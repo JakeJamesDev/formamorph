@@ -27,6 +27,32 @@ Select the ring to see the percent used, about how many turns are left, when the
 
 If Formamorph AI can't serve you right now, the ring stays empty. Select it to see why and what to do.
 
+## How to Make Your Formamorph AI Allowance Last
+<!-- keywords: use less, save allowance, last longer, running out fast, using a lot, why so much, usage going up, turns cost more, expensive, big world, long story, cheaper, reduce usage, stretch, fewer turns left -->
+<!-- route: gameViewer#action-box -->
+
+Each turn sends your world and the story so far to the AI. Two things decide how much a turn uses:
+
+| What | How It Changes |
+|---|---|
+| 🌍 **Your world** | A large world, with many entities, locations and dictionary entries, uses more on every turn, from the first turn on. |
+| 📜 **Your story** | The story so far grows with each turn, so a long save uses more per turn than a new one. |
+
+**About how many turns are left** follows your recent turns. It drops as a story grows or when you start a larger world, even if you play the same way.
+
+### Keep Memory Summaries On
+
+**Memory Summaries** is on by default. It sends the last few turns word for word and older turns as short memories, so a long story grows slowly. See [Story Memory](Memory).
+
+With it off, every older turn goes word for word. Each turn then uses more than the one before, until the story fills the AI's context. From then on, every turn uses that full amount.
+
+The memories cost a little each turn. On a short story that is more than they save. Past the first 20 or so turns, they save more than they cost, and the gap keeps growing.
+
+### Ways to Use Less
+
+- **Turn choices off.** Choices are their own request each turn. See [How to Turn Choices Off](#how-to-turn-choices-off).
+- **Check where your use goes.** Select the ring beside **Send**. The popup shows what share of this week's allowance each kind of request used.
+
 ## How to Use a Choice
 <!-- keywords: options, suggestions, pick, select, buttons, ready-made, click, combine, suggested actions, multiple choice, quick replies, prewritten, ctrl click, append, long press, tap answer -->
 <!-- route: gameViewer#action-box -->
