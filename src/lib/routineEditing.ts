@@ -1,7 +1,7 @@
 import { withDerivedLocations } from '@/lib/entityKind';
 import { placesOf } from '@/lib/positionEngine';
 import { firstFreeRange, ONE_DAYPART_MINUTES } from '@/lib/routineTime';
-import type { Entity, EntityStart, ScheduleAction, ScheduleRow } from '@/types';
+import { PLAYER_START, type Entity, type EntityStart, type ScheduleAction, type ScheduleRow } from '@/types';
 
 // The Routine tab's writes to an entity's Starts and rows. Each returns the whole entity with its `locations` rebuilt.
 
@@ -42,29 +42,37 @@ export function switchAction(action: ScheduleAction, kind: ActionKind, startPlac
   return { kind, stops: (places.length ? places : [first]).map((place) => ({ place, idle })) };
 }
 
+/** Where a new row of `start` begins: its location, or `firstPlace` at `PLAYER_START`, since a row needs a real one. */
+export const rowPlaceOf = (start: Pick<EntityStart, 'place'>, firstPlace: string | undefined): string | undefined =>
+  (start.place === PLAYER_START ? firstPlace : start.place);
+
 /** `entity` with a new timed row of `kind` in the first free time of the Start. The same entity when the day is full. */
-export function withNewRow(entity: Entity, startId: string, kind: ActionKind, newId: () => string): Entity {
+export function withNewRow(entity: Entity, startId: string, kind: ActionKind, newId: () => string, firstPlace?: string): Entity {
   const start = entity.starts?.find((s) => s.id === startId);
   const time = start && firstFreeRange(start.schedule);
-  if (!start || !time) return entity;
-  return withStart(entity, startId, (s) => ({ ...s, schedule: [...s.schedule, { id: newId(), time, action: newAction(kind, s.place) }] }));
+  const place = start && rowPlaceOf(start, firstPlace);
+  if (!start || !time || !place) return entity;
+  return withStart(entity, startId, (s) => ({ ...s, schedule: [...s.schedule, { id: newId(), time, action: newAction(kind, place) }] }));
+}
+
+/** `entity` with a new row at the Start's location, and that row's id. The same entity and no id without a place. */
+function withPlacedRow(
+  entity: Entity, startId: string, newId: () => string, firstPlace: string | undefined, make: (place: string) => Omit<ScheduleRow, 'id'>,
+): { entity: Entity; rowId: string | null } {
+  const start = entity.starts?.find((s) => s.id === startId);
+  const place = start && rowPlaceOf(start, firstPlace);
+  if (!place) return { entity, rowId: null };
+  const rowId = newId();
+  return { entity: withStart(entity, startId, (s) => ({ ...s, schedule: [...s.schedule, { id: rowId, ...make(place) }] })), rowId };
 }
 
 /** `entity` with a new Stay at the Start's location over exactly `time`, and that row's id. */
-export function withRowAt(entity: Entity, startId: string, time: ScheduleRow['time'], newId: () => string): { entity: Entity; rowId: string } {
-  const rowId = newId();
-  const next = withStart(entity, startId, (s) => ({ ...s, schedule: [...s.schedule, { id: rowId, time, action: newAction('stay', s.place) }] }));
-  return { entity: next, rowId };
-}
+export const withRowAt = (entity: Entity, startId: string, time: ScheduleRow['time'], newId: () => string, firstPlace?: string) =>
+  withPlacedRow(entity, startId, newId, firstPlace, (place) => ({ time, action: newAction('stay', place) }));
 
 /** `entity` with its free time made a locked All-day Stay at the Start's location, and that row's id. */
-export function withLockedRest(entity: Entity, startId: string, newId: () => string): { entity: Entity; rowId: string } {
-  const rowId = newId();
-  const next = withStart(entity, startId, (s) => ({
-    ...s, schedule: [...s.schedule, { id: rowId, time: 'allDay' as const, strict: true, action: newAction('stay', s.place) }],
-  }));
-  return { entity: next, rowId };
-}
+export const withLockedRest = (entity: Entity, startId: string, newId: () => string, firstPlace?: string) =>
+  withPlacedRow(entity, startId, newId, firstPlace, (place) => ({ time: 'allDay', strict: true, action: newAction('stay', place) }));
 
 /** `entity` with a new empty Start at `place`. */
 export const withNewStart = (entity: Entity, place: string, newId: () => string): Entity =>

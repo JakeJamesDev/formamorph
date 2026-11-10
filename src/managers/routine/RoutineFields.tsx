@@ -15,6 +15,7 @@ import { fieldFrame } from '@/lib/historyField';
 import { idleMinutes, idleParts, type IdleUnit } from '@/lib/routineTime';
 import { dragStyle, droppedMove } from '@/lib/sortableDrag';
 import { cn } from '@/lib/utils';
+import { PLAYER_START } from '@/types';
 
 /** What the Routine tab's pickers know of the world's locations. */
 export interface PlaceBook {
@@ -59,14 +60,19 @@ export const UnconnectedFlag = () => (
   </Tip>
 );
 
-/** A searchable location list behind `trigger`. */
-export function LocationPicker({ book, places, value, onPick, trigger, ariaLabel }: {
+/** How a Start at `PLAYER_START` reads inside a routine sentence. */
+export const PLAYER_START_NAME = "the player's starting location";
+
+const PLAYER_START_ROW = { key: PLAYER_START, value: PLAYER_START, name: "Player's Starting Location" };
+
+/** A searchable location list behind `trigger`. `playerStart` offers the player's starting location first. */
+export function LocationPicker({ book, places, value, onPick, trigger, ariaLabel, playerStart }: {
   book: PlaceBook; places: readonly string[]; value?: string; onPick: (id: string) => void;
-  trigger?: ReactElement; ariaLabel?: string;
+  trigger?: ReactElement; ariaLabel?: string; playerStart?: boolean;
 }) {
   return (
     <BreadcrumbPicker
-      sections={[{ rows: book.rowsOf(places) }]}
+      sections={[...(playerStart ? [{ rows: [PLAYER_START_ROW] }] : []), { rows: book.rowsOf(places) }]}
       value={value}
       onPick={onPick}
       searchPlaceholder="Search locations"

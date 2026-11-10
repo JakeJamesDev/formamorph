@@ -466,6 +466,8 @@ export interface GameState {
    *  `DEFAULT_START_HOUR`, which is exactly how the game behaved before. Never re-asked for an existing
    *  save: a retroactive answer would shift every memory stamp already written. */
   startHour?: number;
+  /** Where the player began, resolved once at New Game: the place of every Start at `PLAYER_START`. */
+  playerStartLocationId?: string;
   /** A snapshot's own copy of the flat chat history. Live `currentState` carries it in memory, but it is
    *  stripped from persisted snapshots — the canonical history lives once at `SaveObject.messageHistory`.
    *  Absent on migrated/persisted snapshots; present on the in-memory current state. */

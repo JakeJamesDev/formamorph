@@ -13,7 +13,7 @@ import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { turnActivity } from '../lib/turnActivity';
 import { setLiveReasoning } from '../lib/reasoningStreamStore';
 import { usePlaceholderSession } from './PlaceholderSessionContext';
-import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
+import { pageOneLocationId, parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
 import type { SceneImageMap } from '../lib/sceneImages';
 import type { LookStats, LookTraits } from '../lib/avatarLook';
 import type { StrangerLabels } from '../lib/locationContext';
@@ -128,6 +128,8 @@ function useProvideGameplay() {
   // Hour of day the story opened at (see GameState.startHour). Null until the opening-time pass answers,
   // and null forever for a game that started without it — both read as DEFAULT_START_HOUR downstream.
   const [startHour, setStartHour] = useState<number | null>(null);
+  // Where the player began (see GameState.playerStartLocationId). Set once at New Game.
+  const [playerStartLocationId, setPlayerStartLocationId] = useState<string | undefined>(undefined);
   // The single object every clock reader passes to gameClock. Undefined while the story has no measured
   // opening, which is what makes "never asked" and "asked before this feature existed" the same code path
   // as the shipped default rather than a special case at each call site.
@@ -436,6 +438,7 @@ function useProvideGameplay() {
       locationId: currentLocation?.id,
       gameTime,
       ...(startHour !== null ? { startHour } : {}),
+      ...(playerStartLocationId !== undefined ? { playerStartLocationId } : {}),
       fullMessageHistory,
       characterData,
       choices,
@@ -449,7 +452,7 @@ function useProvideGameplay() {
       stateVersion: 2
     };
   }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, individualStates, groupStates, metEntities, strangerAliases, entityStatChanges, codePins, loreToggles, itemCopies, runtimeItems, itemEffects, bodies, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
-      currentLocation, gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
+      currentLocation, gameTime, startHour, playerStartLocationId, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
    *  recovering `playerNotes` from the newest nested state when the top-level field is absent (legacy saves).
@@ -500,6 +503,7 @@ function useProvideGameplay() {
       setGameplayText(gameState.gameplayText);
       setGameTime(gameState.gameTime);
       setStartHour(gameState.startHour ?? null);
+      setPlayerStartLocationId(gameState.playerStartLocationId);
       // Rollback / regenerate keep the live narration + notes (they carry the player's post-turn edits) and
       // rewind the flat history themselves; the snapshot's frozen copies would revert those edits.
       if (!opts?.keepLiveHistory) {
@@ -699,7 +703,9 @@ function useProvideGameplay() {
     const withPlacedCast = (state: GameState, cast: readonly RoutineEntity[]): GameState => {
       const discovered = state.discoveredEntities ?? [];
       const now = storyMinute(state.gameTime ?? 0, state.startHour != null ? { startHour: state.startHour } : undefined);
-      const world = positionWorld(castRoutines(cast, discovered), now, state.locationId, locations, connections);
+      // A save from before the field resolves where page one took place, else where the player stands.
+      const playerStart = state.playerStartLocationId ?? pageOneLocationId(state.fullMessageHistory ?? []) ?? state.locationId;
+      const world = positionWorld(castRoutines(cast, discovered), now, state.locationId, locations, connections, undefined, playerStart);
       const { entityFollowers: legacy, ...rest } = state as GameState & { entityFollowers?: string[] };
       const book = reconcileBook(
         {
@@ -713,6 +719,7 @@ function useProvideGameplay() {
       const { entityPositions: _p, individualStates: _i, groupStates: _g, ...base } = rest;
       return {
         ...base,
+        ...(playerStart !== undefined && { playerStartLocationId: playerStart }),
         ...(Object.keys(positions).length && { entityPositions: positions }),
         ...(Object.keys(book.individuals).length && { individualStates: book.individuals }),
         ...(Object.keys(book.groups).length && { groupStates: book.groups }),
@@ -1031,6 +1038,8 @@ function useProvideGameplay() {
     setGameTime,
     startHour,
     setStartHour,
+    playerStartLocationId,
+    setPlayerStartLocationId,
     calendar,
     currentLocation,
     setCurrentLocation,

@@ -454,13 +454,19 @@ export interface ScheduleRow {
   action: ScheduleAction;
 }
 
+/** The Start place that resolves at New Game to where the player begins. Never a location id. */
+export const PLAYER_START = '@playerStart';
+
 /** One beginning: a place and the daily schedule kept from there. An Individual rolls one by weight; a Group runs them all. */
 export interface EntityStart {
   id: string;
+  /** A location id, or `PLAYER_START`. */
   place: string;
   /** Positive integer. */
   weight: number;
   schedule: ScheduleRow[];
+  /** At `PLAYER_START`, an Individual that rolls this Start begins the game Following. */
+  beginsFollowing?: true;
 }
 
 /** Where an Individual may go beyond its schedule. An empty list means schedule places only. */

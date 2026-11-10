@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Connection, DiscoveredEntity, ScheduleAction, ScheduleRow, Traversable } from '@/types';
+import { PLAYER_START, type Connection, type DiscoveredEntity, type ScheduleAction, type ScheduleRow, type Traversable } from '@/types';
 import {
   advancePositions, allowedPlaces, connectedPlaces, groupPlaces, isStrictNow, moveIndividualByScript, partWays, pullIndividual,
   runtimeRoutine, startFollowing, startWaiting, waitUntil, type PositionBook, type PositionScene, type Routine,
@@ -507,5 +507,97 @@ describe('runtime characters', () => {
     expect(game.pos).toBe('island');
     game.apply((b) => partWays(b, 'stranger')).advance(at(4, 11), 'gate');
     expect(game.pos).toBe('square');
+  });
+});
+
+describe("the player's starting location", () => {
+  /** `playerStart` null: the game knows no player start. */
+  const begin = (now: number, playerAt: string, playerStart: string | null = playerAt): PositionScene =>
+    ({ ...scene(now, playerAt), ...(playerStart !== null && { playerStart }) });
+  const companion = (schedule: ScheduleRow[] = [], traversable: Traversable = 'anywhere', beginsFollowing = true): Routine => ({
+    id: 'kit', traversable,
+    starts: [{ id: 'beside', place: PLAYER_START, weight: 1, schedule, ...(beginsFollowing && { beginsFollowing: true as const }) }],
+  });
+  const run = (r: Routine, book: PositionBook, s: PositionScene, random: () => number = seeded(5)) => advancePositions([r], book, s, random);
+
+  it('begins at each starting location the player can begin at', () => {
+    for (const start of ['inn', 'gate', 'ridge']) {
+      expect(run(companion([], [], false), EMPTY, begin(at(1, 8), start)).positions.kit).toBe(start);
+    }
+  });
+
+  it('begins where the game began, not where the player stands now', () => {
+    expect(run(companion([], [], false), EMPTY, begin(at(2, 8), 'market', 'gate')).positions.kit).toBe('gate');
+  });
+
+  it('places nobody while the player start is unknown', () => {
+    const book = run(companion([], [], false), EMPTY, begin(at(1, 8), 'inn', null));
+    expect(book.positions.kit).toBeUndefined();
+    expect(book.individuals.kit).toBeUndefined();
+  });
+
+  it('begins Following and moves with the player on the first move', () => {
+    const first = run(companion(), EMPTY, begin(at(1, 8), 'inn'));
+    expect(first.individuals.kit.follow).toEqual({ mode: 'following' });
+    expect(first.positions.kit).toBe('inn');
+    expect(run(companion(), first, begin(at(1, 9), 'market', 'inn')).positions.kit).toBe('market');
+  });
+
+  it('begins Following on a Strict row', () => {
+    const guarded = companion([allDay('guard', stay('inn'), true)]);
+    const first = run(guarded, EMPTY, begin(at(1, 8), 'inn'));
+    expect(isStrictNow(guarded, first.individuals.kit, at(1, 8))).toBe(true);
+    expect(first.individuals.kit.follow?.mode).toBe('following');
+    expect(run(guarded, first, begin(at(1, 9), 'gate', 'inn')).positions.kit).toBe('gate');
+  });
+
+  it('keeps Traversable: a place outside it leaves the companion waiting', () => {
+    const homebody = companion([], ['inn']);
+    const first = run(homebody, EMPTY, begin(at(1, 8), 'inn'));
+    const moved = run(homebody, first, begin(at(1, 9), 'market', 'inn'));
+    expect(moved.positions.kit).toBe('inn');
+    expect(moved.individuals.kit.follow?.mode).toBe('waiting');
+  });
+
+  it('follows only in a game that rolled the Start with the setting', () => {
+    const either: Routine = {
+      id: 'kit', traversable: 'anywhere',
+      starts: [
+        { id: 'beside', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true },
+        { id: 'home', place: 'smithy', weight: 1, schedule: [] },
+      ],
+    };
+    const rolledBeside = run(either, EMPTY, begin(at(1, 8), 'inn'), () => 0);
+    expect(rolledBeside.individuals.kit).toMatchObject({ startId: 'beside', follow: { mode: 'following' } });
+    const rolledHome = run(either, EMPTY, begin(at(1, 8), 'inn'), () => 0.99);
+    expect(rolledHome.individuals.kit.startId).toBe('home');
+    expect(rolledHome.individuals.kit.follow).toBeUndefined();
+    expect(rolledHome.positions.kit).toBe('smithy');
+  });
+
+  it('ignores Begins Following on a Start at a fixed location', () => {
+    const fixed: Routine = { id: 'kit', traversable: 'anywhere', starts: [{ id: 'home', place: 'smithy', weight: 1, schedule: [], beginsFollowing: true }] };
+    const book = run(fixed, EMPTY, begin(at(1, 8), 'inn'));
+    expect(book.individuals.kit.follow).toBeUndefined();
+    expect(book.positions.kit).toBe('smithy');
+  });
+
+  it('skips a row place the real start cannot reach', () => {
+    const islander = companion([allDay('shore', stay('island'))], [], false);
+    expect(run(islander, EMPTY, begin(at(1, 8), 'inn')).positions.kit).toBe('inn');
+    expect(run(islander, EMPTY, begin(at(1, 8), 'island')).positions.kit).toBe('island');
+  });
+
+  it('runs a Group presence from beside the player, then its rows, and never follows', () => {
+    const crowd: Routine = {
+      id: 'crowd', group: true, traversable: [],
+      starts: [{ id: 'beside', place: PLAYER_START, weight: 1, schedule: [timed('market', 12, 14, stay('square'))], beginsFollowing: true }],
+    };
+    const first = run(crowd, EMPTY, begin(at(1, 8), 'inn'));
+    expect(first.groups.crowd.beside.position).toBe('inn');
+    expect(first.individuals.crowd).toBeUndefined();
+    const moved = run(crowd, first, begin(at(1, 9), 'gate', 'inn'));
+    expect(moved.groups.crowd.beside.position).toBe('inn');
+    expect(run(crowd, moved, begin(at(1, 13), 'gate', 'inn')).groups.crowd.beside.position).toBe('square');
   });
 });

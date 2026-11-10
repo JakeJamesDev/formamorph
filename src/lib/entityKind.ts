@@ -1,4 +1,4 @@
-import type { DiscoveredEntity, Entity, EntityKind, EntityStart, ScheduleRow } from "@/types";
+import { PLAYER_START, type DiscoveredEntity, type Entity, type EntityKind, type EntityStart, type ScheduleRow } from "@/types";
 import { placesOf, runtimeRoutine, type Routine } from "@/lib/positionEngine";
 
 /**
@@ -9,9 +9,21 @@ import { placesOf, runtimeRoutine, type Routine } from "@/lib/positionEngine";
 export const isGroup = (entity: Pick<Entity, "kind">): boolean => entity.kind === "group";
 export const isIndividual = (entity: Pick<Entity, "kind">): boolean => entity.kind === "individual";
 
-/** Every Start place and every row place of `starts`, deduped, in order. */
+/** Every Start place and every row place of `starts`, deduped, in order. `PLAYER_START` adds none. */
 export const routinePlaces = (starts: readonly EntityStart[]): string[] =>
-  [...new Set(starts.flatMap((start) => [start.place, ...start.schedule.flatMap((row) => placesOf(row.action))]))];
+  [...new Set(starts.flatMap((start) => [
+    ...(start.place === PLAYER_START ? [] : [start.place]), ...start.schedule.flatMap((row) => placesOf(row.action)),
+  ]))];
+
+/** `start` with Begins Following set or cleared. */
+export function withBeginsFollowing(start: EntityStart, on: boolean): EntityStart {
+  const { beginsFollowing: _was, ...rest } = start;
+  return on ? { ...rest, beginsFollowing: true } : rest;
+}
+
+/** `start` moved to `place`. Begins Following holds only at `PLAYER_START`, so a move away clears it. */
+export const withStartPlace = (start: EntityStart, place: string): EntityStart =>
+  withBeginsFollowing({ ...start, place }, place === PLAYER_START && !!start.beginsFollowing);
 
 /** `entity` with its `locations` rebuilt from its Starts and rows. An entity with no kind as it is. */
 export function withDerivedLocations(entity: Entity): Entity {
@@ -107,8 +119,9 @@ function rowMapped(row: ScheduleRow, map: Readonly<Record<string, string>>): Sch
 /** A Group carried into another world, its places renamed through `map` (source id → world id): the Starts whose
  *  place maps are kept with their rows remapped, and with none kept it takes one Start per mapped place. */
 export function withGroupPlacesMapped(entity: Entity, map: Readonly<Record<string, string>>, newId: () => string): Entity {
-  const kept = (entity.starts ?? []).flatMap((start) => (map[start.place]
-    ? [{ ...start, place: map[start.place], schedule: start.schedule.flatMap((row) => rowMapped(row, map) ?? []) }]
+  const placeOf = (start: EntityStart) => (start.place === PLAYER_START ? PLAYER_START : map[start.place]);
+  const kept = (entity.starts ?? []).flatMap((start) => (placeOf(start)
+    ? [{ ...start, place: placeOf(start), schedule: start.schedule.flatMap((row) => rowMapped(row, map) ?? []) }]
     : []));
   const starts = kept.length ? kept : [...new Set(Object.values(map))].map((place) => blankStart(place, newId));
   const { starts: _s, ...rest } = entity;
@@ -147,7 +160,7 @@ export const toggleGroupStart = (entity: Entity, place: string, newId: () => str
 export function withFirstStartPlace(entity: Entity, placeId: string, newId: () => string): Entity {
   const starts = entity.starts ?? [];
   const next = starts.length
-    ? [{ ...starts[0], place: placeId }, ...starts.slice(1)]
+    ? [withStartPlace(starts[0], placeId), ...starts.slice(1)]
     : [blankStart(placeId, newId)];
   return withDerivedLocations({ ...entity, starts: next });
 }

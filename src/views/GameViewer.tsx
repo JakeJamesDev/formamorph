@@ -149,7 +149,7 @@ import { narrationRevealListener } from "../lib/narrationRevealListener";
 import { getRevealReleased } from "../lib/revealTimingStore";
 import { fanOut } from "../lib/aiRequest/fanOut";
 import { rewriteSentences } from "../lib/aiRequest/narrationRewrite";
-import { parseTurnContent, pruneTurnMap, survivingTurnIds, recentParticipants, collectCharacterDiary, parsedTurnById, turnDiaries, turnMemory } from "../lib/turnDigest";
+import { pageOneLocationId, pageOneNarration, parseTurnContent, pruneTurnMap, survivingTurnIds, recentParticipants, collectCharacterDiary, parsedTurnById, turnDiaries, turnMemory } from "../lib/turnDigest";
 import { farDestinationNames, walkableDestinationEntries } from "../lib/locationContext";
 import { chipValues, entityStatsField, sceneEntityChipValues } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
@@ -395,15 +395,6 @@ const choicesPatch = (aiChoices: readonly string[], scripted: readonly string[] 
 
 /** What a Regenerate Choices rerun of the After the AI batch answers: not started, no change, or the scripts' list. */
 type ChoicesRerun = { ran: false } | { ran: true; changed: false } | { ran: true; changed: true; choices: readonly string[] };
-
-/** Page one as stored. */
-const pageOneTurn = (history: readonly ChatMessage[]): AITurnResult | null => {
-  const pageOne = history.find((m) => m.role === "assistant");
-  return pageOne ? parseTurnContent(pageOne.content) : null;
-};
-/** Where page one took place. */
-const pageOneLocationId = (history: readonly ChatMessage[]) => pageOneTurn(history)?.locationId;
-const pageOneNarration = (history: readonly ChatMessage[]) => pageOneTurn(history)?.narration;
 
 /** The pre-turn state a stat re-roll hands stat code, so code reads and switches as the turn it replaces did. */
 type PreTurnCodeState = Pick<
@@ -813,6 +804,8 @@ const GameViewer = ({
     setGameTime,
     startHour,
     setStartHour,
+    playerStartLocationId,
+    setPlayerStartLocationId,
     calendar,
     logsEndRef,
     setChoices,
@@ -1487,8 +1480,8 @@ const GameViewer = ({
   );
   /** The position engine's view of the world at `now`, with the player at `playerAt`. */
   const positionWorldAt = useCallback((now: number, playerAt: string | undefined): PositionWorld => positionWorld(
-    routines, now, playerAt, locations, connections,
-  ), [routines, locations, connections]);
+    routines, now, playerAt, locations, connections, undefined, playerStartLocationId,
+  ), [routines, locations, connections, playerStartLocationId]);
   // AI progress feedback: which request is running, its streamed output estimate (null = indeterminate), and
   // whether the player may already type their next action (choices done, background requests still finishing).
   const [aiRequestType, setAiRequestType] = useState<AIRequestType | null>(null);
@@ -6071,8 +6064,10 @@ const GameViewer = ({
       // here (against the pins the traits above are about to impose) so the player reads plain prose.
       // An Opening Narration is page one: the game starts on it at once, with the box left empty.
       // Each Individual rolls its Start, so the opening pool reads who stands at the start.
+      setPlayerStartLocationId(location?.id);
       const startBook = placeAll(EMPTY_BOOK, positionWorld(
         castRoutines(positionedCast(codeEntities.world, personaPick.ref)), storyMinute(0), location?.id, locations, connections,
+        undefined, location?.id,
       ));
       const startPositions = startBook.positions;
       setEntityPositions(startPositions);
@@ -6105,6 +6100,7 @@ const GameViewer = ({
     loadGame,
     connections,
     setIndividualStates,
+    setPlayerStartLocationId,
     resetEntityStats,
     setSelectedEntityId,
     initialTraits,

@@ -4,7 +4,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { useGameData } from '@/contexts/GameDataContext';
 import { panelWorld, renderPanelBench } from '@/test/panelBench';
-import type { Connection, Entity, EntityStart, GameLocation, ScheduleRow } from '@/types';
+import { PLAYER_START, type Connection, type Entity, type EntityStart, type GameLocation, type ScheduleRow } from '@/types';
 import { RoutineTab } from './RoutineTab';
 
 // Daypart edges in minutes: dawn 360, morning 480, midday 660, afternoon 780, evening 1020, night 1200.
@@ -299,6 +299,48 @@ describe('starts', () => {
     await userEvent.click(screen.getByRole('option', { name: /^Inn/ }));
     expect(stored(bench).starts!.map((s) => s.place)).toEqual(['smithy', 'inn']);
     expect(screen.getByRole('button', { name: 'Start location: Inn' })).toBeInTheDocument();
+  });
+});
+
+describe("the player's starting location", () => {
+  const beside = (over: Partial<EntityStart> = {}, schedule: ScheduleRow[] = []): EntityStart[] =>
+    [{ id: 's1', place: PLAYER_START, weight: 1, schedule, ...over }];
+  const follows = () => screen.queryByRole('checkbox', { name: 'Follows the Player' });
+
+  it('is a choice in the start picker, adds no location, and offers Follows the Player', async () => {
+    const bench = mount(mira(oneStart([])));
+    expect(follows()).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Start location: Smithy' }));
+    await userEvent.click(screen.getByRole('option', { name: "Player's Starting Location" }));
+    expect(stored(bench).starts![0].place).toBe(PLAYER_START);
+    expect(stored(bench).locations).toBeUndefined();
+    expect(lines()).toEqual(["All day, stays at the player's starting location."]);
+    await userEvent.click(follows()!);
+    expect(stored(bench).starts![0].beginsFollowing).toBe(true);
+  });
+
+  it('clears Follows the Player when the start moves to a fixed location', async () => {
+    const bench = mount(mira(beside({ beginsFollowing: true })));
+    expect(follows()).toBeChecked();
+    await userEvent.click(screen.getByRole('button', { name: "Start location: the player's starting location" }));
+    await userEvent.click(screen.getByRole('option', { name: /^Inn/ }));
+    expect(stored(bench).starts![0]).toEqual({ id: 's1', place: 'inn', weight: 1, schedule: [] });
+    expect(follows()).toBeNull();
+  });
+
+  it('shows no Follows the Player for a Generic entity', () => {
+    mount(mira(beside({ beginsFollowing: true }), { kind: 'group' }));
+    expect(follows()).toBeNull();
+  });
+
+  it('offers every location to its rows, and a new row begins at the first', async () => {
+    const bench = mount(mira(beside({}, [stay('day', 'inn', { start: MORNING, end: AFTERNOON_END })])));
+    await userEvent.click(screen.getByRole('button', { name: 'Locations: Inn' }));
+    await userEvent.click(screen.getByRole('combobox', { name: 'Location' }));
+    expect(screen.getAllByRole('option').some((o) => o.textContent?.startsWith('Farm'))).toBe(true);
+    await userEvent.keyboard('{Escape}');
+    await userEvent.click(screen.getByRole('button', { name: 'Add Stay' }));
+    expect(schedule(bench).at(-1)?.action).toEqual({ kind: 'stay', place: 'village' });
   });
 });
 

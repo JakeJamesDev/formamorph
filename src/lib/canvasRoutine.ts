@@ -1,5 +1,5 @@
 import { isGroup } from '@/lib/entityKind';
-import { connectedPlaces, placesOf, type PlaceGraph } from '@/lib/positionEngine';
+import { placesOf, startReach, type PlaceGraph } from '@/lib/positionEngine';
 import type { ActionKind } from '@/lib/routineEditing';
 import type { RoutineSelection } from '@/lib/routineSelection';
 import { chancePercent, freeRanges, rangeText, rowClockKey, strip } from '@/lib/routineTime';
@@ -114,7 +114,7 @@ export function routineView(entity: Entity, selection: RoutineSelection, graph: 
 
   const traversable = group ? 'anywhere' : entity.traversable ?? 'anywhere';
   if (traversable === 'anywhere') {
-    for (const id of connectedPlaces(start.place, graph)) mark(id, { kind: 'plain' });
+    for (const id of startReach(start.place, graph)) mark(id, { kind: 'plain' });
   } else {
     for (const id of traversable) mark(id, { kind: 'reach' });
   }

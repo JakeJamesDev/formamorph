@@ -1,6 +1,6 @@
 # 17: Player's Starting Location And Begins Following
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 14
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -26,13 +26,26 @@ Spec rulings: Q147, Q148, Q149, Q150, Q64, Q54, Q162, Q163.
 
 ## Acceptance criteria
 
-- [ ] A Start at Player's Starting Location puts the entity where the player begins, for each starting location of a world with several, and for an opening that sets its own start. Position engine tests cover both.
-- [ ] With Begins Following on, the entity is Following on the first turn and moves with the player's first move; with a Strict row at the start, it still follows.
-- [ ] With two weighted Starts, the entity follows only in a game that rolled the Start with the setting.
-- [ ] A row on such a Start that names a place out of reach of the real start is skipped in play.
-- [ ] The setting does not render for a Group or for a Start at a fixed location, and changing the place away from Player's Starting Location clears it.
-- [ ] A Group's presence at Player's Starting Location begins beside the player and never follows.
-- [ ] A save and load keeps the resolved place and the follow state.
-- [ ] `docs/World-Editor-Entities.md` and the world format doc describe both. One changelog entry.
+- [x] A Start at Player's Starting Location puts the entity where the player begins, for each starting location of a world with several, and for an opening that sets its own start. Position engine tests cover both. (`positionEngine.test.ts`: "begins at each starting location…", "begins where the game began, not where the player stands now".)
+- [x] With Begins Following on, the entity is Following on the first turn and moves with the player's first move; with a Strict row at the start, it still follows. ("begins Following and moves with the player…", "begins Following on a Strict row".)
+- [x] With two weighted Starts, the entity follows only in a game that rolled the Start with the setting. ("follows only in a game that rolled the Start with the setting".)
+- [x] A row on such a Start that names a place out of reach of the real start is skipped in play. ("skips a row place the real start cannot reach".)
+- [x] The setting does not render for a Group or for a Start at a fixed location, and changing the place away from Player's Starting Location clears it. (`RoutineTab.test.tsx` "the player's starting location" block; preview frame below.)
+- [x] A Group's presence at Player's Starting Location begins beside the player and never follows. ("runs a Group presence from beside the player…".)
+- [x] A save and load keeps the resolved place and the follow state. (`GameplayContext.positions.test.tsx`: round trip, plus the older-save fallbacks.)
+- [x] `docs/World-Editor-Entities.md` and the world format doc describe both. One changelog entry. (`WorldFormat.md` Starts table; fragment `npc-schedules-17.md`.)
 
-For you: start a new game in a world with a companion set to begin Following, and check the first narration treats them as with you.
+## Landed
+
+**Not verified**
+
+- None of the criteria. The engine, save and Routine tab behavior is covered by tests; seven mutations each turned the expected test red.
+
+**For you**
+
+- For you: start a new game in a world with a companion set to begin Following, and check the first narration treats them as with you.
+- Routine tab with a start at the Player's Starting Location: `.scratch/npc-schedules-17/frames/routine-player-start.jpg`. Check the picker entry name and "Follows the Player" read well.
+- Edge cases kept as built, say if any should change:
+  - A Locations pick-mode click on the canvas still sets an Individual's first start to the clicked location. On a start at the Player's Starting Location this replaces it and clears Follows the Player. The Routine view's Generic click never touches such a start.
+  - A start rolled again mid-game (the saved one was deleted) with Follows the Player joins the player Following, the same as the older-save load.
+  - A New Game with no starting location places nobody at the Player's Starting Location; a reload of that save resolves it to page one's location.

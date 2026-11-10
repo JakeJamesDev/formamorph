@@ -461,9 +461,12 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | Field | Type | Meaning |
 |---|---|---|
 | `id` | String | Unique within the entity |
-| `place` | String | The location `id` where the entity begins |
+| `place` | String | The location `id` where the entity begins, or `"@playerStart"`: wherever the player begins, fixed when the game starts |
 | `weight` | Number | A positive whole number. Higher is picked more often. A group ignores it |
 | `schedule` | Row[] | The daily routine kept from there. Empty = it stays at `place` |
+| `beginsFollowing` | `true` | Only with `"@playerStart"`, on an individual: a game that picks this Start begins with the entity following the player, even on a `strict` row. `traversable` still applies. Absent = not following |
+
+A Start at `"@playerStart"` adds no place to `locations`. Its schedule can name any location; play skips one the player's real start doesn't connect to.
 
 Each schedule row:
 

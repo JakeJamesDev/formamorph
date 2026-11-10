@@ -18,13 +18,15 @@ export interface PositionWorld {
   random: () => number;
 }
 
-/** A position world from its parts. */
+/** A position world from its parts. `playerStart` is where the player began. */
 export function positionWorld(
   routines: readonly Routine[], now: number, playerAt: string | undefined,
   locations: readonly Pick<GameLocation, "id" | "parentId">[], connections: readonly Connection[], random: () => number = Math.random,
+  playerStart?: string,
 ): PositionWorld {
   const byId = (group: boolean) => new Map(routines.filter((r) => !!r.group === group).map((r) => [r.id, r]));
-  return { routines: byId(false), groups: byId(true), scene: { now, playerAt, locations, connections }, random };
+  const scene = { now, playerAt, locations, connections, ...(playerStart !== undefined && { playerStart }) };
+  return { routines: byId(false), groups: byId(true), scene, random };
 }
 
 /** `world` with the player at `playerAt`. */
@@ -106,6 +108,6 @@ export function reseatForOpening(book: PositionBook, world: PositionWorld): Posi
 export function openingCast(
   entities: Entity[], locations: readonly Pick<GameLocation, "id" | "parentId">[], connections: readonly Connection[], playerAt: string | undefined,
 ): Entity[] {
-  const world = positionWorld(castRoutines(entities), storyMinute(0), playerAt, locations, connections, () => 0);
+  const world = positionWorld(castRoutines(entities), storyMinute(0), playerAt, locations, connections, () => 0, playerAt);
   return entitiesInPlay(entities, placeAll(EMPTY_BOOK, world));
 }

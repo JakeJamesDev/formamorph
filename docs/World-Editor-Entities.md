@@ -110,6 +110,15 @@ Every entity has one or more starts. Each start is a location and a routine kept
 
 Switching between the two keeps every start and row. Chances, locks and **Can Also Go** come back as they were.
 
+#### Player's Starting Location
+
+Pick **Player's Starting Location** at the top of a start's location list. The entity then begins wherever the player begins, in a world with one starting location or many. It adds no location to the entity's list.
+
+- 🤝 For a **Unique** entity, tick **Follows the Player** to make a companion. In a game that picks this start, it travels with the player from the first turn, even through a locked row. **Can Also Go** still applies: it waits outside a location it can't enter.
+- 👥 A **Generic** entity begins beside the player and then keeps its routine. It never follows.
+- 📍 The start's rows can use any location. In play, the game skips a location the player's real start doesn't connect to.
+- 🔁 Moving the start to a fixed location clears **Follows the Player**.
+
 ### The routine
 
 The routine reads as sentences in the order of the day, such as *Morning – Afternoon, stays at Smithy.*
@@ -144,7 +153,7 @@ Two timed rows can't share an hour. Times another row uses are unavailable in th
 
 ### On the Locations Canvas
 
-On the full-screen Locations Canvas, choose the entity and pick **Routine**. The map shows the routine of the start whose tab is open. Each location takes its action's color, a bar shows when the entity is there, and a flag marks **Starts Here**. A key at the bottom lists what the map shows.
+On the full-screen Locations Canvas, choose the entity and pick **Routine**. The map shows the routine of the start whose tab is open. Each location takes its action's color, a bar shows when the entity is there, and a flag marks **Starts Here**. A start at the **Player's Starting Location** has no flag, and every location shows as one its rows can use. A key at the bottom lists what the map shows.
 
 - 👆 Select a row to edit its locations: click a location, or drag from one. The line over the map says what a click does.
 - 📍 Under **Only Listed Locations** with no row selected, a click adds the location to **Can Also Go** or removes it.

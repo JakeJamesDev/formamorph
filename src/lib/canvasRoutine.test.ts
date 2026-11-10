@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { Connection, Entity, ScheduleAction, ScheduleRow, Traversable } from '@/types';
+import { PLAYER_START, type Connection, type Entity, type ScheduleAction, type ScheduleRow, type Traversable } from '@/types';
 import { routineFlowEdge } from './canvasEdges';
+import { routineKeyEntries } from './canvasKey';
 import { routineView, type RoutineLine } from './canvasRoutine';
 import { rangeText } from './routineTime';
 
@@ -34,6 +35,22 @@ const view = (entity: Entity, rowId: string | null = null, startId: string | nul
 const markOf = (v: ReturnType<typeof view>, id: string) => v.marks.get(id);
 const pairs = (lines: RoutineLine[]) => lines.map((l) => `${l.source}>${l.target}:${l.tone}${l.arrow ? '' : ':roam'}`).sort();
 const label = (from: number, to: number) => rangeText({ start: from * 60, end: to * 60 });
+
+describe("a Start at the player's starting location", () => {
+  const companion = (kind: 'individual' | 'group'): Entity => ({
+    ...farrier(), kind, starts: [{ id: 'p', place: PLAYER_START, weight: 1, schedule: [timed('stay', 6, 10, { kind: 'stay', place: 'island' })] }],
+  });
+
+  it('draws no Starts Here flag, so the key lists none, and offers every place', () => {
+    for (const kind of ['individual', 'group'] as const) {
+      const v = view(companion(kind));
+      expect([...v.marks.values()].some((m) => m.kind === 'routine' && m.begin)).toBe(false);
+      expect(routineKeyEntries(v)).not.toContain('start');
+      expect(markOf(v, 'ridge')?.kind).toBe('plain');
+      expect(markOf(v, 'island')?.kind).toBe('routine');
+    }
+  });
+});
 
 describe('the overview, with no row selected', () => {
   const v = view(farrier());

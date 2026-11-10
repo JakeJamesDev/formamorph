@@ -1,3 +1,4 @@
+import { PLAYER_START } from "@/types";
 import type {
   Connection, DiscoveredEntity, EntityPositions, EntityStart, GroupStates, IndividualState, IndividualStates, PatrolStop, PositionHold,
   PresenceState, ScheduleAction, ScheduleRange, ScheduleRow, Traversable, WanderPlace,
@@ -30,6 +31,8 @@ export interface PlaceGraph {
 export interface PositionScene extends PlaceGraph {
   now: number;
   playerAt: string | undefined;
+  /** Where the player began: the place of a Start at `PLAYER_START`. Undefined places nobody there. */
+  playerStart?: string;
 }
 
 /** Where each Individual stands with its engine state, and each Group's presences. */
@@ -48,6 +51,10 @@ export type WaitLength = "hour" | "thisDaypart" | "nextDaypart";
 /** The places travel can reach from `from` through any path, Far links included. Holds `from`. */
 export const connectedPlaces = (from: string, graph: PlaceGraph): Set<string> =>
   reachableFrom([from], graph.locations, graph.connections);
+
+/** The places a Start's rows may use: every place at `PLAYER_START`, else those connected to its place (Q149). */
+export const startReach = (place: string, graph: PlaceGraph): Set<string> =>
+  (place === PLAYER_START ? new Set(graph.locations.map((l) => l.id)) : connectedPlaces(place, graph));
 
 /** A Patrol stop that survived the connected filter, with its index in the authored list. */
 interface LiveStop extends PatrolStop {
@@ -184,6 +191,18 @@ function stepRow(body: Body, { action }: LiveRow, t: number, random: () => numbe
   }
 }
 
+/** `start` with `PLAYER_START` resolved, and Begins Following kept only there. Undefined while the start is unknown. */
+function resolveStart(start: EntityStart, scene: PositionScene): EntityStart | undefined {
+  if (start.place === PLAYER_START) return scene.playerStart === undefined ? undefined : { ...start, place: scene.playerStart };
+  if (!start.beginsFollowing) return start;
+  const { beginsFollowing: _off, ...rest } = start;
+  return rest;
+}
+
+/** `routine` with every Start placed for `scene`. A Start at an unknown player start is left out. */
+const resolveRoutine = (routine: Routine, scene: PositionScene): Routine =>
+  ({ ...routine, starts: routine.starts.flatMap((s) => resolveStart(s, scene) ?? []) });
+
 function rollStart(starts: readonly EntityStart[], random: () => number): EntityStart | undefined {
   return starts.length ? weighted(starts, (s) => s.weight, random) : undefined;
 }
@@ -219,6 +238,11 @@ function advanceOne(
   const body: Body = saved && savedStart
     ? { pos: savedPos, st: saved }
     : { pos: savedPos ?? start.place, st: { startId: start.id, lastRun: now } };
+  // Begins Following skips the Strict check only, so Traversable still applies (Q148).
+  if (fresh && start.beginsFollowing) {
+    body.pos = playerAt ?? start.place;
+    body.st = { ...body.st, follow: { mode: "following" } };
+  }
   const reach = connected(start.place);
   const pause = (): Body => ({ pos: body.pos, st: { ...body.st, lastRun: now } });
   let cursor = Math.min(body.st.lastRun, now);
@@ -310,7 +334,8 @@ export function advancePositions(
   const individuals = { ...book.individuals };
   const groups = { ...book.groups };
   const connected = connectedCache(scene);
-  for (const routine of routines) {
+  for (const authored of routines) {
+    const routine = resolveRoutine(authored, scene);
     if (routine.group) {
       const presences = advanceGroup(routine, book.groups[routine.id], scene, random, connected);
       if (Object.keys(presences).length) groups[routine.id] = presences;
@@ -336,13 +361,19 @@ export function groupPlaces(groups: Readonly<GroupStates>): Record<string, strin
     [id, [...new Set(Object.values(presences).map((p) => p.position))]]));
 }
 
-/** The saved Start of `routine`, if it still has it. */
-const startOf = (routine: Routine, st: IndividualState | undefined) => st && routine.starts.find((s) => s.id === st.startId);
+/** The saved Start of `routine`, as authored, if it still has it. */
+const savedStart = (routine: Routine, st: IndividualState | undefined) => st && routine.starts.find((s) => s.id === st.startId);
+
+/** The saved Start of `routine` resolved for `scene`, if it still has it. */
+function startOf(routine: Routine, st: IndividualState | undefined, scene: PositionScene): EntityStart | undefined {
+  const start = savedStart(routine, st);
+  return start && resolveStart(start, scene);
+}
 
 /** The places `routine` may be pulled or led into right now: its current row's places (the Start's place in free
  *  time) plus its Traversable places. Every place for Anywhere. */
 export function allowedPlaces(routine: Routine, st: IndividualState | undefined, scene: PositionScene): Set<string> {
-  const start = startOf(routine, st);
+  const start = startOf(routine, st, scene);
   if (!start) return new Set();
   return allowedOn(routine, start, scene.now, scene, connectedPlaces(start.place, scene));
 }
@@ -350,14 +381,14 @@ export function allowedPlaces(routine: Routine, st: IndividualState | undefined,
 /** The places the row in force for `routine` uses right now, unconnected ones dropped: the Start's place in free
  *  time. Empty without a saved Start. */
 export function rowPlacesNow(routine: Routine, st: IndividualState | undefined, scene: PositionScene): string[] {
-  const start = startOf(routine, st);
+  const start = startOf(routine, st, scene);
   if (!start) return [];
   return placesOf(liveRow(start, rowAt(start, scene.now), connectedPlaces(start.place, scene)).action);
 }
 
 /** Whether the row in force for `routine` right now is Strict. */
 export function isStrictNow(routine: Routine, st: IndividualState | undefined, now: number): boolean {
-  const start = startOf(routine, st);
+  const start = savedStart(routine, st);
   return !!start && !!rowAt(start, now)?.strict;
 }
 
@@ -372,7 +403,7 @@ const withState = (book: PositionBook, id: string, st: IndividualState, pos?: st
 function holdFor(
   routine: Routine, st: IndividualState, scene: PositionScene, onStay: (start: EntityStart) => PositionHold | undefined,
 ): { hold?: PositionHold; idleEnd?: number } | undefined {
-  const start = startOf(routine, st);
+  const start = startOf(routine, st, scene);
   if (!start) return undefined;
   const { action } = liveRow(start, rowAt(start, scene.now), connectedPlaces(start.place, scene));
   if (action.kind === "stay") return { hold: onStay(start) };

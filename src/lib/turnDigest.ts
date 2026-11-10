@@ -75,6 +75,18 @@ export function parseTurnContent(content: string): AITurnResult | null {
   return parsed;
 }
 
+/** Page one as stored. */
+const pageOneTurn = (history: readonly ChatMessage[]): AITurnResult | null => {
+  const pageOne = history.find((m) => m.role === 'assistant');
+  return pageOne ? parseTurnContent(pageOne.content) : null;
+};
+
+/** Where page one took place. */
+export const pageOneLocationId = (history: readonly ChatMessage[]): string | undefined => pageOneTurn(history)?.locationId;
+
+/** Page one's narration. */
+export const pageOneNarration = (history: readonly ChatMessage[]): string | undefined => pageOneTurn(history)?.narration;
+
 /** Serialize an assistant turn back to the stored JSON shape. */
 export function serializeTurnContent(content: AITurnResult): string {
   return JSON.stringify(content);

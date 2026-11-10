@@ -11,7 +11,7 @@ import { castRoutines } from '@/lib/entityKind';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { storyMinute } from '@/lib/gameClock';
 import { placeAll, positionWorld } from '@/lib/positionPlay';
-import type { Entity, GameLocation, IndividualStates, SaveRecord } from '@/types';
+import { PLAYER_START, type ChatMessage, type Entity, type GameLocation, type IndividualStates, type SaveRecord } from '@/types';
 
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
 
@@ -232,5 +232,56 @@ describe('Group presences in the save', () => {
 
   it('writes no field when no Group has a presence', () => {
     expect('groupStates' in mount()().saveCurrentGameState()).toBe(false);
+  });
+});
+
+describe("the player's starting location in the save", () => {
+  const linked = [keep, { ...tower, parentId: 'keep' }];
+  const companion: Entity = {
+    id: 'kit', name: 'Kit', kind: 'individual', traversable: 'anywhere',
+    starts: [{ id: 'beside', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }],
+  };
+
+  it('round-trips the resolved place and the follow state', async () => {
+    const live = mount();
+    const states: IndividualStates = { kit: { startId: 'beside', lastRun: OPENING, follow: { mode: 'following' } } };
+    await act(async () => {
+      live().setPlayerStartLocationId('keep');
+      live().setEntityPositions({ kit: 'keep' });
+      live().setIndividualStates(states);
+    });
+    expect(live().saveCurrentGameState().playerStartLocationId).toBe('keep');
+    await save(live, 'save-start');
+    await act(async () => { live().setPlayerStartLocationId(undefined); live().setIndividualStates({}); });
+    await load(live, 'save-start', [companion], linked);
+    expect(live().playerStartLocationId).toBe('keep');
+    expect(live().individualStates.kit).toEqual(states.kit);
+    expect(live().entityFollowers).toEqual(['kit']);
+  });
+
+  /** A save from before the field, with the companion placed at the keep and no engine state for it. */
+  const olderSave = async (live: () => Gameplay, id: string, messageHistory: ChatMessage[]) => {
+    await act(async () => { live().setEntityPositions({ kit: 'keep' }); });
+    await save(live, id);
+    const record = await getSaveRecord(id) as SaveRecord;
+    const { individualStates: _none, playerStartLocationId: _start, ...current } = record.currentState;
+    await putSaveRecord({ ...record, messageHistory, currentState: { ...current, locationId: 'tower' } });
+  };
+
+  it('resolves a save from before the field to where page one took place, and keeps it', async () => {
+    const live = mount();
+    await olderSave(live, 'save-page-one', [{ role: 'assistant', content: JSON.stringify({ narration: 'Dawn.', locationId: 'keep' }) }]);
+    await load(live, 'save-page-one', [companion], linked);
+    expect(live().playerStartLocationId).toBe('keep');
+    expect(live().saveCurrentGameState().playerStartLocationId).toBe('keep');
+  });
+
+  it('places a companion that begins Following beside the player on such a load, Following', async () => {
+    const live = mount();
+    await olderSave(live, 'save-no-page', []);
+    await load(live, 'save-no-page', [companion], linked);
+    expect(live().playerStartLocationId).toBe('tower');
+    expect(live().entityPositions.kit).toBe('tower');
+    expect(live().entityFollowers).toEqual(['kit']);
   });
 });

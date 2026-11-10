@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Coffee, LockOpen, Plus, Trash2, X } from 'lucide-react';
 import { LocationIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,13 +14,15 @@ import { CHIP_BASE } from '@/components/Chip';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryStep } from '@/contexts/worldRecorder';
 import { chanceChipStyle, relativeChance } from '@/lib/chanceColor';
-import { withGroupStart, withKind, withoutGroupStart } from '@/lib/entityKind';
+import { withBeginsFollowing, withGroupStart, withKind, withoutGroupStart, withStartPlace } from '@/lib/entityKind';
 import { withEntityLocations } from '@/lib/entityPresence';
 import { fieldFrame } from '@/lib/historyField';
 import { holderOf, locationRows } from '@/lib/locationTree';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { connectedPlaces } from '@/lib/positionEngine';
-import { withLockedRest, withNewRow, withNewStart, withoutRow, withoutStart, withRow, withRowAt, withStart } from '@/lib/routineEditing';
+import { startReach } from '@/lib/positionEngine';
+import {
+  rowPlaceOf, withLockedRest, withNewRow, withNewStart, withoutRow, withoutStart, withRow, withRowAt, withStart,
+} from '@/lib/routineEditing';
 import { CLEARS_ROUTINE_SELECTION, KEEPS_ROUTINE_SELECTION, useRoutineSelection } from '@/lib/routineSelection';
 import {
   chancePercent, dayFull, freeRanges, onDaypartEdges, rangeText, toStrip, toWeight, type FreeRange,
@@ -27,11 +30,11 @@ import {
 import { cn } from '@/lib/utils';
 import { randomUUID } from '@/lib/uuid';
 import { MINUTES_PER_DAY } from '@/lib/gameClock';
-import type { Connection, Entity, EntityKind, EntityStart, GameLocation, ScheduleRow, Traversable } from '@/types';
+import { PLAYER_START, type Connection, type Entity, type EntityKind, type EntityStart, type GameLocation, type ScheduleRow, type Traversable } from '@/types';
 import { DayStrip, STRIP_PART } from './DayStrip';
 import { RoutineRow } from './RoutineRow';
 import { ACTIONS } from './routineActions';
-import { LocationPicker, Token, TOKEN_CLASS, type PlaceBook } from './RoutineFields';
+import { LocationPicker, PLAYER_START_NAME, Token, TOKEN_CLASS, type PlaceBook } from './RoutineFields';
 
 const KIND_OPTIONS = [
   { value: 'individual', label: 'Unique' },
@@ -82,7 +85,9 @@ export function RoutineTab({ entity, onChange }: { entity: Entity; onChange: (ne
 
   const book = useMemo<PlaceBook>(() => {
     const names = { letters: placementLetters, owners: placeholderOwners };
-    const nameOf = (id: string) => labelPlaceholders(locations.find((l) => l.id === id)?.name ?? '', placeholders, names) || 'Unnamed Location';
+    const nameOf = (id: string) => (id === PLAYER_START
+      ? PLAYER_START_NAME
+      : labelPlaceholders(locations.find((l) => l.id === id)?.name ?? '', placeholders, names) || 'Unnamed Location');
     const ordered = locationRows(locations).map(({ location }) => location.id);
     return {
       nameOf,
@@ -180,7 +185,7 @@ function EntityRoutine({ entity, kind, book, locations, connections, commit, onC
               )}
             </button>
           ))}
-          <LocationPicker book={book} places={book.all} onPick={addStart} trigger={addTrigger(starts.length ? '' : 'Add Start')} />
+          <LocationPicker book={book} places={book.all} playerStart onPick={addStart} trigger={addTrigger(starts.length ? '' : 'Add Start')} />
         </div>
         {starts.length > 1 && <Hint>{STARTS_HINTS[kind]}</Hint>}
         {entity.persona === true && <Hint>Lets the player start at any start location as this entity</Hint>}
@@ -189,7 +194,7 @@ function EntityRoutine({ entity, kind, book, locations, connections, commit, onC
       {start && (
         <StartRoutine
           entity={entity} kind={kind} start={start} weights={weights} book={book} commit={commit} onChange={onChange}
-          connected={[...connectedPlaces(start.place, { locations, connections })]}
+          connected={[...startReach(start.place, { locations, connections })]}
           onDeleted={() => showStart(null)}
         />
       )}
@@ -219,6 +224,8 @@ function StartRoutine({ entity, kind, start, weights, book, connected, commit, o
   ].sort((a, b) => a.at - b.at);
   const full = dayFull(start.schedule);
   const startName = book.nameOf(start.place);
+  // A row needs a real location, so one added at the player's starting location begins at the first.
+  const firstPlace = book.all[0];
 
   const { rowId, selectRow } = useRoutineSelection(entity.id);
   const selected = start.schedule.some((r) => r.id === rowId) ? rowId : null;
@@ -253,7 +260,8 @@ function StartRoutine({ entity, kind, start, weights, book, connected, commit, o
     rowEls.current.get(id)?.scrollIntoView?.({ block: 'nearest' });
   };
   const fill = (time: ScheduleRow['time']) => {
-    const added = withRowAt(entity, start.id, time, randomUUID);
+    const added = withRowAt(entity, start.id, time, randomUUID, firstPlace);
+    if (!added.rowId) return;
     commit('Add Routine Row', added.entity);
     scrollTo.current = added.rowId;
     selectRow(added.rowId);
@@ -271,8 +279,8 @@ function StartRoutine({ entity, kind, start, weights, book, connected, commit, o
         <LocationIcon className="mr-1 inline h-4 w-4 text-muted-foreground" aria-hidden />
         {'Starts at '}
         <LocationPicker
-          book={book} places={book.all} value={start.place}
-          onPick={(place) => commit('Change Start Location', withStart(entity, start.id, (s) => ({ ...s, place })))}
+          book={book} places={book.all} value={start.place} playerStart
+          onPick={(place) => commit('Change Start Location', withStart(entity, start.id, (s) => withStartPlace(s, place)))}
           trigger={(
             <button type="button" aria-label={`Start location: ${startName}`} className={TOKEN_CLASS}>
               {startName}
@@ -310,6 +318,18 @@ function StartRoutine({ entity, kind, start, weights, book, connected, commit, o
           </Tip>
         )}
       </p>
+      {kind === 'individual' && start.place === PLAYER_START && (
+        <div className="space-y-0.5" {...fieldFrame('starts', start.id, 'beginsFollowing')}>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id={`follows-${start.id}`} checked={!!start.beginsFollowing}
+              onCheckedChange={(on) => commit('Change Follows the Player', withStart(entity, start.id, (s) => withBeginsFollowing(s, on === true)))}
+            />
+            <Label htmlFor={`follows-${start.id}`}>Follows the Player</Label>
+          </div>
+          <Hint>Travels with the player from the first turn</Hint>
+        </div>
+      )}
 
       <DayStrip
         rows={start.schedule} free={free} lockable={fields.locks} asHoursOf={asHoursOf} selected={selected}
@@ -319,7 +339,7 @@ function StartRoutine({ entity, kind, start, weights, book, connected, commit, o
       <ol className="space-y-0.5 border-l pl-2" aria-label="Routine">
         {lines.map((line) => line.row ? (
           <RoutineRow
-            key={line.row.id} row={line.row} startPlace={start.place} book={book} connected={connected} lockable={fields.locks}
+            key={line.row.id} row={line.row} startPlace={rowPlaceOf(start, firstPlace) ?? start.place} book={book} connected={connected} lockable={fields.locks}
             asHours={asHoursOf(line.row)} onAsHours={(hours) => setFormats((f) => ({ ...f, [line.row.id]: hours }))}
             selected={selected === line.row.id} onSelect={() => selectRow(line.row.id)}
             rowRef={(el) => { if (el) rowEls.current.set(line.row.id, el); else rowEls.current.delete(line.row.id); }}
@@ -340,7 +360,8 @@ function StartRoutine({ entity, kind, start, weights, book, connected, commit, o
                   type="button" className="shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label="Lock Free Time"
                   onClick={() => {
-                    const added = withLockedRest(entity, start.id, randomUUID);
+                    const added = withLockedRest(entity, start.id, randomUUID, firstPlace);
+                    if (!added.rowId) return;
                     commit('Lock Free Time', added.entity);
                     scrollTo.current = added.rowId;
                     selectRow(added.rowId);
@@ -360,7 +381,7 @@ function StartRoutine({ entity, kind, start, weights, book, connected, commit, o
         {ACTIONS.map(({ value, label, Icon }) => (
           <Button
             key={value} variant="outline" size="sm" className="gap-1" disabled={full} aria-label={`Add ${label}`}
-            onClick={() => commit('Add Routine Row', withNewRow(entity, start.id, value, randomUUID))}
+            onClick={() => commit('Add Routine Row', withNewRow(entity, start.id, value, randomUUID, firstPlace))}
           >
             <Plus className="h-3.5 w-3.5" aria-hidden /><Icon className="h-4 w-4" aria-hidden />{label}
           </Button>

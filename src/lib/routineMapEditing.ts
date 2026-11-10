@@ -1,5 +1,5 @@
 import { isGroup, toggleGroupStart } from '@/lib/entityKind';
-import { connectedPlaces, placesOf, type PlaceGraph } from '@/lib/positionEngine';
+import { placesOf, startReach, type PlaceGraph } from '@/lib/positionEngine';
 import { NEW_STOP_IDLE, withRow } from '@/lib/routineEditing';
 import type { RoutineSelection } from '@/lib/routineSelection';
 import { rangeText } from '@/lib/routineTime';
@@ -36,7 +36,7 @@ const selectedOf = (target: Target | null): Selected | null =>
 function rowEdit(entity: Entity, { start, row }: Selected, place: string, graph: PlaceGraph) {
   return {
     action: row.action,
-    reaches: connectedPlaces(start.place, graph).has(place),
+    reaches: startReach(start.place, graph).has(place),
     write: (action: ScheduleAction): RoutineMapEdit => ({
       entity: withRow(entity, start.id, row.id, (r) => ({ ...r, action })),
       label: 'Edit Routine',

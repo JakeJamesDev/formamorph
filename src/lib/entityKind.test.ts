@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { Entity, EntityStart } from '@/types';
+import { PLAYER_START, type Entity, type EntityStart } from '@/types';
 import {
-  canRemoveGroupStartsAt, castRoutines, toggleGroupStart, withGroupPlacesMapped, withGroupStart, withKind, withoutGroupStart, withoutGroupStartsAt,
+  canRemoveGroupStartsAt, castRoutines, toggleGroupStart, withDerivedLocations, withGroupPlacesMapped, withGroupStart, withKind, withoutGroupStart,
+  withoutGroupStartsAt, withStartPlace,
 } from './entityKind';
 
 let n = 0;
@@ -97,5 +98,25 @@ describe('a Group carried into another world', () => {
   it('takes one Start per mapped place when no Start survives', () => {
     const next = withGroupPlacesMapped(herd, { yard: 'pen' }, newId);
     expect(next.starts?.map((s) => [s.place, s.schedule])).toEqual([['pen', []]]);
+  });
+
+  it("keeps a Start at the player's starting location, with its rows renamed", () => {
+    const beside: EntityStart = { id: 'p', place: PLAYER_START, weight: 1, schedule: [night] };
+    const next = withGroupPlacesMapped({ ...herd, starts: [beside] }, { yard: 'pen' }, newId);
+    expect(next.starts).toEqual([{ ...beside, schedule: [{ ...night, action: { kind: 'stay', place: 'pen' } }] }]);
+  });
+});
+
+describe("the player's starting location", () => {
+  const beside: EntityStart = { id: 'p', place: PLAYER_START, weight: 1, schedule: [night], beginsFollowing: true };
+
+  it('adds no place to the derived locations', () => {
+    expect(withDerivedLocations({ ...mare, starts: [beside] }).locations).toEqual(['yard']);
+    expect(withDerivedLocations({ ...mare, starts: [{ ...beside, schedule: [] }] }).locations).toBeUndefined();
+  });
+
+  it('keeps Begins Following only while the Start stays there', () => {
+    expect(withStartPlace(beside, PLAYER_START).beginsFollowing).toBe(true);
+    expect(withStartPlace(beside, 'barn')).toEqual({ id: 'p', place: 'barn', weight: 1, schedule: [night] });
   });
 });
