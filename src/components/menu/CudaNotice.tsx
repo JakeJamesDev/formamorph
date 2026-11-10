@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useCudaStatus } from '@/components/modals/CudaEngineRow';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
 import { formatModelSize } from '@/lib/localModels';
+import { openModals } from '@/lib/openModals';
 
 /** Set once the CUDA offer has been answered, on this device only, so it never shows again. */
 export const CUDA_PROMPT_SEEN_KEY = 'FORMAMORPH_cudaPromptSeen';
@@ -47,13 +48,11 @@ export function CudaNotice({ downloadBytes, onDownload, onDismiss }: CudaNoticeP
   );
 }
 
-const OPEN_MODAL = '[role="dialog"]:not([aria-modal="false"]):not([data-state="closed"]), [role="alertdialog"]:not([data-state="closed"])';
-
 /** True while any modal dialog is open anywhere in the document, wherever its state lives. */
 function useModalOpen(): boolean {
-  const [open, setOpen] = useState(() => document.querySelector(OPEN_MODAL) !== null);
+  const [open, setOpen] = useState(() => openModals().length > 0);
   useEffect(() => {
-    const check = () => setOpen(document.querySelector(OPEN_MODAL) !== null);
+    const check = () => setOpen(openModals().length > 0);
     check();
     const observer = new MutationObserver(check);
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-state', 'aria-modal', 'role'] });

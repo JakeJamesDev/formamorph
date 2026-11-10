@@ -159,6 +159,15 @@ describe('the CUDA notice on the main menu', () => {
     document.querySelectorAll('[role="dialog"]').forEach((el) => el.remove());
   });
 
+  it('stays up while a tutorial note is open', async () => {
+    stubDesktop(NOT_INSTALLED);
+    renderMainMenu();
+    await startEngine();
+
+    expect(await screen.findByRole('dialog')).toHaveAttribute('data-state', 'open');
+    expect(notice()).toBeInTheDocument();
+  });
+
   it('holds back while the load is still deciding whether the AI is usable, then shows', async () => {
     stubDesktop(NOT_INSTALLED);
     renderMainMenu();
