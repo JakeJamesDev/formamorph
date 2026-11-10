@@ -17,6 +17,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { PodiumDialog } from '@/components/menu/PodiumDialog';
 import { SentMessagesDialog } from '@/components/menu/SentMessagesDialog';
 import { SuspendDialog } from '@/components/menu/SuspendDialog';
+import { MailHistoryDialog } from '@/components/menu/MailHistoryDialog';
+import { DEV_MAIL_HISTORY_STATES, createDevMailHistoryApi } from '@/lib/devMailHistorySample';
 import { ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { RootCrashScreen } from '@/components/RootCrashScreen';
 import { RevealAnimationDialog } from '@/components/RevealAnimationDemo';
@@ -58,6 +60,10 @@ export default function DevPaneRoutes() {
     case 'eventForm': return <EventFormDialog open onOpenChange={clearRouteOnClose} />;
     case 'podium': return <PodiumDialog open onOpenChange={clearRouteOnClose} contest={devContestSamples()[1]} />;
     case 'sentMessages': return <SentMessagesDialog open onOpenChange={clearRouteOnClose} username="Sample Player" />;
+    case 'mailHistory': {
+      const state = DEV_MAIL_HISTORY_STATES.find((value) => value === route.tab) ?? 'marked';
+      return <MailHistoryDialog open onOpenChange={clearRouteOnClose} userId="dev-user" username="Sample Player" mayClear api={createDevMailHistoryApi(state)} />;
+    }
     case 'suspend': return <SuspendDialog open onOpenChange={clearRouteOnClose} username="Sample Player" alreadySuspended={false} onConfirm={ignore} />;
     case 'feedbackForm': {
       const type = FEEDBACK_TYPES.find((value) => value === route.tab) ?? 'bug';

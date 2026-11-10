@@ -1,6 +1,6 @@
 # 06: Mail History Dialog
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 05
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -23,17 +23,27 @@ Ticket 08 exported the Usage tab's tile and table pieces. Reuse them where they 
 
 ## Acceptance criteria
 
-- [ ] Mail History shows in the row menu for moderators and admins.
-- [ ] The dialog lists the rows the server returned, with a readable label for each kind and status, and an empty state for an account with no mail.
-- [ ] A marked account shows the reason and date and the Clear Bounce action. An unmarked account shows neither.
-- [ ] After a successful clear, the marker section disappears and a note says the user must verify again.
-- [ ] A failed clear keeps the marker section and shows the failure.
-- [ ] A bounced row shows whether the bounce was hard or soft.
-- [ ] A moderator who views an admin's or another staff account's history sees no Clear Bounce action, or sees the refusal as a clear message.
-- [ ] A failed history read shows an error state, not an empty list.
-- [ ] No request is left running after the dialog closes.
-- [ ] The dialog shows no email address.
-- [ ] The dialog has a dev-router entry with marked and unmarked samples.
-- [ ] Frames, light and dark, at a realistic desktop width: `.scratch/frames/mail-history-<state>-<theme>.png` for marked, unmarked and empty.
+- [x] Mail History shows in the row menu for moderators and admins. (ManageUsersTab tests: admin row, and moderator on an admin row)
+- [x] The dialog lists the rows the server returned, with a readable label for each kind and status, and an empty state for an account with no mail. (MailHistoryDialog tests; frames)
+- [x] A marked account shows the reason and date and the Clear Bounce action. An unmarked account shows neither. (tests; frames)
+- [x] After a successful clear, the marker section disappears and a note says the user must verify again. (test)
+- [x] A failed clear keeps the marker section and shows the failure. (test)
+- [x] A bounced row shows whether the bounce was hard or soft. (test; marked frame)
+- [x] A moderator who views an admin's or another staff account's history sees no Clear Bounce action, or sees the refusal as a clear message. (`mayClear` false from `canModerate`; dialog test and row test)
+- [x] A failed history read shows an error state, not an empty list. (test)
+- [x] No request is left running after the dialog closes. (test aborts the read and a running clear)
+- [x] The dialog shows no email address. (the server route sends none and the dialog type has no address field)
+- [x] The dialog has a dev-router entry with marked and unmarked samples. (`#dev?modal=mailHistory&tab=marked|unmarked|empty|failed`)
+- [x] Frames, light and dark, at a realistic desktop width: `.scratch/frames/mail-history-<state>-<theme>.png` for marked, unmarked and empty. (1280 px wide; animations off and the help popover hidden for the capture)
 
 For you: open Mail History on a real account after a bounce and check the labels read naturally.
+
+## Landed
+
+**Not verified**
+- Clear Bounce against real SES: the dialog ran only against mocks and canned dev data.
+- The failed-read frame: covered by a test and the `tab=failed` dev route, with no stored frame.
+
+**For you**
+- Open Mail History on a real account after a bounce and check the labels read naturally (Admin Panel, Users, the caret beside Message).
+- Frames: `.scratch/ses-mail-06/frames/mail-history-marked-dark.png`, `-unmarked-`, `-empty-`, and the `-light` set.

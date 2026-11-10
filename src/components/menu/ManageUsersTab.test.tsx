@@ -16,6 +16,10 @@ vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), in
 const dialogProps = vi.hoisted(() => ({
   history: null as Record<string, unknown> | null,
   composer: null as Record<string, unknown> | null,
+  mail: null as Record<string, unknown> | null,
+}));
+vi.mock('./MailHistoryDialog', () => ({
+  MailHistoryDialog: (props: Record<string, unknown>) => { dialogProps.mail = props; return null; },
 }));
 
 vi.mock('./MessageComposerDialog', () => ({
@@ -475,6 +479,29 @@ describe('the message split button', () => {
     fireEvent.click(screen.getByRole('button', { name: 'More message options for alice' }));
 
     expect(await screen.findByRole('button', { name: 'History (0)' })).toBeTruthy();
+  });
+
+  it('opens Mail History for the row, and an admin may clear its bounce', async () => {
+    stubFetch([userRow({ id: 'u7', username: 'alice' })]);
+
+    render(<ManageUsersTab active />);
+    await screen.findByText('alice');
+    fireEvent.click(screen.getByRole('button', { name: 'More message options for alice' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Mail History for alice' }));
+
+    expect(dialogProps.mail).toMatchObject({ open: true, userId: 'u7', username: 'alice', mayClear: true });
+  });
+
+  it('offers a moderator Mail History, without the clear on an admin', async () => {
+    viewer.current = { id: 'm1', username: 'a-mod', accountType: 'mod' };
+    stubFetch([userRow({ id: 'u8', username: 'boss', accountType: 'admin' })]);
+
+    render(<ManageUsersTab active />);
+    await screen.findByText('boss');
+    fireEvent.click(screen.getByRole('button', { name: 'More message options for boss' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Mail History for boss' }));
+
+    expect(dialogProps.mail).toMatchObject({ userId: 'u8', mayClear: false });
   });
 });
 

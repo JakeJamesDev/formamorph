@@ -1,7 +1,7 @@
 import { Fragment, useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import { toastError } from "@/lib/linkToast";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, History, ImageOff, Link2, Mail, RotateCcw, ShieldCheck } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, History, ImageOff, Link2, Mail, MailCheck, RotateCcw, ShieldCheck } from "lucide-react";
 import { SearchField } from "@/components/ui/search-field";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LinkedAccountsPanel } from "@/components/menu/LinkedAccountsPanel";
 import { MessageComposerDialog, type ComposerTarget } from "@/components/menu/MessageComposerDialog";
 import { SentMessagesDialog } from "@/components/menu/SentMessagesDialog";
+import { MailHistoryDialog } from "@/components/menu/MailHistoryDialog";
 import PolicyService from "@/services/PolicyService";
 import WorldStorageService from "@/services/WorldStorageService";
 import AuthService from "@/services/AuthService";
@@ -104,6 +105,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
   // The sent list serves both entry points: unfiltered, or narrowed to one user via `historyUser`.
   const [showSentMessages, setShowSentMessages] = useState(false);
   const [historyUser, setHistoryUser] = useState<{ id: string; username: string } | null>(null);
+  const [mailUser, setMailUser] = useState<{ id: string; username: string; mayClear: boolean } | null>(null);
   // Confirmed before it happens, then offered as a notice afterwards — the same two beats a suspension
   // and a takedown already have.
   const [pendingAvatarRemoval, setPendingAvatarRemoval] = useState<WorldRecord | null>(null);
@@ -734,6 +736,18 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                                     </Button>
                                   </PopoverClose>
 
+                                  <PopoverClose asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="w-full justify-start"
+                                      aria-label={`Mail History for ${usernameOf(user)}`}
+                                      onClick={() => setMailUser({ id: userId, username: usernameOf(user), mayClear: mayModerate(user) })}
+                                    >
+                                      <MailCheck className="mr-2 h-3.5 w-3.5" /> Mail History
+                                    </Button>
+                                  </PopoverClose>
+
                                   {mayTrust(user) && (
                                     <PopoverClose asChild>
                                       <Button
@@ -891,6 +905,16 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       refreshNonce={sentNonce}
       onEdit={setEditingMessage}
     />
+
+    {mailUser && (
+      <MailHistoryDialog
+        open
+        onOpenChange={(isOpen) => { if (!isOpen) setMailUser(null); }}
+        userId={mailUser.id}
+        username={mailUser.username}
+        mayClear={mailUser.mayClear}
+      />
+    )}
 
     {/* An edit reuses the composer, addressed to whoever the message went to. */}
     {editingMessage && (
