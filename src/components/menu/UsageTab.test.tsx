@@ -150,6 +150,14 @@ describe('the figures', () => {
     expect(screen.getByText('40 (40%)')).toBeTruthy();
   });
 
+  it('labels the built-in engine offer step', async () => {
+    const user = userEvent.setup();
+    await mount(report({ offer: [{ step: 'offer_shown', count: 100 }, { step: 'local_offer_shown', count: 30 }] }));
+    await open(user, 'Clients And Offer');
+
+    expect(screen.getByText('Built-In Engine Offer Shown')).toBeTruthy();
+  });
+
   it('names a failure cause and a tier, and never an account', async () => {
     const user = userEvent.setup();
     await mount();

@@ -1,15 +1,23 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
-import { isDemoAICardSeen } from '@/lib/firstTimeFlowStore';
+import { isDemoAICardSeen, isEngineCardSeen, markDemoAICardSeen } from '@/lib/firstTimeFlowStore';
 import { hostedSession } from '@/lib/hostedAi/hostedSession';
 import { HOSTED_STATE_URL } from '@/lib/hostedAi/hostedUrls';
-import { DEFAULT_TEXT_PRESET_ID } from '@/lib/textEndpointPresets';
+import { BUILTIN_ENGINE_PRESET_ID, DEFAULT_TEXT_PRESET_ID } from '@/lib/textEndpointPresets';
+import type { VramClass } from '@/lib/vramClass';
 import AuthService from '@/services/AuthService';
-import { useDemoAIOfferAvailable, useStoryCard } from './useDemoAIOffer';
+import { useDemoAIOfferAvailable, useEngineStoryCard, useStoryCard } from './useDemoAIOffer';
 
 // The hosted build: the Default preset is the Demo AI.
 vi.hoisted(() => { vi.stubEnv('VITE_DEFAULT_ENDPOINT', ''); });
+
+// The desktop shell's VRAM answer for the built-in engine's device.
+const vram = vi.hoisted(() => ({ vramClass: 'low' as VramClass }));
+vi.mock('@/lib/vramClass', async (orig) => ({
+  ...(await orig<typeof import('@/lib/vramClass')>()),
+  useVramClass: () => vram.vramClass,
+}));
 
 const STATE = {
   state: 'ready', window: 24000, maxTokens: 600, tokenMargin: 800,
@@ -144,6 +152,86 @@ describe('useStoryCard', () => {
     expect(showing()).toBe(false);
     view.unmount();
     mount();
+    expect(showing()).toBe(false);
+  });
+});
+
+describe('useEngineStoryCard', () => {
+  function EngineOffer({ turnCount, settled }: { turnCount: number; settled: boolean }) {
+    settings = useSettings();
+    const card = useEngineStoryCard({ turnCount, settled });
+    const demo = useStoryCard({ turnCount, settled });
+    return (
+      <>
+        <span data-testid="showing">{String(card.showing)}</span>
+        <span data-testid="demo-showing">{String(demo.showing)}</span>
+        <button onClick={card.dismiss}>Dismiss</button>
+      </>
+    );
+  }
+
+  const mountEngine = (turnCount = 10, settled = true) => {
+    const tree = (count: number, done: boolean) => <SettingsProvider><EngineOffer turnCount={count} settled={done} /></SettingsProvider>;
+    const view = render(tree(turnCount, settled));
+    act(() => settings.selectTextEndpointPreset(BUILTIN_ENGINE_PRESET_ID));
+    return { ...view, update: (count: number, done: boolean) => view.rerender(tree(count, done)) };
+  };
+  const funnelPosts = (step: string) => vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith(`/funnel/${step}`)).length;
+
+  // The built-in engine preset exists only in the desktop build.
+  beforeEach(() => {
+    vram.vramClass = 'low';
+    (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop = {};
+  });
+  afterEach(() => { delete (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop; });
+
+  it('shows once at 10 settled turns, writes its own seen record and sends local_offer_shown once', () => {
+    const view = mountEngine(9, true);
+    expect(settings.narrationIsBuiltInEngine).toBe(true);
+    expect(showing()).toBe(false);
+    view.update(10, false);
+    expect(showing()).toBe(false);
+    view.update(10, true);
+    expect(showing()).toBe(true);
+    expect(isEngineCardSeen()).toBe(true);
+    expect(isDemoAICardSeen()).toBe(false);
+    view.update(11, true);
+    expect(funnelPosts('local_offer_shown')).toBe(1);
+    expect(funnelPosts('offer_shown')).toBe(0);
+  });
+
+  it.each(['ok', 'unknown'] as const)('never shows on the %s VRAM class', (vramClass) => {
+    vram.vramClass = vramClass;
+    mountEngine(30, true);
+    expect(showing()).toBe(false);
+    expect(isEngineCardSeen()).toBe(false);
+  });
+
+  it('is not blocked by the Demo AI card, and does not block it', () => {
+    markDemoAICardSeen();
+    mountEngine();
+    expect(showing()).toBe(true);
+    cleanup();
+    localStorage.removeItem('FORMAMORPH_demoAICardSeen');
+    render(<SettingsProvider><EngineOffer turnCount={5} settled /></SettingsProvider>);
+    act(() => settings.selectTextEndpointPreset(DEFAULT_TEXT_PRESET_ID));
+    expect(isEngineCardSeen()).toBe(true);
+    expect(screen.getByTestId('demo-showing').textContent).toBe('true');
+  });
+
+  it('hides when narration moves off the built-in engine', () => {
+    mountEngine();
+    expect(showing()).toBe(true);
+    act(() => settings.selectTextEndpointPreset(DEFAULT_TEXT_PRESET_ID));
+    expect(settings.narrationIsBuiltInEngine).toBe(false);
+    expect(showing()).toBe(false);
+  });
+
+  it('never comes back after a reload or in a later game', () => {
+    const view = mountEngine();
+    expect(showing()).toBe(true);
+    view.unmount();
+    mountEngine(20, true);
     expect(showing()).toBe(false);
   });
 });

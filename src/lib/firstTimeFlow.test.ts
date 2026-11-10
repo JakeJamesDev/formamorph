@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { aiSetupLeadsWithHostedAi, cardDue, countsAsDemoAITurn, entryLineDue, firstRunStepDue, offerAvailable, type CardFacts, type DemoAITurnFacts } from './firstTimeFlow';
+import {
+  aiSetupLeadsWithHostedAi, cardDue, countsAsDemoAITurn, countsAsEngineTurn, engineCardDue, engineOfferAvailable, entryLineDue,
+  firstRunStepDue, offerAvailable, type CardFacts, type DemoAITurnFacts, type EngineCardFacts, type EngineOfferFacts, type EngineTurnFacts,
+} from './firstTimeFlow';
 
 describe('firstRunStepDue', () => {
   it.each([
@@ -85,6 +88,67 @@ describe('offerAvailable', () => {
     ['a build without hosted AI', { hostedAvailable: false }],
   ])('is off for %s', (_, change) => {
     expect(offerAvailable({ ...offered, ...change })).toBe(false);
+  });
+});
+
+describe('countsAsEngineTurn', () => {
+  const counted: EngineTurnFacts = { narrationIsBuiltInEngine: true, isOpeningTurn: false, isNewTurn: true, cardSeen: false };
+
+  it('counts a new turn after a player action on the built-in engine', () => {
+    expect(countsAsEngineTurn(counted)).toBe(true);
+  });
+
+  it.each<[string, Partial<EngineTurnFacts>]>([
+    ['narration on another endpoint, the Demo AI included', { narrationIsBuiltInEngine: false }],
+    ['the opening turn', { isOpeningTurn: true }],
+    ['a regenerate', { isNewTurn: false }],
+    ['a card that has shown', { cardSeen: true }],
+  ])('skips %s', (_, change) => {
+    expect(countsAsEngineTurn({ ...counted, ...change })).toBe(false);
+  });
+});
+
+describe('engineCardDue', () => {
+  const due: EngineCardFacts = {
+    narrationIsBuiltInEngine: true, vramClass: 'low', pledged: false, hostedAvailable: true, engineTurnCount: 10, cardSeen: false,
+  };
+
+  it('is due at a count of 10 and not at 9', () => {
+    expect(engineCardDue(due)).toBe(true);
+    expect(engineCardDue({ ...due, engineTurnCount: 9 })).toBe(false);
+  });
+
+  it('stays due past 10 until the card has shown, so a player who becomes eligible later still gets it', () => {
+    expect(engineCardDue({ ...due, engineTurnCount: 25 })).toBe(true);
+  });
+
+  it.each<[string, Partial<EngineCardFacts>]>([
+    ['a card that has shown', { cardSeen: true }],
+    ['a pledged player', { pledged: true }],
+    ['narration off the built-in engine', { narrationIsBuiltInEngine: false }],
+    ['a build without hosted AI', { hostedAvailable: false }],
+    ['the ok VRAM class', { vramClass: 'ok' }],
+    ['the unknown VRAM class', { vramClass: 'unknown' }],
+  ])('is never due for %s', (_, change) => {
+    expect(engineCardDue({ ...due, ...change })).toBe(false);
+  });
+});
+
+describe('engineOfferAvailable', () => {
+  const offered: EngineOfferFacts = { narrationIsBuiltInEngine: true, vramClass: 'low', pledged: false, hostedAvailable: true };
+
+  it('is available on the built-in engine with low VRAM, unpledged, in a build with hosted AI', () => {
+    expect(engineOfferAvailable(offered)).toBe(true);
+  });
+
+  it.each<[string, Partial<EngineOfferFacts>]>([
+    ['narration off the built-in engine', { narrationIsBuiltInEngine: false }],
+    ['the ok VRAM class', { vramClass: 'ok' }],
+    ['the unknown VRAM class', { vramClass: 'unknown' }],
+    ['a pledged player', { pledged: true }],
+    ['a build without hosted AI', { hostedAvailable: false }],
+  ])('is off for %s', (_, change) => {
+    expect(engineOfferAvailable({ ...offered, ...change })).toBe(false);
   });
 });
 

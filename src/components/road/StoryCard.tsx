@@ -9,6 +9,12 @@ import { cn } from '@/lib/utils';
 /** Morphie's drawn height in px; her width follows the base image's aspect. */
 const MORPHIE_HEIGHT = 72;
 
+/** The built-in engine card's words: the comparison with the model on the player's own computer. */
+export const ENGINE_CARD_COPY = {
+  title: 'Want a Bigger Model for This Story?',
+  body: 'Your computer runs a small model that fits its memory. Formamorph AI runs a larger one on our servers, for sharper narration and characters who stay consistent. Your support includes it, and it helps fund new updates.',
+};
+
 /** The offer in the story: under the latest narration, above the choices. It never takes focus. AI setup reuses it
  *  with its own words and no Not Now. */
 export function StoryCard({

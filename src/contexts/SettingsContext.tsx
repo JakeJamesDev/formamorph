@@ -1559,10 +1559,12 @@ function useProvideSettings() {
   }), []);
 
   // The Demo AI notice follows the narration model; the routing of other kinds has no effect.
-  const narrationIsDemoAI = useMemo(
-    () => isDemoAI(resolvePromptEndpoint('narration', promptEndpoints, textPresetStore, activeEndpointState)),
+  const narrationEndpoint = useMemo(
+    () => resolvePromptEndpoint('narration', promptEndpoints, textPresetStore, activeEndpointState),
     [promptEndpoints, textPresetStore, activeEndpointState],
   );
+  const narrationIsDemoAI = isDemoAI(narrationEndpoint);
+  const narrationIsBuiltInEngine = narrationEndpoint.localEngine;
 
   /**
    * Whether the bundled engine should be running: it's the active endpoint, or some prompt is routed to it.
@@ -1881,6 +1883,7 @@ function useProvideSettings() {
     refreshHostedState,
     switchBackFromHostedAi,
     narrationIsDemoAI,
+    narrationIsBuiltInEngine,
     selectTextEndpointPreset,
     addTextEndpointPreset,
     copyTextEndpointPreset,

@@ -418,4 +418,14 @@ describe('SettingsContext: the bundled engine as an endpoint', () => {
     act(() => result.current.setPromptEndpoint('summary', null));
     expect(result.current.engineWanted).toBe(false);
   });
+
+  it('reports narration on the built-in engine from the narration route alone', () => {
+    localStorage.setItem('FORMAMORPH_engineIsPresetMigrated', '1');
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    act(() => result.current.setPromptEndpoint('summary', BUILTIN_ENGINE_PRESET_ID));
+    expect(result.current.narrationIsBuiltInEngine).toBe(false);
+
+    act(() => result.current.setPromptEndpoint('narration', BUILTIN_ENGINE_PRESET_ID));
+    expect(result.current.narrationIsBuiltInEngine).toBe(true);
+  });
 });

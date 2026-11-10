@@ -26,13 +26,13 @@ const FUNNEL_SENT_PREFIX = 'FORMAMORPH_funnelSent_';
 export const isFunnelStepSent = (step: string): boolean => isSet(FUNNEL_SENT_PREFIX + step);
 export const markFunnelStepSent = (step: string): void => mark(FUNNEL_SENT_PREFIX + step);
 
-export const isDemoAICardSeen =(): boolean => isSet(DEMO_AI_CARD_SEEN_KEY);
+export const isDemoAICardSeen = (): boolean => isSet(DEMO_AI_CARD_SEEN_KEY);
 export const markDemoAICardSeen = (): void => mark(DEMO_AI_CARD_SEEN_KEY);
 
-/** Zero with no record, whatever the Demo AI seen key says. */
-export function demoAITurnCount(): number {
+/** Zero with no record. */
+function turnCount(key: string): number {
   try {
-    const count = Number(localStorage.getItem(DEMO_AI_TURN_COUNT_KEY));
+    const count = Number(localStorage.getItem(key));
     return Number.isInteger(count) && count > 0 ? count : 0;
   } catch {
     return 0;
@@ -40,10 +40,22 @@ export function demoAITurnCount(): number {
 }
 
 /** Adds one turn and returns the new count. */
-export function recordDemoAITurn(): number {
-  const count = demoAITurnCount() + 1;
+function recordTurn(key: string): number {
+  const count = turnCount(key) + 1;
   try {
-    localStorage.setItem(DEMO_AI_TURN_COUNT_KEY, String(count));
+    localStorage.setItem(key, String(count));
   } catch { /* private mode: the count stays where it is */ }
   return count;
 }
+
+export const demoAITurnCount = (): number => turnCount(DEMO_AI_TURN_COUNT_KEY);
+export const recordDemoAITurn = (): number => recordTurn(DEMO_AI_TURN_COUNT_KEY);
+
+const ENGINE_TURN_COUNT_KEY = 'FORMAMORPH_engineTurnCount';
+const ENGINE_CARD_SEEN_KEY = 'FORMAMORPH_engineCardSeen';
+
+/** The built-in engine card's records, apart from the Demo AI card's. */
+export const engineTurnCount = (): number => turnCount(ENGINE_TURN_COUNT_KEY);
+export const recordEngineTurn = (): number => recordTurn(ENGINE_TURN_COUNT_KEY);
+export const isEngineCardSeen = (): boolean => isSet(ENGINE_CARD_SEEN_KEY);
+export const markEngineCardSeen = (): void => mark(ENGINE_CARD_SEEN_KEY);

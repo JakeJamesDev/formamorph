@@ -2,7 +2,7 @@ import { API_BASE_URL } from '@/lib/apiBase';
 import { isFunnelStepSent, markFunnelStepSent } from '@/lib/firstTimeFlowStore';
 import { HOSTED_AI_AVAILABLE } from '@/lib/hostedAi/hostedUrls';
 
-export type FunnelStep = 'offer_shown' | 'see_levels' | 'patreon_click' | 'checklist_finished';
+export type FunnelStep = 'offer_shown' | 'local_offer_shown' | 'see_levels' | 'patreon_click' | 'checklist_finished';
 
 /**
  * Reports one funnel step to the totals route, once per device. The call carries no header, body or credential.

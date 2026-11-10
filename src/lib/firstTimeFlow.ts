@@ -64,6 +64,44 @@ export function cardDue({ demoAITurnCount, cardSeen, ...offer }: CardFacts): boo
   return offerAvailable(offer) && !cardSeen && demoAITurnCount >= DEMO_AI_CARD_TURNS;
 }
 
+/** Player actions on the built-in engine before its card is due. */
+const ENGINE_CARD_TURNS = 10;
+
+export interface EngineTurnFacts {
+  narrationIsBuiltInEngine: boolean;
+  isOpeningTurn: boolean;
+  /** The commit adds a turn; false for a regenerate, which replaces one, and a canned test turn. */
+  isNewTurn: boolean;
+  cardSeen: boolean;
+}
+
+/** Whether a committed turn adds to the built-in engine count. The VRAM class and the pledge gate the card, not the count. */
+export function countsAsEngineTurn({ narrationIsBuiltInEngine, isOpeningTurn, isNewTurn, cardSeen }: EngineTurnFacts): boolean {
+  return narrationIsBuiltInEngine && !isOpeningTurn && isNewTurn && !cardSeen;
+}
+
+export interface EngineOfferFacts {
+  narrationIsBuiltInEngine: boolean;
+  vramClass: VramClass;
+  /** The player's pledge already includes Formamorph AI. */
+  pledged: boolean;
+  /** This build has a hosted URL and community accounts. */
+  hostedAvailable: boolean;
+}
+
+export function engineOfferAvailable({ narrationIsBuiltInEngine, vramClass, pledged, hostedAvailable }: EngineOfferFacts): boolean {
+  return narrationIsBuiltInEngine && vramClass === 'low' && hostedAvailable && !pledged;
+}
+
+export interface EngineCardFacts extends EngineOfferFacts {
+  engineTurnCount: number;
+  cardSeen: boolean;
+}
+
+export function engineCardDue({ engineTurnCount, cardSeen, ...offer }: EngineCardFacts): boolean {
+  return engineOfferAvailable(offer) && !cardSeen && engineTurnCount >= ENGINE_CARD_TURNS;
+}
+
 export interface AiSetupFacts {
   vramClass: VramClass;
   hostedAvailable: boolean;

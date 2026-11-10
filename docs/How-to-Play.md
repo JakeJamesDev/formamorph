@@ -435,10 +435,15 @@ In the browser and on Android, Formamorph starts on the **Demo AI**, a small fre
 A stronger model writes better narration and keeps each entity consistent. See [Connect Your Own AI](Connect-Your-Own-AI).
 
 ## The Formamorph AI Offer
-<!-- keywords: upgrade, see levels, spark, flame, beacon, support on patreon, card under the story, not now, stronger ai, morphie -->
+<!-- keywords: upgrade, see levels, spark, flame, beacon, support on patreon, card under the story, not now, stronger ai, morphie, built-in engine, local model, low vram, bigger model -->
 <!-- route: road -->
 
-After five turns on the Demo AI, a card with Morphie appears once, under the latest narration and above the choices. You can still pick a choice or type your action while it shows.
+A card with Morphie appears once, under the latest narration and above the choices:
+
+- After five turns on the Demo AI.
+- After 10 turns on **Built-In Engine** in the desktop app, when it runs on a GPU with 8 GB of memory or less, on an integrated GPU, or with no GPU. This card compares Formamorph AI with the model on your computer.
+
+Each card shows once per device, and seeing one doesn't hide the other. You can still pick a choice or type your action while a card shows.
 
 | Button | What it does |
 |---|---|
@@ -462,7 +467,7 @@ Each step shows a check when it's done, and the fire beside Morphie grows with e
 
 To open the levels screen again, select the **Demo AI** badge, then **See Levels**.
 
-The card and **See Levels** don't show when your support already includes Formamorph AI, when you narrate on another AI, or in a build without Formamorph AI.
+The cards and **See Levels** don't show when your support already includes Formamorph AI, when you narrate on another AI, or in a build without Formamorph AI.
 
 ## The Like Prompt
 <!-- keywords: enjoying popup, heart, rate this world, thumbs up, upvote, stop asking, favorite, review -->

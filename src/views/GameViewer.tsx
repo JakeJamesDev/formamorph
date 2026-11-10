@@ -297,11 +297,11 @@ import { MusicOffIcon } from "../components/game/MusicOffIcon";
 import { AiSetupGate } from "../components/AiSetupGate";
 import { DemoAIBadge, DemoAIEntryLine, DemoAINotice, type DemoAINoticeHandle } from "../components/game/DemoAINotice";
 import { useDemoAIEntryLine } from "../components/game/demoAISeen";
-import { countsAsDemoAITurn } from "@/lib/firstTimeFlow";
-import { demoAITurnCount, isDemoAICardSeen, recordDemoAITurn } from "@/lib/firstTimeFlowStore";
-import { StoryCard } from "../components/road/StoryCard";
+import { countsAsDemoAITurn, countsAsEngineTurn } from "@/lib/firstTimeFlow";
+import { demoAITurnCount, engineTurnCount, isDemoAICardSeen, isEngineCardSeen, recordDemoAITurn, recordEngineTurn } from "@/lib/firstTimeFlowStore";
+import { ENGINE_CARD_COPY, StoryCard } from "../components/road/StoryCard";
 import { openRoadScene } from "../components/road/roadSceneStore";
-import { useStoryCard } from "../components/road/useDemoAIOffer";
+import { useEngineStoryCard, useStoryCard } from "../components/road/useDemoAIOffer";
 import { LikePrompt } from "../components/game/LikePrompt";
 import { useLikePrompt } from "../components/game/useLikePrompt";
 import { useNarrationRescan } from "../components/game/useNarrationRescan";
@@ -1361,10 +1361,10 @@ const GameViewer = ({
   }, [nextEntry, aiGateOpen, isSettingsOpen, settingsRequestPending]);
 
   const [demoAITurns, setDemoAITurns] = useState(demoAITurnCount);
-  const storyCard = useStoryCard({
-    turnCount: demoAITurns,
-    settled: totalPages > 0 && !isWaitingForAI && !isRevealingNarration && !isViewingPast,
-  });
+  const [engineTurns, setEngineTurns] = useState(engineTurnCount);
+  const turnSettled = totalPages > 0 && !isWaitingForAI && !isRevealingNarration && !isViewingPast;
+  const storyCard = useStoryCard({ turnCount: demoAITurns, settled: turnSettled });
+  const engineCard = useEngineStoryCard({ turnCount: engineTurns, settled: turnSettled });
 
   // DEV dev-router: open an in-game modal when the hash asks for it (Menu routes via MenuModal's own
   // devOpenLoad prop below). Tree-shaken in prod.
@@ -3175,6 +3175,12 @@ const GameViewer = ({
       isNewTurn: turn.isNewTurn,
       cardSeen: isDemoAICardSeen(),
     })) setDemoAITurns(recordDemoAITurn());
+    if (countsAsEngineTurn({
+      narrationIsBuiltInEngine: settings.narrationIsBuiltInEngine,
+      isOpeningTurn: commit.isOpeningTurn,
+      isNewTurn: turn.isNewTurn,
+      cardSeen: isEngineCardSeen(),
+    })) setEngineTurns(recordEngineTurn());
     // The turn committed, so the before box's writes stand.
     beforeBoxUndoRef.current = null;
     turnStartItemsRef.current = null;
@@ -6359,7 +6365,9 @@ const GameViewer = ({
       parseAssistantMessage={parseAssistantMessage}
       narrationBadge={<DemoAIBadge onOpen={openDemoAIDialog} />}
       narrationLine={demoAIEntryLine ? <DemoAIEntryLine /> : null}
-      storyCard={storyCard.showing || (import.meta.env.DEV && devRoute?.modal === 'storyCard') ? (
+      storyCard={engineCard.showing || (import.meta.env.DEV && devRoute?.modal === 'storyCard' && devRoute.tab === 'engine') ? (
+        <StoryCard className="my-4" testId="engine-story-card" {...ENGINE_CARD_COPY} onNotNow={engineCard.dismiss} onSeeLevels={() => { engineCard.dismiss(); openRoadScene(); }} />
+      ) : storyCard.showing || (import.meta.env.DEV && devRoute?.modal === 'storyCard') ? (
         <StoryCard className="my-4" onNotNow={storyCard.dismiss} onSeeLevels={() => { storyCard.dismiss(); openRoadScene(); }} />
       ) : null}
       totalPages={totalPages}
