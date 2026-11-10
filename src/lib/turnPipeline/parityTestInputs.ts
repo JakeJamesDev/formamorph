@@ -49,7 +49,7 @@ export const PARITY_SETTINGS: TurnSettings = {
   describeCharacters: false,
   // The recorded world had no items, so no inventory request was dispatched.
   inventoryDue: false,
-  inventoryTextPass: false,
+  inventoryTextPass: false, entityLocationTextPass: false,
   imageAttachments: false,
   promptAttachments: {},
   language: 'English',

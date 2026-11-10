@@ -296,8 +296,8 @@ describe('the concurrency knob', () => {
 
 describe('the entity location requests', () => {
   const movers: TurnPassSubject[] = [
-    { name: 'Sylvie', moves: ['stay', 'comeAlong'] },
-    { name: 'Albus', moves: ['keepFollowing', 'stayHere'] },
+    { name: 'Sylvie', moves: ['stay', 'comeAlong'], moveClock: 12 * 60 },
+    { name: 'Albus', moves: ['keepFollowing', 'waitHour', 'waitThisDaypart', 'waitNextDaypart', 'partWays'], moveClock: 12 * 60 },
   ];
 
   it('go out with the player router, one per entity, when parallel', async () => {
@@ -324,9 +324,9 @@ describe('the entity location requests', () => {
   });
 
   it('read each reply against its own entity’s options', async () => {
-    const { result } = await run({ subjects: { entityLocationAuto: movers }, answers: { entityLocation: 'Stay here' } });
+    const { result } = await run({ subjects: { entityLocationAuto: movers }, answers: { entityLocation: 'Stay, then part ways' } });
     const replies = ok(result).passes.filter((p) => p.id === 'entityLocationAuto').map((p) => p.parsed);
-    expect(replies).toEqual(['stay', 'stayHere']);
+    expect(replies).toEqual(['stay', 'partWays']);
   });
 
   it.each([true, false])('drop a failed entity request and carry on with the turn (parallel: %s)', async (parallel) => {

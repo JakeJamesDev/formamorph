@@ -20,8 +20,9 @@ import { languageDirective } from '@/lib/languages';
 import { stripLinksAndImages } from '@/lib/stripLinksAndImages';
 import { matchLocationResponse, matchNarratedMoveResponse, matchRouterResponse } from '@/lib/locationMatch';
 import {
-  entityMoveCandidates, entityMoveOptions, entityMoveOptionsText, entityMoveStateText, type EntityMove,
+  entityMoveCandidates, entityMoveOptions, entityMoveOptionsText, entityMoveStateText, entityMoveTimeLine, type EntityMove,
 } from '@/lib/entityFollowing';
+import type { ResponseSchema } from '@/lib/aiRequest/responseSchema';
 import { parseChoices } from '@/lib/choices';
 import { parseStatUpdates } from '@/lib/statChanges';
 import { INVENTORY_JSON_FORMAT, INVENTORY_TEXT_FORMAT, inventoryPassSchema, parseInventoryReply } from '@/lib/inventory/pass';
@@ -292,34 +293,81 @@ const locationSuggestPass: TurnPassRecord<string | null> = {
   parseResponse: (raw, material) => matchNarratedMoveResponse(raw, material.destinations),
 };
 
-/** One entity's location request: its system prompt over `values`, its user message over the action, the
- *  narration, whether it already follows, and its own closed list of replies. */
-const entityLocationRequest = (input: TurnPlanInput, material: TurnMaterial, values: TokenValues, narration: string) => {
+/** The tokens the schema reply's `{"reply": ""}` wrapper adds to the line. */
+const JSON_REPLY_SLACK = 12;
+
+const movesOf = (subject: TurnPassSubject) => subject.moves ?? entityMoveOptions(false);
+
+/** The story minute the subject's request reads. Its time line and wait ends need one. */
+const clockOf = (subject: TurnPassSubject): number => {
+  if (subject.moveClock === undefined) throw new Error('an entity location request needs the story clock');
+  return subject.moveClock;
+};
+
+/** The entity location request's schema: one reply, from the subject's closed list. */
+export const entityMoveSchema = (labels: string[]): ResponseSchema => ({
+  name: 'entity_move',
+  schema: { type: 'object', additionalProperties: false, required: ['reply'], properties: { reply: { type: 'string', enum: labels } } },
+});
+
+/** The reply format after the user message: the time, then the closed list. The parser depends on it, so it sits
+ *  out of the author's reach. */
+const entityMoveFormat = (subject: TurnPassSubject, json: boolean): string => {
+  const now = clockOf(subject);
+  const list = entityMoveOptionsText(movesOf(subject), subject.destinations ?? [], now);
+  const ask = json
+    ? `Reply for ${subject.name} with the one line from this list that fits:`
+    : `Reply for ${subject.name} with exactly one line from this list, and nothing else:`;
+  return `\n\n${entityMoveTimeLine(now)}\n${ask}\n${list}`;
+};
+
+/**
+ * One entity's location request: its system prompt over `values`, its user message over the action, the
+ * narration and whether it already follows, then the reply format. The schema request carries the text
+ * request as its fallback; an endpoint that refused the schema before gets the text request alone.
+ */
+const entityLocationRequest = (
+  input: TurnPlanInput, material: TurnMaterial, values: TokenValues, narration: string,
+): TurnPassRequest<ChatMessage> => {
   const subject = subjectOf(material);
-  const moves = subject.moves ?? entityMoveOptions(false);
-  const destinations = subject.destinations ?? [];
-  return labeledRequest(
-    { type: 'entityLocation', maxTokens: locationChangeCap(subjectCandidates(subject).map(([label]) => label)), silent: false, quiet: true },
-    systemTiled(input.prompts.entityLocation, layerValues(values, { '<CHARACTER NAME>': subject.name })),
-    userTiled(
-      input.prompts.entityLocationUser,
-      {
-        '<CHARACTER NAME>': subject.name,
-        '<PLAYER ACTION>': material.action,
-        '<NARRATION>': narration,
-        '<MOVE STATE>': entityMoveStateText(subject.name, moves.includes('keepFollowing')),
-        '<MOVE OPTIONS>': entityMoveOptionsText(moves, destinations),
-      },
-      { '<MOVE STATE>': 'move-options', '<MOVE OPTIONS>': 'move-options' },
-    ),
-  );
+  const moves = movesOf(subject);
+  const labels = subjectCandidates(subject).map(([label]) => label);
+  const system = systemTiled(input.prompts.entityLocation, layerValues(values, { '<CHARACTER NAME>': subject.name }));
+  const user = trimEndTiled(userTiled(
+    input.prompts.entityLocationUser,
+    {
+      '<CHARACTER NAME>': subject.name,
+      '<PLAYER ACTION>': material.action,
+      '<NARRATION>': narration,
+      '<MOVE STATE>': entityMoveStateText(subject.name, moves.includes('keepFollowing')),
+      // The list rides in the reply format (Q108); a saved template that still holds the chip sends nothing there.
+      '<MOVE OPTIONS>': '',
+    },
+    { '<MOVE STATE>': 'move-options' },
+  ));
+  const withFormat = (format: string): TiledRuns => ({
+    content: user.content + format,
+    runs: [...user.runs, { start: user.content.length, end: user.content.length + format.length, contextLabel: 'reply-format' }],
+  });
+  const cap = locationChangeCap(labels);
+  const shared = { type: 'entityLocation' as const, silent: false, quiet: true };
+  const textRequest = labeledRequest({ ...shared, maxTokens: cap }, system, withFormat(entityMoveFormat(subject, false)));
+  if (input.settings.entityLocationTextPass) return textRequest;
+  const { systemPrompt, messages, maxTokens, anatomy } = textRequest;
+  return {
+    ...labeledRequest({ ...shared, maxTokens: cap + JSON_REPLY_SLACK }, system, withFormat(entityMoveFormat(subject, true))),
+    responseSchema: entityMoveSchema(labels),
+    textFallback: { systemPrompt, messages, maxTokens, anatomy },
+  };
 };
 
 /** Each line a subject is offered, with the move it stands for. */
 const subjectCandidates = (subject: TurnPassSubject): [string, EntityMove][] =>
-  entityMoveCandidates(subject.moves ?? entityMoveOptions(false), subject.destinations);
+  entityMoveCandidates(movesOf(subject), subject.destinations ?? [], clockOf(subject));
 
-/** The move an entity location request matched among its own options, or null. */
+/** The move an entity location request matched among its own options, or null. The schema reply holds its line
+ *  inside the JSON, where the match finds it as in a text reply. A place it was not offered, and so not allowed,
+ *  matches nothing. */
 const parseEntityMove = (raw: string, material: TurnMaterial): EntityMove | null => {
   const candidates = subjectCandidates(subjectOf(material));
   const matched = matchLocationResponse(raw, candidates.map(([label]) => label));

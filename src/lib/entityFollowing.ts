@@ -1,8 +1,9 @@
 import type { Connection, DiscoveredEntity, Entity, EntityPositions, GameLocation } from "@/types";
 import { effectiveDestinations } from "@/lib/locationGraph";
 import type { EntityCodeWrite } from "@/lib/statCodeExecutor";
+import { daypart, MINUTES_PER_DAY } from "@/lib/gameClock";
 import {
-  allowedPlaces, isStrictNow, moveIndividualByScript, partWays, rowPlacesNow, startFollowing, startWaiting, type PositionBook,
+  allowedPlaces, isStrictNow, moveIndividualByScript, partWays, startFollowing, startWaiting, waitUntil, type PositionBook, type WaitLength,
 } from "@/lib/positionEngine";
 import { followerIds, placeAll, withPlayerAt, type PositionWorld } from "@/lib/positionPlay";
 
@@ -12,40 +13,74 @@ import { followerIds, placeAll, withPlayerAt, type PositionWorld } from "@/lib/p
  */
 
 /** One fixed reply an entity location request can give. */
-export type EntityMoveReply = "stay" | "comeAlong" | "keepFollowing" | "stayHere";
+export type EntityMoveReply = "stay" | "comeAlong" | "keepFollowing" | "waitHour" | "waitThisDaypart" | "waitNextDaypart" | "partWays";
 
 /** What an entity location request matched: a fixed reply, or a walk to one of its places, by id. */
 export type EntityMove = EntityMoveReply | { goTo: string };
 
-/** The closed list each reply is offered as. */
-export const ENTITY_MOVE_LABELS: Record<EntityMoveReply, string> = {
+const WAIT_LENGTHS = { waitHour: "hour", waitThisDaypart: "thisDaypart", waitNextDaypart: "nextDaypart" } as const satisfies Partial<Record<EntityMoveReply, WaitLength>>;
+
+type WaitReply = keyof typeof WAIT_LENGTHS;
+
+const isWaitReply = (move: EntityMove | null): move is WaitReply => typeof move === "string" && move in WAIT_LENGTHS;
+
+/** The fixed replies' lines. A wait's line also names when it ends, from the story clock. */
+const FIXED_LABELS: Record<Exclude<EntityMoveReply, WaitReply>, string> = {
   stay: "Stay",
   comeAlong: "Come along",
   keepFollowing: "Keep following",
-  stayHere: "Stay here",
+  partWays: "Part ways",
 };
 
-/** The replies an entity is offered: a follower keeps following or stays behind; anyone else stays or comes along. */
+const FOLLOWER_REPLIES: readonly EntityMoveReply[] = ["keepFollowing", "waitHour", "waitThisDaypart", "waitNextDaypart", "partWays"];
+const NEWCOMER_REPLIES: readonly EntityMoveReply[] = ["stay", "comeAlong"];
+
+/** The replies an entity is offered (Q4, Q8): a follower keeps following, waits for one of three lengths, or
+ *  parts ways; anyone else stays or comes along. */
 export function entityMoveOptions(following: boolean): EntityMoveReply[] {
-  return following ? ["keepFollowing", "stayHere"] : ["stay", "comeAlong"];
+  return [...(following ? FOLLOWER_REPLIES : NEWCOMER_REPLIES)];
 }
 
 /** A parsed reply narrowed back from a pass outcome. */
 export const isEntityMove = (value: unknown): value is EntityMove =>
-  (typeof value === "string" && value in ENTITY_MOVE_LABELS)
+  (typeof value === "string" && [...NEWCOMER_REPLIES, ...FOLLOWER_REPLIES].some((reply) => reply === value))
   || (typeof value === "object" && value !== null && typeof (value as { goTo?: unknown }).goTo === "string");
 
-/** Each line an entity is offered, with the move it stands for: the fixed replies, then each place by name. */
+/** Minutes since that day's midnight. */
+const minuteOfDay = (minute: number): number => ((minute % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+
+/** A story minute as a 24-hour clock. */
+const clockText = (minute: number): string => {
+  const inDay = minuteOfDay(minute);
+  return `${String(Math.floor(inDay / 60)).padStart(2, "0")}:${String(inDay % 60).padStart(2, "0")}`;
+};
+
+const daypartOf = (minute: number): string => daypart(minuteOfDay(minute) / 60);
+
+/** One reply's line at story minute `now`. */
+export function entityMoveLabel(move: EntityMoveReply, now: number): string {
+  if (!isWaitReply(move)) return FIXED_LABELS[move];
+  const until = waitUntil(WAIT_LENGTHS[move], now);
+  if (move === "waitHour") return `Wait here about an hour, until ${clockText(until)}, ${daypartOf(until)}`;
+  // A minute past the edge, since edges round down from the daypart's fractional start.
+  return `Wait here until ${clockText(until)}, when ${daypartOf(until + 1)} begins`;
+}
+
+/** The request's fixed time line (Q107): the clock and the daypart now. */
+export const entityMoveTimeLine = (now: number): string => `The time is ${clockText(now)}, ${daypartOf(now)}.`;
+
+/** Each line an entity is offered at story minute `now`, with the move it stands for: the fixed replies, then
+ *  each place by name. */
 export const entityMoveCandidates = (
-  moves: readonly EntityMoveReply[], destinations: readonly GameLocation[] = [],
+  moves: readonly EntityMoveReply[], destinations: readonly GameLocation[], now: number,
 ): [string, EntityMove][] => [
-  ...moves.map((move): [string, EntityMove] => [ENTITY_MOVE_LABELS[move], move]),
+  ...moves.map((move): [string, EntityMove] => [entityMoveLabel(move, now), move]),
   ...destinations.map((place): [string, EntityMove] => [place.name, { goTo: place.id }]),
 ];
 
-/** The `<MOVE OPTIONS>` chip: one offered line per row. */
-export const entityMoveOptionsText = (moves: readonly EntityMoveReply[], destinations: readonly GameLocation[] = []): string =>
-  entityMoveCandidates(moves, destinations).map(([line]) => `- ${line}`).join("\n");
+/** The offered lines as a list, one per row. */
+export const entityMoveOptionsText = (moves: readonly EntityMoveReply[], destinations: readonly GameLocation[], now: number): string =>
+  entityMoveCandidates(moves, destinations, now).map(([line]) => `- ${line}`).join("\n");
 
 /** The `<MOVE STATE>` chip: whether the entity already travels with the player. */
 export const entityMoveStateText = (name: string, following: boolean): string =>
@@ -67,8 +102,7 @@ const NO_RUNTIME_CAST: RuntimeCast = { runtime: [], inScene: new Set() };
 
 /**
  * The entities that get a location request this turn: each follower, and each Individual at the player's place
- * whose row is not Strict and who may go somewhere besides where it stands. A runtime character counts only while
- * the scene list holds it. In `entities` order.
+ * whose row is not Strict. A runtime character counts only while the scene list holds it. In `entities` order.
  */
 export function entityMoveSubjects(
   entities: readonly Entity[], state: FollowerState, playerLocationId: string | undefined, world: PositionWorld,
@@ -84,18 +118,17 @@ export function entityMoveSubjects(
     const st = state.individuals[entity.id];
     if (!routine || !st || st.follow || state.positions[entity.id] !== playerLocationId) return false;
     if (runtimeIds.has(entity.id) && !cast.inScene.has(entity.id)) return false;
-    if (isStrictNow(routine, st, scene.now)) return false;
-    return [...allowedPlaces(routine, st, scene)].some((id) => id !== playerLocationId);
+    return !isStrictNow(routine, st, scene.now);
   });
 }
 
-/** The places `entity` standing at `standingAt` can walk to alone: its current row's places among the router's
- *  effective destinations from there. */
+/** The places `entity` standing at `standingAt` can walk to alone: its allowed places among the router's
+ *  effective destinations from there (Q105). */
 export function entityMoveDestinations(
   entity: Entity, standingAt: string, state: FollowerState, world: PositionWorld, locations: GameLocation[], connections: Connection[],
 ): GameLocation[] {
   const routine = world.routines.get(entity.id);
-  const own = new Set(routine ? rowPlacesNow(routine, state.individuals[entity.id], world.scene) : []);
+  const own = routine ? allowedPlaces(routine, state.individuals[entity.id], world.scene) : new Set<string>();
   const byId = new Map(locations.map((place) => [place.id, place]));
   return [...effectiveDestinations(standingAt, locations, connections).keys()].flatMap((id) => {
     const place = own.has(id) ? byId.get(id) : undefined;
@@ -134,14 +167,21 @@ export interface EntityGoTo {
   to: string;
 }
 
+/** A follower left waiting for one of the offered lengths. */
+export interface EntityWait {
+  id: string;
+  length: WaitLength;
+}
+
 /** What one turn's entity requests answered, by entity id. Only `comeAlong` joins the followers. */
 export interface EntityMoveIntents {
-  stayHere: readonly string[];
+  wait: readonly EntityWait[];
+  partWays: readonly string[];
   comeAlong: readonly string[];
   goTo: readonly EntityGoTo[];
 }
 
-export const NO_ENTITY_MOVES: EntityMoveIntents = { stayHere: [], comeAlong: [], goTo: [] };
+export const NO_ENTITY_MOVES: EntityMoveIntents = { wait: [], partWays: [], comeAlong: [], goTo: [] };
 
 /** The replies that wait on the player's move in suggest mode: Go applies them, Dismiss drops them. */
 export type EntityMoveOffer = Pick<EntityMoveIntents, "comeAlong">;
@@ -162,18 +202,21 @@ export interface EntityReply {
 /** The replies that change anything, by entity id. "Stay" and "keep following" change nothing. */
 export function entityMoveIntents(replies: readonly EntityReply[]): EntityMoveIntents {
   const answering = (reply: EntityMoveReply) => replies.filter(({ move }) => move === reply).map(({ entity }) => entity.id);
-  const stayHere = answering("stayHere");
+  const wait = replies.flatMap(({ entity, move }) => isWaitReply(move) ? [{ id: entity.id, length: WAIT_LENGTHS[move] }] : []);
+  const parting = answering("partWays");
   const comeAlong = answering("comeAlong");
   const goTo = replies.flatMap(({ entity, move }) => typeof move === "object" && move ? [{ id: entity.id, to: move.goTo }] : []);
-  return stayHere.length || comeAlong.length || goTo.length ? { stayHere, comeAlong, goTo } : NO_ENTITY_MOVES;
+  return wait.length || parting.length || comeAlong.length || goTo.length ? { wait, partWays: parting, comeAlong, goTo } : NO_ENTITY_MOVES;
 }
 
-/** `state` with the replies that need no player move applied: "stay here" leaves its follower waiting until the
- *  end of this daypart, and each walk to an allowed place applies with a hold. The same state when there is none. */
+/** `state` with the replies that need no player move applied: a wait leaves its follower waiting for that
+ *  length, Part ways sends it back to its routine, and each walk to an allowed place applies with a hold. The
+ *  same state when there is none. */
 export function applyAtOnce(state: FollowerState, intents: EntityMoveIntents, from: string, world: PositionWorld): FollowerState {
   const { scene } = withPlayerAt(world, from);
   let next = state;
-  for (const id of intents.stayHere) next = startWaiting(next, id, "thisDaypart", scene.now);
+  for (const { id, length } of intents.wait) next = startWaiting(next, id, length, scene.now);
+  for (const id of intents.partWays) next = partWays(next, id);
   for (const { id, to } of intents.goTo) {
     const routine = world.routines.get(id);
     if (!routine || !allowedPlaces(routine, next.individuals[id], scene).has(to)) continue;
@@ -199,7 +242,7 @@ export function entityMoveOffers(
 export function entityMoveRequests(
   cast: readonly Entity[], authored: readonly Entity[], state: FollowerState, playerLocationId: string | undefined,
   world: PositionWorld, locations: GameLocation[], connections: Connection[], runtimeCast?: RuntimeCast,
-): { name: string; entity: Entity; moves: EntityMoveReply[]; destinations: GameLocation[] }[] {
+): { name: string; entity: Entity; moves: EntityMoveReply[]; destinations: GameLocation[]; moveClock: number }[] {
   if (!playerLocationId) return [];
   const authoredById = new Map(authored.map((entity) => [entity.id, entity]));
   const following = new Set(followersOf(state));
@@ -209,6 +252,7 @@ export function entityMoveRequests(
       name: entity.name,
       entity,
       ...entityMoveOffers(entity, following.has(entity.id), playerLocationId, state, world, locations, connections),
+      moveClock: world.scene.now,
     };
   });
 }

@@ -145,7 +145,8 @@ describe('a move of more than one step in Auto mode', () => {
     await openInBarn();
     act(() => play.applyFollowerState(following(['bram', 'maela'], { bram: 'barn', maela: 'barn', wren: 'barn' })));
     stubEndpoint('You walk down the lane into town and into the store.', {
-      router: 'Store', entities: { Bram: 'Keep following', Maela: 'Stay here', Wren: 'Come along' },
+      router: 'Store',
+      entities: { Bram: 'Keep following', Maela: (offered) => offered.find((line) => line.startsWith('Wait here until')) ?? 'Stay', Wren: 'Come along' },
     });
 
     await playTurn('Maela, wait here. Wren, come with me to the store.');

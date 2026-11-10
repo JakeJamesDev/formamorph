@@ -2919,6 +2919,7 @@ const GameViewer = ({
     describeCharacters,
     inventoryDue: worldItems.length > 0 || itemCopies.length > 0 || currenciesSettle(worldCurrencies),
     inventoryTextPass: !schemaAccepted(resolveEndpointForKind("inventory").reasoning),
+    entityLocationTextPass: !schemaAccepted(resolveEndpointForKind("entityLocation").reasoning),
     imageAttachments,
     promptAttachments,
     language,

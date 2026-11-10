@@ -27,7 +27,7 @@ The editor has **Undo** and **Redo** buttons. **Edit full screen** opens the edi
 | **Character** | **Character** and **Entity Location**, and the User Message of **Discover Entity** |
 | **Player Action** | User Messages that send your action |
 | **Narration** | User Messages that send the turn's narration |
-| **Move State**, **Move Options** | The User Message of **Entity Location** |
+| **Move State** | The User Message of **Entity Location**. The game adds the list of answers after the message, so an older template's **Move Options** chip sends nothing. |
 | **In Frame** | The User Message of **Scene Tags** |
 | **First Passage**, **Later Material** | The User Message of **Discover Entity** |
 | **Remembered Moments**, **New Moments** | The User Message of **Milestone Select** |

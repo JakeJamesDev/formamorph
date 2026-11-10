@@ -7,23 +7,33 @@ import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils
 
 type Gameplay = ReturnType<typeof useGameplay>;
 
+/** An entity's reply: the text itself, or a pick from the lines its request offered. */
+export type EntityReplyScript = string | ((offered: string[]) => string);
+
 export interface MoveReplies {
   router?: string;
   narrated?: string;
-  entities?: Record<string, string>;
+  entities?: Record<string, EntityReplyScript>;
+}
+
+/** The request body as the stub reads it. */
+export interface SentBody {
+  messages: { role: string; content: string }[];
+  [key: string]: unknown;
 }
 
 /**
  * The scripted endpoint: each request kind answers from `replies`, and everything else with the narration.
  * `sent` lists the location requests in order; `after` keeps the latest system prompt of each pass that runs
- * after the narration.
+ * after the narration; `entityBodies` keeps the latest entity location request body per character.
  */
 export function stubMoveEndpoint(narration: string, replies: MoveReplies, narratedFallback = 'Barn') {
   const sent: string[] = [];
   const after = { choices: '', stats: '', inventory: '' };
+  const entityBodies: Record<string, SentBody> = {};
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
     if (!init?.body) return new Response(JSON.stringify({ data: [{ id: 'm' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    const body = JSON.parse(init.body as string) as { messages: { role: string; content: string }[] };
+    const body = JSON.parse(init.body as string) as SentBody;
     const system = body.messages.find((m) => m.role === 'system')?.content ?? '';
     if (system.includes('You are the location router')) {
       sent.push('router');
@@ -34,7 +44,13 @@ export function stubMoveEndpoint(narration: string, replies: MoveReplies, narrat
       return sseResponse(sseReply(replies.narrated ?? narratedFallback));
     }
     const mover = /You track where one character goes in an interactive story: (\w+)/.exec(system)?.[1];
-    if (mover) return sseResponse(sseReply(replies.entities?.[mover] ?? 'Stay'));
+    if (mover) {
+      entityBodies[mover] = body;
+      const script = replies.entities?.[mover] ?? 'Stay';
+      const user = body.messages.findLast((m) => m.role === 'user')?.content ?? '';
+      const offered = user.split('\n').flatMap((line) => (line.startsWith('- ') ? [line.slice(2)] : []));
+      return sseResponse(sseReply(typeof script === 'function' ? script(offered) : script));
+    }
     if (system.includes('player choice writer')) {
       after.choices = system;
       return sseResponse(sseReply('1. Look around\n2. Wait'));
@@ -49,7 +65,7 @@ export function stubMoveEndpoint(narration: string, replies: MoveReplies, narrat
     }
     return sseResponse(sseReply(narration));
   }));
-  return { sent, after };
+  return { sent, after, entityBodies };
 }
 
 /** Clears saves and settings, and points the game at the scripted endpoint in Auto mode. */

@@ -179,6 +179,8 @@ const FIXTURE_SUBJECT = {
   stance: 'at the rail, pole across her knees',
   entity: FIXTURE_SUBJECT_ENTITY,
   diary: ['I told them about the crate and not about Harrow. Let them find the stall shut themselves.'],
+  // The entity location request's story minute: early evening on day one.
+  moveClock: 18 * 60,
 };
 
 /** Where the location router could send this turn. Parse-side only — never rendered into a request. */
@@ -220,7 +222,7 @@ function previewInput(prompts: AnatomyPreviewPrompts, settings: AnatomyPreviewSe
       choicesEnabled: true, statUpdatesEnabled: true, statCount: 3,
       locationChangeEnabled: true, locationAutoApply: settings.locationAutoApply, entityMovement: true,
       aiClock: true, memoryDigests: recap, characterDiaries: true, describeCharacters: true,
-      inventoryDue: true, inventoryTextPass: false,
+      inventoryDue: true, inventoryTextPass: false, entityLocationTextPass: false,
       imageAttachments: false, promptAttachments: {}, language: settings.language,
       stripLinksAndImages: false,
     },

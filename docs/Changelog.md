@@ -49,6 +49,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **In the World Editor's Locations Canvas, a Connection can now be Nearby or Far.** The AI hears about entities one Nearby link away, and nothing across a Far one. Travel still works. Far links draw dotted on the Canvas and the Map. Nearby Through Connections is gone.
   - **In game, entities now move about while you are elsewhere and stay put while you are with them.** Opened worlds keep their cast where it was. An entity listed at several locations at once can no longer send one copy along with you.
   - **The World Editor's entity panel has a Routine tab for where an entity starts and its daily routine.** Each start shows its chance. Rows stay at, wander or patrol locations by daypart or by hour, and a lock keeps the entity from being called over.
+  - **In play, a follower can now wait for a set time or part ways with you.** Ask one to wait, and they stay about an hour, to the end of this part of the day, or to the end of the next. Then they return to their routine, or at once if you part ways.
 - **🛠️ Developer tooling**
   - **`pov-rewrite-probe.mjs` measures whether the character and diary passes mix up the player's acts with their own.** It compares the player's words as typed, with today's note, and with "I" or "you" rewritten to the persona name.
 

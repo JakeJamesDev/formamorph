@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Connection, Entity, EntityStart, GameLocation, IndividualStates } from '@/types';
 import {
-  applyEntityCodeWrites, chainEntityWrites, ENTITY_MOVE_LABELS, entityMoveIntents, entityMoveOffers, entityMoveSubjects, followersOf,
+  applyEntityCodeWrites, chainEntityWrites, entityMoveIntents, entityMoveLabel, entityMoveOffers, entityMoveOptions, entityMoveSubjects, followersOf,
   joinEntityMoves, movedPositions, NO_ENTITY_MOVES, type FollowerState,
 } from './entityFollowing';
 import { defaultEntityLocationPrompt } from '@/components/game/GamePrompts';
@@ -46,14 +46,19 @@ describe('who gets an entity location request', () => {
   const subjects = (s: FollowerState, at = 'inn') =>
     entityMoveSubjects(entitiesInPlay(CAST, s.positions), s, at, world(at)).map((e) => e.id);
 
-  it('asks each follower and each Individual here that may go somewhere else', () => {
-    expect(subjects(state(AT_INN))).toEqual(['corvin', 'tess']);
-    expect(subjects(state({ ...AT_INN, albus: 'inn' }, ['albus']))).toEqual(['corvin', 'tess', 'albus']);
+  it('asks each follower and each Individual here whose row is not Strict', () => {
+    // Wenna may go nowhere else, and is still asked: she can come along.
+    expect(subjects(state(AT_INN))).toEqual(['corvin', 'wenna', 'tess']);
+    expect(subjects(state({ ...AT_INN, albus: 'inn' }, ['albus']))).toEqual(['corvin', 'wenna', 'tess', 'albus']);
   });
 
-  it('never asks a Group, a Strict row, or an Individual whose routine allows only where it stands', () => {
+  it('never asks a Group or a character on a Strict row', () => {
     const asked = subjects(state(AT_INN));
-    expect(['moths', 'clerk', 'wenna'].filter((id) => asked.includes(id))).toEqual([]);
+    expect(['moths', 'clerk'].filter((id) => asked.includes(id))).toEqual([]);
+  });
+
+  it('still asks a follower whose row is Strict, since a running follow ignores it', () => {
+    expect(subjects(state(AT_INN, ['clerk']))).toContain('clerk');
   });
 
   it('asks nobody standing elsewhere, and nobody when the player is nowhere', () => {
@@ -64,7 +69,7 @@ describe('who gets an entity location request', () => {
   it('never asks a character left waiting', () => {
     const s = state(AT_INN);
     const waiting = { ...s, individuals: { ...s.individuals, corvin: { ...s.individuals.corvin, follow: { mode: 'waiting' as const, until: NOON + 60 } } } };
-    expect(subjects(waiting)).toEqual(['tess']);
+    expect(subjects(waiting)).toEqual(['wenna', 'tess']);
   });
 });
 
@@ -74,31 +79,65 @@ describe('what a request offers', () => {
 
   it('offers a follower different replies from a newcomer, and a follower no walk', () => {
     expect(offers(corvin).moves).toEqual(['stay', 'comeAlong']);
-    expect(offers(corvin, true)).toEqual({ moves: ['keepFollowing', 'stayHere'], destinations: [] });
+    expect(offers(corvin, true)).toEqual({
+      moves: ['keepFollowing', 'waitHour', 'waitThisDaypart', 'waitNextDaypart', 'partWays'], destinations: [],
+    });
   });
 
-  it("offers walks only to its current row's places one hop away", () => {
+  it('offers walks to its allowed places one travel link away (Q105)', () => {
     // The quay is a row place, but only from the square.
     expect(offers(tess).destinations.map((l) => l.id)).toEqual(['square']);
-    // Anywhere allows a follow, not a walk: an empty schedule walks nowhere but its Start.
-    expect(offers(corvin).destinations).toEqual([]);
+    // Anywhere allows every neighbor, and no place further off.
+    expect(offers(corvin).destinations.map((l) => l.id).sort()).toEqual(['harbor', 'keep', 'square']);
+    // An empty Traversable list and an empty schedule allow only where she stands.
+    expect(offers(wenna).destinations).toEqual([]);
   });
 
   it('names every reply the shipped prompt can offer', () => {
-    for (const label of Object.values(ENTITY_MOVE_LABELS)) expect(defaultEntityLocationPrompt).toContain(label);
+    for (const move of [...entityMoveOptions(false), ...entityMoveOptions(true)]) {
+      const lead = entityMoveLabel(move, NOON).split(/ about| until/)[0];
+      expect(defaultEntityLocationPrompt).toContain(lead);
+    }
   });
 });
 
 describe('the join of replies to the player move', () => {
   const intents = (over: Partial<typeof NO_ENTITY_MOVES>) => ({ ...NO_ENTITY_MOVES, ...over });
 
-  it('brings followers and "come along" to the new place and leaves the one told to stay waiting', () => {
+  it('brings followers and "come along" to the new place and leaves the one told to wait waiting', () => {
     const s = state({ ...AT_INN, albus: 'inn' }, ['albus', 'tess']);
-    const joined = joinEntityMoves(s, { from: 'inn', to: 'square' }, intents({ stayHere: ['tess'], comeAlong: ['corvin'] }), world());
+    const joined = joinEntityMoves(s, { from: 'inn', to: 'square' }, intents({ wait: [{ id: 'tess', length: 'hour' }], comeAlong: ['corvin'] }), world());
     expect(movedPositions(joined.positions, s.positions)).toEqual({ albus: 'square', corvin: 'square' });
     expect(followersOf(joined)).toEqual(['corvin', 'albus']);
-    expect(joined.individuals.tess.follow).toMatchObject({ mode: 'waiting' });
+    expect(joined.individuals.tess.follow).toEqual({ mode: 'waiting', until: NOON + 60 });
     expect(joined.positions.tess).toBe('inn');
+  });
+
+  it('waits each offered length, never past the end of the next daypart (Q3, Q8)', () => {
+    const until = (length: 'hour' | 'thisDaypart' | 'nextDaypart', now = NOON) => {
+      const w = positionWorld(castRoutines(CAST), now, 'inn', LOCATIONS, [QUAY], () => 0);
+      const joined = joinEntityMoves(state(AT_INN, ['corvin']), { from: 'inn', to: 'square' }, intents({ wait: [{ id: 'corvin', length }] }), w);
+      expect(joined.positions.corvin).toBe('inn');
+      return (joined.individuals.corvin.follow as { until: number }).until % (24 * 60);
+    };
+    expect(until('hour')).toBe(13 * 60);
+    expect(until('thisDaypart')).toBe(12 * 60 + 58);
+    expect(until('nextDaypart')).toBe(17 * 60 + 2);
+    // Across midnight, the longest wait is the end of the daypart after this one.
+    expect(until('thisDaypart', 23 * 60 + 30)).toBe(6 * 60);
+    expect(until('nextDaypart', 23 * 60 + 30)).toBe(7 * 60 + 55);
+  });
+
+  it('sends a follower who parts ways back to its routine, in the scene until the player leaves (Q106)', () => {
+    const s = state(AT_INN, ['tess']);
+    const parted = joinEntityMoves(s, { from: 'inn', to: 'inn' }, intents({ partWays: ['tess'] }), world());
+    expect(followersOf(parted)).toEqual([]);
+    expect(parted.individuals.tess.follow).toBeUndefined();
+    expect(parted.positions.tess).toBe('inn');
+    // The player leaves for the gate, which her routine never uses: she stays behind on it.
+    const left = joinEntityMoves(parted, { from: 'inn', to: 'gate' }, NO_ENTITY_MOVES, world('gate'));
+    expect(left.positions.tess).not.toBe('gate');
+    expect(left.individuals.tess.follow).toBeUndefined();
   });
 
   it('leaves a follower its routine does not allow there waiting where it stood', () => {
@@ -162,10 +201,12 @@ describe("a script's entity writes", () => {
 describe('the replies as intents', () => {
   it('keeps only the replies that change anything', () => {
     const intents = entityMoveIntents([
-      { entity: corvin, move: 'comeAlong' }, { entity: tess, move: 'stayHere' }, { entity: wenna, move: 'stay' },
-      { entity: albus, move: { goTo: 'keep' } }, { entity: clerk, move: null },
+      { entity: corvin, move: 'comeAlong' }, { entity: tess, move: 'waitNextDaypart' }, { entity: wenna, move: 'stay' },
+      { entity: albus, move: { goTo: 'keep' } }, { entity: clerk, move: null }, { entity: moths, move: 'partWays' },
     ]);
-    expect(intents).toEqual({ stayHere: ['tess'], comeAlong: ['corvin'], goTo: [{ id: 'albus', to: 'keep' }] });
+    expect(intents).toEqual({
+      wait: [{ id: 'tess', length: 'nextDaypart' }], partWays: ['moths'], comeAlong: ['corvin'], goTo: [{ id: 'albus', to: 'keep' }],
+    });
     expect(entityMoveIntents([{ entity: wenna, move: 'keepFollowing' }])).toBe(NO_ENTITY_MOVES);
   });
 });

@@ -70,6 +70,8 @@ export interface TurnSettings {
   inventoryDue: boolean;
   /** The inventory endpoint refused a response schema before, so the pass sends its text request alone. */
   inventoryTextPass: boolean;
+  /** The entity location endpoint refused a response schema before, so the request sends its text form alone. */
+  entityLocationTextPass: boolean;
   /** The Image Attachments setting. Off, no pass includes the action's images. */
   imageAttachments: boolean;
   /** The active preset's Include Attachments flags. An absent prompt takes its default. */
@@ -164,6 +166,8 @@ export interface TurnPassSubject {
   moves?: EntityMoveReply[];
   /** The places an entity location request offers this subject to walk to, after `moves`. */
   destinations?: GameLocation[];
+  /** The story minute an entity location request reads: its time line and when each wait ends. */
+  moveClock?: number;
 }
 
 /**

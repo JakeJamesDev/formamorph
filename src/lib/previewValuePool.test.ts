@@ -28,11 +28,18 @@ const SETTINGS = {
  *  nothing at all, which is the whole point of it. Every other token must always have something to show. */
 const LANGUAGE = '<LANGUAGE>';
 
+/** Parsed only, for saved templates: the entity location request sends its reply list after the user message. */
+const MOVE_OPTIONS = '<MOVE OPTIONS>';
+
 describe('the pool as a whole', () => {
   it('gives every token non-empty content', () => {
     const pool = composePreviewValues(SETTINGS);
-    const blank = everyToken.filter((t) => !pool(t)?.trim());
+    const blank = everyToken.filter((t) => t !== MOVE_OPTIONS && !pool(t)?.trim());
     expect(blank).toEqual([]);
+  });
+
+  it('shows the move options chip as nothing, as the request sends it', () => {
+    expect(composePreviewValues(SETTINGS)(MOVE_OPTIONS)).toBe('');
   });
 
   it('shows the language chip as nothing on an English game, and as the directive otherwise', () => {
