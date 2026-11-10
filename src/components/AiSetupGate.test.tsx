@@ -146,7 +146,7 @@ describe('AiSetupGate — the low-VRAM lead', () => {
     expect(card.compareDocumentPosition(download) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('keeps today’s layout on an ok class, whatever nvidia-smi reports', async () => {
+  it('shows no lead on an ok class, whatever nvidia-smi reports', async () => {
     rig.gpuTotalMB = 6144;
     rig.vramClass = 'ok';
     mountGate();
@@ -154,7 +154,7 @@ describe('AiSetupGate — the low-VRAM lead', () => {
     expect(lead()).toBeNull();
   });
 
-  it('keeps today’s layout when the class is unknown', async () => {
+  it('shows no lead when the class is unknown', async () => {
     rig.gpuTotalMB = null;
     rig.vramClass = 'unknown';
     mountGate();
@@ -162,7 +162,7 @@ describe('AiSetupGate — the low-VRAM lead', () => {
     expect(lead()).toBeNull();
   });
 
-  it('keeps today’s layout in a build without hosted AI', async () => {
+  it('shows no lead in a build without hosted AI', async () => {
     rig.gpuTotalMB = 6144;
     rig.vramClass = 'low';
     rig.hostedAvailable = false;

@@ -60,13 +60,13 @@ export function useStoryCard({ turnCount, settled }: { turnCount: number; settle
   });
 }
 
-/** The built-in engine card, on the same terms as `useStoryCard` with its own count and records. */
 function useEngineOfferFacts() {
   const { narrationIsBuiltInEngine, hostedAi } = useSettings();
   const vramClass = useVramClass({ enabled: narrationIsBuiltInEngine });
   return { narrationIsBuiltInEngine, vramClass, pledged: isPledged(hostedAi), hostedAvailable: HOSTED_AI_AVAILABLE };
 }
 
+/** The built-in engine card, on the same terms as `useStoryCard` with its own count and records. */
 export function useEngineStoryCard({ turnCount, settled }: { turnCount: number; settled: boolean }) {
   const facts = useEngineOfferFacts();
   return useEarnedCard({
