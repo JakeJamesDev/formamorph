@@ -10,7 +10,7 @@ Model rationale: one read-only tab built from the Usage tab's existing tiles and
 
 ## What to build
 
-The Admin Panel gains a Mail tab, for admins only. It shows tiles for mail sent, delivered, bounced and complaints, the 7-day bounce and complaint rates next to Amazon's limits, the SES account status, and today's quota use. Below the tiles, a table lists each day's counts. The tab uses the Usage tab's tile and table patterns and adds no new visual pattern.
+The Admin Panel gains a Mail tab, for admins only. It shows tiles for mail sent, delivered, bounced and complaints, the 7-day bounce and complaint rates next to Amazon's limits, the SES account status, and the quota used in the last 24 hours. SES counts quota over a rolling 24 hours, so the tab never says "today". Below the tiles, a table lists each day's counts, with hard and soft bounces in separate columns. The bounce tile and the bounce rate use hard bounces. The tab uses the Usage tab's tile and table patterns and adds no new visual pattern.
 
 This ticket owns the client's mail-report service.
 

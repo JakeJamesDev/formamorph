@@ -92,7 +92,7 @@ SES reports what happens to each mail, and the server records it:
 
 28. As an admin, I want a Mail tab with sent, delivered, delayed, bounced and complaint counts per day, so that I can see mail health.
 29. As an admin, I want the 7-day bounce and complaint rates next to Amazon's limits, so that I can see how close we are.
-30. As an admin, I want the SES account status and today's quota use on the tab, so that I see a review or a pause.
+30. As an admin, I want the SES account status and the quota used in the last 24 hours on the tab, so that I see a review or a pause.
 31. As an admin, I want an urgent message when SES reports a non-healthy status, so that I learn of a review the hour it starts.
 32. As an admin, I want an urgent message when the 7-day rate reaches 2.5% bounces or 0.05% complaints, so that I can act before Amazon does.
 33. As an admin, I want each alert once until the condition clears, so that the inbox is not flooded.
@@ -145,6 +145,12 @@ SES reports what happens to each mail, and the server records it:
 - Changing the address clears the marker.
 - While the marker is set, the server sends no verification and no reset mail to that address.
 - A soft bounce (delay, full mailbox) never sets the marker.
+- Existing accounts get the migration time as the time their address was set. A bounce for a mail sent before that marks nothing.
+- A mail sent at the same instant as the address change counts as sent to the new address.
+- A verification link opened while the address is marked is spent and refused with the marked-address code (Q8), and verifies nothing. The verify page shows the bounce notice for it.
+- Setting the marker does not delete outstanding links. A deleted link could only answer "expired", and the user would not learn why. Reset links are left alone.
+- The marked-address code is one code for both reasons, `EMAIL_UNDELIVERABLE` with HTTP 409. The account summary carries the reason as `emailMarker`: `bounce`, `complaint`, or nothing.
+- A second event for a marked address keeps the first reason and time.
 
 **Webhook (Q5, Q6)**
 
@@ -174,6 +180,12 @@ SES reports what happens to each mail, and the server records it:
 **Health (Q10)**
 
 - An hourly job asks SES for the account status and quota, because Amazon sends no event when it pauses an account.
+- The status is non-healthy when SES reports an enforcement status other than healthy, or reports sending as disabled.
+- A change from one non-healthy state to another alerts again. The same state on the next run alerts nothing.
+- SES counts quota over a rolling 24 hours, not a calendar day. The report says "last 24 hours".
+- Under the 200-mail floor a rate is not measured. A rate alert neither fires nor re-arms there, so volume near the floor cannot make it repeat.
+- A failed status call skips only the status alert. The rate checks still run.
+- The report gives hard and soft bounces as separate per-day counts. Amazon's limits are about hard bounces.
 - The same job computes the 7-day hard-bounce and complaint rates from the mail log.
 - It alerts admins through the existing staff alert path: an urgent in-app message, and staff alert mail when configured.
 - Three alert conditions: status not healthy, bounce rate at 2.5% or more, complaint rate at 0.05% or more. Each alerts once and re-arms when the condition clears, like the provider-balance alert.

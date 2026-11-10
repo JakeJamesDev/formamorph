@@ -22,10 +22,11 @@ Write the copy from this facts list, in the user's words, after reading the writ
 
 ## Acceptance criteria
 
-- [ ] The account summary type carries the marker reason, read from sign-in, the account read and the set-email response.
+- [ ] The account summary type carries the marker reason (`emailMarker`: `bounce`, `complaint` or nothing), read from sign-in, the account read and the set-email response. The server's marked-address code is `EMAIL_UNDELIVERABLE`, HTTP 409.
 - [ ] With reason `bounce`, both email sections show the bounce notice and the feedback-form link. With reason `complaint`, both show the complaint wording.
 - [ ] While the marker is set, the status line shows the address as not verified and the resend button is absent.
 - [ ] The server's marked-address code from resend-verification and set-email shows the same notice, not the generic "couldn't be sent" note.
+- [ ] The website's verify-email page shows the bounce notice, not "Link Expired", when the server refuses a link with the marked-address code.
 - [ ] Saving a different address removes the notice and shows the usual "verification email sent" note.
 - [ ] An unmarked account renders exactly as before.
 - [ ] The website account page's bundle still holds no game code.
