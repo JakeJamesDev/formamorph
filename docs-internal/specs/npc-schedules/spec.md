@@ -118,7 +118,8 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q75** A selected row is edited on the map.
   - Click: Stay moves to the place. Wander adds or removes it. Patrol adds it as the next stop, and a click on the last stop removes it. An empty row takes its first place from one click.
   - Drag: starts only on a place of the selected Wander or Patrol row, and those places show their connect grip without a hover. It ends on any connected place (Q43). Patrol puts the new stop right after the stop the drag left, after its last occurrence when the place repeats. A drag from the last stop to stop 1 does nothing. Wander adds the target. Stay has no drag.
-  - A Patrol may visit the same place more than once.
+  - A Patrol may visit the same place more than once, but no stop follows itself, and the loop from the last stop to stop 1 counts as a step. A click or a drag that would break this does nothing. (Ticket 07.)
+  - A Group gets the status line too. With no row selected a click toggles any place, connected to the Start or not. Removing a row's last place is allowed. (Ticket 07.)
 - **Q76** With no row selected, a click adds the place to the Traversable list or removes it. With Traversable = Anywhere a click does nothing.
 - **Q77** A status line at the top of the map says what a click or a drag does right now.
 - **Q78** Hours use the themed time field (hour and minute columns), not the browser's time input.
@@ -164,6 +165,7 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q115** Ticket 09's probe: one batched call met the one-named bar in 24 of 24 runs, and one call per character in 16 of 24. Ticket 12 switches the request to one batched call. (Ticket 09.)
 - **Q116** A row's two handles never cross. A drag cannot turn a row into one that wraps midnight; the time editor sets a wrapping range, and a row that already wraps drags both its ends. The prototype let an end pass its own start, which was not intended. (Ticket 05.)
 - **Q117** In the batched request, each character has a block in the appended format with its state sentence and its own reply list. The character-name and move-state chips leave the default template; in a saved template the first reads "each character listed" and the second renders empty. Two subjects with one name are numbered in the request. (Ticket 12; amends Q108.)
+- **Q118** The one-named bar decides between the two request forms; it is not a 100% gate. Ticket 12's batched text met it in 67 of 72 runs over three batches against 48 of 72 for one call per character, with fewer false moves and more right answers in every batch, so the batched form ships. The cost is about half a second more per turn. "As long as it takes" and "until night falls" still pick the end of this daypart (Q8 not met; two fixes tried and dropped). (Ticket 12.)
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
