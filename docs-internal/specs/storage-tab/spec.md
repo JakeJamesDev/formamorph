@@ -106,6 +106,7 @@ Rulings from the grill:
 - Above the free tier, the bar is full and a line states the amount over.
 - A line under the bar gives each bucket's size, object count, and checked time. The 3-hour note applies to `checkedAt`.
 - A null bucket shows the no-value dash. A null `r2` replaces the bar with one line of text.
+- **Ticket 02 rulings.** Bucket hues go by position, never by name: the first bucket in the report has the second chart token, the next has the third. The server lists the files bucket first. One row per bucket under the bar replaces the bar's legend: swatch, name, size, objects, checked time, and the stale note. A null bucket keeps its row and has no segment. While a bucket is null, the R2 total reads "at least", so a missing bucket cannot hide an overage.
 
 ### History section
 
@@ -114,6 +115,7 @@ Rulings from the grill:
 - **R2 total.** The sum of the `r2:<bucket>` values per day. A day where any bucket is null is empty.
 - **Empty days.** A null value draws no column. It is never drawn as zero.
 - A per-day table under the charts holds the same figures: day, disk used, R2 total, downloads.
+- **Ticket 02 rulings.** The range buttons sit on the History section's heading. The table has one disk-used column per disk, whatever the chart's switcher shows. Only downloads marks today as "so far"; disk and R2 are snapshots and draw at full strength. Above 60 columns the day chart has no gap between columns. There is no aggregation at 365 days.
 
 ### Formatting
 
