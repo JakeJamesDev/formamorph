@@ -194,6 +194,13 @@ describe('turn pass requests', () => {
       expect(pass('locationAuto').parseResponse('NONE', material())).toBeNull();
       expect(pass('locationAuto').parseResponse('Atlantis', material())).toBeNull();
     });
+
+    it('reads a reply naming the turn’s own location as no move, though it holds a destination name', () => {
+      const here = material({ here: 'The Far Bank Landing' });
+      for (const id of ['locationAuto', 'narratedMove', 'locationSuggest'] as const) {
+        expect(pass(id).parseResponse('The Far Bank Landing', here)).toBeNull();
+      }
+    });
   });
 
   describe('the entity location request', () => {

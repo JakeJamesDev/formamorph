@@ -3870,6 +3870,7 @@ const GameViewer = ({
           baseCtx: contextValues(null, codeView),
           destinations: destinations.map((loc) => loc.name),
           farDestinations: farDestinationNames(reach),
+          here: currentLocation?.name,
         }),
         request,
         signal,

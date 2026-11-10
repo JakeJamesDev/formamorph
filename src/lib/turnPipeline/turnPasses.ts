@@ -243,7 +243,7 @@ const locationAutoPass: TurnPassRecord<string | null> = {
     systemTiled(input.prompts.locationChange, material.baseCtx),
     userTiled(input.prompts.locationChangeUser, { '<PLAYER ACTION>': material.action }),
   ),
-  parseResponse: (raw, material) => matchRouterResponse(raw, material.destinations, material.farDestinations ?? []),
+  parseResponse: (raw, material) => matchRouterResponse(raw, material.destinations, material.farDestinations ?? [], material.here),
   fold: (parsed) => (parsed === null ? {} : { moved: true }),
 };
 
@@ -274,7 +274,7 @@ const narratedMovePass: TurnPassRecord<string | null> = {
     input.hasCurrentLocation,
   isReady: (material) => !material.moved,
   buildRequest: (input, material) => narratedMoveRequest(input, material, false),
-  parseResponse: (raw, material) => matchNarratedMoveResponse(raw, material.destinations),
+  parseResponse: (raw, material) => matchNarratedMoveResponse(raw, material.destinations, material.here),
 };
 
 /** After the narration, ask whether the story moved the player and offer it. Suggest mode only. */
@@ -291,7 +291,7 @@ const locationSuggestPass: TurnPassRecord<string | null> = {
     input.locationCount > 1 &&
     input.prompts.narratedMove !== '',
   buildRequest: (input, material) => narratedMoveRequest(input, material, quietInBatch(input)),
-  parseResponse: (raw, material) => matchNarratedMoveResponse(raw, material.destinations),
+  parseResponse: (raw, material) => matchNarratedMoveResponse(raw, material.destinations, material.here),
 };
 
 /** The tokens each subject's key and quotes add to its line in the schema reply. */

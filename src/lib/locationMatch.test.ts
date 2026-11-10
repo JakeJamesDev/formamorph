@@ -88,6 +88,21 @@ describe('matchNarratedMoveResponse', () => {
   it('reads a word that only starts with Elsewhere as a reply like any other', () => {
     expect(matchNarratedMoveResponse('Elsewhereish Cave', names)).toBe('Cave');
   });
+  describe('with the current location', () => {
+    const reach = ['Ridge Campus', 'Glass Studio'];
+    const here = 'Ridge Campus Dorms';
+
+    it('moves nobody when the reply names the current location that holds a destination name', () => {
+      expect(matchNarratedMoveResponse('Ridge Campus Dorms', reach, here)).toBeNull();
+      expect(matchNarratedMoveResponse('**ridge campus dorms**.', reach, here)).toBeNull();
+      expect(matchNarratedMoveResponse('You stay in the Ridge Campus Dorms.', reach, here)).toBeNull();
+    });
+
+    it('still moves the player to a destination the reply names', () => {
+      expect(matchNarratedMoveResponse('Ridge Campus', reach, here)).toBe('Ridge Campus');
+      expect(matchNarratedMoveResponse('Glass Studio', reach, here)).toBe('Glass Studio');
+    });
+  });
 });
 
 describe('matchRouterResponse', () => {
@@ -111,6 +126,12 @@ describe('matchRouterResponse', () => {
   it('moves nobody when the longest name in the reply is far, even with a one-move name inside it', () => {
     expect(matchRouterResponse('I go to the cave entrance', reach, far)).toBeNull();
     expect(matchRouterResponse('Cave Entrance', reach, far)).toBe('Cave Entrance');
+  });
+
+  it('moves nobody when the reply names the current location that holds a destination name', () => {
+    expect(matchRouterResponse('Forest Clearing Camp', reach, far, 'Forest Clearing Camp')).toBeNull();
+    expect(matchRouterResponse('I stay at the Forest Clearing Camp', reach, far, 'Forest Clearing Camp')).toBeNull();
+    expect(matchRouterResponse('Forest Clearing', reach, far, 'Forest Clearing Camp')).toBe('Forest Clearing');
   });
 
   it('reads NONE and an empty reply as no move', () => {

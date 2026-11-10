@@ -43,15 +43,21 @@ export function matchLocationResponse(response: string, names: string[]): string
  * matches only an exact reply, markdown and end punctuation aside; the longest name a reply holds decides, so
  * a reply that names a far place inside other words moves nobody.
  */
-export function matchRouterResponse(response: string, names: string[], far: readonly string[]): string | null {
+export function matchRouterResponse(response: string, names: string[], far: readonly string[], here?: string): string | null {
   const text = (response || '').trim();
   if (!text || text.toUpperCase() === 'NONE') return null;
   const lower = text.toLowerCase();
-  const exact = exactNameIgnoringMarkup(lower, names);
-  if (exact) return exact;
-  const found = longestNameIn(lower, names);
-  return found && !far.includes(found) ? found : null;
+  const all = withHere(names, here);
+  const exact = exactNameIgnoringMarkup(lower, all);
+  if (exact) return exact === here ? null : exact;
+  const found = longestNameIn(lower, all);
+  return found && found !== here && !far.includes(found) ? found : null;
 }
+
+/** `names` plus the player's current location, so a reply naming where the player stands outmatches a shorter
+ *  name inside it ("Academy Dorms" over "Academy"). */
+const withHere = (names: string[], here: string | undefined): string[] =>
+  here && !names.includes(here) ? [...names, here] : names;
 
 /** The longest name in `names` that `lower` holds as whole words, give or take a leading article. */
 function longestNameIn(lower: string, names: string[]): string | null {
@@ -77,11 +83,14 @@ const exactNameIgnoringMarkup = (lower: string, names: string[]): string | undef
 /**
  * Resolve a Narrated Move reply. A reply whose first word is Elsewhere means the player went somewhere off the
  * list and resolves to null, whatever follows it. An exact listed name still wins, markdown and punctuation aside.
+ * A reply that resolves to `here`, the player's current location, is no move.
  */
-export function matchNarratedMoveResponse(response: string, names: string[]): string | null {
+export function matchNarratedMoveResponse(response: string, names: string[], here?: string): string | null {
   const lower = (response || '').trim().toLowerCase();
-  const exact = exactNameIgnoringMarkup(lower, names);
-  if (exact) return exact;
+  const all = withHere(names, here);
+  const exact = exactNameIgnoringMarkup(lower, all);
+  if (exact) return exact === here ? null : exact;
   if (/^[^a-z0-9]*elsewhere(?![a-z0-9])/.test(lower)) return null;
-  return matchLocationResponse(response, names);
+  const found = matchLocationResponse(response, all);
+  return found === here ? null : found;
 }
