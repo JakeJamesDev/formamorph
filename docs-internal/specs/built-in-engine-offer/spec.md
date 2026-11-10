@@ -38,6 +38,7 @@ We also cannot tell which offer leads to a pledge. The funnel counts one "offer 
 | Q11 | The card sends its own funnel step. |
 | Q12 | Every integrated GPU counts as low. Strong APUs get no exception. |
 | Q13 | Tests use four existing seams and add none (see Testing Decisions). |
+| Q14 | The user approved both texts as landed, on 2026-11-09. Lead body: "Formamorph AI writes better narration and keeps characters more consistent than the models that fit your machine. Your support also helps fund new updates." Card: "Want a Bigger Model for This Story?" / "Your computer runs a small model that fits its memory. Formamorph AI runs a larger one on our servers, for sharper narration and characters who stay consistent. Your support includes it, and it helps fund new updates." |
 
 **Carried over from First-Time Flow, unchanged:** no offer for a pledged player (Q44, Q66), in a build without hosted AI, or on Steam (Q6). The card uses Morphie (Q20), the Pages placement (Q19), and the lifetime of Q42: the seen record is written when the card first renders after the turn's reveal ends, and nothing brings the card back.
 
