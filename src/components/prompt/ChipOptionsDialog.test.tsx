@@ -208,8 +208,31 @@ describe('Chip Options', () => {
     expect(await screen.findByText(IN_SCENE_HELP)).toBeVisible();
   });
 
+  it('keeps Movement live under Name content and explains the disabled Traits and Stats', async () => {
+    const user = userEvent.setup();
+    renderReporting(<TooltipProvider><Field initial="<ENTITIES|name>" /></TooltipProvider>);
+    await open(user);
+    expect(box('Include', 'Traits')).toBeDisabled();
+    expect(box('Include', 'Stats')).toBeDisabled();
+    expect(box('Include', 'Movement')).toBeEnabled();
+    await user.hover(within(row('Include')).getByText('Traits'));
+    expect(await screen.findByText('Name content sends no stats or traits')).toBeVisible();
+    await user.click(box('Include', 'Movement'));
+    expect(stored()).toBe('<ENTITIES|name.nomovement>');
+  });
+
+  it('turns Movement off per chip and back on', async () => {
+    const user = userEvent.setup();
+    renderReporting(<Field initial="<ENTITIES>" />);
+    await open(user);
+    expect(box('Include', 'Movement')).toBeChecked();
+    await user.click(box('Include', 'Movement'));
+    expect(stored()).toBe('<ENTITIES|nomovement>');
+    await user.click(box('Include', 'Movement'));
+    expect(stored()).toBe('<ENTITIES>');
+  });
+
   it.each([
-    ['<ENTITIES|name>', 'Include'],
     ['<PERSONA|name>', 'Include'],
     ['<PERSONA|name>', 'Stat Detail'],
   ])('explains the disabled %s row on %s in words that fit the persona too', async (token, rowName) => {

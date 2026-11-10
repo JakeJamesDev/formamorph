@@ -9,6 +9,8 @@ export type TextOrigin =
   | 'traits'
   /** An entity's owned stats lines. */
   | 'stats'
+  /** An Individual's movement line. */
+  | 'movement'
   /** One Stat Detail piece of a stat line. */
   | 'range' | 'descriptor' | 'meaning'
   /** An entity that owns stats or traits, so it passes that Only With pick. */

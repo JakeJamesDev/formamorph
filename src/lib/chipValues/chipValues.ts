@@ -6,6 +6,7 @@ import {
   knownEntityIds, knownEntityRuns, reachableEntityIds, reachableEntityRuns, scopedChipRuns, scopedChipValues, sublocationEntityIds, sublocationEntityRuns, type ContextOpts,
 } from '../locationContext';
 import { relatedIds, relationshipCast, relationshipLines } from '../entityRelationships';
+import { movementLabels } from '../movementTag';
 import { slotsInForce } from '../bodies';
 import { balanceOf, type BalanceState } from '../currency';
 import { buildInventoryContext, type InventoryScene } from '../inventoryContext';
@@ -191,8 +192,10 @@ function entityScopes(scene: ChipScene, cast = sceneRelationshipCast(scene)): Re
   const outer = scene.outerScopeEntities ?? entities;
   // Roster precedence: here > sub-location > reachable > known. A character shows only in the highest scope
   // it belongs to, so the lower scopes drop the ids the higher ones list.
-  const reachableExclude = [...presentIds, ...sublocationEntityIds(location, locations, connections, outer)];
-  const knownExclude = [...reachableExclude, ...reachableEntityIds(location, locations, connections, outer)];
+  const subIds = sublocationEntityIds(location, locations, connections, outer);
+  const nearbyIds = [...subIds, ...reachableEntityIds(location, locations, connections, outer)];
+  const reachableExclude = [...presentIds, ...subIds];
+  const knownExclude = [...presentIds, ...nearbyIds];
   const pulledIds = pulledIdsOver(cast, scene);
   // Each relationship prints once over the chain, and once over In Scene, which no default prompt pairs with it.
   // The Persona block heads both, so a line that touches the persona prints there alone.
@@ -201,7 +204,11 @@ function entityScopes(scene: ChipScene, cast = sceneRelationshipCast(scene)): Re
   const inSceneLines = relationshipLines(cast, inSceneIds, personaId);
   // Every scope renders each entity with its owned traits in force. The scene's owned stats go to every
   // scope, since Only With counts them; whether a scope lists them is `noStats`.
-  const roster = (opts: ContextOpts, lines = chainLines) => ({ ...opts, ownedTraits, ownedStats, relationshipLines: lines, strangerLabels });
+  // The Movement tags follow where each Individual stands, so every scope reads one map.
+  const movementLabelsHere = scene.movement && movementLabels(scene.movement, presentIds, nearbyIds);
+  const roster = (opts: ContextOpts, lines = chainLines) => ({
+    ...opts, ownedTraits, ownedStats, relationshipLines: lines, strangerLabels, movementLabels: movementLabelsHere,
+  });
   // Here and In Scene list stats unless the chip switches them off; the lower scopes only when it switches them on.
   const lowerOpts = (opts: ContextOpts) => ({ ...roster(opts), noStats: !opts.statsOn });
   return {

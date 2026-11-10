@@ -134,7 +134,7 @@ describe('multi-axis variants (Stats: content × format)', () => {
   it('gives Entities a scope axis (Here/Sub/Reachable) plus content, stats and format', () => {
     const ENT = variableForToken('<ENTITIES>')!;
     expect(variableAxes(ENT).map((a) => a.id)).toEqual([
-      'scope', 'withstats', 'withtraits', 'content', 'traits', 'stats', 'range', 'descriptor', 'description', 'format',
+      'scope', 'withstats', 'withtraits', 'content', 'traits', 'stats', 'movement', 'range', 'descriptor', 'description', 'format',
     ]);
     expect(variantLabelForToken('<ENTITIES|reachable.summary.markdown>')).toBe('Reachable, Summary, Markdown');
     expect(variantLabelForToken('<ENTITIES|markdown>')).toBe('Markdown');

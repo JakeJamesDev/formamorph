@@ -152,7 +152,7 @@ describe('lock groups', () => {
       withstats: null, withtraits: null, traits: null, stats: null,
       range: 'statDetail', descriptor: 'statDetail', description: 'statDetail',
     };
-    expect(groups('<ENTITIES>')).toEqual(roster);
+    expect(groups('<ENTITIES>')).toEqual({ ...roster, movement: null });
     expect(groups('<PERSONA>')).toEqual(roster);
   });
 });

@@ -3,6 +3,7 @@ import type {
 } from '@/types';
 import type { slotsInForce } from '../bodies';
 import type { OwnedStatsInForce, OwnedTraitsInForce, StrangerLabels } from '../locationContext';
+import type { MovementStates } from '../movementTag';
 import type { OwnerStatPart, StatPlacement } from '../statContext';
 import type { ResolvedPersona } from '../persona';
 import type { ResolveEntityText } from '../resolveWorldNames';
@@ -92,4 +93,6 @@ export interface ChipScene {
   inSceneNames?: string[];
   /** The label each unmet stranger's roster block prints, by entity id. None when absent. */
   strangerLabels?: StrangerLabels;
+  /** Each Individual's follow state and Strict row, which the Movement tags read. No tags when absent. */
+  movement?: MovementStates;
 }

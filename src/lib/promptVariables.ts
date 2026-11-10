@@ -35,6 +35,8 @@ export interface PromptVariantAxis {
   onByDefaultWhen?: (selection: Record<string, string | null>) => boolean;
   /** For a toggle axis: one chip's toggle axes with this name form a group whose last piece on stays on. */
   lockGroup?: string;
+  /** For a toggle axis: stays live under Name content, which sends this piece beside each name. */
+  keptInNames?: boolean;
   /** For a toggle axis: the Chip Options row its checkbox sits in. Axes that share a row name share a row. */
   row?: string;
   /** One line for the row, read from the first axis of the row that carries it. */
@@ -199,6 +201,12 @@ const ENTITY_STATS_AXIS: PromptVariantAxis = {
   options: [{ id: null, label: 'Stats' }, { id: 'nostats', label: 'No Stats' }, { id: 'stats', label: 'Stats', hideInLabel: true, on: true }],
 };
 
+// The Entities chip's movement piece: on in a bare token, `nomovement` turns it off.
+const ENTITY_MOVEMENT_AXIS = rosterToggle('movement', 'Movement', 'nomovement',
+  "Marks each entity that follows the player, waits for them, or can't leave right now", {
+    onByDefault: true, keptInNames: true, row: 'Include', lights: 'movement',
+  });
+
 // The Persona chip's stats piece: on in a bare token, `nostats` turns it off.
 const PERSONA_STATS_AXIS: PromptVariantAxis = {
   ...ENTITY_STATS_AXIS, onByDefaultWhen: undefined, help: "Sends the persona's own stats: range, descriptor and description",
@@ -230,7 +238,7 @@ const MARKDOWN: PromptVariable = {
 const ACTIVE_CHARACTER: PromptVariable = { token: '<ACTIVE CHARACTER GUIDANCE>', label: 'Active Character Guidance', color: HIGHLIGHT_PALETTE[13] };
 // Entities are one chip whose `scope` axis picks here / sub-locations / reachable siblings.
 const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color: HIGHLIGHT_PALETTE[8], axes: [
-  ENTITY_SCOPE_AXIS, ONLY_WITH_STATS_AXIS, ONLY_WITH_TRAITS_AXIS, CONTENT_AXIS, INCLUDE_TRAITS_AXIS, ENTITY_STATS_AXIS, ...ROSTER_STAT_DETAIL_AXES, FORMAT_AXIS,
+  ENTITY_SCOPE_AXIS, ONLY_WITH_STATS_AXIS, ONLY_WITH_TRAITS_AXIS, CONTENT_AXIS, INCLUDE_TRAITS_AXIS, ENTITY_STATS_AXIS, ENTITY_MOVEMENT_AXIS, ...ROSTER_STAT_DETAIL_AXES, FORMAT_AXIS,
 ], affixable: true };
 // The activated-dictionary lore for the turn — supplied by GameViewer per turn (narration prompt only). The
 // `before` variant renders the early "## Background Lore" block; the default renders the late "## Foreground Lore".

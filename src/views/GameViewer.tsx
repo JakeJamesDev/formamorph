@@ -779,6 +779,7 @@ const GameViewer = ({
     setEntityPositions,
     entityFollowers,
     entityWaiting,
+    individualStates,
     setIndividualStates,
     currentBook,
     applyFollowerState,
@@ -1479,10 +1480,15 @@ const GameViewer = ({
   const liveFollowerState = (): FollowerState => currentBook();
   // The story minute the clock reads now.
   const storyNow = storyMinute(gameTime, calendar);
+  // Every Individual's routine: the authored cast the engine positions, then the runtime characters.
+  const routines = useMemo(
+    () => castRoutines(positionedCast(authoredCast, personaRef), discoveredEntities),
+    [authoredCast, personaRef, discoveredEntities],
+  );
   /** The position engine's view of the world at `now`, with the player at `playerAt`. */
   const positionWorldAt = useCallback((now: number, playerAt: string | undefined): PositionWorld => positionWorld(
-    castRoutines(positionedCast(authoredCast, personaRef), discoveredEntities), now, playerAt, locations, connections,
-  ), [authoredCast, personaRef, discoveredEntities, locations, connections]);
+    routines, now, playerAt, locations, connections,
+  ), [routines, locations, connections]);
   // AI progress feedback: which request is running, its streamed output estimate (null = indeterminate), and
   // whether the player may already type their next action (choices done, background requests still finishing).
   const [aiRequestType, setAiRequestType] = useState<AIRequestType | null>(null);
@@ -2649,6 +2655,11 @@ const GameViewer = ({
     ),
     [allEntities, metEntities, persona, locations, discoveredEntities, strangerAliases],
   );
+  // What the Entities chip's Movement tags read: every Individual's routine and follow state, now.
+  const sceneMovement = useMemo(
+    () => ({ routines, individuals: individualStates, now: storyNow }),
+    [routines, individualStates, storyNow],
+  );
   // The playthrough as a Chip Scene: the live adapter. A turn's location and a before box in flight each
   // yield their own scene.
   const liveScene = useLiveChipScene({
@@ -2682,6 +2693,7 @@ const GameViewer = ({
     placements: worldPlacements,
     strangerLabels,
     equipment: sceneEquipment,
+    movement: sceneMovement,
   });
 
   const contextValues = useCallback((
@@ -3426,7 +3438,7 @@ const GameViewer = ({
       /** The world the turn's prompts read: the code view, with the followers at the player's side. */
       const sceneBox = (): SceneWrites | null => {
         if (!turnJoin) return codeView;
-        return { ...(codeView ?? {}), positions: turnJoin.positions };
+        return { ...(codeView ?? {}), positions: turnJoin.positions, individuals: turnJoin.individuals };
       };
       // An On Call write since the narration's context values were built, which later prompts must read (Q52).
       let narrationBuilt = false;

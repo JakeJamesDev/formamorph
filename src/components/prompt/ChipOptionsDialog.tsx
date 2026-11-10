@@ -167,26 +167,29 @@ function OptionRows({ token, vocab, editable, update, hasActions, light }: Omit<
     });
   };
 
-  // Name content sends no stats or traits, so only Only With stays live.
+  // Name content sends no stats or traits, so only Only With and the pieces a name keeps stay live.
   const namesOnly = selection.content === 'name';
   const statsAxis = axes.find((a) => a.toggle && a.id === 'stats');
   const statsOff = !!statsAxis && !toggleIsOn(statsAxis, selection);
-  const moot = (row: string) =>
-    row !== 'Only With' && namesOnly ? MOOT_NAME_TIP : row === 'Stat Detail' && statsOff ? MOOT_STATS_TIP : undefined;
+  const moot = (row: string, axis: PromptVariantAxis) =>
+    row !== 'Only With' && namesOnly && !axis.keptInNames ? MOOT_NAME_TIP : row === 'Stat Detail' && statsOff ? MOOT_STATS_TIP : undefined;
 
   const toggleRow = (name: string, group: PromptVariantAxis[]) => {
-    const mootTip = moot(name);
+    const tips = group.map((axis) => moot(name, axis));
+    // A row whose every checkbox is moot explains itself once, on the row.
+    const rowMoot = tips.every(Boolean) ? tips[0] : undefined;
     return (
-      <Row key={name} label={name} tip={mootTip ?? group.find((a) => a.rowHelp)?.rowHelp}>
+      <Row key={name} label={name} tip={rowMoot ?? group.find((a) => a.rowHelp)?.rowHelp}>
         <div role="group" aria-label={name} className="flex min-h-7 flex-wrap items-center gap-x-4 gap-y-1">
-          {group.map((axis) => {
+          {group.map((axis, i) => {
             const isOn = toggleIsOn(axis, selection);
             // The last piece on in a lock group stays on, so a stat is never sent as a bare name.
             const lockedOn = isOn && !!axis.lockGroup
               && axes.filter((a) => a.toggle && a.lockGroup === axis.lockGroup && toggleIsOn(a, selection)).length === 1;
+            const mootTip = tips[i];
             const disabled = !editable || !!mootTip || lockedOn;
             return (
-              <Tip key={axis.id} tip={axis.help} labelsChild={false}>
+              <Tip key={axis.id} tip={rowMoot ? axis.help : (mootTip ?? axis.help)} labelsChild={false}>
                 <label className={cn('flex items-center gap-1.5 text-meta', disabled ? 'cursor-default' : 'cursor-pointer')}
                   {...lightProps(axis.lights, light)}>
                   <Checkbox checked={isOn} disabled={disabled} onCheckedChange={() => setAxis(axis.id, toggleOptionFor(axis, selection, !isOn))} />

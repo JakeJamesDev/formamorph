@@ -1,7 +1,9 @@
 import { useCallback } from 'react';
 import type {
-  Connection, Currency, Entity, EntityPositions, GameLocation, Item, ItemCopy, Placement, RuntimeItem, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
+  Connection, Currency, Entity, EntityPositions, GameLocation, IndividualStates, Item, ItemCopy, Placement, RuntimeItem, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
+import { movementStates } from '../movementTag';
+import type { Routine } from '../positionEngine';
 import { entitiesInPlay, entityIdsAt } from '../entityPresence';
 import { entityNamed, scenePresentHere, type OwnedTraitsInForce, type StrangerLabels } from '../locationContext';
 import type { GateTree } from '../traitGates';
@@ -69,6 +71,8 @@ export interface LiveSceneSources {
   strangerLabels?: StrangerLabels;
   /** What each owner's slots in force read. No slots when absent. */
   equipment?: SceneEquipment;
+  /** The Individuals' routines, saved engine states and the story minute the Movement tags read. No tags when absent. */
+  movement?: { routines: readonly Routine[]; individuals: Readonly<IndividualStates>; now: number };
 }
 
 /** The world under a running turn's code writes, which React has not rendered yet. Each absent field keeps
@@ -88,6 +92,8 @@ export interface SceneWrites {
   positions?: Readonly<EntityPositions>;
   /** Runtime characters the turn made before they reach the live cast. */
   addedEntities?: readonly Entity[];
+  /** The follow states the turn's moves left, over the live ones. */
+  individuals?: Readonly<IndividualStates>;
 }
 
 /**
@@ -166,6 +172,9 @@ export function liveChipScene(
     outerScopeEntities: ownText(placed(sources.entities)),
     inSceneNames,
     strangerLabels: sources.strangerLabels,
+    ...(sources.movement && {
+      movement: movementStates(sources.movement.routines, box?.individuals ?? sources.movement.individuals, sources.movement.now),
+    }),
   };
 }
 
@@ -176,16 +185,16 @@ const inForceByOwner = (states: OwnedTraitStates | undefined): OwnedTraitsInForc
 export function useLiveChipScene(sources: LiveSceneSources): (location?: GameLocation | null, box?: SceneWrites | null) => ChipScene {
   const {
     overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-    location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment,
+    location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
   } = sources;
   return useCallback(
     (at?: GameLocation | null, box?: SceneWrites | null) => liveChipScene({
       overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-      location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment,
+      location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
     }, at, box),
     [
       overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-      location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment,
+      location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
     ],
   );
 }

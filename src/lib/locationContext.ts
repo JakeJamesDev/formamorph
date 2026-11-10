@@ -155,10 +155,17 @@ export type RosterOpts = {
   relationshipLines?: RelationshipLines;
   /** The label each unmet stranger's block prints. None when absent. */
   strangerLabels?: StrangerLabels;
+  /** The Movement tag each Individual's block prints. None when absent. */
+  movementLabels?: MovementLabels;
+  /** Leave the Movement tags out. */
+  noMovement?: boolean;
 };
 
 /** Entity id → a stranger's label. */
 export type StrangerLabels = Readonly<Record<string, string>>;
+
+/** Entity id → its Movement tag. */
+export type MovementLabels = Readonly<Record<string, string>>;
 
 /** The known roster's options: `excludeIds` drops whom a higher scope lists; `pulledIds` join it through a relationship. */
 export type KnownRosterOpts = RosterOpts & { excludeIds?: readonly string[]; pulledIds?: readonly string[] };
@@ -253,13 +260,21 @@ export function entityRosterRuns(
   entities: Entity[],
   opts: RosterOpts = {},
 ): MarkedRun[] {
-  const { preferSummary = false, format = "simple", nameOnly = false, ownedTraits, ownedStats, noTraits, noStats, statPieces, relationshipLines, strangerLabels } = opts;
+  const {
+    preferSummary = false, format = "simple", nameOnly = false, ownedTraits, ownedStats, noTraits, noStats, statPieces, relationshipLines, strangerLabels,
+    movementLabels, noMovement,
+  } = opts;
+  const movementOf = (id: string) => (noMovement ? undefined : movementLabels?.[id]);
   const entityIds = allIds.filter((id) => passesOnlyWith(id, opts));
   if (nameOnly) {
     const named = entityIds.flatMap((id) => {
       const name = entities.find((e) => e.id === id)?.name;
+      if (!name) return [];
       const label = strangerLabels?.[id];
-      return name ? [mark(["content", ...ownedKinds(id, opts)], label ? `${name} (${label})` : name)] : [];
+      const movement = movementOf(id);
+      const kinds = ["content" as const, ...ownedKinds(id, opts)];
+      if (!movement) return [mark(kinds, label ? `${name} (${label})` : name)];
+      return [mark(kinds, label ? `${name} (${label}; ` : `${name} (`, mark(["movement"], movement), ")")];
     });
     return named.length ? joinRuns(named, ", ") : emptyRosterRuns(opts);
   }
@@ -289,6 +304,7 @@ export function entityRosterRuns(
     const strangerLine = strangerLabel ? field(xml ? "stranger_name" : "stranger name", strangerLabel) : "";
     const pronouns = entityItem.pronouns?.trim();
     const pronounLine = pronouns ? field("pronouns", pronouns) : "";
+    const movement = movementOf(entityItem.id);
     const ownedLines = runs(
       noTraits ? "" : ownedTraitRuns(entityItem, ownedTraits?.[entityItem.id] ?? [], preferSummary, format, field),
       noStats ? "" : ownedStatRuns(entityItem, ownedStats?.[entityItem.id] ?? [], format, statPieces),
@@ -301,6 +317,7 @@ export function entityRosterRuns(
       appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field),
       (relationshipLines?.[entityItem.id] ?? []).map((line) => field("relationship", line)).join(""),
       ownedLines,
+      movement ? mark(["movement"], field("movement", movement)) : "",
     );
     const block = xml
       ? runs("<entity>\n", field("name", entityItem.name), fields, "</entity>\n")
@@ -685,7 +702,7 @@ export function reachableEntityRuns(
  *  `statsOn` is the stored stats-on pick, which the scopes that default to no stats read. */
 export type ContextOpts = {
   preferSummary?: boolean; nameOnly?: boolean; format?: ContextFormat; noStats?: boolean; statsOn?: boolean;
-  onlyWith?: OnlyWith; noTraits?: boolean; statPieces?: StatPieces;
+  onlyWith?: OnlyWith; noTraits?: boolean; statPieces?: StatPieces; noMovement?: boolean;
 };
 
 // What each registry option means to the builders. The ids come from the registry; only their meaning is
@@ -717,14 +734,15 @@ function chipStats(optionId: string | null): ContextOpts {
   return opts;
 }
 
-/** The Only With, Include Traits and Stat Detail picks of the Entities and Persona chips. A stored id is the
- *  Only With pick on, and the Include or Stat Detail piece off. Other chips carry none of these axes. */
+/** The Only With, Include Traits, Movement and Stat Detail picks of the Entities and Persona chips. A stored id
+ *  is the Only With pick on, and the Include or Stat Detail piece off. Other chips carry none of these axes. */
 function chipRoster(selection: Record<string, string | null | undefined>): ContextOpts {
   const onlyWith: OnlyWith = { stats: selection.withstats != null, traits: selection.withtraits != null };
   const pieces: StatPieces = { values: selection.range == null, status: selection.descriptor == null, meaning: selection.description == null };
   return {
     ...(onlyWith.stats || onlyWith.traits ? { onlyWith } : {}),
     ...(selection.traits != null ? { noTraits: true } : {}),
+    ...(selection.movement != null ? { noMovement: true } : {}),
     ...(pieces.values && pieces.status && pieces.meaning ? {} : { statPieces: pieces }),
   };
 }
