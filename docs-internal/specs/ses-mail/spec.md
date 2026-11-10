@@ -131,7 +131,9 @@ SES reports what happens to each mail, and the server records it:
 **Mail log**
 
 - New table, one row per mail: own id, user id (empty for staff alerts), kind, SES message id, status, the time sent and the time of the last status.
-- Status moves `sent` → `delayed` → `delivered`, or to `bounced` or `complained`. A later event never moves a final status back.
+- Status moves `sent` → `delayed` → `delivered`, or to `bounced` or `complained`. A later event never moves a final status back, with one exception: `complained` or `bounced` may replace `delivered`. A complaint normally arrives after delivery, and a receiving server can accept a mail and reject it later. Nothing moves `bounced` or `complained`.
+- A bounced row records its type, `hard` or `soft`. SES reports a soft bounce as a bounce only when it gives up. Only a hard bounce sets the marker and counts in the bounce rate.
+- A bounce because the address is on the SES suppression list is a hard bounce. It sets the marker and counts in our rate, though Amazon leaves it out of its own.
 - The row is written when SES accepts the mail. The row's own id is the tag, so an event finds its row without the address.
 - Rows are deleted after 90 days by the existing retention sweep, and with the account on deletion.
 
@@ -250,4 +252,6 @@ A good test here drives a route or the transport seam and checks what a caller o
 **Not verified yet**
 
 - Whether SES publishes a bounce event for a mail to a suppressed address.
-- Whether the EventBridge connection lets us name the secret header. The first webhook ticket checks both against a live event before the handler is final.
+- Whether the EventBridge connection lets us name the secret header. The webhook expects `X-SES-Events-Secret`.
+
+Ticket 02 landed on documented payloads, because no live event existed yet. Both facts are checked after the ticket 01 and 02 deploy and the EventBridge setup, with one mail to the SES mailbox simulator's bounce address. A ticket that finds the live event differs from the fixtures reports it to the spec session.

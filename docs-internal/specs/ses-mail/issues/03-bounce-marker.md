@@ -15,6 +15,8 @@ A hard bounce or a spam complaint marks the account's current address and remove
 
 This ticket owns the marker columns and the "address set at" time on the user.
 
+Only a row that is `bounced` with type `hard`, or `complained`, sets the marker. A soft bounce never does. Ticket 02's event fixtures come from Amazon's documents, not from a live event. If the user has shared a live event by the time this ticket starts, check the fixtures against it first.
+
 ## Acceptance criteria
 
 - [ ] An additive schema step adds the marker time, the marker reason (`bounce` or `complaint`) and the time the address was set. The boot-schema list includes it.
