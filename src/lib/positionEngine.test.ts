@@ -340,6 +340,14 @@ describe('following and waiting', () => {
     expect(game.advance(at(1, 9, 10), 'island').pos).toBe('island');
   });
 
+  it('reads a locked All-day row as Strict only in the hours no timed row covers', () => {
+    const baker = routine([allDay('rest', stay('inn'), true), timed('shift', 8, 17, stay('market'))], 'inn', 'anywhere');
+    const game = play(baker, at(1, 9), 'market');
+    expect(isStrictNow(baker, game.state, at(1, 9))).toBe(false);
+    expect(isStrictNow(baker, game.state, at(1, 18))).toBe(true);
+    expect(startFollowing(game.book, baker, scene(at(1, 18), 'inn'))).toBe(game.book);
+  });
+
   it('refuses a new follow on a Strict row unless a script asks', () => {
     const clerk = routine([allDay('rest', stay('inn')), timed('shift', 8, 17, stay('market'), true)], 'inn', 'anywhere');
     const game = play(clerk, at(1, 9), 'market');

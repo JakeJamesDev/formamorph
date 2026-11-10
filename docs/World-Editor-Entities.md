@@ -117,7 +117,7 @@ The routine reads as sentences in the order of the day, such as *Morning – Aft
   - **Wander** moves it between locations at random. A higher **Weight** picks a location more often. It waits the set time between moves.
   - **Patrol** walks the stops in order, waits at each, then starts over. Drag a stop to change the order.
 - 📍 Click the locations to change them. The pickers list only locations the start location connects to.
-- 🔒 The lock beside a row stops the entity from being called over or starting to follow the player during that time.
+- 🔒 The lock beside a row stops the entity from being called over or starting to follow the player during that time. The lock on a free-time line does the same for every hour no row covers: it adds a locked **All Day** row at the start location.
 - ☕ Hours no row covers read *…, stays at* the start location. **All Day** covers the whole day, and reads *The rest of the day* beside timed rows.
 
 A bar above the sentences shows the whole day. Each row is a band in its action's color, and free hours are striped.

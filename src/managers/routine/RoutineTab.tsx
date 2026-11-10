@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Coffee, Plus, Trash2, X } from 'lucide-react';
+import { Coffee, LockOpen, Plus, Trash2, X } from 'lucide-react';
 import { LocationIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -19,7 +19,7 @@ import { fieldFrame } from '@/lib/historyField';
 import { holderOf, locationRows } from '@/lib/locationTree';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { connectedPlaces } from '@/lib/positionEngine';
-import { withNewRow, withNewStart, withoutRow, withoutStart, withRow, withRowAt, withStart } from '@/lib/routineEditing';
+import { withLockedRest, withNewRow, withNewStart, withoutRow, withoutStart, withRow, withRowAt, withStart } from '@/lib/routineEditing';
 import { KEEPS_ROUTINE_SELECTION, useRoutineSelection } from '@/lib/routineSelection';
 import {
   chancePercent, dayFull, freeRanges, onDaypartEdges, rangeText, rowClockKey, toWeight, type FreeRange,
@@ -298,6 +298,21 @@ function StartRoutine({ entity, start, weights, book, connected, commit, onChang
         ) : (
           <li key={`free-${line.free.start}`} className="flex items-center gap-1 px-1 text-label leading-7 text-muted-foreground">
             <Coffee className="h-4 w-4 shrink-0" aria-hidden />
+            {/* Free time has no row to lock, so locking it writes one: a locked All-day Stay under the timed rows. */}
+            <Tip tip="Unlocked: can be called over and follow the player">
+              <button
+                type="button" className="shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Lock Free Time"
+                onClick={() => {
+                  const added = withLockedRest(entity, start.id, randomUUID);
+                  commit('Lock Free Time', added.entity);
+                  scrollTo.current = added.rowId;
+                  selectRow(added.rowId);
+                }}
+              >
+                <LockOpen className="h-4 w-4" />
+              </button>
+            </Tip>
             <span>{line.free.wholeDay ? 'All day' : rangeText({ start: line.free.start, end: line.free.end % MINUTES_PER_DAY })}, stays at {startName}.</span>
           </li>
         ))}

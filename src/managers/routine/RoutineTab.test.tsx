@@ -92,6 +92,20 @@ describe('editing rows', () => {
     expect(schedule(bench)).toEqual([]);
   });
 
+  it('locks the free time as one locked All-day Stay, as one undo step', async () => {
+    const shift = stay('shift', 'smithy', { start: MORNING, end: AFTERNOON_END });
+    const bench = mount(mira(oneStart([shift])));
+    const before = bench.historyState().steps.length;
+    // Free time before and after the shift: either line's lock writes the one row.
+    await userEvent.click(screen.getAllByRole('button', { name: 'Lock Free Time' })[0]);
+    expect(schedule(bench)).toEqual([shift, expect.objectContaining({ time: 'allDay', strict: true, action: { kind: 'stay', place: 'smithy' } })]);
+    expect(lines()).toContain('Busy all day.');
+    await waitFor(() => expect(bench.historyState().steps.length).toBe(before + 1));
+
+    await act(async () => { bench.history().undo(); });
+    expect(schedule(bench)).toEqual([shift]);
+  });
+
   it('keeps two quick picks as two undo steps', async () => {
     const bench = mount(mira(oneStart([])));
     const before = bench.historyState().steps.length;
