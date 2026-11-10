@@ -59,22 +59,26 @@ export function Tile({ label, value, meta }: { label: string; value: string; met
   );
 }
 
+/** Above this many columns, columns touch so each keeps some width. */
+const GAPLESS_AFTER = 60;
+
 /**
- * Columns per UTC day on one scale, with a readout of the day under the pointer. The chart is hidden from
- * assistive technology because the Per Day table holds the same figures.
+ * Columns per UTC day on one scale, oldest first, with a readout of the day under the pointer. The chart is
+ * hidden from assistive technology because a table nearby holds the same figures.
  */
-function DayChart({ days, partialDay, valueOf, tickOf, describe, format }: {
-  days: readonly HostedUsageDay[];
+export function DayChart<Day extends { day: string }>({ days, partialDay, valueOf, tickOf, describe, format }: {
+  days: readonly Day[];
   /** The day still in progress. */
   partialDay?: string;
-  valueOf: (day: HostedUsageDay) => number;
+  /** Null draws no column. */
+  valueOf: (day: Day) => number | null;
   /** A second figure, drawn as a tick across the column. Null draws none. */
-  tickOf?: (day: HostedUsageDay) => number | null;
-  describe: (day: HostedUsageDay) => string;
+  tickOf?: (day: Day) => number | null;
+  describe: (day: Day) => string;
   format: (value: number) => string;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
-  const top = axisTop(Math.max(...days.map((day) => Math.max(valueOf(day), tickOf?.(day) ?? 0))));
+  const top = axisTop(Math.max(0, ...days.map((day) => Math.max(valueOf(day) ?? 0, tickOf?.(day) ?? 0))));
   const heightOf = (value: number) => Math.round((value / top) * CHART_HEIGHT);
   const shown = days.find((day) => day.day === hovered) ?? days[days.length - 1];
 
@@ -85,16 +89,20 @@ function DayChart({ days, partialDay, valueOf, tickOf, describe, format }: {
         <div className="relative border-b" style={{ height: CHART_HEIGHT }}>
           <div className="absolute inset-x-0 top-0 border-t"><Meta className="absolute left-0 top-0.5 tabular-nums">{format(top)}</Meta></div>
           <div className="absolute inset-x-0 border-t" style={{ bottom: CHART_HEIGHT / 2 }}><Meta className="absolute left-0 top-0.5 tabular-nums">{format(top / 2)}</Meta></div>
-          <div className="absolute inset-y-0 left-12 right-0 flex items-end justify-between gap-0.5" onPointerLeave={() => setHovered(null)}>
+          <div className={`absolute inset-y-0 left-12 right-0 flex items-end justify-between ${days.length > GAPLESS_AFTER ? '' : 'gap-0.5'}`} onPointerLeave={() => setHovered(null)}>
             {days.map((day) => {
+              const value = valueOf(day);
               const tick = tickOf?.(day) ?? null;
               return (
                 <div key={day.day} data-day={day.day} data-partial={day.day === partialDay || undefined} className="relative h-full max-w-6 flex-1" onPointerEnter={() => setHovered(day.day)}>
-                  <div
-                    className={`absolute inset-x-0 bottom-0 rounded-t ${CHART_FILL} ${day.day === partialDay ? PARTIAL_OPACITY : day.day === shown?.day ? '' : 'opacity-75'}`}
-                    style={{ height: heightOf(valueOf(day)) }}
-                  />
-                  {tick !== null && <div className="absolute inset-x-0 h-0.5 bg-muted-foreground" style={{ bottom: heightOf(tick) }} />}
+                  {value !== null && (
+                    <div
+                      data-column=""
+                      className={`absolute inset-x-0 bottom-0 rounded-t ${CHART_FILL} ${day.day === partialDay ? PARTIAL_OPACITY : day.day === shown?.day ? '' : 'opacity-75'}`}
+                      style={{ height: heightOf(value) }}
+                    />
+                  )}
+                  {tick !== null && <div data-tick="" className="absolute inset-x-0 h-0.5 bg-muted-foreground" style={{ bottom: heightOf(tick) }} />}
                 </div>
               );
             })}

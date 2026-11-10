@@ -1170,7 +1170,7 @@ The ring keeps its size at every width. The popover opens above the input, align
 | Part | Treatment |
 | --- | --- |
 | Figure tile | Label, one large figure, and one line of context. Six across on a wide panel. |
-| Day chart | One column per day on a round axis, with a line at the top and at the midpoint. The readout above names the day under the pointer. |
+| Day chart | One column per day on a round axis, with a line at the top and at the midpoint. The readout above names the day under the pointer. A day with no value draws no column. Above 60 days, the columns touch. |
 | Second figure | A 2px `muted-foreground` tick across the column, named in a legend. One axis only. |
 | Ranked bars | Label, a 12px bar, and the figure. Rows sort longest first. |
 | Table | Figures align right and words align left. A wide table scrolls sideways inside its own frame. |
@@ -1179,7 +1179,7 @@ The ring keeps its size at every width. The popover opens above the input, align
 
 | Need | Component |
 | --- | --- |
-| The report, its charts and tables | `UsagePanel` in [`UsageTab.tsx`](../src/components/menu/UsageTab.tsx) |
+| The report, its charts and tables | `UsagePanel` and `DayChart` in [`UsageTab.tsx`](../src/components/menu/UsageTab.tsx) |
 | Figure formats and CSV export | [`usageReport.ts`](../src/lib/usageReport.ts) |
 | Isolated reference | [`UsageReportReference.tsx`](../src/components/design-system/UsageReportReference.tsx) |
 
@@ -1214,7 +1214,7 @@ One flat bar that shows the parts of one whole: what fills a disk, or what fills
 | Segment | One per part, with a 2px gap between segments. Largest first, then the remainder. |
 | Remainder | The part of the whole that no named part explains, in `muted-foreground` at 50%. |
 | Mark | A dashed vertical line with a small percent label above the bar. |
-| Legend | A grid under the bar: a small square swatch, the name, and the size of every segment. |
+| Legend | A grid under the bar: a small square swatch, the name, and the size of every segment. When a table under the bar has a row per segment, the table's first cell carries the swatch and the bar draws no legend. |
 
 **Color:** Each part has its own `--chart-*` hue, and keeps it when the order changes. This is the one exception to the Usage Report's `bg-primary` rule, and it applies only to a part-to-whole bar: steps of one hue cannot tell eight parts apart. With more parts than hues, the extra parts share one segment.
 
@@ -1225,7 +1225,7 @@ One flat bar that shows the parts of one whole: what fills a disk, or what fills
 | Need | Component |
 | --- | --- |
 | The bar and its legend | `SegmentedBar` in [`segmented-bar.tsx`](../src/components/ui/segmented-bar.tsx) |
-| A disk's segments | [`storageReport.ts`](../src/lib/storageReport.ts) |
+| A disk's or the R2 buckets' segments | [`storageReport.ts`](../src/lib/storageReport.ts) |
 | Isolated reference | [`SegmentedBarReference.tsx`](../src/components/design-system/SegmentedBarReference.tsx) |
 
 ## Pattern: Header Line

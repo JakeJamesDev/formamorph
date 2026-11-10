@@ -1,7 +1,8 @@
-import { render, screen, cleanup, within } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { StoragePanel } from './StorageTab';
-import type { StorageDisk, StorageReport } from '@/services/StorageReportService';
+import type { StorageDisk, StorageReport, StorageReportDay } from '@/services/StorageReportService';
 
 const toastErrorMock = vi.fn();
 vi.mock('react-toastify', () => ({ toast: { error: (...args: unknown[]) => toastErrorMock(...args) } }));
@@ -162,11 +163,6 @@ describe('the parts table', () => {
 });
 
 describe('reading', () => {
-  it('asks for 30 days', async () => {
-    const { api } = await mount();
-    expect(api.fetchStorageReport).toHaveBeenCalledWith(30, expect.any(AbortSignal));
-  });
-
   it('shows the reason when the read fails', async () => {
     const api = { fetchStorageReport: vi.fn(async () => { throw new Error('Admin access required'); }) };
     render(<StoragePanel active api={api} />);
@@ -212,5 +208,193 @@ describe('reading', () => {
 
     view.rerender(<StoragePanel active={false} api={api} />);
     expect(signal?.aborted).toBe(true);
+  });
+});
+
+const bucket = (gb: number, objects = 100, hours = 0.5) => ({ bytes: gb * GB, objects, checkedAt: ago(hours) });
+const r2 = (buckets: NonNullable<StorageReport['r2']>['buckets'], freeTierBytes = 10 * GB) => ({ freeTierBytes, buckets });
+
+describe('the R2 section', () => {
+  const section = () => screen.getByRole('group', { name: 'R2' });
+  const segments = () => [...section().querySelectorAll<HTMLElement>('[data-segment]')];
+  const bucketCells = (name: string) => {
+    const table = within(section()).getByRole('table', { name: 'R2 Buckets' });
+    const row = within(table).getAllByRole('row').find((candidate) => within(candidate).queryByRole('rowheader')?.textContent === name)!;
+    return within(row).getAllByRole('cell').map((cell) => cell.textContent);
+  };
+
+  it('scales the bar to the free tier, one segment per bucket in the report order', async () => {
+    await mount(report({ r2: r2({ 'files-bucket': bucket(4), 'backup-bucket': bucket(3) }) }));
+
+    expect(segments().map((segment) => [segment.dataset.segment, segment.style.width])).toEqual([['files-bucket', '40%'], ['backup-bucket', '30%']]);
+    expect(within(section()).getByText('R2 holds 7.0 GB of the 10.0 GB free tier')).toBeTruthy();
+  });
+
+  it('colors buckets by their place in the report, not by name', async () => {
+    await mount(report({ r2: r2({ zeta: bucket(4), alpha: bucket(3) }) }));
+    const table = within(section()).getByRole('table', { name: 'R2 Buckets' });
+    const swatches = [...table.querySelectorAll<HTMLElement>('tbody [aria-hidden="true"]')];
+
+    expect(swatches.map((swatch) => swatch.getAttribute('style'))).toEqual([
+      expect.stringContaining('--chart-2'), expect.stringContaining('--chart-3'),
+    ]);
+  });
+
+  it('gives each bucket its size, objects and checked time, and notes one checked over 3 hours ago', async () => {
+    await mount(report({ r2: r2({ 'files-bucket': bucket(4, 36_812, 5.5), 'backup-bucket': bucket(3, 420, 2.9) }) }));
+
+    expect(bucketCells('files-bucket').slice(0, 2)).toEqual(['4.0 GB', '36,812']);
+    expect(bucketCells('files-bucket')[2]).toContain('Not Checked For 5 Hours');
+    expect(bucketCells('backup-bucket')[2]).not.toContain('Not Checked');
+  });
+
+  it('shows the dash for a bucket never checked, and draws no segment for it', async () => {
+    await mount(report({ r2: r2({ 'files-bucket': bucket(4), 'backup-bucket': null }) }));
+
+    expect(bucketCells('backup-bucket')).toEqual(['—', '—', '—']);
+    expect(segments().map((segment) => segment.dataset.segment)).toEqual(['files-bucket']);
+  });
+
+  it('gives the total as a floor while a bucket was never checked', async () => {
+    await mount(report({ r2: r2({ 'files-bucket': bucket(10.5), 'backup-bucket': null }) }));
+    expect(within(section()).getByText('R2 holds at least 10.5 GB, at least 500.0 MB over the 10.0 GB free tier')).toBeTruthy();
+  });
+
+  it('fills the bar and states the amount over the free tier', async () => {
+    await mount(report({ r2: r2({ 'files-bucket': bucket(8), 'backup-bucket': bucket(3.5) }) }));
+
+    expect(within(section()).getByText('R2 holds 11.5 GB, 1.5 GB over the 10.0 GB free tier')).toBeTruthy();
+    const filled = segments().reduce((sum, segment) => sum + parseFloat(segment.style.width), 0);
+    expect(filled).toBeCloseTo(100);
+  });
+
+  it('shows one line and no bar when the server has no R2 access', async () => {
+    await mount(report({ r2: null }));
+
+    expect(within(section()).getByText('The server has no R2 access')).toBeTruthy();
+    expect(segments()).toEqual([]);
+    expect(within(section()).queryByRole('table')).toBeNull();
+  });
+});
+
+const dayOf = (day: string, values: StorageReportDay['values'], downloads = 0): StorageReportDay => ({ day, values, downloads });
+const used = (id: string, gb: number | null) => ({ [`disk:${id}:used`]: gb === null ? null : { bytes: gb * GB, files: 0 } });
+const stored = (name: string, gb: number | null) => ({ [`r2:${name}`]: gb === null ? null : { bytes: gb * GB, files: 0 } });
+
+/** Newest first, as the server sends them. */
+const history: StorageReportDay[] = [
+  dayOf('2026-11-10', { ...used('storage+data+app', 60), ...stored('files-bucket', 4), ...stored('backup-bucket', 3) }, 12),
+  dayOf('2026-11-09', { ...used('storage+data+app', null), ...stored('files-bucket', 4), ...stored('backup-bucket', null) }, 0),
+  dayOf('2026-11-08', { ...used('storage+data+app', 50), ...stored('files-bucket', 3), ...stored('backup-bucket', 2) }, 40),
+];
+const withHistory = (patch: Partial<StorageReport> = {}) =>
+  report({ r2: r2({ 'files-bucket': bucket(4), 'backup-bucket': bucket(3) }), days: history, ...patch });
+
+describe('the history', () => {
+  const chart = (title: string) => screen.getByRole('heading', { name: title, level: 4 }).parentElement as HTMLElement;
+  /** Each day's column height, oldest first; null where no column is drawn. */
+  const columns = (title: string) => [...chart(title).querySelectorAll<HTMLElement>('[data-day]')]
+    .map((day) => [day.dataset.day, day.querySelector<HTMLElement>('[data-column]')?.style.height ?? null]);
+
+  it('draws disk used per day, no column for a day with no value, and a tick at the first alert level', async () => {
+    await mount(withHistory());
+
+    // Axis top is 100 GB over 120 px.
+    expect(columns('Disk Used')).toEqual([['2026-11-08', '60px'], ['2026-11-09', null], ['2026-11-10', '72px']]);
+    const ticks = [...chart('Disk Used').querySelectorAll<HTMLElement>('[data-tick]')].map((tick) => tick.style.bottom);
+    expect(ticks).toEqual(['96px', '96px', '96px']);
+  });
+
+  it('switches the disk chart between two disks', async () => {
+    const user = userEvent.setup();
+    await mount(withHistory({
+      disks: [disk({ id: 'storage', alertLevels: [0.5] }), disk({ id: 'data+app', total: 50 * GB, alertLevels: [0.9] })],
+      forecast: {},
+      days: [dayOf('2026-11-10', { ...used('storage', 20), ...used('data+app', 40) })],
+    }));
+
+    // Axis top is 50 GB, from the tick at 50% of 100 GB.
+    expect(columns('Disk Used')).toEqual([['2026-11-10', '48px']]);
+    await user.click(within(chart('Disk Used')).getAllByRole('radio', { name: 'Database And Backups Disk' })[0]);
+    // Axis top is 50 GB: the tick at 45 GB tops the 40 GB column.
+    expect(columns('Disk Used')).toEqual([['2026-11-10', '96px']]);
+  });
+
+  it('has no disk switcher with one disk', async () => {
+    await mount(withHistory());
+    expect(within(chart('Disk Used')).queryByRole('radio')).toBeNull();
+  });
+
+  it('draws the sum of both buckets per day, and no column where one bucket has no value', async () => {
+    await mount(withHistory());
+
+    // Axis top is 10 GB over 120 px.
+    expect(columns('R2 Total')).toEqual([['2026-11-08', '60px'], ['2026-11-09', null], ['2026-11-10', '84px']]);
+  });
+
+  it('draws no R2 columns when the server has no R2 access', async () => {
+    await mount(withHistory({ r2: null }));
+    expect(columns('R2 Total').map(([, height]) => height)).toEqual([null, null, null]);
+  });
+
+  it('draws downloads per day, with only today faint', async () => {
+    await mount(withHistory());
+
+    // Axis top is 50 over 120 px.
+    expect(columns('Downloads')).toEqual([['2026-11-08', '96px'], ['2026-11-09', '0px'], ['2026-11-10', '29px']]);
+    expect(chart('Downloads').querySelector('[data-partial]')?.getAttribute('data-day')).toBe('2026-11-10');
+    expect(chart('Disk Used').querySelector('[data-partial]')).toBeNull();
+  });
+
+  it('lists every day in a table, with the dash for a missing value and never zero', async () => {
+    await mount(withHistory());
+    const table = screen.getByRole('table', { name: 'Per Day' });
+
+    expect(within(table).getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual(['Day', 'Disk Used', 'R2 Total', 'Downloads']);
+    expect(within(table).getAllByRole('row').slice(1).map((row) => row.textContent)).toEqual([
+      '2026-11-1060.0 GB7.0 GB12 (So Far)',
+      '2026-11-09——0',
+      '2026-11-0850.0 GB5.0 GB40',
+    ]);
+  });
+
+  it('gives each of two disks its own column in the table', async () => {
+    await mount(withHistory({ disks: [disk({ id: 'storage' }), disk({ id: 'data+app' })], forecast: {} }));
+    expect(within(screen.getByRole('table', { name: 'Per Day' })).getAllByRole('columnheader').map((cell) => cell.textContent))
+      .toEqual(['Day', 'Uploads Disk Used', 'Database And Backups Disk Used', 'R2 Total', 'Downloads']);
+  });
+});
+
+describe('the range', () => {
+  it('reads 30 days first and each range when picked', async () => {
+    const user = userEvent.setup();
+    const { api } = await mount(withHistory());
+
+    expect(api.fetchStorageReport.mock.calls.map(([days]) => days)).toEqual([30]);
+    expect(screen.getAllByRole('radio', { name: '30 Days' })[0].getAttribute('aria-checked')).toBe('true');
+    for (const range of ['7', '90', '365']) await user.click(screen.getAllByRole('radio', { name: `${range} Days` })[0]);
+    await waitFor(() => expect(api.fetchStorageReport.mock.calls.map(([days]) => days)).toEqual([30, 7, 90, 365]));
+  });
+
+  it('ignores a slower answer for a range the reader has left', async () => {
+    const user = userEvent.setup();
+    const answers = new Map<number, (value: StorageReport) => void>();
+    const api = {
+      fetchStorageReport: vi.fn((days: number, _signal?: AbortSignal) => (days === 30
+        ? Promise.resolve(withHistory())
+        : new Promise<StorageReport>((resolve) => answers.set(days, resolve)))),
+    };
+    render(<StoragePanel active api={api} />);
+    const rows = () => within(screen.getByRole('table', { name: 'Per Day' })).getAllByRole('row');
+    await screen.findByRole('table', { name: 'Per Day' });
+
+    await user.click(screen.getAllByRole('radio', { name: '7 Days' })[0]);
+    await user.click(screen.getAllByRole('radio', { name: '90 Days' })[0]);
+    answers.get(90)?.(withHistory({ days: history.slice(0, 1) }));
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    answers.get(7)?.(withHistory({ days: history.slice(0, 2) }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(rows()).toHaveLength(2);
   });
 });

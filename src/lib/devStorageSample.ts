@@ -23,14 +23,15 @@ export function createDevStorageApi(): StorageReportApi {
       const days: StorageReportDay[] = Array.from({ length: count }, (_, index) => {
         // Every ninth day has no measurement, to show a gap.
         const gap = index > 0 && index % 9 === 0;
-        const used = USED - index * 0.35 * GB;
+        // Shallow slopes keep a 365-day history above zero.
+        const used = USED - index * 0.15 * GB;
         return {
           day: new Date(today - index * DAY_MS).toISOString().slice(0, 10),
           values: {
             [`disk:${DISK_ID}:total`]: gap ? null : { bytes: TOTAL, files: 0 },
             [`disk:${DISK_ID}:used`]: gap ? null : { bytes: used, files: 0 },
-            'r2:formamorph-worlds': gap ? null : { bytes: 8.1 * GB - index * 0.04 * GB, files: 0 },
-            'r2:formamorph-backups': gap ? null : { bytes: 3.6 * GB - index * 0.02 * GB, files: 0 },
+            'r2:formamorph-files': gap ? null : { bytes: 8.1 * GB - index * 0.004 * GB, files: 0 },
+            'r2:formamorph-backups': gap ? null : { bytes: 3.6 * GB - index * 0.002 * GB, files: 0 },
           },
           downloads: 40 + ((index * 37) % 61),
         };
@@ -50,14 +51,14 @@ export function createDevStorageApi(): StorageReportApi {
           'supporter-private': null,
           database: { bytes: 9.7 * GB, files: 2, measuredAt: at(0.4) },
           backups: { bytes: 21.5 * GB, files: 14, measuredAt: at(0.4) },
-          'r2:formamorph-worlds': { bytes: 8.1 * GB, files: 0, measuredAt: at(0.6) },
+          'r2:formamorph-files': { bytes: 8.1 * GB, files: 0, measuredAt: at(0.6) },
           'r2:formamorph-backups': { bytes: 3.6 * GB, files: 0, measuredAt: at(0.6) },
         },
         vacuumFits: true,
         r2: {
           freeTierBytes: 10 * GB,
           buckets: {
-            'formamorph-worlds': { bytes: 8.1 * GB, objects: 36_812, checkedAt: at(0.6) },
+            'formamorph-files': { bytes: 8.1 * GB, objects: 36_812, checkedAt: at(0.6) },
             'formamorph-backups': { bytes: 3.6 * GB, objects: 420, checkedAt: at(0.6) },
           },
         },

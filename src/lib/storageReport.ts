@@ -1,5 +1,5 @@
 import type { BarSegment } from '@/components/ui/segmented-bar';
-import type { StorageDisk, StoragePart, StorageReport } from '@/services/StorageReportService';
+import type { StorageBucket, StorageDisk, StoragePart, StorageReport, StorageReportDay } from '@/services/StorageReportService';
 
 const HOUR_MS = 3_600_000;
 /** A part's measurement this much older than now has missed hourly runs. */
@@ -82,4 +82,40 @@ export const databaseDisk = (report: StorageReport): StorageDisk | undefined =>
 export function staleHours(iso: string, now: number): number | null {
   const age = now - Date.parse(iso);
   return age > STALE_AFTER_MS ? Math.floor(age / HOUR_MS) : null;
+}
+
+/** Bucket hues by the report's order: files first, backups second. Names come from server config. */
+const BUCKET_HUES = ['hsl(var(--chart-2))', 'hsl(var(--chart-3))'];
+
+export interface BucketRow {
+  name: string;
+  bucket: StorageBucket | null;
+  color: string;
+}
+
+/** Every bucket in the report's order, each with its hue. */
+export function bucketRows(r2: NonNullable<StorageReport['r2']>): BucketRow[] {
+  return Object.entries(r2.buckets).map(([name, bucket], index) => ({ name, bucket, color: BUCKET_HUES[index] ?? OTHER_HUE }));
+}
+
+/** The R2 bar: one segment per measured bucket. */
+export const bucketSegments = (rows: readonly BucketRow[]): BarSegment[] =>
+  rows.flatMap((row) => (row.bucket ? [{ key: row.name, label: row.name, value: row.bucket.bytes, color: row.color }] : []));
+
+/** One stored figure of a day; null when the day has no row for it. */
+const dayBytes = (day: StorageReportDay, name: string) => day.values[name]?.bytes ?? null;
+
+/** A disk's used bytes on a day. */
+export const diskUsedOn = (day: StorageReportDay, disk: StorageDisk) => dayBytes(day, `disk:${disk.id}:used`);
+
+/** Every bucket's bytes summed for a day. Null when any bucket has no row, or the report has no buckets. */
+export function r2TotalOn(day: StorageReportDay, buckets: readonly string[]): number | null {
+  if (buckets.length === 0) return null;
+  let total = 0;
+  for (const name of buckets) {
+    const value = dayBytes(day, `r2:${name}`);
+    if (value === null) return null;
+    total += value;
+  }
+  return total;
 }

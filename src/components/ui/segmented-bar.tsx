@@ -19,13 +19,15 @@ export interface BarMark {
  * scale; what the segments leave is empty track. Segments past the scale squeeze to fit a full bar.
  * The bar is hidden from assistive technology, so the legend and a table nearby hold the figures.
  */
-export function SegmentedBar({ scale, segments, marks = [], format, label }: {
+export function SegmentedBar({ scale, segments, marks = [], format, label, legend = true }: {
   scale: number;
   segments: readonly BarSegment[];
   marks?: readonly BarMark[];
   format: (value: number) => string;
   /** Names the legend. */
   label: string;
+  /** False leaves the legend to the caller, which then lists every segment with its color. */
+  legend?: boolean;
 }) {
   const whole = Math.max(scale, segments.reduce((total, segment) => total + segment.value, 0), 1);
   return (
@@ -48,15 +50,22 @@ export function SegmentedBar({ scale, segments, marks = [], format, label }: {
           </div>
         ))}
       </div>
-      <ul aria-label={label} className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-x-4 gap-y-1.5 text-label">
-        {segments.map((segment) => (
-          <li key={segment.key} data-legend={segment.key} className="flex min-w-0 items-center gap-2">
-            <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: segment.color }} />
-            <span className="min-w-0 truncate">{segment.label}</span>
-            <span className="ml-auto tabular-nums text-muted-foreground">{format(segment.value)}</span>
-          </li>
-        ))}
-      </ul>
+      {legend && (
+        <ul aria-label={label} className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-x-4 gap-y-1.5 text-label">
+          {segments.map((segment) => (
+            <li key={segment.key} data-legend={segment.key} className="flex min-w-0 items-center gap-2">
+              <SegmentSwatch color={segment.color} />
+              <span className="min-w-0 truncate">{segment.label}</span>
+              <span className="ml-auto tabular-nums text-muted-foreground">{format(segment.value)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
+}
+
+/** A segment's color as a small square, for a legend or a table row that names the segment. */
+export function SegmentSwatch({ color }: { color: string }) {
+  return <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: color }} />;
 }
