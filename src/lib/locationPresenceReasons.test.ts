@@ -38,8 +38,33 @@ const cast = [crowd, moths, farrier, guard, persona];
 const reasonsAt = (place: string) => Object.fromEntries(presenceLines(place, cast).map((l) => [l.entity.id, l.reasons]));
 
 describe('presenceLines', () => {
-  it('lists a Group once, as a group, at each place it lists', () => {
-    expect(reasonsAt('market')).toEqual({ crowd: ['group'], moths: ['group'] });
+  it('lists a Group once where a Start begins, with no chance however many Starts it has', () => {
+    expect(reasonsAt('market')).toEqual({ crowd: ['begins here'], moths: ['begins here'] });
+    expect(reasonsAt('tavern').crowd).toEqual(['begins here']);
+  });
+
+  it('merges the Starts of a Group beginning here into one begins-here line and one line per distinct row', () => {
+    const rows = (id: string) => ({ id, time: DAY, action: { kind: 'stay' as const, place: 'tavern' } });
+    const flock: Entity = { id: 'flock', name: 'Flock', kind: 'group', starts: [
+      { id: 'a', place: 'tavern', weight: 1, schedule: [rows('r1')] }, { id: 'b', place: 'tavern', weight: 3, schedule: [rows('r2')] },
+    ] };
+    expect(presenceLines('tavern', [flock])[0].reasons).toEqual(['begins here', 'stays here (Morning – Afternoon)']);
+  });
+
+  it('lists a Group that only patrols through the place, with the row’s time and no begins line', () => {
+    const patrol: Entity = { id: 'watch', name: 'Watch', kind: 'group', starts: [{ id: 'w1', place: 'gate', weight: 1, schedule: [
+      { id: 'p', time: NIGHT, action: { kind: 'patrol', stops: [{ place: 'gate', idle: 30 }, { place: 'tavern', idle: 30 }] } },
+    ] }] };
+    expect(presenceLines('tavern', [patrol])[0].reasons).toEqual(['patrols here (Evening – Night)']);
+  });
+
+  it('gives a Group no can-be-led-here line', () => {
+    const led: Entity = { ...crowd, traversable: ['cellar'] };
+    expect(presenceLines('cellar', [led])).toEqual([]);
+  });
+
+  it('leaves out a Group no Start or row names at the place', () => {
+    expect(reasonsAt('smithy').moths).toBeUndefined();
   });
 
   it('gives the chance of a Start when the entity has several', () => {

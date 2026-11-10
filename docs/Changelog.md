@@ -48,6 +48,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The full-screen Locations Canvas shows a key for the colors and marks of an entity's routine or Known In locations.** It lists only what is on screen, and it folds to its title.
     - **Select a routine row on the full-screen Locations Canvas to edit its locations by clicking or dragging.** A line over the map says what a click or a drag does. With no row selected, a click adds the location to Can Also Go or removes it.
     - **The full-screen Locations Canvas now shows and edits a Generic entity's routine, one start at a time.** A ring marks where its other starts begin. With no row selected, a click adds a start or removes the starts there.
+  - **Routines:**
+    - **A Generic entity can begin at a location from that location's Entities picker.** Pick it to add a place to begin here. Clear it to remove them. Entities Here lists it once.
   - **In the World Editor, an entity with only a Stranger Description now starts as a stranger.** In play, you see its Name and that description until you meet it. Stranger Name now sits beside Name, and Stranger Description under Player-Facing Description. Items' Unidentified fields match, and each field has its own help button.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.

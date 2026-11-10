@@ -101,7 +101,7 @@ describe('the Presence tab: Entities Here', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openPresence('Tavern');
     const list = within(screen.getByTestId('entities-here'));
-    expect(list.getByText('Crowd').parentElement!.textContent).toBe('CrowdGroup');
+    expect(list.getByText('Crowd').parentElement!.textContent).toBe('CrowdBegins here');
     // Two Starts (3:1), the Start at the tavern, and the Wander row.
     expect(list.getByText('Farrier').parentElement!.textContent).toBe('FarrierBegins here (25%), wanders here (All day)');
     expect(list.queryByText('Queen')).toBeNull();

@@ -215,16 +215,21 @@ The **Entities** picker on the **Presence** tab lists the entities that stand at
 
 An entity that stands in **One Location** isn't in this picker. Set where it starts on the entity's **Routine** tab, or click a location on the full-screen Locations Canvas.
 
+Pick a Generic entity to make it begin at this location. It gets a new place to begin here with no rows, and you add rows on its **Routine** tab. Clear it to remove every place it begins at here, with their rows. Its other places stay as they are. **Undo** brings them all back in one step.
+
+A Generic entity that begins at no other location can't be cleared. It stays picked, and a line under the picker says so. Give it another place to begin on its **Routine** tab, then clear it here.
+
 **Entities Here** lists every entity that can be at this location, one line each, with the reason. The list is read-only. Select the route icon on a line to open that entity's **Routine** tab and change it there.
 
 | Reason | Means |
 |---|---|
-| **Group** | The entity stands at every location it lists. |
-| **Begins here** | One of the entity's Starts is at this location. With several Starts, the line gives the chance as a percent. |
+| **Begins here** | The entity begins at this location. A Unique entity with several places to begin gives the chance as a percent. |
 | **Stays here**, **wanders here**, **patrols here** | A routine row uses this location. The line gives the row's time. |
-| **Can be led here** | The entity's **Traversable** list names this location. An entity that can go **Anywhere** isn't listed for that reason. |
+| **Can be led here** | The Unique entity's **Traversable** list names this location. A Unique entity that can go **Anywhere** isn't listed for that reason. A Generic entity is never listed for it. |
 
 An entity with several reasons shows them on one line.
+
+A Generic entity begins at all of its places, so its line shows no chance. It shows each reason once, however many of its places use this location.
 
 - **Known Here** lists entities that aren't at this location but that the entities here may speak of. Their summaries reach the AI anywhere inside this location. Add one with **Make an entity known here**.
 

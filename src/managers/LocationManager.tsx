@@ -16,6 +16,7 @@ import { SoundUpload } from '../lib/UtilityComponents';
 import { LocationImageField } from './LocationImageField';
 import LocationConnections from './LocationConnections';
 import { isGroup } from '@/lib/entityKind';
+import { Hint } from '@/components/ui/typography';
 import LocationKnownHere from './LocationKnownHere';
 import LocationEntitiesHere from './LocationEntitiesHere';
 import { LocationOpenings } from './OpeningsPanel';
@@ -82,6 +83,8 @@ const LocationManager = ({ location, tab, onTabChange, focusField, onOpenEntityR
   const groupIdsHere = treeOrder.filter((e) => isGroup(e) && startsAt(e, location.id)).map((e) => e.id);
   // Remounts the picker when a Group keeps its last Start, so it shows the Group still ticked.
   const [refusals, setRefusals] = useState(0);
+  // The Groups the last pick could not remove, for the location they were refused at.
+  const [refused, setRefused] = useState<{ locationId: string; names: string[] }>({ locationId: '', names: [] });
   const handleEntitiesChange = (ids: string[]) => {
     const before = new Map(entities.map((e) => [e.id, e]));
     // Only the entities whose membership actually moved are written through.
@@ -89,8 +92,11 @@ const LocationManager = ({ location, tab, onTabChange, focusField, onOpenEntityR
     next.forEach((entity) => {
       if (before.get(entity.id) !== entity) updateEntity(entity);
     });
-    if (next.some((e) => isGroup(e) && !ids.includes(e.id) && startsAt(e, location.id))) setRefusals((n) => n + 1);
+    const kept = next.filter((e) => isGroup(e) && !ids.includes(e.id) && startsAt(e, location.id));
+    setRefused({ locationId: location.id, names: kept.map(entityLabel) });
+    if (kept.length) setRefusals((n) => n + 1);
   };
+  const refusedNames = refused.locationId === location.id ? refused.names : [];
 
   // Before the reveal, which is a timer behind this render: the field it looks for has to be mounting by
   // then. A key no tab claims leaves the panel where the author put it.
@@ -196,6 +202,11 @@ const LocationManager = ({ location, tab, onTabChange, focusField, onOpenEntityR
             onValueChange={handleEntitiesChange}
             placeholder="Select entities"
           />
+          {refusedNames.length > 0 && (
+            <Hint role="status" data-testid="entities-refusal">
+              {`${new Intl.ListFormat('en', { type: 'conjunction' }).format(refusedNames)} can't be removed here. ${refusedNames.length === 1 ? 'It begins' : 'Each begins'} at no other location.`}
+            </Hint>
+          )}
         </div>
         <LocationEntitiesHere
           locationId={editingLocation.id}

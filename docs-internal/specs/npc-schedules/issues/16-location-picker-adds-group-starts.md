@@ -1,6 +1,6 @@
 # 16: Location Picker Adds Group Starts
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 13
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -18,9 +18,18 @@ Spec rulings: Q139, Q97, Q111.
 
 ## Acceptance criteria
 
-- [ ] Adding a Group in the picker gives it a Start with no rows at this location.
-- [ ] Removing it deletes all its Starts that begin here and leaves its other Starts unchanged; undo restores them with their rows.
-- [ ] The picker refuses to remove a Group's last Start and says why.
-- [ ] The read-only list shows a Group that only patrols through this location, with the row's time.
-- [ ] Component tests cover add, remove with rows, the last-Start refusal and the list lines.
-- [ ] The Locations wiki page describes the picker for a Group.
+- [x] Adding a Group in the picker gives it a Start with no rows at this location. (`LocationManager.groupStarts.test.tsx`: adds a Start with no rows)
+- [x] Removing it deletes all its Starts that begin here and leaves its other Starts unchanged; undo restores them with their rows. (same file: removes every Start … undoes in one step, over the real provider history)
+- [x] The picker refuses to remove a Group's last Start and says why. (same file: refusal hint, plural names, clears on the next pick)
+- [x] The read-only list shows a Group that only patrols through this location, with the row's time. (`locationPresenceReasons.test.ts`: patrols through the place)
+- [x] Component tests cover add, remove with rows, the last-Start refusal and the list lines.
+- [x] The Locations wiki page describes the picker for a Group. (`docs/World-Editor-Locations.md`, Entities)
+
+## Landed
+
+**Not verified**
+- The picker and list in the live app: no preview run. Tests use a mock MultiSelect with real provider and history.
+
+**For you**
+- Look at the refusal line under the Entities picker (Presence tab) after clearing a Group's only place to begin. Check the wording.
+- The hint stays until the next pick at that location. A Routine-tab edit does not clear it.

@@ -24,15 +24,14 @@ function timeText(row: ScheduleRow, schedule: readonly ScheduleRow[]): string {
 const rowReason = (row: ScheduleRow, schedule: readonly ScheduleRow[]): string =>
   `${ROW_VERB[row.action.kind]} here (${timeText(row, schedule)})`;
 
-/** Why an Individual can be at `locationId`. Empty when its routine never names the place. Traversable = Anywhere
- *  gives no reason of its own. */
-function individualReasons(entity: Entity, locationId: string): string[] {
+/** Why an entity can be at `locationId`, from its Starts and rows. A Group has no chance and no led-to line. */
+function routineReasons(entity: Entity, locationId: string): string[] {
   const starts = entity.starts ?? [];
   const reasons: string[] = [];
   const here = starts.filter((s) => s.place === locationId);
   if (here.length) {
     const chance = chancePercent(here.reduce((sum, s) => sum + s.weight, 0), starts.map((s) => s.weight));
-    reasons.push(starts.length > 1 ? `begins here (${chance}%)` : 'begins here');
+    reasons.push(starts.length > 1 && isIndividual(entity) ? `begins here (${chance}%)` : 'begins here');
   }
   for (const start of starts) {
     for (const row of start.schedule) {
@@ -41,7 +40,7 @@ function individualReasons(entity: Entity, locationId: string): string[] {
       if (!reasons.includes(reason)) reasons.push(reason);
     }
   }
-  if (Array.isArray(entity.traversable) && entity.traversable.includes(locationId)) reasons.push('can be led here');
+  if (!isGroup(entity) && Array.isArray(entity.traversable) && entity.traversable.includes(locationId)) reasons.push('can be led here');
   return reasons;
 }
 
@@ -51,9 +50,8 @@ function individualReasons(entity: Entity, locationId: string): string[] {
  */
 export function presenceLines(locationId: string, entities: readonly Entity[]): PresenceLine[] {
   return entities.flatMap((entity) => {
-    if (isGroup(entity)) return entity.locations?.includes(locationId) ? [{ entity, reasons: ['group'] }] : [];
-    if (!isIndividual(entity)) return [];
-    const reasons = individualReasons(entity, locationId);
+    if (!(isGroup(entity) || isIndividual(entity))) return [];
+    const reasons = routineReasons(entity, locationId);
     return reasons.length ? [{ entity, reasons }] : [];
   });
 }
