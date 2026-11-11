@@ -208,7 +208,7 @@ export const DEV_MODAL_TABS = {
   // (`#dev?modal=worldEditor&tab=locations&subtab=presence`). It shares that tab's `subtab=…` slot with the
   // List/Canvas switch above, which is why no value may appear in both lists. `pins` is Advanced only.
   // `fixture=entityPresence` loads a cast for the Presence tab's Entities Here rows; select The White Room.
-  worldEditorLocation: ['details', 'presence', 'items', 'media', 'pins', 'openings'],
+  worldEditorLocation: ['details', 'presence', 'connections', 'items', 'media', 'pins', 'openings'],
   // The World Editor's Overview right column does the same over the Overview tab
   // (`#dev?modal=worldEditor&tab=overview&subtab=prompts`). `prompts` is Advanced only, and
   // Simple mode leaves one tab and no strip.

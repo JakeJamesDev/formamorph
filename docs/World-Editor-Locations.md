@@ -45,9 +45,9 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 
 **In the panel:**
 
-1. Select one of the two locations, then open its **Presence** tab.
-2. Under **Connections**, pick the other location in **Connect to…**.
-3. Select the **+** button (**Add Connection**). The new Connection travels **Both Ways**.
+1. Select one of the two locations, then open its **Connections** tab.
+2. Pick the other location in **Connect to…**.
+3. Select the **+** button (**Add Connection**). The new Connection travels **Both Ways**, and its row opens.
 4. To make it one-way, pick **To There** or **To Here** under **Travel** on its row.
 5. Optional: write a **Travel Hint**.
 
@@ -165,7 +165,8 @@ Select a location in the list to open its panel. The tab you pick stays open whe
 | Tab | Holds | Mode |
 |---|---|---|
 | **Details** | **Name**, **Starting Location** and the descriptions | Simple and Advanced |
-| **Presence** | **Entities**, **Entities Here**, **Known Here** and **Connections** | Simple and Advanced |
+| **Presence** | **Entities**, **Entities Here** and **Known Here** | Simple and Advanced |
+| **Connections** | The location's [Connections](#connections), one row each | Simple and Advanced |
 | **Items** | The location's [Starting Items](World-Editor-Items#starting-items) | Simple and Advanced |
 | **Media** | **Background Image**. In Advanced mode, also **Image Tags** and **Ambient Sound**. | Simple and Advanced |
 | **Pins** | **Placeholder Pins** | Advanced only |
@@ -261,10 +262,15 @@ The entity goes back to its usual places later: when the player leaves, or after
 
 ## Connections
 <!-- keywords: no way back, both directions, trip description, how you get there, return trip wording, arrow labels, trapdoor, shortcut across branches -->
+<!-- route: worldEditorLocation.connections -->
 
 Nesting lets the story move the player between nested places, always in both directions. A **Connection** is a link you make between *any* two locations, at any place in the tree.
 
-The **Connections** section lists every link this location is part of, from this location's point of view. Each Connection has three fields: **Travel**, **Distance** and its Travel Hints.
+The **Connections** tab lists every link this location is part of, from this location's point of view. Each link is one row: an arrow for its **Travel**, the other place, and its **Distance** mark.
+
+Every row starts closed. Select a row to open it. A Connection you add opens on its own. With two or more rows, **Collapse all connections** above the list closes every open row. When none is open, it reads **Expand all connections** and opens them all.
+
+An open row has three fields: **Travel**, **Distance** and its Travel Hints.
 
 **Travel** sets which way the story can move the player:
 
@@ -289,7 +295,7 @@ Every link between two places is **Nearby** or **Far**. The AI receives the enti
 
 Only places one link away count. A place two links away is never nearby.
 
-To set it, pick **Nearby** or **Far** under **Distance** on the Connection's row in the **Presence** tab, or select the Connection's arrow on the **Canvas**. Both set the same value. Each choice shows a mark: a short line for Nearby, a dotted wave for Far. Select the **ⓘ** beside **Distance** for the full explanation. A Far arrow draws as a dotted line, on the Canvas and on the player's Map.
+To set it, pick **Nearby** or **Far** under **Distance** on the Connection's row in the **Connections** tab, or select the Connection's arrow on the **Canvas**. Both set the same value. Each choice shows a mark: a short line for Nearby, a dotted wave for Far. Select the **ⓘ** beside **Distance** for the full explanation. A Far arrow draws as a dotted line, on the Canvas and on the player's Map.
 
 To make a nested link Far, select its dashed arrow on the Canvas. That turns it into a two-way Connection. Then pick **Far**. Delete the Connection to make the link Nearby again.
 

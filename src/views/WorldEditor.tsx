@@ -95,6 +95,7 @@ import { CURRENCIES_ID, EQUIPMENT_ID, useWorldItemsAdapter } from '../managers/u
 import { ITEM_PANEL_TABS, itemPanelTabsFor, type ItemPanelTab } from './itemPanelTabs';
 import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
 import { useWorldLocationsAdapter } from '../managers/useWorldLocationsAdapter';
+import type { ConnectionOpen } from '../managers/LocationConnections';
 import { useWorldDictionaryAdapter } from '../managers/useWorldDictionaryAdapter';
 import { useWorldMediaEditor } from '../managers/useWorldMediaEditor';
 import type { OptimizeControl } from '../managers/MediaHeader';
@@ -883,9 +884,13 @@ const WorldEditorInner = ({
       }
     }
   }, [entityTabs, locationTabs, statTabs, traitTabs, placeholderTabs, entryTabs, bookTabs]);
+  // A folded Connection row has no field to land on, so a reveal into one, or the tour's example, opens it.
+  const [connectionOpen, setConnectionOpen] = useState<ConnectionOpen | null>(null);
+  const clearConnectionOpen = useCallback(() => setConnectionOpen(null), []);
+  const openConnection = useCallback((id: string) => setConnectionOpen({ id }), []);
   const { connectionReveal, clearConnectionReveal, selectionReveal, clearSelectionReveal, fieldReveal } = useHistoryReveal({
     onMove: historyMoves.onMove, touring, visibleTabs, holds: listHolds, setActiveTab, clearSearch, setLocationView,
-    showSubTab, navigateToItem: navigateToBenchItem,
+    showSubTab, navigateToItem: navigateToBenchItem, showConnectionRow: setConnectionOpen,
   });
   const { place: historyPlace } = historyMoves;
   // Only the canvas selects several locations; the open one leads. The place is published below, once the
@@ -927,12 +932,12 @@ const WorldEditorInner = ({
   }, [deferReveal, worldId, clearSearch, select, selectFromOutside, isMobile]);
   const tourApi = useMemo(
     () => ({
-      updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity,
-      addStat, updateStat, addTrait, updateTrait, addDictionaryEntry, updateDictionaryEntry,
+      updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, openConnection, addEntity,
+      updateEntity, addStat, updateStat, addTrait, updateTrait, addDictionaryEntry, updateDictionaryEntry,
     }),
     [
-      updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity,
-      addStat, updateStat, addTrait, updateTrait, addDictionaryEntry, updateDictionaryEntry,
+      updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, openConnection, addEntity,
+      updateEntity, addStat, updateStat, addTrait, updateTrait, addDictionaryEntry, updateDictionaryEntry,
     ],
   );
   const tourWorld = useMemo(() => getWorldData(), [getWorldData]);
@@ -1096,6 +1101,8 @@ const WorldEditorInner = ({
     onSelectionRevealed: clearSelectionReveal,
     onCanvasSelection,
     onOpenEntityRoutine: (id) => navigateToBenchItem('entities', id, 'routine'),
+    connectionOpen,
+    onConnectionOpened: clearConnectionOpen,
   });
   const locationsParts = useListEditor(locationsAdapter, {
     selectedId: selections.locations ?? null, onSelect: selectLocation, search,

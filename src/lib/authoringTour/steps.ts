@@ -68,6 +68,8 @@ export interface TourEditApi {
   updateLocation: (location: GameLocation) => void;
   addConnection: (connection: Connection) => void;
   updateConnection: (connection: Connection) => void;
+  /** Opens the Connection's row on the location panel's Connections tab. */
+  openConnection: (id: string) => void;
   addEntity: (entity: Entity) => void;
   updateEntity: (entity: Entity) => void;
   /** Gives the stat its default descriptors, as the world does for every added stat. */
@@ -475,15 +477,19 @@ const LOCATION_STEPS: readonly TourStep[] = [
     tab: 'locations',
     anchor: 'location-connections',
     item: 'secondLocation',
-    panelTab: 'presence',
+    panelTab: 'connections',
     title: 'Connection',
     body: 'Connect this place to your first one so players can travel between them. A Travel Hint tells the AI how the trip goes.',
     isComplete: (world, items) => !!tourConnection(world, items),
     useExample: (api, world, items) => {
       const existing = tourConnection(world, items);
-      if (existing) api.updateConnection(withExampleHint(existing));
-      else if (items.location && items.secondLocation) {
-        api.addConnection(withExampleHint(createConnection(items.secondLocation, items.location)));
+      if (existing) {
+        api.updateConnection(withExampleHint(existing));
+        api.openConnection(existing.id);
+      } else if (items.location && items.secondLocation) {
+        const made = withExampleHint(createConnection(items.secondLocation, items.location));
+        api.addConnection(made);
+        api.openConnection(made.id);
       }
     },
     inPlay: {
@@ -846,6 +852,8 @@ export async function replayTourSteps(world: TourWorld, index: number): Promise<
     updateLocation: (location) => { draft = { ...draft, locations: replace(draft.locations, location) }; },
     addConnection: (connection) => { draft = { ...draft, connections: [...(draft.connections ?? []), connection] }; },
     updateConnection: (connection) => { draft = { ...draft, connections: replace(draft.connections, connection) }; },
+    // A replay draws nothing, so it has no row to open.
+    openConnection: () => {},
     addEntity: (entity) => { draft = { ...draft, entities: [...(draft.entities ?? []), entity] }; },
     updateEntity: (entity) => { draft = { ...draft, entities: replace(draft.entities, entity) }; },
     addStat: (stat) => { draft = { ...draft, stats: [...(draft.stats ?? []), withDefaultDescriptors(stat)] }; },

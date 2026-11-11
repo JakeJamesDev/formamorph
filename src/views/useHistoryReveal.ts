@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { HistoryMoveEvent, WorldHistoryControls } from '@/contexts/worldRecorder';
 import { findHistoryField } from '@/lib/historyField';
+import { connectionIdOfField } from '@/lib/connectionEditing';
+import type { ConnectionOpen } from '@/managers/LocationConnections';
 import { revealForMove, type RevealTab } from '@/lib/historyReveal';
 import { useLanding, type LandingOptions } from '@/lib/surface/useLanding';
 import type { ConnectionReveal, SelectionReveal } from '@/managers/LocationCanvas';
@@ -26,6 +28,8 @@ export interface HistoryRevealOptions {
   showSubTab: (tab: string, subTab: string) => void;
   /** The find bar's route to a record: its tab, a clear list filter, the record selected and scrolled to. */
   navigateToItem: (section: RevealTab, id: string) => void;
+  /** Asks the location panel to open one Connection's row, or drops the last request with `null`. */
+  showConnectionRow?: (request: ConnectionOpen | null) => void;
 }
 
 // Full screen moves a prompt field out of the editor's tree, so the field is looked up in the whole page.
@@ -57,9 +61,10 @@ export function useHistoryReveal(options: HistoryRevealOptions) {
     if (!move) return;
     setMove(null);
     const {
-      touring, visibleTabs, holds, setActiveTab, clearSearch, setLocationView, showSubTab, navigateToItem,
+      touring, visibleTabs, holds, setActiveTab, clearSearch, setLocationView, showSubTab, navigateToItem, showConnectionRow,
     } = latest.current;
     if (touring) return;
+    showConnectionRow?.(null);
     const target = revealForMove(move.steps, move.world, {
       shows: (tab) => visibleTabs.some((shown) => shown.value === tab),
       holds,
@@ -91,6 +96,9 @@ export function useHistoryReveal(options: HistoryRevealOptions) {
     if (target.subTab !== undefined) showSubTab(target.tab, target.subTab);
     // A field that never renders lands nothing, so the reveal ends at the selection (Q8).
     if (target.field !== undefined) {
+      // The canvas shows a revealed Connection in its own panel, with no row to open.
+      const rowId = target.connection ? null : connectionIdOfField(target.field);
+      if (rowId) showConnectionRow?.({ id: rowId });
       setFieldReveal({ field: target.field });
       landField(target.field);
     }

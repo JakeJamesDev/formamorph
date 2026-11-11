@@ -11,6 +11,9 @@ export const TRAVEL_ICONS: Record<ConnectionDirection, typeof ArrowRight> = {
 /** How one Travel choice reads on a surface: a word beside its icon, or a tooltip on the icon alone. */
 export type TravelChoiceLabel = { word: string } | { tip: string };
 
+/** The text a Travel choice reads as, whichever form it takes. */
+export const travelLabelText = (label: TravelChoiceLabel): string => ('word' in label ? label.word : label.tip);
+
 /** The Travel choices on a location's panel, worded from that location. */
 export const PANEL_TRAVEL_LABELS: Record<ConnectionDirection, TravelChoiceLabel> = {
   'two-way': { word: 'Both Ways' },

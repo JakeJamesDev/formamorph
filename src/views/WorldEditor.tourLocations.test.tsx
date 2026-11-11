@@ -239,6 +239,16 @@ describe('Authoring Tour — add steps', () => {
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Name' })).toHaveTextContent('The Tidewell'));
   });
 
+  it('shows the Connection step on the Connections tab, and Use Example opens the new row', async () => {
+    const { ctx } = await resumeAt('location-connection');
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Connections', selected: true })).toBeInTheDocument());
+    expect(screen.queryByRole('button', { expanded: true, name: /^The Tidewell, / })).not.toBeInTheDocument();
+    fireEvent.click(noteButton('Use Example')!);
+    await waitFor(() => expect(ctx().connections).toHaveLength(1));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'The Tidewell, Both Ways' })).toHaveAttribute('aria-expanded', 'true'));
+    expect(screen.getByLabelText('Travel Hint to The Tidewell')).toHaveTextContent('down the lane past the net sheds');
+  });
+
   it('makes the add step current again when its location is deleted', async () => {
     const { ctx } = await resumeAt('location-connection');
 

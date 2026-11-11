@@ -23,7 +23,8 @@ const ENTITY_BODY: Record<string, string> = {
 
 const LOCATION_BODY: Record<string, string> = {
   details: 'Name, starting location, and the three descriptions.',
-  presence: 'The entity roster and the connections list.',
+  presence: 'The entity roster and who knows about this place.',
+  connections: 'The travel rules to other locations, one folding row each.',
   items: 'The items lying here when a game starts.',
   media: 'Background image, tags, and ambient sound.',
   pins: 'Placeholder pin rows and their conflict notes.',
@@ -84,7 +85,7 @@ export function PanelTabStripReference() {
 
         <section aria-labelledby="panel-tab-strip-location" className="grid content-start gap-3 rounded-md border border-border p-4">
           <div className="space-y-1">
-            <h3 id="panel-tab-strip-location" className="text-label font-semibold">Six Tabs</h3>
+            <h3 id="panel-tab-strip-location" className="text-label font-semibold">Seven Tabs</h3>
             <Meta>The location panel in Advanced mode</Meta>
           </div>
           <Strip tabs={LOCATION_PANEL_TABS} stripLabel="Sample Location Fields" body={LOCATION_BODY} />

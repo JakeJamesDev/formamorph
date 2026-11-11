@@ -14,7 +14,7 @@ import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/Plac
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { SoundUpload } from '../lib/UtilityComponents';
 import { LocationImageField } from './LocationImageField';
-import LocationConnections from './LocationConnections';
+import LocationConnections, { type ConnectionOpen } from './LocationConnections';
 import { isGeneric } from '@/lib/entityKind';
 import { Hint } from '@/components/ui/typography';
 import LocationKnownHere from './LocationKnownHere';
@@ -48,11 +48,14 @@ export const STARTING_INFO = `**Starting Location** marks where a new game can b
 - With several, the player picks one, or the game picks at random
 - With none, any location can be the start`;
 
-const LocationManager = ({ location, tab, onTabChange, focusField, onOpenEntityRoutine }: {
+const LocationManager = ({ location, tab, onTabChange, focusField, connectionOpen, onConnectionOpened, onOpenEntityRoutine }: {
   location: GameLocation;
   tab: LocationPanelTab;
   onTabChange: (tab: LocationPanelTab) => void;
   focusField?: FocusFieldHint | null;
+  /** A Connection row the Connections tab should open. */
+  connectionOpen?: ConnectionOpen | null;
+  onConnectionOpened?: () => void;
   /** Opens an entity's Routine tab from its line in Entities Here. */
   onOpenEntityRoutine?: (entityId: string) => void;
 }) => {
@@ -222,7 +225,15 @@ const LocationManager = ({ location, tab, onTabChange, focusField, onOpenEntityR
           locationLabel={locationLabel}
           onChange={updateEntity}
         />
-        <LocationConnections location={editingLocation} />
+      </PanelTabContent>
+
+      <PanelTabContent value="connections">
+        <LocationConnections
+          location={editingLocation}
+          focusField={focusField}
+          openRequest={connectionOpen}
+          onOpened={onConnectionOpened}
+        />
       </PanelTabContent>
 
       <PanelTabContent value="items">

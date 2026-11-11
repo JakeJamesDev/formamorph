@@ -195,10 +195,10 @@ const WORLD: World = benchEditorWorld({
   entities: [{ id: 'resident', name: 'Odd Wick', aiDescription: 'Keeps the lamps.', locations: ['veil'] }],
 });
 
-/** Every field label the panel shows, in document order. Three of these are also editor tab names, so the
+/** Every field label the panel shows, in document order. Two of these are also editor tab names, so the
  *  match is taken from the panel body rather than from the whole editor. */
 const FIELD_LABELS =
-  /^(Name|Player-Facing Description|AI-Facing Description|AI-Facing Summary|Entities|Connections|Background Image|Image Tags|Ambient Sound|Placeholder Pins)$/;
+  /^(Name|Player-Facing Description|AI-Facing Description|AI-Facing Summary|Entities|Background Image|Image Tags|Ambient Sound|Placeholder Pins)$/;
 
 const panelLabels = () =>
   screen.getAllByText(FIELD_LABELS)
@@ -245,7 +245,7 @@ describe('the World Editor location panel tabs', () => {
     selectLocation('The Veilwood');
     openPanelTab('Pins');
     pickEditorMode('Simple');
-    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Items', 'Media']);
+    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Connections', 'Items', 'Media']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
     expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description']);
   });
@@ -255,7 +255,7 @@ describe('the World Editor location panel tabs', () => {
     selectLocation('The Veilwood');
     openPanelTab('Media');
     fireEvent.click(screen.getByRole('radio', { name: 'Canvas' }));
-    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Items', 'Media', 'Pins', 'Openings']);
+    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Connections', 'Items', 'Media', 'Pins', 'Openings']);
     expect(panelTab('Media')).toHaveAttribute('aria-selected', 'true');
   });
 });

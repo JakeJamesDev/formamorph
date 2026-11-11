@@ -215,6 +215,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'worldEditorItem.placeholders': { page: 'World-Editor-Items', anchor: 'the-panel' },
   'worldEditorLocation.details': { page: 'World-Editor-Locations', anchor: 'the-panel' },
   'worldEditorLocation.presence': { page: 'World-Editor-Locations', anchor: 'entities' },
+  'worldEditorLocation.connections': { page: 'World-Editor-Locations', anchor: 'connections' },
   'worldEditorLocation.items': { page: 'World-Editor-Items', anchor: 'starting-items' },
   'worldEditorLocation.media': { page: 'World-Editor-Locations', anchor: 'media' },
   'worldEditorLocation.pins': { page: 'World-Editor-Locations', anchor: 'placeholder-pins' },

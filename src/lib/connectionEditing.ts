@@ -95,6 +95,20 @@ export const travelHintFieldKey = (connectionId: string, leg: LegKey): string =>
 /** Whether a find bar field key names a Travel Hint. */
 export const isTravelHintFieldKey = (fieldKey: string): boolean => fieldKey.startsWith(TRAVEL_HINT_KEY);
 
+/** The Connection a find bar Travel Hint key names, or `null` for any other key. */
+export function travelHintConnectionId(fieldKey: string): string | null {
+  if (!isTravelHintFieldKey(fieldKey)) return null;
+  const rest = fieldKey.slice(TRAVEL_HINT_KEY.length);
+  const leg = rest.lastIndexOf(':');
+  return leg > 0 ? rest.slice(0, leg) : null;
+}
+
+/** The Connection a history field identity (`connections/<id>/<part>`) belongs to, or `null`. */
+export function connectionIdOfField(field: string): string | null {
+  const [slice, id] = field.split('/');
+  return slice === 'connections' && id ? id : null;
+}
+
 /** The record's Travel Hints, `a → b` first, blanks left out. */
 export function connectionHints(connection: Connection): string[] {
   return [connection.aToB?.hint, connection.bToA?.hint].filter((hint): hint is string => !!hint);

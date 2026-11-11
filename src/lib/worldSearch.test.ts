@@ -467,8 +467,8 @@ describe('Travel Hints', () => {
     const { src } = hinted({ id: 'c1', a: 'quay', b: 'garden', aToB: { hint: 'up the steps' }, bToA: { hint: 'down the steps' } });
     const hits = findMatches(collectSearchTargets(src), 'steps', LOOSE).map(({ target }) => target);
     expect(hits.map((t) => [t.itemId, t.fieldLabel, t.chipCapable, locationTabForField(t.fieldKey)])).toEqual([
-      ['quay', 'Travel Hint to Hill Garden', true, 'presence'],
-      ['garden', 'Travel Hint to Quay', true, 'presence'],
+      ['quay', 'Travel Hint to Hill Garden', true, 'connections'],
+      ['garden', 'Travel Hint to Quay', true, 'connections'],
     ]);
     hits[1].write('down the stair');
     expect(written).toEqual([{ id: 'c1', a: 'quay', b: 'garden', aToB: { hint: 'up the steps' }, bToA: { hint: 'down the stair' } }]);

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench, shownEditorTab } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
-/** The location Presence tab: the Generic entities-only picker, who can be here and why, and the Connection distance. */
+/** The location Presence tab: the Generic entities-only picker, and who can be here and why. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -133,23 +133,10 @@ describe('the Presence tab: Entities Here', () => {
 });
 
 describe('the Presence tab: Connections', () => {
-  it('sets a Connection to Far, stores only Far, and undoes in one step', async () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+  it('holds no Connections; they have a tab of their own', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
     openPresence('Tavern');
-    const near = screen.getByRole('radio', { name: 'Nearby' });
-    expect(near.getAttribute('aria-checked')).toBe('true');
-
-    await step(() => fireEvent.click(screen.getByRole('radio', { name: 'Far' })));
-    expect(ctx().connections[0].distance).toBe('far');
-
-    await undo();
-    expect(ctx().connections[0]).toEqual(WORLD.connections![0]);
-  });
-
-  it('shows a Far Connection as Far from either end', () => {
-    const far = { ...WORLD, connections: [{ ...WORLD.connections![0], distance: 'far' }] } as World;
-    renderWorldEditorBench(far, 'advanced');
-    openPresence('Yard');
-    expect(screen.getByRole('radio', { name: 'Far' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.queryByRole('combobox', { name: 'Connect To' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('connection-row')).not.toBeInTheDocument();
   });
 });

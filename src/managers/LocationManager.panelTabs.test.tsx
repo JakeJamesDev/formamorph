@@ -40,13 +40,13 @@ const WORLD: World = panelWorld({
   entities: [{ id: 'resident', name: 'Odd Wick', aiDescription: 'Keeps the lamps.', locations: ['veil'] }],
 });
 
-/** Every field label the panel shows, in document order. Three of these are also editor tab names, so the
+/** Every field label the panel shows, in document order. Two of these are also editor tab names, so the
  *  match is taken from the panel body rather than from the whole editor. */
 const FIELD_LABELS =
-  /^(Name|Player-Facing Description|AI-Facing Description|AI-Facing Summary|Entities|Connections|Background Image|Image Tags|Ambient Sound|Placeholder Pins)$/;
+  /^(Name|Player-Facing Description|AI-Facing Description|AI-Facing Summary|Entities|Background Image|Image Tags|Ambient Sound|Placeholder Pins)$/;
 
 const panelLabels = () =>
-  screen.getAllByText(FIELD_LABELS)
+  screen.queryAllByText(FIELD_LABELS)
     .filter((el) => !el.closest('[role="tablist"]'))
     .map((el) => el.textContent);
 
@@ -82,17 +82,17 @@ const selectLocation = (name: string) => {
 beforeEach(() => { localStorage.clear(); });
 
 describe('the World Editor location panel tabs', () => {
-  it('offers six tabs in Advanced mode, Openings last, and opens on Details', () => {
+  it('offers seven tabs in Advanced mode, Openings last, and opens on Details', () => {
     renderLocationsTab(WORLD, 'advanced');
     selectLocation('The Veilwood');
-    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Items', 'Media', 'Pins', 'Openings']);
+    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Connections', 'Items', 'Media', 'Pins', 'Openings']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('offers four tabs in Simple mode', () => {
+  it('offers five tabs in Simple mode', () => {
     renderLocationsTab(WORLD, 'simple');
     selectLocation('The Veilwood');
-    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Items', 'Media']);
+    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Connections', 'Items', 'Media']);
   });
 
   it('puts the name, the starting box and the three descriptions on Details, and nothing else', () => {
@@ -104,11 +104,15 @@ describe('the World Editor location panel tabs', () => {
     expect(screen.getByRole('checkbox', { name: /Starting Location/ })).toBeInTheDocument();
   });
 
-  it('puts the roster and the connections on Presence', () => {
+  it('puts the roster on Presence, and the connections on their own tab', () => {
     renderLocationsTab(WORLD, 'advanced');
     selectLocation('The Veilwood');
     openPanelTab('Presence');
-    expect(panelLabels()).toEqual(['Entities', 'Connections']);
+    expect(panelLabels()).toEqual(['Entities']);
+    expect(screen.queryByTestId('connection-row')).not.toBeInTheDocument();
+    openPanelTab('Connections');
+    expect(panelLabels()).toEqual([]);
+    expect(screen.getAllByTestId('connection-row')).toHaveLength(1);
   });
 
   it('puts the picture, its tags, the Generate button and the sound on Media', () => {
@@ -145,7 +149,7 @@ describe('the World Editor location panel tabs', () => {
     openPanelTab('Presence');
     fireEvent.click(treeRow('The Hollow'));
     expect(panelTab('Presence')).toHaveAttribute('aria-selected', 'true');
-    expect(panelLabels()).toEqual(['Entities', 'Connections']);
+    expect(panelLabels()).toEqual(['Entities']);
   });
 
 });
