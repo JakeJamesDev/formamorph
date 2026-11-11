@@ -74,7 +74,8 @@ Select a trait to open its panel.
 |---|---|---|
 | **Details** | **Name** and the two descriptions | Simple and Advanced |
 | **Availability** | **Mode**, **Starts**, **In Game** and [**Requires**](#requirements) | Simple and Advanced |
-| **Stats** | **Stat Changes**, [**Body**](#body), [**Body Sliders**](#body-sliders), [**Colors**](#colors), and **Stat Availability** in Advanced mode | Simple and Advanced |
+| **Stats** | **Stat Changes** and **Stat Availability** in Advanced mode | Simple and Advanced |
+| **Appearance** | [**Body**](#body), [**Sliders**](#sliders) and [**Colors**](#colors) | Simple and Advanced |
 | **Pins** | **Placeholder Pins** | Advanced only |
 | **Scripts** | [Scripts](#scripts) | Advanced only |
 
@@ -149,6 +150,7 @@ A disabled stat isn't shown to the player or sent to the AI. Its Regen and scrip
 
 ## Body
 <!-- keywords: transformation, wolf form, change shape, equipment slots, lose slots, unequip on transform, curse body -->
+<!-- route: worldEditorTrait.appearance -->
 
 A Body row changes which equipment slots the trait's owner has while the trait is active. For example, a *Wolf Form* trait sets the Body to *Wolf*, which has no hand slots.
 
@@ -159,12 +161,12 @@ A Body row changes which equipment slots the trait's owner has while the trait i
 
 When two active traits set a Body, the one switched on last wins. When it switches off, the one before it takes over. With none left, the Body goes back to the one the owner started with.
 
-## Body Sliders
+## Sliders
 <!-- keywords: elf ears, ear shape, trait changes avatar, set slider, lock slider, race look, head features trait -->
 
-**Body Sliders** set the [Avatar's](Avatars#in-the-game) sliders while the trait is active. For example, an *Elf* trait sets Ear Shape to 1, and a *Human* trait sets it to 0.
+**Sliders** set the [Avatar's](Avatars#in-the-game) sliders while the trait is active. For example, an *Elf* trait sets Ear Shape to 1, and a *Human* trait sets it to 0.
 
-- Pick sliders in the **Body Sliders** list. It has two groups for each model: **Body Sliders** and **Head Features**. On an entity's own trait, the list holds the sliders of the entity's Avatar and of its 3D model.
+- On the **Appearance** tab, pick sliders in the **Sliders** list. It has two groups for each model: **Body Sliders** and **Head Features**. On an entity's own trait, the list holds the sliders of the entity's Avatar and of its 3D model.
 - Each picked slider gets a row with a **Set To** number, 1 by default. Any number works, even one past what Customization allows.
 - The slider takes the **Set To** value in place of the player's own setting. A stat bound to that slider still adds its change on top.
 - When the trait switches off, the player's own setting comes back.
@@ -184,7 +186,7 @@ When two active traits set the same slider, the one switched on last wins. A row
 - Colors work on Avatars only. An entity's 3D model keeps its colors.
 - A row shows **Not on this model** when the model lacks that color.
 
-When two active traits set the same color, the one switched on last wins. The row says **Also set by**, as for [Body Sliders](#body-sliders).
+When two active traits set the same color, the one switched on last wins. The row says **Also set by**, as for [Sliders](#sliders).
 
 ## Placeholder Pins
 <!-- keywords: appearance from choice, force a word, lock random text, returns when off, type custom text, hair by perk -->
@@ -222,7 +224,7 @@ Two active traits can change the availability of the same stat, or pin the same 
 
 For a pin on traits of different owners, a world trait wins, then the played persona's, then the entity lower in the entity list.
 
-[Body](#body) rows, [Body Sliders](#body-sliders) and [Colors](#colors) work differently: the trait switched on last wins.
+[Body](#body) rows, [Sliders](#sliders) and [Colors](#colors) work differently: the trait switched on last wins.
 
 ## Groups
 <!-- keywords: category, start button disabled, choose more message, cant begin game, none of these, swap mid game, over the limit, folders -->

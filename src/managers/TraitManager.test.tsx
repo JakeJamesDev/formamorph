@@ -98,7 +98,7 @@ beforeEach(() => {
 describe('the Body row', () => {
   it('adds a blank row, picks a Body from None and the world Bodies, and removes the row', async () => {
     const user = userEvent.setup();
-    renderManager('stats');
+    renderManager('appearance');
     expect(screen.getByRole('button', { name: 'About Body' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Add Body' }));
     expect(store.trait.body).toEqual({});

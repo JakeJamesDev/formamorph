@@ -1,7 +1,7 @@
 /** The trait detail panel's own tabs, in order. Single source of truth: `TraitManager`'s `PanelTabsList`
  *  renders from this, and the dev-router ledger (`DEV_MODAL_TABS.worldEditorTrait`) is guarded against it in
  *  `devRouter.test.ts`. */
-import { Code, ListChecks, Pin, Tag } from 'lucide-react';
+import { Code, ListChecks, Palette, Pin, Tag } from 'lucide-react';
 
 import { ELEMENT_ICONS } from '@/lib/elementIcons';
 import { tabForField } from './findFocus';
@@ -10,6 +10,7 @@ export const TRAIT_PANEL_TABS = [
   { value: 'details', label: 'Details', icon: Tag },
   { value: 'availability', label: 'Availability', icon: ListChecks },
   { value: 'stats', label: 'Stats', icon: ELEMENT_ICONS.stat },
+  { value: 'appearance', label: 'Appearance', icon: Palette },
   { value: 'pins', label: 'Pins', icon: Pin, advancedOnly: true },
   { value: 'scripts', label: 'Scripts', icon: Code, advancedOnly: true },
 ] as const;

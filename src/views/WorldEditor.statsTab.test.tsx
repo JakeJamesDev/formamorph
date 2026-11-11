@@ -98,7 +98,7 @@ describe('the stat panel and the editor mode', () => {
   // These tabs switch on mouseDown, not click.
   const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
   const FIELD_LABELS =
-    /^(Name|Type|Description|Min|Max|Base Value|Base Value \(%\)|Regen|Body Sliders|Availability|Prevent AI Changes|Stat Descriptors|Scripts|Warmth · After the AI)$/;
+    /^(Name|Type|Description|Min|Max|Base Value|Base Value \(%\)|Regen|Sliders|Colors|Availability|Prevent AI Changes|Stat Descriptors|Scripts|Warmth · After the AI)$/;
 
   /** Every field label the panel shows, in document order. The panel's own strip carries a Scripts tab and a
    *  Details tab, so the match is taken from the panel body rather than the whole editor. */
@@ -127,21 +127,22 @@ describe('the stat panel and the editor mode', () => {
   };
 
   describe('the World Editor stat panel tabs', () => {
-    it('lands on Details with no strip when Simple mode takes the Scripts tab away, and restores it', () => {
+    it('lands on Details when Simple mode takes the Scripts tab away, and restores Scripts in Advanced', () => {
       renderWorldEditorBench(WORLD, 'advanced');
       selectStat('Warmth');
       openPanelTab('Scripts');
 
       pickEditorMode('Simple');
-      expect(panelTabNames()).toEqual([]);
+      expect(panelTabNames()).toEqual(['Details', 'Appearance']);
+      expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
       expect(panelLabels()).toEqual([
-        'Name', 'Type', 'Description', 'Base Value', 'Min', 'Max', 'Regen', 'Body Sliders',
+        'Name', 'Type', 'Description', 'Base Value', 'Min', 'Max', 'Regen',
       ]);
 
       // The switch wears the hidden-data marker, whose own label joins its accessible name.
       pickEditorMode('Advanced');
-      expect(panelTabNames()).toEqual(['Details', 'Descriptors', 'Scripts']);
-      expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
+      expect(panelTabNames()).toEqual(['Details', 'Appearance', 'Descriptors', 'Scripts']);
+      expect(panelTab('Scripts')).toHaveAttribute('aria-selected', 'true');
     });
   });
 });

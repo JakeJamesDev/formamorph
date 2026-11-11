@@ -124,11 +124,12 @@ Each piece is a checkbox in the **Stat Detail** row of the chip's [Chip Options]
 ## The panel
 <!-- keywords: scripts tab missing, code tab missing, cant find descriptors, no tabs showing, three tabs -->
 
-Select a stat to open its panel. In Advanced mode the panel has three tabs.
+Select a stat to open its panel. In Advanced mode the panel has four tabs.
 
 | Tab | Holds | Mode |
 |---|---|---|
-| **Details** | The fields below | Simple and Advanced |
+| **Details** | The fields below, except **Sliders** and **Colors** | Simple and Advanced |
+| **Appearance** | [**Sliders** and **Colors**](#appearance) | Simple and Advanced, for Number and Percentage stats |
 | **Descriptors** | [Stat Descriptors](#stat-descriptors) | Advanced only |
 | **Scripts** | [Scripts](#scripts) | Advanced only |
 
@@ -146,8 +147,6 @@ In Simple mode the panel shows the basic fields with no tabs.
 | **Min** / **Max** | The range. The value always stays in it. A percentage stat locks these at 0 and 100, so you set only its **Base Value (%)**. |
 | **Base Value** | Where the stat starts, before traits change it. |
 | **Regen** | Added to the value as story time passes. Pick the span it counts per: **Minute**, **Hour**, **Day** or **Week**. Hour is the default. With **Measured Clock** off, each turn takes the player's **Time Per Turn**, one hour by default. A positive number heals over time, and a negative number drains. An inactive stat gets no Regen. |
-| **Body Sliders** | Binds the [Avatar's](Avatars#in-the-game) sliders to this stat. The list has two groups for each model: **Body Sliders** and **Head Features**, such as Ear Shape. On an entity's own stat, the list holds the sliders of the entity's Avatar and of its 3D model. Each picked slider gets a row with a **Change By** number, 1 by default. As the value goes from Min to Max, the stat adds 0 up to the **Change By** to the slider. A negative **Change By** makes the slider smaller. Several stats can change one slider, and their changes add up. A row shows **Not on this model** when the model the stat plays on lacks that slider. To add sliders to a model, see [How to Add Body Sliders in Blender](Avatars#how-to-add-body-sliders-in-blender). |
-| **Colors** | Shifts the Avatar's **Skin**, **Eye** or **Hair** color toward a **Target Color** as the stat rises. At Min, the color is unchanged. At Max and above, it is the target. A new row starts at the model's own color, or white when the world doesn't set the player's Avatar. When several stats change one color, they apply in their order in the stat list. Colors work on Avatars only, not on 3D models. A row shows **Not on this model** when the model lacks that color. |
 
 ### Availability
 
@@ -170,6 +169,17 @@ In Simple mode the panel shows the basic fields with no tabs.
 | **Don't Decrease Max** | Lowering the Max |
 
 A percentage stat shows only the first two, because its Max is always 100.
+
+## Appearance
+<!-- keywords: stat changes avatar, slider, ear shape, color, skin eye hair, body sliders, head features -->
+<!-- route: worldEditorStat.appearance -->
+
+On the **Appearance** tab:
+
+| Field | What it does |
+|---|---|
+| **Sliders** | Binds the [Avatar's](Avatars#in-the-game) sliders to this stat. The list has two groups for each model: **Body Sliders** and **Head Features**, such as Ear Shape. On an entity's own stat, the list holds the sliders of the entity's Avatar and of its 3D model. Each picked slider gets a row with a **Change By** number, 1 by default. As the value goes from Min to Max, the stat adds 0 up to the **Change By** to the slider. A negative **Change By** makes the slider smaller. Several stats can change one slider, and their changes add up. A row shows **Not on this model** when the model the stat plays on lacks that slider. To add sliders to a model, see [How to Add Body Sliders in Blender](Avatars#how-to-add-body-sliders-in-blender). |
+| **Colors** | Shifts the Avatar's **Skin**, **Eye** or **Hair** color toward a **Target Color** as the stat rises. At Min, the color is unchanged. At Max and above, it is the target. A new row starts at the model's own color, or white when the world doesn't set the player's Avatar. When several stats change one color, they apply in their order in the stat list. Colors work on Avatars only, not on 3D models. A row shows **Not on this model** when the model lacks that color. |
 
 ## Stat Descriptors
 <!-- keywords: no status red, gap in coverage, which band wins, raw or percent, scales with max, above top tier, label missing, coverage bar -->

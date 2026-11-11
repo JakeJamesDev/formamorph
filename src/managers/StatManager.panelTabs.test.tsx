@@ -9,8 +9,9 @@ import type { World } from '@/types';
  * What the World Editor's stat panel puts on screen, driven through the real editor.
  *
  * The panel splits its field groups across its own tabs, so a group that loses a field, gains a duplicate,
- * lands out of order, or lands on the wrong tab shows up here as a changed label list. Simple mode keeps one
- * tab, which is no choice, so the strip goes away entirely — the case the shared strip gained for this panel.
+ * lands out of order, or lands on the wrong tab shows up here as a changed label list. Simple mode keeps
+ * Details and Appearance, and a stat with no number takes Details alone, which is no choice, so its strip
+ * goes away.
  */
 
 vi.mock('../services/WorldStorageService', () => ({
@@ -50,7 +51,7 @@ const WORLD: World = panelWorld({
   ],
 } as Partial<World>);
 const FIELD_LABELS =
-  /^(Name|Type|Description|Min|Max|Base Value|Base Value \(%\)|Regen|Body Sliders|Availability|Prevent AI Changes|Stat Descriptors|Scripts|Warmth · After the AI)$/;
+  /^(Name|Type|Description|Min|Max|Base Value|Base Value \(%\)|Regen|Sliders|Colors|Availability|Prevent AI Changes|Stat Descriptors|Scripts|Warmth · After the AI)$/;
 
 /** Every field label the panel shows, in document order. The panel's own strip carries a Scripts tab and a
  *  Details tab, so the match is taken from the panel body rather than the whole editor. */
@@ -94,10 +95,10 @@ const selectStat = (name: string) => {
 beforeEach(() => { localStorage.clear(); });
 
 describe('the World Editor stat panel tabs', () => {
-  it('offers three tabs in Advanced mode and opens on Details', () => {
+  it('offers four tabs in Advanced mode and opens on Details', () => {
     renderStatsTab(WORLD, 'advanced');
     selectStat('Warmth');
-    expect(panelTabNames()).toEqual(['Details', 'Descriptors', 'Scripts']);
+    expect(panelTabNames()).toEqual(['Details', 'Appearance', 'Descriptors', 'Scripts']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
   });
 
@@ -105,7 +106,7 @@ describe('the World Editor stat panel tabs', () => {
     renderStatsTab(WORLD, 'advanced');
     selectStat('Warmth');
     expect(panelLabels()).toEqual([
-      'Name', 'Type', 'Description', 'Base Value', 'Min', 'Max', 'Regen', 'Body Sliders',
+      'Name', 'Type', 'Description', 'Base Value', 'Min', 'Max', 'Regen',
       'Availability', 'Prevent AI Changes',
     ]);
     expect(panelSwitches()).toEqual([
@@ -146,13 +147,25 @@ describe('the World Editor stat panel tabs', () => {
     expect(screen.getByRole('button', { name: 'Add Script' })).toBeInTheDocument();
   });
 
-  it('leaves Simple mode no strip and only the fields that mode has always shown', () => {
+  it('puts Sliders and Colors on Appearance, and Details holds neither', () => {
+    renderStatsTab(WORLD, 'advanced');
+    selectStat('Warmth');
+    expect(screen.queryByText('Sliders')).toBeNull();
+    expect(screen.queryByText('Colors')).toBeNull();
+    openPanelTab('Appearance');
+    expect(panelLabels()).toEqual(['Sliders', 'Colors']);
+    expect(screen.queryByText('Regen')).toBeNull();
+  });
+
+  it('gives Simple mode Details and Appearance, with the fields that mode has always shown', () => {
     renderStatsTab(WORLD, 'simple');
     selectStat('Warmth');
-    expect(panelTabNames()).toEqual([]);
+    expect(panelTabNames()).toEqual(['Details', 'Appearance']);
     expect(panelLabels()).toEqual([
-      'Name', 'Type', 'Description', 'Base Value', 'Min', 'Max', 'Regen', 'Body Sliders',
+      'Name', 'Type', 'Description', 'Base Value', 'Min', 'Max', 'Regen',
     ]);
+    openPanelTab('Appearance');
+    expect(panelLabels()).toEqual(['Sliders', 'Colors']);
     expect(screen.queryByText('Enabled')).toBeNull();
     expect(screen.queryByText('Hidden')).toBeNull();
     expect(screen.queryByText('Stat Descriptors')).toBeNull();
@@ -167,12 +180,24 @@ describe('the World Editor stat panel tabs', () => {
     expect(panelTab('Descriptors')).toHaveAttribute('aria-selected', 'true');
     expect(panelLabels()).toEqual(['Stat Descriptors']);
   });
-  it('gives a Percentage stat the same three tabs over its pinned range', () => {
+  it('shows Details when the held Appearance tab meets a stat with no number', () => {
+    const odd = { id: 's4', name: 'Mood', type: 'text', description: 'Odd one.', value: 0, regen: 0, descriptors: [] };
+    renderStatsTab(panelWorld({ stats: [...WORLD.stats, odd] } as unknown as Partial<World>), 'advanced');
+    selectStat('Warmth');
+    openPanelTab('Appearance');
+    selectStat('Mood');
+    expect(panelTabNames()).toEqual(['Details', 'Descriptors']);
+    expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
+    expect(panelLabels()).toContain('Name');
+    expect(screen.queryByText('Colors')).toBeNull();
+  });
+
+  it('gives a Percentage stat the same four tabs over its pinned range', () => {
     renderStatsTab(WORLD, 'advanced');
     selectStat('Resolve');
-    expect(panelTabNames()).toEqual(['Details', 'Descriptors', 'Scripts']);
+    expect(panelTabNames()).toEqual(['Details', 'Appearance', 'Descriptors', 'Scripts']);
     expect(panelLabels()).toEqual([
-      'Name', 'Type', 'Description', 'Base Value (%)', 'Min', 'Max', 'Regen', 'Body Sliders',
+      'Name', 'Type', 'Description', 'Base Value (%)', 'Min', 'Max', 'Regen',
       'Availability', 'Prevent AI Changes',
     ]);
     const min = rangeInput('Min');

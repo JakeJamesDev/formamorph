@@ -156,7 +156,7 @@ function StatOptions({ choices, label }: { choices: readonly StatChoices[]; labe
 }
 
 /**
- * Right-panel editor for one trait: its fields split across Details, Availability, Stats, Pins and Scripts.
+ * Right-panel editor for one trait, split across Details, Availability, Stats, Appearance, Pins and Scripts.
  *
  * The panel remounts per trait, so the chosen tab is the editor's to hold and arrives as a prop. Pins and
  * Scripts are Advanced only.
@@ -324,7 +324,11 @@ const TraitManager = ({
 
   if (!editingTrait) return null;
 
-  const tabs = traitPanelTabsFor(advanced);
+  // Each Appearance field shows when it has a row or the author can add one; a panel with none takes no tab.
+  const showBody = !!(bodies || bodyRow);
+  const showSliders = !readOnly || morphPins.length > 0;
+  const showColors = !readOnly || colorPins.length > 0;
+  const tabs = traitPanelTabsFor(advanced).filter((t) => t.value !== 'appearance' || showBody || showSliders || showColors);
   // An owner's trait changes the owner's own stats, and the global stats whoever is played (Q18).
   const statLabel = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
   // An owner's own stats include its links; the global stats leave the Blueprints out.
@@ -466,94 +470,6 @@ const TraitManager = ({
         <Button size="sm" onClick={handleStatChangeAdd}>Add Stat Change</Button>
       </div>
 
-      {(bodies || bodyRow) && (
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Label>Body</Label>
-          <HelpButton topicId="worldEditor.traitBody" className="h-6 w-6" />
-        </div>
-        {bodyRow ? (
-          <div className="flex space-x-2">
-            <Select
-              value={bodyRow.pick ? (bodyRow.pick.kind === 'none' ? NONE_BODY : bodyRow.pick.id) : ''}
-              onValueChange={(v) => setBodyPick(v === NONE_BODY ? { kind: 'none' } : { kind: 'body', id: v })}
-              disabled={readOnly}
-            >
-              <SelectTrigger aria-label="Body" {...fieldFrame('body')}>
-                <SelectValue placeholder="Select Body" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE_BODY}>None</SelectItem>
-                {(bodies ?? []).map((body) => (
-                  <SelectItem key={body.id} value={body.id}>{statLabel(body.name)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="ghost" size="icon" aria-label="Remove Body" disabled={readOnly} onClick={() => apply({ body: undefined })}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : !readOnly && (
-          <Button size="sm" onClick={() => apply({ body: {} })}>Add Body</Button>
-        )}
-      </div>
-      )}
-
-      {(!readOnly || morphPins.length > 0) && (
-      <div className="space-y-2" {...fieldFrame('morphPins')}>
-        <div className="flex items-center gap-2">
-          <Label>Body Sliders</Label>
-          <HelpButton topicId="worldEditor.traitSliders" className="h-6 w-6" />
-        </div>
-        <MultiSelect
-          key={trait.id}
-          options={sliders.groups}
-          defaultValue={morphPins.map((p) => p.name)}
-          onValueChange={pickMorphPins}
-          onOpenChange={(open) => { if (open) sliders.load(); }}
-          placeholder="Select body sliders"
-          emptyIndicator={sliders.loading ? "Loading sliders…" : sliders.emptyText}
-          maxCount={6}
-          disabled={readOnly}
-        />
-        {morphPins.length > 0 && (
-          <div className="grid grid-cols-[minmax(0,1fr)_7rem] items-center gap-x-3 gap-y-2 pt-1">
-            <span />
-            <Label className="text-meta text-muted-foreground">Set To</Label>
-            {morphPins.map((pin) => (
-              <SliderNumberRow
-                key={pin.name}
-                name={pin.name}
-                value={pin.value}
-                field="Set To"
-                missing={sliders.keyOf(pin.name) === null}
-                disabled={readOnly}
-                note={<SliderOverlapNote others={pinOverlaps[pin.name]} placeholders={placeholders} onOpen={onOpenTrait} />}
-                onCommit={(value) => setPinValue(pin.name, value)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-      )}
-
-      {(!readOnly || colorPins.length > 0) && (
-      <div {...fieldFrame('colorPins')}>
-        <ColorRowsField
-          id={trait.id}
-          label={<Label>Colors</Label>}
-          rows={colorPins}
-          column="Set To"
-          lacksChannel={sliders.lacksChannel}
-          seedColor={sliders.seedColor}
-          note={(channel) => <SliderOverlapNote others={colorOverlaps[channel]} placeholders={placeholders} onOpen={onOpenTrait} />}
-          disabled={readOnly}
-          onOpen={() => setColorsOpened(true)}
-          onChange={(rows) => apply({ colorPins: rows.length ? rows : undefined })}
-        />
-      </div>
-      )}
-
       {advanced && (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -610,6 +526,98 @@ const TraitManager = ({
     </>
   );
 
+  const appearancePanel = (
+    <>
+      {showBody && (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Label>Body</Label>
+          <HelpButton topicId="worldEditor.traitBody" className="h-6 w-6" />
+        </div>
+        {bodyRow ? (
+          <div className="flex space-x-2">
+            <Select
+              value={bodyRow.pick ? (bodyRow.pick.kind === 'none' ? NONE_BODY : bodyRow.pick.id) : ''}
+              onValueChange={(v) => setBodyPick(v === NONE_BODY ? { kind: 'none' } : { kind: 'body', id: v })}
+              disabled={readOnly}
+            >
+              <SelectTrigger aria-label="Body" {...fieldFrame('body')}>
+                <SelectValue placeholder="Select Body" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE_BODY}>None</SelectItem>
+                {(bodies ?? []).map((body) => (
+                  <SelectItem key={body.id} value={body.id}>{statLabel(body.name)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="ghost" size="icon" aria-label="Remove Body" disabled={readOnly} onClick={() => apply({ body: undefined })}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : !readOnly && (
+          <Button size="sm" onClick={() => apply({ body: {} })}>Add Body</Button>
+        )}
+      </div>
+      )}
+
+      {showSliders && (
+      <div className="space-y-2" {...fieldFrame('morphPins')}>
+        <div className="flex items-center gap-2">
+          <Label>Sliders</Label>
+          <HelpButton topicId="worldEditor.traitSliders" className="h-6 w-6" />
+        </div>
+        <MultiSelect
+          key={trait.id}
+          options={sliders.groups}
+          defaultValue={morphPins.map((p) => p.name)}
+          onValueChange={pickMorphPins}
+          onOpenChange={(open) => { if (open) sliders.load(); }}
+          placeholder="Select sliders"
+          emptyIndicator={sliders.loading ? "Loading sliders…" : sliders.emptyText}
+          maxCount={6}
+          disabled={readOnly}
+        />
+        {morphPins.length > 0 && (
+          <div className="grid grid-cols-[minmax(0,1fr)_7rem] items-center gap-x-3 gap-y-2 pt-1">
+            <span />
+            <Label className="text-meta text-muted-foreground">Set To</Label>
+            {morphPins.map((pin) => (
+              <SliderNumberRow
+                key={pin.name}
+                name={pin.name}
+                value={pin.value}
+                field="Set To"
+                missing={sliders.keyOf(pin.name) === null}
+                disabled={readOnly}
+                note={<SliderOverlapNote others={pinOverlaps[pin.name]} placeholders={placeholders} onOpen={onOpenTrait} />}
+                onCommit={(value) => setPinValue(pin.name, value)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+      )}
+
+      {showColors && (
+      <div {...fieldFrame('colorPins')}>
+        <ColorRowsField
+          id={trait.id}
+          label={<Label>Colors</Label>}
+          rows={colorPins}
+          column="Set To"
+          lacksChannel={sliders.lacksChannel}
+          seedColor={sliders.seedColor}
+          note={(channel) => <SliderOverlapNote others={colorOverlaps[channel]} placeholders={placeholders} onOpen={onOpenTrait} />}
+          disabled={readOnly}
+          onOpen={() => setColorsOpened(true)}
+          onChange={(rows) => apply({ colorPins: rows.length ? rows : undefined })}
+        />
+      </div>
+      )}
+    </>
+  );
+
   const pinsPanel = (
     <div className="space-y-2">
       <LabelRow reset={resetControl('placeholderPins', 'Placeholder Pins')}>
@@ -640,7 +648,7 @@ const TraitManager = ({
   );
 
   const panels: Record<TraitPanelTab, ReactNode> = {
-    details: detailsPanel, availability: availabilityPanel, stats: statsPanel, pins: pinsPanel, scripts: scriptsPanel,
+    details: detailsPanel, availability: availabilityPanel, stats: statsPanel, appearance: appearancePanel, pins: pinsPanel, scripts: scriptsPanel,
   };
 
   return (

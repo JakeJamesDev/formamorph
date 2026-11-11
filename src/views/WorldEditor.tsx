@@ -340,17 +340,10 @@ const WorldEditorInner = ({
   const [locationTab, setLocationTab] = useState<LocationPanelTab>('details');
   const locationTabs = useMemo(() => locationPanelTabsFor(advanced), [advanced]);
   const shownLocationTab = locationTabs.some((t) => t.value === locationTab) ? locationTab : 'details';
-  // The stat panel's own tabs, held here for the same reason. Simple mode leaves it one tab, which the panel
-  // reads as no strip at all.
+  // The stat panel's own tabs, held here for the same reason. Simple mode leaves Details and Appearance.
   const [statTab, setStatTab] = useState<StatPanelTab>('details');
   const statTabs = useMemo(() => statPanelTabsFor(advanced), [advanced]);
   const shownStatTab = statTabs.some((t) => t.value === statTab) ? statTab : 'details';
-  // One tab means no strip, so the author is on Details for real rather than bounced off a tab they can see.
-  // Returning to Advanced opens there, which is where they were, not on the tab the strip last held. This is
-  // where the stat panel parts company with the entity and location ones, whose strips never go away.
-  useEffect(() => {
-    if (statTabs.length === 1) setStatTab('details');
-  }, [statTabs]);
   // The trait panel's own tabs, held here for the same reason. Pins is the only Advanced-only one, so Simple
   // mode keeps a strip of two.
   const [traitTab, setTraitTab] = useState<TraitPanelTab>('details');

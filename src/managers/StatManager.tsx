@@ -54,7 +54,7 @@ export interface StatEditorStore {
   updateStat: (stat: Stat) => void;
   /** The id of the entity that owns these stats: `owner` in their code. */
   ownerId: string;
-  /** The owner whose model the Body Sliders picker lists. Absent = the world's player models. */
+  /** The owner whose model the Sliders picker lists. Absent = the world's player models. */
   morphOwner?: MorphOwner;
   /** What the script boxes read with no world loaded, as in the library: the entity and its links' stats. */
   offWorld?: ScriptBoxWorld;
@@ -267,9 +267,10 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   // they only differ in the range fields and how the value is displayed.
   const isNumeric = statType === "number" || isPercentage;
 
-  // A stat with no numeric value has nothing for code to calculate, so it takes no Code tab rather than an
-  // empty one. The shared list stays whole: it is what the dev-router ledger is guarded against.
-  const tabs = statPanelTabsFor(advanced).filter((t) => t.value !== 'code' || isNumeric);
+  // A stat with no numeric value has nothing for code to calculate or sliders to move, so it takes no Scripts
+  // or Appearance tab rather than an empty one. The shared list stays whole: the dev-router ledger is
+  // guarded against it.
+  const tabs = statPanelTabsFor(advanced).filter((t) => isNumeric || (t.value !== 'code' && t.value !== 'appearance'));
 
   // `regen` stays per hour; the unit only sets the span the number reads in. Picking a unit keeps the number
   // shown, so typing 2 then picking Day means 2 per day.
@@ -414,49 +415,6 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
               </>
             )}
           </div>
-          <div className="space-y-2" {...fieldFrame('morphBindings')}>
-            {fieldLabel('morphBindings', 'Body Sliders')}
-            <Hint>Moves each slider as the stat rises, by its Change By at Max</Hint>
-            <MultiSelect
-              key={stat.id}
-              options={sliders.groups}
-              defaultValue={bindings.map((b) => b.name)}
-              onValueChange={pickSliders}
-              onOpenChange={(open) => { if (open) sliders.load(); }}
-              placeholder="Select body sliders"
-              emptyIndicator={sliders.loading ? "Loading sliders…" : sliders.emptyText}
-              maxCount={6}
-            />
-            {bindings.length > 0 && (
-              <div className="grid grid-cols-[minmax(0,1fr)_7rem] items-center gap-x-3 gap-y-2 pt-1">
-                <span />
-                <Label className="text-meta text-muted-foreground">Change By</Label>
-                {bindings.map((binding) => (
-                  <SliderNumberRow
-                    key={binding.name}
-                    name={binding.name}
-                    value={binding.by ?? 1}
-                    field="Change By"
-                    missing={sliders.keyOf(binding.name) === null}
-                    onCommit={(by) => setChangeBy(binding.name, by)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-          <div {...fieldFrame('colorBindings')}>
-            <ColorRowsField
-              id={stat.id}
-              label={fieldLabel('colorBindings', 'Colors')}
-              hint={<Hint>Shifts each color toward its target as the stat nears Max</Hint>}
-              rows={colorBindings}
-              column="Target Color"
-              lacksChannel={sliders.lacksChannel}
-              seedColor={sliders.seedColor}
-              onOpen={() => setColorsOpened(true)}
-              onChange={(rows) => handleChange("colorBindings", rows.length ? rows : undefined)}
-            />
-          </div>
         </div>
       )}
       {advanced && (
@@ -543,6 +501,55 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
     </>
   );
 
+  // Numeric stats only: the sliders and colors move with the stat's value.
+  const appearance = (
+    <div className="flex flex-col gap-4">
+      <div className="space-y-2" {...fieldFrame('morphBindings')}>
+        {fieldLabel('morphBindings', 'Sliders')}
+        <Hint>Moves each slider as the stat rises, by its Change By at Max</Hint>
+        <MultiSelect
+          key={stat.id}
+          options={sliders.groups}
+          defaultValue={bindings.map((b) => b.name)}
+          onValueChange={pickSliders}
+          onOpenChange={(open) => { if (open) sliders.load(); }}
+          placeholder="Select sliders"
+          emptyIndicator={sliders.loading ? "Loading sliders…" : sliders.emptyText}
+          maxCount={6}
+        />
+        {bindings.length > 0 && (
+          <div className="grid grid-cols-[minmax(0,1fr)_7rem] items-center gap-x-3 gap-y-2 pt-1">
+            <span />
+            <Label className="text-meta text-muted-foreground">Change By</Label>
+            {bindings.map((binding) => (
+              <SliderNumberRow
+                key={binding.name}
+                name={binding.name}
+                value={binding.by ?? 1}
+                field="Change By"
+                missing={sliders.keyOf(binding.name) === null}
+                onCommit={(by) => setChangeBy(binding.name, by)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+      <div {...fieldFrame('colorBindings')}>
+        <ColorRowsField
+          id={stat.id}
+          label={fieldLabel('colorBindings', 'Colors')}
+          hint={<Hint>Shifts each color toward its target as the stat nears Max</Hint>}
+          rows={colorBindings}
+          column="Target Color"
+          lacksChannel={sliders.lacksChannel}
+          seedColor={sliders.seedColor}
+          onOpen={() => setColorsOpened(true)}
+          onChange={(rows) => handleChange("colorBindings", rows.length ? rows : undefined)}
+        />
+      </div>
+    </div>
+  );
+
   /** The Resets for fields a tab holds without a label row of their own. */
   const tabResets = (fields: [keyof StatLinkFields, string][]) => {
     const shown = fields.filter(([field]) => link?.overridden.includes(field));
@@ -597,7 +604,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
     </div>
   );
 
-  const panels: Record<StatPanelTab, ReactNode> = { details, descriptors, code };
+  const panels: Record<StatPanelTab, ReactNode> = { details, appearance, descriptors, code };
   const header = link?.header;
 
 

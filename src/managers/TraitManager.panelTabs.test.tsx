@@ -9,7 +9,7 @@ import type { World } from '@/types';
  *
  * The panel splits its field groups across its own tabs, so a group that loses a field, gains a duplicate,
  * lands out of order, or lands on the wrong tab shows up here as a changed label list. Pins and Scripts are
- * Advanced only, so Simple mode shows the other three.
+ * Advanced only, so Simple mode shows the other four.
  */
 
 vi.mock('../services/WorldStorageService', () => ({
@@ -49,7 +49,7 @@ const WORLD: World = panelWorld({
 } as Partial<World>);
 
 const FIELD_LABELS =
-  /^(Name|Player-Facing Description|AI-Facing Description|Requires|Stat Changes|Stat Availability|Placeholder Pins)$/;
+  /^(Name|Player-Facing Description|AI-Facing Description|Requires|Stat Changes|Stat Availability|Body|Sliders|Colors|Placeholder Pins)$/;
 
 /** Every field label the panel shows, in document order. The panel's own strip carries a Stats tab and a
  *  Details tab, so the match is taken from the panel body rather than the whole editor. */
@@ -82,10 +82,10 @@ const selectTrait = (name: string) => {
 beforeEach(() => { localStorage.clear(); });
 
 describe('the World Editor trait panel tabs', () => {
-  it('offers five tabs in Advanced mode and opens on Details', () => {
+  it('offers six tabs in Advanced mode and opens on Details', () => {
     renderTraitsTab(WORLD, 'advanced');
     selectTrait('Sedge-Born');
-    expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats', 'Pins', 'Scripts']);
+    expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats', 'Appearance', 'Pins', 'Scripts']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
   });
 
@@ -113,6 +113,24 @@ describe('the World Editor trait panel tabs', () => {
     expect(screen.getByRole('button', { name: 'Add Stat Availability' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'About Stat Changes' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'About Stat Availability' })).toBeInTheDocument();
+  });
+
+  it('puts Body, Sliders and Colors on Appearance, in that order, and none of them on Stats', () => {
+    renderTraitsTab(WORLD, 'advanced');
+    selectTrait('Sedge-Born');
+    openPanelTab('Appearance');
+    expect(panelLabels()).toEqual(['Body', 'Sliders', 'Colors']);
+    expect(screen.getByRole('button', { name: 'About Sliders' })).toBeInTheDocument();
+    expect(screen.queryByText('Body Sliders')).toBeNull();
+    openPanelTab('Stats');
+    expect(panelLabels()).toEqual(['Stat Changes', 'Stat Availability']);
+  });
+
+  it('keeps Appearance in Simple mode', () => {
+    renderTraitsTab(WORLD, 'simple');
+    selectTrait('Sedge-Born');
+    openPanelTab('Appearance');
+    expect(panelLabels()).toEqual(['Body', 'Sliders', 'Colors']);
   });
 
   it('puts the pin section whole on Pins', () => {
@@ -146,10 +164,10 @@ describe('the World Editor trait panel tabs', () => {
     });
   });
 
-  it('leaves Simple mode three tabs, with Stat Availability gone from Stats', () => {
+  it('leaves Simple mode four tabs, with Stat Availability gone from Stats', () => {
     renderTraitsTab(WORLD, 'simple');
     selectTrait('Sedge-Born');
-    expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats']);
+    expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats', 'Appearance']);
     openPanelTab('Stats');
     expect(panelLabels()).toEqual(['Stat Changes']);
     expect(screen.getByRole('button', { name: 'Add Stat Change' })).toBeInTheDocument();

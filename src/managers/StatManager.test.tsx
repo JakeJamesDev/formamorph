@@ -160,7 +160,7 @@ describe('the coverage bar', () => {
 });
 
 describe('the tab strip', () => {
-  it('drops the Scripts tab for a stat with no numeric value, rather than offering an empty one', () => {
+  it('drops the Scripts and Appearance tabs for a stat with no numeric value, rather than offering an empty one', () => {
     // A type no editor writes any more. `migrateWorld` retypes it on the way in, so the editor never shows
     // one — but the panel takes whatever it is handed, and a tab whose body renders nothing is worse than
     // no tab. Rendered here rather than through the editor for exactly that reason.
@@ -170,10 +170,10 @@ describe('the tab strip', () => {
     expect(within(strip).getAllByRole('tab').map((el) => el.textContent)).toEqual(['Details', 'Descriptors']);
   });
 
-  it('offers all three tabs for a numeric stat', () => {
+  it('offers all four tabs for a numeric stat', () => {
     renderManager('details');
     const strip = screen.getByRole('tablist', { name: 'Stat Fields' });
-    expect(within(strip).getAllByRole('tab').map((el) => el.textContent)).toEqual(['Details', 'Descriptors', 'Scripts']);
+    expect(within(strip).getAllByRole('tab').map((el) => el.textContent)).toEqual(['Details', 'Appearance', 'Descriptors', 'Scripts']);
   });
 });
 

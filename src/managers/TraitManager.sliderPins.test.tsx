@@ -4,7 +4,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Entity, Trait, TraitGroup } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
-import TraitManager from './TraitManager';
+import TraitManager, { type TraitLinkEdit } from './TraitManager';
 
 const elf: Trait = { id: 'elf', name: 'Elf', statChanges: [] };
 
@@ -14,12 +14,13 @@ const world = vi.hoisted(() => ({
   traitGroups: [] as TraitGroup[],
   overview: {} as Record<string, unknown>,
   entities: [] as unknown[],
+  bodies: [] as unknown[] | undefined,
   rerender: () => {},
 }));
 vi.mock('@/contexts/GameDataContext', () => {
   const data = () => ({
     stats: [], statGroups: [], traits: world.traits, traitGroups: world.traitGroups, entities: world.entities, locations: [],
-    placeholders: [], worldOverview: world.overview, bodies: [],
+    placeholders: [], worldOverview: world.overview, bodies: world.bodies,
     updateTrait: (next: Trait) => {
       world.traits = world.traits.map((t) => (t.id === next.id ? next : t));
       world.rerender();
@@ -50,15 +51,15 @@ vi.mock('@/services/ModelStorageService', () => ({
   },
 }));
 
-const Harness = ({ id, owner }: { id: string; owner?: Entity }) => {
+const Harness = ({ id, owner, link }: { id: string; owner?: Entity; link?: TraitLinkEdit }) => {
   const [, setTick] = useState(0);
   world.rerender = () => setTick((n) => n + 1);
-  return <TraitManager trait={world.traits.find((t) => t.id === id)!} owner={owner} onOpenTrait={() => {}} tab="stats" onTabChange={() => {}} />;
+  return <TraitManager trait={world.traits.find((t) => t.id === id)!} owner={owner} link={link} onOpenTrait={() => {}} tab="appearance" onTabChange={() => {}} />;
 };
 
-const renderTrait = (id = 'elf', owner?: Entity) => render(
+const renderTrait = (id = 'elf', owner?: Entity, link?: TraitLinkEdit) => render(
   <EditorModeContext.Provider value={{ mode: 'advanced', advanced: true, setMode: () => {} }}>
-    <Harness id={id} owner={owner} />
+    <Harness id={id} owner={owner} link={link} />
   </EditorModeContext.Provider>,
 );
 
@@ -74,12 +75,13 @@ beforeEach(() => {
   world.traitGroups = [];
   world.overview = {};
   world.entities = [];
+  world.bodies = [];
 });
 
-describe("the trait's Body Sliders", () => {
+describe("the trait's Sliders", () => {
   it('adds a picked Head Features slider at Set To 1, and takes any number', async () => {
     renderTrait();
-    const field = screen.getByText('Body Sliders').parentElement!.parentElement!;
+    const field = screen.getByText('Sliders').parentElement!.parentElement!;
     await userEvent.click(within(field).getByRole('combobox'));
     await userEvent.click(await screen.findByRole('option', { name: 'Ear Shape, not selected' }));
     expect(pinsOf()).toEqual(earPin(1));
@@ -101,13 +103,13 @@ describe("the trait's Body Sliders", () => {
   });
 });
 
-describe("an owned trait's Body Sliders", () => {
+describe("an owned trait's Sliders", () => {
   it("lists the owner's Avatar groups when the entity has no 3D model", async () => {
     world.overview = { vrmStore: { aki: { name: 'Aki', file: { data: 'data:aki' } } } };
     const owner = { id: 'ash', name: 'Ash', locations: [], vrmPick: { kind: 'world', id: 'aki' } } as unknown as Entity;
     world.entities = [owner];
     renderTrait('elf', owner);
-    const field = screen.getByText('Body Sliders').parentElement!.parentElement!;
+    const field = screen.getByText('Sliders').parentElement!.parentElement!;
     await userEvent.click(within(field).getByRole('combobox'));
     expect(await screen.findByText('Aki · Body Sliders')).toBeInTheDocument();
     expect(screen.getByText('Aki · Head Features')).toBeInTheDocument();
@@ -183,5 +185,27 @@ describe("the trait's Colors", () => {
     renderTrait();
     expect(within(colorRow('Skin')).getByRole('paragraph')).toHaveTextContent('Also set by Tan.');
     expect(within(colorRow('Eye')).queryByText(/Also set by/)).toBeNull();
+  });
+});
+
+describe("the trait panel's Appearance tab", () => {
+  const readOnlyLink: TraitLinkEdit = { ownerId: 'ash', linkId: 'l1', overridden: [], stale: [], write: () => {}, reset: () => {} };
+  const ash: Entity = { id: 'ash', name: 'Ash' } as Entity;
+  const tabNames = () => within(screen.getByRole('tablist', { name: 'Trait Fields' })).getAllByRole('tab').map((el) => el.textContent);
+
+  it('is left out of a read-only trait with no Body, slider or color to show', () => {
+    world.bodies = undefined;
+    world.entities = [ash];
+    renderTrait('elf', undefined, readOnlyLink);
+    expect(tabNames()).not.toContain('Appearance');
+    expect(tabNames()[0]).toBe('Details');
+  });
+
+  it('stays for a read-only trait that sets a slider', () => {
+    world.bodies = undefined;
+    world.entities = [ash];
+    world.traits = [{ ...elf, morphPins: earPin(1) }];
+    renderTrait('elf', undefined, readOnlyLink);
+    expect(tabNames()).toContain('Appearance');
   });
 });

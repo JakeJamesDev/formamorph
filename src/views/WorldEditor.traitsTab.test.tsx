@@ -210,13 +210,13 @@ describe('the trait panel and the editor mode', () => {
       openPanelTab('Pins');
 
       pickEditorMode('Simple');
-      expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats']);
+      expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats', 'Appearance']);
       expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
       expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description']);
 
       // The switch wears the hidden-data marker, whose own label joins its accessible name.
       pickEditorMode('Advanced');
-      expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats', 'Pins', 'Scripts']);
+      expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats', 'Appearance', 'Pins', 'Scripts']);
     });
   });
 });
@@ -402,7 +402,7 @@ describe('owned traits and the Entities tab', () => {
       expect(screen.getByText(/^Owned by/)).toHaveTextContent('Owned by Ash');
       expect(screen.getByText("Describes this entity to the AI, and joins the player's traits when they play as it")).toBeInTheDocument();
       const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
-      expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins', 'Scripts']);
+      expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Appearance', 'Pins', 'Scripts']);
       // Tamed names no player stat, so the persona note stays away.
       fireEvent.mouseDown(within(strip).getByRole('tab', { name: 'Stats' }));
       expect(screen.queryByText(/stat changes apply/i)).toBeNull();

@@ -30,9 +30,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The formamorph.ai pages use a violet-to-rose accent and the same Formamorph wordmark as the game's title screen.** The home, privacy, sign-in and community pages share it in light and dark.
     - **The formamorph.ai home page plays an example turn on a real game screen, then tours six features.** An action types in, the story appears word by word, Faith and Renown change, and a map lands in the inventory. A tour below shows six features and sweeps through the color themes. Reduced motion holds everything still.
   - **Avatar Look Bindings:**
-    - **A stat can now bind to an Avatar's Head Features, such as Ear Shape.** The stat's slider list splits each model into Body Sliders and Head Features.
+    - **A stat can now bind to an Avatar's Head Features, such as Ear Shape.** The stat's Sliders list, on its new Appearance tab, splits each model into Body Sliders and Head Features.
     - **In the World Editor, a stat can now grow or shrink each Avatar slider by its own Change By amount.** Several stats can share one slider, and their changes add up. An amount of 1 keeps the look worlds have today.
-    - **In the World Editor, a trait can now set an Avatar slider while active, such as an Elf's Ear Shape.** Stats still add on top, and the player's own setting returns when the trait ends.
+    - **In the World Editor, a trait can now set an Avatar slider while active, such as an Elf's Ear Shape.** Stats still add on top, and the player's own setting returns when the trait ends. Body, Sliders and Colors sit on the trait's new Appearance tab.
     - **In the World Editor, stats can now shift an Avatar's skin, eye or hair color, and traits can set one.** A stat blends toward its target as it rises, from the player's own color. Face and body skin each shift from their own tone.
     - **Avatar Customization now locks the sliders and colors that a trait you checked sets.** A note names the trait. Your own values come back when you uncheck it.
   - **Openings Tab:**
@@ -99,7 +99,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The story no longer moves you to a nearby place when you stay where you are.** Before, a place whose name held a nearby place's name, such as "Academy Dorms" next to "Academy", could send you to that nearby place on a turn where you never moved.
     - **A turn that fails now puts your action and images back in the action box.** Before, an endpoint error emptied the box, so a failed first turn lost the opening text.
   - **World Editor:**
-    - **An entity's stat and trait Body Sliders list now shows the entity's Avatar sliders.** An entity with only an Avatar can bind its Body Sliders and Head Features.
+    - **The Sliders list on an entity's stat and trait now shows the entity's Avatar sliders.** An entity with only an Avatar can bind its Body Sliders and Head Features.
   - **Test Bench:**
     - **The Test Bench now reads an entity's schedule when it checks where entities are.** A companion that begins at Player's Starting Location is no longer reported as placed nowhere, and dead schedule places are reported and fixed.
   - **A world's written openings now always draw, even in a world that had them switched off.** The world file no longer stores an openings on/off setting.

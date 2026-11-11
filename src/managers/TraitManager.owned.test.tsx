@@ -66,7 +66,7 @@ describe('an owned trait\'s panel', () => {
     const statsTab = () => {
       fireEvent.click(treeRow('Tamed')!);
       const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
-      expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins', 'Scripts']);
+      expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Appearance', 'Pins', 'Scripts']);
       fireEvent.mouseDown(within(strip).getByRole('tab', { name: 'Stats' }));
     };
     const { unmount } = renderTraitsTab(withStats(false, 'vigor'), 'advanced');
@@ -151,7 +151,7 @@ describe('an owned trait\'s panel', () => {
     fireEvent.click(treeRow('Paladin')!);
     expect(screen.queryByText(/^Owned by/)).toBeNull();
     const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
-    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins', 'Scripts']);
+    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Appearance', 'Pins', 'Scripts']);
   });
 
   it('writes an edit to its entity, never to the world\'s traits', () => {

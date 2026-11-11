@@ -100,7 +100,7 @@ Keep these rules or the sliders can fail:
 - Don't parent other objects to `Body`.
 - Give every vertex a bone. A vertex with no bone follows the hips, so the part stays behind when the Avatar moves.
 
-To tie a slider to a stat, open a world stat in the World Editor and pick the key in **Body Sliders**. The list has two groups for each model, **Body Sliders** and **Head Features**. See [World Editor Stats](World-Editor-Stats).
+To tie a slider to a stat, open a world stat in the World Editor and pick the key in **Sliders** on the stat's **Appearance** tab. The list has two groups for each model, **Body Sliders** and **Head Features**. See [World Editor Stats](World-Editor-Stats).
 
 - Each picked key has a **Change By** number, 1 by default. At the stat's Min, the stat adds nothing to the key. At its Max, it adds the **Change By**.
 - A negative **Change By** makes the key smaller as the stat rises.
@@ -153,7 +153,7 @@ See [The Game Screen](How-to-Play#the-game-screen).
 
 A world author can tie body sliders to a stat. As the stat changes, the Avatar's shape changes. Your Avatar follows your stats. Each other entity's Avatar follows that entity's stats. The sliders you set in **Initial Body Features** are the start point for your Avatar.
 
-A trait can also set a slider while it is active, such as Ear Shape for an Elf. It replaces your own setting until the trait ends, and stats still add on top. See [Body Sliders](World-Editor-Traits#body-sliders).
+A trait can also set a slider while it is active, such as Ear Shape for an Elf. It replaces your own setting until the trait ends, and stats still add on top. See [Sliders](World-Editor-Traits#sliders).
 
 Stats and traits can change the skin, eye and hair colors too:
 

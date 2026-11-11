@@ -1,21 +1,22 @@
 /** The stat detail panel's own tabs, in order. Single source of truth: `StatManager`'s `PanelTabsList`
  *  renders from this, and the dev-router ledger (`DEV_MODAL_TABS.worldEditorStat`) is guarded against it in
  *  `devRouter.test.ts`. */
-import { Code, ListOrdered } from 'lucide-react';
+import { Code, ListOrdered, Palette } from 'lucide-react';
 
 import { ELEMENT_ICONS } from '@/lib/elementIcons';
 import { tabForField } from './findFocus';
 
 export const STAT_PANEL_TABS = [
   { value: 'details', label: 'Details', icon: ELEMENT_ICONS.stat },
+  { value: 'appearance', label: 'Appearance', icon: Palette },
   { value: 'descriptors', label: 'Descriptors', icon: ListOrdered, advancedOnly: true },
   { value: 'code', label: 'Scripts', icon: Code, advancedOnly: true },
 ] as const;
 
 export type StatPanelTab = (typeof STAT_PANEL_TABS)[number]['value'];
 
-/** The tabs one editor mode shows. Simple drops the `advancedOnly` ones, which leaves it a single tab and
- *  so no strip at all. */
+/** The tabs one editor mode shows. Simple drops the `advancedOnly` ones, which leaves it Details and
+ *  Appearance. */
 export function statPanelTabsFor(advanced: boolean) {
   return STAT_PANEL_TABS.filter((t) => advanced || !('advancedOnly' in t && t.advancedOnly));
 }
@@ -26,6 +27,8 @@ const TAB_BY_FIELD: Record<string, StatPanelTab> = {
   name: 'details',
   description: 'details',
   'descriptors[].description': 'descriptors',
+  morphBindings: 'appearance',
+  colorBindings: 'appearance',
 };
 
 /** The tab holding `fieldKey`, or `null` for a key no tab claims. */

@@ -215,12 +215,12 @@ export const DEV_MODAL_TABS = {
   // Simple mode leaves one tab and no strip.
   worldEditorOverview: ['details', 'prompts'],
   // The World Editor's stat panel does the same over the Stats tab
-  // (`#dev?modal=worldEditor&tab=stats&subtab=code`). `descriptors` and `code` are Advanced only, and
-  // Simple mode leaves one tab and no strip, so land those on an Advanced editor.
-  worldEditorStat: ['details', 'descriptors', 'code'],
+  // (`#dev?modal=worldEditor&tab=stats&subtab=code`). `descriptors` and `code` are Advanced only, so land
+  // those on an Advanced editor.
+  worldEditorStat: ['details', 'appearance', 'descriptors', 'code'],
   // The World Editor's trait panel does the same over the Traits tab
   // (`#dev?modal=worldEditor&tab=traits&subtab=stats`). `pins` is Advanced only.
-  worldEditorTrait: ['details', 'availability', 'stats', 'pins', 'scripts'],
+  worldEditorTrait: ['details', 'availability', 'stats', 'appearance', 'pins', 'scripts'],
   // The World Editor's dictionary entry panel does the same over the Dictionary tab
   // (`#dev?modal=worldEditor&tab=dictionary&subtab=matching`). It lands on the entry panel, so pair it with
   // a book that has an entry to select. `matching` is Advanced only, and Simple mode leaves one tab and no

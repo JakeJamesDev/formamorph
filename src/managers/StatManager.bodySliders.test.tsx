@@ -73,13 +73,13 @@ const entityStore = (model?: Partial<MediaAsset>): StatEditorStore => ({
 
 const renderManager = (store?: StatEditorStore, stat: Stat = wounds) => render(
   <EditorModeContext.Provider value={{ mode: 'advanced', advanced: true, setMode: () => {} }}>
-    <StatManager stat={stat} tab="details" onTabChange={() => {}} store={store} />
+    <StatManager stat={stat} tab="appearance" onTabChange={() => {}} store={store} />
   </EditorModeContext.Provider>,
 );
 
 /** Opens the Body Sliders picker and returns the slider names it offers, with the group heading each sits under. */
 const offeredByGroup = async () => {
-  const field = screen.getByText('Body Sliders').parentElement!;
+  const field = screen.getByText('Sliders').parentElement!;
   await userEvent.click(within(field).getByRole('combobox'));
   const list = await screen.findByRole('listbox', { name: 'Available options' });
   // Let the lazy load settle before reading the list.
@@ -127,7 +127,7 @@ describe('the Body Sliders picker', () => {
     await offered();
     view.rerender(
       <EditorModeContext.Provider value={{ mode: 'advanced', advanced: true, setMode: () => {} }}>
-        <StatManager stat={wounds} tab="details" onTabChange={() => {}} store={{ ...entityStore(model), morphOwner: { name: 'Stone Golem', model } }} />
+        <StatManager stat={wounds} tab="appearance" onTabChange={() => {}} store={{ ...entityStore(model), morphOwner: { name: 'Stone Golem', model } }} />
       </EditorModeContext.Provider>,
     );
     expect(await screen.findByText('Stone Golem · Body Sliders')).toBeInTheDocument();
@@ -248,7 +248,7 @@ describe('the Change By rows', () => {
       written.push(stat);
       mounted.view?.rerender(
         <EditorModeContext.Provider value={{ mode: 'advanced', advanced: true, setMode: () => {} }}>
-          <StatManager stat={stat} tab="details" onTabChange={() => {}} />
+          <StatManager stat={stat} tab="appearance" onTabChange={() => {}} />
         </EditorModeContext.Provider>,
       );
     };
@@ -258,7 +258,7 @@ describe('the Change By rows', () => {
 
   it('adds a row at 1 for a picked slider and drops it when the slider goes', async () => {
     const written = editing(wounds);
-    await userEvent.click(within(screen.getByText('Body Sliders').parentElement!).getByRole('combobox'));
+    await userEvent.click(within(screen.getByText('Sliders').parentElement!).getByRole('combobox'));
     await userEvent.click(await screen.findByRole('option', { name: /^Fat, not selected$/ }));
     expect(written.at(-1)?.morphBindings).toEqual([{ name: 'Fat' }]);
     expect(screen.getByRole('spinbutton', { name: 'Change By for Fat' })).toHaveValue(1);
@@ -335,7 +335,7 @@ describe('the Colors rows', () => {
       written.push(stat);
       mounted.view?.rerender(
         <EditorModeContext.Provider value={{ mode: 'advanced', advanced: true, setMode: () => {} }}>
-          <StatManager stat={stat} tab="details" onTabChange={() => {}} />
+          <StatManager stat={stat} tab="appearance" onTabChange={() => {}} />
         </EditorModeContext.Provider>,
       );
     };

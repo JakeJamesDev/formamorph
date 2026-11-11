@@ -27,27 +27,32 @@ describe('statTabForField', () => {
     expect(statTabForField('')).toBeNull();
   });
 
+  it('sends the slider and color fields to Appearance', () => {
+    expect(statTabForField('morphBindings')).toBe('appearance');
+    expect(statTabForField('colorBindings')).toBe('appearance');
+  });
+
   it('only ever names a tab the panel actually has', () => {
     const values = new Set<string>(STAT_PANEL_TABS.map((t) => t.value));
-    for (const key of ['name', 'description', 'descriptors[0].description']) {
+    for (const key of ['name', 'description', 'descriptors[0].description', 'morphBindings', 'colorBindings']) {
       expect(values.has(statTabForField(key) as string)).toBe(true);
     }
   });
 });
 
 describe('statPanelTabsFor', () => {
-  it('shows all three tabs in Advanced mode', () => {
-    expect(statPanelTabsFor(true).map((t) => t.value)).toEqual(['details', 'descriptors', 'code']);
+  it('shows all four tabs in Advanced mode', () => {
+    expect(statPanelTabsFor(true).map((t) => t.value)).toEqual(['details', 'appearance', 'descriptors', 'code']);
   });
 
-  it('leaves Simple mode one tab, which is what drops the strip', () => {
-    expect(statPanelTabsFor(false).map((t) => t.value)).toEqual(['details']);
+  it('leaves Simple mode Details and Appearance', () => {
+    expect(statPanelTabsFor(false).map((t) => t.value)).toEqual(['details', 'appearance']);
   });
 
   it('sends every Simple-mode field to a tab Simple mode still shows', () => {
     // Descriptors are Advanced-only and so are their search targets; Simple's own fields must all land.
     const simple = new Set<string>(statPanelTabsFor(false).map((t) => t.value));
-    for (const key of ['name', 'description']) {
+    for (const key of ['name', 'description', 'morphBindings', 'colorBindings']) {
       expect(simple.has(statTabForField(key) as string)).toBe(true);
     }
   });

@@ -20,7 +20,7 @@ const ownerEmptyText = (
 const FALLBACK_COLOR = "#ffffff";
 
 /**
- * The shared slider picker behind a stat's and a trait's Body Sliders and Colors: the owner's model's sliders,
+ * The shared slider picker behind a stat's and a trait's Sliders and Colors: the owner's model's sliders,
  * or for a world row every model's, loaded when the picker opens. `keyOf` maps a name to the key of the model
  * the rows play on, null where it lacks one; it passes names through until that model loads, and loads only
  * while `active`. `lacksChannel` is true only once that model loaded without the channel.
