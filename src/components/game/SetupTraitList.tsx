@@ -13,6 +13,8 @@ import { gateLineParts } from '@/lib/traitGateLine';
 import { GateLineText } from '@/components/game/GateLineText';
 import { isAlwaysOn, isDormant, isShown } from '@/lib/traitEffects';
 import { statRowSide } from '@/lib/traitTree';
+import { traitAvatarChanges } from '@/lib/avatarChanges';
+import { AvatarChangeIcon } from './AvatarChangeIcon';
 import type { Stat, StatChange, Trait, TraitGroup } from '@/types';
 
 /** What the last selection change turned off, by name, and the pick that caused it. */
@@ -46,7 +48,7 @@ export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCasca
  */
 export function SetupTraitList({
   name, groups, traits, picks, stats, selectedTraits, resolveText, resolveTraitText, onTraitSelect,
-  ownerId = null, ownStats, gates, cascade, onDismissCascade, heading,
+  ownerId = null, ownStats, gates, cascade, onDismissCascade, heading, avatarInUse = false,
 }: {
   name: string;
   /** Replaces the eyebrow and the name heading. */
@@ -72,6 +74,8 @@ export function SetupTraitList({
   gates?: GateStates;
   cascade?: TraitCascade | null;
   onDismissCascade?: () => void;
+  /** Whether the list owner's Avatar is in use, which shows the Avatar icon on traits that change it. */
+  avatarInUse?: boolean;
 }) {
   // The stat a change moves: a global trait's moves a global stat, and an entity's as its row routes.
   const statOf = useMemo(() => {
@@ -140,6 +144,7 @@ export function SetupTraitList({
           <strong className="flex items-center gap-2 text-label font-semibold">
             {trait.name}
             {locked && <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />}
+            <AvatarChangeIcon names={traitAvatarChanges(trait)} inUse={avatarInUse} />
           </strong>
           {description && <span className="mt-1 block text-helper text-muted-foreground">{description}</span>}
           {line && (

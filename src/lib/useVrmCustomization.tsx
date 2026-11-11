@@ -14,6 +14,7 @@ import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
 import { lockedLook, type AvatarLock } from '@/lib/customizationLock';
 import { COLOR_CHANNELS } from '@/lib/avatarLook';
+import { cleanLabel } from '@/lib/morphLabel';
 
 /**
  * Owns the avatar-customization surface — the sliders and color pickers that read a model's detected
@@ -21,10 +22,6 @@ import { COLOR_CHANNELS } from '@/lib/avatarLook';
  * details modal can offer the same controls to test an exported model. Model selection, the enter-world
  * buttons, and the mobile drawer stay with each screen; only the customization itself lives here.
  */
-
-// Friendly label for a model material/mesh name (e.g. "N00_001_Tops_01_CLOTH" → "N00 001 Tops 01 CLOTH").
-const cleanLabel = (s: string) =>
-  s.replace(/\([^)]*\)/g, '').replace(/[._]+/g, ' ').trim().replace(/^\w/, (c) => c.toUpperCase());
 
 // Undo for one control: enabled only when the control is off its base and no trait holds it.
 const UndoButton = ({ label, onUndo, disabled }: { label: string; onUndo: () => void; disabled: boolean }) => (

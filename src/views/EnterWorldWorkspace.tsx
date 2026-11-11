@@ -71,6 +71,8 @@ export interface EnterWorldWorkspaceProps {
   onCategoryChange: (index: number) => void;
   onTraitSelect: (traitId: string, ownerId: OwnerId) => void;
   traitGates?: GateStates;
+  /** Whether an owner's Avatar will be in use, which shows the Avatar icon on the traits that change it. */
+  avatarInUse?: (ownerId: OwnerId) => boolean;
   /** What the last selection change turned off; shown until dismissed or the next change. */
   traitCascade?: TraitCascade | null;
   onDismissTraitCascade?: () => void;
@@ -357,6 +359,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               ownerId={current.entityId ?? null}
               ownStats={current.entityId ? ownStatsOf(current.entityId) : undefined}
               gates={props.traitGates}
+              avatarInUse={props.avatarInUse?.(current.entityId ?? null) ?? false}
               cascade={props.traitCascade}
               onDismissCascade={props.onDismissTraitCascade}
             />

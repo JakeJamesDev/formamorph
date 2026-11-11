@@ -4,7 +4,7 @@
  * or replaying turns. Loaded via dynamic `import()` so each fixture is a separate chunk fetched only when
  * `loadDevFixture` runs (DEV-gated), never in the production bundle. See `devRouter.ts` / [[formamorph-dev-router]].
  */
-import type { Body, Currency, Entity, EntityStatValues, GameLocation, Item, Placement, ScheduleRow, Slot, World, SaveObject } from '@/types';
+import type { Body, Currency, Entity, EntityStatValues, GameLocation, Item, Placement, ScheduleRow, Slot, Trait, World, SaveObject } from '@/types';
 import { withDerivedLocations } from './entityKind';
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 import { DEFAULT_WORLDS, seedWorldData, type DefaultWorldSeed } from './defaultWorlds';
@@ -14,7 +14,7 @@ const BUNDLED_PREFIX = 'bundled-';
 
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
 export const DEV_FIXTURES = [
-  'whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars',
+  'whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'avatarIcon',
   'entityPresence', 'entityFollowers', 'mapBackground', 'items',
   ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
 ];
@@ -367,6 +367,33 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
           currentState: { ...saved.currentState, visibleEntities: scene, entityStats: morphValues(100) },
         },
         saveName: 'DEV: Entity Avatars',
+      };
+    }
+    case 'avatarIcon': {
+      // The white room played as Wren with an Avatar, holding three traits: slider and color pins, a color pin, and none.
+      // The Resolve stat binds a slider and a color.
+      const [world, save] = await Promise.all([
+        import('./devFixtures/whiteRoomWorld.json'),
+        import('./devFixtures/whiteRoomSave.json'),
+      ]);
+      const base = world.default as unknown as World;
+      const saved = save.default as unknown as SaveObject;
+      const trait = (id: string, name: string, extra: Partial<Trait>): Trait => ({ id, name, statChanges: [], playerToggle: true, ...extra });
+      const traits = [
+        trait('dev-elf', 'Elf', { morphPins: [{ name: 'Ear Shape', value: 1 }, { name: 'Belly', value: 0.3 }], colorPins: [{ channel: 'skin', color: '#d9c7a0' }] }),
+        trait('dev-pale', 'Pale', { colorPins: [{ channel: 'hair', color: '#eeeeee' }] }),
+        trait('dev-plain', 'Plain', {}),
+      ];
+      return {
+        world: {
+          ...base,
+          worldOverview: { ...base.worldOverview, vrmStore: DEV_VRM_STORE },
+          entities: [...base.entities, AVATAR_PERSONA],
+          traits,
+          stats: base.stats.map((s) => (s.name === 'Resolve' ? { ...s, morphBindings: [{ name: 'Belly', by: 1 }], colorBindings: [{ channel: 'eye', color: '#ff0000' }] } : s)),
+        },
+        save: { ...saved, persona: { source: 'world', entityId: AVATAR_PERSONA.id } },
+        saveName: 'DEV: Avatar Icon',
       };
     }
     case 'entityPresence': {

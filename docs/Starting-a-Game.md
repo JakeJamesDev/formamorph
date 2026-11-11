@@ -131,6 +131,7 @@ An entity whose traits you set gets a category with its portrait and name. Your 
 | A lock and *Locked* | The trait needs only traits you can't see |
 | *Unlocked by …* | The picks that opened it |
 | A stat line, such as *Strength: +2* | What the trait does to a stat |
+| An Avatar icon | The trait changes your Avatar's sliders or colors. Hover it to see which ones. It shows only when you will play with an Avatar. |
 
 A world can have **Hidden** traits. They work like **Automatic** traits, and they never show in the list.
 

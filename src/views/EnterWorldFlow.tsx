@@ -170,6 +170,14 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
       .map((e) => bindLibraryEntity(e, rawTraitWorld)),
     [castKey, libraryCastData, rawTraitWorld],
   );
+  // The played side's traits wear the draft persona's Avatar; a cast entity's wear its own pick.
+  const ownerAvatarInUse = (ownerId: string | null): boolean => {
+    if (ownerId === null) return showsDraftVrm;
+    const played = draftPersona.source !== 'none' && draftPersona.entityId === ownerId;
+    const custom = draftPersona.source === 'none' && customPersonaEntity(worldEntities)?.id === ownerId;
+    if (played || custom) return showsDraftVrm;
+    return !![...worldEntities, ...libraryCast].find((e) => e.id === ownerId)?.vrmPick;
+  };
   // The pins the *draft* selection would impose: the traits ticked so far, the starting location picked, and
   // the bands the starting stats fall in once those traits have applied — so these screens resolve the way
   // the game will open, and a pinned name changes the moment its source is picked. Pins mask the roll
@@ -599,6 +607,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
           onCategoryChange={(index) => updateDraft('traitSection', index)}
           onTraitSelect={handleTraitSelection}
           traitGates={traitGates}
+          avatarInUse={ownerAvatarInUse}
           traitCascade={traitCascade}
           onDismissTraitCascade={() => setTraitCascade(null)}
           onLocationChange={(id) => reviseDraft((draft) => withLocationPick(draft, id))}

@@ -7,6 +7,8 @@ import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Tip } from '@/components/ui/tooltip';
+import { statAvatarChanges } from '@/lib/avatarChanges';
+import { AvatarChangeIcon } from './AvatarChangeIcon';
 
 /** How long a value has to settle before its band is announced, so scrubbing through five bands is one
  *  announcement rather than five. */
@@ -140,6 +142,8 @@ export interface StatRowProps {
    *  keeps every row the same height as its values move. */
   reserveDescriptorLine: boolean;
   onCommitValue: (value: number) => void;
+  /** The owner's Avatar is in use, which shows the Avatar icon when the stat changes it. */
+  avatarInUse?: boolean;
 }
 
 /**
@@ -154,7 +158,7 @@ export interface StatRowProps {
  */
 export const StatRow = ({
   stat, change, barDelta, draining, page, isViewingPast, snap, fading, editable, locked = false,
-  reserveDescriptorLine, onCommitValue,
+  reserveDescriptorLine, onCommitValue, avatarInUse = false,
 }: StatRowProps) => {
   const reduce = usePrefersReducedMotion();
   const chipStill = useSnapped(`${page}-${change}`, snap);
@@ -195,7 +199,10 @@ export const StatRow = ({
   return (
     <div className="mb-2">
       <div className="flex justify-between items-center">
-        <span>{stat.name}</span>
+        <span className="inline-flex items-center gap-1.5">
+          {stat.name}
+          <AvatarChangeIcon names={statAvatarChanges(stat)} inUse={avatarInUse} />
+        </span>
         <div className="flex items-center gap-2">
           {shownChange && (
             <span

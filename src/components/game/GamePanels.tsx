@@ -1440,6 +1440,7 @@ export const RightPanel = ({
   // The one tree from the owner resolver: the player's rows at the top, then a node per present owner with
   // its owned traits and links expanded. A trait under two owners is two rows, told apart by their node.
   const gameData = useGameDataOptional();
+  const avatars = usePlayAvatars();
   const ownerWorld = React.useMemo(
     () => ({ traits, traitGroups, entities: traitEntities }),
     [traits, traitGroups, traitEntities],
@@ -1607,6 +1608,7 @@ export const RightPanel = ({
           editable={isEditMode && !isViewingPast}
           locked={statsLocked}
           reserveDescriptorLine={owner.rows.some((row) => (row.descriptors?.length ?? 0) > 0)}
+          avatarInUse={!!avatars.sourceOf(owner.entity)}
           onCommitValue={(value) => listStatEdit(
             { kind: 'stat', stat: { id: stat.id, name: stat.name }, owner: { id: owner.entity.id, name: owner.entity.name }, from: stat.value, to: value },
             () => commitManualEntityStatEdit(owner.entity.id, stat.id, value),
@@ -1688,6 +1690,7 @@ export const RightPanel = ({
                           editable={isEditMode && !isViewingPast}
                           locked={statsLocked}
                           reserveDescriptorLine={anyDescriptors}
+                          avatarInUse={!!avatars.played}
                           onCommitValue={(value) => listStatEdit(
                             { kind: 'stat', stat: { id: stat.id, name: stat.name }, from: stat.value, to: value },
                             () => {
@@ -1765,6 +1768,11 @@ export const RightPanel = ({
               view={traitsView}
               setView={setTraitsView}
               gates={traitGates}
+              avatarInUse={(ownerId) => {
+                if (ownerId === null) return !!avatars.played;
+                const entity = traitTree.entityNodes.get(ownerId);
+                return !!entity && !!avatars.sourceOf(entity);
+              }}
               cascade={traitCascade}
               onDismissCascade={onDismissTraitCascade}
             />

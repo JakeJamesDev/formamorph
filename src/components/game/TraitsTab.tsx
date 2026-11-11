@@ -23,6 +23,8 @@ import { gateLineParts } from '@/lib/traitGateLine';
 import { GateLineText } from '@/components/game/GateLineText';
 import { isAlwaysOn, isHidden } from '@/lib/traitEffects';
 import { statRowSide } from '@/lib/traitTree';
+import { traitAvatarChanges } from '@/lib/avatarChanges';
+import { AvatarChangeIcon } from './AvatarChangeIcon';
 import { TraitCascadeNotice, type TraitCascade } from './SetupTraitList';
 import { YouMark } from './YouMark';
 import { PanelOwnerCard, PanelSubheader } from './PanelOwnerCard';
@@ -62,6 +64,8 @@ export interface TraitsTabProps {
   gates?: GateStates;
   cascade?: TraitCascade | null;
   onDismissCascade?: () => void;
+  /** Whether the owner's Avatar is in use. Absent shows no Avatar icon on any trait. */
+  avatarInUse?: (ownerId: OwnerId) => boolean;
 }
 
 /** The same set with `key` added if it was absent, removed if it was there. */
@@ -83,7 +87,7 @@ const seedOpen = (sections: TraitSection[], isOff: (id: string, ownerId: OwnerId
 
 export const TraitsTab = ({
   traits, groups, entityNodes, playerEntityIds = NO_IDS, stats, ownerStats, isOff, readOnly, onToggleTrait, resolveTraitText, hiddenOwners, emptyOwner, view, setView,
-  gates, cascade, onDismissCascade,
+  gates, cascade, onDismissCascade, avatarInUse,
 }: TraitsTabProps) => {
   const entityNodeIds = React.useMemo(() => new Set(entityNodes?.keys() ?? []), [entityNodes]);
   const isPlayer = (entityId: string | null | undefined) => !!entityId && playerEntityIds.includes(entityId);
@@ -186,6 +190,7 @@ export const TraitsTab = ({
       <span className="inline-flex items-center gap-1.5 font-medium">
         {trait.name}
         {locked && <Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />}
+        <AvatarChangeIcon names={traitAvatarChanges(trait)} inUse={avatarInUse?.(ownerId) ?? false} />
       </span>
     );
     return (
