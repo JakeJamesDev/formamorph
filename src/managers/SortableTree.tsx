@@ -19,6 +19,7 @@ import { EditorDndContext, StableSortableContext } from '@/components/dnd/Editor
 import { restrictYToScrollAncestor } from '@/components/dnd/dragInvariants';
 import { PlaceholderVocabularyProvider } from '@/components/prompt/PlaceholderText';
 import { VirtualRowList, VIRTUALIZE_AT } from '@/components/VirtualRowList';
+import { OPEN_TREE, type TreeCollapse, type TreeCollapseState } from '@/components/treeCollapse';
 import type { Placeholder } from '@/types';
 
 // Pointer-precise collisions, but never empty: at the very bottom the pointer sits past the last row, so
@@ -214,15 +215,21 @@ function sameNode(a: object, b: object, depth = 1): boolean {
 /** What selecting this row reports — see `selectionId` on the adapter. */
 const selectionOf = <N extends { id: string; depth: number }>(adapter: SortableTreeAdapter<N>, node: N) => adapter.selectionId?.(node) ?? node.id;
 
-export function SortableTree<N extends { id: string; depth: number }>({ adapter, selectedId, onSelect, revealSelected = false }: {
+export function SortableTree<N extends { id: string; depth: number }>({ adapter, selectedId, onSelect, revealSelected = false, collapse }: {
   adapter: SortableTreeAdapter<N>;
   selectedId: string | null;
   onSelect: (id: string) => void;
   /** Expand the groups above a newly selected row, so a row selected from outside the tree shows. */
   revealSelected?: boolean;
+  /** The host's collapse state, which outlives the tree. Without it the tree keeps its own. */
+  collapse?: TreeCollapse;
 }) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  // Handlers and rows read the latest adapter, collapsed set and callback through refs, so they stay stable.
+  const [ownState, setOwnState] = useState<TreeCollapseState>(OPEN_TREE);
+  const state = collapse?.value ?? ownState;
+  const collapsed = state.collapsed;
+  // Handlers and rows read the latest adapter, collapse state and callbacks through refs, so they stay stable.
+  const updateRef = useRef(collapse?.update ?? setOwnState);
+  updateRef.current = collapse?.update ?? setOwnState;
   const adapterRef = useRef(adapter);
   adapterRef.current = adapter;
   const collapsedRef = useRef(collapsed);
@@ -230,20 +237,23 @@ export function SortableTree<N extends { id: string; depth: number }>({ adapter,
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
   const selectStable = useCallback((id: string) => onSelectRef.current(id), []);
-  // The last selection revealed. A selection whose row isn't drawn yet waits for the render that draws it.
-  const revealed = useRef<string | null>(null);
+  // `revealed` is the last selection revealed, so a tree that mounts again over it keeps its groups closed.
+  // A selection whose row isn't drawn yet waits for the render that draws it.
   useEffect(() => {
-    if (!revealSelected || !selectedId || revealed.current === selectedId) return;
+    if (!revealSelected || !selectedId || state.revealed === selectedId) return;
     const rows = adapter.getVisible(new Set());
     const at = rows.findIndex((n) => selectionOf(adapter, n) === selectedId);
     if (at < 0) return;
-    revealed.current = selectedId;
     const above = new Set<string>();
     for (let i = at - 1, depth = rows[at].depth; i >= 0 && depth > 0; i--) {
       if (rows[i].depth < depth) { above.add(rows[i].id); depth = rows[i].depth; }
     }
-    setCollapsed((prev) => ([...above].some((id) => prev.has(id)) ? new Set([...prev].filter((id) => !above.has(id))) : prev));
-  }, [revealSelected, selectedId, adapter]);
+    updateRef.current((prev) => {
+      const hidden = [...above].some((id) => prev.collapsed.has(id));
+      if (!hidden && prev.revealed === selectedId) return prev;
+      return { collapsed: hidden ? new Set([...prev.collapsed].filter((id) => !above.has(id))) : prev.collapsed, revealed: selectedId };
+    });
+  }, [revealSelected, selectedId, adapter, state.revealed]);
   const [activeId, setActiveId] = useState<string | null>(null);
   // The pointer position lives in refs: a drag frame redraws the tree only when the projected depth changes.
   const activeRef = useRef<string | null>(null);
@@ -311,10 +321,10 @@ export function SortableTree<N extends { id: string; depth: number }>({ adapter,
     reset();
   }, [reset]);
 
-  const toggleCollapse = useCallback((id: string) => setCollapsed((prev) => {
-    const next = new Set(prev);
+  const toggleCollapse = useCallback((id: string) => updateRef.current((prev) => {
+    const next = new Set(prev.collapsed);
     if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
+    return { ...prev, collapsed: next };
   }), []);
 
   const rowKey = useCallback((i: number) => visible[i].id, [visible]);

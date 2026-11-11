@@ -10,9 +10,15 @@ import { chipInput } from './chipInput';
 import { TREE_INDENT } from '@/components/EditorRow';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
+import type { TreeCollapse } from '@/components/treeCollapse';
 
 /** The Locations tab's sub-location tree: a flat sortable list where horizontal drag sets nesting depth. */
-const LocationTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
+const LocationTree = ({ selectedId, onSelect, collapse }: {
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  /** The host's collapsed groups, which outlive the tree. */
+  collapse?: TreeCollapse;
+}) => {
   const { locations, setLocations, removeLocation, placeholders } = useGameData();
 
   // Ids that are a parent of at least one location — drives the chevron (from the full list, so a
@@ -53,7 +59,7 @@ const LocationTree = ({ selectedId, onSelect }: { selectedId: string | null; onS
     return <EmptyListHint noun="locations" />;
   }
 
-  return <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />;
+  return <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} collapse={collapse} revealSelected />;
 };
 
 export default LocationTree;

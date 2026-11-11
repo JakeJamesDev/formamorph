@@ -11,6 +11,8 @@ import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
 import type { TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { Hint } from '@/components/ui/typography';
+import { TreeCollapseAllButton } from '@/components/CollapseAllButton';
+import type { ListCollapse } from '@/components/treeCollapse';
 
 /** One row of the flat search list. `name` is the label its row shows, and what the search matches. */
 export type ListEditorRow = {
@@ -55,6 +57,8 @@ export type ListEditorAdapter = {
   onDropStale?: () => void;
   /** `tree` fills the slot and owns its clicks: no scroll, no click-to-deselect, and no search list in its place. */
   ownsSlot?: boolean;
+  /** The tree's Collapse All button, right of the search. */
+  collapse?: ListCollapse;
 };
 
 /** The List Editor's pieces, for a host that lays them out itself. */
@@ -141,10 +145,20 @@ export function useListEditor(
     </>
   ) : list);
 
+  const { collapse } = adapter;
+  const collapseAll = collapse && <TreeCollapseAllButton collapse={collapse} shown={!matches && !adapter.isEmpty} />;
+
   return {
     search,
     toolbar: (className, extras) => (
-      <ListSearchToolbar className={className} search={search} placeholder={adapter.placeholder} add={adapter.add} after={extras?.after} target={extras?.target}>
+      <ListSearchToolbar
+        className={className}
+        search={search}
+        placeholder={adapter.placeholder}
+        add={adapter.add}
+        after={collapseAll ? <>{collapseAll}{extras?.after}</> : extras?.after}
+        target={extras?.target}
+      >
         {extras?.children}
       </ListSearchToolbar>
     ),

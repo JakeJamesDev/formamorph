@@ -83,7 +83,7 @@ describe('the Locations tab', () => {
   });
 
   describe('the view switch', () => {
-    /** The toolbar's controls in DOM order: the +, the search box, then each view button by its name. */
+    /** The toolbar's controls in DOM order: the +, the search box, Collapse All, then each view button by its name. */
     const toolbarOrder = () => {
       const box = screen.getByPlaceholderText('Filter Locations');
       const row = screen.getByRole('button', { name: 'Add to Locations' }).parentElement!;
@@ -93,7 +93,7 @@ describe('the Locations tab', () => {
     const viewButtons = () => ['List', 'Canvas'].map((name) => screen.getByRole('radio', { name }));
 
     const expectIconSwitch = () => {
-      expect(toolbarOrder().slice(0, 4)).toEqual(['Add to Locations', 'search', 'List', 'Canvas']);
+      expect(toolbarOrder().slice(0, 5)).toEqual(['Add to Locations', 'search', 'Collapse all locations', 'List', 'Canvas']);
       for (const b of viewButtons()) {
         expect(b.textContent).toBe('');
         expect(b.querySelector('svg')).not.toBeNull();

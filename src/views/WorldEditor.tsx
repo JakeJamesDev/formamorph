@@ -41,6 +41,7 @@ import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useListSearch } from '@/components/listToolbarHooks';
 import { useListEditor, type ListEditorParts } from '@/components/listEditorHooks';
+import { useTreeCollapseStore } from '@/components/treeCollapse';
 import { useWorldTraitsAdapter } from '../managers/useWorldTraitsAdapter';
 import { useWorldPlaceholdersAdapter } from '../managers/useWorldPlaceholdersAdapter';
 import { Button } from "@/components/ui/button";
@@ -441,11 +442,19 @@ const WorldEditorInner = ({
   }, [devSubtab]);
   const search = useListSearch();
   const { clear: clearSearch } = search;
+  // Each tab's collapsed tree groups, kept for the visit.
+  const treeCollapse = useTreeCollapseStore();
+  const { requestReveal } = treeCollapse;
   // Each tab keeps its own selection, so leaving a tab and coming back reopens what it showed.
   const [selections, setSelections] = useState<Partial<Record<string, string | null>>>({});
   const select = useCallback((tab: string, id: string | null) => {
     setSelections((held) => (held[tab] === id ? held : { ...held, [tab]: id }));
   }, []);
+  // A selection made from outside the list opens the closed groups above it, even when it is already selected.
+  const selectFromOutside = useCallback((tab: string, id: string) => {
+    select(tab, id);
+    requestReveal(tab);
+  }, [select, requestReveal]);
   // And over the Items tab, where `equipment` and `currencies` open their pinned entries.
   useEffect(() => {
     if (import.meta.env.DEV && devRoute?.tab === 'items' && (devSubtab === EQUIPMENT_ID || devSubtab === CURRENCIES_ID)) select('items', devSubtab);
@@ -554,7 +563,8 @@ const WorldEditorInner = ({
     setActiveTab(match.target.tab);
     // Same reason as a Bench finding's Open: the list filter would hide the row the hit lives on.
     clearSearch();
-    select(match.target.tab, match.target.itemId);
+    if (match.target.itemId) selectFromOutside(match.target.tab, match.target.itemId);
+    else select(match.target.tab, match.target.itemId);
     // A panel that hides some of its fields behind its own tabs (the Readme pair) needs telling which one
     // was asked for; text alone can't reach a field that isn't rendered.
     setFindField({ fieldKey: match.target.fieldKey, itemId: match.target.itemId });
@@ -582,7 +592,7 @@ const WorldEditorInner = ({
       // stays wherever it was, with the selected row off screen.
       revealSelectedRow(editorRootRef.current);
     });
-  }, [deferReveal, clearSearch, select]);
+  }, [deferReveal, clearSearch, select, selectFromOutside]);
   useEffect(() => () => {
     if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
     cancelEditorReveals();
@@ -611,10 +621,10 @@ const WorldEditorInner = ({
   const navigateToBenchItem = useCallback((section: RevealTab, itemId: string, entityTab?: EntityPanelTab) => {
     setActiveTab(section);
     clearSearch();
-    select(section, itemId);
+    selectFromOutside(section, itemId);
     if (entityTab) setEntityTab(entityTab);
     deferReveal(() => revealSelectedRow(editorRootRef.current));
-  }, [deferReveal, clearSearch, select]);
+  }, [deferReveal, clearSearch, selectFromOutside]);
   // A code card's Open. An entity's own stat or trait opens on the entity's tab with its row selected.
   const openCodeCardItem = useCallback((item: CodeCardItem) => {
     switch (item.kind) {
@@ -899,7 +909,7 @@ const WorldEditorInner = ({
       clearSearch();
     }
     const itemId = step.item ? readTourRecord(worldId)?.items[step.item] : undefined;
-    if (step.tab && itemId) select(step.tab, itemId);
+    if (step.tab && itemId) selectFromOutside(step.tab, itemId);
     // Mobile's pushed detail covers the list's +, so a step that points at it goes back to the list.
     else if (step.tab && isMobile && step.anchor === 'list-add') select(step.tab, null);
     if (step.tab === 'locations' && step.item) {
@@ -914,7 +924,7 @@ const WorldEditorInner = ({
     }
     if (step.tab === 'dictionary' && step.item) setEntryTab('details');
     deferReveal(() => focusTourField(step.anchor));
-  }, [deferReveal, worldId, clearSearch, select, isMobile]);
+  }, [deferReveal, worldId, clearSearch, select, selectFromOutside, isMobile]);
   const tourApi = useMemo(
     () => ({
       updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity,
@@ -1075,6 +1085,7 @@ const WorldEditorInner = ({
     selectedId: selections.locations ?? null,
     onSelect: selectLocation,
     search,
+    collapse: treeCollapse.stateFor('locations'),
     view: locationView,
     tab: shownLocationTab,
     onTabChange: setLocationTab,

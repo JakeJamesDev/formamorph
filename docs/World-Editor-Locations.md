@@ -118,6 +118,8 @@ The **Locations** tab has two views. Switch between them with the **List** and *
 | **List** | Edit a location's fields. Drag a location under another to nest it. |
 | **Canvas** | See how the world connects. Drag to nest, draw Connections, set their direction, distance and Travel Hint, and arrange the layout. It marks a location that no starting location can reach. |
 
+> 💡 In the List view, **Collapse all locations**, right of the filter box, closes every group of sub-locations. Select it again to open them all. Groups stay closed when you switch tabs, until you close the World Editor. The button is unavailable while you filter, in the Canvas view, and when no location has sub-locations.
+
 **Edit Full Screen** opens the canvas at full size, with undo and redo, search and a minimap. Right-click a box and select **Edit Location** to open its panel.
 
 In full screen, the toolbar and the right-click menus also align, distribute and snap boxes, and set the Connection style. An entity card there sets one entity's **Locations** or **Known In** by selecting boxes.
