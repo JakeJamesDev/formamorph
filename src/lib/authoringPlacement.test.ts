@@ -58,9 +58,9 @@ describe('an authoring run reads the cast as the opening places it (Q210)', () =
   });
 
   it('gives the sample Tool snapshot the authoring state', () => {
-    // The sample cast has no kind, so nobody is placed; the opening state alone leaves these absent.
+    // Each of the sample cast stands at its one Start.
     const state = sampleToolSnapshot().script.state;
-    expect(state?.positions).toEqual({});
+    expect(state?.positions).toEqual({ wren: 'landing', gull: 'landing', bell: 'boathouse', harrow: 'sample-town', ossery: 'causeway' });
     expect(state?.followers).toEqual([]);
   });
 

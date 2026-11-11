@@ -641,7 +641,7 @@ Three calls on an entity's entry set its location. They work on a **Unique** ent
 
 How the calls apply:
 
-- **The writes apply when the turn ends**, after the player's move, the followers and the AI's entity answers. So a script's write wins over the AI's answer. Prompts and scripts in the same turn read the entities as they stood before the write.
+- **The writes apply when the turn ends**, after the player's move, the followers and the AI's entity answers. So a script's write wins over the AI's answer. Which scripts read a write before then depends on the timing. See [Where Each Timing Reads Entities](#where-each-timing-reads-entities).
 - **Calls apply in call order**, across every script of the turn. The last call on an entity wins.
 - **Three targets stop the script with an error:** a location your world does not have, the persona (which moves with the player), and an unknown entity name.
 - **A When a Trait Switches script that runs outside a turn applies none of them.**
@@ -669,8 +669,17 @@ Each timing reads `location`, `following`, `waiting`, `action`, `held` and `pres
 | ⏸️ Between turns | Where they stand now |
 
 - **A move the narration describes is known only when the narration ends.** Until then, scripts read the entities as the turn began.
-- **After the AI scripts don't see the turn's end.** Once they and the turn's item scripts run, the game places every entity for the end of the turn, and the scripts' entity writes apply. An entity whose schedule moves it then still reads its earlier location. A re-roll reads the new one.
-- **Two turns are the exception.** On the opening turn, and on a turn whose move the AI suggests and the player hasn't taken, After the AI scripts already read every entity placed for the end of the turn.
+- **After the AI scripts read the end of the turn.** Each entity stands where its schedule puts it when the turn ends, and `action` and `held` read that same time.
+- **A turn that begins with no current location is the exception.** After the AI scripts then read the entities, with their `action` and `held`, as the turn began.
+- **After the AI scripts' own writes come later.** Their entity writes, and a `clock.advance` they call, apply once the turn's item scripts run. A re-roll reads the result.
+
+Which scripts read an entity write before the turn ends:
+
+| The write comes from | Who reads it this turn |
+| --- | --- |
+| 🌅 **At Game Start** | After the AI scripts read it. Before the AI scripts don't. |
+| 🌅 **Before the AI** | The next Before the AI scripts and the After the AI scripts read it. The script that wrote it, During AI Output and a Tool's script don't. |
+| ✅ **After the AI** | The next After the AI scripts read it. |
 
 **Test Code** lists every authored entity except persona-only ones. No trait is chosen, and each stat is at its starting value. A switch or a stat write that it makes is reported and never applied.
 
@@ -975,7 +984,7 @@ A bound that a stat writes applies at the written number, after that script's tr
 - **A failed script still adds nothing.** Later scripts read none of its writes.
 - **A script can write to the diary of an entity that an earlier script discovered.** The diary has no value to read, so only the write applies.
 
-The timings run in order against each other. Everything a Before the AI script wrote is in place when an After the AI script reads. On the opening turn, an At Game Start script's writes are in place when Before the AI reads.
+The timings run in order against each other. Everything a Before the AI script wrote is in place when an After the AI script reads. On the opening turn, an At Game Start script's writes are in place when Before the AI reads, except its entity writes. See [Where Each Timing Reads Entities](#where-each-timing-reads-entities).
 
 ### The Story Clock
 <!-- keywords: calendar, date, day night cycle, duration, time passed, timer, how long slept, always one hour, in game time -->

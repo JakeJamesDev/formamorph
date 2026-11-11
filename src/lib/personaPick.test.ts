@@ -8,6 +8,7 @@ import {
 } from './personaPick';
 import { PLAYER_START, type Entity, type GameLocation, type PersonaRef } from '@/types';
 import { withDerivedLocations } from './entityKind';
+import { migrateEntityRoutine } from './version';
 
 const lib = (entityId: string): PersonaRef => ({ source: 'library', entityId });
 const world = (entityId: string): PersonaRef => ({ source: 'world', entityId });
@@ -228,10 +229,21 @@ describe('a played entity with a kind offers its Starts only', () => {
     expect(ids(offeredStartLocations(world('stale'), context(e)))).toEqual(['dock', 'cellar', 'gate']);
   });
 
-  it("keeps the Custom Persona's and a kindless entity's own locations", () => {
+  it("keeps a kindless entity's own locations", () => {
     const kindless = entity('old', ['inn', 'cellar']);
     expect(ids(offeredStartLocations(world('old'), context(kindless)))).toEqual(['inn', 'dock', 'cellar', 'gate']);
     expect(personaStartLocation(kindless, places)).toBe('inn');
+  });
+
+  it('keeps the Custom Persona on the starting locations, the place picked before it staying', () => {
+    // A loaded world's Custom Persona: migration gives it no kind, and its own locations name a place no Start would.
+    const custom = migrateEntityRoutine({ ...entity('newcomer', ['inn', 'cellar']), customPersona: true });
+    expect(custom.kind).toBeUndefined();
+    const withCustom = context(custom, played('patrol', [start('s1', 'inn', 'cellar')]));
+    expect(ids(offeredStartLocations(NONE, withCustom))).toEqual(['dock', 'gate']);
+    expect(locationForPersonaPick({ ref: NONE, current: 'gate', locationChosen: false, ...withCustom })).toEqual({ locationId: 'gate', locationChosen: false });
+    // A place only a world persona offered drops to Random once the Custom Persona is picked.
+    expect(locationForPersonaPick({ ref: NONE, current: 'inn', locationChosen: true, ...withCustom })).toEqual({ locationId: null, locationChosen: false });
   });
 });
 

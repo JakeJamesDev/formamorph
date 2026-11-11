@@ -1,6 +1,6 @@
 # 35: Close Review Gaps In Script Reads
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -28,10 +28,35 @@ Spec rulings: Q231, Q232, Q220, Q225, Q226.
 
 ## Acceptance criteria
 
-- [ ] A mounted-game test shows what an At Game Start script reads for a companion and a scheduled entity.
-- [ ] A mounted-game test shows what an After the AI script reads for an entity that a Before the AI script moved in the same turn. The landing states the observed value.
-- [ ] The Scripts Reference states, per timing, whether an earlier script's entity write is visible, and no sentence contradicts the test.
-- [ ] In an After the AI script, an entity whose row changes during the turn reads the `action` that fits its `location`. The test fails with the old minute.
-- [ ] On the opening turn, `action` and `location` still read the same moment.
-- [ ] The four thin tests above assert what their criteria say, and each fails when its rule is broken.
-- [ ] Morphie's page for an entity with a kind has no Locations field, and states Can Also Go when the field is absent.
+- [x] A mounted-game test shows what an At Game Start script reads for a companion and a scheduled entity. (`GameViewer.scriptReadMoments` "reads the opening placement": Pip at Village, following, present there; Cora at Hut, present there only.)
+- [x] A mounted-game test shows what an After the AI script reads for an entity that a Before the AI script moved in the same turn. The landing states the observed value. (Observed: `location` "Well", `held` true, in `locations.Well.present`; see Landed.)
+- [x] The Scripts Reference states, per timing, whether an earlier script's entity write is visible, and no sentence contradicts the test. (New table under Where Each Timing Reads Entities; each row run in "reads the entity writes of every earlier script" and "…an At Game Start script moved".)
+- [x] In an After the AI script, an entity whose row changes during the turn reads the `action` that fits its `location`. The test fails with the old minute. (Q234: the no-location test fails with the end minute; the located and opening tests fail with the start minute.)
+- [x] On the opening turn, `action` and `location` still read the same moment. ("…on the opening turn, across a row change": Well and wander at 11:00.)
+- [x] The four thin tests above assert what their criteria say, and each fails when its rule is broken. (Each reinstated: sample cast without kind, exit wrap off, Custom Persona read as a world persona, both page rules reverted.)
+- [x] Morphie's page for an entity with a kind has no Locations field, and states Can Also Go when the field is absent. (`worldIndex.test` two new cases.)
+
+## Landed
+
+Probe on a mounted game (Q234's evidence): a turn from 09:00 to 12:00 with the player at Village. A Before script moved Dan to the Well. Cora's 10:00 row sends her from the Hut to the Well.
+
+| Script | Reads |
+|---|---|
+| Before the AI | 09:00; Cora at Hut, `action` stay |
+| After the AI | 12:00; Cora at Well, `action` wander; Dan at Well, `held` true, in `present` |
+
+Per timing, for a Before the AI `move()` (all observed): the same script reads the old place; the next Before script reads the move; During AI Output and a Tool call read the old place; After reads the move. An After script's move reaches the next After script. On the opening turn, Before does not read an At Game Start move; After does.
+
+Corrected stale claims of ticket 29 (not edited there): the After batch reads the end-of-turn placement in every turn that begins at a location, not only the opening turn and an untaken suggested move. The Reference said the opposite; it now follows the code.
+
+Code changes beyond the tests:
+- `GameViewer.tsx`: a turn that begins with no location reads `action`/`held` at the turn's start minute (Q234). A turn that begins with none and ends at a place with a pull is keyed the same (review finding); no test covers that pull case.
+- `statCodeExecutor.ts`: a write to any field of an exit (`name`, `hint`, `distance`, `oneWay`) is now reported read-only. It was dropped silently, so ticket 30's criterion never held for exits; its old test passed only because the place had no exits.
+- `sampleScene.ts`: the sample cast has a kind and one Start at its old place (spec ruling). No sample chip text or pinned test output changed; the Tool tester with no world open now places the cast, so `present` lists them.
+- `worldIndex.ts`: the two Morphie page rules.
+- Help vectors: 12 stale before (3 Scripts Reference sections from this ticket, 9 Avatars, Stats and Traits sections already stale on main), 0 after.
+
+Not verified: nothing left unticked.
+
+For you:
+- No changelog fragment: each change refines an unreleased Routines entry. Say if you want a line.

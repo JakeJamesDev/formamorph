@@ -3078,8 +3078,8 @@ const GameViewer = ({
     };
     const passBook = ownerPositions();
     const inventoryOwners = commit.inventoryOps.length ? inventoryOwnersAt(turn.location, discovered, passBook) : [];
-    // The After batch and the turn's item scripts read the cast as the Inventory pass does (Q218, Q227).
-    scriptBookRef.current = { book: passBook ?? moveApplied, now: endWorld(commit.turnHours).scene.now };
+    // The After batch and item scripts read the Inventory pass's cast at the minute it was placed for (Q218, Q227, Q234).
+    scriptBookRef.current = { book: passBook ?? moveApplied, now: endWorld(moveFrom ? commit.turnHours : 0).scene.now };
     const commitTotals = startActionTotals();
     const { kept: inventoryKept, landed: inventory } = landInventoryPass(
       commit.inventoryOps, turn.location, inventoryOwners, outputWritten,

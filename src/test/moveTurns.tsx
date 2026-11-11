@@ -1,7 +1,9 @@
-/** Shared pieces of the mounted-game move tests: a scripted endpoint, the storage reset, and the play-one-turn step. */
+/** Shared pieces of the mounted-game move tests: a scripted endpoint, a Tool call, the storage reset, and the
+ *  play-one-turn step. */
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { expect, vi } from 'vitest';
-import { sseReply, sseResponse } from '@/test/aiTextFixtures';
+import { sseFrame, sseReply, sseResponse } from '@/test/aiTextFixtures';
+import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import type { useGameplay } from '@/contexts/GameplayContext';
 import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
 
@@ -73,6 +75,33 @@ export function stubMoveEndpoint(narration: string, replies: MoveReplies, narrat
     return sseResponse(sseReply(narration));
   }));
   return { sent, after, entityBodies, entityRequests };
+}
+
+/** The narration request calls the Tool `name` once, then the endpoint stubbed before answers as usual. */
+export function callingTool(name: string) {
+  const answer = vi.mocked(fetch);
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    const body = init?.body ? JSON.parse(init.body as string) as { messages: { role: string }[]; tools?: unknown[] } : null;
+    if (body?.tools?.length && !body.messages.some((m) => m.role === 'tool')) {
+      return sseResponse([
+        sseFrame({ tool_calls: [{ index: 0, id: 'call-0', type: 'function', function: { name, arguments: '{}' } }] }),
+        sseFrame({}, 'tool_calls'),
+        'data: [DONE]\n\n',
+      ]);
+    }
+    return answer(url, init);
+  }));
+}
+
+/** Lets the narration's model `m` call Tools. */
+export function offerToolsToNarration() {
+  localStorage.setItem('FORMAMORPH_modelName', 'm');
+  localStorage.setItem('FORMAMORPH_toolsEnabled', 'true');
+  localStorage.setItem('FORMAMORPH_reasoningSupport', JSON.stringify({
+    'http://127.0.0.1:5190/v1/chat/completions|m': {
+      ...UNKNOWN_REASONING_CAPABILITY, reasons: false, levels: [], tools: true, sources: { reasons: 'native', levels: 'native', tools: 'native' },
+    },
+  }));
 }
 
 /** Clears saves and settings, and points the game at the scripted endpoint in Auto mode. */

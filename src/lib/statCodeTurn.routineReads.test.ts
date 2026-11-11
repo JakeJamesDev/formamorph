@@ -120,11 +120,9 @@ describe('the four reads are read-only', () => {
   it('drops a write to each, reports it, and reads on as before', async () => {
     expect(await readsIn([
       '(() => { entities.Tess.kind = "generic"; entities.Tess.action = "stay"; entities.Tess.held = true; entities.Pik.knownIn = "nowhere";',
-      '  entities.Pik.knownInPlaces = []; try { entities.Pik.knownInPlaces.push("Keep"); } catch {} ;',
-      '  location.exits.forEach((exit) => { exit.distance = "far"; exit.oneWay = true; }); return true; })()',
+      '  entities.Pik.knownInPlaces = []; try { entities.Pik.knownInPlaces.push("Keep"); } catch {} ; return true; })()',
       '&& entities.Tess.kind === "unique" && entities.Tess.action === "wander" && !entities.Tess.held',
       '&& entities.Pik.knownIn === "picked" && entities.Pik.knownInPlaces.length === 2',
-      '&& location.exits.every((exit) => exit.distance === "nearby" && !exit.oneWay)',
     ].join('\n'))).toBe(true);
     const reported = vi.mocked(console.warn).mock.calls.map(([line]) => String(line)).join('\n');
     for (const path of ['entities.Tess.kind', 'entities.Tess.action', 'entities.Tess.held', 'entities.Pik.knownIn', 'entities.Pik.knownInPlaces']) {

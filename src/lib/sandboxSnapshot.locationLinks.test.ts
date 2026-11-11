@@ -94,6 +94,18 @@ describe('location parent, children and exits', () => {
     expect(result.readOnlyWrites).toContain('location.parent');
   });
 
+  it('drops a write to an exit’s distance and oneWay and reports each path', async () => {
+    const far = connections.map((c) => (c.id === 'c-inn' ? { ...c, distance: 'far' as const } : c));
+    const result = await snapshotOf(playState({ places: { locations, location: { id: 'mill', name: 'Old Mill' }, connections: far } })).run({
+      home: { kind: 'tool' }, timing: 'after', args: {},
+      code: 'location.exits[3].distance = "nearby"; location.exits[3].oneWay = false; locations["Old Mill"].exits[0].oneWay = true;'
+        + ' return [location.exits[3], locations["Old Mill"].exits[0].oneWay];',
+    });
+    expect(result.error).toBeNull();
+    expect(JSON.parse(result.reply ?? 'null')).toEqual([{ name: 'Inn', hint: 'a trapdoor', distance: 'far', oneWay: true }, false]);
+    expect(result.readOnlyWrites).toEqual(['location.exits[3].distance', 'location.exits[3].oneWay', 'locations["Old Mill"].exits[0].oneWay']);
+  });
+
   it('reads the same fields in Test Code’s world and in a read-only user Tool run', async () => {
     const opening = openingStateOf({ locations, connections, entities: [hero] });
     expect(await read(opening, 'return [location.name, location.parent, location.exits.map((e) => e.hint)];'))

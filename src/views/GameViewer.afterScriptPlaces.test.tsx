@@ -2,10 +2,11 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { migrateEntityRoutine } from '@/lib/version';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
-import { playTurn as playOneTurn, resetMoveTurnStorage, stubMoveEndpoint } from '@/test/moveTurns';
-import { sseFrame, sseReply, sseResponse } from '@/test/aiTextFixtures';
+import {
+  callingTool, offerToolsToNarration, playTurn as playOneTurn, resetMoveTurnStorage, stubMoveEndpoint,
+} from '@/test/moveTurns';
+import { sseReply, sseResponse } from '@/test/aiTextFixtures';
 import { scriptWorldTool } from '@/test/worldToolFixtures';
-import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { useGameplay } from '@/contexts/GameplayContext';
 import type { Entity, GameLocation, PlayerStat, World } from '@/types';
 
@@ -69,22 +70,6 @@ beforeEach(resetMoveTurnStorage);
 const playTurn = (action: string) => playOneTurn(() => play, action);
 const value = (id: string) => play.globalStats.find((s) => s.id === id)?.value;
 const recorded = () => Object.fromEntries(Object.keys(READS).map((id) => [id, value(id)])) as Record<Read, number>;
-
-/** The narration request calls `name` once, then writes its reply. */
-function callingTool(name: string) {
-  const answer = vi.mocked(fetch);
-  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-    const body = init?.body ? JSON.parse(init.body as string) as { messages: { role: string }[]; tools?: unknown[] } : null;
-    if (body?.tools?.length && !body.messages.some((m) => m.role === 'tool')) {
-      return sseResponse([
-        sseFrame({ tool_calls: [{ index: 0, id: 'call-0', type: 'function', function: { name, arguments: '{}' } }] }),
-        sseFrame({}, 'tool_calls'),
-        'data: [DONE]\n\n',
-      ]);
-    }
-    return answer(url, init);
-  }));
-}
 
 /** The Inventory pass answers `reply` once, then nothing. */
 function inventoryAnswering(reply: object[]) {
@@ -197,14 +182,7 @@ describe('an After the AI script', () => {
         offeredTo: ['narration'],
       }],
     } as unknown as World;
-    // The narration's model calls Tools.
-    localStorage.setItem('FORMAMORPH_modelName', 'm');
-    localStorage.setItem('FORMAMORPH_toolsEnabled', 'true');
-    localStorage.setItem('FORMAMORPH_reasoningSupport', JSON.stringify({
-      'http://127.0.0.1:5190/v1/chat/completions|m': {
-        ...UNKNOWN_REASONING_CAPABILITY, reasons: false, levels: [], tools: true, sources: { reasons: 'native', levels: 'native', tools: 'native' },
-      },
-    }));
+    offerToolsToNarration();
     await walkToTheWell(calledWorld, { router: 'Well', callTool: 'look' });
 
     expect(play.currentLocation?.id).toBe('well');

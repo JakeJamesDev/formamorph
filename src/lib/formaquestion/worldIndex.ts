@@ -6,7 +6,7 @@ import { BUILTIN_PLACEHOLDERS, builtinLabel } from '@/lib/builtinPlaceholders';
 import { worthText } from '@/lib/currency';
 import { createDocsIndex, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
 import { PANEL_TRAVEL_LABELS, travelLabelText } from '@/components/editor/connectionTravel';
-import { isGeneric, isUnique } from '@/lib/entityKind';
+import { isGeneric, isUnique, traversableOf } from '@/lib/entityKind';
 import { WHEN_EMPTY_LABEL, stateWord, whenEmptyOf } from '@/lib/items';
 import { presenceLines, timeText } from '@/lib/locationPresenceReasons';
 import { allPlaceholders } from '@/lib/placeholderHomes';
@@ -165,9 +165,11 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
     return `**Starts:**\n${items.join('\n')}`;
   };
   const canAlsoGo = (entity: Entity): string | undefined => {
-    if (!isUnique(entity) || entity.traversable === undefined) return undefined;
-    if (entity.traversable === 'anywhere') return field('Can Also Go', 'Anywhere');
-    return field('Can Also Go', entity.traversable.length ? `Only ${entity.traversable.map(placeName).join(', ')}` : 'Only Listed Locations, none added');
+    if (!isUnique(entity)) return undefined;
+    // An absent field reads as an empty list, in the Routine tab and the engine alike.
+    const traversable = traversableOf(entity);
+    if (traversable === 'anywhere') return field('Can Also Go', 'Anywhere');
+    return field('Can Also Go', traversable.length ? `Only ${traversable.map(placeName).join(', ')}` : 'Only Listed Locations, none added');
   };
   const connectionLine = (connection: Connection, here: string): string => {
     const hereIsA = connection.a === here;
@@ -186,7 +188,8 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
       field('Player Description', text(entity.playerDescription)),
       field('AI Description', text(entity.aiDescription)),
       field('AI Summary', text(entity.aiSummary)),
-      entity.locations?.length ? field('Locations', entity.locations.map(locationName).join(', ')) : undefined,
+      // An entity with a kind derives its locations from its Starts, which the page states.
+      !entity.kind && entity.locations?.length ? field('Locations', entity.locations.map(locationName).join(', ')) : undefined,
       Array.isArray(entity.knownIn) ? field('Known In', entity.knownIn.map(locationName).join(', ')) : entity.knownIn === 'nowhere' && '**Known In:** nowhere',
       startsBlock(entity),
       canAlsoGo(entity),
