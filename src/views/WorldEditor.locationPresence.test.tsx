@@ -48,6 +48,9 @@ const WORLD: World = benchEditorWorld({
       ],
     },
     { id: 'queen', name: 'Queen', kind: 'unique', locations: ['yard'], traversable: 'anywhere', starts: [{ id: 'q1', place: 'yard', weight: 1, schedule: [] }] },
+    // At the tavern only through Can Also Go.
+    { id: 'courier', name: 'Courier', kind: 'unique', locations: ['yard'], traversable: ['tavern'], starts: [{ id: 'k1', place: 'yard', weight: 1, schedule: [] }] },
+    { id: 'me', name: 'Me', customPersona: true, locations: ['tavern'], starts: [{ id: 'm1', place: 'tavern', weight: 1, schedule: [] }] },
   ],
 } as Partial<World>);
 
@@ -138,5 +141,137 @@ describe('the Presence tab: Connections', () => {
     openPresence('Tavern');
     expect(screen.queryByRole('combobox', { name: 'Connect To' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('connection-row')).not.toBeInTheDocument();
+  });
+});
+
+const list = () => within(screen.getByTestId('entities-here'));
+const row = (name: string) => list().getByRole('button', { name: new RegExp(`^${name}, `) });
+const selectedRows = () => list().queryAllByRole('button', { current: true }).map((b) => b.getAttribute('aria-label')!.split(',')[0]);
+const editor = () => screen.queryByTestId('presence-editor');
+/** Opens another location from the tree, as a click on its row does. */
+const openLocation = (name: string) => {
+  fireEvent.click(screen.getAllByText(name).map((el) => el.closest<HTMLElement>('[class*="cursor-pointer"]')).find(Boolean)!);
+};
+const openLocationTab = (name: string) =>
+  fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Location Fields' })).getByRole('tab', { name }));
+
+describe('the Presence tab: the list and its editor', () => {
+  it('has a row for a Unique entity that begins here, a Generic entity with a Start here and one here through Can Also Go, and none for the Custom Persona', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openPresence('Tavern');
+    expect(list().getAllByTestId('presence-row').map((r) => r.textContent)).toEqual([
+      'CrowdBegins here',
+      'FarrierBegins here (25%), wanders here (All day)',
+      'CourierCan be led here',
+    ]);
+    expect(list().queryByText('Me')).toBeNull();
+  });
+
+  it('opens with no row selected and a hint in place of the editor', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openPresence('Tavern');
+    expect(selectedRows()).toEqual([]);
+    expect(editor()).toBeNull();
+    expect(list().getByText('Select an entity to edit its Routine and Known In')).toBeTruthy();
+  });
+
+  it('shows the selected entity’s Routine editor under the list, and the switch changes it to Known In', async () => {
+    const user = userEvent.setup();
+    renderWorldEditorBench(WORLD, 'advanced');
+    openPresence('Tavern');
+    await user.click(row('Farrier'));
+    expect(selectedRows()).toEqual(['Farrier']);
+    const region = within(editor()!);
+    expect(region.getByText('Farrier')).toBeTruthy();
+    expect(region.getByRole('group', { name: 'Starts' })).toBeTruthy();
+    expect(region.queryByRole('combobox', { name: 'Known In' })).toBeNull();
+
+    await user.click(region.getByRole('radio', { name: 'Known In' }));
+    expect(region.getByRole('combobox', { name: 'Known In' })).toBeTruthy();
+    expect(region.queryByRole('group', { name: 'Starts' })).toBeNull();
+  });
+
+  it('writes a Routine edit made in the editor to the entity', async () => {
+    const user = userEvent.setup();
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openPresence('Tavern');
+    await user.click(row('Farrier'));
+    await user.click(within(editor()!).getAllByRole('button', { name: 'Delete Start' })[0]);
+    expect(ctx().entities.find((e) => e.id === 'farrier')!.starts!.length).toBe(1);
+  });
+
+  it('replaces the selection with a second row, and clears it from the selected row or the close button', async () => {
+    const user = userEvent.setup();
+    renderWorldEditorBench(WORLD, 'advanced');
+    openPresence('Tavern');
+    await user.click(row('Crowd'));
+    await user.click(row('Farrier'));
+    expect(selectedRows()).toEqual(['Farrier']);
+    expect(within(editor()!).getByText('Farrier')).toBeTruthy();
+
+    await user.click(row('Farrier'));
+    expect(selectedRows()).toEqual([]);
+    expect(editor()).toBeNull();
+
+    await user.click(row('Courier'));
+    await user.click(within(editor()!).getByRole('button', { name: 'Close Entity' }));
+    expect(selectedRows()).toEqual([]);
+    expect(editor()).toBeNull();
+  });
+
+  it('moves through the rows with the arrow keys, and Enter or Space selects', async () => {
+    const user = userEvent.setup();
+    renderWorldEditorBench(WORLD, 'advanced');
+    openPresence('Tavern');
+    row('Crowd').focus();
+    await user.keyboard('{ArrowDown}');
+    expect(document.activeElement).toBe(row('Farrier'));
+    await user.keyboard('{Enter}');
+    expect(selectedRows()).toEqual(['Farrier']);
+    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowUp}{ArrowUp}{ArrowUp}');
+    expect(document.activeElement).toBe(row('Crowd'));
+    await user.keyboard(' ');
+    expect(selectedRows()).toEqual(['Crowd']);
+    // One stop in the tab order: the selected row.
+    expect(list().getAllByTestId('presence-row').map((r) => r.querySelector('button')!.tabIndex)).toEqual([0, -1, -1]);
+  });
+
+  it('keeps the entity selected at another location where it has a row, and clears it where it has none', async () => {
+    const user = userEvent.setup();
+    renderWorldEditorBench(WORLD, 'advanced');
+    openPresence('Tavern');
+    await user.click(row('Farrier'));
+    await step(() => openLocation('Yard'));
+    expect(selectedRows()).toEqual(['Farrier']);
+
+    await step(() => openLocation('Tavern'));
+    await user.click(row('Crowd'));
+    await step(() => openLocation('Yard'));
+    expect(selectedRows()).toEqual([]);
+    // Cleared, not only hidden: back where it has a row, it is not selected.
+    await step(() => openLocation('Tavern'));
+    expect(selectedRows()).toEqual([]);
+  });
+
+  it('clears the selection on a change to another tab', async () => {
+    const user = userEvent.setup();
+    renderWorldEditorBench(WORLD, 'advanced');
+    openPresence('Tavern');
+    await user.click(row('Farrier'));
+    await step(() => openLocationTab('Connections'));
+    await step(() => openLocationTab('Presence'));
+    expect(selectedRows()).toEqual([]);
+    expect(editor()).toBeNull();
+  });
+
+  it('clears the selection when the Locations section leaves the screen', async () => {
+    const user = userEvent.setup();
+    renderWorldEditorBench(WORLD, 'advanced');
+    openPresence('Tavern');
+    await user.click(row('Farrier'));
+    await step(() => fireEvent.click(screen.getByRole('button', { name: 'Open Farrier’s Routine' })));
+    await step(() => openEditorTab(/Locations/));
+    expect(within(screen.getByRole('tablist', { name: 'Location Fields' })).getByRole('tab', { selected: true }).textContent).toMatch(/Presence/);
+    expect(selectedRows()).toEqual([]);
   });
 });

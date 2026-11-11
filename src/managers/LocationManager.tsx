@@ -19,6 +19,7 @@ import { isGeneric } from '@/lib/entityKind';
 import { Hint } from '@/components/ui/typography';
 import LocationKnownHere from './LocationKnownHere';
 import LocationEntitiesHere from './LocationEntitiesHere';
+import type { EntityPick } from './useEntityPick';
 import { LocationOpenings } from './OpeningsPanel';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
@@ -48,7 +49,7 @@ export const STARTING_INFO = `**Starting Location** marks where a new game can b
 - With several, the player picks one, or the game picks at random
 - With none, any location can be the start`;
 
-const LocationManager = ({ location, tab, onTabChange, focusField, connectionOpen, onConnectionOpened, onOpenEntityRoutine }: {
+const LocationManager = ({ location, tab, onTabChange, focusField, connectionOpen, onConnectionOpened, onOpenEntityRoutine, entityPick }: {
   location: GameLocation;
   tab: LocationPanelTab;
   onTabChange: (tab: LocationPanelTab) => void;
@@ -58,6 +59,8 @@ const LocationManager = ({ location, tab, onTabChange, focusField, connectionOpe
   onConnectionOpened?: () => void;
   /** Opens an entity's Routine tab from its line in Entities Here. */
   onOpenEntityRoutine?: (entityId: string) => void;
+  /** The World Editor's entity pick, which a selected Presence row is. */
+  entityPick?: EntityPick;
 }) => {
   const world = useGameData();
   const { updateLocation, entities, updateEntity, entityGroups, placeholders, placementLetters, placeholderOwners } = world;
@@ -216,6 +219,9 @@ const LocationManager = ({ location, tab, onTabChange, focusField, connectionOpe
           entities={treeOrder}
           labelOf={entityLabel}
           onOpenRoutine={onOpenEntityRoutine}
+          pick={entityPick?.shown ? entityPick.pick : null}
+          onPickChange={entityPick?.onPickChange}
+          onChange={updateEntity}
         />
         <LocationKnownHere
           location={editingLocation}

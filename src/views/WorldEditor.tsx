@@ -96,6 +96,7 @@ import { ITEM_PANEL_TABS, itemPanelTabsFor, type ItemPanelTab } from './itemPane
 import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
 import { useWorldLocationsAdapter } from '../managers/useWorldLocationsAdapter';
 import { useEntityPick } from '../managers/useEntityPick';
+import { presenceLines } from '@/lib/locationPresenceReasons';
 import type { ConnectionOpen } from '../managers/LocationConnections';
 import { useWorldDictionaryAdapter } from '../managers/useWorldDictionaryAdapter';
 import { useWorldMediaEditor } from '../managers/useWorldMediaEditor';
@@ -1090,7 +1091,12 @@ const WorldEditorInner = ({
     selectedId: selections.entities ?? null, onSelect: selectEntity, search,
   });
   const selectLocation = useCallback((id: string | null) => select('locations', id), [select]);
-  const { entityPick } = useEntityPick();
+  const presenceLocationId = activeTab === 'locations' && shownLocationTab === 'presence' ? selections.locations ?? null : null;
+  const hasPresenceRow = useCallback(
+    (entityId: string) => !!presenceLocationId && presenceLines(presenceLocationId, entities).some((line) => line.entity.id === entityId),
+    [presenceLocationId, entities],
+  );
+  const { entityPick } = useEntityPick({ hasPresenceRow });
   const locationsAdapter = useWorldLocationsAdapter({
     entityPick,
     selectedId: selections.locations ?? null,

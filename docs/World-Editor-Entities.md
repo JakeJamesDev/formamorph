@@ -98,7 +98,7 @@ Each entity in the list has **Duplicate** and **Delete** actions.
 <!-- keywords: schedule, daily routine, where does the npc start, npc moves, wander, patrol, stays at, follow the player, called over, unique, generic, crowd, herd -->
 <!-- route: worldEditorEntity.routine -->
 
-The **Routine** tab sets where the entity stands in the world.
+The **Routine** tab sets where the entity begins and where it goes. A location's **Presence** tab has the same editor for each entity that can be there.
 
 **Placement** has two choices:
 
@@ -296,7 +296,7 @@ The description the player reads until they meet the entity. It sits directly un
 ## Locations
 <!-- keywords: where npc lives, assign to place, put in room, vanished after delete, several places, too many npcs, crowded scene, orphaned -->
 
-Each entity stores its own locations in one field. The location's **Entities** picker shows the same link from the other side. Set it from either side.
+Each entity stores its own locations in one field. The location's **Presence** tab shows the same link from the other side. Set it from either side.
 
 > ⚠️ **When you delete a location, each entity that was there loses it, and nothing warns you.** The entities stay. But an entity that was only in that location is now in no location, so it reaches the AI only through **Known Here** or a relationship. The entity still looks fine on its own tab.
 

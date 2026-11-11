@@ -185,9 +185,9 @@ export const DEV_MODAL_TABS = {
   // The World Editor's Locations tab shows one of two views of the same locations, switched with `subtab=…`
   // (`#dev?modal=worldEditor&tab=locations&subtab=canvas`). Adding `fullscreen=1` opens the canvas in its
   // full-screen window on arrival — the same canvas, so it is not a third view and not listed as one.
-  // `pick=<entity id>` then picks that entity on it, and `pick=<entity id>:knownIn` starts in Known In mode;
-  // `fixture=entityPresence` has a range warning on `dev-sentry`. `pick=` without `fullscreen=1` shows the
-  // pick on the canvas beside the panel, view-only.
+  // With it, `pick=<entity id>` picks that entity on it, and `pick=<entity id>:knownIn` starts in Known In mode;
+  // `fixture=entityPresence` has a range warning on `dev-sentry`. Beside the panel a pick shows only as a
+  // selected row on the open location's Presence tab.
   worldEditorLocations: ['list', 'canvas'],
   // The World Editor's entity panel splits its fields across its own tabs, reached with the same `subtab=…`
   // slot over the Entities tab (`#dev?modal=worldEditor&tab=entities&subtab=descriptions`). It lands on the

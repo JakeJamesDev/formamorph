@@ -130,6 +130,7 @@ export function useWorldLocationsAdapter({
           connectionOpen={connectionOpen}
           onConnectionOpened={onConnectionOpened}
           onOpenEntityRoutine={onOpenEntityRoutine}
+          entityPick={entityPick}
         />
       );
     },

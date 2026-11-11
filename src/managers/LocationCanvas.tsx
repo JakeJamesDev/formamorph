@@ -1731,6 +1731,12 @@ export const LocationCanvasWorkspace = (props: LocationCanvasInputs & CanvasReve
   const entityPick = props.entityPick ?? ownEntityPick;
   const hostRef = useRef<HTMLDivElement | null>(null);
   const morph = useMorphFullscreen(hostRef);
+  const onFullscreenChange = entityPick.onFullscreenChange;
+  useEffect(() => {
+    onFullscreenChange?.(morph.contentInOverlay);
+  }, [onFullscreenChange, morph.contentInOverlay]);
+  // A canvas that unmounts in full screen has closed it.
+  useEffect(() => () => onFullscreenChange?.(false), [onFullscreenChange]);
   const selectedIdsRef = useRef<string[]>(props.selectedId ? [props.selectedId] : []);
   const lastSyncedRef = useRef<string | null>(props.selectedId);
   const { revealConnection, onConnectionRevealed } = props;

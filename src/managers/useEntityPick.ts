@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDevRoute } from '@/lib/devRouter';
 import type { PickState } from '@/managers/EntityPickCard';
 
@@ -6,25 +6,48 @@ import type { PickState } from '@/managers/EntityPickCard';
 export interface EntityPick {
   pick: PickState | null;
   onPickChange: (next: PickState | null) => void;
-  /** Whether the canvas beside the panel draws the pick. Full screen draws it either way. */
+  /** Whether the pick is a selected row on the Presence tab on screen, which the canvas beside the panel draws. */
   shown: boolean;
+  /** The canvas reports each move into and out of full screen. */
+  onFullscreenChange?: (open: boolean) => void;
 }
 
-export function useEntityPick() {
+/**
+ * Holds the pick. Outside full screen a pick lives only as a selected Presence row: it clears when it stops being
+ * one (another tab, another location with no row, the Locations section gone) and when full screen closes on a
+ * pick that is not one.
+ */
+export function useEntityPick({ hasPresenceRow }: {
+  /** Whether the Presence tab on screen has a row for this entity. */
+  hasPresenceRow: (entityId: string) => boolean;
+}) {
   const [pick, setPick] = useState<PickState | null>(null);
-  const [shown, setShown] = useState(false);
+  const shown = !!pick && hasPresenceRow(pick.entityId);
+  const shownRef = useRef(shown);
+  const fullscreenRef = useRef(false);
 
-  // DEV dev-router: `pick=<entity id>` (or `<entity id>:knownIn`) sets the pick; without `fullscreen=1` it is on show.
+  useEffect(() => {
+    if (shownRef.current && !shown && !fullscreenRef.current) setPick(null);
+    shownRef.current = shown;
+  }, [shown]);
+
+  const onFullscreenChange = useCallback((open: boolean) => {
+    if (!open && fullscreenRef.current && !shownRef.current) setPick(null);
+    fullscreenRef.current = open;
+  }, []);
+
+  // DEV dev-router: `fullscreen=1&pick=<entity id>` (or `<entity id>:knownIn`) picks on the full-screen canvas.
   const route = useDevRoute();
-  const devPick = route?.pick;
-  const devFullscreen = !!route?.fullscreen;
+  const devPick = route?.fullscreen ? route.pick : undefined;
   useEffect(() => {
     if (!import.meta.env.DEV || !devPick) return;
     const [entityId, mode] = devPick.split(':');
     setPick({ entityId, mode: mode === 'knownIn' ? 'knownIn' : 'locations' });
-    setShown(!devFullscreen);
-  }, [devPick, devFullscreen]);
+  }, [devPick]);
 
-  const entityPick = useMemo<EntityPick>(() => ({ pick, onPickChange: setPick, shown }), [pick, shown]);
-  return { entityPick, setShown };
+  const entityPick = useMemo<EntityPick>(
+    () => ({ pick, onPickChange: setPick, shown, onFullscreenChange }),
+    [pick, shown, onFullscreenChange],
+  );
+  return { entityPick };
 }
