@@ -5,6 +5,7 @@ import {
 } from "@/lib/entityKind";
 import { withNewStart } from "@/lib/routineEditing";
 import { genericPlaces } from "@/lib/positionEngine";
+import { withMembership } from "@/lib/entityPlaces";
 import { randomUUID } from "@/lib/uuid";
 
 /**
@@ -32,16 +33,8 @@ export function entityIdsAtAny(locationIds: readonly string[], entities: Entity[
   return entities.filter((e) => e.locations?.some((id) => scope.has(id))).map((e) => e.id);
 }
 
-/** A copy of `entity` belonging to exactly `locationIds`, deduped. An empty list drops the field rather
- *  than storing `[]`, so an entity placed nowhere exports as clean as one that never had a membership. */
-export function withEntityLocations(entity: Entity, locationIds: string[]): Entity {
-  const locations = [...new Set(locationIds)];
-  if (locations.length === 0) {
-    const { locations: _none, ...rest } = entity;
-    return rest;
-  }
-  return { ...entity, locations };
-}
+/** A copy of `entity` belonging to exactly `locationIds`: the Entity Places module's membership write. */
+export const withEntityLocations = (entity: Entity, locationIds: string[]): Entity => withMembership(entity, locationIds);
 
 /** `entity` carried into a world, `map` naming each of its locations the world can place (source id → world id).
  *  A Generic entity keeps its routine through the map; any other entity belongs to the mapped places. */
