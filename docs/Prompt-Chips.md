@@ -64,7 +64,7 @@ The **Now Message** offers **Location**, **Entities**, **Time** and **Notes**.
 
 - **Include Stats is on by default** for **Here** and **In Scene**. It is off for **In Sub**, **Reachable** and **Known**.
 - **Name content turns off Traits, Stats and Stat Detail.** **Only With** and **Movement** still work, so the name list holds only the entities that pass.
-- **Movement is on by default.** A character beside the player reads as following, waiting or staying. One in a nearby place reads as staying when they can't leave right now. Groups get no tag.
+- **Movement is on by default.** An entity beside the player reads as following, waiting or staying. One in a nearby place reads as staying when it can't leave right now. A Generic entity gets no tag.
 - **Include Stats off turns off Stat Detail.**
 - **A chip with no picks sends its default text.**
 

@@ -61,11 +61,12 @@ describe('routine action and hold', () => {
     expect(await readsIn('entities.Nym.action === "" && entities.Orla.action === ""')).toBe(true);
   });
 
-  it('reads no hold in a gap or on an unreachable row, even after a script move (Q223)', async () => {
+  it('reads held with no action in a gap or on an unreachable row after a script move (Q228)', async () => {
     const book = placedBook(AWAY, CAST);
+    expect(await readsIn('!entities.Nym.held && !entities.Orla.held', book)).toBe(true);
     const moved = commit(book, await writesOf(book, AWAY, CAST, 'entities.Nym.move("Keep"); entities.Orla.move("Keep");'), AWAY, WORLD);
     expect([moved.uniques.nym.hold, moved.uniques.orla.hold]).toEqual([expect.anything(), expect.anything()]);
-    expect(await readsIn('entities.Nym.action === "" && !entities.Nym.held && entities.Orla.action === "" && !entities.Orla.held', moved)).toBe(true);
+    expect(await readsIn('entities.Nym.action === "" && entities.Nym.held && entities.Orla.action === "" && entities.Orla.held', moved)).toBe(true);
   });
 
   it('reads empty for a Generic entity and an entity with no kind', async () => {
@@ -88,6 +89,20 @@ describe('routine action and hold', () => {
       'entities.Tess.following && entities.Tess.action === "" && !entities.Tess.held',
       'entities.Bram.waiting && entities.Bram.action === "" && !entities.Bram.held',
     ].join(' && '), waiting)).toBe(true);
+  });
+});
+
+describe('a held follower and a held waiting entity', () => {
+  // The engine clears a hold on follow, so the hold is set on the state itself: the read must ignore it.
+  it('reads not held while it follows or waits, even with a hold on its state (Q228)', async () => {
+    const book = placedBook(AWAY, CAST);
+    const following = commit(book, await writesOf(book, AWAY, CAST, 'entities.Tess.follow();'), AWAY, WORLD);
+    const hold = { until: NOON + 600 };
+    const heldFollower = { ...following, uniques: { ...following.uniques, tess: { ...following.uniques.tess, hold } } };
+    expect(await readsIn('entities.Tess.following && !entities.Tess.held', heldFollower)).toBe(true);
+    const waiting = startWaiting(heldFollower, 'tess', 'hour', NOON);
+    expect(waiting.uniques.tess.hold).toEqual(hold);
+    expect(await readsIn('entities.Tess.waiting && !entities.Tess.held', waiting)).toBe(true);
   });
 });
 
@@ -123,7 +138,7 @@ describe('a runtime character', () => {
   const cast = [...KIND_CAST, wren.entity];
   const world = positionWorld([...castRoutines(KIND_CAST), runtimeRoutine(wren)!], NOON, AWAY, KIND_LOCATIONS, [], () => 0);
 
-  it('reads unique, and no action from its empty schedule, even when a script move holds it (Q224)', async () => {
+  it('reads unique, no action from its empty schedule, and held after a script move (Q224, Q228)', async () => {
     const placed = placeAll(EMPTY_BOOK, world);
     const moved = commit(placed, await writesOf(placed, AWAY, cast, 'entities.Wren.move("Square");'), AWAY, world);
     expect(moved.uniques.wren.hold).toBeDefined();
@@ -133,7 +148,7 @@ describe('a runtime character', () => {
     const result = await snapshotOf(state)
       .run({ home: { kind: 'tool' }, timing: 'after', code: 'return [entities.Wren.kind, entities.Wren.action, entities.Wren.held];', args: {} });
     expect(result.error).toBeNull();
-    expect(JSON.parse(result.reply ?? 'null')).toEqual(['unique', '', false]);
+    expect(JSON.parse(result.reply ?? 'null')).toEqual(['unique', '', true]);
   });
 
   it('takes a script move and a follow, as a Unique entity does (Q224)', async () => {

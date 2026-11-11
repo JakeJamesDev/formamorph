@@ -185,7 +185,7 @@ Helps when you build a world or debug a prompt.`,
   entityMovement: {
     label: 'Entity Movement',
     description: 'Asks the AI each turn whether entities here come with you',
-    info: `- Each entity that can follow you adds its **own request**
+    info: `- Adds **one request** a turn, for every entity that can come with you
 - Without it, followers still follow and fixed entities keep their places`,
   },
 

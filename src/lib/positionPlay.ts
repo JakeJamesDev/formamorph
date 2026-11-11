@@ -50,15 +50,15 @@ export interface RoutineReading {
   held: boolean;
 }
 
-/** Each Unique entity's routine reading at `world.scene.now`, by id. A follower and a waiting entity have none, and
- *  an entity with no action reads no hold (Q223). */
+/** Each Unique entity's routine reading at `world.scene.now`, by id. A follower and a waiting entity have none.
+ *  `held` reads true whether or not an action is in force (Q228). */
 export function routineReadings(world: PositionWorld, uniques: Readonly<UniqueStates>): Record<string, RoutineReading> {
   const out: Record<string, RoutineReading> = {};
   for (const routine of world.uniques.values()) {
     const st = uniques[routine.id];
     if (st?.follow) continue;
     const action = actionNow(routine, st, world.scene);
-    out[routine.id] = { action, held: action !== "" && isHeldNow(st, world.scene.now) };
+    out[routine.id] = { action, held: isHeldNow(st, world.scene.now) };
   }
   return out;
 }

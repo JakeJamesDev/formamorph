@@ -259,7 +259,7 @@ No actions show while the AI writes a turn.
 
 | Tab | What it is |
 |---|---|
-| **Entities** | Every entity at your location, with those in the scene first. A stranger shows under the name you know. When you move, only your followers stay in the scene. See [Entities in Game](Entities). |
+| **Entities** | Every entity at your location, with those in the scene first. A stranger shows under the name you know. When you move, only your followers stay in the scene. See [Characters That Move](Entities#characters-that-move). |
 | **Notes** | Your standing notes for the AI. See [Notes](#notes). |
 | **Memory** | What the story remembers. See [Story Memory](Memory#the-memory-tab). |
 | **Logs** | A record of what changed. See [Logs](#logs). |

@@ -4,7 +4,7 @@
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
-An entity is a person, a creature, an object or a fixture in your world: a ferryman, an eel-smoker, a barred door. An entity belongs to one or more **Locations**. The AI reads the entities that can show up where the player is.
+An entity is a person, a creature, an object or a fixture in your world: a ferryman, an eel-smoker, a barred door. Each entity begins at a location, and its [routine](#routine) can take it to others. The AI reads the entities that can show up where the player is.
 
 ## Why it exists
 <!-- keywords: ai forgets characters, narrator invents people, recurring character, persistent npc, keeps renaming -->
@@ -20,7 +20,7 @@ The default prompt lists the entities that **may** appear in the current locatio
 1. Open the **Entities** tab.
 2. Type the entity's name in the **Filter Entities** box.
 3. Select the **+** button (**Add to Entities**), then select **Add Entity**.
-4. The new entity opens in the panel. On the **Profile** tab, pick one or more places in **Locations**.
+4. The new entity opens in the panel. On the **Routine** tab, pick the location it starts at.
 5. On the **Descriptions** tab, write the **AI-Facing Description**.
 6. Select **Save**.
 
@@ -80,7 +80,7 @@ Select an entity to open its panel.
 | **Placeholders** | The entity's own [placeholders](World-Editor-Placeholders#placeholders-that-belong-to-an-entity-or-a-dictionary) | Advanced only |
 | **Openings** | The entity's own openings, including Self openings for a playable entity | Advanced only |
 
-The **Persona** control has four choices: **Cast**, **Playable**, **Persona-Only** and **Custom Persona**. It decides whether the player can play as the entity. See [Personas for Authors](Persona-Authoring#how-to-make-an-entity-playable). For an entity marked **Playable** or **Persona-Only**, its **Locations** are also where the player can start as it.
+The **Persona** control has four choices: **Cast**, **Playable**, **Persona-Only** and **Custom Persona**. It decides whether the player can play as the entity. See [Personas for Authors](Persona-Authoring#how-to-make-an-entity-playable). The player can start as a **Playable** or **Persona-Only** entity at any of its [starts](#starts).
 
 **Relationships** lists how the entity relates to others. Pick a target, **Persona** or another entity, then type what the target is to this entity. See [Relationships](#relationships).
 
@@ -187,7 +187,7 @@ In a world where no entity has **Pronouns** or a **Persona** mark, every such en
 ## What reaches the AI
 <!-- keywords: npc secret, hidden motive, character ignored, npc never appears, spoilers, does ai see image, private notes -->
 
-An entity reaches the AI through a location: one of its own **Locations**, or a location whose **Known Here** list holds it. A relationship with the persona or with an entity in the scene also brings it in. An entity with none of these never reaches the AI.
+An entity reaches the AI through a location. That is where its [routine](#routine) has it now, or a location whose **Known Here** list holds it. A relationship with the persona or with an entity in the scene also brings it in. An entity with none of these never reaches the AI.
 
 | Field | Sent? |
 |---|---|
@@ -291,12 +291,16 @@ The description the player reads until they meet the entity. It sits directly un
 **Entities the player has already met.** The player has met an entity from the start when it has no Stranger Name and no Stranger Description, or when either of these is true:
 
 - It has a relationship with the persona, in either direction.
-- One of its **Known In** picks is one of the persona's **Locations**, or contains one. The **Nearby** default doesn't count.
+- One of its **Known In** picks is a location where the persona can start, or contains one. The **Nearby** default doesn't count.
 
 ## Locations
 <!-- keywords: where npc lives, assign to place, put in room, vanished after delete, several places, too many npcs, crowded scene, orphaned -->
 
-Each entity stores its own locations in one field. The location's **Presence** tab shows the same link from the other side. Set it from either side. On the entity, use its **Routine** tab. On the location, use **Add an entity here** and the remove button on its [**Presence** tab](World-Editor-Locations#entities).
+An entity's **Routine** tab sets where it begins and where it goes. A location's [**Presence** tab](World-Editor-Locations#entities) has the same editor:
+
+- ➕ **Add an entity here** puts any Unique or Generic entity at the location. It adds a place to begin there, with no rows.
+- ✏️ Select an entity in **Entities Here** to edit its **Routine** or **Known In** under the list.
+- 🗑 A Generic entity's row has a remove button. It is off when the entity begins at no other location. A Unique entity has none: change its **Routine** to take it out.
 
 > ⚠️ **When you delete a location, each entity that was there loses it, and nothing warns you.** The entities stay. But an entity that was only in that location is now in no location, so it reaches the AI only through **Known Here** or a relationship. The entity still looks fine on its own tab.
 
@@ -477,7 +481,7 @@ Open an entity in the library's **Entities** tab, and its editor has four tabs.
 
 | Tab | What it holds |
 |---|---|
-| **Entity** | **Author** and **Tags** in a column on the left. On the right, the **Profile**, **Descriptions** and **Openings** tabs, with the World Editor's fields except **Locations**, **Relationships** and the stranger fields. Its **Avatar** dropdown lists your Avatar library. |
+| **Entity** | **Author** and **Tags** in a column on the left. On the right, the **Profile**, **Descriptions** and **Openings** tabs, with the World Editor's fields except **Relationships** and the stranger fields. Its **Avatar** dropdown lists your Avatar library. |
 | **Traits** | The entity's own [traits](World-Editor-Traits#entity-traits), across the full width. |
 | **Stats** | The entity's own [stats](#entity-stats), across the full width. The stats, groups and links save with the entity's card. A link brings nothing until the world you add the entity to has its Blueprint. |
 | **Placeholders** | The entity's own [placeholders](World-Editor-Placeholders), across the full width. |

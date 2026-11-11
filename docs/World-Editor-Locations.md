@@ -122,11 +122,11 @@ The **Locations** tab has two views. Switch between them with the **List** and *
 
 **Edit Full Screen** opens the canvas at full size, with undo and redo, search and a minimap. Right-click a box and select **Edit Location** to open its panel.
 
-In full screen, the toolbar and the right-click menus also align, distribute and snap boxes, and set the Connection style. An entity card there sets one entity's **Locations** or **Known In** by selecting boxes.
+In full screen, the toolbar and the right-click menus also align, distribute and snap boxes, and set the Connection style. An entity card there sets one entity's **Routine** or **Known In** by selecting boxes.
 
 With **Known In** set to **Nearby**, the canvas shows where the AI gets the entity's summary:
 
-- 📍 **Can Be Here.** Every location the entity's routine uses: where it begins and each location a row names.
+- 📍 **Can Be Here.** Every location the entity's routine uses: where it begins, and each location a row names that connects to that start.
 - 👂 **Known Here While It Is Nearby.** Every location one **Nearby** link from those. The AI gets its summary there only while the entity stands at the marked neighbor.
 - ⋯ A **Far** link draws dotted, and its other end stays unmarked. See [Nearby and Far](#nearby-and-far).
 
@@ -254,7 +254,7 @@ Select the route icon on a row to open that entity's **Routine** tab.
 |---|---|
 | **Begins here** | The entity begins at this location. A Unique entity with several places to begin gives the chance as a percent. |
 | **Stays here**, **wanders here**, **patrols here** | A routine row uses this location. The reason gives that routine row's time. |
-| **Can be led here** | The Unique entity's **Traversable** list names this location. A Unique entity that can go **Anywhere** isn't listed for that reason. A Generic entity is never listed for it. |
+| **Can be led here** | The Unique entity's **Can Also Go** list names this location. A Unique entity that can go **Anywhere** isn't listed for that reason. A Generic entity is never listed for it. |
 
 An entity with several reasons shows them on one line.
 
@@ -380,7 +380,7 @@ The **Starting Location** checkbox marks a place where a new game can start:
 | **One** | Every game starts there |
 | **Several** | The player picks one before they start, or the game picks one at random |
 
-A world persona starts at the first of its own **Locations** that is a starting location, or else at its first location. The start step also lists the persona's locations.
+A world persona starts at the first of its starts that is a starting location, or else at its first start. The start step also lists the locations of its starts. See [Starts](World-Editor-Entities#starts).
 
 ## Delete a location
 <!-- keywords: children afterwards, no confirmation, accidentally removed, npc vanished, undo removal -->

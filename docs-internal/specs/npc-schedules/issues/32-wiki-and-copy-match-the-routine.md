@@ -1,6 +1,6 @@
 # 32: Wiki And Copy Match The Routine
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 26, 27, 28, 29, 30, 31
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -41,15 +41,30 @@ Spec rulings: Q214, Q207, Q175, Q174.
 
 ## Acceptance criteria
 
-- [ ] Each wiki statement above is corrected, and the landing gives the label on screen that each now uses.
-- [ ] The Entities and Locations pages give the same account of adding an entity to a location.
-- [ ] The Entity Movement info text and the Settings page both say one request covers every entity.
-- [ ] The Custom Persona hint names no retired field, and the tests that pin the old string are updated.
-- [ ] A player page has the section on characters that move, with no editor term in it.
-- [ ] The Glossary has the eight terms, each linked to the section that explains it.
-- [ ] After a script move, `held` reads true for an entity in a gap and for a runtime character, and the test fails with the old rule. It reads false for a follower and a Generic entity.
-- [ ] `npm run copy:sweep` gives no notice on the changed strings.
-- [ ] After the rebuild, a count of stale help sections against the docs on the branch gives zero for every page this effort touched. The landing gives the count before and after.
-- [ ] The changelog fragment has one entry for the copy changes an author or player sees.
+- [x] Each wiki statement above is corrected, and the landing gives the label on screen that each now uses. Labels: **Routine** tab and **Starts at** (Entities how-to); **Add an entity here**, **Entities Here**, **Routine**, **Known In** (Presence account); "starts" for Playable/Persona-Only start places, per Q229 (Entities, Persona-Authoring, Personas, Starting-a-Game, Locations); **Routine** / **Known In** for the canvas entity card (EntityPickCard modes); one request (Settings); **Generic** (Prompt Chips); **Can Also Go** (Locations reasons table); **Can Be Here** now says connected to the start (`routinePlaces` in entityPicking.ts). Checked against source.
+- [x] The Entities and Locations pages give the same account of adding an entity to a location. Entities "## Locations" now lists add, edit-under-list and remove as the Locations page does.
+- [x] The Entity Movement info text and the Settings page both say one request covers every entity. Matches turnPasses.ts "The turn's one entity location request".
+- [x] The Custom Persona hint names no retired field, and the tests that pin the old string are updated. No test pinned it; new `PersonaPresenceHint.test.tsx` pins "Placement and Known In".
+- [x] A player page has the section on characters that move, with no editor term in it. `docs/Entities.md` "Characters That Move"; How-to-Play's Entities row links it.
+- [x] The Glossary has the eight terms, each linked to the section that explains it. Starts, Routine, Locked, Can Also Go, Automatic Links, Distance, Nearby, Far; anchors checked by the review.
+- [x] After a script move, `held` reads true for an entity in a gap and for a runtime character, and the test fails with the old rule. It reads false for a follower and a Generic entity. `statCodeTurn.routineReads.test.ts`: the gap test failed with `action !== ""` reinstated; a held follower and a held waiting entity read false, and that test failed with the follow guard removed.
+- [x] `npm run copy:sweep` gives no notice on the changed strings. Last run: notices only on untouched lines.
+- [x] After the rebuild, a count of stale help sections against the docs on the branch gives zero for every page this effort touched. The landing gives the count before and after. Stale: 12 at claim, 32 before the rebuild, 0 of 699 after (`.scratch/countStale.ts`, same hash test as `buildHelpVectors.ts`).
+- [x] The changelog fragment has one entry for the copy changes an author or player sees. `docs-internal/changelog.d/npc-schedules-32.md`, Routines group.
 
 For you: read the new player section and the eight Glossary entries, and approve or change the wording.
+
+## Landed
+
+**Not verified**
+
+- None. No screen was checked in a browser: the copy changes are two strings, pinned by tests and read against source.
+
+**For you**
+
+- Read the new player section and the eight Glossary entries, and approve or change the wording. Player section: `docs/Entities.md` "Characters That Move"; Glossary: the Building a World table.
+- The heading "Characters That Move" uses "character", which the Writing Guide's terminology table reserves. The spec session named it; the body says "entity". Keep it, or rename it "Entities That Move".
+
+**Handed over**
+
+- Ticket 33 (Q229): `personaPick.ts` offers every routine place as a player start. `startsMet` in `src/lib/presence.ts` reads the same `entity.locations`, so the "already met" rule is wider than the docs say too.

@@ -130,7 +130,7 @@ The **AI Context** tab shows what the AI gets from the location in the **at** li
 - **Destinations** lists every place the story can move the player to from here, up to 3 steps away. A place more than one step away shows the places on the way. A place not on the list can't be reached in one turn.
 - **Entities the AI Is Told About** shows whether each entity arrives in full, as a summary or by name only.
 
-The bench places entities as the game does at the opening hour. A Unique entity stands where its first Start puts it. A Generic entity stands at every one of its Starts.
+The bench places entities as a new game does at the opening hour. A Unique entity is at the location of its first [start](World-Editor-Entities#starts). A Generic entity is at the location of each of its starts.
 
 ## Opening
 <!-- keywords: odds of each intro, probability, likelihood of repeat, raw first request, perks at start, try different stat levels, what wildcards rolled, custom presets ignored -->
@@ -146,7 +146,7 @@ The **Opening** tab shows turn one of a new game for your **Testing as** pick.
 
 The **First Prompt** uses the default prompts. Custom prompt presets aren't read here.
 
-The bench places entities for the opening hour. A Unique entity starts at its first Start. A Generic entity starts at all of its Starts.
+The bench places entities as a new game does at the opening hour. A Unique entity begins at its first [start](World-Editor-Entities#starts). A Generic entity begins at each of its starts.
 
 ## Related
 

@@ -548,7 +548,7 @@ When the player plays no entity, `persona` is an empty entry:
 | `waiting` | True when the entity stopped following and waits where it was left. Read-only |
 | `kind` | `'unique'` or `'generic'`, or `''` for an entity with no kind. An entity the story added reads `'unique'`. `move()` and `follow()` do nothing on a Generic entity. Read-only |
 | `action` | What the entity's routine row does now: `'stay'`, `'wander'` or `'patrol'`. `''` when no row covers the hour or none of its places can be reached, while the entity follows or waits, and for a Generic entity. Read-only |
-| `held` | True when a pull by the story or a script `move()` keeps the entity off its routine for now. False while it follows or waits, and for a Generic entity. Read-only |
+| `held` | True when a pull by the story or a script `move()` keeps the entity off its routine for now. It reads true even when `action` is `''`, such as in a gap or for an entity the story added. False while it follows or waits, and for a Generic entity. Read-only |
 | `knownIn` | Where the AI receives the entity while it's not present: `'nowhere'`, `'nearby'`, or `'picked'` for the locations in `knownInPlaces`. Read-only |
 | `knownInPlaces` | The code names of the locations **Known In** picks. Empty unless `knownIn` is `'picked'`. Read-only |
 | `description` | The full AI description, with each placeholder chip filled in. Read-only |

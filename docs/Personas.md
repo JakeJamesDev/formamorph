@@ -110,7 +110,7 @@ Pick an entity under **From This World**, and you play it:
 
 - It leaves the cast for that game, so you never meet yourself.
 - The AI reads that everyone in the world already knows you.
-- Its locations join the **Starting Location** list. Enter World selects the first of them that is a starting location. With none, it selects the entity's first location. Its row in the picker reads **Starts at** and that place. You can pick another.
+- The places it can start at join the **Starting Location** list. Enter World selects the first of them that is a starting location. With none, it selects the first place it can start at. Its row in the picker reads **Starts at** and that place. You can pick another.
 - Its Others openings leave the draw, so page one never greets you as yourself.
 - If it has Self openings, the game draws only from those. See [Self Openings](World-Editor-Openings#self-openings).
 
