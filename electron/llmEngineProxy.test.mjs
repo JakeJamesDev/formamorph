@@ -194,9 +194,10 @@ describe('engine proxy over a real child process', () => {
     const devices = proxy.listDevices();
     await vi.waitFor(() => expect(sent.length).toBe(1));
     expect(sent[0].method).toBe('listDevices');
-    deliver({ type: 'reply', id: sent[0].id, ok: true, value: { gpuBackend: 'vulkan', gpuDeviceNames: ['A', 'B'] } });
+    const listing = { gpuBackend: 'vulkan', devices: [{ id: 'Vulkan0', name: 'A', totalMB: 8192, freeMB: 8000 }], listed: true };
+    deliver({ type: 'reply', id: sent[0].id, ok: true, value: listing });
 
-    await expect(devices).resolves.toEqual({ gpuBackend: 'vulkan', gpuDeviceNames: ['A', 'B'] });
+    await expect(devices).resolves.toEqual(listing);
     expect(proxy.getState().status).toBe('stopped');
     expect(keysOf(proxy.getState())).toEqual(expectedKeys);
   });

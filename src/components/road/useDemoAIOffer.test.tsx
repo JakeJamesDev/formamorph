@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
-import { demoAITurnCount, engineTurnCount, isDemoAICardSeen, isEngineCardSeen, markDemoAICardSeen } from '@/lib/firstTimeFlowStore';
+import { demoAITurnCount, engineTurnCount, isDemoAICardSeen, isEngineCardSeen, markDemoAICardSeen, markEngineCardSeen } from '@/lib/firstTimeFlowStore';
 import { hostedSession } from '@/lib/hostedAi/hostedSession';
 import { HOSTED_STATE_URL } from '@/lib/hostedAi/hostedUrls';
 import { BUILTIN_ENGINE_PRESET_ID, DEFAULT_TEXT_PRESET_ID } from '@/lib/textEndpointPresets';
@@ -178,6 +178,13 @@ describe('useCardTurnCounts', () => {
     render(<Counts />);
     act(() => counts.countTurn({ ...turn, narrationIsBuiltInEngine: true }));
     expect([counts.demoAI, counts.engine]).toEqual([0, 1]);
+  });
+
+  it("stops the engine card's count at its own seen record and leaves the Demo AI card counting", () => {
+    markEngineCardSeen();
+    render(<Counts />);
+    act(() => counts.countTurn({ ...turn, narrationIsBuiltInEngine: true }));
+    expect([counts.demoAI, counts.engine]).toEqual([1, 0]);
   });
 
   it.each<[string, Partial<CommittedTurn>]>([
