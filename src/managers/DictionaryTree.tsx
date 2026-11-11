@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
 import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
@@ -12,7 +12,7 @@ import { useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { useEditorDragActive } from '@/components/dnd/dragInvariants';
-import { reorderBooks, moveEntryInBooks, dictionaryEntryLabel } from '@/lib/dictionaryTree';
+import { reorderBooks, moveEntryInBooks, dictionaryEntryLabel, dictionaryZoneKey } from '@/lib/dictionaryTree';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import type { Dictionary, DictionaryEntry } from '@/types';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
@@ -266,12 +266,12 @@ function BookZones({ book, className, collapsedZones, selectedId, onToggleZone, 
     <div className={cn('flex flex-col gap-2', className)}>
       <DictZone
         bookId={book.id} position="before" entries={before} flat={!advanced}
-        collapsed={collapsedZones.has(`${book.id}:before`)} onToggleCollapse={() => onToggleZone(`${book.id}:before`)}
+        collapsed={collapsedZones.has(dictionaryZoneKey(book.id, 'before'))} onToggleCollapse={() => onToggleZone(dictionaryZoneKey(book.id, 'before'))}
         selectedId={selectedId} {...entryHandlers}
       />
       <DictZone
         bookId={book.id} position="after" entries={after} flat={!advanced}
-        collapsed={collapsedZones.has(`${book.id}:after`)} onToggleCollapse={() => onToggleZone(`${book.id}:after`)}
+        collapsed={collapsedZones.has(dictionaryZoneKey(book.id, 'after'))} onToggleCollapse={() => onToggleZone(dictionaryZoneKey(book.id, 'after'))}
         selectedId={selectedId} {...entryHandlers}
       />
     </div>
@@ -294,6 +294,15 @@ const DictionaryTree = ({ selectedId, onSelect, hideBookRow = false, collapse: h
   const worldHistory = useWorldHistoryMovesOptional();
   const ownCollapse = useDictionaryCollapse();
   const collapse = hostCollapse ?? ownCollapse;
+  // A newly selected entry opens its book and zone, so a row chosen from outside the tree shows.
+  const { revealed, reveal } = collapse;
+  useEffect(() => {
+    if (!selectedId || revealed === selectedId) return;
+    const book = dictionaries.find((b) => b.entries.some((e) => e.id === selectedId));
+    const entry = book?.entries.find((e) => e.id === selectedId);
+    if (!book || !entry) return;
+    reveal(selectedId, [book.id, dictionaryZoneKey(book.id, entry.position)]);
+  }, [selectedId, revealed, reveal, dictionaries]);
   const actions = useDictionaryActions({ selectedId, onSelect, collapse });
   // While a book is being dragged, collapse every book: they can be large and can't nest, so a compact
   // list reorders cleanly. This is transient (doesn't touch the persistent `collapsed` set).

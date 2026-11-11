@@ -10,7 +10,8 @@ import { addOwnedGroup, addOwnedTrait, findOwnedItem, removeOwnedItem, withOwned
 import { OWNER_NAME_SEPARATOR } from '@/lib/placementLetters';
 import type { FindingSection } from '@/lib/testBench/rules';
 import { removeLink } from '@/lib/traitLinks';
-import { blueprintsGroup, duplicateTraitNode, isBlueprintItem, ownedTraitTree } from '@/lib/traitTree';
+import { blueprintsGroup, duplicateTraitNode, isBlueprintItem, ownedTraitRows, ownedTraitTree } from '@/lib/traitTree';
+import { treeParentIds, type TreeCollapse } from '@/components/treeCollapse';
 import { randomUUID } from '@/lib/uuid';
 import type { FocusFieldHint } from '@/types';
 import type { EntityPanelTab } from '@/views/entityPanelTabs';
@@ -30,9 +31,11 @@ import { useRemoveWorldTrait } from './useRemoveWorldTrait';
  * owned traits and Links, and the trait, group, entity node or Link panel for a selection. `dialog` is the
  * remove confirmation the search rows open; the host renders it.
  */
-export function useWorldTraitsAdapter({ selectedId, onSelect, navigate, tab, onTabChange, focusField }: {
+export function useWorldTraitsAdapter({ selectedId, onSelect, collapse, navigate, tab, onTabChange, focusField }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  /** The tree's collapsed groups, held by the World Editor for the visit. */
+  collapse: TreeCollapse;
   /** Lands on an item the way a Bench finding does; `entityTab` names the entity panel's tab to open. */
   navigate: (section: FindingSection, id: string, entityTab?: EntityPanelTab) => void;
   tab: TraitPanelTab;
@@ -50,6 +53,7 @@ export function useWorldTraitsAdapter({ selectedId, onSelect, navigate, tab, onT
     () => ownedTraitTree({ traits, traitGroups }, entities, [], { links: true, emptySystemNodes: advanced }),
     [traits, traitGroups, entities, advanced],
   );
+  const parents = useMemo(() => treeParentIds(ownedTraitRows(tree, new Set())), [tree]);
 
   // A trait or group may be the world's or an entity's own; an entity node or a Link row reads through.
   const owned = selectedId ? findOwnedItem(entities, selectedId) : null;
@@ -214,7 +218,8 @@ export function useWorldTraitsAdapter({ selectedId, onSelect, navigate, tab, onT
   };
 
   const adapter: ListEditorAdapter = {
-    tree: <TraitTree selectedId={selectedId} onSelect={onSelect} />,
+    tree: <TraitTree selectedId={selectedId} onSelect={onSelect} collapse={collapse} />,
+    collapse: { noun: 'traits', parents, state: collapse },
     rows,
     names: { placeholders, letters: placementLetters, owners: placeholderOwners },
     noun: 'traits',

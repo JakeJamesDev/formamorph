@@ -1017,6 +1017,7 @@ const WorldEditorInner = ({
   const { adapter: traitsAdapter, dialog: removeWorldTraitDialog } = useWorldTraitsAdapter({
     selectedId: selections.traits ?? null,
     onSelect: selectTrait,
+    collapse: treeCollapse.stateFor('traits'),
     navigate: navigateToBenchItem,
     tab: shownTraitTab,
     onTabChange: setTraitTab,
@@ -1029,6 +1030,7 @@ const WorldEditorInner = ({
   const placeholdersEditor = useWorldPlaceholdersAdapter({
     selectedId: selections.placeholders ?? null,
     onSelect: selectPlaceholder,
+    collapse: treeCollapse.stateFor('placeholders'),
     tab: shownPlaceholderTab,
     onTabChange: setPlaceholderTab,
     onOpenOwner: (owner) => (owner.kind === 'dictionary'
@@ -1042,12 +1044,12 @@ const WorldEditorInner = ({
   });
   const selectStat = useCallback((id: string | null) => select('stats', id), [select]);
   const { adapter: statsAdapter, dialog: removeWorldStatDialog } = useWorldStatsAdapter({
-    selectedId: selections.stats ?? null, onSelect: selectStat, navigate: navigateToBenchItem, search, tab: shownStatTab,
+    selectedId: selections.stats ?? null, onSelect: selectStat, collapse: treeCollapse.stateFor('stats'), navigate: navigateToBenchItem, search, tab: shownStatTab,
     onTabChange: setStatTab, focusField: findField,
   });
   const statsParts = useListEditor(statsAdapter, { selectedId: selections.stats ?? null, onSelect: selectStat, search });
   const selectScript = useCallback((id: string | null) => select('scripts', id), [select]);
-  const scriptsAdapter = useWorldScriptsAdapter({ selectedId: selections.scripts ?? null, onSelect: selectScript, active: activeTab === 'scripts' });
+  const scriptsAdapter = useWorldScriptsAdapter({ selectedId: selections.scripts ?? null, onSelect: selectScript, collapse: treeCollapse.stateFor('scripts'), active: activeTab === 'scripts' });
   const scriptsParts = useListEditor(scriptsAdapter, { selectedId: selections.scripts ?? null, onSelect: selectScript, search });
   const selectTool = useCallback((id: string | null) => select('tools', id), [select]);
   const toolsAdapter = useWorldToolsAdapter({ selectedId: selections.tools ?? null, onSelect: selectTool, snapshot: editorToolWorld });
@@ -1069,6 +1071,7 @@ const WorldEditorInner = ({
   const entitiesEditor = useWorldEntitiesAdapter({
     selectedId: selections.entities ?? null,
     onSelect: selectEntity,
+    collapse: treeCollapse.stateFor('entities'),
     tab: shownEntityTab,
     onTabChange: setEntityTab,
     traitId: entityTraitId,
@@ -1112,6 +1115,7 @@ const WorldEditorInner = ({
   const dictionaryEditor = useWorldDictionaryAdapter({
     selectedId: selections.dictionary ?? null,
     onSelect: selectDictionaryItem,
+    collapse: treeCollapse.stateFor('dictionary'),
     bookTab: shownBookTab,
     onBookTabChange: setBookTab,
     bookPlaceholderId,

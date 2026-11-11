@@ -24,6 +24,7 @@ import { gateConditions, gateOf, gateStates, type GateState } from '@/lib/traitG
 import { gateLine } from '@/lib/traitGateLine';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
+import type { TreeCollapse } from '@/components/treeCollapse';
 
 // Red on the primary fill is unreadable, so a selected row drops the tint for the row's own color.
 const UNRESOLVED = 'text-destructive [[data-editor-row-selected]_&]:text-current';
@@ -90,7 +91,12 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
  * In Basic, an empty system node hides. Over a one entity's root, its links draw among its own items and
  * stay where they are.
  */
-const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
+const TraitTree = ({ selectedId, onSelect, collapse }: {
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  /** The host's collapsed groups, which outlive the tree. */
+  collapse?: TreeCollapse;
+}) => {
   const {
     traits, traitGroups, entities, setTraits, setTraitGroups, editEntity, placeholders, gateInput, entityRoot, stats, statGroups,
   } = useTraitStore();
@@ -319,7 +325,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   return (
     <>
       {refusal && <TraitDropRefusalNotice refusal={refusal} placeholders={placeholders} onDismiss={() => setRefusal(null)} />}
-      <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} revealSelected />
+      <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} collapse={collapse} revealSelected />
       {removeDialog}
     </>
   );

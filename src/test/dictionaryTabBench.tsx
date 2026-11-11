@@ -1,5 +1,6 @@
 /** The Dictionary tab over its adapter, with the panel state the view holds for it. */
 import { useState } from 'react';
+import { useTreeCollapseStore } from '@/components/treeCollapse';
 import { useWorldDictionaryAdapter } from '@/managers/useWorldDictionaryAdapter';
 import { renderListTab, type ListTabSelection } from '@/test/panelBench';
 import type { EditorMode } from '@/lib/editorMode';
@@ -11,8 +12,9 @@ const useDictionaryTab = (selection: ListTabSelection) => {
   const [bookTab, onBookTabChange] = useState<DictionaryBookPanelTab>('details');
   const [entryTab, onEntryTabChange] = useState<DictionaryPanelTab>('details');
   const [bookPlaceholderId, onBookPlaceholderIdChange] = useState<string | null>(null);
+  const collapse = useTreeCollapseStore().stateFor('dictionary');
   return useWorldDictionaryAdapter({
-    ...selection, bookTab, onBookTabChange, bookPlaceholderId, onBookPlaceholderIdChange, entryTab, onEntryTabChange,
+    ...selection, collapse, bookTab, onBookTabChange, bookPlaceholderId, onBookPlaceholderIdChange, entryTab, onEntryTabChange,
     onOpenWorldPlaceholder: () => {}, focusField: null, library: { onAddFromLibrary: () => {}, onImport: () => {} }, pendingLinks: [],
   });
 };

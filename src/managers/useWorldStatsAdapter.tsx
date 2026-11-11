@@ -10,7 +10,8 @@ import { backingStatKind, lostStatIds } from '@/lib/currencyDeletes';
 import { BlueprintIcon } from '@/lib/elementIcons';
 import { useEditorMode } from '@/lib/editorMode';
 import { updateOwnedStatGroup } from '@/lib/ownedStats';
-import { ownedStatTree } from '@/lib/ownedStatTree';
+import { ownedStatRows, ownedStatTree } from '@/lib/ownedStatTree';
+import { treeParentIds, type TreeCollapse } from '@/components/treeCollapse';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { duplicateStatNode, newStatGroup, statRootCount } from '@/lib/statGroupTree';
 import {
@@ -47,9 +48,11 @@ type Pending = { id: string; name: string; isGroup: boolean; description: string
 /** The World Editor's Stats tab as a List Editor adapter: the one tree with a node per entity that owns stats, a
  *  flat search over world stats, and the stat, group, entity node or Link panel for a selection. `dialog` is the
  *  confirmation a linked Blueprint's delete opens. */
-export function useWorldStatsAdapter({ selectedId, onSelect, navigate, search, tab, onTabChange, focusField }: {
+export function useWorldStatsAdapter({ selectedId, onSelect, collapse, navigate, search, tab, onTabChange, focusField }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  /** The tree's collapsed groups, held by the World Editor for the visit. */
+  collapse: TreeCollapse;
   /** Lands on an item the way a Bench finding does; `entityTab` names the entity panel's tab to open. */
   navigate: (section: FindingSection, id: string, entityTab?: EntityPanelTab) => void;
   /** The World Editor's shared search, which hides the open stat while it leaves the stat out. */
@@ -66,6 +69,7 @@ export function useWorldStatsAdapter({ selectedId, onSelect, navigate, search, t
   const [pending, setPending] = useState<Pending | null>(null);
   const world = useMemo(() => ({ stats, statGroups }), [stats, statGroups]);
   const tree = useMemo(() => ownedStatTree(world, entities, { emptySystemNodes: advanced }), [world, entities, advanced]);
+  const parents = useMemo(() => treeParentIds(ownedStatRows(tree, new Set())), [tree]);
 
   // New stats and groups append at the root; the author drags them into folders.
   const handleAdd = (typed: string) => {
@@ -133,6 +137,7 @@ export function useWorldStatsAdapter({ selectedId, onSelect, navigate, search, t
           selectedId={selectedId}
           onSelect={onSelect}
           world={{ onRemoveStat: askRemoveStat, onRemoveGroup: askRemoveGroup, onDuplicate: handleDuplicate }}
+          collapse={collapse}
           emptyHint={emptyHint}
         />
       ),
@@ -199,6 +204,7 @@ export function useWorldStatsAdapter({ selectedId, onSelect, navigate, search, t
   };
   const adapter: ListEditorAdapter = {
     ...base,
+    collapse: { noun: 'stats', parents, state: collapse },
     detail: (id) => {
       const node = id ? tree.entityNodes.get(id) : undefined;
       if (node) return <EntityNodePanel key={node.id} entity={node} onOpenEntity={() => navigate('entities', node.id, 'stats')} />;

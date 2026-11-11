@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import type { TreeCollapse } from '@/components/treeCollapse';
 import { DropRefusalNotice } from '@/components/editor/DropRefusalNotice';
 import { joinedList } from '@/components/editor/joinedList';
 import { TREE_INDENT } from '@/components/EditorRow';
@@ -68,12 +69,14 @@ export function StatDropRefusalNotice({ refusal, placeholders, onDismiss }: {
  * owners with its ids kept, and a Blueprint dropped on an entity links it (Advanced). `world` acts on the world's
  * rows; an entity's rows act on that entity.
  */
-const WorldStatTree = ({ tree, selectedId, onSelect, world, emptyHint }: {
+const WorldStatTree = ({ tree, selectedId, onSelect, world, emptyHint, collapse }: {
   tree: OwnedStatTree;
   selectedId: string | null;
   onSelect: (id: string) => void;
   world: StatRowActions;
   emptyHint: ReactNode;
+  /** The host's collapsed groups, which outlive the tree. */
+  collapse?: TreeCollapse;
 }) => {
   const {
     stats, statGroups, traits, traitGroups, entities, placeholders, worldScripts, setStats, setStatGroups, editEntity,
@@ -166,7 +169,7 @@ const WorldStatTree = ({ tree, selectedId, onSelect, world, emptyHint }: {
   return (
     <>
       {refusal && <StatDropRefusalNotice refusal={refusal} placeholders={placeholders} onDismiss={() => setRefusal(null)} />}
-      <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} revealSelected />
+      <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} collapse={collapse} revealSelected />
       {removeOwnedDialog}
     </>
   );

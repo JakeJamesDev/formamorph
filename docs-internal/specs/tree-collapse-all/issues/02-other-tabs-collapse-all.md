@@ -1,6 +1,6 @@
 # 02: Collapse All on the Other Tree Tabs
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -17,6 +17,14 @@ Entities, Stats, Traits, Placeholders, Dictionary and Scripts get the Collapse A
 
 ## Acceptance criteria
 
-- [ ] On each of the six tabs, Collapse All hides child rows, Expand All shows them, and the tooltip names the tab's noun (editor-bench test per tab)
-- [ ] Collapsing Entities leaves the Locations tree open, and the reverse (editor-bench test)
-- [ ] A tab whose tree has no parent rows shows the button disabled (editor-bench test)
+- [x] On each of the six tabs, Collapse All hides child rows, Expand All shows them, and the tooltip names the tab's noun (editor-bench test per tab) — `WorldEditor.treeCollapseTabs.test.tsx`, `describe.each` over the six tabs
+- [x] Collapsing Entities leaves the Locations tree open, and the reverse (editor-bench test) — "leaves the Locations tree open when Entities collapses, and the reverse"
+- [x] A tab whose tree has no parent rows shows the button disabled (editor-bench test) — "is disabled on a world with no parent rows", per tab
+
+## Landed
+
+**Not verified:** no Simple-mode test (a Simple-mode world has no groups, so every tab shows the button disabled). Outside-navigation reveal is tested on Dictionary only; the other tabs share ticket 01's `requestReveal` path.
+
+**For you:**
+
+- Open the World Editor on a world with groups and press Collapse All on each of the six tabs. On Dictionary, one press closes the book and its Background/Foreground zones; opening the book by hand leaves the zones closed.

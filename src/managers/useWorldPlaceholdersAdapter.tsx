@@ -10,6 +10,7 @@ import { blueprintsPlaceholderGroup } from '@/lib/placeholderBlueprints';
 import { placeholderOwnerRef, type PlaceholderOwnerRef } from '@/lib/placeholderHomes';
 import { newPlaceholder } from '@/lib/placeholders';
 import { ownerIdOfNode, placeholderTreeNodes } from '@/lib/placeholderScopes';
+import type { TreeCollapse } from '@/components/treeCollapse';
 import { randomUUID } from '@/lib/uuid';
 import type { PlaceholderPanelTab } from '@/views/placeholderPanelTabs';
 import PlaceholderList from './PlaceholderList';
@@ -22,9 +23,11 @@ import { usePlaceholderRowActions } from './usePlaceholderRowActions';
  * each placeholder's own row, and the detail router's pane. `ownerId` is whose placeholder is open, for the
  * palette; `dialog` is the delete confirmation the search rows open, which the host renders.
  */
-export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner, tab, onTabChange }: {
+export function useWorldPlaceholdersAdapter({ selectedId, onSelect, collapse, onOpenOwner, tab, onTabChange }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  /** The tree's collapsed groups, held by the World Editor for the visit. */
+  collapse: TreeCollapse;
   onOpenOwner: (owner: PlaceholderOwnerRef) => void;
   tab: PlaceholderPanelTab;
   onTabChange: (tab: PlaceholderPanelTab) => void;
@@ -37,6 +40,7 @@ export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner,
 
   const nodes = useMemo(() => (lists ? placeholderTreeNodes(lists) : []), [lists]);
   const nodeIds = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes]);
+  const parents = useMemo(() => [...new Set(nodes.flatMap((n) => (n.parentId === null ? [] : [n.parentId])))], [nodes]);
 
   const handleAddPlaceholder = (typed: string) => {
     const p = newPlaceholder(typed || 'New Placeholder');
@@ -58,7 +62,8 @@ export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner,
   };
 
   const adapter: ListEditorAdapter = {
-    tree: <PlaceholderList selectedId={selectedId} onSelect={onSelect} />,
+    tree: <PlaceholderList selectedId={selectedId} onSelect={onSelect} collapse={collapse} />,
+    collapse: { noun: 'placeholders', parents, state: collapse },
     rows: () => (lists ? placeholderSearchRows(nodes, lists, rowRules, { withOwner: true }) : []),
     names: { placeholders, letters: placementLetters, owners: placeholderOwners },
     noun: 'placeholders',

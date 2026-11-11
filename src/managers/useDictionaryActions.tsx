@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { OPEN_TREE, type TreeCollapse, type TreeCollapseState } from '@/components/treeCollapse';
 import { Copy, FilePlus, X } from 'lucide-react';
 import type { ListEditorRow } from '@/components/listEditorHooks';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
@@ -15,6 +16,10 @@ export type DictionaryCollapse = {
   /** Zone keys, `<bookId>:<position>`. */
   zones: ReadonlySet<string>;
   toggleZone: (key: string) => void;
+  /** The selection whose book and zone the tree last opened. */
+  revealed: string | null;
+  /** Opens the given books and zones for a newly selected entry, and records the selection as revealed. */
+  reveal: (selectedId: string, keys: readonly string[]) => void;
 };
 
 const toggled = (set: ReadonlySet<string>, key: string) => {
@@ -23,15 +28,29 @@ const toggled = (set: ReadonlySet<string>, key: string) => {
   return next;
 };
 
-export function useDictionaryCollapse(): DictionaryCollapse {
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
-  const [zones, setZones] = useState<ReadonlySet<string>>(new Set());
+/** Books and zones share one set. A host's `TreeCollapse` keeps it for the visit; without one the set is local. */
+export function useDictionaryCollapse(host?: TreeCollapse): DictionaryCollapse {
+  const [own, setOwn] = useState<TreeCollapseState>(OPEN_TREE);
+  const state = host?.value ?? own;
+  const update = host?.update ?? setOwn;
+  const toggle = (key: string) => update((prev) => ({ ...prev, collapsed: toggled(prev.collapsed, key) }));
   return {
-    collapsed,
-    toggle: (bookId) => setCollapsed((prev) => toggled(prev, bookId)),
-    expand: (bookId) => setCollapsed((prev) => { const next = new Set(prev); next.delete(bookId); return next; }),
-    zones,
-    toggleZone: (key) => setZones((prev) => toggled(prev, key)),
+    collapsed: state.collapsed,
+    zones: state.collapsed,
+    toggle,
+    toggleZone: toggle,
+    expand: (bookId) => update((prev) => {
+      if (!prev.collapsed.has(bookId)) return prev;
+      const next = new Set(prev.collapsed);
+      next.delete(bookId);
+      return { ...prev, collapsed: next };
+    }),
+    revealed: state.revealed,
+    reveal: (selectedId, keys) => update((prev) => {
+      const hidden = keys.some((key) => prev.collapsed.has(key));
+      if (!hidden && prev.revealed === selectedId) return prev;
+      return { collapsed: hidden ? new Set([...prev.collapsed].filter((key) => !keys.includes(key))) : prev.collapsed, revealed: selectedId };
+    }),
   };
 }
 

@@ -12,14 +12,17 @@ import { EmptyListHint } from '@/components/EmptyListHint';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { ContentLinkIcon } from '@/components/ContentLinkStatus';
 import { useRemoveEntity } from './useRemoveEntity';
+import type { TreeCollapse } from '@/components/treeCollapse';
 
 /** The Entities tab's folder tree: a flat sortable list where horizontal drag sets nesting depth. Groups are
  *  editor-only folders (never sent to the AI); entities are leaves. Mirrors the Traits tab. */
-const EntityTree = ({ selectedId, onSelect, pendingLinks }: {
+const EntityTree = ({ selectedId, onSelect, pendingLinks, collapse }: {
   selectedId: string | null;
   onSelect: (id: string) => void;
   /** Library ids linked this session and not yet saved, for the row markers. */
   pendingLinks?: readonly string[];
+  /** The host's collapsed groups, which outlive the tree. */
+  collapse?: TreeCollapse;
 }) => {
   const { entities, entityGroups, setEntities, setEntityGroups, removeEntityGroup, placeholders } = useGameData();
   const { advanced } = useEditorMode();
@@ -65,7 +68,7 @@ const EntityTree = ({ selectedId, onSelect, pendingLinks }: {
 
   return (
     <>
-      <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />
+      <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} collapse={collapse} revealSelected={!!collapse} />
       {removeEntityDialog}
     </>
   );

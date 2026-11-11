@@ -1,4 +1,6 @@
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
+import type { TreeCollapse } from '@/components/treeCollapse';
+import { dictionaryParentIds } from '@/lib/dictionaryTree';
 import { BookPlus } from 'lucide-react';
 import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import { ListMenuRow } from '@/components/ListToolbar';
@@ -22,11 +24,13 @@ import { dictionarySearchRows, useDictionaryActions, useDictionaryCollapse } fro
  * the host renders it. `book` is the open book, or the book of the open entry.
  */
 export function useWorldDictionaryAdapter({
-  selectedId, onSelect, bookTab, onBookTabChange, bookPlaceholderId, onBookPlaceholderIdChange,
+  selectedId, onSelect, collapse: collapseState, bookTab, onBookTabChange, bookPlaceholderId, onBookPlaceholderIdChange,
   onOpenWorldPlaceholder, entryTab, onEntryTabChange, focusField, library, pendingLinks,
 }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  /** The tree's collapsed books and zones, held by the World Editor for the visit. */
+  collapse: TreeCollapse;
   bookTab: DictionaryBookPanelTab;
   onBookTabChange: (tab: DictionaryBookPanelTab) => void;
   bookPlaceholderId: string | null;
@@ -42,7 +46,8 @@ export function useWorldDictionaryAdapter({
 }): { adapter: ListEditorAdapter; dialog: ReactNode; book: Dictionary | undefined } {
   const { placeholders, placementLetters, placeholderOwners } = useGameData();
   const { dictionaries, addDictionary } = useDictionaryStore();
-  const collapse = useDictionaryCollapse();
+  const collapse = useDictionaryCollapse(collapseState);
+  const parents = useMemo(() => dictionaryParentIds(dictionaries), [dictionaries]);
   const actions = useDictionaryActions({ selectedId, onSelect, collapse });
 
   // A book's id opens its panel; an entry's opens the entry panel under its book.
@@ -92,6 +97,7 @@ export function useWorldDictionaryAdapter({
 
   const adapter: ListEditorAdapter = {
     tree: <DictionaryTree selectedId={selectedId} onSelect={onSelect} collapse={collapse} pendingLinks={pendingLinks} />,
+    collapse: { noun: 'entries', parents, state: collapseState },
     rows: () => dictionarySearchRows(dictionaries, actions, true),
     names: { placeholders, letters: placementLetters, owners: placeholderOwners },
     noun: 'dictionaries',

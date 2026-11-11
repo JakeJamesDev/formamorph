@@ -12,6 +12,18 @@ export function dictionaryEntryLabel(entry: DictionaryEntry): string {
   return entry.name || entry.key?.[0] || 'Untitled';
 }
 
+/** The collapse key of a book's zone: `<bookId>:before` for Background, `<bookId>:after` for Foreground. */
+export const dictionaryZoneKey = (bookId: string, position: DictionaryEntry['position']) => `${bookId}:${position === 'before' ? 'before' : 'after'}`;
+
+/** Every book and zone key that holds at least one entry, for Collapse All. */
+export function dictionaryParentIds(books: readonly Dictionary[]): string[] {
+  return books.flatMap((book) => [
+    ...(book.entries.length ? [book.id] : []),
+    ...(book.entries.some((e) => e.position === 'before') ? [dictionaryZoneKey(book.id, 'before')] : []),
+    ...(book.entries.some((e) => e.position !== 'before') ? [dictionaryZoneKey(book.id, 'after')] : []),
+  ]);
+}
+
 /** The entry a book's tree shows first: its first Background entry, else its first Foreground one. */
 export function firstDictionaryEntryId(book: Dictionary): string | null {
   return (book.entries.find((e) => e.position === 'before') ?? book.entries[0])?.id ?? null;

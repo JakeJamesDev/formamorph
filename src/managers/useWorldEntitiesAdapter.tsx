@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
 import { Copy, FilePlus, FolderPlus, X } from 'lucide-react';
 import { ContentLinkIcon } from '@/components/ContentLinkStatus';
@@ -7,7 +7,8 @@ import { ListMenuRow } from '@/components/ListToolbar';
 import { useGameData } from '@/contexts/GameDataContext';
 import { entityRootCount, newEntity } from '@/lib/blankWorld';
 import { useEditorMode } from '@/lib/editorMode';
-import { duplicateEntityNode } from '@/lib/entityGroupTree';
+import { buildEntityTree, duplicateEntityNode, flattenEntityTree } from '@/lib/entityGroupTree';
+import { treeParentIds, type TreeCollapse } from '@/components/treeCollapse';
 import { randomUUID } from '@/lib/uuid';
 import type { FocusFieldHint } from '@/types';
 import type { EntityPanelTab } from '@/views/entityPanelTabs';
@@ -25,10 +26,12 @@ import { useRemoveEntity } from './useRemoveEntity';
  */
 export function useWorldEntitiesAdapter({
   selectedId, onSelect, tab, onTabChange, traitId, onTraitIdChange, statId, onStatIdChange, placeholderId, onPlaceholderIdChange,
-  onOpenWorldPlaceholder, focusField, library, pendingLinks,
+  onOpenWorldPlaceholder, focusField, library, pendingLinks, collapse,
 }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  /** The tree's collapsed groups, held by the World Editor for the visit. */
+  collapse: TreeCollapse;
   tab: EntityPanelTab;
   onTabChange: (tab: EntityPanelTab) => void;
   traitId: string | null;
@@ -49,6 +52,10 @@ export function useWorldEntitiesAdapter({
   } = useGameData();
   const { advanced } = useEditorMode();
   const { ask: askRemoveEntity, dialog } = useRemoveEntity();
+  const parents = useMemo(
+    () => treeParentIds(flattenEntityTree(buildEntityTree(entityGroups, entities))),
+    [entityGroups, entities],
+  );
 
   // New entities and groups append at the root; the author drags them into folders.
   const rootCount = () => entityRootCount({ entities, entityGroups });
@@ -116,7 +123,8 @@ export function useWorldEntitiesAdapter({
   };
 
   const adapter: ListEditorAdapter = {
-    tree: <EntityTree selectedId={selectedId} onSelect={onSelect} pendingLinks={pendingLinks} />,
+    tree: <EntityTree selectedId={selectedId} onSelect={onSelect} pendingLinks={pendingLinks} collapse={collapse} />,
+    collapse: { noun: 'entities', parents, state: collapse },
     rows,
     names: { placeholders, letters: placementLetters, owners: placeholderOwners },
     noun: 'entities',

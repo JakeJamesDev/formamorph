@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import type { TreeCollapse } from '@/components/treeCollapse';
 import { Hint } from '@/components/ui/typography';
 import { HelpButton } from '@/components/HelpButton';
 import { DropRefusalNotice } from '@/components/editor/DropRefusalNotice';
@@ -114,9 +115,11 @@ function OpenOwnerFooter({ entry }: { entry: ScriptEntry }) {
  * The Scripts tab: every script in the world under its timing, in run order. A drag reorders within a timing and
  * writes `order` (Q5); the timing menu alone moves a script between timings (Q4). Add Script adds a world script.
  */
-export function useWorldScriptsAdapter({ selectedId, onSelect, active = false }: {
+export function useWorldScriptsAdapter({ selectedId, onSelect, collapse, active = false }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  /** The tree's collapsed timings, held by the World Editor for the visit. */
+  collapse: TreeCollapse;
   /** True while the Scripts tab shows: the help window's Insert targets the world then. */
   active?: boolean;
 }): ListEditorAdapter {
@@ -155,6 +158,8 @@ export function useWorldScriptsAdapter({ selectedId, onSelect, active = false }:
       },
     });
   }, [active]);
+
+  const parents = useMemo(() => SCRIPT_TIMINGS.filter((timing) => byTiming[timing].length).map(groupId), [byTiming]);
 
   const tree: SortableTreeAdapter<ScriptTreeRow> = {
     visibleDeps: [byTiming],
@@ -251,12 +256,13 @@ export function useWorldScriptsAdapter({ selectedId, onSelect, active = false }:
             {SCRIPT_TIMING_LABEL[refused.script.timing]}. Change its timing with the <strong>Timing</strong> menu.
           </DropRefusalNotice>
         )}
-        <SortableTree adapter={tree} selectedId={selectedId} onSelect={onSelect} revealSelected />
+        <SortableTree adapter={tree} selectedId={selectedId} onSelect={onSelect} collapse={collapse} revealSelected />
       </>
     ),
     rows: () => entries.map((entry) => ({ id: entry.key, name: entry.label, actions: [] })),
     names: { placeholders },
     noun: 'scripts',
+    collapse: { noun: 'scripts', parents, state: collapse },
     detail,
     footer: (id) => {
       const entry = byKey.get(id);

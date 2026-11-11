@@ -22,6 +22,7 @@ import type { PlaceholderSlices } from '@/lib/placeholderHomes';
 import { BlueprintRefusalNotice } from './BlueprintRefusalNotice';
 import { usePlaceholderRowActions } from './usePlaceholderRowActions';
 import { SortableTree, type SortableTreeAdapter } from './SortableTree';
+import type { TreeCollapse } from '@/components/treeCollapse';
 import { chipInput } from './chipInput';
 
 /**
@@ -40,11 +41,13 @@ import { chipInput } from './chipInput';
  * this component only wires them to the shared drag-tree scaffold. Adding is the caller's concern (a
  * toolbar button), mirroring how the World Editor and library editor place their own.
  */
-const PlaceholderList = ({ selectedId, onSelect, openDuplicate }: {
+const PlaceholderList = ({ selectedId, onSelect, openDuplicate, collapse }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   /** Opens a row's fresh duplicate, given the id of the placeholder it copies; absent, the row is selected. */
   openDuplicate?: (rowId: string, sourceId: string) => void;
+  /** The host's collapsed groups, which outlive the tree. */
+  collapse?: TreeCollapse;
 }) => {
   const { placeholders, setPlaceholders, placedIds, lists, setLists, scope } = usePlaceholderStore();
   const world = useGameDataOptional();
@@ -228,7 +231,7 @@ const PlaceholderList = ({ selectedId, onSelect, openDuplicate }: {
           onDismiss={() => setRefusal(null)}
         />
       )}
-      <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />
+      <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} collapse={collapse} revealSelected={!!collapse} />
       {dialog}
     </>
   );
