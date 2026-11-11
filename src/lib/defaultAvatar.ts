@@ -74,8 +74,14 @@ export const clearUserDefaultAvatar = (): void => userDefaultAvatar.clear();
 /** Device flag: the one-time mark of the bundled Avatar as the Default Avatar has run. Device-local, never exported. */
 export const DEFAULT_MARKED_KEY = 'FORMAMORPH_defaultAvatarMarked';
 
-/** The library Avatar a picker opens on: the device default, else the bundled copy, else the first. Praline sorts
- *  after the player's own Avatars, because she is often the newest record. */
+/** What User's Default shows: the device default, else the seeded bundled copy, else the first library Avatar,
+ *  else none. Praline sorts after the player's own Avatars, because she is often the newest record. */
+export const firstAvailableAvatar = (libraryIds: Iterable<string>, deviceDefault: string | undefined): string | undefined => {
+  const ids = [...libraryIds];
+  return [deviceDefault, DEFAULT_AVATAR_ID].find((id) => id && ids.includes(id))
+    ?? ids.find((id) => id !== PRALINE_AVATAR_ID) ?? ids[0];
+};
+
+/** The library Avatar a picker opens on. */
 export const pickerStart = (libraryIds: readonly string[], deviceDefault: string | undefined): string =>
-  [deviceDefault, DEFAULT_AVATAR_ID].find((id) => id && libraryIds.includes(id))
-    ?? libraryIds.find((id) => id !== PRALINE_AVATAR_ID) ?? libraryIds[0] ?? DEFAULT_AVATAR_ID;
+  firstAvailableAvatar(libraryIds, deviceDefault) ?? DEFAULT_AVATAR_ID;

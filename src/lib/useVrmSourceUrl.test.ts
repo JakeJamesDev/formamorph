@@ -34,18 +34,20 @@ describe('useVrmSourceUrl', () => {
     expect(result.current.url).toBe('blob:model');
   });
 
-  it('clears resolving even when the model is missing (deleted → falls back to default, no infinite loader)', async () => {
+  it('clears resolving with no URL when the model fails to load, so no Avatar shows and no loader spins', async () => {
     getModelData.mockRejectedValue(new Error('not found'));
 
     const { result } = renderHook(() => useVrmSourceUrl({ kind: 'library', id: 'deleted-id' }));
     await waitFor(() => expect(result.current.resolving).toBe(false));
-    expect(result.current.url).toBeUndefined(); // fall back to the bundled default
+    expect(result.current.url).toBeUndefined();
   });
 
-  it('never fetches for the bundled file or no source', () => {
-    const bundled = renderHook(() => useVrmSourceUrl({ kind: 'bundled' }));
-    expect(bundled.result.current).toEqual({ url: undefined, resolving: false });
+  it('holds resolving without a fetch while the library list is pending', () => {
+    const pending = renderHook(() => useVrmSourceUrl({ kind: 'pending' }));
+    expect(pending.result.current).toEqual({ url: undefined, resolving: true });
+  });
 
+  it('never fetches for no source', () => {
     const none = renderHook(() => useVrmSourceUrl(undefined));
     expect(none.result.current).toEqual({ url: undefined, resolving: false });
     expect(getModelData).not.toHaveBeenCalled();

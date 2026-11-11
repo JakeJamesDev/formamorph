@@ -2,15 +2,14 @@ import { useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
-import { NO_LIBRARY, useLibraryIds } from '@/lib/useLibraryAvatars';
+import { useLibraryIds } from '@/lib/useLibraryAvatars';
 import { readUserDefaultAvatar } from '@/lib/defaultAvatar';
 import { playedEntityId, playVrmContext, resolveEntityVrm, resolvePlayedVrm } from '@/lib/vrmResolver';
 import { hasEntityVisual } from '@/lib/entityVisual';
 import type { Entity } from '@/types';
 
-/** Each entity's Avatar in this playthrough. A library id that is not there resolves to the bundled file, so on a
- *  build that holds one, whether an entity shows one never waits on the library list. Only which file waits, while
- *  `resolving`. */
+/** Each entity's Avatar in this playthrough. While the library list loads, a User's Default or library pick
+ *  resolves to `pending`, so the entity counts as showing one and its view holds a loader. */
 export function usePlayAvatars() {
   const { entities, worldOverview } = useGameData();
   const { persona } = useResolvedWorld();
@@ -20,7 +19,7 @@ export function usePlayAvatars() {
   return useMemo(() => {
     const ctx = playVrmContext({
       persona, entities, overview: worldOverview, characterData: viewCharacterData,
-      libraryIds: libraryIds ?? NO_LIBRARY, deviceDefault,
+      libraryIds, deviceDefault,
     });
     const sourceOf = (entity: Pick<Entity, 'id' | 'vrmPick'>) => resolveEntityVrm(entity, ctx);
     return {

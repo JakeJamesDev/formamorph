@@ -19,7 +19,7 @@ import { useBackStop } from '@/hooks/useBackStop';
 import { useVrmCustomization } from '@/lib/useVrmCustomization';
 import type { AvatarLock } from '@/lib/customizationLock';
 import { Hint } from '@/components/ui/typography';
-import { BUNDLED_DEFAULT_URL, DEFAULT_AVATAR_ID, pickerStart, readUserDefaultAvatar } from '@/lib/defaultAvatar';
+import { DEFAULT_AVATAR_ID, pickerStart, readUserDefaultAvatar } from '@/lib/defaultAvatar';
 import { namedVrmSource } from '@/lib/vrmResolver';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useMountedRef } from '@/lib/useMountedRef';
@@ -51,7 +51,9 @@ const CharacterCustomization = ({ vrm, lock, onCharacterCustomized, onBack, onAb
   const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_AVATAR_ID);
   const [libraryModels, setLibraryModels] = useState<ModelMetadata[]>();
   const lockedSource = locked && libraryModels
-    && namedVrmSource(locked, { store: worldOverview?.vrmStore, libraryIds: new Set(libraryModels.map((m) => m.id)) });
+    && namedVrmSource(locked, {
+      store: worldOverview?.vrmStore, libraryIds: new Set(libraryModels.map((m) => m.id)), deviceDefault: readUserDefaultAvatar(),
+    });
   const { url: resolvedModelUrl, resolving: resolvingModel } = useVrmSourceUrl(
     locked ? lockedSource : { kind: 'library', id: selectedModelId });
   const isMountedRef = useMountedRef();
@@ -115,11 +117,11 @@ const CharacterCustomization = ({ vrm, lock, onCharacterCustomized, onBack, onAb
             <Loader2 className="animate-spin" size={32} />
           ) : noAvatars ? (
             <AvatarEmptyState onAdd={() => uploadRef.current?.click()} />
-          ) : locked && !lockedSource && !BUNDLED_DEFAULT_URL ? (
+          ) : locked && !lockedSource ? (
             <Hint className="text-center">This world&apos;s Avatar isn&apos;t available.</Hint>
           ) : (
             <VRMViewer
-              key={resolvedModelUrl ?? 'default'}
+              key={resolvedModelUrl ?? 'none'}
               ref={vrmViewerRef}
               {...viewerProps}
               modelUrl={resolvedModelUrl}

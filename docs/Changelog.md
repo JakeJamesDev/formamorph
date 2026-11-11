@@ -97,6 +97,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Avatars:**
     - **The Skin Color picker now tints an Avatar's body and face to the same tone.** Before, an Avatar with dark clothing on the body, such as Aki, could get a pale yellow body.
     - **Avatar hair, eye, skin and clothing colors now open the app's own color picker.** You can type a hex color there. Before, these rows opened the browser's picker, which did not match the theme.
+    - **An entity set to User's Default no longer brings back an Avatar you deleted.** With no default, it shows another Avatar in your library. With an empty library, it shows none.
   - **In Game:**
     - **Items the story gives or takes now reach an entity it calls by an Alias or a Stranger Name.** Before, an entity named by a title, such as "The Captain", got none of the items the story gave it by its first name.
     - **Each part of the day now starts on a whole hour, such as Midday at 11:00.** Before, some started a few minutes early or late, so a Time of Day requirement or a script could miss an hour you expected it to cover.

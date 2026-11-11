@@ -5,8 +5,8 @@ import type { VrmSource } from '@/lib/vrmResolver';
 
 /**
  * An Avatar source as a URL for `VRMViewer.modelUrl`: a library Avatar's object URL, a store entry's embedded
- * file, or `undefined` for the build's bundled file, if any. A library Avatar that fails to load falls back the same way.
- * `resolving` holds while a library Avatar loads, so a caller can hold a loader instead of the bundled file.
+ * file, or `undefined` for none. A library Avatar that fails to load is none too.
+ * `resolving` holds while the library list or a library Avatar loads, so a caller can hold a loader.
  * It clears when the load settles, failed or not, so a deleted Avatar never leaves the loader spinning.
  */
 export function useVrmSourceUrl(source: VrmSource | undefined): { url: string | undefined; resolving: boolean } {
@@ -25,14 +25,14 @@ export function useVrmSourceUrl(source: VrmSource | undefined): { url: string | 
     let cancelled = false;
     let url: string | undefined;
     setResolving(true);
-    // A deleted or malformed model rejects; swallow it so the caller falls back to the bundled default, if any.
+    // A deleted or malformed model rejects; swallow it so the caller shows no Avatar.
     ModelStorageService.getModelData(libraryId).catch(() => null).then((model) => {
       if (cancelled) return;
       if (model) {
         url = URL.createObjectURL(model.blob);
         setLibraryUrl(url);
       }
-      setResolving(false); // settled — success or fall-back-to-default, either way no longer resolving
+      setResolving(false);
     });
     return () => {
       cancelled = true;
@@ -41,5 +41,5 @@ export function useVrmSourceUrl(source: VrmSource | undefined): { url: string | 
     };
   }, [libraryId]);
 
-  return { url: libraryId ? libraryUrl : worldUrl, resolving };
+  return { url: libraryId ? libraryUrl : worldUrl, resolving: resolving || source?.kind === 'pending' };
 }

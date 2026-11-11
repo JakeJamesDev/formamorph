@@ -11,6 +11,7 @@ import { resetTtsPlayback, setTtsPlayback } from '@/test/stubs/ttsPlayback';
 import { lastVrmViewerProps, resetVrmViewerStub } from '@/test/stubs/vrmViewer';
 
 import { phValues } from '@/test/placeholderValues';
+import ModelStorageService from '@/services/ModelStorageService';
 // three.js needs a WebGL context and the TTS engine a Web Audio graph; jsdom has neither.
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
@@ -32,6 +33,7 @@ vi.mock('@/components/prompt/TagChipField', () => ({
 afterEach(() => {
   resetTtsPlayback();
   resetVrmViewerStub();
+  vi.restoreAllMocks();
 });
 
 const TURNS = [
@@ -163,6 +165,9 @@ describe('MiddlePanel — the audio row', () => {
 
 describe('LeftPanel', () => {
   it('draws the player model for a world that has one', async () => {
+    // User's Default shows a library Avatar, so the player has one in the library.
+    vi.spyOn(ModelStorageService, 'getModelMetadata').mockResolvedValue([{ id: 'heron', name: 'Heron' }] as never);
+    vi.spyOn(ModelStorageService, 'getModelData').mockResolvedValue({ blob: new Blob() } as never);
     renderLeftPanel({}, {
       world: { worldOverview: { ...worldFixture().worldOverview, legacyVrmFallback: { kind: 'default' } } },
       seed: (gameplay) => gameplay.setCharacterData({

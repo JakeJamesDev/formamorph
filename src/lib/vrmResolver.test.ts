@@ -16,31 +16,65 @@ const ctx = (over: Partial<VrmContext> = {}): VrmContext => ({
   store, libraryIds: library, deviceDefault: 'lib-default', played: { source: 'none' }, customPersona: undefined, ...over,
 });
 
-describe('the missing default, for a played entity on User\'s Default', () => {
-  const played = (libraryIds: string[], deviceDefault?: string) => resolvePlayedVrm(ctx({
-    libraryIds: new Set(libraryIds), deviceDefault, customPersona: entity('custom', userDefault),
-  }));
+describe('each pick against each library state', () => {
+  // Library ids are newest first, as the library lists them.
+  const states = {
+    'Default marked and present': { libraryIds: ['lib-a', 'lib-default', DEFAULT_AVATAR_ID], deviceDefault: 'lib-default' },
+    'Default marked and missing': { libraryIds: ['lib-a', DEFAULT_AVATAR_ID], deviceDefault: 'lib-default' },
+    'unmarked with Avatars': { libraryIds: [PRALINE_AVATAR_ID, 'lib-b', 'lib-a'], deviceDefault: undefined },
+    empty: { libraryIds: [], deviceDefault: undefined },
+  } as const;
+  const userDefaultShows = {
+    'Default marked and present': lib('lib-default'),
+    'Default marked and missing': lib(DEFAULT_AVATAR_ID),
+    'unmarked with Avatars': lib('lib-b'),
+    empty: undefined,
+  } as const;
+  const picks: [string, VrmPick, Record<keyof typeof states, ReturnType<typeof resolveEntityVrm>>][] = [
+    ["User's Default", userDefault, userDefaultShows],
+    ['a library Avatar the library holds', lib('lib-a'), {
+      'Default marked and present': lib('lib-a'), 'Default marked and missing': lib('lib-a'), 'unmarked with Avatars': lib('lib-a'), empty: undefined,
+    }],
+    ['a library Avatar that is gone', lib('gone'), userDefaultShows],
+    ['a world Avatar', world('knight'), {
+      'Default marked and present': world('knight'), 'Default marked and missing': world('knight'), 'unmarked with Avatars': world('knight'), empty: world('knight'),
+    }],
+  ];
 
-  it('plays the seeded record on an existing library, which an older build seeded', () => {
-    expect(played([DEFAULT_AVATAR_ID, PRALINE_AVATAR_ID, 'lib-a'])).toEqual(lib(DEFAULT_AVATAR_ID));
+  for (const [pickName, pick, expected] of picks) {
+    for (const [stateName, state] of Object.entries(states)) {
+      const shows = expected[stateName as keyof typeof states];
+      it(`${pickName}, ${stateName}: shows ${shows && 'id' in shows ? shows.id : 'no Avatar'}`, () => {
+        const c = ctx({ libraryIds: new Set(state.libraryIds), deviceDefault: state.deviceDefault });
+        expect(resolveEntityVrm(entity('npc', pick), c)).toEqual(shows);
+        expect(resolvePlayedVrm({ ...c, customPersona: entity('custom', pick) })).toEqual(shows);
+      });
+    }
+  }
+
+  it('takes the seeded bundled copy over newer Avatars when nothing is marked', () => {
+    const c = ctx({ libraryIds: new Set([PRALINE_AVATAR_ID, 'lib-a', DEFAULT_AVATAR_ID]), deviceDefault: undefined });
+    expect(resolveEntityVrm(entity('npc', userDefault), c)).toEqual(lib(DEFAULT_AVATAR_ID));
   });
 
-  it('plays the seeded record on a new install, whose copy is the build\'s own default', () => {
-    expect(played([PRALINE_AVATAR_ID, DEFAULT_AVATAR_ID])).toEqual(lib(DEFAULT_AVATAR_ID));
+  it('takes Praline only when she is the only Avatar', () => {
+    const c = ctx({ libraryIds: new Set([PRALINE_AVATAR_ID]), deviceDefault: undefined });
+    expect(resolveEntityVrm(entity('npc', userDefault), c)).toEqual(lib(PRALINE_AVATAR_ID));
+  });
+});
+
+describe('while the library list is still being read', () => {
+  const reading = ctx({ libraryIds: undefined });
+
+  it("holds User's Default and library picks as pending", () => {
+    expect(resolveEntityVrm(entity('npc', userDefault), reading)).toEqual({ kind: 'pending' });
+    expect(resolveEntityVrm(entity('npc', lib('lib-a')), reading)).toEqual({ kind: 'pending' });
+    expect(resolvePlayedVrm({ ...reading, customPersona: entity('custom', userDefault) })).toEqual({ kind: 'pending' });
   });
 
-  it('falls back to the file after the seeded record is deleted', () => {
-    expect(played([PRALINE_AVATAR_ID, 'lib-a'])).toEqual({ kind: 'bundled' });
-  });
-
-  it('lets a set device default win', () => {
-    expect(played([DEFAULT_AVATAR_ID, 'lib-a'], 'lib-a')).toEqual(lib('lib-a'));
-  });
-
-  it('treats a picked id that is gone the same way', () => {
-    const libraryIds = new Set([DEFAULT_AVATAR_ID]);
-    expect(resolveEntityVrm(entity('npc', lib('gone')), ctx({ libraryIds }))).toEqual(lib(DEFAULT_AVATAR_ID));
-    expect(resolveEntityVrm(entity('npc', lib('gone')), ctx({ libraryIds: new Set() }))).toEqual({ kind: 'bundled' });
+  it('resolves a world pick and None at once', () => {
+    expect(resolveEntityVrm(entity('npc', world('knight')), reading)).toEqual(world('knight'));
+    expect(resolveEntityVrm(entity('npc'), reading)).toBeUndefined();
   });
 });
 
@@ -109,12 +143,12 @@ describe("User's Default", () => {
     expect(resolveEntityVrm(entity('npc', userDefault), ctx())).toEqual(lib('lib-default'));
   });
 
-  it('resolves to the bundled file with no device default', () => {
-    expect(resolveEntityVrm(entity('npc', userDefault), ctx({ deviceDefault: undefined }))).toEqual({ kind: 'bundled' });
+  it('resolves to the newest library Avatar with no device default', () => {
+    expect(resolveEntityVrm(entity('npc', userDefault), ctx({ deviceDefault: undefined }))).toEqual(lib('lib-a'));
   });
 
-  it('resolves to the bundled file when the device default is gone, the seeded bundled copy included', () => {
-    expect(resolveEntityVrm(entity('npc', userDefault), ctx({ deviceDefault: 'default-avatar' }))).toEqual({ kind: 'bundled' });
+  it('resolves to the newest library Avatar when the device default is gone, the seeded bundled copy included', () => {
+    expect(resolveEntityVrm(entity('npc', userDefault), ctx({ deviceDefault: DEFAULT_AVATAR_ID }))).toEqual(lib('lib-a'));
   });
 
   it('is what a legacy fallback without an old Avatar resolves to', () => {
@@ -136,13 +170,20 @@ describe('dangling picks', () => {
       .toEqual(world('legacy'));
   });
 
-  it('resolves an unresolvable library id to the bundled file', () => {
-    expect(resolveEntityVrm(entity('npc', lib('gone')), ctx())).toEqual({ kind: 'bundled' });
+  it("resolves an unresolvable library id as User's Default", () => {
+    expect(resolveEntityVrm(entity('npc', lib('gone')), ctx())).toEqual(lib('lib-default'));
   });
 
   it('stops at an unresolvable library id instead of falling through', () => {
     const played = { source: 'library', entity: entity('me', lib('gone')) } as const;
-    expect(resolvePlayedVrm(ctx({ played, customPersona: entity('custom', world('fox')) }))).toEqual({ kind: 'bundled' });
+    expect(resolvePlayedVrm(ctx({ played, customPersona: entity('custom', world('fox')) }))).toEqual(lib('lib-default'));
+  });
+
+  it("stops at User's Default on an empty library instead of falling through", () => {
+    for (const pick of [userDefault, lib('gone')]) {
+      const played = { source: 'library', entity: entity('me', pick) } as const;
+      expect(resolvePlayedVrm(ctx({ played, libraryIds: new Set(), customPersona: entity('custom', world('fox')) }))).toBeUndefined();
+    }
   });
 });
 

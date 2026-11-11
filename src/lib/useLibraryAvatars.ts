@@ -24,7 +24,7 @@ export const NO_LIBRARY: ReadonlySet<string> = new Set();
 
 /**
  * After each save load, once the persona has resolved, seed default customization for a save that holds
- * none while its played side shows an Avatar. Whether it shows one never depends on the library list.
+ * none while its played side has an Avatar pick.
  */
 export function useSeedAvatarOnSaveLoad(loads: number, ready: boolean, persona: ResolvedPersona | null): void {
   const { entities, worldOverview } = useGameData();
@@ -36,7 +36,7 @@ export function useSeedAvatarOnSaveLoad(loads: number, ready: boolean, persona: 
     const ctx = playVrmContext({
       persona, entities, overview: worldOverview, characterData, libraryIds: NO_LIBRARY, deviceDefault: undefined,
     });
-    // The pick counts on its own: with no bundled file, an empty library list resolves it to no model.
+    // The pick counts on its own: an empty library list resolves User's Default to no Avatar.
     const seeded = seededCharacterData(characterData, !!resolvePlayedVrm(ctx) || !!playedVrmPick(ctx));
     if (seeded !== characterData) setCharacterData(seeded);
   }, [loads, ready, persona, entities, worldOverview, characterData, setCharacterData]);

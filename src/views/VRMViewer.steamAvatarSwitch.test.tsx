@@ -48,20 +48,13 @@ afterEach(() => {
 });
 
 describe('the viewer with no model URL', () => {
-  it('requests no model on a build with no bundled Avatar', async () => {
+  it.each(['none', '', 'nsfw'])('requests no model and shows no Avatar on a build with FORMAMORPH_AVATARS "%s"', async (avatarSet) => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const { container, unmount } = await mountOn('none');
+    const { container, unmount } = await mountOn(avatarSet);
     expect(mocks.loaded).toEqual([]);
     expect(container.querySelector('canvas')).not.toBeNull();
     expect(container.querySelector('.animate-spin')).toBeNull();
     unmount();
     expect(error).not.toHaveBeenCalled();
-  });
-
-  it.each(['', 'nsfw'])('loads the bundled default on a build with FORMAMORPH_AVATARS "%s"', async (avatarSet) => {
-    const { container, unmount } = await mountOn(avatarSet);
-    expect(mocks.loaded).toEqual(['./default-avatar.vrm']);
-    expect(container.querySelector('.animate-spin')).not.toBeNull();
-    unmount();
   });
 });

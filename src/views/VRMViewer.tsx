@@ -8,7 +8,6 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
 import type { ColorChannel, HairTypeDef } from '@/types';
-import { BUNDLED_DEFAULT_URL } from '@/lib/defaultAvatar';
 import { applyMorphInfluences } from '@/lib/modelMorphs';
 import { catalogNames, expressionBoundMorphs, vrmMorphCatalog } from '@/lib/vrmMorphCatalog';
 import { dominantClusterRGB, medianOpaqueRGB, tintFactors, tintSeedRGB, toByte } from '@/lib/textureMedian';
@@ -176,7 +175,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   colorPlan,
   currentHairStyle,
   hairLength,
-  modelUrl = BUNDLED_DEFAULT_URL,
+  modelUrl,
   animationFiles = ['./idle.fbx', './bashful.fbx', './idle_dwarf.fbx'],
   extraColors,
   onCapabilities,
@@ -453,7 +452,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     const loader = new GLTFLoader();
     loader.register((parser) => new VRMLoaderPlugin(parser));
 
-    // No URL on a build with no bundled default: the scene stays empty.
+    // No URL: no Avatar, so the scene stays empty.
     if (modelUrl) loader.load(
       modelUrl,
       (gltf) => { void (async () => {

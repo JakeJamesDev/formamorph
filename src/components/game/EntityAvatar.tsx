@@ -39,7 +39,7 @@ export function EntityAvatar({ entity, source, played, resolving }: {
     ),
     [onCatalog],
   );
-  // Hold a loader rather than mount the bundled file and swap it a moment later.
+  // Hold a loader rather than mount an empty viewer and swap the model in a moment later.
   if (resolving || urlResolving) {
     return (
       <div className="w-full h-full flex items-center justify-center">
@@ -49,7 +49,7 @@ export function EntityAvatar({ entity, source, played, resolving }: {
   }
   return (
     <VRMViewer
-      key={url ?? 'default'}
+      key={url ?? 'none'}
       bodyMorphValues={morphs}
       onCapabilities={onCapabilities}
       colorPlan={colors}

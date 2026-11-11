@@ -38,7 +38,7 @@ describe('the resolver on a build with no bundled Avatar', () => {
 
   it('resolves a save that names the default Avatar id to no model', () => {
     expect(resolvePlayedVrm(ctx({ chosen: { pick: lib(DEFAULT_AVATAR_ID) } }))).toBeUndefined();
-    expect(namedVrmSource(lib(DEFAULT_AVATAR_ID), { store: undefined, libraryIds: new Set() })).toBeUndefined();
+    expect(namedVrmSource(lib(DEFAULT_AVATAR_ID), { store: undefined, libraryIds: new Set(), deviceDefault: undefined })).toBeUndefined();
   });
 
   it('resolves another entity that names the default Avatar id to no model', () => {
@@ -60,8 +60,8 @@ describe('the resolver on a build with no bundled Avatar', () => {
     expect(resolvePlayedVrm(save)).toEqual(lib('added'));
   });
 
-  it('does not guess an added Avatar with no device default or pick', () => {
-    expect(resolvePlayedVrm(ctx({ libraryIds: new Set(['added']) }))).toBeUndefined();
+  it('plays the first added Avatar with no device default or pick', () => {
+    expect(resolvePlayedVrm(ctx({ libraryIds: new Set(['added']) }))).toEqual(lib('added'));
   });
 
   it('still resolves a default record the library holds', () => {

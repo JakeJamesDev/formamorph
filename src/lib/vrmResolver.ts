@@ -1,13 +1,14 @@
 import type { CharacterData, ChosenVrm, Entity, VrmPick, WorldOverview, WorldVrmStore } from '@/types';
 import type { ResolvedPersona } from '@/lib/persona';
 import { customPersonaEntity } from '@/lib/blueprints';
-import { BUNDLED_DEFAULT_URL, DEFAULT_AVATAR_ID } from '@/lib/defaultAvatar';
+import { firstAvailableAvatar } from '@/lib/defaultAvatar';
 
 /** A pick that names one Avatar: a world store entry or a library record. */
 type NamedVrm = Exclude<VrmPick, { kind: 'default' }>;
 
-/** Where an entity's Avatar comes from: a world store entry, a library record, or the bundled file. */
-export type VrmSource = NamedVrm | { kind: 'bundled' };
+/** Where an entity's Avatar comes from: a world store entry, a library record, or `pending` while the library
+ *  list is still being read. */
+export type VrmSource = NamedVrm | { kind: 'pending' };
 
 type PickedEntity = Pick<Entity, 'id' | 'vrmPick'>;
 
@@ -20,8 +21,8 @@ export type PlayedVrmAs =
 /** Everything the resolver reads besides the entity. */
 export interface VrmContext {
   store: WorldVrmStore | undefined;
-  /** The ids in the player's Avatar library on this device. */
-  libraryIds: ReadonlySet<string>;
+  /** The ids in the player's Avatar library on this device, newest first. `undefined` while the read runs. */
+  libraryIds: ReadonlySet<string> | undefined;
   /** The device's default Avatar, a library id. */
   deviceDefault: string | undefined;
   played: PlayedVrmAs;
@@ -31,17 +32,20 @@ export interface VrmContext {
   legacyFallback?: VrmPick;
 }
 
-/** With no pick to honor: the seeded copy, which stays the player's across builds, else the build's file, if it
- *  holds one. */
-const missingDefault = ({ libraryIds }: Pick<VrmContext, 'libraryIds'>): VrmSource | undefined => {
-  if (libraryIds.has(DEFAULT_AVATAR_ID)) return { kind: 'library', id: DEFAULT_AVATAR_ID };
-  return BUNDLED_DEFAULT_URL ? { kind: 'bundled' } : undefined;
-};
+const PENDING: VrmSource = { kind: 'pending' };
 
-/** A library id that is gone resolves like a missing default; a store id that is gone resolves to none. */
-export function namedVrmSource(pick: NamedVrm, ctx: Pick<VrmContext, 'store' | 'libraryIds'>): VrmSource | undefined {
+/** User's Default on this device: the marked default, else the first available library Avatar, else none. */
+function userDefaultSource({ libraryIds, deviceDefault: marked }: Pick<VrmContext, 'libraryIds' | 'deviceDefault'>): VrmSource | undefined {
+  if (!libraryIds) return PENDING;
+  const id = firstAvailableAvatar(libraryIds, marked);
+  return id === undefined ? undefined : { kind: 'library', id };
+}
+
+/** A library id that is gone resolves as User's Default; a store id that is gone resolves to none. */
+export function namedVrmSource(pick: NamedVrm, ctx: Pick<VrmContext, 'store' | 'libraryIds' | 'deviceDefault'>): VrmSource | undefined {
   if (pick.kind === 'world') return ctx.store && Object.hasOwn(ctx.store, pick.id) ? { kind: 'world', id: pick.id } : undefined;
-  return ctx.libraryIds.has(pick.id) ? { kind: 'library', id: pick.id } : missingDefault(ctx);
+  if (!ctx.libraryIds) return PENDING;
+  return ctx.libraryIds.has(pick.id) ? { kind: 'library', id: pick.id } : userDefaultSource(ctx);
 }
 
 function resolvePick(pick: VrmPick | undefined, ctx: VrmContext, userDefault: () => VrmSource | undefined): VrmSource | undefined {
@@ -49,30 +53,23 @@ function resolvePick(pick: VrmPick | undefined, ctx: VrmContext, userDefault: ()
   return pick.kind === 'default' ? userDefault() : namedVrmSource(pick, ctx);
 }
 
-const deviceDefault = (ctx: VrmContext): VrmSource | undefined =>
-  ctx.deviceDefault && ctx.libraryIds.has(ctx.deviceDefault) ? { kind: 'library', id: ctx.deviceDefault } : missingDefault(ctx);
-
 /** User's Default for the played entity: the save's chosen Avatar, else the device default. */
 const playedDefault = (ctx: VrmContext): VrmSource | undefined =>
-  (ctx.chosen && resolvePick(ctx.chosen.pick, ctx, () => deviceDefault(ctx))) ?? deviceDefault(ctx);
+  (ctx.chosen && resolvePick(ctx.chosen.pick, ctx, () => userDefaultSource(ctx))) ?? userDefaultSource(ctx);
 
 /** The played entity's id: the persona's, or the Custom Persona's under None. */
 export function playedEntityId({ played, customPersona }: Pick<VrmContext, 'played' | 'customPersona'>): string | undefined {
   return played.source === 'none' ? customPersona?.id : played.entity.id;
 }
 
-/** The played side's Avatar: the first source by persona that is not none. Also serves the You row, which has no
+/** The played side's Avatar: the pick `playedVrmPick` lands on, resolved. Also serves the You row, which has no
  *  played entity. */
 export function resolvePlayedVrm(ctx: VrmContext): VrmSource | undefined {
   if (ctx.chosen?.legacy) {
-    const legacy = resolvePick(ctx.chosen.pick, ctx, () => deviceDefault(ctx));
+    const legacy = resolvePick(ctx.chosen.pick, ctx, () => userDefaultSource(ctx));
     if (legacy) return legacy;
   }
-  for (const pick of playedOrder(ctx)) {
-    const source = resolvePick(pick, ctx, () => playedDefault(ctx));
-    if (source) return source;
-  }
-  return undefined;
+  return resolvePick(playedVrmPick(ctx), ctx, () => playedDefault(ctx));
 }
 
 /** What the played side's precedence reads, apart from the library and the save. */
@@ -88,14 +85,14 @@ function playedOrder({ played, customPersona, legacyFallback }: PlayedVrmSources
 /** The pick the played side lands on, the save's chosen Avatar aside: the first by persona that is not none.
  *  Only a store id that is gone falls through, so the library list is not needed. */
 export function playedVrmPick(sources: PlayedVrmSources): VrmPick | undefined {
-  return playedOrder(sources).find((pick) => pick && (pick.kind !== 'world' || namedVrmSource(pick, { ...sources, libraryIds: new Set() })));
+  return playedOrder(sources).find((pick) => pick && (pick.kind !== 'world' || namedVrmSource(pick, { ...sources, libraryIds: undefined, deviceDefault: undefined })));
 }
 
 /** The Avatar `entity` shows in context. The played entity resolves through the played side; any other entity
  *  shows its own pick. */
 export function resolveEntityVrm(entity: PickedEntity, ctx: VrmContext): VrmSource | undefined {
   if (entity.id === playedEntityId(ctx)) return resolvePlayedVrm(ctx);
-  return resolvePick(entity.vrmPick, ctx, () => deviceDefault(ctx));
+  return resolvePick(entity.vrmPick, ctx, () => userDefaultSource(ctx));
 }
 
 /** Who the player plays: a library or world persona with its entity, else none. */
@@ -111,7 +108,7 @@ export function playVrmContext(args: {
   entities: readonly Entity[];
   overview: Pick<WorldOverview, 'vrmStore' | 'legacyVrmFallback'>;
   characterData: CharacterData | null;
-  libraryIds: ReadonlySet<string>;
+  libraryIds: ReadonlySet<string> | undefined;
   deviceDefault: string | undefined;
 }): VrmContext {
   const { persona, entities, overview, characterData } = args;

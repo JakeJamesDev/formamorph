@@ -52,7 +52,7 @@ See [Avatar Customization](#avatar-customization).
 1. On the **Avatars** tab, right-click the Avatar's tile.
 2. Select **Set as Default Avatar**.
 
-A new install starts with the bundled Avatar as its default. The tile gets a **Default** badge. To go back, right-click the tile and select **Clear Default Avatar**. With no default, **User's Default** shows the bundled Avatar. The default stays on this device. Exports and saves do not carry it as a setting.
+A new install starts with the bundled Avatar as its default. The tile gets a **Default** badge. To go back, right-click the tile and select **Clear Default Avatar**. With no default, **User's Default** shows another Avatar in your library, starting with the one that came with Formamorph. With an empty library, it shows none. The default stays on this device. Exports and saves do not carry it as a setting.
 
 ## How to Check an Avatar's License
 <!-- keywords: allowed, permission, rights, terms of use, copyright, share, redistribute, commercial, credit, vroid hub, legal to upload, who made it, attribution needed, ownership, usage rules, says not shareable, am i allowed -->
@@ -242,7 +242,7 @@ Select an Avatar's card to rename it, replace its file, download it or delete it
 
 See [World Editor Media](World-Editor-Media).
 
-A library entity whose Avatar isn't in your library on this device reads **Missing Avatar** in its **Avatar** dropdown. In the game it shows the bundled Avatar. Pick another option to replace it.
+A library entity whose Avatar isn't in your library on this device reads **Missing Avatar** in its **Avatar** dropdown. In the game it shows what **User's Default** shows. Pick another option to replace it.
 
 Each entity picks its Avatar in its **Avatar** dropdown, in Simple and Advanced mode:
 

@@ -30,7 +30,11 @@ const show = (overview: Record<string, unknown>, persona?: PersonaRef, character
     { world: oldWorld(overview), seed: (g) => { g.setCharacterData(characterData); if (persona) g.setPersonaRef(persona); } },
   );
 
-beforeEach(() => resetVrmViewerStub());
+beforeEach(() => {
+  resetVrmViewerStub();
+  vi.mocked(ModelStorageService.getModelMetadata).mockClear();
+  vi.mocked(ModelStorageService.getModelData).mockClear();
+});
 
 describe("an old world's player Avatar in play", () => {
   it('shows the old world Avatar under None', async () => {
@@ -43,8 +47,25 @@ describe("an old world's player Avatar in play", () => {
     await waitFor(() => expect(lastVrmViewerProps()?.modelUrl).toBe(OLD_AVATAR.data));
   });
 
-  it('shows the bundled Avatar when the flag was on with no old Avatar', async () => {
+  it("shows no Avatar when the flag was on with no old Avatar and the library is empty", async () => {
     show({ use3DModel: true, customPlayerVRM: null });
+    await waitFor(() => expect(ModelStorageService.getModelMetadata).toHaveBeenCalled());
+    await waitFor(() => expect(document.querySelector('.animate-spin')).toBeNull());
+    expect(screen.queryByTestId('vrm-viewer')).toBeNull();
+    expect(ModelStorageService.getModelData).not.toHaveBeenCalled();
+  });
+
+  it("holds a loader for User's Default while the library list is read", async () => {
+    vi.mocked(ModelStorageService.getModelMetadata).mockReturnValueOnce(new Promise(() => undefined));
+    show({ use3DModel: true, customPlayerVRM: null });
+    await waitFor(() => expect(document.querySelector('.animate-spin')).not.toBeNull());
+    expect(screen.queryByTestId('vrm-viewer')).toBeNull();
+  });
+
+  it("shows no Avatar when User's Default's library Avatar fails to load", async () => {
+    vi.mocked(ModelStorageService.getModelMetadata).mockResolvedValueOnce([{ id: 'heron' } as never]);
+    show({ use3DModel: true, customPlayerVRM: null });
+    await waitFor(() => expect(ModelStorageService.getModelData).toHaveBeenCalledWith('heron'));
     await waitFor(() => expect(screen.getByTestId('vrm-viewer')).toBeInTheDocument());
     expect(lastVrmViewerProps()?.modelUrl).toBeUndefined();
   });
