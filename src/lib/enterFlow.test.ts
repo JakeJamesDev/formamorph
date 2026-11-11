@@ -132,6 +132,40 @@ describe('the avatar step follows the draft persona', () => {
     expect(entryVrmPick(as({ source: 'none' }, { overview: { vrmStore, legacyVrmFallback: userDefault } }))).toEqual(userDefault);
   });
 
+  describe('against the Avatar library', () => {
+    const scout = { source: 'world', entityId: 'scout' } as const;
+    const hero = { source: 'world', entityId: 'hero' } as const;
+    const libraryEntities = [
+      ...entities,
+      entity('fox', { kind: 'library', id: 'lib-fox' }, { persona: true }),
+    ];
+    const fox = { source: 'world', entityId: 'fox' } as const;
+    const lib = (...ids: string[]) => new Set(ids);
+
+    it("skips the step for User's Default when the library is empty", () => {
+      expect(entryVrmPick(as(scout, { libraryIds: lib() }))).toBeUndefined();
+      expect(steps(as(scout, { libraryIds: lib() }))).toEqual(['workspace']);
+    });
+
+    it("offers User's Default when the library has an Avatar, or is still being read", () => {
+      expect(entryVrmPick(as(scout, { libraryIds: lib('heron') }))).toEqual(userDefault);
+      expect(entryVrmPick(as(scout))).toEqual(userDefault);
+    });
+
+    it('keeps a library pick that is in the library as set', () => {
+      expect(entryVrmPick(as(fox, { entities: libraryEntities, libraryIds: lib('lib-fox') }))).toEqual({ kind: 'library', id: 'lib-fox' });
+    });
+
+    it("treats a library pick that is gone as User's Default, and skips on an empty library", () => {
+      expect(entryVrmPick(as(fox, { entities: libraryEntities, libraryIds: lib('heron') }))).toEqual(userDefault);
+      expect(entryVrmPick(as(fox, { entities: libraryEntities, libraryIds: lib() }))).toBeUndefined();
+    });
+
+    it('keeps an author Avatar when the library is empty', () => {
+      expect(entryVrmPick(as(hero, { libraryIds: lib() }))).toEqual(knight);
+    });
+  });
+
   it("reads a library persona's pick from its loaded record, and no pick before the load", () => {
     const ref = { source: 'library', entityId: 'wanderer' } as const;
     const lib = { kind: 'library', id: 'lib-fox' } as const;

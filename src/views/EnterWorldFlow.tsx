@@ -42,6 +42,7 @@ import { customPersonaEntity } from '@/lib/blueprints';
 import type { PersonaOption } from '@/components/game/PersonaPicker';
 import DictionaryStorageService from '../services/DictionaryStorageService';
 import EntityStorageService from '../services/EntityStorageService';
+import ModelStorageService from '../services/ModelStorageService';
 import { LibraryRecordNotFoundError } from '../services/LibraryStore';
 import type { WorldRecord } from '@/components/WorldDetails';
 import ReadmeModal from '@/components/game/ReadmeModal';
@@ -134,6 +135,18 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const [selectedCastPicks, setSelectedCastPicks] = useState<OwnedTraitPicks>({});
   // The Avatar the step opens on: User's Default offers the picker, any other pick shows as set.
   const [selectedVrm, setSelectedVrm] = useState<VrmPick>();
+  // The Avatar library's ids, so a library with none skips the Avatar step. Absent while the first read runs.
+  const [libraryIds, setLibraryIds] = useState<ReadonlySet<string>>();
+  // Reads the library afresh, as the player may have changed it since the menu opened.
+  // A failed read leaves it absent, which counts as showing.
+  const readLibraryIds = async (): Promise<ReadonlySet<string> | undefined> => {
+    const models = await ModelStorageService.getModelMetadata().catch(() => undefined);
+    if (!models) return undefined;
+    const ids = new Set(models.map((m) => m.id));
+    if (isMountedRef.current) setLibraryIds(ids);
+    return ids;
+  };
+  useEffect(() => { void readLibraryIds(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The raw world's traits, whose names carried requirements were stored under and bind to, and its blueprints.
   const rawTraitWorld = useMemo(
@@ -158,11 +171,12 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     return () => { cancelled = true; };
   }, [castKey, libraryCastData, isMountedRef]);
   // The persona's Avatar pick. A library persona reads its pick from the loaded record.
-  const entryVrm = (persona: PersonaRef, libraryPersona?: Entity) => entryVrmPick({
+  const entryVrm = (persona: PersonaRef, libraryPersona?: Entity, ids = libraryIds) => entryVrmPick({
     persona,
     libraryPersona: libraryPersona ?? (persona.source === 'library' ? libraryCastData.get(persona.entityId) : undefined),
     entities: worldEntities,
     overview: worldOverview,
+    libraryIds: ids,
   });
   const showsDraftVrm = !!entryVrm(draftPersona);
   const libraryCast = useMemo(
@@ -401,7 +415,8 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
       setSelectedCastPicks(castPicks);
       setSelectedDictionaries(dicts);
       setSelectedPersona(persona);
-      const vrm = entryVrm(persona.ref, persona.libraryEntity);
+      const vrm = entryVrm(persona.ref, persona.libraryEntity, await readLibraryIds());
+      if (entryRequest.current !== request) return;
       setSelectedVrm(vrm);
       if (vrm) {
         showEnterStep('avatar');
@@ -515,7 +530,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     entryStarted.current = true;
     setEntryDraft(draft);
     loadPersonaPick(persona).then(
-      (pick) => {
+      async (pick) => {
         // A library persona starts on its own owned defaults.
         const cast: EntryTraitWorld = {
           ...rawEntryWorld,
@@ -523,7 +538,8 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
             ? [bindLibraryEntity(pick.libraryEntity, rawTraitWorld)]
             : [],
         };
-        const characterData = seededCharacterData(null, !!entryVrm(pick.ref, pick.libraryEntity));
+        const characterData = seededCharacterData(null, !!entryVrm(pick.ref, pick.libraryEntity, await readLibraryIds()));
+        if (!isMountedRef.current) return;
         onStartGame(
           draft.traitIds, characterData, true, draft.locationId, null, null, pick,
           castOwnedTraits(withLibraryDefaults(draft, cast), cast),

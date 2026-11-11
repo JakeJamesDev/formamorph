@@ -200,7 +200,7 @@ Right-click a tile for **Set as Default Avatar** (or **Clear Default Avatar**), 
 
 **Delete Avatar** asks you to confirm. You can delete your last Avatar. The bundled Avatar does not come back after you delete it.
 
-- If saves use the Avatar, the dialog names them. Those saves use the Default Avatar after you delete it.
+- If saves use the Avatar, the dialog names them. Those saves use your Default Avatar after you delete it, or the first Avatar in your library. With no Avatars left, they show none.
 - If library entities use the Avatar, the dialog names them too. Those entities show no Avatar after you delete it.
 
 ## The Permissive License

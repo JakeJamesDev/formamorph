@@ -38,20 +38,15 @@ describe('findModelUsage', () => {
 describe('deleteModelDescription', () => {
   it('names entities and saves together', () => {
     expect(deleteModelDescription({ entities: ['Wren', 'Odd Wick'], saves: ['Night One'] })).toBe(
-      "This Avatar is deleted from your library. \"Wren\" and \"Odd Wick\" will show no Avatar. One save uses this Avatar: \"Night One\". It'll use the Default Avatar instead. You can't undo this.",
+      "This Avatar is deleted from your library. \"Wren\" and \"Odd Wick\" will show no Avatar. One save uses this Avatar: \"Night One\". It'll use your Default Avatar instead, or the first Avatar in your library. With no Avatars left, it'll show none. You can't undo this.",
     );
   });
 
-  it('sends saves to the device default, or to none, on a build with no bundled Avatar', () => {
+  it("names the fallback order for saves, plural, with the same text on every build", () => {
     const usage = { entities: ['Wren'], saves: ['Night One', 'Two'] };
-    expect(deleteModelDescription(usage, false)).toBe(
-      "This Avatar is deleted from your library. \"Wren\" will show no Avatar. 2 saves use this Avatar: \"Night One\" and \"Two\". They'll use your Default Avatar, or show none if you haven't set one. You can't undo this.",
+    expect(deleteModelDescription(usage)).toBe(
+      "This Avatar is deleted from your library. \"Wren\" will show no Avatar. 2 saves use this Avatar: \"Night One\" and \"Two\". They'll use your Default Avatar instead, or the first Avatar in your library. With no Avatars left, they'll show none. You can't undo this.",
     );
-    expect(deleteModelDescription(usage, true)).toContain("They'll use the Default Avatar instead.");
-  });
-
-  it('reads the build when it is not told', () => {
-    expect(deleteModelDescription({ entities: [], saves: ['Night One'] })).toContain('the Default Avatar instead');
   });
 
   it('names only entities when no save uses it', () => {

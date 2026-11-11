@@ -13,7 +13,7 @@ A new game starts at **Enter World**. One dialog holds every choice before page 
 2. Select **Enter World**.
 3. If the world has an **Introduction**, read it and close it.
 4. In the **Enter World** dialog, select each category in the list on the left and make your picks. The categories are in [The Enter World Dialog](#the-enter-world-dialog).
-5. Select **Start Game**. When the persona you play has an Avatar, the button reads **Continue to Avatar**, and the Avatar step comes next.
+5. Select **Start Game**. When the persona you play has an Avatar, the button reads **Continue to Avatar**, and the Avatar step comes next. With no Avatar in your library, a persona on **User's Default** has no Avatar, so the button reads **Start Game** and the game starts without the step.
 
 A world with nothing to choose skips the **Enter World** dialog. A world with a **Custom Persona** opens it even then, so you can type your **Name**.
 

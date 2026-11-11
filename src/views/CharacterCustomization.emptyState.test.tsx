@@ -54,6 +54,14 @@ describe('Avatar Customization with no Avatar in the library', () => {
     expect(done.mock.calls[0][0].chosenVrm).toBeNull();
   });
 
+  it('renders no customization controls until an Avatar shows', async () => {
+    mount();
+    await screen.findByText(/No Avatars yet/);
+    expect(screen.queryByText('Animate Avatar')).toBeNull();
+    fireEvent.change(document.getElementById('model-upload') as HTMLInputElement, { target: { files: [new File(['vrm'], 'Wren.vrm')] } });
+    await screen.findByText('Animate Avatar');
+  });
+
   it("opens the file picker from the empty state's Import Avatar, and shows the preview once one is added", async () => {
     mount();
     await screen.findByText(/No Avatars yet/);
@@ -92,6 +100,7 @@ describe("a locked library pick", () => {
     mount({ vrm: { kind: 'library', id: 'gone' } });
     await screen.findByText(hint);
     expect(screen.queryByTestId('preview')).toBeNull();
+    expect(screen.queryByText('Animate Avatar')).toBeNull();
   });
 
   it('shows the Avatar, with no hint, when it is in the library', async () => {

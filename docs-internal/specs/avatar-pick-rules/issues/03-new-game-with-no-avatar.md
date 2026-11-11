@@ -1,6 +1,6 @@
 # 03: New Game With No Avatar
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -20,13 +20,23 @@ A new game never asks a player to customize an Avatar they don't have (spec, Pla
 
 ## Acceptance criteria
 
-- [ ] With an empty library and a persona on User's Default, the flow goes past the Avatar step and the game starts with no Avatar.
-- [ ] With a missing library pick and Avatars in the library, Avatar Customization preselects the resolved Avatar and shows the dropdown.
-- [ ] With a missing library pick and an empty library, the step is skipped.
-- [ ] A None persona skips the step, as before.
-- [ ] A world Avatar shows as set with no dropdown, as before.
-- [ ] No customization control renders when no Avatar shows.
-- [ ] The delete confirmation for an Avatar a save uses names the first-available fallback, and no longer differs by build.
-- [ ] Mutation: remove the empty-library skip, and its test fails.
+- [x] With an empty library and a persona on User's Default, the flow goes past the Avatar step and the game starts with no Avatar. `EnterWorldFlow.avatarStep.test.tsx`, "skips the step on User's Default when the library is empty".
+- [x] With a missing library pick and Avatars in the library, Avatar Customization preselects the resolved Avatar and shows the dropdown. Same file, "preselects the resolved Avatar and offers the picker".
+- [x] With a missing library pick and an empty library, the step is skipped. Same file, "skips the step for a library pick that is gone".
+- [x] A None persona skips the step, as before. Existing "no avatar step" test.
+- [x] A world Avatar shows as set with no dropdown, as before. Existing "hides the picker on the author's Avatar" test.
+- [x] No customization control renders when no Avatar shows. `CharacterCustomization.emptyState.test.tsx`, "renders no customization controls until an Avatar shows", and the missing-world-Avatar case.
+- [x] The delete confirmation for an Avatar a save uses names the first-available fallback, and no longer differs by build. `libraryVrmDelete.test.ts`.
+- [x] Mutation: remove the empty-library skip, and its test fails. Ran it: 4 tests failed, line restored.
 
 For you: delete every Avatar, start a new game, and check that the flow reads well with the step gone.
+
+## Landed
+
+**Not verified**
+- The Start Game / Continue to Avatar button label can flash while the first library read runs. Not checked in a browser.
+- The delete text says "your Default Avatar" while the seeded Avatar is also named "Default Avatar". Not checked with a player.
+
+**For you**
+- Delete every Avatar, start a new game, and check that the flow reads well with the step gone.
+- Delete the Avatar of a persona's library pick, start a new game, and check the dropdown opens on your Default.

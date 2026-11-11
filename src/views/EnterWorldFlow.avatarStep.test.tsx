@@ -18,15 +18,16 @@ vi.mock('./VRMViewer', async () => {
   const { forwardRef } = await import('react');
   return { default: forwardRef<HTMLDivElement, { modelUrl?: string }>(({ modelUrl }, ref) => <div ref={ref} data-testid="preview" data-url={modelUrl ?? 'bundled'} />) };
 });
-const models = vi.hoisted((): ModelMetadata[] => [
+const libraryModels = vi.hoisted((): ModelMetadata[] => [
   { id: 'heron', name: 'Heron', type: 'model/vrm', size: 1, createdAt: '2026-01-02', thumbnail: 'data:,', hasFileThumbnail: false },
   { id: 'reed', name: 'Reed', type: 'model/vrm', size: 1, createdAt: '2026-01-01', thumbnail: 'data:,', hasFileThumbnail: false },
 ]);
+const models = vi.hoisted(() => ({ current: [] as ModelMetadata[] }));
 vi.mock('@/services/ModelStorageService', () => ({
   default: {
     initialize: vi.fn(async () => {}),
     seedBundledAvatars: vi.fn(async () => {}),
-    getModelMetadata: vi.fn(async () => models),
+    getModelMetadata: vi.fn(async () => models.current),
     ensureThumbnail: vi.fn(async () => null),
     getModelData: vi.fn(async () => null),
     bundledAvatarHashes: vi.fn(async () => []),
@@ -48,11 +49,15 @@ const world: StoredWorldRecord = {
     },
     stats: [], statUpdates: [], traits: [], traitGroups: [], dictionaries: [],
     locations: [{ id: 'inn', name: 'Inn', isStarting: true }],
-    entities: [persona('Hero', { kind: 'world', id: 'knight' }), persona('Scout', { kind: 'default' }), persona('Ghost')],
+    entities: [
+      persona('Hero', { kind: 'world', id: 'knight' }), persona('Scout', { kind: 'default' }), persona('Ghost'),
+      persona('Lost', { kind: 'library', id: 'gone' }),
+    ],
   },
 };
 
 beforeEach(async () => {
+  models.current = libraryModels;
   localStorage.clear();
   DEFAULT_WORLDS.forEach(({ id }) => tombstoneDefaultWorld(id));
   acceptAgeGate();
@@ -107,6 +112,33 @@ describe('the avatar step follows the persona pick', () => {
     expect(screen.getByText('Add .vrm')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Finalize Avatar' }));
     expect(startedWith(onStartGame)?.chosenVrm).toEqual({ pick: { kind: 'library', id: 'heron' } });
+  });
+
+  it("skips the step on User's Default when the library is empty, and starts with no Avatar", async () => {
+    models.current = [];
+    const onStartGame = await enterAs('Scout');
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(startedWith(onStartGame)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Finalize Avatar' })).not.toBeInTheDocument();
+  });
+
+  it('skips the step for a library pick that is gone when the library is empty', async () => {
+    models.current = [];
+    const onStartGame = await enterAs('Lost');
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(startedWith(onStartGame)).toBeNull();
+  });
+
+  it('preselects the resolved Avatar and offers the picker for a library pick that is gone', async () => {
+    setUserDefaultAvatar('reed');
+    await enterAs('Lost');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
+    await screen.findByRole('button', { name: 'Finalize Avatar' });
+    const picker = screen.getByRole('combobox');
+    await waitFor(() => expect(picker).toHaveTextContent('Reed'));
+    expect(picker).toBeEnabled();
   });
 
   it("hides the picker on the author's Avatar, previews it, and starts with no choice", async () => {

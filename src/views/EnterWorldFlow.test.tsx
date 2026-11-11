@@ -4,6 +4,7 @@ import { renderEnterWorld } from '@/test/enterWorldBench';
 import WorldStorageService from '@/services/WorldStorageService';
 import EntityStorageService from '@/services/EntityStorageService';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
+import ModelStorageService from '@/services/ModelStorageService';
 import { DEFAULT_WORLDS, tombstoneDefaultWorld } from '@/lib/defaultWorlds';
 import { acceptAgeGate } from '@/lib/ageGate';
 import { withDerivedLocations } from '@/lib/entityKind';
@@ -61,6 +62,10 @@ beforeEach(async () => {
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ data: [] }), {
     status: 200, headers: { 'Content-Type': 'application/json' },
   })));
+  // The player has one Avatar, so a User's Default pick still earns the Avatar step.
+  vi.spyOn(ModelStorageService, 'getModelMetadata').mockResolvedValue([
+    { id: 'heron', name: 'Heron', type: 'model/vrm', size: 1, createdAt: '2026-01-01', thumbnail: 'data:,', hasFileThumbnail: false },
+  ]);
   await WorldStorageService.storeWorld(world());
   await EntityStorageService.storeEntity({
     id: 'companion', name: 'Companion',

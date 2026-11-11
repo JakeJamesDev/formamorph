@@ -43,22 +43,28 @@ export interface EntryVrmInput {
   libraryPersona: Pick<Entity, 'id' | 'vrmPick'> | undefined;
   entities: readonly Entity[];
   overview: Pick<WorldOverview, 'vrmStore' | 'legacyVrmFallback'> | undefined;
+  /** The ids in the player's Avatar library. Absent while the read runs, when the pick counts as showing. */
+  libraryIds?: ReadonlySet<string>;
 }
 
 /**
  * The pick the draft persona's played side lands on: none skips the avatar step, User's Default offers the
- * picker, and a world or library pick shows that Avatar as set.
+ * picker, and a world or library pick shows that Avatar as set. A library pick that is gone acts as User's
+ * Default, and an empty library leaves User's Default with no Avatar, so the step is skipped.
  */
-export function entryVrmPick({ persona, libraryPersona, entities, overview }: EntryVrmInput): VrmPick | undefined {
+export function entryVrmPick({ persona, libraryPersona, entities, overview, libraryIds }: EntryVrmInput): VrmPick | undefined {
   const entity = persona.source === 'library' ? libraryPersona ?? { id: persona.entityId }
     : persona.source === 'world' ? entities.find((e) => e.id === persona.entityId)
     : undefined;
-  return playedVrmPick({
+  const pick = playedVrmPick({
     store: overview?.vrmStore,
     played: playedVrmAs(entity && persona.source !== 'none' ? { source: persona.source, entity } : null),
     customPersona: customPersonaEntity(entities),
     legacyFallback: overview?.legacyVrmFallback,
   });
+  if (!pick || pick.kind === 'world' || !libraryIds) return pick;
+  if (pick.kind === 'library' && libraryIds.has(pick.id)) return pick;
+  return libraryIds.size ? { kind: 'default' } : undefined;
 }
 
 /**

@@ -92,6 +92,8 @@ const CharacterCustomization = ({ vrm, lock, onCharacterCustomized, onBack, onAb
   };
 
   const noAvatars = !locked && !!libraryModels && libraryModels.length === 0;
+  // With no Avatar on screen there is nothing to customize.
+  const showsAvatar = !noAvatars && !(locked && !listing && !lockedSource);
   const uploadRef = useRef<HTMLInputElement>(null);
 
   const handleFinalize = () => {
@@ -167,7 +169,7 @@ const CharacterCustomization = ({ vrm, lock, onCharacterCustomized, onBack, onAb
           </div>
           )}
 
-          {controls}
+          {showsAvatar && controls}
     </>
   );
 
