@@ -283,12 +283,32 @@ describe('the World Editor Openings tab', () => {
       expect(listRows()).not.toContain('Old Mill 1!');
     });
 
-    it('folds every parent with Collapse All typed over a search, which shows once the search clears', async () => {
+    it("hides and shows a match with its parent's chevron while the search has text", async () => {
       await openOpeningsTab(TREE_WORLD);
       fireEvent.change(tabSearch(), { target: { value: 'creaks' } });
+      fireEvent.click(chevron('Collapse Black Fen'));
+      expect(listRows()).toEqual(['This World 1', '(Black Fen)']);
+      fireEvent.click(chevron('Expand Black Fen'));
+      expect(listRows()).toEqual(['This World 1', '(Black Fen)', 'Old Mill 1!']);
+    });
+
+    it('folds the search result with Collapse All, and clearing the search brings back the folds from before it', async () => {
+      await openOpeningsTab(TREE_WORLD);
+      fireEvent.click(chevron('Collapse Harbor Steps'));
+      fireEvent.change(tabSearch(), { target: { value: 'creaks' } });
       fireEvent.click(collapseAll());
+      expect(listRows()).toEqual(['This World 1', '(Black Fen)']);
+      expect(collapseAll()).toHaveAccessibleName('Expand all groups');
       fireEvent.change(tabSearch(), { target: { value: '' } });
-      expect(listRows()).toEqual(ALL_FOLDED);
+      expect(listRows()).toEqual(FULL.filter((row) => row !== 'Cellar 1!'));
+    });
+
+    it('opens every match again when the search text changes', async () => {
+      await openOpeningsTab(TREE_WORLD);
+      fireEvent.change(tabSearch(), { target: { value: 'creaks' } });
+      fireEvent.click(chevron('Collapse Black Fen'));
+      fireEvent.change(tabSearch(), { target: { value: 'creak' } });
+      expect(listRows()).toEqual(['This World 1', '(Black Fen)', 'Old Mill 1!']);
     });
 
     it('keeps the button enabled while the search has text', async () => {

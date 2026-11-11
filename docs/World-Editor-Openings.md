@@ -53,7 +53,8 @@ Each row shows how many openings it has. The **No Starting Location** icon marks
 - Search finds an owner by its name or by the text of its openings. The right pane then shows only the matching openings.
 - A row with rows inside it, dimmed or not, has an arrow. Select the arrow to hide or show those rows. **This World** has none.
 - **Collapse all groups** sits right of the search. It folds every row that has rows inside it. When all are folded, the same button reads **Expand all groups** and opens them.
-- While the search has text, a folded row still shows the rows that match. A folded row keeps its selection and its right pane.
+- A search opens every row that holds a match. Arrows and **Collapse all groups** then fold the search result. New search text opens every match again. Clearing the search brings back the folds you had before it.
+- A folded row keeps its selection and its right pane.
 - Folds aren't saved with the world. The list opens with every row expanded.
 
 ## How to Add a Self Opening

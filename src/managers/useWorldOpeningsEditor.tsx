@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight, MapPinOff, Plus } from 'lucide-react';
 import { EditorRow, EditorRowList, treeRowPaddingLeft } from '@/components/EditorRow';
 import { ListSearchToolbar } from '@/components/ListToolbar';
@@ -53,7 +53,7 @@ const NO_START_TIP: Record<Exclude<OwnerKind, 'world'>, string> = {
 /**
  * The World Editor's Openings tab: This World and every location and entity with openings, in their own
  * nesting, beside the selected owner's openings. With nothing selected, desktop shows This World. A search
- * keeps an owner whose name or opening text matches, and a parent folds its rows away until a search is typed.
+ * keeps an owner whose name or opening text matches. A parent folds its rows away; a search has its own folds.
  * Neither moves the selection.
  */
 export function useWorldOpeningsEditor({ selectedId, onSelect, search, collapse, defaultToWorld, onOpenEntity, onOpenLocation }: {
@@ -74,7 +74,7 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, collapse,
     placementLetters, placeholderOwners,
   } = useGameData();
   // Folded groups live in the World Editor's per-tab store, so they outlast a tab switch.
-  const folded = collapse.value.collapsed;
+  const [searchFolds, setSearchFolds] = useState<{ query: string; collapsed: ReadonlySet<string> }>({ query: '', collapsed: NONE_COLLAPSED });
   const view = openingsEditorView({ overview: worldOverview, entities, locations });
   const names: ListSearchNames = { placeholders, letters: placementLetters, owners: placeholderOwners };
   const label = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
@@ -89,13 +89,19 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, collapse,
 
   const heldKey = resolved && selectedId ? selectedId : defaultToWorld || ownerGone ? WORLD_OWNER_KEY : null;
   const owners = openingsTabOwners(view, resolved && selectedId ? { key: selectedId, owner: resolved } : null);
-  // A search shows every match, so it ignores the folds.
-  const collapsed = typed ? NONE_COLLAPSED : folded;
+  // A search opens on every match and folds on its own; new text opens them all again.
+  const searchFolded = searchFolds.query === typed ? searchFolds.collapsed : NONE_COLLAPSED;
+  const searchCollapse: TreeCollapse = {
+    value: { ...collapse.value, collapsed: new Set(searchFolded) },
+    update: (next) => setSearchFolds({ query: typed, collapsed: next({ ...collapse.value, collapsed: new Set(searchFolded) }).collapsed }),
+  };
+  const shownCollapse = typed ? searchCollapse : collapse;
   const rowsArgs = { owners, locations, entities, entityGroups, matches };
-  const rows = openingsTabRows({ ...rowsArgs, collapsed });
-  // Collapse All acts on every parent, whatever the search shows.
+  const rows = openingsTabRows({ ...rowsArgs, collapsed: shownCollapse.value.collapsed });
   const openRows = openingsTabRows({ ...rowsArgs, matches: () => true, collapsed: NONE_COLLAPSED });
-  const parentKeys = openRows.flatMap((row) => (row.kind !== 'rule' && row.parent ? [foldKey(row)] : []));
+  const parentsOf = (tree: typeof rows) => tree.flatMap((row) => (row.kind !== 'rule' && row.parent ? [foldKey(row)] : []));
+  // Collapse All acts on the parents the list shows: every one, or the search result's.
+  const parentKeys = parentsOf(typed ? openingsTabRows({ ...rowsArgs, collapsed: NONE_COLLAPSED }) : openRows);
   // The fold keys of every group above the selected owner.
   const above = selectedId ? groupsAbove(openRows, selectedId) : null;
   const aboveRef = useRef(above);
@@ -110,7 +116,7 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, collapse,
     const keys = aboveRef.current;
     if (selectedId && keys) update((prev) => (prev.revealed === selectedId ? prev : revealKeys(prev, selectedId, keys)));
   }, [selectedId, ancestry, revealed, update]);
-  const toggleFold = (key: string) => collapse.update((was) => {
+  const toggleFold = (key: string) => shownCollapse.update((was) => {
     const next = new Set(was.collapsed);
     if (!next.delete(key)) next.add(key);
     return { ...was, collapsed: next };
@@ -273,7 +279,7 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, collapse,
         after={(
           <>
             {/* The search keeps the tree, so the button stays enabled while it has text. */}
-            <TreeCollapseAllButton collapse={{ noun: 'groups', parents: parentKeys, state: collapse }} shown />
+            <TreeCollapseAllButton collapse={{ noun: 'groups', parents: parentKeys, state: shownCollapse }} shown />
             {extras?.after}
           </>
         )}
