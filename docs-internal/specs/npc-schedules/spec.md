@@ -260,6 +260,8 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q202** A reveal that lands on a field of a closed row opens the row first: world search, undo and Reveal Origin, on a Travel Hint, Travel or Distance. (Ticket 22.)
 - **Q203** On a closed row the distance mark draws Far in the foreground color and Nearby muted, as in the prototype. (Ticket 22.)
 - **Q204** The Authoring Tour's example opens the row it writes to, also when the Connection already exists and only its hints change. The step exists to show the example text. (Ticket 22; adds to Q201.)
+- **Q205** The four CUDA notice tests that were red at the close pass alone. Their fix is `5ff664c16` on the branch `worktree-fix-cuda-notice-popover-hold`, not on main. Ticket 25 names it and edits nothing there; main stays red on those tests until the user merges that branch. (Ticket 25.)
+- **Q206** The `instancePid` test fails only inside the full run, where a real PowerShell spawn slows about 35 times. The code's 15 s timeout stays. The fix is in the test: the runner's own way to keep a test out of the parallel pool if it has one, else a longer timeout for that one call. (Ticket 25.)
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
