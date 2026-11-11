@@ -14,7 +14,7 @@ import {
   type PlaceholderFinding, type PlaceholderPick, type PlaceholderToken,
 } from '@/lib/placeholders';
 import { labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
-import { connectionLegs, travelEnds } from '@/lib/locationGraph';
+import { connectionLegs, startingLocationIds, travelEnds } from '@/lib/locationGraph';
 import {
   allPinRows, entityPinTies, collectPins, hasDeadValueId, indexPlaceholders, isBlueprintSideSource, pinConflict, pinSourceOwnerId, pinsTargeting,
   valuePinners, type PinEditorWorld, type PinFinding, type PinRow, type PinSourceKind,
@@ -1985,9 +1985,9 @@ const locationNoEntities: Rule = {
   summary: (count) => `${count} locations contain no entities`,
   check: (world) => {
     const occupied = new Set((world.entities ?? []).flatMap((e) => e.locations ?? []));
-    // An entity that begins at Player's Starting Location stands in the world's starting location.
+    // An entity that begins at Player's Starting Location is at each place a game can start.
     if ((world.entities ?? []).some((e) => !e.customPersona && beginsWithPlayer(e))) {
-      for (const location of world.locations ?? []) if (location.isStarting) occupied.add(location.id);
+      for (const id of startingLocationIds(world.locations ?? [])) occupied.add(id);
     }
     return (world.locations ?? [])
       .filter((location) => !occupied.has(location.id))

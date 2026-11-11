@@ -2333,6 +2333,14 @@ describe('rules that read an entity routine', () => {
       expect(found.map((f) => f.items[0].id)).toEqual(['harbor', 'market']);
     });
 
+    it('counts every location as occupied by that entity when the world flags no starting location', () => {
+      const unflagged = base({
+        locations: [{ id: 'harbor', name: 'Harbor Steps' }, { id: 'market', name: 'The Long Market' }],
+        entities: [companion],
+      });
+      expect(only(unflagged, 'location-no-entities')).toEqual([]);
+    });
+
     it('flags the starting location when nobody begins there', () => {
       const found = only(withMarket([]), 'location-no-entities');
       expect(found.map((f) => f.items[0].id)).toEqual(['harbor', 'market']);

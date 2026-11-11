@@ -69,7 +69,7 @@ const ownersOf = (cast: Entity[]): StatCodeOwners => {
 
 const scriptsOf = (...codes: string[]): Script[] => codes.map((code, i) => ({ id: `s${i}`, timing: 'after', code }));
 
-/** Where the book stands, as a script reads it. `book` absent, no entity has a position (Test Code, the Test Bench). */
+/** Where the book stands, as a script reads it. `book` absent, no entity has a position. */
 const boardOf = (book: PositionBook | undefined, playerAt: string, cast: Entity[]): Partial<FlatStatCodeTurn> => ({
   places: {
     locations: KIND_LOCATIONS.map(({ id, name }) => ({ id, name })),

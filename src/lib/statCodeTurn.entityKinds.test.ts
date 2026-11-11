@@ -124,7 +124,7 @@ describe('location and present for each kind of entity', () => {
     expect(await reads(moved, AWAY, 'locations.Inn.present.some((e) => e.name === "Moths")')).toBe(false);
   });
 
-  it('with no position of its own, lists an entity at every place it lists (Test Code, Test Bench)', async () => {
+  it('with no position of its own, lists an entity at every place it lists', async () => {
     const cast = [WENNA, MOTHS, TESS];
     expect(await reads(undefined, 'gate', 'entities.Wenna.location === "" && locations.Inn.present.some((e) => e.name === "Wenna")', cast)).toBe(true);
     expect(await reads(undefined, 'gate', 'locations.Inn.present.some((e) => e.name === "Moths") && locations.Gate.present.some((e) => e.name === "Moths")', cast)).toBe(true);
