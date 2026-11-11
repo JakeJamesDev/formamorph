@@ -33,6 +33,8 @@ Read the Writing Guide first ("Before you write"). Write each correction from a 
 
 **Left over from ticket 26:** the two placement sentences on the Test Bench page (AI Context and Opening) were not run through the copy sweep. Sweep them with the rest.
 
+**Left over from ticket 30 (code, Q228):** the script read `held` is false whenever `action` is empty. So an entity that a script moved while in a gap, on a row with no connected place, or with no schedule (a runtime character) reads `held` false although the engine holds it. Make `held` read the hold alone. It stays false for a follower, a waiting entity, a Generic entity, the played entity and the persona. Update the tests that pin the old rule, and the `held` entry in the script help and the Scripts Reference.
+
 **Then rebuild the help vectors**, once, as the last step: `npm run build:help-vectors`. Three sections were stale before this ticket, and every doc edit of tickets 26 to 31 added more. No test fails on a stale section, so count them before and after.
 
 Spec rulings: Q214, Q207, Q175, Q174.
@@ -45,6 +47,7 @@ Spec rulings: Q214, Q207, Q175, Q174.
 - [ ] The Custom Persona hint names no retired field, and the tests that pin the old string are updated.
 - [ ] A player page has the section on characters that move, with no editor term in it.
 - [ ] The Glossary has the eight terms, each linked to the section that explains it.
+- [ ] After a script move, `held` reads true for an entity in a gap and for a runtime character, and the test fails with the old rule. It reads false for a follower and a Generic entity.
 - [ ] `npm run copy:sweep` gives no notice on the changed strings.
 - [ ] After the rebuild, a count of stale help sections against the docs on the branch gives zero for every page this effort touched. The landing gives the count before and after.
 - [ ] The changelog fragment has one entry for the copy changes an author or player sees.
