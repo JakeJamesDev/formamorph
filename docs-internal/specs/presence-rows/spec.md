@@ -73,15 +73,15 @@ Rulings from the grill of 2026-11-11, renumbered for this effort.
 - **Q4.** A list row shows the name and the reasons on one line, the reasons cut off when they do not fit, then the Open Routine button and, for a Generic entity that begins here, the remove button. The selected row has the selected-row look of the Design System. There is no chevron.
 - **Q5.** Adding a Unique entity gives it one more Start at this location, weight 1, no rows. Adding a Generic entity gives it a Start here, as today.
 - **Q6.** The editor region holds the canvas entity card's body unchanged: the Routine and Known In switch, the mode hint, the Routine editor or the Known In field.
-- **Q7.** The Routine editor marks each Start and each row that names the location whose Presence tab holds it, and Can Also Go marks that location in its list. On selection the editor shows the first Start that names the location; with none, the first Start. The mark shows only inside the Presence tab.
+- **Q7.** The Routine editor marks each Start and each row that names the location whose Presence tab holds it, and Can Also Go marks that location in its list. On selection the editor shows the first Start that names the location; with none, the first Start (refined by Q28). The mark shows only inside the Presence tab.
 - **Q8.** Only a Generic entity has a remove button. It removes the entity's Starts here. It is disabled, with the reason in its tooltip, when the entity begins at no other location. A Unique entity leaves a location through edits in its routine.
 - **Q9.** While an entity is selected on the Presence tab, the canvas beside the panel draws what full screen draws for a picked entity: the routine view or the Known In marks, the canvas key and the status line. It is view-only there: no routine edit by click or drag, no drag sources. The entity card stays full screen only.
 - **Q10.** A click on a location on the canvas beside the panel selects that location, as today. The entity stays picked. On the new location's Presence tab it is selected when it has a row there; with no row, the pick clears.
 - **Q11.** The pick carries between the Presence tab and full screen in both directions.
 - **Q12.** A change to another tab of the location panel clears the pick.
-- **Q13.** One Add Entity select under the list replaces the Generic multi-select. It lists every Unique and Generic entity with no row at this location, in tree order. The added entity is selected.
+- **Q13.** One Add Entity select under the list replaces the Generic multi-select. It lists every Unique and Generic entity with no row at this location, in tree order. With none to add, the select does not show. The added entity is selected.
 - **Q14.** The Known Here list stays under the rows. Its only change is Q19.
-- **Q15.** An undo or redo of an entity edit made in the Presence editor region shows the change there: when that location's Presence tab is on screen and the entity has a row, the entity is selected. Otherwise the entity's Routine tab opens, as today.
+- **Q15.** An undo or redo of an entity edit made in the Presence editor region shows the change there: when that location's Presence tab is on screen and the entity has a row, the entity is selected. Otherwise the entity's Routine tab opens, as today. (The "otherwise" half is replaced by Q31.)
 - **Q16.** Prototype verdict, 2026-11-11: variant B, a fixed list with one editor region under it. Rejected: A, folding boxes as on Connections (an open box pushes the list off screen with 12 entities), and C, a select with no list.
 - **Q17.** The findings of the scripts sweep and the help-docs sweep of 2026-11-11 are not in this effort. Another session handles them after this work, because this work changes some of them.
 - **Q18.** Canvas status text that names an entity uses the entity's label with placeholders resolved, never the raw name.
@@ -104,6 +104,12 @@ Rulings from ticket sessions:
 - **Q32** (ticket 04, new evidence). Ticket 05's premise held only for an edit that is not batched. The Routine editor commits through the history batch, and the recorder gives a batched Step no Origin, on purpose and for a reason not yet known. So an undo of a Routine edit made on the Presence tab lands on the Entities section. The recorder is shared by the whole editor, so the fix is its own ticket, 06, which must find the guard's reason first. Tickets 04 and 05 keep their unit-level proof and name the gap.
 - **Q33** (ticket 06). The guard's reason: a labeled batch can span the world, so its Step has no one place to return to (History Reveal Origin, story 25 and Q4; Optimize Images must reveal what it touched). The fix is an opt-in on the batch that keeps the place it started in. The Routine editor opts in, which covers its three hosts. Optimize Images keeps no Origin. Two other batch callers are listed in the landing and left as they are: routine edits made by click or drag on the full-screen canvas map, and the entity-field edit that also clears the legacy VRM fallback.
 
+Rulings from the close review of 2026-11-11:
+
+- **Q34.** Known In set to Picked Locations is picked in full screen only. Beside the panel the hint says so and a button opens full screen with the entity and the mode kept. No hint beside the panel tells the author to click a location. The canvas there stays view-only (Q9, Q10). This settles the conflict between Q6 ("the card body unchanged") and Q9: the body's hints differ beside the panel.
+- **Q35.** An entity added with Add Entity opens in Routine mode on its new Start, whatever mode the last selection had. A row click keeps the current mode.
+- **Not changed, on record.** An undo of a Known Here add or remove, or of a row's remove button, also selects that entity on arrival when it has a row, because the reveal keys on the Origin's Presence tab. Q31 named only edits in the editor region. It is kept as it is.
+
 Modules:
 
 - **The pick, lifted.** The picked entity (entity, mode, the pending Picked Locations state) moves out of the canvas component into state the location panel and the canvas both read and set. The canvas gains a second notion beside "picking": it shows a pick without being a picker. Full screen keeps today's picker behavior. Beside the panel the canvas shows the pick only while the Presence tab of the selected location is on screen.
@@ -111,7 +117,7 @@ Modules:
 - **The Presence list.** A new component replaces the Entities Here list and the Generic multi-select. It reads the presence-line model. The model is unchanged.
 - **The Routine editor's here-mark.** The Routine editor takes the location to mark as an input from its host. Without one it marks nothing, so the entity panel and the canvas card are unchanged.
 - **Status text beside the panel.** The canvas status line beside the panel names the entity's routine, or the selected row, and offers no edit.
-- **Reveal.** The history reveal hook gains the Presence target of Q15, in the way it already opens a Connection row.
+- **Reveal.** The Step's Origin decides the location and tab (Q31). On arrival at a Presence tab the reveal selects the Step's entity, in the way it already opens a Connection row. A batch that opts in keeps its Origin, and the Routine editor opts in (Q33).
 
 No world or save shape changes. No engine or prompt changes.
 
@@ -124,7 +130,7 @@ A good test here drives what the author does and reads what the author sees. It 
 - **The Presence tab, component level.** Render the location panel on a world with Unique and Generic entities. Cover: a row per presence line with its reasons; no selection on open; select, change selection, close; Add Entity for each kind and the Start it writes; the remove button, its disabled case and the reason; the here-marks on Starts, rows and Can Also Go; tab change clears the pick. Prior art: the location panel tests, the Connections tab tests, the Routine tab tests.
 - **The canvas.** Cover: with a pick and the Presence tab on screen, the canvas beside the panel has the routine marks, the key and the status line; a location click selects the location and edits no routine; without the Presence tab on screen it draws no pick; full screen behaves as before. Prior art: the canvas key tests, the entity picking tests, the full-screen canvas component tests.
 - **The carry.** Select on the Presence tab, enter full screen, and the card names the entity. Pick in full screen, leave, and the Presence tab has it selected.
-- **The reveal.** A hook-level test for Q15, beside the existing Connection-row reveal tests, plus the case where the Presence tab is not on screen.
+- **The reveal.** Hook-level tests for Q31 beside the existing Connection-row reveal tests, and one test through the mounted World Editor for an undo of a Routine edit (Q33).
 - **Guards must bite.** Each new guard is proven by reinstating the bug once: the view-only click, the cleared pick with no row, the disabled remove.
 - No test of the prototype code.
 
