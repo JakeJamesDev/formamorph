@@ -284,9 +284,9 @@ On the Canvas, the Travel choices show only arrows. Point at one to see which pl
 
 Pick a place in **Connect to…**, then select the **+** button (**Add Connection**).
 
-### Free Links
+### Automatic Links
 
-A location always connects to its parent, its children and its siblings, with no Connection. The **Free Links** group under the picker lists them. It starts closed and shows how many there are. A location with none shows no group.
+A location always connects to its parent, its children and its siblings, with no Connection. The **Automatic Links** group under the picker lists them. It starts closed and shows how many there are. A location with none shows no group.
 
 Each row has the other place, and what it is to this location: it contains this one, it is inside this one, or it is beside this one. Travel works both ways, and each link is Nearby.
 

@@ -492,7 +492,7 @@ describe('Free links', () => {
     ] as GameLocation[];
     connections = [];
   };
-  const group = () => screen.getByRole('button', { name: /^Free Links/ });
+  const group = () => screen.getByRole('button', { name: /^Automatic Links/ });
   const freeRows = () => screen.queryAllByTestId('free-link-row').map((row) => row.textContent);
 
   it('lists the parent, a child and a sibling with the relation of each', () => {

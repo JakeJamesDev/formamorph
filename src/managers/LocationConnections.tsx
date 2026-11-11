@@ -72,7 +72,7 @@ function FreeLinksGroup({ links, nameOf, open, onToggle, onConnect }: {
         onClick={onToggle}
       >
         <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform', !open && '-rotate-90')} />
-        <span className="text-label">Free Links</span>
+        <span className="text-label">Automatic Links</span>
         <span className="text-meta text-muted-foreground">{links.length}</span>
       </button>
       {open && (
