@@ -1,5 +1,5 @@
 import { createKeyedRecordStore, createStoredString } from './keyedStorage';
-import type { AllowedPersonas, Entity, GameLocation, PersonaRef, StartPersona, WorldOverview } from '@/types';
+import { PLAYER_START, type AllowedPersonas, type Entity, type GameLocation, type PersonaRef, type StartPersona, type WorldOverview } from '@/types';
 
 /** Every Allowed Personas value, in the order the World Editor shows them. */
 export const ALLOWED_PERSONAS: readonly AllowedPersonas[] = ['any', 'world'];
@@ -93,9 +93,16 @@ export function preselectPersona({ rules, remembered, globalDefault, available }
   return NONE;
 }
 
-/** The persona's locations the world still has, in the entity's order. */
+/** The places a played entity begins at: each Start's place once, in Start order, none for Player's Starting
+ *  Location. An entity with no kind has no Starts, so its own locations stand. */
+const startPlaces = (entity: Entity): string[] =>
+  entity.kind
+    ? [...new Set((entity.starts ?? []).map((start) => start.place).filter((place) => place !== PLAYER_START))]
+    : entity.locations ?? [];
+
+/** The persona's start places the world still has, in the entity's order. */
 const personaLocations = (entity: Entity, locations: readonly GameLocation[]): string[] =>
-  (entity.locations ?? []).filter((id) => locations.some((l) => l.id === id));
+  startPlaces(entity).filter((id) => locations.some((l) => l.id === id));
 
 /** Where a world persona begins: the first of its locations that is a starting location, else its first
  *  location, else null. */
@@ -113,12 +120,13 @@ export interface PersonaPickContext {
 const worldPersona = (ref: PersonaRef, worldEntities: readonly Entity[]) =>
   ref.source === 'world' ? worldEntities.find((e) => e.id === ref.entityId) : undefined;
 
-/** The locations the Starting Location step lists, in world order: the flagged ones, plus every location of
+/** The locations the Starting Location step lists, in world order: the flagged ones, plus every Start place of
  *  the picked world persona. */
 export function offeredStartLocations<L extends GameLocation>(
   ref: PersonaRef, { worldEntities, locations }: { worldEntities: readonly Entity[]; locations: readonly L[] },
 ): L[] {
-  const own = new Set(worldPersona(ref, worldEntities)?.locations ?? []);
+  const persona = worldPersona(ref, worldEntities);
+  const own = new Set(persona ? startPlaces(persona) : []);
   return locations.filter((l) => l.isStarting || own.has(l.id));
 }
 

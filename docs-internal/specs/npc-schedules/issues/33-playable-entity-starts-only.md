@@ -1,6 +1,6 @@
 # 33: A Playable Entity Offers Its Starts Only
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -24,9 +24,28 @@ Spec rulings: Q229, Q147.
 
 ## Acceptance criteria
 
-- [ ] A Playable entity with a Start at one location and a row that names a second offers only the first. The test fails with the old read.
-- [ ] An entity with two Starts offers both, in Start order.
-- [ ] An entity whose only Start is Player's Starting Location adds nothing beside the world's starting locations.
-- [ ] The preselected place follows the rule above on a list where the first Start is not a starting location and the second is.
-- [ ] The Custom Persona's list is unchanged.
-- [ ] The landing lists the other readers checked and what each reads.
+- [x] A Playable entity with a Start at one location and a row that names a second offers only the first. The test fails with the old read. (`leaves a row place out of the list`; fails with the kind branch off.)
+- [x] An entity with two Starts offers both; the preselect follows Start order. (`offers every Start place, each once, in world order`; list stays in world order per the spec session's ruling.)
+- [x] An entity whose only Start is Player's Starting Location adds nothing beside the world's starting locations. (`adds nothing for a Start at Player's Starting Location`.)
+- [x] The preselected place follows the rule above on a list where the first Start is not a starting location and the second is. (`preselects the first Start place that is a starting location, in Start order`.)
+- [x] The Custom Persona's list is unchanged. (A Custom Persona has no kind and no world persona ref; `keeps the Custom Persona's and a kindless entity's own locations` covers the kindless path.)
+- [x] The landing lists the other readers checked and what each reads.
+
+## Landed
+
+Fix: `personaPick.ts` `startPlaces` reads an entity with a kind from its Starts (each place once, none for Player's Starting Location). An entity with no kind keeps its `locations`. Both `personaStartLocation` and `offeredStartLocations` use it.
+
+Ruling from the spec session: the start list stays in world order; "in Start order" means the preselect follows Start order.
+
+Other readers checked:
+- `EnterWorldFlow.tsx` (persona option's `startsAt`): reads `personaStartLocation`, fixed.
+- `testBench/lens.ts` and `testBench/opening.ts`: read `personaStartLocation` and `offeredStartLocations`, fixed.
+- `locationForPersonaPick`: reads both helpers, fixed.
+- `presence.ts:97` (`metCheck`): reads `persona.locations` for the met-by-start rule through Known In. It still sees row places. Left unchanged: a different mechanic from the start list.
+
+Not verified:
+- A kinded entity with no `starts` array now offers no place; a world always writes `starts` with a kind, but no test pins it.
+- No UI check of the New Game step; the change is in the pure helpers and their tests.
+
+For you:
+- Open New Game on a world with a Playable entity that patrols: the Starting Location step lists its Start places, not its row places.

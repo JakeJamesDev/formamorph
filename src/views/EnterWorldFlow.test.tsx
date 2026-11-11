@@ -6,6 +6,7 @@ import EntityStorageService from '@/services/EntityStorageService';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
 import { DEFAULT_WORLDS, tombstoneDefaultWorld } from '@/lib/defaultWorlds';
 import { acceptAgeGate } from '@/lib/ageGate';
+import { withDerivedLocations } from '@/lib/entityKind';
 import type { StoredWorldRecord } from '@/services/WorldStorageService';
 import { toast } from 'react-toastify';
 import { toastTexts } from '@/test/toastText';
@@ -670,13 +671,17 @@ describe('a world with nothing else to choose at world entry', () => {
 
 describe('a world persona at world entry', () => {
   const keeperRef: PersonaRef = { source: 'world', entityId: 'keeper' };
-  // One marked world entity whose only starting location is the second one, and no library persona.
+  // One marked world entity that starts at the second location and keeps a row at the first, and no library persona.
   beforeEach(async () => {
     const record = world();
-    record.data.entities = [{
+    record.data.entities = [withDerivedLocations({
       id: 'keeper', name: 'Harbor Keeper', playerDescription: '', aiDescription: '', aiSummary: '',
-      persona: true, locations: ['inn', 'hill'],
-    }];
+      persona: true, kind: 'unique',
+      starts: [{
+        id: 'start-1', place: 'hill', weight: 1,
+        schedule: [{ id: 'row-1', time: 'allDay', action: { kind: 'stay', place: 'inn' } }],
+      }],
+    })];
     await WorldStorageService.storeWorld(record);
   });
 

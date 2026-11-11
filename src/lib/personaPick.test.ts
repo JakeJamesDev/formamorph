@@ -6,7 +6,8 @@ import {
   rememberWorldPersona, setDefaultPersona, withoutPersona, worldAllowedPersonas, worldStartPersona, type PersonaChoices,
   type PersonaRules,
 } from './personaPick';
-import type { Entity, GameLocation, PersonaRef } from '@/types';
+import { PLAYER_START, type Entity, type GameLocation, type PersonaRef } from '@/types';
+import { withDerivedLocations } from './entityKind';
 
 const lib = (entityId: string): PersonaRef => ({ source: 'library', entityId });
 const world = (entityId: string): PersonaRef => ({ source: 'world', entityId });
@@ -181,6 +182,56 @@ describe('offeredStartLocations', () => {
 
   it('never adds a location for a library pick that shares a world id', () => {
     expect(ids(offeredStartLocations(lib('hermit'), context))).toEqual(['dock', 'gate']);
+  });
+});
+
+// A played entity with a kind: `locations` is derived from every Start and row place, so it holds more than the Starts.
+describe('a played entity with a kind offers its Starts only', () => {
+  const start = (id: string, at: string, rowPlace?: string) => ({
+    id, place: at, weight: 1,
+    schedule: rowPlace ? [{ id: `${id}-r`, time: 'allDay' as const, action: { kind: 'stay' as const, place: rowPlace } }] : [],
+  });
+  const played = (id: string, starts: ReturnType<typeof start>[]): Entity =>
+    withDerivedLocations({ ...entity(id), kind: 'unique', starts });
+  const context = (...worldEntities: Entity[]) => ({ worldEntities, locations: places });
+
+  it('leaves a row place out of the list', () => {
+    const e = played('patrol', [start('s1', 'inn', 'cellar')]);
+    expect(e.locations).toEqual(['inn', 'cellar']);
+    expect(ids(offeredStartLocations(world('patrol'), context(e)))).toEqual(['inn', 'dock', 'gate']);
+  });
+
+  it('offers every Start place, each once, in world order', () => {
+    const e = played('two', [start('s1', 'cellar'), start('s2', 'inn'), start('s3', 'cellar')]);
+    expect(ids(offeredStartLocations(world('two'), context(e)))).toEqual(['inn', 'dock', 'cellar', 'gate']);
+  });
+
+  it("adds nothing for a Start at Player's Starting Location", () => {
+    const e = played('follower', [start('s1', PLAYER_START, 'cellar')]);
+    expect(ids(offeredStartLocations(world('follower'), context(e)))).toEqual(['dock', 'gate']);
+    expect(personaStartLocation(e, places)).toBeNull();
+  });
+
+  it('preselects the first Start place that is a starting location, in Start order', () => {
+    const e = played('mixed', [start('s1', 'cellar', 'dock'), start('s2', 'gate'), start('s3', 'dock')]);
+    expect(personaStartLocation(e, places)).toBe('gate');
+  });
+
+  it('preselects the first Start place when none is a starting location', () => {
+    const e = played('indoors', [start('s1', 'cellar'), start('s2', 'inn')]);
+    expect(personaStartLocation(e, places)).toBe('cellar');
+  });
+
+  it('skips a Start place the world no longer has', () => {
+    const e = played('stale', [start('s1', 'gone'), start('s2', 'cellar')]);
+    expect(personaStartLocation(e, places)).toBe('cellar');
+    expect(ids(offeredStartLocations(world('stale'), context(e)))).toEqual(['dock', 'cellar', 'gate']);
+  });
+
+  it("keeps the Custom Persona's and a kindless entity's own locations", () => {
+    const kindless = entity('old', ['inn', 'cellar']);
+    expect(ids(offeredStartLocations(world('old'), context(kindless)))).toEqual(['inn', 'dock', 'cellar', 'gate']);
+    expect(personaStartLocation(kindless, places)).toBe('inn');
   });
 });
 
