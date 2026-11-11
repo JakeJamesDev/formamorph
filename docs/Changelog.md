@@ -52,6 +52,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **In the World Editor, an entity is now Unique or Generic, and a Generic one gets a routine per start.** A Generic entity, such as a crowd or a herd, begins at every start at the same time. Start chances, locks and Can Also Go are for Unique entities.
     - **The full-screen Locations Canvas now shows where a Nearby entity can be known.** Its routine locations are marked, and the locations one Nearby link away are marked lighter. Far links stay unmarked.
     - **In the World Editor, undo and redo of a Routine tab edit open that entity's Routine tab again.** You land where you made the change, even from another section.
+  - **Presence Tab:**
+    - **Select an entity on a location's Presence tab to edit its routine and Known In under the list.** The tab lists each entity that can be there and why. The Locations Canvas beside the panel shows the selected entity's routine. Click another location, and the entity stays selected where it can be too.
+    - **A location's Presence tab adds and removes entities from its list.** Choose a Unique or Generic entity under **Add an entity here**. Remove a Generic entity with the button on its row. Known Here rows now remove with an icon button.
+    - **A location's Presence tab marks the routine parts that name it.** A pin shows on each Start, routine row and Can Also Go entry for this location, and the editor opens on the first Start with a pin.
+    - **Undo and redo of an edit made under a location's Presence list bring you back to that entity there.** The location and the Presence tab open, and the entity is selected. Undo an added entity, and the tab stays with no one selected.
   - **Routines:**
     - **In the World Editor's Routine tab, an entity can start at the Player's Starting Location, beside you each game.** A Unique entity there can follow you from the first turn. Its routine can use any location.
     - **In older worlds, an entity with pronouns listed at several locations now wanders between them, one at a time.** So it isn't always where you look. An entity at every location follows you. One with no pronouns or "it/its", such as a monster, becomes Generic. Change it in the Routine tab.
@@ -60,11 +65,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The World Editor's Locations list can close every group of sub-locations at once.** Select **Collapse all locations**, right of the filter box, and again to open them all. Groups stay closed when you switch tabs, until you close the World Editor.
     - **The Entities, Stats, Traits, Placeholders, Dictionary and Scripts lists can close every group at once.** Select **Collapse all**, right of the filter box, and again to open them all. Each list keeps its groups closed until you close the World Editor.
     - **The character and dictionary editors in your library can close every group at once.** Select **Collapse all**, right of the filter box, and again to open them all. Groups stay closed until you close the editor.
-  - **Entity Presence:**
-    - **Undo and redo of an edit made under a location's Presence list bring you back to that entity there.** The location and the Presence tab open, and the entity is selected. Undo an added entity, and the tab stays with no one selected.
-    - **A location's Presence tab marks the routine parts that name it.** A pin shows on each Start, routine row and Can Also Go entry for this location, and the editor opens on the first Start with a pin.
-  - **Presence Rows:**
-    - **A location's Presence tab adds and removes entities with Add Entity and a remove button.** Add a Unique or Generic entity from the select. Remove a Generic entity from its row. Known Here rows now remove with an icon button.
   - **In the World Editor, an entity with only a Stranger Description now starts as a stranger.** In play, you see its Name and that description until you meet it. Stranger Name now sits beside Name, and Stranger Description under Player-Facing Description. Items' Unidentified fields match, and each field has its own help button.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.
@@ -74,13 +74,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The World Editor's entity panel has a Routine tab for where an entity starts and its daily routine.** Each start shows its chance. Rows stay at, wander or patrol locations by daypart or by hour, and a lock keeps the entity from being called over.
   - **In play, a follower can now wait for a set time or part ways with you.** Ask one to wait, and they stay about an hour, to the end of this part of the day, or to the end of the next. Then they return to their routine, or at once if you part ways.
   - **In game, the AI now reads which characters follow you, wait for you, or can't leave right now.** It's the Entities chip's Movement option, on by default in every prompt. Turn it off in Chip Options.
-  - **A location's Presence tab lists the entities that can be there and why.** Each line opens that entity's Routine tab.
   - **In play, asking one entity to come along now leaves the other entities here where they are.** The game asks about all of them in one request per turn, not one request each.
   - **Your account settings now say when email to your address bounced or was marked as spam.** The game and formamorph.ai both show it, with the fix: save a different address, or ask in Feedback if the address is correct. A verification link for that address says so as well.
   - **In the World Editor, a Connection's Travel and Distance choices now have labels, on its location and on the Canvas.** On a location, Travel reads Both Ways, To There or To Here. Nearby and Far each show a line, and the ⓘ explains them.
   - **The World Editor's location panel has a Connections tab, with one folding row per Connection.** Each row starts closed and shows the direction, the other location and the distance. Open it to edit Travel, Distance and the Travel Hints. A Connection you add opens.
   - **The World Editor's Connections tab now lists a location's links with no Connection under Automatic Links.** The closed group shows its parent, children and siblings. Select **+** on a row to make it a two-way, Nearby Connection.
-  - **Select an entity on a location's Presence tab to edit its routine and Known In under the list.** The Locations Canvas beside the panel shows that entity's routine. Click another location, and the entity stays selected where it can be too.
 - **🛠️ Developer tooling**
   - **`pov-rewrite-probe.mjs` measures whether the character and diary passes mix up the player's acts with their own.** It compares the player's words as typed, with today's note, and with "I" or "you" rewritten to the persona name.
   - **`movement-tag-probe.cli.ts` measures whether the narrator keeps a character with a strict shift where they belong.** It compares the Entities chip with and without its Movement tags on take-along, neighbor and ordinary turns.

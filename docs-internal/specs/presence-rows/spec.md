@@ -1,6 +1,7 @@
 # Spec: Presence Rows
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-11, tickets 01–07, last landing 2f1fa5266. Review: three gaps fixed by ticket 07; spec text corrected. Gates green on 2026-11-11; the four CUDA notice tests failed in the full run and passed alone.
 Spec session: presence-rows — spec
 
 ## Problem Statement
@@ -109,6 +110,7 @@ Rulings from the close review of 2026-11-11:
 - **Q34.** Known In set to Picked Locations is picked in full screen only. Beside the panel the hint says so and a button opens full screen with the entity and the mode kept. No hint beside the panel tells the author to click a location. The canvas there stays view-only (Q9, Q10). This settles the conflict between Q6 ("the card body unchanged") and Q9: the body's hints differ beside the panel.
 - **Q35.** An entity added with Add Entity opens in Routine mode on its new Start, whatever mode the last selection had. A row click keeps the current mode.
 - **Not changed, on record.** An undo of a Known Here add or remove, or of a row's remove button, also selects that entity on arrival when it has a row, because the reveal keys on the Origin's Presence tab. Q31 named only edits in the editor region. It is kept as it is.
+- **Q36** (ticket 07). Q34 holds wherever the editor region is not in full screen, the list view included: there the button changes the Locations tab to the canvas view and opens full screen with the entity and Known In mode kept. Outside full screen, Known In set to Nearby or Nowhere shows no mode hint (the choice's own help line stays), and Picked Locations shows the full-screen hint and button in the mode hint's place. A Generic entity's Routine hint outside full screen says its places are edited in the editor and the map only shows them; it has no button. The add control keeps its visible text "Add an entity here"; its accessible name and the wiki use the same words.
 
 Modules:
 
