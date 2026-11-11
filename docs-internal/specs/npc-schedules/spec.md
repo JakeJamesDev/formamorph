@@ -1,7 +1,7 @@
 # Spec: NPC Schedules
 
-Status: done
-Status note: 2026-11-10. Tickets 01–24 done, last landing 89aff2643. Review: spec text corrected (Q176), and one gap fixed before the close (a missing Can Also Go read as Anywhere in the editor). Closed red: electron/llamaServer.test.mjs, src/views/MainMenu.cudaNotice.test.tsx, both outside this effort. Ticket 25 landed f26def9e5 for the first; the second waits for the merge of `worktree-fix-cuda-notice-popover-hold`, so ticket 25 stays ready-for-human. The Presence tab was changed after the close by the Presence Rows effort (Q207).
+Status: ready-for-agent
+Status note: Reopened 2026-11-11 for tickets 26–32, from the scripts and help-content sweeps (Q208). Closed first on 2026-11-10. Tickets 01–24 done, last landing 89aff2643. Review: spec text corrected (Q176), and one gap fixed before the close (a missing Can Also Go read as Anywhere in the editor). Closed red: electron/llamaServer.test.mjs, src/views/MainMenu.cudaNotice.test.tsx, both outside this effort. Ticket 25 landed f26def9e5 for the first; the second waits for the merge of `worktree-fix-cuda-notice-popover-hold`, so ticket 25 stays ready-for-human. The Presence tab was changed after the close by the Presence Rows effort (Q207).
 Spec session: npc-schedules — spec
 
 Each character in a world starts somewhere, keeps a daily routine of staying, wandering or patrolling, can be taken along or told to wait by the player, and is never in two places at once or stuck where the story can't reach them. Locations say which neighbors are near enough to call over.
@@ -272,6 +272,13 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
   - Known Here is unchanged but for its remove button, now an icon.
   - An undo of an edit made in that editor returns to the location's Presence tab with the entity selected.
   - The presence-line model, the position engine, the world shape and the save shape are unchanged.
+- **Q208** Two sweeps ran on 2026-11-11 after the close: of scripts, and of the help content Morphie reads. Their findings are tickets 26 to 32 of this spec, as Q173 did for the Connections work. The Test Bench rules that read an entity's derived locations read the routine instead (ticket 26).
+- **Q209** Script help states the current rules: a Unique entity follows past a locked row and Can Also Go, a Generic entity never follows, and `move`, `follow` and `unfollow` do nothing on a Generic entity. (Ticket 27.)
+- **Q210** An authoring run (Test Code, the Test Bench script check, the sample Tool snapshot, the Tool lists) reads a sample placement: the cast as the opening places it at the opening hour, from the placement the Test Bench AI context already uses. The first Start stands in where play rolls one. (Ticket 28.)
+- **Q211** Scripts gain four read-only reads: the entity's kind; distance and direction on each `exits` entry; the entity's current routine action and whether a script move holds it; and Known In. The user approved this widening of the script sandbox on 2026-11-11; it covers these four only. `exits` still lists direct ways only. (Ticket 30.)
+- **Q212** A script that runs After the AI reads the entity places, followers and waiting entities the turn settled, the same state that turn's narration prompts read. The fault is plausible and not yet reproduced; ticket 29 reproduces it first. The engine's end-of-turn placement is not visible to After scripts.
+- **Q213** Morphie's index of an author's world includes each entity's kind, Starts, rows and Can Also Go, each Connection's Travel, Distance and hints, and who can be at each location. The in-game view shows a player no routine. (Ticket 31.)
+- **Q214** The wiki and copy corrections land as one last ticket, 32, which also rebuilds the help vectors once. Tickets 26 to 31 edit the docs their change makes stale and do not rebuild. Reason: the vectors are one generated file, and parallel rebuilds would collide.
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
