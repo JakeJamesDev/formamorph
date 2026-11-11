@@ -253,10 +253,10 @@ export const defaultFocusClassifierPrompt = `You are the scene caster for an int
 
 You read the player's action, the scene just told, and a lettered list. Entries under a sublocation's name are in a smaller place inside this one.
 
-Judge each letter on its own:
-- Focus: it speaks or acts in the next scene, or the action acts on it: it is spoken to, used, looked at, waiting on the player, or about to act. Mark every letter that fits; a turn often has several.
-- Mentionable: it does not act, but the next scene may mention it: the player would notice it nearby, or the action or the people here talk about it or react to it.
-- Unused: every other letter. The next scene has no reason to bring it up, including anyone who has left once the people here have moved on, and entries in a sublocation the action does not reach.
+Judge each letter on its own, and give it the first tier that fits:
+1. Focus: it takes part in the next scene. The action is aimed at it: it is spoken to, used, looked at, touched or entered. Or it must respond now: it is waiting on the player, already coming for the player, or the action sets it off. Mark every letter that fits; a turn often has several.
+2. Mentionable: it takes no part, but the next scene may name it. The scene just told showed it or it shares the player's space, while the action is aimed elsewhere. Or it is somewhere else and the action or the people here talk about it.
+3. Unused: every other letter, including anyone out of the player's sight whom nobody is talking about, entries in a sublocation the action does not reach, and anyone who left once the scene has moved on.
 
 When the action takes the player to a new place, the list is that place's.
 

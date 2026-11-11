@@ -165,3 +165,22 @@ The shipped prompt's Focus rule includes "asks about it". Under these definition
 - **Fails.** To hold 95% Focus recall, every model calls most entities Focus, so tier match falls to 33–41%. The prompted LLM classifier reached 78–87%.
 - Topical relevance is not Focus. An entity can be Focus because it acts, or the player acts on it, with little word overlap with the action.
 - A Focus AUC of 0.78–0.86 shows some signal, so fine-tuning a cross-encoder stays open. It needs the labeled data first.
+
+**2026-11-11, tier rename and prompt revisions (spec session).** Q28 renamed the tiers to Focus, Mentionable and Unused, and bases them on what the narration needs this turn. Entries above this one use the old names (Background, Offstage). The case file grew to 100 cases: the 70 new ones were drafted, then reviewed by the user. `ember-tavern-window` Sylvie is Mentionable (the carter still reacts to her), and `sugar-hills-sticky` Cream Cyclone accepts Mentionable.
+
+The user lifted Q27's limit of three revisions. Cloud (`default`), 100 cases × 5 runs. Each revision ran in one batch with the control: the pre-rename wording with the new tier names.
+
+| Wording | Focus recall (all / held) | Tier match (all / held) |
+|---|---|---|
+| Rev 1: tiers by "may mention" and "react to" | 81.5% / 79.0% | 63.5% / 66.7% |
+| Rev 2: old tests plus "the scene just told talks about it" | 61.6% / 62.5% | 64.0% / 64.5% |
+| Rev 3: first tier that fits | 94.6% / 95.6% | 60.5% / 63.8% |
+| **Rev 4: Focus needs the action aimed at it, or a response now (kept)** | 84.4% / 82.5% | 65.9% / 67.9% |
+| Rev 5: Mentionable needs the last scene to show it | 88.0% / 88.3% | 61.8% / 64.2% |
+| Control, 5 batches | 79–83% / 74–79% | 67–69% / 65–66% |
+
+- Rev 4 is the only revision above the control on both held numbers in its batch (control held: 74.3% / 64.7%).
+- Each wording moves errors between tiers. Rev 3 gains Focus recall by over-marking: Mentionable→Focus 416 of 1,130, against 203 for the control.
+- The model resists Unused in every wording: 50–65% of Unused labels come back Mentionable, in sublocations and in the player's space alike.
+- Rev 4 still misses the "about to act" Focus cases at 5/5: `tavern-toast` Sylvie, `sunk-silence` Bark Frogs, `rampage-harbor-crane` Navy Destroyer, `ember-barrow-hounds` Grave Hounds.
+- **Open:** the token arm now reports negative savings (−247 per turn) for both prompts, and a reply with every entity Focus renders more tokens than the full roster. The narration prompt changed after 2026-11-07, so the probe's trimmed render no longer matches it. Not investigated.
