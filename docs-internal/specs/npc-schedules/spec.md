@@ -1,7 +1,7 @@
 # Spec: NPC Schedules
 
 Status: done
-Status note: 2026-11-10. Tickets 01–24 done, last landing 89aff2643. Review: spec text corrected (Q176), and one gap fixed before the close (a missing Can Also Go read as Anywhere in the editor). Closed red: electron/llamaServer.test.mjs, src/views/MainMenu.cudaNotice.test.tsx, both outside this effort. Ticket 25 landed f26def9e5 for the first; the second waits for the merge of `worktree-fix-cuda-notice-popover-hold`, so ticket 25 stays ready-for-human.
+Status note: 2026-11-10. Tickets 01–24 done, last landing 89aff2643. Review: spec text corrected (Q176), and one gap fixed before the close (a missing Can Also Go read as Anywhere in the editor). Closed red: electron/llamaServer.test.mjs, src/views/MainMenu.cudaNotice.test.tsx, both outside this effort. Ticket 25 landed f26def9e5 for the first; the second waits for the merge of `worktree-fix-cuda-notice-popover-hold`, so ticket 25 stays ready-for-human. The Presence tab was changed after the close by the Presence Rows effort (Q207).
 Spec session: npc-schedules — spec
 
 Each character in a world starts somewhere, keeps a daily routine of staying, wandering or patrolling, can be taken along or told to wait by the player, and is never in two places at once or stuck where the story can't reach them. Locations say which neighbors are near enough to call over.
@@ -130,7 +130,7 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q78** Hours use the themed time field (hour and minute columns), not the browser's time input.
 - **Q79** Wander and Patrol share one list control: drag to reorder, the place, then the action's own field on the right (Wander: weight and its percent; Patrol: idle), then remove. Patrol rows are numbered. Wander keeps its one idle field under the list. This replaces the weight chips for Wander places (story 6 now applies to Start weights only).
 - **Q80** A press on the map keeps the row selection, so the author can pan and edit with a row selected.
-- **Q81** The location Presence tab keeps its name and changes as follows.
+- **Q81** The location Presence tab keeps its name and changes as follows. (The first two points are replaced by Q207; the last moved to the Connections tab, Q175.)
   - The Entities picker lists Groups only. It adds this place to a Group or removes it.
   - Entities Here becomes a read-only list of who can be at this place, one line per entity with the reason (Group; begins here, with the chance when there are several Starts; stays, wanders or patrols here, with the time; can be led here). Each line opens that entity's Routine tab.
   - Known Here is unchanged.
@@ -227,7 +227,7 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q172** The bundled worlds already store kinds, so the migration skips them, and their named people with several locations are stored as Generic. Ticket 20 applies the rule to them and the user reviews each result by name. (Ticket 20.)
 - **Q173** The Connections tab, the Connection row and the Known In canvas view belong to this spec, as tickets from 21.
 - **Q174** Known In set to Nearby means near where the entity is now: the player is one Nearby link from the place the entity stands this turn (Q61, Q88). The rule does not change. Only the hint text under Known In changes; it must say "nearby", not "one location away".
-- **Q175** A location's panel gets a Connections tab, right after Presence. It holds the Connections and nothing else. Presence keeps Entities, the entities that are here, and Known Here.
+- **Q175** A location's panel gets a Connections tab, right after Presence. It holds the Connections and nothing else. Presence keeps Entities, the entities that are here, and Known Here. (The first two are replaced by Q207.)
 - **Q176** The Connections tab also lists the free links (parent, children, siblings) that no Connection replaces, in one folded group under the Connections and the "Connect to" picker, closed by default.
 - **Q177** A collapsed Connection row shows, in order: the fold chevron, the direction icon, the other location's name, the distance mark, and Delete. It shows no "one way" text and no hint marker. The distance mark is read-only.
 - **Q178** Amended by Q184.
@@ -262,6 +262,16 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q204** The Authoring Tour's example opens the row it writes to, also when the Connection already exists and only its hints change. The step exists to show the example text. (Ticket 22; adds to Q201.)
 - **Q205** The four CUDA notice tests that were red at the close pass alone. Their fix is `5ff664c16` on the branch `worktree-fix-cuda-notice-popover-hold`, not on main. Ticket 25 names it and edits nothing there; main stays red on those tests until the user merges that branch. (Ticket 25.)
 - **Q206** The `instancePid` test fails only inside the full run, where a real PowerShell spawn slows about 35 times. The code's 15 s timeout stays. The fix is in the test: the runner's own way to keep a test out of the parallel pool if it has one, else a longer timeout for that one call. (Ticket 25.)
+- **Q207** The Presence Rows effort (`docs-internal/specs/presence-rows/spec.md`, closed 2026-11-11, last landing 2f1fa5266) replaced the Presence tab of Q81 and Q175. That spec holds the rulings; this is what changed here.
+  - Entities Here is a list the author selects from, one row per Unique or Generic entity with a reason at this location. One entity is selected at a time, and none when the tab opens.
+  - The selected entity's editor shows under the list: the canvas entity card's body, with the Routine editor and Known In. The Routine editor marks each Start, each row and each Can Also Go entry that names this location.
+  - One add control under the list replaces the Generic-only picker. It adds any Unique or Generic entity with no row here: a Unique entity gets one more Start here, a Generic entity a Start here.
+  - Only a Generic entity that begins here has a remove button. It is disabled, with the reason, when the entity begins nowhere else. A Unique entity leaves through edits in its routine.
+  - Each row keeps the button that opens the entity's own Routine tab.
+  - The canvas beside the panel draws the selected entity's routine or Known In marks, with the canvas key and a status line. It is view-only there. Picked Locations is still picked in full screen only. The pick carries to and from full screen and clears on a change of tab.
+  - Known Here is unchanged but for its remove button, now an icon.
+  - An undo of an edit made in that editor returns to the location's Presence tab with the entity selected.
+  - The presence-line model, the position engine, the world shape and the save shape are unchanged.
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
@@ -489,7 +499,7 @@ A Group saves one record per Start id: the position, the current idle's end, the
 ### Connections tab (Q173–Q189)
 
 - The location panel's tab list gains Connections after Presence. The dev-router ledger, the tab-for-field lookup (a Travel Hint field now maps to Connections) and the Authoring Tour's Connection step follow the list.
-- The Presence tab loses the Connections block. Nothing else on it moves.
+- The Presence tab loses the Connections block. Nothing else on it moved in this effort; Presence Rows changed the rest later (Q207).
 - One Connection widget serves both surfaces (Q183). Its body is Travel, Distance and the hint pair (Q179). The tab wraps it in a fold with the header of Q177; the canvas panel shows the body under its own title bar.
 - The widget keeps taking a Connection and handing back a rewritten Connection. The tab writes through the editor's Connection update; the canvas keeps its intents. No new write path.
 - Fold state is view state, held while the tab is mounted. It starts empty (all closed); adding a Connection opens that row (Q184). It does not use the open-below-three rule of the shared card-collapse hook.
