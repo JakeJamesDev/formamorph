@@ -1,6 +1,6 @@
 # 02: Eyedropper in the Color Picker
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -23,14 +23,25 @@ The themed color picker picks a color from anywhere on the screen, where the bro
 
 ## Acceptance criteria
 
-- [ ] With the interface present, the picker shows the eyedropper button. With it absent, the picker has no such button.
-- [ ] A pick sets the color and calls the change handler once.
-- [ ] A canceled pick calls no change handler and leaves the color as it was.
-- [ ] The picker is still open after a pick and after a cancel, inside a dialog too.
-- [ ] In an Avatar viewer, the Avatar's animation is paused during a pick and runs again after a pick and after a cancel.
+- [x] With the interface present, the picker shows the eyedropper button. With it absent, the picker has no such button. (`color-picker.test.tsx`: "shows no button where the browser has no EyeDropper"; button read in the preview DOM)
+- [x] A pick sets the color and calls the change handler once. ("commits a pick once, keeps the picker open, and reports start and end")
+- [x] A canceled pick calls no change handler and leaves the color as it was. ("leaves the color alone on a canceled pick")
+- [x] The picker is still open after a pick and after a cancel, inside a dialog too. (both tests above read the hex field after; "keeps the picker open through a pick inside a dialog" fires an outside pointer and Escape mid-pick)
+- [x] In an Avatar viewer, the Avatar's animation is paused during a pick and runs again after a pick and after a cancel. (`useVrmCustomization.test.tsx`, eyedropper block: `viewerProps.animate`)
 - [ ] A pick in the World Editor is one step in the editor's history.
-- [ ] The result of the desktop app check is written in the ticket's Landed section.
-- [ ] Mutation: remove the feature check, and the "absent" test fails.
-- [ ] Frames: `.scratch/frames/color-picker-dropper-dark.png` and `.scratch/frames/color-picker-dropper-light.png`.
+- [x] The result of the desktop app check is written in the ticket's Landed section.
+- [x] Mutation: remove the feature check, and the "absent" test fails. (also: disable the dismissal guard, and the dialog test fails; drop the queued-frame cancel, and the drag-frame test fails)
+- [x] Frames: `.scratch/frames/color-picker-dropper-dark.png` and `.scratch/frames/color-picker-dropper-light.png`.
 
 For you: pick a color from a reference image and from the Avatar in the desktop app, and judge the button's place in the picker.
+
+## Landed
+
+**Desktop app check:** passes. A probe window in the bundled Electron 42.5.0 (Chromium 148) on the production `app://` secure scheme reports `EyeDropper` present, and `open()` starts the sampler (it ended with `AbortError` only when the probe aborted it). On a `data:` page the interface is absent, because it needs a secure context. The app's own pages are secure.
+
+**Not verified**
+- A pick in the World Editor is one history step. The picker sends one change per pick through its existing commit path, and the tests assert one call. No World Editor history test ran.
+- A real pick with a real click. Only a stubbed `EyeDropper` ran in tests, and the Electron probe aborted its own pick.
+
+**For you**
+- Pick a color from a reference image and from the Avatar in the desktop app, and judge the button's place in the picker. Frames: `.scratch/appearance-preview-02/frames/color-picker-dropper-dark.png`, `.scratch/appearance-preview-02/frames/color-picker-dropper-light.png`.

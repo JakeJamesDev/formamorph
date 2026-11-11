@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ColorPicker } from './color-picker';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from './dialog';
 
 function Harness({ initial = '#336699', onChange = () => {}, onReset }: {
   initial?: string;
@@ -124,6 +125,105 @@ describe('ColorPicker', () => {
     const moved = onChange.mock.calls.at(-1)?.[0];
     expect(moved).toMatch(/^#[0-9a-f]{6}$/);
     expect(moved).not.toBe('#336699');
+  });
+
+  describe('eyedropper', () => {
+    afterEach(() => vi.unstubAllGlobals());
+    const stubDropper = (run: () => Promise<{ sRGBHex: string }>) => {
+      vi.stubGlobal('EyeDropper', class { open = run; });
+    };
+    const dropper = () => screen.queryByRole('button', { name: 'Pick From Screen' });
+
+    it('shows no button where the browser has no EyeDropper', async () => {
+      const user = userEvent.setup();
+      render(<Harness />);
+      await open(user);
+      expect(dropper()).not.toBeInTheDocument();
+    });
+
+    it('commits a pick once, keeps the picker open, and reports start and end', async () => {
+      stubDropper(async () => ({ sRGBHex: '#AA11CC' }));
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const onPickStart = vi.fn();
+      const onPickEnd = vi.fn();
+      function Pick() {
+        const [value, setValue] = useState('#336699');
+        return <ColorPicker aria-label="Dialogue Color" value={value} onPickStart={onPickStart} onPickEnd={onPickEnd}
+          onChange={(hex) => { onChange(hex); setValue(hex); }} />;
+      }
+      render(<Pick />);
+      await open(user);
+
+      await user.click(dropper()!);
+
+      await waitFor(() => expect(onPickEnd).toHaveBeenCalledOnce());
+      expect(onPickStart).toHaveBeenCalledOnce();
+      expect(onChange).toHaveBeenCalledOnce();
+      expect(onChange).toHaveBeenCalledWith('#aa11cc');
+      expect(screen.getByRole('textbox', { name: 'Hex Color' })).toHaveValue('#aa11cc');
+    });
+
+    it('drops a queued drag frame so it cannot overwrite the pick', async () => {
+      let finish: (hex: string) => void = () => {};
+      stubDropper(() => new Promise((resolve) => { finish = (hex) => resolve({ sRGBHex: hex }); }));
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(<Harness onChange={onChange} />);
+      await open(user);
+      await user.click(dropper()!);
+
+      let frames: FrameRequestCallback[] = [];
+      vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => frames.push(cb));
+      vi.stubGlobal('cancelAnimationFrame', () => { frames = []; });
+      fireEvent.keyDown(screen.getByRole('slider', { name: 'Hue' }), { key: 'ArrowRight', keyCode: 39 });
+      await act(async () => finish('#112233'));
+      act(() => { frames.forEach((cb) => cb(0)); });
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenLastCalledWith('#112233');
+    });
+
+    it('leaves the color alone on a canceled pick, with the picker still open', async () => {
+      stubDropper(() => Promise.reject(new DOMException('canceled', 'AbortError')));
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const onPickEnd = vi.fn();
+      render(<ColorPicker aria-label="Dialogue Color" value="#336699" onChange={onChange} onPickEnd={onPickEnd} />);
+      await open(user);
+
+      await user.click(dropper()!);
+
+      await waitFor(() => expect(onPickEnd).toHaveBeenCalledOnce());
+      expect(onChange).not.toHaveBeenCalled();
+      expect(screen.getByRole('textbox', { name: 'Hex Color' })).toHaveValue('#336699');
+    });
+
+    it('keeps the picker open through a pick inside a dialog', async () => {
+      let finish: (hex: string) => void = () => {};
+      stubDropper(() => new Promise((resolve) => { finish = (hex) => resolve({ sRGBHex: hex }); }));
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(
+        <Dialog open>
+          <DialogContent>
+            <DialogTitle>Colors</DialogTitle>
+            <DialogDescription>Pick one.</DialogDescription>
+            <ColorPicker aria-label="Dialogue Color" value="#336699" onChange={onChange} />
+          </DialogContent>
+        </Dialog>,
+      );
+      await open(user);
+      await user.click(dropper()!);
+
+      // The sampler's click lands outside the popover; the popover must not read it as a dismissal.
+      fireEvent.pointerDown(document.body);
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+      await act(async () => finish('#112233'));
+
+      await waitFor(() => expect(onChange).toHaveBeenCalledWith('#112233'));
+      expect(screen.getByRole('textbox', { name: 'Hex Color' })).toBeInTheDocument();
+    });
   });
 
   describe('drag throttling', () => {

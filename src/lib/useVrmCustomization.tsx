@@ -38,13 +38,15 @@ const UndoButton = ({ label, onUndo, disabled }: { label: string; onUndo: () => 
 const sameHex = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
 // One consistent color control: swatch picker + an undo button that returns the color to its base.
-const ColorRow = ({ label, value, base, onChange, onUndo, heldBy }: {
+const ColorRow = ({ label, value, base, onChange, onUndo, onPickStart, onPickEnd, heldBy }: {
   label: string;
   value: string;
   /** The color undo returns to. */
   base: string;
   onChange: (hex: string) => void;
   onUndo: () => void;
+  onPickStart: () => void;
+  onPickEnd: () => void;
   /** The checked trait that sets this color: the row shows it and cannot change it. */
   heldBy?: string;
 }) => (
@@ -57,7 +59,7 @@ const ColorRow = ({ label, value, base, onChange, onUndo, heldBy }: {
           {value}
         </span>
       ) : (
-        <ColorPicker value={value} aria-label={label} onChange={onChange} />
+        <ColorPicker value={value} aria-label={label} onChange={onChange} onPickStart={onPickStart} onPickEnd={onPickEnd} />
       )}
       <UndoButton label={label} onUndo={onUndo} disabled={heldBy !== undefined || sameHex(value, base)} />
     </div>
@@ -155,6 +157,8 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
   // Each material's own color, read when it was first selected.
   const [extraBase, setExtraBase] = useState<Record<string, string>>({});
   const [animate, setAnimate] = useState(true);
+  // The Avatar holds still while the eyedropper samples it.
+  const [picking, setPicking] = useState(false);
 
   // Seed the color pickers from the model's actual colors once it loads, so edits start from its real look.
   useEffect(() => {
@@ -238,7 +242,7 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
     currentHairStyle,
     hairLength,
     extraColors,
-    animate,
+    animate: animate && !picking,
   };
 
   const characterData: Omit<CharacterData, 'chosenVrm'> = {
@@ -340,6 +344,8 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
             base={caps?.colors?.[channel] ?? DEFAULT_COLORS[channel]}
             onChange={(hex) => changeChannel(channel, hex)}
             onUndo={() => undoChannel(channel)}
+            onPickStart={() => setPicking(true)}
+            onPickEnd={() => setPicking(false)}
             heldBy={heldColor(channel)}
           />
         ))}
@@ -364,6 +370,8 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
                 base={extraBase[extraSel] ?? extraPicker[extraSel] ?? '#ffffff'}
                 onChange={(hex) => changeExtra(extraSel, hex)}
                 onUndo={() => undoExtra(extraSel)}
+                onPickStart={() => setPicking(true)}
+                onPickEnd={() => setPicking(false)}
               />
             )}
           </div>

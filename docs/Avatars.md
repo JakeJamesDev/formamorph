@@ -133,6 +133,8 @@ Drag the viewer to turn the Avatar. Scroll to zoom.
 
 Every slider has an **Undo** button beside its name too. It puts the slider back to the model's own value.
 
+A color picker has a **Pick From Screen** button where the app can sample the screen. Click it, then click any pixel on the screen to take that color. The Avatar holds still during the pick, so the color you take stays put. Press Escape to cancel and keep the color you had. The button is hidden where the app cannot sample the screen.
+
 **Colors** always shows. **Hair**, **Initial Body Features** and **Other Colors** show only when the model supports them, so a plain `.glb` file may show few of them or none.
 
 #### Locked Controls

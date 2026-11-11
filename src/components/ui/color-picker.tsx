@@ -1,5 +1,7 @@
 import * as React from "react"
 import { HexColorPicker } from "react-colorful"
+import { Pipette } from "lucide-react"
+import { Tip } from "@/components/ui/tooltip"
 
 import { cn } from "@/lib/utils"
 import { useGestureStart } from "@/components/ui/gesture-group"
@@ -16,10 +18,19 @@ export interface ColorPickerProps {
   /** Shows the reset action when given. */
   onReset?: () => void
   resetLabel?: string
+  /** Called when an eyedropper pick starts, so a host can hold still what the pick samples. */
+  onPickStart?: () => void
+  /** Called when the pick ends, picked or canceled. */
+  onPickEnd?: () => void
   id?: string
   "aria-label"?: string
   "aria-describedby"?: string
 }
+
+type EyeDropperCtor = new () => { open: () => Promise<{ sRGBHex: string }> }
+
+const eyeDropperCtor = (): EyeDropperCtor | undefined =>
+  typeof window === "undefined" ? undefined : (window as unknown as { EyeDropper?: EyeDropperCtor }).EyeDropper
 
 /** The app's standard color control: a swatch button that opens a saturation square, a hue bar, and a
  *  hex field. It has no game or settings dependency. */
@@ -28,6 +39,8 @@ export function ColorPicker({
   onChange,
   onReset,
   resetLabel = "Reset",
+  onPickStart,
+  onPickEnd,
   id,
   "aria-label": ariaLabel,
   "aria-describedby": ariaDescribedBy,
@@ -104,6 +117,41 @@ export function ColorPicker({
     }
   }
 
+  // The native sampler. A canceled pick rejects; it changes nothing and shows nothing.
+  const Dropper = eyeDropperCtor()
+  const picking = React.useRef(false)
+  const onPickStartRef = React.useRef(onPickStart)
+  const onPickEndRef = React.useRef(onPickEnd)
+  onPickStartRef.current = onPickStart
+  onPickEndRef.current = onPickEnd
+  const pick = async () => {
+    if (!Dropper || picking.current) return
+    picking.current = true
+    onPickStartRef.current?.()
+    try {
+      const { sRGBHex } = await new Dropper().open()
+      const hex = parseHex6(sRGBHex)
+      if (hex && mounted.current) {
+        // A drag frame still queued must not land after the pick.
+        if (frame.current !== null) cancelAnimationFrame(frame.current)
+        frame.current = null
+        pending.current = null
+        setLive(hex)
+        setDraft(hex)
+        commit(hex)
+      }
+    } catch {
+      // Canceled.
+    } finally {
+      picking.current = false
+      onPickEndRef.current?.()
+    }
+  }
+  // The sampler owns the pointer and Escape, so the popover must not read them as a dismissal.
+  const holdWhilePicking = (event: Event) => {
+    if (picking.current) event.preventDefault()
+  }
+
   return (
     // Modal so the popover owns the scroll lock and touch inside a Dialog, per the popover-in-dialog convention.
     <Popover modal>
@@ -128,6 +176,8 @@ export function ColorPicker({
       </PopoverTrigger>
       <PopoverContent
         align="start"
+        onInteractOutside={holdWhilePicking}
+        onEscapeKeyDown={holdWhilePicking}
         className={cn(
           "w-auto space-y-3 p-3",
           "[&_.react-colorful]:w-56 [&_.react-colorful]:h-48",
@@ -151,6 +201,13 @@ export function ColorPicker({
               if (event.key === "Enter") revertDraft()
             }}
           />
+          {Dropper && (
+            <Tip tip="Pick From Screen">
+              <Button type="button" variant="outline" size="icon" className="h-9 w-9" aria-label="Pick From Screen" onClick={() => void pick()}>
+                <Pipette className="h-4 w-4" />
+              </Button>
+            </Tip>
+          )}
           {onReset && (
             <Button type="button" variant="ghost" size="sm" onClick={onReset}>
               {resetLabel}

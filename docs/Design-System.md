@@ -51,6 +51,7 @@ Cards use `card` rather than inventing a second panel color. Destructive, succes
 | Slider plus current value | `ValueSlider` in [`SettingsRows.tsx`](../src/components/SettingsRows.tsx) |
 | Optional detail | `HintInfo` in [`SettingsRows.tsx`](../src/components/SettingsRows.tsx) |
 | Inputs and choices | `Input`, `Checkbox`, `Slider`, `Select`, and `ToggleGroup` in [`src/components/ui`](../src/components/ui) |
+| Color | `ColorPicker` in [`color-picker.tsx`](../src/components/ui/color-picker.tsx); see [Pattern: Color Picker](#pattern-color-picker) |
 | Display tab body | `DisplaySettingsSection` in [`DisplaySettingsSection.tsx`](../src/components/modals/DisplaySettingsSection.tsx) |
 | Output tab body | `OutputSettingsSection` in [`OutputSettingsSection.tsx`](../src/components/modals/OutputSettingsSection.tsx) |
 | What a section reads and writes | `SettingsSource` in [`settingsSource.ts`](../src/components/modals/settingsSource.ts) |
@@ -74,6 +75,16 @@ Open `#dev?modal=designSystem&tab=settings`.
 
 - Section, row, hint, and mode copy comes from the production components, so the reference and Settings cannot drift. Reuse does not certify that copy as fully ASD-STE100 compliant.
 - **Unverified:** the card descriptions, the Live Sample description, and the three status lines have terminology review only; vocabulary and grammar evidence is not recorded.
+
+## Pattern: Color Picker
+
+`ColorPicker` is the one color control. A swatch button shows the color and its hex code. It opens a square, a hue bar, and a hex field. The popover is modal, so it works inside a dialog.
+
+- 🎨 **Commit path.** A drag sends one change per frame and a final one on release. A typed hex sends one change. Each goes to the host as one change.
+- 💧 **Eyedropper.** A **Pick From Screen** button sits beside the hex field when the browser has the native `EyeDropper` interface. It is absent elsewhere, and nothing replaces it. One pick is one change. A canceled pick changes nothing and shows no error. The popover stays open through the pick.
+- 🔌 **No game dependency.** The picker takes optional `onPickStart` and `onPickEnd` callbacks. The Avatar viewers use them to hold the Avatar still while it is sampled.
+
+The **Control States** card in the showcase shows it. Open `#dev?modal=designSystem&tab=settings`. The eyedropper button shows there in a browser that has the interface.
 
 ## Pattern: Mode Select
 

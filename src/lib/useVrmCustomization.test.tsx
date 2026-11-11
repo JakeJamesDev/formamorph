@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useVrmCustomization, type VrmCustomization } from './useVrmCustomization';
@@ -54,6 +54,39 @@ describe('useVrmCustomization color rows', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Undo Hair Color' }));
     expect(hook.result.current.viewerProps.hairColor).toBeUndefined();
     expect(screen.getByRole('button', { name: 'Hair Color' })).toHaveAccessibleDescription('#112233');
+  });
+});
+
+describe('useVrmCustomization eyedropper', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const startPick = async (settle: (resolve: () => void, reject: () => void) => void) => {
+    let resolve = () => {};
+    let reject = () => {};
+    vi.stubGlobal('EyeDropper', class {
+      open = () => new Promise((res, rej) => {
+        resolve = () => res({ sRGBHex: '#aa11cc' });
+        reject = () => rej(new DOMException('canceled', 'AbortError'));
+      });
+    });
+    const { hook } = setup({ ...CAPS, colors: { hair: '#112233' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Hair Color' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Pick From Screen' }));
+    expect(hook.result.current.viewerProps.animate).toBe(false);
+    await act(async () => settle(resolve, reject));
+    return hook;
+  };
+
+  it('holds the Avatar still during a pick and animates again after it', async () => {
+    const hook = await startPick((resolve) => resolve());
+    expect(hook.result.current.viewerProps.animate).toBe(true);
+    expect(hook.result.current.viewerProps.hairColor).toBe('#aa11cc');
+  });
+
+  it('animates again after a canceled pick', async () => {
+    const hook = await startPick((_resolve, reject) => reject());
+    expect(hook.result.current.viewerProps.animate).toBe(true);
+    expect(hook.result.current.viewerProps.hairColor).toBeUndefined();
   });
 });
 
