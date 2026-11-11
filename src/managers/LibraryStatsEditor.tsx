@@ -1,4 +1,5 @@
 import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import type { TreeCollapse } from '@/components/treeCollapse';
 import { Hint } from '@/components/ui/typography';
 import { usePlacementLetters } from '@/contexts/PlacementLettersContext';
 import { statLinksBoundTo, statLinksCarriedFrom } from '@/lib/portableStats';
@@ -13,12 +14,14 @@ import type { LibraryEditorWorld } from '@/lib/libraryGateInput';
  * when the world has no such Blueprint, it reads by its stored name and brings nothing. No Link is made here.
  * The tab unmounts on a tab switch, so its selection starts over each time it opens.
  */
-const LibraryStatsEditor = ({ entity, setEntity, placeholders, world = null, detailHeader }: {
+const LibraryStatsEditor = ({ entity, setEntity, placeholders, world = null, detailHeader, collapse }: {
   entity: Entity;
   setEntity: Dispatch<SetStateAction<Entity | null>>;
   placeholders: Placeholder[];
   world?: LibraryEditorWorld | null;
   detailHeader?: ReactNode;
+  /** The modal's collapsed groups, which outlive this tab. */
+  collapse?: TreeCollapse;
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const letters = usePlacementLetters();
@@ -45,6 +48,7 @@ const LibraryStatsEditor = ({ entity, setEntity, placeholders, world = null, det
       placeholder="Search or add new stats"
       emptyHint={<Hint className="p-2">No stats yet. Add one to track something about this entity.</Hint>}
       detailHeader={detailHeader}
+      collapse={collapse}
     />
   );
 };

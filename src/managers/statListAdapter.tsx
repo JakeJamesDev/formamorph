@@ -3,6 +3,8 @@ import { Copy, Link2, X } from 'lucide-react';
 import type { LinkedStatRow } from '@/lib/statLinks';
 import type { ListEditorAdapter, ListEditorRow } from '@/components/listEditorHooks';
 import type { ListSearch } from '@/components/listToolbarHooks';
+import { treeParentIds, type TreeCollapse } from '@/components/treeCollapse';
+import { buildStatTree, flattenStatTree } from '@/lib/statGroupTree';
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
 import type { FocusFieldHint, Stat, StatGroup } from '@/types';
 import { focusFieldForItem } from '@/views/findFocus';
@@ -18,7 +20,7 @@ import StatTree from './StatTree';
  */
 export function statListAdapter({
   stats, groups, names, selectedId, onSelect, onDuplicate, onRemoveStat, onRemoveGroup, tree, onWriteGroup, add, placeholder,
-  emptyHint, search, tab, onTabChange, focusField, store, padded, links, footer,
+  emptyHint, search, tab, onTabChange, focusField, store, padded, links, footer, collapse,
 }: {
   stats: Stat[];
   groups: StatGroup[];
@@ -54,6 +56,8 @@ export function statListAdapter({
   };
   /** The footer under any other row's panel. */
   footer?: (id: string) => ReactNode;
+  /** The host's collapsed groups, which outlive the tree. Absent = the tree keeps its own and shows no button. */
+  collapse?: TreeCollapse;
 }): ListEditorAdapter {
   // A search lists stats only. Order is the tree's to change, so these rows draw no grip.
   const rows = (): ListEditorRow[] => stats.map((s) => {
@@ -89,8 +93,10 @@ export function statListAdapter({
         linked={links?.rows}
         onDetach={links?.onDetach}
         emptyHint={emptyHint}
+        collapse={collapse}
       />
     ),
+    collapse: collapse && { noun: 'stats', parents: treeParentIds(flattenStatTree(buildStatTree(groups, stats))), state: collapse },
     rows,
     names,
     noun: 'stats',

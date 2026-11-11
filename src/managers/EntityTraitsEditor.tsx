@@ -10,7 +10,8 @@ import { addOwnedGroup, addOwnedTrait } from '@/lib/ownedTraits';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { SELF_ENTITY } from '@/lib/portableTraits';
 import { removeLink } from '@/lib/traitLinks';
-import { duplicateTraitNode, entityRootTraitTree, linkRowRemovable, type LinkRow } from '@/lib/traitTree';
+import { duplicateTraitNode, entityRootTraitTree, linkRowRemovable, ownedTraitRows, type LinkRow } from '@/lib/traitTree';
+import { treeParentIds, type TreeCollapse } from '@/components/treeCollapse';
 import { randomUUID } from '@/lib/uuid';
 import type { TraitRequirement } from '@/types';
 import type { TraitPanelTab } from '@/views/traitPanelTabs';
@@ -28,7 +29,7 @@ export type EntityTraitStore = TraitStore & { entityRoot: EntityRoot };
  * group or Link panel beside or over the list. The caller holds the selection. While a search is typed the
  * list is flat: matching traits and Links, never groups.
  */
-const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity, ownerLine = true, emptyHint, detailHeader, placeholder = 'Search or add new traits' }: {
+const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity, ownerLine = true, emptyHint, detailHeader, placeholder = 'Search or add new traits', collapse }: {
   store: EntityTraitStore;
   layout: ListEditorLayout;
   selectedId: string | null;
@@ -42,6 +43,8 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
   detailHeader?: ReactNode;
   /** The list box's text: a host under the World Editor's header search reads "Filter …". */
   placeholder?: string;
+  /** The host's collapsed groups, which outlive the list. Absent = no Collapse All button. */
+  collapse?: TreeCollapse;
 }) => {
   const { owner, world } = store.entityRoot;
   const { placeholders, traits, traitGroups } = store;
@@ -172,7 +175,8 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
   );
 
   const adapter: ListEditorAdapter = {
-    tree: <TraitTree selectedId={selectedId} onSelect={onSelect} />,
+    tree: <TraitTree selectedId={selectedId} onSelect={onSelect} collapse={collapse} />,
+    collapse: collapse && { noun: 'traits', parents: treeParentIds(ownedTraitRows(tree, new Set())), state: collapse },
     rows,
     names: { placeholders },
     noun: 'traits',

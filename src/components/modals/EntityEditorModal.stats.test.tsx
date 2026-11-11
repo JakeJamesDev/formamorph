@@ -214,3 +214,32 @@ describe('the library entity Stats tab and the card', () => {
     expect(parsed.statLinks!.map((l) => [l.id, l.originalName])).toEqual([['l-trust', 'Trust'], ['l-bond', 'Bond']]);
   });
 });
+
+describe("the library entity Stats tab's Collapse All", () => {
+  it('hides the group rows and shows them again, and starts open after the modal closes and reopens', async () => {
+    const ui = (props: { entityId: string | null; draft: Entity | null }) => (
+      <SettingsProvider><EntityEditorModal {...props} onClose={vi.fn()} /></SettingsProvider>
+    );
+    const { rerender } = render(ui({ entityId: null, draft: ash }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Stats' }));
+    expect(screen.getByText('Mood')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Collapse all stats' }));
+    expect(screen.queryByText('Mood')).not.toBeInTheDocument();
+    expect(screen.getByText('Feelings')).toBeInTheDocument();
+
+    // A tab switch keeps the fold while the modal stays open.
+    await userEvent.click(screen.getByRole('tab', { name: 'Entity' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Stats' }));
+    expect(screen.queryByText('Mood')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Expand all stats' }));
+    expect(screen.getByText('Mood')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Collapse all stats' }));
+    rerender(ui({ entityId: null, draft: null }));
+    rerender(ui({ entityId: null, draft: ash }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Stats' }));
+    expect(screen.getByText('Mood')).toBeInTheDocument();
+  });
+});

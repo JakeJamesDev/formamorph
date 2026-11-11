@@ -32,6 +32,7 @@ import { exportedLibraryLinks } from '@/lib/componentExportLinks';
 import { exportEntityCard } from '@/lib/entityFile';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { canonicalStringify } from '@/lib/canonicalStringify';
+import { useTreeCollapseStore } from '@/components/treeCollapse';
 import EntityStorageService from '@/services/EntityStorageService';
 import { EditorModeContext, type EditorModeValue } from '@/lib/editorMode';
 import type { Entity, LibraryDetails, FocusFieldHint, Placeholder } from '@/types';
@@ -87,6 +88,10 @@ const EntityEditorModal = ({
   onCloseRef.current = onClose;
 
   const isOpen = entityId !== null || !!draft;
+  // The list tabs unmount on a tab switch, so the modal keeps their folds until it closes.
+  const treeCollapse = useTreeCollapseStore();
+  const resetTreeCollapse = treeCollapse.reset;
+  useEffect(() => { if (!isOpen) resetTreeCollapse(); }, [isOpen, resetTreeCollapse]);
 
   // Seed from the draft, or load the character from storage; clear when closed.
   useEffect(() => {
@@ -275,6 +280,7 @@ const EntityEditorModal = ({
           <ChipInsertTargetProvider>
             <LibraryTraitsEditor
               entity={entity} setEntity={setEntity} placeholders={pool} onOpenEntity={() => setTab('entity')} world={traitWorld}
+              collapse={treeCollapse.stateFor('traits')}
               detailHeader={<PlaceholderPaletteBar placeholders={pool} className={DETAIL_PALETTE_CLASS} />}
             />
           </ChipInsertTargetProvider>
@@ -282,6 +288,7 @@ const EntityEditorModal = ({
           <ChipInsertTargetProvider>
             <LibraryStatsEditor
               entity={entity} setEntity={setEntity} placeholders={pool} world={traitWorld}
+              collapse={treeCollapse.stateFor('stats')}
               detailHeader={<PlaceholderPaletteBar placeholders={pool} className={DETAIL_PALETTE_CLASS} />}
             />
           </ChipInsertTargetProvider>
@@ -292,6 +299,7 @@ const EntityEditorModal = ({
             <LibraryPlaceholdersEditor
               ownerName={labelPlaceholders(entity?.name ?? '', pool, { letters })}
               carriedBlueprints={entity?.blueprints ?? NO_BLUEPRINTS}
+              collapse={treeCollapse.stateFor('placeholders')}
               detailHeader={<PlaceholderPaletteBar placeholders={pool} className={DETAIL_PALETTE_CLASS} />}
             />
           </ChipInsertTargetProvider>

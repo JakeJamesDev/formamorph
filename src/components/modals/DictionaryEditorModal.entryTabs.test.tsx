@@ -120,3 +120,35 @@ describe('the library dictionary editor’s entry panel', () => {
     expect(screen.queryByText(/These placeholders belong to this dictionary/)).toBeNull();
   });
 });
+
+describe('the library dictionary editor’s Collapse All', () => {
+  it('hides the zone rows and shows them again, and starts open after the modal closes and reopens', () => {
+    const ui = (book: Dictionary | null) => (
+      <SettingsProvider>
+        <GameDataProvider>
+          <DictionaryEditorModal dictionaryId={null} draft={book} onClose={vi.fn()} />
+        </GameDataProvider>
+      </SettingsProvider>
+    );
+    const { rerender } = render(ui(draft));
+    expect(within(entryList()).getByText('Quiet Folk')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse all entries' }));
+    expect(within(entryList()).queryByText('Quiet Folk')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand all entries' }));
+    expect(within(entryList()).getByText('Quiet Folk')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse all entries' }));
+    rerender(ui(null));
+    rerender(ui(draft));
+    expect(within(entryList()).getByText('Quiet Folk')).toBeInTheDocument();
+  });
+
+  it('reads Expand all once the zones are closed by hand, since the book row is hidden', () => {
+    open();
+    fireEvent.click(within(entryList()).getByRole('button', { name: /^Foreground/ }));
+    expect(within(entryList()).queryByText('Quiet Folk')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Expand all entries' })).toBeInTheDocument();
+  });
+});

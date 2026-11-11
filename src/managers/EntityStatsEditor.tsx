@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { ListEditor, type ListEditorLayout } from '@/components/ListEditor';
+import type { TreeCollapse } from '@/components/treeCollapse';
 import type { PlaceholderOwners } from '@/lib/placeholderHomes';
 import {
   addOwnedStat, addOwnedStatGroup, duplicateOwnedStatNode, removeOwnedStat, updateOwnedStatGroup,
@@ -24,7 +25,7 @@ import { statListAdapter } from './statListAdapter';
  * `edit`. The caller holds the selection and the layout; the list clears a selection the entity doesn't hold.
  */
 const EntityStatsEditor = ({
-  entity, world, edit, confirmRemove, names, layout, selectedId, onSelect, canLink, standalone = false, placeholder, emptyHint, detailHeader,
+  entity, world, edit, confirmRemove, names, layout, selectedId, onSelect, canLink, standalone = false, placeholder, emptyHint, detailHeader, collapse,
 }: {
   entity: Entity;
   /** The stats and groups the entity's links read their Blueprints from. */
@@ -45,6 +46,8 @@ const EntityStatsEditor = ({
   emptyHint: ReactNode;
   /** Tops the detail pane: a host's placeholder palette. */
   detailHeader?: ReactNode;
+  /** The host's collapsed groups, which outlive the list. Absent = no Collapse All button. */
+  collapse?: TreeCollapse;
 }) => {
   const { placeholders, letters, owners } = names;
   const [tab, setTab] = useState<StatPanelTab>('details');
@@ -101,6 +104,7 @@ const EntityStatsEditor = ({
     },
     placeholder,
     emptyHint,
+    collapse,
     tab,
     onTabChange: setTab,
     store,

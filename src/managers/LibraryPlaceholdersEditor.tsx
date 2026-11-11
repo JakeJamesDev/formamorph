@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import type { TreeCollapse } from '@/components/treeCollapse';
 import { ListEditor } from '@/components/ListEditor';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import { usePlacementLetters } from '@/contexts/PlacementLettersContext';
@@ -15,11 +16,13 @@ import { usePlaceholderRowActions } from './usePlaceholderRowActions';
  * the detail router's pane. Reads the modal's own store. `carriedBlueprints` are an entity card's blueprints,
  * which its copies open over read-only; a book passes none.
  */
-const LibraryPlaceholdersEditor = ({ ownerName, carriedBlueprints, detailHeader }: {
+const LibraryPlaceholdersEditor = ({ ownerName, carriedBlueprints, detailHeader, collapse }: {
   /** The item's name, which a copy reads as its owner's. */
   ownerName: string;
   carriedBlueprints?: readonly Placeholder[];
   detailHeader?: ReactNode;
+  /** The modal's collapsed groups, which outlive this tab. */
+  collapse?: TreeCollapse;
 }) => {
   const { placeholders } = usePlaceholderStore();
   const letters = usePlacementLetters();
@@ -30,18 +33,20 @@ const LibraryPlaceholdersEditor = ({ ownerName, carriedBlueprints, detailHeader 
     (): PlaceholderRowNode[] => placeholderRows(placeholders, placeholders).map((row) => ({ ...row, kind: 'placeholder', home: { kind: 'world' } })),
     [placeholders],
   );
-  const adapter = usePlaceholderListAdapter({
+  const parents = useMemo(() => [...new Set(nodes.flatMap((n) => (n.parentId === null ? [] : [n.parentId])))], [nodes]);
+  const listAdapter = usePlaceholderListAdapter({
     nodes,
     lists: { placeholders },
     rowRules,
     names: { placeholders, letters },
-    tree: <PlaceholderList selectedId={selectedId} onSelect={setSelectedId} />,
+    tree: <PlaceholderList selectedId={selectedId} onSelect={setSelectedId} collapse={collapse} />,
     detail,
     footer,
     fills,
     addLabel: 'Add Placeholder',
     onSelect: setSelectedId,
   });
+  const adapter = collapse ? { ...listAdapter, collapse: { noun: 'placeholders', parents, state: collapse } } : listAdapter;
   return (
     <>
       <ListEditor adapter={adapter} layout="sideBySide" selectedId={selectedId} onSelect={setSelectedId} backLabel="Placeholders" detailHeader={detailHeader} />

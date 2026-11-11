@@ -24,7 +24,8 @@ import { carriedPlaceholders, splitCarriedPlaceholders } from '@/lib/placeholder
 import { dictionaryPlacementLetters, EMPTY_LETTERS, labelPlaceholders, type PlacementLetters } from '@/lib/placementLetters';
 import { PlacementLettersProvider } from '@/contexts/PlacementLettersContext';
 import { ALWAYS_ADVANCED, EditorModeContext } from '@/lib/editorMode';
-import { firstDictionaryEntryId } from '@/lib/dictionaryTree';
+import { dictionaryParentIds, firstDictionaryEntryId } from '@/lib/dictionaryTree';
+import { useTreeCollapseStore, type TreeCollapse } from '@/components/treeCollapse';
 import { exportedLibraryLinks } from '@/lib/componentExportLinks';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
@@ -43,22 +44,27 @@ const canon = (v: unknown) => canonicalStringify(v, new WeakMap()) ?? '';
  * The book's entries on the List Editor, side by side: the tree with no book row, a flat search over the
  * entries, and the entry panel. Reads the modal's own store.
  */
-function LibraryEntriesEditor({ selectedId, onSelect, entryTab, onEntryTabChange, bookPlaceholders, letters }: {
+function LibraryEntriesEditor({ selectedId, onSelect, entryTab, onEntryTabChange, bookPlaceholders, letters, collapseState }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   entryTab: DictionaryPanelTab;
   onEntryTabChange: (tab: DictionaryPanelTab) => void;
   bookPlaceholders: Placeholder[];
   letters: PlacementLetters;
+  /** The books and zones the modal keeps folded while it is open. */
+  collapseState: TreeCollapse;
 }) {
   const { dictionaries } = useDictionaryStore();
-  // Held here so a search, which unmounts the tree, keeps its folds.
-  const collapse = useDictionaryCollapse();
+  // The modal holds the folds, so a search or a tab switch, which unmounts the tree, keeps them.
+  const collapse = useDictionaryCollapse(collapseState);
+  // The tree hides the book row, so only the zones fold.
+  const parents = useMemo(() => dictionaryParentIds(dictionaries).filter((id) => !dictionaries.some((b) => b.id === id)), [dictionaries]);
   const actions = useDictionaryActions({ selectedId, onSelect, collapse });
   const book = dictionaries[0];
   const selectedEntry = book?.entries.find((e) => e.id === selectedId);
   const adapter: ListEditorAdapter = {
     tree: <DictionaryTree selectedId={selectedId} onSelect={onSelect} hideBookRow collapse={collapse} />,
+    collapse: { noun: 'entries', parents, state: collapseState },
     rows: () => dictionarySearchRows(dictionaries, actions, false),
     names: { placeholders: bookPlaceholders, letters },
     noun: 'entries',
@@ -136,6 +142,10 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
   onCloseRef.current = onClose;
 
   const isOpen = dictionaryId !== null || !!draft;
+  // Folds last while the modal is open and start over with the next open.
+  const treeCollapse = useTreeCollapseStore();
+  const resetTreeCollapse = treeCollapse.reset;
+  useEffect(() => { if (!isOpen) resetTreeCollapse(); }, [isOpen, resetTreeCollapse]);
 
   // Seed the isolated store from the draft, or load a stored book; clear when closed.
   useEffect(() => {
@@ -265,6 +275,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
             <ChipInsertTargetProvider>
               <LibraryPlaceholdersEditor
                 ownerName={labelPlaceholders(dictionaries[0]?.name ?? '', bookPlaceholders, { letters })}
+                collapse={treeCollapse.stateFor('placeholders')}
                 detailHeader={<PlaceholderPaletteBar placeholders={bookPlaceholders} className={DETAIL_PALETTE_CLASS} />}
               />
             </ChipInsertTargetProvider>
@@ -276,6 +287,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
               onEntryTabChange={setEntryTab}
               bookPlaceholders={bookPlaceholders}
               letters={letters}
+              collapseState={treeCollapse.stateFor('entries')}
             />
           )}
         </DictionaryStoreProvider>

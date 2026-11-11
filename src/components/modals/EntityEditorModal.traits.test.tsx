@@ -290,3 +290,15 @@ describe("the library entity Traits tab's links", () => {
     expect((await saved()).traitLinks!.map((l) => l.id)).toEqual(['l-class']);
   });
 });
+
+describe("the library entity Traits tab's Collapse All", () => {
+  it('hides the group rows and shows them again', async () => {
+    await openTraits();
+    expect(screen.getByText('Tamed')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Collapse all traits' }));
+    expect(screen.queryByText('Tamed')).not.toBeInTheDocument();
+    expect(screen.getByText('Bond')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Expand all traits' }));
+    expect(screen.getByText('Tamed')).toBeInTheDocument();
+  });
+});

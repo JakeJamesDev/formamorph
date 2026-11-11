@@ -29,6 +29,8 @@ export type TreeCollapseStore = {
   stateFor: (key: string) => TreeCollapse;
   /** Asks the key's tree to open the groups above its selection again, as a navigation from outside it does. */
   requestReveal: (key: string) => void;
+  /** Forgets every key's state, so the next render starts fully open. */
+  reset: () => void;
 };
 
 /** One collapse state per key, for as long as the host stays mounted. A key's `update` stays the same function. */
@@ -52,5 +54,6 @@ export function useTreeCollapseStore(): TreeCollapseStore {
   const requestReveal = useCallback((key: string) => {
     updaterFor(key)((prev) => (prev.revealed === null ? prev : { ...prev, revealed: null }));
   }, [updaterFor]);
-  return { stateFor, requestReveal };
+  const reset = useCallback(() => setStates((prev) => (Object.keys(prev).length ? {} : prev)), []);
+  return { stateFor, requestReveal, reset };
 }

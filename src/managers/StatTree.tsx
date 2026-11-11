@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { TreeCollapse } from '@/components/treeCollapse';
 import { useStatEditorWorld } from '@/lib/useStatEditorWorld';
 import type { LinkedStatRow } from '@/lib/statLinks';
 import {
@@ -16,7 +17,7 @@ import { chipInput } from './chipInput';
  * they carry a name and a description and nothing that changes how a stat plays.
  */
 const StatTree = ({
-  stats, groups, linked, onDetach, selectedId, onSelect, onDrop, onRemoveStat, onRemoveGroup, onDuplicate, emptyHint,
+  stats, groups, linked, onDetach, selectedId, onSelect, onDrop, onRemoveStat, onRemoveGroup, onDuplicate, emptyHint, collapse,
 }: StatRowActions & {
   stats: Stat[];
   /** The rows a link brings. A link's own row removes or detaches the link; a row below a linked group is fixed. */
@@ -28,6 +29,8 @@ const StatTree = ({
   onDrop: (next: { groups: StatGroup[]; stats: Stat[] }) => void;
   /** Drawn in place of the tree while it holds nothing. */
   emptyHint: ReactNode;
+  /** The host's collapsed groups, which outlive the tree. */
+  collapse?: TreeCollapse;
 }) => {
   const { placeholders } = useStatEditorWorld();
 
@@ -46,7 +49,7 @@ const StatTree = ({
   };
 
   if (!stats.length && !groups.length) return <>{emptyHint}</>;
-  return <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />;
+  return <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} collapse={collapse} revealSelected={!!collapse} />;
 };
 
 export default StatTree;
