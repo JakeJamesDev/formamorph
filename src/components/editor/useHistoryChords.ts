@@ -1,6 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import { historyShortcut } from '@/lib/editorHistory';
 import { keepsOwnHistory } from '@/lib/editableTarget';
+import { openModals } from '@/lib/openModals';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import type { SurfaceId } from '@/lib/docs/surfaceMap';
 
@@ -13,12 +14,10 @@ interface HistoryChordOptions {
   paused?: boolean;
 }
 
-const OPEN_MODALS = '[role="dialog"]:not([aria-modal="false"]):not([data-state="closed"]), [role="alertdialog"]:not([data-state="closed"])';
-
 /** Whether a modal outside the layer was opened over it, also one that reports no surface. A popover is not one. */
 function modalOver(layer: Element): boolean {
-  return [...document.querySelectorAll(OPEN_MODALS)].some((dialog) =>
-    !dialog.closest('[data-radix-popper-content-wrapper]') && !dialog.contains(layer) && !layer.contains(dialog)
+  return openModals().some((dialog) =>
+    !dialog.contains(layer) && !layer.contains(dialog)
     && (layer.compareDocumentPosition(dialog) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0);
 }
 
