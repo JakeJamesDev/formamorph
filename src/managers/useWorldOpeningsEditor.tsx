@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight, MapPinOff, Plus } from 'lucide-react';
 import { EditorRow, EditorRowList, treeRowPaddingLeft } from '@/components/EditorRow';
 import { ListSearchToolbar } from '@/components/ListToolbar';
 import type { ListEditorParts } from '@/components/listEditorHooks';
 import type { ListSearch } from '@/components/listToolbarHooks';
-import { CollapseAllButton } from '@/components/CollapseAllButton';
+import { TreeCollapseAllButton } from '@/components/CollapseAllButton';
+import type { TreeCollapse } from '@/components/treeCollapse';
 import { Button } from '@/components/ui/button';
 import { ListDetailBack } from '@/components/ui/list-detail';
 import { Tip } from '@/components/ui/tooltip';
@@ -41,10 +42,12 @@ const NO_START_TIP: Record<Exclude<OwnerKind, 'world'>, string> = {
  * keeps an owner whose name or opening text matches, and a parent folds its rows away until a search is typed.
  * Neither moves the selection.
  */
-export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultToWorld, onOpenEntity, onOpenLocation }: {
+export function useWorldOpeningsEditor({ selectedId, onSelect, search, collapse, defaultToWorld, onOpenEntity, onOpenLocation }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   search: ListSearch;
+  /** The owner list's folded groups, held by the World Editor for the visit. */
+  collapse: TreeCollapse;
   /** Holds This World while nothing is selected: the desktop split always has a pane to fill. */
   defaultToWorld: boolean;
   /** Opens that entity's Openings tab. */
@@ -56,8 +59,8 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
     worldOverview, updateWorldOverview, entities, entityGroups, updateEntity, locations, updateLocation, placeholders,
     placementLetters, placeholderOwners,
   } = useGameData();
-  // Folded rows last while the editor is open, like the selection.
-  const [folded, setFolded] = useState<ReadonlySet<string>>(NONE_COLLAPSED);
+  // Folded groups live in the World Editor's per-tab store, so they outlast a tab switch.
+  const folded = collapse.value.collapsed;
   const view = openingsEditorView({ overview: worldOverview, entities, locations });
   const names: ListSearchNames = { placeholders, letters: placementLetters, owners: placeholderOwners };
   const label = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
@@ -79,12 +82,10 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
   // Collapse All acts on every parent, whatever the search shows.
   const parentKeys = openingsTabRows({ ...rowsArgs, matches: () => true, collapsed: NONE_COLLAPSED })
     .flatMap((row) => (row.kind !== 'rule' && row.parent ? [foldKey(row)] : []));
-  const anyOpen = parentKeys.some((key) => !folded.has(key));
-  const toggleAll = () => setFolded(anyOpen ? new Set(parentKeys) : NONE_COLLAPSED);
-  const toggleFold = (key: string) => setFolded((was) => {
-    const next = new Set(was);
+  const toggleFold = (key: string) => collapse.update((was) => {
+    const next = new Set(was.collapsed);
     if (!next.delete(key)) next.add(key);
-    return next;
+    return { ...was, collapsed: next };
   });
   const held = heldKey ? owners.get(heldKey) : undefined;
 
@@ -243,7 +244,8 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
         add={{ label: 'Add to Openings', menu: addMenu }}
         after={(
           <>
-            {parentKeys.length > 0 && <CollapseAllButton anyOpen={anyOpen} noun="groups" onClick={toggleAll} />}
+            {/* The search keeps the tree, so the button stays enabled while it has text. */}
+            <TreeCollapseAllButton collapse={{ noun: 'groups', parents: parentKeys, state: collapse }} shown />
             {extras?.after}
           </>
         )}

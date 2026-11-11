@@ -291,6 +291,24 @@ describe('the World Editor Openings tab', () => {
       expect(listRows()).toEqual(ALL_FOLDED);
     });
 
+    it('keeps the button enabled while the search has text', async () => {
+      await openOpeningsTab(TREE_WORLD);
+      fireEvent.change(tabSearch(), { target: { value: 'creaks' } });
+      expect(collapseAll()).toBeEnabled();
+    });
+
+    it('keeps its folded groups through a tab switch and back', async () => {
+      await openOpeningsTab(TREE_WORLD);
+      fireEvent.click(collapseAll());
+      expect(listRows()).toEqual(ALL_FOLDED);
+      openEditorTab(/^Entities$/);
+      await waitFor(() => expect(shownEditorTab()).toBe('Entities'));
+      openEditorTab(/^Openings$/);
+      await waitFor(() => expect(shownEditorTab()).toBe('Openings'));
+      expect(listRows()).toEqual(ALL_FOLDED);
+      expect(collapseAll()).toHaveAccessibleName('Expand all groups');
+    });
+
     it('keeps a selected owner selected, with its pane, when its parent collapses', async () => {
       await openOpeningsTab(TREE_WORLD);
       selectOwner('Old Mill');

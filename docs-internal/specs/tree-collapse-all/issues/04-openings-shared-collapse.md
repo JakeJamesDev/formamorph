@@ -1,6 +1,6 @@
 # 04: Openings Owner List Joins the Shared Collapse
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -19,7 +19,15 @@ Start only after Openings Tab ticket 05 has landed (`ready-for-human` or `done`)
 
 ## Acceptance criteria
 
-- [ ] Openings collapse state survives a tab switch and back (editor-bench test)
-- [ ] Ticket 05's collapse, search and selection tests stay green through the shared button
-- [ ] The Openings button stays enabled while search has text (editor-bench test)
-- [ ] No Openings-only collapse state or toggle-all code remains
+- [x] Openings collapse state survives a tab switch and back (editor-bench test: "keeps its folded groups through a tab switch and back")
+- [x] Ticket 05's collapse, search and selection tests stay green through the shared button (unchanged `collapsing groups` cases; run at prepare)
+- [x] The Openings button stays enabled while search has text (editor-bench test: "keeps the button enabled while the search has text")
+- [x] No Openings-only collapse state or toggle-all code remains (`useState` and `toggleAll` removed from `useWorldOpeningsEditor.tsx`)
+
+## Landed
+
+**Not verified**
+- The jsdom tests ran only at prepare, not in the review gates.
+
+**For you**
+- Open Openings with no nested owners: the Collapse All button now shows disabled instead of hidden (Q7). Look at the toolbar right of the search.

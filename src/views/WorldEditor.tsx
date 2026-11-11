@@ -1148,6 +1148,7 @@ const WorldEditorInner = ({
     selectedId: selections.openings ?? null,
     onSelect: selectOpeningsOwner,
     search,
+    collapse: treeCollapse.stateFor('openings'),
     defaultToWorld: !isMobile,
     onOpenEntity: (id) => navigateToBenchItem('entities', id, 'openings'),
     onOpenLocation: (id) => { navigateToBenchItem('locations', id); setLocationTab('openings'); },

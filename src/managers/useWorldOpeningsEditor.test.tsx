@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import type { Entity, GameLocation, Placeholder, WorldOverview } from '@/types';
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import { useListSearch } from '@/components/listToolbarHooks';
+import { useTreeCollapseStore } from '@/components/treeCollapse';
 import { useWorldOpeningsEditor } from './useWorldOpeningsEditor';
 
 /**
@@ -54,7 +55,8 @@ const Harness = ({ onOpenEntity, onOpenLocation }: { onOpenEntity: OpenItem; onO
   const [selected, setSelected] = useState<string | null>(null);
   world.rerender = () => setTick((n) => n + 1);
   const search = useListSearch();
-  const parts = useWorldOpeningsEditor({ selectedId: selected, onSelect: setSelected, search, defaultToWorld: true, onOpenEntity, onOpenLocation });
+  const collapse = useTreeCollapseStore().stateFor('openings');
+  const parts = useWorldOpeningsEditor({ selectedId: selected, onSelect: setSelected, search, collapse, defaultToWorld: true, onOpenEntity, onOpenLocation });
   return (
     <>
       {parts.toolbar()}
