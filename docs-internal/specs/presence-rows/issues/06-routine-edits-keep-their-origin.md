@@ -18,7 +18,13 @@ This breaks what tickets 04 and 05 built for the Presence tab (Q28, Q31): the re
 - The same gap is in the entity panel and the full-screen entity card: check where an undo of a Routine edit lands from each, and state it. Fix it there too when the same change covers it. When it needs a different change, name it in the landing and leave it.
 - Other editors that commit through the batch may have the same gap. List them in the landing; do not change their behavior in this ticket.
 
-Spec rulings: Q15, Q28, Q31.
+**Reproduction, from ticket 04** (a real browser at 1280 wide, and jsdom): select an entity with two Starts on a location's Presence tab, delete a row of Start 2, press Start 1, switch the panel to Details, press Undo. The undo lands on the Entities section with the entity's Profile, not on Presence with Start 2. In jsdom the Step's Origin is undefined.
+
+**Already built and unit-tested** (tickets 04 and 05): the reveal selects the entity on arrival and carries the Start of the change, read from the Step's Origin field, else the Start whose data differs. This ticket makes that path run for a Routine edit.
+
+**Left over from ticket 04:** no test shows that the full-screen entity card draws no here-mark. Add one.
+
+Spec rulings: Q15, Q28, Q31, Q32.
 
 ## Acceptance criteria
 
@@ -28,4 +34,5 @@ Spec rulings: Q15, Q28, Q31.
 - [ ] Undo of a Routine edit made on the entity panel's Routine tab, from another section, returns to that entity's Routine tab.
 - [ ] The case the old guard protected still holds, shown by its existing test or a new one that fails when the guard is removed outright.
 - [ ] The landing lists every other caller of the batch and whether its Steps carry an Origin now.
+- [ ] A test shows the full-screen entity card draws no here-mark for an entity that has one on the Presence tab.
 - [ ] A changelog fragment describes the fix, folded into this effort's unreleased entry where one exists.
