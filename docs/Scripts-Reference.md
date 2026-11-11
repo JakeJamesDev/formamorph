@@ -12,7 +12,7 @@ A script can use only these objects. In the table, a word in angle brackets is a
 | --- | --- | --- | --- |
 | `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `self.value` | `self.value = <n>` |
 | `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
-| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
+| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `hour`, `minute`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
 | `turn` | `action`, `number`, `narration`, `choices` | `turn.number` | `turn.choices = [<text>]`, After the AI only |
 | `locations` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items` | `locations.<Location>.present` | Read-only |
@@ -21,8 +21,8 @@ A script can use only these objects. In the table, a word in angle brackets is a
 | `memories` | `id`, `turn`, `timestamp`, `day`, `daypart`, `text`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `add()`, `pin()`, `forget()`, `edit()`, `remove()` | `memories.length` | `memories.pin(<text>)` |
 | `notes` | — | `notes` | Read-only |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
-| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
-| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
+| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
+| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
 | `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
 | `dictionaries` | `id`, `name`, `enabled`, `entries`, `placeholders` | `dictionaries.<Dictionary>.enabled` | `dictionaries.<Dictionary>.enabled = true` |
 | `items` | `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, `placeholders`, `copies`, `give()` | `items.<Item>.copies.length` | `items.<Item>.give(persona)` |
@@ -92,7 +92,7 @@ Each entry has the [same members as `self`](#stat-properties). Each entry takes 
 <!-- keywords: own stats, read the entity's other stats, script on a monster's stat, this entity, entity's own stat, self entity, creature code, npc code, blueprint owner, empty owner, owner is blank, owner stats, owner traits, owner placeholders -->
 <!-- route: worldEditorStat.code -->
 
-`owner` is the entity that owns the running stat. It has the same members as an [entity entry](#entities): `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()` and `diary()`.
+`owner` is the entity that owns the running stat. It has the same members as an [entity entry](#entities): `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()` and `diary()`.
 
 The entity's own stats are under `owner.stats`, its own traits under `owner.traits`, and its own placeholders under `owner.placeholders`.
 
@@ -497,10 +497,11 @@ A write to an unknown trait name is ignored. **Test Code** and the **Test Bench*
 | `placeholders` | The placeholders the persona owns. See [Owned Placeholders](#owned-placeholders) |
 | `stats` | The persona's own stats by name, as an [entity's `stats`](#entities). Entries take writes |
 
-`persona` also has the `id`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `description`, `summary`, `aliases`, `items` and `body` of an [entity entry](#entities).
+`persona` also has the `id`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `items` and `body` of an [entity entry](#entities).
 
 - `inScene` and `met` are always true for the played persona.
 - `location` is where the player is. `following` is always false.
+- `kind`, `action` and `knownIn` are always `''`, `held` is always false, and `knownInPlaces` is always empty.
 - While a persona plays, `persona.meet()` is ignored. `persona.move`, `follow`, `unfollow` and `diary` stop the script with an error.
 - Each entry in `persona.traits` has the [same members as a `traits` entry](#traits), for the persona's state. A write to `enabled` switches the persona's own trait, by the same rules as `traits`.
 
@@ -545,6 +546,11 @@ When the player plays no entity, `persona` is an empty entry:
 | `location` | The code name of the location the entity is at. A Unique entity reads its own location, and a follower reads the player's. Empty for a Generic entity, which is in `present` at each place one of its presences is, and for an entity with no position. Read-only |
 | `following` | True when the entity follows the player. Read-only |
 | `waiting` | True when the entity stopped following and waits where it was left. Read-only |
+| `kind` | `'unique'` or `'generic'`, or `''` for an entity with no kind. An entity the story added reads `'unique'`. `move()` and `follow()` do nothing on a Generic entity. Read-only |
+| `action` | What the entity's routine row does now: `'stay'`, `'wander'` or `'patrol'`. `''` when no row covers the hour or none of its places can be reached, while the entity follows or waits, and for a Generic entity. Read-only |
+| `held` | True when a pull by the story or a script `move()` keeps the entity off its routine for now. False while it follows or waits, and for a Generic entity. Read-only |
+| `knownIn` | Where the AI receives the entity while it's not present: `'nowhere'`, `'nearby'`, or `'picked'` for the locations in `knownInPlaces`. Read-only |
+| `knownInPlaces` | The code names of the locations **Known In** picks. Empty unless `knownIn` is `'picked'`. Read-only |
 | `description` | The full AI description, with each placeholder chip filled in. Read-only |
 | `summary` | The short AI summary, with each placeholder chip filled in. Read-only |
 | `aliases` | The entity's other names, as a list, with each placeholder chip filled in. Read-only |
@@ -652,7 +658,7 @@ if (entities.Albus.stats.Trust.value >= 50) entities.Albus.follow();
 #### Where Each Timing Reads Entities
 <!-- keywords: entity location this turn, follower location, companion moved, who is present, stale location, after the move -->
 
-Each timing reads `location`, `following`, `waiting` and `present` at its own point in the turn:
+Each timing reads `location`, `following`, `waiting`, `action`, `held` and `present` at its own point in the turn:
 
 | When the script runs | Where it reads the entities |
 | --- | --- |
@@ -1069,7 +1075,7 @@ if (stats.Bridge.value === 0) turn.choices = turn.choices.filter((choice) => !/b
 | `present` | The [entity entries](#entities) at the location. The persona comes first when the player is there, then the entities in `entities` order. A Unique entity is in `present` at its own location, and a follower at the player's. A Generic entity is in `present` at each place one of its presences is, once. An entity with no position is in `present` at every location it lists |
 | `parent` | The code name of the location that holds this one. Empty at the top level |
 | `children` | The code names of the locations inside this one, in the editor's order |
-| `exits` | The places the AI can move the player to from here, each with a `name` (a code name) and a `hint` (the Connection's travel hint, or empty). It's the same list the AI picks from |
+| `exits` | The direct ways out of here, each with a `name` (a code name), a `hint` (the Connection's travel hint, or empty), a `distance` (`'nearby'`, or `'far'` across a Far Connection) and `oneWay` (true when the Connection runs this way only). A parent, child or sibling with no Connection is `'nearby'` and two-way. A move can carry the player further than these |
 | `items` | The Item Copies lying at the location. See [Items](#items) |
 
 In a world with no location, `location.id` and `location.name` are empty, and `location.present` is an empty list. An unknown location name reads as a blank entry.

@@ -24,6 +24,7 @@ import {
   runtimeStateOf, snapshotOf, switchedTraitOf, withStateGateStats, type SandboxSnapshot, type SnapshotOptions, type TraitSwitchWrite, type TurnReadings, type UnitHome,
 } from './sandboxSnapshot';
 import type { GateStats } from './traitGates';
+import type { RoutineReading } from './positionPlay';
 import { readsTurnStart, type RunTiming } from './statCodeTiming';
 import { filledScriptsAt, inRowOrder, inRunOrder, SCRIPT_TIMING_LABEL, scriptLabel } from './scripts';
 import { rowKeyOf } from './worldScripts';
@@ -87,6 +88,8 @@ export interface SandboxState {
   followers?: readonly string[];
   /** The ids of the followers left waiting. Absent ⇒ none. */
   waiting?: readonly string[];
+  /** Each Unique entity's routine action and hold, by id, from the same book as `positions`. Absent ⇒ none. */
+  routineNow?: Readonly<Record<string, RoutineReading>>;
   /** Absent, text reads as authored. */
   resolveText?: ResolveText;
   /** The story clock: the hours this turn consumed, the hours elapsed, and the calendar. */

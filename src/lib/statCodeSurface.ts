@@ -60,7 +60,7 @@ export const LOCATION_ENTRY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'present', detail: 'array', info: 'The entities at the location, each an entry of entities, the persona first when the player is there' },
   { name: 'parent', detail: 'string', info: 'Code name of the location this one is inside, or empty at the top level' },
   { name: 'children', detail: 'string[]', info: 'Code names of the locations inside this one, in the order the editor lists them' },
-  { name: 'exits', detail: 'array', info: 'Where the AI can move the player from the location, each exit with a code name and travel hint' },
+  { name: 'exits', detail: 'array', info: 'The direct ways out of the location, each exit with a code name, travel hint, distance and direction' },
   { name: 'items', detail: 'array', info: 'The Item Copies lying at the location, each with the fields of an items copy' },
 ]);
 
@@ -68,6 +68,8 @@ export const LOCATION_ENTRY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
 export const LOCATION_EXIT_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'name', detail: 'string', info: 'Code name of the location the exit leads to, a key of locations' },
   { name: 'hint', detail: 'string', info: 'Travel hint of the Connection the exit takes, its placeholders filled in, or empty when it has none' },
+  { name: 'distance', detail: 'string', info: 'far when the exit takes a Far Connection, else nearby' },
+  { name: 'oneWay', detail: 'boolean', info: 'True when the exit takes a Connection that runs this way only' },
 ]);
 
 /** The members of `location`: the fields of a `locations` entry for the turn's location, and the move. */
@@ -80,7 +82,7 @@ export const LOCATION_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'present', detail: 'array', info: 'The entities at the turn’s location, the persona first, or none in a world with no location' },
   { name: 'parent', detail: 'string', info: 'Code name of the location the turn’s location is inside, or empty at the top level' },
   { name: 'children', detail: 'string[]', info: 'Code names of the locations inside the turn’s location, in the order the editor lists them' },
-  { name: 'exits', detail: 'array', info: 'Where the AI can move the player this turn, each exit with a code name and travel hint' },
+  { name: 'exits', detail: 'array', info: 'The direct ways out of the turn’s location, each exit with a code name, travel hint, distance and direction' },
   { name: 'items', detail: 'array', info: 'The Item Copies lying at the turn’s location, each with the fields of an items copy' },
   { name: 'move', detail: '(nameOrId) => void', info: 'Moves the turn to a location of the world, in place of the AI’s move. A name the world has no location for stops the script with an error.' },
 ]);
@@ -247,6 +249,11 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'location', detail: 'string', info: 'Code name of the location the player is at, or empty in a world with no location' },
   { name: 'following', detail: 'boolean', info: 'Always false, since the persona moves with the player' },
   { name: 'waiting', detail: 'boolean', info: 'Always false, since the persona moves with the player' },
+  { name: 'kind', detail: 'string', info: 'Always empty for the persona' },
+  { name: 'action', detail: 'string', info: 'Always empty for the persona' },
+  { name: 'held', detail: 'boolean', info: 'Always false for the persona' },
+  { name: 'knownIn', detail: 'string', info: 'Always empty for the persona' },
+  { name: 'knownInPlaces', detail: 'string[]', info: 'Always empty for the persona' },
   { name: 'description', detail: 'string', info: 'Full AI description of the persona, its placeholders filled in' },
   { name: 'summary', detail: 'string', info: 'Short AI summary of the persona, its placeholders filled in' },
   { name: 'aliases', detail: 'array', info: 'Other names of the persona, its placeholders filled in' },
@@ -270,6 +277,11 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'location', detail: 'string', info: 'Code name of its own location: the player’s for a follower, empty for a Generic entity or no position' },
   { name: 'following', detail: 'boolean', info: 'True when the entity follows the player' },
   { name: 'waiting', detail: 'boolean', info: 'True when the entity stopped following and waits where it stands' },
+  { name: 'kind', detail: 'string', info: 'unique or generic, or empty when the entity has no kind, and unique for an entity the story added' },
+  { name: 'action', detail: 'string', info: 'What its routine row does now: stay, wander or patrol, or empty with no row in force' },
+  { name: 'held', detail: 'boolean', info: 'True when a pull or a script move keeps it off its routine for now' },
+  { name: 'knownIn', detail: 'string', info: 'Where the AI receives it while it’s not present: nowhere, nearby, or picked for the places in knownInPlaces' },
+  { name: 'knownInPlaces', detail: 'string[]', info: 'Code names of the locations Known In picks, or empty unless knownIn is picked' },
   { name: 'description', detail: 'string', info: 'Full AI description of the entity, its placeholders filled in' },
   { name: 'summary', detail: 'string', info: 'Short AI summary of the entity, its placeholders filled in' },
   { name: 'aliases', detail: 'array', info: 'Other names of the entity, its placeholders filled in' },

@@ -1,4 +1,4 @@
-import type { BodyPick, CodeBounds, CurrencyBacking, ItemCopyWhere, ItemScriptTiming, Stat } from '@/types';
+import type { BodyPick, CodeBounds, CurrencyBacking, EntityKind, ItemCopyWhere, ItemScriptTiming, ScheduleAction, Stat } from '@/types';
 import type { SlotOwner } from './bodies';
 import type { InventoryOp } from './inventory';
 import { clamp } from './utils';
@@ -144,6 +144,9 @@ export interface SandboxExit {
   name: string;
   /** The Connection leg's travel hint, its placeholders filled in; empty for implicit travel or a hintless leg. */
   hint: string;
+  distance: 'nearby' | 'far';
+  /** True when the Connection runs this way only. */
+  oneWay: boolean;
 }
 
 /** Where a location sits in the tree and where travel from it goes, all by code name. */
@@ -330,6 +333,16 @@ export interface SandboxEntity {
   following?: boolean;
   /** Whether the entity is a follower left waiting where it stands. */
   waiting?: boolean;
+  /** Absent for an entity with no kind. */
+  kind?: EntityKind;
+  /** What the entity's routine row does now. Absent with no row, or while it follows or waits. */
+  action?: ScheduleAction['kind'];
+  /** Whether a pull or a script move holds it off its routine now. */
+  held?: boolean;
+  /** Where the AI knows of it while it isn't present: `picked` names the places in `knownInPlaces`. Absent = nearby. */
+  knownIn?: 'nowhere' | 'nearby' | 'picked';
+  /** Code names of the Picked Locations. */
+  knownInPlaces?: readonly string[];
   /** The entity's owner node in the placeholder tree. Absent, its `placeholders` holds no names. */
   placeholders?: SandboxPlaceholderNode;
   /** What its `stats` reads and takes writes on. Absent, it holds no stats. */
@@ -931,7 +944,7 @@ const traitData = (entries: readonly SandboxTrait[]) =>
 
 /** The fields on an entity entry that a write never reaches. */
 const ENTITY_READ_ONLY_FIELDS = [
-  'id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'description', 'summary', 'aliases', 'traits', 'placeholders',
+  'id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'kind', 'action', 'held', 'knownIn', 'knownInPlaces', 'description', 'summary', 'aliases', 'traits', 'placeholders',
   'stats', 'items', 'body', 'move', 'follow', 'unfollow', 'meet', 'diary',
 ] as const;
 
@@ -1026,6 +1039,8 @@ const entitiesPrelude = (
     return {
       id, type, pronouns, inScene, met: played || met, location: standing.nameOf(entity, played), following: !played && !!entity.following,
       waiting: !played && !!entity.waiting,
+      kind: played ? '' : entity.kind ?? '', action: played ? '' : entity.action ?? '', held: !played && !!entity.held,
+      knownIn: played ? '' : entity.knownIn ?? 'nearby', knownInPlaces: played ? [] : entity.knownInPlaces ?? [],
       description: reads.text(description), summary: reads.text(summary), aliases, traits: traitData(traits), ph: ownerIndex(indexOf, placeholders),
       stats: owner ? {} : statMapData(statEntriesOf(entity)), owner, played, body: entity.body ?? null,
     };
@@ -1058,9 +1073,10 @@ const entitiesPrelude = (
     `  const who = { id: data.id || '', name: data.own ? data.name || '' : key, played: !!data.played, unknown: unknown || !!data.absent };`,
     `  const write = (kind) => (target) => { ${ENTITY_WRITE}(who, kind, target); if (kind === 'meet') meets.add(who.id || who.name); };`,
     `  const moves = { move: write('move'), follow: write('follow'), unfollow: write('unfollow'), meet: write('meet'), diary: write('diary') };`,
-    `  const blank = { id: '', type: '', pronouns: '', inScene: false, met: false, location: '', following: false, waiting: false, description: -1, summary: -1 };`,
+    `  const blank = { id: '', type: '', pronouns: '', inScene: false, met: false, location: '', following: false, waiting: false, kind: '', action: '', held: false, knownIn: '', knownInPlaces: [], description: -1, summary: -1 };`,
     `  const aliases = Object.freeze([...(data.aliases || [])]);`,
-    `  const values = { ...blank, ...data, name: data.own ? data.name || '' : unknown ? '' : key, aliases, traits, placeholders, stats, ...moves };`,
+    `  const knownInPlaces = Object.freeze([...(data.knownInPlaces || [])]);`,
+    `  const values = { ...blank, ...data, name: data.own ? data.name || '' : unknown ? '' : key, aliases, knownInPlaces, traits, placeholders, stats, ...moves };`,
     // A meet in this run shows on a later read of `met`; the commit lands it.
     `  define(values, 'met', { enumerable: true, get: () => !!data.met || (!who.unknown && !who.played && meets.has(who.id || who.name)) });`,
     // The items prelude runs later; the getter reads it once code runs.

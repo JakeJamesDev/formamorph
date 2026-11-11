@@ -1,6 +1,6 @@
 # 30: Scripts Read Routine Data
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 27, 28
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -30,12 +30,23 @@ Spec rulings: Q211, Q48, Q90, Q174.
 
 ## Acceptance criteria
 
-- [ ] A script reads the kind of a Unique and of a Generic entity; an entity with no kind reads the documented empty value.
-- [ ] `exits` entries carry distance and direction for a Far Connection, a one-way Connection and a link with no Connection.
-- [ ] The routine action reads correctly for an entity in a stay row, a wander row, a patrol row, a gap, under a script-move hold, following and waiting.
-- [ ] Known In reads each of its three values.
-- [ ] A write to any of the four fails with the read-only error.
-- [ ] The four fields read the same in play and in Test Code on the same world at the opening hour.
-- [ ] Completion, hover text, the variable tree and the Scripts Reference list each field. `npm run copy:sweep` gives no notice on the new strings.
-- [ ] One fixture file for entities with a kind is left, and a search finds no caller of the other.
-- [ ] A save made before this ticket loads and plays, and no save or world file gains a field.
+- [x] A script reads the kind of a Unique and of a Generic entity; an entity with no kind reads the documented empty value. (statCodeTurn.routineReads `kind`; a runtime character reads `unique`)
+- [x] `exits` entries carry distance and direction for a Far Connection, a one-way Connection and a link with no Connection. (GameViewer.routineReads, sandboxSnapshot.locationLinks)
+- [x] The routine action reads correctly for an entity in a stay row, a wander row, a patrol row, a gap, under a script-move hold, following and waiting. (statCodeTurn.routineReads; After timing in GameViewer.afterScriptPlaces)
+- [x] Known In reads each of its three values. (statCodeTurn.routineReads `Known In`)
+- [x] A write to any of the four fails with the read-only error. (statCodeTurn.routineReads, reported paths checked)
+- [x] The four fields read the same in play and in Test Code on the same world at the opening hour. (GameViewer.routineReads: mounted Before the AI vs runTestCode)
+- [x] Completion, hover text, the variable tree and the Scripts Reference list each field. `npm run copy:sweep` gives no notice on the new strings. (statCodeVariableTree hover-card cases, codeSurface.copy, sweep run)
+- [x] One fixture file for entities with a kind is left, and a search finds no caller of the other. (src/test/entityKindFixture.ts; positionFixtures.ts deleted, grep empty)
+- [x] A save made before this ticket loads and plays, and no save or world file gains a field. (GameViewer.bundledSaves green; no change under src/types)
+
+## Landed
+
+**Not verified:** none.
+
+**Notes:**
+- `held` follows Q223 over Q222 where they meet: an entity in a gap or on an unreachable row reads no hold, even right after a script move.
+- `scriptPlaces(book, world)` now carries `routineNow`, and ticket 29's turn book keeps the story minute it was placed at, so `action` and `held` read the same book and moment as `location` (Q225).
+
+**For you:**
+- In Test Code, try `entities.<Name>.action`, `held`, `kind` and `knownIn` on a world with routines, and say whether the hover text reads clearly.

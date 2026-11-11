@@ -12,7 +12,8 @@ import {
 import { bodyDefsOf, bodyReadingOf } from './bodies';
 import { statCodeName, statCodeNamed } from './statCodeNames';
 import { navigableDestinationEntries } from './locationContext';
-import { parentIndex } from './locationGraph';
+import { isFar, isTwoWay, parentIndex } from './locationGraph';
+import { knownInOf } from './entityPresence';
 import {
   codeDictionaries, sandboxDictionaries, sandboxPlaceholders, withLibraryPlaceholders, type StatCodePlaceholderSet,
 } from './statCodePlaceholders';
@@ -193,8 +194,11 @@ function codePlaces(
     return {
       parent: place.parentId ? codeName(place.parentId) : '',
       children: (childrenOf.get(place.id) ?? []).map(codeName),
-      exits: navigableDestinationEntries(place, locations, connections)
-        .map(({ location: exit, hint }) => ({ name: codeName(exit.id), hint: resolve(hint ?? '', null) })),
+      exits: navigableDestinationEntries(place, locations, connections).map(({ location: exit, hint, connection }) => ({
+        name: codeName(exit.id), hint: resolve(hint ?? '', null),
+        // A link with no Connection is Nearby and two-way (Q48).
+        distance: connection && isFar(connection) ? 'far' : 'nearby', oneWay: !!connection && !isTwoWay(connection),
+      })),
     };
   };
   return {
@@ -206,13 +210,29 @@ function codePlaces(
   };
 }
 
-/** The fields `entity` adds from play: its text resolved, where it stands, and whether it follows. */
+/** What `playFields` reads beside the state: the runtime characters' ids and each location's code name. */
+interface PlayLookup {
+  runtime: ReadonlySet<string>;
+  placeName: (id: string) => string | undefined;
+}
+
+/** The fields `entity` adds from play: its text resolved, where it stands, whether it follows, and its routine. */
 function playFields(
-  entity: Entity, { positions, presences, followers, waiting }: Pick<SandboxState, 'positions' | 'presences' | 'followers' | 'waiting'>,
-  resolve: ResolveText,
+  entity: Entity, { positions, presences, followers, waiting, routineNow }: Pick<SandboxState, 'positions' | 'presences' | 'followers' | 'waiting' | 'routineNow'>,
+  resolve: ResolveText, { runtime, placeName }: PlayLookup,
 ): Partial<CodeEntity> {
   const at = positions?.[entity.id];
+  const routine = routineNow?.[entity.id];
+  // A runtime character runs as a Unique entity (Q56, Q224).
+  const kind = entity.kind ?? (runtime.has(entity.id) ? 'unique' : undefined);
+  const knownIn = knownInOf(entity);
   return {
+    ...(kind ? { kind } : {}),
+    ...(routine?.action ? { action: routine.action } : {}), ...(routine?.held ? { held: true } : {}),
+    // Nearby is what an entry with no `knownIn` reads.
+    ...(knownIn === 'nowhere' ? { knownIn } : knownIn === 'nearby' ? {} : {
+      knownIn: 'picked', knownInPlaces: knownIn.flatMap((id) => placeName(id) ?? []),
+    }),
     description: resolve(entity.aiDescription ?? '', entity), summary: resolve(entity.aiSummary ?? '', entity),
     aliases: (entity.aliases ?? []).map((alias) => resolve(alias, entity)),
     pronouns: resolve(entity.pronouns ?? '', entity),
@@ -305,11 +325,13 @@ function boardOf(state: SandboxState, { readings, pendingPersona, assumedStats =
   const resolve = state.resolveText ?? AS_AUTHORED;
   const { entities = [], library = [], discovered = [] } = state.ownerTraits;
   const authored = new Map([...entities, ...library, ...discovered].map((entity) => [entity.id, entity]));
+  const placeNames = new Map((state.places?.locations ?? []).map((place) => [place.id, statCodeName(place.name, placeholderDefs)]));
+  const lookup: PlayLookup = { runtime: new Set(discovered.map((entity) => entity.id)), placeName: (id) => placeNames.get(id) };
   const withFields = withEntityFields(cast, (id) => {
     const node = sandbox?.owners.get(id);
     const stats = owned.get(id);
     const entity = authored.get(id);
-    return { ...(node ? { placeholders: node } : {}), ...(stats ? { stats } : {}), ...(entity ? playFields(entity, state, resolve) : {}) };
+    return { ...(node ? { placeholders: node } : {}), ...(stats ? { stats } : {}), ...(entity ? playFields(entity, state, resolve, lookup) : {}) };
   });
   const withPending = pendingPersona ? { ...withFields, persona: pendingPersonaOf(state, withFields, sandbox?.owners, ownerStats) } : withFields;
   const inPlay = state.bodies && !pendingPersona ? withBodies(withPending, state.bodies) : withPending;

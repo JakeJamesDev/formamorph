@@ -1,7 +1,7 @@
-import type { Entity, EntityStart, GameLocation } from '@/types';
+import { PLAYER_START, type Entity, type EntityStart, type GameLocation } from '@/types';
 import { castRoutines } from '@/lib/entityKind';
-import { EMPTY_BOOK, genericPlaces, type PositionBook } from '@/lib/positionEngine';
-import { followerIds, placeAll, positionWorld, waitingIds, type PositionWorld } from '@/lib/positionPlay';
+import { EMPTY_BOOK, type PositionBook } from '@/lib/positionEngine';
+import { placeAll, positionWorld, scriptPlaces, type PositionWorld } from '@/lib/positionPlay';
 import { storyMinute } from '@/lib/gameClock';
 import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
 import { runStatCodeTurn } from '@/lib/statCodeTurn';
@@ -27,8 +27,10 @@ export const KIND_LOCATIONS = [
 
 export const NOON = storyMinute(4);
 
-const start = (at: string, schedule: EntityStart['schedule'] = []): EntityStart => ({ id: `at-${at}`, place: at, weight: 1, schedule });
-const unique = (id: string, name: string, starts: EntityStart[]): Entity =>
+/** A Start at `at`, weight 1. */
+export const start = (at: string, schedule: EntityStart['schedule'] = []): EntityStart => ({ id: `at-${at}`, place: at, weight: 1, schedule });
+/** A Unique entity whose locations are its Starts' places. */
+export const unique = (id: string, name: string, starts: EntityStart[]): Entity =>
   ({ id, name, kind: 'unique', starts, traversable: [], locations: [...new Set(starts.map((s) => s.place))] });
 
 /** Tess wanders between the inn and the square all day, resting 10 minutes at each stop. */
@@ -68,22 +70,19 @@ const ownersOf = (cast: Entity[]): StatCodeOwners => {
 const scriptsOf = (...codes: string[]): Script[] => codes.map((code, i) => ({ id: `s${i}`, timing: 'after', code }));
 
 /** Where the book stands, as a script reads it. `book` absent, no entity has a position (Test Code, the Test Bench). */
-const boardOf = (book: PositionBook | undefined, playerAt: string): Partial<FlatStatCodeTurn> => ({
+const boardOf = (book: PositionBook | undefined, playerAt: string, cast: Entity[]): Partial<FlatStatCodeTurn> => ({
   places: {
     locations: KIND_LOCATIONS.map(({ id, name }) => ({ id, name })),
     location: { id: playerAt, name: KIND_LOCATIONS.find((l) => l.id === playerAt)?.name ?? '' },
   },
-  ...(book && {
-    positions: book.positions, presences: genericPlaces(book.generics),
-    followers: followerIds(book.uniques), waiting: waitingIds(book.uniques),
-  }),
+  ...(book && scriptPlaces(book, worldAt(playerAt, NOON, cast))),
 });
 
 const turnOf = (book: PositionBook | undefined, playerAt: string, codes: string[], cast: Entity[]) => statCodeTurnOf({
   stats: [echo()], enabled: {}, previous: [echo()], asks: [], regenApplied: {}, clock: { deltaHours: 0, elapsedHours: 10 },
   ownerTraits: ownersOf(cast), statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
   turn: { action: '', number: 3, id: 't-3', narration: '', choices: [] },
-  ...boardOf(book, playerAt), worldScripts: scriptsOf(...codes),
+  ...boardOf(book, playerAt, cast), worldScripts: scriptsOf(...codes),
 });
 
 /** The world writes of `codes`, run in order as one chain over `book`, the player at `playerAt`. */
@@ -104,3 +103,35 @@ export function commit(book: PositionBook, writes: WorldWrites | undefined, play
     { from: playerAt, to: playerAt }, world,
   ).state;
 }
+
+/** The position engine tests' cast: a yard with a barn and a field in it, and a smithy apart. */
+export const yardLocations = [
+  { id: 'yard', name: 'Yard', parentId: null, isStarting: true },
+  { id: 'barn', name: 'Barn', parentId: 'yard' },
+  { id: 'field', name: 'Field', parentId: 'yard' },
+  { id: 'smithy', name: 'Smithy', parentId: null },
+];
+
+/** A Generic entity: one Start grazes in the field from 08:00 to 18:00 and stays in the barn otherwise; one stays in the barn. */
+export const herd: Entity = {
+  id: 'herd', name: 'Herd', kind: 'generic', locations: ['barn', 'field'],
+  starts: [
+    { id: 'grazer', place: 'barn', weight: 1, schedule: [{ id: 'graze', time: { start: 480, end: 1080 }, action: { kind: 'stay', place: 'field' } }] },
+    { id: 'sleeper', place: 'barn', weight: 1, schedule: [] },
+  ],
+};
+
+/** A Unique entity: its first Start keeps the smithy and drinks in the barn from 20:00 to 22:00; its second waits in the field. */
+export const smith: Entity = {
+  id: 'smith', name: 'Smith', kind: 'unique',
+  starts: [
+    { id: 'forge', place: 'smithy', weight: 1, schedule: [{ id: 'drink', time: { start: 1200, end: 1320 }, action: { kind: 'stay', place: 'barn' } }] },
+    { id: 'idle', place: 'field', weight: 1, schedule: [] },
+  ],
+};
+
+/** A Unique entity that begins at Player's Starting Location, Following. */
+export const companion: Entity = {
+  id: 'companion', name: 'Companion', kind: 'unique',
+  starts: [{ id: 'beside', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }],
+};

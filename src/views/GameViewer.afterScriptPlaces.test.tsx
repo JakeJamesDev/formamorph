@@ -151,6 +151,35 @@ describe('an After the AI script', () => {
     });
   });
 
+  it('reads the routine of that same book: the pull’s hold, and no action for a follower or a waiting entity (Q225)', async () => {
+    // Asha wanders her hut, and the well is a place she may go, so the pull holds her there until her idle runs out.
+    const wanderer: Entity = {
+      id: 'asha', name: 'Asha', kind: 'unique', locations: ['hut'], traversable: ['well'],
+      starts: [{ id: 'hut', place: 'hut', weight: 1, schedule: [{
+        id: 'w', time: 'allDay', action: { kind: 'wander', places: [{ place: 'hut', weight: 1 }], idle: 600 },
+      }] }],
+    };
+    const routineReads = {
+      beforeAshaHeld: 'entities.Asha.held', ashaHeld: 'entities.Asha.held', ashaWanders: 'entities.Asha.action === "wander"',
+      bramNoAction: 'entities.Bram.action === "" && !entities.Bram.held', maelaNoAction: 'entities.Maela.action === "" && !entities.Maela.held',
+    };
+    const record = (timing: 'before' | 'after', ids: string[]) => ({
+      id: `routine-${timing}`, timing, code: ids.map((id) => `stats.${id}.value = (${routineReads[id as keyof typeof routineReads]}) ? 1 : 0;`).join('\n'),
+    });
+    await walkToTheWell({
+      ...world,
+      stats: [...world.stats, ...Object.keys(routineReads).map(flag)],
+      entities: world.entities.map((entity) => (entity.id === 'asha' ? wanderer : entity)),
+      scripts: [...world.scripts ?? [], record('before', ['beforeAshaHeld']), record('after', ['ashaHeld', 'ashaWanders', 'bramNoAction', 'maelaNoAction'])],
+    });
+
+    expect(play.entityPositions.asha).toBe('well');
+    expect(play.uniqueStates.asha.hold).toBeDefined();
+    expect(Object.fromEntries(Object.keys(routineReads).map((id) => [id, value(id)]))).toEqual({
+      beforeAshaHeld: 0, ashaHeld: 1, ashaWanders: 1, bramNoAction: 1, maelaNoAction: 1,
+    });
+  });
+
   it('leaves a Tool call and an output script reading the followers joined at the move, and no pull (Q220)', async () => {
     const calledWorld = {
       ...world,

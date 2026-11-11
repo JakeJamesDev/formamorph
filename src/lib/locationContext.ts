@@ -413,6 +413,8 @@ export interface DestinationEntry<L extends LocationLink = GameLocation> {
    *  hintless leg. */
   hint?: string;
   via: "implicit" | "connection";
+  /** The Connection the leg belongs to. Absent for implicit travel. */
+  connection?: Connection;
 }
 
 /** The current location's effective destinations paired with the travel hint each one is reached by, in
@@ -433,6 +435,7 @@ export function navigableDestinationEntries<L extends LocationLink = GameLocatio
       location,
       hint: via.via === "connection" ? via.leg.hint : undefined,
       via: via.via,
+      ...(via.via === "connection" && { connection: via.connection }),
     });
   }
   return entries;

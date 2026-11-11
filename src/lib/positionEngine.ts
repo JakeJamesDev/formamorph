@@ -127,6 +127,9 @@ function stretchEnd(start: EntityStart, t: number): number | undefined {
   return undefined;
 }
 
+/** When `hold` lets go; never for a hold that waits on a script move. */
+const releaseOf = (hold: PositionHold): number => ("until" in hold ? hold.until : Infinity);
+
 /** Idle durations count at least one minute, so time always moves forward. */
 const idleOf = (minutes: number) => Math.max(1, Math.round(minutes));
 
@@ -265,7 +268,7 @@ function advanceOne(
 
   const hold = body.st.hold;
   if (hold) {
-    const release = "until" in hold ? hold.until : Infinity;
+    const release = releaseOf(hold);
     if (release > now) return pause();
     cursor = Math.max(cursor, release);
     body.st = { ...body.st, hold: undefined };
@@ -385,6 +388,18 @@ export function rowPlacesNow(routine: Routine, st: UniqueState | undefined, scen
   if (!start) return [];
   return placesOf(liveRow(start, rowAt(start, scene.now), connectedPlaces(start.place, scene)).action);
 }
+
+/** What the row in force for `routine` does now; '' in a gap, and for a row with no connected place left (Q84). */
+export function actionNow(routine: Routine, st: UniqueState | undefined, scene: PositionScene): ScheduleAction["kind"] | "" {
+  const start = startOf(routine, st, scene);
+  const row = start && rowAt(start, scene.now);
+  if (!start || !row) return "";
+  const connected = connectedPlaces(start.place, scene);
+  return placesOf(row.action).some((place) => connected.has(place)) ? row.action.kind : "";
+}
+
+/** Whether a pull or a script move holds `st` off its schedule at `now`. */
+export const isHeldNow = (st: UniqueState | undefined, now: number): boolean => !!st?.hold && releaseOf(st.hold) > now;
 
 /** Whether the row in force for `routine` right now is Strict. */
 export function isStrictNow(routine: Routine, st: UniqueState | undefined, now: number): boolean {

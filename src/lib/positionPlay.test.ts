@@ -5,7 +5,7 @@ import { entityIdsAt } from './entityPresence';
 import { EMPTY_BOOK } from './positionEngine';
 import { openingCast, placeAll, positionWorld, reconcileBook, reseatForOpening } from './positionPlay';
 
-import { herd, yardLocations as locations } from '@/test/positionFixtures';
+import { herd, yardLocations as locations } from '@/test/entityKindFixture';
 
 const world = (now: number, playerAt?: string, cast: Entity[] = [herd]) => positionWorld(castRoutines(cast), now, playerAt, locations, []);
 const where = (book: typeof EMPTY_BOOK) => Object.fromEntries(Object.entries(book.generics.herd ?? {}).map(([id, p]) => [id, p.position]));

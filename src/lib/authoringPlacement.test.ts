@@ -9,7 +9,7 @@ import { openingCast } from './positionPlay';
 import { benchSnapshotOf } from './testBench/scriptCheck';
 import { editorToolSnapshot } from './tools/editorToolSnapshot';
 import { sampleToolSnapshot } from './tools/sampleToolSnapshot';
-import { companion, herd, smith, yardLocations } from '@/test/positionFixtures';
+import { companion, herd, smith, yardLocations } from '@/test/entityKindFixture';
 import type { Stat, World } from '@/types';
 
 const world: AuthoredWorld & StatCodeWorld = {

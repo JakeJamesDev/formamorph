@@ -8,8 +8,8 @@ import { ownedTraitStatesFrom } from './ownedTraitState';
 import { allPlaceholders, placeholderOwners } from './placeholderHomes';
 import { startsMet } from './presence';
 import { positionedCast } from './entityPresence';
-import { genericPlaces } from './positionEngine';
-import { followerIds, openingBook } from './positionPlay';
+import { EMPTY_BOOK } from './positionEngine';
+import { openingWorld, placeAll, scriptPlaces } from './positionPlay';
 import { startingLocations } from './startingLocation';
 import { playStatWorld } from './statLinks';
 import type { ResolveText, SandboxState } from './statCodeTurn';
@@ -167,8 +167,8 @@ export const openingStateOf = (world: OpeningFoldWorld, picks?: OpeningPicks, pe
 export function authoringStateOf(world: OpeningFoldWorld, picks?: OpeningPicks, persona?: OpeningPersona): SandboxState {
   const state = openingStateOf(world, picks, persona);
   const cast = positionedCast(state.ownerTraits.entities ?? [], persona?.ref);
-  const book = openingBook(cast, world.locations ?? [], world.connections ?? [], state.places?.location?.id);
-  return { ...state, positions: book.positions, presences: genericPlaces(book.generics), followers: followerIds(book.uniques) };
+  const placed = openingWorld(cast, world.locations ?? [], world.connections ?? [], state.places?.location?.id);
+  return { ...state, ...scriptPlaces(placeAll(EMPTY_BOOK, placed), placed) };
 }
 
 /** `home` with its stats at their opening values, as turn one seeds them (Q8). */

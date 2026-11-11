@@ -488,7 +488,8 @@ describe('field info', () => {
 describe('array elements', () => {
   // The fields only: the persona has no verbs and stands first where the player is.
   const presentFields = [
-    'id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items', 'body',
+    'id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'kind', 'action', 'held', 'knownIn', 'knownInPlaces',
+    'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items', 'body',
   ];
 
   it('lists the memory element’s group, then the memories calls, with the verbs last', () => {
@@ -505,7 +506,7 @@ describe('array elements', () => {
 
   it('lists the exits list first, then an exit’s fields, under the location and each locations row', () => {
     for (const steps of [['Location', 'exits'], ['Locations', 'Old Mill', 'exits'], ['Locations', 'Dock', 'exits']]) {
-      expect(levelAt(tree, ...steps)).toEqual(['exits', 'name', 'hint']);
+      expect(levelAt(tree, ...steps)).toEqual(['exits', 'name', 'hint', 'distance', 'oneWay']);
     }
     expect(inserts(tree, 'Location', 'exits', 'hint')).toBe('location.exits[0]?.hint');
     expect(inserts(tree, 'Locations', 'Old Mill', 'parent')).toBe('locations["Old Mill"].parent');

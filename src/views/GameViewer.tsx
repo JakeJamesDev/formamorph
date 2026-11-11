@@ -394,7 +394,13 @@ const choicesPatch = (aiChoices: readonly string[], scripted: readonly string[] 
   (scripted ? { choices: [...scripted], aiChoices: [...aiChoices] } : { choices: [...aiChoices], aiChoices: undefined });
 
 /** What a Regenerate Choices rerun of the After the AI batch answers: not started, no change, or the scripts' list. */
-type ChoicesRerun = { ran: false } | { ran: true; changed: false } | { ran: true; changed: true; choices: readonly string[] };
+/** The book a running turn's scripts read, and the story minute it was placed at. */
+interface ScriptBook {
+  book: FollowerState;
+  now: number;
+}
+
+type ChoicesRerun ={ ran: false } | { ran: true; changed: false } | { ran: true; changed: true; choices: readonly string[] };
 
 /** The pre-turn state a stat re-roll hands stat code, so code reads and switches as the turn it replaces did. */
 type PreTurnCodeState = Pick<
@@ -3073,7 +3079,7 @@ const GameViewer = ({
     const passBook = ownerPositions();
     const inventoryOwners = commit.inventoryOps.length ? inventoryOwnersAt(turn.location, discovered, passBook) : [];
     // The After batch and the turn's item scripts read the cast as the Inventory pass does (Q218, Q227).
-    scriptBookRef.current = passBook ?? moveApplied;
+    scriptBookRef.current = { book: passBook ?? moveApplied, now: endWorld(commit.turnHours).scene.now };
     const commitTotals = startActionTotals();
     const { kept: inventoryKept, landed: inventory } = landInventoryPass(
       commit.inventoryOps, turn.location, inventoryOwners, outputWritten,
@@ -3716,7 +3722,7 @@ const GameViewer = ({
             if (moveFrom) {
               const joined = joinEntityMoves(moveStart, { from: moveFrom, to: turnLocation?.id }, entityIntents, turnWorld());
               turnJoin = joined === moveStart ? null : joined;
-              scriptBookRef.current = turnJoin;
+              scriptBookRef.current = turnJoin && { book: turnJoin, now: storyNow };
             }
             return assembleNarration();
           }
@@ -3782,7 +3788,7 @@ const GameViewer = ({
               moveTurnTo(target);
               const joined = joinEntityMoves(moveStart, { from: moveFrom, to: target.id }, entityIntents, turnWorld());
               turnJoin = joined === moveStart ? null : joined;
-              scriptBookRef.current = turnJoin;
+              scriptBookRef.current = turnJoin && { book: turnJoin, now: storyNow };
               // The passes after the narration read the place the story took the player.
               ctxStale = true;
             }
@@ -4060,10 +4066,14 @@ const GameViewer = ({
   // between turns, where the live location stands.
   const scriptLocationRef = useRef<GameLocation | null>(null);
   // Where the running turn's scripts read the cast, ahead of the write that commits it: the followers once the
-  // move settles (Q220), then the moves and pulls for the After batch (Q218). Null outside a turn: the live book.
-  const scriptBookRef = useRef<FollowerState | null>(null);
+  // move settles (Q220), then the moves and pulls for the After batch (Q218), each with the story minute it was placed
+  // at. Null outside a turn: the live book, now.
+  const scriptBookRef = useRef<ScriptBook | null>(null);
   /** The places a script reads now. */
-  const scriptPlacesNow = useCallback(() => scriptPlaces(scriptBookRef.current ?? currentBook()), [currentBook]);
+  const scriptPlacesNow = useCallback(() => {
+    const turnBook = scriptBookRef.current;
+    return scriptPlaces(turnBook?.book ?? currentBook(), positionWorldAt(turnBook?.now ?? storyNow, undefined));
+  }, [currentBook, positionWorldAt, storyNow]);
   // The Memory panel's rows as a script's `memories` reads them, from the ledger the panel builds.
   const scriptMemoryList = useMemo(() => scriptMemories(buildMemoryLedger({
     history: fullMessageHistory, overrides: memoryOverrides, pins: memoryPins, selection: milestoneSelection,

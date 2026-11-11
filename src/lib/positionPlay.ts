@@ -1,5 +1,7 @@
-import type { Connection, Entity, EntityPositions, GameLocation, GenericStates, UniqueStates } from "@/types";
-import { advancePositions, EMPTY_BOOK, genericPlaces, type PositionBook, type PositionScene, type Routine } from "@/lib/positionEngine";
+import type { Connection, Entity, EntityPositions, GameLocation, GenericStates, ScheduleAction, UniqueStates } from "@/types";
+import {
+  actionNow, advancePositions, EMPTY_BOOK, genericPlaces, isHeldNow, type PositionBook, type PositionScene, type Routine,
+} from "@/lib/positionEngine";
 import type { SandboxState } from "@/lib/statCodeTurn";
 import { castRoutines } from "@/lib/entityKind";
 import { entitiesInPlay } from "@/lib/entityPresence";
@@ -42,9 +44,32 @@ export const followerIds = (uniques: Readonly<UniqueStates>): string[] =>
 export const waitingIds = (uniques: Readonly<UniqueStates>): string[] =>
   Object.keys(uniques).filter((id) => uniques[id].follow?.mode === "waiting");
 
-/** What a script reads of `book`: each Unique entity's place, each Generic entity's presences, and who follows or waits. */
-export const scriptPlaces = (book: PositionBook): Pick<SandboxState, "positions" | "presences" | "followers" | "waiting"> => ({
+/** What a Unique entity's routine does at one moment, as scripts read it. */
+export interface RoutineReading {
+  action: ScheduleAction["kind"] | "";
+  held: boolean;
+}
+
+/** Each Unique entity's routine reading at `world.scene.now`, by id. A follower and a waiting entity have none, and
+ *  an entity with no action reads no hold (Q223). */
+export function routineReadings(world: PositionWorld, uniques: Readonly<UniqueStates>): Record<string, RoutineReading> {
+  const out: Record<string, RoutineReading> = {};
+  for (const routine of world.uniques.values()) {
+    const st = uniques[routine.id];
+    if (st?.follow) continue;
+    const action = actionNow(routine, st, world.scene);
+    out[routine.id] = { action, held: action !== "" && isHeldNow(st, world.scene.now) };
+  }
+  return out;
+}
+
+/** What a script reads of `book` placed in `world`: each Unique entity's place and routine, each Generic entity's
+ *  presences, and who follows or waits. */
+export const scriptPlaces = (
+  book: PositionBook, world: PositionWorld,
+): Pick<SandboxState, "positions" | "presences" | "followers" | "waiting" | "routineNow"> => ({
   positions: book.positions, presences: genericPlaces(book.generics), followers: followerIds(book.uniques), waiting: waitingIds(book.uniques),
+  routineNow: routineReadings(world, book.uniques),
 });
 
 /** Every Unique entity and every Generic presence placed for `world.scene`: the engine's one step. */
@@ -114,8 +139,13 @@ export function reseatForOpening(book: PositionBook, world: PositionWorld): Posi
 export function openingBook(
   entities: readonly Entity[], locations: readonly Pick<GameLocation, "id" | "parentId">[], connections: readonly Connection[], playerAt: string | undefined,
 ): PositionBook {
-  return placeAll(EMPTY_BOOK, positionWorld(castRoutines(entities), storyMinute(0), playerAt, locations, connections, () => 0, playerAt));
+  return placeAll(EMPTY_BOOK, openingWorld(entities, locations, connections, playerAt));
 }
+
+/** The position world `openingBook` places `entities` in. */
+export const openingWorld = (
+  entities: readonly Entity[], locations: readonly Pick<GameLocation, "id" | "parentId">[], connections: readonly Connection[], playerAt: string | undefined,
+): PositionWorld => positionWorld(castRoutines(entities), storyMinute(0), playerAt, locations, connections, () => 0, playerAt);
 
 /** `entities` as `openingBook` places them, so an authoring preview reads one stable cast. */
 export function openingCast(
