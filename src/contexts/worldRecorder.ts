@@ -131,7 +131,12 @@ export interface WorldHistoryControls {
   /** Closes the group after every write already queued has committed, so the gesture's last one lands inside. */
   endGroup(): Promise<void>;
   /** Runs an operation as one labeled Step, however many ticks it writes across. */
-  batch(label: string, run: () => void | Promise<void>): Promise<void>;
+  batch(label: string, run: () => void | Promise<void>, options?: BatchOptions): Promise<void>;
+}
+
+export interface BatchOptions {
+  /** The batch edits one place, so its Step takes the editor's place as its Origin like a plain write. */
+  keepOrigin?: boolean;
 }
 
 /**
@@ -146,8 +151,9 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
   const last = useRef<{ recorded: boolean; tick?: number }>({ recorded: false });
   const armed = useRef(true);
   const place = useRef<StepOrigin | null>(null);
-  // A labeled batch spans the world, so its Step has no one place to return to.
-  const batching = useRef(false);
+  // A world-wide batch, such as Optimize Images, has no one place to return to; a batch with keepOrigin does.
+  // Counts the open world-wide batches, so a keepOrigin batch inside one still drops its Origin.
+  const dropOrigin = useRef(0);
   // The tick a close cleared the stack in: what the closing editor still writes in it is not an edit.
   const closedIn = useRef<number | null>(null);
   // The text the last move wrote, until the next recorded write. A field rebuilt to it is restoring, not editing.
@@ -207,7 +213,7 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
       emitChange({ edits, merged: joined });
       return;
     }
-    const origin = batching.current ? undefined : place.current ?? undefined;
+    const origin = dropOrigin.current > 0 ? undefined : place.current ?? undefined;
     const next = record(was, edits, { tick: at, key: settled, origin });
     store.set(next);
     last.current = { recorded: true, tick: at };
@@ -293,14 +299,15 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
     endWaiters.current.push(resolve);
     startTransition(() => setEndRequest((n) => n + 1));
   }), [mounted]);
-  const batch = useCallback(async (label: string, run: () => void | Promise<void>) => {
+  const batch = useCallback(async (label: string, run: () => void | Promise<void>, options?: BatchOptions) => {
     beginGroup(label);
-    batching.current = true;
+    const drops = !options?.keepOrigin;
+    if (drops) dropOrigin.current += 1;
     try {
       await run();
     } finally {
       await endGroup();
-      batching.current = false;
+      if (drops) dropOrigin.current -= 1;
     }
   }, [beginGroup, endGroup]);
 
@@ -329,10 +336,10 @@ export const useWorldHistoryMovesOptional = (): Omit<WorldHistoryControls, 'stor
   useContext(WorldHistoryContext);
 
 /** Runs a write as one History Step under its label, or directly outside a world's history. */
-export const useWorldHistoryStep = () => {
+export const useWorldHistoryStep = (options?: BatchOptions) => {
   const history = useWorldHistoryMovesOptional();
   return (label: string, run: () => void) => {
-    if (history) void history.batch(label, run);
+    if (history) void history.batch(label, run, options);
     else run();
   };
 };

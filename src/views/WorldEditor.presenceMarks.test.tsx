@@ -110,4 +110,16 @@ describe('the Presence tab: marks for this location', () => {
     expect(screen.queryAllByRole('img', { name: /^Names / })).toHaveLength(0);
     expect(startButton(2).getAttribute('aria-pressed')).toBe('true');
   });
+
+  it('draws no mark on the full-screen entity card', async () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openPresence('Tavern');
+    await selectRow(/^Twin/);
+    expect(marksIn(startButton(2))).toHaveLength(1);
+    await step(() => fireEvent.click(screen.getByRole('radio', { name: 'Canvas' })));
+    await step(() => fireEvent.click(screen.getByRole('button', { name: 'Edit Full Screen' })));
+    const card = screen.getByTestId('entity-pick-card');
+    expect(within(card).getByRole('group', { name: 'Starts' })).toBeInTheDocument();
+    expect(within(card).queryAllByRole('img', { name: /^Names / })).toHaveLength(0);
+  });
 });

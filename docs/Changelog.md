@@ -51,6 +51,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The full-screen Locations Canvas now shows and edits a Generic entity's routine, one start at a time.** A ring marks where its other starts begin. With no row selected, a click adds a start or removes the starts there.
     - **In the World Editor, an entity is now Unique or Generic, and a Generic one gets a routine per start.** A Generic entity, such as a crowd or a herd, begins at every start at the same time. Start chances, locks and Can Also Go are for Unique entities.
     - **The full-screen Locations Canvas now shows where a Nearby entity can be known.** Its routine locations are marked, and the locations one Nearby link away are marked lighter. Far links stay unmarked.
+    - **In the World Editor, undo and redo of a Routine tab edit open that entity's Routine tab again.** You land where you made the change, even from another section.
   - **Routines:**
     - **In the World Editor's Routine tab, an entity can start at the Player's Starting Location, beside you each game.** A Unique entity there can follow you from the first turn. Its routine can use any location.
     - **In older worlds, an entity with pronouns listed at several locations now wanders between them, one at a time.** So it isn't always where you look. An entity at every location follows you. One with no pronouns or "it/its", such as a monster, becomes Generic. Change it in the Routine tab.

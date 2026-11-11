@@ -79,6 +79,9 @@ function pathOf(locations: readonly GameLocation[], location: GameLocation): str
   return out;
 }
 
+// A Routine edit touches one entity, so its undo returns to where the author made it.
+const KEEP_ORIGIN = { keepOrigin: true };
+
 /** Where an entity stands and how it moves: the Routine tab of a world entity. Writes the whole entity. */
 export function RoutineTab({ entity, onChange, hereMark }: {
   entity: Entity; onChange: (next: Entity) => void;
@@ -86,7 +89,7 @@ export function RoutineTab({ entity, onChange, hereMark }: {
   hereMark?: string;
 }) {
   const { locations, connections, placeholders, placementLetters, placeholderOwners } = useGameData();
-  const step = useWorldHistoryStep();
+  const step = useWorldHistoryStep(KEEP_ORIGIN);
   const commit = (label: string, next: Entity) => step(label, () => onChange(next));
 
   const book = useMemo<PlaceBook>(() => {

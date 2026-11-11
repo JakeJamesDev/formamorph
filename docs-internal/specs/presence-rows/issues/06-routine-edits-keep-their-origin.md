@@ -1,6 +1,6 @@
 # 06: Routine Edits Keep Their Origin
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -28,11 +28,34 @@ Spec rulings: Q15, Q28, Q31, Q32.
 
 ## Acceptance criteria
 
-- [ ] The landing states why a batched Step had no Origin, with the commit or test that shows it.
-- [ ] A test through the mounted World Editor: edit a routine row under a location's Presence list, change to the Connections tab, undo. The Presence tab is on screen with that entity selected. The test fails on main before the fix.
-- [ ] The same test with the edit on the entity's second Start arrives with the second Start on show.
-- [ ] Undo of a Routine edit made on the entity panel's Routine tab, from another section, returns to that entity's Routine tab.
-- [ ] The case the old guard protected still holds, shown by its existing test or a new one that fails when the guard is removed outright.
-- [ ] The landing lists every other caller of the batch and whether its Steps carry an Origin now.
-- [ ] A test shows the full-screen entity card draws no here-mark for an entity that has one on the Presence tab.
-- [ ] A changelog fragment describes the fix, folded into this effort's unreleased entry where one exists.
+- [x] The landing states why a batched Step had no Origin, with the commit or test that shows it. See Landed.
+- [x] A test through the mounted World Editor: edit a routine row under a location's Presence list, change to the Connections tab, undo. The Presence tab is on screen with that entity selected. The test fails on main before the fix. `WorldEditor.routineOrigin.test.tsx` "returns to the Presence tab with the entity selected"; red without the opt-in (lands on Entities).
+- [x] The same test with the edit on the entity's second Start arrives with the second Start on show. "shows the second Start when the edit was on it": both Starts name the location, Start 1 is pressed before undo; red without the opt-in.
+- [x] Undo of a Routine edit made on the entity panel's Routine tab, from another section, returns to that entity's Routine tab. "returns to that entity's Routine tab from another section"; red without the opt-in (lands on Profile).
+- [x] The case the old guard protected still holds, shown by its existing test or a new one that fails when the guard is removed outright. `WorldEditor.optimize.test.tsx` "reveals what it touched on undo, not the tab the author ran it from"; observed red ("Media" for "Overview") with the guard removed.
+- [x] The landing lists every other caller of the batch and whether its Steps carry an Origin now. See Landed.
+- [x] A test shows the full-screen entity card draws no here-mark for an entity that has one on the Presence tab. `WorldEditor.presenceMarks.test.tsx` "draws no mark on the full-screen entity card"; observed red with a `hereMark` passed to the card.
+- [x] A changelog fragment describes the fix, folded into this effort's unreleased entry where one exists. The Presence half was already claimed by the unreleased Entity Presence entry, so the fragment adds only the Routine tab case, under Routine Tab.
+
+## Landed
+
+**Why a batched Step had no Origin.** Commit c9add5c4f ("Reveal the Origin Tab After Undo", history-reveal-origin spec story 25 and Q4) set it for Optimize Images: that batch spans the world, so its undo reveals what it touched, not the tab it ran from. Its test is `WorldEditor.optimize.test.tsx` "reveals what it touched on undo, not the tab the author ran it from". Every later batch caller inherited the rule.
+
+**The fix.** `batch` takes `{ keepOrigin: true }`, and `useWorldHistoryStep` passes it through. The Routine editor opts in. The recorder counts open world-wide batches, so a Routine edit made during an Optimize Images run still records no Origin.
+
+**Where an undo of a Routine editor edit lands now** (one change, in `RoutineTab`, covers all three hosts):
+- Presence tab: that location's Presence tab, entity selected, Start of the change on show. The Start comes from the data-diff fallback: a row delete records no `starts/<id>` field.
+- Entity panel Routine tab: that entity's Routine tab.
+- Full-screen entity card: Ctrl+Z in full screen belongs to the canvas, so the world undo comes after full screen closes. It lands on the Presence tab the card opened over, entity selected. Full screen does not reopen.
+
+**Other batch callers (Q33), unchanged, no Origin:**
+- Optimize Images (`WorldEditor.tsx`): no Origin, on purpose.
+- Full-screen canvas map routine edits (`LocationCanvas.tsx`, `applyRoutineEdit`): no Origin. From a jsdom run: a map click on a picked entity, full screen closed, Connections tab, undo, lands on the Entities section with the entity's Profile tab.
+- The Custom Persona edit that also clears the legacy VRM fallback (`EntityFields.tsx`, `useSpendFallback`): no Origin. Its plain edits keep theirs.
+- `beginGroup` callers (Move Routine Time in `DayStrip.tsx`, `useMediaItemActions.ts`, the provider's group) never dropped the Origin.
+
+**Not verified:** none.
+
+**For you:**
+- The canvas map routine edits land on the entity's Profile, not where they were made. A follow-up could opt them in.
+- Check the new Routine Tab changelog line beside the Entity Presence undo line in 🚧 In Progress.
