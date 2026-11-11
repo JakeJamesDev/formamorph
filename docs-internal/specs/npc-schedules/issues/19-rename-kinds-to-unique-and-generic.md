@@ -1,6 +1,6 @@
 # 19: Rename Kinds To Unique And Generic
 
-Status: ready-for-human
+Status: done
 Blocked by: 14, 15, 16, 17, 18, 20
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium

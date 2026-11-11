@@ -1,6 +1,7 @@
 # Spec: NPC Schedules
 
-Status: ready-for-agent
+Status: done
+Status note: 2026-11-10. Tickets 01–24 done, last landing 89aff2643. Review: spec text corrected (Q176), and one gap fixed before the close (a missing Can Also Go read as Anywhere in the editor). Closed red: electron/llamaServer.test.mjs, src/views/MainMenu.cudaNotice.test.tsx, both outside this effort.
 Spec session: npc-schedules — spec
 
 Each character in a world starts somewhere, keeps a daily routine of staying, wandering or patrolling, can be taken along or told to wait by the player, and is never in two places at once or stuck where the story can't reach them. Locations say which neighbors are near enough to call over.
@@ -227,7 +228,7 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q173** The Connections tab, the Connection row and the Known In canvas view belong to this spec, as tickets from 21.
 - **Q174** Known In set to Nearby means near where the entity is now: the player is one Nearby link from the place the entity stands this turn (Q61, Q88). The rule does not change. Only the hint text under Known In changes; it must say "nearby", not "one location away".
 - **Q175** A location's panel gets a Connections tab, right after Presence. It holds the Connections and nothing else. Presence keeps Entities, the entities that are here, and Known Here.
-- **Q176** The Connections tab also lists the free links (parent, children, siblings) that no Connection replaces, in one folded group under the Connections, closed by default.
+- **Q176** The Connections tab also lists the free links (parent, children, siblings) that no Connection replaces, in one folded group under the Connections and the "Connect to" picker, closed by default.
 - **Q177** A collapsed Connection row shows, in order: the fold chevron, the direction icon, the other location's name, the distance mark, and Delete. It shows no "one way" text and no hint marker. The distance mark is read-only.
 - **Q178** Amended by Q184.
 - **Q179** An open Connection row holds three fields, top to bottom:
