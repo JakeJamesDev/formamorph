@@ -635,7 +635,7 @@ Three calls on an entity's entry set its location. They work on a **Unique** ent
 
 How the calls apply:
 
-- **The writes apply when the turn ends**, after the player's move, the followers and the AI's entity answers. So a script's write wins over the AI's answer. Prompts in the same turn read the entities at their earlier locations.
+- **The writes apply when the turn ends**, after the player's move, the followers and the AI's entity answers. So a script's write wins over the AI's answer. Prompts and scripts in the same turn read the entities as they stood before the write.
 - **Calls apply in call order**, across every script of the turn. The last call on an entity wins.
 - **Three targets stop the script with an error:** a location your world does not have, the persona (which moves with the player), and an unknown entity name.
 - **A When a Trait Switches script that runs outside a turn applies none of them.**
@@ -648,6 +648,23 @@ if (traits["Crown Restored"].enabled) entities.Wight.move("Barrow Road");
 // Albus joins the party when his trust is high enough.
 if (entities.Albus.stats.Trust.value >= 50) entities.Albus.follow();
 ```
+
+#### Where Each Timing Reads Entities
+<!-- keywords: entity location this turn, follower location, companion moved, who is present, stale location, after the move -->
+
+Each timing reads `location`, `following`, `waiting` and `present` at its own point in the turn:
+
+| When the script runs | Where it reads the entities |
+| --- | --- |
+| 🌅 **At Game Start** and **Before the AI** | As the turn began, before the player moves |
+| ✍️ **During AI Output**, and a Tool's script during the turn | After the player's move, once it is known: followers beside the player, the entities told to wait left behind. An entity the narration calls over is still where it was |
+| ✅ **After the AI**, and an item script that the turn's item changes fire | After the player's move and the followers, with each entity the narration calls over at the player's location |
+| 🎲 A re-roll of the turn's stats | Where they stand now, after the turn ended |
+| ⏸️ Between turns | Where they stand now |
+
+- **A move the narration describes is known only when the narration ends.** Until then, scripts read the entities as the turn began.
+- **After the AI scripts don't see the turn's end.** Once they and the turn's item scripts run, the game places every entity for the end of the turn, and the scripts' entity writes apply. An entity whose schedule moves it then still reads its earlier location. A re-roll reads the new one.
+- **Two turns are the exception.** On the opening turn, and on a turn whose move the AI suggests and the player hasn't taken, After the AI scripts already read every entity placed for the end of the turn.
 
 **Test Code** lists every authored entity except persona-only ones. No trait is chosen, and each stat is at its starting value. A switch or a stat write that it makes is reported and never applied.
 

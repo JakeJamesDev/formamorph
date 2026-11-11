@@ -1,5 +1,6 @@
 import type { Connection, Entity, EntityPositions, GameLocation, GenericStates, UniqueStates } from "@/types";
-import { advancePositions, EMPTY_BOOK, type PositionBook, type PositionScene, type Routine } from "@/lib/positionEngine";
+import { advancePositions, EMPTY_BOOK, genericPlaces, type PositionBook, type PositionScene, type Routine } from "@/lib/positionEngine";
+import type { SandboxState } from "@/lib/statCodeTurn";
 import { castRoutines } from "@/lib/entityKind";
 import { entitiesInPlay } from "@/lib/entityPresence";
 import { storyMinute } from "@/lib/gameClock";
@@ -40,6 +41,11 @@ export const followerIds = (uniques: Readonly<UniqueStates>): string[] =>
 /** The ids of the Unique entities waiting where a follower was left. */
 export const waitingIds = (uniques: Readonly<UniqueStates>): string[] =>
   Object.keys(uniques).filter((id) => uniques[id].follow?.mode === "waiting");
+
+/** What a script reads of `book`: each Unique entity's place, each Generic entity's presences, and who follows or waits. */
+export const scriptPlaces = (book: PositionBook): Pick<SandboxState, "positions" | "presences" | "followers" | "waiting"> => ({
+  positions: book.positions, presences: genericPlaces(book.generics), followers: followerIds(book.uniques), waiting: waitingIds(book.uniques),
+});
 
 /** Every Unique entity and every Generic presence placed for `world.scene`: the engine's one step. */
 export const placeAll = (book: PositionBook, world: PositionWorld): PositionBook =>

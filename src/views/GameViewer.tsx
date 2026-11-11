@@ -131,8 +131,8 @@ import { selectRelevantDiary } from "../lib/semanticDiary";
 import { findEntityByCharacterName, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription, pruneDiscoveredToHistory, pickedAtStart, INITIAL_SOURCE_TURN_ID } from "../lib/runtimeCharacters";
 import { entitiesInPlay, entityIdsAt, positionedCast, type Standings } from "../lib/entityPresence";
 import { castRoutines } from "../lib/entityKind";
-import { placeAll, positionWorld, reseatForOpening, withPlayerAt, type PositionWorld } from "../lib/positionPlay";
-import { EMPTY_BOOK, genericPlaces } from "../lib/positionEngine";
+import { placeAll, positionWorld, reseatForOpening, scriptPlaces, withPlayerAt, type PositionWorld } from "../lib/positionPlay";
+import { EMPTY_BOOK } from "../lib/positionEngine";
 import { selectRegenSource, buildRegenContext } from "../lib/discoveredRegen";
 import { outputReserve } from "../lib/outputLength";
 import { outputCaps, type AiEndpointTarget, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
@@ -208,7 +208,7 @@ import {
 } from "../lib/turnPipeline/computeTurnCommit";
 import {
   entityMoveRequests, hasEntityOffer, joinEntityMoves, moveWithPlayer,
-  NO_ENTITY_MOVES, NO_ENTITY_OFFER, runtimePositions,
+  NO_ENTITY_MOVES, NO_ENTITY_OFFER,
   type EntityMoveOffer, type FollowerState,
 } from "../lib/entityFollowing";
 import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
@@ -765,13 +765,9 @@ const GameViewer = ({
     setEntityStats,
     setEntityStatBaseline,
     resetEntityStats,
-    entityPositions,
     setEntityPositions,
-    entityFollowers,
-    entityWaiting,
     uniqueStates,
     setUniqueStates,
-    genericStates,
     setGenericStates,
     currentBook,
     applyFollowerState,
@@ -3074,7 +3070,10 @@ const GameViewer = ({
       const pulled = calledOver(book, turn.location, world);
       return moved || pulled !== book ? pulled : undefined;
     };
-    const inventoryOwners = commit.inventoryOps.length ? inventoryOwnersAt(turn.location, discovered, ownerPositions()) : [];
+    const passBook = ownerPositions();
+    const inventoryOwners = commit.inventoryOps.length ? inventoryOwnersAt(turn.location, discovered, passBook) : [];
+    // The After batch and the turn's item scripts read the cast as the Inventory pass does (Q218, Q227).
+    scriptBookRef.current = passBook ?? moveApplied;
     const commitTotals = startActionTotals();
     const { kept: inventoryKept, landed: inventory } = landInventoryPass(
       commit.inventoryOps, turn.location, inventoryOwners, outputWritten,
@@ -3189,6 +3188,8 @@ const GameViewer = ({
     await settleTurn(run?.gateStats ?? null, commitTotals);
     // The pass's item scripts run over the committed turn, and the snapshot holds their writes.
     await runItemEvents(inventory?.events ?? [], commitTotals);
+    // The end-of-turn placement is live for every later run.
+    scriptBookRef.current = null;
     armTurnSnapshot();
     cardTurns.countTurn({
       narrationIsDemoAI: settings.narrationIsDemoAI,
@@ -3409,6 +3410,7 @@ const GameViewer = ({
       turnStartItemsRef.current = { ...liveItemsRef.current, copies: [...liveItemsRef.current.copies] };
       // The At Game Start scripts shape the opening: once per new playthrough, ahead of the before box.
       scriptLocationRef.current = turnLocation;
+      scriptBookRef.current = null;
       turnMemoriesRef.current = scriptMemoriesRef.current;
       turnReadRef.current = { action: scriptActionFor(planInput), number: closedTurns(fullMessageHistory) + 1, id: turnId, ...EMPTY_REPLY };
       if (isOpeningTurn) setOpeningTurnAction(turnReadRef.current.action);
@@ -3714,6 +3716,7 @@ const GameViewer = ({
             if (moveFrom) {
               const joined = joinEntityMoves(moveStart, { from: moveFrom, to: turnLocation?.id }, entityIntents, turnWorld());
               turnJoin = joined === moveStart ? null : joined;
+              scriptBookRef.current = turnJoin;
             }
             return assembleNarration();
           }
@@ -3779,6 +3782,7 @@ const GameViewer = ({
               moveTurnTo(target);
               const joined = joinEntityMoves(moveStart, { from: moveFrom, to: target.id }, entityIntents, turnWorld());
               turnJoin = joined === moveStart ? null : joined;
+              scriptBookRef.current = turnJoin;
               // The passes after the narration read the place the story took the player.
               ctxStale = true;
             }
@@ -3954,6 +3958,7 @@ const GameViewer = ({
       releaseChoices();
       setAiRequestType(null);
       scriptLocationRef.current = null;
+      scriptBookRef.current = null;
       turnClockRef.current = null;
       turnMemoriesRef.current = null;
       turnReadRef.current = null;
@@ -4054,6 +4059,11 @@ const GameViewer = ({
   // Where a running turn stands for its scripts' `location`, ahead of the render that commits a move. Null
   // between turns, where the live location stands.
   const scriptLocationRef = useRef<GameLocation | null>(null);
+  // Where the running turn's scripts read the cast, ahead of the write that commits it: the followers once the
+  // move settles (Q220), then the moves and pulls for the After batch (Q218). Null outside a turn: the live book.
+  const scriptBookRef = useRef<FollowerState | null>(null);
+  /** The places a script reads now. */
+  const scriptPlacesNow = useCallback(() => scriptPlaces(scriptBookRef.current ?? currentBook()), [currentBook]);
   // The Memory panel's rows as a script's `memories` reads them, from the ledger the panel builds.
   const scriptMemoryList = useMemo(() => scriptMemories(buildMemoryLedger({
     history: fullMessageHistory, overrides: memoryOverrides, pins: memoryPins, selection: milestoneSelection,
@@ -4174,10 +4184,7 @@ const GameViewer = ({
           },
           owners,
           places: { locations, location: here && { id: here.id, name: here.name }, connections },
-          positions: { ...runtimePositions(discoveredEntities), ...entityPositions },
-          presences: genericPlaces(genericStates),
-          followers: entityFollowers,
-          waiting: entityWaiting,
+          ...scriptPlacesNow(),
           resolveText: (text, owner) => (owner ? resolveEntityText(owner, text) : resolvePH(text)),
           memories: turnMemoriesRef.current ?? scriptMemoriesRef.current,
           notes: liveScene().notes,
@@ -4318,7 +4325,7 @@ const GameViewer = ({
       }
     },
     [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, setLoreToggles, resolvePH, resolveFor, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, scriptTabWorld, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene, presence, libraryIn, locations, currentLocation, discoveredEntities,
-      entityPositions, entityFollowers, entityWaiting, resolveEntityText, setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry, playPrompts, commitTraitState,
+      scriptPlacesNow, resolveEntityText, setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry, playPrompts, commitTraitState,
       worldItems, worldSlots, inventoryWorld, personaRef, startActionTotals],
   );
 
@@ -4825,7 +4832,8 @@ const GameViewer = ({
   toolScriptSourceRef.current = (base) => {
     const world = getWorldData();
     const played = openingPersonaOf(personaRef, { libraryEntity: persona?.entity });
-    return { state: prepareTurnStartCode(base)?.turn.state ?? openingStateOf(world, undefined, played), authored: world };
+    const state = prepareTurnStartCode(base)?.turn.state ?? { ...openingStateOf(world, undefined, played), ...scriptPlacesNow() };
+    return { state, authored: world };
   };
 
   /**
