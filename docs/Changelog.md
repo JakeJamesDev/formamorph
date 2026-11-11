@@ -93,6 +93,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **An entity's stat and trait Body Sliders list now shows the entity's Avatar sliders.** An entity with only an Avatar can bind its Body Sliders and Head Features.
   - **A world's written openings now always draw, even in a world that had them switched off.** The world file no longer stores an openings on/off setting.
   - **The Sign In and Create Account pages on formamorph.ai now ask the Adult Content Ahead question first.** Before, a new account saw it only after the Privacy Policy. Your answer saves to the account you sign in to or create.
+  - **A text or image endpoint typed without `http://`, such as `127.0.0.1:1234`, now reaches your server.** Before, the browser version sent it to formamorph.ai and showed an "Unexpected token '<'" error. An image server that answers with a web page now says so.
 - **🛠️ Developer tooling**
   - **The affected-test gate now runs the tests that import a deleted file.** Vitest can't follow an import to a file that is gone, so the gate adds each file that imports it or matches it through `import.meta.glob`.
 

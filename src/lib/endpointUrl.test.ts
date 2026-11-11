@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeEndpointUrl, endpointUrlWasCompleted } from './endpointUrl';
+import { normalizeEndpointUrl, endpointUrlWasCompleted, withScheme } from './endpointUrl';
 
 describe('normalizeEndpointUrl', () => {
   it('completes a bare origin — the LM Studio "Reachable at" paste', () => {
@@ -39,9 +39,34 @@ describe('normalizeEndpointUrl', () => {
   it('returns unparseable or non-http input as-is', () => {
     expect(normalizeEndpointUrl('')).toBe('');
     expect(normalizeEndpointUrl('   ')).toBe('');
-    expect(normalizeEndpointUrl('127.0.0.1:1234')).toBe('127.0.0.1:1234');
     expect(normalizeEndpointUrl('not a url')).toBe('not a url');
     expect(normalizeEndpointUrl('file:///tmp/x')).toBe('file:///tmp/x');
+  });
+
+  it('adds a missing scheme so the address never resolves against the page', () => {
+    expect(normalizeEndpointUrl('127.0.0.1:1234')).toBe('http://127.0.0.1:1234/v1/chat/completions');
+    expect(normalizeEndpointUrl('localhost:11434/v1')).toBe('http://localhost:11434/v1/chat/completions');
+    expect(normalizeEndpointUrl('api.example.com/v1')).toBe('https://api.example.com/v1/chat/completions');
+    expect(normalizeEndpointUrl('192.168.1.5:5000/api/chat')).toBe('http://192.168.1.5:5000/api/chat');
+  });
+});
+
+describe('withScheme', () => {
+  it('uses plain HTTP for loopback, private and single-label hosts', () => {
+    for (const host of ['localhost:1234', '127.0.0.1', '10.0.0.2:8188', '192.168.0.5', '172.20.1.1:80', '[::1]:1234', 'gpu-box:7860']) {
+      expect(withScheme(host)).toBe(`http://${host}`);
+    }
+  });
+
+  it('uses HTTPS for a public host', () => {
+    expect(withScheme('api.example.com')).toBe('https://api.example.com');
+    expect(withScheme('172.32.0.1')).toBe('https://172.32.0.1');
+  });
+
+  it('leaves a scheme, a blank and a path alone', () => {
+    expect(withScheme(' https://a.example ')).toBe('https://a.example');
+    expect(withScheme('')).toBe('');
+    expect(withScheme('/v1/chat/completions')).toBe('/v1/chat/completions');
   });
 });
 

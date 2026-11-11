@@ -14,7 +14,7 @@ function mockFetch(routes: Record<string, { ok?: boolean; body?: unknown }>) {
   const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
     const route = routes[url];
     if (!route) throw new Error('connection refused');
-    return { ok: route.ok ?? true, status: route.ok === false ? 500 : 200, json: async () => route.body } as Response;
+    return { ok: route.ok ?? true, status: route.ok === false ? 500 : 200, json: async () => route.body, text: async () => JSON.stringify(route.body) } as Response;
   });
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;

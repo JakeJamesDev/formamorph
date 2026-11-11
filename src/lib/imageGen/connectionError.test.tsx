@@ -118,7 +118,7 @@ describe('reachFetch', () => {
 describe('a TypeError after the server answered', () => {
   it('keeps its own text, because the connection worked', async () => {
     const bug = new TypeError("Cannot read properties of undefined (reading 'prompt_id')");
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => { throw bug; } } as unknown as Response)));
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => { throw bug; } } as unknown as Response)));
     vi.stubGlobal('WebSocket', class { constructor() { throw new Error('no socket'); } });
 
     expect(await failure('comfyui')).toBe(bug);

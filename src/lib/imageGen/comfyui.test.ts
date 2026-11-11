@@ -132,7 +132,7 @@ describe('fetchComfyMeta', () => {
     };
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
       const node = url.split('/object_info/')[1];
-      return { ok: true, json: async () => responses[node] } as Response;
+      return { ok: true, json: async () => responses[node], text: async () => JSON.stringify(responses[node]) } as Response;
     }));
     const meta = await fetchComfyMeta('http://127.0.0.1:8188/');
     expect(meta.checkpoints).toEqual(['a.safetensors', 'b.safetensors']);
@@ -148,6 +148,11 @@ describe('fetchComfyMeta', () => {
   it('points at the API Token when the server refuses the request', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => auth403()));
     await expect(fetchComfyMeta('http://127.0.0.1:8188')).rejects.toThrow(/API Token/);
+  });
+
+  it('says a web page came back when the address serves a site, not ComfyUI', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('<!doctype html><html lang="en"></html>', { status: 200 })));
+    await expect(fetchComfyMeta('http://127.0.0.1:8188')).rejects.toThrow('The server sent back a web page instead of data.');
   });
 });
 
@@ -234,7 +239,7 @@ describe('comfyuiProvider', () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: false,
       status: 400,
-      json: async () => missingCheckpointRejection,
+      json: async () => missingCheckpointRejection, text: async () => JSON.stringify(missingCheckpointRejection),
     } as Response)));
     const error = await comfyuiProvider(params, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(DetailedError);
@@ -257,18 +262,18 @@ describe('comfyuiProvider', () => {
     const posted: unknown[] = [];
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes('/object_info/CheckpointLoaderSimple')) {
-        return { ok: true, json: async () => ({ CheckpointLoaderSimple: { input: { required: { ckpt_name: [['a.safetensors', 'b.safetensors']] } } } }) } as Response;
+        return { ok: true, json: async () => ({ CheckpointLoaderSimple: { input: { required: { ckpt_name: [['a.safetensors', 'b.safetensors']] } } } }), text: async () => JSON.stringify(({ CheckpointLoaderSimple: { input: { required: { ckpt_name: [['a.safetensors', 'b.safetensors']] } } } })) } as Response;
       }
-      if (url.includes('/object_info/')) return { ok: true, json: async () => ({}) } as Response;
+      if (url.includes('/object_info/')) return { ok: true, json: async () => ({}), text: async () => JSON.stringify(({})) } as Response;
       posted.push(JSON.parse(String(init?.body)));
-      return { ok: false, status: 400, json: async () => ({ error: 'stop' }) } as Response;
+      return { ok: false, status: 400, json: async () => ({ error: 'stop' }), text: async () => JSON.stringify(({ error: 'stop' })) } as Response;
     }));
     await comfyuiProvider({ ...params, model: '' }, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }).catch(() => {});
     expect((posted[0] as { prompt: Record<string, { inputs: { ckpt_name?: string } }> }).prompt['4'].inputs.ckpt_name).toBe('a.safetensors');
   });
 
   it('passes the abort signal to the checkpoint lookup', async () => {
-    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ({ ok: true, json: async () => ({}) } as Response));
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ({ ok: true, json: async () => ({}), text: async () => JSON.stringify(({})) } as Response));
     vi.stubGlobal('fetch', fetchMock);
     const signal = new AbortController().signal;
     await comfyuiProvider({ ...params, model: '' }, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '', signal }).catch(() => {});
@@ -283,7 +288,7 @@ describe('comfyuiProvider', () => {
   });
 
   it('keeps the HTTP status when the checkpoint lookup fails', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500, json: async () => ({}) } as Response)));
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500, json: async () => ({}), text: async () => JSON.stringify(({})) } as Response)));
     const error = await comfyuiProvider({ ...params, model: '' }, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }).catch((e: unknown) => e);
     expect((error as Error).message).toBe('ComfyUI could not list its checkpoints: HTTP 500');
   });
@@ -306,7 +311,7 @@ describe('comfyuiProvider', () => {
   });
 
   it('says so when Model is empty and the server has no checkpoints', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({}) } as Response)));
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({}), text: async () => JSON.stringify(({})) } as Response)));
     const error = await comfyuiProvider({ ...params, model: '' }, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }).catch((e: unknown) => e);
     expect((error as Error).message).toMatch(/no checkpoints installed/);
   });

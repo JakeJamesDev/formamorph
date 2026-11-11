@@ -1,4 +1,7 @@
-const HTML_START = /^<(?:!doctype\s+html|html[\s>]|head[\s>]|!--)/i;
+import { DetailedError } from './errorDetails';
+import { redactUrl } from './redactUrl';
+
+const HTML_START =/^<(?:!doctype\s+html|html[\s>]|head[\s>]|!--)/i;
 const TITLE = /<title[^>]*>([\s\S]*?)<\/title>/i;
 // Cloudflare wraps the id in markup, such as `Ray ID: <strong>…</strong>`.
 const RAY_ID = /Ray ID:\s*(?:<[^>]*>\s*)*([0-9a-f]{16})/i;
@@ -25,4 +28,20 @@ export function describeResponseBody(raw: string): string {
   const title = decodeEntities(TITLE.exec(raw)?.[1] ?? '').replace(/\s+/g, ' ').trim();
   const ray = RAY_ID.exec(raw)?.[1];
   return [title ? `HTML page "${title}"` : 'HTML page (no title)', ray && `(Ray ID: ${ray})`].filter(Boolean).join(' ');
+}
+
+/** A response's JSON body. An HTML page throws a DetailedError that names the page, not a bare SyntaxError. */
+export async function readJson(response: Response): Promise<unknown> {
+  const raw = await response.text();
+  if (isHtmlBody(raw)) {
+    const details = [
+      ...(response.url ? [`URL: ${redactUrl(response.url)}`] : []),
+      `Status: ${[response.status, response.statusText].filter(Boolean).join(' ')}`,
+      '',
+      'Response:',
+      describeResponseBody(raw),
+    ].join('\n');
+    throw new DetailedError('The server sent back a web page instead of data. Check the address.', details, response.status);
+  }
+  return JSON.parse(raw);
 }

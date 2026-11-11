@@ -97,7 +97,7 @@ describe('a1111Provider', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it('POSTs to /sdapi/v1/txt2img (trimming a trailing slash) and returns a data-URL', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ images: ['QUJD'] }) });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ images: ['QUJD'] }), text: async () => JSON.stringify(({ images: ['QUJD'] })) });
     vi.stubGlobal('fetch', fetchMock);
     const out = await a1111Provider(params, { endpointUrl: 'http://127.0.0.1:7860/', apiToken: '' });
     expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:7860/sdapi/v1/txt2img', expect.objectContaining({ method: 'POST' }));
@@ -124,7 +124,7 @@ describe('a1111Provider', () => {
         controller.abort(); // the request is in flight when Stop is pressed
         return Promise.reject(new DOMException('Aborted', 'AbortError'));
       }
-      return Promise.resolve({ ok: true, json: async () => ({}) });
+      return Promise.resolve({ ok: true, json: async () => ({}), text: async () => JSON.stringify(({})) });
     });
     vi.stubGlobal('fetch', fetchMock);
     await expect(
@@ -137,7 +137,7 @@ describe('a1111Provider', () => {
   });
 
   it('does not interrupt when the run completes normally', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ images: ['QUJD'] }) });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ images: ['QUJD'] }), text: async () => JSON.stringify(({ images: ['QUJD'] })) });
     vi.stubGlobal('fetch', fetchMock);
     await a1111Provider(params, { endpointUrl: 'http://x', apiToken: '', signal: new AbortController().signal });
     expect(fetchMock.mock.calls.map((c) => c[0])).not.toContain('http://x/sdapi/v1/interrupt');
@@ -186,7 +186,7 @@ describe('parseOpenAIResponse', () => {
 
 describe('generateImage dispatcher', () => {
   it('routes to the a1111 provider', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ images: ['QUJD'] }) });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ images: ['QUJD'] }), text: async () => JSON.stringify(({ images: ['QUJD'] })) });
     vi.stubGlobal('fetch', fetchMock);
     const out = await generateImage('a1111', params, { endpointUrl: 'http://x', apiToken: '' });
     expect(out).toBe('data:image/png;base64,QUJD');
@@ -207,5 +207,9 @@ describe('resolveImageEndpoint', () => {
 
   it('uses the entered endpoint when provided', () => {
     expect(resolveImageEndpoint('comfyui', 'http://192.168.0.5:8188')).toBe('http://192.168.0.5:8188');
+  });
+
+  it('adds the scheme to an address typed without one', () => {
+    expect(resolveImageEndpoint('comfyui', '127.0.0.1:8188')).toBe('http://127.0.0.1:8188');
   });
 });

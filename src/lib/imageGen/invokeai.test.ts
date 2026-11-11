@@ -179,15 +179,15 @@ function stubServer(
   const enqueued: unknown[] = [];
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith('/api/v2/models/')) {
-      return { ok: true, json: async () => ({ models }) } as Response;
+      return { ok: true, json: async () => ({ models }), text: async () => JSON.stringify(({ models })) } as Response;
     }
     if (url.includes('/api/v1/boards/')) {
       if (opts.boardsFail) throw new TypeError('Failed to fetch');
-      return { ok: true, json: async () => (opts.boards ?? boards) } as Response;
+      return { ok: true, json: async () => (opts.boards ?? boards), text: async () => JSON.stringify((opts.boards ?? boards)) } as Response;
     }
     if (url.endsWith('/enqueue_batch')) {
       enqueued.push(JSON.parse(String(init?.body)));
-      return { ok: true, json: async () => ({ item_ids: [7] }) } as Response;
+      return { ok: true, json: async () => ({ item_ids: [7] }), text: async () => JSON.stringify(({ item_ids: [7] })) } as Response;
     }
     if (url.includes('/queue/default/i/7')) {
       opts.beforePoll?.(poll);
@@ -195,7 +195,7 @@ function stubServer(
       const body = status === 'completed'
         ? { status, session: { results: { r: { type: 'image_output', image: { image_name: 'out.png' } } } } }
         : { status, error_message: opts.failMsg };
-      return { ok: true, json: async () => body } as Response;
+      return { ok: true, json: async () => body, text: async () => JSON.stringify(body) } as Response;
     }
     if (url.includes('/images/i/')) {
       return {
@@ -333,8 +333,8 @@ describe('invokeaiProvider', () => {
   it('stops polling instead of hanging when the item endpoint keeps erroring', async () => {
     // enqueue succeeds, then every poll returns a non-OK response.
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
-      if (url.endsWith('/api/v2/models/')) return { ok: true, json: async () => ({ models: [sdxl] }) } as Response;
-      if (url.endsWith('/enqueue_batch')) return { ok: true, json: async () => ({ item_ids: [7] }) } as Response;
+      if (url.endsWith('/api/v2/models/')) return { ok: true, json: async () => ({ models: [sdxl] }), text: async () => JSON.stringify(({ models: [sdxl] })) } as Response;
+      if (url.endsWith('/enqueue_batch')) return { ok: true, json: async () => ({ item_ids: [7] }), text: async () => JSON.stringify(({ item_ids: [7] })) } as Response;
       return { ok: false, status: 500 } as Response; // poll always fails
     }));
     await expect(invokeaiProvider(params, { endpointUrl: 'http://127.0.0.1:9090', apiToken: '' }))
@@ -674,17 +674,17 @@ function stubDetailServer(
   };
 
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-    if (url.endsWith('/api/v2/models/')) return { ok: true, json: async () => ({ models }) } as Response;
-    if (url.includes('/api/v1/boards/')) return { ok: true, json: async () => boards } as Response;
+    if (url.endsWith('/api/v2/models/')) return { ok: true, json: async () => ({ models }), text: async () => JSON.stringify(({ models })) } as Response;
+    if (url.includes('/api/v1/boards/')) return { ok: true, json: async () => boards, text: async () => JSON.stringify(boards) } as Response;
     if (url.endsWith('/enqueue_batch')) {
       const graph = JSON.parse(String(init?.body)).batch.graph;
       graphs.push(graph);
       const id = nextId++;
       items.set(id, answer(graph, graphs.length));
-      return { ok: true, json: async () => ({ item_ids: [id] }) } as Response;
+      return { ok: true, json: async () => ({ item_ids: [id] }), text: async () => JSON.stringify(({ item_ids: [id] })) } as Response;
     }
     const queued = url.match(/\/queue\/default\/i\/(\d+)/);
-    if (queued) return { ok: true, json: async () => items.get(Number(queued[1])) } as Response;
+    if (queued) return { ok: true, json: async () => items.get(Number(queued[1])), text: async () => JSON.stringify(items.get(Number(queued[1]))) } as Response;
     if (url.includes('/images/i/')) {
       downloaded = decodeURIComponent(url.split('/images/i/')[1].split('/full')[0]);
       return {
@@ -834,7 +834,7 @@ describe('fetchInvokeMeta', () => {
     const all = [sdxl, sd1, zimg, anima, encoder, animaEncoder, fluxVae, sdxlVae, animaVae, { ...sdxl, key: 'flux1', name: 'Flux', base: 'flux', type: 'main' }];
     vi.stubGlobal('fetch', vi.fn(async (url: string) => ({
       ok: true,
-      json: async () => (url.includes('/boards/') ? boards : { models: all }),
+      json: async () => (url.includes('/boards/') ? boards : { models: all }), text: async () => JSON.stringify((url.includes('/boards/') ? boards : { models: all })),
     } as Response)));
     const meta = await fetchInvokeMeta('http://127.0.0.1:9090');
     expect(meta.models.map((m) => m.name)).toEqual(['My SDXL', 'Photon', 'Z Turbo', 'Anima Base']); // flux main excluded
@@ -848,7 +848,7 @@ describe('fetchInvokeMeta', () => {
   it('still returns the models when the boards endpoint fails', async () => {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
       if (url.includes('/boards/')) return { ok: false, status: 404 } as Response;
-      return { ok: true, json: async () => ({ models: [sdxl] }) } as Response;
+      return { ok: true, json: async () => ({ models: [sdxl] }), text: async () => JSON.stringify(({ models: [sdxl] })) } as Response;
     }));
     const meta = await fetchInvokeMeta('http://127.0.0.1:9090');
     expect(meta.models).toEqual([sdxl]);

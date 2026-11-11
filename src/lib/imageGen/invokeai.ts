@@ -15,6 +15,7 @@ import {
   trimUrl, authHeaders, POLL_INTERVAL_MS, readBody, refusalDetails, reachFetch, imageConnectionError, imageConnectionMessage,
 } from './http';
 import { DetailedError } from '../errorDetails';
+import { readJson } from '../responseBody';
 
 /** Model bases this provider can build a graph for. */
 export type InvokeBase = 'sdxl' | 'sd-1' | 'sd-2' | 'z-image' | 'anima';
@@ -513,7 +514,7 @@ export async function fetchInvokeModels(endpointUrl: string, apiToken?: string):
   const url = `${base}/api/v2/models/`;
   const res = await fetch(url, { headers: authHeaders(apiToken, 'Bearer') });
   if (!res.ok) throw await invokeRefusal(url, res);
-  const body = (await res.json()) as { models?: InvokeModel[] };
+  const body = (await readJson(res)) as { models?: InvokeModel[] };
   return body.models ?? [];
 }
 
@@ -530,7 +531,7 @@ export async function fetchInvokeBoards(endpointUrl: string, apiToken?: string):
   const url = `${base}/api/v1/boards/?all=true`;
   const res = await fetch(url, { headers: authHeaders(apiToken, 'Bearer') });
   if (!res.ok) throw await invokeRefusal(url, res);
-  const body = (await res.json()) as InvokeBoard[] | { items?: InvokeBoard[] };
+  const body = (await readJson(res)) as InvokeBoard[] | { items?: InvokeBoard[] };
   return Array.isArray(body) ? body : (body.items ?? []);
 }
 
@@ -793,7 +794,7 @@ export const invokeaiProvider: ImageProvider = async (params: ImageGenParams, op
       } catch { /* keep the status */ }
       throw new DetailedError(`InvokeAI rejected the batch: ${detail}`, refusalDetails('POST', enqueueUrl, res, raw));
     }
-    const enq = (await res.json()) as { item_ids?: number[] };
+    const enq = (await readJson(res)) as { item_ids?: number[] };
     itemId = enq.item_ids?.[0] ?? null;
     if (itemId == null) throw new Error('InvokeAI did not return a queue item id');
 
@@ -809,7 +810,7 @@ export const invokeaiProvider: ImageProvider = async (params: ImageGenParams, op
         });
       if (poll?.ok) {
         consecutiveErrors = 0;
-        const item = (await poll.json()) as QueueItem;
+        const item = (await readJson(poll)) as QueueItem;
         // Once the socket is feeding real per-step progress, the coarse status bar would only fight it —
         // except at 'completed', which is the only status that reports a percentage the socket can't.
         if (!watcher.live() || item.status === 'completed') {

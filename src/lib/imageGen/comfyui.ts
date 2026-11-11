@@ -7,6 +7,7 @@ import { randomUUID } from "@/lib/uuid";
 import type { ImageGenOpts, ImageGenParams, ImageProvider } from './types';
 import { bytesToDataUrl } from '../imageOptim';
 import { DetailedError } from '../errorDetails';
+import { readJson } from '../responseBody';
 import { withTimeout } from '../withTimeout';
 import { trimUrl, authHeaders, POLL_INTERVAL_MS, reachFetch, readBody, refusalDetails } from './http';
 
@@ -233,7 +234,7 @@ export async function fetchComfyMeta(endpointUrl: string, apiToken?: string): Pr
     const res = await fetch(url, { headers });
     if (res.status === 403) throw await refused('GET', url, res);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
+    return readJson(res);
   };
   const [ckpt, ks] = await Promise.all([get('CheckpointLoaderSimple'), get('KSampler')]);
   return {
@@ -252,7 +253,7 @@ async function firstComfyCheckpoint(base: string, opts: ImageGenOpts): Promise<s
   });
   if (res.status === 403) throw await refused('GET', url, res);
   if (!res.ok) throw new Error(`ComfyUI could not list its checkpoints: HTTP ${res.status}`);
-  return extractEnum(await res.json(), 'CheckpointLoaderSimple', 'ckpt_name')[0] ?? '';
+  return extractEnum(await readJson(res), 'CheckpointLoaderSimple', 'ckpt_name')[0] ?? '';
 }
 
 const WS_SETTLE_MS = 3000; // if the WS never opens/signals, fall back to /history polling after this
@@ -319,7 +320,7 @@ async function pollHistory(base: string, promptId: string, opts: ImageGenOpts): 
       });
     if (res?.ok) {
       consecutiveErrors = 0;
-      const history = await res.json();
+      const history = await readJson(res);
       try {
         return parseHistoryImages(history, promptId);
       } catch {
@@ -372,7 +373,7 @@ export const comfyuiProvider: ImageProvider = async (params: ImageGenParams, opt
       }
       throw comfyRejection(res.status, body);
     }
-    const submit = (await res.json()) as { prompt_id?: string };
+    const submit = (await readJson(res)) as { prompt_id?: string };
     if (!submit.prompt_id) throw new Error('ComfyUI did not return a prompt_id');
     promptId = submit.prompt_id;
 

@@ -3,6 +3,7 @@
 import type { ImageGenOpts, ImageGenParams, ImageProgress, ImageProvider } from './types';
 import { trimUrl, authHeaders, toPngDataUrl, POLL_INTERVAL_MS, readBody, refusalDetails, reachFetch } from './http';
 import { DetailedError } from '../errorDetails';
+import { readJson } from '../responseBody';
 
 interface A1111Body {
   prompt: string;
@@ -80,7 +81,7 @@ function startProgressPoller(base: string, opts: ImageGenOpts): { stop: () => vo
     if (stopped || opts.signal?.aborted) return;
     try {
       const res = await fetch(`${base}/sdapi/v1/progress?skip_current_image=false`, { headers, signal: opts.signal });
-      if (res.ok && !stopped) opts.onProgress?.(parseProgress(await res.json()));
+      if (res.ok && !stopped) opts.onProgress?.(parseProgress(await readJson(res)));
     } catch {
       // ignore — progress is best-effort
     }
@@ -102,7 +103,7 @@ export const a1111Provider: ImageProvider = async (params: ImageGenParams, opts:
       signal: opts.signal,
     });
     if (!res.ok) throw new DetailedError(`HTTP ${res.status}`, refusalDetails('POST', url, res, await readBody(res)));
-    return parseA1111Response(await res.json());
+    return parseA1111Response(await readJson(res));
   } finally {
     poller?.stop();
     // Best-effort interrupt so an aborted run doesn't keep cooking on the server.

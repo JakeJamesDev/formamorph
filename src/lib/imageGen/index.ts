@@ -1,5 +1,6 @@
 // Entry point for AI image generation: dispatch a common request to the selected provider.
 // Local providers (A1111) fetch directly from the browser; cloud providers are added in the desktop slice.
+import { withScheme } from '@/lib/endpointUrl';
 import { a1111Provider } from './a1111';
 import { openaiProvider } from './openai';
 import { comfyuiProvider } from './comfyui';
@@ -23,7 +24,7 @@ export const DEFAULT_ENDPOINT_BY_PROVIDER: Record<ImageProviderId, string> = {
 
 /** The endpoint to actually call: the entered URL, or the provider default when blank. */
 export function resolveImageEndpoint(provider: ImageProviderId, endpoint: string): string {
-  return endpoint.trim() || DEFAULT_ENDPOINT_BY_PROVIDER[provider];
+  return withScheme(endpoint) || DEFAULT_ENDPOINT_BY_PROVIDER[provider];
 }
 
 const PROVIDERS: Record<ImageProviderId, ImageProvider> = {

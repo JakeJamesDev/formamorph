@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { describeResponseBody, isHtmlBody } from './responseBody';
+import { DetailedError } from './errorDetails';
+import { describeResponseBody, isHtmlBody, readJson } from './responseBody';
 
 const CLOUDFLARE_502 = `<!DOCTYPE html>
 <!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
@@ -46,5 +47,23 @@ describe('describeResponseBody', () => {
     for (const text of ['<htmlish>', '<!doctype xml>', 'see <html>', '<error>bad</error>']) {
       expect(isHtmlBody(text)).toBe(false);
     }
+  });
+});
+
+describe('readJson', () => {
+  it('parses a JSON body', async () => {
+    await expect(readJson(new Response('{"ok":true}'))).resolves.toEqual({ ok: true });
+  });
+
+  it('names a web page instead of throwing a bare parse error', async () => {
+    const page = new Response('<!doctype html><html><head><title>Formamorph</title></head></html>', { status: 200 });
+    const error: unknown = await readJson(page).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(DetailedError);
+    expect((error as DetailedError).message).toBe('The server sent back a web page instead of data. Check the address.');
+    expect((error as DetailedError).details).toContain('HTML page "Formamorph"');
+  });
+
+  it('still throws a SyntaxError for malformed JSON', async () => {
+    await expect(readJson(new Response('{nope'))).rejects.toBeInstanceOf(SyntaxError);
   });
 });
