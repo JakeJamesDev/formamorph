@@ -258,6 +258,7 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q201** A row opens only when the author adds the Connection on the tab: the "Connect to" picker and the Authoring Tour's example. A Connection that returns through undo, or arrives any other way, stays closed. (Ticket 22; narrows Q184.)
 - **Q202** A reveal that lands on a field of a closed row opens the row first: world search, undo and Reveal Origin, on a Travel Hint, Travel or Distance. (Ticket 22.)
 - **Q203** On a closed row the distance mark draws Far in the foreground color and Nearby muted, as in the prototype. (Ticket 22.)
+- **Q204** The Authoring Tour's example opens the row it writes to, also when the Connection already exists and only its hints change. The step exists to show the example text. (Ticket 22; adds to Q201.)
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
