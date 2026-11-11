@@ -418,7 +418,7 @@ export interface GalleryImage {
   requires?: TraitRequirementRow[];
 }
 
-/** Generic: every Start runs at once, one presence each. Unique: one body, from one Start rolled per playthrough. */
+/** Generic: every Start runs at once, one Generic Entity Instance each. Unique: one body, from one Start rolled per playthrough. */
 export type EntityKind = 'generic' | 'unique';
 
 /** A schedule row's hours, in minutes from midnight. `end` before `start` wraps past midnight. */

@@ -94,7 +94,7 @@ export interface SceneWrites {
   addedEntities?: readonly Entity[];
   /** The follow states the turn's moves left, over the live ones. */
   uniques?: Readonly<UniqueStates>;
-  /** Where the turn's moves left each Generic entity's presences, over the live ones. */
+  /** Where the turn's moves left each Generic entity's instances, over the live ones. */
   generics?: Readonly<GenericStates>;
 }
 

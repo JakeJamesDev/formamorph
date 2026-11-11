@@ -412,24 +412,24 @@ describe('Generic entities', () => {
       { id: 'watch', place: 'wall', weight: 1, schedule: [allDay('round', patrol([['wall', 30], ['gate', 30]]))] },
     ],
   };
-  const presences = (book: PositionBook) =>
+  const instancePositions = (book: PositionBook) =>
     Object.fromEntries(Object.entries(book.generics.wolves ?? {}).map(([id, p]) => [id, p.position]));
   const run = (book: PositionBook, now: number, playerAt?: string, random = seeded(3)) =>
     advancePositions([wolves], book, scene(now, playerAt), random);
 
   it('runs every Start at once, each on its own row', () => {
-    expect(presences(run(EMPTY, at(1, 12)))).toEqual({ den: 'smithy', pack: 'inn', watch: 'wall' });
-    expect(presences(run(EMPTY, at(1, 21)))).toMatchObject({ den: 'square', watch: 'wall' });
+    expect(instancePositions(run(EMPTY, at(1, 12)))).toEqual({ den: 'smithy', pack: 'inn', watch: 'wall' });
+    expect(instancePositions(run(EMPTY, at(1, 21)))).toMatchObject({ den: 'square', watch: 'wall' });
   });
 
-  it('keeps each presence on its own Wander idle and Patrol stop across calls', () => {
+  it('keeps each Generic Entity Instance on its own Wander idle and Patrol stop across calls', () => {
     const first = run(EMPTY, at(1, 8));
     const half = run(first, at(1, 8, 30));
-    expect(presences(half)).toEqual({ den: 'smithy', pack: 'inn', watch: 'gate' });
+    expect(instancePositions(half)).toEqual({ den: 'smithy', pack: 'inn', watch: 'gate' });
     expect(half.generics.wolves.watch).toMatchObject({ rowId: 'round', stop: 1, idleEnd: at(1, 9) });
     expect(half.generics.wolves.pack).toMatchObject({ rowId: 'roam', idleEnd: at(1, 9) });
     const hour = run(half, at(1, 9));
-    expect(presences(hour)).toEqual({ den: 'smithy', pack: 'market', watch: 'wall' });
+    expect(instancePositions(hour)).toEqual({ den: 'smithy', pack: 'market', watch: 'wall' });
   });
 
   it('gives a Generic entity no Start roll, no Unique entity state and no single position', () => {
@@ -449,27 +449,27 @@ describe('Generic entities', () => {
     };
     const book = advancePositions([pair], EMPTY, scene(at(1, 8)), seeded(1));
     const later = advancePositions([pair], book, scene(at(1, 8, 30)), seeded(1));
-    expect(presences(book)).toEqual({ a: 'inn', b: 'inn' });
-    expect(presences(later)).toEqual({ a: 'inn', b: 'gate' });
+    expect(instancePositions(book)).toEqual({ a: 'inn', b: 'inn' });
+    expect(instancePositions(later)).toEqual({ a: 'inn', b: 'gate' });
   });
 
-  it('moves no presence at the player location until the player leaves', () => {
+  it('moves no Generic Entity Instance at the player location until the player leaves', () => {
     const book = run(EMPTY, at(1, 8), 'wall');
-    expect(presences(run(book, at(1, 10), 'wall')).watch).toBe('wall');
-    expect(presences(run(run(book, at(1, 10), 'wall'), at(1, 10, 15), 'inn')).watch).toBe('gate');
+    expect(instancePositions(run(book, at(1, 10), 'wall')).watch).toBe('wall');
+    expect(instancePositions(run(run(book, at(1, 10), 'wall'), at(1, 10, 15), 'inn')).watch).toBe('gate');
   });
 
-  it('leaves a presence the routine no longer puts here in the scene until the player leaves', () => {
+  it('leaves a Generic Entity Instance the routine no longer puts here in the scene until the player leaves', () => {
     // Saved at the inn before the author moved the den's routine away from it.
     const saved = { ...EMPTY, generics: { wolves: { den: { position: 'inn', lastRun: at(1, 12) } } } };
-    expect(presences(run(saved, at(1, 12, 30), 'inn')).den).toBe('inn');
-    expect(presences(run(saved, at(1, 12, 30), 'gate')).den).toBe('smithy');
+    expect(instancePositions(run(saved, at(1, 12, 30), 'inn')).den).toBe('inn');
+    expect(instancePositions(run(saved, at(1, 12, 30), 'gate')).den).toBe('smithy');
   });
 
-  it('keeps a row change from taking a presence out of the scene', () => {
+  it('keeps a row change from taking a Generic Entity Instance out of the scene', () => {
     const evening = run(EMPTY, at(1, 19), 'smithy');
-    expect(presences(run(evening, at(1, 21), 'smithy')).den).toBe('smithy');
-    expect(presences(run(run(evening, at(1, 21), 'smithy'), at(1, 21, 5), 'inn')).den).toBe('square');
+    expect(instancePositions(run(evening, at(1, 21), 'smithy')).den).toBe('smithy');
+    expect(instancePositions(run(run(evening, at(1, 21), 'smithy'), at(1, 21, 5), 'inn')).den).toBe('square');
   });
 
   it('is never pulled, never follows and takes no script move', () => {
@@ -490,7 +490,7 @@ describe('Generic entities', () => {
     expect(book.generics.wolves.watch).toEqual(saved.generics.wolves.watch);
   });
 
-  it('lists the places its presences stand at, each once', () => {
+  it('lists the places its Generic Entity Instances stand at, each once', () => {
     expect(genericPlaces({ wolves: { a: { position: 'inn', lastRun: 0 }, b: { position: 'inn', lastRun: 0 }, c: { position: 'gate', lastRun: 0 } } }))
       .toEqual({ wolves: ['inn', 'gate'] });
   });
@@ -588,7 +588,7 @@ describe("the player's starting location", () => {
     expect(run(islander, EMPTY, begin(at(1, 8), 'island')).positions.kit).toBe('island');
   });
 
-  it('runs a Generic presence from beside the player, then its rows, and never follows', () => {
+  it('runs a Generic Entity Instance from beside the player, then its rows, and never follows', () => {
     const crowd: Routine = {
       id: 'crowd', generic: true, traversable: [],
       starts: [{ id: 'beside', place: PLAYER_START, weight: 1, schedule: [timed('market', 12, 14, stay('square'))], beginsFollowing: true }],

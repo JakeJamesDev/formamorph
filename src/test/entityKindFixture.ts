@@ -45,7 +45,7 @@ export const TESS = unique('tess', 'Tess', [start('inn', [{
 export const WENNA = unique('wenna', 'Wenna', [start('inn')]);
 /** Clerk keeps a Strict, all-day shift at the inn: a locked row. */
 export const CLERK = unique('clerk', 'Clerk', [start('inn', [{ id: 'shift', time: 'allDay', strict: true, action: { kind: 'stay', place: 'inn' } }])]);
-/** Moths is Generic, with a presence at each of its two Starts. */
+/** Moths is Generic, with a Generic Entity Instance at each of its two Starts. */
 export const MOTHS: Entity = {
   id: 'moths', name: 'Moths', kind: 'generic', locations: ['inn', 'gate'],
   starts: [{ id: 'm1', place: 'inn', weight: 1, schedule: [] }, { id: 'm2', place: 'gate', weight: 1, schedule: [] }],

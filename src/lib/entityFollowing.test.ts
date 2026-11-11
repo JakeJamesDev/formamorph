@@ -180,7 +180,7 @@ describe("a script's entity writes", () => {
     expect('moths' in s.uniques).toBe(false);
   });
 
-  it('leaves a Generic entity where its presences stand on a script follow or move', () => {
+  it('leaves a Generic entity where its Generic Entity Instances stand on a script follow or move', () => {
     const swarm = { m1: { position: 'inn', lastRun: NOON }, m2: { position: 'gate', lastRun: NOON } };
     const before = { ...state(AT_INN), generics: { moths: swarm } };
     const s = writes(before, { entity: 'moths', kind: 'follow' }, { entity: 'moths', kind: 'move', location: 'keep' });

@@ -251,7 +251,7 @@ describe('the named sets', () => {
     expect(ids(p.inScene)).toEqual(['tilly']);
   });
 
-  it('lists a Generic entity once where two of its presences stand, and not where its presences are gone', () => {
+  it('lists a Generic entity once where two of its Generic Entity Instances stand, and not where its Generic Entity Instances are gone', () => {
     const rooks: Entity = {
       id: 'rooks', name: 'Rooks', kind: 'generic', locations: ['hall', 'smithy'],
       starts: [{ id: 'a', place: 'hall', weight: 1, schedule: [] }, { id: 'b', place: 'smithy', weight: 1, schedule: [] }],

@@ -82,8 +82,8 @@ export interface SandboxState {
   places?: StatePlaces;
   /** Where each entity with a runtime position stands, by entity id. Absent ⇒ none has one. */
   positions?: Readonly<EntityPositions>;
-  /** The places each Generic entity's presences stand at, by entity id. Absent ⇒ a Generic entity reads its listed locations. */
-  presences?: Readonly<Record<string, readonly string[]>>;
+  /** The places each Generic entity's instances stand at, by entity id. Absent ⇒ a Generic entity reads its listed locations. */
+  genericPositions?: Readonly<Record<string, readonly string[]>>;
   /** The ids of the entities following the player. Absent ⇒ none. */
   followers?: readonly string[];
   /** The ids of the followers left waiting. Absent ⇒ none. */

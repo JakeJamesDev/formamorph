@@ -3,7 +3,7 @@ import { placesOf, runtimeRoutine, type Routine } from "@/lib/positionEngine";
 
 /**
  * An entity's kind and routine: a Unique entity is one body placed from one rolled Start; a Generic entity runs every Start
- * at once, one presence each. The `locations` of both is derived here and nowhere else.
+ * at once, one Generic Entity Instance each. The `locations` of both is derived here and nowhere else.
  */
 
 export const isGeneric = (entity: Pick<Entity, "kind">): boolean => entity.kind === "generic";

@@ -13,7 +13,7 @@ import { randomUUID } from "@/lib/uuid";
  * inversion rather than one per caller.
  *
  * During play a runtime layer sits on top: a Unique entity is at its position only, and a Generic entity at the places its
- * presences stand, each once. `entitiesInPlay` applies it, so the rosters read it unchanged.
+ * Generic Entity Instances stand, each once. `entitiesInPlay` applies it, so the rosters read it unchanged.
  *
  * Roster order is the entity array's own order — the author's ordering of the cast — since an
  * entity-owned list carries no rank within a location.
@@ -56,14 +56,14 @@ export const startsAt =(entity: Entity, locationId: string) => (entity.starts ??
 export const withStartHere = (entity: Entity, locationId: string): Entity =>
   isGeneric(entity) ? withGenericStart(entity, locationId, randomUUID) : withNewStart(entity, locationId, randomUUID);
 
-/** Where entities stand in play: each Unique entity's position, and each Generic entity's presences. */
+/** Where entities stand in play: each Unique entity's position, and each Generic entity's instances. */
 export interface Standings {
   positions: Readonly<EntityPositions>;
   generics: Readonly<GenericStates>;
 }
 
 /** `entities` as they stand in play: a Unique entity with a position lists that location only, and a Generic entity with
- *  presences the places they stand at, each once (Q131). The same array when nobody is placed. */
+ *  Generic Entity Instances the places they stand at, each once (Q131). The same array when nobody is placed. */
 export function entitiesInPlay(entities: Entity[], { positions, generics }: Standings): Entity[] {
   if (!entities.some((e) => e.id in positions || e.id in generics)) return entities;
   const places = genericPlaces(generics);

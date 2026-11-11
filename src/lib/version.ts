@@ -706,7 +706,7 @@ function migrateSeveralLocations(entity: Entity, movement: unknown, world: Routi
     return { ...entity, kind: 'unique', starts, traversable: 'anywhere' };
   }
   if (world.usesPeopleFields && !isPerson(entity)) {
-    // One Start per place with no rows, so each presence stays where it was (Q133).
+    // One Start per place with no rows, so each Generic Entity Instance stays where it was (Q133).
     const starts: EntityStart[] = places.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule: [] }));
     return { ...entity, kind: 'generic', starts };
   }

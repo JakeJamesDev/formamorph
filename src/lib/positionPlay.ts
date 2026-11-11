@@ -64,22 +64,22 @@ export function routineReadings(world: PositionWorld, uniques: Readonly<UniqueSt
 }
 
 /** What a script reads of `book` placed in `world`: each Unique entity's place and routine, each Generic entity's
- *  presences, and who follows or waits. */
+ *  Generic Entity Instance positions, and who follows or waits. */
 export const scriptPlaces = (
   book: PositionBook, world: PositionWorld,
-): Pick<SandboxState, "positions" | "presences" | "followers" | "waiting" | "routineNow"> => ({
-  positions: book.positions, presences: genericPlaces(book.generics), followers: followerIds(book.uniques), waiting: waitingIds(book.uniques),
+): Pick<SandboxState, "positions" | "genericPositions" | "followers" | "waiting" | "routineNow"> => ({
+  positions: book.positions, genericPositions: genericPlaces(book.generics), followers: followerIds(book.uniques), waiting: waitingIds(book.uniques),
   routineNow: routineReadings(world, book.uniques),
 });
 
-/** Every Unique entity and every Generic presence placed for `world.scene`: the engine's one step. */
+/** Every Unique entity and every Generic Entity Instance placed for `world.scene`: the engine's one step. */
 export const placeAll = (book: PositionBook, world: PositionWorld): PositionBook =>
   advancePositions([...world.uniques.values(), ...world.generics.values()], book, world.scene, world.random);
 
 /**
  * A saved book against the world as it is now: positions of characters without a routine or at a deleted
  * place go, states of characters the world lost go, followers from a save written before the engine join as
- * Following, then everyone is placed for now. A Generic presence at a deleted place goes where its row puts it.
+ * Following, then everyone is placed for now. A Generic Entity Instance at a deleted place goes where its row puts it.
  */
 export function reconcileBook(book: PositionBook, world: PositionWorld, legacyFollowers: readonly string[] = []): PositionBook {
   const live = new Set(world.scene.locations.map((l) => l.id));
@@ -88,8 +88,8 @@ export function reconcileBook(book: PositionBook, world: PositionWorld, legacyFo
   const uniques: UniqueStates = {};
   for (const [id, st] of Object.entries(book.uniques)) if (world.uniques.has(id)) uniques[id] = st;
   const generics: GenericStates = {};
-  for (const [id, presences] of Object.entries(book.generics)) {
-    if (world.generics.has(id)) generics[id] = presences;
+  for (const [id, instances] of Object.entries(book.generics)) {
+    if (world.generics.has(id)) generics[id] = instances;
   }
   // A character the save placed but the engine never ran on keeps the Start at its saved place, when it has one.
   for (const [id, at] of Object.entries(positions)) {
@@ -111,7 +111,7 @@ export function reconcileBook(book: PositionBook, world: PositionWorld, legacyFo
 
 /**
  * The book once the opening hour is set: everyone away from the player is placed again for the real hour from
- * their rolled Start, and everyone at the player's place stays where the opening put them. A Generic presence
+ * their rolled Start, and everyone at the player's place stays where the opening put them. A Generic Entity Instance
  * does the same from its own Start.
  */
 export function reseatForOpening(book: PositionBook, world: PositionWorld): PositionBook {
@@ -127,8 +127,8 @@ export function reseatForOpening(book: PositionBook, world: PositionWorld): Posi
     if (!st.follow) delete positions[id];
   }
   const generics: GenericStates = {};
-  for (const [id, presences] of Object.entries(book.generics)) {
-    generics[id] = Object.fromEntries(Object.entries(presences).flatMap(([startId, p]) =>
+  for (const [id, instances] of Object.entries(book.generics)) {
+    generics[id] = Object.fromEntries(Object.entries(instances).flatMap(([startId, p]) =>
       (playerAt !== undefined && p.position === playerAt ? [[startId, { ...p, lastRun: now }]] : [])));
   }
   return placeAll({ positions, uniques, generics }, world);

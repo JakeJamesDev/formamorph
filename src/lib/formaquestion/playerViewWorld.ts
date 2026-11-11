@@ -314,8 +314,8 @@ export function playerViewState(state: SandboxState, reach: PlayerViewReach, fir
     ownerTraits: playerOwnerTraits(met, state.ownerTraits, keep, statOwners),
     ...(state.places && { places: playerPlaces(met, state.places) }),
     ...(state.positions && { positions: picked(state.positions, (id) => met.entities.has(id) && met.locations.has(state.positions![id])) }),
-    ...(state.presences && {
-      presences: Object.fromEntries(Object.entries(state.presences).flatMap(([id, places]) =>
+    ...(state.genericPositions && {
+      genericPositions: Object.fromEntries(Object.entries(state.genericPositions).flatMap(([id, places]) =>
         (met.entities.has(id) ? [[id, places.filter((place) => met.locations.has(place))]] : []))),
     }),
     ...(state.followers && { followers: state.followers.filter((id) => met.entities.has(id)) }),

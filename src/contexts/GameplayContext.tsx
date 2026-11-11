@@ -204,7 +204,7 @@ function useProvideGameplay() {
       });
     }
   }, [setEntityPositions]);
-  /** Where every Unique entity and Generic presence stands and its engine state, as the latest write left them. */
+  /** Where every Unique entity and Generic Entity Instance stands and its engine state, as the latest write left them. */
   const currentBook = useCallback((): FollowerState => ({
     positions: { ...runtimePositions(discoveredRef.current), ...entityPositionsRef.current },
     uniques: uniqueStatesRef.current,

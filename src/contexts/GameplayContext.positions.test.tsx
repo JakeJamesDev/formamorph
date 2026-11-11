@@ -194,7 +194,7 @@ describe('entity positions in the save', () => {
   });
 });
 
-describe('Generic presences in the save', () => {
+describe('Generic Entity Instances in the save', () => {
   // The tower stands in the keep, so a patrol can walk between them.
   const linked = [keep, { ...tower, parentId: 'keep' }];
   // One Start walks the keep and the tower, an hour at each; the other stays at the tower.
@@ -209,7 +209,7 @@ describe('Generic presences in the save', () => {
   };
   const generics = { herd: { walker: { position: 'tower', rowId: 'walk', lastRun: OPENING, idleEnd: OPENING + 30, stop: 1 }, sitter: { position: 'tower', lastRun: OPENING } } };
 
-  it('round-trips each presence with its Patrol stop and idle end', async () => {
+  it('round-trips each Generic Entity Instance with its Patrol stop and idle end', async () => {
     const live = mount();
     await act(async () => { live().setGenericStates(generics); });
     expect(live().saveCurrentGameState().genericStates).toEqual(generics);
@@ -217,6 +217,22 @@ describe('Generic presences in the save', () => {
     await act(async () => { live().setGenericStates({}); });
     await load(live, 'save-generic', [herd], linked);
     expect(live().genericStates).toEqual(generics);
+  });
+
+  // The stored save text: its keys are the shipped save shape.
+  const STORED = '{"herd":{"walker":{"position":"tower","rowId":"walk","lastRun":480,"idleEnd":510,"stop":1},"sitter":{"position":"tower","lastRun":480}}}';
+
+  it('loads a stored save at its places and writes the same keys back, byte for byte', async () => {
+    const live = mount();
+    await act(async () => { live().setGenericStates(generics); });
+    await save(live, 'save-generic-stored');
+    const record = await getSaveRecord('save-generic-stored') as SaveRecord;
+    await putSaveRecord({ ...record, currentState: { ...record.currentState, genericStates: JSON.parse(STORED) } });
+    await act(async () => { live().setGenericStates({}); });
+    await load(live, 'save-generic-stored', [herd], linked);
+    expect(JSON.stringify(live().genericStates)).toBe(STORED);
+    expect(live().genericStates.herd.sitter.position).toBe('tower');
+    expect(JSON.stringify(live().saveCurrentGameState().genericStates)).toBe(STORED);
   });
 
   it('begins a Start added after the save at its place, and drops the record of a deleted Start', async () => {
@@ -230,7 +246,7 @@ describe('Generic presences in the save', () => {
     expect(live().genericStates.herd.walker).toMatchObject({ position: 'tower', stop: 1, idleEnd: OPENING + 30 });
   });
 
-  it('writes no field when no Generic entity has a presence', () => {
+  it('writes no field when no Generic entity has a Generic Entity Instance', () => {
     expect('genericStates' in mount()().saveCurrentGameState()).toBe(false);
   });
 });

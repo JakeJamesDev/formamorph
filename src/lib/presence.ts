@@ -32,7 +32,7 @@ export interface PresenceInput {
   runtime: readonly Entity[];
   /** Where each positioned entity stands, runtime characters included. */
   positions: Readonly<EntityPositions>;
-  /** Where each Generic entity's presences stand. */
+  /** Where each Generic entity's instances stand. */
   generics: Readonly<GenericStates>;
   followers: readonly string[];
   locationId: string | null | undefined;

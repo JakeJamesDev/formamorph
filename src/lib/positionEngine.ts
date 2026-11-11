@@ -1,13 +1,13 @@
 import { PLAYER_START } from "@/types";
 import type {
   Connection, DiscoveredEntity, EntityPositions, EntityStart, GenericStates, UniqueState, UniqueStates, PatrolStop, PositionHold,
-  PresenceState, ScheduleAction, ScheduleRange, ScheduleRow, Traversable, WanderPlace,
+  GenericEntityInstanceState, ScheduleAction, ScheduleRange, ScheduleRow, Traversable, WanderPlace,
 } from "@/types";
 import { reachableFrom, type LocationLink } from "@/lib/locationGraph";
 import { MINUTES_PER_DAY, nextDaypartEdge } from "@/lib/gameClock";
 
 /**
- * The position engine: where every Unique entity and every presence of a Generic entity is now. Pure: the same routines,
+ * The position engine: where every Unique entity and every Generic Entity Instance is now. Pure: the same routines,
  * book, scene and random source give the same result. Times are story minutes (`storyMinute`). Moves jump
  * straight to their target and are silent; the caller decides what to show.
  */
@@ -35,7 +35,7 @@ export interface PositionScene extends PlaceGraph {
   playerStart?: string;
 }
 
-/** Where each Unique entity stands with its engine state, and each Generic entity's presences. */
+/** Where each Unique entity stands with its engine state, and each Generic entity's instances. */
 export interface PositionBook {
   positions: EntityPositions;
   uniques: UniqueStates;
@@ -294,11 +294,11 @@ function replay(body: Body, start: EntityStart, reach: ReadonlySet<string>, curs
   }
 }
 
-/** One presence of a Generic entity placed for now: a new one begins at its Start's place, and one at the player's place
+/** One Generic Entity Instance placed for now: a new one begins at its Start's place, and one at the player's place
  *  stays until the player leaves. */
-function advancePresence(
-  start: EntityStart, saved: PresenceState | undefined, scene: PositionScene, random: () => number, connected: ConnectedCache,
-): PresenceState {
+function advanceGenericEntityInstance(
+  start: EntityStart, saved: GenericEntityInstanceState | undefined, scene: PositionScene, random: () => number, connected: ConnectedCache,
+): GenericEntityInstanceState {
   const { now, playerAt } = scene;
   const body: Body = saved
     ? { pos: saved.position, st: { startId: start.id, rowId: saved.rowId, lastRun: saved.lastRun, idleEnd: saved.idleEnd, stop: saved.stop } }
@@ -310,12 +310,12 @@ function advancePresence(
   return tidy({ position: body.pos ?? start.place, rowId, lastRun: now, idleEnd, stop });
 }
 
-/** Every presence of `routine`, one per Start. A record whose Start is gone is dropped. */
+/** Every Generic Entity Instance of `routine`, one per Start. A record whose Start is gone is dropped. */
 function advanceGeneric(
-  routine: Routine, saved: Readonly<Record<string, PresenceState>> | undefined, scene: PositionScene, random: () => number,
+  routine: Routine, saved: Readonly<Record<string, GenericEntityInstanceState>> | undefined, scene: PositionScene, random: () => number,
   connected: ConnectedCache,
-): Record<string, PresenceState> {
-  return Object.fromEntries(routine.starts.map((start) => [start.id, advancePresence(start, saved?.[start.id], scene, random, connected)]));
+): Record<string, GenericEntityInstanceState> {
+  return Object.fromEntries(routine.starts.map((start) => [start.id, advanceGenericEntityInstance(start, saved?.[start.id], scene, random, connected)]));
 }
 
 /** Strips undefined fields, so a saved state carries only what it holds. */
@@ -328,7 +328,7 @@ function tidy<T extends object>(st: T): T {
 /**
  * Every routine in `routines` placed for `scene.now`. A Unique entity: the Start rolled on first sight, the
  * schedule replayed since the last run, followers led to the player or left waiting, holds and waits released.
- * A Generic entity: each Start's presence replayed the same way. Characters outside `routines` keep their positions.
+ * A Generic entity: each Start's Generic Entity Instance replayed the same way. Characters outside `routines` keep their positions.
  */
 export function advancePositions(
   routines: readonly Routine[], book: PositionBook, scene: PositionScene, random: () => number,
@@ -340,8 +340,8 @@ export function advancePositions(
   for (const authored of routines) {
     const routine = resolveRoutine(authored, scene);
     if (routine.generic) {
-      const presences = advanceGeneric(routine, book.generics[routine.id], scene, random, connected);
-      if (Object.keys(presences).length) generics[routine.id] = presences;
+      const instances = advanceGeneric(routine, book.generics[routine.id], scene, random, connected);
+      if (Object.keys(instances).length) generics[routine.id] = instances;
       else delete generics[routine.id];
       continue;
     }
@@ -358,10 +358,10 @@ export function advancePositions(
   return { positions, uniques, generics };
 }
 
-/** The places each Generic entity's presences stand at, deduped, by Generic entity id. */
+/** The places each Generic entity's instances stand at, deduped, by Generic entity id. */
 export function genericPlaces(generics: Readonly<GenericStates>): Record<string, string[]> {
-  return Object.fromEntries(Object.entries(generics).map(([id, presences]) =>
-    [id, [...new Set(Object.values(presences).map((p) => p.position))]]));
+  return Object.fromEntries(Object.entries(generics).map(([id, instances]) =>
+    [id, [...new Set(Object.values(instances).map((p) => p.position))]]));
 }
 
 /** The saved Start of `routine`, as authored, if it still has it. */

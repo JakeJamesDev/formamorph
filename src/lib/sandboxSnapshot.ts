@@ -218,7 +218,7 @@ interface PlayLookup {
 
 /** The fields `entity` adds from play: its text resolved, where it stands, whether it follows, and its routine. */
 function playFields(
-  entity: Entity, { positions, presences, followers, waiting, routineNow }: Pick<SandboxState, 'positions' | 'presences' | 'followers' | 'waiting' | 'routineNow'>,
+  entity: Entity, { positions, genericPositions, followers, waiting, routineNow }: Pick<SandboxState, 'positions' | 'genericPositions' | 'followers' | 'waiting' | 'routineNow'>,
   resolve: ResolveText, { runtime, placeName }: PlayLookup,
 ): Partial<CodeEntity> {
   const at = positions?.[entity.id];
@@ -236,7 +236,7 @@ function playFields(
     description: resolve(entity.aiDescription ?? '', entity), summary: resolve(entity.aiSummary ?? '', entity),
     aliases: (entity.aliases ?? []).map((alias) => resolve(alias, entity)),
     pronouns: resolve(entity.pronouns ?? '', entity),
-    ...(at ? { locationId: at } : {}), locationIds: presences?.[entity.id] ?? entity.locations ?? [],
+    ...(at ? { locationId: at } : {}), locationIds: genericPositions?.[entity.id] ?? entity.locations ?? [],
     ...(followers?.includes(entity.id) ? { following: true } : {}),
     ...(waiting?.includes(entity.id) ? { waiting: true } : {}),
   };

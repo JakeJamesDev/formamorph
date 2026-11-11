@@ -120,7 +120,7 @@ describe("placedIn", () => {
 });
 
 describe("entitiesInPlay", () => {
-  it("lists a Generic entity once at each place its presences stand, and nowhere else it lists", () => {
+  it("lists a Generic entity once at each place its Generic Entity Instances stand, and nowhere else it lists", () => {
     const generics = { "bar-keep": { "bar-keep-1": { position: "docks", lastRun: 0 }, "bar-keep-2": { position: "docks", lastRun: 0 } } };
     const placed = entitiesInPlay(cast, { positions: {}, generics });
     expect(entityIdsAt("bar", placed)).toEqual(["alice"]);

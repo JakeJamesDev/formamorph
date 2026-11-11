@@ -175,7 +175,7 @@ describe('playerViewState', () => {
       entities: [WARDEN, STRANGER],
     },
     places: { locations: LOCATIONS, location: { id: 'gate', name: 'Gate' }, connections: CONNECTIONS },
-    positions: { warden: 'gate', stranger: 'gate' }, presences: { warden: ['gate', 'vault'], stranger: ['gate'] }, followers: ['stranger'],
+    positions: { warden: 'gate', stranger: 'gate' }, genericPositions: { warden: ['gate', 'vault'], stranger: ['gate'] }, followers: ['stranger'],
     itemCopies: COPIES, items: [item('key'), item('gem')], clock: {},
     memories: [
       { id: 'm1', turn: 1, timestamp: 0, day: 1, daypart: '', text: 'Digest 1.', custom: false, kept: false, inContext: true, pinned: false, forgotten: false },
@@ -205,7 +205,7 @@ describe('playerViewState', () => {
     expect(ids(cut.places?.locations)).toEqual(['gate', 'hall']);
     expect(cut.places?.locations[0].aiDescription).toBe('Gate player text.');
     expect(cut.positions).toEqual({ warden: 'gate' });
-    expect(cut.presences).toEqual({ warden: ['gate'] });
+    expect(cut.genericPositions).toEqual({ warden: ['gate'] });
     expect(cut.followers).toEqual([]);
     expect(ids(cut.itemCopies)).toEqual(['c1']);
     expect(ids(cut.items)).toEqual(['key']);

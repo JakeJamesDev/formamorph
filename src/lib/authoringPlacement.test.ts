@@ -24,7 +24,7 @@ const READ = `const at = (n) => locations[n].present.map((e) => e.name);
 const read = { smith: entities.Smith.location, companion: [entities.Companion.location, !!entities.Companion.following],
   present: { Yard: at("Yard"), Barn: at("Barn"), Field: at("Field"), Smithy: at("Smithy") } };`;
 /** The placement the opening gives: the Smith at its first Start, the companion following at the player's start
- *  (the Yard), the Herd at each place its presences stand at the start of the story. */
+ *  (the Yard), the Herd at each place its Generic Entity Instances stand at the start of the story. */
 const EXPECTED = {
   smith: 'Smithy', companion: ['Yard', true],
   present: { Yard: ['Companion'], Barn: ['Herd'], Field: ['Herd'], Smithy: ['Smith'] },
@@ -54,7 +54,7 @@ describe('an authoring run reads the cast as the opening places it (Q210)', () =
     const state = editorToolSnapshot(world).script.state;
     expect(state?.positions).toEqual({ smith: 'smithy', companion: 'yard' });
     expect(state?.followers).toEqual(['companion']);
-    expect(state?.presences).toEqual({ herd: ['field', 'barn'] });
+    expect(state?.genericPositions).toEqual({ herd: ['field', 'barn'] });
   });
 
   it('gives the sample Tool snapshot the authoring state', () => {

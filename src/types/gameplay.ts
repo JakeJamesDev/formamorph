@@ -90,7 +90,7 @@ export interface UniqueState {
 export type UniqueStates = Record<string, UniqueState>;
 
 /** Where one Start of a Generic entity stands, and its schedule state. Times are story minutes. */
-export interface PresenceState {
+export interface GenericEntityInstanceState {
   position: string;
   /** The row in force when the engine last ran. Absent = no row. */
   rowId?: string;
@@ -101,8 +101,8 @@ export interface PresenceState {
   stop?: number;
 }
 
-/** Generic entity id → Start id → that presence's state. */
-export type GenericStates = Record<string, Record<string, PresenceState>>;
+/** Generic entity id → Start id → that Generic Entity Instance's state. */
+export type GenericStates = Record<string, Record<string, GenericEntityInstanceState>>;
 
 /** Entity id → stat id → what one turn moved that stat's value. Unmoved stats are absent. */
 export type EntityStatChanges = Record<string, Record<string, number>>;

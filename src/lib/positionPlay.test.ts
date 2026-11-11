@@ -11,7 +11,7 @@ const world = (now: number, playerAt?: string, cast: Entity[] = [herd]) => posit
 const where = (book: typeof EMPTY_BOOK) => Object.fromEntries(Object.entries(book.generics.herd ?? {}).map(([id, p]) => [id, p.position]));
 
 describe('a Generic entity in play', () => {
-  it('stands once at each place a presence holds', () => {
+  it('stands once at each place a Generic Entity Instance holds', () => {
     const cast = openingCast([herd], locations, [], 'yard');
     // The opening hour is 08:00, so the grazer is out in the field and the sleeper in the barn.
     expect(entityIdsAt('field', cast)).toEqual(['herd']);
@@ -19,14 +19,14 @@ describe('a Generic entity in play', () => {
     expect(entityIdsAt('yard', cast)).toEqual([]);
   });
 
-  it('keeps a presence at the player place where the opening put it when the hour is set, and places the others again', () => {
+  it('keeps a Generic Entity Instance at the player place where the opening put it when the hour is set, and places the others again', () => {
     const opening = placeAll(EMPTY_BOOK, world(300, 'barn'));
     expect(where(opening)).toEqual({ grazer: 'barn', sleeper: 'barn' });
     expect(where(reseatForOpening(opening, world(600, 'barn')))).toEqual({ grazer: 'barn', sleeper: 'barn' });
     expect(where(reseatForOpening(opening, world(600, 'yard')))).toEqual({ grazer: 'field', sleeper: 'barn' });
   });
 
-  it('starts a presence away from the player on its Patrol afresh at the real hour, not from the opening hour\'s idle', () => {
+  it('starts a Generic Entity Instance away from the player on its Patrol afresh at the real hour, not from the opening hour\'s idle', () => {
     const flock: Entity = {
       id: 'herd', name: 'Flock', kind: 'generic', locations: ['barn', 'field'],
       starts: [{ id: 'grazer', place: 'barn', weight: 1, schedule: [{
@@ -37,7 +37,7 @@ describe('a Generic entity in play', () => {
     expect(where(reseatForOpening(opening, world(600, 'yard', [flock])))).toEqual({ grazer: 'barn' });
   });
 
-  it('sends a presence at a deleted place where its row puts it, and drops a Generic entity the world lost', () => {
+  it('sends a Generic Entity Instance at a deleted place where its row puts it, and drops a Generic entity the world lost', () => {
     const saved = { ...EMPTY_BOOK, generics: { herd: { grazer: { position: 'meadow', lastRun: 300 } }, lost: { a: { position: 'barn', lastRun: 300 } } } };
     const book = reconcileBook(saved, world(300));
     expect(where(book)).toEqual({ grazer: 'barn', sleeper: 'barn' });

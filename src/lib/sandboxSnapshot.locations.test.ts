@@ -52,9 +52,9 @@ describe('the snapshot’s locations in play', () => {
     expect(await read(playState(), PRESENT)).toEqual([['Hero', 'Tor', 'Sela'], ['Mira', 'Tor']]);
   });
 
-  it('lists a Generic entity once at each place its presences stand, and nowhere else it lists', async () => {
-    const presences = genericPlaces({ tor: { a: { position: 'gate', lastRun: 0 }, b: { position: 'gate', lastRun: 0 } } });
-    expect(await read(playState({ presences }), PRESENT)).toEqual([['Hero', 'Sela'], ['Mira', 'Tor']]);
+  it('lists a Generic entity once at each place its Generic Entity Instances stand, and nowhere else it lists', async () => {
+    const genericPositions = genericPlaces({ tor: { a: { position: 'gate', lastRun: 0 }, b: { position: 'gate', lastRun: 0 } } });
+    expect(await read(playState({ genericPositions }), PRESENT)).toEqual([['Hero', 'Sela'], ['Mira', 'Tor']]);
   });
 
   it('reads each entity’s place and follower state from play', async () => {

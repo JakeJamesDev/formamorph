@@ -79,7 +79,7 @@ describe('script move and follow on a Generic entity', () => {
     ['move', 'entities.Moths.move("Keep");'],
     ['follow', 'entities.Moths.follow();'],
     ['unfollow', 'entities.Moths.unfollow();'],
-  ])('%s changes nothing: no position, no follower, the presences keep their places', async (kind, code) => {
+  ])('%s changes nothing: no position, no follower, the Generic Entity Instances keep their places', async (kind, code) => {
     const book = placedBook(AWAY);
     const writes = await writesOf(book, AWAY, KIND_CAST, code);
     expect(writes?.entities?.map((w) => w.kind)).toEqual([kind]);
@@ -117,7 +117,7 @@ describe('location and present for each kind of entity', () => {
     expect(await reads(book, AWAY, 'locations.Square.present.some((e) => e.name === "Moths")')).toBe(false);
   });
 
-  it('reads a Generic entity at the places its presences have moved to, not at the places it lists', async () => {
+  it('reads a Generic entity at the places its Generic Entity Instances have moved to, not at the places it lists', async () => {
     const book = placedBook(AWAY);
     const moved = { ...book, generics: { moths: { m1: { ...book.generics.moths.m1, position: 'square' }, m2: book.generics.moths.m2 } } };
     expect(await reads(moved, AWAY, 'locations.Square.present.some((e) => e.name === "Moths")')).toBe(true);
