@@ -184,3 +184,9 @@ The user lifted Q27's limit of three revisions. Cloud (`default`), 100 cases × 
 - The model resists Unused in every wording: 50–65% of Unused labels come back Mentionable, in sublocations and in the player's space alike.
 - Rev 4 still misses the "about to act" Focus cases at 5/5: `tavern-toast` Sylvie, `sunk-silence` Bark Frogs, `rampage-harbor-crane` Navy Destroyer, `ember-barrow-hounds` Grave Hounds.
 - **Open:** the token arm now reports negative savings (−247 per turn) for both prompts, and a reply with every entity Focus renders more tokens than the full roster. The narration prompt changed after 2026-11-07, so the probe's trimmed render no longer matches it. Not investigated.
+
+**2026-11-11, token arm fixed (spec session).** The position engine places each entity from its Starts, so the probe's `locations` overrides stopped holding: the trimmed request carried every entity twice, and unlisted entities could enter a scene. Scene entities now lose their routine, and so does an unlisted entity whose routine names a scene place. A startup check renders every scene with all entities as Focus and requires the full roster's request.
+
+Rev 4 on cloud after the fix, 100 cases × 5 runs: Focus recall 84.6% (held 84.8%), tier match 66.8% (held 69.5%). Narration saves 298 ± 25 prompt tokens per turn, the classifier call costs 584, net −286.
+
+- **Open:** in `ember-vault-ask`, The Shade of Maelis is in neither the full nor the trimmed narration request.

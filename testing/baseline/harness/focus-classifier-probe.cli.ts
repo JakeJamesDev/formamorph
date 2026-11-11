@@ -23,6 +23,7 @@ import { pathToFileURL } from 'node:url';
 import { defaultFocusClassifierPrompt, defaultFocusClassifierUserPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
+import { routineNames } from '@/lib/entityKind';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { resolveEntityText, resolvePlaceholders, type ResolveOptions } from '@/lib/placeholders';
 import { placementLetter } from '@/lib/placementLetters';
@@ -99,8 +100,12 @@ function buildScene(scene: Scene): Built {
   const sceneIds = new Set([location.id, ...subIds]);
   const entities = world.entities.map((entity: Entity): Entity => {
     const at = assigned.get(entity.name);
-    if (at) return { ...entity, locations: [at], presence: undefined };
-    return { ...entity, locations: (entity.locations ?? []).filter((id) => !sceneIds.has(id)) };
+    // No kind and no Starts: the position engine leaves the entity where `locations` puts it.
+    if (at) return { ...entity, kind: undefined, starts: undefined, locations: [at], presence: undefined };
+    const locations = (entity.locations ?? []).filter((id) => !sceneIds.has(id));
+    // An unlisted entity whose routine names a scene place loses the routine, so it cannot enter the scene.
+    const routed = [...sceneIds].some((id) => routineNames(entity, id));
+    return routed ? { ...entity, kind: undefined, starts: undefined, locations } : { ...entity, locations };
   });
   for (const name of assigned.keys()) if (!entities.some((e) => e.name === name)) throw new Error(`${scene.world} has no entity ${name}`);
   // Every placeholder takes its first value, so all arms and runs read the same world.
@@ -385,6 +390,14 @@ function mergeArm() {
     const d = pairedDiff(f, t, higher);
     console.log(`${metric}: full ${meanCi(f).mean.toFixed(3)} · trimmed ${meanCi(t).mean.toFixed(3)} · better-by ${d.mean.toFixed(3)} [${d.low.toFixed(3)}, ${d.high.toFixed(3)}] · no worse: ${d.noWorse} · pairs ${paired.length}`);
   }
+}
+
+// An all-Focus tier map must render the full roster's request, or the scene's placements did not hold.
+for (const [id, b] of built) {
+  const c = file.cases.find((x) => x.scene === id);
+  if (!c) continue;
+  const allFocus = Object.fromEntries(b.roster.map((e): [string, FocusTier] => [e.name, 'Focus']));
+  if (JSON.stringify(narrationMessages(c, allFocus)) !== JSON.stringify(narrationMessages(c, null))) throw new Error(`scene ${id}: the trimmed roster does not match the full roster`);
 }
 
 if (dump) {
