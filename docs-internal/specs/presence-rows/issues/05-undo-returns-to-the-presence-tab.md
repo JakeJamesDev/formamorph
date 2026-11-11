@@ -1,6 +1,6 @@
 # 05: Undo Returns To The Presence Tab
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -23,9 +23,21 @@ Spec ruling: Q15.
 ## Acceptance criteria
 
 - [ ] After an edit to a routine row made in the Presence editor region, undo leaves the Locations section and the Presence tab on screen with that entity selected.
-- [ ] The same undo with the location panel on its Connections tab opens the entity's Routine tab.
-- [ ] The same undo for an entity with no row at the selected location opens the entity's Routine tab.
+- [ ] The same undo with the location panel on its Connections tab returns to the Presence tab and selects the entity (Q31).
+- [ ] The same undo with another location selected returns to the Origin's location and selects the entity (Q31).
 - [ ] Undo of an Add Entity leaves the Presence tab on screen with no selection and no marks on the canvas.
-- [ ] A hook-level test, beside the Connection-row reveal tests, fails when the Presence case is removed.
-- [ ] A request nobody took does not select a row on a later visit. The test fails when the request is kept.
-- [ ] The World Editor wiki page's text on undo matches. A changelog fragment describes the change.
+- [x] A hook-level test, beside the Connection-row reveal tests, fails when the Presence case is removed. `the Presence entity request` in `useHistoryReveal.test.tsx`.
+- [x] A request nobody took does not select a row on a later visit. The test fails when the request is kept. Proved by removing the drop: `drops a request nobody took when the next move follows` went red.
+- [x] The World Editor wiki page's text on undo matches. A changelog fragment describes the change. `docs/World-Editor-Locations.md`, `docs-internal/changelog.d/presence-rows-05.md`.
+
+## Landed
+
+Q31 changed criteria 2 and 3: the Step's Origin wins, so an undo of a Presence edit returns to the Origin's location and tab whatever is on screen, and selects the entity there. The ticket text above is updated.
+
+**Not verified**
+- Criteria 1 to 4 end to end in the editor. Covered by hook and pick-state tests (`useEntityPick.test.tsx`: row selects in the requested mode, no row leaves no pick, request waits for the tab). No DOM test drives undo through the whole World Editor.
+- Q28, showing the Start of the change on arrival. The shown-Start state belongs to ticket 04, so the reveal does not set it. After 04 lands, the request needs the Start id from the Origin field (`starts/<id>/...`).
+
+**For you**
+- Edit a routine row under a location's Presence list, switch to Connections, press Ctrl+Z. Look for the Presence tab with that entity selected.
+- Add an entity there, press Ctrl+Z. Look for the Presence tab with no entity selected and no marks on the canvas.

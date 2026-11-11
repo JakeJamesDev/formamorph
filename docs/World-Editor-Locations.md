@@ -236,6 +236,8 @@ Select a row to edit that entity under the list. It is the same editor as on the
 - 📍 **Click another location** to open it. The entity stays selected there when it can be there too.
 - ↔️ **Full screen** opens on the selected entity. Pick an entity there, and it is selected here when you come back.
 - 📑 **Another tab** closes the entity.
+- ↩️ **Undo and redo** of an edit made under the list return you to this location's **Presence** tab with the entity selected. If the edit changed **Known In**, that opens.
+- ↩️ **Undo of an added entity** leaves the tab open with no one selected.
 
 Select the route icon on a row to open that entity's **Routine** tab.
 

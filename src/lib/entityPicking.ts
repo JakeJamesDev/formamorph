@@ -17,6 +17,12 @@ const toggled = (ids: readonly string[], id: string) => (ids.includes(id) ? ids.
 /** What a canvas click writes while an entity is picked. */
 export type PickMode = "locations" | "knownIn";
 
+/** An entity to select on a location's Presence tab: `locations` is the Routine mode. */
+export interface PresenceReveal {
+  entityId: string;
+  mode: PickMode;
+}
+
 /** `entity` with `locationId` toggled for `mode`. For a Unique entity, a location click sets where it starts; for a
  *  Generic entity it adds a Start there or removes the ones that begin there. */
 export function togglePick(entity: Entity, mode: PickMode, locationId: string): Entity {

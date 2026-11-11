@@ -2,7 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import type { HistoryMoveEvent } from '@/contexts/worldRecorder';
 import { createHistory, diffSlice, record, type SliceEdit, type SliceName, type WorldSlices } from '@/lib/editorHistory';
-import type { Connection, Stat } from '@/types';
+import type { StepOrigin } from '@/lib/editorHistory';
+import type { Connection, Entity, GameLocation, Stat } from '@/types';
 import { useHistoryReveal, type HistoryRevealOptions } from './useHistoryReveal';
 
 /** The editor's side of a reveal: which calls an undo or redo makes on the tabs, the selection and the canvas. */
@@ -127,6 +128,57 @@ describe('useHistoryReveal', () => {
       expect(request()).toEqual({ id: 'c1' });
       move(moveOf('connections', [wire('c1')], world({ connections: [wire('c1')] })));
       expect(request()).toBeNull();
+    });
+  });
+
+  describe('the Presence entity request', () => {
+    const entity = (over: Record<string, unknown> = {}): Entity => ({ id: 'warden', name: 'Warden', ...over } as unknown as Entity);
+    const entityEdit = (before: Entity, after: Entity, origin: StepOrigin): HistoryMoveEvent => ({
+      steps: record(createHistory(), [diffSlice('entities', [before], [after]) as SliceEdit], { origin }).steps,
+      world: world({ entities: [before], locations: [{ id: 'harbor', name: 'Harbor' } as GameLocation] }),
+    });
+    const onPresence: StepOrigin = { tab: 'locations', ids: ['harbor'], subTab: 'presence', field: 'starts/s1/weight' };
+    const withLocations = () => setup({
+      visibleTabs: [{ value: 'entities' }, { value: 'locations' }],
+      holds: (tab, id) => tab === 'locations' && id === 'harbor',
+    });
+
+    it('returns to the location and asks for the entity in Routine mode', () => {
+      const { calls, view, move } = withLocations();
+      move(entityEdit(entity(), entity({ name: 'Warden 2' }), onPresence));
+      expect(calls.navigateToItem).toHaveBeenCalledWith('locations', 'harbor');
+      expect(calls.showSubTab).toHaveBeenCalledWith('locations', 'presence');
+      expect(view.result.current.presenceReveal).toEqual({ entityId: 'warden', mode: 'locations' });
+    });
+
+    it('asks for Known In mode when the Step changed Known In', () => {
+      const { view, move } = withLocations();
+      move(entityEdit(entity(), entity({ knownIn: 'nowhere' }), onPresence));
+      expect(view.result.current.presenceReveal).toEqual({ entityId: 'warden', mode: 'knownIn' });
+    });
+
+    it('asks for Routine mode when the Step added the entity, whatever its Known In holds', () => {
+      const { view, move } = withLocations();
+      const added = entity({ knownIn: 'nearby' });
+      move({
+        steps: record(createHistory(), [diffSlice('entities', [], [added]) as SliceEdit], { origin: onPresence }).steps,
+        world: world({ entities: [added], locations: [{ id: 'harbor', name: 'Harbor' } as GameLocation] }),
+      });
+      expect(view.result.current.presenceReveal).toEqual({ entityId: 'warden', mode: 'locations' });
+    });
+
+    it('asks for nothing when the edit was made on the entity panel', () => {
+      const { view, move } = withLocations();
+      move(entityEdit(entity(), entity({ name: 'Warden 2' }), { tab: 'entities', ids: ['warden'], subTab: 'routine' }));
+      expect(view.result.current.presenceReveal).toBeNull();
+    });
+
+    it('drops a request nobody took when the next move follows', () => {
+      const { view, move } = withLocations();
+      move(entityEdit(entity(), entity({ name: 'Warden 2' }), onPresence));
+      expect(view.result.current.presenceReveal).not.toBeNull();
+      move(moveOf('stats', [stat('a')], world({ stats: [stat('a')] })));
+      expect(view.result.current.presenceReveal).toBeNull();
     });
   });
 

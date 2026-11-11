@@ -254,7 +254,9 @@ describe('revealForMove', () => {
     it('rides with the Origin tab and record of a mirror', () => {
       const step = stepFrom({ tab: 'locations', ids: ['harbor'], subTab: 'presence', view: 'canvas' });
       expect(revealForMove([step], world, editor()))
-        .toEqual({ tab: 'locations', id: 'harbor', subTab: 'presence', view: 'canvas' });
+        .toEqual({
+          tab: 'locations', id: 'harbor', subTab: 'presence', view: 'canvas', presenceEntity: { entityId: 'wick', mode: 'locations' },
+        });
     });
 
     it('rides with the Origin tab alone when nothing was selected there', () => {

@@ -3,6 +3,7 @@ import type { HistoryMoveEvent, WorldHistoryControls } from '@/contexts/worldRec
 import { findHistoryField } from '@/lib/historyField';
 import { connectionIdOfField } from '@/lib/connectionEditing';
 import type { ConnectionOpen } from '@/managers/LocationConnections';
+import type { PresenceReveal } from '@/lib/entityPicking';
 import { revealForMove, type RevealTab } from '@/lib/historyReveal';
 import { useLanding, type LandingOptions } from '@/lib/surface/useLanding';
 import type { ConnectionReveal, SelectionReveal } from '@/managers/LocationCanvas';
@@ -49,6 +50,8 @@ export function useHistoryReveal(options: HistoryRevealOptions) {
   const [selectionReveal, setSelectionReveal] = useState<SelectionReveal | null>(null);
   const clearSelectionReveal = useCallback(() => setSelectionReveal(null), []);
   const [fieldReveal, setFieldReveal] = useState<FieldReveal | null>(null);
+  const [presenceReveal, setPresenceReveal] = useState<PresenceReveal | null>(null);
+  const clearPresenceReveal = useCallback(() => setPresenceReveal(null), []);
   const latest = useRef(options);
   latest.current = options;
   const { onMove } = options;
@@ -71,6 +74,7 @@ export function useHistoryReveal(options: HistoryRevealOptions) {
     });
     // A request the canvas never took, or a field landing still looking, must not outlive the move that made it.
     setSelectionReveal(null);
+    setPresenceReveal(null);
     setFieldReveal(null);
     landField(null);
     if (!target) return;
@@ -94,6 +98,7 @@ export function useHistoryReveal(options: HistoryRevealOptions) {
       setLocationView(LOCATION_VIEWS.find((view) => view.value === target.view)?.value ?? 'list');
     }
     if (target.subTab !== undefined) showSubTab(target.tab, target.subTab);
+    if (target.presenceEntity) setPresenceReveal(target.presenceEntity);
     // A field that never renders lands nothing, so the reveal ends at the selection (Q8).
     if (target.field !== undefined) {
       // The canvas shows a revealed Connection in its own panel, with no row to open.
@@ -104,5 +109,7 @@ export function useHistoryReveal(options: HistoryRevealOptions) {
     }
   }, [move, landField]);
 
-  return { connectionReveal, clearConnectionReveal, selectionReveal, clearSelectionReveal, fieldReveal };
+  return {
+    connectionReveal, clearConnectionReveal, selectionReveal, clearSelectionReveal, fieldReveal, presenceReveal, clearPresenceReveal,
+  };
 }

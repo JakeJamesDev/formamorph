@@ -890,7 +890,9 @@ const WorldEditorInner = ({
   const [connectionOpen, setConnectionOpen] = useState<ConnectionOpen | null>(null);
   const clearConnectionOpen = useCallback(() => setConnectionOpen(null), []);
   const openConnection = useCallback((id: string) => setConnectionOpen({ id }), []);
-  const { connectionReveal, clearConnectionReveal, selectionReveal, clearSelectionReveal, fieldReveal } = useHistoryReveal({
+  const {
+    connectionReveal, clearConnectionReveal, selectionReveal, clearSelectionReveal, fieldReveal, presenceReveal, clearPresenceReveal,
+  } = useHistoryReveal({
     onMove: historyMoves.onMove, touring, visibleTabs, holds: listHolds, setActiveTab, clearSearch, setLocationView,
     showSubTab, navigateToItem: navigateToBenchItem, showConnectionRow: setConnectionOpen,
   });
@@ -1096,7 +1098,9 @@ const WorldEditorInner = ({
     (entityId: string) => !!presenceLocationId && presenceLines(presenceLocationId, entities).some((line) => line.entity.id === entityId),
     [presenceLocationId, entities],
   );
-  const { entityPick } = useEntityPick({ hasPresenceRow });
+  const { entityPick } = useEntityPick({
+    hasPresenceRow, presenceOnScreen: !!presenceLocationId, reveal: presenceReveal, onRevealTaken: clearPresenceReveal,
+  });
   const locationsAdapter = useWorldLocationsAdapter({
     entityPick,
     selectedId: selections.locations ?? null,
