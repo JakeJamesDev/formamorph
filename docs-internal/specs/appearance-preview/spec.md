@@ -131,6 +131,7 @@ a drag writes   Change By = dragged value − model's own value
 ### Avatar icon
 
 - One pure function reads a trait's or stat's slider and color rows and returns the names of what it changes: cleaned slider names in row order, then Skin Color, Eye Color and Hair Color.
+- A cleaned slider name is the label Avatar Customization shows for that slider, from the same shared function. Names that clean to the same text show once.
 - The hover text opens with one line that says it changes the Avatar's appearance, then the names. Past four names it gives the rest as a count. It never gives a value. The Writing Guide governs the words.
 - The icon is the Avatar element icon.
 - It shows on traits in new-game trait selection and on the Traits tab in play, and on stats in the Stats tab in play.
@@ -164,5 +165,5 @@ A good test here drives a control and reads what was written or shown. It does n
 
 ## Further Notes
 
-- The eyedropper is confirmed for desktop Chrome and Edge from MDN's compatibility data. It is not yet confirmed in our desktop app; the ticket that adds it checks that first.
+- The eyedropper is confirmed for desktop Chrome and Edge from MDN's compatibility data. Ticket 02 confirmed it in the desktop app (Electron 42.5, Chromium 148) on the `app://` scheme. It needs a secure context.
 - Tickets for this spec start after Avatar Pick Rules tickets 04 and 05 land, because the Preview reads their lookup of the Avatars a row plays on. The eyedropper, the undo rules in the existing viewers, and the icon do not depend on it.
