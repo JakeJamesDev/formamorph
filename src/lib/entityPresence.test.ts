@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  entityIdsAt, entityIdsAtAny, withEntityLocations, setLocationRoster, dropLocationFromEntities,
+  entityIdsAt, entityIdsAtAny, withEntityLocations, withStartHere, dropLocationFromEntities,
   entitiesInPlay, positionedCast, placedIn,
   knownInOf, withKnownIn, toggleKnownInPick, knownHere,
 } from "./entityPresence";
@@ -67,33 +67,18 @@ describe("withEntityLocations", () => {
   });
 });
 
-describe("setLocationRoster (location-first editing writes through to the entities)", () => {
-  it("adds a Start with no rows to newcomers and removes the Starts there from anyone dropped", () => {
-    const next = setLocationRoster("bar", ["gull", "alice"], cast);
-    expect(entityIdsAt("bar", next)).toEqual(["alice", "gull"]);
-    const newcomer = next.find((e) => e.id === "gull")!;
-    expect(newcomer.starts?.map((s) => [s.place, s.schedule])).toEqual([["docks", []], ["bar", []]]);
-    // Removing Bartender from the Bar leaves their other Start alone.
-    expect(next.find((e) => e.id === "bar-keep")!.starts?.map((s) => s.id)).toEqual(["bar-keep-2"]);
-    expect(next.find((e) => e.id === "bar-keep")!.locations).toEqual(["docks"]);
+describe("withStartHere (Add Entity on a location)", () => {
+  it("gives a Generic entity a Start here with weight 1 and no rows", () => {
+    const next = withStartHere(gull, "bar");
+    expect(next.starts?.map((s) => [s.place, s.weight, s.schedule])).toEqual([["docks", 1, []], ["bar", 1, []]]);
+    expect(next.locations).toEqual(["docks", "bar"]);
   });
 
-  it("leaves untouched entities by reference, so unrelated editors don't re-render", () => {
-    const next = setLocationRoster("bar", ["alice", "bar-keep"], cast);
-    expect(next[0]).toBe(alice);
-    expect(next[2]).toBe(gull);
-  });
-
-  it("never writes a Unique entity, whose places come from its routine", () => {
-    const next = setLocationRoster("bar", [], [...cast, sailor]);
-    expect(next[4]).toBe(sailor);
-    expect(setLocationRoster("cellar", ["sailor"], [sailor])[0]).toBe(sailor);
-  });
-
-  it("keeps a Generic entity's last Start when its only place is cleared", () => {
-    const next = setLocationRoster("bar", [], cast);
-    expect(next[0]).toBe(alice);
-    expect(entityIdsAt("bar", next)).toEqual(["alice"]);
+  it("gives a Unique entity one more Start here and keeps its other Starts as they are", () => {
+    const next = withStartHere(sailor, "cellar");
+    expect(next.starts?.slice(0, 2)).toEqual(sailor.starts);
+    expect(next.starts).toHaveLength(3);
+    expect(next.starts?.[2]).toMatchObject({ place: "cellar", weight: 1, schedule: [] });
   });
 });
 

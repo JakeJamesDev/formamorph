@@ -67,33 +67,28 @@ function openPresence(name: string) {
   fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Location Fields' })).getByRole('tab', { name: 'Presence' }));
 }
 
-describe('the Presence tab: Entities', () => {
-  it('offers Generic entities only, and adding one is one undo step', async () => {
+describe('the Presence tab: Add Entity', () => {
+  it('offers each Unique and Generic entity with no row here, and adding one is one undo step', async () => {
     const user = userEvent.setup();
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openPresence('Tavern');
-    await user.click(screen.getByRole('combobox', { name: /Select entities/ }));
-    const names = screen.getAllByRole('option').map((o) => o.getAttribute('aria-label') ?? o.textContent ?? '');
-    expect(names.filter((n) => /, (not )?selected$/.test(n))).toEqual(['Crowd, selected', 'Moths, not selected', 'Rats, not selected']);
+    await user.click(screen.getByRole('combobox', { name: 'Add Entity' }));
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Moths', 'Rats', 'Queen']);
 
-    await user.click(await screen.findByRole('option', { name: 'Moths, not selected' }));
-    await user.keyboard('{Escape}');
+    await user.click(await screen.findByRole('option', { name: 'Moths' }));
     expect(ctx().entities.find((e) => e.id === 'moths')!.locations).toEqual(['tavern']);
 
     await undo();
     expect(ctx().entities.find((e) => e.id === 'moths')!.locations).toBeUndefined();
   });
-});
 
-describe('the Presence tab: Entities, for a Generic entity that only visits', () => {
-  it('leaves a Generic entity unticked when only a row brings it here, and adds it no Start when another Generic entity is picked', async () => {
+  it('does not offer a Generic entity that only a row brings here, and adds no Start to it when another entity is added', async () => {
     const user = userEvent.setup();
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openPresence('Cellar');
-    await user.click(screen.getByRole('combobox', { name: /Select entities/ }));
-    expect(screen.getByRole('option', { name: 'Rats, not selected' })).toBeTruthy();
-    await user.click(await screen.findByRole('option', { name: 'Moths, not selected' }));
-    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('combobox', { name: 'Add Entity' }));
+    expect(screen.queryByRole('option', { name: 'Rats' })).toBeNull();
+    await user.click(await screen.findByRole('option', { name: 'Moths' }));
     expect(ctx().entities.find((e) => e.id === 'rats')!.starts?.map((s) => s.place)).toEqual(['yard']);
     expect(ctx().entities.find((e) => e.id === 'moths')!.starts?.map((s) => s.place)).toEqual(['cellar']);
   });

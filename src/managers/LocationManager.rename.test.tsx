@@ -52,7 +52,6 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
     />
   ),
 }));
-vi.mock('@/components/ui/multi-select', () => ({ MultiSelect: () => null }));
 vi.mock('@/components/AiGenerateButton', () => ({ default: () => null }));
 vi.mock('./LocationConnections', () => ({ default: () => null }));
 vi.mock('./ImageTagsField', () => ({ default: () => null }));

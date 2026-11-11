@@ -43,7 +43,7 @@ const WORLD: World = panelWorld({
 /** Every field label the panel shows, in document order. Two of these are also editor tab names, so the
  *  match is taken from the panel body rather than from the whole editor. */
 const FIELD_LABELS =
-  /^(Name|Player-Facing Description|AI-Facing Description|AI-Facing Summary|Entities|Background Image|Image Tags|Ambient Sound|Placeholder Pins)$/;
+  /^(Name|Player-Facing Description|AI-Facing Description|AI-Facing Summary|Entities Here|Background Image|Image Tags|Ambient Sound|Placeholder Pins)$/;
 
 const panelLabels = () =>
   screen.queryAllByText(FIELD_LABELS)
@@ -108,7 +108,7 @@ describe('the World Editor location panel tabs', () => {
     renderLocationsTab(WORLD, 'advanced');
     selectLocation('The Veilwood');
     openPanelTab('Presence');
-    expect(panelLabels()).toEqual(['Entities']);
+    expect(panelLabels()).toEqual(['Entities Here']);
     expect(screen.queryByTestId('connection-row')).not.toBeInTheDocument();
     openPanelTab('Connections');
     expect(panelLabels()).toEqual([]);
@@ -149,7 +149,7 @@ describe('the World Editor location panel tabs', () => {
     openPanelTab('Presence');
     fireEvent.click(treeRow('The Hollow'));
     expect(panelTab('Presence')).toHaveAttribute('aria-selected', 'true');
-    expect(panelLabels()).toEqual(['Entities']);
+    expect(panelLabels()).toEqual(['Entities Here']);
   });
 
 });

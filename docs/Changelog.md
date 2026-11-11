@@ -62,6 +62,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The character and dictionary editors in your library can close every group at once.** Select **Collapse all**, right of the filter box, and again to open them all. Groups stay closed until you close the editor.
   - **Entity Presence:**
     - **Undo and redo of an edit made under a location's Presence list bring you back to that entity there.** The location and the Presence tab open, and the entity is selected. Undo an added entity, and the tab stays with no one selected.
+  - **Presence Rows:**
+    - **A location's Presence tab adds and removes entities with Add Entity and a remove button.** Add a Unique or Generic entity from the select. Remove a Generic entity from its row. Known Here rows now remove with an icon button.
   - **In the World Editor, an entity with only a Stranger Description now starts as a stranger.** In play, you see its Name and that description until you meet it. Stranger Name now sits beside Name, and Stranger Description under Player-Facing Description. Items' Unidentified fields match, and each field has its own help button.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.

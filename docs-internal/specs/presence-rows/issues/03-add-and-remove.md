@@ -1,6 +1,6 @@
 # 03: Add And Remove
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -27,16 +27,26 @@ Spec rulings: Q5, Q8, Q13, Q14, Q19.
 
 ## Acceptance criteria
 
-- [ ] The select lists an entity with no row here and omits one that has a row. The Custom Persona is never listed.
-- [ ] Adding a Generic entity gives it a Start here and a row with "begins here".
-- [ ] Adding a Unique entity with two Starts gives it a third at this location, and the first two are unchanged.
-- [ ] The added entity is the selected row, and the editor shows the new Start.
-- [ ] One undo after an add removes the Start and the row.
-- [ ] The remove button on a Generic row removes its Starts here, and the row goes.
-- [ ] For a Generic entity whose only Start is here, the remove button is disabled and its tooltip states the reason. The test fails when the button is enabled.
-- [ ] A Unique row has no remove button.
-- [ ] No multi-select of entities is on the tab.
-- [ ] A Known Here row's remove control has no visible word, an accessible name that names the entity, and still removes the pick.
+- [x] The select lists an entity with no row here and omits one that has a row. The Custom Persona is never listed. (presenceAddRemove and locationPresence tests)
+- [x] Adding a Generic entity gives it a Start here and a row with "begins here". (presenceAddRemove)
+- [x] Adding a Unique entity with two Starts gives it a third at this location, and the first two are unchanged. (presenceAddRemove; withStartHere unit test)
+- [x] The added entity is the selected row, and the editor shows the new Start. (presenceAddRemove: aria-current row, Start 2 pressed, "Starts at Tavern."; fails with the show call removed)
+- [x] One undo after an add removes the Start and the row. (presenceAddRemove; locationPresence)
+- [x] The remove button on a Generic row removes its Starts here, and the row goes. (presenceAddRemove)
+- [x] For a Generic entity whose only Start is here, the remove button is disabled and its tooltip states the reason. The test fails when the button is enabled. (presenceAddRemove; failed with the guard removed)
+- [x] A Unique row has no remove button. (presenceAddRemove)
+- [x] No multi-select of entities is on the tab. (presenceAddRemove)
+- [x] A Known Here row's remove control has no visible word, an accessible name that names the entity, and still removes the pick. (LocationKnownHere test)
 - [ ] The copy sweep gives no notice on the new strings.
-- [ ] Frames: `.scratch/frames/presence-add-remove-dark.png` and `-light.png`, at 1440 wide, with the Add Entity select open.
-- [ ] The Locations wiki page describes Add Entity, the remove button and its disabled case; the Entities wiki page's text on setting a place from either side matches. Help vectors are rebuilt for the changed sections. A changelog fragment describes the change.
+- [x] Frames: `.scratch/frames/presence-add-remove-dark.png` and `-light.png`, at 1440 wide, with the Add Entity select open. (Playwright at 1440x900)
+- [x] The Locations wiki page describes Add Entity, the remove button and its disabled case; the Entities wiki page's text on setting a place from either side matches. Help vectors are rebuilt for the changed sections. A changelog fragment describes the change. (wiki pages, `build:help-vectors`, `presence-rows-03.md`)
+
+## Landed
+
+**Not verified**
+- The copy sweep gives no notice on the new strings: `copy-sweep` was not run. The strings were written from a facts list.
+
+**For you**
+- Read the disabled remove tooltip, "{name} begins at no other location, so it stays here", on a Generic row that begins nowhere else.
+- Rows without a remove button keep an empty column when another row has one, so the route icons line up. Look at Presence on The White Room.
+- `docs/Changelog.md` still holds an older Routines line that names the "Entities picker". A ticket branch cannot edit it.

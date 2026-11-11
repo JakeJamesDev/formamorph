@@ -35,7 +35,9 @@ describe('LocationKnownHere', () => {
 
   it("removes only this location's own pick", () => {
     const onChange = renderAt([herald]);
-    fireEvent.click(within(row('Herald')).getByRole('button', { name: 'Removes this location from Herald’s Known In' }));
+    const button = within(row('Herald')).getByRole('button', { name: 'Remove Herald from Known Here' });
+    expect(button).toHaveTextContent('');
+    fireEvent.click(button);
     expect(onChange).toHaveBeenCalledWith({ ...herald, knownIn: ['rosewood'] });
   });
 

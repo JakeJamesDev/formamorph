@@ -50,7 +50,6 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
   default: (props: { label: string; value: string }) => <input readOnly aria-label={props.label} value={props.value} />,
   PlaceholderNameField: (props: { value: string }) => <input readOnly value={props.value} />,
 }));
-vi.mock('@/components/ui/multi-select', () => ({ MultiSelect: () => null }));
 vi.mock('@/components/AiGenerateButton', () => ({ default: () => null }));
 vi.mock('./LocationConnections', () => ({ default: () => null }));
 vi.mock('./ImageTagsField', () => ({ default: () => null }));

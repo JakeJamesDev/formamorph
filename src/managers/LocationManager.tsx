@@ -1,13 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useRenameField } from '@/lib/useCodeRename';
 import { statCodeName } from '@/lib/statCodeNames';
 import { useGameData } from '@/contexts/GameDataContext';
 import { entitiesInTreeOrder } from '@/lib/entityGroupTree';
-import { setLocationRoster, startsAt } from '@/lib/entityPresence';
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { MultiSelect } from "@/components/ui/multi-select";
 import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
 import AiGenerateButton from "@/components/AiGenerateButton";
 import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
@@ -15,8 +13,6 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { SoundUpload } from '../lib/UtilityComponents';
 import { LocationImageField } from './LocationImageField';
 import LocationConnections, { type ConnectionOpen } from './LocationConnections';
-import { isGeneric } from '@/lib/entityKind';
-import { Hint } from '@/components/ui/typography';
 import LocationKnownHere from './LocationKnownHere';
 import LocationEntitiesHere from './LocationEntitiesHere';
 import type { EntityPick } from './useEntityPick';
@@ -85,25 +81,6 @@ const LocationManager = ({ location, tab, onTabChange, focusField, connectionOpe
     const found = world.locations.find((l) => l.id === id);
     return found ? label(found.name) : 'Unknown Location';
   };
-  // The Generic entities with a Start here: what the picker shows and what its write compares against.
-  const genericIdsHere = treeOrder.filter((e) => isGeneric(e) && startsAt(e, location.id)).map((e) => e.id);
-  // Remounts the picker when a Generic entity keeps its last Start, so it shows the Generic entity still ticked.
-  const [refusals, setRefusals] = useState(0);
-  // The Generic entities the last pick could not remove, for the location they were refused at.
-  const [refused, setRefused] = useState<{ locationId: string; names: string[] }>({ locationId: '', names: [] });
-  const handleEntitiesChange = (ids: string[]) => {
-    const before = new Map(entities.map((e) => [e.id, e]));
-    // Only the entities whose membership actually moved are written through.
-    const next = setLocationRoster(location.id, ids, entities);
-    next.forEach((entity) => {
-      if (before.get(entity.id) !== entity) updateEntity(entity);
-    });
-    const kept = next.filter((e) => isGeneric(e) && !ids.includes(e.id) && startsAt(e, location.id));
-    setRefused({ locationId: location.id, names: kept.map(entityLabel) });
-    if (kept.length) setRefusals((n) => n + 1);
-  };
-  const refusedNames = refused.locationId === location.id ? refused.names : [];
-
   // Before the reveal, which is a timer behind this render: the field it looks for has to be mounting by
   // then. A key no tab claims leaves the panel where the author put it.
   useEffect(() => {
@@ -199,21 +176,6 @@ const LocationManager = ({ location, tab, onTabChange, focusField, connectionOpe
       </PanelTabContent>
 
       <PanelTabContent value="presence">
-        <div className="space-y-2" {...fieldFrame('entities')}>
-          <Label>Entities</Label>
-          <MultiSelect
-            key={`${editingLocation.id}:${refusals}`}
-            options={treeOrder.filter(isGeneric).map((e) => ({ label: entityLabel(e), value: e.id }))}
-            defaultValue={genericIdsHere}
-            onValueChange={handleEntitiesChange}
-            placeholder="Select entities"
-          />
-          {refusedNames.length > 0 && (
-            <Hint role="status" data-testid="entities-refusal">
-              {`${new Intl.ListFormat('en', { type: 'conjunction' }).format(refusedNames)} can't be removed here. ${refusedNames.length === 1 ? 'It begins' : 'Each begins'} at no other location.`}
-            </Hint>
-          )}
-        </div>
         <LocationEntitiesHere
           locationId={editingLocation.id}
           entities={treeOrder}

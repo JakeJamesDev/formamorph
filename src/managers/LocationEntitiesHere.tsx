@@ -1,9 +1,15 @@
 import { useMemo, useRef, type KeyboardEvent } from 'react';
-import { Route, X } from 'lucide-react';
+import { Route, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint, Meta } from '@/components/ui/typography';
+import { SelectOptions } from '@/components/SelectOptions';
+import { canRemoveGenericStartsAt, isGeneric, isUnique, withoutGenericStartsAt } from '@/lib/entityKind';
+import { startsAt, withStartHere } from '@/lib/entityPresence';
+import { fieldFrame } from '@/lib/historyField';
+import { showRoutineStart } from '@/lib/routineSelection';
 import { presenceLines } from '@/lib/locationPresenceReasons';
 import { cn } from '@/lib/utils';
 import { EntityPickBody, type PickState } from '@/managers/EntityPickCard';
@@ -39,6 +45,26 @@ export default function LocationEntitiesHere({ locationId, entities, labelOf, on
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const selected = pick ? lines.find((line) => line.entity.id === pick.entityId)?.entity : undefined;
   const selectedAt = selected ? lines.findIndex((line) => line.entity === selected) : -1;
+
+  // Only a Generic entity that begins here has a remove button; the other rows keep its column so the icons line up.
+  const removable = (entity: Entity) => isGeneric(entity) && startsAt(entity, locationId);
+  const anyRemovable = lines.some((line) => removable(line.entity));
+
+  // The cast with no row here, in the order given. The persona has no kind, so it is never listed.
+  const addable = useMemo(() => {
+    const listed = new Set(lines.map((line) => line.entity.id));
+    return entities.filter((e) => (isGeneric(e) || isUnique(e)) && !listed.has(e.id));
+  }, [lines, entities]);
+
+  const add = (id: string) => {
+    const entity = addable.find((e) => e.id === id);
+    if (!entity) return;
+    const next = withStartHere(entity, locationId);
+    onChange(next);
+    // The editor opens on the Start this added.
+    showRoutineStart(entity.id, next.starts?.[next.starts.length - 1]?.id ?? null);
+    onPickChange?.({ entityId: entity.id, mode: pick?.mode ?? 'locations' });
+  };
 
   const toggle = (entity: Entity) => onPickChange?.(selected === entity ? null : { entityId: entity.id, mode: pick?.mode ?? 'locations' });
 
@@ -90,6 +116,27 @@ export default function LocationEntitiesHere({ locationId, entities, labelOf, on
                     </Button>
                   </Tip>
                 )}
+                {!removable(entity) && anyRemovable && <span aria-hidden className="h-8 w-8 shrink-0" />}
+                {removable(entity) && (
+                  canRemoveGenericStartsAt(entity, locationId)
+                    ? (
+                      <Tip tip={`Remove ${label} from this location`}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => onChange(withoutGenericStartsAt(entity, locationId))}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </Tip>
+                    )
+                    : (
+                      // A disabled button takes no pointer events, so the span carries the reason.
+                      <Tip tip={`${label} begins at no other location, so it stays here`}>
+                        <span tabIndex={0} className="inline-flex shrink-0 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" disabled aria-label={`Remove ${label} from this location`}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </span>
+                      </Tip>
+                    )
+                )}
               </li>
             );
           })}
@@ -110,6 +157,18 @@ export default function LocationEntitiesHere({ locationId, entities, labelOf, on
           </section>
         )
         : lines.length > 0 && onPickChange && <Hint>Select an entity to edit its Routine and Known In</Hint>}
+      {addable.length > 0 && (
+        <div {...fieldFrame('entities')}>
+          <Select value="" onValueChange={add}>
+            <SelectTrigger aria-label="Add Entity">
+              <SelectValue placeholder="Add an entity here" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectOptions options={addable.map((e) => ({ value: e.id, label: labelOf(e) }))} />
+            </SelectContent>
+          </Select>
+        </div>
+      )}
     </div>
   );
 }

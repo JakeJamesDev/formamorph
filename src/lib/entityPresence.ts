@@ -1,8 +1,9 @@
 import type { Entity, EntityPositions, GameLocation, GenericStates, PersonaRef } from "@/types";
 import { ancestors, parentLookup } from "@/lib/ancestors";
 import {
-  isGeneric, routineNames, withGenericPlacesMapped, withGenericStart, withoutGenericStartsAt, withoutRoutinePlace,
+  isGeneric, routineNames, withGenericPlacesMapped, withGenericStart, withoutRoutinePlace,
 } from "@/lib/entityKind";
+import { withNewStart } from "@/lib/routineEditing";
 import { genericPlaces } from "@/lib/positionEngine";
 import { randomUUID } from "@/lib/uuid";
 
@@ -51,19 +52,9 @@ export function placedIn(entity: Entity, map: Readonly<Record<string, string>>):
 /** Whether a Start of `entity` begins at `locationId`. */
 export const startsAt =(entity: Entity, locationId: string) => (entity.starts ?? []).some((start) => start.place === locationId);
 
-/** `entities` with a Start added at `locationId` to each picked Generic entity that has none there, and the Starts there
- *  removed from each Generic entity not picked — the write side of a location-first edit. A Generic entity keeps its last Start,
- *  and a Unique entity is never touched. Entities that don't change are returned by reference. */
-export function setLocationRoster(locationId: string, entityIds: string[], entities: Entity[]): Entity[] {
-  const wanted = new Set(entityIds);
-  return entities.map((entity) => {
-    if (!isGeneric(entity)) return entity;
-    const has = startsAt(entity, locationId);
-    const should = wanted.has(entity.id);
-    if (has === should) return entity;
-    return should ? withGenericStart(entity, locationId, randomUUID) : withoutGenericStartsAt(entity, locationId);
-  });
-}
+/** `entity` with one more Start at `locationId`, weight 1 and no rows. Its other Starts stay. */
+export const withStartHere = (entity: Entity, locationId: string): Entity =>
+  isGeneric(entity) ? withGenericStart(entity, locationId, randomUUID) : withNewStart(entity, locationId, randomUUID);
 
 /** Where entities stand in play: each Unique entity's position, and each Generic entity's presences. */
 export interface Standings {

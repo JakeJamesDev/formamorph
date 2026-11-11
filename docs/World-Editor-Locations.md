@@ -165,7 +165,7 @@ Select a location in the list to open its panel. The tab you pick stays open whe
 | Tab | Holds | Mode |
 |---|---|---|
 | **Details** | **Name**, **Starting Location** and the descriptions | Simple and Advanced |
-| **Presence** | **Entities**, **Entities Here** and **Known Here** | Simple and Advanced |
+| **Presence** | **Entities Here**, **Add Entity** and **Known Here** | Simple and Advanced |
 | **Connections** | The location's [Connections](#connections), one row each | Simple and Advanced |
 | **Items** | The location's [Starting Items](World-Editor-Items#starting-items) | Simple and Advanced |
 | **Media** | **Background Image**. In Advanced mode, also **Image Tags** and **Ambient Sound**. | Simple and Advanced |
@@ -220,13 +220,20 @@ The default prompt gives the **narrator** the current location in full. It gives
 <!-- keywords: who is here, npcs in room, assign characters, populate, residents, occupants, put npc here -->
 <!-- route: worldEditorLocation.presence -->
 
-The **Entities** picker on the **Presence** tab lists your Generic entities, such as a crowd or a herd. An edit here adds or removes where an entity begins, the same as on its **Routine** tab.
+**Add Entity** is under the **Entities Here** list on the **Presence** tab. It puts any Unique or Generic entity at this location. An edit here sets where an entity begins, the same as on its **Routine** tab.
 
-A Unique entity isn't in this picker. Set where it begins on the entity's **Routine** tab, or click a location on the full-screen Locations Canvas.
+The select lists each entity that has no row here. The Custom Persona isn't listed. When every entity has a row, the select is not shown.
 
-Pick a Generic entity to make it begin at this location. It gets a new place to begin here with no rows, and you add rows on its **Routine** tab. Clear it to remove every place it begins at here, with their rows. Its other places stay as they are. **Undo** brings them all back in one step.
+- A Generic entity gets a new place to begin here, with no rows.
+- A Unique entity gets one more place to begin here, with a weight of 1 and no rows. Its other places stay as they are.
 
-A Generic entity that begins at no other location can't be cleared. It stays picked, and a line under the picker says so. Give it another place to begin on its **Routine** tab, then clear it here.
+The new entity is selected, so you can set its routine at once. **Undo** takes it back in one step.
+
+A Generic entity that begins here has a 🗑 button at the end of its row. It removes every place the entity begins at here, with their rows. Its other places stay as they are. **Undo** brings them back in one step.
+
+A Generic entity that begins at no other location can't be removed. The button is off, and its tooltip says why. Give the entity another place to begin on its **Routine** tab, then remove it here.
+
+A Unique entity has no remove button. Change its **Routine** to take it out of this location.
 
 **Entities Here** lists every entity that can be at this location, one row each, with its reasons. Reasons that don't fit are cut off at the row's end.
 
@@ -251,7 +258,7 @@ An entity with several reasons shows them on one line.
 
 A Generic entity begins at all of its places, so its line shows no chance. It shows each reason once, however many of its places use this location.
 
-- **Known Here** lists entities that aren't at this location but that the entities here may speak of. Their summaries reach the AI anywhere inside this location. Add one with **Make an entity known here**.
+- **Known Here** lists entities that aren't at this location but that the entities here may speak of. Their summaries reach the AI anywhere inside this location. Add one with **Make an entity known here**. The 🗑 button on a row removes that entity from the list.
 
 ### Who Joins the Scene
 <!-- keywords: npc walks in, character comes over, pulled into scene, joins the player, comes down, comes from next room, wont come, stays at counter -->
