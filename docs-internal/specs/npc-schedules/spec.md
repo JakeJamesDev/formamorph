@@ -1,7 +1,7 @@
 # Spec: NPC Schedules
 
 Status: done
-Status note: 2026-11-10. Tickets 01–24 done, last landing 89aff2643. Review: spec text corrected (Q176), and one gap fixed before the close (a missing Can Also Go read as Anywhere in the editor). Closed red: electron/llamaServer.test.mjs, src/views/MainMenu.cudaNotice.test.tsx, both outside this effort.
+Status note: 2026-11-10. Tickets 01–24 done, last landing 89aff2643. Review: spec text corrected (Q176), and one gap fixed before the close (a missing Can Also Go read as Anywhere in the editor). Closed red: electron/llamaServer.test.mjs, src/views/MainMenu.cudaNotice.test.tsx, both outside this effort. Ticket 25 landed f26def9e5 for the first; the second waits for the merge of `worktree-fix-cuda-notice-popover-hold`, so ticket 25 stays ready-for-human.
 Spec session: npc-schedules — spec
 
 Each character in a world starts somewhere, keeps a daily routine of staying, wandering or patrolling, can be taken along or told to wait by the player, and is never in two places at once or stuck where the story can't reach them. Locations say which neighbors are near enough to call over.
