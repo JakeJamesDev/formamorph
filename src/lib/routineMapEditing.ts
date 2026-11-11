@@ -1,4 +1,4 @@
-import { isGeneric, toggleGenericStart } from '@/lib/entityKind';
+import { isGeneric, toggleGenericStart, traversableOf } from '@/lib/entityKind';
 import { placesOf, startReach, type PlaceGraph } from '@/lib/positionEngine';
 import { NEW_STOP_IDLE, withRow } from '@/lib/routineEditing';
 import type { RoutineSelection } from '@/lib/routineSelection';
@@ -65,7 +65,7 @@ export function routineMapClick(entity: Entity, selection: RoutineSelection, pla
   }
   if (!target) return null;
   if (!selected) {
-    const list = entity.traversable ?? 'anywhere';
+    const list = traversableOf(entity);
     if (list === 'anywhere') return null;
     const traversable = list.includes(place) ? list.filter((p) => p !== place) : [...list, place];
     return { entity: { ...entity, traversable }, label: 'Change Can Also Go' };
@@ -127,7 +127,7 @@ export function routineMapStatus(entity: Entity, selection: RoutineSelection): R
   if (!selected && isGeneric(entity)) return { text: 'Click a location to add or remove it' };
   if (!target) return { text: 'Add a Start to give this entity a routine' };
   if (!selected) {
-    return (entity.traversable ?? 'anywhere') === 'anywhere'
+    return traversableOf(entity) === 'anywhere'
       ? { text: 'Select a row to edit its locations here' }
       : { text: 'Click a location to add or remove it from "Can Also Go"' };
   }

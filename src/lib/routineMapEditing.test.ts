@@ -125,6 +125,11 @@ describe('a click with no row selected', () => {
     expect(click(null, 'inn', farrier(['inn']))?.entity.traversable).toEqual([]);
   });
 
+  it('reads a missing Can Also Go as an empty list, as play does', () => {
+    const { traversable: _absent, ...migrated } = farrier();
+    expect(click(null, 'inn', migrated as Entity)?.entity.traversable).toEqual(['inn']);
+  });
+
   it('does nothing under Anywhere', () => {
     expect(click(null, 'inn', farrier('anywhere'))).toBeNull();
   });

@@ -1,4 +1,4 @@
-import { isGeneric } from '@/lib/entityKind';
+import { isGeneric, traversableOf } from '@/lib/entityKind';
 import { placesOf, startReach, type PlaceGraph } from '@/lib/positionEngine';
 import type { ActionKind } from '@/lib/routineEditing';
 import type { RoutineSelection } from '@/lib/routineSelection';
@@ -112,7 +112,7 @@ export function routineView(entity: Entity, selection: RoutineSelection, graph: 
   if (!start) return { marks, lines };
   const selected = start.schedule.find((r) => r.id === selection.rowId) ?? null;
 
-  const traversable = generic ? 'anywhere' : entity.traversable ?? 'anywhere';
+  const traversable = generic ? 'anywhere' : traversableOf(entity);
   if (traversable === 'anywhere') {
     for (const id of startReach(start.place, graph)) mark(id, { kind: 'plain' });
   } else {

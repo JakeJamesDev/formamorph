@@ -138,6 +138,13 @@ describe('reach', () => {
     expect(markOf(v, 'island')?.kind).toBe('faded');
   });
 
+  it('reads a missing Can Also Go as an empty list, as play does', () => {
+    const { traversable: _absent, ...migrated } = farrier();
+    const v = view(migrated as Entity);
+    expect(markOf(v, 'village')?.kind).toBe('faded');
+    expect(markOf(v, 'inn')?.kind).toBe('routine');
+  });
+
   it('outlines a listed place and fades every place outside the routine and the list', () => {
     const v = view(farrier(['ridge']));
     expect(markOf(v, 'ridge')?.kind).toBe('reach');

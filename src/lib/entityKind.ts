@@ -1,4 +1,4 @@
-import { PLAYER_START, type DiscoveredEntity, type Entity, type EntityKind, type EntityStart, type ScheduleRow } from "@/types";
+import { PLAYER_START, type DiscoveredEntity, type Entity, type EntityKind, type EntityStart, type ScheduleRow, type Traversable } from "@/types";
 import { placesOf, runtimeRoutine, type Routine } from "@/lib/positionEngine";
 
 /**
@@ -43,8 +43,11 @@ export type RoutineEntity = Pick<Entity, "id" | "kind" | "starts" | "traversable
 export function routineOf(entity: RoutineEntity): Routine | undefined {
   if (isGeneric(entity)) return { id: entity.id, starts: entity.starts ?? [], traversable: [], generic: true };
   if (!isUnique(entity)) return undefined;
-  return { id: entity.id, starts: entity.starts ?? [], traversable: entity.traversable ?? [] };
+  return { id: entity.id, starts: entity.starts ?? [], traversable: traversableOf(entity) };
 }
+
+/** A Unique entity's Traversable. An absent field is an empty list, in play and in the editor. */
+export const traversableOf = (entity: Pick<Entity, "traversable">): Traversable => entity.traversable ?? [];
 
 /** The routines of every Unique entity and Generic entity in `cast`, then of every runtime character. */
 export function castRoutines(cast: readonly RoutineEntity[], runtime: readonly DiscoveredEntity[] = []): Routine[] {

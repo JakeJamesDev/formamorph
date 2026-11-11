@@ -14,7 +14,7 @@ import { CHIP_BASE } from '@/components/Chip';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryStep } from '@/contexts/worldRecorder';
 import { chanceChipStyle, relativeChance } from '@/lib/chanceColor';
-import { withBeginsFollowing, withGenericStart, withKind, withoutGenericStart, withStartPlace } from '@/lib/entityKind';
+import { traversableOf, withBeginsFollowing, withGenericStart, withKind, withoutGenericStart, withStartPlace } from '@/lib/entityKind';
 import { withEntityLocations } from '@/lib/entityPresence';
 import { fieldFrame } from '@/lib/historyField';
 import { holderOf, locationRows } from '@/lib/locationTree';
@@ -200,7 +200,7 @@ function EntityRoutine({ entity, kind, book, locations, connections, commit, onC
       )}
       {fields.canAlsoGo && (
         <TraversableField
-          value={entity.traversable ?? 'anywhere'} book={book}
+          value={traversableOf(entity)} book={book}
           onChange={(traversable) => commit('Change Can Also Go', { ...entity, traversable })}
         />
       )}
