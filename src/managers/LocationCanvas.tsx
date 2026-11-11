@@ -1770,6 +1770,15 @@ export const LocationCanvasWorkspace = (props: LocationCanvasInputs & CanvasReve
     inTransitRef.current = true;
     morph.toggle();
   }, [morph]);
+  const { fullscreenRequested, onFullscreenRequestTaken } = entityPick;
+  useEffect(() => {
+    if (!fullscreenRequested) return;
+    inTransitRef.current = true;
+    morph.open();
+    onFullscreenRequestTaken?.();
+    // `morph` changes identity as it opens; only the request opens it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fullscreenRequested, onFullscreenRequestTaken]);
   const windowMorph = useMemo(
     () => ({ ...morph, close: () => { inTransitRef.current = true; morph.close(); } }),
     [morph],

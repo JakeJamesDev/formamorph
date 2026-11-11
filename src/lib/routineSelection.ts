@@ -1,4 +1,6 @@
 import { useCallback, useSyncExternalStore } from 'react';
+import { startToShowFor } from '@/lib/hereMarks';
+import type { Entity } from '@/types';
 
 /** Which Start of an entity is on show in its Routine editor, and which of its rows is selected. */
 export interface RoutineSelection {
@@ -33,6 +35,13 @@ export const routineSelectionOf = (entityId: string): RoutineSelection => byEnti
 
 /** Shows another Start of the entity. Its row selection clears. */
 export const showRoutineStart = (entityId: string, startId: string | null) => set(entityId, { startId, rowId: null });
+
+/** Shows the entity's Start for the location: the one on show when it names the location, else the first that does. */
+export function showStartFor(entity: Entity, locationId: string) {
+  const shown = routineSelectionOf(entity.id).startId;
+  const startId = startToShowFor(entity, locationId, shown);
+  if (startId !== shown) showRoutineStart(entity.id, startId);
+}
 
 /** Selects a row of the Start on show, or clears the selection with null. */
 export const selectRoutineRow = (entityId: string, rowId: string | null) =>

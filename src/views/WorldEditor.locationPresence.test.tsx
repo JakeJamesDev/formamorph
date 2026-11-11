@@ -72,7 +72,7 @@ describe('the Presence tab: Add Entity', () => {
     const user = userEvent.setup();
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openPresence('Tavern');
-    await user.click(screen.getByRole('combobox', { name: 'Add Entity' }));
+    await user.click(screen.getByRole('combobox', { name: 'Add an entity here' }));
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Moths', 'Rats', 'Queen']);
 
     await user.click(await screen.findByRole('option', { name: 'Moths' }));
@@ -86,7 +86,7 @@ describe('the Presence tab: Add Entity', () => {
     const user = userEvent.setup();
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openPresence('Cellar');
-    await user.click(screen.getByRole('combobox', { name: 'Add Entity' }));
+    await user.click(screen.getByRole('combobox', { name: 'Add an entity here' }));
     expect(screen.queryByRole('option', { name: 'Rats' })).toBeNull();
     await user.click(await screen.findByRole('option', { name: 'Moths' }));
     expect(ctx().entities.find((e) => e.id === 'rats')!.starts?.map((s) => s.place)).toEqual(['yard']);

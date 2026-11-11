@@ -165,7 +165,7 @@ Select a location in the list to open its panel. The tab you pick stays open whe
 | Tab | Holds | Mode |
 |---|---|---|
 | **Details** | **Name**, **Starting Location** and the descriptions | Simple and Advanced |
-| **Presence** | **Entities Here**, **Add Entity** and **Known Here** | Simple and Advanced |
+| **Presence** | **Entities Here**, **Add an entity here** and **Known Here** | Simple and Advanced |
 | **Connections** | The location's [Connections](#connections), one row each | Simple and Advanced |
 | **Items** | The location's [Starting Items](World-Editor-Items#starting-items) | Simple and Advanced |
 | **Media** | **Background Image**. In Advanced mode, also **Image Tags** and **Ambient Sound**. | Simple and Advanced |
@@ -220,14 +220,14 @@ The default prompt gives the **narrator** the current location in full. It gives
 <!-- keywords: who is here, npcs in room, assign characters, populate, residents, occupants, put npc here -->
 <!-- route: worldEditorLocation.presence -->
 
-**Add Entity** is under the **Entities Here** list on the **Presence** tab. It puts any Unique or Generic entity at this location. An edit here sets where an entity begins, the same as on its **Routine** tab.
+**Add an entity here** is under the **Entities Here** list on the **Presence** tab. It puts any Unique or Generic entity at this location. An edit here sets where an entity begins, the same as on its **Routine** tab.
 
 The select lists each entity that has no row here. The Custom Persona isn't listed. When every entity has a row, the select is not shown.
 
 - A Generic entity gets a new place to begin here, with no rows.
 - A Unique entity gets one more place to begin here, with a weight of 1 and no rows. Its other places stay as they are.
 
-The new entity is selected, so you can set its routine at once. **Undo** takes it back in one step.
+The new entity is selected with its **Routine** open, so you can set it at once. **Undo** takes it back in one step.
 
 A Generic entity that begins here has a 🗑 button at the end of its row. It removes every place the entity begins at here, with their rows. Its other places stay as they are. **Undo** brings them back in one step.
 
@@ -241,7 +241,8 @@ Select a row to edit that entity under the list. It is the same editor as on the
 
 - 🗺️ **On the Locations Canvas** beside the panel, the selected entity's routine shows on the map, with the key. The map only shows it. Edit the routine under the list, or in full screen.
 - 📌 **A pin** marks each Start, each routine row and each **Can Also Go** entry that names this location. The editor opens on the first Start with a pin, or on the first Start when none has one. The pins show only here, not on the entity's own **Routine** tab.
-- 📍 **Click another location** to open it. The entity stays selected there when it can be there too.
+- 📍 **Click another location** to open it. The entity stays selected there when it can be there too, and the editor opens on a Start with a pin.
+- 🎯 **Picked Locations** under **Known In** are picked in full screen. Select **Edit Full Screen** beside the hint to open it on the entity.
 - ↔️ **Full screen** opens on the selected entity. Pick an entity there, and it is selected here when you come back.
 - 📑 **Another tab** closes the entity.
 - ↩️ **Undo and redo** of an edit made under the list return you to this location's **Presence** tab with the entity selected. If the edit changed **Known In**, that opens.
@@ -252,12 +253,12 @@ Select the route icon on a row to open that entity's **Routine** tab.
 | Reason | Means |
 |---|---|
 | **Begins here** | The entity begins at this location. A Unique entity with several places to begin gives the chance as a percent. |
-| **Stays here**, **wanders here**, **patrols here** | A routine row uses this location. The line gives the row's time. |
+| **Stays here**, **wanders here**, **patrols here** | A routine row uses this location. The reason gives that routine row's time. |
 | **Can be led here** | The Unique entity's **Traversable** list names this location. A Unique entity that can go **Anywhere** isn't listed for that reason. A Generic entity is never listed for it. |
 
 An entity with several reasons shows them on one line.
 
-A Generic entity begins at all of its places, so its line shows no chance. It shows each reason once, however many of its places use this location.
+A Generic entity begins at all of its places, so its row shows no chance. It shows each reason once, however many of its places use this location.
 
 - **Known Here** lists entities that aren't at this location but that the entities here may speak of. Their summaries reach the AI anywhere inside this location. Add one with **Make an entity known here**. The 🗑 button on a row removes that entity from the list.
 

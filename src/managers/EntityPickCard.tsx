@@ -1,4 +1,4 @@
-import { Megaphone, X } from 'lucide-react';
+import { Maximize2, Megaphone, X } from 'lucide-react';
 import { LocationIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,9 @@ import { Hint } from '@/components/ui/typography';
 import { knownInOf, withKnownIn } from '@/lib/entityPresence';
 import { isGeneric } from '@/lib/entityKind';
 import type { PickMode } from '@/lib/entityPicking';
-import { KNOWN_IN_HELP, KNOWN_IN_LABEL, PICK_MODE_HELP, ROUTINE_MAP_HELP, type KnownInChoice } from '@/lib/entityPresenceCopy';
+import {
+  KNOWN_IN_HELP, KNOWN_IN_LABEL, PICK_MODE_HELP, PICKED_IN_FULL_SCREEN_HELP, ROUTINE_MAP_HELP, type KnownInChoice,
+} from '@/lib/entityPresenceCopy';
 import { fieldFrame } from '@/lib/historyField';
 import PersonaPresenceHint from '@/managers/PersonaPresenceHint';
 import { RoutineTab } from '@/managers/routine/RoutineTab';
@@ -30,6 +32,11 @@ const MODES = [
 
 const KNOWN_IN_CHOICES: KnownInChoice[] = ['nearby', 'nowhere', 'picked'];
 
+const knownInChoiceOf = (entity: Entity, pickedPending: boolean): KnownInChoice => {
+  const knownIn = knownInOf(entity);
+  return Array.isArray(knownIn) || pickedPending ? 'picked' : knownIn;
+};
+
 /** Known In of one entity. */
 function PickFields({ entity, pickedPending, onPickedPendingChange, onChange }: {
   entity: Entity;
@@ -37,8 +44,7 @@ function PickFields({ entity, pickedPending, onPickedPendingChange, onChange }: 
   onPickedPendingChange: (pending: boolean) => void;
   onChange: (next: Entity) => void;
 }) {
-  const knownIn = knownInOf(entity);
-  const knownInChoice: KnownInChoice = Array.isArray(knownIn) || pickedPending ? 'picked' : knownIn;
+  const knownInChoice = knownInChoiceOf(entity, pickedPending);
 
   const chooseKnownIn = (choice: KnownInChoice) => {
     onPickedPendingChange(choice === 'picked');
@@ -102,14 +108,43 @@ export default function EntityPickCard({
   );
 }
 
+/** The mode hint; beside the panel a canvas click selects the location, so none says to click one. */
+function ModeHint({ entity, mode, pickedPending, besidePanel, onEditFullScreen }: {
+  entity: Entity;
+  mode: PickMode;
+  pickedPending: boolean;
+  besidePanel: boolean;
+  onEditFullScreen?: () => void;
+}) {
+  if (mode === 'locations') {
+    const clicks = (isGeneric(entity) || !!entity.customPersona) && !besidePanel;
+    return <Hint>{clicks ? PICK_MODE_HELP.locations : ROUTINE_MAP_HELP}</Hint>;
+  }
+  if (!besidePanel) return <Hint>{PICK_MODE_HELP.knownIn}</Hint>;
+  if (knownInChoiceOf(entity, pickedPending) !== 'picked') return null;
+  return (
+    <div className="flex items-center gap-2">
+      <Hint className="min-w-0 flex-1">{PICKED_IN_FULL_SCREEN_HELP}</Hint>
+      {onEditFullScreen && (
+        <Button variant="secondary" size="xs" className="shrink-0 gap-1.5" onClick={onEditFullScreen}>
+          <Maximize2 className="h-4 w-4" aria-hidden />
+          Edit Full Screen
+        </Button>
+      )}
+    </div>
+  );
+}
+
 /** The entity card's body for one entity: the mode switch, the hint, and the Routine editor or Known In. */
-export function EntityPickBody({ entity, picking, onPickingChange, onChange, hereMark }: {
+export function EntityPickBody({ entity, picking, onPickingChange, onChange, hereMark, onEditFullScreen }: {
   entity: Entity;
   /** The location whose Presence tab hosts the body: the Routine editor marks what names it. */
   hereMark?: string;
   picking: PickState | null;
   onPickingChange: (next: PickState | null) => void;
   onChange: (next: Entity) => void;
+  /** Beside the panel: opens the Locations Canvas in full screen with this pick. */
+  onEditFullScreen?: () => void;
 }) {
   const mode = picking?.mode ?? 'locations';
   return (
@@ -131,7 +166,13 @@ export function EntityPickBody({ entity, picking, onPickingChange, onChange, her
           ))}
         </ToggleGroup>
       )}
-      <Hint>{mode === 'locations' && !entity.customPersona && !isGeneric(entity) ? ROUTINE_MAP_HELP : PICK_MODE_HELP[mode]}</Hint>
+      <ModeHint
+        entity={entity}
+        mode={mode}
+        pickedPending={!!picking?.pickedPending}
+        besidePanel={hereMark !== undefined}
+        onEditFullScreen={onEditFullScreen}
+      />
       {entity.customPersona && <PersonaPresenceHint />}
       {!entity.customPersona && mode === 'locations' && <RoutineTab entity={entity} onChange={onChange} hereMark={hereMark} />}
       {!entity.customPersona && mode === 'knownIn' && (

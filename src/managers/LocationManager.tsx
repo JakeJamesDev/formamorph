@@ -183,6 +183,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField, connectionOpe
           onOpenRoutine={onOpenEntityRoutine}
           pick={entityPick?.shown ? entityPick.pick : null}
           onPickChange={entityPick?.onPickChange}
+          onEditFullScreen={entityPick?.onEditFullScreen}
           onChange={updateEntity}
         />
         <LocationKnownHere

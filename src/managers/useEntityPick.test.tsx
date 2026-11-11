@@ -14,7 +14,7 @@ describe('useEntityPick reveal', () => {
       const [reveal, setReveal] = useState<PresenceReveal | null>({ entityId: 'warden', mode: 'knownIn' });
       const { entityPick } = useEntityPick({
         hasPresenceRow: (id) => rows.includes(id),
-        presenceOnScreen: onScreen,
+        presenceAt: onScreen ? 'gate' : null,
         reveal,
         onRevealTaken: () => setReveal(null),
       });
@@ -33,7 +33,7 @@ describe('useEntityPick reveal', () => {
     resetRoutineSelections();
     const reveal: PresenceReveal = { entityId: 'warden', mode: 'locations', startId: 's2' };
     const hasPresenceRow = () => true;
-    renderHook(() => useEntityPick({ hasPresenceRow, presenceOnScreen: true, reveal }));
+    renderHook(() => useEntityPick({ hasPresenceRow, presenceAt: 'gate', reveal }));
     expect(routineSelectionOf('warden').startId).toBe('s2');
   });
 

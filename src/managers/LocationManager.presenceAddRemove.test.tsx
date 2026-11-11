@@ -74,7 +74,7 @@ const open = async (entities: Entity[], locationId = 'tavern') => {
 const starts = (ctx: Handle, id: string) => ctx.entities.find((e) => e.id === id)!.starts!;
 const rows = () => screen.queryAllByTestId('presence-row');
 const rowOf = (name: string) => rows().find((r) => within(r).queryByText(name))!;
-const addSelect = () => screen.getByRole('combobox', { name: 'Add Entity' });
+const addSelect = () => screen.getByRole('combobox', { name: 'Add an entity here' });
 const options = async () => {
   await userEvent.click(addSelect());
   return (await screen.findAllByRole('option')).map((o) => o.textContent);
@@ -93,7 +93,7 @@ describe('Add Entity on the Presence tab', () => {
   it('is not on the tab when every entity has a row here', async () => {
     await open([generic('Crowd', [start('c1', 'tavern')])]);
     expect(await screen.findByTestId('entities-here')).toBeInTheDocument();
-    expect(screen.queryByRole('combobox', { name: 'Add Entity' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Add an entity here' })).toBeNull();
   });
 
   it('gives a Generic entity a Start here, a row that begins here, and the selection', async () => {

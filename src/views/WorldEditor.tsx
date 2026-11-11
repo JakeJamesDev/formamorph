@@ -1098,8 +1098,11 @@ const WorldEditorInner = ({
     (entityId: string) => !!presenceLocationId && presenceLines(presenceLocationId, entities).some((line) => line.entity.id === entityId),
     [presenceLocationId, entities],
   );
+  const entityOf = useCallback((entityId: string) => entities.find((e) => e.id === entityId), [entities]);
+  const showLocationCanvas = useCallback(() => setLocationView('canvas'), []);
   const { entityPick } = useEntityPick({
-    hasPresenceRow, presenceOnScreen: !!presenceLocationId, reveal: presenceReveal, onRevealTaken: clearPresenceReveal,
+    hasPresenceRow, presenceAt: presenceLocationId, entityOf, reveal: presenceReveal, onRevealTaken: clearPresenceReveal,
+    showCanvas: showLocationCanvas,
   });
   const locationsAdapter = useWorldLocationsAdapter({
     entityPick,

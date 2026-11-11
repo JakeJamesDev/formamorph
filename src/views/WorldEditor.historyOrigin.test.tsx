@@ -119,7 +119,7 @@ describe('an undo of an edit made through a mirror', () => {
     openEditorTab(/Locations/);
     fireEvent.click(within(treeRow('Docks')).getByText('Docks'));
     fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Location Fields' })).getByRole('tab', { name: 'Presence' }));
-    await user.click(screen.getByRole('combobox', { name: 'Add Entity' }));
+    await user.click(screen.getByRole('combobox', { name: 'Add an entity here' }));
     await user.click(await screen.findByRole('option', { name: 'Odd Wick' }));
     expect(ctx().entities.find((e) => e.id === 'resident')!.locations).toEqual(['harbor', 'docks']);
 

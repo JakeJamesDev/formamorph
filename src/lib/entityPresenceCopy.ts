@@ -22,4 +22,6 @@ export const PICK_MODE_HELP: Record<PickMode, string> = {
   knownIn: 'Click a location to pick it. A pick covers every location inside it.',
 };
 
+export const PICKED_IN_FULL_SCREEN_HELP = 'Pick its locations in full screen';
+
 export const ROUTINE_MAP_HELP = 'Shows this routine on the map. Select a row to see only its locations.';

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, type KeyboardEvent } from 'react';
+import { useMemo, useRef, type KeyboardEvent } from 'react';
 import { Route, Trash2, X } from 'lucide-react';
+import { DESTRUCTIVE_ROW_ACTION_HOVER } from '@/components/EditorRow';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,10 +9,9 @@ import { Hint, Meta } from '@/components/ui/typography';
 import { SelectOptions } from '@/components/SelectOptions';
 import { canRemoveGenericStartsAt, isGeneric, isUnique, withoutGenericStartsAt } from '@/lib/entityKind';
 import { startsAt, withStartHere } from '@/lib/entityPresence';
-import { startToShowFor } from '@/lib/hereMarks';
 import { fieldFrame } from '@/lib/historyField';
 import { presenceLines } from '@/lib/locationPresenceReasons';
-import { routineSelectionOf, showRoutineStart } from '@/lib/routineSelection';
+import { showRoutineStart, showStartFor } from '@/lib/routineSelection';
 import { cn } from '@/lib/utils';
 import { EntityPickBody, type PickState } from '@/managers/EntityPickCard';
 import type { Entity } from '@/types';
@@ -30,7 +30,7 @@ const ROW_KEYS: Record<string, (at: number, count: number) => number> = {
  * with its reasons, and one editor region under the list for the selected entity. The selection is the World
  * Editor's entity pick, so the canvas beside the panel draws it.
  */
-export default function LocationEntitiesHere({ locationId, entities, labelOf, onOpenRoutine, pick, onPickChange, onChange }: {
+export default function LocationEntitiesHere({ locationId, entities, labelOf, onOpenRoutine, pick, onPickChange, onEditFullScreen, onChange }: {
   locationId: string;
   /** The cast, in the order the tab lists it. */
   entities: Entity[];
@@ -40,6 +40,8 @@ export default function LocationEntitiesHere({ locationId, entities, labelOf, on
   pick: PickState | null;
   /** Without it the rows do not select. */
   onPickChange?: (next: PickState | null) => void;
+  /** Opens the Locations Canvas in full screen with the pick kept. */
+  onEditFullScreen?: () => void;
   onChange: (next: Entity) => void;
 }) {
   const lines = useMemo(() => presenceLines(locationId, entities), [locationId, entities]);
@@ -62,31 +64,15 @@ export default function LocationEntitiesHere({ locationId, entities, labelOf, on
     if (!entity) return;
     const next = withStartHere(entity, locationId);
     onChange(next);
-    // The editor opens on the Start this added.
+    // The editor opens in Routine mode on the Start this added.
     showRoutineStart(entity.id, next.starts?.[next.starts.length - 1]?.id ?? null);
-    onPickChange?.({ entityId: entity.id, mode: pick?.mode ?? 'locations' });
-  };
-
-  // The editor shows the Start that names this location: the one on show when it does, else the first that does.
-  const showStartHere = (entity: Entity) => {
-    const shown = routineSelectionOf(entity.id).startId;
-    const startId = startToShowFor(entity, locationId, shown);
-    if (startId !== shown) showRoutineStart(entity.id, startId);
+    onPickChange?.({ entityId: entity.id, mode: 'locations' });
   };
 
   const toggle = (entity: Entity) => {
-    if (selected !== entity) showStartHere(entity);
+    if (selected !== entity) showStartFor(entity, locationId);
     onPickChange?.(selected === entity ? null : { entityId: entity.id, mode: pick?.mode ?? 'locations' });
   };
-
-  // A pick kept across a change of location opens on that location's Start.
-  const lastLocation = useRef(locationId);
-  useEffect(() => {
-    if (lastLocation.current === locationId) return;
-    lastLocation.current = locationId;
-    if (selected) showStartHere(selected);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locationId]);
 
   const moveFocus = (event: KeyboardEvent, at: number) => {
     const to = ROW_KEYS[event.key]?.(at, lines.length);
@@ -141,7 +127,7 @@ export default function LocationEntitiesHere({ locationId, entities, labelOf, on
                   canRemoveGenericStartsAt(entity, locationId)
                     ? (
                       <Tip tip={`Remove ${label} from this location`}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => onChange(withoutGenericStartsAt(entity, locationId))}>
+                        <Button variant="ghost" size="icon" className={cn('h-8 w-8 shrink-0', DESTRUCTIVE_ROW_ACTION_HOVER)} onClick={() => onChange(withoutGenericStartsAt(entity, locationId))}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </Tip>
@@ -149,7 +135,7 @@ export default function LocationEntitiesHere({ locationId, entities, labelOf, on
                     : (
                       // A disabled button takes no pointer events, so the span carries the reason.
                       <Tip tip={`${label} begins at no other location, so it stays here`}>
-                        <span tabIndex={0} className="inline-flex shrink-0 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        <span tabIndex={0} className="inline-flex shrink-0 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
                           <Button variant="ghost" size="icon" className="h-8 w-8" disabled aria-label={`Remove ${label} from this location`}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -173,14 +159,14 @@ export default function LocationEntitiesHere({ locationId, entities, labelOf, on
                 </Button>
               </Tip>
             </div>
-            <EntityPickBody entity={selected} picking={pick} onPickingChange={onPickChange} onChange={onChange} hereMark={locationId} />
+            <EntityPickBody entity={selected} picking={pick} onPickingChange={onPickChange} onChange={onChange} hereMark={locationId} onEditFullScreen={onEditFullScreen} />
           </section>
         )
         : lines.length > 0 && onPickChange && <Hint>Select an entity to edit its Routine and Known In</Hint>}
       {addable.length > 0 && (
         <div {...fieldFrame('entities')}>
           <Select value="" onValueChange={add}>
-            <SelectTrigger aria-label="Add Entity">
+            <SelectTrigger aria-label="Add an entity here">
               <SelectValue placeholder="Add an entity here" />
             </SelectTrigger>
             <SelectContent>

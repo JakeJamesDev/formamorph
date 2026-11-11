@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Trash2 } from 'lucide-react';
+import { DESTRUCTIVE_ROW_ACTION_HOVER } from '@/components/EditorRow';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Hint } from '@/components/ui/typography';
@@ -8,6 +9,7 @@ import { SelectOptions } from '@/components/SelectOptions';
 import { Tip } from '@/components/ui/tooltip';
 import { knownHere, toggleKnownInPick } from '@/lib/entityPresence';
 import { fieldFrame } from '@/lib/historyField';
+import { cn } from '@/lib/utils';
 import type { Entity, GameLocation } from '@/types';
 
 /** The Known Here section of a location's Presence tab: each entity known at this location through its Known In
@@ -38,7 +40,7 @@ export default function LocationKnownHere({ location, locations, entities, label
             <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
             {via === null ? (
               <Tip tip={`Remove ${label} from Known Here`}>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => onChange(toggleKnownInPick(entity, location.id))}>
+                <Button variant="ghost" size="icon" className={cn('h-8 w-8 shrink-0', DESTRUCTIVE_ROW_ACTION_HOVER)} onClick={() => onChange(toggleKnownInPick(entity, location.id))}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </Tip>

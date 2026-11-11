@@ -1,6 +1,6 @@
 # 07: Close Review Gaps
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -36,18 +36,30 @@ Spec rulings: Q28, Q34, Q35.
 
 ## Acceptance criteria
 
-- [ ] With an entity that begins at location A on Start 1 and at location B on Start 2: select it on A, click B on the canvas, and the editor shows Start 2. The test fails on the code before the fix.
-- [ ] The same change of location through the tree in the list view shows Start 2.
-- [ ] An undo that arrives at a Presence tab with a Start that does not name the location keeps that Start on show. The test fails when the new code re-seats it.
-- [ ] With a row selected in Known In mode, Add Entity opens the added entity in Routine mode on its new Start.
-- [ ] A row click in Known In mode on another row keeps Known In mode.
-- [ ] Beside the panel, with Known In set to Picked Locations, the hint names full screen and its button opens full screen with the same entity picked in Known In mode. In full screen the hint is the old one.
-- [ ] Beside the panel, no hint in the editor region tells the author to click a location.
-- [ ] The control's visible text and the two wiki pages use the same words for adding an entity to a location.
-- [ ] Both trash buttons take the destructive hover of the documented row action, and the Presence row's remove button has the inset focus ring.
-- [ ] The Design System page describes the selected row without a chevron as an approved variant.
-- [ ] The copy sweep gives no notice on the new and changed strings.
-- [ ] Frames: `.scratch/frames/presence-picked-hint-dark.png` and `-light.png`, at 1440 wide, with Known In set to Picked Locations beside the panel.
-- [ ] Help vectors are rebuilt for the changed wiki sections. A changelog fragment covers what an author sees change; fixes to behavior that never shipped get none.
+- [x] With an entity that begins at location A on Start 1 and at location B on Start 2: select it on A, click B on the canvas, and the editor shows Start 2. The test fails on the code before the fix. (`WorldEditor.presenceCloseGaps.test.tsx`, canvas case; red with the re-seat removed)
+- [x] The same change of location through the tree in the list view shows Start 2. (`WorldEditor.presenceCloseGaps.test.tsx`, tree case)
+- [x] An undo that arrives at a Presence tab with a Start that does not name the location keeps that Start on show. The test fails when the new code re-seats it. (`WorldEditor.presenceCloseGaps.test.tsx`, undo case; red with the reveal's seat line removed)
+- [x] With a row selected in Known In mode, Add Entity opens the added entity in Routine mode on its new Start. (`WorldEditor.presenceCloseGaps.test.tsx`; red with the old mode carry)
+- [x] A row click in Known In mode on another row keeps Known In mode. (`WorldEditor.presenceCloseGaps.test.tsx`)
+- [x] Beside the panel, with Known In set to Picked Locations, the hint names full screen and its button opens full screen with the same entity picked in Known In mode. In full screen the hint is the old one. (`WorldEditor.presenceCloseGaps.test.tsx`, from the list view per Q36)
+- [x] Beside the panel, no hint in the editor region tells the author to click a location. (`WorldEditor.presenceCloseGaps.test.tsx`, Unique and Generic rows in both modes)
+- [x] The control's visible text and the two wiki pages use the same words for adding an entity to a location. ("Add an entity here" as the placeholder, the accessible name, and in both pages, per Q36)
+- [x] Both trash buttons take the destructive hover of the documented row action, and the Presence row's remove button has the inset focus ring. (`DESTRUCTIVE_ROW_ACTION_HOVER` on both; `ring-inset` on the blocked remove's focus span)
+- [x] The Design System page describes the selected row without a chevron as an approved variant. (new row in "Lists With Controls or Metadata")
+- [x] The copy sweep gives no notice on the new and changed strings. (`npm run copy:sweep` on the changed files; the one notice left is `label-case` on "Add an entity here", a sentence the spec set by Q36, a known false positive per the skill's triage)
+- [x] Frames: `.scratch/frames/presence-picked-hint-dark.png` and `-light.png`, at 1440 wide, with Known In set to Picked Locations beside the panel. (Playwright at 1440×900)
+- [x] Help vectors are rebuilt for the changed wiki sections. A changelog fragment covers what an author sees change; fixes to behavior that never shipped get none. (3 sections re-embedded; no fragment, since every change is to the unreleased Presence Rows work)
 
 For you: read the new Picked Locations hint and its button beside the panel, and approve the words.
+
+## Landed
+
+**Not verified**
+
+- None.
+
+**For you**
+
+- For you: read the new Picked Locations hint and its button beside the panel, and approve the words. The hint reads "Pick its locations in full screen" and the button **Edit Full Screen**: `.scratch/presence-rows-07/frames/presence-picked-hint-dark.png` and `.scratch/presence-rows-07/frames/presence-picked-hint-light.png`.
+- The Generic Routine hint beside the panel reuses the Unique one: "Shows this routine on the map. Select a row to see only its locations." On the Presence tab, "a row" can read as a Presence row, not a routine row; the Unique line had this since ticket 02. Select a Generic entity on a location's Presence tab to read it.
+- The changelog's Presence Rows entry ([Changelog.md:67](../../../../docs/Changelog.md)) still says "Add Entity". A ticket branch cannot edit the changelog, so the close can change it to "Add an entity here".
