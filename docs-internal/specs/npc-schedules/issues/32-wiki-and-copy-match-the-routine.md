@@ -1,6 +1,6 @@
 # 32: Wiki And Copy Match The Routine
 
-Status: ready-for-human
+Status: done
 Blocked by: 26, 27, 28, 29, 30, 31
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
