@@ -51,6 +51,7 @@ import {
 import { formatBytes, type ImageCap } from '@/lib/imageOptim';
 import { worldImageItems, type MediaItem } from '@/lib/mediaIndex';
 import { clamp } from '@/lib/utils';
+import { beginsWithPlayer, routinePlaces, withoutRoutinePlace } from '@/lib/entityKind';
 import { entityTexts } from '@/lib/entityTexts';
 import { itemTexts } from '@/lib/itemTexts';
 import { overviewTexts } from '@/lib/overviewTexts';
@@ -445,6 +446,11 @@ const linkConnectionBroken: Rule = {
   },
 };
 
+/** The places an entity with a kind names that this world lacks: Starts, rows and Can Also Go. */
+const routineMissing = (entity: Entity, known: ReadonlySet<string>): string[] => [
+  ...new Set([...routinePlaces(entity.starts ?? []), ...(Array.isArray(entity.traversable) ? entity.traversable : [])]),
+].filter((id) => !known.has(id));
+
 const entityLocationOrphan: Rule = {
   id: 'entity-location-orphan',
   severity: 'error',
@@ -453,7 +459,9 @@ const entityLocationOrphan: Rule = {
   check: (world) => {
     const known = new Set((world.locations ?? []).map((l) => l.id));
     return (world.entities ?? [])
-      .filter((entity) => (entity.locations ?? []).some((id) => !known.has(id)))
+      .filter((entity) => (entity.kind
+        ? routineMissing(entity, known).length > 0
+        : (entity.locations ?? []).some((id) => !known.has(id))))
       .map((entity) => {
         const item = asItem(entity, world);
         return finding(entityLocationOrphan, `${quote(item.name)} is placed at a location that doesn’t exist`, [item]);
@@ -462,6 +470,8 @@ const entityLocationOrphan: Rule = {
   fix: (world) => {
     const known = new Set((world.locations ?? []).map((l) => l.id));
     return withSlice(world, 'entities', mapChanged(world.entities ?? [], (entity) => {
+      // The editor's location delete runs the same operation, and the derived list follows.
+      if (entity.kind) return routineMissing(entity, known).reduce((acc, id) => withoutRoutinePlace(acc, id), entity);
       const placements = entity.locations;
       if (!placements?.length) return entity;
       const live = placements.filter((id) => known.has(id));
@@ -1392,8 +1402,9 @@ const entityNowhere: Rule = {
   section: 'entities',
   summary: (count) => `${count} entities are placed in no location, so they can never appear`,
   // The Custom Persona entity is the player, never a scene's entity, so it stands nowhere.
+  // A Start at Player's Starting Location places a companion, though it adds no place to `locations`.
   check: (world) => (world.entities ?? [])
-    .filter((entity) => (entity.locations ?? []).length === 0 && !entity.customPersona)
+    .filter((entity) => (entity.locations ?? []).length === 0 && !entity.customPersona && !beginsWithPlayer(entity))
     .map((entity) => {
       const item = asItem(entity, world);
       return finding(entityNowhere, `${quote(item.name)} is placed in no location, so it can never appear`, [item]);
@@ -1974,6 +1985,10 @@ const locationNoEntities: Rule = {
   summary: (count) => `${count} locations contain no entities`,
   check: (world) => {
     const occupied = new Set((world.entities ?? []).flatMap((e) => e.locations ?? []));
+    // An entity that begins at Player's Starting Location stands in the world's starting location.
+    if ((world.entities ?? []).some((e) => !e.customPersona && beginsWithPlayer(e))) {
+      for (const location of world.locations ?? []) if (location.isStarting) occupied.add(location.id);
+    }
     return (world.locations ?? [])
       .filter((location) => !occupied.has(location.id))
       .map((location) => {

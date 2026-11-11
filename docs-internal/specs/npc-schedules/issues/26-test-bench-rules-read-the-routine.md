@@ -1,6 +1,6 @@
 # 26: Test Bench Rules Read The Routine
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -23,10 +23,20 @@ Spec rulings: Q208, Q147, Q148, Q165, Q55.
 
 ## Acceptance criteria
 
-- [ ] A Unique entity whose only Start is Player's Starting Location gets no "placed in no location" finding. The test fails with the old check.
-- [ ] A Unique entity with no Start, and an entity with no kind and no location, still get the finding.
-- [ ] A Start, a row and a Can Also Go entry that name a missing location are each reported, and the fix removes each. A second run of the rule finds nothing.
-- [ ] The orphan fix on an entity with a kind leaves `locations` equal to what the routine derives.
-- [ ] A starting location whose only entity begins at Player's Starting Location gets no "no entities" finding.
-- [ ] The Test Bench wiki page states the placement rule.
-- [ ] The landing says whether the editor's location delete already cleans routines, with the evidence.
+- [x] A Unique entity whose only Start is Player's Starting Location gets no "placed in no location" finding. The test fails with the old check. (rules.test.ts "leaves a Unique entity…"; red when the new check is disabled)
+- [x] A Unique entity with no Start, and an entity with no kind and no location, still get the finding. (two entity-nowhere tests)
+- [x] A Start, a row and a Can Also Go entry that name a missing location are each reported, and the fix removes each. A second run of the rule finds nothing. (`it.each` orphan cases; red when the fix is disabled)
+- [x] The orphan fix on an entity with a kind leaves `locations` equal to what the routine derives. (same `it.each`)
+- [x] A starting location whose only entity begins at Player's Starting Location gets no "no entities" finding. (location-no-entities test)
+- [x] The Test Bench wiki page states the placement rule. (docs/Test-Bench.md, AI Context and Opening)
+- [x] The landing says whether the editor's location delete already cleans routines, with the evidence.
+
+## Landed
+
+**Not verified**
+- Nothing unticked. The wiki wording was not run through `copy-sweep`.
+
+**For you**
+- Read the two placement sentences in `docs/Test-Bench.md` (AI Context and Opening) for voice.
+- The editor's location delete already cleans routines: `removeLocation` in `src/contexts/GameDataContext.tsx` calls `dropLocationFromEntities`, which calls `withoutRoutinePlace` for Starts, rows and Can Also Go. A dead routine place therefore arises only through import or hand edits.
+- The Custom Persona entity does not count toward "no entities", matching "placed in no location".

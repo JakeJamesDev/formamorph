@@ -15,6 +15,10 @@ export const routinePlaces = (starts: readonly EntityStart[]): string[] =>
     ...(start.place === PLAYER_START ? [] : [start.place]), ...start.schedule.flatMap((row) => placesOf(row.action)),
   ]))];
 
+/** Whether `entity` has a kind and a Start at Player's Starting Location, which places it though `locations` omits it. */
+export const beginsWithPlayer = (entity: Pick<Entity, "kind" | "starts">): boolean =>
+  !!entity.kind && (entity.starts ?? []).some((start) => start.place === PLAYER_START);
+
 /** `start` with Begins Following set or cleared. */
 export function withBeginsFollowing(start: EntityStart, on: boolean): EntityStart {
   const { beginsFollowing: _was, ...rest } = start;

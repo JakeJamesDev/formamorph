@@ -18,6 +18,8 @@ import { allPlaceholders } from '@/lib/placeholderHomes';
 import { placeholderSelection } from '@/lib/placeholderTree';
 import { boxScripts } from '@/test/scriptFixtures';
 import { scriptEntryKey } from '@/lib/worldScripts';
+import { routinePlaces } from '@/lib/entityKind';
+import { PLAYER_START, type EntityStart, type ScheduleRow } from '@/types';
 
 /** A described entity at the starting location — what keeps the completeness rules quiet about a fixture
  *  that is about something else entirely. */
@@ -2252,6 +2254,89 @@ describe('entity completeness rules', () => {
     expect(found[0].severity).toBe('info');
     expect(found[0].items.map((i) => i.id)).toEqual(['market']);
     expect(runRules(market([{ ...resident, id: 'e-m', name: 'Stallkeep', locations: ['market'] }]))).toEqual([]);
+  });
+});
+
+describe('rules that read an entity routine', () => {
+  const start = (id: string, place: string, schedule: EntityStart['schedule'] = []): EntityStart =>
+    ({ id, place, weight: 1, schedule });
+  const stayRow = (place: string): ScheduleRow => ({ id: 'r1', time: 'allDay', action: { kind: 'stay', place } });
+  const described = { playerDescription: 'Seen around.', aiDescription: 'A fen regular.' };
+  /** An entity with a kind, `locations` as the routine derives it. */
+  const kinded = (starts: EntityStart[], over: Partial<Entity> = {}): Entity => ({
+    id: 'k1', name: 'Pip', ...described, kind: 'unique', starts, locations: routinePlaces(starts), ...over,
+  });
+  const companion = kinded([start('s1', PLAYER_START)]);
+
+  describe('entity-nowhere', () => {
+    it('leaves a Unique entity whose only Start is Player’s Starting Location alone', () => {
+      expect(only(base({ entities: [resident, companion] }), 'entity-nowhere')).toEqual([]);
+    });
+
+    it('leaves a Generic entity that begins at Player’s Starting Location alone', () => {
+      expect(only(base({ entities: [resident, { ...companion, kind: 'generic' }] }), 'entity-nowhere')).toEqual([]);
+    });
+
+    it('still flags an entity with a kind and no Start', () => {
+      const found = only(base({ entities: [resident, kinded([])] }), 'entity-nowhere');
+      expect(found.map((f) => f.items[0].id)).toEqual(['k1']);
+    });
+
+    it('still flags an entity with no kind and no location', () => {
+      const found = only(base({ entities: [resident, { id: 'n1', name: 'Drift', ...described }] }), 'entity-nowhere');
+      expect(found.map((f) => f.items[0].id)).toEqual(['n1']);
+    });
+  });
+
+  describe('entity-location-orphan', () => {
+    const cases: [string, Entity][] = [
+      ['a Start', kinded([start('s1', 'harbor'), start('s2', 'gone')])],
+      ['a row', kinded([start('s1', 'harbor', [stayRow('gone')])])],
+      ['a Can Also Go entry', kinded([start('s1', 'harbor')], { traversable: ['gone'] })],
+    ];
+
+    it.each(cases)('reports %s that names a missing location, fixes it, and finds nothing after', (_label, entity) => {
+      const w = base({ entities: [resident, entity] });
+      expect(only(w, 'entity-location-orphan').map((f) => f.items[0].id)).toEqual(['k1']);
+      const fixed = applyRuleFix(w, 'entity-location-orphan');
+      expect(only(fixed, 'entity-location-orphan')).toEqual([]);
+      const after = fixed.entities.find((e) => e.id === 'k1')!;
+      expect(after.locations).toEqual(routinePlaces(after.starts ?? []));
+      expect(after.locations).not.toContain('gone');
+      expect(JSON.stringify(after)).not.toContain('gone');
+    });
+
+    it('does not report a Start at Player’s Starting Location', () => {
+      expect(only(base({ entities: [resident, companion] }), 'entity-location-orphan')).toEqual([]);
+    });
+
+    it('keeps the old check and fix for an entity with no kind', () => {
+      const w = base({ entities: [resident, { id: 'n1', name: 'Maren', locations: ['harbor', 'gone'] }] });
+      expect(only(w, 'entity-location-orphan')).toHaveLength(1);
+      expect(applyRuleFix(w, 'entity-location-orphan').entities[1].locations).toEqual(['harbor']);
+    });
+  });
+
+  describe('location-no-entities', () => {
+    const withMarket = (entities: Entity[]) => base({
+      locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }, { id: 'market', name: 'The Long Market' }],
+      entities,
+    });
+
+    it('counts the starting location as occupied by an entity that begins at Player’s Starting Location', () => {
+      const found = only(withMarket([companion]), 'location-no-entities');
+      expect(found.map((f) => f.items[0].id)).toEqual(['market']);
+    });
+
+    it('does not count the Custom Persona entity, which is the player', () => {
+      const found = only(withMarket([{ ...companion, customPersona: true }]), 'location-no-entities');
+      expect(found.map((f) => f.items[0].id)).toEqual(['harbor', 'market']);
+    });
+
+    it('flags the starting location when nobody begins there', () => {
+      const found = only(withMarket([]), 'location-no-entities');
+      expect(found.map((f) => f.items[0].id)).toEqual(['harbor', 'market']);
+    });
   });
 });
 

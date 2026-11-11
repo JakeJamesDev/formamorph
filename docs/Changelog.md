@@ -96,6 +96,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A turn that fails now puts your action and images back in the action box.** Before, an endpoint error emptied the box, so a failed first turn lost the opening text.
   - **World Editor:**
     - **An entity's stat and trait Body Sliders list now shows the entity's Avatar sliders.** An entity with only an Avatar can bind its Body Sliders and Head Features.
+  - **Test Bench:**
+    - **The Test Bench now reads an entity's schedule when it checks where entities are.** A companion that begins at Player's Starting Location is no longer reported as placed nowhere, and dead schedule places are reported and fixed.
   - **A world's written openings now always draw, even in a world that had them switched off.** The world file no longer stores an openings on/off setting.
   - **The Sign In and Create Account pages on formamorph.ai now ask the Adult Content Ahead question first.** Before, a new account saw it only after the Privacy Policy. Your answer saves to the account you sign in to or create.
   - **A text or image endpoint typed without `http://`, such as `127.0.0.1:1234`, now reaches your server.** Before, the browser version sent it to formamorph.ai and showed an "Unexpected token '<'" error. An image server that answers with a web page now says so.
