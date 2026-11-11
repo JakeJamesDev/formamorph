@@ -86,6 +86,12 @@ The **Persona** control has four choices: **Cast**, **Playable**, **Persona-Only
 
 **Known In** is set on the full-screen Locations Canvas. See [World Editor: Locations](World-Editor-Locations#entities).
 
+| Known In | The AI gets the entity's summary |
+|---|---|
+| **Nearby** | At locations one **Nearby** link from where the entity is now. Never across a **Far** link. The canvas marks every location this can be. |
+| **Nowhere** | Only at its own location |
+| **Picked Locations** | Anywhere inside the locations you pick |
+
 Each entity in the list has **Duplicate** and **Delete** actions.
 
 ## Routine

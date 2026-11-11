@@ -19,6 +19,7 @@ import { pickMarks, togglePick, type PickMark } from '@/lib/entityPicking';
 import { routineView, type RoutineMark, type RoutineSpan } from '@/lib/canvasRoutine';
 import { MINUTES_PER_DAY } from '@/lib/gameClock';
 import { pickKeyEntries, routineKeyEntries } from '@/lib/canvasKey';
+import { KNOWN_NEARBY_MARK, KNOWN_ROUTINE_MARK } from '@/lib/canvasMarks';
 import { CanvasKey } from '@/managers/CanvasKey';
 import type { ActionKind } from '@/lib/routineEditing';
 import {
@@ -219,7 +220,8 @@ const routineData = (mark: RoutineMark | undefined) => ({
 /** How a box draws its pick mark: a solid tint for the entity's locations, a dashed outline over each pick
  *  (a group's box encloses its whole subtree), and a fade for the rest. */
 const pickClass = (mark: PickMark | undefined) => cn(
-  mark?.kind === 'member' && 'bg-primary/20 ring-2 ring-primary',
+  (mark?.kind === 'member' || mark?.kind === 'routine') && KNOWN_ROUTINE_MARK,
+  mark?.kind === 'nearby' && KNOWN_NEARBY_MARK,
   mark?.pick && 'outline-dashed outline-2 outline-offset-2 outline-primary',
   mark?.kind === 'faded' && 'opacity-30',
 );
@@ -816,8 +818,8 @@ const CanvasInner = ({
     [routineEntity, routineAt, placeGraph],
   );
   const marks = useMemo(
-    () => (pickedEntity && !routine ? pickMarks(pickedEntity, locations) : null),
-    [pickedEntity, routine, locations],
+    () => (pickedEntity && !routine ? pickMarks(pickedEntity, locations, connections, !!pickState?.pickedPending) : null),
+    [pickedEntity, routine, locations, connections, pickState?.pickedPending],
   );
   const routineSources = useMemo(
     () => (routineEntity ? routineDragSources(routineEntity, routineAt) : NO_SOURCES),

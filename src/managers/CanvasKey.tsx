@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import type { KeyEntryId } from '@/lib/canvasKey';
 import type { RoutineSpan } from '@/lib/canvasRoutine';
 import { ELEMENT_ICONS } from '@/lib/elementIcons';
+import { KNOWN_ROUTINE_MARK } from '@/lib/canvasMarks';
 import { boolCodec, usePersistentState } from '@/lib/usePersistentState';
 import { cn } from '@/lib/utils';
 
@@ -42,6 +43,8 @@ const ENTRIES: Record<KeyEntryId, { label: string; sample: ReactElement }> = {
   here: { label: 'Is Here', sample: <Box className="ring-2 ring-muted-foreground" /> },
   entityLocation: { label: 'Entity Location', sample: <LocationIcon aria-hidden className="h-3.5 w-3.5 shrink-0 text-primary" /> },
   knownIn: { label: 'Known In', sample: <Megaphone aria-hidden className="h-3.5 w-3.5 shrink-0 text-primary" /> },
+  canBeHere: { label: 'Can Be Here', sample: <Box className={KNOWN_ROUTINE_MARK} /> },
+  knownNearby: { label: 'Known Here While It Is Nearby', sample: <Box className="bg-primary/5 outline-dashed outline-1 outline-offset-1 outline-primary/70" /> },
 };
 
 /** A small key at the foot of the canvas for the colors and marks the view on show uses. It folds to its title. */

@@ -122,6 +122,12 @@ The **Locations** tab has two views. Switch between them with the **List** and *
 
 In full screen, the toolbar and the right-click menus also align, distribute and snap boxes, and set the Connection style. An entity card there sets one entity's **Locations** or **Known In** by selecting boxes.
 
+With **Known In** set to **Nearby**, the canvas shows where the AI gets the entity's summary:
+
+- 📍 **Can Be Here.** Every location the entity's routine uses: where it begins and each location a row names.
+- 👂 **Known Here While It Is Nearby.** Every location one **Nearby** link from those. The AI gets its summary there only while the entity stands at the marked neighbor.
+- ⋯ A **Far** link draws dotted, and its other end stays unmarked. See [Nearby and Far](#nearby-and-far).
+
 Nothing on the canvas moves until you move it or ask for a layout:
 
 - Right-click an empty part of the canvas and select **Auto Arrange All** to lay out every box.

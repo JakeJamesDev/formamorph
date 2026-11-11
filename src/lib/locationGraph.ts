@@ -227,8 +227,13 @@ export function walkableReach(
  * is unreachable. Treating that as "no starts" would badge an entire ordinary world.
  */
 export function reachableFromStarts(locations: GameLocation[], connections: Connection[]): Set<string> {
+  return reachableFrom(startingLocationIds(locations), locations, connections);
+}
+
+/** Where a new game can begin: the flagged starting locations, or every location when none is flagged. */
+export function startingLocationIds(locations: readonly Pick<GameLocation, "id" | "isStarting">[]): string[] {
   const flagged = locations.filter((l) => l.isStarting);
-  return reachableFrom((flagged.length ? flagged : locations).map((l) => l.id), locations, connections);
+  return (flagged.length ? flagged : locations).map((l) => l.id);
 }
 
 /** The ids travel can reach from any of `starts` through any path, in travel directions. Holds `starts`. */

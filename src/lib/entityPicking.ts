@@ -2,7 +2,9 @@ import { knownInOf, toggleKnownInPick, withEntityLocations } from "@/lib/entityP
 import { isGeneric, isUnique, toggleGenericStart, withFirstStartPlace } from "@/lib/entityKind";
 import { randomUUID } from "@/lib/uuid";
 import { holderOf } from "@/lib/locationTree";
-import type { Entity, GameLocation } from "@/types";
+import { nearbyPlaces, reachableFrom, startingLocationIds } from "@/lib/locationGraph";
+import { placesOf } from "@/lib/positionEngine";
+import { PLAYER_START, type Connection, type Entity, type GameLocation } from "@/types";
 
 /**
  * The full-screen Locations Canvas as a picker for one entity: how each location draws while the entity is
@@ -31,14 +33,50 @@ export function knownInPicks(entity: Pick<Entity, "knownIn" | "customPersona">):
 }
 
 /** How a location draws: `member` is one of the entity's locations, `covered` sits inside a pick at any
- *  depth, `faded` is neither. `pick` marks a pick itself. */
+ *  depth, `faded` is neither. Under Nearby, `routine` is a place the routine uses and `nearby` is one Nearby
+ *  link from one. `pick` marks a pick itself. */
 export interface PickMark {
-  kind: "member" | "covered" | "faded";
+  kind: "member" | "covered" | "routine" | "nearby" | "faded";
   pick: boolean;
 }
 
-/** The mark of every location while `entity` is picked. */
-export function pickMarks(entity: Entity, locations: GameLocation[]): Map<string, PickMark> {
+/**
+ * Every place `entity` can be over the whole day of every Start: where each Start begins, and each place a row
+ * names that is connected to it, as the engine keeps it. `PLAYER_START` stands for the world's starting
+ * locations, or every location when none is flagged.
+ */
+export function routinePlaces(
+  entity: Pick<Entity, "starts">, locations: readonly GameLocation[], connections: readonly Connection[],
+): Set<string> {
+  const playerStarts = startingLocationIds(locations);
+  const known = new Set(locations.map((l) => l.id));
+  const out = new Set<string>();
+  for (const start of entity.starts ?? []) {
+    const begins = start.place === PLAYER_START ? playerStarts : [start.place];
+    const connected = reachableFrom(begins, locations, connections);
+    for (const id of begins) out.add(id);
+    for (const row of start.schedule) {
+      for (const id of placesOf(row.action)) if (connected.has(id)) out.add(id);
+    }
+  }
+  return new Set([...out].filter((id) => known.has(id)));
+}
+
+/** Under Nearby: the full mark on every routine place, the lighter mark on every place one Nearby link from one. */
+function nearbyMarks(entity: Entity, locations: GameLocation[], connections: readonly Connection[]): Map<string, PickMark> {
+  const routine = routinePlaces(entity, locations, connections);
+  const near = new Set([...routine].flatMap((id) => nearbyPlaces(id, locations, connections)));
+  return new Map(locations.map((l) => [l.id, {
+    kind: routine.has(l.id) ? "routine" : near.has(l.id) ? "nearby" : "faded",
+    pick: false,
+  }]));
+}
+
+/** The mark of every location while `entity` is picked. `pickedPending`: Picked Locations is chosen with no pick yet. */
+export function pickMarks(
+  entity: Entity, locations: GameLocation[], connections: readonly Connection[], pickedPending = false,
+): Map<string, PickMark> {
+  if (!pickedPending && !entity.customPersona && knownInOf(entity) === "nearby") return nearbyMarks(entity, locations, connections);
   const members = new Set(entity.locations);
   const picks = new Set(knownInPicks(entity));
   const byId = new Map(locations.map((l) => [l.id, l]));

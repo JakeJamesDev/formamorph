@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { Megaphone, X } from 'lucide-react';
 import { LocationIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
@@ -20,6 +19,8 @@ import type { Entity } from '@/types';
 export interface PickState {
   entityId: string;
   mode: PickMode;
+  /** Picked Locations is chosen with no pick yet: nothing is stored until the first click on the canvas. */
+  pickedPending?: true;
 }
 
 const MODES = [
@@ -30,26 +31,18 @@ const MODES = [
 const KNOWN_IN_CHOICES: KnownInChoice[] = ['nearby', 'nowhere', 'picked'];
 
 /** Known In of one entity. */
-function PickFields({ entity, mode, onModeChange, onChange }: {
+function PickFields({ entity, pickedPending, onPickedPendingChange, onChange }: {
   entity: Entity;
-  mode: PickMode;
-  onModeChange: (mode: PickMode) => void;
+  pickedPending: boolean;
+  onPickedPendingChange: (pending: boolean) => void;
   onChange: (next: Entity) => void;
 }) {
-  // Picked Locations chosen with no pick yet: nothing is stored until the first click on the canvas.
-  const [pickedPending, setPickedPending] = useState(false);
-  useEffect(() => { if (mode !== 'knownIn') setPickedPending(false); }, [mode]);
   const knownIn = knownInOf(entity);
-  const knownInChoice: KnownInChoice = Array.isArray(knownIn) || (pickedPending && mode === 'knownIn') ? 'picked' : knownIn;
+  const knownInChoice: KnownInChoice = Array.isArray(knownIn) || pickedPending ? 'picked' : knownIn;
 
   const chooseKnownIn = (choice: KnownInChoice) => {
-    if (choice === 'picked') {
-      setPickedPending(true);
-      onModeChange('knownIn');
-      return;
-    }
-    setPickedPending(false);
-    onChange(withKnownIn(entity, choice));
+    onPickedPendingChange(choice === 'picked');
+    if (choice !== 'picked') onChange(withKnownIn(entity, choice));
   };
 
   return (
@@ -131,8 +124,8 @@ export default function EntityPickCard({
             <PickFields
               key={entity.id}
               entity={entity}
-              mode={mode}
-              onModeChange={(next) => onPickingChange({ entityId: entity.id, mode: next })}
+              pickedPending={!!picking?.pickedPending}
+              onPickedPendingChange={(pending) => onPickingChange({ entityId: entity.id, mode: 'knownIn', ...(pending ? { pickedPending: true } : {}) })}
               onChange={onChange}
             />
           )}

@@ -56,3 +56,11 @@ it('lists the entity’s locations and Known In picks only when the map shows on
   expect(pickKeyEntries(new Map([['a', { kind: 'member', pick: false }], ['b', { kind: 'faded', pick: true }]]))).toEqual(['entityLocation', 'knownIn']);
   expect(pickKeyEntries(new Map([['a', { kind: 'faded', pick: false }]]))).toEqual([]);
 });
+
+it('lists the two Nearby marks in the Nearby view and neither in the Picked Locations view', () => {
+  const nearby = pickKeyEntries(new Map([['a', { kind: 'routine', pick: false }], ['b', { kind: 'nearby', pick: false }]]));
+  expect(nearby).toEqual(['canBeHere', 'knownNearby']);
+  const picked = pickKeyEntries(new Map([['a', { kind: 'member', pick: false }], ['b', { kind: 'covered', pick: true }]]));
+  expect(picked).not.toContain('canBeHere');
+  expect(picked).not.toContain('knownNearby');
+});
