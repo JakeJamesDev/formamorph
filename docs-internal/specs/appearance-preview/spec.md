@@ -114,7 +114,8 @@ a drag writes   Change By = dragged value − model's own value
 - Each slider and each color row has an undo button in its label row.
 - The button returns the control to its base and is disabled when the control is at its base.
 - The base in the Preview is the value the dialog opened with: the row's saved value, or the model's own where there is no row.
-- The base in Avatar Customization and in the Model Library details panel is the model's own value.
+- The base in Avatar Customization and in the Model Library details panel is the model's own value. For a Body Slider, a Head Feature and Hair Length that is 0. For a color it is the model's color for the channel.
+- The Other Colors row follows the same rule. Its base is the material's calculated color. Its undo is enabled only while the selected material has an applied color, and it removes that color.
 - A control a trait holds has its undo disabled.
 - The existing color revert becomes this button. Its always-enabled state goes.
 
