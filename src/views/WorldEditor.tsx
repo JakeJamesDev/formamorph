@@ -95,6 +95,7 @@ import { CURRENCIES_ID, EQUIPMENT_ID, useWorldItemsAdapter } from '../managers/u
 import { ITEM_PANEL_TABS, itemPanelTabsFor, type ItemPanelTab } from './itemPanelTabs';
 import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
 import { useWorldLocationsAdapter } from '../managers/useWorldLocationsAdapter';
+import { useEntityPick } from '../managers/useEntityPick';
 import type { ConnectionOpen } from '../managers/LocationConnections';
 import { useWorldDictionaryAdapter } from '../managers/useWorldDictionaryAdapter';
 import { useWorldMediaEditor } from '../managers/useWorldMediaEditor';
@@ -1089,7 +1090,9 @@ const WorldEditorInner = ({
     selectedId: selections.entities ?? null, onSelect: selectEntity, search,
   });
   const selectLocation = useCallback((id: string | null) => select('locations', id), [select]);
+  const { entityPick } = useEntityPick();
   const locationsAdapter = useWorldLocationsAdapter({
+    entityPick,
     selectedId: selections.locations ?? null,
     onSelect: selectLocation,
     search,

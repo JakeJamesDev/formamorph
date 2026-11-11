@@ -121,6 +121,12 @@ export interface RoutineMapStatus {
   text: string;
 }
 
+/** The status line over a map that only shows the routine: the selected row, or whose routine it is. */
+export function routineShownStatus(entity: Entity, selection: RoutineSelection, label: string): RoutineMapStatus {
+  const { row } = routineMapStatus(entity, selection);
+  return row ? { row, text: 'Locations of this row' } : { text: `Routine of ${label}` };
+}
+
 export function routineMapStatus(entity: Entity, selection: RoutineSelection): RoutineMapStatus {
   const target = targetOf(entity, selection);
   const selected = selectedOf(target);

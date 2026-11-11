@@ -75,7 +75,6 @@ export default function EntityPickCard({
   onChange: (next: Entity) => void;
 }) {
   const entity = picking ? entities.find((e) => e.id === picking.entityId) : undefined;
-  const mode = picking?.mode ?? 'locations';
   return (
     <div data-testid="entity-pick-card" className="space-y-3 rounded-md border bg-card p-3 shadow-md">
       <div className="flex items-center gap-1">
@@ -98,39 +97,50 @@ export default function EntityPickCard({
           </Tip>
         )}
       </div>
-      {entity && (
-        <>
-          {!entity.customPersona && (
-            <ToggleGroup
-              type="single"
-              className="grid w-full grid-cols-2"
-              value={mode}
-              aria-label="Pick Mode"
-              // A single group clears its value when the active item is clicked again; one mode is always on.
-              onValueChange={(v) => { if (v) onPickingChange({ entityId: entity.id, mode: v as PickMode }); }}
-            >
-              {MODES.map(({ value, label, Icon }) => (
-                <ToggleGroupItem key={value} value={value} className="gap-1.5">
-                  <Icon className="h-4 w-4" aria-hidden />
-                  {label}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          )}
-          <Hint>{mode === 'locations' && !entity.customPersona && !isGeneric(entity) ? ROUTINE_MAP_HELP : PICK_MODE_HELP[mode]}</Hint>
-          {entity.customPersona && <PersonaPresenceHint />}
-          {!entity.customPersona && mode === 'locations' && <RoutineTab entity={entity} onChange={onChange} />}
-          {!entity.customPersona && mode === 'knownIn' && (
-            <PickFields
-              key={entity.id}
-              entity={entity}
-              pickedPending={!!picking?.pickedPending}
-              onPickedPendingChange={(pending) => onPickingChange({ entityId: entity.id, mode: 'knownIn', ...(pending ? { pickedPending: true } : {}) })}
-              onChange={onChange}
-            />
-          )}
-        </>
-      )}
+      {entity && <EntityPickBody entity={entity} picking={picking} onPickingChange={onPickingChange} onChange={onChange} />}
     </div>
+  );
+}
+
+/** The entity card's body for one entity: the mode switch, the hint, and the Routine editor or Known In. */
+export function EntityPickBody({ entity, picking, onPickingChange, onChange }: {
+  entity: Entity;
+  picking: PickState | null;
+  onPickingChange: (next: PickState | null) => void;
+  onChange: (next: Entity) => void;
+}) {
+  const mode = picking?.mode ?? 'locations';
+  return (
+    <>
+      {!entity.customPersona && (
+        <ToggleGroup
+          type="single"
+          className="grid w-full grid-cols-2"
+          value={mode}
+          aria-label="Pick Mode"
+          // A single group clears its value when the active item is clicked again; one mode is always on.
+          onValueChange={(v) => { if (v) onPickingChange({ entityId: entity.id, mode: v as PickMode }); }}
+        >
+          {MODES.map(({ value, label, Icon }) => (
+            <ToggleGroupItem key={value} value={value} className="gap-1.5">
+              <Icon className="h-4 w-4" aria-hidden />
+              {label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      )}
+      <Hint>{mode === 'locations' && !entity.customPersona && !isGeneric(entity) ? ROUTINE_MAP_HELP : PICK_MODE_HELP[mode]}</Hint>
+      {entity.customPersona && <PersonaPresenceHint />}
+      {!entity.customPersona && mode === 'locations' && <RoutineTab entity={entity} onChange={onChange} />}
+      {!entity.customPersona && mode === 'knownIn' && (
+        <PickFields
+          key={entity.id}
+          entity={entity}
+          pickedPending={!!picking?.pickedPending}
+          onPickedPendingChange={(pending) => onPickingChange({ entityId: entity.id, mode: 'knownIn', ...(pending ? { pickedPending: true } : {}) })}
+          onChange={onChange}
+        />
+      )}
+    </>
   );
 }

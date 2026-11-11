@@ -15,6 +15,7 @@ import {
   Undo2, X,
 } from 'lucide-react';
 import EntityPickCard, { type PickState } from '@/managers/EntityPickCard';
+import type { EntityPick } from '@/managers/useEntityPick';
 import { pickMarks, togglePick, type PickMark } from '@/lib/entityPicking';
 import { routineView, type RoutineMark, type RoutineSpan } from '@/lib/canvasRoutine';
 import { MINUTES_PER_DAY } from '@/lib/gameClock';
@@ -23,7 +24,7 @@ import { KNOWN_NEARBY_MARK, KNOWN_ROUTINE_MARK } from '@/lib/canvasMarks';
 import { CanvasKey } from '@/managers/CanvasKey';
 import type { ActionKind } from '@/lib/routineEditing';
 import {
-  routineDragSources, routineMapClick, routineMapDrag, routineMapStatus, type RoutineMapEdit,
+  routineDragSources, routineMapClick, routineMapDrag, routineMapStatus, routineShownStatus, type RoutineMapEdit,
 } from '@/lib/routineMapEditing';
 import { CLEARS_ROUTINE_SELECTION, KEEPS_ROUTINE_SELECTION, useRoutineSelection } from '@/lib/routineSelection';
 import { LocationIcon } from '@/lib/elementIcons';
@@ -790,21 +791,25 @@ export interface LocationCanvasInputs {
 
 const CanvasInner = ({
   selectedId, onSelect, session, fullscreen, onToggleFullscreen, data, preferences, revealSelection, onSelectionRevealed,
+  entityPick,
 }: {
   selectedId: string | null;
   onSelect: (id: string) => void;
   session: CanvasSession;
   fullscreen: boolean;
   onToggleFullscreen: () => void;
+  entityPick: EntityPick;
 } & Pick<LocationCanvasInputs, 'data' | 'preferences'> & Pick<CanvasReveal, 'revealSelection' | 'onSelectionRevealed'>) => {
   const {
     locations, setLocations, connections, setConnections, placeholders, placementLetters, placeholderOwners,
     entities, updateEntity, worldOverview, updateWorldOverview,
   } = data;
-  // The entity the full-screen canvas picks for. While one is picked, the canvas is a read-only picker.
-  const [pickState, setPickState] = useState<PickState | null>(null);
-  const pickedEntity = fullscreen && pickState ? entities?.find((e) => e.id === pickState.entityId) : undefined;
-  const picking = !!pickedEntity;
+  const { pick: pickState, onPickChange: setPickState } = entityPick;
+  // Full screen picks: the canvas is a read-only picker. Beside the panel it only shows a pick on show.
+  const pickedEntity = pickState && (fullscreen || entityPick.shown)
+    ? entities?.find((e) => e.id === pickState.entityId)
+    : undefined;
+  const picking = fullscreen && !!pickedEntity;
   const pickMode = pickedEntity?.customPersona ? 'locations' : pickState?.mode ?? 'locations';
   // Routine mode draws the entity's routine in place of the Connections. A custom persona has no routine.
   const routineEntity = pickedEntity && pickMode === 'locations' && !pickedEntity.customPersona ? pickedEntity : undefined;
@@ -821,9 +826,11 @@ const CanvasInner = ({
     () => (pickedEntity && !routine ? pickMarks(pickedEntity, locations, connections, !!pickState?.pickedPending) : null),
     [pickedEntity, routine, locations, connections, pickState?.pickedPending],
   );
+  // Only the full-screen picker edits the routine on the map.
+  const editingRoutine = !!routine && picking;
   const routineSources = useMemo(
-    () => (routineEntity ? routineDragSources(routineEntity, routineAt) : NO_SOURCES),
-    [routineEntity, routineAt],
+    () => (routineEntity && editingRoutine ? routineDragSources(routineEntity, routineAt) : NO_SOURCES),
+    [routineEntity, routineAt, editingRoutine],
   );
   const routineStatus = routineEntity ? routineMapStatus(routineEntity, routineAt) : null;
   const {
@@ -929,6 +936,10 @@ const CanvasInner = ({
     (entity: Entity) => labelPlaceholders(entity.name, placeholders, { letters: placementLetters, owners: placeholderOwners }),
     [placeholders, placementLetters, placeholderOwners],
   );
+  // Beside the panel the routine is only shown, so its status names it and offers no edit.
+  const statusLine = routineEntity && !picking
+    ? routineShownStatus(routineEntity, routineAt, entityLabel(routineEntity))
+    : routineStatus;
 
   const findLocations = useCallback(
     (query: string) => searchLocations(locations, query, { resolveName }),
@@ -1295,7 +1306,7 @@ const CanvasInner = ({
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [picking]);
+  }, [picking, setPickState]);
 
   // One Step per map edit of a routine, so each click or drag undoes on its own.
   const applyRoutineEdit = (edit: RoutineMapEdit) => {
@@ -1320,14 +1331,6 @@ const CanvasInner = ({
     });
     updateEntity(togglePick(pickedEntity, pickMode, locationId));
   };
-
-  // DEV dev-router: `pick=<entity id>` (or `<entity id>:knownIn`) picks an entity on the full-screen canvas.
-  const devPick = useDevRoute()?.pick;
-  useEffect(() => {
-    if (!import.meta.env.DEV || !devPick || !fullscreen) return;
-    const [entityId, mode] = devPick.split(':');
-    setPickState({ entityId, mode: mode === 'knownIn' ? 'knownIn' : 'locations' });
-  }, [devPick, fullscreen]);
 
   /**
    * Composing a selection on a touch screen. Shift and Ctrl are what a mouse adds a location to a selection
@@ -1536,13 +1539,13 @@ const CanvasInner = ({
         snapToGrid={snap}
         snapGrid={[CANVAS_GRID, CANVAS_GRID]}
         onConnect={({ source, target }) => {
-          if (!routine) { applyIntent(connectIntent(source, target, connections)); return; }
+          if (!editingRoutine) { applyIntent(connectIntent(source, target, connections)); return; }
           const edit = routineDrag(source, target);
           if (edit) applyRoutineEdit(edit);
         }}
         // The same rule the gesture obeys, so a drag onto a pair that already has a record reads as
         // refused while it is being drawn rather than landing and doing nothing.
-        isValidConnection={({ source, target }) => (routine ? !!routineDrag(source, target) : !!connectIntent(source, target, connections))}
+        isValidConnection={({ source, target }) => (editingRoutine ? !!routineDrag(source, target) : !!connectIntent(source, target, connections))}
         connectionLineStyle={{ stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
         deleteKeyCode={null}
         // Under the zoom controls rather than alone in the far corner, where a lone bit of text on open canvas
@@ -1551,7 +1554,7 @@ const CanvasInner = ({
         minZoom={0.2}
         fitView
         // Routine lines draw at full strength; the fade is for the Connections behind a pick.
-        className={cn('h-full w-full', picking && !routine && 'canvas-picking', adjustingMap && 'canvas-adjusting')}
+        className={cn('h-full w-full', pickedEntity && !routine && 'canvas-picking', adjustingMap && 'canvas-adjusting')}
         // A press or pan on the map keeps the selected routine row.
         {...{ [KEEPS_ROUTINE_SELECTION]: routine ? '' : undefined }}
       >
@@ -1576,11 +1579,14 @@ const CanvasInner = ({
         </CanvasControls>
         <TopLevelDrop />
         {/* In the toolbar's place, which picking hides. Clear of the entity card on the right. */}
-        {routineStatus && (
-          <Panel position="top-center" className="!m-2 md:!mt-[5px] max-w-[min(36rem,calc(100%-30rem))] max-md:max-w-[calc(100%-1rem)]">
+        {statusLine && (
+          <Panel
+            position="top-center"
+            className={cn('!m-2 md:!mt-[5px] max-md:max-w-[calc(100%-1rem)]', picking ? 'max-w-[min(36rem,calc(100%-30rem))]' : 'max-w-[min(36rem,calc(100%-1rem))]')}
+          >
             <p data-testid="routine-status" role="status" className="rounded-md border bg-card px-3 py-1.5 text-center text-label shadow-md">
-              {routineStatus.row && <strong className="block font-semibold">{routineStatus.row}</strong>}
-              {routineStatus.text}
+              {statusLine.row && <strong className="block font-semibold">{statusLine.row}</strong>}
+              {statusLine.text}
             </p>
           </Panel>
         )}
@@ -1612,7 +1618,7 @@ const CanvasInner = ({
             onNavigate={(at) => setCenter(at.x, at.y, { duration: reduceMotion ? 0 : 200 })}
           />
         )}
-        {fullscreen && (routine || marks) && (
+        {(routine || marks) && (
           <CanvasKey entries={routine ? routineKeyEntries(routine) : pickKeyEntries(marks ?? new Map())} />
         )}
         {/* One column on the right: an open Connection above the entity card, so neither covers the other.
@@ -1624,7 +1630,7 @@ const CanvasInner = ({
             {...{ [CLEARS_ROUTINE_SELECTION]: '' }}
             // Full screen drops the column under the window's corner button.
             // The Routine editor needs the width of its day strip.
-            className={cn('!m-2 flex max-h-[calc(100%-1rem)] flex-col gap-2 overflow-y-auto', routine ? 'w-[27rem] max-w-[calc(100%-1rem)]' : 'w-72', fullscreen && 'sm:!mt-10 sm:max-h-[calc(100%-3rem)] md:!mt-[calc(var(--header-line)+0.5rem)] md:max-h-[calc(100%-var(--header-line)-1rem)] max-sm:!mt-28 max-sm:max-h-[40%]')}
+            className={cn('!m-2 flex max-h-[calc(100%-1rem)] flex-col gap-2 overflow-y-auto', routine && picking ? 'w-[27rem] max-w-[calc(100%-1rem)]' : 'w-72', fullscreen && 'sm:!mt-10 sm:max-h-[calc(100%-3rem)] md:!mt-[calc(var(--header-line)+0.5rem)] md:max-h-[calc(100%-var(--header-line)-1rem)] max-sm:!mt-28 max-sm:max-h-[40%]')}
           >
             {shownMapPanel && worldOverview && (
               <MapBackgroundPanel
@@ -1717,7 +1723,12 @@ interface CanvasReveal {
  *  above it, so a caller with a world of its own provides one. */
 export const LocationCanvasWorkspace = (props: LocationCanvasInputs & CanvasReveal & {
   selectedId: string | null; onSelect: (id: string) => void;
+  /** The host's entity pick. Without one the canvas keeps its own, which nothing beside it shows. */
+  entityPick?: EntityPick;
 }) => {
+  const [ownPick, setOwnPick] = useState<PickState | null>(null);
+  const ownEntityPick = useMemo<EntityPick>(() => ({ pick: ownPick, onPickChange: setOwnPick, shown: false }), [ownPick]);
+  const entityPick = props.entityPick ?? ownEntityPick;
   const hostRef = useRef<HTMLDivElement | null>(null);
   const morph = useMorphFullscreen(hostRef);
   const selectedIdsRef = useRef<string[]>(props.selectedId ? [props.selectedId] : []);
@@ -1774,6 +1785,7 @@ export const LocationCanvasWorkspace = (props: LocationCanvasInputs & CanvasReve
     <ReactFlowProvider>
       <CanvasInner
         {...props}
+        entityPick={entityPick}
         session={session}
         fullscreen={morph.contentInOverlay}
         onToggleFullscreen={toggleFullscreen}
@@ -1803,7 +1815,9 @@ export const LocationCanvasWorkspace = (props: LocationCanvasInputs & CanvasReve
   );
 };
 
-const LocationCanvas = (props: CanvasReveal & { selectedId: string | null; onSelect: (id: string) => void }) => {
+const LocationCanvas = (props: CanvasReveal & {
+  selectedId: string | null; onSelect: (id: string) => void; entityPick?: EntityPick;
+}) => {
   const data = useGameData();
   const snap = useCanvasSnap();
   const grid = useCanvasGridVisible();

@@ -20,11 +20,13 @@ import LocationCanvas, { type ConnectionReveal, type SelectionReveal } from './L
 import LocationManager from './LocationManager';
 import type { ConnectionOpen } from './LocationConnections';
 import LocationTree from './LocationTree';
+import type { EntityPick } from './useEntityPick';
 
 /** The World Editor's Locations tab as a List Editor adapter: the tree or the canvas, a flat sortable search, and the location panel. */
 export function useWorldLocationsAdapter({
   selectedId, onSelect, search, collapse, view, tab, onTabChange, focusField, revealConnection, onConnectionRevealed,
   revealSelection, onSelectionRevealed, onCanvasSelection, onOpenEntityRoutine, connectionOpen, onConnectionOpened,
+  entityPick,
 }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -49,6 +51,8 @@ export function useWorldLocationsAdapter({
   /** A Connection row the open location's Connections tab should open. */
   connectionOpen?: ConnectionOpen | null;
   onConnectionOpened?: () => void;
+  /** The World Editor's entity pick, which the canvas picks and shows. */
+  entityPick?: EntityPick;
 }): ListEditorAdapter {
   const { locations, placeholders, placementLetters, placeholderOwners, addLocation, removeLocation, setLocations } = useGameData();
   const names = { placeholders, letters: placementLetters, owners: placeholderOwners };
@@ -104,6 +108,7 @@ export function useWorldLocationsAdapter({
             revealSelection={revealSelection}
             onSelectionRevealed={onSelectionRevealed}
             onSelectionChange={onCanvasSelection}
+            entityPick={entityPick}
           />
         </PanelErrorBoundary>
       )

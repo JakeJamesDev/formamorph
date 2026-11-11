@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Connection, Entity, ScheduleAction, ScheduleRow, Traversable } from '@/types';
 import { placesOf } from './positionEngine';
-import { routineDragSources, routineMapClick, routineMapDrag, routineMapStatus } from './routineMapEditing';
+import { routineDragSources, routineMapClick, routineMapDrag, routineMapStatus, routineShownStatus } from './routineMapEditing';
 import { rangeText } from './routineTime';
 
 // A village of sibling places, a ridge one Far Connection away, and an island nothing reaches.
@@ -252,5 +252,18 @@ describe('the status line', () => {
     const herd: Entity = { ...farrier(), kind: 'generic' };
     expect(status(null, herd)).toEqual({ text: 'Click a location to add or remove it' });
     expect(status('patrol', herd)).toEqual(status('patrol'));
+  });
+});
+
+describe('the status line of a routine that is only shown', () => {
+  const shown = (rowId: string | null, entity = farrier()) => routineShownStatus(entity, at(rowId), 'Old Farrier');
+
+  it('names whose routine it is with no row selected, and offers no click', () => {
+    expect(shown(null)).toEqual({ text: 'Routine of Old Farrier' });
+    expect(shown(null, { ...farrier(), kind: 'generic' })).toEqual({ text: 'Routine of Old Farrier' });
+  });
+
+  it('keeps the selected row and says the map shows its locations', () => {
+    expect(shown('wander')).toEqual({ row: routineMapStatus(farrier(), at('wander')).row, text: 'Locations of this row' });
   });
 });
