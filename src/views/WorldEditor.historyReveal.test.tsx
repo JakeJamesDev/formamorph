@@ -52,7 +52,7 @@ const statPanelShown = () => screen.queryByRole('tablist', { name: 'Stat Fields'
 /** The stat the panel holds, read from its Name field. */
 const openStatName = () => screen.getByRole('textbox', { name: 'Name' }).textContent;
 /** The canvas's panel for the selected connection. */
-const connectionPanelShown = () => screen.queryByLabelText('Direction of Travel') !== null;
+const connectionPanelShown = () => screen.queryByRole('radiogroup', { name: /^Travel between/ }) !== null;
 const canvasShown = () => document.querySelector('.react-flow') !== null;
 
 beforeEach(() => {

@@ -726,16 +726,10 @@ export function updateIntent(connection: Connection): CanvasIntent {
   return { kind: "update", connection };
 }
 
-/** A pair's distance as the inspector's choice reads it. */
+/** A pair's distance as the Distance control reads it. */
 export type ConnectionDistance = "nearby" | "far";
 
 export const distanceOf = (connection: Connection): ConnectionDistance => connection.distance ?? "nearby";
-
-/** The line under a distance choice, on the inspector and on a Connection row. */
-export const DISTANCE_HINTS: Record<ConnectionDistance, string> = {
-  nearby: "Lists entities at the other end as nearby for the AI",
-  far: "Hides entities at the other end from the AI; travel still works",
-};
 
 /** `connection` at `distance`. Nearby is stored as no field. */
 export function withDistance(connection: Connection, distance: ConnectionDistance): Connection {

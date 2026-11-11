@@ -1701,7 +1701,7 @@ The same levels work on desktop and on a phone. Nothing opens to the side, so a 
 **Purpose:** Edit a two-way Connection's two Travel Hints, one for each direction, or use one hint for both.
 
 - 📚 **Two stacked boxes.** Each box edits one direction and carries that direction in its label. A link copies the top box into the bottom box.
-- 🔗 **Vertical link toggle.** A ghost button sits to the right of both boxes and spans their full height. Its icon, turned upright, is a chain (`link`) when linked and a broken chain (`unlink`) when unlinked. Its tooltip names what a click does: **Link Travel Hints** or **Unlink Travel Hints**.
+- 🔗 **Vertical link toggle.** A ghost button sits to the right of both boxes. It spans from the top of the first box to the bottom of the second, so it never covers the first label. Its icon, turned upright, is a chain (`link`) when linked and a broken chain (`unlink`) when unlinked. Its tooltip names what a click does: **Link Travel Hints** or **Unlink Travel Hints**.
 - 🔒 **Linked.** The top box writes both directions. The bottom box is read-only, muted, and shows the top box's text. Screen readers hear that it copies the first Travel Hint.
 - ✏️ **Unlinked.** Both boxes are editable. Unlinking restores the text the bottom box had before the last link.
 - ➡️ **One-way.** One box and no toggle. Switching to two-way adds the second box, linked.
@@ -1719,11 +1719,50 @@ The link state is never saved. The pair opens linked when both hints are equal, 
 | --- | --- |
 | Boxes, toggle, link memory | `TravelHintPair` in [`TravelHintPair.tsx`](../src/components/editor/TravelHintPair.tsx) |
 | Link and unlink rewrites, opening state | `withLink`, `withUnlink` and `hintsLinked` in [`connectionEditing.ts`](../src/lib/connectionEditing.ts) |
-| Canvas inspector | `ConnectionInspector` in [`LocationCanvas.tsx`](../src/managers/LocationCanvas.tsx) |
+| Canvas inspector | `ConnectionInspector` in [`ConnectionInspector.tsx`](../src/managers/ConnectionInspector.tsx) |
 | Location panel | [`LocationConnections.tsx`](../src/managers/LocationConnections.tsx) |
 | Isolated reference | [`TravelHintPairReference.tsx`](../src/components/design-system/TravelHintPairReference.tsx) |
 
 Open `#dev?modal=designSystem&tab=travel-hints` for linked, unlinked, and one-way samples in local state. The **Locations** tab's quay-to-garden pair has different hints, so its arrow labels sit on their outer sides.
+
+## Pattern: Distance Mark
+
+**Purpose:** Show a Connection's distance, Nearby or Far, as a small picture and its word.
+
+- 📏 **Line, then word.** The mark has one fixed width. The shorter word gets the longer line, so marks line up in a list.
+- ➖ **Nearby** is a short straight line. Nearby always shows its mark; it is never blank.
+- 〰️ **Far** is a dotted sine wave with few humps, one every 8 px.
+- 🎨 **Current text color.** The mark has no color of its own. It follows the text around it, so it works in both themes and in a muted row.
+
+| Instance | Where |
+| --- | --- |
+| Distance choices | Both choices of the Connection widget's **Distance** control |
+
+## Pattern: Connection Widget
+
+**Purpose:** Edit one Connection's Travel, Distance and Travel Hints, the same way on every surface.
+
+- ↔️ **Travel.** A label, then a three-choice segmented control: both ways, one way out, one way in. No line under it.
+- 📐 **Distance.** A label with an **ⓘ**, then a two-choice segmented control of [distance marks](#pattern-distance-mark). It is as wide as the first two Travel choices, which sit right above its two choices; the third slot stays empty. The **ⓘ** holds the full explanation. No line under it.
+- 💬 **Travel Hints.** The [Travel Hint Pair](#pattern-travel-hint-pair), with no group label above it.
+- ↩️ **Re-clicking the active choice changes nothing.** A Connection always has a direction and a distance.
+
+The widget takes a Connection and hands back the rewritten record. Each surface supplies its own wording:
+
+| Surface | Travel choices | Hint box labels |
+| --- | --- | --- |
+| Location panel | An icon and a word: **Both Ways**, **To There**, **To Here** | **To** *partner*, **From** *partner* |
+| Canvas inspector | An icon only. The tooltip names both ends. | An arrow plus the destination name |
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Distance mark | `DistanceMark` in [`DistanceMark.tsx`](../src/components/editor/DistanceMark.tsx) |
+| Travel, Distance and hints | `ConnectionFields` in [`ConnectionFields.tsx`](../src/components/editor/ConnectionFields.tsx) |
+| Isolated reference | [`ConnectionFieldsReference.tsx`](../src/components/design-system/ConnectionFieldsReference.tsx) |
+
+Open `#dev?modal=designSystem&tab=connection-widget` for both values of the mark, muted and in full color, and for the widget in local state.
 
 ## Pattern: Routine Sentences
 

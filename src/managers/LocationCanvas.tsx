@@ -10,9 +10,9 @@ import {
 import '@xyflow/react/dist/base.css';
 import {
   AlertTriangle, AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
-  AlignVerticalDistributeCenter, ArrowLeft, ArrowLeftRight, ArrowRight, CornerDownRight, Flag, Grid2x2, ImagePlus,
+  AlignVerticalDistributeCenter, CornerDownRight, Flag, Grid2x2, ImagePlus,
   LayoutGrid, Magnet, Maximize2, Megaphone, Minus, Pencil, Redo2, Spline, SquareCheck, Star,
-  Trash2, Undo2, X,
+  Undo2, X,
 } from 'lucide-react';
 import EntityPickCard, { type PickState } from '@/managers/EntityPickCard';
 import { pickMarks, togglePick, type PickMark } from '@/lib/entityPicking';
@@ -30,7 +30,6 @@ import { useGameData } from '@/contexts/GameDataContext';
 import FullscreenShell from '@/components/FullscreenShell';
 import { FloatingEdge } from '@/components/FloatingEdge';
 import { routineFlowEdge, toFlowEdge } from '@/lib/canvasEdges';
-import { fieldFrame } from '@/lib/historyField';
 import { useCanvasConnectionStyle, useCanvasGridVisible, useCanvasSnap } from '@/lib/canvasPrefs';
 import { CONNECTION_STYLES, isConnectionStyle, type ConnectionStyle } from '@/lib/canvasEdgePath';
 import { useDevRoute } from '@/lib/devRouter';
@@ -45,16 +44,15 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { describePlaceholders } from '@/lib/placeholders';
-import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
   applyCanvasDrops, applyCanvasIntent, beginCanvasDrag, buildLocationCanvas, canvasFocus, CANVAS_GRID,
-  connectIntent, connectionEnds, deleteIntent, directionIntent, directionOf, DISTANCE_HINTS, distanceIntent, distanceOf, hintKey, implicitCanvasEdges,
-  nudgeKey, updateIntent, isStationaryClick, leafTarget,
+  connectIntent, hintKey, implicitCanvasEdges,
+  nudgeKey, isStationaryClick, leafTarget,
   LONG_PRESS_MS, multiDropIntents, TOUCH_SLOP, UNNAMED_LOCATION,
-  type CanvasDragSession, type CanvasIntent, type CanvasNodeData, type ConnectionDistance,
+  type CanvasDragSession, type CanvasIntent, type CanvasNodeData,
 } from '@/lib/locationCanvas';
-import { connectionLegs } from '@/lib/locationGraph';
-import { TravelHintPair, type TravelHintFocus } from '@/components/editor/TravelHintPair';
+import type { TravelHintFocus } from '@/components/editor/TravelHintPair';
+import { ConnectionInspector } from '@/managers/ConnectionInspector';
 import {
   canvasMenuSections, type CanvasMenuItem, type CanvasMenuSection,
 } from '@/lib/canvasMenu';
@@ -70,14 +68,14 @@ import {
 import { searchLocations, type LocationMatch } from '@/lib/locationSearch';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
-import type { Connection, Entity, GameLocation, LegKey, Placeholder } from '@/types';
+import type { Entity, GameLocation, LegKey } from '@/types';
 import { CanvasControlButton, CanvasControls } from '@/components/CanvasControls';
 import { Tip } from '@/components/ui/tooltip';
 import { MapBackgroundLayer, type MapGesture } from '@/components/MapBackgroundLayer';
 import { mapImages } from '@/lib/mapBackground';
 import { MapBackgroundPanel, type MapBackgroundPanelMode } from '@/managers/MapBackgroundPanel';
 import { useMapBackground } from '@/managers/useMapBackground';
-import { Hint, Meta } from '@/components/ui/typography';
+import { Meta } from '@/components/ui/typography';
 
 /**
  * The Locations canvas: the world's navigable shape as a map, and the primary place to draw on it. What a
@@ -395,107 +393,6 @@ const TopLevelDrop = () => {
 
 const nodeTypes = { location: LocationNode, locationGroup: LocationGroupNode };
 const edgeTypes = { floating: FloatingEdge };
-
-/** The three ways a pair's travel can run, worded from the pair's first end so the option an author just
- *  clicked stays where it was. Full names live in the labels; the arrows read against the header. */
-const DIRECTIONS: { value: ConnectionDirection; Icon: typeof ArrowRight; label: (a: string, b: string) => string }[] = [
-  { value: 'two-way', Icon: ArrowLeftRight, label: (a, b) => `Travel both ways between ${a} and ${b}` },
-  { value: 'outgoing', Icon: ArrowRight, label: (a, b) => `Travel one way, ${a} to ${b}` },
-  { value: 'incoming', Icon: ArrowLeft, label: (a, b) => `Travel one way, ${b} to ${a}` },
-];
-
-/**
- * The selected arrow's record, edited in place on the map: which way travel runs, how far apart the pair is,
- * how the narration should describe making the trip, and whether the link exists at all. Every control hands its intent back, so the
- * panel decides nothing about what an edit means.
- */
-const ConnectionInspector = ({ connection, focus, nameOf, onIntent, onClose, placeholders }: {
-  connection: Connection;
-  placeholders: Placeholder[];
-  /** The leg whose arrow was clicked last. */
-  focus: TravelHintFocus | null;
-  nameOf: (id: string) => string;
-  onIntent: (intent: CanvasIntent, typedLeg?: LegKey) => void;
-  onClose: () => void;
-}) => {
-  const [a, b] = connectionEnds(connection);
-  const names = [nameOf(a), nameOf(b)] as const;
-  const distance = distanceOf(connection);
-  return (
-    <div className="space-y-2 rounded-md border bg-card p-3 shadow-md">
-      <div className="flex items-center gap-1">
-        <Tip tip={`${names[0]} — ${names[1]}`} labelsChild={false}>
-          <span className="min-w-0 flex-grow truncate text-label">
-            {names[0]} — {names[1]}
-          </span>
-        </Tip>
-        <Tip tip="Delete Connection">
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0"
-            onClick={() => onIntent(deleteIntent(connection))}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </Tip>
-        <Tip tip="Close">
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
-        </Tip>
-      </div>
-      <ToggleGroup
-        type="single"
-        className="w-full"
-        value={directionOf(connection)}
-        aria-label="Direction of Travel"
-        {...fieldFrame('connections', connection.id, 'direction')}
-        // A single ToggleGroup clears its value when the active item is clicked again; a Connection always
-        // runs some direction, so an empty result is ignored rather than stored.
-        onValueChange={(v) => { if (v) onIntent(directionIntent(connection, v as ConnectionDirection)); }}
-      >
-        {DIRECTIONS.map(({ value, Icon, label }) => (
-          <Tip key={value} tip={label(...names)}>
-            <ToggleGroupItem value={value} className="flex-1">
-              <Icon className="h-4 w-4" />
-            </ToggleGroupItem>
-          </Tip>
-        ))}
-      </ToggleGroup>
-      <div className="space-y-1">
-        <ToggleGroup
-          type="single"
-          className="grid w-full grid-cols-2"
-          value={distance}
-          aria-label="Distance"
-          {...fieldFrame('connections', connection.id, 'distance')}
-          onValueChange={(v) => { if (v) onIntent(distanceIntent(connection, v as ConnectionDistance)); }}
-        >
-          <ToggleGroupItem value="nearby">Nearby</ToggleGroupItem>
-          <ToggleGroupItem value="far">Far</ToggleGroupItem>
-        </ToggleGroup>
-        <Hint>{DISTANCE_HINTS[distance]}</Hint>
-      </div>
-      <TravelHintPair
-        connection={connection}
-        legs={connectionLegs(connection).map(({ key }) => {
-          const [Icon, destination] = key === 'aToB' ? [ArrowRight, names[1]] : [ArrowLeft, names[0]];
-          return {
-            key,
-            label: (
-              <>
-                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <span className="min-w-0 truncate">{destination}</span>
-              </>
-            ),
-            name: `Travel Hint to ${destination}`,
-          };
-        })}
-        idPrefix={`canvas-connection-${connection.id}`}
-        placeholders={placeholders}
-        onChange={(next, typedLeg) => onIntent(updateIntent(next), typedLeg)}
-        focus={focus}
-      />
-    </div>
-  );
-};
 
 /**
  * What a right-click was aimed at, which is what the menu is a menu *of*: one location, the whole selection,

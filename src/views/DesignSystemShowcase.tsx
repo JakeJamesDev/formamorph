@@ -4,6 +4,7 @@ import { OwnerFlyoutReference } from '@/components/design-system/OwnerFlyoutRefe
 import { BreadcrumbPickerReference } from '@/components/design-system/BreadcrumbPickerReference';
 import { ItemIconPickerReference } from '@/components/design-system/ItemIconPickerReference';
 import { TravelHintPairReference } from '@/components/design-system/TravelHintPairReference';
+import { ConnectionFieldsReference } from '@/components/design-system/ConnectionFieldsReference';
 import { RoutineSentenceReference } from '@/components/design-system/RoutineSentenceReference';
 import { FormaquestionReference } from '@/components/design-system/FormaquestionReference';
 import { FeedbackFilterRowReference } from '@/components/design-system/FeedbackFilterRowReference';
@@ -467,6 +468,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Travel Hints',
     description: 'Two Travel Hint boxes joined by a link toggle',
     Component: TravelHintPairReference,
+  },
+  {
+    id: 'connection-widget',
+    label: 'Connection Widget',
+    description: 'Travel, Distance and Travel Hints for one Connection, with the distance mark',
+    Component: ConnectionFieldsReference,
   },
   {
     id: 'routine-sentences',

@@ -47,8 +47,8 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 
 1. Select one of the two locations, then open its **Presence** tab.
 2. Under **Connections**, pick the other location in **Connect to…**.
-3. Select the **+** button (**Add Connection**). The new Connection is **Two-Way**.
-4. To make it one-way, pick **Outgoing** or **Incoming** on its row.
+3. Select the **+** button (**Add Connection**). The new Connection travels **Both Ways**.
+4. To make it one-way, pick **To There** or **To Here** under **Travel** on its row.
 5. Optional: write a **Travel Hint**.
 
 **On the canvas:** drag from the handle on the right edge of one box (**Drag To Connect**) onto the other box.
@@ -256,13 +256,17 @@ The entity goes back to its usual places later: when the player leaves, or after
 
 Nesting lets the story move the player between nested places, always in both directions. A **Connection** is a link you make between *any* two locations, at any place in the tree.
 
-The **Connections** section lists every link this location is part of, from this location's point of view:
+The **Connections** section lists every link this location is part of, from this location's point of view. Each Connection has three fields: **Travel**, **Distance** and its Travel Hints.
 
-| Direction | Means |
+**Travel** sets which way the story can move the player:
+
+| Travel | Means |
 |---|---|
-| **Two-Way** | The story can move the player in both directions. A new Connection starts as this. |
-| **Outgoing** | The story can leave here for the other place. It can never bring the player back. |
-| **Incoming** | The story can arrive here from the other place. It can't go the other way. |
+| **Both Ways** | The story can move the player in both directions. A new Connection starts as this. |
+| **To There** | The story can leave here for the other place. It can never bring the player back. |
+| **To Here** | The story can arrive here from the other place. It can't go the other way. |
+
+On the Canvas, the Travel choices show only arrows. Point at one to see which place it leads from and to.
 
 Pick a place in **Connect to…**, then select the **+** button (**Add Connection**).
 
@@ -277,7 +281,7 @@ Every link between two places is **Nearby** or **Far**. The AI receives the enti
 
 Only places one link away count. A place two links away is never nearby.
 
-To set it, pick **Nearby** or **Far** on the Connection's row in the **Presence** tab, or select the Connection's arrow on the **Canvas**. Both set the same value. A Far arrow draws as a dotted line, on the Canvas and on the player's Map.
+To set it, pick **Nearby** or **Far** under **Distance** on the Connection's row in the **Presence** tab, or select the Connection's arrow on the **Canvas**. Both set the same value. Each choice shows a mark: a short line for Nearby, a dotted wave for Far. Select the **ⓘ** beside **Distance** for the full explanation. A Far arrow draws as a dotted line, on the Canvas and on the player's Map.
 
 To make a nested link Far, select its dashed arrow on the Canvas. That turns it into a two-way Connection. Then pick **Far**. Delete the Connection to make the link Nearby again.
 
@@ -289,8 +293,8 @@ Each direction has its own hint. The AI gets the hint for the direction the play
 
 | Connection | Hint boxes |
 |---|---|
-| **Two-Way** | Two boxes, one for each direction. A **link toggle** is to the right of both. |
-| **Outgoing** or **Incoming** | One box. There is no toggle. |
+| **Both Ways** | Two boxes, one for each direction. A **link toggle** is to the right of both. |
+| **To There** or **To Here** | One box. There is no toggle. |
 
 On a location's panel, the boxes read **To** *place* and **From** *place*. On the Canvas, each box shows an arrow and the place it leads to.
 

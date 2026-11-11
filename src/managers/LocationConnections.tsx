@@ -1,40 +1,23 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, ArrowLeftRight, Plus, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SelectOptions } from '@/components/SelectOptions';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import {
   connectionTargets,
   connectionsAt,
   createConnection,
   legFrom,
-  withDirection,
-  type ConnectionDirection,
 } from '@/lib/connectionEditing';
 import { otherLeg } from '@/lib/locationGraph';
-import { DISTANCE_HINTS, distanceOf, withDistance, type ConnectionDistance } from '@/lib/locationCanvas';
 import type { Connection, GameLocation, LegKey } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
-import { fieldFrame } from '@/lib/historyField';
-import { TravelHintPair } from '@/components/editor/TravelHintPair';
-
-/** The direction control's options in the order they're offered, worded from the panel that's open. */
-const DIRECTIONS: { value: ConnectionDirection; label: string }[] = [
-  { value: 'two-way', label: 'Two-Way' },
-  { value: 'outgoing', label: 'Outgoing' },
-  { value: 'incoming', label: 'Incoming' },
-];
-
-const DIRECTION_ICONS: Record<ConnectionDirection, typeof ArrowRight> = {
-  'two-way': ArrowLeftRight,
-  outgoing: ArrowRight,
-  incoming: ArrowLeft,
-};
+import { ConnectionFields } from '@/components/editor/ConnectionFields';
+import { PANEL_TRAVEL_LABELS, TRAVEL_ICONS } from '@/components/editor/connectionTravel';
 
 /** The legs a Connection has, seen from `locationId`: the trip leaving first, then the trip arriving. */
 function legsAt(connection: Connection, locationId: string): { key: LegKey; word: 'To' | 'From' }[] {
@@ -47,12 +30,10 @@ function legsAt(connection: Connection, locationId: string): { key: LegKey; word
 }
 
 /**
- * The Connections on one location's editor panel: add, retarget direction, hint, delete.
+ * The Connections on one location's editor panel: add, set Travel, Distance and hints, delete.
  *
  * A Connection is one world record shown from whichever end the author opened, so the same link appears on
- * both locations and every edit here writes the single record through the editor's own path. Where a
- * Connection exists, it is the pair's whole travel rule — which is why the direction control offers the
- * one-way orientations rather than hiding a flip behind a second gesture.
+ * both locations and every edit here writes the single record through the editor's own path.
  */
 const LocationConnections = ({ location }: { location: GameLocation }) => {
   const { locations, connections, addConnection, updateConnection, removeConnection, placeholders, placementLetters, placeholderOwners } = useGameData();
@@ -87,7 +68,7 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
         its children, and its siblings.
       </Hint>
       {views.map(({ connection, partnerId, direction }) => {
-        const Icon = DIRECTION_ICONS[direction];
+        const Icon = TRAVEL_ICONS[direction];
         const partnerName = nameOf(partnerId);
         return (
           <div key={connection.id} className="space-y-2 rounded-md border p-2">
@@ -105,41 +86,11 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
                 </Button>
               </Tip>
             </div>
-            <ToggleGroup
-              type="single"
-              className="w-full"
-              value={direction}
-              aria-label={`Direction of the Connection to ${partnerName}`}
-              {...fieldFrame('connections', connection.id, 'direction')}
-              // A single ToggleGroup clears its value when the active item is clicked again; a Connection
-              // always runs some direction, so an empty result is ignored rather than stored.
-              onValueChange={(v) => {
-                if (v) updateConnection(withDirection(connection, location.id, v as ConnectionDirection));
-              }}
-            >
-              {DIRECTIONS.map((d) => (
-                <ToggleGroupItem key={d.value} value={d.value} className="flex-1">{d.label}</ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-            <div className="space-y-1">
-              <ToggleGroup
-                type="single"
-                className="grid w-full grid-cols-2"
-                value={distanceOf(connection)}
-                aria-label={`Distance of the Connection to ${partnerName}`}
-                {...fieldFrame('connections', connection.id, 'distance')}
-                // A Connection always has a distance; an empty result from re-clicking the active item is ignored.
-                onValueChange={(v) => {
-                  if (v) updateConnection(withDistance(connection, v as ConnectionDistance));
-                }}
-              >
-                <ToggleGroupItem value="nearby">Nearby</ToggleGroupItem>
-                <ToggleGroupItem value="far">Far</ToggleGroupItem>
-              </ToggleGroup>
-              <Hint>{DISTANCE_HINTS[distanceOf(connection)]}</Hint>
-            </div>
-            <TravelHintPair
+            <ConnectionFields
               connection={connection}
+              viewpoint={location.id}
+              travelLabels={PANEL_TRAVEL_LABELS}
+              groupNames={{ travel: `Travel between here and ${partnerName}`, distance: `Distance to ${partnerName}` }}
               legs={legsAt(connection, location.id).map(({ key, word }) => ({
                 key,
                 label: `${word} ${partnerName}`,

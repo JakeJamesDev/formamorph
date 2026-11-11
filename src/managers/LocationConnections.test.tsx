@@ -114,27 +114,53 @@ describe('LocationConnections', () => {
   it('shows the partner and the direction from the end being edited', () => {
     render(<LocationConnections location={at('ledge')} />);
     expect(screen.getByText('Cave')).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Outgoing' })).toHaveAttribute('data-state', 'on');
+    expect(screen.getByRole('radio', { name: 'To There' })).toHaveAttribute('data-state', 'on');
   });
 
   it('shows the same record mirrored from the other end', () => {
     render(<LocationConnections location={at('cave')} />);
     expect(screen.getByText('Ledge')).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Incoming' })).toHaveAttribute('data-state', 'on');
+    expect(screen.getByRole('radio', { name: 'To Here' })).toHaveAttribute('data-state', 'on');
     expect(screen.getByLabelText('Travel Hint from Ledge')).toHaveValue('over the lip');
     expect(screen.queryByLabelText('Travel Hint to Ledge')).not.toBeInTheDocument();
   });
 
   it('makes the Connection two-way from either end without touching its endpoints', () => {
     render(<LocationConnections location={at('cave')} />);
-    fireEvent.click(screen.getByRole('radio', { name: 'Two-Way' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Both Ways' }));
     expect(lastUpdate()).toEqual({ id: 'c1', a: 'ledge', b: 'cave', aToB: { hint: 'over the lip' }, bToA: { hint: 'over the lip' } });
   });
 
   it('flips a one-way Connection to run the other way, taking its hint along', () => {
     render(<LocationConnections location={at('ledge')} />);
-    fireEvent.click(screen.getByRole('radio', { name: 'Incoming' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'To Here' }));
     expect(lastUpdate()).toEqual({ id: 'c1', a: 'ledge', b: 'cave', bToA: { hint: 'over the lip' } });
+  });
+
+  it('shows the Connection widget: Travel, Distance and the hint boxes', () => {
+    render(<LocationConnections location={at('ledge')} />);
+    expect(screen.getByText('Travel')).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'Travel between here and Cave' })).toBeInTheDocument();
+    expect(screen.getByText('Distance')).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'Distance to Cave' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'More info' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Travel Hint to Cave')).toBeInTheDocument();
+  });
+
+  it('sets the distance Far and back to Nearby, storing Nearby as no field', () => {
+    render(<LocationConnections location={at('cave')} />);
+    expect(screen.getByRole('radio', { name: 'Nearby' })).toHaveAttribute('data-state', 'on');
+    fireEvent.click(screen.getByRole('radio', { name: 'Far' }));
+    expect(lastUpdate()).toEqual({ id: 'c1', a: 'ledge', b: 'cave', aToB: { hint: 'over the lip' }, distance: 'far' });
+    fireEvent.click(screen.getByRole('radio', { name: 'Nearby' }));
+    expect(lastUpdate()).toEqual({ id: 'c1', a: 'ledge', b: 'cave', aToB: { hint: 'over the lip' } });
+  });
+
+  it('changes nothing when the active Travel or Distance choice is clicked again', () => {
+    render(<LocationConnections location={at('ledge')} />);
+    fireEvent.click(screen.getByRole('radio', { name: 'To There' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Nearby' }));
+    expect(updateConnection).not.toHaveBeenCalled();
   });
 
   it('writes the travel hint through to the record', () => {
@@ -311,7 +337,7 @@ describe('Travel Hint link toggle', () => {
 
   it('shows the second box linked when a one-way Connection turns two-way', () => {
     render(<LocationConnections location={at('ledge')} />);
-    fireEvent.click(screen.getByRole('radio', { name: 'Two-Way' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Both Ways' }));
     expect(toggle()).toHaveAttribute('aria-pressed', 'true');
     expect(fromBox()).toHaveValue('over the lip');
     expect(fromBox()).toHaveAttribute('readonly');

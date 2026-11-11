@@ -49,7 +49,7 @@ async function openConnectionPanel({ ctx }: ReturnType<typeof renderWorldEditorB
   fireEvent.click(screen.getByRole('radio', { name: 'Canvas' }));
   await step(() => ctx().updateConnection({ ...ctx().connections[0], aToB: {} }));
   await undo();
-  expect(screen.getByLabelText('Distance')).toBeTruthy();
+  expect(screen.getByRole('radiogroup', { name: /^Distance between/ })).toBeTruthy();
 }
 
 describe('the Connection panel on the Locations Canvas', () => {
@@ -61,7 +61,6 @@ describe('the Connection panel on the Locations Canvas', () => {
 
     await step(() => fireEvent.click(screen.getByRole('radio', { name: 'Far' })));
     expect(ctx().connections[0].distance).toBe('far');
-    expect(screen.getByText(/travel still works/)).toBeTruthy();
 
     await step(() => fireEvent.click(screen.getByRole('radio', { name: 'Nearby' })));
     expect(ctx().connections[0]).not.toHaveProperty('distance');

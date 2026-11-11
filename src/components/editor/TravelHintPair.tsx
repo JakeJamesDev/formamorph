@@ -92,7 +92,7 @@ export function TravelHintPair({ connection, legs, idPrefix, onChange, focus, pl
           const copy = linked && key === second?.key;
           return (
             <div key={key} className="space-y-1" {...fieldFrame('connections', connection.id, key)}>
-              <Label className="flex items-center gap-1" onClick={() => boxes.current[key]?.focus()}>{label}</Label>
+              <Label className="flex h-4 items-center gap-1" onClick={() => boxes.current[key]?.focus()}>{label}</Label>
               <PlaceholderNameField
                 focusRef={(handle) => { boxes.current[key] = handle; }}
                 value={copy ? firstHint : connection[key]?.hint ?? ''}
@@ -116,7 +116,8 @@ export function TravelHintPair({ connection, legs, idPrefix, onChange, focus, pl
             size="icon"
             aria-label="Link Travel Hints"
             aria-pressed={linked}
-            className={cn('h-auto w-7 shrink-0 self-stretch', linked ? 'text-primary' : 'text-muted-foreground')}
+            // The top margin is the first label's fixed height plus its gap, so the button spans only the boxes.
+            className={cn('mt-5 h-auto w-7 shrink-0 self-stretch',linked ? 'text-primary' : 'text-muted-foreground')}
             onClick={toggle}
           >
             {linked

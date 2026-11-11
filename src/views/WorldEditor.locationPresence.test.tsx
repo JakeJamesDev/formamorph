@@ -141,7 +141,6 @@ describe('the Presence tab: Connections', () => {
 
     await step(() => fireEvent.click(screen.getByRole('radio', { name: 'Far' })));
     expect(ctx().connections[0].distance).toBe('far');
-    expect(screen.getByText(/travel still works/)).toBeTruthy();
 
     await undo();
     expect(ctx().connections[0]).toEqual(WORLD.connections![0]);

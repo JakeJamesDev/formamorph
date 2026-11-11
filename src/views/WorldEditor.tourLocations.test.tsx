@@ -410,7 +410,7 @@ describe('In Game — Locations', () => {
     await waitFor(() => expect(ctx().connections).toHaveLength(1));
     const [tidewell, lantern] = ['The Tidewell', 'The Salt Lantern'].map((n) => ctx().locations.find((l) => l.name === n)!.id);
     // The step selects the second location, so the only direction control on screen runs from there.
-    const setDirection = async (name: 'Outgoing' | 'Incoming', from: string, to: string) => {
+    const setDirection = async (name: 'To There' | 'To Here', from: string, to: string) => {
       fireEvent.click(screen.getByRole('radio', { name }));
       await waitFor(() => expect(connectionLegs(ctx().connections[0]).map((l) => [l.from, l.to])).toEqual([[from, to]]));
     };
@@ -426,13 +426,13 @@ describe('In Game — Locations', () => {
       expect(marks(change)).toEqual(['down the lane past the net sheds']);
     };
 
-    // Two-Way: the first tour location.
+    // Both Ways: the first tour location.
     await expectStandsAt('The Tidewell', 'The Salt Lantern');
     // One-way, second → first: the second tour location, the only end with somewhere to go.
-    await setDirection('Outgoing', lantern, tidewell);
+    await setDirection('To There', lantern, tidewell);
     await expectStandsAt('The Salt Lantern', 'The Tidewell');
     // One-way, first → second: the first tour location again.
-    await setDirection('Incoming', tidewell, lantern);
+    await setDirection('To Here', tidewell, lantern);
     await expectStandsAt('The Tidewell', 'The Salt Lantern');
   });
 });
