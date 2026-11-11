@@ -21,6 +21,8 @@ The free links come from the location graph's implicit neighbors. Use them; do n
 
 The prototype shows the group: branch `prototype/connection-rows`, variant B4, under the picker. "Free Links" is a working name; final copy follows the Writing Guide.
 
+**The tab's hint:** ticket 22 keeps the old two-sentence hint. Its second sentence says a location still connects to its parent, children and siblings. The group now says that, so cut the hint to its first sentence (Q200).
+
 **Left over from ticket 21:** the canvas's direction and distance intent helpers have no caller but their own tests since the canvas sends the widget's rewritten record. Delete the two helpers and their tests.
 
 **Left over from ticket 24:** the Design System page does not list the two Known In marks of the Nearby view: the full mark (the entity-location tint and ring) and the lighter mark (a dashed outline). The user picked that look before the landing. Add both to the page's canvas marks.

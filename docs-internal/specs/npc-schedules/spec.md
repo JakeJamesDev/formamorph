@@ -253,6 +253,11 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q196** The widget takes its hint labels from the surface too: "To X" and "From X" on the location panel, an arrow and the destination on the canvas. (Ticket 21.)
 - **Q197** The one-line distance hints are deleted. The Distance ⓘ is the only place that explains Nearby and Far (Q186). (Ticket 21.)
 - **Q198** Tickets 21 and 24 share no primitive. Ticket 21 owns the distance mark; ticket 24 draws Far links in the canvas's existing Far style. (Tickets 21, 24.)
+- **Q199** Collapse All on the Connections tab shows only with more than one row, as on the Openings list. (Ticket 22.)
+- **Q200** The Connections tab has no "Connections" label; the tab names it. Its hint line stays, with Collapse All right-aligned on it. Ticket 23 cuts the hint to its first sentence when the free-links group says the rest. (Tickets 22, 23.)
+- **Q201** A row opens only when the author adds the Connection on the tab: the "Connect to" picker and the Authoring Tour's example. A Connection that returns through undo, or arrives any other way, stays closed. (Ticket 22; narrows Q184.)
+- **Q202** A reveal that lands on a field of a closed row opens the row first: world search, undo and Reveal Origin, on a Travel Hint, Travel or Distance. (Ticket 22.)
+- **Q203** On a closed row the distance mark draws Far in the foreground color and Nearby muted, as in the prototype. (Ticket 22.)
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
