@@ -101,6 +101,13 @@ Rulings from the grill of 2026-11-11.
 - **Q15.** One standing body of a Generic entity is a **Generic Entity Instance**. "Presence" no longer names it. "Instance" and "Generic Instance" are avoided: neither says what the thing is. Code identifiers that use "presence" for the body are renamed in this effort. Save-file keys are not renamed; the rename is of types, functions and prose only, so the save shape does not change.
 - **Q16.** Start places has one definition for every reader: a Start at Player's Starting Location stands for the world's starting locations, or every location when none is flagged. The New Game start list follows it. This replaces the "adds none" of NPC Schedules Q229 for that list; its met-by-start rule (Q230) already reads it this way. User ruling of 2026-11-11, on the landings of NPC Schedules tickets 33 and 34.
 - **Q17.** The live field `presences` (entity id → the places its Generic Entity Instances stand at) is renamed `genericPositions`. It holds where instances stand now, which is Position, not Presence. The field is never saved, so no shape changes. Spec-session ruling of 2026-11-11, on an intent question of ticket 01. It holds only while no script or stat code can read the field by name.
+- **Q18.** Rows of a Start at Player's Starting Location get no path check: every row place counts. The real start is not known until play, because a persona can begin at an unflagged place, so the test of Q8 cannot be decided. This keeps NPC Schedules Q149 and the canvas does not change. The Start itself still expands as in Q7.
+- **Q19.** Presence holds only places the world has, for every reason. The module gives a second read, the **named places**: every place id the routine names (Starts, rows, Traversable), with no world and no path check. The orphan rule (ticket 07) and carry (ticket 09) use it.
+- **Q20.** An entity with no kind has Presence equal to its membership list, with the reason "member".
+- **Q21.** Presence has no unchecked mode. The library list of the places a carried entity names (ticket 09) uses the named places of Q19.
+- **Q22.** The glossary term is Traversable; "Can Also Go" is its UI label, which this spec and ADR-0017 use in prose. In code the reason is `traversable`.
+
+  Q18 to Q22 are spec-session rulings of 2026-11-11, on intent questions of ticket 02.
 
 Other decisions:
 

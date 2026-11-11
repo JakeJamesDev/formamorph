@@ -37,3 +37,5 @@ Spec rulings: Q7, Q8, Q9 (#1, #2). Presence Rows Q2.
 - [ ] Frames: `.scratch/frames/presence-tab-player-start.png` (a starting location's Presence tab with a Player's Starting Location entity) and `.scratch/frames/canvas-pick-known-in.png` (canvas marks under Known In picks), dark theme, 1440 wide.
 - [ ] The Locations wiki page matches.
 - [ ] A changelog fragment records the two fixes.
+
+Spec rulings added after this ticket was written: Q18 (rows of a Start at Player's Starting Location get no path check; the canvas keeps that), Q22.

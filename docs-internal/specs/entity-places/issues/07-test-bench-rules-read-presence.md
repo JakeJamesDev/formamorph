@@ -35,3 +35,5 @@ Spec rulings: Q7, Q8, Q9 (#10). ADR-0005.
 - [ ] No rule special-cases Player's Starting Location outside the module, and the helper for it is gone.
 - [ ] The Test Bench wiki page matches.
 - [ ] A changelog fragment records the new finding if one was added. With none added, there is no fragment.
+
+Spec rulings added after this ticket was written: Q19 (the orphan rule reads the module's named places, since Presence holds only places the world has), Q18, Q22.

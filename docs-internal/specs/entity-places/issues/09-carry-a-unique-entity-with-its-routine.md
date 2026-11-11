@@ -38,3 +38,5 @@ Spec rulings: Q11, Q7.
 - [ ] A Generic entity and an entity with no kind carry as before. Existing tests still pass unchanged.
 - [ ] The library's carried-locations list includes a Can Also Go place.
 - [ ] A changelog fragment records the fix.
+
+Spec rulings added after this ticket was written: Q19, Q21 (the library list of carried places reads the module's named places; Presence has no unchecked mode).
