@@ -542,7 +542,7 @@ When the player plays no entity, `persona` is an empty entry:
 | `pronouns` | The entity's pronouns, or `''` when it has none. Read-only |
 | `inScene` | True when the **Entities** tab lists the entity under **In Scene**. An entity under **Also Here** reads false. Read-only |
 | `met` | True when the player has met the entity. Never turns false. Read-only |
-| `location` | The code name of the location the entity is at. A follower reads the player's location. Empty when the entity has no position of its own and is at every location it lists. Read-only |
+| `location` | The code name of the location the entity is at. A Unique entity reads its own location, and a follower reads the player's. Empty for a Generic entity, which is in `present` at each place one of its presences is, and for an entity with no position. Read-only |
 | `following` | True when the entity follows the player. Read-only |
 | `waiting` | True when the entity stopped following and waits where it was left. Read-only |
 | `description` | The full AI description, with each placeholder chip filled in. Read-only |
@@ -553,9 +553,9 @@ When the player plays no entity, `persona` is an empty entry:
 | `stats` | The entity's own stats by name. Entries take writes |
 | `items` | The Item Copies the entity owns. See [Items](#items). Read-only |
 | `body` | The entity's Body in force, or `null`. Assign a Body name to set its base Body. See [Bodies](#bodies) |
-| `move()` | Moves the entity to a location. See [Moving Entities](#moving-entities) |
-| `follow()` | Makes the entity follow the player |
-| `unfollow()` | Stops the entity following or waiting, so it goes back to its usual places |
+| `move()` | Moves a Unique entity to a location. Ignored on a Generic entity. See [Moving Entities](#moving-entities) |
+| `follow()` | Makes a Unique entity follow the player. Ignored on a Generic entity |
+| `unfollow()` | Stops a Unique entity following or waiting, so it goes back to its usual places. Ignored on a Generic entity |
 | `meet()` | The player meets the entity. See [Meeting Entities](#meeting-entities) |
 | `diary(line)` | Adds a line to the entity's diary. See [Diary](#diary) |
 
@@ -627,10 +627,10 @@ if (self.value >= 3) entities.Sylvie.meet();
 #### Moving Entities
 <!-- keywords: move npc, companion joins, follow player, leave party, schedule, patrol, entity location, send away -->
 
-Three calls on an entity's entry set its location. They work on a **Unique** entity; a **Generic** entity ignores them.
+Three calls on an entity's entry set its location. They work on a **Unique** entity. On a **Generic** entity they are ignored: it has no position of its own, never follows, and its presences keep their routines.
 
-- **`entities.<Entity>.move("<Location>")`** puts the entity at a location of your world, by id, else by name. A following or waiting entity stops. It stays there for a while, then goes back to its usual places.
-- **`entities.<Entity>.follow()`** makes the entity follow the player, at the player's location. It follows even where its routine would not let it go.
+- **`entities.<Entity>.move("<Location>")`** puts the entity at a location of your world, by id, else by name. A following or waiting entity stops. The entity stays there until its current idle runs out. On a Stay row it stays until that stretch of the day ends, and with no timed row at all it stays until a script moves it again. Then its schedule applies again.
+- **`entities.<Entity>.follow()`** makes the entity follow the player, at the player's location. It follows past a locked row and past **Can Also Go**. A follower still waits or parts ways when the player asks it to.
 - **`entities.<Entity>.unfollow()`** stops the entity following or waiting. It goes back to its usual places once the player leaves. An entity that is not following keeps its location.
 
 How the calls apply:
@@ -1049,7 +1049,7 @@ if (stats.Bridge.value === 0) turn.choices = turn.choices.filter((choice) => !/b
 | `description` | The full AI description, with each placeholder chip filled in |
 | `summary` | The short AI summary, with each placeholder chip filled in |
 | `starting` | True when the game can start at the location |
-| `present` | The [entity entries](#entities) at the location. The persona comes first when the player is there, then the entities in `entities` order. An entity with no position of its own is in `present` at every location it lists |
+| `present` | The [entity entries](#entities) at the location. The persona comes first when the player is there, then the entities in `entities` order. A Unique entity is in `present` at its own location, and a follower at the player's. A Generic entity is in `present` at each place one of its presences is, once. An entity with no position is in `present` at every location it lists |
 | `parent` | The code name of the location that holds this one. Empty at the top level |
 | `children` | The code names of the locations inside this one, in the editor's order |
 | `exits` | The places the AI can move the player to from here, each with a `name` (a code name) and a `hint` (the Connection's travel hint, or empty). It's the same list the AI picks from |
@@ -1074,6 +1074,8 @@ if (exit) location.move(exit.name);
 In **Test Code** and the **Test Bench**, no entity has a position. Each entity is in `present` at every location it lists, and the persona is at the starting location.
 
 `location.move("<Location>")` moves the turn to a location of your world, by name or id. It replaces the AI's move for that turn. It needs no path from the turn's location.
+
+In an At Game Start script, `location.move` moves the player and does not change Player's Starting Location. An entity that begins at **Player's Starting Location** without **Follows the Player** stays where **New Game** seated the player.
 
 - **A Before the AI move applies before the AI writes.** The narration is written at the new location.
 - **A During AI Output or After the AI move applies with the turn.**

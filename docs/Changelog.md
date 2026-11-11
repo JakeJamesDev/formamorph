@@ -102,6 +102,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Sign In and Create Account pages on formamorph.ai now ask the Adult Content Ahead question first.** Before, a new account saw it only after the Privacy Policy. Your answer saves to the account you sign in to or create.
   - **A text or image endpoint typed without `http://`, such as `127.0.0.1:1234`, now reaches your server.** Before, the browser version sent it to formamorph.ai and showed an "Unexpected token '<'" error. An image server that answers with a web page now says so.
 - **🛠️ Developer tooling**
+  - **World Editor:**
+    - **Script help now says a Generic entity ignores `move`, `follow` and `unfollow`, and where `location` reads.** It also states that a Unique entity follows past a locked row, and that Opening Location leaves Player's Starting Location unchanged.
   - **The affected-test gate now runs the tests that import a deleted file.** Vitest can't follow an import to a file that is gone, so the gate adds each file that imports it or matches it through `import.meta.glob`.
 
 ---
