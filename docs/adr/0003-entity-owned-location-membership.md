@@ -1,6 +1,6 @@
 # ADR-0003 — Entities own their location membership
 
-**Status:** Accepted · **Date:** 2026-08-13
+**Status:** Accepted · **Date:** 2026-08-13 · **Replaced in part by:** [ADR-0017](0017-kinded-entities-own-a-routine-not-a-membership-list.md) (entities with a kind)
 
 ## Context
 

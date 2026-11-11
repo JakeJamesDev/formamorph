@@ -123,7 +123,7 @@ The entities here that took part in the story in one of the last 3 turns. An ent
 _Avoid_: present, visible, participants
 
 **Generic (entity kind)**:
-An entity met in several places at once: a herd, a swarm, an enemy type, one Mimic in each dungeon. Every Start runs at the same time as its own presence, each on its own Schedule, but it is one entity with one set of stats, inventory and memory. Two presences in one place count once. It is never pulled and never follows.
+An entity met in several places at once: a herd, a swarm, an enemy type, one Mimic in each dungeon. Every Start runs at the same time as its own Generic Entity Instance, each on its own Schedule, but it is one entity with one set of stats, inventory and memory. Two Generic Entity Instances in one place count once. It is never pulled and never follows.
 _Avoid_: Group (entity kind), Everywhere Listed
 
 **Unique (entity kind)**:
@@ -133,6 +133,26 @@ _Avoid_: Individual, One, random presence
 **Start**:
 One beginning of an entity: a place plus a Schedule. A Unique entity rolls one by weight per playthrough and keeps it for the whole save; a Generic entity runs all of them. A Start with an empty Schedule stays at its place.
 _Avoid_: spawn, presence
+
+**Generic Entity Instance**:
+One standing body of a Generic entity: one per Start, at one place at a time. It is not a separate entity.
+_Avoid_: presence (that is every place an entity can be), Instance, Generic Instance
+
+**Position**:
+Where an entity stands now in the running game. A Unique entity has one; a Generic entity has one per Generic Entity Instance. An entity with a kind and no Position stands nowhere.
+_Avoid_: location (of an entity), current place
+
+**Sample Placement**:
+Where authoring places each entity at the start of the story: a Unique entity from its first Start, a Generic entity from all of them. Previews, the Test Bench and Test Code read it, so they show one stable cast.
+_Avoid_: opening cast, preview position
+
+**Presence**:
+Every place an entity can be, each with its reasons: it begins there, a Schedule row names it, or Traversable lists it. Player's Starting Location counts as each starting location. A row place with no path from its Start is left out.
+_Avoid_: reach, membership, locations (of an entity with a kind)
+
+**Start places**:
+The places an entity can begin: the place of each of its Starts, with Player's Starting Location counted as each starting location.
+_Avoid_: spawn points
 
 **Schedule**:
 A Start's daily routine: rows of a time and an action (Stay, Wander or Patrol). A timed row beats the All-day row for its hours; in hours no row covers, the character stays at its Start's place.
