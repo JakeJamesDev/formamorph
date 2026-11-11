@@ -40,6 +40,8 @@ let narrations: string[];
 let statRequests: string[];
 /** How many narration calls still fail before the endpoint answers. */
 let narrationFailures: number;
+/** How many stat calls still fail before the endpoint answers. */
+let statFailures: number;
 
 /** A scripted endpoint: narration, choices and a stat reply that moves nothing. */
 function stubEndpoint() {
@@ -50,6 +52,10 @@ function stubEndpoint() {
     if (system.includes('player choice writer')) return sseResponse(sseReply('1. Ring the bell\n2. Wait at the dock'));
     if (system.includes('stat tracker')) {
       statRequests.push(system);
+      if (statFailures > 0) {
+        statFailures -= 1;
+        return new Response('The model is down.', { status: 400 });
+      }
       return sseResponse(sseReply('No changes.'));
     }
     if (system.startsWith(NARRATOR_PROMPT)) {
@@ -70,6 +76,7 @@ beforeEach(async () => {
   narrations = [];
   statRequests = [];
   narrationFailures = 0;
+  statFailures = 0;
   localStorage.clear();
   localStorage.setItem('FORMAMORPH_endpointUrl', 'http://127.0.0.1:5190/v1/chat/completions');
   localStorage.setItem('FORMAMORPH_thinkingMode', 'off');
@@ -147,13 +154,36 @@ describe('a new game whose opening is redone', () => {
     fireEvent.change(box, { target: { value: 'I walk the pier.' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     await waitFor(() => expect(narrations).toHaveLength(1));
-    // The failed opening puts back the pre-start state; the player sends the action again.
-    fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: 'I walk the pier.' } });
+    // The failed opening puts back the pre-start state and the action, which the player sends again.
+    await waitFor(() => expect(screen.getByPlaceholderText(/Type your action/)).toHaveValue('I walk the pier.'));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     await waitFor(() => expect(narrations).toHaveLength(2));
     expect(narrations[1]).toContain('Vigor: 60/100');
     expect(narrations[1]).not.toContain('Vigor: 70/100');
+  });
+});
+
+describe('a later turn', () => {
+  it('puts its action back in the box when the narration fails', async () => {
+    await playOpening(worldWith([]));
+    narrationFailures = 1;
+    fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: 'I ring the bell.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => expect(narrations).toHaveLength(2));
+    await waitFor(() => expect(screen.getByPlaceholderText(/Type your action/)).toHaveValue('I ring the bell.'));
+  });
+
+  it('leaves the box empty when the stat pass fails after the narration landed', async () => {
+    await playOpening(worldWith([]));
+    statFailures = 1;
+    fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: 'I ring the bell.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => expect(statFailures).toBe(0));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Narration' })).toBeEnabled());
+    // The narration stands as page two, so its action is not offered again.
+    expect(narrations).toHaveLength(2);
+    expect(screen.getByPlaceholderText(/Type your action/)).toHaveValue('');
   });
 });
 

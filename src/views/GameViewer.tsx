@@ -1244,8 +1244,11 @@ const GameViewer = ({
   const currentTurnIdRef = useRef(""); // stable id for the in-progress turn, stamped into its assistant JSON
   // The turn a `player.tell` belongs to while a sent turn runs; between turns a tell joins the latest one (Q53).
   const tellTurnRef = useRef<string | null>(null);
-  // The sent turn's live list and sent lists from before its send, which come back if the turn never lands.
-  const unlandedListRef = useRef<{ turnId: string; list: ListedAction<ActionSnapshot>[]; sent: SentActionMap<ActionSnapshot> } | null>(null);
+  // The sent turn's live list, sent lists and box contents from before its send, which come back if the turn never lands.
+  const unlandedListRef = useRef<{
+    turnId: string; list: ListedAction<ActionSnapshot>[]; sent: SentActionMap<ActionSnapshot>;
+    box: { text: string; images: ImageAttachment[] } | null;
+  } | null>(null);
   // The prompt host of one run: its tells keep the run's timing (Q54), a toast shows at once, asks go to the line.
   const playPrompts = useCallback((timing: RunTiming): ScriptPromptHost => noticeHost(scriptPrompts, {
     onTell: (text) => {
@@ -1439,12 +1442,18 @@ const GameViewer = ({
     if (unlanded && !survivingTurnIds(fullMessageHistory).has(unlanded.turnId)) {
       setActionList(unlanded.list);
       setSentActions(unlanded.sent);
+      // Anything typed or attached during the wait wins over the unsent turn's own.
+      const box = unlanded.box;
+      if (box) {
+        setPlayerInput((now) => now || box.text);
+        if (box.images.length) setPendingAttachments((now) => (now.length ? now : box.images));
+      }
     }
     setActionAttachments((prev) => pruneAttachments(prev, fullMessageHistory));
     setScriptTells((prev) => pruneTells(prev, fullMessageHistory));
     setSentActions((prev) => pruneTurnMap(prev, fullMessageHistory));
     setMemoryNotes((prev) => pruneScriptPins(prev, fullMessageHistory));
-  }, [isWaitingForAI, fullMessageHistory, setActionAttachments, setScriptTells, setSentActions, setMemoryNotes, setActionList]);
+  }, [isWaitingForAI, fullMessageHistory, setActionAttachments, setScriptTells, setSentActions, setMemoryNotes, setActionList, setPlayerInput, setPendingAttachments]);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
   const [leftCollapsed, setLeftCollapsed] = useGameLeftCollapsed();
@@ -3375,7 +3384,9 @@ const GameViewer = ({
       setActionAttachments((prev) => setTurnAttachments(prev, turnId, carried));
       if (!resentAttachments) setPendingAttachments([]);
       const liveAtSend = resentList ? reopenSent(resentList)?.list ?? [] : actionList;
-      unlandedListRef.current = { turnId, list: liveAtSend, sent: sentActions };
+      // A written page one was never the player's text, and a scripted turn's action is canned.
+      const box = plan.writtenNarration === null && !script ? { text: action, images: resentAttachments ?? attachments ?? [] } : null;
+      unlandedListRef.current = { turnId, list: liveAtSend, sent: sentActions, box };
       setActionList((list) => closeList(list).live);
       setSentActions((map) => recordSent(map, turnId, sentEntries, tellsActionList && !script, sentState));
       // This turn hasn't entered history yet; an abort before the user message is added (the up-front

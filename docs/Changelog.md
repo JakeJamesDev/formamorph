@@ -89,6 +89,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Each part of the day now starts on a whole hour, such as Midday at 11:00.** Before, some started a few minutes early or late, so a Time of Day requirement or a script could miss an hour you expected it to cover.
     - **A character the story calls over from one Nearby link away now joins the scene.** That includes the place around yours and the other end of a Connection. Their item changes land that turn. Nobody comes across a Far link.
     - **The story no longer moves you to a nearby place when you stay where you are.** Before, a place whose name held a nearby place's name, such as "Academy Dorms" next to "Academy", could send you to that nearby place on a turn where you never moved.
+    - **A turn that fails now puts your action and images back in the action box.** Before, an endpoint error emptied the box, so a failed first turn lost the opening text.
   - **World Editor:**
     - **An entity's stat and trait Body Sliders list now shows the entity's Avatar sliders.** An entity with only an Avatar can bind its Body Sliders and Head Features.
   - **A world's written openings now always draw, even in a world that had them switched off.** The world file no longer stores an openings on/off setting.
