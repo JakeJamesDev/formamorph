@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { OPEN_TREE, type TreeCollapse, type TreeCollapseState } from '@/components/treeCollapse';
+import { OPEN_TREE, revealKeys, type TreeCollapse, type TreeCollapseState } from '@/components/treeCollapse';
 import { Copy, FilePlus, X } from 'lucide-react';
 import type { ListEditorRow } from '@/components/listEditorHooks';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
@@ -46,11 +46,7 @@ export function useDictionaryCollapse(host?: TreeCollapse): DictionaryCollapse {
       return { ...prev, collapsed: next };
     }),
     revealed: state.revealed,
-    reveal: (selectedId, keys) => update((prev) => {
-      const hidden = keys.some((key) => prev.collapsed.has(key));
-      if (!hidden && prev.revealed === selectedId) return prev;
-      return { collapsed: hidden ? new Set([...prev.collapsed].filter((key) => !keys.includes(key))) : prev.collapsed, revealed: selectedId };
-    }),
+    reveal: (selectedId, keys) => update((prev) => revealKeys(prev, selectedId, keys)),
   };
 }
 

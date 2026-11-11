@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
-  asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench, shownEditorTab,
+  asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench, searchWorldField, shownEditorTab,
 } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
@@ -307,6 +307,41 @@ describe('the World Editor Openings tab', () => {
       await waitFor(() => expect(shownEditorTab()).toBe('Openings'));
       expect(listRows()).toEqual(ALL_FOLDED);
       expect(collapseAll()).toHaveAccessibleName('Expand all groups');
+    });
+
+    const findCreaks = async () => {
+      fireEvent.keyDown(window, { key: 'f', ctrlKey: true });
+      await waitFor(() => expect(document.activeElement).toBe(searchWorldField()));
+      fireEvent.change(searchWorldField(), { target: { value: 'creaks' } });
+    };
+
+    it('opens the groups above an owner that Find jumps to', async () => {
+      await openOpeningsTab(TREE_WORLD);
+      fireEvent.click(collapseAll());
+      expect(listRows()).toEqual(ALL_FOLDED);
+      await findCreaks();
+      await waitFor(() => expect(listRows()).toContain('Old Mill 1!'));
+      expect(listRows()).toContain('(Black Fen)');
+    });
+
+    it('opens the groups again for an owner that is already selected', async () => {
+      await openOpeningsTab(TREE_WORLD);
+      selectOwner('Old Mill');
+      fireEvent.click(collapseAll());
+      expect(listRows()).toEqual(ALL_FOLDED);
+      await findCreaks();
+      await waitFor(() => expect(listRows()).toContain('Old Mill 1!'));
+    });
+
+    it('keeps the groups closed over a tab switch with the same owner selected', async () => {
+      await openOpeningsTab(TREE_WORLD);
+      selectOwner('Old Mill');
+      fireEvent.click(collapseAll());
+      openEditorTab(/^Entities$/);
+      await waitFor(() => expect(shownEditorTab()).toBe('Entities'));
+      openEditorTab(/^Openings$/);
+      await waitFor(() => expect(shownEditorTab()).toBe('Openings'));
+      expect(listRows()).toEqual(ALL_FOLDED);
     });
 
     it('keeps a selected owner selected, with its pane, when its parent collapses', async () => {

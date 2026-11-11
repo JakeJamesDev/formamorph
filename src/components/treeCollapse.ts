@@ -5,6 +5,13 @@ export type TreeCollapseState = { collapsed: Set<string>; revealed: string | nul
 
 export const OPEN_TREE: TreeCollapseState = { collapsed: new Set(), revealed: null };
 
+/** Opens the given groups and records the selection as revealed. Unchanged when nothing is closed and it already was. */
+export function revealKeys(prev: TreeCollapseState, selectedId: string, keys: readonly string[]): TreeCollapseState {
+  const hidden = keys.some((key) => prev.collapsed.has(key));
+  if (!hidden && prev.revealed === selectedId) return prev;
+  return { collapsed: hidden ? new Set([...prev.collapsed].filter((key) => !keys.includes(key))) : prev.collapsed, revealed: selectedId };
+}
+
 /** A tree's collapse state, held by its host so it outlives the tree. */
 export type TreeCollapse = {
   value: TreeCollapseState;

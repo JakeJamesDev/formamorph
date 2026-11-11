@@ -1,11 +1,11 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight, MapPinOff, Plus } from 'lucide-react';
 import { EditorRow, EditorRowList, treeRowPaddingLeft } from '@/components/EditorRow';
 import { ListSearchToolbar } from '@/components/ListToolbar';
 import type { ListEditorParts } from '@/components/listEditorHooks';
 import type { ListSearch } from '@/components/listToolbarHooks';
 import { TreeCollapseAllButton } from '@/components/CollapseAllButton';
-import type { TreeCollapse } from '@/components/treeCollapse';
+import { revealKeys, type TreeCollapse } from '@/components/treeCollapse';
 import { Button } from '@/components/ui/button';
 import { ListDetailBack } from '@/components/ui/list-detail';
 import { Tip } from '@/components/ui/tooltip';
@@ -28,6 +28,20 @@ import {
 import { OpeningsAddMenu } from './OpeningsAddMenu';
 
 const NONE_COLLAPSED: ReadonlySet<string> = new Set();
+
+/** The fold keys of the groups above an owner row, nearest first. Null for an owner the list does not show. */
+function groupsAbove(rows: ReturnType<typeof openingsTabRows>, ownerKey: string): string[] | null {
+  const at = rows.findIndex((row) => row.kind === 'owner' && row.owner.key === ownerKey);
+  const own = rows[at];
+  if (!own || own.kind === 'rule') return null;
+  const out: string[] = [];
+  let depth = own.depth;
+  for (let i = at - 1; i >= 0 && depth > 0; i--) {
+    const row = rows[i];
+    if (row.kind !== 'rule' && row.depth < depth) { out.push(foldKey(row)); depth = row.depth; }
+  }
+  return out;
+}
 
 const KIND_ICON = { world: WorldIcon, location: LocationIcon, entity: EntityIcon } as const;
 
@@ -80,8 +94,22 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, collapse,
   const rowsArgs = { owners, locations, entities, entityGroups, matches };
   const rows = openingsTabRows({ ...rowsArgs, collapsed });
   // Collapse All acts on every parent, whatever the search shows.
-  const parentKeys = openingsTabRows({ ...rowsArgs, matches: () => true, collapsed: NONE_COLLAPSED })
-    .flatMap((row) => (row.kind !== 'rule' && row.parent ? [foldKey(row)] : []));
+  const openRows = openingsTabRows({ ...rowsArgs, matches: () => true, collapsed: NONE_COLLAPSED });
+  const parentKeys = openRows.flatMap((row) => (row.kind !== 'rule' && row.parent ? [foldKey(row)] : []));
+  // The fold keys of every group above the selected owner.
+  const above = selectedId ? groupsAbove(openRows, selectedId) : null;
+  const aboveRef = useRef(above);
+  aboveRef.current = above;
+  // Effect deps: the reveal reruns when the owner's ancestry changes, not on every render.
+  const ancestry = JSON.stringify(above);
+  const { revealed } = collapse.value;
+  const { update } = collapse;
+  // An outside navigation (Find, Reveal Origin) clears `revealed`, so it opens the groups even for the same owner.
+  // An owner with no row yet waits for the render that draws it.
+  useEffect(() => {
+    const keys = aboveRef.current;
+    if (selectedId && keys) update((prev) => (prev.revealed === selectedId ? prev : revealKeys(prev, selectedId, keys)));
+  }, [selectedId, ancestry, revealed, update]);
   const toggleFold = (key: string) => collapse.update((was) => {
     const next = new Set(was.collapsed);
     if (!next.delete(key)) next.add(key);
