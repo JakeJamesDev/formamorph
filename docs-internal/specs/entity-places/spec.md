@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Spec session: entity-places — spec
-Status note: Written 2026-11-11 from the architecture review. Implementation waits until NPC Schedules tickets 29, 30 and 31 land (Q4). Tickets 01–10; 01 is the first, 03–09 run in parallel after 02, 10 is last.
+Status note: Written 2026-11-11 from the architecture review. NPC Schedules closed on 2026-11-11 (615ffa3da), so the wait of Q4 is over. Tickets 01–10; 01 is the first, 03–09 run in parallel after 02, 10 is last.
 
 ## Problem Statement
 
@@ -92,12 +92,14 @@ Rulings from the grill of 2026-11-11.
   8. The "starts met" check for the played persona counts row places; it takes Start places.
   9. The page-one opening redraw reads live Positions against the opening's start; it takes the placement the game opened with.
   10. The Test Bench rule for a location with no entities ignores Player's Starting Location when no location is flagged.
+  **Already corrected by NPC Schedules before this effort started (checked 2026-11-11 at 82bb3cdb7):** #7 and #8 (its Q229, Q230, tickets 33 and 34), #10 (its Q233), and most of #4 (its ticket 35: Morphie's entity page lists Starts, rows and Can Also Go, and no derived Locations field). Those readers still move to the module; their tickets prove the landed behavior holds and add only what is listed in Q16 and in ticket 04.
 - **Q10.** In play, an entity with a kind and no Position stands nowhere. A script run that has no live positions takes the Sample Placement.
 - **Q11.** A Unique entity carried from the library into another world has its Starts and rows mapped to the new world's locations, by the rule a Generic entity already follows: a Start whose place maps is kept with its rows remapped, and with none kept the entity takes one Start at the mapped place. The link-repair path follows the same rule.
 - **Q12.** Glossary terms: Position, Sample Placement, Presence, Start places. They are words for code, specs and chat. User-facing copy keeps its own words.
 - **Q13.** ADR-0017 records the ownership change and replaces the membership part of ADR-0003 for entities with a kind.
 - **Q14.** This is its own effort, `entity-places`.
 - **Q15.** One standing body of a Generic entity is a **Generic Entity Instance**. "Presence" no longer names it. "Instance" and "Generic Instance" are avoided: neither says what the thing is. Code identifiers that use "presence" for the body are renamed in this effort. Save-file keys are not renamed; the rename is of types, functions and prose only, so the save shape does not change.
+- **Q16.** Start places has one definition for every reader: a Start at Player's Starting Location stands for the world's starting locations, or every location when none is flagged. The New Game start list follows it. This replaces the "adds none" of NPC Schedules Q229 for that list; its met-by-start rule (Q230) already reads it this way. User ruling of 2026-11-11, on the landings of NPC Schedules tickets 33 and 34.
 
 Other decisions:
 

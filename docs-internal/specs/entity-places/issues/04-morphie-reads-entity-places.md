@@ -12,7 +12,7 @@ Morphie's two views of a world ask the Entity Places module.
 - **The world index (#4).** For an author, an entity's places come from Presence. The index names Player's Starting Location and Can Also Go, and tells where the entity begins from where a Schedule row sends it. Today it reads the stored list, which has neither.
 - **The player view (#5).** In a game, a met entity's place comes from Position. Today one path hands the authored cast to the player view, so a met Unique entity shows at every routine place the player visited. It shows at the one place it stands, and only when the player view rules already let the player know it (ADR-0014 does not change).
 
-First check what NPC Schedules ticket 31 landed for Morphie and routines. Build on it; do not redo it. If it already moved one of these reads, say so in the landing and cover only the rest.
+NPC Schedules tickets 31 and 35 already changed the world index: an entity's page lists its Starts, each with its rows, and Can Also Go, and has no derived Locations field for an entity with a kind. Keep that page. What is left for the index: take the places from Presence so a Start at Player's Starting Location also names the world's starting locations, and so a row place with no path from its Start is not presented as a place the entity can be. The player view correction (#5) is untouched by those tickets; confirm that before you start and say so in the landing.
 
 Add both readers to the agreement test. Rebuild the help vectors only if a help topic's text changes.
 

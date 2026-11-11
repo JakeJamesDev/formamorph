@@ -11,9 +11,9 @@ The three Test Bench rules that ask where an entity can be ask the Entity Places
 
 Rules that move: "placed in no location", the orphan rule for a place that no longer exists, and "location has no entities".
 
-Correction that lands here (Q9):
+Already corrected (Q9 note):
 
-- **"Location has no entities" (#10).** When no location is flagged as a starting location, every location is one, but the rule treats an entity that begins at Player's Starting Location as occupying nothing. It counts that entity at every location in that case.
+- **"Location has no entities" (#10).** NPC Schedules fixed this at f58e9c64e: with no location flagged, an entity that begins at Player's Starting Location counts at every location. This ticket keeps that behavior and gets it from Presence. It is not a new fix and needs no changelog line.
 
 The special case for Player's Starting Location that two rules carry today goes: Presence already expands it. The helper that exists only for that special case goes with it.
 
@@ -27,11 +27,11 @@ Spec rulings: Q7, Q8, Q9 (#10). ADR-0005.
 
 ## Acceptance criteria
 
-- [ ] With no location flagged as starting, a location whose only entity begins at Player's Starting Location gets no "no entities" finding. The test fails with the old read.
+- [ ] With no location flagged as starting, a location whose only entity begins at Player's Starting Location gets no "no entities" finding, as today. The existing test passes unchanged.
 - [ ] With one location flagged, only that location counts as occupied by that entity.
 - [ ] "Placed in no location" gives the same findings as before on the bundled worlds and on the rule's existing tests.
 - [ ] The orphan rule still reports a Start, a row and a Can Also Go entry that name a missing location, and its fix removes each. After the fix the entity with a kind stores no rewritten list.
 - [ ] A row place with no path from its Start produces a Test Bench finding. The landing says whether the finding existed or was added.
 - [ ] No rule special-cases Player's Starting Location outside the module, and the helper for it is gone.
 - [ ] The Test Bench wiki page matches.
-- [ ] A changelog fragment records the fix, and the new finding if one was added.
+- [ ] A changelog fragment records the new finding if one was added. With none added, there is no fragment.

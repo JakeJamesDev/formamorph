@@ -5,8 +5,6 @@ Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
 
-Starts after: NPC Schedules tickets 29, 30 and 31 land (Q4).
-
 ## What to build
 
 One standing body of a Generic entity is called a "presence" in code, comments and specs. The glossary now uses Presence for every place an entity can be, and Generic Entity Instance for the body (Q15). Rename the body everywhere so the word has one meaning before the Entity Places module is written.

@@ -11,10 +11,11 @@ When a player enters a world as one of its entities, the places they can begin c
 
 Readers that move: the persona's start location, the offered start locations in the Enter World flow, the same offer in the Test Bench lens and opening, and the "starts met" check for the played persona.
 
-Corrections that land here (Q9):
+NPC Schedules tickets 33 and 34 already made both readers read the Starts (its Q229, Q230), through a helper of their own. This ticket moves them to the module's Start places and removes that helper. One behavior changes (Q16):
 
-- **Start offers (#7).** A played entity with a routine is offered its Schedule row places as places to begin. It is offered only the places of its Starts. A Start at Player's Starting Location offers the world's starting locations, or every location when none is flagged.
-- **"Starts met" (#8).** The check counts row places as starts for the played persona. It counts Start places only.
+- **The New Game start list.** Today a Start at Player's Starting Location adds no place to the list. It offers the world's starting locations, or every location when none is flagged, as the met-by-start rule already counts it. The list keeps world order, and Start order still sets the preselected place.
+
+Row places stay out of both readers, as landed.
 
 The Custom Persona has no kind. Its stored locations keep working as today, read through the module.
 
@@ -24,11 +25,15 @@ Spec rulings: Q2, Q9 (#7, #8).
 
 ## Acceptance criteria
 
-- [ ] A played Unique entity with one Start at a town and a row that sends it to a forest is offered the town only. The test fails with the old read.
-- [ ] A played entity whose Start is Player's Starting Location is offered each flagged starting location, and every location when none is flagged.
+- [ ] A played Unique entity with one Start at a town and a row that sends it to a forest is offered the town only, as today. The existing test passes unchanged.
+- [ ] A played entity whose Start is Player's Starting Location is offered each flagged starting location, and every location when none is flagged. The test fails with the "adds none" read.
+- [ ] The list keeps world order and the preselected place follows Start order.
+- [ ] The helper that tickets 33 and 34 of NPC Schedules added for Start places is gone, with no caller left.
 - [ ] A played Generic entity is offered the place of each of its Starts.
-- [ ] The "starts met" check for a played persona is true at a Start place and false at a place only a row names. The test fails with the old read.
+- [ ] The "starts met" check for a played persona is true at a Start place and false at a place only a row names, as today. The existing tests pass unchanged.
 - [ ] The Custom Persona is offered the same places as before. A test covers it.
 - [ ] The Enter World flow and the Test Bench lens offer the same places for the same world and persona. A test compares them.
 - [ ] The agreement test holds the readers moved here.
-- [ ] A changelog fragment records the two fixes.
+- [ ] A changelog fragment records the New Game list change.
+
+Spec rulings added after this ticket was written: Q16.
