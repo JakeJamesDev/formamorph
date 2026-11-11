@@ -21,7 +21,9 @@ The free links come from the location graph's implicit neighbors. Use them; do n
 
 The prototype shows the group: branch `prototype/connection-rows`, variant B4, under the picker. "Free Links" is a working name; final copy follows the Writing Guide.
 
-**Left over from ticket 21:** the canvas's direction and distance intent helpers have no caller but their own tests since the canvas sends the widget's rewritten record. Delete the two helpers and their tests. If ticket 24 is still in progress, ask its session first: it edits the same test file.
+**Left over from ticket 21:** the canvas's direction and distance intent helpers have no caller but their own tests since the canvas sends the widget's rewritten record. Delete the two helpers and their tests.
+
+**Left over from ticket 24:** the Design System page does not list the two Known In marks of the Nearby view: the full mark (the entity-location tint and ring) and the lighter mark (a dashed outline). The user picked that look before the landing. Add both to the page's canvas marks.
 
 Spec rulings: Q176, Q182, Q48.
 
@@ -36,5 +38,6 @@ Spec rulings: Q176, Q182, Q48.
 - [ ] Frames: `.scratch/frames/connections-free-links-dark.png` and `-light.png`, at 1440 wide, with the group open.
 - [ ] The Locations wiki page and the changelog fragment describe the group.
 - [ ] The canvas's direction and distance intent helpers and their tests are gone, and a search finds no caller.
+- [ ] The Design System page lists the two Known In marks of the Nearby view.
 
 For you: read the group's name and its line of text, and say whether an author would understand "free".
