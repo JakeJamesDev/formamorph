@@ -52,7 +52,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **In the World Editor, an entity is now Unique or Generic, and a Generic one gets a routine per start.** A Generic entity, such as a crowd or a herd, begins at every start at the same time. Start chances, locks and Can Also Go are for Unique entities.
     - **The full-screen Locations Canvas now shows where a Nearby entity can be known.** Its routine locations are marked, and the locations one Nearby link away are marked lighter. Far links stay unmarked.
   - **Routines:**
-    - **A Generic entity can begin at a location from that location's Entities picker.** Pick it to add a place to begin here. Clear it to remove them. Entities Here lists it once.
     - **In the World Editor's Routine tab, an entity can start at the Player's Starting Location, beside you each game.** A Unique entity there can follow you from the first turn. Its routine can use any location.
     - **In older worlds, an entity with pronouns listed at several locations now wanders between them, one at a time.** So it isn't always where you look. An entity at every location follows you. One with no pronouns or "it/its", such as a monster, becomes Generic. Change it in the Routine tab.
     - **In the bundled worlds, named people with several locations now keep one place at a time, on a daily routine.** Coach Daizen and Rin Hayama patrol the school, and Emberwatch's captain takes the evening watch. Crowds such as the Swarm still fill every place.
