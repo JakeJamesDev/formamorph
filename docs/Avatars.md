@@ -128,8 +128,10 @@ Drag the viewer to turn the Avatar. Scroll to zoom.
 | **Animate Avatar** | Plays the idle animations. Clear it to stop the Avatar. |
 | **Hair** | A hair style, when the model has more than one, and **Hair Length** |
 | **Initial Body Features** | One slider for each body shape the model has. The world's stats can change these during the game. |
-| **Colors** | **Hair Color**, **Eye Color** and **Skin Color**. **Revert to original** restores the file's color. |
+| **Colors** | **Hair Color**, **Eye Color** and **Skin Color**. Each color has an **Undo** button that puts back the model's own color. It is disabled while the color is unchanged. |
 | **Other Colors** | Pick a part, such as clothing, and change its color |
+
+Every slider has an **Undo** button beside its name too. It puts the slider back to the model's own value.
 
 **Colors** always shows. **Hair**, **Initial Body Features** and **Other Colors** show only when the model supports them, so a plain `.glb` file may show few of them or none.
 

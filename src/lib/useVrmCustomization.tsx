@@ -26,12 +26,25 @@ import { COLOR_CHANNELS } from '@/lib/avatarLook';
 const cleanLabel = (s: string) =>
   s.replace(/\([^)]*\)/g, '').replace(/[._]+/g, ' ').trim().replace(/^\w/, (c) => c.toUpperCase());
 
-// One consistent color control: swatch picker + a revert (↩) button that restores the model's original.
-const ColorRow = ({ label, value, onChange, onRevert, heldBy }: {
+// Undo for one control: enabled only when the control is off its base and no trait holds it.
+const UndoButton = ({ label, onUndo, disabled }: { label: string; onUndo: () => void; disabled: boolean }) => (
+  <Tip tip="Undo">
+    <Button variant="ghost" size="icon" aria-label={`Undo ${label}`} onClick={onUndo} disabled={disabled}>
+      <Undo2 className="h-4 w-4" />
+    </Button>
+  </Tip>
+);
+
+const sameHex = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+
+// One consistent color control: swatch picker + an undo button that returns the color to its base.
+const ColorRow = ({ label, value, base, onChange, onUndo, heldBy }: {
   label: string;
   value: string;
+  /** The color undo returns to. */
+  base: string;
   onChange: (hex: string) => void;
-  onRevert: () => void;
+  onUndo: () => void;
   /** The checked trait that sets this color: the row shows it and cannot change it. */
   heldBy?: string;
 }) => (
@@ -46,13 +59,34 @@ const ColorRow = ({ label, value, onChange, onRevert, heldBy }: {
       ) : (
         <ColorPicker value={value} aria-label={label} onChange={onChange} />
       )}
-      <Tip tip="Revert to original">
-        <Button variant="ghost" size="icon" onClick={onRevert} disabled={heldBy !== undefined}>
-          <Undo2 className="h-4 w-4" />
-        </Button>
-      </Tip>
+      <UndoButton label={label} onUndo={onUndo} disabled={heldBy !== undefined || sameHex(value, base)} />
     </div>
     {heldBy !== undefined && <Meta>Set by {heldBy}</Meta>}
+  </div>
+);
+
+// One slider with its undo button in the label row.
+const SliderRow = ({ id, label, value, base, min, max, step, format, onChange, heldBy }: {
+  id: string;
+  label: string;
+  value: number;
+  /** The value undo returns to. */
+  base: number;
+  min: number;
+  max: number;
+  step: number;
+  format: (value: number) => string;
+  onChange: (value: number) => void;
+  /** The checked trait that sets this slider: the row shows it and cannot change it. */
+  heldBy?: string;
+}) => (
+  <div className="space-y-2">
+    <div className="flex items-center space-x-2">
+      <Label htmlFor={id} className="flex-1">{label}</Label>
+      <UndoButton label={label} onUndo={() => onChange(base)} disabled={heldBy !== undefined || value === base} />
+    </div>
+    <Slider id={id} min={min} max={max} step={step} value={[value]} disabled={heldBy !== undefined} onValueChange={([v]) => onChange(v)} />
+    <Meta>{format(value)}{heldBy !== undefined && ` · Set by ${heldBy}`}</Meta>
   </div>
 );
 
@@ -69,6 +103,10 @@ const BODY_MORPH_STEP = 0.05;
 // Head keys run between their two modeled shapes; past either end the mesh distorts.
 const HEAD_MORPH_MIN = 0;
 const HEAD_MORPH_MAX = 1;
+// The model's own value for every slider, and what undo returns to.
+const SLIDER_BASE = 0;
+// Picker colors for a model that reports none; also what undo returns to then.
+const DEFAULT_COLORS = { hair: '#7d0909', eye: '#86ff70', skin: '#fcdec7' } as const;
 
 export interface VrmCustomization {
   /** Pass to `VRMViewer.onCapabilities` so the controls learn what the loaded model supports. */
@@ -104,9 +142,9 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
 
   // Chosen morph influences keyed by morph name; one slider is derived per morph the loaded model exposes.
   const [bodyMorphs, setBodyMorphs] = useState<Record<string, number>>({});
-  const [hairColor, setHairColor] = useState('#7d0909');
-  const [eyeColor, setEyeColor] = useState('#86ff70');
-  const [skinColor, setSkinColor] = useState('#fcdec7');
+  const [hairColor, setHairColor] = useState<string>(DEFAULT_COLORS.hair);
+  const [eyeColor, setEyeColor] = useState<string>(DEFAULT_COLORS.eye);
+  const [skinColor, setSkinColor] = useState<string>(DEFAULT_COLORS.skin);
   const [currentHairStyle, setCurrentHairStyle] = useState('');
   const [hairLength, setHairLength] = useState(0);
   // Colors are applied only after the player actually changes them — keeps unedited (and custom) models pristine.
@@ -114,6 +152,8 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
   const [extraSel, setExtraSel] = useState('');
   const [extraColors, setExtraColors] = useState<Record<string, string>>({});
   const [extraPicker, setExtraPicker] = useState<Record<string, string>>({});
+  // Each material's own color, read when it was first selected.
+  const [extraBase, setExtraBase] = useState<Record<string, string>>({});
   const [animate, setAnimate] = useState(true);
 
   // Seed the color pickers from the model's actual colors once it loads, so edits start from its real look.
@@ -141,10 +181,10 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
     setColorTouched((t) => ({ ...t, [channel]: true }));
     channelSetters[channel](value);
   };
-  // Revert: stop applying (model reverts to its own) and reset the picker to the calculated original.
-  const revertChannel = (channel: 'hair' | 'eye' | 'skin') => {
+  // Undo: stop applying (the model shows its own) and reset the picker to the calculated original.
+  const undoChannel = (channel: 'hair' | 'eye' | 'skin') => {
     setColorTouched((t) => ({ ...t, [channel]: false }));
-    channelSetters[channel](caps?.colors?.[channel] ?? '#ffffff');
+    channelSetters[channel](caps?.colors?.[channel] ?? DEFAULT_COLORS[channel]);
   };
 
   const selectExtra = (name: string) => {
@@ -152,21 +192,24 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
     // Calculate this material's current color once and seed its picker; nothing is applied yet.
     if (name && !(name in extraPicker)) {
       const calc = vrmViewerRef.current?.calcColor(name);
-      if (calc) setExtraPicker((p) => ({ ...p, [name]: calc }));
+      if (calc) {
+        setExtraPicker((p) => ({ ...p, [name]: calc }));
+        setExtraBase((b) => ({ ...b, [name]: calc }));
+      }
     }
   };
   const changeExtra = (name: string, value: string) => {
     setExtraColors((c) => ({ ...c, [name]: value }));
     setExtraPicker((p) => ({ ...p, [name]: value }));
   };
-  const revertExtra = (name: string) => {
+  const undoExtra = (name: string) => {
     setExtraColors((c) => {
       const n = { ...c };
       delete n[name];
       return n;
     });
-    const calc = vrmViewerRef.current?.calcColor(name);
-    if (calc) setExtraPicker((p) => ({ ...p, [name]: calc }));
+    const own = extraBase[name] ?? vrmViewerRef.current?.calcColor(name);
+    if (own) setExtraPicker((p) => ({ ...p, [name]: own }));
   };
 
   // One slider per body morph the loaded model actually exposes — fully model-driven, nothing hardcoded.
@@ -211,21 +254,21 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
 
   const morphSlider = (morph: string, min: number, max: number) => {
     const heldBy = holderName(pinned?.holders[morph]);
-    const value = heldBy !== undefined ? pinned!.morphs[morph] : bodyMorphs[morph] ?? 0;
+    const value = heldBy !== undefined ? pinned!.morphs[morph] : bodyMorphs[morph] ?? SLIDER_BASE;
     return (
-      <div key={morph} className="space-y-2">
-        <Label htmlFor={`morph-${morph}`}>{cleanLabel(morph)}</Label>
-        <Slider
-          id={`morph-${morph}`}
-          min={min}
-          max={max}
-          step={BODY_MORPH_STEP}
-          value={[value]}
-          disabled={heldBy !== undefined}
-          onValueChange={([v]) => setBodyMorph(morph, v)}
-        />
-        <Meta>{value.toFixed(2)}{heldBy !== undefined && ` · Set by ${heldBy}`}</Meta>
-      </div>
+      <SliderRow
+        key={morph}
+        id={`morph-${morph}`}
+        label={cleanLabel(morph)}
+        value={value}
+        base={SLIDER_BASE}
+        min={min}
+        max={max}
+        step={BODY_MORPH_STEP}
+        format={(v) => v.toFixed(2)}
+        onChange={(v) => setBodyMorph(morph, v)}
+        heldBy={heldBy}
+      />
     );
   };
 
@@ -254,11 +297,17 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
             </Select>
           )}
           {caps?.hairLength && (
-            <div className="space-y-2">
-              <Label htmlFor="hair-length">Hair Length</Label>
-              <Slider id="hair-length" min={0} max={2} step={0.1} value={[hairLength]} onValueChange={([v]) => setHairLength(v)} />
-              <Meta>{hairLength.toFixed(1)}</Meta>
-            </div>
+            <SliderRow
+              id="hair-length"
+              label="Hair Length"
+              value={hairLength}
+              base={SLIDER_BASE}
+              min={0}
+              max={2}
+              step={0.1}
+              format={(v) => v.toFixed(1)}
+              onChange={setHairLength}
+            />
           )}
         </div>
       )}
@@ -288,8 +337,9 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
             key={channel}
             label={label}
             value={pinnedColor(channel) ?? value}
+            base={caps?.colors?.[channel] ?? DEFAULT_COLORS[channel]}
             onChange={(hex) => changeChannel(channel, hex)}
-            onRevert={() => revertChannel(channel)}
+            onUndo={() => undoChannel(channel)}
             heldBy={heldColor(channel)}
           />
         ))}
@@ -311,8 +361,9 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
               <ColorRow
                 label={cleanLabel(extraSel)}
                 value={extraPicker[extraSel] ?? '#ffffff'}
+                base={extraBase[extraSel] ?? extraPicker[extraSel] ?? '#ffffff'}
                 onChange={(hex) => changeExtra(extraSel, hex)}
-                onRevert={() => revertExtra(extraSel)}
+                onUndo={() => undoExtra(extraSel)}
               />
             )}
           </div>

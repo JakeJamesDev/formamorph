@@ -79,6 +79,8 @@ describe('the Avatar step lock', () => {
     await screen.findByRole('button', { name: 'Finalize Avatar' });
     await waitFor(() => expect(screen.getAllByText(/Set by Elf/)).toHaveLength(2));
     expect(document.getElementById('morph-EarShape')).toHaveAttribute('data-disabled');
+    expect(screen.getByRole('button', { name: 'Undo EarShape' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Undo Skin Color' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Elf' }));

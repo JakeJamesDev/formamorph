@@ -51,11 +51,63 @@ describe('useVrmCustomization color rows', () => {
     await enterHex('Hair Color', 'AA11CC');
     expect(hook.result.current.viewerProps.hairColor).toBe('#aa11cc');
 
-    const row = screen.getByRole('button', { name: 'Hair Color' }).parentElement as HTMLElement;
-    const buttons = within(row).getAllByRole('button');
-    fireEvent.click(buttons[buttons.length - 1]);
+    fireEvent.click(screen.getByRole('button', { name: 'Undo Hair Color' }));
     expect(hook.result.current.viewerProps.hairColor).toBeUndefined();
     expect(screen.getByRole('button', { name: 'Hair Color' })).toHaveAccessibleDescription('#112233');
+  });
+});
+
+describe('useVrmCustomization undo', () => {
+  const undo = (name: string) => screen.getByRole('button', { name: `Undo ${name}` });
+
+  it('keeps an untouched color undo disabled, enables it after a pick, and disables it after the click', async () => {
+    setup({ ...CAPS, colors: { hair: '#112233' } });
+    expect(undo('Hair Color')).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hair Color' }));
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Hex Color' }), { target: { value: 'AA11CC' } });
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    await waitFor(() => expect(undo('Hair Color')).toBeEnabled());
+
+    fireEvent.click(undo('Hair Color'));
+    expect(undo('Hair Color')).toBeDisabled();
+  });
+
+  it('keeps a color undo disabled on a model that reports no color, until a pick', () => {
+    setup(CAPS);
+    expect(undo('Skin Color')).toBeDisabled();
+  });
+
+  it.each([['Head Features', 'Ear Shape'], ['Initial Body Features', 'Waist']])('puts a %s slider back alone', async (heading, name) => {
+    const { hook } = setup(CAPS);
+    expect(undo(name)).toBeDisabled();
+
+    within(section(heading)).getByRole('slider').focus();
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}');
+    expect(undo(name)).toBeEnabled();
+    expect(hook.result.current.viewerProps.bodyMorphValues[name]).toBeCloseTo(0.1);
+
+    fireEvent.click(undo(name));
+    expect(hook.result.current.viewerProps.bodyMorphValues[name]).toBe(0);
+    expect(undo(name)).toBeDisabled();
+  });
+
+  it('puts Hair Length back to the model\'s own length', async () => {
+    const { hook } = setup({ ...CAPS, hairStyles: ['ponytail'], hairLength: true });
+    expect(undo('Hair Length')).toBeDisabled();
+
+    within(section('Hair')).getByRole('slider').focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(undo('Hair Length')).toBeEnabled();
+
+    fireEvent.click(undo('Hair Length'));
+    expect(hook.result.current.viewerProps.hairLength).toBe(0);
+    expect(undo('Hair Length')).toBeDisabled();
+  });
+
+  it('has no undo on the hair style', () => {
+    setup({ ...CAPS, hairStyles: ['ponytail', 'bobcut'], hairLength: true });
+    expect(screen.queryByRole('button', { name: /Undo Hair Style/ })).toBeNull();
   });
 });
 
