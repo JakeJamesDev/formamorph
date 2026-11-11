@@ -8,6 +8,7 @@ import { MultiSelect } from '@/components/ui/multi-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint, Meta } from '@/components/ui/typography';
+import { HereMark } from '@/components/HereMark';
 import { WorldInput } from '@/components/editor/WorldField';
 import { OptionSwitcher } from '@/components/SettingsRows';
 import { CHIP_BASE } from '@/components/Chip';
@@ -17,6 +18,7 @@ import { chanceChipStyle, relativeChance } from '@/lib/chanceColor';
 import { traversableOf, withBeginsFollowing, withGenericStart, withKind, withoutGenericStart, withStartPlace } from '@/lib/entityKind';
 import { withEntityLocations } from '@/lib/entityPresence';
 import { fieldFrame } from '@/lib/historyField';
+import { rowNamesLocation, startNamesLocation } from '@/lib/hereMarks';
 import { holderOf, locationRows } from '@/lib/locationTree';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { startReach } from '@/lib/positionEngine';
@@ -78,7 +80,11 @@ function pathOf(locations: readonly GameLocation[], location: GameLocation): str
 }
 
 /** Where an entity stands and how it moves: the Routine tab of a world entity. Writes the whole entity. */
-export function RoutineTab({ entity, onChange }: { entity: Entity; onChange: (next: Entity) => void }) {
+export function RoutineTab({ entity, onChange, hereMark }: {
+  entity: Entity; onChange: (next: Entity) => void;
+  /** The location whose Presence tab hosts this editor: what names it gets a mark. Without it nothing is marked. */
+  hereMark?: string;
+}) {
   const { locations, connections, placeholders, placementLetters, placeholderOwners } = useGameData();
   const step = useWorldHistoryStep();
   const commit = (label: string, next: Entity) => step(label, () => onChange(next));
@@ -117,7 +123,10 @@ export function RoutineTab({ entity, onChange }: { entity: Entity; onChange: (ne
         />
         <Hint>{KIND_HINTS[kind]}</Hint>
       </div>
-      <EntityRoutine entity={kinded} kind={kind} book={book} connections={connections} locations={locations} commit={commit} onChange={onChange} />
+      <EntityRoutine
+        entity={kinded} kind={kind} book={book} connections={connections} locations={locations} commit={commit} onChange={onChange}
+        hereMark={hereMark}
+      />
     </div>
   );
 }
@@ -150,9 +159,9 @@ function PersonaLocations({ entity, book, commit }: { entity: Entity; book: Plac
 
 /** The Starts, the shown Start's routine and, for a Unique entity, Can Also Go. A Generic entity hides weight, Strict and
  *  Traversable but keeps them in the data. */
-function EntityRoutine({ entity, kind, book, locations, connections, commit, onChange }: {
+function EntityRoutine({ entity, kind, book, locations, connections, commit, onChange, hereMark }: {
   entity: Entity; kind: EntityKind; book: PlaceBook; locations: readonly GameLocation[]; connections: readonly Connection[];
-  commit: (label: string, next: Entity) => void; onChange: (next: Entity) => void;
+  commit: (label: string, next: Entity) => void; onChange: (next: Entity) => void; hereMark?: string;
 }) {
   const generic = kind === 'generic';
   const fields = KIND_FIELDS[kind];
@@ -180,6 +189,7 @@ function EntityRoutine({ entity, kind, book, locations, connections, commit, onC
                 s.id === start?.id ? 'border-primary bg-accent' : 'border-transparent hover:bg-muted')}
             >
               Start {i + 1}
+              {hereMark && startNamesLocation(s, hereMark) && <HereMark locationName={book.nameOf(hereMark)} />}
               {fields.chance && starts.length > 1 && (
                 <span className={CHIP_BASE} style={chanceChipStyle(relativeChance(s.weight, weights))}>{chancePercent(s.weight, weights)}%</span>
               )}
@@ -193,14 +203,14 @@ function EntityRoutine({ entity, kind, book, locations, connections, commit, onC
       </div>
       {start && (
         <StartRoutine
-          entity={entity} kind={kind} start={start} weights={weights} book={book} commit={commit} onChange={onChange}
+          entity={entity} kind={kind} start={start} weights={weights} book={book} commit={commit} onChange={onChange} hereMark={hereMark}
           connected={[...startReach(start.place, { locations, connections })]}
           onDeleted={() => showStart(null)}
         />
       )}
       {fields.canAlsoGo && (
         <TraversableField
-          value={traversableOf(entity)} book={book}
+          value={traversableOf(entity)} book={book} hereMark={hereMark}
           onChange={(traversable) => commit('Change Can Also Go', { ...entity, traversable })}
         />
       )}
@@ -208,9 +218,9 @@ function EntityRoutine({ entity, kind, book, locations, connections, commit, onC
   );
 }
 
-function StartRoutine({ entity, kind, start, weights, book, connected, commit, onChange, onDeleted }: {
+function StartRoutine({ entity, kind, start, weights, book, connected, commit, onChange, onDeleted, hereMark }: {
   entity: Entity; kind: EntityKind; start: EntityStart; weights: number[]; book: PlaceBook; connected: string[];
-  commit: (label: string, next: Entity) => void; onChange: (next: Entity) => void; onDeleted: () => void;
+  commit: (label: string, next: Entity) => void; onChange: (next: Entity) => void; onDeleted: () => void; hereMark?: string;
 }) {
   const many = (entity.starts?.length ?? 0) > 1;
   const fields = KIND_FIELDS[kind];
@@ -340,6 +350,7 @@ function StartRoutine({ entity, kind, start, weights, book, connected, commit, o
         {lines.map((line) => line.row ? (
           <RoutineRow
             key={line.row.id} row={line.row} startPlace={rowPlaceOf(start, firstPlace) ?? start.place} book={book} connected={connected} lockable={fields.locks}
+            here={hereMark && rowNamesLocation(line.row, hereMark) ? book.nameOf(hereMark) : undefined}
             asHours={asHoursOf(line.row)} onAsHours={(hours) => setFormats((f) => ({ ...f, [line.row.id]: hours }))}
             selected={selected === line.row.id} onSelect={() => selectRow(line.row.id)}
             rowRef={(el) => { if (el) rowEls.current.set(line.row.id, el); else rowEls.current.delete(line.row.id); }}
@@ -392,7 +403,9 @@ function StartRoutine({ entity, kind, start, weights, book, connected, commit, o
   );
 }
 
-function TraversableField({ value, book, onChange }: { value: Traversable; book: PlaceBook; onChange: (next: Traversable) => void }) {
+function TraversableField({ value, book, onChange, hereMark }: {
+  value: Traversable; book: PlaceBook; onChange: (next: Traversable) => void; hereMark?: string;
+}) {
   const anywhere = value === 'anywhere';
   const list = anywhere ? [] : value;
   return (
@@ -410,6 +423,7 @@ function TraversableField({ value, book, onChange }: { value: Traversable; book:
           {list.map((id) => (
             <span key={id} className={cn(CHIP_BASE, 'bg-secondary text-secondary-foreground')}>
               {book.nameOf(id)}
+              {id === hereMark && <HereMark locationName={book.nameOf(id)} />}
               <button type="button" aria-label={`Remove ${book.nameOf(id)}`} onClick={() => onChange(list.filter((x) => x !== id))}>
                 <X className="h-3 w-3" />
               </button>

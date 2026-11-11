@@ -21,6 +21,8 @@ export type PickMode = "locations" | "knownIn";
 export interface PresenceReveal {
   entityId: string;
   mode: PickMode;
+  /** The Start the Step changed, to show in the Routine editor. */
+  startId?: string;
 }
 
 /** `entity` with `locationId` toggled for `mode`. For a Unique entity, a location click sets where it starts; for a

@@ -103,8 +103,10 @@ export default function EntityPickCard({
 }
 
 /** The entity card's body for one entity: the mode switch, the hint, and the Routine editor or Known In. */
-export function EntityPickBody({ entity, picking, onPickingChange, onChange }: {
+export function EntityPickBody({ entity, picking, onPickingChange, onChange, hereMark }: {
   entity: Entity;
+  /** The location whose Presence tab hosts the body: the Routine editor marks what names it. */
+  hereMark?: string;
   picking: PickState | null;
   onPickingChange: (next: PickState | null) => void;
   onChange: (next: Entity) => void;
@@ -131,7 +133,7 @@ export function EntityPickBody({ entity, picking, onPickingChange, onChange }: {
       )}
       <Hint>{mode === 'locations' && !entity.customPersona && !isGeneric(entity) ? ROUTINE_MAP_HELP : PICK_MODE_HELP[mode]}</Hint>
       {entity.customPersona && <PersonaPresenceHint />}
-      {!entity.customPersona && mode === 'locations' && <RoutineTab entity={entity} onChange={onChange} />}
+      {!entity.customPersona && mode === 'locations' && <RoutineTab entity={entity} onChange={onChange} hereMark={hereMark} />}
       {!entity.customPersona && mode === 'knownIn' && (
         <PickFields
           key={entity.id}

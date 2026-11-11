@@ -4,7 +4,7 @@ import {
 import type { FindingSection } from '@/lib/testBench/rules';
 import { scriptEntryKey } from '@/lib/worldScripts';
 import type { PresenceReveal } from '@/lib/entityPicking';
-import type { Dictionary, DictionaryEntry } from '@/types';
+import type { Dictionary, DictionaryEntry, Entity } from '@/types';
 
 /** The World Editor tabs a Step can reveal. */
 export type RevealTab = FindingSection | 'openings';
@@ -105,7 +105,16 @@ function presenceEntityOf(step: Step): PresenceReveal | undefined {
   const became = edit.after.find((e) => e.id === entityId);
   // An entity added or removed by the Step changed no field of its own.
   const changedKnownIn = !!was && !!became && JSON.stringify(was.knownIn) !== JSON.stringify(became.knownIn);
-  return { entityId, mode: changedKnownIn ? 'knownIn' : 'locations' };
+  const startId = changedKnownIn ? undefined : changedStartId(step, was, became);
+  return { entityId, mode: changedKnownIn ? 'knownIn' : 'locations', ...(startId ? { startId } : {}) };
+}
+
+/** The Start a Step changed: the one its Origin field names, else the first whose data differs. */
+function changedStartId(step: Step, was: Entity | undefined, became: Entity | undefined): string | undefined {
+  const starts = became?.starts ?? was?.starts ?? [];
+  const named = /^starts\/([^/]+)/.exec(step.origin?.field ?? '')?.[1];
+  if (named && starts.some((s) => s.id === named)) return named;
+  return starts.find((s) => JSON.stringify(s) !== JSON.stringify(was?.starts?.find((w) => w.id === s.id)))?.id;
 }
 
 /** What the editor shows after the move's commit. */

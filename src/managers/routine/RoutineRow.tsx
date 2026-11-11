@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
+import { HereMark } from '@/components/HereMark';
 import { cn } from '@/lib/utils';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
@@ -182,13 +183,15 @@ function PlacesEditor({ row, book, connected, onChange, field }: {
 }
 
 /** One schedule row as a sentence. The time, the action and the locations each open their own editor. */
-export function RoutineRow({ row, others, startPlace, book, connected, lockable = true, asHours, onAsHours, selected, onSelect, rowRef, onChange, onDelete }: {
+export function RoutineRow({ row, others, startPlace, book, connected, lockable = true, asHours, onAsHours, selected, onSelect, rowRef, onChange, onDelete, here }: {
   row: ScheduleRow; others: readonly ScheduleRow[]; startPlace: string; book: PlaceBook; connected: readonly string[];
   /** Whether the Strict lock shows. A Generic entity's rows keep their flag but hide it. */
   lockable?: boolean;
   /** Whether the row's time shows as hours. */
   asHours: boolean; onAsHours: (hours: boolean) => void;
   selected: boolean; onSelect: () => void; rowRef?: Ref<HTMLLIElement>;
+  /** The name of the host's location, when this row names it: the row gets a mark. */
+  here?: string;
   /** `typed` is true for a keystroke in a number box, which joins the typing run; a pick is its own Step. */
   onChange: (row: ScheduleRow, typed?: boolean) => void; onDelete: () => void;
 }) {
@@ -223,6 +226,7 @@ export function RoutineRow({ row, others, startPlace, book, connected, lockable 
         </Tip>
       )}
       <p className="min-w-0 flex-1">
+        {here && <HereMark locationName={here} className="mr-1.5 align-middle" />}
         <Token wide label={`Time: ${timeText}`} editor={(
           <RowTimeEditor time={row.time} asHours={asHours} onAsHours={onAsHours} others={others} onChange={(time) => onChange({ ...row, time })} />
         )}>{timeText}</Token>

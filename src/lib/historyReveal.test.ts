@@ -259,6 +259,26 @@ describe('revealForMove', () => {
         });
     });
 
+    describe('the Start of a Presence edit', () => {
+      const start = (id: string, row = 'stay') => ({
+        id, place: 'harbor', weight: 1, schedule: [{ id: `${id}-row`, time: 'allDay', action: { kind: row, place: 'docks' } }],
+      });
+      const twoStarts = { ...wick, starts: [start('a'), start('b')] } as unknown as Entity;
+      const edited = { ...twoStarts, starts: [start('a'), start('b', 'patrol')] } as unknown as Entity;
+      const presence = (field?: string): StepOrigin => ({ tab: 'locations', ids: ['harbor'], subTab: 'presence', ...(field ? { field } : {}) });
+      const stepOfEdit = (origin: StepOrigin) => stepFrom(origin, [diffSlice('entities', [twoStarts], [edited]) as SliceEdit]);
+
+      it('names the Start whose data differs when the Origin field names none', () => {
+        expect(revealForMove([stepOfEdit(presence('routine/b-row'))], world, editor())?.presenceEntity)
+          .toEqual({ entityId: 'wick', mode: 'locations', startId: 'b' });
+      });
+
+      it('names the Start the Origin field holds over the one that differs', () => {
+        expect(revealForMove([stepOfEdit(presence('starts/a/weight'))], world, editor())?.presenceEntity)
+          .toEqual({ entityId: 'wick', mode: 'locations', startId: 'a' });
+      });
+    });
+
     it('rides with the Origin tab alone when nothing was selected there', () => {
       const step = stepFrom({ tab: 'overview', subTab: 'opening' });
       expect(revealForMove([step], world, editor())).toEqual({ tab: 'overview', subTab: 'opening' });

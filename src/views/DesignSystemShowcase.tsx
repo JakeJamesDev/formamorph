@@ -64,6 +64,7 @@ import { NavRailReference } from '@/components/design-system/NavRailReference';
 import { TwoSegmentButtonReference } from '@/components/design-system/TwoSegmentButtonReference';
 import { WindowCornerReference } from '@/components/design-system/WindowCornerReference';
 import { AllowanceRingReference } from '@/components/design-system/AllowanceRingReference';
+import { HereMarkReference } from '@/components/design-system/HereMarkReference';
 import { UsageReportReference } from '@/components/design-system/UsageReportReference';
 import { SegmentedBarReference } from '@/components/design-system/SegmentedBarReference';
 import { SurfaceAppBarReference } from '@/components/design-system/SurfaceAppBarReference';
@@ -396,6 +397,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Allowance Ring',
     description: 'A filling ring beside Send, and its breakdown bars',
     Component: AllowanceRingReference,
+  },
+  {
+    id: 'here-mark',
+    label: 'Here Mark',
+    description: 'A pin on the routine parts that name this location',
+    Component: HereMarkReference,
   },
   {
     id: 'usage-report',

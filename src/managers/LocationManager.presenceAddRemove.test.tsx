@@ -106,8 +106,8 @@ describe('Add Entity on the Presence tab', () => {
     const editor = await screen.findByTestId('presence-editor');
     expect(editor).toHaveAccessibleName('Crowd');
     // The Start on show is the new one: Start 2 is pressed, Start 1 is not.
-    expect(within(editor).getByRole('button', { name: 'Start 2' })).toHaveAttribute('aria-pressed', 'true');
-    expect(within(editor).getByRole('button', { name: 'Start 1' })).toHaveAttribute('aria-pressed', 'false');
+    expect(within(editor).getByRole('button', { name: /^Start 2/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(editor).getByRole('button', { name: /^Start 1/ })).toHaveAttribute('aria-pressed', 'false');
     expect(editor.textContent).toContain('Starts at Tavern.');
     expect(editor.textContent).not.toContain('Market');
   });

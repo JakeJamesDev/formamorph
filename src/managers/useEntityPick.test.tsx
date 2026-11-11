@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import type { PresenceReveal } from '@/lib/entityPicking';
+import { resetRoutineSelections, routineSelectionOf } from '@/lib/routineSelection';
 import { useEntityPick } from './useEntityPick';
 
 /** What an undo's Presence request does to the pick, once the Presence tab is on screen. */
@@ -26,6 +27,14 @@ describe('useEntityPick reveal', () => {
     expect(result.current.entityPick.pick).toEqual({ entityId: 'warden', mode: 'knownIn' });
     expect(result.current.entityPick.shown).toBe(true);
     expect(result.current.reveal).toBeNull();
+  });
+
+  it('shows the Start the undo changed in the Routine editor', () => {
+    resetRoutineSelections();
+    const reveal: PresenceReveal = { entityId: 'warden', mode: 'locations', startId: 's2' };
+    const hasPresenceRow = () => true;
+    renderHook(() => useEntityPick({ hasPresenceRow, presenceOnScreen: true, reveal }));
+    expect(routineSelectionOf('warden').startId).toBe('s2');
   });
 
   it('leaves no pick when the entity has no row, as after the undo of an add', () => {

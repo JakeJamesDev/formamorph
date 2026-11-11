@@ -1,4 +1,4 @@
-import { useMemo, useRef, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, type KeyboardEvent } from 'react';
 import { Route, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -8,9 +8,10 @@ import { Hint, Meta } from '@/components/ui/typography';
 import { SelectOptions } from '@/components/SelectOptions';
 import { canRemoveGenericStartsAt, isGeneric, isUnique, withoutGenericStartsAt } from '@/lib/entityKind';
 import { startsAt, withStartHere } from '@/lib/entityPresence';
+import { startToShowFor } from '@/lib/hereMarks';
 import { fieldFrame } from '@/lib/historyField';
-import { showRoutineStart } from '@/lib/routineSelection';
 import { presenceLines } from '@/lib/locationPresenceReasons';
+import { routineSelectionOf, showRoutineStart } from '@/lib/routineSelection';
 import { cn } from '@/lib/utils';
 import { EntityPickBody, type PickState } from '@/managers/EntityPickCard';
 import type { Entity } from '@/types';
@@ -66,7 +67,26 @@ export default function LocationEntitiesHere({ locationId, entities, labelOf, on
     onPickChange?.({ entityId: entity.id, mode: pick?.mode ?? 'locations' });
   };
 
-  const toggle = (entity: Entity) => onPickChange?.(selected === entity ? null : { entityId: entity.id, mode: pick?.mode ?? 'locations' });
+  // The editor shows the Start that names this location: the one on show when it does, else the first that does.
+  const showStartHere = (entity: Entity) => {
+    const shown = routineSelectionOf(entity.id).startId;
+    const startId = startToShowFor(entity, locationId, shown);
+    if (startId !== shown) showRoutineStart(entity.id, startId);
+  };
+
+  const toggle = (entity: Entity) => {
+    if (selected !== entity) showStartHere(entity);
+    onPickChange?.(selected === entity ? null : { entityId: entity.id, mode: pick?.mode ?? 'locations' });
+  };
+
+  // A pick kept across a change of location opens on that location's Start.
+  const lastLocation = useRef(locationId);
+  useEffect(() => {
+    if (lastLocation.current === locationId) return;
+    lastLocation.current = locationId;
+    if (selected) showStartHere(selected);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationId]);
 
   const moveFocus = (event: KeyboardEvent, at: number) => {
     const to = ROW_KEYS[event.key]?.(at, lines.length);
@@ -153,7 +173,7 @@ export default function LocationEntitiesHere({ locationId, entities, labelOf, on
                 </Button>
               </Tip>
             </div>
-            <EntityPickBody entity={selected} picking={pick} onPickingChange={onPickChange} onChange={onChange} />
+            <EntityPickBody entity={selected} picking={pick} onPickingChange={onPickChange} onChange={onChange} hereMark={locationId} />
           </section>
         )
         : lines.length > 0 && onPickChange && <Hint>Select an entity to edit its Routine and Known In</Hint>}

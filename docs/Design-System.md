@@ -1156,6 +1156,20 @@ The ring keeps its size at every width. The popover opens above the input, align
 | No usage figure (paused, locked, app-derived) | The track alone. The accessible name holds no percent. |
 | During a turn | The figure holds, and moves when the turn ends. |
 
+## Pattern: Here Mark
+
+**Approved by the user on 2026-11-11.** A 14px map-pin icon in the primary color marks the parts of an entity's routine that name the location whose Presence tab holds the editor. It sits on a Start button, before a routine row's sentence, and after a **Can Also Go** entry. The mark has the accessible name "Names <location>".
+
+The mark shows only inside that tab. The entity panel's Routine tab and the full-screen entity card show none.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The mark | `HereMark` in [`HereMark.tsx`](../src/components/HereMark.tsx) |
+| What names a location | [`hereMarks.ts`](../src/lib/hereMarks.ts) |
+| Isolated reference | [`HereMarkReference.tsx`](../src/components/design-system/HereMarkReference.tsx) |
+
 ## Pattern: Usage Report
 
 **Approved by the user on 2026-11-05.** A staff report that reads top to bottom: a row of figure tiles, charts for change over time and rank, then the tables that hold the exact figures.

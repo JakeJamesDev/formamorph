@@ -240,6 +240,7 @@ A Unique entity has no remove button. Change its **Routine** to take it out of t
 Select a row to edit that entity under the list. It is the same editor as on the entity: **Routine** for its routine and **Known In** for where it is known. One entity is selected at a time. Select the row again, or the ✕ button, to close it. The arrow keys move between rows, and Enter or Space selects one.
 
 - 🗺️ **On the Locations Canvas** beside the panel, the selected entity's routine shows on the map, with the key. The map only shows it. Edit the routine under the list, or in full screen.
+- 📌 **A pin** marks each Start, each routine row and each **Can Also Go** entry that names this location. The editor opens on the first Start with a pin, or on the first Start when none has one. The pins show only here, not on the entity's own **Routine** tab.
 - 📍 **Click another location** to open it. The entity stays selected there when it can be there too.
 - ↔️ **Full screen** opens on the selected entity. Pick an entity there, and it is selected here when you come back.
 - 📑 **Another tab** closes the entity.

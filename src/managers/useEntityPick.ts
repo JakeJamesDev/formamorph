@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDevRoute } from '@/lib/devRouter';
 import type { PickState } from '@/managers/EntityPickCard';
 import type { PresenceReveal } from '@/lib/entityPicking';
+import { showRoutineStart } from '@/lib/routineSelection';
 
 /** The World Editor's one entity pick, which the location panel and the Locations Canvas both read and set. */
 export interface EntityPick {
@@ -45,7 +46,9 @@ export function useEntityPick({ hasPresenceRow, presenceOnScreen, reveal, onReve
   // An entity with no row now (an undone add) leaves the tab on screen with no selection.
   useEffect(() => {
     if (!reveal || !presenceOnScreen) return;
-    setPick(hasPresenceRow(reveal.entityId) ? { entityId: reveal.entityId, mode: reveal.mode } : null);
+    const row = hasPresenceRow(reveal.entityId);
+    setPick(row ? { entityId: reveal.entityId, mode: reveal.mode } : null);
+    if (row && reveal.startId) showRoutineStart(reveal.entityId, reveal.startId);
     onRevealTaken?.();
   }, [reveal, presenceOnScreen, hasPresenceRow, onRevealTaken]);
 
