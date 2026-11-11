@@ -67,7 +67,9 @@ Q-numbers are from the grill of 2026-11-11. Q7–Q17 belong to the Appearance Pr
 One resolver turns a pick into an Avatar source or none. Play already has it; the editor's pickers and the "Not on this model" mark move onto it.
 
 - User's Default resolves in this order: the marked Default Avatar when the library holds it, then the first available library Avatar, then none.
-- "First available" keeps the order Avatar Customization preselects in today.
+- "First available" keeps the order Avatar Customization preselects in today: the seeded bundled copy when the library holds it, then the newest library Avatar that is not Praline, then Praline. The bundled copy here is a library record, never the bundled file.
+- While play reads the library, a User's Default or library pick counts as showing and the view holds its loader. After the read the real answer applies. A library with Avatars must not get a late Avatar tab; a loader that ends in no Avatar on an empty library is accepted.
+- A User's Default pick that resolves to none stops the played side's chain: the player shows no Avatar. It does not fall through to the Custom Persona's pick or the legacy fallback. Only an absent pick and a gone world-store id fall through, as today.
 - The bundled-file source is removed. No caller loads the bundled Avatar file except seeding.
 - The viewer shows no Avatar when its source resolves to none or fails to load. It has no bundled fallback.
 - A world pick the store lacks is unchanged by this spec.
@@ -95,6 +97,7 @@ One resolver turns a pick into an Avatar source or none. Play already has it; th
 - The first seed of the bundled default Avatar marks it as the Default Avatar when none is marked.
 - A one-time device step marks it on existing installs under Q6. It runs once, and never after the player clears or changes the Default Avatar.
 - A build with no bundled Avatar marks nothing.
+- The delete confirmation says what a save that uses the Avatar shows afterwards, by the resolver's order: the Default Avatar, then the first available Avatar, then none. The text is the same on every build.
 
 ### Export shape
 
