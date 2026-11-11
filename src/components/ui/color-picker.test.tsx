@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { useState } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ColorPicker } from './color-picker';
 
@@ -119,9 +119,55 @@ describe('ColorPicker', () => {
     expect(screen.getByRole('slider', { name: 'Color' })).toHaveAttribute('tabindex', '0');
     // react-colorful reads keyCode, which browsers set and user-event does not.
     fireEvent.keyDown(hue, { key: 'ArrowRight', keyCode: 39 });
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
 
     const moved = onChange.mock.calls.at(-1)?.[0];
     expect(moved).toMatch(/^#[0-9a-f]{6}$/);
     expect(moved).not.toBe('#336699');
+  });
+
+  describe('drag throttling', () => {
+    let frames: FrameRequestCallback[] = [];
+    const stubFrames = () => {
+      frames = [];
+      vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => frames.push(cb));
+      vi.stubGlobal('cancelAnimationFrame', () => { frames = []; });
+    };
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('sends one parent change per frame for a burst of moves, ending on the final color', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(<Harness onChange={onChange} />);
+      await open(user);
+      stubFrames();
+
+      const hue = screen.getByRole('slider', { name: 'Hue' });
+      for (let i = 0; i < 20; i++) fireEvent.keyDown(hue, { key: 'ArrowRight', keyCode: 39 });
+      expect(onChange).not.toHaveBeenCalled();
+
+      act(() => { frames.forEach((cb) => cb(0)); });
+      expect(onChange).toHaveBeenCalledTimes(1);
+      const sent = onChange.mock.calls[0][0];
+      expect(sent).not.toBe('#336699');
+      expect(screen.getByRole('textbox', { name: 'Hex Color', hidden: true })).toHaveValue(sent);
+    });
+
+    it('sends the final color on release without waiting for the frame', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(<Harness onChange={onChange} />);
+      await open(user);
+      stubFrames();
+
+      const hue = screen.getByRole('slider', { name: 'Hue' });
+      fireEvent.pointerDown(hue, { button: 0 });
+      fireEvent.keyDown(hue, { key: 'ArrowRight', keyCode: 39 });
+      fireEvent.keyDown(hue, { key: 'ArrowRight', keyCode: 39 });
+      expect(onChange).not.toHaveBeenCalled();
+
+      act(() => { fireEvent.pointerUp(window); });
+      expect(onChange).toHaveBeenCalledTimes(1);
+    });
   });
 });

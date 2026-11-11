@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useVrmCustomization, type VrmCustomization } from './useVrmCustomization';
 import type { VRMCapabilities } from '@/views/VRMViewer';
@@ -27,6 +27,37 @@ function setup(caps: VRMCapabilities) {
 }
 
 const section = (heading: string) => screen.getByRole('heading', { name: heading }).parentElement as HTMLElement;
+
+describe('useVrmCustomization color rows', () => {
+  const enterHex = async (name: string, hex: string) => {
+    fireEvent.click(screen.getByRole('button', { name }));
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Hex Color' }), { target: { value: hex } });
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Hex Color' })).toBeNull());
+  };
+
+  it('offers the themed picker per channel, not the native color input', () => {
+    setup({ ...CAPS, colors: { hair: '#112233' } });
+
+    const trigger = screen.getByRole('button', { name: 'Hair Color' });
+    expect(trigger).toHaveAccessibleDescription('#112233');
+    expect(trigger.querySelector('[data-color-swatch]')).not.toBeNull();
+    expect(document.querySelector('input[type="color"]')).toBeNull();
+  });
+
+  it('sends a picked hex to the viewer as #rrggbb, and the revert button drops it again', async () => {
+    const { hook } = setup({ ...CAPS, colors: { hair: '#112233' } });
+
+    await enterHex('Hair Color', 'AA11CC');
+    expect(hook.result.current.viewerProps.hairColor).toBe('#aa11cc');
+
+    const row = screen.getByRole('button', { name: 'Hair Color' }).parentElement as HTMLElement;
+    const buttons = within(row).getAllByRole('button');
+    fireEvent.click(buttons[buttons.length - 1]);
+    expect(hook.result.current.viewerProps.hairColor).toBeUndefined();
+    expect(screen.getByRole('button', { name: 'Hair Color' })).toHaveAccessibleDescription('#112233');
+  });
+});
 
 describe('useVrmCustomization head sliders', () => {
   it('shows a Head Features slider per head key, running from 0 to 1', () => {

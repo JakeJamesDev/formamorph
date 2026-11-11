@@ -31,9 +31,12 @@ describe('ThemePreviewDialog dialogue token', () => {
     const dialog = await openDialog();
     const row = within(dialog).getByText('Dialogue').closest('label');
     expect(row).not.toBeNull();
-    const picker = row!.querySelector('input[type="color"]') as HTMLInputElement;
+    expect(dialog.querySelector('input[type="color"]')).toBeNull();
+    const picker = within(row as HTMLElement).getByRole('button', { name: 'Dialogue' });
+    expect(picker.querySelector('[data-color-swatch]')).not.toBeNull();
 
-    fireEvent.change(picker, { target: { value: '#3b82f6' } });
+    fireEvent.click(picker);
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Hex Color' }), { target: { value: '#3b82f6' } });
 
     const quote = dialog.querySelector(`.${QUOTE_CLASS}`) as HTMLElement;
     expect(quote).not.toBeNull();

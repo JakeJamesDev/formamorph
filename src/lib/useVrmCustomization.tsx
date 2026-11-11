@@ -1,9 +1,9 @@
 /* eslint-disable react-refresh/only-export-components -- this hook file keeps its private ColorRow helper
    and the shared customization surface together as one unit; there's nothing to fast-refresh separately. */
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import { ColorPicker } from '@/components/ui/color-picker';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -30,7 +30,7 @@ const cleanLabel = (s: string) =>
 const ColorRow = ({ label, value, onChange, onRevert, heldBy }: {
   label: string;
   value: string;
-  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onChange: (hex: string) => void;
   onRevert: () => void;
   /** The checked trait that sets this color: the row shows it and cannot change it. */
   heldBy?: string;
@@ -38,7 +38,14 @@ const ColorRow = ({ label, value, onChange, onRevert, heldBy }: {
   <div className="space-y-1">
     <div className="flex items-center space-x-2">
       <Label className="flex-1">{label}</Label>
-      <Input type="color" value={value} onChange={onChange} disabled={heldBy !== undefined} className="w-10 h-10 p-0 border-0" />
+      {heldBy !== undefined ? (
+        <span className="flex items-center gap-2 font-mono text-body">
+          <span aria-hidden className="h-5 w-5 rounded-sm border border-border" style={{ backgroundColor: value }} />
+          {value}
+        </span>
+      ) : (
+        <ColorPicker value={value} aria-label={label} onChange={onChange} />
+      )}
       <Tip tip="Revert to original">
         <Button variant="ghost" size="icon" onClick={onRevert} disabled={heldBy !== undefined}>
           <Undo2 className="h-4 w-4" />
@@ -281,7 +288,7 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
             key={channel}
             label={label}
             value={pinnedColor(channel) ?? value}
-            onChange={(e) => changeChannel(channel, e.target.value)}
+            onChange={(hex) => changeChannel(channel, hex)}
             onRevert={() => revertChannel(channel)}
             heldBy={heldColor(channel)}
           />
@@ -304,7 +311,7 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
               <ColorRow
                 label={cleanLabel(extraSel)}
                 value={extraPicker[extraSel] ?? '#ffffff'}
-                onChange={(e) => changeExtra(extraSel, e.target.value)}
+                onChange={(hex) => changeExtra(extraSel, hex)}
                 onRevert={() => revertExtra(extraSel)}
               />
             )}

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { ColorPicker } from '@/components/ui/color-picker';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
@@ -326,12 +327,7 @@ function ThemePreviewDialog({ open, onOpenChange, source }: { open: boolean; onO
                   const hex = value ? hslTripleToHex(value) : '#000000';
                   return (
                     <label key={token} className="flex items-center gap-2 text-label">
-                      <input
-                        type="color"
-                        value={hex}
-                        onChange={(e) => setToken(token, e.target.value)}
-                        className="h-6 w-8 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0"
-                      />
+                      <ColorPicker value={hex} aria-label={label} onChange={(next) => setToken(token, next)} />
                       <span className="min-w-0 flex-1 truncate">{label}</span>
                       <code className="text-[10px] text-muted-foreground">{value}</code>
                     </label>

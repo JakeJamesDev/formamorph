@@ -40,6 +40,14 @@ const event = (over: Partial<ServerEvent> = {}): ServerEvent =>
 const field = (label: string) => screen.getByLabelText(label) as HTMLInputElement;
 const type = (label: string, value: string) => fireEvent.change(field(label), { target: { value } });
 
+/** Open the themed Poster color picker and enter a hex, the way an organizer does. */
+const choosePosterColor = async (hex: string) => {
+  fireEvent.click(screen.getByRole('button', { name: 'Poster color' }));
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Hex Color' }), { target: { value: hex } });
+  fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Hex Color' })).toBeNull());
+};
+
 /**
  * The themed picker holds a day and an hour apart, so a window is set as the pair an admin sets: open
  * the calendar, page forward to the month, press the day, then type the hour.
@@ -232,11 +240,18 @@ describe('the prose fields', () => {
 });
 
 describe('styling the poster', () => {
-  it('previews the band from what is in the form right now', () => {
+  it('offers the themed picker, not the native color input', () => {
+    render(<EventFormDialog open onOpenChange={() => {}} />);
+
+    expect(screen.getByRole('button', { name: 'Poster color' }).querySelector('[data-color-swatch]')).not.toBeNull();
+    expect(document.querySelector('input[type="color"]')).toBeNull();
+  });
+
+  it('previews the band from what is in the form right now', async () => {
     render(<EventFormDialog open onOpenChange={() => {}} />);
 
     type('Title', 'Autumn Hauntings Contest');
-    fireEvent.change(field('Poster color'), { target: { value: '#7c3aed' } });
+    await choosePosterColor('#7c3aed');
 
     const preview = screen.getByTestId('poster-preview');
     expect(preview.textContent).toContain('Autumn Hauntings Contest');
@@ -249,7 +264,7 @@ describe('styling the poster', () => {
     render(<EventFormDialog open onOpenChange={() => {}} />);
 
     await fillValid();
-    fireEvent.change(field('Poster color'), { target: { value: '#7C3AED' } });
+    await choosePosterColor('#7C3AED');
     fireEvent.click(screen.getByRole('button', { name: /Create Event/ }));
 
     await waitFor(() => expect(create).toHaveBeenCalled());
@@ -272,7 +287,7 @@ describe('styling the poster', () => {
     render(<EventFormDialog open onOpenChange={() => {}} />);
 
     await fillValid();
-    fireEvent.change(field('Poster color'), { target: { value: '#7c3aed' } });
+    await choosePosterColor('#7c3aed');
     fireEvent.click(screen.getByRole('button', { name: 'Default Color' }));
     fireEvent.click(screen.getByRole('button', { name: /Create Event/ }));
 
@@ -281,9 +296,10 @@ describe('styling the poster', () => {
   });
 
   it('opens an edit on the styling the event already carries', () => {
+    // The picker's description is its hex value.
     render(<EventFormDialog open onOpenChange={() => {}} editing={event({ posterColor: '#1e3a8a' })} />);
 
-    expect(field('Poster color').value).toBe('#1e3a8a');
+    expect(screen.getByRole('button', { name: 'Poster color' })).toHaveAccessibleDescription('#1e3a8a');
   });
 
   it('leaves stored artwork alone on an edit that never touched it', async () => {

@@ -13,6 +13,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { Button } from "@/components/ui/button";
 import { DateTimeField } from "@/components/ui/date-time-field";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -291,12 +292,10 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
                 {previewImage && <> <strong>Reposition</strong> sets which part of the image the band shows.</>}
               </Hint>
               <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="color"
+                <ColorPicker
                   aria-label="Poster color"
-                  className="h-9 w-14 cursor-pointer rounded-md border border-input bg-background p-1"
                   value={posterColor ?? COLOR_PICKER_START}
-                  onChange={(e) => setPosterColor(parsePosterColor(e.target.value))}
+                  onChange={(hex) => setPosterColor(parsePosterColor(hex))}
                 />
                 <Button variant="outline" size="sm" disabled={!posterColor} onClick={() => setPosterColor(null)}>
                   Default Color

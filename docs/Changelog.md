@@ -91,6 +91,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Avatars:**
     - **The Skin Color picker now tints an Avatar's body and face to the same tone.** Before, an Avatar with dark clothing on the body, such as Aki, could get a pale yellow body.
+    - **Avatar hair, eye, skin and clothing colors now open the app's own color picker.** You can type a hex color there. Before, these rows opened the browser's picker, which did not match the theme.
   - **In Game:**
     - **Items the story gives or takes now reach an entity it calls by an Alias or a Stranger Name.** Before, an entity named by a title, such as "The Captain", got none of the items the story gave it by its first name.
     - **Each part of the day now starts on a whole hour, such as Midday at 11:00.** Before, some started a few minutes early or late, so a Time of Day requirement or a script could miss an hour you expected it to cover.
@@ -104,6 +105,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A world's written openings now always draw, even in a world that had them switched off.** The world file no longer stores an openings on/off setting.
   - **The Sign In and Create Account pages on formamorph.ai now ask the Adult Content Ahead question first.** Before, a new account saw it only after the Privacy Policy. Your answer saves to the account you sign in to or create.
   - **A text or image endpoint typed without `http://`, such as `127.0.0.1:1234`, now reaches your server.** Before, the browser version sent it to formamorph.ai and showed an "Unexpected token '<'" error. An image server that answers with a web page now says so.
+  - **The color picker in Settings now keeps up with a drag.** Before, every small move saved the color and redrew the screen, so the picker fell behind the pointer.
 - **🛠️ Developer tooling**
   - **World Editor:**
     - **Script help now says a Generic entity ignores `move`, `follow` and `unfollow`, and where `location` reads.** It also states that a Unique entity follows past a locked row, and that Opening Location leaves Player's Starting Location unchanged.
