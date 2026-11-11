@@ -8,6 +8,7 @@ import { createDocsIndex, type DocSection, type DocsIndex } from '@/lib/docs/doc
 import { PANEL_TRAVEL_LABELS, travelLabelText } from '@/components/editor/connectionTravel';
 import { isGeneric, isUnique, traversableOf } from '@/lib/entityKind';
 import { WHEN_EMPTY_LABEL, stateWord, whenEmptyOf } from '@/lib/items';
+import { isFar, isTwoWay } from '@/lib/locationGraph';
 import { presenceLines, timeText } from '@/lib/locationPresenceReasons';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { decodePlaceholderToken, encodePlaceholderToken, parsePlaceholderText } from '@/lib/placeholders';
@@ -175,16 +176,16 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
     const hereIsA = connection.a === here;
     const [out, back] = hereIsA ? [connection.aToB, connection.bToA] : [connection.bToA, connection.aToB];
     const other = placeName(hereIsA ? connection.b : connection.a);
-    const travel = travelLabelText(PANEL_TRAVEL_LABELS[out && back ? 'two-way' : out ? 'outgoing' : 'incoming']);
+    const travel = travelLabelText(PANEL_TRAVEL_LABELS[isTwoWay(connection) ? 'two-way' : out ? 'outgoing' : 'incoming']);
     const hints = [[out, other] as const, [back, text(locationName(here))] as const]
       .flatMap(([leg, to]) => (leg?.hint?.trim() ? [`Travel Hint to ${to}: ${text(leg.hint.trim())}`] : []));
-    return [`- ${other}: Travel ${travel}, Distance ${connection.distance === 'far' ? 'Far' : 'Nearby'}`, ...hints.map((hint) => `  - ${hint}`)].join('\n');
+    return [`- ${other}: Travel ${travel}, Distance ${isFar(connection) ? 'Far' : 'Nearby'}`, ...hints.map((hint) => `  - ${hint}`)].join('\n');
   };
 
   for (const entity of world.entities) {
     add('entity', entity.id, entity.name, [], lines(
       `# ${entity.name}`,
-      facts(isUnique(entity) && 'Unique', isGeneric(entity) && 'Generic', entity.persona && 'Persona',entity.type && `Type: ${entity.type}`, entity.pronouns && `Pronouns: ${entity.pronouns}`, entity.aliases?.length ? `Aliases: ${entity.aliases.join(', ')}` : undefined),
+      facts(isUnique(entity) && 'Unique', isGeneric(entity) && 'Generic', entity.persona && 'Persona', entity.type && `Type: ${entity.type}`, entity.pronouns && `Pronouns: ${entity.pronouns}`, entity.aliases?.length ? `Aliases: ${entity.aliases.join(', ')}` : undefined),
       field('Player Description', text(entity.playerDescription)),
       field('AI Description', text(entity.aiDescription)),
       field('AI Summary', text(entity.aiSummary)),

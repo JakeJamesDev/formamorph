@@ -546,9 +546,9 @@ When the player plays no entity, `persona` is an empty entry:
 | `location` | The code name of the location the entity is at. A Unique entity reads its own location, and a follower reads the player's. Empty for a Generic entity, which is in `present` at each place one of its presences is, and for an entity with no position. Read-only |
 | `following` | True when the entity follows the player. Read-only |
 | `waiting` | True when the entity stopped following and waits where it was left. Read-only |
-| `kind` | `'unique'` or `'generic'`, or `''` for an entity with no kind. An entity the story added reads `'unique'`. `move()` and `follow()` do nothing on a Generic entity. Read-only |
+| `kind` | `'unique'` or `'generic'`, or `''` for an entity with no kind. An entity the story added reads `'unique'`. `move()` and `follow()` are ignored on a Generic entity. Read-only |
 | `action` | What the entity's routine row does now: `'stay'`, `'wander'` or `'patrol'`. `''` when no row covers the hour or none of its places can be reached, while the entity follows or waits, and for a Generic entity. Read-only |
-| `held` | True when a pull by the story or a script `move()` keeps the entity off its routine for now. It reads true even when `action` is `''`, such as in a gap or for an entity the story added. False while it follows or waits, and for a Generic entity. Read-only |
+| `held` | True when the narration called the entity over, or a script `move()` moved it, and it is off its routine for now. It reads true even when `action` is `''`, such as in a gap or for an entity the story added. False while it follows or waits, and for a Generic entity. Read-only |
 | `knownIn` | Where the AI receives the entity while it's not present: `'nowhere'`, `'nearby'`, or `'picked'` for the locations in `knownInPlaces`. Read-only |
 | `knownInPlaces` | The code names of the locations **Known In** picks. Empty unless `knownIn` is `'picked'`. Read-only |
 | `description` | The full AI description, with each placeholder chip filled in. Read-only |
@@ -635,7 +635,7 @@ if (self.value >= 3) entities.Sylvie.meet();
 
 Three calls on an entity's entry set its location. They work on a **Unique** entity. On a **Generic** entity they are ignored: it has no position of its own, never follows, and its presences keep their routines.
 
-- **`entities.<Entity>.move("<Location>")`** puts the entity at a location of your world, by id, else by name. A following or waiting entity stops. The entity stays there until its current idle runs out. On a Stay row it stays until that stretch of the day ends, and with no timed row at all it stays until a script moves it again. Then its schedule applies again.
+- **`entities.<Entity>.move("<Location>")`** puts the entity at a location of your world, by id, else by name. A following or waiting entity stops. The entity stays there until its current idle runs out. On a Stay row it stays until that stretch of the day ends, and with no timed row at all it stays until a script moves it again. Then its routine applies again.
 - **`entities.<Entity>.follow()`** makes the entity follow the player, at the player's location. It follows past a locked row and past **Can Also Go**. A follower still waits or parts ways when the player asks it to.
 - **`entities.<Entity>.unfollow()`** stops the entity following or waiting. It goes back to its usual places once the player leaves. An entity that is not following keeps its location.
 
@@ -665,11 +665,11 @@ Each timing reads `location`, `following`, `waiting`, `action`, `held` and `pres
 | 🌅 **At Game Start** and **Before the AI** | As the turn began, before the player moves |
 | ✍️ **During AI Output**, and a Tool's script during the turn | After the player's move, once it is known: followers beside the player, the entities told to wait left behind. An entity the narration calls over is still where it was |
 | ✅ **After the AI**, and an item script that the turn's item changes fire | After the player's move and the followers, with each entity the narration calls over at the player's location |
-| 🎲 A re-roll of the turn's stats | Where they stand now, after the turn ended |
-| ⏸️ Between turns | Where they stand now |
+| 🎲 A re-roll of the turn's stats | Where they are now, after the turn ended |
+| ⏸️ Between turns | Where they are now |
 
 - **A move the narration describes is known only when the narration ends.** Until then, scripts read the entities as the turn began.
-- **After the AI scripts read the end of the turn.** Each entity stands where its schedule puts it when the turn ends, and `action` and `held` read that same time.
+- **After the AI scripts read the end of the turn.** Each entity is where its routine puts it when the turn ends, and `action` and `held` read that same time.
 - **A turn that begins with no current location is the exception.** After the AI scripts then read the entities, with their `action` and `held`, as the turn began.
 - **After the AI scripts' own writes come later.** Their entity writes, and a `clock.advance` they call, apply once the turn's item scripts run. A re-roll reads the result.
 
@@ -1107,14 +1107,14 @@ In **Test Code** and the **Test Bench**, each entity is where a new game puts it
 
 - 🧍 A **Unique** entity is where its first start puts it. A game picks one of its starts at random.
 - 👥 A **Generic** entity is where each of its starts puts it.
-- 🤝 An entity that starts at the **Player's Starting Location** is at the starting location. With **Follows the Player** on, it follows.
+- 🤝 An entity that starts at **Player's Starting Location** is at the starting location. With **Follows the Player** on, it follows.
 - 🕗 A start's schedule applies as it does at the start of the story. A row that begins later in the day hasn't begun.
 
 The persona is at the starting location.
 
 `location.move("<Location>")` moves the turn to a location of your world, by name or id. It replaces the AI's move for that turn. It needs no path from the turn's location.
 
-In an At Game Start script, `location.move` moves the player and does not change Player's Starting Location. An entity that begins at **Player's Starting Location** without **Follows the Player** stays where **New Game** seated the player.
+In an At Game Start script, `location.move` moves the player and does not change Player's Starting Location. An entity that begins at **Player's Starting Location** without **Follows the Player** stays at the location the player started at in **New Game**.
 
 - **A Before the AI move applies before the AI writes.** The narration is written at the new location.
 - **A During AI Output or After the AI move applies with the turn.**

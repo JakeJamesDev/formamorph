@@ -279,7 +279,7 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'waiting', detail: 'boolean', info: 'True when the entity stopped following and waits where it stands' },
   { name: 'kind', detail: 'string', info: 'unique or generic, or empty when the entity has no kind, and unique for an entity the story added' },
   { name: 'action', detail: 'string', info: 'What its routine row does now: stay, wander or patrol, or empty with no row in force' },
-  { name: 'held', detail: 'boolean', info: 'True when a pull or a script move keeps it off its routine, even with no action' },
+  { name: 'held', detail: 'boolean', info: 'True when the narration or a script moved it off its routine, even with no action' },
   { name: 'knownIn', detail: 'string', info: 'Where the AI receives it while it’s not present: nowhere, nearby, or picked for the places in knownInPlaces' },
   { name: 'knownInPlaces', detail: 'string[]', info: 'Code names of the locations Known In picks, or empty unless knownIn is picked' },
   { name: 'description', detail: 'string', info: 'Full AI description of the entity, its placeholders filled in' },

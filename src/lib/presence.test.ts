@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PLAYER_START, type Entity, type GameLocation } from '@/types';
+import { PLAYER_START, type Entity, type EntityStart, type GameLocation } from '@/types';
+import { startWithRow } from '@/test/entityKindFixture';
 import { withDerivedLocations } from './entityKind';
 import {
   computePresence, connectedPlaces, introducedIds, strangersInPlay, sceneAfterMove, startsMet, strangerAliasesFromCast, withMet,
@@ -152,11 +153,8 @@ describe('start-met', () => {
   });
 
   describe('a persona with a kind reads its Starts only', () => {
-    const start = (id: string, place: string, rowPlace?: string) => ({
-      id, place, weight: 1,
-      schedule: rowPlace ? [{ id: `${id}-r`, time: 'allDay' as const, action: { kind: 'stay' as const, place: rowPlace } }] : [],
-    });
-    const played = (starts: ReturnType<typeof start>[]): Entity =>
+    const start = startWithRow;
+    const played = (starts: EntityStart[]): Entity =>
       withDerivedLocations({ id: 'me', name: 'Wren', kind: 'unique', starts });
     const places = LOCATIONS.map((l) => ({ ...l, isStarting: l.id === 'harbor' }));
 

@@ -100,10 +100,6 @@ export const startPlaces = (entity: Entity): string[] =>
     ? [...new Set((entity.starts ?? []).map((start) => start.place).filter((place) => place !== PLAYER_START))]
     : entity.locations ?? [];
 
-/** Whether a Start of the entity is at Player's Starting Location. An entity with no kind has no Starts. */
-export const startsAtPlayerStart = (entity: Entity): boolean =>
-  !!entity.kind && !!entity.starts?.some((start) => start.place === PLAYER_START);
-
 /** The persona's start places the world still has, in the entity's order. */
 const personaLocations = (entity: Entity, locations: readonly GameLocation[]): string[] =>
   startPlaces(entity).filter((id) => locations.some((l) => l.id === id));

@@ -6,7 +6,8 @@ import {
   rememberWorldPersona, setDefaultPersona, withoutPersona, worldAllowedPersonas, worldStartPersona, type PersonaChoices,
   type PersonaRules,
 } from './personaPick';
-import { PLAYER_START, type Entity, type GameLocation, type PersonaRef } from '@/types';
+import { PLAYER_START, type Entity, type EntityStart, type GameLocation, type PersonaRef } from '@/types';
+import { startWithRow } from '@/test/entityKindFixture';
 import { withDerivedLocations } from './entityKind';
 import { migrateEntityRoutine } from './version';
 
@@ -188,11 +189,8 @@ describe('offeredStartLocations', () => {
 
 // A played entity with a kind: `locations` is derived from every Start and row place, so it holds more than the Starts.
 describe('a played entity with a kind offers its Starts only', () => {
-  const start = (id: string, at: string, rowPlace?: string) => ({
-    id, place: at, weight: 1,
-    schedule: rowPlace ? [{ id: `${id}-r`, time: 'allDay' as const, action: { kind: 'stay' as const, place: rowPlace } }] : [],
-  });
-  const played = (id: string, starts: ReturnType<typeof start>[]): Entity =>
+  const start = startWithRow;
+  const played = (id: string, starts: EntityStart[]): Entity =>
     withDerivedLocations({ ...entity(id), kind: 'unique', starts });
   const context = (...worldEntities: Entity[]) => ({ worldEntities, locations: places });
 

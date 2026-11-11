@@ -1,4 +1,4 @@
-import { PLAYER_START, type Entity, type EntityStart, type GameLocation } from '@/types';
+import { PLAYER_START, type Entity, type EntityStart, type GameLocation, type PlayerStat, type Script } from '@/types';
 import { castRoutines } from '@/lib/entityKind';
 import { EMPTY_BOOK, type PositionBook } from '@/lib/positionEngine';
 import { placeAll, positionWorld, scriptPlaces, type PositionWorld } from '@/lib/positionPlay';
@@ -10,7 +10,6 @@ import type { WorldWrites } from '@/lib/statCodeExecutor';
 import { commitEntityMoves } from '@/lib/turnPipeline/computeTurnCommit';
 import { NO_ENTITY_MOVES, type FollowerState } from '@/lib/entityFollowing';
 import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
-import type { PlayerStat, Script } from '@/types';
 
 /**
  * Script tests on entities with a kind and Starts: a cast placed by the real position engine, a script run through
@@ -29,6 +28,11 @@ export const NOON = storyMinute(4);
 
 /** A Start at `at`, weight 1. */
 export const start = (at: string, schedule: EntityStart['schedule'] = []): EntityStart => ({ id: `at-${at}`, place: at, weight: 1, schedule });
+/** A Start `id` at `place`, with one all-day Stay row at `rowPlace` when given. */
+export const startWithRow = (id: string, place: string, rowPlace?: string): EntityStart => ({
+  id, place, weight: 1,
+  schedule: rowPlace ? [{ id: `${id}-r`, time: 'allDay', action: { kind: 'stay', place: rowPlace } }] : [],
+});
 /** A Unique entity whose locations are its Starts' places. */
 export const unique = (id: string, name: string, starts: EntityStart[]): Entity =>
   ({ id, name, kind: 'unique', starts, traversable: [], locations: [...new Set(starts.map((s) => s.place))] });

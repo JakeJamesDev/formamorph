@@ -203,7 +203,7 @@ In your own template, `{{name:param(number)=amount}}` is a parameter input:
 
 A world script has no stat or trait of its own. Its templates never read `self` and never return a value.
 
-**Opening Location** moves the player at game start. It does not change **Player's Starting Location**: an entity that begins there without **Follows the Player** stays where **New Game** seated the player.
+**Opening Location** moves the player at game start. It does not change **Player's Starting Location**: an entity that begins there without **Follows the Player** stays at the location the player started at in **New Game**.
 
 | Timing | Built-in templates in its menu |
 |---|---|

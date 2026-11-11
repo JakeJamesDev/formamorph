@@ -393,14 +393,14 @@ const aiChoicesOf = (stored: AITurnResult): string[] => stored.aiChoices ?? stor
 const choicesPatch = (aiChoices: readonly string[], scripted: readonly string[] | undefined): Pick<AITurnResult, "choices" | "aiChoices"> =>
   (scripted ? { choices: [...scripted], aiChoices: [...aiChoices] } : { choices: [...aiChoices], aiChoices: undefined });
 
-/** What a Regenerate Choices rerun of the After the AI batch answers: not started, no change, or the scripts' list. */
 /** The book a running turn's scripts read, and the story minute it was placed at. */
 interface ScriptBook {
   book: FollowerState;
   now: number;
 }
 
-type ChoicesRerun ={ ran: false } | { ran: true; changed: false } | { ran: true; changed: true; choices: readonly string[] };
+/** What a Regenerate Choices rerun of the After the AI batch answers: not started, no change, or the scripts' list. */
+type ChoicesRerun = { ran: false } | { ran: true; changed: false } | { ran: true; changed: true; choices: readonly string[] };
 
 /** The pre-turn state a stat re-roll hands stat code, so code reads and switches as the turn it replaces did. */
 type PreTurnCodeState = Pick<

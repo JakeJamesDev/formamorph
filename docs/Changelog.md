@@ -61,14 +61,14 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **In the World Editor's Routine tab, an entity can start at the Player's Starting Location, beside you each game.** A Unique entity there can follow you from the first turn. Its routine can use any location.
     - **In older worlds, an entity with pronouns listed at several locations now wanders between them, one at a time.** So it isn't always where you look. An entity at every location follows you. One with no pronouns or "it/its", such as a monster, becomes Generic. Change it in the Routine tab.
     - **In the bundled worlds, named people with several locations now keep one place at a time, on a daily routine.** Coach Daizen and Rin Hayama patrol the school, and Emberwatch's captain takes the evening watch. Crowds such as the Swarm still fill every place.
-    - **Scripts can read an entity's kind, routine and Known In, and how far and which way each exit goes.** Check `kind` to skip a Generic entity before `move`. `action` reads stay, wander or patrol, and `held` says a pull or a script move keeps it off its routine.
+    - **Scripts can read an entity's kind, routine and Known In, and how far and which way each exit goes.** Check `kind` to skip a Generic entity before `move`. `action` reads stay, wander or patrol, and `held` says the narration called it over or a script moved it, so it is off its routine.
     - **The help pages now explain entities that keep a daily routine, follow you or wait.** The Glossary defines the routine terms. The Entity Movement setting now says one request covers every entity.
   - **Collapse All:**
     - **The World Editor's Locations list can close every group of sub-locations at once.** Select **Collapse all locations**, right of the filter box, and again to open them all. Groups stay closed when you switch tabs, until you close the World Editor.
     - **The Entities, Stats, Traits, Placeholders, Dictionary and Scripts lists can close every group at once.** Select **Collapse all**, right of the filter box, and again to open them all. Each list keeps its groups closed until you close the World Editor.
     - **The character and dictionary editors in your library can close every group at once.** Select **Collapse all**, right of the filter box, and again to open them all. Groups stay closed until you close the editor.
   - **Formaquestion:**
-    - **In the World Editor, Formaquestion now reads each character's routine and each location's Connections.** It sees kinds, Starts, rows, Can Also Go, Travel, Distance, hints and who can be at a place.
+    - **In the World Editor, Formaquestion now reads each entity's routine and each location's Connections.** It sees kinds, starts, rows, Can Also Go, Travel, Distance, hints and who can be at a place.
   - **In the World Editor, an entity with only a Stranger Description now starts as a stranger.** In play, you see its Name and that description until you meet it. Stranger Name now sits beside Name, and Stranger Description under Player-Facing Description. Items' Unidentified fields match, and each field has its own help button.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.
@@ -99,18 +99,13 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A character the story calls over from one Nearby link away now joins the scene.** That includes the place around yours and the other end of a Connection. Their item changes land that turn. Nobody comes across a Far link.
     - **The story no longer moves you to a nearby place when you stay where you are.** Before, a place whose name held a nearby place's name, such as "Academy Dorms" next to "Academy", could send you to that nearby place on a turn where you never moved.
     - **A turn that fails now puts your action and images back in the action box.** Before, an endpoint error emptied the box, so a failed first turn lost the opening text.
-    - **At game start, your persona has met an entity only when its Known In covers one of its Starts.** A place the persona's routine visits no longer counts.
   - **World Editor:**
     - **The Sliders list on an entity's stat and trait now shows the entity's Avatar sliders.** An entity with only an Avatar can bind its Body Sliders and Head Features.
-  - **Test Bench:**
-    - **The Test Bench now reads an entity's schedule when it checks where entities are.** A companion that begins at Player's Starting Location is no longer reported as placed nowhere, and dead schedule places are reported and fixed.
   - **A world's written openings now always draw, even in a world that had them switched off.** The world file no longer stores an openings on/off setting.
   - **The Sign In and Create Account pages on formamorph.ai now ask the Adult Content Ahead question first.** Before, a new account saw it only after the Privacy Policy. Your answer saves to the account you sign in to or create.
   - **A text or image endpoint typed without `http://`, such as `127.0.0.1:1234`, now reaches your server.** Before, the browser version sent it to formamorph.ai and showed an "Unexpected token '<'" error. An image server that answers with a web page now says so.
   - **The color picker in Settings now keeps up with a drag.** Before, every small move saved the color and redrew the screen, so the picker fell behind the pointer.
 - **🛠️ Developer tooling**
-  - **World Editor:**
-    - **Script help now says a Generic entity ignores `move`, `follow` and `unfollow`, and where `location` reads.** It also states that a Unique entity follows past a locked row, and that Opening Location leaves Player's Starting Location unchanged.
   - **The affected-test gate now runs the tests that import a deleted file.** Vitest can't follow an import to a file that is gone, so the gate adds each file that imports it or matches it through `import.meta.glob`.
 
 ---

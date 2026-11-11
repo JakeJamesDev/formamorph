@@ -10,7 +10,7 @@ export const WORLD_SCRIPT_TEMPLATES: readonly CodeTemplate[] = [
     kind: 'worldScript',
     timings: ['start'],
     name: 'Opening Location',
-    description: 'Move the player at game start. An entity that begins at Player’s Starting Location without Follows the Player stays where New Game seated the player.',
+    description: 'Move the player at game start. An entity at "Player’s Starting Location" without "Follows the Player" stays at the location the player started at.',
     code: 'location.move({{place:location}});',
   },
   {

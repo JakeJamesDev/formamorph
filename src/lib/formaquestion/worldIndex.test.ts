@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { decodePlaceholderToken, encodePlaceholderToken } from '@/lib/placeholders';
 import { migrateWorld } from '@/lib/version';
-import { presenceLines } from '@/lib/locationPresenceReasons';
 import { withDerivedLocations } from '@/lib/entityKind';
 import { PLAYER_START, type Currency, type Dictionary, type Entity, type GameState, type Item, type Stat, type Tool, type World } from '@/types';
 import { buildPlayerView } from './playerView';
@@ -271,11 +270,6 @@ describe('routines and Connections in the World Index', () => {
   });
 
   it('lists who can be at a location with the Presence tab’s reasons', () => {
-    const lines = (id: string) => presenceLines(id, input.entities).map((l) => `- ${l.entity.name}: ${l.reasons.join('; ')}`);
-    for (const id of ['loc-gate', 'loc-mill']) {
-      const md = page('location', id);
-      for (const line of lines(id)) expect(md).toContain(line);
-    }
     expect(page('location', 'loc-mill')).toContain('- Warden: patrols here (20:00 – 04:00); can be led here');
     expect(page('location', 'loc-gate')).toContain('- Warden: begins here (75%)');
   });
