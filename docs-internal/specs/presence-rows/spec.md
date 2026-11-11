@@ -87,6 +87,13 @@ Rulings from the grill of 2026-11-11, renumbered for this effort.
 - **Q18.** Canvas status text that names an entity uses the entity's label with placeholders resolved, never the raw name.
 - **Q19.** The Remove button on a Known Here row becomes an icon button with no word. It uses the same icon as the remove button of Q8, and its tooltip and accessible name say what it removes and name the entity. Nothing else on the Known Here list changes.
 
+Rulings from ticket sessions:
+
+- **Q20** (ticket 01). Status line beside the panel, Routine mode. No row selected: "Routine of {label}". A row selected: the bold row line as in full screen, over "Locations of this row". Working copy; the user approves it. Full screen keeps its lines.
+- **Q21** (ticket 01). Known In mode beside the panel has no status line, as in full screen. The marks and the key are enough.
+- **Q22** (ticket 01). Escape beside the panel does not clear a shown pick. It keeps what it does there today. Only the Presence tab and full-screen picking clear the pick.
+- **Q23** (ticket 01). While a pick is shown beside the panel, the Drag To Connect grips stay hidden in both modes, as full screen draws them. The canvas is then a view of the entity; the author closes the pick or changes tab to draw a Connection. Selecting a location and dragging a box still work.
+
 Modules:
 
 - **The pick, lifted.** The picked entity (entity, mode, the pending Picked Locations state) moves out of the canvas component into state the location panel and the canvas both read and set. The canvas gains a second notion beside "picking": it shows a pick without being a picker. Full screen keeps today's picker behavior. Beside the panel the canvas shows the pick only while the Presence tab of the selected location is on screen.

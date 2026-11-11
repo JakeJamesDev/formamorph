@@ -19,6 +19,8 @@ On a location's Presence tab, Entities Here becomes a list the author selects fr
 - **No canvas.** In the list view and on a narrow screen the list and the editor work with no map.
 - **Kept for now.** The Generic multi-select stays above the list in this ticket. Ticket 03 replaces it. The Known Here list is untouched.
 
+**From ticket 01:** the pick is World Editor state with a `shown` input that only the dev route sets today; this ticket sets it from the Presence tab. The card body is its own component. While a pick is shown, the Drag To Connect grips are hidden (Q23), and Escape does not clear the pick (Q22).
+
 The prototype's variant B shows the layout: branch `prototype/presence-rows`, `?variant=B`. Its copy is placeholder text. Write the hint and labels under the Writing Guide from a facts list.
 
 Spec rulings: Q2, Q3, Q4, Q6, Q10, Q11, Q12, Q16.
