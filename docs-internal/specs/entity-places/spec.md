@@ -1,7 +1,8 @@
 # Spec: Entity Places
 
 Status: ready-for-agent
-Status note: Written 2026-11-11 from the architecture review. Implementation waits until NPC Schedules tickets 29, 30 and 31 land (Q4). No tickets yet.
+Spec session: entity-places — spec
+Status note: Written 2026-11-11 from the architecture review. Implementation waits until NPC Schedules tickets 29, 30 and 31 land (Q4). Tickets 01–10; 01 is the first, 03–09 run in parallel after 02, 10 is last.
 
 ## Problem Statement
 
