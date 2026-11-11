@@ -48,7 +48,14 @@ export function namedVrmSource(pick: NamedVrm, ctx: Pick<VrmContext, 'store' | '
   return ctx.libraryIds.has(pick.id) ? { kind: 'library', id: pick.id } : userDefaultSource(ctx);
 }
 
-function resolvePick(pick: VrmPick | undefined, ctx: VrmContext, userDefault: () => VrmSource | undefined): VrmSource | undefined {
+/** An entity's own pick on this device, outside play: User's Default is the device's default. */
+export const resolveOwnPick = (pick: VrmPick | undefined, ctx: LibraryContext): VrmSource | undefined =>
+  resolvePick(pick, ctx, () => userDefaultSource(ctx));
+
+/** What a pick reads to resolve, apart from who is played. */
+type LibraryContext = Pick<VrmContext, 'store' | 'libraryIds' | 'deviceDefault'>;
+
+function resolvePick(pick: VrmPick | undefined, ctx: LibraryContext, userDefault: () => VrmSource | undefined): VrmSource | undefined {
   if (!pick) return undefined;
   return pick.kind === 'default' ? userDefault() : namedVrmSource(pick, ctx);
 }

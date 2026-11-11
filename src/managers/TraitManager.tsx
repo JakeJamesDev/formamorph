@@ -528,6 +528,7 @@ const TraitManager = ({
 
   const appearancePanel = (
     <>
+      {!readOnly && sliders.noModelHint && <Hint>{sliders.noModelHint}</Hint>}
       {showBody && (
       <div className="space-y-2">
         <div className="flex items-center gap-2">

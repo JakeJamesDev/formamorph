@@ -1,6 +1,6 @@
 # 04: Entity Rows List the Resolved Avatar
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -21,14 +21,24 @@ An entity's stat or trait shows the author exactly what that entity can use (spe
 
 ## Acceptance criteria
 
-- [ ] An entity on User's Default lists the author's Default Avatar's Body Sliders and Head Features.
-- [ ] With no Default Avatar marked, it lists the first available library Avatar's.
-- [ ] An entity on a world Avatar lists only that Avatar's groups, beside its 3D model's when it has one.
-- [ ] An entity with None and no 3D model shows the hint in the Appearance tab, on a stat and on a trait.
-- [ ] An entity with None and a 3D model lists the 3D model's sliders and shows no hint.
-- [ ] On User's Default, a bound slider the resolved Avatar lacks is marked "Not on this model".
-- [ ] A bound slider that is not in the list stays on the row and can be removed.
-- [ ] Mutation: make User's Default add nothing again, and the User's Default test fails.
-- [ ] Frames: `.scratch/frames/entity-appearance-none-dark-1440.png` and `.scratch/frames/entity-appearance-default-dark-1440.png`.
+- [x] An entity on User's Default lists the author's Default Avatar's Body Sliders and Head Features. (StatManager.bodySliders "lists the author's Default Avatar's Body Sliders and Head Features")
+- [x] With no Default Avatar marked, it lists the first available library Avatar's. ("lists the first available library Avatar when no Default Avatar is marked")
+- [x] An entity on a world Avatar lists only that Avatar's groups, beside its 3D model's when it has one. ("lists only the world Avatar's groups, not the library's", "lists both the 3D model's and the Avatar's groups")
+- [x] An entity with None and no 3D model shows the hint in the Appearance tab, on a stat and on a trait. ("on None › shows the hint…"; TraitManager.sliderPins "shows the hint in the Appearance tab…"; None frame)
+- [x] An entity with None and a 3D model lists the 3D model's sliders and shows no hint. ("lists the 3D model's sliders and shows no hint")
+- [x] On User's Default, a bound slider the resolved Avatar lacks is marked "Not on this model". ("marks a bound slider the resolved Avatar lacks")
+- [x] A bound slider that is not in the list stays on the row and can be removed. ("keeps a bound slider that is not listed, and removes it")
+- [x] Mutation: make User's Default add nothing again, and the User's Default test fails. (resolveOwnPick returning undefined for `default`: 6 tests failed, then restored)
+- [x] Frames: `.scratch/frames/entity-appearance-none-dark-1440.png` and `.scratch/frames/entity-appearance-default-dark-1440.png`. (Playwright, 1440x900 dark)
 
 For you: read the hint text for None, and check an entity on User's Default against your own Default Avatar.
+
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
+- Read the hint text for None, and check an entity on User's Default against your own Default Avatar. Frames: `.scratch/avatar-pick-rules-04/frames/entity-appearance-none-dark-1440.png`, `.scratch/avatar-pick-rules-04/frames/entity-appearance-default-dark-1440.png`.
+- The default frame reads "This entity's Avatar has no sliders": the bundled Aki (`default-avatar.vrm`) has no Body Sliders or Head Features in this build. Check that this is expected for Aki.
+- The library list and the marked default are read once per editor mount: a change made elsewhere shows after the stat or trait reopens.

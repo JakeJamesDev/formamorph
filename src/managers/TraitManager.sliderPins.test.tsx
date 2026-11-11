@@ -4,6 +4,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Entity, Trait, TraitGroup } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
+import { NO_MODEL_HINT } from '@/lib/useSliderPicker';
 import TraitManager, { type TraitLinkEdit } from './TraitManager';
 
 const elf: Trait = { id: 'elf', name: 'Elf', statChanges: [] };
@@ -114,6 +115,23 @@ describe("an owned trait's Sliders", () => {
     expect(await screen.findByText('Aki · Body Sliders')).toBeInTheDocument();
     expect(screen.getByText('Aki · Head Features')).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Ear Shape, not selected' })).toBeInTheDocument();
+  });
+
+  it('shows the hint in the Appearance tab when the entity has no Avatar and no 3D model', async () => {
+    const owner = { id: 'ash', name: 'Ash', locations: [] } as unknown as Entity;
+    world.entities = [owner];
+    renderTrait('elf', owner);
+    expect(await screen.findByText(NO_MODEL_HINT)).toBeInTheDocument();
+  });
+
+  it('shows no hint when the entity has an Avatar', async () => {
+    const owner = { id: 'ash', name: 'Ash', locations: [], vrmPick: { kind: 'default' } } as unknown as Entity;
+    world.entities = [owner];
+    renderTrait('elf', owner);
+    const field = screen.getByText('Sliders').parentElement!.parentElement!;
+    await userEvent.click(within(field).getByRole('combobox'));
+    expect(await screen.findByText('Aurelia · Body Sliders')).toBeInTheDocument();
+    expect(screen.queryByText(NO_MODEL_HINT)).toBeNull();
   });
 });
 

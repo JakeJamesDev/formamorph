@@ -3,6 +3,8 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { MediaAsset, Stat } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
+import { clearUserDefaultAvatar, setUserDefaultAvatar } from '@/lib/defaultAvatar';
+import { NO_MODEL_HINT } from '@/lib/useSliderPicker';
 import StatManager, { type StatEditorStore } from './StatManager';
 
 const wounds = {
@@ -60,10 +62,12 @@ vi.mock('@/lib/modelLoader', () => ({
     return loads.owner.get(model.data ?? '') ?? [];
   },
 }));
+// The author's Avatar library, newest first. Each Avatar's blob URL is `blob:<id>`.
+const library = vi.hoisted(() => ({ models: [] as { id: string; name: string }[] }));
 vi.mock('@/services/ModelStorageService', () => ({
   default: {
-    getModelMetadata: async () => [{ id: 'm1', name: 'Library Model' }],
-    getModelData: async () => ({ blob: new Blob(['x']) }),
+    getModelMetadata: async () => library.models,
+    getModelData: async (id: string) => ({ blob: { id } }),
   },
 }));
 
@@ -100,8 +104,10 @@ const offeredByGroup = async () => {
 const offered = async () => Object.values(await offeredByGroup()).flat();
 
 beforeEach(() => {
-  URL.createObjectURL = vi.fn(() => 'blob:model');
+  URL.createObjectURL = vi.fn((blob: Blob | MediaSource) => `blob:${(blob as unknown as { id: string }).id}`);
   URL.revokeObjectURL = vi.fn();
+  library.models = [{ id: 'm1', name: 'Library Model' }];
+  clearUserDefaultAvatar();
   loads.owner.clear();
   loads.splits.clear();
   loads.catalogs.clear();
@@ -151,7 +157,8 @@ describe('the Body Sliders picker', () => {
     renderManager(entityStore(undefined));
     expect(await offered()).toEqual([]);
     expect(loads.ownerCalls).toBe(0);
-    expect(screen.getByText("Pick an Avatar or add a 3D model to bind this entity's sliders")).toBeInTheDocument();
+    expect(screen.getByText('No sliders to bind')).toBeInTheDocument();
+    expect(screen.getByText(NO_MODEL_HINT)).toBeInTheDocument();
   });
 
   describe("with the owner's Avatar", () => {
@@ -175,10 +182,10 @@ describe('the Body Sliders picker', () => {
       });
     });
 
-    it('adds nothing for a device-default pick, and says so', async () => {
-      renderManager({ ...entityStore(), morphOwner: { name: 'Golem', vrmPick: { kind: 'default' } } });
-      expect(await offered()).toEqual([]);
-      expect(screen.getByText("Pick an Avatar or add a 3D model to bind this entity's sliders")).toBeInTheDocument();
+    it("lists only the world Avatar's groups, not the library's", async () => {
+      library.models = [{ id: 'lib-other', name: 'Other' }];
+      renderManager(withAvatar(undefined, 'data:elf-only'));
+      expect(await offeredByGroup()).toEqual({ 'Elf · Body Sliders': ['Belly'], 'Elf · Head Features': ['EarShape'] });
     });
 
     it('lists a library Avatar by its library name', async () => {
@@ -193,13 +200,15 @@ describe('the Body Sliders picker', () => {
       worldParts.overview = { vrmStore: {} };
       renderManager({ ...entityStore(), morphOwner: { name: 'Golem', vrmPick: { kind: 'world', id: 'gone' } } });
       expect(await offered()).toEqual([]);
-      expect(screen.getByText("Pick an Avatar or add a 3D model to bind this entity's sliders")).toBeInTheDocument();
+      expect(screen.getByText('No sliders to bind')).toBeInTheDocument();
+      expect(screen.getByText(NO_MODEL_HINT)).toBeInTheDocument();
     });
 
-    it('treats a library pick the library lacks as no Avatar', async () => {
+    it("resolves a library pick the library lacks as User's Default", async () => {
+      library.models = [{ id: 'lib-kept', name: 'Kept' }];
+      loads.splits.set('blob:lib-kept', { body: ['Hips'], head: ['Nose'] });
       renderManager({ ...entityStore(), morphOwner: { name: 'Golem', vrmPick: { kind: 'library', id: 'gone' } } });
-      expect(await offered()).toEqual([]);
-      expect(screen.getByText("Pick an Avatar or add a 3D model to bind this entity's sliders")).toBeInTheDocument();
+      expect(await offeredByGroup()).toEqual({ 'Kept · Body Sliders': ['Hips'], 'Kept · Head Features': ['Nose'] });
     });
 
     it("keeps the 3D model's sliders when the Avatar fails to load", async () => {
@@ -214,6 +223,78 @@ describe('the Body Sliders picker', () => {
       renderManager({ ...entityStore(), morphOwner: { name: 'Golem', vrmPick: { kind: 'world', id: 'elf' } } });
       expect(await offered()).toEqual([]);
       expect(screen.getByText("This entity's Avatar has no sliders")).toBeInTheDocument();
+    });
+  });
+
+  describe("on User's Default", () => {
+    const onDefault = (model?: Partial<MediaAsset>): StatEditorStore =>
+      ({ ...entityStore(model), morphOwner: { name: 'Golem', model, vrmPick: { kind: 'default' } } });
+
+    it("lists the author's Default Avatar's Body Sliders and Head Features", async () => {
+      library.models = [{ id: 'def-newer', name: 'Newer' }, { id: 'def-marked', name: 'Marked' }];
+      loads.splits.set('blob:def-marked', { body: ['Hips'], head: ['Nose'] });
+      setUserDefaultAvatar('def-marked');
+      renderManager(onDefault());
+      expect(await offeredByGroup()).toEqual({ 'Marked · Body Sliders': ['Hips'], 'Marked · Head Features': ['Nose'] });
+    });
+
+    it('lists the first available library Avatar when no Default Avatar is marked', async () => {
+      library.models = [{ id: 'first-newest', name: 'Newest' }, { id: 'first-older', name: 'Older' }];
+      loads.splits.set('blob:first-newest', { body: ['Hips'], head: [] });
+      renderManager(onDefault());
+      expect(await offeredByGroup()).toEqual({ 'Newest · Body Sliders': ['Hips'] });
+    });
+
+    it('lists the 3D model beside the resolved Avatar', async () => {
+      library.models = [{ id: 'beside', name: 'Beside' }];
+      loads.splits.set('blob:beside', { body: ['Hips'], head: [] });
+      loads.owner.set('data:golem-default', ['Cracks']);
+      renderManager(onDefault({ name: 'golem.glb', data: 'data:golem-default' }));
+      expect(await offeredByGroup()).toEqual({ 'Golem · Body Sliders': ['Cracks'], 'Beside · Body Sliders': ['Hips'] });
+    });
+
+    it('shows the hint when the library is empty', async () => {
+      library.models = [];
+      renderManager(onDefault());
+      expect(await screen.findByText(NO_MODEL_HINT)).toBeInTheDocument();
+    });
+
+    it('marks a bound slider the resolved Avatar lacks', async () => {
+      library.models = [{ id: 'mark-def', name: 'Marked' }];
+      loads.catalogs.set('blob:mark-def', ['Hips']);
+      setUserDefaultAvatar('mark-def');
+      const bound = { ...wounds, morphBindings: [{ name: 'Hips' }, { name: 'Tusks' }] };
+      renderManager({ ...onDefault(), stats: [bound] }, bound);
+      const rowOf = (name: string) => screen.getByRole('spinbutton', { name: `Change By for ${name}` }).previousElementSibling as HTMLElement;
+      expect(await within(rowOf('Tusks')).findByText('Not on this model')).toBeInTheDocument();
+      expect(within(rowOf('Hips')).queryByText('Not on this model')).toBeNull();
+    });
+
+    it('keeps a bound slider that is not listed, and removes it', async () => {
+      library.models = [{ id: 'keep-def', name: 'Keeper' }];
+      loads.splits.set('blob:keep-def', { body: ['Hips'], head: [] });
+      const written: Stat[] = [];
+      worldParts.updateStat = (next) => { written.push(next as Stat); };
+      const bound = { ...wounds, morphBindings: [{ name: 'Tusks' }] };
+      renderManager({ ...onDefault(), stats: [bound], updateStat: worldParts.updateStat }, bound);
+      expect(await offered()).toEqual(['Hips']);
+      await userEvent.keyboard('{Escape}');
+      await userEvent.click(screen.getByRole('button', { name: /Remove Tusks/ }));
+      expect(written.at(-1)?.morphBindings).toEqual([]);
+    });
+  });
+
+  describe('on None', () => {
+    it('shows the hint in the Appearance tab with no 3D model', async () => {
+      renderManager(entityStore(undefined));
+      expect(await screen.findByText(NO_MODEL_HINT)).toBeInTheDocument();
+    });
+
+    it("lists the 3D model's sliders and shows no hint", async () => {
+      loads.owner.set('data:golem-none', ['Cracks']);
+      renderManager(entityStore({ name: 'golem.glb', data: 'data:golem-none' }));
+      expect(await offeredByGroup()).toEqual({ 'Golem · Body Sliders': ['Cracks'] });
+      expect(screen.queryByText(NO_MODEL_HINT)).toBeNull();
     });
   });
 

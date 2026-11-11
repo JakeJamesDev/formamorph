@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useGameDataOptional } from "@/contexts/GameDataContext";
 import { DEFAULT_AVATAR_ID } from "./defaultAvatar";
 import { loadMorphSplit, type MorphSplit } from "./vrmMorphLoader";
@@ -6,7 +6,8 @@ import { loadModelMorphNames } from "./modelLoader";
 import { useMountedRef } from "./useMountedRef";
 import ModelStorageService from "@/services/ModelStorageService";
 import type { MorphSource } from "./bodyMorphs";
-import type { MediaAsset, VrmPick, WorldVrmStore } from "@/types";
+import type { RowModel, RowModels } from "./useRowModels";
+import type { MediaAsset } from "@/types";
 
 // Morph names cached by a stable key (model id, or the custom VRM's data URL) so re-opening the picker —
 // or editing another stat — never reloads a model.
@@ -53,90 +54,45 @@ async function ownerSplit(model: Partial<MediaAsset>): Promise<MorphSplit> {
   return { body: await loadModelMorphNames(model), head: [] };
 }
 
-/** The model an owned stat's body sliders bind to: its owner's own. */
-export interface MorphOwner {
-  /** Group heading: the owner's name. */
-  name: string;
-  model?: Partial<MediaAsset>;
-  /** The owner's Avatar pick; its sliders and colors count toward the "not on this model" mark. */
-  vrmPick?: VrmPick;
+/** A row model's sliders under its heading; undefined when it has none. */
+async function rowModelSource(row: RowModel): Promise<MorphSource | undefined> {
+  const [heading, split] = row.kind === "model"
+    ? [row.heading, await cachedLoad(dataKey("owner", row.model.data), () => ownerSplit(row.model))]
+    : row.kind === "world"
+      ? [row.name, await morphsForCustom(row.data)]
+      : [row.name, await morphsForModel(row.id)];
+  const built: MorphSource[] = [];
+  pushSource(built, heading, split);
+  return built[0];
 }
 
-interface PickedAvatar {
-  name: string;
-  split: MorphSplit;
-}
-
-/** A picked Avatar's display name and sliders; undefined when the pick names no stored model. */
-async function avatarSplit(pick: Exclude<VrmPick, { kind: "default" }>, store: WorldVrmStore | undefined): Promise<PickedAvatar | undefined> {
-  if (pick.kind === "world") {
-    const vrm = store?.[pick.id];
-    return vrm?.file.data ? { name: vrm.name, split: await morphsForCustom(vrm.file.data) } : undefined;
-  }
-  const meta = (await ModelStorageService.getModelMetadata()).find((model) => model.id === pick.id);
-  return meta ? { name: meta.name, split: await morphsForModel(pick.id) } : undefined;
-}
+const NO_SOURCES: MorphSource[] = [];
 
 /**
- * Slider names an owned stat can bind: the shape keys on its owner's 3D model, across every mesh, and the Body
- * Sliders and Head Features of its Avatar. A device-default Avatar pick names no model and adds nothing.
- * Lazy and cached like `useBodyMorphSources`.
+ * Slider names an owned stat can bind: the shape keys on each model of `rows`, the owner's 3D model across
+ * every mesh, and the Body Sliders and Head Features of its resolved Avatar. Loads after the first `load()`,
+ * once the rows resolve, and again when they change. Cached like `useBodyMorphSources`.
  */
-export function useOwnerMorphSources(
-  owner: MorphOwner | undefined,
-): { sources: MorphSource[]; loading: boolean; load: () => void; avatarNamed: boolean } {
-  const model = owner?.model?.data ? owner.model : undefined;
-  const pick = owner?.vrmPick && owner.vrmPick.kind !== "default" ? owner.vrmPick : undefined;
-  const pickKind = pick?.kind;
-  const pickId = pick?.id;
-  const store = useGameDataOptional()?.worldOverview?.vrmStore;
-  const name = owner?.name ?? "";
-  const [morphs, setMorphs] = useState<string[]>([]);
-  const [avatar, setAvatar] = useState<PickedAvatar>();
-  const [loading, setLoading] = useState(false);
-  const loadedRef = useRef(false);
-  // Each reset starts a new generation; a load from an earlier one is dropped.
-  const generation = useRef(0);
+export function useOwnerMorphSources(rows: RowModels | undefined): { sources: MorphSource[]; loading: boolean; load: () => void } {
+  const [loaded, setLoaded] = useState<{ rows: RowModels; sources: MorphSource[] }>();
+  const [wanted, setWanted] = useState(false);
   const mounted = useMountedRef();
-  // A world pick names a model only when the store holds it; a library pick, once the library returned it.
-  const avatarNamed = !!pick && (pick.kind === "library" ? !!avatar : !!store?.[pick.id]?.file.data);
+  const load = useCallback(() => setWanted(true), []);
+  const ready = wanted && !!rows && !rows.resolving;
 
-  const load = useCallback(() => {
-    if (loadedRef.current || (!model?.data && !pick)) return;
-    loadedRef.current = true;
-    const mine = generation.current;
-    setLoading(true);
-    // Each source fails alone, so a broken Avatar keeps the 3D model's sliders.
-    void Promise.all([
-      model?.data ? cachedLoad(dataKey("owner", model.data), () => ownerSplit(model)).catch(() => undefined) : undefined,
-      pick ? avatarSplit(pick, store).catch(() => undefined) : undefined,
-    ]).then(([own, worn]) => {
-      if (!mounted.current || generation.current !== mine) return;
-      setMorphs(own?.body ?? []);
-      setAvatar(worn);
-      setLoading(false);
-    });
-    // The pick's kind and id name its Avatar; the object around them may be rebuilt every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [model, pickKind, pickId, store, mounted]);
-
-  // A swapped model or Avatar invalidates the loaded set; allow a reload on the next picker open.
   useEffect(() => {
-    generation.current++;
-    loadedRef.current = false;
-    setMorphs([]);
-    setAvatar(undefined);
-    setLoading(false);
-  }, [model, pickKind, pickId, store]);
+    if (!ready || !rows || loaded?.rows === rows) return;
+    let current = true;
+    // Each model fails alone, so a broken Avatar keeps the 3D model's sliders.
+    void Promise.all(rows.models.map((row) => rowModelSource(row).catch(() => undefined))).then((found) => {
+      if (current && mounted.current) setLoaded({ rows, sources: found.filter((s): s is MorphSource => !!s) });
+    });
+    return () => { current = false; };
+  }, [ready, rows, loaded, mounted]);
 
-  // The heading follows the owner's current name, so a rename after the load shows.
-  const sources = useMemo(() => {
-    const built: MorphSource[] = [];
-    if (morphs.length) built.push({ heading: name, morphs });
-    if (avatar) pushSource(built, avatar.name, avatar.split);
-    return built;
-  }, [morphs, avatar, name]);
-  return { sources, loading, load, avatarNamed };
+  // Sources of earlier rows never show, so a rename or a new pick reads fresh.
+  const fresh = !!loaded && loaded.rows === rows;
+  return { sources: fresh ? loaded.sources : NO_SOURCES, loading: wanted && !fresh, load };
 }
 
 /**

@@ -73,6 +73,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Every slider and color in Avatar Customization and the model details panel has its own Undo button.** It puts the control back to the model's own value and is disabled while the control is unchanged.
   - **Avatar Pick Rules:**
     - **You can delete your last Avatar, and the bundled Avatar is your starting Default.** A new install marks it as your Default Avatar. An update marks it once, when you had none.
+    - **In the World Editor, an entity set to User's Default now lists your Default Avatar's sliders and colors.** A library Avatar you deleted lists your default instead. With no Avatar and no 3D model, the Appearance tab asks you to pick one.
   - **Appearance Preview:**
     - **Color pickers can take a color from anywhere on the screen.** A **Pick From Screen** button shows only where the system allows it. In Avatar controls, the Avatar holds still during the pick.
     - **Traits and stats that change your Avatar now show an Avatar icon.** It shows in trait selection, on the Traits tab and on the Stats tab. Hover it to see which sliders or colors change.

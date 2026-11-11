@@ -25,7 +25,7 @@ import { newScript, noFocus, scriptRow } from "@/lib/scriptRows";
 import { statPanelHome, type ScriptBoxWorld } from "@/lib/scriptBoxHome";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
-import type { MorphOwner } from "@/lib/useBodyMorphNames";
+import type { MorphOwner } from "@/lib/useRowModels";
 import { useSliderPicker } from "@/lib/useSliderPicker";
 import { clamp } from "@/lib/utils";
 import { useEditorMode } from '@/lib/editorMode';
@@ -504,6 +504,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   // Numeric stats only: the sliders and colors move with the stat's value.
   const appearance = (
     <div className="flex flex-col gap-4">
+      {sliders.noModelHint && <Hint>{sliders.noModelHint}</Hint>}
       <div className="space-y-2" {...fieldFrame('morphBindings')}>
         {fieldLabel('morphBindings', 'Sliders')}
         <Hint>Moves each slider as the stat rises, by its Change By at Max</Hint>

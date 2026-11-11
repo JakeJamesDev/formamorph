@@ -7,7 +7,8 @@ import { useMountedRef } from "./useMountedRef";
 import { worldStartPersona } from "./personaPick";
 import { playedVrmPick, type PlayedVrmAs } from "./vrmResolver";
 import ModelStorageService from "@/services/ModelStorageService";
-import type { ColorChannel, Entity, MediaAsset, VrmPick, WorldOverview } from "@/types";
+import type { RowModel, RowModels } from "./useRowModels";
+import type { ColorChannel, Entity, VrmPick, WorldOverview } from "@/types";
 
 /** What the known model offers bindings: its slider keys, its color channels and each channel's own color. */
 interface ModelOffer {
@@ -68,58 +69,54 @@ function pickLoader(pick: Exclude<VrmPick, { kind: "default" }>, overview: Pick<
     const data = overview?.vrmStore?.[pick.id]?.file.data;
     return data ? () => cached(dataKey("world", data), () => vrmOffer(data)) : undefined;
   }
-  return () => cached(`library:${pick.id}`, async () => {
-    const { blob } = await ModelStorageService.getModelData(pick.id);
-    const url = URL.createObjectURL(blob);
-    try {
-      return await vrmOffer(url);
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-  });
+  return libraryLoader(pick.id);
 }
 
-/** An owner's 3D model and Avatar as one offer: every key and channel either carries, the Avatar's colors. */
-const mergeOffers = (model: ModelOffer, avatar: ModelOffer): ModelOffer => ({
-  keys: [...new Set([...model.keys, ...avatar.keys])],
-  channels: [...new Set([...model.channels, ...avatar.channels])],
-  colors: { ...model.colors, ...avatar.colors },
+/** A loader for a library Avatar's offer. */
+const libraryLoader = (id: string) => () => cached(`library:${id}`, async () => {
+  const { blob } = await ModelStorageService.getModelData(id);
+  const url = URL.createObjectURL(blob);
+  try {
+    return await vrmOffer(url);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 });
 
-/** What an owner's look applies to: its 3D model and its Avatar. */
-export interface KnownOwner {
-  model?: Partial<MediaAsset>;
-  /** The owner's Avatar pick. A User's Default pick names no model, so it adds nothing. */
-  vrmPick?: VrmPick;
+/** Several models as one offer: every key and channel any carries; a later model's color wins. */
+const mergeOffers = (offers: ModelOffer[]): ModelOffer => ({
+  keys: [...new Set(offers.flatMap((offer) => offer.keys))],
+  channels: [...new Set(offers.flatMap((offer) => offer.channels))],
+  colors: Object.assign({}, ...offers.map((offer) => offer.colors)) as ModelOffer["colors"],
+});
+
+/** A loader for one row model's offer. A non-VRM 3D model has no color channels. */
+function rowLoader(row: RowModel): () => Promise<ModelOffer> {
+  if (row.kind === "model") {
+    return () => cached(dataKey("owner", row.model.data), async () => ({ keys: await loadModelMorphNames(row.model), channels: [], colors: {} }));
+  }
+  if (row.kind === "world") return () => cached(dataKey("world", row.data), () => vrmOffer(row.data));
+  return libraryLoader(row.id);
 }
 
 /**
- * The slider keys and color channels of the models a stat's or trait's rows play on: every model the look
- * applies to on an owned row (its 3D model and its Avatar), else the world's player Avatar. A non-VRM owner
- * model has no color channels. Null while loading, or when no model is known. Loads only when `active`.
+ * The slider keys and color channels of the models a stat's or trait's rows play on: every model of an owned
+ * row's `rows`, else the world's player Avatar. A key or channel counts when any model carries it. Null while
+ * loading, or when no model is known. Loads only when `active`.
  */
-export function useKnownMorphKeys(owner: KnownOwner | undefined, active: boolean): KnownModel | null {
+export function useKnownMorphKeys(rows: RowModels | undefined, active: boolean): KnownModel | null {
   const world = useGameDataOptional();
   const overview = world?.worldOverview;
   const entities = world?.entities;
-  const ownerData = owner?.model?.data;
-  const ownerPick = owner?.vrmPick && owner.vrmPick.kind !== "default" ? owner.vrmPick : undefined;
-  const pickKind = ownerPick?.kind;
-  const pickId = ownerPick?.id;
   const load = useMemo(() => {
-    if (owner) {
-      const own = ownerData
-        ? () => cached(dataKey("owner", ownerData), async () => ({ keys: await loadModelMorphNames(owner.model!), channels: [], colors: {} }))
-        : undefined;
-      const avatar = ownerPick ? pickLoader(ownerPick, overview) : undefined;
-      if (own && avatar) return () => Promise.all([own(), avatar()]).then(([model, look]) => mergeOffers(model, look));
-      return own ?? avatar;
+    if (rows) {
+      if (rows.resolving || !rows.models.length) return undefined;
+      const loaders = rows.models.map(rowLoader);
+      return () => Promise.all(loaders.map((loader) => loader())).then(mergeOffers);
     }
     const pick = worldPlayerVrmPick(overview, entities ?? []);
     return pick ? pickLoader(pick, overview) : undefined;
-    // The owner's model data and pick name its models; the objects around them may be rebuilt every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [owner === undefined, ownerData, pickKind, pickId, overview, entities]);
+  }, [rows, overview, entities]);
   const [known, setKnown] = useState<KnownModel | null>(null);
   const mounted = useMountedRef();
 
