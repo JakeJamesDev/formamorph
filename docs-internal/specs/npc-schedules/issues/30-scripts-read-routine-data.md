@@ -20,6 +20,8 @@ Each field needs its completion entry, hover text, variable tree entry and Scrip
 
 `exits` lists one move. The router reaches further. Do not change that here; the description of `exits` must say it lists the direct ways only.
 
+**Left over from tickets 27 and 28:** two test fixtures for entities with a kind now exist, one from each ticket, both under the shared test folder. Fold them into one, move every caller, and use it for this ticket's tests.
+
 No world or save shape changes. The fields are derived at run time.
 
 Do not rebuild the help vectors. Ticket 32 does that once.
@@ -35,4 +37,5 @@ Spec rulings: Q211, Q48, Q90, Q174.
 - [ ] A write to any of the four fails with the read-only error.
 - [ ] The four fields read the same in play and in Test Code on the same world at the opening hour.
 - [ ] Completion, hover text, the variable tree and the Scripts Reference list each field. `npm run copy:sweep` gives no notice on the new strings.
+- [ ] One fixture file for entities with a kind is left, and a search finds no caller of the other.
 - [ ] A save made before this ticket loads and plays, and no save or world file gains a field.

@@ -282,6 +282,9 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q215** The sample placement of Q210 is for authoring runs only. Play never reads it. The in-game Tool call that falls back to the opening state before the first turn stays unplaced in ticket 28; the landing says whether play's own placement exists at that point, and ticket 29 owns what Tool calls read in play. (Ticket 28.)
 - **Q216** The sample placement is taken at story minute 0, as the Test Bench AI context does, whatever clock the script's timing reads. A row that starts later in the day does not show in an authoring run. The Scripts Reference says so. (Ticket 28.)
 - **Q217** In the Scripts Reference, ticket 27 owns the `location` and `present` rows and ticket 28 owns the authoring-run paragraph. Ticket 28 does not wait for 27; it uses the position engine tests' fixtures. (Tickets 27, 28.)
+- **Q218** An After the AI script reads a character the prose called over as at the player's location, as the Inventory pass does (Q100): the turn's moves plus its pulls. This sharpens Q212, whose "same state as the narration prompts" left the pulls out. (Ticket 29.)
+- **Q219** A re-roll's After the AI run reads the live places, which already hold the engine's end-of-turn placement. No settled places are stored on the turn, so the save shape does not change. The Scripts Reference states the difference from the first run. (Ticket 29.)
+- **Q220** A Tool call during the turn (a World Tool's On Call script, a User Tool's snapshot) reads the followers joined once the move settled, with no pulls, because the prose does not exist yet. Before the AI and At Game Start scripts read the turn-start places. (Ticket 29.)
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
