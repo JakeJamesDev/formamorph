@@ -15,7 +15,7 @@ import {
   ruleScripts, scriptFinding, scriptTreeWorldOf, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME, type Finding, type FindingItem, type RuleWorld,
 } from './rules';
 import { boxHomeOf } from '@/lib/codeBoxOwner';
-import { openingHomeOf, openingStateOf, type OpeningPersona } from '@/lib/openingState';
+import { authoringStateOf, openingHomeOf, type OpeningPersona } from '@/lib/openingState';
 import { snapshotOf, type SandboxSnapshot, type UnitHome } from '@/lib/sandboxSnapshot';
 import { SCRIPT_TIMINGS } from '@/lib/scripts';
 import { turnOneClock, type RunTiming } from '@/lib/statCodeTiming';
@@ -99,7 +99,7 @@ export const checkedScriptCount = (world: RuleWorld): number => scriptUnits(worl
 /** The Bench's state of `world` at turn one for a `timing` run: Test Code's clock and the authored enabled map. */
 const benchStateOf = (world: RuleWorld, timing: RunTiming, persona: OpeningPersona | undefined): SandboxState =>
   ({
-    ...openingStateOf(world, undefined, persona), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing),
+    ...authoringStateOf(world, undefined, persona), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing),
     items: world.items ?? [], slots: world.slots ?? [],
     ...(world.currencies?.length ? { money: { currencies: world.currencies, placements: world.placements ?? [] } } : {}),
   });

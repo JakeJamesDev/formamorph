@@ -20,7 +20,7 @@ import { turnOneClock } from '@/lib/statCodeTiming';
 import { sampleTurn } from '@/lib/scriptTestSamples';
 import type { ScriptPromptHost } from '@/lib/scriptPrompts';
 import type { ToolArgs } from '@/lib/tools/toolRunner';
-import { openingHomeOf, openingStateOf, type OpeningFoldWorld, type OpeningPersona } from '@/lib/openingState';
+import { authoringStateOf, openingHomeOf, type OpeningFoldWorld, type OpeningPersona } from '@/lib/openingState';
 import {
   ownerOfHome, PENDING_PERSONA_ID, snapshotOf, type SandboxSnapshot, type ScriptRunUnit, type SnapshotOptions, type UnitHome,
 } from '@/lib/sandboxSnapshot';
@@ -217,7 +217,7 @@ export const testCodeSnapshotOf = (
   world: OpeningFoldWorld, timing: ScriptTiming,
   { persona, ...overlays }: Pick<SnapshotOptions, 'pendingPersona' | 'assumedStats'> & { persona?: OpeningPersona } = {},
 ): SandboxSnapshot => snapshotOf(
-  { ...openingStateOf(world, undefined, persona), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing) }, { openCast: true, ...overlays },
+  { ...authoringStateOf(world, undefined, persona), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing) }, { openCast: true, ...overlays },
 );
 
 /**

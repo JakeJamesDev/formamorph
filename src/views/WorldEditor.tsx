@@ -142,9 +142,7 @@ import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { SelectedContentActions } from '@/components/ContentLinkStatus';
 import { useLibraryLinking } from '@/lib/useLibraryLinking';
 import { Tip } from '@/components/ui/tooltip';
-import { authoredChipScene } from '@/lib/chipValues/authoredScene';
-import { buildToolSnapshot } from '@/lib/tools/toolSnapshot';
-import { openingStateOf } from '@/lib/openingState';
+import { editorToolSnapshot } from '@/lib/tools/editorToolSnapshot';
 import { useHelpWorldSource, useWorldIndexWarmup } from '@/lib/formaquestion/helpWorld';
 import type { WorldSource } from '@/lib/formaquestion/helpWorldSource';
 
@@ -221,8 +219,7 @@ const WorldEditorInner = ({
   // A Formaquestion Tool, a World Tool's Try It and the code test read the world as the editor holds it,
   // unsaved edits included.
   const editorToolWorld = useCallback(() => {
-    const world = getWorldData();
-    return buildToolSnapshot(authoredChipScene(world), world.dictionaries ?? [], null, { state: openingStateOf(world), authored: world });
+    return editorToolSnapshot(getWorldData());
   }, [getWorldData]);
   useWorldIndexWarmup(getWorldData);
 

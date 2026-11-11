@@ -103,11 +103,17 @@ export function reseatForOpening(book: PositionBook, world: PositionWorld): Posi
   return placeAll({ positions, uniques, generics }, world);
 }
 
-/** `entities` as a new game at `playerAt` places them at the opening hour, each Unique entity from its first Start
- *  and its first pick and each Generic entity from all of its, so an authoring preview reads one stable cast. */
+/** The book a new game at `playerAt` opens with at the start of the story, each Unique entity from its first Start
+ *  and its first pick and each Generic entity from all of its: the one sample placement authoring reads (Q210, Q216). */
+export function openingBook(
+  entities: readonly Entity[], locations: readonly Pick<GameLocation, "id" | "parentId">[], connections: readonly Connection[], playerAt: string | undefined,
+): PositionBook {
+  return placeAll(EMPTY_BOOK, positionWorld(castRoutines(entities), storyMinute(0), playerAt, locations, connections, () => 0, playerAt));
+}
+
+/** `entities` as `openingBook` places them, so an authoring preview reads one stable cast. */
 export function openingCast(
   entities: Entity[], locations: readonly Pick<GameLocation, "id" | "parentId">[], connections: readonly Connection[], playerAt: string | undefined,
 ): Entity[] {
-  const world = positionWorld(castRoutines(entities), storyMinute(0), playerAt, locations, connections, () => 0, playerAt);
-  return entitiesInPlay(entities, placeAll(EMPTY_BOOK, world));
+  return entitiesInPlay(entities, openingBook(entities, locations, connections, playerAt));
 }

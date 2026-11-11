@@ -5,16 +5,8 @@ import { entityIdsAt } from './entityPresence';
 import { EMPTY_BOOK } from './positionEngine';
 import { openingCast, placeAll, positionWorld, reconcileBook, reseatForOpening } from './positionPlay';
 
-// A yard with a barn and a field in it.
-const locations = [{ id: 'yard', parentId: null }, { id: 'barn', parentId: 'yard' }, { id: 'field', parentId: 'yard' }];
-// One Start grazes in the field from 08:00 to 18:00 and stays in the barn otherwise; one stays in the barn.
-const herd: Entity = {
-  id: 'herd', name: 'Herd', kind: 'generic', locations: ['barn', 'field'],
-  starts: [
-    { id: 'grazer', place: 'barn', weight: 1, schedule: [{ id: 'graze', time: { start: 480, end: 1080 }, action: { kind: 'stay', place: 'field' } }] },
-    { id: 'sleeper', place: 'barn', weight: 1, schedule: [] },
-  ],
-};
+import { herd, yardLocations as locations } from '@/test/positionFixtures';
+
 const world = (now: number, playerAt?: string, cast: Entity[] = [herd]) => positionWorld(castRoutines(cast), now, playerAt, locations, []);
 const where = (book: typeof EMPTY_BOOK) => Object.fromEntries(Object.entries(book.generics.herd ?? {}).map(([id, p]) => [id, p.position]));
 

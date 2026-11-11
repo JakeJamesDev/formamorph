@@ -1071,7 +1071,14 @@ if (exit) location.move(exit.name);
 
 `location` and its `exits` keep reading the location where the script started, even after `location.move` in the same script. The scripts below it read the new location, with its `present` and `exits`.
 
-In **Test Code** and the **Test Bench**, no entity has a position. Each entity is in `present` at every location it lists, and the persona is at the starting location.
+In **Test Code** and the **Test Bench**, each entity is where a new game puts it at the start of the story:
+
+- 🧍 A **Unique** entity is where its first start puts it. A game picks one of its starts at random.
+- 👥 A **Generic** entity is where each of its starts puts it.
+- 🤝 An entity that starts at the **Player's Starting Location** is at the starting location. With **Follows the Player** on, it follows.
+- 🕗 A start's schedule applies as it does at the start of the story. A row that begins later in the day hasn't begun.
+
+The persona is at the starting location.
 
 `location.move("<Location>")` moves the turn to a location of your world, by name or id. It replaces the AI's move for that turn. It needs no path from the turn's location.
 
