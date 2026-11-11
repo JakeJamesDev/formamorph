@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { decodePlaceholderToken, encodePlaceholderToken } from '@/lib/placeholders';
 import { migrateWorld } from '@/lib/version';
-import type { Currency, Dictionary, Entity, Item, Stat, Tool, World } from '@/types';
+import { presenceLines } from '@/lib/locationPresenceReasons';
+import { PLAYER_START, type Currency, type Dictionary, type Entity, type GameState, type Item, type Stat, type Tool, type World } from '@/types';
+import { buildPlayerView } from './playerView';
+import { playerViewWorld } from './playerViewWorld';
 import { buildWorldIndex, chipsFromText, worldIndexOf, worldTextOf, type WorldIndexInput } from './worldIndex';
 
 const stat = (patch: Partial<Stat> = {}): Stat => ({ id: 'grit', name: 'Grit', type: 'number', description: 'How long you hold on.', min: 0, max: 100, value: 40, regen: 0, descriptors: [], ...patch });
@@ -193,5 +196,84 @@ describe('chipsFromText', () => {
 
   it('leaves a stored token alone', () => {
     expect(read('{{user}} and {{Town}}', { placeholders: [{ ...town, name: 'user' }] })).toBe('{{user}} and {{Town}}');
+  });
+});
+
+describe('routines and Connections in the World Index', () => {
+  const place = (id: string, name: string) => ({ id, name, playerDescription: `${name} text.` });
+  const warden: Entity = {
+    id: 'warden', name: 'Warden', kind: 'unique', traversable: ['loc-mill'],
+    starts: [
+      { id: 's1', place: 'loc-gate', weight: 3, schedule: [
+        { id: 'r1', time: { start: 1200, end: 240 }, strict: true, action: { kind: 'patrol', stops: [{ place: 'loc-gate', idle: 60 }, { place: 'loc-mill', idle: 60 }] } },
+        { id: 'r2', time: 'allDay', action: { kind: 'stay', place: 'loc-gate' } },
+      ] },
+      { id: 's2', place: PLAYER_START, weight: 1, beginsFollowing: true, schedule: [] },
+    ],
+  };
+  const crowd: Entity = { id: 'crowd', name: 'Crowd', kind: 'generic', starts: [{ id: 'g1', place: 'loc-mill', weight: 1, schedule: [] }] };
+  const input = world({
+    locations: [place('loc-gate', 'North Gate'), place('loc-mill', 'Old Mill'), place('loc-quay', 'Quay'), place('loc-vault', 'Vault')],
+    entities: [warden, crowd],
+    connections: [
+      { id: 'c1', a: 'loc-gate', b: 'loc-mill', aToB: {}, bToA: {} },
+      { id: 'c2', a: 'loc-gate', b: 'loc-quay', aToB: { hint: 'by ferry' } },
+      { id: 'c3', a: 'loc-vault', b: 'loc-gate', distance: 'far', aToB: {}, bToA: {} },
+    ],
+  });
+  const page = (kind: 'entity' | 'location', id: string) =>
+    buildWorldIndex(input).sectionsOf({ kind: 'world', worldKind: kind, id, name: id }).map((s) => s.markdown).join('\n');
+
+  it('states a Unique entity’s kind, Starts with chance, rows and Can Also Go', () => {
+    const md = page('entity', 'warden');
+    expect(md).toContain('Unique');
+    expect(md).toContain('- North Gate, 75% chance');
+    expect(md).toContain("- Player's Starting Location, 25% chance, Follows the Player");
+    expect(md).toContain('patrols North Gate, Old Mill (Locked)');
+    expect(md).toContain('The rest of the day: stays at North Gate');
+    expect(md).toContain('**Can Also Go:** Only Old Mill');
+  });
+
+  it('states each Start of a Generic entity without chance or Can Also Go', () => {
+    const md = page('entity', 'crowd');
+    expect(md).toContain('Generic');
+    expect(md).toContain('- Old Mill');
+    expect(md).not.toMatch(/chance|Can Also Go/);
+  });
+
+  it('states Travel, Distance and hints for each Connection of a location', () => {
+    const md = page('location', 'loc-gate');
+    expect(md).toContain('- Old Mill: Travel Both Ways, Distance Nearby');
+    expect(md).toContain('- Quay: Travel To There, Distance Nearby');
+    expect(md).toContain('Travel Hint to Quay: by ferry');
+    expect(md).toContain('- Vault: Travel Both Ways, Distance Far');
+    expect(page('location', 'loc-quay')).toContain('- North Gate: Travel To Here');
+  });
+
+  it('lists who can be at a location with the Presence tab’s reasons', () => {
+    const lines = (id: string) => presenceLines(id, input.entities).map((l) => `- ${l.entity.name}: ${l.reasons.join('; ')}`);
+    for (const id of ['loc-gate', 'loc-mill']) {
+      const md = page('location', id);
+      for (const line of lines(id)) expect(md).toContain(line);
+    }
+    expect(page('location', 'loc-mill')).toContain('- Warden: patrols here (20:00 – 04:00); can be led here');
+    expect(page('location', 'loc-gate')).toContain('- Warden: begins here (75%)');
+  });
+
+  it('shows no location id, token or field name', () => {
+    const all = [page('entity', 'warden'), page('entity', 'crowd'), page('location', 'loc-gate'), page('location', 'loc-mill')].join('\n');
+    expect(all).not.toMatch(/loc-|@playerStart|\{\{|beginsFollowing|traversable|aToB|bToA/);
+  });
+
+  it('keeps the in-game view free of routines', () => {
+    const cut = playerViewWorld(
+      { stats: [], statGroups: [], traits: [], traitGroups: [], entities: [warden], entityGroups: [], placeholders: [], placeholderGroups: [], dictionaries: [], locations: input.locations ?? [] },
+      { view: buildPlayerView({ world: { entities: [warden], locations: input.locations ?? [], traits: [] }, chain: [{ metEntities: ['warden'], locationId: 'loc-gate', visibleEntities: [], globalStats: [], globalTraits: [], disabledTraitIds: [], itemCopies: [] } as unknown as GameState], history: [], persona: null, resolve: (t) => t }), current: { metEntities: ['warden'], locationId: 'loc-gate', visibleEntities: [], globalStats: [], globalTraits: [], disabledTraitIds: [], itemCopies: [] } as unknown as GameState },
+    );
+    const md = buildWorldIndex({ ...input, entities: cut.entities, locations: cut.locations ?? [] }).sectionsOf({ kind: 'world', worldKind: 'entity', id: 'warden', name: 'Warden' }).map((s) => s.markdown).join('\n');
+    expect(md).not.toMatch(/Starts|Unique|Can Also Go|patrols|chance/);
+    expect(cut.entities[0]).not.toHaveProperty('starts');
+    expect(cut.entities[0]).not.toHaveProperty('kind');
+    expect(cut.entities[0]).not.toHaveProperty('traversable');
   });
 });

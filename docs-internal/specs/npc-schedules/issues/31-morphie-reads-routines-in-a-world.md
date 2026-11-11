@@ -1,6 +1,6 @@
 # 31: Morphie Reads Routines In A World
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -28,12 +28,27 @@ Spec rulings: Q213, Q81, Q207.
 
 ## Acceptance criteria
 
-- [ ] An entity page for a Unique entity with two Starts and three rows states the kind, both Starts with their chance, each row with its time, action and places, and Can Also Go.
-- [ ] An entity page for a Generic entity states each Start.
-- [ ] A location page states Travel, Distance and hints for a two-way Nearby, a one-way and a Far Connection.
-- [ ] A location page lists who can be there with the reasons, equal to the Presence tab's rows for that location.
-- [ ] No page shows a location id, a raw placeholder token or a field name.
-- [ ] The landing gives the page of one entity and one location from the dev fixture, before and after, with the size of each.
-- [ ] The in-game view is unchanged, with a test that a routine does not appear in it.
+- [x] An entity page for a Unique entity with two Starts and three rows states the kind, both Starts with their chance, each row with its time, action and places, and Can Also Go. (worldIndex.test.ts, "states a Unique entity's kind…")
+- [x] An entity page for a Generic entity states each Start. (test "states each Start of a Generic entity…")
+- [x] A location page states Travel, Distance and hints for a two-way Nearby, a one-way and a Far Connection. (test "states Travel, Distance and hints…")
+- [x] A location page lists who can be there with the reasons, equal to the Presence tab's rows for that location. (test compares with `presenceLines`)
+- [x] No page shows a location id, a raw placeholder token or a field name. (test "shows no location id, token or field name", four pages)
+- [x] The landing gives the page of one entity and one location from the dev fixture, before and after, with the size of each. (below)
+- [x] The in-game view is unchanged, with a test that a routine does not appear in it. (test "keeps the in-game view free of routines"; `playerViewWorld.ts` is not edited)
 
 For you: in the World Editor, ask Morphie where an entity goes at night and which links of a location are Far, and say whether the answers are right.
+
+## Landed
+
+Sizes, from the bundled Emberwatch world (the dev fixture holds no routines). Before = the page with kind, Starts, Can Also Go and Connections removed.
+
+- Entity Sylvie Thornwhistle: 849 → 1070 chars. It gains Unique, one Start with two rows, and Can Also Go.
+- Location Emberwatch Keep: 846 → 1961 chars. It gains four Connections with hints and three Entities Here lines. The old page held a one-line list of names (about 100 chars more than the 846).
+
+**Not verified**
+- Morphie's answers in the live World Editor: no model call was run.
+- The Persona page staying unchanged: no new test; an entity with no kind skips every new line by construction.
+- Wander weights and Patrol idle times are left out on purpose, to keep a routine to a few lines.
+
+**For you**
+- In the World Editor, ask Morphie where an entity goes at night and which links of a location are Far, and say whether the answers are right.

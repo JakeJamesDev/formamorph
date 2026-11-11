@@ -5,11 +5,15 @@
 import { BUILTIN_PLACEHOLDERS, builtinLabel } from '@/lib/builtinPlaceholders';
 import { worthText } from '@/lib/currency';
 import { createDocsIndex, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
+import { PANEL_TRAVEL_LABELS, travelLabelText } from '@/components/editor/connectionTravel';
+import { isGeneric, isUnique } from '@/lib/entityKind';
 import { WHEN_EMPTY_LABEL, stateWord, whenEmptyOf } from '@/lib/items';
+import { presenceLines, timeText } from '@/lib/locationPresenceReasons';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { decodePlaceholderToken, encodePlaceholderToken, parsePlaceholderText } from '@/lib/placeholders';
+import { chancePercent } from '@/lib/routineTime';
 import { randomUUID } from '@/lib/uuid';
-import type { DictionaryEntry, Item, Placeholder, Script, Stat, Tool, Trait, World } from '@/types';
+import { PLAYER_START, type Connection, type DictionaryEntry, type Entity, type Item, type Placeholder, type ScheduleAction, type Script, type Stat, type Tool, type Trait, type World } from '@/types';
 import { sourceKey, type WorldItemKind, type WorldSource } from './helpWorldSource';
 
 /** The world slices the index reads: an editor's live world. */
@@ -141,15 +145,51 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
     scriptsBlock(trait.scripts, text),
   ));
 
+  // The Routine tab's name for the Start place that resolves to where the player begins.
+  const placeName = (id: string) => (id === PLAYER_START ? "Player's Starting Location" : text(locationName(id)));
+  const actionText = (action: ScheduleAction): string =>
+    action.kind === 'stay' ? `stays at ${placeName(action.place)}`
+      : action.kind === 'wander' ? `wanders ${action.places.map((p) => placeName(p.place)).join(', ')}`
+        : `patrols ${action.stops.map((s) => placeName(s.place)).join(', ')}`;
+  const startsBlock = (entity: Entity): string | undefined => {
+    const starts = entity.starts ?? [];
+    if (!starts.length) return undefined;
+    const unique = isUnique(entity);
+    const items = starts.map((start) => {
+      const chance = unique && starts.length > 1 ? `, ${chancePercent(start.weight, starts.map((s) => s.weight))}% chance` : '';
+      const head = `- ${placeName(start.place)}${chance}${unique && start.beginsFollowing ? ', Follows the Player' : ''}`;
+      const rows = start.schedule.map((row) =>
+        `  - ${timeText(row, start.schedule)}: ${actionText(row.action)}${unique && row.strict ? ' (Locked)' : ''}`);
+      return [head, ...rows].join('\n');
+    });
+    return `**Starts:**\n${items.join('\n')}`;
+  };
+  const canAlsoGo = (entity: Entity): string | undefined => {
+    if (!isUnique(entity) || entity.traversable === undefined) return undefined;
+    if (entity.traversable === 'anywhere') return field('Can Also Go', 'Anywhere');
+    return field('Can Also Go', entity.traversable.length ? `Only ${entity.traversable.map(placeName).join(', ')}` : 'Only Listed Locations, none added');
+  };
+  const connectionLine = (connection: Connection, here: string): string => {
+    const hereIsA = connection.a === here;
+    const [out, back] = hereIsA ? [connection.aToB, connection.bToA] : [connection.bToA, connection.aToB];
+    const other = placeName(hereIsA ? connection.b : connection.a);
+    const travel = travelLabelText(PANEL_TRAVEL_LABELS[out && back ? 'two-way' : out ? 'outgoing' : 'incoming']);
+    const hints = [[out, other] as const, [back, text(locationName(here))] as const]
+      .flatMap(([leg, to]) => (leg?.hint?.trim() ? [`Travel Hint to ${to}: ${text(leg.hint.trim())}`] : []));
+    return [`- ${other}: Travel ${travel}, Distance ${connection.distance === 'far' ? 'Far' : 'Nearby'}`, ...hints.map((hint) => `  - ${hint}`)].join('\n');
+  };
+
   for (const entity of world.entities) {
     add('entity', entity.id, entity.name, [], lines(
       `# ${entity.name}`,
-      facts(entity.persona && 'Persona', entity.type && `Type: ${entity.type}`, entity.pronouns && `Pronouns: ${entity.pronouns}`, entity.aliases?.length ? `Aliases: ${entity.aliases.join(', ')}` : undefined),
+      facts(isUnique(entity) && 'Unique', isGeneric(entity) && 'Generic', entity.persona && 'Persona',entity.type && `Type: ${entity.type}`, entity.pronouns && `Pronouns: ${entity.pronouns}`, entity.aliases?.length ? `Aliases: ${entity.aliases.join(', ')}` : undefined),
       field('Player Description', text(entity.playerDescription)),
       field('AI Description', text(entity.aiDescription)),
       field('AI Summary', text(entity.aiSummary)),
       entity.locations?.length ? field('Locations', entity.locations.map(locationName).join(', ')) : undefined,
       Array.isArray(entity.knownIn) ? field('Known In', entity.knownIn.map(locationName).join(', ')) : entity.knownIn === 'nowhere' && '**Known In:** nowhere',
+      startsBlock(entity),
+      canAlsoGo(entity),
       entity.tags?.length ? field('Tags', entity.tags.join(', ')) : undefined,
     ));
     for (const stat of entity.stats ?? []) statPage(stat, entity.name);
@@ -157,17 +197,17 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
   }
   for (const location of world.locations) {
     const parent = location.parentId ? locationName(location.parentId) : undefined;
-    const linked = (world.connections ?? []).flatMap((connection) => {
-      const other = connection.a === location.id ? connection.b : connection.b === location.id ? connection.a : undefined;
-      return other ? [locationName(other)] : [];
-    });
+    const linked = (world.connections ?? []).filter((connection) => connection.a === location.id || connection.b === location.id)
+      .map((connection) => connectionLine(connection, location.id));
+    const here = presenceLines(location.id, world.entities);
     add('location', location.id, location.name, [], lines(
       `# ${location.name}`,
       facts(location.isStarting && 'Starting Location', parent && `Inside: ${parent}`),
       field('Player Description', text(location.playerDescription ?? location.description)),
       field('AI Description', text(location.aiDescription)),
       field('AI Summary', text(location.aiSummary)),
-      linked.length > 0 && field('Connections', linked.join(', ')),
+      linked.length > 0 && `**Connections:**\n${linked.join('\n')}`,
+      here.length > 0 && `**Entities Here:**\n${here.map((line) => `- ${text(line.entity.name)}: ${line.reasons.join('; ')}`).join('\n')}`,
     ));
   }
   // A Becomes target outside this world, such as an unmet item in the player view, goes unnamed.

@@ -16,7 +16,7 @@ const rowPlaces = (action: ScheduleAction): string[] =>
       : action.stops.map((s) => s.place);
 
 /** The row's time as the Routine tab words it: an All-day row beside timed rows is the rest of the day. */
-function timeText(row: ScheduleRow, schedule: readonly ScheduleRow[]): string {
+export function timeText(row: ScheduleRow, schedule: readonly ScheduleRow[]): string {
   if (row.time !== 'allDay') return rangeText(row.time);
   return schedule.some((r) => r.time !== 'allDay') ? 'The rest of the day' : 'All day';
 }
