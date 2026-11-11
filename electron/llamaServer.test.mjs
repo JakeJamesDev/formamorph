@@ -81,9 +81,10 @@ describe('instancePid', () => {
   });
 
   it('lists this OS’s real process table, this process under its parent', async () => {
-    const rows = await llamaServer.listProcesses();
+    // Idle it answers in ~0.4 s; a full run under load slowed the spawn ~35x past the 15 s production limit.
+    const rows = await llamaServer.listProcesses({ timeoutMs: 60_000 });
     expect(rows.find((r) => r.pid === process.pid)?.ppid).toBe(process.ppid);
-  });
+  }, 90_000);
 
   it('keeps a name with spaces whole', () => {
     expect(parseProcessRows('12 3 Formamorph Engine Helper.exe')).toEqual([{ pid: 12, ppid: 3, name: 'Formamorph Engine Helper.exe' }]);
