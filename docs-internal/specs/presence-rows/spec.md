@@ -93,6 +93,10 @@ Rulings from ticket sessions:
 - **Q21** (ticket 01). Known In mode beside the panel has no status line, as in full screen. The marks and the key are enough.
 - **Q22** (ticket 01). Escape beside the panel does not clear a shown pick. It keeps what it does there today. Only the Presence tab and full-screen picking clear the pick.
 - **Q23** (ticket 01). While a pick is shown beside the panel, the Drag To Connect grips stay hidden in both modes, as full screen draws them. The canvas is then a view of the entity; the author closes the pick or changes tab to draw a Connection. Selecting a location and dragging a box still work.
+- **Q24** (ticket 02). The selected row uses the Design System's Custom Prompts status-row look: accent fill and medium weight, with the editor under the list. No chevron (Q4). It is an existing pattern, so it needs no new approval.
+- **Q25** (ticket 02). The pick clears when the Locations section leaves the screen, including through Open Routine. Coming back shows no selection (Q3). Ticket 05's reveal sets the pick again when an undo calls for it.
+- **Q26** (ticket 02). Leaving full screen keeps the pick only when the Presence tab of the selected location is on screen and the entity has a row there (Q11). In every other case the pick clears, as it did before this effort. One rule: outside full screen, a pick exists only as a selected Presence row.
+- **Q27** (ticket 02). Q10 holds for any change of location, also a click in the list view's tree: the entity stays selected when it has a row at the new location, else the pick clears.
 
 Modules:
 

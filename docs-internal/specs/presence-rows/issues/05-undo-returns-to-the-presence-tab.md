@@ -14,6 +14,8 @@ An undo or redo shows the author the change it made. For an entity's routine or 
 - A step that removes the entity's row at this location (for example the undo of an add) leaves the Presence tab on screen with no selection.
 - A request to select that nobody took is dropped on the next move, as the Connection-row request is.
 
+**From ticket 02:** outside full screen a pick exists only as a selected Presence row (Q26), and the pick clears when the Presence tab stops showing it. So the reveal must put the Presence tab on screen before it sets the pick. An edit that removes the entity's last reason to be here already removes its row and closes the editor.
+
 This follows the existing Connection-row reveal in the history reveal hook.
 
 Spec ruling: Q15.

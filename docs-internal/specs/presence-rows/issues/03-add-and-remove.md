@@ -19,6 +19,8 @@ The Presence tab adds and removes entities from the list itself, for both kinds.
 - **An empty location** says that no entity can be here and still offers Add Entity.
 - **Known Here (Q19).** The Remove button on a Known Here row becomes an icon button with no word. It uses the same icon as the remove button above. Its tooltip and accessible name say what it removes and name the entity. Nothing else on that list changes.
 
+**From ticket 02:** the list and the editor region landed, and selecting a row sets the shared pick. Selecting the added entity goes through that pick. The Generic multi-select and its refusal hint are still above the list for this ticket to remove.
+
 Write the labels and tooltips under the Writing Guide from a facts list.
 
 Spec rulings: Q5, Q8, Q13, Q14, Q19.

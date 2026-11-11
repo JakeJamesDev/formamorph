@@ -15,6 +15,8 @@ The editor under the Presence list shows an entity's whole routine, not only the
 - **Opens on the right Start.** On selection the editor shows the first Start that names this location. With none (the entity is here only through Can Also Go), it shows the first Start.
 - **Only here.** The Routine editor takes the location to mark from its host. The entity panel's Routine tab and the full-screen entity card pass none and show no mark.
 
+**From ticket 02:** the editor region renders the shared card body, which holds the Routine editor. Pass the location through that body. The selection opens on the entity's first Start today; this ticket changes which Start it opens on.
+
 The mark is a new visual pattern. Follow the Design System, propose the look to the user with frames, and get approval before the landing. The prototype used a small dot on the Start button; it is not approved.
 
 Spec ruling: Q7.
