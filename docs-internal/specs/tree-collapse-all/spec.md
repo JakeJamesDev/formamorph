@@ -1,6 +1,7 @@
 # Spec: Tree Collapse All
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-11, tickets 01–05, last landing 5a8a2c5d0. Review: spec text corrected; one gap fixed by ticket 05. Gates green on 2026-11-11.
 Spec session: tree-collapse-all — spec
 
 ## Problem Statement
