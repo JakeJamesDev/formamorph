@@ -52,7 +52,7 @@ See [Avatar Customization](#avatar-customization).
 1. On the **Avatars** tab, right-click the Avatar's tile.
 2. Select **Set as Default Avatar**.
 
-The tile gets a **Default** badge. To go back, right-click the tile and select **Clear Default Avatar**. With no default, **User's Default** shows the bundled Avatar. The default stays on this device. Exports and saves do not carry it as a setting.
+A new install starts with the bundled Avatar as its default. The tile gets a **Default** badge. To go back, right-click the tile and select **Clear Default Avatar**. With no default, **User's Default** shows the bundled Avatar. The default stays on this device. Exports and saves do not carry it as a setting.
 
 ## How to Check an Avatar's License
 <!-- keywords: allowed, permission, rights, terms of use, copyright, share, redistribute, commercial, credit, vroid hub, legal to upload, who made it, attribution needed, ownership, usage rules, says not shareable, am i allowed -->
@@ -196,7 +196,7 @@ Right-click a tile for **Set as Default Avatar** (or **Clear Default Avatar**), 
 
 ### Deleting an Avatar
 
-**Delete Avatar** asks you to confirm. You can't delete your last Avatar.
+**Delete Avatar** asks you to confirm. You can delete your last Avatar. The bundled Avatar does not come back after you delete it.
 
 - If saves use the Avatar, the dialog names them. Those saves use the Default Avatar after you delete it.
 - If library entities use the Avatar, the dialog names them too. Those entities show no Avatar after you delete it.

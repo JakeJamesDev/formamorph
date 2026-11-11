@@ -71,6 +71,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **In the World Editor, Formaquestion now reads each entity's routine and each location's Connections.** It sees kinds, starts, rows, Can Also Go, Travel, Distance, hints and who can be at a place.
   - **Avatar Undo:**
     - **Every slider and color in Avatar Customization and the model details panel has its own Undo button.** It puts the control back to the model's own value and is disabled while the control is unchanged.
+  - **Avatar Pick Rules:**
+    - **You can delete your last Avatar, and the bundled Avatar is your starting Default.** A new install marks it as your Default Avatar. An update marks it once, when you had none.
   - **In the World Editor, an entity with only a Stranger Description now starts as a stranger.** In play, you see its Name and that description until you meet it. Stranger Name now sits beside Name, and Stranger Description under Player-Facing Description. Items' Unidentified fields match, and each field has its own help button.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.

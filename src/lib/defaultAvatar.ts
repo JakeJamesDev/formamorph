@@ -7,8 +7,7 @@ export const DEFAULT_AVATAR_URL = './default-avatar.vrm';
  * Library id of the seeded copy of the bundled avatar. Fixed rather than random so saves can name it and
  * `migrateSave` can fold the two older values onto it.
  *
- * It is an ordinary library record once seeded: deletable like any other, protected only by the "never fewer
- * than one avatar" rule of a library on a build that holds a bundled file.
+ * It is an ordinary library record once seeded: deletable like any other.
  */
 export const DEFAULT_AVATAR_ID = 'default-avatar';
 
@@ -71,6 +70,9 @@ const userDefaultAvatar = createStoredString('local', 'FORMAMORPH_defaultAvatar'
 export const readUserDefaultAvatar = (): string | undefined => userDefaultAvatar.read();
 export const setUserDefaultAvatar = (modelId: string): void => userDefaultAvatar.write(modelId);
 export const clearUserDefaultAvatar = (): void => userDefaultAvatar.clear();
+
+/** Device flag: the one-time mark of the bundled Avatar as the Default Avatar has run. Device-local, never exported. */
+export const DEFAULT_MARKED_KEY = 'FORMAMORPH_defaultAvatarMarked';
 
 /** The library Avatar a picker opens on: the device default, else the bundled copy, else the first. Praline sorts
  *  after the player's own Avatars, because she is often the newest record. */

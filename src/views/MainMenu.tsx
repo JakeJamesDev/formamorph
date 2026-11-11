@@ -3023,7 +3023,6 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             await clearLibraryModelPicks(modelToDelete!)
               .catch((error: unknown) => toastError(error, 'Could not clear the Avatar from your library entities.'));
           } catch (error) {
-            // The library refuses to drop its last avatar; tell the player why rather than failing silently.
             toastError(error, "Couldn't delete that Avatar.");
           } finally {
             setModelToDelete(null);

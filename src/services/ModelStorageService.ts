@@ -4,7 +4,10 @@ import { blobHash } from '@/lib/blobHash';
 import { readVrmMeta } from '@/lib/vrmMeta';
 import { optimizeImageDataUrl, IMAGE_CAPS } from '@/lib/imageOptim';
 import { renderVrmThumbnail } from '@/lib/vrmThumbnail';
-import { BUNDLED_AVATARS, BUNDLED_DEFAULT_URL, DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_ID, type BundledAvatar } from '@/lib/defaultAvatar';
+import {
+  BUNDLED_AVATARS, DEFAULT_AVATAR_ID, DEFAULT_MARKED_KEY, LEGACY_DEFAULT_AVATAR_ID, readUserDefaultAvatar,
+  setUserDefaultAvatar, type BundledAvatar,
+} from '@/lib/defaultAvatar';
 import { LibraryStore, type StoredRecord } from './LibraryStore';
 import type { AvatarThumbnailSource, ModelMetadata, VrmData, VrmLicense } from '@/types';
 
@@ -233,6 +236,23 @@ class ModelStorageService {
   async seedBundledAvatars(avatars: readonly BundledAvatar[] = BUNDLED_AVATARS): Promise<void> {
     await this.ensureMigrated();
     for (const avatar of avatars) await this.seedBundledAvatar(avatar);
+    await this.markBundledDefault(avatars);
+  }
+
+  /**
+   * Mark the bundled default as the Default Avatar, once per device, when none is marked and the library still
+   * holds it. Runs after its seed flag is set, so a failed first seed retries. The done flag keeps a later clear
+   * or change of the Default Avatar from being undone.
+   */
+  private async markBundledDefault(avatars: readonly BundledAvatar[]): Promise<void> {
+    const entry = avatars.find(({ id }) => id === DEFAULT_AVATAR_ID);
+    try {
+      if (!entry || localStorage.getItem(DEFAULT_MARKED_KEY) || !localStorage.getItem(entry.seededKey)) return;
+      if (!readUserDefaultAvatar() && await this.getRecord(entry.id)) setUserDefaultAvatar(entry.id);
+      localStorage.setItem(DEFAULT_MARKED_KEY, '1');
+    } catch (error) {
+      console.error('Failed to mark the bundled Default Avatar:', error);
+    }
   }
 
   private async seedBundledAvatar({ id, url, seededKey, fallbackName }: BundledAvatar): Promise<void> {
@@ -456,29 +476,13 @@ class ModelStorageService {
     return this.store.store(model);
   }
 
-  /**
-   * Remove a model from the library by `id`. On a build that holds a bundled default, the last one stays. The rule
-   * is "at least one", not "keep the bundled default": once another model exists, the default is as deletable as
-   * anything else. A build with no bundled default plays without a model, so its library can reach zero.
-   */
+  /** Remove a model from the library by `id`. Any model deletes, the last one included. */
   async deleteModel(id: string): Promise<void> {
     await this.ensureMigrated();
     await this.store.ensureInitialized();
-    // Values are read first and read-only: a refused value read aborts a read-write transaction.
-    const usable = new Set((await getAllReadable<StoredModelRecord>(this.store.db!, 'models')).map((record) => record.id));
-    // The key listing, the existence check, and the delete share one readwrite transaction. IndexedDB
-    // serializes transactions over the store, so two concurrent deletes can't both see another usable model
-    // and then both delete — which a read-then-delete across separate transactions would allow.
-    const store = this.store.db!.transaction(['models'], 'readwrite').objectStore('models');
-    // Requests in one transaction run in order, so the listing has its result when the key's arrives.
-    const keys = store.getAllKeys();
-    return writeAfterRead(store.transaction, store.getKey(id), (key) => {
-      const othersUsable = keys.result.some((other) => String(other) !== id && usable.has(String(other)));
-      if (BUNDLED_DEFAULT_URL && key !== undefined && usable.has(id) && !othersUsable) {
-        throw new Error('Cannot delete the last player avatar: the library must always have at least one.');
-      }
-      store.delete(id);
-    });
+    const transaction = this.store.db!.transaction(['models'], 'readwrite');
+    transaction.objectStore('models').delete(id);
+    await transactionDone(transaction);
   }
 }
 

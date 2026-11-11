@@ -1,6 +1,6 @@
 # 02: Delete the Last Avatar, Mark the Bundled Default
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -21,12 +21,22 @@ The library lets a player remove every Avatar, and a new install starts with a D
 
 ## Acceptance criteria
 
-- [ ] On a build with a bundled Avatar, the last Avatar in the library deletes.
-- [ ] A fresh install seeds the bundled Avatar and marks it as the Default Avatar.
-- [ ] An existing install with no Default Avatar and the bundled Avatar present gets the mark once.
-- [ ] An existing install that deleted the bundled Avatar gets no mark and no new Avatar.
-- [ ] After the one-time step, clearing the Default Avatar stays cleared across a restart.
-- [ ] A Default Avatar the player marked before the update is unchanged.
+- [x] On a build with a bundled Avatar, the last Avatar in the library deletes. (`ModelStorageService.test.ts` "deletes the last model, even on a build with a bundled Avatar")
+- [x] A fresh install seeds the bundled Avatar and marks it as the Default Avatar. ("marks it on a fresh install")
+- [x] An existing install with no Default Avatar and the bundled Avatar present gets the mark once. ("marks it once on an existing install...")
+- [x] An existing install that deleted the bundled Avatar gets no mark and no new Avatar. ("marks nothing and adds nothing...")
+- [x] After the one-time step, clearing the Default Avatar stays cleared across a restart. ("keeps a clear across a restart")
+- [x] A Default Avatar the player marked before the update is unchanged. ("keeps a Default Avatar the player marked...")
 - [ ] Mutation: restore the delete guard, and the last-Avatar test fails.
 
 For you: on your own install, check that the Default Avatar badge is on the bundled Avatar after the update, and that your own pick is kept if you had one.
+
+## Landed
+
+**Not verified**
+- Mutation check of the delete guard: not run. The old guard tests were flipped to assert deletion, so they fail if the guard returns, but I did not reinstate it.
+- A Default Avatar id that points at a deleted Avatar counts as marked, so the step marks nothing and sets its flag. The spec says "none is marked"; a ruling would pin the stale-id case.
+
+**For you**
+- Your own install: the **Default** badge sits on the bundled Avatar after the update, and your own earlier pick is kept.
+- The Avatars wiki still says "With no default, User's Default shows the bundled Avatar". The resolver ticket changes that.

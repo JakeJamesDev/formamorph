@@ -6,8 +6,10 @@ import ModelStorageService from './ModelStorageService';
 import {
   BUNDLED_AVATARS,
   DEFAULT_AVATAR_ID,
+  DEFAULT_MARKED_KEY,
   PRALINE_AVATAR_ID,
   bundledAvatarsFor,
+  clearUserDefaultAvatar,
   pickerStart,
   readUserDefaultAvatar,
   setUserDefaultAvatar,
@@ -163,6 +165,69 @@ describe('an existing library on an NSFW build', () => {
 
     expect(await libraryIds()).toContain(PRALINE_AVATAR_ID);
     expect(pickerStart(await libraryIds(), readUserDefaultAvatar())).toBe(own);
+  });
+});
+
+describe('marking the bundled default as the Default Avatar', () => {
+  /** An install from before the mark existed: seeded, with no Default Avatar and no done flag. */
+  const installBeforeTheMark = async () => {
+    serve({ [DEFAULT_URL]: 'Aurelia' });
+    await ModelStorageService.seedBundledAvatars(SFW);
+    clearUserDefaultAvatar();
+    localStorage.removeItem(DEFAULT_MARKED_KEY);
+  };
+
+  it('marks it on a fresh install', async () => {
+    serve({ [DEFAULT_URL]: 'Aurelia' });
+    await ModelStorageService.seedBundledAvatars(SFW);
+    expect(readUserDefaultAvatar()).toBe(DEFAULT_AVATAR_ID);
+  });
+
+  it('marks it once on an existing install that has none marked and still holds it', async () => {
+    await installBeforeTheMark();
+    await ModelStorageService.seedBundledAvatars(SFW);
+    expect(readUserDefaultAvatar()).toBe(DEFAULT_AVATAR_ID);
+  });
+
+  it('keeps a clear across a restart', async () => {
+    await installBeforeTheMark();
+    await ModelStorageService.seedBundledAvatars(SFW);
+    clearUserDefaultAvatar();
+    await ModelStorageService.seedBundledAvatars(SFW);
+    expect(readUserDefaultAvatar()).toBeUndefined();
+  });
+
+  it('keeps a Default Avatar the player marked before the update', async () => {
+    await installBeforeTheMark();
+    const own = await ModelStorageService.addModel(new File([await makeVrm1({ name: 'Heron' })], 'heron.vrm', { type: 'model/vrm' }));
+    setUserDefaultAvatar(own.id);
+    await ModelStorageService.seedBundledAvatars(SFW);
+    expect(readUserDefaultAvatar()).toBe(own.id);
+  });
+
+  it('marks nothing and adds nothing on an install that deleted the bundled Avatar', async () => {
+    await installBeforeTheMark();
+    await ModelStorageService.deleteModel(DEFAULT_AVATAR_ID);
+    vi.unstubAllGlobals();
+    serve({ [DEFAULT_URL]: 'Aurelia' });
+    await ModelStorageService.seedBundledAvatars(SFW);
+    expect(readUserDefaultAvatar()).toBeUndefined();
+    expect(await libraryIds()).toEqual([]);
+  });
+
+  it('marks nothing on a build with no bundled Avatar', async () => {
+    await ModelStorageService.seedBundledAvatars(bundledAvatarsFor('none'));
+    expect(readUserDefaultAvatar()).toBeUndefined();
+  });
+
+  it('waits for a failed first seed, then marks on the retry', async () => {
+    serve({});
+    await ModelStorageService.seedBundledAvatars(SFW);
+    expect(readUserDefaultAvatar()).toBeUndefined();
+
+    serve({ [DEFAULT_URL]: 'Aurelia' });
+    await ModelStorageService.seedBundledAvatars(SFW);
+    expect(readUserDefaultAvatar()).toBe(DEFAULT_AVATAR_ID);
   });
 });
 

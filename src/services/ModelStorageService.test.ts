@@ -191,17 +191,10 @@ describe('deleteModel', () => {
     await expect(ModelStorageService.getModelData(gone.id)).rejects.toBeInstanceOf(LibraryRecordNotFoundError);
   });
 
-  it('refuses to delete the last model, so the player always has one to be', async () => {
+  it('deletes the last model, even on a build with a bundled Avatar', async () => {
     const only = await ModelStorageService.addModel(new File([blob()], 'only.vrm', { type: 'model/vrm' }));
-    await expect(ModelStorageService.deleteModel(only.id)).rejects.toThrow('Cannot delete the last player avatar');
-    await expect(ModelStorageService.getModelData(only.id)).resolves.toBeDefined();
-  });
-
-  it('allows deleting the last model once a second exists, whichever one it is', async () => {
-    // The rule is "keep at least one", not "keep the first/bundled one".
-    const first = await ModelStorageService.addModel(new File([blob('a')], 'first.vrm', { type: 'model/vrm' }));
-    await ModelStorageService.addModel(new File([blob('b')], 'second.vrm', { type: 'model/vrm' }));
-    await expect(ModelStorageService.deleteModel(first.id)).resolves.toBeUndefined();
+    await ModelStorageService.deleteModel(only.id);
+    await expect(ModelStorageService.getModelMetadata()).resolves.toEqual([]);
   });
 
   it('does not block deleting an id the library does not hold', async () => {
@@ -595,15 +588,15 @@ describe('a model that can not be read', () => {
     expect(thumbnail).toBeUndefined();
   });
 
-  it('refuses to delete the last usable model while a lost one remains', async () => {
+  it('deletes the last usable model while a lost one remains', async () => {
     await putRaw(stored('lost', 'h-lost'));
     await putRaw(stored('kept', 'h-kept'));
     const restore = refuseReads({ [STORE]: ['lost'] });
 
-    await expect(ModelStorageService.deleteModel('kept')).rejects.toThrow('Cannot delete the last player avatar');
+    await ModelStorageService.deleteModel('kept');
 
     restore();
-    expect(await getRaw('kept')).toBeTruthy();
+    expect(await getRaw('kept')).toBeUndefined();
   });
 
   it('removes a record whose file is lost', async () => {
