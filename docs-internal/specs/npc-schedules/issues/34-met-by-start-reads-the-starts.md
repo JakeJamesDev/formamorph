@@ -1,6 +1,6 @@
 # 34: Met By Start Reads The Starts
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -26,9 +26,21 @@ Spec rulings: Q230, Q229, Q190.
 
 ## Acceptance criteria
 
-- [ ] A persona with a Start at one location and a row at a second has not met an entity whose Known In picks only the second. The test fails with the old read.
-- [ ] The same persona has met an entity whose Known In picks its Start place, and one that picks the parent of its Start place.
-- [ ] A persona whose only Start is Player's Starting Location has met an entity whose Known In picks a world starting location.
-- [ ] A persona with no kind gives the same result as before this ticket.
-- [ ] One helper gives the Start places to both the start list and this check.
-- [ ] The landing lists every other reader checked and what each reads.
+- [x] A persona with a Start at one location and a row at a second has not met an entity whose Known In picks only the second. The test fails with the old read. (`presence.test.ts`: "does not meet through a place only a routine row names")
+- [x] The same persona has met an entity whose Known In picks its Start place, and one that picks the parent of its Start place. ("meets through a Start place and through its parent")
+- [x] A persona whose only Start is Player's Starting Location has met an entity whose Known In picks a world starting location. (flagged and unflagged world tests)
+- [x] A persona with no kind gives the same result as before this ticket. ("keeps the own locations of a persona with no kind")
+- [x] One helper gives the Start places to both the start list and this check. (`startPlaces` in `personaPick.ts`)
+- [x] The landing lists every other reader checked and what each reads. (below)
+
+## Landed
+
+**Not verified**
+- Nothing open.
+
+**Readers checked**
+- `startsMet` in `src/lib/presence.ts`: now reads `startPlaces`, plus `startingLocationIds` for a Start at Player's Starting Location. Every caller (`metCheck`, `computePresence`, stranger labels, `chainedWorld.ts`, `GameViewer.tsx`, `openingState.ts`, `statCodeTraits.ts`, `authoredScene.ts`) goes through it.
+- A search for `persona.locations`, `player.locations` and similar found no other reader of a played persona's derived locations in `src`.
+
+**Finding for you**
+- In a world with no flagged starting location, New Game lists nothing for a persona whose only Start is Player's Starting Location, and `personaStartLocation` gives null. The engine starts such a game at any location (Q191). The met check now follows the engine. The start list is unchanged, as the spec session ruled.

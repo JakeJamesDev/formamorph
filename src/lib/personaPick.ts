@@ -95,10 +95,14 @@ export function preselectPersona({ rules, remembered, globalDefault, available }
 
 /** The places a played entity begins at: each Start's place once, in Start order, none for Player's Starting
  *  Location. An entity with no kind has no Starts, so its own locations stand. */
-const startPlaces = (entity: Entity): string[] =>
+export const startPlaces = (entity: Entity): string[] =>
   entity.kind
     ? [...new Set((entity.starts ?? []).map((start) => start.place).filter((place) => place !== PLAYER_START))]
     : entity.locations ?? [];
+
+/** Whether a Start of the entity is at Player's Starting Location. An entity with no kind has no Starts. */
+export const startsAtPlayerStart = (entity: Entity): boolean =>
+  !!entity.kind && !!entity.starts?.some((start) => start.place === PLAYER_START);
 
 /** The persona's start places the world still has, in the entity's order. */
 const personaLocations = (entity: Entity, locations: readonly GameLocation[]): string[] =>

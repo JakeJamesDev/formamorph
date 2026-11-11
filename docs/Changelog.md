@@ -99,6 +99,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A character the story calls over from one Nearby link away now joins the scene.** That includes the place around yours and the other end of a Connection. Their item changes land that turn. Nobody comes across a Far link.
     - **The story no longer moves you to a nearby place when you stay where you are.** Before, a place whose name held a nearby place's name, such as "Academy Dorms" next to "Academy", could send you to that nearby place on a turn where you never moved.
     - **A turn that fails now puts your action and images back in the action box.** Before, an endpoint error emptied the box, so a failed first turn lost the opening text.
+    - **At game start, your persona has met an entity only when its Known In covers one of its Starts.** A place the persona's routine visits no longer counts.
   - **World Editor:**
     - **The Sliders list on an entity's stat and trait now shows the entity's Avatar sliders.** An entity with only an Avatar can bind its Body Sliders and Head Features.
   - **Test Bench:**

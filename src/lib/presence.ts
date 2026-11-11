@@ -3,6 +3,8 @@ import { ancestors, parentLookup } from './ancestors';
 import { entitiesInPlay } from './entityPresence';
 import { findNameMatches } from './entityMatch';
 import type { StrangerLabels } from './locationContext';
+import { startPlaces, startsAtPlayerStart } from './personaPick';
+import { startingLocationIds } from './locationGraph';
 
 /**
  * Scene Presence: for every entity, where it is, whether the player has met it, whether it is in scene, and
@@ -33,7 +35,7 @@ export interface PresenceInput {
   generics: Readonly<GenericStates>;
   followers: readonly string[];
   locationId: string | null | undefined;
-  locations: readonly Pick<GameLocation, 'id' | 'parentId'>[];
+  locations: readonly Pick<GameLocation, 'id' | 'parentId' | 'isStarting'>[];
   connections: readonly Pick<Connection, 'a' | 'b'>[];
   /** The played persona's entity. */
   persona: Entity | null;
@@ -82,7 +84,7 @@ export const hasStrangerFace = (entity: Pick<Entity, 'strangerName' | 'strangerD
 export function startsMet(
   entity: Entity,
   persona: Entity | null,
-  locations: readonly Pick<GameLocation, 'id' | 'parentId'>[],
+  locations: readonly Pick<GameLocation, 'id' | 'parentId' | 'isStarting'>[],
   runtime = false,
 ): boolean {
   if (runtime || !hasStrangerFace(entity)) return true;
@@ -94,14 +96,16 @@ export function startsMet(
   const picks = Array.isArray(entity.knownIn) ? new Set(entity.knownIn) : null;
   if (!picks?.size) return false;
   const parentOf = parentLookup(locations, (l) => l.parentId);
-  return (persona.locations ?? []).some((at) => [at, ...ancestors(at, parentOf)].some((id) => picks.has(id)));
+  // A Start at Player's Starting Location stands for where the engine starts a game.
+  const starts = [...startPlaces(persona), ...(startsAtPlayerStart(persona) ? startingLocationIds(locations) : [])];
+  return starts.some((at) => [at, ...ancestors(at, parentOf)].some((id) => picks.has(id)));
 }
 
 /** Whether the player has met an entity: on the met-in-play list, or by the start rule. */
 export function metCheck(
   met: readonly string[],
   persona: Entity | null,
-  locations: readonly Pick<GameLocation, 'id' | 'parentId'>[],
+  locations: readonly Pick<GameLocation, 'id' | 'parentId' | 'isStarting'>[],
   runtimeIds: ReadonlySet<string>,
 ): (entity: Entity) => boolean {
   const metIds = new Set(met);
@@ -184,7 +188,7 @@ export function labelsInPlay(
   entities: readonly Entity[],
   met: readonly string[],
   persona: Entity | null,
-  locations: readonly Pick<GameLocation, 'id' | 'parentId'>[],
+  locations: readonly Pick<GameLocation, 'id' | 'parentId' | 'isStarting'>[],
   runtimeIds: ReadonlySet<string>,
   aliases: StrangerLabels,
 ): StrangerLabels {

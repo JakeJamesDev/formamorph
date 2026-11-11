@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Entity, GameLocation } from '@/types';
+import { PLAYER_START, type Entity, type GameLocation } from '@/types';
+import { withDerivedLocations } from './entityKind';
 import {
   computePresence, connectedPlaces, introducedIds, strangersInPlay, sceneAfterMove, startsMet, strangerAliasesFromCast, withMet,
   type PresenceInput, type SceneTurn,
@@ -148,6 +149,44 @@ describe('start-met', () => {
     expect(startsMet({ ...sylvie, knownIn: ['keep'] }, persona, LOCATIONS)).toBe(true);
     expect(startsMet({ ...sylvie, knownIn: ['cellar'] }, persona, LOCATIONS)).toBe(true);
     expect(startsMet({ ...sylvie, knownIn: ['smithy'] }, persona, LOCATIONS)).toBe(false);
+  });
+
+  describe('a persona with a kind reads its Starts only', () => {
+    const start = (id: string, place: string, rowPlace?: string) => ({
+      id, place, weight: 1,
+      schedule: rowPlace ? [{ id: `${id}-r`, time: 'allDay' as const, action: { kind: 'stay' as const, place: rowPlace } }] : [],
+    });
+    const played = (starts: ReturnType<typeof start>[]): Entity =>
+      withDerivedLocations({ id: 'me', name: 'Wren', kind: 'unique', starts });
+    const places = LOCATIONS.map((l) => ({ ...l, isStarting: l.id === 'harbor' }));
+
+    it('does not meet through a place only a routine row names', () => {
+      const patrol = played([start('s1', 'cellar', 'smithy')]);
+      expect(patrol.locations).toContain('smithy');
+      expect(startsMet({ ...sylvie, knownIn: ['smithy'] }, patrol, places)).toBe(false);
+    });
+
+    it('meets through a Start place and through its parent', () => {
+      const patrol = played([start('s1', 'cellar', 'smithy')]);
+      expect(startsMet({ ...sylvie, knownIn: ['cellar'] }, patrol, places)).toBe(true);
+      expect(startsMet({ ...sylvie, knownIn: ['hall'] }, patrol, places)).toBe(true);
+    });
+
+    it("meets through a world starting location for a Start at Player's Starting Location", () => {
+      const follower = played([start('s1', PLAYER_START)]);
+      expect(startsMet({ ...sylvie, knownIn: ['harbor'] }, follower, places)).toBe(true);
+      expect(startsMet({ ...sylvie, knownIn: ['smithy'] }, follower, places)).toBe(false);
+    });
+
+    it("meets through any location for a Start at Player's Starting Location when none is flagged", () => {
+      const follower = played([start('s1', PLAYER_START)]);
+      expect(startsMet({ ...sylvie, knownIn: ['smithy'] }, follower, LOCATIONS)).toBe(true);
+    });
+
+    it('keeps the own locations of a persona with no kind', () => {
+      const kindless: Entity = { id: 'me', name: 'Wren', locations: ['cellar', 'smithy'] };
+      expect(startsMet({ ...sylvie, knownIn: ['smithy'] }, kindless, places)).toBe(true);
+    });
   });
 
   it('meets nobody through Nearby or Nowhere', () => {
