@@ -279,6 +279,9 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q212** A script that runs After the AI reads the entity places, followers and waiting entities the turn settled, the same state that turn's narration prompts read. The fault is plausible and not yet reproduced; ticket 29 reproduces it first. The engine's end-of-turn placement is not visible to After scripts.
 - **Q213** Morphie's index of an author's world includes each entity's kind, Starts, rows and Can Also Go, each Connection's Travel, Distance and hints, and who can be at each location. The in-game view shows a player no routine. (Ticket 31.)
 - **Q214** The wiki and copy corrections land as one last ticket, 32, which also rebuilds the help vectors once. Tickets 26 to 31 edit the docs their change makes stale and do not rebuild. Reason: the vectors are one generated file, and parallel rebuilds would collide.
+- **Q215** The sample placement of Q210 is for authoring runs only. Play never reads it. The in-game Tool call that falls back to the opening state before the first turn stays unplaced in ticket 28; the landing says whether play's own placement exists at that point, and ticket 29 owns what Tool calls read in play. (Ticket 28.)
+- **Q216** The sample placement is taken at story minute 0, as the Test Bench AI context does, whatever clock the script's timing reads. A row that starts later in the day does not show in an authoring run. The Scripts Reference says so. (Ticket 28.)
+- **Q217** In the Scripts Reference, ticket 27 owns the `location` and `present` rows and ticket 28 owns the authoring-run paragraph. Ticket 28 does not wait for 27; it uses the position engine tests' fixtures. (Tickets 27, 28.)
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories

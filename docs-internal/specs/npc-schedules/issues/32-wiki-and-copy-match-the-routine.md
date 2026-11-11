@@ -31,6 +31,8 @@ Morphie answers from the wiki pages and from the app's own copy. Several stateme
 
 Read the Writing Guide first ("Before you write"). Write each correction from a facts list checked against the screen, in the labels the screen shows. Run the copy sweep on every changed string.
 
+**Left over from ticket 26:** the two placement sentences on the Test Bench page (AI Context and Opening) were not run through the copy sweep. Sweep them with the rest.
+
 **Then rebuild the help vectors**, once, as the last step: `npm run build:help-vectors`. Three sections were stale before this ticket, and every doc edit of tickets 26 to 31 added more. No test fails on a stale section, so count them before and after.
 
 Spec rulings: Q214, Q207, Q175, Q174.
