@@ -1,7 +1,7 @@
 # Spec: Built-In Engine Offer
 
 Status: done
-Status note: Follow-up tickets 05 and 06 (Q15–Q17) landed after the close as 381eaa504 and FormamorphServer b17f9ea, with no review or full gates after them. Closed 2026-11-09. Tickets 01–04, last landing fee78fb1b. Review: three gaps fixed by ticket 04, spec text corrected. Closed red: lint has 11 errors, all in the ignored worlds-wip folder and none in this effort; test exit 0 on 2026-11-09.
+Status note: Closed 2026-11-10. Tickets 01–06, last landing 381eaa504 (ticket 06 is FormamorphServer b17f9ea). Review clean on the follow-ups; three earlier gaps fixed by ticket 04, spec text corrected. Gates green on 2026-11-10.
 Spec session: built-in-engine-offer — spec
 
 A desktop player who runs narration on the built-in engine with little VRAM learns about Formamorph AI a second time, after 10 turns of their own play. AMD, Intel and CPU-only machines join the low-VRAM group for the first time. Spans both repos: the client and FormamorphServer.
