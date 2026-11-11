@@ -11,6 +11,9 @@ import {
   connectionTargets,
   connectionsAt,
   createConnection,
+  freeLinksAt,
+  type FreeLink,
+  type FreeLinkRelation,
   legFrom,
   travelHintConnectionId,
   type ConnectionView,
@@ -44,6 +47,61 @@ const without = (ids: ReadonlySet<string>, id: string): ReadonlySet<string> => {
   next.delete(id);
   return next;
 };
+
+const RELATION_TEXT: Record<FreeLinkRelation, string> = {
+  parent: 'Contains this location',
+  child: 'Inside this location',
+  sibling: 'Beside this location',
+};
+
+/** The links a location has with no Connection, folded under the Connections. Each row can become a Connection. */
+function FreeLinksGroup({ links, nameOf, open, onToggle, onConnect }: {
+  links: FreeLink[];
+  nameOf: (id: string) => string;
+  open: boolean;
+  onToggle: () => void;
+  onConnect: (partnerId: string) => void;
+}) {
+  const Icon = TRAVEL_ICONS['two-way'];
+  return (
+    <div className="rounded-md border bg-card" data-testid="free-links">
+      <button
+        type="button"
+        className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left"
+        aria-expanded={open}
+        onClick={onToggle}
+      >
+        <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform', !open && '-rotate-90')} />
+        <span className="text-label">Free Links</span>
+        <span className="text-meta text-muted-foreground">{links.length}</span>
+      </button>
+      {open && (
+        <div className="space-y-1 border-t p-2">
+          <Hint>Travel works both ways between these with no Connection. Each is Nearby.</Hint>
+          {links.map(({ partnerId, relation }) => {
+            const name = nameOf(partnerId);
+            return (
+              <div key={partnerId} className="flex items-center gap-1.5" data-testid="free-link-row">
+                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="min-w-0 truncate text-label">{name}</span>
+                <span className="min-w-0 flex-1 truncate text-meta text-muted-foreground">{RELATION_TEXT[relation]}</span>
+                <Tip tip={`Make a Connection to ${name}`}>
+                  <Button
+                    variant="ghost" size="icon" className="h-6 w-6 shrink-0"
+                    aria-label={`Make Connection to ${name}`}
+                    onClick={() => onConnect(partnerId)}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </Tip>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** One Connection as a row that folds: the header names it, the open body edits it. */
 function ConnectionRow({ view, locationId, partnerName, open, onToggle, onRemove, placeholders, onChange }: {
@@ -151,6 +209,12 @@ const LocationConnections = ({ location, focusField, openRequest, onOpened }: {
     [targets, placeholders, placementLetters, placeholderOwners],
   );
 
+  const freeLinks = useMemo(
+    () => freeLinksAt(location.id, locations, connections),
+    [location.id, locations, connections],
+  );
+  const [freeOpen, setFreeOpen] = useState(false);
+
   const ids = views.map((v) => v.connection.id);
   const anyOpen = ids.some((id) => opened.has(id));
   const toggleAll = () => setOpened(anyOpen ? new Set() : new Set(ids));
@@ -164,6 +228,12 @@ const LocationConnections = ({ location, focusField, openRequest, onOpened }: {
     setTarget('');
   };
 
+  const handleConnectFree = (partnerId: string) => {
+    const made = createConnection(location.id, partnerId);
+    addConnection(made);
+    open(made.id);
+  };
+
   // A Connection an undo brings back starts closed, like any row the author did not add here.
   const handleRemove = (id: string) => {
     removeConnection(id);
@@ -173,10 +243,7 @@ const LocationConnections = ({ location, focusField, openRequest, onOpened }: {
   return (
     <div data-tour-anchor="location-connections" className="space-y-2">
       <div className="flex items-start justify-between gap-2">
-        <Hint>
-          Sets the travel rule for a pair of locations. Without one, a location still connects to its parent,
-          its children, and its siblings.
-        </Hint>
+        <Hint>Sets the travel rule for a pair of locations.</Hint>
         {views.length > 1 && <CollapseAllButton anyOpen={anyOpen} noun="connections" onClick={toggleAll} />}
       </div>
       {views.length > 0 && (
@@ -211,6 +278,15 @@ const LocationConnections = ({ location, focusField, openRequest, onOpened }: {
           </Button>
         </Tip>
       </div>
+      {freeLinks.length > 0 && (
+        <FreeLinksGroup
+          links={freeLinks}
+          nameOf={nameOf}
+          open={freeOpen}
+          onToggle={() => setFreeOpen((was) => !was)}
+          onConnect={handleConnectFree}
+        />
+      )}
     </div>
   );
 };

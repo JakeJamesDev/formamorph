@@ -1,6 +1,6 @@
 # 23: Free Links On The Connections Tab
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 22
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -33,16 +33,25 @@ Spec rulings: Q176, Q182, Q48.
 
 ## Acceptance criteria
 
-- [ ] A location with a parent, a child and a sibling lists three free links, each with the right relation. (Component test.)
-- [ ] The group is closed on open and shows its count.
-- [ ] A pair that has a Connection is not in the group.
-- [ ] The button creates a two-way Nearby Connection, opens its row in the list above and removes the free row. One undo step reverses it.
-- [ ] Deleting that Connection lists the pair as a free link again.
-- [ ] A top-level location with no children shows no group.
-- [ ] Frames: `.scratch/frames/connections-free-links-dark.png` and `-light.png`, at 1440 wide, with the group open.
-- [ ] The Locations wiki page and the changelog fragment describe the group.
-- [ ] The canvas's direction and distance intent helpers and their tests are gone, and a search finds no caller.
-- [ ] The Design System page lists the two Known In marks of the Nearby view.
-- [ ] A test undoes a Connection edit made on the canvas, then opens that location's Connections tab, and finds every row closed. It fails when the reveal hook keeps the request.
+- [x] A location with a parent, a child and a sibling lists three free links, each with the right relation. (Component test: `lists the parent, a child and a sibling with the relation of each`.)
+- [x] The group is closed on open and shows its count. (`starts closed and shows the count`.)
+- [x] A pair that has a Connection is not in the group. (`leaves out a pair that has a Connection`.)
+- [ ] The button creates a two-way Nearby Connection, opens its row in the list above and removes the free row. One undo step reverses it. (Component test covers the create, the open row and the removed free row, with one `addConnection` call; the undo step is not driven.)
+- [x] Deleting that Connection lists the pair as a free link again. (`lists the pair as a free link again when its Connection is deleted`.)
+- [x] A top-level location with no children shows no group. (`shows no group for a top-level location with no children`.)
+- [x] Frames: `.scratch/frames/connections-free-links-dark.png` and `-light.png`, at 1440 wide, with the group open. (Playwright, 1440x900, 600 ms settle.)
+- [x] The Locations wiki page and the changelog fragment describe the group. (`docs/World-Editor-Locations.md` Free Links; `docs-internal/changelog.d/npc-schedules-23.md`.)
+- [x] The canvas's direction and distance intent helpers and their tests are gone, and a search finds no caller. (`directionIntent`, `distanceIntent` and the then-unused `directionOf` deleted; grep clean.)
+- [x] The Design System page lists the two Known In marks of the Nearby view. (New row in the Bounded Spatial Workspace table.)
+- [x] A test undoes a Connection edit made on the canvas, then opens that location's Connections tab, and finds every row closed. It fails when the reveal hook keeps the request. (`useHistoryReveal.test.tsx`, `drops a request nobody took...`: hook-level, with a holder for the row request; failed with the `showConnectionRow?.(null)` line removed.)
 
 For you: read the group's name and its line of text, and say whether an author would understand "free".
+
+## Landed
+
+**Not verified**
+- One undo step reverses the free-link button: the component test counts one `addConnection` call, but no test undoes it in the editor.
+- The undo test for the canvas path runs at the hook, not through a mounted editor and the Connections tab. The tab-level click path is not driven.
+
+**For you**
+- Read the group's name and its line of text, and say whether an author would understand "free". Look at `.scratch/npc-schedules-23/frames/connections-free-links-dark.png` and `-light.png`.

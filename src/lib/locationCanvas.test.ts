@@ -1,14 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
   CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH, GROUP_HEADER, GROUP_PADDING,
-  applyCanvasDrop, buildLocationCanvas, canvasFocus, connectIntent, connectionEnds, deleteIntent, directionIntent,
-  applyCanvasDrops, beginCanvasDrag, directionOf, distanceIntent, dropIntent, dropTarget, updateIntent, isStationaryClick,
+  applyCanvasDrop, buildLocationCanvas, canvasFocus, connectIntent, deleteIntent,
+  applyCanvasDrops, beginCanvasDrag, dropIntent, dropTarget, updateIntent, isStationaryClick,
   implicitCanvasEdges, isTravelClick, mapFocus, multiDropIntents, leafTarget,
   TOUCH_SLOP,
   newLocationPosition, withCanvasPosition,
   type CanvasIntent,
 } from "./locationCanvas";
-import { connectionsAt, withHint } from "./connectionEditing";
+import { connectionsAt, withDirection, withHint, type ConnectionDirection } from "./connectionEditing";
 import { toFlowEdge } from "./canvasEdges";
 import { describePlaceholders, encodePlaceholderToken } from "./placeholders";
 import { phValues } from "@/test/placeholderValues";
@@ -358,14 +358,6 @@ describe("buildLocationCanvas edges", () => {
       expect(labels(far({ aToB: { hint: "by boat" }, bToA: { hint: "by boat" } }))).toEqual(["Far · by boat", undefined]);
       expect(labels(far({ aToB: { hint: "by boat" }, bToA: { hint: "on foot" } }))).toEqual(["Far · by boat", "Far · on foot"]);
       expect(labels(far({ aToB: {}, bToA: { hint: "on foot" } }))).toEqual([undefined, "Far · on foot"]);
-    });
-
-    it("sets Far and back to Nearby as one record update, storing nothing for Nearby", () => {
-      const near = far({ distance: undefined });
-      expect(distanceIntent(near, "far")).toEqual({ kind: "update", connection: far() });
-      const back = distanceIntent(far(), "nearby");
-      if (back.kind !== "update") throw new Error("expected an update");
-      expect(back.connection).not.toHaveProperty("distance");
     });
   });
 
@@ -890,47 +882,26 @@ describe("connectIntent", () => {
   });
 });
 
-describe("directionIntent", () => {
+describe("a Connection narrowed on the canvas", () => {
   const conn: Connection = {
     id: "c8", a: "shore", b: "landing", aToB: { hint: "down the jetty" }, bToA: { hint: "up the jetty" },
   };
-  const [a, b] = connectionEnds(conn);
+  const { a, b } = conn;
+  const narrow = (c: Connection, direction: ConnectionDirection) =>
+    applied([c], updateIntent(withDirection(c, a, direction)));
 
-  it("reads a record's current direction from its first end", () => {
-    expect([a, b]).toEqual(["shore", "landing"]);
-    expect(directionOf(conn)).toBe("two-way");
-    expect(directionOf({ id: "c8", a, b, aToB: {} })).toBe("outgoing");
-    expect(directionOf({ id: "c8", a, b, bToA: {} })).toBe("incoming");
-  });
-
-  it("names the same two ends whichever way the record currently runs", () => {
-    expect(connectionEnds({ id: "c8", a, b, bToA: {} })).toEqual([a, b]);
-  });
-
-  it("narrows travel to one way, and flips which way, by moving the leg with its hint", () => {
-    const oneWay = directionIntent(conn, "outgoing");
-    expect(oneWay.kind).toBe("update");
-    const forward = applied([conn], oneWay);
+  it("draws one arrow, pointing the way travel now runs", () => {
+    const forward = narrow(conn, "outgoing");
     expect(forward[0]).toEqual({ id: "c8", a, b, aToB: { hint: "down the jetty" } });
-    // One arrow, pointing the way travel now runs.
-    const drawn = canvas([landing, shore], forward).edges;
-    expect(drawn.map((e) => [e.source, e.target])).toEqual([[a, b]]);
-    const flipped = applied(forward, directionIntent(forward[0], "incoming"));
+    expect(canvas([landing, shore], forward).edges.map((e) => [e.source, e.target])).toEqual([[a, b]]);
+    const flipped = narrow(forward[0], "incoming");
     expect(flipped[0]).toEqual({ id: "c8", a, b, bToA: { hint: "down the jetty" } });
     expect(canvas([landing, shore], flipped).edges.map((e) => [e.source, e.target])).toEqual([[b, a]]);
   });
 
-  it("widens a one-way record back to two-way, the new leg taking the existing hint", () => {
+  it("draws both arrows again when widened to two-way", () => {
     const oneWay: Connection = { id: "c8", a, b, bToA: { hint: "up the jetty" } };
-    const both = applied([oneWay], directionIntent(oneWay, "two-way"));
-    expect(both[0]).toEqual({ id: "c8", a, b, aToB: { hint: "up the jetty" }, bToA: { hint: "up the jetty" } });
-    expect(canvas([landing, shore], both).edges.length).toBe(2);
-  });
-
-  it("shows the same edit from both ends in the list editor", () => {
-    const oneWay = applied([conn], directionIntent(conn, "outgoing"));
-    expect(connectionsAt(a, oneWay)[0].direction).toBe("outgoing");
-    expect(connectionsAt(b, oneWay)[0].direction).toBe("incoming");
+    expect(canvas([landing, shore], narrow(oneWay, "two-way")).edges.length).toBe(2);
   });
 
   it("recomputes the unreachable badge as travel narrows", () => {
@@ -938,9 +909,7 @@ describe("directionIntent", () => {
     expect(nodeOf([landing, shore], "shore").data.unreachable).toBe(true);
     const linked = applied([], connectIntent("landing", "shore", []));
     expect(nodeOf([landing, shore], "shore", linked).data.unreachable).toBe(false);
-    const leavingShore = connectionEnds(linked[0])[0] === "shore" ? "outgoing" : "incoming";
-    const away = applied(linked, directionIntent(linked[0], leavingShore));
-    expect(away[0]).toEqual({ id: linked[0].id, a: "landing", b: "shore", bToA: {} });
+    const away = narrow({ ...linked[0], a: "shore", b: "landing" }, "outgoing");
     expect(nodeOf([landing, shore], "shore", away).data.unreachable).toBe(true);
   });
 });

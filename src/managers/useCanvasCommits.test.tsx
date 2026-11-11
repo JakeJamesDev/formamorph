@@ -7,12 +7,12 @@ import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistory } from '@/contexts/worldRecorder';
 import { stepLabel } from '@/lib/editorHistoryLabels';
 import {
-  applyCanvasDrops, applyCanvasIntent, connectIntent, deleteIntent, directionIntent, hintKey, multiDropIntents,
+  applyCanvasDrops, applyCanvasIntent, connectIntent, deleteIntent, hintKey, multiDropIntents,
   nudgeKey, updateIntent,
 } from '@/lib/locationCanvas';
 import { autoArrangeAll } from '@/lib/locationArrange';
 import { nudgeLocations } from '@/lib/locationAlign';
-import { withHint } from '@/lib/connectionEditing';
+import { withDirection, withHint } from '@/lib/connectionEditing';
 import { useCanvasCommits } from './useCanvasCommits';
 import type { Connection, GameLocation, World } from '@/types';
 
@@ -104,7 +104,7 @@ describe('the canvas commits into the world history', () => {
 
   it.each([
     ['creating', (c: Connection[]) => connectIntent('tavern', 'shore', c)!],
-    ['editing the direction of', (c: Connection[]) => directionIntent(c[0], 'outgoing')],
+    ['editing the direction of', (c: Connection[]) => updateIntent(withDirection(c[0], c[0].a, 'outgoing'))],
     ['deleting', (c: Connection[]) => deleteIntent(c[0])],
   ])('puts a Connection back after %s one', async (_label, intent) => {
     const handle = await open();

@@ -480,3 +480,72 @@ describe('Connection rows', () => {
     expect(header('Cave, To There')).toHaveAttribute('aria-expanded', 'false');
   });
 });
+
+describe('Free links', () => {
+  const tree = () => {
+    locations = [
+      { id: 'town', name: 'Town' },
+      { id: 'inn', name: 'Inn', parentId: 'town' },
+      { id: 'shop', name: 'Shop', parentId: 'town' },
+      { id: 'cellar', name: 'Cellar', parentId: 'inn' },
+      { id: 'far-hill', name: 'Far Hill' },
+    ] as GameLocation[];
+    connections = [];
+  };
+  const group = () => screen.getByRole('button', { name: /^Free Links/ });
+  const freeRows = () => screen.queryAllByTestId('free-link-row').map((row) => row.textContent);
+
+  it('lists the parent, a child and a sibling with the relation of each', () => {
+    tree();
+    render(<LocationConnections location={at('inn')} />);
+    fireEvent.click(group());
+    expect(freeRows()).toEqual([
+      'TownContains this location',
+      'CellarInside this location',
+      'ShopBeside this location',
+    ]);
+  });
+
+  it('starts closed and shows the count', () => {
+    tree();
+    render(<LocationConnections location={at('inn')} />);
+    expect(group()).toHaveAttribute('aria-expanded', 'false');
+    expect(group()).toHaveTextContent('3');
+    expect(freeRows()).toEqual([]);
+  });
+
+  it('leaves out a pair that has a Connection', () => {
+    tree();
+    connections = [{ id: 'c1', a: 'inn', b: 'shop', aToB: {} }];
+    render(<LocationConnections location={at('inn')} />);
+    fireEvent.click(group());
+    expect(freeRows()).toEqual(['TownContains this location', 'CellarInside this location']);
+  });
+
+  it('shows no group for a top-level location with no children', () => {
+    tree();
+    render(<LocationConnections location={at('far-hill')} />);
+    expect(screen.queryByTestId('free-links')).not.toBeInTheDocument();
+  });
+
+  it('makes a two-way Nearby Connection, opens its row and drops the free row', () => {
+    tree();
+    render(<LocationConnections location={at('inn')} />);
+    fireEvent.click(group());
+    fireEvent.click(screen.getByRole('button', { name: 'Make Connection to Shop' }));
+    expect(addConnection).toHaveBeenCalledTimes(1);
+    expect(addConnection.mock.calls[0][0]).toMatchObject({ a: 'inn', b: 'shop', aToB: {}, bToA: {} });
+    expect(addConnection.mock.calls[0][0].distance).toBeUndefined();
+    expect(screen.getByRole('button', { name: 'Shop, Both Ways' })).toHaveAttribute('aria-expanded', 'true');
+    expect(freeRows().join()).not.toContain('Shop');
+  });
+
+  it('lists the pair as a free link again when its Connection is deleted', () => {
+    tree();
+    render(<LocationConnections location={at('inn')} />);
+    fireEvent.click(group());
+    fireEvent.click(screen.getByRole('button', { name: 'Make Connection to Shop' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Connection to Shop' }));
+    expect(freeRows().join()).toContain('Shop');
+  });
+});

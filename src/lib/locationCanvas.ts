@@ -1,8 +1,6 @@
 import { ancestors } from "@/lib/ancestors";
 import type { Connection, GameLocation, LegKey } from "@/types";
-import {
-  createConnection, directionFrom, withDirection, type ConnectionDirection,
-} from "./connectionEditing";
+import { createConnection } from "./connectionEditing";
 import {
   connectionLegs, implicitNeighbors, isFar, isTwoWay, pairKey, parentIndex, reachableFromStarts,
 } from "./locationGraph";
@@ -697,11 +695,6 @@ export function connectionEnds(connection: Connection): [string, string] {
   return [connection.a, connection.b];
 }
 
-/** Which of the direction control's options a record currently sits on. */
-export function directionOf(connection: Connection): ConnectionDirection {
-  return directionFrom(connection, connectionEnds(connection)[0]);
-}
-
 /**
  * Dragging between two locations and clicking a dashed implicit arrow ask for the same thing: this pair gets
  * a two-way Connection, the common case needing no follow-up click. Nothing comes of a self-drag, or of a
@@ -713,12 +706,6 @@ export function connectIntent(fromId: string, toId: string, connections: Connect
   const key = pairKey(fromId, toId);
   if (connections.some((c) => pairKey(c.a, c.b) === key)) return null;
   return { kind: "add", connection: createConnection(fromId, toId) };
-}
-
-/** The direction control on a selected arrow — the list panel's own edit, anchored to the pair's first end
- *  instead of to the location whose panel is open. */
-export function directionIntent(connection: Connection, direction: ConnectionDirection): CanvasIntent {
-  return { kind: "update", connection: withDirection(connection, connectionEnds(connection)[0], direction) };
 }
 
 /** A selected Connection as its Travel Hint pair rewrote it: a hint edit, a link, or an unlink. */
@@ -735,11 +722,6 @@ export const distanceOf = (connection: Connection): ConnectionDistance => connec
 export function withDistance(connection: Connection, distance: ConnectionDistance): Connection {
   const { distance: _old, ...rest } = connection;
   return distance === "far" ? { ...rest, distance: "far" } : rest;
-}
-
-/** The distance choice on a selected arrow. */
-export function distanceIntent(connection: Connection, distance: ConnectionDistance): CanvasIntent {
-  return { kind: "update", connection: withDistance(connection, distance) };
 }
 
 /** Deleting a selected arrow deletes the record both of the pair's directions came from, which hands the

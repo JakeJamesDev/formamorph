@@ -100,6 +100,36 @@ describe('useHistoryReveal', () => {
     expect(view.result.current.selectionReveal).toBeNull();
   });
 
+  describe('the Connection row request', () => {
+    const listEdit = (): HistoryMoveEvent => ({
+      steps: record(createHistory(), [diffSlice('connections', [] as unknown as WorldSlices['connections'], [wire('c1')]) as SliceEdit], {
+        origin: { tab: 'locations', view: 'list', ids: ['harbor'], field: 'connections/c1/aToB' },
+      }).steps,
+      world: world({ connections: [wire('c1')] }),
+    });
+
+    /** The editor's own holder: the request stays until the Connections tab takes it. */
+    const withHolder = () => {
+      let request: { id: string } | null = null;
+      const setup_ = setup({ showConnectionRow: (next) => { request = next; } });
+      return { ...setup_, request: () => request };
+    };
+
+    it('asks for the row of a Connection field edited in the list view', () => {
+      const { move, request } = withHolder();
+      move(listEdit());
+      expect(request()).toEqual({ id: 'c1' });
+    });
+
+    it('drops a request nobody took when an undo of a canvas Connection edit follows', () => {
+      const { move, request } = withHolder();
+      move(listEdit());
+      expect(request()).toEqual({ id: 'c1' });
+      move(moveOf('connections', [wire('c1')], world({ connections: [wire('c1')] })));
+      expect(request()).toBeNull();
+    });
+  });
+
   it('marks a removed connection as gone so the canvas can drop it', () => {
     const { view, move } = setup();
     move(moveOf('connections', [wire('c1')], world()));

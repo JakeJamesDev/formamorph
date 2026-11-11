@@ -1,6 +1,6 @@
 import { randomUUID } from '@/lib/uuid';
 import type { Connection, ConnectionLeg, GameLocation, LegKey } from '@/types';
-import { isTwoWay, otherLeg } from '@/lib/locationGraph';
+import { implicitNeighbors, isTwoWay, otherLeg, parentIndex } from '@/lib/locationGraph';
 import { placementIdsIn, remintPlaceholderPlacements } from '@/lib/placeholders';
 
 /**
@@ -147,6 +147,37 @@ export function connectionTargets(
 ): GameLocation[] {
   const taken = new Set(connectionsAt(locationId, connections).map((v) => v.partnerId));
   return locations.filter((l) => l.id !== locationId && !taken.has(l.id));
+}
+
+/** What a free link's other location is to the one being edited. */
+export type FreeLinkRelation = 'parent' | 'child' | 'sibling';
+
+/** One pair the containment tree links for free, seen from a location. */
+export interface FreeLink {
+  partnerId: string;
+  relation: FreeLinkRelation;
+}
+
+const RELATION_ORDER: Record<FreeLinkRelation, number> = { parent: 0, child: 1, sibling: 2 };
+
+/** The implicit neighbors of `locationId` that no Connection covers: its parent, children and siblings,
+ *  in that order. A neighbor id that names no location is left out, since it has no name to show. */
+export function freeLinksAt(
+  locationId: string,
+  locations: readonly GameLocation[],
+  connections: readonly Connection[],
+): FreeLink[] {
+  const index = parentIndex(locations);
+  const known = new Set(locations.map((l) => l.id));
+  const covered = new Set(connectionsAt(locationId, [...connections]).map((v) => v.partnerId));
+  const parentId = index.parentOf.get(locationId);
+  return implicitNeighbors(locationId, index)
+    .filter((id) => id !== locationId && known.has(id) && !covered.has(id))
+    .map((partnerId): FreeLink => ({
+      partnerId,
+      relation: partnerId === parentId ? 'parent' : index.childrenOf.get(locationId)?.includes(partnerId) ? 'child' : 'sibling',
+    }))
+    .sort((x, y) => RELATION_ORDER[x.relation] - RELATION_ORDER[y.relation]);
 }
 
 /** A new Connection out of `fromId`, two-way — the common case needs no follow-up click. */

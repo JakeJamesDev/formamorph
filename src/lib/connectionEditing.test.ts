@@ -4,6 +4,7 @@ import {
   connectionsAt,
   createConnection,
   directionFrom,
+  freeLinksAt,
   hintsLinked,
   legFrom,
   withDirection,
@@ -229,5 +230,37 @@ describe('createConnection', () => {
     const created = createConnection('a', 'b');
     expect(created).toEqual({ id: expect.any(String), a: 'a', b: 'b', aToB: {}, bToA: {} });
     expect(created.id).not.toBe(createConnection('a', 'b').id);
+  });
+});
+
+describe('freeLinksAt', () => {
+  const loc = (id: string, parentId?: string) => ({ id, name: id, ...(parentId ? { parentId } : {}) }) as GameLocation;
+  const world = [loc('top'), loc('a', 'top'), loc('b', 'top'), loc('c', 'top'), loc('a1', 'a')];
+
+  it('lists the parent first, then children, then siblings', () => {
+    expect(freeLinksAt('a', world, [])).toEqual([
+      { partnerId: 'top', relation: 'parent' },
+      { partnerId: 'a1', relation: 'child' },
+      { partnerId: 'b', relation: 'sibling' },
+      { partnerId: 'c', relation: 'sibling' },
+    ]);
+  });
+
+  it('leaves out a pair that a Connection covers, from either end', () => {
+    const covering: Connection[] = [{ id: 'k', a: 'b', b: 'a', bToA: {} }];
+    expect(freeLinksAt('a', world, covering).map((l) => l.partnerId)).toEqual(['top', 'a1', 'c']);
+    expect(freeLinksAt('b', world, covering).map((l) => l.partnerId)).toEqual(['top', 'c']);
+  });
+
+  it('leaves out a parent id that names no location', () => {
+    expect(freeLinksAt('x', [loc('x', 'ghost')], [])).toEqual([]);
+  });
+
+  it('never lists a location as a free link of itself', () => {
+    expect(freeLinksAt('x', [loc('x', 'x')], [])).toEqual([]);
+  });
+
+  it('lists nothing for a top-level location with no children', () => {
+    expect(freeLinksAt('top', [loc('top'), loc('lone')], [])).toEqual([]);
   });
 });
