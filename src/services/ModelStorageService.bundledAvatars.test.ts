@@ -205,6 +205,13 @@ describe('marking the bundled default as the Default Avatar', () => {
     expect(readUserDefaultAvatar()).toBe(own.id);
   });
 
+  it('marks the bundled Avatar once when the stored Default Avatar is gone from the library', async () => {
+    await installBeforeTheMark();
+    setUserDefaultAvatar('deleted-avatar');
+    await ModelStorageService.seedBundledAvatars(SFW);
+    expect(readUserDefaultAvatar()).toBe(DEFAULT_AVATAR_ID);
+  });
+
   it('marks nothing and adds nothing on an install that deleted the bundled Avatar', async () => {
     await installBeforeTheMark();
     await ModelStorageService.deleteModel(DEFAULT_AVATAR_ID);

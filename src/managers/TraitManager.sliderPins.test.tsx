@@ -4,7 +4,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Entity, Trait, TraitGroup } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
-import { NO_MODEL_HINT } from '@/lib/useSliderPicker';
+import { NO_MODEL_HINT, WORLD_NO_MODEL_HINT } from '@/lib/useSliderPicker';
 import TraitManager, { type TraitLinkEdit } from './TraitManager';
 
 const elf: Trait = { id: 'elf', name: 'Elf', statChanges: [] };
@@ -35,7 +35,7 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
 }));
 
 // The model files stand behind these loaders; the hooks that pick between them run for real.
-const loads = vi.hoisted(() => ({ catalogs: new Map<string, string[]>() }));
+const loads = vi.hoisted(() => ({ catalogs: new Map<string, string[]>(), library: [{ id: 'm1', name: 'Aurelia' }] }));
 vi.mock('@/lib/vrmMorphLoader', () => ({
   loadMorphSplit: async () => ({ body: ['Fat'], head: ['Ear Shape'] }),
   loadMorphCatalog: async (url: string) => (loads.catalogs.get(url) ?? []).map((name) => ({ name, group: 'body' })),
@@ -47,7 +47,7 @@ vi.mock('@/lib/vrmMorphLoader', () => ({
 }));
 vi.mock('@/services/ModelStorageService', () => ({
   default: {
-    getModelMetadata: async () => [{ id: 'm1', name: 'Aurelia' }],
+    getModelMetadata: async () => loads.library,
     getModelData: async () => ({ blob: new Blob(['x']) }),
   },
 }));
@@ -72,6 +72,7 @@ beforeEach(() => {
   URL.createObjectURL = vi.fn(() => 'blob:model');
   URL.revokeObjectURL = vi.fn();
   loads.catalogs.clear();
+  loads.library = [{ id: 'm1', name: 'Aurelia' }];
   world.traits = [elf];
   world.traitGroups = [];
   world.overview = {};
@@ -103,6 +104,24 @@ describe("the trait's Sliders", () => {
     await userEvent.click(within(field).getByRole('combobox'));
     expect(await screen.findByText('Aki · Body Sliders')).toBeInTheDocument();
     expect(screen.queryByText('Aurelia · Body Sliders')).toBeNull();
+  });
+
+  it('shows the world-row hint, not the Profile tab hint, when no playable persona has an Avatar', async () => {
+    world.overview = { allowedPersonas: 'world' };
+    world.entities = [{ id: 'p1', name: 'P', persona: true, locations: [] }];
+    renderTrait();
+    expect(await screen.findByText(WORLD_NO_MODEL_HINT)).toBeInTheDocument();
+    expect(screen.queryByText(NO_MODEL_HINT)).toBeNull();
+    expect(WORLD_NO_MODEL_HINT).not.toMatch(/Profile/);
+  });
+
+  it("shows the world-row hint when the personas use User's Default and the library is empty", async () => {
+    loads.library = [];
+    world.overview = { allowedPersonas: 'world' };
+    world.entities = [{ id: 'p1', name: 'P', persona: true, locations: [], vrmPick: { kind: 'default' } }];
+    renderTrait();
+    expect(await screen.findByText(WORLD_NO_MODEL_HINT)).toBeInTheDocument();
+    expect(screen.queryByText(NO_MODEL_HINT)).toBeNull();
   });
 
   it("marks a slider the world's player Avatar lacks", async () => {

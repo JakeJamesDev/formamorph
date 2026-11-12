@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { MediaAsset, Stat } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
 import { clearUserDefaultAvatar, setUserDefaultAvatar } from '@/lib/defaultAvatar';
-import { NO_MODEL_HINT } from '@/lib/useSliderPicker';
+import { NO_MODEL_HINT, WORLD_NO_MODEL_HINT } from '@/lib/useSliderPicker';
 import StatManager, { type StatEditorStore } from './StatManager';
 
 const wounds = {
@@ -205,7 +205,8 @@ describe('the Body Sliders picker', () => {
     it('shows the hint when every playable persona has None', async () => {
       worldParts.entities = [persona('p1'), persona('p2', undefined)];
       renderManager();
-      expect(await screen.findByText(NO_MODEL_HINT)).toBeInTheDocument();
+      expect(await screen.findByText(WORLD_NO_MODEL_HINT)).toBeInTheDocument();
+      expect(screen.queryByText(NO_MODEL_HINT)).toBeNull();
       expect(await offered()).toEqual([]);
     });
 

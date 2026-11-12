@@ -240,15 +240,18 @@ class ModelStorageService {
   }
 
   /**
-   * Mark the bundled default as the Default Avatar, once per device, when none is marked and the library still
-   * holds it. Runs after its seed flag is set, so a failed first seed retries. The done flag keeps a later clear
+   * Mark the bundled default as the Default Avatar, once per device, when none is marked (or the marked one is
+   * gone from the library) and the library still holds it. Runs after its seed flag is set, so a failed first seed retries. The done flag keeps a later clear
    * or change of the Default Avatar from being undone.
    */
   private async markBundledDefault(avatars: readonly BundledAvatar[]): Promise<void> {
     const entry = avatars.find(({ id }) => id === DEFAULT_AVATAR_ID);
     try {
       if (!entry || localStorage.getItem(DEFAULT_MARKED_KEY) || !localStorage.getItem(entry.seededKey)) return;
-      if (!readUserDefaultAvatar() && await this.getRecord(entry.id)) setUserDefaultAvatar(entry.id);
+      const stored = readUserDefaultAvatar();
+      // A stored id the library no longer holds counts as unmarked.
+      const marked = !!stored && !!await this.getRecord(stored);
+      if (!marked && await this.getRecord(entry.id)) setUserDefaultAvatar(entry.id);
       localStorage.setItem(DEFAULT_MARKED_KEY, '1');
     } catch (error) {
       console.error('Failed to mark the bundled Default Avatar:', error);

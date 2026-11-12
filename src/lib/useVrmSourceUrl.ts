@@ -13,33 +13,27 @@ export function useVrmSourceUrl(source: VrmSource | undefined): { url: string | 
   const { worldOverview } = useGameData();
   const libraryId = source?.kind === 'library' ? source.id : undefined;
   const worldUrl = source?.kind === 'world' ? worldOverview?.vrmStore?.[source.id]?.file.data || undefined : undefined;
-  const [libraryUrl, setLibraryUrl] = useState<string | undefined>(undefined);
-  const [resolving, setResolving] = useState(false);
+  // The last settled load. A library id it does not name is still loading, from the first render on.
+  const [loaded, setLoaded] = useState<{ id: string; url: string | undefined }>();
 
   useEffect(() => {
-    if (!libraryId) {
-      setLibraryUrl(undefined);
-      setResolving(false);
-      return;
-    }
+    if (!libraryId) return;
     let cancelled = false;
     let url: string | undefined;
-    setResolving(true);
     // A deleted or malformed model rejects; swallow it so the caller shows no Avatar.
     ModelStorageService.getModelData(libraryId).catch(() => null).then((model) => {
       if (cancelled) return;
-      if (model) {
-        url = URL.createObjectURL(model.blob);
-        setLibraryUrl(url);
-      }
-      setResolving(false);
+      if (model) url = URL.createObjectURL(model.blob);
+      setLoaded({ id: libraryId, url });
     });
     return () => {
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
-      setLibraryUrl(undefined);
+      setLoaded(undefined);
     };
   }, [libraryId]);
 
-  return { url: libraryId ? libraryUrl : worldUrl, resolving: resolving || source?.kind === 'pending' };
+  const settled = !!libraryId && loaded?.id === libraryId;
+  const libraryUrl = settled ? loaded.url : undefined;
+  return { url: libraryId ? libraryUrl : worldUrl, resolving: (!!libraryId && !settled) || source?.kind === 'pending' };
 }

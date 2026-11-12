@@ -8,6 +8,9 @@ import type { ColorChannel } from "@/types";
 /** The Appearance tab's hint when a row has no model to play on. */
 export const NO_MODEL_HINT = "Set an Avatar or 3D model on the Profile tab to bind sliders";
 
+/** The hint on a world row, which has no Profile tab: no playable persona resolves to an Avatar. */
+export const WORLD_NO_MODEL_HINT = "Give a playable persona an Avatar, or add one to your library, to bind sliders";
+
 /** The picker's empty text when the row's models offer nothing to bind; undefined otherwise. */
 const ownerEmptyText = (rows: RowModels | undefined, sources: readonly MorphSource[]): string | undefined => {
   if (!rows || sources.length) return undefined;
@@ -43,6 +46,6 @@ export function useSliderPicker(owner: MorphOwner | undefined, active: boolean) 
   );
   const lacksChannel = (channel: ColorChannel) => !!known && !known.channels.has(channel);
   const seedColor = (channel: ColorChannel) => known?.colors[channel] ?? FALLBACK_COLOR;
-  const noModelHint = rows && !rows.resolving && !rows.models.length ? NO_MODEL_HINT : undefined;
+  const noModelHint = rows && !rows.resolving && !rows.models.length ? (rows.world ? WORLD_NO_MODEL_HINT : NO_MODEL_HINT) : undefined;
   return { groups, loading, load, emptyText: ownerEmptyText(rows, sources), keyOf, lacksChannel, seedColor, noModelHint };
 }

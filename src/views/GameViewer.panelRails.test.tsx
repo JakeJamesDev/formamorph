@@ -375,8 +375,9 @@ describe('the Entity View model', () => {
     const readme = await screen.findByRole('dialog', { name: 'Readme' });
     fireEvent.click(within(readme).getByRole('button', { name: 'Close' }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Readme' })).toBeNull());
-    // The viewer is keyed on its file, so it mounts again once the Avatar resolves; count from there.
+    // A loader holds until the Avatar resolves, so the viewer mounts once, on its file.
     await waitFor(() => expect(lastVrmViewerProps()?.modelUrl).toBe('blob:mine'));
+    await waitFor(() => expect(vrmViewerMounts.count).toBe(1));
     const loaded = vrmViewerMounts.count;
 
     await user.click(await strip('left', 'Collapse Panel')); await settleSides();
