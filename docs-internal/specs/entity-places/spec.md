@@ -128,6 +128,10 @@ Rulings from the grill of 2026-11-11.
 
   Q34 to Q39 are spec-session rulings of 2026-11-11, on intent questions of ticket 12.
 - **Q40.** Q37 applies only when no library Start carried at all. When one or more library Starts carried, the carry made no fallback, so a plain Start the author added goes back. Spec-session ruling of 2026-11-11, on the close review; ticket 13 builds it.
+- **Q41.** A runtime character's place is Position: the book's position, else its saved anchor. It stores no membership. The save shape does not change.
+- **Q42.** Morphie's in-game code test reads Position from live places cut to met entities and met places. The player-view copy of an entity holds no places. An entity with no place in those live places stands nowhere; the Sample Placement is never the fallback there (ADR-0014).
+
+  Q41 and Q42 are spec-session rulings of 2026-11-11, on intent questions of ticket 13.
 
 Other decisions:
 
