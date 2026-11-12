@@ -85,6 +85,18 @@ describe('the world history', () => {
     expect(statIds(ctx())).toEqual(['hunger', 'warmth']);
   });
 
+  it("undoes a Preview's Save, its slider and color rows together, in one step", async () => {
+    const elf: Trait = { id: 'elf', name: 'Elf', statChanges: [], morphPins: [{ name: 'Ear Shape', value: 0.6 }] };
+    const { ctx, history } = await open(world('w-preview', { traits: [elf] }));
+    await act1(() => ctx().updateTrait({
+      ...elf, morphPins: [{ name: 'Ear Shape', value: 1 }, { name: 'Fat', value: 0.4 }], colorPins: [{ channel: 'hair', color: '#ffffff' }],
+    }));
+
+    await act1(() => history().undo());
+    expect(ctx().traits.find((t) => t.id === 'elf')).toEqual(elf);
+    expect(history().canUndo).toBe(false);
+  });
+
   it('undoes an added and an edited location, newest first', async () => {
     const { ctx, history } = await open();
     await act1(() => ctx().addLocation(location('docks', 'Docks')));

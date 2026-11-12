@@ -35,7 +35,7 @@ const UndoButton = ({ label, onUndo, disabled }: { label: string; onUndo: () => 
 const sameHex = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
 // One consistent color control: swatch picker + an undo button that returns the color to its base.
-const ColorRow = ({ label, value, base, onChange, onUndo, onPickStart, onPickEnd, heldBy }: {
+export const ColorRow = ({ label, value, base, onChange, onUndo, onPickStart, onPickEnd, heldBy }: {
   label: string;
   value: string;
   /** The color undo returns to. */
@@ -65,7 +65,7 @@ const ColorRow = ({ label, value, base, onChange, onUndo, onPickStart, onPickEnd
 );
 
 // One slider with its undo button in the label row.
-const SliderRow = ({ id, label, value, base, min, max, step, format, onChange, heldBy }: {
+export const SliderRow = ({ id, label, value, base, min, max, step, format, onChange, heldBy }: {
   id: string;
   label: string;
   value: number;
@@ -96,12 +96,12 @@ const HAIR_TYPES: Record<string, HairTypeDef> = {
 
 // Body-morph slider bounds. The stored value is the absolute morph influence (0 = off, 1 = the model's
 // authored full shape); this range only clamps the UI, so widening it later needs no save migration.
-const BODY_MORPH_MIN = -0.25;
-const BODY_MORPH_MAX = 1.25;
-const BODY_MORPH_STEP = 0.05;
+export const BODY_MORPH_MIN = -0.25;
+export const BODY_MORPH_MAX = 1.25;
+export const BODY_MORPH_STEP = 0.05;
 // Head keys run between their two modeled shapes; past either end the mesh distorts.
-const HEAD_MORPH_MIN = 0;
-const HEAD_MORPH_MAX = 1;
+export const HEAD_MORPH_MIN = 0;
+export const HEAD_MORPH_MAX = 1;
 // The model's own value for every slider, and what undo returns to.
 const SLIDER_BASE = 0;
 // Picker colors for a model that reports none; also what undo returns to then.

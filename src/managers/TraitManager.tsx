@@ -39,6 +39,7 @@ import { MultiSelect } from '@/components/ui/multi-select';
 import { useSliderPicker } from '@/lib/useSliderPicker';
 import { linkedTraits } from '@/lib/traitLinks';
 import { fieldFrame } from '@/lib/historyField';
+import { AppearancePreviewDialog } from '@/components/editor/AppearancePreviewDialog';
 
 /** A link's edit of one trait it brings: which fields it overrides, which of those the blueprint changed
  *  since, and where a whole-trait write and a field reset go. */
@@ -284,6 +285,10 @@ const TraitManager = ({
   const [colorsOpened, setColorsOpened] = useState(false);
   useEffect(() => { setColorsOpened(false); }, [trait.id]);
   const sliders = useSliderPicker(morphOwner, morphPins.length > 0 || colorPins.length > 0 || colorsOpened);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  useEffect(() => { setPreviewOpen(false); }, [trait.id]);
+  // The Preview opens the first Avatar the row plays on.
+  const previewAvatar = sliders.avatars[0];
   // A world trait rivals the world's traits; an owner's trait rivals the owner's own and linked ones.
   const pinRivals = useMemo(() => {
     if (!traitOwner) return { traits, groups: traitGroups };
@@ -528,7 +533,21 @@ const TraitManager = ({
 
   const appearancePanel = (
     <>
-      {!readOnly && sliders.noModelHint && <Hint>{sliders.noModelHint}</Hint>}
+      {!readOnly && (
+        <div className="flex items-center gap-3">
+          <Button size="sm" variant="outline" disabled={!previewAvatar} onClick={() => setPreviewOpen(true)}>Preview</Button>
+          {(sliders.noModelHint ?? sliders.noAvatarHint) && <Hint>{sliders.noModelHint ?? sliders.noAvatarHint}</Hint>}
+        </div>
+      )}
+      {previewOpen && previewAvatar && (
+        <AppearancePreviewDialog
+          name={statLabel(editingTrait.name)}
+          avatar={previewAvatar}
+          rows={{ morphPins: editingTrait.morphPins, colorPins: editingTrait.colorPins }}
+          onSave={apply}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
       {showBody && (
       <div className="space-y-2">
         <div className="flex items-center gap-2">

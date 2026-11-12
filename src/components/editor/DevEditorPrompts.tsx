@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CodeRenameDialog } from '@/components/editor/CodeRenameOffer';
 import { ReplaceAllConfirm } from '@/components/editor/EditorFindBar';
 import { ChangedElsewhereDialog } from '@/components/editor/ChangedElsewhereDialog';
 import { ReplaceImageDialog } from '@/managers/ImageTagsField';
 import { DeleteVrmConfirm } from '@/managers/AvatarStore';
+import { AppearancePreviewDialog } from '@/components/editor/AppearancePreviewDialog';
+import type { RowAvatar } from '@/lib/useSliderPicker';
+import ModelStorageService from '@/services/ModelStorageService';
+import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
 import type { CodeRenamePlan } from '@/lib/statCodeRename';
+import type { TraitLookRows } from '@/lib/appearancePreview';
 import type { Entity } from '@/types';
 
 const swatch = (color: string) =>
@@ -24,6 +29,26 @@ const PLAN: CodeRenamePlan = {
   references: 3,
 };
 
+// An Elf-style trait: pointed ears where the Avatar has them, and silver hair.
+const PREVIEW_ROWS: TraitLookRows = { morphPins: [{ name: 'Ear Shape', value: 1 }], colorPins: [{ channel: 'hair', color: '#c8ccd8' }] };
+
+/** The library's first Avatar, or the bundled one on an empty library. */
+function DevAppearancePreview({ onClose }: { onClose: () => void }) {
+  const [avatar, setAvatar] = useState<RowAvatar>();
+  useEffect(() => {
+    let live = true;
+    void ModelStorageService.getModelMetadata()
+      .catch(() => [])
+      .then((models) => {
+        if (!live) return;
+        const first = models[0];
+        setAvatar(first ? { kind: 'library', id: first.id, name: first.name } : { kind: 'world', name: 'Default Avatar', data: DEFAULT_AVATAR_URL });
+      });
+    return () => { live = false; };
+  }, []);
+  return avatar ? <AppearancePreviewDialog name="Elf" avatar={avatar} rows={PREVIEW_ROWS} onSave={() => {}} onClose={onClose} /> : null;
+}
+
 /** DEV: the questions an edit asks partway through, raised on canned text. Every answer closes it and writes nothing. */
 export function DevEditorPrompts({ modal }: { modal: string | undefined }) {
   const [done, setDone] = useState(false);
@@ -33,6 +58,7 @@ export function DevEditorPrompts({ modal }: { modal: string | undefined }) {
   if (modal === 'imageReplace') {
     return <ReplaceImageDialog open images={IMAGES} slot={slot} onSlotChange={setSlot} idPrefix="dev-image" onClose={close} />;
   }
+  if (modal === 'appearancePreview') return <DevAppearancePreview onClose={close} />;
   if (modal === 'codeRename') return <CodeRenameDialog open plan={PLAN} onApply={close} onSettle={close} />;
   if (modal === 'savedElsewhere' || modal === 'deletedElsewhere') {
     return <ChangedElsewhereDialog change={modal === 'savedElsewhere' ? 'saved' : 'deleted'} onLeave={close} onKeepMine={close} />;

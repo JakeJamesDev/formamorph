@@ -189,6 +189,20 @@ When two active traits set the same slider, the one switched on last wins. A row
 
 When two active traits set the same color, the one switched on last wins. The row says **Also set by**, as for [Sliders](#sliders).
 
+## Preview
+<!-- keywords: preview trait look, see trait on avatar, set ears by eye, try trait sliders, avatar preview -->
+<!-- route: appearancePreview -->
+
+**Preview** shows the trait's look on its Avatar, so you can set sliders and colors by eye.
+
+- Select **Preview** at the top of the **Appearance** tab. The dialog opens the Avatar the trait plays on. With several, it opens the first.
+- Each slider shows its **Set To** value, or the Avatar's own value where the trait has no row. Colors work the same way. Only this trait's rows apply.
+- The dialog has the Avatar's **Head Features**, **Body Sliders**, and its hair, eye and skin colors.
+- Each control's **Undo** button returns it to the value it had when the dialog opened.
+- **Save** writes your changes to the trait. A changed row keeps its place. A slider or color you changed that has no row gets a new one. Save never removes a row. One **Undo** in the editor takes the whole change back.
+- Closing with unsaved changes asks before it discards them.
+- With no Avatar, **Preview** is disabled. An entity's 3D model has no Preview, so set an Avatar on its **Profile** tab first.
+
 ## Placeholder Pins
 <!-- keywords: appearance from choice, force a word, lock random text, returns when off, type custom text, hair by perk -->
 <!-- route: worldEditorTrait.pins -->
