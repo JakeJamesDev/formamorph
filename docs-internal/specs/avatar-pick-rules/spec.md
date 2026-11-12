@@ -70,7 +70,7 @@ One resolver turns a pick into an Avatar source or none. Play already has it; th
 - "First available" keeps the order Avatar Customization preselects in today: the seeded bundled copy when the library holds it, then the newest library Avatar that is not Praline, then Praline. The bundled copy here is a library record, never the bundled file.
 - While play reads the library, a User's Default or library pick counts as showing and the view holds its loader. After the read the real answer applies. A library with Avatars must not get a late Avatar tab; a loader that ends in no Avatar on an empty library is accepted.
 - A User's Default pick that resolves to none stops the played side's chain: the player shows no Avatar. It does not fall through to the Custom Persona's pick or the legacy fallback. Only an absent pick and a gone world-store id fall through, as today.
-- The bundled-file source is removed. No caller loads the bundled Avatar file except seeding.
+- The bundled-file source is removed. No caller loads the bundled Avatar file to show it. Seeding reads it, and the publish check reads it for its hash.
 - The viewer shows no Avatar when its source resolves to none or fails to load. It has no bundled fallback.
 - A world pick the store lacks is unchanged by this spec.
 
@@ -82,7 +82,7 @@ One resolver turns a pick into an Avatar source or none. Play already has it; th
 - The list of every library Avatar is removed.
 - The Colors picker and the color channels follow the same resolved Avatars.
 - The "Not on this model" mark reads the same resolved Avatars. This replaces Q14 of the Avatar Look Bindings spec for User's Default: the pick is now known on the author's device. A row is marked only when none of its Avatars and models has the control.
-- When no Avatar resolves and the owner has no 3D model, the Appearance tab shows a hint to select an Avatar. The hint is in the tab, not only inside the picker. The Writing Guide governs the words.
+- When no Avatar resolves and the owner has no 3D model, the Appearance tab shows a hint to select an Avatar. The hint is in the tab, not only inside the picker. The Writing Guide governs the words. A world row has its own hint text, because it has no Profile tab.
 
 ### Play
 
@@ -97,6 +97,7 @@ One resolver turns a pick into an Avatar source or none. Play already has it; th
 - The seed-once flags stay. They are what keeps a deleted bundled Avatar from returning.
 - The first seed of the bundled default Avatar marks it as the Default Avatar when none is marked.
 - A one-time device step marks it on existing installs under Q6. It runs once, and never after the player clears or changes the Default Avatar.
+- A stored Default Avatar that the library no longer holds counts as not marked for this step.
 - A build with no bundled Avatar marks nothing.
 - The delete confirmation says what a save that uses the Avatar shows afterwards, by the resolver's order: the Default Avatar, then the first available Avatar, then none. The text is the same on every build.
 
