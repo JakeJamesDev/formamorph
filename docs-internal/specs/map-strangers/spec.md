@@ -71,6 +71,9 @@ Rulings from the grill of 2026-11-12.
 - **Q16.** Bundled-world sweep: the agent proposes an On Map value for each bundled entity that should differ from Always, one table per world. The user approves before any world changes.
 - **Q17.** Duplicate named entries at one place are numbered the way the scene roster numbers them ("a gate guard", "a gate guard (2)"). Each still counts once in the named part. Spec-session ruling of 2026-11-12, on an intent question of ticket 01.
 - **Q18.** With no current place, the reach is empty: every unmet entity is an unknown, and met entities show their true names. Spec-session ruling of 2026-11-12, on an intent question of ticket 01.
+- **Q19.** No entity-field validator exists. One pure On Map reader returns the four known values and Always for anything else. Import and the roster both read through it, so an unknown value never hides an entity. Spec-session ruling of 2026-11-12, on an intent question of ticket 02.
+- **Q20.** The entity card carries On Map alone, written only when it is not Always and read through the same reader. The card's other fields do not change, so Once Met on a received card acts as Always. Spec-session ruling of 2026-11-12, on an intent question of ticket 02.
+- **Q21.** "Below Placement in Routines" means directly under the Placement control inside the Routines tab body, hidden for a custom persona. Spec-session ruling of 2026-11-12, on an intent question of ticket 02.
 
 Module decisions:
 
@@ -84,7 +87,7 @@ Module decisions:
 - **Presence.** The roster needs every cast entity, not only the known set, so it reads the full presence record. Presence itself does not change.
 - **Map badge.** The location map renders the split badge from the roster output. The tooltip copy for the unknown line comes from the Writing Guide.
 - **Entity editor.** A four-value control for On Map, below Placement in Routines. Copy follows the Writing Guide.
-- **World and card import.** The field passes through import, export, the library carry and the entity card unchanged. The world validator accepts the four values.
+- **World and card import.** The field passes through import, export, the library carry and the entity card unchanged. An unknown value reads as Always (Q19).
 
 ## Testing Decisions
 
