@@ -1,5 +1,5 @@
 import { randomUUID } from '@/lib/uuid';
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { getDevRoute } from '@/lib/devRouter';
@@ -312,21 +312,20 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     [additionEntities],
   );
   /** The world's entities the author marked as playable. */
+  /** A persona card with the name of the location it starts at. */
+  const startingOption = useCallback((entity: Entity): PersonaOption => {
+    const start = personaStartLocation(entity, locations);
+    return { ...personaOption(resolveEntityText)(entity), startsAt: locations.find((l) => l.id === start)?.name };
+  }, [resolveEntityText, locations]);
   const worldPersonaOptions = useMemo<PersonaOption[]>(
-    () => resolvedWorldEntities.filter((entity) => entity.persona === true)
-      .map((entity) => {
-        const start = personaStartLocation(entity, locations);
-        return { ...personaOption(resolveEntityText)(entity), startsAt: locations.find((l) => l.id === start)?.name };
-      }),
-    [resolvedWorldEntities, resolveEntityText, locations],
+    () => resolvedWorldEntities.filter((entity) => entity.persona === true).map(startingOption),
+    [resolvedWorldEntities, startingOption],
   );
   /** The Custom Persona entity, which replaces None. */
   const customPersonaOption = useMemo<PersonaOption | undefined>(() => {
     const marked = customPersonaEntity(resolvedWorldEntities);
-    if (!marked) return undefined;
-    const start = personaStartLocation(marked, locations);
-    return { ...personaOption(resolveEntityText)(marked), startsAt: locations.find((l) => l.id === start)?.name };
-  }, [resolvedWorldEntities, resolveEntityText, locations]);
+    return marked && startingOption(marked);
+  }, [resolvedWorldEntities, startingOption]);
   /** The entities the trait tree pages, the marked one carrying the player's entry or library persona. */
   const entryPersona = entryDraft.persona;
   const entryLibraryName = entryPersona?.source === 'library'

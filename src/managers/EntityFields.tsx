@@ -194,6 +194,7 @@ export const EntityPersonaField = ({ value, onChange, placeholders = [], home, c
   const role = personaRole(value);
   // One History Step: the marks, the converted start places and the dropped routine fields land together.
   const apply = (next: PersonaRole) => spendFallback('Set Persona', next === 'custom' && !!value.vrmPick, () => {
+    // Indexed by field name so every changed or dropped field is written through `onChange`.
     const converted = withPersonaRole(value, next, randomUUID) as unknown as Record<string, unknown>;
     const before = value as unknown as Record<string, unknown>;
     const marks = Object.keys(personaRolePatch(next));
