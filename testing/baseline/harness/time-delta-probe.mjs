@@ -175,12 +175,19 @@ Answer with three fields:
 - A conversation, a walk across town, a meal, a night's sleep, a task seen through: some number of hours.
 - An overland journey, a long convalescence, a season of training: some number of days or weeks.`;
 
-const SYSTEMS = { anchor: ANCHOR_SYS, schema: SCHEMA_SYS, schema2: SCHEMA2_SYS, schema3: SCHEMA3_SYS };
-const FORMATS = { schema: SCHEMA_FORMAT, schema2: SCHEMA2_FORMAT, schema3: SCHEMA3_FORMAT };
+// Schema v4: v2 with an anchor line that excludes a time of day someone only speaks of.
+const SCHEMA4_SYS = SCHEMA2_SYS.replace(
+  /- lasts_until: .*\n/,
+  "- lasts_until: when the scene itself carries on until a time of day arrives - the character waits, works, travels or sleeps until it - that time of day. Otherwise none. A time of day someone only speaks of is not one, and neither is the time the scene happens at.\n",
+);
+if (SCHEMA4_SYS === SCHEMA2_SYS) throw new Error("schema4 edit did not apply");
+
+const SYSTEMS = { anchor: ANCHOR_SYS, schema: SCHEMA_SYS, schema2: SCHEMA2_SYS, schema3: SCHEMA3_SYS, schema4: SCHEMA4_SYS };
+const FORMATS = { schema: SCHEMA_FORMAT, schema2: SCHEMA2_FORMAT, schema3: SCHEMA3_FORMAT, schema4: SCHEMA2_FORMAT };
 const sysFor = (arm) => SYSTEMS[arm] ?? SYS;
 const parseFor = (arm, reply, c) =>
   arm === "anchor" ? parseAnchor(reply, c.start) : arm === "schema" ? parseSchema(reply, c.start)
-    : arm === "schema2" || arm === "schema3" ? parseSchema2(reply, c.start) : clock.parseTimeDelta(reply);
+    : arm === "schema2" || arm === "schema3" || arm === "schema4" ? parseSchema2(reply, c.start) : clock.parseTimeDelta(reply);
 const callFor = (arm) => (FORMATS[arm] ? { ...opts, temp: 0, maxTokens: 60, extra: { response_format: FORMATS[arm] } } : { ...opts, temp: 0, maxTokens: 12 });
 
 if (SHOW_PROMPT) { for (const arm of ARMS) console.log(`--- ${arm}\n${sysFor(arm)}\n\n${userFor(cases[0], arm)}\n`); process.exit(0); }
