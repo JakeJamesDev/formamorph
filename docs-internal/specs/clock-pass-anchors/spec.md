@@ -1,6 +1,7 @@
 # Spec: Clock Pass Anchors
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-12. Tickets 01–02, last landing 3ac247fd0. Review: two trivial fixes in 9c17e727d (changelog fold, a history comment). Gates green on 2026-11-12.
 Spec session: clock-pass-anchors — spec
 
 The clock pass answers through a response schema that can name a time of day the scene runs until ("until dawn"), and code turns that into the turn's hours from the story clock. Probe evidence: `testing/baseline/harness/time-delta-probe.cli.ts`.
