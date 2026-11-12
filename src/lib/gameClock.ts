@@ -83,7 +83,7 @@ function parseCount(text: string): ClockAmount | null {
  */
 export function parseClockReading(reply: string): ClockReading | null {
   const text = reply || '';
-  const until = text.match(new RegExp(`\\buntil\\s+(?:the\\s+)?(${CLOCK_ANCHORS.join('|')})\\b`, 'i'));
+  const until = text.match(new RegExp(`\\buntil\\s+(?:the\\s+)?(?:next\\s+)?(${CLOCK_ANCHORS.join('|')})\\b`, 'i'));
   const amount = parseCount(until ? text.replace(until[0], ' ') : text);
   if (!until && !amount) return null;
   return { anchor: until ? (until[1].toLowerCase() as ClockAnchor) : null, amount };

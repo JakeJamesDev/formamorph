@@ -266,6 +266,8 @@ describe('computeTurnCommit — anchored clock replies', () => {
     expect(hoursFrom('until dawn', 21)).toBe(9);
     expect(hoursFrom('until dawn', 2)).toBe(4);
     expect(hoursFrom('Until the dawn.', 21)).toBe(9);
+    expect(hoursFrom('until the next dawn', 21)).toBe(9);
+    expect(hoursFrom('until next morning', 9)).toBe(23);
   });
 
   it('runs every anchor forward to its next occurrence', () => {
@@ -463,6 +465,17 @@ describe('computeTurnCommit — the clock', () => {
     expect(commit?.isOpeningTurn).toBe(true);
     expect(commit?.openingHour).toBe(19);
     expect(commit?.clock.calendar).toEqual({ startHour: 19 });
+  });
+
+  it('keeps a custom day length in the opening turn frame', () => {
+    const { plan, result } = runOf(
+      [{ id: 'narration', raw: NARRATION }, { id: 'openingTime', raw: 'evening' }],
+      {},
+      {},
+      { isGameStarted: false },
+    );
+    const commit = computeTurnCommit({ result, plan, context: context({ gameTime: 0, calendar: { startHour: 4, hoursPerDay: 12 } }) });
+    expect(commit?.clock.calendar?.hoursPerDay).toBe(12);
   });
 
   it('keeps the world calendar when the opening pass answers with nothing readable', () => {

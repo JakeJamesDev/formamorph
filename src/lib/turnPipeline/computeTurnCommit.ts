@@ -216,7 +216,7 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
       elapsedHours: context.gameTime + turnHours,
       // The opening turn's own frame, built from the hour just measured: without it the opening turn's stat
       // code reads the default start hour and an accumulating stat banks that wrong value for good.
-      calendar: openingHour !== null ? { startHour: openingHour } : context.calendar,
+      calendar: startCalendar,
     },
     isOpeningTurn: plan.isOpeningTurn,
     openingHour,
