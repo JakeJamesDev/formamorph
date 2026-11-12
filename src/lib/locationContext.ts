@@ -190,20 +190,25 @@ export function passesOnlyWith(entityId: string, opts: Pick<RosterOpts, "onlyWit
 export function ownedStatLines(
   entity: Entity, stats: readonly PlayerStat[], format: ContextFormat, pieces: StatPieces = ALL_STAT_PIECES,
 ): string {
-  const field = (key: string, value: string) =>
-    format === "xml" ? `  <${key}>${xmlEscape(value)}</${key}>\n` : format === "markdown" ? `  - **${key}:** ${value}\n` : `  ${key}: ${value}\n`;
-  return textOf(ownedStatRuns(entity, stats, format, field, pieces));
+  return textOf(ownedStatRuns(entity, stats, format, pieces));
+}
+
+/** One indented field line of a roster entry, in `format`. */
+function rosterField(format: ContextFormat) {
+  return (key: string, value: string | number | boolean): string =>
+    format === "xml" ? `  <${key}>${xmlEscape(String(value))}</${key}>\n`
+    : format === "markdown" ? `  - **${key}:** ${value}\n`
+    : `  ${key}: ${value}\n`;
 }
 
 /** {@link ownedStatLines} as runs marked as stats lines. With every piece off the stat names read inline on
  *  one `stats` line, as owned trait names do. */
 function ownedStatRuns(
-  entity: Entity, stats: readonly PlayerStat[], format: ContextFormat, field: (key: string, value: string) => string,
-  pieces: StatPieces = ALL_STAT_PIECES,
+  entity: Entity, stats: readonly PlayerStat[], format: ContextFormat, pieces: StatPieces = ALL_STAT_PIECES,
 ): MarkedRun[] {
   if (!stats.length) return [];
   if (!pieces.values && !pieces.status && !pieces.meaning) {
-    return mark(["stats"], field("stats", stats.map((s) => s.name).join(", ")));
+    return mark(["stats"], rosterField(format)("stats", stats.map((s) => s.name).join(", ")));
   }
   const block = indentRuns(statContextRuns([...stats], pieces, format, statPlacementOf(entity)), "    ");
   if (format === "xml") return mark(["stats"], "  <stats>\n", block, "\n  </stats>\n");
@@ -216,8 +221,8 @@ function ownedTraitRuns(
   ids: readonly string[],
   preferSummary: boolean,
   format: ContextFormat,
-  field: (key: string, value: string) => string,
 ): MarkedRun[] {
+  const field = rosterField(format);
   const traits = entity.traits ?? [];
   const groups = entity.traitGroups ?? [];
   const inForce = traitsInContextOrder(ids, traits, groups);
@@ -290,10 +295,7 @@ export function entityRosterRuns(
   const md = format === "markdown";
   const xml = format === "xml";
   const head = (name: string) => (md ? `- **${name}**\n` : `${name}\n`);
-  const field = (key: string, value: string | number | boolean) =>
-    xml ? `  <${key}>${xmlEscape(String(value))}</${key}>\n`
-    : md ? `  - **${key}:** ${value}\n`
-    : `  ${key}: ${value}\n`;
+  const field = rosterField(format);
   if (entityIds.length === 0) return emptyRosterRuns(opts);
 
   const output: MarkedRun[] = [];
@@ -315,8 +317,8 @@ export function entityRosterRuns(
     const pronounLine = pronouns ? field("pronouns", pronouns) : "";
     const movement = movementOf(entityItem.id);
     const ownedLines = runs(
-      noTraits ? "" : ownedTraitRuns(entityItem, ownedTraits?.[entityItem.id] ?? [], preferSummary, format, field),
-      noStats ? "" : ownedStatRuns(entityItem, ownedStats?.[entityItem.id] ?? [], format, field, statPieces),
+      noTraits ? "" : ownedTraitRuns(entityItem, ownedTraits?.[entityItem.id] ?? [], preferSummary, format),
+      noStats ? "" : ownedStatRuns(entityItem, ownedStats?.[entityItem.id] ?? [], format, statPieces),
     );
     const fields = runs(
       strangerLine,

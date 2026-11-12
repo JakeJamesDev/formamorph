@@ -79,7 +79,7 @@ const scene = authoredChipScene({ ...base, entities: [...cast, you] }, {
 if (!scene.playedStats?.some((part) => part.stats.length)) throw new Error('The scene holds no persona stats.');
 const ctx = chipValues(scene);
 
-const STAT_LABELS = ['Vigor', 'Resolve', 'Calm', 'Trust', 'Stock'];
+const STAT_LABELS = [...new Set([...fixture.personaStats, ...Object.values(entityFixture.entityStats).flat()].map((s) => s.name))];
 const NAMED_VALUE = new RegExp(`\\b(${STAT_LABELS.join('|')})\\b[^.\\n]{0,12}\\b\\d+\\b`, 'i');
 const contract = (text: string) => {
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);

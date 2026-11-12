@@ -144,8 +144,8 @@ const STAT_DESCRIPTOR_HELP = "Sends the word for the stat's current level, like 
 const STAT_DESCRIPTION_HELP = 'Sends what the stat measures';
 
 // Stats content is three independent pieces (each a checkbox), plus the shared format axis. The stat's Name
-// is always present; with every piece off a stat sends its name only. The old single-select ids
-// `numbers` (Range) and `descriptions` (Descriptor) are kept, so existing tokens still render; `meaning` is new.
+// is always present; with every piece off a stat sends its name only. The ids are `numbers` (Range),
+// `descriptions` (Descriptor) and `meaning` (Description).
 const STAT_VALUES_AXIS: PromptVariantAxis = {
   id: 'numbers', label: 'Range', toggle: true, lights: 'range', row: 'Stat Detail', rowHelp: STAT_DETAIL_ROW_HELP, help: STAT_RANGE_HELP,
   options: [{ id: null, label: 'Range' }, { id: 'numbers', label: 'Range' }],
