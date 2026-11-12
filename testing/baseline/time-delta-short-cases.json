@@ -1,0 +1,92 @@
+[
+  {
+    "id": "greeting",
+    "why": "two lines of greeting at a door",
+    "start": 9,
+    "action": "\"Morning. Is your father in?\"",
+    "narration": "The boy squints up at you and wipes his nose on his sleeve. \"Out back with the goats,\" he says. \"You want me to fetch him?\" He is already half turned toward the yard, waiting to see which way you will answer.",
+    "min": 0,
+    "max": 0.1
+  },
+  {
+    "id": "haggle",
+    "why": "a quick back-and-forth over a price",
+    "start": 11,
+    "action": "\"Three coppers for the knife. Not a coin more.\"",
+    "narration": "The trader laughs and turns the blade so it catches the light. \"Three? For Ferran steel?\" He sets it down between you. \"Five, and I'm robbing my own children.\" You shake your head. He sighs, looks at the sky as though it has wronged him, and says, \"Four. Four and you never tell anyone.\" He holds out his palm.",
+    "min": 0,
+    "max": 0.15
+  },
+  {
+    "id": "question-answer",
+    "why": "one question, a short answer and a follow-up",
+    "start": 15,
+    "action": "\"Did anyone come through here with a gray mare?\"",
+    "narration": "The ferryman keeps coiling his rope while he thinks. \"A woman, yes. Gray mare with a white sock.\" He spits over the side. \"Paid in silver and didn't wait for change. Asked about the north road.\" He looks at you properly for the first time. \"Friend of yours?\"",
+    "min": 0,
+    "max": 0.15
+  },
+  {
+    "id": "argument",
+    "why": "a heated exchange of several lines",
+    "start": 19,
+    "action": "\"You told them where we were hiding. Admit it.\"",
+    "narration": "Dace goes pale, then red. \"I told them nothing. Nothing!\" He slams his cup on the table and half the room turns to look. \"If I wanted you caught you'd be in irons already.\" You hold his stare. He is the first to look away, jaw working. \"Ask Mira who she was talking to at the well,\" he mutters. \"Ask her, not me.\"",
+    "min": 0,
+    "max": 0.2
+  },
+  {
+    "id": "comfort",
+    "why": "a quiet moment of comfort, a few lines",
+    "start": 21,
+    "action": "I sit beside her and ask what's wrong.",
+    "narration": "She doesn't answer at first. The fire pops and settles. Then she says, very quietly, \"He promised he'd come back before the snow.\" You don't say anything. She leans her shoulder against yours and lets out a long breath. \"Stupid,\" she says. \"I know it's stupid.\" You stay like that, the two of you, watching the embers.",
+    "min": 0,
+    "max": 0.25
+  },
+  {
+    "id": "walk-talk-street",
+    "why": "talking while walking down one street",
+    "start": 13,
+    "action": "I walk with him toward the guildhall and ask about the vote.",
+    "narration": "He falls into step beside you, hands clasped behind his back. \"Close,\" he says. \"Closer than they'll admit.\" A cart rattles past and you both step aside for it. \"The weavers will side with us if the dyers do. The dyers want the canal toll lifted.\" You pass the fountain, then the bakery with its door propped open. \"Which is why,\" he says, slowing as the guildhall steps come into view, \"I need you to talk to Orrin tonight.\"",
+    "min": 0.03,
+    "max": 0.35
+  },
+  {
+    "id": "walk-talk-camp",
+    "why": "a short walk across a camp while talking",
+    "start": 22,
+    "action": "\"Walk with me. Tell me what the scouts saw.\"",
+    "narration": "Teller hurries to keep up as you cross between the tents. \"Riders, maybe twenty. Two miles east, by the burned mill.\" A sentry straightens as you pass. \"They had no banners, but their horses were good. Too good for bandits.\" You reach the edge of the picket line, where the horses shift and blow in the dark. Teller stops beside you. \"What do you want us to do?\"",
+    "min": 0.03,
+    "max": 0.35
+  },
+  {
+    "id": "walk-talk-trail",
+    "why": "conversation on a short stretch of trail",
+    "start": 16,
+    "action": "I ask Wren how she learned to track.",
+    "narration": "She keeps her eyes on the ground as she answers. \"My uncle. He used to hide a bone in the woods and make me find it before supper.\" She steps over a root without looking. \"I hated it. Cried every time.\" The trail bends around a mossy boulder and she crouches, fingers brushing a scuffed patch of earth. \"There,\" she says. \"Deer. This morning, not long after first light.\"",
+    "min": 0.02,
+    "max": 0.3
+  },
+  {
+    "id": "tavern-chat",
+    "why": "small talk across a bar, a handful of lines",
+    "start": 20,
+    "action": "\"Quiet tonight. Where is everyone?\"",
+    "narration": "The barkeep shrugs and keeps polishing the same mug. \"Harvest. Half the valley's still out in the fields.\" He sets the mug down and pours you a measure without asking. \"Other half's at the Hendry wedding.\" He nods at your cup. \"First one's on the house. Second one isn't.\"",
+    "min": 0,
+    "max": 0.15
+  },
+  {
+    "id": "introduction",
+    "why": "meeting someone, names traded",
+    "start": 10,
+    "action": "I offer my hand and give my name.",
+    "narration": "The woman looks at your hand a moment before she takes it. Her grip is firm and dry. \"Isolde Varn,\" she says. \"I run the archive on the hill. You'll be the one the abbot wrote to me about.\" She lets go and studies you, head tilted. \"You're younger than I expected.\"",
+    "min": 0,
+    "max": 0.1
+  }
+]

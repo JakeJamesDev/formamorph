@@ -43,7 +43,8 @@ const clock = await import(`data:text/javascript;base64,${Buffer.from(code).toSt
 
 const SYS = grab("defaultTimePassedPrompt");
 const USER = grab("defaultTimePassedUserPrompt").replaceAll("\\\n", ""); // a template-literal line continuation evaluates to nothing
-const cases = JSON.parse(await readFile(path.join(HARNESS_DIR, "../time-delta-cases.json"), "utf8"))
+const CASES_FILE = argVal("--cases", "time-delta-cases.json"); // e.g. time-delta-short-cases.json
+const cases = JSON.parse(await readFile(path.join(HARNESS_DIR, "..", CASES_FILE), "utf8"))
   .filter((c) => !ONLY || c.id === ONLY);
 
 const fmt = (h) => (h >= 24 ? `${(h / 24).toFixed(1)}d` : h >= 1 ? `${h.toFixed(1)}h` : `${Math.round(h * 60)}m`);
