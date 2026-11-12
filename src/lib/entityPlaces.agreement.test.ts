@@ -33,6 +33,7 @@ import { newGamePool } from '@/lib/newGameOpening';
 import { selectVisitorAdditions } from '@/lib/turnPipeline/narrationReading';
 import { openingPlacesOf, placementOf } from '@/lib/openingPlacement';
 
+import { runRules, type RuleWorld } from '@/lib/testBench/rules';
 const CARD_SELF: Stat = { id: 's', name: 'S', type: 'number', description: '', min: 0, max: 10, regen: 0, descriptors: [] };
 
 /**
@@ -331,5 +332,37 @@ describe('the script snapshot agrees with Entity Places', () => {
     const result = await snapshotOf(state(book)).run({ home: { kind: 'tool' }, timing: 'after', code: PRESENT, args: {} });
     expect(result.error).toBeNull();
     expect(JSON.parse(result.reply ?? 'null')).toEqual(LOCATIONS.map((l) => idsAt(l.id, EVERYONE, positionsIn(book))));
+  });
+});
+
+describe('the Test Bench rules agree with Presence', () => {
+  const found = (ruleId: string, world: RuleWorld = { ...authoredWorld, statUpdates: [], dictionaries: [], placeholders: [] }) =>
+    runRules(world).filter((f) => f.ruleId === ruleId);
+
+  it('"location has no entities" flags the places no entity can be', () => {
+    const empty = LOCATIONS.filter((l) => !CAST.some((entity) => presenceIn(WORLD)(entity).includes(l.id))).map((l) => l.id);
+    expect(found('location-no-entities').map((f) => f.items[0].id)).toEqual(empty);
+  });
+
+  it('"placed in no location" flags the entities with an empty Presence', () => {
+    const stranded: Entity = { id: 'ghost', name: 'Ghost', kind: 'unique', traversable: [], starts: [] };
+    const world = { ...authoredWorld, entities: [...CAST, stranded], statUpdates: [], dictionaries: [], placeholders: [] };
+    expect(found('entity-nowhere', world).map((f) => f.items[0].id)).toEqual(['ghost']);
+  });
+
+  it('"entity-row-unreachable" flags the row place Presence leaves out', () => {
+    const [flag] = found('entity-row-unreachable');
+    expect(flag.items[0].id).toBe('baker');
+    expect(flag.message).toContain('lighthouse');
+    expect(presenceIn(WORLD)(CAST.find((e) => e.id === 'baker')!)).not.toContain('lighthouse');
+    expect(found('entity-row-unreachable')).toHaveLength(1);
+  });
+
+  it('"entity-location-orphan" flags a named place the world lacks, which Presence leaves out', () => {
+    const lost: Entity = { id: 'lost', name: 'Lost', kind: 'unique', traversable: [], starts: [{ id: 'l1', place: 'gone', weight: 1, schedule: [] }] };
+    const world = { ...authoredWorld, entities: [...CAST, lost], statUpdates: [], dictionaries: [], placeholders: [] };
+    expect(found('entity-location-orphan', world).map((f) => f.items[0].id)).toEqual(['lost']);
+    expect(presenceIn(WORLD)(lost)).toEqual([]);
+    expect(found('entity-nowhere', world)).toEqual([]);
   });
 });

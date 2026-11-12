@@ -2301,13 +2301,19 @@ describe('rules that read an entity routine', () => {
       const fixed = applyRuleFix(w, 'entity-location-orphan');
       expect(only(fixed, 'entity-location-orphan')).toEqual([]);
       const after = fixed.entities.find((e) => e.id === 'k1')!;
-      expect(after.locations).toEqual(routinePlaces(after.starts ?? []));
-      expect(after.locations).not.toContain('gone');
-      expect(JSON.stringify(after)).not.toContain('gone');
+      expect(after.locations).toBe(entity.locations);
+      expect(JSON.stringify({ starts: after.starts, traversable: after.traversable })).not.toContain('gone');
     });
 
     it('does not report a Start at Player’s Starting Location', () => {
       expect(only(base({ entities: [resident, companion] }), 'entity-location-orphan')).toEqual([]);
+    });
+
+    it('writes no list for an entity with a kind', () => {
+      const entity: Entity = { ...kinded([start('s1', 'harbor'), start('s2', 'gone')]) };
+      delete entity.locations;
+      const fixed = applyRuleFix(base({ entities: [resident, entity] }), 'entity-location-orphan');
+      expect(fixed.entities.find((e) => e.id === 'k1')).not.toHaveProperty('locations');
     });
 
     it('keeps the old check and fix for an entity with no kind', () => {
@@ -2317,7 +2323,40 @@ describe('rules that read an entity routine', () => {
     });
   });
 
+  describe('entity-row-unreachable', () => {
+    const world = (entity: Entity) => base({
+      locations: [
+        { id: 'harbor', name: 'Harbor Steps', isStarting: true },
+        { id: 'market', name: 'The Long Market' },
+        { id: 'island', name: 'Lone Island' },
+      ],
+      connections: [{ id: 'c1', a: 'harbor', b: 'market', aToB: {}, bToA: {} }],
+      entities: [resident, entity],
+    });
+
+    it('flags a row place the Start has no path to, naming it', () => {
+      const found = only(world(kinded([start('s1', 'harbor', [stayRow('island')])])), 'entity-row-unreachable');
+      expect(found).toHaveLength(1);
+      expect(found[0].items[0].id).toBe('k1');
+      expect(found[0].message).toContain('Lone Island');
+    });
+
+    it('leaves a connected row place, a Start at Player’s Starting Location and a missing place alone', () => {
+      expect(only(world(kinded([start('s1', 'harbor', [stayRow('market')])])), 'entity-row-unreachable')).toEqual([]);
+      expect(only(world(kinded([start('s1', PLAYER_START, [stayRow('island')])])), 'entity-row-unreachable')).toEqual([]);
+      expect(only(world(kinded([start('s1', 'harbor', [stayRow('gone')])])), 'entity-row-unreachable')).toEqual([]);
+    });
+  });
+
   describe('location-no-entities', () => {
+    it('counts only the flagged location as occupied by an entity that begins at Player’s Starting Location', () => {
+      const w = base({
+        locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }, { id: 'market', name: 'The Long Market' }],
+        entities: [companion],
+      });
+      expect(only(w, 'location-no-entities').map((f) => f.items[0].id)).toEqual(['market']);
+    });
+
     const withMarket = (entities: Entity[]) => base({
       locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }, { id: 'market', name: 'The Long Market' }],
       entities,
@@ -5419,6 +5458,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'entity-missing-both-descriptions': 'simple',
   'entity-missing-player-description': 'simple',
   'entity-nowhere': 'simple',
+  'entity-row-unreachable': 'simple',
   'image-mislabeled': 'simple',
   'image-not-webp': 'simple',
   // Its field is invisible in both modes, and the repair is the row's own one-click fix.

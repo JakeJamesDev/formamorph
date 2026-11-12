@@ -15,10 +15,6 @@ export const routinePlaces = (starts: readonly EntityStart[]): string[] =>
     ...(start.place === PLAYER_START ? [] : [start.place]), ...start.schedule.flatMap((row) => placesOf(row.action)),
   ]))];
 
-/** Whether `entity` has a kind and a Start at Player's Starting Location, which places it though `locations` omits it. */
-export const beginsWithPlayer = (entity: Pick<Entity, "kind" | "starts">): boolean =>
-  !!entity.kind && (entity.starts ?? []).some((start) => start.place === PLAYER_START);
-
 /** `start` with Begins Following set or cleared. */
 export function withBeginsFollowing(start: EntityStart, on: boolean): EntityStart {
   const { beginsFollowing: _was, ...rest } = start;
@@ -83,6 +79,12 @@ export const routineNames = (entity: Entity, placeId: string): boolean =>
 /** `entity` with `placeId` dropped from its Starts, rows and Traversable: a Start at the place goes, and so does
  *  a row left with no places. The same entity when it never named the place. */
 export function withoutRoutinePlace(entity: Entity, placeId: string): Entity {
+  const next = dropRoutinePlace(entity, placeId);
+  return next === entity ? entity : withDerivedLocations(next);
+}
+
+/** `withoutRoutinePlace` without rebuilding the stored `locations` list. */
+export function dropRoutinePlace(entity: Entity, placeId: string): Entity {
   if (!routineNames(entity, placeId)) return entity;
   const next: Entity = { ...entity };
   if (entity.starts?.some((start) => routinePlaces([start]).includes(placeId))) {
@@ -91,7 +93,7 @@ export function withoutRoutinePlace(entity: Entity, placeId: string): Entity {
       .map((start) => ({ ...start, schedule: start.schedule.flatMap((row) => rowWithout(row, placeId) ?? []) }));
   }
   if (Array.isArray(entity.traversable)) next.traversable = entity.traversable.filter((id) => id !== placeId);
-  return withDerivedLocations(next);
+  return next;
 }
 
 /** A new Start at `place` with an empty schedule. */

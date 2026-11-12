@@ -3,9 +3,7 @@ import { ancestors, parentLookup } from './ancestors';
 import { positionsIn } from './entityPlaces';
 import { findNameMatches } from './entityMatch';
 import type { StrangerLabels } from './locationContext';
-import { startPlaces } from './personaPick';
-import { beginsWithPlayer } from './entityKind';
-import { startingLocationIds } from './locationGraph';
+import { startPlacesOf } from './entityPlaces';
 
 /**
  * Scene Presence: for every entity, where it is, whether the player has met it, whether it is in scene, and
@@ -99,8 +97,7 @@ export function startsMet(
   const picks = Array.isArray(entity.knownIn) ? new Set(entity.knownIn) : null;
   if (!picks?.size) return false;
   const parentOf = parentLookup(locations, (l) => l.parentId);
-  // A Start at Player's Starting Location resolves to each location a game can start at.
-  const starts = [...startPlaces(persona), ...(beginsWithPlayer(persona) ? startingLocationIds(locations) : [])];
+  const starts = startPlacesOf(persona, { locations });
   return starts.some((at) => [at, ...ancestors(at, parentOf)].some((id) => picks.has(id)));
 }
 

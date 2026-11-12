@@ -14,7 +14,7 @@ import {
   type PlaceholderFinding, type PlaceholderPick, type PlaceholderToken,
 } from '@/lib/placeholders';
 import { labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
-import { connectionLegs, startingLocationIds, travelEnds } from '@/lib/locationGraph';
+import { connectionLegs, travelEnds } from '@/lib/locationGraph';
 import {
   allPinRows, entityPinTies, collectPins, hasDeadValueId, indexPlaceholders, isBlueprintSideSource, pinConflict, pinSourceOwnerId, pinsTargeting,
   valuePinners, type PinEditorWorld, type PinFinding, type PinRow, type PinSourceKind,
@@ -51,7 +51,10 @@ import {
 import { formatBytes, type ImageCap } from '@/lib/imageOptim';
 import { worldImageItems, type MediaItem } from '@/lib/mediaIndex';
 import { clamp } from '@/lib/utils';
-import { beginsWithPlayer, routinePlaces, withoutRoutinePlace } from '@/lib/entityKind';
+import { dropRoutinePlace } from '@/lib/entityKind';
+import { namedPlacesOf, presenceIn, withMembership, type PlacesWorld } from '@/lib/entityPlaces';
+import { placesOf, startReach } from '@/lib/positionEngine';
+import { PLAYER_START } from '@/types';
 import { entityTexts } from '@/lib/entityTexts';
 import { itemTexts } from '@/lib/itemTexts';
 import { overviewTexts } from '@/lib/overviewTexts';
@@ -446,10 +449,9 @@ const linkConnectionBroken: Rule = {
   },
 };
 
-/** The places an entity with a kind names that this world lacks: Starts, rows and Can Also Go. */
-const routineMissing = (entity: Entity, known: ReadonlySet<string>): string[] => [
-  ...new Set([...routinePlaces(entity.starts ?? []), ...(Array.isArray(entity.traversable) ? entity.traversable : [])]),
-].filter((id) => !known.has(id));
+/** The places an entity names that this world lacks: Starts, rows and Can Also Go, or its membership. */
+const routineMissing = (entity: Entity, known: ReadonlySet<string>): string[] =>
+  namedPlacesOf(entity).filter((id) => !known.has(id));
 
 const entityLocationOrphan: Rule = {
   id: 'entity-location-orphan',
@@ -459,9 +461,7 @@ const entityLocationOrphan: Rule = {
   check: (world) => {
     const known = new Set((world.locations ?? []).map((l) => l.id));
     return (world.entities ?? [])
-      .filter((entity) => (entity.kind
-        ? routineMissing(entity, known).length > 0
-        : (entity.locations ?? []).some((id) => !known.has(id))))
+      .filter((entity) => routineMissing(entity, known).length > 0)
       .map((entity) => {
         const item = asItem(entity, world);
         return finding(entityLocationOrphan, `${quote(item.name)} is placed at a location that doesn’t exist`, [item]);
@@ -470,15 +470,14 @@ const entityLocationOrphan: Rule = {
   fix: (world) => {
     const known = new Set((world.locations ?? []).map((l) => l.id));
     return withSlice(world, 'entities', mapChanged(world.entities ?? [], (entity) => {
-      // The editor's location delete runs the same operation, and the derived list follows.
-      if (entity.kind) return routineMissing(entity, known).reduce((acc, id) => withoutRoutinePlace(acc, id), entity);
-      const placements = entity.locations;
-      if (!placements?.length) return entity;
+      // The editor's location delete runs the same operation; the routine is the only source, so no list is written.
+      if (entity.kind) return routineMissing(entity, known).reduce((acc, id) => dropRoutinePlace(acc, id), entity);
+      const placements = namedPlacesOf(entity);
       const live = placements.filter((id) => known.has(id));
       // Dropping the last placement would leave the entity nowhere, and where it belongs instead is the
       // author's call — so an entity with nothing live left keeps its reference, and its finding.
       if (live.length === placements.length || live.length === 0) return entity;
-      return { ...entity, locations: live };
+      return withMembership(entity, live);
     }));
   },
 };
@@ -1396,19 +1395,53 @@ const legacyStartLocation: Rule = {
   },
 };
 
+/** The locations and links the Entity Places module reads. */
+const placesWorld = (world: RuleWorld): PlacesWorld => ({ locations: world.locations ?? [], connections: world.connections ?? [] });
+
 const entityNowhere: Rule = {
   id: 'entity-nowhere',
   severity: 'warning',
   section: 'entities',
   summary: (count) => `${count} entities are placed in no location, so they can never appear`,
   // The Custom Persona entity is the player, never a scene's entity, so it stands nowhere.
-  // A Start at Player's Starting Location places a companion, though it adds no place to `locations`.
-  check: (world) => (world.entities ?? [])
-    .filter((entity) => (entity.locations ?? []).length === 0 && !entity.customPersona && !beginsWithPlayer(entity))
-    .map((entity) => {
+  // A place the world lacks is the orphan rule's finding, so an entity that names one is not also "nowhere".
+  check: (world) => {
+    const places = presenceIn(placesWorld(world));
+    return (world.entities ?? [])
+      .filter((entity) => !entity.customPersona && places(entity).length === 0 && namedPlacesOf(entity).length === 0)
+      .map((entity) => {
+        const item = asItem(entity, world);
+        return finding(entityNowhere, `${quote(item.name)} is placed in no location, so it can never appear`, [item]);
+      });
+  },
+};
+
+const entityRowUnreachable: Rule = {
+  id: 'entity-row-unreachable',
+  severity: 'warning',
+  section: 'entities',
+  summary: (count) => `${count} entities have Schedule rows at locations their Start can’t reach`,
+  // Presence leaves such a place out (Q8), so this finding is the author's only sign of the broken row.
+  // A Start at Player's Starting Location checks no path (Q18).
+  check: (world) => {
+    const graph = placesWorld(world);
+    const known = new Set(graph.locations.map((l) => l.id));
+    return (world.entities ?? []).flatMap((entity) => {
+      if (!entity.kind) return [];
+      const lost = new Set<string>();
+      for (const start of entity.starts ?? []) {
+        if (!known.has(start.place) && start.place !== PLAYER_START) continue;
+        const reach = startReach(start.place, graph);
+        for (const row of start.schedule) {
+          for (const place of placesOf(row.action)) if (known.has(place) && !reach.has(place)) lost.add(place);
+        }
+      }
+      if (!lost.size) return [];
       const item = asItem(entity, world);
-      return finding(entityNowhere, `${quote(item.name)} is placed in no location, so it can never appear`, [item]);
-    }),
+      const names = listNames([...lost].map((id) => quote(locationLabel(id, world))));
+      return [finding(entityRowUnreachable, `${quote(item.name)} has a Schedule row at ${names}, which its Start can’t reach`, [item])];
+    });
+  },
 };
 
 const entityNoCodeName: Rule = {
@@ -1984,11 +2017,9 @@ const locationNoEntities: Rule = {
   section: 'locations',
   summary: (count) => `${count} locations contain no entities`,
   check: (world) => {
-    const occupied = new Set((world.entities ?? []).flatMap((e) => e.locations ?? []));
-    // An entity that begins at Player's Starting Location is at each place a game can start.
-    if ((world.entities ?? []).some((e) => !e.customPersona && beginsWithPlayer(e))) {
-      for (const id of startingLocationIds(world.locations ?? [])) occupied.add(id);
-    }
+    // The Custom Persona entity is the player, so it occupies nothing.
+    const places = presenceIn(placesWorld(world));
+    const occupied = new Set((world.entities ?? []).filter((e) => !e.customPersona).flatMap(places));
     return (world.locations ?? [])
       .filter((location) => !occupied.has(location.id))
       .map((location) => {
@@ -3828,7 +3859,7 @@ export const RULES: readonly Rule[] = [
   chipUnknownPlaceholder, placeholderUnused, placeholderPinnedUnused, scriptUnknownStat, scriptUnknownBlueprintOwnerStat, scriptUnknownBody,
   scriptBeforeReadsDelta, scriptTwoWriters,
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,
-  noStartingLocation, legacyStartLocation, entityNowhere, entityNoCodeName, statDisabledForever,
+  noStartingLocation, legacyStartLocation, entityNowhere, entityRowUnreachable, entityNoCodeName, statDisabledForever,
   statStartingOutOfRange, statStartNoDescriptor, statDescriptorDuplicateThreshold, statDescriptorOutOfRange,
   statDescriptorCoverageGap, statPercentageBounds,
   statTraitDeltaClamped, scriptOverridesTrait, statAiLockFrozen,
