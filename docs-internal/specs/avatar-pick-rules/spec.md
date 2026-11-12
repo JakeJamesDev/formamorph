@@ -1,6 +1,7 @@
 # Spec: Avatar Pick Rules
 
-Status: ready-for-agent
+Status: done
+Status note: 2026-11-11. Tickets 01–06 done; last landing 8f6c88699. Review: three gaps and one failing test fixed by ticket 06; spec text corrected. Gates green on 2026-11-11.
 Spec session: avatar-pick-rules — spec
 
 First of two specs from one grill. The second, Appearance Preview, depends on the resolver this one defines.
