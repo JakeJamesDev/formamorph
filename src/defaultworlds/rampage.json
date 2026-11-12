@@ -1268,7 +1268,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "id": "b9738b28-1916-48ee-b188-09b96fed709b",
@@ -1457,7 +1458,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "images": [
@@ -1515,7 +1517,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "images": [
@@ -1719,7 +1722,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "never"
     }
   ],
   "traits": [],

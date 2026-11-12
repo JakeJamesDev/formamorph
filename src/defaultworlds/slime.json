@@ -985,7 +985,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "id": "efc08318-f07a-4459-931e-8e1e5a3abe00",
@@ -1362,7 +1363,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "never"
     },
     {
       "id": "640a4004-feed-48b7-8b58-e5e2dd700b77",
@@ -1422,7 +1424,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "never"
     },
     {
       "id": "21eab6d7-c533-4b4d-9189-671070122fc1",
@@ -1523,7 +1526,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "never"
     },
     {
       "id": "9e6c2a5c-1e53-4729-a327-bf2076ce0dcd",
@@ -1632,7 +1636,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "id": "88cf2703-ed16-4992-b8d1-219d38384e57",
@@ -1706,7 +1711,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     }
   ],
   "traits": [],

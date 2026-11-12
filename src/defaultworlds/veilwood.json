@@ -1256,7 +1256,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "id": "1725040131033",
@@ -1341,7 +1342,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "id": "ba4063b4-cf52-4e59-8417-6270488912dd",
@@ -1400,7 +1402,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "never"
     },
     {
       "id": "c4e9a1f7-5d2b-4b83-8e60-1a7f3c9d2b54",
@@ -1516,7 +1519,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "never"
     },
     {
       "sound": null,
@@ -1562,7 +1566,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "never"
     },
     {
       "sound": null,
@@ -1591,7 +1596,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "never"
     },
     {
       "sound": null,
@@ -1617,7 +1623,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "never"
     },
     {
       "sound": null,
@@ -1705,7 +1712,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "never"
     }
   ],
   "traits": [],

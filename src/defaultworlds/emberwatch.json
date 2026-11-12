@@ -1677,7 +1677,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "id": "31992da6-786c-579b-a840-99951b25aed5",
@@ -1946,7 +1947,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "never"
     },
     {
       "id": "46ff70b4-c555-59b6-80e7-c188e26736a5",
@@ -1980,7 +1982,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "id": "cf670a0a-e859-5830-a40a-28db12fddc50",
@@ -2021,7 +2024,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     }
   ],
   "traits": [

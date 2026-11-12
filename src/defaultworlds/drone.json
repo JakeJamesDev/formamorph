@@ -1187,7 +1187,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "id": "bbf54640-b13f-4feb-a361-2e0161645616",
@@ -1239,7 +1240,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "id": "45ddaece-fb0d-427f-9ca7-5bc302096908",
@@ -1293,7 +1295,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "id": "a1417021-a041-4bab-855f-bb40825915ea",
@@ -1323,7 +1326,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "id": "4ca931e6-d66d-4e3b-97d6-8cfbfff07414",
@@ -1354,7 +1358,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "id": "e0fb5b72-656b-4412-923f-3ac00ca2d902",

@@ -973,7 +973,8 @@
         "0484b1c3-c15f-4b0c-8550-4e25e90e9367",
         "8381bbd7-3818-4527-a0a7-4a86fe411057",
         "c115a222-8165-4635-b53c-ccb7fcbd38ac"
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "id": "50d3fe3f-11b1-4088-b7c4-c5b3cf05f75d",
@@ -1029,7 +1030,8 @@
           "weight": 1,
           "schedule": []
         }
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "id": "3c7e1a95-d24b-4f08-9e6a-5b2f8c1d7a40",
@@ -1317,7 +1319,8 @@
       "traversable": [
         "2e887c0c-6e74-447b-ad9d-791a63ed6db8",
         "8381bbd7-3818-4527-a0a7-4a86fe411057"
-      ]
+      ],
+      "onMap": "whenNearby"
     },
     {
       "id": "5a967743-0c9e-4ba9-90af-e17016dc92d1",
