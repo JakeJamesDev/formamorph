@@ -1,6 +1,6 @@
 # 12: Write-Back Keeps the Library Item's Places
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 11
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -27,14 +27,32 @@ Spec rulings: Q30, Q31, Q33, Q21, Q25, Q2.
 
 ## Acceptance criteria
 
-- [ ] A test reproduces problem 1: two worlds link one Unique entity, each with its own connections. World B's copy writes back. World A's copy updates and loses a place. The test fails before the fix.
-- [ ] After the fix, world A's copy keeps every place it has a connection for.
-- [ ] A row the author added in world B at a place with no connection reaches the library item as a new named place. World A's update shows it as unconnected and drops only that row.
-- [ ] Right after a write-back, world B's copy does not read as differing from the library item.
-- [ ] A write-back followed by an update in the same world gives the same routine back, Start and row ids aside.
-- [ ] Carry, update, compare, repair and write-back share one mapping and its inverse. No second mapping exists.
-- [ ] A test reproduces problem 2, or the landing says it does not reproduce and shows the test that proves it.
-- [ ] After the fix, a linked copy with no kind that equals its library item does not differ, and one with a changed description does.
-- [ ] The landing lists the fix lines for the entity kinds entry, and says whether problem 2 got a fragment.
+- [x] A test reproduces problem 1: two worlds link one Unique entity, each with its own connections. World B's copy writes back. World A's copy updates and loses a place. The test fails before the fix. (`leaves world A's copy every place it has a connection for` in `linkedContent.writeBack.test.ts`, red at Base)
+- [x] After the fix, world A's copy keeps every place it has a connection for. (same test; Q34 kept entries in `keeps the Cellar Start, the Cellar row in its old place, and the Cellar in Can Also Go`)
+- [x] A row the author added in world B at a place with no connection reaches the library item as a new named place. World A's update shows it as unconnected and drops only that row. (`names a place added in world B as a new library place…`, read through `unresolvedReferences`)
+- [x] Right after a write-back, world B's copy does not read as differing from the library item. (`connects the new place and reads as its library item`: compare true, second `planWriteBack` empty)
+- [x] A write-back followed by an update in the same world gives the same routine back, Start and row ids aside. (`gets the same routine back from an update…`)
+- [x] Carry, update, compare, repair and write-back share one mapping and its inverse. No second mapping exists. (`returnedPlaces` builds its map with `carryMap`; `withRoutineReturned` and `placesReturned` only invert it)
+- [x] A test reproduces problem 2, or the landing says it does not reproduce and shows the test that proves it. (`a linked copy with no kind` block, red at Base on the v3.6.2 shape)
+- [x] After the fix, a linked copy with no kind that equals its library item does not differ, and one with a changed description does. (`matches its library item…`, `differs once its description changes`)
+- [x] The landing lists the fix lines for the entity kinds entry, and says whether problem 2 got a fragment. (below)
+
+## Landed
+
+Spec-session rulings Q34–Q39 (2026-11-11) shaped the build: Q34 keep what the copy could not hold, Q35 map back by entry, Q36 refs and connections, Q37 minted fallback Starts stay out, Q38 Anywhere against no list, Q39 membership through the same inverse. They still need folding into the spec.
+
+Fix lines for the entity kinds entry (Q25, no fragment):
+- Saving a world writes a linked entity's routine back in the library item's own places, so other worlds that link it keep their places on update.
+- A place added in one world reaches the library item as a new place to connect elsewhere, and the library keeps the Starts, rows and Can Also Go places that world never had.
+
+Problem 2 reproduced on the v3.6.2 shape and got a fragment (`docs-internal/changelog.d/entity-places-12.md`, World Editor fix).
+
+Mutation checks: each guard (kept Starts, kept rows, entry-first mapping, added connections, the no-kind compare, the minted fallback, Q38, Q39) was reverted once and turned its own test red.
+
+**Not verified**
+- Nothing in a running app. The write-back runs only on a world save against IndexedDB, and the tests drive `planWriteBack` with the real `toLibraryItem`.
+
+**For you**
+- Link one character into two worlds, change its routine in one world and save, then update the copy in the other world and check that no place is lost.
 
 For you: link one character into two worlds, change its routine in one world and save, then update the copy in the other world and check that no place is lost.

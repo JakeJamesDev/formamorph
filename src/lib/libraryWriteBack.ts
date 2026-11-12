@@ -50,7 +50,10 @@ export async function planOwnedWriteBack(world: WorldToWriteBack): Promise<Owned
   const revision = new Date().toISOString();
   const planned = plan.map((step) => ({
     ...step,
-    stamp: { id: step.copy.id, link: { ...step.copy.link, sourceName: step.content.name, sourceRevision: revision } },
+    stamp: {
+      id: step.copy.id,
+      link: { ...step.copy.link, ...(step.connections && { connections: step.connections }), sourceName: step.content.name, sourceRevision: revision },
+    },
   }));
   return async () => {
     const written: LinkStamp[] = [];

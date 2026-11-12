@@ -127,6 +127,101 @@ export function withRoutineMapped(entity: Entity, map: Readonly<Record<string, s
   };
 }
 
+/** `written` with each `library` entry that `isKept` holds put back after the nearest earlier library entry it still
+ *  holds, else first: the library's own order for what the copy could not hold (Q34). */
+function withUncarriedRestored<T>(written: T[], library: readonly T[], isKept: (entry: T) => boolean, same: (a: T, b: T) => boolean): T[] {
+  const out = [...written];
+  let after = -1;
+  for (const entry of library) {
+    if (isKept(entry)) out.splice(++after, 0, entry);
+    else {
+      const at = out.findIndex((w) => same(w, entry));
+      if (at >= 0) after = at;
+    }
+  }
+  return out;
+}
+
+const sameId = (a: { id: string }, b: { id: string }) => a.id === b.id;
+
+/** The first source place `map` carries to each world place. */
+function firstSources(map: Readonly<Record<string, string>>): Record<string, string> {
+  const first: Record<string, string> = {};
+  for (const [from, to] of Object.entries(map)) first[to] ??= from;
+  return first;
+}
+
+/** The inverse of a carry over a plain list of places, such as Can Also Go or a membership (Q34, Q35). The carry folds
+ *  library places that share a world place into one, so each world place returns them all. */
+export function placesReturned(written: readonly string[], library: readonly string[], map: Readonly<Record<string, string>>): string[] {
+  const first = firstSources(map);
+  const back = [...new Set(written.flatMap((place) => {
+    const from = library.filter((p) => map[p] === place);
+    return from.length ? from : [first[place] ?? place];
+  }))];
+  return withUncarriedRestored(back, library, (p) => !map[p], (a, b) => a === b);
+}
+
+/** Whether `start` is the fallback a carry through `map` mints when no library Start carries (Q30): a new id at a
+ *  fallback place, no rows, weight 1. */
+function isMintedFallback(start: EntityStart, kind: Entity["kind"], map: Readonly<Record<string, string>>, libraryIds: ReadonlySet<string>): boolean {
+  const mapped = [...new Set(Object.values(map))];
+  const places = isGeneric({ kind }) ? mapped : mapped.slice(0, 1);
+  return !libraryIds.has(start.id) && places.includes(start.place) && !start.schedule.length && start.weight === 1 && !start.beginsFollowing;
+}
+
+/** The inverse of `withRoutineMapped`: `copy`'s routine in world ids, written back over `library`'s through `map` (Q34, Q35).
+ *  A fallback Start the carry minted stays out while the library keeps a Start (Q37). */
+export function withRoutineReturned(
+  copy: Pick<Entity, "kind" | "starts" | "traversable">, library: Pick<Entity, "starts" | "traversable">, map: Readonly<Record<string, string>>,
+): Pick<Entity, "starts" | "traversable"> {
+  const firstSource = firstSources(map);
+  const carries = (place: string) => place === PLAYER_START || !!map[place];
+  const toSource = (place: string, prior?: string) =>
+    place === PLAYER_START ? place : prior !== undefined && map[prior] === place ? prior : firstSource[place] ?? place;
+
+  // Entries without ids pair with the library entries carried to the same place, in order.
+  const entriesBack = <E extends { place: string }>(written: readonly E[], libraryEntries: readonly E[]): E[] => {
+    const pool = [...libraryEntries];
+    const mapped = written.map((entry) => {
+      const at = pool.findIndex((h) => map[h.place] === entry.place);
+      return { ...entry, place: toSource(entry.place, at >= 0 ? pool.splice(at, 1)[0].place : undefined) };
+    });
+    return withUncarriedRestored(mapped, libraryEntries, (h) => !carries(h.place), (a, b) => a.place === b.place);
+  };
+
+  const rowBack = (row: ScheduleRow, libraryRow?: ScheduleRow): ScheduleRow => {
+    const { action } = row;
+    const was = libraryRow?.action;
+    if (action.kind === "stay") return { ...row, action: { ...action, place: toSource(action.place, was?.kind === "stay" ? was.place : undefined) } };
+    if (action.kind === "wander") return { ...row, action: { ...action, places: entriesBack(action.places, was?.kind === "wander" ? was.places : []) } };
+    return { ...row, action: { ...action, stops: entriesBack(action.stops, was?.kind === "patrol" ? was.stops : []) } };
+  };
+
+  const libraryStarts = library.starts ?? [];
+  const startById = new Map(libraryStarts.map((start) => [start.id, start]));
+  const keepsStart = libraryStarts.some((start) => !carries(start.place));
+  const libraryIds = new Set(startById.keys());
+  const authored = (copy.starts ?? []).filter((start) => !keepsStart || !isMintedFallback(start, copy.kind, map, libraryIds));
+  const written = authored.map((start) => {
+    const libraryStart = startById.get(start.id);
+    const libraryRows = libraryStart?.schedule ?? [];
+    const rowById = new Map(libraryRows.map((row) => [row.id, row]));
+    const rows = start.schedule.map((row) => rowBack(row, rowById.get(row.id)));
+    return { ...start, place: toSource(start.place, libraryStart?.place), schedule: withUncarriedRestored(rows, libraryRows, (row) => !rowMapped(row, map), sameId) };
+  });
+  const starts = withUncarriedRestored(written, libraryStarts, (start) => !carries(start.place), sameId);
+
+  // Anywhere replaces the list; no list keeps the library's uncarried entries as the list (Q38).
+  let traversable = copy.traversable;
+  if (traversable !== "anywhere") {
+    const libraryPlaces = Array.isArray(library.traversable) ? library.traversable : [];
+    const returned = placesReturned(traversable ?? [], libraryPlaces, map);
+    if (traversable || returned.length) traversable = returned;
+  }
+  return { ...(starts.length && { starts }), ...(traversable !== undefined && { traversable }) };
+}
+
 /** A Generic entity with a new Start with no rows at `place`. */
 export function withGenericStart(entity: Entity, place: string, newId: () => string): Entity {
   return { ...entity, starts: [...(entity.starts ?? []), blankStart(place, newId)] };

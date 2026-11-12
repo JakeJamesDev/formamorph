@@ -6,7 +6,7 @@ import { followedLibraryId } from '@/lib/publishLinks';
 import { entityTexts } from '@/lib/entityTexts';
 import { entityImages } from '@/lib/entityImages';
 import { randomUUID } from '@/lib/uuid';
-import { carriedMembership, carriedRoutine, withCarriedRoutine, type Routine } from '@/lib/entityPresence';
+import { carriedMembership, carriedRoutine, returnedPlaces, withCarriedRoutine, type Routine } from '@/lib/entityPresence';
 import { withMembership, withoutMembership } from '@/lib/entityPlaces';
 import { pickToken, type VrmLookup } from '@/lib/vrmPickMatch';
 import type { CommunityLink, ContentLink, Dictionary, Entity, EntityKind, GameLocation, Placeholder, PlaceholderGroup } from '@/types';
@@ -172,6 +172,8 @@ function authoredContent(raw: LinkableContent, world?: TraitWorld, vrm?: VrmLook
     delete shed.traversable;
     if (mapped) delete shed.locationRefs;
   }
+  // With no kind the references name a membership, and the copy's membership is the world's (Q2).
+  if (!('entries' in item) && !item.kind) delete shed.locationRefs;
   // A world file read before migration still holds data strings; the library copy holds images.
   if (!('entries' in item) && item.images) shed.images = entityImages(item);
   if (!('entries' in item) && (item.traits || item.traitLinks || item.images)) Object.assign(shed, comparableOwnedTraits(item));
@@ -315,13 +317,15 @@ export interface WriteBack {
   copy: LinkableContent;
   source: LibrarySource;
   content: LinkableContent;
+  /** The copy's connections once written, where the write-back added a place to the item (Q36). */
+  connections?: Record<string, string>;
 }
 
 /**
  * The copies a world save writes to the library: each one Linked to an item the author owns, not a local
  * replacement, and holding content that differs from the item. `shape` rewrites a copy as a standalone
- * library item, the same rewrite Save to Library uses, so the world's own fields never reach the item. The
- * copy itself is returned untouched, connections included.
+ * library item, the same rewrite Save to Library uses, so the world's own fields never reach the item. An entity
+ * then takes its places back through the inverse of its carry, so the item stays usable from every world (Q34–Q39). The copy itself is returned untouched.
  *
  * `sources` is the answer to looking up every library id the world's copies name; a copy of an item the
  * lookup did not answer, or one without content, is not written.
@@ -340,7 +344,9 @@ export function planWriteBack(
     const content = shape(copy);
     const places = world.locations && { ...routinePlacesOf(world.locations), connections: copy.link?.connections };
     if (contentMatchesSource(content, source.data, traitWorld, vrm, places)) return [];
-    return [{ copy, source, content }];
+    if (!places || 'entries' in content || 'entries' in source.data) return [{ copy, source, content }];
+    const back = returnedPlaces(content, source.data, places.connections ?? {}, places.known);
+    return [{ copy, source, content: back.item, ...(Object.keys(back.connections).length && { connections: back.connections }) }];
   });
 }
 

@@ -1,6 +1,6 @@
 import type { ContentLocationRef, Entity, EntityKind, EntityPositions, GameLocation, GenericStates, PersonaRef } from "@/types";
 import { ancestors, parentLookup } from "@/lib/ancestors";
-import { isGeneric, withGenericStart, withoutRoutinePlace, withRoutineMapped } from "@/lib/entityKind";
+import { isGeneric, placesReturned, withGenericStart, withoutRoutinePlace, withRoutineMapped, withRoutineReturned } from "@/lib/entityKind";
 import { withNewStart } from "@/lib/routineEditing";
 import { idsAt, namedPlacesOf, positionsIn, withMembership } from "@/lib/entityPlaces";
 import { randomUUID } from "@/lib/uuid";
@@ -45,6 +45,32 @@ export function carriedRoutine(
   return {
     ...(carried.starts && { starts: carried.starts }),
     ...(carried.traversable !== undefined && { traversable: carried.traversable }),
+  };
+}
+
+/**
+ * The inverse of `carriedRoutine` and `carriedMembership`: `item`, a copy in library form whose refs name its world's
+ * places, written back over `source` through the same carry map (Q34, Q35, Q39). An entity with a kind returns its
+ * routine; one with no kind, the membership its refs name. Its refs become the places returned, and `connections`
+ * gains each world place that goes back as a new ref (Q36).
+ */
+export function returnedPlaces(
+  item: Entity, source: Entity, connections: Readonly<Record<string, string>>, known: ReadonlySet<string>,
+): { item: Entity; connections: Record<string, string> } {
+  const sourceRefs = source.locationRefs ?? [];
+  const libraryRefs = new Map(sourceRefs.map((ref) => [ref.id, ref]));
+  const worldRefs = new Map((item.locationRefs ?? []).map((ref) => [ref.id, ref]));
+  const map = carryMap(sourceRefs, connections, known);
+  const { starts: _s, traversable: _t, locationRefs: _r, ...rest } = item;
+  const routine = item.kind ? withRoutineReturned(item, source, map) : {};
+  const places = item.kind
+    ? namedPlacesOf({ ...rest, ...routine })
+    : placesReturned([...worldRefs.keys()], sourceRefs.map((ref) => ref.id), map);
+  const locationRefs = places.flatMap((id) => libraryRefs.get(id) ?? worldRefs.get(id) ?? []);
+  const added = locationRefs.filter((ref) => !libraryRefs.has(ref.id)).map((ref) => [ref.id, ref.id]);
+  return {
+    item: { ...rest, ...routine, ...(locationRefs.length && { locationRefs }) },
+    connections: { ...connections, ...Object.fromEntries(added) },
   };
 }
 

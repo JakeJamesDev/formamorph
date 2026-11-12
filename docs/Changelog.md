@@ -118,6 +118,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **World Editor:**
     - **Templates, hover cards and the Time of Day picker now say "time of day" instead of "daypart".** The templates are now Time of Day Modifier and Placeholder by Time of Day. Scripts still read `clock.daypart`.
     - **The Sliders list on an entity's stat and trait now shows the entity's Avatar sliders.** An entity with only an Avatar can bind its Body Sliders and Head Features.
+    - **An entity you link to a matching library item now reads Linked, even when its locations differ.** Each world keeps its own locations for an entity.
   - **Formaquestion:**
     - **In game, Formaquestion's code test places a character where it stands now.** A character a script moved no longer reads as still at its listed places.
   - **A world's written openings now always draw, even in a world that had them switched off.** The world file no longer stores an openings on/off setting.
