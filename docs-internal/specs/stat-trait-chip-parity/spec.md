@@ -34,6 +34,14 @@ Settled in the grill on 2026-11-12.
 - **Q8.** Every Entities chip in those two prompts that sends stats also sends Descriptor only.
 - **Q9.** The default-prompt change ships with probe numbers on the cloud model. The bar: the new defaults leak stat numbers or ranges into narration no more often than the old defaults. The old defaults run in the same batch as the control, with 5 or more runs per arm. The report also gives the prompt tokens saved.
 
+### Ticket 03 rulings
+
+- **T03-a.** Only the chips that send stats by default change: the Persona chip and the Here-scope Entities chip in Narration and Choices. The Sublocations, Reachable and Known chips send no stats and stay as written.
+- **T03-b.** The Experimental preset's own Narration prompt gets the same ids, so every built-in narrator reads stats the same way. The Simple and XML presets derive from the defaults.
+- **T03-c.** "Follows the default" means the built-in presets, which read the live defaults. A user preset keeps the snapshot it stored, and a world's prompt override keeps its text. The mechanism does not change.
+- **T03-e.** The bundled Open Chat world's Narration and Choices prompts get the same ids. Its prompts follow the defaults (player-character-block Q22), and its parity test stays as written.
+- **T03-d.** The probe runs on the Sedge Landing scene, cloud model, with old and new arms paired by run index in one batch, 6 runs per arm per case. A leak is a stat value, range or percent in the output. The headline rate counts narration turns. Choices leaks and the per-prompt token savings are reported on their own lines.
+
 ## User Stories
 
 1. As a world author, I want to uncheck every Stat Detail piece on the Stats chip, so that I can return to names only after I tried Range.
