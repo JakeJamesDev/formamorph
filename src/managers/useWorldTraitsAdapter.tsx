@@ -206,15 +206,13 @@ export function useWorldTraitsAdapter({ selectedId, onSelect, collapse, navigate
     </>
   );
 
-  // In Advanced, the link button sits in the frozen footer, below every panel tab. A link row's footer always
-  // shows, with Reset to Blueprint and Edit Blueprint.
+  // A link row's footer holds Edit Blueprint and Reset to Blueprint; a Blueprint item's, in Advanced, Link To….
   const footer = () => {
-    const linkTo = advanced && shownOriginalId && isBlueprintItem({ traits, traitGroups }, shownOriginalId)
-      ? <LinkToOwnerButton originalId={shownOriginalId} /> : null;
     if (linkRow && linkOwner && shownOriginalId) {
-      return <LinkFooter owner={linkOwner} row={linkRow} onEditBlueprint={() => onSelect(shownOriginalId)}>{linkTo}</LinkFooter>;
+      return <LinkFooter owner={linkOwner} row={linkRow} onEditBlueprint={() => onSelect(shownOriginalId)} />;
     }
-    return linkTo && <div className="p-3 border-t flex justify-end">{linkTo}</div>;
+    return advanced && shownOriginalId && isBlueprintItem({ traits, traitGroups }, shownOriginalId)
+      ? <LinkToOwnerButton originalId={shownOriginalId} /> : null;
   };
 
   const adapter: ListEditorAdapter = {

@@ -173,13 +173,15 @@ describe('the link button', () => {
     expect(screen.getByRole('button', { name: 'Link To…' })).toBeInTheDocument();
   });
 
-  it('shows on a selected link, acting on its original', () => {
+  it('is absent on a selected link, which offers Edit Blueprint for its original', () => {
     renderTraitsTab(WORLD, 'advanced');
     const link = screen.getAllByLabelText('Drag to reorder or nest')
       .map((grip) => grip.parentElement as HTMLElement)
       .find((row) => within(row).queryByRole('button', { name: 'Open Paladin' }))!;
     fireEvent.click(within(link).getByText('Paladin'));
     expect(screen.getByText(/Linked from/)).toBeInTheDocument();
+    expect(menuButton('Link To…')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Blueprint' }));
     openLinkFlyout();
     fireEvent.click(flyoutRow('Link To', 'Heroes'));
     expect(flyoutRows('Link To')).toEqual(['✓Albus', 'Mira', '#City Guard']);
@@ -199,7 +201,7 @@ describe('the link button', () => {
     }
   });
 
-  it('shows on a selected link on a non-Details tab, with the Linked-from line left on Details', () => {
+  it('stays off a selected link on a non-Details tab, with the Linked-from line left on Details', () => {
     renderTraitsTab(WORLD, 'advanced');
     const link = screen.getAllByLabelText('Drag to reorder or nest')
       .map((grip) => grip.parentElement as HTMLElement)
@@ -207,7 +209,8 @@ describe('the link button', () => {
     fireEvent.click(within(link).getByText('Paladin'));
     openTraitTab('Stats');
     expect(screen.queryByText(/Linked from/)).toBeNull();
-    expect(menuButton('Link To…')).not.toBeNull();
+    expect(menuButton('Link To…')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Edit Blueprint' })).toBeInTheDocument();
   });
 
   it('never shows on a non-Details tab in Basic or on an owned trait', () => {

@@ -187,7 +187,7 @@ On the **Appearance** tab:
 
 **Preview** shows the stat's look on its Avatar, so you can set sliders and colors by eye.
 
-- Select **Preview** at the top of the **Appearance** tab. The dialog opens the Avatar the stat plays on. With several, it opens the first and offers an **Avatar** menu to switch. Your changes stay when you switch. A control the other Avatar lacks is hidden there, and Save still writes its change.
+- On the **Appearance** tab, select **Preview** at the bottom left of the panel. The dialog opens the Avatar the stat plays on. With several, it opens the first and offers an **Avatar** menu to switch. Your changes stay when you switch. A control the other Avatar lacks is hidden there, and Save still writes its change.
 - The dialog opens at Max. Each slider shows the Avatar's own value plus its **Change By**. Each color shows its **Target Color**. Only this stat's rows apply.
 - Drag the stat's slider at the top to see the look from Min to Max. At Min, the Avatar shows its own sliders and colors.
 - A drag or a color pick sets the look at Max, and moves the stat's slider to Max first. The **Change By** becomes the value you drag to, less the Avatar's own value.

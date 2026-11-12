@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
 import { ListDetailBackContext, useListDetailBack, type ListDetailBackTarget } from '@/components/ui/listDetailBack';
+import { DetailFooter, DetailFooterScope } from '@/components/ui/detail-footer';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { cn } from '@/lib/utils';
 
@@ -48,7 +49,8 @@ export function ListDetailFirstRow({ align = 'end', children }: { align?: 'end' 
  * columns). Mobile shows one panel at a time: the list, and — when `showDetail` is set — the detail slides in
  * over it, native push-navigation style, and places its own back arrow (`ListDetailBack`). `stacked` uses that
  * push at every width, for a host too narrow to split. The caller owns selection; this only takes the
- * `showDetail` flag and an `onBack` to pop. Slide is skipped under `prefers-reduced-motion`. `detailFooter` stays frozen below the detail's scroll.
+ * `showDetail` flag and an `onBack` to pop. Slide is skipped under `prefers-reduced-motion`. `detailFooter` holds the
+ * actions on the right of the footer row frozen below the detail's scroll; the detail can lead that row too.
  */
 export function ListDetail({
   list, detail, detailFooter, showDetail, onBack, backLabel, className, stacked = false, scrollList = true, scrollDetail = true,
@@ -85,10 +87,12 @@ export function ListDetail({
             ? <ScrollArea className="w-1/2 min-w-0 border-r">{list}</ScrollArea>
             : <div className="w-1/2 min-w-0 border-r overflow-hidden">{list}</div>}
           <div className="w-1/2 min-w-0 flex flex-col">
-            {scrollDetail
-              ? <ScrollArea className="flex-1 min-h-0">{detail}</ScrollArea>
-              : <div data-detail-fill className="flex-1 min-h-0 flex flex-col">{detail}</div>}
-            {detailFooter}
+            <DetailFooterScope>
+              {scrollDetail
+                ? <ScrollArea className="flex-1 min-h-0">{detail}</ScrollArea>
+                : <div data-detail-fill className="flex-1 min-h-0 flex flex-col">{detail}</div>}
+              <DetailFooter actions={detailFooter} />
+            </DetailFooterScope>
           </div>
         </ListDetailBackProvider>
       </div>
@@ -123,12 +127,14 @@ export function ListDetail({
         )}
         aria-hidden={!showDetail}
       >
-        <ListDetailBackProvider value={back}>
-          {scrollDetail
-            ? <ScrollArea className="flex-1 min-h-0">{detail}</ScrollArea>
-            : <div data-detail-fill className="flex-1 min-h-0 flex flex-col">{detail}</div>}
-        </ListDetailBackProvider>
-        <ListDetailBackProvider value={null}>{detailFooter}</ListDetailBackProvider>
+        <DetailFooterScope>
+          <ListDetailBackProvider value={back}>
+            {scrollDetail
+              ? <ScrollArea className="flex-1 min-h-0">{detail}</ScrollArea>
+              : <div data-detail-fill className="flex-1 min-h-0 flex flex-col">{detail}</div>}
+          </ListDetailBackProvider>
+          <ListDetailBackProvider value={null}><DetailFooter actions={detailFooter} /></ListDetailBackProvider>
+        </DetailFooterScope>
       </div>
     </div>
   );

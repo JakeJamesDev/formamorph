@@ -103,11 +103,9 @@ function OpenOwnerFooter({ entry }: { entry: ScriptEntry }) {
     name: entry.ownerName, line: 1, noOwners: false,
   });
   return (
-    <div className="flex items-center justify-end gap-2 border-t p-3">
-      <Button type="button" variant="outline" size="sm" onClick={open}>
-        Open <PlaceholderText text={ownerText} placeholders={placeholders} />
-      </Button>
-    </div>
+    <Button type="button" variant="outline" size="sm" onClick={open}>
+      Open <PlaceholderText text={ownerText} placeholders={placeholders} />
+    </Button>
   );
 }
 

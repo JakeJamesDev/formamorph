@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { BlueprintFooter } from '@/components/editor/BlueprintReset';
+import { BlueprintFooter, EditBlueprintButton } from '@/components/editor/BlueprintReset';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { updateOwnedStat } from '@/lib/ownedStats';
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -44,7 +44,8 @@ export interface EntityStatPanelsInput {
 export function entityStatPanels({ entity, world, edit, rows, resolved, placeholders, standalone = false, tab, onTabChange }: EntityStatPanelsInput): {
   store: StatEditorStore;
   linkDetail: (id: string, key?: string) => ReactNode;
-  linkFooter: (id: string) => ReactNode;
+  /** `onEditBlueprint` selects the original, where the host can. */
+  linkFooter: (id: string, onEditBlueprint?: (originalId: string) => void) => ReactNode;
   /** The id the detached item takes, or null when the link or its original is gone. */
   detach: (linkId: string) => string | null;
 } {
@@ -94,13 +95,16 @@ export function entityStatPanels({ entity, world, edit, rows, resolved, placehol
     );
   };
   // Reset to Blueprint clears one linked stat, or on a group link's row, the whole link.
-  const linkFooter = (id: string) => {
+  const linkFooter = (id: string, onEditBlueprint?: (originalId: string) => void) => {
     const { link, originalId, kind, root, unbound } = rows.linked.get(id)!;
     if (unbound) return null;
+    const editBlueprint = onEditBlueprint && <EditBlueprintButton onClick={() => onEditBlueprint(originalId)} />;
     if (kind === 'stat') {
-      return <BlueprintFooter canReset={!!link.overrides?.[originalId]} onReset={() => edit((e) => resetStatLinkStatOn(e, link.id, originalId))} />;
+      return <BlueprintFooter canReset={!!link.overrides?.[originalId]} onReset={() => edit((e) => resetStatLinkStatOn(e, link.id, originalId))}>{editBlueprint}</BlueprintFooter>;
     }
-    return root ? <BlueprintFooter canReset={!!link.overrides} onReset={() => edit((e) => resetStatLinkOn(e, link.id))} /> : null;
+    return root
+      ? <BlueprintFooter canReset={!!link.overrides} onReset={() => edit((e) => resetStatLinkOn(e, link.id))}>{editBlueprint}</BlueprintFooter>
+      : editBlueprint || null;
   };
   const detach = (linkId: string) => {
     const res = detachStatLink(world, entity, linkId);

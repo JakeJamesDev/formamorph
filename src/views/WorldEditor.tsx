@@ -82,6 +82,7 @@ import {
 import { Panel, PanelGroup, PanelResizeHandle, type ImperativePanelGroupHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ListDetail } from "@/components/ui/list-detail";
+import { DetailFooter, DetailFooterScope } from "@/components/ui/detail-footer";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useBackStop } from "@/hooks/useBackStop";
 import { useLeavePrompt } from "@/hooks/useLeavePrompt";
@@ -1636,10 +1637,12 @@ const WorldEditorInner = ({
             <Panel id="editor-detail" order={2} minSize={30}>
               <div className="h-full p-3">
                 <Card className="h-full flex flex-col">
-                  <CardContent className="flex-1 min-h-0 p-0">
-                    <div data-detail-fill className="h-full flex flex-col">{detailPanel({ frozen: true, capped: true })}</div>
-                  </CardContent>
-                  {detailFooter}
+                  <DetailFooterScope>
+                    <CardContent className="flex-1 min-h-0 p-0">
+                      <div data-detail-fill className="h-full flex flex-col">{detailPanel({ frozen: true, capped: true })}</div>
+                    </CardContent>
+                    <DetailFooter actions={detailFooter} />
+                  </DetailFooterScope>
                 </Card>
               </div>
             </Panel>

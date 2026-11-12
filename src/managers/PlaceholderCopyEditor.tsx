@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tip } from '@/components/ui/tooltip';
-import { BlueprintFooter, FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
+import { BlueprintFooter, EditBlueprintButton, FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import {
@@ -175,7 +175,7 @@ export function PlaceholderCopyFooter({ copy, onEditBlueprint }: { copy: Placeho
   const overridden = !!copy.valueOverrides && Object.keys(copy.valueOverrides).length > 0;
   return (
     <BlueprintFooter canReset={overridden} onReset={() => updatePlaceholder(resetCopyOverrides(copy))}>
-      {onEditBlueprint && <Button type="button" variant="outline" size="sm" onClick={onEditBlueprint}>Edit Blueprint</Button>}
+      {onEditBlueprint && <EditBlueprintButton onClick={onEditBlueprint} />}
     </BlueprintFooter>
   );
 }

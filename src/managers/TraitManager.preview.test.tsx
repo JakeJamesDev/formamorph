@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import type { Entity, Stat, Trait } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
+import { DetailFooter, DetailFooterScope } from '@/components/ui/detail-footer';
 import { NO_AVATAR_PREVIEW_HINT, NO_MODEL_HINT } from '@/lib/useSliderPicker';
 import type { VRMCapabilities } from '@/views/VRMViewer';
 import TraitManager from './TraitManager';
@@ -96,7 +97,13 @@ const Harness = ({ owner }: { owner?: Entity }) => {
   const [, setTick] = useState(0);
   world.rerender = () => setTick((n) => n + 1);
   const trait = owner ? owner.traits![0] : world.traits.find((t) => t.id === 'elf')!;
-  return <TraitManager trait={trait} owner={owner} onOpenTrait={() => {}} tab="appearance" onTabChange={() => {}} />;
+  // The hosts draw the editor above its footer row, where the Preview sits.
+  return (
+    <DetailFooterScope>
+      <TraitManager trait={trait} owner={owner} onOpenTrait={() => {}} tab="appearance" onTabChange={() => {}} />
+      <DetailFooter />
+    </DetailFooterScope>
+  );
 };
 
 const renderTrait = (owner?: Entity) => render(
@@ -106,7 +113,8 @@ const renderTrait = (owner?: Entity) => render(
 );
 
 const elfNow = () => world.traits.find((t) => t.id === 'elf')!;
-const previewButton = () => screen.getByRole('button', { name: 'Preview' });
+const footer = () => document.querySelector('[data-detail-footer]') as HTMLElement;
+const previewButton = () => within(footer()).getByRole('button', { name: 'Preview' });
 const dialog = () => screen.getByRole('dialog', { name: 'Preview Elf' });
 const section = (heading: string) => within(dialog()).getByRole('heading', { name: heading }).parentElement as HTMLElement;
 const undo = (name: string) => within(dialog()).getByRole('button', { name: `Undo ${name}` });

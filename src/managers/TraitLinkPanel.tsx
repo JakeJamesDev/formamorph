@@ -1,12 +1,11 @@
 import { useMemo, type ReactNode } from 'react';
-import { Link2, Pencil } from 'lucide-react';
+import { Link2 } from 'lucide-react';
 import { originalsOf, useTraitStore } from '@/contexts/TraitStoreContext';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Hint } from '@/components/ui/typography';
 import { Section } from '@/components/SettingsRows';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
-import { BlueprintFooter, FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
+import { BlueprintFooter, EditBlueprintButton, FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
 import { effectiveLinkTrait, linkTraitState } from '@/lib/blueprints';
 import { editLinkTrait, linkedTraits, originalPath, resetLink, resetLinkField, resetLinkTrait, setLinkField } from '@/lib/traitLinks';
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -123,34 +122,21 @@ export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; 
 }
 
 /**
- * The footer under a selected link row. Reset to Blueprint drops every override the link holds on its own
- * row, and one trait's on a row of a linked group's subtree; a subgroup row has nothing of its own to reset.
- * `onEditBlueprint` selects the original, where the host can; `children` sit beside it.
+ * The footer actions of a selected link row: Edit Blueprint, where the host can select the original, then
+ * Reset to Blueprint. Reset drops every override the link holds on its own row, and one trait's on a row of a
+ * linked group's subtree; a subgroup row has nothing of its own to reset.
  */
-export function LinkFooter({ owner, row, onEditBlueprint, children }: {
+export function LinkFooter({ owner, row, onEditBlueprint }: {
   owner: Entity;
   row: LinkRow;
   onEditBlueprint?: () => void;
-  children?: ReactNode;
 }) {
   const store = useTraitStore();
   const { link, originalId } = row;
   const traitRow = !row.root && originalsOf(store).traits.some((t) => t.id === originalId);
   const canReset = row.root ? !!link.overrides : traitRow && !!link.overrides?.[originalId];
   const onReset = () => store.editEntity(owner.id, (e) => (row.root ? resetLink(e, link.id) : resetLinkTrait(e, link.id, originalId)));
-  const actions = (
-    <>
-      {children}
-      {onEditBlueprint && (
-        <Button type="button" variant="outline" size="sm" className="gap-1" onClick={onEditBlueprint}>
-          <Pencil className="h-4 w-4" aria-hidden />
-          Edit Blueprint
-        </Button>
-      )}
-    </>
-  );
-  if (!row.root && !traitRow) {
-    return onEditBlueprint || children ? <div className="flex items-center justify-end gap-2 border-t p-3">{actions}</div> : null;
-  }
-  return <BlueprintFooter canReset={canReset} onReset={onReset}>{actions}</BlueprintFooter>;
+  const edit = onEditBlueprint && <EditBlueprintButton onClick={onEditBlueprint} />;
+  if (!row.root && !traitRow) return edit || null;
+  return <BlueprintFooter canReset={canReset} onReset={onReset}>{edit}</BlueprintFooter>;
 }

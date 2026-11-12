@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { AlertTriangle, RotateCcw } from 'lucide-react';
+import { AlertTriangle, Pencil, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Meta } from '@/components/ui/typography';
 
@@ -30,18 +30,28 @@ export function LabelRow({ children, reset }: { children: ReactNode; reset?: Rea
   return <div className="flex items-center gap-2">{children}{reset}</div>;
 }
 
+/** Opens the Blueprint a link row reads, from the link's footer. */
+export function EditBlueprintButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button type="button" variant="outline" size="sm" className="gap-1" onClick={onClick}>
+      <Pencil className="h-4 w-4" aria-hidden />
+      Edit Blueprint
+    </Button>
+  );
+}
+
 /**
- * The frozen footer under a link's or copy's panel: Reset to Blueprint on the left, off while nothing is
- * overridden, and the host's own actions on the right.
+ * A link's or copy's actions in the detail's footer row: the host's own, then Reset to Blueprint, off while
+ * nothing is overridden.
  */
 export function BlueprintFooter({ canReset, onReset, children }: { canReset: boolean; onReset: () => void; children?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 border-t p-3">
+    <>
+      {children}
       <Button type="button" variant="outline" size="sm" className="gap-1" disabled={!canReset} onClick={onReset}>
         <RotateCcw className="h-4 w-4" aria-hidden />
         Reset to Blueprint
       </Button>
-      {children && <div className="ml-auto flex items-center gap-2">{children}</div>}
-    </div>
+    </>
   );
 }

@@ -45,6 +45,7 @@ import { ColorRowsField } from '@/components/editor/ColorRowsField';
 import { fieldFrame } from '@/lib/historyField';
 import { Button } from '@/components/ui/button';
 import { AppearancePreviewDialog } from '@/components/editor/AppearancePreviewDialog';
+import { DetailFooterLead } from '@/components/ui/detail-footer';
 import { statLookRows, statRowsFromLook } from '@/lib/appearancePreview';
 
 export const AVAILABILITY_INFO = `**Enabled** keeps the stat active. Uncheck it and the stat stays inactive until a trait enables it. An inactive stat isn't shown to the player or sent to the AI, and its Regen and scripts don't run.
@@ -518,10 +519,10 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   // Numeric stats only: the sliders and colors move with the stat's value.
   const appearance = (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
+      <DetailFooterLead>
         <Button size="sm" variant="outline" disabled={!previewAvatar || flatRange} onClick={() => setPreviewOpen(true)}>Preview</Button>
-        {previewHint && <Hint>{previewHint}</Hint>}
-      </div>
+      </DetailFooterLead>
+      {previewHint && <Hint>{previewHint}</Hint>}
       {previewOpen && previewAvatar && !flatRange && (
         <AppearancePreviewDialog
           name={labelPlaceholders(editingStat.name ?? '', placeholders, { letters: placementLetters, owners: placeholderOwners })}

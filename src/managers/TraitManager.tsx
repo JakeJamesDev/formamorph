@@ -40,6 +40,7 @@ import { useSliderPicker } from '@/lib/useSliderPicker';
 import { linkedTraits } from '@/lib/traitLinks';
 import { fieldFrame } from '@/lib/historyField';
 import { AppearancePreviewDialog } from '@/components/editor/AppearancePreviewDialog';
+import { DetailFooterLead } from '@/components/ui/detail-footer';
 
 /** A link's edit of one trait it brings: which fields it overrides, which of those the blueprint changed
  *  since, and where a whole-trait write and a field reset go. */
@@ -289,6 +290,7 @@ const TraitManager = ({
   useEffect(() => { setPreviewOpen(false); }, [trait.id]);
   // The Preview opens the first Avatar the row plays on.
   const previewAvatar = sliders.avatars[0];
+  const previewHint = sliders.noModelHint ?? sliders.noAvatarHint;
   // A world trait rivals the world's traits; an owner's trait rivals the owner's own and linked ones.
   const pinRivals = useMemo(() => {
     if (!traitOwner) return { traits, groups: traitGroups };
@@ -534,10 +536,12 @@ const TraitManager = ({
   const appearancePanel = (
     <>
       {!readOnly && (
-        <div className="flex items-center gap-3">
-          <Button size="sm" variant="outline" disabled={!previewAvatar} onClick={() => setPreviewOpen(true)}>Preview</Button>
-          {(sliders.noModelHint ?? sliders.noAvatarHint) && <Hint>{sliders.noModelHint ?? sliders.noAvatarHint}</Hint>}
-        </div>
+        <>
+          <DetailFooterLead>
+            <Button size="sm" variant="outline" disabled={!previewAvatar} onClick={() => setPreviewOpen(true)}>Preview</Button>
+          </DetailFooterLead>
+          {previewHint && <Hint>{previewHint}</Hint>}
+        </>
       )}
       {previewOpen && previewAvatar && (
         <AppearancePreviewDialog

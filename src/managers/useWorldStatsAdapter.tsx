@@ -162,7 +162,7 @@ export function useWorldStatsAdapter({ selectedId, onSelect, collapse, navigate,
     focusField,
     // In Advanced, a Blueprint stat or group links onto entities from here.
     footer: (id) => (advanced && statOriginalOf({ stats, statGroups }, id)
-      ? <div className="p-3 border-t flex justify-end"><StatLinkToButton originalId={id} /></div>
+      ? <StatLinkToButton originalId={id} />
       : null),
   });
 
@@ -213,7 +213,7 @@ export function useWorldStatsAdapter({ selectedId, onSelect, collapse, navigate,
     footer: (id) => {
       if (!tree.owned.has(id)) return base.footer?.(id) ?? null;
       const owned = ownedRow(id);
-      return owned?.row.linked ? owned.panels.linkFooter(owned.row.id) : null;
+      return owned?.row.linked ? owned.panels.linkFooter(owned.row.id, onSelect) : null;
     },
     // A linked stat or an entity's own stat opens the tabbed stat panel, which scrolls itself.
     fills: (id) => {

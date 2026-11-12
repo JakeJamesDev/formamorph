@@ -1713,7 +1713,7 @@ The same levels work on desktop and on a phone. Nothing opens to the side, so a 
 
 - ↺ **Field Reset.** An overridden field ends its label row in a ghost **Reset** button with a rotate icon. A field that reads its blueprint live has no Reset. Each Reset's accessible name adds the field, such as "Reset Requires".
 - ⚠️ **Stale marker.** When the blueprint changed a field after the override was made, a warning-colored "Blueprint changed" line with a warning icon sits just left of that field's Reset. It shows on the details panel only, never in the tree.
-- 🧊 **Frozen footer.** Below every panel tab, **Reset to Blueprint** sits on the left and is unavailable while nothing is overridden. The host's own actions, such as **Link To…** and **Edit Blueprint**, sit on the right.
+- 🧊 **Frozen footer.** Below every panel tab, the host's actions sit on the right: **Edit Blueprint**, then **Reset to Blueprint**, which is unavailable while nothing is overridden. A link row has no **Link To…**. The open panel's own action, such as **Preview**, sits alone on the left.
 - Read-only fields keep their normal look, with editing off.
 
 ### Production mapping
@@ -1722,6 +1722,7 @@ The same levels work on desktop and on a phone. Nothing opens to the side, so a 
 | --- | --- |
 | Field Reset, stale marker, label row, footer | `FieldReset`, `LabelRow` and `BlueprintFooter` in [`BlueprintReset.tsx`](../src/components/editor/BlueprintReset.tsx) |
 | Trait link panel and footer | `LinkedTraitManager` and `LinkFooter` in [`TraitLinkPanel.tsx`](../src/managers/TraitLinkPanel.tsx) |
+| Footer row and its left slot | `DetailFooter`, `DetailFooterScope` and `DetailFooterLead` in [`detail-footer.tsx`](../src/components/ui/detail-footer.tsx) |
 
 ## Pattern: Travel Hint Pair
 

@@ -167,14 +167,12 @@ export function useWorldToolsAdapter({ selectedId, onSelect, snapshot }: {
       const tool = byId.get(id);
       if (!tool || openDraft) return null;
       return (
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t p-3">
-          <Button
-            variant="outline" size="sm"
-            onClick={() => setDraft({ tool: structuredClone(tool), editTab: 'definition', kept: {}, saved: true })}
-          >
-            <Pencil className="h-4 w-4 mr-1" />Edit
-          </Button>
-        </div>
+        <Button
+          variant="outline" size="sm"
+          onClick={() => setDraft({ tool: structuredClone(tool), editTab: 'definition', kept: {}, saved: true })}
+        >
+          <Pencil className="h-4 w-4 mr-1" />Edit
+        </Button>
       );
     },
     onReorder: (activeId, overId) => {

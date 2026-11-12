@@ -426,7 +426,7 @@ When two active traits set a Body, the one switched on last wins. When it switch
 - The slider takes this value in place of the player's own setting. A stat bound to the slider still adds on top.
 - When the trait switches off, the player's own setting comes back.
 - A world trait changes the player's Avatar. An entity's own trait changes that entity's model.
-- Select **Preview** to set sliders and colors on the Avatar itself. **Save** writes them to the trait.
+- Select **Preview** at the bottom left of the panel to set sliders and colors on the Avatar itself. **Save** writes them to the trait.
 
 When two active traits set the same slider, the one switched on last wins.`,
   },

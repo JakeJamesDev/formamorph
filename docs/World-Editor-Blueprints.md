@@ -110,7 +110,7 @@ Each field you change on a link becomes an override. The rest of the link keeps 
 - **Reset** sits at the end of an overridden field's label row. It returns that field to the original.
 - **Reset to Blueprint** sits in the footer below every tab. It returns every override on the link. On a trait in a linked group, it returns that trait's overrides. It is disabled while nothing is overridden.
 - **Blueprint changed** shows beside a field's **Reset** when the original changed that field after you set your override. Your value may be stale. Edit the field again, or reset it, and the marker clears. It shows on the tab that holds the field, never in the tree.
-- **Edit Blueprint** in the footer selects the original. Edit there to change every owner. It shows in the World Editor's **Traits** tab, not in an entity's **Traits** tab.
+- **Edit Blueprint** in the footer selects the original. Edit there to change every owner. It shows in the World Editor's **Traits** and **Stats** tabs, not in an entity's own tabs.
 
 A linked group's shape always follows the original. To add, remove or move a trait for one owner only, use **Detach**.
 

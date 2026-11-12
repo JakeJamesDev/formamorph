@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import type { Stat } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
+import { DetailFooter, DetailFooterScope } from '@/components/ui/detail-footer';
 import { blendColor } from '@/lib/oklab';
 import type { VRMCapabilities } from '@/views/VRMViewer';
 import StatManager, { FLAT_RANGE_PREVIEW_HINT } from './StatManager';
@@ -76,11 +77,18 @@ vi.mock('@/views/VRMViewer', async () => {
 const Harness = () => {
   const [, setTick] = useState(0);
   world.rerender = () => setTick((n) => n + 1);
-  return <StatManager stat={world.stats.find((s) => s.id === 'growth')!} tab="appearance" onTabChange={() => {}} />;
+  // The hosts draw the editor above its footer row, where the Preview sits.
+  return (
+    <DetailFooterScope>
+      <StatManager stat={world.stats.find((s) => s.id === 'growth')!} tab="appearance" onTabChange={() => {}} />
+      <DetailFooter />
+    </DetailFooterScope>
+  );
 };
 
 const growthNow = () => world.stats.find((s) => s.id === 'growth')!;
-const previewButton = () => screen.getByRole('button', { name: 'Preview' });
+const footer = () => document.querySelector('[data-detail-footer]') as HTMLElement;
+const previewButton = () => within(footer()).getByRole('button', { name: 'Preview' });
 const dialog = () => screen.getByRole('dialog', { name: 'Preview Growth' });
 const section = (heading: string) => within(dialog()).getByRole('heading', { name: heading }).parentElement as HTMLElement;
 const sliderIn = (heading: string) => within(section(heading)).getByRole('slider');

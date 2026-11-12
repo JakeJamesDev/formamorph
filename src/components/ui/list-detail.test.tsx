@@ -147,8 +147,10 @@ describe('ListDetail', () => {
       const scroller = screen.getByText('DETAIL-CONTENT').closest('[data-radix-scroll-area-viewport]');
       expect(scroller).not.toBeNull();
       expect(scroller!.contains(foot)).toBe(false);
-      // The next sibling of the detail's scroll root, inside the same column.
-      expect(scroller!.parentElement!.nextElementSibling).toBe(foot);
+      // In the footer row, the next sibling of the detail's scroll root, inside the same column.
+      const row = scroller!.parentElement!.nextElementSibling;
+      expect(row).toHaveAttribute('data-detail-footer');
+      expect(row!.contains(foot)).toBe(true);
     };
     mockMatchMedia(false);
     const { unmount } = render(<ListDetail {...base} detailFooter={footer} showDetail />);
