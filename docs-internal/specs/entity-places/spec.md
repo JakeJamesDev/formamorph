@@ -114,6 +114,7 @@ Rulings from the grill of 2026-11-11.
 - **Q26.** Sample Placement is nowhere for an entity with a kind and no Starts, and for an entity whose every Start is at Player's Starting Location when the sample has no player start. This applies Q10 to open check 3. Spec-session ruling of 2026-11-11, on an intent question of ticket 05.
 - **Q27.** The chance on a "begins here" line is the sum of the Starts that name the place directly. A Start at Player's Starting Location adds to it only when it expands to exactly one place. When it expands to more, it gives a "begins here" with no chance at a place with no direct Start. The chance shown then holds wherever the player starts. Spec-session ruling of 2026-11-11, on an intent question of ticket 06.
 - **Q28.** Q16 changes what the New Game start list offers, not what it preselects. The preselected place comes only from Starts that name a place directly. A Start at Player's Starting Location adds none, so a persona with only that Start keeps the current pick, else Random. Spec-session ruling of 2026-11-11, on an intent question of ticket 08.
+- **Q29.** The Test Bench rule "location has no entities" ignores the Custom Persona. The persona is the player, so it does not make a location occupied. User ruling of 2026-11-11, on the landing of ticket 07. The rule and the Custom Persona are both in v3.6.2, so an author can see this change: it needs its own changelog line, which the close adds with the lines of Q25.
 
 Other decisions:
 
