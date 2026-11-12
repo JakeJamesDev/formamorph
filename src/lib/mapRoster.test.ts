@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Connection, Entity } from '@/types';
-import { computePresence, type PresenceInput } from './presence';
-import { mapRoster } from './mapRoster';
+import type { PresenceInput } from './presence';
+import { mapRosterOf } from '@/test/mapRosterOf';
 
 const entity = (id: string, name: string, extra: Partial<Entity> = {}): Entity => ({ id, name, ...extra });
 
@@ -17,13 +17,8 @@ const CONNECTIONS: Connection[] = [
 ];
 
 /** The roster of a state where the player stands at `at`, built from the full presence. */
-const rosterOf = (input: Partial<PresenceInput>, at: string | null = 'market') => mapRoster(
-  computePresence({
-    entities: [], runtime: [], positions: {}, generics: {}, followers: [], locationId: at, locations: LOCATIONS,
-    connections: CONNECTIONS, persona: null, met: [], strangerAliases: {}, turns: [], ...input,
-  }).byId.values(),
-  at, LOCATIONS, CONNECTIONS,
-);
+const rosterOf = (input: Partial<PresenceInput>, at: string | null = 'market') =>
+  mapRosterOf({ ...input, locations: LOCATIONS, connections: CONNECTIONS }, at);
 
 const spy = (id: string, at: string, extra: Partial<Entity> = {}) =>
   entity(id, `True ${id}`, { strangerName: `a hooded ${id}`, locations: [at], ...extra });

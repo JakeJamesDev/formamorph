@@ -23,6 +23,17 @@ export const readOnMap = (raw: unknown): OnMap | undefined =>
 /** The entity's On Map. Absent, or a value this build does not know, reads as Always. */
 export const onMapOf = (entity: Pick<Entity, 'onMap'>): OnMap => readOnMap(entity.onMap) ?? 'always';
 
+/** Whether the Map lists the entity at one place. `known`: met, or no Stranger Name. `inReach`: the player's place
+ *  or a Nearby one. */
+export function shownOnMap(onMap: OnMap, known: boolean, inReach: boolean): boolean {
+  switch (onMap) {
+    case 'never': return false;
+    case 'onceMet': return known;
+    case 'whenNearby': return inReach;
+    case 'always': return true;
+  }
+}
+
 /** The field to store for `raw`: nothing for Always, an absent field or a value this build does not know. */
 export function storedOnMap(raw: unknown): { onMap?: OnMap } {
   const value = readOnMap(raw);

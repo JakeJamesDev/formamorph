@@ -12,9 +12,9 @@ import { placedIn, presentEntityIds, type Standings } from '@/lib/entityPresence
 import { EMPTY_BOOK, runtimeRoutine, type PositionBook } from '@/lib/positionEngine';
 import { placeAll, positionWorld, scriptPlaces } from '@/lib/positionPlay';
 import { discoveredAsEntities, selectReachableVisitors } from '@/lib/runtimeCharacters';
-import { computePresence, startsMet } from '@/lib/presence';
+import { startsMet } from '@/lib/presence';
 import { locationForPersonaPick, offeredStartLocations } from '@/lib/personaPick';
-import { mapRoster } from '@/lib/mapRoster';
+import { mapRosterOf } from '@/test/mapRosterOf';
 import { nearbyPlaces } from '@/lib/locationGraph';
 import { reachableEntityIds, sublocationEntityIds } from '@/lib/locationContext';
 import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
@@ -171,11 +171,10 @@ const READERS: Reader[] = [
     name: 'the map roster by location',
     answer: position,
     read: (place, book) => {
-      const presence = computePresence({
-        entities: CAST, runtime: RUNTIME, ...book, followers: [], locationId: 'square', locations: LOCATIONS,
-        connections: CONNECTIONS, persona: null, met: EVERYONE.map((e) => e.id), strangerAliases: {}, turns: [],
-      });
-      const names = mapRoster(presence.byId.values(), 'square', LOCATIONS, CONNECTIONS)[place.id]?.named ?? [];
+      const roster = mapRosterOf({
+        entities: CAST, runtime: RUNTIME, ...book, locations: LOCATIONS, connections: CONNECTIONS, met: EVERYONE.map((e) => e.id),
+      }, 'square');
+      const names = roster[place.id]?.named ?? [];
       return EVERYONE.filter((e) => names.includes(e.name)).map((e) => e.id);
     },
   },

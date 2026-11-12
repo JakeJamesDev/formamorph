@@ -3,8 +3,9 @@ import { act, render, screen, fireEvent, waitFor, within } from '@testing-librar
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH } from '@/lib/locationCanvas';
 import LocationMap from './LocationMap';
-import { computePresence, type PresenceInput } from '@/lib/presence';
-import { mapRoster, type MapRoster } from '@/lib/mapRoster';
+import type { PresenceInput } from '@/lib/presence';
+import type { MapRoster } from '@/lib/mapRoster';
+import { mapRosterOf } from '@/test/mapRosterOf';
 import type { Connection, Entity, GameLocation } from '@/types';
 
 /**
@@ -199,10 +200,7 @@ describe('the Map', () => {
     describe('fed by the Presence', () => {
       const entity = (id: string, name: string, extra: Partial<Entity> = {}): Entity => ({ id, name, ...extra });
       /** The roster the game builds for the map from a state where the player stands at s7. */
-      const rosterOf = (input: Partial<PresenceInput>) => mapRoster(computePresence({
-        entities: [], runtime: [], positions: {}, generics: {}, followers: [], locationId: 's7', locations: crowd, connections: [],
-        persona: null, met: [], strangerAliases: {}, turns: [], ...input,
-      }).byId.values(), 's7', crowd, []);
+      const rosterOf = (input: Partial<PresenceInput>) => mapRosterOf({ ...input, locations: crowd, connections: [] }, 's7');
       const badges = () => [...document.querySelectorAll('.react-flow__node [role="img"]')].map((b) => b.getAttribute('aria-label'));
 
       it('draws a Met entity at its position, and an unpositioned one at each place it lists', async () => {

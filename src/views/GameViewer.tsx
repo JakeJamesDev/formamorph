@@ -12,7 +12,7 @@ import { addAction, closeList, listCounts, recordSent, reopenSent, reversalOf, t
 import { useNarrationLayout } from '@/lib/useNarrationLayout';
 import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { personaKey, samePersonaRef } from '@/lib/personaPick';
-import { mapRoster } from '@/lib/mapRoster';
+import { mapReach, mapRoster } from '@/lib/mapRoster';
 import { usePresence } from '@/lib/usePresence';
 import {
   IN_SCENE_TURNS, hasStrangerFace, introducedIds, labelsInPlay, metCheck, strangersInPlay, sceneAfterMove, strangerAliasesFromCast, withMet,
@@ -1010,10 +1010,11 @@ const GameViewer = ({
   // The Map's live roster: every entity where it stands, named or unknown by what the player has heard.
   const presence = usePresence();
   const { byId: presenceById } = presence;
-  const mapEntities = useMemo(
-    () => mapRoster(presenceById.values(), currentLocation?.id, locations, connections),
-    [presenceById, currentLocation?.id, locations, connections],
+  const mapReachSet = useMemo(
+    () => mapReach(currentLocation?.id, locations, connections),
+    [currentLocation?.id, locations, connections],
   );
+  const mapEntities = useMemo(() => mapRoster(presenceById.values(), mapReachSet), [presenceById, mapReachSet]);
   // Everything a capitalized word in the narration might be OTHER than a new character. Feeds the
   // narration name extractor so a place, a stat, a trait, a lore term, a wildcard value or the player
   // never gets promoted to a person. Location names include the whole world, not just here — the
