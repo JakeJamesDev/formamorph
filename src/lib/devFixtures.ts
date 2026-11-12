@@ -5,7 +5,7 @@
  * `loadDevFixture` runs (DEV-gated), never in the production bundle. See `devRouter.ts` / [[formamorph-dev-router]].
  */
 import type { Body, Currency, Entity, EntityStatValues, GameLocation, Item, Placement, ScheduleRow, Slot, Trait, World, SaveObject } from '@/types';
-import { withDerivedLocations } from './entityKind';
+import { withMembership } from './entityPlaces';
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 import { DEFAULT_WORLDS, seedWorldData, type DefaultWorldSeed } from './defaultWorlds';
 
@@ -169,9 +169,9 @@ const DEV_PLACEMENTS = ([
 const DEV_ITEM_CAST: Entity[] = [
   // `devStat` lists only the fields play reads, hence the cast.
   { id: 'dev-you', name: 'You', customPersona: true, stats: [devStat('Vigor', 10)] } as Entity,
-  { id: 'dev-courier', name: 'Courier', locations: [WHITE_ROOM_ID] },
-  { id: 'dev-archivist', name: 'Archivist', locations: [WHITE_ROOM_ID] },
-  { id: 'dev-sentry', name: 'Sentry', locations: ['dev-corridor'] },
+  withMembership<Entity>({ id: 'dev-courier', name: 'Courier' }, [WHITE_ROOM_ID]),
+  withMembership<Entity>({ id: 'dev-archivist', name: 'Archivist' }, [WHITE_ROOM_ID]),
+  withMembership<Entity>({ id: 'dev-sentry', name: 'Sentry' }, ['dev-corridor']),
 ];
 
 /** The `entityMorphs` fixture's entity: the bundled avatar as an entity model, its Bulk stat bound to a face
@@ -187,15 +187,15 @@ const morphValues = (value: number) => ({ [MORPH_ENTITY.id]: [{ ...MORPH_STAT, v
 const DEV_VRM_STORE = {
   'dev-avatar': { name: 'Default', file: { name: 'default-avatar.vrm', type: 'model/vrm', data: DEFAULT_AVATAR_URL } },
 };
-const AVATAR_PERSONA: Entity = { id: 'dev-wren', name: 'Wren', locations: [], persona: true, vrmPick: { kind: 'default' } };
+const AVATAR_PERSONA: Entity = { id: 'dev-wren', name: 'Wren', persona: true, vrmPick: { kind: 'default' } };
 
-/** A Unique entity with one empty-schedule Start per place in `places`, its locations derived. */
-const unique = (entity: Omit<Entity, 'kind' | 'starts'>, places: string[], schedule: ScheduleRow[] = []): Entity => withDerivedLocations({
+/** A Unique entity with one Start per place in `places`, each running `schedule`. */
+const unique = (entity: Omit<Entity, 'kind' | 'starts'>, places: string[], schedule: ScheduleRow[] = []): Entity => ({
   ...entity, kind: 'unique', starts: places.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule })),
 });
 
 /** A Generic entity with one Start per place, no rows. */
-const generic = (entity: Omit<Entity, 'kind' | 'starts'>, places: string[]): Entity => withDerivedLocations({
+const generic = (entity: Omit<Entity, 'kind' | 'starts'>, places: string[]): Entity => ({
   ...entity, kind: 'generic', starts: places.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule: [] })),
 });
 
@@ -211,7 +211,7 @@ const ENTITY_PRESENCE_CAST: Entity[] = [
     relationships: [['dev-warden', 'mentor and former employer'], ['dev-queen', '']].map(([targetId, label]) => ({ targetId, label })),
   }, [WHITE_ROOM_ID]),
   unique({ id: 'dev-tamsin', name: 'Tamsin', persona: true }, [WHITE_ROOM_ID]),
-  { id: 'dev-self', name: 'Visitor', locations: [WHITE_ROOM_ID], customPersona: true },
+  withMembership<Entity>({ id: 'dev-self', name: 'Visitor', customPersona: true }, [WHITE_ROOM_ID]),
   // Off the White Room, wandering between the Corridor and the Alcove. It is also the White Room's own Known Here pick.
   unique({ id: 'dev-sentry', name: 'Sentry', knownIn: [WHITE_ROOM_ID] }, ['dev-corridor', 'dev-alcove'], [{
     id: 'row-1', time: 'allDay',
@@ -293,7 +293,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
           bodies: devBodies(),
           items: devItems(base.stats[0]?.id),
           currencies: devCurrencies(base.stats[0]?.id),
-          entities: [...base.entities, ...ENTITY_STATS_CAST.map((e) => (here.has(e.id) ? { ...e, locations: [WHITE_ROOM_ID] } : e))],
+          entities: [...base.entities, ...ENTITY_STATS_CAST.map((e) => (here.has(e.id) ? withMembership(e, [WHITE_ROOM_ID]) : e))],
         },
         save: {
           ...saved,

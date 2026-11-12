@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { loadDevFixture } from './devFixtures';
-import { routinePlaces } from './entityKind';
 import { migrateWorld } from './version';
 import type { Entity, World } from '@/types';
 
@@ -15,10 +14,7 @@ function shapeProblems(world: World): string[] {
     const old = OLD_FIELDS.filter((key) => key in entity);
     if (old.length) problems.push(`${entity.id} keeps ${old.join(', ')}`);
     if (!entity.customPersona && entity.locations?.length && !entity.kind) problems.push(`${entity.id} has places and no kind`);
-    if (entity.kind === 'unique') {
-      const places = routinePlaces(entity.starts ?? []);
-      if (JSON.stringify(places) !== JSON.stringify(entity.locations ?? [])) problems.push(`${entity.id} locations are not its routine places`);
-    }
+    if (entity.kind && 'locations' in entity) problems.push(`${entity.id} has a kind and stores locations`);
     return problems;
   });
 }

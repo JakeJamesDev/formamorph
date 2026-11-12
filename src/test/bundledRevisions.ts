@@ -8,6 +8,9 @@ export const PRE_REFRESH_SHA = pins.preRefresh;
 /** The last commit before the bundled worlds expansion changed a world file. */
 export const PRE_EXPANSION_SHA = pins.preExpansion;
 
+/** The last commit before Entity Places removed the stored list from entities with a kind. */
+export const PRE_ENTITY_PLACES_SHA = pins.preEntityPlaces;
+
 /** The world without its first stat: a global one, else the first an entity owns. Null when it has none. */
 export function withoutAStat(world: World): World | null {
   if (world.stats.length) return { ...world, stats: world.stats.slice(1) };

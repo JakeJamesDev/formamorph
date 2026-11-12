@@ -2,14 +2,15 @@ import { PLAYER_START, type Connection, type Entity, type EntityStart, type Game
 import { isGeneric, isUnique, routinePlaces } from "@/lib/entityKind";
 import type { Standings } from "@/lib/entityPresence";
 import { startingLocationIds } from "@/lib/locationGraph";
-import { placesOf, startReach } from "@/lib/positionEngine";
+import { genericPlaces, placesOf, startReach } from "@/lib/positionEngine";
 import { openingBook } from "@/lib/positionPlay";
 
 /**
  * Entity Places: where an entity is (ADR-0017). Four questions, each its own answer: Position (where it stands now),
  * Sample Placement (where authoring places it at the start of the story), Presence (every place it can be, with its
  * reasons) and Start places (where it can begin). An entity with no kind answers all four from its stored membership
- * list, which only this module reads and writes. "Who is at a place" inverts any of them, in cast order (ADR-0003).
+ * list, which only this module reads and writes; an entity with a kind stores none. "Who is at a place" inverts any
+ * of them, in cast order (ADR-0003).
  */
 
 /** The entity fields every answer reads. */
@@ -157,3 +158,29 @@ export function withMembership<E extends Pick<Entity, "locations">>(entity: E, p
   const { locations: _none, ...rest } = entity;
   return rest as E;
 }
+
+/** `entity` without a stored membership list. The same entity when it holds none. */
+export function withoutMembership<E extends Pick<Entity, "locations">>(entity: E): E {
+  return "locations" in entity ? withMembership(entity, []) : entity;
+}
+
+/** `entities` as they stand in play, a projection only this module reads: each placed copy's `locations` is its Position,
+ *  a Generic entity's places each once (Q131). Never saved. The same array when nobody is placed. */
+export function entitiesInPlay(entities: Entity[], { positions, generics }: Standings): Entity[] {
+  if (!entities.some((e) => e.id in positions || e.id in generics)) return entities;
+  const places = genericPlaces(generics);
+  return entities.map((entity) => {
+    const at = positions[entity.id];
+    if (at !== undefined) return { ...entity, locations: [at] };
+    const generic = places[entity.id];
+    return generic ? { ...entity, locations: generic } : entity;
+  });
+}
+
+/** The ids of `entities` whose membership holds `locationId`, read over `entitiesInPlay` in play. */
+export const entityIdsAt = (locationId: string | null | undefined, entities: readonly PlacedEntity[]): string[] =>
+  idsAt(locationId, entities, membership);
+
+/** The ids of `entities` whose membership holds any of `locationIds`, each once. */
+export const entityIdsAtAny = (locationIds: readonly string[], entities: readonly PlacedEntity[]): string[] =>
+  idsAtAny(locationIds, entities, membership);

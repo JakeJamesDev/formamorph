@@ -4,7 +4,7 @@ import type {
   Opening, TraitRequirement, EntityStart, ScheduleRow,
 } from '@/types';
 import { PLAYER_START } from '@/types';
-import { withDerivedLocations } from './entityKind';
+import { namedPlacesOf, withoutMembership } from './entityPlaces';
 import { isImplicitPair, parentIndex } from './locationGraph';
 import { LEGACY_DEFAULT_AVATAR_VALUES, migrateLegacyPlayerAvatar, type LegacyCharacterData } from './legacyVrm';
 import { autoBindLegacyBodyStats, migrateMorphBindingList, migrateStatListMorphBindings } from './bodyMorphs';
@@ -698,8 +698,7 @@ const allDayWander = (id: string, places: string[]): ScheduleRow => ({
 });
 
 /** The kind, Starts and Traversable of a released entity with several locations and no presence (Q143, Q144, Q146). */
-function migrateSeveralLocations(entity: Entity, movement: unknown, world: RoutineMigrationWorld): Entity {
-  const places = entity.locations ?? [];
+function migrateSeveralLocations(entity: Entity, places: string[], movement: unknown, world: RoutineMigrationWorld): Entity {
   const listed = new Set(places);
   if (world.locationIds.length > 1 && world.locationIds.every((id) => listed.has(id))) {
     const starts: EntityStart[] = [{ id: 'start-1', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }];
@@ -716,8 +715,9 @@ function migrateSeveralLocations(entity: Entity, movement: unknown, world: Routi
 
 /**
  * One entity's shipped `presence` and `movement` mapped to a kind, Starts and Traversable (NPC Schedules
- * migration table), and a Unique entity's `locations` derived from its routine. Idempotent: an entity without the
- * old fields keeps its kind. Without `world`, as for a library entity, several locations always give the Wander.
+ * migration table), read from its membership. An entity with a kind leaves without a stored list, whether it just got
+ * its kind or already had one (Q32). Idempotent: an entity without the old fields keeps its kind. Without `world`, as
+ * for a library entity, several locations always give the Wander.
  */
 export function migrateEntityRoutine<T>(raw: T, world?: RoutineMigrationWorld): T {
   if (!raw || typeof raw !== 'object') return raw;
@@ -725,15 +725,17 @@ export function migrateEntityRoutine<T>(raw: T, world?: RoutineMigrationWorld): 
   const entity = rest as Entity;
   const legacy = presence !== undefined || movement !== undefined;
   // `raw` is any record a file holds; only its entity fields are read here.
-  if (entity.kind || entity.customPersona || !entity.locations?.length) return withDerivedLocations(legacy ? entity : raw as unknown as Entity) as T;
-  const places = entity.locations;
+  const kept = legacy ? entity : raw as unknown as Entity;
+  if (entity.kind) return withoutMembership(kept) as T;
+  const places = namedPlacesOf(entity);
+  if (entity.customPersona || !places.length) return kept as T;
   if (presence !== 'random' && places.length > 1) {
-    return withDerivedLocations(migrateSeveralLocations(entity, movement, world ?? { locationIds: [], usesPeopleFields: false })) as T;
+    return withoutMembership(migrateSeveralLocations(entity, places, movement, world ?? { locationIds: [], usesPeopleFields: false })) as T;
   }
   const startPlaces = presence === 'random' ? places : places.slice(0, 1);
   const schedule = (n: number): ScheduleRow[] => (movement === 'between' ? [allDayWander(`row-${n}`, places)] : []);
   const starts: EntityStart[] = startPlaces.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule: schedule(i + 1) }));
-  return withDerivedLocations({
+  return withoutMembership({
     ...entity, kind: 'unique', starts, ...(movement === 'follow' && { traversable: 'anywhere' as const }),
   }) as T;
 }

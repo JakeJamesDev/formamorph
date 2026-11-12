@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import rawWorld from '../../../testing/baseline/sedge-landing.json';
 import { migrateWorld } from '@/lib/version';
-import { openingStateOf } from '@/lib/openingState';
+import { authoringStateOf } from '@/lib/openingState';
 import { authoredChipScene, type AuthoredWorld } from '@/lib/chipValues/authoredScene';
 import { TOOL_CATALOG } from './toolCatalog';
 import { buildToolSnapshot, type ToolSnapshot } from './toolSnapshot';
@@ -28,7 +28,7 @@ function sedge(): AuthoredWorld {
 }
 
 function snapshot(world = sedge()): ToolSnapshot {
-  return buildToolSnapshot(authoredChipScene(world), world.dictionaries ?? [], null, { state: openingStateOf(world), authored: null });
+  return buildToolSnapshot(authoredChipScene(world), world.dictionaries ?? [], null, { state: authoringStateOf(world), authored: null });
 }
 
 const param = (name: string, over: Partial<ToolParam> = {}): ToolParam =>

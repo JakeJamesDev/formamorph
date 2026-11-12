@@ -19,7 +19,7 @@ import { buildLens, lensActiveTraits, resolveLensText, seedLens, type BenchLens 
 import { settledOpeningStats } from '@/lib/testBench/opening';
 import type { Connection, Entity, GameLocation, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
 import {
-  liveTourItem, tourConnectionStart, tourEntity, tourEntityPlaces, tourEntry, tourStat, type TourItems, type TourWorld,
+  liveTourItem, tourConnectionStart, tourEntity, tourEntityPlaces, tourEntityPresence, tourEntry, tourStat, type TourItems, type TourWorld,
 } from './steps';
 import { readTestLine, type TestLineScan } from './testLine';
 
@@ -185,9 +185,7 @@ function startsAt(world: TourWorld, locationId: string | undefined): StartsAt {
 /** Where the tour entity is: a tour location it is in, else any location it is in, else nowhere. */
 function entitySceneId(world: TourWorld, items: TourItems): string | null {
   const [tourPlace] = tourEntityPlaces(world, items);
-  if (tourPlace) return tourPlace;
-  const live = new Set((world.locations ?? []).map((l) => l.id));
-  return tourEntity(world, items)?.locations?.find((id) => live.has(id)) ?? null;
+  return tourPlace ?? tourEntityPresence(world, items)[0] ?? null;
 }
 
 /** The tour entity with its name and Player-Facing Description resolved as a player there reads them. */

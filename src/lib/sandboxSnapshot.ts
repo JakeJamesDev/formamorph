@@ -238,8 +238,7 @@ function playFields(
     aliases: (entity.aliases ?? []).map((alias) => resolve(alias, entity)),
     pronouns: resolve(entity.pronouns ?? '', entity),
     ...(at ? { locationId: at } : {}),
-    // A run with no live positions at all reads the stored list.
-    locationIds: positions ? positionAmong(entity, positions, genericPositions ?? {}) : genericPositions?.[entity.id] ?? entity.locations ?? [],
+    locationIds: positionAmong(entity, positions ?? {}, genericPositions ?? {}),
     ...(followers?.includes(entity.id) ? { following: true } : {}),
     ...(waiting?.includes(entity.id) ? { waiting: true } : {}),
   };

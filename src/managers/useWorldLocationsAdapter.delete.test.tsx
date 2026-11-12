@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { namedPlacesOf } from '@/lib/entityPlaces';
 import { screen, fireEvent, within } from '@testing-library/react';
 import { renderLocationsTab } from '@/test/locationsTabBench';
 import { panelWorld } from '@/test/panelBench';
@@ -56,7 +57,7 @@ const expectCleanDelete = (ctx: ReturnType<ReturnType<typeof renderLocationsTab>
   expect(ctx.locations.map((l) => l.id)).toEqual(['harbor', 'hollow']);
   // The sub-location moves up to the deleted location's parent.
   expect(ctx.locations.find((l) => l.id === 'hollow')?.parentId ?? null).toBeNull();
-  expect(ctx.entities[0].locations).toEqual(['harbor']);
+  expect(namedPlacesOf(ctx.entities[0])).toEqual(['harbor']);
   expect(ctx.connections.map((c) => c.id)).toEqual(['c2']);
   expect(JSON.stringify(ctx.getWorldData())).not.toContain('"wood"');
 };

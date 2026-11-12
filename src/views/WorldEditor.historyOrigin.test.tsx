@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { namedPlacesOf } from '@/lib/entityPlaces';
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
@@ -121,7 +122,7 @@ describe('an undo of an edit made through a mirror', () => {
     fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Location Fields' })).getByRole('tab', { name: 'Presence' }));
     await user.click(screen.getByRole('combobox', { name: 'Add an entity here' }));
     await user.click(await screen.findByRole('option', { name: 'Odd Wick' }));
-    expect(ctx().entities.find((e) => e.id === 'resident')!.locations).toEqual(['harbor', 'docks']);
+    expect(namedPlacesOf(ctx().entities.find((e) => e.id === 'resident')!)).toEqual(['harbor', 'docks']);
 
     await expectReturnTo(/Stats/, () => {
       expect(shownEditorTab()).toMatch(/Locations/);

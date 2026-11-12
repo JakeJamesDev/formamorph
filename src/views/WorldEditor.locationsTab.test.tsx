@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { namedPlacesOf } from '@/lib/entityPlaces';
 import { screen, fireEvent, within } from '@testing-library/react';
 import { asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench, pickEditorMode } from '@/test/worldEditorBench';
 import type { World } from '@/types';
@@ -304,7 +305,7 @@ describe('World Editor — deleting a location', () => {
 
     expect(ctx().locations.map((l) => l.id)).toEqual(['harbor', 'wood', 'hollow']);
     expect(ctx().locations.find((l) => l.id === 'hollow')?.parentId).toBe('wood');
-    expect(ctx().entities[0].locations).toEqual(['harbor', 'wood']);
+    expect(namedPlacesOf(ctx().entities[0])).toEqual(['harbor', 'wood']);
     expect(ctx().connections.map((c) => c.id)).toEqual(['c1', 'c2']);
     expect(ctx().isWorldDirty).toBe(false);
   });

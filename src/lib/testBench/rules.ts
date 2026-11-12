@@ -51,7 +51,7 @@ import {
 import { formatBytes, type ImageCap } from '@/lib/imageOptim';
 import { worldImageItems, type MediaItem } from '@/lib/mediaIndex';
 import { clamp } from '@/lib/utils';
-import { dropRoutinePlace } from '@/lib/entityKind';
+import { withoutRoutinePlace } from '@/lib/entityKind';
 import { namedPlacesOf, presenceIn, withMembership, type PlacesWorld } from '@/lib/entityPlaces';
 import { placesOf, startReach } from '@/lib/positionEngine';
 import { PLAYER_START } from '@/types';
@@ -471,7 +471,7 @@ const entityLocationOrphan: Rule = {
     const known = new Set((world.locations ?? []).map((l) => l.id));
     return withSlice(world, 'entities', mapChanged(world.entities ?? [], (entity) => {
       // The editor's location delete runs the same operation; the routine is the only source, so no list is written.
-      if (entity.kind) return routineMissing(entity, known).reduce((acc, id) => dropRoutinePlace(acc, id), entity);
+      if (entity.kind) return routineMissing(entity, known).reduce((acc, id) => withoutRoutinePlace(acc, id), entity);
       const placements = namedPlacesOf(entity);
       const live = placements.filter((id) => known.has(id));
       // Dropping the last placement would leave the entity nowhere, and where it belongs instead is the

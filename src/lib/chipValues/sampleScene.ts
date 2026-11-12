@@ -57,8 +57,8 @@ const trait = (id: string, name: string, aiDescription: string): Trait => ({
 });
 
 /** A Unique entity's routine: one Start at `place`, where it stays all day. */
-const staysAt = (id: string, place: string): Pick<Entity, 'kind' | 'starts' | 'locations'> => ({
-  kind: 'unique', locations: [place],
+const staysAt = (id: string, place: string): Pick<Entity, 'kind' | 'starts'> => ({
+  kind: 'unique',
   starts: [{ id: `${id}-home`, place, weight: 1, schedule: [{ id: `${id}-stay`, time: 'allDay', action: { kind: 'stay', place } }] }],
 });
 

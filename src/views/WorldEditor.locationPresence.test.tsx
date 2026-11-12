@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { namedPlacesOf } from '@/lib/entityPlaces';
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench, shownEditorTab } from '@/test/worldEditorBench';
@@ -77,10 +78,11 @@ describe('the Presence tab: Add Entity', () => {
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Moths', 'Rats', 'Queen']);
 
     await user.click(await screen.findByRole('option', { name: 'Moths' }));
-    expect(ctx().entities.find((e) => e.id === 'moths')!.locations).toEqual(['tavern']);
+    expect(namedPlacesOf(ctx().entities.find((e) => e.id === 'moths')!)).toEqual(['tavern']);
+    expect(ctx().entities.find((e) => e.id === 'moths')!).not.toHaveProperty('locations');
 
     await undo();
-    expect(ctx().entities.find((e) => e.id === 'moths')!.locations).toBeUndefined();
+    expect(namedPlacesOf(ctx().entities.find((e) => e.id === 'moths')!)).toEqual([]);
   });
 
   it('does not offer a Generic entity that only a row brings here, and adds no Start to it when another entity is added', async () => {

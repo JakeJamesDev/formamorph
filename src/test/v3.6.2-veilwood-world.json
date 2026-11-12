@@ -1,0 +1,386 @@
+{
+  "version": "3.3.0",
+  "worldOverview": {
+    "name": "Veilwood"
+  },
+  "locations": [
+    {
+      "id": "1725037201878",
+      "name": "The Veilwood"
+    },
+    {
+      "id": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
+      "name": "The Drowned Hollow",
+      "parentId": "1725037201878",
+      "isStarting": true
+    },
+    {
+      "id": "343d2396-c459-44f2-bf1a-8df30863d44e",
+      "name": "Gloomcap Thicket",
+      "parentId": "1725037201878"
+    },
+    {
+      "id": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
+      "name": "Blackwater Channels",
+      "parentId": "1725037201878"
+    },
+    {
+      "id": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
+      "name": "The Hollow Fig",
+      "parentId": "1725037201878"
+    },
+    {
+      "id": "64c2212e-cf1a-42b0-8d76-3b04252b4f43",
+      "name": "The Surveyor's Camp",
+      "parentId": "2dcf2b34-f694-4018-bfca-83a02db92e7a"
+    },
+    {
+      "id": "f0977527-8c51-47a3-b0d9-f2efdd11709c",
+      "name": "The Veilbreak",
+      "parentId": "1725037201878"
+    },
+    {
+      "id": "05d63f43-c798-4071-865d-7a99ed73de51",
+      "name": "The Gloam Cathedral",
+      "parentId": "1725037201878"
+    },
+    {
+      "id": "3a691535-0953-45a1-adf6-4abe23339963",
+      "name": "The Predator Dens",
+      "parentId": "1725037201878"
+    },
+    {
+      "id": "84dbce05-5d3c-469f-9217-4d4b78a98805",
+      "name": "Sunkwater",
+      "parentId": "1725037201878"
+    },
+    {
+      "id": "419322fd-bb43-463f-99da-d650542ccaf7",
+      "name": "Sunkwater Belfry",
+      "parentId": "84dbce05-5d3c-469f-9217-4d4b78a98805"
+    },
+    {
+      "id": "74d1dad1-e1ce-41d4-b97d-15cca7b9ce41",
+      "name": "The Eastern Edge",
+      "parentId": "1725037201878"
+    },
+    {
+      "id": "ed37475f-a7c3-423c-abc7-3af3229764de",
+      "name": "The Surveyor's Cache",
+      "parentId": "74d1dad1-e1ce-41d4-b97d-15cca7b9ce41"
+    }
+  ],
+  "connections": [
+    {
+      "id": "d0b02078-0fd4-4941-a971-7d31e60a799c",
+      "a": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
+      "b": "343d2396-c459-44f2-bf1a-8df30863d44e",
+      "aToB": {
+        "hint": "northeast along a spine of roots above the waterline"
+      },
+      "bToA": {
+        "hint": "southwest along the spine of roots, down to the waterline"
+      }
+    },
+    {
+      "id": "28097286-1991-4afe-b9a0-9ef0a5110270",
+      "a": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
+      "b": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
+      "aToB": {
+        "hint": "southeast, where the hollow's water drains into the channels"
+      },
+      "bToA": {
+        "hint": "northwest, up the channel the hollow drains into"
+      }
+    },
+    {
+      "id": "091b2a03-4e2b-4754-aee8-8d58ff35b53a",
+      "a": "343d2396-c459-44f2-bf1a-8df30863d44e",
+      "b": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
+      "aToB": {
+        "hint": "southeast along the fig's colossal roots"
+      },
+      "bToA": {
+        "hint": "northwest along the fig's roots into the undergrowth"
+      }
+    },
+    {
+      "id": "ca91b347-3f53-4deb-b728-b2c4e91d00d9",
+      "a": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
+      "b": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
+      "aToB": {
+        "hint": "hauling out of the water at the fig's knees"
+      },
+      "bToA": {
+        "hint": "down the fig's knees into the black water"
+      }
+    },
+    {
+      "id": "b1bbae38-3e93-4f25-a962-f2ed78613415",
+      "a": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
+      "b": "f0977527-8c51-47a3-b0d9-f2efdd11709c",
+      "aToB": {
+        "hint": "a hard eastward climb, the same way the moths go at dusk"
+      },
+      "bToA": {
+        "hint": "back down into the trees, west toward the fig"
+      }
+    },
+    {
+      "id": "4e0db32c-cd22-4425-b119-eecda4c69991",
+      "a": "343d2396-c459-44f2-bf1a-8df30863d44e",
+      "b": "05d63f43-c798-4071-865d-7a99ed73de51",
+      "aToB": {
+        "hint": "north, where the undergrowth gives way to pale pillars"
+      },
+      "bToA": {
+        "hint": "south, down into the glowing undergrowth"
+      }
+    },
+    {
+      "id": "e67d2c22-0c1f-4dda-ba43-53408b553805",
+      "a": "05d63f43-c798-4071-865d-7a99ed73de51",
+      "b": "3a691535-0953-45a1-adf6-4abe23339963",
+      "aToB": {
+        "hint": "east along the ridge foot, where the ground turns dry and the bones begin"
+      },
+      "bToA": {
+        "hint": "west, toward the echo of the pillars"
+      }
+    },
+    {
+      "id": "c67253b8-e119-414c-b40d-74d15c44143d",
+      "a": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
+      "b": "3a691535-0953-45a1-adf6-4abe23339963",
+      "aToB": {
+        "hint": "northeast up a dry gully that smells of musk"
+      },
+      "bToA": {
+        "hint": "southwest down the gully to the fig's roots"
+      }
+    },
+    {
+      "id": "651e1ca2-71e9-4cfe-8e1a-d4b155877768",
+      "a": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
+      "b": "84dbce05-5d3c-469f-9217-4d4b78a98805",
+      "aToB": {
+        "hint": "south downstream, where a channel widens into a drowned street"
+      },
+      "bToA": {
+        "hint": "north upstream along the braided channels"
+      }
+    },
+    {
+      "id": "3c461cb3-2aa5-4b03-9f54-12c1c7b115ae",
+      "a": "84dbce05-5d3c-469f-9217-4d4b78a98805",
+      "b": "74d1dad1-e1ce-41d4-b97d-15cca7b9ce41",
+      "aToB": {
+        "hint": "northeast along the old village road as it climbs out of the water"
+      },
+      "bToA": {
+        "hint": "southwest down the old road into the drowned village"
+      }
+    },
+    {
+      "id": "fd566695-25ee-4c97-92cb-3a7e9d3bdec5",
+      "a": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
+      "b": "74d1dad1-e1ce-41d4-b97d-15cca7b9ce41",
+      "aToB": {
+        "hint": "southeast, following {{ph:12382226-bdc4-45aa-a9a4-1089bec1c173:world:af10dcb5-99dd-4faf-bddc-94dcfa7ef0d2}}'s paint blazes from trunk to trunk"
+      },
+      "bToA": {
+        "hint": "northwest, following {{ph:12382226-bdc4-45aa-a9a4-1089bec1c173:world:af10dcb5-99dd-4faf-bddc-94dcfa7ef0d2}}'s paint blazes back to the fig"
+      }
+    },
+    {
+      "id": "64c49dd4-51de-4554-b72a-414d2de5eb0e",
+      "a": "74d1dad1-e1ce-41d4-b97d-15cca7b9ce41",
+      "b": "f0977527-8c51-47a3-b0d9-f2efdd11709c",
+      "aToB": {
+        "hint": "northeast up the open slope of loose stone, in plain view the whole way"
+      },
+      "bToA": {
+        "hint": "down the loose stone to the thinning trees"
+      }
+    }
+  ],
+  "entities": [
+    {
+      "id": "b9d6e959-177a-4593-a1ee-7a41e2d7d30e",
+      "name": "The Wanderer",
+      "type": "Person",
+      "customPersona": true
+    },
+    {
+      "id": "1725036145521",
+      "name": "Ember Speckle",
+      "type": "Mushroom",
+      "locations": [
+        "952e1bae-8503-46b7-9a66-15e05d3ec38c",
+        "343d2396-c459-44f2-bf1a-8df30863d44e"
+      ]
+    },
+    {
+      "id": "1725036588931",
+      "name": "Midnight Shimmer",
+      "type": "Mushroom",
+      "locations": [
+        "1ca86d9a-0690-4865-be91-3c6ee21b53ea"
+      ]
+    },
+    {
+      "id": "1725036815162",
+      "name": "Ember Spire",
+      "type": "Mushroom",
+      "locations": [
+        "343d2396-c459-44f2-bf1a-8df30863d44e",
+        "2dcf2b34-f694-4018-bfca-83a02db92e7a"
+      ]
+    },
+    {
+      "id": "1725036993099",
+      "name": "Night Veil",
+      "type": "Mushroom",
+      "locations": [
+        "343d2396-c459-44f2-bf1a-8df30863d44e"
+      ]
+    },
+    {
+      "id": "1725039626026",
+      "name": "Cerulean Vex",
+      "type": "Mushroom",
+      "locations": [
+        "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
+        "343d2396-c459-44f2-bf1a-8df30863d44e"
+      ]
+    },
+    {
+      "id": "1725039996730",
+      "name": "Shadow Raptor",
+      "type": "Creature",
+      "locations": [
+        "952e1bae-8503-46b7-9a66-15e05d3ec38c",
+        "343d2396-c459-44f2-bf1a-8df30863d44e",
+        "3a691535-0953-45a1-adf6-4abe23339963",
+        "74d1dad1-e1ce-41d4-b97d-15cca7b9ce41"
+      ],
+      "knownIn": [
+        "1725037201878"
+      ]
+    },
+    {
+      "id": "1725040131033",
+      "name": "Dread Crawler",
+      "type": "Creature",
+      "locations": [
+        "952e1bae-8503-46b7-9a66-15e05d3ec38c",
+        "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
+        "2dcf2b34-f694-4018-bfca-83a02db92e7a",
+        "3a691535-0953-45a1-adf6-4abe23339963",
+        "84dbce05-5d3c-469f-9217-4d4b78a98805"
+      ],
+      "knownIn": [
+        "1725037201878"
+      ]
+    },
+    {
+      "id": "ba4063b4-cf52-4e59-8417-6270488912dd",
+      "name": "Lantern Moths",
+      "type": "Creature",
+      "locations": [
+        "1725037201878",
+        "952e1bae-8503-46b7-9a66-15e05d3ec38c",
+        "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
+        "f0977527-8c51-47a3-b0d9-f2efdd11709c",
+        "05d63f43-c798-4071-865d-7a99ed73de51",
+        "74d1dad1-e1ce-41d4-b97d-15cca7b9ce41"
+      ]
+    },
+    {
+      "id": "c4e9a1f7-5d2b-4b83-8e60-1a7f3c9d2b54",
+      "name": "The Surveyor's Journal",
+      "type": "Object",
+      "locations": [
+        "64c2212e-cf1a-42b0-8d76-3b04252b4f43"
+      ]
+    },
+    {
+      "id": "772f3897-dd49-437f-8a49-d122230d3c7e",
+      "name": "Ghost Chanterelle",
+      "type": "Mushroom",
+      "locations": [
+        "05d63f43-c798-4071-865d-7a99ed73de51"
+      ]
+    },
+    {
+      "id": "621fc648-4e14-4ac6-9ed2-b365c9a6f638",
+      "name": "Bleeding Tooth",
+      "type": "Mushroom",
+      "locations": [
+        "84dbce05-5d3c-469f-9217-4d4b78a98805"
+      ]
+    },
+    {
+      "id": "790740cb-a1fd-417d-8450-33d3e0a9febf",
+      "name": "Sporeburst Puffball",
+      "type": "Mushroom",
+      "locations": [
+        "05d63f43-c798-4071-865d-7a99ed73de51",
+        "343d2396-c459-44f2-bf1a-8df30863d44e"
+      ]
+    },
+    {
+      "id": "6a8e7cc0-ab17-43e8-86e5-237dadc44afd",
+      "name": "Bark Frogs",
+      "type": "Creature",
+      "locations": [
+        "952e1bae-8503-46b7-9a66-15e05d3ec38c",
+        "343d2396-c459-44f2-bf1a-8df30863d44e",
+        "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
+        "84dbce05-5d3c-469f-9217-4d4b78a98805"
+      ]
+    },
+    {
+      "id": "1ce040be-ab12-437f-b937-023039df27aa",
+      "name": "Mire Leeches",
+      "type": "Creature",
+      "locations": [
+        "84dbce05-5d3c-469f-9217-4d4b78a98805"
+      ],
+      "knownIn": "nowhere"
+    },
+    {
+      "id": "9ace74ca-b429-4e65-bdc7-5ee806e6b20e",
+      "name": "The Drowned Bell",
+      "type": "Object",
+      "locations": [
+        "419322fd-bb43-463f-99da-d650542ccaf7"
+      ]
+    },
+    {
+      "id": "733a88c1-3944-4856-a0f1-372c387186dc",
+      "name": "The Map's Other Half",
+      "type": "Object",
+      "locations": [
+        "ed37475f-a7c3-423c-abc7-3af3229764de"
+      ]
+    },
+    {
+      "id": "23b874a6-3ec4-4e40-bc2f-edddd47f0ada",
+      "name": "The Bone Midden",
+      "type": "Object",
+      "locations": [
+        "3a691535-0953-45a1-adf6-4abe23339963"
+      ]
+    },
+    {
+      "id": "d3197229-7a1a-44fc-82fd-1f77315361a6",
+      "name": "The Surveyor's Blazes",
+      "type": "Object",
+      "locations": [
+        "2dcf2b34-f694-4018-bfca-83a02db92e7a",
+        "74d1dad1-e1ce-41d4-b97d-15cca7b9ce41"
+      ]
+    }
+  ]
+}

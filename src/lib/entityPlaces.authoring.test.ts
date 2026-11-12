@@ -4,7 +4,6 @@
  */
 import { describe, expect, it } from 'vitest';
 import { PLAYER_START, type Connection, type Entity, type GameLocation, type ScheduleRow, type Stat, type World } from '@/types';
-import { withDerivedLocations } from '@/lib/entityKind';
 import { statBoxLookups, type CodeCardWorld } from '@/lib/codeWorldLookup';
 import { runTestCode, type StatCodeWorld } from '@/lib/statCodeTestRun';
 import { snapshotOf } from '@/lib/sandboxSnapshot';
@@ -37,7 +36,7 @@ const CAST: Entity[] = ([
   { id: 'urchin', name: 'Urchin', kind: 'unique', traversable: [], starts: [{ id: 'u1', place: PLAYER_START, weight: 1, schedule: [] }] },
   // No kind: it belongs where it lists.
   { id: 'gull', name: 'Gull', locations: ['docks'] },
-] satisfies Entity[]).map(withDerivedLocations);
+] satisfies Entity[]);
 
 const WORLD = {
   stats: [], statGroups: [], traits: [], traitGroups: [], entities: CAST, entityGroups: [], placeholders: [], placeholderGroups: [],
@@ -72,15 +71,15 @@ describe('the script hover card reads the Sample Placement', () => {
 
 describe('an entity the opening cannot place has no Sample Placement (Q26)', () => {
   // Every Start is at Player's Starting Location, and a row names the docks; the sample has no player start.
-  const stray = withDerivedLocations({
+  const stray: Entity = {
     id: 'stray', name: 'Stray', kind: 'unique', traversable: [],
     starts: [{ id: 's1', place: PLAYER_START, weight: 1, schedule: [row('s1-am', 'docks')] }],
-  });
-  const noStarts = withDerivedLocations({ id: 'ghost', name: 'Ghost', kind: 'unique', traversable: [], starts: [] });
+  };
+  const noStarts: Entity = { id: 'ghost', name: 'Ghost', kind: 'unique', traversable: [], starts: [] };
 
-  it('places the stray nowhere where `openingCast` kept it at its row place', () => {
+  it('places the stray nowhere, in `openingCast` too, now that it stores no list', () => {
     const kept = openingCast([stray], LOCATIONS, CONNECTIONS, undefined);
-    expect(entityIdsAt('docks', kept)).toEqual(['stray']);
+    expect(entityIdsAt('docks', kept)).toEqual([]);
     expect(idsAt('docks', [stray], samplePlacement([stray], { locations: LOCATIONS, connections: CONNECTIONS }, undefined))).toEqual([]);
   });
 

@@ -1,37 +1,16 @@
 import type { ContentLocationRef, Entity, EntityPositions, GameLocation, GenericStates, PersonaRef } from "@/types";
 import { ancestors, parentLookup } from "@/lib/ancestors";
-import {
-  isGeneric, routineNames, withDerivedLocations, withGenericStart, withoutRoutinePlace, withRoutineMapped,
-} from "@/lib/entityKind";
+import { isGeneric, withGenericStart, withoutRoutinePlace, withRoutineMapped } from "@/lib/entityKind";
 import { withNewStart } from "@/lib/routineEditing";
-import { genericPlaces } from "@/lib/positionEngine";
-import { idsAt, positionsIn, withMembership } from "@/lib/entityPlaces";
+import { idsAt, namedPlacesOf, positionsIn, withMembership } from "@/lib/entityPlaces";
 import { randomUUID } from "@/lib/uuid";
 
 /**
- * The inverted index over entity-owned location membership (see ADR-0003). Entities carry the locations
- * they belong to; every roster that asks "who is at this place" reads it through here, so there is one
- * inversion rather than one per caller.
- *
- * During play a runtime layer sits on top: a Unique entity is at its position only, and a Generic entity at the places its
- * Generic Entity Instances stand, each once. `entitiesInPlay` applies it, so the rosters read it unchanged.
- *
- * Roster order is the entity array's own order — the author's ordering of the cast — since an
- * entity-owned list carries no rank within a location.
+ * Entity edits that touch places, and the rosters over the Entity Places module (ADR-0017). In play,
+ * `entitiesInPlay` lays each entity's Position over the cast, so the rosters read it unchanged. Roster order is
+ * the cast's own order.
  */
-
-/** The ids of the entities that belong to `locationId`. Empty for a location nobody lists. */
-export function entityIdsAt(locationId: string | null | undefined, entities: Entity[]): string[] {
-  if (!locationId) return [];
-  return entities.filter((e) => e.locations?.includes(locationId)).map((e) => e.id);
-}
-
-/** The deduped ids of the entities that belong to any of `locationIds` — the union a multi-location scope
- *  (sub-locations, reachable) rosters. Each entity appears once however many of the places it lists. */
-export function entityIdsAtAny(locationIds: readonly string[], entities: Entity[]): string[] {
-  const scope = new Set(locationIds);
-  return entities.filter((e) => e.locations?.some((id) => scope.has(id))).map((e) => e.id);
-}
+export { entitiesInPlay, entityIdsAt, entityIdsAtAny } from "@/lib/entityPlaces";
 
 /** A copy of `entity` belonging to exactly `locationIds`: the Entity Places module's membership write. */
 export const withEntityLocations = (entity: Entity, locationIds: string[]): Entity => withMembership(entity, locationIds);
@@ -59,11 +38,11 @@ export function withCarriedRoutine(
 ): Entity {
   const carried = placedIn({ ...source, kind: copy.kind }, carryMap(source.locationRefs ?? [], connections, known));
   const { starts: _s, traversable: _t, ...rest } = copy;
-  return withDerivedLocations({
+  return {
     ...rest,
     ...(carried.starts && { starts: carried.starts }),
     ...(carried.traversable !== undefined && { traversable: carried.traversable }),
-  });
+  };
 }
 
 /** Whether a Start of `entity` begins at `locationId`. */
@@ -77,19 +56,6 @@ export const withStartHere = (entity: Entity, locationId: string): Entity =>
 export interface Standings {
   positions: Readonly<EntityPositions>;
   generics: Readonly<GenericStates>;
-}
-
-/** `entities` as they stand in play: a Unique entity with a position lists that location only, and a Generic entity with
- *  Generic Entity Instances the places they stand at, each once (Q131). The same array when nobody is placed. */
-export function entitiesInPlay(entities: Entity[], { positions, generics }: Standings): Entity[] {
-  if (!entities.some((e) => e.id in positions || e.id in generics)) return entities;
-  const places = genericPlaces(generics);
-  return entities.map((entity) => {
-    const at = positions[entity.id];
-    if (at !== undefined) return { ...entity, locations: [at] };
-    const generic = places[entity.id];
-    return generic ? { ...entity, locations: generic } : entity;
-  });
 }
 
 /** The ids of the entities whose Position is `locationId`. Pass the discovered entities in `entities` too, so the
@@ -155,11 +121,12 @@ const knownInIncludes = (entity: Entity, locationId: string) => Array.isArray(en
  *  location is deleted, so no entity keeps pointing at a place that no longer exists. A Start at the place goes,
  *  and so does a row left with no places. Returns the same array when nobody named it. */
 export function dropLocationFromEntities(locationId: string, entities: Entity[]): Entity[] {
-  const names = (e: Entity) => e.locations?.includes(locationId) || knownInIncludes(e, locationId) || routineNames(e, locationId);
+  const names = (e: Entity) => namedPlacesOf(e).includes(locationId) || knownInIncludes(e, locationId);
   if (!entities.some(names)) return entities;
   return entities.map((entity) => {
     let next = withoutRoutinePlace(entity, locationId);
-    if (!next.kind && next.locations?.includes(locationId)) next = withEntityLocations(next, next.locations.filter((id) => id !== locationId));
+    const members = next.kind ? [] : namedPlacesOf(next);
+    if (members.includes(locationId)) next = withEntityLocations(next, members.filter((id) => id !== locationId));
     if (knownInIncludes(next, locationId)) next = toggleKnownInPick(next, locationId);
     return next;
   });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PLAYER_START, type Entity, type EntityStart, type GameLocation } from '@/types';
 import { startWithRow } from '@/test/entityKindFixture';
-import { withDerivedLocations } from './entityKind';
+import { namedPlacesOf } from './entityPlaces';
 import {
   computePresence, connectedPlaces, introducedIds, strangersInPlay, sceneAfterMove, startsMet, strangerAliasesFromCast, withMet,
   type PresenceInput, type SceneTurn,
@@ -155,7 +155,8 @@ describe('start-met', () => {
   describe('a persona with a kind reads its Starts only', () => {
     const start = startWithRow;
     const played = (starts: EntityStart[]): Entity =>
-      withDerivedLocations({ id: 'me', name: 'Wren', kind: 'unique', starts });
+      // An unreleased world still stores every Start and row place as its list (Q5).
+      ({ id: 'me', name: 'Wren', kind: 'unique', starts, locations: namedPlacesOf({ id: 'me', kind: 'unique', starts }) });
     const places = LOCATIONS.map((l) => ({ ...l, isStarting: l.id === 'harbor' }));
 
     it('does not meet through a place only a routine row names', () => {

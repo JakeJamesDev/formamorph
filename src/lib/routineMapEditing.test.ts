@@ -97,10 +97,10 @@ describe('a click with a row selected', () => {
     expect(click('stay', 'inn')).toBeNull();
   });
 
-  it('edits only the selected row and keeps the derived locations current', () => {
+  it('edits only the selected row and stores no list', () => {
     const next = click('stay', 'ridge')?.entity;
     expect(placesAfter(next, 'wander')).toEqual(['market', 'square']);
-    expect(next?.locations).toContain('ridge');
+    expect(next).not.toHaveProperty('locations');
   });
 
   it('edits the Start on show', () => {

@@ -8,6 +8,7 @@ import { fieldCaptionPropRule } from './eslint.field-caption-prop.js';
 import { moduleBoundaryRule } from './eslint.module-boundary.js';
 import { noNativeScrollerRule } from './eslint.no-native-scroller.js';
 import { noRawEntityListRule } from './eslint.no-raw-entity-list.js';
+import { noRawEntityPlacesRule } from './eslint.no-raw-entity-places.js';
 import { sourceContractRule } from './eslint.source-contract.js';
 import { ELEMENT_ICONS } from '@/lib/elementIcons';
 
@@ -165,6 +166,31 @@ tester.run('no-raw-entity-list', noRawEntityListRule, {
   ],
 });
 
+// Type-aware: each case stands in for a real file outside the module, so the project resolves `@/types`.
+const typedTester = new RuleTester({
+  languageOptions: { parser: tseslint.parser, parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
+});
+const OUTSIDE = 'src/lib/entityPresence.ts';
+const typed = (code: string) => `import type { Entity, World } from '@/types';\n${code}`;
+
+typedTester.run('no-raw-entity-places', noRawEntityPlacesRule, {
+  valid: [
+    { name: "a world's location list", filename: OUTSIDE, code: typed(`export const ids = (world: World) => world.locations.map((l) => l.id);`) },
+    { name: "a world's list destructured", filename: OUTSIDE, code: typed(`export const ids = ({ locations }: World) => locations.length;`) },
+    { name: 'another type with the same field', filename: OUTSIDE, code: typed(`export const n = (graph: { locations: string[] }) => graph.locations.length;`) },
+    { name: 'a literal of another type', filename: OUTSIDE, code: typed(`export const graph: { locations: string[] } = { locations: [] };`) },
+  ],
+  invalid: [
+    { name: 'a read', filename: OUTSIDE, code: typed(`export const at = (entity: Entity) => entity.locations ?? [];`), errors: errors('rawPlaces') },
+    { name: 'a read through a Pick', filename: OUTSIDE, code: typed(`export const at = (entity: Pick<Entity, 'locations'>) => entity.locations;`), errors: errors('rawPlaces') },
+    { name: 'a read of a found entity', filename: OUTSIDE, code: typed(`export const at = (world: World) => world.entities.find(Boolean)?.locations;`), errors: errors('rawPlaces') },
+    { name: 'a read by a string key', filename: OUTSIDE, code: typed(`export const at = (entity: Entity) => entity['locations'];`), errors: errors('rawPlaces') },
+    { name: 'a destructure', filename: OUTSIDE, code: typed(`export const at = ({ locations }: Entity) => locations;`), errors: errors('rawPlaces') },
+    { name: 'a write', filename: OUTSIDE, code: typed(`export const put = (entity: Entity) => { entity.locations = []; };`), errors: errors('rawPlaces') },
+    { name: 'a literal', filename: OUTSIDE, code: typed(`export const one: Entity = { id: 'a', name: 'A', locations: ['x'] };`), errors: errors('rawPlaces') },
+  ],
+});
+
 tester.run('field-caption-prop', fieldCaptionPropRule, {
   valid: [
     `<div><PromptField label="Name" /></div>`,
@@ -179,10 +205,15 @@ tester.run('field-caption-prop', fieldCaptionPropRule, {
   ],
 });
 
-/** The rule ids the repo's own config reports for `code` at `filename`. */
-const lint = (code: string, filename: string) =>
+// The one type-aware rule costs a project load per file, so only its own rows run it.
+const TYPED_RULE = 'formamorph/no-raw-entity-places';
+const UNTYPED: Linter.Config = { languageOptions: { parserOptions: { projectService: false } }, rules: { [TYPED_RULE]: 'off' } };
+const configFor = (typed: boolean) => (typed ? config : [...config, UNTYPED]) as Linter.Config[];
+
+/** The rule ids the repo's own config reports for `code` at `filename`; `typed` runs the type-aware rule too. */
+const lint = (code: string, filename: string, typed = false) =>
   new Linter({ configType: 'flat' })
-    .verify(code, config as Linter.Config[], { filename })
+    .verify(code, configFor(typed), { filename })
     .filter((message) => message.severity === 2)
     .map((message) => message.ruleId);
 
@@ -195,13 +226,15 @@ describe('the lint config reports each scanned problem where the scan looked', (
     ['docs index import', `export { bundledDocsIndex } from './bundledDocsIndex';\n`, 'src/lib/docs/a.ts', 'src/lib/docs/a.test.ts', 'formamorph/module-boundary'],
     ['raw entity list', `export const a = gameData.entities;\n`, 'src/components/game/deep/a.ts', 'src/managers/a.ts', 'formamorph/no-raw-entity-list'],
     ['raw entity list in the view', `export const a = gameData.entities;\n`, 'src/views/GameViewer.tsx', 'src/views/WorldEditor.tsx', 'formamorph/no-raw-entity-list'],
+    ['raw entity places', `import type { Entity } from '@/types';\nexport const a = (e: Entity) => e.locations;\n`, 'src/lib/entityPresence.ts', 'src/lib/entityPlaces.ts', 'formamorph/no-raw-entity-places'],
+    ['raw entity places in a test', `import type { Entity } from '@/types';\nexport const a = (e: Entity) => e.locations;\n`, 'src/lib/entityPresence.ts', 'src/lib/entityPresence.test.ts', 'formamorph/no-raw-entity-places'],
     ['sibling caption', `export const A = () => <div><Label>A</Label><PromptField /></div>;\n`, 'src/managers/A.tsx', 'src/managers/deep/A.tsx', 'formamorph/field-caption-prop'],
     ['help session value import', `import { helpSettingsOf } from './helpSettings';\nexport { helpSettingsOf };\n`, 'src/lib/formaquestion/helpSession.ts', 'src/lib/formaquestion/other.ts', '@typescript-eslint/no-restricted-imports'],
     ['help session value import by alias', `import { helpSettingsOf } from '@/lib/formaquestion/helpSettings';\nexport { helpSettingsOf };\n`, 'src/lib/formaquestion/helpSession.ts', 'src/lib/formaquestion/other.ts', '@typescript-eslint/no-restricted-imports'],
     ['help session constant', `export const HELP_MAX_TOKENS = 1;\n`, 'src/lib/formaquestion/helpSession.ts', 'src/lib/formaquestion/other.ts', 'formamorph/source-contract'],
   ])('%s', (_name, code, inside, outside, rule) => {
-    expect(lint(code, inside)).toContain(rule);
-    expect(lint(code, outside)).not.toContain(rule);
+    expect(lint(code, inside, rule === TYPED_RULE)).toContain(rule);
+    expect(lint(code, outside, rule === TYPED_RULE)).not.toContain(rule);
   });
 
   it.each([
@@ -233,7 +266,7 @@ describe('the lint config reports each scanned problem where the scan looked', (
     ['src/components/formaquestion/FormaquestionPromptsTab.tsx', 'FullscreenShell'],
     ['src/components/formaquestion/FormaquestionMascotTab.tsx', 'FullscreenShell'],
   ])('%s may not name %s', (file, name) => {
-    const messages = new Linter({ configType: 'flat' }).verify(`export const a = ${name};\n`, config as Linter.Config[], { filename: file });
+    const messages = new Linter({ configType: 'flat' }).verify(`export const a = ${name};\n`, configFor(false), { filename: file });
     expect(messages.some((message) => message.ruleId === 'formamorph/source-contract' && message.message.includes(`must not use ${name}`))).toBe(true);
   });
 

@@ -13,6 +13,7 @@ import { noNativeScrollerRule } from './eslint.no-native-scroller.js'
 import { noNativeTitleRule } from './eslint.no-native-title.js'
 import { noPinnedCommitRule } from './eslint.no-pinned-commit.js'
 import { noRawEntityListRule } from './eslint.no-raw-entity-list.js'
+import { noRawEntityPlacesRule } from './eslint.no-raw-entity-places.js'
 import { sourceContractRule } from './eslint.source-contract.js'
 
 // Raw Tailwind size utilities say how big text is, never what it is — so `text-xs` reads the same on a
@@ -44,6 +45,7 @@ const formamorph = {
     'no-native-title': noNativeTitleRule,
     'no-pinned-commit': noPinnedCommitRule,
     'no-raw-entity-list': noRawEntityListRule,
+    'no-raw-entity-places': noRawEntityPlacesRule,
     'source-contract': sourceContractRule,
   },
 }
@@ -164,6 +166,14 @@ export default tseslint.config(
     ignores: TESTS,
     plugins: { formamorph },
     rules: { 'formamorph/no-raw-entity-list': 'error' },
+  },
+  {
+    // The one type-aware rule: it tells an entity's `locations` from a world's by the declaring type.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [...TESTS, 'src/lib/entityPlaces.ts'],
+    languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
+    plugins: { formamorph },
+    rules: { 'formamorph/no-raw-entity-places': 'error' },
   },
   {
     files: ['src/managers/*.tsx'],

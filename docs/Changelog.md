@@ -52,6 +52,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **In the World Editor, an entity is now Unique or Generic, and a Generic one gets a routine per start.** A Generic entity, such as a crowd or a herd, begins at every start at the same time. Start chances, locks and Can Also Go are for Unique entities.
     - **The full-screen Locations Canvas now shows where a Nearby entity can be known.** Its routine locations are marked, and the locations one Nearby link away are marked lighter. Far links stay unmarked.
     - **In the World Editor, undo and redo of a Routine tab edit open that entity's Routine tab again.** You land where you made the change, even from another section.
+    - **World files now save a Unique or Generic entity's places as its routine alone, with no location list.** Formamorph 3.6.2 and older open such a world but show those entities nowhere. The Custom Persona keeps its list.
   - **Presence Tab:**
     - **Select an entity on a location's Presence tab to edit its routine and Known In under the list.** The tab lists each entity that can be there and why. The Locations Canvas beside the panel shows the selected entity's routine. Click another location, and the entity stays selected where it can be too.
     - **A location's Presence tab adds and removes entities from its list.** Choose a Unique or Generic entity under **Add an entity here**. Remove a Generic entity with the button on its row. Known Here rows now remove with an icon button.

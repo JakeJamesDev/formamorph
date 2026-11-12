@@ -10,15 +10,17 @@ import { APP_VERSION, migrateWorld } from "@/lib/version";
 
 /** A Generic entity with one Start per place, no rows. */
 const generic = (id: string, name: string, places: string[]): Entity => ({
-  id, name, kind: "generic", locations: places, starts: places.map((place, i) => ({ id: `${id}-${i + 1}`, place, weight: 1, schedule: [] })),
+  id, name, kind: "generic", starts: places.map((place, i) => ({ id: `${id}-${i + 1}`, place, weight: 1, schedule: [] })),
 });
-const alice = generic("alice", "Alice", ["bar"]);
-const bartender = generic("bar-keep", "Bartender", ["bar", "docks"]);
-const gull = generic("gull", "Gull", ["docks"]);
+/** An entity with no kind that belongs to `places`. */
+const member = (id: string, name: string, places: string[]): Entity => ({ id, name, locations: places });
+const alice = member("alice", "Alice", ["bar"]);
+const bartender = member("bar-keep", "Bartender", ["bar", "docks"]);
+const gull = member("gull", "Gull", ["docks"]);
 /** A Unique entity starting at the bar or the docks, standing at the bar by day and wandering the docks and the
  *  attic at night, and allowed into the cellar. */
 const sailor: Entity = {
-  id: "sailor", name: "Sailor", kind: "unique", locations: ["bar", "docks", "attic"], traversable: ["cellar", "bar"],
+  id: "sailor", name: "Sailor", kind: "unique", traversable: ["cellar", "bar"],
   starts: [
     { id: "s1", place: "bar", weight: 1, schedule: [
       { id: "day", time: { start: 360, end: 1080 }, action: { kind: "stay", place: "bar" } },
@@ -71,9 +73,9 @@ describe("withEntityLocations", () => {
 
 describe("withStartHere (Add Entity on a location)", () => {
   it("gives a Generic entity a Start here with weight 1 and no rows", () => {
-    const next = withStartHere(gull, "bar");
+    const next = withStartHere(generic("gull", "Gull", ["docks"]), "bar");
     expect(next.starts?.map((s) => [s.place, s.weight, s.schedule])).toEqual([["docks", 1, []], ["bar", 1, []]]);
-    expect(next.locations).toEqual(["docks", "bar"]);
+    expect(next).not.toHaveProperty("locations");
   });
 
   it("gives a Unique entity one more Start here and keeps its other Starts as they are", () => {
@@ -100,11 +102,11 @@ describe("dropLocationFromEntities", () => {
     // Start s1 began at the bar, and s2's only patrol stop was the bar.
     expect(bar.starts).toEqual([{ id: "s2", place: "docks", weight: 1, schedule: [] }]);
     expect(bar.traversable).toEqual(["cellar"]);
-    expect(bar.locations).toEqual(["docks"]);
+    expect(bar).not.toHaveProperty("locations");
     const [docks] = dropLocationFromEntities("docks", [sailor]);
     expect(docks.starts?.map((s) => s.id)).toEqual(["s1"]);
     expect(docks.starts?.[0].schedule[1].action).toEqual({ kind: "wander", places: [{ place: "attic", weight: 1 }], idle: 60 });
-    expect(docks.locations).toEqual(["bar", "attic"]);
+    expect(docks).not.toHaveProperty("locations");
   });
 
   it("drops a place named only in a Unique entity's Traversable list", () => {
@@ -115,8 +117,9 @@ describe("dropLocationFromEntities", () => {
 });
 
 describe("placedIn", () => {
+  const herdsman = generic("bar-keep", "Bartender", ["bar", "docks"]);
   it("carries a Generic entity's Starts through the map, and lists any other entity at the mapped places", () => {
-    expect(placedIn(bartender, { docks: "pier" }).starts).toEqual([{ id: "bar-keep-2", place: "pier", weight: 1, schedule: [] }]);
+    expect(placedIn(herdsman, { docks: "pier" }).starts).toEqual([{ id: "bar-keep-2", place: "pier", weight: 1, schedule: [] }]);
     expect(placedIn(ghost, { a: "pier", b: "bar" }).locations).toEqual(["pier", "bar"]);
   });
 
@@ -135,8 +138,8 @@ describe("placedIn", () => {
   });
 
   it("rebuilds a linked Generic copy's Starts from its source on repair, replacing a local Start", () => {
-    const source: Entity = { ...bartender, locationRefs: [{ id: "bar", name: "Bar" }, { id: "docks", name: "Docks" }] };
-    const local: Entity = { ...bartender, starts: [...bartender.starts!, { id: "mine", place: "tavern", weight: 1, schedule: [] }] };
+    const source: Entity = { ...herdsman, locationRefs: [{ id: "bar", name: "Bar" }, { id: "docks", name: "Docks" }] };
+    const local: Entity = { ...herdsman, starts: [...herdsman.starts!, { id: "mine", place: "tavern", weight: 1, schedule: [] }] };
     const repaired = withCarriedRoutine(local, source, { docks: "pier" }, new Set(["pier", "tavern"]));
     expect(repaired.starts).toEqual([{ id: "bar-keep-2", place: "pier", weight: 1, schedule: [] }]);
   });

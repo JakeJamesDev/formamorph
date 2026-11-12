@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { namedPlacesOf } from '@/lib/entityPlaces';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench, shownEditorTab } from '@/test/worldEditorBench';
 import WorldStorageService from '../services/WorldStorageService';
@@ -239,7 +240,7 @@ describe('returning to where the edit was made', () => {
   /** The record the open panel holds, read from its Name field. */
   const openRecordName = () => screen.getByRole('textbox', { name: 'Name' }).textContent;
   const residentIn = (ctx: () => { entities: World['entities'] }, ...locations: string[]) =>
-    ({ ...ctx().entities.find((e) => e.id === 'resident')!, locations });
+    ({ ...ctx().entities.find((e) => e.id === 'resident')!, starts: locations.map((place) => ({ id: `at-${place}`, place, weight: 1, schedule: [] })) });
 
   it('records the place as it stood at the write when a tab switch commits with it', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
@@ -254,7 +255,7 @@ describe('returning to where the edit was made', () => {
     openEditorTab(/Traits/);
 
     await undo();
-    expect(ctx().entities.find((e) => e.id === 'resident')!.locations).toEqual(['harbor']);
+    expect(namedPlacesOf(ctx().entities.find((e) => e.id === 'resident')!)).toEqual(['harbor']);
     expect(shownEditorTab()).toMatch(/Locations/);
     expect(openRecordName()).toBe('Docks');
   });
@@ -279,13 +280,13 @@ describe('returning to where the edit was made', () => {
       openEditorTab(/Stats/);
 
       await undo();
-      expect(ctx().entities.find((e) => e.id === 'resident')!.locations).toEqual(['harbor']);
+      expect(namedPlacesOf(ctx().entities.find((e) => e.id === 'resident')!)).toEqual(['harbor']);
       expect(shownEditorTab()).toMatch(/Locations/);
       expect(picked()).toEqual(['harbor', 'docks', 'quay']);
       openEditorTab(/Stats/);
 
       await redo();
-      expect(ctx().entities.find((e) => e.id === 'resident')!.locations).toEqual(['harbor', 'docks']);
+      expect(namedPlacesOf(ctx().entities.find((e) => e.id === 'resident')!)).toEqual(['harbor', 'docks']);
       expect(shownEditorTab()).toMatch(/Locations/);
       expect(picked()).toEqual(['harbor', 'docks', 'quay']);
     });

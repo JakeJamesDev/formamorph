@@ -1,4 +1,5 @@
 import { knownInOf, toggleKnownInPick, withEntityLocations } from "@/lib/entityPresence";
+import { namedPlacesOf } from "@/lib/entityPlaces";
 import { isGeneric, isUnique, toggleGenericStart, withFirstStartPlace } from "@/lib/entityKind";
 import { randomUUID } from "@/lib/uuid";
 import { holderOf } from "@/lib/locationTree";
@@ -31,7 +32,7 @@ export function togglePick(entity: Entity, mode: PickMode, locationId: string): 
   if (mode === "knownIn") return toggleKnownInPick(entity, locationId);
   if (isUnique(entity)) return withFirstStartPlace(entity, locationId, randomUUID);
   if (isGeneric(entity)) return toggleGenericStart(entity, locationId, randomUUID);
-  return withEntityLocations(entity, toggled(entity.locations ?? [], locationId));
+  return withEntityLocations(entity, toggled(namedPlacesOf(entity), locationId));
 }
 
 /** The locations `entity` is known in through a pick. None for the Custom Persona, which hides Known In. */

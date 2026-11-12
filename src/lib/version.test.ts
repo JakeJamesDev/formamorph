@@ -3,7 +3,8 @@ import { APP_VERSION, MIGRATED_IDLE_MINUTES, migrateWorld, migrateSave, isSaveEn
 import { placeholderWeight } from './placeholders';
 import { gateOf, gateStates, worldGateInput } from './traitGates';
 import { headingReachesAi } from './groupTree';
-import { entityIdsAt } from './entityPresence';
+import { idsAt, namedPlacesOf, presenceIn } from './entityPlaces';
+import { openingCast } from './positionPlay';
 import { buildEntityContext, navigableDestinationEntries } from './locationContext';
 import { effectiveDestinations } from './locationGraph';
 import type { Connection, Entity, GameLocation, Placeholder, SaveObject, World } from '@/types';
@@ -92,15 +93,25 @@ describe('migrateWorld — entity-owned location membership (ADR-0003)', () => {
     ]));
 
   const locationsOf = (w: unknown) => (w as { entities: { id: string; locations?: string[] }[] }).entities;
+  /** Where each entity of a migrated world can be: its Presence, which carries the old membership (Q1). */
+  const presenceOfWorld = (w: unknown) => {
+    const world = w as { locations: GameLocation[]; connections?: Connection[] };
+    return presenceIn({ locations: world.locations, connections: world.connections ?? [] });
+  };
+  const rosterAt = (place: string, w: unknown) => idsAt(place, (w as { entities: Entity[] }).entities, presenceOfWorld(w));
 
   it('inverts every roster onto the entities and strips the location-side lists', () => {
     const out = migrateWorld(legacyWorld()) as unknown as MigratedWorld & {
       locations: Record<string, unknown>[];
       entities: { id: string; locations?: string[] }[];
     };
-    expect(locationsOf(out).find((e) => e.id === 'alice')!.locations).toEqual(['bar']);
-    expect(locationsOf(out).find((e) => e.id === 'bar-keep')!.locations).toEqual(['bar', 'docks']);
-    expect(locationsOf(out).find((e) => e.id === 'gull')!.locations).toEqual(['docks', 'cellar']);
+    const placesOf = presenceOfWorld(out);
+    const byId = (id: string) => locationsOf(out).find((e) => e.id === id) as unknown as Entity;
+    expect(placesOf(byId('alice'))).toEqual(['bar']);
+    expect(placesOf(byId('bar-keep'))).toEqual(['bar', 'docks']);
+    expect(placesOf(byId('gull'))).toEqual(['docks', 'cellar']);
+    // Each got a kind on the way, so none stores the list it was given.
+    for (const id of ['alice', 'bar-keep', 'gull']) expect(byId(id)).not.toHaveProperty('locations');
     // Nobody listed the Ghost, so it gains no field at all.
     expect('locations' in locationsOf(out).find((e) => e.id === 'ghost')!).toBe(false);
     for (const loc of out.locations) {
@@ -114,7 +125,7 @@ describe('migrateWorld — entity-owned location membership (ADR-0003)', () => {
     const after = migrateWorld(before);
     const rosters = legacyRosters(legacyWorld());
     for (const id of Object.keys(rosters)) {
-      expect(entityIdsAt(id, (after as unknown as { entities: Entity[] }).entities).sort()).toEqual(rosters[id]);
+      expect(rosterAt(id, after).sort()).toEqual(rosters[id]);
     }
   });
 
@@ -124,7 +135,8 @@ describe('migrateWorld — entity-owned location membership (ADR-0003)', () => {
       locations: [{ id: 'bar', name: 'The Bar', entities: ['alice'] }],
       entities: [{ id: 'alice', name: 'Alice', aiDescription: 'The tenant.' }],
     }) as unknown as { locations: GameLocation[]; entities: Entity[] };
-    expect(buildEntityContext(after.locations[0], after.entities)).toBe('Alice\n  description: The tenant.\n');
+    const opening = openingCast(after.entities, after.locations, [], after.locations[0].id);
+    expect(buildEntityContext(after.locations[0], opening)).toBe('Alice\n  description: The tenant.\n');
   });
 
   it('migrating twice is identical to migrating once', () => {
@@ -134,8 +146,8 @@ describe('migrateWorld — entity-owned location membership (ADR-0003)', () => {
   });
 
   it('runs on a world already stamped at APP_VERSION (shipped 2.x worlds predate the flip)', () => {
-    const out = migrateWorld({ ...legacyWorld(), version: APP_VERSION }) as unknown as { entities: Entity[] };
-    expect(entityIdsAt('bar', out.entities)).toEqual(['alice', 'bar-keep']);
+    const out = migrateWorld({ ...legacyWorld(), version: APP_VERSION });
+    expect(rosterAt('bar', out)).toEqual(['alice', 'bar-keep']);
   });
 
   it('drops an id naming no entity rather than carrying the dangle onto the entities', () => {
@@ -145,7 +157,7 @@ describe('migrateWorld — entity-owned location membership (ADR-0003)', () => {
       entities: [{ id: 'alice', name: 'Alice' }],
     }) as unknown as { entities: Entity[] };
     expect(out.entities).toHaveLength(1);
-    expect(entityIdsAt('bar', out.entities)).toEqual(['alice']);
+    expect(rosterAt('bar', out)).toEqual(['alice']);
   });
 
   it('leaves the rosters alone when the world has no entities array to move them to', () => {
@@ -163,7 +175,7 @@ describe('migrateWorld — entity-owned location membership (ADR-0003)', () => {
       locations: [{ id: 'bar', name: 'The Bar', entities: ['alice'] }],
       entities: [{ id: 'alice', name: 'Alice', locations: ['bar', 'docks'] }],
     }) as unknown as { entities: Entity[] };
-    expect(out.entities[0].locations).toEqual(['bar', 'docks']);
+    expect(namedPlacesOf(out.entities[0])).toEqual(['bar', 'docks']);
   });
 });
 
@@ -177,8 +189,9 @@ describe('migrateWorld — entity kind and routine (NPC Schedules migration tabl
 
   it('makes an entity with no presence and one location a Unique entity with one Start there', () => {
     const e = one({ locations: ['keep'] });
-    expect(e).toMatchObject({ kind: 'unique', locations: ['keep'], starts: [{ place: 'keep', weight: 1, schedule: [] }] });
+    expect(e).toMatchObject({ kind: 'unique', starts: [{ place: 'keep', weight: 1, schedule: [] }] });
     expect(e).not.toHaveProperty('traversable');
+    expect(e).not.toHaveProperty('locations');
   });
 
   it('gives a random-presence entity one weight-1 Start per listed place', () => {
@@ -205,7 +218,8 @@ describe('migrateWorld — entity kind and routine (NPC Schedules migration tabl
       }]);
     }
     expect(e.traversable ?? []).toEqual([]);
-    expect(e.locations).toEqual(['keep', 'tower']);
+    expect(e).not.toHaveProperty('locations');
+    expect(namedPlacesOf(e)).toEqual(['keep', 'tower']);
   });
 
   it('gives a Can Follow Unique entity Traversable = Anywhere', () => {
@@ -236,12 +250,13 @@ describe('migrateWorld — entity kind and routine (NPC Schedules migration tabl
     expect(migrateWorld(JSON.parse(JSON.stringify(once)))).toEqual(once);
   });
 
-  it("rebuilds a Unique entity's locations from its Starts and rows on load", () => {
+  it('drops a stale list from an entity with a kind on load, so its places come from the routine alone (Q32)', () => {
     const e = one({
       kind: 'unique', locations: ['gate'],
       starts: [{ id: 's', place: 'keep', weight: 1, schedule: [{ id: 'r', time: 'allDay', action: { kind: 'stay', place: 'tower' } }] }],
     });
-    expect(e.locations).toEqual(['keep', 'tower']);
+    expect(e).not.toHaveProperty('locations');
+    expect(namedPlacesOf(e)).toEqual(['keep', 'tower']);
   });
 });
 
@@ -260,7 +275,8 @@ describe('migrateWorld — a released entity with several locations and no prese
 
   it('makes a person with a home and a workplace one wandering Unique entity starting at the first', () => {
     const e = byId(migrate([narrator, { id: 'smith', name: 'Smith', pronouns: 'he/him', locations: ['mill', 'gate'] }]), 'smith');
-    expect(e).toMatchObject({ kind: 'unique', locations: ['mill', 'gate'], traversable: ['mill', 'gate'] });
+    expect(e).toMatchObject({ kind: 'unique', traversable: ['mill', 'gate'] });
+    expect(e).not.toHaveProperty('locations');
     expect(e.starts).toEqual([{ id: expect.any(String), place: 'mill', weight: 1, schedule: wander(['mill', 'gate']) }]);
   });
 
@@ -273,10 +289,11 @@ describe('migrateWorld — a released entity with several locations and no prese
   it('makes an enemy with neither field a Generic entity with one rowless Start per place, in a world that uses pronouns', () => {
     const e = byId(migrate([narrator, { id: 'mimic', name: 'Mimic', locations: ['tower', 'gate'], movement: 'between' }]), 'mimic');
     expect(e).toMatchObject({
-      kind: 'generic', locations: ['tower', 'gate'],
+      kind: 'generic',
       starts: [{ place: 'tower', weight: 1, schedule: [] }, { place: 'gate', weight: 1, schedule: [] }],
     });
     expect(e).not.toHaveProperty('traversable');
+    expect(e).not.toHaveProperty('locations');
   });
 
   it('counts a persona mark as the world using the fields', () => {
@@ -309,7 +326,8 @@ describe('migrateWorld — a released entity with several locations and no prese
       { id: 'slime', name: 'Slime', pronouns: ' It/Its ', locations: ['tower', 'gate'] },
       { id: 'crew', name: 'Crew', pronouns: 'they/them', locations: ['keep', 'mill'] },
     ]);
-    expect(byId(entities, 'slime')).toMatchObject({ kind: 'generic', locations: ['tower', 'gate'] });
+    expect(byId(entities, 'slime')).toMatchObject({ kind: 'generic' });
+    expect(namedPlacesOf(byId(entities, 'slime'))).toEqual(['tower', 'gate']);
     expect(byId(entities, 'crew')).toMatchObject({ kind: 'unique', traversable: ['keep', 'mill'] });
   });
 
@@ -1590,7 +1608,7 @@ describe('migrateWorld — persona start locations', () => {
     };
     const [a, b] = migrateWorld(raw).entities;
     expect(a).not.toHaveProperty('startingLocationId');
-    expect(a).toMatchObject({ id: 'a', name: 'A', persona: true, locations: ['x'] });
+    expect(a).toMatchObject({ id: 'a', name: 'A', persona: true, kind: 'unique', starts: [{ place: 'x' }] });
     expect(b).toMatchObject({ id: 'b', name: 'B' });
   });
 });

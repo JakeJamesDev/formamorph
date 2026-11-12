@@ -8,7 +8,7 @@ import {
 } from './personaPick';
 import { PLAYER_START, type Entity, type EntityStart, type GameLocation, type PersonaRef } from '@/types';
 import { startWithRow } from '@/test/entityKindFixture';
-import { withDerivedLocations } from './entityKind';
+import { namedPlacesOf } from './entityPlaces';
 import { migrateEntityRoutine } from './version';
 
 const lib = (entityId: string): PersonaRef => ({ source: 'library', entityId });
@@ -187,11 +187,11 @@ describe('offeredStartLocations', () => {
   });
 });
 
-// A played entity with a kind: `locations` is derived from every Start and row place, so it holds more than the Starts.
+// A played entity with a kind whose unreleased world still stores every Start and row place as its list (Q5).
 describe('a played entity with a kind offers its Starts only', () => {
   const start = startWithRow;
   const played = (id: string, starts: EntityStart[]): Entity =>
-    withDerivedLocations({ ...entity(id), kind: 'unique', starts });
+    ({ ...entity(id), kind: 'unique', starts, locations: namedPlacesOf({ id, kind: 'unique', starts }) });
   const context = (...worldEntities: Entity[]) => ({ worldEntities, locations: places });
 
   it('leaves a row place out of the list', () => {

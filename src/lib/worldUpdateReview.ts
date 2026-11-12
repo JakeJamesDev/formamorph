@@ -17,6 +17,7 @@ import { allPlaceholders, sharedPlaceholdersUsed } from '@/lib/placeholderHomes'
 import { componentKind, type DependencyRow, type InstalledSource } from '@/lib/worldDependencies';
 import type { LibraryKind } from '@/lib/librarySources';
 import type { ContentLink, Dictionary, Entity, EntityGroup, GameLocation, Placeholder } from '@/types';
+import { namedPlacesOf, withMembership } from '@/lib/entityPlaces';
 
 /** What one row of the review is about. */
 export type WorldUpdateRowKind =
@@ -190,8 +191,7 @@ function reviseCopy<T extends LinkableContent>(copy: T, chosen: ProtectedCopy): 
 function settleInWorld(copy: Entity, groups: ReadonlySet<string>, locations: ReadonlySet<string>): Entity {
   const settled = { ...copy };
   if (settled.groupId && !groups.has(settled.groupId)) delete settled.groupId;
-  if (settled.locations) settled.locations = settled.locations.filter((id) => locations.has(id));
-  return settled;
+  return settled.kind ? settled : withMembership(settled, namedPlacesOf(settled).filter((id) => locations.has(id)));
 }
 
 /** Put `kept` where the incoming list already holds this component: the copy following the same listing,

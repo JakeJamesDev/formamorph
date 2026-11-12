@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PLAYER_START, type Entity, type EntityStart } from '@/types';
 import {
-  canRemoveGenericStartsAt, castRoutines, toggleGenericStart, withDerivedLocations, withRoutineMapped, withGenericStart, withKind, withoutGenericStart,
+  canRemoveGenericStartsAt, castRoutines, toggleGenericStart, withRoutineMapped, withGenericStart, withKind, withoutGenericStart,
   withoutGenericStartsAt, withStartPlace,
 } from './entityKind';
 
@@ -13,13 +13,14 @@ const starts: EntityStart[] = [
   { id: 'a', place: 'barn', weight: 3, schedule: [night] },
   { id: 'b', place: 'field', weight: 1, schedule: [] },
 ];
-const herd: Entity = { id: 'herd', name: 'Herd', kind: 'generic', locations: ['barn', 'yard', 'field'], starts };
-const mare: Entity = { id: 'mare', name: 'Mare', kind: 'unique', locations: ['barn', 'yard', 'field'], starts, traversable: ['barn'] };
+const herd: Entity = { id: 'herd', name: 'Herd', kind: 'generic', starts };
+const mare: Entity = { id: 'mare', name: 'Mare', kind: 'unique', starts, traversable: ['barn'] };
 
 describe('the kind switch', () => {
   it('keeps every Start, row, weight, Strict flag and Traversable both ways', () => {
     const asGeneric = withKind(mare, 'generic', newId);
-    expect(asGeneric).toMatchObject({ kind: 'generic', starts, traversable: ['barn'], locations: ['barn', 'yard', 'field'] });
+    expect(asGeneric).toMatchObject({ kind: 'generic', starts, traversable: ['barn'] });
+    expect(asGeneric).not.toHaveProperty('locations');
     expect(withKind(asGeneric, 'unique', newId)).toEqual(mare);
   });
 
@@ -27,6 +28,8 @@ describe('the kind switch', () => {
     const loose: Entity = { id: 'x', name: 'X', locations: ['barn', 'field'] };
     expect(withKind(loose, 'generic', newId).starts?.map((s) => [s.place, s.schedule])).toEqual([['barn', []], ['field', []]]);
     expect(withKind(loose, 'unique', newId).starts?.map((s) => s.place)).toEqual(['barn']);
+    expect(withKind(loose, 'generic', newId)).not.toHaveProperty('locations');
+    expect(withKind(loose, 'unique', newId)).not.toHaveProperty('locations');
   });
 });
 
@@ -34,14 +37,14 @@ describe("a Generic entity's Starts", () => {
   it('adds a Start with no rows, even at a place a Start already begins at', () => {
     const next = withGenericStart(herd, 'barn', newId);
     expect(next.starts?.slice(2)).toEqual([expect.objectContaining({ place: 'barn', weight: 1, schedule: [] })]);
-    expect(next.locations).toEqual(['barn', 'yard', 'field']);
+    expect(next).not.toHaveProperty('locations');
   });
 
-  it('removes every Start that begins at a place, rows and all, and rewrites its locations', () => {
+  it('removes every Start that begins at a place, rows and all, and stores no list', () => {
     const twice = withGenericStart(herd, 'barn', newId);
     const next = withoutGenericStartsAt(twice, 'barn');
     expect(next.starts).toEqual([starts[1]]);
-    expect(next.locations).toEqual(['field']);
+    expect(next).not.toHaveProperty('locations');
   });
 
   it('keeps the last Start', () => {
@@ -54,7 +57,7 @@ describe("a Generic entity's Starts", () => {
     const twice = withGenericStart(herd, 'barn', newId);
     const added = twice.starts![2];
     expect(withoutGenericStart(twice, 'a').starts).toEqual([starts[1], added]);
-    expect(withoutGenericStart(twice, 'a').locations).toEqual(['field', 'barn']);
+    expect(withoutGenericStart(twice, 'a')).not.toHaveProperty('locations');
     const one: Entity = { ...herd, starts: [starts[0]] };
     expect(withoutGenericStart(one, 'a')).toBe(one);
     expect(withoutGenericStart(herd, 'missing')).toBe(herd);
@@ -79,7 +82,7 @@ describe('a Generic entity carried into another world', () => {
     ]);
     const kept = withRoutineMapped(herd, { barn: 'stable', yard: 'pen' }, newId);
     expect(kept.starts).toEqual([{ ...starts[0], place: 'stable', schedule: [{ ...night, action: { kind: 'stay', place: 'pen' } }] }]);
-    expect(kept.locations).toEqual(['stable', 'pen']);
+    expect(kept).not.toHaveProperty('locations');
   });
 
   it('renames Wander places and Patrol stops, dropping the ones the world lacks', () => {
@@ -144,11 +147,6 @@ describe('a Unique entity carried into another world', () => {
 
 describe("the player's starting location", () => {
   const beside: EntityStart = { id: 'p', place: PLAYER_START, weight: 1, schedule: [night], beginsFollowing: true };
-
-  it('adds no place to the derived locations', () => {
-    expect(withDerivedLocations({ ...mare, starts: [beside] }).locations).toEqual(['yard']);
-    expect(withDerivedLocations({ ...mare, starts: [{ ...beside, schedule: [] }] }).locations).toBeUndefined();
-  });
 
   it('keeps Begins Following only while the Start stays there', () => {
     expect(withStartPlace(beside, PLAYER_START).beginsFollowing).toBe(true);

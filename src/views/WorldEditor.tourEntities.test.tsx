@@ -148,14 +148,15 @@ describe('Authoring Tour — Entities steps', () => {
 
     const tidewell = ctx().locations.find((l) => l.name === 'The Tidewell')!;
     const maren = ctx().entities.find((e) => e.id !== 'resident')!;
+    expect(maren).not.toHaveProperty('locations');
     expect(maren).toMatchObject({
-      name: 'Maren', pronouns: 'she/her', locations: [tidewell.id],
+      name: 'Maren', pronouns: 'she/her', starts: [expect.objectContaining({ place: tidewell.id })],
       playerDescription: 'The keeper of the Tidewell, with a warm laugh and faint silver scales along her jaw.',
       aiDescription: expect.stringMatching(/^Maren tends the Tidewell and has bathed in it every week/),
     });
     // The last save holds the placed entity.
     expect(storeWorld.mock.calls.at(-1)![0]).toMatchObject({
-      data: { entities: expect.arrayContaining([expect.objectContaining({ name: 'Maren', locations: [tidewell.id] })]) },
+      data: { entities: expect.arrayContaining([expect.objectContaining({ name: 'Maren', starts: [expect.objectContaining({ place: tidewell.id })] })]) },
     });
   });
 
@@ -209,12 +210,13 @@ describe('Authoring Tour — Entities steps', () => {
 
     // A location outside the tour does not count, though the AI then reads the entity there.
     const maren = ctx().entities.find((e) => e.name === 'Maren')!;
-    ctx().updateEntity({ ...maren, locations: ['harbor'] });
+    const startAt = (place: string) => ({ id: `at-${place}`, place, weight: 1, schedule: [] });
+    ctx().updateEntity({ ...maren, starts: [startAt('harbor')] });
     await waitFor(() => expect(within(playerSees()).getByText('While players are at Harbor Steps')).toBeInTheDocument());
     expect(noteButton('Next')).toBeDisabled();
 
     const lantern = ctx().locations.find((l) => l.name === 'The Salt Lantern')!;
-    ctx().updateEntity({ ...maren, locations: ['harbor', lantern.id] });
+    ctx().updateEntity({ ...maren, starts: [startAt('harbor'), startAt(lantern.id)] });
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
     // The roster is the tour location's once the entity is in one.
     expect(within(playerSees()).getByText('While players are at The Salt Lantern')).toBeInTheDocument();

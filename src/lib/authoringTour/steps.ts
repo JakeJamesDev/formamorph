@@ -21,6 +21,7 @@ import { parseKeywords } from '@/lib/dictionaryUtils';
 import { entityImages } from '@/lib/entityImages';
 import { locationImages } from '@/lib/locationImages';
 import { withEntityLocations } from '@/lib/entityPresence';
+import { namedPlacesOf, presenceOf } from '@/lib/entityPlaces';
 import { isGeneric, isUnique, withFirstStartPlace, withGenericStart } from '@/lib/entityKind';
 import { randomUUID } from '@/lib/uuid';
 import { createConnection, legFrom, withHint } from '@/lib/connectionEditing';
@@ -164,9 +165,17 @@ function patchEntity(api: TourEditApi, world: TourWorld, items: TourItems, patch
   if (entity) api.updateEntity({ ...entity, ...patch });
 }
 
+/** Where the tour entity begins or a routine row takes it: its Presence without Can Also Go. Empty with no tour entity. */
+export function tourEntityPresence(world: TourWorld, items: TourItems): readonly string[] {
+  const entity = tourEntity(world, items);
+  if (!entity) return [];
+  const { places } = presenceOf(entity, { locations: world.locations ?? [], connections: world.connections ?? [] });
+  return places.filter((p) => p.reasons.some((reason) => reason.kind !== 'traversable')).map((p) => p.place);
+}
+
 /** The tour locations the tour entity is in, the first location first. */
 export function tourEntityPlaces(world: TourWorld, items: TourItems): string[] {
-  const at = new Set(tourEntity(world, items)?.locations ?? []);
+  const at = new Set(tourEntityPresence(world, items));
   return (['location', 'secondLocation'] as const)
     .map((item) => liveTourItem(world, items, item))
     .filter((id): id is string => !!id && at.has(id));
@@ -546,7 +555,7 @@ const ENTITY_STEPS: readonly TourStep[] = [
       // A Unique entity starts there; a Generic entity gains a Start there.
       api.updateEntity(isUnique(entity) ? withFirstStartPlace(entity, place, randomUUID)
         : isGeneric(entity) ? withGenericStart(entity, place, randomUUID)
-        : withEntityLocations(entity, [...(entity.locations ?? []), place]));
+        : withEntityLocations(entity, [...namedPlacesOf(entity), place]));
     },
     inPlay: {
       sees: 'entityRowAndCard',

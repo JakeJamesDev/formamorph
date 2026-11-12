@@ -521,10 +521,8 @@ export interface Entity {
   model?: MediaAsset;
   /** The entity's Avatar. Absent = none. */
   vrmPick?: VrmPick;
-  /** Ids of the locations this entity belongs to. Read it through `lib/entityPresence`, which inverts it into
-   *  per-location rosters. For both kinds it is derived from the Starts and rows (`withDerivedLocations`);
-   *  nothing else writes it. Under the Persona mark they are also where the
-   *  player can start as it (see `lib/personaPick`). */
+  /** The membership of an entity with no kind: the ids of the locations it belongs to. An entity with a kind stores
+   *  none; its routine is the only source of its places. Only `lib/entityPlaces` reads or writes it (ADR-0017). */
   locations?: string[];
   /** Absent for an entity with no locations, the persona and the played entity. */
   kind?: EntityKind;

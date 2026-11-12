@@ -85,7 +85,7 @@ describe('editing rows', () => {
     const before = bench.historyState().steps.length;
     await userEvent.click(screen.getByRole('button', { name: 'Add Stay' }));
     expect(schedule(bench)).toEqual([expect.objectContaining({ time: { start: MORNING, end: AFTERNOON_END }, action: { kind: 'stay', place: 'smithy' } })]);
-    expect(stored(bench).locations).toEqual(['smithy']);
+    expect(stored(bench)).not.toHaveProperty('locations');
     await waitFor(() => expect(bench.historyState().steps.length).toBe(before + 1));
 
     await act(async () => { bench.history().undo(); });
@@ -121,7 +121,7 @@ describe('editing rows', () => {
     const before = bench.historyState().steps.length;
     await userEvent.click(screen.getByRole('button', { name: 'Delete Morning – Afternoon' }));
     expect(schedule(bench)).toEqual([]);
-    expect(stored(bench).locations).toEqual(['smithy']);
+    expect(stored(bench)).not.toHaveProperty('locations');
     await waitFor(() => expect(bench.historyState().steps.length).toBe(before + 1));
   });
 
@@ -289,7 +289,7 @@ describe('starts', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Start 2 25%' }));
     await userEvent.click(screen.getByRole('button', { name: 'Delete Start' }));
     expect(stored(bench).starts!.map((s) => s.id)).toEqual(['s1']);
-    expect(stored(bench).locations).toEqual(['smithy']);
+    expect(stored(bench)).not.toHaveProperty('locations');
     expect(screen.queryByRole('button', { name: 'Delete Start' })).toBeNull();
   });
 
@@ -298,6 +298,7 @@ describe('starts', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Add Start' }));
     await userEvent.click(screen.getByRole('option', { name: /^Inn/ }));
     expect(stored(bench).starts!.map((s) => s.place)).toEqual(['smithy', 'inn']);
+    expect(stored(bench)).not.toHaveProperty('locations');
     expect(screen.getByRole('button', { name: 'Start location: Inn' })).toBeInTheDocument();
   });
 });
@@ -313,7 +314,7 @@ describe("the player's starting location", () => {
     await userEvent.click(screen.getByRole('button', { name: 'Start location: Smithy' }));
     await userEvent.click(screen.getByRole('option', { name: "Player's Starting Location" }));
     expect(stored(bench).starts![0].place).toBe(PLAYER_START);
-    expect(stored(bench).locations).toBeUndefined();
+    expect(stored(bench)).not.toHaveProperty('locations');
     expect(lines()).toEqual(["All day, stays at the player's starting location."]);
     await userEvent.click(follows()!);
     expect(stored(bench).starts![0].beginsFollowing).toBe(true);
@@ -354,7 +355,8 @@ describe('placement', () => {
     const starts = oneStart([stay('day', 'inn', { start: MORNING, end: AFTERNOON_END })]);
     const bench = mount(mira(starts));
     await userEvent.click(screen.getByRole('radio', { name: 'Generic' }));
-    expect(stored(bench)).toEqual(expect.objectContaining({ kind: 'generic', locations: ['smithy', 'inn'], starts, traversable: 'anywhere' }));
+    expect(stored(bench)).toEqual(expect.objectContaining({ kind: 'generic', starts, traversable: 'anywhere' }));
+    expect(stored(bench)).not.toHaveProperty('locations');
   });
 
   it('tells a persona author of a Generic entity that any start can be the start', () => {
@@ -372,8 +374,7 @@ describe('placement', () => {
     await userEvent.click(screen.getByRole('radio', { name: 'Generic' }));
     expect(stored(bench).kind).toBe('generic');
     await userEvent.click(screen.getByRole('radio', { name: 'Unique' }));
-    const { locations: _derived, ...back } = stored(bench);
-    expect(back).toEqual(original);
+    expect(stored(bench)).toEqual(original);
     expect(screen.getByRole('button', { name: 'Start 1 75%' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Locked' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('Farm')).toBeInTheDocument();
@@ -442,7 +443,7 @@ describe('placement', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Start 2' }));
       await userEvent.click(screen.getByRole('button', { name: 'Delete Start' }));
       expect(stored(bench).starts).toEqual([twoStarts[0]]);
-      expect(stored(bench).locations).toEqual(['smithy', 'inn']);
+      expect(stored(bench)).not.toHaveProperty('locations');
       expect(screen.queryByRole('button', { name: 'Delete Start' })).toBeNull();
     });
   });

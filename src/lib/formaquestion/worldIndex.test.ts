@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { decodePlaceholderToken, encodePlaceholderToken } from '@/lib/placeholders';
 import { migrateWorld } from '@/lib/version';
-import { withDerivedLocations } from '@/lib/entityKind';
 import { PLAYER_START, type Currency, type Dictionary, type Entity, type GameState, type Item, type Stat, type Tool, type World } from '@/types';
 import { buildPlayerView } from './playerView';
 import { playerViewWorld } from './playerViewWorld';
@@ -234,12 +233,12 @@ describe('routines and Connections in the World Index', () => {
     expect(md).toContain('**Can Also Go:** Only Old Mill');
   });
 
-  it('leaves out the derived Locations field for an entity with a kind, and keeps it for one without', () => {
+  it('leaves out a stale Locations field for an entity with a kind, and keeps it for one without', () => {
     const pageOf = (entities: Entity[], id: string) => buildWorldIndex({ ...input, entities })
       .sectionsOf({ kind: 'world', worldKind: 'entity', id, name: id }).map((s) => s.markdown).join('\n');
     const kindless: Entity = { id: 'old', name: 'Old', locations: ['loc-quay'] };
-    const cast = [withDerivedLocations(warden), withDerivedLocations(crowd), kindless];
-    expect(cast[0].locations).toEqual(['loc-gate', 'loc-mill']);
+    // An unreleased world can still store the list on an entity with a kind (Q5).
+    const cast = [{ ...warden, locations: ['loc-gate', 'loc-mill'] }, { ...crowd, locations: ['loc-quay'] }, kindless];
     expect(pageOf(cast, 'warden')).not.toContain('**Locations:**');
     expect(pageOf(cast, 'crowd')).not.toContain('**Locations:**');
     expect(pageOf(cast, 'old')).toContain('**Locations:** Quay');

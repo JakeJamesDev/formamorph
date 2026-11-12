@@ -3,7 +3,7 @@ import { PLAYER_START, type Connection, type Entity, type EntityStart, type Game
 import {
   idsAt, idsAtAny, namedPlacesOf, positionOf, positionsIn, presenceIn, presenceOf, samplePlacement, startPlacesOf, withMembership, type PlacesWorld,
 } from '@/lib/entityPlaces';
-import { castRoutines, withDerivedLocations } from '@/lib/entityKind';
+import { castRoutines } from '@/lib/entityKind';
 import { EMPTY_BOOK } from '@/lib/positionEngine';
 import { placeAll, positionWorld } from '@/lib/positionPlay';
 import { discoveredAsEntities } from '@/lib/runtimeCharacters';
@@ -21,17 +21,17 @@ const stay = (id: string, place: string): ScheduleRow => ({ id, time: 'allDay', 
 const start = (id: string, place: string, schedule: ScheduleRow[] = [], weight = 1): EntityStart => ({ id, place, weight, schedule });
 
 /** Begins at the market (weight 3) and wanders to the well; or begins in the forest and stays on the island. */
-const MARA: Entity = withDerivedLocations({
+const MARA: Entity = {
   id: 'mara', name: 'Mara', kind: 'unique', traversable: ['forest', 'well'],
   starts: [
     start('s-market', 'market', [{ id: 'r-wander', time: 'allDay', action: { kind: 'wander', idle: 10, places: [{ place: 'market', weight: 1 }, { place: 'well', weight: 1 }] } }], 3),
     start('s-forest', 'forest', [stay('r-island', 'island')]),
   ],
-});
+};
 /** Two Generic Entity Instances, both beginning at the well. */
-const CROWS: Entity = withDerivedLocations({ id: 'crows', name: 'Crows', kind: 'generic', traversable: ['island'], starts: [start('c1', 'well'), start('c2', 'well', [stay('c2-r', 'forest')])] });
+const CROWS: Entity = { id: 'crows', name: 'Crows', kind: 'generic', traversable: ['island'], starts: [start('c1', 'well'), start('c2', 'well', [stay('c2-r', 'forest')])] };
 /** Begins wherever the player does. */
-const GUIDE: Entity = withDerivedLocations({ id: 'guide', name: 'Guide', kind: 'unique', traversable: 'anywhere', starts: [start('g', PLAYER_START, [stay('g-r', 'forest')])] });
+const GUIDE: Entity = { id: 'guide', name: 'Guide', kind: 'unique', traversable: 'anywhere', starts: [start('g', PLAYER_START, [stay('g-r', 'forest')])] };
 /** No kind: plain membership. */
 const STATUE: Entity = { id: 'statue', name: 'Statue', locations: ['well', 'forest'] };
 const CAST = [MARA, CROWS, GUIDE, STATUE];

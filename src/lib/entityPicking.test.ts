@@ -157,33 +157,33 @@ describe("pickMarks under Known In picks", () => {
 
 describe("togglePick", () => {
   const captain: Entity = {
-    id: "captain", name: "Captain", locations: ["keep"], kind: "generic", starts: [{ id: "c1", place: "keep", weight: 1, schedule: [] }],
+    id: "captain", name: "Captain", kind: "generic", starts: [{ id: "c1", place: "keep", weight: 1, schedule: [] }],
   };
   const customPersona: Entity = { id: "me", name: "Me", customPersona: true, locations: ["keep"] };
   const scout: Entity = {
-    id: "scout", name: "Scout", kind: "unique", locations: ["keep", "inn"],
+    id: "scout", name: "Scout", kind: "unique",
     starts: [{ id: "s1", place: "keep", weight: 1, schedule: [] }, { id: "s2", place: "inn", weight: 2, schedule: [] }],
   };
 
   it("moves a Unique entity's first Start to the clicked location in Locations mode, keeping the others", () => {
     const moved = togglePick(scout, "locations", "watchtower");
     expect(moved.starts?.map((s) => [s.id, s.place, s.weight])).toEqual([["s1", "watchtower", 1], ["s2", "inn", 2]]);
-    expect(moved.locations).toEqual(["watchtower", "inn"]);
+    expect(moved).not.toHaveProperty("locations");
   });
 
   it("gives a Unique entity with no Start its first one at the clicked location", () => {
     const placed = togglePick({ id: "new", name: "New", kind: "unique", traversable: "anywhere" }, "locations", "harbor");
     expect(placed.starts).toEqual([expect.objectContaining({ place: "harbor", weight: 1, schedule: [] })]);
-    expect(placed.locations).toEqual(["harbor"]);
+    expect(placed).not.toHaveProperty("locations");
   });
 
   it("adds a Generic entity's Start in Locations mode, and removes it on the next click", () => {
     const added = togglePick(captain, "locations", "watchtower");
     expect(added.starts?.map((s) => [s.place, s.schedule])).toEqual([["keep", []], ["watchtower", []]]);
-    expect(added.locations).toEqual(["keep", "watchtower"]);
+    expect(added).not.toHaveProperty("locations");
     const removed = togglePick(added, "locations", "watchtower");
     expect(removed.starts?.map((s) => s.id)).toEqual(["c1"]);
-    expect(removed.locations).toEqual(["keep"]);
+    expect(removed).not.toHaveProperty("locations");
   });
 
   it("keeps a Generic entity's last Start", () => {
@@ -204,7 +204,7 @@ describe("togglePick", () => {
     expect(togglePick(captain, "knownIn", "rosewood").knownIn).toEqual(["rosewood"]);
     expect(togglePick({ ...captain, knownIn: "nowhere" }, "knownIn", "harbor").knownIn).toEqual(["harbor"]);
     expect(togglePick({ ...captain, knownIn: ["rosewood"] }, "knownIn", "harbor").knownIn).toEqual(["rosewood", "harbor"]);
-    expect(togglePick(captain, "knownIn", "rosewood").locations).toEqual(["keep"]);
+    expect(togglePick(captain, "knownIn", "rosewood").starts).toBe(captain.starts);
   });
 
   it("falls back to Nearby when the last pick is removed", () => {

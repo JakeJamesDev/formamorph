@@ -1,9 +1,10 @@
 import { PLAYER_START, type DiscoveredEntity, type Entity, type EntityKind, type EntityStart, type ScheduleRow, type Traversable } from "@/types";
+import { namedPlacesOf, withoutMembership } from "@/lib/entityPlaces";
 import { placesOf, runtimeRoutine, type Routine } from "@/lib/positionEngine";
 
 /**
  * An entity's kind and routine: a Unique entity is one body placed from one rolled Start; a Generic entity runs every Start
- * at once, one Generic Entity Instance each. The `locations` of both is derived here and nowhere else.
+ * at once, one Generic Entity Instance each. The routine is the only source of its places; neither kind stores a list.
  */
 
 export const isGeneric = (entity: Pick<Entity, "kind">): boolean => entity.kind === "generic";
@@ -24,17 +25,6 @@ export function withBeginsFollowing(start: EntityStart, on: boolean): EntityStar
 /** `start` moved to `place`. Begins Following holds only at `PLAYER_START`, so a move away clears it. */
 export const withStartPlace = (start: EntityStart, place: string): EntityStart =>
   withBeginsFollowing({ ...start, place }, place === PLAYER_START && !!start.beginsFollowing);
-
-/** `entity` with its `locations` rebuilt from its Starts and rows. An entity with no kind as it is. */
-export function withDerivedLocations(entity: Entity): Entity {
-  if (!entity.kind) return entity;
-  const places = routinePlaces(entity.starts ?? []);
-  const same = places.length === (entity.locations?.length ?? 0) && places.every((id, i) => entity.locations?.[i] === id);
-  if (same) return entity;
-  if (places.length) return { ...entity, locations: places };
-  const { locations: _none, ...rest } = entity;
-  return rest;
-}
 
 /** The entity fields a routine is read from. */
 export type RoutineEntity = Pick<Entity, "id" | "kind" | "starts" | "traversable">;
@@ -79,12 +69,6 @@ export const routineNames = (entity: Entity, placeId: string): boolean =>
 /** `entity` with `placeId` dropped from its Starts, rows and Traversable: a Start at the place goes, and so does
  *  a row left with no places. The same entity when it never named the place. */
 export function withoutRoutinePlace(entity: Entity, placeId: string): Entity {
-  const next = dropRoutinePlace(entity, placeId);
-  return next === entity ? entity : withDerivedLocations(next);
-}
-
-/** `withoutRoutinePlace` without rebuilding the stored `locations` list. */
-export function dropRoutinePlace(entity: Entity, placeId: string): Entity {
   if (!routineNames(entity, placeId)) return entity;
   const next: Entity = { ...entity };
   if (entity.starts?.some((start) => routinePlaces([start]).includes(placeId))) {
@@ -100,14 +84,15 @@ export function dropRoutinePlace(entity: Entity, placeId: string): Entity {
 const blankStart = (place: string, newId: () => string): EntityStart => ({ id: newId(), place, weight: 1, schedule: [] });
 
 /** A copy of `entity` of `kind`, keeping every Start, row, weight, Strict flag and Traversable (Q135). Without
- *  Starts, a Unique entity takes one at its first place and a Generic entity one per place. */
+ *  Starts, an entity with no kind becomes a Unique entity with one at its first place or a Generic entity with one
+ *  per place; its membership goes. */
 export function withKind(entity: Entity, kind: EntityKind, newId: () => string): Entity {
   if (entity.kind === kind) return entity;
-  const places = entity.locations ?? [];
+  const places = entity.kind ? [] : namedPlacesOf(entity);
   const starts = entity.starts?.length ? entity.starts
     : (kind === "generic" ? places : places.slice(0, 1)).map((place) => blankStart(place, newId));
   const { starts: _s, ...rest } = entity;
-  return withDerivedLocations({
+  return withoutMembership({
     ...rest, kind, ...(starts.length && { starts }),
     ...(kind === "unique" && { traversable: entity.traversable ?? "anywhere" }),
   });
@@ -136,15 +121,15 @@ export function withRoutineMapped(entity: Entity, map: Readonly<Record<string, s
   const mapped = [...new Set(Object.values(map))];
   const starts = kept.length ? kept : (isGeneric(entity) ? mapped : mapped.slice(0, 1)).map((place) => blankStart(place, newId));
   const { starts: _s, ...rest } = entity;
-  return withDerivedLocations({
+  return {
     ...rest, ...(starts.length && { starts }),
     ...(Array.isArray(entity.traversable) && { traversable: [...new Set(entity.traversable.flatMap((id) => map[id] ?? []))] }),
-  });
+  };
 }
 
 /** A Generic entity with a new Start with no rows at `place`. */
 export function withGenericStart(entity: Entity, place: string, newId: () => string): Entity {
-  return withDerivedLocations({ ...entity, starts: [...(entity.starts ?? []), blankStart(place, newId)] });
+  return { ...entity, starts: [...(entity.starts ?? []), blankStart(place, newId)] };
 }
 
 /** Whether removing the Starts that begin at `place` leaves `entity` at least one. */
@@ -156,14 +141,14 @@ export const canRemoveGenericStartsAt = (entity: Pick<Entity, "starts">, place: 
 export function withoutGenericStartsAt(entity: Entity, place: string): Entity {
   const starts = entity.starts ?? [];
   if (!starts.some((start) => start.place === place) || !canRemoveGenericStartsAt(entity, place)) return entity;
-  return withDerivedLocations({ ...entity, starts: starts.filter((start) => start.place !== place) });
+  return { ...entity, starts: starts.filter((start) => start.place !== place) };
 }
 
 /** A Generic entity without the Start `startId`, rows and all. The same entity when that is its last Start. */
 export function withoutGenericStart(entity: Entity, startId: string): Entity {
   const starts = entity.starts ?? [];
   if (starts.length < 2 || !starts.some((start) => start.id === startId)) return entity;
-  return withDerivedLocations({ ...entity, starts: starts.filter((start) => start.id !== startId) });
+  return { ...entity, starts: starts.filter((start) => start.id !== startId) };
 }
 
 /** A Generic entity with a Start added at `place`, or the Starts that begin there removed when there are any. */
@@ -176,5 +161,5 @@ export function withFirstStartPlace(entity: Entity, placeId: string, newId: () =
   const next = starts.length
     ? [withStartPlace(starts[0], placeId), ...starts.slice(1)]
     : [blankStart(placeId, newId)];
-  return withDerivedLocations({ ...entity, starts: next });
+  return { ...entity, starts: next };
 }

@@ -5,7 +5,10 @@ import { entityImages } from './entityImages';
 import { locationImages } from './locationImages';
 import { encodePlaceholderToken, PLACEHOLDER_TOKEN_SOURCE } from './placeholders';
 import { worldImageItems } from './mediaIndex';
-import { PRE_EXPANSION_SHA, worldAt } from '@/test/bundledRevisions';
+import { PRE_ENTITY_PLACES_SHA, PRE_EXPANSION_SHA, worldAt } from '@/test/bundledRevisions';
+import { presenceOf } from './entityPlaces';
+import { startingLocationIds } from './locationGraph';
+import { PLAYER_START } from '@/types';
 import { bundledWorldIds, bundledWorldText } from '@/test/bundledWorldFiles';
 import type { Entity, GalleryImage, Script, Tool, Trait, TraitGroup, TraitRequirementRow, World } from '@/types';
 
@@ -131,6 +134,30 @@ describe.each(worlds)('the %s world', (id, raw) => {
     const { version: _loaded, ...loaded } = stored(world) as Record<string, unknown>;
     const { version: _stored, ...onDisk } = file;
     expect(loaded).toEqual(onDisk);
+  });
+
+  it('stores no locations on an entity with a kind', () => {
+    const entities = (file.entities ?? []) as Entity[];
+    expect(entities.filter((e) => e.kind && 'locations' in e).map((e) => e.name)).toEqual([]);
+  });
+
+  it('places each entity where its stored list did, plus only the places Q7 adds', () => {
+    const old = new Map(((worldAt(PRE_ENTITY_PLACES_SHA, id).entities ?? []) as Entity[]).map((e) => [e.id, e.locations ?? []]));
+    const places = { locations: world.locations ?? [], connections: world.connections ?? [] };
+    const lost: string[] = [];
+    const extra: string[] = [];
+    for (const entity of world.entities ?? []) {
+      const before = new Set(old.get(entity.id) ?? []);
+      const now = new Set(presenceOf(entity, places).places.map((p) => p.place));
+      // Q7 adds Player's Starting Location as the starting locations, and Can Also Go as a list.
+      const added = new Set([
+        ...((entity.starts ?? []).some((s) => s.place === PLAYER_START) ? startingLocationIds(places.locations) : []),
+        ...(Array.isArray(entity.traversable) ? entity.traversable : []),
+      ]);
+      lost.push(...[...before].filter((place) => !now.has(place)).map((place) => `${entity.name}: ${place}`));
+      extra.push(...[...now].filter((place) => !before.has(place) && !added.has(place)).map((place) => `${entity.name}: ${place}`));
+    }
+    expect({ lost, extra }).toEqual({ lost: [], extra: [] });
   });
 
   it('holds every image as stored data, so the image rules below read real bytes', () => {

@@ -33,9 +33,9 @@ export const startWithRow = (id: string, place: string, rowPlace?: string): Enti
   id, place, weight: 1,
   schedule: rowPlace ? [{ id: `${id}-r`, time: 'allDay', action: { kind: 'stay', place: rowPlace } }] : [],
 });
-/** A Unique entity whose locations are its Starts' places. */
+/** A Unique entity with `starts` and no Traversable. */
 export const unique = (id: string, name: string, starts: EntityStart[]): Entity =>
-  ({ id, name, kind: 'unique', starts, traversable: [], locations: [...new Set(starts.map((s) => s.place))] });
+  ({ id, name, kind: 'unique', starts, traversable: [] });
 
 /** Tess wanders between the inn and the square all day, resting 10 minutes at each stop. */
 export const TESS = unique('tess', 'Tess', [start('inn', [{
@@ -47,7 +47,7 @@ export const WENNA = unique('wenna', 'Wenna', [start('inn')]);
 export const CLERK = unique('clerk', 'Clerk', [start('inn', [{ id: 'shift', time: 'allDay', strict: true, action: { kind: 'stay', place: 'inn' } }])]);
 /** Moths is Generic, with a Generic Entity Instance at each of its two Starts. */
 export const MOTHS: Entity = {
-  id: 'moths', name: 'Moths', kind: 'generic', locations: ['inn', 'gate'],
+  id: 'moths', name: 'Moths', kind: 'generic',
   starts: [{ id: 'm1', place: 'inn', weight: 1, schedule: [] }, { id: 'm2', place: 'gate', weight: 1, schedule: [] }],
 };
 export const KIND_CAST: Entity[] = [TESS, WENNA, CLERK, MOTHS];
@@ -118,7 +118,7 @@ export const yardLocations = [
 
 /** A Generic entity: one Start grazes in the field from 08:00 to 18:00 and stays in the barn otherwise; one stays in the barn. */
 export const herd: Entity = {
-  id: 'herd', name: 'Herd', kind: 'generic', locations: ['barn', 'field'],
+  id: 'herd', name: 'Herd', kind: 'generic',
   starts: [
     { id: 'grazer', place: 'barn', weight: 1, schedule: [{ id: 'graze', time: { start: 480, end: 1080 }, action: { kind: 'stay', place: 'field' } }] },
     { id: 'sleeper', place: 'barn', weight: 1, schedule: [] },

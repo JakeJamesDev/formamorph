@@ -7,7 +7,7 @@ import {
 } from '@/lib/entityPlaces';
 import { pickMarks, type PickMark } from '@/lib/entityPicking';
 import { presenceLines } from '@/lib/locationPresenceReasons';
-import { castRoutines, withDerivedLocations } from '@/lib/entityKind';
+import { castRoutines } from '@/lib/entityKind';
 import { placedIn, presentEntityIds, type Standings } from '@/lib/entityPresence';
 import { EMPTY_BOOK, runtimeRoutine, type PositionBook } from '@/lib/positionEngine';
 import { placeAll, positionWorld, scriptPlaces } from '@/lib/positionPlay';
@@ -59,20 +59,20 @@ const WORLD: PlacesWorld = { locations: LOCATIONS, connections: CONNECTIONS };
 const row = (id: string, time: ScheduleRow['time'], place: string): ScheduleRow => ({ id, time, action: { kind: 'stay', place } });
 const MORNING = { start: 360, end: 720 };
 
-// The cast as a world stores it: an entity with a kind carries the list derived from its routine.
+// The cast as an unreleased world stores it: the baker and the gulls still carry a stale list (Q5).
 const CAST: Entity[] = ([
-  { id: 'baker', name: 'Baker', kind: 'unique', traversable: ['chapel'], starts: [
+  { id: 'baker', name: 'Baker', kind: 'unique', traversable: ['chapel'], locations: ['bakery', 'square', 'docks', 'lighthouse'], starts: [
     { id: 'b1', place: 'bakery', weight: 2, schedule: [row('b1-am', MORNING, 'square')] },
     { id: 'b2', place: 'docks', weight: 1, schedule: [row('b2-day', 'allDay', 'lighthouse')] },
   ] },
-  { id: 'gulls', name: 'Gulls', kind: 'generic', starts: [
+  { id: 'gulls', name: 'Gulls', kind: 'generic', locations: ['docks', 'square', 'chapel'], starts: [
     { id: 'g1', place: 'docks', weight: 1, schedule: [] },
     { id: 'g2', place: 'docks', weight: 1, schedule: [row('g2-day', 'allDay', 'square')] },
     { id: 'g3', place: 'chapel', weight: 1, schedule: [] },
   ] },
   { id: 'friar', name: 'Friar', kind: 'unique', traversable: 'anywhere', starts: [{ id: 'f1', place: 'chapel', weight: 1, schedule: [] }] },
   { id: 'urchin', name: 'Urchin', kind: 'unique', traversable: [], starts: [{ id: 'u1', place: PLAYER_START, weight: 1, schedule: [] }] },
-] satisfies Entity[]).map(withDerivedLocations);
+] satisfies Entity[]);
 
 /** A character the story met at the docks this playthrough. */
 const MET = [{ entity: { id: 'sailor', name: 'Sailor' }, locationId: 'docks', sourceTurnId: 't-2' }];

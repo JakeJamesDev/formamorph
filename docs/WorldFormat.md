@@ -54,7 +54,7 @@ The import adds a new world. It never replaces the world you exported. Import sk
 1. Add an object to the top-level `entities` list.
 2. Give it a new `id` and a `name`.
 3. Write `playerDescription`, `aiDescription` and, for a long description, `aiSummary`.
-4. Set `locations` to the ids of the locations where the entity is. Leave it out for an entity with no fixed place.
+4. Set `locations` to the ids of the locations where the entity is. When the app opens the world, it turns the list into a `kind` and [Starts](#starts) and drops it. Leave it out for an entity with no fixed place.
 5. To make the entity playable, set `persona` to `true`. See [Persona Marks](#persona-marks).
 
 ```json
@@ -133,7 +133,7 @@ Import runs every world through a migration. The migration changes an older shap
 | A stat's `beforeCode` and `code` | Scripts with the timings `"before"` and `"after"` |
 | A script that uses `stats.find(…)` | The same code with the stat map |
 | A root `customPlayerVRM` | An Avatar in `worldOverview.vrmStore`. See [Avatar Picks](#avatar-picks) |
-| An entity `startingLocationId` | Removed. A persona's `locations` are where it can start |
+| An entity `startingLocationId` | Removed. A persona's Starts are where it can start |
 | A stat with `type: "list"` | A `number` stat at its `min`. The items are dropped |
 | A Stomach, Fatness or Breastsize stat with no `morphBindings` | The matching body morphs |
 | A `morphBindings` entry that is a bare name | `{ name }` |
@@ -388,7 +388,7 @@ The world group with `system: "blueprints"`, and every group below it, holds Blu
 | `images` | | [Gallery image](#media-fields)[] | The gallery, in author order. During the game, the backdrop shows the first visible image |
 | `imageTags` | | String | Comma-separated tags for image generation |
 | `ambientSound` | | [MediaAsset](#media-fields) | Looping sound |
-| `isStarting` | | Boolean | A new game can start here. One marked = every game starts there. Several = the player picks. None = any location. A played entity's `locations` join the choices |
+| `isStarting` | | Boolean | A new game can start here. One marked = every game starts there. Several = the player picks. None = any location. A played entity's Start places join the choices |
 | `parentId` | | String \| `null` | The parent location's `id`. Absent or `null` = the top level. List order is the order among siblings |
 | `canvasPosition` | | `{ "x", "y" }` | Editor-only. The location's place on the Locations canvas, relative to its parent. Absent = automatic |
 | `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values pinned while the player is here. A child location does not get its parent's pins |
@@ -435,7 +435,7 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `sound` | | [MediaAsset](#media-fields) | A sound |
 | `model` | | [MediaAsset](#media-fields) | A 3D model |
 | `vrmPick` | | [Avatar pick](#avatar-picks) | The entity's Avatar. Absent = none |
-| `locations` | | String[] | The `id`s of the locations where the entity can be. For a Unique or a Generic entity the app writes it from `starts`: every Start place and every schedule place |
+| `locations` | | String[] | Only for an entity with no `kind`, such as the Custom Persona: the `id`s of the locations where it belongs. A Unique or a Generic entity has none; its `starts` and `traversable` say where it can be |
 | `kind` | | `"unique"` \| `"generic"` | A Unique entity is one body in one place. A Generic entity runs every Start at once, one presence each. Absent for the Custom Persona and an entity with no locations |
 | `starts` | | [Start](#starts)[] | The entity's beginnings, in author order. A Unique entity picks one by `weight` in each new game. A Generic entity runs all of them |
 | `traversable` | | `"anywhere"` \| String[] | Where a Unique entity may be led or called beyond its schedule: anywhere, or exact location `id`s. Absent = an empty list: its schedule places only. A Generic entity ignores it |
@@ -466,7 +466,11 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `schedule` | Row[] | The daily routine kept from there. Empty = it stays at `place` |
 | `beginsFollowing` | `true` | Only with `"@playerStart"`, on a Unique entity: a game that picks this Start begins with the entity following the player, even on a `strict` row. `traversable` still applies. Absent = not following |
 
-A Start at `"@playerStart"` adds no place to `locations`. Its schedule can name any location; play skips one the player's real start doesn't connect to.
+A Start at `"@playerStart"` stands for the starting locations, or every location when none is marked. Its schedule can name any location; play skips one the player's real start doesn't connect to.
+
+> ⚠️ **Formamorph 3.6.2 and older read only `locations`.** They open a world from a newer build, but show each Unique and Generic entity as placed nowhere.
+>
+> A file that still has `locations` on a Unique or a Generic entity opens in this build. The app ignores the list and drops it when you save.
 
 Each schedule row:
 

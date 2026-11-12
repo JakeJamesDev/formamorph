@@ -1,16 +1,15 @@
-import { withDerivedLocations } from '@/lib/entityKind';
 import { placesOf } from '@/lib/positionEngine';
 import { firstFreeRange, ONE_DAYPART_MINUTES } from '@/lib/routineTime';
 import { PLAYER_START, type Entity, type EntityStart, type ScheduleAction, type ScheduleRow } from '@/types';
 
-// The Routine tab's writes to an entity's Starts and rows. Each returns the whole entity with its `locations` rebuilt.
+// The Routine tab's writes to an entity's Starts and rows. Each returns the whole entity.
 
 export type ActionKind = ScheduleAction['kind'];
 
 /** How long a new Patrol stop idles, in minutes. */
 export const NEW_STOP_IDLE = 60;
 
-const write = (entity: Entity, starts: EntityStart[]): Entity => withDerivedLocations({ ...entity, starts });
+const write = (entity: Entity, starts: EntityStart[]): Entity => ({ ...entity, starts });
 
 export const withStart = (entity: Entity, startId: string, change: (start: EntityStart) => EntityStart): Entity =>
   write(entity, (entity.starts ?? []).map((s) => (s.id === startId ? change(s) : s)));

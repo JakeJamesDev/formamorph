@@ -5,7 +5,6 @@ import type { SandboxState } from '@/lib/statCodeTurn';
 import type { StatCodeWorld } from '@/lib/statCodeTestRun';
 import { serializeTurnContent } from '@/lib/turnDigest';
 import { buildToolSnapshot } from '@/lib/tools/toolSnapshot';
-import { withDerivedLocations } from '@/lib/entityKind';
 import { buildPlayerView } from './playerView';
 import { playerViewMemory, playerViewScene, playerViewState, playerViewWorld, type PlayerViewReach } from './playerViewWorld';
 
@@ -279,11 +278,11 @@ describe('playerViewWorld', () => {
   });
 
   describe('a met Unique entity whose routine names both places the player visited', () => {
-    // The warden begins at the gate and stays in the hall; the world stores both as its list.
-    const routined = withDerivedLocations({
-      ...WARDEN, kind: 'unique', traversable: [],
+    // The warden begins at the gate and stays in the hall; an unreleased world still stores both as its list (Q5).
+    const routined: Entity = {
+      ...WARDEN, kind: 'unique', traversable: [], locations: ['gate', 'hall'],
       starts: [{ id: 'w1', place: 'gate', weight: 1, schedule: [{ id: 'w1-day', time: 'allDay', action: { kind: 'stay', place: 'hall' } }] }],
-    });
+    };
     const standing = (at: string | undefined) => {
       const base = reach();
       const current: GameState = { ...base.current, entityPositions: at ? { warden: at } : {} };

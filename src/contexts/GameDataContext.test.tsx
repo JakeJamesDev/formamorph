@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { namedPlacesOf } from '@/lib/entityPlaces';
 import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { GameDataProvider, useGameData } from './GameDataContext';
@@ -313,7 +314,7 @@ describe('entity ↔ location membership', () => {
     act(() => { result.current.removeLocation('l1'); });
 
     // A stale id is invisible in every roster but rides into the exported world forever.
-    expect(result.current.entities[0].locations).toEqual(['l2']);
+    expect(namedPlacesOf(result.current.entities[0])).toEqual(['l2']);
   });
 
   it('moves the sub-locations of a deleted location up to its parent', () => {
@@ -351,7 +352,7 @@ describe('entity ↔ location membership', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(legacyWorld); });
 
-    expect(result.current.entities[0].locations).toEqual(['l1']);
+    expect(namedPlacesOf(result.current.entities[0])).toEqual(['l1']);
     expect('entities' in result.current.locations[0]).toBe(false);
   });
 });

@@ -7,7 +7,7 @@ import raw from '@/defaultworlds/drone.json?raw';
 import { gateOf, gateStates, settleDefaults, underfills, type SettleResult } from './traitGates';
 import { runStatCodeTurn } from './statCodeTurn';
 import type { PlayerStat, World } from '@/types';
-import { entityIdsAt } from './entityPresence';
+import { idsAt, presenceIn } from './entityPlaces';
 import { primeRolls, resolvePlaceholders, type PlaceholderPick } from './placeholders';
 import { bundledWorldHarness } from '@/test/bundledWorldHarness';
 import { readWorldTools } from './tools/worldTools';
@@ -195,7 +195,8 @@ describe('the drone map', () => {
   const world = JSON.parse(raw) as World;
   const locationNamed = (name: string) => world.locations.find((location) => location.name === name)!;
   const castAt = (name: string) =>
-    entityIdsAt(locationNamed(name).id, world.entities).map((id) => world.entities.find((entity) => entity.id === id)!.name);
+    idsAt(locationNamed(name).id, world.entities, presenceIn({ locations: world.locations, connections: world.connections ?? [] }))
+      .map((id) => world.entities.find((entity) => entity.id === id)!.name);
 
   it.each([
     ['Ashfall Capital', 'Archon Vael'],

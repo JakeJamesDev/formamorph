@@ -13,6 +13,7 @@ import { readLibraryDetails } from '@/lib/contentAuthor';
 import { contentLinkStatusLine } from '@/lib/contentLink';
 import { isHelpSeen } from '@/lib/helpSeenStore';
 import { carryMap, placedIn, withCarriedRoutine, withEntityLocations } from '@/lib/entityPresence';
+import { namedPlacesOf } from '@/lib/entityPlaces';
 import { adoptCardVrm, importCharacterFile, type CardVrmFields } from '@/lib/entityFile';
 import { parseJsonText } from '@/lib/jsonFileWorkerUtils';
 import type { LiveWorld } from '@/lib/componentUpdateRun';
@@ -442,7 +443,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         return;
       }
       // A location membership the repair re-aimed moves with it; one it did not is left as it stands.
-      const moved = (entity.locations ?? []).map((id) => {
+      const moved = namedPlacesOf(entity).map((id) => {
         const row = flow.rows.find((r) => r.kind === 'location' && held[r.key] === id);
         return row ? plan.locations[row.key] ?? id : id;
       });

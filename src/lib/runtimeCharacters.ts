@@ -6,7 +6,7 @@ import { trimToLastSentence } from '@/lib/outputLength';
 import { escapeRegExp } from '@/lib/utils';
 import { sameCharacterName } from '@/lib/entityMatch';
 import type { Standings } from '@/lib/entityPresence';
-import { idsAtAny, positionsIn } from '@/lib/entityPlaces';
+import { idsAtAny, positionsIn, withMembership } from '@/lib/entityPlaces';
 
 /** Labels in the character-note user message. Shared by the request builder and the response cleaner —
  *  a small model often parrots these back into its output. */
@@ -85,7 +85,7 @@ export function cleanDiscoveredDescription(raw: string, name: string): string {
  * The anchor is the record's whole membership — a discovered character is somewhere it was invented.
  */
 export function discoveredAsEntities(discovered: readonly DiscoveredEntity[]): Entity[] {
-  return discovered.map((d) => (d.locationId ? { ...d.entity, locations: [d.locationId] } : d.entity));
+  return discovered.map((d) => (d.locationId ? withMembership(d.entity, [d.locationId]) : d.entity));
 }
 
 /**
