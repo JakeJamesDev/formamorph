@@ -10,6 +10,9 @@ export const startCandidates = (locations: readonly GameLocation[]): GameLocatio
   return starting.length > 0 ? starting : [...locations];
 };
 
+/** Where an authoring run's story begins: the first start candidate. Undefined with no locations. */
+export const sampleStart = (locations: readonly GameLocation[]): GameLocation | undefined => startCandidates(locations)[0];
+
 /**
  * Resolve the initial location for a new game: the player's chosen id when valid, otherwise a random pick
  * among the starting locations (falling back to all locations when none are flagged). `undefined` only

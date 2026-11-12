@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  PLAYER_START, type Connection, type Entity, type GameLocation, type ScheduleRow, type WorldOverview,
+  PLAYER_START, type Connection, type Entity, type GameLocation, type ScheduleRow, type Stat, type WorldOverview,
 } from '@/types';
-import { idsAt, positionsIn, presenceIn, samplePlacement, type PlacesOf, type PlacesWorld } from '@/lib/entityPlaces';
+import { idsAt, positionsIn, presenceIn, samplePlacement, startPlacesOf, type PlacesOf, type PlacesWorld } from '@/lib/entityPlaces';
 import { pickMarks, type PickMark } from '@/lib/entityPicking';
 import { presenceLines } from '@/lib/locationPresenceReasons';
 import { castRoutines, withDerivedLocations } from '@/lib/entityKind';
@@ -13,6 +13,15 @@ import { discoveredAsEntities } from '@/lib/runtimeCharacters';
 import { liveChipScene, type LiveSceneSources } from '@/lib/chipValues/liveScene';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { NOON } from '@/test/entityKindFixture';
+import { statBoxLookups } from '@/lib/codeWorldLookup';
+import { sampleStart } from '@/lib/startingLocation';
+import { buildAiContext } from '@/lib/testBench/aiContext';
+import { buildLens } from '@/lib/testBench/lens';
+import { buildOpening, primeOpeningRolls } from '@/lib/testBench/opening';
+import { openingsEditorView } from '@/lib/openings';
+import { standaloneStateOf } from '@/lib/openingState';
+import { snapshotOf } from '@/lib/sandboxSnapshot';
+const CARD_SELF: Stat = { id: 's', name: 'S', type: 'number', description: '', min: 0, max: 10, regen: 0, descriptors: [] };
 
 /**
  * Every reader of where an entity is, held to the Entity Places module on one world. A reader joins the table when it
@@ -74,7 +83,7 @@ interface Reader {
   name: string;
   /** The module's answer this reader must match at `place`. */
   answer: (place: GameLocation) => { cast: readonly Entity[]; placesOf: PlacesOf };
-  read: (place: GameLocation) => string[];
+  read: (place: GameLocation) => string[] | Promise<string[]>;
 }
 
 const position = () => ({ cast: EVERYONE, placesOf: positionsIn(BOOK) });
@@ -108,7 +117,57 @@ const READERS: Reader[] = [
   },
   { name: 'the canvas marks under Nearby', answer: presence, read: canvasMarks(undefined, 'routine') },
   { name: 'the canvas marks under Known In picks', answer: presence, read: canvasMarks(['lighthouse'], 'member') },
+  {
+    name: 'the script hover card',
+    answer: () => ({ cast: CAST, placesOf: samplePlacement(CAST, WORLD, sampleStart(LOCATIONS)?.id) }),
+    read: (place) => {
+      const card = statBoxLookups({ ...authoredWorld, placeholders: [], statGroups: [], traitGroups: [], entityGroups: [], dictionaries: [] })({ owner: null, timing: 'after', self: CARD_SELF });
+      return (card.location(place.id)?.present ?? []).map((name) => CAST.find((entity) => entity.name === name)!.id);
+    },
+  },
+  {
+    name: 'the Test Bench AI context',
+    answer: (place) => ({ cast: CAST, placesOf: samplePlacement(CAST, WORLD, place.id) }),
+    read: (place) => {
+      const lens = buildLens({ ...authoredWorld, traitGroups: [] }, { personaId: null, locationId: place.id });
+      return buildAiContext({ ...authoredWorld, dictionaries: [] }, lens)
+        .rosters.find((roster) => roster.scope === 'here')!.entities.map((entity) => entity.id);
+    },
+  },
+  {
+    name: 'the Openings tab, with the place as the one start',
+    answer: (place) => ({ cast: CAST, placesOf: (entity) => startPlacesOf(entity, { locations: onlyStart(place) }) }),
+    read: (place) => openingsEditorView({ overview: authoredWorld.worldOverview, entities: withOpenings, locations: onlyStart(place) })
+      .groups.filter((group) => group.entity && !group.atNoStart).map((group) => group.entity!.id),
+  },
+  {
+    name: 'the Test Bench opening pool, with the place as the one start',
+    answer: (place) => ({ cast: CAST, placesOf: samplePlacement(CAST, WORLD, place.id) }),
+    read: (place) => {
+      const world = { ...authoredWorld, entities: withOpenings, locations: onlyStart(place), traitGroups: [], statUpdates: [], dictionaries: [] };
+      const pool = buildOpening(world, buildLens(world, { personaId: null, locationId: null }), primeOpeningRolls(world), { startLocationId: place.id }).pool;
+      return pool.flatMap((row) => CAST.filter((entity) => entity.name === row.ownerName).map((entity) => entity.id));
+    },
+  },
+  {
+    name: 'a script run with no live positions',
+    answer: () => ({ cast: CAST, placesOf: samplePlacement(CAST, WORLD, sampleStart(LOCATIONS)?.id) }),
+    read: async (place) => {
+      const state = standaloneStateOf(authoredWorld, undefined, { positions: {}, genericPositions: {} });
+      const code = `return locations.${place.name}.present.map((entity) => entity.name).join(',');`;
+      const out = await snapshotOf(state).run({ home: { kind: 'tool' }, timing: 'before', code, args: {}, readOnly: true });
+      return (out.reply ? out.reply.split(',') : []).map((name) => CAST.find((entity) => entity.name === name)!.id);
+    },
+  },
 ];
+
+/** The fixture with `place` as its one starting location. */
+function onlyStart(place: GameLocation): GameLocation[] {
+  return LOCATIONS.map((l) => ({ ...l, isStarting: l.id === place.id }));
+}
+
+/** The cast, each with one opening, so the Openings readers list it. */
+const withOpenings: Entity[] = CAST.map((entity) => ({ ...entity, openings: [{ id: `o-${entity.id}`, text: `${entity.name}.`, kind: 'action' }] }));
 
 describe('every reader agrees with Entity Places', () => {
   it('runs on a book where everyone stands somewhere and no place is empty but the lighthouse', () => {
@@ -118,9 +177,9 @@ describe('every reader agrees with Entity Places', () => {
   });
 
   describe.each(READERS)('$name', ({ answer, read }) => {
-    it.each(LOCATIONS)('at $id', (place) => {
+    it.each(LOCATIONS)('at $id', async (place) => {
       const { cast, placesOf } = answer(place);
-      expect(read(place)).toEqual(idsAt(place.id, cast, placesOf));
+      expect(await read(place)).toEqual(idsAt(place.id, cast, placesOf));
     });
   });
 });

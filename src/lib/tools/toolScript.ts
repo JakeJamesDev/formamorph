@@ -20,8 +20,8 @@ export async function runToolScript(
   // Loaded at the first script, so a reader that never runs one never loads the sandbox.
   let sandbox = sandboxes.get(snapshot);
   if (!sandbox) {
-    const [{ snapshotOf }, { openingStateOf }] = await Promise.all([import('@/lib/sandboxSnapshot'), import('@/lib/openingState')]);
-    sandbox = snapshotOf(snapshot.script.state ?? openingStateOf({}));
+    const [{ snapshotOf }, { authoringStateOf }] = await Promise.all([import('@/lib/sandboxSnapshot'), import('@/lib/openingState')]);
+    sandbox = snapshotOf(snapshot.script.state ?? authoringStateOf({}));
     sandboxes.set(snapshot, sandbox);
   }
   const result = await sandbox.run({ home: { kind: 'tool' }, timing: 'before', code, args, readOnly: true });

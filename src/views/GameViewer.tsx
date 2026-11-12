@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import { openingFold, openingPersonaOf, openingStateOf } from '@/lib/openingState';
+import { openingFold, openingPersonaOf, standaloneStateOf } from '@/lib/openingState';
 import {
   applyInventoryOps, applyInventoryPass, passOwners, equipRequirement, settleInventory, settleTraitsWithItems, statEffectItems, traitPicksInPlay, timedEffectViews, type ItemUse, type InventoryOp, type ItemScriptEvent,
 } from '@/lib/inventory';
@@ -4842,7 +4842,7 @@ const GameViewer = ({
   toolScriptSourceRef.current = (base) => {
     const world = getWorldData();
     const played = openingPersonaOf(personaRef, { libraryEntity: persona?.entity });
-    const state = prepareTurnStartCode(base)?.turn.state ?? { ...openingStateOf(world, undefined, played), ...scriptPlacesNow() };
+    const state = prepareTurnStartCode(base)?.turn.state ?? standaloneStateOf(world, played, scriptPlacesNow());
     return { state, authored: world };
   };
 

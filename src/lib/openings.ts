@@ -1,5 +1,6 @@
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
-import { entityIdsAt, entityIdsAtAny } from '@/lib/entityPresence';
+import { entityIdsAt } from '@/lib/entityPresence';
+import { idsAt, idsAtAny, startPlacesOf, type PlacesOf } from '@/lib/entityPlaces';
 import { playsOnlyWhenPicked } from '@/lib/entityRelationships';
 import { locationRows } from '@/lib/locationTree';
 import { startCandidates } from '@/lib/startingLocation';
@@ -90,6 +91,8 @@ export interface PoolSources {
   persona?: ResolvedPersona | null;
   /** The world's Custom Persona entity, whose Self rows stand in under a library persona that has none. */
   customPersona?: Entity | null;
+  /** Where the cast stands at the start. Absent ⇒ each entity's stored list. */
+  placesOf?: PlacesOf;
 }
 
 /** The Self rows that replace the pool: the played entity's, or the Custom Persona entity's under a library
@@ -111,7 +114,7 @@ const selfOnly = (owner: Entity | null | undefined): OpeningOwner | null =>
  * persona's own, or as the Custom Persona entity's in its place.
  */
 export function openingPool({
-  overview, entities = [], locations = [], startingLocationId, picked = [], persona, customPersona,
+  overview, entities = [], locations = [], startingLocationId, picked = [], persona, customPersona, placesOf,
 }: PoolSources): PoolEntry[] {
   // A world with no authored opening anywhere plays the default, whatever a picked entity brings. The played
   // entity's Others rows never draw, so only its Self rows and the Custom Persona entity's count.
@@ -121,7 +124,7 @@ export function openingPool({
   if (selfRows.length) return selfRows;
   const pickedRows = picked.flatMap((e) => drawable(e, e.id));
   if (pickedRows.length) return pickedRows;
-  const present = new Set(entityIdsAt(startingLocationId, [...entities]));
+  const present = new Set(placesOf ? idsAt(startingLocationId, entities, placesOf) : entityIdsAt(startingLocationId, [...entities]));
   return [
     ...drawable(overview, null),
     ...locationEntries(locations.find((l) => l.id === startingLocationId)),
@@ -313,18 +316,21 @@ export function openingsEditorView({ overview, entities, locations }: OpeningsEd
   const startId = allLocations ? null : starts[0]?.id ?? null;
   // The cast as play resolves it: never an entity that plays only when picked.
   const cast = entities.filter((e) => !othersNeverDraw(e));
+  // An entity is at a start only where it can begin (Q9).
+  const beginsAt: PlacesOf = (e) => startPlacesOf(e, { locations });
   const poolAt = (startingLocationId: string | null) => openingPool({
     overview,
     entities: cast,
     locations,
     startingLocationId,
+    placesOf: beginsAt,
   });
   const pool = poolAt(startId);
   const chances = poolChances(pool);
   const shares = new Map(pool.map((e, i) => [poolKey(e), chances[i]]));
   const othersChance = (key: string, drawsHere: boolean) => (allLocations || !drawsHere ? null : shares.get(key) ?? 0);
-  const here = new Set(entityIdsAt(startId, [...entities]));
-  const atAnyStart = new Set(entityIdsAtAny(starts.map((l) => l.id), [...entities]));
+  const here = new Set(idsAt(startId, entities, beginsAt));
+  const atAnyStart = new Set(idsAtAny(starts.map((l) => l.id), entities, beginsAt));
 
   const entityGroup = (e: Entity): EditorOpeningGroup => {
     const showSelf = canOwnSelfOpenings(e);

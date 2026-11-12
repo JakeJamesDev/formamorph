@@ -1,6 +1,6 @@
 import { flattenEnabledBookEntries } from '../dictionaryUtils';
 import { ownerStatParts, statPlacementOf } from '../statContext';
-import { entityIdsAt } from '../entityPresence';
+import { idsAt, samplePlacement } from '../entityPlaces';
 import { openingCast } from '../positionPlay';
 import { allPlaceholders } from '../placeholderHomes';
 import { inCast, playsAs, resolveOwners, type Owner } from '../owners';
@@ -89,6 +89,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
   const location = options.location !== undefined ? options.location : resolveStartingLocation(locations, null) ?? null;
   // Each Unique entity stands where a game opening here puts it.
   const entities = openingCast(authored, locations, connections, location?.id);
+  const placesOf = samplePlacement(authored, { locations, connections }, location?.id);
   // Chips resolve against a fresh roll, since a world has no playthrough whose rolls could be reused.
   const resolve = options.resolve
     ?? ((text: string) => resolvePlaceholders(text, { placeholders, rolls: {} }));
@@ -120,7 +121,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
   const cast = resolveEntity
     ? resolveOwnedTraitTexts(resolveEntityTexts(withLinks, resolveEntity), resolveOwned, resolveEntity)
     : withLinks;
-  const presentIds = entityIdsAt(location?.id, personaRef?.source === 'world' ? entities.filter((e) => inCast(e, personaRef)) : entities);
+  const presentIds = idsAt(location?.id, personaRef?.source === 'world' ? authored.filter((e) => inCast(e, personaRef)) : authored, placesOf);
   const defaultsOf = (tree: Pick<Owner, 'traits' | 'groups'>) =>
     defaultPicks(tree.traits, tree.groups);
   const activeIds = new Set(options.activeTraitIds ?? defaultsOf(global));

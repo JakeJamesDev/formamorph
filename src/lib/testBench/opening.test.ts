@@ -3,7 +3,7 @@ import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { drawNewGameOpening } from '@/lib/newGameOpening';
 import { activeDescriptor } from '@/lib/statContext';
-import type { Entity, GameLocation, Stat, Trait, TraitGroup, WorldOverview } from '@/types';
+import { PLAYER_START, type Entity, type GameLocation, type Stat, type Trait, type TraitGroup, type WorldOverview } from '@/types';
 import type { PlaceholderPick } from '@/lib/placeholders';
 import { buildLens, type LensState } from './lens';
 import { phValueId, phValues } from '@/test/placeholderValues';
@@ -424,6 +424,25 @@ describe('the opening pool', () => {
     const market = at(w, 'market');
     expect(market.location?.id).toBe('market');
     expect(market.pool.map((r) => [r.ownerName, r.chance])).toEqual([[null, 20], [null, 60], ['Maren', 20]]);
+  });
+
+  it('draws from the cast the Sample Placement puts at the chosen start', () => {
+    const stall = (id: string, name: string, starts: Entity['starts']): Entity => ({
+      id, name, kind: 'unique', traversable: [], starts, openings: [{ id: `o-${id}`, text: `${name} is here.`, kind: 'narration' }],
+    });
+    const w = pooled();
+    const sample = world({
+      ...w,
+      entities: [
+        // Begins at the market; a row names the harbor, which its stored list holds but no path reaches.
+        { ...stall('e-runner', 'Runner', [{ id: 'r1', place: 'market', weight: 1, schedule: [
+          { id: 'r1-day', time: 'allDay', action: { kind: 'stay', place: 'harbor' } },
+        ] }]), locations: ['market', 'harbor'] },
+        stall('e-urchin', 'Urchin', [{ id: 'u1', place: PLAYER_START, weight: 1, schedule: [] }]),
+      ],
+    });
+    expect(at(sample, 'market').pool.map((r) => r.ownerName)).toEqual([null, null, 'Runner', 'Urchin']);
+    expect(at(sample, 'harbor').pool.map((r) => r.ownerName)).toEqual([null, null, 'Urchin']);
   });
 
   it('renders the user macro as the draw does', () => {

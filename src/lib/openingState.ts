@@ -10,7 +10,7 @@ import { startsMet } from './presence';
 import { positionedCast } from './entityPresence';
 import { EMPTY_BOOK } from './positionEngine';
 import { openingWorld, placeAll, scriptPlaces } from './positionPlay';
-import { startingLocations } from './startingLocation';
+import { sampleStart } from './startingLocation';
 import { playStatWorld } from './statLinks';
 import type { ResolveText, SandboxState } from './statCodeTurn';
 import type { UnitHome } from './sandboxSnapshot';
@@ -129,7 +129,7 @@ export function openingFold(
   const ownedTraits = traitState.ownedTraits ?? {};
 
   const locations = world.locations ?? [];
-  const start = startingLocations(locations)[0] ?? locations[0] ?? null;
+  const start = sampleStart(locations) ?? null;
   // A new game has no met-in-play list yet, so the start rule alone says who the player knows.
   const played = openingPlayedEntity(entities, persona);
   const metIds = [...entities, ...library].filter((e) => startsMet(e, played, locations)).map((e) => e.id);
@@ -169,6 +169,15 @@ export function authoringStateOf(world: OpeningFoldWorld, picks?: OpeningPicks, 
   const cast = positionedCast(state.ownerTraits.entities ?? [], persona?.ref);
   const placed = openingWorld(cast, world.locations ?? [], world.connections ?? [], state.places?.location?.id);
   return { ...state, ...scriptPlaces(placeAll(EMPTY_BOOK, placed), placed) };
+}
+
+/** What a script reads of where the cast stands in a live game. */
+export type LivePlaces = Pick<SandboxState, 'positions' | 'genericPositions' | 'followers' | 'waiting' | 'routineNow'>;
+
+/** A script run's state outside a turn: the live places, or the Sample Placement while nobody is placed (Q10). */
+export function standaloneStateOf(world: OpeningFoldWorld, persona: OpeningPersona | undefined, live: LivePlaces): SandboxState {
+  const placed = Object.keys(live.positions ?? {}).length > 0 || Object.keys(live.genericPositions ?? {}).length > 0;
+  return placed ? { ...openingStateOf(world, undefined, persona), ...live } : authoringStateOf(world, undefined, persona);
 }
 
 /** `home` with its stats at their opening values, as turn one seeds them (Q8). */

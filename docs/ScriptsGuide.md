@@ -485,6 +485,8 @@ The sketch matches the exact name only. The drone world has the full **lock_targ
 - After the AI runs as a one-hour turn on day one.
 - Every other timing runs as the opening turn, where `clock.deltaHours` and `clock.elapsedHours` are both `0`.
 - It shows a trait switch and never applies it to the world.
+- It places entities as a new game does at the first starting location. With no location marked as a start, it uses the first location. A Unique entity is at the location of its first start. An entity that begins at **Player's Starting Location** is at that location.
+- A location's card in a code box lists the same entities in its **Present** row.
 
 ### A Note on Accumulating Stats
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
-import type { Entity, GameLocation, Opening, WorldOverview } from '@/types';
+import { PLAYER_START, type Entity, type GameLocation, type Opening, type WorldOverview } from '@/types';
 import {
   addOpening, DEFAULT_OPENING, drawOpening, drawPoolEntry, openingOwner, isOpeningFieldKey, moveOpening, openingChances, openingFieldKey, openingsEditorView,
   drawUnseenOpening, hasAuthoredOpenings, openingPool, poolKey, remintOpenings, openingTexts, removeOpening, resolveOpening, setOpeningKind,
@@ -609,6 +609,27 @@ describe('the editor view', () => {
     expect(v.startId).toBe('dock');
     expect(chances(v)).toEqual([[null, [50]], [null, [null]], ['d', [50]], ['far', [null]]]);
     expect(v.groups.map((g) => g.atNoStart)).toEqual([false, true, false, true]);
+  });
+
+  describe('an entity with a kind is at a start only where it can begin', () => {
+    const start = (id: string, place: string, rowPlace?: string) => ({
+      id, place, weight: 1,
+      schedule: rowPlace ? [{ id: `${id}-r`, time: 'allDay' as const, action: { kind: 'stay' as const, place: rowPlace } }] : [],
+    });
+    // Its stored list holds the row place, as the derived list does.
+    const visitor = ent('visitor', ['cave', 'dock'], [action('v1')], { kind: 'unique', traversable: [], starts: [start('v', 'cave', 'dock')] });
+    const urchin = ent('urchin', undefined, [action('u1')], { kind: 'unique', traversable: [], starts: [start('u', PLAYER_START)] });
+    const v = view({ overview: overview({ openings: [action('w1')] }), entities: [visitor, urchin], locations: [loc('dock', true), loc('cave')] });
+
+    it('leaves out a Unique entity whose only tie to the start is a Schedule row', () => {
+      expect(v.groups[1]).toMatchObject({ entity: visitor, atNoStart: true });
+      expect(v.groups[1].rows.map((r) => r.chance)).toEqual([null]);
+    });
+
+    it('counts an entity that begins at Player\'s Starting Location at the start, with its chance', () => {
+      expect(v.groups[2]).toMatchObject({ entity: urchin, atNoStart: false });
+      expect(chances(v)).toEqual([[null, [50]], ['visitor', [null]], ['urchin', [50]]]);
+    });
   });
 
   it('filters nothing in a world with no locations, marking the entities no start reaches', () => {

@@ -4,7 +4,12 @@
  * then its Blueprint.
  */
 
-import type { Dictionary, Entity, EntityGroup, GameLocation, Placeholder, ScriptTiming, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import type {
+  Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, ScriptTiming, Stat, StatGroup, Trait, TraitGroup,
+} from '@/types';
+import { idsAt, samplePlacement, type PlacesOf } from './entityPlaces';
+import { positionedCast } from './entityPresence';
+import { sampleStart } from './startingLocation';
 import { effectiveCopy } from './blueprints';
 import { editorGateInput, resolveOwners, type OwnerWorld } from './owners';
 import { startingGateStats } from './gateStats';
@@ -156,6 +161,8 @@ export interface CodeCardWorld extends PinEditorWorld, WorldScriptsSource, World
   dictionaries?: readonly Dictionary[];
   /** Absent ⇒ none. */
   locations?: readonly GameLocation[];
+  /** Absent ⇒ none. */
+  connections?: readonly Connection[];
   /** The authored items a Requires line can name. Absent ⇒ none. */
   items?: OwnerWorld['items'];
 }
@@ -198,6 +205,15 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
   const ownerWorld: OwnerWorld = { traits: world.traits, traitGroups: world.traitGroups, entities: world.entities, items: world.items };
   const named = new Map(entityTraitNames(ownerWorld, placeholders).map((entity) => [entity.id, entity]));
   const ownerById = new Map(resolveOwners(ownerWorld, undefined).owners.map((owner) => [owner.id, owner]));
+  // A location's "Present" row: the cast a Test Code run places there, with no persona.
+  let sample: { cast: Entity[]; placesOf: PlacesOf } | undefined;
+  const samplePresent = () => {
+    if (sample) return sample;
+    const locations = world.locations ?? [];
+    const cast = positionedCast([...world.entities], undefined);
+    const placesOf = samplePlacement(cast, { locations, connections: world.connections ?? [] }, sampleStart(locations)?.id);
+    return (sample = { cast, placesOf });
+  };
   const gate = editorGateInput(ownerWorld, startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities }));
   const textOf = conditionTexts(gate);
   // Later names win, as the sandbox's map keys them.
@@ -281,7 +297,9 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
       const places = world.locations ?? [];
       const location = places.find((place) => place.id === key) ?? places.find((place) => owners.codeName(place.name) === key);
       if (!location) return null;
-      const present = world.entities.filter((entity) => entity.locations?.includes(location.id)).map((entity) => owners.codeName(entity.name));
+      const { cast, placesOf } = samplePresent();
+      const byId = new Map(cast.map((entity) => [entity.id, entity]));
+      const present = idsAt(location.id, cast, placesOf).map((id) => owners.codeName(byId.get(id)!.name));
       return { location, present };
     },
   };
