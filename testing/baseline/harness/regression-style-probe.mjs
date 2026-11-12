@@ -13,7 +13,7 @@
 // Digest metric: digestFreeze (lower=better). GOAL: xml should not regress freeze/stall vs markdown.
 
 import { restyle } from "@/lib/sectionStyle";
-import { buildLocationContext, buildEntityContext } from "@/lib/locationContext";
+import { buildLocationContext, renderEntityRoster } from "@/lib/locationContext";
 import { buildTraitContext } from "@/lib/traitTree";
 import {
   parseArgs, grab, buildThinkingUser, callMessages, parsePlan, scorePlan, FREEZE_RE,
@@ -64,7 +64,7 @@ function thinkingSys(style) {
     .replaceAll("<LOCATION|summary.markdown>", buildLocationContext(LOCATION, { preferSummary: true, format: fmt }))
     .replaceAll("<LOCATION|sublocations.summary.markdown>", "N/A")
     .replaceAll("<LOCATION|reachable.summary.markdown>", "N/A")
-    .replaceAll("<ENTITIES|summary.markdown>", buildEntityContext(LOCATION, ENTITIES, { preferSummary: true, format: fmt }))
+    .replaceAll("<ENTITIES|summary.markdown>", renderEntityRoster(ENTITIES.map((e) => e.id), ENTITIES, { preferSummary: true, format: fmt }))
     .replaceAll("<ENTITIES|sublocations.summary.markdown>", "N/A")
     .replaceAll("<ENTITIES|reachable.summary.markdown>", "N/A")
     .replaceAll("<NOTES>", "None");

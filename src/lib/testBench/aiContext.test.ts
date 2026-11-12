@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { buildDestinationsContext, buildEntityContext, buildLocationContext } from '@/lib/locationContext';
+import { buildDestinationsContext, buildLocationContext } from '@/lib/locationContext';
+import { rosterAsListed } from '@/test/asListed';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { YOU_TARGET } from '@/lib/entityRelationships';
 import type { Connection, Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, TraitGroup } from '@/types';
@@ -105,7 +106,7 @@ describe('context blocks', () => {
     const data = context(at('loc-harbor'), plain);
     const harbor = locations[1];
     expect(block(data, 'location').text).toBe(buildLocationContext(harbor, { format: 'markdown' }));
-    expect(block(data, 'entities').text).toBe(buildEntityContext(harbor, plain.entities, { format: 'markdown' }));
+    expect(block(data, 'entities').text).toBe(rosterAsListed(harbor, plain.entities, { format: 'markdown' }));
     expect(block(data, 'destinations').text).toBe(
       buildDestinationsContext(harbor, locations, plain.connections, { preferSummary: true, format: 'markdown' }),
     );

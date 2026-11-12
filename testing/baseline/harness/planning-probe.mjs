@@ -37,7 +37,7 @@ const grab = (name) => {
 };
 const SYS = grab("defaultThinkingPrompt");
 
-// Render the entity roster exactly as buildEntityContext(markdown) does.
+// Render the entity roster exactly as renderEntityRoster (markdown) does.
 const renderEntities = (entities) =>
   entities.length
     ? entities.map((e) => `- **${e.name}**\n  - **description:** ${e.description}\n  - **type:** ${e.type}`).join("\n")

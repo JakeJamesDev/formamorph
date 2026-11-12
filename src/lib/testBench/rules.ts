@@ -52,9 +52,7 @@ import { formatBytes, type ImageCap } from '@/lib/imageOptim';
 import { worldImageItems, type MediaItem } from '@/lib/mediaIndex';
 import { clamp } from '@/lib/utils';
 import { withoutRoutinePlace } from '@/lib/entityKind';
-import { namedPlacesOf, presenceIn, withMembership, type PlacesWorld } from '@/lib/entityPlaces';
-import { placesOf, startReach } from '@/lib/positionEngine';
-import { PLAYER_START } from '@/types';
+import { namedPlacesOf, presenceIn, unreachedRowPlaces, withMembership, type PlacesWorld } from '@/lib/entityPlaces';
 import { entityTexts } from '@/lib/entityTexts';
 import { itemTexts } from '@/lib/itemTexts';
 import { overviewTexts } from '@/lib/overviewTexts';
@@ -1420,26 +1418,16 @@ const entityRowUnreachable: Rule = {
   id: 'entity-row-unreachable',
   severity: 'warning',
   section: 'entities',
-  summary: (count) => `${count} entities have Schedule rows at locations their Start can’t reach`,
+  summary: (count) => `${count} entities have a Routine row at a location their Start can’t reach`,
   // Presence leaves such a place out (Q8), so this finding is the author's only sign of the broken row.
-  // A Start at Player's Starting Location checks no path (Q18).
   check: (world) => {
     const graph = placesWorld(world);
-    const known = new Set(graph.locations.map((l) => l.id));
     return (world.entities ?? []).flatMap((entity) => {
-      if (!entity.kind) return [];
-      const lost = new Set<string>();
-      for (const start of entity.starts ?? []) {
-        if (!known.has(start.place) && start.place !== PLAYER_START) continue;
-        const reach = startReach(start.place, graph);
-        for (const row of start.schedule) {
-          for (const place of placesOf(row.action)) if (known.has(place) && !reach.has(place)) lost.add(place);
-        }
-      }
-      if (!lost.size) return [];
+      const lost = unreachedRowPlaces(entity, graph);
+      if (!lost.length) return [];
       const item = asItem(entity, world);
-      const names = listNames([...lost].map((id) => quote(locationLabel(id, world))));
-      return [finding(entityRowUnreachable, `${quote(item.name)} has a Schedule row at ${names}, which its Start can’t reach`, [item])];
+      const names = listNames(lost.map((id) => quote(locationLabel(id, world))));
+      return [finding(entityRowUnreachable, `${quote(item.name)} has a Routine row at ${names}, which its Start can’t reach`, [item])];
     });
   },
 };

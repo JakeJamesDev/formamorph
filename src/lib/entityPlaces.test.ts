@@ -7,6 +7,7 @@ import { castRoutines } from '@/lib/entityKind';
 import { EMPTY_BOOK } from '@/lib/positionEngine';
 import { placeAll, positionWorld } from '@/lib/positionPlay';
 import { discoveredAsEntities } from '@/lib/runtimeCharacters';
+import { runtimePositions } from '@/lib/entityFollowing';
 import { NOON } from '@/test/entityKindFixture';
 
 // Entities with a kind carry the derived list a world stores, which no answer may read.
@@ -153,7 +154,7 @@ describe('Position', () => {
     expect(positionOf(GUIDE, book)).toEqual([book.positions.guide]);
   });
 
-  it('puts a Generic entity at each place an instance stands, once', () => {
+  it('puts a Generic entity at each place a Generic Entity Instance stands, once', () => {
     const generics = { crows: { c1: { position: 'well', lastRun: 0 }, c2: { position: 'well', lastRun: 0 } } };
     expect(positionOf(CROWS, { positions: {}, generics })).toEqual(['well']);
   });
@@ -168,9 +169,13 @@ describe('Position', () => {
   });
 
   it('gives a runtime character a Position, where it stands once the engine places it', () => {
-    const [runtime] = discoveredAsEntities([{ entity: { id: 'stranger', name: 'Stranger' }, locationId: 'market', sourceTurnId: 't' }]);
-    expect(positionOf(runtime, { positions: {}, generics: {} })).toEqual(['market']);
-    expect(positionOf(runtime, { positions: { stranger: 'forest' }, generics: {} })).toEqual(['forest']);
+    const records = [{ entity: { id: 'stranger', name: 'Stranger' }, locationId: 'market', sourceTurnId: 't' }];
+    const [runtime] = discoveredAsEntities(records);
+    // Its saved anchor, under the book's positions (Q41).
+    const at = (book: Record<string, string>) => positionOf(runtime, { positions: { ...runtimePositions(records), ...book }, generics: {} });
+    expect(at({})).toEqual(['market']);
+    expect(at({ stranger: 'forest' })).toEqual(['forest']);
+    expect(positionOf(runtime, { positions: {}, generics: {} })).toEqual([]);
   });
 
   it('inverts in cast order', () => {

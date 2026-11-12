@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
 import {
-  buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext,
+  buildLocationContext, buildSublocationsContext, buildSublocationEntitiesContext,
   buildReachableLocationsContext, buildReachableEntitiesContext,
   navigableDestinations, navigableDestinationEntries, buildDestinationsContext, walkableDestinationEntries, walkableDestinations, sublocationEntityIds, reachableEntityIds, renderEntityRoster,
   buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere, knownEntityIds, buildKnownEntitiesContext,
 } from "./locationContext";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 import type { Connection, Entity, GameLocation } from "@/types";
-import { AS_LISTED } from "@/test/asListed";
+import { AS_LISTED, rosterAsListed } from "@/test/asListed";
 
 const guard: Entity = {
   id: "e1",
@@ -518,21 +518,20 @@ describe("walkableDestinations / buildDestinationsContext reach", () => {
   });
 });
 
-describe("buildEntityContext", () => {
-  it("returns the placeholder for a null location or no entities", () => {
-    expect(buildEntityContext(null, [guard])).toBe(NONE_PLACEHOLDER);
-    expect(buildEntityContext({ id: "loc2", name: "Empty Field" }, [guard])).toBe(NONE_PLACEHOLDER);
+describe("the <ENTITIES> roster", () => {
+  it("returns the placeholder for a location with no entities", () => {
+    expect(rosterAsListed({ id: "loc2", name: "Empty Field" }, [guard])).toBe(NONE_PLACEHOLDER);
   });
 
   it("rosters a multi-location entity at every place it lists, simultaneously", () => {
     const roamer: Entity = { ...guard, locations: ["loc1", "docks"] };
     const docks: GameLocation = { id: "docks", name: "The Docks" };
-    expect(buildEntityContext(location, [roamer], { nameOnly: true })).toBe("Guard");
-    expect(buildEntityContext(docks, [roamer], { nameOnly: true })).toBe("Guard");
+    expect(rosterAsListed(location, [roamer], { nameOnly: true })).toBe("Guard");
+    expect(rosterAsListed(docks, [roamer], { nameOnly: true })).toBe("Guard");
   });
 
   it("emits only allow-listed fields — an unknown field never leaks to the AI by default", () => {
-    const out = buildEntityContext(
+    const out = rosterAsListed(
       location,
       [{ ...guard, playerDescription: "What the player reads.", imageTags: "1girl, blue_hair", placeholders: [], someFutureField: "secret editor state" } as never],
     );
@@ -547,7 +546,7 @@ describe("buildEntityContext", () => {
   });
 
   it("emits a top-level roster (name as subject, indented fields) with full aiDescription by default", () => {
-    const out = buildEntityContext(location, [guard]);
+    const out = rosterAsListed(location, [guard]);
     expect(out).toContain("Guard\n");
     expect(out).toContain("  description: A burly guard in full plate, scarred from old wars.");
     expect(out).toContain("  type: npc");
@@ -556,14 +555,14 @@ describe("buildEntityContext", () => {
   });
 
   it("markdown format leads each entity with a bold-name bullet and nested bold-key fields", () => {
-    const out = buildEntityContext(location, [guard], { format: "markdown" });
+    const out = rosterAsListed(location, [guard], { format: "markdown" });
     expect(out).toContain("- **Guard**");
     expect(out).toContain("  - **description:** A burly guard in full plate, scarred from old wars.");
     expect(out).toContain("  - **type:** npc");
   });
 
   it("xml format wraps each entity in <entity> with <name> and one <key> child per field", () => {
-    const out = buildEntityContext(location, [guard], { format: "xml" });
+    const out = rosterAsListed(location, [guard], { format: "xml" });
     expect(out).toBe(
       "<entity>\n" +
       "  <name>Guard</name>\n" +
@@ -574,7 +573,7 @@ describe("buildEntityContext", () => {
   });
 
   it("prefers aiSummary for entities when preferSummary is set", () => {
-    const out = buildEntityContext(location, [guard], { preferSummary: true });
+    const out = rosterAsListed(location, [guard], { preferSummary: true });
     expect(out).toContain("  summary: A burly scarred guard.");
     expect(out).not.toContain("description:");
     expect(out).not.toContain("full plate");
@@ -582,13 +581,13 @@ describe("buildEntityContext", () => {
 
   it("falls back to aiDescription when aiSummary is empty or whitespace", () => {
     const ent: Entity = { id: "e2", name: "Merchant", aiDescription: "A shrewd traveling merchant.", aiSummary: "", locations: ["loc1"] };
-    const out = buildEntityContext(location, [ent], { preferSummary: true });
+    const out = rosterAsListed(location, [ent], { preferSummary: true });
     expect(out).toContain("  description: A shrewd traveling merchant.");
   });
 
   it("returns the placeholder when nobody belongs to the location", () => {
     const elsewhere: GameLocation = { ...location, id: "loc-empty" };
-    expect(buildEntityContext(elsewhere, [guard])).toBe(NONE_PLACEHOLDER);
+    expect(rosterAsListed(elsewhere, [guard])).toBe(NONE_PLACEHOLDER);
   });
 
   describe("owned traits in force", () => {
@@ -662,47 +661,47 @@ describe("buildEntityContext", () => {
 
   it("surfaces aliases as an 'also known as' line, joined, right after the name", () => {
     const aka = { ...guard, aliases: ["Matron", "Em"] };
-    const simple = buildEntityContext(location, [aka]);
+    const simple = rosterAsListed(location, [aka]);
     expect(simple).toContain("  also known as: Matron, Em");
-    const md = buildEntityContext(location, [aka], { format: "markdown" });
+    const md = rosterAsListed(location, [aka], { format: "markdown" });
     expect(md).toContain("  - **also known as:** Matron, Em");
-    const xml = buildEntityContext(location, [aka], { format: "xml" });
+    const xml = rosterAsListed(location, [aka], { format: "xml" });
     expect(xml).toContain("  <name>Guard</name>\n  <aliases>Matron, Em</aliases>\n"); // spaced label can't be an xml tag
   });
 
   it("emits no alias line when aliases are absent, empty, or blank", () => {
-    expect(buildEntityContext(location, [guard])).not.toContain("also known as");
-    expect(buildEntityContext(location, [{ ...guard, aliases: [] }])).not.toContain("also known as");
-    expect(buildEntityContext(location, [{ ...guard, aliases: ["  "] }])).not.toContain("also known as");
+    expect(rosterAsListed(location, [guard])).not.toContain("also known as");
+    expect(rosterAsListed(location, [{ ...guard, aliases: [] }])).not.toContain("also known as");
+    expect(rosterAsListed(location, [{ ...guard, aliases: ["  "] }])).not.toContain("also known as");
   });
 
   it("renders pronouns after the aliases in each format", () => {
     const she = { ...guard, aliases: ["Em"], pronouns: " she/her " };
-    expect(buildEntityContext(location, [she])).toContain("  also known as: Em\n  pronouns: she/her\n");
-    expect(buildEntityContext(location, [she], { format: "markdown" }))
+    expect(rosterAsListed(location, [she])).toContain("  also known as: Em\n  pronouns: she/her\n");
+    expect(rosterAsListed(location, [she], { format: "markdown" }))
       .toContain("  - **also known as:** Em\n  - **pronouns:** she/her\n");
-    expect(buildEntityContext(location, [she], { format: "xml" }))
+    expect(rosterAsListed(location, [she], { format: "xml" }))
       .toContain("  <aliases>Em</aliases>\n  <pronouns>she/her</pronouns>\n");
   });
 
   it("renders an entity with no pronouns exactly as one without the field", () => {
     for (const format of ["simple", "markdown", "xml"] as const) {
-      const bare = buildEntityContext(location, [guard], { format });
-      expect(buildEntityContext(location, [{ ...guard, pronouns: "" }], { format })).toBe(bare);
-      expect(buildEntityContext(location, [{ ...guard, pronouns: "  " }], { format })).toBe(bare);
+      const bare = rosterAsListed(location, [guard], { format });
+      expect(rosterAsListed(location, [{ ...guard, pronouns: "" }], { format })).toBe(bare);
+      expect(rosterAsListed(location, [{ ...guard, pronouns: "  " }], { format })).toBe(bare);
       expect(bare).not.toContain("pronouns");
     }
   });
 
   it("never sends the Persona mark to the AI", () => {
-    expect(buildEntityContext(location, [{ ...guard, persona: true }])).toBe(buildEntityContext(location, [guard]));
+    expect(rosterAsListed(location, [{ ...guard, persona: true }])).toBe(rosterAsListed(location, [guard]));
   });
 
   it("never emits editor-only grouping fields (groupId/order) to the AI", () => {
     // Grouping is purely organizational; the entity context is identical whether grouped or not.
     const grouped: Entity = { id: "g9", name: "Synthia", aiDescription: "The matron.", groupId: "elf", order: 2, locations: ["l"] };
     const loc: GameLocation = { id: "l", name: "Hall" };
-    const out = buildEntityContext(loc, [grouped]);
+    const out = rosterAsListed(loc, [grouped]);
     expect(out).toContain("Synthia\n");
     expect(out).toContain("description: The matron.");
     expect(out).not.toContain("groupId");
@@ -728,18 +727,18 @@ describe('name-only content variant', () => {
   });
 
   it('returns entity names as a plain comma-separated list', () => {
-    expect(buildEntityContext(here, cast, { nameOnly: true })).toBe('Sarah Jones, Mira');
+    expect(rosterAsListed(here, cast, { nameOnly: true })).toBe('Sarah Jones, Mira');
   });
 
   it('ignores format, since a bare list has nothing to decorate', () => {
     for (const format of ['simple', 'markdown', 'xml'] as const) {
       expect(buildLocationContext(here, { nameOnly: true, format })).toBe("Sarah's Place");
-      expect(buildEntityContext(here, cast, { nameOnly: true, format })).toBe('Sarah Jones, Mira');
+      expect(rosterAsListed(here, cast, { nameOnly: true, format })).toBe('Sarah Jones, Mira');
     }
   });
 
   it('still returns the N/A placeholder when there is nothing to name', () => {
-    expect(buildEntityContext({ ...here, id: 'empty' }, cast, { nameOnly: true })).toBe(NONE_PLACEHOLDER);
+    expect(rosterAsListed({ ...here, id: 'empty' }, cast, { nameOnly: true })).toBe(NONE_PLACEHOLDER);
   });
 
   it('leaves the full and summary variants untouched', () => {

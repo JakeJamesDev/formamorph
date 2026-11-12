@@ -171,7 +171,7 @@ function isMintedFallback(start: EntityStart, kind: Entity["kind"], map: Readonl
 }
 
 /** The inverse of `withRoutineMapped`: `copy`'s routine in world ids, written back over `library`'s through `map` (Q34, Q35).
- *  A fallback Start the carry minted stays out while the library keeps a Start (Q37). */
+ *  A fallback Start the carry minted stays out (Q37, Q40). */
 export function withRoutineReturned(
   copy: Pick<Entity, "kind" | "starts" | "traversable">, library: Pick<Entity, "starts" | "traversable">, map: Readonly<Record<string, string>>,
 ): Pick<Entity, "starts" | "traversable"> {
@@ -200,9 +200,10 @@ export function withRoutineReturned(
 
   const libraryStarts = library.starts ?? [];
   const startById = new Map(libraryStarts.map((start) => [start.id, start]));
-  const keepsStart = libraryStarts.some((start) => !carries(start.place));
+  // The carry minted a fallback only when no library Start carried (Q40).
+  const mintedFallback = libraryStarts.length > 0 && !libraryStarts.some((start) => carries(start.place));
   const libraryIds = new Set(startById.keys());
-  const authored = (copy.starts ?? []).filter((start) => !keepsStart || !isMintedFallback(start, copy.kind, map, libraryIds));
+  const authored = (copy.starts ?? []).filter((start) => !mintedFallback || !isMintedFallback(start, copy.kind, map, libraryIds));
   const written = authored.map((start) => {
     const libraryStart = startById.get(start.id);
     const libraryRows = libraryStart?.schedule ?? [];

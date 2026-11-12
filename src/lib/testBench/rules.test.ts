@@ -2339,12 +2339,15 @@ describe('rules that read an entity routine', () => {
       expect(found).toHaveLength(1);
       expect(found[0].items[0].id).toBe('k1');
       expect(found[0].message).toContain('Lone Island');
+      expect(found[0].message).toContain('has a Routine row at');
     });
 
     it('leaves a connected row place, a Start at Player’s Starting Location and a missing place alone', () => {
       expect(only(world(kinded([start('s1', 'harbor', [stayRow('market')])])), 'entity-row-unreachable')).toEqual([]);
       expect(only(world(kinded([start('s1', PLAYER_START, [stayRow('island')])])), 'entity-row-unreachable')).toEqual([]);
       expect(only(world(kinded([start('s1', 'harbor', [stayRow('gone')])])), 'entity-row-unreachable')).toEqual([]);
+      // A Start at a place the world lacks is the orphan rule's finding.
+      expect(only(world(kinded([start('s1', 'gone', [stayRow('island')])])), 'entity-row-unreachable')).toEqual([]);
     });
   });
 

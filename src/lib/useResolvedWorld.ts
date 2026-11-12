@@ -9,7 +9,6 @@ import {
 import { traitScopedPins } from '@/lib/placeholderPins';
 import { resolvePersona, withPersonaEntry, worldEntitiesOf, type ResolvedPersona } from '@/lib/persona';
 import { customPersonaEntity } from '@/lib/blueprints';
-import { entitiesInPlay } from '@/lib/entityPresence';
 import { libraryPlaceholderSet, type LibraryCarrier } from '@/lib/libraryPlaceholders';
 import { inAuthoredOrder, refreshChosenTraits, traitOrderIndex } from '@/lib/traitEffects';
 import {
@@ -39,11 +38,9 @@ import type {
  * turn's pins would stop matching them.
  */
 export interface ResolvedWorld {
-  /** The cast: the authored entities without the one the player plays (see lib/persona), each positioned one
-   *  listing only its position. */
+  /** The cast: the authored entities without the one the player plays (see lib/persona). Where each stands is
+   *  its Position, which the Entity Places module reads from the live standings. */
   entities: Entity[];
-  /** The same cast before any play position applies, so a past turn's positions can be laid over it. */
-  authoredCast: Entity[];
   /** Who the player plays, or null. */
   persona: ResolvedPersona | null;
   /** The persona's name and aliases, which the planner reads as the player. */
@@ -260,7 +257,7 @@ export function useResolvedWorld(): ResolvedWorld {
   const {
     globalStats: rawGlobalStats, viewStats: rawViewStats, runtimeDictionary: rawDictionary,
     currentLocation: storedLocation, globalTraits, disabledTraitIds, ownedTraits, codePins,
-    personaRef, libraryPersona, personaPending, discoveredEntities, entityPositions, genericStates, entityStats,
+    personaRef, libraryPersona, personaPending, discoveredEntities, entityStats,
   } = useGameplay();
   const pinBlueprints = useMemo(
     () => pinBlueprintsOf({ stats: authoredStats, statGroups, placeholders: worldPlaceholders, placeholderGroups }),
@@ -311,13 +308,9 @@ export function useResolvedWorld(): ResolvedWorld {
     () => (libraryPersona ? resolveEntityNames([libraryPersona], resolveNameOf) : []),
     [libraryPersona, resolveNameOf],
   );
-  const { persona, cast, playerNames, unresolved } = useMemo(
+  const { persona, cast: entities, playerNames, unresolved } = useMemo(
     () => resolvePersona(personaRef, worldEntities, libraryEntities),
     [personaRef, worldEntities, libraryEntities],
-  );
-  // The cast as it stands in play, so every roster reads each positioned entity at its position.
-  const entities = useMemo(
-    () => entitiesInPlay(cast, { positions: entityPositions, generics: genericStates }), [cast, entityPositions, genericStates],
   );
   const worldPersonas = useMemo(() => worldEntities.filter((e) => e.persona === true), [worldEntities]);
   const customPersona = useMemo(() => customPersonaEntity(worldEntities) ?? null, [worldEntities]);
@@ -359,7 +352,7 @@ export function useResolvedWorld(): ResolvedWorld {
   const viewStats = useMemo(() => resolveStatNames(rawViewStats, resolvePH), [rawViewStats, resolvePH]);
 
   return {
-    entities, authoredCast: cast, persona, playerNames, worldPersonas, customPersona, personaUnresolved: unresolved && !personaPending,
+    entities, persona, playerNames, worldPersonas, customPersona, personaUnresolved: unresolved && !personaPending,
     locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
     globalStats, viewStats, traitOrder, traitEntities, traitLibrary, presentEntitiesUnder, codeEntities, pins, pinSet, pinsFor, pinBlueprints,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,

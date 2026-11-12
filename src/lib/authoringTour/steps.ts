@@ -20,8 +20,7 @@ import { blankDictionaryEntry } from '@/lib/dictionaryTree';
 import { parseKeywords } from '@/lib/dictionaryUtils';
 import { entityImages } from '@/lib/entityImages';
 import { locationImages } from '@/lib/locationImages';
-import { withEntityLocations } from '@/lib/entityPresence';
-import { namedPlacesOf, presenceOf } from '@/lib/entityPlaces';
+import { namedPlacesOf, presenceOf, withMembership } from '@/lib/entityPlaces';
 import { isGeneric, isUnique, withFirstStartPlace, withGenericStart } from '@/lib/entityKind';
 import { randomUUID } from '@/lib/uuid';
 import { createConnection, legFrom, withHint } from '@/lib/connectionEditing';
@@ -555,7 +554,7 @@ const ENTITY_STEPS: readonly TourStep[] = [
       // A Unique entity starts there; a Generic entity gains a Start there.
       api.updateEntity(isUnique(entity) ? withFirstStartPlace(entity, place, randomUUID)
         : isGeneric(entity) ? withGenericStart(entity, place, randomUUID)
-        : withEntityLocations(entity, [...namedPlacesOf(entity), place]));
+        : withMembership(entity, [...namedPlacesOf(entity), place]));
     },
     inPlay: {
       sees: 'entityRowAndCard',

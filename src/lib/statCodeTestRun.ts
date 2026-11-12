@@ -20,7 +20,9 @@ import { turnOneClock } from '@/lib/statCodeTiming';
 import { sampleTurn } from '@/lib/scriptTestSamples';
 import type { ScriptPromptHost } from '@/lib/scriptPrompts';
 import type { ToolArgs } from '@/lib/tools/toolRunner';
-import { authoringStateOf, openingHomeOf, type OpeningFoldWorld, type OpeningPersona } from '@/lib/openingState';
+import {
+  authoringStateOf, liveStateOf, openingHomeOf, type LivePlaces, type OpeningFoldWorld, type OpeningPersona,
+} from '@/lib/openingState';
 import {
   ownerOfHome, PENDING_PERSONA_ID, snapshotOf, type SandboxSnapshot, type ScriptRunUnit, type SnapshotOptions, type UnitHome,
 } from '@/lib/sandboxSnapshot';
@@ -31,7 +33,13 @@ const BOUND_LABELS: Record<CodeBoundField, string> = { min: 'Min', max: 'Max', r
 
 /** The parts of an authored world a stat's code reaches. */
 export type StatCodeWorld = Pick<World, 'stats' | 'statGroups' | 'traits' | 'traitGroups' | 'entities' | 'entityGroups' | 'placeholders' | 'placeholderGroups' | 'dictionaries'>
-  & Partial<Pick<World, 'locations' | 'currencies'>>;
+  & Partial<Pick<World, 'locations' | 'currencies'>> & LivePlacesWorld;
+
+/** A world whose run reads where the cast stands now. With `livePlaces`, an entity it does not place stands
+ *  nowhere; without, the run reads the Sample Placement (Q42). */
+export interface LivePlacesWorld {
+  livePlaces?: LivePlaces;
+}
 
 /** The names of `world` as the stat panel reads them: the global stats without Blueprints, and each entity's
  *  with its links. */
@@ -214,18 +222,19 @@ const paymentLines = (
 /** Test Code's snapshot of `world` at turn one for a `timing` run. No playthrough: no picks, no persona and no
  *  rolls (Q3). The editor holds no discovered cast, so a `diary` name it lacks is a warning (Q46). */
 export const testCodeSnapshotOf = (
-  world: OpeningFoldWorld, timing: ScriptTiming,
+  world: OpeningFoldWorld & LivePlacesWorld, timing: ScriptTiming,
   { persona, ...overlays }: Pick<SnapshotOptions, 'pendingPersona' | 'assumedStats'> & { persona?: OpeningPersona } = {},
-): SandboxSnapshot => snapshotOf(
-  { ...authoringStateOf(world, undefined, persona), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing) }, { openCast: true, ...overlays },
-);
+): SandboxSnapshot => snapshotOf({
+  ...(world.livePlaces ? liveStateOf(world, persona, world.livePlaces) : authoringStateOf(world, undefined, persona)),
+  clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing),
+}, { openCast: true, ...overlays });
 
 /**
  * Runs `code` from the `timing` box of `home` on `world` at turn one. Applies nothing. With `pendingPersona`, a
  * `persona` write to a trait or placeholder a persona-capable entity holds is reported as pending.
  */
 export async function runTestCode(
-  code: string, timing: ScriptTiming, home: UnitHome, world: OpeningFoldWorld,
+  code: string, timing: ScriptTiming, home: UnitHome, world: OpeningFoldWorld & LivePlacesWorld,
   { pendingPersona: pending = false, persona, missing, sentence, prompts, args }: TestRunOptions = {},
 ): Promise<TestCodeReport> {
   const seeded = openingHomeOf(home);

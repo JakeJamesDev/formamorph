@@ -6,7 +6,6 @@ import {
 } from './entityFollowing';
 import { defaultEntityLocationPrompt } from '@/components/game/GamePrompts';
 import { castRoutines } from './entityKind';
-import { entitiesInPlay } from './entityPresence';
 import { storyMinute } from './gameClock';
 import { positionWorld } from './positionPlay';
 import type { EntityCodeWrite } from './statCodeExecutor';
@@ -48,7 +47,7 @@ const AT_INN = { corvin: 'inn', wenna: 'inn', tess: 'inn', clerk: 'inn', albus: 
 
 describe('who gets an entity location request', () => {
   const subjects = (s: FollowerState, at = 'inn') =>
-    entityMoveSubjects(entitiesInPlay(CAST, s), s, at, world(at)).map((e) => e.id);
+    entityMoveSubjects(CAST, s, at, world(at)).map((e) => e.id);
 
   it('asks each follower and each Unique entity here whose row is not Strict', () => {
     // Wenna may go nowhere else, and is still asked: she can come along.

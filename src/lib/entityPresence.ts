@@ -6,19 +6,14 @@ import { idsAt, namedPlacesOf, positionsIn, withMembership } from "@/lib/entityP
 import { randomUUID } from "@/lib/uuid";
 
 /**
- * Entity edits that touch places, and the rosters over the Entity Places module (ADR-0017). In play,
- * `entitiesInPlay` lays each entity's Position over the cast, so the rosters read it unchanged. Roster order is
- * the cast's own order.
+ * Entity edits that touch places, and the rosters over the Entity Places module (ADR-0017). Roster order is the
+ * cast's own order.
  */
-export { entitiesInPlay, entityIdsAt, entityIdsAtAny } from "@/lib/entityPlaces";
-
-/** A copy of `entity` belonging to exactly `locationIds`: the Entity Places module's membership write. */
-export const withEntityLocations = (entity: Entity, locationIds: string[]): Entity => withMembership(entity, locationIds);
 
 /** `entity` carried into a world, `map` naming each of its places the world can place (source id → world id).
  *  An entity with a kind keeps its routine through the map; one with no kind belongs to the mapped places. */
 export function placedIn(entity: Entity, map: Readonly<Record<string, string>>): Entity {
-  return entity.kind ? withRoutineMapped(entity, map, randomUUID) : withEntityLocations(entity, Object.values(map));
+  return entity.kind ? withRoutineMapped(entity, map, randomUUID) : withMembership(entity, Object.values(map));
 }
 
 /** The carry map of `refs` (source id → world id, in ref order): each ref through `connections`, else its own id,
@@ -98,7 +93,7 @@ export const startsAt =(entity: Entity, locationId: string) => (entity.starts ??
 export const withStartHere = (entity: Entity, locationId: string): Entity =>
   isGeneric(entity) ? withGenericStart(entity, locationId, randomUUID) : withNewStart(entity, locationId, randomUUID);
 
-/** Where entities stand in play: each Unique entity's position, and each Generic entity's instances. */
+/** Where entities stand in play: each Unique entity's position, and each Generic entity's Generic Entity Instances. */
 export interface Standings {
   positions: Readonly<EntityPositions>;
   generics: Readonly<GenericStates>;
@@ -172,7 +167,7 @@ export function dropLocationFromEntities(locationId: string, entities: Entity[])
   return entities.map((entity) => {
     let next = withoutRoutinePlace(entity, locationId);
     const members = next.kind ? [] : namedPlacesOf(next);
-    if (members.includes(locationId)) next = withEntityLocations(next, members.filter((id) => id !== locationId));
+    if (members.includes(locationId)) next = withMembership(next, members.filter((id) => id !== locationId));
     if (knownInIncludes(next, locationId)) next = toggleKnownInPick(next, locationId);
     return next;
   });

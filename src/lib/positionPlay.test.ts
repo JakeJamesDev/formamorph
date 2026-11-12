@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity } from '@/types';
 import { castRoutines } from './entityKind';
-import { entityIdsAt } from './entityPresence';
+import { idsAt, samplePlacement } from './entityPlaces';
 import { EMPTY_BOOK } from './positionEngine';
-import { openingCast, placeAll, positionWorld, reconcileBook, reseatForOpening } from './positionPlay';
+import { placeAll, positionWorld, reconcileBook, reseatForOpening } from './positionPlay';
 
 import { herd, yardLocations as locations } from '@/test/entityKindFixture';
 
@@ -12,11 +12,11 @@ const where = (book: typeof EMPTY_BOOK) => Object.fromEntries(Object.entries(boo
 
 describe('a Generic entity in play', () => {
   it('stands once at each place a Generic Entity Instance holds', () => {
-    const cast = openingCast([herd], locations, [], 'yard');
+    const placesOf = samplePlacement([herd], { locations, connections: [] }, 'yard');
     // The opening hour is 08:00, so the grazer is out in the field and the sleeper in the barn.
-    expect(entityIdsAt('field', cast)).toEqual(['herd']);
-    expect(entityIdsAt('barn', cast)).toEqual(['herd']);
-    expect(entityIdsAt('yard', cast)).toEqual([]);
+    expect(idsAt('field', [herd], placesOf)).toEqual(['herd']);
+    expect(idsAt('barn', [herd], placesOf)).toEqual(['herd']);
+    expect(idsAt('yard', [herd], placesOf)).toEqual([]);
   });
 
   it('keeps a Generic Entity Instance at the player place where the opening put it when the hour is set, and places the others again', () => {

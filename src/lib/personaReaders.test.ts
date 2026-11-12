@@ -47,6 +47,10 @@ describe('entity readers in play', () => {
     { reader: 'opening pool, the placement it reads', source: viewer, pattern: /placesOf: openingPlacesOf\(openingPlacement, entities,/ },
     { reader: 'panels, scene list', source: panels, pattern: /const \{ entities: authoredEntities(?:, \w+)* \} = useResolvedWorld\(\)/ },
     { reader: 'narration edit rescan', source: viewer, pattern: /useNarrationRescan\(\{ entities: allEntities,/ },
+    // The agreement test calls each of these; the scan pins the game view to the call.
+    { reader: 'present ids', source: viewer, pattern: /presentEntityIds\(allEntities, liveStandings, loc\?\.id\)/ },
+    { reader: 'scene roster override', source: viewer, pattern: /sceneRosterValues\(liveScene\(sceneLoc\), sceneLoc, sceneEntities\)/ },
+    { reader: 'Inventory pass owners', source: viewer, pattern: /inventoryOwnersIn\(liveScene\(location, null\), location, discovered, standings\)/ },
   ];
 
   it.each(readers)('$reader reads the cast', ({ source, pattern }) => {

@@ -145,6 +145,21 @@ describe('a fallback Start the carry minted (Q37)', () => {
   });
 });
 
+describe('a plain Start the author added while a library Start carried (Q40)', () => {
+  // World B connects the Dock and not the Cellar, so s1 carries and s3 stays behind; the carry mints no fallback.
+  const dockAndCellar: Entity = {
+    ...LIBRARY, kind: 'generic', starts: [start('s1', 'src-dock'), start('s3', 'src-cellar', [stay('r3', 'src-cellar')])], traversable: undefined,
+  };
+
+  it('goes back to the library item', () => {
+    const copy = carried(dockAndCellar, WORLD_B);
+    expect(copy.starts!.map((s) => [s.id, s.place])).toEqual([['s1', 'b-quay']]);
+    const added = { ...copy, starts: [...copy.starts!, start('mine', 'b-bar')] };
+    const { item } = writeBack(added, WORLD_B, dockAndCellar);
+    expect(item.starts!.map((s) => [s.id, s.place])).toEqual([['s1', 'src-dock'], ['s3', 'src-cellar'], ['mine', 'src-inn']]);
+  });
+});
+
 describe('Can Also Go written back (Q38)', () => {
   it('replaces the list with Anywhere', () => {
     expect(writeBack({ ...editedInB(), traversable: 'anywhere' }, WORLD_B).item.traversable).toBe('anywhere');

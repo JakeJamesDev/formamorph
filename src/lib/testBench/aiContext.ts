@@ -27,7 +27,6 @@ import type { ValueLookup } from '@/lib/promptValues';
 import { splitToken, variableForToken } from '@/lib/promptVariables';
 import { enabledStats } from '@/lib/traitEffects';
 import type { Entity, GameLocation, PlayerStat } from '@/types';
-import { openingCast } from '@/lib/positionPlay';
 import { samplePlacement } from '@/lib/entityPlaces';
 import { inCast } from '@/lib/owners';
 import { openingPersonaOf } from '@/lib/openingState';
@@ -232,7 +231,6 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
   // The played persona is no one's neighbor, so it stays off every roster.
   const location = lens.location;
   const cast = (world.entities ?? []).filter((e) => !lens.persona || inCast(e, lensPersonaRef(lens.persona.id)));
-  const entities = openingCast(cast, locations, connections, location?.id);
   const scene = lensScene(world, lens);
   const values = chipValues(scene);
   const resolve = scene.resolve;
@@ -242,11 +240,11 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
   const hereIds = scene.presentIds;
   const here = new Set(hereIds);
   const placesOf = samplePlacement(cast, { locations, connections }, location?.id);
-  const subIds = sublocationEntityIds(location, locations, connections, entities, placesOf).filter((id) => !here.has(id));
+  const subIds = sublocationEntityIds(location, locations, connections, cast, placesOf).filter((id) => !here.has(id));
   const shown = new Set([...hereIds, ...subIds]);
-  const reachIds = reachableEntityIds(location, locations, connections, entities, placesOf).filter((id) => !shown.has(id));
+  const reachIds = reachableEntityIds(location, locations, connections, cast, placesOf).filter((id) => !shown.has(id));
   const listed = new Set([...shown, ...reachIds]);
-  const knownIds = knownEntityIds(location, locations, entities, knownPulledIds(scene)).filter((id) => !listed.has(id));
+  const knownIds = knownEntityIds(location, locations, cast, knownPulledIds(scene)).filter((id) => !listed.has(id));
 
   // Text stays exactly as the module produced it, trailing newline included — what an author reads here is
   // byte-for-byte what the model receives; the Dictionary block is its two lore chips, one after the other.
@@ -266,7 +264,7 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
     };
   });
 
-  const byId = new Map(entities.map((e) => [e.id, e]));
+  const byId = new Map(cast.map((e) => [e.id, e]));
   const roster = (ids: string[], summary: boolean): RosterEntity[] => ids.flatMap((id) => {
     const entity: Entity | undefined = byId.get(id);
     return entity

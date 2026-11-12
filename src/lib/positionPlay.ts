@@ -4,7 +4,6 @@ import {
 } from "@/lib/positionEngine";
 import type { SandboxState } from "@/lib/statCodeTurn";
 import { castRoutines } from "@/lib/entityKind";
-import { entitiesInPlay } from "@/lib/entityPresence";
 import { storyMinute } from "@/lib/gameClock";
 
 /**
@@ -88,8 +87,8 @@ export function reconcileBook(book: PositionBook, world: PositionWorld, legacyFo
   const uniques: UniqueStates = {};
   for (const [id, st] of Object.entries(book.uniques)) if (world.uniques.has(id)) uniques[id] = st;
   const generics: GenericStates = {};
-  for (const [id, instances] of Object.entries(book.generics)) {
-    if (world.generics.has(id)) generics[id] = instances;
+  for (const [id, entityInstances] of Object.entries(book.generics)) {
+    if (world.generics.has(id)) generics[id] = entityInstances;
   }
   // A character the save placed but the engine never ran on keeps the Start at its saved place, when it has one.
   for (const [id, at] of Object.entries(positions)) {
@@ -127,8 +126,8 @@ export function reseatForOpening(book: PositionBook, world: PositionWorld): Posi
     if (!st.follow) delete positions[id];
   }
   const generics: GenericStates = {};
-  for (const [id, instances] of Object.entries(book.generics)) {
-    generics[id] = Object.fromEntries(Object.entries(instances).flatMap(([startId, p]) =>
+  for (const [id, entityInstances] of Object.entries(book.generics)) {
+    generics[id] = Object.fromEntries(Object.entries(entityInstances).flatMap(([startId, p]) =>
       (playerAt !== undefined && p.position === playerAt ? [[startId, { ...p, lastRun: now }]] : [])));
   }
   return placeAll({ positions, uniques, generics }, world);
@@ -146,10 +145,3 @@ export function openingBook(
 export const openingWorld = (
   entities: readonly Entity[], locations: readonly Pick<GameLocation, "id" | "parentId">[], connections: readonly Connection[], playerAt: string | undefined,
 ): PositionWorld => positionWorld(castRoutines(entities), storyMinute(0), playerAt, locations, connections, () => 0, playerAt);
-
-/** `entities` as `openingBook` places them, so an authoring preview reads one stable cast. */
-export function openingCast(
-  entities: Entity[], locations: readonly Pick<GameLocation, "id" | "parentId">[], connections: readonly Connection[], playerAt: string | undefined,
-): Entity[] {
-  return entitiesInPlay(entities, openingBook(entities, locations, connections, playerAt));
-}

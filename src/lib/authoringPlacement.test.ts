@@ -5,7 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runTestCode, type StatCodeWorld } from './statCodeTestRun';
 import type { AuthoredWorld } from './chipValues/authoredScene';
-import { openingCast } from './positionPlay';
+import { samplePlacement } from './entityPlaces';
 import { benchSnapshotOf } from './testBench/scriptCheck';
 import { editorToolSnapshot } from './tools/editorToolSnapshot';
 import { sampleToolSnapshot } from './tools/sampleToolSnapshot';
@@ -65,8 +65,8 @@ describe('an authoring run reads the cast as the opening places it (Q210)', () =
   });
 
   it('keeps the Test Bench AI context cast where the opening places it', () => {
-    const cast = openingCast(world.entities, yardLocations, [], 'yard');
-    expect(Object.fromEntries(cast.map((e) => [e.id, e.locations]))).toEqual({
+    const placesOf = samplePlacement(world.entities, { locations: yardLocations, connections: [] }, 'yard');
+    expect(Object.fromEntries(world.entities.map((e) => [e.id, placesOf(e)]))).toEqual({
       smith: ['smithy'], companion: ['yard'], herd: ['field', 'barn'],
     });
   });

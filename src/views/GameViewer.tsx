@@ -129,7 +129,7 @@ import {
 } from "../lib/stagedPlanning";
 import { selectRelevantDiary } from "../lib/semanticDiary";
 import { findEntityByCharacterName, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription, pruneDiscoveredToHistory, pickedAtStart, INITIAL_SOURCE_TURN_ID } from "../lib/runtimeCharacters";
-import { positionedCast, type Standings } from "../lib/entityPresence";
+import { positionedCast, presentEntityIds, type Standings } from "../lib/entityPresence";
 import { castRoutines } from "../lib/entityKind";
 import { placeAll, positionWorld, reseatForOpening, scriptPlaces, withPlayerAt, type PositionWorld } from "../lib/positionPlay";
 import { EMPTY_BOOK } from "../lib/positionEngine";
@@ -152,8 +152,8 @@ import { fanOut } from "../lib/aiRequest/fanOut";
 import { rewriteSentences } from "../lib/aiRequest/narrationRewrite";
 import { pageOneLocationId, pageOneNarration, parseTurnContent, pruneTurnMap, survivingTurnIds, recentParticipants, collectCharacterDiary, parsedTurnById, turnDiaries, turnMemory } from "../lib/turnDigest";
 import { farDestinationNames, walkableDestinationEntries } from "../lib/locationContext";
-import { chipValues, entityStatsField, sceneEntityChipValues } from "../lib/chipValues/chipValues";
-import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
+import { chipValues, entityStatsField } from "../lib/chipValues/chipValues";
+import { inventoryOwnersIn, sceneRosterValues, useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
 import { buildToolSnapshot, type ToolScriptSource, type ToolMemorySource } from "../lib/tools/toolSnapshot";
 import { toolCallStatus } from "../lib/tools/toolCallStatus";
 import { snapshotToolExecutor, toolsOfferedTo } from "../lib/tools/toolOffer";
@@ -212,7 +212,7 @@ import {
   NO_ENTITY_MOVES, NO_ENTITY_OFFER, runtimePositions,
   type EntityMoveOffer, type FollowerState,
 } from "../lib/entityFollowing";
-import { idsAt, positionsIn } from "../lib/entityPlaces";
+import { positionsIn } from "../lib/entityPlaces";
 import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
 import { emptyTurnMaterial, type TurnMaterial, type TurnPassSubject, type TurnPlan, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
@@ -904,7 +904,7 @@ const GameViewer = ({
   // an entity/location/stat/trait/dictionary name is a plain string with no chips left in it. The `raw*`
   // values above stay untouched for roll priming, which has to see the chips it is rolling for.
   const {
-    entities, authoredCast, locations, connections, stats, traits, traitGroups, dictionary, globalStats, viewStats,
+    entities, locations, connections, stats, traits, traitGroups, dictionary, globalStats, viewStats,
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText,
     resolveTraitFor, resolveEntityText, resolveEntityFor, playerNames, persona, traitEntities, traitLibrary, codeEntities,
     presentEntitiesUnder, worldPersonas, customPersona: resolvedCustomPersona, pinBlueprints,
@@ -1044,7 +1044,7 @@ const GameViewer = ({
 
   /** Who belongs at `loc` — authored cast plus any discovered/visiting character anchored there. */
   const presentIdsAt = useCallback(
-    (loc: GameLocation | null | undefined): string[] => idsAt(loc?.id, allEntities, positionsIn(liveStandings)),
+    (loc: GameLocation | null | undefined): string[] => presentEntityIds(allEntities, liveStandings, loc?.id),
     [allEntities, liveStandings],
   );
   /** Meets each entity at `loc` that `narration` names. Followers count as here before their move renders. */
@@ -1497,8 +1497,8 @@ const GameViewer = ({
   const storyNow = storyMinute(gameTime, calendar);
   // Every Unique entity's routine: the authored cast the engine positions, then the runtime characters.
   const routines = useMemo(
-    () => castRoutines(positionedCast(authoredCast, personaRef), discoveredEntities),
-    [authoredCast, personaRef, discoveredEntities],
+    () => castRoutines(positionedCast(entities, personaRef), discoveredEntities),
+    [entities, personaRef, discoveredEntities],
   );
   /** The position engine's view of the world at `now`, with the player at `playerAt`. */
   const positionWorldAt = useCallback((now: number, playerAt: string | undefined): PositionWorld => positionWorld(
@@ -2735,10 +2735,7 @@ const GameViewer = ({
 
   // Scene-roster override for the entity chips: choices and re-roll prompts see only who is in the scene.
   const sceneEntityOverride = useCallback(
-    (sceneLoc: GameLocation | null, sceneEntities: Entity[]): TokenValues => {
-      const scene = liveScene(sceneLoc);
-      return sceneEntityChipValues(scene, idsAt(sceneLoc?.id, sceneEntities, scene.placesOf));
-    },
+    (sceneLoc: GameLocation | null, sceneEntities: Entity[]): TokenValues => sceneRosterValues(liveScene(sceneLoc), sceneLoc, sceneEntities),
     [liveScene],
   );
 
@@ -3380,7 +3377,7 @@ const GameViewer = ({
       .map((d) => d.entity.id));
     /** Each entity the turn asks whether it moves, with the replies it is offered. */
     const moveSubjects = (): TurnPassSubject[] => entityMoveRequests(
-      movingCast, authoredCast, moveStart, moveFrom, turnWorld(), locations, connections, { runtime: discoveredEntities, inScene: runtimeInScene },
+      movingCast, entities, moveStart, moveFrom, turnWorld(), locations, connections, { runtime: discoveredEntities, inScene: runtimeInScene },
     );
 
     const reportFailure = (error: unknown) =>
@@ -5842,15 +5839,7 @@ const GameViewer = ({
     location: GameLocation | null,
     discovered: readonly InventoryOwner[],
     standings?: Standings,
-  ): InventoryOwner[] => {
-    const scene = liveScene(location, null);
-    const played = new Set([scene.persona?.entity.id, ...(scene.playedEntities ?? []).map((e) => e.id)]);
-    const here = new Set(standings ? idsAt(location?.id, scene.entities, positionsIn(standings)) : scene.presentIds);
-    return [
-      ...scene.entities.filter((e) => here.has(e.id) && !played.has(e.id)).map((e) => ({ id: e.id, name: e.name })),
-      ...discovered,
-    ];
-  };
+  ): InventoryOwner[] => inventoryOwnersIn(liveScene(location, null), location, discovered, standings);
 
   /**
    * The Inventory pass's operations through the validator and the inventory settle, with nothing committed. `owners`

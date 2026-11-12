@@ -6,6 +6,7 @@ import { computePresence, IN_SCENE_TURNS, type Presence } from '@/lib/presence';
 import type { StrangerLabels } from '@/lib/locationContext';
 import { discoveredAsEntities } from '@/lib/runtimeCharacters';
 import { followerIds } from '@/lib/positionPlay';
+import { runtimePositions } from '@/lib/entityFollowing';
 import { recentSceneTurns } from '@/lib/turnDigest';
 import { pageAssistantIndex } from '@/lib/turnHistory';
 
@@ -20,7 +21,7 @@ const NO_ALIASES: StrangerLabels = {};
  * turn's snapshot and the history up to that turn; otherwise the live state.
  */
 export function usePresence(viewedPage?: number): Presence {
-  const { authoredCast, locations, connections, persona, currentLocation } = useResolvedWorld();
+  const { entities: cast, locations, connections, persona, currentLocation } = useResolvedWorld();
   const {
     gameStates, fullMessageHistory, totalPages, discoveredEntities,
     entityPositions, genericStates, entityFollowers, metEntities, strangerAliases,
@@ -35,7 +36,8 @@ export function usePresence(viewedPage?: number): Presence {
   );
   const runtimeSource = snapshot ? (snapshot.discoveredEntities ?? NO_RUNTIME) : discoveredEntities;
   const runtime = useMemo(() => discoveredAsEntities(runtimeSource), [runtimeSource]);
-  const positions = snapshot ? (snapshot.entityPositions ?? NO_POSITIONS) : entityPositions;
+  const livePositions = snapshot ? (snapshot.entityPositions ?? NO_POSITIONS) : entityPositions;
+  const positions = useMemo(() => ({ ...runtimePositions(runtimeSource), ...livePositions }), [runtimeSource, livePositions]);
   const generics = snapshot ? (snapshot.genericStates ?? NO_GENERICS) : genericStates;
   const followers = useMemo(
     () => (snapshot ? followerIds(snapshot.uniqueStates ?? {}) : entityFollowers), [snapshot, entityFollowers],
@@ -47,8 +49,8 @@ export function usePresence(viewedPage?: number): Presence {
   const personaEntity = persona?.entity ?? null;
 
   return useMemo(() => computePresence({
-    entities: authoredCast, runtime, positions, generics, followers, locationId, locations, connections,
+    entities: cast, runtime, positions, generics, followers, locationId, locations, connections,
     persona: personaEntity, met, strangerAliases: aliases,
     turns: recentSceneTurns(history, IN_SCENE_TURNS),
-  }), [authoredCast, runtime, positions, generics, followers, locationId, locations, connections, personaEntity, met, aliases, history]);
+  }), [cast, runtime, positions, generics, followers, locationId, locations, connections, personaEntity, met, aliases, history]);
 }

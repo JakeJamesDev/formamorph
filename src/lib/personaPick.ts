@@ -95,7 +95,7 @@ export function preselectPersona({ rules, remembered, globalDefault, available }
 }
 
 /** The persona's Start places the world still has, in Start order, leaving out Player's Starting Location (Q28). */
-const personaLocations = (entity: Entity, locations: readonly GameLocation[]): string[] => {
+const namedStartPlaces = (entity: Entity, locations: readonly GameLocation[]): string[] => {
   const named = { ...entity, starts: entity.starts?.filter((start) => start.place !== PLAYER_START) };
   return startPlacesOf(named, { locations }).filter((id) => locations.some((l) => l.id === id));
 };
@@ -103,7 +103,7 @@ const personaLocations = (entity: Entity, locations: readonly GameLocation[]): s
 /** Where a world persona begins: the first of its named Start places that is a starting location, else the first
  *  of them, else null. */
 export function personaStartLocation(entity: Entity, locations: readonly GameLocation[]): string | null {
-  const own = personaLocations(entity, locations);
+  const own = namedStartPlaces(entity, locations);
   return own.find((id) => locations.some((l) => l.id === id && l.isStarting)) ?? own[0] ?? null;
 }
 

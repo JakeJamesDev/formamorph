@@ -35,7 +35,7 @@ export interface PositionScene extends PlaceGraph {
   playerStart?: string;
 }
 
-/** Where each Unique entity stands with its engine state, and each Generic entity's instances. */
+/** Where each Unique entity stands with its engine state, and each Generic entity's Generic Entity Instances. */
 export interface PositionBook {
   positions: EntityPositions;
   uniques: UniqueStates;
@@ -340,8 +340,8 @@ export function advancePositions(
   for (const authored of routines) {
     const routine = resolveRoutine(authored, scene);
     if (routine.generic) {
-      const instances = advanceGeneric(routine, book.generics[routine.id], scene, random, connected);
-      if (Object.keys(instances).length) generics[routine.id] = instances;
+      const entityInstances = advanceGeneric(routine, book.generics[routine.id], scene, random, connected);
+      if (Object.keys(entityInstances).length) generics[routine.id] = entityInstances;
       else delete generics[routine.id];
       continue;
     }
@@ -358,10 +358,10 @@ export function advancePositions(
   return { positions, uniques, generics };
 }
 
-/** The places each Generic entity's instances stand at, deduped, by Generic entity id. */
+/** The places each Generic entity's Generic Entity Instances stand at, deduped, by Generic entity id. */
 export function genericPlaces(generics: Readonly<GenericStates>): Record<string, string[]> {
-  return Object.fromEntries(Object.entries(generics).map(([id, instances]) =>
-    [id, [...new Set(Object.values(instances).map((p) => p.position))]]));
+  return Object.fromEntries(Object.entries(generics).map(([id, entityInstances]) =>
+    [id, [...new Set(Object.values(entityInstances).map((p) => p.position))]]));
 }
 
 /** The saved Start of `routine`, as authored, if it still has it. */

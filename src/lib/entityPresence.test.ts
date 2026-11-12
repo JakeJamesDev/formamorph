@@ -1,11 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
-  entityIdsAt, entityIdsAtAny, withEntityLocations, withStartHere, dropLocationFromEntities,
-  entitiesInPlay, positionedCast, placedIn, carryMap, withCarriedRoutine,
-  knownInOf, withKnownIn, toggleKnownInPick, knownHere,
+  withStartHere, dropLocationFromEntities, positionedCast, placedIn, carryMap, withCarriedRoutine, presentEntityIds,
+  knownInOf, withKnownIn, toggleKnownInPick, knownHere, type Standings,
 } from "./entityPresence";
 import type { Entity } from "@/types";
-import { namedPlacesOf, presenceOf } from "@/lib/entityPlaces";
+import { idsAt, idsAtAny, namedPlacesOf, positionsIn, presenceOf, withMembership } from "@/lib/entityPlaces";
 import { APP_VERSION, migrateWorld } from "@/lib/version";
 
 /** A Generic entity with one Start per place, no rows. */
@@ -32,42 +31,40 @@ const sailor: Entity = {
 const ghost: Entity = { id: "ghost", name: "Ghost" }; // placed nowhere
 const cast = [alice, bartender, gull, ghost];
 
-describe("entityIdsAt", () => {
-  it("rosters everyone listing the location, in cast order", () => {
-    expect(entityIdsAt("bar", cast)).toEqual(["alice", "bar-keep"]);
+const NOBODY: Standings = { positions: {}, generics: {} };
+const at = (place: string | null | undefined, entities: Entity[], standings = NOBODY) => idsAt(place, entities, positionsIn(standings));
+
+describe("the rosters with nobody placed", () => {
+  it("roster everyone listing the location, in cast order", () => {
+    expect(at("bar", cast)).toEqual(["alice", "bar-keep"]);
   });
 
-  it("keeps a multi-location entity present at every place it lists", () => {
-    expect(entityIdsAt("docks", cast)).toContain("bar-keep");
-    expect(entityIdsAt("bar", cast)).toContain("bar-keep");
+  it("keep a multi-location entity present at every place it lists", () => {
+    expect(at("docks", cast)).toContain("bar-keep");
+    expect(at("bar", cast)).toContain("bar-keep");
   });
 
-  it("is empty for an unpeopled location, and for no location at all", () => {
-    expect(entityIdsAt("attic", cast)).toEqual([]);
-    expect(entityIdsAt(null, cast)).toEqual([]);
-    expect(entityIdsAt(undefined, cast)).toEqual([]);
-  });
-});
-
-describe("entityIdsAtAny", () => {
-  it("unions the scope and lists a two-place entity once", () => {
-    expect(entityIdsAtAny(["bar", "docks"], cast)).toEqual(["alice", "bar-keep", "gull"]);
+  it("are empty for an unpeopled location, and for no location at all", () => {
+    expect(at("attic", cast)).toEqual([]);
+    expect(at(null, cast)).toEqual([]);
+    expect(at(undefined, cast)).toEqual([]);
   });
 
-  it("is empty for an empty scope", () => {
-    expect(entityIdsAtAny([], cast)).toEqual([]);
+  it("union a scope and list a two-place entity once", () => {
+    expect(idsAtAny(["bar", "docks"], cast, positionsIn(NOBODY))).toEqual(["alice", "bar-keep", "gull"]);
+    expect(idsAtAny([], cast, positionsIn(NOBODY))).toEqual([]);
   });
 });
 
-describe("withEntityLocations", () => {
+describe("withMembership", () => {
   it("dedupes and never mutates the original", () => {
-    const out = withEntityLocations(alice, ["bar", "bar", "docks"]);
+    const out = withMembership(alice, ["bar", "bar", "docks"]);
     expect(out.locations).toEqual(["bar", "docks"]);
     expect(alice.locations).toEqual(["bar"]);
   });
 
   it("drops the field entirely rather than storing an empty array", () => {
-    expect("locations" in withEntityLocations(alice, [])).toBe(false);
+    expect("locations" in withMembership(alice, [])).toBe(false);
   });
 });
 
@@ -89,8 +86,8 @@ describe("withStartHere (Add Entity on a location)", () => {
 describe("dropLocationFromEntities", () => {
   it("strips a deleted location from every membership", () => {
     const next = dropLocationFromEntities("bar", cast);
-    expect(entityIdsAt("bar", next)).toEqual([]);
-    expect(entityIdsAt("docks", next)).toEqual(["bar-keep", "gull"]);
+    expect(at("bar", next)).toEqual([]);
+    expect(at("docks", next)).toEqual(["bar-keep", "gull"]);
   });
 
   it("returns the same array when nobody listed the location", () => {
@@ -155,33 +152,36 @@ describe("placedIn", () => {
   });
 });
 
-describe("entitiesInPlay", () => {
-  it("lists a Generic entity once at each place its Generic Entity Instances stand, and nowhere else it lists", () => {
+describe("the rosters in play read Position", () => {
+  it("list a Generic entity once at each place its Generic Entity Instances stand, and nowhere else it lists", () => {
     const generics = { "bar-keep": { "bar-keep-1": { position: "docks", lastRun: 0 }, "bar-keep-2": { position: "docks", lastRun: 0 } } };
-    const placed = entitiesInPlay(cast, { positions: {}, generics });
-    expect(entityIdsAt("bar", placed)).toEqual(["alice"]);
-    expect(entityIdsAt("docks", placed)).toEqual(["bar-keep", "gull"]);
-    expect(placed[1].locations).toEqual(["docks"]);
+    expect(at("bar", cast, { positions: {}, generics })).toEqual(["alice"]);
+    expect(at("docks", cast, { positions: {}, generics })).toEqual(["bar-keep", "gull"]);
   });
 
-  it("puts a positioned entity at its position only", () => {
-    const placed = entitiesInPlay(cast, { positions: { "bar-keep": "docks" }, generics: {} });
-    expect(entityIdsAt("bar", placed)).toEqual(["alice"]);
-    expect(entityIdsAt("docks", placed)).toEqual(["bar-keep", "gull"]);
+  it("put a positioned entity at its position only", () => {
+    const standings = { positions: { "bar-keep": "docks" }, generics: {} };
+    expect(at("bar", cast, standings)).toEqual(["alice"]);
+    expect(at("docks", cast, standings)).toEqual(["bar-keep", "gull"]);
+    expect(idsAtAny(["bar"], cast, positionsIn(standings))).toEqual(["alice"]);
   });
 
-  it("keeps an entity without a position at every location it lists", () => {
-    const placed = entitiesInPlay(cast, { positions: { gull: "bar" }, generics: {} });
-    expect(entityIdsAt("bar", placed)).toEqual(["alice", "bar-keep", "gull"]);
-    expect(entityIdsAt("docks", placed)).toEqual(["bar-keep"]);
+  it("keep an entity without a position at every location it lists", () => {
+    const standings = { positions: { gull: "bar" }, generics: {} };
+    expect(at("bar", cast, standings)).toEqual(["alice", "bar-keep", "gull"]);
+    expect(at("docks", cast, standings)).toEqual(["bar-keep"]);
   });
 
-  it("returns the same array when nobody has a position", () => {
-    expect(entitiesInPlay(cast, { positions: {}, generics: {} })).toBe(cast);
-  });
-
-  it("reads through the multi-location scopes too", () => {
-    expect(entityIdsAtAny(["bar"], entitiesInPlay(cast, { positions: { "bar-keep": "docks" }, generics: {} }))).toEqual(["alice"]);
+  // A list a world stored before kinds owned their routine (Q10).
+  const stale: Entity = { id: "stale", name: "Stale", kind: "unique", starts: [], locations: ["bar", "docks"] };
+  it("stand an entity with a kind, a stale stored list and no Position nowhere, through every roster", () => {
+    const standings = { positions: { "bar-keep": "docks" }, generics: {} };
+    const withStale = [...cast, stale];
+    for (const place of ["bar", "docks"]) {
+      expect(at(place, withStale, standings)).not.toContain("stale");
+      expect(presentEntityIds(withStale, standings, place)).not.toContain("stale");
+    }
+    expect(idsAtAny(["bar", "docks"], withStale, positionsIn(standings))).not.toContain("stale");
   });
 });
 

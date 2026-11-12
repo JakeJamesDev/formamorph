@@ -14,6 +14,7 @@ import { activeOwnedTraitIds } from '@/lib/ownedTraitsInPlay';
 import { INITIAL_SOURCE_TURN_ID, discoveredAsEntities } from '@/lib/runtimeCharacters';
 import { computePresence } from '@/lib/presence';
 import { followerIds } from '@/lib/positionPlay';
+import { runtimePositions } from '@/lib/entityFollowing';
 
 export interface PlayerViewEntity {
   kind: 'entity';
@@ -149,7 +150,7 @@ function knownIds(
   }));
   const runtime = discovered.filter((d) => !worldIds.has(d.entity.id) && poolIds.has(d.entity.id));
   const { known } = computePresence({
-    entities: authored, runtime: discoveredAsEntities(runtime), positions: current.entityPositions ?? {},
+    entities: authored, runtime: discoveredAsEntities(runtime), positions: { ...runtimePositions(runtime), ...current.entityPositions },
     generics: current.genericStates ?? {},
     followers: followerIds(current.uniqueStates ?? {}), locationId: current.locationId, locations: world.locations,
     connections: world.connections ?? [], persona, met: current.metEntities ?? [],

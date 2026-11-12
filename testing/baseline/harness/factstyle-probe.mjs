@@ -24,7 +24,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { restyle } from "@/lib/sectionStyle";
-import { buildLocationContext, buildEntityContext } from "@/lib/locationContext";
+import { buildLocationContext, renderEntityRoster } from "@/lib/locationContext";
 import { buildTraitContext } from "@/lib/traitTree";
 import { buildStatContext } from "@/lib/statContext";
 import { parseArgs, grab, buildThinkingUser, callMessages, parsePlan } from "./planner-probe-lib.mjs";
@@ -75,7 +75,7 @@ function plannerSys(style) {
     .replaceAll("<LOCATION|summary.markdown>", buildLocationContext(LOCATION, { preferSummary: true, format: fmt }))
     .replaceAll("<LOCATION|sublocations.summary.markdown>", "N/A")
     .replaceAll("<LOCATION|reachable.summary.markdown>", "N/A")
-    .replaceAll("<ENTITIES|summary.markdown>", buildEntityContext(LOCATION, ENTITIES, { preferSummary: true, format: fmt }))
+    .replaceAll("<ENTITIES|summary.markdown>", renderEntityRoster(ENTITIES.map((e) => e.id), ENTITIES, { preferSummary: true, format: fmt }))
     .replaceAll("<ENTITIES|sublocations.summary.markdown>", "N/A")
     .replaceAll("<ENTITIES|reachable.summary.markdown>", "N/A")
     .replaceAll("<NOTES>", "None");
@@ -95,7 +95,7 @@ function narrationSys(style) {
     .replaceAll("<LOCATION|markdown>", buildLocationContext(LOCATION, { preferSummary: false, format: fmt }))
     .replaceAll("<LOCATION|sublocations.summary.markdown>", "N/A")
     .replaceAll("<LOCATION|reachable.summary.markdown>", "N/A")
-    .replaceAll("<ENTITIES|markdown>", buildEntityContext(LOCATION, ENTITIES, { preferSummary: false, format: fmt }))
+    .replaceAll("<ENTITIES|markdown>", renderEntityRoster(ENTITIES.map((e) => e.id), ENTITIES, { preferSummary: false, format: fmt }))
     .replaceAll("<ENTITIES|sublocations.markdown>", "N/A")
     .replaceAll("<ENTITIES|reachable.summary.markdown>", "N/A")
     .replaceAll("<DICTIONARY>", "N/A");

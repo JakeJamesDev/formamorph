@@ -16,8 +16,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryStep } from '@/contexts/worldRecorder';
 import { chanceChipStyle, relativeChance } from '@/lib/chanceColor';
 import { traversableOf, withBeginsFollowing, withGenericStart, withKind, withoutGenericStart, withStartPlace } from '@/lib/entityKind';
-import { withEntityLocations } from '@/lib/entityPresence';
-import { namedPlacesOf } from '@/lib/entityPlaces';
+import { namedPlacesOf, withMembership } from '@/lib/entityPlaces';
 import { fieldFrame } from '@/lib/historyField';
 import { rowNamesLocation, startNamesLocation } from '@/lib/hereMarks';
 import { holderOf, locationRows } from '@/lib/locationTree';
@@ -156,7 +155,7 @@ function PersonaLocations({ entity, book, commit }: { entity: Entity; book: Plac
   return (
     <PlaceList
       entity={entity} book={book} selected={namedPlacesOf(entity)}
-      onChange={(ids) => commit('Change Locations', withEntityLocations(entity, ids))}
+      onChange={(ids) => commit('Change Locations', withMembership(entity, ids))}
     />
   );
 }

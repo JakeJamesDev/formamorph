@@ -9,7 +9,6 @@ import { GameplayProvider, useGameplay } from './GameplayContext';
 import { GameDataProvider } from './GameDataContext';
 import { PlaceholderSessionProvider } from './PlaceholderSessionContext';
 import { getSaveRecord, putSaveRecord } from '@/components/modals/dbUtils';
-import { entitiesInPlay, entityIdsAt } from '@/lib/entityPresence';
 import { idsAt, positionsIn, type PlacesOf } from '@/lib/entityPlaces';
 import { castRoutines } from '@/lib/entityKind';
 import { storyMinute } from '@/lib/gameClock';
@@ -55,9 +54,9 @@ describe('a stored save under Entity Places', () => {
     const stored = record.currentState;
     const discovered = stored.discoveredEntities ?? [];
     const cast = [...world.entities, ...discoveredAsEntities(discovered)];
-    // The oracle: the stored positions laid over a copy of the cast by `entitiesInPlay`.
+    // The oracle: the cast where the stored positions put it.
     const standingsBefore = { positions: { ...runtimePositions(discovered), ...(stored.entityPositions ?? {}) }, generics: stored.genericStates ?? {} };
-    const before = world.locations.map((l) => entityIdsAt(l.id, entitiesInPlay(cast, standingsBefore)));
+    const before = world.locations.map((l) => idsAt(l.id, cast, positionsIn(standingsBefore)));
 
     const live = mount();
     await putSaveRecord(record);
@@ -71,6 +70,29 @@ describe('a stored save under Entity Places', () => {
 
     expect(after).toEqual(before);
     expect(after.flat().length).toBeGreaterThan(world.entities.length / 2);
+  });
+});
+
+describe('a runtime character through a save and a load (Q41)', () => {
+  const PLACES: GameLocation[] = [{ id: 'dock', name: 'Dock', isStarting: true }, { id: 'inn', name: 'Inn' }];
+  const LINKS: Connection[] = [{ id: 'lane', a: 'dock', b: 'inn', aToB: {}, bToA: {} }];
+  const met = { entity: { id: 'sailor', name: 'Sailor', aiDescription: 'A sailor.' }, locationId: 'inn', sourceTurnId: 'initial' };
+
+  it('keeps the saved record as it was, with no list of places, and stands where its anchor is', async () => {
+    const live = mount();
+    await act(async () => { live().setDiscoveredEntities([met]); });
+    await act(async () => { await live().saveGame('slot', 'Harbor', 'w', 'save-runtime'); });
+    const stored = await getSaveRecord('save-runtime') as SaveRecord;
+    expect(stored.currentState.discoveredEntities).toEqual([met]);
+
+    await act(async () => { live().setDiscoveredEntities([]); });
+    await act(async () => { await live().loadGame('save-runtime', PLACES, [], [], undefined, undefined, undefined, LINKS); });
+    const loaded = live().discoveredEntities;
+    expect(loaded).toEqual([met]);
+    const cast = discoveredAsEntities(loaded);
+    expect(cast.map((e) => 'locations' in e)).toEqual([false]);
+    const placesOf = positionsIn({ positions: { ...runtimePositions(loaded), ...live().entityPositions }, generics: live().genericStates });
+    expect(PLACES.map((l) => idsAt(l.id, cast, placesOf))).toEqual([[], ['sailor']]);
   });
 });
 

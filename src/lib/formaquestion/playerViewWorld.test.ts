@@ -277,38 +277,36 @@ describe('playerViewWorld', () => {
     expect(ids(linked.stats)).toEqual(['nerve', 'bp-grit']);
   });
 
-  describe('a met Unique entity whose routine names both places the player visited', () => {
+  describe('where met entities stand (Q42)', () => {
     // The warden begins at the gate and stays in the hall; an unreleased world still stores both as its list (Q5).
     const routined: Entity = {
       ...WARDEN, kind: 'unique', traversable: [], locations: ['gate', 'hall'],
       starts: [{ id: 'w1', place: 'gate', weight: 1, schedule: [{ id: 'w1-day', time: 'allDay', action: { kind: 'stay', place: 'hall' } }] }],
     };
-    const standing = (at: string | undefined) => {
+    const cutAt = (positions: Record<string, string>, entities = [routined, STRANGER]) => {
       const base = reach();
-      const current: GameState = { ...base.current, entityPositions: at ? { warden: at } : {} };
-      const cutWorld = playerViewWorld({ ...world, entities: [routined, STRANGER] }, { ...base, current });
-      return cutWorld.entities.find((e) => e.id === 'warden')?.locations;
+      return playerViewWorld({ ...world, entities }, { ...base, current: { ...base.current, entityPositions: positions } });
     };
 
-    it('stands at its one Position', () => {
-      expect(routined.locations).toEqual(['gate', 'hall']);
-      expect(standing('hall')).toEqual(['hall']);
+    it('gives no copy a list of places', () => {
+      expect(cutAt({ warden: 'hall' }).entities.map((e) => 'locations' in e)).toEqual([false]);
     });
 
-    it('stands nowhere the player knows when its Position is a place the player has not met', () => {
-      expect(standing('vault')).toBeUndefined();
+    it('places a met entity at its one Position', () => {
+      expect(cutAt({ warden: 'hall' }).livePlaces).toEqual({ positions: { warden: 'hall' }, genericPositions: {} });
     });
 
-    it('stands nowhere with no Position', () => {
-      expect(standing(undefined)).toBeUndefined();
+    it('places it nowhere when its Position is a place the player has not met, or when it has none', () => {
+      expect(cutAt({ warden: 'vault' }).livePlaces?.positions).toEqual({});
+      expect(cutAt({}).livePlaces?.positions).toEqual({});
     });
-  });
 
-  it('places a met entity with no kind that a script moved at its Position, not its listed place', () => {
-    const listed = { ...WARDEN, locations: ['gate'] };
-    const base = reach();
-    const current: GameState = { ...base.current, entityPositions: { warden: 'hall' } };
-    const cutWorld = playerViewWorld({ ...world, entities: [listed, STRANGER] }, { ...base, current });
-    expect(cutWorld.entities.find((e) => e.id === 'warden')?.locations).toEqual(['hall']);
+    it('places an unmet entity nowhere, wherever it stands', () => {
+      expect(cutAt({ warden: 'hall', stranger: 'gate' }).livePlaces?.positions).toEqual({ warden: 'hall' });
+    });
+
+    it('places a met entity with no kind that a script moved at its Position, not its listed place', () => {
+      expect(cutAt({ warden: 'hall' }, [{ ...WARDEN, locations: ['gate'] }, STRANGER]).livePlaces?.positions).toEqual({ warden: 'hall' });
+    });
   });
 });

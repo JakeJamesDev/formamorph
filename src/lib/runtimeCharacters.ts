@@ -6,7 +6,7 @@ import { trimToLastSentence } from '@/lib/outputLength';
 import { escapeRegExp } from '@/lib/utils';
 import { sameCharacterName } from '@/lib/entityMatch';
 import type { Standings } from '@/lib/entityPresence';
-import { idsAtAny, positionsIn, withMembership } from '@/lib/entityPlaces';
+import { idsAtAny, positionsIn } from '@/lib/entityPlaces';
 
 /** Labels in the character-note user message. Shared by the request builder and the response cleaner —
  *  a small model often parrots these back into its output. */
@@ -79,13 +79,10 @@ export function cleanDiscoveredDescription(raw: string, name: string): string {
   return trimToLastSentence(out).trim();
 }
 
-/**
- * The discovered entities as ordinary `Entity` records carrying the location they were anchored to, so the
- * whole location-scoped pipeline (rosters, present-entity filters) treats them exactly like authored ones.
- * The anchor is the record's whole membership — a discovered character is somewhere it was invented.
- */
+/** The discovered entities as ordinary `Entity` records. Where each stands is its Position: the book's, else its
+ *  saved anchor through `runtimePositions` (Q41). */
 export function discoveredAsEntities(discovered: readonly DiscoveredEntity[]): Entity[] {
-  return discovered.map((d) => (d.locationId ? withMembership(d.entity, [d.locationId]) : d.entity));
+  return discovered.map((d) => d.entity);
 }
 
 /**

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type {
-  Connection, Currency, Entity, EntityPositions, GameLocation, GenericStates, UniqueStates, Item, ItemCopy, Placement, RuntimeItem, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
+  Connection, Currency, Entity, EntityPositions, GameLocation, GenericStates, InventoryOwner, UniqueStates, Item, ItemCopy, Placement, RuntimeItem, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
 import { movementStates } from '../movementTag';
 import type { Routine } from '../positionEngine';
@@ -15,6 +15,8 @@ import { enabledOwnerStats, withTraitToggles, type OwnerStats } from '../statOwn
 import { resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText } from '../resolveWorldNames';
 import { ownerStatParts, type StatPlacement } from '../statContext';
 import type { ChipScene, ChipSceneTime, SceneEquipment } from './chipScene';
+import { sceneEntityChipValues } from './chipValues';
+import type { ValueLookup } from '../promptValues';
 
 /** A trait's own text under its own pins; an owned trait passes its owner. */
 export type ResolveTraitText = (trait: Trait, text: string, owner?: Entity | null) => string;
@@ -97,7 +99,7 @@ export interface SceneWrites {
   addedEntities?: readonly Entity[];
   /** The follow states the turn's moves left, over the live ones. */
   uniques?: Readonly<UniqueStates>;
-  /** Where the turn's moves left each Generic entity's instances, over the live ones. */
+  /** Where the turn's moves left each Generic entity's Generic Entity Instances, over the live ones. */
   generics?: Readonly<GenericStates>;
 }
 
@@ -185,6 +187,23 @@ export function liveChipScene(
       movement: movementStates(sources.movement.routines, box?.uniques ?? sources.movement.uniques, sources.movement.now),
     }),
   };
+}
+
+/** The entity chips of `scene` with only `sceneEntities` on the roster at `location`, where the scene places them. */
+export const sceneRosterValues = (scene: ChipScene, location: GameLocation | null, sceneEntities: readonly Entity[]): ValueLookup =>
+  sceneEntityChipValues(scene, idsAt(location?.id, sceneEntities, scene.placesOf));
+
+/** The owners at `location` in the Inventory pass (Q62): the scene's entities there, at their Position in `standings`
+ *  when given, without the played ones, then `discovered`. */
+export function inventoryOwnersIn(
+  scene: ChipScene, location: GameLocation | null, discovered: readonly InventoryOwner[], standings?: Standings,
+): InventoryOwner[] {
+  const played = new Set([scene.persona?.entity.id, ...(scene.playedEntities ?? []).map((e) => e.id)]);
+  const here = new Set(standings ? idsAt(location?.id, scene.entities, positionsIn(standings)) : scene.presentIds);
+  return [
+    ...scene.entities.filter((e) => here.has(e.id) && !played.has(e.id)).map((e) => ({ id: e.id, name: e.name })),
+    ...discovered,
+  ];
 }
 
 /** Each entity's owned traits in force: its picks on, and the ones an item grant holds. */

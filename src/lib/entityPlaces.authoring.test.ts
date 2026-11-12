@@ -8,9 +8,7 @@ import { statBoxLookups, type CodeCardWorld } from '@/lib/codeWorldLookup';
 import { runTestCode, type StatCodeWorld } from '@/lib/statCodeTestRun';
 import { snapshotOf } from '@/lib/sandboxSnapshot';
 import { standaloneStateOf } from '@/lib/openingState';
-import { entityIdsAt } from '@/lib/entityPresence';
 import { idsAt, samplePlacement } from '@/lib/entityPlaces';
-import { openingCast } from '@/lib/positionPlay';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { buildAiContext } from '@/lib/testBench/aiContext';
 import { buildLens } from '@/lib/testBench/lens';
@@ -77,9 +75,7 @@ describe('an entity the opening cannot place has no Sample Placement (Q26)', () 
   };
   const noStarts: Entity = { id: 'ghost', name: 'Ghost', kind: 'unique', traversable: [], starts: [] };
 
-  it('places the stray nowhere, in `openingCast` too, now that it stores no list', () => {
-    const kept = openingCast([stray], LOCATIONS, CONNECTIONS, undefined);
-    expect(entityIdsAt('docks', kept)).toEqual([]);
+  it('places the stray nowhere, now that it stores no list', () => {
     expect(idsAt('docks', [stray], samplePlacement([stray], { locations: LOCATIONS, connections: CONNECTIONS }, undefined))).toEqual([]);
   });
 
@@ -90,23 +86,24 @@ describe('an entity the opening cannot place has no Sample Placement (Q26)', () 
   });
 });
 
-// The comparison reads `openingCast`'s overwritten lists.
+// The comparison reads the Sample Placement at each location.
 const bundled = Object.entries(import.meta.glob<World>('@/defaultworlds/*.json', { import: 'default', eager: true }))
   .map(([path, world]) => [path.replace(/^.*\/(.+)\.json$/, '$1'), world] as const);
 
 describe.each(bundled)('the bundled world %s keeps its authoring cast', (_name, world) => {
   const locations = world.locations ?? [];
-  const oldCast = (at: GameLocation) => entityIdsAt(at.id, openingCast(world.entities ?? [], locations, world.connections ?? [], at.id));
+  const cast = world.entities ?? [];
+  const sampleCast = (at: GameLocation) => idsAt(at.id, cast, samplePlacement(cast, { locations, connections: world.connections ?? [] }, at.id));
 
   it('in the authored chip scene at every location', () => {
-    for (const at of locations) expect(authoredChipScene(world, { location: at }).presentIds, at.name).toEqual(oldCast(at));
+    for (const at of locations) expect(authoredChipScene(world, { location: at }).presentIds, at.name).toEqual(sampleCast(at));
   });
 
   it('in the Test Bench AI context at every location', () => {
     const lensWorld = { ...world, traitGroups: world.traitGroups ?? [] };
     for (const at of locations) {
       const here = buildAiContext(world, buildLens(lensWorld, { personaId: null, locationId: at.id })).rosters.find((r) => r.scope === 'here')!;
-      expect(here.entities.map((e) => e.id), at.name).toEqual(oldCast(at));
+      expect(here.entities.map((e) => e.id), at.name).toEqual(sampleCast(at));
     }
   });
 });

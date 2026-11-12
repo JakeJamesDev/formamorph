@@ -7,7 +7,8 @@ import type { ChipScene } from '@/lib/chipValues/chipScene';
 import type { SandboxState, StatePlaces } from '@/lib/statCodeTurn';
 import type { StatCodeOwners } from '@/lib/statCodeTraits';
 import type { GateEntity, GateStats } from '@/lib/traitGates';
-import { positionOf, withMembership } from '@/lib/entityPlaces';
+import { positionOf } from '@/lib/entityPlaces';
+import type { LivePlaces } from '@/lib/openingState';
 import { stateWord } from '@/lib/items';
 import { statBlueprintIds } from '@/lib/statLinks';
 import type { StatCodeWorld } from '@/lib/statCodeTestRun';
@@ -90,10 +91,8 @@ function playerEntity(met: Met, entity: Entity, row: PlayerViewEntity, targets: 
     return link.kind === 'group' || (target !== undefined && statShown(met, target, entity.id));
   });
   const traitLinks = entity.traitLinks?.filter((link) => link.kind === 'trait' && met.traits.has(traitKey(entity.id, link.originalId)));
-  // The copy has no kind, so its membership is its Position at the places the player has met.
-  const standings = { positions: met.current.entityPositions ?? {}, generics: met.current.genericStates ?? {} };
-  const known = positionOf(entity, standings).filter((id) => met.locations.has(id));
-  return withMembership<Entity>({
+  // The copy holds no places: a reader asks the met live places for its Position (Q42).
+  return {
     id: entity.id, name: row.name, aliases: [...(row.seenAliases ?? [])],
     playerDescription: row.description, aiDescription: row.description,
     ...(entity.type !== undefined && { type: entity.type }),
@@ -106,7 +105,20 @@ function playerEntity(met: Met, entity: Entity, row: PlayerViewEntity, targets: 
     ...(traits && { traits, traitGroups: keptGroups(entity.traitGroups ?? [], [...traits, ...(traitLinks ?? [])]) }),
     ...(statLinks?.length ? { statLinks } : {}),
     ...(traitLinks?.length ? { traitLinks } : {}),
-  }, known);
+  };
+}
+
+/** Where met entities stand now, at met places only: the Position the player knows. */
+function metLivePlaces(met: Met): Required<Pick<LivePlaces, 'positions' | 'genericPositions'>> {
+  const standings = { positions: met.current.entityPositions ?? {}, generics: met.current.genericStates ?? {} };
+  const positions: Record<string, string> = {};
+  const genericPositions: Record<string, string[]> = {};
+  for (const id of met.entities.keys()) {
+    const known = positionOf({ id }, standings).filter((place) => met.locations.has(place));
+    if (standings.generics[id]) genericPositions[id] = known;
+    else if (known.length) positions[id] = known[0];
+  }
+  return { positions, genericPositions };
 }
 
 /** The met ones of `things`, each rebuilt from its Player View row. */
@@ -360,6 +372,7 @@ export function playerViewWorld(world: StatCodeWorld, reach: PlayerViewReach): S
     traits, traitGroups: keptGroups(world.traitGroups ?? [], traits),
     entities, entityGroups: keptGroups(world.entityGroups ?? [], entities),
     ...(world.locations && { locations: playerLocations(met, world.locations) }),
+    livePlaces: metLivePlaces(met),
   };
 }
 

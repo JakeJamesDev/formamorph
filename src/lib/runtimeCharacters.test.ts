@@ -10,10 +10,11 @@ import {
   INITIAL_SOURCE_TURN_ID,
 } from './runtimeCharacters';
 import { drawUnseenOpening, openingPool } from './openings';
-import { entityIdsAt } from './entityPresence';
-import { buildEntityContext } from './locationContext';
-import type { ChatMessage, DiscoveredEntity, Entity, GameLocation } from '@/types';
+import type { ChatMessage, DiscoveredEntity, Entity } from '@/types';
 import { AS_LISTED } from '@/test/asListed';
+import { idsAt, positionsIn } from './entityPlaces';
+import { runtimePositions } from './entityFollowing';
+import { renderEntityRoster } from './locationContext';
 
 /** Build an assistant turn message with the given fields. */
 function turn(fields: { turnId?: string; narration?: string; entities?: string[]; locationId?: string }): ChatMessage {
@@ -182,24 +183,42 @@ describe('discoveredAsEntities', () => {
     { entity: { id: 'disc-1', name: 'Mouse' }, locationId: 'loc-1', sourceTurnId: 't2' },
     { entity: { id: 'disc-2', name: 'Bat' }, locationId: 'loc-9', sourceTurnId: 't3' },
   ];
+  // Where the cast stands: each runtime character at its anchor, under the book's positions (Q41).
+  const placesOf = (records: readonly DiscoveredEntity[], book: Record<string, string> = {}) =>
+    positionsIn({ positions: { ...runtimePositions(records), ...book }, generics: {} });
 
-  it('anchors each discovered character to the location it was invented in', () => {
+  it('gives each runtime character no list of places', () => {
+    expect(discoveredAsEntities(discovered).map((e) => 'locations' in e)).toEqual([false, false]);
+  });
+
+  it('places each one at the location it was invented in, through its Position', () => {
     const cast = [worldEntity, ...discoveredAsEntities(discovered)];
-    // Rostering the cave lists the authored hermit and only the mouse — the bat is somewhere else.
-    expect(entityIdsAt('loc-1', cast)).toEqual(['world-a', 'disc-1']);
-    expect(entityIdsAt('loc-9', cast)).toEqual(['disc-2']);
+    // Rostering the cave lists the authored hermit and only the mouse; the bat is somewhere else.
+    expect(idsAt('loc-1', cast, placesOf(discovered))).toEqual(['world-a', 'disc-1']);
+    expect(idsAt('loc-9', cast, placesOf(discovered))).toEqual(['disc-2']);
+  });
+
+  it("places one where the book moved it, over its anchor", () => {
+    const cast = discoveredAsEntities(discovered);
+    expect(idsAt('loc-9', cast, placesOf(discovered, { 'disc-1': 'loc-9' }))).toEqual(['disc-1', 'disc-2']);
   });
 
   it('leaves an unanchored discovery belonging nowhere rather than everywhere', () => {
     const floating: DiscoveredEntity = { entity: { id: 'disc-3', name: 'Voice' }, sourceTurnId: 't4' };
-    expect(discoveredAsEntities([floating])[0].locations).toBeUndefined();
-    expect(entityIdsAt('loc-1', discoveredAsEntities([floating]))).toEqual([]);
+    expect(idsAt('loc-1', discoveredAsEntities([floating]), placesOf([floating]))).toEqual([]);
   });
 
   it('rosters at the location it was invented at, alongside the authored cast', () => {
-    const cave: GameLocation = { id: 'loc-1', name: 'Cave' };
     const all = [worldEntity, ...discoveredAsEntities(discovered)];
-    expect(buildEntityContext(cave, all, { nameOnly: true })).toBe('Hermit, Mouse');
+    expect(renderEntityRoster(idsAt('loc-1', all, placesOf(discovered)), all, { nameOnly: true })).toBe('Hermit, Mouse');
+  });
+
+  it('keeps the saved record as it was, and the Position it reads, through a save and a load', () => {
+    const loaded = JSON.parse(JSON.stringify(discovered)) as DiscoveredEntity[];
+    expect(loaded).toEqual(discovered);
+    expect(loaded.map((d) => Object.keys(d).sort())).toEqual([['entity', 'locationId', 'sourceTurnId'], ['entity', 'locationId', 'sourceTurnId']]);
+    const cast = discoveredAsEntities(loaded);
+    expect(['loc-1', 'loc-9'].map((place) => idsAt(place, cast, placesOf(loaded)))).toEqual([['disc-1'], ['disc-2']]);
   });
 
   it('never mutates the stored discovery record', () => {

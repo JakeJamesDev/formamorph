@@ -3,9 +3,8 @@ import { APP_VERSION, MIGRATED_IDLE_MINUTES, migrateWorld, migrateSave, isSaveEn
 import { placeholderWeight } from './placeholders';
 import { gateOf, gateStates, worldGateInput } from './traitGates';
 import { headingReachesAi } from './groupTree';
-import { idsAt, namedPlacesOf, presenceIn } from './entityPlaces';
-import { openingCast } from './positionPlay';
-import { buildEntityContext, navigableDestinationEntries } from './locationContext';
+import { idsAt, namedPlacesOf, presenceIn, samplePlacement } from './entityPlaces';
+import { navigableDestinationEntries, renderEntityRoster } from './locationContext';
 import { effectiveDestinations } from './locationGraph';
 import type { Connection, Entity, GameLocation, Placeholder, SaveObject, World } from '@/types';
 import { PLAYER_START } from '@/types';
@@ -135,8 +134,9 @@ describe('migrateWorld — entity-owned location membership (ADR-0003)', () => {
       locations: [{ id: 'bar', name: 'The Bar', entities: ['alice'] }],
       entities: [{ id: 'alice', name: 'Alice', aiDescription: 'The tenant.' }],
     }) as unknown as { locations: GameLocation[]; entities: Entity[] };
-    const opening = openingCast(after.entities, after.locations, [], after.locations[0].id);
-    expect(buildEntityContext(after.locations[0], opening)).toBe('Alice\n  description: The tenant.\n');
+    const bar = after.locations[0];
+    const opening = samplePlacement(after.entities, { locations: after.locations, connections: [] }, bar.id);
+    expect(renderEntityRoster(idsAt(bar.id, after.entities, opening), after.entities)).toBe('Alice\n  description: The tenant.\n');
   });
 
   it('migrating twice is identical to migrating once', () => {

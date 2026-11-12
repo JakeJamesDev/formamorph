@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { enteredPersona, personaOption, resolvePersona, withPersonaEntry, worldEntitiesOf } from './persona';
-import { entityIdsAt } from './entityPresence';
-import { buildEntityContext, buildSublocationEntitiesContext } from './locationContext';
+import { buildSublocationEntitiesContext } from './locationContext';
 import type { Entity, GameLocation, PersonaRef } from '@/types';
-import { AS_LISTED } from '@/test/asListed';
+import { AS_LISTED, idsAsListed, rosterAsListed } from '@/test/asListed';
 
 const ent = (id: string, name: string, extra: Partial<Entity> = {}): Entity => ({ id, name, ...extra });
 
@@ -57,8 +56,8 @@ describe('resolvePersona', () => {
 
   it('removes a played world entity from every one of its locations', () => {
     const { cast } = resolvePersona({ source: 'world', entityId: 'w-mira' }, world, library);
-    expect(entityIdsAt('dock', cast)).toEqual(['w-vos']);
-    expect(entityIdsAt('inn', cast)).toEqual([]);
+    expect(idsAsListed('dock', cast)).toEqual(['w-vos']);
+    expect(idsAsListed('inn', cast)).toEqual([]);
   });
 
   it('never puts a library persona into the cast', () => {
@@ -99,7 +98,7 @@ describe('resolvePersona: persona-only entities', () => {
   ])('leaves an unpicked persona-only entity out of the cast under $label', ({ ref }) => {
     const { cast } = resolvePersona(ref, withCustom, library);
     expect(cast.map((e) => e.id)).not.toContain('w-custom');
-    expect(entityIdsAt('dock', cast)).not.toContain('w-custom');
+    expect(idsAsListed('dock', cast)).not.toContain('w-custom');
   });
 
   it('plays a picked persona-only entity and keeps it out of the cast', () => {
@@ -122,8 +121,8 @@ describe('resolvePersona: persona-only entities', () => {
   it('leaves an unpicked persona-only entity out of the roster', () => {
     const { cast } = resolvePersona({ source: 'none' }, withCustom, library);
     const dock: GameLocation = { id: 'dock', name: 'Dock' };
-    expect(buildEntityContext(dock, cast, { format: 'markdown' })).not.toContain('Custom Character');
-    expect(buildEntityContext(dock, cast, { format: 'markdown' })).toContain('Captain Vos');
+    expect(rosterAsListed(dock, cast, { format: 'markdown' })).not.toContain('Custom Character');
+    expect(rosterAsListed(dock, cast, { format: 'markdown' })).toContain('Captain Vos');
   });
 });
 
@@ -197,16 +196,16 @@ describe('the roster without the played entity', () => {
 
   it('leaves the played entity out of the roster at every one of its locations', () => {
     for (const location of [dock, inn]) {
-      expect(buildEntityContext(location, played.cast, { format: 'markdown' })).not.toContain('Mira');
+      expect(rosterAsListed(location, played.cast, { format: 'markdown' })).not.toContain('Mira');
     }
-    expect(buildEntityContext(dock, played.cast, { format: 'markdown' })).toContain('Captain Vos');
+    expect(rosterAsListed(dock, played.cast, { format: 'markdown' })).toContain('Captain Vos');
     expect(buildSublocationEntitiesContext(town, locations, [], played.cast, AS_LISTED, { format: 'markdown' })).not.toContain('Mira');
   });
 
   it('lists the entity at its locations again after a switch away', () => {
     const { cast } = resolvePersona({ source: 'none' }, world, library);
     for (const location of [dock, inn]) {
-      expect(buildEntityContext(location, cast, { format: 'markdown' })).toContain('Mira');
+      expect(rosterAsListed(location, cast, { format: 'markdown' })).toContain('Mira');
     }
   });
 });

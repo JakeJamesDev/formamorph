@@ -12,8 +12,8 @@ import { parseDictionaryImport } from '@/lib/dictionaryFile';
 import { readLibraryDetails } from '@/lib/contentAuthor';
 import { contentLinkStatusLine } from '@/lib/contentLink';
 import { isHelpSeen } from '@/lib/helpSeenStore';
-import { carryMap, placedIn, withCarriedRoutine, withEntityLocations } from '@/lib/entityPresence';
-import { namedPlacesOf } from '@/lib/entityPlaces';
+import { carryMap, placedIn, withCarriedRoutine } from '@/lib/entityPresence';
+import { namedPlacesOf, withMembership } from '@/lib/entityPlaces';
 import { adoptCardVrm, importCharacterFile, type CardVrmFields } from '@/lib/entityFile';
 import { parseJsonText } from '@/lib/jsonFileWorkerUtils';
 import type { LiveWorld } from '@/lib/componentUpdateRun';
@@ -451,7 +451,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       const fresh = flow.rows
         .filter((r) => r.kind === 'location' && !held[r.key] && plan.locations[r.key])
         .map((r) => plan.locations[r.key]);
-      updateEntity({ ...withEntityLocations(entity, [...moved, ...fresh]), link });
+      updateEntity({ ...withMembership(entity, [...moved, ...fresh]), link });
     }
   }, [updateDictionary, updateEntity]);
 

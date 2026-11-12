@@ -1,7 +1,7 @@
 import type { Connection, Entity, GameLocation, PlayerStat } from "@/types";
 import { statContextRuns, statPlacementOf, type ContextFormat, type StatPieces } from "./statContext";
 import { indentRuns, joinRuns, mark, runs, textOf, type MarkedRun, type MarkedText, type TextOrigin } from "./markedText";
-import { entityIdsAt, knownHere, knownInOf } from "./entityPresence";
+import { knownHere, knownInOf } from "./entityPresence";
 import { idsAtAny, type PlacesOf } from "./entityPlaces";
 import type { RelationshipLines } from "./entityRelationships";
 import { effectiveDestinations, nearbyPlaces, walkableReach, type LocationLink } from "./locationGraph";
@@ -97,7 +97,7 @@ function buildLocationList(
 /**
  * Serialize the current location into the plain-text block the AI prompts inject for
  * `<LOCATION>`. Blank fields are skipped so empty values don't confuse smaller models, and
- * media/editor-only fields are never dumped. Entities are emitted separately by `buildEntityContext`.
+ * media/editor-only fields are never dumped. Entities are emitted separately by `renderEntityRoster`.
  *
  * `preferSummary` makes the location emit its short `aiSummary` (falling back to the full
  * `aiDescription` when no summary is authored) — used by the lightweight precall planning request.
@@ -331,21 +331,6 @@ export function entityRosterRuns(
 }
 
 /**
- * Serialize the cast belonging to the current location — the `<ENTITIES>` roster. Membership is
- * entity-owned (ADR-0003), so the roster is the inversion of `entities`, in their authored order.
- * Returns the `N/A` placeholder when the location is null or nobody belongs to it. `preferSummary` and
- * `format` mirror `renderEntityRoster`.
- */
-export function buildEntityContext(
-  location: MaybeLocation,
-  entities: Entity[],
-  opts: RosterOpts = {},
-): string {
-  if (!location) return NONE_PLACEHOLDER;
-  return renderEntityRoster(entityIdsAt(location.id, entities), entities, opts);
-}
-
-/**
  * Serialize the current location's **direct** sub-locations for the `<LOCATION|sublocations>` chip — one line per
  * child (`name: <summary>` / `- **name:** <summary>`), the summary chosen like the other builders. Returns
  * the `N/A` placeholder when the location is null or has no children. Nesting is revealed a level at a time:
@@ -379,7 +364,7 @@ export function sublocationEntityIds(
 /**
  * Serialize the characters/things located in the current location's direct sub-locations for the
  * `<ENTITIES|sublocations>` chip. Gathers + dedupes the children's entity ids and delegates to
- * `buildEntityContext` (a synthetic location holding those ids), so the roster shaping matches the main
+ * `renderEntityRoster`, so the roster shaping matches the main
  * entities section. `excludeIds` drops anyone already shown in a higher-precedence roster (present here) so a
  * character never double-lists across scopes. Returns the `N/A` placeholder when nothing remains.
  */
@@ -677,7 +662,7 @@ export function buildReachableLocationsContext(
 /**
  * Serialize the characters/things in the current location's reachable locations for the
  * `<ENTITIES|reachable>` chip. Gathers + dedupes their entity ids (minus `excludeIds` — anyone shown in a
- * higher-precedence roster, i.e. present here or in a sub-location) and delegates to `buildEntityContext`.
+ * higher-precedence roster, i.e. present here or in a sub-location) and delegates to `renderEntityRoster`.
  * Returns `N/A` when nothing is reachable or no entities remain.
  */
 export function buildReachableEntitiesContext(

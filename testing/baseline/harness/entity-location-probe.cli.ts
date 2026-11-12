@@ -29,7 +29,6 @@ import { defaultEntityLocationPrompt, defaultEntityLocationUserPrompt } from '@/
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import { castRoutines } from '@/lib/entityKind';
-import { entitiesInPlay } from '@/lib/entityPresence';
 import { entityMoveCandidates, entityMoveLabel, entityMoveRequests, isEntityMove, isEntityReply, type EntityMove } from '@/lib/entityFollowing';
 import { navigableDestinations } from '@/lib/locationContext';
 import { placeAll, positionWorld } from '@/lib/positionPlay';
@@ -162,10 +161,9 @@ const passOf = (arm: Arm, id: TurnPassId) => {
 /** Each scene's chip values, destinations and subjects, built once. */
 const prepared = Object.fromEntries(Object.entries(SCENES).map(([id, scene]) => {
   const { w, book } = bookAt(scene.location.id);
-  const cast = entitiesInPlay(entities, book.positions);
-  const ctx = chipValues(authoredChipScene({ ...world, entities: cast }, { location: scene.location, resolve: (text) => text }));
+  const ctx = chipValues(authoredChipScene(world, { location: scene.location, resolve: (text) => text }));
   const destinations = navigableDestinations(scene.location, world.locations, connections).map((l) => l.name);
-  const subjects: TurnPassSubject[] = entityMoveRequests(cast, entities, book, scene.location.id, w, world.locations, connections);
+  const subjects: TurnPassSubject[] = entityMoveRequests(entities, entities, book, scene.location.id, w, world.locations, connections);
   return [id, { ctx, destinations, subjects }];
 })) as Record<keyof typeof SCENES, { ctx: Record<string, string>; destinations: string[]; subjects: TurnPassSubject[] }>;
 

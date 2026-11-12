@@ -3,7 +3,7 @@ import {
   PLAYER_START, type Connection, type Entity, type GameLocation, type PersonaRef, type ScheduleRow, type Stat, type WorldOverview,
 } from '@/types';
 import {
-  idsAt, idsAtAny, namedPlacesOf, positionsIn, presenceIn, samplePlacement, startPlacesOf, type PlacesOf, type PlacesWorld,
+  idsAt, idsAtAny, namedPlacesOf, positionAmong, positionsIn, presenceIn, samplePlacement, startPlacesOf, type PlacesOf, type PlacesWorld,
 } from '@/lib/entityPlaces';
 import { pickMarks, type PickMark } from '@/lib/entityPicking';
 import { presenceLines } from '@/lib/locationPresenceReasons';
@@ -20,7 +20,8 @@ import { reachableEntityIds, sublocationEntityIds } from '@/lib/locationContext'
 import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
 import { snapshotOf } from '@/lib/sandboxSnapshot';
 import type { SandboxState } from '@/lib/statCodeTurn';
-import { liveChipScene, type LiveSceneSources } from '@/lib/chipValues/liveScene';
+import { inventoryOwnersIn, liveChipScene, sceneRosterValues, type LiveSceneSources } from '@/lib/chipValues/liveScene';
+import { tourEntityPresence, type TourWorld } from '@/lib/authoringTour/steps';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { NOON } from '@/test/entityKindFixture';
 import { statBoxLookups } from '@/lib/codeWorldLookup';
@@ -133,7 +134,7 @@ const canvasMarks = (knownIn: Entity['knownIn'], kind: PickMark['kind']) => (pla
 
 const READERS: Reader[] = [
   {
-    name: 'the turn\'s "who is here"',
+    name: 'the turn\'s "who is here", and the game view\'s present ids',
     answer: position,
     read: (place, book) => presentEntityIds(EVERYONE, book, place.id),
   },
@@ -146,6 +147,25 @@ const READERS: Reader[] = [
     name: 'the live chip scene under a turn box',
     answer: position,
     read: (place, book) => liveChipScene(liveSources(EMPTY_BOOK), place, { positions: book.positions, generics: book.generics }).presentIds,
+  },
+  {
+    name: "the game view's scene roster for choices and re-rolls",
+    answer: position,
+    read: (place, book) => {
+      const roster = sceneRosterValues(liveChipScene(liveSources(book), place), place, EVERYONE)('<ENTITIES|markdown>') ?? '';
+      const names = [...roster.matchAll(/^- \*\*(.+?)\*\*/gm)].map((m) => m[1]);
+      return EVERYONE.filter((e) => names.includes(e.name)).map((e) => e.id);
+    },
+  },
+  {
+    name: "the game view's Inventory pass owners after a move",
+    answer: position,
+    read: (place, book) => inventoryOwnersIn(liveChipScene(liveSources(EMPTY_BOOK), place), place, [], book).map((owner) => owner.id),
+  },
+  {
+    name: "the game view's Inventory pass owners with no move",
+    answer: position,
+    read: (place, book) => inventoryOwnersIn(liveChipScene(liveSources(book), place), place, []).map((owner) => owner.id),
   },
   {
     name: 'the met roster by location',
@@ -189,6 +209,12 @@ const READERS: Reader[] = [
     name: 'the Presence tab',
     answer: presence,
     read: (place) => presenceLines(place.id, CAST, WORLD).map((line) => line.entity.id),
+  },
+  {
+    // The tour points at where the entity begins or a row sends it; Can Also Go only allows a place.
+    name: "the authoring tour's entity places",
+    answer: () => ({ cast: CAST, placesOf: (entity) => presenceIn(WORLD)({ ...entity, traversable: [] }) }),
+    read: (place) => CAST.filter((entity) => tourEntityPresence({ ...authoredWorld, dictionaries: [], statUpdates: [] } as TourWorld, { entity: entity.id }).includes(place.id)).map((e) => e.id),
   },
   { name: 'the canvas marks under Nearby', answer: presence, read: canvasMarks(undefined, 'routine') },
   { name: 'the canvas marks under Known In picks', answer: presence, read: canvasMarks(['lighthouse'], 'member') },
@@ -429,7 +455,10 @@ describe("Morphie's readers agree with Entity Places", () => {
 
   describe.each(BOOKS)("the player view's places with $name", ({ book }) => {
     it.each(LOCATIONS)('at $id read Position', (place) => {
-      expect(idsAt(place.id, cut(book).entities, (entity) => entity.locations ?? [])).toEqual(idsAt(place.id, CAST, positionsIn(book)));
+      // A script run reads each met copy's places from the view's live places, as the sandbox snapshot does.
+      const { entities, livePlaces } = cut(book);
+      const placesOf: PlacesOf = (entity) => positionAmong(entity, livePlaces?.positions ?? {}, livePlaces?.genericPositions ?? {});
+      expect(idsAt(place.id, entities, placesOf)).toEqual(idsAt(place.id, CAST, positionsIn(book)));
     });
   });
 });

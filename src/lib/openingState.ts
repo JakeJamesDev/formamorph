@@ -177,8 +177,12 @@ export type LivePlaces = Pick<SandboxState, 'positions' | 'genericPositions' | '
 /** A script run's state outside a turn: the live places, or the Sample Placement while nobody is placed (Q10). */
 export function standaloneStateOf(world: OpeningFoldWorld, persona: OpeningPersona | undefined, live: LivePlaces): SandboxState {
   const placed = Object.keys(live.positions ?? {}).length > 0 || Object.keys(live.genericPositions ?? {}).length > 0;
-  return placed ? { ...openingStateOf(world, undefined, persona), ...live } : authoringStateOf(world, undefined, persona);
+  return placed ? liveStateOf(world, persona, live) : authoringStateOf(world, undefined, persona);
 }
+
+/** Turn one's state with the cast where `live` places it, and nowhere else. */
+export const liveStateOf = (world: OpeningFoldWorld, persona: OpeningPersona | undefined, live: LivePlaces): SandboxState =>
+  ({ ...openingStateOf(world, undefined, persona), ...live });
 
 /** `home` with its stats at their opening values, as turn one seeds them (Q8). */
 export function openingHomeOf(home: UnitHome): UnitHome {

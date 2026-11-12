@@ -2,7 +2,7 @@ import { PLAYER_START, type Connection, type Entity, type EntityStart, type Game
 import { isGeneric, isUnique, routinePlaces } from "@/lib/entityKind";
 import type { Standings } from "@/lib/entityPresence";
 import { startingLocationIds } from "@/lib/locationGraph";
-import { genericPlaces, placesOf, startReach } from "@/lib/positionEngine";
+import { placesOf, startReach } from "@/lib/positionEngine";
 import { openingBook } from "@/lib/positionPlay";
 
 /**
@@ -37,11 +37,11 @@ const membership = (entity: PlacedEntity): string[] => [...(entity.locations ?? 
  *  Entity Instance stands, once. An entity with a kind and no Position stands nowhere (Q10). An entity with no kind
  *  stands at its own Position when it has one, a runtime character's included, else at its membership. */
 export function positionOf(entity: PlacedEntity, { positions, generics }: Standings): string[] {
-  const instances = generics[entity.id];
-  return positionAmong(entity, positions, instances ? { [entity.id]: Object.values(instances).map((instance) => instance.position) } : {});
+  const entityInstances = generics[entity.id];
+  return positionAmong(entity, positions, entityInstances ? { [entity.id]: Object.values(entityInstances).map((g) => g.position) } : {});
 }
 
-/** `positionOf` over a reader that keeps only the places each Generic entity's instances stand at. */
+/** `positionOf` over a reader that keeps only the places each Generic entity's Generic Entity Instances stand at. */
 export function positionAmong(
   entity: PlacedEntity, positions: Readonly<Record<string, string>>, genericPlaces: Readonly<Record<string, readonly string[]>>,
 ): string[] {
@@ -85,6 +85,24 @@ export interface Presence {
 const beginsAt = (start: Pick<EntityStart, "place">, world: Pick<PlacesWorld, "locations">): string[] =>
   (start.place === PLAYER_START ? startingLocationIds(world.locations) : [start.place]);
 
+/** Each place `start`'s rows name, once per row, and whether the Start reaches it. A Player's Starting Location
+ *  Start reaches every place (Q18). */
+function* rowPlaces(start: EntityStart, world: PlacesWorld) {
+  const reach = startReach(start.place, world);
+  for (const row of start.schedule) {
+    for (const place of unique(placesOf(row.action))) yield { row, place, reached: reach.has(place) };
+  }
+}
+
+/** Each row place Presence leaves out because its Start has no path there (Q8). A Start at a place the world lacks counts none. */
+export function unreachedRowPlaces(entity: PlacedEntity, world: PlacesWorld): string[] {
+  if (!hasKind(entity)) return [];
+  const known = new Set(world.locations.map((l) => l.id));
+  return unique((entity.starts ?? [])
+    .filter((start) => start.place === PLAYER_START || known.has(start.place))
+    .flatMap((start) => [...rowPlaces(start, world)].filter(({ place, reached }) => !reached && known.has(place)).map(({ place }) => place)));
+}
+
 /** The Presence of `entity` in `world`: only places the world has (Q19), in the order Starts, rows, Traversable first
  *  name them. A row place with no path from its Start is left out (Q8); a Player's Starting Location Start checks none (Q18). */
 export function presenceOf(entity: PlacedEntity, world: PlacesWorld): Presence {
@@ -101,11 +119,8 @@ export function presenceOf(entity: PlacedEntity, world: PlacesWorld): Presence {
   };
   for (const start of entity.starts ?? []) {
     for (const place of beginsAt(start, world)) at(place).begins.push(start.id);
-    const reach = startReach(start.place, world);
-    for (const row of start.schedule) {
-      for (const place of unique(placesOf(row.action))) {
-        if (reach.has(place)) at(place).rows.push({ kind: "row", startId: start.id, rowId: row.id });
-      }
+    for (const { row, place, reached } of rowPlaces(start, world)) {
+      if (reached) at(place).rows.push({ kind: "row", startId: start.id, rowId: row.id });
     }
   }
   const traversable = isUnique(entity) ? entity.traversable ?? [] : [];
@@ -163,24 +178,3 @@ export function withMembership<E extends Pick<Entity, "locations">>(entity: E, p
 export function withoutMembership<E extends Pick<Entity, "locations">>(entity: E): E {
   return "locations" in entity ? withMembership(entity, []) : entity;
 }
-
-/** `entities` as they stand in play, a projection only this module reads: each placed copy's `locations` is its Position,
- *  a Generic entity's places each once (Q131). Never saved. The same array when nobody is placed. */
-export function entitiesInPlay(entities: Entity[], { positions, generics }: Standings): Entity[] {
-  if (!entities.some((e) => e.id in positions || e.id in generics)) return entities;
-  const places = genericPlaces(generics);
-  return entities.map((entity) => {
-    const at = positions[entity.id];
-    if (at !== undefined) return { ...entity, locations: [at] };
-    const generic = places[entity.id];
-    return generic ? { ...entity, locations: generic } : entity;
-  });
-}
-
-/** The ids of `entities` whose membership holds `locationId`, read over `entitiesInPlay` in play. */
-export const entityIdsAt = (locationId: string | null | undefined, entities: readonly PlacedEntity[]): string[] =>
-  idsAt(locationId, entities, membership);
-
-/** The ids of `entities` whose membership holds any of `locationIds`, each once. */
-export const entityIdsAtAny = (locationIds: readonly string[], entities: readonly PlacedEntity[]): string[] =>
-  idsAtAny(locationIds, entities, membership);
