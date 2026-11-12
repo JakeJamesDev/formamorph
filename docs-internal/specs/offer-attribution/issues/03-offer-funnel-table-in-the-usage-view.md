@@ -1,6 +1,6 @@
 # 03: Offer Funnel Table in the Usage View
 
-Status: ready-for-human
+Status: done
 Blocked by: 02 — Send Funnel Steps per Source
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

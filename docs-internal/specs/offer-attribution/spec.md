@@ -1,6 +1,7 @@
 # Spec: Offer Attribution
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-12. Tickets 01–03, last landing de8e557b3 (ticket 01 is FormamorphServer dc9b197). Review: one gap fixed in the close (Q18), Q16 text clarified, server README row fixed (FormamorphServer 1e52a71). Gates green on 2026-11-12.
 Spec session: offer-attribution — spec
 
 Each Formamorph AI offer gets its own funnel counts, from shown to See Levels to Patreon to the finished checklist, so we can see which offer converts. Spans both repos: the client and FormamorphServer.
@@ -37,8 +38,9 @@ The staff Usage view shows one row per source, with a rate from each step to the
 | Q13 | The locked-preset panel's See Levels button sends `locked_see_levels`. The earlier text said `locked` opens only the checklist; the panel has both buttons. Ticket 02 ruling. |
 | Q14 | The Road sends no Patreon or Checklist step while it holds no source. Only the dev-router opens it that way; every real caller passes a source by type. Ticket 02 ruling. |
 | Q15 | The table replaces the Offer Steps bars under the same heading. The empty text stays for a range where every count is zero. Ticket 03 ruling. |
-| Q16 | A row's first valid step shows its count with no rate. Notice and locked show the empty value only in Shown. A step missing from the report counts 0. A rate over a zero base shows the empty value. Ticket 03 ruling. |
+| Q16 | A row's first valid step shows its count with no rate. Notice and locked show the empty value only in Shown. A step missing from the report counts 0. A rate over a zero base shows the empty value in place of the rate, so the cell reads `0 (—)`. Ticket 03 ruling. |
 | Q17 | Cells read "count (rate)", the same as the bars did. Ticket 03 ruling. |
+| Q18 | Only a checklist finished during the open counts. An install whose checklist was already finished when The Road opened sends no Checklist step. Close review ruling. |
 | Q12 | Tests use existing seams only: funnel POSTs counted per surface on the client, the server's funnel totals and Usage report tests, and the Usage tab test. |
 
 ## User Stories

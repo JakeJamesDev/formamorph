@@ -1,6 +1,6 @@
 # 01: Per-Source Funnel Steps on the Server
 
-Status: ready-for-human
+Status: done
 Base: 8c99bde
 Repo: FormamorphServer
 Blocked by: None (can start immediately)
