@@ -82,6 +82,7 @@ Q-numbers are from the grill of 2026-11-11. Q1–Q6 and Q19 belong to the Avatar
 - The Avatar is the one the row resolves to under Avatar Pick Rules. When a world row resolves to several, the dialog offers a choice between them and opens on the first.
 - The controls are the ones a row can hold: the Avatar's Body Sliders, Head Features, and its skin, eye and hair colors. Hair style, hair length and other colors are absent.
 - The controls reuse the Avatar viewers' customization surface, so the sliders, the color rows and the undo buttons are the same components.
+- With no Avatar the button is disabled. Where the tab already shows its hint for a row with no model, the button sits beside that hint. An entity with only a 3D model gets a short hint of its own that says to set an Avatar. A world row with no Avatar has no model, so it shows the existing hint.
 - The viewer mounts only while the dialog is open.
 - The dialog has a dev-route entry.
 
