@@ -78,6 +78,7 @@ One resolver turns a pick into an Avatar source or none. Play already has it; th
 
 - An owned row (entity stat or trait) lists the entity's 3D model and the Avatar its pick resolves to on the author's device.
 - A world row lists the Avatar of each persona a new game of the world can be played as. A world that fixes the persona gives one Avatar. A library persona or None plays as the Custom Persona's pick.
+- The playable set is what Enter World offers under Allowed Personas. Starts On guides the player and does not lock them, so it never narrows the set. A world fixes the persona only when the offered set holds one choice. World Only with no persona entity offers what Any offers.
 - The list of every library Avatar is removed.
 - The Colors picker and the color channels follow the same resolved Avatars.
 - The "Not on this model" mark reads the same resolved Avatars. This replaces Q14 of the Avatar Look Bindings spec for User's Default: the pick is now known on the author's device. A row is marked only when none of its Avatars and models has the control.
