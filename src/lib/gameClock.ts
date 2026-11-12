@@ -120,8 +120,8 @@ Answer with three fields:
 function jsonClockReading(reply: Record<string, unknown>): ClockReading | null {
   const { lasts_until: until, unit, count } = reply;
   const anchor = CLOCK_ANCHORS.find((a) => a === until) ?? null;
-  const amount = Number.isInteger(count) && (count as number) >= 0 && TURN_TIME_UNITS.some((u) => u === unit)
-    ? { count: count as number, unit: unit as TurnTimeUnit } : null;
+  const amount = typeof count === 'number' && Number.isInteger(count) && count >= 0 && isTurnTimeUnit(unit)
+    ? { count, unit } : null;
   return anchor || amount ? { anchor, amount } : null;
 }
 
@@ -132,10 +132,20 @@ export function parseClockReply(raw: string): ClockReading | null {
     ? jsonClockReading(parsed as Record<string, unknown>) : parseClockReading(raw);
 }
 
-/** Where each anchor falls, as a fraction of the day: the daypart starts, noon at half, midnight at the end. */
-const ANCHOR_FRACTIONS: Record<ClockAnchor, number> = {
-  dawn: 6 / 24, morning: 8 / 24, noon: 12 / 24, afternoon: 13 / 24, evening: 17 / 24, nightfall: 20 / 24, midnight: 1,
-};
+/** Where an anchor falls, as a fraction of the day: its daypart's start (nightfall starts night), noon at half, midnight at the end. */
+function anchorFraction(anchor: ClockAnchor): number {
+  if (anchor === 'noon') return 1 / 2;
+  if (anchor === 'midnight') return 1;
+  const part: Daypart = anchor === 'nightfall' ? 'night' : anchor;
+  return DAYPART_STARTS.find(([, d]) => d === part)?.[0] ?? 0;
+}
+
+/** Whole calendar days a count names: days and weeks directly, smaller units by filling days. */
+function countedCalendarDays(amount: { count: number; unit: TurnTimeUnit }, hoursPerDay: number): number {
+  if (amount.unit === 'days') return amount.count;
+  if (amount.unit === 'weeks') return amount.count * 7;
+  return (amount.count * TURN_TIME_UNIT_HOURS[amount.unit]) / hoursPerDay;
+}
 
 /** An anchor further ahead than this share of a day, beside a sub-day count, names the time it already is. */
 const ANCHOR_GUARD_FRACTION = 20 / 24;
@@ -154,11 +164,9 @@ export function readingHours(reading: ClockReading, startElapsed: number, calend
     const { hoursPerDay } = resolve(calendar);
     const minutesPerDay = hoursPerDay * 60;
     const startMinute = storyMinute(startElapsed, calendar) % minutesPerDay;
-    const anchorMinute = Math.round(ANCHOR_FRACTIONS[anchor] * minutesPerDay) % minutesPerDay;
+    const anchorMinute = Math.round(anchorFraction(anchor) * minutesPerDay) % minutesPerDay;
     const minutesAhead = (anchorMinute - startMinute + minutesPerDay) % minutesPerDay || minutesPerDay;
-    // Calendar days: a count in days or weeks names days directly; a count in hours fills them.
-    const countedDays = !amount || countedHours === null ? null
-      : amount.unit === 'days' ? amount.count : amount.unit === 'weeks' ? amount.count * 7 : countedHours / hoursPerDay;
+    const countedDays = amount ? countedCalendarDays(amount, hoursPerDay) : null;
     const countWins = minutesAhead > ANCHOR_GUARD_FRACTION * minutesPerDay && countedDays !== null && countedDays < 1;
     if (!countWins) hours = minutesAhead / 60 + Math.max(0, Math.floor(countedDays ?? 0) - 1) * hoursPerDay;
   }
@@ -381,6 +389,7 @@ export function formatNow(nowHours: number, calendar?: WorldCalendar): string {
 
 export const TURN_TIME_UNITS = ['minutes', 'hours', 'days', 'weeks'] as const;
 export type TurnTimeUnit = (typeof TURN_TIME_UNITS)[number];
+const isTurnTimeUnit = (value: unknown): value is TurnTimeUnit => TURN_TIME_UNITS.some((u) => u === value);
 export const TURN_TIME_UNIT_HOURS: Record<TurnTimeUnit, number> = { minutes: 1 / 60, hours: 1, days: 24, weeks: 168 };
 
 const isWhole = (n: number) => Math.abs(n - Math.round(n)) < 1e-6;

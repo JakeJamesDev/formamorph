@@ -252,13 +252,14 @@ describe('computeTurnCommit — the stored turn', () => {
   });
 });
 
+/** The hours a clock reply costs when the turn starts at `hour` of day 2. */
+const hoursFrom = (raw: string, hour: number, calendar: WorldCalendar = { startHour: 0 }) => {
+  const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }, { id: 'timePassed', raw }]);
+  const day = calendar.hoursPerDay ?? 24;
+  return computeTurnCommit({ result, plan, context: context({ gameTime: day + hour, calendar }) })?.turnHours;
+};
+
 describe('computeTurnCommit — anchored clock replies', () => {
-  /** The hours a clock reply costs when the turn starts at `hour` of day 2. */
-  const hoursFrom = (raw: string, hour: number, calendar: WorldCalendar = { startHour: 0 }) => {
-    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }, { id: 'timePassed', raw }]);
-    const day = calendar.hoursPerDay ?? 24;
-    return computeTurnCommit({ result, plan, context: context({ gameTime: day + hour, calendar }) })?.turnHours;
-  };
   const ANCHOR_AT = { dawn: 6, morning: 8, noon: 12, afternoon: 13, evening: 17, nightfall: 20, midnight: 24 };
 
   it('lands a sleep until dawn at dawn, whenever it began', () => {
@@ -330,10 +331,6 @@ describe('computeTurnCommit — anchored clock replies', () => {
 });
 
 describe('computeTurnCommit — schema clock replies', () => {
-  const hoursFrom = (raw: string, hour: number, calendar: WorldCalendar = { startHour: 0 }) => {
-    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }, { id: 'timePassed', raw }]);
-    return computeTurnCommit({ result, plan, context: context({ gameTime: (calendar.hoursPerDay ?? 24) + hour, calendar }) })?.turnHours;
-  };
   const json = (lastsUntil: string, unit: string, count: number) => JSON.stringify({ lasts_until: lastsUntil, unit, count });
 
   it.each([

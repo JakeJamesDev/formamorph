@@ -385,18 +385,17 @@ const entityLocationRequest = (
       '<MOVE OPTIONS>': '',
     },
   ));
-  const withFormat = (format: string) => withReplyFormat(user, format);
   // One row per subject: its key, a colon, and its longest line.
   const cap = subjects.reduce(
     (sum, subject, i) => sum + estimateTokens(keys[i].length + 2) + locationChangeCap(subjectCandidates(subject).map(([label]) => label)), 0,
   );
   const shared = { type: 'entityLocation' as const, silent: false, quiet: true };
-  const textRequest = labeledRequest({ ...shared, maxTokens: cap }, system, withFormat(entityMovesFormat(subjects, false)));
+  const textRequest = labeledRequest({ ...shared, maxTokens: cap }, system, withReplyFormat(user, entityMovesFormat(subjects, false)));
   if (input.settings.entityLocationTextPass) return textRequest;
   const { systemPrompt, messages, maxTokens, anatomy } = textRequest;
   return {
     ...labeledRequest(
-      { ...shared, maxTokens: cap + JSON_REPLY_SLACK * subjects.length }, system, withFormat(entityMovesFormat(subjects, true)),
+      { ...shared, maxTokens: cap + JSON_REPLY_SLACK * subjects.length }, system, withReplyFormat(user, entityMovesFormat(subjects, true)),
     ),
     responseSchema: entityMovesSchema(subjects),
     textFallback: { systemPrompt, messages, maxTokens, anatomy },
@@ -767,13 +766,12 @@ export function inventoryRequest(
 ): TurnPassRequest<ChatMessage> {
   const system = systemTiled(prompts.system, values.ctx);
   const user = userTiled(prompts.user, { '<PLAYER ACTION>': values.action, '<NARRATION>': values.narration });
-  const withFormat = (format: string) => withReplyFormat(user, format);
   const shared = { type: 'inventory' as const, maxTokens: TURN_PASS_CAPS.inventory, silent: false, quiet: base.quiet };
-  const textRequest = labeledRequest(shared, system, withFormat(INVENTORY_TEXT_FORMAT));
+  const textRequest = labeledRequest(shared, system, withReplyFormat(user, INVENTORY_TEXT_FORMAT));
   if (base.textPass) return textRequest;
   const { systemPrompt, messages, maxTokens, anatomy } = textRequest;
   return {
-    ...labeledRequest(shared, system, withFormat(INVENTORY_JSON_FORMAT)),
+    ...labeledRequest(shared, system, withReplyFormat(user, INVENTORY_JSON_FORMAT)),
     responseSchema: inventoryPassSchema(),
     textFallback: { systemPrompt, messages, maxTokens, anatomy },
   };
@@ -830,13 +828,12 @@ const timePassedPass: TurnPassRecord<ClockReading | null> = {
       '<PLAYER ACTION>': stripOocDirectives(material.effectiveAction),
       '<NARRATION>': material.narration,
     });
-    const withFormat = (format: string) => withReplyFormat(user, format);
     const shared = { type: 'timePassed' as const, ...silentOn(material) };
-    const textRequest = labeledRequest({ ...shared, maxTokens: TURN_PASS_CAPS.timePassed }, system, withFormat(CLOCK_TEXT_FORMAT));
+    const textRequest = labeledRequest({ ...shared, maxTokens: TURN_PASS_CAPS.timePassed }, system, withReplyFormat(user, CLOCK_TEXT_FORMAT));
     if (input.settings.clockTextPass) return textRequest;
     const { systemPrompt, messages, maxTokens, anatomy } = textRequest;
     return {
-      ...labeledRequest({ ...shared, maxTokens: TURN_PASS_CAPS.timePassedSchema }, system, withFormat(CLOCK_SCHEMA_FORMAT)),
+      ...labeledRequest({ ...shared, maxTokens: TURN_PASS_CAPS.timePassedSchema }, system, withReplyFormat(user, CLOCK_SCHEMA_FORMAT)),
       responseSchema: clockReadingSchema(),
       textFallback: { systemPrompt, messages, maxTokens, anatomy },
     };
