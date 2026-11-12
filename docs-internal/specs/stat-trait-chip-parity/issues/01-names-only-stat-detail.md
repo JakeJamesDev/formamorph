@@ -30,7 +30,7 @@ Spec rulings: Q1, Q3, Q5.
 
 **Not verified**
 
-- The lock-restored mutation was not run. The dialog tests assert the Range box is enabled and clears, which the lock disabled.
+- The lock-restored mutation was not run here. The spec session ran it after landing: with the lock put back, 4 dialog tests in ChipOptionsDialog and PromptField.entityStats went red.
 - No browser check of the dialog.
 
 **For you**
