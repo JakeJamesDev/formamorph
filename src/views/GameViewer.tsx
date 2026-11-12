@@ -12,7 +12,7 @@ import { addAction, closeList, listCounts, recordSent, reopenSent, reversalOf, t
 import { useNarrationLayout } from '@/lib/useNarrationLayout';
 import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { personaKey, samePersonaRef } from '@/lib/personaPick';
-import { metRosterByLocation } from '@/lib/metEntities';
+import { mapRoster } from '@/lib/mapRoster';
 import { usePresence } from '@/lib/usePresence';
 import {
   IN_SCENE_TURNS, hasStrangerFace, introducedIds, labelsInPlay, metCheck, strangersInPlay, sceneAfterMove, strangerAliasesFromCast, withMet,
@@ -1007,10 +1007,13 @@ const GameViewer = ({
     () => Object.fromEntries([...traitLibrary, ...allEntities].map((entity) => [entity.id, entity.name])),
     [traitLibrary, allEntities],
   );
-  // The Map's live roster: everyone the player knows by name, where each stands. A runtime character stands where it was met.
+  // The Map's live roster: every entity where it stands, named or unknown by what the player has heard.
   const presence = usePresence();
-  const { known: knownPresence } = presence;
-  const metRoster = useMemo(() => metRosterByLocation(knownPresence), [knownPresence]);
+  const { byId: presenceById } = presence;
+  const mapEntities = useMemo(
+    () => mapRoster(presenceById.values(), currentLocation?.id, locations, connections),
+    [presenceById, currentLocation?.id, locations, connections],
+  );
   // Everything a capitalized word in the narration might be OTHER than a new character. Feeds the
   // narration name extractor so a place, a stat, a trait, a lore term, a wildcard value or the player
   // never gets promoted to a person. Location names include the whole world, not just here — the
@@ -6745,7 +6748,7 @@ const GameViewer = ({
         locations={locations}
         connections={connections}
         currentLocationId={currentLocation?.id ?? null}
-        entitiesAt={metRoster}
+        entitiesAt={mapEntities}
         mapBackground={mapBackdrop}
         changeLocation={travel}
         resolveText={resolvePH}

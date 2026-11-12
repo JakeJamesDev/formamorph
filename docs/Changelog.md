@@ -85,6 +85,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A trait Preview in a world with several playable Avatars has an Avatar menu to switch between them.** Your unsaved changes stay when you switch. Save writes the changes you made on every Avatar.
     - **In the World Editor, a stat's Appearance tab has a Preview of the stat's look at Max on its Avatar.** A scrubber shows the look from Min to Max. Save writes each slider's Change By and each Target Color.
     - **In the World Editor, a linked stat now has Edit Blueprint, and a linked trait no longer has Link To….** Edit Blueprint and Reset to Blueprint sit at the bottom right of the panel.
+  - **Map Strangers:**
+    - **The Map counts entities you haven't met, under the name you've heard nearby and as unknowns elsewhere.** A box's count splits into named entries and unknowns marked ?. An entity with no heard name stays unknown everywhere. The tip lists names, then unknowns.
   - **In the World Editor, an entity with only a Stranger Description now starts as a stranger.** In play, you see its Name and that description until you meet it. Stranger Name now sits beside Name, and Stranger Description under Player-Facing Description. Items' Unidentified fields match, and each field has its own help button.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Aurelia, the default Avatar in release builds, now has Ear Shape, Tusks, Fox Ears and Fox Tail sliders.** Worlds can set them from traits, such as Fox Ears and Fox Tail for a Kitsune.

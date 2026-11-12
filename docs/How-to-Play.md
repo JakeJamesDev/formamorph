@@ -387,6 +387,8 @@ You meet a stranger when the story says its real name. After that, the full enti
 | **List** | Every location as a tree, with sublocations indented. Expand or collapse a parent. Your location is highlighted. |
 | **Map** | The author's map, read-only. A pin marks your location. Drag to pan, and pinch to zoom. |
 
+A count on a Map box shows the entities there. In your location and the places next to it, an entity you haven't met shows under the name you've heard for it. Everywhere else it shows as an unknown, marked **?**. An entity you've heard no name for is an unknown everywhere. Hover the count to read the names, then the unknowns.
+
 The dialog opens on the tab you used last.
 
 ## Game Actions

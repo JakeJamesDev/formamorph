@@ -15,7 +15,7 @@ const BUNDLED_PREFIX = 'bundled-';
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
 export const DEV_FIXTURES = [
   'whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'avatarIcon',
-  'entityPresence', 'entityFollowers', 'mapBackground', 'items',
+  'entityPresence', 'entityFollowers', 'mapStrangers', 'mapBackground', 'items',
   ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
 ];
 
@@ -444,6 +444,23 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
           },
         },
         saveName: 'DEV: Entity Followers',
+      };
+    }
+    case 'mapStrangers': {
+      // The `entityFollowers` save with the Archivist unmet (its label shows in the player's place), a Warden
+      // met by true name, and Moss beside a stranger in the Vent Crawl, two places from the player (an unknown).
+      const base = await loadDevFixture('entityFollowers');
+      if (!base) return null;
+      const save = base.save as SaveObject;
+      const lurker = unique({ id: 'dev-lurker', name: 'Lurker', strangerName: 'a lurking shape' }, ['dev-vent']);
+      const moss = unique({ id: 'dev-moss', name: 'Moss' }, ['dev-vent']);
+      return {
+        world: { ...base.world, entities: [...base.world.entities, lurker, moss] },
+        save: {
+          ...save,
+          currentState: { ...save.currentState, metEntities: [ENTITY_FOLLOWER.id, 'dev-sentry', 'dev-warden'] },
+        },
+        saveName: 'DEV: Map Strangers',
       };
     }
     case 'mapBackground': {

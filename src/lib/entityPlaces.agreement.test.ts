@@ -14,7 +14,7 @@ import { placeAll, positionWorld, scriptPlaces } from '@/lib/positionPlay';
 import { discoveredAsEntities, selectReachableVisitors } from '@/lib/runtimeCharacters';
 import { computePresence, startsMet } from '@/lib/presence';
 import { locationForPersonaPick, offeredStartLocations } from '@/lib/personaPick';
-import { metRosterByLocation } from '@/lib/metEntities';
+import { mapRoster } from '@/lib/mapRoster';
 import { nearbyPlaces } from '@/lib/locationGraph';
 import { reachableEntityIds, sublocationEntityIds } from '@/lib/locationContext';
 import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
@@ -168,14 +168,14 @@ const READERS: Reader[] = [
     read: (place, book) => inventoryOwnersIn(liveChipScene(liveSources(book), place), place, []).map((owner) => owner.id),
   },
   {
-    name: 'the met roster by location',
+    name: 'the map roster by location',
     answer: position,
     read: (place, book) => {
       const presence = computePresence({
         entities: CAST, runtime: RUNTIME, ...book, followers: [], locationId: 'square', locations: LOCATIONS,
         connections: CONNECTIONS, persona: null, met: EVERYONE.map((e) => e.id), strangerAliases: {}, turns: [],
       });
-      const names = metRosterByLocation(presence.known)[place.id] ?? [];
+      const names = mapRoster(presence.byId.values(), 'square', LOCATIONS, CONNECTIONS)[place.id]?.named ?? [];
       return EVERYONE.filter((e) => names.includes(e.name)).map((e) => e.id);
     },
   },

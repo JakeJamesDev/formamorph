@@ -9,7 +9,7 @@ import { defaultCollapsedLocations, locationRows, removeCollapsedChildren } from
 import { ancestors, parentLookup } from "@/lib/ancestors";
 import { useTravelView, type TravelView } from "@/lib/travelPrefs";
 import { cn } from "@/lib/utils";
-import type { MetRoster } from "@/lib/metEntities";
+import type { MapRoster } from "@/lib/mapRoster";
 import type { MapBackdrop } from "@/lib/useLocationBackdrop";
 import type { Connection, GameLocation } from "@/types";
 
@@ -32,8 +32,8 @@ export const LocationModal = ({
   locations: GameLocation[];
   connections: Connection[];
   currentLocationId: string | null;
-  /** The met entities the Map shows. */
-  entitiesAt?: MetRoster;
+  /** What the Map shows at each place: names and unknowns. */
+  entitiesAt?: MapRoster;
   /** The Map Background image the Map draws behind its boxes. */
   mapBackground?: MapBackdrop;
   changeLocation: (location: GameLocation) => void;

@@ -17,7 +17,7 @@ import { Tip } from '@/components/ui/tooltip';
 import { MapBackgroundLayer } from '@/components/MapBackgroundLayer';
 import type { MapBackdrop } from '@/lib/useLocationBackdrop';
 import { cn } from '@/lib/utils';
-import type { MetRoster } from '@/lib/metEntities';
+import type { MapPlace, MapRoster } from '@/lib/mapRoster';
 import type { Connection, GameLocation } from '@/types';
 
 /**
@@ -35,8 +35,8 @@ interface MapNodeData extends Record<string, unknown> {
   label: string;
   /** The box the player is standing in. */
   here: boolean;
-  /** The met entities standing in this box. */
-  entities?: string[];
+  /** The names and unknown entries standing in this box. */
+  entities?: MapPlace;
 }
 
 type MapNode = Node<MapNodeData>;
@@ -74,14 +74,20 @@ const TravelButton = ({ id, data, className }: {
   );
 };
 
-/** How many met entities stand in a box, on its top-right corner. The tip names them. */
-const EntityCount = ({ names }: { names?: string[] }) => {
-  if (!names?.length) return null;
+/** The tip for a box's badge: the names on one line, the unknown count on the next. */
+const entityTip = ({ named, unknown }: MapPlace): string =>
+  [named.join(', '), unknown ? `${unknown} unknown` : ''].filter(Boolean).join('\n');
+
+/** The entities in a box, on its top-right corner: the named count, then the unknown count marked "?". A part
+ *  of zero is left out. The tip lists the names, then the unknowns. */
+const EntityCount = ({ place }: { place?: MapPlace }) => {
+  if (!place || (!place.named.length && !place.unknown)) return null;
   return (
-    <Tip tip={names.join(', ')}>
+    <Tip tip={entityTip(place)}>
       <span role="img" className="absolute -right-2 -top-2 z-10 flex items-center gap-0.5 rounded-full border bg-card px-1.5 text-meta text-muted-foreground shadow-sm">
         <EntitiesIcon className="h-3 w-3" aria-hidden="true" />
-        {names.length}
+        {place.named.length > 0 && <span data-part="named">{place.named.length}</span>}
+        {place.unknown > 0 && <span data-part="unknown">{place.named.length > 0 ? `+${place.unknown}?` : `${place.unknown}?`}</span>}
       </span>
     </Tip>
   );
@@ -103,7 +109,7 @@ const MapLocationNode = ({ id, data }: NodeProps<MapNode>) => (
       data={data}
       className={cn('flex h-full w-full justify-center rounded-md border px-3', data.here && hereRing)}
     />
-    <EntityCount names={data.entities} />
+    <EntityCount place={data.entities} />
     <ArrowEnds />
   </>
 );
@@ -113,7 +119,7 @@ const MapLocationNode = ({ id, data }: NodeProps<MapNode>) => (
 const MapGroupNode = ({ id, data }: NodeProps<MapNode>) => (
   <div className={cn('h-full w-full rounded-md border bg-muted/40', data.here && hereRing)}>
     <TravelButton id={id} data={data} className="flex w-full rounded-t-md border-b px-3 py-1.5" />
-    <EntityCount names={data.entities} />
+    <EntityCount place={data.entities} />
     <ArrowEnds />
   </div>
 );
@@ -125,7 +131,7 @@ const LocationMap = ({ locations, connections, currentLocationId, entitiesAt, ba
   locations: GameLocation[];
   connections: Connection[];
   currentLocationId: string | null;
-  entitiesAt?: MetRoster;
+  entitiesAt?: MapRoster;
   /** The Map Background's visible image, drawn where the author placed it. */
   background?: MapBackdrop;
   onTravel: (location: GameLocation) => void;
