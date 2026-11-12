@@ -19,7 +19,7 @@ This page covers how your world meets the player's persona:
 1. Switch the World Editor to Advanced mode.
 2. Open the **Entities** tab, and select the entity.
 3. On the **Profile** tab, find the **Persona** control and select **Playable**.
-4. Optional: on the **Routine** tab, add a [start](World-Editor-Entities#starts) at every place where the player can start as this persona. The first start at a starting location is picked first. With none flagged, the first start is. A start at **Player's Starting Location** lets the player begin at any starting location. None of them is picked first.
+4. Optional: on the **Presence** tab, add a [start](World-Editor-Entities#starts) at every place where the player can start as this persona. The first start at a starting location is picked first. With none flagged, the first start is. A start at **Player's Starting Location** lets the player begin at any starting location. None of them is picked first.
 5. Read the entity's descriptions, and the descriptions that mention it. Make sure each one is still correct when the player is this entity. See [Playable Entities](#playable-entities).
 
 For an entity that exists only when the player picks it, select **Persona-Only** in step 3.

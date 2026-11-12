@@ -222,7 +222,7 @@ The default prompt gives the **narrator** the current location in full. It gives
 <!-- keywords: who is here, npcs in room, assign characters, populate, residents, occupants, put npc here -->
 <!-- route: worldEditorLocation.presence -->
 
-**Add an entity here** is under the **Entities Here** list on the **Presence** tab. It puts any Unique or Generic entity at this location. An edit here sets where an entity begins, the same as on its **Routine** tab.
+**Add an entity here** is under the **Entities Here** list on the **Presence** tab. It puts any Unique or Generic entity at this location. An edit here sets where an entity begins, the same as on its **Presence** tab.
 
 The select lists each entity that has no row here. The Custom Persona isn't listed. When every entity has a row, the select is not shown.
 
@@ -233,7 +233,7 @@ The new entity is selected with its **Routine** open, so you can set it at once.
 
 A Generic entity that begins here has a 🗑 button at the end of its row. It removes every place the entity begins at here, with their rows. Its other places stay as they are. **Undo** brings them back in one step.
 
-A Generic entity that begins at no other location can't be removed. The button is off, and its tooltip says why. Give the entity another place to begin on its **Routine** tab, then remove it here.
+A Generic entity that begins at no other location can't be removed. The button is off, and its tooltip says why. Give the entity another place to begin on its **Presence** tab, then remove it here.
 
 A Unique entity has no remove button. Change its **Routine** to take it out of this location.
 
@@ -246,7 +246,7 @@ A Unique entity has no remove button. Change its **Routine** to take it out of t
 Select a row to edit that entity under the list. It is the same editor as on the entity: **Routine** for its routine and **Known In** for where it is known. One entity is selected at a time. Select the row again, or the ✕ button, to close it. The arrow keys move between rows, and Enter or Space selects one.
 
 - 🗺️ **On the Locations Canvas** beside the panel, the selected entity's routine shows on the map, with the key. The map only shows it. Edit the routine under the list, or in full screen.
-- 📌 **A pin** marks each Start, each routine row and each **Can Also Go** entry that names this location. The editor opens on the first Start with a pin, or on the first Start when none has one. The pins show only here, not on the entity's own **Routine** tab.
+- 📌 **A pin** marks each Start, each routine row and each **Can Also Go** entry that names this location. The editor opens on the first Start with a pin, or on the first Start when none has one. The pins show only here, not on the entity's own **Presence** tab.
 - 📍 **Click another location** to open it. The entity stays selected there when it can be there too, and the editor opens on a Start with a pin.
 - 🎯 **Picked Locations** under **Known In** are picked in full screen. Select **Edit Full Screen** beside the hint to open it on the entity.
 - ↔️ **Full screen** opens on the selected entity. Pick an entity there, and it is selected here when you come back.
@@ -254,7 +254,7 @@ Select a row to edit that entity under the list. It is the same editor as on the
 - ↩️ **Undo and redo** of an edit made under the list return you to this location's **Presence** tab with the entity selected. If the edit changed **Known In**, that opens.
 - ↩️ **Undo of an added entity** leaves the tab open with no one selected.
 
-Select the route icon on a row to open that entity's **Routine** tab.
+Select the route icon on a row to open that entity's **Presence** tab.
 
 | Reason | Means |
 |---|---|

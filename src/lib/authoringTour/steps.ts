@@ -543,8 +543,8 @@ const ENTITY_STEPS: readonly TourStep[] = [
     tab: 'entities',
     anchor: 'entity-locations',
     item: 'entity',
-    panelTab: 'routine',
-    title: 'Routine',
+    panelTab: 'presence',
+    title: 'Presence',
     body: 'Pick where the entity starts. The AI reads an entity only where it stands.',
     isComplete: (world, items) => tourEntityPlaces(world, items).length > 0,
     useExample: (api, world, items) => {

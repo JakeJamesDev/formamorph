@@ -69,7 +69,7 @@ describe('entityTabForField', () => {
   });
 
   it('shows Simple mode only Profile, Descriptions, Items and Routine', () => {
-    expect(entityPanelTabsFor(false).map((t) => t.value)).toEqual(['profile', 'descriptions', 'items', 'routine']);
+    expect(entityPanelTabsFor(false).map((t) => t.value)).toEqual(['profile', 'descriptions', 'items', 'presence']);
   });
 });
 
@@ -78,12 +78,12 @@ describe('the library entity editor tabs', () => {
     expect(ENTITY_EDITOR_TABS.map((t) => t.value)).toEqual(['entity', 'traits', 'stats', 'placeholders']);
     expect(ENTITY_EDITOR_SUBTABS.map((t) => t.value)).toEqual(['profile', 'descriptions', 'openings']);
     // Placements and routines are world records, so a library entity has no Items or Routine tab.
-    const both = [...ENTITY_EDITOR_SUBTABS, ...ENTITY_EDITOR_TABS.slice(1), { value: 'items' }, { value: 'routine' }].map((t) => t.value).sort();
+    const both = [...ENTITY_EDITOR_SUBTABS, ...ENTITY_EDITOR_TABS.slice(1), { value: 'items' }, { value: 'presence' }].map((t) => t.value).sort();
     expect(both).toEqual(ENTITY_PANEL_TABS.map((t) => t.value).sort());
   });
 
   it('puts Stats after Traits in the World Editor panel, Advanced only', () => {
-    expect(ENTITY_PANEL_TABS.map((t) => t.value)).toEqual(['profile', 'descriptions', 'items', 'routine', 'traits', 'stats', 'placeholders', 'openings']);
+    expect(ENTITY_PANEL_TABS.map((t) => t.value)).toEqual(['profile', 'descriptions', 'items', 'presence', 'traits', 'stats', 'placeholders', 'openings']);
     expect(entityPanelTabsFor(true).map((t) => t.value)).toContain('stats');
     expect(entityPanelTabsFor(false).map((t) => t.value)).not.toContain('stats');
   });

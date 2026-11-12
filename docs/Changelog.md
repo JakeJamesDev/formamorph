@@ -43,15 +43,16 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Formamorph AI:**
     - **Set up your AI offers Formamorph AI first on AMD, Intel and integrated GPUs, and on computers without a GPU.** It reads the GPU the built-in engine uses. A card with 8 GB of memory or less still counts.
     - **After 10 turns on the built-in engine with little GPU memory, a card offers Formamorph AI once.** It sits under the story and compares Formamorph AI with the model on your computer. Not Now hides it for good.
-  - **Routine Tab:**
-    - **The Routine tab shows the day as a bar of colored bands above the sentences.** Drag a band's ends to change its time, drag the band itself to move it, click a band to find its row, or click free time to fill it.
+  - **Entity Presence Tab:**
+    - **An entity's Presence tab shows the day as a bar of colored bands above the sentences.** Drag a band's ends to change its time, drag the band itself to move it, click a band to find its row, or click free time to fill it.
     - **The full-screen Locations Canvas now draws an entity's routine when you pick it.** Each location takes its action's color, and a bar on it shows when the entity is there. A Patrol draws arrows in order. Select a row to see only its locations, with Wander chances and Patrol stop numbers.
     - **The full-screen Locations Canvas shows a key for the colors and marks of an entity's routine or Known In locations.** It lists only what is on screen, and it folds to its title.
     - **Select a routine row on the full-screen Locations Canvas to edit its locations by clicking or dragging.** A line over the map says what a click or a drag does. With no row selected, a click adds the location to Can Also Go or removes it.
     - **The full-screen Locations Canvas now shows and edits a Generic entity's routine, one start at a time.** A ring marks where its other starts begin. With no row selected, a click adds a start or removes the starts there.
     - **In the World Editor, an entity is now Unique or Generic, and a Generic one gets a routine per start.** A Generic entity, such as a crowd or a herd, begins at every start at the same time. Start chances, locks and Can Also Go are for Unique entities.
     - **The full-screen Locations Canvas now shows where a Nearby entity can be known.** Its routine locations are marked, and the locations one Nearby link away are marked lighter. Far links stay unmarked.
-    - **In the World Editor, undo and redo of a Routine tab edit open that entity's Routine tab again.** You land where you made the change, even from another section.
+    - **In the World Editor, undo and redo of a routine edit open that entity's Presence tab again.** You land where you made the change, even from another section.
+    - **An entity's Presence tab in the World Editor now sets Known In under its routine.** Choose Nearby, Nowhere or Picked Locations. For Picked Locations, add and remove locations in the tab or by clicking on the full-screen Locations Canvas.
     - **World files now save a Unique or Generic entity's places as its routine alone, with no location list.** Formamorph 3.6.2 and older open such a world but show those entities nowhere. The Custom Persona keeps its list.
   - **Presence Tab:**
     - **Select an entity on a location's Presence tab to edit its routine and Known In under the list.** The tab lists each entity that can be there and why. The Locations Canvas beside the panel shows the selected entity's routine. Click another location, and the entity stays selected where it can be too.
@@ -59,8 +60,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A location's Presence tab marks the routine parts that name it.** A pin shows on each Start, routine row and Can Also Go entry for this location, and the editor opens on the first Start with a pin.
     - **Undo and redo of an edit made under a location's Presence list bring you back to that entity there.** The location and the Presence tab open, and the entity is selected. Undo an added entity, and the tab stays with no one selected.
   - **Routines:**
-    - **In the World Editor's Routine tab, an entity can start at the Player's Starting Location, beside you each game.** A Unique entity there can follow you from the first turn. Its routine can use any location.
-    - **In older worlds, an entity with pronouns listed at several locations now wanders between them, one at a time.** So it isn't always where you look. An entity at every location follows you. One with no pronouns or "it/its", such as a monster, becomes Generic. Change it in the Routine tab.
+    - **In the World Editor, an entity's Presence tab can start it at the Player's Starting Location, beside you each game.** A Unique entity there can follow you from the first turn. Its routine can use any location.
+    - **In older worlds, an entity with pronouns listed at several locations now wanders between them, one at a time.** So it isn't always where you look. An entity at every location follows you. One with no pronouns or "it/its", such as a monster, becomes Generic. Change it on its Presence tab.
     - **In the bundled worlds, named people with several locations now keep one place at a time, on a daily routine.** Coach Daizen and Rin Hayama patrol the school, and Emberwatch's captain takes the evening watch. Crowds such as the Swarm still fill every place.
     - **Scripts can read an entity's kind, routine and Known In, and how far and which way each exit goes.** Check `kind` to skip a Generic entity before `move`. `action` reads stay, wander or patrol, and `held` says the narration called it over or a script moved it, so it is off its routine.
     - **A library update now brings an entity's routine to each world that links it.** Starts, rows and Can Also Go land on that world's locations. A location with no match there is left out. **View Changes** lists the routine first, because the update replaces your own routine edits.

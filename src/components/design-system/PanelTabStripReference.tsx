@@ -14,7 +14,7 @@ const ENTITY_BODY: Record<string, string> = {
   profile: 'Identity, image, and where the entity is found.',
   descriptions: 'The text the player reads and the text the AI reads.',
   items: 'The items the entity starts a game with.',
-  routine: 'Where the entity starts and its daily routine.',
+  presence: 'Where the entity starts, its daily routine, and where the AI knows of it.',
   traits: 'The entity\'s own traits and groups, each one opening on the editor\'s Traits tab.',
   stats: 'The entity\'s own stats, each one opening in the stat panel.',
   openings: 'The entity\'s openings, drawn when a player starts at one of its locations.',

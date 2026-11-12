@@ -4,7 +4,7 @@
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
-An entity is a person, a creature, an object or a fixture in your world: a ferryman, an eel-smoker, a barred door. Each entity begins at a location, and its [routine](#routine) can take it to others. The AI reads the entities that can show up where the player is.
+An entity is a person, a creature, an object or a fixture in your world: a ferryman, an eel-smoker, a barred door. Each entity begins at a location, and its [routine](#the-routine) can take it to others. The AI reads the entities that can show up where the player is.
 
 ## Why it exists
 <!-- keywords: ai forgets characters, narrator invents people, recurring character, persistent npc, keeps renaming -->
@@ -20,7 +20,7 @@ The default prompt lists the entities that **may** appear in the current locatio
 1. Open the **Entities** tab.
 2. Type the entity's name in the **Filter Entities** box.
 3. Select the **+** button (**Add to Entities**), then select **Add Entity**.
-4. The new entity opens in the panel. On the **Routine** tab, pick the location it starts at.
+4. The new entity opens in the panel. On the **Presence** tab, pick the location it starts at.
 5. On the **Descriptions** tab, write the **AI-Facing Description**.
 6. Select **Save**.
 
@@ -74,7 +74,7 @@ Select an entity to open its panel.
 | **Profile** | **Name**, **Pronouns**, **Relationships**, the **Image** and the **Avatar** dropdown (**None**, **User's Default**, or an Avatar of the world; see [World Avatars](Avatars#world-avatars)). In Advanced mode, also **Aliases**, [**Stranger Name**](#stranger-name) beside **Name**, the **Persona** control, **Type**, **Image Tags** and the **3D Model**. | Simple and Advanced |
 | **Descriptions** | **Player-Facing Description** and **AI-Facing Description**. In Advanced mode, also [**Stranger Description**](#stranger-description) under **Player-Facing Description**, and **AI-Facing Summary**. | Simple and Advanced |
 | **Items** | The entity's [Starting Items](World-Editor-Items#starting-items) | Simple and Advanced |
-| **Routine** | Where the entity stands, where it starts, and its [daily routine](#routine) | Simple and Advanced |
+| **Presence** | Where the entity starts, its [daily routine](#the-routine), and where the AI knows of it ([Known In](#known-in)) | Simple and Advanced |
 | **Traits** | The entity's own [traits](World-Editor-Traits#entity-traits) | Advanced only |
 | **Stats** | The entity's own [stats](#entity-stats) | Advanced only |
 | **Placeholders** | The entity's own [placeholders](World-Editor-Placeholders#placeholders-that-belong-to-an-entity-or-a-dictionary) | Advanced only |
@@ -84,21 +84,13 @@ The **Persona** control has four choices: **Cast**, **Playable**, **Persona-Only
 
 **Relationships** lists how the entity relates to others. Pick a target, **Persona** or another entity, then type what the target is to this entity. See [Relationships](#relationships).
 
-**Known In** is set on the full-screen Locations Canvas. See [World Editor: Locations](World-Editor-Locations#entities).
-
-| Known In | The AI gets the entity's summary |
-|---|---|
-| **Nearby** | At locations one **Nearby** link from where the entity is now. Never across a **Far** link. The canvas marks every location this can be. |
-| **Nowhere** | Only at its own location |
-| **Picked Locations** | Anywhere inside the locations you pick |
-
 Each entity in the list has **Duplicate** and **Delete** actions.
 
-## Routine
-<!-- keywords: schedule, daily routine, where does the npc start, npc moves, wander, patrol, stays at, follow the player, called over, unique, generic, crowd, herd -->
-<!-- route: worldEditorEntity.routine -->
+## Presence
+<!-- keywords: schedule, daily routine, routine tab, where does the npc start, npc moves, wander, patrol, stays at, follow the player, called over, unique, generic, crowd, herd, known in, where the ai knows -->
+<!-- route: worldEditorEntity.presence -->
 
-The **Routine** tab sets where the entity begins and where it goes. A location's **Presence** tab has the same editor for each entity that can be there.
+The **Presence** tab sets where the entity begins, where it goes, and where the AI knows of it. A location's **Presence** tab has the same routine editor for each entity that can be there.
 
 **Placement** has two choices:
 
@@ -157,6 +149,18 @@ Two timed rows can't share an hour. Times another row uses are unavailable in th
 - **Anywhere**: any location.
 - **Only Listed Locations**: its routine locations and the ones you list. A listed location doesn't include the locations inside it.
 
+### Known In
+
+**Known In** sets where the AI gets the entity's summary when the entity isn't there.
+
+| Known In | The AI gets the entity's summary |
+|---|---|
+| **Nearby** | At locations one **Nearby** link from where the entity is now. Never across a **Far** link. The canvas marks every location this can be. |
+| **Nowhere** | Only at its own location |
+| **Picked Locations** | Anywhere inside the locations you pick. Use **Add Location** to pick one. |
+
+You can also pick them by clicking on the full-screen Locations Canvas. See [World Editor: Locations](World-Editor-Locations#entities).
+
 ### On the Locations Canvas
 
 On the full-screen Locations Canvas, choose the entity and pick **Routine**. The map shows the routine of the start whose tab is open. Each location takes its action's color, a bar shows when the entity is there, and a flag marks **Starts Here**. A start at the **Player's Starting Location** has no flag, and every location shows as one its rows can use. A key at the bottom lists what the map shows.
@@ -182,12 +186,12 @@ An older world can list an entity at several locations with no routine. When you
 
 In a world where no entity has **Pronouns** or a **Persona** mark, every such entity gets the **Wander**.
 
-⚠️ A **Unique** entity is in **one location at a time**, so it isn't always where the player looks. To keep it in one place, open its **Routine** tab and give it a **Stay** row, or switch it to **Generic**.
+⚠️ A **Unique** entity is in **one location at a time**, so it isn't always where the player looks. To keep it in one place, open its **Presence** tab and give it a **Stay** row, or switch it to **Generic**.
 
 ## What reaches the AI
 <!-- keywords: npc secret, hidden motive, character ignored, npc never appears, spoilers, does ai see image, private notes -->
 
-An entity reaches the AI through a location. That is where its [routine](#routine) has it now, or a location whose **Known Here** list holds it. A relationship with the persona or with an entity in the scene also brings it in. An entity with none of these never reaches the AI.
+An entity reaches the AI through a location. That is where its [routine](#the-routine) has it now, or a location whose **Known Here** list holds it. A relationship with the persona or with an entity in the scene also brings it in. An entity with none of these never reaches the AI.
 
 | Field | Sent? |
 |---|---|
@@ -296,7 +300,7 @@ The description the player reads until they meet the entity. It sits directly un
 ## Locations
 <!-- keywords: where npc lives, assign to place, put in room, vanished after delete, several places, too many npcs, crowded scene, orphaned -->
 
-An entity's **Routine** tab sets where it begins and where it goes. A location's [**Presence** tab](World-Editor-Locations#entities) has the same editor:
+An entity's **Presence** tab sets where it begins and where it goes. A location's [**Presence** tab](World-Editor-Locations#entities) has the same editor:
 
 - ➕ **Add an entity here** puts any Unique or Generic entity at the location. It adds a place to begin there, with no rows.
 - ✏️ Select an entity in **Entities Here** to edit its **Routine** or **Known In** under the list.

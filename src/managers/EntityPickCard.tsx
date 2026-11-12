@@ -1,18 +1,17 @@
 import { Maximize2, Megaphone, X } from 'lucide-react';
 import { LocationIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
-import { knownInOf, withKnownIn } from '@/lib/entityPresence';
+import { knownInOf } from '@/lib/entityPresence';
 import { isGeneric } from '@/lib/entityKind';
 import type { PickMode } from '@/lib/entityPicking';
 import {
-  KNOWN_IN_HELP, KNOWN_IN_LABEL, PICK_MODE_HELP, PICKED_IN_FULL_SCREEN_HELP, ROUTINE_MAP_HELP, type KnownInChoice,
+  PICK_MODE_HELP, PICKED_IN_FULL_SCREEN_HELP, ROUTINE_MAP_HELP, type KnownInChoice,
 } from '@/lib/entityPresenceCopy';
-import { fieldFrame } from '@/lib/historyField';
+import { KnownInField } from '@/managers/KnownInField';
 import PersonaPresenceHint from '@/managers/PersonaPresenceHint';
 import { RoutineTab } from '@/managers/routine/RoutineTab';
 import type { Entity } from '@/types';
@@ -30,42 +29,10 @@ const MODES = [
   { value: 'knownIn', label: 'Known In', Icon: Megaphone },
 ] as const;
 
-const KNOWN_IN_CHOICES: KnownInChoice[] = ['nearby', 'nowhere', 'picked'];
-
 const knownInChoiceOf = (entity: Entity, pickedPending: boolean): KnownInChoice => {
   const knownIn = knownInOf(entity);
   return Array.isArray(knownIn) || pickedPending ? 'picked' : knownIn;
 };
-
-/** Known In of one entity. */
-function PickFields({ entity, pickedPending, onPickedPendingChange, onChange }: {
-  entity: Entity;
-  pickedPending: boolean;
-  onPickedPendingChange: (pending: boolean) => void;
-  onChange: (next: Entity) => void;
-}) {
-  const knownInChoice = knownInChoiceOf(entity, pickedPending);
-
-  const chooseKnownIn = (choice: KnownInChoice) => {
-    onPickedPendingChange(choice === 'picked');
-    if (choice !== 'picked') onChange(withKnownIn(entity, choice));
-  };
-
-  return (
-    <>
-      <div className="space-y-1.5" {...fieldFrame('entities', entity.id, 'knownIn')}>
-        <Label>Known In</Label>
-        <Select value={knownInChoice} onValueChange={(v) => chooseKnownIn(v as KnownInChoice)}>
-          <SelectTrigger aria-label="Known In"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {KNOWN_IN_CHOICES.map((c) => <SelectItem key={c} value={c}>{KNOWN_IN_LABEL[c]}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Hint>{KNOWN_IN_HELP[knownInChoice]}</Hint>
-      </div>
-    </>
-  );
-}
 
 /**
  * The full-screen canvas's entity card: which entity the canvas picks for, what a click writes, and that
@@ -176,7 +143,7 @@ export function EntityPickBody({ entity, picking, onPickingChange, onChange, her
       {entity.customPersona && <PersonaPresenceHint />}
       {!entity.customPersona && mode === 'locations' && <RoutineTab entity={entity} onChange={onChange} hereMark={hereMark} />}
       {!entity.customPersona && mode === 'knownIn' && (
-        <PickFields
+        <KnownInField
           key={entity.id}
           entity={entity}
           pickedPending={!!picking?.pickedPending}

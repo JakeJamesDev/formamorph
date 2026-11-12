@@ -169,7 +169,7 @@ describe('useHistoryReveal', () => {
 
     it('asks for nothing when the edit was made on the entity panel', () => {
       const { view, move } = withLocations();
-      move(entityEdit(entity(), entity({ name: 'Warden 2' }), { tab: 'entities', ids: ['warden'], subTab: 'routine' }));
+      move(entityEdit(entity(), entity({ name: 'Warden 2' }), { tab: 'entities', ids: ['warden'], subTab: 'presence' }));
       expect(view.result.current.presenceReveal).toBeNull();
     });
 

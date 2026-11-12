@@ -15,7 +15,7 @@ import { withRelationships } from '@/lib/entityRelationships';
 import EntityRelationshipsField from './EntityRelationshipsField';
 import { customPersonaHeldElsewhere } from '@/lib/customPersona';
 import type { Entity, FocusFieldHint } from '@/types';
-import { Hint } from '@/components/ui/typography';
+import { KnownInField } from './KnownInField';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { useEditorMode } from '@/lib/editorMode';
 import PlacementsSection from './PlacementsSection';
@@ -98,18 +98,13 @@ const EntityManager = ({
             // column comes back only where the pane is wide enough — once in the sheet, again at `xl`.
             columnsClassName="sm:grid-cols-[18rem_minmax(0,1fr)] md:grid-cols-1 xl:grid-cols-[18rem_minmax(0,1fr)]"
             locations={(
-              <>
-                {!editingEntity.customPersona && (
-                  <Hint>Set <b>Known In</b> on the full-screen <b>Locations Canvas</b></Hint>
-                )}
-                <EntityRelationshipsField
-                  entity={editingEntity}
-                  entities={entitiesInTreeOrder(entityGroups, entities)}
-                  labelOf={(e) => labelPlaceholders(e.name, placeholders, { letters: placementLetters, owners: placeholderOwners })}
-                  placeholders={placeholders}
-                  onChange={(relationships) => writeWhole(withRelationships(editingEntity, relationships))}
-                />
-              </>
+              <EntityRelationshipsField
+                entity={editingEntity}
+                entities={entitiesInTreeOrder(entityGroups, entities)}
+                labelOf={(e) => labelPlaceholders(e.name, placeholders, { letters: placementLetters, owners: placeholderOwners })}
+                placeholders={placeholders}
+                onChange={(relationships) => writeWhole(withRelationships(editingEntity, relationships))}
+              />
             )}
           />
         </PanelTabContent>
@@ -127,8 +122,9 @@ const EntityManager = ({
           />
         </PanelTabContent>
 
-        <PanelTabContent value="routine">
+        <PanelTabContent value="presence">
           <RoutineTab entity={editingEntity} onChange={writeWhole} />
+          {!editingEntity.customPersona && <KnownInField entity={editingEntity} onChange={writeWhole} list />}
         </PanelTabContent>
 
         {advanced && (

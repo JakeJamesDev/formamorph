@@ -111,7 +111,7 @@ describe('the two entity editors', () => {
     expect(libraryTop).toEqual(['Entity', 'Traits', 'Stats', 'Placeholders']);
     expect(librarySub).toEqual(['Profile', 'Descriptions', 'Openings']);
     // Placements and routines are world records, so only the World Editor has Items and Routine.
-    expect(worldTabs).toEqual(['Profile', 'Descriptions', 'Items', 'Routine', 'Traits', 'Stats', 'Placeholders', 'Openings']);
+    expect(worldTabs).toEqual(['Profile', 'Descriptions', 'Items', 'Presence', 'Traits', 'Stats', 'Placeholders', 'Openings']);
   });
 
   it('drop Traits, Openings and Placeholders in the World Editor in Simple mode, and keep them in the always-Advanced library', () => {
@@ -121,7 +121,7 @@ describe('the two entity editors', () => {
       </SettingsProvider>
     );
     render(simple(<WorldPanel />));
-    expect(fieldTabNames()).toEqual(['Profile', 'Descriptions', 'Items', 'Routine']);
+    expect(fieldTabNames()).toEqual(['Profile', 'Descriptions', 'Items', 'Presence']);
     cleanup();
     render(simple(<EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} />));
     expect(topTabNames()).toEqual(['Entity', 'Traits', 'Stats', 'Placeholders']);
@@ -170,7 +170,7 @@ describe('the two entity editors', () => {
     cleanup();
     render(<SettingsProvider><WorldPanel /></SettingsProvider>);
     // Items, Routine, Traits and Stats hold the entity's own placements, routine, traits and stats, not fields.
-    const worldFields = await fieldsByTab(['Items', 'Routine', 'Traits', 'Stats', 'Openings', 'Placeholders']);
+    const worldFields = await fieldsByTab(['Items', 'Presence', 'Traits', 'Stats', 'Openings', 'Placeholders']);
 
     expect(library).toEqual({
       Profile: ['Image', 'Name', 'Aliases', 'Pronouns', 'Type', 'Image Tags', 'Persona', '3D Model'],

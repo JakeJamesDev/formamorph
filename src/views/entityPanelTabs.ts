@@ -12,7 +12,7 @@ export const ENTITY_PANEL_TABS = [
   { value: 'profile', label: 'Profile', icon: ELEMENT_ICONS.entity },
   { value: 'descriptions', label: 'Descriptions', icon: AlignLeft },
   { value: 'items', label: 'Items', icon: ELEMENT_ICONS.item, worldOnly: true },
-  { value: 'routine', label: 'Routine', icon: Route, worldOnly: true },
+  { value: 'presence', label: 'Presence', icon: Route, worldOnly: true },
   { value: 'traits', label: 'Traits', icon: ELEMENT_ICONS.trait, advancedOnly: true },
   { value: 'stats', label: 'Stats', icon: ELEMENT_ICONS.stat, advancedOnly: true },
   { value: 'placeholders', label: 'Placeholders', icon: ELEMENT_ICONS.placeholder, advancedOnly: true },

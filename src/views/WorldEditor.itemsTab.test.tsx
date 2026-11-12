@@ -51,10 +51,10 @@ const openEquipment = () => {
 beforeEach(() => { localStorage.clear(); });
 
 describe('the Items list', () => {
-  it('sits beside Entities and lists the items in order', () => {
+  it('sits beside Locations and lists the items in order', () => {
     renderWorldEditorBench(WORLD, 'simple');
     const tabs = within(screen.getByRole('tablist', { name: 'Editor Sections' })).getAllByRole('tab').map((t) => t.textContent);
-    expect(tabs.indexOf('Items')).toBe(tabs.indexOf('Entities') + 1);
+    expect(tabs.indexOf('Items')).toBe(tabs.indexOf('Locations') + 1);
     openEditorTab(/Items/);
     expect(screen.getByRole('button', { name: 'Select Lamp' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Select Greatsword' })).toBeTruthy();

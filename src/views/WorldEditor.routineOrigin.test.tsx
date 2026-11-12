@@ -134,7 +134,7 @@ describe('an undo of a Routine edit made on the entity panel', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Entities/);
     openTreeRow('Twin');
-    await openPanelTab('Entity Fields', 'Routine');
+    await openPanelTab('Entity Fields', 'Presence');
     await deleteRoutineRow();
     expect(scheduleOf(ctx, 'a')).toHaveLength(0);
     await openPanelTab('Entity Fields', 'Profile');
@@ -143,6 +143,6 @@ describe('an undo of a Routine edit made on the entity panel', () => {
     await undo();
     expect(scheduleOf(ctx, 'a')).toHaveLength(1);
     expect(shownEditorTab()).toMatch(/Entities/);
-    expect(isSelected(panelTab('Entity Fields', 'Routine'))).toBe(true);
+    expect(isSelected(panelTab('Entity Fields', 'Presence'))).toBe(true);
   });
 });

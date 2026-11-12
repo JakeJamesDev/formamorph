@@ -147,7 +147,7 @@ export const DEV_MODAL_TABS = {
   // `tagPrompt` is Advanced only and hidden while image generation is off. `fixture=fai-<state>` shows the
   // Formamorph AI preset in one of its states and selects nothing (`#dev?modal=settings&tab=endpoints&subtab=text&fixture=fai-locked`). `fixture=fai-notice-75`, `fai-notice-90` and `fai-notice-exhausted` raise the allowance notices.
   settingsEndpoints: ['text', 'image', 'tagPrompt'],
-  worldEditor: ['overview', 'openings', 'media', 'entities', 'items', 'locations', 'traits', 'stats', 'dictionary', 'placeholders', 'scripts', 'tools'],
+  worldEditor: ['overview', 'openings', 'media', 'entities', 'locations', 'items', 'traits', 'stats', 'dictionary', 'placeholders', 'scripts', 'tools'],
   // Community Creations browses one kind per tab, plus Contest — a view over the worlds already in the
   // catalog rather than a fourth kind (see lib/browseTabs). `tab=contest` serves canned contests, so the
   // tab is reachable whether or not one is really running. `fixture=review` shows the viewer as an admin
@@ -194,7 +194,7 @@ export const DEV_MODAL_TABS = {
   // slot over the Entities tab (`#dev?modal=worldEditor&tab=entities&subtab=descriptions`). It lands on the
   // panel, so pair it with a world that has an entity to select. `openings` and `placeholders` are Advanced only.
   // `fixture=entityPresence` gives the Archivist Relationships rows on `profile`.
-  worldEditorEntity: ['profile', 'descriptions', 'items', 'routine', 'traits', 'stats', 'placeholders', 'openings'],
+  worldEditorEntity: ['profile', 'descriptions', 'items', 'presence', 'traits', 'stats', 'placeholders', 'openings'],
   // The item panel's own tabs, in the same `subtab=…` slot over the Items tab
   // (`#dev?modal=worldEditor&tab=items&subtab=properties`). `fixture=items` gives a world with items and slots.
   // `subtab=equipment` and `subtab=currencies` open their pinned entries instead of an item.

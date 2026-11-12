@@ -1111,7 +1111,7 @@ const WorldEditorInner = ({
     revealSelection: selectionReveal,
     onSelectionRevealed: clearSelectionReveal,
     onCanvasSelection,
-    onOpenEntityRoutine: (id) => navigateToBenchItem('entities', id, 'routine'),
+    onOpenEntityRoutine: (id) => navigateToBenchItem('entities', id, 'presence'),
     connectionOpen,
     onConnectionOpened: clearConnectionOpen,
   });

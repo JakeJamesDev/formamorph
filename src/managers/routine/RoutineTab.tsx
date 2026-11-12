@@ -82,17 +82,10 @@ function pathOf(locations: readonly GameLocation[], location: GameLocation): str
 // A Routine edit touches one entity, so its undo returns to where the author made it.
 const KEEP_ORIGIN = { keepOrigin: true };
 
-/** Where an entity stands and how it moves: the Routine tab of a world entity. Writes the whole entity. */
-export function RoutineTab({ entity, onChange, hereMark }: {
-  entity: Entity; onChange: (next: Entity) => void;
-  /** The location whose Presence tab hosts this editor: what names it gets a mark. Without it nothing is marked. */
-  hereMark?: string;
-}) {
-  const { locations, connections, placeholders, placementLetters, placeholderOwners } = useGameData();
-  const step = useWorldHistoryStep(KEEP_ORIGIN);
-  const commit = (label: string, next: Entity) => step(label, () => onChange(next));
-
-  const book = useMemo<PlaceBook>(() => {
+/** The world's locations as picker rows and display names, placeholders labeled. */
+export function usePlaceBook(): PlaceBook {
+  const { locations, placeholders, placementLetters, placeholderOwners } = useGameData();
+  return useMemo<PlaceBook>(() => {
     const names = { letters: placementLetters, owners: placeholderOwners };
     const nameOf = (id: string) => (id === PLAYER_START
       ? PLAYER_START_NAME
@@ -109,6 +102,18 @@ export function RoutineTab({ entity, onChange, hereMark }: {
       }),
     };
   }, [locations, placeholders, placementLetters, placeholderOwners]);
+}
+
+/** Where an entity stands and how it moves: the routine fields of a world entity. Writes the whole entity. */
+export function RoutineTab({ entity, onChange, hereMark }: {
+  entity: Entity; onChange: (next: Entity) => void;
+  /** The location whose Presence tab hosts this editor: what names it gets a mark. Without it nothing is marked. */
+  hereMark?: string;
+}) {
+  const { locations, connections } = useGameData();
+  const step = useWorldHistoryStep(KEEP_ORIGIN);
+  const commit = (label: string, next: Entity) => step(label, () => onChange(next));
+  const book = usePlaceBook();
 
   // An entity with no kind yet edits as a new Unique entity; its first write stores the kind.
   const kinded = useMemo(() => (entity.kind ? entity : withKind(entity, 'unique', randomUUID)), [entity]);
@@ -344,10 +349,13 @@ function StartRoutine({ entity, kind, start, weights, book, connected, commit, o
         </div>
       )}
 
-      <DayStrip
-        rows={start.schedule} free={free} lockable={fields.locks} asHoursOf={asHoursOf} selected={selected}
-        onSelect={showRow} onFill={fill} onMove={move}
-      />
+      <div className="space-y-1.5">
+        <Label>Routine</Label>
+        <DayStrip
+          rows={start.schedule} free={free} lockable={fields.locks} asHoursOf={asHoursOf} selected={selected}
+          onSelect={showRow} onFill={fill} onMove={move}
+        />
+      </div>
 
       <ol className="space-y-0.5 border-l pl-2" aria-label="Routine">
         {lines.map((line) => line.row ? (

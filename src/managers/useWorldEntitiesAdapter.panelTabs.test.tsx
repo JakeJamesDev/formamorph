@@ -69,14 +69,14 @@ describe('the World Editor entity panel tabs', () => {
   it('offers eight tabs in Advanced mode and opens on Profile', () => {
     renderEntitiesTab(WORLD, 'advanced');
     selectEntity('Wren');
-    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items', 'Routine', 'Traits', 'Stats', 'Placeholders', 'Openings']);
+    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items', 'Presence', 'Traits', 'Stats', 'Placeholders', 'Openings']);
     expect(panelTab('Profile')).toHaveAttribute('aria-selected', 'true');
   });
 
   it('offers four tabs in Simple mode', () => {
     renderEntitiesTab(WORLD, 'simple');
     selectEntity('Wren');
-    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items', 'Routine']);
+    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items', 'Presence']);
   });
 
   it('puts the identity fields, the picture and its tags on Profile, and no description', () => {
@@ -90,7 +90,7 @@ describe('the World Editor entity panel tabs', () => {
   it('puts where the entity stands on Routine', () => {
     renderEntitiesTab(WORLD, 'simple');
     selectEntity('Wren');
-    openPanelTab('Routine');
+    openPanelTab('Presence');
     expect(panelLabels()).toEqual(['Placement', 'Can Also Go']);
   });
 

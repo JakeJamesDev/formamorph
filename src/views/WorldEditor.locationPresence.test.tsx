@@ -129,7 +129,7 @@ describe('the Presence tab: Entities Here', () => {
     openPresence('Tavern');
     await step(() => fireEvent.click(screen.getByRole('button', { name: 'Open Farrier’s Routine' })));
     expect(shownEditorTab()).toMatch(/Entities/);
-    expect(within(screen.getByRole('tablist', { name: /Entity/ })).getByRole('tab', { selected: true }).textContent).toMatch(/Routine/);
+    expect(within(screen.getByRole('tablist', { name: /Entity/ })).getByRole('tab', { selected: true }).textContent).toMatch(/Presence/);
   });
 });
 
