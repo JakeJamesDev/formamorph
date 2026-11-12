@@ -4,7 +4,8 @@ import { chipValues } from './chipValues';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
 import { spelledTokens } from '@/test/chipTokens';
 import { renderPromptTemplate } from '../promptTemplate';
-import { defaultStatUpdatesPrompt } from '@/components/game/GamePrompts';
+import { defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
+import { experimentalSystemPrompt } from '@/components/game/ExperimentalPrompts';
 
 describe('sampleChipScene', () => {
   it('opens on the Landing with the sample cast, as a player mid-scene would see it', () => {
@@ -52,5 +53,16 @@ describe('sampleChipScene', () => {
     const prompt = renderPromptTemplate(defaultStatUpdatesPrompt, chipValues(sampleChipScene()));
     expect(prompt).toMatch(/## Player Character\n- \*\*Traveler\*\*[^#]*- \*\*Nerve:\*\* 55\/100/);
     expect(prompt).toMatch(/## In Scene\n- \*\*Wren\*\*[^#]*- \*\*Patience:\*\* 70\/100/);
+  });
+
+  it.each([
+    ['narration', defaultSystemPrompt],
+    ['choices', defaultChoicesPrompt],
+    ['experimental narration', experimentalSystemPrompt],
+  ])('sends the persona and cast stats to the default %s prompt as descriptors only', (_, template) => {
+    const prompt = renderPromptTemplate(template, chipValues(sampleChipScene()));
+    expect(prompt).toMatch(/## Player Character\n[^#]*- \*\*Nerve:\*\* Steady\n/);
+    expect(prompt).toMatch(/## Entities in the Current Location\n[^#]*- \*\*Wren\*\*[^#]*- \*\*Patience:\*\* Measured\n/);
+    expect(prompt).not.toMatch(/\/100/);
   });
 });

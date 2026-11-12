@@ -236,8 +236,9 @@ describe('the Persona block', () => {
   it("serves the Custom Persona entity's traits and stats nested in one block, as the Persona chip renders it", () => {
     const lens = lensOf(withYou);
     const text = block(buildAiContext(withYou, lens), 'persona').text;
-    expect(text).toBe('- **You**\n  - **traits:**\n    - **Keen-Eyed:** Sees the far shore.\n  - **stats:**\n    - **Calm:** 3/10\n');
-    expect(text).toBe(buildStatBlock(withYou, lens, '<PERSONA|markdown>'));
+    // The default prompts send descriptors only, so a stat with no descriptors sends its name.
+    expect(text).toBe('- **You**\n  - **traits:**\n    - **Keen-Eyed:** Sees the far shore.\n  - **stats:**\n    - **Calm**\n');
+    expect(text).toBe(buildStatBlock(withYou, lens, '<PERSONA|norange.nodescription.markdown>'));
   });
 
   it('has nothing to send in a world with no Custom Persona entity', () => {

@@ -116,7 +116,7 @@ export const EMPTY_AI_CONTEXT: AiContextData = {
 // positions under one row, Background first, so it shows every entry a turn could inject.
 const BLOCK_TOKENS: Record<ContextBlockId, { label: string; token: string; parts?: string[] }> = {
   world: { label: 'World Description', token: '<WORLD DESCRIPTION>' },
-  persona: { label: 'Persona', token: '<PERSONA|markdown>' },
+  persona: { label: 'Persona', token: '<PERSONA|norange.nodescription.markdown>' },
   stats: { label: 'Stats', token: '<STATS DESCRIPTION|descriptions.markdown>' },
   traits: { label: 'Traits', token: '<TRAITS DESCRIPTION|markdown>' },
   location: { label: 'Location', token: '<LOCATION|markdown>' },
@@ -124,7 +124,7 @@ const BLOCK_TOKENS: Record<ContextBlockId, { label: string; token: string; parts
   parent: { label: 'Parent Location', token: '<LOCATION|parent.summary.markdown>' },
   reachable: { label: 'Reachable Locations', token: '<LOCATION|reachable.summary.markdown>' },
   destinations: { label: 'Destinations', token: '<LOCATION|destinations.summary.markdown>' },
-  entities: { label: 'Entities Here', token: '<ENTITIES|markdown>' },
+  entities: { label: 'Entities Here', token: '<ENTITIES|norange.nodescription.markdown>' },
   subEntities: { label: 'Entities in Sub-Locations', token: '<ENTITIES|sublocations.markdown>' },
   reachableEntities: { label: 'Entities Reachable', token: '<ENTITIES|reachable.summary.markdown>' },
   knownEntities: { label: 'Entities Known Here', token: '<ENTITIES|known.summary.markdown>' },

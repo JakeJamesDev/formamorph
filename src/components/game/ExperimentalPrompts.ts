@@ -7,12 +7,12 @@ export const experimentalSystemPrompt = `You are the narrator of an interactive 
 <DICTIONARY|before|pre="Facts about the world that are true throughout the story.\n\n"|format=markdown|header="Background Lore">\
 <STATS DESCRIPTION|descriptions.markdown|pre="A stat is a named value that the game tracks and that changes during play.\n\n"|header="Global Stats">\
 <TRAITS DESCRIPTION|markdown|pre="A trait is a characteristic or condition that is either active or inactive.\n\n"|header="Global Traits">\
-<PERSONA|markdown|pre="The identity and description of the character controlled by the player.\n\n"|header="Player Character">\
+<PERSONA|norange.nodescription.markdown|pre="The identity and description of the character controlled by the player.\n\n"|header="Player Character">\
 <NOTES|pre="Additional information supplied by the player for this story.\n\n"|format=markdown|header="Important Player Notes">\
 <LOCATION|markdown|pre="The place where the player character currently is.\n\n"|header="Current Location">\
 <LOCATION|sublocations.summary.markdown|pre="Places contained within the current location.\n\n"|header="Sublocations">\
 <LOCATION|reachable.summary.markdown|pre="Places the player can reach from the current location.\n\n"|header="Reachable Locations">\
-<ENTITIES|summary.markdown|pre="An entity is a character, creature, or object. These entries summarize entities that may appear in the current location.\n\n"|header="Entities in the Current Location">\
+<ENTITIES|summary.norange.nodescription.markdown|pre="An entity is a character, creature, or object. These entries summarize entities that may appear in the current location.\n\n"|header="Entities in the Current Location">\
 <INVENTORY|markdown|pre="What each person here has with them, and what lies in this place. An item marked hidden stays out of sight until someone searches where it lies; then it enters the story.\n\n"|header="Items Here">\
 <ENTITIES|sublocations.summary.markdown|pre="Summaries of entities associated with sublocations.\n\n"|header="Entities in Sublocations">\
 <ENTITIES|reachable.summary.markdown|pre="Summaries of entities associated with reachable locations.\n\n"|header="Entities in Reachable Locations">\

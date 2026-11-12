@@ -150,8 +150,8 @@ const ENTITY_DEFINITION_PRE =
   'pre="An entity is a character, creature, or object. These entries describe entities that may appear in the current location.\n\n"';
 const SUBLOCATION_PRE = 'pre="Entries for entities associated with sublocations.\n\n"';
 const DEFAULT_ENTITY_SWAPS: ReadonlyArray<readonly [string, string]> = [
-  [`<ENTITIES|markdown|${ENTITY_DEFINITION_PRE}|header="Entities in the Current Location">`,
-    `<ENTITIES|summary.markdown|${ENTITY_DEFINITION_PRE}|header="Entities in the Current Location">`],
+  [`<ENTITIES|norange.nodescription.markdown|${ENTITY_DEFINITION_PRE}|header="Entities in the Current Location">`,
+    `<ENTITIES|summary.norange.nodescription.markdown|${ENTITY_DEFINITION_PRE}|header="Entities in the Current Location">`],
   [`<ENTITIES|sublocations.markdown|${SUBLOCATION_PRE}|header="Entities in Sublocations">`,
     `<ENTITIES|sublocations.summary.markdown|${SUBLOCATION_PRE}|header="Entities in Sublocations">`],
 ];

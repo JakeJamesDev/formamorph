@@ -579,7 +579,7 @@ describe('turn pass requests', () => {
       const render = (language: string) => build('choices', {}, shipped, { language }).systemPrompt;
       const english = render('English');
       // The chip takes its own blank lines with it: the prompt still ends on the template's last block.
-      expect(english.endsWith('<PERSONA|summary.markdown|header="Player Character">')).toBe(true);
+      expect(english.endsWith('<PERSONA|summary.norange.nodescription.markdown|header="Player Character">')).toBe(true);
       expect(english).not.toContain('Write all choices in');
       // And the non-English arm is that same prompt plus the directive as its own final line. A rendered
       // block ends on a newline, so in play the directive sits one blank line after it.

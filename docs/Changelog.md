@@ -130,6 +130,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The story no longer moves you to a nearby place when you stay where you are.** Before, a place whose name held a nearby place's name, such as "Academy Dorms" next to "Academy", could send you to that nearby place on a turn where you never moved.
     - **A turn that fails now puts your action and images back in the action box.** Before, an endpoint error emptied the box, so a failed first turn lost the opening text.
     - **With Measured Clock on, a scene that runs until a time of day now ends the clock at that time.** Sleeping until dawn costs nine hours from 21:00 and four from 02:00. Where the endpoint allows it, the AI also answers in a fixed form, so a short conversation rarely jumps the clock an hour.
+    - **The narrator and the choices no longer read stat numbers for you or the characters around you, only their descriptors.** This applies to the built-in prompt presets and the Open Chat world. Your own presets and other worlds' own prompts keep their text.
   - **World Editor:**
     - **Templates, hover cards and the Time of Day picker now say "time of day" instead of "daypart".** The templates are now Time of Day Modifier and Placeholder by Time of Day. Scripts still read `clock.daypart`.
     - **The Sliders list on an entity's stat and trait now shows the entity's Avatar sliders.** An entity with only an Avatar can bind its Body Sliders and Head Features.
