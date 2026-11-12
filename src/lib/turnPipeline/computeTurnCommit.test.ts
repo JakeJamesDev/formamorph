@@ -12,7 +12,8 @@ import { TURN_PASSES } from './turnPasses';
 import { testInput } from './turnTestInputs';
 import type { TurnMaterial, TurnPassId, TurnPassSubject, TurnPlanInput, TurnSettings } from './turnPlan';
 import type { TurnPassOutcome, TurnResult, TurnRun } from './turnRunner';
-import { FLAT_HOURS_PER_TURN, storyMinute, type WorldCalendar } from '@/lib/gameClock';
+import { CLOCK_TEXT_FORMAT, FLAT_HOURS_PER_TURN, storyMinute, type WorldCalendar } from '@/lib/gameClock';
+import { SchemaRefused, withTextFallback } from '@/lib/aiRequest/responseSchema';
 import type { TurnCommitContext } from './computeTurnCommit';
 import type { WorldWrites } from '@/lib/statCodeExecutor';
 import { parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
@@ -325,6 +326,63 @@ describe('computeTurnCommit — anchored clock replies', () => {
     const commit = computeTurnCommit({ result, plan, context: context({ gameTime: 0, calendar: { startHour: 8 } }) });
     expect(commit?.turnHours).toBe(11); // evening seeds 19:00
     expect(commit?.turn.timeDelta).toBe(11);
+  });
+});
+
+describe('computeTurnCommit — schema clock replies', () => {
+  const hoursFrom = (raw: string, hour: number, calendar: WorldCalendar = { startHour: 0 }) => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }, { id: 'timePassed', raw }]);
+    return computeTurnCommit({ result, plan, context: context({ gameTime: (calendar.hoursPerDay ?? 24) + hour, calendar }) })?.turnHours;
+  };
+  const json = (lastsUntil: string, unit: string, count: number) => JSON.stringify({ lasts_until: lastsUntil, unit, count });
+
+  it.each([
+    ['an anchor', json('dawn', 'hours', 8), '8h until dawn', 21, 9],
+    ['an anchor after midnight', json('dawn', 'hours', 3), '3h until dawn', 2, 4],
+    ['a day carry', json('morning', 'days', 4), '4d until morning', 21, 11 + 72],
+    ['the next morning', json('morning', 'days', 1), '1d until morning', 21, 11],
+    ['a count with none', json('none', 'minutes', 45), '45m', 21, 0.75],
+    ['a stated length', json('none', 'weeks', 3), '3w', 21, 504],
+    ['the guard on a count of 0', json('morning', 'minutes', 0), '0m until morning', 8.5, 0],
+    ['the guard on a sub-day count', json('nightfall', 'minutes', 20), '20m until nightfall', 21, 1 / 3],
+  ])('resolves %s like its text twin', (_label, schemaReply, textReply, hour, hours) => {
+    expect(hoursFrom(schemaReply, hour)).toBeCloseTo(hours);
+    expect(hoursFrom(textReply, hour)).toBeCloseTo(hours);
+  });
+
+  it('reads a fenced schema reply', () => {
+    expect(hoursFrom('```json\n{"lasts_until": "dawn", "unit": "hours", "count": 7}\n```', 21)).toBe(9);
+  });
+
+  it('divides a custom-length day by the same fractions', () => {
+    expect(hoursFrom(json('dawn', 'hours', 4), 10, { startHour: 0, hoursPerDay: 12 })).toBe(5);
+  });
+
+  it('keeps the anchor when only the count is unreadable', () => {
+    expect(hoursFrom('{"lasts_until": "dawn", "unit": "fortnights", "count": 2}', 21)).toBe(9);
+  });
+
+  it('charges the flat hour for a reply with neither an anchor nor a count', () => {
+    expect(hoursFrom('{"lasts_until": "teatime", "unit": "hours", "count": -1}', 21)).toBe(FLAT_HOURS_PER_TURN);
+    expect(hoursFrom('{}', 21)).toBe(FLAT_HOURS_PER_TURN);
+    expect(hoursFrom('{"lasts_until": "none", "unit": "hours", "count": 1.5}', 21)).toBe(FLAT_HOURS_PER_TURN);
+  });
+
+  it('never reads a schema reply as text', () => {
+    expect(hoursFrom('{"lasts": "until dawn", "took": "3h"}', 21)).toBe(FLAT_HOURS_PER_TURN);
+  });
+
+  it('moves the clock by the text answer when the endpoint refuses the schema', async () => {
+    const clock = TURN_PASSES.find((p) => p.id === 'timePassed')!;
+    const request = clock.buildRequest(testInput({}, { aiClock: true }), material());
+    const sent: { schema: boolean; format: string }[] = [];
+    const raw = await withTextFallback(request, async (args) => {
+      sent.push({ schema: Boolean(args.responseSchema), format: args.messages[0].content.endsWith(CLOCK_TEXT_FORMAT) ? 'text' : 'schema' });
+      if (args.responseSchema) throw new SchemaRefused({ url: 'http://endpoint', model: 'm' }, new Error('400'));
+      return 'until dawn';
+    }, () => {});
+    expect(sent).toEqual([{ schema: true, format: 'schema' }, { schema: false, format: 'text' }]);
+    expect(hoursFrom(raw, 21)).toBe(9);
   });
 });
 

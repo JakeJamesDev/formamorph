@@ -7,7 +7,9 @@
 // Arms, dispatched together per run so model drift lands on both:
 //   shipped  the in-batch control: the clock prompt and parser at --ref (default: the commit before anchors),
 //            over the same user message
-//   text     the app's own request, built by the real pass record, scored by the real parser and anchor math
+//   schema   the app's own request with its response schema, built by the real pass record, scored by the
+//            real parser and anchor math
+//   text     the schema request's text fallback, scored the same way
 //
 // Usage: npx vite-node testing/baseline/harness/time-delta-probe.cli.ts --
 //          [--endpoint URL] [--model ID] [--runs 12] [--cases time-delta-short-cases.json] [--only id,id]
@@ -18,6 +20,7 @@ import path from 'node:path';
 import { transform } from 'esbuild';
 import { defaultTimePassedPrompt, defaultTimePassedUserPrompt } from '@/components/game/GamePrompts';
 import { CLOCK_TEXT_FORMAT, FLAT_HOURS_PER_TURN, readingHours, type ClockReading } from '@/lib/gameClock';
+import { responseFormat, type ResponseFormat } from '@/lib/aiRequest/responseSchema';
 import { PROMPT_SAMPLER_PINS } from '@/lib/promptSamplers';
 import { TURN_PASSES } from '@/lib/turnPipeline/turnPasses';
 import { emptyTurnMaterial } from '@/lib/turnPipeline/turnPlan';
@@ -67,51 +70,85 @@ const requestFor = (c: Case) => clockPass.buildRequest(input, {
   ...emptyTurnMaterial({ action: c.action, effectiveAction: c.action, turnId: 'probe', baseCtx: {}, destinations: [] }),
   narration: c.narration,
 });
+const fallbackFor = (c: Case) => {
+  const fallback = requestFor(c).textFallback;
+  if (!fallback?.systemPrompt || !fallback.messages || !fallback.maxTokens) throw new Error('the clock request has no text fallback');
+  return { systemPrompt: fallback.systemPrompt, messages: fallback.messages, maxTokens: fallback.maxTokens };
+};
+const schemaOf = (c: Case) => {
+  const schema = requestFor(c).responseSchema;
+  if (!schema) throw new Error('the clock request has no response schema');
+  return responseFormat(schema);
+};
 
 /** Day 2 at the case's start hour, on a calendar that opens at midnight. */
 const CALENDAR = { startHour: 0 };
 const startOf = (c: Case) => 24 + c.start;
 
-interface Arm { name: string; system: (c: Case) => string; messages: (c: Case) => ChatMessage[]; cap: (c: Case) => number; hours: (raw: string, c: Case) => number | null }
+interface Arm {
+  name: string; system: (c: Case) => string; messages: (c: Case) => ChatMessage[]; cap: (c: Case) => number;
+  format?: (c: Case) => ResponseFormat; hours: (raw: string, c: Case) => number | null;
+}
+const appHours = (raw: string, c: Case) => {
+  const reading = clockPass.parseResponse(raw, emptyTurnMaterial({ action: '', effectiveAction: '', turnId: 'probe', baseCtx: {}, destinations: [] })) as ClockReading | null;
+  return reading && readingHours(reading, startOf(c), CALENDAR);
+};
 const ARMS: Arm[] = [
   {
     name: 'shipped',
     system: () => SHIPPED_SYSTEM,
-    messages: (c) => requestFor(c).messages.map((m) => ({ ...m, content: m.content.replace(CLOCK_TEXT_FORMAT, '') })),
-    cap: (c) => requestFor(c).maxTokens,
+    messages: (c) => fallbackFor(c).messages.map((m) => ({ ...m, content: m.content.replace(CLOCK_TEXT_FORMAT, '') })),
+    cap: (c) => fallbackFor(c).maxTokens,
     hours: (raw) => refClock.parseTimeDelta(raw),
   },
   {
-    name: 'text',
+    name: 'schema',
     system: (c) => requestFor(c).systemPrompt,
     messages: (c) => requestFor(c).messages,
     cap: (c) => requestFor(c).maxTokens,
-    hours: (raw, c) => {
-      const reading = clockPass.parseResponse(raw, emptyTurnMaterial({ action: '', effectiveAction: '', turnId: 'probe', baseCtx: {}, destinations: [] })) as ClockReading | null;
-      return reading && readingHours(reading, startOf(c), CALENDAR);
-    },
+    format: schemaOf,
+    hours: appHours,
+  },
+  {
+    name: 'text',
+    system: (c) => fallbackFor(c).systemPrompt,
+    messages: (c) => fallbackFor(c).messages,
+    cap: (c) => fallbackFor(c).maxTokens,
+    hours: appHours,
   },
 ];
 
 if (show) {
-  for (const arm of ARMS) console.log(`--- ${arm.name}\n${arm.system(cases[0])}\n\n${arm.messages(cases[0]).map((m) => m.content).join('\n')}\n`);
+  for (const arm of ARMS) {
+    console.log(`--- ${arm.name}\n${arm.system(cases[0])}\n\n${arm.messages(cases[0]).map((m) => m.content).join('\n')}\n`);
+    if (arm.format) console.log(`${JSON.stringify(arm.format(cases[0]))}\n`);
+  }
   process.exit(0);
 }
 
 const pins = PROMPT_SAMPLER_PINS.timePassed ?? {};
-async function post(system: string, messages: ChatMessage[], maxTokens: number, attempt = 1): Promise<string> {
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model, max_tokens: maxTokens, temperature: pins.temperature ?? 0, reasoning_effort: 'none', stream: false,
-      messages: [{ role: 'system', content: system }, ...messages],
-    }),
-  });
-  if (res.status >= 500 && attempt < 4) {
+async function post(system: string, messages: ChatMessage[], maxTokens: number, format?: ResponseFormat, attempt = 1): Promise<string> {
+  const retry = async () => {
     await new Promise((done) => setTimeout(done, 2000 * attempt));
-    return post(system, messages, maxTokens, attempt + 1);
+    return post(system, messages, maxTokens, format, attempt + 1);
+  };
+  let res: Response;
+  try {
+    res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model, max_tokens: maxTokens, temperature: pins.temperature ?? 0, reasoning_effort: 'none', stream: false,
+        messages: [{ role: 'system', content: system }, ...messages],
+        ...(format && { response_format: format }),
+      }),
+    });
+  } catch (error) {
+    // A dropped connection is the network, not the arm.
+    if (attempt < 4) return retry();
+    throw error;
   }
+  if (res.status >= 500 && attempt < 4) return retry();
   if (!res.ok) throw new Error(`${res.status} ${(await res.text()).slice(0, 200)}`);
   const body = await res.json() as { choices: Array<{ message: { content: string | null } }> };
   return body.choices[0].message.content ?? '';
@@ -128,7 +165,7 @@ console.log(`arms ${ARMS.map((a) => a.name).join(', ')} · control at ${ref} · 
 for (const c of cases) {
   const got: Record<string, (number | null)[]> = Object.fromEntries(ARMS.map((a) => [a.name, []]));
   for (let r = 0; r < runs; r++) {
-    const replies = await Promise.all(ARMS.map((arm) => post(arm.system(c), arm.messages(c), arm.cap(c))));
+    const replies = await Promise.all(ARMS.map((arm) => post(arm.system(c), arm.messages(c), arm.cap(c), arm.format?.(c))));
     ARMS.forEach((arm, i) => {
       const hours = arm.hours(replies[i], c);
       const s = score[arm.name];

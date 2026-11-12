@@ -4,7 +4,8 @@ import path from 'node:path';
 import { validateParityFixture, type ParityRequestRecord, type ParityTurnRecord } from './parityRecorder';
 import type { TurnPassId, TurnPlanInput, TurnPrompts, TurnSettings } from './turnPlan';
 import type { AIRequestType, ChatMessage } from '@/types';
-import { CLOCK_TEXT_FORMAT } from '@/lib/gameClock';
+import { CLOCK_SCHEMA_FORMAT } from '@/lib/gameClock';
+import { TURN_PASS_CAPS } from './turnPasses';
 import {
   defaultChoicesPrompt, defaultChoicesUserPrompt,
   defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt,
@@ -50,7 +51,7 @@ export const PARITY_SETTINGS: TurnSettings = {
   describeCharacters: false,
   // The recorded world had no items, so no inventory request was dispatched.
   inventoryDue: false,
-  inventoryTextPass: false, entityLocationTextPass: false,
+  inventoryTextPass: false, entityLocationTextPass: false, clockTextPass: false,
   imageAttachments: false,
   promptAttachments: {},
   language: 'English',
@@ -160,15 +161,16 @@ const CAPS_SINCE_RECORDING: Partial<Record<AIRequestType, number>> = {
   locationChange: 12,
 };
 
-/** The cap a replayed request must carry: the recorded one, or the one added since. */
+/** The cap a replayed request must carry: the recorded one, or the one added since. The clock pass's schema
+ *  request, which the run predates, has its own. */
 export const expectedCap = (request: ParityRequestRecord): number | null =>
-  request.maxTokens ?? CAPS_SINCE_RECORDING[request.type] ?? null;
+  request.type === 'timePassed' ? TURN_PASS_CAPS.timePassedSchema : request.maxTokens ?? CAPS_SINCE_RECORDING[request.type] ?? null;
 
-/** The messages a replayed pass must send: the recorded ones, plus the clock pass's reply format, which the
- *  run predates and which rides after the user message. */
+/** The messages a replayed pass must send: the recorded ones, plus the clock pass's schema reply format, which
+ *  the run predates and which rides after the user message. */
 export const expectedMessages = (id: TurnPassId, messages: ChatMessage[]): ChatMessage[] =>
   id === 'timePassed'
-    ? messages.map((m, i) => (i === messages.length - 1 ? { ...m, content: m.content + CLOCK_TEXT_FORMAT } : m))
+    ? messages.map((m, i) => (i === messages.length - 1 ? { ...m, content: m.content + CLOCK_SCHEMA_FORMAT } : m))
     : messages;
 
 /** The clock prompt as the run sent it, before its reply format moved into the appended block. */

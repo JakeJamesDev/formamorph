@@ -24,6 +24,7 @@ import {
   type EntityReply,
 } from '@/lib/entityFollowing';
 import type { ResponseSchema } from '@/lib/aiRequest/responseSchema';
+import { parseJsonReply } from '@/lib/aiRequest/jsonReply';
 import { parseChoices } from '@/lib/choices';
 import { parseStatUpdates } from '@/lib/statChanges';
 import { INVENTORY_JSON_FORMAT, INVENTORY_TEXT_FORMAT, inventoryPassSchema, parseInventoryReply } from '@/lib/inventory/pass';
@@ -31,7 +32,9 @@ import { backingStatIds } from '@/lib/currency';
 import { toldLines, type ToldAction } from '@/lib/actionList';
 import type { Currency, InventoryPassOp } from '@/types';
 import { statRequestSchema, textPassTargets, type StatRequestSnapshot } from '@/lib/statRequest';
-import { CLOCK_TEXT_FORMAT, parseClockReading, parseOpeningDaypart, type ClockReading } from '@/lib/gameClock';
+import {
+  CLOCK_SCHEMA_FORMAT, CLOCK_TEXT_FORMAT, clockReadingSchema, parseClockReply, parseOpeningDaypart, type ClockReading,
+} from '@/lib/gameClock';
 import { cleanDiscoveredDescription, DISCOVER_LATER_LABEL, DISCOVER_PASSAGE_LABEL } from '@/lib/runtimeCharacters';
 import {
   milestoneMomentValues, milestoneReplyFormat, parseIncrementalMilestoneReply, type IncrementalVerdict,
@@ -62,6 +65,8 @@ export const TURN_PASS_CAPS = {
   summary: 200,
   /** One value like "2h"; anything longer is stray prose the parser ignores. */
   timePassed: 12,
+  /** The clock pass's three-field JSON reply, with room for spacing. */
+  timePassedSchema: 60,
   /** One daypart word. */
   openingTime: 8,
   /** A diary entry is one or two first-person sentences. */
@@ -297,6 +302,12 @@ const locationSuggestPass: TurnPassRecord<string | null> = {
 /** The tokens each subject's key and quotes add to its line in the schema reply. */
 const JSON_REPLY_SLACK = 6;
 
+/** `user` with a reply format appended as its own run. */
+const withReplyFormat = (user: TiledRuns, format: string): TiledRuns => ({
+  content: user.content + format,
+  runs: [...user.runs, { start: user.content.length, end: user.content.length + format.length, contextLabel: 'reply-format' }],
+});
+
 /** What `<CHARACTER NAME>` renders in a saved entity location template that still holds it (Q117): the request
  *  covers every subject at once. */
 const SAVED_TEMPLATE_CHARACTER_NAME = 'each character listed';
@@ -374,10 +385,7 @@ const entityLocationRequest = (
       '<MOVE OPTIONS>': '',
     },
   ));
-  const withFormat = (format: string): TiledRuns => ({
-    content: user.content + format,
-    runs: [...user.runs, { start: user.content.length, end: user.content.length + format.length, contextLabel: 'reply-format' }],
-  });
+  const withFormat = (format: string) => withReplyFormat(user, format);
   // One row per subject: its key, a colon, and its longest line.
   const cap = subjects.reduce(
     (sum, subject, i) => sum + estimateTokens(keys[i].length + 2) + locationChangeCap(subjectCandidates(subject).map(([label]) => label)), 0,
@@ -397,12 +405,7 @@ const entityLocationRequest = (
 
 /** A schema reply's fields that hold a line, by key. Null when the reply is not a JSON object. */
 const jsonReplies = (raw: string): Map<string, string> | null => {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''));
-  } catch {
-    return null;
-  }
+  const parsed = parseJsonReply(raw);
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
   return new Map(Object.entries(parsed).flatMap(([key, line]): [string, string][] => (typeof line === 'string' ? [[key, line]] : [])));
 };
@@ -764,10 +767,7 @@ export function inventoryRequest(
 ): TurnPassRequest<ChatMessage> {
   const system = systemTiled(prompts.system, values.ctx);
   const user = userTiled(prompts.user, { '<PLAYER ACTION>': values.action, '<NARRATION>': values.narration });
-  const withFormat = (format: string): TiledRuns => ({
-    content: user.content + format,
-    runs: [...user.runs, { start: user.content.length, end: user.content.length + format.length, contextLabel: 'reply-format' }],
-  });
+  const withFormat = (format: string) => withReplyFormat(user, format);
   const shared = { type: 'inventory' as const, maxTokens: TURN_PASS_CAPS.inventory, silent: false, quiet: base.quiet };
   const textRequest = labeledRequest(shared, system, withFormat(INVENTORY_TEXT_FORMAT));
   if (base.textPass) return textRequest;
@@ -823,22 +823,25 @@ const timePassedPass: TurnPassRecord<ClockReading | null> = {
   stage: 'postNarration',
   fanOut: false,
   isDue: (input) => input.settings.aiClock,
+  // An endpoint that refused the schema before gets the text request alone.
   buildRequest: (input, material) => {
+    const system = systemTiled(input.prompts.timePassed, material.ctx);
     const user = userTiled(input.prompts.timePassedUser, {
       '<PLAYER ACTION>': stripOocDirectives(material.effectiveAction),
       '<NARRATION>': material.narration,
     });
-    const end = user.content.length;
-    return labeledRequest(
-      { type: 'timePassed', maxTokens: TURN_PASS_CAPS.timePassed, ...silentOn(material) },
-      systemTiled(input.prompts.timePassed, material.ctx),
-      {
-        content: user.content + CLOCK_TEXT_FORMAT,
-        runs: [...user.runs, { start: end, end: end + CLOCK_TEXT_FORMAT.length, contextLabel: 'reply-format' }],
-      },
-    );
+    const withFormat = (format: string) => withReplyFormat(user, format);
+    const shared = { type: 'timePassed' as const, ...silentOn(material) };
+    const textRequest = labeledRequest({ ...shared, maxTokens: TURN_PASS_CAPS.timePassed }, system, withFormat(CLOCK_TEXT_FORMAT));
+    if (input.settings.clockTextPass) return textRequest;
+    const { systemPrompt, messages, maxTokens, anatomy } = textRequest;
+    return {
+      ...labeledRequest({ ...shared, maxTokens: TURN_PASS_CAPS.timePassedSchema }, system, withFormat(CLOCK_SCHEMA_FORMAT)),
+      responseSchema: clockReadingSchema(),
+      textFallback: { systemPrompt, messages, maxTokens, anatomy },
+    };
   },
-  parseResponse: (raw) => parseClockReading(raw),
+  parseResponse: (raw) => parseClockReply(raw),
 };
 
 /**

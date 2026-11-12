@@ -222,7 +222,7 @@ function previewInput(prompts: AnatomyPreviewPrompts, settings: AnatomyPreviewSe
       choicesEnabled: true, statUpdatesEnabled: true, statCount: 3,
       locationChangeEnabled: true, locationAutoApply: settings.locationAutoApply, entityMovement: true,
       aiClock: true, memoryDigests: recap, characterDiaries: true, describeCharacters: true,
-      inventoryDue: true, inventoryTextPass: false, entityLocationTextPass: false,
+      inventoryDue: true, inventoryTextPass: false, entityLocationTextPass: false, clockTextPass: false,
       imageAttachments: false, promptAttachments: {}, language: settings.language,
       stripLinksAndImages: false,
     },

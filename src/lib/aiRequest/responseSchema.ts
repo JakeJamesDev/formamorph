@@ -1,4 +1,5 @@
 import { AiStreamError } from './aiStream';
+import { parseJsonReply } from './jsonReply';
 
 /** The JSON Schema subset a response format may use. It names no `uniqueItems`, which the cloud server rejects. */
 export type ResponseSchemaNode =
@@ -42,11 +43,8 @@ function followsNode(value: unknown, node: ResponseSchemaNode, sparse: boolean):
  * around it counts. `sparse` lets an object leave out keys.
  */
 export function followsResponseSchema(text: string, schema: ResponseSchemaNode, sparse = false): boolean {
-  try {
-    return followsNode(JSON.parse(text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')), schema, sparse);
-  } catch {
-    return false;
-  }
+  const parsed = parseJsonReply(text);
+  return parsed !== undefined && followsNode(parsed, schema, sparse);
 }
 
 /** A schema request the endpoint refused with a client error, before a text-pass answer proves the schema was why. */

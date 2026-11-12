@@ -6,10 +6,10 @@ import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { layerValues } from '@/lib/promptValues';
 import { planTurn } from './planTurn';
 import type { ChatMessage, Currency, Entity, GameLocation, PlayerStat } from '@/types';
-import type { TurnMaterial, TurnPassId, TurnPassRecord, TurnPassSubject, TurnPlanInput, TurnPrompts, TurnSettings } from './turnPlan';
+import type { TurnMaterial, TurnPassId, TurnPassRecord, TurnPassRequest, TurnPassSubject, TurnPlanInput, TurnPrompts, TurnSettings } from './turnPlan';
 import type { SectionStyle } from '@/lib/promptPresets';
 import { runsTile } from '@/lib/requestAnatomy';
-import { CLOCK_TEXT_FORMAT } from '@/lib/gameClock';
+import { CLOCK_SCHEMA_FORMAT, CLOCK_TEXT_FORMAT, clockReadingSchema } from '@/lib/gameClock';
 import { TEST_PROMPTS, testInput } from './turnTestInputs';
 import {
   INLINE_THINKING_DIRECTIVE, OPENING_SCENE_CUE, planDirective, defaultChoicesPrompt,
@@ -639,7 +639,8 @@ describe('turn pass requests', () => {
     it('pins the caps the passes ask for', () => {
       expect(build('discoverEntity', { subject: { name: 'Ferryman' } }).maxTokens).toBe(TURN_PASS_CAPS.discoverEntity);
       expect(build('summary').maxTokens).toBe(TURN_PASS_CAPS.summary);
-      expect(build('timePassed').maxTokens).toBe(TURN_PASS_CAPS.timePassed);
+      expect(build('timePassed').maxTokens).toBe(TURN_PASS_CAPS.timePassedSchema);
+      expect(build('timePassed').textFallback?.maxTokens).toBe(TURN_PASS_CAPS.timePassed);
       expect(build('openingTime', {}, { isGameStarted: false }).maxTokens).toBe(TURN_PASS_CAPS.openingTime);
       expect(build('diary', { subject: { name: 'Bram' } }).maxTokens).toBe(TURN_PASS_CAPS.diary);
     });
@@ -1203,19 +1204,42 @@ describe('the stat request item line (Q53)', () => {
 });
 
 describe('the clock pass request', () => {
-  it('appends the text reply format as its own run after the user message', () => {
-    const request = build('timePassed');
+  /** The reply-format run that closes `request`'s user message, and the text it covers. */
+  const formatRun = (request: Pick<TurnPassRequest<ChatMessage>, 'messages' | 'anatomy'>) => {
     const content = request.messages[0].content;
     const runs = request.anatomy!.messages[0];
     expect(runsTile(content, runs)).toBe(true);
     const last = runs[runs.length - 1];
-    expect([last.contextLabel, content.slice(last.start, last.end)]).toEqual(['reply-format', CLOCK_TEXT_FORMAT]);
-    expect(content.startsWith('Time: I read the notices. | ')).toBe(true);
+    return [last.contextLabel, content.slice(last.start, last.end)];
+  };
+
+  it('asks for the schema, with the schema reply format as its own run after the user message', () => {
+    const request = build('timePassed');
+    expect(request.responseSchema).toEqual(clockReadingSchema());
+    expect(formatRun(request)).toEqual(['reply-format', CLOCK_SCHEMA_FORMAT]);
+    expect(request.messages[0].content.startsWith('Time: I read the notices. | ')).toBe(true);
   });
 
-  it('keeps the reply format under a clock prompt the player edited', () => {
-    const content = build('timePassed', {}, { prompts: { ...TEST_PROMPTS, timePassedUser: 'How long? <NARRATION>' } }).messages[0].content;
-    expect(content.startsWith('How long? ')).toBe(true);
-    expect(content.endsWith(CLOCK_TEXT_FORMAT)).toBe(true);
+  it('carries the text request as its fallback, with the text reply format as its own run', () => {
+    const request = build('timePassed');
+    const fallback = request.textFallback!;
+    expect(fallback.systemPrompt).toBe(request.systemPrompt);
+    expect(formatRun(fallback)).toEqual(['reply-format', CLOCK_TEXT_FORMAT]);
+    expect(fallback.messages[0].content.replace(CLOCK_TEXT_FORMAT, '')).toBe(request.messages[0].content.replace(CLOCK_SCHEMA_FORMAT, ''));
+  });
+
+  it('sends the text request alone for an endpoint that refused the schema', () => {
+    const request = build('timePassed', {}, {}, { clockTextPass: true });
+    expect(request).not.toHaveProperty('responseSchema');
+    expect(request).not.toHaveProperty('textFallback');
+    expect(request.maxTokens).toBe(TURN_PASS_CAPS.timePassed);
+    expect(formatRun(request)).toEqual(['reply-format', CLOCK_TEXT_FORMAT]);
+  });
+
+  it('keeps both reply formats under a clock prompt the player edited', () => {
+    const request = build('timePassed', {}, { prompts: { ...TEST_PROMPTS, timePassedUser: 'How long? <NARRATION>' } });
+    expect(request.messages[0].content.startsWith('How long? ')).toBe(true);
+    expect(request.messages[0].content.endsWith(CLOCK_SCHEMA_FORMAT)).toBe(true);
+    expect(request.textFallback!.messages[0].content.endsWith(CLOCK_TEXT_FORMAT)).toBe(true);
   });
 });

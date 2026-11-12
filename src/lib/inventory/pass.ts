@@ -3,6 +3,7 @@
  * named operations it returns into the validator's id-form operations (Q23, Q24, Q56). Pure.
  */
 import type { ResponseSchema } from '@/lib/aiRequest/responseSchema';
+import { parseJsonReply } from '@/lib/aiRequest/jsonReply';
 import type { PaymentStats } from '@/lib/currency/payment';
 import { sameWhere, stateWord } from '@/lib/items';
 import { escapeRegExp } from '@/lib/utils';
@@ -110,17 +111,13 @@ const passOp = (raw: Record<string, unknown>): InventoryPassOp | null => {
 };
 
 const jsonOps = (raw: string): InventoryPassOp[] | null => {
-  try {
-    const parsed: unknown = JSON.parse(raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''));
-    const list = Array.isArray(parsed) ? parsed
-      : parsed && typeof parsed === 'object' && Array.isArray((parsed as { operations?: unknown }).operations)
-        ? (parsed as { operations: unknown[] }).operations : null;
-    if (!list) return null;
-    return list.flatMap((entry) => (entry && typeof entry === 'object' ? [passOp(entry as Record<string, unknown>)] : []))
-      .filter((op): op is InventoryPassOp => op !== null);
-  } catch {
-    return null;
-  }
+  const parsed = parseJsonReply(raw);
+  const list = Array.isArray(parsed) ? parsed
+    : parsed && typeof parsed === 'object' && Array.isArray((parsed as { operations?: unknown }).operations)
+      ? (parsed as { operations: unknown[] }).operations : null;
+  if (!list) return null;
+  return list.flatMap((entry) => (entry && typeof entry === 'object' ? [passOp(entry as Record<string, unknown>)] : []))
+    .filter((op): op is InventoryPassOp => op !== null);
 };
 
 /** A cell a reply labeled with its field's name, as in `item: Rope`. */

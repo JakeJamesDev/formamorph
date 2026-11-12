@@ -72,6 +72,8 @@ export interface TurnSettings {
   inventoryTextPass: boolean;
   /** The entity location endpoint refused a response schema before, so the request sends its text form alone. */
   entityLocationTextPass: boolean;
+  /** The clock endpoint refused a response schema before, so the clock pass sends its text request alone. */
+  clockTextPass: boolean;
   /** The Image Attachments setting. Off, no pass includes the action's images. */
   imageAttachments: boolean;
   /** The active preset's Include Attachments flags. An absent prompt takes its default. */

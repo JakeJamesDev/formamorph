@@ -12,6 +12,8 @@
  */
 
 import type { Daypart } from '@/types';
+import type { ResponseSchema } from '@/lib/aiRequest/responseSchema';
+import { parseJsonReply } from '@/lib/aiRequest/jsonReply';
 
 /** The story's time frame. Not authored anywhere yet — every field falls back to its default. */
 export interface WorldCalendar {
@@ -91,6 +93,44 @@ export function parseClockReading(reply: string): ClockReading | null {
 export const CLOCK_TEXT_FORMAT = `
 
 Write how long it took as a count followed by its unit: m for minutes, h for hours, d for days, w for weeks. Always write the count first - a bare unit letter is not an answer. When the passage ends at a time of day rather than after a length of time, answer with the word until and that time of day instead of a count. The times of day are: ${CLOCK_ANCHORS.join(', ')}. Your entire reply is that count and its unit, or until and a time of day, with nothing before or after it.`;
+
+/** The clock pass's reply schema: the anchor first, then the unit before its count. */
+export const clockReadingSchema = (): ResponseSchema => ({
+  name: 'time_passed',
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['lasts_until', 'unit', 'count'],
+    properties: {
+      lasts_until: { type: 'string', enum: ['none', ...CLOCK_ANCHORS] },
+      unit: { type: 'string', enum: [...TURN_TIME_UNITS] },
+      count: { type: 'integer', minimum: 0 },
+    },
+  },
+});
+
+/** The schema request's reply format, which describes the fields. */
+export const CLOCK_SCHEMA_FORMAT = `
+
+Answer with three fields:
+- lasts_until: when the passage runs on until a time of day it shows or names, that time of day. Otherwise none. The time of day the scene happens at is not enough on its own.
+- unit and count: how long it took. Choose the unit first - minutes, hours, days, weeks - then the whole number of that unit.`;
+
+/** A schema reply's reading: a count of 0 beside an anchor is still a count. */
+function jsonClockReading(reply: Record<string, unknown>): ClockReading | null {
+  const { lasts_until: until, unit, count } = reply;
+  const anchor = CLOCK_ANCHORS.find((a) => a === until) ?? null;
+  const amount = Number.isInteger(count) && (count as number) >= 0 && TURN_TIME_UNITS.some((u) => u === unit)
+    ? { count: count as number, unit: unit as TurnTimeUnit } : null;
+  return anchor || amount ? { anchor, amount } : null;
+}
+
+/** The clock pass's reply from either request: a JSON object reads as the schema reply, anything else as text. */
+export function parseClockReply(raw: string): ClockReading | null {
+  const parsed = parseJsonReply(raw);
+  return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+    ? jsonClockReading(parsed as Record<string, unknown>) : parseClockReading(raw);
+}
 
 /** Where each anchor falls, as a fraction of the day: the daypart starts, noon at half, midnight at the end. */
 const ANCHOR_FRACTIONS: Record<ClockAnchor, number> = {

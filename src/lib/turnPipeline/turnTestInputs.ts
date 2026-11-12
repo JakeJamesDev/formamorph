@@ -61,7 +61,7 @@ export const TEST_SETTINGS: TurnSettings = {
   describeCharacters: true,
   // The parity capture's world had no items.
   inventoryDue: false,
-  inventoryTextPass: false, entityLocationTextPass: false,
+  inventoryTextPass: false, entityLocationTextPass: false, clockTextPass: false,
   imageAttachments: false,
   promptAttachments: {},
   language: 'English',
