@@ -5,7 +5,8 @@ import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AiSetupGate } from './AiSetupGate';
 import { LOCAL_MODELS, groupModelsByFit, tierForVram, type LocalModelInfo } from '@/lib/localModels';
-import { closeRoadScene, isRoadSceneOpen } from '@/components/road/roadSceneStore';
+import { closeRoadScene, isRoadSceneOpen, roadSceneStart } from '@/components/road/roadSceneStore';
+import { sendFunnelStep } from '@/lib/funnel';
 import { downloadLocalModel, type LocalDownloadProgress } from '@/lib/imageGen/desktop';
 import { toast } from 'react-toastify';
 import { openLatestDetails, toastTexts } from '@/test/toastText';
@@ -67,6 +68,8 @@ vi.mock('@/lib/imageGen/desktop', async (orig) => {
     },
   };
 });
+
+vi.mock('@/lib/funnel', () => ({ sendFunnelStep: vi.fn() }));
 
 vi.mock('react-toastify', () => ({
   toast: Object.assign(vi.fn(() => 'toast-id'), { update: vi.fn(), dismiss: vi.fn(), error: vi.fn() }),
@@ -188,6 +191,8 @@ describe('AiSetupGate — the low-VRAM lead', () => {
     const recommended = groupModelsByFit(tierForVram(6144)).recommended as LocalModelInfo;
     await userEvent.click(within(card).getByRole('button', { name: 'See Levels' }));
     expect(isRoadSceneOpen()).toBe(true);
+    expect(roadSceneStart()).toBe('levels');
+    expect(sendFunnelStep).toHaveBeenCalledWith('see_levels');
     await userEvent.click(within(row(recommended)).getByRole('button', { name: 'Download' }));
     expect(downloadLocalModel).toHaveBeenCalledWith(expect.objectContaining({ fileName: recommended.fileName }));
     withLead.unmount();
