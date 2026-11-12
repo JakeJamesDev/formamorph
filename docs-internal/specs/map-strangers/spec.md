@@ -1,6 +1,7 @@
 # Spec: Map Strangers
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-12. Tickets 01–03, last landing 650fa72d6. Review clean; one test gap (Once Met and Never in the control test) fixed in ca762a147. Gates green on 2026-11-12: lint 0, test 35780 pass.
 Spec session: map-strangers — spec
 
 ## Problem Statement
