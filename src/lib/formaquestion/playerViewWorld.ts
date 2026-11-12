@@ -7,6 +7,7 @@ import type { ChipScene } from '@/lib/chipValues/chipScene';
 import type { SandboxState, StatePlaces } from '@/lib/statCodeTurn';
 import type { StatCodeOwners } from '@/lib/statCodeTraits';
 import type { GateEntity, GateStats } from '@/lib/traitGates';
+import { positionOf, withMembership } from '@/lib/entityPlaces';
 import { stateWord } from '@/lib/items';
 import { statBlueprintIds } from '@/lib/statLinks';
 import type { StatCodeWorld } from '@/lib/statCodeTestRun';
@@ -89,7 +90,10 @@ function playerEntity(met: Met, entity: Entity, row: PlayerViewEntity, targets: 
     return link.kind === 'group' || (target !== undefined && statShown(met, target, entity.id));
   });
   const traitLinks = entity.traitLinks?.filter((link) => link.kind === 'trait' && met.traits.has(traitKey(entity.id, link.originalId)));
-  return {
+  // The copy has no kind, so its membership is its Position at the places the player has met.
+  const standings = { positions: met.current.entityPositions ?? {}, generics: met.current.genericStates ?? {} };
+  const known = positionOf(entity, standings).filter((id) => met.locations.has(id));
+  return withMembership<Entity>({
     id: entity.id, name: row.name, aliases: [...(row.seenAliases ?? [])],
     playerDescription: row.description, aiDescription: row.description,
     ...(entity.type !== undefined && { type: entity.type }),
@@ -97,13 +101,12 @@ function playerEntity(met: Met, entity: Entity, row: PlayerViewEntity, targets: 
     ...(entity.persona && { persona: true }),
     ...(entity.personaOnly && { personaOnly: true }),
     ...(entity.customPersona && { customPersona: true }),
-    ...(entity.locations && { locations: entity.locations.filter((id) => met.locations.has(id)) }),
     ...(entity.placeholders && { placeholders: entity.placeholders }),
     ...(stats && { stats, statGroups: keptGroups(entity.statGroups ?? [], [...stats, ...(statLinks ?? [])]) }),
     ...(traits && { traits, traitGroups: keptGroups(entity.traitGroups ?? [], [...traits, ...(traitLinks ?? [])]) }),
     ...(statLinks?.length ? { statLinks } : {}),
     ...(traitLinks?.length ? { traitLinks } : {}),
-  };
+  }, known);
 }
 
 /** The met ones of `things`, each rebuilt from its Player View row. */

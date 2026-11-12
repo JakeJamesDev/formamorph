@@ -5,6 +5,7 @@ import type { SandboxState } from '@/lib/statCodeTurn';
 import type { StatCodeWorld } from '@/lib/statCodeTestRun';
 import { serializeTurnContent } from '@/lib/turnDigest';
 import { buildToolSnapshot } from '@/lib/tools/toolSnapshot';
+import { withDerivedLocations } from '@/lib/entityKind';
 import { buildPlayerView } from './playerView';
 import { playerViewMemory, playerViewScene, playerViewState, playerViewWorld, type PlayerViewReach } from './playerViewWorld';
 
@@ -275,5 +276,40 @@ describe('playerViewWorld', () => {
       ],
     }, reach());
     expect(ids(linked.stats)).toEqual(['nerve', 'bp-grit']);
+  });
+
+  describe('a met Unique entity whose routine names both places the player visited', () => {
+    // The warden begins at the gate and stays in the hall; the world stores both as its list.
+    const routined = withDerivedLocations({
+      ...WARDEN, kind: 'unique', traversable: [],
+      starts: [{ id: 'w1', place: 'gate', weight: 1, schedule: [{ id: 'w1-day', time: 'allDay', action: { kind: 'stay', place: 'hall' } }] }],
+    });
+    const standing = (at: string | undefined) => {
+      const base = reach();
+      const current: GameState = { ...base.current, entityPositions: at ? { warden: at } : {} };
+      const cutWorld = playerViewWorld({ ...world, entities: [routined, STRANGER] }, { ...base, current });
+      return cutWorld.entities.find((e) => e.id === 'warden')?.locations;
+    };
+
+    it('stands at its one Position', () => {
+      expect(routined.locations).toEqual(['gate', 'hall']);
+      expect(standing('hall')).toEqual(['hall']);
+    });
+
+    it('stands nowhere the player knows when its Position is a place the player has not met', () => {
+      expect(standing('vault')).toBeUndefined();
+    });
+
+    it('stands nowhere with no Position', () => {
+      expect(standing(undefined)).toBeUndefined();
+    });
+  });
+
+  it('places a met entity with no kind that a script moved at its Position, not its listed place', () => {
+    const listed = { ...WARDEN, locations: ['gate'] };
+    const base = reach();
+    const current: GameState = { ...base.current, entityPositions: { warden: 'hall' } };
+    const cutWorld = playerViewWorld({ ...world, entities: [listed, STRANGER] }, { ...base, current });
+    expect(cutWorld.entities.find((e) => e.id === 'warden')?.locations).toEqual(['hall']);
   });
 });

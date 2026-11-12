@@ -245,6 +245,47 @@ describe('routines and Connections in the World Index', () => {
     expect(pageOf(cast, 'old')).toContain('**Locations:** Quay');
   });
 
+  describe('the places an entity can be, by its Presence', () => {
+    const canBeAt = (entities: Entity[], id: string, locations = input.locations) => {
+      const md = buildWorldIndex({ ...input, entities, locations }).sectionsOf({ kind: 'world', worldKind: 'entity', id, name: id }).map((s) => s.markdown).join('\n\n');
+      return md.split('**Can Be At:**\n')[1]?.split('\n\n')[0].split('\n') ?? [];
+    };
+    const quayStarts = input.locations.map((l) => ({ ...l, isStarting: l.id === 'loc-quay' }));
+
+    it('lists each place with whether the entity begins there, a row sends it there, or Can Also Go lists it', () => {
+      // With no location flagged, the Player's Starting Location Start stands for every location.
+      expect(canBeAt([warden, crowd], 'warden')).toEqual([
+        '- North Gate: begins here (75%); patrols here (20:00 – 04:00); stays here (The rest of the day)',
+        '- Old Mill: begins here; patrols here (20:00 – 04:00); can be led here',
+        '- Quay: begins here',
+        '- Vault: begins here',
+      ]);
+      expect(canBeAt([warden, crowd], 'crowd')).toEqual(['- Old Mill: begins here']);
+    });
+
+    it("lists a Player's Starting Location Start at the world's starting locations", () => {
+      expect(canBeAt([warden, crowd], 'warden', quayStarts)).toEqual([
+        '- North Gate: begins here (75%); patrols here (20:00 – 04:00); stays here (The rest of the day)',
+        '- Old Mill: patrols here (20:00 – 04:00); can be led here',
+        '- Quay: begins here (25%)',
+      ]);
+    });
+
+    it('states Can Also Go set to Anywhere as such, and lists no place for it', () => {
+      const roamer: Entity = { ...warden, traversable: 'anywhere' };
+      const md = buildWorldIndex({ ...input, entities: [roamer], locations: quayStarts })
+        .sectionsOf({ kind: 'world', worldKind: 'entity', id: 'warden', name: 'Warden' }).map((s) => s.markdown).join('\n\n');
+      expect(md).toContain('**Can Also Go:** Anywhere');
+      expect(canBeAt([roamer], 'warden', quayStarts).map((line) => line.split(':')[0])).toEqual(['- North Gate', '- Old Mill', '- Quay']);
+    });
+
+    it('leaves out a row place its Start has no path to', () => {
+      const islander: Entity = { ...crowd, starts: [{ id: 'g1', place: 'loc-mill', weight: 1, schedule: [{ id: 'g1-day', time: 'allDay', action: { kind: 'stay', place: 'loc-isle' } }] }] };
+      const isle = [...input.locations, place('loc-isle', 'Isle')];
+      expect(canBeAt([islander], 'crowd', isle)).toEqual(['- Old Mill: begins here']);
+    });
+  });
+
   it('states Can Also Go for a Unique entity with no field as the Routine tab shows it: an empty list', () => {
     const { traversable: _, ...unset } = warden;
     expect(page('entity', 'warden')).toContain('**Can Also Go:** Only Old Mill');

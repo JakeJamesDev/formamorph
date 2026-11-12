@@ -5,6 +5,7 @@
 import { BUILTIN_PLACEHOLDERS, builtinLabel } from '@/lib/builtinPlaceholders';
 import { worthText } from '@/lib/currency';
 import { createDocsIndex, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
+import { presenceOf, type PlacesWorld } from '@/lib/entityPlaces';
 import { PANEL_TRAVEL_LABELS, travelLabelText } from '@/components/editor/connectionTravel';
 import { isGeneric, isUnique, traversableOf } from '@/lib/entityKind';
 import { WHEN_EMPTY_LABEL, stateWord, whenEmptyOf } from '@/lib/items';
@@ -172,6 +173,15 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
     if (traversable === 'anywhere') return field('Can Also Go', 'Anywhere');
     return field('Can Also Go', traversable.length ? `Only ${traversable.map(placeName).join(', ')}` : 'Only Listed Locations, none added');
   };
+  const placesWorld: PlacesWorld = { locations: world.locations, connections: world.connections ?? [] };
+  // Each place the entity can be by its Presence, with the Presence tab's reasons; Anywhere stays on Can Also Go.
+  const placesField = (entity: Entity): string | undefined => {
+    const { places } = presenceOf(entity, placesWorld);
+    if (!isUnique(entity) && !isGeneric(entity)) return field('Locations', places.map((p) => text(locationName(p.place))).join(', '));
+    const items = places.flatMap(({ place }) => presenceLines(place, [entity], placesWorld)
+      .map((line) => `- ${text(locationName(place))}: ${line.reasons.join('; ')}`));
+    return items.length ? `**Can Be At:**\n${items.join('\n')}` : undefined;
+  };
   const connectionLine = (connection: Connection, here: string): string => {
     const hereIsA = connection.a === here;
     const [out, back] = hereIsA ? [connection.aToB, connection.bToA] : [connection.bToA, connection.aToB];
@@ -189,8 +199,7 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
       field('Player Description', text(entity.playerDescription)),
       field('AI Description', text(entity.aiDescription)),
       field('AI Summary', text(entity.aiSummary)),
-      // An entity with a kind derives its locations from its Starts, which the page states.
-      !entity.kind && entity.locations?.length ? field('Locations', entity.locations.map(locationName).join(', ')) : undefined,
+      placesField(entity),
       Array.isArray(entity.knownIn) ? field('Known In', entity.knownIn.map(locationName).join(', ')) : entity.knownIn === 'nowhere' && '**Known In:** nowhere',
       startsBlock(entity),
       canAlsoGo(entity),
@@ -203,7 +212,7 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
     const parent = location.parentId ? locationName(location.parentId) : undefined;
     const linked = (world.connections ?? []).filter((connection) => connection.a === location.id || connection.b === location.id)
       .map((connection) => connectionLine(connection, location.id));
-    const here = presenceLines(location.id, world.entities, { locations: world.locations, connections: world.connections ?? [] });
+    const here = presenceLines(location.id, world.entities, placesWorld);
     add('location', location.id, location.name, [], lines(
       `# ${location.name}`,
       facts(location.isStarting && 'Starting Location', parent && `Inside: ${parent}`),

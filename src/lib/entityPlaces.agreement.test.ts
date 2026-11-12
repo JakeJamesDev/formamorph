@@ -34,6 +34,10 @@ import { selectVisitorAdditions } from '@/lib/turnPipeline/narrationReading';
 import { openingPlacesOf, placementOf } from '@/lib/openingPlacement';
 
 import { runRules, type RuleWorld } from '@/lib/testBench/rules';
+import { buildWorldIndex } from '@/lib/formaquestion/worldIndex';
+import { playerViewWorld } from '@/lib/formaquestion/playerViewWorld';
+import type { PlayerView } from '@/lib/formaquestion/playerView';
+import type { GameState } from '@/types';
 const CARD_SELF: Stat = { id: 's', name: 'S', type: 'number', description: '', min: 0, max: 10, regen: 0, descriptors: [] };
 
 /**
@@ -364,5 +368,49 @@ describe('the Test Bench rules agree with Presence', () => {
     expect(found('entity-location-orphan', world).map((f) => f.items[0].id)).toEqual(['lost']);
     expect(presenceIn(WORLD)(lost)).toEqual([]);
     expect(found('entity-nowhere', world)).toEqual([]);
+  });
+});
+
+describe("Morphie's readers agree with Entity Places", () => {
+  const index = buildWorldIndex({ ...authoredWorld, dictionaries: [] });
+  /** The ids whose World Index page lists `place` under Can Be At. Location names are their ids here. */
+  const indexedAt = (place: GameLocation) => CAST.filter((entity) => index.sectionsOf({ kind: 'world', worldKind: 'entity', id: entity.id, name: entity.name })
+    .some((section) => section.markdown.split('**Can Be At:**\n')[1]?.split('\n').some((line) => line.startsWith(`- ${place.name}:`))))
+    .map((entity) => entity.id);
+
+  /** The ids the World Index page of `place` lists under Entities Here. */
+  const hereAt = (place: GameLocation) => {
+    const md = index.sectionsOf({ kind: 'world', worldKind: 'location', id: place.id, name: place.name }).map((s) => s.markdown).join('\n\n');
+    const names = (md.split('**Entities Here:**\n')[1]?.split('\n\n')[0].split('\n') ?? []).map((line) => line.slice(2).split(':')[0]);
+    return CAST.filter((entity) => names.includes(entity.name)).map((entity) => entity.id);
+  };
+
+  // A game where the player met everyone and walked everywhere, with the book's Positions. The player view reads
+  // only these fields of a snapshot, so the rest stay unset.
+  const current = (book: PositionBook) => ({
+    metEntities: CAST.map((entity) => entity.id), locationId: 'square', visibleEntities: [], globalStats: [], globalTraits: [],
+    disabledTraitIds: [], itemCopies: [], entityPositions: book.positions, genericStates: book.generics,
+  } as unknown as GameState);
+  const view: PlayerView = {
+    entities: CAST.map((entity) => ({ kind: 'entity', id: entity.id, name: entity.name, description: '' })),
+    locations: LOCATIONS.map((l) => ({ kind: 'location', id: l.id, name: l.name, description: '' })), items: [], stats: [], traits: [],
+  };
+  const cut = (book: PositionBook) => playerViewWorld(
+    { ...authoredWorld, statGroups: [], traitGroups: [], entityGroups: [], placeholders: [], placeholderGroups: [], dictionaries: [] },
+    { view, current: current(book) },
+  );
+
+  it.each(LOCATIONS)("the world index's Can Be At, at $id, reads Presence", (place) => {
+    expect(indexedAt(place)).toEqual(idsAt(place.id, CAST, presenceIn(WORLD)));
+  });
+
+  it.each(LOCATIONS)("the world index's Entities Here, at $id, reads Presence", (place) => {
+    expect(hereAt(place)).toEqual(idsAt(place.id, CAST, presenceIn(WORLD)));
+  });
+
+  describe.each(BOOKS)("the player view's places with $name", ({ book }) => {
+    it.each(LOCATIONS)('at $id read Position', (place) => {
+      expect(idsAt(place.id, cut(book).entities, (entity) => entity.locations ?? [])).toEqual(idsAt(place.id, CAST, positionsIn(book)));
+    });
   });
 });
