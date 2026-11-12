@@ -3,7 +3,7 @@
 Status: ready-for-agent
 Spec session: clock-pass-anchors — spec
 
-The clock pass answers through a response schema that can name a time of day the scene runs until ("until dawn"), and code turns that into the turn's hours from the story clock. Probe evidence: `testing/baseline/harness/time-delta-probe.mjs`.
+The clock pass answers through a response schema that can name a time of day the scene runs until ("until dawn"), and code turns that into the turn's hours from the story clock. Probe evidence: `testing/baseline/harness/time-delta-probe.cli.ts`.
 
 ## Problem Statement
 
@@ -27,6 +27,12 @@ The player sees a clock that lands where the scene ends: a sleep until dawn begu
 - **Q3.** The pass uses a response schema where the endpoint takes one.
 - **Q4.** Test seams: the turn commit, from a raw reply to the turn's hours (parse, anchor math and guard together); the pass record, for the request shape (schema attached, text fallback present); the probe, for model numbers.
 - **Q5.** Without a schema, the text reply is a count and its unit, or "until" and a time of day, resolved by the same anchor math.
+- **Q6.** Ticket 01 reports cloud numbers (text request vs the shipped control) and has no pass bar. The spec's bar applies at ticket 02, which also carries the MeroMero run.
+- **Q7.** The probe's control is the shipped clock request read from a fixed ref, scored the old way. The test arm is the app's real request, parse and commit math, bundled, with no copies in the harness. The spike's arms are removed; git history keeps them.
+- **Q8.** The text reply-format wording is the implementer's, measured by the probe. If it scores below the spike's anchor arm on cloud (74% main, 75% anchored), use the spike's anchor sentence as written.
+- **Q9.** On a custom calendar, a day is `hoursPerDay` for the day carry and the guard: the guard fires when the anchor lands more than 20/24 of a day ahead and the count is under one calendar day. A counted "N days" with no anchor stays N × 24 hours, as today.
+- **Q10.** An anchor and any count in the same reply form one reading. "until dawn" alone has no count, so neither the carry nor the guard applies.
+- **Q11.** Anchor math on the opening turn uses the calendar with the seeded opening hour merged in. The stat-code clock frame that drops `hoursPerDay` on the opening turn is named in the Landed section, not fixed here.
 
 ## User Stories
 
@@ -79,7 +85,7 @@ The player sees a clock that lands where the scene ends: a sleep until dawn begu
 - A good test feeds what the model would send and asserts the hours the player's clock moves. It never asserts the prompt text or the private parse shape.
 - **Turn commit (main seam):** raw schema replies and raw text replies, with a start time and calendar, give the turn's hours. Cover: each anchor from a start before and after it; an anchor equal to the start; the day carry (journey, next morning); the 20h guard firing and not firing; a stated count; `none` with a count; a malformed reply giving the flat hour; a custom-length calendar; the opening turn measuring from the seeded opening hour. Prior art: the computeTurnCommit tests that feed `parseResponse` a raw reply.
 - **Pass record:** the request carries the schema and a text fallback; with the text-pass setting on it carries the text format alone; the reply-format block is its own anatomy run. Prior art: the inventory and stat pass request tests in the turnPasses tests.
-- **Probe:** run `time-delta-probe.mjs` with the shipped request as the in-batch control, on both case files, cloud (12 runs) and MeroMero (3 runs). The probe must score the app's real parser and anchor math, not its own copies. Bar from the spike: cloud main set at least 87%, dialogue set at least 65%; MeroMero 100% on both.
+- **Probe:** run the time-delta probe with the shipped request as the in-batch control, on both case files, cloud (12 runs) and MeroMero (3 runs). The probe must score the app's real parser and anchor math, not its own copies. Bar from the spike: cloud main set at least 87%, dialogue set at least 65%; MeroMero 100% on both.
 - Prove each guard bites by reverting it and watching its test fail.
 
 ## Out of Scope
