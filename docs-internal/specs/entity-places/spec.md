@@ -113,6 +113,7 @@ Rulings from the grill of 2026-11-11.
 - **Q25.** A fix to a bug that exists only with entity kinds gets no changelog fragment, because kinds are unreleased. The landing lists each fix, and the spec session folds the lines into the unreleased entity kinds entry at close. A change that a v3.6.2 player or author can see still gets a fragment. This replaces the fragment criteria of the tickets where it applies. Spec-session ruling of 2026-11-11, on an intent question of ticket 03.
 - **Q26.** Sample Placement is nowhere for an entity with a kind and no Starts, and for an entity whose every Start is at Player's Starting Location when the sample has no player start. This applies Q10 to open check 3. Spec-session ruling of 2026-11-11, on an intent question of ticket 05.
 - **Q27.** The chance on a "begins here" line is the sum of the Starts that name the place directly. A Start at Player's Starting Location adds to it only when it expands to exactly one place. When it expands to more, it gives a "begins here" with no chance at a place with no direct Start. The chance shown then holds wherever the player starts. Spec-session ruling of 2026-11-11, on an intent question of ticket 06.
+- **Q28.** Q16 changes what the New Game start list offers, not what it preselects. The preselected place comes only from Starts that name a place directly. A Start at Player's Starting Location adds none, so a persona with only that Start keeps the current pick, else Random. Spec-session ruling of 2026-11-11, on an intent question of ticket 08.
 
 Other decisions:
 
