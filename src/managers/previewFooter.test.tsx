@@ -52,6 +52,7 @@ const LIBRARY_WORLD: LibraryEditorWorld = {
   stats: WORLD.stats, statGroups: WORLD.statGroups,
 };
 
+// A partial Entity, cast: the panel reads only these fields.
 const libraryEntity: Entity = {
   id: 'lib', name: 'Wick', playerDescription: '', aiDescription: '', locations: [],
   traits: [{ id: 'lt', name: 'Lamplit', statChanges: [] }],
