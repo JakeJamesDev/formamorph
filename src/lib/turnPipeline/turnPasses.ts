@@ -134,6 +134,16 @@ const labeledRequest = (
   anatomy: { system: system.runs, messages: [message.runs] },
 });
 
+/** A schema request that falls back to the text request's prompt when the endpoint refuses the schema. */
+const withTextFallback = (
+  textRequest: TurnPassRequest<ChatMessage>,
+  schemaRequest: TurnPassRequest<ChatMessage>,
+  responseSchema: ResponseSchema,
+): TurnPassRequest<ChatMessage> => {
+  const { systemPrompt, messages, maxTokens, anatomy } = textRequest;
+  return { ...schemaRequest, responseSchema, textFallback: { systemPrompt, messages, maxTokens, anatomy } };
+};
+
 const isOpening = (input: TurnPlanInput): boolean => !input.isGameStarted;
 
 /** The opening turn's action as history and every prompt but the narration's hold it. */
@@ -392,14 +402,13 @@ const entityLocationRequest = (
   const shared = { type: 'entityLocation' as const, silent: false, quiet: true };
   const textRequest = labeledRequest({ ...shared, maxTokens: cap }, system, withReplyFormat(user, entityMovesFormat(subjects, false)));
   if (input.settings.entityLocationTextPass) return textRequest;
-  const { systemPrompt, messages, maxTokens, anatomy } = textRequest;
-  return {
-    ...labeledRequest(
+  return withTextFallback(
+    textRequest,
+    labeledRequest(
       { ...shared, maxTokens: cap + JSON_REPLY_SLACK * subjects.length }, system, withReplyFormat(user, entityMovesFormat(subjects, true)),
     ),
-    responseSchema: entityMovesSchema(subjects),
-    textFallback: { systemPrompt, messages, maxTokens, anatomy },
-  };
+    entityMovesSchema(subjects),
+  );
 };
 
 /** A schema reply's fields that hold a line, by key. Null when the reply is not a JSON object. */
@@ -716,17 +725,14 @@ export function statUpdatesRequest(
     userTiled(text.user, user),
   );
   if (!statRequest || statRequest.textPass) return textRequest;
-  const { systemPrompt, messages, maxTokens, anatomy } = textRequest;
-  return {
-    ...labeledRequest(
-      { ...shared, maxTokens: statSchemaCap(statRequest.targets.length, new Set(statRequest.targets.map((t) => t.ownerKey)).size) },
-      withItemLine(systemTiled(prompts.system, layerValues(values.ctx, statRequest.context)), base.itemNames),
-      userTiled(prompts.user, user),
-    ),
-    responseSchema: statRequestSchema(statRequest),
-    // With no stat of the player's, the text pass has nothing to ask.
-    ...(textStats > 0 && { textFallback: { systemPrompt, messages, maxTokens, anatomy } }),
-  };
+  const schemaRequest = labeledRequest(
+    { ...shared, maxTokens: statSchemaCap(statRequest.targets.length, new Set(statRequest.targets.map((t) => t.ownerKey)).size) },
+    withItemLine(systemTiled(prompts.system, layerValues(values.ctx, statRequest.context)), base.itemNames),
+    userTiled(prompts.user, user),
+  );
+  const responseSchema = statRequestSchema(statRequest);
+  // With no stat of the player's, the text pass has nothing to ask.
+  return textStats > 0 ? withTextFallback(textRequest, schemaRequest, responseSchema) : { ...schemaRequest, responseSchema };
 }
 
 /** Whether a stat request has a stat to ask about on the path it takes. No snapshot sends the text pass. */
@@ -769,12 +775,7 @@ export function inventoryRequest(
   const shared = { type: 'inventory' as const, maxTokens: TURN_PASS_CAPS.inventory, silent: false, quiet: base.quiet };
   const textRequest = labeledRequest(shared, system, withReplyFormat(user, INVENTORY_TEXT_FORMAT));
   if (base.textPass) return textRequest;
-  const { systemPrompt, messages, maxTokens, anatomy } = textRequest;
-  return {
-    ...labeledRequest(shared, system, withReplyFormat(user, INVENTORY_JSON_FORMAT)),
-    responseSchema: inventoryPassSchema(),
-    textFallback: { systemPrompt, messages, maxTokens, anatomy },
-  };
+  return withTextFallback(textRequest, labeledRequest(shared, system, withReplyFormat(user, INVENTORY_JSON_FORMAT)), inventoryPassSchema());
 }
 
 /** How the story changed who has which item and money (R1, Q23). Due only in a world with items or money that settles (Q37, Q55). */
@@ -831,12 +832,11 @@ const timePassedPass: TurnPassRecord<ClockReading | null> = {
     const shared = { type: 'timePassed' as const, ...silentOn(material) };
     const textRequest = labeledRequest({ ...shared, maxTokens: TURN_PASS_CAPS.timePassed }, system, withReplyFormat(user, CLOCK_TEXT_FORMAT));
     if (input.settings.clockTextPass) return textRequest;
-    const { systemPrompt, messages, maxTokens, anatomy } = textRequest;
-    return {
-      ...labeledRequest({ ...shared, maxTokens: TURN_PASS_CAPS.timePassedSchema }, system, withReplyFormat(user, CLOCK_SCHEMA_FORMAT)),
-      responseSchema: clockReadingSchema(),
-      textFallback: { systemPrompt, messages, maxTokens, anatomy },
-    };
+    return withTextFallback(
+      textRequest,
+      labeledRequest({ ...shared, maxTokens: TURN_PASS_CAPS.timePassedSchema }, system, withReplyFormat(user, CLOCK_SCHEMA_FORMAT)),
+      clockReadingSchema(),
+    );
   },
   parseResponse: (raw) => parseClockReply(raw),
 };
