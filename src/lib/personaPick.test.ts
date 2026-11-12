@@ -211,6 +211,25 @@ describe('a played entity with a kind offers its Starts only', () => {
     expect(personaStartLocation(e, places)).toBeNull();
   });
 
+  it("offers every location for a Start at Player's Starting Location when none is flagged", () => {
+    const e = played('follower', [start('s1', PLAYER_START, 'cellar')]);
+    const unflagged = places.map((l) => ({ ...l, isStarting: false }));
+    expect(ids(offeredStartLocations(world('follower'), { worldEntities: [e], locations: unflagged }))).toEqual(['inn', 'dock', 'cellar', 'gate']);
+    expect(personaStartLocation(e, unflagged)).toBeNull();
+  });
+
+  it("preselects a named Start place over one at Player's Starting Location", () => {
+    const e = played('mixed', [start('s1', PLAYER_START), start('s2', 'cellar')]);
+    expect(ids(offeredStartLocations(world('mixed'), context(e)))).toEqual(['dock', 'cellar', 'gate']);
+    expect(personaStartLocation(e, places)).toBe('cellar');
+  });
+
+  it('offers the place of each Start of a Generic entity', () => {
+    const e: Entity = { ...played('crowd', [start('s1', 'cellar', 'inn'), start('s2', 'gate')]), kind: 'generic' };
+    expect(ids(offeredStartLocations(world('crowd'), context(e)))).toEqual(['dock', 'cellar', 'gate']);
+    expect(personaStartLocation(e, places)).toBe('gate');
+  });
+
   it('preselects the first Start place that is a starting location, in Start order', () => {
     const e = played('mixed', [start('s1', 'cellar', 'dock'), start('s2', 'gate'), start('s3', 'dock')]);
     expect(personaStartLocation(e, places)).toBe('gate');

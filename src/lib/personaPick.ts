@@ -1,4 +1,5 @@
 import { createKeyedRecordStore, createStoredString } from './keyedStorage';
+import { startPlacesOf } from './entityPlaces';
 import { PLAYER_START, type AllowedPersonas, type Entity, type GameLocation, type PersonaRef, type StartPersona, type WorldOverview } from '@/types';
 
 /** Every Allowed Personas value, in the order the World Editor shows them. */
@@ -93,19 +94,14 @@ export function preselectPersona({ rules, remembered, globalDefault, available }
   return NONE;
 }
 
-/** The places a played entity begins at: each Start's place once, in Start order, none for Player's Starting
- *  Location. An entity with no kind has no Starts, so its own locations stand. */
-export const startPlaces = (entity: Entity): string[] =>
-  entity.kind
-    ? [...new Set((entity.starts ?? []).map((start) => start.place).filter((place) => place !== PLAYER_START))]
-    : entity.locations ?? [];
+/** The persona's Start places the world still has, in Start order, leaving out Player's Starting Location (Q28). */
+const personaLocations = (entity: Entity, locations: readonly GameLocation[]): string[] => {
+  const named = { ...entity, starts: entity.starts?.filter((start) => start.place !== PLAYER_START) };
+  return startPlacesOf(named, { locations }).filter((id) => locations.some((l) => l.id === id));
+};
 
-/** The persona's start places the world still has, in the entity's order. */
-const personaLocations = (entity: Entity, locations: readonly GameLocation[]): string[] =>
-  startPlaces(entity).filter((id) => locations.some((l) => l.id === id));
-
-/** Where a world persona begins: the first of its locations that is a starting location, else its first
- *  location, else null. */
+/** Where a world persona begins: the first of its named Start places that is a starting location, else the first
+ *  of them, else null. */
 export function personaStartLocation(entity: Entity, locations: readonly GameLocation[]): string | null {
   const own = personaLocations(entity, locations);
   return own.find((id) => locations.some((l) => l.id === id && l.isStarting)) ?? own[0] ?? null;
@@ -126,7 +122,7 @@ export function offeredStartLocations<L extends GameLocation>(
   ref: PersonaRef, { worldEntities, locations }: { worldEntities: readonly Entity[]; locations: readonly L[] },
 ): L[] {
   const persona = worldPersona(ref, worldEntities);
-  const own = new Set(persona ? startPlaces(persona) : []);
+  const own = new Set(persona ? startPlacesOf(persona, { locations }) : []);
   return locations.filter((l) => l.isStarting || own.has(l.id));
 }
 

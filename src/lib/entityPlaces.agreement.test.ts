@@ -12,7 +12,8 @@ import { presentEntityIds, type Standings } from '@/lib/entityPresence';
 import { EMPTY_BOOK, runtimeRoutine, type PositionBook } from '@/lib/positionEngine';
 import { placeAll, positionWorld, scriptPlaces } from '@/lib/positionPlay';
 import { discoveredAsEntities, selectReachableVisitors } from '@/lib/runtimeCharacters';
-import { computePresence } from '@/lib/presence';
+import { computePresence, startsMet } from '@/lib/presence';
+import { locationForPersonaPick, offeredStartLocations } from '@/lib/personaPick';
 import { metRosterByLocation } from '@/lib/metEntities';
 import { nearbyPlaces } from '@/lib/locationGraph';
 import { reachableEntityIds, sublocationEntityIds } from '@/lib/locationContext';
@@ -25,7 +26,7 @@ import { NOON } from '@/test/entityKindFixture';
 import { statBoxLookups } from '@/lib/codeWorldLookup';
 import { sampleStart } from '@/lib/startingLocation';
 import { buildAiContext } from '@/lib/testBench/aiContext';
-import { buildLens } from '@/lib/testBench/lens';
+import { buildLens, EMPTY_LENS, lensWithPersona } from '@/lib/testBench/lens';
 import { buildOpening, primeOpeningRolls } from '@/lib/testBench/opening';
 import { openingPool, openingsEditorView, type PoolEntry } from '@/lib/openings';
 import { standaloneStateOf } from '@/lib/openingState';
@@ -411,6 +412,45 @@ describe("Morphie's readers agree with Entity Places", () => {
   describe.each(BOOKS)("the player view's places with $name", ({ book }) => {
     it.each(LOCATIONS)('at $id read Position', (place) => {
       expect(idsAt(place.id, cut(book).entities, (entity) => entity.locations ?? [])).toEqual(idsAt(place.id, CAST, positionsIn(book)));
+    });
+  });
+});
+
+describe('the persona start readers agree with Start places', () => {
+  const PERSONAS: Entity[] = CAST.map((entity) => ({ ...entity, persona: true }));
+  const WORLDS = [
+    { name: 'the square flagged', locations: LOCATIONS },
+    { name: 'no place flagged', locations: LOCATIONS.map((l) => ({ ...l, isStarting: false })) },
+  ];
+  const ids = (locations: readonly GameLocation[]) => locations.map((l) => l.id);
+
+  describe.each(WORLDS)('with $name', ({ locations }) => {
+    const context = { worldEntities: PERSONAS, locations };
+    const benchWorld = { ...authoredWorld, entities: PERSONAS, locations, traitGroups: [], statUpdates: [], dictionaries: [] };
+    const ref = (persona: Entity): PersonaRef => ({ source: 'world', entityId: persona.id });
+
+    it.each(PERSONAS)('Enter World offers $id the flagged places and its Start places, in world order', (persona) => {
+      const begins = startPlacesOf(persona, { locations });
+      expect(ids(offeredStartLocations(ref(persona), context)))
+        .toEqual(ids(locations.filter((l) => l.isStarting || begins.includes(l.id))));
+    });
+
+    it.each(PERSONAS)('the Test Bench offers and preselects for $id what Enter World does', (persona) => {
+      const offered = ids(offeredStartLocations(ref(persona), context));
+      expect(offered).not.toEqual([]);
+      const lens = buildLens(benchWorld, { personaId: persona.id, locationId: null });
+      expect(buildOpening(benchWorld, lens, primeOpeningRolls(benchWorld)).starts.map((s) => s.id)).toEqual(offered);
+      const picked = locationForPersonaPick({ ref: ref(persona), current: null, locationChosen: false, ...context }).locationId;
+      expect(lensWithPersona(benchWorld, EMPTY_LENS, persona.id).locationId).toBe(picked);
+    });
+
+    it.each(PERSONAS)('the starts met check under $id meets at its Start places and their parents', (persona) => {
+      const begins = startPlacesOf(persona, { locations });
+      for (const place of locations) {
+        const stranger: Entity = { id: 'watcher', name: 'Watcher', strangerName: 'Someone', knownIn: [place.id] };
+        const expected = begins.some((at) => at === place.id || locations.find((l) => l.id === at)?.parentId === place.id);
+        expect(startsMet(stranger, persona, locations), place.id).toBe(expected);
+      }
     });
   });
 });
