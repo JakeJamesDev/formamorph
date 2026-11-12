@@ -24,6 +24,7 @@ import { applyInventoryOps, applyInventoryPass, seedItemCopies } from './invento
 import { openingFold } from './openingState';
 import { wantedGrants } from './inventory/grants';
 import type { Entity, InventoryPassOp, ItemCopy, PersonaRef, World } from '@/types';
+import { AS_LISTED } from '@/test/asListed';
 
 // The stored text through the world migration, images included: the Test Bench pass below reads them.
 const raw = bundledWorldText('emberwatch');
@@ -162,6 +163,7 @@ describe('openings on Emberwatch', () => {
   const poolAs = (persona: PersonaRef) => {
     const played = persona.source === 'world' ? world.entities.find((e) => e.id === persona.entityId)! : null;
     return openingPool({
+      placesOf: AS_LISTED,
       overview: world.worldOverview,
       entities: resolveOwners(ownerWorld(world), persona).cast,
       locations: world.locations,

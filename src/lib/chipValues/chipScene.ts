@@ -7,6 +7,7 @@ import type { MovementStates } from '../movementTag';
 import type { OwnerStatPart, StatPlacement } from '../statContext';
 import type { ResolvedPersona } from '../persona';
 import type { ResolveEntityText } from '../resolveWorldNames';
+import type { PlacesOf } from '../entityPlaces';
 import type { WorldCalendar } from '../gameClock';
 
 /** The slice each owner's Body in force resolves from. */
@@ -58,6 +59,8 @@ export interface ChipScene {
   entities: Entity[];
   /** Who is at the location: the Here scope, and whom the lower scopes leave out. */
   presentIds: string[];
+  /** Where each of the scene's cast stands, which the Sub-locations and Reachable scopes read. */
+  placesOf: PlacesOf;
   /** Who has taken part in the scene: the In Scene scope. */
   inSceneIds: string[];
   /** The world's authored items. None when absent. */

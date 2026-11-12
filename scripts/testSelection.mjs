@@ -133,7 +133,7 @@ export const PATH_TRIGGERS = {
   'src/defaultworlds/drone.json': ['src/lib/droneWorld.test.ts', 'testing/art-harness/artHarness.test.ts'],
   'src/defaultworlds/emberwatch.json': ['src/lib/emberwatchWorld.test.ts', 'src/lib/emberwatchWorld.scripts.test.ts', 'src/views/GameViewer.emberwatchItems.test.tsx', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
   'src/defaultworlds/slime.json': ['src/lib/slimeWorld.test.ts'],
-  'src/defaultworlds/rampage.json': ['src/lib/rampageWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
+  'src/defaultworlds/rampage.json': ['src/lib/rampageWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts', 'src/contexts/GameplayContext.entityPlaces.test.tsx'],
   'src/defaultworlds/open-chat.json': ['src/lib/openChatWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
   'src/defaultworlds/sugarscape.json': ['src/lib/sugarscapeWorld.test.ts'],
   'src/defaultworlds/valentines.json': ['src/lib/valentinesWorld.test.ts', 'src/services/WorldStorageService.strippedSeed.test.ts'],

@@ -188,12 +188,12 @@ const pulledIdsOver = (cast: readonly Entity[], scene: Pick<ChipScene, 'persona'
 
 /** The Entities chip's scope builders over one scene and its relationship ends. */
 function entityScopes(scene: ChipScene, cast = sceneRelationshipCast(scene)): Record<string, (opts: ContextOpts) => MarkedText> {
-  const { location, locations, connections, entities, presentIds, inSceneIds, inSceneNames = [], ownedTraits, ownedStats, strangerLabels } = scene;
+  const { location, locations, connections, entities, presentIds, placesOf, inSceneIds, inSceneNames = [], ownedTraits, ownedStats, strangerLabels } = scene;
   const outer = scene.outerScopeEntities ?? entities;
   // Roster precedence: here > sub-location > reachable > known. A character shows only in the highest scope
   // it belongs to, so the lower scopes drop the ids the higher ones list.
-  const subIds = sublocationEntityIds(location, locations, connections, outer);
-  const nearbyIds = [...subIds, ...reachableEntityIds(location, locations, connections, outer)];
+  const subIds = sublocationEntityIds(location, locations, connections, outer, placesOf);
+  const nearbyIds = [...subIds, ...reachableEntityIds(location, locations, connections, outer, placesOf)];
   const reachableExclude = [...presentIds, ...subIds];
   const knownExclude = [...presentIds, ...nearbyIds];
   const pulledIds = pulledIdsOver(cast, scene);
@@ -213,8 +213,8 @@ function entityScopes(scene: ChipScene, cast = sceneRelationshipCast(scene)): Re
   const lowerOpts = (opts: ContextOpts) => ({ ...roster(opts), noStats: !opts.statsOn });
   return {
     '': (opts) => entityRosterRuns(presentIds, entities, roster(opts)),
-    sublocations: (opts) => sublocationEntityRuns(location, locations, connections, outer, { ...lowerOpts(opts), excludeIds: presentIds }),
-    reachable: (opts) => reachableEntityRuns(location, locations, connections, outer, { ...lowerOpts(opts), excludeIds: reachableExclude }),
+    sublocations: (opts) => sublocationEntityRuns(location, locations, connections, outer, placesOf, { ...lowerOpts(opts), excludeIds: presentIds }),
+    reachable: (opts) => reachableEntityRuns(location, locations, connections, outer, placesOf, { ...lowerOpts(opts), excludeIds: reachableExclude }),
     known: (opts) => knownEntityRuns(location, locations, outer, { ...roster(opts), excludeIds: knownExclude, pulledIds }),
     inscene: (opts) => {
       const block = entityRosterRuns(inSceneIds, entities, roster(opts, inSceneLines));

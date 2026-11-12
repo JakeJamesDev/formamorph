@@ -5,7 +5,8 @@ import { stripReasoning } from '@/lib/aiResponse';
 import { trimToLastSentence } from '@/lib/outputLength';
 import { escapeRegExp } from '@/lib/utils';
 import { sameCharacterName } from '@/lib/entityMatch';
-import { entitiesInPlay, entityIdsAtAny, type Standings } from '@/lib/entityPresence';
+import type { Standings } from '@/lib/entityPresence';
+import { idsAtAny, positionsIn } from '@/lib/entityPlaces';
 
 /** Labels in the character-note user message. Shared by the request builder and the response cleaner —
  *  a small model often parrots these back into its output. */
@@ -89,8 +90,8 @@ export function discoveredAsEntities(discovered: readonly DiscoveredEntity[]): E
 
 /**
  * "Bring-them-over" candidates: the authored entities standing in one of the `nearby` places, named by the
- * narration as participants, and not already present. Where they stand reads `standings` over their listed
- * locations. The position engine decides which of them may come. Pure.
+ * narration as participants, and not already present. Where they stand is their Position in `standings`. The
+ * position engine decides which of them may come. Pure.
  */
 export function selectReachableVisitors(
   participants: string[],
@@ -99,7 +100,7 @@ export function selectReachableVisitors(
   presentIds: string[],
   standings: Standings = { positions: {}, generics: {} },
 ): Entity[] {
-  const reachableIds = new Set(entityIdsAtAny(nearby, entitiesInPlay(authoredEntities, standings)));
+  const reachableIds = new Set(idsAtAny(nearby, authoredEntities, positionsIn(standings)));
   const present = new Set(presentIds);
   return authoredEntities.filter(
     (e) => reachableIds.has(e.id) && !present.has(e.id) && participants.some((p) => sameCharacterName(p, e.name)),

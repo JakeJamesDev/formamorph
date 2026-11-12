@@ -21,6 +21,7 @@ import { DAYPARTS } from './gameClock';
 import { canvasRects } from './locationCanvas';
 import type { StatCodeTurn, StatCodeTurnResult } from './statCodeTurn';
 import type { Daypart, LoreToggles } from '@/types';
+import { AS_LISTED } from '@/test/asListed';
 
 const { world, persona: resident, gate, ownerWorld, none: NONE, traitNamed, activeNames, build, personaStats, turn, personaStatsOut, activeIds,
   statAt, atDaypart, entitySlots, locationSlots,
@@ -139,6 +140,7 @@ describe('the rolled neighbor', () => {
 describe('openings on Slime Outbreak', () => {
   it('draws from several world openings at the start', () => {
     const pool = openingPool({
+      placesOf: AS_LISTED,
       overview: world.worldOverview,
       entities: resolveOwners(ownerWorld, NONE).cast,
       locations: world.locations,

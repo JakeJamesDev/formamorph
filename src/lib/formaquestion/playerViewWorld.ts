@@ -199,6 +199,7 @@ export function playerViewScene(scene: ChipScene, reach: PlayerViewReach): ChipS
     connections: playerConnections(met, scene.connections),
     entities: playerEntities(met, scene.entities),
     presentIds: metIds(scene.presentIds),
+    placesOf: (entity) => scene.placesOf(entity).filter((id) => met.locations.has(id)),
     inSceneIds: metIds(scene.inSceneIds),
     items: playerItems(met, scene.items),
     itemCopies: scene.itemCopies && shownCopies(met, scene.itemCopies),

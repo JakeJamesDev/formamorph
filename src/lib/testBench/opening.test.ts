@@ -9,6 +9,7 @@ import { buildLens, type LensState } from './lens';
 import { phValueId, phValues } from '@/test/placeholderValues';
 import {
   buildOpening, EMPTY_OPENING, primeOpeningRolls, rerollOpeningRolls, type OpeningWorld, type OpeningChoice } from './opening';
+import { AS_LISTED } from '@/test/asListed';
 
 // Chip tokens, spelled as the editor inserts them.
 const chip = (id: string, mode: 'world' | 'unique', placement: string) => `{{ph:${id}:${mode}:${placement}}}`;
@@ -761,6 +762,7 @@ describe('the persona pick', () => {
       const drawn = new Set<string>();
       for (let i = 0; i < 50; i++) {
         drawn.add(drawNewGameOpening({
+          placesOf: AS_LISTED,
           pick: { ref }, worldEntities: w.entities ?? [], overview: w.worldOverview, locations: w.locations,
           startingLocationId: start, picked: [], random: () => i / 50,
         }).draw.opening.text);

@@ -25,6 +25,7 @@ import { SETTINGS_COPY } from '@/components/modals/settingsCopy';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { NARRATION_LAYOUTS } from '@/contexts/settingsDefaults';
 import type { Trait } from '@/types';
+import { AS_LISTED } from '@/test/asListed';
 
 // The stored text through the world migration, images included: the Test Bench pass below reads them.
 const world = migrateWorld(JSON.parse(bundledWorldText('open-chat')));
@@ -210,7 +211,7 @@ describe('the Open Chat tone traits', () => {
       sectionStyle: 'markdown', resolvePH,
     }).prompt;
     const choices = choicesSystemPrompt(resolveWorldPrompt(overview, 'choices', defaultChoicesPrompt, false), 'English', chips);
-    const drawn = drawOpening(openingPool({ overview }), () => 0);
+    const drawn = drawOpening(openingPool({ placesOf: AS_LISTED, overview }), () => 0);
     const opening = resolvePlaceholders(drawn.text, { placeholders, rolls: {}, pins, player: { name: null, kind: 'opening' } });
     return { narration, choices, opening };
   };

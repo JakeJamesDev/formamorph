@@ -14,6 +14,12 @@ import { useNarrationRescan } from '@/components/game/useNarrationRescan';
 import { LeftPanel, MiddlePanel, RightPanel } from '@/components/game/GamePanels';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { defaultSystemPrompt } from '@/components/game/GamePrompts';
+import { castRoutines } from '@/lib/entityKind';
+import { storyMinute } from '@/lib/gameClock';
+import { EMPTY_BOOK, type PositionBook } from '@/lib/positionEngine';
+import { placeAll, positionWorld } from '@/lib/positionPlay';
+import { resolveStartingLocation } from '@/lib/startingLocation';
+import { migrateWorld } from '@/lib/version';
 import type { AITurnResult, ChatMessage, Entity, EntityStatChanges, EntityStatValues, GameState, PlayerStat, SceneEntity, Stat, Trait, World } from '@/types';
 
 /**
@@ -181,14 +187,28 @@ function snapshotFixture(turn: TurnFixture, stats: PlayerStat[]): GameState {
 }
 
 /** Stage a committed history (and the snapshots that make paging back work) into Gameplay. */
-function seedTurns(gameplay: Gameplay, turns: TurnFixture[], page: number, stats: PlayerStat[]): void {
+function seedTurns(gameplay: Gameplay, turns: TurnFixture[], page: number, stats: PlayerStat[], book: PositionBook): void {
   const history = turnHistory(turns);
   gameplay.setFullMessageHistory(history);
-  gameplay.setGameStates(turns.map((turn) => snapshotFixture(turn, stats)));
+  // Each turn's snapshot holds where the cast stood, as a real one does.
+  const standing = { entityPositions: book.positions, uniqueStates: book.uniques, genericStates: book.generics };
+  gameplay.setGameStates(turns.map((turn) => ({ ...standing, ...snapshotFixture(turn, stats) })));
   // GameViewer shows the viewed page's pair; the panels read this rather than slicing the history themselves.
   gameplay.setDisplayedMessages(history.slice((page - 1) * 2, page * 2));
   gameplay.setChoices(turns[turns.length - 1]?.choices ?? []);
   if (page < turns.length) gameplay.setUserPage(page);
+}
+
+/** Places `world`'s cast where a new game at its starting location opens, as play does before any panel reads it. */
+function placeAtOpening(gameplay: Gameplay, world: World): PositionBook {
+  const start = resolveStartingLocation(world.locations ?? [], null)?.id;
+  const book = placeAll(EMPTY_BOOK, positionWorld(
+    castRoutines(world.entities ?? []), storyMinute(0), start, world.locations ?? [], world.connections ?? [], () => 0, start,
+  ));
+  gameplay.setEntityPositions(book.positions);
+  gameplay.setUniqueStates(book.uniques);
+  gameplay.setGenericStates(book.generics);
+  return book;
 }
 
 /** Mounts the providers, stages state once, and exposes the live contexts to the caller. */
@@ -205,11 +225,13 @@ const Stage =({ options, stats, expose, children }: {
   expose({ gameplay, gameData, settings });
 
   useEffect(() => {
-    gameData.loadWorldData(worldFixture({ ...options.world, stats: options.world?.stats ?? (stats as unknown as Stat[]) }));
+    const world = worldFixture({ ...options.world, stats: options.world?.stats ?? (stats as unknown as Stat[]) });
+    gameData.loadWorldData(world);
+    const book = placeAtOpening(gameplay, migrateWorld(world));
     options.settings?.(settings);
     gameplay.setGlobalStats(stats);
     if (options.turns?.length) {
-      seedTurns(gameplay, options.turns, options.page ?? options.turns.length, stats);
+      seedTurns(gameplay, options.turns, options.page ?? options.turns.length, stats, book);
     }
     if (options.gameplayText !== undefined) setGameplayText(options.gameplayText);
     options.seed?.(gameplay);

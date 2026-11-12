@@ -28,6 +28,7 @@ import { splitToken, variableForToken } from '@/lib/promptVariables';
 import { enabledStats } from '@/lib/traitEffects';
 import type { Entity, GameLocation, PlayerStat } from '@/types';
 import { openingCast } from '@/lib/positionPlay';
+import { samplePlacement } from '@/lib/entityPlaces';
 import { inCast } from '@/lib/owners';
 import { openingPersonaOf } from '@/lib/openingState';
 import { lensActiveTraits, lensOwnerScopes, lensPersonaRef, resolveLensEntityText, resolveLensText, type BenchLens } from './lens';
@@ -240,9 +241,10 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
   // roster that listed someone twice would disagree with the text beside it.
   const hereIds = scene.presentIds;
   const here = new Set(hereIds);
-  const subIds = sublocationEntityIds(location, locations, connections, entities).filter((id) => !here.has(id));
+  const placesOf = samplePlacement(cast, { locations, connections }, location?.id);
+  const subIds = sublocationEntityIds(location, locations, connections, entities, placesOf).filter((id) => !here.has(id));
   const shown = new Set([...hereIds, ...subIds]);
-  const reachIds = reachableEntityIds(location, locations, connections, entities).filter((id) => !shown.has(id));
+  const reachIds = reachableEntityIds(location, locations, connections, entities, placesOf).filter((id) => !shown.has(id));
   const listed = new Set([...shown, ...reachIds]);
   const knownIds = knownEntityIds(location, locations, entities, knownPulledIds(scene)).filter((id) => !listed.has(id));
 

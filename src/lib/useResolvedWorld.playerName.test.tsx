@@ -3,6 +3,7 @@ import 'fake-indexeddb/auto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
+import { samplePlacement } from '@/lib/entityPlaces';
 import { render, act } from '@testing-library/react';
 import { GameplayProvider, useGameplay } from '@/contexts/GameplayContext';
 import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
@@ -78,7 +79,9 @@ describe('the Persona Name chip in play', () => {
   it('names the persona on page one at the first draw, before the persona is in state', async () => {
     const live = mount();
     await loadWorld(live);
+    const { gameData } = live();
     const { persona, draw } = drawNewGameOpening({
+      placesOf: samplePlacement(gameData.entities, { locations: gameData.locations, connections: [] }, 'dock'),
       pick: { ref: { source: 'library', entityId: wren.id }, libraryEntity: wren },
       worldEntities: live().gameData.entities,
       overview: live().gameData.worldOverview,

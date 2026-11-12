@@ -62,6 +62,13 @@ export type EntityStatValues = Record<string, PlayerStat[]>;
 /** Unique entity id → the location id it stands at during the game. A Generic entity's places come from `GenericStates`. */
 export type EntityPositions = Record<string, string>;
 
+/** Where the cast stood when the game opened: each Unique entity's place, and the places each Generic entity's
+ *  Generic Entity Instances stood at. */
+export interface OpeningPlacement {
+  positions: EntityPositions;
+  genericPlaces: Record<string, string[]>;
+}
+
 /** A Unique entity traveling with the player, or left waiting at its position until `until`. `script`: a
  *  script started it, so Strict and Traversable don't apply. */
 export type FollowState =
@@ -468,6 +475,9 @@ export interface GameState {
   startHour?: number;
   /** Where the player began, resolved once at New Game: the place of every Start at `PLAYER_START`. */
   playerStartLocationId?: string;
+  /** Where the cast stood when the game opened, which a redraw of page one reads. Absent, the redraw reads the
+   *  Sample Placement at the page-one start. */
+  openingPlacement?: OpeningPlacement;
   /** A snapshot's own copy of the flat chat history. Live `currentState` carries it in memory, but it is
    *  stripped from persisted snapshots — the canonical history lives once at `SaveObject.messageHistory`.
    *  Absent on migrated/persisted snapshots; present on the in-memory current state. */

@@ -85,7 +85,7 @@ const start = async (persona: Entity) => {
  *  and resolution, and nothing else. */
 const narrationPrompt = (live: () => Live): string => renderPromptTemplate(PROMPT_TEXT_DEFAULTS.systemPrompt, chipValues({
   overview: '', stats: [], traits: [], traitGroups: [], location: null, locations: [], connections: [], entities: [],
-  presentIds: [], inSceneIds: [], lore: [], notes: '', time: null,
+  presentIds: [], placesOf: () => [], inSceneIds: [], lore: [], notes: '', time: null,
   persona: live().world.persona, resolve: live().world.resolvePH,
 }));
 

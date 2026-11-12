@@ -5,7 +5,7 @@ import {
 } from "@/lib/entityKind";
 import { withNewStart } from "@/lib/routineEditing";
 import { genericPlaces } from "@/lib/positionEngine";
-import { withMembership } from "@/lib/entityPlaces";
+import { idsAt, positionsIn, withMembership } from "@/lib/entityPlaces";
 import { randomUUID } from "@/lib/uuid";
 
 /**
@@ -68,11 +68,11 @@ export function entitiesInPlay(entities: Entity[], { positions, generics }: Stan
   });
 }
 
-/** The ids of the entities present at `locationId` as they stand in play. Pass the discovered entities in
- *  `entities` too, so the ones met this turn count (Q62). */
+/** The ids of the entities whose Position is `locationId`. Pass the discovered entities in `entities` too, so the
+ *  ones met this turn count (Q62). */
 export const presentEntityIds = (
   entities: Entity[], standings: Standings, locationId: string | null | undefined,
-): string[] => entityIdsAt(locationId, entitiesInPlay(entities, standings));
+): string[] => idsAt(locationId, entities, positionsIn(standings));
 
 /** The entities that can hold a position under `persona`: all but the Custom Persona and the played one. */
 export function positionedCast<E extends Pick<Entity, 'id' | 'customPersona'>>(entities: readonly E[], persona: PersonaRef | undefined): E[] {

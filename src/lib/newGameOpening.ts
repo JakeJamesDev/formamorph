@@ -12,9 +12,9 @@ export interface NewGameOpeningSources {
   /** The authored world's locations; the starting location's own openings join the pool. */
   locations?: readonly GameLocation[];
   startingLocationId: string | null | undefined;
+  /** Where each world entity stands when the story opens. */
+  placesOf: PlacesOf;
   picked: readonly Entity[];
-  /** Where the cast stands at the start. Absent ⇒ each entity's stored list. */
-  placesOf?: PlacesOf;
   random: () => number;
 }
 
@@ -23,10 +23,10 @@ export interface NewGameOpeningSources {
 export function newGamePool(
   sources: Omit<NewGameOpeningSources, 'random'>,
 ): { persona: ResolvedPersona | null; cast: Entity[]; customPersona: Entity | undefined; pool: PoolEntry[] } {
-  const { pick, worldEntities, overview, locations, startingLocationId, picked, placesOf } = sources;
+  const { pick, worldEntities, overview, locations, startingLocationId, placesOf, picked } = sources;
   const { persona, cast } = resolvePersona(pick.ref, worldEntities, pick.libraryEntity ? [pick.libraryEntity] : []);
   const customPersona = customPersonaEntity(worldEntities);
-  const pool = openingPool({ overview, entities: cast, locations, startingLocationId, picked, persona, customPersona, placesOf });
+  const pool = openingPool({ overview, entities: cast, locations, startingLocationId, placesOf, picked, persona, customPersona });
   return { persona, cast, customPersona, pool };
 }
 

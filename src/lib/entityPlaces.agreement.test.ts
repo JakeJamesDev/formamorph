@@ -1,15 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import {
-  PLAYER_START, type Connection, type Entity, type GameLocation, type ScheduleRow, type Stat, type WorldOverview,
+  PLAYER_START, type Connection, type Entity, type GameLocation, type PersonaRef, type ScheduleRow, type Stat, type WorldOverview,
 } from '@/types';
-import { idsAt, positionsIn, presenceIn, samplePlacement, startPlacesOf, type PlacesOf, type PlacesWorld } from '@/lib/entityPlaces';
+import {
+  idsAt, idsAtAny, positionsIn, presenceIn, samplePlacement, startPlacesOf, type PlacesOf, type PlacesWorld,
+} from '@/lib/entityPlaces';
 import { pickMarks, type PickMark } from '@/lib/entityPicking';
 import { presenceLines } from '@/lib/locationPresenceReasons';
 import { castRoutines, withDerivedLocations } from '@/lib/entityKind';
-import { presentEntityIds } from '@/lib/entityPresence';
-import { EMPTY_BOOK, runtimeRoutine } from '@/lib/positionEngine';
-import { placeAll, positionWorld } from '@/lib/positionPlay';
-import { discoveredAsEntities } from '@/lib/runtimeCharacters';
+import { presentEntityIds, type Standings } from '@/lib/entityPresence';
+import { EMPTY_BOOK, runtimeRoutine, type PositionBook } from '@/lib/positionEngine';
+import { placeAll, positionWorld, scriptPlaces } from '@/lib/positionPlay';
+import { discoveredAsEntities, selectReachableVisitors } from '@/lib/runtimeCharacters';
+import { computePresence } from '@/lib/presence';
+import { metRosterByLocation } from '@/lib/metEntities';
+import { nearbyPlaces } from '@/lib/locationGraph';
+import { reachableEntityIds, sublocationEntityIds } from '@/lib/locationContext';
+import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
+import { snapshotOf } from '@/lib/sandboxSnapshot';
+import type { SandboxState } from '@/lib/statCodeTurn';
 import { liveChipScene, type LiveSceneSources } from '@/lib/chipValues/liveScene';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { NOON } from '@/test/entityKindFixture';
@@ -18,9 +27,12 @@ import { sampleStart } from '@/lib/startingLocation';
 import { buildAiContext } from '@/lib/testBench/aiContext';
 import { buildLens } from '@/lib/testBench/lens';
 import { buildOpening, primeOpeningRolls } from '@/lib/testBench/opening';
-import { openingsEditorView } from '@/lib/openings';
+import { openingPool, openingsEditorView, type PoolEntry } from '@/lib/openings';
 import { standaloneStateOf } from '@/lib/openingState';
-import { snapshotOf } from '@/lib/sandboxSnapshot';
+import { newGamePool } from '@/lib/newGameOpening';
+import { selectVisitorAdditions } from '@/lib/turnPipeline/narrationReading';
+import { openingPlacesOf, placementOf } from '@/lib/openingPlacement';
+
 const CARD_SELF: Stat = { id: 's', name: 'S', type: 'number', description: '', min: 0, max: 10, regen: 0, descriptors: [] };
 
 /**
@@ -57,21 +69,36 @@ const CAST: Entity[] = ([
 ] satisfies Entity[]).map(withDerivedLocations);
 
 /** A character the story met at the docks this playthrough. */
-const RUNTIME = discoveredAsEntities([{ entity: { id: 'sailor', name: 'Sailor' }, locationId: 'docks', sourceTurnId: 't-2' }]);
+const MET = [{ entity: { id: 'sailor', name: 'Sailor' }, locationId: 'docks', sourceTurnId: 't-2' }];
+const RUNTIME = discoveredAsEntities(MET);
 const EVERYONE = [...CAST, ...RUNTIME];
 
 // The book a game reads at noon with the player in the square: every entity with a kind placed by the engine.
 const BOOK = placeAll(EMPTY_BOOK, positionWorld(
-  [...castRoutines(CAST), runtimeRoutine({ entity: RUNTIME[0], locationId: 'docks', sourceTurnId: 't-2' })!],
-  NOON, 'square', LOCATIONS, CONNECTIONS, () => 0, 'square',
+  [...castRoutines(CAST), runtimeRoutine(MET[0])!], NOON, 'square', LOCATIONS, CONNECTIONS, () => 0, 'square',
 ));
 
-const liveSources: LiveSceneSources = {
+// The same book with the baker and the gulls unplaced: each has a kind and no Position, and stands nowhere (Q10).
+const { baker: _baker, ...placedButBaker } = BOOK.positions;
+const { gulls: _gulls, ...genericsButGulls } = BOOK.generics;
+const UNPLACED: PositionBook = { ...BOOK, positions: placedButBaker, generics: genericsButGulls };
+
+const BOOKS = [
+  { name: 'everyone placed', book: BOOK },
+  { name: 'the baker and the gulls with no Position', book: UNPLACED },
+];
+
+const liveSources = (standings: Standings): LiveSceneSources => ({
   overview: '', stats: [], statPlacement: { groups: [], authored: [] }, traits: [], traitGroups: [],
   resolve: (text) => text, resolveTrait: (_t, text) => text, resolveEntity: (_e, text) => text,
   persona: null, location: null, locations: LOCATIONS, connections: CONNECTIONS,
-  entities: CAST, allEntities: EVERYONE, participants: [], notes: '', time: null, placeholders: [],
-};
+  entities: CAST, allEntities: EVERYONE, standings, participants: [], notes: '', time: null, placeholders: [],
+});
+
+// The cast with an opening each, so an opening pool lists whom it reads at the start.
+const WITH_OPENINGS: Entity[] = CAST.map((e) => ({ ...e, openings: [{ id: `${e.id}-hello`, text: 'Hello.', kind: 'action' }] }));
+const OVERVIEW = { name: 'Harbor Town', description: '' } as WorldOverview;
+const entityOwners = (pool: readonly PoolEntry[]) => pool.flatMap((row) => (row.ownerId && !row.locationId ? [row.ownerId] : []));
 
 const authoredWorld = {
   worldOverview: { name: 'Harbor Town', description: '' } as WorldOverview,
@@ -81,13 +108,17 @@ const authoredWorld = {
 /** One reader: the question it asks, and its ids at each place through its own interface. */
 interface Reader {
   name: string;
-  /** The module's answer this reader must match at `place`. */
-  answer: (place: GameLocation) => { cast: readonly Entity[]; placesOf: PlacesOf };
-  read: (place: GameLocation) => string[] | Promise<string[]>;
+  /** The module's answer this reader must match at `place` while the game reads `book`. */
+  answer: (place: GameLocation, book: PositionBook) => { cast: readonly Entity[]; placesOf: PlacesOf };
+  read: (place: GameLocation, book: PositionBook) => string[] | Promise<string[]>;
 }
 
-const position = () => ({ cast: EVERYONE, placesOf: positionsIn(BOOK) });
+const position = (_place: GameLocation, book: PositionBook) => ({ cast: EVERYONE, placesOf: positionsIn(book) });
+const authoredPosition = (_place: GameLocation, book: PositionBook) => ({ cast: CAST, placesOf: positionsIn(book) });
 const presence = () => ({ cast: CAST, placesOf: presenceIn(WORLD) });
+
+/** The places the narration can bring a visitor from: one Nearby link away. */
+const nearbyOf = (place: GameLocation) => nearbyPlaces(place.id, LOCATIONS, CONNECTIONS);
 
 /** The cast the canvas marks with `kind` at `place`, each entity picked in turn with `knownIn` (unset is Nearby). */
 const canvasMarks = (knownIn: Entity['knownIn'], kind: PickMark['kind']) => (place: GameLocation) =>
@@ -98,12 +129,50 @@ const READERS: Reader[] = [
   {
     name: 'the turn\'s "who is here"',
     answer: position,
-    read: (place) => presentEntityIds(EVERYONE, BOOK, place.id),
+    read: (place, book) => presentEntityIds(EVERYONE, book, place.id),
   },
   {
     name: 'the live chip scene',
     answer: position,
-    read: (place) => liveChipScene(liveSources, place, { positions: BOOK.positions, generics: BOOK.generics }).presentIds,
+    read: (place, book) => liveChipScene(liveSources(book), place).presentIds,
+  },
+  {
+    name: 'the live chip scene under a turn box',
+    answer: position,
+    read: (place, book) => liveChipScene(liveSources(EMPTY_BOOK), place, { positions: book.positions, generics: book.generics }).presentIds,
+  },
+  {
+    name: 'the met roster by location',
+    answer: position,
+    read: (place, book) => {
+      const presence = computePresence({
+        entities: CAST, runtime: RUNTIME, ...book, followers: [], locationId: 'square', locations: LOCATIONS,
+        connections: CONNECTIONS, persona: null, met: EVERYONE.map((e) => e.id), strangerAliases: {}, turns: [],
+      });
+      const names = metRosterByLocation(presence.known)[place.id] ?? [];
+      return EVERYONE.filter((e) => names.includes(e.name)).map((e) => e.id);
+    },
+  },
+  {
+    name: 'the reachable runtime visitors',
+    answer: authoredPosition,
+    read: (place, book) => selectReachableVisitors(CAST.map((e) => e.name), [place.id], CAST, [], book).map((e) => e.id),
+  },
+  {
+    name: 'the new-game opening draw',
+    answer: authoredPosition,
+    read: (place, book) => entityOwners(newGamePool({
+      pick: { ref: { source: 'none' } }, worldEntities: WITH_OPENINGS, overview: OVERVIEW, locations: LOCATIONS,
+      startingLocationId: place.id, placesOf: positionsIn(book), picked: [],
+    }).pool),
+  },
+  {
+    name: 'the page-one redraw',
+    answer: authoredPosition,
+    read: (place, book) => entityOwners(openingPool({
+      overview: OVERVIEW, entities: WITH_OPENINGS, locations: LOCATIONS, startingLocationId: place.id,
+      placesOf: openingPlacesOf(placementOf(book), WITH_OPENINGS, WORLD, place.id),
+    })),
   },
   {
     name: 'the authored chip scene',
@@ -169,6 +238,29 @@ function onlyStart(place: GameLocation): GameLocation[] {
 /** The cast, each with one opening, so the Openings readers list it. */
 const withOpenings: Entity[] = CAST.map((entity) => ({ ...entity, openings: [{ id: `o-${entity.id}`, text: `${entity.name}.`, kind: 'action' }] }));
 
+/** A reader over several places at once: the module's ids across them, against the reader's own. */
+interface ScopeReader {
+  name: string;
+  places: (place: GameLocation) => string[];
+  read: (place: GameLocation, book: PositionBook) => string[];
+}
+
+const childrenOf = (place: GameLocation) => LOCATIONS.filter((l) => l.parentId === place.id).map((l) => l.id);
+const liveScope = (book: PositionBook) => liveChipScene(liveSources(book), null);
+
+const SCOPE_READERS: ScopeReader[] = [
+  {
+    name: 'the sub-location entities of the Entities chip',
+    places: childrenOf,
+    read: (place, book) => sublocationEntityIds(place, LOCATIONS, CONNECTIONS, CAST, liveScope(book).placesOf),
+  },
+  {
+    name: 'the reachable entities of the Entities chip',
+    places: nearbyOf,
+    read: (place, book) => reachableEntityIds(place, LOCATIONS, CONNECTIONS, CAST, liveScope(book).placesOf),
+  },
+];
+
 describe('every reader agrees with Entity Places', () => {
   it('runs on a book where everyone stands somewhere and no place is empty but the lighthouse', () => {
     for (const entity of EVERYONE) expect(positionsIn(BOOK)(entity), entity.id).not.toEqual([]);
@@ -176,10 +268,68 @@ describe('every reader agrees with Entity Places', () => {
     expect(LOCATIONS.filter((l) => !occupied.has(l.id)).map((l) => l.id)).toEqual(['lighthouse']);
   });
 
-  describe.each(READERS)('$name', ({ answer, read }) => {
-    it.each(LOCATIONS)('at $id', async (place) => {
-      const { cast, placesOf } = answer(place);
-      expect(await read(place)).toEqual(idsAt(place.id, cast, placesOf));
+  it('runs on a second book where the baker and the gulls stand nowhere, though each stores a list', () => {
+    for (const id of ['baker', 'gulls']) {
+      const entity = CAST.find((e) => e.id === id)!;
+      expect(entity.locations?.length, id).toBeGreaterThan(0);
+      expect(positionsIn(UNPLACED)(entity), id).toEqual([]);
+    }
+  });
+
+  describe.each(BOOKS)('with $name', ({ book }) => {
+    describe.each(READERS)('$name', ({ answer, read }) => {
+      it.each(LOCATIONS)('at $id', async (place) => {
+        const { cast, placesOf } = answer(place, book);
+        expect(await read(place, book)).toEqual(idsAt(place.id, cast, placesOf));
+      });
     });
+
+    describe.each(SCOPE_READERS)('$name', ({ places, read }) => {
+      it.each(LOCATIONS)('from $id', (place) => {
+        expect(read(place, book)).toEqual(idsAtAny(places(place), CAST, positionsIn(book)));
+      });
+    });
+  });
+});
+
+describe('the narration visitor additions agree with Entity Places', () => {
+  const engine = positionWorld(castRoutines(CAST), NOON, 'square', LOCATIONS, CONNECTIONS, () => 0, 'square');
+  const prose = `${CAST.map((e) => e.name).join(' and ')} come over.`;
+
+  it('runs on a book where the narration brings the friar from the chapel to the square', () => {
+    const after = selectVisitorAdditions({ prose, entities: CAST, allEntities: EVERYONE, location: LOCATIONS[0], book: BOOK, world: engine });
+    expect([BOOK.positions.friar, after.positions.friar]).toEqual(['chapel', 'square']);
+  });
+
+  describe.each(BOOKS)('with $name', ({ book }) => {
+    it.each(LOCATIONS)('brings to $id only those whose Position was one Nearby link away', (place) => {
+      const after = selectVisitorAdditions({ prose, entities: CAST, allEntities: EVERYONE, location: place, book, world: engine });
+      const pulled = CAST.filter((e) => after.positions[e.id] === place.id && book.positions[e.id] !== place.id).map((e) => e.id);
+      const nearby = idsAtAny(nearbyOf(place), CAST, positionsIn(book));
+      const here = idsAt(place.id, CAST, positionsIn(book));
+      expect(pulled.filter((id) => !nearby.includes(id) || here.includes(id))).toEqual([]);
+    });
+  });
+});
+
+describe('the script snapshot agrees with Entity Places', () => {
+  const persona: PersonaRef = { source: 'none' };
+  const world = { traits: [], traitGroups: [], entities: CAST };
+  const state = (book: PositionBook): SandboxState => ({
+    stats: [], enabled: {}, clock: { deltaHours: 1, elapsedHours: 1 },
+    ownerTraits: {
+      acquired: [], disabledTraitIds: [], appliedValues: {}, entities: CAST, library: [], discovered: RUNTIME,
+      world: { traits: [], groups: [], entities: CAST, persona, ...inPlayOwners(world, persona, []) },
+    },
+    places: { locations: LOCATIONS, location: { id: 'square', name: 'square' } },
+    ...scriptPlaces(book, positionWorld(castRoutines(CAST), NOON, 'square', LOCATIONS, CONNECTIONS, () => 0, 'square')),
+    resolveText: (text) => text,
+  });
+  const PRESENT = `return ${JSON.stringify(LOCATIONS.map((l) => l.name))}.map((name) => locations[name].present.map((e) => e.id));`;
+
+  it.each(BOOKS)('lists who stands at each place with $name', async ({ book }) => {
+    const result = await snapshotOf(state(book)).run({ home: { kind: 'tool' }, timing: 'after', code: PRESENT, args: {} });
+    expect(result.error).toBeNull();
+    expect(JSON.parse(result.reply ?? 'null')).toEqual(LOCATIONS.map((l) => idsAt(l.id, EVERYONE, positionsIn(book))));
   });
 });

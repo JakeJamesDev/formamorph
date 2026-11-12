@@ -6,6 +6,7 @@ import {
   drawUnseenOpening, hasAuthoredOpenings, openingPool, poolKey, remintOpenings, openingTexts, removeOpening, resolveOpening, setOpeningKind,
   othersNeverDraw, ownerOpeningRows, setOpeningText, setOpeningWeight,
 } from './openings';
+import { AS_LISTED } from '@/test/asListed';
 
 /** Mulberry32: a small seeded source, so a draw test is repeatable without mocking a global. */
 const seeded = (seed: number) => () => {
@@ -28,7 +29,7 @@ const storedOff = (ov: WorldOverview): WorldOverview => ({ ...ov, openingsEnable
 /** How often each opening comes up over many seeded draws. */
 const tally = (ov: WorldOverview, draws = 20000, seed = 7) => {
   const random = seeded(seed);
-  const pool = openingPool({ overview: ov });
+  const pool = openingPool({ placesOf: AS_LISTED, overview: ov });
   const counts: Record<string, number> = {};
   for (let i = 0; i < draws; i++) {
     const id = drawOpening(pool, random).id;
@@ -98,7 +99,7 @@ describe('the draw', () => {
   });
 
   it('maps the random source onto the rows in authored order', () => {
-    const pool = openingPool({ overview: overview({ openings: [action('a'), action('b')], openingWeights: { a: 3 } }) });
+    const pool = openingPool({ placesOf: AS_LISTED, overview: overview({ openings: [action('a'), action('b')], openingWeights: { a: 3 } }) });
     expect(drawOpening(pool, () => 0).id).toBe('a');
     expect(drawOpening(pool, () => 0.74).id).toBe('a');
     expect(drawOpening(pool, () => 0.76).id).toBe('b');
@@ -108,7 +109,7 @@ describe('the draw', () => {
 
 describe('the no-repeat draw', () => {
   const pool = (ids: string[], weights?: Record<string, number>) =>
-    openingPool({ overview: overview({ openings: ids.map((id) => action(id)), openingWeights: weights }) });
+    openingPool({ placesOf: AS_LISTED, overview: overview({ openings: ids.map((id) => action(id)), openingWeights: weights }) });
   /** The shown-list key of the world's own row `id`. */
   const k = (id: string) => poolKey({ ownerId: null, opening: action(id), weight: 1 });
   const ks = (...ids: string[]) => ids.map(k);
@@ -169,6 +170,7 @@ describe('the pool with entities', () => {
 
   it('adds the rows of an entity at the starting location after the world’s own', () => {
     const pool = openingPool({
+      placesOf: AS_LISTED,
       overview: overview({ openings: [action('w1', 'The world opens.')] }),
       entities: [guide()],
       startingLocationId: 'dock',
@@ -178,7 +180,7 @@ describe('the pool with entities', () => {
   });
 
   it('says which entity owns the row a draw lands on', () => {
-    const pool = openingPool({ overview: overview(), entities: [guide()], startingLocationId: 'dock' });
+    const pool = openingPool({ placesOf: AS_LISTED, overview: overview(), entities: [guide()], startingLocationId: 'dock' });
     const drawn = drawUnseenOpening(pool, [], seeded(1));
     expect(drawn.ownerId).toBe('guide');
     expect(drawPoolEntry(pool, seeded(1)).ownerId).toBe('guide');
@@ -188,19 +190,19 @@ describe('the pool with entities', () => {
   });
 
   it('adds nothing for an entity somewhere else', () => {
-    const pool = openingPool({ overview: overview(), entities: [guide({ locations: ['market'] })], startingLocationId: 'dock' });
+    const pool = openingPool({ placesOf: AS_LISTED, overview: overview(), entities: [guide({ locations: ['market'] })], startingLocationId: 'dock' });
     expect(pool).toEqual([]);
     expect(drawOpening(pool, seeded(1))).toEqual(DEFAULT_OPENING);
   });
 
   it('adds nothing, with no error, for an entity written before openings', () => {
     const older: Entity = { id: 'old', name: 'Old', locations: ['dock'] };
-    expect(openingPool({ overview: overview(), entities: [older], startingLocationId: 'dock' })).toEqual([]);
+    expect(openingPool({ placesOf: AS_LISTED, overview: overview(), entities: [older], startingLocationId: 'dock' })).toEqual([]);
   });
 
   it('adds nothing for an entity at no location, or with no starting location chosen', () => {
-    expect(openingPool({ overview: overview(), entities: [guide({ locations: undefined })], startingLocationId: 'dock' })).toEqual([]);
-    expect(openingPool({ overview: overview(), entities: [guide()], startingLocationId: null })).toEqual([]);
+    expect(openingPool({ placesOf: AS_LISTED, overview: overview(), entities: [guide({ locations: undefined })], startingLocationId: 'dock' })).toEqual([]);
+    expect(openingPool({ placesOf: AS_LISTED, overview: overview(), entities: [guide()], startingLocationId: null })).toEqual([]);
   });
 
   it('follows whichever of several starting locations was chosen', () => {
@@ -210,9 +212,9 @@ describe('the pool with entities', () => {
       { id: 'both', name: 'Both', locations: ['dock', 'market'], openings: [action('b1', 'A voice calls.')] },
     ];
     const ov = overview({ openings: [action('w1', 'The world opens.')] });
-    expect(texts(openingPool({ overview: ov, entities, startingLocationId: 'dock' })))
+    expect(texts(openingPool({ placesOf: AS_LISTED, overview: ov, entities, startingLocationId: 'dock' })))
       .toEqual(['The world opens.', 'The guide waves.', 'A voice calls.']);
-    expect(texts(openingPool({ overview: ov, entities, startingLocationId: 'market' })))
+    expect(texts(openingPool({ placesOf: AS_LISTED, overview: ov, entities, startingLocationId: 'market' })))
       .toEqual(['The world opens.', 'The clerk looks up.', 'A voice calls.']);
   });
 
@@ -221,12 +223,13 @@ describe('the pool with entities', () => {
       openings: [action('g1', 'Often.'), action('g2', 'Rarely.'), action('g3', 'Benched.'), action('g4', '  ')],
       openingWeights: { g1: 3, g3: 0 },
     });
-    const pool = openingPool({ overview: overview(), entities: [entity], startingLocationId: 'dock' });
+    const pool = openingPool({ placesOf: AS_LISTED, overview: overview(), entities: [entity], startingLocationId: 'dock' });
     expect(pool.map((e) => [e.opening.text, e.weight])).toEqual([['Often.', 3], ['Rarely.', 1]]);
   });
 
   it('keeps the world’s and the entities’ rows under a stored off flag', () => {
     const pool = openingPool({
+      placesOf: AS_LISTED,
       overview: storedOff(overview({ openings: [action('w1')] })),
       entities: [guide()],
       startingLocationId: 'dock',
@@ -236,14 +239,14 @@ describe('the pool with entities', () => {
 
   it('reads the entities it is handed, so a deleted entity’s rows are gone', () => {
     const ov = overview();
-    expect(openingPool({ overview: ov, entities: [guide()], startingLocationId: 'dock' })).toHaveLength(1);
-    expect(openingPool({ overview: ov, entities: [], startingLocationId: 'dock' })).toEqual([]);
+    expect(openingPool({ placesOf: AS_LISTED, overview: ov, entities: [guide()], startingLocationId: 'dock' })).toHaveLength(1);
+    expect(openingPool({ placesOf: AS_LISTED, overview: ov, entities: [], startingLocationId: 'dock' })).toEqual([]);
   });
 
   it('keeps two entities that share opening ids apart, in the draw and in the shown list', () => {
     // One library entity added twice: two entity ids, the same opening ids.
     const copies = [guide({ id: 'copy-1' }), guide({ id: 'copy-2' })];
-    const pool = openingPool({ overview: overview(), entities: copies, startingLocationId: 'dock' });
+    const pool = openingPool({ placesOf: AS_LISTED, overview: overview(), entities: copies, startingLocationId: 'dock' });
     expect(pool).toHaveLength(2);
     expect(new Set(pool.map(poolKey)).size).toBe(2);
     for (let seed = 1; seed <= 25; seed++) {
@@ -265,6 +268,7 @@ describe('the pool with picked entities', () => {
 
   it('draws only the picked entities’ rows when one of them has a drawable opening', () => {
     const pool = openingPool({
+      placesOf: AS_LISTED,
       overview: world, entities: [guide], startingLocationId: 'dock',
       picked: [pick('bard', [action('b1', 'The bard tunes up.')])],
     });
@@ -277,7 +281,7 @@ describe('the pool with picked entities', () => {
       pick('bard', [action('b1', 'Bard.')], { b1: 3 }),
       pick('smith', [action('s1', 'Smith.')]),
     ];
-    const pool = openingPool({ overview: world, picked });
+    const pool = openingPool({ placesOf: AS_LISTED, overview: world, picked });
     expect(pool.map((e) => [e.ownerId, e.weight])).toEqual([['bard', 3], ['smith', 1]]);
     const random = seeded(11);
     const counts: Record<string, number> = {};
@@ -296,14 +300,14 @@ describe('the pool with picked entities', () => {
       pick('benched', [action('x1', 'Benched.')], { x1: 0 }),
       pick('blank', [action('y1', '   ')]),
     ];
-    const pool = openingPool({ overview: world, entities: [guide], startingLocationId: 'dock', picked });
+    const pool = openingPool({ placesOf: AS_LISTED, overview: world, entities: [guide], startingLocationId: 'dock', picked });
     expect(texts(pool)).toEqual(['The world opens.', 'The guide waves.']);
   });
 
   it('draws the picked entities’ rows under a stored off flag', () => {
     const off = storedOff(overview({ openings: [action('w1')] }));
     const picked = [pick('bard', [action('b1', 'Bard.')])];
-    expect(texts(openingPool({ overview: off, entities: [guide], startingLocationId: 'dock', picked }))).toEqual(['Bard.']);
+    expect(texts(openingPool({ placesOf: AS_LISTED, overview: off, entities: [guide], startingLocationId: 'dock', picked }))).toEqual(['Bard.']);
   });
 });
 

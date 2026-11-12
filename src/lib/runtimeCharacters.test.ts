@@ -13,6 +13,7 @@ import { drawUnseenOpening, openingPool } from './openings';
 import { entityIdsAt } from './entityPresence';
 import { buildEntityContext } from './locationContext';
 import type { ChatMessage, DiscoveredEntity, Entity, GameLocation } from '@/types';
+import { AS_LISTED } from '@/test/asListed';
 
 /** Build an assistant turn message with the given fields. */
 function turn(fields: { turnId?: string; narration?: string; entities?: string[]; locationId?: string }): ChatMessage {
@@ -219,14 +220,14 @@ describe('pickedAtStart', () => {
       { entity: bard, locationId: 'dock', sourceTurnId: INITIAL_SOURCE_TURN_ID },
       { entity: stranger, locationId: 'dock', sourceTurnId: 'turn-3' },
     ]));
-    const pool = openingPool({ overview: world, startingLocationId: 'dock', picked: pickedAtStart(saved) });
+    const pool = openingPool({ placesOf: AS_LISTED, overview: world, startingLocationId: 'dock', picked: pickedAtStart(saved) });
     expect(pool.map((e) => e.opening.text)).toEqual(['The bard tunes up.']);
     expect(drawUnseenOpening(pool, [], () => 0.5).opening.text).toBe('The bard tunes up.');
   });
 
   it('falls back to the world’s pool on a save with no seeded entities', () => {
     const saved: DiscoveredEntity[] = [{ entity: stranger, locationId: 'dock', sourceTurnId: 'turn-3' }];
-    const pool = openingPool({ overview: world, startingLocationId: 'dock', picked: pickedAtStart(saved) });
+    const pool = openingPool({ placesOf: AS_LISTED, overview: world, startingLocationId: 'dock', picked: pickedAtStart(saved) });
     expect(pool.map((e) => e.opening.text)).toEqual(['The world opens.']);
   });
 });

@@ -69,7 +69,7 @@ describe('playerViewScene', () => {
   const scene: ChipScene = {
     overview: 'The heir hides in the vault.', stats: STATS, traits: [BRAVE, CURSED], traitGroups: [], persona: null,
     location: LOCATIONS[0], locations: LOCATIONS, connections: CONNECTIONS, entities: [WARDEN, STRANGER],
-    presentIds: ['warden', 'stranger'], inSceneIds: ['stranger'], items: [item('key'), item('gem')], itemCopies: COPIES,
+    presentIds: ['warden', 'stranger'], placesOf: () => [], inSceneIds: ['stranger'], items: [item('key'), item('gem')], itemCopies: COPIES,
     lore: [{ id: 'l1', name: 'Pact', key: ['pact'], value: 'The pact binds the heir.' }], notes: 'My notes.', time: null,
     resolve: (text) => text,
   };
@@ -147,7 +147,7 @@ describe('playerViewMemory', () => {
   const memory = { history, overrides: null, verbatimFloor: 0 };
   const scene = playerViewScene({
     overview: '', stats: [], traits: [], traitGroups: [], persona: null, location: null, locations: [], connections: [],
-    entities: [], presentIds: [], inSceneIds: [], lore: [], notes: '', time: null, resolve: (text) => text,
+    entities: [], presentIds: [], placesOf: () => [], inSceneIds: [], lore: [], notes: '', time: null, resolve: (text) => text,
   }, reach());
 
   it('gives recall the digests and no diary entries', () => {

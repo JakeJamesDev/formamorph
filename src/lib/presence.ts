@@ -1,6 +1,6 @@
 import type { Connection, Entity, EntityPositions, GameLocation, GenericStates } from '@/types';
 import { ancestors, parentLookup } from './ancestors';
-import { entitiesInPlay } from './entityPresence';
+import { positionsIn } from './entityPlaces';
 import { findNameMatches } from './entityMatch';
 import type { StrangerLabels } from './locationContext';
 import { startPlaces } from './personaPick';
@@ -50,6 +50,8 @@ export interface PresenceInput {
 
 export interface EntityPresence {
   entity: Entity;
+  /** Where it stands. */
+  position: string[];
   where: Where;
   met: boolean;
   /** Whether the player knows the entity's name: met, or unmet with no Stranger Name. */
@@ -218,20 +220,20 @@ export function strangersInPlay(
 export function computePresence(input: PresenceInput): Presence {
   const { persona, locationId, locations } = input;
   const isMet = metCheck(input.met, persona, locations, new Set(input.runtime.map((e) => e.id)));
-  const cast = entitiesInPlay([...input.entities, ...input.runtime], input)
-    .filter((e) => !e.customPersona && e.id !== persona?.id);
+  const cast = [...input.entities, ...input.runtime].filter((e) => !e.customPersona && e.id !== persona?.id);
+  const positionOf = positionsIn(input);
   const near = locationId ? connectedPlaces(locationId, locations, input.connections) : new Set<string>();
   const recentIds = participantIds(input.turns, locationId, cast, new Set(input.followers));
 
   const byId = new Map<string, EntityPresence>();
   for (const entity of cast) {
-    const places = entity.locations ?? [];
-    const where: Where = locationId && places.includes(locationId) ? 'here'
-      : places.some((id) => near.has(id)) ? 'connected' : 'elsewhere';
+    const position = [...positionOf(entity)];
+    const where: Where = locationId && position.includes(locationId) ? 'here'
+      : position.some((id) => near.has(id)) ? 'connected' : 'elsewhere';
     const met = isMet(entity);
     const known = met || !hidesName(entity);
     const label = known ? entity.name : strangerLabel(entity, input.strangerAliases);
-    byId.set(entity.id, { entity, where, met, known, inScene: where === 'here' && recentIds.has(entity.id), label });
+    byId.set(entity.id, { entity, position, where, met, known, inScene: where === 'here' && recentIds.has(entity.id), label });
   }
   const all = [...byId.values()];
   const shown = all.filter((p) => p.where === 'here' && p.label !== null);

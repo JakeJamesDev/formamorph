@@ -129,10 +129,11 @@ import {
 } from "../lib/stagedPlanning";
 import { selectRelevantDiary } from "../lib/semanticDiary";
 import { findEntityByCharacterName, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription, pruneDiscoveredToHistory, pickedAtStart, INITIAL_SOURCE_TURN_ID } from "../lib/runtimeCharacters";
-import { entitiesInPlay, entityIdsAt, positionedCast, type Standings } from "../lib/entityPresence";
+import { positionedCast, type Standings } from "../lib/entityPresence";
 import { castRoutines } from "../lib/entityKind";
 import { placeAll, positionWorld, reseatForOpening, scriptPlaces, withPlayerAt, type PositionWorld } from "../lib/positionPlay";
 import { EMPTY_BOOK } from "../lib/positionEngine";
+import { openingPlacesOf, placementOf } from "../lib/openingPlacement";
 import { selectRegenSource, buildRegenContext } from "../lib/discoveredRegen";
 import { outputReserve } from "../lib/outputLength";
 import { outputCaps, type AiEndpointTarget, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
@@ -208,9 +209,10 @@ import {
 } from "../lib/turnPipeline/computeTurnCommit";
 import {
   entityMoveRequests, hasEntityOffer, joinEntityMoves, moveWithPlayer,
-  NO_ENTITY_MOVES, NO_ENTITY_OFFER,
+  NO_ENTITY_MOVES, NO_ENTITY_OFFER, runtimePositions,
   type EntityMoveOffer, type FollowerState,
 } from "../lib/entityFollowing";
+import { idsAt, positionsIn } from "../lib/entityPlaces";
 import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
 import { emptyTurnMaterial, type TurnMaterial, type TurnPassSubject, type TurnPlan, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
@@ -771,9 +773,11 @@ const GameViewer = ({
     setEntityStats,
     setEntityStatBaseline,
     resetEntityStats,
+    entityPositions,
     setEntityPositions,
     uniqueStates,
     setUniqueStates,
+    genericStates,
     setGenericStates,
     currentBook,
     applyFollowerState,
@@ -808,6 +812,8 @@ const GameViewer = ({
     setStartHour,
     playerStartLocationId,
     setPlayerStartLocationId,
+    openingPlacement,
+    setOpeningPlacement,
     calendar,
     logsEndRef,
     setChoices,
@@ -991,6 +997,11 @@ const GameViewer = ({
     () => [...entities, ...discoveredAsEntities(discoveredEntities)],
     [entities, discoveredEntities],
   );
+  // Where the cast stands now, runtime characters included.
+  const liveStandings = useMemo<Standings>(
+    () => ({ positions: { ...runtimePositions(discoveredEntities), ...entityPositions }, generics: genericStates }),
+    [discoveredEntities, entityPositions, genericStates],
+  );
   // The names a script's diary lines land under, by entity id.
   const diaryNames = useMemo(
     () => Object.fromEntries([...traitLibrary, ...allEntities].map((entity) => [entity.id, entity.name])),
@@ -1033,8 +1044,8 @@ const GameViewer = ({
 
   /** Who belongs at `loc` — authored cast plus any discovered/visiting character anchored there. */
   const presentIdsAt = useCallback(
-    (loc: GameLocation | null | undefined): string[] => entityIdsAt(loc?.id, allEntities),
-    [allEntities],
+    (loc: GameLocation | null | undefined): string[] => idsAt(loc?.id, allEntities, positionsIn(liveStandings)),
+    [allEntities, liveStandings],
   );
   /** Meets each entity at `loc` that `narration` names. Followers count as here before their move renders. */
   const meetNamed = useCallback((narration: string, loc: GameLocation | null | undefined) => {
@@ -1766,15 +1777,19 @@ const GameViewer = ({
   const customPersona = customPersonaEntity(traitEntities);
   /** The rows this playthrough draws from. The picked entities come off the initial-turn seed, so a loaded
    *  save rebuilds the same pool. */
-  const sessionPool = () => openingPool({
-    overview: worldOverview,
-    entities,
-    locations,
-    startingLocationId: openingSessionRef.current.startLocationId ?? pageOneLocationId(fullMessageHistory),
-    picked: pickedAtStart(discoveredEntities),
-    persona,
-    customPersona,
-  });
+  const sessionPool = () => {
+    const startingLocationId = openingSessionRef.current.startLocationId ?? pageOneLocationId(fullMessageHistory);
+    return openingPool({
+      overview: worldOverview,
+      entities,
+      locations,
+      startingLocationId,
+      placesOf: openingPlacesOf(openingPlacement, entities, { locations, connections }, startingLocationId),
+      picked: pickedAtStart(discoveredEntities),
+      persona,
+      customPersona,
+    });
+  };
   // An Opening Narration is page one, never a directive to the narrator, so a session that drew one reads
   // an action row here.
   const openingCue = (): DrawnOpening => {
@@ -2686,6 +2701,7 @@ const GameViewer = ({
     connections,
     entities,
     allEntities,
+    standings: liveStandings,
     participants,
     notes: playerNotes,
     time: chipTime,
@@ -2719,8 +2735,10 @@ const GameViewer = ({
 
   // Scene-roster override for the entity chips: choices and re-roll prompts see only who is in the scene.
   const sceneEntityOverride = useCallback(
-    (sceneLoc: GameLocation | null, sceneEntities: Entity[]): TokenValues =>
-      sceneEntityChipValues(liveScene(sceneLoc), entityIdsAt(sceneLoc?.id, sceneEntities)),
+    (sceneLoc: GameLocation | null, sceneEntities: Entity[]): TokenValues => {
+      const scene = liveScene(sceneLoc);
+      return sceneEntityChipValues(scene, idsAt(sceneLoc?.id, sceneEntities, scene.placesOf));
+    },
     [liveScene],
   );
 
@@ -5827,7 +5845,7 @@ const GameViewer = ({
   ): InventoryOwner[] => {
     const scene = liveScene(location, null);
     const played = new Set([scene.persona?.entity.id, ...(scene.playedEntities ?? []).map((e) => e.id)]);
-    const here = new Set(standings ? entityIdsAt(location?.id, entitiesInPlay(scene.entities, standings)) : scene.presentIds);
+    const here = new Set(standings ? idsAt(location?.id, scene.entities, positionsIn(standings)) : scene.presentIds);
     return [
       ...scene.entities.filter((e) => here.has(e.id) && !played.has(e.id)).map((e) => ({ id: e.id, name: e.name })),
       ...discovered,
@@ -6102,12 +6120,13 @@ const GameViewer = ({
       setEntityPositions(startPositions);
       setUniqueStates(startBook.uniques);
       setGenericStates(startBook.generics);
+      setOpeningPlacement(placementOf(startBook));
       setMetEntities([]);
       setStrangerAliases({});
       entityOfferRef.current = NO_ENTITY_OFFER;
       // The whole world, since the cast in state still reads the persona from before this seed.
       const { persona: drawnPersona, draw: drawn, owner: drawnOwner } = drawNewGameOpening({
-        pick: personaPick, worldEntities: entitiesInPlay(traitEntities, startBook), overview: worldOverview, locations, startingLocationId: location?.id,
+        pick: personaPick, worldEntities: traitEntities, placesOf: positionsIn(startBook), overview: worldOverview, locations, startingLocationId: location?.id,
         picked, random: Math.random,
       });
       openingSessionRef.current = {
@@ -6130,6 +6149,7 @@ const GameViewer = ({
     connections,
     setUniqueStates,
     setPlayerStartLocationId,
+    setOpeningPlacement,
     resetEntityStats,
     setSelectedEntityId,
     initialTraits,

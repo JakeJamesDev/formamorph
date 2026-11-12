@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { positionsIn } from '@/lib/entityPlaces';
 import { chipValues } from './chipValues';
 import type { ChipScene } from './chipScene';
 import { defaultStatUpdatesPrompt } from '@/components/game/GamePrompts';
@@ -43,6 +44,7 @@ const ownedStats = {
 
 const scene = (over: Partial<ChipScene> = {}): ChipScene => ({
   overview: 'A river town.',
+  placesOf: positionsIn({ positions: {}, generics: {} }),
   stats: [health],
   traits: [],
   traitGroups: [],

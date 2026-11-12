@@ -29,6 +29,7 @@ const seaLegs: Trait = { id: 'sea-legs', name: 'Sea Legs', aiDescription: 'Stead
 
 const sources = (over: Partial<LiveSceneSources> = {}): LiveSceneSources => ({
   overview: 'A working harbor.',
+  standings: { positions: {}, generics: {} },
   stats: [grit],
   statPlacement: { groups: [], authored: [grit] },
   traits: [seaLegs],

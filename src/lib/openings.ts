@@ -1,5 +1,4 @@
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
-import { entityIdsAt } from '@/lib/entityPresence';
 import { idsAt, idsAtAny, startPlacesOf, type PlacesOf } from '@/lib/entityPlaces';
 import { playsOnlyWhenPicked } from '@/lib/entityRelationships';
 import { locationRows } from '@/lib/locationTree';
@@ -85,14 +84,14 @@ export interface PoolSources {
   entities?: readonly Entity[];
   locations?: readonly GameLocation[];
   startingLocationId?: string | null;
+  /** Where each of `entities` stands when the story opens. */
+  placesOf: PlacesOf;
   /** The library entities the player picked at Enter World. */
   picked?: readonly Entity[];
   /** The entity the player plays, whose Self rows replace the pool. */
   persona?: ResolvedPersona | null;
   /** The world's Custom Persona entity, whose Self rows stand in under a library persona that has none. */
   customPersona?: Entity | null;
-  /** Where the cast stands at the start. Absent ⇒ each entity's stored list. */
-  placesOf?: PlacesOf;
 }
 
 /** The Self rows that replace the pool: the played entity's, or the Custom Persona entity's under a library
@@ -114,7 +113,7 @@ const selfOnly = (owner: Entity | null | undefined): OpeningOwner | null =>
  * persona's own, or as the Custom Persona entity's in its place.
  */
 export function openingPool({
-  overview, entities = [], locations = [], startingLocationId, picked = [], persona, customPersona, placesOf,
+  overview, entities = [], locations = [], startingLocationId, placesOf, picked = [], persona, customPersona,
 }: PoolSources): PoolEntry[] {
   // A world with no authored opening anywhere plays the default, whatever a picked entity brings. The played
   // entity's Others rows never draw, so only its Self rows and the Custom Persona entity's count.
@@ -124,7 +123,7 @@ export function openingPool({
   if (selfRows.length) return selfRows;
   const pickedRows = picked.flatMap((e) => drawable(e, e.id));
   if (pickedRows.length) return pickedRows;
-  const present = new Set(placesOf ? idsAt(startingLocationId, entities, placesOf) : entityIdsAt(startingLocationId, [...entities]));
+  const present = new Set(idsAt(startingLocationId, entities, placesOf));
   return [
     ...drawable(overview, null),
     ...locationEntries(locations.find((l) => l.id === startingLocationId)),
@@ -215,7 +214,7 @@ export function heaviestWorldOpening(overview: Overview): Opening | null {
 
 /** The opening a new playthrough of this world starts on. */
 export function resolveOpening(overview: Overview, random: () => number = Math.random): Opening {
-  return drawOpening(openingPool({ overview }), random);
+  return drawOpening(openingPool({ overview, placesOf: () => [] }), random);
 }
 
 /** Each of one owner's rows' chance of being drawn from that owner's list, as a percentage keyed by id. Self

@@ -36,10 +36,18 @@ const membership = (entity: PlacedEntity): string[] => [...(entity.locations ?? 
  *  Entity Instance stands, once. An entity with a kind and no Position stands nowhere (Q10). An entity with no kind
  *  stands at its own Position when it has one, a runtime character's included, else at its membership. */
 export function positionOf(entity: PlacedEntity, { positions, generics }: Standings): string[] {
+  const instances = generics[entity.id];
+  return positionAmong(entity, positions, instances ? { [entity.id]: Object.values(instances).map((instance) => instance.position) } : {});
+}
+
+/** `positionOf` over a reader that keeps only the places each Generic entity's instances stand at. */
+export function positionAmong(
+  entity: PlacedEntity, positions: Readonly<Record<string, string>>, genericPlaces: Readonly<Record<string, readonly string[]>>,
+): string[] {
   const at = positions[entity.id];
   if (at !== undefined) return [at];
-  const instances = generics[entity.id];
-  if (instances) return unique(Object.values(instances).map((instance) => instance.position));
+  const places = genericPlaces[entity.id];
+  if (places) return unique(places);
   return hasKind(entity) ? [] : membership(entity);
 }
 

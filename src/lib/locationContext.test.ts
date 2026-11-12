@@ -7,6 +7,7 @@ import {
 } from "./locationContext";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 import type { Connection, Entity, GameLocation } from "@/types";
+import { AS_LISTED } from "@/test/asListed";
 
 const guard: Entity = {
   id: "e1",
@@ -138,27 +139,27 @@ describe("buildSublocationsContext / buildSublocationEntitiesContext", () => {
   });
 
   it("sublocation entities: rosters entities from direct children, N/A when none", () => {
-    const out = buildSublocationEntitiesContext(keep, locs, [], [rat]);
+    const out = buildSublocationEntitiesContext(keep, locs, [], [rat], AS_LISTED);
     expect(out).toContain("Rat");
     expect(out).toContain("A big rat.");
     // Cellar's own child (Sub-cellar) has no entities → N/A.
-    expect(buildSublocationEntitiesContext(cellar, locs, [], [rat])).toBe(NONE_PLACEHOLDER);
-    expect(buildSublocationEntitiesContext(null, locs, [], [rat])).toBe(NONE_PLACEHOLDER);
+    expect(buildSublocationEntitiesContext(cellar, locs, [], [rat], AS_LISTED)).toBe(NONE_PLACEHOLDER);
+    expect(buildSublocationEntitiesContext(null, locs, [], [rat], AS_LISTED)).toBe(NONE_PLACEHOLDER);
   });
 
   it("sublocation entities: excludeIds drops anyone shown in a higher-precedence roster (present here)", () => {
-    expect(buildSublocationEntitiesContext(keep, locs, [], [rat], { excludeIds: ["g1"] })).toBe(NONE_PLACEHOLDER);
+    expect(buildSublocationEntitiesContext(keep, locs, [], [rat], AS_LISTED, { excludeIds: ["g1"] })).toBe(NONE_PLACEHOLDER);
   });
 
   it("sublocationEntityIds: deduped union across direct children only", () => {
-    expect(sublocationEntityIds(keep, locs, [], [rat])).toEqual(["g1"]);
-    expect(sublocationEntityIds(tower, locs, [], [rat])).toEqual([]);
-    expect(sublocationEntityIds(null, locs, [], [rat])).toEqual([]);
+    expect(sublocationEntityIds(keep, locs, [], [rat], AS_LISTED)).toEqual(["g1"]);
+    expect(sublocationEntityIds(tower, locs, [], [rat], AS_LISTED)).toEqual([]);
+    expect(sublocationEntityIds(null, locs, [], [rat], AS_LISTED)).toEqual([]);
   });
 
   it("sublocation entities: someone who belongs to two children is rostered once", () => {
     const bat: Entity = { id: "g2", name: "Bat", aiDescription: "A bat.", locations: ["a", "b"] };
-    expect(sublocationEntityIds(keep, locs, [], [rat, bat])).toEqual(["g1", "g2"]);
+    expect(sublocationEntityIds(keep, locs, [], [rat, bat], AS_LISTED)).toEqual(["g1", "g2"]);
   });
 });
 
@@ -206,22 +207,22 @@ describe("buildReachableLocationsContext / buildReachableEntitiesContext", () =>
   });
 
   it("reachable entities: gathers the containing location's cast alongside the neighbors'", () => {
-    const out = buildReachableEntitiesContext(houseA, locs, [], [sarah, mayor]);
+    const out = buildReachableEntitiesContext(houseA, locs, [], [sarah, mayor], AS_LISTED);
     expect(out).toContain("Sarah");
     expect(out).toContain("Mayor");
     expect(out).toContain("Runs the town.");
   });
 
   it("reachable entities: honors excludeIds, N/A when nobody is left or nothing is reachable", () => {
-    expect(buildReachableEntitiesContext(houseA, locs, [], [sarah, mayor], { excludeIds: ["sarah", "mayor"] })).toBe(NONE_PLACEHOLDER);
-    expect(buildReachableEntitiesContext(top, locs, [], [sarah])).toBe(NONE_PLACEHOLDER);
+    expect(buildReachableEntitiesContext(houseA, locs, [], [sarah, mayor], AS_LISTED, { excludeIds: ["sarah", "mayor"] })).toBe(NONE_PLACEHOLDER);
+    expect(buildReachableEntitiesContext(top, locs, [], [sarah], AS_LISTED)).toBe(NONE_PLACEHOLDER);
   });
 
   it("reachableEntityIds: dedupes someone standing in two reachable places", () => {
     const twoPlaceMayor: Entity = { ...mayor, locations: ["town", "m"] }; // Mayor is in Town and at the Mall
-    expect(reachableEntityIds(houseA, [town, houseA, sarahs, mall], [], [sarah, twoPlaceMayor]).sort())
+    expect(reachableEntityIds(houseA, [town, houseA, sarahs, mall], [], [sarah, twoPlaceMayor], AS_LISTED).sort())
       .toEqual(["mayor", "sarah"]);
-    expect(reachableEntityIds(top, locs, [], [sarah, mayor])).toEqual([]); // top-level → nothing reachable
+    expect(reachableEntityIds(top, locs, [], [sarah, mayor], AS_LISTED)).toEqual([]); // top-level → nothing reachable
   });
 });
 
@@ -262,7 +263,7 @@ describe("Known In rosters", () => {
   it("an emptied pick list falls back to Nearby: reachable again, not known", () => {
     const emptied = { ...queen, knownIn: [] };
     expect(knownEntityIds(inn, locs, [emptied])).toEqual([]);
-    expect(reachableEntityIds(inn, locs, [], [emptied])).toEqual(["queen"]);
+    expect(reachableEntityIds(inn, locs, [], [emptied], AS_LISTED)).toEqual(["queen"]);
   });
 
   it("picks stay fixed when the entity moves", () => {
@@ -271,11 +272,11 @@ describe("Known In rosters", () => {
   });
 
   it("the reachable roster lists only Nearby entities", () => {
-    expect(reachableEntityIds(inn, locs, [], [queen, sage, guard])).toEqual(["guard"]);
+    expect(reachableEntityIds(inn, locs, [], [queen, sage, guard], AS_LISTED)).toEqual(["guard"]);
   });
 
   it("the sublocations roster lists only Nearby entities", () => {
-    expect(sublocationEntityIds(rosewood, locs, [], [queen, sage, guard])).toEqual(["guard"]);
+    expect(sublocationEntityIds(rosewood, locs, [], [queen, sage, guard], AS_LISTED)).toEqual(["guard"]);
   });
 
   it("the known roster sends name and summary only, even under Full content", () => {
@@ -295,33 +296,33 @@ describe("Known In rosters", () => {
 
   describe("Nearby reach", () => {
     it("lists someone one Nearby Connection away", () => {
-      expect(reachableEntityIds(market, locs, [road], [smith, guard]).sort()).toEqual(["guard", "smith"]);
+      expect(reachableEntityIds(market, locs, [road], [smith, guard], AS_LISTED).sort()).toEqual(["guard", "smith"]);
     });
 
     it("leaves out someone across a Far Connection", () => {
-      expect(reachableEntityIds(market, locs, [{ ...road, distance: "far" }], [smith, guard])).toEqual(["guard"]);
+      expect(reachableEntityIds(market, locs, [{ ...road, distance: "far" }], [smith, guard], AS_LISTED)).toEqual(["guard"]);
     });
 
     it("a one-way leg is Nearby from both ends", () => {
       const oneWay: Connection = { id: "road", a: "market", b: "ashby", bToA: {} };
-      expect(reachableEntityIds(market, locs, [oneWay], [smith])).toEqual(["smith"]);
-      expect(reachableEntityIds(ashby, locs, [oneWay], [{ ...guard, locations: ["market"] }])).toEqual(["guard"]);
+      expect(reachableEntityIds(market, locs, [oneWay], [smith], AS_LISTED)).toEqual(["smith"]);
+      expect(reachableEntityIds(ashby, locs, [oneWay], [{ ...guard, locations: ["market"] }], AS_LISTED)).toEqual(["guard"]);
     });
 
     it("a Far Connection over an implicit pair drops that sibling", () => {
       const farWalk: Connection = { id: "walk", a: "inn", b: "throne", aToB: {}, bToA: {}, distance: "far" };
-      expect(reachableEntityIds(inn, locs, [farWalk], [guard])).toEqual([]);
-      expect(reachableEntityIds(inn, locs, [], [guard])).toEqual(["guard"]);
+      expect(reachableEntityIds(inn, locs, [farWalk], [guard], AS_LISTED)).toEqual([]);
+      expect(reachableEntityIds(inn, locs, [], [guard], AS_LISTED)).toEqual(["guard"]);
     });
 
     it("never chains: two links away is out of reach", () => {
-      expect(reachableEntityIds(inn, locs, [road], [smith])).toEqual([]);
+      expect(reachableEntityIds(inn, locs, [road], [smith], AS_LISTED)).toEqual([]);
     });
 
     it("the sublocations roster drops a child across a Far Connection", () => {
       const farStair: Connection = { id: "stair", a: "rosewood", b: "throne", aToB: {}, bToA: {}, distance: "far" };
-      expect(sublocationEntityIds(rosewood, locs, [], [guard])).toEqual(["guard"]);
-      expect(sublocationEntityIds(rosewood, locs, [farStair], [guard])).toEqual([]);
+      expect(sublocationEntityIds(rosewood, locs, [], [guard], AS_LISTED)).toEqual(["guard"]);
+      expect(sublocationEntityIds(rosewood, locs, [farStair], [guard], AS_LISTED)).toEqual([]);
     });
   });
 });

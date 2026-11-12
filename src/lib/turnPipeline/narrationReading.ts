@@ -1,5 +1,5 @@
 import type { Entity, GameLocation, SceneEntity } from "@/types";
-import { entitiesInPlay, entityIdsAt } from "../entityPresence";
+import { idsAt, positionsIn } from "../entityPlaces";
 import { findEntityNames, matchNames, matchNamesLoose, sameCharacterName, stripQuotedSpeech } from "../entityMatch";
 import { extractCharacterCandidates, collectCandidateEvidence, type CandidateExclusions } from "../characterCandidates";
 import { buildSceneList, type DirectorCastMember } from "../stagedPlanning";
@@ -133,7 +133,7 @@ export interface VisitorInput {
 export function selectVisitorAdditions(input: VisitorInput): PositionBook {
   const { prose, entities, allEntities, location, book, world } = input;
   const visitorParticipants = findEntityNames(prose, allEntities, { partial: false });
-  const presentIds = entityIdsAt(location.id, entitiesInPlay(allEntities, book));
+  const presentIds = idsAt(location.id, allEntities, positionsIn(book));
   const { scene } = withPlayerAt(world, location.id);
   const nearby = nearbyPlaces(location.id, scene.locations, scene.connections);
   const visitors = selectReachableVisitors(visitorParticipants, nearby, entities, presentIds, book);

@@ -47,7 +47,7 @@ describe('buildScanCorpus — scans exactly the blocks the prompt renders', () =
       location: { id: 'vault', name: 'Vault', aiDescription: 'a deep vault' },
       locations: [{ id: 'vault', name: 'Vault', aiDescription: 'a deep vault' }],
       entities: [{ id: 'rustjaw', name: 'Rustjaw', locations: ['vault'], aiSummary: 'a scavenger', aiDescription: 'a scavenger' }],
-      presentIds: ['rustjaw'], inSceneIds: [], resolve: (text) => text,
+      presentIds: ['rustjaw'], placesOf: () => [], inSceneIds: [], resolve: (text) => text,
     });
     const read: string[] = [];
     const ctx = (key: string) => { read.push(key); return scene(key); };

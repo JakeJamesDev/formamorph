@@ -167,6 +167,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     connections,
     entities: cast,
     presentIds,
+    placesOf,
     // No turns have happened, so nobody is in scene beyond who the author placed here.
     inSceneIds: presentIds,
     lore: flattenEnabledBookEntries(dictionaries).filter((entry) => entry.enabled !== false),

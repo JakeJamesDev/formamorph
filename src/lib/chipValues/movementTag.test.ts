@@ -46,6 +46,8 @@ const uniques: UniqueStates = {
 
 const sources = (over: Partial<LiveSceneSources> = {}): LiveSceneSources => ({
   overview: '', stats: [], statPlacement: { groups: [], authored: [] }, traits: [], traitGroups: [],
+  // Each Unique entity stands at its Start, as the engine places it.
+  standings: { positions: Object.fromEntries(cast.flatMap((e) => (e.kind ? [[e.id, e.starts![0].place]] : []))), generics: {} },
   resolve: (text) => text, resolveTrait: (_t, text) => text, resolveEntity: (_e, text) => text,
   persona: null, location: inn, locations: [inn, smithy, ridge], connections,
   entities: cast, allEntities: cast, participants: ['Clerk', 'Companion'], notes: '', time: null, placeholders: [],

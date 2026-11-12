@@ -4,7 +4,8 @@ import type {
 } from '@/types';
 import { movementStates } from '../movementTag';
 import type { Routine } from '../positionEngine';
-import { entitiesInPlay, entityIdsAt } from '../entityPresence';
+import type { Standings } from '../entityPresence';
+import { idsAt, positionsIn } from '../entityPlaces';
 import { entityNamed, scenePresentHere, type OwnedTraitsInForce, type StrangerLabels } from '../locationContext';
 import type { GateTree } from '../traitGates';
 import { activeOwnedTraitIds, borneByPlayer, inOwnerPlaces, withOwnerTrees, type OwnerTree } from '../ownedTraitsInPlay';
@@ -51,6 +52,8 @@ export interface LiveSceneSources {
   entities: Entity[];
   /** The authored cast plus every runtime character this playthrough discovered. */
   allEntities: Entity[];
+  /** Where the cast stands now, runtime characters included. */
+  standings: Standings;
   /** Who the recent turns named as taking part. */
   participants: string[];
   notes: string;
@@ -114,11 +117,14 @@ export function liveChipScene(
   const ownText = (entities: Entity[]) => resolveOwnedTraitTexts(
     resolveEntityTexts(withOwnerTrees(entities, sources.owners), resolveEntity), resolveTrait, resolveEntity,
   );
-  const placed = (entities: Entity[]) => (box?.positions ? entitiesInPlay(entities, { positions: box.positions, generics: box.generics ?? {} }) : entities);
-  const allEntities = ownText(placed(box?.addedEntities ? [...sources.allEntities, ...box.addedEntities] : sources.allEntities));
+  const placesOf = positionsIn({
+    positions: box?.positions ? { ...sources.standings.positions, ...box.positions } : sources.standings.positions,
+    generics: box?.generics ?? sources.standings.generics,
+  });
+  const allEntities = ownText(box?.addedEntities ? [...sources.allEntities, ...box.addedEntities] : sources.allEntities);
   const persona = sources.persona && { ...sources.persona, entity: ownText([sources.persona.entity])[0] };
   const loc = location ?? sources.location;
-  const presentIds = entityIdsAt(loc?.id, allEntities);
+  const presentIds = idsAt(loc?.id, allEntities, placesOf);
   // Who has taken part lately, minus anyone the dialogue merely kept naming: an authored entity who lives
   // elsewhere is dropped, while ad-hoc and just-arrived characters stay (visitors reach `presentIds`
   // through the discovered-entity path). An ad-hoc name matches nobody and rides as a name.
@@ -171,7 +177,8 @@ export function liveChipScene(
     currencies: sources.currencies,
     placements: sources.placements,
     equipment: sources.equipment,
-    outerScopeEntities: ownText(placed(sources.entities)),
+    placesOf,
+    outerScopeEntities: ownText(sources.entities),
     inSceneNames,
     strangerLabels: sources.strangerLabels,
     ...(sources.movement && {
@@ -187,16 +194,16 @@ const inForceByOwner = (states: OwnedTraitStates | undefined): OwnedTraitsInForc
 export function useLiveChipScene(sources: LiveSceneSources): (location?: GameLocation | null, box?: SceneWrites | null) => ChipScene {
   const {
     overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-    location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
+    location, locations, connections, entities, allEntities, standings, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
   } = sources;
   return useCallback(
     (at?: GameLocation | null, box?: SceneWrites | null) => liveChipScene({
       overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-      location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
+      location, locations, connections, entities, allEntities, standings, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
     }, at, box),
     [
       overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-      location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
+      location, locations, connections, entities, allEntities, standings, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
     ],
   );
 }

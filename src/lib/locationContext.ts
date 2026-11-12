@@ -1,7 +1,8 @@
 import type { Connection, Entity, GameLocation, PlayerStat } from "@/types";
 import { statContextRuns, statPlacementOf, type ContextFormat, type StatPieces } from "./statContext";
 import { indentRuns, joinRuns, mark, runs, textOf, type MarkedRun, type MarkedText, type TextOrigin } from "./markedText";
-import { entityIdsAt, entityIdsAtAny, knownHere, knownInOf } from "./entityPresence";
+import { entityIdsAt, knownHere, knownInOf } from "./entityPresence";
+import { idsAtAny, type PlacesOf } from "./entityPlaces";
 import type { RelationshipLines } from "./entityRelationships";
 import { effectiveDestinations, nearbyPlaces, walkableReach, type LocationLink } from "./locationGraph";
 import { placeNameKey } from "./locationMatch";
@@ -364,15 +365,15 @@ export function buildSublocationsContext(
 /** The entities a roster of places they aren't present at may list: those whose Known In is Nearby. */
 const nearbyKnown = (entities: Entity[]) => entities.filter((e) => knownInOf(e) === "nearby");
 
-/** The deduped ids of the Nearby entities across the current location's direct sub-locations. A child the
- *  location links to by a Far Connection is left out. */
+/** The deduped ids of the Nearby entities `placesOf` puts in the current location's direct sub-locations. A child
+ *  the location links to by a Far Connection is left out. */
 export function sublocationEntityIds(
-  current: MaybeLocation, locations: GameLocation[], connections: Connection[], entities: Entity[],
+  current: MaybeLocation, locations: GameLocation[], connections: Connection[], entities: Entity[], placesOf: PlacesOf,
 ): string[] {
   if (!current) return [];
   const nearby = new Set(nearbyPlaces(current.id, locations, connections));
   const kids = locations.filter((l) => (l.parentId ?? null) === current.id && nearby.has(l.id));
-  return entityIdsAtAny(kids.map((k) => k.id), nearbyKnown(entities));
+  return idsAtAny(kids.map((k) => k.id), nearbyKnown(entities), placesOf);
 }
 
 /**
@@ -387,9 +388,10 @@ export function buildSublocationEntitiesContext(
   locations: GameLocation[],
   connections: Connection[],
   entities: Entity[],
+  placesOf: PlacesOf,
   opts: RosterOpts & { excludeIds?: string[] } = {},
 ): string {
-  return textOf(sublocationEntityRuns(current, locations, connections, entities, opts));
+  return textOf(sublocationEntityRuns(current, locations, connections, entities, placesOf, opts));
 }
 
 /** {@link buildSublocationEntitiesContext} as marked runs. */
@@ -398,11 +400,12 @@ export function sublocationEntityRuns(
   locations: GameLocation[],
   connections: Connection[],
   entities: Entity[],
+  placesOf: PlacesOf,
   opts: RosterOpts & { excludeIds?: string[] } = {},
 ): MarkedRun[] {
   if (!current) return runs(NONE_PLACEHOLDER);
   const exclude = new Set(opts.excludeIds ?? []);
-  const ids = sublocationEntityIds(current, locations, connections, entities).filter((id) => !exclude.has(id));
+  const ids = sublocationEntityIds(current, locations, connections, entities, placesOf).filter((id) => !exclude.has(id));
   return entityRosterRuns(ids, entities, opts);
 }
 
@@ -610,12 +613,12 @@ export function scenePresentHere(names: string[], entities: Entity[], hereIds: s
   });
 }
 
-/** The deduped ids of the Nearby entities across the places one Nearby link from the current location. */
+/** The deduped ids of the Nearby entities `placesOf` puts one Nearby link from the current location. */
 export function reachableEntityIds(
-  current: MaybeLocation, locations: GameLocation[], connections: Connection[], entities: Entity[],
+  current: MaybeLocation, locations: GameLocation[], connections: Connection[], entities: Entity[], placesOf: PlacesOf,
 ): string[] {
   if (!current) return [];
-  return entityIdsAtAny(nearbyPlaces(current.id, locations, connections), nearbyKnown(entities));
+  return idsAtAny(nearbyPlaces(current.id, locations, connections), nearbyKnown(entities), placesOf);
 }
 
 /** The ids of the entities known at the current location, in cast order: one of each one's Known In picks is
@@ -682,9 +685,10 @@ export function buildReachableEntitiesContext(
   locations: GameLocation[],
   connections: Connection[],
   entities: Entity[],
+  placesOf: PlacesOf,
   opts: RosterOpts & { excludeIds?: string[] } = {},
 ): string {
-  return textOf(reachableEntityRuns(current, locations, connections, entities, opts));
+  return textOf(reachableEntityRuns(current, locations, connections, entities, placesOf, opts));
 }
 
 /** {@link buildReachableEntitiesContext} as marked runs. */
@@ -693,11 +697,12 @@ export function reachableEntityRuns(
   locations: GameLocation[],
   connections: Connection[],
   entities: Entity[],
+  placesOf: PlacesOf,
   opts: RosterOpts & { excludeIds?: string[] } = {},
 ): MarkedRun[] {
   if (!current) return runs(NONE_PLACEHOLDER);
   const exclude = new Set(opts.excludeIds ?? []);
-  const ids = reachableEntityIds(current, locations, connections, entities).filter((id) => !exclude.has(id));
+  const ids = reachableEntityIds(current, locations, connections, entities, placesOf).filter((id) => !exclude.has(id));
   return entityRosterRuns(ids, entities, opts);
 }
 

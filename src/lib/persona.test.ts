@@ -3,6 +3,7 @@ import { enteredPersona, personaOption, resolvePersona, withPersonaEntry, worldE
 import { entityIdsAt } from './entityPresence';
 import { buildEntityContext, buildSublocationEntitiesContext } from './locationContext';
 import type { Entity, GameLocation, PersonaRef } from '@/types';
+import { AS_LISTED } from '@/test/asListed';
 
 const ent = (id: string, name: string, extra: Partial<Entity> = {}): Entity => ({ id, name, ...extra });
 
@@ -199,7 +200,7 @@ describe('the roster without the played entity', () => {
       expect(buildEntityContext(location, played.cast, { format: 'markdown' })).not.toContain('Mira');
     }
     expect(buildEntityContext(dock, played.cast, { format: 'markdown' })).toContain('Captain Vos');
-    expect(buildSublocationEntitiesContext(town, locations, [], played.cast, { format: 'markdown' })).not.toContain('Mira');
+    expect(buildSublocationEntitiesContext(town, locations, [], played.cast, AS_LISTED, { format: 'markdown' })).not.toContain('Mira');
   });
 
   it('lists the entity at its locations again after a switch away', () => {

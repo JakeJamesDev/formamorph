@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { positionsIn } from '@/lib/entityPlaces';
 import { chipValues, sceneEntityChipValues } from './chipValues';
 import type { ChipScene } from './chipScene';
 import { spelledTokens } from '@/test/chipTokens';
@@ -22,6 +23,7 @@ const herald: Entity = { id: 'herald', name: 'Herald', knownIn: ['old-town'], ai
 
 const scene = (entities: Entity[], over: Partial<ChipScene> = {}): ChipScene => ({
   overview: '', stats: [], traits: [], traitGroups: [], persona: null,
+  placesOf: positionsIn({ positions: {}, generics: {} }),
   location: northGate, locations, connections: [], entities,
   presentIds: ['guard'], inSceneIds: ['guard'], lore: [], notes: '', time: null,
   resolve: (text) => text,

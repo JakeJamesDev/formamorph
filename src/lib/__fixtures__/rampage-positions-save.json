@@ -1,0 +1,206 @@
+{
+  "id": "fixture",
+  "name": "slot",
+  "worldId": "rampage",
+  "messageHistory": [],
+  "currentState": {
+    "globalStats": [],
+    "globalTraits": [],
+    "entityPositions": {
+      "1739140991471": "545f34f6-5efc-4a96-918a-49fea1db9652",
+      "1db44b4d-6f38-48c2-b350-70cef21fc0fe": "545f34f6-5efc-4a96-918a-49fea1db9652",
+      "e1785562-8f4f-453f-b87c-e2c405eaee04": "545f34f6-5efc-4a96-918a-49fea1db9652",
+      "3d0ef98b-7e55-4077-b4dd-b6bd6f0653ea": "33edfb4b-2356-45fd-80b4-de75cbca7bb1",
+      "5c517bdd-1037-4114-a288-2c997decbdf6": "f7a8a344-6986-42df-965b-0eac20820edc",
+      "b794561b-c766-486d-ac01-47fbe3d1eba9": "dde19988-f34e-4d9e-a6fe-8a86141d98c9",
+      "0a9e5b7c-3d21-4c8e-9f64-2b1d7e8a5c30": "dde19988-f34e-4d9e-a6fe-8a86141d98c9",
+      "2e62ed1d-0fbe-4ff8-a037-25d0255557f6": "1eae497d-dbd0-48e8-978b-8b67f93745f8",
+      "5236b7ee-68b6-4708-a32b-6f7d0161762b": "541721dc-e269-4539-9da7-9dd2be608a16",
+      "1664a8d3-c7c1-4e70-b4f2-4d8a0114ad80": "18b34752-6fb9-4651-9c29-721af9dfd928",
+      "7e849117-4667-443d-be44-d23349a7ff53": "18b34752-6fb9-4651-9c29-721af9dfd928",
+      "f543198c-4092-44e7-856d-1a5a75a83439": "545f34f6-5efc-4a96-918a-49fea1db9652",
+      "e5b9c8bd-b9b4-48b8-bec9-acdd06b551b5": "545f34f6-5efc-4a96-918a-49fea1db9652"
+    },
+    "uniqueStates": {
+      "1739140991471": {
+        "startId": "start-1",
+        "lastRun": 1020
+      },
+      "1db44b4d-6f38-48c2-b350-70cef21fc0fe": {
+        "startId": "start-1",
+        "lastRun": 1020
+      },
+      "e1785562-8f4f-453f-b87c-e2c405eaee04": {
+        "startId": "start-1",
+        "lastRun": 1020
+      },
+      "3d0ef98b-7e55-4077-b4dd-b6bd6f0653ea": {
+        "startId": "start-1",
+        "lastRun": 1020
+      },
+      "5c517bdd-1037-4114-a288-2c997decbdf6": {
+        "startId": "start-1",
+        "lastRun": 1020
+      },
+      "b794561b-c766-486d-ac01-47fbe3d1eba9": {
+        "startId": "start-1",
+        "lastRun": 1020
+      },
+      "0a9e5b7c-3d21-4c8e-9f64-2b1d7e8a5c30": {
+        "startId": "start-1",
+        "lastRun": 1020
+      },
+      "2e62ed1d-0fbe-4ff8-a037-25d0255557f6": {
+        "startId": "start-1",
+        "lastRun": 1020
+      },
+      "5236b7ee-68b6-4708-a32b-6f7d0161762b": {
+        "startId": "start-1",
+        "lastRun": 1020
+      },
+      "1664a8d3-c7c1-4e70-b4f2-4d8a0114ad80": {
+        "startId": "start-1",
+        "lastRun": 1020
+      },
+      "7e849117-4667-443d-be44-d23349a7ff53": {
+        "startId": "start-1",
+        "lastRun": 1020
+      },
+      "f543198c-4092-44e7-856d-1a5a75a83439": {
+        "startId": "start-1",
+        "lastRun": 1020
+      },
+      "e5b9c8bd-b9b4-48b8-bec9-acdd06b551b5": {
+        "startId": "start-1",
+        "lastRun": 1020
+      }
+    },
+    "genericStates": {
+      "1739140807977": {
+        "start-1": {
+          "position": "542a8d1e-f045-432c-89e0-836be699b1dc",
+          "lastRun": 1020
+        },
+        "start-2": {
+          "position": "7669f491-6486-4012-b827-442f0b18c26d",
+          "lastRun": 1020
+        },
+        "start-3": {
+          "position": "dde19988-f34e-4d9e-a6fe-8a86141d98c9",
+          "lastRun": 1020
+        }
+      },
+      "1739140862574": {
+        "start-1": {
+          "position": "542a8d1e-f045-432c-89e0-836be699b1dc",
+          "lastRun": 1020
+        },
+        "start-2": {
+          "position": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
+          "lastRun": 1020
+        },
+        "start-3": {
+          "position": "1eae497d-dbd0-48e8-978b-8b67f93745f8",
+          "lastRun": 1020
+        }
+      },
+      "1739140929151": {
+        "start-1": {
+          "position": "fbf2ccb1-bee4-4273-89bf-8ed35ed2fbc3",
+          "lastRun": 1020
+        },
+        "start-2": {
+          "position": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
+          "lastRun": 1020
+        },
+        "start-3": {
+          "position": "541721dc-e269-4539-9da7-9dd2be608a16",
+          "lastRun": 1020
+        }
+      },
+      "b9738b28-1916-48ee-b188-09b96fed709b": {
+        "start-1": {
+          "position": "1739141048247",
+          "lastRun": 1020
+        },
+        "start-2": {
+          "position": "542a8d1e-f045-432c-89e0-836be699b1dc",
+          "lastRun": 1020
+        },
+        "start-3": {
+          "position": "7669f491-6486-4012-b827-442f0b18c26d",
+          "lastRun": 1020
+        }
+      },
+      "22578969-7992-441f-add8-fbd10f6e49c0": {
+        "start-1": {
+          "position": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
+          "lastRun": 1020
+        },
+        "start-2": {
+          "position": "7669f491-6486-4012-b827-442f0b18c26d",
+          "lastRun": 1020
+        },
+        "start-3": {
+          "position": "f7a8a344-6986-42df-965b-0eac20820edc",
+          "lastRun": 1020
+        }
+      },
+      "23b6c3ce-3fc1-43e2-925f-1d46d87b94b4": {
+        "start-1": {
+          "position": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
+          "lastRun": 1020
+        },
+        "start-2": {
+          "position": "33edfb4b-2356-45fd-80b4-de75cbca7bb1",
+          "lastRun": 1020
+        }
+      },
+      "3151efd3-2512-4e10-960d-b29054b397cc": {
+        "start-1": {
+          "position": "5873058f-ec2d-42f2-8c9e-3657181c90d3",
+          "lastRun": 1020
+        },
+        "start-2": {
+          "position": "542a8d1e-f045-432c-89e0-836be699b1dc",
+          "lastRun": 1020
+        }
+      }
+    },
+    "visibleEntities": [],
+    "discoveredEntities": [
+      {
+        "entity": {
+          "id": "runtime-ferry",
+          "name": "Ferry Hand",
+          "aiDescription": "Met on the road."
+        },
+        "locationId": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
+        "sourceTurnId": "t-3"
+      }
+    ],
+    "suppressedCharacterNames": [],
+    "logEntries": [
+      {
+        "text": "Entered new location: Harbor District",
+        "gameTime": 0,
+        "repeat": 0,
+        "kind": "world"
+      }
+    ],
+    "gameplayText": "",
+    "locationId": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
+    "gameTime": 0,
+    "characterData": null,
+    "choices": [],
+    "isGameStarted": false,
+    "timestamp": "2026-11-12T00:30:56.020Z",
+    "worldName": "Rampage",
+    "playerNotes": "",
+    "previousStateIndex": null,
+    "stateVersion": 2
+  },
+  "stateHistory": [],
+  "version": "3.6.2",
+  "dictionaries": []
+}

@@ -163,6 +163,7 @@ describe('the played entities in the narration request under each persona source
   const resolveEntity = (entity: { name: string }, text: string) => resolveEntityText(entity, text, { placeholders: [], rolls: {} });
   const render = (over: Partial<LiveSceneSources>) => renderPromptTemplate(defaults.systemPrompt, chipValues(liveChipScene({
     overview: 'A city under siege.',
+    standings: { positions: {}, generics: {} },
     stats: [destruction],
     statPlacement: { groups: [], authored: [destruction] },
     traits: [lucky],

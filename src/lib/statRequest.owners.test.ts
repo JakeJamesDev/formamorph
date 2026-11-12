@@ -56,7 +56,7 @@ const sceneOf = (
     overview: '', stats, traits: [], traitGroups: [], ownedStats,
     playedStats: persona ? ownerStatParts([persona], ownedStats) : [],
     persona: persona ? { entity: persona, source: 'world' } : null, playerName: persona?.name ?? null,
-    location: null, locations: [], connections: [], entities: cast, presentIds: [], inSceneIds: [],
+    location: null, locations: [], connections: [], entities: cast, presentIds: [], placesOf: () => [], inSceneIds: [],
     lore: [], notes: '', time: null, resolve: (text) => text,
   };
 };

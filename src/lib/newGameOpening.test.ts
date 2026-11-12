@@ -4,6 +4,12 @@ import { drawUnseenOpening, openingPool, poolKey } from './openings';
 import { resolvePersona } from './persona';
 import { migrateWorld } from './version';
 import type { Entity, GameLocation, Opening, PersonaRef, WorldOverview } from '@/types';
+import { AS_LISTED } from '@/test/asListed';
+import { samplePlacement } from '@/lib/entityPlaces';
+
+/** Where a new game at 'start' places `cast`, a migrated entity with a kind included. */
+const openingAt = (cast: readonly Entity[]) =>
+  samplePlacement(cast, { locations: [{ id: 'start', isStarting: true }], connections: [] }, 'start');
 
 const action = (id: string): Opening => ({ id, text: `Opening ${id}.`, kind: 'action' });
 
@@ -23,6 +29,7 @@ const always = () => 0;
 describe('drawNewGameOpening', () => {
   it('resolves the persona before the draw, so the draw reads the cast without the played entity', () => {
     const result = drawNewGameOpening({
+      placesOf: AS_LISTED,
       pick: { ref: { source: 'world', entityId: 'guide' } },
       worldEntities: [guide, keeper],
       overview,
@@ -38,6 +45,7 @@ describe('drawNewGameOpening', () => {
   it('names a picked library entity as the owner of its row', () => {
     const visitor = entity('visitor', { openings: [action('visitor-hello')] });
     const result = drawNewGameOpening({
+      placesOf: AS_LISTED,
       pick: { ref: { source: 'none' } },
       worldEntities: [guide],
       overview,
@@ -52,6 +60,7 @@ describe('drawNewGameOpening', () => {
   it('hands the library persona read at entry to the page-one render', () => {
     const self = entity('self', { persona: true });
     const result = drawNewGameOpening({
+      placesOf: AS_LISTED,
       pick: { ref: { source: 'library', entityId: 'self' }, libraryEntity: self },
       worldEntities: [guide],
       overview,
@@ -65,6 +74,7 @@ describe('drawNewGameOpening', () => {
 
   it('draws with no persona for None', () => {
     const result = drawNewGameOpening({
+      placesOf: AS_LISTED,
       pick: { ref: { source: 'none' } },
       worldEntities: [guide],
       overview,
@@ -86,7 +96,7 @@ const seeded = (seed: number) => () => {
 describe('the pool after the first draw, with a world persona', () => {
   const worldEntities = [guide, keeper];
   const played = resolvePersona({ source: 'world', entityId: 'guide' }, worldEntities, []);
-  const pool = (entities: Entity[]) => openingPool({ overview, entities, startingLocationId: 'start', picked: [] });
+  const pool = (entities: Entity[]) => openingPool({ placesOf: AS_LISTED, overview, entities, startingLocationId: 'start', picked: [] });
   const drawIds = (entities: Entity[], shown: string[]) => {
     const random = seeded(7);
     let seen = shown;
@@ -99,6 +109,7 @@ describe('the pool after the first draw, with a world persona', () => {
 
   it('keeps the played entity out at page-one regenerate', () => {
     const first = drawNewGameOpening({
+      placesOf: AS_LISTED,
       pick: { ref: { source: 'world', entityId: 'guide' } }, worldEntities, overview, startingLocationId: 'start',
       picked: [], random: seeded(3),
     });
@@ -125,7 +136,7 @@ describe('the pool with a persona-only entity', () => {
     const random = seeded(11);
     let seen: string[] = [];
     const ids = Array.from({ length: 20 }, () => {
-      const next = drawUnseenOpening(openingPool({ overview, entities: cast, startingLocationId: 'start', picked: [] }), seen, random);
+      const next = drawUnseenOpening(openingPool({ placesOf: AS_LISTED, overview, entities: cast, startingLocationId: 'start', picked: [] }), seen, random);
       seen = next.shown;
       return next.opening.id;
     });
@@ -134,6 +145,7 @@ describe('the pool with a persona-only entity', () => {
 
   it('keeps a picked persona-only entity out: it is the played entity', () => {
     const result = drawNewGameOpening({
+      placesOf: AS_LISTED,
       pick: { ref: { source: 'world', entityId: 'custom' } }, worldEntities, overview, startingLocationId: 'start',
       picked: [], random: always,
     });
@@ -157,7 +169,7 @@ const selfRow = (id: string): Opening => ({ ...action(id), self: true });
 
 /** Every opening the first draw can land on: one draw at each of 40 evenly spaced points in [0, 1). */
 const firstDraws = (pick: PersonaRef, worldEntities: Entity[], over: Partial<WorldOverview> = {}) => new Set(
-  Array.from({ length: 40 }, (_, i) => drawNewGameOpening({
+  Array.from({ length: 40 }, (_, i) => drawNewGameOpening({ placesOf: openingAt(worldEntities),
     pick: { ref: pick }, worldEntities, overview: { ...overview, ...over }, startingLocationId: 'start', picked: [],
     random: () => (i + 0.5) / 40,
   }).draw.opening.id),
@@ -179,6 +191,7 @@ describe('Self openings of a world persona', () => {
 
   it('name their owner as the drawn row’s owner', () => {
     const result = drawNewGameOpening({
+      placesOf: AS_LISTED,
       pick: { ref: { source: 'world', entityId: 'hero' } }, worldEntities, overview, startingLocationId: 'start',
       picked: [], random: always,
     });
@@ -200,6 +213,7 @@ describe('Self openings of a world persona', () => {
 
   it('draw under a stored off flag, which no longer switches anything', () => {
     const result = drawNewGameOpening({
+      placesOf: AS_LISTED,
       pick: { ref: { source: 'world', entityId: 'hero' } }, worldEntities, overview: { ...overview, openingsEnabled: false } as typeof overview,
       startingLocationId: 'start', picked: [], random: always,
     });
@@ -214,24 +228,26 @@ describe('Self openings of a world persona', () => {
   it('keep a picked library entity’s Self rows out of the Library Additions pool', () => {
     const visitor = entity('visitor', { openings: [action('visitor-hello'), selfRow('visitor-self')] });
     const result = drawNewGameOpening({
+      placesOf: AS_LISTED,
       pick: { ref: { source: 'none' } }, worldEntities: [keeper], overview, startingLocationId: 'start',
       picked: [visitor], random: seeded(5),
     });
     expect(result.draw.opening.id).toBe('visitor-hello');
-    expect(openingPool({ overview, entities: [keeper], startingLocationId: 'start', picked: [visitor] })
+    expect(openingPool({ placesOf: AS_LISTED, overview, entities: [keeper], startingLocationId: 'start', picked: [visitor] })
       .map((row) => row.opening.id)).toEqual(['visitor-hello']);
   });
 
   it('are what the page-one redraw draws again from', () => {
     const played = resolvePersona({ source: 'world', entityId: 'hero' }, worldEntities, []);
     const first = drawNewGameOpening({
+      placesOf: AS_LISTED,
       pick: { ref: { source: 'world', entityId: 'hero' } }, worldEntities, overview, startingLocationId: 'start',
       picked: [], random: seeded(3),
     });
     const random = seeded(9);
     let seen = first.draw.shown;
     const redraws = Array.from({ length: 20 }, () => {
-      const pool = openingPool({ overview, entities: played.cast, startingLocationId: 'start', picked: [], persona: played.persona });
+      const pool = openingPool({ placesOf: AS_LISTED, overview, entities: played.cast, startingLocationId: 'start', picked: [], persona: played.persona });
       const next = drawUnseenOpening(pool, seen, random);
       seen = next.shown;
       return next.opening.id;
@@ -260,7 +276,7 @@ describe('a world whose openings carry no Self flag, as every shipped world', ()
     { label: 'the world persona', ref: { source: 'world', entityId: 'guide' }, ids: ['world-hello', 'keeper-hello'], weights: [3, 2] },
   ])('draws from the location pool under $label', ({ ref, ids, weights }) => {
     const { cast, persona } = resolvePersona(ref, world.entities, []);
-    const pool = openingPool({ overview: world.worldOverview, entities: cast, startingLocationId: 'start', persona });
+    const pool = openingPool({ placesOf: openingAt(world.entities), overview: world.worldOverview, entities: cast, startingLocationId: 'start', persona });
     expect(pool.map((row) => [row.opening.id, row.weight])).toEqual(ids.map((id, i) => [id, weights[i]]));
     expect(firstDraws(ref, world.entities, world.worldOverview)).toEqual(new Set(ids));
   });
@@ -270,6 +286,7 @@ describe('the pool in a world with no openings that can draw', () => {
   // A Library Addition's row draws only once the world's list reads on, so it shows whether a row switched it on.
   const visitor = entity('visitor', { openings: [action('visitor-hello')] });
   const drawWith = (pick: PersonaRef, worldEntities: Entity[], libraryEntity?: Entity) => drawNewGameOpening({
+    placesOf: AS_LISTED,
     pick: { ref: pick, libraryEntity }, worldEntities, overview, startingLocationId: 'start', picked: [visitor],
     random: always,
   }).draw.opening.id;
@@ -292,6 +309,7 @@ describe('the pool in a world with no openings that can draw', () => {
   it('draws the player’s Self rows under a stored off flag', () => {
     const own = entity('own', { persona: true, openings: [selfRow('own-self')] });
     expect(drawNewGameOpening({
+      placesOf: AS_LISTED,
       pick: { ref: { source: 'library', entityId: 'own' }, libraryEntity: own }, worldEntities: [],
       overview: { ...overview, openingsEnabled: false } as typeof overview, startingLocationId: 'start', picked: [visitor], random: always,
     }).draw.opening.id).toBe('own-self');
@@ -359,6 +377,7 @@ describe('Self openings of a library persona and the Custom Persona entity', () 
     } = {},
   ) => new Map(Array.from({ length: 40 }, (_, i) => {
     const result = drawNewGameOpening({
+      placesOf: AS_LISTED,
       pick: { ref: pick, libraryEntity }, worldEntities, overview: worldRows, startingLocationId: 'start', picked,
       random: () => (i + 0.5) / 40,
     });
@@ -421,6 +440,7 @@ describe('Self openings of a library persona and the Custom Persona entity', () 
     let seen: string[] = [];
     const redraws = Array.from({ length: 20 }, () => {
       const pool = openingPool({
+        placesOf: AS_LISTED,
         overview: worldRows, entities: cast, startingLocationId: 'start', picked: [], persona, customPersona: wanderer,
       });
       const next = drawUnseenOpening(pool, seen, random);
@@ -443,6 +463,7 @@ describe('location openings', () => {
     { ref = { source: 'none' } as PersonaRef, worldEntities = [guide], over = {} as Partial<WorldOverview>, places = locations } = {},
   ) => new Map(Array.from({ length: 40 }, (_, i) => {
     const result = drawNewGameOpening({
+      placesOf: AS_LISTED,
       pick: { ref }, worldEntities, overview: { ...overview, ...over }, locations: places, startingLocationId,
       picked: [], random: () => (i + 0.5) / 40,
     });
@@ -450,7 +471,7 @@ describe('location openings', () => {
   }));
 
   it('join the pool at their exact start, between the world’s rows and the present entities’', () => {
-    const pool = openingPool({ overview: { ...overview, openings: [action('world-hello')] }, entities: [guide], locations, startingLocationId: 'start' });
+    const pool = openingPool({ placesOf: AS_LISTED, overview: { ...overview, openings: [action('world-hello')] }, entities: [guide], locations, startingLocationId: 'start' });
     expect(pool.map((e) => e.opening.id)).toEqual(['world-hello', 'start-here', 'guide-hello']);
     expect(drawsAt('start')).toEqual(new Map([['start-here', null], ['guide-hello', 'guide']]));
   });
@@ -477,7 +498,7 @@ describe('location openings', () => {
     // An entity whose id is the start's, standing there, with an opening id the start's own row shares.
     const namesake = entity('start', { locations: ['start'], openings: [action('shared')] });
     const place: GameLocation = { id: 'start', name: 'Start', openings: [action('shared')] };
-    const pool = openingPool({ overview, entities: [namesake], locations: [place], startingLocationId: 'start' });
+    const pool = openingPool({ placesOf: AS_LISTED, overview, entities: [namesake], locations: [place], startingLocationId: 'start' });
     expect(new Set(pool.map(poolKey)).size).toBe(2);
 
     const first = drawUnseenOpening(pool, [], always);
@@ -485,6 +506,7 @@ describe('location openings', () => {
     expect([first.ownerId, second.ownerId]).toEqual([null, 'start']);
     // The location's row names no entity, even though one shares its id.
     const owners = new Set([0.1, 0.9].map((r) => drawNewGameOpening({
+      placesOf: AS_LISTED,
       pick: { ref: { source: 'none' } }, worldEntities: [namesake], overview, locations: [place],
       startingLocationId: 'start', picked: [], random: () => r,
     }).owner?.id ?? null));

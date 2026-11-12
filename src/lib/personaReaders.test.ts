@@ -27,8 +27,8 @@ describe('entity readers in play', () => {
     // The roster chips read the live Chip Scene: Here and In Scene from the full cast, the outer scopes from
     // the authored cast. liveScene.test.ts proves the rendering; this pins which list the scene is handed.
     { reader: 'roster chip', source: liveScene, pattern: /entities: allEntities,/ },
-    { reader: 'roster chip, sublocations and reachable', source: liveScene, pattern: /outerScopeEntities: ownText\(placed\(sources\.entities\)\),/ },
-    { reader: 'roster chip, live view hands the adapter both casts', source: viewer, pattern: /entities,\s*allEntities,\s*participants,/ },
+    { reader: 'roster chip, sublocations and reachable', source: liveScene, pattern: /outerScopeEntities: ownText\(sources\.entities\),/ },
+    { reader: 'roster chip, live view hands the adapter both casts', source: viewer, pattern: /entities,\s*allEntities,\s*standings: liveStandings,\s*participants,/ },
     { reader: 'prose parse for participation', source: viewer, pattern: /readNarration\(\{[^}]*entities: allEntities,/ },
     { reader: 'participation fan-out', source: viewer, pattern: /splitParticipants\(turnParticipants, liveScene\(null, codeView\)\.entities,/ },
     { reader: 'diaries, view hands over the cast', source: viewer, pattern: /const found = findEntityByCharacterName\(target\.name, allEntities\);/ },
@@ -41,8 +41,10 @@ describe('entity readers in play', () => {
     { reader: 'in-game entity panel', source: viewer, pattern: /entities=\{allEntities\}/ },
     // The seed resolves the pick itself, so it reads every world entity: a picked persona-only one is in no cast yet.
     // It reads them where the new game placed them.
-    { reader: 'opening pool, new game', source: viewer, pattern: /drawNewGameOpening\(\{\s*pick: personaPick, worldEntities: entitiesInPlay\(traitEntities, startBook\),/ },
-    { reader: 'opening pool, regenerate and load', source: viewer, pattern: /const sessionPool = \(\) => openingPool\(\{\s*overview: worldOverview,\s*entities,/ },
+    { reader: 'opening pool, new game', source: viewer, pattern: /drawNewGameOpening\(\{\s*pick: personaPick, worldEntities: traitEntities, placesOf: positionsIn\(startBook\),/ },
+    { reader: 'opening pool, regenerate and load', source: viewer, pattern: /const sessionPool = \(\) => \{[^}]*openingPool\(\{\s*overview: worldOverview,\s*entities,/ },
+    // The redraw reads where the cast stood when the game opened, never where it stands now (Q24).
+    { reader: 'opening pool, the placement it reads', source: viewer, pattern: /placesOf: openingPlacesOf\(openingPlacement, entities,/ },
     { reader: 'panels, scene list', source: panels, pattern: /const \{ entities: authoredEntities(?:, \w+)* \} = useResolvedWorld\(\)/ },
     { reader: 'narration edit rescan', source: viewer, pattern: /useNarrationRescan\(\{ entities: allEntities,/ },
   ];

@@ -14,6 +14,7 @@ import { statCodeName, statCodeNamed } from './statCodeNames';
 import { navigableDestinationEntries } from './locationContext';
 import { isFar, isTwoWay, parentIndex } from './locationGraph';
 import { knownInOf } from './entityPresence';
+import { positionAmong } from './entityPlaces';
 import {
   codeDictionaries, sandboxDictionaries, sandboxPlaceholders, withLibraryPlaceholders, type StatCodePlaceholderSet,
 } from './statCodePlaceholders';
@@ -236,7 +237,9 @@ function playFields(
     description: resolve(entity.aiDescription ?? '', entity), summary: resolve(entity.aiSummary ?? '', entity),
     aliases: (entity.aliases ?? []).map((alias) => resolve(alias, entity)),
     pronouns: resolve(entity.pronouns ?? '', entity),
-    ...(at ? { locationId: at } : {}), locationIds: genericPositions?.[entity.id] ?? entity.locations ?? [],
+    ...(at ? { locationId: at } : {}),
+    // A run with no live positions at all reads the stored list.
+    locationIds: positions ? positionAmong(entity, positions, genericPositions ?? {}) : genericPositions?.[entity.id] ?? entity.locations ?? [],
     ...(followers?.includes(entity.id) ? { following: true } : {}),
     ...(waiting?.includes(entity.id) ? { waiting: true } : {}),
   };

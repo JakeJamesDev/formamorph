@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { positionsIn } from '@/lib/entityPlaces';
 import { chipValues, sceneEntityChipValues } from './chipValues';
 import { splitToken } from '../promptVariables';
 import type { ChipScene } from './chipScene';
@@ -46,6 +47,7 @@ const chip = (base: string, ...ids: string[]) => {
 
 const scene = (over: Partial<ChipScene> = {}): ChipScene => ({
   overview: 'A quiet coast.',
+  placesOf: positionsIn({ positions: {}, generics: {} }),
   stats: [],
   traits: [],
   traitGroups: [],
