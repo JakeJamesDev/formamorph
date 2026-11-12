@@ -122,6 +122,7 @@ const PICK = GROUPS.recommended as LocalModelInfo;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   rig.engineStatus = 'stopped';
   rig.engineError = null;
   rig.gpuTotalMB = 16376;
@@ -192,10 +193,33 @@ describe('AiSetupGate — the low-VRAM lead', () => {
     await userEvent.click(within(card).getByRole('button', { name: 'See Levels' }));
     expect(isRoadSceneOpen()).toBe(true);
     expect(roadSceneStart()).toBe('levels');
-    expect(sendFunnelStep).toHaveBeenCalledWith('see_levels');
+    expect(vi.mocked(sendFunnelStep).mock.calls.map(([step]) => step)).toEqual(['setup_offer_shown', 'setup_see_levels']);
     await userEvent.click(within(row(recommended)).getByRole('button', { name: 'Download' }));
     expect(downloadLocalModel).toHaveBeenCalledWith(expect.objectContaining({ fileName: recommended.fileName }));
     withLead.unmount();
+  });
+
+  it('sends its shown step on its first show, and never again after a reload', async () => {
+    rig.gpuTotalMB = 6144;
+    rig.vramClass = 'low';
+    const first = mountGate();
+    await screen.findByTestId('ai-setup-lead');
+    first.set({ open: false });
+    first.set({ open: true });
+    await screen.findByTestId('ai-setup-lead');
+    first.unmount();
+    mountGate({ reason: 'play' });
+    await screen.findByTestId('ai-setup-lead');
+    expect(vi.mocked(sendFunnelStep).mock.calls.map(([step]) => step)).toEqual(['setup_offer_shown']);
+  });
+
+  it('sends no shown step while it is hidden', async () => {
+    rig.gpuTotalMB = 6144;
+    rig.vramClass = 'low';
+    rig.presetState = 'ready';
+    mountGate();
+    expect(await screen.findByText(/6\.0 GB VRAM/)).toBeInTheDocument();
+    expect(sendFunnelStep).not.toHaveBeenCalled();
   });
 
   it('leads in a world too, and in the full model list', async () => {

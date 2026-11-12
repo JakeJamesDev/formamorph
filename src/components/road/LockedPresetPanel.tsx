@@ -23,8 +23,8 @@ export function LockedPresetPanel({ reason }: { reason: string }) {
       <RoadLevelPicker tier={tier} onPick={setTier} />
       <p className="text-label">{roadLevel(tier).line(name)}</p>
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button variant="outline" onClick={() => openRoadScene()}>See Levels</Button>
-        <Button onClick={() => openRoadScene('checklist')}>Support on Patreon</Button>
+        <Button variant="outline" onClick={() => openRoadScene('locked')}>See Levels</Button>
+        <Button onClick={() => openRoadScene('locked', 'checklist')}>Support on Patreon</Button>
       </div>
     </div>
   );

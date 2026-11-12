@@ -7,6 +7,7 @@ import { HOSTED_STATE_URL } from '@/lib/hostedAi/hostedUrls';
 import { BUILTIN_ENGINE_PRESET_ID, DEFAULT_TEXT_PRESET_ID } from '@/lib/textEndpointPresets';
 import type { VramClass } from '@/lib/vramClass';
 import AuthService from '@/services/AuthService';
+import { funnelPosts } from '@/test/funnelPosts';
 import { useCardTurnCounts, useDemoAIOfferAvailable, useDemoAIStoryCard, useEngineStoryCard, type CommittedTurn } from './useDemoAIOffer';
 
 // The hosted build: the Default preset is the Demo AI.
@@ -112,13 +113,15 @@ describe('who counts as pledged', () => {
 });
 
 describe('useDemoAIStoryCard', () => {
-  it('waits for the turn to settle, then writes the seen record', () => {
+  it('waits for the turn to settle, then writes the seen record and sends demo_offer_shown once', () => {
     const view = mount(5, false);
     expect(showing()).toBe(false);
     expect(isDemoAICardSeen()).toBe(false);
     view.update(5, true);
     expect(showing()).toBe(true);
     expect(isDemoAICardSeen()).toBe(true);
+    view.update(6, true);
+    expect(funnelPosts()).toEqual(['demo_offer_shown']);
   });
 
   it('rises with the turn count while settled', () => {
@@ -217,7 +220,6 @@ describe('useEngineStoryCard', () => {
     act(() => settings.selectTextEndpointPreset(BUILTIN_ENGINE_PRESET_ID));
     return { ...view, update: (count: number, done: boolean) => view.rerender(tree(count, done)) };
   };
-  const funnelPosts = (step: string) => vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith(`/funnel/${step}`)).length;
 
   // The built-in engine preset exists only in the desktop build.
   beforeEach(() => {
@@ -237,8 +239,7 @@ describe('useEngineStoryCard', () => {
     expect(isEngineCardSeen()).toBe(true);
     expect(isDemoAICardSeen()).toBe(false);
     view.update(11, true);
-    expect(funnelPosts('engine_offer_shown')).toBe(1);
-    expect(funnelPosts('offer_shown')).toBe(0);
+    expect(funnelPosts()).toEqual(['engine_offer_shown']);
   });
 
   it.each(['ok', 'unknown'] as const)('never shows on the %s VRAM class', (vramClass) => {

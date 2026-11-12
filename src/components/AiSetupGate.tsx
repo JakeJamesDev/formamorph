@@ -20,6 +20,8 @@ import { StoryCard } from '@/components/road/StoryCard';
 import { openRoadScene } from '@/components/road/roadSceneStore';
 import { isPledged } from '@/components/road/useDemoAIOffer';
 import { aiSetupLeadsWithHostedAi } from '@/lib/firstTimeFlow';
+import { isSetupLeadSeen, markSetupLeadSeen } from '@/lib/firstTimeFlowStore';
+import { sendFunnelStep } from '@/lib/funnel';
 import { HOSTED_AI_AVAILABLE } from '@/lib/hostedAi/hostedUrls';
 import { isCrossOriginEmbed, isLocalEndpoint, openInOwnTab, shouldOfferPopOut } from '@/lib/localNetworkEmbed';
 import type { AiBlocker, AiMode } from '@/lib/useAiReachable';
@@ -27,6 +29,24 @@ import {
   downloadLocalModel, cancelLocalDownload, subscribeLocalDownload, DOWNLOAD_PAUSED,
   type LocalDownloadProgress,
 } from '@/lib/imageGen/desktop';
+
+/** The Formamorph AI lead. Its first show on this device writes its seen record and shown step. */
+function SetupLead({ className }: { className?: string }) {
+  useEffect(() => {
+    if (isSetupLeadSeen()) return;
+    markSetupLeadSeen();
+    sendFunnelStep('setup_offer_shown');
+  }, []);
+  return (
+    <StoryCard
+      testId="ai-setup-lead"
+      className={className}
+      title="Better Narration, Nothing to Download"
+      body="Formamorph AI writes better narration and keeps characters more consistent than the models that fit your computer. Your support also helps fund new updates."
+      onSeeLevels={() => openRoadScene('setup')}
+    />
+  );
+}
 
 /** Why the gate opened: after the first-run intro, or on entering a world with the AI unreachable. Both are
  *  dismissible — the gate warns, it doesn't trap. A failed turn is recoverable; a modal with no exit isn't. */
@@ -368,15 +388,7 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
 
         {error && <FieldError>{error}</FieldError>}
 
-        {leadsWithHostedAi && (
-          <StoryCard
-            testId="ai-setup-lead"
-            className={cn(expanded && 'shrink-0')}
-            title="Better Narration, Nothing to Download"
-            body="Formamorph AI writes better narration and keeps characters more consistent than the models that fit your computer. Your support also helps fund new updates."
-            onSeeLevels={openRoadScene}
-          />
-        )}
+        {leadsWithHostedAi && <SetupLead className={cn(expanded && 'shrink-0')} />}
 
         {inFlow && phase === 'downloading' ? (
           <div className="space-y-2">

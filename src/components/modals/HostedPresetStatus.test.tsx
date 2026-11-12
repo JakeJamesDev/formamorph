@@ -2,10 +2,11 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { CHANGE_JELLY } from '@/components/road/useMorphieJelly';
 import { jellyDipMs } from '@/lib/formaquestion/mascotTransition';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { closeRoadScene, isRoadSceneOpen, roadSceneStart } from '@/components/road/roadSceneStore';
+import { closeRoadScene, isRoadSceneOpen, roadSceneSource, roadSceneStart } from '@/components/road/roadSceneStore';
 import { hostedStateCopy } from '@/lib/hostedAi/hostedCopy';
 import { resetTierNamesForTest, seedTierNamesForTest } from '@/lib/tierNames';
 import type { HostedPresetState } from '@/lib/hostedAi/refusals';
+import { funnelPosts } from '@/test/funnelPosts';
 import { HostedPresetStatus } from './HostedPresetStatus';
 
 const settings = vi.hoisted(() => ({
@@ -83,12 +84,20 @@ describe('HostedPresetStatus locked panel', () => {
 
   it('See Levels opens the levels and Support on Patreon opens the checklist', () => {
     render(<HostedPresetStatus state="signed-out" lockedPanel />);
-    fireEvent.click(screen.getByRole('button', { name: 'See Levels' }));
-    expect(isRoadSceneOpen()).toBe(true);
-    expect(roadSceneStart()).toBe('levels');
-    closeRoadScene();
-    fireEvent.click(screen.getByRole('button', { name: 'Support on Patreon' }));
-    expect(roadSceneStart()).toBe('checklist');
+    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('offline (test)'))));
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'See Levels' }));
+      expect(isRoadSceneOpen()).toBe(true);
+      expect(roadSceneStart()).toBe('levels');
+      expect(roadSceneSource()).toBe('locked');
+      closeRoadScene();
+      fireEvent.click(screen.getByRole('button', { name: 'Support on Patreon' }));
+      expect(roadSceneStart()).toBe('checklist');
+      expect(roadSceneSource()).toBe('locked');
+      expect(funnelPosts()).toEqual(['locked_see_levels']);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it.each(['ready', 'warned'] as const)('draws nothing for %s when a ring holds the usage', (state) => {

@@ -26,6 +26,12 @@ const FUNNEL_SENT_PREFIX = 'FORMAMORPH_funnelSent_';
 export const isFunnelStepSent = (step: string): boolean => isSet(FUNNEL_SENT_PREFIX + step);
 export const markFunnelStepSent = (step: string): void => mark(FUNNEL_SENT_PREFIX + step);
 
+const SETUP_LEAD_SEEN_KEY = 'FORMAMORPH_setupLeadSeen';
+
+/** The AI setup lead showed on this device. */
+export const isSetupLeadSeen = (): boolean => isSet(SETUP_LEAD_SEEN_KEY);
+export const markSetupLeadSeen = (): void => mark(SETUP_LEAD_SEEN_KEY);
+
 export const isDemoAICardSeen = (): boolean => isSet(DEMO_AI_CARD_SEEN_KEY);
 export const markDemoAICardSeen = (): void => mark(DEMO_AI_CARD_SEEN_KEY);
 

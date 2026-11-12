@@ -19,9 +19,10 @@ import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { DEFAULT_TEXT_PRESET_ID } from '@/lib/textEndpointPresets';
 import { DemoAIBadge, DemoAIEntryLine, DemoAINotice, type DemoAINoticeHandle } from './DemoAINotice';
-import { closeRoadScene, isRoadSceneOpen } from '@/components/road/roadSceneStore';
+import { closeRoadScene, isRoadSceneOpen, roadSceneSource } from '@/components/road/roadSceneStore';
 import { registerDocsOpener } from '@/lib/formaquestion/docsOpener';
 import { DEMO_AI_SEEN_KEY, useDemoAIEntryLine } from './demoAISeen';
+import { funnelPosts } from '@/test/funnelPosts';
 
 const UA = {
   windowsChrome: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
@@ -288,6 +289,8 @@ describe('DemoAINotice controls', () => {
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'See Levels' }));
     expect(dialog()).toBeNull();
     expect(isRoadSceneOpen()).toBe(true);
+    expect(roadSceneSource()).toBe('notice');
+    expect(funnelPosts()).toEqual(['notice_see_levels']);
     closeRoadScene();
   });
 

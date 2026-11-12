@@ -36,13 +36,13 @@ describe('RoadSceneHost', () => {
   it('draws nothing until something asks, then opens from anywhere', () => {
     render(<App />);
     expect(scene()).toBeNull();
-    act(() => openRoadScene());
+    act(() => openRoadScene('demo'));
     expect(scene()).not.toBeNull();
   });
 
   it('stays open across a view change', () => {
     render(<App />);
-    act(() => openRoadScene());
+    act(() => openRoadScene('demo'));
     act(() => swapView('mainMenu'));
     expect(screen.getByRole('main', { hidden: true })).toHaveTextContent('mainMenu');
     expect(scene()).not.toBeNull();
@@ -50,23 +50,23 @@ describe('RoadSceneHost', () => {
 
   it('closes on Keep Playing and opens again on the next ask', () => {
     render(<App />);
-    act(() => openRoadScene());
+    act(() => openRoadScene('demo'));
     fireEvent.click(screen.getByRole('button', { name: 'Keep Playing' }));
     expect(scene()).toBeNull();
-    act(() => openRoadScene());
+    act(() => openRoadScene('demo'));
     expect(scene()).not.toBeNull();
   });
 
   it('closes on Escape', () => {
     render(<App />);
-    act(() => openRoadScene());
+    act(() => openRoadScene('demo'));
     fireEvent.keyDown(scene()!, { key: 'Escape' });
     expect(scene()).toBeNull();
   });
 
   it('opens the checklist from Support on Patreon and leaves the Patreon page closed', () => {
     render(<App />);
-    act(() => openRoadScene());
+    act(() => openRoadScene('demo'));
     fireEvent.click(screen.getByRole('button', { name: 'Support on Patreon' }));
     expect(screen.getByRole('heading', { name: 'Set Up Formamorph AI' })).not.toBeNull();
     expect(openExternal).not.toHaveBeenCalled();
@@ -74,10 +74,10 @@ describe('RoadSceneHost', () => {
 
   it('opens on the levels unless the ask names the checklist', () => {
     render(<App />);
-    act(() => openRoadScene());
+    act(() => openRoadScene('demo'));
     expect(screen.getByRole('heading', { name: 'Better Narration for Your Stories' })).not.toBeNull();
     act(() => closeRoadScene());
-    act(() => openRoadScene('checklist'));
+    act(() => openRoadScene('demo', 'checklist'));
     expect(screen.getByRole('heading', { name: 'Set Up Formamorph AI' })).not.toBeNull();
   });
 });

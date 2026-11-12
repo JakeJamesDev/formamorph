@@ -6416,9 +6416,9 @@ const GameViewer = ({
       narrationBadge={<DemoAIBadge onOpen={openDemoAIDialog} />}
       narrationLine={demoAIEntryLine ? <DemoAIEntryLine /> : null}
       storyCard={engineCard.showing || (import.meta.env.DEV && devRoute?.modal === 'storyCard' && devRoute.tab === 'engine') ? (
-        <StoryCard className="my-4" testId="engine-story-card" {...ENGINE_CARD_COPY} onNotNow={engineCard.dismiss} onSeeLevels={() => { engineCard.dismiss(); openRoadScene(); }} />
+        <StoryCard className="my-4" testId="engine-story-card" {...ENGINE_CARD_COPY} onNotNow={engineCard.dismiss} onSeeLevels={() => { engineCard.dismiss(); openRoadScene('engine'); }} />
       ) : storyCard.showing || (import.meta.env.DEV && devRoute?.modal === 'storyCard') ? (
-        <StoryCard className="my-4" onNotNow={storyCard.dismiss} onSeeLevels={() => { storyCard.dismiss(); openRoadScene(); }} />
+        <StoryCard className="my-4" onNotNow={storyCard.dismiss} onSeeLevels={() => { storyCard.dismiss(); openRoadScene('demo'); }} />
       ) : null}
       totalPages={totalPages}
       handlePageChange={handlePageChange}

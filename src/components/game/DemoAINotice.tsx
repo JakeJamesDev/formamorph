@@ -85,7 +85,7 @@ export const DemoAINotice = forwardRef<DemoAINoticeHandle>(function DemoAINotice
             {offerAvailable && (
               <div className="flex items-center justify-between gap-3">
                 <p>Formamorph AI is a stronger AI with no setup. Your support on Patreon includes it and helps fund new updates.</p>
-                <Button variant="outline" size="sm" className="shrink-0" onClick={() => { close(); openRoadScene(); }}>
+                <Button variant="outline" size="sm" className="shrink-0" onClick={() => { close(); openRoadScene('notice'); }}>
                   See Levels
                 </Button>
               </div>

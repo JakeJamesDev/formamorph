@@ -78,7 +78,7 @@ export function useDemoAIStoryCard({ turnCount, settled }: { turnCount: number; 
     available: offerAvailable(facts),
     settled,
     markSeen: markDemoAICardSeen,
-    step: 'offer_shown',
+    step: 'demo_offer_shown',
   });
 }
 

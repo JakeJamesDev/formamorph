@@ -6,6 +6,7 @@ import { openExternal } from '@/lib/openExternal';
 import { requestSignIn } from '@/lib/signInStore';
 import { FORMAMORPH_AI_PRESET_ID } from '@/lib/textEndpointPresets';
 import { PatreonService, type PatreonStatus } from '@/services/PatreonService';
+import { funnelPosts } from '@/test/funnelPosts';
 import { RoadSceneHost } from './RoadSceneHost';
 import { closeRoadScene, openRoadScene } from './roadSceneStore';
 
@@ -45,7 +46,7 @@ const status = (next: PatreonStatus) => vi.mocked(PatreonService.getStatus).mock
 /** Opens the checklist and lets the first status read answer. */
 const open = async () => {
   render(<RoadSceneHost />);
-  await act(async () => { openRoadScene('checklist'); });
+  await act(async () => { openRoadScene('locked', 'checklist'); });
 };
 
 beforeEach(() => {
@@ -191,7 +192,60 @@ describe('Support checklist', () => {
     status(PLEDGED);
     await open();
     fireEvent.click(screen.getByRole('button', { name: 'Finish Later' }));
-    await act(async () => { openRoadScene('checklist'); });
+    await act(async () => { openRoadScene('locked', 'checklist'); });
     await waitFor(() => expect(doneRows()).toEqual(['signIn', 'pledge', 'link']));
+  });
+});
+
+describe('Support checklist funnel steps', () => {
+  const openPatreon = () => fireEvent.click(screen.getAllByRole('button', { name: 'Open Patreon' }).at(-1)!);
+
+  beforeEach(() => {
+    world.signedIn = true;
+    world.attested = true;
+    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('offline (test)'))));
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    window.location.hash = '';
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  });
+
+  it('credits the Patreon click to the source that opened the checklist', async () => {
+    status(UNLINKED);
+    await open();
+    openPatreon();
+    expect(funnelPosts()).toEqual(['locked_patreon_click']);
+  });
+
+  it('credits the latest open: one source opens and closes, a second opens the levels, walks to the checklist and clicks', async () => {
+    status(UNLINKED);
+    render(<RoadSceneHost />);
+    await act(async () => { openRoadScene('demo'); });
+    fireEvent.click(screen.getByRole('button', { name: 'Keep Playing' }));
+    await act(async () => { openRoadScene('engine'); });
+    fireEvent.click(screen.getByRole('button', { name: 'Support on Patreon' }));
+    openPatreon();
+    expect(funnelPosts()).toEqual(['demo_see_levels', 'engine_see_levels', 'engine_patreon_click']);
+  });
+
+  it('credits the finished checklist to the source that opened it', async () => {
+    world.activePreset = FORMAMORPH_AI_PRESET_ID;
+    status(PLEDGED);
+    render(<RoadSceneHost />);
+    await act(async () => { openRoadScene('setup', 'checklist'); });
+    await waitFor(() => expect(doneRows()).toEqual(['signIn', 'pledge', 'link', 'switch']));
+    expect(funnelPosts()).toEqual(['setup_checklist_finished']);
+  });
+
+  it('sends nothing from a scene no entry point opened', async () => {
+    status(UNLINKED);
+    window.location.hash = '#dev?modal=road&tab=checklist';
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+    render(<RoadSceneHost />);
+    await act(async () => {});
+    openPatreon();
+    expect(openExternal).toHaveBeenCalledWith(PATREON_PAGE_URL);
+    expect(funnelPosts()).toEqual([]);
   });
 });

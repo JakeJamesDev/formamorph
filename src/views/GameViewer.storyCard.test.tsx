@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
+import { funnelPosts } from '@/test/funnelPosts';
 import { playTurn, regenerateChoices, regenerateStats, settles, stubDemoAIEndpoint } from '@/test/demoAIPlay';
 import { DEMO_AI_SEEN_KEY } from '@/components/game/demoAISeen';
 import { RoadSceneHost } from '@/components/road/RoadSceneHost';
@@ -137,6 +138,7 @@ describe('the card', () => {
     fireEvent.change(box(), { target: { value: 'Half a thought' } });
     fireEvent.click(within(await screen.findByTestId('story-card')).getByRole('button', { name: 'See Levels' }));
     expect(scene()).not.toBeNull();
+    expect(funnelPosts()).toEqual(['demo_offer_shown', 'demo_see_levels']);
     fireEvent.click(screen.getByRole('button', { name: 'Keep Playing' }));
     expect(scene()).toBeNull();
     expect(card()).toBeNull();
