@@ -563,6 +563,15 @@ describe('the Notes and Time chips', () => {
     expect(values('<TIME>')).toBe('Day 2, afternoon');
   });
 
+  it('read the Time chip in its picked format, with or without the day', () => {
+    const values = chipValues(scene());
+    expect(values('<TIME|hours>')).toBe('Day 2, 14:00');
+    expect(values('<TIME|ampm>')).toBe('Day 2, 2:00 PM');
+    expect(values('<TIME|noday>')).toBe('afternoon');
+    expect(values('<TIME|hours.noday>')).toBe('14:00');
+    expect(values('<TIME|ampm.noday>')).toBe('2:00 PM');
+  });
+
   it('render the placeholder when absent', () => {
     const values = chipValues(scene({ notes: '', time: null }));
     expect(values('<NOTES>')).toBe(NONE_PLACEHOLDER);

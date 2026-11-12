@@ -164,8 +164,29 @@ export const OPENING_DAYPART: Daypart = daypart(DEFAULT_START_HOUR);
 
 /** Absolute position in story time, e.g. `Day 3, evening`. */
 export function formatAbsolute(elapsed: number, calendar?: WorldCalendar): string {
-  const { day, hour } = dayAndHour(elapsed, calendar);
-  return `Day ${day}, ${daypart(hour, calendar)}`;
+  return formatStoryTime(elapsed, calendar, 'daypart', true);
+}
+
+/** How a story-time reading shows the time: the daypart, or a 24- or 12-hour clock. */
+export type ClockStyle = 'daypart' | '24h' | '12h';
+
+/** Story time in `style`, with or without the day: `Day 3, evening`, `19:00`, `Day 3, 7:00 PM`. */
+export function formatStoryTime(elapsed: number, calendar: WorldCalendar | undefined, style: ClockStyle, withDay: boolean): string {
+  let day: number;
+  let time: string;
+  if (style === 'daypart') {
+    const reading = dayAndHour(elapsed, calendar);
+    day = reading.day;
+    time = daypart(reading.hour, calendar);
+  } else {
+    const reading = clockReading(elapsed, calendar);
+    day = reading.day;
+    const mm = String(reading.minute).padStart(2, '0');
+    time = style === '24h'
+      ? `${String(reading.hour).padStart(2, '0')}:${mm}`
+      : `${reading.hour % 12 || 12}:${mm} ${reading.hour % 24 < 12 ? 'AM' : 'PM'}`;
+  }
+  return withDay ? `Day ${day}, ${time}` : time;
 }
 
 /** Position in story time as a readable timestamp, e.g. `Day 3, 19:00`. The player-facing log wants a
@@ -173,8 +194,7 @@ export function formatAbsolute(elapsed: number, calendar?: WorldCalendar): strin
  *  the log never enters context. Accumulated in whole minutes so a measured 15m delta shows, and so a
  *  moment just short of midnight rolls the day instead of printing `24:00`. */
 export function formatClock(elapsed: number, calendar?: WorldCalendar): string {
-  const { day, hour, minute } = clockReading(elapsed, calendar);
-  return `Day ${day}, ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  return formatStoryTime(elapsed, calendar, '24h', true);
 }
 
 /** Day, hour and minute after `elapsed` story hours, all from one rounded minute count, so `formatClock`'s

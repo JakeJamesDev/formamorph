@@ -11,6 +11,7 @@ import {
   daypart,
   formatAbsolute,
   formatClock,
+  formatStoryTime,
   parseOpeningDaypart,
   OPENING_HOURS,
   formatRelative,
@@ -127,6 +128,21 @@ describe('parseOpeningDaypart', () => {
     for (const hour of Object.values(OPENING_HOURS)) {
       expect(dayAndHour(0, { startHour: hour }).day).toBe(1);
     }
+  });
+});
+
+describe('formatStoryTime', () => {
+  it('reads a 12-hour clock across midnight and noon', () => {
+    expect(formatStoryTime(16, undefined, '12h', true)).toBe('Day 2, 12:00 AM');
+    expect(formatStoryTime(4, undefined, '12h', true)).toBe('Day 1, 12:00 PM');
+    expect(formatStoryTime(15.5, undefined, '12h', true)).toBe('Day 1, 11:30 PM');
+    expect(formatStoryTime(1, undefined, '12h', true)).toBe('Day 1, 9:00 AM');
+  });
+
+  it('drops the day when asked, in every style', () => {
+    expect(formatStoryTime(11, undefined, 'daypart', false)).toBe('evening');
+    expect(formatStoryTime(11, undefined, '24h', false)).toBe('19:00');
+    expect(formatStoryTime(11, undefined, '12h', false)).toBe('7:00 PM');
   });
 });
 

@@ -96,6 +96,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **In the World Editor, a Connection's Travel and Distance choices now have labels, on its location and on the Canvas.** On a location, Travel reads Both Ways, To There or To Here. Nearby and Far each show a line, and the ⓘ explains them.
   - **The World Editor's location panel has a Connections tab, with one folding row per Connection.** Each row starts closed and shows the direction, the other location and the distance. Open it to edit Travel, Distance and the Travel Hints. A Connection you add opens.
   - **The World Editor's Connections tab now lists a location's links with no Connection under Automatic Links.** The closed group shows its parent, children and siblings. Select **+** on a row to make it a two-way, Nearby Connection.
+  - **The Time prompt chip can now send a 24-hour or 12-hour clock, like "19:00" or "7:00 PM".** Pick it under Format in Chip Options. Turn off Include Day to send the time without "Day 3". Prompts send the time of day until you change it.
 - **🛠️ Developer tooling**
   - **`pov-rewrite-probe.mjs` measures whether the character and diary passes mix up the player's acts with their own.** It compares the player's words as typed, with today's note, and with "I" or "you" rewritten to the persona name.
   - **`movement-tag-probe.cli.ts` measures whether the narrator keeps a character with a strict shift where they belong.** It compares the Entities chip with and without its Movement tags on take-along, neighbor and ordinary turns.

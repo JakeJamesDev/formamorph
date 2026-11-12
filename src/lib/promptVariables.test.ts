@@ -181,11 +181,14 @@ describe('phase 2 registry changes', () => {
     expect(scope.options.map((o) => o.label)).toEqual(['Here', 'In Sub', 'Reachable', 'Known', 'In Scene']);
   });
 
-  it('registers Time as an ordinary affixable context chip', () => {
+  it('registers Time as an affixable chip with a Format pick and an Include Day switch', () => {
     const TIME = variableForToken('<TIME>')!;
     expect(TIME.label).toBe('Time');
     expect(TIME.affixable).toBe(true);
-    expect(variableAxes(TIME)).toHaveLength(0); // one value, no modes
+    const [clock, day] = variableAxes(TIME);
+    expect(clock.options.map((o) => o.label)).toEqual(['Time of Day', '24-Hour', '12-Hour']);
+    expect(day.toggle && day.onByDefault).toBe(true);
+    expect(variantLabelForToken('<TIME|ampm.noday>')).toBe('12-Hour, No Day');
   });
 
   it('has retired the bespoke clause tokens', () => {

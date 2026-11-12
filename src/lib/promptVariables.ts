@@ -263,9 +263,26 @@ const NARRATION: PromptVariable = { token: '<NARRATION>', label: 'Narration', co
 // here so the shared prompt parser/chip recognize it; it is never offered in a game prompt's toolbar.
 export const SUBJECT: PromptVariable = { token: '<SUBJECT>', label: 'Subject', color: HIGHLIGHT_PALETTE[12] };
 
+// Not `format`: the labels-style preset strips an axis with that id.
+const TIME_CLOCK_AXIS: PromptVariantAxis = {
+  id: 'clock',
+  label: 'Format',
+  options: [
+    { id: null, label: 'Time of Day', help: 'Sends the time of day, like "evening"' },
+    { id: 'hours', label: '24-Hour', help: 'Sends the time on a 24-hour clock, like "19:00"' },
+    { id: 'ampm', label: '12-Hour', help: 'Sends the time on a 12-hour clock, like "7:00 PM"' },
+  ],
+};
+const TIME_DAY_AXIS: PromptVariantAxis = {
+  id: 'day', label: 'Include Day', toggle: true, onByDefault: true, help: 'Sends the day number before the time, like "Day 3"',
+  options: [{ id: null, label: 'Include Day' }, { id: 'noday', label: 'No Day' }],
+};
+
 // The story's own clock — "Day 3, evening" — as a plain inline value. Renders the uniform placeholder while
 // Time in Memory is off, so an affixed placement simply disappears rather than needing its own switch.
-const TIME: PromptVariable = { token: '<TIME>', label: 'Time', color: HIGHLIGHT_PALETTE[10], affixable: true };
+const TIME: PromptVariable = {
+  token: '<TIME>', label: 'Time', color: HIGHLIGHT_PALETTE[10], affixable: true, axes: [TIME_CLOCK_AXIS, TIME_DAY_AXIS],
+};
 
 // Scene-image tag pass only: the characters the composer has put in frame, so the action tags describe
 // those people and no others. A value token like <NARRATION> — never a context block.

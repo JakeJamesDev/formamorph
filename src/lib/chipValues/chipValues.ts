@@ -1,5 +1,5 @@
 import { buildDictionaryContext } from '../dictionaryUtils';
-import { formatAbsolute } from '../gameClock';
+import { formatStoryTime, type ClockStyle } from '../gameClock';
 import {
   buildDestinationsContext, buildLocationContext, buildParentLocationContext, buildReachableLocationsContext,
   buildSublocationsContext, chipFamilyRuns, chipFamilyValues, chipFormat, entityRosterRuns, hasOnlyWith, ownedStatLines,
@@ -33,6 +33,7 @@ const TIME = variableForToken('<TIME>')!;
 const DICTIONARY = variableForToken('<DICTIONARY>')!;
 const ENTITIES = variableForToken('<ENTITIES>')!;
 const INVENTORY = variableForToken('<INVENTORY>')!;
+const TIME_CLOCK_STYLES: Record<string, ClockStyle> = { hours: '24h', ampm: '12h' };
 // A Header is reference text, cased mid-sentence; its title-casing capitalizes the words that lead.
 const NO_PLAYER = PLAYER_NAME.resolve({ before: ' ' }, { kind: 'reference' });
 
@@ -116,7 +117,9 @@ export function chipValues(scene: ChipScene): ValueLookup {
     })],
     [NOTES, chipFamilyValues(NOTES.token, () => scene.notes || NONE_PLACEHOLDER)],
     // Off or unknown reads as the uniform placeholder, so an affixed placement simply vanishes.
-    [TIME, chipFamilyValues(TIME.token, () => (scene.time ? formatAbsolute(scene.time.elapsed, scene.time.calendar) : NONE_PLACEHOLDER))],
+    [TIME, chipFamilyValues(TIME.token, (sel) => (scene.time
+      ? formatStoryTime(scene.time.elapsed, scene.time.calendar, TIME_CLOCK_STYLES[sel.clock ?? ''] ?? 'daypart', sel.day !== 'noday')
+      : NONE_PLACEHOLDER))],
     [LOCATION, scopedChipValues(LOCATION.token, {
       '': (opts) => buildLocationContext(location, opts),
       sublocations: (opts) => buildSublocationsContext(location, locations, opts),

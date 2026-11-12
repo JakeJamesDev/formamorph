@@ -91,6 +91,18 @@ describe('Chip Options', () => {
     expect(box('Include', 'Stats')).toBeChecked();
   });
 
+  it("writes the Time chip's Format and Include Day to the token", async () => {
+    const user = userEvent.setup();
+    renderReporting(<Field initial="<TIME>" />);
+    const options = await open(user);
+    expect(within(options).getByRole('radio', { name: 'Time of Day' })).toBeChecked();
+    const includeDay = within(options).getByRole('checkbox', { name: 'Include Day' });
+    expect(includeDay).toBeChecked();
+    await user.click(within(options).getByRole('radio', { name: '12-Hour' }));
+    await user.click(includeDay);
+    expect(stored()).toBe('<TIME|ampm.noday>');
+  });
+
   it('writes each row to the token and reads it back on reopen, without closing between changes', async () => {
     const user = userEvent.setup();
     renderReporting(<Field initial="<ENTITIES>" />);
