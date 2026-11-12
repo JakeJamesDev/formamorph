@@ -301,7 +301,7 @@ A VRM 3D model — in the local Model Library, held in a world's Avatar store, c
 _Avoid_: model (in copy), VRM (the file format, not the thing)
 
 **User's Default**:
-The Avatar choice that shows the player's default Avatar: the library Avatar marked Default, or the bundled one when none is marked. Device-local, never exported.
+The Avatar choice that shows the player's default Avatar: the library Avatar marked Default, then the first available library Avatar, then none. Device-local, never exported.
 _Avoid_: default avatar (as the choice's name)
 
 **Default Avatar**:

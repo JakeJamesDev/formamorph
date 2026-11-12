@@ -181,7 +181,7 @@ When two active traits set the same slider, the one switched on last wins. A row
 
 **Colors** set the [Avatar's](Avatars#in-the-game) skin, eye or hair color while the trait is active. For example, a *Drow* trait sets the skin to gray.
 
-- Pick **Skin**, **Eye** or **Hair** in the **Colors** list. Each gets a row with a **Set To** color, which starts at the model's own color, or white when the world doesn't set the player's Avatar.
+- Pick **Skin**, **Eye** or **Hair** in the **Colors** list. Each gets a row with a **Set To** color, which starts at the Avatar's own color, or white when the trait has no Avatar.
 - The color replaces the player's own pick. A stat bound to that color still shifts it on from there.
 - When the trait switches off, the player's own color comes back.
 - Colors work on Avatars only. An entity's 3D model keeps its colors.

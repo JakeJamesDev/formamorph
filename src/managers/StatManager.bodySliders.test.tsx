@@ -525,7 +525,7 @@ describe('the Colors rows', () => {
     expect(written.at(-1)?.colorBindings).toBeUndefined();
   });
 
-  it('seeds white when no Avatar is fixed', async () => {
+  it('seeds white when no Avatar resolves', async () => {
     const written = editing(wounds);
     await openColors();
     await userEvent.click(await screen.findByRole('option', { name: /^Hair, not selected$/ }));
@@ -593,7 +593,7 @@ describe('the Colors rows', () => {
       expect(await screen.findByText('Not on this model')).toBeInTheDocument();
     });
 
-    it('marks nothing when the only Avatar is the default pick and there is no 3D model', async () => {
+    it("marks nothing when User's Default resolves to no Avatar and there is no 3D model", async () => {
       const bound = { ...wounds, colorBindings: [{ channel: 'skin' as const, color: '#ffffff' }] };
       renderManager({ ...entityStore(), stats: [bound], morphOwner: { name: 'Golem', vrmPick: { kind: 'default' } } }, bound);
       await new Promise((resolve) => setTimeout(resolve, 0));

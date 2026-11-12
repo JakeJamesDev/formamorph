@@ -207,7 +207,7 @@ World actions such as **Edit World** and **Publish World** are in the world dial
 
 **Delete** asks you to confirm, and you cannot undo it. Make a backup first. See [How to Make a Backup](Saves-and-Backup#how-to-make-a-backup).
 
-- When saves use an avatar, the dialog names them. Those saves use the default avatar after you erase it.
+- When saves use an avatar, the dialog names them. Those saves use your default avatar after you erase it, or the first avatar in your library. With no avatars left, they show none.
 - When library entities use an avatar, the dialog names them. They show no avatar after you erase it.
 - To restore an erased world that came with Formamorph, see [How to Restore Default Worlds](Settings#how-to-restore-default-worlds).
 - When worlds use a deleted entity or dictionary, see [Removing a Library Item](LinkedContent#removing-a-library-item).
