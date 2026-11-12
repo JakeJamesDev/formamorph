@@ -33,6 +33,10 @@ The player sees a clock that lands where the scene ends: a sleep until dawn begu
 - **Q9.** On a custom calendar, a day is `hoursPerDay` for the day carry and the guard: the guard fires when the anchor lands more than 20/24 of a day ahead and the count is under one calendar day. A counted "N days" with no anchor stays N × 24 hours, as today.
 - **Q10.** An anchor and any count in the same reply form one reading. "until dawn" alone has no count, so neither the carry nor the guard applies.
 - **Q11.** Anchor math on the opening turn uses the calendar with the seeded opening hour merged in. The stat-code clock frame that drops `hoursPerDay` on the opening turn is named in the Landed section, not fixed here.
+- **Q12.** A schema `count` of 0 beside an anchor is a count, as the spike scored it, so the guard can fire. The guard is what turned "Morning." and "Quiet tonight" in dialogue back into 0 minutes. A schema reply matches the text reply that carries the same count, not bare "until dawn".
+- **Q13.** Ticket 02's probe runs three arms: the shipped control at the fixed ref, the schema request, and the text fallback for information. The bar applies to the schema arm only.
+- **Q14.** The schema field lines go in the reply-format block, using the spike's v2 wording. If the schema arm misses the bar, run one more arm with the spike's exact layout (the field lines in the system prompt). If that arm meets the bar, report both and ask the spec session, since the placement differs from the spec. If neither meets it, stop and report the numbers; do not reword (v3 and v4 showed that rewording moves the failures around).
+- **Q15.** The user's ruling, 2026-11-12: ship the spec layout. Measured on cloud: 79–84% main, 84–88% dialogue, against the shipped prompt's 53% / 57% and text's 79% / 70%; MeroMero 100% on both. This replaces the cloud bar in Testing Decisions. The remaining misses are all sleep cases (a night's sleep at 1h or 3 days, lying down at 1h) and the "tonight" street walk.
 
 ## User Stories
 
