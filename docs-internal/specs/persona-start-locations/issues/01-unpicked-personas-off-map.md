@@ -1,6 +1,6 @@
 # 01: Unpicked Personas Stay Off The Map And Out Of Known In
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
@@ -19,8 +19,22 @@ Spec rulings: Q6.
 
 ## Acceptance criteria
 
-- [ ] A game turn test, red on today's code, shows that an unpicked Persona-Only entity at the player's location with a Known In pick there is absent from the turn's request body.
-- [ ] The same setup leaves the entity without a Position: the map roster and the present-entity list never name it.
-- [ ] The guard bites: reinstating the old positioned cast or Known In lookup turns the test red.
-- [ ] Played as that Persona-Only entity, the player still starts and moves as before; an existing persona play test stays green.
-- [ ] The ticket records what the reproduction found leaking on today's code.
+- [x] A game turn test, red on today's code, shows that an unpicked Persona-Only entity placed away from the player with a Known In pick at the player's location holds no Position: gameplay `entityPositions` never names it (`GameViewer.unpickedPersona.test.tsx`; red before the fix, `["bram","cassia","ghost"]`). Rewritten with the spec session: the request body never leaked.
+- [x] The same turn's request body never names the entity, while a cast control with the same Known In pick is named. A guard, green on today's code too.
+- [x] A `knownEntityIds` unit test with a persona ref drops an unpicked Persona-Only entity and the played persona of any role (`locationContext.test.ts`); `positionedCast` drops the same (`entityPresence.test.ts`).
+- [x] The guard bites: reinstating the old positioned cast and the unfiltered Known In lookup turned all three tests red.
+- [x] Played as that Persona-Only entity, the player still starts and moves as before; an existing persona play test stays green (`GameViewer.actionList.test.tsx`, `GameViewer.personaSwitchScript.test.tsx`, `persona.test.ts`: 192 tests green).
+- [x] The ticket records what the reproduction found leaking on today's code (Landed section).
+
+## Landed
+
+**Reproduction on today's code** (mounted GameViewer turn, unpicked Persona-Only entity at the inn, Known In harbor, another persona played):
+- Leaked: the entity held a Position. `GameViewer.tsx` positions the raw world at opening, so `entityPositions` was `["bram","cassia","ghost"]`.
+- Did not leak: the narrator request. `resolvePersona` already applies `inCast` to the live cast.
+- Leaked to raw-entity callers: `knownEntityIds` through the chip scene and Test Bench. The roster and pulled ids now follow `inCast` (Q8).
+- Left alone by ruling: the World Editor's Known Here list (`knownHere`).
+- No changelog fragment: nothing a player sees changed.
+
+**Not verified**: none.
+
+**For you**: nothing only a player can judge.

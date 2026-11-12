@@ -4,6 +4,7 @@ import { isGeneric, placesReturned, withGenericStart, withoutRoutinePlace, withR
 import { withNewStart } from "@/lib/routineEditing";
 import { idsAt, namedPlacesOf, positionsIn, withMembership } from "@/lib/entityPlaces";
 import { randomUUID } from "@/lib/uuid";
+import { inCast } from "@/lib/owners";
 
 /**
  * Entity edits that touch places, and the rosters over the Entity Places module (ADR-0017). Roster order is the
@@ -105,10 +106,9 @@ export const presentEntityIds = (
   entities: Entity[], standings: Standings, locationId: string | null | undefined,
 ): string[] => idsAt(locationId, entities, positionsIn(standings));
 
-/** The entities that can hold a position under `persona`: all but the Custom Persona and the played one. */
-export function positionedCast<E extends Pick<Entity, 'id' | 'customPersona'>>(entities: readonly E[], persona: PersonaRef | undefined): E[] {
-  const played = persona?.source === 'world' ? persona.entityId : undefined;
-  return entities.filter((e) => !e.customPersona && e.id !== played);
+/** The entities that can hold a position under `persona`: the cast, as `inCast` reads it. */
+export function positionedCast<E extends Pick<Entity, 'id' | 'customPersona' | 'persona' | 'personaOnly'>>(entities: readonly E[], persona: PersonaRef | undefined): E[] {
+  return entities.filter((e) => inCast(e, persona));
 }
 
 /** An entity's Known In: Nearby, Nowhere, or the picked location ids, each covering its subtree. */

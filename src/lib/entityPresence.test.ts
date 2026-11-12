@@ -191,9 +191,12 @@ describe("positionedCast", () => {
   const sylvie: Entity = { ...wanderer, id: "sylvie", persona: true };
   const custom: Entity = { ...wanderer, id: "custom", customPersona: true };
 
-  it("leaves out the played world persona and the Custom Persona", () => {
-    const ids = (ref?: Parameters<typeof positionedCast>[1]) => positionedCast([wanderer, sylvie, custom], ref).map((e) => e.id);
+  const only: Entity = { ...wanderer, id: "only", persona: true, personaOnly: true };
+
+  it("leaves out the played world persona, the Custom Persona and an unpicked Persona-Only entity", () => {
+    const ids = (ref?: Parameters<typeof positionedCast>[1]) => positionedCast([wanderer, sylvie, custom, only], ref).map((e) => e.id);
     expect(ids({ source: "world", entityId: "sylvie" })).toEqual(["wanderer"]);
+    expect(ids({ source: "world", entityId: "only" })).toEqual(["wanderer", "sylvie"]);
     expect(ids({ source: "none" })).toEqual(["wanderer", "sylvie"]);
     expect(ids(undefined)).toEqual(["wanderer", "sylvie"]);
   });

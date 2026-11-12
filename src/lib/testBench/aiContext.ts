@@ -244,7 +244,7 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
   const shown = new Set([...hereIds, ...subIds]);
   const reachIds = reachableEntityIds(location, locations, connections, cast, placesOf).filter((id) => !shown.has(id));
   const listed = new Set([...shown, ...reachIds]);
-  const knownIds = knownEntityIds(location, locations, cast, knownPulledIds(scene)).filter((id) => !listed.has(id));
+  const knownIds = knownEntityIds(location, locations, cast, knownPulledIds(scene), lens.persona ? lensPersonaRef(lens.persona.id) : undefined).filter((id) => !listed.has(id));
 
   // Text stays exactly as the module produced it, trailing newline included — what an author reads here is
   // byte-for-byte what the model receives; the Dictionary block is its two lore chips, one after the other.

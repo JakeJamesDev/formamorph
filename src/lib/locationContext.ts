@@ -1,4 +1,5 @@
-import type { Connection, Entity, GameLocation, PlayerStat } from "@/types";
+import type { Connection, Entity, GameLocation, PersonaRef, PlayerStat } from "@/types";
+import { inCast } from "./owners";
 import { statContextRuns, statPlacementOf, type ContextFormat, type StatPieces } from "./statContext";
 import { indentRuns, joinRuns, mark, runs, textOf, type MarkedRun, type MarkedText, type TextOrigin } from "./markedText";
 import { knownHere, knownInOf } from "./entityPresence";
@@ -169,7 +170,7 @@ export type StrangerLabels = Readonly<Record<string, string>>;
 export type MovementLabels = Readonly<Record<string, string>>;
 
 /** The known roster's options: `excludeIds` drops whom a higher scope lists; `pulledIds` join it through a relationship. */
-export type KnownRosterOpts = RosterOpts & { excludeIds?: readonly string[]; pulledIds?: readonly string[] };
+export type KnownRosterOpts = RosterOpts & { excludeIds?: readonly string[]; pulledIds?: readonly string[]; persona?: PersonaRef };
 
 const ALL_STAT_PIECES: StatPieces = { values: true, status: true, meaning: true };
 
@@ -607,12 +608,15 @@ export function reachableEntityIds(
 }
 
 /** The ids of the entities known at the current location, in cast order: one of each one's Known In picks is
- *  the location or contains it, or it is in `pulledIds`. The Custom Persona is never listed; the played persona
- *  is not in the cast play passes. */
-export function knownEntityIds(current: MaybeLocation, locations: GameLocation[], entities: Entity[], pulledIds: readonly string[] = []): string[] {
-  const known = new Set(current ? knownHere(current.id, locations, entities).map((row) => row.entity.id) : []);
+ *  the location or contains it, or it is in `pulledIds`. Only the cast is listed, as `inCast` reads it under
+ *  `persona`: never the Custom Persona, the played persona or an unpicked Persona-Only entity. */
+export function knownEntityIds(
+  current: MaybeLocation, locations: GameLocation[], entities: Entity[], pulledIds: readonly string[] = [], persona?: PersonaRef,
+): string[] {
+  const cast = entities.filter((e) => inCast(e, persona));
+  const known = new Set(current ? knownHere(current.id, locations, cast).map((row) => row.entity.id) : []);
   const pulled = new Set(pulledIds);
-  return entities.flatMap((e) => (known.has(e.id) || (pulled.has(e.id) && !e.customPersona) ? [e.id] : []));
+  return cast.flatMap((e) => (known.has(e.id) || pulled.has(e.id) ? [e.id] : []));
 }
 
 /**
@@ -638,7 +642,7 @@ export function knownEntityRuns(
   opts: KnownRosterOpts = {},
 ): MarkedRun[] {
   const exclude = new Set(opts.excludeIds ?? []);
-  const ids = knownEntityIds(current, locations, entities, opts.pulledIds).filter((id) => !exclude.has(id));
+  const ids = knownEntityIds(current, locations, entities, opts.pulledIds, opts.persona).filter((id) => !exclude.has(id));
   if (!current && !ids.length) return runs(NONE_PLACEHOLDER);
   return entityRosterRuns(ids, entities, { ...opts, preferSummary: true, noTraits: true, noStats: true });
 }

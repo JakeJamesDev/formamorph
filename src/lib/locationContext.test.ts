@@ -256,6 +256,19 @@ describe("Known In rosters", () => {
     expect(knownEntityIds(inn, locs, [{ ...queen, knownIn: ["market"] }])).toEqual([]);
   });
 
+  it("leaves out an unpicked Persona-Only entity and the played persona, however they are picked", () => {
+    const only = { ...queen, id: "only", persona: true, personaOnly: true };
+    const playable = { ...queen, id: "playable", persona: true };
+    expect(knownEntityIds(inn, locs, [queen, only, playable], [], undefined)).toEqual(["queen", "playable"]);
+    expect(knownEntityIds(inn, locs, [queen, only, playable], [], { source: "world", entityId: "playable" })).toEqual(["queen"]);
+    expect(knownEntityIds(inn, locs, [queen, only], [], { source: "world", entityId: "only" })).toEqual(["queen"]);
+  });
+
+  it("leaves out a Persona-Only entity a relationship pulls in", () => {
+    const only = { ...guard, id: "only", persona: true, personaOnly: true };
+    expect(knownEntityIds(inn, locs, [guard, only], ["guard", "only"])).toEqual(["guard"]);
+  });
+
   it("Nearby and Nowhere entities are never on the known roster", () => {
     expect(knownEntityIds(inn, locs, [sage, guard])).toEqual([]);
   });

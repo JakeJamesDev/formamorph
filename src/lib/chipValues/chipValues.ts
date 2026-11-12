@@ -20,7 +20,7 @@ import { statContextRuns, type StatChipPart, type StatPlacement } from '../statC
 import { statKeys } from '../statKeys';
 import { stripMarkdown } from '../stripMarkdown';
 import { buildTraitContext } from '../traitTree';
-import type { Entity, PlayerStat } from '@/types';
+import type { Entity, PersonaRef, PlayerStat } from '@/types';
 import type { ChipScene } from './chipScene';
 
 const WORLD = variableForToken('<WORLD DESCRIPTION>')!;
@@ -200,10 +200,11 @@ function entityScopes(scene: ChipScene, cast = sceneRelationshipCast(scene)): Re
   const reachableExclude = [...presentIds, ...subIds];
   const knownExclude = [...presentIds, ...nearbyIds];
   const pulledIds = pulledIdsOver(cast, scene);
+  const personaRef: PersonaRef | undefined = scene.persona?.source === 'world' ? { source: 'world', entityId: scene.persona.entity.id } : undefined;
   // Each relationship prints once over the chain, and once over In Scene, which no default prompt pairs with it.
   // The Persona block heads both, so a line that touches the persona prints there alone.
   const personaId = scene.persona?.entity.id;
-  const chainLines = relationshipLines(cast, [...knownExclude, ...knownEntityIds(location, locations, outer, pulledIds)], personaId);
+  const chainLines = relationshipLines(cast, [...knownExclude, ...knownEntityIds(location, locations, outer, pulledIds, personaRef)], personaId);
   const inSceneLines = relationshipLines(cast, inSceneIds, personaId);
   // Every scope renders each entity with its owned traits in force. The scene's owned stats go to every
   // scope, since Only With counts them; whether a scope lists them is `noStats`.
@@ -218,7 +219,7 @@ function entityScopes(scene: ChipScene, cast = sceneRelationshipCast(scene)): Re
     '': (opts) => entityRosterRuns(presentIds, entities, roster(opts)),
     sublocations: (opts) => sublocationEntityRuns(location, locations, connections, outer, placesOf, { ...lowerOpts(opts), excludeIds: presentIds }),
     reachable: (opts) => reachableEntityRuns(location, locations, connections, outer, placesOf, { ...lowerOpts(opts), excludeIds: reachableExclude }),
-    known: (opts) => knownEntityRuns(location, locations, outer, { ...roster(opts), excludeIds: knownExclude, pulledIds }),
+    known: (opts) => knownEntityRuns(location, locations, outer, { ...roster(opts), excludeIds: knownExclude, pulledIds, persona: personaRef }),
     inscene: (opts) => {
       const block = entityRosterRuns(inSceneIds, entities, roster(opts, inSceneLines));
       // A name with no entity record owns nothing, so a filter drops it.
