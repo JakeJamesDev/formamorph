@@ -139,11 +139,88 @@ describe('the Body Sliders picker', () => {
     expect(await screen.findByText('Stone Golem · Body Sliders')).toBeInTheDocument();
   });
 
-  it('splits a world stat model into Body Sliders and Head Features', async () => {
-    renderManager();
-    expect(await offeredByGroup()).toEqual({
-      'Library Model · Body Sliders': ['Belly', 'Fat'],
-      'Library Model · Head Features': ['EarShape'],
+  describe('on a world stat', () => {
+    /** A world Avatar the store holds, with its own sliders under `data:<id>`. */
+    const worldAvatar = (id: string, name: string, body: string[], head: string[] = []) => {
+      loads.splits.set(`data:${id}`, { body, head });
+      return { [id]: { name, file: { data: `data:${id}` } } };
+    };
+    const persona = (id: string, vrmPick?: unknown) => ({ id, name: id, persona: true, locations: [], vrmPick });
+    const custom = (vrmPick?: unknown) => ({ id: 'you', name: 'You', customPersona: true, locations: [], vrmPick });
+
+    it('splits a persona Avatar into Body Sliders and Head Features', async () => {
+      worldParts.overview = { allowedPersonas: 'world', vrmStore: worldAvatar('wsplit', 'Aki', ['Belly', 'Fat'], ['EarShape']) };
+      worldParts.entities = [persona('p1', { kind: 'world', id: 'wsplit' })];
+      renderManager();
+      expect(await offeredByGroup()).toEqual({ 'Aki · Body Sliders': ['Belly', 'Fat'], 'Aki · Head Features': ['EarShape'] });
+    });
+
+    it('lists only the fixed persona’s Avatar when the world offers one persona', async () => {
+      worldParts.overview = { allowedPersonas: 'world', vrmStore: worldAvatar('wfix', 'Fixed', ['Hips']) };
+      worldParts.entities = [persona('p1', { kind: 'world', id: 'wfix' })];
+      library.models = [{ id: 'unused-fix', name: 'Unused' }];
+      renderManager();
+      expect(await offeredByGroup()).toEqual({ 'Fixed · Body Sliders': ['Hips'] });
+    });
+
+    it('lists each playable persona’s Avatar when the player picks', async () => {
+      worldParts.overview = { vrmStore: { ...worldAvatar('wa', 'Alder', ['Hips']), ...worldAvatar('wb', 'Birch', ['Nose']) } };
+      worldParts.entities = [persona('p1', { kind: 'world', id: 'wa' }), persona('p2', { kind: 'world', id: 'wb' })];
+      renderManager();
+      expect(await offeredByGroup()).toEqual({ 'Alder · Body Sliders': ['Hips'], 'Birch · Body Sliders': ['Nose'] });
+    });
+
+    it('gives two personas on one Avatar a single group', async () => {
+      worldParts.overview = { vrmStore: worldAvatar('wshared', 'Shared', ['Hips']) };
+      worldParts.entities = [persona('p1', { kind: 'world', id: 'wshared' }), persona('p2', { kind: 'world', id: 'wshared' })];
+      renderManager();
+      expect(await offeredByGroup()).toEqual({ 'Shared · Body Sliders': ['Hips'] });
+    });
+
+    it('lists the Custom Persona’s Avatar for a library persona or None', async () => {
+      worldParts.overview = { vrmStore: { ...worldAvatar('wp', 'Pine', ['Hips']), ...worldAvatar('wc', 'Cedar', ['Nose']) } };
+      worldParts.entities = [persona('p1', { kind: 'world', id: 'wp' }), custom({ kind: 'world', id: 'wc' })];
+      renderManager();
+      expect(await offeredByGroup()).toEqual({ 'Pine · Body Sliders': ['Hips'], 'Cedar · Body Sliders': ['Nose'] });
+    });
+
+    it("lists the author's resolved default once for personas on User's Default", async () => {
+      library.models = [{ id: 'wd-newer', name: 'Newer' }, { id: 'wd-marked', name: 'Marked' }];
+      loads.splits.set('blob:wd-marked', { body: ['Hips'], head: [] });
+      setUserDefaultAvatar('wd-marked');
+      worldParts.entities = [persona('p1', { kind: 'default' }), persona('p2', { kind: 'default' })];
+      renderManager();
+      expect(await offeredByGroup()).toEqual({ 'Marked · Body Sliders': ['Hips'] });
+    });
+
+    it('does not list a library Avatar that no playable persona resolves to', async () => {
+      library.models = [{ id: 'wl-used', name: 'Used' }, { id: 'wl-idle', name: 'Idle' }];
+      loads.splits.set('blob:wl-used', { body: ['Hips'], head: [] });
+      loads.splits.set('blob:wl-idle', { body: ['Tail'], head: [] });
+      worldParts.entities = [persona('p1', { kind: 'library', id: 'wl-used' })];
+      renderManager();
+      expect(await offeredByGroup()).toEqual({ 'Used · Body Sliders': ['Hips'] });
+    });
+
+    it('shows the hint when every playable persona has None', async () => {
+      worldParts.entities = [persona('p1'), persona('p2', undefined)];
+      renderManager();
+      expect(await screen.findByText(NO_MODEL_HINT)).toBeInTheDocument();
+      expect(await offered()).toEqual([]);
+    });
+
+    it('keeps a bound slider that is not listed, and removes it', async () => {
+      worldParts.overview = { vrmStore: worldAvatar('wkeep', 'Keeper', ['Hips']) };
+      worldParts.entities = [persona('p1', { kind: 'world', id: 'wkeep' })];
+      const written: Stat[] = [];
+      worldParts.updateStat = (next) => { written.push(next as Stat); };
+      const bound = { ...wounds, morphBindings: [{ name: 'Tusks' }] };
+      worldParts.stats = [bound];
+      renderManager(undefined, bound);
+      expect(await offered()).toEqual(['Hips']);
+      await userEvent.keyboard('{Escape}');
+      await userEvent.click(screen.getByRole('button', { name: /Remove Tusks/ }));
+      expect(written.at(-1)?.morphBindings).toEqual([]);
     });
   });
 
@@ -314,6 +391,7 @@ describe('the Body Sliders picker', () => {
   it('keeps a slider another stat uses pickable', async () => {
     const fatness = { ...wounds, id: 's2', name: 'Fatness', morphBindings: [{ name: 'Belly' }] };
     worldParts.stats = [wounds, fatness];
+    worldParts.entities = [{ id: 'p1', name: 'P', persona: true, locations: [], vrmPick: { kind: 'library', id: 'm1' } }];
     renderManager();
     expect(await offered()).toEqual(['Belly', 'Fat', 'EarShape']);
   });
@@ -338,6 +416,7 @@ describe('the Change By rows', () => {
   };
 
   it('adds a row at 1 for a picked slider and drops it when the slider goes', async () => {
+    worldParts.entities = [{ id: 'p1', name: 'P', persona: true, locations: [], vrmPick: { kind: 'library', id: 'm1' } }];
     const written = editing(wounds);
     await userEvent.click(within(screen.getByText('Sliders').parentElement!).getByRole('combobox'));
     await userEvent.click(await screen.findByRole('option', { name: /^Fat, not selected$/ }));

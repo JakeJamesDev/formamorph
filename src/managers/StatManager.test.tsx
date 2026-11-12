@@ -51,7 +51,6 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
   ),
 }));
 vi.mock('@/lib/useBodyMorphNames', () => ({
-  useBodyMorphSources: () => ({ sources: [], loading: false, load: () => {} }),
   useOwnerMorphSources: () => ({ sources: [], loading: false, load: () => {} }),
 }));
 

@@ -81,6 +81,8 @@ beforeEach(() => {
 
 describe("the trait's Sliders", () => {
   it('adds a picked Head Features slider at Set To 1, and takes any number', async () => {
+    // A world trait lists the Avatar its playable persona has.
+    world.entities = [{ id: 'p1', name: 'P', persona: true, locations: [], vrmPick: { kind: 'library', id: 'm1' } }];
     renderTrait();
     const field = screen.getByText('Sliders').parentElement!.parentElement!;
     await userEvent.click(within(field).getByRole('combobox'));
@@ -91,6 +93,16 @@ describe("the trait's Sliders", () => {
     await userEvent.clear(value);
     await userEvent.type(value, '2.5');
     expect(pinsOf()).toEqual(earPin(2.5));
+  });
+
+  it('lists only the playable persona’s Avatar on a world trait, not the library’s', async () => {
+    world.overview = { allowedPersonas: 'world', vrmStore: { aki: { name: 'Aki', file: { data: 'data:aki' } } } };
+    world.entities = [{ id: 'p1', name: 'P', persona: true, locations: [], vrmPick: { kind: 'world', id: 'aki' } }];
+    renderTrait();
+    const field = screen.getByText('Sliders').parentElement!.parentElement!;
+    await userEvent.click(within(field).getByRole('combobox'));
+    expect(await screen.findByText('Aki · Body Sliders')).toBeInTheDocument();
+    expect(screen.queryByText('Aurelia · Body Sliders')).toBeNull();
   });
 
   it("marks a slider the world's player Avatar lacks", async () => {

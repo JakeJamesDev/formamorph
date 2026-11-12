@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useGameDataOptional } from "@/contexts/GameDataContext";
+import { customPersonaEntity } from "./blueprints";
 import { readUserDefaultAvatar } from "./defaultAvatar";
+import { offeredPersonas, worldAllowedPersonas } from "./personaPick";
 import { useMountedRef } from "./useMountedRef";
-import { resolveOwnPick } from "./vrmResolver";
+import { playedVrmPick, resolveOwnPick, type VrmSource } from "./vrmResolver";
 import ModelStorageService from "@/services/ModelStorageService";
-import type { MediaAsset, VrmPick, WorldVrmStore } from "@/types";
+import type { Entity, MediaAsset, VrmPick, WorldOverview, WorldVrmStore } from "@/types";
 
 /** The models an owned stat's or trait's rows play on: its owner's own. */
 export interface MorphOwner {
@@ -25,27 +27,80 @@ export type RowModel =
 export interface RowModels {
   models: RowModel[];
   resolving: boolean;
+  /** A world row's models: the Avatars its playable personas show. */
+  world?: true;
 }
 
 /** A library Avatar's id and display name, newest first. */
 type LibraryNames = ReadonlyMap<string, string>;
 
+/** What a pick reads to resolve on this device. */
+interface RowContext {
+  store: WorldVrmStore | undefined;
+  library: LibraryNames | undefined;
+  deviceDefault: string | undefined;
+}
+
+/** The row model for a resolved source; none when the world store lacks its file. */
+function avatarRowModel(source: VrmSource, ctx: RowContext): RowModel | undefined {
+  if (source.kind === "world") {
+    const vrm = ctx.store?.[source.id];
+    return vrm?.file.data ? { kind: "world", name: vrm.name, data: vrm.file.data } : undefined;
+  }
+  if (source.kind === "library") return { kind: "library", id: source.id, name: ctx.library?.get(source.id) ?? "" };
+  return undefined;
+}
+
+const resolveOn = (pick: VrmPick | undefined, ctx: RowContext) =>
+  resolveOwnPick(pick, { store: ctx.store, libraryIds: ctx.library && new Set(ctx.library.keys()), deviceDefault: ctx.deviceDefault });
+
 /** The owner's 3D model, then the Avatar its pick resolves to. Undefined while the library is unread. */
-export function ownerRowModels(
-  owner: MorphOwner,
-  ctx: { store: WorldVrmStore | undefined; library: LibraryNames | undefined; deviceDefault: string | undefined },
-): RowModel[] | undefined {
+export function ownerRowModels(owner: MorphOwner, ctx: RowContext): RowModel[] | undefined {
   const models: RowModel[] = [];
   const data = owner.model?.data;
   if (data) models.push({ kind: "model", heading: owner.name, model: { ...owner.model, data } });
-  const libraryIds = ctx.library && new Set(ctx.library.keys());
-  const source = resolveOwnPick(owner.vrmPick, { store: ctx.store, libraryIds, deviceDefault: ctx.deviceDefault });
+  const source = resolveOn(owner.vrmPick, ctx);
   if (source?.kind === "pending") return undefined;
-  if (source?.kind === "world") {
-    const vrm = ctx.store?.[source.id];
-    if (vrm?.file.data) models.push({ kind: "world", name: vrm.name, data: vrm.file.data });
+  const avatar = source && avatarRowModel(source, ctx);
+  if (avatar) models.push(avatar);
+  return models;
+}
+
+/** The world as the pickers read it. */
+export interface WorldRowSource {
+  overview: Pick<WorldOverview, "vrmStore" | "allowedPersonas" | "legacyVrmFallback"> | undefined;
+  entities: readonly Entity[];
+}
+
+/**
+ * The picks a new game of the world can be played with, one per persona Enter World offers under Allowed
+ * Personas. A library persona or None plays as the Custom Persona's pick, so one entry stands for them. Starts On
+ * only guides the player, so it never narrows the set.
+ */
+export function playablePicks({ overview, entities }: WorldRowSource): (VrmPick | undefined)[] {
+  const customPersona = customPersonaEntity(entities);
+  const world = entities.filter((entity) => entity.persona === true);
+  const offer = offeredPersonas(worldAllowedPersonas(overview), { world, library: [], custom: customPersona });
+  const base = { store: overview?.vrmStore, customPersona, legacyFallback: overview?.legacyVrmFallback };
+  const picks = offer.world.map((entity) => playedVrmPick({ ...base, played: { source: "world", entity } }));
+  if (offer.none) picks.push(playedVrmPick({ ...base, played: { source: "none" } }));
+  return picks;
+}
+
+/** Every playable persona's Avatar once, in persona order. Undefined while the library is unread. */
+export function worldRowModels(picks: readonly (VrmPick | undefined)[], ctx: RowContext): RowModel[] | undefined {
+  const sources = picks.map((pick) => resolveOn(pick, ctx));
+  if (sources.some((source) => source?.kind === "pending")) return undefined;
+  const seen = new Set<string>();
+  const models: RowModel[] = [];
+  for (const source of sources) {
+    if (!source || source.kind === "pending") continue;
+    const key = `${source.kind}:${source.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const avatar = avatarRowModel(source, ctx);
+    if (avatar) models.push(avatar);
   }
-  if (source?.kind === "library") models.push({ kind: "library", id: source.id, name: ctx.library?.get(source.id) ?? "" });
   return models;
 }
 
@@ -55,11 +110,19 @@ const readsLibrary = (pick: VrmPick | undefined) => pick?.kind === "default" || 
 /**
  * The lookup behind a stat's and a trait's Sliders picker, Colors and "Not on this model" mark: the models the
  * rows play on. An owned row plays on its owner's 3D model and the Avatar its pick resolves to on this device.
- * Undefined for a world row, which reads the world's player Avatars elsewhere.
+ * A world row (no owner) plays on each playable persona's Avatar. Undefined off a world.
  */
 export function useRowModels(owner: MorphOwner | undefined): RowModels | undefined {
-  const store = useGameDataOptional()?.worldOverview?.vrmStore;
-  const needsLibrary = !!owner && readsLibrary(owner.vrmPick);
+  const world = useGameDataOptional();
+  const overview = world?.worldOverview;
+  const entities = world?.entities;
+  const store = overview?.vrmStore;
+  const isWorldRow = !owner;
+  const picks = useMemo(
+    () => (isWorldRow && overview ? playablePicks({ overview, entities: entities ?? [] }) : []),
+    [isWorldRow, overview, entities],
+  );
+  const needsLibrary = owner ? readsLibrary(owner.vrmPick) : picks.some(readsLibrary);
   const library = useLibraryNames(needsLibrary);
   const deviceDefault = useMemo(readUserDefaultAvatar, []);
   const name = owner?.name;
@@ -68,12 +131,16 @@ export function useRowModels(owner: MorphOwner | undefined): RowModels | undefin
   const pickKind = pick?.kind;
   const pickId = pick && pick.kind !== "default" ? pick.id : undefined;
   return useMemo(() => {
-    if (name === undefined) return undefined;
+    if (name === undefined) {
+      if (!overview) return undefined;
+      const models = worldRowModels(picks, { store, library, deviceDefault });
+      return models ? { models, resolving: false, world: true } : { models: [], resolving: true, world: true };
+    }
     const models = ownerRowModels({ name, model, vrmPick: pick }, { store, library, deviceDefault });
     return models ? { models, resolving: false } : { models: [], resolving: true };
     // The pick's kind and id name its Avatar; the object around them may be rebuilt every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, model, pickKind, pickId, store, library, deviceDefault]);
+  }, [name, model, pickKind, pickId, picks, overview, store, library, deviceDefault]);
 }
 
 /** The library's Avatar names by id, read once `wanted`. An unreadable library reads as empty. */

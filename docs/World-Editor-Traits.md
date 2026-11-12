@@ -166,7 +166,8 @@ When two active traits set a Body, the one switched on last wins. When it switch
 
 **Sliders** set the [Avatar's](Avatars#in-the-game) sliders while the trait is active. For example, an *Elf* trait sets Ear Shape to 1, and a *Human* trait sets it to 0.
 
-- On the **Appearance** tab, pick sliders in the **Sliders** list. It has two groups for each model: **Body Sliders** and **Head Features**. On an entity's own trait, the list holds the sliders of its 3D model and of the Avatar it shows on this device. For **User's Default**, that is your Default Avatar. With no Avatar and no 3D model, the **Appearance** tab asks you to pick one.
+- On the **Appearance** tab, pick sliders in the **Sliders** list. It has two groups for each model: **Body Sliders** and **Head Features**. On an entity's own trait, the list holds the sliders of its 3D model and of the Avatar it shows on this device. For **User's Default**, that is your Default Avatar. On a world trait, the list holds the Avatar of each persona the player can pick, once each. A world that allows one persona lists one Avatar. A library persona or **None** uses your **Custom Persona**'s Avatar. **Starts On** does not narrow the list. With no Avatar and no 3D model, the **Appearance** tab asks you to pick one.
+- A slider you bound that the list no longer holds stays on the trait, and you can remove it.
 - Each picked slider gets a row with a **Set To** number, 1 by default. Any number works, even one past what Customization allows.
 - The slider takes the **Set To** value in place of the player's own setting. A stat bound to that slider still adds its change on top.
 - When the trait switches off, the player's own setting comes back.

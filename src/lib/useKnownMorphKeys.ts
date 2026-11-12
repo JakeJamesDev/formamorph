@@ -1,14 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { useGameDataOptional } from "@/contexts/GameDataContext";
-import { customPersonaEntity } from "./blueprints";
 import { loadVrmLook } from "./vrmMorphLoader";
 import { loadModelMorphNames } from "./modelLoader";
 import { useMountedRef } from "./useMountedRef";
-import { worldStartPersona } from "./personaPick";
-import { playedVrmPick, type PlayedVrmAs } from "./vrmResolver";
 import ModelStorageService from "@/services/ModelStorageService";
 import type { RowModel, RowModels } from "./useRowModels";
-import type { ColorChannel, Entity, VrmPick, WorldOverview } from "@/types";
+import type { ColorChannel } from "@/types";
 
 /** What the known model offers bindings: its slider keys, its color channels and each channel's own color. */
 interface ModelOffer {
@@ -47,31 +43,6 @@ const vrmOffer = async (url: string): Promise<ModelOffer> => {
 /** An embedded model's cache key: its length and both ends, rather than a second copy of the whole payload. */
 const dataKey = (kind: string, data: string) => `${kind}:${data.length}:${data.slice(0, 128)}:${data.slice(-128)}`;
 
-/** The Avatar a new game of this world shows for the player, when the world fixes one: its Starts On persona's,
- *  else its Custom Persona's. Undefined when the player's own default decides. */
-export function worldPlayerVrmPick(
-  overview: Pick<WorldOverview, "vrmStore" | "startPersona" | "legacyVrmFallback"> | undefined,
-  entities: readonly Entity[],
-): Exclude<VrmPick, { kind: "default" }> | undefined {
-  const start = worldStartPersona(overview);
-  if (!start) return undefined;
-  const entity = start.source === "world" ? entities.find((e) => e.id === start.entityId) : undefined;
-  const played: PlayedVrmAs = entity ? { source: "world", entity } : { source: "none" };
-  const pick = playedVrmPick({
-    store: overview?.vrmStore, played, customPersona: customPersonaEntity(entities), legacyFallback: overview?.legacyVrmFallback,
-  });
-  return pick && pick.kind !== "default" ? pick : undefined;
-}
-
-/** A loader for the offer of the model `pick` names, or undefined when it names none. */
-function pickLoader(pick: Exclude<VrmPick, { kind: "default" }>, overview: Pick<WorldOverview, "vrmStore"> | undefined) {
-  if (pick.kind === "world") {
-    const data = overview?.vrmStore?.[pick.id]?.file.data;
-    return data ? () => cached(dataKey("world", data), () => vrmOffer(data)) : undefined;
-  }
-  return libraryLoader(pick.id);
-}
-
 /** A loader for a library Avatar's offer. */
 const libraryLoader = (id: string) => () => cached(`library:${id}`, async () => {
   const { blob } = await ModelStorageService.getModelData(id);
@@ -101,22 +72,15 @@ function rowLoader(row: RowModel): () => Promise<ModelOffer> {
 
 /**
  * The slider keys and color channels of the models a stat's or trait's rows play on: every model of an owned
- * row's `rows`, else the world's player Avatar. A key or channel counts when any model carries it. Null while
+ * row's `rows`. A key or channel counts when any model carries it. Null while
  * loading, or when no model is known. Loads only when `active`.
  */
 export function useKnownMorphKeys(rows: RowModels | undefined, active: boolean): KnownModel | null {
-  const world = useGameDataOptional();
-  const overview = world?.worldOverview;
-  const entities = world?.entities;
   const load = useMemo(() => {
-    if (rows) {
-      if (rows.resolving || !rows.models.length) return undefined;
-      const loaders = rows.models.map(rowLoader);
-      return () => Promise.all(loaders.map((loader) => loader())).then(mergeOffers);
-    }
-    const pick = worldPlayerVrmPick(overview, entities ?? []);
-    return pick ? pickLoader(pick, overview) : undefined;
-  }, [rows, overview, entities]);
+    if (!rows || rows.resolving || !rows.models.length) return undefined;
+    const loaders = rows.models.map(rowLoader);
+    return () => Promise.all(loaders.map((loader) => loader())).then(mergeOffers);
+  }, [rows]);
   const [known, setKnown] = useState<KnownModel | null>(null);
   const mounted = useMountedRef();
 
