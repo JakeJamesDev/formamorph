@@ -155,9 +155,8 @@ describe('names-only owned stats over the sample scene', () => {
   it('keeps the Stats chip at names only with every piece off', () => {
     for (const token of ['<STATS DESCRIPTION>', '<STATS DESCRIPTION|markdown>', '<STATS DESCRIPTION|xml>']) {
       const out = values(token)!;
-      const format = token;
-      expect(out, format).toContain('Health');
-      expect(out, format).not.toMatch(/\/100|Shaking|Steady/);
+      expect(out, token).toContain('Health');
+      expect(out, token).not.toMatch(/\/100|Shaking|Steady/);
     }
   });
 
