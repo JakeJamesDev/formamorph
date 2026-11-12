@@ -33,8 +33,8 @@ const chipIds = (text: string) => directChipTargets([text]);
 const byName = (name: string) => (world.placeholders ?? []).find((ph) => ph.name === name)!.id;
 
 describe('the Open Chat default world', () => {
-  it('is listed as a bundled default under its stable id', () => {
-    expect(DEFAULT_WORLDS).toContainEqual({ id: 'open-chat', defaultName: 'Open Chat' });
+  it('is listed as a bundled default under its stable id, waiting for a library entity', () => {
+    expect(DEFAULT_WORLDS).toContainEqual({ id: 'open-chat', defaultName: 'Open Chat', needsLibraryEntity: true });
     expect(world.worldOverview.name).toBe('Open Chat');
   });
 

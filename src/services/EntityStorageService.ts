@@ -63,6 +63,11 @@ class EntityStorageService {
     return this.store.getMetadata();
   }
 
+  /** Whether the library holds at least one entity. */
+  async hasEntities(): Promise<boolean> {
+    return (await this.store.count()) > 0;
+  }
+
   /** Load one character's full entity; rejects if missing. A library character never passes through
    *  `migrateWorld`, so its carried defs take the value-record conversion, its trait gates take
    *  Requirement Rows and Global row targets, its gallery takes image objects, its stats' code boxes become scripts, its stat bindings take the object form, its script

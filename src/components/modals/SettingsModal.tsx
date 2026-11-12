@@ -94,6 +94,7 @@ import { ConfirmDialog } from '../ConfirmDialog';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
 import WorldStorageService from '@/services/WorldStorageService';
+import EntityStorageService from '@/services/EntityStorageService';
 import { cachedImageBytes, clearCachedImages } from '@/lib/remoteImageCache';
 import { formatBytes } from '@/lib/imageOptim';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
@@ -355,7 +356,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const restoreDefaultWorlds = async () => {
     clearDeletedDefaultWorlds();
     try {
-      const { failed, errors } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS, bundledWorlds);
+      const libraryHasEntity = await EntityStorageService.hasEntities();
+      const { failed, errors } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS, bundledWorlds, { libraryHasEntity });
       if (failed.length) {
         toastError(
           new AggregateError(errors, 'Default worlds failed to restore'),

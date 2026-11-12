@@ -190,3 +190,25 @@ The user lifted Q27's limit of three revisions. Cloud (`default`), 100 cases × 
 Rev 4 on cloud after the fix, 100 cases × 5 runs: Focus recall 84.6% (held 84.8%), tier match 66.8% (held 69.5%). Narration saves 298 ± 25 prompt tokens per turn, the classifier call costs 584, net −286.
 
 - **Open:** in `ember-vault-ask`, The Shade of Maelis is in neither the full nor the trimmed narration request.
+
+**2026-11-11, labeler qualification (spec session).** Two Opus subagents labeled the 100 cases blind, 50 each, from `testing/baseline/focus-labeler-prompt.md`: the Q28 definitions and the user's rulings as general rules, with no test case named. About 250,000 tokens per run.
+
+| Run | Agreement, toss-ups accepted | Labeler's first choice only | Focus recall |
+|---|---|---|---|
+| 1: "in the player's space but not shown" is Unused | 81.3% | n/a | 89.3% |
+| 2: nearby is Mentionable; spread over a large open location is Unused | 91.7% | 85.6% | 90.2% |
+| 2, rescored on the labels below | 93.1% | 87.1% | 94.1% (112/119) |
+
+The labeler marks about one label in five as a toss-up, so the first column is generous. The same 12 Focus entities were missed in both runs. The user reviewed all 16 Focus disagreements and changed 7 labels:
+
+| Case | Entity | Was | Now |
+|---|---|---|---|
+| `fort-hangar` | Jet Fighter | Mentionable | Focus |
+| `sedge-board` | Bram | Mentionable | Focus |
+| `keep-smith` | Bram Oakes | Focus | Mentionable |
+| `veilwood-gloomcap-raptor` | Bark Frogs | Focus | Mentionable |
+| `rampage-downtown-spire` | Channel 8 News Chopper | Focus | Mentionable |
+| `valentines-bus-under` | Mr. Gonda | Focus | Mentionable |
+| `ember-square-plinth` | Reeve Godric Holt | Focus | Mentionable |
+
+Kept as Focus: an entity already attacking (`fort-highway` jets and artillery, `rampage-downtown-subway` tanks), one about to stop the player (`cafeteria-kitchen` Rin, `slime-marquette-alley` Quarantine Watch), a warning that is the scene (`sunk-silence` Bark Frogs), and a keeper the player walks in on (`tavern-arrive` Wenna). Kept as Mentionable: `sugar-marsh-arrive` Fluffbog and `ember-barrow-alone` Barrow Dead. The labeler prompt now states these rulings as rules; that version has not run yet.

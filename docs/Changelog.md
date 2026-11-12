@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **3.0.0 – 3.6.2 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.6.2** — the latest released version.
+> ✅ **3.0.0 – 3.7.0 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.7.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more additions touch the same feature, they sit together under that feature's name. Fixes sit under the part of the app they touch, such as **In Game** or **World Editor**.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.6.2** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.7.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 3.7.0 — Released 2026-11-12</strong> — entities keep daily routines — a Since Last Turn tray with undo — stats and traits change your Avatar — an Openings tab and Connections tab in the World Editor (click to expand)</summary>
 
 ### Minor Changes
 
@@ -19,40 +24,49 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Since Last Turn:**
     - **A tray above the action box lists what you do in the Inventory tab between turns.** Undo the newest action to put the game back as it was, the item's scripts and effects included. Repeats share one row.
-    - **Stat edits you make in the Stats tab now list in the Since Last Turn tray.** Each shows the old and new value. It starts hidden from the AI, and you can show it or undo it.
+    - **Stat edits you make in the Stats tab list in the Since Last Turn tray.** Each shows the old and new value. It starts hidden from the AI, and you can show it or undo it.
     - **When you send, the AI hears what Since Last Turn lists, so the story reacts to those actions.** Hidden rows stay with you. Send works with an empty action box, and each page keeps its list under your action.
-    - **Trait switches, map travel and persona changes now list in the tray above the action box.** Undo puts the game back as it was. Turning, traveling or switching straight back clears the row. These controls wait while a turn runs.
+    - **Trait switches, map travel and persona changes list in the tray above the action box.** Undo puts the game back as it was. Turning, traveling or switching straight back clears the row. These controls wait while a turn runs.
     - **Saves keep the Since Last Turn tray, so a loaded game shows the same rows and can still undo them.** Hidden rows stay hidden. Manual saves and autosaves both keep it.
     - **What you do in the Inventory tab is not repeated when the story describes it.** A second use you type still counts when the story describes both. A hidden row never blocks the same action typed in the box.
-    - **Regenerating a turn now keeps the actions its Since Last Turn tray listed, and the tray comes back.** Your action returns to the box. Hide or undo rows, then press Send. Regenerate Stats keeps those actions too.
-    - **The Since Last Turn tray comes back when a turn fails or you stop it before the story appears.** Send again and the AI hears its rows once. Regenerating your last finished turn still keeps its listed actions.
+    - **Regenerating a turn keeps the actions its Since Last Turn tray listed, and the tray comes back.** Your action returns to the box. Hide or undo rows, then press Send. Regenerate Stats keeps those actions too.
+    - **The Since Last Turn tray comes back when a turn fails or you stop it before the story appears.** Send again and the AI hears its rows once.
   - **Website:**
     - **The formamorph.ai pages use a violet-to-rose accent and the same Formamorph wordmark as the game's title screen.** The home, privacy, sign-in and community pages share it in light and dark.
     - **The formamorph.ai home page plays an example turn on a real game screen, then tours six features.** An action types in, the story appears word by word, Faith and Renown change, and a map lands in the inventory. A tour below shows six features and sweeps through the color themes. Reduced motion holds everything still.
   - **Avatar Look Bindings:**
+    - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
+    - **Aurelia, the default Avatar in release builds, now has Ear Shape, Tusks, Fox Ears and Fox Tail sliders.** Worlds can set them from traits, such as Fox Ears and Fox Tail for a Kitsune.
     - **A stat can now bind to an Avatar's Head Features, such as Ear Shape.** The stat's Sliders list, on its new Appearance tab, splits each model into Body Sliders and Head Features.
     - **In the World Editor, a stat can now grow or shrink each Avatar slider by its own Change By amount.** Several stats can share one slider, and their changes add up. An amount of 1 keeps the look worlds have today.
     - **In the World Editor, a trait can now set an Avatar slider while active, such as an Elf's Ear Shape.** Stats still add on top, and the player's own setting returns when the trait ends. Body, Sliders and Colors sit on the trait's new Appearance tab.
     - **In the World Editor, stats can now shift an Avatar's skin, eye or hair color, and traits can set one.** A stat blends toward its target as it rises, from the player's own color. Face and body skin each shift from their own tone.
     - **Avatar Customization now locks the sliders and colors that a trait you checked sets.** A note names the trait. Your own values come back when you uncheck it.
   - **Openings Tab:**
+    - **The World Editor's Overview tab puts Custom Prompts on a tab of its own.** In Advanced mode, the right column has Details and Custom Prompts tabs. Custom Prompts lists Narration, Choices and Stats with a checkbox each and shows which are Custom.
     - **Openings have their own World Editor tab, after Overview.** In Advanced mode, it lists This World and each location and entity with openings, nested as on their own tabs. Select one to edit its openings, or search their text.
     - **The Openings tab's + gives a location or entity its first opening.** Pick Location or Entity, then find it in its folders or inside other locations. It's listed and selected with one blank opening.
     - **In the World Editor, Find and undo now open the Openings tab on the opening's owner.** The Overview tab's right column keeps Details and Custom Prompts. Help's Take Me There for openings lands on the Openings tab too.
-    - **On the Openings tab, a parent row folds its rows away, and Collapse All folds every parent at once.** A search still shows its matches. The Starting Location filter is gone. In a world with several starts, an Others chance shows a dash.
+    - **On the Openings tab, a parent row folds its rows away, and Collapse All folds every parent at once.** A search still shows its matches. In a world with several starts, an Others chance shows a dash.
   - **Formamorph AI:**
     - **Set up your AI offers Formamorph AI first on AMD, Intel and integrated GPUs, and on computers without a GPU.** It reads the GPU the built-in engine uses. A card with 8 GB of memory or less still counts.
     - **After 10 turns on the built-in engine with little GPU memory, a card offers Formamorph AI once.** It sits under the story and compares Formamorph AI with the model on your computer. Not Now hides it for good.
+  - **Connections:**
+    - **In the World Editor's Locations Canvas, a Connection can now be Nearby or Far.** The AI hears about entities one Nearby link away, and nothing across a Far one. Travel still works. Far links draw dotted on the Canvas and the Map. Nearby Through Connections is gone.
+    - **The World Editor's location panel has a Connections tab, with one folding row per Connection.** Each row starts closed and shows the direction, the other location and the distance. Open it to edit Travel, Distance and the Travel Hints. A Connection you add opens.
+    - **In the World Editor, a Connection's Travel and Distance choices now have labels, on its location and on the Canvas.** On a location, Travel reads Both Ways, To There or To Here. Nearby and Far each show a line, and the ⓘ explains them.
+    - **The World Editor's Connections tab now lists a location's links with no Connection under Automatic Links.** The closed group shows its parent, children and siblings. Select **+** on a row to make it a two-way, Nearby Connection.
   - **Entity Presence Tab:**
+    - **An entity's Presence tab in the World Editor sets where it starts and its daily routine.** Each start shows its chance. Rows stay at, wander or patrol locations by time of day or by hour, and a lock keeps the entity from being called over.
+    - **In the World Editor, an entity is Unique or Generic, and a Generic one gets a routine per start.** A Generic entity, such as a crowd or a herd, begins at every start at the same time. Start chances, locks and Can Also Go are for Unique entities.
     - **An entity's Presence tab shows the day as a bar of colored bands above the sentences.** Drag a band's ends to change its time, drag the band itself to move it, click a band to find its row, or click free time to fill it.
-    - **The full-screen Locations Canvas now draws an entity's routine when you pick it.** Each location takes its action's color, and a bar on it shows when the entity is there. A Patrol draws arrows in order. Select a row to see only its locations, with Wander chances and Patrol stop numbers.
+    - **An entity's Presence tab in the World Editor sets Known In under its routine.** Choose Nearby, Nowhere or Picked Locations. For Picked Locations, add and remove locations in the tab or by clicking on the full-screen Locations Canvas.
+    - **The full-screen Locations Canvas draws an entity's routine when you pick it.** Each location takes its action's color, and a bar on it shows when the entity is there. A Patrol draws arrows in order. Select a row to see only its locations, with Wander chances and Patrol stop numbers.
     - **The full-screen Locations Canvas shows a key for the colors and marks of an entity's routine or Known In locations.** It lists only what is on screen, and it folds to its title.
     - **Select a routine row on the full-screen Locations Canvas to edit its locations by clicking or dragging.** A line over the map says what a click or a drag does. With no row selected, a click adds the location to Can Also Go or removes it.
     - **The full-screen Locations Canvas now shows and edits a Generic entity's routine, one start at a time.** A ring marks where its other starts begin. With no row selected, a click adds a start or removes the starts there.
-    - **In the World Editor, an entity is now Unique or Generic, and a Generic one gets a routine per start.** A Generic entity, such as a crowd or a herd, begins at every start at the same time. Start chances, locks and Can Also Go are for Unique entities.
     - **The full-screen Locations Canvas now shows where a Nearby entity can be known.** Its routine locations are marked, and the locations one Nearby link away are marked lighter. Far links stay unmarked.
     - **In the World Editor, undo and redo of a routine edit open that entity's Presence tab again.** You land where you made the change, even from another section.
-    - **An entity's Presence tab in the World Editor now sets Known In under its routine.** Choose Nearby, Nowhere or Picked Locations. For Picked Locations, add and remove locations in the tab or by clicking on the full-screen Locations Canvas.
     - **World files now save a Unique or Generic entity's places as its routine alone, with no location list.** Formamorph 3.6.2 and older open such a world but show those entities nowhere. The Custom Persona keeps its list.
   - **Presence Tab:**
     - **Select an entity on a location's Presence tab to edit its routine and Known In under the list.** The tab lists each entity that can be there and why. The Locations Canvas beside the panel shows the selected entity's routine. Click another location, and the entity stays selected where it can be too.
@@ -60,7 +74,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A location's Presence tab marks the routine parts that name it.** A pin shows on each Start, routine row and Can Also Go entry for this location, and the editor opens on the first Start with a pin.
     - **Undo and redo of an edit made under a location's Presence list bring you back to that entity there.** The location and the Presence tab open, and the entity is selected. Undo an added entity, and the tab stays with no one selected.
   - **Routines:**
+    - **In game, entities now move about while you are elsewhere and stay put while you are with them.** Opened worlds keep their cast where it was. An entity listed at several locations at once can no longer send one copy along with you.
     - **In the World Editor, an entity's Presence tab can start it at the Player's Starting Location, beside you each game.** A Unique entity there can follow you from the first turn. Its routine can use any location.
+    - **In play, a follower can now wait for a set time or part ways with you.** Ask one to wait, and they stay about an hour, to the end of this part of the day, or to the end of the next. Then they return to their routine, or at once if you part ways.
+    - **In game, the AI now reads which characters follow you, wait for you, or can't leave right now.** It's the Entities chip's Movement option, on by default in every prompt. Turn it off in Chip Options.
+    - **In play, asking one entity to come along now leaves the other entities here where they are.** The game asks about all of them in one request per turn, not one request each.
     - **In older worlds, an entity with pronouns listed at several locations now wanders between them, one at a time.** So it isn't always where you look. An entity at every location follows you. One with no pronouns or "it/its", such as a monster, becomes Generic. Change it on its Presence tab.
     - **In the bundled worlds, named people with several locations now keep one place at a time, on a daily routine.** Coach Daizen and Rin Hayama patrol the school, and Emberwatch's captain takes the evening watch. Crowds such as the Swarm still fill every place.
     - **Scripts can read an entity's kind, routine and Known In, and how far and which way each exit goes.** Check `kind` to skip a Generic entity before `move`. `action` reads stay, wander or patrol, and `held` says the narration called it over or a script moved it, so it is off its routine.
@@ -71,8 +89,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The World Editor's Locations list can close every group of sub-locations at once.** Select **Collapse all locations**, right of the filter box, and again to open them all. Groups stay closed when you switch tabs, until you close the World Editor.
     - **The Entities, Stats, Traits, Placeholders, Dictionary and Scripts lists can close every group at once.** Select **Collapse all**, right of the filter box, and again to open them all. Each list keeps its groups closed until you close the World Editor.
     - **The character and dictionary editors in your library can close every group at once.** Select **Collapse all**, right of the filter box, and again to open them all. Groups stay closed until you close the editor.
-  - **Formaquestion:**
-    - **In the World Editor, Formaquestion now reads each entity's routine and each location's Connections.** It sees kinds, starts, rows, Can Also Go, Travel, Distance, hints and who can be at a place.
   - **Avatar Pick Rules:**
     - **You can delete your last Avatar, and the bundled Avatar is your starting Default.** A new install marks it as your Default Avatar. An update marks it once, when you had none.
     - **In the World Editor, an entity set to User's Default now lists your Default Avatar's sliders and colors.** A library Avatar you deleted lists your default instead. With no Avatar and no 3D model, the Appearance tab asks you to pick one.
@@ -96,20 +112,10 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Traits chip can send Global Trait names without their descriptions.** In Chip Options, set Content to Name. Names list one per line under their group headings.
     - **Stat chips can send stat names only.** In Chip Options, uncheck Range, Descriptor and Description on the Stats, Persona and Entities chips. Owned stats then read as one line, `stats: Nerve, Patience`, or one per line under their stat groups.
   - **In the World Editor, an entity with only a Stranger Description now starts as a stranger.** In play, you see its Name and that description until you meet it. Stranger Name now sits beside Name, and Stranger Description under Player-Facing Description. Items' Unidentified fields match, and each field has its own help button.
-  - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
-  - **Aurelia, the default Avatar in release builds, now has Ear Shape, Tusks, Fox Ears and Fox Tail sliders.** Worlds can set them from traits, such as Fox Ears and Fox Tail for a Kitsune.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.
-  - **The World Editor's Overview tab puts Custom Prompts on a tab of its own.** In Advanced mode, the right column has Details and Custom Prompts tabs. Custom Prompts lists Narration, Choices and Stats with a checkbox each and shows which are Custom.
-  - **In the World Editor's Locations Canvas, a Connection can now be Nearby or Far.** The AI hears about entities one Nearby link away, and nothing across a Far one. Travel still works. Far links draw dotted on the Canvas and the Map. Nearby Through Connections is gone.
-  - **In game, entities now move about while you are elsewhere and stay put while you are with them.** Opened worlds keep their cast where it was. An entity listed at several locations at once can no longer send one copy along with you.
-  - **The World Editor's entity panel has a Routine tab for where an entity starts and its daily routine.** Each start shows its chance. Rows stay at, wander or patrol locations by time of day or by hour, and a lock keeps the entity from being called over.
-  - **In play, a follower can now wait for a set time or part ways with you.** Ask one to wait, and they stay about an hour, to the end of this part of the day, or to the end of the next. Then they return to their routine, or at once if you part ways.
-  - **In game, the AI now reads which characters follow you, wait for you, or can't leave right now.** It's the Entities chip's Movement option, on by default in every prompt. Turn it off in Chip Options.
-  - **In play, asking one entity to come along now leaves the other entities here where they are.** The game asks about all of them in one request per turn, not one request each.
+  - **In the World Editor, Formaquestion now reads each entity's routine and each location's Connections.** It sees kinds, starts, rows, Can Also Go, Travel, Distance, hints and who can be at a place.
+  - **The Open Chat world now joins your Worlds once your library holds an entity.** It stays after that, even when you delete every entity. Installs that already have Open Chat keep it.
   - **Your account settings now say when email to your address bounced or was marked as spam.** The game and formamorph.ai both show it, with the fix: save a different address, or ask in Feedback if the address is correct. A verification link for that address says so as well.
-  - **In the World Editor, a Connection's Travel and Distance choices now have labels, on its location and on the Canvas.** On a location, Travel reads Both Ways, To There or To Here. Nearby and Far each show a line, and the ⓘ explains them.
-  - **The World Editor's location panel has a Connections tab, with one folding row per Connection.** Each row starts closed and shows the direction, the other location and the distance. Open it to edit Travel, Distance and the Travel Hints. A Connection you add opens.
-  - **The World Editor's Connections tab now lists a location's links with no Connection under Automatic Links.** The closed group shows its parent, children and siblings. Select **+** on a row to make it a two-way, Nearby Connection.
   - **The Time prompt chip can now send a 24-hour or 12-hour clock, like "19:00" or "7:00 PM".** Pick it under Format in Chip Options. Turn off Include Day to send the time without "Day 3". Prompts send the time of day until you change it.
 - **🛠️ Developer tooling**
   - **`pov-rewrite-probe.mjs` measures whether the character and diary passes mix up the player's acts with their own.** It compares the player's words as typed, with today's note, and with "I" or "you" rewritten to the persona name.
@@ -133,17 +139,18 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The narrator and the choices no longer read stat numbers for you or the characters around you, only their descriptors.** This applies to the built-in prompt presets and the Open Chat world. Your own presets and other worlds' own prompts keep their text.
   - **World Editor:**
     - **Templates, hover cards and the Time of Day picker now say "time of day" instead of "daypart".** The templates are now Time of Day Modifier and Placeholder by Time of Day. Scripts still read `clock.daypart`.
-    - **The Sliders list on an entity's stat and trait now shows the entity's Avatar sliders.** An entity with only an Avatar can bind its Body Sliders and Head Features.
+    - **The Sliders list on an entity's stat now shows the entity's Avatar sliders.** An entity with only an Avatar can bind its Body Sliders and Head Features.
     - **The Test Bench no longer counts the Custom Persona as an entity at a location.** The persona is the player. A location with only the persona now gets the warning that it has no entities.
     - **An entity you link to a matching library item now reads Linked, even when its locations differ.** Each world keeps its own locations for an entity.
-  - **Formaquestion:**
-    - **In game, Formaquestion's code test places a character where it stands now.** A character a script moved no longer reads as still at its listed places.
+  - **In game, Formaquestion's code test places a character where it stands now.** A character a script moved no longer reads as still at its listed places.
   - **A world's written openings now always draw, even in a world that had them switched off.** The world file no longer stores an openings on/off setting.
   - **The Sign In and Create Account pages on formamorph.ai now ask the Adult Content Ahead question first.** Before, a new account saw it only after the Privacy Policy. Your answer saves to the account you sign in to or create.
   - **A text or image endpoint typed without `http://`, such as `127.0.0.1:1234`, now reaches your server.** Before, the browser version sent it to formamorph.ai and showed an "Unexpected token '<'" error. An image server that answers with a web page now says so.
   - **The color picker in Settings now keeps up with a drag.** Before, every small move saved the color and redrew the screen, so the picker fell behind the pointer.
 - **🛠️ Developer tooling**
   - **The affected-test gate now runs the tests that import a deleted file.** Vitest can't follow an import to a file that is gone, so the gate adds each file that imports it or matches it through `import.meta.glob`.
+
+</details>
 
 ---
 

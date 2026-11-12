@@ -797,6 +797,32 @@ describe('default worlds: seed vs. the player deleting one', () => {
     await expect(WorldStorageService.getWorldData('rampage')).resolves.toBeTruthy();
   });
 
+  describe('a default that waits for a library entity', () => {
+    const OPEN_CHAT = [{ id: 'open-chat', defaultName: 'Open Chat', needsLibraryEntity: true as const }];
+
+    it('is not seeded while the library has no entity', async () => {
+      await WorldStorageService.loadDefaultWorlds([...RAMPAGE, ...OPEN_CHAT], bundledWorlds, { libraryHasEntity: false });
+      await expect(WorldStorageService.getWorldData('open-chat')).rejects.toBe('World not found');
+      await expect(WorldStorageService.getWorldData('rampage')).resolves.toBeTruthy();
+    });
+
+    it('is seeded once the library has an entity', async () => {
+      await WorldStorageService.loadDefaultWorlds(OPEN_CHAT, bundledWorlds, { libraryHasEntity: true });
+      await expect(WorldStorageService.getWorldData('open-chat')).resolves.toBeTruthy();
+    });
+
+    it('stays, and still takes bundle updates, after the library loses its entities', async () => {
+      await WorldStorageService.loadDefaultWorlds(OPEN_CHAT, bundledWorlds, { libraryHasEntity: true });
+      const stale = await WorldStorageService.getWorldData('open-chat');
+      await WorldStorageService.storeWorld({ id: 'open-chat', name: 'Open Chat', sourceHash: 'stale', data: stale } as StoredWorldRecord);
+
+      const { updated } = await WorldStorageService.loadDefaultWorlds(OPEN_CHAT, bundledWorlds, { libraryHasEntity: false });
+
+      await expect(WorldStorageService.getWorldData('open-chat')).resolves.toBeTruthy();
+      expect(updated).toEqual(['Open Chat']);
+    });
+  });
+
   it('does not tombstone a deleted non-default world', async () => {
     await WorldStorageService.storeWorld({
       id: 'uploaded-1', name: 'Mine', description: '', author: '', thumbnail: '',

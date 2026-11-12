@@ -495,7 +495,7 @@
       "lastNarration": "\"Two coppers,\" he says, and holds out his one hand. When the coins are in it he nods at the raft tied to the post. \"Both hands on the rope. She leans.\"",
       "action": "I climb onto the raft and take hold of the rope.",
       "tiers": {
-        "Bram": "Mentionable",
+        "Bram": "Focus",
         "Odette": "Mentionable",
         "Rope Ferry": "Focus"
       }
@@ -607,7 +607,7 @@
         "Albus": "Mentionable",
         "Sylvie Thornwhistle": "Mentionable",
         "Captain Orrin Blackwell": "Focus",
-        "Bram Oakes": "Focus"
+        "Bram Oakes": "Mentionable"
       }
     },
     {
@@ -874,7 +874,7 @@
       "lastNarration": "The mast comes free in a shower of sparks. Jets scream overhead and missiles burst against your hide. Beyond the runway stands a hangar far bigger than the rest, its doors sealed, a warning light turning on its roof.",
       "action": "I rip the doors off the giant hangar and look inside.",
       "tiers": {
-        "Jet Fighter": "Mentionable",
+        "Jet Fighter": "Focus",
         "General Vasquez": "Mentionable",
         "Aegis-One": "Focus",
         "Dr. Lena Sorensen": "Unused",
@@ -1550,7 +1550,7 @@
       "lastNarration": "The frogs stop singing all at once. Between the trunks a dark shape lopes across the clearing, head low, yellow eyes catching the little light there is. It stops, and turns toward you.",
       "action": "I scramble up the nearest tree as high as I can climb.",
       "tiers": {
-        "Bark Frogs": "Focus",
+        "Bark Frogs": "Mentionable",
         "Cerulean Vex": "Unused",
         "Ember Speckle": "Unused",
         "Ember Spire": "Unused",
@@ -1560,7 +1560,7 @@
       },
       "why": {
         "Shadow Raptor": "It charges and, unable to climb, circles below.",
-        "Bark Frogs": "Their silence carries on while the hunter is near, like guns still firing.",
+        "Bark Frogs": "Their silence was the warning; the hunter in view has taken over the scene.",
         "Ember Spire": "The mushroom the player was kneeling over plays no part in the escape."
       }
     },
@@ -1944,7 +1944,7 @@
       "tiers": {
         "Attack Helicopter": "Mentionable",
         "Battle Tank": "Focus",
-        "Channel 8 News Chopper": "Focus",
+        "Channel 8 News Chopper": "Mentionable",
         "Combat Engineers": "Mentionable",
         "Rooftop Missile Team": "Focus",
         "Stalled Drivers": "Mentionable",
@@ -1953,7 +1953,7 @@
       "why": {
         "Rooftop Missile Team": "They hold the tower the player is pulling down, so they fire from it or flee it.",
         "Battle Tank": "The tanks were firing last turn and are still firing.",
-        "Channel 8 News Chopper": "Its authored role is to react loudly to the rampage's most dramatic moments, and this is one."
+        "Channel 8 News Chopper": "Nothing in the turn shows it, and the action is aimed at the tower."
       }
     },
     {
@@ -2175,13 +2175,13 @@
       "tiers": {
         "Coach Daizen": "Focus",
         "Kenta Ishida": "Mentionable",
-        "Mr. Gonda": "Focus",
+        "Mr. Gonda": "Mentionable",
         "The Swarm": "Focus"
       },
       "why": {
         "Coach Daizen": "He was jogging after the player and keeps searching this turn.",
         "The Swarm": "The admirers spilling out last turn fan out across the loop now.",
-        "Mr. Gonda": "The player hides under his bus, the known hiding place he keeps an eye on."
+        "Mr. Gonda": "He is nearby, but the player hides from the man with the whistle, not from him."
       }
     },
     {
@@ -2554,10 +2554,10 @@
         "Corvin Vale": "Mentionable",
         "Hob Wainwright": "Unused",
         "Mara Venn": "Mentionable",
-        "Reeve Godric Holt": "Focus"
+        "Reeve Godric Holt": "Mentionable"
       },
       "why": {
-        "Reeve Godric Holt": "He is already glaring, and a stranger digging at the town's plinth during his meeting draws him in.",
+        "Reeve Godric Holt": "He glares mid-speech, but the action is aimed at the plinth and nothing shows him stepping in yet.",
         "Hob Wainwright": "His cart just left the square.",
         "Corvin Vale": "Barrow secrets interest him, but nothing shows him moving yet."
       }

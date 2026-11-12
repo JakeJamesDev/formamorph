@@ -528,10 +528,12 @@ class WorldStorageService {
    *  they deleted it — absent alone can't be trusted to mean "never seeded", so a deleted default carries a
    *  tombstone and stays gone even when the bundled copy changes.
    *  `bundled` is `bundledWorlds`, passed in so this module never bundles the worlds.
+   *  `libraryHasEntity: false` holds back a `needsLibraryEntity` world that isn't stored yet; omitted, nothing is held back.
    *  Returns the ids that failed to load plus the display names auto-updated in place. */
   async loadDefaultWorlds(
     defaultWorlds: DefaultWorldSeed[],
     bundled: BundledWorlds,
+    { libraryHasEntity = true }: { libraryHasEntity?: boolean } = {},
   ): Promise<DefaultWorldSyncResult> {
     await this.ensureInitialized();
     const deleted = readDeletedDefaultWorlds();
@@ -547,6 +549,7 @@ class WorldStorageService {
     // A stored world without readable metadata may hold edits, so a reseed could overwrite them.
     const unknown = new Set(worldIds.filter((id) => !byId.has(id)));
     defaultWorlds = defaultWorlds.filter((w) => !unknown.has(w.id));
+    if (!libraryHasEntity) defaultWorlds = defaultWorlds.filter((w) => !w.needsLibraryEntity || byId.has(w.id));
 
     const failed: string[] = [];
     const errors: Error[] = [];

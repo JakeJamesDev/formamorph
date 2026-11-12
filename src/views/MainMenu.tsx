@@ -948,7 +948,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         if (!isMountedRef.current) return;
         setSkeletonWorlds(existingIds.map((id) => ({ id, isLoading: true })));
         const firstRun = existingIds.length === 0;
-        const { failed, errors, updated } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS, bundledWorlds);
+        const libraryHasEntity = await EntityStorageService.hasEntities();
+        const { failed, errors, updated } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS, bundledWorlds, { libraryHasEntity });
         if (!isMountedRef.current) return;
         if (firstRun) {
           if (failed.length === 0) toast.success("Loaded default worlds");
@@ -970,6 +971,18 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
     initializeWorlds();
   }, [refreshWorlds]);
+
+  // The first entity stored in the library seeds the worlds that wait for one.
+  useEffect(() => EntityStorageService.subscribe(() => {
+    void (async () => {
+      const deleted = readDeletedDefaultWorlds();
+      const stored = new Set(await WorldStorageService.getWorldIds());
+      const waiting = DEFAULT_WORLDS.filter((w) => w.needsLibraryEntity && !stored.has(w.id) && !deleted.has(w.id));
+      if (waiting.length === 0 || !(await EntityStorageService.hasEntities())) return;
+      await WorldStorageService.loadDefaultWorlds(waiting, bundledWorlds);
+      if (isMountedRef.current) await refreshWorlds();
+    })().catch((error: unknown) => console.error('Error seeding default worlds:', error));
+  }), [refreshWorlds]);
 
   // Load the local dictionary library metadata (no defaults to seed). Reused on mount and after the editor
   // modal closes so the grid reflects renames/edits.

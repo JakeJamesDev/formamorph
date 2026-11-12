@@ -11,6 +11,8 @@ import { migrateWorld } from '@/lib/version';
 export interface DefaultWorldSeed {
   id: string;
   defaultName: string;
+  /** First seeded once the entity library holds an entity; stays seeded after that. */
+  needsLibraryEntity?: true;
 }
 
 /** The bundled worlds' text and hashes, by world id. */
@@ -29,7 +31,7 @@ export const DEFAULT_WORLDS: DefaultWorldSeed[] = [
   { id: 'sugarscape', defaultName: 'Sugarscape Survival' },
   { id: 'slime', defaultName: 'Slime Outbreak' },
   { id: 'emberwatch', defaultName: 'Emberwatch' },
-  { id: 'open-chat', defaultName: 'Open Chat' },
+  { id: 'open-chat', defaultName: 'Open Chat', needsLibraryEntity: true },
 ];
 
 export const isDefaultWorldId = (id: string): boolean => DEFAULT_WORLDS.some((w) => w.id === id);

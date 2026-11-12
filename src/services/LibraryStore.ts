@@ -89,6 +89,12 @@ export class LibraryStore<T, M> {
     return records.map((record) => this.toMetadata(record));
   }
 
+  /** How many records are stored, without reading them. */
+  async count(): Promise<number> {
+    await this.ensureInitialized();
+    return promisifyRequest<number>(this.objectStore('readonly').count());
+  }
+
   /** Load one record's full payload; rejects if missing or malformed. */
   async getData(id: string): Promise<T> {
     await this.ensureInitialized();
