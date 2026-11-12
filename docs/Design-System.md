@@ -443,7 +443,7 @@ Open `#dev?modal=designSystem&tab=search-field` for both heights in both themes.
 - Put Built-In and My Templates in a categorized sidebar at desktop widths. Use one template selector on mobile so the detail pane keeps useful width.
 - Draw each library row with `CompactSelectionRow` and its check mark off. The selected template takes the primary fill; a hovered one takes the neutral hover, so the two never share a color. The Settings Tools list uses the same row.
 - Keep the selected template's name and explanation above its parameter form. Use the template declaration as the source of fields and defaults.
-- Put required stat choices and numeric parameters in the same form. Pick a stat, trait, entity or placeholder with the [Breadcrumb Picker](#pattern-breadcrumb-picker). Keep a short fixed set, such as a daypart, in a Select. Show validation beside the affected field and connect it to the control's accessible description.
+- Put required stat choices and numeric parameters in the same form. Pick a stat, trait, entity or placeholder with the [Breadcrumb Picker](#pattern-breadcrumb-picker). Keep a short fixed set, such as a time of day, in a Select. Show validation beside the affected field and connect it to the control's accessible description.
 - Update the generated code preview as parameter values change. Keep the preview bounded and scrollable for long code.
 - Freeze the footer below the scrolling panes. Keep Duplicate or Edit and Delete beside Insert Code according to template ownership.
 - Disable Insert Code while any slot is missing or invalid. Ask for confirmation before replacing existing stat code.
@@ -666,7 +666,7 @@ New functional labels and error/status sentences follow the [Writing Guide](Writ
 
 **Purpose:** Pick one item from a list of world content, and show where each item lives.
 
-**When to use it:** Lists of world content (stats, traits, entities, placeholders) use the Breadcrumb Picker. A short fixed option set, such as a daypart, keeps Select.
+**When to use it:** Lists of world content (stats, traits, entities, placeholders) use the Breadcrumb Picker. A short fixed option set, such as a time of day, keeps Select.
 
 It differs from the Searchable Group Picker. That pattern is a Dialog for an unbounded destination list with create and rename. The Breadcrumb Picker is a popover form control.
 
@@ -1803,20 +1803,20 @@ Open `#dev?modal=designSystem&tab=connection-widget` for both values of the mark
 
 ### Day strip
 
-A 24-hour bar sits above the sentences, with daypart icons over it (full name in a tooltip).
+A 24-hour bar sits above the sentences, with time-of-day icons over it (full name in a tooltip).
 
 - 🎨 **Action colors.** Each row is a band in its action's token: `routine-stay`, `routine-wander`, `routine-patrol`, at 70% fill. A matching swatch leads its sentence. The tokens are set once per mode, never per palette.
 - 🧱 **Layers.** An All-day row sits under the timed rows at half strength. Free time is hatched; clicking it adds a Stay over exactly that time.
 - 🎯 **Selection.** Clicking a band or a sentence selects that row in both places: the band takes a primary inset ring, the sentence an accent fill. A press anywhere else, except an open row editor, clears it.
-- ↔️ **Handles.** Each timed band has a handle on both ends. A drag snaps to daypart edges or whole hours, by the row's format, and stops before another timed row. A label above the handle names its place (*From Morning*, *To 14:00*). The selected row's handles sit on top at a shared edge. Arrow keys move a focused handle one snap.
+- ↔️ **Handles.** Each timed band has a handle on both ends. A drag snaps to time-of-day edges or whole hours, by the row's format, and stops before another timed row. A label above the handle names its place (*From Morning*, *To 14:00*). The selected row's handles sit on top at a shared edge. Arrow keys move a focused handle one snap.
 
 ### Location list
 
-Wander and Patrol share one list inside the locations popover: grip, an optional stop number, the location, the action's own field, then remove. Wander's field is a weight box and its percent; Patrol's is a wait (number plus **Minutes** / **Hours** / **Dayparts**). The grip reorders by drag or keyboard. **Add Location** opens a Breadcrumb Picker.
+Wander and Patrol share one list inside the locations popover: grip, an optional stop number, the location, the action's own field, then remove. Wander's field is a weight box and its percent; Patrol's is a wait (number plus **Minutes** / **Hours** / **Parts of the Day**). The grip reorders by drag or keyboard. **Add Location** opens a Breadcrumb Picker.
 
 ### Time editor
 
-A swap button leads the row: **Use Hours** or **Use Dayparts**. Dayparts use two selects; hours use two time-only Date Time Fields. Choices another timed row holds are disabled, and a typed overlap is refused with a note.
+A swap button leads the row: **Use Hours** or **Use Time of Day**. Time of day uses two selects; hours use two time-only Date Time Fields. Choices another timed row holds are disabled, and a typed overlap is refused with a note.
 
 ### Production mapping
 

@@ -667,8 +667,8 @@ export function StatCodeTemplateDialog({
               />
               <Hint>
                 Write a slot as <code>{'{{name:type=default}}'}</code>. {kind === 'worldTool'
-                  ? 'Stat, placeholder, trait, entity, location, daypart and parameter'
-                  : 'Stat, placeholder, trait, entity, location and daypart'} slots insert a quoted string. Number, choice
+                  ? <>Stat, placeholder, trait, entity, location, <code>daypart</code> and parameter</>
+                  : <>Stat, placeholder, trait, entity, location and <code>daypart</code></>} slots insert a quoted string. Number, choice
                 and text slots insert their value without quotes. Add quotes for a string.
               </Hint>
             </div>

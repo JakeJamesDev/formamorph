@@ -34,7 +34,7 @@ if (stat.value <= stat.min) location.move({{place:location}});`,
     id: 'builtin-world-placeholder-by-daypart',
     kind: 'worldScript',
     timings: ['before', 'start'],
-    name: 'Placeholder by Daypart',
+    name: 'Placeholder by Time of Day',
     description: 'Pin a placeholder to one of its values during one part of the day. Position 1 is the first value, and a position past the last pins nothing.',
     code: `const target = placeholders[{{placeholder:placeholder}}];
 const value = target.values[{{position:number=1}} - 1];

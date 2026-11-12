@@ -405,9 +405,9 @@ A **time condition** checks the story's time of day. *Night Hunter* requires *ev
 
 1. Open the trait's **Availability** tab.
 2. Under **Requires**, select **Add Requirement**, then pick **Time of Day**.
-3. Turn on each daypart that counts: **Night**, **Dawn**, **Morning**, **Midday**, **Afternoon** or **Evening**.
+3. Turn on each time of day that counts: **Night**, **Dawn**, **Morning**, **Midday**, **Afternoon** or **Evening**.
 
-| Daypart | On a 24-hour day |
+| Time of day | On a 24-hour day |
 |---|---|
 | 🌙 Night | 20:00 to 6:00 |
 | 🌅 Dawn | 6:00 to 8:00 |
@@ -417,7 +417,7 @@ A **time condition** checks the story's time of day. *Night Hunter* requires *ev
 | 🌆 Evening | 17:00 to 20:00 |
 
 - The narration's time of day uses the same split, so the condition matches what the story says.
-- At least one daypart stays on. To exclude a daypart, turn on the others. A time condition has no **Not**.
+- At least one time of day stays on. To exclude one, turn on the others. A time condition has no **Not**.
 - A row holds one time condition. It never checks the day number or an hour.
 - The game checks once per turn, after the turn's time passes, like a [stat condition](#when-the-game-checks). With the AI clock off, each turn is one hour.
 - Outside play, the [Test Bench](#test-bench-checks) reads the time the story opens at, which is morning.

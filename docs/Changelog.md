@@ -88,7 +88,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The World Editor's Overview tab puts Custom Prompts on a tab of its own.** In Advanced mode, the right column has Details and Custom Prompts tabs. Custom Prompts lists Narration, Choices and Stats with a checkbox each and shows which are Custom.
   - **In the World Editor's Locations Canvas, a Connection can now be Nearby or Far.** The AI hears about entities one Nearby link away, and nothing across a Far one. Travel still works. Far links draw dotted on the Canvas and the Map. Nearby Through Connections is gone.
   - **In game, entities now move about while you are elsewhere and stay put while you are with them.** Opened worlds keep their cast where it was. An entity listed at several locations at once can no longer send one copy along with you.
-  - **The World Editor's entity panel has a Routine tab for where an entity starts and its daily routine.** Each start shows its chance. Rows stay at, wander or patrol locations by daypart or by hour, and a lock keeps the entity from being called over.
+  - **The World Editor's entity panel has a Routine tab for where an entity starts and its daily routine.** Each start shows its chance. Rows stay at, wander or patrol locations by time of day or by hour, and a lock keeps the entity from being called over.
   - **In play, a follower can now wait for a set time or part ways with you.** Ask one to wait, and they stay about an hour, to the end of this part of the day, or to the end of the next. Then they return to their routine, or at once if you part ways.
   - **In game, the AI now reads which characters follow you, wait for you, or can't leave right now.** It's the Entities chip's Movement option, on by default in every prompt. Turn it off in Chip Options.
   - **In play, asking one entity to come along now leaves the other entities here where they are.** The game asks about all of them in one request per turn, not one request each.
@@ -116,6 +116,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The story no longer moves you to a nearby place when you stay where you are.** Before, a place whose name held a nearby place's name, such as "Academy Dorms" next to "Academy", could send you to that nearby place on a turn where you never moved.
     - **A turn that fails now puts your action and images back in the action box.** Before, an endpoint error emptied the box, so a failed first turn lost the opening text.
   - **World Editor:**
+    - **Templates, hover cards and the Time of Day picker now say "time of day" instead of "daypart".** The templates are now Time of Day Modifier and Placeholder by Time of Day. Scripts still read `clock.daypart`.
     - **The Sliders list on an entity's stat and trait now shows the entity's Avatar sliders.** An entity with only an Avatar can bind its Body Sliders and Head Features.
   - **Formaquestion:**
     - **In game, Formaquestion's code test places a character where it stands now.** A character a script moved no longer reads as still at its listed places.

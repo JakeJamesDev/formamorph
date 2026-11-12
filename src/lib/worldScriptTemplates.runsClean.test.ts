@@ -102,7 +102,7 @@ describe('a world script template that acts on a condition', () => {
     expect((await run('Health')).writes).toEqual([]);
   });
 
-  it('Placeholder by Daypart pins only in the daypart it names', async () => {
+  it('Placeholder by Time of Day pins only in the time of day it names', async () => {
     const template = builtIn('builtin-world-placeholder-by-daypart');
     const run = (when: string) => runTestCode(filled(template, { when, position: '2' }), 'before', { kind: 'world' }, world);
     expect((await run(TEST_CODE_DAYPART)).writes).toEqual(['Mood = wary']);

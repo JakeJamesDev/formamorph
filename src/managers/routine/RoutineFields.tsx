@@ -83,7 +83,7 @@ export function LocationPicker({ book, places, value, onPick, trigger, ariaLabel
   );
 }
 
-const UNIT_LABELS: Record<IdleUnit, string> = { minutes: 'Minutes', hours: 'Hours', dayparts: 'Dayparts' };
+const UNIT_LABELS: Record<IdleUnit, string> = { minutes: 'Minutes', hours: 'Hours', dayparts: 'Parts of the Day' };
 
 /** How long the entity waits: a number and its unit, stored in minutes. */
 export function IdleField({ minutes, onChange, label, field }: {

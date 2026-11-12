@@ -27,7 +27,7 @@ export function snippetSelection(snippet: InsertSnippet): InsertSelection | unde
 export const SLOT_SNIPPETS: InsertSnippet[] = [
   { label: 'Stat picker', text: '{{name:stat}}', select: 'name' },
   { label: 'Number', text: '{{name:number=0}}', select: 'name' },
-  { label: 'Daypart picker', text: '{{name:daypart=night}}', select: 'name' },
+  { label: 'Time of Day picker', text: '{{name:daypart=night}}', select: 'name' },
   { label: 'Choice', text: '{{name:choice(a|b)=a}}', select: 'name' },
   { label: 'Free text', text: '{{name:text}}', select: 'name' },
 ];

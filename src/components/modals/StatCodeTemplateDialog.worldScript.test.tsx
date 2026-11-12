@@ -61,7 +61,7 @@ const openTool = (timing: ToolScriptTiming) => render(
 const listed = () => screen.getAllByRole('button').map((button) => button.textContent);
 const generated = () => document.querySelector('pre')?.textContent ?? '';
 
-const WORLD_ONLY = ['Opening Location', 'Advance Time While a Trait Is On', 'Leave When a Stat Runs Out', 'Placeholder by Daypart',
+const WORLD_ONLY = ['Opening Location', 'Advance Time While a Trait Is On', 'Leave When a Stat Runs Out', 'Placeholder by Time of Day',
   'Memory When a Trait Turns On', 'Diary Line When a Trait Turns On', 'Entity Stat Follows a Global Stat'];
 
 describe('a world script box’s menu', () => {

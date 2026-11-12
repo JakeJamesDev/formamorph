@@ -47,9 +47,9 @@ export function RowTimeEditor({ time, asHours, onAsHours, others, onChange }: {
     if (!range) return;
     if (!asHours) { setNote(null); onAsHours(true); return; }
     const { range: snapped, snapped: moved } = snapToDayparts(range);
-    if (blocked(covered, snapped)) { setNote('The dayparts around these hours overlap another row'); return; }
+    if (blocked(covered, snapped)) { setNote('The parts of the day around these hours overlap another row'); return; }
     onAsHours(false);
-    setNote(moved ? 'Snapped to the dayparts that cover those hours' : null);
+    setNote(moved ? 'Snapped to the parts of the day that cover those hours' : null);
     if (moved) onChange(snapped);
   };
   const pickFrom = (v: string) => {
@@ -63,10 +63,10 @@ export function RowTimeEditor({ time, asHours, onAsHours, others, onChange }: {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-1">
-        <Tip tip={asHours ? 'Use Dayparts' : 'Use Hours'}>
+        <Tip tip={asHours ? 'Use Time of Day' : 'Use Hours'}>
           <Button
             variant="ghost" size="icon" className="h-8 w-8 shrink-0" disabled={!range} onClick={swap}
-            aria-label={asHours ? 'Use Dayparts' : 'Use Hours'}
+            aria-label={asHours ? 'Use Time of Day' : 'Use Hours'}
           >
             <ArrowLeftRight className="h-4 w-4" />
           </Button>

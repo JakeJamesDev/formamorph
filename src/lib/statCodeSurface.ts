@@ -22,7 +22,7 @@ const shapeOf = (entries: readonly SurfaceEntry[]) => `{ ${entries.map((entry) =
 /** The fields on `clock.previous`: the story clock at the start of the turn. Read-only. */
 export const CLOCK_PREVIOUS_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'day', detail: 'number', info: 'Day number at the start of this turn' },
-  { name: 'daypart', detail: 'string', info: 'Daypart at the start of this turn' },
+  { name: 'daypart', detail: 'string', info: 'Time of day at the start of this turn' },
   { name: 'hour', detail: 'number', info: 'Hour of the day at the start of this turn, from 0' },
   { name: 'minute', detail: 'number', info: 'Minute of the hour at the start of this turn, 0 to 59' },
 ]);
@@ -30,7 +30,7 @@ export const CLOCK_PREVIOUS_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
 /** The members of `clock`: the story clock at the end of the turn, then `previous` for its start. Read-only. */
 export const CLOCK_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'day', detail: 'number', info: 'Day number at the end of this turn' },
-  { name: 'daypart', detail: 'string', info: 'Daypart at the end of this turn: night, dawn, morning, midday, afternoon or evening' },
+  { name: 'daypart', detail: 'string', info: 'Time of day at the end of this turn: night, dawn, morning, midday, afternoon or evening' },
   { name: 'hour', detail: 'number', info: 'Hour of the day at the end of this turn, from 0' },
   { name: 'minute', detail: 'number', info: 'Minute of the hour at the end of this turn, 0 to 59' },
   { name: 'deltaHours', detail: 'number', info: 'Story hours this turn consumed' },
@@ -99,7 +99,7 @@ export const MEMORY_ENTRY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'turn', detail: 'number', info: 'Turn number of the memory, from 1, or the turn before it was added for a Custom memory' },
   { name: 'timestamp', detail: 'number', info: 'Total story hours at the end of that turn, on the scale of clock.elapsedHours' },
   { name: 'day', detail: 'number', info: 'Day number at the end of that turn' },
-  { name: 'daypart', detail: 'string', info: 'Daypart at the end of that turn: night, dawn, morning, midday, afternoon or evening' },
+  { name: 'daypart', detail: 'string', info: 'Time of day at the end of that turn: night, dawn, morning, midday, afternoon or evening' },
   { name: 'text', detail: 'string', info: 'Text of the memory as the Memory panel shows it, edits included' },
   { name: 'custom', detail: 'boolean', info: 'True for a memory listed under Custom: one the player wrote or a script pinned' },
   { name: 'kept', detail: 'boolean', info: 'True when the story keeps the memory, though recall can still leave it out of a turn' },

@@ -169,7 +169,7 @@ describe('the Code Templates editor’s Variable menu', () => {
     await user.click(screen.getByLabelText('Slot'));
     const menu = within(screen.getByRole('button', { name: 'Number' }).parentElement!);
     expect(menu.getAllByRole('button').map((item) => item.textContent))
-      .toEqual(['Stat picker', 'Number', 'Daypart picker', 'Choice', 'Free text']);
+      .toEqual(['Stat picker', 'Number', 'Time of Day picker', 'Choice', 'Free text']);
 
     await user.click(screen.getByRole('button', { name: 'Number' }));
     expect(code(field)).toBe('{{name:number=0}}');

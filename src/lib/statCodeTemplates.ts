@@ -421,7 +421,7 @@ return self.min + (self.max - self.min) * progress;`,
     id: 'builtin-daypart-modifier',
     kind: 'script',
     timings: ['before', 'after', 'start', 'switch'],
-    name: 'Daypart Modifier',
+    name: 'Time of Day Modifier',
     description: 'Follow another stat, with a bonus that applies during one part of the day',
     code: `const base = stats[{{base:stat}}].value;
 return base + (clock.daypart === {{when:daypart=night}} ? {{bonus:number=20}} : 0);`,

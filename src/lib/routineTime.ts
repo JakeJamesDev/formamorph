@@ -277,10 +277,10 @@ export const idleMinutes = (amount: number, unit: IdleUnit): number =>
   Math.max(1, Math.round(amount)) * (unit === 'dayparts' ? ONE_DAYPART_MINUTES : unit === 'hours' ? 60 : 1);
 
 const UNIT_WORDS: Record<IdleUnit, [string, string]> = {
-  minutes: ['minute', 'minutes'], hours: ['hour', 'hours'], dayparts: ['daypart', 'dayparts'],
+  minutes: ['minute', 'minutes'], hours: ['hour', 'hours'], dayparts: ['part of the day', 'parts of the day'],
 };
 
-/** An idle in words: "1 daypart", "2 hours", "30 minutes". */
+/** An idle in words: "1 part of the day", "2 hours", "30 minutes". */
 export function idleText(minutes: number): string {
   const { amount, unit } = idleParts(minutes);
   return `${amount} ${UNIT_WORDS[unit][amount === 1 ? 0 : 1]}`;

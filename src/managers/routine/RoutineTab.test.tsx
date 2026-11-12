@@ -65,7 +65,7 @@ describe('the routine as sentences', () => {
       stay('day', 'smithy', { start: MORNING, end: AFTERNOON_END }),
     ])));
     expect(lines()).toEqual([
-      'The rest of the day, wanders Market, waiting 1 daypart between moves.',
+      'The rest of the day, wanders Market, waiting 1 part of the day between moves.',
       'Morning – Afternoon, stays at Smithy.',
       'Busy all day.',
     ]);
@@ -181,17 +181,17 @@ describe('the time editor', () => {
     expect(screen.getByRole('button', { name: 'Time: 08:00 – 17:00' })).toBeInTheDocument();
     expect(schedule(bench)[0].time).toEqual({ start: MORNING, end: AFTERNOON_END });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Use Dayparts' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Use Time of Day' }));
     expect(schedule(bench)[0].time).toEqual({ start: MORNING, end: AFTERNOON_END });
-    expect(screen.queryByText('Snapped to the dayparts that cover those hours')).toBeNull();
+    expect(screen.queryByText('Snapped to the parts of the day that cover those hours')).toBeNull();
   });
 
   it('snaps odd hours to the dayparts that cover them, and says so', async () => {
     const bench = mount(mira(oneStart([stay('day', 'smithy', { start: 510, end: 1020 })])));
     await openTime('08:30 – 17:00');
-    await userEvent.click(screen.getByRole('button', { name: 'Use Dayparts' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Use Time of Day' }));
     expect(schedule(bench)[0].time).toEqual({ start: MORNING, end: AFTERNOON_END });
-    expect(screen.getByText('Snapped to the dayparts that cover those hours')).toBeInTheDocument();
+    expect(screen.getByText('Snapped to the parts of the day that cover those hours')).toBeInTheDocument();
   });
 
   it('refuses typed hours that overlap another row, and greys out the hours that would', async () => {

@@ -129,7 +129,7 @@ Pick **Player's Starting Location** at the top of a start's location list. The e
 
 The routine reads as sentences in the order of the day, such as *Morning – Afternoon, stays at Smithy.*
 
-- 🕑 Click the time to change it. Times use dayparts. **Use Hours** switches the row to exact hours, and **Use Dayparts** switches back, snapping to the dayparts that cover those hours.
+- 🕑 Click the time to change it. Times use the time of day, such as **Morning**. **Use Hours** switches the row to exact hours, and **Use Time of Day** switches back, snapping to the parts of the day that cover those hours.
 - 🚶 Click the verb to pick **Stay**, **Wander** or **Patrol**.
   - **Stay** keeps it at one location.
   - **Wander** moves it between locations at random. A higher **Weight** picks a location more often. It waits the set time between moves.
@@ -141,9 +141,9 @@ The routine reads as sentences in the order of the day, such as *Morning – Aft
 A bar above the sentences shows the whole day, from **Dawn** on the left to the end of **Night** on the right. Each row is a band in its action's color, and free hours are striped.
 
 - 👆 Click a band or a sentence to select that row in both places.
-- ↔️ Drag either end of a band to change its time. It snaps to dayparts or to whole hours, whichever the row uses, and stops at the next row. A band dragged across the whole bar becomes **All Day**; drag an end back in to give it hours again.
+- ↔️ Drag either end of a band to change its time. It snaps to the time of day or to whole hours, whichever the row uses, and stops at the next row. A band dragged across the whole bar becomes **All Day**; drag an end back in to give it hours again.
 - 🔁 A row that ends at the bar's right edge can carry on into the next morning: drag that end to the left side of the bar. A row that starts at the left edge can reach back into the night the same way.
-- ✋ Drag a band by its middle to move the whole row. An hours row keeps its length and moves by whole hours. A daypart row keeps its number of dayparts. It lands in the nearest free time, and the left and right arrow keys do the same.
+- ✋ Drag a band by its middle to move the whole row. An hours row keeps its length and moves by whole hours. A time-of-day row keeps its span, such as **Morning – Afternoon**. It lands in the nearest free time, and the left and right arrow keys do the same.
 - ➕ Click a striped stretch to add a **Stay** at the start location for exactly those hours.
 
 Two timed rows can't share an hour. Times another row uses are unavailable in the pickers, and the add buttons turn off once timed rows fill the day.
@@ -177,7 +177,7 @@ An older world can list an entity at several locations with no routine. When you
 | The entity | Gets |
 |---|---|
 | 🤝 Is listed at every location of the world | **Unique**, starting at the **Player's Starting Location** with **Follows the Player** on. **Can Also Go** is **Anywhere**. |
-| 🚶 Has **Pronouns** that don't start with *it*, or the **Persona** mark | **Unique**, starting at its first location, with an **All Day** **Wander** between its locations that waits one daypart. **Can Also Go** lists those locations, or is **Anywhere** if it could follow the player. |
+| 🚶 Has **Pronouns** that don't start with *it*, or the **Persona** mark | **Unique**, starting at its first location, with an **All Day** **Wander** between its locations that waits one part of the day. **Can Also Go** lists those locations, or is **Anywhere** if it could follow the player. |
 | 👥 Has neither, or has *it/its*, in a world where some entity has **Pronouns** or a **Persona** mark | **Generic**, with a start at each of its locations and no rows. |
 
 In a world where no entity has **Pronouns** or a **Persona** mark, every such entity gets the **Wander**.
