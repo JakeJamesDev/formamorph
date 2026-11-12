@@ -229,9 +229,15 @@ export function seedLens(
   const locations = world.locations ?? [];
   const storedLocation = stored?.locationId;
   const kept = !!storedLocation && locations.some((l) => l.id === storedLocation);
+  const personaId = persona.source === 'world' ? persona.entityId : null;
+  // Below the editor's selected location, a fresh seed starts where Enter World would for this persona.
+  const starting = startingPersona(lensPersonaRef(personaId), world.entities ?? []);
+  const personaStart = starting ? personaStartLocation(starting, locations) : null;
+  const fresh = locations.some((l) => l.id === selectedLocationId) || !personaStart
+    ? seedLocationId(world, selectedLocationId) : personaStart;
   return {
-    personaId: persona.source === 'world' ? persona.entityId : null,
-    locationId: kept ? storedLocation : seedLocationId(world, selectedLocationId),
+    personaId,
+    locationId: kept ? storedLocation : fresh,
     ...(kept && stored?.locationChosen ? { locationChosen: true } : {}),
   };
 }

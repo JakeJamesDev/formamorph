@@ -130,7 +130,7 @@ Open the entity's **Profile** tab and set **Persona** to **Custom Persona**. The
 | Self openings | Its [Self Openings](World-Editor-Openings#self-openings) draw for a player who picks **None**, or a library persona with no Self openings of its own |
 | At the top level | It stays at the top level of the **Traits** tab, in the order you set. A drop into a group is refused. |
 | Always an owner | The **Traits** and **Placeholders** tabs list it, so you can drag and link to it while it is empty. |
-| Start Locations | Its **Presence** tab shows **Start Locations**, the same as a Persona-Only entity's. It moves with the player, so **Placement** and **Known In** don't apply to it. |
+| Start Locations | Its **Presence** tab shows **Start Locations**, the same as a Persona-Only entity's. It plays as the player, so **Placement** and **Known In** don't apply to it. |
 | Duplicate | A duplicate drops the mark. |
 
 Its traits are the persona's traits when the player picks **None** or a library persona. A world persona keeps its own traits. The root traits the player picks stay global traits under every persona and under **None**. The picks carry over between **None** and library personas.

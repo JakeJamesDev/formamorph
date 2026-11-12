@@ -86,6 +86,12 @@ describe('seedLens', () => {
     expect(seedLens(noStart, null, null).locationId).toBe('loc-market');
   });
 
+  it('opens a fresh seed on the persona start, as Enter World does, below the editor selection', () => {
+    const custom: Entity = { id: 'e-self', name: 'Self', customPersona: true, locations: ['loc-market'] };
+    expect(seedLens(world({ entities: [custom] }), null, null).locationId).toBe('loc-market');
+    expect(seedLens(world({ entities: [custom] }), null, 'loc-harbor').locationId).toBe('loc-harbor');
+  });
+
   const wren: Entity = { id: 'e-wren', name: 'Wren', persona: true, locations: ['loc-market'] };
   const sable: Entity = { id: 'e-sable', name: 'Sable', persona: true };
 
@@ -101,7 +107,7 @@ describe('seedLens', () => {
 
   it('re-seeds only the half the world no longer has', () => {
     const stored = { personaId: 'e-wren', locationId: 'loc-gone', locationChosen: true };
-    expect(seedLens(world({ entities: [wren] }), stored, null)).toEqual({ personaId: 'e-wren', locationId: 'loc-harbor' });
+    expect(seedLens(world({ entities: [wren] }), stored, null)).toEqual({ personaId: 'e-wren', locationId: 'loc-market' });
   });
 
   it('drops a stored persona the world no longer offers', () => {
