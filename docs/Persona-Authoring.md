@@ -22,7 +22,7 @@ This page covers how your world meets the player's persona:
 4. Optional: on the **Presence** tab, add a [start](World-Editor-Entities#starts) at every place where the player can start as this persona. The first start at a starting location is picked first. With none flagged, the first start is. A start at **Player's Starting Location** lets the player begin at any starting location. None of them is picked first.
 5. Read the entity's descriptions, and the descriptions that mention it. Make sure each one is still correct when the player is this entity. See [Playable Entities](#playable-entities).
 
-For an entity that exists only when the player picks it, select **Persona-Only** in step 3.
+For an entity that exists only when the player picks it, select **Persona-Only** in step 3. Its **Presence** tab then shows **Start Locations** in place of starts. See [Persona-Only Entities](#persona-only-entities).
 
 ## How to Make a Custom Persona
 <!-- keywords: player character, create your own, own character, name yourself, blank character, self insert, character creation, generic hero, give player a race, class for protagonist, builder at start, nameless template, player gets perks -->
@@ -108,6 +108,8 @@ Some entities exist only as a player slot, such as a *Stranger* with no story of
 | Picks it | Is the player, the same as any playable entity |
 | Picks someone else, or **None** | Isn't in the world. It's left out of the cast, scenes, diaries and the side panel. |
 
+- **Its Presence tab shows only Start Locations.** Pick the locations where the player can start as it. They join the world's starting locations, and the first one is preselected. With none picked, only the world's own list shows. **Placement**, routine rows, **Can Also Go** and **Known In** don't apply, because it never stands in the world.
+- **Switching its Persona keeps the places.** From **Playable** or **Cast**, each start's place becomes a start location, in order. Back to **Playable** or **Cast**, each start location becomes a start with no routine rows.
 - **Its Others openings never draw.** When picked, it's the player. When not picked, it's absent.
 - **Its Self openings draw when the player picks it.** They give a Persona-Only entity its own start.
 - **The choice is in the World Editor only.** A library entity is never in a cast, so the library editor doesn't offer it.
@@ -128,7 +130,7 @@ Open the entity's **Profile** tab and set **Persona** to **Custom Persona**. The
 | Self openings | Its [Self Openings](World-Editor-Openings#self-openings) draw for a player who picks **None**, or a library persona with no Self openings of its own |
 | At the top level | It stays at the top level of the **Traits** tab, in the order you set. A drop into a group is refused. |
 | Always an owner | The **Traits** and **Placeholders** tabs list it, so you can drag and link to it while it is empty. |
-| Locations | It moves with the player, so **Placement** and **Known In** don't apply to it |
+| Start Locations | Its **Presence** tab shows **Start Locations**, the same as a Persona-Only entity's. It moves with the player, so **Placement** and **Known In** don't apply to it. |
 | Duplicate | A duplicate drops the mark. |
 
 Its traits are the persona's traits when the player picks **None** or a library persona. A world persona keeps its own traits. The root traits the player picks stay global traits under every persona and under **None**. The picks carry over between **None** and library personas.

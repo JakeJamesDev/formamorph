@@ -1,6 +1,6 @@
 # 02: Persona-Only And Custom Persona Share Start Locations
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
@@ -21,10 +21,20 @@ Spec rulings: Q1, Q4, Q5, Q7.
 
 ## Acceptance criteria
 
-- [ ] On the World Editor bench, a Persona-Only entity's Presence tab shows the Start Locations field and no Placement, routine rows, Can Also Go or Known In. The same holds for the Custom Persona.
-- [ ] The Start Locations field offers no Player's Starting Location, and a pick stores the location in `locations`.
-- [ ] Switching a Playable entity with two Starts to Persona-Only stores their places as the list, in Start order, and drops `kind`, `starts` and `traversable`.
-- [ ] Switching a Persona-Only entity with two listed locations to Playable stores two Unique Starts with empty Schedules, in list order, and no `locations`.
-- [ ] Switching a Cast entity to Custom Persona and back converts the same way.
-- [ ] Undo after a role switch restores the stored entity exactly, routine rows included.
-- [ ] A v3.6.2 world's Persona-Only entity keeps its `locations` through `migrateWorld` and gains no kind; a second pass changes nothing.
+- [x] On the World Editor bench, a Persona-Only entity's Presence tab shows the Start Locations field and no Placement, routine rows, Can Also Go or Known In. The same holds for the Custom Persona. (`EntityManager.personaPresence.test.tsx`, `RoutineTab.test.tsx`)
+- [x] The Start Locations field offers no Player's Starting Location, and a pick stores the location in `locations`. (`RoutineTab.test.tsx`: option list and stored list)
+- [x] Switching a Playable entity with two Starts to Persona-Only stores their places as the list, in Start order, and drops `kind`, `starts` and `traversable`. (`EntityFields.personaStarts.test.tsx`)
+- [x] Switching a Persona-Only entity with two listed locations to Playable stores two Unique Starts with empty Schedules, in list order, and no `locations`. (`EntityFields.personaStarts.test.tsx`)
+- [x] Switching a Cast entity to Custom Persona and back converts the same way. (`EntityFields.personaStarts.test.tsx`: Generic Cast and back)
+- [x] Undo after a role switch restores the stored entity exactly, routine rows included. (`EntityFields.personaStarts.test.tsx`; the History already groups the writes of one tick into one Step, and an explicit batch broke the field pulse after undo, so none wraps them)
+- [x] A v3.6.2 world's Persona-Only entity keeps its `locations` through `migrateWorld` and gains no kind; a second pass changes nothing. (`version.test.ts`)
+
+## Landed
+
+**Not verified**
+- Nothing is unticked. Every check ran on the panel bench, with no screenshot of a rendered World Editor view.
+
+**For you**
+- Open a Persona-Only entity's Presence tab in the World Editor. Only Start Locations shows, with its hint.
+- Switch a Playable entity with two Starts to Persona-Only and back, then undo. The Starts and routine rows return.
+- A location's Presence tab and the Locations Canvas pick card now treat Persona-Only like the Custom Persona: hint only, no routine. The ticket did not name this.

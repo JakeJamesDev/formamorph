@@ -233,6 +233,20 @@ describe('migrateWorld — entity kind and routine (NPC Schedules migration tabl
     expect(OLD.filter((key) => key in persona || key in nowhere)).toEqual([]);
   });
 
+  it('keeps a v3.6.2 Persona-Only entity on its list with no kind, and a second pass changes nothing', () => {
+    const rows = [
+      { id: 'p', name: 'P', persona: true, personaOnly: true, locations: ['keep', 'tower'] },
+      { id: 'q', name: 'Q', persona: true, locations: ['keep', 'tower'] },
+    ];
+    const once = migrateWorld(world(rows));
+    const p = once.entities.find((e) => e.id === 'p')!;
+    expect(p.locations).toEqual(['keep', 'tower']);
+    expect([p.kind, p.starts]).toEqual([undefined, undefined]);
+    // A Playable entity with the same list still converts, so the skip is the Persona-Only mark alone.
+    expect(once.entities.find((e) => e.id === 'q')!.kind).toBe('unique');
+    expect(migrateWorld(JSON.parse(JSON.stringify(once)))).toEqual(once);
+  });
+
   it('keeps Known In and leaves no entity on the old fields', () => {
     const e = one({ locations: ['keep', 'tower'], presence: 'random', movement: 'between', knownIn: ['keep'] });
     expect(e.knownIn).toEqual(['keep']);

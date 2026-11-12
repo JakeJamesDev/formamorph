@@ -15,7 +15,8 @@ import { entityImages } from '../lib/entityImages';
 import { ImageGallery, ImageTags, ImageWidget, type GalleryFrameProps } from './ImageTagsField';
 import { useEditorMode } from '@/lib/editorMode';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { customPersonaCounts, personaRole, personaRolePatch, unmarkLine, type PersonaRole } from '@/lib/customPersona';
+import { randomUUID } from '@/lib/uuid';
+import { customPersonaCounts, personaRole, personaRolePatch, unmarkLine, withPersonaRole, type PersonaRole } from '@/lib/customPersona';
 import type { RenameFieldHandlers } from '@/lib/useCodeRename';
 import type { ReactNode } from 'react';
 import type { Entity, Placeholder, VrmPick } from '@/types';
@@ -191,8 +192,14 @@ export const EntityPersonaField = ({ value, onChange, placeholders = [], home, c
   if (!advanced) return null;
   const roles = PERSONA_ROLES[home];
   const role = personaRole(value);
+  // One History Step: the marks, the converted start places and the dropped routine fields land together.
   const apply = (next: PersonaRole) => spendFallback('Set Persona', next === 'custom' && !!value.vrmPick, () => {
-    for (const [field, v] of Object.entries(personaRolePatch(next))) onChange(field, v);
+    const converted = withPersonaRole(value, next, randomUUID) as unknown as Record<string, unknown>;
+    const before = value as unknown as Record<string, unknown>;
+    const marks = Object.keys(personaRolePatch(next));
+    for (const field of new Set([...marks, ...Object.keys(before), ...Object.keys(converted)])) {
+      if (marks.includes(field) || before[field] !== converted[field]) onChange(field, converted[field]);
+    }
   });
   const pick = (next: PersonaRole) => {
     const line = role === 'custom' ? unmarkLine(customPersonaCounts(value)) : null;

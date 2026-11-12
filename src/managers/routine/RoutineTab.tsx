@@ -15,6 +15,7 @@ import { CHIP_BASE } from '@/components/Chip';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryStep } from '@/contexts/worldRecorder';
 import { chanceChipStyle, relativeChance } from '@/lib/chanceColor';
+import { holdsStartList } from '@/lib/customPersona';
 import { traversableOf, withBeginsFollowing, withGenericStart, withKind, withoutGenericStart, withStartPlace } from '@/lib/entityKind';
 import { namedPlacesOf, withMembership } from '@/lib/entityPlaces';
 import { fieldFrame } from '@/lib/historyField';
@@ -118,8 +119,8 @@ export function RoutineTab({ entity, onChange, hereMark }: {
 
   // An entity with no kind yet edits as a new Unique entity; its first write stores the kind.
   const kinded = useMemo(() => (entity.kind ? entity : withKind(entity, 'unique', randomUUID)), [entity]);
-  // A custom persona moves with the player: it keeps only its locations, with no placement or routine.
-  if (entity.customPersona) return <PersonaLocations entity={entity} book={book} commit={commit} />;
+  // A persona stands for the player: it keeps only its Start Locations, with no placement or routine.
+  if (holdsStartList(entity)) return <PersonaLocations entity={entity} book={book} commit={commit} />;
   const kind: EntityKind = entity.kind ?? 'unique';
 
   return (
@@ -141,15 +142,15 @@ export function RoutineTab({ entity, onChange, hereMark }: {
   );
 }
 
-/** The Locations field: a pick list over every location. */
+/** The Start Locations field of a persona: a pick list over every location. */
 function PlaceList({ entity, book, selected, onChange }: {
   entity: Entity; book: PlaceBook; selected: string[]; onChange: (ids: string[]) => void;
 }) {
   const options = book.rowsOf(book.all).map((r) => ({ label: r.name, value: r.value, depth: r.breadcrumb?.length ?? 0 }));
   return (
     <div className="space-y-1.5" {...fieldFrame('locations')}>
-      <Label>Locations</Label>
-      {entity.persona === true && <Hint>Lets the player start at any of these as this entity</Hint>}
+      <Label>Start Locations</Label>
+      <Hint>Adds places the player can start at as this persona</Hint>
       <MultiSelect
         key={entity.id} options={options} defaultValue={selected.filter((id) => book.all.includes(id))}
         placeholder="Select locations" onValueChange={onChange}
@@ -162,7 +163,7 @@ function PersonaLocations({ entity, book, commit }: { entity: Entity; book: Plac
   return (
     <PlaceList
       entity={entity} book={book} selected={namedPlacesOf(entity)}
-      onChange={(ids) => commit('Change Locations', withMembership(entity, ids))}
+      onChange={(ids) => commit('Change Start Locations', withMembership(entity, ids))}
     />
   );
 }

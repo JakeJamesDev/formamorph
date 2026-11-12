@@ -13,7 +13,7 @@ import { useRenameField } from '@/lib/useCodeRename';
 import { entitiesInTreeOrder } from '@/lib/entityGroupTree';
 import { withRelationships } from '@/lib/entityRelationships';
 import EntityRelationshipsField from './EntityRelationshipsField';
-import { customPersonaHeldElsewhere } from '@/lib/customPersona';
+import { customPersonaHeldElsewhere, holdsStartList } from '@/lib/customPersona';
 import type { Entity, FocusFieldHint } from '@/types';
 import { KnownInField } from './KnownInField';
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -124,7 +124,7 @@ const EntityManager = ({
 
         <PanelTabContent value="presence">
           <RoutineTab entity={editingEntity} onChange={writeWhole} />
-          {!editingEntity.customPersona && <KnownInField entity={editingEntity} onChange={writeWhole} list />}
+          {!holdsStartList(editingEntity) && <KnownInField entity={editingEntity} onChange={writeWhole} list />}
         </PanelTabContent>
 
         {advanced && (

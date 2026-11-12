@@ -14,6 +14,7 @@ import {
 import { KnownInField } from '@/managers/KnownInField';
 import PersonaPresenceHint from '@/managers/PersonaPresenceHint';
 import { RoutineTab } from '@/managers/routine/RoutineTab';
+import { holdsStartList } from '@/lib/customPersona';
 import type { Entity } from '@/types';
 
 /** The entity the canvas is picking for, and what a click on a location writes. */
@@ -84,7 +85,7 @@ function ModeHint({ entity, mode, pickedPending, besidePanel, onEditFullScreen }
   onEditFullScreen?: () => void;
 }) {
   if (mode === 'locations') {
-    const clicks = (isGeneric(entity) || !!entity.customPersona) && !besidePanel;
+    const clicks = (isGeneric(entity) || holdsStartList(entity)) && !besidePanel;
     return <Hint>{clicks ? PICK_MODE_HELP.locations : ROUTINE_MAP_HELP}</Hint>;
   }
   if (!besidePanel) return <Hint>{PICK_MODE_HELP.knownIn}</Hint>;
@@ -114,9 +115,10 @@ export function EntityPickBody({ entity, picking, onPickingChange, onChange, her
   onEditFullScreen?: () => void;
 }) {
   const mode = picking?.mode ?? 'locations';
+  const persona = holdsStartList(entity);
   return (
     <>
-      {!entity.customPersona && (
+      {!persona && (
         <ToggleGroup
           type="single"
           className="grid w-full grid-cols-2"
@@ -140,9 +142,9 @@ export function EntityPickBody({ entity, picking, onPickingChange, onChange, her
         besidePanel={hereMark !== undefined}
         onEditFullScreen={onEditFullScreen}
       />
-      {entity.customPersona && <PersonaPresenceHint />}
-      {!entity.customPersona && mode === 'locations' && <RoutineTab entity={entity} onChange={onChange} hereMark={hereMark} />}
-      {!entity.customPersona && mode === 'knownIn' && (
+      {persona && <PersonaPresenceHint />}
+      {!persona && mode === 'locations' && <RoutineTab entity={entity} onChange={onChange} hereMark={hereMark} />}
+      {!persona && mode === 'knownIn' && (
         <KnownInField
           key={entity.id}
           entity={entity}

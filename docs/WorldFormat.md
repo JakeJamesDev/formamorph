@@ -435,8 +435,8 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `sound` | | [MediaAsset](#media-fields) | A sound |
 | `model` | | [MediaAsset](#media-fields) | A 3D model |
 | `vrmPick` | | [Avatar pick](#avatar-picks) | The entity's Avatar. Absent = none |
-| `locations` | | String[] | Only for an entity with no `kind`, such as the Custom Persona: the `id`s of the locations where it belongs. A Unique or a Generic entity has none; its `starts` and `traversable` say where it can be |
-| `kind` | | `"unique"` \| `"generic"` | A Unique entity is one body in one place. A Generic entity runs every Start at once, one presence each. Absent for the Custom Persona and an entity with no locations |
+| `locations` | | String[] | Only for the Persona-Only entity and the Custom Persona, which have no `kind`: the `id`s of the locations where the player can start as it. A Unique or a Generic entity has none; its `starts` and `traversable` say where it can be |
+| `kind` | | `"unique"` \| `"generic"` | A Unique entity is one body in one place. A Generic entity runs every Start at once, one presence each. Absent for the Persona-Only entity, the Custom Persona and an entity with no locations |
 | `starts` | | [Start](#starts)[] | The entity's beginnings, in author order. A Unique entity picks one by `weight` in each new game. A Generic entity runs all of them |
 | `traversable` | | `"anywhere"` \| String[] | Where a Unique entity may be led or called beyond its schedule: anywhere, or exact location `id`s. Absent = an empty list: its schedule places only. A Generic entity ignores it |
 | `knownIn` | | `"nowhere"` \| String[] | **Known In**: where the AI knows of the entity while it isn't present. `"nowhere"`, or location `id`s, each with every location below it. Absent = **Nearby** |

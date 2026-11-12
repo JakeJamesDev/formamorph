@@ -728,7 +728,8 @@ export function migrateEntityRoutine<T>(raw: T, world?: RoutineMigrationWorld): 
   const kept = legacy ? entity : raw as unknown as Entity;
   if (entity.kind) return withoutMembership(kept) as T;
   const places = namedPlacesOf(entity);
-  if (entity.customPersona || !places.length) return kept as T;
+  // A Persona-Only and a Custom Persona entity keep their list: they hold no kind or Starts.
+  if (entity.customPersona || (entity.persona && entity.personaOnly) || !places.length) return kept as T;
   if (presence !== 'random' && places.length > 1) {
     return withoutMembership(migrateSeveralLocations(entity, places, movement, world ?? { locationIds: [], usesPeopleFields: false })) as T;
   }

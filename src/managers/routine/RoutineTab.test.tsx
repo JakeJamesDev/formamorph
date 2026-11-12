@@ -477,11 +477,23 @@ describe('placement', () => {
     });
   });
 
-  it('gives a custom persona only its locations, with no placement or routine', () => {
-    mount(mira([], { customPersona: true, kind: undefined, starts: undefined, locations: ['inn'] }));
-    expect(screen.getByText('Locations')).toBeInTheDocument();
+  it.each([
+    ['custom persona', { customPersona: true }],
+    ['Persona-Only entity', { persona: true, personaOnly: true }],
+  ] as const)('gives a %s only its Start Locations, with no placement, On Map or routine', async (_name, marks) => {
+    const bench = mount(mira([], { ...marks, kind: undefined, starts: undefined, traversable: undefined, locations: ['inn'] }));
+    expect(screen.getByText('Start Locations')).toBeInTheDocument();
     expect(screen.queryByRole('radio', { name: 'Generic' })).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'On Map' })).toBeNull();
     expect(screen.queryByRole('list', { name: 'Routine' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Can Also Go' })).toBeNull();
+
+    await userEvent.click(screen.getByRole('combobox'));
+    const offered = within(await screen.findByRole('listbox', { name: 'Available options' })).getAllByRole('option').map((o) => o.textContent);
+    expect(offered.some((text) => /Player's Starting Location/.test(text ?? ''))).toBe(false);
+    fireEvent.click(within(screen.getByRole('listbox', { name: 'Available options' })).getByRole('option', { name: /Market/ }));
+    expect(stored(bench).locations).toEqual(['inn', 'market']);
+    expect(stored(bench).starts).toBeUndefined();
   });
 
   it('limits where it can also go to listed locations', async () => {

@@ -80,7 +80,7 @@ Select an entity to open its panel.
 | **Placeholders** | The entity's own [placeholders](World-Editor-Placeholders#placeholders-that-belong-to-an-entity-or-a-dictionary) | Advanced only |
 | **Openings** | The entity's own openings, including Self openings for a playable entity | Advanced only |
 
-The **Persona** control has four choices: **Cast**, **Playable**, **Persona-Only** and **Custom Persona**. It decides whether the player can play as the entity. See [Personas for Authors](Persona-Authoring#how-to-make-an-entity-playable). The player can start as a **Playable** or **Persona-Only** entity at any of its [starts](#starts).
+The **Persona** control has four choices: **Cast**, **Playable**, **Persona-Only** and **Custom Persona**. It decides whether the player can play as the entity. See [Personas for Authors](Persona-Authoring#how-to-make-an-entity-playable). The player can start as a **Playable** entity at any of its [starts](#starts). A **Persona-Only** entity and the **Custom Persona** list **Start Locations** instead.
 
 **Relationships** lists how the entity relates to others. Pick a target, **Persona** or another entity, then type what the target is to this entity. See [Relationships](#relationships).
 
@@ -91,6 +91,8 @@ Each entity in the list has **Duplicate** and **Delete** actions.
 <!-- route: worldEditorEntity.presence -->
 
 The **Presence** tab sets where the entity begins, where it goes, and where the AI knows of it. A location's **Presence** tab has the same routine editor for each entity that can be there.
+
+For a **Persona-Only** entity and the **Custom Persona**, the tab shows one **Start Locations** field. Pick the locations where the player can start as that persona. An empty field leaves the world's own starting locations. The routine, **Known In** and **Placement** are hidden.
 
 **Placement** has two choices:
 

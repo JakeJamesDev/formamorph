@@ -2,7 +2,8 @@
 // its unmark and delete confirmations name.
 
 import { customPersonaEntity } from './blueprints';
-import type { Entity } from '@/types';
+import { namedPlacesOf, withMembership, withoutMembership } from './entityPlaces';
+import { PLAYER_START, type Entity } from '@/types';
 
 /** The four states the `persona`, `personaOnly` and `customPersona` marks can take together. */
 export type PersonaRole = 'cast' | 'playable' | 'only' | 'custom';
@@ -19,6 +20,29 @@ export function personaRolePatch(role: PersonaRole): Partial<Entity> {
     customPersona: role === 'custom' ? true : undefined,
     ...(role === 'custom' ? { traitPlacement: undefined, statPlacement: undefined } : {}),
   };
+}
+
+/** Whether the role keeps its start places as the `locations` list; Cast and Playable keep a kind and Starts. */
+export const keepsStartList = (role: PersonaRole): boolean => role === 'only' || role === 'custom';
+
+/** Whether `e` is a Persona-Only or Custom Persona entity, which holds the list and no routine. */
+export const holdsStartList = (e: Pick<Entity, 'persona' | 'personaOnly' | 'customPersona'>): boolean => keepsStartList(personaRole(e));
+
+/** `entity` in `next`'s role: the marks, and the start places in that role's shape. Starts become the list (named
+ *  places in Start order, each once); the list becomes one Unique Start per place. A switch inside one shape keeps it. */
+export function withPersonaRole(entity: Entity, next: PersonaRole, newId: () => string): Entity {
+  const marked: Entity = { ...entity, ...personaRolePatch(next) };
+  const wasList = holdsStartList(entity);
+  if (wasList === keepsStartList(next)) return marked;
+  if (wasList) {
+    const places = namedPlacesOf(entity);
+    const rest = withoutMembership(marked);
+    if (!places.length) return rest;
+    return { ...rest, kind: 'unique', starts: places.map((place) => ({ id: newId(), place, weight: 1, schedule: [] })) };
+  }
+  const places = [...new Set((entity.starts ?? []).flatMap((s) => (s.place === PLAYER_START ? [] : [s.place])))];
+  const { kind: _k, starts: _s, traversable: _t, onMap: _m, knownIn: _i, ...rest } = marked;
+  return withMembership(rest, places);
 }
 
 /** The other entity that holds the mark, which keeps it off `id`. */
