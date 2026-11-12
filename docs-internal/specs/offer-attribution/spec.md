@@ -1,6 +1,7 @@
 # Spec: Offer Attribution
 
 Status: ready-for-agent
+Spec session: offer-attribution — spec
 
 Each Formamorph AI offer gets its own funnel counts, from shown to See Levels to Patreon to the finished checklist, so we can see which offer converts. Spans both repos: the client and FormamorphServer.
 
