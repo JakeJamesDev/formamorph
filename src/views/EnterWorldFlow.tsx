@@ -46,8 +46,9 @@ import ModelStorageService from '../services/ModelStorageService';
 import { LibraryRecordNotFoundError } from '../services/LibraryStore';
 import type { WorldRecord } from '@/components/WorldDetails';
 import ReadmeModal from '@/components/game/ReadmeModal';
+import { readUserDefaultAvatar } from '@/lib/defaultAvatar';
 import {
-  buildEnterFlow, entryVrmPick, navigableSteps, type EnterMode, type EnterStep, type NavigableStep,
+  buildEnterFlow, entryAvatarInUse, entryVrmPick, navigableSteps, type EntryVrmInput, type EnterMode, type EnterStep, type NavigableStep,
 } from '@/lib/enterFlow';
 import type {
   CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, OwnedTraitPicks, PersonaRef, VrmPick,
@@ -171,27 +172,23 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     return () => { cancelled = true; };
   }, [castKey, libraryCastData, isMountedRef]);
   // The persona's Avatar pick. A library persona reads its pick from the loaded record.
-  const entryVrm = (persona: PersonaRef, libraryPersona?: Entity, ids = libraryIds) => entryVrmPick({
+  const entryInput = (persona: PersonaRef, libraryPersona?: Entity, ids = libraryIds): EntryVrmInput => ({
     persona,
     libraryPersona: libraryPersona ?? (persona.source === 'library' ? libraryCastData.get(persona.entityId) : undefined),
     entities: worldEntities,
     overview: worldOverview,
     libraryIds: ids,
   });
+  const entryVrm = (persona: PersonaRef, libraryPersona?: Entity, ids = libraryIds) => entryVrmPick(entryInput(persona, libraryPersona, ids));
   const showsDraftVrm = !!entryVrm(draftPersona);
   const libraryCast = useMemo(
     () => castKey.split('|').flatMap((id) => libraryCastData.get(id) ?? [])
       .map((e) => bindLibraryEntity(e, rawTraitWorld)),
     [castKey, libraryCastData, rawTraitWorld],
   );
-  // The played side's traits wear the draft persona's Avatar; a cast entity's wear its own pick.
-  const ownerAvatarInUse = (ownerId: string | null): boolean => {
-    if (ownerId === null) return showsDraftVrm;
-    const played = draftPersona.source !== 'none' && draftPersona.entityId === ownerId;
-    const custom = draftPersona.source === 'none' && customPersonaEntity(worldEntities)?.id === ownerId;
-    if (played || custom) return showsDraftVrm;
-    return !![...worldEntities, ...libraryCast].find((e) => e.id === ownerId)?.vrmPick;
-  };
+  const deviceDefault = useMemo(readUserDefaultAvatar, []);
+  const ownerAvatarInUse = (ownerId: string | null) =>
+    entryAvatarInUse(ownerId, { ...entryInput(draftPersona), libraryCast, deviceDefault });
   // The pins the *draft* selection would impose: the traits ticked so far, the starting location picked, and
   // the bands the starting stats fall in once those traits have applied — so these screens resolve the way
   // the game will open, and a pinned name changes the moment its source is picked. Pins mask the roll

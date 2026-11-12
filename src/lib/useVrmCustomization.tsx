@@ -373,6 +373,7 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
                 label={cleanLabel(extraSel)}
                 value={extraPicker[extraSel] ?? '#ffffff'}
                 base={extraBase[extraSel] ?? extraPicker[extraSel] ?? '#ffffff'}
+                changed={Object.hasOwn(extraColors, extraSel)}
                 onChange={(hex) => changeExtra(extraSel, hex)}
                 onUndo={() => undoExtra(extraSel)}
                 onPickStart={() => setPicking(true)}

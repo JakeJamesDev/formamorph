@@ -1608,7 +1608,7 @@ export const RightPanel = ({
           editable={isEditMode && !isViewingPast}
           locked={statsLocked}
           reserveDescriptorLine={owner.rows.some((row) => (row.descriptors?.length ?? 0) > 0)}
-          avatarInUse={!!avatars.sourceOf(owner.entity)}
+          avatarInUse={avatars.inUse(owner.entity)}
           onCommitValue={(value) => listStatEdit(
             { kind: 'stat', stat: { id: stat.id, name: stat.name }, owner: { id: owner.entity.id, name: owner.entity.name }, from: stat.value, to: value },
             () => commitManualEntityStatEdit(owner.entity.id, stat.id, value),
@@ -1771,7 +1771,7 @@ export const RightPanel = ({
               avatarInUse={(ownerId) => {
                 if (ownerId === null) return !!avatars.played;
                 const entity = traitTree.entityNodes.get(ownerId);
-                return !!entity && !!avatars.sourceOf(entity);
+                return !!entity && avatars.inUse(entity);
               }}
               cascade={traitCascade}
               onDismissCascade={onDismissTraitCascade}

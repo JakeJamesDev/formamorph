@@ -79,14 +79,14 @@ vi.mock('@/services/ModelStorageService', () => ({
   },
 }));
 // The viewer reports the model it loaded and keeps the look it was last given.
-const viewer = vi.hoisted(() => ({ props: null as null | Record<string, unknown> }));
+const viewer = vi.hoisted(() => ({ props: null as null | Record<string, unknown>, brynBody: [] as string[] }));
 vi.mock('@/views/VRMViewer', async () => {
   const { useEffect } = await import('react');
   const FakeViewer = (props: { onCapabilities?: (caps: VRMCapabilities) => void; modelUrl?: string } & Record<string, unknown>) => {
     viewer.props = props;
     const report = props.onCapabilities;
     // The object URL names the Avatar it holds, so each Avatar reports its own sliders.
-    useEffect(() => { report?.(props.modelUrl === 'blob:bryn' ? BRYN_CAPS : CAPS); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => { report?.(props.modelUrl === 'blob:bryn' ? { ...BRYN_CAPS, bodyMorphs: viewer.brynBody } : CAPS); }, []); // eslint-disable-line react-hooks/exhaustive-deps
     return <div data-testid="avatar-viewer" />;
   };
   return { default: FakeViewer };
@@ -141,6 +141,7 @@ beforeEach(() => {
   world.writes = 0;
   storage.read = [];
   viewer.props = null;
+  viewer.brynBody = BRYN_CAPS.bodyMorphs;
 });
 
 describe("a trait's Preview", () => {
@@ -286,6 +287,19 @@ describe("a world trait's Preview with two playable Avatars", () => {
 
     expect(within(dialog()).getByRole('button', { name: 'Hair Color' })).toHaveAccessibleDescription('#111111');
     expect(saveButton()).toBeDisabled();
+  });
+
+  it('shows a drag on one alias on the other Avatar, and Save writes the most recent drag', async () => {
+    viewer.brynBody = ['Weight'];
+    await openPreview();
+    await nudge('Body Sliders', '{ArrowRight}');
+    await switchTo('Bryn');
+    await within(dialog()).findByRole('heading', { name: 'Body Sliders' });
+    expect(within(section('Body Sliders')).getByRole('slider')).toHaveAttribute('aria-valuenow', '0.05');
+
+    await nudge('Body Sliders', '{ArrowRight}');
+    await userEvent.click(saveButton());
+    expect(elfNow().morphPins).toEqual([{ name: 'Ear Shape', value: 0.6 }, { name: 'Fat', value: 0.1 }]);
   });
 
   it("keeps a control's undo at the trait's saved value after a switch", async () => {

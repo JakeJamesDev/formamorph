@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { buildEnterFlow, entryVrmPick, navigableSteps, type EnterFlowWorld, type EntryVrmInput } from './enterFlow';
+import {
+  buildEnterFlow, entryAvatarInUse, entryVrmPick, navigableSteps,
+  type EnterFlowWorld, type EntryAvatarInput, type EntryVrmInput,
+} from './enterFlow';
+import { entityAvatarInUse, playVrmContext } from './vrmResolver';
 import type { Entity, PersonaRef, VrmPick, WorldVrm } from '@/types';
 
 /** A world offering nothing: every step has to be earned by the case that wants it. */
@@ -171,5 +175,50 @@ describe('the avatar step follows the draft persona', () => {
     const lib = { kind: 'library', id: 'lib-fox' } as const;
     expect(entryVrmPick(as(ref, { libraryPersona: { id: 'wanderer', vrmPick: lib } }))).toEqual(lib);
     expect(entryVrmPick(as(ref))).toBeUndefined();
+  });
+
+  describe("an owner's Avatar icon in trait selection", () => {
+    const hero = { source: 'world', entityId: 'hero' } as const;
+    const cast = [
+      entity('guard', knight),
+      entity('lost', { kind: 'world', id: 'gone' }),
+      entity('plain'),
+      entity('wolf', { kind: 'library', id: 'lib-wolf' }),
+    ];
+    const inUse = (ownerId: string | null, over: Partial<EntryAvatarInput> = {}) =>
+      entryAvatarInUse(ownerId, { ...as(hero, { entities: [...entities, ...cast] }), libraryCast: [], ...over });
+
+    it('shows the icon for a cast entity whose Avatar resolves, and none for a missing or absent one', () => {
+      expect(inUse('guard')).toBe(true);
+      expect(inUse('lost')).toBe(false);
+      expect(inUse('plain')).toBe(false);
+    });
+
+    it('resolves a library cast pick against the library, as the game does', () => {
+      const libraryCast = [entity('fox', { kind: 'library', id: 'lib-gone' })];
+      expect(inUse('fox', { libraryCast, libraryIds: new Set() })).toBe(false);
+      expect(inUse('fox', { libraryCast, libraryIds: new Set(['heron']) })).toBe(true);
+    });
+
+    it("reads the draft persona's Avatar for the played side", () => {
+      expect(inUse(null)).toBe(true);
+      expect(inUse('hero')).toBe(true);
+      expect(inUse(null, as({ source: 'world', entityId: 'ghost' }, { entities: [...entities, ...cast] }))).toBe(false);
+    });
+
+    it.each<[string, ReadonlySet<string> | undefined]>([
+      ['while the library loads', undefined],
+      ['on an empty library', new Set()],
+      ['on a library with an Avatar', new Set(['heron'])],
+    ])("agrees with the game's check for every cast entity %s", (_, libraryIds) => {
+      const libraryCast = [entity('fox', { kind: 'library', id: 'lib-gone' })];
+      const world = [...entities, ...cast];
+      const input = { ...as(hero, { entities: world, libraryIds }), libraryCast, deviceDefault: 'heron' };
+      const game = playVrmContext({
+        persona: { source: 'world', entity: world.find((e) => e.id === 'hero')! },
+        entities: [...world, ...libraryCast], overview: { vrmStore }, characterData: null, libraryIds, deviceDefault: 'heron',
+      });
+      for (const e of [...cast, ...libraryCast]) expect(entryAvatarInUse(e.id, input)).toBe(entityAvatarInUse(e, game));
+    });
   });
 });

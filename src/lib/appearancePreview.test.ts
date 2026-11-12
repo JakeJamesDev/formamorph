@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  NO_EDITS, avatarsChanged, editColor, editSlider, lookChanged, lookWithEdits, shownLook, statLookRows, statRowsFromLook, traitLook,
+  NO_EDITS, avatarsChanged, clearSlider, editColor, editSlider, lookChanged, lookWithEdits, shownLook, statLookRows, statRowsFromLook, traitLook,
   traitRowsOnSave, traitRowsOnSaveAcross, withColor, withSlider, type PreviewLook, type PreviewModel, type StatLookRows, type TraitLookRows,
 } from './appearancePreview';
 import { blendColor } from './oklab';
@@ -92,6 +92,48 @@ describe('edits across Avatars', () => {
     const rows = { morphPins: [{ name: 'Ear Shape', value: 0.5 }] };
     expect(traitRowsOnSaveAcross(rows, opened(rows), editSlider(NO_EDITS, 'Tail', 0.2)).morphPins)
       .toEqual([{ name: 'Ear Shape', value: 0.5 }, { name: 'Tail', value: 0.2 }]);
+  });
+
+  describe('two Avatars that name one slider by different aliases', () => {
+    const WEIGHT: PreviewModel = { sliders: ['Weight'], colors: {} };
+    const FAT: PreviewModel = { sliders: ['Fat'], colors: {} };
+    const both = (rows: TraitLookRows) => [WEIGHT, FAT].map((model) => ({ model, base: traitLook(rows, model) }));
+
+    it.each<[string, TraitLookRows]>([
+      ['with a row', { morphPins: [{ name: 'Fat', value: 0.3 }] }],
+      ['with no row', {}],
+    ])('saves a drag on the first Avatar %s', (_, rows) => {
+      const rowName = rows.morphPins?.[0].name ?? 'Weight';
+      expect(traitRowsOnSaveAcross(rows, both(rows), editSlider(NO_EDITS, 'Weight', 0.8)).morphPins)
+        .toEqual([{ name: rowName, value: 0.8 }]);
+    });
+
+    it.each<[string, TraitLookRows]>([
+      ['with a row', { morphPins: [{ name: 'Weight', value: 0.3 }] }],
+      ['with no row', {}],
+    ])('saves a drag on the second Avatar %s', (_, rows) => {
+      const rowName = rows.morphPins?.[0].name ?? 'Weight'; // A new row takes the first opened Avatar's name.
+      expect(traitRowsOnSaveAcross(rows, both(rows), editSlider(NO_EDITS, 'Fat', 0.6)).morphPins)
+        .toEqual([{ name: rowName, value: 0.6 }]);
+    });
+
+    it('shows a drag on the first Avatar on the second, and undo there clears it on both', () => {
+      const edits = editSlider(NO_EDITS, 'Weight', 0.8);
+      expect(lookWithEdits(traitLook({}, FAT), edits).sliders).toEqual({ Fat: 0.8 });
+      const cleared = clearSlider(edits, 'Fat');
+      expect(both({}).map(({ base }) => lookWithEdits(base, cleared).sliders)).toEqual([{ Weight: 0 }, { Fat: 0 }]);
+    });
+
+    it.each<[string, TraitLookRows]>([
+      ['with a row', { morphPins: [{ name: 'Fat', value: 0.3 }] }],
+      ['with no row', {}],
+    ])('saves the most recent drag when both Avatars are dragged %s', (_, rows) => {
+      const rowName = rows.morphPins?.[0].name ?? 'Weight';
+      const aThenB = editSlider(editSlider(NO_EDITS, 'Weight', 0.8), 'Fat', 0.6);
+      expect(traitRowsOnSaveAcross(rows, both(rows), aThenB).morphPins).toEqual([{ name: rowName, value: 0.6 }]);
+      const bThenA = editSlider(editSlider(NO_EDITS, 'Fat', 0.6), 'Weight', 0.8);
+      expect(traitRowsOnSaveAcross(rows, both(rows), bThenA).morphPins).toEqual([{ name: rowName, value: 0.8 }]);
+    });
   });
 
   it('counts an edit put back to its base as no change', () => {

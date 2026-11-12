@@ -71,17 +71,23 @@ export interface PreviewEdits {
 
 export const NO_EDITS: PreviewEdits = { sliders: {}, colors: {} };
 
+/** Whether two slider keys are one control: the same key, or aliases of one slider. */
+const sameSlider = (a: string, b: string) => resolveMorphAlias(a, (key) => key === b) !== null;
+
+/** `sliders` without the edit on the slider `key` names, under whichever alias it was made. */
+const withoutSlider = (sliders: PreviewEdits['sliders'], key: string) =>
+  Object.fromEntries(Object.entries(sliders).filter(([edited]) => !sameSlider(edited, key)));
+
+/** One edit per slider: a drag replaces an earlier one made under any of its aliases. */
 export const editSlider = (edits: PreviewEdits, key: string, value: number): PreviewEdits =>
-  ({ ...edits, sliders: { ...edits.sliders, [key]: value } });
+  ({ ...edits, sliders: { ...withoutSlider(edits.sliders, key), [key]: value } });
 
 export const editColor = (edits: PreviewEdits, channel: ColorChannel, color: string): PreviewEdits =>
   ({ ...edits, colors: { ...edits.colors, [channel]: color } });
 
 /** `edits` without the slider's edit, so every Avatar shows its own opening value again. */
-export const clearSlider = (edits: PreviewEdits, key: string): PreviewEdits => {
-  const { [key]: _gone, ...sliders } = edits.sliders;
-  return { ...edits, sliders };
-};
+export const clearSlider = (edits: PreviewEdits, key: string): PreviewEdits =>
+  ({ ...edits, sliders: withoutSlider(edits.sliders, key) });
 
 /** `edits` without the channel's edit, so every Avatar shows its own opening color again. */
 export const clearColor = (edits: PreviewEdits, channel: ColorChannel): PreviewEdits => {
@@ -89,10 +95,13 @@ export const clearColor = (edits: PreviewEdits, channel: ColorChannel): PreviewE
   return { ...edits, colors };
 };
 
-/** What one Avatar shows: its opening look with the edits laid over the controls it has. */
+/** What one Avatar shows: its opening look with the edits laid over the controls it has, an alias's edit included. */
 export function lookWithEdits(base: PreviewLook, edits: PreviewEdits): PreviewLook {
   let look = base;
-  for (const key of Object.keys(base.sliders)) if (key in edits.sliders) look = withSlider(look, key, edits.sliders[key]);
+  for (const key of Object.keys(base.sliders)) {
+    const edited = Object.keys(edits.sliders).find((name) => sameSlider(name, key));
+    if (edited !== undefined) look = withSlider(look, key, edits.sliders[edited]);
+  }
   for (const channel of Object.keys(base.colors) as ColorChannel[]) {
     const color = edits.colors[channel];
     if (color !== undefined) look = withColor(look, channel, color);
@@ -119,7 +128,7 @@ export interface LoadedAvatar<M extends PreviewModel = PreviewModel> {
 
 /**
  * The trait's rows after Save across every Avatar the author opened. Each Avatar writes the edits to the
- * controls it has, so a change made on one Avatar survives a switch to another.
+ * controls it has, an alias's edit included, so a change made on one Avatar survives a switch to another.
  */
 export function traitRowsOnSaveAcross(rows: TraitLookRows, avatars: readonly LoadedAvatar[], edits: PreviewEdits): TraitLookRows {
   let out: TraitLookRows = rows;

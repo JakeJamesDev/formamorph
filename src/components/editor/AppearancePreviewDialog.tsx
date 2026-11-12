@@ -57,7 +57,7 @@ export interface PreviewStatRange {
   max: number;
 }
 
-const STAT_NOTE = "Adds to the player's own slider values in play";
+const STAT_NOTE = "Adds these changes to the player's own slider values during the game";
 
 const formatStat = (value: number) => String(Math.round(value * 100) / 100);
 

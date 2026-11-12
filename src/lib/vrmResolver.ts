@@ -10,7 +10,7 @@ type NamedVrm = Exclude<VrmPick, { kind: 'default' }>;
  *  list is still being read. */
 export type VrmSource = NamedVrm | { kind: 'pending' };
 
-type PickedEntity = Pick<Entity, 'id' | 'vrmPick'>;
+export type PickedEntity = Pick<Entity, 'id' | 'vrmPick'>;
 
 /** Who the player plays, with the entity for a library or world persona. */
 export type PlayedVrmAs =
@@ -101,6 +101,9 @@ export function resolveEntityVrm(entity: PickedEntity, ctx: VrmContext): VrmSour
   if (entity.id === playedEntityId(ctx)) return resolvePlayedVrm(ctx);
   return resolvePick(entity.vrmPick, ctx, () => userDefaultSource(ctx));
 }
+
+/** Whether `entity` wears an Avatar in context, so its traits and stats show the Avatar icon. */
+export const entityAvatarInUse = (entity: PickedEntity, ctx: VrmContext): boolean => resolveEntityVrm(entity, ctx) !== undefined;
 
 /** Who the player plays: a library or world persona with its entity, else none. */
 export function playedVrmAs(persona: { source: ResolvedPersona['source']; entity: PickedEntity } | null): PlayedVrmAs {

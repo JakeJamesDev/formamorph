@@ -144,7 +144,7 @@ describe("a stat's Preview", () => {
     expect(scrubber()).toHaveAttribute('aria-valuenow', '100');
     expect(shownSliders()).toEqual({ 'Ear Shape': 0, Fat: 1 });
     expect(hairPlan()).toEqual({ steps: [{ target: '#ffffff', t: 1 }] });
-    expect(within(dialog()).getByText("Adds to the player's own slider values in play")).toBeInTheDocument();
+    expect(within(dialog()).getByText("Adds these changes to the player's own slider values during the game")).toBeInTheDocument();
   });
 
   it('writes Change By 0.8 for a drag to 0.8 on a slider with no row, and adds no other row', async () => {

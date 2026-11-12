@@ -192,7 +192,7 @@ On the **Appearance** tab:
 - Drag the stat's slider at the top to see the look from Min to Max. At Min, the Avatar shows its own sliders and colors.
 - A drag or a color pick sets the look at Max, and moves the stat's slider to Max first. The **Change By** becomes the value you drag to, less the Avatar's own value.
 - A **Change By** past a slider's range shows the slider at its end, with the number beside it. It changes only when you drag that slider.
-- In play, the stat adds to the player's own slider values, so a player who starts higher ends higher.
+- During the game, the stat adds to the player's own slider values, so a player who starts higher ends higher.
 - Each control's **Undo** button returns it to the look at Max from the saved rows.
 - **Save** writes your changes to the stat. A slider or color you changed that has no row gets a new one. Save never removes a row. One **Undo** in the editor takes the whole change back.
 - Closing with unsaved changes asks before it discards them.

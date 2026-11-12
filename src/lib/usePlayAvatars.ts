@@ -4,7 +4,7 @@ import { useGameplay } from '@/contexts/GameplayContext';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { useLibraryIds } from '@/lib/useLibraryAvatars';
 import { readUserDefaultAvatar } from '@/lib/defaultAvatar';
-import { playedEntityId, playVrmContext, resolveEntityVrm, resolvePlayedVrm } from '@/lib/vrmResolver';
+import { entityAvatarInUse, playedEntityId, playVrmContext, resolveEntityVrm, resolvePlayedVrm, type PickedEntity } from '@/lib/vrmResolver';
 import { hasEntityVisual } from '@/lib/entityVisual';
 import type { Entity } from '@/types';
 
@@ -21,11 +21,13 @@ export function usePlayAvatars() {
       persona, entities, overview: worldOverview, characterData: viewCharacterData,
       libraryIds, deviceDefault,
     });
-    const sourceOf = (entity: Pick<Entity, 'id' | 'vrmPick'>) => resolveEntityVrm(entity, ctx);
+    const sourceOf = (entity: PickedEntity) => resolveEntityVrm(entity, ctx);
+    const inUse = (entity: PickedEntity) => entityAvatarInUse(entity, ctx);
     return {
       sourceOf,
+      inUse,
       /** Whether the entity view has anything to show for `entity`: an Avatar, a 3D model or an image. */
-      shows: (entity: Entity) => hasEntityVisual(entity) || !!sourceOf(entity),
+      shows: (entity: Entity) => hasEntityVisual(entity) || inUse(entity),
       /** The played side's Avatar, which the You row shows when no entity is played. */
       played: resolvePlayedVrm(ctx),
       playedId: playedEntityId(ctx),

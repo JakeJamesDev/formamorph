@@ -184,6 +184,23 @@ describe('ColorPicker', () => {
       expect(onChange).toHaveBeenLastCalledWith('#112233');
     });
 
+    it('calls no pick-end callback after an unmount in the middle of a pick', async () => {
+      let finish: () => void = () => {};
+      stubDropper(() => new Promise((resolve) => { finish = () => resolve({ sRGBHex: '#112233' }); }));
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const onPickEnd = vi.fn();
+      const { unmount } = render(<ColorPicker aria-label="Dialogue Color" value="#336699" onChange={onChange} onPickEnd={onPickEnd} />);
+      await open(user);
+      await user.click(dropper()!);
+
+      unmount();
+      await act(async () => finish());
+
+      expect(onPickEnd).not.toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
     it('leaves the color alone on a canceled pick, with the picker still open', async () => {
       stubDropper(() => Promise.reject(new DOMException('canceled', 'AbortError')));
       const user = userEvent.setup();

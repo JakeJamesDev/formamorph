@@ -29,6 +29,7 @@ export interface ColorPickerProps {
 
 type EyeDropperCtor = new () => { open: () => Promise<{ sRGBHex: string }> }
 
+// TypeScript's DOM lib has no EyeDropper yet, so the window is read through `unknown`.
 const eyeDropperCtor = (): EyeDropperCtor | undefined =>
   typeof window === "undefined" ? undefined : (window as unknown as { EyeDropper?: EyeDropperCtor }).EyeDropper
 
@@ -144,7 +145,7 @@ export function ColorPicker({
       // Canceled.
     } finally {
       picking.current = false
-      onPickEndRef.current?.()
+      if (mounted.current) onPickEndRef.current?.()
     }
   }
   // The sampler owns the pointer and Escape, so the popover must not read them as a dismissal.

@@ -7,6 +7,7 @@ import { DeleteVrmConfirm } from '@/managers/AvatarStore';
 import { AppearancePreviewDialog } from '@/components/editor/AppearancePreviewDialog';
 import type { RowAvatar } from '@/lib/useSliderPicker';
 import ModelStorageService from '@/services/ModelStorageService';
+import { useMountedRef } from '@/lib/useMountedRef';
 import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
 import type { CodeRenamePlan } from '@/lib/statCodeRename';
 import { statLookRows, type TraitLookRows } from '@/lib/appearancePreview';
@@ -40,12 +41,12 @@ const STAT_PREVIEW_ROWS: TraitLookRows = statLookRows({
 /** The library's first Avatar and the bundled one, or the bundled one twice. `stat` previews a stat in place of a trait. */
 function DevAppearancePreview({ onClose, stat }: { onClose: () => void; stat: boolean }) {
   const [avatars, setAvatars] = useState<RowAvatar[]>();
+  const mounted = useMountedRef();
   useEffect(() => {
-    let live = true;
     void ModelStorageService.getModelMetadata()
       .catch(() => [])
       .then((models) => {
-        if (!live) return;
+        if (!mounted.current) return;
         const first: RowAvatar[] = models.slice(0, 1).map((m) => ({ kind: 'library', id: m.id, name: m.name }));
         // Two Avatars always, so the Avatar choice shows on an empty library too.
         const bundled: RowAvatar[] = [
@@ -54,8 +55,7 @@ function DevAppearancePreview({ onClose, stat }: { onClose: () => void; stat: bo
         ];
         setAvatars([...first, ...bundled].slice(0, 2));
       });
-    return () => { live = false; };
-  }, []);
+  }, [mounted]);
   if (!avatars) return null;
   return stat
     ? <AppearancePreviewDialog name="Fatness" avatars={avatars} rows={STAT_PREVIEW_ROWS} stat={{ min: 0, max: 100 }} onSave={() => {}} onClose={onClose} />

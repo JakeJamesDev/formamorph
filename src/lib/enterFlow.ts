@@ -6,7 +6,7 @@
  */
 
 import { customPersonaEntity } from './blueprints';
-import { playedVrmAs, playedVrmPick } from './vrmResolver';
+import { entityAvatarInUse, playedVrmAs, playedVrmPick, type PickedEntity, type VrmContext } from './vrmResolver';
 import type { Entity, PersonaRef, VrmPick, WorldOverview } from '@/types';
 
 /** How the player is starting: the full setup flow, the Quick Start bypass, or resuming a save. */
@@ -52,19 +52,47 @@ export interface EntryVrmInput {
  * picker, and a world or library pick shows that Avatar as set. A library pick that is gone acts as User's
  * Default, and an empty library leaves User's Default with no Avatar, so the step is skipped.
  */
-export function entryVrmPick({ persona, libraryPersona, entities, overview, libraryIds }: EntryVrmInput): VrmPick | undefined {
-  const entity = persona.source === 'library' ? libraryPersona ?? { id: persona.entityId }
-    : persona.source === 'world' ? entities.find((e) => e.id === persona.entityId)
-    : undefined;
-  const pick = playedVrmPick({
-    store: overview?.vrmStore,
-    played: playedVrmAs(entity && persona.source !== 'none' ? { source: persona.source, entity } : null),
-    customPersona: customPersonaEntity(entities),
-    legacyFallback: overview?.legacyVrmFallback,
-  });
+export function entryVrmPick(input: EntryVrmInput): VrmPick | undefined {
+  const { libraryIds } = input;
+  const pick = playedVrmPick(entryVrmContext(input));
   if (!pick || pick.kind === 'world' || !libraryIds) return pick;
   if (pick.kind === 'library' && libraryIds.has(pick.id)) return pick;
   return libraryIds.size ? { kind: 'default' } : undefined;
+}
+
+/** The resolver's context at world entry: the draft persona played, the world's store, no save yet. */
+export function entryVrmContext(
+  { persona, libraryPersona, entities, overview, libraryIds, deviceDefault }: EntryVrmInput & { deviceDefault?: string },
+): VrmContext {
+  const entity = persona.source === 'library' ? libraryPersona ?? { id: persona.entityId }
+    : persona.source === 'world' ? entities.find((e) => e.id === persona.entityId)
+    : undefined;
+  return {
+    store: overview?.vrmStore,
+    libraryIds,
+    deviceDefault,
+    played: playedVrmAs(entity && persona.source !== 'none' ? { source: persona.source, entity } : null),
+    customPersona: customPersonaEntity(entities),
+    legacyFallback: overview?.legacyVrmFallback,
+  };
+}
+
+/** What trait selection reads for an owner's Avatar icon. */
+export interface EntryAvatarInput extends EntryVrmInput {
+  libraryCast: readonly PickedEntity[];
+  deviceDefault?: string;
+}
+
+/** Whether an owner's Avatar is in use at world entry. The played side (`null`, the persona, the Custom Persona
+ *  under None) wears the draft persona's; a cast entity wears its own pick, resolved as the game resolves it. */
+export function entryAvatarInUse(ownerId: string | null, input: EntryAvatarInput): boolean {
+  const { persona, entities, libraryCast } = input;
+  const played = ownerId === null
+    || (persona.source !== 'none' && persona.entityId === ownerId)
+    || (persona.source === 'none' && customPersonaEntity(entities)?.id === ownerId);
+  if (played) return !!entryVrmPick(input);
+  const entity = [...entities, ...libraryCast].find((e) => e.id === ownerId);
+  return !!entity && entityAvatarInUse(entity, entryVrmContext(input));
 }
 
 /**

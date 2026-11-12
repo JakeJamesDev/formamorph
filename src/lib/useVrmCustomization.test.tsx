@@ -106,6 +106,43 @@ describe('useVrmCustomization undo', () => {
     expect(undo('Hair Color')).toBeDisabled();
   });
 
+  describe('Other Colors', () => {
+    const selectTrim = async () => {
+      await userEvent.click(screen.getByRole('combobox'));
+      await userEvent.click(await screen.findByRole('option', { name: 'Trim' }));
+    };
+    const pickExtra = async (hex: string) => {
+      fireEvent.click(screen.getByRole('button', { name: 'Trim' }));
+      fireEvent.change(await screen.findByRole('textbox', { name: 'Hex Color' }), { target: { value: hex } });
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+      await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Hex Color' })).toBeNull());
+    };
+
+    it('enables undo after a pick on a material with no calculated color, and the click removes the color', async () => {
+      const { hook } = setup({ ...CAPS, extras: ['Trim'] });
+
+      await selectTrim();
+      await pickExtra('AA11CC');
+      expect(hook.result.current.viewerProps.extraColors).toEqual({ Trim: '#aa11cc' });
+      expect(undo('Trim')).toBeEnabled();
+
+      fireEvent.click(undo('Trim'));
+      expect(hook.result.current.viewerProps.extraColors).toEqual({});
+      expect(undo('Trim')).toBeDisabled();
+    });
+
+    it('keeps undo enabled when the applied color equals the calculated color', async () => {
+      const { hook } = setup({ ...CAPS, extras: ['Trim'] });
+      Object.assign(hook.result.current.vrmViewerRef, { current: { calcColor: () => '#112233' } });
+
+      await selectTrim();
+      await pickExtra('AA11CC');
+      await pickExtra('112233');
+      expect(hook.result.current.viewerProps.extraColors).toEqual({ Trim: '#112233' });
+      expect(undo('Trim')).toBeEnabled();
+    });
+  });
+
   it('keeps a color undo disabled on a model that reports no color, until a pick', () => {
     setup(CAPS);
     expect(undo('Skin Color')).toBeDisabled();
