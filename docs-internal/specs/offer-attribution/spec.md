@@ -34,6 +34,8 @@ The staff Usage view shows one row per source, with a rate from each step to the
 | Q9 | Checklist Finished splits per source, the same as the Patreon click. |
 | Q10 | The Demo AI notice and the locked-preset panel get no "shown" step. They show on every visit, so a shown count has no comparable rate. |
 | Q11 | The Usage view shows a table: one row per source, columns Shown, See Levels, Patreon, Checklist, each with a rate to the step before. A last row holds the older-build totals. |
+| Q13 | The locked-preset panel's See Levels button sends `locked_see_levels`. The earlier text said `locked` opens only the checklist; the panel has both buttons. Ticket 02 ruling. |
+| Q14 | The Road sends no Patreon or Checklist step while it holds no source. Only the dev-router opens it that way; every real caller passes a source by type. Ticket 02 ruling. |
 | Q12 | Tests use existing seams only: funnel POSTs counted per surface on the client, the server's funnel totals and Usage report tests, and the Usage tab test. |
 
 ## User Stories
@@ -58,7 +60,7 @@ The staff Usage view shows one row per source, with a rate from each step to the
 
 ## Implementation Decisions
 
-- **Sources and steps.** The client and the server each name the five sources and the four steps once. The full step list is the valid `<source>_<step>` pairs plus the legacy names. `checklist_finished` also shipped in v3.6.2, so it is legacy beside the three Q6 names. Valid pairs: `offer_shown` for `setup`, `demo` and `engine` only; `see_levels` for every source except `locked`, which opens the checklist directly; `patreon_click` and `checklist_finished` for all five.
+- **Sources and steps.** The client and the server each name the five sources and the four steps once. The full step list is the valid `<source>_<step>` pairs plus the legacy names. `checklist_finished` also shipped in v3.6.2, so it is legacy beside the three Q6 names. Valid pairs: `offer_shown` for `setup`, `demo` and `engine` only; `see_levels` for all five (Q13); `patreon_click` and `checklist_finished` for all five.
 - **Once per device.** `sendFunnelStep` already sends each step once per device. A per-source name therefore counts installs per source, not clicks. A device that clicked See Levels in v3.6.2 counts again under its new source name. That is expected.
 - **Road source.** Opening The Road takes a source with the start view. The Road scene store holds the source while the scene is open and clears it on close. The support checklist reads it for its Patreon and Checklist Finished steps. Every caller of the Road open passes a source. A missing source is a type error, not a fallback.
 - **AI setup lead shown.** The lead sends `setup_offer_shown` the first time it renders on screen for an install. Its seen record lives beside the two cards' records in the first-time flow store.
