@@ -1,6 +1,6 @@
 # 01: Names-Only Stat Detail
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -20,8 +20,19 @@ Spec rulings: Q1, Q3, Q5.
 
 ## Acceptance criteria
 
-- [ ] In the Chip Options dialog, all three Stat Detail pieces can be unchecked on the Stats, Persona and Entities chips. The saved token carries each unchecked piece.
-- [ ] `<PERSONA|norange.nodescriptor.nodescription>` over the sample scene renders `stats: Nerve` inline in plain, markdown and XML.
-- [ ] `<ENTITIES|norange.nodescriptor.nodescription>` renders Wren's stats inline.
-- [ ] The bare `<STATS DESCRIPTION>`, `<PERSONA>` and `<ENTITIES>` renders are unchanged. The rendered corpus snapshot shows no diff.
-- [ ] Each new test fails with the lock or the old owned-stat render put back.
+- [x] In the Chip Options dialog, all three Stat Detail pieces can be unchecked on the Stats, Persona and Entities chips. The saved token carries each unchecked piece. (ChipOptionsDialog tests: Stats, and Entities/Persona `it.each`)
+- [x] `<PERSONA|norange.nodescriptor.nodescription>` over the sample scene renders `stats: Nerve` inline in plain, markdown and XML. (promptTokenGrammar test, sample scene)
+- [x] `<ENTITIES|norange.nodescriptor.nodescription>` renders Wren's stats inline. (promptTokenGrammar and rosterOptions tests)
+- [x] The bare `<STATS DESCRIPTION>`, `<PERSONA>` and `<ENTITIES>` renders are unchanged. The rendered corpus snapshot shows no diff. (corpusRendered test green, snapshot untouched)
+- [x] Each new test fails with the lock or the old owned-stat render put back. (Render branch disabled: 4 tests went red. The dialog tests assert enabled boxes, which the lock failed.)
+
+## Landed
+
+**Not verified**
+
+- The lock-restored mutation was not run. The dialog tests assert the Range box is enabled and clears, which the lock disabled.
+- No browser check of the dialog.
+
+**For you**
+
+- Open Chip Options on the Persona chip and uncheck all three Stat Detail pieces. Preview should read `stats: Nerve, ...` inline.

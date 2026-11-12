@@ -161,13 +161,21 @@ describe('Chip Options', () => {
     expect(stored()).toBe('<ENTITIES|withstats.name>');
   });
 
-  it('disables Stat Detail while stats are off and locks the last detail piece on', async () => {
+  it.each(['ENTITIES', 'PERSONA'])('lets every Stat Detail piece go off on the %s chip', async (chip) => {
+    const user = userEvent.setup();
+    renderReporting(<Field initial={`<${chip}|nodescriptor.nodescription>`} />);
+    await open(user);
+    expect(box('Stat Detail', 'Range')).toBeChecked();
+    expect(box('Stat Detail', 'Range')).toBeEnabled();
+    await user.click(box('Stat Detail', 'Range'));
+    expect(stored()).toBe(`<${chip}|norange.nodescriptor.nodescription>`);
+    expect(box('Stat Detail', 'Range')).not.toBeChecked();
+  });
+
+  it('disables Stat Detail while stats are off', async () => {
     const user = userEvent.setup();
     renderReporting(<Field initial="<ENTITIES|nodescriptor.nodescription>" />);
     await open(user);
-    expect(box('Stat Detail', 'Range')).toBeChecked();
-    expect(box('Stat Detail', 'Range')).toBeDisabled();
-    expect(box('Stat Detail', 'Descriptor')).toBeEnabled();
     await user.click(box('Include', 'Stats'));
     expect(stored()).toBe('<ENTITIES|nostats.nodescriptor.nodescription>');
     for (const name of ['Range', 'Descriptor', 'Description']) expect(box('Stat Detail', name)).toBeDisabled();
@@ -284,7 +292,7 @@ describe('Chip Options', () => {
     expect(rows.compareDocumentPosition(reads) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('shows the Stats chip pieces as checkboxes and locks the last one on', async () => {
+  it('shows the Stats chip pieces as checkboxes and lets the last one go off', async () => {
     const user = userEvent.setup();
     renderReporting(<Field initial="<STATS DESCRIPTION|numbers.descriptions>" />);
     const options = await open(user);
@@ -294,7 +302,10 @@ describe('Chip Options', () => {
     await user.click(descriptor);
     expect(stored()).toBe('<STATS DESCRIPTION|numbers>');
     expect(range).toBeChecked();
-    expect(range).toBeDisabled();
+    expect(range).toBeEnabled();
+    await user.click(range);
+    expect(stored()).toBe('<STATS DESCRIPTION>');
+    expect(range).not.toBeChecked();
   });
 
   it('gives the Traits chip a Content row of Description and Name that saves the Name id', async () => {

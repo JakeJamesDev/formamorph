@@ -33,8 +33,6 @@ export interface PromptVariantAxis {
   /** For a toggle axis: whether the piece is on while it holds its default (null) option, read from the
    *  chip's other picks. Absent, `onByDefault` decides. */
   onByDefaultWhen?: (selection: Record<string, string | null>) => boolean;
-  /** For a toggle axis: one chip's toggle axes with this name form a group whose last piece on stays on. */
-  lockGroup?: string;
   /** For a toggle axis: stays live under Name content, which sends this piece beside each name. */
   keptInNames?: boolean;
   /** For a toggle axis: the Chip Options row its checkbox sits in. Axes that share a row name share a row. */
@@ -146,18 +144,18 @@ const STAT_DESCRIPTOR_HELP = "Sends the word for the stat's current level, like 
 const STAT_DESCRIPTION_HELP = 'Sends what the stat measures';
 
 // Stats content is three independent pieces (each a checkbox), plus the shared format axis. The stat's Name
-// is always present; at least one piece must stay on (enforced in the editor). The old single-select ids
+// is always present; with every piece off a stat sends its name only. The old single-select ids
 // `numbers` (Range) and `descriptions` (Descriptor) are kept, so existing tokens still render; `meaning` is new.
 const STAT_VALUES_AXIS: PromptVariantAxis = {
-  id: 'numbers', label: 'Range', toggle: true, lights: 'range', lockGroup: 'statDetail', row: 'Stat Detail', rowHelp: STAT_DETAIL_ROW_HELP, help: STAT_RANGE_HELP,
+  id: 'numbers', label: 'Range', toggle: true, lights: 'range', row: 'Stat Detail', rowHelp: STAT_DETAIL_ROW_HELP, help: STAT_RANGE_HELP,
   options: [{ id: null, label: 'Range' }, { id: 'numbers', label: 'Range' }],
 };
 const STAT_STATUS_AXIS: PromptVariantAxis = {
-  id: 'descriptions', label: 'Descriptor', toggle: true, lights: 'descriptor', lockGroup: 'statDetail', row: 'Stat Detail', help: STAT_DESCRIPTOR_HELP,
+  id: 'descriptions', label: 'Descriptor', toggle: true, lights: 'descriptor', row: 'Stat Detail', help: STAT_DESCRIPTOR_HELP,
   options: [{ id: null, label: 'Descriptor' }, { id: 'descriptions', label: 'Descriptor' }],
 };
 const STAT_MEANING_AXIS: PromptVariantAxis = {
-  id: 'meaning', label: 'Description', toggle: true, lights: 'meaning', lockGroup: 'statDetail', row: 'Stat Detail', help: STAT_DESCRIPTION_HELP,
+  id: 'meaning', label: 'Description', toggle: true, lights: 'meaning', row: 'Stat Detail', help: STAT_DESCRIPTION_HELP,
   options: [{ id: null, label: 'Description' }, { id: 'meaning', label: 'Description' }],
 };
 
@@ -188,9 +186,9 @@ const INCLUDE_TRAITS_AXIS = rosterToggle('traits', 'Traits', 'notraits', "Sends 
 const PERSONA_INCLUDE_TRAITS_AXIS = { ...INCLUDE_TRAITS_AXIS, help: "Sends the persona's owned traits",
   rowHelp: 'Picks what the persona sends besides its name' };
 const ROSTER_STAT_DETAIL_AXES: PromptVariantAxis[] = [
-  rosterToggle('range', 'Range', 'norange', STAT_RANGE_HELP, { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail', rowHelp: STAT_DETAIL_ROW_HELP, lights: 'range' }),
-  rosterToggle('descriptor', 'Descriptor', 'nodescriptor', STAT_DESCRIPTOR_HELP, { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail', lights: 'descriptor' }),
-  rosterToggle('description', 'Description', 'nodescription', STAT_DESCRIPTION_HELP, { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail', lights: 'meaning' }),
+  rosterToggle('range', 'Range', 'norange', STAT_RANGE_HELP, { onByDefault: true, row: 'Stat Detail', rowHelp: STAT_DETAIL_ROW_HELP, lights: 'range' }),
+  rosterToggle('descriptor', 'Descriptor', 'nodescriptor', STAT_DESCRIPTOR_HELP, { onByDefault: true, row: 'Stat Detail', lights: 'descriptor' }),
+  rosterToggle('description', 'Description', 'nodescription', STAT_DESCRIPTION_HELP, { onByDefault: true, row: 'Stat Detail', lights: 'meaning' }),
 ];
 
 // The Entities chip's stats piece: null is the scope's default (on for Here and In Scene), `nostats` stores off, `stats` on.

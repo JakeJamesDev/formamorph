@@ -384,7 +384,7 @@ The **Entities** chip lists each entity's stats under its entry. Each stat shows
 - **Hidden stats are sent.** **Hidden** hides a stat from the player, and the AI still reads it.
 - **A stat that is switched off isn't sent.**
 - **Clear Include → Stats to leave them out.**
-- **Stat Detail picks which parts of each stat the AI reads:** **Range**, **Descriptor** and **Description**. At least one stays checked.
+- **Stat Detail picks which parts of each stat the AI reads:** **Range**, **Descriptor** and **Description**. With all three off, the chip sends stat names only.
 - **Only With keeps the entities that own stats or traits.** To send only entities with stats, check **Stats** under **Only With**. See [How to Send Only Entities With Stats](Prompt-Chips#how-to-send-only-entities-with-stats).
 
 ## Openings

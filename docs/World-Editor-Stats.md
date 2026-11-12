@@ -117,7 +117,7 @@ Each stat's **Name** is always sent. The Stats chip in your [prompt](Prompt-Chip
 | **Descriptor** | The matching Stat Descriptor, a word for the current level |
 | **Description** | The stat's **Description** |
 
-Each piece is a checkbox in the **Stat Detail** row of the chip's [Chip Options](Prompt-Chips#chip-options). At least one stays checked. The **Entities** and **Persona** chips have the same row for the stats they send.
+Each piece is a checkbox in the **Stat Detail** row of the chip's [Chip Options](Prompt-Chips#chip-options). With all three off, the chip sends stat names only. The **Entities** and **Persona** chips have the same row for the stats they send.
 
 > ⚠️ **Every active stat is sent on every turn.** Stats use your context budget all the time. Three stats that matter are better than twelve that don't.
 

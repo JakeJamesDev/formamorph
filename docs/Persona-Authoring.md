@@ -214,7 +214,7 @@ These rows work with **Content**:
 |---|---|
 | **Only With** | Check **Stats** or **Traits** to send the persona only when it owns one of them. Otherwise the chip sends what it sends with no persona. |
 | **Include** | Clear **Traits** or **Stats** to leave them out of **Full** and **Summary**. Both are on by default. |
-| **Stat Detail** | Pick **Range**, **Descriptor** and **Description** for each stat. At least one stays checked. |
+| **Stat Detail** | Pick **Range**, **Descriptor** and **Description** for each stat. With all three off, the chip sends stat names only. |
 | **Format** | **Simple**, **Markdown** or **XML**, as on the other list chips |
 
 **Name** sends plain text. It turns off **Include** and **Stat Detail**, and it locks **Format** while the chip has no **Header**. **Only With** still works. Clearing **Include → Stats** turns off **Stat Detail**.

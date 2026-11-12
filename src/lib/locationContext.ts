@@ -190,14 +190,21 @@ export function passesOnlyWith(entityId: string, opts: Pick<RosterOpts, "onlyWit
 export function ownedStatLines(
   entity: Entity, stats: readonly PlayerStat[], format: ContextFormat, pieces: StatPieces = ALL_STAT_PIECES,
 ): string {
-  return textOf(ownedStatRuns(entity, stats, format, pieces));
+  const field = (key: string, value: string) =>
+    format === "xml" ? `  <${key}>${xmlEscape(value)}</${key}>\n` : format === "markdown" ? `  - **${key}:** ${value}\n` : `  ${key}: ${value}\n`;
+  return textOf(ownedStatRuns(entity, stats, format, field, pieces));
 }
 
-/** {@link ownedStatLines} as runs marked as stats lines. */
+/** {@link ownedStatLines} as runs marked as stats lines. With every piece off the stat names read inline on
+ *  one `stats` line, as owned trait names do. */
 function ownedStatRuns(
-  entity: Entity, stats: readonly PlayerStat[], format: ContextFormat, pieces: StatPieces = ALL_STAT_PIECES,
+  entity: Entity, stats: readonly PlayerStat[], format: ContextFormat, field: (key: string, value: string) => string,
+  pieces: StatPieces = ALL_STAT_PIECES,
 ): MarkedRun[] {
   if (!stats.length) return [];
+  if (!pieces.values && !pieces.status && !pieces.meaning) {
+    return mark(["stats"], field("stats", stats.map((s) => s.name).join(", ")));
+  }
   const block = indentRuns(statContextRuns([...stats], pieces, format, statPlacementOf(entity)), "    ");
   if (format === "xml") return mark(["stats"], "  <stats>\n", block, "\n  </stats>\n");
   return mark(["stats"], `${format === "markdown" ? "  - **stats:**" : "  stats:"}\n`, block, "\n");
@@ -309,7 +316,7 @@ export function entityRosterRuns(
     const movement = movementOf(entityItem.id);
     const ownedLines = runs(
       noTraits ? "" : ownedTraitRuns(entityItem, ownedTraits?.[entityItem.id] ?? [], preferSummary, format, field),
-      noStats ? "" : ownedStatRuns(entityItem, ownedStats?.[entityItem.id] ?? [], format, statPieces),
+      noStats ? "" : ownedStatRuns(entityItem, ownedStats?.[entityItem.id] ?? [], format, field, statPieces),
     );
     const fields = runs(
       strangerLine,

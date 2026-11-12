@@ -35,7 +35,7 @@ const SAMPLES: readonly Sample[] = [
   {
     id: 'stats',
     title: 'Stats Chip',
-    note: 'Two panes, with “Stat Detail” as the one row of checkboxes. The last checked piece can’t be cleared.',
+    note: 'Two panes, with “Stat Detail” as the one row of checkboxes. Every piece can be cleared.',
     token: '<STATS DESCRIPTION|markdown>',
     vocab: PROMPT_VOCABULARY,
   },

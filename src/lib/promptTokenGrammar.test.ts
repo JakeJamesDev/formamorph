@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ALL_PROMPT_VARIABLES, TOKEN_PATTERN, decodeChipKey, decodeVariant, encodeVariant, joinToken, splitToken, tokenVariant,
-  variableAxes, variableForToken, variableOptionIds, variantLabelForToken, withVariant, type TokenParts,
+  variableForToken, variableOptionIds, variantLabelForToken, withVariant, type TokenParts,
 } from './promptVariables';
 import { corpusTokens } from '@/test/tokenCorpus';
 import { parsePromptTemplate, renderPromptTemplate, serializeSegments } from './promptTemplate';
@@ -141,19 +141,30 @@ describe('the chip label', () => {
   });
 });
 
-describe('lock groups', () => {
-  const groups = (base: string) => Object.fromEntries(
-    variableAxes(variableForToken(base)!).filter((a) => a.toggle).map((a) => [a.id, a.lockGroup ?? null]),
-  );
+describe('names-only owned stats over the sample scene', () => {
+  const values = chipValues(sampleChipScene());
+  const off = 'norange.nodescriptor.nodescription';
 
-  it('group the Stats chip pieces, and the Stat Detail pieces of each roster chip', () => {
-    expect(groups('<STATS DESCRIPTION>')).toEqual({ numbers: 'statDetail', descriptions: 'statDetail', meaning: 'statDetail' });
-    const roster = {
-      withstats: null, withtraits: null, traits: null, stats: null,
-      range: 'statDetail', descriptor: 'statDetail', description: 'statDetail',
-    };
-    expect(groups('<ENTITIES>')).toEqual({ ...roster, movement: null });
-    expect(groups('<PERSONA>')).toEqual(roster);
+  it('lists the persona stat names inline in every format', () => {
+    expect(values(`<PERSONA|${off}>`)).toContain('stats: Nerve');
+    expect(values(`<PERSONA|${off}.markdown>`)).toContain('**stats:** Nerve');
+    expect(values(`<PERSONA|${off}.xml>`)).toContain('<stats>Nerve</stats>');
+    expect(values(`<PERSONA|${off}>`)).not.toContain('/100');
+  });
+
+  it('keeps the Stats chip at names only with every piece off', () => {
+    for (const token of ['<STATS DESCRIPTION>', '<STATS DESCRIPTION|markdown>', '<STATS DESCRIPTION|xml>']) {
+      const out = values(token)!;
+      const format = token;
+      expect(out, format).toContain('Health');
+      expect(out, format).not.toMatch(/\/100|Shaking|Steady/);
+    }
+  });
+
+  it('lists the entity stat names inline', () => {
+    const out = values(`<ENTITIES|${off}>`)!;
+    expect(out).toMatch(/\n {2}stats: [A-Z][\w ,]*\n/);
+    expect(out).not.toContain('/100');
   });
 });
 

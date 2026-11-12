@@ -2261,7 +2261,6 @@ Open `#dev?modal=designSystem&tab=panel-crash-card` for the card in both themes,
 - ↔️ **Two panes for a prompt chip.** The rows sit on the left at about 1.15 parts, and **What the AI Reads** sits on the right at 1 part. The dialog is `max-w-3xl`.
 - 📄 **One column for the rest.** Placeholder chips and Tool argument chips show the rows alone, in `max-w-md`.
 - 📏 **Rows.** The name sits in a fixed column, and the control fills the rest. A pick-one setting is a segmented control up to three options, and a dropdown from four. A pick-many setting is a group of inline checkboxes with labels, never pills.
-- 🔒 **Lock groups.** The last checked piece of a group, such as **Stat Detail**, stays checked and disabled.
 - 🌫️ **Moot rows.** A row that has no effect under the current picks is disabled, and its tooltip says why.
 - 💬 **Help.** An option's help is the tooltip of its segment or dropdown item. A checkbox's help is the tooltip of its label. A read-only control's help says why it is shut.
 - ➖ **Placement.** **Label**, **Header**, **Prepend** and **Append** sit below a rule.
@@ -2296,7 +2295,6 @@ Build a new chip setting as an axis in the registry. Do not draw a control in th
 | Editable | Every control live. |
 | Read-only | Every control disabled. The rows and the pane still show. |
 | Moot | The row is disabled. Its tooltip names the pick that made it moot. |
-| Locked | The last checked piece of a lock group is checked and disabled. |
 | Lit | The text the hovered or focused control produces has a `primary` tint. Other lines are at 40% opacity. |
 | Nothing to light | A control with no text, such as **Scope**, leaves the pane as it is. |
 | No chip rows | The dialog reads "No options for this variable." |

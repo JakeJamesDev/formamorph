@@ -183,11 +183,8 @@ function OptionRows({ token, vocab, editable, update, hasActions, light }: Omit<
         <div role="group" aria-label={name} className="flex min-h-7 flex-wrap items-center gap-x-4 gap-y-1">
           {group.map((axis, i) => {
             const isOn = toggleIsOn(axis, selection);
-            // The last piece on in a lock group stays on, so a stat is never sent as a bare name.
-            const lockedOn = isOn && !!axis.lockGroup
-              && axes.filter((a) => a.toggle && a.lockGroup === axis.lockGroup && toggleIsOn(a, selection)).length === 1;
             const mootTip = tips[i];
-            const disabled = !editable || !!mootTip || lockedOn;
+            const disabled = !editable || !!mootTip;
             return (
               <Tip key={axis.id} tip={rowMoot ? axis.help : (mootTip ?? axis.help)} labelsChild={false}>
                 <label className={cn('flex items-center gap-1.5 text-meta', disabled ? 'cursor-default' : 'cursor-pointer')}

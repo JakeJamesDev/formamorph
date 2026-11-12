@@ -36,10 +36,14 @@ describe('the Entities chip’s Stats checkbox', () => {
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith('<ENTITIES|inscene.markdown>'));
   });
 
-  it('does not count toward the Stats chip’s last-piece lock', async () => {
-    const { container } = render(<Field initial="<STATS DESCRIPTION|numbers>" onChange={() => {}} />);
+  it('leaves the Stats chip’s last piece free to clear', async () => {
+    const onChange = vi.fn();
+    const { container } = render(<Field initial="<STATS DESCRIPTION|numbers>" onChange={onChange} />);
     await userEvent.click(container.querySelector('[data-chip-token]')!);
-    expect(screen.getByRole('checkbox', { name: /Range/ })).toBeDisabled();
+    const range = screen.getByRole('checkbox', { name: /Range/ });
+    expect(range).toBeEnabled();
+    await userEvent.click(range);
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith('<STATS DESCRIPTION>'));
   });
 });
 

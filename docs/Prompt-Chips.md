@@ -57,7 +57,7 @@ The **Now Message** offers **Location**, **Entities**, **Time** and **Notes**.
 | **Content** | **Location**, **Entities**, **Persona** | Sends **Full** detail, a **Summary**, or the **Name** only |
 | **Content** | **Traits** | Sends each trait's **Description**, or the **Name** only, one per line under its group heading |
 | **Include** | **Entities**, **Persona** | Sends each entity's **Traits** and **Stats**, each on or off. On **Entities**, **Movement** sends whether a character follows the player, waits, or can't leave right now. |
-| **Stat Detail** | **Stats**, **Entities**, **Persona** | Sends **Range**, **Descriptor** and **Description** for each stat. At least one stays checked. |
+| **Stat Detail** | **Stats**, **Entities**, **Persona** | Sends **Range**, **Descriptor** and **Description** for each stat. With all three off, the chip sends stat names only. |
 | **Format** | **Stats**, **Traits**, **Location**, **Entities**, **Persona**, **Inventory** | Shapes the text as **Simple**, **Markdown** or **XML** |
 | **Mode** | **Dictionary**, placeholder chips | Picks **Foreground** or **Background** lore. On a placeholder chip, picks **World** or **Unique**. |
 | **Label** | Placeholder chips set to **Unique** | Names the chip |
