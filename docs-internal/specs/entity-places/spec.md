@@ -117,6 +117,7 @@ Rulings from the grill of 2026-11-11.
 - **Q29.** The Test Bench rule "location has no entities" ignores the Custom Persona. The persona is the player, so it does not make a location occupied. User ruling of 2026-11-11, on the landing of ticket 07. The rule and the Custom Persona are both in v3.6.2, so an author can see this change: it needs its own changelog line, which the close adds with the lines of Q25.
 - **Q30.** The library owns the routine of a linked entity with a kind. A library update maps the source's Starts, rows and Can Also Go through the copy's location connections and replaces the copy's routine; compare and the update review use the same mapping; link repair is a fresh carry. A Unique entity with no kept Start takes one Start at the first mapped place in ref order. Ticket 09 builds an interim where the routine is world-owned; ticket 11 builds the mapped read after tickets 09 and 10. User ruling of 2026-11-11, on an intent question of ticket 09.
 - **Q31.** Q30 covers both kinds. Link repair rebuilds the routine of a Generic copy from the source too, so Starts added on the copy are replaced. Spec-session ruling of 2026-11-11, on an intent question of ticket 09; it applies Q30.
+- **Q32.** The load drops a stored `locations` from every entity with a kind, in the routine migration that rebuilt the list before. No export path strips it. Q5 stands: the bundled worlds are rewritten once, with no new migration step. Spec-session ruling of 2026-11-11, on an intent question of ticket 10.
 
 Other decisions:
 
