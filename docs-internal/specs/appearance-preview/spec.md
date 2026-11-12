@@ -1,6 +1,7 @@
 # Spec: Appearance Preview
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-11. Tickets 01-08, last landing 4165c89bb. Review: gaps fixed in ticket 07, spec text corrected. Closed red: src/components/prompt/CodeArea.test.tsx, not in this effort.
 Spec session: appearance-preview — spec
 
 Second of two specs from one grill. It builds on Avatar Pick Rules: the Preview opens the Avatar that spec's resolver gives a row.
@@ -79,11 +80,15 @@ Q-numbers are from the grill of 2026-11-11. Q1–Q6 and Q19 belong to the Avatar
 ### The Preview
 
 - A Preview button sits in the footer row of the stat and trait editor panel while the Appearance tab is open. It opens a dialog that holds the Avatar viewer and the controls. Tickets 04 and 05 built it at the top of the tab; ticket 08 moves it.
-- In the footer row, Preview sits on the left. Reset to Blueprint and Link sit on the right; one row never has both. A trait's link row gets the Reset to Blueprint button a stat's has.
+- In the footer row, Preview sits alone on the left. The right side holds the row's other actions.
+- A link row, of a stat or of a trait, has Edit Blueprint and then Reset to Blueprint. It has no Link To… button. A stat's link row gets the Edit Blueprint button a trait's has, and a trait's loses Link To….
+- A Blueprint item in Advanced keeps Link To… on the right.
+- A read-only row has no Preview button. A trait link row is read-only, so it has none; a stat link row has one.
+- Edit Blueprint shows where the host can open the original. The entity and library editors cannot, so their link rows have Reset to Blueprint only.
 - The Avatar is the one the row resolves to under Avatar Pick Rules. When a world row resolves to several, the dialog offers a choice between them and opens on the first.
 - The controls are the ones a row can hold: the Avatar's Body Sliders, Head Features, and its skin, eye and hair colors. Hair style, hair length and other colors are absent.
 - The controls reuse the Avatar viewers' customization surface, so the sliders, the color rows and the undo buttons are the same components.
-- With no Avatar the button is disabled. Where the tab already shows its hint for a row with no model, the button sits beside that hint. An entity with only a 3D model gets a short hint of its own that says to set an Avatar. A world row with no Avatar has no model, so it shows the existing hint.
+- With no Avatar the button is disabled in the footer row, and the hint shows in the tab (Q13, as the footer ruling changed it). A row with no model shows the tab's existing hint. An entity with only a 3D model gets a short hint of its own that says to set an Avatar. A world row with no Avatar has no model, so it shows the existing hint.
 - Two Avatars can name one slider by different aliases. That is one control with one edit: after a change of Avatar the slider shows the edit, and Save writes the most recent drag.
 - The viewer mounts only while the dialog is open.
 - The dialog has a dev-route entry.

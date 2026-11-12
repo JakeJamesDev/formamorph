@@ -70,19 +70,18 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The character and dictionary editors in your library can close every group at once.** Select **Collapse all**, right of the filter box, and again to open them all. Groups stay closed until you close the editor.
   - **Formaquestion:**
     - **In the World Editor, Formaquestion now reads each entity's routine and each location's Connections.** It sees kinds, starts, rows, Can Also Go, Travel, Distance, hints and who can be at a place.
-  - **Avatar Undo:**
-    - **Every slider and color in Avatar Customization and the model details panel has its own Undo button.** It puts the control back to the model's own value and is disabled while the control is unchanged.
   - **Avatar Pick Rules:**
     - **You can delete your last Avatar, and the bundled Avatar is your starting Default.** A new install marks it as your Default Avatar. An update marks it once, when you had none.
     - **In the World Editor, an entity set to User's Default now lists your Default Avatar's sliders and colors.** A library Avatar you deleted lists your default instead. With no Avatar and no 3D model, the Appearance tab asks you to pick one.
     - **In the World Editor, a world stat or trait now lists only the Avatars its players can have.** It lists each playable persona's Avatar once. A bound slider the list lacks stays on the row.
   - **Appearance Preview:**
+    - **Every slider and color in Avatar Customization and the model details panel has its own Undo button.** It puts the control back to the model's own value and is disabled while the control is unchanged.
     - **Color pickers can take a color from anywhere on the screen.** A **Pick From Screen** button shows only where the system allows it. In Avatar controls, the Avatar holds still during the pick.
     - **Traits and stats that change your Avatar now show an Avatar icon.** It shows in trait selection, on the Traits tab and on the Stats tab. Hover it to see which sliders or colors change.
-    - **In the World Editor, a trait's Appearance tab has a Preview that shows the trait on its Avatar.** Drag sliders and pick colors there, then Save writes them to the trait's rows. One Undo takes the whole change back.
+    - **In the World Editor, a trait's Appearance tab has a Preview that shows the trait on its Avatar.** Preview sits at the bottom left of the panel. Drag sliders and pick colors there, then Save writes them to the trait's rows. One Undo takes the whole change back.
     - **A trait Preview in a world with several playable Avatars has an Avatar menu to switch between them.** Your unsaved changes stay when you switch. Save writes the changes you made on every Avatar.
     - **In the World Editor, a stat's Appearance tab has a Preview of the stat's look at Max on its Avatar.** A scrubber shows the look from Min to Max. Save writes each slider's Change By and each Target Color.
-    - **In the World Editor, Preview now sits at the bottom left of a stat or trait panel.** It shows while the Appearance tab is open. A linked stat now has Edit Blueprint, and a linked trait no longer has Link To….
+    - **In the World Editor, a linked stat now has Edit Blueprint, and a linked trait no longer has Link To….** Edit Blueprint and Reset to Blueprint sit at the bottom right of the panel.
   - **In the World Editor, an entity with only a Stranger Description now starts as a stranger.** In play, you see its Name and that description until you meet it. Stranger Name now sits beside Name, and Stranger Description under Player-Facing Description. Items' Unidentified fields match, and each field has its own help button.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.
