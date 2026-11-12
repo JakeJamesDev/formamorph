@@ -100,6 +100,7 @@ a drag writes   Change By = dragged value − model's own value
 - A color shows the blend from the model's own color toward the Target Color at `progress`. A pick is the new Target Color.
 - A Change By outside the slider's range shows the slider at its end with the number beside it. It changes only if the author drags it.
 - One line of text says the change adds to the player's own value in play.
+- A stat whose Max is not above its Min never changes the Avatar in play. Its Preview button is disabled with a hint to set a Max above Min.
 
 **Save.**
 
