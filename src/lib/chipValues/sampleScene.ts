@@ -1,4 +1,4 @@
-import type { Currency, Entity, GameLocation, Item, ItemCopy, Placeholder, Stat, Trait, WorldOverview } from '@/types';
+import type { Currency, Entity, GameLocation, Item, ItemCopy, Placeholder, Stat, StatGroup, Trait, TraitGroup, WorldOverview } from '@/types';
 import type { ResolvedPersona } from '../persona';
 import { authoredChipScene, type AuthoredWorld } from './authoredScene';
 import { ownerStatParts } from '../statContext';
@@ -111,20 +111,26 @@ const ITEMS = [
 // The traveler and Wren hold Items and a gull doesn't, so the chip shows a balance on some owners only.
 const CURRENCIES: Currency[] = [{ id: 'tide-money', name: 'Coin', backing: { kind: 'items', items: [{ itemId: 'tide-bit', worth: 1 }, { itemId: 'tide-crown', worth: 10 }] } }];
 
+// One grouped and some top-level global stats and traits, so the Stats and Traits chips show both shapes.
+const STAT_GROUPS: StatGroup[] = [{ id: 'body', name: 'Body', aiDescription: 'What the coast has done to the traveler.', parentId: null }];
+const TRAIT_GROUPS: TraitGroup[] = [{ id: 'habits', name: 'Habits', aiDescription: 'Ways the traveler cannot help.', parentId: null }];
+
 /** The sample world the Settings preview renders when no game runs. */
 const SAMPLE_WORLD: AuthoredWorld = {
   worldOverview: overview,
   stats: [
-    stat('health', 'Health', 82, 'How much punishment the body still has in it.', [[30, 'Badly hurt'], [90, 'Bruised'], [100, 'Unhurt']]),
+    { ...stat('health', 'Health', 82, 'How much punishment the body still has in it.', [[30, 'Badly hurt'], [90, 'Bruised'], [100, 'Unhurt']]), groupId: 'body' },
     stat('resolve', 'Resolve', 40, 'The will to keep going when it stops being sensible.', [[25, 'Breaking'], [50, 'Fraying'], [100, 'Steady']]),
     stat('standing', 'Standing', 15, 'How the coast reckons the traveler.', [[20, 'A stranger'], [60, 'Known'], [100, 'Trusted']]),
   ],
+  statGroups: STAT_GROUPS,
   locations: [boathouse, tidePools, landing, causeway, sampleTown],
   entities: [wren, gull, bell, harrow, ossery],
   traits: [
-    trait('light-sleeper', 'Light Sleeper', 'Wakes at the smallest sound, and is never quite rested.'),
+    { ...trait('light-sleeper', 'Light Sleeper', 'Wakes at the smallest sound, and is never quite rested.'), groupId: 'habits' },
     trait('salvagers-eye', "Salvager's Eye", 'Spots the worth in a heap of junk, and rarely says so out loud.'),
   ],
+  traitGroups: TRAIT_GROUPS,
   dictionaries: [{
     id: 'sample-lore', name: 'Sample Lore', placeholders: [fixed('glass-color', 'Glass Color', 'sea green')], entries: [
       {

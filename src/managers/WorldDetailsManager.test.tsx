@@ -425,6 +425,15 @@ describe('the world narration prompt field', () => {
     expect(values('<NARRATION>')).toBeTruthy();
   });
 
+  it('previews the sample clock in every Time format, not just the plain one', async () => {
+    const values = await previewValues();
+
+    expect(values('<TIME>')).toBe('Day 3, evening');
+    expect(values('<TIME|hours>')).toBe('Day 3, 18:00');
+    expect(values('<TIME|ampm>')).toBe('Day 3, 6:00 PM');
+    expect(values('<TIME|noday>')).toBe('evening');
+  });
+
   it('previews the guidance built from the player’s own settings, not a stand-in', async () => {
     const values = await previewValues();
 

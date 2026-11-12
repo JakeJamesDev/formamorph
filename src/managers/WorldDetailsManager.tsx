@@ -9,7 +9,7 @@ import { PanelTabContent, PanelTabs, type PanelTab } from "@/components/ui/panel
 import PromptField from "@/components/prompt/PromptField";
 import PlaceholderField from "@/components/prompt/PlaceholderField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
-import { PROMPT_KIND_VARIABLES } from "@/lib/promptVariables";
+import { PROMPT_KIND_VARIABLES, variableForToken } from "@/lib/promptVariables";
 import { authoredChipScene } from "@/lib/chipValues/authoredScene";
 import { chipValues } from "@/lib/chipValues/chipValues";
 import { composePreviewValues, languagePreviewValue } from "@/lib/previewValuePool";
@@ -52,6 +52,9 @@ const PanelFooter = ({ note, onReset }: { note: ReactNode; onReset?: () => void 
  * to tracking the template. Only these three system prompts are replaceable; every other AI pass keeps
  * running on the player's own preset.
  */
+// Chips a world alone cannot fill, in every variant; the sample turn supplies them.
+const SAMPLE_ONLY_CHIPS = new Set(['<NOTES>', '<TIME>']);
+
 const CustomPromptsSection = ({ kind, onKindChange }: {
   kind: WorldPromptKind;
   onKindChange: (kind: WorldPromptKind) => void;
@@ -71,11 +74,10 @@ const CustomPromptsSection = ({ kind, onKindChange }: {
   // fall through to the shared samples, exactly as they do for a live game between turns.
   const previewValues = useMemo(
     () => {
-      // A world has no notes or clock, so the pool's sample turn supplies both, as it does the per-turn chips.
       const authored = omitValues(chipValues(authoredChipScene({
         worldOverview, stats, statGroups, locations, connections, entities, traits, traitGroups, dictionaries, placeholders,
         items, placements, slots, bodies, currencies,
-      })), (key) => key === '<NOTES>' || key === '<TIME>');
+      })), (key) => SAMPLE_ONLY_CHIPS.has(variableForToken(key)?.token ?? ''));
       return composePreviewValues(
         {
           paragraphLimit, maxTokens, markdownOutput, sectionStyle: activeSectionStyle,

@@ -38,12 +38,12 @@
  "<PERSONA|nostats.markdown>": "- **Traveler**\n  - **pronouns:** they/them\n  - **description:** Salt-stained and slow to speak, carrying a map they no longer trust.\n  - **traits:**\n    - **False Map:** Carries a chart that lies, and knows which parts.\n",
  "<PERSONA|summary.markdown>": "- **Traveler**\n  - **pronouns:** they/them\n  - **summary:** A quiet, salt-stained wanderer.\n  - **traits:** False Map\n  - **stats:**\n    - **Nerve:** 55/100 (Steady) — How steady the hands stay when the water rises.\n",
  "<PERSONA|withstats.summary.markdown>": "- **Traveler**\n  - **pronouns:** they/them\n  - **summary:** A quiet, salt-stained wanderer.\n  - **traits:** False Map\n  - **stats:**\n    - **Nerve:** 55/100 (Steady) — How steady the hands stay when the water rises.\n",
- "<STATS DESCRIPTION>": "Health\nResolve\nStanding",
- "<STATS DESCRIPTION|descriptions.markdown>": "- **Health:** Bruised\n- **Resolve:** Fraying\n- **Standing:** A stranger",
- "<STATS DESCRIPTION|markdown>": "- **Health**\n- **Resolve**\n- **Standing**",
- "<STATS DESCRIPTION|numbers.meaning.markdown>": "- **Health:** 82/100 — How much punishment the body still has in it.\n- **Resolve:** 40/100 — The will to keep going when it stops being sensible.\n- **Standing:** 15/100 — How the coast reckons the traveler.",
+ "<STATS DESCRIPTION>": "Resolve\nStanding\nBody:\n  What the coast has done to the traveler.\n  Health",
+ "<STATS DESCRIPTION|descriptions.markdown>": "- **Resolve:** Fraying\n- **Standing:** A stranger\n- **Body:** What the coast has done to the traveler.\n  - **Health:** Bruised",
+ "<STATS DESCRIPTION|markdown>": "- **Resolve**\n- **Standing**\n- **Body:** What the coast has done to the traveler.\n  - **Health**",
+ "<STATS DESCRIPTION|numbers.meaning.markdown>": "- **Resolve:** 40/100 — The will to keep going when it stops being sensible.\n- **Standing:** 15/100 — How the coast reckons the traveler.\n- **Body:** What the coast has done to the traveler.\n  - **Health:** 82/100 — How much punishment the body still has in it.",
  "<TIME>": "Day 3, evening",
- "<TRAITS DESCRIPTION>": "Light Sleeper: Wakes at the smallest sound, and is never quite rested.\nSalvager's Eye: Spots the worth in a heap of junk, and rarely says so out loud.",
- "<TRAITS DESCRIPTION|markdown>": "- **Light Sleeper:** Wakes at the smallest sound, and is never quite rested.\n- **Salvager's Eye:** Spots the worth in a heap of junk, and rarely says so out loud.",
+ "<TRAITS DESCRIPTION>": "Salvager's Eye: Spots the worth in a heap of junk, and rarely says so out loud.\nHabits:\n  Ways the traveler cannot help.\n  Light Sleeper: Wakes at the smallest sound, and is never quite rested.",
+ "<TRAITS DESCRIPTION|markdown>": "- **Salvager's Eye:** Spots the worth in a heap of junk, and rarely says so out loud.\n- **Habits:** Ways the traveler cannot help.\n  - **Light Sleeper:** Wakes at the smallest sound, and is never quite rested.",
  "<WORLD DESCRIPTION>": "A quiet stretch of coast where the tide leaves more behind than it takes. People here trade in salvage and rumor, and nobody asks where either came from."
 }

@@ -29,6 +29,12 @@ describe('sampleChipScene', () => {
     expect(chipValues(sampleChipScene())('<TIME>')).toBe('Day 3, evening');
   });
 
+  it('shows grouped and top-level global stats and traits', () => {
+    const values = chipValues(sampleChipScene());
+    expect(values('<STATS DESCRIPTION>')).toBe('Resolve\nStanding\nBody:\n  What the coast has done to the traveler.\n  Health');
+    expect(values('<TRAITS DESCRIPTION>')).toMatch(/^Salvager's Eye: .*\nHabits:\n {2}Ways the traveler cannot help\.\n {2}Light Sleeper: /);
+  });
+
   it('fills both owner blocks of the default stat prompt in the Settings preview', () => {
     const prompt = renderPromptTemplate(defaultStatUpdatesPrompt, chipValues(sampleChipScene()));
     expect(prompt).toMatch(/## Player Character\n- \*\*Traveler\*\*[^#]*- \*\*Nerve:\*\* 55\/100/);
