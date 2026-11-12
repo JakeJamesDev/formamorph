@@ -2,7 +2,7 @@
  *  `EntityEditorModal` render from these, and the dev-router ledgers (`DEV_MODAL_TABS.worldEditorEntity`,
  *  `DEV_MODAL_TABS.entityEditor`, `DEV_MODAL_TABS.entityEditorEntity`) are guarded against them in
  *  `devRouter.test.ts`. */
-import { AlignLeft, Route } from 'lucide-react';
+import { AlignLeft } from 'lucide-react';
 
 import { ELEMENT_ICONS } from '@/lib/elementIcons';
 import { isOpeningFieldKey } from '@/lib/openings';
@@ -12,7 +12,7 @@ export const ENTITY_PANEL_TABS = [
   { value: 'profile', label: 'Profile', icon: ELEMENT_ICONS.entity },
   { value: 'descriptions', label: 'Descriptions', icon: AlignLeft },
   { value: 'items', label: 'Items', icon: ELEMENT_ICONS.item, worldOnly: true },
-  { value: 'presence', label: 'Presence', icon: Route, worldOnly: true },
+  { value: 'presence', label: 'Presence', icon: ELEMENT_ICONS.location, worldOnly: true },
   { value: 'traits', label: 'Traits', icon: ELEMENT_ICONS.trait, advancedOnly: true },
   { value: 'stats', label: 'Stats', icon: ELEMENT_ICONS.stat, advancedOnly: true },
   { value: 'placeholders', label: 'Placeholders', icon: ELEMENT_ICONS.placeholder, advancedOnly: true },

@@ -349,13 +349,10 @@ function StartRoutine({ entity, kind, start, weights, book, connected, commit, o
         </div>
       )}
 
-      <div className="space-y-1.5">
-        <Label>Routine</Label>
-        <DayStrip
-          rows={start.schedule} free={free} lockable={fields.locks} asHoursOf={asHoursOf} selected={selected}
-          onSelect={showRow} onFill={fill} onMove={move}
-        />
-      </div>
+      <DayStrip
+        rows={start.schedule} free={free} lockable={fields.locks} asHoursOf={asHoursOf} selected={selected}
+        onSelect={showRow} onFill={fill} onMove={move}
+      />
 
       <ol className="space-y-0.5 border-l pl-2" aria-label="Routine">
         {lines.map((line) => line.row ? (
