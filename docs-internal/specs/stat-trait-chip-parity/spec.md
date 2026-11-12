@@ -1,6 +1,7 @@
 # Spec: Stat And Trait Chip Parity
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-12; tickets 01–03, last landing 9ce75cd93. Review: spec text corrected. Gates green on 2026-11-12.
 Spec session: stat-trait-chip-parity — spec
 
 ## Problem Statement
@@ -64,10 +65,10 @@ Settled in the grill on 2026-11-12.
 
 ## Implementation Decisions
 
-- **Stat Detail lock.** Remove the "last checked piece stays on" rule for the `statDetail` lock group in the Chip Options dialog. The lock group's only use is this rule. Remove the field if nothing else reads it.
-- **Names-only renders.** The Stats chip already renders names only with every piece off. The owned stat-line builder (Persona and Entities) gains the all-off case. It renders the stat names inline after the `stats` label, in every format (plain, markdown, XML), the same way owned trait names render in Summary content.
+- **Stat Detail lock.** Remove the "last checked piece stays on" rule for the `statDetail` lock group in the Chip Options dialog. The lock group's only use was this rule, so the field is gone.
+- **Names-only renders.** The Stats chip already renders names only with every piece off. The owned stat-line builder (Persona and Entities) gains the all-off case. It renders the stat names inline after the `stats` label, with no owned stat-group headings, in every format (plain, markdown, XML), the same way owned trait names render in Summary content.
 - **Traits Content axis.** Add a Content axis to the Traits chip with two options: Description (`null`, the default) and Name. Use its own axis, not the Entities chip's three-option Content axis. Name mode renders one name per line and keeps group headings, in every format. A group's heading description still shows, as it does for names-only Global Stats.
-- **Default prompts.** In the default Narration and Choices prompts, add the `norange` and `nodescription` ids to every Persona chip and every Entities chip that sends stats. The stored variant ids are as they are today. The default Stat Updates, Planner and Director prompts do not change.
+- **Default prompts.** In the default Narration and Choices prompts, add the `norange` and `nodescription` ids to every Persona chip and every Entities chip that sends stats. The stored variant ids are as they are today. The default Stat Updates, Planner and Director prompts do not change. The Test Bench's AI Context table names the chips the default Narration prompt uses, so its Persona and Here Entities rows carry the same ids.
 - **Saved prompts.** A player whose prompt follows the default gets the new text. An edited prompt stays as written. This uses the existing default-prompt mechanism; nothing migrates.
 - **No export-shape change.** World and save files do not change. Chip variant ids live in prompt text that already exists.
 - **Copy.** The Traits Content row and its option help follow the Writing Guide. Reuse the Stats chip's Stat Detail help as it is.
