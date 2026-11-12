@@ -127,6 +127,7 @@ Rulings from the grill of 2026-11-11.
 - **Q39.** A copy with no kind writes its membership back through the same inverse as a routine, and library membership the world has no connection for stays (Q34).
 
   Q34 to Q39 are spec-session rulings of 2026-11-11, on intent questions of ticket 12.
+- **Q40.** Q37 applies only when no library Start carried at all. When one or more library Starts carried, the carry made no fallback, so a plain Start the author added goes back. Spec-session ruling of 2026-11-11, on the close review; ticket 13 builds it.
 
 Other decisions:
 
