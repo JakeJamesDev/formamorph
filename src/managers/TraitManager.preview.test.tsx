@@ -17,6 +17,9 @@ const CAPS: VRMCapabilities = {
   extras: [],
 };
 
+// A second Avatar with no Ear Shape and a slider the first lacks.
+const BRYN_CAPS: VRMCapabilities = { ...CAPS, headMorphs: [], bodyMorphs: ['Fat', 'Tail'], colors: { hair: '#111111' } };
+
 const elf: Trait = {
   id: 'elf', name: 'Elf', statChanges: [],
   morphPins: [{ name: 'Ear Shape', value: 0.6 }],
@@ -63,13 +66,15 @@ vi.mock('@/lib/vrmMorphLoader', () => ({
   loadMorphCatalog: async () => [{ name: 'Ear Shape', group: 'head' }, { name: 'Fat', group: 'body' }],
   loadVrmLook: async () => ({ catalog: [{ name: 'Ear Shape', group: 'head' }, { name: 'Fat', group: 'body' }], channels: ['skin', 'hair'], colors: CAPS.colors }),
 }));
-const storage = vi.hoisted(() => ({ read: [] as string[] }));
+const storage = vi.hoisted(() => ({ read: [] as string[], ids: new WeakMap<Blob, string>() }));
 vi.mock('@/services/ModelStorageService', () => ({
   default: {
-    getModelMetadata: async () => [{ id: 'aurelia', name: 'Aurelia' }],
+    getModelMetadata: async () => [{ id: 'aurelia', name: 'Aurelia' }, { id: 'bryn', name: 'Bryn' }],
     getModelData: async (id: string) => {
       storage.read.push(id);
-      return { blob: new Blob(['x']) };
+      const blob = new Blob(['x']);
+      storage.ids.set(blob, id);
+      return { blob };
     },
   },
 }));
@@ -77,10 +82,11 @@ vi.mock('@/services/ModelStorageService', () => ({
 const viewer = vi.hoisted(() => ({ props: null as null | Record<string, unknown> }));
 vi.mock('@/views/VRMViewer', async () => {
   const { useEffect } = await import('react');
-  const FakeViewer = (props: { onCapabilities?: (caps: VRMCapabilities) => void } & Record<string, unknown>) => {
+  const FakeViewer = (props: { onCapabilities?: (caps: VRMCapabilities) => void; modelUrl?: string } & Record<string, unknown>) => {
     viewer.props = props;
     const report = props.onCapabilities;
-    useEffect(() => { report?.(CAPS); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // The object URL names the Avatar it holds, so each Avatar reports its own sliders.
+    useEffect(() => { report?.(props.modelUrl === 'blob:bryn' ? BRYN_CAPS : CAPS); }, []); // eslint-disable-line react-hooks/exhaustive-deps
     return <div data-testid="avatar-viewer" />;
   };
   return { default: FakeViewer };
@@ -115,7 +121,7 @@ const openPreview = async () => {
 
 /** Moves a section's slider by keyboard steps of 0.05. */
 const nudge = async (heading: string, keys: string) => {
-  within(section(heading)).getByRole('slider').focus();
+  within(section(heading)).getAllByRole('slider')[0].focus();
   await userEvent.keyboard(keys);
 };
 
@@ -127,7 +133,7 @@ const pickHex = async (label: string, hex: string) => {
 };
 
 beforeEach(() => {
-  URL.createObjectURL = vi.fn(() => 'blob:avatar');
+  URL.createObjectURL = vi.fn((blob: Blob) => `blob:${storage.ids.get(blob) ?? 'avatar'}`);
   URL.revokeObjectURL = vi.fn();
   world.traits = [elf, human];
   world.stats = [growth];
@@ -218,6 +224,79 @@ describe("a trait's Preview", () => {
     await userEvent.click(within(dialog()).getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+});
+
+describe("a world trait's Preview with two playable Avatars", () => {
+  const avatarMenu = () => within(dialog()).getByRole('combobox', { name: 'Avatar' });
+  const switchTo = async (avatarName: string) => {
+    await userEvent.click(avatarMenu());
+    await userEvent.click(await screen.findByRole('option', { name: avatarName }));
+  };
+
+  beforeEach(() => {
+    world.entities = [
+      ...world.entities,
+      { id: 'p2', name: 'Q', persona: true, locations: [], vrmPick: { kind: 'library', id: 'bryn' } },
+    ];
+  });
+
+  it('offers the Avatars by name and opens on the first', async () => {
+    await openPreview();
+    expect(avatarMenu()).toHaveTextContent('Aurelia');
+    expect(viewer.props).toMatchObject({ modelUrl: 'blob:aurelia' });
+  });
+
+  it('offers no choice with one Avatar', async () => {
+    world.entities = world.entities.slice(0, 1);
+    await openPreview();
+    expect(within(dialog()).queryByRole('combobox', { name: 'Avatar' })).toBeNull();
+  });
+
+  it('writes a drag made on the first Avatar after a switch to the second', async () => {
+    await openPreview();
+    await nudge('Head Features', '{ArrowRight}{ArrowRight}');
+    await switchTo('Bryn');
+    await within(dialog()).findByRole('heading', { name: 'Body Sliders' });
+    expect(saveButton()).toBeEnabled();
+    await userEvent.click(saveButton());
+
+    expect(world.writes).toBe(1);
+    expect(elfNow().morphPins).toEqual([{ name: 'Ear Shape', value: 0.7 }]);
+  });
+
+  it("hides a slider the second Avatar lacks, and a row for it is unchanged by Save", async () => {
+    await openPreview();
+    await switchTo('Bryn');
+    await within(dialog()).findByRole('heading', { name: 'Body Sliders' });
+    expect(within(dialog()).queryByRole('heading', { name: 'Head Features' })).toBeNull();
+    await nudge('Body Sliders', '{ArrowRight}');
+    await userEvent.click(saveButton());
+
+    expect(elfNow().morphPins).toEqual([{ name: 'Ear Shape', value: 0.6 }, { name: 'Fat', value: 0.05 }]);
+  });
+
+  it("does not carry the first Avatar's own color to the second after an undo", async () => {
+    world.traits = [{ ...elf, colorPins: undefined }, human];
+    await openPreview();
+    await pickHex('Hair Color', 'AA11CC');
+    fireEvent.click(undo('Hair Color'));
+    await switchTo('Bryn');
+    await within(dialog()).findByRole('heading', { name: 'Body Sliders' });
+
+    expect(within(dialog()).getByRole('button', { name: 'Hair Color' })).toHaveAccessibleDescription('#111111');
+    expect(saveButton()).toBeDisabled();
+  });
+
+  it("keeps a control's undo at the trait's saved value after a switch", async () => {
+    await openPreview();
+    await nudge('Body Sliders', '{ArrowRight}');
+    await switchTo('Bryn');
+    await within(dialog()).findByRole('heading', { name: 'Body Sliders' });
+    expect(undo('Fat')).toBeEnabled();
+    fireEvent.click(undo('Fat'));
+    expect(undo('Fat')).toBeDisabled();
+    expect(saveButton()).toBeDisabled();
   });
 });
 

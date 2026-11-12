@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lookChanged, traitLook, traitRowsOnSave, withColor, withSlider, type PreviewLook, type PreviewModel, type TraitLookRows } from './appearancePreview';
+import { NO_EDITS, avatarsChanged, editColor, editSlider, lookChanged, lookWithEdits, traitLook, traitRowsOnSave, traitRowsOnSaveAcross, withColor, withSlider, type PreviewLook, type PreviewModel, type TraitLookRows } from './appearancePreview';
 
 const MODEL: PreviewModel = { sliders: ['Ear Shape', 'Fat'], colors: { skin: '#e8c8b0', hair: '#402010' } };
 
@@ -66,6 +66,33 @@ describe('traitRowsOnSave', () => {
     // A drag on another Avatar's slider, as a dialog that switches Avatars carries it.
     const base = traitLook({}, MODEL);
     expect(traitRowsOnSave({}, MODEL, base, withSlider(base, 'Tail', 0.5)).morphPins).toEqual([{ name: 'Tail', value: 0.5 }]);
+  });
+});
+
+describe('edits across Avatars', () => {
+  const OTHER: PreviewModel = { sliders: ['Fat', 'Tail'], colors: { hair: '#111111' } };
+  const opened = (rows: TraitLookRows) => [MODEL, OTHER].map((model) => ({ model, base: traitLook(rows, model) }));
+
+  it('shows an edit only on the controls an Avatar has', () => {
+    const edits = editSlider(editColor(NO_EDITS, 'skin', '#112233'), 'Ear Shape', 0.9);
+    const look = lookWithEdits(traitLook({}, OTHER), edits);
+    expect(look).toEqual({ sliders: { Fat: 0, Tail: 0 }, colors: { hair: '#111111' } });
+  });
+
+  it('saves an edit made on one Avatar once both are opened', () => {
+    const edits = editSlider(editSlider(NO_EDITS, 'Ear Shape', 0.4), 'Tail', 0.2);
+    expect(traitRowsOnSaveAcross({}, opened({}), edits).morphPins).toEqual([{ name: 'Ear Shape', value: 0.4 }, { name: 'Tail', value: 0.2 }]);
+  });
+
+  it('leaves a row the second Avatar lacks as it is', () => {
+    const rows = { morphPins: [{ name: 'Ear Shape', value: 0.5 }] };
+    expect(traitRowsOnSaveAcross(rows, opened(rows), editSlider(NO_EDITS, 'Tail', 0.2)).morphPins)
+      .toEqual([{ name: 'Ear Shape', value: 0.5 }, { name: 'Tail', value: 0.2 }]);
+  });
+
+  it('counts an edit put back to its base as no change', () => {
+    expect(avatarsChanged(opened({}), editSlider(NO_EDITS, 'Fat', 0))).toBe(false);
+    expect(avatarsChanged(opened({}), editSlider(NO_EDITS, 'Fat', 0.1))).toBe(true);
   });
 });
 

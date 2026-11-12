@@ -34,19 +34,24 @@ const PREVIEW_ROWS: TraitLookRows = { morphPins: [{ name: 'Ear Shape', value: 1 
 
 /** The library's first Avatar, or the bundled one on an empty library. */
 function DevAppearancePreview({ onClose }: { onClose: () => void }) {
-  const [avatar, setAvatar] = useState<RowAvatar>();
+  const [avatars, setAvatars] = useState<RowAvatar[]>();
   useEffect(() => {
     let live = true;
     void ModelStorageService.getModelMetadata()
       .catch(() => [])
       .then((models) => {
         if (!live) return;
-        const first = models[0];
-        setAvatar(first ? { kind: 'library', id: first.id, name: first.name } : { kind: 'world', name: 'Default Avatar', data: DEFAULT_AVATAR_URL });
+        const first: RowAvatar[] = models.slice(0, 1).map((m) => ({ kind: 'library', id: m.id, name: m.name }));
+        // Two Avatars always, so the Avatar choice shows on an empty library too.
+        const bundled: RowAvatar[] = [
+          { kind: 'world', name: 'Default Avatar', data: DEFAULT_AVATAR_URL },
+          { kind: 'world', name: 'Default Avatar Again', data: DEFAULT_AVATAR_URL },
+        ];
+        setAvatars([...first, ...bundled].slice(0, 2));
       });
     return () => { live = false; };
   }, []);
-  return avatar ? <AppearancePreviewDialog name="Elf" avatar={avatar} rows={PREVIEW_ROWS} onSave={() => {}} onClose={onClose} /> : null;
+  return avatars ? <AppearancePreviewDialog name="Elf" avatars={avatars} rows={PREVIEW_ROWS} onSave={() => {}} onClose={onClose} /> : null;
 }
 
 /** DEV: the questions an edit asks partway through, raised on canned text. Every answer closes it and writes nothing. */

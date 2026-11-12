@@ -195,7 +195,7 @@ When two active traits set the same color, the one switched on last wins. The ro
 
 **Preview** shows the trait's look on its Avatar, so you can set sliders and colors by eye.
 
-- Select **Preview** at the top of the **Appearance** tab. The dialog opens the Avatar the trait plays on. With several, it opens the first.
+- Select **Preview** at the top of the **Appearance** tab. The dialog opens the Avatar the trait plays on. With several, it opens the first and offers an **Avatar** menu to switch. Your changes stay when you switch. A control the other Avatar lacks is hidden there, and Save still writes its change.
 - Each slider shows its **Set To** value, or the Avatar's own value where the trait has no row. Colors work the same way. Only this trait's rows apply.
 - The dialog has the Avatar's **Head Features**, **Body Sliders**, and its hair, eye and skin colors.
 - Each control's **Undo** button returns it to the value it had when the dialog opened.

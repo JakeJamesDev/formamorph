@@ -62,6 +62,43 @@ export const withSlider = (look: PreviewLook, key: string, value: number): Previ
 export const withColor = (look: PreviewLook, channel: ColorChannel, color: string): PreviewLook =>
   ({ ...look, colors: { ...look.colors, [channel]: color } });
 
+/** The controls the author changed, kept across a change of Avatar. A key an Avatar lacks stays here and is saved. */
+export interface PreviewEdits {
+  sliders: Readonly<Record<string, number>>;
+  colors: Readonly<Partial<Record<ColorChannel, string>>>;
+}
+
+export const NO_EDITS: PreviewEdits = { sliders: {}, colors: {} };
+
+export const editSlider = (edits: PreviewEdits, key: string, value: number): PreviewEdits =>
+  ({ ...edits, sliders: { ...edits.sliders, [key]: value } });
+
+export const editColor = (edits: PreviewEdits, channel: ColorChannel, color: string): PreviewEdits =>
+  ({ ...edits, colors: { ...edits.colors, [channel]: color } });
+
+/** `edits` without the slider's edit, so every Avatar shows its own opening value again. */
+export const clearSlider = (edits: PreviewEdits, key: string): PreviewEdits => {
+  const { [key]: _gone, ...sliders } = edits.sliders;
+  return { ...edits, sliders };
+};
+
+/** `edits` without the channel's edit, so every Avatar shows its own opening color again. */
+export const clearColor = (edits: PreviewEdits, channel: ColorChannel): PreviewEdits => {
+  const { [channel]: _gone, ...colors } = edits.colors;
+  return { ...edits, colors };
+};
+
+/** What one Avatar shows: its opening look with the edits laid over the controls it has. */
+export function lookWithEdits(base: PreviewLook, edits: PreviewEdits): PreviewLook {
+  let look = base;
+  for (const key of Object.keys(base.sliders)) if (key in edits.sliders) look = withSlider(look, key, edits.sliders[key]);
+  for (const channel of Object.keys(base.colors) as ColorChannel[]) {
+    const color = edits.colors[channel];
+    if (color !== undefined) look = withColor(look, channel, color);
+  }
+  return look;
+}
+
 export const sliderChanged = (look: PreviewLook, base: PreviewLook, key: string) => look.sliders[key] !== base.sliders[key];
 
 export const colorChanged = (look: PreviewLook, base: PreviewLook, channel: ColorChannel) =>
@@ -72,6 +109,26 @@ export function lookChanged(look: PreviewLook, base: PreviewLook): boolean {
   return Object.keys(look.sliders).some((key) => sliderChanged(look, base, key))
     || (Object.keys(look.colors) as ColorChannel[]).some((channel) => colorChanged(look, base, channel));
 }
+
+/** An Avatar the Preview loaded: its model and the look it opened with. */
+export interface LoadedAvatar<M extends PreviewModel = PreviewModel> {
+  model: M;
+  base: PreviewLook;
+}
+
+/**
+ * The trait's rows after Save across every Avatar the author opened. Each Avatar writes the edits to the
+ * controls it has, so a change made on one Avatar survives a switch to another.
+ */
+export function traitRowsOnSaveAcross(rows: TraitLookRows, avatars: readonly LoadedAvatar[], edits: PreviewEdits): TraitLookRows {
+  let out: TraitLookRows = rows;
+  for (const { model, base } of avatars) out = traitRowsOnSave(out, model, base, lookWithEdits(base, edits));
+  return out;
+}
+
+/** Whether any opened Avatar differs from the look it opened with. */
+export const avatarsChanged = (avatars: readonly LoadedAvatar[], edits: PreviewEdits) =>
+  avatars.some(({ base }) => lookChanged(lookWithEdits(base, edits), base));
 
 /**
  * The trait's rows after Save. A row keeps its place and takes its control's value. A control with no row adds

@@ -12,9 +12,10 @@ import { cn } from '@/lib/utils';
 import {
   BODY_MORPH_MAX, BODY_MORPH_MIN, BODY_MORPH_STEP, HEAD_MORPH_MAX, HEAD_MORPH_MIN, ColorRow, SliderRow,
 } from '@/lib/useVrmCustomization';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  colorChanged, lookChanged, modelChannels, traitLook, traitRowsOnSave, withColor, withSlider,
-  type PreviewLook, type PreviewModel, type TraitLookRows,
+  NO_EDITS, avatarsChanged, clearColor, clearSlider, colorChanged, editColor, editSlider, lookWithEdits, modelChannels, traitLook, traitRowsOnSaveAcross,
+  type LoadedAvatar, type PreviewEdits, type PreviewLook, type PreviewModel, type TraitLookRows,
 } from '@/lib/appearancePreview';
 import type { RowAvatar } from '@/lib/useSliderPicker';
 import type { ColorChannel } from '@/types';
@@ -39,47 +40,55 @@ const previewModel = (caps: VRMCapabilities): DialogModel => ({
   colors: caps.colors,
 });
 
-/** What the dialog holds once the model loads: the model, the look it opened with, and the look now. */
-interface Draft {
-  model: DialogModel;
-  base: PreviewLook;
+/** An Avatar the dialog loaded: its model, the look it opened with, and the look now. */
+interface Draft extends LoadedAvatar<DialogModel> {
   look: PreviewLook;
 }
 
+const avatarName = (avatar: RowAvatar, index: number) => avatar.name || `Avatar ${index + 1}`;
+
 /**
- * The Preview of a trait's sliders and colors on its Avatar. Mount it only while it is open: the viewer and
- * the draft live as long as it does. Save writes `onSave` once.
+ * The Preview of a trait's sliders and colors on its Avatars. Mount it only while it is open: the viewer and
+ * the edits live as long as it does. The edits are kept across a change of Avatar. Save writes `onSave` once.
  */
-export function AppearancePreviewDialog({ name, avatar, rows, onSave, onClose }: {
+export function AppearancePreviewDialog({ name, avatars, rows, onSave, onClose }: {
   /** The trait's display name. */
   name: string;
-  avatar: RowAvatar;
+  /** The Avatars the row plays on, at least one; the dialog opens on the first. */
+  avatars: readonly RowAvatar[];
   rows: TraitLookRows;
   onSave: (rows: TraitLookRows) => void;
   onClose: () => void;
 }) {
+  const [index, setIndex] = useState(0);
+  const avatar = avatars[Math.min(index, avatars.length - 1)];
   const load = useMemo(() => avatarLoader(avatar), [avatar]);
   const { url, failed } = useHeldModelBlob(load);
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const [loaded, setLoaded] = useState<Record<number, LoadedAvatar<DialogModel>>>({});
+  const [edits, setEdits] = useState<PreviewEdits>(NO_EDITS);
   const [picking, setPicking] = useState(false);
   const [confirmingClose, setConfirmingClose] = useState(false);
-  const changed = !!draft && lookChanged(draft.look, draft.base);
+  const here = loaded[index];
+  const draft: Draft | null = here ? { ...here, look: lookWithEdits(here.base, edits) } : null;
+  const opened = Object.values(loaded);
+  const changed = avatarsChanged(opened, edits);
 
   const onCapabilities = (caps: VRMCapabilities) => {
     const model = previewModel(caps);
-    const base = traitLook(rows, model);
-    // A second report of the same model keeps the author's changes.
-    setDraft((d) => d ?? { model, base, look: base });
+    // A second report of the same model keeps what the dialog opened with.
+    setLoaded((l) => (l[index] ? l : { ...l, [index]: { model, base: traitLook(rows, model) } }));
   };
-  const edit = (next: (look: PreviewLook) => PreviewLook) => setDraft((d) => (d ? { ...d, look: next(d.look) } : d));
+  const switchAvatar = (next: number) => {
+    setPicking(false);
+    setIndex(next);
+  };
 
   const requestClose = () => {
     if (changed) setConfirmingClose(true);
     else onClose();
   };
   const save = () => {
-    if (!draft) return;
-    onSave(traitRowsOnSave(rows, draft.model, draft.base, draft.look));
+    onSave(traitRowsOnSaveAcross(rows, opened, edits));
     onClose();
   };
 
@@ -118,7 +127,7 @@ export function AppearancePreviewDialog({ name, avatar, rows, onSave, onClose }:
       max={max}
       step={BODY_MORPH_STEP}
       format={(v) => v.toFixed(2)}
-      onChange={(v) => edit((look) => withSlider(look, key, v))}
+      onChange={(v) => setEdits((e) => (v === draft.base.sliders[key] ? clearSlider(e, key) : editSlider(e, key, v)))}
     />
   );
 
@@ -131,8 +140,8 @@ export function AppearancePreviewDialog({ name, avatar, rows, onSave, onClose }:
         label={CHANNEL_LABELS[channel]}
         value={value}
         base={base}
-        onChange={(hex) => edit((look) => withColor(look, channel, hex))}
-        onUndo={() => edit((look) => withColor(look, channel, base))}
+        onChange={(hex) => setEdits((e) => editColor(e, channel, hex))}
+        onUndo={() => setEdits((e) => clearColor(e, channel))}
         onPickStart={() => setPicking(true)}
         onPickEnd={() => setPicking(false)}
       />
@@ -176,7 +185,17 @@ export function AppearancePreviewDialog({ name, avatar, rows, onSave, onClose }:
           <div className="min-h-[40dvh] flex-1 bg-muted/30">{viewer}</div>
           <div className="flex min-h-0 flex-1 flex-col border-t md:w-80 md:flex-none md:border-l md:border-t-0">
             <ScrollArea className="min-h-0 flex-1">
-              <div className="space-y-6 px-4 py-3">{controls}</div>
+              <div className="space-y-6 px-4 py-3">
+                {avatars.length > 1 && (
+                  <Select value={String(index)} onValueChange={(v) => switchAvatar(Number(v))}>
+                    <SelectTrigger aria-label="Avatar"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {avatars.map((a, i) => <SelectItem key={i} value={String(i)}>{avatarName(a, i)}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+                {controls}
+              </div>
             </ScrollArea>
             <DialogFooter className="shrink-0 border-t p-4">
               <Button variant="outline" onClick={requestClose}>Cancel</Button>

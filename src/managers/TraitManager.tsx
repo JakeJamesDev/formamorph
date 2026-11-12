@@ -542,7 +542,7 @@ const TraitManager = ({
       {previewOpen && previewAvatar && (
         <AppearancePreviewDialog
           name={statLabel(editingTrait.name)}
-          avatar={previewAvatar}
+          avatars={sliders.avatars}
           rows={{ morphPins: editingTrait.morphPins, colorPins: editingTrait.colorPins }}
           onSave={apply}
           onClose={() => setPreviewOpen(false)}
