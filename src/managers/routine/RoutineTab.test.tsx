@@ -92,6 +92,12 @@ describe('On Map', () => {
     expect(stored(bench).onMap).toBe('whenNearby');
     expect(screen.getByText('Shows it only in the player’s location and Nearby locations')).toBeInTheDocument();
 
+    await userEvent.click(within(onMap).getByRole('radio', { name: 'Once Met' }));
+    expect(stored(bench).onMap).toBe('onceMet');
+
+    await userEvent.click(within(onMap).getByRole('radio', { name: 'Never' }));
+    expect(stored(bench).onMap).toBe('never');
+
     await userEvent.click(within(onMap).getByRole('radio', { name: 'Always' }));
     expect(stored(bench)).not.toHaveProperty('onMap');
   });
