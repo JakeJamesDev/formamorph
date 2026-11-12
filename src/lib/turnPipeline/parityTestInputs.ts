@@ -173,7 +173,7 @@ export const expectedMessages = (id: TurnPassId, messages: ChatMessage[]): ChatM
     ? messages.map((m, i) => (i === messages.length - 1 ? { ...m, content: m.content + CLOCK_SCHEMA_FORMAT } : m))
     : messages;
 
-/** The clock prompt as the run sent it, before its reply format moved into the appended block. */
+/** The clock prompt as the recorded run sent it, with its reply format inline in the system prompt. */
 export const recordedTimePassed = (template: string): string =>
   `${template.replace(
     'Decide how long it took.',
