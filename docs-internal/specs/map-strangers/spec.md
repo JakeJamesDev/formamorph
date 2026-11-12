@@ -69,6 +69,8 @@ Rulings from the grill of 2026-11-12.
 - **Q14.** A zero part of the badge is dropped: "3" with no unknowns, the unknown part alone with no named entries.
 - **Q15.** Once Met on an entity that starts met acts as Always. The editor shows no warning. The value's help text says it applies only to strangers.
 - **Q16.** Bundled-world sweep: the agent proposes an On Map value for each bundled entity that should differ from Always, one table per world. The user approves before any world changes.
+- **Q17.** Duplicate named entries at one place are numbered the way the scene roster numbers them ("a gate guard", "a gate guard (2)"). Each still counts once in the named part. Spec-session ruling of 2026-11-12, on an intent question of ticket 01.
+- **Q18.** With no current place, the reach is empty: every unmet entity is an unknown, and met entities show their true names. Spec-session ruling of 2026-11-12, on an intent question of ticket 01.
 
 Module decisions:
 
