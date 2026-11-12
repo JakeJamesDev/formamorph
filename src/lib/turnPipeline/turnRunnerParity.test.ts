@@ -119,7 +119,7 @@ describe('turn pipeline parity with the recorded run', () => {
       const { recorded, emitted, result } = await replay(index as number);
       expect(result.status, JSON.stringify(result.status === 'failed' ? result.kind : '')).toBe('ok');
       expect(emitted.map((r) => [r.type, r.maxTokens, r.silent, r.attachTurnId])).toEqual(
-        recorded.map((r) => [r.request.type, expectedCap(r.request), r.request.silent, r.request.attachTurnId]),
+        recorded.map((r) => [r.request.type, expectedCap(r.id, r.request), r.request.silent, r.request.attachTurnId]),
       );
     },
   );

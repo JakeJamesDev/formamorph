@@ -151,34 +151,61 @@ export const DRAINER_TYPES: AIRequestType[] = ['milestoneSelect'];
 /** The dock's destinations, as every recorded router prompt lists them. */
 export const PARITY_DESTINATIONS = ['Far Bank', 'The Common Green'];
 
-/**
- * Caps the passes gained after the recording, which holds null for them: choices' shipped 256, 16 per
- * stat for the run's 3 stats plus 16, and 'The Common Green' (4 tokens) plus 8.
- */
-const CAPS_SINCE_RECORDING: Partial<Record<AIRequestType, number>> = {
-  choices: 256,
-  statUpdates: 64,
-  locationChange: 12,
+/** How a pass changed since the recording, so a replay knows what the run would send today. */
+interface RecordedShape {
+  /** Replaces the recorded cap. */
+  cap?: number;
+  /** Fills a cap the recording holds as null. */
+  capSinceRecording?: number;
+  /** Turns the recorded messages into the ones a replay sends. */
+  messages?: (recorded: ChatMessage[]) => ChatMessage[];
+  /** Turns the current system template into the one the run rendered. */
+  systemPrompt?: (template: string) => string;
+}
+
+const RECORDED_SHAPES: Partial<Record<TurnPassId, RecordedShape>> = {
+  // 'The Common Green' (4 tokens) plus 8.
+  locationAuto: { capSinceRecording: 12 },
+  choices: {
+    capSinceRecording: 256,
+    // Matched paragraph by paragraph: the run recorded the world blocks between them.
+    systemPrompt: (template) => template.replace(/(<[^<>]+>)|\n\n/g, (match, chip: string | undefined) => chip ?? '<PARAGRAPH>'),
+  },
+  statUpdates: {
+    // 16 per stat for the run's 3 stats, plus 16.
+    capSinceRecording: 64,
+    // The text prompt from its rules on: no owner rule or slight-shift rule, and the change bound it had.
+    systemPrompt: (template) => template.slice(template.indexOf('## What to change'))
+      .replace(/^- The stats under Player Character.*\n/m, '')
+      .replace('a value-over-maximum. Put', 'a value-over-maximum; keep it between -20 and 20. Put')
+      .replace(/^- A slight but clear shift still gets a line.*\n/m, ''),
+  },
+  // Before its closing rule named the player character.
+  storyboard: { systemPrompt: (template) => template.replace("- Let the player character's stats", "- Let the player's stats") },
+  // The run predates the schema request: its reply format sat in the system prompt, not after the user message.
+  timePassed: {
+    cap: TURN_PASS_CAPS.timePassedSchema,
+    messages: (recorded) => recorded.map((m, i) => (i === recorded.length - 1 ? { ...m, content: m.content + CLOCK_SCHEMA_FORMAT } : m)),
+    systemPrompt: (template) => `${template.replace(
+      'Decide how long it took.',
+      'Decide how long it took, then write that as a count followed by its unit. Always write the count first - a bare unit letter is not an answer. Use m for minutes, h for hours, d for days, w for weeks.',
+    )}\n\nYour entire reply is that count and its unit, with nothing before or after it.`,
+  },
 };
 
-/** The cap a replayed request must carry: the recorded one, or the one added since. The clock pass's schema
- *  request, which the run predates, has its own. */
-export const expectedCap = (request: ParityRequestRecord): number | null =>
-  request.type === 'timePassed' ? TURN_PASS_CAPS.timePassedSchema : request.maxTokens ?? CAPS_SINCE_RECORDING[request.type] ?? null;
+/** The cap a replayed pass must carry. */
+export const expectedCap = (id: TurnPassId, request: ParityRequestRecord): number | null => {
+  const shape = RECORDED_SHAPES[id];
+  return shape?.cap ?? request.maxTokens ?? shape?.capSinceRecording ?? null;
+};
 
-/** The messages a replayed pass must send: the recorded ones, plus the clock pass's schema reply format, which
- *  the run predates and which rides after the user message. */
+/** The messages a replayed pass must send. */
 export const expectedMessages = (id: TurnPassId, messages: ChatMessage[]): ChatMessage[] =>
-  id === 'timePassed'
-    ? messages.map((m, i) => (i === messages.length - 1 ? { ...m, content: m.content + CLOCK_SCHEMA_FORMAT } : m))
-    : messages;
+  RECORDED_SHAPES[id]?.messages?.(messages) ?? messages;
 
-/** The clock prompt as the recorded run sent it, with its reply format inline in the system prompt. */
-export const recordedTimePassed = (template: string): string =>
-  `${template.replace(
-    'Decide how long it took.',
-    'Decide how long it took, then write that as a count followed by its unit. Always write the count first - a bare unit letter is not an answer. Use m for minutes, h for hours, d for days, w for weeks.',
-  )}\n\nYour entire reply is that count and its unit, with nothing before or after it.`;
+/** The system template as the recorded run rendered it. */
+export const recordedTemplate = (id: TurnPassId, template: string): string =>
+  RECORDED_SHAPES[id]?.systemPrompt?.(template) ?? template;
 
 /** The recorded turn's requests that are turn passes, in dispatch order. */
 export const recordedPasses = (turn: ParityTurnRecord): { id: TurnPassId; request: ParityRequestRecord }[] =>
