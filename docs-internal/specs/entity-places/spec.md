@@ -109,6 +109,9 @@ Rulings from the grill of 2026-11-11.
 
   Q18 to Q22 are spec-session rulings of 2026-11-11, on intent questions of ticket 02.
 - **Q23.** The canvas Routine view of one Start (`routineView`) is an editor of the routine, not a reader of where an entity can be. It keeps every row place of that Start, reachable or not, so the author can repair a broken row. It does not read Presence. The canvas pick marks do. Spec-session ruling of 2026-11-11, on an intent question of ticket 06.
+- **Q24.** The save records the opening placement, and the page-one opening redraw (Q9 #9) reads it in a live session and on a loaded save. **This changes the export shape** of the save file: one new field. A save without the field loads, and its redraw uses the Sample Placement at the page-one start. Ticket 03 builds it. User ruling of 2026-11-11, on an intent question of ticket 03: the Unique Start roll is random, so nothing else can give the rolled cast again.
+- **Q25.** A fix to a bug that exists only with entity kinds gets no changelog fragment, because kinds are unreleased. The landing lists each fix, and the spec session folds the lines into the unreleased entity kinds entry at close. A change that a v3.6.2 player or author can see still gets a fragment. This replaces the fragment criteria of the tickets where it applies. Spec-session ruling of 2026-11-11, on an intent question of ticket 03.
+- **Q26.** Sample Placement is nowhere for an entity with a kind and no Starts, and for an entity whose every Start is at Player's Starting Location when the sample has no player start. This applies Q10 to open check 3. Spec-session ruling of 2026-11-11, on an intent question of ticket 05.
 
 Other decisions:
 
