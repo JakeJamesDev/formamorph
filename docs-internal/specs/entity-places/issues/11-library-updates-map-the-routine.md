@@ -17,7 +17,7 @@ Ticket 09 made the routine world-owned as an interim: a library update, the "dif
 - **Link repair.** Repair already rebuilds the routine as a fresh carry (ticket 09). Keep it, and make it share the mapping with update and compare, so the three cannot disagree.
 - **No kind.** An entity with no kind keeps today's rule: its stored location list is world-owned.
 
-Use one mapping function for carry, update, compare and repair. Remove the interim world-owned handling that ticket 09 named in its landing.
+Use one mapping function for carry, update, compare and repair. Remove the interim world-owned handling of ticket 09 (902cbe090): `COPY_ROUTINE_FIELDS`, `withoutCopyFields` and the routine block in `applyLibraryUpdate`, all in `src/lib/linkedContent.ts`. Both kinds follow the rule (Q31).
 
 The update review must show the author what changes in the routine before they accept, since their own routine edits are replaced. Follow the existing review's patterns; write new copy from the Writing Guide. The library linking wiki text changes if it says what an update keeps.
 
