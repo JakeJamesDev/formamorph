@@ -139,6 +139,12 @@ describe('lensWithPersona', () => {
     expect(lensWithPersona(w, { personaId: null, locationId: 'loc-harbor' }, 'e-sable').locationId).toBe('loc-harbor');
     expect(lensWithPersona(w, { personaId: 'e-wren', locationId: 'loc-market' }, null)).toEqual({ personaId: null, locationId: 'loc-market' });
   });
+
+  it('moves the location to the Custom Persona’s start under None', () => {
+    const newcomer: Entity = { id: 'cp', name: 'Newcomer', customPersona: true, locations: ['loc-market'] };
+    const withCustom = world({ entities: [wren, sable, newcomer] });
+    expect(lensWithPersona(withCustom, { personaId: 'e-sable', locationId: 'loc-harbor' }, null).locationId).toBe('loc-market');
+  });
 });
 
 describe('buildLens under a persona', () => {

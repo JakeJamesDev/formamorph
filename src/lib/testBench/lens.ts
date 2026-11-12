@@ -8,7 +8,7 @@
  * Pure and world-shaped: nothing here reads storage or React, and nothing writes the world.
  */
 import { customPersonaEntity } from '@/lib/blueprints';
-import { offeredPersonas, personaStartLocation, preselectPersona, worldPersonaRules } from '@/lib/personaPick';
+import { offeredPersonas, personaStartLocation, preselectPersona, startingPersona, worldPersonaRules } from '@/lib/personaPick';
 import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
@@ -236,10 +236,10 @@ export function seedLens(
   };
 }
 
-/** The lens after a persona pick. A world persona moves the location to its own start until the author picks a
+/** The lens after a persona pick. A persona with start places, the Custom Persona under None included, moves the location to its own start until the author picks a
  *  location by hand, as Enter World's Starting Location does. */
 export function lensWithPersona(world: LensWorld, state: LensState, personaId: string | null): LensState {
-  const persona = worldPersonas(world).find((e) => e.id === personaId);
+  const persona = startingPersona(lensPersonaRef(personaId), world.entities ?? []);
   const own = persona && !state.locationChosen ? personaStartLocation(persona, world.locations ?? []) : null;
   return { ...state, personaId, ...(own ? { locationId: own } : {}) };
 }

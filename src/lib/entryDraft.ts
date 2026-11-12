@@ -32,7 +32,7 @@ export const emptyEntryDraft = (): EntryDraft => ({
   persona: { source: 'none' }, traitSection: 0,
 });
 
-/** The draft after a persona pick: one entity fills one role, and a world persona preselects its location. */
+/** The draft after a persona pick: one entity fills one role, and a persona with start places preselects its location. */
 export function withPersonaPick(draft: EntryDraft, ref: PersonaRef, context: PersonaPickContext): EntryDraft {
   return {
     ...draft,

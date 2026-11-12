@@ -1,6 +1,6 @@
 # 03: Enter World Offers A Persona's Start Locations
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -19,9 +19,20 @@ Spec rulings: Q2, Q3.
 
 ## Acceptance criteria
 
-- [ ] A persona pick test: picking a Persona-Only world persona lists the flagged starting locations plus its listed locations, in world order, and preselects its first listed location.
-- [ ] Under None, a world with a Custom Persona lists its locations the same way and preselects the first.
-- [ ] Under a library persona, the same Custom Persona list is offered and preselected.
-- [ ] A location the player picked by hand stays picked after a persona change while it is still offered.
-- [ ] A Playable persona's offered list and preselect are unchanged; the existing persona pick tests stay green.
-- [ ] A persona with an empty list offers only the flagged starting locations.
+- [x] A persona pick test: picking a Persona-Only world persona lists the flagged starting locations plus its listed locations, in world order, and preselects its first listed location that is a flagged starting location, else its first (spec session ruling Q11). `personaPick.test.ts`: "lists a Persona-Only world persona's flagged and listed locations…".
+- [x] Under None, a world with a Custom Persona lists its locations the same way and preselects the first. `personaPick.test.ts`: "offers the Custom Persona's list under None and under a library persona…".
+- [x] Under a library persona, the same Custom Persona list is offered and preselected. Same test.
+- [x] A location the player picked by hand stays picked after a persona change while it is still offered. `personaPick.test.ts`: two hand-pick tests.
+- [x] A Playable persona's offered list and preselect are unchanged; the existing persona pick tests stay green. Affected-test gate green.
+- [x] A persona with an empty list offers only the flagged starting locations. `personaPick.test.ts`: "offers only the flagged locations… with an empty list".
+- [x] Test Bench opening and lens follow (Q12). `opening.test.ts` bites: reverting `opening.ts` fails it.
+
+## Landed
+
+**Not verified**
+- The Enter World screen itself (list, preselect, **Starts at** line on the Custom Persona row) was read through unit tests only, not in a browser.
+- The Test Bench fresh seed (`seedLens`) still opens on the seeded location and ignores a persona's start. A world persona had the same gap before; left alone.
+
+**For you**
+- Enter World, world with a Custom Persona that has Start Locations: pick None, then a library persona. Check the list gains those places and the first flagged one is selected.
+- Quick Start now also lands on that Custom Persona start when None or a library persona is the preselect (same shared function; no ticket line asked for it).

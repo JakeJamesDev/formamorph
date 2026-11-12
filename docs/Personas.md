@@ -110,7 +110,7 @@ Pick an entity under **From This World**, and you play it:
 
 - It leaves the cast for that game, so you never meet yourself.
 - The AI reads that everyone in the world already knows you.
-- The places it can start at join the **Starting Location** list. Enter World selects the first of them that is a starting location. With none, it selects the first place it can start at. Its row in the picker reads **Starts at** and that place. You can pick another.
+- The places it can start at join the **Starting Location** list. For a **Persona-Only** entity, these are its **Start Locations**. Enter World selects the first of them that is a starting location. With none, it selects the first place it can start at. Its row in the picker reads **Starts at** and that place. You can pick another.
 - Its Others openings leave the draw, so page one never greets you as yourself.
 - If it has Self openings, the game draws only from those. See [Self Openings](World-Editor-Openings#self-openings).
 
@@ -120,6 +120,8 @@ A persona from your library can bring its own Self openings. They draw in any wo
 <!-- keywords: self insert, blank slate, fill in my details, enter my name, race and class picks, replaces none option, author portrait shown -->
 
 Some worlds have a **Custom Persona**. It takes **None**'s place in the list, with the author's portrait and name. Pick it, and **Name** and **Description** fields open under it. **Enter World** opens its dialog for these worlds even with nothing else to choose. **Quick Start** still skips it.
+
+If the Custom Persona has **Start Locations**, they join the **Starting Location** list, and the first one that is a starting location is selected. This holds when you pick **None** and when you pick a persona from your library.
 
 - **Your name replaces the entity's name.** The story calls you by it.
 - **Your description follows the author's.** The AI reads both.

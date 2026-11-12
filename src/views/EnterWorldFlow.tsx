@@ -323,8 +323,10 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   /** The Custom Persona entity, which replaces None. */
   const customPersonaOption = useMemo<PersonaOption | undefined>(() => {
     const marked = customPersonaEntity(resolvedWorldEntities);
-    return marked && personaOption(resolveEntityText)(marked);
-  }, [resolvedWorldEntities, resolveEntityText]);
+    if (!marked) return undefined;
+    const start = personaStartLocation(marked, locations);
+    return { ...personaOption(resolveEntityText)(marked), startsAt: locations.find((l) => l.id === start)?.name };
+  }, [resolvedWorldEntities, resolveEntityText, locations]);
   /** The entities the trait tree pages, the marked one carrying the player's entry or library persona. */
   const entryPersona = entryDraft.persona;
   const entryLibraryName = entryPersona?.source === 'library'
@@ -492,7 +494,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     const additions = restoreWorldAdditionDefaults(
       selectedWorld!.id, buildInitialSelection(worldBooks, dictionaries, signedInId), additionEntities);
     const persona = personaPreselect(selectedWorld!.id);
-    // The persona wins a tie with a remembered character, and a world persona preselects its location.
+    // The persona wins a tie with a remembered character, and a persona with start places preselects its location.
     const draft = withPersonaPick(
       // Library entities join with their own defaults once loaded, so the last visit's cast starts no picks.
       { ...emptyEntryDraft(), ...entryDefaults({ ...rawEntryWorld, library: [] }, persona), ...additions }, persona, personaPickContext);
@@ -517,7 +519,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const quickStart = () => {
     // Skip the setup steps but honor the author's default trait choices.
     const persona = personaPreselect(selectedWorld!.id);
-    // A world persona starts at its own starting location; any other start stays random.
+    // A persona with start places starts at its own; any other start keeps the current location.
     const draft = withPersonaPick({
       ...emptyEntryDraft(), ...entryDefaults({ ...rawEntryWorld, library: [] }, persona),
       dictionaryItems: buildInitialSelection(worldBooks, dictionaries, signedInId),

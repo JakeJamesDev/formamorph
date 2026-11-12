@@ -108,7 +108,7 @@ Some entities exist only as a player slot, such as a *Stranger* with no story of
 | Picks it | Is the player, the same as any playable entity |
 | Picks someone else, or **None** | Isn't in the world. It's left out of the cast, scenes, diaries and the side panel. |
 
-- **Its Presence tab shows only Start Locations.** Pick the locations where the player can start as it. They join the world's starting locations, and the first one is preselected. With none picked, only the world's own list shows. **Placement**, routine rows, **Can Also Go** and **Known In** don't apply, because it never stands in the world.
+- **Its Presence tab shows only Start Locations.** Pick the locations where the player can start as it. They join the world's starting locations, and the first start that is a starting location is preselected, else the first start. With none picked, only the world's own list shows. **Placement**, routine rows, **Can Also Go** and **Known In** don't apply, because it never stands in the world.
 - **Switching its Persona keeps the places.** From **Playable** or **Cast**, each start's place becomes a start location, in order. Back to **Playable** or **Cast**, each start location becomes a start with no routine rows.
 - **Its Others openings never draw.** When picked, it's the player. When not picked, it's absent.
 - **Its Self openings draw when the player picks it.** They give a Persona-Only entity its own start.

@@ -696,6 +696,20 @@ describe('the persona pick', () => {
     expect(texts(at(w, { personaId: 'e-wren' }))).toEqual(['You are Wren.']);
   });
 
+  it('starts under None at the Custom Persona’s own start place, not the pool’s first', () => {
+    // Harbor is the flagged first location; the Custom Persona lists the unflagged market.
+    const w = staged({
+      locations: [
+        { ...locations[0], isStarting: true, openings: [row('o-harbor', 'Gulls over the steps.')] },
+        { ...locations[1], isStarting: false, openings: [row('o-market', 'Stalls open.')] },
+      ],
+      entities: [...cast(), { ...custom(), openings: [], locations: ['market'] }],
+    });
+    const opening = at(w, { startLocationId: undefined });
+    expect(opening.pool.map((r) => r.locationName)).toContain('The Long Market');
+    expect(opening.pool.map((r) => r.locationName)).not.toContain('Harbor Steps');
+  });
+
   it('adds the location’s rows at the picked start and not at another', () => {
     const w = staged();
     const harbor = at(w, { startLocationId: 'harbor' }).pool;

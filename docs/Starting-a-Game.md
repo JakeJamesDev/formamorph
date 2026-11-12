@@ -149,7 +149,7 @@ The list shows **Random** first, then each starting location with its descriptio
 | A location | That location |
 | **Random** | Any starting location, at random |
 
-When you play one of the world's own entities, the places it can start at join the list. Its starting location is picked for you. You can pick another. After you pick a location yourself, a persona change no longer moves it, unless the new persona can't start there.
+When you play one of the world's own entities, the places it can start at join the list. Its starting location is picked for you. The same holds for a world's **Custom Persona** when you pick **None** or one of your library personas: its **Start Locations** join the list. You can pick another. After you pick a location yourself, a persona change no longer moves it, unless the new persona can't start there.
 
 ## Library Additions
 <!-- keywords: bring my character, extra npc, companion, mods, custom content, lorebook order, remember for next time, tag meaning, include my own -->

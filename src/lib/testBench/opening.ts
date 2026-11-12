@@ -46,7 +46,7 @@ import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import type {
   Entity, GameLocation, Opening, PersonaRef, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, ThresholdUnit, Trait,
 } from '@/types';
-import { offeredStartLocations, personaStartLocation } from '@/lib/personaPick';
+import { offeredStartLocations, personaStartLocation, startingPersona } from '@/lib/personaPick';
 import { lensActiveTraits, lensPersonaPicks, lensPersonaRef, lensPinBlueprints, lensStartingStats, resolveLensText, type BenchLens } from './lens';
 import { ownerWorldOf, chipBearingTexts, type RuleWorld } from './rules';
 import { scannedEntries } from './triggers';
@@ -203,7 +203,8 @@ function openingStart(world: OpeningWorld, lens: BenchLens, startLocationId?: st
   const locations = world.locations ?? [];
   const offered = offeredStartLocations(persona, { worldEntities: world.entities ?? [], locations });
   const pool = offered.length > 0 ? offered : locations;
-  const own = lens.persona ? personaStartLocation(lens.persona, locations) : null;
+  const startPersona = startingPersona(persona, world.entities ?? []);
+  const own = startPersona ? personaStartLocation(startPersona, locations) : null;
   const location = pool.find((l) => l.id === startLocationId) ?? pool.find((l) => l.id === own) ?? pool[0] ?? null;
   const picks = openingPicks(world, active, persona);
   const state = openingStateOf(world, picks, openingPersonaOf(persona));

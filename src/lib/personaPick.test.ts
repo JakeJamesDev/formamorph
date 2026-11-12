@@ -252,15 +252,48 @@ describe('a played entity with a kind offers its Starts only', () => {
     expect(personaStartLocation(kindless, places)).toBe('inn');
   });
 
-  it('keeps the Custom Persona on the starting locations, the place picked before it staying', () => {
-    // A loaded world's Custom Persona: migration gives it no kind, and its own locations name a place no Start would.
-    const custom = migrateEntityRoutine({ ...entity('newcomer', ['inn', 'cellar']), customPersona: true });
+  it("offers the Custom Persona's list under None and under a library persona, preselecting its first start", () => {
+    // A loaded world's Custom Persona: migration gives it no kind, and its list names the places it starts at.
+    const custom = migrateEntityRoutine({ ...entity('newcomer', ['cellar', 'inn']), customPersona: true });
     expect(custom.kind).toBeUndefined();
-    const withCustom = context(custom, played('patrol', [start('s1', 'inn', 'cellar')]));
-    expect(ids(offeredStartLocations(NONE, withCustom))).toEqual(['dock', 'gate']);
-    expect(locationForPersonaPick({ ref: NONE, current: 'gate', locationChosen: false, ...withCustom })).toEqual({ locationId: 'gate', locationChosen: false });
-    // A place only a world persona offered drops to Random once the Custom Persona is picked.
-    expect(locationForPersonaPick({ ref: NONE, current: 'inn', locationChosen: true, ...withCustom })).toEqual({ locationId: null, locationChosen: false });
+    const withCustom = context(custom, played('patrol', [start('s1', 'gate', 'inn')]));
+    for (const ref of [NONE, lib('a')]) {
+      expect(ids(offeredStartLocations(ref, withCustom))).toEqual(['inn', 'dock', 'cellar', 'gate']);
+      expect(locationForPersonaPick({ ref, current: null, locationChosen: false, ...withCustom })).toEqual({ locationId: 'cellar', locationChosen: false });
+    }
+    // A world persona pick leaves the Custom Persona's list out.
+    expect(ids(offeredStartLocations(world('patrol'), withCustom))).toEqual(['dock', 'gate']);
+  });
+
+  it('keeps a hand-picked location that the Custom Persona still offers, and drops one it does not', () => {
+    const custom = { ...entity('newcomer', ['cellar']), customPersona: true };
+    const withCustom = context(custom, played('patrol', [start('s1', 'inn')]));
+    expect(locationForPersonaPick({ ref: NONE, current: 'cellar', locationChosen: true, ...withCustom })).toEqual({ locationId: 'cellar', locationChosen: true });
+    expect(locationForPersonaPick({ ref: NONE, current: 'inn', locationChosen: true, ...withCustom })).toEqual({ locationId: 'cellar', locationChosen: false });
+  });
+
+  it('keeps a hand-picked location through a persona change while the new pick still offers it', () => {
+    const persona = entity('hermit', ['cellar']);
+    const custom = { ...entity('newcomer', ['cellar']), customPersona: true };
+    const withBoth = context(persona, custom);
+    expect(locationForPersonaPick({ ref: world('hermit'), current: 'cellar', locationChosen: true, ...withBoth })).toEqual({ locationId: 'cellar', locationChosen: true });
+    expect(locationForPersonaPick({ ref: NONE, current: 'cellar', locationChosen: true, ...withBoth })).toEqual({ locationId: 'cellar', locationChosen: true });
+  });
+
+  it('offers only the flagged locations for a Persona-Only entity or Custom Persona with an empty list', () => {
+    const custom = { ...entity('newcomer', []), customPersona: true };
+    const only = entity('only', []);
+    const withBoth = context(custom, only);
+    expect(ids(offeredStartLocations(NONE, withBoth))).toEqual(['dock', 'gate']);
+    expect(ids(offeredStartLocations(world('only'), withBoth))).toEqual(['dock', 'gate']);
+    expect(locationForPersonaPick({ ref: NONE, current: null, locationChosen: false, ...withBoth }).locationId).toBeNull();
+  });
+
+  it("lists a Persona-Only world persona's flagged and listed locations, preselecting its first flagged start", () => {
+    const only = entity('only', ['cellar', 'gate']);
+    const withOnly = context(only);
+    expect(ids(offeredStartLocations(world('only'), withOnly))).toEqual(['dock', 'cellar', 'gate']);
+    expect(locationForPersonaPick({ ref: world('only'), current: null, locationChosen: false, ...withOnly }).locationId).toBe('gate');
   });
 });
 

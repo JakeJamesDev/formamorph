@@ -1,4 +1,5 @@
 import { createKeyedRecordStore, createStoredString } from './keyedStorage';
+import { customPersonaEntity } from './blueprints';
 import { startPlacesOf } from './entityPlaces';
 import { PLAYER_START, type AllowedPersonas, type Entity, type GameLocation, type PersonaRef, type StartPersona, type WorldOverview } from '@/types';
 
@@ -113,29 +114,31 @@ export interface PersonaPickContext {
   locations: readonly GameLocation[];
 }
 
-const worldPersona = (ref: PersonaRef, worldEntities: readonly Entity[]) =>
-  ref.source === 'world' ? worldEntities.find((e) => e.id === ref.entityId) : undefined;
+/** The entity whose start places a pick reads: the picked world persona, else the Custom Persona, which stands
+ *  in for None and for a library persona. */
+export const startingPersona = (ref: PersonaRef, worldEntities: readonly Entity[]): Entity | undefined =>
+  ref.source === 'world' ? worldEntities.find((e) => e.id === ref.entityId) : customPersonaEntity(worldEntities);
 
-/** The locations the Starting Location step lists, in world order: the flagged ones, plus every Start place of
- *  the picked world persona. */
+/** The locations the Starting Location step lists, in world order: the flagged ones, plus every start place of
+ *  the pick's persona. */
 export function offeredStartLocations<L extends GameLocation>(
   ref: PersonaRef, { worldEntities, locations }: { worldEntities: readonly Entity[]; locations: readonly L[] },
 ): L[] {
-  const persona = worldPersona(ref, worldEntities);
+  const persona = startingPersona(ref, worldEntities);
   const own = new Set(persona ? startPlacesOf(persona, { locations }) : []);
   return locations.filter((l) => l.isStarting || own.has(l.id));
 }
 
 /** The starting location after a persona pick. A location the step no longer lists drops to the new persona's
- *  own start, else Random. Otherwise a world persona preselects its own start until the player picks a
- *  location by hand, and every other pick keeps the current one. */
+ *  own start, else Random. Otherwise a persona with start places preselects its own start until the player
+ *  picks a location by hand, and a pick with none keeps the current one. */
 export function locationForPersonaPick({ ref, current, locationChosen, ...context }: {
   ref: PersonaRef;
   current: string | null;
   /** The player picked the location by hand in this step. */
   locationChosen: boolean;
 } & PersonaPickContext): { locationId: string | null; locationChosen: boolean } {
-  const persona = worldPersona(ref, context.worldEntities);
+  const persona = startingPersona(ref, context.worldEntities);
   const own = persona ? personaStartLocation(persona, context.locations) : null;
   if (current !== null && !offeredStartLocations(ref, context).some((l) => l.id === current)) {
     return { locationId: own, locationChosen: false };
