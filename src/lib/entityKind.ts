@@ -125,16 +125,21 @@ function rowMapped(row: ScheduleRow, map: Readonly<Record<string, string>>): Sch
   return stops.length ? { ...row, action: { ...action, stops } } : undefined;
 }
 
-/** A Generic entity carried into another world, its places renamed through `map` (source id → world id): the Starts whose
- *  place maps are kept with their rows remapped, and with none kept it takes one Start per mapped place. */
-export function withGenericPlacesMapped(entity: Entity, map: Readonly<Record<string, string>>, newId: () => string): Entity {
+/** An entity with a kind carried into another world, its places renamed through `map` (source id → world id, in ref
+ *  order): the Starts whose place maps are kept with their rows remapped, and Traversable keeps its mapped places
+ *  (Q11). With no Start kept, a Generic entity takes one Start per mapped place and a Unique entity one at the first. */
+export function withRoutineMapped(entity: Entity, map: Readonly<Record<string, string>>, newId: () => string): Entity {
   const placeOf = (start: EntityStart) => (start.place === PLAYER_START ? PLAYER_START : map[start.place]);
   const kept = (entity.starts ?? []).flatMap((start) => (placeOf(start)
     ? [{ ...start, place: placeOf(start), schedule: start.schedule.flatMap((row) => rowMapped(row, map) ?? []) }]
     : []));
-  const starts = kept.length ? kept : [...new Set(Object.values(map))].map((place) => blankStart(place, newId));
+  const mapped = [...new Set(Object.values(map))];
+  const starts = kept.length ? kept : (isGeneric(entity) ? mapped : mapped.slice(0, 1)).map((place) => blankStart(place, newId));
   const { starts: _s, ...rest } = entity;
-  return withDerivedLocations({ ...rest, ...(starts.length && { starts }) });
+  return withDerivedLocations({
+    ...rest, ...(starts.length && { starts }),
+    ...(Array.isArray(entity.traversable) && { traversable: [...new Set(entity.traversable.flatMap((id) => map[id] ?? []))] }),
+  });
 }
 
 /** A Generic entity with a new Start with no rows at `place`. */

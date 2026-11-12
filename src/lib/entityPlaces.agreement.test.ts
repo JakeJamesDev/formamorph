@@ -3,12 +3,12 @@ import {
   PLAYER_START, type Connection, type Entity, type GameLocation, type PersonaRef, type ScheduleRow, type Stat, type WorldOverview,
 } from '@/types';
 import {
-  idsAt, idsAtAny, positionsIn, presenceIn, samplePlacement, startPlacesOf, type PlacesOf, type PlacesWorld,
+  idsAt, idsAtAny, namedPlacesOf, positionsIn, presenceIn, samplePlacement, startPlacesOf, type PlacesOf, type PlacesWorld,
 } from '@/lib/entityPlaces';
 import { pickMarks, type PickMark } from '@/lib/entityPicking';
 import { presenceLines } from '@/lib/locationPresenceReasons';
 import { castRoutines, withDerivedLocations } from '@/lib/entityKind';
-import { presentEntityIds, type Standings } from '@/lib/entityPresence';
+import { placedIn, presentEntityIds, type Standings } from '@/lib/entityPresence';
 import { EMPTY_BOOK, runtimeRoutine, type PositionBook } from '@/lib/positionEngine';
 import { placeAll, positionWorld, scriptPlaces } from '@/lib/positionPlay';
 import { discoveredAsEntities, selectReachableVisitors } from '@/lib/runtimeCharacters';
@@ -337,6 +337,24 @@ describe('the script snapshot agrees with Entity Places', () => {
     const result = await snapshotOf(state(book)).run({ home: { kind: 'tool' }, timing: 'after', code: PRESENT, args: {} });
     expect(result.error).toBeNull();
     expect(JSON.parse(result.reply ?? 'null')).toEqual(LOCATIONS.map((l) => idsAt(l.id, EVERYONE, positionsIn(book))));
+  });
+});
+
+describe('a carry into another world agrees with Entity Places', () => {
+  // The harbor town has a mill and a quay; the carry maps the square and the bakery to the mill, the docks to the quay.
+  const HARBOR: PlacesWorld = {
+    locations: [loc('mill', { isStarting: true }), loc('quay')],
+    connections: [{ id: 'mill-lane', a: 'mill', b: 'quay', aToB: {}, bToA: {} }],
+  };
+  const MAP = { square: 'mill', bakery: 'mill', docks: 'quay' };
+
+  it('leaves every entity with a kind a Presence and named places of the new world only', () => {
+    const harbor = new Set(HARBOR.locations.map((l) => l.id));
+    for (const entity of CAST.filter((e) => e.kind)) {
+      const carried = placedIn(entity, MAP);
+      expect(presenceIn(HARBOR)(carried), entity.id).not.toEqual([]);
+      expect(namedPlacesOf(carried).filter((place) => !harbor.has(place)), entity.id).toEqual([]);
+    }
   });
 });
 

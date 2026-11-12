@@ -7,7 +7,7 @@
  * one transaction.
  */
 
-import { placedIn } from '@/lib/entityPresence';
+import { carryMap, placedIn } from '@/lib/entityPresence';
 import { linkToSource, type LibrarySource, type LinkableContent } from '@/lib/linkedContent';
 import { kindOf } from '@/lib/librarySources';
 import { adoptBookPlaceholders, adoptEntityPlaceholders } from '@/lib/placeholderHomes';
@@ -110,10 +110,7 @@ export async function addCopyToStoredWorld(
     dropped = bound.dropped + scrubbed.dropped;
     const { locationRefs = [], ...rest } = scrubbed.entity;
     // A membership the world cannot place is dropped rather than left pointing at a location it has not got.
-    const used = Object.fromEntries(locationRefs.flatMap((ref) => {
-      const id = plan.locations[ref.id] ?? ref.id;
-      return known.has(id) ? [[ref.id, id]] : [];
-    }));
+    const used = carryMap(locationRefs, plan.locations, known);
     const connections = { ...adopted.connections, ...used };
     const kept = data.entities ?? [];
     const entity: Entity = {

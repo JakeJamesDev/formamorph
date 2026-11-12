@@ -13,6 +13,7 @@ import DictionaryStorageService from '@/services/DictionaryStorageService';
 import EntityStorageService from '@/services/EntityStorageService';
 import { withLibraryPick } from '@/lib/libraryVrm';
 import { adoptListingVrm } from '@/lib/entityVrmCarry';
+import { namedPlacesOf } from '@/lib/entityPlaces';
 import type {
   CommunityLink, ContentLocationRef, Dictionary, DictionaryMetadata, Entity, EntityMetadata, LibraryDetails, GameLocation,
   Placeholder, WorldVrmStore,
@@ -148,11 +149,11 @@ export async function libraryItemDetails(kind: LibraryKind, id: string): Promise
 /** Which library a piece of content belongs to, read from its own shape. */
 export const kindOf = (item: LinkableContent): LibraryKind => ('entries' in item ? 'dictionary' : 'entity');
 
-/** An entity's location membership named rather than pointed at, so a receiving world can connect each
- *  place to one of its own. A membership at a location this world no longer holds is dropped. */
-function carriedLocations(entity: Entity, worldLocations: readonly GameLocation[]): ContentLocationRef[] {
+/** Every place an entity names, named rather than pointed at, so a receiving world can connect each place to one
+ *  of its own (Q21). A place this world no longer holds is dropped. */
+function carriedPlaces(entity: Entity, worldLocations: readonly GameLocation[]): ContentLocationRef[] {
   const byId = new Map(worldLocations.map((l) => [l.id, l]));
-  return (entity.locations ?? []).flatMap((id) => {
+  return namedPlacesOf(entity).flatMap((id) => {
     const location = byId.get(id);
     return location ? [{ id: location.id, name: location.name }] : [];
   });
@@ -173,7 +174,7 @@ export function toLibraryItem<T extends LinkableContent>(
   const carried = kindOf(item) === 'dictionary'
     ? buildDictionaryFile(item as Dictionary, available)
     : buildEntityCardData(item as Entity, available, {}, undefined, traitWorld);
-  const locationRefs = kindOf(item) === 'entity' ? carriedLocations(item as Entity, worldLocations) : [];
+  const locationRefs = kindOf(item) === 'entity' ? carriedPlaces(item as Entity, worldLocations) : [];
   const traits = 'traits' in carried ? carried.traits : undefined;
   const traitLinks = 'traitLinks' in carried ? carried.traitLinks : undefined;
   // The world's own fields go, including its id: the caller stamps the library record's own.

@@ -12,9 +12,7 @@ import { parseDictionaryImport } from '@/lib/dictionaryFile';
 import { readLibraryDetails } from '@/lib/contentAuthor';
 import { contentLinkStatusLine } from '@/lib/contentLink';
 import { isHelpSeen } from '@/lib/helpSeenStore';
-import { placedIn, withEntityLocations } from '@/lib/entityPresence';
-import { isGeneric, withGenericPlacesMapped, withGenericStart } from '@/lib/entityKind';
-import { randomUUID } from '@/lib/uuid';
+import { carryMap, placedIn, withCarriedRoutine, withEntityLocations } from '@/lib/entityPresence';
 import { adoptCardVrm, importCharacterFile, type CardVrmFields } from '@/lib/entityFile';
 import { parseJsonText } from '@/lib/jsonFileWorkerUtils';
 import type { LiveWorld } from '@/lib/componentUpdateRun';
@@ -347,10 +345,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         const kept = dropEntityBlueprintChips(adopted.entity, blueprints);
         dropped += bound.dropped + kept.dropped;
         const { locationRefs = [], ...rest } = kept.entity;
-        const used = Object.fromEntries(locationRefs.flatMap((ref) => {
-          const id = plan.locations[ref.id] ?? ref.id;
-          return placeIds.has(id) ? [[ref.id, id]] : [];
-        }));
+        const used = carryMap(locationRefs, plan.locations, placeIds);
         const placed = adoptOwnedTraits(placedIn(rest as Entity, used), {
           traits: current.traits, traitGroups: current.traitGroups, entities: [...current.entities, ...added],
           stats: current.stats, statGroups: current.statGroups,
@@ -440,6 +435,12 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       updateDictionary({ ...remapBookChips(repair.copy as Dictionary, chipMap), link });
     } else {
       const entity = remapEntityChips(repair.copy as Entity, chipMap);
+      if (entity.kind) {
+        // The routine is the source's, carried afresh, so a repair lands where a new add would.
+        const placeIds = new Set([...current.locations, ...plan.newLocations].map((l) => l.id));
+        updateEntity({ ...withCarriedRoutine(entity, repair.source as Entity, connections, placeIds), link });
+        return;
+      }
       // A location membership the repair re-aimed moves with it; one it did not is left as it stands.
       const moved = (entity.locations ?? []).map((id) => {
         const row = flow.rows.find((r) => r.kind === 'location' && held[r.key] === id);
@@ -448,11 +449,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       const fresh = flow.rows
         .filter((r) => r.kind === 'location' && !held[r.key] && plan.locations[r.key])
         .map((r) => plan.locations[r.key]);
-      if (isGeneric(entity)) {
-        const map = Object.fromEntries((entity.locations ?? []).map((id, i) => [id, moved[i]]));
-        const placed = fresh.reduce((next, place) => withGenericStart(next, place, randomUUID), withGenericPlacesMapped(entity, map, randomUUID));
-        updateEntity({ ...placed, link });
-      } else updateEntity({ ...withEntityLocations(entity, [...moved, ...fresh]), link });
+      updateEntity({ ...withEntityLocations(entity, [...moved, ...fresh]), link });
     }
   }, [updateDictionary, updateEntity]);
 

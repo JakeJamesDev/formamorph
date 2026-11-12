@@ -291,6 +291,17 @@ describe('applyLibraryUpdate', () => {
     expect(result.toAdd).toEqual([]);
   });
 
+  it("keeps the copy's routine, so no place id of the source's world arrives", () => {
+    const start = (place: string) => ({ id: 's', place, weight: 1, schedule: [] });
+    const copy = person({ kind: 'unique', starts: [start('pier')], traversable: ['pier'], link: { libraryId: 'lib-1' } });
+    const source = person({ kind: 'unique', name: 'Wren the Elder', starts: [start('src-dock')], traversable: 'anywhere' });
+    const next = applyLibraryUpdate(copy, source, { id: 'lib-1', name: 'Wren', revision: 'r2', owned: true }, []).item;
+    expect(next).toMatchObject({ name: 'Wren the Elder', starts: [start('pier')], traversable: ['pier'] });
+    const bare = applyLibraryUpdate(person({ kind: 'unique', link: { libraryId: 'lib-1' } }), source, { id: 'lib-1', name: 'Wren', revision: 'r2', owned: true }, []).item;
+    expect('starts' in bare || 'traversable' in bare).toBe(false);
+    expect(contentMatchesSource(copy, { ...source, name: 'Wren' })).toBe(true);
+  });
+
   it('carries a location connection over, which no adopt pass settles', () => {
     const copy = person({
       locations: ['w-inn'],

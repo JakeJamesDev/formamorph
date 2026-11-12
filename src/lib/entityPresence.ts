@@ -1,7 +1,7 @@
-import type { Entity, EntityPositions, GameLocation, GenericStates, PersonaRef } from "@/types";
+import type { ContentLocationRef, Entity, EntityPositions, GameLocation, GenericStates, PersonaRef } from "@/types";
 import { ancestors, parentLookup } from "@/lib/ancestors";
 import {
-  isGeneric, routineNames, withGenericPlacesMapped, withGenericStart, withoutRoutinePlace,
+  isGeneric, routineNames, withDerivedLocations, withGenericStart, withoutRoutinePlace, withRoutineMapped,
 } from "@/lib/entityKind";
 import { withNewStart } from "@/lib/routineEditing";
 import { genericPlaces } from "@/lib/positionEngine";
@@ -36,10 +36,34 @@ export function entityIdsAtAny(locationIds: readonly string[], entities: Entity[
 /** A copy of `entity` belonging to exactly `locationIds`: the Entity Places module's membership write. */
 export const withEntityLocations = (entity: Entity, locationIds: string[]): Entity => withMembership(entity, locationIds);
 
-/** `entity` carried into a world, `map` naming each of its locations the world can place (source id → world id).
- *  A Generic entity keeps its routine through the map; any other entity belongs to the mapped places. */
+/** `entity` carried into a world, `map` naming each of its places the world can place (source id → world id).
+ *  An entity with a kind keeps its routine through the map; one with no kind belongs to the mapped places. */
 export function placedIn(entity: Entity, map: Readonly<Record<string, string>>): Entity {
-  return isGeneric(entity) ? withGenericPlacesMapped(entity, map, randomUUID) : withEntityLocations(entity, Object.values(map));
+  return entity.kind ? withRoutineMapped(entity, map, randomUUID) : withEntityLocations(entity, Object.values(map));
+}
+
+/** The carry map of `refs` (source id → world id, in ref order): each ref through `connections`, else its own id,
+ *  kept only where `known` holds the place. */
+export function carryMap(
+  refs: readonly ContentLocationRef[], connections: Readonly<Record<string, string>>, known: ReadonlySet<string>,
+): Record<string, string> {
+  return Object.fromEntries(refs.flatMap((ref) => {
+    const id = connections[ref.id] ?? ref.id;
+    return known.has(id) ? [[ref.id, id]] : [];
+  }));
+}
+
+/** A linked `copy` of an entity with a kind, its routine rebuilt as a fresh carry of `source` through `connections` (Q30). */
+export function withCarriedRoutine(
+  copy: Entity, source: Entity, connections: Readonly<Record<string, string>>, known: ReadonlySet<string>,
+): Entity {
+  const carried = placedIn({ ...source, kind: copy.kind }, carryMap(source.locationRefs ?? [], connections, known));
+  const { starts: _s, traversable: _t, ...rest } = copy;
+  return withDerivedLocations({
+    ...rest,
+    ...(carried.starts && { starts: carried.starts }),
+    ...(carried.traversable !== undefined && { traversable: carried.traversable }),
+  });
 }
 
 /** Whether a Start of `entity` begins at `locationId`. */

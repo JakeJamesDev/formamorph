@@ -114,6 +114,13 @@ describe('diffContent', () => {
     expect(diffHasChanges(diff)).toBe(true);
   });
 
+  it("ignores the routine of a carried copy, whose places are this world's", () => {
+    const routine = (place: string): Partial<Entity> => ({
+      kind: 'unique', traversable: [place], starts: [{ id: 's', place, weight: 1, schedule: [] }],
+    });
+    expect(diffContent(person(routine('pier')), person(routine('src-dock'))).changed).toEqual([]);
+  });
+
   it('ignores the fields the world owns, so a moved copy compares equal', () => {
     const diff = diffContent(
       person({ id: 'local', groupId: 'folder-a', order: 3, locations: ['loc-1'] }),

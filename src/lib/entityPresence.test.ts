@@ -1,10 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
   entityIdsAt, entityIdsAtAny, withEntityLocations, withStartHere, dropLocationFromEntities,
-  entitiesInPlay, positionedCast, placedIn,
+  entitiesInPlay, positionedCast, placedIn, carryMap, withCarriedRoutine,
   knownInOf, withKnownIn, toggleKnownInPick, knownHere,
 } from "./entityPresence";
 import type { Entity } from "@/types";
+import { namedPlacesOf, presenceOf } from "@/lib/entityPlaces";
+import { APP_VERSION, migrateWorld } from "@/lib/version";
 
 /** A Generic entity with one Start per place, no rows. */
 const generic = (id: string, name: string, places: string[]): Entity => ({
@@ -116,6 +118,37 @@ describe("placedIn", () => {
   it("carries a Generic entity's Starts through the map, and lists any other entity at the mapped places", () => {
     expect(placedIn(bartender, { docks: "pier" }).starts).toEqual([{ id: "bar-keep-2", place: "pier", weight: 1, schedule: [] }]);
     expect(placedIn(ghost, { a: "pier", b: "bar" }).locations).toEqual(["pier", "bar"]);
+  });
+
+  it("rebuilds a linked copy's routine on repair exactly as a fresh carry of its source", () => {
+    const refs = [{ id: "bar", name: "Bar" }, { id: "docks", name: "Docks" }, { id: "attic", name: "Attic" }, { id: "cellar", name: "Cellar" }];
+    const source: Entity = { ...sailor, locationRefs: refs };
+    const known = new Set(["tavern", "pier", "attic"]);
+    const connections = { bar: "tavern", docks: "pier", "ph-1": "ph-world" };
+    const map = carryMap(refs, connections, known);
+    expect(map).toEqual({ bar: "tavern", docks: "pier", attic: "attic" });
+    const stale: Entity = { ...sailor, name: "Old Salt", starts: [{ id: "x", place: "gone", weight: 1, schedule: [] }], traversable: "anywhere" };
+    const repaired = withCarriedRoutine(stale, source, connections, known);
+    const fresh = placedIn(source, map);
+    expect(repaired.name).toBe("Old Salt");
+    expect([repaired.starts, repaired.traversable, repaired.locations]).toEqual([fresh.starts, fresh.traversable, fresh.locations]);
+  });
+
+  it("rebuilds a linked Generic copy's Starts from its source on repair, replacing a local Start", () => {
+    const source: Entity = { ...bartender, locationRefs: [{ id: "bar", name: "Bar" }, { id: "docks", name: "Docks" }] };
+    const local: Entity = { ...bartender, starts: [...bartender.starts!, { id: "mine", place: "tavern", weight: 1, schedule: [] }] };
+    const repaired = withCarriedRoutine(local, source, { docks: "pier" }, new Set(["pier", "tavern"]));
+    expect(repaired.starts).toEqual([{ id: "bar-keep-2", place: "pier", weight: 1, schedule: [] }]);
+  });
+
+  it("carries a Unique entity's routine, so its Presence names only places of the new world, after a reload too", () => {
+    const world = { version: APP_VERSION, locations: [{ id: "pier", name: "Pier" }, { id: "tavern", name: "Tavern" }], connections: [], entities: [] };
+    const carried = placedIn(sailor, { bar: "tavern", docks: "pier", cellar: "tavern" });
+    const reloaded = migrateWorld(JSON.parse(JSON.stringify({ ...world, entities: [carried] }))).entities[0];
+    for (const entity of [carried, reloaded]) {
+      expect(presenceOf(entity, world).places.map((p) => p.place)).toEqual(["tavern", "pier"]);
+      expect(namedPlacesOf(entity)).toEqual(["tavern", "pier"]);
+    }
   });
 });
 

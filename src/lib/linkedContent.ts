@@ -41,6 +41,10 @@ const WORLD_OWNED_FIELDS = [
   'id', 'link', 'groupId', 'order', 'traitPlacement', 'statPlacement', 'locations', 'placeholders', 'sharedPlaceholders', 'blueprints',
 ] as const;
 
+/** The routine of an entity with a kind names the copy's world's places, so a copy owns it on update, compare and the
+ *  update review (Q30). Save to Library still carries it, named by `locationRefs`. */
+const COPY_ROUTINE_FIELDS = ['starts', 'traversable'] as const;
+
 /** The library record fields that stamp a revision, newest meaning first. */
 type RevisionStamps = Pick<CommunityLink, 'editedAt' | 'downloadedAt'> & { createdAt?: string };
 
@@ -134,6 +138,13 @@ export function withoutWorldFields<T extends LinkableContent>(item: T): Partial<
   return shed as Partial<T>;
 }
 
+/** `withoutWorldFields` less the routine a copy owns: the authored content a copy and its source compare on. */
+export function withoutCopyFields<T extends LinkableContent>(item: T): Partial<T> {
+  const shed: Record<string, unknown> = withoutWorldFields(item);
+  for (const field of COPY_ROUTINE_FIELDS) delete shed[field];
+  return shed as Partial<T>;
+}
+
 /**
  * Every authored string on one item that can hold a chip.
  *
@@ -153,7 +164,7 @@ export function chipTexts(item: LinkableContent): string[] {
 function authoredContent(raw: LinkableContent, world?: TraitWorld, vrm?: VrmLookup): unknown {
   // Both sides read the owners the copy's world drops, whichever side stored one (Q19).
   const item = world && !('entries' in raw) ? bindOwnedRules(raw, world) : raw;
-  const shed: Record<string, unknown> = withoutWorldFields(item);
+  const shed: Record<string, unknown> = withoutCopyFields(item);
   // A world file read before migration still holds data strings; the library copy holds images.
   if (!('entries' in item) && item.images) shed.images = entityImages(item);
   if (!('entries' in item) && (item.traits || item.traitLinks || item.images)) Object.assign(shed, comparableOwnedTraits(item));
@@ -218,7 +229,15 @@ export function applyLibraryUpdate<T extends LinkableContent>(
   }
   // The source's location references are its own world's; the copy's membership here is what stands.
   const { locationRefs: _theirs, ...content } = sourceData as T & { locationRefs?: unknown };
-  const incoming = { ...content, ...kept } as T;
+  const fields: Record<string, unknown> = { ...content, ...kept };
+  // The copy's routine stands, an absent one included, so no place id of the source's world arrives.
+  if (!('entries' in copy) && copy.kind) {
+    for (const field of COPY_ROUTINE_FIELDS) {
+      if (field in held) fields[field] = held[field];
+      else delete fields[field];
+    }
+  }
+  const incoming = fields as T;
   const resolved = 'entries' in incoming
     ? adoptBookPlaceholders(incoming as Dictionary, worldShared, copy.link?.connections)
     : adoptEntityPlaceholders(

@@ -7,7 +7,7 @@
  */
 
 import type { ContentLinkState } from '@/lib/contentLink';
-import { withoutWorldFields, type LinkableContent } from '@/lib/linkedContent';
+import { withoutCopyFields, type LinkableContent } from '@/lib/linkedContent';
 import type { LibraryKind } from '@/lib/librarySources';
 import { pickLabel, pickToken, type VrmLookup } from '@/lib/vrmPickMatch';
 import type { ContentLink, Dictionary, DictionaryEntry, VrmPick } from '@/types';
@@ -216,8 +216,8 @@ const NO_LOOKUP: VrmLookup = { world: new Map(), library: new Map() };
  * equal.
  */
 export function diffContent(copy: LinkableContent, source: LinkableContent, vrm: VrmLookup = NO_LOOKUP): ContentDiff {
-  const held = withoutWorldFields(copy) as Record<string, unknown>;
-  const offered = withoutWorldFields(source) as Record<string, unknown>;
+  const held = withoutCopyFields(copy) as Record<string, unknown>;
+  const offered = withoutCopyFields(source) as Record<string, unknown>;
   const fields = [...new Set([...Object.keys(held), ...Object.keys(offered)])]
     .filter((field) => !SKIPPED_FIELDS.has(field))
     .sort();

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PLAYER_START, type Entity, type EntityStart } from '@/types';
 import {
-  canRemoveGenericStartsAt, castRoutines, toggleGenericStart, withDerivedLocations, withGenericPlacesMapped, withGenericStart, withKind, withoutGenericStart,
+  canRemoveGenericStartsAt, castRoutines, toggleGenericStart, withDerivedLocations, withRoutineMapped, withGenericStart, withKind, withoutGenericStart,
   withoutGenericStartsAt, withStartPlace,
 } from './entityKind';
 
@@ -72,12 +72,12 @@ describe("a Generic entity's Starts", () => {
 
 describe('a Generic entity carried into another world', () => {
   it('keeps the Starts whose place maps, with their rows renamed, and drops a row left with no place', () => {
-    const next = withGenericPlacesMapped(herd, { barn: 'stable', field: 'meadow' }, newId);
+    const next = withRoutineMapped(herd, { barn: 'stable', field: 'meadow' }, newId);
     expect(next.starts).toEqual([
       { id: 'a', place: 'stable', weight: 3, schedule: [] },
       { id: 'b', place: 'meadow', weight: 1, schedule: [] },
     ]);
-    const kept = withGenericPlacesMapped(herd, { barn: 'stable', yard: 'pen' }, newId);
+    const kept = withRoutineMapped(herd, { barn: 'stable', yard: 'pen' }, newId);
     expect(kept.starts).toEqual([{ ...starts[0], place: 'stable', schedule: [{ ...night, action: { kind: 'stay', place: 'pen' } }] }]);
     expect(kept.locations).toEqual(['stable', 'pen']);
   });
@@ -88,7 +88,7 @@ describe('a Generic entity carried into another world', () => {
       { id: 'p', time: { start: 60, end: 120 }, action: { kind: 'patrol', stops: [{ place: 'moor', idle: 5 }, { place: 'barn', idle: 9 }] } },
       { id: 'gone', time: { start: 200, end: 300 }, action: { kind: 'patrol', stops: [{ place: 'moor', idle: 5 }] } },
     ] };
-    const next = withGenericPlacesMapped({ ...herd, starts: [roam] }, { barn: 'stable', yard: 'pen' }, newId);
+    const next = withRoutineMapped({ ...herd, starts: [roam] }, { barn: 'stable', yard: 'pen' }, newId);
     expect(next.starts?.[0].schedule.map((row) => row.action)).toEqual([
       { kind: 'wander', places: [{ place: 'pen', weight: 2 }], idle: 60 },
       { kind: 'patrol', stops: [{ place: 'stable', idle: 9 }] },
@@ -96,14 +96,49 @@ describe('a Generic entity carried into another world', () => {
   });
 
   it('takes one Start per mapped place when no Start survives', () => {
-    const next = withGenericPlacesMapped(herd, { yard: 'pen' }, newId);
+    const next = withRoutineMapped(herd, { yard: 'pen' }, newId);
     expect(next.starts?.map((s) => [s.place, s.schedule])).toEqual([['pen', []]]);
   });
 
   it("keeps a Start at the player's starting location, with its rows renamed", () => {
     const beside: EntityStart = { id: 'p', place: PLAYER_START, weight: 1, schedule: [night] };
-    const next = withGenericPlacesMapped({ ...herd, starts: [beside] }, { yard: 'pen' }, newId);
+    const next = withRoutineMapped({ ...herd, starts: [beside] }, { yard: 'pen' }, newId);
     expect(next.starts).toEqual([{ ...beside, schedule: [{ ...night, action: { kind: 'stay', place: 'pen' } }] }]);
+  });
+});
+
+describe('a Unique entity carried into another world', () => {
+  const both: Entity = { ...mare, starts: [
+    { id: 'a', place: 'barn', weight: 3, schedule: [
+      night,
+      { id: 'roam', time: 'allDay', action: { kind: 'wander', places: [{ place: 'yard', weight: 1 }, { place: 'moor', weight: 2 }], idle: 30 } },
+      { id: 'lost', time: { start: 60, end: 120 }, action: { kind: 'stay', place: 'moor' } },
+    ] },
+    { id: 'b', place: 'moor', weight: 1, schedule: [] },
+  ] };
+
+  it('keeps the Start whose place maps, with its rows renamed, and drops the Start and the rows that do not', () => {
+    const next = withRoutineMapped(both, { barn: 'stable', yard: 'pen' }, newId);
+    expect(next.starts).toEqual([{ id: 'a', place: 'stable', weight: 3, schedule: [
+      { ...night, action: { kind: 'stay', place: 'pen' } },
+      { id: 'roam', time: 'allDay', action: { kind: 'wander', places: [{ place: 'pen', weight: 1 }], idle: 30 } },
+    ] }]);
+  });
+
+  it('takes one Start with no rows at the first mapped place when no Start maps', () => {
+    const next = withRoutineMapped(both, { yard: 'pen', field: 'meadow' }, newId);
+    expect(next.starts?.map((s) => [s.place, s.schedule])).toEqual([['pen', []]]);
+  });
+
+  it("keeps a Start at the player's starting location as it is", () => {
+    const beside: EntityStart = { id: 'p', place: PLAYER_START, weight: 2, schedule: [], beginsFollowing: true };
+    expect(withRoutineMapped({ ...both, starts: [beside] }, { yard: 'pen' }, newId).starts).toEqual([beside]);
+  });
+
+  it('maps a Can Also Go list and drops the places that do not map; Anywhere stays Anywhere', () => {
+    const wide = { ...both, traversable: ['barn', 'moor', 'yard'] };
+    expect(withRoutineMapped(wide, { barn: 'stable', yard: 'pen' }, newId).traversable).toEqual(['stable', 'pen']);
+    expect(withRoutineMapped({ ...both, traversable: 'anywhere' }, { barn: 'stable' }, newId).traversable).toBe('anywhere');
   });
 });
 
