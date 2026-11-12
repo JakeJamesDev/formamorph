@@ -229,13 +229,25 @@ describe('Support checklist funnel steps', () => {
     expect(funnelPosts()).toEqual(['demo_see_levels', 'engine_see_levels', 'engine_patreon_click']);
   });
 
-  it('credits the finished checklist to the source that opened it', async () => {
+  it('credits a checklist finished during the open to the source that opened it', async () => {
+    world.activePreset = FORMAMORPH_AI_PRESET_ID;
+    status(UNLINKED);
+    render(<RoadSceneHost />);
+    await act(async () => { openRoadScene('setup', 'checklist'); });
+    await waitFor(() => expect(doneRows()).toEqual(['signIn', 'switch']));
+    status(PLEDGED);
+    await act(async () => { window.dispatchEvent(new Event('focus')); });
+    await waitFor(() => expect(doneRows()).toEqual(['signIn', 'pledge', 'link', 'switch']));
+    expect(funnelPosts()).toEqual(['setup_checklist_finished']);
+  });
+
+  it('credits no source for a checklist that was already finished when the scene opened', async () => {
     world.activePreset = FORMAMORPH_AI_PRESET_ID;
     status(PLEDGED);
     render(<RoadSceneHost />);
-    await act(async () => { openRoadScene('setup', 'checklist'); });
+    await act(async () => { openRoadScene('demo', 'checklist'); });
     await waitFor(() => expect(doneRows()).toEqual(['signIn', 'pledge', 'link', 'switch']));
-    expect(funnelPosts()).toEqual(['setup_checklist_finished']);
+    expect(funnelPosts()).toEqual([]);
   });
 
   it('sends nothing from a scene no entry point opened', async () => {

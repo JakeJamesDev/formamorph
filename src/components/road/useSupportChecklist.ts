@@ -123,9 +123,12 @@ export function useSupportChecklist({ onDone, facts: given }: { onDone: () => vo
   };
 
   const finished = given === undefined && checklistRows(facts).every((row) => row.done);
+  // Whether the first known state was already finished; only a finish during this open counts.
+  const finishedAtStart = useRef<boolean | null>(null);
+  if (finishedAtStart.current === null && (!signedIn || patreon !== undefined)) finishedAtStart.current = finished;
   useEffect(() => {
     const source = roadSceneSource();
-    if (finished && source) sendFunnelStep(`${source}_checklist_finished`);
+    if (finished && finishedAtStart.current === false && source) sendFunnelStep(`${source}_checklist_finished`);
   }, [finished]);
 
   const action = checklistAction(facts);
