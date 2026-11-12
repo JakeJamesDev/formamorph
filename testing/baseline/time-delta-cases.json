@@ -5,7 +5,8 @@
     "action": "I ask her which road leads to the mill.",
     "narration": "She barely looks up from the sack she is tying off. \"Left at the split stone,\" she says, \"then keep the water on your right.\" A cart creaks past behind you. She goes back to her knot, and that is the end of it.",
     "min": 0,
-    "max": 0.35
+    "max": 0.35,
+    "start": 10
   },
   {
     "id": "walk",
@@ -13,7 +14,8 @@
     "action": "I walk across town to the harbor office.",
     "narration": "You take the long way, through the market and down the stepped lane where the gulls argue over fish heads. The crowds thin as the streets tilt toward the water. By the time the harbor office comes into view, the light has shifted and your legs have that dull ache that comes from cobbles. You push the door open.",
     "min": 0.4,
-    "max": 2
+    "max": 2,
+    "start": 14
   },
   {
     "id": "meal",
@@ -21,7 +23,8 @@
     "action": "I sit down to eat with them.",
     "narration": "The stew comes out in a chipped pot and keeps coming. Someone refills your cup twice without asking. Talk wanders from the harvest to an old argument about a boundary stone and back again, and nobody seems in any hurry. The fire burns down to a red bed before anyone thinks about standing up.",
     "min": 1,
-    "max": 5
+    "max": 5,
+    "start": 18
   },
   {
     "id": "sleep",
@@ -29,7 +32,8 @@
     "action": "I lie down and sleep.",
     "narration": "The straw is coarse but the blanket is thick, and you are asleep before you have finished being uncomfortable. You do not dream, or do not remember it. When you open your eyes the shutters have gone pale at the edges and somewhere below a door is banging in the wind.",
     "min": 5,
-    "max": 12
+    "max": 12,
+    "start": 22
   },
   {
     "id": "fight",
@@ -37,7 +41,8 @@
     "action": "I block the strike and drive him back.",
     "narration": "The blow lands hard enough to numb your forearm. You shove into him before he can set his feet, and the two of you go crashing against the barrels. He swings again, wide, and you get inside it. Then he is down, breathing hard, and you are standing over him with your heart going like a hammer.",
     "min": 0,
-    "max": 0.5
+    "max": 0.5,
+    "start": 16
   },
   {
     "id": "stated-skip",
@@ -45,7 +50,8 @@
     "action": "I settle in and wait for the thaw.",
     "narration": "Three weeks pass. The snow comes twice more and each time gives up a little faster. You mend what needs mending, learn the names of everyone on the lane, and grow used to the smell of woodsmoke in your clothes. When the river finally breaks, the sound of it wakes half the village.",
     "min": 336,
-    "max": 672
+    "max": 672,
+    "start": 9
   },
   {
     "id": "stated-short",
@@ -53,7 +59,8 @@
     "action": "I wait for her to come back.",
     "narration": "She holds up a hand and disappears into the back room. You count the knots in the floorboards. Perhaps ten minutes later she returns with a flat tin box under one arm and an apologetic look.",
     "min": 0.08,
-    "max": 0.5
+    "max": 0.5,
+    "start": 11
   },
   {
     "id": "journey",
@@ -61,7 +68,8 @@
     "action": "I set out for the capital.",
     "narration": "The road runs east and keeps running. You sleep the first night under a hedge and the second in a barn that costs you a coin and an hour of listening to a farmer's grievances. The country flattens, then rises. On the fourth morning the capital's smoke smudges the horizon ahead of you.",
     "min": 48,
-    "max": 168
+    "max": 168,
+    "start": 7
   },
   {
     "id": "sleep-implied",
@@ -69,7 +77,8 @@
     "max": 12,
     "action": "I go to sleep.",
     "narration": "You pull the blanket up and let the dark have you. Somewhere past the wall a dog gives up barking. The shutters are grey when you next look at them, and the fire has gone to white ash in the grate.",
-    "note": "a full night, but the prose never says 'you slept' or names an hour - the passage of time is carried entirely by the shutters and the dead fire"
+    "note": "a full night, but the prose never says 'you slept' or names an hour - the passage of time is carried entirely by the shutters and the dead fire",
+    "start": 22
   },
   {
     "id": "sleep-interrupted",
@@ -77,7 +86,8 @@
     "max": 8,
     "action": "I lie down and try to rest.",
     "narration": "Sleep comes slower than you would like. You surface twice - once at a sound that turns out to be nothing, once at the cold - and the second time you stay awake a while, listening. When you finally give up on it the sky outside has begun to lighten.",
-    "note": "broken sleep reaching dawn; the narration is about the interruptions rather than the duration"
+    "note": "broken sleep reaching dawn; the narration is about the interruptions rather than the duration",
+    "start": 23
   },
   {
     "id": "sleep-onset",
@@ -85,6 +95,79 @@
     "max": 0.5,
     "action": "I go to sleep.",
     "narration": "You shake out the blanket, settle onto the cot, and let your eyes close. The straw shifts under you as you find a position that does not dig in.",
-    "note": "FALSE-POSITIVE GUARD: the player asked to sleep but the narration only reaches the moment of lying down. A near-zero answer is CORRECT here - a model that charges eight hours for this is reading the action, not the passage"
+    "note": "FALSE-POSITIVE GUARD: the player asked to sleep but the narration only reaches the moment of lying down. A near-zero answer is CORRECT here - a model that charges eight hours for this is reading the action, not the passage",
+    "start": 22
+  },
+  {
+    "id": "anchor-dawn-a",
+    "why": "ANCHORED: sleep ends at dawn - the duration depends on when it started (both starts are night, so a daypart reading cannot tell them apart)",
+    "action": "I sleep until dawn.",
+    "narration": "You bank the fire, pull the blanket to your chin, and sleep the way you have not slept in days. Nothing wakes you. When you finally stir, the first grey light is just showing at the edge of the shutters and the birds outside have only started.",
+    "start": 21,
+    "min": 7,
+    "max": 11
+  },
+  {
+    "id": "anchor-dawn-b",
+    "why": "ANCHORED: sleep ends at dawn - the duration depends on when it started (both starts are night, so a daypart reading cannot tell them apart)",
+    "action": "I sleep until dawn.",
+    "narration": "You bank the fire, pull the blanket to your chin, and sleep the way you have not slept in days. Nothing wakes you. When you finally stir, the first grey light is just showing at the edge of the shutters and the birds outside have only started.",
+    "start": 2,
+    "min": 2,
+    "max": 6
+  },
+  {
+    "id": "anchor-dusk-a",
+    "why": "ANCHORED: waiting ends at nightfall - the duration depends on when it started",
+    "action": "I wait for nightfall.",
+    "narration": "You find a spot in the lee of the wall where the shade is cool and settle in to watch the road. Carts come and go. The shadows of the poplars stretch across the field and climb the far hedge. You stay put until the sun is gone and the first lamps are lit in the village below.",
+    "start": 13,
+    "min": 5,
+    "max": 9
+  },
+  {
+    "id": "anchor-dusk-b",
+    "why": "ANCHORED: waiting ends at nightfall - the duration depends on when it started",
+    "action": "I wait for nightfall.",
+    "narration": "You find a spot in the lee of the wall where the shade is cool and settle in to watch the road. Carts come and go. The shadows of the poplars stretch across the field and climb the far hedge. You stay put until the sun is gone and the first lamps are lit in the village below.",
+    "start": 18,
+    "min": 0.5,
+    "max": 4
+  },
+  {
+    "id": "anchor-noon-a",
+    "why": "ANCHORED: work ends at noon - the duration depends on when it started",
+    "action": "I work the field until noon.",
+    "narration": "You work down the rows with the hoe, one after another, stopping only to drink from the jug at the end of each. The soil turns over dark and damp. You keep at it until the sun stands straight overhead and the bell in the village rings the noon hour.",
+    "start": 6,
+    "min": 4.5,
+    "max": 7.5
+  },
+  {
+    "id": "anchor-noon-b",
+    "why": "ANCHORED: work ends at noon - the duration depends on when it started",
+    "action": "I work the field until noon.",
+    "narration": "You work down the rows with the hoe, one after another, stopping only to drink from the jug at the end of each. The soil turns over dark and damp. You keep at it until the sun stands straight overhead and the bell in the village rings the noon hour.",
+    "start": 10,
+    "min": 1,
+    "max": 3.5
+  },
+  {
+    "id": "anchor-morrow-a",
+    "why": "ANCHORED: the scene ends the next morning - the duration depends on when it started",
+    "action": "I tell her I will meet her here tomorrow morning.",
+    "narration": "She nods, and you leave her at the gate. The rest of the day goes to errands, a long supper, and a bed you do not remember falling into. Early the next morning you are back at the gate, and she is already waiting.",
+    "start": 9,
+    "min": 18,
+    "max": 27
+  },
+  {
+    "id": "anchor-morrow-b",
+    "why": "ANCHORED: the scene ends the next morning - the duration depends on when it started",
+    "action": "I tell her I will meet her here tomorrow morning.",
+    "narration": "She nods, and you leave her at the gate. The rest of the day goes to errands, a long supper, and a bed you do not remember falling into. Early the next morning you are back at the gate, and she is already waiting.",
+    "start": 19,
+    "min": 9,
+    "max": 16
   }
 ]
