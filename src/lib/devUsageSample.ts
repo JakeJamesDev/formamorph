@@ -1,6 +1,9 @@
 import type { HostedAiAdminApi, HostedUsageReport } from '@/services/HostedAiAdminService';
 
+import { FUNNEL_SOURCES, FUNNEL_SOURCE_STAGES, FUNNEL_STAGES, type FunnelStage } from '@/lib/funnel';
+
 const DAY_MS = 86_400_000;
+const FUNNEL_SAMPLE_PER_DAY: Record<FunnelStage, number> = { offer_shown: 30, see_levels: 12, patreon_click: 3, checklist_finished: 1 };
 const WAVE = [12, 15, 9, 18, 21, 16, 11, 14, 23, 26, 19, 13, 17, 24, 28, 22, 15, 18, 29, 31, 24, 17, 20, 33, 36, 27, 19, 25, 38, 22];
 
 /**
@@ -78,10 +81,11 @@ export function createDevUsageApi(): Pick<HostedAiAdminApi, 'fetchUsageReport'> 
           { tier: 'supporter', turns: Math.round(turns * 0.1), costMicros: Math.round(costMicros * 0.1), budgetShare: null },
         ],
         offer: [
-          { step: 'offer_shown', count: count * 30 },
-          { step: 'see_levels', count: count * 12 },
-          { step: 'patreon_click', count: count * 3 },
-          { step: 'checklist_finished', count: count },
+          ...FUNNEL_SOURCES.flatMap((source, sourceIndex) => FUNNEL_SOURCE_STAGES[source].map((stage) => ({
+            step: `${source}_${stage}`,
+            count: Math.round(count * FUNNEL_SAMPLE_PER_DAY[stage] * (1 - sourceIndex * 0.15)),
+          }))),
+          ...FUNNEL_STAGES.map((stage) => ({ step: stage, count: count * FUNNEL_SAMPLE_PER_DAY[stage] })),
         ],
         reservations: {
           overall: { calls: 400, reserveMicros: 4_000_000, costMicros: 1_400_000, ratio: 0.35 },

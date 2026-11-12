@@ -13,9 +13,11 @@ import { useDevRoute } from "@/lib/devRouter";
 import { useMountedRef } from "@/lib/useMountedRef";
 import { useTierName } from "@/lib/tierNames";
 import {
-  NO_VALUE, axisTop, clientLabel, dayLabel, daysCsv, endingLabel, failureLabel, instantLabel, money, offerLabel, percent,
-  platformLabel, promptTypeLabel, promptTypesCsv, refusalLabel, seconds, share, whole,
+  FUNNEL_COLUMN_LABELS, NO_VALUE, axisTop, clientLabel, dayLabel, daysCsv, endingLabel, failureLabel, funnelCellLabel, funnelRows,
+  instantLabel, money, percent, platformLabel, promptTypeLabel, promptTypesCsv, refusalLabel, seconds, share, whole,
 } from "@/lib/usageReport";
+import type { FunnelRow } from "@/lib/usageReport";
+import { FUNNEL_STAGES } from "@/lib/funnel";
 import HostedAiAdminService, {
   type HostedActiveFigures, type HostedAiAdminApi, type HostedInstallBuild, type HostedPromptTypeUsage, type HostedUsageDay,
   type HostedUsageReport,
@@ -537,17 +539,18 @@ function ClientsSection({ report }: { report: HostedUsageReport }) {
       </UsageSection>
 
       <UsageSection title="Offer Steps">
-        <RankedBars
-          empty="No offer steps in this range"
-          rows={report.offer.every((row) => row.count === 0) ? [] : report.offer.map((row, index) => {
-            const previous = report.offer[index - 1]?.count;
-            return {
-              label: offerLabel(row.step),
-              amount: row.count,
-              value: previous ? `${whole(row.count)} (${percent(row.count / previous)})` : whole(row.count),
-            };
-          })}
-        />
+        {report.offer.every((row) => row.count === 0) ? <Meta>No offer steps in this range</Meta> : (
+          <FiguresTable
+            label="Offer Steps"
+            minWidth="34rem"
+            rows={funnelRows(report.offer)}
+            rowKey={(row) => row.key}
+            columns={[
+              { label: 'Source', left: true, cell: (row) => row.label },
+              ...FUNNEL_STAGES.map((stage, index) => ({ label: FUNNEL_COLUMN_LABELS[stage], cell: (row: FunnelRow) => funnelCellLabel(row.cells[index]) })),
+            ]}
+          />
+        )}
       </UsageSection>
     </div>
   );

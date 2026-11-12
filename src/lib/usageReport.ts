@@ -1,3 +1,4 @@
+import { FUNNEL_SOURCES, FUNNEL_SOURCE_STAGES, FUNNEL_STAGES, type FunnelSource, type FunnelStage } from '@/lib/funnel';
 import { REQUEST_LABELS } from '@/lib/promptGroups';
 import type { HostedPromptTypeUsage, HostedUsageDay } from '@/services/HostedAiAdminService';
 
@@ -55,11 +56,47 @@ export function failureLabel(failure: string): string {
   return status ? `Provider Error ${status[1]}` : FAILURE_LABELS[failure] ?? failure;
 }
 
-const OFFER_LABELS: Record<string, string> = {
-  offer_shown: 'Offer Shown', engine_offer_shown: 'Built-In Engine Offer Shown', see_levels: 'See Levels', patreon_click: 'Patreon Click', checklist_finished: 'Checklist Finished',
+/** The funnel table's columns, one per stage in funnel order. */
+export const FUNNEL_COLUMN_LABELS: Record<FunnelStage, string> = {
+  offer_shown: 'Shown', see_levels: 'See Levels', patreon_click: 'Patreon', checklist_finished: 'Checklist',
 };
 
-export const offerLabel = (step: string): string => OFFER_LABELS[step] ?? step;
+const FUNNEL_SOURCE_LABELS: Record<FunnelSource, string> = {
+  setup: 'AI Setup', demo: 'Demo AI Card', engine: 'Built-In Engine Card', notice: 'Demo AI Notice', locked: 'Locked Preset Panel',
+};
+
+/** A null count is a stage the source does not report. A rate is null over a zero base, and `ranked` is false on a row's first count. */
+export interface FunnelCell { count: number | null; rate: number | null; ranked: boolean }
+/** `cells` follow `FUNNEL_STAGES`. */
+export interface FunnelRow { key: string; label: string; cells: readonly FunnelCell[] }
+
+/** One row per source in report order, then the older-build totals. A step the report omits counts zero. */
+export function funnelRows(offer: readonly { step: string; count: number }[]): FunnelRow[] {
+  const counts = new Map(offer.map((row) => [row.step, row.count]));
+  const rowOf = (key: string, label: string, steps: ReadonlyMap<FunnelStage, string>): FunnelRow => {
+    let previous: number | null = null;
+    const cells = FUNNEL_STAGES.map((stage): FunnelCell => {
+      const step = steps.get(stage);
+      if (step === undefined) return { count: null, rate: null, ranked: false };
+      const count = counts.get(step) ?? 0;
+      const cell = { count, rate: previous === null ? null : share(count, previous), ranked: previous !== null };
+      previous = count;
+      return cell;
+    });
+    return { key, label, cells };
+  };
+  const stepsOf = (source: FunnelSource) => new Map(FUNNEL_SOURCE_STAGES[source].map((stage): [FunnelStage, string] => [stage, `${source}_${stage}`]));
+  return [
+    ...FUNNEL_SOURCES.map((source) => rowOf(source, FUNNEL_SOURCE_LABELS[source], stepsOf(source))),
+    rowOf('older', 'Older Builds', new Map(FUNNEL_STAGES.map((stage): [FunnelStage, string] => [stage, stage]))),
+  ];
+}
+
+/** `12 (40%)`; a rate with no base reads `12 (—)`, a row's first count is bare, and an unreported stage is the empty value. */
+export function funnelCellLabel(cell: FunnelCell): string {
+  if (cell.count === null) return NO_VALUE;
+  return cell.ranked ? `${whole(cell.count)} (${percent(cell.rate)})` : whole(cell.count);
+}
 
 const REFUSAL_LABELS: Record<string, string> = {
   invalid_request: 'Invalid Request', age_gate_required: 'Age Check Needed', not_entitled: 'Not Entitled',

@@ -206,20 +206,34 @@ describe('the figures', () => {
     expect(screen.getByText('Jan 2 So Far: 120 Active Installs')).toBeTruthy();
   });
 
-  it('gives each offer step its share of the step before it', async () => {
+  it('shows one offer row per source, each count with its rate to the step before', async () => {
+    const user = userEvent.setup();
+    await mount(report({
+      offer: [
+        { step: 'setup_offer_shown', count: 200 }, { step: 'setup_see_levels', count: 20 }, { step: 'setup_patreon_click', count: 5 },
+        { step: 'engine_offer_shown', count: 30 }, { step: 'notice_see_levels', count: 8 }, { step: 'notice_patreon_click', count: 2 },
+        { step: 'locked_see_levels', count: 4 }, { step: 'locked_patreon_click', count: 1 }, { step: 'locked_checklist_finished', count: 1 },
+      ],
+    }));
+    await open(user, 'Clients And Offer');
+
+    expect(rowHeaders('Offer Steps')).toEqual(['AI Setup', 'Demo AI Card', 'Built-In Engine Card', 'Demo AI Notice', 'Locked Preset Panel', 'Older Builds']);
+    expect(rowsOf('Offer Steps')).toEqual([
+      ['200', '20 (10%)', '5 (25%)', '0 (0%)'],
+      ['0', '0 (—)', '0 (—)', '0 (—)'],
+      ['30', '0 (0%)', '0 (—)', '0 (—)'],
+      ['—', '8', '2 (25%)', '0 (0%)'],
+      ['—', '4', '1 (25%)', '1 (100%)'],
+      ['0', '0 (—)', '0 (—)', '0 (—)'],
+    ]);
+  });
+
+  it('reads the source-less step names into the Older Builds row', async () => {
     const user = userEvent.setup();
     await mount();
     await open(user, 'Clients And Offer');
 
-    expect(screen.getByText('40 (40%)')).toBeTruthy();
-  });
-
-  it('labels the built-in engine offer step', async () => {
-    const user = userEvent.setup();
-    await mount(report({ offer: [{ step: 'offer_shown', count: 100 }, { step: 'engine_offer_shown', count: 30 }] }));
-    await open(user, 'Clients And Offer');
-
-    expect(screen.getByText('Built-In Engine Offer Shown')).toBeTruthy();
+    expect(rowsOf('Offer Steps')[5]).toEqual(['100', '40 (40%)', '0 (0%)', '0 (—)']);
   });
 
   it('names a failure cause and a tier, and never an account', async () => {
