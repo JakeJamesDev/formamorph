@@ -100,6 +100,61 @@ describe('mapRoster', () => {
     expect(rosterOf({ entities: [spy('a', 'market'), met] }, null)).toEqual({ market: { named: ['Bram'], unknown: 1 } });
   });
 
+  describe('On Map', () => {
+    const PLACES = ['market', 'keep', 'gate', 'tower', 'moor'];
+    const everywhere = (extra: Partial<Entity>) => rosterOf({
+      entities: PLACES.map((at) => spy(`at-${at}`, at, extra)), met: [],
+    });
+
+    it('reads an absent field as Always', () => {
+      expect(rosterOf({ entities: [spy('a', 'market')] })).toEqual(rosterOf({ entities: [spy('a', 'market', { onMap: 'always' })] }));
+      expect(rosterOf({ entities: [spy('a', 'market')] })).toEqual({ market: { named: ['a hooded a'], unknown: 0 } });
+    });
+
+    it('reads an unknown value as Always', () => {
+      const odd = spy('a', 'moor', { onMap: 'sometimes' as unknown as Entity['onMap'] });
+      expect(rosterOf({ entities: [odd] })).toEqual({ moor: { named: [], unknown: 1 } });
+    });
+
+    it('Never removes a met entity and an unmet one from every place', () => {
+      expect(everywhere({ onMap: 'never' })).toEqual({});
+      const met = PLACES.map((at) => spy(`m-${at}`, at, { onMap: 'never' }));
+      expect(rosterOf({ entities: met, met: met.map((e) => e.id) })).toEqual({});
+    });
+
+    it('When Nearby keeps the entity in the player’s place and Nearby places, and drops it from Far ones', () => {
+      expect(everywhere({ onMap: 'whenNearby' })).toEqual({
+        market: { named: ['a hooded at-market'], unknown: 0 },
+        keep: { named: ['a hooded at-keep'], unknown: 0 },
+        gate: { named: ['a hooded at-gate'], unknown: 0 },
+      });
+      const met = PLACES.map((at) => spy(`m-${at}`, at, { onMap: 'whenNearby' }));
+      expect(rosterOf({ entities: met, met: met.map((e) => e.id) })).toEqual({
+        market: { named: ['True m-market'], unknown: 0 },
+        keep: { named: ['True m-keep'], unknown: 0 },
+        gate: { named: ['True m-gate'], unknown: 0 },
+      });
+    });
+
+    it('Once Met removes an unmet stranger everywhere and shows it by true name once met', () => {
+      expect(everywhere({ onMap: 'onceMet' })).toEqual({});
+      const met = PLACES.map((at) => spy(`m-${at}`, at, { onMap: 'onceMet' }));
+      const roster = rosterOf({ entities: met, met: met.map((e) => e.id) });
+      expect(Object.keys(roster).sort()).toEqual([...PLACES].sort());
+      expect(roster.moor).toEqual({ named: ['True m-moor'], unknown: 0 });
+    });
+
+    it('When Nearby shows nothing with no current place, as the reach is empty', () => {
+      const met = spy('m', 'market', { onMap: 'whenNearby' });
+      expect(rosterOf({ entities: [met], met: ['m'] }, null)).toEqual({});
+    });
+
+    it('Once Met shows an entity with no stranger fields as Always', () => {
+      const plain = entity('plain', 'Old Hesk', { locations: ['tower'], onMap: 'onceMet' });
+      expect(rosterOf({ entities: [plain] })).toEqual({ tower: { named: ['Old Hesk'], unknown: 0 } });
+    });
+  });
+
   it('places a runtime character where it was met', () => {
     const fishwife = entity('fish', 'Fishwife', { locations: ['market'] });
     expect(rosterOf({ runtime: [fishwife] })).toEqual({ market: { named: ['Fishwife'], unknown: 0 } });

@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { randomUUID } from '@/lib/uuid';
 import { MINUTES_PER_DAY } from '@/lib/gameClock';
 import { PLAYER_START, type Connection, type Entity, type EntityKind, type EntityStart, type GameLocation, type ScheduleRow, type Traversable } from '@/types';
+import { OnMapField } from '@/managers/OnMapField';
 import { DayStrip, STRIP_PART } from './DayStrip';
 import { RoutineRow } from './RoutineRow';
 import { ACTIONS } from './routineActions';
@@ -131,6 +132,7 @@ export function RoutineTab({ entity, onChange, hereMark }: {
         />
         <Hint>{KIND_HINTS[kind]}</Hint>
       </div>
+      <OnMapField entity={entity} commit={commit} />
       <EntityRoutine
         entity={kinded} kind={kind} book={book} connections={connections} locations={locations} commit={commit} onChange={onChange}
         hereMark={hereMark}

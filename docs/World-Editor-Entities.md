@@ -97,6 +97,19 @@ The **Presence** tab sets where the entity begins, where it goes, and where the 
 - **Unique**: one character in one location at a time. A new entity is **Unique**. During the game it can move, follow the player and be left waiting.
 - **Generic**: a type of character, such as a crowd or a herd. One begins at every start at the same time, and each moves on its start's routine. It never follows and is never called over.
 
+### On Map
+
+**On Map**, under **Placement**, sets how the player's map shows the entity. The map counts the entity at each location where it stands.
+
+| On Map | The player's map shows the entity |
+|---|---|
+| **Always** | At every location where it stands. This is the default. |
+| **Once Met** | Only after the player meets it. It applies only to an entity with a [Stranger Name](#stranger-name). An entity with no **Stranger Name** shows as with **Always**. |
+| **When Nearby** | Only at the player's location and the locations **Nearby** it, met or not. |
+| **Never** | Nowhere, met or not. |
+
+Until the player meets an entity with a **Stranger Name**, the map shows it under the name the story gave it, or the **Stranger Name**, at the player's location and **Nearby** locations. Elsewhere it shows as an unknown. An entity with no **Stranger Name** shows under its **Name**.
+
 ### Starts
 
 Every entity has one or more starts. Each start is a location and a routine kept from there.

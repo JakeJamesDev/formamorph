@@ -1,6 +1,7 @@
 import type { Connection } from '@/types';
 import type { EntityPresence } from '@/lib/presence';
 import { numbered } from '@/lib/presence';
+import { onMapOf } from '@/lib/onMap';
 import { nearbyPlaces, type LocationLink } from '@/lib/locationGraph';
 
 /** What the Map shows at one place: the names the player has heard, then how many entries stay unknown. */
@@ -16,7 +17,9 @@ export type MapRoster = Readonly<Record<string, MapPlace>>;
 /**
  * The Map's roster: every cast entity at each place it stands. The player's place and its Nearby places show
  * an unmet stranger under its stranger label; every other place counts it as unknown. An unmet entity with
- * no label is unknown everywhere. A stranger's true name never enters the output before it is met.
+ * no label is unknown everywhere. A stranger's true name never enters the output before it is met. Each
+ * entity's On Map comes first: Never shows nothing, When Nearby nothing outside that reach, Once Met nothing
+ * while unmet.
  */
 export function mapRoster(
   presence: Iterable<EntityPresence>,
@@ -29,7 +32,10 @@ export function mapRoster(
   const labels: Record<string, string[]> = {};
   const unknown: Record<string, number> = {};
   for (const { entity, position, known, label } of presence) {
+    const onMap = onMapOf(entity);
+    if (onMap === 'never' || (onMap === 'onceMet' && !known)) continue;
     for (const at of position) {
+      if (onMap === 'whenNearby' && !reach.has(at)) continue;
       if (known) (names[at] ??= []).push(entity.name);
       else if (label && reach.has(at)) (labels[at] ??= []).push(label);
       else unknown[at] = (unknown[at] ?? 0) + 1;

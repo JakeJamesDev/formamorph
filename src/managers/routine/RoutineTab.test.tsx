@@ -79,6 +79,29 @@ describe('the routine as sentences', () => {
   });
 });
 
+describe('On Map', () => {
+  it('sits below Placement, shows Always for an entity with no field, and writes the field on change', async () => {
+    const bench = mount(mira(oneStart([])));
+    const placement = screen.getByRole('radiogroup', { name: 'Placement' });
+    const onMap = screen.getByRole('radiogroup', { name: 'On Map' });
+    expect(placement.compareDocumentPosition(onMap) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(onMap).getByRole('radio', { name: 'Always' })).toBeChecked();
+    expect(screen.getByText('Shows it on the player’s map wherever it stands')).toBeInTheDocument();
+
+    await userEvent.click(within(onMap).getByRole('radio', { name: 'When Nearby' }));
+    expect(stored(bench).onMap).toBe('whenNearby');
+    expect(screen.getByText('Shows it only in the player’s location and Nearby locations')).toBeInTheDocument();
+
+    await userEvent.click(within(onMap).getByRole('radio', { name: 'Always' }));
+    expect(stored(bench)).not.toHaveProperty('onMap');
+  });
+
+  it('is absent for a custom persona', () => {
+    mount(mira(oneStart([]), { customPersona: true }));
+    expect(screen.queryByRole('radiogroup', { name: 'On Map' })).toBeNull();
+  });
+});
+
 describe('editing rows', () => {
   it('adds a row in the free time at the start location, as one undo step', async () => {
     const bench = mount(mira(oneStart([])));

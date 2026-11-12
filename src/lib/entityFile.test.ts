@@ -55,6 +55,21 @@ function fakeWebp(): Uint8Array {
   return out;
 }
 
+describe('entity card On Map', () => {
+  it.each(['onceMet', 'whenNearby', 'never'] as const)('round-trips %s through a card, bytes included', async (onMap) => {
+    const card = buildEntityCardData({ id: 'x', name: 'Bram', onMap });
+    expect(card.onMap).toBe(onMap);
+    const bytes = embedEntityCard(fakeWebp(), JSON.stringify(card), { w: 4, h: 4 });
+    expect(parseEntityCardData(JSON.parse(readEntityCard(bytes)!)).onMap).toBe(onMap);
+  });
+
+  it('writes no field for Always or an absent field, and reads an unknown value as no field', () => {
+    expect(buildEntityCardData({ id: 'x', name: 'Bram' })).not.toHaveProperty('onMap');
+    expect(buildEntityCardData({ id: 'x', name: 'Bram', onMap: 'always' })).not.toHaveProperty('onMap');
+    expect(parseEntityCardData({ formamorphKind: 'entity', name: 'X', onMap: 'sometimes' })).not.toHaveProperty('onMap');
+  });
+});
+
 describe('buildEntityCardData', () => {
   it('drops image/model/sound and stamps kind + version', () => {
     const card = buildEntityCardData(entity);

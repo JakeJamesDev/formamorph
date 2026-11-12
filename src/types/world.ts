@@ -475,6 +475,9 @@ export interface EntityStart {
 /** Where a Unique entity may go beyond its schedule. An empty list means schedule places only. */
 export type Traversable = 'anywhere' | string[];
 
+/** How the player's map shows an entity. Read it through `lib/onMap`. */
+export type OnMap = 'always' | 'onceMet' | 'whenNearby' | 'never';
+
 /** A character or object in the world, with separate player-facing and AI-facing descriptions plus optional media. */
 export interface Entity {
   id: string;
@@ -536,6 +539,8 @@ export interface Entity {
   /** Where the AI knows of the entity while it isn't present: `nowhere`, or the picked location ids, each
    *  covering its whole subtree. Absent = Nearby, one step from where it is. */
   knownIn?: 'nowhere' | string[];
+  /** How the player's map shows the entity. Absent = Always. */
+  onMap?: OnMap;
   /** The entity's links to other entities, at most one per target, in author order. Absent or empty = none. */
   relationships?: EntityRelationship[];
   /** Editor-only folder this entity lives in; null/absent = ungrouped. Purely organizational — never sent

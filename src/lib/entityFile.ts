@@ -15,7 +15,8 @@ import { readComponentFileLinks, type ComponentFileLinks, type ComponentFileSour
 import { chipTexts } from './linkedContent';
 import { carriedPlaceholders, sharedPlaceholdersUsed } from './placeholderHomes';
 import { portablePlaceholders } from './placeholderGroups';
-import type { Dictionary } from '@/types';
+import type { Dictionary, OnMap } from '@/types';
+import { storedOnMap } from './onMap';
 import { embedEntityCard, readEntityCard } from './entityCard';
 import { readTavernCard, readTavernJson } from './tavernCard';
 import { IMAGE_CAPS, bytesToDataUrl, dataUrlMime, measureDataUrl, optimizeImageDataUrl, optimizeToWebpDataUrl } from './imageOptim';
@@ -43,6 +44,8 @@ export interface EntityCardData {
   pronouns?: string;
   /** The Persona mark. A shared persona arrives as a persona. */
   persona?: boolean;
+  /** How the map shows the entity; absent = Always. */
+  onMap?: OnMap;
   type?: string;
   playerDescription?: string;
   aiDescription?: string;
@@ -115,6 +118,7 @@ export function buildEntityCardData(
     ...(entity.aliases?.length ? { aliases: entity.aliases } : {}),
     ...(entity.pronouns ? { pronouns: entity.pronouns } : {}),
     ...(entity.persona ? { persona: true } : {}),
+    ...storedOnMap(entity.onMap),
     ...(entity.type ? { type: entity.type } : {}),
     ...(entity.playerDescription ? { playerDescription: entity.playerDescription } : {}),
     ...(entity.aiDescription ? { aiDescription: entity.aiDescription } : {}),
@@ -187,6 +191,7 @@ export function parseEntityCardData(raw: unknown, pixels?: Base64Data): Entity {
     ...(aliases.length ? { aliases } : {}),
     ...(typeof obj.pronouns === 'string' && obj.pronouns ? { pronouns: obj.pronouns } : {}),
     ...(obj.persona === true ? { persona: true } : {}),
+    ...storedOnMap(obj.onMap),
     ...(typeof obj.type === 'string' && obj.type ? { type: obj.type } : {}),
     ...(typeof obj.playerDescription === 'string' && obj.playerDescription ? { playerDescription: obj.playerDescription } : {}),
     ...(typeof obj.aiDescription === 'string' && obj.aiDescription ? { aiDescription: obj.aiDescription } : {}),
