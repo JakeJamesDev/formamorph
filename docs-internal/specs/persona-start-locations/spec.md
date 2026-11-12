@@ -27,6 +27,9 @@ Both store the list in the entity's `locations` field, the shape v3.6.2 shipped.
 - **Q5 Field.** The existing location multiselect, labeled **Start Locations**, without a Player's Starting Location option. An empty list means the world's base list only.
 - **Q6 Runtime.** An unpicked Persona-Only entity and the Custom Persona never hold a Position or a Known In listing. Reproduce today's behavior first; the fix comes with a test.
 - **Q7 Every switch.** The Q4 conversion applies to every change into or out of Persona-Only and Custom Persona, Cast included. Cast and Playable keep Starts; Persona-Only and Custom Persona keep the list.
+- **Q8 One cast rule.** The positioned cast and the Known In lookup both follow `inCast`: they drop the Custom Persona, every unpicked Persona-Only entity, and the played persona of any role. A played persona is the player, never someone known about. (Ticket 01 question.) Ticket 01 found the narrator request never leaked, since the live scene already applies `inCast`; the Position at opening did, and stat code and Test Code read Known In over raw world entities.
+- **Q9 Hidden fields drop.** A switch into Persona-Only or Custom Persona also drops `onMap` and `knownIn`; a switch back starts with both absent. Undo restores the whole entity. (Ticket 02 question.)
+- **Q10 One hint.** Both personas show one Start Locations hint, written from the Writing Guide. The existing persona hint stays where it is. (Ticket 02 question.)
 
 ## User Stories
 
