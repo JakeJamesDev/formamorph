@@ -30,3 +30,5 @@ Spec rulings: Q9 (#4, #5), Q7.
 - [ ] A changelog fragment records the two fixes.
 
 For you: ask Morphie in a bundled world where a named character is, once in the editor and once in a game, and judge whether the answer reads right.
+
+Spec rulings added after this ticket was written: Q19, Q22. Ticket 06 owns `presenceLines`: it gives it a world argument and makes it read Presence, so Morphie's location pages change there. For that part this ticket adds only its reader to the agreement test.

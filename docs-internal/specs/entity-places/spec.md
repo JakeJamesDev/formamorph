@@ -108,6 +108,7 @@ Rulings from the grill of 2026-11-11.
 - **Q22.** The glossary term is Traversable; "Can Also Go" is its UI label, which this spec and ADR-0017 use in prose. In code the reason is `traversable`.
 
   Q18 to Q22 are spec-session rulings of 2026-11-11, on intent questions of ticket 02.
+- **Q23.** The canvas Routine view of one Start (`routineView`) is an editor of the routine, not a reader of where an entity can be. It keeps every row place of that Start, reachable or not, so the author can repair a broken row. It does not read Presence. The canvas pick marks do. Spec-session ruling of 2026-11-11, on an intent question of ticket 06.
 
 Other decisions:
 
