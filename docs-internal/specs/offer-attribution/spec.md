@@ -36,6 +36,9 @@ The staff Usage view shows one row per source, with a rate from each step to the
 | Q11 | The Usage view shows a table: one row per source, columns Shown, See Levels, Patreon, Checklist, each with a rate to the step before. A last row holds the older-build totals. |
 | Q13 | The locked-preset panel's See Levels button sends `locked_see_levels`. The earlier text said `locked` opens only the checklist; the panel has both buttons. Ticket 02 ruling. |
 | Q14 | The Road sends no Patreon or Checklist step while it holds no source. Only the dev-router opens it that way; every real caller passes a source by type. Ticket 02 ruling. |
+| Q15 | The table replaces the Offer Steps bars under the same heading. The empty text stays for a range where every count is zero. Ticket 03 ruling. |
+| Q16 | A row's first valid step shows its count with no rate. Notice and locked show the empty value only in Shown. A step missing from the report counts 0. A rate over a zero base shows the empty value. Ticket 03 ruling. |
+| Q17 | Cells read "count (rate)", the same as the bars did. Ticket 03 ruling. |
 | Q12 | Tests use existing seams only: funnel POSTs counted per surface on the client, the server's funnel totals and Usage report tests, and the Usage tab test. |
 
 ## User Stories
