@@ -206,6 +206,15 @@ describe('world B right after its write-back', () => {
   });
 });
 
+describe('On Map through the library', () => {
+  it('keeps its value from a save in world A to a copy in world B', () => {
+    const inA = { ...carried(LIBRARY, WORLD_A), onMap: 'whenNearby' as const };
+    const item = { ...toLibraryItem(inA, [], WORLD_A.locations), id: 'lib-content' } as Entity;
+    expect(item.onMap).toBe('whenNearby');
+    expect(carried(item, WORLD_B).onMap).toBe('whenNearby');
+  });
+});
+
 describe('a linked copy with no kind', () => {
   // A library item names its places in refs; the world copy holds its own list and no refs (Q2).
   const library: Entity = { id: 'lib-content', name: 'Wren', playerDescription: 'A ferryman.', locationRefs: [{ id: 'src-inn', name: 'Inn' }] };

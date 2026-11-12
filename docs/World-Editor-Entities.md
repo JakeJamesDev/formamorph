@@ -104,7 +104,7 @@ The **Presence** tab sets where the entity begins, where it goes, and where the 
 | On Map | The player's map shows the entity |
 |---|---|
 | **Always** | At every location where it stands. This is the default. |
-| **Once Met** | Only after the player meets it. It applies only to an entity with a [Stranger Name](#stranger-name). An entity with no **Stranger Name** shows as with **Always**. |
+| **Once Met** | Only after the player meets it. Without a [Stranger Name](#stranger-name), it works like **Always**. |
 | **When Nearby** | Only at the player's location and the locations **Nearby** it, met or not. |
 | **Never** | Nowhere, met or not. |
 

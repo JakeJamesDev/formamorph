@@ -6,45 +6,45 @@ import { onMapOf } from './onMap';
 /** Each bundled world's text, loaded on demand. */
 const worldTexts = import.meta.glob<string>('/src/defaultworlds/*.json', { query: '?raw', import: 'default' });
 
-const N: OnMap = 'whenNearby';
-const V: OnMap = 'never';
+const NEARBY: OnMap = 'whenNearby';
+const NEVER: OnMap = 'never';
 
 /** The approved On Map values by bundled world, by entity name. Every entity not listed is Always. */
 const APPROVED: Record<string, Record<string, OnMap>> = {
-  drone: { 'Vault Warden': N, 'Glassback Burrower': N, 'Blight Drake': N, Blightspawn: N, 'Herald Skarn': N },
-  emberwatch: { 'The Shade of Maelis': V, 'Cold Lights': N, 'Grave Hounds': N, 'Barrow Dead': N },
+  drone: { 'Vault Warden': NEARBY, 'Glassback Burrower': NEARBY, 'Blight Drake': NEARBY, Blightspawn: NEARBY, 'Herald Skarn': NEARBY },
+  emberwatch: { 'The Shade of Maelis': NEVER, 'Cold Lights': NEARBY, 'Grave Hounds': NEARBY, 'Barrow Dead': NEARBY },
   'open-chat': {},
-  rampage: { 'Captain Theo Ward': V, 'Aegis-One': N, 'Rooftop Missile Team': N, 'Combat Engineers': N },
+  rampage: { 'Captain Theo Ward': NEVER, 'Aegis-One': NEARBY, 'Rooftop Missile Team': NEARBY, 'Combat Engineers': NEARBY },
   slime: {
-    'The Ward Mimic': V,
-    'The Signal Slime': N,
-    'Amber Creeper': N,
-    'The Fog Veil': V,
-    'The Gutter Swarm': N,
-    'The Loudspeakers': V,
+    'The Ward Mimic': NEVER,
+    'The Signal Slime': NEARBY,
+    'Amber Creeper': NEARBY,
+    'The Fog Veil': NEVER,
+    'The Gutter Swarm': NEARBY,
+    'The Loudspeakers': NEVER,
   },
   sugarscape: {
-    'Licorice Constrictor': V,
-    Fluffbog: V,
-    'Caramel Seep': V,
-    'Toffee Slide': V,
-    'Gingerbread Waypost': V,
-    'The Daylight Seam': V,
-    'Saltlick Stones': V,
-    'Cream Cyclone': N,
-    'Sprinkle Swarmers': N,
-    'Stale Moths': N,
+    'Licorice Constrictor': NEVER,
+    Fluffbog: NEVER,
+    'Caramel Seep': NEVER,
+    'Toffee Slide': NEVER,
+    'Gingerbread Waypost': NEVER,
+    'The Daylight Seam': NEVER,
+    'Saltlick Stones': NEVER,
+    'Cream Cyclone': NEARBY,
+    'Sprinkle Swarmers': NEARBY,
+    'Stale Moths': NEARBY,
   },
-  valentines: { 'The Swarm': N, 'Ren Takeda': N, 'Coach Daizen': N },
+  valentines: { 'The Swarm': NEARBY, 'Ren Takeda': NEARBY, 'Coach Daizen': NEARBY },
   veilwood: {
-    'Mire Leeches': V,
-    'Sporeburst Puffball': V,
-    'Shadow Raptor': N,
-    'Dread Crawler': N,
-    'The Drowned Bell': V,
-    "The Surveyor's Blazes": V,
-    'Lantern Moths': V,
-    'Bark Frogs': V,
+    'Mire Leeches': NEVER,
+    'Sporeburst Puffball': NEVER,
+    'Shadow Raptor': NEARBY,
+    'Dread Crawler': NEARBY,
+    'The Drowned Bell': NEVER,
+    "The Surveyor's Blazes": NEVER,
+    'Lantern Moths': NEVER,
+    'Bark Frogs': NEVER,
   },
 };
 

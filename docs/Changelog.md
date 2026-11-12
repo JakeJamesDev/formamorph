@@ -88,7 +88,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Map Strangers:**
     - **The Map counts entities you haven't met, under the name you've heard nearby and as unknowns elsewhere.** A box's count splits into named entries and unknowns marked ?. An entity with no heard name stays unknown everywhere. The tip lists names, then unknowns.
     - **Each entity has an On Map setting, under Placement, that sets how the Map shows it.** Choose Always, Once Met, When Nearby or Never. Once Met applies only to an entity with a Stranger Name. Entity cards carry it.
-    - **Bundled worlds hide their hidden hazards and roaming threats on the Map.** Hazards, scenery and secrets use Never. Wandering threats use When Nearby, so the Map cannot track them.
+    - **Bundled worlds hide hazards on the Map and show roaming threats only nearby.** Hazards use Never. Wandering threats use When Nearby.
   - **In the World Editor, an entity with only a Stranger Description now starts as a stranger.** In play, you see its Name and that description until you meet it. Stranger Name now sits beside Name, and Stranger Description under Player-Facing Description. Items' Unidentified fields match, and each field has its own help button.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Aurelia, the default Avatar in release builds, now has Ear Shape, Tusks, Fox Ears and Fox Tail sliders.** Worlds can set them from traits, such as Fox Ears and Fox Tail for a Kitsune.

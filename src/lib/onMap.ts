@@ -11,12 +11,12 @@ export const ON_MAP_OPTIONS: readonly { value: OnMap; label: string }[] = [
 /** The help line under the control, by value. */
 export const ON_MAP_HELP: Record<OnMap, string> = {
   always: 'Shows it on the player’s map wherever it stands',
-  onceMet: 'Hides it until the narration uses its Name. Needs a Stranger Name.',
+  onceMet: 'Keeps it off the player’s map until the player meets it. Needs a Stranger Name.',
   whenNearby: 'Shows it only in the player’s location and Nearby locations',
   never: 'Keeps it off the player’s map',
 };
 
-/** `raw` as an On Map value, or undefined when it is not one of the four. */
+/** `raw` as an On Map value. */
 export const readOnMap = (raw: unknown): OnMap | undefined =>
   ON_MAP_OPTIONS.find((o) => o.value === raw)?.value;
 
