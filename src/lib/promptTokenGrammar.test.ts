@@ -141,32 +141,6 @@ describe('the chip label', () => {
   });
 });
 
-describe('names-only owned stats over the sample scene', () => {
-  const values = chipValues(sampleChipScene());
-  const off = 'norange.nodescriptor.nodescription';
-
-  it('lists the persona stat names inline in every format', () => {
-    expect(values(`<PERSONA|${off}>`)).toContain('stats: Nerve');
-    expect(values(`<PERSONA|${off}.markdown>`)).toContain('**stats:** Nerve');
-    expect(values(`<PERSONA|${off}.xml>`)).toContain('<stats>Nerve</stats>');
-    expect(values(`<PERSONA|${off}>`)).not.toContain('/100');
-  });
-
-  it('keeps the Stats chip at names only with every piece off', () => {
-    for (const token of ['<STATS DESCRIPTION>', '<STATS DESCRIPTION|markdown>', '<STATS DESCRIPTION|xml>']) {
-      const out = values(token)!;
-      expect(out, token).toContain('Health');
-      expect(out, token).not.toMatch(/\/100|Shaking|Steady/);
-    }
-  });
-
-  it('lists the entity stat names inline', () => {
-    const out = values(`<ENTITIES|${off}>`)!;
-    expect(out).toMatch(/\n {2}stats: [A-Z][\w ,]*\n/);
-    expect(out).not.toContain('/100');
-  });
-});
-
 describe('rendering the roster ids', () => {
   const values = chipValues(sampleChipScene());
 

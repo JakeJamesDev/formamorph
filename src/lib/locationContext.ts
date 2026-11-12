@@ -1,6 +1,6 @@
 import type { Connection, Entity, GameLocation, PersonaRef, PlayerStat } from "@/types";
 import { inCast } from "./owners";
-import { statContextRuns, statPlacementOf, type ContextFormat, type StatPieces } from "./statContext";
+import { statContextRuns, statPlacementOf, type ContextFormat, type StatPieces, type StatPlacement } from "./statContext";
 import { indentRuns, joinRuns, mark, runs, textOf, type MarkedRun, type MarkedText, type TextOrigin } from "./markedText";
 import { knownHere, knownInOf } from "./entityPresence";
 import { idsAtAny, type PlacesOf } from "./entityPlaces";
@@ -201,16 +201,26 @@ function rosterField(format: ContextFormat) {
     : `  ${key}: ${value}\n`;
 }
 
-/** {@link ownedStatLines} as runs marked as stats lines. With every piece off the stat names read inline on
- *  one `stats` line, as owned trait names do. */
+/** Whether any of `stats` sits in one of its owner's stat groups. */
+function anyStatGrouped(stats: readonly PlayerStat[], placement: StatPlacement): boolean {
+  const groupIds = new Set(placement.groups.map((g) => g.id));
+  return stats.some((s) => {
+    const groupId = placement.authored.find((a) => a.id === s.id)?.groupId;
+    return !!groupId && groupIds.has(groupId);
+  });
+}
+
+/** {@link ownedStatLines} as runs marked as stats lines. With every piece off and none of the stats in a
+ *  stat group, the names read inline on one `stats` line, as owned trait names do. */
 function ownedStatRuns(
   entity: Entity, stats: readonly PlayerStat[], format: ContextFormat, pieces: StatPieces = ALL_STAT_PIECES,
 ): MarkedRun[] {
   if (!stats.length) return [];
-  if (!pieces.values && !pieces.status && !pieces.meaning) {
+  const placement = statPlacementOf(entity);
+  if (!pieces.values && !pieces.status && !pieces.meaning && !anyStatGrouped(stats, placement)) {
     return mark(["stats"], rosterField(format)("stats", stats.map((s) => s.name).join(", ")));
   }
-  const block = indentRuns(statContextRuns([...stats], pieces, format, statPlacementOf(entity)), "    ");
+  const block = indentRuns(statContextRuns([...stats], pieces, format, placement), "    ");
   if (format === "xml") return mark(["stats"], "  <stats>\n", block, "\n  </stats>\n");
   return mark(["stats"], `${format === "markdown" ? "  - **stats:**" : "  stats:"}\n`, block, "\n");
 }

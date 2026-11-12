@@ -94,7 +94,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Enter World offers a persona's Start Locations.** Pick a Persona-Only entity, or None or a library persona in a world with a Custom Persona, and its places join Starting Location with the first one selected.
   - **Prompts:**
     - **The Traits chip can send Global Trait names without their descriptions.** In Chip Options, set Content to Name. Names list one per line under their group headings.
-    - **Stat chips can send stat names only.** In Chip Options, uncheck Range, Descriptor and Description on the Stats, Persona and Entities chips. Owned stats then read as one line: `stats: Nerve, Patience`.
+    - **Stat chips can send stat names only.** In Chip Options, uncheck Range, Descriptor and Description on the Stats, Persona and Entities chips. Owned stats then read as one line, `stats: Nerve, Patience`, or one per line under their stat groups.
   - **In the World Editor, an entity with only a Stranger Description now starts as a stranger.** In play, you see its Name and that description until you meet it. Stranger Name now sits beside Name, and Stranger Description under Player-Facing Description. Items' Unidentified fields match, and each field has its own help button.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Aurelia, the default Avatar in release builds, now has Ear Shape, Tusks, Fox Ears and Fox Tail sliders.** Worlds can set them from traits, such as Fox Ears and Fox Tail for a Kitsune.

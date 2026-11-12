@@ -456,6 +456,9 @@ export function traitsInContextOrder(selectedIds: Iterable<string>, traits: Trai
   return [...selectedLeaves(tree, sel), ...walk(tree)];
 }
 
+/** What each trait in a trait block sends: its AI description, or its name alone. */
+export type TraitContent = 'description' | 'name';
+
 /**
  * Build the trait block sent to the AI: ungrouped selected traits first, then each group (depth-first) that
  * has ≥1 selected trait, emitting the group name + its AI description (if non-blank) above its selected
@@ -465,16 +468,18 @@ export function traitsInContextOrder(selectedIds: Iterable<string>, traits: Trai
  * `format` controls the shape (mirrors the Default/Simple presets): `'simple'` is plain labels + indentation
  * (`World:` / `Name: desc`); `'markdown'` is nested bold bullets (`- **World:** desc` / `- **Name:** desc`)
  * a small model parses more cleanly; `'xml'` nests `<trait>`/`<group>` tags. The tree walk + selection are
- * identical; only line shaping differs.
+ * identical; only line shaping differs. `content` picks whether each trait sends its description or its name
+ * alone.
  */
 export function buildTraitContext(
   selectedIds: Iterable<string>,
   traits: Trait[],
   groups: TraitGroup[],
   format: 'simple' | 'markdown' | 'xml' = 'simple',
-  namesOnly = false,
+  content: TraitContent = 'description',
 ): string {
   const sel = new Set(selectedIds);
+  const namesOnly = content === 'name';
   if (format === 'xml') return buildTraitContextXml(sel, traits, groups, namesOnly);
   const md = format === 'markdown';
   const traitLine = (t: Trait) => {

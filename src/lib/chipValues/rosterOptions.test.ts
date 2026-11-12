@@ -223,6 +223,19 @@ describe('Stat Detail on the Entities chip', () => {
     expect(values(`<ENTITIES|${off}>`)).not.toContain('Trust:');
   });
 
+  it('nests stat names under their stat group with every piece off, in every format', () => {
+    const off = 'norange.nodescriptor.nodescription';
+    const grouped: Entity = {
+      ...guard, stats: [{ ...trust, groupId: 'mind' }], statGroups: [{ id: 'mind', name: 'Mind', parentId: null }],
+    };
+    const values = lookup(scene({ entities: [grouped, ...entities.filter((e) => e !== guard)] }));
+    expect(values(`<ENTITIES|${off}>`)).toContain('  stats:\n    Mind:\n      Trust\n');
+    expect(values(`<ENTITIES|${off}.markdown>`)).toContain('  - **stats:**\n    - **Mind:**\n      - **Trust**');
+    // The Merchant holds the same stat with no group, so it keeps the inline line.
+    expect(values(`<ENTITIES|${off}.markdown>`)).toContain('  - **stats:** Trust\n');
+    expect(values(`<ENTITIES|${off}.xml>`)).toMatch(/<stats>\n\s*<group>\n\s*<name>Mind<\/name>\n\s*<stat>\n\s*<name>Trust<\/name>/);
+  });
+
   it('renders the pieces in the xml format', () => {
     const xml = (ids: string) => values(`<ENTITIES|${ids}.xml>`)!;
     expect(xml('norange')).not.toContain('<value>');

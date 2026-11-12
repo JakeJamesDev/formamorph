@@ -102,7 +102,7 @@ export function chipValues(scene: ChipScene): ValueLookup {
     [WORLD, chipFamilyValues(WORLD.token, () => scene.overview)],
     [STATS, statChipPartValues(scene.persona ? [world] : [world, ...played])],
     [TRAITS, chipFamilyValues(TRAITS.token, (sel) => (
-      buildTraitContext(traitIds, scene.traits, scene.traitGroups, chipFormat(sel.format), sel.content === 'name') || NONE_PLACEHOLDER
+      buildTraitContext(traitIds, scene.traits, scene.traitGroups, chipFormat(sel.format), sel.content === 'name' ? 'name' : 'description') || NONE_PLACEHOLDER
     ))],
     // The played entities' owned traits and stats render in the persona's block, as a cast member's do.
     // A relationship that touches the played persona prints on its block.

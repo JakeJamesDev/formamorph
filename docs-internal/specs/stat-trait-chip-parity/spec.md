@@ -35,6 +35,16 @@ Settled in the grill on 2026-11-12.
 - **Q8.** Every Entities chip in those two prompts that sends stats also sends Descriptor only.
 - **Q9.** The default-prompt change ships with probe numbers on the cloud model. The bar: the new defaults leak stat numbers or ranges into narration no more often than the old defaults. The old defaults run in the same batch as the control, with 5 or more runs per arm. The report also gives the prompt tokens saved.
 
+### Close follow-up rulings
+
+Settled after the close review on 2026-11-12.
+
+- **Q10.** Names-only owned stats keep their owner's stat-group headings: an owner with stat groups lists `stats:` and then one name per line, nested under its groups. An owner with no stat groups keeps Q5's inline line (Q10b). This narrows Q5.
+- **Q11.** The Test Bench's AI Context table keeps the descriptor-only Persona and Here Entities chips.
+- **Q12.** The probe result stands: no regression, and 91 narration tokens saved.
+- **Q13.** The trait context builder takes the chip's Content value, not a names-only boolean.
+- **Q14.** The names-only render tests live with the chip-values tests, with no duplicate in the token grammar tests.
+
 ### Ticket 03 rulings
 
 - **T03-a.** Only the chips that send stats by default change: the Persona chip and the Here-scope Entities chip in Narration and Choices. The Sublocations, Reachable and Known chips send no stats and stay as written.

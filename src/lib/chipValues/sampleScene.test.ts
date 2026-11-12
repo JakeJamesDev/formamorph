@@ -49,6 +49,14 @@ describe('sampleChipScene', () => {
     expect(xml).not.toMatch(/Spots the worth|Wakes at the smallest/);
   });
 
+  it('lists the persona stat names inline with every Stat Detail piece off, per format', () => {
+    const values = chipValues(sampleChipScene());
+    const off = 'norange.nodescriptor.nodescription';
+    expect(values(`<PERSONA|${off}>`)).toContain('  stats: Nerve\n');
+    expect(values(`<PERSONA|${off}.markdown>`)).toContain('  - **stats:** Nerve\n');
+    expect(values(`<PERSONA|${off}.xml>`)).toContain('  <stats>Nerve</stats>\n');
+  });
+
   it('fills both owner blocks of the default stat prompt in the Settings preview', () => {
     const prompt = renderPromptTemplate(defaultStatUpdatesPrompt, chipValues(sampleChipScene()));
     expect(prompt).toMatch(/## Player Character\n- \*\*Traveler\*\*[^#]*- \*\*Nerve:\*\* 55\/100/);
