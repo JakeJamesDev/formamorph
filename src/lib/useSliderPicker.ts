@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { buildMorphGroups, resolveMorphAlias, type MorphSource } from "./bodyMorphs";
-import { useOwnerMorphSources } from "./useBodyMorphNames";
+import { useRowMorphSources } from "./useBodyMorphNames";
 import { useKnownMorphKeys } from "./useKnownMorphKeys";
 import { useRowModels, type MorphOwner, type RowModels } from "./useRowModels";
 import type { ColorChannel } from "@/types";
@@ -12,9 +12,9 @@ export const NO_MODEL_HINT = "Set an Avatar or 3D model on the Profile tab to bi
 export const WORLD_NO_MODEL_HINT = "Give a playable persona an Avatar, or add one to your library, to bind sliders";
 
 /** The picker's empty text when the row's models offer nothing to bind; undefined otherwise. */
-const ownerEmptyText = (rows: RowModels | undefined, sources: readonly MorphSource[]): string | undefined => {
+const emptyText = (rows: RowModels | undefined, sources: readonly MorphSource[]): string | undefined => {
   if (!rows || sources.length) return undefined;
-  if (rows.world) return rows.models.length ? "No Avatar a player can have has sliders" : "No sliders to bind";
+  if (rows.world) return rows.models.length ? "The Avatars players can use have no sliders" : "No sliders to bind";
   const hasModel = rows.models.some((row) => row.kind === "model");
   const hasAvatar = rows.models.some((row) => row.kind !== "model");
   if (hasModel && hasAvatar) return "Neither this entity's 3D model nor its Avatar has sliders";
@@ -36,7 +36,7 @@ const FALLBACK_COLOR = "#ffffff";
  */
 export function useSliderPicker(owner: MorphOwner | undefined, active: boolean) {
   const rows = useRowModels(owner);
-  const { sources, loading, load } = useOwnerMorphSources(rows);
+  const { sources, loading, load } = useRowMorphSources(rows);
   const groups = useMemo(() => buildMorphGroups(sources), [sources]);
   const known = useKnownMorphKeys(rows, active);
   const knownKeys = known?.keys;
@@ -47,5 +47,5 @@ export function useSliderPicker(owner: MorphOwner | undefined, active: boolean) 
   const lacksChannel = (channel: ColorChannel) => !!known && !known.channels.has(channel);
   const seedColor = (channel: ColorChannel) => known?.colors[channel] ?? FALLBACK_COLOR;
   const noModelHint = rows && !rows.resolving && !rows.models.length ? (rows.world ? WORLD_NO_MODEL_HINT : NO_MODEL_HINT) : undefined;
-  return { groups, loading, load, emptyText: ownerEmptyText(rows, sources), keyOf, lacksChannel, seedColor, noModelHint };
+  return { groups, loading, load, emptyText: emptyText(rows, sources), keyOf, lacksChannel, seedColor, noModelHint };
 }

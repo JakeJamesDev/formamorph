@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { loadVrmLook } from "./vrmMorphLoader";
 import { loadModelMorphNames } from "./modelLoader";
 import { useMountedRef } from "./useMountedRef";
-import ModelStorageService from "@/services/ModelStorageService";
+import { dataKey, withLibraryModelUrl } from "./useRowModels";
 import type { RowModel, RowModels } from "./useRowModels";
 import type { ColorChannel } from "@/types";
 
@@ -40,25 +40,14 @@ const vrmOffer = async (url: string): Promise<ModelOffer> => {
   return { keys: catalog.map((morph) => morph.name), channels, colors };
 };
 
-/** An embedded model's cache key: its length and both ends, rather than a second copy of the whole payload. */
-const dataKey = (kind: string, data: string) => `${kind}:${data.length}:${data.slice(0, 128)}:${data.slice(-128)}`;
-
 /** A loader for a library Avatar's offer. */
-const libraryLoader = (id: string) => () => cached(`library:${id}`, async () => {
-  const { blob } = await ModelStorageService.getModelData(id);
-  const url = URL.createObjectURL(blob);
-  try {
-    return await vrmOffer(url);
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-});
+const libraryLoader = (id: string) => () => cached(`library:${id}`, () => withLibraryModelUrl(id, vrmOffer));
 
 /** Several models as one offer: every key and channel any carries; a later model's color wins. */
 const mergeOffers = (offers: ModelOffer[]): ModelOffer => ({
   keys: [...new Set(offers.flatMap((offer) => offer.keys))],
   channels: [...new Set(offers.flatMap((offer) => offer.channels))],
-  colors: Object.assign({}, ...offers.map((offer) => offer.colors)) as ModelOffer["colors"],
+  colors: offers.reduce<ModelOffer["colors"]>((all, offer) => ({ ...all, ...offer.colors }), {}),
 });
 
 /** A loader for one row model's offer. A non-VRM 3D model has no color channels. */

@@ -1,6 +1,6 @@
 import { createStoredString } from './keyedStorage';
 
-/** The path of the bundled default Avatar. `BUNDLED_DEFAULT_URL` says whether this build holds it. */
+/** The path of the bundled default Avatar. `BUNDLED_AVATARS` says whether this build holds it. */
 export const DEFAULT_AVATAR_URL = './default-avatar.vrm';
 
 /**
@@ -44,17 +44,11 @@ export const bundledAvatarsFor = (avatarSet: string): readonly BundledAvatar[] =
 
 export let BUNDLED_AVATARS = bundledAvatarsFor(__AVATAR_SET__);
 
-const defaultUrlOf = (avatars: readonly BundledAvatar[]) => avatars.find(({ id }) => id === DEFAULT_AVATAR_ID)?.url;
-
-/** The build's default Avatar file. A build that holds none has no model to fall back on. */
-export let BUNDLED_DEFAULT_URL = defaultUrlOf(BUNDLED_AVATARS);
-
 /** DEV only: the dev router's `avatars=…` routes switch a dev build to another Avatar set. A production build
  *  strips the body, so the set stays the one the build was made with. */
 export function setDevAvatarSet(avatarSet: string): void {
   if (!import.meta.env.DEV) return;
   BUNDLED_AVATARS = bundledAvatarsFor(avatarSet);
-  BUNDLED_DEFAULT_URL = defaultUrlOf(BUNDLED_AVATARS);
 }
 
 /** Pre-library saves picked the bundled avatar by this sentinel; `migrateSave` rewrites it to the id above. */

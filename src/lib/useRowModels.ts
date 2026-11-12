@@ -3,6 +3,7 @@ import { useGameDataOptional } from "@/contexts/GameDataContext";
 import { customPersonaEntity } from "./blueprints";
 import { readUserDefaultAvatar } from "./defaultAvatar";
 import { offeredPersonas, worldAllowedPersonas } from "./personaPick";
+import { readLibraryNames } from "./useLibraryAvatars";
 import { useMountedRef } from "./useMountedRef";
 import { playedVrmPick, resolveOwnPick, type VrmSource } from "./vrmResolver";
 import ModelStorageService from "@/services/ModelStorageService";
@@ -19,7 +20,7 @@ export interface MorphOwner {
 
 /** One model a row plays on: the owner's 3D model, a world store Avatar, or a library Avatar. */
 export type RowModel =
-  | { kind: "model"; heading: string; model: Partial<MediaAsset> & { data: string } }
+  | { kind: "model"; name: string; model: Partial<MediaAsset> & { data: string } }
   | { kind: "world"; name: string; data: string }
   | { kind: "library"; id: string; name: string };
 
@@ -55,10 +56,10 @@ const resolveOn = (pick: VrmPick | undefined, ctx: RowContext) =>
   resolveOwnPick(pick, { store: ctx.store, libraryIds: ctx.library && new Set(ctx.library.keys()), deviceDefault: ctx.deviceDefault });
 
 /** The owner's 3D model, then the Avatar its pick resolves to. Undefined while the library is unread. */
-export function ownerRowModels(owner: MorphOwner, ctx: RowContext): RowModel[] | undefined {
+function ownerRowModels(owner: MorphOwner, ctx: RowContext): RowModel[] | undefined {
   const models: RowModel[] = [];
   const data = owner.model?.data;
-  if (data) models.push({ kind: "model", heading: owner.name, model: { ...owner.model, data } });
+  if (data) models.push({ kind: "model", name: owner.name, model: { ...owner.model, data } });
   const source = resolveOn(owner.vrmPick, ctx);
   if (source?.kind === "pending") return undefined;
   const avatar = source && avatarRowModel(source, ctx);
@@ -66,8 +67,23 @@ export function ownerRowModels(owner: MorphOwner, ctx: RowContext): RowModel[] |
   return models;
 }
 
+/** An embedded model's cache key: its length and both ends, rather than a second copy of the whole payload. */
+export const dataKey = (kind: string, data: string) =>
+  `${kind}:${data.length}:${data.slice(0, 128)}:${data.slice(-128)}`;
+
+/** Runs `load` over a library Avatar's stored blob through a throwaway object URL. */
+export async function withLibraryModelUrl<T>(id: string, load: (url: string) => Promise<T>): Promise<T> {
+  const { blob } = await ModelStorageService.getModelData(id);
+  const url = URL.createObjectURL(blob);
+  try {
+    return await load(url);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 /** The world as the pickers read it. */
-export interface WorldRowSource {
+interface WorldRowSource {
   overview: Pick<WorldOverview, "vrmStore" | "allowedPersonas" | "legacyVrmFallback"> | undefined;
   entities: readonly Entity[];
 }
@@ -77,7 +93,7 @@ export interface WorldRowSource {
  * Personas. A library persona or None plays as the Custom Persona's pick, so one entry stands for them. Starts On
  * only guides the player, so it never narrows the set.
  */
-export function playablePicks({ overview, entities }: WorldRowSource): (VrmPick | undefined)[] {
+function playablePicks({ overview, entities }: WorldRowSource): (VrmPick | undefined)[] {
   const customPersona = customPersonaEntity(entities);
   const world = entities.filter((entity) => entity.persona === true);
   const offer = offeredPersonas(worldAllowedPersonas(overview), { world, library: [], custom: customPersona });
@@ -88,7 +104,7 @@ export function playablePicks({ overview, entities }: WorldRowSource): (VrmPick 
 }
 
 /** Every playable persona's Avatar once, in persona order. Undefined while the library is unread. */
-export function worldRowModels(picks: readonly (VrmPick | undefined)[], ctx: RowContext): RowModel[] | undefined {
+function worldRowModels(picks: readonly (VrmPick | undefined)[], ctx: RowContext): RowModel[] | undefined {
   const sources = picks.map((pick) => resolveOn(pick, ctx));
   if (sources.some((source) => source?.kind === "pending")) return undefined;
   const seen = new Set<string>();
@@ -149,8 +165,8 @@ function useLibraryNames(wanted: boolean): LibraryNames | undefined {
   const mounted = useMountedRef();
   useEffect(() => {
     if (!wanted || names) return;
-    void ModelStorageService.getModelMetadata().catch(() => []).then((models) => {
-      if (mounted.current) setNames(new Map(models.map((m) => [m.id, m.name])));
+    void readLibraryNames().then((read) => {
+      if (mounted.current) setNames(read);
     });
   }, [wanted, names, mounted]);
   return names;

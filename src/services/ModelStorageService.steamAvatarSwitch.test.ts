@@ -3,7 +3,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import ModelStorageService from './ModelStorageService';
-import { BUNDLED_AVATARS, BUNDLED_DEFAULT_URL } from '@/lib/defaultAvatar';
+import { BUNDLED_AVATARS, DEFAULT_AVATAR_ID } from '@/lib/defaultAvatar';
 import { promisifyRequest } from '@/lib/idb';
 import { makeVrm1 } from '@/test/glbFixture';
 
@@ -29,7 +29,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe('the library on a build with no bundled Avatar', () => {
   it('holds no bundled entry and no default file', () => {
     expect(BUNDLED_AVATARS).toEqual([]);
-    expect(BUNDLED_DEFAULT_URL).toBeUndefined();
+    expect(BUNDLED_AVATARS.some(({ id }) => id === DEFAULT_AVATAR_ID)).toBe(false);
   });
 
   it('seeds nothing and requests nothing', async () => {

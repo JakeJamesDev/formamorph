@@ -51,7 +51,7 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
   ),
 }));
 vi.mock('@/lib/useBodyMorphNames', () => ({
-  useOwnerMorphSources: () => ({ sources: [], loading: false, load: () => {} }),
+  useRowMorphSources: () => ({ sources: [], loading: false, load: () => {} }),
 }));
 
 /** Renders the manager against the live store, re-rendering whenever it writes. The panel's tab belongs to

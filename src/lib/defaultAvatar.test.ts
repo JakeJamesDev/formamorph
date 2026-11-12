@@ -4,15 +4,16 @@ import { DEFAULT_AVATAR_ID, PRALINE_AVATAR_ID, pickerStart } from './defaultAvat
 
 describe('setDevAvatarSet', () => {
   const built = avatars.BUNDLED_AVATARS;
+  const holdsDefault = () => avatars.BUNDLED_AVATARS.some(({ id }) => id === DEFAULT_AVATAR_ID);
   afterEach(() => avatars.setDevAvatarSet(__AVATAR_SET__));
 
   it('moves the dev build to a set with no bundled file, and back', () => {
     avatars.setDevAvatarSet('none');
     expect(avatars.BUNDLED_AVATARS).toEqual([]);
-    expect(avatars.BUNDLED_DEFAULT_URL).toBeUndefined();
+    expect(holdsDefault()).toBe(false);
     avatars.setDevAvatarSet(__AVATAR_SET__);
     expect(avatars.BUNDLED_AVATARS).toEqual(built);
-    expect(avatars.BUNDLED_DEFAULT_URL).toBeDefined();
+    expect(holdsDefault()).toBe(true);
   });
 });
 

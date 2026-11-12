@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { loadMorphSplit, type MorphSplit } from "./vrmMorphLoader";
 import { loadModelMorphNames } from "./modelLoader";
 import { useMountedRef } from "./useMountedRef";
-import ModelStorageService from "@/services/ModelStorageService";
+import { dataKey, withLibraryModelUrl } from "./useRowModels";
 import type { MorphSource } from "./bodyMorphs";
 import type { RowModel, RowModels } from "./useRowModels";
 import type { MediaAsset } from "@/types";
@@ -21,21 +21,8 @@ async function cachedLoad(key: string, load: () => Promise<MorphSplit>): Promise
 
 /** Read a library model's body morphs, via a throwaway object URL over its stored blob. */
 function morphsForModel(id: string): Promise<MorphSplit> {
-  return cachedLoad(id, async () => {
-    const { blob } = await ModelStorageService.getModelData(id);
-    const url = URL.createObjectURL(blob);
-    try {
-      return await loadMorphSplit(url);
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-  });
+  return cachedLoad(id, () => withLibraryModelUrl(id, loadMorphSplit));
 }
-
-/** Cache key for an embedded model: its length and both ends of its data URL, so the cache doesn't hold a second
- *  copy of the whole base64 payload. Two files from one exporter share a head; their tails differ. */
-const dataKey = (kind: string, dataUrl: string) =>
-  `${kind}:${dataUrl.length}:${dataUrl.slice(0, 128)}:${dataUrl.slice(-128)}`;
 
 /** Read the world's embedded custom VRM morphs. */
 function morphsForCustom(dataUrl: string): Promise<MorphSplit> {
@@ -55,7 +42,7 @@ async function ownerSplit(model: Partial<MediaAsset>): Promise<MorphSplit> {
 /** A row model's sliders under its heading; undefined when it has none. */
 async function rowModelSource(row: RowModel): Promise<MorphSource | undefined> {
   const [heading, split] = row.kind === "model"
-    ? [row.heading, await cachedLoad(dataKey("owner", row.model.data), () => ownerSplit(row.model))]
+    ? [row.name, await cachedLoad(dataKey("owner", row.model.data), () => ownerSplit(row.model))]
     : row.kind === "world"
       ? [row.name, await morphsForCustom(row.data)]
       : [row.name, await morphsForModel(row.id)];
@@ -71,7 +58,7 @@ const NO_SOURCES: MorphSource[] = [];
  * every mesh, and the Body Sliders and Head Features of its resolved Avatar. Loads after the first `load()`,
  * once the rows resolve, and again when they change. Cached by model.
  */
-export function useOwnerMorphSources(rows: RowModels | undefined): { sources: MorphSource[]; loading: boolean; load: () => void } {
+export function useRowMorphSources(rows: RowModels | undefined): { sources: MorphSource[]; loading: boolean; load: () => void } {
   const [loaded, setLoaded] = useState<{ rows: RowModels; sources: MorphSource[] }>();
   const [wanted, setWanted] = useState(false);
   const mounted = useMountedRef();
