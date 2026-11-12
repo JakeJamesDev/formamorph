@@ -3,7 +3,8 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { validateParityFixture, type ParityRequestRecord, type ParityTurnRecord } from './parityRecorder';
 import type { TurnPassId, TurnPlanInput, TurnPrompts, TurnSettings } from './turnPlan';
-import type { AIRequestType } from '@/types';
+import type { AIRequestType, ChatMessage } from '@/types';
+import { CLOCK_TEXT_FORMAT } from '@/lib/gameClock';
 import {
   defaultChoicesPrompt, defaultChoicesUserPrompt,
   defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt,
@@ -162,6 +163,20 @@ const CAPS_SINCE_RECORDING: Partial<Record<AIRequestType, number>> = {
 /** The cap a replayed request must carry: the recorded one, or the one added since. */
 export const expectedCap = (request: ParityRequestRecord): number | null =>
   request.maxTokens ?? CAPS_SINCE_RECORDING[request.type] ?? null;
+
+/** The messages a replayed pass must send: the recorded ones, plus the clock pass's reply format, which the
+ *  run predates and which rides after the user message. */
+export const expectedMessages = (id: TurnPassId, messages: ChatMessage[]): ChatMessage[] =>
+  id === 'timePassed'
+    ? messages.map((m, i) => (i === messages.length - 1 ? { ...m, content: m.content + CLOCK_TEXT_FORMAT } : m))
+    : messages;
+
+/** The clock prompt as the run sent it, before its reply format moved into the appended block. */
+export const recordedTimePassed = (template: string): string =>
+  `${template.replace(
+    'Decide how long it took.',
+    'Decide how long it took, then write that as a count followed by its unit. Always write the count first - a bare unit letter is not an answer. Use m for minutes, h for hours, d for days, w for weeks.',
+  )}\n\nYour entire reply is that count and its unit, with nothing before or after it.`;
 
 /** The recorded turn's requests that are turn passes, in dispatch order. */
 export const recordedPasses = (turn: ParityTurnRecord): { id: TurnPassId; request: ParityRequestRecord }[] =>

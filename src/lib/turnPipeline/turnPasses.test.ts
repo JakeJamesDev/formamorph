@@ -9,6 +9,7 @@ import type { ChatMessage, Currency, Entity, GameLocation, PlayerStat } from '@/
 import type { TurnMaterial, TurnPassId, TurnPassRecord, TurnPassSubject, TurnPlanInput, TurnPrompts, TurnSettings } from './turnPlan';
 import type { SectionStyle } from '@/lib/promptPresets';
 import { runsTile } from '@/lib/requestAnatomy';
+import { CLOCK_TEXT_FORMAT } from '@/lib/gameClock';
 import { TEST_PROMPTS, testInput } from './turnTestInputs';
 import {
   INLINE_THINKING_DIRECTIVE, OPENING_SCENE_CUE, planDirective, defaultChoicesPrompt,
@@ -672,7 +673,6 @@ describe('turn pass requests', () => {
     it('reads each pass’s answer into the value the turn commits', () => {
       expect(pass('choices').parseResponse('Wait\nLeave', material())).toEqual(['Wait', 'Leave']);
       expect(pass('statUpdates').parseResponse('Health: -5', material())).toEqual({ values: { health: -5 }, maxes: {} });
-      expect(pass('timePassed').parseResponse('2h', material())).toBe(2);
       expect(pass('summary').parseResponse('  a digest  ', material())).toBe('a digest');
       expect(pass('diary').parseResponse('  I waited.  ', material())).toBe('I waited.');
       expect(pass('director').parseResponse('Scene: dusk\nCast:\n- Bram', material())).toEqual({
@@ -1199,5 +1199,23 @@ describe('the stat request item line (Q53)', () => {
     const plain = stat({});
     expect(stat({}, { statItemNames: ['Healing Potion'] })).toEqual(plain);
     expect(stat({ inventoryDue: true }, { statItemNames: [] })).toEqual(plain);
+  });
+});
+
+describe('the clock pass request', () => {
+  it('appends the text reply format as its own run after the user message', () => {
+    const request = build('timePassed');
+    const content = request.messages[0].content;
+    const runs = request.anatomy!.messages[0];
+    expect(runsTile(content, runs)).toBe(true);
+    const last = runs[runs.length - 1];
+    expect([last.contextLabel, content.slice(last.start, last.end)]).toEqual(['reply-format', CLOCK_TEXT_FORMAT]);
+    expect(content.startsWith('Time: I read the notices. | ')).toBe(true);
+  });
+
+  it('keeps the reply format under a clock prompt the player edited', () => {
+    const content = build('timePassed', {}, { prompts: { ...TEST_PROMPTS, timePassedUser: 'How long? <NARRATION>' } }).messages[0].content;
+    expect(content.startsWith('How long? ')).toBe(true);
+    expect(content.endsWith(CLOCK_TEXT_FORMAT)).toBe(true);
   });
 });

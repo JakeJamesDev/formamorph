@@ -31,7 +31,7 @@ import { backingStatIds } from '@/lib/currency';
 import { toldLines, type ToldAction } from '@/lib/actionList';
 import type { Currency, InventoryPassOp } from '@/types';
 import { statRequestSchema, textPassTargets, type StatRequestSnapshot } from '@/lib/statRequest';
-import { parseTimeDelta, parseOpeningDaypart } from '@/lib/gameClock';
+import { CLOCK_TEXT_FORMAT, parseClockReading, parseOpeningDaypart, type ClockReading } from '@/lib/gameClock';
 import { cleanDiscoveredDescription, DISCOVER_LATER_LABEL, DISCOVER_PASSAGE_LABEL } from '@/lib/runtimeCharacters';
 import {
   milestoneMomentValues, milestoneReplyFormat, parseIncrementalMilestoneReply, type IncrementalVerdict,
@@ -816,22 +816,29 @@ export const summaryPass: TurnPassRecord<string> = {
   parseResponse: (raw) => raw.trim(),
 };
 
-/** How much in-world time this turn consumed. */
-const timePassedPass: TurnPassRecord<number | null> = {
+/** How much in-world time this turn consumed, as a reading the turn commit resolves against the clock. */
+const timePassedPass: TurnPassRecord<ClockReading | null> = {
   id: 'timePassed',
   type: 'timePassed',
   stage: 'postNarration',
   fanOut: false,
   isDue: (input) => input.settings.aiClock,
-  buildRequest: (input, material) => labeledRequest(
-    { type: 'timePassed', maxTokens: TURN_PASS_CAPS.timePassed, ...silentOn(material) },
-    systemTiled(input.prompts.timePassed, material.ctx),
-    userTiled(input.prompts.timePassedUser, {
+  buildRequest: (input, material) => {
+    const user = userTiled(input.prompts.timePassedUser, {
       '<PLAYER ACTION>': stripOocDirectives(material.effectiveAction),
       '<NARRATION>': material.narration,
-    }),
-  ),
-  parseResponse: (raw) => parseTimeDelta(raw),
+    });
+    const end = user.content.length;
+    return labeledRequest(
+      { type: 'timePassed', maxTokens: TURN_PASS_CAPS.timePassed, ...silentOn(material) },
+      systemTiled(input.prompts.timePassed, material.ctx),
+      {
+        content: user.content + CLOCK_TEXT_FORMAT,
+        runs: [...user.runs, { start: end, end: end + CLOCK_TEXT_FORMAT.length, contextLabel: 'reply-format' }],
+      },
+    );
+  },
+  parseResponse: (raw) => parseClockReading(raw),
 };
 
 /**

@@ -33,8 +33,6 @@ export const FLAT_HOURS_PER_TURN = 1;
  *  chronicle, and no single turn legitimately spans more than a year. Over-range replies fall back. */
 export const MAX_TURN_HOURS = 8760;
 
-const UNIT_HOURS: Record<string, number> = { m: 1 / 60, h: 1, d: 24, w: 168 };
-
 /** Counts the models actually write out in words rather than digits ("five minutes" was a third of one
  *  probe case's replies). Small values only — nobody spells out "seventeen". */
 const WORD_NUMBERS: Record<string, number> = {
@@ -43,25 +41,88 @@ const WORD_NUMBERS: Record<string, number> = {
 };
 const WORD_PATTERN = Object.keys(WORD_NUMBERS).join('|');
 
-/**
- * Read the clock pass's reply into hours. Accepts `0`, `15m`, `2h`, `3 days`, `2w`, and spelled-out
- * counts like `five minutes` — a count with an optional unit, anywhere in the reply, since small models
- * append stray prose. A bare number means hours (the unit the game already counts in). Returns null when
- * nothing parses or the value is out of range, which callers resolve to FLAT_HOURS_PER_TURN — never to
- * zero, so a garbled reply cannot silently freeze time.
- */
-export function parseTimeDelta(reply: string): number | null {
-  const m = (reply || '').match(
+const UNIT_NAMES: Record<string, TurnTimeUnit> = { m: 'minutes', h: 'hours', d: 'days', w: 'weeks' };
+
+/** A time of day a scene can run until. */
+export const CLOCK_ANCHORS = ['dawn', 'morning', 'noon', 'afternoon', 'evening', 'nightfall', 'midnight'] as const;
+export type ClockAnchor = (typeof CLOCK_ANCHORS)[number];
+
+/** A length of story time as the clock pass wrote it. */
+export interface ClockAmount {
+  count: number;
+  unit: TurnTimeUnit;
+}
+
+/** What the clock pass answered: the time of day the scene runs until, and how long it took. Either may be
+ *  missing; a reading with neither is no reading. */
+export interface ClockReading {
+  anchor: ClockAnchor | null;
+  amount: ClockAmount | null;
+}
+
+/** A count with an optional unit, anywhere in `text`. A bare number means hours. */
+function parseCount(text: string): ClockAmount | null {
+  const m = text.match(
     new RegExp(`(-?\\d+(?:\\.\\d+)?|${WORD_PATTERN})\\s*(minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|wks?|w)?\\b`, 'i'),
   );
   if (!m) return null;
   const raw = m[1].toLowerCase();
   // A spelled-out count needs its unit: a bare "a"/"one" in prose is not a measurement.
   if (raw in WORD_NUMBERS && !m[2]) return null;
-  const value = raw in WORD_NUMBERS ? WORD_NUMBERS[raw] : Number(m[1]);
-  if (!Number.isFinite(value) || value < 0) return null;
-  const hours = value * (m[2] ? UNIT_HOURS[m[2][0].toLowerCase()] : 1);
-  return hours <= MAX_TURN_HOURS ? hours : null;
+  const count = raw in WORD_NUMBERS ? WORD_NUMBERS[raw] : Number(m[1]);
+  if (!Number.isFinite(count) || count < 0) return null;
+  return { count, unit: m[2] ? UNIT_NAMES[m[2][0].toLowerCase()] : 'hours' };
+}
+
+/**
+ * Read the clock pass's text reply. Accepts `until dawn` and the other anchors, and a count with an optional
+ * unit (`0`, `15m`, `2h`, `3 days`, `five minutes`) anywhere in the reply, since small models append stray
+ * prose. Null when neither reads, which callers resolve to FLAT_HOURS_PER_TURN, never to zero.
+ */
+export function parseClockReading(reply: string): ClockReading | null {
+  const text = reply || '';
+  const until = text.match(new RegExp(`\\buntil\\s+(?:the\\s+)?(${CLOCK_ANCHORS.join('|')})\\b`, 'i'));
+  const amount = parseCount(until ? text.replace(until[0], ' ') : text);
+  if (!until && !amount) return null;
+  return { anchor: until ? (until[1].toLowerCase() as ClockAnchor) : null, amount };
+}
+
+/** The clock pass's text reply format, which rides after the user message out of the author's reach. */
+export const CLOCK_TEXT_FORMAT = `
+
+Write how long it took as a count followed by its unit: m for minutes, h for hours, d for days, w for weeks. Always write the count first - a bare unit letter is not an answer. When the passage ends at a time of day rather than after a length of time, answer with the word until and that time of day instead of a count. The times of day are: ${CLOCK_ANCHORS.join(', ')}. Your entire reply is that count and its unit, or until and a time of day, with nothing before or after it.`;
+
+/** Where each anchor falls, as a fraction of the day: the daypart starts, noon at half, midnight at the end. */
+const ANCHOR_FRACTIONS: Record<ClockAnchor, number> = {
+  dawn: 6 / 24, morning: 8 / 24, noon: 12 / 24, afternoon: 13 / 24, evening: 17 / 24, nightfall: 20 / 24, midnight: 1,
+};
+
+/** An anchor further ahead than this share of a day, beside a sub-day count, names the time it already is. */
+const ANCHOR_GUARD_FRACTION = 20 / 24;
+
+/**
+ * The hours a reading costs, measured from the clock at the turn's start. An anchor runs forward to its next
+ * occurrence (a full day when the clock stands on it), and a count of whole days adds the days beyond the
+ * first. An anchor more than 20 of 24 hours ahead with a sub-day count costs the count instead. Null when
+ * nothing is countable or the result passes MAX_TURN_HOURS.
+ */
+export function readingHours(reading: ClockReading, startElapsed: number, calendar?: WorldCalendar): number | null {
+  const { anchor, amount } = reading;
+  const countedHours = amount && amount.count * TURN_TIME_UNIT_HOURS[amount.unit];
+  let hours = countedHours;
+  if (anchor) {
+    const { hoursPerDay } = resolve(calendar);
+    const minutesPerDay = hoursPerDay * 60;
+    const startMinute = storyMinute(startElapsed, calendar) % minutesPerDay;
+    const anchorMinute = Math.round(ANCHOR_FRACTIONS[anchor] * minutesPerDay) % minutesPerDay;
+    const minutesAhead = (anchorMinute - startMinute + minutesPerDay) % minutesPerDay || minutesPerDay;
+    // Calendar days: a count in days or weeks names days directly; a count in hours fills them.
+    const countedDays = !amount || countedHours === null ? null
+      : amount.unit === 'days' ? amount.count : amount.unit === 'weeks' ? amount.count * 7 : countedHours / hoursPerDay;
+    const countWins = minutesAhead > ANCHOR_GUARD_FRACTION * minutesPerDay && countedDays !== null && countedDays < 1;
+    if (!countWins) hours = minutesAhead / 60 + Math.max(0, Math.floor(countedDays ?? 0) - 1) * hoursPerDay;
+  }
+  return hours !== null && hours <= MAX_TURN_HOURS ? hours : null;
 }
 
 /** The dayparts the opening-time pass may answer with — exactly the set `daypart()` emits, so the answer

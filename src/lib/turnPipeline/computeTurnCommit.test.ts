@@ -12,7 +12,7 @@ import { TURN_PASSES } from './turnPasses';
 import { testInput } from './turnTestInputs';
 import type { TurnMaterial, TurnPassId, TurnPassSubject, TurnPlanInput, TurnSettings } from './turnPlan';
 import type { TurnPassOutcome, TurnResult, TurnRun } from './turnRunner';
-import { FLAT_HOURS_PER_TURN, storyMinute } from '@/lib/gameClock';
+import { FLAT_HOURS_PER_TURN, storyMinute, type WorldCalendar } from '@/lib/gameClock';
 import type { TurnCommitContext } from './computeTurnCommit';
 import type { WorldWrites } from '@/lib/statCodeExecutor';
 import { parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
@@ -248,6 +248,83 @@ describe('computeTurnCommit — the stored turn', () => {
     expect(computeTurnCommit({ result, plan, context: context({ toolCalls: [] }) })?.turn).not.toHaveProperty('toolCalls');
     const saved = '{"narration":"Hi.","choices":[],"stat_changes":[]}';
     expect(parseTurnContent(saved)).toEqual({ narration: 'Hi.', choices: [], stat_changes: [] });
+  });
+});
+
+describe('computeTurnCommit — anchored clock replies', () => {
+  /** The hours a clock reply costs when the turn starts at `hour` of day 2. */
+  const hoursFrom = (raw: string, hour: number, calendar: WorldCalendar = { startHour: 0 }) => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }, { id: 'timePassed', raw }]);
+    const day = calendar.hoursPerDay ?? 24;
+    return computeTurnCommit({ result, plan, context: context({ gameTime: day + hour, calendar }) })?.turnHours;
+  };
+  const ANCHOR_AT = { dawn: 6, morning: 8, noon: 12, afternoon: 13, evening: 17, nightfall: 20, midnight: 24 };
+
+  it('lands a sleep until dawn at dawn, whenever it began', () => {
+    expect(hoursFrom('until dawn', 21)).toBe(9);
+    expect(hoursFrom('until dawn', 2)).toBe(4);
+    expect(hoursFrom('Until the dawn.', 21)).toBe(9);
+  });
+
+  it('runs every anchor forward to its next occurrence', () => {
+    for (const [anchor, at] of Object.entries(ANCHOR_AT)) {
+      expect([anchor, hoursFrom(`until ${anchor}`, 5)]).toEqual([anchor, at - 5]);
+      expect([anchor, hoursFrom(`until ${anchor}`, (at + 1) % 24)]).toEqual([anchor, 23]);
+    }
+  });
+
+  it('costs a full day for an anchor the clock already stands on', () => {
+    expect(hoursFrom('until noon', 12)).toBe(24);
+    expect(hoursFrom('until midnight', 0)).toBe(24);
+  });
+
+  it('carries the whole days beyond the first', () => {
+    expect(hoursFrom('4d until morning', 21)).toBe(11 + 72); // a four-day journey reaching a morning
+    expect(hoursFrom('1d until morning', 21)).toBe(11); // the next morning
+    expect(hoursFrom('2w until dawn', 21)).toBe(9 + 13 * 24);
+    expect(hoursFrom('50h until dawn', 21)).toBe(9 + 24);
+  });
+
+  it('trusts a sub-day count over an anchor more than 20 hours ahead', () => {
+    expect(hoursFrom('0m until morning', 8.5)).toBe(0); // "Morning." said in the morning
+    expect(hoursFrom('20m until nightfall', 21)).toBeCloseTo(1 / 3);
+  });
+
+  it('keeps the anchor when the guard does not apply', () => {
+    expect(hoursFrom('until morning', 9)).toBe(23); // no count to trust
+    expect(hoursFrom('30m until dawn', 10)).toBe(20); // exactly 20 hours ahead
+    expect(hoursFrom('1d until morning', 9)).toBe(23); // a count of a day
+  });
+
+  it('charges a count with no anchor as stated', () => {
+    expect(hoursFrom('3 days', 21)).toBe(72);
+    expect(hoursFrom('45m', 21)).toBe(0.75);
+    expect(hoursFrom('0', 21)).toBe(0);
+  });
+
+  it('charges the flat hour for an anchor it cannot read', () => {
+    expect(hoursFrom('until teatime', 21)).toBe(FLAT_HOURS_PER_TURN);
+  });
+
+  it('divides a custom-length day by the same fractions', () => {
+    const short = { startHour: 0, hoursPerDay: 12 };
+    expect(hoursFrom('until dawn', 10, short)).toBe(5); // dawn falls at 3 of 12
+    expect(hoursFrom('until noon', 1, short)).toBe(5);
+    expect(hoursFrom('2d until dawn', 10, short)).toBe(5 + 12); // a day is 12 hours
+    expect(hoursFrom('1h until dawn', 3.5, short)).toBe(1); // 11.5 of 12 hours ahead
+    expect(hoursFrom('12h until dawn', 3.5, short)).toBe(11.5); // a count of one short day
+  });
+
+  it('measures the opening turn from the opening hour it seeds', () => {
+    const { plan, result } = runOf(
+      [{ id: 'narration', raw: NARRATION }, { id: 'openingTime', raw: 'evening' }, { id: 'timePassed', raw: 'until dawn' }],
+      {},
+      {},
+      { isGameStarted: false },
+    );
+    const commit = computeTurnCommit({ result, plan, context: context({ gameTime: 0, calendar: { startHour: 8 } }) });
+    expect(commit?.turnHours).toBe(11); // evening seeds 19:00
+    expect(commit?.turn.timeDelta).toBe(11);
   });
 });
 

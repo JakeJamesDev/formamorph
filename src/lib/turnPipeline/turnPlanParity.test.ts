@@ -7,7 +7,7 @@ import { planDirective } from '@/components/game/GamePrompts';
 import { personaContextValues } from '@/lib/personaContext';
 import {
   fixture, PARITY_PROMPTS as PROMPTS, PASS_ID_BY_TYPE, DRAINER_TYPES,
-  recordedPasses, inputFor, narrationOf, expectedCap, PARITY_DESTINATIONS,
+  recordedPasses, inputFor, narrationOf, expectedCap, expectedMessages, recordedTimePassed, PARITY_DESTINATIONS,
 } from './parityTestInputs';
 
 /**
@@ -171,12 +171,13 @@ describe('turn plan parity with the recorded run', () => {
       if (template) {
         assertRendersTemplate(built.systemPrompt, template);
         // The recorded text prompt has no owner blocks; only its shared tail is matched.
-        const recorded = id === 'statUpdates' ? sharedStatTail(template) : id === 'storyboard' ? recordedStoryboard(template) : id === 'choices' ? recordedChoices(template) : template;
+        const recorded = id === 'statUpdates' ? sharedStatTail(template) : id === 'storyboard' ? recordedStoryboard(template)
+          : id === 'choices' ? recordedChoices(template) : id === 'timePassed' ? recordedTimePassed(template) : template;
         assertRendersTemplate(request.systemPrompt, recorded);
       }
       // Messages the fixture holds every input for.
       if (!pass.fanOut && id !== 'storyboard') {
-        expect(built.messages, `${id} messages`).toEqual(request.messages);
+        expect(built.messages, `${id} messages`).toEqual(expectedMessages(id, request.messages));
         compared.push(id);
       }
     }

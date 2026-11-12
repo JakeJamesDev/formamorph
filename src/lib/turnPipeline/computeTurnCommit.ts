@@ -1,8 +1,8 @@
 import type { AITurnResult, Entity, InventoryPassOp, TurnToolCall } from '@/types';
 import type { StatClock, WorldWrites } from '@/lib/statCodeExecutor';
 import { mergeWorldWrites } from '@/lib/worldWrites';
-import type { WorldCalendar } from '@/lib/gameClock';
-import { FLAT_HOURS_PER_TURN } from '@/lib/gameClock';
+import type { ClockReading, WorldCalendar } from '@/lib/gameClock';
+import { FLAT_HOURS_PER_TURN, readingHours } from '@/lib/gameClock';
 import { materializeDiscoveredEntity } from '@/lib/runtimeCharacters';
 import { sameCharacterName } from '@/lib/entityMatch';
 import { randomUUID } from '@/lib/uuid';
@@ -138,17 +138,19 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
   const statAsks = statResponse ? savedStatAsks(statResponse) : undefined;
   const statMaxChanges = stats?.maxes ?? {};
 
-  // The measured duration when the clock pass ran. An unreadable, out-of-range or absent reply resolves to the
-  // flat hour rather than to zero, so a bad answer cannot freeze a clock the player asked to measure. With the
-  // pass off, the turn costs the player's Time Per Turn, which may be zero.
-  const measuredHours = answerOf<number | null>(passes, 'timePassed');
-  const clockPassRan = passes.some((outcome) => outcome.id === 'timePassed');
-  const fixedHours = clockPassRan ? FLAT_HOURS_PER_TURN : Math.max(0, context.fixedTurnHours ?? FLAT_HOURS_PER_TURN);
-  const turnHours = measuredHours ?? fixedHours;
-
   // Seed the story's opening hour, on the opening turn only: a retroactive answer would re-date every
   // memory stamp already written. An unreadable answer leaves it null, which reads as the shipped default.
   const openingHour = plan.isOpeningTurn ? answerOf<number | null>(passes, 'openingTime') : null;
+
+  // The measured duration when the clock pass ran, resolved from the clock at the turn's start. An unreadable,
+  // out-of-range or absent reply resolves to the flat hour rather than to zero, so a bad answer cannot freeze a
+  // clock the player asked to measure. With the pass off, the turn costs the player's Time Per Turn.
+  const reading = answerOf<ClockReading | null>(passes, 'timePassed');
+  const startCalendar = openingHour !== null ? { ...context.calendar, startHour: openingHour } : context.calendar;
+  const measuredHours = reading ? readingHours(reading, context.gameTime, startCalendar) : null;
+  const clockPassRan = passes.some((outcome) => outcome.id === 'timePassed');
+  const fixedHours = clockPassRan ? FLAT_HOURS_PER_TURN : Math.max(0, context.fixedTurnHours ?? FLAT_HOURS_PER_TURN);
+  const turnHours = measuredHours ?? fixedHours;
 
   const summary = answerOf<string>(passes, 'summary') ?? '';
 

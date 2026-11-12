@@ -418,15 +418,13 @@ export const defaultNowLinePrompt = `Now you are at <LOCATION|name><LOCATION|par
 // hence the clause giving stated time precedence over the model's own estimate.
 export const defaultTimePassedPrompt = `You measure how much time passes in a story. You are given what the character did and what happened next.
 
-Decide how long it took, then write that as a count followed by its unit. Always write the count first - a bare unit letter is not an answer. Use m for minutes, h for hours, d for days, w for weeks.
+Decide how long it took.
 
 - A brief exchange, a glance, a few words traded: some number of minutes.
 - A conversation, a walk across town, a meal, a night's sleep, a task seen through: some number of hours.
 - An overland journey, a long convalescence, a season of training: some number of days or weeks.
 - When the passage says how much time passed, answer with the amount it names rather than your own estimate.
-- When no time passes at all, the count is zero.
-
-Your entire reply is that count and its unit, with nothing before or after it.`;
+- When no time passes at all, the count is zero.`;
 
 // The opening-time pass (requestType 'openingTime'): run once, silently, after the FIRST narration, to
 // work out what time of day the story opens at. Without it every world starts at 08:00 and a midnight
