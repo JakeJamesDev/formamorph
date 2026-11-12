@@ -1,6 +1,7 @@
 # Spec: Stat And Trait Chip Parity
 
 Status: ready-for-agent
+Spec session: stat-trait-chip-parity — spec
 
 ## Problem Statement
 
@@ -8,7 +9,7 @@ Global Stats and Global Traits and the stats and traits an entity owns reach the
 
 - **Names-only stats can't be picked.** The Stat Detail row (Range, Descriptor, Description) locks its last checked piece on. The bare Stats chip sends names only, but after the author checks one piece, they can't uncheck back to names. Owned stat lines on the Persona and Entities chips never reach names only.
 - **Global Traits always send descriptions.** Owned traits can send names only through the Content row. The Traits chip has no Content row and always sends `Name: description`.
-- **The default prompts send more stat detail for the player and the cast than for the world.** Narration and Choices send Global Stats as Descriptor only. The same prompts send Persona stats, and Narration also sends Entity stats, with Range, Descriptor and Description. Early versions sent stat numbers to the narrator, and the AI leaked them into the story. The extra detail was noise. The persona and cast lines send that detail again today.
+- **The default prompts send more stat detail for the player and the cast than for the world.** Narration and Choices send Global Stats as Descriptor only. The same prompts send Persona stats and the stats of entities at the location with Range, Descriptor and Description. Early versions sent stat numbers to the narrator, and the AI leaked them into the story. The extra detail was noise. The persona and cast lines send that detail again today.
 
 ## Solution
 
