@@ -9,7 +9,7 @@ import type { RowAvatar } from '@/lib/useSliderPicker';
 import ModelStorageService from '@/services/ModelStorageService';
 import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
 import type { CodeRenamePlan } from '@/lib/statCodeRename';
-import type { TraitLookRows } from '@/lib/appearancePreview';
+import { statLookRows, type TraitLookRows } from '@/lib/appearancePreview';
 import type { Entity } from '@/types';
 
 const swatch = (color: string) =>
@@ -32,8 +32,13 @@ const PLAN: CodeRenamePlan = {
 // An Elf-style trait: pointed ears where the Avatar has them, and silver hair.
 const PREVIEW_ROWS: TraitLookRows = { morphPins: [{ name: 'Ear Shape', value: 1 }], colorPins: [{ channel: 'hair', color: '#c8ccd8' }] };
 
-/** The library's first Avatar, or the bundled one on an empty library. */
-function DevAppearancePreview({ onClose }: { onClose: () => void }) {
+// A Fatness-style stat from 0 to 100: a thicker body and warmer skin at Max.
+const STAT_PREVIEW_ROWS: TraitLookRows = statLookRows({
+  morphBindings: [{ name: 'Thickness' }], colorBindings: [{ channel: 'skin', color: '#e89a7a' }],
+});
+
+/** The library's first Avatar and the bundled one, or the bundled one twice. `stat` previews a stat in place of a trait. */
+function DevAppearancePreview({ onClose, stat }: { onClose: () => void; stat: boolean }) {
   const [avatars, setAvatars] = useState<RowAvatar[]>();
   useEffect(() => {
     let live = true;
@@ -51,7 +56,10 @@ function DevAppearancePreview({ onClose }: { onClose: () => void }) {
       });
     return () => { live = false; };
   }, []);
-  return avatars ? <AppearancePreviewDialog name="Elf" avatars={avatars} rows={PREVIEW_ROWS} onSave={() => {}} onClose={onClose} /> : null;
+  if (!avatars) return null;
+  return stat
+    ? <AppearancePreviewDialog name="Fatness" avatars={avatars} rows={STAT_PREVIEW_ROWS} stat={{ min: 0, max: 100 }} onSave={() => {}} onClose={onClose} />
+    : <AppearancePreviewDialog name="Elf" avatars={avatars} rows={PREVIEW_ROWS} onSave={() => {}} onClose={onClose} />;
 }
 
 /** DEV: the questions an edit asks partway through, raised on canned text. Every answer closes it and writes nothing. */
@@ -63,7 +71,7 @@ export function DevEditorPrompts({ modal }: { modal: string | undefined }) {
   if (modal === 'imageReplace') {
     return <ReplaceImageDialog open images={IMAGES} slot={slot} onSlotChange={setSlot} idPrefix="dev-image" onClose={close} />;
   }
-  if (modal === 'appearancePreview') return <DevAppearancePreview onClose={close} />;
+  if (modal === 'appearancePreview' || modal === 'statAppearancePreview') return <DevAppearancePreview onClose={close} stat={modal === 'statAppearancePreview'} />;
   if (modal === 'codeRename') return <CodeRenameDialog open plan={PLAN} onApply={close} onSettle={close} />;
   if (modal === 'savedElsewhere' || modal === 'deletedElsewhere') {
     return <ChangedElsewhereDialog change={modal === 'savedElsewhere' ? 'saved' : 'deleted'} onLeave={close} onKeepMine={close} />;

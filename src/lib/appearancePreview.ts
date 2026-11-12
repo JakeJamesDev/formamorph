@@ -1,6 +1,7 @@
-import { resolveMorphAlias } from './bodyMorphs';
+import { DEFAULT_CHANGE_BY, bindingBy, resolveMorphAlias } from './bodyMorphs';
 import { COLOR_CHANNELS } from './avatarLook';
-import type { ColorChannel, ColorPin, MorphPin } from '@/types';
+import { mixOklab } from './oklab';
+import type { ColorBinding, ColorChannel, ColorPin, MorphBinding, MorphPin } from '@/types';
 
 /** What the previewed Avatar offers: its slider keys and its own color for each channel it has. */
 export interface PreviewModel {
@@ -158,4 +159,38 @@ export function traitRowsOnSave(rows: TraitLookRows, model: PreviewModel, base: 
     if (color !== undefined && !held.has(channel) && colorChanged(look, base, channel)) colorPins.push({ channel, color });
   }
   return { morphPins: morphPins.length ? morphPins : undefined, colorPins: colorPins.length ? colorPins : undefined };
+}
+
+/** The stat rows the Preview reads and writes. */
+export interface StatLookRows {
+  morphBindings?: MorphBinding[];
+  colorBindings?: ColorBinding[];
+}
+
+/** A stat's rows as the look at Max: each slider at the model's own value plus its Change By, each color at its Target Color. */
+export const statLookRows = (rows: StatLookRows): TraitLookRows => ({
+  morphPins: rows.morphBindings?.map((binding) => ({ name: binding.name, value: MODEL_SLIDER + bindingBy(binding) })),
+  colorPins: rows.colorBindings,
+});
+
+/** The stat's rows from the look at Max: Change By is the value at Max less the model's own. The default is stored as absent. */
+export const statRowsFromLook = (rows: TraitLookRows): StatLookRows => ({
+  morphBindings: rows.morphPins?.map(({ name, value }) => {
+    const by = value - MODEL_SLIDER;
+    return by === DEFAULT_CHANGE_BY ? { name } : { name, by };
+  }),
+  colorBindings: rows.colorPins,
+});
+
+/** The look a stat at `progress` (0 at Min, 1 at Max) gives the model, from its look at Max, with the game's color blend. */
+export function shownLook(look: PreviewLook, model: PreviewModel, progress: number): PreviewLook {
+  const sliders = Object.fromEntries(Object.entries(look.sliders)
+    .map(([key, value]) => [key, MODEL_SLIDER + progress * (value - MODEL_SLIDER)]));
+  const colors: Partial<Record<ColorChannel, string>> = {};
+  for (const channel of Object.keys(look.colors) as ColorChannel[]) {
+    const target = look.colors[channel];
+    const own = model.colors[channel];
+    colors[channel] = own === undefined || target === undefined || progress >= 1 ? target : mixOklab(own, target, progress);
+  }
+  return { sliders, colors };
 }

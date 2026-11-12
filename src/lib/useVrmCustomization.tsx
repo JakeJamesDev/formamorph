@@ -15,6 +15,7 @@ import { Meta } from '@/components/ui/typography';
 import { lockedLook, type AvatarLock } from '@/lib/customizationLock';
 import { COLOR_CHANNELS } from '@/lib/avatarLook';
 import { cleanLabel } from '@/lib/morphLabel';
+import { clamp } from '@/lib/utils';
 
 /**
  * Owns the avatar-customization surface — the sliders and color pickers that read a model's detected
@@ -35,11 +36,13 @@ const UndoButton = ({ label, onUndo, disabled }: { label: string; onUndo: () => 
 const sameHex = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
 // One consistent color control: swatch picker + an undo button that returns the color to its base.
-export const ColorRow = ({ label, value, base, onChange, onUndo, onPickStart, onPickEnd, heldBy }: {
+export const ColorRow = ({ label, value, base, changed, onChange, onUndo, onPickStart, onPickEnd, heldBy }: {
   label: string;
   value: string;
   /** The color undo returns to. */
   base: string;
+  /** Whether undo has anything to return, where `value` is not what it compares. Absent = `value` differs from `base`. */
+  changed?: boolean;
   onChange: (hex: string) => void;
   onUndo: () => void;
   onPickStart: () => void;
@@ -58,33 +61,38 @@ export const ColorRow = ({ label, value, base, onChange, onUndo, onPickStart, on
       ) : (
         <ColorPicker value={value} aria-label={label} onChange={onChange} onPickStart={onPickStart} onPickEnd={onPickEnd} />
       )}
-      <UndoButton label={label} onUndo={onUndo} disabled={heldBy !== undefined || sameHex(value, base)} />
+      <UndoButton label={label} onUndo={onUndo} disabled={heldBy !== undefined || !(changed ?? !sameHex(value, base))} />
     </div>
     {heldBy !== undefined && <Meta>Set by {heldBy}</Meta>}
   </div>
 );
 
 // One slider with its undo button in the label row.
-export const SliderRow = ({ id, label, value, base, min, max, step, format, onChange, heldBy }: {
+export const SliderRow = ({ id, label, value, base, changed, min, max, step, format, onChange, onUndo, heldBy }: {
   id: string;
   label: string;
+  /** May lie past the range: the slider then sits at its end and the number shows the value. */
   value: number;
   /** The value undo returns to. */
   base: number;
+  /** Whether undo has anything to return, where `value` is not what it compares. Absent = `value` differs from `base`. */
+  changed?: boolean;
   min: number;
   max: number;
   step: number;
   format: (value: number) => string;
   onChange: (value: number) => void;
+  /** Absent = `onChange(base)`. */
+  onUndo?: () => void;
   /** The checked trait that sets this slider: the row shows it and cannot change it. */
   heldBy?: string;
 }) => (
   <div className="space-y-2">
     <div className="flex items-center space-x-2">
       <Label htmlFor={id} className="flex-1">{label}</Label>
-      <UndoButton label={label} onUndo={() => onChange(base)} disabled={heldBy !== undefined || value === base} />
+      <UndoButton label={label} onUndo={onUndo ?? (() => onChange(base))} disabled={heldBy !== undefined || !(changed ?? value !== base)} />
     </div>
-    <Slider id={id} min={min} max={max} step={step} value={[value]} disabled={heldBy !== undefined} onValueChange={([v]) => onChange(v)} />
+    <Slider id={id} min={min} max={max} step={step} value={[clamp(value, min, max)]} disabled={heldBy !== undefined} onValueChange={([v]) => onChange(v)} />
     <Meta>{format(value)}{heldBy !== undefined && ` · Set by ${heldBy}`}</Meta>
   </div>
 );

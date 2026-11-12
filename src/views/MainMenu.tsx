@@ -484,7 +484,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (devRoute?.modal === 'profile') setShowProfileDialog(true);
     if (devRoute?.modal === 'feedbackHub') setShowFeedback(true);
     if (devRoute?.modal === 'adminPanel') setShowAdminPanel(true);
-    if (['worldEditor', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere', 'deleteWorldAvatar', 'appearancePreview'].includes(devRoute?.modal ?? '')) setShowWorldEditor(true);
+    if (['worldEditor', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere', 'deleteWorldAvatar', 'appearancePreview', 'statAppearancePreview'].includes(devRoute?.modal ?? '')) setShowWorldEditor(true);
     if (devRoute?.modal === 'avatar') setShowCharacterCustomization(true);
     if (devRoute?.modal === 'aiSetup') setGate({ reason: 'firstRun' });
     if (devRoute?.modal === 'firstRun') setDevFirstRun(true);

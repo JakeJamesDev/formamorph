@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { NO_EDITS, avatarsChanged, editColor, editSlider, lookChanged, lookWithEdits, traitLook, traitRowsOnSave, traitRowsOnSaveAcross, withColor, withSlider, type PreviewLook, type PreviewModel, type TraitLookRows } from './appearancePreview';
+import {
+  NO_EDITS, avatarsChanged, editColor, editSlider, lookChanged, lookWithEdits, shownLook, statLookRows, statRowsFromLook, traitLook,
+  traitRowsOnSave, traitRowsOnSaveAcross, withColor, withSlider, type PreviewLook, type PreviewModel, type StatLookRows, type TraitLookRows,
+} from './appearancePreview';
+import { blendColor } from './oklab';
 
 const MODEL: PreviewModel = { sliders: ['Ear Shape', 'Fat'], colors: { skin: '#e8c8b0', hair: '#402010' } };
 
@@ -19,7 +23,7 @@ describe('traitLook', () => {
     expect(traitLook(rows, MODEL).sliders).toEqual(sliders);
   });
 
-  it("shows a color row's Set To, the model's own color elsewhere, and no channel the model lacks", () => {
+  it("shows a color row's Set To, the model’s own color elsewhere, and no channel the model lacks", () => {
     const look = traitLook({ colorPins: [{ channel: 'hair', color: '#ffffff' }, { channel: 'eye', color: '#00ff00' }] }, MODEL);
     expect(look.colors).toEqual({ skin: '#e8c8b0', hair: '#ffffff' });
   });
@@ -93,6 +97,56 @@ describe('edits across Avatars', () => {
   it('counts an edit put back to its base as no change', () => {
     expect(avatarsChanged(opened({}), editSlider(NO_EDITS, 'Fat', 0))).toBe(false);
     expect(avatarsChanged(opened({}), editSlider(NO_EDITS, 'Fat', 0.1))).toBe(true);
+  });
+});
+
+describe("a stat's Preview", () => {
+  /** Opens a stat's Preview on `rows`, applies `edit` to the look at Max, and returns the stat rows Save writes. */
+  const saveStat = (rows: StatLookRows, edit: (look: PreviewLook) => PreviewLook = (l) => l) => {
+    const lookRows = statLookRows(rows);
+    const base = traitLook(lookRows, MODEL);
+    return statRowsFromLook(traitRowsOnSave(lookRows, MODEL, base, edit(base)));
+  };
+  const atMax = (rows: StatLookRows) => traitLook(statLookRows(rows), MODEL);
+
+  it("opens at Max with each slider at the model’s own value plus its Change By", () => {
+    expect(atMax({ morphBindings: [{ name: 'Fat', by: 0.4 }, { name: 'Ear Shape' }] }).sliders).toEqual({ 'Ear Shape': 1, Fat: 0.4 });
+  });
+
+  // The walkthroughs of the stat-preview-reading prototype, as scrub positions and drags on an untouched Avatar.
+  it('simple case: a drag to 1.0 at Max shows 0.5 at half and the model’s own at Min', () => {
+    const look = withSlider(atMax({}), 'Fat', 1);
+    expect(shownLook(look, MODEL, 0.5).sliders.Fat).toBe(0.5);
+    expect(shownLook(look, MODEL, 0).sliders).toEqual({ 'Ear Shape': 0, Fat: 0 });
+    expect(saveStat({}, (l) => withSlider(l, 'Fat', 1))).toEqual({ morphBindings: [{ name: 'Fat' }], colorBindings: undefined });
+  });
+
+  it.each<[string, StatLookRows, (l: PreviewLook) => PreviewLook, StatLookRows]>([
+    ['a drag to 0.8 on a slider with no row writes Change By 0.8', {}, (l) => withSlider(l, 'Fat', 0.8),
+      { morphBindings: [{ name: 'Fat', by: 0.8 }], colorBindings: undefined }],
+    ['editing halfway: a drag to 0.5 writes Change By 0.5, not 0.5 ÷ progress', {}, (l) => withSlider(l, 'Fat', 0.5),
+      { morphBindings: [{ name: 'Fat', by: 0.5 }], colorBindings: undefined }],
+    ['shrinking: a drag below the model’s own writes a negative Change By', {}, (l) => withSlider(l, 'Fat', -0.25),
+      { morphBindings: [{ name: 'Fat', by: -0.25 }], colorBindings: undefined }],
+    ['undo and Save: a drag put back to the saved 0.6 leaves 0.6', { morphBindings: [{ name: 'Fat', by: 0.6 }] },
+      (l) => withSlider(withSlider(l, 'Fat', 1), 'Fat', 0.6), { morphBindings: [{ name: 'Fat', by: 0.6 }], colorBindings: undefined }],
+    ['a Change By of 5 survives an untouched Save', { morphBindings: [{ name: 'Fat', by: 5 }] }, (l) => l,
+      { morphBindings: [{ name: 'Fat', by: 5 }], colorBindings: undefined }],
+    ['only the dragged one of two sliders with no row adds a row', {}, (l) => withSlider(l, 'Ear Shape', 0.3),
+      { morphBindings: [{ name: 'Ear Shape', by: 0.3 }], colorBindings: undefined }],
+    ['a row the Avatar lacks stays as it is', { morphBindings: [{ name: 'Tail', by: 2 }] }, (l) => l,
+      { morphBindings: [{ name: 'Tail', by: 2 }], colorBindings: undefined }],
+    ['a pick writes the Target Color', { colorBindings: [{ channel: 'hair', color: '#ffffff' }] }, (l) => withColor(l, 'hair', '#aa00aa'),
+      { morphBindings: undefined, colorBindings: [{ channel: 'hair', color: '#aa00aa' }] }],
+  ])('%s', (_, rows, edit, expected) => {
+    expect(saveStat(rows, edit)).toEqual(expected);
+  });
+
+  it("shows each color as the game's blend from the model’s own toward the Target Color", () => {
+    const look = atMax({ colorBindings: [{ channel: 'hair', color: '#ffffff' }] });
+    expect(shownLook(look, MODEL, 0.5).colors.hair).toBe(blendColor('#402010', [{ target: '#ffffff', t: 0.5 }]));
+    expect(shownLook(look, MODEL, 0).colors).toEqual(MODEL.colors);
+    expect(shownLook(look, MODEL, 1).colors.hair).toBe('#ffffff');
   });
 });
 

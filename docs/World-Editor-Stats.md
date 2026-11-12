@@ -181,6 +181,23 @@ On the **Appearance** tab:
 | **Sliders** | Binds the [Avatar's](Avatars#in-the-game) sliders to this stat. The list has two groups for each model: **Body Sliders** and **Head Features**, such as Ear Shape. On an entity's own stat, the list holds the sliders of its 3D model and of the Avatar it shows on this device. For **User's Default**, that is your Default Avatar. On a world stat, the list holds the Avatar of each persona the player can pick, once each. A world that allows one persona lists one Avatar. A library persona or **None** uses your **Custom Persona**'s Avatar. **Starts On** does not narrow the list. With no Avatar and no 3D model, the **Appearance** tab asks you to pick one. Each picked slider gets a row with a **Change By** number, 1 by default. As the value goes from Min to Max, the stat adds 0 up to the **Change By** to the slider. A negative **Change By** makes the slider smaller. Several stats can change one slider, and their changes add up. A row shows **Not on this model** when none of the models the stat plays on has that slider. A slider you bound that the list no longer holds stays on the stat, and you can remove it. To add sliders to a model, see [How to Add Body Sliders in Blender](Avatars#how-to-add-body-sliders-in-blender). |
 | **Colors** | Shifts the Avatar's **Skin**, **Eye** or **Hair** color toward a **Target Color** as the stat rises. At Min, the color is unchanged. At Max and above, it is the target. A new row starts at the Avatar's own color, or white when the stat has no Avatar. When several stats change one color, they apply in their order in the stat list. Colors work on Avatars only, not on 3D models. A row shows **Not on this model** when none of the Avatars the stat plays on has that color. |
 
+## Preview
+<!-- keywords: preview stat look, see stat on avatar, set change by by eye, stat at max, scrub stat -->
+<!-- route: statAppearancePreview -->
+
+**Preview** shows the stat's look on its Avatar, so you can set sliders and colors by eye.
+
+- Select **Preview** at the top of the **Appearance** tab. The dialog opens the Avatar the stat plays on. With several, it opens the first and offers an **Avatar** menu to switch. Your changes stay when you switch. A control the other Avatar lacks is hidden there, and Save still writes its change.
+- The dialog opens at Max. Each slider shows the Avatar's own value plus its **Change By**. Each color shows its **Target Color**. Only this stat's rows apply.
+- Drag the stat's slider at the top to see the look from Min to Max. At Min, the Avatar shows its own sliders and colors.
+- A drag or a color pick sets the look at Max, and moves the stat's slider to Max first. The **Change By** becomes the value you drag to, less the Avatar's own value.
+- A **Change By** past a slider's range shows the slider at its end, with the number beside it. It changes only when you drag that slider.
+- In play, the stat adds to the player's own slider values, so a player who starts higher ends higher.
+- Each control's **Undo** button returns it to the look at Max from the saved rows.
+- **Save** writes your changes to the stat. A slider or color you changed that has no row gets a new one. Save never removes a row. One **Undo** in the editor takes the whole change back.
+- Closing with unsaved changes asks before it discards them.
+- With no Avatar, **Preview** is disabled. An entity's 3D model has no Preview, so set an Avatar on its **Profile** tab first. **Preview** is also disabled until Max is above Min, because the stat changes nothing in play until then.
+
 ## Stat Descriptors
 <!-- keywords: no status red, gap in coverage, which band wins, raw or percent, scales with max, above top tier, label missing, coverage bar -->
 <!-- route: worldEditorStat.descriptors -->

@@ -43,6 +43,9 @@ import { WorldInput } from '@/components/editor/WorldField';
 import { SliderNumberRow } from '@/components/editor/SliderNumberRow';
 import { ColorRowsField } from '@/components/editor/ColorRowsField';
 import { fieldFrame } from '@/lib/historyField';
+import { Button } from '@/components/ui/button';
+import { AppearancePreviewDialog } from '@/components/editor/AppearancePreviewDialog';
+import { statLookRows, statRowsFromLook } from '@/lib/appearancePreview';
 
 export const AVAILABILITY_INFO = `**Enabled** keeps the stat active. Uncheck it and the stat stays inactive until a trait enables it. An inactive stat isn't shown to the player or sent to the AI, and its Regen and scripts don't run.
 
@@ -80,6 +83,9 @@ const normalizeStat = (stat: EditingStat): EditingStat => ({
   ...(stat ?? {}),
   type: stat?.type || "number",
 });
+
+/** The Preview button's hint on a stat whose Max is not above its Min. */
+export const FLAT_RANGE_PREVIEW_HINT = "Set a Max above Min to preview";
 
 const NO_BINDINGS: readonly MorphBinding[] = [];
 const NO_COLOR_BINDINGS: readonly ColorBinding[] = [];
@@ -127,6 +133,14 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   const [colorsOpened, setColorsOpened] = useState(false);
   useEffect(() => { setColorsOpened(false); }, [stat.id]);
   const sliders = useSliderPicker(store?.morphOwner, bindings.length > 0 || colorBindings.length > 0 || colorsOpened);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  useEffect(() => { setPreviewOpen(false); }, [stat.id]);
+  // The Preview opens the first Avatar the row plays on.
+  const previewAvatar = sliders.avatars[0];
+  const statRange = { min: editingStat.min ?? 0, max: editingStat.max ?? 100 };
+  // Play never moves the Avatar for a stat with no span, so the Preview has no look to show.
+  const flatRange = statRange.max <= statRange.min;
+  const previewHint = sliders.noModelHint ?? sliders.noAvatarHint ?? (flatRange ? FLAT_RANGE_PREVIEW_HINT : undefined);
   // A picked slider keeps its Change By; a new one starts at the default.
   const pickSliders = (names: string[]) =>
     handleChange("morphBindings", names.map((name) => bindings.find((b) => b.name === name) ?? { name }));
@@ -504,7 +518,20 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   // Numeric stats only: the sliders and colors move with the stat's value.
   const appearance = (
     <div className="flex flex-col gap-4">
-      {sliders.noModelHint && <Hint>{sliders.noModelHint}</Hint>}
+      <div className="flex items-center gap-3">
+        <Button size="sm" variant="outline" disabled={!previewAvatar || flatRange} onClick={() => setPreviewOpen(true)}>Preview</Button>
+        {previewHint && <Hint>{previewHint}</Hint>}
+      </div>
+      {previewOpen && previewAvatar && !flatRange && (
+        <AppearancePreviewDialog
+          name={labelPlaceholders(editingStat.name ?? '', placeholders, { letters: placementLetters, owners: placeholderOwners })}
+          avatars={sliders.avatars}
+          rows={statLookRows(editingStat)}
+          stat={statRange}
+          onSave={(rows) => apply(statRowsFromLook(rows))}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
       <div className="space-y-2" {...fieldFrame('morphBindings')}>
         {fieldLabel('morphBindings', 'Sliders')}
         <Hint>Moves each slider as the stat rises, by its Change By at Max</Hint>

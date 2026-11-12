@@ -1,6 +1,6 @@
 # 05: Stat Preview
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -30,17 +30,32 @@ An author sets how the Avatar looks when a stat is full, and watches the path th
 
 ## Acceptance criteria
 
-- [ ] The Preview opens at Max with each bound slider at the model's own value plus its Change By.
-- [ ] A drag to 0.8 on a slider whose model value is 0 writes Change By 0.8 on Save.
-- [ ] With the scrubber at half, a slider with Change By 1 shows 0.5. A drag then moves the scrubber to Max and writes the dragged value.
-- [ ] At Min, every bound slider and color shows the model's own.
-- [ ] A color at half shows the game's blend of the model's color and the Target Color. A pick writes the Target Color.
-- [ ] A saved Change By of 5 shows the slider at its end with "5" beside it, and Save without a drag leaves it 5.
-- [ ] A slider with no row adds a row on Save only when dragged.
-- [ ] A slider's undo returns to the look at Max from the saved Change By and is then disabled.
-- [ ] The note about the player's own value shows in the dialog.
-- [ ] Table tests cover the draft logic for a stat with the prototype's walkthrough cases.
-- [ ] Mutation: write the dragged value at the scrubber's position without moving to Max, and the half-scrubber test fails.
-- [ ] Frames: `.scratch/frames/stat-preview-max-dark-1440.png` and `.scratch/frames/stat-preview-half-dark-1440.png`.
+- [x] The Preview opens at Max with each bound slider at the model's own value plus its Change By. StatManager.preview test "opens at Max…"; the live Max frame reads Thickness 1.00.
+- [x] A drag to 0.8 on a slider whose model value is 0 writes Change By 0.8 on Save. Test "writes Change By 0.8…".
+- [x] With the scrubber at half, a slider with Change By 1 shows 0.5. A drag then moves the scrubber to Max and writes the dragged value. Test "shows half the Change By at half…" (0.5, then 100 and by 0.55).
+- [x] At Min, every bound slider and color shows the model's own. Test "shows the model's own slider and color at Min".
+- [x] A color at half shows the game's blend of the model's color and the Target Color. A pick writes the Target Color. Test "shows the game's blend at half…" against `blendColor`; the viewer gets a per-material color plan.
+- [x] A saved Change By of 5 shows the slider at its end with "5" beside it, and Save without a drag leaves it 5. Test reads the thumb at 1.25 and "5.00" beside it.
+- [x] A slider with no row adds a row on Save only when dragged. Tests "writes Change By 0.8…" and the table case "only the dragged one of two sliders…".
+- [x] A slider's undo returns to the look at Max from the saved Change By and is then disabled. Test "returns a slider to the look at Max…", undo still enabled at Min.
+- [x] The note about the player's own value shows in the dialog. Test "opens at Max…"; Max frame.
+- [x] Table tests cover the draft logic for a stat with the prototype's walkthrough cases. appearancePreview.test "a stat's Preview": simple case, editing halfway, shrinking, undo and Save.
+- [x] Mutation: write the dragged value at the scrubber's position without moving to Max, and the half-scrubber test fails. Removing `setProgress(1)` in the dialog's edit failed it and two more.
+- [x] Frames: `.scratch/frames/stat-preview-max-dark-1440.png` and `.scratch/frames/stat-preview-half-dark-1440.png`. Live dev route `statAppearancePreview`.
 
 For you: scrub a stat from Min to Max on the Avatar, and judge the scrubber, the jump to Max on a drag, and the note's wording.
+
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
+- For you: scrub a stat from Min to Max on the Avatar, and judge the scrubber, the jump to Max on a drag, and the note's wording.
+- The note reads "Adds to the player's own slider values in play". It names sliders only, because colors blend toward the target rather than add.
+- Per the spec session's ruling, a stat whose Max is not above its Min has its Preview disabled beside "Set a Max above Min to preview". The no-Avatar hint wins where both apply.
+- The scrubber is labeled with the stat's name and shows its value under it. An undo also moves the scrubber to Max, as a drag does.
+- A stored Change By of exactly 1 is saved as absent, the editor's existing form for the default.
+- Two rows of one stat on the same slider: the Preview binds the first only, as the trait Preview does, while play adds both.
+- Frames: `.scratch/appearance-preview-05/frames/stat-preview-max-dark-1440.png` and `.scratch/appearance-preview-05/frames/stat-preview-half-dark-1440.png`. They use `aurelia-ears.vrm` with a canned Fatness stat bound to Thickness and Skin Color.
+- The stat Preview has ticket 06's Avatar choice: the stat editor converts its bindings (`statLookRows`, `statRowsFromLook`), so edits across Avatars serve stats unchanged. A change of Avatar keeps the scrubber where it is.

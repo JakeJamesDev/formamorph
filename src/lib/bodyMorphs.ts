@@ -40,8 +40,11 @@ export function normalizeStat(value: number, min: number, max: number, refMax: n
   return Math.max(0, t);
 }
 
-/** A binding's Change By: its `by`, or 1 when absent. */
-export const bindingBy = (binding: MorphBinding): number => binding.by ?? 1;
+/** The Change By a binding with no `by` has. */
+export const DEFAULT_CHANGE_BY = 1;
+
+/** A binding's Change By: its `by`, or the default when absent. */
+export const bindingBy = (binding: MorphBinding): number => binding.by ?? DEFAULT_CHANGE_BY;
 
 /** One model's contribution to the slider picker: its display name and the sliders it exposes. */
 export interface MorphSource {
