@@ -113,9 +113,11 @@ describe('multi-axis variants (Stats: content × format)', () => {
     expect(variantLabelForToken('<STATS DESCRIPTION>')).toBeNull();
   });
 
-  it('gives Traits a single format axis (shared with Stats)', () => {
+  it('gives Traits a Content axis of Description and Name, plus the shared format axis', () => {
     const TRAITS = variableForToken('<TRAITS DESCRIPTION>')!;
-    expect(variableAxes(TRAITS).map((a) => a.id)).toEqual(['format']);
+    expect(variableAxes(TRAITS).map((a) => a.id)).toEqual(['content', 'format']);
+    expect(variableAxes(TRAITS)[0].options.map((o) => o.id)).toEqual([null, 'name']);
+    expect(variantLabelForToken('<TRAITS DESCRIPTION|name>')).toBe('Name');
     expect(variantLabelForToken('<TRAITS DESCRIPTION|markdown>')).toBe('Markdown');
     expect(variantLabelForToken('<TRAITS DESCRIPTION>')).toBeNull();
   });

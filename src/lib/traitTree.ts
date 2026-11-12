@@ -472,14 +472,15 @@ export function buildTraitContext(
   traits: Trait[],
   groups: TraitGroup[],
   format: 'simple' | 'markdown' | 'xml' = 'simple',
+  namesOnly = false,
 ): string {
   const sel = new Set(selectedIds);
-  if (format === 'xml') return buildTraitContextXml(sel, traits, groups);
+  if (format === 'xml') return buildTraitContextXml(sel, traits, groups, namesOnly);
   const md = format === 'markdown';
   const traitLine = (t: Trait) => {
     const name = md ? `**${t.name}:**` : `${t.name}:`;
     const bare = md ? `**${t.name}**` : t.name;
-    return t.aiDescription?.trim() ? `${name} ${t.aiDescription.trim()}` : bare;
+    return !namesOnly && t.aiDescription?.trim() ? `${name} ${t.aiDescription.trim()}` : bare;
   };
   const tree = aiTraitTree(groups, traits);
 
@@ -513,11 +514,11 @@ export function buildTraitContext(
 /** XML shape of the trait block: ungrouped `<trait>` first, then each group (with ≥1 selected trait) as a
  *  `<group>` nesting its `<name>`/`<description>`, its traits, and any descendant groups. A group with no
  *  directly-selected trait isn't wrapped but its descendants still surface (mirrors the simple/markdown walk). */
-function buildTraitContextXml(sel: Set<string>, traits: Trait[], groups: TraitGroup[]): string {
+function buildTraitContextXml(sel: Set<string>, traits: Trait[], groups: TraitGroup[], namesOnly: boolean): string {
   const tree = aiTraitTree(groups, traits);
 
   const traitXml = (t: Trait, pad: string): string => {
-    const desc = t.aiDescription?.trim();
+    const desc = namesOnly ? undefined : t.aiDescription?.trim();
     let inner = `\n${pad}  <name>${xmlEscape(t.name)}</name>`;
     if (desc) inner += `\n${pad}  <description>${xmlEscape(desc)}</description>`;
     return `${pad}<trait>${inner}\n${pad}</trait>`;

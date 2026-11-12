@@ -1,6 +1,6 @@
 # 02: Traits Chip Content Row
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -20,7 +20,15 @@ Spec rulings: Q2, Q4, Q6.
 
 ## Acceptance criteria
 
-- [ ] The Chip Options dialog shows a Content row on the Traits chip with Description and Name. Picking Name saves the Name variant id in the token.
-- [ ] The Name variant over the sample scene renders `Salvager's Eye` and, under the `Habits` heading and its description, `Light Sleeper`, one per line, in plain, markdown and XML.
-- [ ] The bare `<TRAITS DESCRIPTION>` render is unchanged. The rendered corpus snapshot shows no diff.
-- [ ] Each new test fails with the Name branch removed.
+- [x] The Chip Options dialog shows a Content row on the Traits chip with Description and Name. Picking Name saves the Name variant id in the token. (ChipOptionsDialog.test: "gives the Traits chip a Content row")
+- [x] The Name variant over the sample scene renders `Salvager's Eye` and, under the `Habits` heading and its description, `Light Sleeper`, one per line, in plain, markdown and XML. (sampleScene.test: "sends Global Trait names alone")
+- [x] The bare `<TRAITS DESCRIPTION>` render is unchanged. The rendered corpus snapshot shows no diff. (corpusRendered.test and the existing sample-scene regex pass, snapshot untouched)
+- [x] Each new test fails with the Name branch removed. (sampleScene test failed with the branch off; the dialog and axis tests pin the axis itself)
+
+## Landed
+
+**Not verified**
+- The dialog test does not fail with the Name branch off in `chipValues.ts`, since it reads the saved token only. The axis option guards it.
+
+**For you**
+- Open Chip Options on a Traits chip in the prompt editor. Pick Name and read the preview: names one per line under group headings.

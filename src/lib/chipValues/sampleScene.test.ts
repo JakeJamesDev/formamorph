@@ -35,6 +35,19 @@ describe('sampleChipScene', () => {
     expect(values('<TRAITS DESCRIPTION>')).toMatch(/^Salvager's Eye: .*\nHabits:\n {2}Ways the traveler cannot help\.\n {2}Light Sleeper: /);
   });
 
+  it('sends Global Trait names alone under their group heading, per format', () => {
+    const values = chipValues(sampleChipScene());
+    expect(values('<TRAITS DESCRIPTION|name>')).toBe("Salvager's Eye\nHabits:\n  Ways the traveler cannot help.\n  Light Sleeper");
+    expect(values('<TRAITS DESCRIPTION|name.markdown>')).toBe(
+      "- **Salvager's Eye**\n- **Habits:** Ways the traveler cannot help.\n  - **Light Sleeper**",
+    );
+    const xml = values('<TRAITS DESCRIPTION|name.xml>');
+    expect(xml).toContain("<name>Salvager's Eye</name>");
+    expect(xml).toContain('<description>Ways the traveler cannot help.</description>');
+    expect(xml).toContain('<name>Light Sleeper</name>');
+    expect(xml).not.toMatch(/Spots the worth|Wakes at the smallest/);
+  });
+
   it('fills both owner blocks of the default stat prompt in the Settings preview', () => {
     const prompt = renderPromptTemplate(defaultStatUpdatesPrompt, chipValues(sampleChipScene()));
     expect(prompt).toMatch(/## Player Character\n- \*\*Traveler\*\*[^#]*- \*\*Nerve:\*\* 55\/100/);

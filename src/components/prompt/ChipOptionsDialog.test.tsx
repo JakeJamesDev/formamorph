@@ -297,6 +297,17 @@ describe('Chip Options', () => {
     expect(range).toBeDisabled();
   });
 
+  it('gives the Traits chip a Content row of Description and Name that saves the Name id', async () => {
+    const user = userEvent.setup();
+    renderReporting(<Field initial="<TRAITS DESCRIPTION>" />);
+    const options = await open(user);
+    const content = within(options).getByRole('radiogroup', { name: 'Content' });
+    expect(within(content).getAllByRole('radio').map((r) => r.getAttribute('aria-label') ?? r.textContent)).toEqual(['Description', 'Name']);
+    expect(within(content).getByRole('radio', { name: 'Description' })).toBeChecked();
+    await user.click(within(content).getByRole('radio', { name: 'Name' }));
+    expect(stored()).toBe('<TRAITS DESCRIPTION|name>');
+  });
+
   it('writes Header, Prepend and Append below the rows', async () => {
     const user = userEvent.setup();
     renderReporting(<Field initial="<LOCATION>" />);

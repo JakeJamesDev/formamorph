@@ -216,7 +216,16 @@ const PERSONA_STATS_AXIS: PromptVariantAxis = {
 // Each variable gets a fixed palette slot so its color is stable everywhere (chip + preview, every prompt).
 const WORLD: PromptVariable = { token: '<WORLD DESCRIPTION>', label: 'World', color: HIGHLIGHT_PALETTE[0], affixable: true };
 const STATS: PromptVariable = { token: '<STATS DESCRIPTION>', label: 'Stats', color: HIGHLIGHT_PALETTE[1], axes: [STAT_VALUES_AXIS, STAT_STATUS_AXIS, STAT_MEANING_AXIS, FORMAT_AXIS] };
-const TRAITS: PromptVariable = { token: '<TRAITS DESCRIPTION>', label: 'Traits', color: HIGHLIGHT_PALETTE[2], axes: [FORMAT_AXIS] };
+// Traits have no AI summary, so the chip's Content row offers Description and Name only.
+const TRAITS_CONTENT_AXIS: PromptVariantAxis = {
+  id: 'content',
+  label: 'Content',
+  options: [
+    { id: null, label: 'Description', help: "Sends each trait's name and description" },
+    { id: 'name', label: 'Name', help: 'Sends only the trait names, one per line' },
+  ],
+};
+const TRAITS: PromptVariable = { token: '<TRAITS DESCRIPTION>', label: 'Traits', color: HIGHLIGHT_PALETTE[2], axes: [TRAITS_CONTENT_AXIS, FORMAT_AXIS] };
 const LOCATION: PromptVariable = { token: '<LOCATION>', label: 'Location', color: HIGHLIGHT_PALETTE[3], axes: [LOCATION_SCOPE_AXIS, CONTENT_AXIS, FORMAT_AXIS], affixable: true };
 // The entity the player plays. Affixable so a placement can carry its own heading, which then disappears
 // with the value when no persona is set.
