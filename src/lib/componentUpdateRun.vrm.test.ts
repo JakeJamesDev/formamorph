@@ -47,7 +47,7 @@ describe('applyUpdate with an Avatar pick', () => {
     const written: Entity[] = [];
     let vrmStore: Record<string, WorldVrm> | undefined;
     const live: LiveWorld = {
-      id: 'w1', name: 'Marsh', entities: [copy], dictionaries: [], placeholders: [],
+      id: 'w1', name: 'Marsh', entities: [copy], dictionaries: [], placeholders: [], locations: [],
       writeItem: (item) => written.push(item as Entity),
       getVrmStore: () => vrmStore,
       setVrmStore: (next) => { vrmStore = next; },
@@ -66,7 +66,7 @@ describe('applyUpdate with an Avatar pick', () => {
     const written: Entity[] = [];
     let vrmStore: Record<string, WorldVrm> | undefined;
     const live: LiveWorld = {
-      id: 'w1', name: 'Marsh', entities: [copy, second], dictionaries: [], placeholders: [],
+      id: 'w1', name: 'Marsh', entities: [copy, second], dictionaries: [], placeholders: [], locations: [],
       writeItem: (item) => written.push(item as Entity),
       getVrmStore: () => vrmStore,
       setVrmStore: (next) => { vrmStore = next; },

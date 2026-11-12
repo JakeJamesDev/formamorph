@@ -6,7 +6,7 @@
  */
 
 import {
-  applyLibraryUpdate, unlink, type LibrarySource, type LinkableContent,
+  applyLibraryUpdate, routinePlacesOf, unlink, type LibrarySource, type LinkableContent, type RoutinePlaces,
 } from '@/lib/linkedContent';
 import { markReviewed, needsReview, type UpdateAction, type UpdateRow } from '@/lib/componentUpdates';
 import { contentLinkState } from '@/lib/contentLink';
@@ -16,7 +16,7 @@ import { traitWorldOf, type TraitWorld } from '@/lib/portableTraits';
 import { loadLibraryVrms, storeHashes } from '@/lib/libraryVrm';
 import { libraryPickIds, placeLibraryPicks, type LibraryVrm } from '@/lib/vrmPickMatch';
 import type {
-  ContentLink, Dictionary, Entity, Placeholder, PlaceholderGroup, Stat, StatGroup, Trait, TraitGroup, WorldOverview, WorldVrmStore,
+  ContentLink, Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Stat, StatGroup, Trait, TraitGroup, WorldOverview, WorldVrmStore,
 } from '@/types';
 
 /**
@@ -33,6 +33,8 @@ export interface LiveWorld {
   dictionaries: Dictionary[];
   /** The world's shared list, which updated content resolves its references against. */
   placeholders: Placeholder[];
+  /** The world's locations, which an updated routine maps into. */
+  locations: GameLocation[];
   /** The world's traits and groups, which an updated entity's owned trait requirements bind to. */
   traits?: Trait[];
   traitGroups?: TraitGroup[];
@@ -115,12 +117,13 @@ function revisedCopy(
   source: LibrarySource,
   sourceData: LinkableContent | null,
   worldShared: readonly Placeholder[],
+  places: RoutinePlaces,
   traitWorld?: TraitWorld,
 ): { item: LinkableContent; toAdd: Placeholder[] } {
   if (action === 'keep') return { item: markReviewed(copy, source.revision), toAdd: [] };
   if (action === 'unlink') return { item: unlink(copy), toAdd: [] };
   if (!sourceData) throw new Error(`"${source.name}" is no longer in your library.`);
-  return applyLibraryUpdate(copy, sourceData, source, worldShared, traitWorld);
+  return applyLibraryUpdate(copy, sourceData, source, worldShared, places, traitWorld);
 }
 
 /** The copy with a library Avatar pick placed in `store`. Anything else comes back as it is, store included. */
@@ -153,7 +156,7 @@ export async function applyUpdate(
   if (world) {
     const copy = liveCopyFor(world, row);
     if (!copy) throw new Error(`"${row.itemName}" is no longer in ${row.worldName}.`);
-    const revised = revisedCopy(copy, action, source, sourceData, world.placeholders, traitWorldOf(world));
+    const revised = revisedCopy(copy, action, source, sourceData, world.placeholders, routinePlacesOf(world.locations), traitWorldOf(world));
     const hashes = vrms.size ? await storeHashes(world.getVrmStore?.()) : new Map<string, string>();
     const store = world.getVrmStore?.();
     const placed = placeInStore(revised.item, store, hashes, vrms);
@@ -173,7 +176,8 @@ export async function applyUpdate(
     const index = list.findIndex((item) => item.id === row.itemId);
     if (index < 0) throw new Error(`"${row.itemName}" is no longer in ${row.worldName}.`);
     const shared = (data.placeholders ?? []) as Placeholder[];
-    const revised = revisedCopy(list[index], action, source, sourceData, shared, traitWorldOf(data as Parameters<typeof traitWorldOf>[0]));
+    const places = routinePlacesOf((data.locations ?? []) as GameLocation[]);
+    const revised = revisedCopy(list[index], action, source, sourceData, shared, places, traitWorldOf(data as Parameters<typeof traitWorldOf>[0]));
     const overview = data.worldOverview as WorldOverview | undefined;
     const placed = placeInStore(revised.item, overview?.vrmStore, hashes, vrms);
     const next = [...list];

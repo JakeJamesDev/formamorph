@@ -9,7 +9,7 @@ import { embedEntityCard } from './entityCard';
 import { buildEntityCardData, importCharacterFile, parseEntityCardData } from './entityFile';
 import { saveCopyToLibrary } from './librarySources';
 import { encodePlaceholderToken } from './placeholders';
-import { applyLibraryUpdate, type LibrarySource } from './linkedContent';
+import { applyLibraryUpdate, routinePlacesOf, type LibrarySource } from './linkedContent';
 import { traitWorldOf, type TraitWorld } from './portableTraits';
 import EntityStorageService from '@/services/EntityStorageService';
 import WorldStorageService from '@/services/WorldStorageService';
@@ -256,7 +256,7 @@ describe('a library update', () => {
   it('binds the source revision’s copies to the world holding the linked copy', async () => {
     const data = await carriers[2][1](mira);
     const linked: Entity = { id: 'mira-here', name: 'Mira', link: { libraryId: 'lib-1', sourceRevision: 'r0' } };
-    const { item } = applyLibraryUpdate(linked, data, { ...source, data }, elsewhere.placeholders, traitWorldOf(elsewhere));
+    const { item } = applyLibraryUpdate(linked, data, { ...source, data }, elsewhere.placeholders, routinePlacesOf([]), traitWorldOf(elsewhere));
     expect(item).not.toHaveProperty('blueprints');
     expect(item.placeholders!.map((p) => p.blueprintId)).toEqual(['n-garb', 'n-crest']);
   });

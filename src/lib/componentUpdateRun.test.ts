@@ -81,7 +81,7 @@ describe('affectedCopies', () => {
       name: 'Open World',
       entities: [copy({ libraryId: 'lib-1', sourceRevision: 'r1' }, { id: 'copy-live' })],
       dictionaries: [],
-      placeholders: [],
+      placeholders: [], locations: [],
       writeItem: vi.fn(),
       addPlaceholder: vi.fn(),
     };
@@ -211,7 +211,7 @@ describe('applyUpdate', () => {
       name: 'Open World',
       entities: [copy({ libraryId: 'lib-1', sourceRevision: 'r1' }, { id: 'copy-live' })],
       dictionaries: [],
-      placeholders: [],
+      placeholders: [], locations: [],
       writeItem,
       addPlaceholder: vi.fn(),
     };

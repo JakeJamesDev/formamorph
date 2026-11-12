@@ -15,7 +15,7 @@ import { allPlaceholders } from '@/lib/placeholderHomes';
 import { decodePlaceholderToken, encodePlaceholderToken, parsePlaceholderText } from '@/lib/placeholders';
 import { chancePercent } from '@/lib/routineTime';
 import { randomUUID } from '@/lib/uuid';
-import { PLAYER_START, type Connection, type DictionaryEntry, type Entity, type Item, type Placeholder, type ScheduleAction, type Script, type Stat, type Tool, type Trait, type World } from '@/types';
+import { PLAYER_START, PLAYER_START_LABEL, type Connection, type DictionaryEntry, type Entity, type Item, type Placeholder, type ScheduleAction, type Script, type Stat, type Tool, type Trait, type World } from '@/types';
 import { sourceKey, type WorldItemKind, type WorldSource } from './helpWorldSource';
 
 /** The world slices the index reads: an editor's live world. */
@@ -148,7 +148,7 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
   ));
 
   // The Routine tab's name for the Start place that resolves to where the player begins.
-  const placeName = (id: string) => (id === PLAYER_START ? "Player's Starting Location" : text(locationName(id)));
+  const placeName = (id: string) => (id === PLAYER_START ? PLAYER_START_LABEL : text(locationName(id)));
   const actionText = (action: ScheduleAction): string =>
     action.kind === 'stay' ? `stays at ${placeName(action.place)}`
       : action.kind === 'wander' ? `wanders ${action.places.map((p) => placeName(p.place)).join(', ')}`

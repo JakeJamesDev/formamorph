@@ -6,8 +6,10 @@ import { followedLibraryId } from '@/lib/publishLinks';
 import { entityTexts } from '@/lib/entityTexts';
 import { entityImages } from '@/lib/entityImages';
 import { randomUUID } from '@/lib/uuid';
+import { carriedMembership, carriedRoutine, withCarriedRoutine, type Routine } from '@/lib/entityPresence';
+import { withMembership, withoutMembership } from '@/lib/entityPlaces';
 import { pickToken, type VrmLookup } from '@/lib/vrmPickMatch';
-import type { CommunityLink, ContentLink, Dictionary, Entity, Placeholder, PlaceholderGroup } from '@/types';
+import type { CommunityLink, ContentLink, Dictionary, Entity, EntityKind, GameLocation, Placeholder, PlaceholderGroup } from '@/types';
 
 /** An entity or a dictionary — the two kinds of content a world copy can follow a source for. */
 export type LinkableContent = Entity | Dictionary;
@@ -41,9 +43,15 @@ const WORLD_OWNED_FIELDS = [
   'id', 'link', 'groupId', 'order', 'traitPlacement', 'statPlacement', 'locations', 'placeholders', 'sharedPlaceholders', 'blueprints',
 ] as const;
 
-/** The routine of an entity with a kind names the copy's world's places, so a copy owns it on update, compare and the
- *  update review (Q30). Save to Library still carries it, named by `locationRefs`. */
-const COPY_ROUTINE_FIELDS = ['starts', 'traversable'] as const;
+/** A world's location ids, for reading a source's routine mapped into that world (Q30). */
+export interface RoutinePlaces {
+  known: ReadonlySet<string>;
+  /** The copy's connections, where the compared copy no longer carries its record. */
+  connections?: Readonly<Record<string, string>>;
+}
+
+/** The location ids of `locations`, as a routine mapping reads them. */
+export const routinePlacesOf = (locations: readonly Pick<GameLocation, 'id'>[]): RoutinePlaces => ({ known: new Set(locations.map((l) => l.id)) });
 
 /** The library record fields that stamp a revision, newest meaning first. */
 type RevisionStamps = Pick<CommunityLink, 'editedAt' | 'downloadedAt'> & { createdAt?: string };
@@ -138,13 +146,6 @@ export function withoutWorldFields<T extends LinkableContent>(item: T): Partial<
   return shed as Partial<T>;
 }
 
-/** `withoutWorldFields` less the routine a copy owns: the authored content a copy and its source compare on. */
-export function withoutCopyFields<T extends LinkableContent>(item: T): Partial<T> {
-  const shed: Record<string, unknown> = withoutWorldFields(item);
-  for (const field of COPY_ROUTINE_FIELDS) delete shed[field];
-  return shed as Partial<T>;
-}
-
 /**
  * Every authored string on one item that can hold a chip.
  *
@@ -161,10 +162,16 @@ export function chipTexts(item: LinkableContent): string[] {
 
 /** The authored content of one item, ready to compare. Dictionary entry ids go too: every copy mints its
  *  own, so two identical books never share them. */
-function authoredContent(raw: LinkableContent, world?: TraitWorld, vrm?: VrmLookup): unknown {
+function authoredContent(raw: LinkableContent, world?: TraitWorld, vrm?: VrmLookup, mapped = false): unknown {
   // Both sides read the owners the copy's world drops, whichever side stored one (Q19).
   const item = world && !('entries' in raw) ? bindOwnedRules(raw, world) : raw;
-  const shed: Record<string, unknown> = withoutCopyFields(item);
+  const shed: Record<string, unknown> = withoutWorldFields(item);
+  // `routineMatches` compares the routine; a mapped one has consumed the place references too.
+  if (!('entries' in item) && item.kind) {
+    delete shed.starts;
+    delete shed.traversable;
+    if (mapped) delete shed.locationRefs;
+  }
   // A world file read before migration still holds data strings; the library copy holds images.
   if (!('entries' in item) && item.images) shed.images = entityImages(item);
   if (!('entries' in item) && (item.traits || item.traitLinks || item.images)) Object.assign(shed, comparableOwnedTraits(item));
@@ -177,11 +184,37 @@ function authoredContent(raw: LinkableContent, world?: TraitWorld, vrm?: VrmLook
   return stable(shed);
 }
 
+/** A routine as compare reads it: what each Start is, without the ids a carry mints. */
+function comparableRoutine({ starts, traversable }: Routine): string {
+  const bare = starts?.map(({ id: _start, schedule, ...start }) => ({ ...start, schedule: schedule.map(({ id: _row, ...row }) => row) }));
+  return JSON.stringify(stable({ starts: bare, traversable }));
+}
+
+/** Whether two routines hold the same Starts, rows and Can Also Go, whatever ids their Starts and rows carry. */
+export const sameRoutine = (a: Routine, b: Routine): boolean => comparableRoutine(a) === comparableRoutine(b);
+
+/** The routine `source` offers a copy of `kind`: mapped into the copy's world when `places` is given, else as stored. */
+export function offeredRoutine(copy: Entity, source: Entity, kind: EntityKind, places?: RoutinePlaces): Routine {
+  if (!places) return { starts: source.starts, traversable: source.traversable };
+  return carriedRoutine(source, kind, places.connections ?? copy.link?.connections ?? {}, places.known);
+}
+
+/** Whether the copy's routine is what its source offers it. A side with no kind has no routine to compare here. */
+function routineMatches(copy: LinkableContent, source: LinkableContent, places?: RoutinePlaces): boolean {
+  if ('entries' in copy || 'entries' in source || !copy.kind || !source.kind) return true;
+  return sameRoutine(copy, offeredRoutine(copy, source, source.kind, places));
+}
+
 /** Whether the copy still holds exactly what the source holds. Names alone prove nothing, so this reads
  *  the whole authored payload. `world` is the copy's: it binds each side's trait requirements, so an owner the
- *  world drops cannot make the two differ. `vrm` matches an Avatar pick across the world and library forms. */
-export function contentMatchesSource(copy: LinkableContent, source: LinkableContent, world?: TraitWorld, vrm?: VrmLookup): boolean {
-  return JSON.stringify(authoredContent(copy, world, vrm)) === JSON.stringify(authoredContent(source, world, vrm));
+ *  world drops cannot make the two differ. `vrm` matches an Avatar pick across the world and library forms.
+ *  `places` names the copy's world, so a routine compares as a fresh carry of the source would hold it (Q30). */
+export function contentMatchesSource(
+  copy: LinkableContent, source: LinkableContent, world?: TraitWorld, vrm?: VrmLookup, places?: RoutinePlaces,
+): boolean {
+  const mapped = !!places;
+  return JSON.stringify(authoredContent(copy, world, vrm, mapped)) === JSON.stringify(authoredContent(source, world, vrm, mapped))
+    && routineMatches(copy, source, places);
 }
 
 /** The world-owned fields an update keeps from the copy. The placeholder lists and the carried blueprints are
@@ -216,11 +249,15 @@ function carriedConnections(copy: LinkableContent, sourceData: LinkableContent):
  * A book's entries take the copy's own ids in order, so the entry open in the editor is still the entry
  * open in the editor after the update.
  *
+ * An entity with a kind takes the source's routine mapped through the copy's location connections, and stores no
+ * place list (Q30). `places` names the world's locations for that mapping.
+ *
  * `traitWorld` binds an entity's owned trait requirements to this world, as an add does. Without it they stay
  * as the source wrote them.
  */
 export function applyLibraryUpdate<T extends LinkableContent>(
-  copy: T, sourceData: T, source: LibrarySource, worldShared: readonly Placeholder[], traitWorld?: TraitWorld,
+  copy: T, sourceData: T, source: LibrarySource, worldShared: readonly Placeholder[], places: RoutinePlaces,
+  traitWorld?: TraitWorld,
 ): { item: T; toAdd: Placeholder[] } {
   const kept: Record<string, unknown> = {};
   const held: Record<string, unknown> = { ...copy };
@@ -229,15 +266,16 @@ export function applyLibraryUpdate<T extends LinkableContent>(
   }
   // The source's location references are its own world's; the copy's membership here is what stands.
   const { locationRefs: _theirs, ...content } = sourceData as T & { locationRefs?: unknown };
-  const fields: Record<string, unknown> = { ...content, ...kept };
-  // The copy's routine stands, an absent one included, so no place id of the source's world arrives.
-  if (!('entries' in copy) && copy.kind) {
-    for (const field of COPY_ROUTINE_FIELDS) {
-      if (field in held) fields[field] = held[field];
-      else delete fields[field];
+  let incoming = { ...content, ...kept } as T;
+  if (!('entries' in sourceData) && !('entries' in copy)) {
+    const connections = places.connections ?? copy.link?.connections ?? {};
+    if (sourceData.kind) {
+      incoming = withoutMembership(withCarriedRoutine(incoming as Entity, sourceData, connections, places.known, sourceData.kind)) as T;
+    } else if (copy.kind) {
+      // A copy losing its kind takes the source's membership, carried as a first add would (Q33).
+      incoming = withMembership(incoming as Entity, carriedMembership(sourceData, connections, places.known)) as T;
     }
   }
-  const incoming = fields as T;
   const resolved = 'entries' in incoming
     ? adoptBookPlaceholders(incoming as Dictionary, worldShared, copy.link?.connections)
     : adoptEntityPlaceholders(
@@ -267,6 +305,8 @@ export function applyLibraryUpdate<T extends LinkableContent>(
 export interface WorldContent {
   entities: Entity[];
   dictionaries: Dictionary[];
+  /** The world's locations, which a routine maps into. */
+  locations?: readonly Pick<GameLocation, 'id'>[];
 }
 
 /** One copy the world save writes to the library: the copy, the owned item it follows, and the content to
@@ -298,7 +338,8 @@ export function planWriteBack(
     if (!source?.owned || !source.data) return [];
     // Compared in library form, which names what the copy's owned traits require, as the item stores them.
     const content = shape(copy);
-    if (contentMatchesSource(content, source.data, traitWorld, vrm)) return [];
+    const places = world.locations && { ...routinePlacesOf(world.locations), connections: copy.link?.connections };
+    if (contentMatchesSource(content, source.data, traitWorld, vrm, places)) return [];
     return [{ copy, source, content }];
   });
 }
@@ -310,7 +351,7 @@ export interface UnlinkedCopy {
 }
 
 function syncList<T extends LinkableContent>(
-  items: T[], sources: Map<string, LibrarySource>, shared: Placeholder[], traitWorld?: TraitWorld,
+  items: T[], sources: Map<string, LibrarySource>, shared: Placeholder[], places: RoutinePlaces, traitWorld?: TraitWorld,
 ): { items: T[]; updated: number; unlinked: number; unlinkedCopies: UnlinkedCopy[]; toAdd: Placeholder[] } {
   let updated = 0;
   const unlinkedCopies: UnlinkedCopy[] = [];
@@ -333,7 +374,7 @@ function syncList<T extends LinkableContent>(
     updated += 1;
     // Each copy resolves against the world plus whatever the copies before it already brought in, so two
     // copies expecting the same new reference land on one placeholder rather than two.
-    const applied = applyLibraryUpdate(item, source.data as T, source, [...shared, ...toAdd], traitWorld);
+    const applied = applyLibraryUpdate(item, source.data as T, source, [...shared, ...toAdd], places, traitWorld);
     toAdd.push(...applied.toAdd);
     return applied.item;
   });
@@ -361,15 +402,16 @@ function syncList<T extends LinkableContent>(
  */
 export function syncWorldContent(
   world: WorldContent & {
-    placeholders: Placeholder[]; placeholderGroups?: PlaceholderGroup[]; traits?: TraitWorld['traits']; traitGroups?: TraitWorld['traitGroups'];
+    locations: readonly Pick<GameLocation, 'id'>[]; placeholders: Placeholder[]; placeholderGroups?: PlaceholderGroup[]; traits?: TraitWorld['traits']; traitGroups?: TraitWorld['traitGroups'];
     stats?: TraitWorld['stats']; statGroups?: TraitWorld['statGroups'];
   },
   sources: LibrarySource[],
 ): WorldContent & { updated: number; unlinked: number; unlinkedCopies: UnlinkedCopy[]; toAdd: Placeholder[] } {
   const byId = new Map(sources.map((source) => [source.id, source]));
   const traitWorld = traitWorldOf(world);
-  const entities = syncList(world.entities, byId, world.placeholders, traitWorld);
-  const dictionaries = syncList(world.dictionaries, byId, [...world.placeholders, ...entities.toAdd]);
+  const places = routinePlacesOf(world.locations);
+  const entities = syncList(world.entities, byId, world.placeholders, places, traitWorld);
+  const dictionaries = syncList(world.dictionaries, byId, [...world.placeholders, ...entities.toAdd], places);
   return {
     entities: entities.items,
     dictionaries: dictionaries.items,

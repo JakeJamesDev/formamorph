@@ -1936,6 +1936,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     entities: [],
     dictionaries: [devUpdates.copies[row.itemId] as Dictionary],
     placeholders: [],
+    locations: [],
     writeItem: () => {},
     addPlaceholder: () => {},
   }));

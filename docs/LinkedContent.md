@@ -151,6 +151,8 @@ If a world is behind it, **Update Available** lists one row per world, with the 
 
 **View Changes** shows each changed field twice, under **This world** and **Library**. For an imported file, the file's name replaces **Library**. A dictionary's changed, added, and removed entries are grouped. Unchanged content is in a collapsed section.
 
+An entity's routine comes from the library item too: its **Starts**, their schedule rows, and **Can Also Go**. Each place moves to the location you connected it to in this world. A place with no connection here is left out. An update replaces routine edits you made in the world, so **View Changes** lists **Starts** and **Can Also Go** with this world's location names.
+
 Choosing an action changes nothing until **Apply Updates**. **Cancel** applies none of it. If one world fails, it keeps the content it had and offers **Retry**. Every other world keeps its result.
 
 > [!NOTE]

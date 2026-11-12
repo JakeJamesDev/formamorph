@@ -15,7 +15,7 @@ import { fieldFrame } from '@/lib/historyField';
 import { idleMinutes, idleParts, type IdleUnit } from '@/lib/routineTime';
 import { dragStyle, droppedMove } from '@/lib/sortableDrag';
 import { cn } from '@/lib/utils';
-import { PLAYER_START } from '@/types';
+import { PLAYER_START, PLAYER_START_LABEL } from '@/types';
 
 /** What the Routine tab's pickers know of the world's locations. */
 export interface PlaceBook {
@@ -63,7 +63,7 @@ export const UnconnectedFlag = () => (
 /** How a Start at `PLAYER_START` reads inside a routine sentence. */
 export const PLAYER_START_NAME = "the player's starting location";
 
-const PLAYER_START_ROW = { key: PLAYER_START, value: PLAYER_START, name: "Player's Starting Location" };
+const PLAYER_START_ROW = { key: PLAYER_START, value: PLAYER_START, name: PLAYER_START_LABEL };
 
 /** A searchable location list behind `trigger`. `playerStart` offers the player's starting location first. */
 export function LocationPicker({ book, places, value, onPick, trigger, ariaLabel, playerStart }: {

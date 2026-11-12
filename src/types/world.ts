@@ -457,6 +457,9 @@ export interface ScheduleRow {
 /** The Start place that resolves at New Game to where the player begins. Never a location id. */
 export const PLAYER_START = '@playerStart';
 
+/** What the editor calls `PLAYER_START`. */
+export const PLAYER_START_LABEL = "Player's Starting Location";
+
 /** One beginning: a place and the daily schedule kept from there. A Unique entity rolls one by weight; a Generic entity runs them all. */
 export interface EntityStart {
   id: string;

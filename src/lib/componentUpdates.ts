@@ -7,10 +7,21 @@
  */
 
 import type { ContentLinkState } from '@/lib/contentLink';
-import { withoutCopyFields, type LinkableContent } from '@/lib/linkedContent';
+import {
+  offeredRoutine, routinePlacesOf, sameRoutine, withoutWorldFields, type LinkableContent,
+} from '@/lib/linkedContent';
+import { carriedMembership, ROUTINE_FIELDS } from '@/lib/entityPresence';
+import { namedPlacesOf } from '@/lib/entityPlaces';
 import type { LibraryKind } from '@/lib/librarySources';
+import { UNNAMED_LOCATION } from '@/lib/locationCanvas';
+import { ACTION_LABELS } from '@/lib/routineEditing';
+import { chancePercent, rangeText } from '@/lib/routineTime';
 import { pickLabel, pickToken, type VrmLookup } from '@/lib/vrmPickMatch';
-import type { ContentLink, Dictionary, DictionaryEntry, VrmPick } from '@/types';
+import { placesOf } from '@/lib/positionEngine';
+import { PLAYER_START, PLAYER_START_LABEL } from '@/types';
+import type {
+  ContentLink, Dictionary, DictionaryEntry, Entity, EntityKind, EntityStart, GameLocation, ScheduleRow, VrmPick,
+} from '@/types';
 
 /** What one world does with the update offered to its copy. */
 export type UpdateAction = 'update' | 'keep' | 'unlink';
@@ -208,6 +219,69 @@ function pairEntries(current: DictionaryEntry[], incoming: DictionaryEntry[]): {
 
 const NO_LOOKUP: VrmLookup = { world: new Map(), library: new Map() };
 
+const ROUTINE_FIELD_SET = new Set<string>(ROUTINE_FIELDS);
+
+/** One schedule row in words: its hours, its action and its places. */
+function rowText(row: ScheduleRow, nameOf: (id: string) => string): string {
+  const time = row.time === 'allDay' ? 'All day' : rangeText(row.time);
+  const { action } = row;
+  const names = placesOf(action).map(nameOf).join(', ');
+  const doing = action.kind === 'patrol' ? `${ACTION_LABELS.patrol} ${names}` : `${ACTION_LABELS[action.kind]} at ${names}`;
+  return `${time}: ${doing}${row.strict ? ', Locked' : ''}`;
+}
+
+/** Each Start on a line, its place and, for a Unique entity with more than one, its chance, then its rows indented. */
+function startsText(starts: readonly EntityStart[] | undefined, kind: EntityKind, nameOf: (id: string) => string): string {
+  if (!starts?.length) return formatValue('starts', undefined);
+  const weights = starts.map((s) => s.weight);
+  return starts.map((start, i) => {
+    const chance = kind === 'unique' && starts.length > 1 ? `, ${chancePercent(start.weight, weights)}%` : '';
+    const rows = start.schedule.map((row) => `\n  ${rowText(row, nameOf)}`).join('');
+    return `Start ${i + 1} at ${nameOf(start.place)}${chance}${rows}`;
+  }).join('\n');
+}
+
+const traversableText = (value: Entity['traversable'], nameOf: (id: string) => string): string =>
+  (value === 'anywhere' ? 'Anywhere' : formatValue('traversable', value?.map(nameOf)));
+
+/**
+ * The routine rows of an entity with a kind: what the copy holds against what an update would write, the source's
+ * routine mapped into the copy's world through `locations` (Q30). Undefined for a dictionary or an entity with no kind.
+ */
+function routineChanges(
+  copy: LinkableContent, source: LinkableContent, locations: readonly Pick<GameLocation, 'id' | 'name'>[] | undefined,
+): { row: FieldChange; same: boolean }[] | undefined {
+  if ('entries' in copy || 'entries' in source) return undefined;
+  const kind = source.kind ?? copy.kind;
+  if (!kind) return undefined;
+  const byId = new Map((locations ?? []).map((l) => [l.id, l.name]));
+  const nameOf = (id: string) => (id === PLAYER_START ? PLAYER_START_LABEL : byId.get(id) || UNNAMED_LOCATION);
+  const offered = source.kind ? offeredRoutine(copy, source, source.kind, locations && routinePlacesOf(locations)) : {};
+  const sameStarts = sameRoutine({ starts: copy.starts }, { starts: offered.starts });
+  const rows = [{
+    row: { field: 'starts', label: 'Starts', current: startsText(copy.starts, kind, nameOf), incoming: startsText(offered.starts, kind, nameOf) },
+    same: sameStarts,
+  }];
+  // A kind change moves the copy between a location list and a routine (Q33), so the list shows too.
+  if (!copy.kind !== !source.kind) {
+    const held = copy.kind ? [] : namedPlacesOf(copy);
+    const places = locations && routinePlacesOf(locations);
+    const taken = source.kind || !places ? [] : carriedMembership(source, copy.link?.connections ?? {}, places.known);
+    rows.push({
+      row: { field: 'locations', label: 'Locations', current: formatValue('locations', held.map(nameOf)), incoming: formatValue('locations', taken.map(nameOf)) },
+      same: false,
+    });
+  }
+  if (kind !== 'unique') return rows;
+  return [...rows, {
+    row: {
+      field: 'traversable', label: 'Can Also Go',
+      current: traversableText(copy.traversable, nameOf), incoming: traversableText(offered.traversable, nameOf),
+    },
+    same: sameRoutine({ traversable: copy.traversable }, { traversable: offered.traversable }),
+  }];
+}
+
 /**
  * What this world's copy holds against what the source offers.
  *
@@ -215,11 +289,14 @@ const NO_LOOKUP: VrmLookup = { world: new Map(), library: new Map() };
  * are the world's own and are never the source's to change, so two copies differing only there compare
  * equal.
  */
-export function diffContent(copy: LinkableContent, source: LinkableContent, vrm: VrmLookup = NO_LOOKUP): ContentDiff {
-  const held = withoutCopyFields(copy) as Record<string, unknown>;
-  const offered = withoutCopyFields(source) as Record<string, unknown>;
+export function diffContent(
+  copy: LinkableContent, source: LinkableContent, vrm: VrmLookup = NO_LOOKUP, locations?: readonly Pick<GameLocation, 'id' | 'name'>[],
+): ContentDiff {
+  const held = withoutWorldFields(copy) as Record<string, unknown>;
+  const offered = withoutWorldFields(source) as Record<string, unknown>;
+  const routine = routineChanges(copy, source, locations);
   const fields = [...new Set([...Object.keys(held), ...Object.keys(offered)])]
-    .filter((field) => !SKIPPED_FIELDS.has(field))
+    .filter((field) => !SKIPPED_FIELDS.has(field) && !(routine && ROUTINE_FIELD_SET.has(field)))
     .sort();
 
   const changed: FieldChange[] = [];
@@ -238,6 +315,7 @@ export function diffContent(copy: LinkableContent, source: LinkableContent, vrm:
       : JSON.stringify(held[field] ?? null) === JSON.stringify(offered[field] ?? null);
     (same ? unchanged : changed).push(row);
   }
+  for (const { row, same } of routine ?? []) (same ? unchanged : changed).push(row);
 
   const entries = 'entries' in copy || 'entries' in source
     ? pairEntries((copy as Dictionary).entries ?? [], (source as Dictionary).entries ?? [])

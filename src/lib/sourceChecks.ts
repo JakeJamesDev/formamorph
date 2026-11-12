@@ -6,10 +6,10 @@
  * issue list and the main menu's gate read one module and cannot disagree about what is missing.
  */
 import { listNames } from '@/lib/utils';
-import { applyLibraryUpdate, unlink, type LibrarySource, type LinkableContent } from '@/lib/linkedContent';
+import { applyLibraryUpdate, routinePlacesOf, unlink, type LibrarySource, type LinkableContent } from '@/lib/linkedContent';
 import type { LibraryKind } from '@/lib/librarySources';
 import { traitWorldOf } from '@/lib/portableTraits';
-import type { Dictionary, Entity, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import type { Dictionary, Entity, GameLocation, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 
 /**
  * What a check said about one source.
@@ -28,6 +28,8 @@ export interface SourceCheckWorld {
   entities?: Entity[];
   dictionaries?: Dictionary[];
   placeholders?: Placeholder[];
+  /** The world's locations, which a replacement's routine maps into. */
+  locations?: GameLocation[];
   traits?: Trait[];
   traitGroups?: TraitGroup[];
   stats?: Stat[];
@@ -201,7 +203,7 @@ export function applyRepair<T extends SourceCheckWorld>(
   const shared = world.placeholders ?? [];
   const added: Placeholder[] = [];
   const relink = <I extends LinkableContent>(item: I): I => {
-    const applied = applyLibraryUpdate(item, replacement.data as I, replacement.source, shared, traitWorldOf(world));
+    const applied = applyLibraryUpdate(item, replacement.data as I, replacement.source, shared, routinePlacesOf(world.locations ?? []), traitWorldOf(world));
     added.push(...applied.toAdd);
     return applied.item;
   };

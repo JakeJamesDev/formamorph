@@ -19,7 +19,7 @@ import { parseJsonText } from '@/lib/jsonFileWorkerUtils';
 import type { LiveWorld } from '@/lib/componentUpdateRun';
 import { useComponentUpdates } from '@/lib/useComponentUpdates';
 import {
-  contentMatchesSource, linkToSource, syncWorldContent, unlink,
+  contentMatchesSource, linkToSource, routinePlacesOf, syncWorldContent, unlink,
   type LibrarySource, type LinkableContent,
 } from '@/lib/linkedContent';
 import {
@@ -183,6 +183,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     entities: options.entities,
     dictionaries: options.dictionaries,
     placeholders: options.worldPlaceholders,
+    locations: options.locations,
     placeholderGroups: options.placeholderGroups,
     traits: options.traits,
     traitGroups: options.traitGroups,
@@ -221,7 +222,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     }
     current.setOwnedLibraryIds(sources.filter((source) => source.owned).map((source) => source.id));
     const next = syncWorldContent({
-      entities: current.entities, dictionaries: current.dictionaries, placeholders: current.worldPlaceholders,
+      entities: current.entities, dictionaries: current.dictionaries, locations: current.locations, placeholders: current.worldPlaceholders,
       placeholderGroups: current.placeholderGroups, traits: current.traits, traitGroups: current.traitGroups,
       stats: current.stats, statGroups: current.statGroups,
     }, sources);
@@ -439,7 +440,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       if (entity.kind) {
         // The routine is the source's, carried afresh, so a repair lands where a new add would.
         const placeIds = new Set([...current.locations, ...plan.newLocations].map((l) => l.id));
-        updateEntity({ ...withCarriedRoutine(entity, repair.source as Entity, connections, placeIds), link });
+        updateEntity({ ...withCarriedRoutine(entity, repair.source as Entity, connections, placeIds, entity.kind), link });
         return;
       }
       // A location membership the repair re-aimed moves with it; one it did not is left as it stands.
@@ -478,7 +479,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     if (!item) return;
     const vrm = await loadVrmLookup(liveStore.current);
     if (!mounted.current) return;
-    applyLink(item, pick.source, !contentMatchesSource(item, pick.data, traitWorld, vrm));
+    applyLink(item, pick.source, !contentMatchesSource(item, pick.data, traitWorld, vrm, routinePlacesOf(latest.current.locations)));
   }, [applyLink, linkPickerFor, mounted, traitWorld]);
 
   /**

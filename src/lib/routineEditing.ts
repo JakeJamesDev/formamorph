@@ -6,6 +6,9 @@ import { PLAYER_START, type Entity, type EntityStart, type ScheduleAction, type 
 
 export type ActionKind = ScheduleAction['kind'];
 
+/** Each schedule action's name in the editor. */
+export const ACTION_LABELS: Record<ActionKind, string> = { stay: 'Stay', wander: 'Wander', patrol: 'Patrol' };
+
 /** How long a new Patrol stop idles, in minutes. */
 export const NEW_STOP_IDLE = 60;
 

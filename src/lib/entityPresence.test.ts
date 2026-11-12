@@ -131,7 +131,7 @@ describe("placedIn", () => {
     const map = carryMap(refs, connections, known);
     expect(map).toEqual({ bar: "tavern", docks: "pier", attic: "attic" });
     const stale: Entity = { ...sailor, name: "Old Salt", starts: [{ id: "x", place: "gone", weight: 1, schedule: [] }], traversable: "anywhere" };
-    const repaired = withCarriedRoutine(stale, source, connections, known);
+    const repaired = withCarriedRoutine(stale, source, connections, known, "unique");
     const fresh = placedIn(source, map);
     expect(repaired.name).toBe("Old Salt");
     expect([repaired.starts, repaired.traversable, repaired.locations]).toEqual([fresh.starts, fresh.traversable, fresh.locations]);
@@ -140,7 +140,7 @@ describe("placedIn", () => {
   it("rebuilds a linked Generic copy's Starts from its source on repair, replacing a local Start", () => {
     const source: Entity = { ...herdsman, locationRefs: [{ id: "bar", name: "Bar" }, { id: "docks", name: "Docks" }] };
     const local: Entity = { ...herdsman, starts: [...herdsman.starts!, { id: "mine", place: "tavern", weight: 1, schedule: [] }] };
-    const repaired = withCarriedRoutine(local, source, { docks: "pier" }, new Set(["pier", "tavern"]));
+    const repaired = withCarriedRoutine(local, source, { docks: "pier" }, new Set(["pier", "tavern"]), "generic");
     expect(repaired.starts).toEqual([{ id: "bar-keep-2", place: "pier", weight: 1, schedule: [] }]);
   });
 

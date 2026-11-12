@@ -247,7 +247,7 @@ describe('Check for Updates', () => {
       name: 'Open World',
       entities: [copy({ libraryId: LIBRARY_ID, sourceRevision: 'r1' }, { id: 'copy-live' })],
       dictionaries: [],
-      placeholders: [],
+      placeholders: [], locations: [],
       writeItem,
       addPlaceholder: vi.fn(),
     };
