@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import type { Entity } from '@/types';
+import { PLAYER_START, type Connection, type Entity, type GameLocation } from '@/types';
 import { daypartEnd, daypartStart } from '@/lib/routineTime';
-import { presenceLines } from './locationPresenceReasons';
+import type { PlacesWorld } from '@/lib/entityPlaces';
+import { presenceLines as linesIn } from './locationPresenceReasons';
 
 const DAY = { start: daypartStart('morning'), end: daypartEnd('afternoon') };
 const NIGHT = { start: daypartStart('evening'), end: daypartEnd('night') };
@@ -32,6 +33,15 @@ const guard: Entity = {
     { id: 'round', time: 'allDay', action: { kind: 'patrol', stops: [{ place: 'gate', idle: 30 }, { place: 'tavern', idle: 30 }] } },
   ] }],
 };
+
+// Every place hangs off the tavern by road, so every row reaches; the island is linked to nothing.
+const PLACES = ['tavern', 'market', 'smithy', 'yard', 'cellar', 'gate', 'island'];
+const road = (b: string): Connection => ({ id: `tavern-${b}`, a: 'tavern', b, aToB: {}, bToA: {} });
+const WORLD: PlacesWorld = {
+  locations: PLACES.map((id): GameLocation => ({ id, name: id })),
+  connections: PLACES.filter((id) => id !== 'tavern' && id !== 'island').map(road),
+};
+const presenceLines = (place: string, entities: Entity[], world = WORLD) => linesIn(place, entities, world);
 
 const persona: Entity = { id: 'me', name: 'Me', customPersona: true, locations: ['tavern'] };
 const cast = [crowd, moths, farrier, guard, persona];
@@ -116,5 +126,54 @@ describe('presenceLines', () => {
 
   it('keeps the order of the entities given', () => {
     expect(presenceLines('tavern', [guard, crowd]).map((l) => l.entity.id)).toEqual(['guard', 'crowd']);
+  });
+
+  describe('an entity that begins at Player’s Starting Location', () => {
+    const follower: Entity = { id: 'follower', name: 'Follower', kind: 'unique', traversable: [], starts: [{ id: 'f1', place: PLAYER_START, weight: 1, schedule: [] }] };
+    const flagged = (...ids: string[]): PlacesWorld => ({
+      ...WORLD, locations: WORLD.locations.map((l) => (ids.includes(l.id) ? { ...l, isStarting: true } : l)),
+    });
+
+    it('begins at each flagged starting location and nowhere else', () => {
+      const world = flagged('market', 'gate');
+      const listing = PLACES.filter((place) => presenceLines(place, [follower], world).length);
+      expect(listing).toEqual(['market', 'gate']);
+      expect(presenceLines('market', [follower], world)[0].reasons).toEqual(['begins here']);
+    });
+
+    it('begins at every location when none is flagged', () => {
+      for (const place of PLACES) expect(presenceLines(place, [follower])[0]?.reasons, place).toEqual(['begins here']);
+    });
+
+    const split: Entity = { ...follower, starts: [follower.starts![0], { id: 'f2', place: 'smithy', weight: 3, schedule: [] }] };
+
+    it('gives the chance of that Start among the others with one starting location', () => {
+      expect(presenceLines('market', [split], flagged('market'))[0].reasons).toEqual(['begins here (25%)']);
+    });
+
+    it('adds no chance where it stands for several places', () => {
+      expect(presenceLines('market', [split], flagged('market', 'smithy'))[0].reasons).toEqual(['begins here']);
+      expect(presenceLines('smithy', [split], flagged('market', 'smithy'))[0].reasons).toEqual(['begins here (75%)']);
+    });
+
+    it('adds no chance with no location flagged', () => {
+      expect(presenceLines('market', [split])[0].reasons).toEqual(['begins here']);
+      expect(presenceLines('smithy', [split])[0].reasons).toEqual(['begins here (75%)']);
+    });
+
+    it('keeps every row place of that Start, linked or not', () => {
+      const roamer: Entity = { ...follower, starts: [{ ...follower.starts![0], schedule: [
+        { id: 'r', time: NIGHT, action: { kind: 'stay', place: 'island' } },
+      ] }] };
+      expect(presenceLines('island', [roamer], flagged('market'))[0].reasons).toEqual(['stays here (Evening – Night)']);
+    });
+  });
+
+  it('gives no line for a row place with no path from its Start', () => {
+    const sailor: Entity = { id: 'sailor', name: 'Sailor', kind: 'unique', traversable: [], starts: [{ id: 's', place: 'tavern', weight: 1, schedule: [
+      { id: 'r', time: NIGHT, action: { kind: 'stay', place: 'island' } },
+    ] }] };
+    expect(presenceLines('island', [sailor])).toEqual([]);
+    expect(presenceLines('tavern', [sailor])[0].reasons).toEqual(['begins here']);
   });
 });

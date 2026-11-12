@@ -126,9 +126,11 @@ In full screen, the toolbar and the right-click menus also align, distribute and
 
 With **Known In** set to **Nearby**, the canvas shows where the AI gets the entity's summary:
 
-- 📍 **Can Be Here.** Every location the entity's routine uses: where it begins, and each location a row names that connects to that start.
+- 📍 **Can Be Here.** Every location where the entity is listed under **Entities Here**: where it begins, each location a row names that connects to that start, and each **Can Also Go** location.
 - 👂 **Known Here While It Is Nearby.** Every location one **Nearby** link from those. The AI gets its summary there only while the entity stands at the marked neighbor.
 - ⋯ A **Far** link draws dotted, and its other end stays unmarked. See [Nearby and Far](#nearby-and-far).
+
+With **Picked Locations**, the canvas marks the same locations with **Entity Location**, and marks your picks with **Known In**.
 
 Nothing on the canvas moves until you move it or ask for a layout:
 
@@ -236,6 +238,10 @@ A Generic entity that begins at no other location can't be removed. The button i
 A Unique entity has no remove button. Change its **Routine** to take it out of this location.
 
 **Entities Here** lists every entity that can be at this location, one row each, with its reasons. Reasons that don't fit are cut off at the row's end.
+
+- 🏁 **Begins here.** An entity that begins at **Player's Starting Location** is listed on each Starting Location. With none marked, it's listed on every location.
+- 🔗 **A row's location** is listed only when it connects to the start of that row. Rows of a **Player's Starting Location** start count everywhere.
+- 🧭 **Can Also Go** locations are listed as **can be led here**.
 
 Select a row to edit that entity under the list. It is the same editor as on the entity: **Routine** for its routine and **Known In** for where it is known. One entity is selected at a time. Select the row again, or the ✕ button, to close it. The arrow keys move between rows, and Enter or Space selects one.
 

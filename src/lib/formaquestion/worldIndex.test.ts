@@ -270,7 +270,8 @@ describe('routines and Connections in the World Index', () => {
   });
 
   it('lists who can be at a location with the Presence tab’s reasons', () => {
-    expect(page('location', 'loc-mill')).toContain('- Warden: patrols here (20:00 – 04:00); can be led here');
+    // Warden's Player's Starting Location Start stands for every location, as none is flagged.
+    expect(page('location', 'loc-mill')).toContain('- Warden: begins here; patrols here (20:00 – 04:00); can be led here');
     expect(page('location', 'loc-gate')).toContain('- Warden: begins here (75%)');
   });
 

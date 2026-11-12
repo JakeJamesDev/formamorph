@@ -1085,8 +1085,9 @@ const WorldEditorInner = ({
   const selectLocation = useCallback((id: string | null) => select('locations', id), [select]);
   const presenceLocationId = activeTab === 'locations' && shownLocationTab === 'presence' ? selections.locations ?? null : null;
   const hasPresenceRow = useCallback(
-    (entityId: string) => !!presenceLocationId && presenceLines(presenceLocationId, entities).some((line) => line.entity.id === entityId),
-    [presenceLocationId, entities],
+    (entityId: string) => !!presenceLocationId
+      && presenceLines(presenceLocationId, entities, { locations, connections }).some((line) => line.entity.id === entityId),
+    [presenceLocationId, entities, locations, connections],
   );
   const entityOf = useCallback((entityId: string) => entities.find((e) => e.id === entityId), [entities]);
   const showLocationCanvas = useCallback(() => setLocationView('canvas'), []);

@@ -29,7 +29,8 @@ const WORLD: World = benchEditorWorld({
     { id: 'yard', name: 'Yard' },
     { id: 'cellar', name: 'Cellar' },
   ],
-  connections: [{ id: 'c1', a: 'tavern', b: 'yard', aToB: {}, bToA: {} }],
+  // The cellar is linked to the yard, so the Rats' row reaches it.
+  connections: [{ id: 'c1', a: 'tavern', b: 'yard', aToB: {}, bToA: {} }, { id: 'c2', a: 'yard', b: 'cellar', aToB: {}, bToA: {} }],
   entities: [
     { id: 'crowd', name: 'Crowd', kind: 'generic', locations: ['tavern'], starts: [{ id: 's1', place: 'tavern', weight: 1, schedule: [] }] },
     { id: 'moths', name: 'Moths', kind: 'generic' },

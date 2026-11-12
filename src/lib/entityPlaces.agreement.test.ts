@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   PLAYER_START, type Connection, type Entity, type GameLocation, type ScheduleRow, type WorldOverview,
 } from '@/types';
-import { idsAt, positionsIn, samplePlacement, type PlacesOf, type PlacesWorld } from '@/lib/entityPlaces';
+import { idsAt, positionsIn, presenceIn, samplePlacement, type PlacesOf, type PlacesWorld } from '@/lib/entityPlaces';
+import { pickMarks, type PickMark } from '@/lib/entityPicking';
+import { presenceLines } from '@/lib/locationPresenceReasons';
 import { castRoutines, withDerivedLocations } from '@/lib/entityKind';
 import { presentEntityIds } from '@/lib/entityPresence';
 import { EMPTY_BOOK, runtimeRoutine } from '@/lib/positionEngine';
@@ -76,6 +78,12 @@ interface Reader {
 }
 
 const position = () => ({ cast: EVERYONE, placesOf: positionsIn(BOOK) });
+const presence = () => ({ cast: CAST, placesOf: presenceIn(WORLD) });
+
+/** The cast the canvas marks with `kind` at `place`, each entity picked in turn with `knownIn` (unset is Nearby). */
+const canvasMarks = (knownIn: Entity['knownIn'], kind: PickMark['kind']) => (place: GameLocation) =>
+  CAST.filter((entity) => pickMarks({ ...entity, knownIn }, LOCATIONS, CONNECTIONS).get(place.id)?.kind === kind)
+    .map((entity) => entity.id);
 
 const READERS: Reader[] = [
   {
@@ -93,6 +101,13 @@ const READERS: Reader[] = [
     answer: (place) => ({ cast: CAST, placesOf: samplePlacement(CAST, WORLD, place.id) }),
     read: (place) => authoredChipScene(authoredWorld, { location: place }).presentIds,
   },
+  {
+    name: 'the Presence tab',
+    answer: presence,
+    read: (place) => presenceLines(place.id, CAST, WORLD).map((line) => line.entity.id),
+  },
+  { name: 'the canvas marks under Nearby', answer: presence, read: canvasMarks(undefined, 'routine') },
+  { name: 'the canvas marks under Known In picks', answer: presence, read: canvasMarks(['lighthouse'], 'member') },
 ];
 
 describe('every reader agrees with Entity Places', () => {

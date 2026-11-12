@@ -14,7 +14,7 @@ import { presenceLines } from '@/lib/locationPresenceReasons';
 import { showRoutineStart, showStartFor } from '@/lib/routineSelection';
 import { cn } from '@/lib/utils';
 import { EntityPickBody, type PickState } from '@/managers/EntityPickCard';
-import type { Entity } from '@/types';
+import type { Connection, Entity, GameLocation } from '@/types';
 
 const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
@@ -30,10 +30,12 @@ const ROW_KEYS: Record<string, (at: number, count: number) => number> = {
  * with its reasons, and one editor region under the list for the selected entity. The selection is the World
  * Editor's entity pick, so the canvas beside the panel draws it.
  */
-export default function LocationEntitiesHere({ locationId, entities, labelOf, onOpenRoutine, pick, onPickChange, onEditFullScreen, onChange }: {
+export default function LocationEntitiesHere({ locationId, entities, locations, connections, labelOf, onOpenRoutine, pick, onPickChange, onEditFullScreen, onChange }: {
   locationId: string;
   /** The cast, in the order the tab lists it. */
   entities: Entity[];
+  locations: GameLocation[];
+  connections: Connection[];
   labelOf: (entity: Entity) => string;
   onOpenRoutine?: (entityId: string) => void;
   /** The pick a selected row holds. */
@@ -44,7 +46,10 @@ export default function LocationEntitiesHere({ locationId, entities, labelOf, on
   onEditFullScreen?: () => void;
   onChange: (next: Entity) => void;
 }) {
-  const lines = useMemo(() => presenceLines(locationId, entities), [locationId, entities]);
+  const lines = useMemo(
+    () => presenceLines(locationId, entities, { locations, connections }),
+    [locationId, entities, locations, connections],
+  );
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const selected = pick ? lines.find((line) => line.entity.id === pick.entityId)?.entity : undefined;
   const selectedAt = selected ? lines.findIndex((line) => line.entity === selected) : -1;

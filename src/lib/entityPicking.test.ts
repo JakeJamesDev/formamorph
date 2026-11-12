@@ -105,16 +105,53 @@ describe("pickMarks under Nearby", () => {
     expect(kinds(steward, map, farKeep)).toMatchObject({ keep: "routine", rosewood: "nearby", inn: "nearby", throne: "faded" });
   });
 
-  it("draws Picked Locations as before while that choice has no pick yet", () => {
+  it("draws Picked Locations while that choice has no pick yet, from the routine, not the stored list", () => {
     const keeper: Entity = { id: "k", name: "K", kind: "unique", locations: ["cove"], starts: [start("harbor")] };
     const marks = pickMarks(keeper, map, roads, true);
-    expect(marks.get("cove")).toEqual({ kind: "member", pick: false });
-    expect(marks.get("harbor")).toEqual({ kind: "faded", pick: false });
+    expect(marks.get("harbor")).toEqual({ kind: "member", pick: false });
+    expect(marks.get("cove")).toEqual({ kind: "faded", pick: false });
+  });
+
+  it("marks a Can Also Go place, and nothing extra for Anywhere", () => {
+    const scout: Entity = { id: "s", name: "S", kind: "unique", traversable: ["island"], starts: [start("harbor")] };
+    expect(kinds(scout).island).toBe("routine");
+    const free = kinds({ ...scout, traversable: "anywhere" });
+    expect(Object.keys(free).filter((id) => free[id] === "routine")).toEqual(["harbor"]);
   });
 
   it("does not draw the entity's old locations", () => {
     const marks = kinds({ id: "q", name: "Q", kind: "unique", locations: ["cove"], starts: [start("harbor")] });
     expect(marks.cove).toBe("faded");
+  });
+});
+
+describe("pickMarks under Known In picks", () => {
+  const island: GameLocation = { id: "island", name: "Island" };
+  const map = [...world, island];
+  const roads: Connection[] = [{ id: "road", a: "inn", b: "harbor", aToB: {}, bToA: {} }];
+  const members = (entity: Entity, locations = map) =>
+    [...pickMarks({ ...entity, knownIn: ["watchtower"] }, locations, roads)].filter(([, m]) => m.kind === "member").map(([id]) => id);
+  const start = (place: string, schedule: EntityStart["schedule"] = []): EntityStart => ({ id: place, place, weight: 1, schedule });
+
+  it("marks the starting locations for Player's Starting Location, or every location with none flagged", () => {
+    const follower: Entity = { id: "f", name: "F", kind: "unique", starts: [start(PLAYER_START)] };
+    const flagged = map.map((l) => (l.id === "harbor" ? { ...l, isStarting: true } : l));
+    expect(members(follower, flagged)).toEqual(["harbor"]);
+    expect(members(follower)).toEqual(map.map((l) => l.id));
+  });
+
+  it("marks a Can Also Go place, and nothing extra for Anywhere", () => {
+    const scout: Entity = { id: "s", name: "S", kind: "unique", traversable: ["island"], starts: [start("harbor")] };
+    expect(members(scout)).toEqual(["harbor", "island"]);
+    expect(members({ ...scout, traversable: "anywhere" })).toEqual(["harbor"]);
+  });
+
+  it("skips a row place the Start cannot reach, as Nearby does", () => {
+    const rows: EntityStart["schedule"] = [
+      { id: "a", time: "allDay", action: { kind: "stay", place: "island" } },
+      { id: "b", time: { start: 0, end: 600 }, action: { kind: "stay", place: "harbor" } },
+    ];
+    expect(members({ id: "x", name: "X", kind: "unique", starts: [start("inn", rows)] })).toEqual(["inn", "harbor"]);
   });
 });
 

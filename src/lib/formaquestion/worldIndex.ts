@@ -203,7 +203,7 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
     const parent = location.parentId ? locationName(location.parentId) : undefined;
     const linked = (world.connections ?? []).filter((connection) => connection.a === location.id || connection.b === location.id)
       .map((connection) => connectionLine(connection, location.id));
-    const here = presenceLines(location.id, world.entities);
+    const here = presenceLines(location.id, world.entities, { locations: world.locations, connections: world.connections ?? [] });
     add('location', location.id, location.name, [], lines(
       `# ${location.name}`,
       facts(location.isStarting && 'Starting Location', parent && `Inside: ${parent}`),

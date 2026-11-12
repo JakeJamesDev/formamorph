@@ -179,6 +179,8 @@ const LocationManager = ({ location, tab, onTabChange, focusField, connectionOpe
         <LocationEntitiesHere
           locationId={editingLocation.id}
           entities={treeOrder}
+          locations={world.locations}
+          connections={world.connections}
           labelOf={entityLabel}
           onOpenRoutine={onOpenEntityRoutine}
           pick={entityPick?.shown ? entityPick.pick : null}
