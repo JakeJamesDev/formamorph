@@ -119,6 +119,14 @@ Rulings from the grill of 2026-11-11.
 - **Q31.** Q30 covers both kinds. Link repair rebuilds the routine of a Generic copy from the source too, so Starts added on the copy are replaced. Spec-session ruling of 2026-11-11, on an intent question of ticket 09; it applies Q30.
 - **Q32.** The load drops a stored `locations` from every entity with a kind, in the routine migration that rebuilt the list before. No export path strips it. Q5 stands: the bundled worlds are rewritten once, with no new migration step. Spec-session ruling of 2026-11-11, on an intent question of ticket 10.
 - **Q33.** When a library update removes the kind from a linked copy, the copy takes the source's membership, mapped through its location connections, as its stored list. This is the carry of a first add. The stored list of a copy that had no kind before the update stays world-owned. Spec-session ruling of 2026-11-11, on an intent question of ticket 11.
+- **Q34.** A write-back does not remove what the copy could not hold. A Start, a row or a Can Also Go entry of the library item at a place the writing world has no connection for stays in the library item. A kept row stays under its Start, matched by Start id; when the copy no longer has that Start, its kept rows go with it.
+- **Q35.** A write-back maps back by entry first: a Start or row that came from the library item and still stands where its library place carries to goes back to that library place. A new or moved entry takes the first library place in ref order that maps to its world place.
+- **Q36.** After a write-back the library item's `locationRefs` hold the places its routine names. A world place with no connection goes back as a new named place, and the writing copy's connections gain it.
+- **Q37.** A fallback Start that the carry made does not go back on a write-back: a copy Start whose id is not in the library, at the fallback place, with no rows and weight 1, while the library item keeps a Start. A fallback Start the author changed goes back as a new entry.
+- **Q38.** On a write-back, Can Also Go set to Anywhere replaces the list, so kept entries go. None keeps the kept entries as the list.
+- **Q39.** A copy with no kind writes its membership back through the same inverse as a routine, and library membership the world has no connection for stays (Q34).
+
+  Q34 to Q39 are spec-session rulings of 2026-11-11, on intent questions of ticket 12.
 
 Other decisions:
 
