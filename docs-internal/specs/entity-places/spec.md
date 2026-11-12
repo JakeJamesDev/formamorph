@@ -1,8 +1,8 @@
 # Spec: Entity Places
 
-Status: ready-for-agent
+Status: done
 Spec session: entity-places — spec
-Status note: Written 2026-11-11 from the architecture review. NPC Schedules closed on 2026-11-11 (615ffa3da), so the wait of Q4 is over. Tickets 01–10; 01 is the first, 03–09 run in parallel after 02, 10 is last.
+Status note: Closed 2026-11-12. Tickets 01–13, last landing 56d38894f. Review: six gaps of the first pass closed by ticket 13; one case left that cannot occur (a met entity with no kind and a stored list in the in-game code test). Gates green on 2026-11-12: lint 0, test 35696 pass.
 
 ## Problem Statement
 

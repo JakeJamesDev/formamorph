@@ -63,6 +63,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **In older worlds, an entity with pronouns listed at several locations now wanders between them, one at a time.** So it isn't always where you look. An entity at every location follows you. One with no pronouns or "it/its", such as a monster, becomes Generic. Change it in the Routine tab.
     - **In the bundled worlds, named people with several locations now keep one place at a time, on a daily routine.** Coach Daizen and Rin Hayama patrol the school, and Emberwatch's captain takes the evening watch. Crowds such as the Swarm still fill every place.
     - **Scripts can read an entity's kind, routine and Known In, and how far and which way each exit goes.** Check `kind` to skip a Generic entity before `move`. `action` reads stay, wander or patrol, and `held` says the narration called it over or a script moved it, so it is off its routine.
+    - **A library update now brings an entity's routine to each world that links it.** Starts, rows and Can Also Go land on that world's locations. A location with no match there is left out. **View Changes** lists the routine first, because the update replaces your own routine edits.
+    - **The Test Bench now warns when a routine row names a location its start can't reach.** Such a location is left off the Presence tab, so the warning is where you find the row.
     - **The help pages now explain entities that keep a daily routine, follow you or wait.** The Glossary defines the routine terms. The Entity Movement setting now says one request covers every entity.
   - **Collapse All:**
     - **The World Editor's Locations list can close every group of sub-locations at once.** Select **Collapse all locations**, right of the filter box, and again to open them all. Groups stay closed when you switch tabs, until you close the World Editor.
@@ -118,6 +120,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **World Editor:**
     - **Templates, hover cards and the Time of Day picker now say "time of day" instead of "daypart".** The templates are now Time of Day Modifier and Placeholder by Time of Day. Scripts still read `clock.daypart`.
     - **The Sliders list on an entity's stat and trait now shows the entity's Avatar sliders.** An entity with only an Avatar can bind its Body Sliders and Head Features.
+    - **The Test Bench no longer counts the Custom Persona as an entity at a location.** The persona is the player. A location with only the persona now gets the warning that it has no entities.
     - **An entity you link to a matching library item now reads Linked, even when its locations differ.** Each world keeps its own locations for an entity.
   - **Formaquestion:**
     - **In game, Formaquestion's code test places a character where it stands now.** A character a script moved no longer reads as still at its listed places.

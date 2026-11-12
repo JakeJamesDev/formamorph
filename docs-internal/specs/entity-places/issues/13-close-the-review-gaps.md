@@ -1,6 +1,6 @@
 # 13: Close the Review Gaps
 
-Status: ready-for-human
+Status: done
 Blocked by: 12
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
