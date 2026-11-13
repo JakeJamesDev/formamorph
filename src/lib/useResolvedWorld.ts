@@ -12,6 +12,7 @@ import { customPersonaEntity } from '@/lib/blueprints';
 import { playedEntityIdOf, resolveInPlayWorld, type InPlayGateView, type InPlayWorld } from '@/lib/inPlayWorld';
 import { libraryPlaceholderSet, type LibraryCarrier } from '@/lib/libraryPlaceholders';
 import { inAuthoredOrder, refreshChosenTraits, traitOrderIndex } from '@/lib/traitEffects';
+import { optionPinLists } from '@/lib/worldOptions';
 import {
   resolveConnectionHints, resolveEntityNames, resolveLocationNames, resolveOwnedTraitNames, resolveStatNames, resolveCastNames, resolveTraitNames, resolveTraitGroupNames,
   resolveDictionaryEntryNames, type ResolveEntityText,
@@ -264,13 +265,13 @@ export function usePersonaName(rolls: PlaceholderRolls, pins: Record<string, str
 export function useResolvedWorld(): ResolvedWorld {
   const {
     traits: rawTraits, traitGroups: rawTraitGroups, locations: rawLocations, connections: rawConnections, playEntities: rawEntities,
-    worldPlaceholders, stats: authoredStats, statGroups, placeholderGroups,
+    worldPlaceholders, stats: authoredStats, statGroups, placeholderGroups, options: worldOptions,
   } = useGameData();
   const { rolls, placeholders } = usePlaceholderSession();
   const {
     globalStats: rawGlobalStats, viewStats: rawViewStats, runtimeDictionary: rawDictionary,
     currentLocation: storedLocation, globalTraits, disabledTraitIds, ownedTraits, codePins,
-    personaRef, libraryPersona, personaPending, discoveredEntities, entityStats,
+    personaRef, libraryPersona, personaPending, discoveredEntities, entityStats, worldOptionValues,
   } = useGameplay();
   const pinBlueprints = useMemo(
     () => pinBlueprintsOf({ stats: authoredStats, statGroups, placeholders: worldPlaceholders, placeholderGroups }),
@@ -278,6 +279,7 @@ export function useResolvedWorld(): ResolvedWorld {
   );
 
   const traitOrder = useMemo(() => traitOrderIndex(rawTraits, rawTraitGroups), [rawTraits, rawTraitGroups]);
+  const optionPins = useMemo(() => optionPinLists(worldOptions, worldOptionValues), [worldOptions, worldOptionValues]);
   // The location by id and the stats by number: both are state, so a move or a stat crossing a band
   // re-collects here and every name below follows.
   const storedLocationId = storedLocation?.id;
@@ -298,6 +300,7 @@ export function useResolvedWorld(): ResolvedWorld {
     entityStats: over.entityStats ?? entityStats,
     blueprints: pinBlueprints,
   }, {
+    options: optionPins,
     location: rawLocations.find((l) => l.id === storedLocationId),
     stats: over.stats ?? rawGlobalStats,
     placeholders,
@@ -305,7 +308,7 @@ export function useResolvedWorld(): ResolvedWorld {
     codePins: withCodePins,
   }), [
     globalTraits, disabledTraitIds, ownedTraits, rawTraits, rawTraitGroups, rawEntities, worldPlaceholders, rawLibrary,
-    personaRef, traitOrder, rawLocations, storedLocationId, rawGlobalStats, placeholders, rolls, entityStats, pinBlueprints,
+    personaRef, traitOrder, rawLocations, storedLocationId, rawGlobalStats, placeholders, rolls, entityStats, pinBlueprints, optionPins,
   ]);
   const pinSet = useMemo(() => pinsFor(codePins), [pinsFor, codePins]);
   const pins = pinSet.world;

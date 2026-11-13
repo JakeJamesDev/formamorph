@@ -16,6 +16,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 #### ➕ Added
 
+- **👤 User-facing**
+  - **World Options:**
+    - **Worlds can offer World Options at new game.** Authors add choices, switches and number sliders on the new Options tab; the player sets them above the traits, and choices and switches pin placeholder text.
 - **🛠️ Developer tooling**
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.
 

@@ -1,4 +1,4 @@
-import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming, PlacementWhere, BodyPick } from './world';
+import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming, PlacementWhere, BodyPick, WorldOptionValueOf } from './world';
 import type { ChatMessage } from './ai';
 import type { ActionSnapshot, ListedAction, SentActionList } from '@/lib/actionList';
 
@@ -454,6 +454,8 @@ export interface GameState {
   codePins?: CodePins;
   /** Absent ⇒ none. */
   loreToggles?: LoreToggles;
+  /** The playthrough's World Option values. An Option missing here reads its default. Absent ⇒ every default. */
+  worldOptionValues?: WorldOptionValues;
   /** The live scene list — who is physically present this turn, with alias/reveal state for the tab. Legacy
    *  saves stored a bare `string[]` of names; those are normalized to `{ name, revealed: true }` on load. */
   visibleEntities: SceneEntity[];
@@ -607,6 +609,9 @@ export interface LoreEntryToggle {
   enabled?: boolean;
   constant?: boolean;
 }
+
+/** Option id → the value the playthrough holds for it. */
+export type WorldOptionValues = Readonly<Record<string, WorldOptionValueOf>>;
 
 /** Book id → what scripts set on that book and its entries, by entry id. The save's books stay as entered. */
 export type LoreToggles = Readonly<Record<string, {

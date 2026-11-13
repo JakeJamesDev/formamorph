@@ -9,6 +9,7 @@ import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUti
 import { useTtsPlayback } from '../lib/useTtsPlayback';
 import { APP_VERSION, isSaveEnvelope, migrateSave, migrateLegacySaveState, stripSnapshotHistory } from '../lib/version';
 import { loreEntries, NO_LORE_TOGGLES, playthroughBooks } from '../lib/loreToggles';
+import { NO_WORLD_OPTION_VALUES } from '../lib/worldOptions';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { turnActivity } from '../lib/turnActivity';
 import { setLiveReasoning } from '../lib/reasoningStreamStore';
@@ -55,6 +56,7 @@ import type {
   CharacterData,
   CodePins,
   LoreToggles,
+  WorldOptionValues,
   Entity,
   Connection,
   UniqueStates,
@@ -239,6 +241,8 @@ function useProvideGameplay() {
   const [codePins, setCodePins] = useState<CodePins>(EMPTY_PINS);
   // What scripts switched on dictionary entries. Snapshotted per turn, so undo and re-roll restore it.
   const [loreToggles, setLoreToggles] = useState<LoreToggles>(NO_LORE_TOGGLES);
+  // The playthrough's World Option values; an Option missing here reads its default.
+  const [worldOptionValues, setWorldOptionValues] = useState<WorldOptionValues>(NO_WORLD_OPTION_VALUES);
   // Every Item Copy in play. Snapshotted per turn, so undo and re-roll restore it.
   const [itemCopies, setItemCopies] = useState<readonly ItemCopy[]>(NO_ITEM_COPIES);
   // What item effects have applied, beside the Item Copies they follow.
@@ -429,6 +433,7 @@ function useProvideGameplay() {
       ...(Object.keys(entityStatChanges).length ? { entityStatChanges } : {}),
       ...(Object.keys(codePins).length ? { codePins } : {}),
       ...(Object.keys(loreToggles).length ? { loreToggles } : {}),
+      ...(Object.keys(worldOptionValues).length ? { worldOptionValues } : {}),
       ...(itemCopies.length ? { itemCopies: [...itemCopies] } : {}),
       ...(runtimeItems.length ? { runtimeItems: [...runtimeItems] } : {}),
       ...(Object.keys(itemEffects).length ? { itemEffects } : {}),
@@ -455,7 +460,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, uniqueStates, genericStates, metEntities, strangerAliases, entityStatChanges, codePins, loreToggles, itemCopies, runtimeItems, itemEffects, bodies, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
+  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, uniqueStates, genericStates, metEntities, strangerAliases, entityStatChanges, codePins, loreToggles, worldOptionValues, itemCopies, runtimeItems, itemEffects, bodies, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
       currentLocation, gameTime, startHour, playerStartLocationId, openingPlacement, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -487,6 +492,7 @@ function useProvideGameplay() {
       setStrangerAliases(gameState.strangerAliases ?? {});
       setCodePins(gameState.codePins ?? EMPTY_PINS);
       setLoreToggles(gameState.loreToggles ?? NO_LORE_TOGGLES);
+      setWorldOptionValues(gameState.worldOptionValues ?? NO_WORLD_OPTION_VALUES);
       setItemCopies(gameState.itemCopies ?? NO_ITEM_COPIES);
       setItemEffects(gameState.itemEffects ?? NO_ITEM_EFFECTS);
       setBodies(gameState.bodies ?? NO_BODIES);
@@ -1092,6 +1098,8 @@ function useProvideGameplay() {
     setCodePins,
     loreToggles,
     setLoreToggles,
+    worldOptionValues,
+    setWorldOptionValues,
     itemCopies,
     setItemCopies,
     itemEffects,

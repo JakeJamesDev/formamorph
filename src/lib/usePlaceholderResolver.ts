@@ -6,6 +6,7 @@ import { resolveEntityText, resolvePlaceholders, type ResolveOptions } from '@/l
 import { activeOwnedTraitIds, addedCharacters, ownerPins, inPlayLibrary, pinBlueprintsOf, type PinSet } from '@/lib/ownedTraitsInPlay';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { usePersonaName } from '@/lib/useResolvedWorld';
+import { optionPinLists } from '@/lib/worldOptions';
 import type { ResolveEntityText } from '@/lib/resolveWorldNames';
 
 /**
@@ -33,13 +34,13 @@ export function useEntityTextResolver(): ResolveEntityText {
 }
 
 function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
-  const { traits, traitGroups, locations, entities, worldPlaceholders, stats, statGroups, placeholderGroups } = useGameData();
+  const { traits, traitGroups, locations, entities, worldPlaceholders, stats, statGroups, placeholderGroups, options } = useGameData();
   const { placeholders } = usePlaceholderSession();
   // View-aliased (equal to live on the latest page): a past page resolves with the pins that were in
   // force on that turn, not whatever the player has toggled or walked into since.
   const {
     placeholderRolls, viewTraits, viewDisabledTraitIds, viewOwnedTraits, viewStats, viewLocationId, viewCodePins,
-    personaRef, libraryPersona, discoveredEntities, viewEntityStats,
+    personaRef, libraryPersona, discoveredEntities, viewEntityStats, worldOptionValues,
   } = useGameplay();
   const blueprints = useMemo(
     () => pinBlueprintsOf({ stats, statGroups, placeholders: worldPlaceholders, placeholderGroups }),
@@ -56,6 +57,7 @@ function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
     entityStats: viewEntityStats,
     blueprints,
   }, {
+    options: optionPinLists(options, worldOptionValues),
     location: locations.find((l) => l.id === viewLocationId),
     stats: viewStats,
     placeholders,
@@ -64,7 +66,7 @@ function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
   }), [
     viewTraits, viewDisabledTraitIds, viewOwnedTraits, traits, traitGroups, entities, worldPlaceholders, personaRef,
     libraryPersona, discoveredEntities, locations, viewLocationId, viewStats, placeholders, placeholderRolls, viewCodePins,
-    viewEntityStats, blueprints,
+    viewEntityStats, blueprints, options, worldOptionValues,
   ]);
   const pins = pinSet.world;
   const name = usePersonaName(placeholderRolls, pins);

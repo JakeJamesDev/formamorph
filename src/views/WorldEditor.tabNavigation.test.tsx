@@ -68,18 +68,18 @@ const sizeListCard = (width: number) => {
 };
 
 describe('World Editor rail (desktop)', () => {
-  it('draws twelve tabs in Advanced mode, grouped by lines, inside the list card', () => {
+  it('draws thirteen tabs in Advanced mode, grouped by lines, inside the list card', () => {
     renderWorldEditorBench(WORLD, 'advanced');
-    expect(railRows()).toEqual(['Overview', 'Openings', 'Media', '|', 'Entities', 'Locations', 'Items', 'Traits', 'Stats', '|', 'Dictionary', 'Placeholders', '|', 'Scripts', 'Tools']);
+    expect(railRows()).toEqual(['Overview', 'Openings', 'Media', '|', 'Entities', 'Locations', 'Items', 'Traits', 'Stats', 'Options', '|', 'Dictionary', 'Placeholders', '|', 'Scripts', 'Tools']);
     expect(editorTabs()).toHaveAttribute('aria-orientation', 'vertical');
     expect(listCard().contains(editorTabs())).toBe(true);
     expect(screen.getAllByRole('tablist', { name: 'Editor Sections' })).toHaveLength(1);
     expect(screen.queryByRole('button', { name: /^Sections/ })).toBeNull();
   });
 
-  it('draws eight tabs in Simple mode, without Openings or Placeholders', () => {
+  it('draws nine tabs in Simple mode, without Openings or Placeholders', () => {
     renderWorldEditorBench(WORLD, 'simple');
-    expect(railRows()).toEqual(['Overview', 'Media', '|', 'Entities', 'Locations', 'Items', 'Traits', 'Stats', '|', 'Dictionary']);
+    expect(railRows()).toEqual(['Overview', 'Media', '|', 'Entities', 'Locations', 'Items', 'Traits', 'Stats', 'Options', '|', 'Dictionary']);
   });
 
   it('opens the list of a tab picked on the rail', () => {
@@ -151,7 +151,7 @@ describe('World Editor Sections bar (mobile)', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     await user.click(sections());
     expect(sections()).toHaveAttribute('aria-expanded', 'true');
-    expect(tabNames()).toEqual(['Overview', 'Openings', 'Media', 'Entities', 'Locations', 'Items', 'Traits', 'Stats', 'Dictionary', 'Placeholders', 'Scripts', 'Tools']);
+    expect(tabNames()).toEqual(['Overview', 'Openings', 'Media', 'Entities', 'Locations', 'Items', 'Traits', 'Stats', 'Options', 'Dictionary', 'Placeholders', 'Scripts', 'Tools']);
     expect(document.getElementById('world-editor-sections')).not.toHaveAttribute('inert');
 
     await user.click(within(editorTabs()).getByRole('tab', { name: 'Entities' }));

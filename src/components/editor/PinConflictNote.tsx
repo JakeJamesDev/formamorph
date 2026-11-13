@@ -9,9 +9,10 @@ const ORDER_RULE: Partial<Record<PinSourceKind, string>> = {
   trait: 'The lowest in the trait list wins',
   descriptor: 'The lowest stat in the list wins',
   value: 'The lowest in the placeholder list wins',
+  option: 'The lowest in the Options list wins',
 };
 const SELF: Record<PinSourceKind, string> = {
-  trait: 'this trait', location: 'this location', descriptor: 'this band', value: 'this value',
+  trait: 'this trait', location: 'this location', descriptor: 'this band', value: 'this value', option: 'this value',
 };
 
 /**

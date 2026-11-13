@@ -13,7 +13,7 @@ import { scoped } from '@/lib/scope';
 import { cascadeOffInput } from '@/lib/traitRuntime';
 import type { TraitCascade } from '@/components/game/SetupTraitList';
 import { offeredStartLocations, personaStartLocation, withoutPersona } from '@/lib/personaPick';
-import type { Entity, EntityMetadata, GameLocation, PersonaRef, Stat, Trait } from '@/types';
+import type { Entity, EntityMetadata, GameLocation, PersonaRef, Stat, Trait, WorldOption } from '@/types';
 
 const identity = (text: string) => text;
 const traitIdentity = (_trait: Trait, text: string) => text;
@@ -1235,3 +1235,45 @@ describe('EnterWorldWorkspace cast pages', () => {
     });
   });
 });
+
+describe('EnterWorldWorkspace World Options', () => {
+  const options: WorldOption[] = [
+    {
+      id: 'o-style', name: 'Style', type: 'choice', shownToPlayer: true, midGame: false, default: 'v-plain', playerDescription: 'How replies read',
+      values: [{ id: 'v-plain', name: 'Plain' }, { id: 'v-lush', name: 'Lush' }],
+    },
+    { id: 'o-flag', name: 'Secret Flag', type: 'boolean', shownToPlayer: false, midGame: false, default: false },
+    { id: 'o-heat', name: 'Heat', type: 'number', shownToPlayer: true, midGame: false, min: 0, max: 10, default: 3 },
+  ];
+
+  it('opens on a World Options page above the traits with every shown Option on its value', () => {
+    render(<Harness options={options} optionValues={{ 'o-style': 'v-lush' }} onOptionChange={vi.fn()} />);
+    const nav = screen.getByRole('navigation', { name: 'World setup categories' });
+    const buttons = within(nav).getAllByRole('button').map((b) => b.textContent ?? '');
+    expect(buttons[0]).toMatch(/^World Options/);
+    expect(screen.getByRole('heading', { name: 'World Options' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Lush' })).toBeChecked();
+    expect(screen.getByText('How replies read')).toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: 'Heat' })).toHaveAttribute('aria-valuenow', '3');
+  });
+
+  it('never shows an Option that is not Shown to Player', () => {
+    render(<Harness options={options} onOptionChange={vi.fn()} />);
+    expect(screen.queryByText('Secret Flag')).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: /Secret Flag/ })).toBeNull();
+  });
+
+  it('draws no World Options category when no Option is shown', () => {
+    render(<Harness options={options.map((o) => ({ ...o, shownToPlayer: false }))} onOptionChange={vi.fn()} />);
+    const nav = screen.getByRole('navigation', { name: 'World setup categories' });
+    expect(within(nav).queryByRole('button', { name: /World Options/ })).toBeNull();
+  });
+
+  it('reports a pick by Option id', async () => {
+    const onOptionChange = vi.fn();
+    render(<Harness options={options} onOptionChange={onOptionChange} />);
+    await userEvent.click(screen.getByRole('radio', { name: 'Lush' }));
+    expect(onOptionChange).toHaveBeenCalledWith('o-style', 'v-lush');
+  });
+});
+

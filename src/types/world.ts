@@ -1095,7 +1095,61 @@ export interface World {
   bodies?: Body[];
   /** Starting Item Copies. Absent = none. */
   placements?: Placement[];
+  /** World Options, in Options-tab order. Absent = none. */
+  options?: WorldOption[];
 }
+
+/** What every World Option carries, whatever its type. */
+interface WorldOptionBase {
+  id: string;
+  name: string;
+  /** Shown under the control at new game. Never sent to the AI. */
+  playerDescription?: string;
+  /** False keeps the Option out of every player surface; it still pins and gates. */
+  shownToPlayer: boolean;
+  /** True lets the player change it during play. */
+  midGame: boolean;
+}
+
+/** One named value of a choice Option. */
+export interface WorldOptionValue {
+  id: string;
+  name: string;
+  placeholderPins?: PlaceholderPin[];
+}
+
+/** Pick one of named values. `default` is a value id. */
+export interface ChoiceWorldOption extends WorldOptionBase {
+  type: 'choice';
+  values: WorldOptionValue[];
+  default: string;
+}
+
+/** On or off, each state with its own pins. */
+export interface BooleanWorldOption extends WorldOptionBase {
+  type: 'boolean';
+  default: boolean;
+  onPins?: PlaceholderPin[];
+  offPins?: PlaceholderPin[];
+}
+
+/** A whole number in `min`–`max`, moved by `step`. Pins nothing. */
+export interface NumberWorldOption extends WorldOptionBase {
+  type: 'number';
+  min: number;
+  max: number;
+  /** Absent = 1. */
+  step?: number;
+  default: number;
+}
+
+/** A player-facing setup switch that acts only through placeholder pins and gates. */
+export type WorldOption = ChoiceWorldOption | BooleanWorldOption | NumberWorldOption;
+
+export type WorldOptionType = WorldOption['type'];
+
+/** What one Option holds: a choice's value id, a boolean, or a number. */
+export type WorldOptionValueOf = string | boolean | number;
 
 /** One authored value: a stable id and the author's text. The id is minted once and never changes, so a
  *  draw weight or a trait pin keyed by it survives the author re-spelling the value; `text` is what

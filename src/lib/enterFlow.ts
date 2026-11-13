@@ -26,6 +26,8 @@ export interface EnterFlowWorld {
   /** The world's Introduction readme, as authored. Blank/absent ⇒ no Introduction. */
   introReadme?: string;
   traitCount: number;
+  /** The World Options shown to the player. */
+  shownOptionCount?: number;
   startingLocationCount: number;
   hasLibraryAdditions: boolean;
   /** The world has entities the player can play as. */
@@ -105,6 +107,7 @@ export function buildEnterFlow(world: EnterFlowWorld, mode: EnterMode): EnterSte
   if (world.introReadme?.trim()) steps.push('intro');
   if (
     world.traitCount > 0
+    || (world.shownOptionCount ?? 0) > 0
     || world.startingLocationCount > 1
     || world.hasLibraryAdditions
     || world.hasWorldPersonas

@@ -144,7 +144,7 @@ describe('the retained entry draft', () => {
     expect(screen.getByRole('checkbox', { name: 'Enable Library book from Library' })).not.toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Enable World book from World' })).not.toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
-    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, [], [], NO_PERSONA, {}));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, [], [], NO_PERSONA, {}, {}));
     cleanup();
     onStartGame.mockClear();
     renderEnterWorld({ onStartGame });
@@ -181,7 +181,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Library Additions' }));
     expect(screen.getByRole('checkbox', { name: 'Enable World book from World' })).not.toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
-    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, [], [], NO_PERSONA, {}));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, [], [], NO_PERSONA, {}, {}));
   });
 
   it('keeps a remembered lone world dictionary editable after the library is removed', async () => {
@@ -297,6 +297,7 @@ describe('the retained entry draft', () => {
       [],
       NO_PERSONA,
       {},
+      {},
     );
   });
 
@@ -365,7 +366,7 @@ describe('the retained entry draft', () => {
       }),
       expect.objectContaining({ name: 'World book', id: 'shared' }),
     ],
-      [expect.objectContaining({ name: 'Companion', id: expect.not.stringMatching(/^companion$/) })], NO_PERSONA, {});
+      [expect.objectContaining({ name: 'Companion', id: expect.not.stringMatching(/^companion$/) })], NO_PERSONA, {}, {});
     expect((await EntityStorageService.getEntityData('companion')).id).toBe('companion');
     expect(await DictionaryStorageService.getDictionaryData('shared')).toMatchObject({
       id: 'shared', entries: [{ id: 'library-entry' }],
@@ -474,6 +475,7 @@ describe('the retained entry draft', () => {
       [expect.objectContaining({ id: 'shared', name: 'World book' })],
       [],
       NO_PERSONA,
+      {},
       {},
     );
   });

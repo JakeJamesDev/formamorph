@@ -871,7 +871,7 @@ describe('pins on blueprints — only blueprint-side sources name a blueprint, a
     expect(pinKindsFor(world, 'garb').map((k) => k.kind)).toEqual(['descriptor', 'trait', 'value']);
     expect(pinSourcesOfKind(world, 'descriptor', 'garb').map((s) => s.label)).toEqual(['Term ≤ 20: band 0']);
     expect(pinSourcesOfKind(world, 'descriptor', 'town').map((s) => s.label)).toEqual(['Hunger ≤ 20: band 0']);
-    expect(pinKindsFor(world, 'town').map((k) => k.kind)).toEqual(['descriptor', 'location', 'trait', 'value']);
+    expect(pinKindsFor(world, 'town').map((k) => k.kind)).toEqual(['descriptor', 'location', 'trait', 'option', 'value']);
     expect(pinSourcesOfKind(world, 'trait', 'garb').map((s) => s.label)).toEqual(['paladin']);
     const valueOwners = (id: string) => pinSourcesOfKind(world, 'value', id).map((s) => (s.source as { placeholderId: string }).placeholderId);
     expect(valueOwners('garb')).toEqual(['trim', 'sash']);

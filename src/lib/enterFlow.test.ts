@@ -37,6 +37,11 @@ describe('buildEnterFlow', () => {
       .toEqual(['intro', 'workspace']);
   });
 
+  it('shows the workspace for a shown World Option alone (Q35)', () => {
+    expect(buildEnterFlow(world({ shownOptionCount: 1 }), 'newGame')).toEqual(['workspace']);
+    expect(buildEnterFlow(world({ shownOptionCount: 0 }), 'newGame')).toEqual([]);
+  });
+
   it('shows the workspace for world personas alone, so the player can pick one', () => {
     expect(buildEnterFlow(world({ hasWorldPersonas: true }), 'newGame')).toEqual(['workspace']);
   });

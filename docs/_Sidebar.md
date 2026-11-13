@@ -38,6 +38,7 @@
   - [🎒 Items](World-Editor-Items)
   - [🗺️ Locations](World-Editor-Locations)
   - [🧬 Traits](World-Editor-Traits)
+  - [🔘 Options](World-Editor-Options)
   - [🔗 Blueprints](World-Editor-Blueprints)
   - [📖 Dictionary](World-Editor-Dictionary)
   - [🧩 Placeholders](World-Editor-Placeholders)

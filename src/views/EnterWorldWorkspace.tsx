@@ -13,7 +13,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
-import type { Entity, GameLocation, PersonaRef, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import type { Entity, GameLocation, PersonaRef, Stat, StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValueOf, WorldOptionValues } from '@/types';
+import { SetupWorldOptions } from '@/components/game/SetupWorldOptions';
+import { shownOptions } from '@/lib/worldOptions';
 import { resolvedEntityStats } from '@/lib/statLinks';
 import { PersonaPicker, PersonaPortrait, type PersonaOption } from '@/components/game/PersonaPicker';
 import { primaryImage } from '@/lib/entityImages';
@@ -38,6 +40,10 @@ export interface EnterWorldWorkspaceProps {
   /** Who wrote the world, for the provenance line on its own dictionaries. */
   worldAuthor?: string;
   traits: Trait[];
+  /** The world's Options. Only those Shown to Player appear; none hides the category. */
+  options?: readonly WorldOption[];
+  optionValues?: WorldOptionValues;
+  onOptionChange?: (optionId: string, value: WorldOptionValueOf) => void;
   traitGroups: TraitGroup[];
   /** The world's entities; each that has traits gets a page in the tree. */
   traitEntities?: readonly Entity[];
@@ -140,11 +146,14 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     () => (personaId ? props.libraryEntities.filter((entity) => entity.id !== personaId) : props.libraryEntities),
     [personaId, props.libraryEntities],
   );
+  const setupOptions = useMemo(() => shownOptions(props.options), [props.options]);
+  const hasOptions = setupOptions.length > 0;
   const hasPersonas = hasPersonaChoice({
     world: props.worldPersonas ?? [], library: props.personas ?? [], none: props.personaNone !== false, custom: props.personaCustom,
   });
   const categories = useMemo(
     () => [
+      ...(hasOptions ? [{ kind: 'options' as const, id: 'options', name: 'World Options' }] : []),
       ...(hasPersonas ? [{ kind: 'persona' as const, id: 'persona', name: 'Persona' }] : []),
       ...traitWorkspace.categories,
       ...(props.locations.length > 1
@@ -154,7 +163,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
         ? [{ kind: 'library' as const, id: 'library', name: 'Library Additions' }]
         : []),
     ],
-    [hasPersonas, props.dictionaryItems.length, props.libraryEntities.length, props.locations.length, traitWorkspace],
+    [hasOptions, hasPersonas, props.dictionaryItems.length, props.libraryEntities.length, props.locations.length, traitWorkspace],
   );
   const pickStateOf = (category: TraitCategory) =>
     (category.group ? groupPickState(category.group, category.traits, picksOf(category.entityId)) : null);
@@ -229,9 +238,10 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
       </div>
     );
   };
+  const optionsIndex = categories.findIndex((category) => category.kind === 'options');
   const personaIndex = categories.findIndex((category) => category.kind === 'persona');
-  // Trait group indices count from the first trait category, which the Persona category precedes.
-  const traitOffset = personaIndex >= 0 ? 1 : 0;
+  // Trait group indices count from the first trait category.
+  const traitOffset = Math.max(categories.findIndex((category) => category.kind === 'traits'), 0);
   const generalIndex = categories.findIndex((category) => category.kind === 'traits' && category.id === null);
   const locationIndex = categories.findIndex((category) => category.kind === 'location');
   const libraryIndex = categories.findIndex((category) => category.kind === 'library');
@@ -244,6 +254,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
       )}
     >
     <nav aria-label="World setup categories" className="space-y-1 p-3">
+      {optionsIndex >= 0 && categoryButton(categories[optionsIndex], optionsIndex)}
       {personaIndex >= 0 && categoryButton(categories[personaIndex], personaIndex)}
       {traitTree.traits.length > 0 && (
         <Meta as="p" className="my-3 flex items-center gap-3 px-2 font-medium uppercase">
@@ -362,6 +373,12 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               avatarInUse={props.avatarInUse?.(current.entityId ?? null) ?? false}
               cascade={props.traitCascade}
               onDismissCascade={props.onDismissTraitCascade}
+            />
+          )}
+          {current?.kind === 'options' && (
+            <SetupWorldOptions
+              options={setupOptions} values={props.optionValues ?? {}}
+              onChange={(id, value) => props.onOptionChange?.(id, value)} resolveText={props.resolveText}
             />
           )}
           {current?.kind === 'persona' && props.persona && props.onPersonaChange && (

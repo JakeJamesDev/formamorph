@@ -112,7 +112,7 @@ import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import WorldEditor, { type EditorExit } from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemCopy, ItemEffectLedger, RuntimeItem, BodyRuntime, BodyPick } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemCopy, ItemEffectLedger, RuntimeItem, BodyRuntime, BodyPick, WorldOptionValues } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { narrationOf, storyText, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -280,6 +280,7 @@ import { useTurnSettle } from "../lib/useTurnSettle";
 import type { TraitCascade } from "../components/game/SetupTraitList";
 import { savedTraits } from "../lib/statCodeTraits";
 import { liveSnapshotOf, type LiveSnapshot } from "../lib/globalSaveFields";
+import { NO_WORLD_OPTION_VALUES, optionPinLists } from "../lib/worldOptions";
 import { parseKeywords, locateMatches, type EntryActivation, type MatchHit, type MatchRule } from "../lib/dictionaryUtils";
 import { highlightSegments, HIGHLIGHT_PALETTE, type HighlightRule, type HighlightSegment } from "../lib/highlightUtils";
 import { useIsMobile } from "../lib/useIsMobile";
@@ -314,6 +315,8 @@ interface GameViewerProps {
   initialTraits?: string[];
   /** Entity id → the owned traits picked at the entry step. */
   initialOwnedTraits?: OwnedTraitPicks;
+  /** Option id → the value picked at the entry step. A missing id starts on its default. */
+  initialOptionValues?: WorldOptionValues;
   initialCharacterData: CharacterData | null;
   initialLocationId?: string | null;
   /** Per-playthrough dictionary set chosen at the entry step; null when the step was skipped (falls back
@@ -565,6 +568,7 @@ function RenderMounted({ render }: { render: () => React.ReactNode }) {
 const GameViewer = ({
   initialTraits = [],
   initialOwnedTraits = NO_OWNED_TRAITS,
+  initialOptionValues = NO_WORLD_OPTION_VALUES,
   initialCharacterData,
   initialLocationId = null,
   initialDictionaries = null,
@@ -596,6 +600,7 @@ const GameViewer = ({
     bodies: worldBodies,
     placements: worldPlacements,
     currencies: worldCurrencies,
+    options: worldOptions,
     worldOverview,
     worldId,
     worldLoaded,
@@ -792,6 +797,7 @@ const GameViewer = ({
     setCodePins,
     loreToggles,
     setLoreToggles,
+    setWorldOptionValues,
     itemCopies,
     setItemCopies,
     itemEffects,
@@ -6064,7 +6070,10 @@ const GameViewer = ({
         sharedPlaceholders: worldPlaceholders,
         entityStats: opening.entityStats,
         blueprints: pinBlueprints,
-      }, { location: authoredLocation, stats: opening.traitState.stats, placeholders, rolls: sessionRolls }).world;
+      }, {
+        options: optionPinLists(worldOptions, initialOptionValues),
+        location: authoredLocation, stats: opening.traitState.stats, placeholders, rolls: sessionRolls,
+      }).world;
       if (location && authoredLocation) {
         changeLocation(location);
         // A log line is frozen the moment it is written.
@@ -6080,6 +6089,7 @@ const GameViewer = ({
       setMemoryPins({});
       setCodePins({});
       setLoreToggles({});
+      setWorldOptionValues(initialOptionValues);
       setEntityVisualPreference({});
       // A new game always holds a reference; None is a choice, and absence means a save from before personas.
       const personaPick: PersonaPick = initialPersona ?? { ref: { source: 'none' } };
@@ -6153,6 +6163,9 @@ const GameViewer = ({
     setSelectedEntityId,
     initialTraits,
     initialOwnedTraits,
+    initialOptionValues,
+    worldOptions,
+    setWorldOptionValues,
     traitEntities,
     initialLocationId,
     placeholders,

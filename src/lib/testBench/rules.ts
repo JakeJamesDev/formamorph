@@ -94,7 +94,7 @@ export const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'] as c
 
 /** The editor tab that owns a finding's items — where Open navigates to. */
 export type FindingSection =
-  | 'overview' | 'stats' | 'entities' | 'items' | 'locations' | 'traits' | 'dictionary' | 'placeholders' | 'scripts' | 'tools' | 'media';
+  | 'overview' | 'stats' | 'entities' | 'items' | 'locations' | 'traits' | 'dictionary' | 'placeholders' | 'scripts' | 'tools' | 'media' | 'options';
 
 /** One item a finding names, labeled as the editor's own lists label it. */
 export interface FindingItem {
@@ -527,6 +527,7 @@ const pinEditorWorld = (world: RuleWorld): PinEditorWorld => {
       traits: world.traits ?? [], traitGroups: world.traitGroups ?? [], entities: world.entities ?? [],
       locations: world.locations ?? [], stats: world.stats ?? [], statGroups: world.statGroups ?? [], placeholders: allPlaceholders(world),
       placeholderGroups: world.placeholderGroups ?? [], placeholderOwners: placeholderOwners(world), placementLetters: lettersOf(world),
+      options: world.options ?? [],
     };
     pinEditorByWorld.set(world, editor);
   }
@@ -552,6 +553,7 @@ const PIN_SOURCE_TABS: Record<PinSourceKind, { section: FindingSection; byLabel?
   location: { section: 'locations' },
   descriptor: { section: 'stats', byLabel: true },
   value: { section: 'placeholders', byLabel: true },
+  option: { section: 'options', byLabel: true },
 };
 
 /** A pin's source as a finding item: the trait or location by its name, a band or a value by the label

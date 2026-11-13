@@ -98,6 +98,7 @@ The import adds a new world. It never replaces the world you exported. Import sk
 | `statUpdates` | ✓ | [StatUpdate](#stat-updates)[] | An older field. Write `[]` |
 | `scripts` | | [Script](#scripts)[] | Scripts no stat or trait owns. They run with no `self` |
 | `tools` | | [Tool](#world-tools)[] | The World Tools, in **Tools** tab order. Absent = none |
+| `options` | | [WorldOption](#world-options)[] | The World Options, in **Options** tab order. Absent = none |
 | `items` | | [Item](#items)[] | The world's items, in **Items** tab order. Absent = none |
 | `currencies` | | [Currency](#currencies)[] | The world's money, in order. The first is the **Default**. Absent = none |
 | `slots` | | [Slot](#slots-and-bodies)[] | Where items equip, such as Hand. Absent = none |
@@ -835,6 +836,27 @@ A trait's `body` row overrides this while the trait is active. A world trait set
 | `hidden` | | Boolean | `true` = the player doesn't see the copies until the story reveals them |
 | `equipped` | | Boolean | `true` = the copies start equipped. Never on a location |
 | `source` | ✓ | Object | `{ "kind": "item", "itemId": "<item id>" }` |
+
+## World Options
+<!-- keywords: options key, world option json, choice boolean number, values, default, onPins offPins, shownToPlayer, midGame -->
+
+`options` lists the world's [Options](World-Editor-Options).
+
+| Field | Req. | Type | Meaning |
+|---|---|---|---|
+| `id` | ✓ | String | Unique id. A save keys its value by it |
+| `name` | ✓ | String | The name the player reads |
+| `type` | ✓ | String | `choice`, `boolean` or `number` |
+| `default` | ✓ | String, Boolean or Number | A choice's value `id`, `true` or `false`, or a whole number |
+| `shownToPlayer` | ✓ | Boolean | `false` keeps the Option off every player screen |
+| `midGame` | ✓ | Boolean | `true` lets the player change it during play |
+| `playerDescription` | | String | Shows under the Option at new game. Never sent to the AI |
+| `values` | choice | Value[] | The named values: `id`, `name`, optional `placeholderPins` |
+| `onPins`, `offPins` | | Pin[] | A boolean's [placeholder pins](#placeholder-pins) for each state |
+| `min`, `max` | number | Number | The whole-number range |
+| `step` | | Number | The slider's step. Absent = 1 |
+
+A save holds the values under `worldOptionValues`, by Option `id`. A missing value, or one the Option no longer accepts, reads the `default`.
 
 ## World Tools
 <!-- keywords: tools key, world tool json, function object, params array, handler object, lookup, template, script handler, offered to, call limit -->

@@ -90,8 +90,8 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, o
   // (a library item) the only pins are the ones this field's own placeholders' values carry.
   const game = useGameDataOptional();
   const pinRows = useMemo(
-    () => allPinRows({ traits: game?.traits, locations: game?.locations, stats: game?.stats, placeholders }),
-    [game?.traits, game?.locations, game?.stats, placeholders],
+    () => allPinRows({ traits: game?.traits, locations: game?.locations, stats: game?.stats, options: game?.options, placeholders }),
+    [game?.traits, game?.locations, game?.stats, game?.options, placeholders],
   );
   // Re-read on every reroll: the store's identity carries its version.
   const chipValues = useMemo(
@@ -109,14 +109,15 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, o
     updateLocation: game?.updateLocation,
     updateStat: game?.updateStat,
     updatePlaceholder: store?.updatePlaceholder,
-  }), [game?.updateTrait, game?.updateLocation, game?.updateStat, store?.updatePlaceholder]);
+    updateOption: game?.updateOption,
+  }), [game?.updateTrait, game?.updateLocation, game?.updateStat, store?.updatePlaceholder, game?.updateOption]);
   const writersRef = useRef(writers);
   writersRef.current = writers;
   // The world as this field last wrote it, until a render brings the lists it was built from up to date.
   const pending = useRef<{ from: readonly unknown[]; world: PinEditorWorld } | null>(null);
   const rendered = useRef<PinEditorWorld>({ placeholders: [] });
-  rendered.current = { traits: game?.traits, locations: game?.locations, stats: game?.stats, placeholders: store?.placeholders ?? [] };
-  const listsOf = (world: PinEditorWorld) => [world.traits, world.locations, world.stats, world.placeholders];
+  rendered.current = { traits: game?.traits, locations: game?.locations, stats: game?.stats, options: game?.options, placeholders: store?.placeholders ?? [] };
+  const listsOf = (world: PinEditorWorld) => [world.traits, world.locations, world.stats, world.options, world.placeholders];
   const renderedLists = listsOf(rendered.current);
   if (pending.current?.from.some((list, i) => list !== renderedLists[i])) pending.current = null;
   const commit = useCallback((next: PinEditorWorld, source: PinSourceRef) => {

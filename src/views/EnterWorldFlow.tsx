@@ -29,6 +29,7 @@ import {
   castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, entryTrees, libraryCastIds, rekeyOwnedPicks,
   withLibraryDefaults, withLocationPick, withPersonaPick, withSettledTraits, type EntryDraft, type EntryTraitWorld,
 } from '@/lib/entryDraft';
+import { optionPinLists, shownOptions } from '@/lib/worldOptions';
 import { bindLibraryEntity, blueprintBindWorld } from '@/lib/blueprintTravel';
 import { playLibraryStats } from '@/lib/portableStats';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
@@ -51,12 +52,13 @@ import {
   buildEnterFlow, entryAvatarInUse, entryVrmPick, navigableSteps, type EntryVrmInput, type EnterMode, type EnterStep, type NavigableStep,
 } from '@/lib/enterFlow';
 import type {
-  CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, OwnedTraitPicks, PersonaRef, VrmPick,
+  CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, OwnedTraitPicks, PersonaRef, VrmPick, WorldOptionValues,
 } from '@/types';
 
 export type StartGame = (
   traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null,
   dictionaries?: Dictionary[] | null, characters?: Entity[] | null, persona?: PersonaPick, ownedTraits?: OwnedTraitPicks,
+  optionValues?: WorldOptionValues,
 ) => void;
 
 export interface EnterWorldFlowHandle {
@@ -97,9 +99,10 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const {
     traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, statGroups: rawStatGroups, locations: rawLocations, placeholders,
     dictionaries: worldBooks, entities: worldEntities, worldPlaceholders, placeholderGroups, worldOverview, items: worldItems, placements: worldPlacements,
-    slots: worldSlots, bodies: worldBodies,
+    slots: worldSlots, bodies: worldBodies, options: worldOptions,
   } = useGameData();
   const { beginSession, endSession, rolls } = usePlaceholderSession();
+  const setupOptions = useMemo(() => shownOptions(worldOptions), [worldOptions]);
 
   const [showSetupWorkspace, setShowSetupWorkspace] = useState(false);
   // The workspace stays mounted for one exit animation after it closes, so the dialog can fade out.
@@ -214,6 +217,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
       entityStats,
       blueprints: pinBlueprintsOf({ stats: rawStats, statGroups: rawStatGroups, placeholders: worldPlaceholders, placeholderGroups }),
     }, {
+      options: optionPinLists(worldOptions, entryDraft.optionValues),
       location: rawLocations.find((l) => l.id === selectedLocationId),
       stats: starting,
       placeholders,
@@ -221,7 +225,8 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     });
   }, [
     selectedTraits, ownedTraitPicks, draftPersona, selectedLocationId, rawTraits, rawTraitGroups, worldEntities,
-    worldPlaceholders, rawStats, rawStatGroups, rawLocations, placeholders, rolls, libraryCast, placeholderGroups,
+    worldPlaceholders, rawStats, rawStatGroups, rawLocations, placeholders, rolls, libraryCast, placeholderGroups, worldOptions,
+    entryDraft.optionValues,
   ]);
   const {
     traits, traitGroups, locations, entities: resolvedWorldEntities, resolvePH, resolveTraitText, resolveEntityText,
@@ -420,7 +425,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
         showEnterStep('avatar');
       } else {
         entryStarted.current = true;
-        onStartGame(draft.traitIds, null, true, draft.locationId, dicts, chars, persona, castPicks);
+        onStartGame(draft.traitIds, null, true, draft.locationId, dicts, chars, persona, castPicks, draft.optionValues);
       }
     } catch (error) {
       if (entryRequest.current === request) {
@@ -458,6 +463,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const enterFlowSteps = (mode: EnterMode = 'newGame'): EnterStep[] => buildEnterFlow({
     introReadme: selectedWorld?.data.worldOverview?.introReadme,
     traitCount: gateTrees(castTrees).reduce((count, owner) => count + owner.traits.length, 0),
+    shownOptionCount: setupOptions.length,
     startingLocationCount: startingLocations(locations).length,
     hasLibraryAdditions,
     hasWorldPersonas: worldPersonaOptions.length > 0,
@@ -564,7 +570,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
           setShowCharacterCustomization(false);
           onStartGame(
             selectedTraits, customizedData, true, selectedLocationId, selectedDictionaries, selectedCharacters, selectedPersona,
-            selectedCastPicks,
+            selectedCastPicks, entryDraft.optionValues,
           );
         }}
         onBack={backFrom('avatar')}
@@ -597,6 +603,9 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
           worldName={selectedWorld.name}
           traits={traits}
           traitGroups={traitGroups}
+          options={worldOptions}
+          optionValues={entryDraft.optionValues}
+          onOptionChange={(id, value) => updateDraft('optionValues', (current) => ({ ...current, [id]: value }))}
           traitEntities={entryTraitEntities}
           traitLibrary={entryWorld.library}
           resolveEntityText={resolveEntityText}

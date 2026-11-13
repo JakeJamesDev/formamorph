@@ -92,6 +92,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useWorldStatsAdapter } from '../managers/useWorldStatsAdapter';
 import { useScriptWrites, useWorldScriptsAdapter } from '../managers/useWorldScriptsAdapter';
 import { useWorldToolsAdapter } from '../managers/useWorldToolsAdapter';
+import { useWorldOptionsAdapter } from '../managers/useWorldOptionsAdapter';
 import { CURRENCIES_ID, EQUIPMENT_ID, useWorldItemsAdapter } from '../managers/useWorldItemsAdapter';
 import { ITEM_PANEL_TABS, itemPanelTabsFor, type ItemPanelTab } from './itemPanelTabs';
 import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
@@ -1049,6 +1050,9 @@ const WorldEditorInner = ({
   const selectTool = useCallback((id: string | null) => select('tools', id), [select]);
   const toolsAdapter = useWorldToolsAdapter({ selectedId: selections.tools ?? null, onSelect: selectTool, snapshot: editorToolWorld });
   const toolsParts = useListEditor(toolsAdapter, { selectedId: selections.tools ?? null, onSelect: selectTool, search });
+  const selectOption = useCallback((id: string | null) => select('options', id), [select]);
+  const optionsAdapter = useWorldOptionsAdapter({ selectedId: selections.options ?? null, onSelect: selectOption });
+  const optionsParts = useListEditor(optionsAdapter, { selectedId: selections.options ?? null, onSelect: selectOption, search });
   const selectItem = useCallback((id: string | null) => select('items', id), [select]);
   const { adapter: itemsAdapter, dialog: removeItemDialog } = useWorldItemsAdapter({
     selectedId: selections.items ?? null,
@@ -1170,14 +1174,14 @@ const WorldEditorInner = ({
     media: mediaParts, openings: openingsParts,
     traits: traitsParts, placeholders: placeholdersParts, stats: statsParts,
     entities: entitiesParts, items: itemsParts, locations: locationsParts, dictionary: dictionaryParts, scripts: scriptsParts,
-    tools: toolsParts,
+    tools: toolsParts, options: optionsParts,
   };
   const listEditorParts = partsByTab[activeTab] ?? null;
   const adaptersByTab: Partial<Record<RevealTab, { holds: (id: string) => boolean }>> = {
     traits: traitsAdapter, placeholders: placeholdersEditor.adapter, stats: statsAdapter,
     entities: entitiesEditor.adapter, items: itemsAdapter, locations: locationsAdapter, dictionary: dictionaryEditor.adapter,
     scripts: scriptsAdapter,
-    tools: toolsAdapter, media: { holds: (id) => mediaHolds(getWorldData(), id) },
+    tools: toolsAdapter, options: optionsAdapter, media: { holds: (id) => mediaHolds(getWorldData(), id) },
     openings: {
       holds: (id) => {
         const { locations: held, entities: owners } = getWorldData();

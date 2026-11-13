@@ -8,7 +8,7 @@ import { scoped } from './scope';
 import { startingCopies } from './inventory';
 import type {
   Body, CascadeOffTraitIds, Entity, GameLocation, Item, OwnedTraitPicks, PersonaRef, Placement, Slot, Stat, StatGroup, Trait,
-  TraitGroup,
+  TraitGroup, WorldOptionValues,
 } from '@/types';
 
 /** Choices retained for one visit to Enter World. */
@@ -25,11 +25,13 @@ export interface EntryDraft {
   dictionaryItems: DictionarySelectionItem[];
   persona: PersonaRef;
   traitSection: number;
+  /** The player's World Option picks. An Option missing here starts on its default. */
+  optionValues: WorldOptionValues;
 }
 
 export const emptyEntryDraft = (): EntryDraft => ({
   traitIds: [], ownedTraitIds: {}, cascadeOffTraitIds: {}, locationId: null, locationChosen: false, entityIds: new Set(), dictionaryItems: [],
-  persona: { source: 'none' }, traitSection: 0,
+  persona: { source: 'none' }, traitSection: 0, optionValues: {},
 });
 
 /** The draft after a persona pick: one entity fills one role, and a persona with start places preselects its location. */

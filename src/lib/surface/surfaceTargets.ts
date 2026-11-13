@@ -28,6 +28,7 @@ export const SURFACE_TARGETS = {
   'worldEditor.items': ['list-toolbar'],
   'worldEditor.locations': ['list-toolbar'],
   'worldEditor.traits': ['list-toolbar'],
+  'worldEditor.options': ['list-toolbar'],
   'worldEditor.dictionary': ['list-toolbar'],
   'worldEditor.placeholders': ['list-toolbar'],
   'worldEditorBench.triggers': ['scene-text'],

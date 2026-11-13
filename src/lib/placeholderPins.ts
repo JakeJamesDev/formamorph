@@ -3,14 +3,15 @@
 // writes at runtime. A pin masks the roll under it and never overwrites it, so every collector here is an
 // overlay computed fresh from the current state.
 //
-// Precedence: Code Pin > descriptor > location > trait > value pin. An entity's traits and bands pin every text.
+// Precedence: Code Pin > descriptor > location > trait > World Option > value pin. An entity's traits and bands pin every text.
 // Inside one kind: global, then the played persona, then the entity later in the list (`ownerPins`).
 // Within one source the later row wins.
 
 import type {
   CodePins, Entity, GameLocation, Placeholder, PlaceholderGroup, PlaceholderPin, PlaceholderRolls, PlaceholderValue, Stat, StatDescriptor,
-  StatGroup, Trait, TraitGroup, TraitLink,
+  StatGroup, Trait, TraitGroup, TraitLink, WorldOption,
 } from '@/types';
+import { BOOLEAN_OFF, BOOLEAN_ON, type OptionPins } from './worldOptions';
 import { encodePlaceholderToken, pinText, placeholderIsChoice, placeholderValueLine, sameMap, VALUE_JOIN } from './placeholders';
 import type { PlaceholderOwners } from './placeholderHomes';
 import { labelPlaceholders, placeholderDisplayName, type PlacementLetters } from './placementLetters';
@@ -52,6 +53,8 @@ export interface PinSources {
   disabledTraitIds?: readonly string[];
   /** The traits whose stat toggles decide which global bands pin: the player's. Absent = `traits`. */
   statTraits?: readonly Trait[];
+  /** The pins the World Options' current values lay, in Options-tab order. They lay under the traits. */
+  options?: readonly OptionPins[];
   /** Where the player is; absent or null before a location is picked. */
   location?: Pick<GameLocation, 'id' | 'placeholderPins'> | null;
   /** The global stats with their current values; each one's band is what pins. */
@@ -148,7 +151,7 @@ export function collectPins(src: PinSources): Record<string, string> {
  */
 export function collectPinLayers(src: PinSources): { pins: Record<string, string>; layers: PinLayer[] } {
   const {
-    traits, disabledTraitIds = [], statTraits, location, stats = [], entityBands = [], placeholders, rolls, codePins = {}, onFinding,
+    traits, disabledTraitIds = [], statTraits, options = [], location, stats = [], entityBands = [], placeholders, rolls, codePins = {}, onFinding,
   } = src;
   const byId = indexPlaceholders(placeholders);
   const off = new Set(disabledTraitIds);
@@ -157,6 +160,7 @@ export function collectPinLayers(src: PinSources): { pins: Record<string, string
   const layered: Record<string, string> = {};
   const layers: PinLayer[] = [];
   const laidBy = (source: PinSourceRef) => ({ layers, source });
+  for (const o of options) layPins(layered, o.pins, byId, laidBy({ kind: 'option', optionId: o.optionId, valueId: o.valueId }));
   for (const t of active) layPins(layered, t.placeholderPins, byId, laidBy({ kind: 'trait', id: t.id }));
   if (location) layPins(layered, location.placeholderPins, byId, laidBy({ kind: 'location', id: location.id }));
   const layBands = (list: readonly PinnableStat[], switches: readonly Trait[], ownerId?: string) => {
@@ -403,6 +407,7 @@ export interface LinkPinRef {
  *  that entity's own stat, or with `linkId` on that link's overridden bands. */
 export type PinSourceRef =
   | { kind: 'trait'; id: string; link?: LinkPinRef }
+  | { kind: 'option'; optionId: string; valueId: string }
   | { kind: 'location'; id: string }
   | { kind: 'descriptor'; statId: string; descriptorId: string | number; ownerId?: string; linkId?: string }
   | { kind: 'value'; placeholderId: string; valueId: string };
@@ -439,6 +444,7 @@ export interface PinEditorWorld {
   placeholderOwners?: PlaceholderOwners;
   /** The world's placeholder folders, so a pin picker heads its rows the way every other picker does. */
   placeholderGroups?: readonly PlaceholderGroup[];
+  options?: readonly WorldOption[];
   placementLetters?: PlacementLetters;
 }
 
@@ -747,6 +753,44 @@ const PIN_SOURCE_KINDS: { [K in PinSourceKind]: PinSourceSpec<K> } = {
       if (entity) updateEntity?.(entity);
     }),
   },
+  option: {
+    label: 'World Option',
+    empty: 'No World Option values to pin from.',
+    sources(world) {
+      const name = labeler(world);
+      return (world.options ?? []).flatMap((option): PinSourceEntry<'option'>[] => {
+        const entry = (valueId: string, valueName: string, pins: PinList | undefined): PinSourceEntry<'option'> => {
+          const label = `${name.text(option.name)} = ${name.text(valueName)}`;
+          return { source: { kind: 'option', optionId: option.id, valueId }, name: option.name, label: `Option: ${label}`, option: label, pins };
+        };
+        if (option.type === 'choice') return option.values.map((v) => entry(v.id, v.name, v.placeholderPins));
+        if (option.type === 'boolean') return [entry(BOOLEAN_ON, 'On', option.onPins), entry(BOOLEAN_OFF, 'Off', option.offPins)];
+        return [];
+      });
+    },
+    key: (s) => `option:${s.optionId}:${s.valueId}`,
+    same: (a, b) => a.optionId === b.optionId && a.valueId === b.valueId,
+    // An Option holds one value at a time.
+    neverTogether: (_world, a, b) => a.optionId === b.optionId,
+    ownerId: (s) => s.optionId,
+    write: (world, source, change) => {
+      const options = mapOne(world.options, (o) => o.id === source.optionId, (o) => {
+        if (o.type === 'choice') {
+          const values = mapOne(o.values, (v) => v.id === source.valueId, (v) => rewritten(v, 'placeholderPins', change));
+          return values ? { ...o, values } : null;
+        }
+        if (o.type !== 'boolean') return null;
+        const field = source.valueId === BOOLEAN_ON ? 'onPins' : 'offPins';
+        const pins = change(o[field] ?? []);
+        return pins ? { ...o, [field]: [...pins] } : null;
+      });
+      return options ? { ...world, options } : world;
+    },
+    commit: ({ updateOption }) => updateOption && ((next, source) => {
+      const option = next.options?.find((o) => o.id === source.optionId);
+      if (option) updateOption(option);
+    }),
+  },
   value: {
     label: 'Placeholder Value',
     empty: 'No other placeholder values to pin from.',
@@ -789,7 +833,7 @@ const PIN_SOURCE_KINDS: { [K in PinSourceKind]: PinSourceSpec<K> } = {
 /** Kinds strongest first — the order {@link PIN_SOURCE_KINDS} declares them in. */
 const KINDS_BY_RANK = Object.keys(PIN_SOURCE_KINDS) as PinSourceKind[];
 
-/** Lower is stronger: a descriptor, then a location, then a trait, then a value pin. */
+/** Lower is stronger: a descriptor, then a location, then a trait, then a World Option, then a value pin. */
 const KIND_RANK = Object.fromEntries(KINDS_BY_RANK.map((kind, i) => [kind, i])) as Record<PinSourceKind, number>;
 
 /** The row for a ref's kind. The kind is a union at every call site, so the widening the switches used to
@@ -1140,6 +1184,7 @@ export interface PinWriters {
   updateLocation?: (location: GameLocation) => void;
   updateStat?: (stat: Stat) => void;
   updatePlaceholder?: (placeholder: Placeholder) => void;
+  updateOption?: (option: WorldOption) => void;
 }
 
 /** Whether `writers` can hand a source of this kind back at all. */

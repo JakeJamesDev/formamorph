@@ -23,12 +23,13 @@ import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
 import { resolveOwners, type Owner } from '@/lib/owners';
 import type { Entity, EntityStatValues, GameLocation, OwnedTraitPicks, PersonaRef, Placeholder, PlayerStat, Stat, Trait } from '@/types';
 import { ownerWorldOf, type RuleWorld } from './rules';
+import { optionPinLists } from '@/lib/worldOptions';
 
 /** The slices of the authored world the lens reads. The rest of the document is optional and read only to
  *  letter the pickers' chips the way the editor letters them — entities come first in that walk. */
 export type LensWorld =
   Pick<RuleWorld, 'traits' | 'traitGroups' | 'locations' | 'placeholders' | 'stats'>
-  & Partial<Pick<RuleWorld, 'entities' | 'entityGroups' | 'dictionaries' | 'worldOverview' | 'statGroups' | 'placeholderGroups'>>;
+  & Partial<Pick<RuleWorld, 'entities' | 'entityGroups' | 'dictionaries' | 'worldOverview' | 'statGroups' | 'placeholderGroups' | 'options'>>;
 
 /** The traits the lens player picks from, with the links that brought them. */
 type LensTree = Pick<Owner, 'traits' | 'groups' | 'linkOf'>;
@@ -289,7 +290,7 @@ export function buildLens(world: LensWorld, state: LensState): BenchLens {
   const rows = allPinRows({
     traits, traitGroups: groups, entities: world.entities ?? [],
     locations: world.locations ?? [], stats: world.stats ?? [],
-    placeholders, placeholderOwners: placeholderOwners(world), placementLetters: worldPlacementLetters(world),
+    placeholders, placeholderOwners: placeholderOwners(world), placementLetters: worldPlacementLetters(world), options: world.options ?? [],
   });
   const pinLayers = layers.map((layer): LensPinLayer => ({
     ...layer,
@@ -342,6 +343,8 @@ export function lensPinPlan(
     entityStats: lensEntityStats(world),
     blueprints: lensPinBlueprints(world),
   }, {
+    // Outside play an Option reads its default (Q25).
+    options: optionPinLists(world.options),
     location,
     stats: globalStatsOf(lensStartingStats(world, world.stats ?? [], active, personaId), world.statGroups ?? []),
     placeholders: allPlaceholders(world),

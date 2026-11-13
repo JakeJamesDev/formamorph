@@ -193,6 +193,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'worldEditor.items': { page: 'World-Editor-Items', anchor: '-world-editor-items' },
   'worldEditor.locations': { page: 'World-Editor-Locations', anchor: '\u{FE0F}-world-editor-locations' },
   'worldEditor.traits': { page: 'World-Editor-Traits', anchor: '-world-editor-traits' },
+  'worldEditor.options': { page: 'World-Editor-Options', anchor: '-world-editor-options' },
   'worldEditor.dictionary': { page: 'World-Editor-Dictionary', anchor: '-world-editor-dictionary' },
   'worldEditor.placeholders': { page: 'World-Editor-Placeholders', anchor: '-world-editor-placeholders' },
   'worldEditor.scripts': { page: 'ScriptsGuide', anchor: 'how-to-review-every-script-in-one-place' },

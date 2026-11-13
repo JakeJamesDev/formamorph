@@ -37,7 +37,7 @@ import { Formaquestion } from './components/formaquestion/Formaquestion';
 import { TooltipProvider } from './components/ui/tooltip';
 import GameViewer from './views/GameViewer';
 import MainMenu from './views/MainMenu';
-import type { CharacterData, Dictionary, Entity, OwnedTraitPicks } from '@/types';
+import type { CharacterData, Dictionary, Entity, OwnedTraitPicks, WorldOptionValues } from '@/types';
 import type { PersonaPick } from '@/lib/persona';
 
 const DesignSystemShowcase = import.meta.env.DEV
@@ -130,6 +130,7 @@ function AppViews() {
   useEffect(() => registerDevHook('surface', surfaceRegistry.get), []);
   const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
   const [initialOwnedTraits, setInitialOwnedTraits] = useState<OwnedTraitPicks>({});
+  const [initialOptionValues, setInitialOptionValues] = useState<WorldOptionValues>({});
   const [initialCharacterData, setInitialCharacterData] = useState<CharacterData | null>(null);
   const [initialLocationId, setInitialLocationId] = useState<string | null>(null);
   const [initialDictionaries, setInitialDictionaries] = useState<Dictionary[] | null>(null);
@@ -146,9 +147,11 @@ function AppViews() {
     characters?: Entity[] | null,
     persona?: PersonaPick | null,
     ownedTraits?: OwnedTraitPicks,
+    optionValues?: WorldOptionValues,
   ) => {
     setSelectedTraits(traits);
     setInitialOwnedTraits(ownedTraits ?? {});
+    setInitialOptionValues(optionValues ?? {});
     setInitialCharacterData(customCharacterData);
     setInitialLocationId(startingLocationId ?? null);
     setInitialDictionaries(dictionaries ?? null);
@@ -230,6 +233,7 @@ function AppViews() {
             <GameViewer
               initialTraits={selectedTraits}
               initialOwnedTraits={initialOwnedTraits}
+              initialOptionValues={initialOptionValues}
               initialCharacterData={initialCharacterData}
               initialLocationId={initialLocationId}
               initialDictionaries={initialDictionaries}

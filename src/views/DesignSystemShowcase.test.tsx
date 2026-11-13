@@ -354,7 +354,7 @@ describe('sections bar reference', () => {
     const sections = () => within(region).getByRole('button', { name: /^Sections/ });
     const bar = () => within(region).getByRole('tablist', { name: 'Editor Sections' });
     await user.click(sections());
-    expect(within(bar()).getAllByRole('tab')).toHaveLength(12);
+    expect(within(bar()).getAllByRole('tab')).toHaveLength(13);
     // Lines split the groups; no group name is drawn.
     expect(bar().querySelectorAll('[data-sections-separator]')).toHaveLength(3);
     expect(within(bar()).queryByText('Content')).toBeNull();
@@ -364,7 +364,7 @@ describe('sections bar reference', () => {
 
     await user.click(within(region).getByRole('radio', { name: 'Simple' }));
     await user.click(sections());
-    expect(within(bar()).getAllByRole('tab')).toHaveLength(8);
+    expect(within(bar()).getAllByRole('tab')).toHaveLength(9);
     expect(localStorage).toHaveLength(0);
   });
 });
@@ -377,7 +377,7 @@ describe('nav rail reference', () => {
 
     const region = screen.getByRole('region', { name: 'Nav Rail' });
     const rail = within(region).getByRole('tablist', { name: 'Sample Editor Sections' });
-    expect(within(rail).getAllByRole('tab')).toHaveLength(12);
+    expect(within(rail).getAllByRole('tab')).toHaveLength(13);
     await user.click(within(rail).getByRole('tab', { name: 'Traits' }));
     expect(within(region).getByText('The trait tree beside the selected trait\'s details.')).toBeInTheDocument();
 

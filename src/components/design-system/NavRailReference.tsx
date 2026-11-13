@@ -18,6 +18,7 @@ const BODY: Record<(typeof WORLD_EDITOR_TABS)[number]['value'], string> = {
   items: 'The item list beside the selected item\'s details.',
   locations: 'The location tree or the canvas.',
   traits: 'The trait tree beside the selected trait\'s details.',
+  options: 'The World Options list beside the selected Option\'s details.',
   dictionary: 'The dictionaries and their entries.',
   placeholders: 'Every placeholder in the world, by owner.',
   scripts: 'Every script in the world, by timing.',

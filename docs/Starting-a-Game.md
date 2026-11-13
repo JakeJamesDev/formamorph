@@ -30,9 +30,19 @@ For the **Persona** category, see [How to Pick a Persona](Personas#how-to-pick-a
 
 - The persona that **Enter World** picks first.
 - The author's default traits.
+- Each World Option on its default.
 - A random starting location. When the persona is one of the world's own entities, you start at its location.
 
 No library additions come in, even after **Remember Additions**. The world's own dictionaries are on as the author set them.
+
+## How to Pick World Options
+<!-- keywords: world settings, game options, reply length, style, difficulty, slider, switch, setup choices -->
+<!-- route: enterWorld -->
+
+1. In the **Enter World** dialog, open **World Options**. It is the first category when the world has any.
+2. Pick a value for each Option: a round button for a choice, a checkbox for on or off, a slider for a number.
+
+Each Option starts on the author's default, so you can skip the category.
 
 ## How to Pick Starting Traits
 <!-- keywords: choose, character creation, options, class, race, perks, background, skills, abilities, attributes, species, feats, start button disabled, greyed out, customize character -->
@@ -108,6 +118,7 @@ The dialog shows the world's name at the top and a category list on the left. On
 
 | Category | What you pick | Shows when |
 |---|---|---|
+| **World Options** | How the world plays, such as reply length or style | The world has Options shown to the player |
 | **Persona** | Who you play | The world or your library has a persona to pick, or the world has a **Custom Persona** |
 | **Starting Traits** | One category per trait group, and one per entity whose traits you set | The world has traits you can pick |
 | **Starting Location** | Where the story begins | The world offers more than one starting location |

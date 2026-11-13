@@ -230,7 +230,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
     await finalize();
     expect(onStartGame).toHaveBeenCalledWith(['default'], expect.any(Object), true, 'hill', [],
-      [expect.objectContaining({ name: 'Companion' })], NO_PERSONA, {});
+      [expect.objectContaining({ name: 'Companion' })], NO_PERSONA, {}, {});
   });
 });
 

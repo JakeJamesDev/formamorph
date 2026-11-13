@@ -50,6 +50,7 @@ import { offeredStartLocations, personaStartLocation, startingPersona } from '@/
 import { lensActiveTraits, lensPersonaPicks, lensPersonaRef, lensPinBlueprints, lensStartingStats, resolveLensText, type BenchLens } from './lens';
 import { ownerWorldOf, chipBearingTexts, type RuleWorld } from './rules';
 import { scannedEntries } from './triggers';
+import { optionPinLists } from '@/lib/worldOptions';
 
 /** The instrument reads the whole authored world — the first prompt pulls from every slice. */
 export type OpeningWorld = RuleWorld;
@@ -244,6 +245,7 @@ const openingPins = (world: OpeningWorld, start: OpeningStart, rolls: Placeholde
     entityStats: Object.fromEntries((start.state.owners ?? []).map((owner) => [owner.id, owner.stats])),
     blueprints: lensPinBlueprints(world),
   }, {
+    options: optionPinLists(world.options),
     location: start.location, stats: globalStatsOf(start.settled, world.statGroups ?? []), placeholders: allPlaceholders(world), rolls,
   }).world;
 };

@@ -550,8 +550,12 @@ The value a playthrough draws for a Wildcard, made once at Enter World and kept 
 _Avoid_: random value, draw (the act only), selection
 
 **Pin**:
-A source holding a Placeholder at one fixed value while the source is active: a trait that is on, the current location, the stat band a stat sits in, or a Placeholder value that is the effective value of its Placeholder. A Pin masks the Roll underneath and never replaces it, so the Roll returns when the source goes off. A Code Pin outranks a stat band, a stat band a location, a location a trait, a trait a value Pin. An entity's own stat bands and traits are Pins in every text, for any persona, and hold while it is out of the scene. Inside one kind a global source wins, then the played persona's, then the entity later in the entity list. A Blueprint stat's band pins each Owner's own Copy.
+A source holding a Placeholder at one fixed value while the source is active: a trait that is on, the current location, the stat band a stat sits in, the current value of a World Option, or a Placeholder value that is the effective value of its Placeholder. A Pin masks the Roll underneath and never replaces it, so the Roll returns when the source goes off. A Code Pin outranks a stat band, a stat band a location, a location a trait, a trait a World Option, a World Option a value Pin. An entity's own stat bands and traits are Pins in every text, for any persona, and hold while it is out of the scene. Inside one kind a global source wins, then the played persona's, then the entity later in the entity list. A Blueprint stat's band pins each Owner's own Copy.
 _Avoid_: override, lock, fixed value
+
+**World Option**:
+A player-facing setup switch on the world, authored on the Options tab: a choice of named values, a boolean, or a whole number between a min and a max. The player sets the shown ones at new game; a hidden one serves as script and gate state. It acts only through Pins (a choice value's or a boolean state's) and gates, never through AI text. A playthrough keeps one value per Option; a missing or no-longer-valid value reads the Option's default.
+_Avoid_: setting (the app's own), preference, toggle trait
 
 **Placeholder Set**:
 The read side of a list of Placeholders, bound once to whichever list a text is read against: a world's, or the list an off-world entity or dictionary carries. It answers what a text describes at design time and, given a playthrough's Rolls, what it resolves to.
