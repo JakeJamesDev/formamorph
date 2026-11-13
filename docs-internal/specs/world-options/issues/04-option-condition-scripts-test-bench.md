@@ -14,6 +14,7 @@ Gates and scripts can use World Options, and Test Bench can try them.
 - A script global exposes World Options by name: read the value, write a new one. Writes follow the existing script write timing and persist in 03's save record (Q17).
 - Test Bench lets the author pick each Option's value, and gates read the picked values. Elsewhere outside play, gates read defaults (Q25).
 - A player's mid-game Option change (05's `changeWorldOption`) runs the trait and item settle, like a trait toggle, so gates on the Option settle at once (Q41). 05 left this to 04.
+- From 07's landing: if 07 is on main when 04 lands, 04 wires play's Option values and the world's Options into the gate input in `useInPlayWorld`, and the Test Bench picker also feeds the entity-gate start input (`startGateInput`).
 - Glossary: add the World Option Condition to CONTEXT.md.
 - Docs: the wiki's Requirements and script reference pages. Changelog fragment.
 - ⚠️ Export-shape change: a new Condition kind in worlds.
