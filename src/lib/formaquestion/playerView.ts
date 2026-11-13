@@ -90,6 +90,8 @@ export interface PlayerViewInput {
   persona: Entity | null;
   /** Resolves placeholder chips the way the player sees them. */
   resolve: (text: string) => string;
+  /** Whether a runtime character is on. `world` arrives already gated; the snapshots' runtime characters do not. */
+  isEntityOn?: (entity: Entity) => boolean;
 }
 
 /** Player text with chips resolved; empty when there is none. */
@@ -164,7 +166,7 @@ function viewEntities(input: PlayerViewInput, current: GameState): PlayerViewEnt
   const personaId = persona?.id ?? null;
   const worldById = new Map(world.entities.map((e) => [e.id, e]));
   // A deleted character leaves the discovered list, so its met id resolves to nothing.
-  const discovered = current.discoveredEntities ?? [];
+  const discovered = (current.discoveredEntities ?? []).filter((d) => input.isEntityOn?.(d.entity) ?? true);
   const pool = new Map<string, Entity>();
   const texts = new Map<string, string | undefined>();
   for (const entity of world.entities) {

@@ -28,7 +28,7 @@ export function PersonaRow({ onChange, disabled = false }: {
 }) {
   const { personaRef, setPersonaRef, discoveredEntities } = useGameplay();
   const { worldId, worldOverview } = useGameData();
-  const { persona, entities: cast, worldPersonas, customPersona, resolveEntityText } = useResolvedWorld();
+  const { persona, entities: cast, worldPersonas, customPersona, resolveEntityText, inPlay } = useResolvedWorld();
   const [open, setOpen] = useState(false);
   const [options, setOptions] = useState<PersonaOption[]>([]);
   // Null until the player picks in this opening, so the picker starts on the current persona.
@@ -49,12 +49,12 @@ export function PersonaRow({ onChange, disabled = false }: {
         if (!mounted) return;
         // The played world entity counts too: a library persona it copies stays out.
         const world = worldEntitiesOf(cast, persona);
-        setOptions(inGamePersonas(library, world, pickedAtStart(discoveredEntities)).map(({ id, name, image, description }) => ({ id, name, image, description })));
+        setOptions(inGamePersonas(library, world, pickedAtStart(inPlay.discoveredOn(discoveredEntities))).map(({ id, name, image, description }) => ({ id, name, image, description })));
       },
       () => { if (mounted) setOptions([]); },
     );
     return () => { mounted = false; };
-  }, [open, cast, persona, discoveredEntities]);
+  }, [open, cast, persona, discoveredEntities, inPlay]);
 
   const showPicker = (next: boolean) => { setDraft(null); setOpen(next); };
 

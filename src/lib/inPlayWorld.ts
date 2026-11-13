@@ -34,6 +34,26 @@ export function playedEntityIdOf(persona: PersonaRef | undefined, entities: read
   return customPersonaEntity(entities)?.id ?? null;
 }
 
+/** An authored world slice with the off entities, locations and connections left out. Same object when all are on. */
+export function inPlayWorldData<W extends { entities: Entity[]; locations: GameLocation[]; connections?: Connection[] }>(
+  world: W, inPlay: Pick<InPlayWorld, 'entitiesOn' | 'isLocationOn'>,
+): W {
+  const entities = inPlay.entitiesOn(world.entities);
+  const locations = world.locations.filter((l) => inPlay.isLocationOn(l.id));
+  const connections = world.connections?.filter((c) => inPlay.isLocationOn(c.a) && inPlay.isLocationOn(c.b));
+  const same = entities.length === world.entities.length && locations.length === world.locations.length
+    && connections?.length === world.connections?.length;
+  return same ? world : { ...world, entities, locations, ...(connections ? { connections } : {}) };
+}
+
+/** An authored world slice as play sees it with `playedEntityId` as the player, for a reader with no playthrough. */
+export function inPlayWorldOf<W extends { entities: Entity[]; locations: GameLocation[]; connections?: Connection[] }>(
+  world: W, playedEntityId: string | null,
+): W {
+  const source = { entities: world.entities, locations: world.locations, connections: world.connections ?? [] };
+  return inPlayWorldData(world, resolveInPlayWorld(source, { playedEntityId }));
+}
+
 /** Drops what `keep` refuses; the same array when it refuses nothing, so readers see no new identity. */
 const kept = <T>(list: readonly T[], keep: (item: T) => boolean): T[] => {
   const out = list.filter(keep);

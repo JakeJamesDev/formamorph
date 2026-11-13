@@ -1,6 +1,6 @@
 # 02: Remaining Readers Onto The Resolver
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
@@ -19,6 +19,28 @@ Spec rulings: Implementation Decisions (In-Play World resolver), Testing Decisio
 
 ## Acceptance criteria
 
-- [ ] The parity harness covers every reader listed above, and with one entity and one location forced off, none of them shows either.
-- [ ] The guard bites: routing any one listed reader back to the raw world turns its case red.
-- [ ] A search of in-play code for direct reads of the world's entity and location lists finds only the resolver and editor code; the ticket lists any exception with its reason.
+- [x] The parity harness covers every reader listed above, and with one entity and one location forced off, none of them shows either. Behavior cases in `GameViewer.inPlayWorld.test.tsx` (script globals for entities, locations and runtime characters; placeholder pins), `aiContext.test.ts` (Test Bench AI context), `playerView.test.ts` (Player View runtime characters), each beside an on twin. Mention detection, scene image tags, the inventory pass, following, relationships, World Tools snapshots, the List and the Map read the gated `entities`, `allEntities`, `locations` and `liveScene` that 01 built; `personaReaders.test.ts` pins that wiring by source scan, and 01's cases cover the cast and the router.
+- [x] The guard bites: routing any one listed reader back to the raw world turns its case red. Mutated four: the script and pin cast (`codeEntities.world` raw), pins (`ownerPins` on the raw list), the script's runtime characters, and the Test Bench world gate. Each turned its case red.
+- [x] A search of in-play code for direct reads of the world's entity and location lists finds only the resolver and editor code; the ticket lists any exception with its reason. Exceptions are in the Landed section.
+
+## Landed
+
+**Not verified**
+
+- The Test Bench hook, the Player View call and the persona picker are pinned by source scan plus a behavior test of the function they call; no test mounts them with a gate off.
+- Code Pins carry no owner (they key by placeholder id), so an off entity's script-set Code Pin still applies. Only its trait pins are filtered. Ticket 07 (inertness) owns its scripts.
+- Mention detection, scene image tags, the inventory pass, following, relationships, List and Map were not changed: they already read 01's gated lists. No new case for each.
+
+**Exceptions: reads that stay on the authored world**
+
+- `loadGame(…, authoredEntities, …)` in GameViewer: the item-copy orphan check must not delete a disabled entity's copies.
+- `openingFold(getWorldData(), …)` at new game: stats and starting traits seed the save for the day an entity turns on.
+- `PlaceholderSessionContext` roll priming: rolls must not depend on gates.
+- `knownDiscoveredNames` (GameViewer): a hidden runtime character's name still counts as known, so discovery does not mint it again.
+- `liveStandings` runtime positions and `usePlayAvatars`: lookups by id of entities the gated lists hand over.
+- Pin location lookup (`pinsFor`): the current location keeps its pins while the player stands in it (Q10).
+- Test Bench rule pass, lens picker and editor checks read the whole authored world (Q25).
+
+**For you**
+
+- Nothing to judge: no player-visible change.

@@ -57,6 +57,36 @@ describe('entity readers in play', () => {
     { reader: 'Inventory pass owners', source: viewer, pattern: /inventoryOwnersIn\(liveScene\(location, null\), location, discovered, standings\)/ },
   ];
 
+  // Readers of the authored world slice and of the runtime characters: each is handed the gated list.
+  const testBench = read('src/lib/testBench/useTestBench.ts');
+  const gated: Array<{ reader: string; source: string; pattern: RegExp }> = [
+    { reader: 'Formaquestion Player View', source: viewer, pattern: /buildPlayerView\(\{\s*world: getInPlayWorldData\(\)[^}]*isEntityOn: inPlay\.isEntityOn/ },
+    { reader: 'Formaquestion authored world', source: viewer, pattern: /playerViewWorld\(getInPlayWorldData\(\), playerViewReach\(\)\)/ },
+    { reader: "Tool script's standalone state", source: viewer, pattern: /toolScriptSourceRef\.current = \(base\) => \{\s*const world = getInPlayWorldData\(\);/ },
+    { reader: 'script entities, runtime characters', source: viewer, pattern: /discovered: laterDiscovered\(discoveredInPlay\)/ },
+    { reader: 'script and pin entities, authored', source: read('src/lib/useResolvedWorld.ts'), pattern: /codeEntities = useMemo\(\(\) => \(\{ world: inPlay\.entities, library: libraryOn \}\)/ },
+    { reader: 'placeholder pins in view', source: read('src/lib/usePlaceholderResolver.ts'), pattern: /world: \{ traits, traitGroups, entities: inPlay\.entities \}/ },
+    { reader: 'following, runtime characters', source: viewer, pattern: /\{ runtime: discoveredInPlay, inScene: runtimeInScene \}/ },
+    { reader: 'opening pool, picked characters', source: viewer, pattern: /picked: pickedAtStart\(discoveredInPlay\)/ },
+    { reader: 'stranger labels, runtime characters', source: viewer, pattern: /\.\.\.discoveredAsEntities\(discoveredInPlay\)\], metEntities/ },
+    { reader: 'Test Bench AI context', source: testBench, pattern: /buildAiContext\(benchPlay,/ },
+    { reader: 'Test Bench gated world', source: testBench, pattern: /benchPlay = useMemo\(\(\) => inPlayWorldOf\(benchWorld, lensPersonaId\)/ },
+    { reader: 'Test Bench opening', source: testBench, pattern: /buildOpening\(benchPlay,/ },
+    { reader: 'Test Bench lens', source: testBench, pattern: /lensStatOverrides\(benchPlay,/ },
+    { reader: 'in-game persona picker', source: read('src/components/game/PersonaRow.tsx'), pattern: /pickedAtStart\(inPlay\.discoveredOn\(discoveredEntities\)\)/ },
+  ];
+
+  it.each(gated)('$reader reads the gated list', ({ source, pattern }) => {
+    expect(source).toMatch(pattern);
+  });
+
+  // The save-load orphan check and the opening fold read the authored world: a gated-off entity's item copies
+  // are no orphans, and its stats and starting traits seed the save for the day it turns on.
+  it('hands the save load the authored entities', () => {
+    expect(viewer.match(/loadGame\([^)]*authoredEntities/g)).toHaveLength(3);
+    expect(viewer).not.toMatch(/loadGame\([^)]*codeEntities\.world/);
+  });
+
   it.each(readers)('$reader reads the cast', ({ source, pattern }) => {
     expect(source).toMatch(pattern);
   });

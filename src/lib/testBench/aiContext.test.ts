@@ -1,4 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { forceOff } from '@/test/inPlayOverride';
+import { inPlayWorldOf } from '@/lib/inPlayWorld';
 import { buildDestinationsContext, buildLocationContext } from '@/lib/locationContext';
 import { rosterAsListed } from '@/test/asListed';
 import { estimateTokens } from '@/lib/memoryUtils';
@@ -11,6 +13,8 @@ import {
 import { buildLens, type LensState } from './lens';
 
 import { phValues } from '@/test/placeholderValues';
+
+vi.mock('@/lib/inPlayGates', async (original) => (await import('@/test/inPlayOverride')).withForcedOff(original));
 // A chip in an entity's name and in a connection's travel hint, so both paths through the lens are covered.
 const HAIR_CHIP = '{{ph:ph-hair:world:p1}}';
 const hairColor: Placeholder = { id: 'ph-hair', name: 'Hair Color', values: phValues(['ash', 'copper', 'jet']) };
@@ -94,6 +98,23 @@ const context = (state: LensState, over: Partial<AiContextWorld> = {}) => {
 const block = (data: ReturnType<typeof context>, id: ContextBlockId) => data.blocks.find((b) => b.id === id)!;
 const roster = (data: ReturnType<typeof context>, scope: RosterScope) =>
   data.rosters.find((r) => r.scope === scope)!;
+
+describe('the world as play sees it', () => {
+  const marketText = (data: ReturnType<typeof context>) =>
+    JSON.stringify([data.blocks.map((b) => b.text), data.destinations, data.rosters.map((r) => r.entities)]);
+
+  it('leaves out an entity and a location the gates turn off, and shows them while they are on', () => {
+    const state = at('loc-harbor');
+    const w = world();
+    const on = buildAiContext(inPlayWorldOf(w, null), buildLens({ ...w, traitGroups }, state));
+    expect(marketText(on)).toContain('The Long Market');
+    expect(marketText(on)).toContain('Mara');
+    forceOff({ entities: ['e-mara'], locations: ['loc-market'] });
+    const off = buildAiContext(inPlayWorldOf(w, null), buildLens({ ...w, traitGroups }, state));
+    expect(marketText(off)).not.toContain('The Long Market');
+    expect(marketText(off)).not.toContain('Mara');
+  });
+});
 
 describe('context blocks', () => {
   it('renders each block exactly as the game builder does for the same inputs', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { playedEntityIdOf, resolveInPlayWorld } from './inPlayWorld';
+import { inPlayWorldData, playedEntityIdOf, resolveInPlayWorld } from './inPlayWorld';
 import { forceOff } from '@/test/inPlayOverride';
 import type { Connection, DiscoveredEntity, Entity, GameLocation } from '@/types';
 
@@ -59,6 +59,23 @@ describe('the In-Play World with an entity and a location off', () => {
     const world = resolveInPlayWorld(source, { playedEntityId: 'ash' });
     expect(world.entities).toContain(ash);
     expect(resolveInPlayWorld(source, { playedEntityId: null }).entities).not.toContain(ash);
+  });
+});
+
+describe('an authored world slice under the In-Play World', () => {
+  const slice = { ...source, name: 'Sedge' };
+
+  it('is the same object when nothing is off', () => {
+    expect(inPlayWorldData(slice, resolveInPlayWorld(source, { playedEntityId: null }))).toBe(slice);
+  });
+
+  it('loses the off entity, the off location and the connection that reaches it, and keeps the rest', () => {
+    forceOff({ entities: ['ghost'], locations: ['market'] });
+    const gated = inPlayWorldData(slice, resolveInPlayWorld(source, { playedEntityId: null }));
+    expect(gated.entities.map((e) => e.id)).toEqual(['mira', 'ash']);
+    expect(gated.locations.map((l) => l.id)).toEqual(['harbor', 'stall']);
+    expect(gated.connections).toEqual([]);
+    expect(gated.name).toBe('Sedge');
   });
 });
 

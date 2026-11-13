@@ -89,6 +89,13 @@ describe('buildPlayerView entities', () => {
     expect(deleted.entities).toEqual([]);
   });
 
+  it('drops a discovered entity the gates turn off, and holds it while they leave it on', () => {
+    const invented: DiscoveredEntity = { entity: { id: 'rt-1', name: 'Ferryman', aiDescription: 'An old ferryman.' }, sourceTurnId: 't1' };
+    const chain = [state({ metEntities: ['rt-1'], discoveredEntities: [invented] })];
+    expect(view({ chain, isEntityOn: (entity) => entity.id !== 'rt-1' }).entities).toEqual([]);
+    expect(view({ chain, isEntityOn: () => true }).entities).toHaveLength(1);
+  });
+
   it("gives a peeled follower its source's player description, never the AI text it carries", () => {
     const peeled: DiscoveredEntity = {
       entity: { id: 'rt-2', name: 'Warden', aiDescription: 'Warden AI summary.' }, sourceTurnId: 't3', peeledFrom: 'warden',

@@ -23,6 +23,7 @@ import { buildOpening, EMPTY_OPENING, type OpeningChoice } from './opening';
 import { useOpeningRolls } from './useOpeningRolls';
 import { loadLastTurn, type LastTurn } from './lastTurn';
 import { openingPersonaOf } from '@/lib/openingState';
+import { inPlayWorldOf } from '@/lib/inPlayWorld';
 import { checkedScriptCount, checkScripts } from './scriptCheck';
 import { useEditorPromptRun } from '@/lib/useEditorPromptRun';
 import { lensPersonaRef, lensStatOverrides } from './lens';
@@ -189,9 +190,13 @@ export function useTestBench({
   const semantics = useTriggerSemantics(
     panelShown && benchTab === 'triggers', semanticOn, benchWorld, triggerText,
   );
+  // The instruments that show play read the world as play sees it under the lens persona; the rule pass, the
+  // lens picker and the editor-side checks keep the whole authored world.
+  const lensPersonaId = benchLens.lens.persona?.id ?? null;
+  const benchPlay = useMemo(() => inPlayWorldOf(benchWorld, lensPersonaId), [benchWorld, lensPersonaId]);
   const statOverrides = useMemo(
-    () => lensStatOverrides(benchWorld, benchLens.lens),
-    [benchWorld, benchLens.lens],
+    () => lensStatOverrides(benchPlay, benchLens.lens),
+    [benchPlay, benchLens.lens],
   );
   const triggerReport = useDebouncedTriggerReport(benchWorld, triggerText, triggerHistory, {
     semantic: semantics.input,
@@ -201,16 +206,16 @@ export function useTestBench({
   // placeholder-scanned in there, which is not work to redo on each keystroke of an edit nobody is watching.
   const aiContextLive = panelShown && benchTab === 'aiContext';
   const aiContext = useMemo(
-    () => (aiContextLive ? buildAiContext(benchWorld, benchLens.lens) : EMPTY_AI_CONTEXT),
-    [aiContextLive, benchWorld, benchLens.lens],
+    () => (aiContextLive ? buildAiContext(benchPlay, benchLens.lens) : EMPTY_AI_CONTEXT),
+    [aiContextLive, benchPlay, benchLens.lens],
   );
   // The Opening instrument's frozen rolls live above the assembly so a tab switch never rerolls them; the
   // assembly itself — stat settling, the roll table, the whole first prompt — runs only while watched.
   const openingLive = panelShown && benchTab === 'opening';
   const openingRolls = useOpeningRolls(benchWorld, openingLive);
   const opening = useMemo(
-    () => (openingLive ? buildOpening(benchWorld, benchLens.lens, openingRolls.rolls, openingChoice) : EMPTY_OPENING),
-    [openingLive, benchWorld, benchLens.lens, openingRolls.rolls, openingChoice],
+    () => (openingLive ? buildOpening(benchPlay, benchLens.lens, openingRolls.rolls, openingChoice) : EMPTY_OPENING),
+    [openingLive, benchPlay, benchLens.lens, openingRolls.rolls, openingChoice],
   );
   const rerollOpening = useCallback(
     () => openingRolls.reroll(benchLens.lens, openingChoice.startLocationId),

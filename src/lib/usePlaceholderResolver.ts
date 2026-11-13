@@ -7,6 +7,7 @@ import { activeOwnedTraitIds, addedCharacters, ownerPins, inPlayLibrary, pinBlue
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { usePersonaName } from '@/lib/useResolvedWorld';
 import { optionPinLists } from '@/lib/worldOptions';
+import { useInPlayWorld } from '@/lib/useInPlayWorld';
 import type { ResolveEntityText } from '@/lib/resolveWorldNames';
 
 /**
@@ -46,10 +47,11 @@ function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
     () => pinBlueprintsOf({ stats, statGroups, placeholders: worldPlaceholders, placeholderGroups }),
     [stats, statGroups, worldPlaceholders, placeholderGroups],
   );
+  const inPlay = useInPlayWorld();
   const pinSet = useMemo(() => ownerPins({
-    world: { traits, traitGroups, entities },
+    world: { traits, traitGroups, entities: inPlay.entities },
     persona: personaRef,
-    library: inPlayLibrary({ traits, traitGroups, entities }, libraryPersona, addedCharacters(discoveredEntities)),
+    library: inPlay.entitiesOn(inPlayLibrary({ traits, traitGroups, entities }, libraryPersona, addedCharacters(discoveredEntities))),
     globalTraits: inAuthoredOrder(viewTraits, traitOrderIndex(traits, traitGroups)),
     disabledTraitIds: viewDisabledTraitIds,
     owned: activeOwnedTraitIds(viewOwnedTraits),
@@ -64,7 +66,7 @@ function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
     rolls: placeholderRolls,
     codePins: viewCodePins,
   }), [
-    viewTraits, viewDisabledTraitIds, viewOwnedTraits, traits, traitGroups, entities, worldPlaceholders, personaRef,
+    viewTraits, viewDisabledTraitIds, viewOwnedTraits, traits, traitGroups, entities, inPlay, worldPlaceholders, personaRef,
     libraryPersona, discoveredEntities, locations, viewLocationId, viewStats, placeholders, placeholderRolls, viewCodePins,
     viewEntityStats, blueprints, options, worldOptionValues,
   ]);

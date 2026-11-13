@@ -5,8 +5,10 @@ import { playTurn, resetMoveTurnStorage, stubMoveEndpoint } from '@/test/moveTur
 import { forceOff } from '@/test/inPlayOverride';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { usePresence } from '@/lib/usePresence';
+import { useResolvedWorld } from '@/lib/useResolvedWorld';
+import { phValues } from '@/test/placeholderValues';
 import type { Presence } from '@/lib/presence';
-import type { DiscoveredEntity, Entity, GameLocation, World } from '@/types';
+import type { DiscoveredEntity, Entity, GameLocation, Placeholder, PlayerStat, World } from '@/types';
 
 /**
  * Reader coverage: an entity and a location the In-Play World resolver turns off reach no in-play reader.
@@ -132,6 +134,76 @@ describe('an entity and a location the resolver turns off', () => {
     await start(world, 'save-off');
     await waitFor(() => expect(gameplay().entityPositions).toMatchObject({ mira: 'harbor', wren: 'market' }));
     expect(gameplay().entityPositions).not.toHaveProperty('ghost');
+  });
+});
+
+// Ghost carries a default-on trait that pins Mood, and an After script reads who and where the play has.
+const moodPin: Placeholder = { id: 'mood', name: 'Mood', values: phValues(['calm', 'fierce']) };
+const ghostWithPin: Entity = { ...ghost, traits: [{ id: 't-ghost', name: 'Eerie', statChanges: [], placeholderPins: [{ placeholderId: 'mood', value: 'fierce' }] }] };
+const seenStat = (id: string, name: string): PlayerStat =>
+  ({ id, name, type: 'number', description: '', min: 0, max: 10, value: 0, regen: 0, descriptors: [] });
+const readers: World = {
+  ...harborWorld({ entities: [mira, wren, ghostWithPin], stats: [seenStat('sg', 'SeesGhost'), seenStat('sc', 'SeesCellar'), seenStat('sd', 'SeesDrifter')] }),
+  locations: world.locations,
+  connections: world.connections,
+  placeholders: [moodPin],
+  scripts: [{
+    id: 'who', timing: 'after',
+    code: 'if (entities.Ghost.name === "Ghost") stats.SeesGhost.value = 1; if (locations.Cellar.name === "Cellar") stats.SeesCellar.value = 1; if (entities.Drifter.name === "Drifter") stats.SeesDrifter.value = 1;',
+  }],
+} as unknown as World;
+
+const Resolved = () => { resolved = useResolvedWorld(); return null; };
+let resolved: ReturnType<typeof useResolvedWorld> | null = null;
+const resolvedWorld = () => {
+  if (!resolved) throw new Error('no resolved world yet');
+  return resolved;
+};
+const statValue = (name: string) => gameplay().globalStats.find((s) => s.name === name)?.value;
+
+async function startReaders() {
+  renderGameViewer(readers, { inGameplay: <><Probe /><Resolved /></>, initialOwnedTraits: { ghost: ['t-ghost'] } });
+  await screen.findByPlaceholderText(/Type your action/);
+  await waitFor(() => expect(gameplay().currentLocation).not.toBeNull());
+}
+
+describe('the readers outside the cast', () => {
+  it('see no off entity or location: the script globals, the pins and the stat code cast', async () => {
+    forceOff({ entities: ['ghost'], locations: ['cellar'] });
+    await startReaders();
+    stubMoveEndpoint('The tide turns.', {});
+    await playTurn(gameplay, 'Look around');
+    expect(statValue('SeesGhost')).toBe(0);
+    expect(statValue('SeesCellar')).toBe(0);
+    expect(resolvedWorld().pins).not.toHaveProperty('mood');
+    expect(resolvedWorld().codeEntities.world.map((e) => e.id)).not.toContain('ghost');
+  });
+
+  it('see them while they are on', async () => {
+    await startReaders();
+    stubMoveEndpoint('The tide turns.', {});
+    await playTurn(gameplay, 'Look around');
+    expect(statValue('SeesGhost')).toBe(1);
+    expect(statValue('SeesCellar')).toBe(1);
+    expect(resolvedWorld().pins).toHaveProperty('mood', 'fierce');
+    expect(resolvedWorld().codeEntities.world.map((e) => e.id)).toContain('ghost');
+  });
+
+  it('see an off runtime character in the script globals', async () => {
+    forceOff({ entities: ['drifter'] });
+    await startReaders();
+    addDrifter();
+    stubMoveEndpoint('The tide turns.', {});
+    await playTurn(gameplay, 'Look around');
+    expect(statValue('SeesDrifter')).toBe(0);
+  });
+
+  it('see a runtime character while it is on', async () => {
+    await startReaders();
+    addDrifter();
+    stubMoveEndpoint('The tide turns.', {});
+    await playTurn(gameplay, 'Look around');
+    expect(statValue('SeesDrifter')).toBe(1);
   });
 });
 

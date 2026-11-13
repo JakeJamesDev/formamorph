@@ -4,6 +4,7 @@ import {
   applyInventoryOps, applyInventoryPass, passOwners, equipRequirement, settleInventory, settleTraitsWithItems, statEffectItems, traitPicksInPlay, timedEffectViews, type ItemUse, type InventoryOp, type ItemScriptEvent,
 } from '@/lib/inventory';
 import { hasCode, isItemTiming } from '@/lib/scripts';
+import { inPlayWorldData } from '@/lib/inPlayWorld';
 import { runRowKeys } from '@/lib/worldScripts';
 import { playedEntityIds } from '@/lib/scope';
 import type { InventoryPanelSettle, PanelActionList } from '@/components/game/useInventoryPanel';
@@ -608,6 +609,7 @@ const GameViewer = ({
     worldChangedElsewhere,
     loadWorldData,
     getWorldData,
+    playEntities: authoredEntities,
   } = useGameData();
 
   // World README popup — shown once on entry (new game or save load) when the world has README text and
@@ -1070,8 +1072,8 @@ const GameViewer = ({
   strangerAliasesRef.current = strangerAliases;
   /** The met test for a met-in-play list, with the start rule for the played persona. */
   const metCheckFor = useCallback(
-    (met: readonly string[]) => metCheck(met, persona?.entity ?? null, locations, new Set(discoveredEntities.map((d) => d.entity.id))),
-    [persona, locations, discoveredEntities],
+    (met: readonly string[]) => metCheck(met, persona?.entity ?? null, locations, new Set(discoveredInPlay.map((d) => d.entity.id))),
+    [persona, locations, discoveredInPlay],
   );
   /** The ids of everyone the player has met now: the met-in-play list plus the start rule. */
   const metIdsNow = useCallback((): string[] => {
@@ -1432,9 +1434,9 @@ const GameViewer = ({
       // Seed the fixture as an id-keyed record and load it by that id.
       const id = randomUUID();
       await putSaveRecord({ ...(fx.save as unknown as Record<string, unknown>), id, name: fx.saveName } as unknown as SaveRecord);
-      await loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems, undefined, connections, inPlay.isEntityOn);
+      await loadGame(id, locations, stats, authoredEntities, worldOverview.vrmStore, worldItems, undefined, connections, inPlay.isEntityOn);
     })();
-  }, [devRoute?.fixture, locations, stats, codeEntities, loadGame, worldOverview.vrmStore, worldItems, connections, inPlay]);
+  }, [devRoute?.fixture, locations, stats, authoredEntities, loadGame, worldOverview.vrmStore, worldItems, connections, inPlay]);
   const imageAttachments = useImageAttachments();
   const mounted = useMountedRef();
   // DEV dev-router: `attach=sample` stages attached images once the game has a committed turn, through the
@@ -1796,7 +1798,7 @@ const GameViewer = ({
       locations,
       startingLocationId,
       placesOf: openingPlacesOf(openingPlacement, entities, { locations, connections }, startingLocationId),
-      picked: pickedAtStart(discoveredEntities),
+      picked: pickedAtStart(discoveredInPlay),
       persona,
       customPersona,
     });
@@ -1810,7 +1812,7 @@ const GameViewer = ({
   };
   /** A drawn row's text, with its owning entity as the Entity Name. */
   const resolveDrawn = (drawn: DrawnOpening): string => resolveOpening(drawn.opening.text, {
-    owner: openingOwner(drawn.ownerId, [...entities, ...pickedAtStart(discoveredEntities)], persona, customPersona),
+    owner: openingOwner(drawn.ownerId, [...entities, ...pickedAtStart(discoveredInPlay)], persona, customPersona),
   });
   /** The `turn.action` a re-rolled turn reads: history's "START GAME" proxy stands for the opening cue. */
   const rerolledAction = (action: string): string => {
@@ -2615,9 +2617,9 @@ const GameViewer = ({
   // time its clock advances reached. Null when code moved nothing, which leaves every pass on the memoized reads.
   // The stranger labels of an authored cast plus the discovered characters, against the live met list.
   const strangerLabelsOf = useCallback((cast: Entity[]) => labelsInPlay(
-    [...cast, ...discoveredAsEntities(discoveredEntities)], metEntities, persona?.entity ?? null, locations,
-    new Set(discoveredEntities.map((d) => d.entity.id)), strangerAliases,
-  ), [discoveredEntities, metEntities, persona, locations, strangerAliases]);
+    [...cast, ...discoveredAsEntities(discoveredInPlay)], metEntities, persona?.entity ?? null, locations,
+    new Set(discoveredInPlay.map((d) => d.entity.id)), strangerAliases,
+  ), [discoveredInPlay, metEntities, persona, locations, strangerAliases]);
 
   const turnCodeView = useCallback((over: TurnCodeState | null, elapsed?: number): SceneWrites | null => {
     if (!over) return elapsed === undefined ? null : { elapsed };
@@ -2804,15 +2806,17 @@ const GameViewer = ({
     () => buildToolSnapshot(liveScene(), withLoreToggles(playthroughDictionaries, loreToggles), toolMemorySource(), betweenTurnsScript()),
     [liveScene, playthroughDictionaries, loreToggles, toolMemorySource, betweenTurnsScript],
   );
+  // The authored world minus what the gates turn off, for every in-play reader of `getWorldData`.
+  const getInPlayWorldData = useCallback(() => inPlayWorldData(getWorldData(), inPlay), [getWorldData, inPlay]);
   /** The Player View of the current snapshot, with its chain of the turns up to it. */
   const playerViewReach = useCallback((): PlayerViewReach => {
     const current = saveCurrentGameState();
     const chain = [...gameStates.slice(0, closedTurns(fullMessageHistory)), current];
     const view = buildPlayerView({
-      world: getWorldData(), chain, history: fullMessageHistory, persona: persona?.entity ?? null, resolve: resolvePH,
+      world: getInPlayWorldData(), chain, history: fullMessageHistory, persona: persona?.entity ?? null, resolve: resolvePH, isEntityOn: inPlay.isEntityOn,
     });
     return { view, current };
-  }, [saveCurrentGameState, gameStates, fullMessageHistory, getWorldData, persona, resolvePH]);
+  }, [saveCurrentGameState, gameStates, fullMessageHistory, getInPlayWorldData, persona, resolvePH, inPlay]);
   // A Formaquestion Tool and the code test read the Player View while the game shows (Q20).
   const helpToolWorld = useCallback((fired?: readonly DictionaryEntry[]) => {
     const reach = playerViewReach();
@@ -2823,7 +2827,7 @@ const GameViewer = ({
       memory && playerViewMemory(memory), script && playerViewScript(script, reach, new Set(fired?.map((entry) => entry.id))),
     );
   }, [playerViewReach, toolMemorySource, betweenTurnsScript, liveScene, playthroughDictionaries, loreToggles]);
-  const helpAuthoredWorld = useCallback(() => playerViewWorld(getWorldData(), playerViewReach()), [getWorldData, playerViewReach]);
+  const helpAuthoredWorld = useCallback(() => playerViewWorld(getInPlayWorldData(), playerViewReach()), [getInPlayWorldData, playerViewReach]);
   // The game lean reads the Player View, the story so far as the narration builds it, and the narration's lore (Q9, Q15).
   const helpGameWorld = useCallback((): GameWorldInput => {
     const turns = parseEffectiveTurns(fullMessageHistory);
@@ -3388,12 +3392,12 @@ const GameViewer = ({
     /** The engine's view of the turn: the routines at the turn's start, at `now`. */
     const turnWorld = (now = storyNow) => positionWorldAt(now, moveFrom);
     // The runtime characters the scene list names, the only ones asked unless they already follow.
-    const runtimeInScene = new Set(discoveredEntities
+    const runtimeInScene = new Set(discoveredInPlay
       .filter((d) => participants.some((name) => sameCharacterName(name, d.entity.name)))
       .map((d) => d.entity.id));
     /** Each entity the turn asks whether it moves, with the replies it is offered. */
     const moveSubjects = (): TurnPassSubject[] => entityMoveRequests(
-      movingCast, entities, moveStart, moveFrom, turnWorld(), locations, connections, { runtime: discoveredEntities, inScene: runtimeInScene },
+      movingCast, entities, moveStart, moveFrom, turnWorld(), locations, connections, { runtime: discoveredInPlay, inScene: runtimeInScene },
     );
 
     const reportFailure = (error: unknown) =>
@@ -4208,7 +4212,7 @@ const GameViewer = ({
             traits: held.acquired, disabledTraitIds: held.disabledTraitIds, ownedTraits: held.ownedTraits, stats, entityStats: entityBase,
           }, world),
           ownerTraits: {
-            ...held, world, entities: codeEntities.world, library: libraryIn(world), discovered: laterDiscovered(discoveredEntities),
+            ...held, world, entities: codeEntities.world, library: libraryIn(world), discovered: laterDiscovered(discoveredInPlay),
             inSceneIds: presence.inScene.map(({ entity }) => entity.id),
             metIds: metIdsNow(),
           },
@@ -4871,7 +4875,7 @@ const GameViewer = ({
     return prepareStatCode(stats, stats, [], { deltaHours: 0, elapsedHours: turnClockRef.current ?? gameTime, calendar }, base ?? undefined, timing, { items });
   };
   toolScriptSourceRef.current = (base) => {
-    const world = getWorldData();
+    const world = getInPlayWorldData();
     const played = openingPersonaOf(personaRef, { libraryEntity: persona?.entity });
     const state = prepareTurnStartCode(base)?.turn.state ?? standaloneStateOf(world, played, scriptPlacesNow());
     return { state, authored: world };
@@ -6024,7 +6028,7 @@ const GameViewer = ({
       // Cold-load from the main menu: restore the save instead of starting a fresh game. Its world is
       // already in GameData (loaded before this view mounted), so `locations` here are the right ones.
       if (initialSaveId) {
-        void loadGame(initialSaveId, locations, authoredStats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits, connections, inPlay.isEntityOn)
+        void loadGame(initialSaveId, locations, authoredStats, authoredEntities, worldOverview.vrmStore, worldItems, savedOwnerTraits, connections, inPlay.isEntityOn)
           .then((loaded) => { if (loaded && mounted.current) rebaseRightDots(); });
         return;
       }
@@ -6122,7 +6126,7 @@ const GameViewer = ({
       // Each Unique entity rolls its Start, so the opening pool reads who stands at the start.
       setPlayerStartLocationId(location?.id);
       const startBook = placeAll(EMPTY_BOOK, positionWorld(
-        castRoutines(positionedCast(inPlay.entitiesOn(codeEntities.world), personaPick.ref)), storyMinute(0), location?.id, locations, connections,
+        castRoutines(positionedCast(codeEntities.world, personaPick.ref)), storyMinute(0), location?.id, locations, connections,
         undefined, location?.id,
       ));
       const startPositions = startBook.positions;
@@ -6188,6 +6192,7 @@ const GameViewer = ({
     resolveOpening,
     commitTraitState,
     codeEntities,
+    authoredEntities,
     inPlay,
     resolveTraitText,
     changeLocation,
@@ -6591,7 +6596,7 @@ const GameViewer = ({
         return false;
       }
     }
-    const loaded = await loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits, connections, inPlay.isEntityOn);
+    const loaded = await loadGame(id, locations, stats, authoredEntities, worldOverview.vrmStore, worldItems, savedOwnerTraits, connections, inPlay.isEntityOn);
     // A loaded game starts with no dots, from its own state.
     if (loaded && mounted.current) rebaseRightDots();
     return loaded;
