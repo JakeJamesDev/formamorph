@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { ChevronRight, Eye, EyeOff, ListChecks, Undo2, type LucideIcon } from 'lucide-react';
+import { ChevronRight, Eye, EyeOff, ListChecks, SlidersHorizontal, Undo2, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 /** Each entry wears the icon of the panel tab it came from (Q27). */
 const SOURCE_ICON: Record<ListedActionKind, LucideIcon> = {
   use: ItemIcon, equip: ItemIcon, unequip: ItemIcon, give: ItemIcon, drop: ItemIcon, pickup: ItemIcon, stat: StatIcon,
-  trait: TraitIcon, travel: LocationIcon, persona: PersonaIcon,
+  trait: TraitIcon, travel: LocationIcon, persona: PersonaIcon, option: SlidersHorizontal,
 };
 
 function RowButton({ tip, icon: Icon, disabled, onClick }: { tip: string; icon: LucideIcon; disabled: boolean; onClick: () => void }) {
@@ -30,7 +30,7 @@ export function SentActions({ sent }: { sent: SentActionList<unknown> | undefine
     <ul className="mt-1.5 space-y-0.5" aria-label="Since Last Turn" data-testid="sent-action-list">
       {sent.entries.map((entry) => {
         const Icon = SOURCE_ICON[entry.facts.kind];
-        const onlyYou = entry.hidden || !sent.told;
+        const onlyYou = entry.hidden || !sent.told || entry.facts.kind === 'option';
         return (
           <li key={entry.id} className="flex items-center gap-2" data-only-you={onlyYou || undefined}>
             <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -86,15 +86,19 @@ export function ActionListTray({ entries, disabled, onUndo, onToggleHidden }: {
             {entries.map((entry, i) => {
               const Icon = SOURCE_ICON[entry.facts.kind];
               const newest = i === entries.length - 1;
+              const onlyYou = entry.hidden || entry.facts.kind === 'option';
               return (
-                <li key={entry.id} className={cn('flex min-h-8 items-center gap-2 rounded-sm px-1.5 text-label', entry.hidden && 'text-muted-foreground')}>
+                <li key={entry.id} className={cn('flex min-h-8 items-center gap-2 rounded-sm px-1.5 text-label', onlyYou && 'text-muted-foreground')}>
                   <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden data-testid="action-list-icon" />
                   <span className="min-w-0 flex-1 truncate">{entryLine(entry)}</span>
-                  {entry.hidden && <Meta className="shrink-0">Only You</Meta>}
-                  <RowButton
-                    tip={entry.hidden ? 'Tell the AI' : 'Hide from the AI'} icon={entry.hidden ? EyeOff : Eye}
-                    disabled={disabled} onClick={() => onToggleHidden(entry.id)}
-                  />
+                  {onlyYou && <Meta className="shrink-0">Only You</Meta>}
+                  {/* An Option change is never told, so it has no switch. */}
+                  {entry.facts.kind === 'option' ? <span className="w-7 shrink-0" aria-hidden /> : (
+                    <RowButton
+                      tip={entry.hidden ? 'Tell the AI' : 'Hide from the AI'} icon={entry.hidden ? EyeOff : Eye}
+                      disabled={disabled} onClick={() => onToggleHidden(entry.id)}
+                    />
+                  )}
                   {newest
                     ? <RowButton tip={entry.count > 1 ? 'Undo One' : 'Undo'} icon={Undo2} disabled={disabled} onClick={onUndo} />
                     : <span className="w-7 shrink-0" aria-hidden />}

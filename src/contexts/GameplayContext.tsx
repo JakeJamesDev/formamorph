@@ -920,6 +920,7 @@ function useProvideGameplay() {
   // What the shown turn moved each entity stat: live, this turn's; on a past page, that turn's record.
   const viewEntityStatChanges = viewedSnapshot ? (viewedSnapshot.entityStatChanges ?? EMPTY_ENTITY_CHANGES) : entityStatChanges;
   const viewCodePins = viewedSnapshot ? (viewedSnapshot.codePins ?? EMPTY_PINS) : codePins;
+  const viewWorldOptionValues = viewedSnapshot ? (viewedSnapshot.worldOptionValues ?? NO_WORLD_OPTION_VALUES) : worldOptionValues;
   const viewEntityFollowers: readonly string[] = useMemo(
     () => (viewedSnapshot ? followerIds(viewedSnapshot.uniqueStates ?? {}) : entityFollowers), [viewedSnapshot, entityFollowers],
   );
@@ -1188,6 +1189,7 @@ function useProvideGameplay() {
     viewBodies,
     viewEntityStatChanges,
     viewCodePins,
+    viewWorldOptionValues,
     viewCharacterData,
     viewVisibleEntities,
     viewGameTime,

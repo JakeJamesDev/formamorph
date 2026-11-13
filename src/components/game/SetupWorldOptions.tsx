@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Slider } from '@/components/ui/slider';
@@ -14,13 +15,18 @@ interface SetupWorldOptionsProps {
   resolveText: (text: string) => string;
 }
 
-/** One Option's control: radio rows for a choice, a check row for a boolean, a slider for a number. */
-function OptionControl({ option, value, onChange, resolveText }: {
+/** One Option's control: radio rows for a choice, a check row for a boolean, a slider for a number.
+ *  With `commitOnRelease`, a slider reports once when the player lets go, not on every step. */
+export function OptionControl({ option, value, onChange, resolveText, disabled, commitOnRelease }: {
   option: WorldOption;
   value: WorldOptionValueOf;
   onChange: (value: WorldOptionValueOf) => void;
   resolveText: (text: string) => string;
+  disabled?: boolean;
+  commitOnRelease?: boolean;
 }) {
+  const [drag, setDrag] = useState<number | null>(null);
+  useEffect(() => setDrag(null), [value]);
   const name = resolveText(option.name);
   const description = option.playerDescription?.trim() ? resolveText(option.playerDescription) : '';
   const descriptionId = description ? `setup-option-${option.id}-description` : undefined;
@@ -31,7 +37,7 @@ function OptionControl({ option, value, onChange, resolveText }: {
       <div className={choiceRowClass(checked)}>
         <Checkbox
           id={id} checked={checked} onCheckedChange={(next) => onChange(next === true)}
-          aria-describedby={descriptionId} className="mt-0.5 shrink-0"
+          aria-describedby={descriptionId} className="mt-0.5 shrink-0" disabled={disabled}
         />
         <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer">
           <strong className="block break-words text-label font-semibold">{name}</strong>
@@ -50,14 +56,16 @@ function OptionControl({ option, value, onChange, resolveText }: {
     </div>
   );
   if (option.type === 'number') {
-    const n = typeof value === 'number' ? value : snapNumber(option, option.default);
+    const n = drag ?? (typeof value === 'number' ? value : snapNumber(option, option.default));
     const { lo, hi } = optionRange(option);
     return (
       <div>
         {heading(String(n))}
         <Slider
           min={lo} max={hi} step={optionStep(option)}
-          value={[n]} onValueChange={([next]) => onChange(snapNumber(option, next))}
+          value={[n]} disabled={disabled}
+          onValueChange={([next]) => (commitOnRelease ? setDrag(snapNumber(option, next)) : onChange(snapNumber(option, next)))}
+          onValueCommit={commitOnRelease ? ([next]) => { setDrag(null); onChange(snapNumber(option, next)); } : undefined}
           aria-label={name} aria-describedby={descriptionId}
         />
         <Meta as="div" className="mt-1 flex justify-between tabular-nums">
@@ -71,7 +79,7 @@ function OptionControl({ option, value, onChange, resolveText }: {
     <div>
       {heading()}
       <RadioGroup
-        value={String(value)} onValueChange={onChange} aria-label={name} aria-describedby={descriptionId} className="space-y-2"
+        value={String(value)} onValueChange={onChange} aria-label={name} aria-describedby={descriptionId} className="space-y-2" disabled={disabled}
       >
         {option.values.map((v) => {
           const id = `setup-option-${option.id}-${v.id}`;

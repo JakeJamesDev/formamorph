@@ -132,6 +132,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'gameViewer.traits': { page: 'How-to-Play', anchor: 'the-right-panel' },
   'gameViewer.inventory': { page: 'How-to-Play', anchor: 'how-to-use-your-inventory' },
   'gameViewer.location': { page: 'How-to-Play', anchor: 'the-right-panel' },
+  'gameViewer.options': { page: 'How-to-Play', anchor: 'how-to-change-a-world-option' },
   'gameViewerLayout.pages': { page: 'How-to-Play', anchor: 'narration-layout' },
   'gameViewerLayout.chat': { page: 'How-to-Play', anchor: 'narration-layout' },
 

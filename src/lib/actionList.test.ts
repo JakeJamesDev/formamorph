@@ -234,6 +234,55 @@ describe('stat edits in the Action List', () => {
   });
 });
 
+describe('World Option changes in the Action List', () => {
+  const pick = (from: string, to: string, option = 'o-style'): ListedActionFacts => ({
+    kind: 'option', option: { id: option, name: option === 'o-style' ? 'Style' : 'Length' }, from: { id: from, name: from }, to: { id: to, name: to },
+  });
+
+  it('arrives hidden, so the AI is never told, with both values in its line', () => {
+    const { list } = play([pick('plain', 'lush')]);
+    expect(list[0].hidden).toBe(true);
+    expect(toldActions(list)).toEqual([]);
+    expect(entryLine(list[0])).toBe('Style plain → lush');
+  });
+
+  it('is never told to the AI, even after the player unhides it, and never counts as shown', () => {
+    const { list } = play([pick('plain', 'lush')]);
+    const unhidden = toggleHidden(list, list[0].id);
+    expect(unhidden[0].hidden).toBe(false);
+    expect(toldActions(unhidden)).toEqual([]);
+    expect(listCounts(unhidden)).toEqual({ shown: 0, hidden: 1 });
+  });
+
+  it('merges a run of changes to one Option from the first old value, first snapshot', () => {
+    const { list } = play([pick('plain', 'lush'), pick('lush', 'terse')]);
+    expect(list).toHaveLength(1);
+    expect(entryLine(list[0])).toBe('Style plain → terse');
+    expect(list[0].snapshots).toEqual(['s0']);
+  });
+
+  it('removes the entry when the Option is set back to its old value', () => {
+    expect(play([pick('plain', 'lush'), pick('lush', 'plain')]).list).toEqual([]);
+  });
+
+  it('starts a new entry for another Option', () => {
+    expect(play([pick('plain', 'lush'), pick('1', '2', 'o-length')]).list).toHaveLength(2);
+  });
+
+  it('undoes to the snapshot before the first change', () => {
+    const { list } = play([pick('plain', 'lush'), pick('lush', 'terse')]);
+    expect(undoNewest(list)?.restore).toBe('s0');
+  });
+
+  it('restores from a save, and drops an entry whose facts are malformed', () => {
+    const sent = restoreSent({ t1: { told: true, entries: [
+      { id: 'a', count: 1, hidden: true, facts: pick('plain', 'lush') },
+      { id: 'b', count: 1, hidden: true, facts: { kind: 'option', option: { id: 'o', name: 'X' } } },
+    ] } });
+    expect(sent.t1.entries.map((e) => e.id)).toEqual(['a']);
+  });
+});
+
 describe('sending the list', () => {
   it('tells the shown entries with their counts, in list order, and writes one line each', () => {
     const { list } = play([use, use, equip, give()]);

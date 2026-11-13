@@ -113,7 +113,7 @@ import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import WorldEditor, { type EditorExit } from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemCopy, ItemEffectLedger, RuntimeItem, BodyRuntime, BodyPick, WorldOptionValues } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemCopy, ItemEffectLedger, RuntimeItem, BodyRuntime, BodyPick, WorldOption, WorldOptionValueOf, WorldOptionValues } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { narrationOf, storyText, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -281,7 +281,7 @@ import { useTurnSettle } from "../lib/useTurnSettle";
 import type { TraitCascade } from "../components/game/SetupTraitList";
 import { savedTraits } from "../lib/statCodeTraits";
 import { liveSnapshotOf, type LiveSnapshot } from "../lib/globalSaveFields";
-import { NO_WORLD_OPTION_VALUES, optionPinLists } from "../lib/worldOptions";
+import { NO_WORLD_OPTION_VALUES, optionPinLists, optionValue, optionValueRef } from "../lib/worldOptions";
 import { parseKeywords, locateMatches, type EntryActivation, type MatchHit, type MatchRule } from "../lib/dictionaryUtils";
 import { highlightSegments, HIGHLIGHT_PALETTE, type HighlightRule, type HighlightSegment } from "../lib/highlightUtils";
 import { useIsMobile } from "../lib/useIsMobile";
@@ -799,6 +799,7 @@ const GameViewer = ({
     setCodePins,
     loreToggles,
     setLoreToggles,
+    worldOptionValues,
     setWorldOptionValues,
     itemCopies,
     setItemCopies,
@@ -5701,6 +5702,18 @@ const GameViewer = ({
       reverseListedAction, takeActionSnapshot, trackPanelRun, addListedAction],
   );
 
+  /** Set a mid-game World Option between turns. It applies at once and lists as a hidden action (Q41, Q42). */
+  const changeWorldOption = useCallback((option: WorldOption, value: WorldOptionValueOf) => {
+    if (isWaitingForAI || listBusy) return;
+    const from = optionValue(option, worldOptionValues);
+    if (from === value) return;
+    const facts: ListedActionFacts = {
+      kind: 'option', option: { id: option.id, name: option.name }, from: optionValueRef(option, from), to: optionValueRef(option, value),
+    };
+    addListedAction(facts, takeActionSnapshot());
+    setWorldOptionValues({ ...worldOptionValues, [option.id]: value });
+  }, [isWaitingForAI, listBusy, worldOptionValues, addListedAction, takeActionSnapshot, setWorldOptionValues]);
+
   /** Script inventory writes through the Inventory module, checked against `over`, else the live state, and the
    *  Bodies in force under it with `baseWrites` on top (Q41, Q58). The render's Bodies can be behind a write. */
   const applyScriptOps = useCallback((copies: readonly ItemCopy[], ops: readonly InventoryOp[], over: TraitRuntimeState = liveTraitStateRef.current, replay?: HeldItems, baseWrites?: Record<string, BodyPick>) => {
@@ -6513,6 +6526,7 @@ const GameViewer = ({
       onRailClose={closeDrawer}
       onLocationClick={() => setIsLocationModalOpen(true)}
       onToggleTrait={toggleTrait}
+      onChangeWorldOption={changeWorldOption}
       actionsBusy={listBusy}
       inventorySettle={inventorySettle}
       onPersonaChange={changePersona}

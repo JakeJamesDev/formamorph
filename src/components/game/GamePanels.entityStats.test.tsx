@@ -233,7 +233,7 @@ describe('the entity view and the stat panel', () => {
     <>
       <LeftPanel entities={[bram, odette, wick] as never} onEntityClick={vi.fn()} narrationPrompt={defaultSystemPrompt} />
       <RightPanel
-        onLocationClick={vi.fn()} onToggleTrait={vi.fn()} onPersonaChange={vi.fn()} traitCascade={null}
+        onLocationClick={vi.fn()} onToggleTrait={vi.fn()} onChangeWorldOption={vi.fn()} onPersonaChange={vi.fn()} traitCascade={null}
         onDismissTraitCascade={vi.fn()} onRegenerateStats={vi.fn()} sceneImageJob={null}
       />
     </>,
@@ -268,7 +268,7 @@ describe('the entity view and the stat panel', () => {
       <>
         <LeftPanel entities={[bram, plainOdette, wick] as never} onEntityClick={vi.fn()} narrationPrompt={defaultSystemPrompt} />
         <RightPanel
-          onLocationClick={vi.fn()} onToggleTrait={vi.fn()} onPersonaChange={vi.fn()} traitCascade={null}
+          onLocationClick={vi.fn()} onToggleTrait={vi.fn()} onChangeWorldOption={vi.fn()} onPersonaChange={vi.fn()} traitCascade={null}
           onDismissTraitCascade={vi.fn()} onRegenerateStats={vi.fn()} sceneImageJob={null}
         />
       </>,

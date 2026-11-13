@@ -41,7 +41,7 @@ function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
   // force on that turn, not whatever the player has toggled or walked into since.
   const {
     placeholderRolls, viewTraits, viewDisabledTraitIds, viewOwnedTraits, viewStats, viewLocationId, viewCodePins,
-    personaRef, libraryPersona, discoveredEntities, viewEntityStats, worldOptionValues,
+    personaRef, libraryPersona, discoveredEntities, viewEntityStats, viewWorldOptionValues,
   } = useGameplay();
   const blueprints = useMemo(
     () => pinBlueprintsOf({ stats, statGroups, placeholders: worldPlaceholders, placeholderGroups }),
@@ -59,7 +59,7 @@ function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
     entityStats: viewEntityStats,
     blueprints,
   }, {
-    options: optionPinLists(options, worldOptionValues),
+    options: optionPinLists(options, viewWorldOptionValues),
     location: locations.find((l) => l.id === viewLocationId),
     stats: viewStats,
     placeholders,
@@ -68,7 +68,7 @@ function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
   }), [
     viewTraits, viewDisabledTraitIds, viewOwnedTraits, traits, traitGroups, entities, inPlay, worldPlaceholders, personaRef,
     libraryPersona, discoveredEntities, locations, viewLocationId, viewStats, placeholders, placeholderRolls, viewCodePins,
-    viewEntityStats, blueprints, options, worldOptionValues,
+    viewEntityStats, blueprints, options, viewWorldOptionValues,
   ]);
   const pins = pinSet.world;
   const name = usePersonaName(placeholderRolls, pins);

@@ -163,6 +163,7 @@ const ENTRIES: [string, string][] = [
   ['gameViewer.traits', 'Traits'],
   ['gameViewer.inventory', 'Inventory'],
   ['gameViewer.location', 'Location'],
+  ['gameViewer.options', 'World Options'],
 ];
 
 /** The label for each surface id the player can have open. */

@@ -227,7 +227,7 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 |---|---|
 | The story | The narration, the choices and the action box. While the AI works, a status strip over the bottom of the narration names the running request, such as *Generating Narration…*. A small animated icon for that request shows beside it. |
 | The left panel | The **Entities**, **Notes**, **Memory** and **Logs** tabs. The entity view shows the selected entity's Avatar, 3D model or image. See [In the Game](Avatars#in-the-game). |
-| The right panel | Your persona, the in-game date and time, and the **Stats**, **Traits**, **Inventory** and **Location** tabs |
+| The right panel | Your persona, the in-game date and time, and the **Stats**, **Traits**, **Inventory**, **Location** and **World Options** tabs |
 | Top of the left panel | **Exit to Main Menu**, the music button and the entity view's toggle |
 | Top right | **Save Game**, **Load Game**, **Settings** and **More Actions** (`...`) |
 | Bottom left | **Hide UI**, which hides the panels so only the story shows |
@@ -293,6 +293,20 @@ The **Logs** tab lists what the game changed. That includes your starting traits
 | **Traits** | Your active traits. A **Global** section holds the global traits you picked. Your persona's section is marked **You**. Entities in the scene follow. Filter them, or switch one on or off. A trait that changes the Avatar shows an Avatar icon; hover it to see which sliders or colors. |
 | **Inventory** | What you wear and what you carry. See [How to Use Your Inventory](#how-to-use-your-inventory). Shows only when the world has items or money. |
 | **Location** | Where you are, its description and the places it connects to |
+| **World Options** | The World Options you can change during play. Shows only when the world has any. See [How to Change a World Option](#how-to-change-a-world-option). |
+
+## How to Change a World Option
+<!-- keywords: world option, change during play, reply length, setting, switch, slider -->
+<!-- route: gameViewer.options -->
+
+Some worlds let you change a World Option after the game starts.
+
+1. In the right panel, open the **World Options** tab. On mobile, open **Status** first.
+2. Pick a value, switch an Option, or drag its slider.
+
+The change applies at once, and your next turn reads it. The controls stay off while a turn runs and while you read an earlier turn. An earlier turn keeps the text it was written under.
+
+The change shows under **Since Last Turn** with **Only You**, so the AI isn't told about it. Select **Undo** to restore the old value.
 
 ## How to Use Your Inventory
 <!-- keywords: items, equipment, gear, equip, wear, wield, unequip, take off, drop, give, hand over, pick up, take item, loot, bag, pack, backpack, slot, bound item, quest item, charges, use, drink, potion, consume, buff, timed effects, time left -->

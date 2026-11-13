@@ -42,7 +42,9 @@ export type ListedActionFacts =
   | { kind: 'trait'; trait: ActionRef; owner: ActionRef | null; enabled: boolean }
   /** `from` is null when the player stood nowhere. */
   | { kind: 'travel'; from: ActionRef | null; to: ActionRef }
-  | { kind: 'persona'; from: PersonaFact; to: PersonaFact };
+  | { kind: 'persona'; from: PersonaFact; to: PersonaFact }
+  /** A mid-game World Option change. `from` and `to` name the values by id and display name. */
+  | { kind: 'option'; option: ActionRef; from: ActionRef; to: ActionRef };
 
 /** A persona: `id` matches exactly when the persona does; `name` is null for None without a name. */
 export interface PersonaFact {
@@ -133,6 +135,15 @@ export function reversalOf<S>(list: ActionList<S>, facts: ListedActionFacts): { 
  */
 export function addAction<S>(list: ActionList<S>, facts: ListedActionFacts, snapshot: S, id: string): ListedAction<S>[] {
   const newest = list.at(-1);
+  // A new Option entry arrives hidden (Q42), and a change of the newest entry's Option merges into it as a stat edit does.
+  if (facts.kind === 'option') {
+    if (newest?.facts.kind === 'option' && newest.facts.option.id === facts.option.id) {
+      const rest = list.slice(0, -1);
+      if (facts.to.id === newest.facts.from.id) return rest;
+      return [...rest, { ...newest, facts: { ...newest.facts, to: facts.to } }];
+    }
+    return facts.from.id === facts.to.id ? [...list] : [...list, { id, facts, count: 1, hidden: true, snapshots: [snapshot] }];
+  }
   if (facts.kind === 'stat') {
     if (newest && sameStat(newest.facts, facts)) {
       const rest = list.slice(0, -1);
@@ -162,9 +173,9 @@ export interface ToldAction {
   count: number;
 }
 
-/** The entries a send tells the AI: the shown ones, in list order. */
+/** The entries a send tells the AI: the shown ones, in list order. An Option change is never told, shown or not (Q13). */
 export const toldActions = <S>(list: ActionList<S>): ToldAction[] =>
-  list.filter((entry) => !entry.hidden).map(({ facts, count }) => ({ facts, count }));
+  list.filter((entry) => !entry.hidden && entry.facts.kind !== 'option').map(({ facts, count }) => ({ facts, count }));
 
 /** The told entries' lines, one per entry, as the narration request carries them under the wrapper (Q19). */
 export const toldLines = (told: readonly ToldAction[]): string =>
@@ -215,7 +226,7 @@ export function reopenSent<S>(sent: SentActionList<S> | undefined): { list: List
 
 /** Every kind a saved entry may carry; a new kind fails to compile until it is added here. */
 const KINDS: Record<ListedActionKind, true> = {
-  use: true, equip: true, unequip: true, give: true, drop: true, pickup: true, stat: true, trait: true, travel: true, persona: true,
+  use: true, equip: true, unequip: true, give: true, drop: true, pickup: true, stat: true, trait: true, travel: true, persona: true, option: true,
 };
 
 /** The facts name the subject their line reads. */
@@ -225,6 +236,7 @@ const namesSubject = (facts: ListedActionFacts): boolean => {
     case 'trait': return typeof facts.trait?.name === 'string';
     case 'travel': return typeof facts.to?.name === 'string';
     case 'persona': return typeof facts.to?.id === 'string';
+    case 'option': return typeof facts.option?.name === 'string' && typeof facts.to?.id === 'string' && typeof facts.from?.id === 'string';
     default: return typeof facts.item?.name === 'string';
   }
 };
@@ -289,7 +301,7 @@ export function mapSentSnapshots<S, T>(sent: SentActionMap<S>, map: (snapshot: S
 
 /** How many rows the AI is told and how many are hidden. */
 export function listCounts<S>(list: ActionList<S>): { shown: number; hidden: number } {
-  const hidden = list.filter((entry) => entry.hidden).length;
+  const hidden = list.filter((entry) => entry.hidden || entry.facts.kind === 'option').length;
   return { shown: list.length - hidden, hidden };
 }
 
@@ -310,6 +322,7 @@ export function entryLine(entry: Pick<ListedAction<unknown>, 'facts' | 'count'>)
       case 'trait': return `Turned ${facts.enabled ? 'on' : 'off'} ${facts.owner ? `${facts.owner.name}’s ` : ''}${facts.trait.name}`;
       case 'travel': return `Traveled to ${facts.to.name}`;
       case 'persona': return `Switched persona to ${facts.to.name ?? 'None'}`;
+      case 'option': return `${facts.option.name} ${facts.from.name} → ${facts.to.name}`;
     }
   })();
   return entry.count > 1 ? `${text} ×${entry.count}` : text;

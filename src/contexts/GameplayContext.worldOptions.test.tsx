@@ -46,6 +46,27 @@ const style: WorldOption = {
   values: [{ id: 'v-plain', name: 'Plain' }, { id: 'v-lush', name: 'Lush' }],
 };
 
+describe('World Option values on a history page', () => {
+  it('reads the paged turn\'s values, and the live ones on the latest page', async () => {
+    const live = mount();
+    const turn = (n: number) => [
+      { role: 'user' as const, content: `act ${n}` }, { role: 'assistant' as const, content: `told ${n}` },
+    ];
+    const first = { ...legacySnapshot(), worldOptionValues: { 'o-style': 'v-plain' } };
+    const second = { ...legacySnapshot(), worldOptionValues: { 'o-style': 'v-lush' } };
+    await act(async () => {
+      live().setFullMessageHistory([...turn(1), ...turn(2)]);
+      live().setGameStates([first, second]);
+      live().setWorldOptionValues({ 'o-style': 'v-lush' });
+    });
+    await act(async () => { live().setUserPage(1); });
+    expect(live().isViewingPast).toBe(true);
+    expect(live().viewWorldOptionValues).toEqual({ 'o-style': 'v-plain' });
+    await act(async () => { live().setUserPage(null); });
+    expect(live().viewWorldOptionValues).toEqual({ 'o-style': 'v-lush' });
+  });
+});
+
 describe('World Option values in the save', () => {
   it('writes them into the snapshot and reads them back through a JSON round trip', async () => {
     const live = mount();

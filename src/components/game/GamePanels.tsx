@@ -40,7 +40,10 @@ import { useSlashCompletion } from '@/lib/useSlashCompletion';
 import { SuggestionList } from '@/components/SuggestionList';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Send, RefreshCw, Loader2, Headphones, Square, ChevronUp, X, MoreHorizontal, Check } from "lucide-react";
+import { Send, RefreshCw, Loader2, Headphones, Square, ChevronUp, X, MoreHorizontal, Check, SlidersHorizontal } from "lucide-react";
+import { WorldOptionsTab } from '@/components/game/WorldOptionsTab';
+import { midGameOptions } from '@/lib/worldOptions';
+import type { WorldOption, WorldOptionValueOf } from '@/types';
 import type { StoryWidth } from "@/lib/gamePanelPrefs";
 import { AvatarIcon, ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
 import { balanceRows } from '@/lib/currency';
@@ -1354,7 +1357,7 @@ const entityItems = (options: StatPanelOption[]) =>
   ));
 
 export const RightPanel = ({
-  onLocationClick, onToggleTrait, onPersonaChange, traitCascade, onDismissTraitCascade, onRegenerateStats, sceneImageJob,
+  onLocationClick, onToggleTrait, onChangeWorldOption, onPersonaChange, traitCascade, onDismissTraitCascade, onRegenerateStats, sceneImageJob,
   inventorySettle, actionsBusy = false, collapsed, placement = 'docked', railOpen, railDots, onShownTab, onRailOpen, onRailClose,
 }: {
   /** Desktop: shows the panel's rail in place of the panel. */
@@ -1376,6 +1379,8 @@ export const RightPanel = ({
   onToggleTrait: (traitId: string, enabled: boolean, ownerId: OwnerId, ownerName: string | null) => void;
   /** Script runs of an earlier panel action still go, so a listed action waits. */
   actionsBusy?: boolean;
+  /** Set a mid-game World Option; owned by GameViewer, which lists the change. */
+  onChangeWorldOption: (option: WorldOption, value: WorldOptionValueOf) => void;
   /** Settle the traits after the player picks another persona. `name` is that persona's; null for None. */
   onPersonaChange: (ref: PersonaRef, name: string | null) => void;
   /** What the player's last trait switch or persona change turned off. */
@@ -1414,6 +1419,7 @@ export const RightPanel = ({
     personaRef,
     setSelectedEntityId,
     itemCopies,
+    viewWorldOptionValues,
   } = useGameplay();
   const worldItems = useGameDataOptional()?.items;
   const {
@@ -1576,13 +1582,18 @@ export const RightPanel = ({
   // stat the player never sees can't put the line there for the ones they do.
   // A world with no stat the player can see gets no Stats tab; the panel then opens on Traits.
   const hasShownStats = globalStats.some((stat) => stat.hidden !== true) || ownersShowStats;
-  const shownTab = (!hasShownStats && activeTab === 'stats') || (!hasInventory && activeTab === 'inventory') ? 'traits' : activeTab;
+  // A world with no Option flagged for change during play gets no Options tab.
+  const playOptions = midGameOptions(gameData?.options);
+  const hasOptions = playOptions.length > 0;
+  const shownTab = (!hasShownStats && activeTab === 'stats') || (!hasInventory && activeTab === 'inventory') || (!hasOptions && activeTab === 'options')
+    ? 'traits' : activeTab;
   // The rail lists the same tabs as the panel.
   const statusTabs: RailTab[] = [
     ...(hasShownStats ? [{ value: 'stats', icon: StatIcon, label: 'Stats' }] : []),
     { value: 'traits', icon: TraitIcon, label: 'Traits' },
     ...(hasInventory ? [{ value: 'inventory', icon: ItemIcon, label: 'Inventory' }] : []),
     { value: 'location', icon: LocationIcon, label: 'Location' },
+    ...(hasOptions ? [{ value: 'options', icon: SlidersHorizontal, label: 'World Options' }] : []),
   ];
   const anyDescriptors = visibleStats.some(({ stat }) => (stat.descriptors?.length ?? 0) > 0);
   // The author's groups decide where each row sits, so a save made before a regrouping follows it.
@@ -1818,6 +1829,17 @@ export const RightPanel = ({
             />
           </ScrollArea>
         </TabsContent>
+        {hasOptions && (
+          <TabsContent value="options" className="flex-grow overflow-hidden">
+            <WorldOptionsTab
+              options={playOptions}
+              values={viewWorldOptionValues}
+              disabled={actionsBlocked || isViewingPast}
+              onChange={onChangeWorldOption}
+              resolveText={resolvePH}
+            />
+          </TabsContent>
+        )}
       </Tabs>
       {isViewingPast && (
         <p className="text-center text-meta font-medium text-primary bg-primary/10 rounded py-0.5 mt-2 flex-shrink-0">

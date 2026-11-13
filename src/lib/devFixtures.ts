@@ -4,7 +4,7 @@
  * or replaying turns. Loaded via dynamic `import()` so each fixture is a separate chunk fetched only when
  * `loadDevFixture` runs (DEV-gated), never in the production bundle. See `devRouter.ts` / [[formamorph-dev-router]].
  */
-import type { Body, Currency, Entity, EntityStatValues, GameLocation, Item, Placement, ScheduleRow, Slot, Trait, World, SaveObject } from '@/types';
+import type { Body, Currency, WorldOption, Entity, EntityStatValues, GameLocation, Item, Placement, ScheduleRow, Slot, Trait, World, SaveObject } from '@/types';
 import { withMembership } from './entityPlaces';
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 import { DEFAULT_WORLDS, seedWorldData, type DefaultWorldSeed } from './defaultWorlds';
@@ -15,7 +15,7 @@ const BUNDLED_PREFIX = 'bundled-';
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
 export const DEV_FIXTURES = [
   'whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'avatarIcon',
-  'entityPresence', 'entityFollowers', 'mapStrangers', 'mapBackground', 'items',
+  'entityPresence', 'entityFollowers', 'mapStrangers', 'mapBackground', 'items', 'options',
   ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
 ];
 
@@ -31,6 +31,18 @@ export interface DevFixture {
   /** Library entities the player picked at Enter World, for a new game. */
   picked?: Entity[];
 }
+
+const DEV_OPTIONS: WorldOption[] = [
+  {
+    id: 'dev-opt-length', name: 'Reply Length', type: 'choice', shownToPlayer: true, midGame: true, default: 'dev-len-medium',
+    playerDescription: 'How much the narrator writes each turn',
+    values: [{ id: 'dev-len-short', name: 'Short' }, { id: 'dev-len-medium', name: 'Medium' }, { id: 'dev-len-long', name: 'Long' }],
+  },
+  { id: 'dev-opt-gore', name: 'Graphic Violence', type: 'boolean', shownToPlayer: true, midGame: true, default: false },
+  { id: 'dev-opt-pace', name: 'Pacing', type: 'number', shownToPlayer: true, midGame: true, min: 1, max: 5, default: 3 },
+  { id: 'dev-opt-setup', name: 'Starting Season', type: 'boolean', shownToPlayer: true, midGame: false, default: true },
+  { id: 'dev-opt-secret', name: 'Secret Flag', type: 'boolean', shownToPlayer: false, midGame: true, default: false },
+];
 
 const portrait = (fill: string) =>
   `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="288"><rect width="240" height="288" fill="${fill}"/></svg>`)}`;
@@ -403,6 +415,18 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       const world = (await import('./devFixtures/whiteRoomWorld.json')).default as unknown as World;
       const locations = world.locations.map((l) => (l.id === WHITE_ROOM_ID ? { ...l, parentId: DEV_KEEP.id } : l));
       return { world: { ...world, locations: [DEV_KEEP, ...locations], entities: [...world.entities, ...ENTITY_PRESENCE_CAST] } };
+    }
+    case 'options': {
+      // The white room (8 turns) with World Options: three the player changes mid-game, one set at new game only, and a hidden flag.
+      const [world, save] = await Promise.all([
+        import('./devFixtures/whiteRoomWorld.json'),
+        import('./devFixtures/whiteRoomSave.json'),
+      ]);
+      return {
+        world: { ...(world.default as unknown as World), options: DEV_OPTIONS },
+        save: save.default as unknown as SaveObject,
+        saveName: 'DEV: World Options',
+      };
     }
     case 'items': {
       // The white room with three items and two slots: a stacked single-use tonic, a bound three-use wand in Hand, and

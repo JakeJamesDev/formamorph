@@ -1,5 +1,6 @@
 // World Options: setup switches that act through placeholder pins and never add text to the AI.
 
+import type { ActionRef } from './actionList';
 import type { PlaceholderPin, WorldOption, WorldOptionType, WorldOptionValueOf, WorldOptionValues } from '@/types';
 
 /** The value ids a boolean Option's pin lists sit under. */
@@ -85,6 +86,19 @@ export function optionPinLists(options: readonly WorldOption[] | undefined, valu
 /** The Options the player sees at new game. */
 export const shownOptions = (options: readonly WorldOption[] | undefined): WorldOption[] =>
   (options ?? []).filter((o) => o.shownToPlayer);
+
+/** The Options the in-game tab lists: shown to the player and flagged for change during play (Q26). */
+export const midGameOptions = (options: readonly WorldOption[] | undefined): WorldOption[] =>
+  shownOptions(options).filter((o) => o.midGame);
+
+/** `value` of `option` as an id and a display name, for a Listed Action's facts. */
+export function optionValueRef(option: WorldOption, value: WorldOptionValueOf): ActionRef {
+  switch (option.type) {
+    case 'choice': return { id: String(value), name: option.values.find((v) => v.id === value)?.name ?? String(value) };
+    case 'boolean': return value ? { id: BOOLEAN_ON, name: 'On' } : { id: BOOLEAN_OFF, name: 'Off' };
+    case 'number': return { id: String(value), name: String(value) };
+  }
+}
 
 /** A new Option of `type`: shown, set at new game only. `newId` mints a choice's first values. */
 export function blankOption(type: WorldOptionType, id: string, name: string, newId: () => string): WorldOption {

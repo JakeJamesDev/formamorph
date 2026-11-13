@@ -286,9 +286,9 @@ export const DEV_MODAL_TABS = {
   // (`#dev?modal=settings&tab=prompts&subtab=overview`). A built-in preset shows none and lands on Narration.
   settingsPromptPreset: ['overview'],
   // GameViewer's side panels: Entities/Notes/Memory/Logs on the left, Stats/Traits/Inventory/Location on the
-  // right. Also not a modal: `#dev?view=gameViewer&tab=memory`. Inventory shows with `fixture=items`.
-  // The mobile-only `model` tab is deliberately not routable.
-  gameViewer: ['entities', 'notes', 'memory', 'logs', 'stats', 'traits', 'inventory', 'location'],
+  // right. Also not a modal: `#dev?view=gameViewer&tab=memory`. Inventory shows with `fixture=items`; World
+  // Options shows with `fixture=options` (`tab=options`). The mobile-only `model` tab is deliberately not routable.
+  gameViewer: ['entities', 'notes', 'memory', 'logs', 'stats', 'traits', 'inventory', 'location', 'options'],
   // The narration panel's layout, reached with `mode=…` on the game view (`#dev?view=gameViewer&mode=chat`).
   // It overrides the Narration Layout setting without saving it.
   gameViewerLayout: ['pages', 'chat'],
