@@ -242,6 +242,15 @@ function cardRequirement(condition: unknown): TraitRequirement[] {
   if (!isRecord(raw) || typeof raw.id !== 'string') return [];
   const not = notFlag(raw.not);
   if (raw.kind === 'playingAs') return [{ kind: raw.kind, id: raw.id, ...nameOf(raw), ...not }];
+  if (raw.kind === 'option') {
+    const { operator, value, valueId } = raw;
+    const valueName = typeof raw.valueName === 'string' && raw.valueName ? { valueName: raw.valueName } : {};
+    if (operator !== undefined) {
+      return isStatComparison(operator) && typeof value === 'number' && Number.isFinite(value)
+        ? [{ kind: 'option', id: raw.id, ...nameOf(raw), operator, value }] : [];
+    }
+    return [{ kind: 'option', id: raw.id, ...nameOf(raw), ...(typeof valueId === 'string' && valueId ? { valueId, ...valueName } : {}), ...not }];
+  }
   if (raw.kind === 'stat') {
     const { operator, value, unit } = raw;
     if (!isStatComparison(operator) || typeof value !== 'number' || !Number.isFinite(value) || (unit !== 'raw' && unit !== 'percent')) return [];

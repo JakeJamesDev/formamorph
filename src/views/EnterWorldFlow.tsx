@@ -52,7 +52,7 @@ import {
   buildEnterFlow, entryAvatarInUse, entryVrmPick, navigableSteps, type EntryVrmInput, type EnterMode, type EnterStep, type NavigableStep,
 } from '@/lib/enterFlow';
 import type {
-  CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, OwnedTraitPicks, PersonaRef, VrmPick, WorldOptionValues,
+  CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, OwnedTraitPicks, PersonaRef, VrmPick, WorldOptionValueOf, WorldOptionValues,
 } from '@/types';
 
 export type StartGame = (
@@ -238,9 +238,9 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const entryWorld = useMemo<EntryTraitWorld>(
     () => ({
       traits, traitGroups, entities: resolvedWorldEntities, library: libraryCast, stats: rawStats, statGroups: rawStatGroups,
-      items: worldItems, placements: worldPlacements, slots: worldSlots, bodies: worldBodies, locations: rawLocations,
+      items: worldItems, placements: worldPlacements, slots: worldSlots, bodies: worldBodies, locations: rawLocations, options: worldOptions,
     }),
-    [traits, traitGroups, resolvedWorldEntities, libraryCast, rawStats, rawStatGroups, worldItems, worldPlacements, worldSlots, worldBodies, rawLocations],
+    [traits, traitGroups, resolvedWorldEntities, libraryCast, rawStats, rawStatGroups, worldItems, worldPlacements, worldSlots, worldBodies, rawLocations, worldOptions],
   );
   const rawEntryWorld: EntryTraitWorld = {
     traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, library: libraryCast, stats: rawStats, statGroups: rawStatGroups,
@@ -292,6 +292,14 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     const picked = ref.source === 'world' ? worldPersonaOptions.find((p) => p.id === ref.entityId)
       : ref.source === 'library' ? personaOptions.find((p) => p.id === ref.entityId) : undefined;
     setTraitCascade(cascadeFrom(result, picked?.name ?? 'the persona change'));
+  };
+
+  // An Option pick can open or close Option gates, so the traits settle against the new value (Q43).
+  const handleOptionChange = (id: string, value: WorldOptionValueOf) => {
+    const next = { ...entryDraft, optionValues: { ...entryDraft.optionValues, [id]: value } };
+    const result = settle(entryGateInput(entryWorld, next), cascadeOffInput(next.cascadeOffTraitIds));
+    reviseDraft(() => withSettledTraits(next, result));
+    setTraitCascade(cascadeFrom(result, worldOptions.find((o) => o.id === id)?.name ?? 'the World Option change'));
   };
 
   /**
@@ -605,7 +613,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
           traitGroups={traitGroups}
           options={worldOptions}
           optionValues={entryDraft.optionValues}
-          onOptionChange={(id, value) => updateDraft('optionValues', (current) => ({ ...current, [id]: value }))}
+          onOptionChange={handleOptionChange}
           traitEntities={entryTraitEntities}
           traitLibrary={entryWorld.library}
           resolveEntityText={resolveEntityText}

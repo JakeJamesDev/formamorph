@@ -448,6 +448,8 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
     return {
       clock: state.clock, ...(read.stats.readings ? { readings: read.stats.readings } : {}), ...(state.turn && { turn: turnRead(state.turn, unit) }),
       ...(takesChoicesWrite(unit, state.turn) && { choicesWritable: true }),
+      ...(state.ownerTraits.world.options?.length && { worldOptions: state.ownerTraits.world.options }),
+      ...(state.ownerTraits.world.optionValues && { optionValues: state.ownerTraits.world.optionValues }),
       enabled: read.stats.enabled,
       placeholders: read.placeholders, traits: read.traits, ...read.inPlay,
       ...(owner && { owner }), dictionaries: read.dictionaries, ...(read.resolveEntryValue && { resolveEntryValue: read.resolveEntryValue }),

@@ -86,6 +86,8 @@ const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProp
     statOverrides: [],
     onPersonaChange: vi.fn(),
     onLocationChange: vi.fn(),
+    worldOptions: [],
+    onOptionChange: vi.fn(),
     ...over.lens,
   },
   triggers: {

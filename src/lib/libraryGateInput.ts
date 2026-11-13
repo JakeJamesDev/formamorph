@@ -18,5 +18,6 @@ export function libraryGateInput(entity: Entity, world: LibraryEditorWorld | nul
   return editorGateInput({
     traits: world?.traits ?? [], traitGroups: world?.traitGroups ?? [],
     entities: [...(world?.entities ?? []).filter((e) => e.id !== entity.id), bindOwnedTraits(entity, world ?? NO_WORLD)],
+    ...(world?.options ? { options: world.options } : {}),
   }, startingGateStats({ entities: [entity] }));
 }

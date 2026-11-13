@@ -4,6 +4,7 @@ import {
   lensWithPersona, seedLens, type BenchLens, type LensOption, type LensState, type LensWorld,
 } from './lens';
 import { readLensState, writeLensState } from './lensStore';
+import type { WorldOptionValueOf } from '@/types';
 
 export interface BenchLensHandle {
   lens: BenchLens;
@@ -13,6 +14,8 @@ export interface BenchLensHandle {
   locationOptions: LensOption[];
   setPersona: (personaId: string | null) => void;
   setLocation: (locationId: string | null) => void;
+  /** Picks one World Option's value for every instrument (Q25). */
+  setOptionValue: (optionId: string, value: WorldOptionValueOf) => void;
 }
 
 /**
@@ -56,5 +59,9 @@ export function useBenchLens(
     locationOptions: useMemo(() => lensLocationOptions(world), [world]),
     setPersona: useCallback((personaId: string | null) => apply(lensWithPersona(world, state, personaId)), [apply, state, world]),
     setLocation: useCallback((locationId: string | null) => apply({ ...state, locationId, locationChosen: true }), [apply, state]),
+    setOptionValue: useCallback(
+      (optionId: string, value: WorldOptionValueOf) => apply({ ...state, optionValues: { ...state.optionValues, [optionId]: value } }),
+      [apply, state],
+    ),
   };
 }

@@ -146,6 +146,8 @@ export interface AnalysisOptions {
   /** The global stat names, in authored order: what `stats` keys in every box. Absent, stat names are neither
    *  offered nor checked. */
   statNames?: readonly string[];
+  /** The World Option names `options` keys, in Options-tab order. Absent, Option names are not checked. */
+  optionNames?: readonly string[];
   /** Whose code this is. Absent in a global stat's box. */
   owner?: CodeOwnerKind;
   /** The stat names `owner.stats` keys: the entity's own, or a Blueprint group's. None in a global stat's box,
@@ -199,10 +201,10 @@ const reachesOwnStat = (text: string, selfName: string | undefined, owned: boole
   || (selfName !== undefined && indexesStat(text, selfName, owned));
 
 /** What one entry of a name-keyed sandbox map is called in a message. */
-export type EntryNoun = 'placeholder' | 'trait' | 'stat' | 'entity' | 'dictionary';
+export type EntryNoun = 'placeholder' | 'trait' | 'stat' | 'entity' | 'dictionary' | 'World Option';
 
 const PLURAL: Record<EntryNoun, string> = {
-  placeholder: 'placeholders', trait: 'traits', stat: 'stats', entity: 'entities', dictionary: 'dictionaries',
+  placeholder: 'placeholders', trait: 'traits', stat: 'stats', entity: 'entities', dictionary: 'dictionaries', 'World Option': 'World Options',
 };
 
 /** One entry per distinct name of a `kind` of map entry. `dotted` keeps only the names a `.` can reach; the
@@ -638,7 +640,7 @@ function isPlaceholderWriteCall(node: SyntaxNode, code: string, inScope: (root: 
 /** The name a `root.Name` or `root["Name"]` member names, or null for any other member and for a key only a
  *  run could know. */
 function entryRef(
-  node: SyntaxNode, code: string, root: 'placeholders' | 'traits' | 'stats' | 'persona' | 'owner' | 'entities' | 'dictionaries' | ReadOnlyGlobal,
+  node: SyntaxNode, code: string, root: 'placeholders' | 'traits' | 'stats' | 'persona' | 'owner' | 'entities' | 'dictionaries' | 'options' | ReadOnlyGlobal,
 ): EntryRef | null {
   const object = node.firstChild;
   if (object?.name !== 'VariableName' || code.slice(object.from, object.to) !== root) return null;
@@ -1300,6 +1302,7 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
   const entitiesInScope = rules.entities && !declared.has('entities');
   const dictionariesInScope = rules.dictionaries && !declared.has('dictionaries');
   const statsInScope = rules.stats && !declared.has('stats');
+  const optionsInScope = surfaceHasGlobal(surface, 'options') && !declared.has('options');
   const clockInScope = rules.stats && !declared.has('clock');
   const selfInScope = rules.self && !declared.has('self');
   const switchedTraitInScope = surfaceHasGlobal(surface, 'trait') && !declared.has('trait');
@@ -1436,6 +1439,11 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
       const ref = entryRef(cursor.node, code, 'stats');
       // The empty key reaches an unnamed stat, which no name list carries.
       const problem = ref?.name && !overlapsAny(ref.from, ref.to, ranges) ? checkEntryName(ref, options.statNames, 'stat', undefined, { kind: 'stat', root: 'stats', segments: [ref.name] }) : null;
+      if (problem) diagnostics.push(problem);
+    }
+    if (cursor.type.name === 'MemberExpression' && options.optionNames && optionsInScope) {
+      const ref = entryRef(cursor.node, code, 'options');
+      const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkEntryName(ref, options.optionNames, 'World Option') : null;
       if (problem) diagnostics.push(problem);
     }
     if (cursor.type.name === 'MemberExpression') {

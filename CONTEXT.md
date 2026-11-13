@@ -666,7 +666,7 @@ One alternative in a Requirement. A row holds when every Condition in it holds (
 _Avoid_: clause, branch, group (a group is a trait group)
 
 **Condition**:
-One check in a Requirement Row: a trait, any trait in a group, a persona the player plays as, a stat, or an item, with an optional owner, or the time of day. A Condition can carry the Not flag, and then it holds while its target is off. Not is a flag on a Condition, not a separate item. A Time Condition has no Not.
+One check in a Requirement Row: a trait, any trait in a group, a persona the player plays as, a stat, or an item, with an optional owner, or the time of day, or a World Option. A Condition can carry the Not flag, and then it holds while its target is off. Not is a flag on a Condition, not a separate item. A Time Condition has no Not.
 _Avoid_: exclusion, negation, rule, requirement (a Requirement is the whole gate)
 
 **Stat Condition**:
@@ -680,6 +680,10 @@ _Avoid_: item gate, inventory check
 **Time Condition**:
 A Condition that holds while the story clock's daypart is one of a set: night, dawn, morning, midday, afternoon, evening. Dayparts split the day by fraction, as the narration's do. It has no owner and no Not, and it never tests the day number or an hour. The game reads it once per turn commit, after the turn's time passes. Outside play it reads the opening hour, which is morning. Traits and image Visibility rules share it.
 _Avoid_: time gate, schedule, hour condition
+
+**World Option Condition**:
+A Condition on a World Option. On a choice it holds while the Option holds one value; on an On or Off it holds while the Option is on; Not flips either. On a number it compares with the six stat operators and has no Not. It has no owner. In play it reads the playthrough's value; at Enter World, the player's pick; in Test Bench, the author's pick; elsewhere outside play, the default. Player lines leave out a Condition on a hidden World Option. Traits and image Visibility rules share it.
+_Avoid_: option gate, setting condition
 
 **Visibility rule**:
 Requirement Rows on one gallery image. In play the image shows while any row holds, and an image with no rows always shows. The primary is the first visible image in author order. Outside play slot 0 shows and rules are ignored. The summary reads "Shown while …". The trait side of the same rows is a Requirement.

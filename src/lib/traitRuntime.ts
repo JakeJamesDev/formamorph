@@ -61,6 +61,10 @@ export type TraitWorld = {
   items?: GateInput['worldItems'];
   /** Every Item Copy in play, hidden ones included. Absent ⇒ no one owns anything. */
   itemCopies?: readonly ItemCopy[];
+  /** The world's Options an Option Condition reads. Absent ⇒ every Option Condition is unresolved. */
+  options?: GateInput['worldOptions'];
+  /** The playthrough's Option values. Absent ⇒ each Option's default. */
+  optionValues?: GateInput['optionValues'];
 } & (
   | { entities?: readonly GateEntity[]; global?: undefined; owners?: undefined }
   /** Global scope's tree and every present entity owner as the gate module reads them (see lib/owners).
@@ -715,6 +719,8 @@ export const traitGateInput = (state: GateStatState, world: TraitWorld): GateInp
   ...(world.daypart ? { daypart: world.daypart } : {}),
   ...(world.items ? { worldItems: world.items } : {}),
   ...(world.itemCopies ? { itemCopies: world.itemCopies } : {}),
+  ...(world.options ? { worldOptions: world.options } : {}),
+  ...(world.optionValues ? { optionValues: world.optionValues } : {}),
   ...grantInput(state.ownedTraits),
   entities: world.entities ?? [],
   persona: world.persona ?? { source: 'none' },

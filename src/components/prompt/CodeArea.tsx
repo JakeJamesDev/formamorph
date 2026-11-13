@@ -87,6 +87,8 @@ interface CodeAreaProps {
   entities?: readonly CodeEntityNames[];
   /** The world's location code names, completed after `locations` and listed by the Variable menu. */
   locations?: readonly string[];
+  /** The World Option names, checked after `options`. */
+  optionNames?: readonly string[];
   /** The world's items by code name, listed by the Variable menu. */
   items?: readonly { id: string; name: string }[];
   /** The world's Currencies by code name, listed by the Variable menu. */
@@ -310,12 +312,14 @@ export function CodeArea(props: CodeAreaProps) {
 
   // A template has no world, so its tree types over each name.
   const variableTree = useCallback(() => {
-    const { slots: template, statNames, owner, placeholders, traits, entities, locations, items, currencies, surface, variables } = latest.current;
+    const { slots: template, statNames, owner, placeholders, traits, entities, locations, items, currencies, optionNames, surface, variables } = latest.current;
     if (!surface.statMaps) return variables?.() ?? [];
     // A box that gives a menu beside stat maps, such as a World Tool's arguments, lists it first.
     const tree = [
       ...variables?.() ?? [],
-      ...buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities, locations, items, currencies }, owner, surface.selfIs ?? 'stat', timingGlobalsOf(surface)),
+      ...buildVariableTree(
+        template ? undefined : { statNames, placeholders, traits, entities, locations, items, currencies, optionNames }, owner, surface.selfIs ?? 'stat', timingGlobalsOf(surface),
+      ),
     ];
     return surface.readOnly ? readOnlyTree(tree) : tree;
   }, []);
@@ -342,6 +346,7 @@ export function CodeArea(props: CodeAreaProps) {
         traits: latest.current.traits?.map((trait) => trait.name),
         entities: latest.current.entities,
         locations: latest.current.locations,
+        optionNames: latest.current.optionNames,
         lookup: () => latest.current.lookup,
         navigation: () => {
           const navigation = latest.current.navigation;
@@ -389,6 +394,7 @@ export function CodeArea(props: CodeAreaProps) {
   useEffect(() => { session?.setTraits(traitNames); }, [session, traitNames]);
   useEffect(() => { session?.setEntities(props.entities); }, [session, props.entities]);
   useEffect(() => { session?.setLocations(props.locations); }, [session, props.locations]);
+  useEffect(() => { session?.setOptionNames(props.optionNames); }, [session, props.optionNames]);
   const { revealLine, autoFocus } = props;
   useEffect(() => {
     if (session && autoFocus) session.focus();

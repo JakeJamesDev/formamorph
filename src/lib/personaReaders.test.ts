@@ -70,7 +70,7 @@ describe('entity readers in play', () => {
     { reader: 'opening pool, picked characters', source: viewer, pattern: /picked: pickedAtStart\(discoveredInPlay\)/ },
     { reader: 'stranger labels, runtime characters', source: viewer, pattern: /\.\.\.discoveredAsEntities\(discoveredInPlay\)\], metEntities/ },
     { reader: 'Test Bench AI context', source: testBench, pattern: /buildAiContext\(benchPlay,/ },
-    { reader: 'Test Bench gated world', source: testBench, pattern: /benchPlay = useMemo\(\(\) => inPlayWorldOf\(benchWorld, lensPersonaId\)/ },
+    { reader: 'Test Bench gated world', source: testBench, pattern: /benchPlay = useMemo\(\(\) => inPlayWorldOf\(benchWorld, lensPersonaId, lensOptionValues\)/ },
     { reader: 'Test Bench opening', source: testBench, pattern: /buildOpening\(benchPlay,/ },
     { reader: 'Test Bench lens', source: testBench, pattern: /lensStatOverrides\(benchPlay,/ },
     { reader: 'in-game persona picker', source: read('src/components/game/PersonaRow.tsx'), pattern: /pickedAtStart\(inPlay\.discoveredOn\(discoveredEntities\)\)/ },

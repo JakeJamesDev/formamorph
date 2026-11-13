@@ -5,7 +5,7 @@ import type {
 import type { BodyWorld } from './bodies';
 import { bareLoreWrite, withLoreWrites, type LoreWrite } from './loreToggles';
 import {
-  CODE_BOUND_FIELDS, type EntityTraitWrites, type NarrationInput, type PlaceholderWrite, type StatClock, type StatCodeResult,
+  CODE_BOUND_FIELDS, type EntityTraitWrites, type NarrationInput, type OptionWrite, type PlaceholderWrite, type StatClock, type StatCodeResult,
   type StatTurnInputs, type StatWrite, type SandboxTurn, type TraitWrite, type ValueAndMax, type SandboxMemory, type SandboxPlace, type WorldWrites,
 } from './statCodeExecutor';
 import { mergeWorldWrites } from './worldWrites';
@@ -17,9 +17,10 @@ import type { StatCodePlaceholderSet } from './statCodePlaceholders';
 import { recordKey } from './ownedTraitState';
 import type { StatCodeOwners } from './statCodeTraits';
 import {
-  applyCodeTraitSwitches, codeDeltaFor, gateStatsOf, ownerStatTraitsInForce, sameCodeDelta, sameHidden, traitForceScope, traitSwitchEvents, withCodeDelta,
-  type AppliedTraitValues, type CodeTraitSwitch, type TraitForceState, type TraitSwitchEvent, type TraitWorld,
+  applyCodeTraitSwitches, codeDeltaFor, gateStatsOf, ownerStatTraitsInForce, sameCodeDelta, sameHidden, settleTraits, traitForceScope, traitSwitchEvents, withCodeDelta,
+  type AppliedTraitValues, type CodeTraitSwitch, type GatedTraitResult, type TraitForceState, type TraitSwitchEvent, type TraitWorld,
 } from './traitRuntime';
+import { withOptionWrites } from './worldOptions';
 import {
   runtimeStateOf, snapshotOf, switchedTraitOf, withStateGateStats, type SandboxSnapshot, type SnapshotOptions, type TraitSwitchWrite, type TurnReadings, type UnitHome,
 } from './sandboxSnapshot';
@@ -231,6 +232,8 @@ export interface SavedScriptWrites {
   lore?: LoreWrite[];
   /** Absent ⇒ none. A write naming a copy the turn made skips on replay, which makes new ids (Q49). */
   inventory?: InventoryOp[];
+  /** World Option values, in write order. Absent ⇒ none. */
+  options?: OptionWrite[];
 }
 
 /** A World Tool call replayed from its saved writes: the Tool's name, for the switch log, and the writes. */
@@ -286,6 +289,8 @@ export interface StatCodeTurnResult {
   worldWrites?: WorldWrites;
   /** Every entry field the run's scripts wrote, in run order, so the later write wins. Absent when none wrote one. */
   loreWrites?: LoreWrite[];
+  /** Every World Option value the run's scripts wrote, in run order, so the later write wins. Absent when none wrote one. */
+  optionWrites?: OptionWrite[];
   /** What the run's inventory writes left. Absent when no script wrote one. */
   items?: ChainedItems;
   /** Present on a run with triggers. */
@@ -374,6 +379,7 @@ const RESULT_WARNINGS = {
   disabledStatWrites: 'wrote switched-off stats',
   unknownEntities: 'switched traits of entities not in the game',
   unknownLore: 'wrote dictionary entries the game does not have',
+  unknownOptions: 'wrote World Options the world does not have',
 } as const satisfies Partial<Record<keyof StatCodeResult, string>>;
 
 /** Each entity row field that lists dropped writes, and how the warning describes it for `whose` traits. */
@@ -434,6 +440,7 @@ interface ScriptWrites {
   traits?: StatTraitWrites;
   world?: WorldWrites;
   lore?: readonly LoreWrite[];
+  options?: readonly OptionWrite[];
 }
 
 /** One stat's fields a box wrote. */
@@ -461,20 +468,21 @@ function targetWrites(stat: PlayerStat | null, result: StatCodeResult, ownerId: 
 }
 
 /** `writes` as a save keeps them; empty fields are left out. */
-function savedWrites({ stats, placeholders, traits, lore, world }: ScriptWrites): SavedScriptWrites {
+function savedWrites({ stats, placeholders, traits, lore, world, options }: ScriptWrites): SavedScriptWrites {
   return {
     ...(stats.size ? { stats: [...stats].map(([owner, writes]) => ({ owner, writes: [...writes] })) } : {}),
     ...(placeholders.length ? { placeholders: [...placeholders] } : {}),
     ...(traits ? { traits } : {}),
     ...(lore?.length ? { lore: [...lore] } : {}),
     ...(world?.inventory?.length ? { inventory: [...world.inventory] } : {}),
+    ...(options?.length ? { options: [...options] } : {}),
   };
 }
 
 /** Saved writes as a run lays them on. */
-const scriptWritesOf = ({ stats = [], placeholders = [], traits, lore, inventory }: SavedScriptWrites): ScriptWrites => ({
+const scriptWritesOf = ({ stats = [], placeholders = [], traits, lore, inventory, options }: SavedScriptWrites): ScriptWrites => ({
   stats: new Map(stats.map(({ owner, writes }) => [owner, writes])), placeholders, ...(traits ? { traits } : {}), ...(lore ? { lore } : {}),
-  ...(inventory ? { world: { inventory } } : {}),
+  ...(inventory ? { world: { inventory } } : {}), ...(options ? { options } : {}),
 });
 
 /** One script's writes by target scope, each target stat's merged field by field, its later write winning a field. */
@@ -902,7 +910,9 @@ export function afterRun(turn: StatCodeTurn, result: StatCodeTurnResult): StatCo
         if (!ran) return owner;
         return { ...owner, stats: ran.stats, enabled: ran.inForce ? activeStatEnabled(ran.stats, ran.inForce) : owner.enabled };
       }),
-      ownerTraits,
+      ownerTraits: result.optionWrites?.length
+        ? { ...ownerTraits, world: { ...ownerTraits.world, optionValues: withOptionWrites(ownerTraits.world.optionValues, result.optionWrites) } }
+        : ownerTraits,
       placeholders: set && { ...set, codePins, ...(pins ? { pins } : {}) },
       ...(result.loreWrites ? { loreToggles: withLoreWrites(state.loreToggles ?? {}, result.loreWrites) } : {}),
       // The switch runs of a commit read the choices the batch left.
@@ -942,6 +952,7 @@ export function chainedResult(start: StatCodeTurn, steps: readonly StatCodeTurnR
   const pinWrites: PinWrites = Object.assign({}, ...steps.map((step) => step.pinWrites));
   const worldWrites = mergedWorldWrites(steps.map((step) => step.worldWrites));
   const loreWrites = steps.flatMap((step) => step.loreWrites ?? []);
+  const optionWrites = steps.flatMap((step) => step.optionWrites ?? []);
   const last = steps.findLast((step) => step.traits)?.traits;
   const logs = steps.map((step) => step.traits?.log ?? []);
   const traits: StatCodeTraitResult | undefined = last && {
@@ -962,7 +973,7 @@ export function chainedResult(start: StatCodeTurn, steps: readonly StatCodeTurnR
   return {
     stats: now.state.stats, ...changedStats(start.state.stats, now.state.stats), pinWrites, gateStats: finalStep.gateStats,
     ...(traits ? { traits } : {}), ...(owners ? { owners } : {}), ...(worldWrites ? { worldWrites } : {}),
-    ...(loreWrites.length ? { loreWrites } : {}), ...(items ? { items } : {}),
+    ...(loreWrites.length ? { loreWrites } : {}), ...(optionWrites.length ? { optionWrites } : {}), ...(items ? { items } : {}),
   };
 }
 
@@ -1013,8 +1024,8 @@ function keyedPlan(entries: readonly PlannedUnit[]): Map<string, PlannedUnit> {
 const beganOf = (turn: StatCodeTurn): TimingStart => turn.timingStart ?? timingStartOf(turn.state);
 
 /** Whether a script's writes change anything the next script reads or the turn commits. */
-const landsAnything = ({ stats, placeholders, traits, world, lore }: ScriptWrites) =>
-  stats.size > 0 || placeholders.length > 0 || !!traits || !!world || !!lore?.length;
+const landsAnything = ({ stats, placeholders, traits, world, lore, options }: ScriptWrites) =>
+  stats.size > 0 || placeholders.length > 0 || !!traits || !!world || !!lore?.length || !!options?.length;
 
 /** The Sandbox Snapshot `turn`'s next script runs over. */
 export const chainSnapshotOf = (turn: StatCodeTurn, options: Omit<SnapshotOptions, 'readings'> = {}): SandboxSnapshot =>
@@ -1096,6 +1107,7 @@ const scriptWritesFrom = (stat: PlayerStat | null, result: StatCodeResult, owner
   ...(result.traits || result.entities ? { traits: { world: result.traits ?? [], entities: result.entities ?? [] } } : {}),
   ...(result.worldWrites ? { world: result.worldWrites } : {}),
   ...(result.lore ? { lore: result.lore.map(bareLoreWrite) } : {}),
+  ...(result.optionWrites ? { options: result.optionWrites } : {}),
 });
 
 /** The name a trait switch's log line gives a script: its stat's or trait's as the player reads it, else its own. */
@@ -1241,17 +1253,29 @@ async function runScripts(turn: StatCodeTurn, nesting: RunNesting = ACTION_TOP, 
 }
 
 /** `turn` with one script's writes and trait switches applied, as one run's result. Absent writes change nothing. */
+/** A code switch's result with a later settle laid on; a settle line belongs to no one switch. */
+const withSettleOf = (
+  switched: ReturnType<typeof applyCodeTraitSwitches>, settled: GatedTraitResult,
+): ReturnType<typeof applyCodeTraitSwitches> => (settled.state === switched.state ? switched : {
+  state: settled.state, log: [...switched.log, ...settled.log], logTraits: [...switched.logTraits, ...settled.log.map(() => null)],
+});
+
 function settledStep(
   turn: StatCodeTurn, began: TimingStart, writes?: ScriptWrites, switches: readonly CodeTraitSwitch[] = [],
 ): StatCodeTurnResult {
   const { state } = turn;
-  const world = state.ownerTraits.world;
+  const optionWrites = writes?.options ?? [];
+  // Gates read the run's Option writes at this timing (Q17).
+  const world = optionWrites.length
+    ? { ...state.ownerTraits.world, optionValues: withOptionWrites(state.ownerTraits.world.optionValues, optionWrites) }
+    : state.ownerTraits.world;
   const before = runtimeStateOf(state);
   const owned = state.owners ?? [];
   const pinWrites = pinWritesOf(writes?.placeholders ?? []);
   const withWorld = {
     ...(writes?.world ? { worldWrites: writes.world } : {}),
     ...(writes?.lore?.length ? { loreWrites: [...writes.lore] } : {}),
+    ...(optionWrites.length ? { optionWrites: [...optionWrites] } : {}),
   };
 
   // Merged per target before the first settle, so the gate snapshot and the penalties see every owner's writes.
@@ -1268,7 +1292,11 @@ function settledStep(
   const gateStats = withStateGateStats(state, gateStatsOf({ ...before, stats: landedMain, entityStats: landedOwners }, world));
 
   // Trait switches first, so bounds re-derive under them; the code's own bounds and values then go on top.
-  const switched = applyCodeTraitSwitches(before, switches, { ...world, gateStats }, turn.traitNameOf);
+  const switchedOnly = applyCodeTraitSwitches(before, switches, { ...world, gateStats }, turn.traitNameOf);
+  // A switch settles on its own; an Option write with no switch settles here, so its gates apply at this timing.
+  const switched = optionWrites.length && !switches.length
+    ? withSettleOf(switchedOnly, settleTraits(switchedOnly.state, { ...world, gateStats }, turn.traitNameOf))
+    : switchedOnly;
   const active = ownerStatTraitsInForce(switched.state, world, null);
   const traitResult: StatCodeTraitResult | undefined = switched.state === before ? undefined : {
     acquired: switched.state.traits,

@@ -21,7 +21,9 @@ import { startingStatsWith, statTraitsInForce, type TraitWorld } from '@/lib/tra
 import { seedWorldEntityStats } from '@/lib/entityStats';
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
 import { resolveOwners, type Owner } from '@/lib/owners';
-import type { Entity, EntityStatValues, GameLocation, OwnedTraitPicks, PersonaRef, Placeholder, PlayerStat, Stat, Trait } from '@/types';
+import type {
+  Entity, EntityStatValues, GameLocation, OwnedTraitPicks, PersonaRef, Placeholder, PlayerStat, Stat, Trait, WorldOptionValues,
+} from '@/types';
 import { ownerWorldOf, type RuleWorld } from './rules';
 import { optionPinLists } from '@/lib/worldOptions';
 
@@ -117,6 +119,8 @@ export interface LensState {
   locationChosen?: boolean;
   /** One trait applied over the defaults. Only the Authoring Tour's In Game sets it. */
   pickedTraitId?: string | null;
+  /** The World Option values the author picked. An Option missing here reads its default (Q25). */
+  optionValues?: WorldOptionValues;
 }
 
 export const EMPTY_LENS: LensState = { personaId: null, locationId: null };
@@ -240,6 +244,7 @@ export function seedLens(
     personaId,
     locationId: kept ? storedLocation : fresh,
     ...(kept && stored?.locationChosen ? { locationChosen: true } : {}),
+    ...(stored?.optionValues ? { optionValues: stored.optionValues } : {}),
   };
 }
 
@@ -284,7 +289,7 @@ export function buildLens(world: LensWorld, state: LensState): BenchLens {
   const pickedTrait = player.traits.find((t) => t.id === state.pickedTraitId) ?? traits.find((t) => t.id === state.pickedTraitId) ?? null;
   const location = (world.locations ?? []).find((l) => l.id === state.locationId) ?? null;
   const active = activeTraitsFor(world, pickedTrait, personaId);
-  const { pins, layers } = collectPinLayers(lensPinPlan(world, active, personaId, location).sources);
+  const { pins, layers } = collectPinLayers(lensPinPlan(world, active, personaId, location, state.optionValues).sources);
   // The editors' labels for the same rows, matched by the stored pin: a layer carries the pin object its
   // source holds, and so does every row.
   const rows = allPinRows({
@@ -326,7 +331,7 @@ export function lensActiveTraits(world: LensWorld, lens: BenchLens): Trait[] {
  * as the traits leave them, and the lens location.
  */
 export function lensPinPlan(
-  world: LensWorld, active: readonly Trait[], personaId: string | null, location: GameLocation | null,
+  world: LensWorld, active: readonly Trait[], personaId: string | null, location: GameLocation | null, optionValues?: WorldOptionValues,
 ): OwnerPinPlan {
   const ownerWorld = ownerWorldOf(world);
   const persona = lensPersonaRef(personaId);
@@ -343,8 +348,8 @@ export function lensPinPlan(
     entityStats: lensEntityStats(world),
     blueprints: lensPinBlueprints(world),
   }, {
-    // Outside play an Option reads its default (Q25).
-    options: optionPinLists(world.options),
+    // An Option reads the author's pick, else its default (Q25).
+    options: optionPinLists(world.options, optionValues),
     location,
     stats: globalStatsOf(lensStartingStats(world, world.stats ?? [], active, personaId), world.statGroups ?? []),
     placeholders: allPlaceholders(world),

@@ -297,7 +297,7 @@ During the game:
 
 A **row** is one way to open the trait. It holds when every condition in it holds, so a row means **and**. The trait opens when any one row holds, so rows mean **or**.
 
-- **Add Requirement** adds the first condition. It opens a search with these lists: **Traits**, **Any Trait in a Group**, **Stats** with a page for each owner, **Items**, **Time of Day** and **Playing As**. In a large world, the search opens on those lists with a count beside each. Select a list, then an owner, to see its targets. Type in the search to find a target in every list.
+- **Add Requirement** adds the first condition. It opens a search with these lists: **Traits**, **Any Trait in a Group**, **Stats** with a page for each owner, **Items**, **Time of Day**, **World Options** and **Playing As**. In a large world, the search opens on those lists with a count beside each. Select a list, then an owner, to see its targets. Type in the search to find a target in every list.
 - **And** (in a row) adds another condition to that row.
 - **Or Another Way** (below the rows) adds a new row.
 - The **X** at the end of a row removes the whole row. Remove the last condition in a row, and the row goes too.
@@ -313,8 +313,9 @@ A **condition** checks one target. A target is one of these:
 - A persona the player plays as
 - A stat
 - The [time of day](#time-conditions)
+- A [World Option](#world-option-conditions)
 
-Select a condition to open its target. A [stat condition](#stat-conditions) or a time condition has nowhere to open, so it shows its controls instead.
+Select a condition to open its target. A [stat condition](#stat-conditions), a time condition or a World Option condition has nowhere to open, so it shows its controls instead.
 
 Select **Require it to be off** on a condition's chip to make it **Not**. A Not condition shows a **NOT** mark and a dashed border, and it holds while its target is off. Select the button again to require the target instead.
 
@@ -421,6 +422,29 @@ A **time condition** checks the story's time of day. *Night Hunter* requires *ev
 - A row holds one time condition. It never checks the day number or an hour.
 - The game checks once per turn, after the turn's time passes, like a [stat condition](#when-the-game-checks). With the AI clock off, each turn is one hour.
 - Outside play, the [Test Bench](#test-bench-checks) reads the time the story opens at, which is morning.
+
+### World Option conditions
+<!-- keywords: world option, option, setting, setup choice, on or off, flag, switch, unlock with a script, player setup, difficulty -->
+<!-- route: worldEditorTrait.availability -->
+
+A **World Option condition** checks an Option from the [Options tab](World-Editor-Options). *Lantern Glow* requires *Lanterns Lit is on*, so it opens while that Option is on.
+
+1. Open the trait's **Availability** tab.
+2. Under **Requires**, select **Add Requirement**, then pick an Option under **World Options**.
+3. Set what it checks on the chip:
+
+| Option type | The chip checks | Reads as |
+|---|---|---|
+| Choice | One value, picked from the list | *Reply Length is Short* |
+| On or Off | On; **Require it to be off** checks off | *Lanterns Lit is on* |
+| Number | A comparison and a whole number | *Heat >= 3* |
+
+- A Choice or On or Off condition takes **Not**. A Number condition has no **Not**: pick the opposite comparison instead.
+- In play it reads the Option's current value. A script can set it, and the trait follows at once.
+- On the new game screen it reads what the player picks above the traits.
+- In the [Test Bench](#test-bench-checks), pick values under **World Options** in the lens bar. Anywhere else outside play, it reads each Option's default.
+- A condition on a hidden Option never shows on the player's lines. A lock with nothing else left reads *Locked*.
+- Change an Option's type, or delete the value a condition picked, and the condition reads red and never holds.
 
 ### What the player reads
 

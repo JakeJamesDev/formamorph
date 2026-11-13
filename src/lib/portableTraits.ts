@@ -1,8 +1,8 @@
 // An entity's owned traits and links off-world: named on the way out, bound to a receiving world on the way in.
 
 import type {
-  Entity, GalleryImage, Placeholder, PlaceholderGroup, RequirementOwner, Stat, StatGroup, StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement,
-  TraitRequirementRow,
+  Entity, GalleryImage, OptionRequirement, Placeholder, PlaceholderGroup, RequirementOwner, Stat, StatGroup, StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement,
+  TraitRequirementRow, WorldOption,
 } from '@/types';
 import { canBePlayer, linksInTreeOrder, originalOf } from './owners';
 import { resolvedEntityStats } from './statLinks';
@@ -33,6 +33,8 @@ export interface TraitWorld extends StatWorld {
   items?: readonly Named[];
   /** The world's blueprints, what a carried copy binds to. */
   blueprints?: readonly Placeholder[];
+  /** The world's Options, what an Option Condition binds to by name, and its choice value by the value's name. */
+  options?: readonly WorldOption[];
 }
 
 type Portable = Pick<Entity, 'traits' | 'traitGroups' | 'traitLinks'>;
@@ -42,10 +44,11 @@ type EntityOwner = Extract<RequirementOwner, { kind: 'entity' }>;
 export const traitWorldOf = (data: {
   traits?: readonly Trait[]; traitGroups?: readonly TraitGroup[]; entities?: readonly Entity[];
   placeholders?: readonly Placeholder[]; placeholderGroups?: readonly PlaceholderGroup[];
-  stats?: readonly Stat[]; statGroups?: readonly StatGroup[]; items?: readonly Named[];
+  stats?: readonly Stat[]; statGroups?: readonly StatGroup[]; items?: readonly Named[]; options?: readonly WorldOption[];
 }): TraitWorld | undefined => (data.traits ? {
   traits: data.traits, traitGroups: data.traitGroups ?? [], entities: data.entities ?? [],
   ...(data.items ? { items: data.items } : {}),
+  ...(data.options ? { options: data.options } : {}),
   ...(data.stats ? { stats: data.stats, statGroups: data.statGroups ?? [] } : {}),
   blueprints: worldBlueprints({ placeholders: [...data.placeholders ?? []], placeholderGroups: [...data.placeholderGroups ?? []] }),
 } : undefined);
@@ -68,11 +71,20 @@ function targets(world: TraitWorld, except?: string) {
     stat: [...world.stats ?? [], ...others.flatMap((e) => e.stats ?? [])],
     item: world.items ?? [],
     time: [],
+    option: world.options ?? [],
   };
   return lists;
 }
 
-const NO_TARGETS: ReturnType<typeof targets> = { trait: [], group: [], playingAs: [], stat: [], item: [], time: [] };
+const NO_TARGETS: ReturnType<typeof targets> = { trait: [], group: [], playingAs: [], stat: [], item: [], time: [], option: [] };
+
+/** A choice Option Condition's value as `options` names it: by id, else by the stored value name. */
+function optionValueBound(r: OptionRequirement, options: readonly WorldOption[]): OptionRequirement {
+  const option = options.find((o) => o.id === r.id);
+  if (option?.type !== 'choice' || r.valueId === undefined) return r;
+  const value = option.values.find((v) => v.id === r.valueId) ?? uniqueNamed(option.values, r.valueName ?? '');
+  return value ? { ...r, valueId: value.id, valueName: value.name } : r;
+}
 
 const isSelf = (r: TraitRequirement, entityId: string): r is Extract<TraitRequirement, { kind: 'playingAs' }> =>
   r.kind === 'playingAs' && (r.id === SELF_ENTITY || r.id === entityId);
@@ -81,7 +93,7 @@ const isSelfOwner = (b: EntityOwner, entityId: string) => b.id === SELF_ENTITY |
 
 /** The requirement with its named owner rewritten; the same requirement when it names none. */
 const withOwner = (r: TraitRequirement, map: (b: EntityOwner) => RequirementOwner): TraitRequirement =>
-  (r.kind !== 'playingAs' && r.kind !== 'time' && r.owner?.kind === 'entity' ? { ...r, owner: map(r.owner) } : r);
+  (r.kind !== 'playingAs' && r.kind !== 'time' && r.kind !== 'option' && r.owner?.kind === 'entity' ? { ...r, owner: map(r.owner) } : r);
 
 const withRequires = (entity: Entity, map: (r: TraitRequirement) => TraitRequirement): Trait[] | undefined =>
   entity.traits?.map((t) => (t.requires ? { ...t, requires: mapConditions(t.requires, map) } : t));
@@ -141,7 +153,8 @@ function portableRequirement(entity: Entity, world?: TraitWorld): (req: TraitReq
     const r = withOwner(req, owner);
     if (r.kind === 'time' || pointsInside(r, entity, inside)) return r;
     const name = pool[r.kind].find((item) => item.id === r.id)?.name ?? r.name;
-    return name ? { ...r, name } : r;
+    const named = name ? { ...r, name } : r;
+    return named.kind === 'option' ? optionValueBound(named, world?.options ?? []) : named;
   };
 }
 
@@ -195,8 +208,8 @@ function ruleBinder(entity: Entity, world: TraitWorld): (req: TraitRequirement) 
     // A world record that carries no stats has none to bind a stat Condition to.
     if (r.kind === 'time' || pointsInside(r, entity, inside) || (r.kind === 'stat' && !statWorld)) return r;
     const list = r.kind === 'stat' ? statsOf(r, statWorld!) : pool[r.kind];
-    if (list.some((item) => item.id === r.id)) return r;
-    return { ...r, id: uniqueNamed(list, r.name)?.id ?? '' };
+    const bound = list.some((item) => item.id === r.id) ? r : { ...r, id: uniqueNamed(list, r.name)?.id ?? '' };
+    return bound.kind === 'option' ? optionValueBound(bound, world.options ?? []) : bound;
   };
   return (req) => withoutGlobalOwners(bindId(req));
 }
@@ -253,6 +266,13 @@ export const comparableOwnedTraits = (entity: Entity): {
   const inside = ownIds(entity);
   const comparable = (req: TraitRequirement): TraitRequirement => {
     if (req.kind === 'time') return { kind: 'time', dayparts: daypartSet(req.dayparts) };
+    // A World Option is the world's own, so two copies compare it by its stored names.
+    if (req.kind === 'option') {
+      return {
+        kind: 'option', id: '', ...(req.name && { name: req.name }), ...(req.valueName && { valueName: req.valueName }),
+        ...(req.operator && { operator: req.operator, value: req.value }), ...notFlag(req.not),
+      };
+    }
     const not = notFlag(req.not);
     if (isSelf(req, entity.id)) return { kind: req.kind, id: SELF_ENTITY, ...not };
     const r = withOwner(req, (b) => comparableOwner(b, entity.id));

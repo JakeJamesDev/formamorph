@@ -1,4 +1,7 @@
-import type { BodyPick, CodeBounds, CurrencyBacking, EntityKind, ItemCopyWhere, ItemScriptTiming, ScheduleAction, Stat } from '@/types';
+import type {
+  BodyPick, CodeBounds, CurrencyBacking, EntityKind, ItemCopyWhere, ItemScriptTiming, ScheduleAction, Stat, WorldOption, WorldOptionValueOf, WorldOptionValues,
+} from '@/types';
+import { optionValue, snapNumber } from './worldOptions';
 import type { SlotOwner } from './bodies';
 import type { InventoryOp } from './inventory';
 import { clamp } from './utils';
@@ -73,6 +76,12 @@ export const PLACEHOLDER_WRITABLE_FIELD = 'value';
  *  writer's bounds have landed. */
 export type StatWrite = { id: string; name: string } & Partial<Pick<StatNumbers, 'value' | CodeBoundField>> & { hidden?: boolean };
 
+/** One World Option value a run wrote, as the Option holds it: a choice's value id, a boolean, or a snapped number. */
+export interface OptionWrite {
+  id: string;
+  value: WorldOptionValueOf;
+}
+
 export interface StatCodeResult {
   /** The value the code set, by return or by `self.value`, as written: the turn clamps it once every bound
    *  and trait switch has landed. Null when it left the value alone. */
@@ -122,6 +131,10 @@ export interface StatCodeResult {
   payments?: ScriptPayment[];
   /** The `turn.choices` the run left, when it takes the write and the list differs from the one it read (Q12). */
   choices?: string[];
+  /** The World Option values the code wrote through `options`, in Options-tab order. Absent when it wrote none. */
+  optionWrites?: OptionWrite[];
+  /** Unknown `options` names the code wrote, as code spelled them; each write was ignored. */
+  unknownOptions?: string[];
   /** The sentence the code left, by return or by `narration.sentence`. Present on a During AI Output run that
    *  succeeded, the sentence as it came when the code did not touch it. */
   sentence?: string;
@@ -1522,6 +1535,65 @@ const isLoreField = (field: unknown): field is LoreWrite['field'] =>
 export const memberPath = (root: string, name: string) =>
   /^[A-Za-z_$][\w$]*$/.test(name) ? `${root}.${name}` : `${root}[${JSON.stringify(name)}]`;
 
+/** The global World Options sit under in code. */
+export const OPTIONS_GLOBAL = 'options';
+
+/** An Option's value as code reads it: a choice's value name, a boolean, or a number. */
+export function optionCodeValue(option: WorldOption, values: WorldOptionValues | undefined): WorldOptionValueOf {
+  const value = optionValue(option, values);
+  return option.type === 'choice' ? option.values.find((v) => v.id === value)?.name ?? '' : value;
+}
+
+/** `options` as code reads it: each Option's value by its name, a later name winning. */
+export const optionsCodeMap = (options: readonly WorldOption[], values: WorldOptionValues | undefined): Record<string, WorldOptionValueOf> =>
+  Object.fromEntries(options.map((option) => [option.name, optionCodeValue(option, values)]));
+
+/** The value code left on one Option, as the Option holds it, or the error that fails the run. A number snaps
+ *  onto the Option's step inside its bounds. */
+function optionWriteOf(option: WorldOption, written: unknown): { value: WorldOptionValueOf } | { error: string } {
+  const path = memberPath(OPTIONS_GLOBAL, option.name);
+  switch (option.type) {
+    case 'choice': {
+      const value = typeof written === 'string' ? option.values.find((v) => v.name === written) : undefined;
+      return value ? { value: value.id } : { error: `${path} must be one of ${option.values.map((v) => JSON.stringify(v.name)).join(', ')}` };
+    }
+    case 'boolean': return typeof written === 'boolean' ? { value: written } : { error: `${path} must be true or false` };
+    case 'number':
+      return typeof written === 'number' && Number.isFinite(written) ? { value: snapNumber(option, written) } : { error: `${path} must be a finite number` };
+  }
+}
+
+/** The World Option writes in `dump`, the run-end `options` map, against the map the run read. A changed value is
+ *  a write, or read-only in a run that takes none; a write to an unknown name is ignored. */
+function readOptionWrites(
+  dump: string, options: readonly WorldOption[], values: WorldOptionValues | undefined, writable: boolean,
+): { writes: OptionWrite[]; unknown: string[]; readOnly: string[] } | { error: string } {
+  const end: unknown = JSON.parse(dump);
+  if (!end || typeof end !== 'object' || Array.isArray(end)) return { writes: [], unknown: [], readOnly: [] };
+  const read = optionsCodeMap(options, values);
+  const byName = new Map(options.map((option) => [option.name, option]));
+  const writes: OptionWrite[] = [];
+  const unknown: string[] = [];
+  const readOnly: string[] = [];
+  for (const [name, written] of Object.entries(end)) {
+    if (Object.is(written, read[name])) continue;
+    const option = byName.get(name);
+    if (!option) {
+      unknown.push(memberPath(OPTIONS_GLOBAL, name));
+      continue;
+    }
+    if (!writable) {
+      readOnly.push(memberPath(OPTIONS_GLOBAL, name));
+      continue;
+    }
+    const write = optionWriteOf(option, written);
+    if ('error' in write) return write;
+    writes.push({ id: option.id, value: write.value });
+  }
+  const order = new Map(options.map((option, i) => [option.id, i]));
+  return { writes: writes.sort((a, b) => order.get(a.id)! - order.get(b.id)!), unknown, readOnly };
+}
+
 /** How code names an entity: through `entities`, or through `persona` for the empty persona. */
 const entityPath = (entity: string) => (entity ? memberPath('entities', entity) : 'persona');
 
@@ -1771,6 +1843,10 @@ export interface StatCodeRunOptions {
   turn?: SandboxTurn;
   /** `turn.choices` takes the write: an After the AI script's, with choices on (Q21). A change elsewhere is dropped. */
   choicesWritable?: boolean;
+  /** The world's Options, which `options` reads and writes by name. Absent, `options` is empty. */
+  worldOptions?: readonly WorldOption[];
+  /** The playthrough's Option values. Absent, each Option's default. */
+  optionValues?: WorldOptionValues;
   /** The live stat-enabled map. A stat set false here reads `enabled: false`. */
   enabled?: Readonly<Record<string, boolean>>;
   /** The map's top-level keys, in authored order. Absent, the map is empty. */
@@ -1833,7 +1909,7 @@ const ADVANCE_CLOCK = '__formamorphAdvanceClock';
 const MOVE_TURN = '__formamorphMoveTurn';
 
 /** The globals a read-only run reads through its view, the surface of a user Tool (Q24). */
-const READ_ONLY_GLOBALS = ['entities', 'persona', 'locations', 'location', 'memories', 'clock', 'turn', 'stats', 'traits', 'placeholders', 'dictionaries', 'items'] as const;
+const READ_ONLY_GLOBALS = ['entities', 'persona', 'locations', 'location', 'memories', 'clock', 'turn', 'stats', 'traits', 'placeholders', 'dictionaries', 'items', 'options'] as const;
 
 const READ_ONLY_VIEW_OF = '__formamorphReadOnlyView';
 
@@ -2226,7 +2302,7 @@ export const executeStatCode = async (
    *  write is ignored. */
   currentStat: Stat | null,
   {
-    clock, readings, turn = NO_TURN, choicesWritable = false, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner,
+    clock, readings, turn = NO_TURN, choicesWritable = false, worldOptions = [], optionValues, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner,
     dictionaries = [], resolveEntryValue, narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES, discovered = [], args,
     openCast = false, memories = [], notes = '', readOnly = false, items = [], itemEvent, bodies = [], randomSeed,
     currencies = [], money,
@@ -2351,6 +2427,8 @@ export const executeStatCode = async (
       `  enumerable: true, get: () => choices, set: (next) => { choices = next; },`,
       `})))((${LOCK_FIELDS})(${JSON.stringify({ action: turn.action, number: turn.number, narration: turn.narration })}, ['action', 'number', 'narration'], 'turn.', ${LOOSE_NOTE}),`,
       `  ${JSON.stringify(turn.choices)});`,
+      // A plain object: the run end reads it back, and each changed value is a write.
+      `const ${OPTIONS_GLOBAL} = ${JSON.stringify(optionsCodeMap(worldOptions, optionValues))};`,
       `const ${CHOICES_AT_END} = ((isArray, stringify) => (list) => {`,
       `  if (!isArray(list)) return null;`,
       `  const out = [];`,
@@ -2389,7 +2467,7 @@ export const executeStatCode = async (
       `})(), ${selfRead('value')}, ${CODE_BOUND_FIELDS.map(selfRead).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
       `  ${STAT_WRITES}(), ${DICTIONARY_WRITES}(), ${STRINGIFY}(${SELF_ASSIGNED}), ${OWNER_STAT_WRITES}(), ${STRINGIFY}(${LOOSE_WRITES}),`,
       `  ${ENTITY_STAT_WRITES}(), ${narration ? 'narration.sentence' : 'undefined'}, ${STRINGIFY}(${WORLD_WRITES}), ${selfRead('hidden')},`,
-      `  ${CHOICES_AT_END}(turn.choices)];`,
+      `  ${CHOICES_AT_END}(turn.choices), ${STRINGIFY}(${OPTIONS_GLOBAL})];`,
     ].join('\n');
 
     return await runInSandbox(program, ({ vm, result, consoleOutput, timedOut }): StatCodeResult => {
@@ -2456,6 +2534,7 @@ export const executeStatCode = async (
       const worldWrites = readWorldWrites(readDump(12 + CODE_BOUND_FIELDS.length));
       const selfHidden = readSlot(13 + CODE_BOUND_FIELDS.length);
       const choicesDump = readSlot(14 + CODE_BOUND_FIELDS.length);
+      const optionsDump = readDump(15 + CODE_BOUND_FIELDS.length);
 
       if (consoleOutput.trim()) {
         console.log('Console output:', consoleOutput);
@@ -2522,6 +2601,8 @@ export const executeStatCode = async (
       if ('error' in entityWrites) return failure(entityWrites.error, 'bad-write');
       const loreWrites = readDictionaryWrites(dictionariesDump, dictionaries);
       if ('error' in loreWrites) return failure(loreWrites.error, 'bad-write');
+      const optionWrites = readOptionWrites(optionsDump, worldOptions, optionValues, !readOnly);
+      if ('error' in optionWrites) return failure(optionWrites.error, 'bad-write');
       const unknownStatWrites = [...statWrites.unknown, ...ownerStatWrites.unknown, ...entityStatWrites.unknown];
       const disabledStatWrites = [...statWrites.disabled, ...ownerStatWrites.disabled, ...entityStatWrites.disabled];
       const readOnlyWrites = [
@@ -2533,6 +2614,7 @@ export const executeStatCode = async (
         ...traitWrites.readOnly,
         ...entityWrites.readOnly,
         ...loreWrites.readOnly,
+        ...optionWrites.readOnly,
         ...(endChoices.changed && !choicesWritable ? ['turn.choices'] : []),
       ];
 
@@ -2557,6 +2639,8 @@ export const executeStatCode = async (
         ...(loreWrites.unknown.length ? { unknownLore: loreWrites.unknown } : {}),
         ...(readOnlyWrites.length ? { readOnlyWrites } : {}),
         ...(choices ? { choices } : {}),
+        ...(optionWrites.writes.length ? { optionWrites: optionWrites.writes } : {}),
+        ...(optionWrites.unknown.length ? { unknownOptions: optionWrites.unknown } : {}),
         ...(sentence === undefined ? {} : { sentence }),
         ...(inventoryWrites ? { worldWrites: inventoryWrites } : {}),
         ...(paid?.payments.length ? { payments: paid.payments } : {}),

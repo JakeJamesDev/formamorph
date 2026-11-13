@@ -26,19 +26,22 @@ import { randomUUID } from './uuid';
 import type { OwnerId } from './scope';
 import { resolveEntityText, type PlaceholderMode } from './placeholders';
 import type {
-  BodyRuntime, Entity, EntityStatValues, PersonaRef, ItemEffectLedger, OwnedTraitPicks, Placeholder, Trait, World,
+  BodyRuntime, Entity, EntityStatValues, PersonaRef, ItemEffectLedger, OwnedTraitPicks, Placeholder, Trait, World, WorldOptionValues,
 } from '@/types';
 
 /** The authored slice the fold reads. An absent slice reads as empty, as an editor's half-built world can be. */
 export type OpeningFoldWorld = Partial<Pick<World,
   'stats' | 'statGroups' | 'traits' | 'traitGroups' | 'entities' | 'entityGroups' | 'placeholders' | 'placeholderGroups' | 'dictionaries' | 'locations'
-  | 'connections' | 'worldOverview' | 'items' | 'placements' | 'slots' | 'bodies' | 'currencies'
+  | 'connections' | 'worldOverview' | 'items' | 'placements' | 'slots' | 'bodies' | 'currencies' | 'options'
 >>;
 
-/** What the player picked at the entry step: the global trait ids and each owner's trait ids. */
+/** What the player picked at the entry step: the global trait ids, each owner's trait ids, and the World
+ *  Option values. */
 export interface OpeningPicks {
   traits: readonly string[];
   owned: OwnedTraitPicks;
+  /** Absent ⇒ each Option's default. */
+  options?: WorldOptionValues;
 }
 
 /** The played persona and the library characters added at the entry step. Absent ⇒ None, no library. */
@@ -99,6 +102,7 @@ export function openingFold(
   // The trait picks read the start as Enter World showed it: equipped, before any requirement check (Q51).
   const traitWorld: TraitWorld = {
     traits, groups: traitGroups, entities, persona: ref, items: world.items ?? [], itemCopies: startingCopies(startWorld, ref, newId),
+    options: world.options ?? [], ...(picks.options ? { optionValues: picks.options } : {}),
     ...inPlayOwners(ownerWorld, ref, library),
   };
 

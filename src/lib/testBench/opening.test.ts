@@ -3,7 +3,7 @@ import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { drawNewGameOpening } from '@/lib/newGameOpening';
 import { activeDescriptor } from '@/lib/statContext';
-import { PLAYER_START, type Entity, type GameLocation, type Stat, type Trait, type TraitGroup, type WorldOverview } from '@/types';
+import { PLAYER_START, type Entity, type GameLocation, type Stat, type Trait, type TraitGroup, type WorldOption, type WorldOptionValues, type WorldOverview } from '@/types';
 import type { PlaceholderPick } from '@/lib/placeholders';
 import { buildLens, type LensState } from './lens';
 import { phValueId, phValues } from '@/test/placeholderValues';
@@ -833,6 +833,16 @@ describe('entity stats at game start', () => {
     const gatedOn = (value: number) => maren({ traits: [{ ...hardy, requires: [{ all: [{ kind: 'stat', id: 's-trust', operator: '>=', value, unit: 'raw' }] }] }] });
     expect(marenOf(staged([gatedOn(20)]))!.stats[0]).toMatchObject({ value: 35, max: 150 });
     expect(marenOf(staged([gatedOn(25)]))!.stats[0]).toMatchObject({ value: 20, max: 100 });
+  });
+
+  it('gates a default trait on a World Option at the lens’s pick, else the default (Q25)', () => {
+    const lit: WorldOption = { id: 'lit', name: 'Lanterns Lit', type: 'boolean', shownToPlayer: false, midGame: false, default: false };
+    const w = staged([maren({ traits: [{ ...hardy, requires: [{ all: [{ kind: 'option', id: 'lit' }] }] }] })], { options: [lit] });
+    const trustWith = (optionValues?: WorldOptionValues) =>
+      buildOpening(w, lensAt(w, optionValues ? { optionValues } : {}), primeOpeningRolls(w, {}, pickFirst)).entityStats[0].stats[0];
+    expect(trustWith()).toMatchObject({ value: 20, max: 100 });
+    expect(trustWith({ lit: true })).toMatchObject({ value: 35, max: 150 });
+    expect(trustWith({ lit: false })).toMatchObject({ value: 20, max: 100 });
   });
 
   it('leaves out a trait a fresh game does not pick', () => {

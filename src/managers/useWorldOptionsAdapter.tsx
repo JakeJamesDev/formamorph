@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Hint, Meta } from '@/components/ui/typography';
 import { useGameData } from '@/contexts/GameDataContext';
 import { fieldFrame } from '@/lib/historyField';
+import { useRenameField } from '@/lib/useCodeRename';
 import { randomUUID } from '@/lib/uuid';
 import {
   BOOLEAN_OFF, BOOLEAN_ON, blankOption, choiceDefault, optionRange, reorderOptions, snapNumber, withOptionType,
@@ -56,6 +57,7 @@ function PinsField({ label, pins, onChange, source, world }: {
 /** The selected Option's fields. Every edit writes the world at once. */
 function OptionDetail({ option, onChange }: { option: WorldOption; onChange: (next: WorldOption) => void }) {
   const world = useGameData();
+  const rename = useRenameField({ root: 'options', value: option.name, siblings: world.options, ownId: option.id });
   const field = (name: string) => `option-${option.id}-${name}`;
   const withPins = (pins: PlaceholderPin[]) => (pins.length ? pins : undefined);
 
@@ -152,7 +154,10 @@ function OptionDetail({ option, onChange }: { option: WorldOption; onChange: (ne
     <div className="flex min-w-0 flex-col gap-4">
       <div className="space-y-2" {...fieldFrame('name')}>
         <Label htmlFor={field('name')}>Name</Label>
-        <Input id={field('name')} value={option.name} onChange={(e) => onChange({ ...option, name: e.target.value })} />
+        <Input
+          id={field('name')} value={option.name} onChange={(e) => onChange({ ...option, name: e.target.value })}
+          onFocus={rename.onFocus} onBlur={rename.onBlur} onKeyDown={(e) => { if (e.key === 'Enter') rename.onSubmit(); }}
+        />
       </div>
       <div className="space-y-2" {...fieldFrame('type')}>
         <Label htmlFor={field('type')}>Type</Label>

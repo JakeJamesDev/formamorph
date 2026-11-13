@@ -311,7 +311,7 @@ const TraitManager = ({
   const setRequires = (next: TraitRequirementRow[]) => apply({ requires: next.length ? next : undefined });
   const openRequirement = (r: TraitRequirement) => {
     if (r.kind === 'playingAs') onOpenEntity?.(r.id);
-    else if (r.kind !== 'time' && r.kind !== 'item') onOpenTrait(r.id);
+    else if (r.kind !== 'time' && r.kind !== 'item' && r.kind !== 'option') onOpenTrait(r.id);
   };
 
   const { advanced } = useEditorMode();

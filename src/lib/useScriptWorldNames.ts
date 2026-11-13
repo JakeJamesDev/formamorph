@@ -22,10 +22,11 @@ export function useScriptWorldNames(): ScriptWorldNames {
   const locations = gameData?.locations;
   const items = gameData?.items;
   const currencies = gameData?.currencies;
+  const options = gameData?.options;
   // `stats` is the world's play stats in every box.
   const names = useMemo(() => statCodeWorldNames({
-    playStats: playStats ?? [], playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries, locations, items, currencies,
-  }), [playStats, playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries, locations, items, currencies]);
+    playStats: playStats ?? [], playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries, locations, items, currencies, options,
+  }), [playStats, playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries, locations, items, currencies, options]);
   const placeholderPlaces = useMemo(
     () => worldPlaceholderPlaces({ list: placeholders, owners: placeholderOwners, groups: placeholderGroups }),
     [placeholders, placeholderOwners, placeholderGroups],
@@ -40,10 +41,10 @@ export function useScriptWorldNames(): ScriptWorldNames {
   const onWorld = !!gameData;
   const world = useMemo<OpeningFoldWorld>(() => (onWorld ? {
     stats, statGroups, traits, traitGroups, entities, entityGroups, placeholders: worldPlaceholders, placeholderGroups, dictionaries, locations, connections,
-    items, placements, slots, currencies,
+    items, placements, slots, currencies, options,
   } : { placeholders }), [
     onWorld, stats, statGroups, traits, traitGroups, entities, entityGroups, worldPlaceholders, placeholderGroups, dictionaries, locations, connections,
-    items, placements, slots, currencies, placeholders,
+    items, placements, slots, currencies, options, placeholders,
   ]);
   return { names, placeholderPlaces, world };
 }

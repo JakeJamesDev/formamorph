@@ -15,6 +15,10 @@ export interface OwnerWorld {
   entities: readonly Entity[];
   /** The authored items an item Condition can name. */
   items?: GateInput['worldItems'];
+  /** The world's Options an Option Condition reads. */
+  options?: GateInput['worldOptions'];
+  /** The Option values gates read. Absent, each Option's default (Q25). */
+  optionValues?: GateInput['optionValues'];
 }
 
 /** One owner's effective tree: its own items plus each link's original and live subtree, in the places the
@@ -223,6 +227,8 @@ export function resolveOwners(
       persona: persona ?? { source: 'none' },
       originals: { traits: world.traits, groups: world.traitGroups },
       ...(world.items ? { worldItems: world.items } : {}),
+      ...(world.options ? { worldOptions: world.options } : {}),
+      ...(world.optionValues ? { optionValues: world.optionValues } : {}),
     },
   };
 }

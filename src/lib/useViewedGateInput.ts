@@ -11,8 +11,9 @@ import type { GateInput } from './traitGates';
 
 /** Every owner's traits, stats and clock on the turn on screen, live or paged back (Q34), as the gate module reads them. */
 export function useViewedGateInput(): GateInput {
-  const { viewTraits, viewDisabledTraitIds, viewOwnedTraits, viewEntityStats, personaRef, viewGameTime, calendar, itemCopies } = useGameplay();
+  const { viewTraits, viewDisabledTraitIds, viewOwnedTraits, viewEntityStats, personaRef, viewGameTime, calendar, itemCopies, viewWorldOptionValues } = useGameplay();
   const worldItems = useGameDataOptional()?.items;
+  const worldOptions = useGameDataOptional()?.options;
   const daypart = daypartAt(viewGameTime, calendar);
   const { traits, traitGroups, viewStats, entities: cast, persona, traitEntities, traitLibrary } = useResolvedWorld();
   return useMemo(() => traitGateInput(
@@ -26,8 +27,8 @@ export function useViewedGateInput(): GateInput {
     },
     {
       traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' }, daypart,
-      ...(worldItems ? { items: worldItems } : {}), itemCopies,
+      ...(worldItems ? { items: worldItems } : {}), itemCopies, options: worldOptions, optionValues: viewWorldOptionValues,
       ...inPlayOwners({ traits, traitGroups, entities: traitEntities }, personaRef, traitLibrary),
     },
-  ), [viewTraits, viewDisabledTraitIds, viewOwnedTraits, viewStats, viewEntityStats, traits, traitGroups, cast, persona, personaRef, daypart, worldItems, itemCopies, traitEntities, traitLibrary]);
+  ), [viewTraits, viewDisabledTraitIds, viewOwnedTraits, viewStats, viewEntityStats, traits, traitGroups, cast, persona, personaRef, daypart, worldItems, itemCopies, worldOptions, viewWorldOptionValues, traitEntities, traitLibrary]);
 }

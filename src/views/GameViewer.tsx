@@ -281,7 +281,7 @@ import { useTurnSettle } from "../lib/useTurnSettle";
 import type { TraitCascade } from "../components/game/SetupTraitList";
 import { savedTraits } from "../lib/statCodeTraits";
 import { liveSnapshotOf, type LiveSnapshot } from "../lib/globalSaveFields";
-import { NO_WORLD_OPTION_VALUES, optionPinLists, optionValue, optionValueRef } from "../lib/worldOptions";
+import { NO_WORLD_OPTION_VALUES, optionPinLists, optionValue, optionValueRef, withOptionWrites } from "../lib/worldOptions";
 import { parseKeywords, locateMatches, type EntryActivation, type MatchHit, type MatchRule } from "../lib/dictionaryUtils";
 import { highlightSegments, HIGHLIGHT_PALETTE, type HighlightRule, type HighlightSegment } from "../lib/highlightUtils";
 import { useIsMobile } from "../lib/useIsMobile";
@@ -958,12 +958,12 @@ const GameViewer = ({
   const gatedWorld = useCallback(
     (ref: PersonaRef | undefined = personaRef): TraitWorld => ({
       traits: authoredTraits, groups: traitGroups, persona: ref ?? { source: 'none' }, daypart,
-      items: worldItems, itemCopies: heldItemCopies,
+      items: worldItems, itemCopies: heldItemCopies, options: worldOptions, optionValues: worldOptionValues,
       // A persona change reads this before its render, so its entities and library are the ones under `ref`.
       entities: ref === personaRef ? worldEntitiesOf(entities, persona) : presentEntitiesUnder(ref),
       ...inPlayOwners(ownerWorld, ref, libraryUnder(traitLibrary, personaRef, ref)),
     }),
-    [authoredTraits, traitGroups, daypart, worldItems, heldItemCopies, entities, persona, personaRef, ownerWorld, traitLibrary, presentEntitiesUnder],
+    [authoredTraits, traitGroups, daypart, worldItems, heldItemCopies, worldOptions, worldOptionValues, entities, persona, personaRef, ownerWorld, traitLibrary, presentEntitiesUnder],
   );
   /** The gameplay slice the trait runtime reads and rewrites. */
   const traitState = useMemo<TraitRuntimeState>(
@@ -4306,6 +4306,7 @@ const GameViewer = ({
             result = { ...result, worldWrites: withoutBodies(result.worldWrites) };
           }
           setLoreToggles((prev) => withLoreWrites(prev, result.loreWrites));
+          setWorldOptionValues((prev) => withOptionWrites(prev, result.optionWrites));
           // Onto the latest values, as the player's stats below: the regen tick can apply while the run awaits.
           const ownersInForce = entityInForceUnder(result.traits?.ownedTraits ?? held.ownedTraits ?? {});
           setEntityStats((prev) => withOwnerCodeResults(prev, result.owners, ownersInForce));
@@ -4358,6 +4359,7 @@ const GameViewer = ({
           if (inventory?.length && result.items) landScriptInventoryRef.current?.(inventory, result.items, totals, undefined, baseWrites);
           setCodePins((prev) => withPinWrites(prev, result.pinWrites));
           setLoreToggles((prev) => withLoreWrites(prev, result.loreWrites));
+          setWorldOptionValues((prev) => withOptionWrites(prev, result.optionWrites));
           ranTraits?.log.forEach((line, i) => {
             const trait = ranTraits.logTraits?.[i];
             if (!trait || !dropped.has(trait)) addLogEntry(line);
@@ -5713,9 +5715,20 @@ const GameViewer = ({
     const facts: ListedActionFacts = {
       kind: 'option', option: { id: option.id, name: option.name }, from: optionValueRef(option, from), to: optionValueRef(option, value),
     };
-    addListedAction(facts, takeActionSnapshot());
-    setWorldOptionValues({ ...worldOptionValues, [option.id]: value });
-  }, [isWaitingForAI, listBusy, worldOptionValues, addListedAction, takeActionSnapshot, setWorldOptionValues]);
+    const snapshot = takeActionSnapshot();
+    const values = { ...worldOptionValues, [option.id]: value };
+    setWorldOptionValues(values);
+    // Gates on the Option settle at once, as after a trait toggle (Q41).
+    const world = { ...gatedWorld(), optionValues: values };
+    const result = settleWithItems(traitState, world, traitName);
+    const totals = startActionTotals();
+    trackPanelRun(commitGatedTraits(result, option.name, totals));
+    trackPanelRun(fireSwitchScripts(traitState, result.state, world, totals));
+    addListedAction(facts, snapshot);
+  }, [
+    isWaitingForAI, listBusy, worldOptionValues, traitState, gatedWorld, traitName, settleWithItems, commitGatedTraits, fireSwitchScripts,
+    startActionTotals, trackPanelRun, addListedAction, takeActionSnapshot, setWorldOptionValues,
+  ]);
 
   /** Script inventory writes through the Inventory module, checked against `over`, else the live state, and the
    *  Bodies in force under it with `baseWrites` on top (Q41, Q58). The render's Bodies can be behind a write. */
@@ -6052,7 +6065,7 @@ const GameViewer = ({
       rebaseRightDots();
 
       // New game, once: a loaded save returned above. The fold reads the authored world, chips and all.
-      const opening = openingFold(getWorldData(), { traits: initialTraits, owned: initialOwnedTraits }, {
+      const opening = openingFold(getWorldData(), { traits: initialTraits, owned: initialOwnedTraits, options: initialOptionValues }, {
         ...(initialPersona ?? { ref: { source: 'none' } }), characters: initialCharacters ?? [],
       });
       const acquired = opening.state.ownerTraits.acquired;

@@ -60,6 +60,12 @@ export const optionValue = (option: WorldOption, values: WorldOptionValues | und
   return acceptsValue(option, held) ? held : optionDefault(option);
 };
 
+/** `values` with each write laid on in order, the later write to an Option winning. The same record with none. */
+export function withOptionWrites(values: WorldOptionValues | undefined, writes: readonly { id: string; value: WorldOptionValueOf }[] | undefined): WorldOptionValues {
+  if (!writes?.length) return values ?? NO_WORLD_OPTION_VALUES;
+  return { ...values, ...Object.fromEntries(writes.map((write) => [write.id, write.value])) };
+}
+
 /** The pins one Option value lays: under `valueId`, the choice value's id or a boolean's on/off. */
 export interface OptionPins {
   optionId: string;

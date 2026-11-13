@@ -140,6 +140,10 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'dictionaries', detail: 'object', info: 'Every dictionary in the game by name, with its own placeholders. A dictionary the player turned off isn’t listed. Use dictionaries["Two Words"] for a name with a space.' },
   { name: 'items', detail: 'object', info: 'Every item in the world by name, with its own placeholders and every Item Copy of it. Call items.Lamp.give to give one. Use items["Two Words"] for a name with a space.' },
   { name: 'currencies', detail: 'object', info: 'Every Currency in the world by name. Call currencies.Gold.balance to read what an owner has, and currencies.Gold.pay to move money. Use currencies["Two Words"] for a name with a space.' },
+  {
+    name: 'options', detail: 'object',
+    info: 'Every World Option by name, hidden ones included. A Choice reads its value’s name, an On or Off reads true or false, and a Number reads its number. Set one to change it. Use options["Two Words"] for a name with a space.',
+  },
   { name: 'console', detail: 'object', info: 'Only console.log. Output shows in the browser console.' },
 ];
 

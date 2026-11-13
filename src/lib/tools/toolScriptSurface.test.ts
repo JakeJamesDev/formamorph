@@ -28,7 +28,7 @@ describe('the Tool script surface matches the sandbox', () => {
   it('lists every global the script can reach, and each is really there', async () => {
     const globals = surface.globals.map((g) => g.name);
     expect(globals).toEqual([
-      'args', 'stats', 'clock', 'turn', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'items', 'currencies', 'console',
+      'args', 'stats', 'clock', 'turn', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'items', 'currencies', 'options', 'console',
     ]);
     const probe = `return [${globals.map((g) => `typeof ${g}`).join(', ')}];`;
     const result = await runToolScript(probe, { name: 'Wren' }, snapshot);

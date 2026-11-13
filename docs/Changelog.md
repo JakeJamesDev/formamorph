@@ -21,6 +21,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Worlds can offer World Options at new game.** Authors add choices, switches and number sliders on the new Options tab; the player sets them above the traits, and choices and switches pin placeholder text.
     - **Players can change a World Option during play on a new World Options tab.** It lists the Options the author allows to change. A change applies at once and **Undo** reverses it.
     - **Authors can switch an entity on and off during a game with its new Enabled rows.** Set them on the entity's Presence tab. While off, it's hidden from the player and the AI, and its stats, scripts and routine pause until it returns.
+    - **Traits and images can require a World Option, and scripts can change one.** A Requires row checks a Choice value, On or Off, or a Number. Scripts read and write `options`, and the Test Bench lets you pick each value.
 - **🛠️ Developer tooling**
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.
 

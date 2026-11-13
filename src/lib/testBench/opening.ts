@@ -44,7 +44,7 @@ import { enabledStats } from '@/lib/traitEffects';
 import { seedNewGameStats } from '@/lib/traitRuntime';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import type {
-  Entity, GameLocation, Opening, PersonaRef, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, ThresholdUnit, Trait,
+  Entity, GameLocation, Opening, PersonaRef, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, ThresholdUnit, Trait, WorldOptionValues,
 } from '@/types';
 import { offeredStartLocations, personaStartLocation, startingPersona } from '@/lib/personaPick';
 import { lensActiveTraits, lensPersonaPicks, lensPersonaRef, lensPinBlueprints, lensStartingStats, resolveLensText, type BenchLens } from './lens';
@@ -196,6 +196,8 @@ interface OpeningStart {
   location: GameLocation | null;
   /** The world persona played. Null under None. */
   personaId: string | null;
+  /** The lens's World Option values. Absent ⇒ each Option's default. */
+  optionValues?: WorldOptionValues;
 }
 
 function openingStart(world: OpeningWorld, lens: BenchLens, startLocationId?: string | null): OpeningStart {
@@ -207,17 +209,22 @@ function openingStart(world: OpeningWorld, lens: BenchLens, startLocationId?: st
   const startPersona = startingPersona(persona, world.entities ?? []);
   const own = startPersona ? personaStartLocation(startPersona, locations) : null;
   const location = pool.find((l) => l.id === startLocationId) ?? pool.find((l) => l.id === own) ?? pool[0] ?? null;
-  const picks = openingPicks(world, active, persona);
+  const picks = openingPicks(world, active, persona, lens.state.optionValues);
   const state = openingStateOf(world, picks, openingPersonaOf(persona));
-  return { active, owned: picks.owned, state, settled: [...state.stats], pool, location, personaId: lens.persona?.id ?? null };
+  return {
+    active, owned: picks.owned, state, settled: [...state.stats], pool, location, personaId: lens.persona?.id ?? null,
+    ...(lens.state.optionValues && { optionValues: lens.state.optionValues }),
+  };
 }
 
-/** The picks Enter World starts from under `persona`: the lens's traits, and each owner's default picks.
- *  The played entity holds its own picks among them (Q33). */
-function openingPicks(world: OpeningWorld, active: readonly Trait[], persona: PersonaRef): OpeningPicks {
+/** The picks Enter World starts from under `persona`: the lens's traits, each owner's default picks, and the
+ *  lens's World Option values. The played entity holds its own picks among them (Q33). */
+function openingPicks(world: OpeningWorld, active: readonly Trait[], persona: PersonaRef, optionValues?: WorldOptionValues): OpeningPicks {
   const { gate: ownerGate } = resolveOwners(ownerWorldOf(world), persona);
-  // Stat Conditions read the authored start, as Enter World's do (Q23).
-  const gate = { ...ownerGate, stats: startingGateStats({ ...world, entities: world.entities ?? [] }) };
+  // Stat Conditions read the authored start, as Enter World's do (Q23); Option Conditions the lens's picks (Q25).
+  const gate = {
+    ...ownerGate, stats: startingGateStats({ ...world, entities: world.entities ?? [] }), ...(optionValues && { optionValues }),
+  };
   const custom = lensPersonaPicks(world, active, persona.source === 'world' ? persona.entityId : null);
   const defaults = settleDefaults(gate).active;
   const owned = settle({
@@ -229,7 +236,10 @@ function openingPicks(world: OpeningWorld, active: readonly Trait[], persona: Pe
         : defaults.owners,
     },
   }).active.owners;
-  return { traits: active.map((t) => t.id), owned: Object.fromEntries(Object.entries(owned).map(([id, ids]) => [id, [...ids]])) };
+  return {
+    traits: active.map((t) => t.id), owned: Object.fromEntries(Object.entries(owned).map(([id, ids]) => [id, [...ids]])),
+    ...(optionValues && { options: optionValues }),
+  };
 }
 
 /** The pins the fresh game opens under, from every source — the active traits (a default trait's pin binds
@@ -245,7 +255,7 @@ const openingPins = (world: OpeningWorld, start: OpeningStart, rolls: Placeholde
     entityStats: Object.fromEntries((start.state.owners ?? []).map((owner) => [owner.id, owner.stats])),
     blueprints: lensPinBlueprints(world),
   }, {
-    options: optionPinLists(world.options),
+    options: optionPinLists(world.options, start.optionValues),
     location: start.location, stats: globalStatsOf(start.settled, world.statGroups ?? []), placeholders: allPlaceholders(world), rolls,
   }).world;
 };

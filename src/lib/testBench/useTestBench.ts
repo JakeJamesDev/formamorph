@@ -13,6 +13,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { asBenchTab } from './benchTabs';
 import { readBenchPlacement, writeBenchPlacement, type BenchPlacement } from './benchPlacement';
 import type { BenchPopoverProps, CheckStatus, TestBenchProps } from '@/lib/testBench/benchProps';
+import type { WorldOption } from '@/types';
 import {
   applyRuleFix, IMAGE_WEBP_RULE_ID, RULES, selectMatchingFindings,
   type Finding, type FindingSection, type RuleWorld,
@@ -91,6 +92,7 @@ export interface TestBenchHandle {
 }
 
 const NO_FINDINGS: Finding[] = [];
+const NO_OPTIONS: readonly WorldOption[] = [];
 
 /** `next`, or the last list while it says the same thing. */
 function useSameFindings(next: Finding[]): Finding[] {
@@ -193,7 +195,8 @@ export function useTestBench({
   // The instruments that show play read the world as play sees it under the lens persona; the rule pass, the
   // lens picker and the editor-side checks keep the whole authored world.
   const lensPersonaId = benchLens.lens.persona?.id ?? null;
-  const benchPlay = useMemo(() => inPlayWorldOf(benchWorld, lensPersonaId), [benchWorld, lensPersonaId]);
+  const lensOptionValues = benchLens.lens.state.optionValues;
+  const benchPlay = useMemo(() => inPlayWorldOf(benchWorld, lensPersonaId, lensOptionValues), [benchWorld, lensPersonaId, lensOptionValues]);
   const statOverrides = useMemo(
     () => lensStatOverrides(benchPlay, benchLens.lens),
     [benchPlay, benchLens.lens],
@@ -457,6 +460,8 @@ export function useTestBench({
         statOverrides,
         onPersonaChange: benchLens.setPersona,
         onLocationChange: benchLens.setLocation,
+        worldOptions: benchWorld.options ?? NO_OPTIONS,
+        onOptionChange: benchLens.setOptionValue,
       },
       triggers: {
         text: triggerText,

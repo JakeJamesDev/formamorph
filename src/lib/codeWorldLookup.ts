@@ -165,6 +165,8 @@ export interface CodeCardWorld extends PinEditorWorld, WorldScriptsSource, World
   connections?: readonly Connection[];
   /** The authored items a Requires line can name. Absent ⇒ none. */
   items?: OwnerWorld['items'];
+  /** The World Options a Requires line can name. Absent ⇒ none. */
+  options?: OwnerWorld['options'];
 }
 
 /** Each box's lookup over `world`. The world's owners resolve once, on the first card any box opens. */
@@ -202,7 +204,7 @@ const signedAmount = (n: number, unit: string) => (n < 0 ? `−${-n}${unit}` : `
 /** Everything trait, placeholder, entity and dictionary cards read, built once per lookup. */
 function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
   const { placeholders } = world;
-  const ownerWorld: OwnerWorld = { traits: world.traits, traitGroups: world.traitGroups, entities: world.entities, items: world.items };
+  const ownerWorld: OwnerWorld = { traits: world.traits, traitGroups: world.traitGroups, entities: world.entities, items: world.items, options: world.options };
   const named = new Map(entityTraitNames(ownerWorld, placeholders).map((entity) => [entity.id, entity]));
   const ownerById = new Map(resolveOwners(ownerWorld, undefined).owners.map((owner) => [owner.id, owner]));
   // A location's "Present" row: the cast a Test Code run places there, with no persona.

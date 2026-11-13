@@ -54,7 +54,7 @@ When a trait and an Option pin the same placeholder, the trait wins. An Option w
 
 | Field | Off | On |
 |---|---|---|
-| **Shown to Player** | The player never sees the Option. It still pins placeholders with its default. | The Option shows on the **Enter World** dialog. |
+| **Shown to Player** | The player never sees the Option. It still pins placeholders and opens [requirements](World-Editor-Traits#world-option-conditions), and a [script](Scripts-Reference#world-options) can set it. | The Option shows on the **Enter World** dialog. |
 | **Changeable During Play** | The player sets it only when the game starts. | The player can change it during play too, on the **World Options** tab of the game's right panel. See [How to Change a World Option](How-to-Play#how-to-change-a-world-option). An Option that is not shown never has a tab entry. |
 
 ## What a Save Keeps

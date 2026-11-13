@@ -31,7 +31,7 @@ import {
 } from './statCodeTargets';
 
 /** The name-keyed maps a rename can reach. */
-export type RenameRoot = 'stats' | 'placeholders' | 'traits' | 'locations';
+export type RenameRoot = 'stats' | 'placeholders' | 'traits' | 'locations' | 'options';
 
 /** The roots that are maps code looks a name up in; a location is named by `location.move`'s argument instead. */
 type MapRoot = Exclude<RenameRoot, 'locations'>;

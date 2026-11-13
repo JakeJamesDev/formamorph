@@ -10,7 +10,7 @@ import { javascriptLanguage } from '@codemirror/lang-javascript';
 import type { SyntaxNode } from '@lezer/common';
 
 /** Every global a chain can hang off. */
-export type ChainRoot = 'stats' | 'placeholders' | 'traits' | 'owner' | 'entities' | 'persona' | 'dictionaries';
+export type ChainRoot = 'stats' | 'placeholders' | 'traits' | 'owner' | 'entities' | 'persona' | 'dictionaries' | 'options';
 
 /** One key of a member chain hanging off a map, and what it takes to rewrite that key alone. */
 export interface CodeRenameKey {

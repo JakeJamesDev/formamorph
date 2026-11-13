@@ -1,6 +1,6 @@
 # 04: World Option Condition, Scripts And Test Bench
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -23,8 +23,23 @@ Spec rulings: Q4, Q8, Q11 (hidden filter), Q17, Q25.
 
 ## Acceptance criteria
 
-- [ ] Evaluator tests cover each Option type, Not on choice and boolean, and every number operator.
-- [ ] A trait gated on an Option turns on when a script writes the matching value, at the script's write timing.
-- [ ] The hidden-Option filter drops a hidden Option's Condition from a lock line and keeps a shown one; the guard bites when the filter is removed.
-- [ ] A Test Bench lens test shows a gate result flipping when the picked Option value changes.
-- [ ] Frames: `.scratch/frames/option-condition-row.png`, light and dark, 1280 px.
+- [x] Evaluator tests cover each Option type, Not on choice and boolean, and every number operator. `traitGates.option.test.ts`.
+- [x] A trait gated on an Option turns on when a script writes the matching value, at the script's write timing. `statCodeTurn.optionWrite.test.ts`; guard bites with the post-write settle removed.
+- [x] The hidden-Option filter drops a hidden Option's Condition from a lock line and keeps a shown one; the guard bites when the filter is removed. `traitGates.option.test.ts` "the hidden-Option filter"; 3 red with the `hidden` flag forced off.
+- [x] A Test Bench lens test shows a gate result flipping when the picked Option value changes. `opening.test.ts` "gates a default trait on a World Option at the lens’s pick" and `inPlayWorld.options.test.ts` (entity Enabled gate via `startGateInput`); both guards bite.
+- [x] Frames: `.scratch/frames/option-condition-row.png`, light and dark, 1280 px. Taken with Playwright at 1280 × 800.
+
+## Landed
+
+**Not verified**
+- The mid-game settle in GameViewer's `changeWorldOption` (Q41) has no test that drives GameViewer; the settle itself is tested in `traitGates.option.test.ts`, the wiring is checked by review.
+- The Test Bench lens's own trait and stat lists (`activeTraitsFor`, `lensStatTraits`) apply no gates at all, before or after this ticket, so a default global trait gated on an Option does not follow the picker there. The opening, pins, AI context and entity gates do.
+
+**For you**
+- The Requires row for a World Option: `.scratch/world-options-04/frames/option-condition-row.png` and `option-condition-row-dark.png`.
+- The Test Bench lens bar's World Options button (an icon button opening the new-game Option controls in a popover): whether it reads well, and whether it counts as a new pattern for the Design System.
+- ⚠️ Export shape: worlds gain a `kind: 'option'` Condition; a saved World Tool call's writes (`SavedScriptWrites.options`) can carry Option writes.
+
+**Notes for later tickets**
+- 09: the hidden-Option filter is `ConditionState.hidden`; `gateLineParts` already drops it, so a Lock gate's line needs no extra helper.
+- Follow-ups named in review, not built: hover cards for `options` (Q44); a discriminated `OptionRequirement` by mode instead of one bag of optional fields; the GateInput `worldOptions` vs TraitWorld `options` naming.

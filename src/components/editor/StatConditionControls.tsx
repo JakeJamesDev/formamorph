@@ -25,7 +25,7 @@ const ITEM_CLASS = 'h-6 px-2 text-helper';
  * sees, and a blur puts the Condition's own number back. `accepts` says whether a number would repeat another
  * Condition, which the box then holds as a draft too.
  */
-function ValueInput({ value, accepts, onChange }: { value: number; accepts: (value: number) => boolean; onChange: (value: number) => void }) {
+export function ValueInput({ value, accepts, onChange }: { value: number; accepts: (value: number) => boolean; onChange: (value: number) => void }) {
   const [draft, setDraft] = useState(String(value));
   // A change from outside, such as an undo, replaces the draft.
   useEffect(() => setDraft((prev) => (Number(prev) === value ? prev : String(value))), [value]);
@@ -46,6 +46,34 @@ function ValueInput({ value, accepts, onChange }: { value: number; accepts: (val
   );
 }
 
+/** The comparison dropdown of a numeric Condition. An operator `accepts` refuses is disabled. */
+export function OperatorSelect({ value, accepts, onChange }: {
+  value: StatComparison;
+  accepts: (operator: StatComparison) => boolean;
+  onChange: (operator: StatComparison) => void;
+}) {
+  return (
+    <Select value={value} onValueChange={(v) => onChange(v as StatComparison)}>
+      <SelectTrigger size="sm" aria-label="Operator" className="h-6 w-auto shrink-0 gap-1 px-2 text-helper">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent className="min-w-0">
+        {OPERATORS.map((o) => (
+          <SelectItem
+            key={o.value}
+            value={o.value}
+            disabled={o.value !== value && !accepts(o.value)}
+            className="pl-7 pr-3 text-helper"
+          >
+            {/* The item text names the option, so the spoken name rides on the symbol. */}
+            <span aria-label={o.name}>{o.value}</span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 /**
  * The controls a stat Condition chip carries: an operator dropdown, the number it compares to, and whether
  * that number is in raw units or a percent of the stat's span. `accepts` says whether a replacement would
@@ -58,27 +86,11 @@ export function StatConditionControls({ requirement, accepts, onChange }: {
 }) {
   return (
     <>
-      <Select
+      <OperatorSelect
         value={requirement.operator}
-        onValueChange={(v) => onChange({ ...requirement, operator: v as StatComparison })}
-      >
-        <SelectTrigger size="sm" aria-label="Operator" className="h-6 w-auto shrink-0 gap-1 px-2 text-helper">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent className="min-w-0">
-          {OPERATORS.map((o) => (
-            <SelectItem
-              key={o.value}
-              value={o.value}
-              disabled={o.value !== requirement.operator && !accepts({ ...requirement, operator: o.value })}
-              className="pl-7 pr-3 text-helper"
-            >
-              {/* The item text names the option, so the spoken name rides on the symbol. */}
-              <span aria-label={o.name}>{o.value}</span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        accepts={(operator) => accepts({ ...requirement, operator })}
+        onChange={(operator) => onChange({ ...requirement, operator })}
+      />
       <ValueInput
         value={requirement.value}
         accepts={(value) => accepts({ ...requirement, value })}

@@ -265,6 +265,9 @@ function playerOwnerTraits(met: Met, owners: StatCodeOwners, keep: KeepStat, sta
     ...tree(world.traits, world.groups, null),
     ...(world.persona && { persona: world.persona }),
     ...(world.daypart && { daypart: world.daypart }),
+    // A hidden Option's Condition reads `hidden`, so player lines leave it out.
+    ...(world.options && { options: world.options }),
+    ...(world.optionValues && { optionValues: world.optionValues }),
     ...(world.gateStats && { gateStats: playerGateStats(world.gateStats, keep, statOwners) }),
     ...(world.items && {
       // Only the fields a Condition reads, so no other text of the item rides along.

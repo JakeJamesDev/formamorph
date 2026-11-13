@@ -1422,6 +1422,7 @@ export const RightPanel = ({
     viewWorldOptionValues,
   } = useGameplay();
   const worldItems = useGameDataOptional()?.items;
+  const worldOptions = useGameDataOptional()?.options;
   const {
     locations, connections, traits, traitGroups, viewStats: globalStats, currentLocation, resolveTraitText, resolveEntityText,
     entities: cast, persona, traitEntities, traitLibrary, codeEntities,
@@ -1497,9 +1498,9 @@ export const RightPanel = ({
   const daypart = daypartAt(gameTime, calendar);
   const gateWorld = React.useMemo<TraitWorld>(() => ({
     traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' }, daypart,
-    ...(worldItems ? { items: worldItems } : {}), itemCopies,
+    ...(worldItems ? { items: worldItems } : {}), itemCopies, options: worldOptions, optionValues: viewWorldOptionValues,
     ...inPlayOwners(ownerWorld, personaRef, traitLibrary),
-  }), [traits, traitGroups, cast, persona, personaRef, daypart, worldItems, itemCopies, ownerWorld, traitLibrary]);
+  }), [traits, traitGroups, cast, persona, personaRef, daypart, worldItems, itemCopies, worldOptions, viewWorldOptionValues, ownerWorld, traitLibrary]);
   const viewTraitState = React.useMemo(
     () => ({ traits: globalTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits }),
     [globalTraits, viewDisabledTraitIds, viewOwnedTraits],

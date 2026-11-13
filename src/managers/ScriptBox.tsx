@@ -212,6 +212,7 @@ export function ScriptBox({ script, label, onChange, context, reveal, autoFocus,
           traits={traitPlaces}
           entities={analysis.entities}
           locations={analysis.locations}
+          optionNames={analysis.optionNames}
           items={names.items}
           currencies={names.currencies}
           lookup={analysis.lookup}

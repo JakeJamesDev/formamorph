@@ -27,6 +27,7 @@ A script can use only these objects. In the table, a word in angle brackets is a
 | `dictionaries` | `id`, `name`, `enabled`, `entries`, `placeholders` | `dictionaries.<Dictionary>.enabled` | `dictionaries.<Dictionary>.enabled = true` |
 | `items` | `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, `placeholders`, `copies`, `give()` | `items.<Item>.copies.length` | `items.<Item>.give(persona)` |
 | `currencies` | `id`, `name`, `kind`, `balance()`, `pay()` | `currencies.<Currency>.balance(persona)` | `currencies.<Currency>.pay(persona, null, <n>)` |
+| `options` | — | `options.<Option>` | `options.<Option> = true` |
 | `console` | `log()` | — | `console.log(<text>)` |
 
 A timing adds one name to those objects. A script reads only the name its own timing adds:
@@ -838,6 +839,31 @@ if (!toll.paid) player.toast("You can't pay the toll.");
 - **An unknown Currency or party stops the script with an error.**
 - **A user Tool reads `balance` and can't pay.** Calling `pay` stops the Tool with an error.
 - **Test Code and the Test Bench apply nothing.** **Test Code** lists each `pay` with its result. With no persona in play, `persona` holds only what the world places on the player, and a Global Stat. A payment it can't afford is refused. To test with a persona's own money, select a persona in the Test Bench.
+
+### World Options
+<!-- keywords: options, world options, setting, switch, flag, choice, on or off, setup, unlock, open a door, hidden flag -->
+
+`options` holds every World Option by name, hidden ones too. You set them up on the **Options** tab.
+
+| Type | Reads as | Write |
+| --- | --- | --- |
+| Choice | The picked value's name, such as `"Short"` | `options["Reply Length"] = "Long"` |
+| On or Off | `true` or `false` | `options.Lit = true` |
+| Number | A whole number | `options.Heat = 5` |
+
+```javascript
+// Pulling the lever opens the vault for good.
+if (turn.action.includes('lever')) options["Vault Open"] = true;
+```
+
+- **A script can set any Option,** one the player picked at the start included.
+- **A value applies when the script ends.** Scripts later in the same timing read the new value. A trait or image that requires the Option follows at once.
+- **A Number snaps to its step and stays inside its range.** Writing `99` to an Option that goes up to 10 sets 10.
+- **A value the Option can't hold stops the script with an error:** a Choice value that isn't on its list, text on an On or Off, or text on a Number.
+- **A write to an unknown name is ignored and reported.** The editor underlines the name.
+- **Renaming an Option on the Options tab offers to update every script that names it.**
+- **`options` is read-only in a user Tool.**
+- **Test Code reads each Option's default.** The Test Bench reads the values you pick under **World Options** in its lens bar.
 
 ### Bodies
 <!-- keywords: body, bodies, transform, wolf form, change slots, set body from code, body in force, base body, unequip on transform, unknown body name -->

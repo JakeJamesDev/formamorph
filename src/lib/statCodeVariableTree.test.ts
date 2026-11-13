@@ -74,6 +74,7 @@ function editorNames(): VariableTreeNames {
     locations: ['Dock', 'Old Mill'],
     items: [{ id: 'lamp', name: 'Brass Lamp' }],
     currencies: [{ id: 'coin', name: 'Coin' }],
+    optionNames: ['Lanterns Lit'],
   };
 }
 
@@ -118,7 +119,7 @@ const asLevel = (entries: readonly { name: string }[]) => entries.map((entry) =>
 
 describe('the top level', () => {
   it('lists the sandbox’s globals in the order an author meets them, without console', () => {
-    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Items', 'Currencies', 'Clock', 'Turn', 'Locations', 'Location', 'Memories', 'notes', 'discover']);
+    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Items', 'Currencies', 'World Options', 'Clock', 'Turn', 'Locations', 'Location', 'Memories', 'notes', 'discover']);
   });
 
   it('keeps the in-group order of a stat’s fields', () => {
@@ -154,6 +155,14 @@ describe('the top level', () => {
     const owned = buildVariableTree(editorNames(), { kind: 'entity', entity: null });
     const roots = new Set(variableTreeLeaves(owned).map((field) => field.insert.match(/^\w+/)![0]));
     expect(SANDBOX_GLOBALS.map((entry) => entry.name).filter((name) => !roots.has(name))).toEqual(['console']);
+  });
+});
+
+describe('World Options', () => {
+  it('lists each Option by name, inserting its read in bracket form for a space', () => {
+    const list = pick(tree, 'World Options');
+    if (list.kind !== 'names') throw new Error('World Options is no name list');
+    expect(list.rows.map((row) => [row.name, row.field?.insert])).toEqual([['Lanterns Lit', 'options["Lanterns Lit"]']]);
   });
 });
 

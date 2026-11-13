@@ -14,7 +14,7 @@ import { codeDictionaries } from './statCodePlaceholders';
 import { STAT_CODE_SURFACE } from './statCodeSurface';
 import { playStatWorld } from './statLinks';
 import { entityCodeStats, entityTraitNames, worldTraitPlaces } from './statCodeTraits';
-import type { Currency, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, Stat, Trait, TraitGroup } from '@/types';
+import type { Currency, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, Stat, Trait, TraitGroup, WorldOption } from '@/types';
 
 /** The names a run reads and the editor's reader checks, all under their code names. */
 export interface StatCodeNames {
@@ -38,6 +38,8 @@ export interface StatCodeNames {
   items: { id: string; name: string }[];
   /** The world's Currencies under their code names, which `currencies` keys. */
   currencies: { id: string; name: string }[];
+  /** The World Option names `options` keys, in Options-tab order. */
+  optionNames: string[];
 }
 
 /** The world as play reads it, with links read through their Blueprints. */
@@ -54,6 +56,7 @@ export interface StatCodeNameWorld {
   locations?: readonly Pick<GameLocation, 'id' | 'name' | 'isStarting'>[];
   items?: readonly Pick<Item, 'id' | 'name'>[];
   currencies?: readonly Pick<Currency, 'id' | 'name'>[];
+  options?: readonly Pick<WorldOption, 'name'>[];
 }
 
 /** `locations` under their code names, standing where a run with no playthrough stands: the starting one, else
@@ -82,6 +85,7 @@ export function statCodeWorldNames(world: StatCodeNameWorld): StatCodeNames {
     places: codeLocationsOf(world.locations ?? [], placeholders),
     items: (world.items ?? []).map(({ id, name }) => ({ id, name: statCodeName(name, placeholders) })),
     currencies: (world.currencies ?? []).map(({ id, name }) => ({ id, name: statCodeName(name, placeholders) })),
+    optionNames: (world.options ?? []).map((option) => option.name),
   };
 }
 
@@ -104,11 +108,12 @@ export interface StatBoxSpec {
 
 /** The reader's options for one stat code box under the world's `names`. */
 export const statBoxAnalysisOptions = (
-  { placeholders, traitNames, entities, statNames, places }: Pick<StatCodeNames, 'placeholders' | 'traitNames' | 'entities' | 'statNames' | 'places'>,
+  { placeholders, traitNames, entities, statNames, places, optionNames }: Pick<StatCodeNames, 'placeholders' | 'traitNames' | 'entities' | 'statNames' | 'places'>
+    & Partial<Pick<StatCodeNames, 'optionNames'>>,
   { selfName, owner, lookup, surface = STAT_CODE_SURFACE }: StatBoxSpec = {},
 ): SurfaceAnalysisOptions => ({
   surface,
-  placeholders, traits: traitNames, entities, statNames,
+  placeholders, traits: traitNames, entities, statNames, ...(optionNames && { optionNames }),
   ...(places && { locations: places.locations.map((location) => location.name) }),
   // A global box's `owner.stats` is empty; an owner given no names leaves them unchecked.
   ...(!owner ? { ownerStatNames: [] } : owner.statNames ? { ownerStatNames: owner.statNames } : {}),

@@ -25,6 +25,8 @@ export type VariableTreeNames = Pick<AnalysisOptions, 'statNames' | 'placeholder
   items?: readonly { id: string; name: string }[];
   /** The world's Currencies by code name. Absent, Currencies is one type-over row. */
   currencies?: readonly { id: string; name: string }[];
+  /** The World Option names. Absent, World Options is one type-over row. */
+  optionNames?: readonly string[];
 };
 
 /** What an owned or Blueprint stat's `owner` holds, for the menu's Owner group. A null owner or name list is the
@@ -433,6 +435,15 @@ export function buildVariableTree(
   const currencyRows = names
     ? keyedLastWins(names.currencies ?? []).map((currency) => ({ name: currency.name, trail: [], children: fields(keyed(currencies, currency.name), CURRENCY_FIELDS) }))
     : templateRows(currencies, (at) => fields(at, CURRENCY_FIELDS));
+  // An Option is its own value: picking its row inserts the read itself.
+  const options = root('options');
+  const optionRow = (at: Path, name: string): VariableNameRow => ({
+    name, trail: [], children: [],
+    field: { kind: 'field', label: name, detail: 'value', info: globalInfo('options') ?? '', insert: at.text, ...(at.selection ? { selection: at.selection } : {}) },
+  });
+  const optionRows = names
+    ? keyedLastWins((names.optionNames ?? []).map((name) => ({ name }))).map(({ name }) => optionRow(keyed(options, name), name))
+    : [optionRow(typeOver(options), TEMPLATE_NAME)];
   const locationRows = names
     ? keyedLastWins((names.locations ?? []).map((name) => ({ name })))
       .map(({ name }) => ({ name, trail: [], children: locationEntryFields(keyed(locations, name)) }))
@@ -467,6 +478,7 @@ export function buildVariableTree(
     nameList('Dictionaries', dictionaryRows, 'No dictionaries in this world', globalInfo('dictionaries')),
     nameList('Items', itemRows, 'No items in this world', globalInfo('items')),
     nameList('Currencies', currencyRows, 'No currencies in this world', globalInfo('currencies')),
+    nameList('World Options', optionRows, 'No World Options in this world', globalInfo('options')),
     { kind: 'group', label: 'Clock', info: globalInfo('clock'), children: clockFields(root('clock')) },
     { kind: 'group', label: 'Turn', info: globalInfo('turn'), children: fields(root('turn'), timing.turn ?? TURN_MEMBERS) },
     nameList('Locations', locationRows, 'No locations in this world', globalInfo('locations')),
@@ -532,7 +544,7 @@ export function variableTreeLeaves(nodes: readonly VariableNode[]): VariableFiel
   return nodes.flatMap((node): VariableField[] => {
     if (node.kind === 'field') return [node];
     if (node.kind === 'group') return variableTreeLeaves(node.children);
-    if (node.kind === 'names') return node.rows.flatMap((row) => variableTreeLeaves(row.children));
+    if (node.kind === 'names') return node.rows.flatMap((row) => [...(row.field ? [row.field] : []), ...variableTreeLeaves(row.children)]);
     return [];
   });
 }

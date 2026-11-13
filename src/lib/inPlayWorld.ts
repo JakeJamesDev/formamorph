@@ -4,7 +4,7 @@ import { startingGateStats } from '@/lib/gateStats';
 import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
 import { worldGateInput, type GateInput } from '@/lib/traitGates';
 import type {
-  Connection, DiscoveredEntity, Entity, GameLocation, PersonaRef, Stat, StatGroup, Trait, TraitGroup,
+  Connection, DiscoveredEntity, Entity, GameLocation, PersonaRef, Stat, StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValues,
 } from '@/types';
 
 /**
@@ -56,11 +56,12 @@ export function inPlayWorldData<W extends { entities: Entity[]; locations: GameL
 /** The authored slice a reader with no playthrough gates. */
 type StartWorld = {
   entities: Entity[]; locations: GameLocation[]; connections?: Connection[];
-  traits?: Trait[]; traitGroups?: TraitGroup[]; stats?: Stat[]; statGroups?: StatGroup[];
+  traits?: Trait[]; traitGroups?: TraitGroup[]; stats?: Stat[]; statGroups?: StatGroup[]; options?: WorldOption[];
 };
 
-/** The gate input of a world at its start under `playedEntityId`: authored stats, no trait picked (Q25). */
-export function startGateInput(world: StartWorld, playedEntityId: string | null): GateInput {
+/** The gate input of a world at its start under `playedEntityId`: authored stats, no trait picked, and
+ *  `optionValues` over each Option's default (Q25). */
+export function startGateInput(world: StartWorld, playedEntityId: string | null, optionValues?: WorldOptionValues): GateInput {
   const persona: PersonaRef = playedEntityId ? { source: 'world', entityId: playedEntityId } : { source: 'none' };
   const traits = world.traits ?? [];
   const traitGroups = world.traitGroups ?? [];
@@ -68,14 +69,16 @@ export function startGateInput(world: StartWorld, playedEntityId: string | null)
     ...worldGateInput({ traits, groups: traitGroups, entities: world.entities }, persona),
     ...inPlayOwners({ traits, traitGroups, entities: world.entities }, persona),
     stats: startingGateStats(world),
+    ...(world.options ? { worldOptions: world.options } : {}),
+    ...(optionValues ? { optionValues } : {}),
   };
 }
 
 /** An authored world slice as play sees it at its start with `playedEntityId` as the player, for a reader with no
- *  playthrough. */
-export function inPlayWorldOf<W extends StartWorld>(world: W, playedEntityId: string | null): W {
+ *  playthrough. `optionValues` are the Test Bench's picks. */
+export function inPlayWorldOf<W extends StartWorld>(world: W, playedEntityId: string | null, optionValues?: WorldOptionValues): W {
   const source = { entities: world.entities, locations: world.locations, connections: world.connections ?? [] };
-  const gate = world.entities.some(hasEnabledGate) ? startGateInput(world, playedEntityId) : undefined;
+  const gate = world.entities.some(hasEnabledGate) ? startGateInput(world, playedEntityId, optionValues) : undefined;
   return inPlayWorldData(world, resolveInPlayWorld(source, { playedEntityId, gate }));
 }
 

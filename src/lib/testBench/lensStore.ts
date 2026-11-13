@@ -7,6 +7,7 @@
  */
 import { createKeyedRecordStore } from '@/lib/keyedStorage';
 import { EMPTY_LENS, type LensState } from './lens';
+import type { WorldOptionValues } from '@/types';
 
 const store = createKeyedRecordStore('session', 'FORMAMORPH_benchLens');
 
@@ -16,8 +17,19 @@ const asId = (value: unknown): string | null => (typeof value === 'string' && va
 export function readLensState(worldId: string): LensState | null {
   const stored = store.read(worldId);
   if (!stored || typeof stored !== 'object') return null;
-  const { personaId, locationId, locationChosen } = stored as Partial<LensState>;
-  return { ...EMPTY_LENS, personaId: asId(personaId), locationId: asId(locationId), ...(locationChosen === true ? { locationChosen } : {}) };
+  const { personaId, locationId, locationChosen, optionValues } = stored as Partial<LensState>;
+  const values = asOptionValues(optionValues);
+  return {
+    ...EMPTY_LENS, personaId: asId(personaId), locationId: asId(locationId), ...(locationChosen === true ? { locationChosen } : {}),
+    ...(values ? { optionValues: values } : {}),
+  };
+}
+
+/** Stored Option values; each that no longer fits its Option reads the default at use. */
+function asOptionValues(value: unknown): WorldOptionValues | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const kept = Object.entries(value).filter(([, v]) => typeof v === 'string' || typeof v === 'boolean' || typeof v === 'number');
+  return kept.length ? Object.fromEntries(kept) as WorldOptionValues : null;
 }
 
 export function writeLensState(worldId: string, state: LensState): void {

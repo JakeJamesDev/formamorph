@@ -5,7 +5,11 @@
  * Presentational: findings arrive as props, and navigation is a callback the editor fulfills, so the panel
  * renders identically embedded in the editor's list panel, docked beside it, and inside the mobile sheet.
  */
-import { CircleX, FlaskConical, PanelLeft, PanelRight, X, type LucideIcon } from 'lucide-react';
+import { CircleX, FlaskConical, PanelLeft, PanelRight, SlidersHorizontal, X, type LucideIcon } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { OptionControl } from '@/components/game/SetupWorldOptions';
+import { optionValue } from '@/lib/worldOptions';
+import type { WorldOption, WorldOptionValueOf, WorldOptionValues } from '@/types';
 import { LocationIcon, PersonaIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -147,9 +151,39 @@ const LensSelect = ({ icon: Icon, label, none, value, options, onChange }: {
   </Select>
 );
 
+/** The lens's World Option values, every Option listed, hidden ones marked (Q25). */
+const LensWorldOptions = ({ options, values, onChange }: {
+  options: readonly WorldOption[];
+  values: WorldOptionValues | undefined;
+  onChange: (optionId: string, value: WorldOptionValueOf) => void;
+}) => (
+  <Popover>
+    <Tip tip="World Options">
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0" aria-label="World Options">
+          <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
+        </Button>
+      </PopoverTrigger>
+    </Tip>
+    <PopoverContent align="end" className="w-80 space-y-2">
+      {options.map((option) => (
+        <div key={option.id}>
+          <OptionControl
+            option={option} value={optionValue(option, values)} onChange={(value) => onChange(option.id, value)}
+            resolveText={(text) => text} commitOnRelease
+          />
+          {!option.shownToPlayer && <Meta as="p" className="mt-1">Hidden from the player</Meta>}
+        </div>
+      ))}
+    </PopoverContent>
+  </Popover>
+);
+
 /** The Bench-level lens: who is being played, and at which location, as far as the open instrument reads. Its notes go
  *  under it because both follow from the picks directly above them. */
-const LensBar = ({ lens, personaOptions, noneLabel, locationOptions, statOverrides, onPersonaChange, onLocationChange, parts }: LensBarProps & {
+const LensBar = ({
+  lens, personaOptions, noneLabel, locationOptions, statOverrides, onPersonaChange, onLocationChange, worldOptions, onOptionChange, parts,
+}: LensBarProps & {
   /** The lens parts the open instrument reads. */
   parts: { persona: boolean; location: boolean };
 }) => (
@@ -181,6 +215,7 @@ const LensBar = ({ lens, personaOptions, noneLabel, locationOptions, statOverrid
           />
         </>
       )}
+      {worldOptions.length > 0 && <LensWorldOptions options={worldOptions} values={lens.state.optionValues} onChange={onOptionChange} />}
     </div>
     {lens.brokenPins.map((pin) => (
       <p key={`${pin.placeholderId}:${pin.value}`} className="flex items-start gap-1 text-meta text-destructive">

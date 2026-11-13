@@ -250,7 +250,23 @@ export type TraitRequirement =
   | { kind: 'playingAs'; id: string; name?: string; not?: true }
   | StatRequirement
   | ItemRequirement
-  | TimeRequirement;
+  | TimeRequirement
+  | OptionRequirement;
+
+/** A World Option Condition. It names no owner. A choice Option holds `valueId`; a boolean holds on; Not flips
+ *  either. A number compares by `operator` to `value` and takes no Not. Fields that do not fit the Option's
+ *  type, or a missing Option or value, leave it unresolved. `name` and `valueName` are stored for display. */
+export interface OptionRequirement {
+  kind: 'option';
+  id: string;
+  name?: string;
+  valueId?: string;
+  valueName?: string;
+  operator?: StatComparison;
+  value?: number;
+  owner?: undefined;
+  not?: true;
+}
 
 /** An item Condition: an owner has a copy of the item, or has one equipped. `name` is the item's name when it
  *  was stored, so an unresolved one still reads. An owner-less one means the host's owner; on an item it is

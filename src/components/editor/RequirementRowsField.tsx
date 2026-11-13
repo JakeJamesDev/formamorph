@@ -10,6 +10,7 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { StatConditionControls } from '@/components/editor/StatConditionControls';
 import { TimeConditionControls } from '@/components/editor/TimeConditionControls';
 import { ItemConditionControls } from '@/components/editor/ItemConditionControls';
+import { OptionConditionControls } from '@/components/editor/OptionConditionControls';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import {
   requirementOwnerKey, requirementOwnerOf, flipped, itemChecks, sameRequirement, statTail, withRequirementOwner,
@@ -43,6 +44,9 @@ type AddTarget = number | 'new';
  * floor and once as a ceiling.
  *
  * A time Condition's chip is a toggle per daypart, at least one on, with no Not. A row holds one at most.
+ *
+ * A World Option Condition's chip edits a choice's value or a number's comparison in place; a number has no
+ * Not. A boolean's chip reads "on" or "off" and flips between them.
  *
  * The host supplies everything the rows read: `states` the rows' evaluated state in the same order, `options`
  * the targets an author can add, `statSections` the stats by owner, and `textOf` the rule text of one Condition.
@@ -103,7 +107,7 @@ export function RequirementRowsField({
   // A stat row names its owner in the section it sits in, so it needs no owner page. What a playing-as row,
   // an off-world row and a global target add at once; any other target asks which owner first.
   const atOnce = (option: RequirementOption) =>
-    (option.requirement.kind === 'playingAs' || option.requirement.kind === 'stat' || option.requirement.kind === 'time' || offWorld
+    (option.requirement.kind === 'playingAs' || option.requirement.kind === 'stat' || option.requirement.kind === 'time' || option.requirement.kind === 'option' || offWorld
       ? option.requirement : soleOwnerRequirement(option));
   const pick = (option: RequirementOption) => {
     const requirement = atOnce(option);
@@ -135,7 +139,11 @@ export function RequirementRowsField({
   // Off-world only the entity's own stats exist to read.
   const shownStats = statSections.filter((s) => !offWorld || s.own);
   const shownItems = offWorld ? [] : options.items ?? [];
-  const searchable = joinAnd(['traits', 'groups', ...(shownStats.length ? ['stats'] : []), ...(shownItems.length ? ['items'] : []), 'time of day', ...(offWorld ? [] : ['personas'])]);
+  const worldOptions = options.worldOptions ?? [];
+  const searchable = joinAnd([
+    'traits', 'groups', ...(shownStats.length ? ['stats'] : []), ...(shownItems.length ? ['items'] : []), 'time of day',
+    ...(worldOptions.length ? ['World Options'] : []), ...(offWorld ? [] : ['personas']),
+  ]);
   // One owner page per home, the world first and then in tree order; pages key on the owner's id, not its name.
   const ownerPages = (prefix: string, list: RequirementOption[]): BreadcrumbPickerNode<RequirementOption>[] => {
     const homes = new Map<string, { heading: string; list: RequirementOption[] }>();
@@ -162,6 +170,7 @@ export function RequirementRowsField({
       return list.length ? [{ kind: 'section' as const, ...targets(status === 'owned' ? 'Owned' : 'Equipped', list) }] : [];
     })),
     ...category('time', 'Time of Day', [{ kind: 'section', ...targets('Time of Day', [TIME_OPTION]) }]),
+    ...(worldOptions.length ? category('worldOptions', 'World Options', [{ kind: 'section', ...targets('World Options', worldOptions) }]) : []),
     ...(offWorld ? [] : category('playingAs', 'Playing As', [{ kind: 'section', ...targets('Playing As', options.personas) }])),
   ];
 
@@ -212,15 +221,22 @@ export function RequirementRowsField({
     const itemName = itemTail && targetText.endsWith(itemTail) ? targetText.slice(0, targetText.length - itemTail.length) : targetText;
     // A time chip is its daypart toggles; the complement is the other dayparts, so it has no Not.
     const time = requirement.kind === 'time' ? requirement : null;
+    // A World Option chip edits a choice's value or a number's comparison in place; a boolean's text says on or off.
+    const optionReq = requirement.kind === 'option' ? requirement : null;
+    const optionDef = optionReq && !unresolved ? worldOptions.find((o) => o.requirement.id === optionReq.id)?.worldOption : undefined;
+    const optionEdits = optionReq && optionDef && optionDef.type !== 'boolean' ? { req: optionReq, def: optionDef } : null;
+    const grouped = stat || time || item || optionEdits;
+    // A number Option Condition flips by its operator, so it has no Not toggle.
+    const flips = !time && optionReq?.operator === undefined;
     return (
       <span
-        role={stat || time || item ? 'group' : undefined}
-        aria-label={stat || time || item ? ruleLabel : undefined}
+        role={grouped ? 'group' : undefined}
+        aria-label={grouped ? ruleLabel : undefined}
         data-unresolved={unresolved || undefined}
         data-not={requirement.not || undefined}
         className={cn(
           'inline-flex max-w-full items-center gap-0.5 rounded-full border bg-secondary py-0.5 pl-2.5 pr-1 text-label',
-          (stat || time || item) && 'flex-wrap gap-y-1',
+          grouped && 'flex-wrap gap-y-1',
           time && 'flex-nowrap rounded-2xl',
           requirement.not && 'border-dashed',
           unresolved && 'border-destructive text-destructive',
@@ -228,6 +244,17 @@ export function RequirementRowsField({
       >
         {time ? (
           <TimeConditionControls requirement={time} accepts={edit.accepts} onChange={edit.replace} />
+        ) : optionEdits ? (
+          <>
+            <span className="min-w-0 truncate">
+              {mark}<PlaceholderText text={optionEdits.def.type === 'choice' ? `${optionEdits.def.name} is` : optionEdits.def.name} placeholders={placeholders} />
+            </span>
+            <span className="ml-1.5 inline-flex items-center gap-1.5 text-foreground">
+              <OptionConditionControls option={optionEdits.def} requirement={optionEdits.req} accepts={edit.accepts} onChange={edit.replace} />
+            </span>
+          </>
+        ) : optionReq ? (
+          <span className="min-w-0 truncate"><PlaceholderText text={state?.text ?? ''} placeholders={placeholders} /></span>
         ) : stat ? (
           <>
             <span className="min-w-0 truncate">{mark}<PlaceholderText text={statName} placeholders={placeholders} /></span>
@@ -257,7 +284,7 @@ export function RequirementRowsField({
             {mark}<PlaceholderText text={targetText} placeholders={placeholders} />
           </button>
         )}
-        {!time && <Tip tip={requirement.not ? 'Require it instead' : 'Require it to be off'}>
+        {flips && <Tip tip={requirement.not ? 'Require it instead' : 'Require it to be off'}>
           <button
             type="button"
             aria-label={requirement.not ? `Require ${targetLabel} instead` : `Require ${targetLabel} to be off`}

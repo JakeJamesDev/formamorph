@@ -2151,7 +2151,7 @@ const traitGroupTooSmall: Rule = {
 // ── Trait gates ───────────────────────────────────────────────────────────────────────────────────────────
 
 /** The slices the owner resolver reads. */
-export type OwnerSource = Partial<Pick<RuleWorld, 'traits' | 'traitGroups' | 'entities' | 'items'>>;
+export type OwnerSource = Partial<Pick<RuleWorld, 'traits' | 'traitGroups' | 'entities' | 'items' | 'options'>>;
 
 const pairKey = (a: OwnerId, b: string) => `${scopeKey(a)}\u0000${b}`;
 
@@ -2176,6 +2176,7 @@ export function ownerWorldOf(world: OwnerSource, open: OpenGates = NONE_OPEN): O
     traits: (world.traits ?? []).map(opened),
     traitGroups: world.traitGroups ?? [],
     ...(world.items ? { items: world.items } : {}),
+    ...(world.options ? { options: world.options } : {}),
     entities: (world.entities ?? []).map((e) => ({
       ...e, name: e.name ?? '',
       ...(e.traits ? { traits: e.traits.map(opened) } : {}),
@@ -2536,7 +2537,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     : req.kind !== 'playingAs' && req.kind !== 'item' && editor.owners.some((o) => (req.kind === 'trait' ? o.traits : o.groups).some((x) => x.id === req.id)));
   const crossings = held.filter((gate) => gate.owner.id === null && global.traits.some((t) => t.id === gate.trait.id))
     .flatMap((gate) => (gate.trait.requires ?? []).flatMap((row, i) => row.all.flatMap((req, j) => {
-      if (req.kind === 'playingAs' || req.kind === 'time' || req.kind === 'item' || req.owner) return [];
+      if (req.kind === 'playingAs' || req.kind === 'time' || req.kind === 'item' || req.kind === 'option' || req.owner) return [];
       const isGlobal = req.kind === 'stat' ? !!stats.global[req.id] : globalIds.has(req.id);
       return !isGlobal && entityHolds(req) ? [{ gate, condition: quote(gate.rows[i][j]) }] : [];
     })));

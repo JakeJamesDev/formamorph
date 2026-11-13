@@ -12,6 +12,7 @@ import type { BenchTab } from './benchTabs';
 import type { BenchPlacement } from './benchPlacement';
 import type { MissingSource, RepairAction } from '@/lib/sourceChecks';
 import type { ScriptPromptStore } from '@/lib/scriptPrompts';
+import type { WorldOption, WorldOptionValueOf } from '@/types';
 
 /** Where the author is sent when they click an item a finding names. */
 export type OpenFindingItem = (section: FindingSection, itemId: string) => void;
@@ -79,6 +80,9 @@ export interface LensBarProps {
   statOverrides: StatOverride[];
   onPersonaChange: (personaId: string | null) => void;
   onLocationChange: (locationId: string | null) => void;
+  /** Every World Option, hidden ones included. */
+  worldOptions: readonly WorldOption[];
+  onOptionChange: (optionId: string, value: WorldOptionValueOf) => void;
 }
 
 /** The Activation Tester's bundle. Its text, history and semantic toggle live above the tab strip so

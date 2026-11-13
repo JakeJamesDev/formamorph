@@ -94,8 +94,10 @@ const money = () => scriptMoney({
   stats: { globalStats: [], entityStats: { hero: world.persona.stats.stats.map((s) => ({ ...s, value: 50 })) } },
   playedIds: ['hero'], statsOn: (_id, list) => list,
 });
+// An On or Off Option, so the guide's `= true` form writes it.
+const worldOptions = [{ id: 'option', name: 'Option', type: 'boolean' as const, shownToPlayer: true, midGame: false, default: false }];
 const run = (code: string, options: StatCodeRunOptions = {}) => executeStatCode(code, stats, stats[0], {
-  ...world, currencies: [{ id: 'currency', name: 'Currency', kind: 'stat' }], money: money(), ...options,
+  ...world, currencies: [{ id: 'currency', name: 'Currency', kind: 'stat' }], money: money(), worldOptions, ...options,
 });
 
 /** The objects whose write a box takes at After the AI only, where the guide's form runs and is checked. */
@@ -108,6 +110,7 @@ const editorNames: AnalysisOptions = {
   statNames: stats.map((entry) => entry.name),
   selfName: stats[0].name,
   traits: ['Trait'],
+  optionNames: ['Option'],
   entities: [{ id: 'entity', name: 'Entity', traits: [{ id: 'trait', name: 'Trait', path: [] }], persona: true }],
   placeholders: {
     list: [ownedPlaceholder('world'), ownedPlaceholder('of-entity'), ownedPlaceholder('of-dictionary')],
@@ -123,7 +126,7 @@ const editorFindings = (code: string, timing?: ScriptTiming) => (timing
   : statCodeDiagnostics(code, editorNames)).map((finding) => finding.message);
 
 /** The result fields a run that changed only what it meant to fills. Any other field reports a dropped write. */
-const APPLIED_FIELDS = new Set(['value', 'error', 'bounds', 'statWrites', 'ownerStatWrites', 'placeholders', 'traits', 'entities', 'worldWrites', 'lore', 'choices', 'payments']);
+const APPLIED_FIELDS = new Set(['value', 'error', 'bounds', 'statWrites', 'ownerStatWrites', 'placeholders', 'traits', 'entities', 'worldWrites', 'lore', 'choices', 'payments', 'optionWrites']);
 const APPLIED_ENTITY_FIELDS = new Set(['entity', 'traits']);
 
 /** The fields of a run's result that report a dropped write, an entity's own included. */
@@ -136,7 +139,7 @@ const dropped = (result: StatCodeResult) => [
 const landed = (result: StatCodeResult) => result.value !== null || !!result.bounds || !!result.statWrites?.length
   || !!result.ownerStatWrites?.length || !!result.placeholders?.length
   || !!result.traits?.length || !!result.entities?.some((entity) => entity.traits?.length) || !!result.worldWrites || !!result.lore?.length
-  || !!result.choices;
+  || !!result.choices || !!result.optionWrites?.length;
 
 /** Each object's members as the surface lists them. `console` has no list; the sandbox answers for it below. */
 const SURFACE_MEMBERS: Record<string, readonly SurfaceEntry[]> = {
@@ -158,6 +161,8 @@ const SURFACE_MEMBERS: Record<string, readonly SurfaceEntry[]> = {
   dictionaries: DICTIONARY_FIELDS,
   items: ITEM_FIELDS,
   currencies: CURRENCY_FIELDS,
+  // Keyed by the world's Option names; no member of its own.
+  options: [],
 };
 
 const rows = quickReferenceRows();
