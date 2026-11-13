@@ -15,6 +15,7 @@ An author gives an entity an Enabled gate, and a disabled entity is fully hidden
 - The resolver evaluates the gate at each turn commit. A disabled entity leaves the scene at the next commit, and any follow ends (Q9).
 - A disabled entity is inert: its stats, regen, traits and scripts pause and resume where they paused, using the machinery that pauses a disabled stat (Q23).
 - Its position and engine state (start, hold) survive while disabled: the position engine's drop of entities outside the cast, at placement and at save load, skips disabled entities. Re-enabled, it returns where it was (Q38).
+- 02 kept the save-load orphan check, the new-game opening fold, roll priming and known-name matching on the authored world, so a disabled entity's item copies and stats survive. Its earlier Code Pins still apply (Q39); pausing its scripts stops new ones.
 - Glossary: Enabled in its entity sense. Docs: the wiki's entity pages. Changelog fragment.
 - ⚠️ Export-shape change for worlds.
 

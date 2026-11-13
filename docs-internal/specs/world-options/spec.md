@@ -44,7 +44,7 @@ Scripts never write Enabled or Locked directly. They write a World Option, and t
 - **Q19 Pins.** Each choice value and each boolean state can carry placeholder pins. A number Option has no pins.
 - **Q20 Scope.** World Options are world-level and flat: no owner, no groups, no gates on the Options themselves.
 - **Q21 Old saves.** Existing Open Chat saves start each Option at its default. No save migration.
-- **Q22 Mid-game tab.** Mid-game Options live in their own in-game tab, the rightmost tab of the right panel. A change applies at the next turn commit.
+- **Q22 Mid-game tab.** Mid-game Options live in their own in-game tab, the rightmost tab of the right panel. When a change applies: see Q41.
 - **Q23 Inert.** A disabled entity is fully inert: its stats, regen, traits and scripts pause and resume where they paused.
 - **Q24 Number.** A number Option has a required min and max. The player sets it with a slider.
 - **Q25 Test Bench.** Test Bench lets the author pick Option values. Elsewhere outside play, gates read each Option's default, and the editor shows every entity and location.
@@ -61,8 +61,12 @@ Scripts never write Enabled or Locked directly. They write a World Option, and t
 - **Q36 Resolver timing and scope.** The resolver derives the in-play view live from committed playthrough state; gate inputs change only at commit, which satisfies Q9 and Q22. It gates every in-play entity by its own gate, library and runtime entities included; one with no gate is on. The played persona is always on. (Ticket 01 question.)
 - **Q37 Option pins path.** Option pins go through the existing pin collection beside trait pins, not through the resolver. Ticket 03 does not wait for 01. (Ticket 01 and 03 question.)
 - **Q38 Position resumes.** A re-enabled entity comes back at its stored position with its engine state (start, hold), not wherever its routine would place it fresh. A follow still ends at disable (Q9). The position engine's drop of entities outside the cast skips disabled entities. (Ticket 01 evidence.)
-- **Q39 Off entities pin nothing.** A disabled entity's trait pins and Code Pins do not apply, and scripts that name it read an unknown name. (Ticket 02 question.)
+- **Q39 Off entities pin nothing.** A disabled entity's trait pins do not apply, and scripts that name it read an unknown name. Code Pins have no owner, so one its script set before it turned off still applies; 07 pauses its scripts so it sets no new ones. (Ticket 02 question and landing.)
 - **Q40 Test Bench is in play.** Test Bench's opening, lens and AI-context run go through the resolver, reading default Option values until ticket 04's picker. Its world picker and editor-side World Tools read the authored world. (Ticket 02 question.)
+- **Q41 Mid-game timing.** A mid-game Option change works like a player trait toggle: the tab is disabled while a turn runs; when idle the change applies at once, gates settle, and the next request reads it. It replaces Q22's "at the next turn commit". (Ticket 05 question.)
+- **Q42 Hidden Listed Action.** The change becomes a Listed Action hidden from the narrator, so undo can reverse it and Options still add no AI text (Q13). (Ticket 05 question.)
+- **Q43 Setup gates.** On the Enter World screen, trait gates read the Option values the player picked above them. (Ticket 04 question.)
+- **Q44 Script tooling.** Ticket 04 includes Option rename tracking in scripts and unknown-Option-name warnings. Hover cards are a follow-up. (Ticket 04 question; spec session's call.)
 
 ## User Stories
 
