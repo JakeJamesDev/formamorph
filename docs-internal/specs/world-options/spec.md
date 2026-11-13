@@ -61,6 +61,8 @@ Scripts never write Enabled or Locked directly. They write a World Option, and t
 - **Q36 Resolver timing and scope.** The resolver derives the in-play view live from committed playthrough state; gate inputs change only at commit, which satisfies Q9 and Q22. It gates every in-play entity by its own gate, library and runtime entities included; one with no gate is on. The played persona is always on. (Ticket 01 question.)
 - **Q37 Option pins path.** Option pins go through the existing pin collection beside trait pins, not through the resolver. Ticket 03 does not wait for 01. (Ticket 01 and 03 question.)
 - **Q38 Position resumes.** A re-enabled entity comes back at its stored position with its engine state (start, hold), not wherever its routine would place it fresh. A follow still ends at disable (Q9). The position engine's drop of entities outside the cast skips disabled entities. (Ticket 01 evidence.)
+- **Q39 Off entities pin nothing.** A disabled entity's trait pins and Code Pins do not apply, and scripts that name it read an unknown name. (Ticket 02 question.)
+- **Q40 Test Bench is in play.** Test Bench's opening, lens and AI-context run go through the resolver, reading default Option values until ticket 04's picker. Its world picker and editor-side World Tools read the authored world. (Ticket 02 question.)
 
 ## User Stories
 

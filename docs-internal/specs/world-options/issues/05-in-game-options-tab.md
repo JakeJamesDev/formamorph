@@ -11,6 +11,7 @@ The player changes mid-game Options during play.
 
 - A new tab, the rightmost of the in-game right panel, lists only Options flagged for mid-game change and Shown to Player. With none, the tab does not show (Q22, Q26).
 - A change applies at the next turn commit, not mid-turn.
+- 03 left two pieces for mid-game changes: Option pins aliased per history page, so earlier pages keep the text they were written under, and undo restoring Option values.
 - A dev-router entry for the tab.
 - Docs: the wiki's playing pages. Changelog fragment.
 
