@@ -67,6 +67,10 @@ Scripts never write Enabled or Locked directly. They write a World Option, and t
 - **Q42 Hidden Listed Action.** The change becomes a Listed Action hidden from the narrator, so undo can reverse it and Options still add no AI text (Q13). (Ticket 05 question.)
 - **Q43 Setup gates.** On the Enter World screen, trait gates read the Option values the player picked above them. (Ticket 04 question.)
 - **Q44 Script tooling.** Ticket 04 includes Option rename tracking in scripts and unknown-Option-name warnings. Hover cards are a follow-up. (Ticket 04 question; spec session's call.)
+- **Q45 Gate placement.** An entity's Enabled gate sits on its Presence tab. The library entity editor has no gate editor; a library entity that carries a gate still follows it (Q36). (Ticket 07 question.)
+- **Q46 Simple mode.** The Enabled and Lock gates show in Simple mode. (Ticket 07 question.)
+- **Q47 One pass.** Every gate evaluates in one pass against committed state; a disabled entity's stored stats and traits read frozen. No cascade. (Ticket 07 question.)
+- **Q48 Self-lock scope.** The Q30 warning fires when every Condition in an entity's gate reads the entity itself: its stats, traits or groups. Own-item Conditions do not count, since scripts can still move its items. (Ticket 07 question.)
 
 ## User Stories
 
