@@ -906,7 +906,7 @@ const GameViewer = ({
   const {
     entities, locations, connections, stats, traits, traitGroups, dictionary, globalStats, viewStats,
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText,
-    resolveTraitFor, resolveEntityText, resolveEntityFor, playerNames, persona, traitEntities, traitLibrary, codeEntities,
+    resolveTraitFor, resolveEntityText, resolveEntityFor, entitiesFor, playerNames, persona, traitEntities, traitLibrary, codeEntities,
     presentEntitiesUnder, worldPersonas, customPersona: resolvedCustomPersona, pinBlueprints,
   } = useResolvedWorld();
   usePersonaNotice();
@@ -2606,6 +2606,12 @@ const GameViewer = ({
 
   // The world as this turn's passes read it, over what its code wrote and React has not rendered yet, at the
   // time its clock advances reached. Null when code moved nothing, which leaves every pass on the memoized reads.
+  // The stranger labels of an authored cast plus the discovered characters, against the live met list.
+  const strangerLabelsOf = useCallback((cast: Entity[]) => labelsInPlay(
+    [...cast, ...discoveredAsEntities(discoveredEntities)], metEntities, persona?.entity ?? null, locations,
+    new Set(discoveredEntities.map((d) => d.entity.id)), strangerAliases,
+  ), [discoveredEntities, metEntities, persona, locations, strangerAliases]);
+
   const turnCodeView = useCallback((over: TurnCodeState | null, elapsed?: number): SceneWrites | null => {
     if (!over) return elapsed === undefined ? null : { elapsed };
     const overPins = pinsFor(over.codePins ?? {}, {
@@ -2614,6 +2620,7 @@ const GameViewer = ({
     });
     const resolve = (text: string) => resolveFor(overPins.world, text);
     const held = savedTraits(over, traits);
+    const boxCast = entitiesFor(overPins);
     return {
       ...activeUnderTraits(
         resolveStatNames(over.globalStats, resolve), held.acquired, held.disabledTraitIds, traitOrder,
@@ -2624,9 +2631,11 @@ const GameViewer = ({
       resolve,
       resolveTrait: (trait, text, owner) => resolveTraitFor(overPins, trait, text, owner),
       resolveEntity: (entity, text) => resolveEntityFor(overPins, entity, text),
+      entities: boxCast,
+      strangerLabels: strangerLabelsOf(boxCast),
       ...(elapsed === undefined ? {} : { elapsed }),
     };
-  }, [pinsFor, resolveFor, resolveTraitFor, resolveEntityFor, traits, traitOrder, gatedWorld]);
+  }, [pinsFor, resolveFor, resolveTraitFor, resolveEntityFor, entitiesFor, strangerLabelsOf, traits, traitOrder, gatedWorld]);
 
   // The lore a running turn's prompts read under its code's lore writes; the live entries when they changed none.
   const turnLore = useCallback((over: TurnCodeState | null, view: SceneWrites | null): DictionaryEntry[] => {
@@ -2672,12 +2681,7 @@ const GameViewer = ({
   }, [gatedWorld]);
   // Every roster lists an unmet stranger under its true name with its label beside it. This reads the live
   // met list; the turn start reads its own, as the turn begins.
-  const strangerLabels = useMemo(
-    () => labelsInPlay(
-      allEntities, metEntities, persona?.entity ?? null, locations, new Set(discoveredEntities.map((d) => d.entity.id)), strangerAliases,
-    ),
-    [allEntities, metEntities, persona, locations, discoveredEntities, strangerAliases],
-  );
+  const strangerLabels = useMemo(() => strangerLabelsOf(entities), [strangerLabelsOf, entities]);
   // What the Entities chip's Movement tags read: every Unique entity's routine and follow state, now.
   const sceneMovement = useMemo(
     () => ({ routines, uniques: uniqueStates, now: storyNow }),

@@ -101,6 +101,10 @@ export interface SceneWrites {
   uniques?: Readonly<UniqueStates>;
   /** Where the turn's moves left each Generic entity's Generic Entity Instances, over the live ones. */
   generics?: Readonly<GenericStates>;
+  /** The authored cast with names and Stranger Names under the box's pins, over the live entries by id. */
+  entities?: readonly Entity[];
+  /** The stranger labels read from `entities`. */
+  strangerLabels?: StrangerLabels;
 }
 
 /**
@@ -123,7 +127,10 @@ export function liveChipScene(
     positions: box?.positions ? { ...sources.standings.positions, ...box.positions } : sources.standings.positions,
     generics: box?.generics ?? sources.standings.generics,
   });
-  const allEntities = ownText(box?.addedEntities ? [...sources.allEntities, ...box.addedEntities] : sources.allEntities);
+  // The box's cast replaces the live entries by id; a runtime character keeps its own.
+  const boxCastById = box?.entities && new Map(box.entities.map((e) => [e.id, e]));
+  const underBox = (entities: Entity[]) => (boxCastById ? entities.map((e) => boxCastById.get(e.id) ?? e) : entities);
+  const allEntities = ownText(underBox(box?.addedEntities ? [...sources.allEntities, ...box.addedEntities] : sources.allEntities));
   const persona = sources.persona && { ...sources.persona, entity: ownText([sources.persona.entity])[0] };
   const loc = location ?? sources.location;
   const presentIds = idsAt(loc?.id, allEntities, placesOf);
@@ -180,9 +187,9 @@ export function liveChipScene(
     placements: sources.placements,
     equipment: sources.equipment,
     placesOf,
-    outerScopeEntities: ownText(sources.entities),
+    outerScopeEntities: ownText(underBox(sources.entities)),
     inSceneNames,
-    strangerLabels: sources.strangerLabels,
+    strangerLabels: box?.strangerLabels ?? sources.strangerLabels,
     ...(sources.movement && {
       movement: movementStates(sources.movement.routines, box?.uniques ?? sources.movement.uniques, sources.movement.now),
     }),

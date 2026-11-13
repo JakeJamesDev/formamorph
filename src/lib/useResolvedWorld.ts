@@ -12,7 +12,7 @@ import { customPersonaEntity } from '@/lib/blueprints';
 import { libraryPlaceholderSet, type LibraryCarrier } from '@/lib/libraryPlaceholders';
 import { inAuthoredOrder, refreshChosenTraits, traitOrderIndex } from '@/lib/traitEffects';
 import {
-  resolveConnectionHints, resolveEntityNames, resolveLocationNames, resolveOwnedTraitNames, resolveStatNames, resolveStrangerNames, resolveTraitNames, resolveTraitGroupNames,
+  resolveConnectionHints, resolveEntityNames, resolveLocationNames, resolveOwnedTraitNames, resolveStatNames, resolveCastNames, resolveTraitNames, resolveTraitGroupNames,
   resolveDictionaryEntryNames, type ResolveEntityText,
 } from '@/lib/resolveWorldNames';
 import type {
@@ -101,6 +101,8 @@ export interface ResolvedWorld {
   resolveEntityText: ResolveEntityText;
   /** `resolveEntityText` against a pin set of the caller's own. */
   resolveEntityFor: (pins: PinSet, entity: Entity, text: string) => string;
+  /** `entities` with names and Stranger Names under a pin set of the caller's own. */
+  entitiesFor: (pins: PinSet) => Entity[];
   /** Resolve a TRAIT'S OWN text (description, its card's stat names): its pins, bound for its owner, over
    *  the owner's, so a pinning trait reads its own value whatever else is ticked. The owner is its Character
    *  Name; with no owner the player is. Trait names in `traits` already use this. */
@@ -212,10 +214,13 @@ export function useResolvedAuthoredWorld(
   // Each mapper hands back the original array when nothing held a chip, so a world without placeholders
   // produces no new identities and nothing downstream re-renders for this.
   // The Stranger Name resolves here too: the narration matcher reads it as the name the story uses.
-  const entities = useMemo(
-    () => resolveStrangerNames(resolveEntityNames(rawEntities, resolveNameOf), resolveEntityText),
-    [rawEntities, resolveNameOf, resolveEntityText],
+  const entitiesFor = useCallback(
+    (withPins: PinSet) => resolveCastNames(
+      rawEntities, (text, e) => resolveFor(withPins.of(e.id), text), (e, text) => resolveEntityFor(withPins, e, text),
+    ),
+    [rawEntities, resolveFor, resolveEntityFor],
   );
+  const entities = useMemo(() => entitiesFor(pinSet), [entitiesFor, pinSet]);
   const locations = useMemo(() => resolveLocationNames(rawLocations, resolvePH), [rawLocations, resolvePH]);
   const connections = useMemo(() => resolveConnectionHints(rawConnections, resolvePH), [rawConnections, resolvePH]);
   const stats = useMemo(() => resolveStatNames(rawStats, resolvePH), [rawStats, resolvePH]);
@@ -228,7 +233,7 @@ export function useResolvedAuthoredWorld(
   return {
     entities, locations, connections, stats, traits, traitGroups,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,
-    resolveEntityText, resolveEntityFor, resolveNameOf,
+    resolveEntityText, resolveEntityFor, resolveNameOf, entitiesFor,
   };
 }
 
@@ -301,7 +306,7 @@ export function useResolvedWorld(): ResolvedWorld {
   const {
     entities: worldEntities, locations, connections, stats, traits, traitGroups,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,
-    resolveEntityText, resolveEntityFor, resolveNameOf,
+    resolveEntityText, resolveEntityFor, resolveNameOf, entitiesFor: worldEntitiesFor,
   } = useResolvedAuthoredWorld(pinSet, personaName);
   // Resolved like the world's entities, so the side panel and the planner read its name, not its chips.
   const libraryEntities = useMemo(
@@ -311,6 +316,11 @@ export function useResolvedWorld(): ResolvedWorld {
   const { persona, cast: entities, playerNames, unresolved } = useMemo(
     () => resolvePersona(personaRef, worldEntities, libraryEntities),
     [personaRef, worldEntities, libraryEntities],
+  );
+  // The cast as `entities` holds it, under a pin set of the caller's own. A library persona never sits in the cast.
+  const entitiesFor = useCallback(
+    (withPins: PinSet) => resolvePersona(personaRef, worldEntitiesFor(withPins), []).cast,
+    [personaRef, worldEntitiesFor],
   );
   const worldPersonas = useMemo(() => worldEntities.filter((e) => e.persona === true), [worldEntities]);
   const customPersona = useMemo(() => customPersonaEntity(worldEntities) ?? null, [worldEntities]);
@@ -356,6 +366,6 @@ export function useResolvedWorld(): ResolvedWorld {
     locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
     globalStats, viewStats, traitOrder, traitEntities, traitLibrary, presentEntitiesUnder, codeEntities, pins, pinSet, pinsFor, pinBlueprints,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,
-    resolveEntityText, resolveEntityFor,
+    resolveEntityText, resolveEntityFor, entitiesFor,
   };
 }

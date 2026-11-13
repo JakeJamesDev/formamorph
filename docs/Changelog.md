@@ -19,6 +19,12 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **🛠️ Developer tooling**
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.
 
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **In Game:**
+    - **A stat change at Start or Before that renames an entity now reaches the AI on that turn.** Before, the AI read the old name and Stranger Name until the next turn.
+
 ---
 
 <details>

@@ -47,6 +47,11 @@ export function resolveStrangerNames(entities: Entity[], resolve: (entity: Entit
   });
 }
 
+/** The cast's names, aliases and Stranger Names, each read with that entity as its owner. */
+export const resolveCastNames = (
+  entities: Entity[], resolveName: (text: string, entity: Entity) => string, resolveEntity: (entity: Entity, text: string) => string,
+): Entity[] => resolveStrangerNames(resolveEntityNames(entities, resolveName), resolveEntity);
+
 /** Resolves one entity's own text with that entity as the Entity Name. */
 export type ResolveEntityText = (entity: Entity, text: string) => string;
 

@@ -2,12 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { liveChipScene, type LiveSceneSources } from './liveScene';
 import { chipValues, entityStatsField } from './chipValues';
 import { resolveOwners, type OwnerWorld } from '../owners';
-import { resolveOwnerText, resolveEntityText } from '../placeholders';
+import { encodePlaceholderToken, resolveOwnerText, resolveEntityText, resolvePlaceholders } from '../placeholders';
+import { resolveCastNames } from '../resolveWorldNames';
+import { labelsInPlay } from '../presence';
+import { phValues } from '@/test/placeholderValues';
 import { buildCharacterUserMessage, buildDiaryUserMessage } from '../stagedPlanning';
 import { buildToolSnapshot } from '../tools/toolSnapshot';
 import { renderPromptTemplate } from '../promptTemplate';
 import { layerValues } from '../promptValues';
-import type { Currency, Entity, GameLocation, Item, PersonaRef, Placement, PlayerStat, StatGroup, Trait, TraitGroup, TraitLink } from '@/types';
+import type { Currency, Entity, GameLocation, Item, PersonaRef, Placeholder, Placement, PlayerStat, StatGroup, Trait, TraitGroup, TraitLink } from '@/types';
 
 // The harbor: the Quay contains the Warehouse.
 const quay: GameLocation = { id: 'quay', name: 'Quay', aiDescription: 'Wet stone and rope.' };
@@ -450,6 +453,48 @@ describe('the live adapter', () => {
 
   it('carries no lore, since activation is per turn', () => {
     expect(liveChipScene(sources()).lore).toEqual([]);
+  });
+
+  describe('a box write that moves a pinned name', () => {
+    // A stat band pins both the name and the Stranger Name; the box's code moved the stat across bands.
+    const guise: Placeholder = { id: 'guise', name: 'guise', values: phValues(['Vix', 'A Familiar Face']) };
+    const label: Placeholder = { id: 'label', name: 'label', values: phValues(['The Fox of the Woods', 'A Familiar Face']) };
+    const placeholders = [guise, label];
+    const fox: Entity = {
+      id: 'fox', name: encodePlaceholderToken({ id: 'guise', mode: 'world', placementId: 'n1' }), locations: ['quay'],
+      strangerName: encodePlaceholderToken({ id: 'label', mode: 'world', placementId: 's1' }), aiDescription: 'Watches the boats.',
+    };
+    const livePins = { guise: 'Vix', label: 'The Fox of the Woods' };
+    const boxPins = { guise: 'A Familiar Face', label: 'A Familiar Face' };
+    const resolveEntityUnder = (pins: Record<string, string>) => (entity: Entity, text: string) =>
+      resolveEntityText(entity, text, { placeholders, rolls: {}, pins });
+    const castUnder = (pins: Record<string, string>) => resolveCastNames(
+      [harbormaster, fox], (text) => resolvePlaceholders(text, { placeholders, rolls: {}, pins }), resolveEntityUnder(pins),
+    );
+    const labelsOf = (cast: Entity[]) => labelsInPlay(cast, [], null, [quay, warehouse], new Set(), {});
+    const liveCast = castUnder(livePins);
+    const live = sources({
+      entities: liveCast, allEntities: [...liveCast, stray], strangerLabels: labelsOf(liveCast), resolveEntity: resolveEntityUnder(livePins),
+    });
+
+    it("rosters the box's name and Stranger Name", () => {
+      const boxCast = castUnder(boxPins);
+      const scene = liveChipScene(live, null, {
+        resolveEntity: resolveEntityUnder(boxPins), entities: boxCast, strangerLabels: labelsOf(boxCast),
+      });
+      const roster = chipValues(scene)('<ENTITIES|summary.markdown>');
+      expect(roster).toContain('- **A Familiar Face**\n  - **stranger name:** A Familiar Face\n');
+      expect(roster).not.toContain('Vix');
+      expect(roster).not.toContain('The Fox of the Woods');
+      expect(scene.outerScopeEntities?.find((e) => e.id === 'fox')?.name).toBe('A Familiar Face');
+      // The runtime character keeps its live entry.
+      expect(scene.entities.find((e) => e.id === 'stray')).toBe(stray);
+    });
+
+    it('keeps the live names with no cast in the box', () => {
+      const roster = chipValues(liveChipScene(live, null, { resolveEntity: resolveEntityUnder(boxPins) }))('<ENTITIES|summary.markdown>');
+      expect(roster).toContain('- **Vix**\n  - **stranger name:** The Fox of the Woods\n');
+    });
   });
 
   describe('a clock the turn advanced', () => {

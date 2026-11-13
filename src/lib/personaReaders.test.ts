@@ -27,7 +27,10 @@ describe('entity readers in play', () => {
     // The roster chips read the live Chip Scene: Here and In Scene from the full cast, the outer scopes from
     // the authored cast. liveScene.test.ts proves the rendering; this pins which list the scene is handed.
     { reader: 'roster chip', source: liveScene, pattern: /entities: allEntities,/ },
-    { reader: 'roster chip, sublocations and reachable', source: liveScene, pattern: /outerScopeEntities: ownText\(sources\.entities\),/ },
+    { reader: 'roster chip, sublocations and reachable', source: liveScene, pattern: /outerScopeEntities: ownText\(underBox\(sources\.entities\)\),/ },
+    // A before box hands the scene its own cast and the labels read from it; the live labels read the same way.
+    { reader: 'before box cast', source: viewer, pattern: /const boxCast = entitiesFor\(overPins\);[\s\S]*?entities: boxCast,\s*strangerLabels: strangerLabelsOf\(boxCast\),/ },
+    { reader: 'live stranger labels', source: viewer, pattern: /const strangerLabels = useMemo\(\(\) => strangerLabelsOf\(entities\),/ },
     { reader: 'roster chip, live view hands the adapter both casts', source: viewer, pattern: /entities,\s*allEntities,\s*standings: liveStandings,\s*participants,/ },
     { reader: 'prose parse for participation', source: viewer, pattern: /readNarration\(\{[^}]*entities: allEntities,/ },
     { reader: 'participation fan-out', source: viewer, pattern: /splitParticipants\(turnParticipants, liveScene\(null, codeView\)\.entities,/ },
