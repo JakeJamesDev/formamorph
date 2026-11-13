@@ -2,6 +2,7 @@
 
 import type {
   Entity, GalleryImage, Placeholder, PlaceholderGroup, RequirementOwner, Stat, StatGroup, StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement,
+  TraitRequirementRow,
 } from '@/types';
 import { canBePlayer, linksInTreeOrder, originalOf } from './owners';
 import { resolvedEntityStats } from './statLinks';
@@ -14,7 +15,8 @@ import { blueprintItemIds, groupsBelow } from './traitTree';
 import { mapConditions, notFlag } from './requirementRows';
 import { daypartSet } from './gameClock';
 import { stateTextKey } from './items';
-import { hasImageRules, mapImageRules, withImageRules } from './entityImages';
+import { hasImageRules, mapImageRules } from './entityImages';
+import { hasEntityRules, withEntityRules } from './entityRules';
 import { withoutGlobalOwner } from './version';
 
 /** Off-world, a "playing as" or a named owner on the entity itself names it by this id, since each copy has
@@ -147,6 +149,10 @@ function portableRequirement(entity: Entity, world?: TraitWorld): (req: TraitReq
 export const portableImages = (entity: Entity, world?: TraitWorld): GalleryImage[] =>
   mapImageRules(entity, portableRequirement(entity, world));
 
+/** The entity's Enabled gate as it travels, named as its image rules are. Absent when it has none. */
+export const portableEnabledGate = (entity: Entity, world?: TraitWorld): TraitRequirementRow[] | undefined =>
+  (entity.enabledWhen?.length ? mapConditions(entity.enabledWhen, portableRequirement(entity, world)) : undefined);
+
 /**
  * The entity's owned traits and links as they travel: a requirement into the entity keeps its id, one out of
  * it also stores its target's name, a named owner stores its name, and the entity itself reads
@@ -199,10 +205,10 @@ function ruleBinder(entity: Entity, world: TraitWorld): (req: TraitRequirement) 
  *  `world`, and its links left as they are. A copy and its library source compare through this, so both read
  *  the owners a world drops (Q19). */
 export function bindOwnedRules(entity: Entity, world: TraitWorld): Entity {
-  if (!entity.traits?.length && !entity.traitLinks?.length && !hasImageRules(entity)) return entity;
+  if (!entity.traits?.length && !entity.traitLinks?.length && !hasEntityRules(entity)) return entity;
   const bind = ruleBinder(entity, world);
   const traits = withRequires(entity, bind);
-  const bound = withImageRules(traits ? { ...entity, traits } : entity, bind);
+  const bound = withEntityRules(traits ? { ...entity, traits } : entity, bind);
   return entity.traitLinks ? { ...bound, traitLinks: entity.traitLinks.map((l) => linkWithRules(l, bind)) } : bound;
 }
 
@@ -213,10 +219,10 @@ export function bindOwnedRules(entity: Entity, world: TraitWorld): Entity {
  * by its name. A named owner binds the same way among the world's entities. Links bind as {@link bindLinks} does.
  */
 export function bindOwnedTraits(entity: Entity, world: TraitWorld): Entity {
-  if (!entity.traits?.length && !entity.traitLinks?.length && !hasImageRules(entity)) return entity;
+  if (!entity.traits?.length && !entity.traitLinks?.length && !hasEntityRules(entity)) return entity;
   const bind = ruleBinder(entity, world);
   const traits = withRequires(entity, bind);
-  const bound = withImageRules(traits ? { ...entity, traits } : entity, bind);
+  const bound = withEntityRules(traits ? { ...entity, traits } : entity, bind);
   const links = entity.traitLinks && bindLinks(entity.traitLinks, linksInTreeOrder(entity), traitLists(world)).map((l) => linkWithRules(l, bind));
   return entity.traitLinks ? withLinks(bound, links) : bound;
 }
@@ -241,7 +247,9 @@ const comparableOwner = (b: EntityOwner, entityId: string): RequirementOwner =>
  * of it by the name it stores (its id is each world's own), one into it by id, "playing as" itself as
  * {@link SELF_ENTITY}, and a named owner by its name. Links compare as {@link comparableLink} reads them.
  */
-export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; traitLinks?: ComparableLink<TraitLink>[]; images?: GalleryImage[] } => {
+export const comparableOwnedTraits = (entity: Entity): {
+  traits?: Trait[]; traitLinks?: ComparableLink<TraitLink>[]; images?: GalleryImage[]; enabledWhen?: TraitRequirementRow[];
+} => {
   const inside = ownIds(entity);
   const comparable = (req: TraitRequirement): TraitRequirement => {
     if (req.kind === 'time') return { kind: 'time', dayparts: daypartSet(req.dayparts) };
@@ -258,6 +266,7 @@ export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; trait
   return {
     ...(traits ? { traits } : {}),
     ...(hasImageRules(entity) ? { images: mapImageRules(entity, comparable) } : {}),
+    ...(entity.enabledWhen?.length ? { enabledWhen: mapConditions(entity.enabledWhen, comparable) } : {}),
     ...(entity.traitLinks?.length ? { traitLinks: entity.traitLinks.map(comparableLink) } : {}),
   };
 };

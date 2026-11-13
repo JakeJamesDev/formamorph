@@ -2,7 +2,7 @@ import type { Base64Data, GalleryImage, TraitRequirement, TraitRequirementRow } 
 import { mapConditions } from './requirementRows';
 
 /** An entity's picture list in the shape the app stores it, or in any shape a record written before it holds. */
-type ImageBearing = {
+export type ImageBearing = {
   /** Images, or data strings on records written before Visibility rules. */
   images?: readonly (GalleryImage | Base64Data)[];
   /** The pre-gallery single-portrait field, still present on files and library records written before the

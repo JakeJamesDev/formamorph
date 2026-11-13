@@ -437,6 +437,7 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `model` | | [MediaAsset](#media-fields) | A 3D model |
 | `vrmPick` | | [Avatar pick](#avatar-picks) | The entity's Avatar. Absent = none |
 | `locations` | | String[] | Only for the Persona-Only entity and the Custom Persona, which have no `kind`: the `id`s of the locations where the player can start as it. A Unique or a Generic entity has none; its `starts` and `traversable` say where it can be |
+| `enabledWhen` | | [Requirement Row](#trait-requirements)[] | The **Enabled** rows: the entity is in the game while any row holds. A condition with no `owner` reads the entity itself. Absent or empty = always on |
 | `kind` | | `"unique"` \| `"generic"` | A Unique entity is one body in one place. A Generic entity runs every Start at once, one presence each. Absent for the Persona-Only entity, the Custom Persona and an entity with no locations |
 | `starts` | | [Start](#starts)[] | The entity's beginnings, in author order. A Unique entity picks one by `weight` in each new game. A Generic entity runs all of them |
 | `traversable` | | `"anywhere"` \| String[] | Where a Unique entity may be led or called beyond its schedule: anywhere, or exact location `id`s. Absent = an empty list: its schedule places only. A Generic entity ignores it |

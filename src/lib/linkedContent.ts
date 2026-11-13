@@ -176,7 +176,7 @@ function authoredContent(raw: LinkableContent, world?: TraitWorld, vrm?: VrmLook
   if (!('entries' in item) && !item.kind) delete shed.locationRefs;
   // A world file read before migration still holds data strings; the library copy holds images.
   if (!('entries' in item) && item.images) shed.images = entityImages(item);
-  if (!('entries' in item) && (item.traits || item.traitLinks || item.images)) Object.assign(shed, comparableOwnedTraits(item));
+  if (!('entries' in item) && (item.traits || item.traitLinks || item.images || item.enabledWhen)) Object.assign(shed, comparableOwnedTraits(item));
   if (!('entries' in item) && item.statLinks) Object.assign(shed, comparableOwnedStats(item));
   // A world copy picks a store id and its library item a library id; the two match when they show the same file.
   if (!('entries' in item) && vrm) shed.vrmPick = pickToken(item.vrmPick, vrm);

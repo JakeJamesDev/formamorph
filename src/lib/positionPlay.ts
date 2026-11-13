@@ -18,6 +18,8 @@ export interface PositionWorld {
   generics: ReadonlyMap<string, Routine>;
   scene: PositionScene;
   random: () => number;
+  /** The disabled entities, whose follow ends at the next commit (Q9). Absent, none. */
+  off?: ReadonlySet<string>;
 }
 
 /** A position world from its parts. `playerStart` is where the player began. */
@@ -71,16 +73,39 @@ export const scriptPlaces = (
   routineNow: routineReadings(world, book.uniques),
 });
 
-/** Every Unique entity and every Generic Entity Instance placed for `world.scene`: the engine's one step. */
+/** Every Unique entity and every Generic Entity Instance placed for `world.scene`: the engine's one step. A disabled
+ *  entity stays where it is and its clock pauses, so it resumes there (Q23, Q38). */
 export const placeAll = (book: PositionBook, world: PositionWorld): PositionBook =>
-  advancePositions([...world.uniques.values(), ...world.generics.values()], book, world.scene, world.random);
+  paused(advancePositions([...world.uniques.values(), ...world.generics.values()], book, world.scene, world.random), world);
+
+/** `book` with each disabled entity's engine times moved up to `world.scene.now`, so no time passes for it. */
+function paused(book: PositionBook, world: PositionWorld): PositionBook {
+  const { now } = world.scene;
+  let uniques: UniqueStates | null = null;
+  for (const id of world.off ?? []) {
+    const st = book.uniques[id];
+    if (!st || st.lastRun >= now) continue;
+    const by = now - st.lastRun;
+    uniques ??= { ...book.uniques };
+    uniques[id] = {
+      ...st, lastRun: now,
+      ...(st.idleEnd !== undefined && { idleEnd: st.idleEnd + by }),
+      ...(st.hold && 'until' in st.hold && { hold: { until: st.hold.until + by } }),
+    };
+  }
+  return uniques ? { ...book, uniques } : book;
+}
 
 /**
  * A saved book against the world as it is now: positions of characters without a routine or at a deleted
  * place go, states of characters the world lost go, followers from a save written before the engine join as
  * Following, then everyone is placed for now. A Generic Entity Instance at a deleted place goes where its row puts it.
+ * `held` names disabled entities: their entries stay as stored, unplaced (Q38).
  */
-export function reconcileBook(book: PositionBook, world: PositionWorld, legacyFollowers: readonly string[] = []): PositionBook {
+export function reconcileBook(
+  book: PositionBook, world: PositionWorld, legacyFollowers: readonly string[] = [], held: ReadonlySet<string> = new Set(),
+): PositionBook {
+  if (held.size) return withHeld(reconcileBook(withoutIds(book, held), world, legacyFollowers), book, held, world);
   const live = new Set(world.scene.locations.map((l) => l.id));
   const positions: EntityPositions = {};
   for (const [id, at] of Object.entries(book.positions)) if (world.uniques.has(id) && live.has(at)) positions[id] = at;
@@ -108,6 +133,27 @@ export function reconcileBook(book: PositionBook, world: PositionWorld, legacyFo
   return placeAll({ ...placed, positions: at, uniques: following }, world);
 }
 
+/** `book` without the Unique entries of `ids`. */
+function withoutIds(book: PositionBook, ids: ReadonlySet<string>): PositionBook {
+  const drop = <T>(record: Readonly<Record<string, T>>) => Object.fromEntries(Object.entries(record).filter(([id]) => !ids.has(id)));
+  return { ...book, positions: drop(book.positions), uniques: drop(book.uniques) };
+}
+
+/** `placed` with each of `held`'s stored entries from `stored` put back as they were, at a place that still exists. */
+function withHeld(placed: PositionBook, stored: PositionBook, held: ReadonlySet<string>, world: PositionWorld): PositionBook {
+  const live = new Set(world.scene.locations.map((l) => l.id));
+  const positions = { ...placed.positions };
+  const uniques = { ...placed.uniques };
+  for (const id of held) {
+    const at = stored.positions[id];
+    // A held entity at a deleted place keeps what the reconcile gave it.
+    if (at !== undefined && !live.has(at)) continue;
+    if (at !== undefined) positions[id] = at;
+    if (stored.uniques[id]) uniques[id] = stored.uniques[id];
+  }
+  return { ...placed, positions, uniques };
+}
+
 /**
  * The book once the opening hour is set: everyone away from the player is placed again for the real hour from
  * their rolled Start, and everyone at the player's place stays where the opening put them. A Generic Entity Instance
@@ -118,6 +164,10 @@ export function reseatForOpening(book: PositionBook, world: PositionWorld): Posi
   const positions = { ...book.positions };
   const uniques: UniqueStates = {};
   for (const [id, st] of Object.entries(book.uniques)) {
+    if (world.off?.has(id)) {
+      uniques[id] = st;
+      continue;
+    }
     if (playerAt !== undefined && positions[id] === playerAt) {
       uniques[id] = { ...st, lastRun: now };
       continue;

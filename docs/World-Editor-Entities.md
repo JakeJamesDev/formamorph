@@ -74,7 +74,7 @@ Select an entity to open its panel.
 | **Profile** | **Name**, **Pronouns**, **Relationships**, the **Image** and the **Avatar** dropdown (**None**, **User's Default**, or an Avatar of the world; see [World Avatars](Avatars#world-avatars)). In Advanced mode, also **Aliases**, [**Stranger Name**](#stranger-name) beside **Name**, the **Persona** control, **Type**, **Image Tags** and the **3D Model**. | Simple and Advanced |
 | **Descriptions** | **Player-Facing Description** and **AI-Facing Description**. In Advanced mode, also [**Stranger Description**](#stranger-description) under **Player-Facing Description**, and **AI-Facing Summary**. | Simple and Advanced |
 | **Items** | The entity's [Starting Items](World-Editor-Items#starting-items) | Simple and Advanced |
-| **Presence** | Where the entity starts, its [daily routine](#the-routine), and where the AI knows of it ([Known In](#known-in)) | Simple and Advanced |
+| **Presence** | When the entity is on ([Enabled](#enabled)), where it starts, its [daily routine](#the-routine), and where the AI knows of it ([Known In](#known-in)) | Simple and Advanced |
 | **Traits** | The entity's own [traits](World-Editor-Traits#entity-traits) | Advanced only |
 | **Stats** | The entity's own [stats](#entity-stats) | Advanced only |
 | **Placeholders** | The entity's own [placeholders](World-Editor-Placeholders#placeholders-that-belong-to-an-entity-or-a-dictionary) | Advanced only |
@@ -163,6 +163,19 @@ Two timed rows can't share an hour. Times another row uses are unavailable in th
 
 - **Anywhere**: any location.
 - **Only Listed Locations**: its routine locations and the ones you list. A listed location doesn't include the locations inside it.
+
+### Enabled
+<!-- keywords: enabled, turn an entity off, hide an entity, appear later, disappear, gate, only exists when -->
+
+**Enabled** decides when the entity is on. Add rows of conditions, the same kind a trait's **Requires** uses. The entity is on while any row holds. With no rows, it's always on.
+
+- 🙈 **While it's off,** the player and the AI never see it: not in the scene, on the map, in lists or in what the AI reads. Scripts can't find it by name.
+- ⏸️ **It pauses.** Its stats, regen, traits, scripts and routine stop where they are. When it turns back on, it picks up from there, in the same place.
+- 🚶 **It turns off at the end of a turn.** If it was following the player, it stops.
+- 👤 **A condition with no owner** checks this entity's own traits, stats and items.
+- 🎭 **The character the player plays** is always on.
+
+⚠️ If every condition checks only this entity's own traits or stats, a warning shows under the rows. Those pause while the entity is off, so once it turns off it can't turn back on. Add a condition on something else, such as a World Option, a global stat or the time of day.
 
 ### Known In
 

@@ -85,9 +85,10 @@ const scriptCode = (world: World): string[] => [
 
 const hasVisibilityRule = (images: GalleryImage[]) => images.some((image) => (image.requires ?? []).length > 0);
 
-/** Every Requirement Row: trait gates and image Visibility rules. */
+/** Every Requirement Row: trait gates, entity Enabled gates and image Visibility rules. */
 const requirementRows = (world: World): TraitRequirementRow[] => [
   ...ownersOf(world).flatMap((o) => o.traits.flatMap((t) => t.requires ?? [])),
+  ...(world.entities ?? []).flatMap((e) => e.enabledWhen ?? []),
   ...[
     ...(world.locations ?? []).flatMap((l) => locationImages(l)),
     ...(world.entities ?? []).flatMap((e) => entityImages(e)),

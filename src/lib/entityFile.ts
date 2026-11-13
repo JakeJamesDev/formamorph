@@ -24,7 +24,7 @@ import { primaryImage } from './entityImages';
 import { fetchAsDataUrl, isRemoteImage } from './imageSource';
 import { morphCardImage } from './morphArtCanvas';
 import { portableOwnedStats, type OwnedStatFields } from './portableStats';
-import { portableImages, portableOwnedTraits, type TraitWorld } from './portableTraits';
+import { portableEnabledGate, portableImages, portableOwnedTraits, type TraitWorld } from './portableTraits';
 import { carriedBlueprints } from './blueprintTravel';
 import { notFlag } from './requirementRows';
 import { daypartSet, isDaypart } from './gameClock';
@@ -59,6 +59,8 @@ export interface EntityCardData {
   extraImages?: GalleryImage[];
   /** The primary's Visibility rule, which has no other home since the primary travels as the card's pixels. */
   primaryImageRequires?: TraitRequirementRow[];
+  /** The entity's Enabled gate. */
+  enabledWhen?: TraitRequirementRow[];
   /** The entity's own placeholders, as they are (see lib/placeholders). A card with no
    *  `sharedPlaceholders` carries everything its chips use here, and reads it all as owned. */
   placeholders?: Placeholder[];
@@ -110,6 +112,7 @@ export function buildEntityCardData(
   const reworded = owned.flatMap((p) => Object.values(p.valueOverrides ?? {}).flatMap((o) => (o.text ? [o.text.value] : [])));
   const shared = portablePlaceholders(sharedPlaceholdersUsed([...chipTexts(entity), ...reworded], [...owned, ...blueprints], available));
   const [primary, ...extras] = portableImages(entity, world);
+  const enabledWhen = portableEnabledGate(entity, world);
   return {
     formamorphKind: ENTITY_FILE_KIND,
     version: APP_VERSION,
@@ -127,6 +130,7 @@ export function buildEntityCardData(
     ...(entity.imageTags ? { imageTags: entity.imageTags } : {}),
     ...(extras.length ? { extraImages: extras } : {}),
     ...(primary?.requires?.length ? { primaryImageRequires: primary.requires } : {}),
+    ...(enabledWhen ? { enabledWhen } : {}),
     ...(owned.length ? { placeholders: owned } : {}),
     ...(shared.length ? { sharedPlaceholders: shared } : {}),
     ...(blueprints.length ? { blueprints } : {}),
@@ -179,6 +183,7 @@ export function parseEntityCardData(raw: unknown, pixels?: Base64Data): Entity {
   const extras = Array.isArray(obj.extraImages) ? (obj.extraImages as unknown[]).flatMap(cardImage) : [];
   const primaryRows = Array.isArray(obj.primaryImageRequires) ? cardRows(obj.primaryImageRequires) : [];
   const images = pixels ? [{ data: pixels, ...(primaryRows.length ? { requires: primaryRows } : {}) }, ...extras] : extras;
+  const enabledWhen = Array.isArray(obj.enabledWhen) ? cardRows(obj.enabledWhen) : [];
   const openings = Array.isArray(obj.openings) ? (obj.openings as unknown[]).flatMap(cardOpening) : [];
   const weights = obj.openingWeights && typeof obj.openingWeights === 'object' && !Array.isArray(obj.openingWeights)
     ? Object.fromEntries(Object.entries(obj.openingWeights as Record<string, unknown>)
@@ -199,6 +204,7 @@ export function parseEntityCardData(raw: unknown, pixels?: Base64Data): Entity {
     ...(tags.length ? { tags } : {}),
     ...(typeof obj.imageTags === 'string' && obj.imageTags ? { imageTags: obj.imageTags } : {}),
     ...(images.length ? { images } : {}),
+    ...(enabledWhen.length ? { enabledWhen } : {}),
     // Carried placeholders ride along: the owned ones stay the entity's when it is added to a world, the shared
     // ones merge into the world's list (see `adoptEntityPlaceholders`).
     ...(Array.isArray(obj.placeholders) ? { placeholders: migrateCarriedPlaceholders(obj.placeholders) } : {}),

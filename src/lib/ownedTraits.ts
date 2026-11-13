@@ -6,7 +6,7 @@ import { removeGroupPromotingChildren } from './groupTree';
 import { newTrait } from './blankWorld';
 import type { GateInput, GateOwner } from './traitGates';
 import { mapConditions } from './requirementRows';
-import { hasImageRules, withImageRules } from './entityImages';
+import { hasEntityRules, withEntityRules } from './entityRules';
 import { offeredWorldTraits, ownsTraits } from './traitTree';
 import { nodePlacement, placeableGroupIds, withEntityLists } from './ownerTree';
 
@@ -83,18 +83,18 @@ export function findOwnedItem(
 }
 
 /** A copy of the entity whose owned traits and groups have fresh ids, so the copy shares none with the
- *  source. Requirements that point inside the entity follow, the images' Visibility rules included; ones that
+ *  source. Requirements that point inside the entity follow, its image rules and Enabled gate included; ones that
  *  point out of it keep their target.
  *  `entityIds` maps each copied entity to its copy, so "playing as" the source becomes "playing as" the copy. */
 export function remintOwnedTraits(entity: Entity, entityIds: ReadonlyMap<string, string> = new Map()): Entity {
   const links = entity.traitLinks ?? [];
-  if (!entity.traits?.length && !entity.traitGroups?.length && !links.length && !hasImageRules(entity)) return entity;
+  if (!entity.traits?.length && !entity.traitGroups?.length && !links.length && !hasEntityRules(entity)) return entity;
   const ids = new Map([...traitsOf(entity), ...groupsOf(entity), ...links].map((item) => [item.id, randomUUID()] as const));
   const remap = (id: string | null | undefined) => (id ? ids.get(id) ?? id : id);
   const remapRequirement = (r: TraitRequirement): TraitRequirement =>
     (r.kind === 'time' ? r : { ...r, id: (r.kind === 'playingAs' ? entityIds.get(r.id) : ids.get(r.id)) ?? r.id });
   const reminted = withOwnedTraits(
-    withImageRules(entity, remapRequirement),
+    withEntityRules(entity, remapRequirement),
     traitsOf(entity).map((t) => ({
       ...t,
       id: remap(t.id)!,

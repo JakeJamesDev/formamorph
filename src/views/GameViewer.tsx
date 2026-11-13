@@ -1514,10 +1514,13 @@ const GameViewer = ({
     () => castRoutines(positionedCast(entities, personaRef), discoveredInPlay),
     [entities, personaRef, discoveredInPlay],
   );
+  // The disabled entities, whose follows end at the next commit (Q9).
+  const { offEntityIds } = inPlay;
   /** The position engine's view of the world at `now`, with the player at `playerAt`. */
-  const positionWorldAt = useCallback((now: number, playerAt: string | undefined): PositionWorld => positionWorld(
-    routines, now, playerAt, locations, connections, undefined, playerStartLocationId,
-  ), [routines, locations, connections, playerStartLocationId]);
+  const positionWorldAt = useCallback((now: number, playerAt: string | undefined): PositionWorld => ({
+    ...positionWorld(routines, now, playerAt, locations, connections, undefined, playerStartLocationId),
+    ...(offEntityIds.size ? { off: offEntityIds } : {}),
+  }), [routines, locations, connections, playerStartLocationId, offEntityIds]);
   // AI progress feedback: which request is running, its streamed output estimate (null = indeterminate), and
   // whether the player may already type their next action (choices done, background requests still finishing).
   const [aiRequestType, setAiRequestType] = useState<AIRequestType | null>(null);
@@ -6138,8 +6141,9 @@ const GameViewer = ({
       // An Opening Narration is page one: the game starts on it at once, with the box left empty.
       // Each Unique entity rolls its Start, so the opening pool reads who stands at the start.
       setPlayerStartLocationId(location?.id);
+      // Every authored entity rolls its Start, a gated one too: its gate reads the state this seed is about to set.
       const startBook = placeAll(EMPTY_BOOK, positionWorld(
-        castRoutines(positionedCast(codeEntities.world, personaPick.ref)), storyMinute(0), location?.id, locations, connections,
+        castRoutines(positionedCast(authoredEntities, personaPick.ref)), storyMinute(0), location?.id, locations, connections,
         undefined, location?.id,
       ));
       const startPositions = startBook.positions;

@@ -530,6 +530,9 @@ export interface Entity {
   /** The membership of an entity with no kind: the ids of the locations it belongs to. An entity with a kind stores
    *  none; its routine is the only source of its places. Only `lib/entityPlaces` reads or writes it (ADR-0017). */
   locations?: string[];
+  /** The Enabled gate: on while any row holds; absent or empty = always on. A Condition with no owner reads the
+   *  entity itself. Off in play, the entity is hidden and inert. */
+  enabledWhen?: TraitRequirementRow[];
   /** Absent for an entity with no locations, the persona and the played entity. */
   kind?: EntityKind;
   /** The beginnings, in author order. A Unique entity rolls one per playthrough; a Generic entity runs every one. */

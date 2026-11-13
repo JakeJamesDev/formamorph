@@ -20,6 +20,7 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { useEditorMode } from '@/lib/editorMode';
 import PlacementsSection from './PlacementsSection';
 import EntityBodyField from './EntityBodyField';
+import { EntityEnabledField } from '@/components/editor/HostGateField';
 import { entityPanelTabsFor, entityTabForField, type EntityPanelTab } from '@/views/entityPanelTabs';
 
 /**
@@ -123,6 +124,7 @@ const EntityManager = ({
         </PanelTabContent>
 
         <PanelTabContent value="presence">
+          <EntityEnabledField entity={editingEntity} onChange={writeWhole} />
           <RoutineTab entity={editingEntity} onChange={writeWhole} />
           {!holdsStartList(editingEntity) && <KnownInField entity={editingEntity} onChange={writeWhole} list />}
         </PanelTabContent>

@@ -621,6 +621,33 @@ describe('computeTurnCommit — entity movement', () => {
   /** Wenna stands at the inn; Albus and Corvin follow the player there. */
   const atInn = book({ wenna: 'inn', albus: 'inn', corvin: 'inn' }, ['albus', 'corvin']);
 
+  describe('a follower whose Enabled gate failed (Q9, Q38)', () => {
+    // Off, Albus is out of the cast, so the engine reads no routine for it.
+    const offAlbus = (state: FollowerState) => {
+      const held = holding(state);
+      return { ...held, uniques: new Map([...held.uniques].filter(([id]) => id !== 'albus')), off: new Set(['albus']) };
+    };
+    const keepFollowing = autoCommit([[who('albus', [...FOLLOWING]), 'Keep following'], [who('corvin', [...FOLLOWING]), 'Keep following']]);
+
+    it('stops following at the commit and stays where it stood, while the others follow on', () => {
+      const { state } = commitEntityMoves(atInn, keepFollowing, { from: 'inn', to: 'chapel' }, offAlbus(atInn));
+      expect(followersOf(state)).toEqual(['corvin']);
+      expect(state.positions.albus).toBe('inn');
+      expect(state.uniques.albus.startId).toBe('s');
+      expect(state.positions.corvin).toBe('chapel');
+    });
+
+    it('stops following when the player stays put too', () => {
+      const { state } = commitEntityMoves(atInn, keepFollowing, { from: 'inn', to: undefined }, offAlbus(atInn));
+      expect(followersOf(state)).toEqual(['corvin']);
+    });
+
+    it('keeps following while on', () => {
+      const { state } = move(atInn, keepFollowing, 'inn', 'chapel');
+      expect(followersOf(state)).toEqual(['albus', 'corvin']);
+    });
+  });
+
   it('reads each row of the one reply under its entity, and keeps only the ones that change something', () => {
     const commit = autoCommit([
       [who('wenna', [...NEW]), 'Come along'],

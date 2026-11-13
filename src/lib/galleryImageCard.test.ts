@@ -51,6 +51,36 @@ function fakeWebp(): Uint8Array {
   return out;
 }
 
+describe('a character card’s Enabled gate', () => {
+  const gated = (enabledWhen: TraitRequirementRow[]): Entity => ({ ...wren([{ data: A }]), enabledWhen });
+
+  it('round-trips through the card, an outward Condition named and bound by name, an own one by id', () => {
+    const carried = throughText(gated(row(paladin, hurt)), A);
+    expect(conditionsOf(carried.enabledWhen)).toEqual([{ ...paladin, name: 'Paladin' }, hurt]);
+    const elsewhere: TraitWorld = { ...home, traits: [{ id: 'n-paladin', name: 'Paladin', statChanges: [] }] };
+    expect(conditionsOf(bindOwnedTraits(carried, elsewhere).enabledWhen).map((r) => r.id)).toEqual(['n-paladin', 'hp']);
+  });
+
+  it('writes no field without a gate, and drops a malformed Condition on the way in', () => {
+    expect(buildEntityCardData(wren([{ data: A }]))).not.toHaveProperty('enabledWhen');
+    expect(parseEntityCardData({ formamorphKind: 'entity', name: 'X', enabledWhen: [{ all: [{ kind: 'mood', id: 'x' }] }] }, A))
+      .not.toHaveProperty('enabledWhen');
+  });
+
+  it('follows the copy’s own trait to its fresh id when the entity is duplicated', () => {
+    const copy = remintOwnedTraits(gated(row(knight)));
+    const [ownTrait] = copy.traits ?? [];
+    expect(ownTrait.id).not.toBe('t-knight');
+    expect(conditionsOf(copy.enabledWhen)).toEqual([{ ...knight, id: ownTrait.id }]);
+  });
+
+  it('tells a copy whose gate differs from its source', () => {
+    const a = comparableOwnedTraits(gated(row(knight)));
+    const b = comparableOwnedTraits(gated(row(hurt)));
+    expect(a.enabledWhen).not.toEqual(b.enabledWhen);
+  });
+});
+
 describe('a character card’s gallery', () => {
   it('imports a card whose extras are data strings, the card pixels leading', () => {
     const parsed = parseEntityCardData({ formamorphKind: 'entity', name: 'Old', extraImages: [B, '', C, 7] }, A);

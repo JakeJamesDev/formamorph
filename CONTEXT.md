@@ -557,6 +557,10 @@ _Avoid_: override, lock, fixed value
 A player-facing setup switch on the world, authored on the Options tab: a choice of named values, a boolean, or a whole number between a min and a max. The player sets the shown ones at new game; a hidden one serves as script and gate state. It acts only through Pins (a choice value's or a boolean state's) and gates, never through AI text. A playthrough keeps one value per Option; a missing or no-longer-valid value reads the Option's default.
 _Avoid_: setting (the app's own), preference, toggle trait
 
+**Enabled** (entity):
+An entity's gate: Requirement Rows that keep it in play while any row holds; with no rows it is always on. A Condition with no owner reads the entity itself. Off, the entity is hidden from the player and the AI and inert: its stats, regen, traits, scripts and routine pause and resume where they paused. Every gate is read in one pass against committed state, an off entity's own state frozen. The played persona is always on.
+_Avoid_: active, visible, spawned, present (that is presence)
+
 **Placeholder Set**:
 The read side of a list of Placeholders, bound once to whichever list a text is read against: a world's, or the list an off-world entity or dictionary carries. It answers what a text describes at design time and, given a playthrough's Rolls, what it resolves to.
 _Avoid_: placeholder list, defs, vocabulary (that is the editor's chip menu)

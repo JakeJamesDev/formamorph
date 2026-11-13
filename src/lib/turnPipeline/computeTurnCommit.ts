@@ -13,6 +13,7 @@ import {
   type EntityMoveIntents, type EntityMoveOffer, type FollowerState, type PlayerMove,
 } from '@/lib/entityFollowing';
 import { placeAll, withPlayerAt, type PositionWorld } from '@/lib/positionPlay';
+import { partWays } from '@/lib/positionEngine';
 import type { TurnPassId, TurnPlan } from './turnPlan';
 import type { TurnPassOutcome, TurnResult } from './turnRunner';
 
@@ -241,9 +242,20 @@ export function entityMovesOf(passes: readonly TurnPassOutcome[]): EntityMoveInt
  * turn began, `to` where the player stands after the router and the turn's code. While the commit offers a
  * move the player has not taken, "stay here" and each walk apply at once and "come along" waits in `offer`
  * for Go. The code's entity writes apply last, and an entity they name leaves the offer. `world.scene.now` is
- * the time the engine places everyone for.
+ * the time the engine places everyone for. A disabled entity's follow ends (Q9).
  */
 export function commitEntityMoves(
+  state: FollowerState,
+  commit: Pick<TurnCommit, 'entityMoves' | 'suggestedLocation' | 'codeWrites'>,
+  move: PlayerMove,
+  world: PositionWorld,
+): { state: FollowerState; offer: EntityMoveOffer } {
+  const result = commitMovesOn(state, commit, move, world);
+  return world.off?.size ? { ...result, state: [...world.off].reduce(partWays, result.state) } : result;
+}
+
+/** The commit's entity replies and code writes laid over `state`, before any disabled entity's follow ends. */
+function commitMovesOn(
   state: FollowerState,
   commit: Pick<TurnCommit, 'entityMoves' | 'suggestedLocation' | 'codeWrites'>,
   move: PlayerMove,

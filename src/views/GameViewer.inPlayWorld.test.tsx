@@ -94,7 +94,8 @@ describe('an entity and a location the resolver turns off', () => {
     expect(gameplay().currentLocation?.id).toBe('harbor');
     // Routines and positions.
     await waitFor(() => expect(gameplay().entityPositions).toMatchObject({ mira: 'harbor', wren: 'market' }));
-    expect(gameplay().entityPositions).not.toHaveProperty('ghost');
+    // An off entity keeps the place its Start gave it, for the day it turns on (Q38); no reader sees it.
+    const ghostAt = gameplay().entityPositions.ghost;
     // Presence and the scene cast.
     expect(presenceIds()).toContain('wren');
     expect(presenceIds()).not.toContain('ghost');
@@ -108,8 +109,8 @@ describe('an entity and a location the resolver turns off', () => {
     expect(text).not.toContain('Cellar');
     // The move the narration named is matched against the router's candidates, which lack the Cellar.
     expect(gameplay().currentLocation?.id).toBe('harbor');
-    // The turn's own placement reads the routines again.
-    expect(gameplay().entityPositions).not.toHaveProperty('ghost');
+    // The turn's own placement leaves the off entity where it stood.
+    expect(gameplay().entityPositions.ghost).toBe(ghostAt);
   });
 
   it('reach every reader while on', async () => {
@@ -129,11 +130,13 @@ describe('an entity and a location the resolver turns off', () => {
     forceOff({ entities: ['ghost'] });
     await start();
     await act(async () => { await gameplay().saveGame('slot', 'Sedge Landing', 'w1', 'save-off'); });
+    const saved = gameplay().entityPositions.ghost;
     cleanup();
     live = null;
     await start(world, 'save-off');
     await waitFor(() => expect(gameplay().entityPositions).toMatchObject({ mira: 'harbor', wren: 'market' }));
-    expect(gameplay().entityPositions).not.toHaveProperty('ghost');
+    expect(gameplay().entityPositions.ghost).toBe(saved);
+    expect(presenceIds()).not.toContain('ghost');
   });
 });
 

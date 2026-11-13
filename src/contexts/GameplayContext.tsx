@@ -37,6 +37,7 @@ import { positionedCast } from '../lib/entityPresence';
 import { movedPositions, runtimePositions, withRuntimePositions, type FollowerState } from '../lib/entityFollowing';
 import { castRoutines, type RoutineEntity } from '../lib/entityKind';
 import { followerIds, placeAll, positionWorld, reconcileBook, waitingIds, type PositionWorld } from '../lib/positionPlay';
+import { hasEnabledGate } from '../lib/inPlayGates';
 import { storyMinute } from '../lib/gameClock';
 import { deltasOf, useStatDeltas } from '../lib/useStatDeltas';
 
@@ -655,7 +656,7 @@ function useProvideGameplay() {
    *  store, which a pre-per-entity-Avatar save's chosen Avatar remaps against. `entityOn` picks the entities the
    *  engine places: the In-Play World's. */
   const loadGame = useCallback(async (
-    saveId: string, locations: GameLocation[], worldStats: Stat[] = [], worldEntities?: readonly (RoutineEntity & Pick<Entity, 'locations' | 'customPersona' | 'stats'>)[],
+    saveId: string, locations: GameLocation[], worldStats: Stat[] = [], worldEntities?: readonly (RoutineEntity & Pick<Entity, 'locations' | 'customPersona' | 'stats' | 'enabledWhen'>)[],
     vrmStore?: WorldVrmStore, items?: readonly Item[], ownerStatTraits?: (state: GameState, persona?: PersonaRef) => OwnerStatTraits,
     connections: readonly Connection[] = [], entityOn: (entity: Pick<Entity, 'id'>) => boolean = () => true,
   ) => {
@@ -708,11 +709,13 @@ function useProvideGameplay() {
         backfillGameStateStats(withoutEntityCodeBounds(state), worldStats), worldStats, worldEntities, worldStatGroups,
       );
       if (!worldEntities) return players;
-      return withPlacedCast(backfillGameStateEntityStats(players, worldEntities), positionedCast(worldEntities.filter(entityOn), persona));
+      // A gated entity's stored place and engine state stay as saved, on or off, so a disabled one resumes there (Q38).
+      const held = new Set(worldEntities.filter((e) => hasEnabledGate(e) || !entityOn(e)).map((e) => e.id));
+      return withPlacedCast(backfillGameStateEntityStats(players, worldEntities), positionedCast(worldEntities.filter(entityOn), persona), held);
     };
     /** The state with every Unique entity placed by the engine for its own clock, the save's positions and engine
      *  state kept against the world, and followers from before the engine joining as Following. */
-    const withPlacedCast = (state: GameState, cast: readonly RoutineEntity[]): GameState => {
+    const withPlacedCast = (state: GameState, cast: readonly RoutineEntity[], held: ReadonlySet<string>): GameState => {
       const discovered = state.discoveredEntities ?? [];
       const now = storyMinute(state.gameTime ?? 0, state.startHour != null ? { startHour: state.startHour } : undefined);
       // A save from before the field resolves where page one took place, else where the player stands.
@@ -724,7 +727,7 @@ function useProvideGameplay() {
           positions: { ...runtimePositions(discovered), ...(state.entityPositions ?? {}) },
           uniques: state.uniqueStates ?? {}, generics: state.genericStates ?? {},
         },
-        world, legacy ?? [],
+        world, legacy ?? [], held,
       );
       const runtimeIds = new Set(discovered.map((d) => d.entity.id));
       const positions = Object.fromEntries(Object.entries(book.positions).filter(([id]) => !runtimeIds.has(id)));
