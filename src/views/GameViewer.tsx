@@ -907,7 +907,7 @@ const GameViewer = ({
     entities, locations, connections, stats, traits, traitGroups, dictionary, globalStats, viewStats,
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText,
     resolveTraitFor, resolveEntityText, resolveEntityFor, entitiesFor, playerNames, persona, traitEntities, traitLibrary, codeEntities,
-    presentEntitiesUnder, worldPersonas, customPersona: resolvedCustomPersona, pinBlueprints,
+    presentEntitiesUnder, worldPersonas, customPersona: resolvedCustomPersona, pinBlueprints, inPlay,
   } = useResolvedWorld();
   usePersonaNotice();
   // The authored slice inventory operations read, with every entity whose Body pick play reads.
@@ -993,9 +993,10 @@ const GameViewer = ({
   // playthrough behave like authored ones — union them into the AI-pipeline roster, each carrying the
   // location it was invented at, so the location-scoped context rosters it like anyone else.
   // Discovered entities are minted at runtime from AI prose, so their names never carry chips.
+  const discoveredInPlay = useMemo(() => inPlay.discoveredOn(discoveredEntities), [inPlay, discoveredEntities]);
   const allEntities = useMemo(
-    () => [...entities, ...discoveredAsEntities(discoveredEntities)],
-    [entities, discoveredEntities],
+    () => [...entities, ...discoveredAsEntities(discoveredInPlay)],
+    [entities, discoveredInPlay],
   );
   // Where the cast stands now, runtime characters included.
   const liveStandings = useMemo<Standings>(
@@ -1425,9 +1426,9 @@ const GameViewer = ({
       // Seed the fixture as an id-keyed record and load it by that id.
       const id = randomUUID();
       await putSaveRecord({ ...(fx.save as unknown as Record<string, unknown>), id, name: fx.saveName } as unknown as SaveRecord);
-      await loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems, undefined, connections);
+      await loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems, undefined, connections, inPlay.isEntityOn);
     })();
-  }, [devRoute?.fixture, locations, stats, codeEntities, loadGame, worldOverview.vrmStore, worldItems, connections]);
+  }, [devRoute?.fixture, locations, stats, codeEntities, loadGame, worldOverview.vrmStore, worldItems, connections, inPlay]);
   const imageAttachments = useImageAttachments();
   const mounted = useMountedRef();
   // DEV dev-router: `attach=sample` stages attached images once the game has a committed turn, through the
@@ -1501,8 +1502,8 @@ const GameViewer = ({
   const storyNow = storyMinute(gameTime, calendar);
   // Every Unique entity's routine: the authored cast the engine positions, then the runtime characters.
   const routines = useMemo(
-    () => castRoutines(positionedCast(entities, personaRef), discoveredEntities),
-    [entities, personaRef, discoveredEntities],
+    () => castRoutines(positionedCast(entities, personaRef), discoveredInPlay),
+    [entities, personaRef, discoveredInPlay],
   );
   /** The position engine's view of the world at `now`, with the player at `playerAt`. */
   const positionWorldAt = useCallback((now: number, playerAt: string | undefined): PositionWorld => positionWorld(
@@ -6017,7 +6018,7 @@ const GameViewer = ({
       // Cold-load from the main menu: restore the save instead of starting a fresh game. Its world is
       // already in GameData (loaded before this view mounted), so `locations` here are the right ones.
       if (initialSaveId) {
-        void loadGame(initialSaveId, locations, authoredStats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits, connections)
+        void loadGame(initialSaveId, locations, authoredStats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits, connections, inPlay.isEntityOn)
           .then((loaded) => { if (loaded && mounted.current) rebaseRightDots(); });
         return;
       }
@@ -6111,7 +6112,7 @@ const GameViewer = ({
       // Each Unique entity rolls its Start, so the opening pool reads who stands at the start.
       setPlayerStartLocationId(location?.id);
       const startBook = placeAll(EMPTY_BOOK, positionWorld(
-        castRoutines(positionedCast(codeEntities.world, personaPick.ref)), storyMinute(0), location?.id, locations, connections,
+        castRoutines(positionedCast(inPlay.entitiesOn(codeEntities.world), personaPick.ref)), storyMinute(0), location?.id, locations, connections,
         undefined, location?.id,
       ));
       const startPositions = startBook.positions;
@@ -6174,6 +6175,7 @@ const GameViewer = ({
     resolveOpening,
     commitTraitState,
     codeEntities,
+    inPlay,
     resolveTraitText,
     changeLocation,
     addLogEntry,
@@ -6576,7 +6578,7 @@ const GameViewer = ({
         return false;
       }
     }
-    const loaded = await loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits, connections);
+    const loaded = await loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits, connections, inPlay.isEntityOn);
     // A loaded game starts with no dots, from its own state.
     if (loaded && mounted.current) rebaseRightDots();
     return loaded;

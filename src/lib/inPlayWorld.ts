@@ -1,0 +1,59 @@
+import { customPersonaEntity } from '@/lib/blueprints';
+import { evaluateGates, type InPlaySource, type InPlayState } from '@/lib/inPlayGates';
+import type { Connection, DiscoveredEntity, Entity, GameLocation, PersonaRef } from '@/types';
+
+/**
+ * The world as play sees it: the authored world with its gates applied. Every in-play reader of entities and
+ * locations reads this, never the authored lists.
+ */
+export interface InPlayWorld {
+  /** The authored entities that are on. */
+  entities: Entity[];
+  /** The locations that are on. */
+  locations: GameLocation[];
+  /** The connections whose ends are both on. */
+  connections: Connection[];
+  isLocationOn: (locationId: string) => boolean;
+  /** On, but no one may move the player in. */
+  isLocked: (locationId: string) => boolean;
+  /** Whether an entity is on: an authored one, a library one or a runtime one, each by its own gate. */
+  isEntityOn: (entity: Pick<Entity, 'id'>) => boolean;
+  /** `list` without the entities that are off. The same array when all are on. */
+  entitiesOn: <E extends Pick<Entity, 'id'>>(list: readonly E[]) => E[];
+  /** The runtime characters that are on. The same array when all are on. */
+  discoveredOn: (list: readonly DiscoveredEntity[]) => DiscoveredEntity[];
+}
+
+/** The verdicts alone, for lists that do not come from the resolver: runtime and library characters. */
+export type InPlayGateView = Omit<InPlayWorld, 'entities' | 'locations' | 'connections'>;
+
+/** The entity id the persona plays, which no gate turns off. */
+export function playedEntityIdOf(persona: PersonaRef | undefined, entities: readonly Entity[]): string | null {
+  if (!persona) return null;
+  if (persona.source !== 'none') return persona.entityId;
+  return customPersonaEntity(entities)?.id ?? null;
+}
+
+/** Drops what `keep` refuses; the same array when it refuses nothing, so readers see no new identity. */
+const kept = <T>(list: readonly T[], keep: (item: T) => boolean): T[] => {
+  const out = list.filter(keep);
+  return out.length === list.length ? (list as T[]) : out;
+};
+
+/** The In-Play World for the authored lists under the playthrough state. */
+export function resolveInPlayWorld(source: InPlaySource, state: InPlayState): InPlayWorld {
+  const { offEntityIds, offLocationIds, lockedLocationIds } = evaluateGates(source, state);
+  const isEntityOn = (entity: Pick<Entity, 'id'>) => entity.id === state.playedEntityId || !offEntityIds.has(entity.id);
+  const isLocationOn = (id: string) => !offLocationIds.has(id);
+  const entitiesOn = <E extends Pick<Entity, 'id'>>(list: readonly E[]): E[] => kept(list, isEntityOn);
+  return {
+    entities: kept(source.entities, isEntityOn),
+    locations: kept(source.locations, (l) => isLocationOn(l.id)),
+    connections: kept(source.connections, (c) => isLocationOn(c.a) && isLocationOn(c.b)),
+    isLocationOn,
+    isLocked: (id) => lockedLocationIds.has(id),
+    isEntityOn,
+    entitiesOn,
+    discoveredOn: (list) => kept(list, (d) => isEntityOn(d.entity)),
+  };
+}

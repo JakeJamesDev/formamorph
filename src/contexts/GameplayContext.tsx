@@ -646,11 +646,12 @@ function useProvideGameplay() {
    *  `convertSaveFile` worker, with a best-effort raw load if conversion throws. Returns success.
    *  `worldEntities` given, the owned trait state and stat values of an entity the playthrough no longer holds
    *  are dropped, and each authored entity's missing stats are backfilled. `vrmStore` is the world's Avatar
-   *  store, which a pre-per-entity-Avatar save's chosen Avatar remaps against. */
+   *  store, which a pre-per-entity-Avatar save's chosen Avatar remaps against. `entityOn` picks the entities the
+   *  engine places: the In-Play World's. */
   const loadGame = useCallback(async (
     saveId: string, locations: GameLocation[], worldStats: Stat[] = [], worldEntities?: readonly (RoutineEntity & Pick<Entity, 'locations' | 'customPersona' | 'stats'>)[],
     vrmStore?: WorldVrmStore, items?: readonly Item[], ownerStatTraits?: (state: GameState, persona?: PersonaRef) => OwnerStatTraits,
-    connections: readonly Connection[] = [],
+    connections: readonly Connection[] = [], entityOn: (entity: Pick<Entity, 'id'>) => boolean = () => true,
   ) => {
     const locationIds = locations.map((l) => l.id);
     const orphanIds = new Set<string>();
@@ -701,7 +702,7 @@ function useProvideGameplay() {
         backfillGameStateStats(withoutEntityCodeBounds(state), worldStats), worldStats, worldEntities, worldStatGroups,
       );
       if (!worldEntities) return players;
-      return withPlacedCast(backfillGameStateEntityStats(players, worldEntities), positionedCast(worldEntities, persona));
+      return withPlacedCast(backfillGameStateEntityStats(players, worldEntities), positionedCast(worldEntities.filter(entityOn), persona));
     };
     /** The state with every Unique entity placed by the engine for its own clock, the save's positions and engine
      *  state kept against the world, and followers from before the engine joining as Following. */
@@ -710,7 +711,7 @@ function useProvideGameplay() {
       const now = storyMinute(state.gameTime ?? 0, state.startHour != null ? { startHour: state.startHour } : undefined);
       // A save from before the field resolves where page one took place, else where the player stands.
       const playerStart = state.playerStartLocationId ?? pageOneLocationId(state.fullMessageHistory ?? []) ?? state.locationId;
-      const world = positionWorld(castRoutines(cast, discovered), now, state.locationId, locations, connections, undefined, playerStart);
+      const world = positionWorld(castRoutines(cast, discovered.filter((d) => entityOn(d.entity))), now, state.locationId, locations, connections, undefined, playerStart);
       const { entityFollowers: legacy, ...rest } = state as GameState & { entityFollowers?: string[] };
       const book = reconcileBook(
         {

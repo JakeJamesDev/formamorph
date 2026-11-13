@@ -1,6 +1,6 @@
 # 01: In-Play World Resolver
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -18,7 +18,23 @@ Spec rulings: Implementation Decisions (In-Play World resolver), Testing Decisio
 
 ## Acceptance criteria
 
-- [ ] The resolver has unit tests for today's world: every entity and location on, none locked.
-- [ ] The parity harness, with one entity and one location forced off through the resolver, shows neither in presence, positions, Known In, the AI context, chip values, the router's candidates or the start pick.
-- [ ] The guard bites: routing one covered reader back to the raw world turns its harness case red.
-- [ ] Existing turn pipeline parity tests stay green with no fixture changes.
+- [x] The resolver has unit tests for today's world: every entity and location on, none locked. `inPlayWorld.test.ts`, "a world with no gates" (same arrays back, none locked); 100% coverage of the resolver and gates modules.
+- [x] The parity harness, with one entity and one location forced off through the resolver, shows neither in presence, positions, Known In, the AI context, chip values, the router's candidates or the start pick. `GameViewer.inPlayWorld.test.tsx`: real GameViewer, forced off with `forceOff` (`src/test/inPlayOverride.ts`); each case has an on twin as its control. Covers a runtime character and a save load too.
+- [x] The guard bites: routing one covered reader back to the raw world turns its harness case red. Mutated nine readers one at a time: the router candidates, start pick, routines memo, start-book placement, presence, AI context and chips, load placement, runtime cast and runtime presence. Each turned its case red.
+- [x] Existing turn pipeline parity tests stay green with no fixture changes. `src/lib/turnPipeline` suite green; no fixture touched.
+
+## Landed
+
+**Not verified**
+
+- The runtime characters in GameViewer's routines memo read the in-play list, but no harness case can see it. Runtime characters' engine places are filtered out of the stored positions, so routing that one input back to the raw list stays green.
+
+**For ticket 02 and later**
+
+- Still on the authored world, by design for 02: `codeEntities` (scripts, owner traits), `pinsFor` (placeholder pins), the library list, `getWorldData()` readers (World Tools, Formaquestion Player View).
+- The cross-world load in GameViewer resolves another world's save before that world is in play, so it passes no gate. Ticket 08 should decide whether it gates.
+- Placing an off entity drops its stored position and engine state, at the next placement and at load. A re-enabled Unique is placed again by its routine. Ticket 07 (Q23 inertness) should confirm this matches intent.
+
+**For you**
+
+- Nothing to judge: no player-visible change.

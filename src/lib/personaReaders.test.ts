@@ -17,9 +17,10 @@ describe('entity readers in play', () => {
   const panels = read('src/components/game/GamePanels.tsx');
   const liveScene = read('src/lib/chipValues/liveScene.ts');
 
-  it('builds the game view cast from the resolved world, plus the discovered characters', () => {
+  it('builds the game view cast from the resolved world, plus the discovered characters that are in play', () => {
     expect(destructuredFrom(viewer, 'useResolvedWorld')).toEqual(['entities']);
-    expect(viewer).toMatch(/const allEntities = useMemo\(\s*\(\) => \[\.\.\.entities, \.\.\.discoveredAsEntities\(discoveredEntities\)\]/);
+    expect(viewer).toMatch(/const discoveredInPlay = useMemo\(\(\) => inPlay\.discoveredOn\(discoveredEntities\)/);
+    expect(viewer).toMatch(/const allEntities = useMemo\(\s*\(\) => \[\.\.\.entities, \.\.\.discoveredAsEntities\(discoveredInPlay\)\]/);
   });
 
   // One row per reader the spec names. Each pattern pins the list the reader is handed to a cast name.

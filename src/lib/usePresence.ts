@@ -21,7 +21,7 @@ const NO_ALIASES: StrangerLabels = {};
  * turn's snapshot and the history up to that turn; otherwise the live state.
  */
 export function usePresence(viewedPage?: number): Presence {
-  const { entities: cast, locations, connections, persona, currentLocation } = useResolvedWorld();
+  const { entities: cast, locations, connections, persona, currentLocation, inPlay } = useResolvedWorld();
   const {
     gameStates, fullMessageHistory, totalPages, discoveredEntities,
     entityPositions, genericStates, entityFollowers, metEntities, strangerAliases,
@@ -34,7 +34,8 @@ export function usePresence(viewedPage?: number): Presence {
       : fullMessageHistory),
     [snapshot, viewedPage, fullMessageHistory],
   );
-  const runtimeSource = snapshot ? (snapshot.discoveredEntities ?? NO_RUNTIME) : discoveredEntities;
+  const allRuntime = snapshot ? (snapshot.discoveredEntities ?? NO_RUNTIME) : discoveredEntities;
+  const runtimeSource = useMemo(() => inPlay.discoveredOn(allRuntime), [inPlay, allRuntime]);
   const runtime = useMemo(() => discoveredAsEntities(runtimeSource), [runtimeSource]);
   const livePositions = snapshot ? (snapshot.entityPositions ?? NO_POSITIONS) : entityPositions;
   const positions = useMemo(() => ({ ...runtimePositions(runtimeSource), ...livePositions }), [runtimeSource, livePositions]);
