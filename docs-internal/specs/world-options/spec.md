@@ -71,6 +71,10 @@ Scripts never write Enabled or Locked directly. They write a World Option, and t
 - **Q46 Simple mode.** The Enabled and Lock gates show in Simple mode. (Ticket 07 question.)
 - **Q47 One pass.** Every gate evaluates in one pass against committed state; a disabled entity's stored stats and traits read frozen. No cascade. (Ticket 07 question.)
 - **Q48 Self-lock scope.** The Q30 warning fires when every Condition in an entity's gate reads the entity itself: its stats, traits or groups. Own-item Conditions do not count, since scripts can still move its items. (Ticket 07 question.)
+- **Q49 Exemption scope.** The standing exemption covers the player's current location and its subtree, recomputed each commit, for every reader, the AI included. Moving into a child makes the child the root; disabled ancestors stay off. (Ticket 08 question.)
+- **Q50 Stranded readers.** An entity's places are its membership, routine rows and Traversable; one with no places is never stranded. A stranded entity is dropped from World Tools snapshots (the AI's reach) but kept in the script `entities` global. (Ticket 08 question.)
+- **Q51 Positions in a disabled place.** A stored position in a disabled location is dropped and the routine re-places the entity; nothing is held, unlike Q38. (Ticket 08 question.)
+- **Q52 Start fallback.** When every starting location is disabled, the start is the first enabled location in tree order; with every location off, today's authored pick. Location gates sit at the top of the location's Presence tab in Simple mode. (Ticket 08 question.)
 
 ## User Stories
 
