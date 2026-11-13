@@ -11,7 +11,8 @@ Every remaining in-play reader of entities and locations reads the In-Play World
 
 - Readers: the script `entities` and `locations` globals, World Tools snapshots, the Formaquestion Player View, Test Bench (opening, lens, AI context), mention detection, scene image tags, the inventory pass, following, placeholder pins, relationships, and the player's List and Map.
 - Extend ticket 01's parity harness to each reader.
-- Editor surfaces keep reading the raw world.
+- Editor surfaces keep reading the raw world. So does the save-load item-copy orphan check: a disabled entity's copies are not orphans and must never be deleted (01's landing note).
+- 01 left these on the authored world: scripts, pins, the library, and `getWorldData` readers. They are in scope here.
 - No changelog fragment: no player-visible change.
 
 Spec rulings: Implementation Decisions (In-Play World resolver), Testing Decisions (reader coverage).
