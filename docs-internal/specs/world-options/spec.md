@@ -1,6 +1,7 @@
 # Spec: World Options
 
-Status: ready-for-agent
+Status: done
+Status note: 2026-11-13. Tickets 01–09 done; last landing f45b2c0f7. Review: spec text corrected. Closed with gaps: ticket 10 (a disabled follower moves one step before its follow ends). Gates: test green, lint red only in gitignored worlds-wip/ files.
 Spec session: world-options — spec
 
 ## Problem Statement
@@ -79,6 +80,9 @@ Scripts never write Enabled or Locked directly. They write a World Option, and t
 - **Q54 Routes.** A locked place is neither a router candidate nor a waypoint, and it leaves the destinations chip. It stays in Nearby context and Known In (Q28). (Ticket 09 question.)
 - **Q55 Starts with locks.** The start pick skips off and locked starting locations, then falls back as Q52 to the first on and unlocked location; Enter World's list hides locked ones. (Ticket 09 question.)
 - **Q56 Who the lock binds.** Lock binds only the player's travel. Script and World Tool moves, entity routines and followers ignore it. The Move-to chip re-checks the gate at click. Locked text replaces the whole lock line and resolves placeholders. (Ticket 09 question.)
+- **Q57 Open Chat descriptions.** Each Option keeps its trait group's description; per-value descriptions are dropped (Q32). A value whose name does not explain itself gets one short clause in the Option description. (Ticket 06 question.)
+- **Q58 Open Chat readmes.** The world's readme and intro readme lines that name traits are reworded in place to point to World Options. (Ticket 06 question.)
+- **Q59 World Index.** The Formaquestion World Index lists World Options (name, description, value names) and flags hidden ones as it flags hidden traits. Ticket 06 builds it. (Ticket 06 question.)
 
 ## User Stories
 
@@ -118,7 +122,7 @@ Scripts never write Enabled or Locked directly. They write a World Option, and t
 26. As an author, I want the Enabled gate to use the same Requirement Rows as Requires, so that I learn one editor.
 27. As an author, I want an empty Enabled gate to mean always on, so that existing worlds behave as before.
 28. As an author, I want a blank owner in an entity's gate to read that entity, so that the gate matches the entity's trait gates.
-29. As an author, I want a warning when an entity's Enabled gate tests only its own stats, so that I don't build a gate that can never reopen.
+29. As an author, I want a warning when an entity's Enabled gate tests only its own stats, traits and groups (Q48), so that I don't build a gate that can never reopen.
 30. As a player, I never want to see a disabled entity anywhere: scene, map, lists, character panels, mentions, so that hidden content stays hidden.
 31. As a player, I never want the AI to mention a disabled entity or location, so that the story doesn't leak it.
 32. As an author, I want a disabled entity to be inert, so that its stats, regen, traits and scripts pause like a disabled stat's.
@@ -154,14 +158,14 @@ Scripts never write Enabled or Locked directly. They write a World Option, and t
 - **World Option Condition.** A new Condition kind on the Requirement union. It names an Option by id with its name stored for display, like other Conditions. It tests a choice value, a boolean state, or a number with the stat comparison operators. It has no owner. Choice and boolean tests can carry Not; a number test uses the operators instead.
 - **Lock line.** The existing lock-line builder renders location Lock gates. It drops World Option Conditions for hidden Options (Q11).
 - **Travel gate.** One function answers "can the player be moved into this location by this route". The List, the Map, the Move-to chip, the router's candidate walk and the start pick all call it. `location.move` does not (Q3). A new ADR records that Lock binds player travel and supersedes that part of ADR-0006; navigation rules still bind only the AI.
-- **Timing.** Gates and Option changes are read once per turn commit, like Time Conditions (Q9, Q22). Option values written by scripts follow the existing script write timing.
+- **Timing.** The resolver reads committed state live (Q36). A player's mid-game Option change applies at once, like a trait toggle (Q41). Option values written by scripts follow the existing script write timing.
 - **Runtime state.** Option values live in GameplayContext and the save envelope, as a playthrough record keyed by Option id, following the `loreToggles` precedent. Missing ids read the Option's default (Q21). Gameplay never writes GameDataContext.
 - **Inertness.** A disabled entity's stats, regen, traits and scripts pause using the same machinery that pauses a disabled stat (Q23).
 - **Script surface.** A new global exposes World Options by name, readable and writable by value. Entity and location fields stay read-only; no Enabled or Locked write exists.
 - **Editor.** A new Options tab in the World Editor. Entity and location panels gain Enabled and Lock gate editors built from the existing Requires editor. The Q30 warning shows under an entity's Enabled gate.
 - **Play UI.** A World Options section above the traits on the trait selection screen (Q18). A new rightmost tab in the right panel lists mid-game Options (Q22, Q26). The List and the Map show locked locations with the lock line or Locked text and refuse travel.
 - **Open Chat conversion.** Reply Length, Style and Pacing become choice Options with the same pins; their trait groups are removed. The bundled world JSON changes.
-- **Export shape.** ⚠️ World shape: new `options` list on the world, Enabled gate on entities and locations, Lock gate and Locked text on locations, new Condition kind. Save shape: new Option values record.
+- **Export shape.** ⚠️ World shape: new `options` list on the world, Enabled gate on entities and locations, Lock gate (stored as `unlockedWhen`: rows that hold unlock) and Locked text (`lockedText`) on locations, new Condition kind. Entity card files carry the Enabled gate (`enabledWhen`). Save shape: new Option values record.
 - **Glossary.** Add World Option, Enabled (entity and location sense), Locked location and the World Option Condition to CONTEXT.md. "Locked" for a location means its Lock gate fails, matching a Locked trait.
 - **Copy.** Every label, hint and the default lock text are written from the Writing Guide at build time; this spec fixes no user-facing wording beyond the names in Q5.
 
@@ -170,7 +174,7 @@ Scripts never write Enabled or Locked directly. They write a World Option, and t
 - A good test drives external behavior through a seam and asserts what the player or the AI would see. It never mirrors the implementation. Each guard is proven by reinstating the bug.
 - **In-Play World resolver (the main seam).** Pure unit tests: gates on and off per Condition kind, subtree removal, the standing exemption, stranded entities, the blank-owner rule for entities and locations, hidden Options left out of lock lines, start-pick filtering. Prior art: `traitGates` and `imageVisibility` tests.
 - **Reader coverage.** A parity-style test builds a world with one disabled entity and one disabled location and asserts neither appears in any in-play output: AI context, chip values, script globals, World Tools snapshot, Formaquestion Player View, Test Bench. Prior art: the turn pipeline parity suite.
-- **Turn commit.** `computeTurnCommit` tests for leaving at the next commit, follow ending, and a mid-game Option change applying at the next commit. Prior art: `computeTurnCommit.test.ts`.
+- **Turn commit.** `computeTurnCommit` tests for leaving at the next commit, follow ending, and a mid-game Option change applying at once (Q41). Prior art: `computeTurnCommit.test.ts`.
 - **Test Bench.** `runRules`/lens tests for the Options picker changing gate results. Prior art: Test Bench lens tests.
 - **Scripts.** Executor tests for reading and writing Options and for `location.move` ignoring a lock. Prior art: `statCodeExecutor` write tests.
 - **Saves.** Round-trip of Option values; an old save loads with defaults.

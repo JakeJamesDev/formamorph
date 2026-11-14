@@ -1,6 +1,6 @@
 # 08: Location Enabled Gate
 
-Status: ready-for-human
+Status: done
 Blocked by: 07
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -31,7 +31,7 @@ Spec rulings: Q2, Q10, Q12, Q27, Q29.
 **Not verified**
 
 - New game: the opening cast placement reads the resolver's verdicts from before the seed, as 02 left it. An entity whose start is off at the opening stands there, unseen, until the first placement moves it.
-- Location gates at Enter World and new game read the picked Options and the authored stats, not the picked traits (`startGateInput`).
+- Location gates at Enter World and new game read the picked Options, the picked traits and the authored stats (`startGateInput`, since e0cc31397).
 - Generic Entity Instances in a place that turns off: their routines lose the place like a Unique's; no test.
 - A runtime character is never stranded: its place is where it stands, not an authored place. In an off place it is simply in no scene.
 
