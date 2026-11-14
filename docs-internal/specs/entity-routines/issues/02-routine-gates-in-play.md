@@ -16,7 +16,8 @@ A character switches behavior when the world changes: the first Routine whose ga
 - A swap places the entity by the new Routine's Schedule at the current time, with no hold, idle or patrol stop carried over (Q11). A Generic entity's instances of an off Routine leave and return the same way (Q5).
 - A follower stays when the player's place is inside the new Routine's reach, and otherwise parts ways through the dismissal path (Q4, Q13).
 - The opening placement reads Routine gates against the state after setup picks (Q12).
-- No Routine holds: the entity has no Position (04 gives it the Away reader behavior, Q24).
+- No Routine holds: the entity is Away (Q24), through ticket 04's `awayAllDay(routine)` engine helper (Q29). Add the reader-parity harness case for it (04 left it to 02).
+- A script move on an All-day Away row holds until another script move. Check that such a hold does not pin an entity whose applying Routine changes.
 - A Routine with no Starts never applies (Q19).
 - Presence lists every Routine's places, each reason naming its Routine. Sample Placement uses the first Routine whose gate holds at the authored start (Q18).
 - Ticket 01 added `applyingRoutine(entity)` as the one seam; replace its body with the gate pick. Rename the engine's flat `Routine` view type in the position engine so it no longer clashes with the glossary word.
