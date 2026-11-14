@@ -49,6 +49,10 @@ Settled in the grill on 2026-11-14. Numbered R so they don't collide with the ba
 | R22 | R21's heart is the standard mark for a Patreon item, in place of a lock icon. It marks the item wherever its name shows in a list or picker, whether or not the account has access: a Supporter Copy world card, a Supporter-only Mascot in the Mascot tab, and the Formamorph AI preset. Ticket 04 builds it as one shared component and adds it to the Design System; ticket 08 applies it to the Mascot tab and Formamorph AI. User ruling, 2026-11-14. |
 | R23 | In game, the AI Context export of a Supporter Copy is blocked under R7, since it holds the world's books as text. The story export stays allowed: it is the player's own playthrough. New evidence from ticket 04; user ruling on the story export, 2026-11-14. |
 | R24 | Formaquestion's AI Context export is blocked while the open world is a Supporter Copy, since its trace holds that world's excerpts. Same reason as R23; found in ticket 04's landing. Ticket 05 builds it. |
+| R25 | An Avatar that Save to Library writes from a Supporter Copy is a library entry under R7 and R9: same marker, same `sourceWorldId`, same rule. A library Avatar that already exists keeps its current state. A marked one stays marked when the same file is saved later from a plain world; an unmarked one stays unmarked. Ticket 05 intent answer. |
+| R26 | A marked library entry can't be duplicated, and the backup bundle leaves marked entries and Avatars out (R15). Update-review pushes from a marked entry reach only its source world (R9). Ticket 05 intent answer. |
+| R27 | R9 covers the play-time pickers too: Enter World and the in-game persona pick show a marked entry disabled outside its source world. A Supporter Copy never writes back into an unmarked library item it follows; its edits stay in the world. The player's own item stays theirs and exportable. Ticket 05 new evidence. |
+| R28 | A marked Avatar stays pickable as the Player Avatar in Enter World. It is a display choice and no export carries it. Ticket 05 landing. |
 
 ## User Stories
 
