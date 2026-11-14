@@ -4,7 +4,7 @@ import {
   applyInventoryOps, applyInventoryPass, passOwners, equipRequirement, settleInventory, settleTraitsWithItems, statEffectItems, traitPicksInPlay, timedEffectViews, type ItemUse, type InventoryOp, type ItemScriptEvent,
 } from '@/lib/inventory';
 import { hasCode, isItemTiming } from '@/lib/scripts';
-import { inPlayWorldData, playedEntityIdOf, startLocationIdsOpen } from '@/lib/inPlayWorld';
+import { inPlayWorldData, playedEntityIdOf, startLocationIdsOpen, startRoutinePick } from '@/lib/inPlayWorld';
 import { gatePick } from '@/lib/inPlayGates';
 import { runRowKeys } from '@/lib/worldScripts';
 import { playedEntityIds } from '@/lib/scope';
@@ -1804,7 +1804,10 @@ const GameViewer = ({
       entities,
       locations,
       startingLocationId,
-      placesOf: openingPlacesOf(openingPlacement, entities, { locations, connections }, startingLocationId),
+      placesOf: openingPlacesOf(openingPlacement, entities, { locations, connections }, startingLocationId, startRoutinePick(
+        { entities: authoredEntities, locations: authoredLocations, connections: authoredConnections, traits: authoredTraits, traitGroups: worldTraitGroups, stats: worldStats, statGroups: authoredStatGroups, options: worldOptions },
+        personaRef?.source === "world" ? personaRef.entityId : null, worldOptionValues,
+      )),
       picked: pickedAtStart(discoveredInPlay),
       persona,
       customPersona,

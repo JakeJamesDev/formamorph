@@ -1,6 +1,6 @@
 # 05: Gated Opening Fallback
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -19,4 +19,10 @@ Spec rulings: Q18.
 
 ## Acceptance criteria
 
-- [ ] A test: a save with no opening placement, for an entity whose first Routine's gate fails at the start, places it from the Routine that holds. The guard bites with the ungated pick reinstated.
+- [x] A test: a save with no opening placement, for an entity whose first Routine's gate fails at the start, places it from the Routine that holds. The guard bites with the ungated pick reinstated. (`openingPlacement.test.ts`; failed with the pick dropped from the fallback, passes with it.)
+
+## Landed
+
+**Not verified:** nothing open. The GameViewer call site has no render test; typecheck covers its types.
+
+**For you:** nothing a player must judge.
