@@ -1773,6 +1773,16 @@ describe('the unused-placeholder rule', () => {
     expect(only(w, 'placeholder-pinned-unused').map((f) => f.items.map((i) => i.id))).toEqual([['p1', 't1']]);
   });
 
+  it.each(['strangerName', 'strangerDescription'] as const)('counts a trait-pinned chip placed only in %s as a use', (field) => {
+    const w = base({
+      placeholders: [{ id: 'p1', name: 'Guise', values: phValues(['a hooded figure', 'a lizard']) }],
+      traits: [trait({ id: 't1', name: 'Seen', placeholderPins: [{ placeholderId: 'p1', value: 'a lizard' }] })],
+      entities: [resident, { id: 'e2', name: 'Mimi', [field]: '{{ph:p1:world:pl1}}' }],
+    });
+    expect(only(w, 'placeholder-pinned-unused')).toEqual([]);
+    expect(only(w, 'placeholder-unused')).toEqual([]);
+  });
+
   it('counts a chip in a stat description as a use', () => {
     const w = base({
       placeholders: [{ id: 'p1', name: 'Vice', values: phValues(['ale']) }],
