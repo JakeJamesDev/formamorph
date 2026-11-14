@@ -98,7 +98,8 @@ export type UniqueStates = Record<string, UniqueState>;
 
 /** Where one Start of a Generic entity stands, and its schedule state. Times are story minutes. */
 export interface GenericEntityInstanceState {
-  position: string;
+  /** Absent while an Away row holds it. */
+  position?: string;
   /** The row in force when the engine last ran. Absent = no row. */
   rowId?: string;
   lastRun: number;

@@ -1,6 +1,6 @@
 import { isGeneric, toggleGenericStart, traversableOf, startsOf, withFirstTraversable } from '@/lib/entityKind';
 import { placesOf, startReach, type PlaceGraph } from '@/lib/positionEngine';
-import { NEW_STOP_IDLE, withRow } from '@/lib/routineEditing';
+import { ACTION_LABELS, NEW_STOP_IDLE, withRow } from '@/lib/routineEditing';
 import type { RoutineSelection } from '@/lib/routineSelection';
 import { rangeText } from '@/lib/routineTime';
 import { randomUUID } from '@/lib/uuid';
@@ -71,7 +71,7 @@ export function routineMapClick(entity: Entity, selection: RoutineSelection, pla
     return { entity: withFirstTraversable(entity, traversable), label: 'Change Can Also Go' };
   }
   const { action, reaches, write } = rowEdit(entity, selected, place, graph);
-  if (!reaches) return null;
+  if (!reaches || action.kind === 'away') return null;
   if (action.kind === 'stay') return action.place === place ? null : write({ ...action, place });
   if (action.kind === 'wander') {
     const places = action.places.some((p) => p.place === place)
@@ -107,7 +107,6 @@ export function routineMapDrag(entity: Entity, selection: RoutineSelection, from
   return stops ? write({ ...action, stops }) : null;
 }
 
-const ACTION_NAMES = { stay: 'Stay', wander: 'Wander', patrol: 'Patrol' } as const;
 
 function timeOf(row: ScheduleRow, start: EntityStart): string {
   if (row.time !== 'allDay') return rangeText(row.time);
@@ -138,7 +137,8 @@ export function routineMapStatus(entity: Entity, selection: RoutineSelection): R
       : { text: 'Click a location to add or remove it from "Can Also Go"' };
   }
   const { action } = selected.row;
-  const row = `${ACTION_NAMES[action.kind]}, ${timeOf(selected.row, selected.start)}`;
+  const row = `${ACTION_LABELS[action.kind]}, ${timeOf(selected.row, selected.start)}`;
+  if (action.kind === 'away') return { row, text: 'Away uses no location' };
   if (action.kind === 'stay') return { row, text: 'Click a location to stay there' };
   if (action.kind === 'wander') {
     return action.places.length === 0

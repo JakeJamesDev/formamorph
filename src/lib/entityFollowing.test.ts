@@ -62,6 +62,18 @@ describe('who gets an entity location request', () => {
     expect(['moths', 'clerk'].filter((id) => asked.includes(id))).toEqual([]);
   });
 
+  it('never asks a character whose Away row began while it stood here, and still asks one following through it', () => {
+    // An Away row lets nobody leave mid-scene, so Nell still stands at the inn (Q29).
+    const nell = unique('nell', [start('inn', [{ id: 'gone', time: 'allDay', action: { kind: 'away' } }])], 'anywhere');
+    const asked = (follow: boolean) => entityMoveSubjects([nell], {
+      positions: { nell: 'inn' },
+      uniques: { nell: { startId: 'at-inn', lastRun: NOON, rowId: 'gone', ...(follow && { follow: { mode: 'following' as const } }) } },
+      generics: {},
+    }, 'inn', world('inn', [nell])).map((e) => e.id);
+    expect(asked(false)).toEqual([]);
+    expect(asked(true)).toEqual(['nell']);
+  });
+
   it('still asks a follower whose row is Strict, since a running follow ignores it', () => {
     expect(subjects(state(AT_INN, ['clerk']))).toContain('clerk');
   });

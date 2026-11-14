@@ -65,7 +65,8 @@ interface LiveStop extends PatrolStop {
 type LiveAction =
   | { kind: "stay"; place: string }
   | { kind: "wander"; places: WanderPlace[]; idle: number }
-  | { kind: "patrol"; stops: LiveStop[] };
+  | { kind: "patrol"; stops: LiveStop[] }
+  | { kind: "away" };
 
 interface LiveRow {
   /** Absent in free time and with an empty schedule. */
@@ -91,6 +92,7 @@ function liveRow(start: EntityStart, row: ScheduleRow | undefined, connected: Re
   if (!row) return { strict: false, action: atStart };
   const base = { rowId: row.id, strict: !!row.strict };
   const a = row.action;
+  if (a.kind === "away") return { ...base, action: a };
   if (a.kind === "stay") return { ...base, action: connected.has(a.place) ? a : atStart };
   if (a.kind === "wander") {
     const places = a.places.filter((p) => connected.has(p.place));
@@ -101,8 +103,10 @@ function liveRow(start: EntityStart, row: ScheduleRow | undefined, connected: Re
 }
 
 /** The places a schedule action uses, in order. */
-export const placesOf = (action: ScheduleAction | LiveAction): string[] =>
-  action.kind === "stay" ? [action.place] : action.kind === "wander" ? action.places.map((p) => p.place) : action.stops.map((s) => s.place);
+export function placesOf(action: ScheduleAction | LiveAction): string[] {
+  if (action.kind === "away") return [];
+  return action.kind === "stay" ? [action.place] : action.kind === "wander" ? action.places.map((p) => p.place) : action.stops.map((s) => s.place);
+}
 
 /** The first time after `t` a timed row starts or ends. */
 function nextBoundary(start: EntityStart, t: number): number {
@@ -168,7 +172,8 @@ interface Body {
 function enterRow(body: Body, row: LiveRow, t: number, random: () => number): void {
   const { action } = row;
   body.st = { ...body.st, rowId: row.rowId, idleEnd: undefined, stop: undefined };
-  if (action.kind === "stay") body.pos = action.place;
+  if (action.kind === "away") body.pos = undefined;
+  else if (action.kind === "stay") body.pos = action.place;
   else if (action.kind === "wander") {
     if (!body.pos || !placesOf(action).includes(body.pos)) body.pos = pickWander(action.places, body.pos, random);
     body.st.idleEnd = t + idleOf(action.idle);
@@ -179,9 +184,12 @@ function enterRow(body: Body, row: LiveRow, t: number, random: () => number): vo
   }
 }
 
-/** The row's next move at `t`: back to the Stay place, a new Wander pick, or the next Patrol stop. */
+/** The row's next move at `t`: back to the Stay place, a new Wander pick, the next Patrol stop, or off to no place. */
 function stepRow(body: Body, { action }: LiveRow, t: number, random: () => number): void {
-  if (action.kind === "stay") {
+  if (action.kind === "away") {
+    body.pos = undefined;
+    body.st = { ...body.st, idleEnd: undefined };
+  } else if (action.kind === "stay") {
     body.pos = action.place;
     body.st = { ...body.st, idleEnd: undefined };
   } else if (action.kind === "wander") {
@@ -210,10 +218,12 @@ function rollStart(starts: readonly EntityStart[], random: () => number): Entity
   return starts.length ? weighted(starts, (s) => s.weight, random) : undefined;
 }
 
-/** The places `routine` may be pulled or led into on `start` at `now`: its row's places plus Traversable. */
+/** The places `routine` may be pulled or led into on `start` at `now`: its row's places plus Traversable. An Away
+ *  row leads a follower anywhere its Start connects to (Q29). */
 function allowedOn(routine: Routine, start: EntityStart, now: number, graph: PlaceGraph, connected: ReadonlySet<string>): Set<string> {
   if (routine.traversable === "anywhere") return new Set(graph.locations.map((l) => l.id));
-  return new Set([...placesOf(liveRow(start, rowAt(start, now), connected).action), ...routine.traversable]);
+  const { action } = liveRow(start, rowAt(start, now), connected);
+  return new Set([...(action.kind === "away" ? connected : placesOf(action)), ...routine.traversable]);
 }
 
 /** Per-call cache of each Start place's connected set. */
@@ -284,7 +294,7 @@ function replay(body: Body, start: EntityStart, reach: ReadonlySet<string>, curs
   const first = live(cursor);
   if (first.rowId !== body.st.rowId) enterRow(body, first, cursor, random);
   else if (!body.pos || !placesOf(first.action).includes(body.pos)) stepRow(body, first, cursor, random);
-  while (body.pos !== scene.playerAt) {
+  while (body.pos === undefined || body.pos !== scene.playerAt) {
     const t = Math.max(cursor, Math.min(nextBoundary(start, cursor), body.st.idleEnd ?? Infinity));
     if (!(t <= scene.now)) break;
     cursor = t;
@@ -307,7 +317,7 @@ function advanceGenericEntityInstance(
     replay(body, start, connected(start.place), Math.min(body.st.lastRun, now), scene, random);
   }
   const { rowId, idleEnd, stop } = body.st;
-  return tidy({ position: body.pos ?? start.place, rowId, lastRun: now, idleEnd, stop });
+  return tidy({ position: body.pos, rowId, lastRun: now, idleEnd, stop });
 }
 
 /** Every Generic Entity Instance of `routine`, one per Start. A record whose Start is gone is dropped. */
@@ -361,7 +371,7 @@ export function advancePositions(
 /** The places each Generic entity's Generic Entity Instances stand at, deduped, by Generic entity id. */
 export function genericPlaces(generics: Readonly<GenericStates>): Record<string, string[]> {
   return Object.fromEntries(Object.entries(generics).map(([id, entityInstances]) =>
-    [id, [...new Set(Object.values(entityInstances).map((p) => p.position))]]));
+    [id, [...new Set(Object.values(entityInstances).flatMap((p) => p.position ?? []))]]));
 }
 
 /** The saved Start of `routine`, as authored, if it still has it. */
@@ -394,6 +404,7 @@ export function actionNow(routine: Routine, st: UniqueState | undefined, scene: 
   const start = startOf(routine, st, scene);
   const row = start && rowAt(start, scene.now);
   if (!start || !row) return "";
+  if (row.action.kind === "away") return "away";
   const connected = connectedPlaces(start.place, scene);
   return placesOf(row.action).some((place) => connected.has(place)) ? row.action.kind : "";
 }
@@ -406,6 +417,25 @@ export function isStrictNow(routine: Routine, st: UniqueState | undefined, now: 
   const start = savedStart(routine, st);
   return !!start && !!rowAt(start, now)?.strict;
 }
+
+/** Whether the row in force for `routine` right now is Away. */
+export function isAwayNow(routine: Routine, st: UniqueState | undefined, now: number): boolean {
+  const start = savedStart(routine, st);
+  return !!start && rowAt(start, now)?.action.kind === "away";
+}
+
+/** Narration can neither call `routine` over nor start its follow: on a Strict or an Away row (Q22). */
+export const isKeptOffNow = (routine: Routine, st: UniqueState | undefined, now: number): boolean =>
+  isStrictNow(routine, st, now) || isAwayNow(routine, st, now);
+
+/** The row id `awayAllDay` gives its one row. */
+export const AWAY_ROW_ID = "@away";
+
+/** `routine` Away all day on every Start, its rolls kept: the entity while no Routine holds (Q24). */
+export const awayAllDay = (routine: Routine): Routine => ({
+  ...routine,
+  starts: routine.starts.map((start) => ({ ...start, schedule: [{ id: AWAY_ROW_ID, time: "allDay", action: { kind: "away" } }] })),
+});
 
 const withState = (book: PositionBook, id: string, st: UniqueState, pos?: string): PositionBook => ({
   ...book,
@@ -421,7 +451,7 @@ function holdFor(
   const start = startOf(routine, st, scene);
   if (!start) return undefined;
   const { action } = liveRow(start, rowAt(start, scene.now), connectedPlaces(start.place, scene));
-  if (action.kind === "stay") return { hold: onStay(start) };
+  if (action.kind === "stay" || action.kind === "away") return { hold: onStay(start) };
   const idle = action.kind === "wander" ? action.idle : (action.stops.find((s) => s.index === st.stop) ?? action.stops[0]).idle;
   const idleEnd = st.idleEnd !== undefined && st.idleEnd > scene.now ? st.idleEnd : scene.now + idleOf(idle);
   return { hold: { until: idleEnd }, idleEnd };
@@ -432,7 +462,7 @@ function holdFor(
  *  goes back once the player leaves (Q40). */
 export function pullUnique(book: PositionBook, routine: Routine, to: string, scene: PositionScene): PositionBook {
   const st = book.uniques[routine.id];
-  if (!st || st.follow || isStrictNow(routine, st, scene.now) || !allowedPlaces(routine, st, scene).has(to)) return book;
+  if (!st || st.follow || isKeptOffNow(routine, st, scene.now) || !allowedPlaces(routine, st, scene).has(to)) return book;
   const held = holdFor(routine, st, scene, () => undefined);
   if (!held) return book;
   return withState(book, routine.id, { ...st, hold: held.hold, idleEnd: held.idleEnd ?? st.idleEnd }, to);
@@ -451,13 +481,13 @@ export function moveUniqueByScript(book: PositionBook, routine: Routine, to: str
   return withState(book, routine.id, { ...st, follow, hold: held.hold, idleEnd: held.idleEnd ?? st.idleEnd }, to);
 }
 
-/** `routine` starts following the player. Refused on a Strict row unless a script asks (Q36, Q64). */
+/** `routine` starts following the player. Refused on a Strict or an Away row unless a script asks (Q22, Q36, Q64). */
 export function startFollowing(
   book: PositionBook, routine: Routine, scene: PositionScene, options: { script?: boolean } = {},
 ): PositionBook {
   const st = book.uniques[routine.id];
   if (!st || st.follow?.mode === "following") return book;
-  if (!options.script && isStrictNow(routine, st, scene.now)) return book;
+  if (!options.script && isKeptOffNow(routine, st, scene.now)) return book;
   return withState(book, routine.id, { ...st, hold: undefined, follow: { mode: "following", ...(options.script ? { script: true } : {}) } });
 }
 

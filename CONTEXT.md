@@ -163,7 +163,7 @@ The places an entity can begin: the place of each of its Starts, with Player's S
 _Avoid_: spawn points
 
 **Schedule**:
-A Start's daily routine: rows of a time and an action (Stay, Wander or Patrol). A timed row beats the All-day row for its hours; in hours no row covers, the character stays at its Start's place.
+A Start's daily routine: rows of a time and an action (Stay, Wander, Patrol or Away). A timed row beats the All-day row for its hours; in hours no row covers, the character stays at its Start's place.
 _Avoid_: movement
 
 **Stay**:
@@ -177,6 +177,10 @@ _Avoid_: Moves Between, roam
 **Patrol**:
 A Schedule action: the character walks a list of stops in order, idling at each, then loops to the first.
 _Avoid_: route, circuit
+
+**Away**:
+A Schedule action with no place: for the row's hours the character has no Position, so it is in no scene, not here, not nearby and not on the map. It still exists: its stats, regen, traits and scripts run, and contexts that need no place, such as the entities known here, keep it. A follow already running continues, led anywhere its Start connects to; narration can't call it over and it won't start following. An entity whose Routines all fail is Away all day. To take an entity out of the world instead, use the Enabled gate.
+_Avoid_: offstage (a stranded entity, which also leaves the known-entity lists), hidden, gone
 
 **Strict**:
 A Schedule row flag: during the row the character can't be called over by narration and won't start following the player. A follow already running continues.

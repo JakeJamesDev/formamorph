@@ -150,7 +150,8 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
   // The Routine tab's name for the Start place that resolves to where the player begins.
   const placeName = (id: string) => (id === PLAYER_START ? PLAYER_START_LABEL : text(locationName(id)));
   const actionText = (action: ScheduleAction): string =>
-    action.kind === 'stay' ? `stays at ${placeName(action.place)}`
+    action.kind === 'away' ? 'is away'
+      : action.kind === 'stay' ? `stays at ${placeName(action.place)}`
       : action.kind === 'wander' ? `wanders ${action.places.map((p) => placeName(p.place)).join(', ')}`
         : `patrols ${action.stops.map((s) => placeName(s.place)).join(', ')}`;
   const startsBlock = (entity: Entity): string | undefined => {

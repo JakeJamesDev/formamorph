@@ -1,6 +1,6 @@
 import { isGeneric, traversableOf, startsOf } from '@/lib/entityKind';
 import { placesOf, startReach, type PlaceGraph } from '@/lib/positionEngine';
-import type { ActionKind } from '@/lib/routineEditing';
+import { isPlaced, type PlacedAction, type PlacedActionKind } from '@/lib/routineEditing';
 import type { RoutineSelection } from '@/lib/routineSelection';
 import { chancePercent, freeRanges, rangeText, rowClockKey, strip } from '@/lib/routineTime';
 import { MINUTES_PER_DAY } from '@/lib/gameClock';
@@ -17,7 +17,7 @@ export type RoutinePlaceKind = 'routine' | 'here' | 'reach' | 'plain' | 'faded';
 
 /** A stretch of the day the entity can be at a place. `free`: time no row covers, at the Start's location. */
 export interface RoutineSpan {
-  tone: ActionKind | 'free';
+  tone: PlacedActionKind | 'free';
   /** In words, as its row's sentence says it. */
   time: string;
   /** Where it sits on the Dawn-to-Dawn strip, in minutes: two pieces when it runs across Dawn. */
@@ -29,7 +29,7 @@ export interface RoutineMark {
   /** Where the Start on show begins. */
   begin?: true;
   /** The place's color: the selected row's action, or the one action every row here shares. Absent is the neutral ring. */
-  tone?: ActionKind;
+  tone?: PlacedActionKind;
   /** Wander chances or Patrol stop numbers of the selected row. */
   badge?: string;
   /** When the entity can be here, in clock order: the whole day's rows, or only the selected row. */
@@ -41,7 +41,7 @@ export interface RoutineLine {
   id: string;
   source: string;
   target: string;
-  tone: ActionKind;
+  tone: PlacedActionKind;
   arrow: boolean;
   dashed: boolean;
 }
@@ -52,13 +52,18 @@ export interface RoutineView {
 }
 
 /** One stretch of the day in clock order: a timed row, or time between them under the All-day row or at the Start. */
-interface Block {
-  row: ScheduleRow | null;
+interface Block<R extends ScheduleRow = ScheduleRow> {
+  row: R | null;
   span: Omit<RoutineSpan, 'tone'>;
   places: string[];
 }
 
-function blocks(start: EntityStart): Block[] {
+/** A row that puts the entity at a place. Away rows draw nothing. */
+type PlacedRow = ScheduleRow & { action: PlacedAction };
+
+const placedRow = (row: ScheduleRow): row is PlacedRow => isPlaced(row.action);
+
+function blocks(start: EntityStart): Block<PlacedRow>[] {
   const base = start.schedule.find((r) => r.time === 'allDay') ?? null;
   const timed = start.schedule.filter((r): r is ScheduleRow & { time: ScheduleRange } => r.time !== 'allDay').sort((a, b) => rowClockKey(a) - rowClockKey(b));
   const gaps = freeRanges(timed).map((g) => {
@@ -76,7 +81,8 @@ function blocks(start: EntityStart): Block[] {
     at: rowClockKey(r),
     block: { row: r, span: { time: rangeText(r.time), pieces: strip(r.time) }, places: placesOf(r.action) },
   }));
-  return [...gaps, ...rows].sort((a, b) => a.at - b.at).map((x) => x.block).filter((b) => b.places.length > 0);
+  return [...gaps, ...rows].sort((a, b) => a.at - b.at).map((x) => x.block)
+    .filter((b): b is Block<PlacedRow> => b.places.length > 0 && (!b.row || placedRow(b.row)));
 }
 
 function badgeOf(row: ScheduleRow, place: string): string | undefined {
@@ -93,7 +99,7 @@ function badgeOf(row: ScheduleRow, place: string): string | undefined {
 }
 
 /** The one action every span shares, when there is one. */
-function sharedTone(spans: readonly RoutineSpan[]): ActionKind | undefined {
+function sharedTone(spans: readonly RoutineSpan[]): PlacedActionKind | undefined {
   const tones = new Set(spans.map((s) => s.tone));
   const [only] = tones;
   return tones.size === 1 && only !== 'free' ? only : undefined;
@@ -135,7 +141,7 @@ export function routineView(entity: Entity, selection: RoutineSelection, graph: 
   for (const [id, spans] of spansAt) {
     if (selected) {
       const badge = spans.length ? badgeOf(selected, id) : undefined;
-      mark(id, spans.length ? { kind: 'routine', tone: selected.action.kind, badge, spans } : { kind: 'routine' });
+      mark(id, spans.length && placedRow(selected) ? { kind: 'routine', tone: selected.action.kind, badge, spans } : { kind: 'routine' });
     } else {
       mark(id, { kind: 'routine', tone: sharedTone(spans), spans });
     }
@@ -149,7 +155,7 @@ export function routineView(entity: Entity, selection: RoutineSelection, graph: 
   }
 
   const drawn = new Set<string>();
-  const line = (source: string, target: string, row: ScheduleRow, arrow: boolean) => {
+  const line = (source: string, target: string, row: PlacedRow, arrow: boolean) => {
     if (source === target || !marks.has(source) || !marks.has(target)) return;
     const id = `routine:${source}>${target}:${row.id}:${arrow ? 'go' : 'roam'}`;
     if (drawn.has(id) || (!arrow && drawn.has(`routine:${target}>${source}:${row.id}:roam`))) return;

@@ -8,7 +8,14 @@ import { startsOf, withFirstStarts } from '@/lib/entityKind';
 export type ActionKind = ScheduleAction['kind'];
 
 /** Each schedule action's name in the editor. */
-export const ACTION_LABELS: Record<ActionKind, string> = { stay: 'Stay', wander: 'Wander', patrol: 'Patrol' };
+export const ACTION_LABELS: Record<ActionKind, string> = { stay: 'Stay', wander: 'Wander', patrol: 'Patrol', away: 'Away' };
+
+/** A schedule action at one or more places: every kind but Away. */
+export type PlacedAction = Exclude<ScheduleAction, { kind: 'away' }>;
+export type PlacedActionKind = PlacedAction['kind'];
+
+/** Whether `action` puts the entity at a place. */
+export const isPlaced = (action: ScheduleAction): action is PlacedAction => action.kind !== 'away';
 
 /** How long a new Patrol stop idles, in minutes. */
 export const NEW_STOP_IDLE = 60;
@@ -24,6 +31,7 @@ export const withoutRow = (entity: Entity, startId: string, rowId: string): Enti
 
 /** A new action of `kind` at `place`. */
 export function newAction(kind: ActionKind, place: string): ScheduleAction {
+  if (kind === 'away') return { kind };
   if (kind === 'stay') return { kind, place };
   if (kind === 'wander') return { kind, places: [{ place, weight: 1 }], idle: ONE_DAYPART_MINUTES };
   return { kind, stops: [{ place, idle: NEW_STOP_IDLE }] };
@@ -32,6 +40,7 @@ export function newAction(kind: ActionKind, place: string): ScheduleAction {
 /** `action` turned into `kind`, keeping its places in order. */
 export function switchAction(action: ScheduleAction, kind: ActionKind, startPlace: string): ScheduleAction {
   if (action.kind === kind) return action;
+  if (kind === 'away') return { kind };
   const places = placesOf(action);
   const first = places[0] ?? startPlace;
   if (kind === 'stay') return { kind, place: first };
@@ -52,8 +61,8 @@ export function withNewRow(entity: Entity, startId: string, kind: ActionKind, ne
   const start = startsOf(entity).find((s) => s.id === startId);
   const time = start && firstFreeRange(start.schedule);
   const place = start && rowPlaceOf(start, firstPlace);
-  if (!start || !time || !place) return entity;
-  return withStart(entity, startId, (s) => ({ ...s, schedule: [...s.schedule, { id: newId(), time, action: newAction(kind, place) }] }));
+  if (!start || !time || (kind !== 'away' && !place)) return entity;
+  return withStart(entity, startId, (s) => ({ ...s, schedule: [...s.schedule, { id: newId(), time, action: newAction(kind, place ?? '') }] }));
 }
 
 /** `entity` with a new row at the Start's location, and that row's id. The same entity and no id without a place. */

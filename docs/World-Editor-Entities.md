@@ -87,7 +87,7 @@ The **Persona** control has four choices: **Cast**, **Playable**, **Persona-Only
 Each entity in the list has **Duplicate** and **Delete** actions.
 
 ## Presence
-<!-- keywords: schedule, daily routine, routine tab, where does the npc start, npc moves, wander, patrol, stays at, follow the player, called over, unique, generic, crowd, herd, known in, where the ai knows -->
+<!-- keywords: schedule, daily routine, routine tab, where does the npc start, npc moves, wander, patrol, away, gone for the night, stays at, follow the player, called over, unique, generic, crowd, herd, known in, where the ai knows -->
 <!-- route: worldEditorEntity.presence -->
 
 The **Presence** tab sets where the entity begins, where it goes, and where the AI knows of it. A location's **Presence** tab has the same routine editor for each entity that can be there.
@@ -137,10 +137,11 @@ Pick **Player's Starting Location** at the top of a start's location list. The e
 The routine reads as sentences in the order of the day, such as *Morning – Afternoon, stays at Smithy.*
 
 - 🕑 Click the time to change it. Times use the time of day, such as **Morning**. **Use Hours** switches the row to exact hours, and **Use Time of Day** switches back, snapping to the parts of the day that cover those hours.
-- 🚶 Click the verb to pick **Stay**, **Wander** or **Patrol**.
+- 🚶 Click the verb to pick **Stay**, **Wander**, **Patrol** or **Away**.
   - **Stay** keeps it at one location.
   - **Wander** moves it between locations at random. A higher **Weight** picks a location more often. It waits the set time between moves.
   - **Patrol** walks the stops in order, waits at each, then starts over. Drag a stop to change the order.
+  - **Away** puts it at no location for those hours, such as *Night, is away.* It isn't on the map, in the scene or nearby, and the narration can't call it over. Its stats, regen, traits and scripts keep running, and the AI still knows of it where **Known In** says. If it's already following the player, it keeps following and goes away when the follow ends.
 - 📍 Click the locations to change them. The pickers list only locations the start location connects to.
 - 🔒 The lock beside a row stops the entity from being called over or starting to follow the player during that time. The lock on a free-time line does the same for every hour no row covers: it adds a locked **All Day** row at the start location.
 - ☕ Hours no row covers read *…, stays at* the start location. **All Day** covers the whole day, and reads *The rest of the day* beside timed rows.

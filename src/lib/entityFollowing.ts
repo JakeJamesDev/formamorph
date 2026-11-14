@@ -3,7 +3,7 @@ import { effectiveDestinations } from "@/lib/locationGraph";
 import type { EntityCodeWrite } from "@/lib/statCodeExecutor";
 import { daypart, MINUTES_PER_DAY } from "@/lib/gameClock";
 import {
-  allowedPlaces, isStrictNow, moveUniqueByScript, partWays, startFollowing, startWaiting, waitUntil, type PositionBook, type WaitLength,
+  allowedPlaces, isKeptOffNow, moveUniqueByScript, partWays, startFollowing, startWaiting, waitUntil, type PositionBook, type WaitLength,
 } from "@/lib/positionEngine";
 import { followerIds, placeAll, withPlayerAt, type PositionWorld } from "@/lib/positionPlay";
 
@@ -102,7 +102,7 @@ const NO_RUNTIME_CAST: RuntimeCast = { runtime: [], inScene: new Set() };
 
 /**
  * The entities that get a location request this turn: each follower, and each Unique entity at the player's place
- * whose row is not Strict. A runtime character counts only while the scene list holds it. In `entities` order.
+ * whose row is neither Strict nor Away. A runtime character counts only while the scene list holds it. In `entities` order.
  */
 export function entityMoveSubjects(
   entities: readonly Entity[], state: FollowerState, playerLocationId: string | undefined, world: PositionWorld,
@@ -118,7 +118,7 @@ export function entityMoveSubjects(
     const st = state.uniques[entity.id];
     if (!routine || !st || st.follow || state.positions[entity.id] !== playerLocationId) return false;
     if (runtimeIds.has(entity.id) && !cast.inScene.has(entity.id)) return false;
-    return !isStrictNow(routine, st, scene.now);
+    return !isKeptOffNow(routine, st, scene.now);
   });
 }
 

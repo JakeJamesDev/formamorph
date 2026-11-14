@@ -459,7 +459,9 @@ export interface PatrolStop {
 export type ScheduleAction =
   | { kind: 'stay'; place: string }
   | { kind: 'wander'; places: WanderPlace[]; idle: number }
-  | { kind: 'patrol'; stops: PatrolStop[] };
+  | { kind: 'patrol'; stops: PatrolStop[] }
+  /** At no place: off the map and out of every scene, its stats and scripts still running. */
+  | { kind: 'away' };
 
 /** One row of a Start's schedule. A timed row beats the All-day row for the hours it covers. */
 export interface ScheduleRow {

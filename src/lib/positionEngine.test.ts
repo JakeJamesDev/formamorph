@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PLAYER_START, type Connection, type DiscoveredEntity, type ScheduleAction, type ScheduleRow, type Traversable } from '@/types';
 import {
-  advancePositions, allowedPlaces, connectedPlaces, genericPlaces, isStrictNow, moveUniqueByScript, partWays, pullUnique,
+  actionNow, advancePositions, allowedPlaces, awayAllDay, connectedPlaces, genericPlaces, isStrictNow, moveUniqueByScript, partWays, pullUnique,
   runtimeRoutine, startFollowing, startWaiting, waitUntil, type PositionBook, type PositionScene, type Routine,
 } from './positionEngine';
 
@@ -399,6 +399,108 @@ describe('reach', () => {
     expect(allowedPlaces(listed, play(listed, now).state, scene(now))).toEqual(new Set(['market', 'square']));
     expect(allowedPlaces(listed, play(listed, at(1, 20)).state, scene(at(1, 20)))).toEqual(new Set(['inn']));
     expect(allowedPlaces(extra, play(extra, now).state, scene(now))).toEqual(new Set(['inn', 'gate']));
+  });
+});
+
+describe('Away', () => {
+  const away: ScheduleAction = { kind: 'away' };
+  // Patrols the wall all day, and is gone from midday to 14:00.
+  const guard = routine([timed('gone', 12, 14, away), allDay('round', patrol([['wall', 30], ['gate', 60], ['market', 30]]))], 'square', ['inn']);
+  const follow = (r: Routine, t: number, player: string, options = {}) => (b: PositionBook) => startFollowing(b, r, scene(t, player), options);
+
+  it('gives no Position during the row while time and Patrol progress continue', () => {
+    const game = play(guard, at(1, 11), 'inn');
+    expect(game.pos).toBe('wall');
+    expect(game.advance(at(1, 12, 30), 'inn').pos).toBeUndefined();
+    expect(game.state).toMatchObject({ startId: 's1', rowId: 'gone', lastRun: at(1, 12, 30) });
+    expect(actionNow(guard, game.state, scene(at(1, 13), 'inn'))).toBe('away');
+    expect(game.advance(at(1, 14), 'inn').pos).toBe('wall');
+    expect(game.advance(at(1, 14, 30), 'inn').pos).toBe('gate');
+  });
+
+  it('replays the Patrol after the row across one long absence', () => {
+    // Back at 14:00 on stop 1, then 30 minutes later on to the gate.
+    expect(play(guard, at(1, 11), 'inn').advance(at(1, 15), 'inn').pos).toBe('gate');
+  });
+
+  it('comes back when the row ends while the player stands at no place', () => {
+    const game = play(guard, at(1, 12, 30));
+    expect(game.pos).toBeUndefined();
+    expect(game.advance(at(1, 14, 30)).pos).toBe('gate');
+  });
+
+  it('places nobody at the start of a game that opens in the row', () => {
+    const game = play(guard, at(1, 13));
+    expect(game.pos).toBeUndefined();
+    expect(game.state.startId).toBe('s1');
+  });
+
+  it('keeps a character in the scene until the player leaves, then takes it away', () => {
+    const game = play(guard, at(1, 11, 50), 'wall');
+    expect(game.pos).toBe('wall');
+    expect(game.advance(at(1, 12, 30), 'wall').pos).toBe('wall');
+    expect(game.advance(at(1, 12, 40), 'inn').pos).toBeUndefined();
+  });
+
+  it('refuses a call-over and a new follow during the row, unless a script starts the follow', () => {
+    const game = play(guard, at(1, 12, 30), 'inn');
+    expect(pullUnique(game.book, guard, 'inn', scene(at(1, 12, 30), 'inn'))).toBe(game.book);
+    expect(startFollowing(game.book, guard, scene(at(1, 12, 30), 'inn'))).toBe(game.book);
+    game.apply(follow(guard, at(1, 12, 30), 'inn', { script: true }));
+    expect(game.advance(at(1, 12, 35), 'inn').pos).toBe('inn');
+  });
+
+  it('keeps a running follow going through the row, anywhere its Start connects to', () => {
+    const game = play(guard, at(1, 11), 'wall').apply(follow(guard, at(1, 11), 'wall'));
+    expect(game.advance(at(1, 12, 30), 'smithy').pos).toBe('smithy');
+    expect(game.advance(at(1, 13), 'ridge').pos).toBe('ridge');
+    expect(game.state.follow).toEqual({ mode: 'following' });
+    expect(game.advance(at(1, 13, 10), 'island').pos).toBe('ridge'); // no path from the Start
+    expect(game.state.follow?.mode).toBe('waiting');
+  });
+
+  it('goes away when a follow ends in the row, once the player leaves', () => {
+    const game = play(guard, at(1, 11), 'wall').apply(follow(guard, at(1, 11), 'wall')).advance(at(1, 12, 30), 'smithy');
+    game.apply((b) => partWays(b, 'mara'));
+    expect(game.advance(at(1, 12, 40), 'smithy').pos).toBe('smithy');
+    expect(game.advance(at(1, 12, 50), 'inn').pos).toBeUndefined();
+  });
+
+  it('holds a script move in the row until the row ends', () => {
+    const game = play(guard, at(1, 12, 30), 'inn');
+    game.apply((b) => moveUniqueByScript(b, guard, 'gate', scene(at(1, 12, 30), 'inn')));
+    expect(game.advance(at(1, 13, 30), 'inn').pos).toBe('gate');
+    expect(game.advance(at(1, 14), 'inn').pos).toBe('wall');
+  });
+
+  it('puts a character away all day, its rolled Start kept', () => {
+    const twoStarts: Routine = {
+      id: 'mara', traversable: [],
+      starts: [
+        { id: 'forge', place: 'smithy', weight: 1, schedule: [allDay('work', stay('smithy'))] },
+        { id: 'tavern', place: 'inn', weight: 1, schedule: [allDay('drink', stay('inn'))] },
+      ],
+    };
+    const book = advancePositions([twoStarts], EMPTY, scene(at(1, 8), 'square'), seeded(5));
+    const gone = advancePositions([awayAllDay(twoStarts)], book, scene(at(1, 9), 'square'), seeded(5));
+    expect(gone.positions.mara).toBeUndefined();
+    expect(gone.uniques.mara.startId).toBe(book.uniques.mara.startId);
+    expect(advancePositions([twoStarts], gone, scene(at(1, 10), 'square'), seeded(5)).positions.mara).toBe(book.positions.mara);
+  });
+
+  it('gives a Generic Entity Instance no place during the row', () => {
+    const bats: Routine = {
+      id: 'bats', generic: true, traversable: [],
+      starts: [
+        { id: 'roost', place: 'wall', weight: 1, schedule: [timed('out', 6, 18, away)] },
+        { id: 'loft', place: 'inn', weight: 1, schedule: [] },
+      ],
+    };
+    const day = advancePositions([bats], EMPTY, scene(at(1, 10), 'square'), seeded(3));
+    expect(day.generics.bats.roost.position).toBeUndefined();
+    expect(genericPlaces(day.generics)).toEqual({ bats: ['inn'] });
+    const night = advancePositions([bats], day, scene(at(1, 19), 'square'), seeded(3));
+    expect(night.generics.bats.roost.position).toBe('wall');
   });
 });
 

@@ -10,7 +10,7 @@ export interface PresenceLine {
   reasons: string[];
 }
 
-const ROW_VERB: Record<ScheduleAction['kind'], string> = { stay: 'stays', wander: 'wanders', patrol: 'patrols' };
+const ROW_VERB: Record<ScheduleAction['kind'], string> = { stay: 'stays', wander: 'wanders', patrol: 'patrols', away: 'is away' };
 
 /** The row's time as the Routine tab words it: an All-day row beside timed rows is the rest of the day. */
 export function timeText(row: ScheduleRow, schedule: readonly ScheduleRow[]): string {

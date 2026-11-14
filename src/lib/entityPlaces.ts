@@ -38,7 +38,7 @@ const membership = (entity: PlacedEntity): string[] => [...(entity.locations ?? 
  *  stands at its own Position when it has one, a runtime character's included, else at its membership. */
 export function positionOf(entity: PlacedEntity, { positions, generics }: Standings): string[] {
   const entityInstances = generics[entity.id];
-  return positionAmong(entity, positions, entityInstances ? { [entity.id]: Object.values(entityInstances).map((g) => g.position) } : {});
+  return positionAmong(entity, positions, entityInstances ? { [entity.id]: Object.values(entityInstances).flatMap((g) => g.position ?? []) } : {});
 }
 
 /** `positionOf` over a reader that keeps only the places each Generic entity's Generic Entity Instances stand at. */

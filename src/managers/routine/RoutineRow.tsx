@@ -20,7 +20,7 @@ import type { Daypart, ScheduleRange, ScheduleRow } from '@/types';
 import { ACTION_TONE, ACTIONS } from './routineActions';
 import { IdleField, LocationPicker, RoutinePlaceList, Token, UnconnectedFlag, type PlaceBook } from './RoutineFields';
 
-const VERBS: Record<ActionKind, string> = { stay: 'stays at', wander: 'wanders', patrol: 'patrols' };
+const VERBS: Record<ActionKind, string> = { stay: 'stays at', wander: 'wanders', patrol: 'patrols', away: 'is away' };
 
 const ALL_DAY = 'allDay';
 
@@ -121,11 +121,11 @@ export function RowTimeEditor({ time, asHours, onAsHours, others, onChange }: {
   );
 }
 
-/** The row's action as a Stay, Wander or Patrol switch. */
+/** The row's action as a Stay, Wander, Patrol or Away switch. */
 function ActionEditor({ value, onChange }: { value: ActionKind; onChange: (kind: ActionKind) => void }) {
   return (
     <ToggleGroup
-      type="single" className="grid w-full grid-cols-3" value={value} aria-label="Action"
+      type="single" className="grid w-full grid-cols-2" value={value} aria-label="Action"
       onValueChange={(v) => { if (v) onChange(v as ActionKind); }}
     >
       {ACTIONS.map(({ value: v, label, Icon }) => (
@@ -140,6 +140,7 @@ function PlacesEditor({ row, book, connected, onChange, field }: {
   row: ScheduleRow; book: PlaceBook; connected: readonly string[]; onChange: (row: ScheduleRow, typed: boolean) => void; field: string;
 }) {
   const { action } = row;
+  if (action.kind === 'away') return null;
   if (action.kind === 'stay') {
     return (
       <div className="space-y-1">
@@ -234,10 +235,14 @@ export function RoutineRow({ row, others, startPlace, book, connected, lockable 
         <Token label={`Action: ${VERBS[row.action.kind]}`} editor={(
           <ActionEditor value={row.action.kind} onChange={(kind) => onChange({ ...row, action: switchAction(row.action, kind, startPlace) })} />
         )}>{VERBS[row.action.kind]}</Token>
-        {' '}
-        <Token wide label={`Locations: ${placeText}`} editor={<PlacesEditor row={row} book={book} connected={connected} onChange={onChange} field={field} />}>
-          {placeText}
-        </Token>
+        {row.action.kind !== 'away' && (
+          <>
+            {' '}
+            <Token wide label={`Locations: ${placeText}`} editor={<PlacesEditor row={row} book={book} connected={connected} onChange={onChange} field={field} />}>
+              {placeText}
+            </Token>
+          </>
+        )}
         {unconnected && <span className="ml-1 inline-flex align-middle"><UnconnectedFlag /></span>}
         {row.action.kind === 'wander' && <>{', waiting '}{idleText(row.action.idle)}{' between moves'}</>}
         {row.action.kind === 'patrol' && places.length > 1 && ', then starts over'}

@@ -15,4 +15,11 @@ describe('the Movement tag', () => {
     expect(Object.keys(states)).toEqual(['guard']);
     expect(movementLabels(states, ['guard', 'crows'], [])).toEqual({ guard: 'stays here' });
   });
+
+  it('tags a Unique entity still here as its Away row begins', () => {
+    const gone = { id: 'gone', time: 'allDay' as const, action: { kind: 'away' as const } };
+    const nell: Entity = { id: 'nell', name: 'Nell', kind: 'unique', routines: oneRoutine([{ id: 's', place: 'gate', weight: 1, schedule: [gone] }]) };
+    const states = movementStates(castRoutines([nell]), { nell: { startId: 's', lastRun: 0 } }, 600);
+    expect(movementLabels(states, ['nell'], [])).toEqual({ nell: 'stays here' });
+  });
 });

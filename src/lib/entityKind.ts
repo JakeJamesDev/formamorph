@@ -86,6 +86,7 @@ export function castRoutines(cast: readonly RoutineEntity[], runtime: readonly D
 /** A schedule row without `placeId`. Undefined when no place is left. */
 function rowWithout(row: ScheduleRow, placeId: string): ScheduleRow | undefined {
   const { action } = row;
+  if (action.kind === "away") return row;
   if (action.kind === "stay") return action.place === placeId ? undefined : row;
   if (action.kind === "wander") {
     const places = action.places.filter((p) => p.place !== placeId);
@@ -148,6 +149,7 @@ export function withKind(entity: Entity, kind: EntityKind, newId: () => string):
 /** A schedule row with each place renamed through `map` and places it lacks dropped. Undefined when none is left. */
 function rowMapped(row: ScheduleRow, map: Readonly<Record<string, string>>): ScheduleRow | undefined {
   const { action } = row;
+  if (action.kind === "away") return row;
   if (action.kind === "stay") return map[action.place] ? { ...row, action: { ...action, place: map[action.place] } } : undefined;
   if (action.kind === "wander") {
     const places = action.places.flatMap((p) => (map[p.place] ? [{ ...p, place: map[p.place] }] : []));
@@ -251,6 +253,7 @@ function routineReturned(
   const rowBack = (row: ScheduleRow, libraryRow?: ScheduleRow): ScheduleRow => {
     const { action } = row;
     const was = libraryRow?.action;
+    if (action.kind === "away") return row;
     if (action.kind === "stay") return { ...row, action: { ...action, place: toSource(action.place, was?.kind === "stay" ? was.place : undefined) } };
     if (action.kind === "wander") return { ...row, action: { ...action, places: entriesBack(action.places, was?.kind === "wander" ? was.places : []) } };
     return { ...row, action: { ...action, stops: entriesBack(action.stops, was?.kind === "patrol" ? was.stops : []) } };

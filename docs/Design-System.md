@@ -1797,7 +1797,7 @@ Open `#dev?modal=designSystem&tab=connection-widget` for both values of the mark
 **Purpose:** Edit an entity's daily routine as plain sentences, such as *Morning – Afternoon, stays at Smithy.*
 
 - 📝 **One row, one sentence.** Rows sort by time of day. Free hours sit between them as muted lines with a cup icon, or one *Busy all day.* line.
-- 🔗 **Tokens.** The time, the verb and the locations are dotted-underline buttons. Each opens a popover with its own editor: the time editor, the **Stay** / **Wander** / **Patrol** toggle, or the location editor.
+- 🔗 **Tokens.** The time, the verb and the locations are dotted-underline buttons. Each opens a popover with its own editor: the time editor, the **Stay** / **Wander** / **Patrol** / **Away** toggle, or the location editor. An **Away** row has no location token.
 - 🔒 **Lock.** A lock button leads each sentence. Its tooltip says what the locked state does.
 - 🗑️ **Delete.** A ghost trash button ends each sentence, always visible so touch can reach it.
 - ⚠️ **Disconnected location.** The token gets a warning icon; the location list shows the name in the warning color with the same icon.
@@ -1806,7 +1806,7 @@ Open `#dev?modal=designSystem&tab=connection-widget` for both values of the mark
 
 A 24-hour bar sits above the sentences, with time-of-day icons over it (full name in a tooltip).
 
-- 🎨 **Action colors.** Each row is a band in its action's token: `routine-stay`, `routine-wander`, `routine-patrol`, at 70% fill. A matching swatch leads its sentence. The tokens are set once per mode, never per palette.
+- 🎨 **Action colors.** Each row is a band in its action's token: `routine-stay`, `routine-wander`, `routine-patrol`, at 70% fill. An **Away** row has no place and no token of its own: its band is `muted-foreground` at 25%. A matching swatch leads its sentence. The tokens are set once per mode, never per palette.
 - 🧱 **Layers.** An All-day row sits under the timed rows at half strength. Free time is hatched; clicking it adds a Stay over exactly that time.
 - 🎯 **Selection.** Clicking a band or a sentence selects that row in both places: the band takes a primary inset ring, the sentence an accent fill. A press anywhere else, except an open row editor, clears it.
 - ↔️ **Handles.** Each timed band has a handle on both ends. A drag snaps to time-of-day edges or whole hours, by the row's format, and stops before another timed row. A label above the handle names its place (*From Morning*, *To 14:00*). The selected row's handles sit on top at a shared edge. Arrow keys move a focused handle one snap.

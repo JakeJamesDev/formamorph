@@ -504,7 +504,7 @@ Each schedule row:
 | `id` | String | Unique within the Start |
 | `time` | `"allDay"` \| `{ "start", "end" }` | Minutes from midnight. An `end` before `start` runs past midnight. A timed row wins over the All-day row for its hours |
 | `strict` | Boolean | During the row a Unique entity can't be called over and won't start following. A Generic entity ignores it |
-| `action` | Object | `{ "kind": "stay", "place" }`, `{ "kind": "wander", "places": [{ "place", "weight" }], "idle" }` or `{ "kind": "patrol", "stops": [{ "place", "idle" }] }`. `idle` is in minutes |
+| `action` | Object | `{ "kind": "stay", "place" }`, `{ "kind": "wander", "places": [{ "place", "weight" }], "idle" }` or `{ "kind": "patrol", "stops": [{ "place", "idle" }] }` or `{ "kind": "away" }`. `idle` is in minutes. Away has no `place`: the entity is at no location for the row's hours |
 
 In hours no row covers, the entity stays at its Start's `place`.
 

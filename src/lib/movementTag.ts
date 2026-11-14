@@ -1,7 +1,7 @@
 import type { UniqueStates } from "@/types";
-import { isStrictNow, type Routine } from "./positionEngine";
+import { isKeptOffNow, type Routine } from "./positionEngine";
 
-/** A Unique entity's follow state and whether its row in force is Strict. */
+/** A Unique entity's follow state and whether its row in force is Strict or Away. */
 export interface MovementState { follow?: "following" | "waiting"; strict: boolean }
 
 /** Each Unique entity's movement state, by id. A Generic entity has no entry. */
@@ -15,7 +15,7 @@ export function movementStates(
   for (const routine of routines) {
     if (routine.generic) continue;
     const st = uniques[routine.id];
-    out[routine.id] = { ...(st?.follow && { follow: st.follow.mode }), strict: isStrictNow(routine, st, now) };
+    out[routine.id] = { ...(st?.follow && { follow: st.follow.mode }), strict: isKeptOffNow(routine, st, now) };
   }
   return out;
 }

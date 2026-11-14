@@ -227,7 +227,8 @@ function rowText(row: ScheduleRow, nameOf: (id: string) => string): string {
   const time = row.time === 'allDay' ? 'All day' : rangeText(row.time);
   const { action } = row;
   const names = placesOf(action).map(nameOf).join(', ');
-  const doing = action.kind === 'patrol' ? `${ACTION_LABELS.patrol} ${names}` : `${ACTION_LABELS[action.kind]} at ${names}`;
+  const doing = action.kind === 'away' ? ACTION_LABELS.away
+    : action.kind === 'patrol' ? `${ACTION_LABELS.patrol} ${names}` : `${ACTION_LABELS[action.kind]} at ${names}`;
   return `${time}: ${doing}${row.strict ? ', Locked' : ''}`;
 }
 

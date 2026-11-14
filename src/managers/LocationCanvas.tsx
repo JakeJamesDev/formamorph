@@ -22,7 +22,7 @@ import { MINUTES_PER_DAY } from '@/lib/gameClock';
 import { pickKeyEntries, routineKeyEntries } from '@/lib/canvasKey';
 import { KNOWN_NEARBY_MARK, KNOWN_ROUTINE_MARK } from '@/lib/canvasMarks';
 import { CanvasKey } from '@/managers/CanvasKey';
-import type { ActionKind } from '@/lib/routineEditing';
+import type { PlacedActionKind } from '@/lib/routineEditing';
 import {
   routineDragSources, routineMapClick, routineMapDrag, routineMapStatus, routineShownStatus, type RoutineMapEdit,
 } from '@/lib/routineMapEditing';
@@ -157,13 +157,13 @@ const NO_SOURCES: ReadonlySet<string> = new Set();
 /** Where a routine drag may start, as `routineDragSources` reads it. */
 const RoutineSourceContext = createContext<ReadonlySet<string>>(NO_SOURCES);
 
-const ROUTINE_RING: Record<ActionKind, string> = {
+const ROUTINE_RING: Record<PlacedActionKind, string> = {
   stay: 'bg-routine-stay/20 ring-2 ring-routine-stay',
   wander: 'bg-routine-wander/20 ring-2 ring-routine-wander',
   patrol: 'bg-routine-patrol/20 ring-2 ring-routine-patrol',
 };
 const NEUTRAL_RING = 'ring-2 ring-muted-foreground';
-const ROUTINE_BADGE: Record<ActionKind, string> = {
+const ROUTINE_BADGE: Record<PlacedActionKind, string> = {
   stay: 'bg-routine-stay/25 ring-routine-stay', wander: 'bg-routine-wander/25 ring-routine-wander', patrol: 'bg-routine-patrol/25 ring-routine-patrol',
 };
 

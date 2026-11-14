@@ -169,6 +169,26 @@ describe('editing rows', () => {
     await userEvent.click(screen.getByRole('radio', { name: 'Patrol' }));
     expect(schedule(bench)[0].action).toEqual({ kind: 'patrol', stops: [{ place: 'inn', idle: 60 }] });
   });
+
+  it('offers Away in the action menu, saves it with no place, and reads it with no locations', async () => {
+    const bench = mount(mira(oneStart([stay('day', 'inn', { start: MORNING, end: AFTERNOON_END })])));
+    await userEvent.click(screen.getByRole('button', { name: 'Action: stays at' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Away' }));
+    expect(schedule(bench)[0].action).toEqual({ kind: 'away' });
+    expect(lines()).toContain('Morning – Afternoon, is away.');
+    expect(screen.queryByRole('button', { name: /^Locations:/ })).toBeNull();
+
+    await userEvent.keyboard('{Escape}');
+    await userEvent.click(screen.getByRole('button', { name: 'Action: is away' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Stay' }));
+    expect(schedule(bench)[0].action).toEqual({ kind: 'stay', place: 'smithy' });
+  });
+
+  it('adds an Away row in the free time', async () => {
+    const bench = mount(mira(oneStart([])));
+    await userEvent.click(screen.getByRole('button', { name: 'Add Away' }));
+    expect(schedule(bench)).toEqual([expect.objectContaining({ time: { start: MORNING, end: AFTERNOON_END }, action: { kind: 'away' } })]);
+  });
 });
 
 const openTime = (text: string) => userEvent.click(screen.getByRole('button', { name: `Time: ${text}` }));
