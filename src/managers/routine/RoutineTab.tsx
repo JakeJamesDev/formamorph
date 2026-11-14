@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Coffee, LockOpen, Plus, Trash2, TriangleAlert, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { ArrowDown, ArrowUp, Coffee, LockOpen, Plus, Trash2, TriangleAlert, X } from 'lucide-react';
 import { LocationIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,7 +11,8 @@ import { Hint, Meta } from '@/components/ui/typography';
 import { HereMark } from '@/components/HereMark';
 import { WorldInput } from '@/components/editor/WorldField';
 import { HostGateField } from '@/components/editor/HostGateField';
-import { useEntityRuleHost } from '@/components/editor/ImageRuleCog';
+import { useEntityRuleHost, useHostRuleText } from '@/components/editor/ImageRuleCog';
+import { DESTRUCTIVE_ROW_ACTION_HOVER } from '@/components/EditorRow';
 import { OptionSwitcher } from '@/components/SettingsRows';
 import { CHIP_BASE } from '@/components/Chip';
 import { useGameData } from '@/contexts/GameDataContext';
@@ -206,7 +207,6 @@ function EntityRoutine({ entity, kind, book, locations, connections, commit, onC
   return (
     <>
       <RoutineLevel entity={entity} routine={routine} level={level} book={book} commit={commit} onChange={onChange} hereMark={hereMark} onShow={showRoutine} />
-      {level && canAlsoGo}
       <div className="space-y-2" {...fieldFrame('starts')}>
         <div className="flex flex-wrap items-center gap-1 border-b pb-2" role="group" aria-label="Starts">
           {starts.map((s, i) => (
@@ -235,7 +235,7 @@ function EntityRoutine({ entity, kind, book, locations, connections, commit, onC
           onDeleted={() => showRoutine(routine.id)}
         />
       )}
-      {!level && canAlsoGo}
+      {canAlsoGo}
     </>
   );
 }
@@ -243,7 +243,14 @@ function EntityRoutine({ entity, kind, book, locations, connections, commit, onC
 const REQUIRES_HINT = 'Applies while any row holds. With no rows, it always applies.';
 const EMPTY_WARNING = 'This Routine has no starts, so it never applies.';
 
-/** The Routine strip and the shown Routine's name, order and Requires. One ungated Routine shows only Add Routine
+const ROUTINE_KEYS: Record<string, (at: number, count: number) => number> = {
+  ArrowDown: (at, count) => Math.min(at + 1, count - 1),
+  ArrowUp: (at) => Math.max(at - 1, 0),
+  Home: () => 0,
+  End: (_, count) => count - 1,
+};
+
+/** The Routine list and the shown Routine's name and Requires. One ungated Routine shows only Add Routine
  *  (Q16, Q30). */
 function RoutineLevel({ entity, routine, level, book, commit, onChange, onShow, hereMark }: {
   entity: Entity; routine: EntityRoutine; level: boolean; book: PlaceBook;
@@ -253,6 +260,7 @@ function RoutineLevel({ entity, routine, level, book, commit, onChange, onShow, 
   const host = useEntityRuleHost(entity.id);
   const routines = routinesOf(entity);
   const at = routines.findIndex((r) => r.id === routine.id);
+  const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const add = () => {
     const added = withNewRoutine(entity, randomUUID);
     commit('Add Routine', added.entity);
@@ -263,54 +271,35 @@ function RoutineLevel({ entity, routine, level, book, commit, onChange, onShow, 
   );
   if (!level) return <div role="group" aria-label="Routines">{addButton}</div>;
 
-  const orderButton = (label: string, Icon: typeof ArrowLeft, disabled: boolean, onClick: () => void) => (
-    <Tip tip={label}>
-      <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" aria-label={label} disabled={disabled} onClick={onClick}>
-        <Icon className="h-4 w-4" />
-      </Button>
-    </Tip>
-  );
+  const moveFocus = (event: KeyboardEvent, from: number) => {
+    const to = ROUTINE_KEYS[event.key]?.(from, routines.length);
+    if (to === undefined) return;
+    event.preventDefault();
+    rowRefs.current[to]?.focus();
+  };
   const empty = warnsEmpty(entity, routine);
 
   return (
     <div className="space-y-3" {...fieldFrame('routines')}>
-      <div className="flex flex-wrap items-center gap-1 border-b pb-2" role="group" aria-label="Routines">
-        {routines.map((r, i) => (
-          <button
-            key={r.id} type="button" aria-pressed={r.id === routine.id} onClick={() => onShow(r.id)}
-            className={cn('flex items-center gap-1.5 rounded-md border px-2 py-1 text-label',
-              r.id === routine.id ? 'border-primary bg-accent' : 'border-transparent hover:bg-muted')}
-          >
-            {routineLabel(r, i)}
-            {hereMark && r.starts.some((s) => startNamesLocation(s, hereMark)) && <HereMark locationName={book.nameOf(hereMark)} />}
-            {warnsEmpty(entity, r) && <TriangleAlert className="h-3.5 w-3.5 text-warning" role="img" aria-label={EMPTY_WARNING} />}
-          </button>
-        ))}
+      <div className="space-y-2">
+        <Label className="block">Routines</Label>
+        <ul aria-label="Routines" className="divide-y divide-border overflow-hidden rounded-md border border-border">
+          {routines.map((r, i) => (
+            <RoutineListRow
+              key={r.id} entity={entity} routine={r} index={i} count={routines.length} selected={r.id === routine.id}
+              tabbable={i === Math.max(at, 0)} book={book} hereMark={hereMark} commit={commit} onShow={onShow}
+              buttonRef={(el) => { rowRefs.current[i] = el; }} onKeyDown={(event) => moveFocus(event, i)}
+            />
+          ))}
+        </ul>
         {addButton}
       </div>
-      <div className="flex items-end gap-1">
-        <div className="min-w-0 flex-1 space-y-1.5" {...fieldFrame('routines', routine.id, 'name')}>
-          <Label htmlFor={`routine-name-${routine.id}`}>Name</Label>
-          <WorldInput
-            id={`routine-name-${routine.id}`} value={routine.name} placeholder={routineName(at + 1)}
-            onChange={(e) => onChange(withRoutineName(entity, routine.id, e.target.value))}
-          />
-        </div>
-        {orderButton('Move Earlier', ArrowLeft, at <= 0, () => commit('Move Routine', withRoutineMoved(entity, routine.id, -1)))}
-        {orderButton('Move Later', ArrowRight, at >= routines.length - 1, () => commit('Move Routine', withRoutineMoved(entity, routine.id, 1)))}
-        {routines.length > 1 && (
-          <Tip tip="Delete Routine">
-            <Button
-              variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" aria-label="Delete Routine"
-              onClick={() => {
-                commit('Delete Routine', withoutRoutine(entity, routine.id));
-                onShow(null);
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </Tip>
-        )}
+      <div className="space-y-1.5" {...fieldFrame('routines', routine.id, 'name')}>
+        <Label htmlFor={`routine-name-${routine.id}`}>Name</Label>
+        <WorldInput
+          id={`routine-name-${routine.id}`} value={routine.name} placeholder={routineName(at + 1)}
+          onChange={(e) => onChange(withRoutineName(entity, routine.id, e.target.value))}
+        />
       </div>
       {host && (
         <div {...fieldFrame('routines', routine.id, 'requires')}>
@@ -321,6 +310,48 @@ function RoutineLevel({ entity, routine, level, book, commit, onChange, onShow, 
         </div>
       )}
     </div>
+  );
+}
+
+/** One Routine in the list: its name, its gate as a muted line, and its order and delete actions. */
+function RoutineListRow({ entity, routine, index, count, selected, tabbable, book, hereMark, commit, onShow, buttonRef, onKeyDown }: {
+  entity: Entity; routine: EntityRoutine; index: number; count: number; selected: boolean; tabbable: boolean; book: PlaceBook;
+  hereMark?: string; commit: (label: string, next: Entity) => void; onShow: (routineId: string | null) => void;
+  buttonRef: (el: HTMLButtonElement | null) => void; onKeyDown: (event: KeyboardEvent) => void;
+}) {
+  const host = useEntityRuleHost(entity.id);
+  const rule = useHostRuleText(host, routine.requires ?? []);
+  const label = routineLabel(routine, index);
+  const reason = rule ? `Applies while ${rule}` : 'Always applies';
+  const action = (tip: string, Icon: typeof ArrowUp, disabled: boolean, onClick: () => void, className?: string) => (
+    <Tip tip={tip}>
+      <Button variant="ghost" size="icon" className={cn('h-8 w-8 shrink-0', className)} aria-label={`${tip}: ${label}`} disabled={disabled} onClick={onClick}>
+        <Icon className="h-4 w-4" />
+      </Button>
+    </Tip>
+  );
+  return (
+    <li data-testid="routine-row" className={cn('flex items-center gap-1 pr-1', selected ? 'bg-accent' : 'hover:bg-accent/60')}>
+      <button
+        ref={buttonRef} type="button" aria-current={selected ? 'true' : undefined} aria-label={`${label}, ${reason}`}
+        tabIndex={tabbable ? 0 : -1} onClick={() => onShow(routine.id)} onKeyDown={onKeyDown}
+        className={cn(
+          'flex min-w-0 flex-1 items-baseline gap-2 py-2 pl-3 text-left outline-none',
+          'focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+        )}
+      >
+        <span className={cn('max-w-[60%] shrink-0 truncate text-label', selected && 'font-medium')}>{label}</span>
+        <Meta className="min-w-0 flex-1 truncate">{reason}</Meta>
+      </button>
+      {hereMark && routine.starts.some((s) => startNamesLocation(s, hereMark)) && <HereMark locationName={book.nameOf(hereMark)} />}
+      {warnsEmpty(entity, routine) && <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-warning" role="img" aria-label={EMPTY_WARNING} />}
+      {action('Move Earlier', ArrowUp, index === 0, () => commit('Move Routine', withRoutineMoved(entity, routine.id, -1)))}
+      {action('Move Later', ArrowDown, index === count - 1, () => commit('Move Routine', withRoutineMoved(entity, routine.id, 1)))}
+      {action('Delete Routine', Trash2, false, () => {
+        commit('Delete Routine', withoutRoutine(entity, routine.id));
+        if (selected) onShow(null);
+      }, DESTRUCTIVE_ROW_ACTION_HOVER)}
+    </li>
   );
 }
 

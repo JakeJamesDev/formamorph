@@ -118,10 +118,10 @@ Until the player meets an entity with a **Stranger Name**, the map shows it unde
 An entity can have more than one Routine. Each Routine has its own starts and schedules, its own **Can Also Go**, and its own **Requires** rows. In play, the first Routine whose **Requires** holds applies.
 
 - ➕ **Add Routine** adds a Routine with no starts. With one Routine and no gate, the tab shows only this button above the starts.
-- 👆 Click a Routine above the starts to show it. Its **Name**, **Requires** and **Can Also Go** come next, then its starts and schedule.
+- 👆 The **Routines** list shows each Routine's name and when it applies. Click a row to show that Routine. Its **Name** and **Requires** come next, then its starts and schedule, then **Can Also Go**.
 - ✏️ Type in **Name** to rename it. A blank name shows as *Routine 2*, *Routine 3* and so on.
-- ↔️ **Move Earlier** and **Move Later** change the order. When more than one Routine's **Requires** holds, the earliest applies.
-- 🗑 **Delete Routine** removes the Routine on show. The last Routine can't be deleted.
+- ↕️ Each row's **Move Earlier** and **Move Later** buttons change the order. When more than one Routine's **Requires** holds, the earliest applies.
+- 🗑 Each row's **Delete Routine** button removes that Routine. The last Routine can't be deleted.
 - 🔐 **Requires** takes rows of conditions, the same kind **Enabled** uses. The Routine applies while any row holds. With no rows, it always applies. A condition with no owner checks this entity.
 - ⚠️ A Routine with no starts shows a warning, because it never applies.
 

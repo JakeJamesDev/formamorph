@@ -12,7 +12,7 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { locationRuleStates } from '@/lib/imageVisibility';
 import { itemHostStatSections, personaHostStatSections, requirementStatSections } from '@/lib/requirementStatOptions';
 import { conditionTexts, requirementOptions, ruleStates, type GateInput, type RequirementOptions } from '@/lib/traitGates';
-import { shownWhileLine } from '@/lib/traitGateLine';
+import { ruleText, shownWhileLine } from '@/lib/traitGateLine';
 import { cn } from '@/lib/utils';
 import type { TraitRequirementRow } from '@/types';
 
@@ -39,6 +39,16 @@ const hostRuleStates = (input: GateInput, host: RuleHost, rows: readonly TraitRe
     holds: false, conditions: row.conditions.map((c) => ({ ...c, holds: false })),
   }));
 };
+
+/** `rows` on `host` as "A and B, or C", placeholders labeled; null with no rows or nothing to read targets from. */
+export function useHostRuleText(host: RuleHost | undefined, rows: readonly TraitRequirementRow[]): string | null {
+  const source = useRuleSource();
+  return useMemo(() => {
+    if (!source || !host || !rows.length) return null;
+    const states = hostRuleStates(source.gateInput, host, rows);
+    return labelPlaceholders(ruleText(states.map((row) => row.conditions.map((c) => c.text))), source.placeholders);
+  }, [source, host, rows]);
+}
 
 /** A location rule's owner-less Condition already reads the persona, so no target offers Persona again. */
 const withoutPersonaOwner = (options: RequirementOptions): RequirementOptions => {

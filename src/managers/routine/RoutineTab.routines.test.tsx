@@ -35,7 +35,10 @@ const mount = (entity: Entity) => renderPanelBench(panelWorld({ locations: LOCAT
 const stored = (bench: ReturnType<typeof mount>) => bench.ctx().entities.find((e) => e.id === 'mira')!;
 const names = (bench: ReturnType<typeof mount>) => stored(bench).routines?.map((r) => r.name);
 const strip = () => screen.getByRole('group', { name: 'Routines' });
-const routineButton = (name: string) => within(strip()).getByRole('button', { name: new RegExp(`^${name}`) });
+const list = () => screen.getByRole('list', { name: 'Routines' });
+const routineButton = (name: string) => within(list()).getByRole('button', { name: new RegExp(`^${name},`) });
+const routineRow = (name: string) => routineButton(name).closest('li')!;
+const rowAction = (action: string, name: string) => screen.getByRole('button', { name: `${action}: ${name}` });
 const startPlace = () => screen.getByRole('button', { name: /^Start location:/ }).textContent;
 
 afterEach(() => resetRoutineSelections());
@@ -52,12 +55,35 @@ describe('one ungated Routine', () => {
 
   it('shows the strip for a lone Routine that has a gate', () => {
     mount(mira([{ ...day, requires: SEX_FUTA }]));
-    expect(routineButton('Day Job')).toHaveAttribute('aria-pressed', 'true');
+    expect(routineButton('Day Job')).toHaveAttribute('aria-current', 'true');
     expect(screen.getByText('Requires')).toBeInTheDocument();
   });
 });
 
-describe('the Routine strip', () => {
+describe('the Routine list', () => {
+  it('reads each gate as a muted line beside the name', () => {
+    mount(mira([day, night]));
+    expect(routineButton('Day Job')).toHaveAccessibleName('Day Job, Always applies');
+    expect(routineButton('Night Life')).toHaveAccessibleName('Night Life, Applies while Futanari');
+  });
+
+  it('moves focus between rows with the arrow keys', async () => {
+    mount(mira([day, night]));
+    routineButton('Day Job').focus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(routineButton('Night Life')).toHaveFocus();
+    await userEvent.keyboard('{ArrowUp}');
+    expect(routineButton('Day Job')).toHaveFocus();
+  });
+
+  it('puts Can Also Go below the Schedule', () => {
+    mount(mira([day, night]));
+    const schedule = screen.getByRole('group', { name: 'Starts' });
+    const canAlsoGo = screen.getByRole('combobox', { name: 'Can Also Go' });
+    expect(schedule.compareDocumentPosition(canAlsoGo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByLabelText('Name').compareDocumentPosition(canAlsoGo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('adds a Routine with no Starts, named past the ones in use, and shows it, as one undo step', async () => {
     const bench = mount(mira([{ ...day, name: 'Routine 2' }]));
     const before = bench.historyState().steps.length;
@@ -65,7 +91,7 @@ describe('the Routine strip', () => {
     expect(names(bench)).toEqual(['Routine 2', 'Routine 3']);
     expect(stored(bench).routines?.[1]).toEqual(expect.objectContaining({ starts: [], traversable: 'anywhere' }));
     expect(stored(bench).routines?.[1]).not.toHaveProperty('requires');
-    expect(routineButton('Routine 3')).toHaveAttribute('aria-pressed', 'true');
+    expect(routineButton('Routine 3')).toHaveAttribute('aria-current', 'true');
     expect(screen.getByRole('button', { name: 'Add Start' })).toBeInTheDocument();
     await waitFor(() => expect(bench.historyState().steps.length).toBe(before + 1));
 
@@ -77,18 +103,18 @@ describe('the Routine strip', () => {
     mount(mira([day, night]));
     expect(startPlace()).toBe('Smithy');
     await userEvent.click(routineButton('Night Life'));
-    expect(routineButton('Night Life')).toHaveAttribute('aria-pressed', 'true');
+    expect(routineButton('Night Life')).toHaveAttribute('aria-current', 'true');
     expect(startPlace()).toBe('Market');
     expect(screen.getByRole('button', { name: 'Remove Farm' })).toBeInTheDocument();
   });
 
-  it('renames the shown Routine, and a blank name shows its default name on the strip', async () => {
+  it('renames the shown Routine, and a blank name shows its default name in the list', async () => {
     const bench = mount(mira([day, night]));
     await userEvent.click(routineButton('Night Life'));
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Evenings' } });
     expect(names(bench)).toEqual(['Day Job', 'Evenings']);
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: '' } });
-    expect(routineButton('Routine 2')).toHaveAttribute('aria-pressed', 'true');
+    expect(routineButton('Routine 2')).toHaveAttribute('aria-current', 'true');
   });
 
   it('keeps typing in the name as one undo step', async () => {
@@ -104,12 +130,12 @@ describe('the Routine strip', () => {
   it('moves the shown Routine earlier and later, each move one undo step', async () => {
     const bench = mount(mira([day, night]));
     await userEvent.click(routineButton('Night Life'));
-    expect(screen.getByRole('button', { name: 'Move Later' })).toBeDisabled();
+    expect(rowAction('Move Later', 'Night Life')).toBeDisabled();
     const before = bench.historyState().steps.length;
-    await userEvent.click(screen.getByRole('button', { name: 'Move Earlier' }));
+    await userEvent.click(rowAction('Move Earlier', 'Night Life'));
     expect(names(bench)).toEqual(['Night Life', 'Day Job']);
-    expect(routineButton('Night Life')).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'Move Earlier' })).toBeDisabled();
+    expect(routineButton('Night Life')).toHaveAttribute('aria-current', 'true');
+    expect(rowAction('Move Earlier', 'Night Life')).toBeDisabled();
     await waitFor(() => expect(bench.historyState().steps.length).toBe(before + 1));
 
     await act(async () => { bench.history().undo(); });
@@ -119,11 +145,11 @@ describe('the Routine strip', () => {
   it('deletes the shown Routine and shows the first, but never the last one', async () => {
     const bench = mount(mira([day, night]));
     await userEvent.click(routineButton('Night Life'));
-    await userEvent.click(screen.getByRole('button', { name: 'Delete Routine' }));
+    await userEvent.click(rowAction('Delete Routine', 'Night Life'));
     expect(names(bench)).toEqual(['Day Job']);
     expect(startPlace()).toBe('Smithy');
     // Day Job has no gate, so the tab falls back to the one-Routine look, with nothing to delete.
-    expect(screen.queryByRole('button', { name: 'Delete Routine' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Delete Routine/ })).toBeNull();
   });
 
   it('writes the Requires rows of the shown Routine only', async () => {
@@ -149,13 +175,13 @@ describe('the empty-Routine warning', () => {
 
   it('shows on a Routine with no Starts while there are two, and clears once it has one', async () => {
     mount(mira([day, { ...night, starts: [] }]));
-    expect(within(routineButton('Night Life')).getByRole('img', { name: warning })).toBeInTheDocument();
+    expect(within(routineRow('Night Life')).getByRole('img', { name: warning })).toBeInTheDocument();
     await userEvent.click(routineButton('Night Life'));
     expect(screen.getByText(warning, { selector: 'p' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Add Start' }));
     await userEvent.click(await screen.findByRole('option', { name: /Inn/ }));
     expect(screen.queryByText(warning, { selector: 'p' })).toBeNull();
-    expect(within(strip()).queryByRole('img', { name: warning })).toBeNull();
+    expect(within(list()).queryByRole('img', { name: warning })).toBeNull();
   });
 
   it('does not show on a lone empty Routine', () => {
