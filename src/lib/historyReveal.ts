@@ -5,7 +5,7 @@ import type { FindingSection } from '@/lib/testBench/rules';
 import { scriptEntryKey } from '@/lib/worldScripts';
 import type { PresenceReveal } from '@/lib/entityPicking';
 import type { Dictionary, DictionaryEntry, Entity } from '@/types';
-import { startsOf } from '@/lib/entityKind';
+import { everyStart } from '@/lib/entityKind';
 
 /** The World Editor tabs a Step can reveal. */
 export type RevealTab = FindingSection | 'openings';
@@ -113,10 +113,10 @@ function presenceEntityOf(step: Step): PresenceReveal | undefined {
 
 /** The Start a Step changed: the one its Origin field names, else the first whose data differs. */
 function changedStartId(step: Step, was: Entity | undefined, became: Entity | undefined): string | undefined {
-  const starts = became ? startsOf(became) : was ? startsOf(was) : [];
+  const starts = became ? everyStart(became) : was ? everyStart(was) : [];
   const named = /^starts\/([^/]+)/.exec(step.origin?.field ?? '')?.[1];
   if (named && starts.some((s) => s.id === named)) return named;
-  return starts.find((s) => JSON.stringify(s) !== JSON.stringify(was && startsOf(was).find((w) => w.id === s.id)))?.id;
+  return starts.find((s) => JSON.stringify(s) !== JSON.stringify(was && everyStart(was).find((w) => w.id === s.id)))?.id;
 }
 
 /** What the editor shows after the move's commit. */

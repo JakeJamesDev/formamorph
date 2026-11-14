@@ -21,7 +21,7 @@ const farrier = (schedule: ScheduleRow[], traversable: Traversable = ['island'])
   routines: oneRoutine([{ id: 's1', place: 'smithy', weight: 1, schedule }], traversable),
 } as Entity);
 const key = (entity: Entity, rowId: string | null = null) =>
-  routineKeyEntries(routineView(entity, { startId: null, rowId }, graph));
+  routineKeyEntries(routineView(entity, { routineId: null, startId: null, rowId }, graph));
 
 describe('the key of the Routine view', () => {
   it('lists each action on show, the free time, the day bar, the Start flag and the listed place, in a set order', () => {

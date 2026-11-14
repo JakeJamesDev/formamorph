@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Coffee, LockOpen, Plus, Trash2, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Coffee, LockOpen, Plus, Trash2, TriangleAlert, X } from 'lucide-react';
 import { LocationIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -10,13 +10,15 @@ import { Tip } from '@/components/ui/tooltip';
 import { Hint, Meta } from '@/components/ui/typography';
 import { HereMark } from '@/components/HereMark';
 import { WorldInput } from '@/components/editor/WorldField';
+import { HostGateField } from '@/components/editor/HostGateField';
+import { useEntityRuleHost } from '@/components/editor/ImageRuleCog';
 import { OptionSwitcher } from '@/components/SettingsRows';
 import { CHIP_BASE } from '@/components/Chip';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryStep } from '@/contexts/worldRecorder';
 import { chanceChipStyle, relativeChance } from '@/lib/chanceColor';
 import { holdsStartList } from '@/lib/customPersona';
-import { traversableOf, withBeginsFollowing, withGenericStart, withKind, withoutGenericStart, withStartPlace, startsOf, withFirstTraversable } from '@/lib/entityKind';
+import { routineName, withBeginsFollowing, withKind, withStartPlace } from '@/lib/entityKind';
 import { namedPlacesOf, withMembership } from '@/lib/entityPlaces';
 import { fieldFrame } from '@/lib/historyField';
 import { rowNamesLocation, startNamesLocation } from '@/lib/hereMarks';
@@ -24,8 +26,12 @@ import { holderOf, locationRows } from '@/lib/locationTree';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { startReach } from '@/lib/positionEngine';
 import {
-  rowPlaceOf, withLockedRest, withNewRow, withNewStart, withoutRow, withoutStart, withRow, withRowAt, withStart,
+  rowPlaceOf, withLockedRest, withNewRow, withoutRow, withoutStart, withRow, withRowAt, withStart,
 } from '@/lib/routineEditing';
+import {
+  routineLabel, routinesOf, shownRoutine, shownStart, showsRoutineLevel, warnsEmpty, withNewRoutine, withoutRoutine, withRoutineMoved,
+  withRoutineName, withRoutineRequires, withRoutineStartAdded, withRoutineTraversable,
+} from '@/lib/routineList';
 import { CLEARS_ROUTINE_SELECTION, KEEPS_ROUTINE_SELECTION, useRoutineSelection } from '@/lib/routineSelection';
 import {
   chancePercent, dayFull, freeRanges, onDaypartEdges, rangeText, toStrip, toWeight, type FreeRange,
@@ -33,7 +39,7 @@ import {
 import { cn } from '@/lib/utils';
 import { randomUUID } from '@/lib/uuid';
 import { MINUTES_PER_DAY } from '@/lib/gameClock';
-import { PLAYER_START, type Connection, type Entity, type EntityKind, type EntityStart, type GameLocation, type ScheduleRow, type Traversable } from '@/types';
+import { PLAYER_START, type Connection, type Entity, type EntityKind, type EntityRoutine, type EntityStart, type GameLocation, type ScheduleRow, type Traversable } from '@/types';
 import { OnMapField } from '@/managers/OnMapField';
 import { DayStrip, STRIP_PART } from './DayStrip';
 import { RoutineRow } from './RoutineRow';
@@ -174,23 +180,33 @@ function EntityRoutine({ entity, kind, book, locations, connections, commit, onC
   entity: Entity; kind: EntityKind; book: PlaceBook; locations: readonly GameLocation[]; connections: readonly Connection[];
   commit: (label: string, next: Entity) => void; onChange: (next: Entity) => void; hereMark?: string;
 }) {
-  const generic = kind === 'generic';
   const fields = KIND_FIELDS[kind];
-  const starts = startsOf(entity);
-  const { startId, showStart } = useRoutineSelection(entity.id);
-  const start = starts.find((s) => s.id === startId) ?? starts[0];
+  const selection = useRoutineSelection(entity.id);
+  const { showStart, showRoutine } = selection;
+  const routine = shownRoutine(entity, selection);
+  const { starts } = routine;
+  const start = shownStart(entity, selection);
   const weights = starts.map((s) => s.weight);
+  const level = showsRoutineLevel(entity);
   const addStart = (place: string) => {
-    const next = generic ? withGenericStart(entity, place, randomUUID) : withNewStart(entity, place, randomUUID);
-    commit('Add Start', next);
-    showStart(startsOf(next).at(-1)?.id ?? null);
+    const startId = randomUUID();
+    commit('Add Start', withRoutineStartAdded(entity, routine.id, place, () => startId));
+    showStart(startId);
   };
   const addTrigger = (label: string) => (
     <Button variant="ghost" size="sm" className="h-8 gap-1 px-2" aria-label="Add Start"><Plus className="h-4 w-4" aria-hidden />{label}</Button>
   );
+  const canAlsoGo = fields.canAlsoGo && (
+    <TraversableField
+      value={routine.traversable ?? []} book={book} hereMark={hereMark}
+      onChange={(traversable) => commit('Change Can Also Go', withRoutineTraversable(entity, routine.id, traversable))}
+    />
+  );
 
   return (
     <>
+      <RoutineLevel entity={entity} routine={routine} level={level} book={book} commit={commit} onChange={onChange} hereMark={hereMark} onShow={showRoutine} />
+      {level && canAlsoGo}
       <div className="space-y-2" {...fieldFrame('starts')}>
         <div className="flex flex-wrap items-center gap-1 border-b pb-2" role="group" aria-label="Starts">
           {starts.map((s, i) => (
@@ -214,26 +230,104 @@ function EntityRoutine({ entity, kind, book, locations, connections, commit, onC
       </div>
       {start && (
         <StartRoutine
-          entity={entity} kind={kind} start={start} weights={weights} book={book} commit={commit} onChange={onChange} hereMark={hereMark}
+          entity={entity} kind={kind} start={start} many={starts.length > 1} weights={weights} book={book} commit={commit} onChange={onChange} hereMark={hereMark}
           connected={[...startReach(start.place, { locations, connections })]}
-          onDeleted={() => showStart(null)}
+          onDeleted={() => showRoutine(routine.id)}
         />
       )}
-      {fields.canAlsoGo && (
-        <TraversableField
-          value={traversableOf(entity)} book={book} hereMark={hereMark}
-          onChange={(traversable) => commit('Change Can Also Go', withFirstTraversable(entity, traversable))}
-        />
-      )}
+      {!level && canAlsoGo}
     </>
   );
 }
 
-function StartRoutine({ entity, kind, start, weights, book, connected, commit, onChange, onDeleted, hereMark }: {
-  entity: Entity; kind: EntityKind; start: EntityStart; weights: number[]; book: PlaceBook; connected: string[];
+const REQUIRES_HINT = 'Applies while any row holds. With no rows, it always applies.';
+const EMPTY_WARNING = 'This Routine has no starts, so it never applies.';
+
+/** The Routine strip and the shown Routine's name, order and Requires. One ungated Routine shows only Add Routine
+ *  (Q16, Q30). */
+function RoutineLevel({ entity, routine, level, book, commit, onChange, onShow, hereMark }: {
+  entity: Entity; routine: EntityRoutine; level: boolean; book: PlaceBook;
+  commit: (label: string, next: Entity) => void; onChange: (next: Entity) => void; onShow: (routineId: string | null) => void;
+  hereMark?: string;
+}) {
+  const host = useEntityRuleHost(entity.id);
+  const routines = routinesOf(entity);
+  const at = routines.findIndex((r) => r.id === routine.id);
+  const add = () => {
+    const added = withNewRoutine(entity, randomUUID);
+    commit('Add Routine', added.entity);
+    onShow(added.routineId);
+  };
+  const addButton = (
+    <Button variant="ghost" size="sm" className="h-8 gap-1 px-2" onClick={add}><Plus className="h-4 w-4" aria-hidden />Add Routine</Button>
+  );
+  if (!level) return <div role="group" aria-label="Routines">{addButton}</div>;
+
+  const orderButton = (label: string, Icon: typeof ArrowLeft, disabled: boolean, onClick: () => void) => (
+    <Tip tip={label}>
+      <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" aria-label={label} disabled={disabled} onClick={onClick}>
+        <Icon className="h-4 w-4" />
+      </Button>
+    </Tip>
+  );
+  const empty = warnsEmpty(entity, routine);
+
+  return (
+    <div className="space-y-3" {...fieldFrame('routines')}>
+      <div className="flex flex-wrap items-center gap-1 border-b pb-2" role="group" aria-label="Routines">
+        {routines.map((r, i) => (
+          <button
+            key={r.id} type="button" aria-pressed={r.id === routine.id} onClick={() => onShow(r.id)}
+            className={cn('flex items-center gap-1.5 rounded-md border px-2 py-1 text-label',
+              r.id === routine.id ? 'border-primary bg-accent' : 'border-transparent hover:bg-muted')}
+          >
+            {routineLabel(r, i)}
+            {hereMark && r.starts.some((s) => startNamesLocation(s, hereMark)) && <HereMark locationName={book.nameOf(hereMark)} />}
+            {warnsEmpty(entity, r) && <TriangleAlert className="h-3.5 w-3.5 text-warning" role="img" aria-label={EMPTY_WARNING} />}
+          </button>
+        ))}
+        {addButton}
+      </div>
+      <div className="flex items-end gap-1">
+        <div className="min-w-0 flex-1 space-y-1.5" {...fieldFrame('routines', routine.id, 'name')}>
+          <Label htmlFor={`routine-name-${routine.id}`}>Name</Label>
+          <WorldInput
+            id={`routine-name-${routine.id}`} value={routine.name} placeholder={routineName(at + 1)}
+            onChange={(e) => onChange(withRoutineName(entity, routine.id, e.target.value))}
+          />
+        </div>
+        {orderButton('Move Earlier', ArrowLeft, at <= 0, () => commit('Move Routine', withRoutineMoved(entity, routine.id, -1)))}
+        {orderButton('Move Later', ArrowRight, at >= routines.length - 1, () => commit('Move Routine', withRoutineMoved(entity, routine.id, 1)))}
+        {routines.length > 1 && (
+          <Tip tip="Delete Routine">
+            <Button
+              variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" aria-label="Delete Routine"
+              onClick={() => {
+                commit('Delete Routine', withoutRoutine(entity, routine.id));
+                onShow(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </Tip>
+        )}
+      </div>
+      {host && (
+        <div {...fieldFrame('routines', routine.id, 'requires')}>
+          <HostGateField
+            host={host} rows={routine.requires ?? []} label="Requires" hint={REQUIRES_HINT} warning={empty && EMPTY_WARNING}
+            onChange={(rows) => commit('Change Requires', withRoutineRequires(entity, routine.id, rows))}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StartRoutine({ entity, kind, start, many, weights, book, connected, commit, onChange, onDeleted, hereMark }: {
+  entity: Entity; kind: EntityKind; start: EntityStart; many: boolean; weights: number[]; book: PlaceBook; connected: string[];
   commit: (label: string, next: Entity) => void; onChange: (next: Entity) => void; onDeleted: () => void; hereMark?: string;
 }) {
-  const many = startsOf(entity).length > 1;
   const fields = KIND_FIELDS[kind];
   const percent = chancePercent(start.weight, weights);
   const free = freeRanges(start.schedule);
@@ -330,7 +424,7 @@ function StartRoutine({ entity, kind, start, weights, book, connected, commit, o
             <Button
               variant="ghost" size="icon" className="ml-1 h-7 w-7 align-middle text-muted-foreground" aria-label="Delete Start"
               onClick={() => {
-                commit('Delete Start', kind === 'generic' ? withoutGenericStart(entity, start.id) : withoutStart(entity, start.id));
+                commit('Delete Start', withoutStart(entity, start.id));
                 onDeleted();
               }}
             >

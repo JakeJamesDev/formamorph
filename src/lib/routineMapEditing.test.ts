@@ -33,7 +33,7 @@ const farrier = (traversable: Traversable = 'anywhere', schedule = day): Entity 
   ], traversable),
 } as Entity);
 
-const at = (rowId: string | null) => ({ startId: null, rowId });
+const at = (rowId: string | null) => ({ routineId: null, startId: null, rowId });
 const rowOf = (e: Entity | undefined, rowId: string) => (e ? startsOf(e) : undefined)?.[0].schedule.find((r) => r.id === rowId);
 const placesAfter = (e: Entity | undefined, rowId: string) => {
   const row = rowOf(e, rowId);
@@ -110,13 +110,13 @@ describe('a click with a row selected', () => {
   it('edits the Start on show', () => {
     const edit = routineMapClick(
       farrier('anywhere'),
-      { startId: 's2', rowId: null },
+      { routineId: null, startId: 's2', rowId: null },
       'inn',
       graph,
     );
     expect(edit).toBeNull();
     const withRow: Entity = { ...withFirstStarts(farrier(), [startsOf(farrier())[0], { id: 's2', place: 'gate', weight: 1, schedule: [timed('g', 6, 10, { kind: 'stay', place: 'gate' })] }]) };
-    const moved = routineMapClick(withRow, { startId: 's2', rowId: 'g' }, 'inn', graph);
+    const moved = routineMapClick(withRow, { routineId: null, startId: 's2', rowId: 'g' }, 'inn', graph);
     expect(startsOf(moved!.entity)[1].schedule[0].action).toEqual({ kind: 'stay', place: 'inn' });
   });
 });
@@ -269,5 +269,31 @@ describe('the status line of a routine that is only shown', () => {
 
   it('keeps the selected row and says the map shows its locations', () => {
     expect(shown('wander')).toEqual({ row: routineMapStatus(farrier(), at('wander')).row, text: 'Locations of this row' });
+  });
+});
+
+describe('a second Routine on show', () => {
+  const night = { id: 'night', name: 'Night', traversable: ['ridge'], starts: [{ id: 'n1', place: 'inn', weight: 1, schedule: [] }] };
+  const twoRoutines = (generic = false): Entity => {
+    const e = farrier(['island']);
+    return { ...e, ...(generic && { kind: 'generic' }), routines: [...e.routines!, night] } as Entity;
+  };
+  const shown = { routineId: 'night', startId: null, rowId: null };
+
+  it('edits that Routine’s Can Also Go and leaves the first alone', () => {
+    const edit = routineMapClick(twoRoutines(), shown, 'island', graph);
+    expect(edit?.entity.routines?.map((r) => r.traversable)).toEqual([['island'], ['ridge', 'island']]);
+  });
+
+  it('adds a Generic entity’s Start to that Routine', () => {
+    const edit = routineMapClick(twoRoutines(true), shown, 'market', graph);
+    expect(edit?.entity.routines?.map((r) => r.starts.map((s) => s.place))).toEqual([['smithy', 'gate'], ['inn', 'market']]);
+  });
+
+  it('reads the row selection of a Start in that Routine', () => {
+    const withRow = twoRoutines();
+    withRow.routines![1] = { ...night, starts: [{ id: 'n1', place: 'inn', weight: 1, schedule: [timed('late', 20, 22, { kind: 'stay', place: 'inn' })] }] };
+    const edit = routineMapClick(withRow, { routineId: null, startId: 'n1', rowId: 'late' }, 'smithy', graph);
+    expect(edit?.entity.routines?.[1].starts[0].schedule[0].action).toEqual({ kind: 'stay', place: 'smithy' });
   });
 });

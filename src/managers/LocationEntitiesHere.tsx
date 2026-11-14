@@ -7,11 +7,12 @@ import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/
 import { Tip } from '@/components/ui/tooltip';
 import { Hint, Meta } from '@/components/ui/typography';
 import { SelectOptions } from '@/components/SelectOptions';
-import { canRemoveGenericStartsAt, isGeneric, isUnique, withoutGenericStartsAt, startsOf } from '@/lib/entityKind';
-import { startsAt, withStartHere } from '@/lib/entityPresence';
+import { isGeneric, isUnique } from '@/lib/entityKind';
 import { fieldFrame } from '@/lib/historyField';
 import { presenceLines } from '@/lib/locationPresenceReasons';
-import { showRoutineStart, showStartFor } from '@/lib/routineSelection';
+import { beginsAt, canRemoveStartsAt, shownRoutine, withoutStartsAt, withRoutineStartAdded } from '@/lib/routineList';
+import { routineSelectionOf, showRoutineStart, showStartFor } from '@/lib/routineSelection';
+import { randomUUID } from '@/lib/uuid';
 import { cn } from '@/lib/utils';
 import { EntityPickBody, type PickState } from '@/managers/EntityPickCard';
 import type { Connection, Entity, GameLocation } from '@/types';
@@ -55,7 +56,7 @@ export default function LocationEntitiesHere({ locationId, entities, locations, 
   const selectedAt = selected ? lines.findIndex((line) => line.entity === selected) : -1;
 
   // Only a Generic entity that begins here has a remove button; the other rows keep its column so the icons line up.
-  const removable = (entity: Entity) => isGeneric(entity) && startsAt(entity, locationId);
+  const removable = (entity: Entity) => isGeneric(entity) && beginsAt(entity, locationId);
   const anyRemovable = lines.some((line) => removable(line.entity));
 
   // The cast with no row here, in the order given. The persona has no kind, so it is never listed.
@@ -67,10 +68,10 @@ export default function LocationEntitiesHere({ locationId, entities, locations, 
   const add = (id: string) => {
     const entity = addable.find((e) => e.id === id);
     if (!entity) return;
-    const next = withStartHere(entity, locationId);
-    onChange(next);
-    // The editor opens in Routine mode on the Start this added.
-    showRoutineStart(entity.id, startsOf(next).at(-1)?.id ?? null);
+    // The Start goes into the Routine on show, and the editor opens in Routine mode on it.
+    const startId = randomUUID();
+    onChange(withRoutineStartAdded(entity, shownRoutine(entity, routineSelectionOf(entity.id)).id, locationId, () => startId));
+    showRoutineStart(entity.id, startId);
     onPickChange?.({ entityId: entity.id, mode: 'locations' });
   };
 
@@ -129,10 +130,10 @@ export default function LocationEntitiesHere({ locationId, entities, locations, 
                 )}
                 {!removable(entity) && anyRemovable && <span aria-hidden className="h-8 w-8 shrink-0" />}
                 {removable(entity) && (
-                  canRemoveGenericStartsAt(entity, locationId)
+                  canRemoveStartsAt(entity, locationId)
                     ? (
                       <Tip tip={`Remove ${label} from this location`}>
-                        <Button variant="ghost" size="icon" className={cn('h-8 w-8 shrink-0', DESTRUCTIVE_ROW_ACTION_HOVER)} onClick={() => onChange(withoutGenericStartsAt(entity, locationId))}>
+                        <Button variant="ghost" size="icon" className={cn('h-8 w-8 shrink-0', DESTRUCTIVE_ROW_ACTION_HOVER)} onClick={() => onChange(withoutStartsAt(entity, locationId))}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </Tip>

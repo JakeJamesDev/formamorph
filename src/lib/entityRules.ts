@@ -1,18 +1,24 @@
-// An entity's own Requirement Rows outside its traits: its images' Visibility rules and its Enabled gate.
+// An entity's own Requirement Rows outside its traits: its images' Visibility rules, its Enabled gate and its Routines'
+// Requires.
 
 import type { Entity, TraitRequirement } from '@/types';
 import { hasImageRules, withImageRules, type ImageBearing } from './entityImages';
 import { hasEnabledGate } from './inPlayGates';
 import { mapConditions } from './requirementRows';
 
-type RuleBearing = ImageBearing & Pick<Entity, 'enabledWhen'>;
+type RuleBearing = ImageBearing & Pick<Entity, 'enabledWhen' | 'routines'>;
 
-/** Whether the entity carries an image Visibility rule or an Enabled gate. */
-export const hasEntityRules = (entity: RuleBearing): boolean => hasImageRules(entity) || hasEnabledGate(entity);
+const hasRoutineGate = (entity: RuleBearing): boolean => !!entity.routines?.some((r) => r.requires?.length);
 
-/** The entity with `map` over every Condition of its image rules and its Enabled gate; the same entity when it
- *  carries neither. */
+/** Whether the entity carries an image Visibility rule, an Enabled gate or a gated Routine. */
+export const hasEntityRules = (entity: RuleBearing): boolean => hasImageRules(entity) || hasEnabledGate(entity) || hasRoutineGate(entity);
+
+/** The entity with `map` over every Condition of its image rules, its Enabled gate and its Routines' Requires; the
+ *  same entity when it carries none. */
 export function withEntityRules<T extends RuleBearing>(entity: T, map: (req: TraitRequirement) => TraitRequirement): T {
   const imaged = withImageRules(entity, map);
-  return entity.enabledWhen?.length ? { ...imaged, enabledWhen: mapConditions(entity.enabledWhen, map) } : imaged;
+  const enabled = entity.enabledWhen?.length ? { ...imaged, enabledWhen: mapConditions(entity.enabledWhen, map) } : imaged;
+  if (!hasRoutineGate(entity)) return enabled;
+  const routines = entity.routines?.map((r) => (r.requires?.length ? { ...r, requires: mapConditions(r.requires, map) } : r));
+  return { ...enabled, routines };
 }

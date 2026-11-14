@@ -4,7 +4,7 @@
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
-An entity is a person, a creature, an object or a fixture in your world: a ferryman, an eel-smoker, a barred door. Each entity begins at a location, and its [routine](#the-routine) can take it to others. The AI reads the entities that can show up where the player is.
+An entity is a person, a creature, an object or a fixture in your world: a ferryman, an eel-smoker, a barred door. Each entity begins at a location, and its [schedule](#the-schedule) can take it to others. The AI reads the entities that can show up where the player is.
 
 ## Why it exists
 <!-- keywords: ai forgets characters, narrator invents people, recurring character, persistent npc, keeps renaming -->
@@ -74,7 +74,7 @@ Select an entity to open its panel.
 | **Profile** | **Name**, **Pronouns**, **Relationships**, the **Image** and the **Avatar** dropdown (**None**, **User's Default**, or an Avatar of the world; see [World Avatars](Avatars#world-avatars)). In Advanced mode, also **Aliases**, [**Stranger Name**](#stranger-name) beside **Name**, the **Persona** control, **Type**, **Image Tags** and the **3D Model**. | Simple and Advanced |
 | **Descriptions** | **Player-Facing Description** and **AI-Facing Description**. In Advanced mode, also [**Stranger Description**](#stranger-description) under **Player-Facing Description**, and **AI-Facing Summary**. | Simple and Advanced |
 | **Items** | The entity's [Starting Items](World-Editor-Items#starting-items) | Simple and Advanced |
-| **Presence** | When the entity is on ([Enabled](#enabled)), where it starts, its [daily routine](#the-routine), and where the AI knows of it ([Known In](#known-in)) | Simple and Advanced |
+| **Presence** | When the entity is on ([Enabled](#enabled)), its [Routines](#routines), where it starts, its daily [schedule](#the-schedule), and where the AI knows of it ([Known In](#known-in)) | Simple and Advanced |
 | **Traits** | The entity's own [traits](World-Editor-Traits#entity-traits) | Advanced only |
 | **Stats** | The entity's own [stats](#entity-stats) | Advanced only |
 | **Placeholders** | The entity's own [placeholders](World-Editor-Placeholders#placeholders-that-belong-to-an-entity-or-a-dictionary) | Advanced only |
@@ -87,17 +87,17 @@ The **Persona** control has four choices: **Cast**, **Playable**, **Persona-Only
 Each entity in the list has **Duplicate** and **Delete** actions.
 
 ## Presence
-<!-- keywords: schedule, daily routine, routine tab, where does the npc start, npc moves, wander, patrol, away, gone for the night, stays at, follow the player, called over, unique, generic, crowd, herd, known in, where the ai knows -->
+<!-- keywords: schedule, daily routine, routine tab, routines, add routine, requires, two ways of living, behavior changes, where does the npc start, npc moves, wander, patrol, away, gone for the night, stays at, follow the player, called over, unique, generic, crowd, herd, known in, where the ai knows -->
 <!-- route: worldEditorEntity.presence -->
 
-The **Presence** tab sets where the entity begins, where it goes, and where the AI knows of it. A location's **Presence** tab has the same routine editor for each entity that can be there.
+The **Presence** tab sets where the entity begins, where it goes, and where the AI knows of it. A location's **Presence** tab has the same editor for each entity that can be there.
 
-For a **Persona-Only** entity and the **Custom Persona**, the tab shows one **Start Locations** field. Pick the locations where the player can start as that persona. An empty field leaves the world's own starting locations. The routine, **Known In** and **Placement** are hidden.
+For a **Persona-Only** entity and the **Custom Persona**, the tab shows one **Start Locations** field. Pick the locations where the player can start as that persona. An empty field leaves the world's own starting locations. Routines, starts, **Known In** and **Placement** are hidden.
 
 **Placement** has two choices:
 
 - **Unique**: one character in one location at a time. A new entity is **Unique**. During the game it can move, follow the player and be left waiting.
-- **Generic**: a type of character, such as a crowd or a herd. One begins at every start at the same time, and each moves on its start's routine. It never follows and is never called over.
+- **Generic**: a type of character, such as a crowd or a herd. One begins at every start at the same time, and each moves on its start's schedule. It never follows and is never called over.
 
 ### On Map
 
@@ -112,9 +112,24 @@ For a **Persona-Only** entity and the **Custom Persona**, the tab shows one **St
 
 Until the player meets an entity with a **Stranger Name**, the map shows it under the name the story gave it, or the **Stranger Name**, at the player's location and **Nearby** locations. Elsewhere it shows as an unknown. An entity with no **Stranger Name** shows under its **Name**.
 
+### Routines
+<!-- keywords: routine, add routine, requires, move earlier, move later, delete routine, behaves differently, second schedule -->
+
+An entity can have more than one Routine. Each Routine has its own starts and schedules, its own **Can Also Go**, and its own **Requires** rows. In play, the first Routine whose **Requires** holds applies.
+
+- ➕ **Add Routine** adds a Routine with no starts. With one Routine and no gate, the tab shows only this button above the starts.
+- 👆 Click a Routine above the starts to show it. Its **Name**, **Requires** and **Can Also Go** come next, then its starts and schedule.
+- ✏️ Type in **Name** to rename it. A blank name shows as *Routine 2*, *Routine 3* and so on.
+- ↔️ **Move Earlier** and **Move Later** change the order. When more than one Routine's **Requires** holds, the earliest applies.
+- 🗑 **Delete Routine** removes the Routine on show. The last Routine can't be deleted.
+- 🔐 **Requires** takes rows of conditions, the same kind **Enabled** uses. The Routine applies while any row holds. With no rows, it always applies. A condition with no owner checks this entity.
+- ⚠️ A Routine with no starts shows a warning, because it never applies.
+
+Switching **Placement** keeps every Routine. Deleting a location removes it from every Routine.
+
 ### Starts
 
-Every entity has one or more starts. Each start is a location and a routine kept from there.
+Every entity has one or more starts. Each start is a location and a schedule kept from there. Each Routine has its own starts.
 
 - 🎲 A **Unique** entity begins at one start, picked at random in each new game. Each start's tab shows its chance.
 - 👥 A **Generic** entity begins at every start at the same time. Its tabs show no chance, its rows have no lock, and it has no **Can Also Go**.
@@ -128,13 +143,13 @@ Switching between the two keeps every start and row. Chances, locks and **Can Al
 Pick **Player's Starting Location** at the top of a start's location list. The entity then begins wherever the player begins, in a world with one starting location or many. It adds no location to the entity's list.
 
 - 🤝 For a **Unique** entity, tick **Follows the Player** to make a companion. In a game that picks this start, it travels with the player from the first turn, even through a locked row. **Can Also Go** still applies: it waits outside a location it can't enter.
-- 👥 A **Generic** entity begins beside the player and then keeps its routine. It never follows.
+- 👥 A **Generic** entity begins beside the player and then keeps its schedule. It never follows.
 - 📍 The start's rows can use any location. In play, the game skips a location the player's real start doesn't connect to.
 - 🔁 Moving the start to a fixed location clears **Follows the Player**.
 
-### The routine
+### The schedule
 
-The routine reads as sentences in the order of the day, such as *Morning – Afternoon, stays at Smithy.*
+The schedule reads as sentences in the order of the day, such as *Morning – Afternoon, stays at Smithy.*
 
 - 🕑 Click the time to change it. Times use the time of day, such as **Morning**. **Use Hours** switches the row to exact hours, and **Use Time of Day** switches back, snapping to the parts of the day that cover those hours.
 - 🚶 Click the verb to pick **Stay**, **Wander**, **Patrol** or **Away**.
@@ -160,10 +175,12 @@ Two timed rows can't share an hour. Times another row uses are unavailable in th
 
 ### Can Also Go
 
-**Can Also Go** sets where the entity may go beyond its routine: following the player, or being called over.
+Each Routine has its own **Can Also Go**. With two or more Routines, it sits under the Routine's **Requires**.
+
+**Can Also Go** sets where the entity may go beyond its schedule: following the player, or being called over.
 
 - **Anywhere**: any location.
-- **Only Listed Locations**: its routine locations and the ones you list. A listed location doesn't include the locations inside it.
+- **Only Listed Locations**: its schedule's locations and the ones you list. A listed location doesn't include the locations inside it.
 
 ### Enabled
 <!-- keywords: enabled, turn an entity off, hide an entity, appear later, disappear, gate, only exists when -->
@@ -171,7 +188,7 @@ Two timed rows can't share an hour. Times another row uses are unavailable in th
 **Enabled** decides when the entity is on. Add rows of conditions, the same kind a trait's **Requires** uses. The entity is on while any row holds. With no rows, it's always on.
 
 - 🙈 **While it's off,** the player and the AI never see it: not in the scene, on the map, in lists or in what the AI reads. Scripts can't find it by name.
-- ⏸️ **It pauses.** Its stats, regen, traits, scripts and routine stop where they are. When it turns back on, it picks up from there, in the same place.
+- ⏸️ **It pauses.** Its stats, regen, traits, scripts and schedule stop where they are. When it turns back on, it picks up from there, in the same place.
 - 🚶 **It turns off at the end of a turn.** If it was following the player, it stops.
 - 👤 **A condition with no owner** checks this entity's own traits, stats and items.
 - 🎭 **The character the player plays** is always on.
@@ -192,7 +209,7 @@ You can also pick them by clicking on the full-screen Locations Canvas. See [Wor
 
 ### On the Locations Canvas
 
-On the full-screen Locations Canvas, choose the entity and pick **Routine**. The map shows the routine of the start whose tab is open. Each location takes its action's color, a bar shows when the entity is there, and a flag marks **Starts Here**. A start at the **Player's Starting Location** has no flag, and every location shows as one its rows can use. A key at the bottom lists what the map shows.
+On the full-screen Locations Canvas, choose the entity and pick **Routine**. The map shows the schedule of the start whose tab is open, in the Routine on show. Each location takes its action's color, a bar shows when the entity is there, and a flag marks **Starts Here**. A start at the **Player's Starting Location** has no flag, and every location shows as one its rows can use. A key at the bottom lists what the map shows.
 
 - 👆 Select a row to edit its locations: click a location, or drag from one. The line over the map says what a click does.
 - 📍 Under **Only Listed Locations** with no row selected, a click adds the location to **Can Also Go** or removes it.
@@ -205,7 +222,7 @@ A **Generic** entity shows the same view for the start whose tab is open, with n
 ### Entities from older worlds
 <!-- keywords: old world, older version, character moved, not where they were, missing npc, used to be everywhere, several locations, now wanders, became generic -->
 
-An older world can list an entity at several locations with no routine. When you open the world, that entity gets one:
+An older world can list an entity at several locations with no schedule. When you open the world, that entity gets one:
 
 | The entity | Gets |
 |---|---|
@@ -220,7 +237,7 @@ In a world where no entity has **Pronouns** or a **Persona** mark, every such en
 ## What reaches the AI
 <!-- keywords: npc secret, hidden motive, character ignored, npc never appears, spoilers, does ai see image, private notes -->
 
-An entity reaches the AI through a location. That is where its [routine](#the-routine) has it now, or a location whose **Known Here** list holds it. A relationship with the persona or with an entity in the scene also brings it in. An entity with none of these never reaches the AI.
+An entity reaches the AI through a location. That is where its [schedule](#the-schedule) has it now, or a location whose **Known Here** list holds it. A relationship with the persona or with an entity in the scene also brings it in. An entity with none of these never reaches the AI.
 
 | Field | Sent? |
 |---|---|

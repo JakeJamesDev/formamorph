@@ -33,7 +33,7 @@ const farrier = (traversable: Traversable = 'anywhere', schedule = day): Entity 
 } as Entity);
 
 const view = (entity: Entity, rowId: string | null = null, startId: string | null = null) =>
-  routineView(entity, { startId, rowId }, graph);
+  routineView(entity, { routineId: null, startId, rowId }, graph);
 const markOf = (v: ReturnType<typeof view>, id: string) => v.marks.get(id);
 const pairs = (lines: RoutineLine[]) => lines.map((l) => `${l.source}>${l.target}:${l.tone}${l.arrow ? '' : ':roam'}`).sort();
 const label = (from: number, to: number) => rangeText({ start: from * 60, end: to * 60 });

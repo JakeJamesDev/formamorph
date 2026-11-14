@@ -208,9 +208,12 @@ export function offeredRoutine(copy: Entity, source: Entity, kind: EntityKind, p
 }
 
 /** Whether the copy's routine is what its source offers it. A side with no kind has no routine to compare here. */
-function routineMatches(copy: LinkableContent, source: LinkableContent, places?: RoutinePlaces): boolean {
+function routineMatches(copy: LinkableContent, source: LinkableContent, world?: TraitWorld, places?: RoutinePlaces): boolean {
   if ('entries' in copy || 'entries' in source || !copy.kind || !source.kind) return true;
-  return sameRoutine(copy, offeredRoutine(copy, source, source.kind, places));
+  // Each side's Requires bound to the copy's world, as the Enabled gate compares.
+  const bound = (entity: Entity) => (world ? bindOwnedRules(entity, world) : entity);
+  const held = bound(copy);
+  return sameRoutine(held, offeredRoutine(held, bound(source), source.kind, places));
 }
 
 /** Whether the copy still holds exactly what the source holds. Names alone prove nothing, so this reads
@@ -222,7 +225,7 @@ export function contentMatchesSource(
 ): boolean {
   const mapped = !!places;
   return JSON.stringify(authoredContent(copy, world, vrm, mapped)) === JSON.stringify(authoredContent(source, world, vrm, mapped))
-    && routineMatches(copy, source, places);
+    && routineMatches(copy, source, world, places);
 }
 
 /** The world-owned fields an update keeps from the copy. The placeholder lists and the carried blueprints are

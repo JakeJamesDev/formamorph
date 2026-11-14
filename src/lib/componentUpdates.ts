@@ -15,14 +15,15 @@ import { namedPlacesOf } from '@/lib/entityPlaces';
 import type { LibraryKind } from '@/lib/librarySources';
 import { UNNAMED_LOCATION } from '@/lib/locationCanvas';
 import { ACTION_LABELS } from '@/lib/routineEditing';
+import { routineLabel } from '@/lib/routineList';
 import { chancePercent, rangeText } from '@/lib/routineTime';
 import { pickLabel, pickToken, type VrmLookup } from '@/lib/vrmPickMatch';
 import { placesOf } from '@/lib/positionEngine';
 import { PLAYER_START, PLAYER_START_LABEL } from '@/types';
 import type {
-  ContentLink, Dictionary, DictionaryEntry, EntityKind, EntityStart, GameLocation, ScheduleRow, Traversable, VrmPick,
+  ContentLink, Dictionary, DictionaryEntry, EntityKind, EntityRoutine, EntityStart, GameLocation, ScheduleRow, TraitRequirement,
+  TraitRequirementRow, Traversable, VrmPick,
 } from '@/types';
-import { applyingRoutine } from '@/lib/entityKind';
 
 /** What one world does with the update offered to its copy. */
 export type UpdateAction = 'update' | 'keep' | 'unlink';
@@ -246,6 +247,21 @@ function startsText(starts: readonly EntityStart[] | undefined, kind: EntityKind
 const traversableText = (value: Traversable | undefined, nameOf: (id: string) => string): string =>
   (value === 'anywhere' ? 'Anywhere' : formatValue('traversable', value?.map(nameOf)));
 
+const capitalized = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
+
+/** One Condition as text, by the name it stores. */
+function conditionText(req: TraitRequirement): string {
+  if (req.kind === 'time') return req.dayparts.map(capitalized).join(' or ');
+  const named = req.name || capitalized(req.kind);
+  const target = req.kind === 'stat' ? `${named} ${req.operator} ${req.value}`
+    : req.kind === 'option' && req.valueName ? `${named} is ${req.valueName}` : named;
+  return req.not ? `Not ${target}` : target;
+}
+
+/** A Routine's Requires as text: each row's Conditions joined by "and", the rows by "or". */
+const requiresText = (rows: readonly TraitRequirementRow[] | undefined): string =>
+  (rows?.length ? rows.map((row) => row.all.map(conditionText).join(' and ')).join(' or ') : 'Always');
+
 /**
  * The routine rows of an entity with a kind: what the copy holds against what an update would write, the source's
  * routine mapped into the copy's world through `locations` (Q30). Undefined for a dictionary or an entity with no kind.
@@ -259,31 +275,67 @@ function routineChanges(
   const byId = new Map((locations ?? []).map((l) => [l.id, l.name]));
   const nameOf = (id: string) => (id === PLAYER_START ? PLAYER_START_LABEL : byId.get(id) || UNNAMED_LOCATION);
   const offered = source.kind ? offeredRoutine(copy, source, source.kind, locations && routinePlacesOf(locations)) : {};
-  // The first Routine's rows; per-Routine rows are not shown yet.
-  const held = applyingRoutine(copy);
-  const offers = applyingRoutine(offered);
-  const rows = [{
-    row: { field: 'starts', label: 'Starts', current: startsText(held?.starts, kind, nameOf), incoming: startsText(offers?.starts, kind, nameOf) },
-    same: sameStarts(held?.starts, offers?.starts),
-  }];
+  const held = copy.routines ?? [];
+  const offers = offered.routines ?? [];
+  const rows: { row: FieldChange; same: boolean }[] = [];
+  // At most one ungated Routine a side, of one id and name, reads with no Routine name on the rows (Q30).
+  const lone = held.length <= 1 && offers.length <= 1 && [...held, ...offers].every((r) => !r.requires?.length)
+    && (!held.length || !offers.length || (held[0].id === offers[0].id && held[0].name === offers[0].name));
+  const pairs = [
+    ...offers.map((routine, i) => ({
+      id: routine.id, name: routineLabel(routine, i), held: held.find((r) => r.id === routine.id), offers: routine as EntityRoutine | undefined,
+    })),
+    ...held.flatMap((routine, i) => (offers.some((o) => o.id === routine.id) ? []
+      : [{ id: routine.id, name: routineLabel(routine, i), held: routine as EntityRoutine | undefined, offers: undefined }])),
+  ];
+  // Author order is priority (Q9), so a reorder of the Routines both sides hold is a row of its own.
+  const shared = (list: readonly EntityRoutine[], other: readonly EntityRoutine[]) => list.filter((r) => other.some((o) => o.id === r.id));
+  const orderOf = (list: readonly EntityRoutine[], other: readonly EntityRoutine[]) =>
+    shared(list, other).map((r) => routineLabel(r, list.indexOf(r))).join(', ');
+  if (shared(held, offers).map((r) => r.id).join() !== shared(offers, held).map((r) => r.id).join()) {
+    rows.push({ row: { field: 'routines/order', label: 'Routine Order', current: orderOf(held, offers), incoming: orderOf(offers, held) }, same: false });
+  }
+  for (const pair of pairs) {
+    const { name } = pair;
+    const field = (key: string) => (lone ? key : `routines/${pair.id}/${key}`);
+    const label = (text: string) => (lone ? text : `${name}: ${text}`);
+    if (!lone && pair.held?.name !== pair.offers?.name) {
+      rows.push({
+        row: { field: field('name'), label: label('Name'), current: formatValue('name', pair.held?.name), incoming: formatValue('name', pair.offers?.name) },
+        same: false,
+      });
+    }
+    rows.push({
+      row: { field: field('starts'), label: label('Starts'), current: startsText(pair.held?.starts, kind, nameOf), incoming: startsText(pair.offers?.starts, kind, nameOf) },
+      same: !!pair.held && !!pair.offers && sameStarts(pair.held.starts, pair.offers.starts),
+    });
+    if (!lone) {
+      const current = requiresText(pair.held?.requires);
+      const incoming = requiresText(pair.offers?.requires);
+      rows.push({ row: { field: field('requires'), label: label('Requires'), current, incoming }, same: !!pair.held && !!pair.offers && current === incoming });
+    }
+    if (kind === 'unique') {
+      rows.push({
+        row: {
+          field: field('traversable'), label: label('Can Also Go'),
+          current: traversableText(pair.held?.traversable, nameOf), incoming: traversableText(pair.offers?.traversable, nameOf),
+        },
+        same: !!pair.held && !!pair.offers && JSON.stringify(pair.held.traversable) === JSON.stringify(pair.offers.traversable),
+      });
+    }
+  }
   // A kind change moves the copy between a location list and a routine (Q33), so the list shows too.
   if (!copy.kind !== !source.kind) {
     const member = copy.kind ? [] : namedPlacesOf(copy);
     const places = locations && routinePlacesOf(locations);
     const taken = source.kind || !places ? [] : carriedMembership(source, copy.link?.connections ?? {}, places.known);
-    rows.push({
+    // One Routine's rows read Starts, Locations, Can Also Go.
+    rows.splice(lone ? 1 : rows.length, 0, {
       row: { field: 'locations', label: 'Locations', current: formatValue('locations', member.map(nameOf)), incoming: formatValue('locations', taken.map(nameOf)) },
       same: false,
     });
   }
-  if (kind !== 'unique') return rows;
-  return [...rows, {
-    row: {
-      field: 'traversable', label: 'Can Also Go',
-      current: traversableText(held?.traversable, nameOf), incoming: traversableText(offers?.traversable, nameOf),
-    },
-    same: JSON.stringify(held?.traversable) === JSON.stringify(offers?.traversable),
-  }];
+  return rows;
 }
 
 /**

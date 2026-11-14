@@ -1,4 +1,5 @@
-import { isGeneric, traversableOf, startsOf } from '@/lib/entityKind';
+import { isGeneric } from '@/lib/entityKind';
+import { shownRoutine, shownStart } from '@/lib/routineList';
 import { placesOf, startReach, type PlaceGraph } from '@/lib/positionEngine';
 import { isPlaced, type PlacedAction, type PlacedActionKind } from '@/lib/routineEditing';
 import type { RoutineSelection } from '@/lib/routineSelection';
@@ -113,12 +114,11 @@ export function routineView(entity: Entity, selection: RoutineSelection, graph: 
   const mark = (id: string, next: RoutineMark) => { if (marks.has(id)) marks.set(id, next); };
 
   const generic = isGeneric(entity);
-  const starts = startsOf(entity);
-  const start = starts.find((s) => s.id === selection.startId) ?? starts[0];
+  const start = shownStart(entity, selection);
   if (!start) return { marks, lines };
   const selected = start.schedule.find((r) => r.id === selection.rowId) ?? null;
 
-  const traversable = generic ? 'anywhere' : traversableOf(entity);
+  const traversable = generic ? 'anywhere' : shownRoutine(entity, selection).traversable ?? [];
   if (traversable === 'anywhere') {
     for (const id of startReach(start.place, graph)) mark(id, { kind: 'plain' });
   } else {
@@ -149,7 +149,7 @@ export function routineView(entity: Entity, selection: RoutineSelection, graph: 
   const at = marks.get(start.place);
   if (at) marks.set(start.place, { ...at, kind: 'routine', begin: true });
   if (generic) {
-    for (const other of starts) {
+    for (const other of shownRoutine(entity, selection).starts) {
       if (other !== start && marks.get(other.place)?.kind !== 'routine') mark(other.place, { kind: 'here' });
     }
   }

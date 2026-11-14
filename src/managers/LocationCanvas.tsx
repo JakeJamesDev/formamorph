@@ -814,9 +814,11 @@ const CanvasInner = ({
   // Routine mode draws the entity's routine in place of the Connections. A custom persona has no routine.
   const routineEntity = pickedEntity && pickMode === 'locations' && !pickedEntity.customPersona ? pickedEntity : undefined;
   const routineSelection = useRoutineSelection(routineEntity?.id ?? '');
-  const routineStartId = routineSelection.startId;
-  const routineRowId = routineSelection.rowId;
-  const routineAt = useMemo(() => ({ startId: routineStartId, rowId: routineRowId }), [routineStartId, routineRowId]);
+  const { routineId: shownRoutineId, startId: routineStartId, rowId: routineRowId } = routineSelection;
+  const routineAt = useMemo(
+    () => ({ routineId: shownRoutineId, startId: routineStartId, rowId: routineRowId }),
+    [shownRoutineId, routineStartId, routineRowId],
+  );
   const placeGraph = useMemo(() => ({ locations, connections }), [locations, connections]);
   const routine = useMemo(
     () => (routineEntity ? routineView(routineEntity, routineAt, placeGraph) : null),

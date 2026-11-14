@@ -146,10 +146,11 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Auto Arrange](World-Editor-Locations#list-and-canvas) | The canvas command that lays out boxes for you. Nothing on the canvas moves without it or you. |
 | [Map](How-to-Play#the-change-location-dialog) | The read-only canvas the player sees during the game, on the **Map** tab |
 | [Placement](World-Editor-Entities) | How an entity stands in the world: **Unique**, one character that begins at one of its starts, or **Generic**, a type of character that begins at every start at the same time |
-| [Starts](World-Editor-Entities#starts) | The locations an entity can begin a game at, one tab each on its **Presence** tab. Each start keeps its own routine. |
-| [Routine](World-Editor-Entities#the-routine) | An entity's day as a list of rows: when it stays at a location, wanders between several, or patrols them in order |
-| [Locked](World-Editor-Entities#the-routine) | A lock set on a routine row. During that time the entity can't be called over or start to follow the player. |
-| [Can Also Go](World-Editor-Entities#can-also-go) | Where a Unique entity may go beyond its routine: **Anywhere**, or **Only Listed Locations**. It applies when the entity follows the player or is called over. |
+| [Starts](World-Editor-Entities#starts) | The locations an entity can begin a game at, one tab each on its **Presence** tab. Each start keeps its own schedule. |
+| [Routine](World-Editor-Entities#routines) | One way an entity lives: its own starts, schedules and **Can Also Go**, applied while its **Requires** holds |
+| [Schedule](World-Editor-Entities#the-schedule) | A start's day as a list of rows: when the entity stays at a location, wanders between several, patrols them in order, or is away |
+| [Locked](World-Editor-Entities#the-schedule) | A lock set on a schedule row. During that time the entity can't be called over or start to follow the player. |
+| [Can Also Go](World-Editor-Entities#can-also-go) | Where a Unique entity may go beyond its schedule, set per Routine: **Anywhere**, or **Only Listed Locations**. It applies when the entity follows the player or is called over. |
 | [Known In](World-Editor-Entities#locations) | Where the AI knows of an entity while the entity isn't present. The default is **Nearby**. |
 | [Known Here](World-Editor-Locations#entities) | A location's list of entities that aren't there, but that the entities there may speak of |
 | [Relationship](World-Editor-Entities#the-panel) | Another entity, or the persona, with its role toward this entity. The AI reads each one as a line. |

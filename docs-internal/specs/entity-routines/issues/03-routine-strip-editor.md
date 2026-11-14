@@ -1,6 +1,6 @@
 # 03: Routine Strip in the Editor
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -26,9 +26,17 @@ Spec rulings: Q9, Q14, Q16, Q19.
 
 ## Acceptance criteria
 
-- [ ] Routine tab tests: add, switch, rename, reorder, delete; the empty-Routine warning shows and clears.
-- [ ] A single ungated Routine renders as before plus the Add Routine button.
-- [ ] Kind switch and location delete keep and clean every Routine (tests).
-- [ ] Frames: `.scratch/frames/routine-strip.png` and `.scratch/frames/routine-strip-dark.png`, two Routines with a gate, 1280 px.
+- [x] Routine tab tests: add, switch, rename, reorder, delete; the empty-Routine warning shows and clears. `RoutineTab.routines.test.tsx`, six guards mutation-tested.
+- [x] A single ungated Routine renders as before plus the Add Routine button. Test "looks as before plus Add Routine"; the existing RoutineTab suite passes unchanged.
+- [x] Kind switch and location delete keep and clean every Routine (tests). "every Routine through a kind switch and a location delete" in `RoutineTab.routines.test.tsx`.
+- [x] Frames: `.scratch/frames/routine-strip.png` and `.scratch/frames/routine-strip-dark.png`, two Routines with a gate, 1280 px. Playwright, Sugarscape entity with a time-gated second Routine.
 
-For you: World Editor → an entity → Routine tab. Check that the strip and Requires read well with two Routines.
+## Landed
+
+**Not verified**
+- Nothing open in the criteria.
+
+**For you**
+- For you: World Editor → an entity → Routine tab. Check that the strip and Requires read well with two Routines.
+- The Move Earlier and Move Later arrows beside **Name** (Q30 #5): check that they read as Routine order. Frames: `.scratch/entity-routines-03/frames/routine-strip.png`, `.scratch/entity-routines-03/frames/routine-strip-dark.png`.
+- Notes for later work: the canvas Location pick (`entityPicking`) and `withStartHere` still add to the first Routine only. The update review writes Requires from the names each Condition stores, with no world, so its wording differs from the gate line's.
