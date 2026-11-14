@@ -118,6 +118,8 @@ export const MASCOT_COPY = {
   supporterOverlay: 'Supporter Image',
   /** A Supporter-only Mascot this account hasn't installed. */
   locked: { label: '(Locked)', checking: '(Checking…)', installFailed: "Couldn't install this Supporter Mascot." },
+  /** The Patreon Mark's name on a Supporter Mascot's row. */
+  supporterMark: 'Supporter Mascot',
   removeLayer: 'Remove layer',
   removeOverlay: 'Remove overlay',
   preset: {

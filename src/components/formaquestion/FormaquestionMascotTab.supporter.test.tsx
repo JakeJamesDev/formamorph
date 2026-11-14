@@ -161,13 +161,21 @@ describe('a locked Supporter Mascot in the Mascot tab', () => {
   it('shows the listing thumbnail beside its name', async () => {
     mountWith();
     await userEvent.click(presetSelect());
-    const option = await screen.findByRole('option', { name: 'Nova (Locked)' });
+    const option = await screen.findByRole('option', { name: 'Nova Supporter Mascot (Locked)' });
     expect(option.querySelector('img')).toHaveAttribute('src', LISTING.thumbnailUrl);
+  });
+
+  it('marks the locked row with the Patreon Mark and no lock icon', async () => {
+    mountWith();
+    await userEvent.click(presetSelect());
+    const option = await screen.findByRole('option', { name: 'Nova Supporter Mascot (Locked)' });
+    expect(option.querySelectorAll('[data-patreon-mark]')).toHaveLength(1);
+    expect(option.querySelector('.lucide-lock')).toBeNull();
   });
 
   it('opens its listing for a signed-in account that does not qualify, and keeps the selection', async () => {
     mountWith();
-    await pick('Nova (Locked)');
+    await pick('Nova Supporter Mascot (Locked)');
     await waitFor(() => expect(openListing).toHaveBeenCalledWith('nova'));
     expect(fake.refresh).toHaveBeenCalledTimes(1);
     expect(fake.install).not.toHaveBeenCalled();
@@ -183,7 +191,7 @@ describe('a locked Supporter Mascot in the Mascot tab', () => {
       publish({ installed: [{ id: 'nova', kind: 'mascot', revision: 1 }] });
     });
     mountWith();
-    await pick('Nova (Locked)');
+    await pick('Nova Supporter Mascot (Locked)');
     await waitFor(() => expect(fake.install).toHaveBeenCalledWith('nova'));
     expect(openListing).not.toHaveBeenCalled();
   });
@@ -191,7 +199,7 @@ describe('a locked Supporter Mascot in the Mascot tab', () => {
   it('opens its listing when signed out, where the module lists nothing', async () => {
     fake.snapshot = { status: 'ready', qualifies: false, entitled: [], installed: [] };
     mountWith();
-    await pick('Nova (Locked)');
+    await pick('Nova Supporter Mascot (Locked)');
     await waitFor(() => expect(openListing).toHaveBeenCalledWith('nova'));
   });
 
@@ -204,14 +212,14 @@ describe('a locked Supporter Mascot in the Mascot tab', () => {
     mountWith();
     const user = userEvent.setup();
     await user.click(presetSelect());
-    const option = await screen.findByRole('option', { name: 'Nova (Checking…)' });
+    const option = await screen.findByRole('option', { name: 'Nova Supporter Mascot (Checking…)' });
     expect(option).toHaveAttribute('aria-disabled', 'true');
     await user.click(option);
     expect(openListing).not.toHaveBeenCalled();
     expect(fake.install).not.toHaveBeenCalled();
     await user.keyboard('{Escape}');
     act(() => publish({ status: 'ready', qualifies: true, entitled: [{ id: 'nova', kind: 'mascot', revision: 1 }] }));
-    await pick('Nova (Locked)');
+    await pick('Nova Supporter Mascot (Locked)');
     expect(fake.install).toHaveBeenCalledWith('nova');
     expect(openListing).not.toHaveBeenCalled();
   });
@@ -223,7 +231,7 @@ describe('a locked Supporter Mascot in the Mascot tab', () => {
       publish({ installed: [{ id: 'nova', kind: 'mascot', revision: 1 }] });
     });
     mountWith();
-    await pick('Nova (Locked)');
+    await pick('Nova Supporter Mascot (Locked)');
     expect(fake.install).toHaveBeenCalledWith('nova');
     await waitFor(() => expect(presetSelect()).toHaveTextContent('Nova'));
     expect(currentHelpSettings().mascotPresets.activeId).toBe(supporterMascotId('nova'));
@@ -235,7 +243,7 @@ describe('a locked Supporter Mascot in the Mascot tab', () => {
     fake.snapshot = { status: 'ready', qualifies: true, entitled: [{ id: 'nova', kind: 'mascot', revision: 1 }], installed: [] };
     fake.install.mockRejectedValue(new Error('The Supporter content download failed with status 503'));
     mountWith();
-    await pick('Nova (Locked)');
+    await pick('Nova Supporter Mascot (Locked)');
     await waitFor(() => expect(toastError).toHaveBeenCalledWith(expect.any(Error), "Couldn't install this Supporter Mascot."));
     expect(presetSelect()).toHaveTextContent('Morphie');
     expect(presetSelect()).toBeEnabled();

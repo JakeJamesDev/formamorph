@@ -34,6 +34,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A Supporter world plays and edits like any world, but its export, Duplicate, Publish and media Download are disabled.** Point at a disabled button to see why. Backups leave Supporter worlds out, and their saves can't be exported.
     - **A character, dictionary or Avatar saved from a Supporter world stays in that world.** Its Export, Publish and Duplicate are disabled, and it can only be added back to that world. AI Context export in Formaquestion is disabled while a Supporter world is open.
     - **Supporters can download a Supporter-only world from its listing.** It lands in your Worlds list as a Supporter world. A newer revision shows Update Available. Public sources download with it; Supporter-only ones are left out and named.
+    - **Patreon items wear a heart where a lock used to show.** Supporter Mascots in the Mascot tab and Formamorph AI in every endpoint list now carry the Patreon heart.
 - **🛠️ Developer tooling**
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.
 

@@ -3,7 +3,8 @@ import { verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { Info, Lock, Move, Play, Plus, Redo2, Undo2, X } from 'lucide-react';
+import { PatreonMark } from '@/components/PatreonMark';
+import { Info, Move, Play, Plus, Redo2, Undo2, X } from 'lucide-react';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { PresetNameDialog } from '@/components/modals/PresetNameDialog';
@@ -936,13 +937,19 @@ export function MascotTab({ settings, control, onOpenGeneral, onOpenListing }: {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={DEFAULT_MASCOT_ID}>{DEFAULT_MASCOT_NAME}</SelectItem>
-              {control.store.mascots.map((mascot) => <SelectItem key={mascot.id} value={mascot.id}>{mascot.name}</SelectItem>)}
+              {control.store.mascots.map((mascot) => (
+                <SelectItem key={mascot.id} value={mascot.id}>
+                  {mascot.supporter ? (
+                    <span className="flex items-center gap-2">{mascot.name}<PatreonMark label={MASCOT_COPY.supporterMark} /></span>
+                  ) : mascot.name}
+                </SelectItem>
+              ))}
               {lockedMascots.locked.map((listing) => (
                 <SelectItem key={listing.id} value={`${LOCKED_PREFIX}${listing.id}`} disabled={lockedMascots.checking} data-fq-locked-mascot={listing.id}>
                   <span className="flex items-center gap-2">
                     {listing.thumbnailUrl && <img src={listing.thumbnailUrl} alt="" draggable={false} className="h-5 w-5 shrink-0 rounded-sm object-cover" />}
                     {listing.name}
-                    <Lock aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <PatreonMark label={MASCOT_COPY.supporterMark} />
                     <span className="sr-only">{` ${lockedMascots.checking ? MASCOT_COPY.locked.checking : MASCOT_COPY.locked.label}`}</span>
                   </span>
                 </SelectItem>

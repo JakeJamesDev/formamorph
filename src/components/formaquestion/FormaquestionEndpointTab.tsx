@@ -91,6 +91,7 @@ export function EndpointTab({ settings, onChange }: { settings: HelpSettings; on
           target={targetAttribute('formaquestionSettings.endpoint', 'answer-endpoint')}
           info={routeInfo(answerPreset?.name, ENDPOINT_COPY.followsActive)}
           value={answerPreset?.id ?? null}
+          activeId={s.activeTextEndpointPresetId}
           activeName={s.activeTextEndpointPresetName}
           presets={presets}
           onChange={(answerEndpoint) => onChange({ answerEndpoint })}
@@ -100,8 +101,9 @@ export function EndpointTab({ settings, onChange }: { settings: HelpSettings; on
           {...ENDPOINT_COPY.pick}
           info={pickValue === SAME_AS_ANSWER ? ENDPOINT_COPY.sameAsAnswer : routeInfo(pickPreset?.name, ENDPOINT_COPY.followsActive)}
           value={pickValue}
+          activeId={s.activeTextEndpointPresetId}
           activeName={s.activeTextEndpointPresetName}
-          extraRows={[{ value: SAME_AS_ANSWER, label: `Same as Answer (${answer.presetName})` }]}
+          extraRows={[{ value: SAME_AS_ANSWER, label: `Same as Answer (${answer.presetName})`, presetId: answer.presetId }]}
           presets={presets}
           onChange={(pickEndpoint) => onChange({ pickEndpoint })}
           reachability={{ url: pick.url, apiToken: pick.apiToken, model: pick.model, enabled: pickPreset !== undefined }}
@@ -110,8 +112,9 @@ export function EndpointTab({ settings, onChange }: { settings: HelpSettings; on
           {...ENDPOINT_COPY.sort}
           info={sortValue === SAME_AS_SEARCH ? ENDPOINT_COPY.sameAsSearch : routeInfo(sortPreset?.name, ENDPOINT_COPY.followsActive)}
           value={sortValue}
+          activeId={s.activeTextEndpointPresetId}
           activeName={s.activeTextEndpointPresetName}
-          extraRows={[{ value: SAME_AS_SEARCH, label: `Same as Search (${pick.presetName})` }]}
+          extraRows={[{ value: SAME_AS_SEARCH, label: `Same as Search (${pick.presetName})`, presetId: pick.presetId }]}
           presets={presets}
           onChange={(intentEndpoint) => onChange({ intentEndpoint })}
           reachability={{ url: sort.url, apiToken: sort.apiToken, model: sort.model, enabled: settings.intentClassifier && sortPreset !== undefined }}
@@ -120,8 +123,9 @@ export function EndpointTab({ settings, onChange }: { settings: HelpSettings; on
           {...ENDPOINT_COPY.create}
           info={createValue === SAME_AS_ANSWER ? ENDPOINT_COPY.sameAsAnswer : routeInfo(createPreset?.name, ENDPOINT_COPY.followsActive)}
           value={createValue}
+          activeId={s.activeTextEndpointPresetId}
           activeName={s.activeTextEndpointPresetName}
-          extraRows={[{ value: SAME_AS_ANSWER, label: `Same as Answer (${answer.presetName})` }]}
+          extraRows={[{ value: SAME_AS_ANSWER, label: `Same as Answer (${answer.presetName})`, presetId: answer.presetId }]}
           presets={presets}
           onChange={(createEndpoint) => onChange({ createEndpoint })}
           reachability={{ url: create.url, apiToken: create.apiToken, model: create.model, enabled: settings.intentClassifier && settings.creation && createPreset !== undefined }}

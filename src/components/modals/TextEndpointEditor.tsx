@@ -21,6 +21,7 @@ import { Hint, FieldError } from '@/components/ui/typography';
 import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import { presetHeaderActions } from '@/lib/presetHeaderActions';
 import { EndpointReachabilityBadge, HostedReachabilityBadge } from './EndpointReachabilityBadge';
+import { PresetOptionName } from './PresetOptionName';
 import { PresetNameDialog } from './PresetNameDialog';
 import { PresetAllowanceRing } from '@/components/game/AllowanceRing';
 import { HostedPresetStatus } from './HostedPresetStatus';
@@ -191,7 +192,7 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
                       </SelectTrigger>
                       <SelectContent>
                         {presets.builtIn.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                          <SelectItem key={p.id} value={p.id}><PresetOptionName id={p.id}>{p.name}</PresetOptionName></SelectItem>
                         ))}
                         {presets.user.map((p) => (
                           <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
