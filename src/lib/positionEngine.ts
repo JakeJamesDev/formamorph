@@ -49,8 +49,11 @@ export const oneRoutineCourse = (leg: PlayedRoutine): Course => ({
   ...(leg.generic && { generic: true as const }),
 });
 
-/** The Routine `st` plays: its saved one, absent the first (a v3.7.0 save). */
-const routineIdOf = (course: Course, st: UniqueState | undefined): string | undefined => st?.routineId ?? course.routines[0]?.id;
+/** The Routine `st` plays: its saved one, else the one holding its Start, else the first (Q31, Q34). */
+const routineIdOf = (course: Course, st: UniqueState | undefined): string | undefined =>
+  st?.routineId
+  ?? (st && course.routines.find((r) => r.starts.some((s) => s.id === st.startId))?.id)
+  ?? course.routines[0]?.id;
 
 /** `routine` as a leg of `course`. */
 const playedRoutineFrom = (course: Course, routine: CourseRoutine | undefined): PlayedRoutine => ({
@@ -332,6 +335,7 @@ function advanceOne(
   const start = routine.starts.find((s) => s.id === rolls[played]);
   if (!start) return undefined;
   const fresh = !kept;
+  const newGame = !saved;
   const others = Object.fromEntries(Object.entries(rolls).filter(([id]) => id !== played));
   const ledger: Pick<UniqueState, "routineId" | "rolls" | "nowhere"> = {
     routineId: course.routines.length > 1 ? played : undefined,
@@ -347,8 +351,8 @@ function advanceOne(
       ? { pos: savedPos, st: { ...body.st, ...(follow && { follow }) } }
       : { pos: savedPos, st: { ...saved, ...ledger } };
   }
-  // Begins Following skips the Strict check only, so Traversable still applies (Q148). Only an applying Routine's.
-  if (fresh && applying !== null && start.beginsFollowing) {
+  // New game and an applying Routine only (Q31, Q34); skips Strict, not Traversable (Q148).
+  if (newGame && applying !== null && start.beginsFollowing) {
     body.pos = playerAt ?? start.place;
     body.st = { ...body.st, follow: { mode: "following" } };
   }

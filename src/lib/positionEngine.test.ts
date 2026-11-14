@@ -811,6 +811,36 @@ describe('Routines', () => {
     expect(step('day', step('night', read, at(1, 20)), at(2, 9)).uniques.mara.startId).toBe('stall');
   });
 
+  it('keeps a one-Routine save\'s roll after the author puts a new Routine first (Q34)', () => {
+    const saved: PositionBook = { positions: { mara: 'gate' }, uniques: { mara: { startId: 'post', lastRun: at(1, 20) } }, generics: {} };
+    // `() => 0` re-rolls night onto the tavern, so a lost roll shows.
+    const read = step('night', saved, at(1, 21), () => 0);
+    expect(read.uniques.mara).toMatchObject({ startId: 'post', routineId: 'night', rolls: { day: 'forge' } });
+    expect(read.positions.mara).toBe('gate');
+  });
+
+  it('never begins following on a load-time re-roll (Q34)', () => {
+    const beside = { id: 'beside', traversable: 'anywhere' as Traversable, starts: [{ id: 'b', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true as const }] };
+    const home = { id: 'home', traversable: 'anywhere' as Traversable, starts: [
+      { id: 'cot', place: 'inn', weight: 1, schedule: [] },
+      { id: 'h', place: 'smithy', weight: 1, schedule: [] },
+    ] };
+    const s: PositionScene = { ...scene(at(1, 9), 'square'), playerStart: 'square' };
+    // `() => 0` rolls each Routine's first Start.
+    const load = (routines: Course['routines'], startId: string, applying: string) => advancePositions(
+      [{ id: 'kit', routines, applying }],
+      { positions: { kit: 'smithy' }, uniques: { kit: { startId, lastRun: at(1, 8) } }, generics: {} }, s, () => 0,
+    ).uniques.kit;
+    // The saved Start is gone, so the entity rolls again onto the Begins Following Start.
+    const rerolled = load([beside], 'gone', 'beside');
+    expect(rerolled.startId).toBe('b');
+    expect(rerolled.follow).toBeUndefined();
+    // A one-Routine save keeps its roll and swaps to a Begins Following Routine the author put first.
+    const swapped = load([beside, home], 'h', 'beside');
+    expect(swapped).toMatchObject({ startId: 'b', routineId: 'beside', rolls: { home: 'h' } });
+    expect(swapped.follow).toBeUndefined();
+  });
+
   it('writes no Routine fields for an entity with one Routine', () => {
     const single = advancePositions([routine([allDay('rest', stay('inn'))])], EMPTY, scene(at(1, 8)), seeded(1)).uniques.mara;
     expect(single).not.toHaveProperty('routineId');

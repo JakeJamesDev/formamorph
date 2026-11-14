@@ -1,6 +1,6 @@
 # 06: Keep Rolls Across a Routine Reorder
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -22,5 +22,13 @@ Spec rulings: Q4, Q31.
 
 ## Acceptance criteria
 
-- [ ] Engine test: a saved one-Routine entity loads into a world where a new Routine sits first and keeps its Start; the guard bites with the old lookup reinstated.
-- [ ] Engine test: a load-time re-roll onto a Start with Begins Following does not start a follow.
+- [x] Engine test: a saved one-Routine entity loads into a world where a new Routine sits first and keeps its Start; the guard bites with the old lookup reinstated. `positionEngine.test.ts` "keeps a one-Routine save's roll after the author puts a new Routine first (Q34)"; red with the old `routineIdOf`.
+- [x] Engine test: a load-time re-roll onto a Start with Begins Following does not start a follow. "never begins following on a load-time re-roll (Q34)"; red with the `fresh` gate put back, and its swap case also red with the old lookup.
+
+## Landed
+
+**Not verified:** nothing.
+
+**For you:**
+- Nothing a player needs to judge; the fix is engine-only, with no UI.
+- Adjacent, not fixed (review): a saved `routineId` that names a deleted Routine skips the Start lookup and re-rolls. A lost-Start re-roll also drops a saved follow, script follows included. Both behaved this way before this ticket.
