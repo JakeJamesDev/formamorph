@@ -53,10 +53,11 @@ describe('one ungated Routine', () => {
     expect(screen.getByRole('combobox', { name: 'Can Also Go' })).toBeInTheDocument();
   });
 
-  it('shows the strip for a lone Routine that has a gate', () => {
+  it('shows the list for a lone Routine that has a gate, with no Delete', () => {
     mount(mira([{ ...day, requires: SEX_FUTA }]));
     expect(routineButton('Day Job')).toHaveAttribute('aria-current', 'true');
     expect(screen.getByText('Requires')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Delete Routine/ })).toBeNull();
   });
 });
 

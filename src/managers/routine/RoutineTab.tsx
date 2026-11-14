@@ -347,7 +347,7 @@ function RoutineListRow({ entity, routine, index, count, selected, tabbable, boo
       {warnsEmpty(entity, routine) && <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-warning" role="img" aria-label={EMPTY_WARNING} />}
       {action('Move Earlier', ArrowUp, index === 0, () => commit('Move Routine', withRoutineMoved(entity, routine.id, -1)))}
       {action('Move Later', ArrowDown, index === count - 1, () => commit('Move Routine', withRoutineMoved(entity, routine.id, 1)))}
-      {action('Delete Routine', Trash2, false, () => {
+      {count > 1 && action('Delete Routine', Trash2, false, () => {
         commit('Delete Routine', withoutRoutine(entity, routine.id));
         if (selected) onShow(null);
       }, DESTRUCTIVE_ROW_ACTION_HOVER)}
