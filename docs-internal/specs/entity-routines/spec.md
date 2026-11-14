@@ -46,6 +46,7 @@ An entity with one Routine and no gate works exactly as today.
 - **Q22 Away and following.** Away acts like Strict for follows: a follow already running continues, and the entity goes Away when the follow ends. During an Away row, narration cannot call it over and it cannot start a follow.
 - **Q23 What Away hides.** An Away entity stays in every context that needs no place, such as a list of known entities and where they are usually found. It leaves every context tied to a map place: the scene, here, nearby, and the map.
 - **Q24 Nowhere.** "No Routine holds" and "an Away row" mean the same: Away. To make an entity inert, an author uses the Enabled gate.
+- **Q28 Ticket 01 answers.** Every entity with a kind holds at least one Routine; a blank entity gets "Routine 1" with no Starts. The empty-Routine warning (Q19) shows only when the entity has two or more Routines, so a lone empty Routine reads as today (Q16). Library carry and write-back run per Routine, matched by id; the update dialog keeps its Starts and Can Also Go rows, read from the first Routine. Bundled worlds are rewritten to the Routine shape in ticket 01, since the house style and the bundled-world guard require that `migrateWorld` change nothing in them. Runtime characters store nothing new; only the engine's view gets one ungated Routine.
 - **Q26 Seams.** Tests go through the gate resolver, the position engine, the turn commit with the reader-parity harness, the world migration with save load, and the Routine tab. No new seam.
 
 ## User Stories

@@ -19,6 +19,7 @@ A character switches behavior when the world changes: the first Routine whose ga
 - No Routine holds: the entity has no Position (04 gives it the Away reader behavior, Q24).
 - A Routine with no Starts never applies (Q19).
 - Presence lists every Routine's places, each reason naming its Routine. Sample Placement uses the first Routine whose gate holds at the authored start (Q18).
+- Ticket 01 added `applyingRoutine(entity)` as the one seam; replace its body with the gate pick. Rename the engine's flat `Routine` view type in the position engine so it no longer clashes with the glossary word.
 - World Option Conditions: if world-options ticket 04 has landed, wire Option values into the Routine gate input; else leave a note for it.
 - Glossary: Start, Presence and Sample Placement updated. Docs: the wiki's entity Routine page. Changelog fragment.
 - ⚠️ Export-shape change for saves. A v3.7.0 save's `startId` loads as the first Routine's roll.
