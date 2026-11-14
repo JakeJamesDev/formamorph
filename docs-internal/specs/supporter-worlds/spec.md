@@ -58,6 +58,7 @@ Settled in the grill on 2026-11-14. Numbered R so they don't collide with the ba
 | R31 | Under R22, the heart marks every list or picker row that names Formamorph AI, "Use Active Endpoint (Formamorph AI)" included. Headings are not lists and stay plain. Select rows carry the heart with an aria-label and no tooltip; the tooltip stays on cards. An installed Supporter Mascot's row carries it too. Ticket 08 intent answer. |
 | R32 | Supporter world processing has no time budget. Ticket 02 measured 7.6 s cold for the largest bundled world (61.5 MB, 42 images) on a fast desktop. User ruling, 2026-11-14. |
 | R33 | Under R11, turning the Supporter-only flag on also checks a pending update of the listing for linked images. Found in ticket 02's landing; user ruling puts it in ticket 01, 2026-11-14. |
+| R34 | A Supporter world's gated response size is accepted as is. Processed images are lossless PNG, the Mascot's format, so the largest bundled world comes to 166 MB. User ruling, 2026-11-14. |
 
 ## User Stories
 
