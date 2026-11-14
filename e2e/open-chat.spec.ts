@@ -134,7 +134,7 @@ test('a Quick Start applies the middle setting of every tone group', async ({ pa
   }
 });
 
-// The Style trait carries the frame, so a switch reaches the voice block and the choice shape on the next turn.
+// The Style Option carries the frame, so a switch reaches the voice block and the choice shape on the next turn.
 test('switching Style mid-game changes the voice block and the choice shape on the next turn', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', QUICK_START_SKIP);
   await mockModel(page);
@@ -155,12 +155,11 @@ test('switching Style mid-game changes the voice block and the choice shape on t
   expect(plain.narration).toContain(voice[1]);
   expect(plain.choices).toContain(shape[1]);
 
-  // The gameplay readme shows once play starts; the Traits tab sits under it, with each group folded.
+  // The gameplay readme shows once play starts; the World Options tab sits under it.
   await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
-  await page.getByRole('button', { name: /^Style/ }).click();
-  await page.getByRole('group', { name: 'Style' }).getByRole('button', { name: /^Disabled/ }).click();
-  await page.getByRole('radio', { name: 'Switch on Chat' }).click();
-  await expect(page.getByRole('radio', { name: 'Switch off Chat' })).toBeVisible();
+  await page.getByRole('tab', { name: 'World Options' }).click();
+  await page.getByRole('radiogroup', { name: 'Style' }).getByRole('radio', { name: 'Chat' }).click();
+  await expect(page.getByRole('radiogroup', { name: 'Style' }).getByRole('radio', { name: 'Chat' })).toBeChecked();
   const chat = await systems('Still there?');
   expect(chat.narration).toContain(voice[0]);
   expect(chat.narration).not.toContain(voice[1]);
@@ -168,8 +167,8 @@ test('switching Style mid-game changes the voice block and the choice shape on t
   expect(chat.choices).not.toContain(shape[1]);
 });
 
-// A pin names its value by id, so an author's edit of the text reaches play through the unchanged trait.
-test('editing a pinned value in the World Editor changes what its trait sends', async ({ page }, testInfo) => {
+// A pin names its value by id, so an author's edit of the text reaches play through the unchanged Option.
+test('editing a pinned value in the World Editor changes what its Option sends', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', QUICK_START_SKIP);
   const edited = 'Keep each message to exactly one short paragraph.';
   await mockModel(page);
@@ -191,7 +190,7 @@ test('editing a pinned value in the World Editor changes what its trait sends', 
   await page.goto('/');
   const system = await quickStartTurn(page);
   expect(system).toContain(edited);
-  // Every chip still reads its default trait's pin: the edit moved one text, not the pins.
+  // Every chip still reads its default value's pin: the edit moved one text, not the pins.
   const [replyLength, ...others] = narrationPlaceholders;
   for (const value of replyLength.values) expect(system).not.toContain(value.text);
   for (const ph of others) expect(system, ph.name).toContain(ph.values[1].text);

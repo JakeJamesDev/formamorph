@@ -138,8 +138,11 @@ describe("the persona's stats beside the global blocks", () => {
   });
 
   it('opens at "## Global Traits" for a world with world traits and no persona', () => {
-    const out = renderFor(openChatRaw);
+    // No bundled world holds a world trait with no persona, so Open Chat gains one here.
+    const trait = { id: 'steady', name: 'Steady', aiDescription: 'Keeps a level head.', statChanges: [], isDefault: true, playerToggle: true };
+    const out = renderFor(JSON.stringify({ ...JSON.parse(openChatRaw), traits: [trait] }));
     expect(out).toContain('\n## Global Traits\n');
+    expect(out).toContain('Keeps a level head.');
     expect(out).not.toContain('Player Character');
   });
 

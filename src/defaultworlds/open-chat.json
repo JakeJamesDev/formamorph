@@ -18,8 +18,8 @@
       "chat",
       "sandbox"
     ],
-    "introReadme": "💬 **This world is a blank stage.** It has no story, no stats, and one quiet room. The entity you bring sets the scene, and you pick how the chat reads.\n\n**Bring one entity.** Add it to your library, or import a card, before you start. Then pick it under **Library Additions**. A chat with two or more is still an experiment. With nobody picked, you enter an empty room and a stranger answers.\n\nUnder **Persona**, pick who you play. **Persona** shows when your library holds a persona.\n\nThree groups set the tone of the chat. Each starts on its middle setting; pick another trait to change it:\n- **Reply Length**: how long each reply runs\n- **Style**: how the chat reads, as a text thread, a short story with dialogue, or a novel with you as the lead\n- **Pacing**: who drives the conversation, the entity or you\n\nSay hello.",
-    "readme": "## Open Chat\n\nType what you say or do. In the Chat style, type the message you'd send, or put a deed between asterisks, like `*I sit down*`. Each choice under a reply is something you could say or do next.\n\n**Make it look like a chat**\nOpen Settings, then the **Display** tab. Under **Narration Layout**, pick **Chat**. The whole conversation scrolls as one thread, with your messages on the right.\n\n**Change the tone any time**\nOpen the **Traits** tab and switch a trait in any tone group. The next reply uses it.\n\n**Direct the scene**\nText in [square brackets] speaks to the AI as the author, and the entity never hears it. Try `Fine, I'll wait. [Skip ahead to the evening.]`\n\n**Turn choices off**\nFor a pure chat, open Settings, then the **Output** tab. Under **System Prompts**, clear **Choices**.",
+    "introReadme": "💬 **This world is a blank stage.** It has no story, no stats, and one quiet room. The entity you bring sets the scene, and you pick how the chat reads.\n\n**Bring one entity.** Add it to your library, or import a card, before you start. Then pick it under **Library Additions**. A chat with two or more is still an experiment. With nobody picked, you enter an empty room and a stranger answers.\n\nUnder **Persona**, pick who you play. **Persona** shows when your library holds a persona.\n\nThree World Options set the tone of the chat. Each starts on its middle setting; pick another value to change it:\n- **Reply Length**: how long each reply runs\n- **Style**: how the chat reads, as a text thread, a short story with dialogue, or a novel with you as the lead\n- **Pacing**: who drives the conversation, the entity or you\n\nSay hello.",
+    "readme": "## Open Chat\n\nType what you say or do. In the Chat style, type the message you'd send, or put a deed between asterisks, like `*I sit down*`. Each choice under a reply is something you could say or do next.\n\n**Make it look like a chat**\nOpen Settings, then the **Display** tab. Under **Narration Layout**, pick **Chat**. The whole conversation scrolls as one thread, with your messages on the right.\n\n**Change the tone any time**\nOpen the **World Options** tab and switch any tone option. The next reply uses it.\n\n**Direct the scene**\nText in [square brackets] speaks to the AI as the author, and the entity never hears it. Try `Fine, I'll wait. [Skip ahead to the evening.]`\n\n**Turn choices off**\nFor a pure chat, open Settings, then the **Output** tab. Under **System Prompts**, clear **Choices**.",
     "openings": [
       {
         "id": "5f0c2a8e-3b1d-4c6e-9a7f-2d8b4e1c6a90",
@@ -42,211 +42,8 @@
   ],
   "connections": [],
   "entities": [],
-  "traits": [
-    {
-      "id": "79af54ba-3792-442c-8a4f-fbd04d81180c",
-      "name": "Short",
-      "playerDescription": "A few sentences",
-      "statChanges": [],
-      "groupId": "1ef7899e-8dea-45bb-a7d2-2a838d5ab28f",
-      "order": 0,
-      "playerToggle": true,
-      "placeholderPins": [
-        {
-          "placeholderId": "fdaef22b-547b-4183-b659-ce07a341cf20",
-          "value": "Keep each reply brief: two or three sentences at most.",
-          "valueId": "8484196c-8264-4d1b-a615-88bdbb72df18"
-        }
-      ]
-    },
-    {
-      "id": "14a3d5a3-6608-46b4-badc-f4fd5bbea731",
-      "name": "Medium",
-      "playerDescription": "Several sentences",
-      "statChanges": [],
-      "groupId": "1ef7899e-8dea-45bb-a7d2-2a838d5ab28f",
-      "order": 1,
-      "playerToggle": true,
-      "placeholderPins": [
-        {
-          "placeholderId": "fdaef22b-547b-4183-b659-ce07a341cf20",
-          "value": "Give each reply a medium length: about four to eight sentences.",
-          "valueId": "1c1134db-1d33-4ccd-8403-5c310d2e4e4f"
-        }
-      ],
-      "isDefault": true
-    },
-    {
-      "id": "0bd19c9a-b137-429f-93d6-bcb2f9c84950",
-      "name": "Long",
-      "playerDescription": "Long, full replies",
-      "statChanges": [],
-      "groupId": "1ef7899e-8dea-45bb-a7d2-2a838d5ab28f",
-      "order": 2,
-      "playerToggle": true,
-      "placeholderPins": [
-        {
-          "placeholderId": "fdaef22b-547b-4183-b659-ce07a341cf20",
-          "value": "Give each reply its full length: about ten to fifteen sentences.",
-          "valueId": "4dd800de-d832-4b3f-ab78-fff058f5f171"
-        }
-      ]
-    },
-    {
-      "id": "09020338-3e4a-427d-8c92-a0eb46668036",
-      "name": "Chat",
-      "playerDescription": "Reads like a text thread",
-      "statChanges": [],
-      "groupId": "b62384a5-60c1-42aa-b7f5-a04db1e9bd94",
-      "order": 0,
-      "playerToggle": true,
-      "placeholderPins": [
-        {
-          "placeholderId": "f47a8adc-4e46-4932-bcbe-f8d8dd189865",
-          "value": "You are the entity, chatting with the player by text message.\n- Type as yourself, in your own first person: \"I\", \"me\", \"my\". The player is \"you\".\n- Your message is your own typed words, sent as plain text: you speak for yourself, and the words you send stand on their own with no quotation marks around them.\n- When you do something, type it between asterisks, in the shape *action*, in the same first person, and keep typing after it.\n- A message has one shape: *what I do*, then what I say, typed bare as myself in first person.\n- When two or more entities are listed, you are each of them: every message starts with its sender's name and a colon, and each entity that answers sends a message of its own.\n- When no entity is listed, you are a stranger the player meets here: give your name in your first message, and stay that person for every message after.",
-          "valueId": "3707696f-7ac3-47ef-a45b-7e158f768edc"
-        },
-        {
-          "placeholderId": "71c41ba6-463c-475d-9582-d534186567f7",
-          "value": "- Each option is a message I could send, typed in my own first person.\n- A typed option is the message itself: the exact words I send, as plain text, with no quotation marks around them and nothing before them.\n- A deed option is something I do instead of typing: it sits between asterisks, in the shape *what I do*, in first person.\n- In a chat, sending a message is the action I take: when someone is with me, the first option is a typed option, most options are typed options, and each takes a different stance toward what was just said. When I am alone, every option is a deed option.\n- Keep every option short, roughly 3 to 10 words.",
-          "valueId": "06d1acd4-c079-4a72-87f1-484942498560"
-        },
-        {
-          "placeholderId": "9d062ad2-1032-4015-b1fa-d4d48c8f762a",
-          "value": "Hey, are you there?",
-          "valueId": "716be76e-710f-4467-b70e-fa40db3edd93"
-        }
-      ]
-    },
-    {
-      "id": "af7a4f3a-84ec-45bb-a761-9f958e38d3b6",
-      "name": "Plain",
-      "playerDescription": "Reads like a short story with dialogue",
-      "statChanges": [],
-      "groupId": "b62384a5-60c1-42aa-b7f5-a04db1e9bd94",
-      "order": 1,
-      "playerToggle": true,
-      "placeholderPins": [
-        {
-          "placeholderId": "f47a8adc-4e46-4932-bcbe-f8d8dd189865",
-          "value": "You tell the chat as a plain back-and-forth, in clear, simple prose.\n- The entity is in third person: by name, or as \"he\", \"she\", or \"they\". The player is \"you\".\n- When two or more entities are listed, each one answers in its own quoted lines, named as it speaks.\n- When no entity is listed, a stranger the player meets here answers: the stranger gives a name in the first reply and stays that person after.\n- The player's line already stands on the page as they typed it: the reply's first sentence is the entity's spoken answer to it, inside quotation marks.\n- Build the reply from the entity's spoken lines. Each paragraph is one spoken line inside quotation marks, with at most one short sentence of what the entity does.\n- Write every sentence of the reply in present tense, in the shape <name> says, <name> looks.",
-          "valueId": "ca6ce4cd-9a8b-4189-bef2-b61aee58c091"
-        },
-        {
-          "placeholderId": "71c41ba6-463c-475d-9582-d534186567f7",
-          "value": "- Each option is one plain line of what I do and say, in my own first person, in the shape: I <do something> and say, \"<my words>\".\n- A speaking option carries my exact words inside quotation marks, after a short lead in the shape I <verb>, \"<my words>\".\n- A deed option is I and a verb, with no spoken words.\n- When someone is with me, the first option speaks, most options speak, and each takes a different stance toward what was just said. When I am alone, every option is a deed option.\n- Keep every option to one plain sentence, roughly 6 to 16 words.",
-          "valueId": "0ba62c8f-46af-4153-b484-6e5128f09037"
-        },
-        {
-          "placeholderId": "9d062ad2-1032-4015-b1fa-d4d48c8f762a",
-          "value": "I look up and say, \"Hello.\"",
-          "valueId": "4bf7723c-4db3-4de4-959e-b275418b757b"
-        }
-      ],
-      "isDefault": true
-    },
-    {
-      "id": "2b77aea0-723a-4578-bb6b-09b271042d74",
-      "name": "Literary",
-      "playerDescription": "Reads like a novel, and you're the lead",
-      "statChanges": [],
-      "groupId": "b62384a5-60c1-42aa-b7f5-a04db1e9bd94",
-      "order": 2,
-      "playerToggle": true,
-      "placeholderPins": [
-        {
-          "placeholderId": "f47a8adc-4e46-4932-bcbe-f8d8dd189865",
-          "value": "You tell the chat as an interactive novel, in vivid prose.\n- Write in second person, present tense (\"You ...\"): the player is \"you\", and the entity is written in third person.\n- The player's line is the turn's first beat, written as it happens: a line that speaks reaches the page as the player's own quoted sentences, carrying the feeling the line names.\n- Then the entity answers in its own quoted voice, woven into what it does, with something of its own that carries the scene onward.\n- Advance the scene, then stop, ending on a spoken line or concrete image that lands what this turn changed.\n- When two or more entities are listed, each one speaks and acts as itself.\n- When no entity is listed, a stranger the player meets here answers: introduce the stranger by description, and let a name reach the page once the stranger gives it.",
-          "valueId": "f506673e-6eb6-4656-9878-2f55dff85483"
-        },
-        {
-          "placeholderId": "71c41ba6-463c-475d-9582-d534186567f7",
-          "value": "- Each option is one line of a novel told by me, in my own first person: a gesture that carries a feeling, then my words inside quotation marks, in the shape: I <gesture>, \"<my words>\".\n- Make the gesture specific: a look, a movement, a pause, a touch.\n- A deed option is I and a vivid verb, with no spoken words.\n- When someone is with me, the first option speaks, most options speak, and each takes a different stance toward what was just said. When I am alone, every option is a deed option.\n- Keep every option to one sentence, roughly 8 to 20 words.",
-          "valueId": "1960cd4d-1122-4728-bf71-72a1ea4f55bd"
-        },
-        {
-          "placeholderId": "9d062ad2-1032-4015-b1fa-d4d48c8f762a",
-          "value": "I set down what I was holding, look up, and say, \"Hello there.\"",
-          "valueId": "735d0180-dac5-4a8d-8fb8-e70657e5e28a"
-        }
-      ]
-    },
-    {
-      "id": "1a5362b7-6785-456c-bded-f49bdca20a95",
-      "name": "Entity Leads",
-      "playerDescription": "The entity drives the chat",
-      "statChanges": [],
-      "groupId": "c0a3e596-0e3f-4124-b874-d527d0527532",
-      "order": 0,
-      "playerToggle": true,
-      "placeholderPins": [
-        {
-          "placeholderId": "547962ea-289d-4010-8b58-37800bf24059",
-          "value": "The entity drives the conversation: it brings up new topics, asks questions, and suggests what to do next.",
-          "valueId": "a8cfaf12-95b0-434c-b73d-0e94a5ac9fe1"
-        }
-      ]
-    },
-    {
-      "id": "24591956-72d7-4cb1-aeeb-267b5798c556",
-      "name": "Shared",
-      "playerDescription": "You both move the chat",
-      "statChanges": [],
-      "groupId": "c0a3e596-0e3f-4124-b874-d527d0527532",
-      "order": 1,
-      "playerToggle": true,
-      "placeholderPins": [
-        {
-          "placeholderId": "547962ea-289d-4010-8b58-37800bf24059",
-          "value": "The entity answers the player and adds one thought or question of its own when it fits.",
-          "valueId": "c2221429-5822-4306-b541-c28ae70ced92"
-        }
-      ],
-      "isDefault": true
-    },
-    {
-      "id": "2f897e88-241d-4fff-bf8e-94f8c5bdc4a5",
-      "name": "You Lead",
-      "playerDescription": "The entity waits for you",
-      "statChanges": [],
-      "groupId": "c0a3e596-0e3f-4124-b874-d527d0527532",
-      "order": 2,
-      "playerToggle": true,
-      "placeholderPins": [
-        {
-          "placeholderId": "547962ea-289d-4010-8b58-37800bf24059",
-          "value": "The entity answers what the player said, then waits for the player to lead.",
-          "valueId": "5b91f059-1f66-4083-a8fd-914f8a9709f5"
-        }
-      ]
-    }
-  ],
-  "traitGroups": [
-    {
-      "id": "1ef7899e-8dea-45bb-a7d2-2a838d5ab28f",
-      "name": "Reply Length",
-      "playerDescription": "How long each reply runs",
-      "parentId": null,
-      "order": 0,
-      "maxPicks": 1
-    },
-    {
-      "id": "b62384a5-60c1-42aa-b7f5-a04db1e9bd94",
-      "name": "Style",
-      "playerDescription": "How the whole chat reads",
-      "parentId": null,
-      "order": 1,
-      "maxPicks": 1
-    },
-    {
-      "id": "c0a3e596-0e3f-4124-b874-d527d0527532",
-      "name": "Pacing",
-      "playerDescription": "Who drives the conversation",
-      "parentId": null,
-      "order": 2,
-      "maxPicks": 1
-    }
-  ],
+  "traits": [],
+  "traitGroups": [],
   "statUpdates": [],
   "dictionaries": [
     {
@@ -359,6 +156,170 @@
       "name": "Chat Style",
       "parentId": null,
       "order": 0
+    }
+  ],
+  "options": [
+    {
+      "id": "86a7904d-eec5-413b-ab9a-8212bff3283b",
+      "name": "Reply Length",
+      "type": "choice",
+      "playerDescription": "How long each reply runs",
+      "shownToPlayer": true,
+      "midGame": true,
+      "values": [
+        {
+          "id": "79af54ba-3792-442c-8a4f-fbd04d81180c",
+          "name": "Short",
+          "placeholderPins": [
+            {
+              "placeholderId": "fdaef22b-547b-4183-b659-ce07a341cf20",
+              "value": "Keep each reply brief: two or three sentences at most.",
+              "valueId": "8484196c-8264-4d1b-a615-88bdbb72df18"
+            }
+          ]
+        },
+        {
+          "id": "14a3d5a3-6608-46b4-badc-f4fd5bbea731",
+          "name": "Medium",
+          "placeholderPins": [
+            {
+              "placeholderId": "fdaef22b-547b-4183-b659-ce07a341cf20",
+              "value": "Give each reply a medium length: about four to eight sentences.",
+              "valueId": "1c1134db-1d33-4ccd-8403-5c310d2e4e4f"
+            }
+          ]
+        },
+        {
+          "id": "0bd19c9a-b137-429f-93d6-bcb2f9c84950",
+          "name": "Long",
+          "placeholderPins": [
+            {
+              "placeholderId": "fdaef22b-547b-4183-b659-ce07a341cf20",
+              "value": "Give each reply its full length: about ten to fifteen sentences.",
+              "valueId": "4dd800de-d832-4b3f-ab78-fff058f5f171"
+            }
+          ]
+        }
+      ],
+      "default": "14a3d5a3-6608-46b4-badc-f4fd5bbea731"
+    },
+    {
+      "id": "9cbfd2a6-13f3-469e-af01-2dcff13a4556",
+      "name": "Style",
+      "type": "choice",
+      "playerDescription": "How the whole chat reads. Chat is a text thread, Plain is a short story with dialogue, and Literary is a novel with you as the lead",
+      "shownToPlayer": true,
+      "midGame": true,
+      "values": [
+        {
+          "id": "09020338-3e4a-427d-8c92-a0eb46668036",
+          "name": "Chat",
+          "placeholderPins": [
+            {
+              "placeholderId": "f47a8adc-4e46-4932-bcbe-f8d8dd189865",
+              "value": "You are the entity, chatting with the player by text message.\n- Type as yourself, in your own first person: \"I\", \"me\", \"my\". The player is \"you\".\n- Your message is your own typed words, sent as plain text: you speak for yourself, and the words you send stand on their own with no quotation marks around them.\n- When you do something, type it between asterisks, in the shape *action*, in the same first person, and keep typing after it.\n- A message has one shape: *what I do*, then what I say, typed bare as myself in first person.\n- When two or more entities are listed, you are each of them: every message starts with its sender's name and a colon, and each entity that answers sends a message of its own.\n- When no entity is listed, you are a stranger the player meets here: give your name in your first message, and stay that person for every message after.",
+              "valueId": "3707696f-7ac3-47ef-a45b-7e158f768edc"
+            },
+            {
+              "placeholderId": "71c41ba6-463c-475d-9582-d534186567f7",
+              "value": "- Each option is a message I could send, typed in my own first person.\n- A typed option is the message itself: the exact words I send, as plain text, with no quotation marks around them and nothing before them.\n- A deed option is something I do instead of typing: it sits between asterisks, in the shape *what I do*, in first person.\n- In a chat, sending a message is the action I take: when someone is with me, the first option is a typed option, most options are typed options, and each takes a different stance toward what was just said. When I am alone, every option is a deed option.\n- Keep every option short, roughly 3 to 10 words.",
+              "valueId": "06d1acd4-c079-4a72-87f1-484942498560"
+            },
+            {
+              "placeholderId": "9d062ad2-1032-4015-b1fa-d4d48c8f762a",
+              "value": "Hey, are you there?",
+              "valueId": "716be76e-710f-4467-b70e-fa40db3edd93"
+            }
+          ]
+        },
+        {
+          "id": "af7a4f3a-84ec-45bb-a761-9f958e38d3b6",
+          "name": "Plain",
+          "placeholderPins": [
+            {
+              "placeholderId": "f47a8adc-4e46-4932-bcbe-f8d8dd189865",
+              "value": "You tell the chat as a plain back-and-forth, in clear, simple prose.\n- The entity is in third person: by name, or as \"he\", \"she\", or \"they\". The player is \"you\".\n- When two or more entities are listed, each one answers in its own quoted lines, named as it speaks.\n- When no entity is listed, a stranger the player meets here answers: the stranger gives a name in the first reply and stays that person after.\n- The player's line already stands on the page as they typed it: the reply's first sentence is the entity's spoken answer to it, inside quotation marks.\n- Build the reply from the entity's spoken lines. Each paragraph is one spoken line inside quotation marks, with at most one short sentence of what the entity does.\n- Write every sentence of the reply in present tense, in the shape <name> says, <name> looks.",
+              "valueId": "ca6ce4cd-9a8b-4189-bef2-b61aee58c091"
+            },
+            {
+              "placeholderId": "71c41ba6-463c-475d-9582-d534186567f7",
+              "value": "- Each option is one plain line of what I do and say, in my own first person, in the shape: I <do something> and say, \"<my words>\".\n- A speaking option carries my exact words inside quotation marks, after a short lead in the shape I <verb>, \"<my words>\".\n- A deed option is I and a verb, with no spoken words.\n- When someone is with me, the first option speaks, most options speak, and each takes a different stance toward what was just said. When I am alone, every option is a deed option.\n- Keep every option to one plain sentence, roughly 6 to 16 words.",
+              "valueId": "0ba62c8f-46af-4153-b484-6e5128f09037"
+            },
+            {
+              "placeholderId": "9d062ad2-1032-4015-b1fa-d4d48c8f762a",
+              "value": "I look up and say, \"Hello.\"",
+              "valueId": "4bf7723c-4db3-4de4-959e-b275418b757b"
+            }
+          ]
+        },
+        {
+          "id": "2b77aea0-723a-4578-bb6b-09b271042d74",
+          "name": "Literary",
+          "placeholderPins": [
+            {
+              "placeholderId": "f47a8adc-4e46-4932-bcbe-f8d8dd189865",
+              "value": "You tell the chat as an interactive novel, in vivid prose.\n- Write in second person, present tense (\"You ...\"): the player is \"you\", and the entity is written in third person.\n- The player's line is the turn's first beat, written as it happens: a line that speaks reaches the page as the player's own quoted sentences, carrying the feeling the line names.\n- Then the entity answers in its own quoted voice, woven into what it does, with something of its own that carries the scene onward.\n- Advance the scene, then stop, ending on a spoken line or concrete image that lands what this turn changed.\n- When two or more entities are listed, each one speaks and acts as itself.\n- When no entity is listed, a stranger the player meets here answers: introduce the stranger by description, and let a name reach the page once the stranger gives it.",
+              "valueId": "f506673e-6eb6-4656-9878-2f55dff85483"
+            },
+            {
+              "placeholderId": "71c41ba6-463c-475d-9582-d534186567f7",
+              "value": "- Each option is one line of a novel told by me, in my own first person: a gesture that carries a feeling, then my words inside quotation marks, in the shape: I <gesture>, \"<my words>\".\n- Make the gesture specific: a look, a movement, a pause, a touch.\n- A deed option is I and a vivid verb, with no spoken words.\n- When someone is with me, the first option speaks, most options speak, and each takes a different stance toward what was just said. When I am alone, every option is a deed option.\n- Keep every option to one sentence, roughly 8 to 20 words.",
+              "valueId": "1960cd4d-1122-4728-bf71-72a1ea4f55bd"
+            },
+            {
+              "placeholderId": "9d062ad2-1032-4015-b1fa-d4d48c8f762a",
+              "value": "I set down what I was holding, look up, and say, \"Hello there.\"",
+              "valueId": "735d0180-dac5-4a8d-8fb8-e70657e5e28a"
+            }
+          ]
+        }
+      ],
+      "default": "af7a4f3a-84ec-45bb-a761-9f958e38d3b6"
+    },
+    {
+      "id": "5061ac8f-ef0b-4af5-a438-ed50429183bc",
+      "name": "Pacing",
+      "type": "choice",
+      "playerDescription": "Who drives the conversation",
+      "shownToPlayer": true,
+      "midGame": true,
+      "values": [
+        {
+          "id": "1a5362b7-6785-456c-bded-f49bdca20a95",
+          "name": "Entity Leads",
+          "placeholderPins": [
+            {
+              "placeholderId": "547962ea-289d-4010-8b58-37800bf24059",
+              "value": "The entity drives the conversation: it brings up new topics, asks questions, and suggests what to do next.",
+              "valueId": "a8cfaf12-95b0-434c-b73d-0e94a5ac9fe1"
+            }
+          ]
+        },
+        {
+          "id": "24591956-72d7-4cb1-aeeb-267b5798c556",
+          "name": "Shared",
+          "placeholderPins": [
+            {
+              "placeholderId": "547962ea-289d-4010-8b58-37800bf24059",
+              "value": "The entity answers the player and adds one thought or question of its own when it fits.",
+              "valueId": "c2221429-5822-4306-b541-c28ae70ced92"
+            }
+          ]
+        },
+        {
+          "id": "2f897e88-241d-4fff-bf8e-94f8c5bdc4a5",
+          "name": "You Lead",
+          "placeholderPins": [
+            {
+              "placeholderId": "547962ea-289d-4010-8b58-37800bf24059",
+              "value": "The entity answers what the player said, then waits for the player to lead.",
+              "valueId": "5b91f059-1f66-4083-a8fd-914f8a9709f5"
+            }
+          ]
+        }
+      ],
+      "default": "24591956-72d7-4cb1-aeeb-267b5798c556"
     }
   ]
 }

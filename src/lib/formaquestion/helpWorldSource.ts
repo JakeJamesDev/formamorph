@@ -5,7 +5,7 @@
 import type { DocSection } from '@/lib/docs/docsIndex';
 
 /** The kinds of world item a source can name. */
-export type WorldItemKind = 'entity' | 'location' | 'item' | 'trait' | 'stat' | 'script' | 'tool' | 'dictionary' | 'prompt';
+export type WorldItemKind = 'entity' | 'location' | 'item' | 'trait' | 'stat' | 'script' | 'tool' | 'dictionary' | 'prompt' | 'option';
 
 export interface WorldSource {
   kind: 'world';

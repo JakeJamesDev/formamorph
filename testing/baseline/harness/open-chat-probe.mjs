@@ -33,7 +33,7 @@ import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { decodeChipKey } from '@/lib/promptVariables';
 import { scopedChipValues, buildLocationContext, renderEntityRoster } from '@/lib/locationContext';
 import { layerValues, mapValues } from '@/lib/promptValues';
-import { buildTraitContext } from '@/lib/traitTree';
+import { optionPinLists } from '@/lib/worldOptions';
 import { personaContextValues } from '@/lib/personaContext';
 import { collectPins } from '@/lib/placeholderPins';
 import { resolvePlaceholders } from '@/lib/placeholders';
@@ -120,26 +120,21 @@ const CASES = {
 };
 
 // ---------- assembly ----------
-const traitNamed = (world, name) => {
-  const trait = world.traits.find((t) => t.name.toLowerCase() === name.toLowerCase());
-  if (!trait) throw new Error(`no trait "${name}"`);
-  return trait;
-};
-
-// The traits in play: every group's default, with each picked trait in place of its own group's.
-function activeTraits(world, picks) {
-  let active = world.traits.filter((t) => t.isDefault);
-  for (const name of picks) {
+// The Option values in play: every Option's default, with each named value in place of its own Option's.
+function optionPicks(world, names) {
+  const picks = {};
+  for (const name of names) {
     if (name === 'none') continue;
-    const trait = traitNamed(world, name);
-    active = [...active.filter((t) => t.groupId !== trait.groupId), trait];
+    const option = (world.options ?? []).find((o) => o.type === 'choice' && o.values.some((v) => v.name.toLowerCase() === name.toLowerCase()));
+    if (!option) throw new Error(`no Option value "${name}"`);
+    picks[option.id] = option.values.find((v) => v.name.toLowerCase() === name.toLowerCase()).id;
   }
-  return active;
+  return picks;
 }
 
-function pinsFor(world, active) {
+function pinsFor(world, picks) {
   const placeholders = world.placeholders ?? [];
-  const pins = collectPins({ traits: active, disabledTraitIds: [], placeholders });
+  const pins = collectPins({ traits: [], options: optionPinLists(world.options, picks), placeholders });
   return { placeholders, pins };
 }
 
@@ -159,9 +154,8 @@ function buildSystem(world, entities, active, action, history) {
 
   const own = { '<WORLD DESCRIPTION>': overview.systemPrompt || '', '<NOTES>': 'N/A' };
   for (const format of ['simple', 'markdown', 'xml']) {
-    own[format === 'simple' ? '<TRAITS DESCRIPTION>' : `<TRAITS DESCRIPTION|${format}>`] = active.length
-      ? buildTraitContext(active.map((t) => t.id), world.traits, world.traitGroups ?? [], format)
-      : 'N/A';
+    // Open Chat holds no traits, so the Traits chip reads N/A.
+    own[format === 'simple' ? '<TRAITS DESCRIPTION>' : `<TRAITS DESCRIPTION|${format}>`] = 'N/A';
   }
   const scene = layerValues(
     (key) => (decodeChipKey(key) ? 'N/A' : undefined),
@@ -296,7 +290,7 @@ function score(text, action, entities) {
 async function runJob({ arm, caseId, length, run }) {
   const { world, style } = ARMS[arm];
   const spec = CASES[caseId];
-  const active = activeTraits(world, [style, length]);
+  const active = optionPicks(world, [style, length]);
   const history = spec.greeting
     ? [{ role: 'user', content: 'START GAME' }, { role: 'assistant', content: spec.greeting }]
     : [];

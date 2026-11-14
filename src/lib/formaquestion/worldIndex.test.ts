@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { decodePlaceholderToken, encodePlaceholderToken } from '@/lib/placeholders';
 import { migrateWorld } from '@/lib/version';
-import { PLAYER_START, type Currency, type Dictionary, type Entity, type GameState, type Item, type Stat, type Tool, type World } from '@/types';
+import { PLAYER_START, type Currency, type Dictionary, type Entity, type GameState, type Item, type Stat, type Tool, type World, type WorldOption } from '@/types';
 import { buildPlayerView } from './playerView';
+import { playerViewPages } from './gameWorld';
 import { playerViewWorld } from './playerViewWorld';
 import { buildWorldIndex, chipsFromText, worldIndexOf, worldTextOf, type WorldIndexInput } from './worldIndex';
 import { withFirstTraversable, withFirstStarts } from '@/lib/entityKind';
@@ -320,6 +321,38 @@ describe('routines and Connections in the World Index', () => {
   it('shows no location id, token or field name', () => {
     const all = [page('entity', 'warden'), page('entity', 'crowd'), page('location', 'loc-gate'), page('location', 'loc-mill')].join('\n');
     expect(all).not.toMatch(/loc-|@playerStart|\{\{|beginsFollowing|traversable|aToB|bToA/);
+  });
+
+  describe('World Options', () => {
+    const style: WorldOption = {
+      id: 'style', name: 'Style', type: 'choice', playerDescription: 'How the chat reads.', shownToPlayer: true, midGame: true,
+      values: [{ id: 'chat', name: 'Chat' }, { id: 'plain', name: 'Plain' }], default: 'plain',
+    };
+    const flag: WorldOption = { id: 'flag', name: 'Secret Flag', type: 'boolean', shownToPlayer: false, midGame: false, default: false };
+    const withOptions = world({ options: [style, flag] });
+    const page = (id: string) => buildWorldIndex(withOptions).sectionsOf({ kind: 'world', worldKind: 'option', id, name: id }).map((s) => s.markdown).join('\n');
+
+    it('lists an Option with its player text and value names, the default marked', () => {
+      expect(page('style')).toContain('How the chat reads.');
+      expect(page('style')).toMatch(/- Chat\n- Plain \(default\)/);
+      expect(page('style')).toContain('Player can change it in play');
+      expect(hits(withOptions, 'how the chat reads')).toContainEqual({ kind: 'world', worldKind: 'option', id: 'style', name: 'Style' });
+    });
+
+    // The editor index reads the whole world: a hidden Option stays in it, marked Hidden, as a hidden trait does.
+    it('marks a hidden Option as hidden', () => {
+      expect(page('flag')).toContain('Hidden');
+      expect(page('style')).not.toContain('Hidden');
+    });
+
+    // The game lean builds its pages from the Player View, whose inputs carry no Options: no Option page can reach it.
+    it('adds no Option page to the in-game view', () => {
+      const current = { metEntities: [], locationId: 'gate', visibleEntities: [], globalStats: [], globalTraits: [], disabledTraitIds: [], itemCopies: [] } as unknown as GameState;
+      const view = buildPlayerView({ world: { entities: [], locations: withOptions.locations, traits: [] }, chain: [current], history: [], persona: null, resolve: (t) => t });
+      const kinds = playerViewPages(view).map((p) => p.source.worldKind);
+      expect(kinds).not.toContain('option');
+      expect(playerViewPages(view).map((p) => p.markdown).join('\n')).not.toContain('Secret Flag');
+    });
   });
 
   it('keeps the in-game view free of routines', () => {

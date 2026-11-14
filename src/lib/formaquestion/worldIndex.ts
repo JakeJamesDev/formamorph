@@ -15,12 +15,12 @@ import { allPlaceholders } from '@/lib/placeholderHomes';
 import { decodePlaceholderToken, encodePlaceholderToken, parsePlaceholderText } from '@/lib/placeholders';
 import { chancePercent } from '@/lib/routineTime';
 import { randomUUID } from '@/lib/uuid';
-import { PLAYER_START, PLAYER_START_LABEL, type Connection, type DictionaryEntry, type Entity, type Item, type Placeholder, type ScheduleAction, type Script, type Stat, type Tool, type Trait, type World } from '@/types';
+import { PLAYER_START, PLAYER_START_LABEL, type Connection, type DictionaryEntry, type Entity, type Item, type Placeholder, type ScheduleAction, type Script, type Stat, type Tool, type Trait, type World, type WorldOption } from '@/types';
 import { sourceKey, type WorldItemKind, type WorldSource } from './helpWorldSource';
 
 /** The world slices the index reads: an editor's live world. */
 export type WorldIndexInput = Pick<World, 'worldOverview' | 'stats' | 'locations' | 'entities' | 'traits' | 'dictionaries'>
-  & Partial<Pick<World, 'scripts' | 'tools' | 'items' | 'currencies' | 'placeholders' | 'connections' | 'entityGroups'>>;
+  & Partial<Pick<World, 'scripts' | 'tools' | 'items' | 'currencies' | 'placeholders' | 'connections' | 'entityGroups' | 'options'>>;
 
 export interface WorldIndex {
   /** The world's sections, searched like the guide's. */
@@ -35,7 +35,7 @@ export interface WorldIndex {
 
 /** The type name each kind reads as in a pick line and a source link. */
 export const WORLD_KIND_NAMES: Record<WorldItemKind, string> = {
-  entity: 'Entity', location: 'Location', item: 'Item', trait: 'Trait', stat: 'Stat', script: 'Script', tool: 'Tool', dictionary: 'Dictionary Entry', prompt: 'World Prompt',
+  entity: 'Entity', location: 'Location', item: 'Item', trait: 'Trait', stat: 'Stat', script: 'Script', tool: 'Tool', dictionary: 'Dictionary Entry', prompt: 'World Prompt', option: 'World Option',
 };
 
 /** The world prompts, by source id: the AI-Facing Description, then the overrides. */
@@ -136,6 +136,16 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
     // Live editor state can hold a stat with no descriptors yet.
     (stat.descriptors?.length ?? 0) > 0 && `**Stat Descriptors:**\n${stat.descriptors.map((band) => `- From ${band.threshold}: ${text(band.description)}`).join('\n')}`,
     scriptsBlock(stat.scripts, text),
+  ));
+  // An Option carries no AI text: its page lists the player text and the value names only. Like a hidden trait, a
+  // hidden Option stays in the editor's index, flagged.
+  const optionPage = (option: WorldOption) => add('option', option.id, option.name, [], lines(
+    `# ${option.name}`,
+    facts(`World Option (${option.type})`, !option.shownToPlayer && 'Hidden', option.midGame && 'Player can change it in play'),
+    field('Player Description', text(option.playerDescription)),
+    option.type === 'choice' && `**Values:**\n${option.values.map((value) => `- ${text(value.name)}${value.id === option.default ? ' (default)' : ''}`).join('\n')}`,
+    option.type === 'boolean' && `**Default:** ${option.default ? 'On' : 'Off'}`,
+    option.type === 'number' && `**Range:** ${option.min} to ${option.max}, default ${option.default}`,
   ));
   // A stat named in a trait resolves among the owner's own stats first.
   const traitPage = (trait: Trait, owner?: string, own?: readonly Stat[]) => add('trait', trait.id, trait.name, owner ? [owner] : [], lines(
@@ -248,6 +258,7 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
     ));
   }
   for (const trait of world.traits) traitPage(trait);
+  for (const option of world.options ?? []) optionPage(option);
   for (const stat of world.stats) statPage(stat);
   for (const script of world.scripts ?? []) {
     const name = script.name?.trim() || `World Script (${script.timing})`;
@@ -338,7 +349,7 @@ export function worldIndexOfPages(pages: readonly WorldPage[]): WorldIndex {
 /** The slices one index was built from, so an unchanged world reuses it. */
 let last: { input: WorldIndexInput; index: WorldIndex } | undefined;
 
-const SLICES = ['worldOverview', 'stats', 'locations', 'entities', 'traits', 'dictionaries', 'scripts', 'tools', 'items', 'placeholders', 'connections'] as const;
+const SLICES = ['worldOverview', 'stats', 'locations', 'entities', 'traits', 'dictionaries', 'scripts', 'tools', 'items', 'placeholders', 'connections', 'options'] as const;
 
 /** The index of `world`, rebuilt only when one of its slices changed identity. */
 export function worldIndexOf(world: WorldIndexInput): WorldIndex {

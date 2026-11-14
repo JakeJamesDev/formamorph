@@ -287,10 +287,10 @@ export const WORLD_QUESTION_CASES: WorldQuestionCase[] = [
     facts: [check('mechanic', /mechanic/i), check('the clan camp', /clan|hulkfall|rustjaw/i)] },
   { id: 'drone-try', world: 'drone', lean: 'game', question: ASK_TRY, facts: [], opinion: { solutions: [] } },
   // Open Chat: no cast, no save to play, so editor cases only.
-  { id: 'chat-entity-leads', world: 'open-chat', lean: 'editor', question: 'What does the Entity Leads trait do?',
+  { id: 'chat-entity-leads', world: 'open-chat', lean: 'editor', question: 'What does the Entity Leads choice in the Pacing Option do?',
     facts: [check('the entity drives', /entity (drives|leads|takes the lead)|drives the (chat|conversation)/i)] },
   { id: 'chat-reply-length', world: 'open-chat', lean: 'editor', question: 'How do I make the replies longer?',
-    facts: [check('the Long trait', /\blong\b/i)] },
+    facts: [check('the Long value', /\blong\b/i)] },
   // Rampage
   { id: 'rampage-alert-stat', world: 'rampage', lean: 'editor', question: 'What raises the Alert Level stat?',
     facts: [check('damage', /damage|destruct|wreck/i), check('never goes down', /never (goes )?down|only (climbs|rises)|never (falls|drops|decreases)/i)] },

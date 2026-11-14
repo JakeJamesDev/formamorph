@@ -24,6 +24,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Traits and images can require a World Option, and scripts can change one.** A Requires row checks a Choice value, On or Off, or a Number. Scripts read and write `options`, and the Test Bench lets you pick each value.
     - **Authors can switch a location and the locations inside it on and off during a game with Enabled rows.** Set them on the location's Presence tab. While off, it's gone from the map, the list and the AI, and no new game starts there.
     - **Authors can lock a location with Unlocked rows, so the player can't travel in until a row holds.** Set them on the location's Presence tab. The map and the list show a lock and the reason. The AI never moves the player in; a script still can.
+    - **Open Chat sets Reply Length, Style and Pacing as World Options.** They show at new game and change in the World Options tab. Old saves start on the defaults.
   - **Entity Routines:**
     - **World files keep each entity's Starts and Can Also Go inside a Routine.** A world from 3.7.0 opens with one Routine per entity and plays as before.
     - **An entity's routine row can be Away, taking it off the map and out of every scene for those hours.** Its stats and scripts keep running, and the AI still knows of it where Known In says. Saves can now hold a Generic entity at no place.
