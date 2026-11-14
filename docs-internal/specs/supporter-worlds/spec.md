@@ -46,6 +46,7 @@ Settled in the grill on 2026-11-14. Numbered R so they don't collide with the ba
 | R19 | Under R14, the crash screen shows Export World disabled with the reason as visible text, since it has no tooltip host. The backup checklist lists a Supporter Copy disabled with a tooltip, and the backup bundle drops it regardless. |
 | R20 | Ticket 04 owns the allowed-action rule for both targets: a world and a library entry (marker plus `sourceWorldId`), including add-to-world. Ticket 05 wires the library surfaces. |
 | R21 | R14's Supporter badge on a Supporter Copy world card is the Patreon button's heart icon in its gradient colors, with a tooltip. User ruling, 2026-11-14. |
+| R22 | R21's heart is the standard mark for a Patreon item, in place of a lock icon. It marks the item wherever its name shows in a list or picker, whether or not the account has access: a Supporter Copy world card, a Supporter-only Mascot in the Mascot tab, and the Formamorph AI preset. Ticket 04 builds it as one shared component and adds it to the Design System; ticket 08 applies it to the Mascot tab and Formamorph AI. User ruling, 2026-11-14. |
 
 ## User Stories
 
