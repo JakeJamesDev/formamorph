@@ -828,6 +828,9 @@ export interface GameLocation {
   /** Parent location id for sub-location nesting; null/absent = top-level. Editor-only for now — not
    *  sent to the AI (excluded in buildLocationContext). Sibling order is the `locations` array order. */
   parentId?: string | null;
+  /** The Enabled gate: on while any row holds; absent or empty = always on. A Condition with no owner reads the
+   *  played persona. Off in play, the location and its subtree are absent. */
+  enabledWhen?: TraitRequirementRow[];
   /** Where the author dragged this location on the Locations canvas — relative to its parent's box when
    *  nested, as the canvas reads a child's position. Editor-only: never sent to the AI. Absent means the
    *  canvas lays it out itself. */

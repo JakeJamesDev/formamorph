@@ -1,4 +1,7 @@
 import type { Connection, Entity, GameLocation, TraitRequirementRow } from '@/types';
+import { presenceOf } from './entityPlaces';
+import { locationRuleStates } from './imageVisibility';
+import { parentIndex } from './locationGraph';
 import { conditionsOf } from './requirementRows';
 import { ruleStates, type GateInput } from './traitGates';
 
@@ -15,6 +18,8 @@ export interface InPlaySource {
 export interface InPlayState {
   /** The entity the player plays, which is always on. */
   playedEntityId?: string | null;
+  /** Where the player stands: it and its subtree stay on while they stand there (Q10, Q49). */
+  playerAt?: string | null;
   /** Every owner's traits, stats, clock and items as committed, off entities' frozen (Q47). Absent, no gate is
    *  read and everything is on. */
   gate?: GateInput;
@@ -25,13 +30,57 @@ export interface GateVerdicts {
   offEntityIds: ReadonlySet<string>;
   offLocationIds: ReadonlySet<string>;
   lockedLocationIds: ReadonlySet<string>;
+  /** On entities whose every place is off: in no scene and out of the AI's reach, their stats still running (Q27). */
+  strandedEntityIds: ReadonlySet<string>;
 }
 
 const NONE: ReadonlySet<string> = new Set();
-export const ALL_OPEN: GateVerdicts = { offEntityIds: NONE, offLocationIds: NONE, lockedLocationIds: NONE };
+export const ALL_OPEN: GateVerdicts = { offEntityIds: NONE, offLocationIds: NONE, lockedLocationIds: NONE, strandedEntityIds: NONE };
 
-/** Whether the entity carries an Enabled gate with any row. */
-export const hasEnabledGate = (entity: Pick<Entity, 'enabledWhen'>): boolean => !!entity.enabledWhen?.length;
+/** Whether the entity or location carries an Enabled gate with any row. */
+export const hasEnabledGate = (host: Pick<Entity | GameLocation, 'enabledWhen'>): boolean => !!host.enabledWhen?.length;
+
+/** Whether the world needs a gate input: some entity or location carries an Enabled gate. */
+export const worldHasGates = (entities: readonly Pick<Entity, 'enabledWhen'>[], locations: readonly Pick<GameLocation, 'enabledWhen'>[]) =>
+  entities.some(hasEnabledGate) || locations.some(hasEnabledGate);
+
+/** Whether a location's Enabled rows hold: a blank owner reads the played persona (Q29). No rows = on. */
+export const locationGateHolds = (input: GateInput, rows: readonly TraitRequirementRow[] | undefined): boolean =>
+  !rows?.length || locationRuleStates(input, rows).some((row) => row.holds);
+
+/** `roots` and every location below them. */
+function withSubtrees(roots: ReadonlySet<string>, locations: readonly Pick<GameLocation, 'id' | 'parentId'>[]): Set<string> {
+  const out = new Set(roots);
+  const { childrenOf } = parentIndex(locations);
+  const queue = [...roots];
+  for (let id = queue.pop(); id !== undefined; id = queue.pop()) {
+    for (const child of childrenOf.get(id) ?? []) if (!out.has(child)) { out.add(child); queue.push(child); }
+  }
+  return out;
+}
+
+/** The off locations: each one whose gate fails with its subtree (Q2), less the player's place and its subtree (Q49). */
+function offLocations(source: InPlaySource, gate: GateInput, playerAt: string | null | undefined): Set<string> {
+  const failed = new Set(source.locations.filter((l) => !locationGateHolds(gate, l.enabledWhen)).map((l) => l.id));
+  if (!failed.size) return failed;
+  const off = withSubtrees(failed, source.locations);
+  if (playerAt && off.has(playerAt)) for (const id of withSubtrees(new Set([playerAt]), source.locations)) off.delete(id);
+  return off;
+}
+
+/** The on entities whose places all lie in `offLocations`. One with no places, or Traversable anywhere, never is (Q50). */
+function strandedEntities(
+  source: InPlaySource, offLocationIds: ReadonlySet<string>, offEntityIds: ReadonlySet<string>, playedEntityId: string | null | undefined,
+): Set<string> {
+  const stranded = new Set<string>();
+  const world = { locations: source.locations, connections: source.connections };
+  for (const entity of source.entities) {
+    if (entity.id === playedEntityId || offEntityIds.has(entity.id)) continue;
+    const { places, anywhere } = presenceOf(entity, world);
+    if (!anywhere && places.length && places.every((p) => offLocationIds.has(p.place))) stranded.add(entity.id);
+  }
+  return stranded;
+}
 
 /** Whether `rows`, read from `entityId`, hold: a blank owner reads the entity itself (Q29). No rows = on. */
 export const entityGateHolds = (input: GateInput, entityId: string, rows: readonly TraitRequirementRow[] | undefined): boolean =>
@@ -46,13 +95,17 @@ export function evaluateGates(source: InPlaySource, state: InPlayState): GateVer
     if (!hasEnabledGate(entity) || entity.id === state.playedEntityId) continue;
     if (!entityGateHolds(gate, entity.id, entity.enabledWhen)) off.add(entity.id);
   }
-  return off.size ? { ...ALL_OPEN, offEntityIds: off } : ALL_OPEN;
+  const offPlaces = offLocations(source, gate, state.playerAt);
+  const stranded = offPlaces.size ? strandedEntities(source, offPlaces, off, state.playedEntityId) : NONE;
+  if (!off.size && !offPlaces.size) return ALL_OPEN;
+  return { ...ALL_OPEN, offEntityIds: off, offLocationIds: offPlaces, strandedEntityIds: stranded };
 }
 
-/** Whether the two verdicts switch off and lock the same ids. */
+/** Whether the two verdicts switch off, lock and strand the same ids. */
 export function sameVerdicts(a: GateVerdicts, b: GateVerdicts): boolean {
   const same = (x: ReadonlySet<string>, y: ReadonlySet<string>) => x.size === y.size && [...x].every((id) => y.has(id));
-  return same(a.offEntityIds, b.offEntityIds) && same(a.offLocationIds, b.offLocationIds) && same(a.lockedLocationIds, b.lockedLocationIds);
+  return same(a.offEntityIds, b.offEntityIds) && same(a.offLocationIds, b.offLocationIds)
+    && same(a.lockedLocationIds, b.lockedLocationIds) && same(a.strandedEntityIds, b.strandedEntityIds);
 }
 
 /** The ids a Condition reads as the entity's own: its traits and groups, linked ones under their original's id,

@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
-import { evaluateGates, hasEnabledGate, sameVerdicts, type GateVerdicts, type InPlaySource } from '@/lib/inPlayGates';
+import { evaluateGates, hasEnabledGate, sameVerdicts, worldHasGates, type GateVerdicts, type InPlaySource } from '@/lib/inPlayGates';
 import { inPlayWorldFrom, playedEntityIdOf, type InPlayWorld } from '@/lib/inPlayWorld';
 import { addedCharacters, inPlayLibrary, inPlayOwners } from '@/lib/ownedTraitsInPlay';
 import { refreshChosenTraits } from '@/lib/traitEffects';
@@ -21,8 +21,9 @@ export function useInPlayWorld(): InPlayWorld {
   const { locations, connections, playEntities, traits, traitGroups, items, options } = useGameData();
   const {
     personaRef, libraryPersona, discoveredEntities, globalStats, globalTraits, disabledTraitIds, ownedTraits, entityStats,
-    gameTime, calendar, itemCopies, worldOptionValues,
+    gameTime, calendar, itemCopies, worldOptionValues, currentLocation,
   } = useGameplay();
+  const playerAt = currentLocation?.id ?? null;
   const playedEntityId = playedEntityIdOf(personaRef, playEntities);
   const library = useMemo(
     () => inPlayLibrary({ traits, traitGroups, entities: playEntities }, libraryPersona, addedCharacters(discoveredEntities)),
@@ -37,9 +38,11 @@ export function useInPlayWorld(): InPlayWorld {
     () => ({ entities: playEntities, locations, connections, others }),
     [playEntities, locations, connections, others],
   );
-  const gated = useMemo(() => playEntities.some(hasEnabledGate) || others.some(hasEnabledGate), [playEntities, others]);
+  const gated = useMemo(
+    () => worldHasGates(playEntities, locations) || others.some(hasEnabledGate), [playEntities, locations, others],
+  );
   const daypart = daypartAt(gameTime, calendar);
-  // Every owner reads as committed, off ones frozen (Q47); built only when some entity has a gate.
+  // Every owner reads as committed, off ones frozen (Q47); built only when some entity or location has a gate.
   const gate = useMemo<GateInput | undefined>(() => (gated ? traitGateInput(
     { traits: refreshChosenTraits(globalTraits, traits), disabledTraitIds, ownedTraits, stats: globalStats, entityStats },
     {
@@ -51,6 +54,6 @@ export function useInPlayWorld(): InPlayWorld {
     gated, globalTraits, traits, disabledTraitIds, ownedTraits, globalStats, entityStats, traitGroups, playEntities, others, library,
     personaRef, daypart, items, itemCopies, options, worldOptionValues,
   ]);
-  const verdicts = useSameVerdicts(useMemo(() => evaluateGates(source, { playedEntityId, gate }), [source, playedEntityId, gate]));
+  const verdicts = useSameVerdicts(useMemo(() => evaluateGates(source, { playedEntityId, playerAt, gate }), [source, playedEntityId, playerAt, gate]));
   return useMemo(() => inPlayWorldFrom(source, verdicts, playedEntityId), [source, verdicts, playedEntityId]);
 }

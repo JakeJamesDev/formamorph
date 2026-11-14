@@ -21,6 +21,7 @@ import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
 import { HintInfo } from '@/components/SettingsRows';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
+import { LocationEnabledField } from '@/components/editor/HostGateField';
 import PlacementsSection from './PlacementsSection';
 import { locationPanelTabsFor, locationTabForField, type LocationPanelTab } from '@/views/locationPanelTabs';
 import type { Entity, FocusFieldHint, GameLocation, PlaceholderPin } from '@/types';
@@ -176,6 +177,10 @@ const LocationManager = ({ location, tab, onTabChange, focusField, connectionOpe
       </PanelTabContent>
 
       <PanelTabContent value="presence">
+        <LocationEnabledField
+          rows={editingLocation.enabledWhen ?? []}
+          onChange={(rows) => apply({ enabledWhen: rows.length ? rows : undefined })}
+        />
         <LocationEntitiesHere
           locationId={editingLocation.id}
           entities={treeOrder}

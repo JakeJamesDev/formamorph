@@ -39,6 +39,7 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     imageTags: "Image Tags",
     placeholderPins: "Placeholder Pins",
     openings: "Openings",
+    enabledWhen: "Enabled",
   },
   worldOverview: {
     name: "World Name",

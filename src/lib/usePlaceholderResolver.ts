@@ -49,7 +49,7 @@ function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
   );
   const inPlay = useInPlayWorld();
   const pinSet = useMemo(() => ownerPins({
-    world: { traits, traitGroups, entities: inPlay.entities },
+    world: { traits, traitGroups, entities: inPlay.runningEntities },
     persona: personaRef,
     library: inPlay.entitiesOn(inPlayLibrary({ traits, traitGroups, entities }, libraryPersona, addedCharacters(discoveredEntities))),
     globalTraits: inAuthoredOrder(viewTraits, traitOrderIndex(traits, traitGroups)),

@@ -4,7 +4,7 @@ import {
   applyInventoryOps, applyInventoryPass, passOwners, equipRequirement, settleInventory, settleTraitsWithItems, statEffectItems, traitPicksInPlay, timedEffectViews, type ItemUse, type InventoryOp, type ItemScriptEvent,
 } from '@/lib/inventory';
 import { hasCode, isItemTiming } from '@/lib/scripts';
-import { inPlayWorldData } from '@/lib/inPlayWorld';
+import { inPlayWorldData, playedEntityIdOf, startLocationIdsOn } from '@/lib/inPlayWorld';
 import { runRowKeys } from '@/lib/worldScripts';
 import { playedEntityIds } from '@/lib/scope';
 import type { InventoryPanelSettle, PanelActionList } from '@/components/game/useInventoryPanel';
@@ -131,7 +131,7 @@ import {
 import { selectRelevantDiary } from "../lib/semanticDiary";
 import { findEntityByCharacterName, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription, pruneDiscoveredToHistory, pickedAtStart, INITIAL_SOURCE_TURN_ID } from "../lib/runtimeCharacters";
 import { positionedCast, presentEntityIds, type Standings } from "../lib/entityPresence";
-import { castRoutines } from "../lib/entityKind";
+import { castRoutines, withoutRoutinePlace } from "../lib/entityKind";
 import { placeAll, positionWorld, reseatForOpening, scriptPlaces, withPlayerAt, type PositionWorld } from "../lib/positionPlay";
 import { EMPTY_BOOK } from "../lib/positionEngine";
 import { openingPlacesOf, placementOf } from "../lib/openingPlacement";
@@ -172,7 +172,7 @@ import { useResolvedWorld } from "@/lib/useResolvedWorld";
 import { useLocationBackdrop, useMapBackdrop } from "@/lib/useLocationBackdrop";
 import { useSeedAvatarOnSaveLoad } from "@/lib/useLibraryAvatars";
 import { usePersonaNotice } from "@/lib/usePersonaNotice";
-import { resolveStartingLocation } from "../lib/startingLocation";
+import { startingLocationIn } from "../lib/startingLocation";
 import { variableForToken, tokenVariant } from "../lib/promptVariables";
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { layerValues, omitValues, type TokenValues } from "../lib/promptValues";
@@ -589,6 +589,7 @@ const GameViewer = ({
     statGroups: authoredStatGroups,
     traits: authoredTraits,
     locations: authoredLocations,
+    connections: authoredConnections,
     dictionaries,
     placeholders: worldPlaceholders,
     placeholderOwners,
@@ -1435,9 +1436,9 @@ const GameViewer = ({
       // Seed the fixture as an id-keyed record and load it by that id.
       const id = randomUUID();
       await putSaveRecord({ ...(fx.save as unknown as Record<string, unknown>), id, name: fx.saveName } as unknown as SaveRecord);
-      await loadGame(id, locations, stats, authoredEntities, worldOverview.vrmStore, worldItems, undefined, connections, inPlay.isEntityOn);
+      await loadGame(id, authoredLocations, stats, authoredEntities, worldOverview.vrmStore, worldItems, undefined, authoredConnections, inPlay.isEntityOn);
     })();
-  }, [devRoute?.fixture, locations, stats, authoredEntities, loadGame, worldOverview.vrmStore, worldItems, connections, inPlay]);
+  }, [devRoute?.fixture, authoredLocations, stats, authoredEntities, loadGame, worldOverview.vrmStore, worldItems, authoredConnections, inPlay]);
   const imageAttachments = useImageAttachments();
   const mounted = useMountedRef();
   // DEV dev-router: `attach=sample` stages attached images once the game has a committed turn, through the
@@ -1509,11 +1510,13 @@ const GameViewer = ({
   const liveFollowerState = (): FollowerState => currentBook();
   // The story minute the clock reads now.
   const storyNow = storyMinute(gameTime, calendar);
-  // Every Unique entity's routine: the authored cast the engine positions, then the runtime characters.
-  const routines = useMemo(
-    () => castRoutines(positionedCast(entities, personaRef), discoveredInPlay),
-    [entities, personaRef, discoveredInPlay],
-  );
+  // Every Unique entity's routine: the authored cast the engine positions, then the runtime characters. Stranded
+  // entities run too, and each routine loses its off places as for a deleted place (Q2, Q52).
+  const routines = useMemo(() => {
+    const off = authoredLocations.filter((l) => !inPlay.isLocationOn(l.id)).map((l) => l.id);
+    const cast = positionedCast(codeEntities.world, personaRef);
+    return castRoutines(off.length ? cast.map((e) => off.reduce(withoutRoutinePlace, e)) : cast, discoveredInPlay);
+  }, [authoredLocations, inPlay, codeEntities, personaRef, discoveredInPlay]);
   // The disabled entities, whose follows end at the next commit (Q9).
   const { offEntityIds } = inPlay;
   /** The position engine's view of the world at `now`, with the player at `playerAt`. */
@@ -5612,6 +5615,14 @@ const GameViewer = ({
   const settleHistory = useMemo(() => ({ states: gameStates, commit: setGameStates }), [gameStates, setGameStates]);
   useSettleOnSaveLoad(saveLoads, !personaPending, traitState, gatedWorld, traitName, commitLoadSettle, settleHistory, settleWithItems);
   useSeedAvatarOnSaveLoad(saveLoads, !personaPending, persona);
+  // A load places the cast under the gates of the state before it; place it again under the loaded state's (Q52).
+  const placedLoads = useRef(saveLoads);
+  useEffect(() => {
+    if (saveLoads === placedLoads.current) return;
+    placedLoads.current = saveLoads;
+    if (authoredLocations.every((l) => inPlay.isLocationOn(l.id))) return;
+    placeCast(positionWorldAt(storyNow, currentLocation?.id));
+  }, [saveLoads, authoredLocations, inPlay, placeCast, positionWorldAt, storyNow, currentLocation]);
   // The per-turn settle writes log lines and leaves the banner alone, as a stat-code switch does (Q26).
   const commitTurnSettle = useCallback(
     (result: GatedTraitResult, totals: ActionTotals) => {
@@ -6057,7 +6068,7 @@ const GameViewer = ({
       // Cold-load from the main menu: restore the save instead of starting a fresh game. Its world is
       // already in GameData (loaded before this view mounted), so `locations` here are the right ones.
       if (initialSaveId) {
-        void loadGame(initialSaveId, locations, authoredStats, authoredEntities, worldOverview.vrmStore, worldItems, savedOwnerTraits, connections, inPlay.isEntityOn)
+        void loadGame(initialSaveId, authoredLocations, authoredStats, authoredEntities, worldOverview.vrmStore, worldItems, savedOwnerTraits, authoredConnections, inPlay.isEntityOn)
           .then((loaded) => { if (loaded && mounted.current) rebaseRightDots(); });
         return;
       }
@@ -6088,8 +6099,11 @@ const GameViewer = ({
       // A new game starts with no entity picked in the stat panel or the entity view.
       setSelectedEntityId(undefined);
 
-      // Use the player's chosen starting location, else a random starting point (fallback: any location).
-      const location = resolveStartingLocation(locations, initialLocationId);
+      // The player's chosen start, else a random one, skipping locations the gates turn off at the start (Q12).
+      const startOn = startLocationIdsOn(getWorldData(), playedEntityIdOf(initialPersona?.ref, authoredEntities), initialOptionValues);
+      const startId = startingLocationIn(authoredLocations, (id) => startOn.has(id), initialLocationId)?.id;
+      const startRaw = authoredLocations.find((l) => l.id === startId);
+      const location = locations.find((l) => l.id === startId) ?? (startRaw && { ...startRaw, name: resolvePH(startRaw.name) });
       const authoredLocation = location ? authoredLocations.find((l) => l.id === location.id) ?? location : null;
       // The pins the game opens under, from every source: the traits just applied, the starting location
       // and the bands the post-trait stats fall in. None of it is in state yet, so anything written in this
@@ -6627,7 +6641,7 @@ const GameViewer = ({
         return false;
       }
     }
-    const loaded = await loadGame(id, locations, stats, authoredEntities, worldOverview.vrmStore, worldItems, savedOwnerTraits, connections, inPlay.isEntityOn);
+    const loaded = await loadGame(id, authoredLocations, stats, authoredEntities, worldOverview.vrmStore, worldItems, savedOwnerTraits, authoredConnections, inPlay.isEntityOn);
     // A loaded game starts with no dots, from its own state.
     if (loaded && mounted.current) rebaseRightDots();
     return loaded;

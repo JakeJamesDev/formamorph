@@ -561,6 +561,10 @@ _Avoid_: setting (the app's own), preference, toggle trait
 An entity's gate: Requirement Rows that keep it in play while any row holds; with no rows it is always on. A Condition with no owner reads the entity itself. Off, the entity is hidden from the player and the AI and inert: its stats, regen, traits, scripts and routine pause and resume where they paused. Every gate is read in one pass against committed state, an off entity's own state frozen. The played persona is always on.
 _Avoid_: active, visible, spawned, present (that is presence)
 
+**Enabled** (location):
+A location's gate: Requirement Rows that keep it in the world while any row holds; with no rows it is always on. A Condition with no owner reads the played persona. Off, the location is absent with its whole subtree, and connections through it break. The player's place and its subtree stay while they stand there. An on entity whose every place is off is **stranded**: in no scene and out of the AI's reach, its stats and scripts still running.
+_Avoid_: closed, hidden, locked (that is the Lock gate)
+
 **Placeholder Set**:
 The read side of a list of Placeholders, bound once to whichever list a text is read against: a world's, or the list an off-world entity or dictionary carries. It answers what a text describes at design time and, given a playthrough's Rolls, what it resolves to.
 _Avoid_: placeholder list, defs, vocabulary (that is the editor's chip menu)

@@ -13,7 +13,7 @@ import { toastTexts } from '@/test/toastText';
 import { readWorldPersona, rememberWorldPersona, setDefaultPersona } from '@/lib/personaPick';
 import { saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import { buildInitialSelection } from '@/lib/dictionarySelection';
-import type { Dictionary, PersonaRef, WorldOverview } from '@/types';
+import type { Dictionary, GameLocation, PersonaRef, WorldOverview } from '@/types';
 
 vi.mock('react-toastify', () => ({
   toast: { error: vi.fn(), success: vi.fn(), info: vi.fn(), warn: vi.fn() },
@@ -678,7 +678,7 @@ describe('a world with nothing else to choose at world entry', () => {
 describe('a world persona at world entry', () => {
   const keeperRef: PersonaRef = { source: 'world', entityId: 'keeper' };
   // One marked world entity that starts at the second location and keeps a row at the first, and no library persona.
-  beforeEach(async () => {
+  const keeperWorld = () => {
     const record = world();
     record.data.entities = [{
       id: 'keeper', name: 'Harbor Keeper', playerDescription: '', aiDescription: '', aiSummary: '',
@@ -688,7 +688,10 @@ describe('a world persona at world entry', () => {
         schedule: [{ id: 'row-1', time: 'allDay', action: { kind: 'stay', place: 'inn' } }],
       }],
     }];
-    await WorldStorageService.storeWorld(record);
+    return record;
+  };
+  beforeEach(async () => {
+    await WorldStorageService.storeWorld(keeperWorld());
   });
 
   it('preselects its starting location on a pick, starts there, and remembers the pick', async () => {
@@ -702,6 +705,23 @@ describe('a world persona at world entry', () => {
     expect(onStartGame.mock.calls[0][3]).toBe('hill');
     expect(onStartGame.mock.calls[0][6]).toEqual({ ref: keeperRef });
     expect(readWorldPersona('entry-world')).toEqual(keeperRef);
+  });
+
+  it('never preselects or offers its start when that location is off at the start (Q12)', async () => {
+    // The Hill, the keeper's only start, is on only while the Veil is up, and it starts down.
+    const record = keeperWorld();
+    record.data.stats = [{ id: 'veil', name: 'Veil', type: 'number', description: '', min: 0, max: 10, value: 0, regen: 0, descriptors: [] }];
+    record.data.locations = (record.data.locations as GameLocation[]).map((l) => (l.id === 'hill'
+      ? { ...l, enabledWhen: [{ all: [{ kind: 'stat' as const, id: 'veil', operator: '>=' as const, value: 1, unit: 'raw' as const }] }] } : l));
+    await WorldStorageService.storeWorld(record);
+    const onStartGame = vi.fn();
+    renderEnterWorld({ onStartGame });
+    await enter();
+    fireEvent.click(screen.getByRole('radio', { name: 'Harbor Keeper' }));
+    expect(screen.queryByRole('radio', { name: 'Hill' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][3]).not.toBe('hill');
   });
 
   it('opens the step on a remembered world persona with its location selected', async () => {

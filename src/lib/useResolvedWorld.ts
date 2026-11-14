@@ -293,7 +293,7 @@ export function useResolvedWorld(): ResolvedWorld {
     [inPlay, rawTraits, rawTraitGroups, rawEntities, libraryPersona, discoveredEntities],
   );
   const pinsFor = useCallback((withCodePins: CodePins, over: PinSources = {}) => ownerPins({
-    world: { traits: rawTraits, traitGroups: rawTraitGroups, entities: inPlay.entities },
+    world: { traits: rawTraits, traitGroups: rawTraitGroups, entities: inPlay.runningEntities },
     persona: personaRef,
     library: libraryOn,
     globalTraits: inAuthoredOrder(refreshChosenTraits(over.traits ?? globalTraits, rawTraits), traitOrder),
@@ -354,7 +354,8 @@ export function useResolvedWorld(): ResolvedWorld {
     () => resolveOwnedNames(resolveEntityNames(libraryOn, resolveNameOf)),
     [resolveOwnedNames, libraryOn, resolveNameOf],
   );
-  const codeEntities = useMemo(() => ({ world: inPlay.entities, library: libraryOn }), [inPlay, libraryOn]);
+  // Stranded entities stay in the code cast: their stats and scripts run (Q27).
+  const codeEntities = useMemo(() => ({ world: inPlay.runningEntities, library: libraryOn }), [inPlay, libraryOn]);
   const presentEntitiesUnder = useCallback((ref: PersonaRef | undefined) => {
     const resolved = resolvePersona(ref, worldEntities, libraryEntities);
     return worldEntitiesOf(resolved.cast, resolved.persona);

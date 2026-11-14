@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from 'react';
 import { TriangleAlert } from 'lucide-react';
-import { HostRuleRows, useEntityRuleHost, type RuleHost } from '@/components/editor/ImageRuleCog';
+import { HostRuleRows, LOCATION_RULE_HOST, useEntityRuleHost, type RuleHost } from '@/components/editor/ImageRuleCog';
 import { useGameData } from '@/contexts/GameDataContext';
 import { ownGateIds, selfLocked } from '@/lib/inPlayGates';
 import { resolvedEntityStats } from '@/lib/statLinks';
@@ -51,6 +51,19 @@ export function EntityEnabledField({ entity, onChange }: { entity: Entity; onCha
       label="Enabled"
       hint="Keeps this entity on while any row holds. With no rows, it’s always on."
       warning={locked && 'These rows check only this entity’s own traits and stats, which pause while it’s off. Once it turns off, it can’t turn back on.'}
+    />
+  );
+}
+
+/** A location's Enabled gate. A Condition with no owner reads the played persona (Q29). */
+export function LocationEnabledField({ rows, onChange }: { rows: TraitRequirementRow[]; onChange: (rows: TraitRequirementRow[]) => void }) {
+  return (
+    <HostGateField
+      host={LOCATION_RULE_HOST}
+      rows={rows}
+      onChange={onChange}
+      label="Enabled"
+      hint="Keeps this location and the locations inside it on while any row holds. With no rows, it’s always on."
     />
   );
 }

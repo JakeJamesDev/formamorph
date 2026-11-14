@@ -9,6 +9,7 @@ import { useMountedRef } from '@/lib/useMountedRef';
 import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { ownerPins, inPlayOwners, pinBlueprintsOf, playedEntityId } from '@/lib/ownedTraitsInPlay';
+import { playedEntityIdOf, startLocationIdsOn } from '@/lib/inPlayWorld';
 import { cascadeOffInput, startingStatsWith } from '@/lib/traitRuntime';
 import { seedWorldEntityStats } from '@/lib/entityStats';
 import { toastError } from '@/lib/linkToast';
@@ -353,9 +354,18 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     () => offeredPersonas(personaRules.allowed, { world: worldPersonaOptions, library: personaOptions, custom: customPersonaOption }),
     [personaRules.allowed, worldPersonaOptions, personaOptions, customPersonaOption],
   );
+  // The locations the gates leave on at the start under the picked persona and Options (Q12, Q43).
+  const startLocations = useMemo(() => {
+    const world = {
+      entities: worldEntities, locations: rawLocations, traits: rawTraits, traitGroups: rawTraitGroups,
+      stats: rawStats, statGroups: rawStatGroups, options: worldOptions,
+    };
+    const on = startLocationIdsOn(world, playedEntityIdOf(entryDraft.persona, worldEntities), entryDraft.optionValues);
+    return on.size === locations.length ? locations : locations.filter((l) => on.has(l.id));
+  }, [worldEntities, rawLocations, rawTraits, rawTraitGroups, rawStats, rawStatGroups, worldOptions, entryDraft.persona, entryDraft.optionValues, locations]);
   const personaPickContext: PersonaPickContext = {
     worldEntities: resolvedWorldEntities,
-    locations,
+    locations: startLocations,
   };
   // Enter World and Quick Start start on the same persona, and at the same location for it.
   const personaPreselect = (worldId: string) => preselectPersona({

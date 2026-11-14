@@ -167,7 +167,7 @@ Select a location in the list to open its panel. The tab you pick stays open whe
 | Tab | Holds | Mode |
 |---|---|---|
 | **Details** | **Name**, **Starting Location** and the descriptions | Simple and Advanced |
-| **Presence** | **Entities Here**, **Add an entity here** and **Known Here** | Simple and Advanced |
+| **Presence** | When the location is on ([Enabled](#enabled)), **Entities Here**, **Add an entity here** and **Known Here** | Simple and Advanced |
 | **Connections** | The location's [Connections](#connections), one row each | Simple and Advanced |
 | **Items** | The location's [Starting Items](World-Editor-Items#starting-items) | Simple and Advanced |
 | **Media** | **Background Image**. In Advanced mode, also **Image Tags** and **Ambient Sound**. | Simple and Advanced |
@@ -175,6 +175,17 @@ Select a location in the list to open its panel. The tab you pick stays open whe
 | **Openings** | The location's own [openings](World-Editor-Openings#location-openings), drawn when a game starts here | Advanced only |
 
 Simple mode also hides **AI-Facing Summary**.
+
+### Enabled
+<!-- keywords: enabled, turn a location off, hide a location, close a district, open later, gate, only exists when -->
+
+**Enabled** decides when the location is on. Add rows of conditions, the same kind a trait's **Requires** uses. The location is on while any row holds. With no rows, it's always on.
+
+- 🙈 **While it's off,** the location and the locations inside it are gone. The player and the AI never see them: not in the list, on the map or in what the AI reads. Connections to them stop working.
+- 🧍 **The player stays put.** If the player is standing in it when it turns off, they keep that location and the locations inside it until they leave. Going deeper keeps only where they stand and what's inside it.
+- 🚪 **Entities with nowhere to be** leave the story. An entity whose every location is off is in no scene, and the AI doesn't read it. Its stats and scripts keep running. An entity with another location on goes there as its routine says.
+- 👤 **A condition with no owner** reads the **persona** the player plays, the same as a [Background Visibility rule](#background-visibility-rules).
+- 🏁 **A new game never starts here** while it's off. See [Starting Location](#starting-location).
 
 ### Media
 
@@ -385,6 +396,8 @@ The **Starting Location** checkbox marks a place where a new game can start:
 | **No location** | The game starts at a **random location, any of them**. You rarely want this. |
 | **One** | Every game starts there |
 | **Several** | The player picks one before they start, or the game picks one at random |
+
+A Starting Location that is [off](#enabled) when the game starts is skipped. If every Starting Location is off, the game starts at the first location that's on, in list order.
 
 A world persona starts at the first of its starts that is a starting location, or else at its first start. The start step also lists the locations of its starts. See [Starts](World-Editor-Entities#starts).
 

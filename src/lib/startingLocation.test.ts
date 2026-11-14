@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { startingLocations, resolveStartingLocation } from "./startingLocation";
+import { startingLocations, resolveStartingLocation, startingLocationIn, inTreeOrder } from "./startingLocation";
 import type { GameLocation } from "@/types";
 
 const loc = (id: string, isStarting = false): GameLocation => ({ id, name: id, isStarting });
@@ -44,5 +44,41 @@ describe("resolveStartingLocation", () => {
     for (let i = 0; i < 20; i++) {
       expect(["x", "y"]).toContain(resolveStartingLocation(plain)!.id);
     }
+  });
+});
+
+describe("startingLocationIn, under the Enabled gates (Q12, Q51)", () => {
+  const child = (id: string, parentId: string, isStarting = false): GameLocation => ({ ...loc(id, isStarting), parentId });
+  // Gate (off) holds Yard; Hall holds Attic; Cellar sits at the root after them.
+  const world = [loc("gate", true), child("yard", "gate", true), loc("hall"), loc("cellar"), child("attic", "hall")];
+  const offOnly = (...off: string[]) => (id: string) => !off.includes(id);
+  const every = Array.from({ length: 40 }, (_, i) => i / 40);
+
+  it("never starts in an off starting location", () => {
+    for (const r of every) expect(startingLocationIn(world, offOnly("gate"), null, () => r)?.id).toBe("yard");
+  });
+
+  it("drops a chosen location that is off", () => {
+    expect(startingLocationIn(world, offOnly("gate"), "gate", () => 0)?.id).toBe("yard");
+    expect(startingLocationIn(world, offOnly(), "attic", () => 0)?.id).toBe("attic");
+  });
+
+  it("takes the first on location in tree order when every starting location is off", () => {
+    for (const r of every) expect(startingLocationIn(world, offOnly("gate", "yard"), null, () => r)?.id).toBe("hall");
+    for (const r of every) expect(startingLocationIn(world, offOnly("gate", "yard", "hall", "attic"), null, () => r)?.id).toBe("cellar");
+  });
+
+  it("falls back to the authored pick when every location is off", () => {
+    const start = startingLocationIn(world, () => false, null, () => 0);
+    expect(["gate", "yard"]).toContain(start?.id);
+  });
+
+  it("picks among the on locations when none is flagged", () => {
+    const flat = [loc("a"), loc("b"), loc("c")];
+    for (const r of every) expect(startingLocationIn(flat, offOnly("b"), null, () => r)?.id).not.toBe("b");
+  });
+
+  it("orders a tree depth-first, each root in list order", () => {
+    expect(inTreeOrder(world).map((l) => l.id)).toEqual(["gate", "yard", "hall", "attic", "cellar"]);
   });
 });
