@@ -1,6 +1,7 @@
 # Spec: Named Memories
 
 Status: ready-for-agent
+Spec session: named-memories — spec
 
 ## Problem Statement
 
