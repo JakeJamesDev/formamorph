@@ -55,6 +55,7 @@ Settled in the grill on 2026-11-14. Numbered R so they don't collide with the ba
 | R28 | A marked Avatar stays pickable as the Player Avatar in Enter World. It is a display choice and no export carries it. Ticket 05 landing. |
 | R29 | A Supporter Copy lives only in the world store, with the marker written on the first store. An update overwrites the copy in place, and a Supporter-only listing offers no second copy (story 9). The downscale offer is skipped, since it would re-encode the watermark away. Ticket 06 intent answer. |
 | R30 | A Supporter world's public required sources and add-ons install through the normal path, update review included. A dependency that is itself Supporter-only is skipped and named to the player. Ticket 06 intent answer. |
+| R31 | Under R22, the heart marks every list or picker row that names Formamorph AI, "Use Active Endpoint (Formamorph AI)" included. Headings are not lists and stay plain. Select rows carry the heart with an aria-label and no tooltip; the tooltip stays on cards. An installed Supporter Mascot's row carries it too. Ticket 08 intent answer. |
 
 ## User Stories
 
