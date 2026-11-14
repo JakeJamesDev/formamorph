@@ -1,5 +1,5 @@
 import type { UniqueStates } from "@/types";
-import { isKeptOffNow, type Routine } from "./positionEngine";
+import { isKeptOffNow, type Course } from "./positionEngine";
 
 /** A Unique entity's follow state and whether its row in force is Strict or Away. */
 export interface MovementState { follow?: "following" | "waiting"; strict: boolean }
@@ -9,13 +9,13 @@ export type MovementStates = Readonly<Record<string, MovementState>>;
 
 /** Each Unique entity's state at `now`, read from its saved engine state and its routine. */
 export function movementStates(
-  routines: readonly Routine[], uniques: Readonly<UniqueStates>, now: number,
+  courses: readonly Course[], uniques: Readonly<UniqueStates>, now: number,
 ): MovementStates {
   const out: Record<string, MovementState> = {};
-  for (const routine of routines) {
-    if (routine.generic) continue;
-    const st = uniques[routine.id];
-    out[routine.id] = { ...(st?.follow && { follow: st.follow.mode }), strict: isKeptOffNow(routine, st, now) };
+  for (const course of courses) {
+    if (course.generic) continue;
+    const st = uniques[course.id];
+    out[course.id] = { ...(st?.follow && { follow: st.follow.mode }), strict: isKeptOffNow(course, st, now) };
   }
   return out;
 }

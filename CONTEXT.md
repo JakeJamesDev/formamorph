@@ -139,7 +139,7 @@ One way an entity with a kind lives: a name, a Requires gate, its own Traversabl
 _Avoid_: behavior, mode, schedule set
 
 **Start**:
-One beginning of an entity: a place plus a Schedule. A Unique entity rolls one by weight per playthrough and keeps it for the whole save; a Generic entity runs all of them. A Start with an empty Schedule stays at its place.
+One beginning of an entity: a place plus a Schedule, in one Routine. At new game a Unique entity rolls one Start by weight for every Routine and keeps each roll for the whole save; when another Routine applies, it swaps to that Routine's roll and never rolls again. A Generic entity runs every Start of the applying Routine. A Start with an empty Schedule stays at its place.
 _Avoid_: spawn, presence
 
 **Generic Entity Instance**:
@@ -151,11 +151,11 @@ Where an entity stands now in the running game. A Unique entity has one; a Gener
 _Avoid_: location (of an entity), current place
 
 **Sample Placement**:
-Where authoring places each entity at the start of the story: a Unique entity from its first Start, a Generic entity from all of them. Previews, the Test Bench and Test Code read it, so they show one stable cast.
+Where authoring places each entity at the start of the story, from the first Routine whose gate holds there: a Unique entity from its first Start, a Generic entity from all of them. Previews, the Test Bench and Test Code read it, so they show one stable cast.
 _Avoid_: opening cast, preview position
 
 **Presence**:
-Every place an entity can be, each with its reasons: it begins there, a Schedule row names it, or Traversable lists it. Player's Starting Location counts as each starting location. A row place with no path from its Start is left out.
+Every place an entity can be under any of its Routines, each with its reasons and the Routine each comes from: it begins there, a Schedule row names it, or Traversable lists it. Player's Starting Location counts as each starting location. A row place with no path from its Start is left out.
 _Avoid_: reach, membership, locations (of an entity with a kind)
 
 **Start places**:

@@ -18,8 +18,11 @@ import { atStartValues, statStartValue } from './statDescriptorGeometry';
 import { activeStatEnabled, inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import {
   acquireTrait, applyGlobalRowTraits, applyOwnedStatTraits, entityStatTraitsInForce, gateStatsOf, heldGlobalTraits,
-  seedNewGameStats, statTraitsInForce, type TraitRuntimeState, type TraitWorld,
+  seedNewGameStats, statTraitsInForce, traitGateInput, type TraitRuntimeState, type TraitWorld,
 } from './traitRuntime';
+import type { GateInput } from './traitGates';
+import { daypartAt } from './gameClock';
+import { gatePick } from './inPlayGates';
 import type { PersonaPick } from './persona';
 import { equipRequirement, settleInventory, startingCopies, type NewId } from './inventory';
 import { randomUUID } from './uuid';
@@ -78,6 +81,8 @@ export interface OpeningFold {
   itemEffects: { ledger: ItemEffectLedger; log: string[] };
   /** Which Body-setting traits opened on, in order. */
   bodies: BodyRuntime;
+  /** Every owner's traits, stats, items and Options after the setup picks, as the gates read them (Q12). */
+  gate: GateInput;
 }
 
 /** Authored text resolved as turn one would: an unrolled chip draws once, and every text after it reads that roll. */
@@ -159,7 +164,8 @@ export function openingFold(
     ...(world.currencies?.length ? { money: { currencies: world.currencies, placements: world.placements ?? [] } } : {}),
   };
   const startingTraits = [...held.map((trait) => ({ trait, ownerId: null })), ...rows.appliedRows];
-  return { state, entityStats, startingTraits, traitState, itemEffects: { ledger: items.ledger, log: items.log }, bodies: items.bodies };
+  const gate = traitGateInput(traitState, { ...playWorld, daypart: daypartAt(0) });
+  return { state, entityStats, startingTraits, traitState, itemEffects: { ledger: items.ledger, log: items.log }, bodies: items.bodies, gate };
 }
 
 /** The `SandboxState` of turn one. */
@@ -169,9 +175,10 @@ export const openingStateOf = (world: OpeningFoldWorld, picks?: OpeningPicks, pe
 /** The `SandboxState` an authoring run reads: turn one with the cast as `openingBook` places it (Q210). Play never
  *  reads it, since New Game rolls its own book (Q215). */
 export function authoringStateOf(world: OpeningFoldWorld, picks?: OpeningPicks, persona?: OpeningPersona): SandboxState {
-  const state = openingStateOf(world, picks, persona);
+  const fold = openingFold(world, picks, persona);
+  const { state } = fold;
   const cast = positionedCast(state.ownerTraits.entities ?? [], persona?.ref);
-  const placed = openingWorld(cast, world.locations ?? [], world.connections ?? [], state.places?.location?.id);
+  const placed = openingWorld(cast, world.locations ?? [], world.connections ?? [], state.places?.location?.id, gatePick(fold.gate));
   return { ...state, ...scriptPlaces(placeAll(EMPTY_BOOK, placed), placed) };
 }
 

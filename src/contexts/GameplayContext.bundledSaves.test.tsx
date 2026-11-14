@@ -8,7 +8,7 @@ import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils
 import { daypartAt, storyMinute } from '@/lib/gameClock';
 import { DEFAULT_WORLDS, seedWorldData } from '@/lib/defaultWorlds';
 import { positionedCast } from '@/lib/entityPresence';
-import { castRoutines } from '@/lib/entityKind';
+import { castCourses } from '@/lib/entityKind';
 import { placeAll, positionWorld } from '@/lib/positionPlay';
 import { settleTraitsWithItems } from '@/lib/inventory';
 import { openingFold } from '@/lib/openingState';
@@ -150,7 +150,7 @@ async function saveTwoTurns(world: World): Promise<string> {
     gameplay.setPersonaRef(NO_PERSONA);
     const start = resolveStartingLocation(locations, undefined);
     const book = placeAll({ positions: {}, uniques: {}, generics: {} }, positionWorld(
-      castRoutines(positionedCast(entities, NO_PERSONA)), storyMinute(0), start?.id, locations, world.connections ?? [],
+      castCourses(positionedCast(entities, NO_PERSONA)), storyMinute(0), start?.id, locations, world.connections ?? [],
     ));
     gameplay.setEntityPositions(book.positions);
     gameplay.setUniqueStates(book.uniques);

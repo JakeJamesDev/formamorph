@@ -1,21 +1,21 @@
 import type { Connection, Entity, EntityPositions, GameLocation, GenericStates, ScheduleAction, UniqueStates } from "@/types";
 import {
-  actionNow, advancePositions, EMPTY_BOOK, genericPlaces, isHeldNow, type PositionBook, type PositionScene, type Routine,
+  actionNow, advancePositions, EMPTY_BOOK, genericPlaces, isHeldNow, type Course, type PositionBook, type PositionScene,
 } from "@/lib/positionEngine";
 import type { SandboxState } from "@/lib/statCodeTurn";
-import { castRoutines } from "@/lib/entityKind";
+import { castCourses, ungatedPick, type RoutinePick } from "@/lib/entityKind";
 import { storyMinute } from "@/lib/gameClock";
 
 /**
- * The game's side of the position engine: the routines and scene one call reads, and the saved book kept against
+ * The game's side of the position engine: the courses and scene one call reads, and the saved book kept against
  * the world on load and when the opening hour lands.
  */
 
 /** What every engine call in one game moment reads. `scene.playerAt` is where the player stands then. `uniques`
  *  holds the Unique entities, the only ones a pull, a follow or a script move reaches; `generics` holds the Generic entities. */
 export interface PositionWorld {
-  uniques: ReadonlyMap<string, Routine>;
-  generics: ReadonlyMap<string, Routine>;
+  uniques: ReadonlyMap<string, Course>;
+  generics: ReadonlyMap<string, Course>;
   scene: PositionScene;
   random: () => number;
   /** The disabled entities, whose follow ends at the next commit (Q9). Absent, none. */
@@ -24,11 +24,11 @@ export interface PositionWorld {
 
 /** A position world from its parts. `playerStart` is where the player began. */
 export function positionWorld(
-  routines: readonly Routine[], now: number, playerAt: string | undefined,
+  courses: readonly Course[], now: number, playerAt: string | undefined,
   locations: readonly Pick<GameLocation, "id" | "parentId">[], connections: readonly Connection[], random: () => number = Math.random,
   playerStart?: string,
 ): PositionWorld {
-  const byId = (generic: boolean) => new Map(routines.filter((r) => !!r.generic === generic).map((r) => [r.id, r]));
+  const byId = (generic: boolean) => new Map(courses.filter((c) => !!c.generic === generic).map((c) => [c.id, c]));
   const scene = { now, playerAt, locations, connections, ...(playerStart !== undefined && { playerStart }) };
   return { uniques: byId(false), generics: byId(true), scene, random };
 }
@@ -55,11 +55,11 @@ export interface RoutineReading {
  *  `held` reads true whether or not an action is in force (Q228). */
 export function routineReadings(world: PositionWorld, uniques: Readonly<UniqueStates>): Record<string, RoutineReading> {
   const out: Record<string, RoutineReading> = {};
-  for (const routine of world.uniques.values()) {
-    const st = uniques[routine.id];
+  for (const course of world.uniques.values()) {
+    const st = uniques[course.id];
     if (st?.follow) continue;
-    const action = actionNow(routine, st, world.scene);
-    out[routine.id] = { action, held: isHeldNow(st, world.scene.now) };
+    const action = actionNow(course, st, world.scene);
+    out[course.id] = { action, held: isHeldNow(st, world.scene.now) };
   }
   return out;
 }
@@ -115,9 +115,9 @@ export function reconcileBook(
   for (const [id, entityInstances] of Object.entries(book.generics)) {
     if (world.generics.has(id)) generics[id] = entityInstances;
   }
-  // A character the save placed but the engine never ran on keeps the Start at its saved place, when it has one.
+  // A character the save placed but the engine never ran on keeps its first Routine's Start at its saved place, when it has one.
   for (const [id, at] of Object.entries(positions)) {
-    const start = uniques[id] ? undefined : world.uniques.get(id)?.starts.find((s) => s.place === at);
+    const start = uniques[id] ? undefined : world.uniques.get(id)?.routines[0]?.starts.find((s) => s.place === at);
     if (start) uniques[id] = { startId: start.id, lastRun: world.scene.now };
   }
   const placed = placeAll({ positions, uniques, generics }, world);
@@ -133,10 +133,10 @@ export function reconcileBook(
   return placeAll({ ...placed, positions: at, uniques: following }, world);
 }
 
-/** `book` without the Unique entries of `ids`. */
+/** `book` without the entries of `ids`. */
 function withoutIds(book: PositionBook, ids: ReadonlySet<string>): PositionBook {
   const drop = <T>(record: Readonly<Record<string, T>>) => Object.fromEntries(Object.entries(record).filter(([id]) => !ids.has(id)));
-  return { ...book, positions: drop(book.positions), uniques: drop(book.uniques) };
+  return { positions: drop(book.positions), uniques: drop(book.uniques), generics: drop(book.generics) };
 }
 
 /** `placed` with each of `held`'s stored entries from `stored` put back as they were, at a place that still exists. */
@@ -144,14 +144,18 @@ function withHeld(placed: PositionBook, stored: PositionBook, held: ReadonlySet<
   const live = new Set(world.scene.locations.map((l) => l.id));
   const positions = { ...placed.positions };
   const uniques = { ...placed.uniques };
+  const generics = { ...placed.generics };
   for (const id of held) {
+    // A Generic Entity Instance at a deleted place goes; the next engine run places it fresh.
+    const instances = Object.entries(stored.generics[id] ?? {}).filter(([, p]) => p.position === undefined || live.has(p.position));
+    if (instances.length) generics[id] = Object.fromEntries(instances);
     const at = stored.positions[id];
     // A held entity at a deleted place keeps what the reconcile gave it.
     if (at !== undefined && !live.has(at)) continue;
     if (at !== undefined) positions[id] = at;
     if (stored.uniques[id]) uniques[id] = stored.uniques[id];
   }
-  return { ...placed, positions, uniques };
+  return { positions, uniques, generics };
 }
 
 /**
@@ -172,7 +176,9 @@ export function reseatForOpening(book: PositionBook, world: PositionWorld): Posi
       uniques[id] = { ...st, lastRun: now };
       continue;
     }
-    uniques[id] = { startId: st.startId, lastRun: now, ...(st.follow && { follow: st.follow }) };
+    // The opening hour drops the row, hold, idle and stop; the rolls and the follow stay.
+    const { rowId: _row, hold: _hold, idleEnd: _idle, stop: _stop, ...rest } = st;
+    uniques[id] = { ...rest, lastRun: now };
     if (!st.follow) delete positions[id];
   }
   const generics: GenericStates = {};
@@ -183,15 +189,18 @@ export function reseatForOpening(book: PositionBook, world: PositionWorld): Posi
   return placeAll({ positions, uniques, generics }, world);
 }
 
-/** The book a new game at `playerAt` opens with at the start of the story, each Unique entity from its first Start
- *  and its first pick and each Generic entity from all of its: the one sample placement authoring reads (Q210, Q216). */
+/** The book a new game at `playerAt` opens with at the start of the story, each Unique entity from the first Start
+ *  and first pick of the Routine `pick` applies and each Generic entity from all of its: the one sample placement
+ *  authoring reads (Q18, Q210, Q216). */
 export function openingBook(
   entities: readonly Entity[], locations: readonly Pick<GameLocation, "id" | "parentId">[], connections: readonly Connection[], playerAt: string | undefined,
+  pick: RoutinePick = ungatedPick,
 ): PositionBook {
-  return placeAll(EMPTY_BOOK, openingWorld(entities, locations, connections, playerAt));
+  return placeAll(EMPTY_BOOK, openingWorld(entities, locations, connections, playerAt, pick));
 }
 
 /** The position world `openingBook` places `entities` in. */
 export const openingWorld = (
   entities: readonly Entity[], locations: readonly Pick<GameLocation, "id" | "parentId">[], connections: readonly Connection[], playerAt: string | undefined,
-): PositionWorld => positionWorld(castRoutines(entities), storyMinute(0), playerAt, locations, connections, () => 0, playerAt);
+  pick: RoutinePick = ungatedPick,
+): PositionWorld => positionWorld(castCourses(entities, [], pick), storyMinute(0), playerAt, locations, connections, () => 0, playerAt);

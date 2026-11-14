@@ -3,7 +3,7 @@ import type {
   Connection, Currency, Entity, EntityPositions, GameLocation, GenericStates, InventoryOwner, UniqueStates, Item, ItemCopy, Placement, RuntimeItem, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
 import { movementStates } from '../movementTag';
-import type { Routine } from '../positionEngine';
+import type { Course } from '../positionEngine';
 import type { Standings } from '../entityPresence';
 import { idsAt, positionsIn } from '../entityPlaces';
 import { entityNamed, scenePresentHere, type OwnedTraitsInForce, type StrangerLabels } from '../locationContext';
@@ -79,7 +79,7 @@ export interface LiveSceneSources {
   /** What each owner's slots in force read. No slots when absent. */
   equipment?: SceneEquipment;
   /** The Unique entities' routines, saved engine states and the story minute the Movement tags read. No tags when absent. */
-  movement?: { routines: readonly Routine[]; uniques: Readonly<UniqueStates>; now: number };
+  movement?: { routines: readonly Course[]; uniques: Readonly<UniqueStates>; now: number };
 }
 
 /** The world under a running turn's code writes, which React has not rendered yet. Each absent field keeps

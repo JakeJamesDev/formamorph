@@ -35,9 +35,9 @@ import { liveAppliedValues, migrateGlobalFields, savedAppliedValues, savedCascad
 import { backfillEntityStats, backfillGameStateEntityStats, entityStatDeltas, withEntityStatValue, withoutEntityCodeBounds } from '../lib/entityStats';
 import { positionedCast } from '../lib/entityPresence';
 import { movedPositions, runtimePositions, withRuntimePositions, type FollowerState } from '../lib/entityFollowing';
-import { castRoutines, type RoutineEntity } from '../lib/entityKind';
+import { castCourses, type RoutineEntity } from '../lib/entityKind';
 import { followerIds, placeAll, positionWorld, reconcileBook, waitingIds, type PositionWorld } from '../lib/positionPlay';
-import { hasEnabledGate } from '../lib/inPlayGates';
+import { hasAnyGate } from '../lib/inPlayGates';
 import { storyMinute } from '../lib/gameClock';
 import { deltasOf, useStatDeltas } from '../lib/useStatDeltas';
 
@@ -709,8 +709,8 @@ function useProvideGameplay() {
         backfillGameStateStats(withoutEntityCodeBounds(state), worldStats), worldStats, worldEntities, worldStatGroups,
       );
       if (!worldEntities) return players;
-      // A gated entity's stored place and engine state stay as saved, on or off, so a disabled one resumes there (Q38).
-      const held = new Set(worldEntities.filter((e) => hasEnabledGate(e) || !entityOn(e)).map((e) => e.id));
+      // A gated entity's stored places and engine state stay as saved until play reads its gates (Q38).
+      const held = new Set(worldEntities.filter((e) => hasAnyGate(e) || !entityOn(e)).map((e) => e.id));
       return withPlacedCast(backfillGameStateEntityStats(players, worldEntities), positionedCast(worldEntities.filter(entityOn), persona), held);
     };
     /** The state with every Unique entity placed by the engine for its own clock, the save's positions and engine
@@ -720,7 +720,7 @@ function useProvideGameplay() {
       const now = storyMinute(state.gameTime ?? 0, state.startHour != null ? { startHour: state.startHour } : undefined);
       // A save from before the field resolves where page one took place, else where the player stands.
       const playerStart = state.playerStartLocationId ?? pageOneLocationId(state.fullMessageHistory ?? []) ?? state.locationId;
-      const world = positionWorld(castRoutines(cast, discovered.filter((d) => entityOn(d.entity))), now, state.locationId, locations, connections, undefined, playerStart);
+      const world = positionWorld(castCourses(cast, discovered.filter((d) => entityOn(d.entity))), now, state.locationId, locations, connections, undefined, playerStart);
       const { entityFollowers: legacy, ...rest } = state as GameState & { entityFollowers?: string[] };
       const book = reconcileBook(
         {

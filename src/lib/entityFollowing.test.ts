@@ -5,7 +5,7 @@ import {
   joinEntityMoves, movedPositions, NO_ENTITY_MOVES, type FollowerState,
 } from './entityFollowing';
 import { defaultEntityLocationPrompt } from '@/components/game/GamePrompts';
-import { castRoutines } from './entityKind';
+import { castCourses } from './entityKind';
 import { storyMinute } from './gameClock';
 import { positionWorld } from './positionPlay';
 import type { EntityCodeWrite } from './statCodeExecutor';
@@ -36,7 +36,7 @@ const moths: Entity = {
 const albus = unique('albus', [start('keep')], 'anywhere');
 const CAST = [corvin, wenna, tess, clerk, moths, albus];
 
-const world = (playerAt = 'inn', cast: Entity[] = CAST) => positionWorld(castRoutines(cast), NOON, playerAt, LOCATIONS, [QUAY], () => 0);
+const world = (playerAt = 'inn', cast: Entity[] = CAST) => positionWorld(castCourses(cast), NOON, playerAt, LOCATIONS, [QUAY], () => 0);
 const state = (positions: Record<string, string>, follow: string[] = []): FollowerState => ({
   positions,
   uniques: Object.fromEntries(CAST.filter((e) => e.kind === 'unique').map((e) => [e.id, {
@@ -132,7 +132,7 @@ describe('the join of replies to the player move', () => {
 
   it('waits each offered length, never past the end of the next daypart (Q3, Q8)', () => {
     const until = (length: 'hour' | 'thisDaypart' | 'nextDaypart', now = NOON) => {
-      const w = positionWorld(castRoutines(CAST), now, 'inn', LOCATIONS, [QUAY], () => 0);
+      const w = positionWorld(castCourses(CAST), now, 'inn', LOCATIONS, [QUAY], () => 0);
       const joined = joinEntityMoves(state(AT_INN, ['corvin']), { from: 'inn', to: 'square' }, intents({ wait: [{ id: 'corvin', length }] }), w);
       expect(joined.positions.corvin).toBe('inn');
       return (joined.uniques.corvin.follow as { until: number }).until % (24 * 60);

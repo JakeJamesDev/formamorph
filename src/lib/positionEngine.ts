@@ -1,24 +1,67 @@
 import { PLAYER_START } from "@/types";
 import type {
-  Connection, DiscoveredEntity, EntityPositions, EntityStart, GenericStates, UniqueState, UniqueStates, PatrolStop, PositionHold,
+  Connection, DiscoveredEntity, EntityPositions, EntityStart, FollowState, GenericStates, UniqueState, UniqueStates, PatrolStop, PositionHold,
   GenericEntityInstanceState, ScheduleAction, ScheduleRange, ScheduleRow, Traversable, WanderPlace,
 } from "@/types";
 import { reachableFrom, type LocationLink } from "@/lib/locationGraph";
 import { MINUTES_PER_DAY, nextDaypartEdge } from "@/lib/gameClock";
 
 /**
- * The position engine: where every Unique entity and every Generic Entity Instance is now. Pure: the same routines,
+ * The position engine: where every Unique entity and every Generic Entity Instance is now. Pure: the same courses,
  * book, scene and random source give the same result. Times are story minutes (`storyMinute`). Moves jump
  * straight to their target and are silent; the caller decides what to show.
  */
 
-/** What the engine reads of an entity with a kind. A Generic entity runs every Start at once and ignores weight,
- *  Strict and Traversable. */
-export interface Routine {
+/** One Routine as the engine reads it. */
+export interface CourseRoutine {
+  id: string;
+  starts: readonly EntityStart[];
+  traversable: Traversable;
+}
+
+/** What the engine reads of an entity with a kind: its Routines in author order and the one whose gate holds. A
+ *  Generic entity runs every Start of that Routine at once and ignores weight, Strict and Traversable. */
+export interface Course {
+  /** The entity id. */
+  id: string;
+  routines: readonly CourseRoutine[];
+  /** The applying Routine's id; null while none holds, which is Away all day (Q24). */
+  applying: string | null;
+  generic?: true;
+}
+
+/** One Routine's Starts and Traversable under the entity's id: what one engine step plays. */
+interface PlayedRoutine {
   id: string;
   starts: readonly EntityStart[];
   traversable: Traversable;
   generic?: true;
+}
+
+/** The id `oneRoutineCourse` gives its Routine. */
+export const ONLY_ROUTINE_ID = "routine-1";
+
+/** A Course of one Routine that always applies. */
+export const oneRoutineCourse = (leg: PlayedRoutine): Course => ({
+  id: leg.id,
+  routines: [{ id: ONLY_ROUTINE_ID, starts: leg.starts, traversable: leg.traversable }],
+  applying: ONLY_ROUTINE_ID,
+  ...(leg.generic && { generic: true as const }),
+});
+
+/** The Routine `st` plays: its saved one, absent the first (a v3.7.0 save). */
+const routineIdOf = (course: Course, st: UniqueState | undefined): string | undefined => st?.routineId ?? course.routines[0]?.id;
+
+/** `routine` as a leg of `course`. */
+const playedRoutineFrom = (course: Course, routine: CourseRoutine | undefined): PlayedRoutine => ({
+  id: course.id, starts: routine?.starts ?? [], traversable: routine?.traversable ?? [], ...(course.generic && { generic: true as const }),
+});
+
+/** The leg `st` plays: its Routine's Starts, Away all day while no Routine holds for it. */
+function playedRoutineOf(course: Course, st: UniqueState | undefined): PlayedRoutine {
+  const id = routineIdOf(course, st);
+  const leg = playedRoutineFrom(course, course.routines.find((r) => r.id === id) ?? course.routines[0]);
+  return st?.nowhere ? awayAllDay(leg) : leg;
 }
 
 /** The places and links travel runs over. */
@@ -210,9 +253,9 @@ function resolveStart(start: EntityStart, scene: PositionScene): EntityStart | u
   return rest;
 }
 
-/** `routine` with every Start placed for `scene`. A Start at an unknown player start is left out. */
-const resolveRoutine = (routine: Routine, scene: PositionScene): Routine =>
-  ({ ...routine, starts: routine.starts.flatMap((s) => resolveStart(s, scene) ?? []) });
+/** `course` with every Start placed for `scene`. A Start at an unknown player start is left out. */
+const resolveCourse = (course: Course, scene: PositionScene): Course =>
+  ({ ...course, routines: course.routines.map((r) => ({ ...r, starts: r.starts.flatMap((s) => resolveStart(s, scene) ?? []) })) });
 
 function rollStart(starts: readonly EntityStart[], random: () => number): EntityStart | undefined {
   return starts.length ? weighted(starts, (s) => s.weight, random) : undefined;
@@ -220,7 +263,7 @@ function rollStart(starts: readonly EntityStart[], random: () => number): Entity
 
 /** The places `routine` may be pulled or led into on `start` at `now`: its row's places plus Traversable. An Away
  *  row leads a follower anywhere its Start connects to (Q29). */
-function allowedOn(routine: Routine, start: EntityStart, now: number, graph: PlaceGraph, connected: ReadonlySet<string>): Set<string> {
+function allowedOn(routine: PlayedRoutine, start: EntityStart, now: number, graph: PlaceGraph, connected: ReadonlySet<string>): Set<string> {
   if (routine.traversable === "anywhere") return new Set(graph.locations.map((l) => l.id));
   const { action } = liveRow(start, rowAt(start, now), connected);
   return new Set([...(action.kind === "away" ? connected : placesOf(action)), ...routine.traversable]);
@@ -238,21 +281,74 @@ function connectedCache(graph: PlaceGraph): ConnectedCache {
   };
 }
 
+/** Each Routine's kept roll in `st`, by Routine id: the played Routine's Start and the others' rolls. A roll whose
+ *  Routine or Start is gone is left out. */
+function keptRolls(course: Course, st: UniqueState | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!st) return out;
+  const played = routineIdOf(course, st);
+  for (const routine of course.routines) {
+    const id = routine.id === played ? st.startId : st.rolls?.[routine.id];
+    if (id !== undefined && routine.starts.some((s) => s.id === id)) out[routine.id] = id;
+  }
+  return out;
+}
+
+/** Which Routine `course` plays from `rolls`: the applying one, else the one `saved` played, else the first rolled. A
+ *  Routine with no roll has no Starts and never applies (Q19). */
+function routineToPlay(course: Course, saved: UniqueState | undefined, rolls: Readonly<Record<string, string>>) {
+  const applying = course.applying !== null && rolls[course.applying] !== undefined ? course.applying : null;
+  const played = applying ?? [routineIdOf(course, saved), ...course.routines.map((r) => r.id)].find((id) => id !== undefined && rolls[id] !== undefined);
+  return { applying, played };
+}
+
+/** The follow a swap keeps, or undefined when it parts ways as if dismissed: a follower whose new `reach` misses the
+ *  player's place, or a wait at a place outside it. A script follow, and a follower while no Routine holds, keep on
+ *  (Q4, Q13, Q31). */
+function followAfterSwap(
+  follow: FollowState, nowhere: boolean, at: string | undefined, scene: PositionScene, reach: ReadonlySet<string>,
+): FollowState | undefined {
+  if (follow.script) return follow;
+  if (follow.mode === "following") return nowhere || scene.playerAt === undefined || reach.has(scene.playerAt) ? follow : undefined;
+  return at !== undefined && reach.has(at) ? follow : undefined;
+}
+
 function advanceOne(
-  routine: Routine, saved: UniqueState | undefined, savedPos: string | undefined,
+  course: Course, saved: UniqueState | undefined, savedPos: string | undefined,
   scene: PositionScene, random: () => number, connected: ConnectedCache,
 ): Body | undefined {
   const { now, playerAt } = scene;
-  const savedStart = saved && routine.starts.find((s) => s.id === saved.startId);
-  const fresh = !savedStart;
-  // Once per playthrough (Q33); a lost Start rolls again (Q87).
-  const start = savedStart ?? rollStart(routine.starts, random);
+  const rolls = keptRolls(course, saved);
+  const kept = !!saved && rolls[routineIdOf(course, saved) ?? ""] === saved.startId;
+  // Every Routine rolls once per playthrough and keeps its roll (Q4, Q33); a lost Start rolls again (Q87).
+  for (const r of course.routines) {
+    const rolled = r.id in rolls ? undefined : rollStart(r.starts, random);
+    if (rolled) rolls[r.id] = rolled.id;
+  }
+  const { applying, played } = routineToPlay(course, saved, rolls);
+  if (played === undefined) return undefined;
+  const leg = playedRoutineFrom(course, course.routines.find((r) => r.id === played));
+  const routine = applying === null ? awayAllDay(leg) : leg;
+  const start = routine.starts.find((s) => s.id === rolls[played]);
   if (!start) return undefined;
-  const body: Body = saved && savedStart
-    ? { pos: savedPos, st: saved }
-    : { pos: savedPos ?? start.place, st: { startId: start.id, lastRun: now } };
-  // Begins Following skips the Strict check only, so Traversable still applies (Q148).
-  if (fresh && start.beginsFollowing) {
+  const fresh = !kept;
+  const others = Object.fromEntries(Object.entries(rolls).filter(([id]) => id !== played));
+  const ledger: Pick<UniqueState, "routineId" | "rolls" | "nowhere"> = {
+    routineId: course.routines.length > 1 ? played : undefined,
+    rolls: Object.keys(others).length ? others : undefined,
+    nowhere: applying === null ? true : undefined,
+  };
+  let body: Body = { pos: savedPos ?? start.place, st: { startId: start.id, lastRun: now, ...ledger } };
+  if (kept && saved) {
+    // A swap takes the new Routine's kept Start with no row, hold, idle or stop (Q4, Q11).
+    const swapped = (saved.nowhere ? null : routineIdOf(course, saved)) !== applying;
+    const follow = swapped && saved.follow && followAfterSwap(saved.follow, applying === null, savedPos, scene, allowedOn(routine, start, now, scene, connected(start.place)));
+    body = swapped
+      ? { pos: savedPos, st: { ...body.st, ...(follow && { follow }) } }
+      : { pos: savedPos, st: { ...saved, ...ledger } };
+  }
+  // Begins Following skips the Strict check only, so Traversable still applies (Q148). Only an applying Routine's.
+  if (fresh && applying !== null && start.beginsFollowing) {
     body.pos = playerAt ?? start.place;
     body.st = { ...body.st, follow: { mode: "following" } };
   }
@@ -320,9 +416,10 @@ function advanceGenericEntityInstance(
   return tidy({ position: body.pos, rowId, lastRun: now, idleEnd, stop });
 }
 
-/** Every Generic Entity Instance of `routine`, one per Start. A record whose Start is gone is dropped. */
+/** Every Generic Entity Instance of `routine`, one per Start. A record whose Start is gone is dropped, so an off
+ *  Routine's instances leave and come back fresh (Q5, Q11). */
 function advanceGeneric(
-  routine: Routine, saved: Readonly<Record<string, GenericEntityInstanceState>> | undefined, scene: PositionScene, random: () => number,
+  routine: PlayedRoutine, saved: Readonly<Record<string, GenericEntityInstanceState>> | undefined, scene: PositionScene, random: () => number,
   connected: ConnectedCache,
 ): Record<string, GenericEntityInstanceState> {
   return Object.fromEntries(routine.starts.map((start) => [start.id, advanceGenericEntityInstance(start, saved?.[start.id], scene, random, connected)]));
@@ -336,34 +433,37 @@ function tidy<T extends object>(st: T): T {
 }
 
 /**
- * Every routine in `routines` placed for `scene.now`. A Unique entity: the Start rolled on first sight, the
- * schedule replayed since the last run, followers led to the player or left waiting, holds and waits released.
- * A Generic entity: each Start's Generic Entity Instance replayed the same way. Characters outside `routines` keep their positions.
+ * Every course in `courses` placed for `scene.now`. A Unique entity: each Routine's Start rolled on first sight, a
+ * swap to the applying Routine's kept roll, the schedule replayed since the last run, followers led to the player or
+ * left waiting, holds and waits released. A Generic entity: each Start of the applying Routine's Generic Entity
+ * Instance replayed the same way. Characters outside `courses` keep their positions.
  */
 export function advancePositions(
-  routines: readonly Routine[], book: PositionBook, scene: PositionScene, random: () => number,
+  courses: readonly Course[], book: PositionBook, scene: PositionScene, random: () => number,
 ): PositionBook {
   const positions = { ...book.positions };
   const uniques = { ...book.uniques };
   const generics = { ...book.generics };
   const connected = connectedCache(scene);
-  for (const authored of routines) {
-    const routine = resolveRoutine(authored, scene);
-    if (routine.generic) {
-      const entityInstances = advanceGeneric(routine, book.generics[routine.id], scene, random, connected);
-      if (Object.keys(entityInstances).length) generics[routine.id] = entityInstances;
-      else delete generics[routine.id];
+  for (const authored of courses) {
+    const course = resolveCourse(authored, scene);
+    const { id } = course;
+    if (course.generic) {
+      const leg = playedRoutineFrom(course, course.routines.find((r) => r.id === course.applying));
+      const entityInstances = advanceGeneric(leg, book.generics[id], scene, random, connected);
+      if (Object.keys(entityInstances).length) generics[id] = entityInstances;
+      else delete generics[id];
       continue;
     }
-    const body = advanceOne(routine, book.uniques[routine.id], book.positions[routine.id], scene, random, connected);
+    const body = advanceOne(course, book.uniques[id], book.positions[id], scene, random, connected);
     if (!body) {
-      delete uniques[routine.id];
-      delete positions[routine.id];
+      delete uniques[id];
+      delete positions[id];
       continue;
     }
-    if (body.pos === undefined) delete positions[routine.id];
-    else positions[routine.id] = body.pos;
-    uniques[routine.id] = tidy(body.st);
+    if (body.pos === undefined) delete positions[id];
+    else positions[id] = body.pos;
+    uniques[id] = tidy(body.st);
   }
   return { positions, uniques, generics };
 }
@@ -374,34 +474,39 @@ export function genericPlaces(generics: Readonly<GenericStates>): Record<string,
     [id, [...new Set(Object.values(entityInstances).flatMap((p) => p.position ?? []))]]));
 }
 
-/** The saved Start of `routine`, as authored, if it still has it. */
-const savedStart = (routine: Routine, st: UniqueState | undefined) => st && routine.starts.find((s) => s.id === st.startId);
-
-/** The saved Start of `routine` resolved for `scene`, if it still has it. */
-function startOf(routine: Routine, st: UniqueState | undefined, scene: PositionScene): EntityStart | undefined {
-  const start = savedStart(routine, st);
-  return start && resolveStart(start, scene);
+/** The saved Start `st` plays on `course`, as authored, with its leg, if it still has it. */
+function savedStart(course: Course, st: UniqueState | undefined): { leg: PlayedRoutine; start: EntityStart } | undefined {
+  const leg = playedRoutineOf(course, st);
+  const start = st && leg.starts.find((s) => s.id === st.startId);
+  return start && { leg, start };
 }
 
-/** The places `routine` may be pulled or led into right now: its current row's places (the Start's place in free
+/** The saved Start `st` plays on `course`, resolved for `scene`, with its leg, if it still has it. */
+function startOf(course: Course, st: UniqueState | undefined, scene: PositionScene): { leg: PlayedRoutine; start: EntityStart } | undefined {
+  const saved = savedStart(course, st);
+  const start = saved && resolveStart(saved.start, scene);
+  return start && { leg: saved.leg, start };
+}
+
+/** The places `course` may be pulled or led into right now: its current row's places (the Start's place in free
  *  time) plus its Traversable places. Every place for Anywhere. */
-export function allowedPlaces(routine: Routine, st: UniqueState | undefined, scene: PositionScene): Set<string> {
-  const start = startOf(routine, st, scene);
-  if (!start) return new Set();
-  return allowedOn(routine, start, scene.now, scene, connectedPlaces(start.place, scene));
+export function allowedPlaces(course: Course, st: UniqueState | undefined, scene: PositionScene): Set<string> {
+  const saved = startOf(course, st, scene);
+  if (!saved) return new Set();
+  return allowedOn(saved.leg, saved.start, scene.now, scene, connectedPlaces(saved.start.place, scene));
 }
 
-/** The places the row in force for `routine` uses right now, unconnected ones dropped: the Start's place in free
+/** The places the row in force for `course` uses right now, unconnected ones dropped: the Start's place in free
  *  time. Empty without a saved Start. */
-export function rowPlacesNow(routine: Routine, st: UniqueState | undefined, scene: PositionScene): string[] {
-  const start = startOf(routine, st, scene);
+export function rowPlacesNow(course: Course, st: UniqueState | undefined, scene: PositionScene): string[] {
+  const start = startOf(course, st, scene)?.start;
   if (!start) return [];
   return placesOf(liveRow(start, rowAt(start, scene.now), connectedPlaces(start.place, scene)).action);
 }
 
-/** What the row in force for `routine` does now; '' in a gap, and for a row with no connected place left (Q84). */
-export function actionNow(routine: Routine, st: UniqueState | undefined, scene: PositionScene): ScheduleAction["kind"] | "" {
-  const start = startOf(routine, st, scene);
+/** What the row in force for `course` does now; '' in a gap, and for a row with no connected place left (Q84). */
+export function actionNow(course: Course, st: UniqueState | undefined, scene: PositionScene): ScheduleAction["kind"] | "" {
+  const start = startOf(course, st, scene)?.start;
   const row = start && rowAt(start, scene.now);
   if (!start || !row) return "";
   if (row.action.kind === "away") return "away";
@@ -412,27 +517,27 @@ export function actionNow(routine: Routine, st: UniqueState | undefined, scene: 
 /** Whether a pull or a script move holds `st` off its schedule at `now`. */
 export const isHeldNow = (st: UniqueState | undefined, now: number): boolean => !!st?.hold && releaseOf(st.hold) > now;
 
-/** Whether the row in force for `routine` right now is Strict. */
-export function isStrictNow(routine: Routine, st: UniqueState | undefined, now: number): boolean {
-  const start = savedStart(routine, st);
+/** Whether the row in force for `course` right now is Strict. */
+export function isStrictNow(course: Course, st: UniqueState | undefined, now: number): boolean {
+  const start = savedStart(course, st)?.start;
   return !!start && !!rowAt(start, now)?.strict;
 }
 
-/** Whether the row in force for `routine` right now is Away. */
-export function isAwayNow(routine: Routine, st: UniqueState | undefined, now: number): boolean {
-  const start = savedStart(routine, st);
+/** Whether the row in force for `course` right now is Away. */
+export function isAwayNow(course: Course, st: UniqueState | undefined, now: number): boolean {
+  const start = savedStart(course, st)?.start;
   return !!start && rowAt(start, now)?.action.kind === "away";
 }
 
-/** Narration can neither call `routine` over nor start its follow: on a Strict or an Away row (Q22). */
-export const isKeptOffNow = (routine: Routine, st: UniqueState | undefined, now: number): boolean =>
-  isStrictNow(routine, st, now) || isAwayNow(routine, st, now);
+/** Narration can neither call `course` over nor start its follow: on a Strict or an Away row (Q22). */
+export const isKeptOffNow = (course: Course, st: UniqueState | undefined, now: number): boolean =>
+  isStrictNow(course, st, now) || isAwayNow(course, st, now);
 
 /** The row id `awayAllDay` gives its one row. */
 export const AWAY_ROW_ID = "@away";
 
 /** `routine` Away all day on every Start, its rolls kept: the entity while no Routine holds (Q24). */
-export const awayAllDay = (routine: Routine): Routine => ({
+const awayAllDay = (routine: PlayedRoutine): PlayedRoutine => ({
   ...routine,
   starts: routine.starts.map((start) => ({ ...start, schedule: [{ id: AWAY_ROW_ID, time: "allDay", action: { kind: "away" } }] })),
 });
@@ -446,9 +551,9 @@ const withState = (book: PositionBook, id: string, st: UniqueState, pos?: string
 /** The hold for a move off the schedule now, and the idle it runs on. Wander and Patrol hold until the current
  *  idle runs out, or a fresh one when it already has (Q92). */
 function holdFor(
-  routine: Routine, st: UniqueState, scene: PositionScene, onStay: (start: EntityStart) => PositionHold | undefined,
+  course: Course, st: UniqueState, scene: PositionScene, onStay: (start: EntityStart) => PositionHold | undefined,
 ): { hold?: PositionHold; idleEnd?: number } | undefined {
-  const start = startOf(routine, st, scene);
+  const start = startOf(course, st, scene)?.start;
   if (!start) return undefined;
   const { action } = liveRow(start, rowAt(start, scene.now), connectedPlaces(start.place, scene));
   if (action.kind === "stay" || action.kind === "away") return { hold: onStay(start) };
@@ -457,38 +562,38 @@ function holdFor(
   return { hold: { until: idleEnd }, idleEnd };
 }
 
-/** A narration pull brings `routine` to `to`. Refused for a follower, a waiting character, a Strict row and a
+/** A narration pull brings `course` to `to`. Refused for a follower, a waiting character, a Strict row and a
  *  place not allowed (Q26, Q36). On a Stay row it needs no hold: nobody moves at the player location, so it
  *  goes back once the player leaves (Q40). */
-export function pullUnique(book: PositionBook, routine: Routine, to: string, scene: PositionScene): PositionBook {
-  const st = book.uniques[routine.id];
-  if (!st || st.follow || isKeptOffNow(routine, st, scene.now) || !allowedPlaces(routine, st, scene).has(to)) return book;
-  const held = holdFor(routine, st, scene, () => undefined);
+export function pullUnique(book: PositionBook, course: Course, to: string, scene: PositionScene): PositionBook {
+  const st = book.uniques[course.id];
+  if (!st || st.follow || isKeptOffNow(course, st, scene.now) || !allowedPlaces(course, st, scene).has(to)) return book;
+  const held = holdFor(course, st, scene, () => undefined);
   if (!held) return book;
-  return withState(book, routine.id, { ...st, hold: held.hold, idleEnd: held.idleEnd ?? st.idleEnd }, to);
+  return withState(book, course.id, { ...st, hold: held.hold, idleEnd: held.idleEnd ?? st.idleEnd }, to);
 }
 
-/** A script moved `routine` to `to`. It holds until the current idle runs out, or on a Stay row until that
+/** A script moved `course` to `to`. It holds until the current idle runs out, or on a Stay row until that
  *  stretch of the day ends (Q53, Q90). It ends a wait. */
-export function moveUniqueByScript(book: PositionBook, routine: Routine, to: string, scene: PositionScene): PositionBook {
-  const st = book.uniques[routine.id];
-  const held = st && holdFor(routine, st, scene, (start) => {
+export function moveUniqueByScript(book: PositionBook, course: Course, to: string, scene: PositionScene): PositionBook {
+  const st = book.uniques[course.id];
+  const held = st && holdFor(course, st, scene, (start) => {
     const end = stretchEnd(start, scene.now);
     return end === undefined ? { untilScriptMove: true } : { until: end };
   });
   if (!held) return book;
   const follow = st.follow?.mode === "waiting" ? undefined : st.follow;
-  return withState(book, routine.id, { ...st, follow, hold: held.hold, idleEnd: held.idleEnd ?? st.idleEnd }, to);
+  return withState(book, course.id, { ...st, follow, hold: held.hold, idleEnd: held.idleEnd ?? st.idleEnd }, to);
 }
 
-/** `routine` starts following the player. Refused on a Strict or an Away row unless a script asks (Q22, Q36, Q64). */
+/** `course` starts following the player. Refused on a Strict or an Away row unless a script asks (Q22, Q36, Q64). */
 export function startFollowing(
-  book: PositionBook, routine: Routine, scene: PositionScene, options: { script?: boolean } = {},
+  book: PositionBook, course: Course, scene: PositionScene, options: { script?: boolean } = {},
 ): PositionBook {
-  const st = book.uniques[routine.id];
+  const st = book.uniques[course.id];
   if (!st || st.follow?.mode === "following") return book;
-  if (!options.script && isKeptOffNow(routine, st, scene.now)) return book;
-  return withState(book, routine.id, { ...st, hold: undefined, follow: { mode: "following", ...(options.script ? { script: true } : {}) } });
+  if (!options.script && isKeptOffNow(course, st, scene.now)) return book;
+  return withState(book, course.id, { ...st, hold: undefined, follow: { mode: "following", ...(options.script ? { script: true } : {}) } });
 }
 
 /** The until-time of a wait asked at `now`, never past the end of the next daypart (Q3). */
@@ -513,12 +618,12 @@ export function partWays(book: PositionBook, id: string): PositionBook {
   return st?.follow ? withState(book, id, { ...st, follow: undefined }) : book;
 }
 
-/** A runtime character as a Unique entity: one Start at its discovery place, an empty schedule, Anywhere (Q56). */
-export function runtimeRoutine(discovered: DiscoveredEntity): Routine | undefined {
+/** A runtime character as a Unique entity: one Routine with one Start at its discovery place, an empty schedule, Anywhere (Q56). */
+export function runtimeCourse(discovered: DiscoveredEntity): Course | undefined {
   if (!discovered.locationId) return undefined;
-  return {
+  return oneRoutineCourse({
     id: discovered.entity.id,
     starts: [{ id: "discovered", place: discovered.locationId, weight: 1, schedule: [] }],
     traversable: "anywhere",
-  };
+  });
 }

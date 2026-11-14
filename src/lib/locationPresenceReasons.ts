@@ -1,4 +1,4 @@
-import { isGeneric, isUnique, startsOf } from '@/lib/entityKind';
+import { isGeneric, isUnique } from '@/lib/entityKind';
 import { presenceOf, type PlacesWorld } from '@/lib/entityPlaces';
 import { startingLocationIds } from '@/lib/locationGraph';
 import { chancePercent, rangeText } from '@/lib/routineTime';
@@ -18,24 +18,30 @@ export function timeText(row: ScheduleRow, schedule: readonly ScheduleRow[]): st
   return schedule.some((r) => r.time !== 'allDay') ? 'The rest of the day' : 'All day';
 }
 
-/** The Presence reasons of `entity` at `locationId` in words. A Generic entity has no chance and no led-to line. */
+/** The Presence reasons of `entity` at `locationId` in words, each led by its Routine's name when the entity has
+ *  two or more (Q18). A Generic entity has no chance and no led-to line. */
 function reasonTexts(entity: Entity, locationId: string, world: PlacesWorld): string[] {
-  const starts = startsOf(entity);
+  const routines = entity.routines ?? [];
   // A Player's Starting Location Start is certain here only when it stands for one place.
   const playerStartCertain = startingLocationIds(world.locations).length === 1;
   const texts: string[] = [];
   for (const reason of presenceOf(entity, world).places.find((p) => p.place === locationId)?.reasons ?? []) {
+    if (reason.kind === 'member') continue;
+    const routine = routines.find((r) => r.id === reason.routineId);
+    const starts = routine?.starts ?? [];
+    const named = (text: string) => (routines.length > 1 && routine ? `${routine.name}: ${text}` : text);
     if (reason.kind === 'begins') {
       const certain = starts.filter((s) => reason.startIds.includes(s.id) && (s.place !== PLAYER_START || playerStartCertain));
       const chance = chancePercent(certain.reduce((sum, s) => sum + s.weight, 0), starts.map((s) => s.weight));
-      texts.push(starts.length > 1 && isUnique(entity) && certain.length ? `begins here (${chance}%)` : 'begins here');
+      texts.push(named(starts.length > 1 && isUnique(entity) && certain.length ? `begins here (${chance}%)` : 'begins here'));
     } else if (reason.kind === 'row') {
       const schedule = starts.find((s) => s.id === reason.startId)?.schedule ?? [];
       const row = schedule.find((r) => r.id === reason.rowId);
-      const text = row && `${ROW_VERB[row.action.kind]} here (${timeText(row, schedule)})`;
+      const text = row && named(`${ROW_VERB[row.action.kind]} here (${timeText(row, schedule)})`);
       if (text && !texts.includes(text)) texts.push(text);
-    } else if (reason.kind === 'traversable') {
-      texts.push('can be led here');
+    } else {
+      const text = named('can be led here');
+      if (!texts.includes(text)) texts.push(text);
     }
   }
   return texts;

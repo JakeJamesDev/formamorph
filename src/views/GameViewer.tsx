@@ -5,6 +5,7 @@ import {
 } from '@/lib/inventory';
 import { hasCode, isItemTiming } from '@/lib/scripts';
 import { inPlayWorldData, playedEntityIdOf, startLocationIdsOpen } from '@/lib/inPlayWorld';
+import { gatePick } from '@/lib/inPlayGates';
 import { runRowKeys } from '@/lib/worldScripts';
 import { playedEntityIds } from '@/lib/scope';
 import type { InventoryPanelSettle, PanelActionList } from '@/components/game/useInventoryPanel';
@@ -131,7 +132,7 @@ import {
 import { selectRelevantDiary } from "../lib/semanticDiary";
 import { findEntityByCharacterName, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription, pruneDiscoveredToHistory, pickedAtStart, INITIAL_SOURCE_TURN_ID } from "../lib/runtimeCharacters";
 import { positionedCast, presentEntityIds, type Standings } from "../lib/entityPresence";
-import { castRoutines, withoutRoutinePlace } from "../lib/entityKind";
+import { castCourses, withoutRoutinePlace } from "../lib/entityKind";
 import { placeAll, positionWorld, reseatForOpening, scriptPlaces, withPlayerAt, type PositionWorld } from "../lib/positionPlay";
 import { EMPTY_BOOK } from "../lib/positionEngine";
 import { openingPlacesOf, placementOf } from "../lib/openingPlacement";
@@ -1510,12 +1511,11 @@ const GameViewer = ({
   const liveFollowerState = (): FollowerState => currentBook();
   // The story minute the clock reads now.
   const storyNow = storyMinute(gameTime, calendar);
-  // Every Unique entity's routine: the authored cast the engine positions, then the runtime characters. Stranded
-  // entities run too, and each routine loses its off places as for a deleted place (Q2, Q52).
+  // Every course the engine positions, on its gated Routine; stranded entities run too, minus off places (Q2, Q52).
   const routines = useMemo(() => {
     const off = authoredLocations.filter((l) => !inPlay.isLocationOn(l.id)).map((l) => l.id);
     const cast = positionedCast(codeEntities.world, personaRef);
-    return castRoutines(off.length ? cast.map((e) => off.reduce(withoutRoutinePlace, e)) : cast, discoveredInPlay);
+    return castCourses(off.length ? cast.map((e) => off.reduce(withoutRoutinePlace, e)) : cast, discoveredInPlay, inPlay.routinePick);
   }, [authoredLocations, inPlay, codeEntities, personaRef, discoveredInPlay]);
   // The disabled entities, whose follows end at the next commit (Q9).
   const { offEntityIds } = inPlay;
@@ -6171,9 +6171,9 @@ const GameViewer = ({
       // An Opening Narration is page one: the game starts on it at once, with the box left empty.
       // Each Unique entity rolls its Start, so the opening pool reads who stands at the start.
       setPlayerStartLocationId(location?.id);
-      // Every authored entity rolls its Start, a gated one too: its gate reads the state this seed is about to set.
+      // Every authored entity rolls every Routine's Start; Routine gates read the state after the setup picks (Q12).
       const startBook = placeAll(EMPTY_BOOK, positionWorld(
-        castRoutines(positionedCast(authoredEntities, personaPick.ref)), storyMinute(0), location?.id, locations, connections,
+        castCourses(positionedCast(authoredEntities, personaPick.ref), [], gatePick(opening.gate)), storyMinute(0), location?.id, locations, connections,
         undefined, location?.id,
       ));
       const startPositions = startBook.positions;

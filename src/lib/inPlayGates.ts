@@ -1,4 +1,5 @@
 import type { Connection, Entity, GameLocation, TraitRequirementRow } from '@/types';
+import { applyingRoutine, type RoutinePick } from './entityKind';
 import { presenceOf } from './entityPlaces';
 import { locationRuleStates } from './imageVisibility';
 import { parentIndex } from './locationGraph';
@@ -35,11 +36,15 @@ export interface GateVerdicts {
   lockRoots: ReadonlyMap<string, GateState>;
   /** On entities whose every place is off: in no scene and out of the AI's reach, their stats still running (Q27). */
   strandedEntityIds: ReadonlySet<string>;
+  /** Each entity with a Routine gate → the id of its applying Routine, null when none holds (Q3, Q9). An entity
+   *  absent here plays its first Routine with a Start. */
+  routineIds: ReadonlyMap<string, string | null>;
 }
 
 const NONE: ReadonlySet<string> = new Set();
+const NO_ROUTINES: ReadonlyMap<string, string | null> = new Map();
 export const ALL_OPEN: GateVerdicts = {
-  offEntityIds: NONE, offLocationIds: NONE, lockedLocationIds: NONE, lockRoots: new Map(), strandedEntityIds: NONE,
+  offEntityIds: NONE, offLocationIds: NONE, lockedLocationIds: NONE, lockRoots: new Map(), strandedEntityIds: NONE, routineIds: NO_ROUTINES,
 };
 
 /** Whether the entity or location carries an Enabled gate with any row. */
@@ -48,10 +53,16 @@ export const hasEnabledGate = (host: Pick<Entity | GameLocation, 'enabledWhen'>)
 /** Whether the location carries a Lock gate with any row. */
 export const hasLockGate = (location: Pick<GameLocation, 'unlockedWhen'>): boolean => !!location.unlockedWhen?.length;
 
-/** Whether the world needs a gate input: some entity or location carries an Enabled gate, or a location a Lock gate. */
+/** Whether any of the entity's Routines carries a Requires row. */
+export const hasRoutineGate = (entity: Pick<Entity, 'routines'>): boolean => !!entity.routines?.some((routine) => routine.requires?.length);
+
+/** Whether the entity carries an Enabled gate or a Routine gate. */
+export const hasAnyGate = (entity: Pick<Entity, 'enabledWhen' | 'routines'>): boolean => hasEnabledGate(entity) || hasRoutineGate(entity);
+
+/** Whether the world needs a gate input: some entity carries an Enabled or Routine gate, or a location an Enabled or Lock gate. */
 export const worldHasGates = (
-  entities: readonly Pick<Entity, 'enabledWhen'>[], locations: readonly Pick<GameLocation, 'enabledWhen' | 'unlockedWhen'>[],
-) => entities.some(hasEnabledGate) || locations.some((l) => hasEnabledGate(l) || hasLockGate(l));
+  entities: readonly Pick<Entity, 'enabledWhen' | 'routines'>[], locations: readonly Pick<GameLocation, 'enabledWhen' | 'unlockedWhen'>[],
+) => entities.some(hasAnyGate) || locations.some((l) => hasEnabledGate(l) || hasLockGate(l));
 
 /** Whether a location's Enabled rows hold: a blank owner reads the played persona (Q29). No rows = on. */
 export const locationGateHolds = (input: GateInput, rows: readonly TraitRequirementRow[] | undefined): boolean =>
@@ -106,33 +117,54 @@ function strandedEntities(
 export const entityGateHolds = (input: GateInput, entityId: string, rows: readonly TraitRequirementRow[] | undefined): boolean =>
   !rows?.length || ruleStates(input, entityId, rows).some((row) => row.holds);
 
-/** Every Enabled and Lock gate in the world, evaluated in one pass against `state.gate` (Q47). */
+/** The Routine pick under `gate`: a blank owner reads the entity (Q7). */
+export const gatePick = (gate: GateInput): RoutinePick => (entity) =>
+  applyingRoutine(entity, (rows) => entityGateHolds(gate, entity.id, rows))?.id ?? null;
+
+/** Each gated entity's applying Routine under `gate`: a blank owner reads the entity (Q7). */
+export function routinePicks(entities: readonly Pick<Entity, 'id' | 'routines'>[], gate: GateInput): Map<string, string | null> {
+  const picks = new Map<string, string | null>();
+  const pick = gatePick(gate);
+  for (const entity of entities) {
+    if (hasRoutineGate(entity)) picks.set(entity.id, pick(entity));
+  }
+  return picks;
+}
+
+/** Every Enabled, Lock and Routine gate in the world, evaluated in one pass against `state.gate` (Q47). */
 export function evaluateGates(source: InPlaySource, state: InPlayState): GateVerdicts {
   const { gate } = state;
   if (!gate) return ALL_OPEN;
   const off = new Set<string>();
-  for (const entity of [...source.entities, ...source.others ?? []]) {
+  const all = [...source.entities, ...source.others ?? []];
+  for (const entity of all) {
     if (!hasEnabledGate(entity) || entity.id === state.playedEntityId) continue;
     if (!entityGateHolds(gate, entity.id, entity.enabledWhen)) off.add(entity.id);
   }
   const offPlaces = offLocations(source, gate, state.playerAt);
   const stranded = offPlaces.size ? strandedEntities(source, offPlaces, off, state.playedEntityId) : NONE;
   const lockRoots = lockRootsOf(source, gate);
-  if (!off.size && !offPlaces.size && !lockRoots.size) return ALL_OPEN;
+  const routineIds = routinePicks(all, gate);
+  if (!off.size && !offPlaces.size && !lockRoots.size && !routineIds.size) return ALL_OPEN;
   const locked = lockRoots.size ? withSubtrees(new Set(lockRoots.keys()), source.locations) : NONE;
-  return { offEntityIds: off, offLocationIds: offPlaces, lockedLocationIds: locked, lockRoots, strandedEntityIds: stranded };
+  return {
+    offEntityIds: off, offLocationIds: offPlaces, lockedLocationIds: locked, lockRoots, strandedEntityIds: stranded,
+    routineIds: routineIds.size > 0 ? routineIds : NO_ROUTINES,
+  };
 }
 
 /** Whether the two lock-root maps hold the same ids with the same lines. */
 const sameLockRoots = (a: ReadonlyMap<string, GateState>, b: ReadonlyMap<string, GateState>) =>
   a.size === b.size && [...a].every(([id, gate]) => b.has(id) && JSON.stringify(b.get(id)) === JSON.stringify(gate));
 
-/** Whether the two verdicts switch off, lock and strand the same ids. */
+/** Whether the two verdicts switch off, lock and strand the same ids and pick the same Routines. */
 export function sameVerdicts(a: GateVerdicts, b: GateVerdicts): boolean {
   const same = (x: ReadonlySet<string>, y: ReadonlySet<string>) => x.size === y.size && [...x].every((id) => y.has(id));
+  const sameRoutines = a.routineIds.size === b.routineIds.size
+    && [...a.routineIds].every(([id, routine]) => b.routineIds.has(id) && b.routineIds.get(id) === routine);
   return same(a.offEntityIds, b.offEntityIds) && same(a.offLocationIds, b.offLocationIds)
     && same(a.lockedLocationIds, b.lockedLocationIds) && same(a.strandedEntityIds, b.strandedEntityIds)
-    && sameLockRoots(a.lockRoots, b.lockRoots);
+    && sameLockRoots(a.lockRoots, b.lockRoots) && sameRoutines;
 }
 
 /** The ids a Condition reads as the entity's own: its traits and groups, linked ones under their original's id,

@@ -1,6 +1,9 @@
-import { PLAYER_START, type DiscoveredEntity, type Entity, type EntityKind, type EntityRoutine, type EntityStart, type ScheduleRow, type Traversable } from "@/types";
+import {
+  PLAYER_START, type DiscoveredEntity, type Entity, type EntityKind, type EntityRoutine, type EntityStart, type ScheduleRow, type TraitRequirementRow,
+  type Traversable,
+} from "@/types";
 import { namedPlacesOf, withoutMembership } from "@/lib/entityPlaces";
-import { placesOf, runtimeRoutine, type Routine } from "@/lib/positionEngine";
+import { placesOf, runtimeCourse, type Course } from "@/lib/positionEngine";
 
 /**
  * An entity's kind and routine: a Unique entity is one body placed from one rolled Start; a Generic entity runs every Start
@@ -35,14 +38,22 @@ export const routineName = (n: number): string => `Routine ${n}`;
 export const firstRoutine = (starts: EntityStart[] = [], traversable?: Traversable): EntityRoutine =>
   ({ id: FIRST_ROUTINE_ID, name: routineName(1), starts, ...(traversable !== undefined && { traversable }) });
 
-/** The Routine that applies in play: the first. */
-export const applyingRoutine = (entity: Pick<Entity, "routines">): EntityRoutine | undefined => entity.routines?.[0];
+/** Whether a Routine's Requires rows hold. */
+export type RoutineGate = (rows: readonly TraitRequirementRow[] | undefined) => boolean;
 
-/** The applying Routine's Starts. */
-export const startsOf = (entity: Pick<Entity, "routines">): EntityStart[] => applyingRoutine(entity)?.starts ?? [];
+/** Every gate holds: the pick with no playthrough state. */
+export const EVERY_GATE: RoutineGate = () => true;
 
-/** The applying Routine's Traversable. An absent field is an empty list, in play and in the editor. */
-export const traversableOf = (entity: Pick<Entity, "routines">): Traversable => applyingRoutine(entity)?.traversable ?? [];
+/** The Routine that applies in play: the first, in author order, with a Start and a gate that holds (Q9, Q19).
+ *  Undefined when none does (Q24). */
+export const applyingRoutine = (entity: Pick<Entity, "routines">, holds: RoutineGate = EVERY_GATE): EntityRoutine | undefined =>
+  entity.routines?.find((routine) => routine.starts.length > 0 && holds(routine.requires));
+
+/** The first Routine's Starts. */
+export const startsOf = (entity: Pick<Entity, "routines">): EntityStart[] => entity.routines?.[0]?.starts ?? [];
+
+/** The first Routine's Traversable. An absent field is an empty list, in play and in the editor. */
+export const traversableOf = (entity: Pick<Entity, "routines">): Traversable => entity.routines?.[0]?.traversable ?? [];
 
 /** Every Start of every Routine, in order. */
 export const everyStart = (entity: Pick<Entity, "routines">): EntityStart[] => (entity.routines ?? []).flatMap((r) => r.starts);
@@ -65,21 +76,30 @@ export const withFirstStarts = <E extends Pick<Entity, "routines">>(entity: E, s
 export const withFirstTraversable = <E extends Pick<Entity, "routines">>(entity: E, traversable: Traversable): E =>
   withFirstRoutine(entity, (routine) => ({ ...routine, traversable }));
 
-/** The entity fields a routine is read from. */
+/** The entity fields a course is read from. */
 export type RoutineEntity = Pick<Entity, "id" | "kind" | "routines">;
 
-/** The engine's view of an entity with a kind: its applying Routine. Undefined for anything else. */
-export function routineOf(entity: RoutineEntity): Routine | undefined {
-  if (isGeneric(entity)) return { id: entity.id, starts: startsOf(entity), traversable: [], generic: true };
-  if (!isUnique(entity)) return undefined;
-  return { id: entity.id, starts: startsOf(entity), traversable: traversableOf(entity) };
+/** The id of the Routine that applies to `entity` in play, or null when none does. */
+export type RoutinePick = (entity: RoutineEntity) => string | null;
+
+/** The pick with no playthrough state: every gate holds. */
+export const ungatedPick: RoutinePick = (entity) => applyingRoutine(entity, EVERY_GATE)?.id ?? null;
+
+/** The engine's view of an entity with a kind: every Routine, and the one `pick` applies. Undefined for anything else. */
+export function courseOf(entity: RoutineEntity, pick: RoutinePick = ungatedPick): Course | undefined {
+  const generic = isGeneric(entity);
+  if (!generic && !isUnique(entity)) return undefined;
+  const routines = (entity.routines ?? []).map((routine) => ({
+    id: routine.id, starts: routine.starts, traversable: generic ? [] : routine.traversable ?? [],
+  }));
+  return { id: entity.id, routines, applying: pick(entity), ...(generic && { generic: true as const }) };
 }
 
-/** The routines of every Unique entity and Generic entity in `cast`, then of every runtime character. */
-export function castRoutines(cast: readonly RoutineEntity[], runtime: readonly DiscoveredEntity[] = []): Routine[] {
+/** The courses of every Unique entity and Generic entity in `cast` under `pick`, then of every runtime character. */
+export function castCourses(cast: readonly RoutineEntity[], runtime: readonly DiscoveredEntity[] = [], pick: RoutinePick = ungatedPick): Course[] {
   return [
-    ...cast.flatMap((entity) => routineOf(entity) ?? []),
-    ...runtime.flatMap((d) => runtimeRoutine(d) ?? []),
+    ...cast.flatMap((entity) => courseOf(entity, pick) ?? []),
+    ...runtime.flatMap((d) => runtimeCourse(d) ?? []),
   ];
 }
 

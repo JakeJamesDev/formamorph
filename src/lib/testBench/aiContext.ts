@@ -29,6 +29,7 @@ import { splitToken, variableForToken } from '@/lib/promptVariables';
 import { enabledStats } from '@/lib/traitEffects';
 import type { Entity, GameLocation, PlayerStat } from '@/types';
 import { samplePlacement } from '@/lib/entityPlaces';
+import { startRoutinePick } from '@/lib/inPlayWorld';
 import { inCast } from '@/lib/owners';
 import { openingPersonaOf } from '@/lib/openingState';
 import { lensActiveTraits, lensOwnerScopes, lensPersonaRef, resolveLensEntityText, resolveLensText, type BenchLens } from './lens';
@@ -248,7 +249,7 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
   // roster that listed someone twice would disagree with the text beside it.
   const hereIds = scene.presentIds;
   const here = new Set(hereIds);
-  const placesOf = samplePlacement(cast, { locations, connections }, location?.id);
+  const placesOf = samplePlacement(cast, { locations, connections }, location?.id, startRoutinePick({ ...world, entities: world.entities ?? [], locations }, lens.persona?.id ?? null, lens.state.optionValues));
   const subIds = sublocationEntityIds(location, locations, connections, cast, placesOf).filter((id) => !here.has(id));
   const shown = new Set([...hereIds, ...subIds]);
   const reachIds = reachableEntityIds(location, locations, connections, cast, placesOf).filter((id) => !shown.has(id));

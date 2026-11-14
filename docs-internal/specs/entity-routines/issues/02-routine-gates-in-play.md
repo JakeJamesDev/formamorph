@@ -1,6 +1,6 @@
 # 02: Routine Gates in Play
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -29,9 +29,21 @@ Spec rulings: Q3, Q4, Q5, Q7, Q9, Q11, Q12, Q13, Q18, Q19, Q24.
 
 ## Acceptance criteria
 
-- [ ] Resolver tests: each Condition kind picks a Routine; first in order wins on overlap; blank owner reads the entity; none holding gives none.
-- [ ] Engine tests: every Routine rolls once at new game; repeated swaps reuse the kept roll; a return places by Schedule at the current time.
-- [ ] `computeTurnCommit` tests: a follower inside the new reach stays, one outside parts ways; the guard bites when the reach check is removed.
-- [ ] Opening test: an entity whose Routine reads a setup pick opens on that Routine.
-- [ ] Save tests: a save keeps every roll across save and load; a v3.7.0 save loads with its Start kept.
-- [ ] Presence and Sample Placement tests for a two-Routine entity.
+- [x] Resolver tests: each Condition kind picks a Routine; first in order wins on overlap; blank owner reads the entity; none holding gives none. `inPlayGates.routines.test.ts`, all seven kinds, World Option included.
+- [x] Engine tests: every Routine rolls once at new game; repeated swaps reuse the kept roll; a return places by Schedule at the current time. `positionEngine.test.ts` › Routines (10 cases, an Away hold that does not pin a return included).
+- [x] `computeTurnCommit` tests: a follower inside the new reach stays, one outside parts ways; the guard bites when the reach check is removed. `computeTurnCommit.test.ts` › a follower whose Routine swaps; `followAfterSwap` mutated to keep every follow, 3 cases went red.
+- [x] Opening test: an entity whose Routine reads a setup pick opens on that Routine. `GameViewer.routineGates.test.tsx` › the opening placement; the ungated opening pick turns it red.
+- [x] Save tests: a save keeps every roll across save and load; a v3.7.0 save loads with its Start kept. `GameplayContext.positions.test.tsx` › an entity with Routines; the load hold for gated Unique and Generic entities each reverted once and went red.
+- [x] Presence and Sample Placement tests for a two-Routine entity. `entityPlaces.test.ts` and `locationPresenceReasons.test.ts`.
+
+## Landed
+
+**Not verified**
+- Nothing open in the criteria. A gate flip mid-play with a follower is covered at the engine and commit seams, not by a full GameViewer turn.
+- No frame: nothing new renders except the Presence reason text, checked by DOM-free tests.
+
+**For you**
+- ⚠️ Save shape: a Unique entity's engine state gains `routineId`, `rolls` and `nowhere` (written only for two or more Routines, or while none holds). A v3.7.0 save loads as before.
+- Presence tab copy for a two-Routine entity reads *Day: begins here (50%)*. Approve the "Routine name: reason" form or name another.
+- A swap of an entity standing at the player's location waits until the player leaves (the existing "nobody leaves mid-scene" rule). Check that this feels right in play.
+- Notes for later tickets: the fallback Sample Placement for a save with no stored opening placement (`openingPlacement.ts`) stays ungated; only pre-placement saves reach it. `startsOf`/`traversableOf` now mean the first Routine explicitly, for 03's editor.

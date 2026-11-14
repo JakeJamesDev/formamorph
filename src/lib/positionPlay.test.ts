@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity } from '@/types';
-import { castRoutines } from './entityKind';
+import { castCourses } from './entityKind';
 import { idsAt, samplePlacement } from './entityPlaces';
 import { EMPTY_BOOK } from './positionEngine';
 import { placeAll, positionWorld, reconcileBook, reseatForOpening } from './positionPlay';
@@ -8,7 +8,7 @@ import { placeAll, positionWorld, reconcileBook, reseatForOpening } from './posi
 import { herd, yardLocations as locations } from '@/test/entityKindFixture';
 import { oneRoutine } from '@/test/routines';
 
-const world = (now: number, playerAt?: string, cast: Entity[] = [herd]) => positionWorld(castRoutines(cast), now, playerAt, locations, []);
+const world = (now: number, playerAt?: string, cast: Entity[] = [herd]) => positionWorld(castCourses(cast), now, playerAt, locations, []);
 const where = (book: typeof EMPTY_BOOK) => Object.fromEntries(Object.entries(book.generics.herd ?? {}).map(([id, p]) => [id, p.position]));
 
 describe('a Generic entity in play', () => {

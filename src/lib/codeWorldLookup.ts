@@ -8,6 +8,7 @@ import type {
   Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, ScriptTiming, Stat, StatGroup, Trait, TraitGroup,
 } from '@/types';
 import { idsAt, samplePlacement, type PlacesOf } from './entityPlaces';
+import { startRoutinePick } from './inPlayWorld';
 import { positionedCast } from './entityPresence';
 import { sampleStart } from './startingLocation';
 import { effectiveCopy } from './blueprints';
@@ -213,7 +214,11 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
     if (sample) return sample;
     const locations = world.locations ?? [];
     const cast = positionedCast([...world.entities], undefined);
-    const placesOf = samplePlacement(cast, { locations, connections: world.connections ?? [] }, sampleStart(locations)?.id);
+    const pick = startRoutinePick({
+      entities: [...world.entities], locations: [...locations], traits: [...world.traits], traitGroups: [...world.traitGroups],
+      stats: [...world.stats ?? []], statGroups: [...world.statGroups ?? []], options: [...world.options ?? []],
+    });
+    const placesOf = samplePlacement(cast, { locations, connections: world.connections ?? [] }, sampleStart(locations)?.id, pick);
     return (sample = { cast, placesOf });
   };
   const gate = editorGateInput(ownerWorld, startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities }));

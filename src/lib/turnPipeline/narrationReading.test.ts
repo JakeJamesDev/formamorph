@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readNarration, readEditedNarration, selectVisitorAdditions, splitParticipants, presentSceneEntities } from './narrationReading';
 import type { Connection, Entity, EntityStart, GameLocation } from '@/types';
-import { castRoutines } from '../entityKind';
+import { castCourses } from '../entityKind';
 import { storyMinute } from '../gameClock';
 import { placeAll, positionWorld, type PositionWorld } from '../positionPlay';
 import { startFollowing, startWaiting, type PositionBook } from '../positionEngine';
@@ -122,7 +122,7 @@ describe('selectVisitorAdditions', () => {
   /** The book before and after the pull, and the engine view it read. */
   const pull = (prose: string, cast: Entity[], over: PullOptions = {}) => {
     const location = over.location ?? here;
-    const positionsWorld = positionWorld(castRoutines(cast), NOON, location.id, world, over.connections ?? [ferryRoad], () => 0);
+    const positionsWorld = positionWorld(castCourses(cast), NOON, location.id, world, over.connections ?? [ferryRoad], () => 0);
     const placed = placeAll({ positions: {}, uniques: {}, generics: {} }, positionsWorld);
     const seated = { ...placed, positions: { ...placed.positions, ...over.positions } };
     const book = over.before ? over.before(seated, positionsWorld) : seated;

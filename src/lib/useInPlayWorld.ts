@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
-import { evaluateGates, hasEnabledGate, sameVerdicts, worldHasGates, type GateVerdicts, type InPlaySource } from '@/lib/inPlayGates';
+import { evaluateGates, hasAnyGate, sameVerdicts, worldHasGates, type GateVerdicts, type InPlaySource } from '@/lib/inPlayGates';
 import { inPlayWorldFrom, playedEntityIdOf, type InPlayWorld } from '@/lib/inPlayWorld';
 import { addedCharacters, inPlayLibrary, inPlayOwners } from '@/lib/ownedTraitsInPlay';
 import { refreshChosenTraits } from '@/lib/traitEffects';
@@ -39,7 +39,7 @@ export function useInPlayWorld(): InPlayWorld {
     [playEntities, locations, connections, others],
   );
   const gated = useMemo(
-    () => worldHasGates(playEntities, locations) || others.some(hasEnabledGate), [playEntities, locations, others],
+    () => worldHasGates(playEntities, locations) || others.some(hasAnyGate), [playEntities, locations, others],
   );
   const daypart = daypartAt(gameTime, calendar);
   // Every owner reads as committed, off ones frozen (Q47); built only when some entity or location has a gate.

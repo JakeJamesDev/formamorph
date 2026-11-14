@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { PLAYER_START, type Connection, type DiscoveredEntity, type ScheduleAction, type ScheduleRow, type Traversable } from '@/types';
 import {
-  actionNow, advancePositions, allowedPlaces, awayAllDay, connectedPlaces, genericPlaces, isStrictNow, moveUniqueByScript, partWays, pullUnique,
-  runtimeRoutine, startFollowing, startWaiting, waitUntil, type PositionBook, type PositionScene, type Routine,
+  actionNow, advancePositions, allowedPlaces, connectedPlaces, genericPlaces, isStrictNow, moveUniqueByScript, partWays, pullUnique,
+  runtimeCourse, startFollowing, startWaiting, waitUntil, oneRoutineCourse, type Course, type PositionBook, type PositionScene,
 } from './positionEngine';
 
 // A village of sibling places, a ridge one Far Connection away, and an island nothing reaches.
@@ -38,8 +38,12 @@ const allDay = (id: string, action: ScheduleAction, strict = false): ScheduleRow
 const timed = (id: string, from: number, to: number, action: ScheduleAction, strict = false): ScheduleRow =>
   ({ id, time: { start: from * 60, end: to * 60 }, action, ...(strict ? { strict } : {}) });
 
+type Routine = Course;
+/** A Course of one always-applying Routine. */
+const one = oneRoutineCourse;
+
 const routine = (schedule: ScheduleRow[], place = 'inn', traversable: Traversable = []): Routine =>
-  ({ id: 'mara', starts: [{ id: 's1', place, weight: 1, schedule }], traversable });
+  one({ id: 'mara', starts: [{ id: 's1', place, weight: 1, schedule }], traversable });
 
 const EMPTY: PositionBook = { positions: {}, uniques: {}, generics: {} };
 const scene = (now: number, playerAt?: string): PositionScene => ({ locations, connections, now, playerAt });
@@ -64,14 +68,14 @@ function play(r: Routine, now: number, playerAt?: string, random = seeded(7)) {
 }
 
 describe('the Start roll', () => {
-  const twoStarts: Routine = {
+  const twoStarts = one({
     id: 'mara',
     starts: [
       { id: 'forge', place: 'smithy', weight: 3, schedule: [] },
       { id: 'tavern', place: 'inn', weight: 1, schedule: [] },
     ],
     traversable: [],
-  };
+  });
 
   it('weights the pick', () => {
     let forge = 0;
@@ -97,7 +101,7 @@ describe('the Start roll', () => {
 
   it('rolls again for a Start the world no longer has', () => {
     const first = advancePositions([twoStarts], EMPTY, scene(at(1, 8)), () => 0);
-    const edited = { ...twoStarts, starts: [twoStarts.starts[1]] };
+    const edited = one({ id: 'mara', traversable: [], starts: [twoStarts.routines[0].starts[1]] });
     expect(advancePositions([edited], first, scene(at(1, 9)), () => 0).uniques.mara.startId).toBe('tavern');
   });
 });
@@ -474,28 +478,28 @@ describe('Away', () => {
   });
 
   it('puts a character away all day, its rolled Start kept', () => {
-    const twoStarts: Routine = {
+    const twoStarts = one({
       id: 'mara', traversable: [],
       starts: [
         { id: 'forge', place: 'smithy', weight: 1, schedule: [allDay('work', stay('smithy'))] },
         { id: 'tavern', place: 'inn', weight: 1, schedule: [allDay('drink', stay('inn'))] },
       ],
-    };
+    });
     const book = advancePositions([twoStarts], EMPTY, scene(at(1, 8), 'square'), seeded(5));
-    const gone = advancePositions([awayAllDay(twoStarts)], book, scene(at(1, 9), 'square'), seeded(5));
+    const gone = advancePositions([{ ...twoStarts, applying: null }], book, scene(at(1, 9), 'square'), seeded(5));
     expect(gone.positions.mara).toBeUndefined();
     expect(gone.uniques.mara.startId).toBe(book.uniques.mara.startId);
     expect(advancePositions([twoStarts], gone, scene(at(1, 10), 'square'), seeded(5)).positions.mara).toBe(book.positions.mara);
   });
 
   it('gives a Generic Entity Instance no place during the row', () => {
-    const bats: Routine = {
+    const bats = one({
       id: 'bats', generic: true, traversable: [],
       starts: [
         { id: 'roost', place: 'wall', weight: 1, schedule: [timed('out', 6, 18, away)] },
         { id: 'loft', place: 'inn', weight: 1, schedule: [] },
       ],
-    };
+    });
     const day = advancePositions([bats], EMPTY, scene(at(1, 10), 'square'), seeded(3));
     expect(day.generics.bats.roost.position).toBeUndefined();
     expect(genericPlaces(day.generics)).toEqual({ bats: ['inn'] });
@@ -506,14 +510,14 @@ describe('Away', () => {
 
 describe('Generic entities', () => {
   // A den by day that hunts at the square by night, a pack that wanders, and one that patrols the wall.
-  const wolves: Routine = {
+  const wolves = one({
     id: 'wolves', generic: true, traversable: [],
     starts: [
       { id: 'den', place: 'smithy', weight: 1, schedule: [timed('hunt', 20, 6, stay('square'))] },
       { id: 'pack', place: 'inn', weight: 1, schedule: [allDay('roam', wander(['inn', 'market'], 60))] },
       { id: 'watch', place: 'wall', weight: 1, schedule: [allDay('round', patrol([['wall', 30], ['gate', 30]]))] },
     ],
-  };
+  });
   const instancePositions = (book: PositionBook) =>
     Object.fromEntries(Object.entries(book.generics.wolves ?? {}).map(([id, p]) => [id, p.position]));
   const run = (book: PositionBook, now: number, playerAt?: string, random = seeded(3)) =>
@@ -542,13 +546,13 @@ describe('Generic entities', () => {
   });
 
   it('runs two Starts at the same place, each on its own rows', () => {
-    const pair: Routine = {
+    const pair = one({
       id: 'wolves', generic: true, traversable: [],
       starts: [
         { id: 'a', place: 'inn', weight: 1, schedule: [] },
         { id: 'b', place: 'inn', weight: 1, schedule: [allDay('round', patrol([['inn', 30], ['gate', 30]]))] },
       ],
-    };
+    });
     const book = advancePositions([pair], EMPTY, scene(at(1, 8)), seeded(1));
     const later = advancePositions([pair], book, scene(at(1, 8, 30)), seeded(1));
     expect(instancePositions(book)).toEqual({ a: 'inn', b: 'inn' });
@@ -585,7 +589,7 @@ describe('Generic entities', () => {
   it('begins a new Start at its place and drops the record of a Start the world lost', () => {
     const saved = run(EMPTY, at(1, 8, 30));
     const withLost = { ...saved, generics: { wolves: { ...saved.generics.wolves, gone: { position: 'gate', lastRun: at(1, 8) } } } };
-    const grown: Routine = { ...wolves, starts: [...wolves.starts.slice(1), { id: 'cub', place: 'square', weight: 1, schedule: [] }] };
+    const grown = one({ id: 'wolves', generic: true, traversable: [], starts: [...wolves.routines[0].starts.slice(1), { id: 'cub', place: 'square', weight: 1, schedule: [] }] });
     const book = advancePositions([grown], withLost, scene(at(1, 8, 30)), seeded(3));
     expect(Object.keys(book.generics.wolves)).toEqual(['pack', 'watch', 'cub']);
     expect(book.generics.wolves.cub.position).toBe('square');
@@ -602,7 +606,7 @@ describe('runtime characters', () => {
   const discovered: DiscoveredEntity = { entity: { id: 'stranger', name: 'Stranger' }, locationId: 'square', sourceTurnId: 't1' };
 
   it('stays where it was discovered, and may follow anywhere', () => {
-    const r = runtimeRoutine(discovered)!;
+    const r = runtimeCourse(discovered)!;
     const game = play(r, at(1, 9));
     expect(game.advance(at(4, 9)).pos).toBe('square');
     game.apply((b) => startFollowing(b, r, scene(at(4, 9), 'square'))).advance(at(4, 10), 'island');
@@ -616,7 +620,7 @@ describe("the player's starting location", () => {
   /** `playerStart` null: the game knows no player start. */
   const begin = (now: number, playerAt: string, playerStart: string | null = playerAt): PositionScene =>
     ({ ...scene(now, playerAt), ...(playerStart !== null && { playerStart }) });
-  const companion = (schedule: ScheduleRow[] = [], traversable: Traversable = 'anywhere', beginsFollowing = true): Routine => ({
+  const companion = (schedule: ScheduleRow[] = [], traversable: Traversable = 'anywhere', beginsFollowing = true): Routine => one({
     id: 'kit', traversable,
     starts: [{ id: 'beside', place: PLAYER_START, weight: 1, schedule, ...(beginsFollowing && { beginsFollowing: true as const }) }],
   });
@@ -662,13 +666,13 @@ describe("the player's starting location", () => {
   });
 
   it('follows only in a game that rolled the Start with the setting', () => {
-    const either: Routine = {
+    const either = one({
       id: 'kit', traversable: 'anywhere',
       starts: [
         { id: 'beside', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true },
         { id: 'home', place: 'smithy', weight: 1, schedule: [] },
       ],
-    };
+    });
     const rolledBeside = run(either, EMPTY, begin(at(1, 8), 'inn'), () => 0);
     expect(rolledBeside.uniques.kit).toMatchObject({ startId: 'beside', follow: { mode: 'following' } });
     const rolledHome = run(either, EMPTY, begin(at(1, 8), 'inn'), () => 0.99);
@@ -678,7 +682,7 @@ describe("the player's starting location", () => {
   });
 
   it('ignores Begins Following on a Start at a fixed location', () => {
-    const fixed: Routine = { id: 'kit', traversable: 'anywhere', starts: [{ id: 'home', place: 'smithy', weight: 1, schedule: [], beginsFollowing: true }] };
+    const fixed = one({ id: 'kit', traversable: 'anywhere', starts: [{ id: 'home', place: 'smithy', weight: 1, schedule: [], beginsFollowing: true }] });
     const book = run(fixed, EMPTY, begin(at(1, 8), 'inn'));
     expect(book.uniques.kit.follow).toBeUndefined();
     expect(book.positions.kit).toBe('smithy');
@@ -691,15 +695,137 @@ describe("the player's starting location", () => {
   });
 
   it('runs a Generic Entity Instance from beside the player, then its rows, and never follows', () => {
-    const crowd: Routine = {
+    const crowd = one({
       id: 'crowd', generic: true, traversable: [],
       starts: [{ id: 'beside', place: PLAYER_START, weight: 1, schedule: [timed('market', 12, 14, stay('square'))], beginsFollowing: true }],
-    };
+    });
     const first = run(crowd, EMPTY, begin(at(1, 8), 'inn'));
     expect(first.generics.crowd.beside.position).toBe('inn');
     expect(first.uniques.crowd).toBeUndefined();
     const moved = run(crowd, first, begin(at(1, 9), 'gate', 'inn'));
     expect(moved.generics.crowd.beside.position).toBe('inn');
     expect(run(crowd, moved, begin(at(1, 13), 'gate', 'inn')).generics.crowd.beside.position).toBe('square');
+  });
+});
+
+describe('Routines', () => {
+  // Day: works at the smithy or sells at the market. Night: drinks at the inn or guards the gate.
+  const day = { id: 'day', traversable: [] as Traversable, starts: [
+    { id: 'forge', place: 'smithy', weight: 1, schedule: [allDay('work', stay('smithy'))] },
+    { id: 'stall', place: 'market', weight: 1, schedule: [allDay('sell', stay('market'))] },
+  ] };
+  const night = { id: 'night', traversable: [] as Traversable, starts: [
+    { id: 'tavern', place: 'inn', weight: 1, schedule: [allDay('drink', wander(['inn', 'square'], 30))] },
+    { id: 'post', place: 'gate', weight: 1, schedule: [allDay('guard', stay('gate'))] },
+  ] };
+  const mara = (applying: string | null): Course => ({ id: 'mara', routines: [day, night], applying });
+  const step = (applying: string | null, book: PositionBook, t: number, random: () => number = seeded(9), player = 'ridge') =>
+    advancePositions([mara(applying)], book, scene(t, player), random);
+
+  it('rolls every Routine once at new game and keeps each roll in the state', () => {
+    const rolled = new Set<string>();
+    for (let seed = 1; seed <= 40; seed++) {
+      const st = step('day', EMPTY, at(1, 8), seeded(seed)).uniques.mara;
+      expect(st.routineId).toBe('day');
+      expect(Object.keys(st.rolls ?? {})).toEqual(['night']);
+      rolled.add(`${st.startId}/${st.rolls?.night}`);
+    }
+    // Both Routines roll by weight, each on its own.
+    expect(rolled.size).toBe(4);
+  });
+
+  it('reuses the kept roll on every swap, never rolling again (Q4)', () => {
+    let book = step('day', EMPTY, at(1, 8), seeded(3));
+    const dayStart = book.uniques.mara.startId;
+    const nightStart = book.uniques.mara.rolls?.night;
+    for (let i = 1; i <= 12; i++) {
+      const applying = i % 2 ? 'night' : 'day';
+      // A fresh random source every swap, so a second roll would drift.
+      book = step(applying, book, at(1, 8) + i * 60, seeded(100 + i));
+      expect(book.uniques.mara.routineId).toBe(applying);
+      expect(book.uniques.mara.startId).toBe(applying === 'day' ? dayStart : nightStart);
+    }
+  });
+
+  it('places a swap by the new Schedule at the current time, with no row, idle or hold carried (Q11)', () => {
+    const daytime = step('day', EMPTY, at(1, 8), () => 0);
+    expect(daytime.positions.mara).toBe('smithy');
+    const held = moveUniqueByScript(daytime, mara('day'), 'wall', scene(at(1, 8, 30), 'square'));
+    expect(held.uniques.mara.hold).toEqual({ untilScriptMove: true });
+    const nighttime = step('night', held, at(1, 20), () => 0);
+    expect(nighttime.positions.mara).toBe('inn');
+    expect(nighttime.uniques.mara).toMatchObject({ rowId: 'drink', idleEnd: at(1, 20, 30) });
+    expect(nighttime.uniques.mara.hold).toBeUndefined();
+    const back = step('day', nighttime, at(2, 9), () => 0);
+    expect(back.positions.mara).toBe('smithy');
+    expect(back.uniques.mara).not.toHaveProperty('idleEnd');
+  });
+
+  it('waits for the player to leave before a swap moves an entity out of the scene', () => {
+    const daytime = step('day', EMPTY, at(1, 8), () => 0, 'smithy');
+    const swapped = step('night', daytime, at(1, 20), () => 0, 'smithy');
+    expect(swapped.positions.mara).toBe('smithy');
+    expect(step('night', swapped, at(1, 20, 10), () => 0, 'square').positions.mara).toBe('inn');
+  });
+
+  it('goes Away while no Routine holds, and a script hold on that Away row does not pin a return (Q24)', () => {
+    const daytime = step('day', EMPTY, at(1, 8), () => 0);
+    const gone = step(null, daytime, at(1, 9), () => 0);
+    expect(gone.positions.mara).toBeUndefined();
+    expect(gone.uniques.mara).toMatchObject({ nowhere: true, routineId: 'day', startId: daytime.uniques.mara.startId });
+    // All-day Away: a script move holds until the next script move.
+    const moved = moveUniqueByScript(gone, mara(null), 'wall', scene(at(1, 9, 30), 'square'));
+    expect(moved.uniques.mara.hold).toEqual({ untilScriptMove: true });
+    expect(step(null, moved, at(1, 10), () => 0).positions.mara).toBe('wall');
+    const back = step('night', moved, at(1, 20), () => 0);
+    expect(back.positions.mara).toBe('inn');
+    expect(back.uniques.mara.nowhere).toBeUndefined();
+    expect(back.uniques.mara.startId).toBe(daytime.uniques.mara.rolls?.night);
+  });
+
+  it('keeps a follow through a swap and leads the follower on the new Routine\'s reach', () => {
+    const daytime = step('day', EMPTY, at(1, 8), () => 0);
+    const following = startFollowing(daytime, mara('day'), scene(at(1, 8), 'square'));
+    const swapped = step('night', following, at(1, 20), () => 0, 'inn');
+    expect(swapped.uniques.mara.follow).toEqual({ mode: 'following' });
+    expect(swapped.positions.mara).toBe('inn');
+  });
+
+  it('begins following only on the Routine that applies at new game (Q31)', () => {
+    const beside = { id: 'beside', traversable: 'anywhere' as Traversable, starts: [{ id: 'b', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true as const }] };
+    const home = { id: 'home', traversable: 'anywhere' as Traversable, starts: [{ id: 'h', place: 'smithy', weight: 1, schedule: [] }] };
+    const kit = (applying: string): Course => ({ id: 'kit', routines: [home, beside], applying });
+    const s = (t: number, player: string): PositionScene => ({ ...scene(t, player), playerStart: 'square' });
+    const opened = advancePositions([kit('home')], EMPTY, s(at(1, 8), 'square'), () => 0);
+    expect(opened.uniques.kit.follow).toBeUndefined();
+    expect(advancePositions([kit('beside')], opened, s(at(1, 9), 'square'), () => 0).uniques.kit.follow).toBeUndefined();
+    expect(advancePositions([kit('beside')], EMPTY, s(at(1, 8), 'square'), () => 0).uniques.kit.follow).toEqual({ mode: 'following' });
+  });
+
+  it('reads a v3.7.0 state, which holds one startId, as the first Routine\'s roll', () => {
+    const saved: PositionBook = { positions: { mara: 'market' }, uniques: { mara: { startId: 'stall', lastRun: at(1, 8) } }, generics: {} };
+    const read = step('day', saved, at(1, 9), seeded(4));
+    expect(read.uniques.mara).toMatchObject({ startId: 'stall', routineId: 'day' });
+    expect(read.positions.mara).toBe('market');
+    expect(['tavern', 'post']).toContain(read.uniques.mara.rolls?.night);
+    expect(step('day', step('night', read, at(1, 20)), at(2, 9)).uniques.mara.startId).toBe('stall');
+  });
+
+  it('writes no Routine fields for an entity with one Routine', () => {
+    const single = advancePositions([routine([allDay('rest', stay('inn'))])], EMPTY, scene(at(1, 8)), seeded(1)).uniques.mara;
+    expect(single).not.toHaveProperty('routineId');
+    expect(single).not.toHaveProperty('rolls');
+  });
+
+  it('runs only the applying Routine\'s Generic Entity Instances, which leave and come back fresh (Q5, Q11)', () => {
+    const herd = (applying: string | null): Course => ({ id: 'herd', generic: true, applying, routines: [day, night] });
+    const run = (applying: string | null, book: PositionBook, t: number) => advancePositions([herd(applying)], book, scene(t, 'wall'), seeded(2));
+    const daytime = run('day', EMPTY, at(1, 8));
+    expect(Object.keys(daytime.generics.herd)).toEqual(['forge', 'stall']);
+    const nighttime = run('night', daytime, at(1, 20));
+    expect(Object.keys(nighttime.generics.herd)).toEqual(['tavern', 'post']);
+    expect(nighttime.generics.herd.post.position).toBe('gate');
+    expect(run(null, nighttime, at(1, 21)).generics.herd).toBeUndefined();
+    expect(run('day', nighttime, at(2, 8)).generics.herd.forge).toMatchObject({ position: 'smithy', rowId: 'work', lastRun: at(2, 8) });
   });
 });

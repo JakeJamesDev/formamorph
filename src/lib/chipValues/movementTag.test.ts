@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { castRoutines } from '../entityKind';
+import { castCourses } from '../entityKind';
 import { splitToken } from '../promptVariables';
 import { chipValues, sceneEntityChipValues } from './chipValues';
 import { liveChipScene, type LiveSceneSources } from './liveScene';
@@ -53,7 +53,7 @@ const sources = (over: Partial<LiveSceneSources> = {}): LiveSceneSources => ({
   resolve: (text) => text, resolveTrait: (_t, text) => text, resolveEntity: (_e, text) => text,
   persona: null, location: inn, locations: [inn, smithy, ridge], connections,
   entities: cast, allEntities: cast, participants: ['Clerk', 'Companion'], notes: '', time: null, placeholders: [],
-  movement: { routines: castRoutines(cast), uniques, now: 480 },
+  movement: { routines: castCourses(cast), uniques, now: 480 },
   ...over,
 });
 
@@ -96,7 +96,7 @@ describe('the Movement tag on the Entities chip', () => {
   });
 
   it('lets following win over Strict in a Nearby place too', () => {
-    const scene = liveChipScene(sources({ movement: { routines: castRoutines(cast), uniques: { ...uniques, smith: state({ mode: 'following' }) }, now: 480 } }));
+    const scene = liveChipScene(sources({ movement: { routines: castCourses(cast), uniques: { ...uniques, smith: state({ mode: 'following' }) }, now: 480 } }));
     expect(tagOf(lookup(scene)('<ENTITIES|reachable.markdown>'), 'Smith')).toBeUndefined();
   });
 
@@ -142,7 +142,7 @@ describe('the Movement tag on the Entities chip', () => {
     };
     const roster = [offShift, ...cast.slice(1)];
     const read = (now: number) => tagOf(lookup(liveChipScene(sources({
-      entities: roster, allEntities: roster, movement: { routines: castRoutines(roster), uniques, now },
+      entities: roster, allEntities: roster, movement: { routines: castCourses(roster), uniques, now },
     })))('<ENTITIES|markdown>'), 'Clerk');
     expect(read(600)).toBe('stays here');
     expect(read(480)).toBeUndefined();

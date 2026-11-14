@@ -173,6 +173,18 @@ Two timed rows can't share an hour. Times another row uses are unavailable in th
 
 ⚠️ A listed location that a later link change disconnects stays in its row with a warning. The game skips it until it connects again.
 
+### Several routines in play
+<!-- keywords: routines, switch routine, behaves differently, requires, swap, after an event -->
+
+An entity can hold several routines, each with its own **Requires**, starts and **Can Also Go**. In play, the first routine whose **Requires** holds applies.
+
+- 🎲 **Each routine picks its start once.** A new game picks a start for every routine. When the world changes and another routine applies, the entity goes back to that routine's start and never picks again.
+- 🕑 **It switches by the clock.** It goes where the new routine puts it at the current time. A character at the player's location stays until the player leaves.
+- 🤝 **Followers stay if they can.** A follower keeps following when the new routine's **Can Also Go** reaches the player's location. Otherwise it parts ways. A follow a script started always continues.
+- 🌙 **No routine holds:** the entity is **Away** all day.
+- 🎬 **Page one already uses the right routine.** The new game reads the player's setup picks first.
+- 🗺️ **Presence** lists every routine's locations, each line led by its routine's name.
+
 ### Can Also Go
 
 Each Routine has its own **Can Also Go**. With two or more Routines, it sits under the Routine's **Requires**.

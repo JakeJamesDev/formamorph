@@ -7,9 +7,9 @@ import {
 } from '@/lib/entityPlaces';
 import { pickMarks, type PickMark } from '@/lib/entityPicking';
 import { presenceLines } from '@/lib/locationPresenceReasons';
-import { castRoutines, withFirstTraversable } from '@/lib/entityKind';
+import { castCourses, withFirstTraversable } from '@/lib/entityKind';
 import { placedIn, presentEntityIds, type Standings } from '@/lib/entityPresence';
-import { EMPTY_BOOK, runtimeRoutine, type PositionBook } from '@/lib/positionEngine';
+import { EMPTY_BOOK, runtimeCourse, type PositionBook } from '@/lib/positionEngine';
 import { placeAll, positionWorld, scriptPlaces } from '@/lib/positionPlay';
 import { discoveredAsEntities, selectReachableVisitors } from '@/lib/runtimeCharacters';
 import { startsMet } from '@/lib/presence';
@@ -83,7 +83,7 @@ const EVERYONE = [...CAST, ...RUNTIME];
 
 // The book a game reads at noon with the player in the square: every entity with a kind placed by the engine.
 const BOOK = placeAll(EMPTY_BOOK, positionWorld(
-  [...castRoutines(CAST), runtimeRoutine(MET[0])!], NOON, 'square', LOCATIONS, CONNECTIONS, () => 0, 'square',
+  [...castCourses(CAST), runtimeCourse(MET[0])!], NOON, 'square', LOCATIONS, CONNECTIONS, () => 0, 'square',
 ));
 
 // The same book with the baker and the gulls unplaced: each has a kind and no Position, and stands nowhere (Q10).
@@ -325,7 +325,7 @@ describe('every reader agrees with Entity Places', () => {
 });
 
 describe('the narration visitor additions agree with Entity Places', () => {
-  const engine = positionWorld(castRoutines(CAST), NOON, 'square', LOCATIONS, CONNECTIONS, () => 0, 'square');
+  const engine = positionWorld(castCourses(CAST), NOON, 'square', LOCATIONS, CONNECTIONS, () => 0, 'square');
   const prose = `${CAST.map((e) => e.name).join(' and ')} come over.`;
 
   it('runs on a book where the narration brings the friar from the chapel to the square', () => {
@@ -354,7 +354,7 @@ describe('the script snapshot agrees with Entity Places', () => {
       world: { traits: [], groups: [], entities: CAST, persona, ...inPlayOwners(world, persona, []) },
     },
     places: { locations: LOCATIONS, location: { id: 'square', name: 'square' } },
-    ...scriptPlaces(book, positionWorld(castRoutines(CAST), NOON, 'square', LOCATIONS, CONNECTIONS, () => 0, 'square')),
+    ...scriptPlaces(book, positionWorld(castCourses(CAST), NOON, 'square', LOCATIONS, CONNECTIONS, () => 0, 'square')),
     resolveText: (text) => text,
   });
   const PRESENT = `return ${JSON.stringify(LOCATIONS.map((l) => l.name))}.map((name) => locations[name].present.map((e) => e.id));`;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PLAYER_START, type Entity, type EntityStart } from '@/types';
 import {
-  canRemoveGenericStartsAt, castRoutines, toggleGenericStart, withRoutineMapped, withGenericStart, withKind, withoutGenericStart,
+  canRemoveGenericStartsAt, castCourses, FIRST_ROUTINE_ID, toggleGenericStart, withRoutineMapped, withGenericStart, withKind, withoutGenericStart,
   withoutGenericStartsAt, withStartPlace,
 } from './entityKind';
 import { startsOf, applyingRoutine, withFirstStarts, withFirstTraversable } from '@/lib/entityKind';
@@ -71,7 +71,9 @@ describe("a Generic entity's Starts", () => {
   });
 
   it('reads as a routine that runs every Start and ignores Traversable', () => {
-    expect(castRoutines([withFirstTraversable(herd, 'anywhere')])).toEqual([{ id: 'herd', starts, traversable: [], generic: true }]);
+    expect(castCourses([withFirstTraversable(herd, 'anywhere')])).toEqual([
+      { id: 'herd', routines: [{ id: FIRST_ROUTINE_ID, starts, traversable: [] }], applying: FIRST_ROUTINE_ID, generic: true },
+    ]);
   });
 });
 

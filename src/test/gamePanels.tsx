@@ -14,7 +14,7 @@ import { useNarrationRescan } from '@/components/game/useNarrationRescan';
 import { LeftPanel, MiddlePanel, RightPanel } from '@/components/game/GamePanels';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { defaultSystemPrompt } from '@/components/game/GamePrompts';
-import { castRoutines } from '@/lib/entityKind';
+import { castCourses } from '@/lib/entityKind';
 import { storyMinute } from '@/lib/gameClock';
 import { EMPTY_BOOK, type PositionBook } from '@/lib/positionEngine';
 import { placeAll, positionWorld } from '@/lib/positionPlay';
@@ -203,7 +203,7 @@ function seedTurns(gameplay: Gameplay, turns: TurnFixture[], page: number, stats
 function placeAtOpening(gameplay: Gameplay, world: World): PositionBook {
   const start = resolveStartingLocation(world.locations ?? [], null)?.id;
   const book = placeAll(EMPTY_BOOK, positionWorld(
-    castRoutines(world.entities ?? []), storyMinute(0), start, world.locations ?? [], world.connections ?? [], () => 0, start,
+    castCourses(world.entities ?? []), storyMinute(0), start, world.locations ?? [], world.connections ?? [], () => 0, start,
   ));
   gameplay.setEntityPositions(book.positions);
   gameplay.setUniqueStates(book.uniques);

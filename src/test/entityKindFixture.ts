@@ -1,5 +1,5 @@
 import { PLAYER_START, type Entity, type EntityStart, type GameLocation, type PlayerStat, type Script } from '@/types';
-import { castRoutines } from '@/lib/entityKind';
+import { castCourses } from '@/lib/entityKind';
 import { EMPTY_BOOK, type PositionBook } from '@/lib/positionEngine';
 import { placeAll, positionWorld, scriptPlaces, type PositionWorld } from '@/lib/positionPlay';
 import { storyMinute } from '@/lib/gameClock';
@@ -54,7 +54,7 @@ export const MOTHS: Entity = {
 export const KIND_CAST: Entity[] = [TESS, WENNA, CLERK, MOTHS];
 
 export const worldAt = (playerAt: string, now = NOON, cast: Entity[] = KIND_CAST): PositionWorld =>
-  positionWorld(castRoutines(cast), now, playerAt, KIND_LOCATIONS, [], () => 0);
+  positionWorld(castCourses(cast), now, playerAt, KIND_LOCATIONS, [], () => 0);
 
 /** The cast placed by the engine for a player at `playerAt`, as a new game places it. */
 export const placedBook = (playerAt: string, cast: Entity[] = KIND_CAST): PositionBook => placeAll(EMPTY_BOOK, worldAt(playerAt, NOON, cast));

@@ -10,7 +10,7 @@ import { GameDataProvider } from './GameDataContext';
 import { PlaceholderSessionProvider } from './PlaceholderSessionContext';
 import { getSaveRecord, putSaveRecord } from '@/components/modals/dbUtils';
 import { idsAt, positionsIn, type PlacesOf } from '@/lib/entityPlaces';
-import { castRoutines } from '@/lib/entityKind';
+import { castCourses } from '@/lib/entityKind';
 import { storyMinute } from '@/lib/gameClock';
 import { openingPool } from '@/lib/openings';
 import { openingPlacesOf, placementOf } from '@/lib/openingPlacement';
@@ -117,7 +117,7 @@ describe('the opening placement in the save (Q24)', () => {
 
   it('keeps the rolled cast across a save, so a redraw after the ferryman walked off draws him still', async () => {
     const live = mount();
-    const rolled = placeAll(EMPTY_BOOK, positionWorld(castRoutines(cast), storyMinute(0), 'dock', PLACES, LINKS, () => 0.99, 'dock'));
+    const rolled = placeAll(EMPTY_BOOK, positionWorld(castCourses(cast), storyMinute(0), 'dock', PLACES, LINKS, () => 0.99, 'dock'));
     expect(rolled.positions.ferryman).toBe('dock');
     await act(async () => {
       live().setOpeningPlacement(placementOf(rolled));

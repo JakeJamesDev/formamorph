@@ -1,6 +1,7 @@
 import { ancestors, parentLookup } from '@/lib/ancestors';
 import { customPersonaEntity } from '@/lib/blueprints';
-import { evaluateGates, worldHasGates, type GateVerdicts, type InPlaySource, type InPlayState } from '@/lib/inPlayGates';
+import { ungatedPick, type RoutinePick } from '@/lib/entityKind';
+import { evaluateGates, gatePick, hasRoutineGate, worldHasGates, type GateVerdicts, type InPlaySource, type InPlayState } from '@/lib/inPlayGates';
 import { startingGateStats } from '@/lib/gateStats';
 import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
 import { gateLineParts, plainLine, type GateLinePart } from '@/lib/traitGateLine';
@@ -46,6 +47,8 @@ export interface InPlayWorld {
   isEntityOn: (entity: Pick<Entity, 'id'>) => boolean;
   /** On and not stranded: in reach of scenes, the AI and the player (Q27, Q50). */
   isEntityOnstage: (entity: Pick<Entity, 'id'>) => boolean;
+  /** The id of the Routine that applies to an entity, null when none holds (Q3, Q24). */
+  routinePick: RoutinePick;
   /** `list` without the entities that are off. The same array when all are on. */
   entitiesOn: <E extends Pick<Entity, 'id'>>(list: readonly E[]) => E[];
   /** The runtime characters that are on. The same array when all are on. */
@@ -117,6 +120,10 @@ export function startGateInput(world: StartWorld, playedEntityId: string | null,
   };
 }
 
+/** The Routine pick at a world's start under `playedEntityId` and the picked `optionValues`: Sample Placement's (Q18). */
+export const startRoutinePick = (world: StartWorld, playedEntityId: string | null = null, optionValues?: WorldOptionValues): RoutinePick =>
+  (world.entities.some(hasRoutineGate) ? gatePick(startGateInput(world, playedEntityId, optionValues)) : ungatedPick);
+
 /** An authored world slice as play sees it at its start with `playedEntityId` as the player, for a reader with no
  *  playthrough. `optionValues` are the Test Bench's picks. */
 export function inPlayWorldOf<W extends StartWorld>(world: W, playedEntityId: string | null, optionValues?: WorldOptionValues): W {
@@ -136,7 +143,7 @@ export const resolveInPlayWorld = (source: InPlaySource, state: InPlayState): In
 
 /** The In-Play World for the authored lists under verdicts already reached. */
 export function inPlayWorldFrom(source: InPlaySource, verdicts: GateVerdicts, playedEntityId: string | null): InPlayWorld {
-  const { offEntityIds, offLocationIds, lockedLocationIds, lockRoots, strandedEntityIds } = verdicts;
+  const { offEntityIds, offLocationIds, lockedLocationIds, lockRoots, strandedEntityIds, routineIds } = verdicts;
   const isEntityOn = (entity: Pick<Entity, 'id'>) => entity.id === playedEntityId || !offEntityIds.has(entity.id);
   const isEntityOnstage = (entity: Pick<Entity, 'id'>) => isEntityOn(entity) && !strandedEntityIds.has(entity.id);
   const runningEntities = kept(source.entities, isEntityOn);
@@ -174,6 +181,7 @@ export function inPlayWorldFrom(source: InPlaySource, verdicts: GateVerdicts, pl
       ? new Set([...offEntityIds].filter((id) => id !== playedEntityId)) : offEntityIds,
     isEntityOn,
     isEntityOnstage,
+    routinePick: routineIds.size ? (entity) => (routineIds.has(entity.id) ? routineIds.get(entity.id) ?? null : ungatedPick(entity)) : ungatedPick,
     entitiesOn,
     discoveredOn: (list) => kept(list, (d) => isEntityOn(d.entity)),
   };

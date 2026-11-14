@@ -1,5 +1,5 @@
 import { PLAYER_START, type Connection, type Entity, type EntityStart, type GameLocation } from "@/types";
-import { everyStart, isGeneric, isUnique, routinePlaces, startsOf, traversableOf } from "@/lib/entityKind";
+import { everyStart, isGeneric, isUnique, routinePlaces, ungatedPick, type RoutinePick } from "@/lib/entityKind";
 import type { Standings } from "@/lib/entityPresence";
 import { startingLocationIds } from "@/lib/locationGraph";
 import { placesOf, startReach } from "@/lib/positionEngine";
@@ -55,18 +55,21 @@ export function positionAmong(
 /** The Position answer over `standings`. */
 export const positionsIn = (standings: Standings): PlacesOf => (entity) => positionOf(entity, standings);
 
-/** The Sample Placement of `cast` for a story that begins at `playerStart`: a Unique entity from its first Start, a
- *  Generic entity from all of them, as a new game opens. */
-export function samplePlacement(cast: readonly Entity[], world: PlacesWorld, playerStart: string | undefined): PlacesOf {
-  return positionsIn(openingBook(cast, world.locations, world.connections, playerStart));
+/** The Sample Placement of `cast` for a story that begins at `playerStart`: from the Routine `pick` applies at the
+ *  authored start, a Unique entity from its first Start and a Generic entity from all of them, as a new game opens (Q18). */
+export function samplePlacement(
+  cast: readonly Entity[], world: PlacesWorld, playerStart: string | undefined, pick: RoutinePick = ungatedPick,
+): PlacesOf {
+  return positionsIn(openingBook(cast, world.locations, world.connections, playerStart, pick));
 }
 
-/** Why an entity can be at a place. `begins`: the Starts that begin there. `row`: a Schedule row that names it.
- *  `traversable`: Traversable lists it. `member`: an entity with no kind belongs there. */
+/** Why an entity can be at a place, each with the Routine it comes from (Q18). `begins`: the Routine's Starts that
+ *  begin there. `row`: a Schedule row that names it. `traversable`: the Routine's Traversable lists it. `member`: an
+ *  entity with no kind belongs there. */
 export type PresenceReason =
-  | { kind: "begins"; startIds: string[] }
-  | { kind: "row"; startId: string; rowId: string }
-  | { kind: "traversable" }
+  | { kind: "begins"; routineId: string; startIds: string[] }
+  | { kind: "row"; routineId: string; startId: string; rowId: string }
+  | { kind: "traversable"; routineId: string }
   | { kind: "member" };
 
 /** A place an entity can be, with each reason in the order begins, rows, Traversable. */
@@ -75,7 +78,7 @@ export interface PresencePlace {
   reasons: PresenceReason[];
 }
 
-/** Every place an entity can be. `anywhere`: Traversable is Anywhere, which adds no place. */
+/** Every place an entity can be, over every Routine. `anywhere`: some Routine's Traversable is Anywhere, which adds no place. */
 export interface Presence {
   places: PresencePlace[];
   anywhere: boolean;
@@ -98,42 +101,50 @@ function* rowPlaces(start: EntityStart, world: PlacesWorld) {
 export function unreachedRowPlaces(entity: PlacedEntity, world: PlacesWorld): string[] {
   if (!hasKind(entity)) return [];
   const known = new Set(world.locations.map((l) => l.id));
-  return unique(startsOf(entity)
+  return unique(everyStart(entity)
     .filter((start) => start.place === PLAYER_START || known.has(start.place))
     .flatMap((start) => [...rowPlaces(start, world)].filter(({ place, reached }) => !reached && known.has(place)).map(({ place }) => place)));
 }
 
-/** The Presence of `entity` in `world`: only places the world has (Q19), in the order Starts, rows, Traversable first
- *  name them. A row place with no path from its Start is left out (Q8); a Player's Starting Location Start checks none (Q18). */
+/** The Presence of `entity` in `world`, the union over every Routine (Q18): only places the world has (Q19), in the
+ *  order Starts, rows, Traversable first name them. A row place with no path from its Start is left out (Q8); a
+ *  Player's Starting Location Start checks none (Q18). */
 export function presenceOf(entity: PlacedEntity, world: PlacesWorld): Presence {
   const known = new Set(world.locations.map((l) => l.id));
   if (!hasKind(entity)) {
     const places = unique(membership(entity)).filter((place) => known.has(place));
     return { places: places.map((place) => ({ place, reasons: [{ kind: "member" }] })), anywhere: false };
   }
-  const found = new Map<string, { begins: string[]; rows: PresenceReason[]; traversable: boolean }>();
+  const found = new Map<string, { begins: Map<string, string[]>; rows: PresenceReason[]; traversable: string[] }>();
   const at = (place: string) => {
     let entry = found.get(place);
-    if (!entry) found.set(place, (entry = { begins: [], rows: [], traversable: false }));
+    if (!entry) found.set(place, (entry = { begins: new Map(), rows: [], traversable: [] }));
     return entry;
   };
-  for (const start of startsOf(entity)) {
-    for (const place of beginsAt(start, world)) at(place).begins.push(start.id);
-    for (const { row, place, reached } of rowPlaces(start, world)) {
-      if (reached) at(place).rows.push({ kind: "row", startId: start.id, rowId: row.id });
+  let anywhere = false;
+  for (const routine of entity.routines ?? []) {
+    for (const start of routine.starts) {
+      for (const place of beginsAt(start, world)) {
+        const begins = at(place).begins;
+        begins.set(routine.id, [...begins.get(routine.id) ?? [], start.id]);
+      }
+      for (const { row, place, reached } of rowPlaces(start, world)) {
+        if (reached) at(place).rows.push({ kind: "row", routineId: routine.id, startId: start.id, rowId: row.id });
+      }
     }
+    const traversable = isUnique(entity) ? routine.traversable ?? [] : [];
+    if (traversable === "anywhere") anywhere = true;
+    else for (const place of traversable) at(place).traversable.push(routine.id);
   }
-  const traversable = isUnique(entity) ? traversableOf(entity) : [];
-  if (Array.isArray(traversable)) for (const place of traversable) at(place).traversable = true;
   const places = [...found].filter(([place]) => known.has(place)).map(([place, entry]): PresencePlace => ({
     place,
     reasons: [
-      ...(entry.begins.length ? [{ kind: "begins" as const, startIds: entry.begins }] : []),
+      ...[...entry.begins].map(([routineId, startIds]) => ({ kind: "begins" as const, routineId, startIds })),
       ...entry.rows,
-      ...(entry.traversable ? [{ kind: "traversable" as const }] : []),
+      ...entry.traversable.map((routineId) => ({ kind: "traversable" as const, routineId })),
     ],
   }));
-  return { places, anywhere: traversable === "anywhere" };
+  return { places, anywhere };
 }
 
 /** Every place id `entity` names, whether or not a world has it: every Routine's Starts (Player's Starting Location is
@@ -147,11 +158,11 @@ export function namedPlacesOf(entity: PlacedEntity): string[] {
 /** The Presence answer over `world`, as places alone. */
 export const presenceIn = (world: PlacesWorld): PlacesOf => (entity) => presenceOf(entity, world).places.map((p) => p.place);
 
-/** Where `entity` can begin, in Start order, each place once: Player's Starting Location stands for the starting
+/** Where `entity` can begin under any Routine, in Start order, each place once: Player's Starting Location stands for the starting
  *  locations (Q16). An entity with no kind begins at its membership. */
 export function startPlacesOf(entity: PlacedEntity, world: Pick<PlacesWorld, "locations">): string[] {
   if (!hasKind(entity)) return unique(membership(entity));
-  return unique(startsOf(entity).flatMap((start) => beginsAt(start, world)));
+  return unique(everyStart(entity).flatMap((start) => beginsAt(start, world)));
 }
 
 /** The ids of `cast` that `placesOf` puts at `place`, in cast order. Empty for no place. */

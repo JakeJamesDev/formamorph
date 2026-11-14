@@ -4,7 +4,7 @@ import { commitEntityMoves, computeTurnCommit, withCodeLines, withCodeWrites } f
 import {
   entityMoveSubjects, followersOf, moveWithPlayer, runtimePositions, withRuntimePositions, type FollowerState,
 } from '@/lib/entityFollowing';
-import { castRoutines } from '@/lib/entityKind';
+import { castCourses } from '@/lib/entityKind';
 import { placeAll, positionWorld, withPlayerAt } from '@/lib/positionPlay';
 import { dueDiscoveries } from '@/lib/backgroundPassQueue/backgroundPassQueue';
 import { pruneDiscoveredToHistory } from '@/lib/runtimeCharacters';
@@ -17,7 +17,7 @@ import { SchemaRefused, withTextFallback } from '@/lib/aiRequest/responseSchema'
 import type { TurnCommitContext } from './computeTurnCommit';
 import type { WorldWrites } from '@/lib/statCodeExecutor';
 import { parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
-import type { Entity, EntityStart, GameLocation, Traversable, TurnToolCall } from '@/types';
+import type { Entity, EntityStart, GameLocation, Traversable, TurnToolCall, UniqueState } from '@/types';
 import { oneRoutine } from '@/test/routines';
 
 /**
@@ -600,7 +600,7 @@ describe('computeTurnCommit — entity movement', () => {
     at('wenna', 'inn', 'anywhere'), at('albus', 'inn', 'anywhere'), at('corvin', 'inn', 'anywhere'), at('sylvie', 'keep', 'anywhere'),
     route('blackwell'), route('hale'), { id: 'moths', name: 'moths', kind: 'generic', locations: ['inn', 'gate'], routines: oneRoutine([{ id: 's1', place: 'inn', weight: 1, schedule: [] }, { id: 's2', place: 'gate', weight: 1, schedule: [] }]) } as Entity,
   ];
-  const world = positionWorld(castRoutines(CAST, [stranger]), NOON, 'inn', PLACES, [], () => 0);
+  const world = positionWorld(castCourses(CAST, [stranger]), NOON, 'inn', PLACES, [], () => 0);
   /** Everyone at `positions` with their engine state, `followers` following. */
   const book = (positions: Record<string, string>, followers: string[] = []): FollowerState => ({
     positions,
@@ -646,6 +646,61 @@ describe('computeTurnCommit — entity movement', () => {
     it('keeps following while on', () => {
       const { state } = move(atInn, keepFollowing, 'inn', 'chapel');
       expect(followersOf(state)).toEqual(['albus', 'corvin']);
+    });
+  });
+
+  describe('a follower whose Routine swaps (Q4, Q13, Q31)', () => {
+    // Rook keeps to the inn and may be led to the chapel; the pier Routine keeps it at the pier and lets it reach the square.
+    const rook: Entity = {
+      id: 'rook', name: 'rook', kind: 'unique', routines: [
+        { id: 'inn', name: 'Inn', traversable: ['chapel'], starts: [{ id: 's-inn', place: 'inn', weight: 1, schedule: [] }] },
+        { id: 'pier', name: 'Pier', traversable: ['square'], starts: [{ id: 's-pier', place: 'pier', weight: 1, schedule: [{ id: 'p', time: 'allDay', action: { kind: 'stay', place: 'pier' } }] }] },
+      ],
+    };
+    const applying = (routine: string | null) => positionWorld(castCourses([rook], [], () => routine), NOON, 'inn', PLACES, [], () => 0);
+    const state = (follow: UniqueState['follow'], at = 'inn'): FollowerState => ({
+      positions: { rook: at }, generics: {},
+      uniques: { rook: { startId: 's-inn', routineId: 'inn', rolls: { pier: 's-pier' }, lastRun: NOON, ...(follow && { follow }) } },
+    });
+    const following = state({ mode: 'following' });
+    const go = (from: FollowerState, to: string | undefined, routine: string | null) =>
+      commitEntityMoves(from, autoCommit([]), { from: 'inn', to }, applying(routine)).state;
+
+    it('keeps following when the player\'s place is inside the new Routine\'s reach', () => {
+      const after = go(following, 'square', 'pier');
+      expect(followersOf(after)).toEqual(['rook']);
+      expect(after.positions.rook).toBe('square');
+      expect(after.uniques.rook).toMatchObject({ routineId: 'pier', startId: 's-pier' });
+    });
+
+    it('parts ways when the new reach misses the player\'s place, and goes where the new Schedule puts it', () => {
+      const after = go(following, 'chapel', 'pier');
+      expect(followersOf(after)).toEqual([]);
+      expect(after.positions.rook).toBe('pier');
+    });
+
+    it('parts ways at the turn-start engine run when that run makes the swap, as play runs it', () => {
+      // The view places everyone at the turn's start before the commit; the swap happens there.
+      const parted = placeAll(following, applying('pier'));
+      expect(followersOf(parted)).toEqual([]);
+      expect(followersOf(go(parted, 'square', 'pier'))).toEqual([]);
+      const atSquare = placeAll(state({ mode: 'following' }, 'square'), withPlayerAt(applying('pier'), 'square'));
+      expect(followersOf(atSquare)).toEqual(['rook']);
+    });
+
+    it('keeps following with no swap, on the same reach', () => {
+      expect(followersOf(go(following, 'chapel', 'inn'))).toEqual(['rook']);
+    });
+
+    it('keeps a script follow and a follow while no Routine holds', () => {
+      expect(followersOf(go(state({ mode: 'following', script: true }), 'chapel', 'pier'))).toEqual(['rook']);
+      expect(followersOf(go(following, 'chapel', null))).toEqual(['rook']);
+    });
+
+    it('parts a waiting entity only when its waiting place is outside the new reach', () => {
+      const waiting = (at: string) => state({ mode: 'waiting', until: NOON + 600 }, at);
+      expect(go(waiting('chapel'), 'inn', 'pier').uniques.rook.follow).toBeUndefined();
+      expect(go(waiting('square'), 'inn', 'pier').uniques.rook.follow).toMatchObject({ mode: 'waiting' });
     });
   });
 

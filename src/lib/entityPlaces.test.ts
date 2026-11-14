@@ -3,7 +3,10 @@ import { PLAYER_START, type Connection, type Entity, type EntityStart, type Game
 import {
   idsAt, idsAtAny, namedPlacesOf, positionOf, positionsIn, presenceIn, presenceOf, samplePlacement, startPlacesOf, withMembership, type PlacesWorld,
 } from '@/lib/entityPlaces';
-import { castRoutines, withFirstStarts } from '@/lib/entityKind';
+import { castCourses, FIRST_ROUTINE_ID, withFirstStarts } from '@/lib/entityKind';
+import { startRoutinePick } from '@/lib/inPlayWorld';
+
+const R1 = FIRST_ROUTINE_ID;
 import { EMPTY_BOOK } from '@/lib/positionEngine';
 import { placeAll, positionWorld } from '@/lib/positionPlay';
 import { discoveredAsEntities } from '@/lib/runtimeCharacters';
@@ -46,9 +49,9 @@ describe('Presence', () => {
     expect(presenceOf(MARA, WORLD)).toEqual({
       anywhere: false,
       places: [
-        { place: 'market', reasons: [{ kind: 'begins', startIds: ['s-market'] }, { kind: 'row', startId: 's-market', rowId: 'r-wander' }] },
-        { place: 'well', reasons: [{ kind: 'row', startId: 's-market', rowId: 'r-wander' }, { kind: 'traversable' }] },
-        { place: 'forest', reasons: [{ kind: 'begins', startIds: ['s-forest'] }, { kind: 'traversable' }] },
+        { place: 'market', reasons: [{ kind: 'begins', routineId: R1, startIds: ['s-market'] }, { kind: 'row', routineId: R1, startId: 's-market', rowId: 'r-wander' }] },
+        { place: 'well', reasons: [{ kind: 'row', routineId: R1, startId: 's-market', rowId: 'r-wander' }, { kind: 'traversable', routineId: R1 }] },
+        { place: 'forest', reasons: [{ kind: 'begins', routineId: R1, startIds: ['s-forest'] }, { kind: 'traversable', routineId: R1 }] },
       ],
     });
   });
@@ -56,15 +59,15 @@ describe('Presence', () => {
   it('leaves out a row place with no path from its Start', () => {
     expect(placeOf(MARA)).not.toContain('island');
     const linked: PlacesWorld = { ...WORLD, connections: [ROAD, { id: 'ferry', a: 'forest', b: 'island', aToB: {} }] };
-    expect(reasonsAt(MARA, 'island', linked)).toEqual([{ kind: 'row', startId: 's-forest', rowId: 'r-island' }]);
+    expect(reasonsAt(MARA, 'island', linked)).toEqual([{ kind: 'row', routineId: R1, startId: 's-forest', rowId: 'r-island' }]);
   });
 
   it('gives a Generic entity each Start once per place, and no Traversable', () => {
     expect(presenceOf(CROWS, WORLD)).toEqual({
       anywhere: false,
       places: [
-        { place: 'well', reasons: [{ kind: 'begins', startIds: ['c1', 'c2'] }] },
-        { place: 'forest', reasons: [{ kind: 'row', startId: 'c2', rowId: 'c2-r' }] },
+        { place: 'well', reasons: [{ kind: 'begins', routineId: R1, startIds: ['c1', 'c2'] }] },
+        { place: 'forest', reasons: [{ kind: 'row', routineId: R1, startId: 'c2', rowId: 'c2-r' }] },
       ],
     });
   });
@@ -77,18 +80,18 @@ describe('Presence', () => {
   });
 
   it('expands Player\'s Starting Location to the flagged starting locations', () => {
-    expect(reasonsAt(GUIDE, 'town')).toEqual([{ kind: 'begins', startIds: ['g'] }]);
+    expect(reasonsAt(GUIDE, 'town')).toEqual([{ kind: 'begins', routineId: R1, startIds: ['g'] }]);
     expect(placeOf(GUIDE)).toEqual(['town', 'forest']);
   });
 
   it('expands Player\'s Starting Location to every location when none is flagged', () => {
     expect(placeOf(GUIDE, UNFLAGGED)).toEqual(['town', 'market', 'well', 'forest', 'island']);
-    expect(reasonsAt(GUIDE, 'island', UNFLAGGED)).toEqual([{ kind: 'begins', startIds: ['g'] }]);
+    expect(reasonsAt(GUIDE, 'island', UNFLAGGED)).toEqual([{ kind: 'begins', routineId: R1, startIds: ['g'] }]);
   });
 
   it('counts every row place of a Player\'s Starting Location Start, with no path check', () => {
     const wanderer = withFirstStarts(GUIDE, [start('g', PLAYER_START, [stay('to-island', 'island')])]);
-    expect(reasonsAt(wanderer, 'island')).toEqual([{ kind: 'row', startId: 'g', rowId: 'to-island' }]);
+    expect(reasonsAt(wanderer, 'island')).toEqual([{ kind: 'row', routineId: R1, startId: 'g', rowId: 'to-island' }]);
     expect(placeOf(wanderer)).toEqual(['town', 'island']);
   });
 
@@ -148,7 +151,7 @@ describe('Start places', () => {
 });
 
 describe('Position', () => {
-  const book = placeAll(EMPTY_BOOK, positionWorld(castRoutines(CAST), NOON, 'town', LOCATIONS, [ROAD], () => 0, 'town'));
+  const book = placeAll(EMPTY_BOOK, positionWorld(castCourses(CAST), NOON, 'town', LOCATIONS, [ROAD], () => 0, 'town'));
 
   it('puts a Unique entity at its one place', () => {
     expect(positionOf(MARA, { positions: { mara: 'well' }, generics: {} })).toEqual(['well']);
@@ -203,6 +206,38 @@ describe('Sample Placement', () => {
 
   it('places an entity with a kind outside the cast nowhere', () => {
     expect(samplePlacement([STATUE], WORLD, 'town')(MARA)).toEqual([]);
+  });
+
+  it('uses the first Routine whose gate holds at the authored start (Q18)', () => {
+    const world = { entities: [TWO_ROUTINES, ASH], locations: LOCATIONS };
+    const placed = (playing: string | null) => samplePlacement([TWO_ROUTINES], WORLD, 'town', startRoutinePick(world, playing))(TWO_ROUTINES);
+    expect(placed('ash')).toEqual(['market']);
+    expect(placed(null)).toEqual(['town']);
+  });
+});
+
+/** The persona Vela keeps watch for. */
+const ASH: Entity = { id: 'ash', name: 'Ash', persona: true };
+/** While the player plays Ash she keeps the market and may be led to the well; otherwise she begins in the forest and stays in the town. */
+const TWO_ROUTINES: Entity = {
+  id: 'vela', name: 'Vela', kind: 'unique', routines: [
+    { id: 'night', name: 'Night', requires: [{ all: [{ kind: 'playingAs', id: 'ash' }] }], traversable: ['well'], starts: [start('n', 'market')] },
+    { id: 'day', name: 'Day', traversable: [], starts: [start('d', 'forest', [stay('d-r', 'town')])] },
+  ],
+};
+
+describe('Presence of an entity with two Routines (Q18)', () => {
+  it('lists every Routine\'s places, each reason naming its Routine', () => {
+    expect(presenceOf(TWO_ROUTINES, WORLD)).toEqual({
+      anywhere: false,
+      places: [
+        { place: 'market', reasons: [{ kind: 'begins', routineId: 'night', startIds: ['n'] }] },
+        { place: 'well', reasons: [{ kind: 'traversable', routineId: 'night' }] },
+        { place: 'forest', reasons: [{ kind: 'begins', routineId: 'day', startIds: ['d'] }] },
+        { place: 'town', reasons: [{ kind: 'row', routineId: 'day', startId: 'd', rowId: 'd-r' }] },
+      ],
+    });
+    expect(startPlacesOf(TWO_ROUTINES, WORLD)).toEqual(['market', 'forest']);
   });
 });
 

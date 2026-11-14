@@ -29,6 +29,7 @@ import { chipValues } from '@/lib/chipValues/chipValues';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { newGamePool } from '@/lib/newGameOpening';
 import { samplePlacement } from '@/lib/entityPlaces';
+import { startRoutinePick } from '@/lib/inPlayWorld';
 import { openingPersonaOf, openingStateOf, type OpeningPicks } from '@/lib/openingState';
 import type { SandboxState } from '@/lib/statCodeTurn';
 import {
@@ -481,7 +482,10 @@ export function buildOpening(
   const { persona, cast, customPersona, pool: entries } = newGamePool({
     pick: { ref: personaRef },
     worldEntities, overview: world.worldOverview, locations: world.locations ?? [], startingLocationId: location?.id, picked: [],
-    placesOf: samplePlacement(worldEntities, { locations: world.locations ?? [], connections: world.connections ?? [] }, location?.id),
+    placesOf: samplePlacement(
+      worldEntities, { locations: world.locations ?? [], connections: world.connections ?? [] }, location?.id,
+      startRoutinePick({ ...world, entities: worldEntities, locations: world.locations ?? [] }, lens.persona?.id ?? null, lens.state.optionValues),
+    ),
   });
   const chances = poolChances(entries);
   const entityName = new Map([...cast, persona?.entity, customPersona].flatMap((e) => (e ? [[e.id, e.name] as const] : [])));

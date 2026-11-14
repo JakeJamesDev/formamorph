@@ -3,8 +3,8 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { castRoutines } from './entityKind';
-import { EMPTY_BOOK, runtimeRoutine, startWaiting } from './positionEngine';
+import { castCourses } from './entityKind';
+import { EMPTY_BOOK, runtimeCourse, startWaiting } from './positionEngine';
 import { placeAll, positionWorld, scriptPlaces } from './positionPlay';
 import { followersOf } from './entityFollowing';
 import { snapshotOf } from './sandboxSnapshot';
@@ -134,7 +134,7 @@ describe('the four reads are read-only', () => {
 describe('a runtime character', () => {
   const wren: DiscoveredEntity = { entity: { id: 'wren', name: 'Wren', locations: ['inn'] }, locationId: 'inn', sourceTurnId: 't-1' };
   const cast = [...KIND_CAST, wren.entity];
-  const world = positionWorld([...castRoutines(KIND_CAST), runtimeRoutine(wren)!], NOON, AWAY, KIND_LOCATIONS, [], () => 0);
+  const world = positionWorld([...castCourses(KIND_CAST), runtimeCourse(wren)!], NOON, AWAY, KIND_LOCATIONS, [], () => 0);
 
   it('reads unique, no action from its empty schedule, and held after a script move (Q224, Q228)', async () => {
     const placed = placeAll(EMPTY_BOOK, world);

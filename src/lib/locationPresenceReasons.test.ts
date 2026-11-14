@@ -49,6 +49,29 @@ const persona: Entity = { id: 'me', name: 'Me', customPersona: true, locations: 
 const cast = [crowd, moths, farrier, guard, persona];
 const reasonsAt = (place: string) => Object.fromEntries(presenceLines(place, cast).map((l) => [l.entity.id, l.reasons]));
 
+describe('presenceLines for an entity with two Routines (Q18)', () => {
+  // Day: begins at the smithy or the tavern (1:1) and may be led to the cellar. Night: begins at the tavern and stays there by night.
+  const smith: Entity = {
+    id: 'smith', name: 'Smith', kind: 'unique', routines: [
+      { id: 'day', name: 'Day', traversable: ['cellar'], starts: [
+        { id: 'd1', place: 'smithy', weight: 1, schedule: [] }, { id: 'd2', place: 'tavern', weight: 1, schedule: [] },
+      ] },
+      { id: 'night', name: 'Night', traversable: [], starts: [
+        { id: 'n1', place: 'tavern', weight: 1, schedule: [{ id: 'r', time: NIGHT, action: { kind: 'stay', place: 'tavern' } }] },
+      ] },
+    ],
+  };
+
+  it('names the Routine of each reason, with each chance among that Routine\'s Starts', () => {
+    expect(presenceLines('tavern', [smith])[0].reasons).toEqual(['Day: begins here (50%)', 'Night: begins here', 'Night: stays here (Evening – Night)']);
+    expect(presenceLines('cellar', [smith])[0].reasons).toEqual(['Day: can be led here']);
+  });
+
+  it('names no Routine for an entity with one', () => {
+    expect(presenceLines('cellar', [farrier])[0].reasons).toEqual(['can be led here']);
+  });
+});
+
 describe('presenceLines', () => {
   it('lists a Generic entity once where a Start begins, with no chance however many Starts it has', () => {
     expect(reasonsAt('market')).toEqual({ crowd: ['begins here'], moths: ['begins here'] });

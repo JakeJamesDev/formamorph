@@ -7,7 +7,7 @@ import { GameplayProvider, useGameplay } from './GameplayContext';
 import { GameDataProvider } from './GameDataContext';
 import { PlaceholderSessionProvider } from './PlaceholderSessionContext';
 import { getSaveRecord, putSaveRecord } from '@/components/modals/dbUtils';
-import { castRoutines, startsOf, withFirstStarts } from '@/lib/entityKind';
+import { castCourses, startsOf, withFirstStarts } from '@/lib/entityKind';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { storyMinute } from '@/lib/gameClock';
 import { placeAll, positionWorld } from '@/lib/positionPlay';
@@ -75,7 +75,7 @@ describe('entity positions in the save', () => {
   it('rolls one Start per Unique entity for a new game, saves it, and keeps it on load', async () => {
     const live = mount();
     // A draw at the top of the range takes each entity's last Start.
-    const book = placeAll({ positions: {}, uniques: {}, generics: {} }, positionWorld(castRoutines(WORLD), OPENING, 'keep', LOCATIONS, [], () => 0.99));
+    const book = placeAll({ positions: {}, uniques: {}, generics: {} }, positionWorld(castCourses(WORLD), OPENING, 'keep', LOCATIONS, [], () => 0.99));
     expect(book.uniques.merchant.startId).toBe('at-tower');
     await act(async () => {
       live().setEntityPositions(book.positions);
@@ -107,6 +107,64 @@ describe('entity positions in the save', () => {
     expect(live().entityPositions).toEqual({ merchant: 'tower', guard: 'keep', watch: 'keep' });
     expect(live().entityFollowers).toEqual(['guard']);
     expect(live().entityWaiting).toEqual(['merchant']);
+  });
+
+  describe('an entity with Routines', () => {
+    const start = (id: string, place: string) => ({ id, place, weight: 1, schedule: [] });
+    // By day the lamplighter works the keep or the tower; by night it climbs the tower or sleeps in the keep.
+    const lamplighter = (requires?: Entity['enabledWhen']): Entity => ({
+      id: 'lamp', name: 'Lamplighter', kind: 'unique', routines: [
+        { id: 'day', name: 'Day', starts: [start('d-keep', 'keep'), start('d-tower', 'tower')], ...(requires && { requires }) },
+        { id: 'night', name: 'Night', starts: [start('n-tower', 'tower'), start('n-keep', 'keep')] },
+      ],
+    });
+    const never: Entity['enabledWhen'] = [{ all: [{ kind: 'trait', id: 'nobody-holds-this' }] }];
+
+    it('keeps the applying Routine and every Routine\'s roll across a save and a load', async () => {
+      const live = mount();
+      const states: UniqueStates = { lamp: { startId: 'd-tower', routineId: 'day', rolls: { night: 'n-keep' }, lastRun: OPENING } };
+      await act(async () => { live().setEntityPositions({ lamp: 'tower' }); live().setUniqueStates(states); });
+      await save(live, 'save-routines');
+      await act(async () => { live().setUniqueStates({}); live().setEntityPositions({}); });
+      await load(live, 'save-routines', [lamplighter()]);
+      expect(live().uniqueStates).toEqual(states);
+      expect(live().entityPositions).toEqual({ lamp: 'tower' });
+    });
+
+    it('keeps a Routine-gated entity\'s stored Routine on load, for play to read its gates', async () => {
+      const live = mount();
+      const states: UniqueStates = { lamp: { startId: 'n-keep', routineId: 'night', rolls: { day: 'd-tower' }, lastRun: OPENING } };
+      await act(async () => { live().setEntityPositions({ lamp: 'keep' }); live().setUniqueStates(states); });
+      await save(live, 'save-gated');
+      await act(async () => { live().setUniqueStates({}); live().setEntityPositions({}); });
+      await load(live, 'save-gated', [lamplighter(never)]);
+      expect(live().uniqueStates).toEqual(states);
+    });
+
+    it('keeps a Routine-gated Generic entity\'s instances on load, for play to read its gates', async () => {
+      const live = mount();
+      const moths: Entity = { ...lamplighter(never), id: 'moths', name: 'Moths', kind: 'generic' };
+      const instances = { 'n-tower': { position: 'tower', lastRun: OPENING }, 'n-keep': { position: 'keep', lastRun: OPENING } };
+      await act(async () => { live().setGenericStates({ moths: instances }); });
+      await save(live, 'save-gated-generic');
+      await act(async () => { live().setGenericStates({}); });
+      await load(live, 'save-gated-generic', [moths]);
+      expect(live().genericStates).toEqual({ moths: instances });
+    });
+
+    it('loads a v3.7.0 save with its Start kept as the first Routine\'s roll', async () => {
+      const live = mount();
+      await act(async () => {
+        live().setEntityPositions({ lamp: 'tower' });
+        live().setUniqueStates({ lamp: { startId: 'd-tower', lastRun: OPENING } });
+      });
+      await save(live, 'save-370');
+      await act(async () => { live().setUniqueStates({}); live().setEntityPositions({}); });
+      await load(live, 'save-370', [lamplighter()]);
+      expect(live().uniqueStates.lamp).toMatchObject({ startId: 'd-tower', routineId: 'day' });
+      expect(['n-tower', 'n-keep']).toContain(live().uniqueStates.lamp.rolls?.night);
+      expect(live().entityPositions).toEqual({ lamp: 'tower' });
+    });
   });
 
   it('writes no fields when nobody has a position or a state', () => {
@@ -167,7 +225,7 @@ describe('entity positions in the save', () => {
         merchant: { startId: 'at-keep', lastRun: OPENING }, guard: { startId: 'post', lastRun: OPENING, follow: { mode: 'following' } },
       });
     });
-    await act(async () => { live().placeCast(positionWorld(castRoutines([merchant, guard]), OPENING, 'tower', LOCATIONS, [])); });
+    await act(async () => { live().placeCast(positionWorld(castCourses([merchant, guard]), OPENING, 'tower', LOCATIONS, [])); });
     expect(live().entityPositions).toEqual({ merchant: 'keep', guard: 'tower' });
   });
 
@@ -178,7 +236,7 @@ describe('entity positions in the save', () => {
       live().setDiscoveredEntities([mira]);
       live().setUniqueStates({ mira: { startId: 'discovered', lastRun: OPENING, follow: { mode: 'following' } } });
     });
-    await act(async () => { live().placeCast(positionWorld(castRoutines([], [mira]), OPENING, 'tower', LOCATIONS, [])); });
+    await act(async () => { live().placeCast(positionWorld(castCourses([], [mira]), OPENING, 'tower', LOCATIONS, [])); });
     expect(live().discoveredEntities[0].locationId).toBe('tower');
     expect(live().entityPositions).toEqual({});
   });

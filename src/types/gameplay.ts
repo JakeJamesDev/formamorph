@@ -80,7 +80,14 @@ export type PositionHold = { until: number } | { untilScriptMove: true };
 
 /** The position engine's saved state for one Unique entity. Times are story minutes (see `storyMinute`). */
 export interface UniqueState {
+  /** The rolled Start of the Routine it plays. */
   startId: string;
+  /** The Routine it plays. Absent = the first (a v3.7.0 save), written only for an entity with two or more. */
+  routineId?: string;
+  /** Every other Routine's rolled Start, by Routine id: rolled once at new game and kept for swaps (Q4). */
+  rolls?: Record<string, string>;
+  /** No Routine holds: Away all day on `routineId`'s Start (Q24). */
+  nowhere?: true;
   /** The row in force when the engine last ran. Absent = no row. */
   rowId?: string;
   lastRun: number;
