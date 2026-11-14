@@ -360,9 +360,11 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
       entities: worldEntities, locations: rawLocations, traits: rawTraits, traitGroups: rawTraitGroups,
       stats: rawStats, statGroups: rawStatGroups, options: worldOptions,
     };
-    const open = startLocationIdsOpen(world, playedEntityIdOf(entryDraft.persona, worldEntities), entryDraft.optionValues);
+    const open = startLocationIdsOpen(
+      world, playedEntityIdOf(entryDraft.persona, worldEntities), entryDraft.optionValues, scoped(entryDraft.traitIds, entryDraft.ownedTraitIds),
+    );
     return open.size === locations.length ? locations : locations.filter((l) => open.has(l.id));
-  }, [worldEntities, rawLocations, rawTraits, rawTraitGroups, rawStats, rawStatGroups, worldOptions, entryDraft.persona, entryDraft.optionValues, locations]);
+  }, [worldEntities, rawLocations, rawTraits, rawTraitGroups, rawStats, rawStatGroups, worldOptions, entryDraft.persona, entryDraft.optionValues, entryDraft.traitIds, entryDraft.ownedTraitIds, locations]);
   const personaPickContext: PersonaPickContext = {
     worldEntities: resolvedWorldEntities,
     locations: startLocations,

@@ -33,6 +33,7 @@ import { startRoutinePick } from '@/lib/inPlayWorld';
 import { inCast } from '@/lib/owners';
 import { openingPersonaOf } from '@/lib/openingState';
 import { lensActiveTraits, lensOwnerScopes, lensPersonaRef, resolveLensEntityText, resolveLensText, type BenchLens } from './lens';
+import { lensStartPicks } from './opening';
 import type { RuleWorld } from './rules';
 
 /** The slices of the authored world this instrument reads. */
@@ -224,7 +225,7 @@ function lensScene(world: AiContextWorld, lens: BenchLens) {
 /** The travel gate from the lens location at the world's start, under the lens persona and Options (Q54). */
 function lensTravelGate(world: AiContextWorld, lens: BenchLens): (id: string) => boolean {
   const start = { ...world, entities: world.entities ?? [], locations: world.locations ?? [] };
-  const canEnter = startTravelGate(start, lens.persona?.id ?? null, lens.state.optionValues);
+  const canEnter = startTravelGate(start, lens.persona?.id ?? null, lens.state.optionValues, lensStartPicks(world, lens));
   return (id) => canEnter(lens.location?.id, id);
 }
 
@@ -249,7 +250,7 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
   // roster that listed someone twice would disagree with the text beside it.
   const hereIds = scene.presentIds;
   const here = new Set(hereIds);
-  const placesOf = samplePlacement(cast, { locations, connections }, location?.id, startRoutinePick({ ...world, entities: world.entities ?? [], locations }, lens.persona?.id ?? null, lens.state.optionValues));
+  const placesOf = samplePlacement(cast, { locations, connections }, location?.id, startRoutinePick({ ...world, entities: world.entities ?? [], locations }, lens.persona?.id ?? null, lens.state.optionValues, lensStartPicks(world, lens)));
   const subIds = sublocationEntityIds(location, locations, connections, cast, placesOf).filter((id) => !here.has(id));
   const shown = new Set([...hereIds, ...subIds]);
   const reachIds = reachableEntityIds(location, locations, connections, cast, placesOf).filter((id) => !shown.has(id));

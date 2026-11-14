@@ -22,7 +22,8 @@ import { startingGateStats } from '@/lib/gateStats';
 import { seedEntityStats } from '@/lib/entityStats';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { playStatWorld, globalStatsOf } from '@/lib/statLinks';
-import { settle, settleDefaults } from '@/lib/traitGates';
+import { settle, settleDefaults, type GateActive } from '@/lib/traitGates';
+import { scoped } from '@/lib/scope';
 import { DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
@@ -219,9 +220,21 @@ function openingStart(world: OpeningWorld, lens: BenchLens, startLocationId?: st
   };
 }
 
+/** The slices the start picks read. */
+type PicksWorld = Pick<
+  OpeningWorld, 'worldOverview' | 'stats' | 'statGroups' | 'locations' | 'entities' | 'traits' | 'traitGroups' | 'placeholders' | 'options'
+>;
+
+/** The traits a fresh game under `lens` starts with, as the start gates read them. */
+export function lensStartPicks(world: PicksWorld, lens: BenchLens): GateActive {
+  const persona = lensPersonaRef(lens.persona?.id ?? null);
+  const { traits, owned } = openingPicks(world, lensActiveTraits(world, lens), persona, lens.state.optionValues);
+  return scoped(traits, owned);
+}
+
 /** The picks Enter World starts from under `persona`: the lens's traits, each owner's default picks, and the
  *  lens's World Option values. The played entity holds its own picks among them (Q33). */
-function openingPicks(world: OpeningWorld, active: readonly Trait[], persona: PersonaRef, optionValues?: WorldOptionValues): OpeningPicks {
+function openingPicks(world: PicksWorld, active: readonly Trait[], persona: PersonaRef, optionValues?: WorldOptionValues): OpeningPicks {
   const { gate: ownerGate } = resolveOwners(ownerWorldOf(world), persona);
   // Stat Conditions read the authored start, as Enter World's do (Q23); Option Conditions the lens's picks (Q25).
   const gate = {
@@ -463,9 +476,9 @@ export function buildOpening(
   // The turn-one assembly, through the game's own builders: the chip values of this opening's scene, the
   // narration prompt over them with the real lore scan, and the cue framed as the opening user turn.
   // The scene has no notes and no clock yet, so both chips read as the uniform "none".
-  const canEnter = startTravelGate(
-    { ...world, entities: world.entities ?? [], locations: world.locations ?? [] }, lens.persona?.id ?? null, lens.state.optionValues,
-  );
+  const startWorld = { ...world, entities: worldEntities, locations: world.locations ?? [] };
+  const startPicks = scoped(start.active.map((t) => t.id), start.owned);
+  const canEnter = startTravelGate(startWorld, lens.persona?.id ?? null, lens.state.optionValues, startPicks);
   const ctx = chipValues({
     ...authoredChipScene(world, {
       location,
@@ -484,7 +497,7 @@ export function buildOpening(
     worldEntities, overview: world.worldOverview, locations: world.locations ?? [], startingLocationId: location?.id, picked: [],
     placesOf: samplePlacement(
       worldEntities, { locations: world.locations ?? [], connections: world.connections ?? [] }, location?.id,
-      startRoutinePick({ ...world, entities: worldEntities, locations: world.locations ?? [] }, lens.persona?.id ?? null, lens.state.optionValues),
+      startRoutinePick(startWorld, lens.persona?.id ?? null, lens.state.optionValues, startPicks),
     ),
   });
   const chances = poolChances(entries);

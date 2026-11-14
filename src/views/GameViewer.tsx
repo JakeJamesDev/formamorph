@@ -7,12 +7,12 @@ import { hasCode, isItemTiming } from '@/lib/scripts';
 import { inPlayWorldData, playedEntityIdOf, startLocationIdsOpen, startRoutinePick } from '@/lib/inPlayWorld';
 import { gatePick } from '@/lib/inPlayGates';
 import { runRowKeys } from '@/lib/worldScripts';
-import { playedEntityIds } from '@/lib/scope';
+import { playedEntityIds, scoped } from '@/lib/scope';
 import type { InventoryPanelSettle, PanelActionList } from '@/components/game/useInventoryPanel';
 import { ActionListTray } from '@/components/game/ActionListTray';
 import { addAction, closeList, listCounts, recordSent, reopenSent, reversalOf, toggleHidden, toldActions, undoNewest, type ActionSnapshot, type ListedAction, type ListedActionFacts, type SentActionList, type SentActionMap, type ToldAction } from '@/lib/actionList';
 import { useNarrationLayout } from '@/lib/useNarrationLayout';
-import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
+import { activeOwnedTraitIds, ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { personaKey, samePersonaRef } from '@/lib/personaPick';
 import { mapReach, mapRoster } from '@/lib/mapRoster';
 import { usePresence } from '@/lib/usePresence';
@@ -1807,6 +1807,7 @@ const GameViewer = ({
       placesOf: openingPlacesOf(openingPlacement, entities, { locations, connections }, startingLocationId, startRoutinePick(
         { entities: authoredEntities, locations: authoredLocations, connections: authoredConnections, traits: authoredTraits, traitGroups: worldTraitGroups, stats: worldStats, statGroups: authoredStatGroups, options: worldOptions },
         personaRef?.source === "world" ? personaRef.entityId : null, worldOptionValues,
+        scoped(activeTraits.map((t) => t.id), activeOwnedTraitIds(ownedTraits)),
       )),
       picked: pickedAtStart(discoveredInPlay),
       persona,
@@ -6106,7 +6107,9 @@ const GameViewer = ({
       setSelectedEntityId(undefined);
 
       // The player's chosen start, else a random one, skipping locations the gates turn off or lock at the start (Q12).
-      const startOpen = startLocationIdsOpen(getWorldData(), playedEntityIdOf(initialPersona?.ref, authoredEntities), initialOptionValues);
+      const startOpen = startLocationIdsOpen(
+        getWorldData(), playedEntityIdOf(initialPersona?.ref, authoredEntities), initialOptionValues, scoped(initialTraits, initialOwnedTraits),
+      );
       const startId = startingLocationIn(authoredLocations, (id) => startOpen.has(id), initialLocationId)?.id;
       const startRaw = authoredLocations.find((l) => l.id === startId);
       const location = locations.find((l) => l.id === startId) ?? (startRaw && { ...startRaw, name: resolvePH(startRaw.name) });

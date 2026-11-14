@@ -36,7 +36,7 @@ Spec rulings: Q1, Q7, Q8, Q9, Q23, Q29, Q30, Q36, Q38.
 **Not verified**
 
 - The World Option Condition in an entity gate: ticket 04 owns it. Whichever of 04 and 07 lands second wires play's `worldOptionValues` and the world's `options` into the gate input in `useInPlayWorld` (agreed with 04).
-- Test Bench gates read the world's start: authored stats, no trait picked, the lens persona (`startGateInput`). Ticket 04's Option picker should feed it too.
+- Test Bench gates read the world's start: authored stats, the lens's traits over each owner's default picks, the lens persona (`startGateInput`). Every start reader passes the picks the game starts with; absent, each scope holds its defaults. Ticket 04's Option picker should feed it too.
 - At new game, the opening draw and the first render read gates against the state before the seed, as 02 left it. An entity whose gate holds only under the seeded state is left out of the opening pool; it turns on once the seed commits.
 - At load, every gated entity keeps its saved place and engine state unplaced, on or off, because the verdict at load reads the pre-load state. A world that adds a gate after a pre-engine save does not convert that entity's legacy follow.
 - Ticket 01's reader test asserted an off entity has no stored position. Q38 reverses that, so the test now asserts the place is held and hidden.

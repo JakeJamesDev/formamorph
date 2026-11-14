@@ -20,7 +20,7 @@ import {
 } from './rules';
 import { convertWorldImagesToWebp, describeWebpFixRun } from './imageWebpFix';
 import { buildAiContext, EMPTY_AI_CONTEXT } from './aiContext';
-import { buildOpening, EMPTY_OPENING, type OpeningChoice } from './opening';
+import { buildOpening, EMPTY_OPENING, lensStartPicks, type OpeningChoice } from './opening';
 import { useOpeningRolls } from './useOpeningRolls';
 import { loadLastTurn, type LastTurn } from './lastTurn';
 import { openingPersonaOf } from '@/lib/openingState';
@@ -196,7 +196,10 @@ export function useTestBench({
   // lens picker and the editor-side checks keep the whole authored world.
   const lensPersonaId = benchLens.lens.persona?.id ?? null;
   const lensOptionValues = benchLens.lens.state.optionValues;
-  const benchPlay = useMemo(() => inPlayWorldOf(benchWorld, lensPersonaId, lensOptionValues), [benchWorld, lensPersonaId, lensOptionValues]);
+  const benchPlay = useMemo(
+    () => inPlayWorldOf(benchWorld, lensPersonaId, lensOptionValues, lensStartPicks(benchWorld, benchLens.lens)),
+    [benchWorld, lensPersonaId, lensOptionValues, benchLens.lens],
+  );
   const statOverrides = useMemo(
     () => lensStatOverrides(benchPlay, benchLens.lens),
     [benchPlay, benchLens.lens],

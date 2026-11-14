@@ -5,7 +5,7 @@ import { evaluateGates, gatePick, hasRoutineGate, worldHasGates, type GateVerdic
 import { startingGateStats } from '@/lib/gateStats';
 import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
 import { gateLineParts, plainLine, type GateLinePart } from '@/lib/traitGateLine';
-import { worldGateInput, type GateInput } from '@/lib/traitGates';
+import { settleDefaults, worldGateInput, type GateActive, type GateInput } from '@/lib/traitGates';
 import type {
   Connection, DiscoveredEntity, Entity, GameLocation, PersonaRef, Stat, StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValues,
 } from '@/types';
@@ -68,15 +68,17 @@ export function playedEntityIdOf(persona: PersonaRef | undefined, entities: read
   return customPersonaEntity(entities)?.id ?? null;
 }
 
-/** The travel gate at a world's start under `playedEntityId` and the picked `optionValues`, for a reader with no
- *  playthrough. */
-export const startTravelGate = (world: StartWorld, playedEntityId: string | null, optionValues?: WorldOptionValues) =>
-  startInPlay(world, playedEntityId, optionValues).canEnter;
+/** The travel gate at a world's start under `playedEntityId`, the picked `optionValues` and the start `picks`, for a
+ *  reader with no playthrough. */
+export const startTravelGate = (world: StartWorld, playedEntityId: string | null, optionValues?: WorldOptionValues, picks?: GateActive) =>
+  startInPlay(world, playedEntityId, optionValues, picks).canEnter;
 
-/** The ids of the locations a new game may open in under `playedEntityId` and the picked `optionValues`: on and
- *  unlocked (Q12, Q43, Q55). */
-export function startLocationIdsOpen(world: StartWorld, playedEntityId: string | null, optionValues?: WorldOptionValues): Set<string> {
-  const inPlay = startInPlay(world, playedEntityId, optionValues);
+/** The ids of the locations a new game may open in under `playedEntityId`, the picked `optionValues` and the start
+ *  `picks`: on and unlocked (Q12, Q43, Q55). */
+export function startLocationIdsOpen(
+  world: StartWorld, playedEntityId: string | null, optionValues?: WorldOptionValues, picks?: GateActive,
+): Set<string> {
+  const inPlay = startInPlay(world, playedEntityId, optionValues, picks);
   return new Set(inPlay.locations.filter((l) => inPlay.canEnter(null, l.id)).map((l) => l.id));
 }
 
@@ -105,35 +107,43 @@ type StartWorld = {
   traits?: Trait[]; traitGroups?: TraitGroup[]; stats?: Stat[]; statGroups?: StatGroup[]; options?: WorldOption[];
 };
 
-/** The gate input of a world at its start under `playedEntityId`: authored stats, no trait picked, and
- *  `optionValues` over each Option's default (Q25). */
-export function startGateInput(world: StartWorld, playedEntityId: string | null, optionValues?: WorldOptionValues): GateInput {
+/** The gate input of a world at its start under `playedEntityId`: authored stats, `optionValues` over each Option's
+ *  default (Q25), and the traits the new game starts with. Absent `picks`, every scope holds its default picks. */
+export function startGateInput(
+  world: StartWorld, playedEntityId: string | null, optionValues?: WorldOptionValues, picks?: GateActive,
+): GateInput {
   const persona: PersonaRef = playedEntityId ? { source: 'world', entityId: playedEntityId } : { source: 'none' };
   const traits = world.traits ?? [];
   const traitGroups = world.traitGroups ?? [];
-  return {
+  const base = {
     ...worldGateInput({ traits, groups: traitGroups, entities: world.entities }, persona),
     ...inPlayOwners({ traits, traitGroups, entities: world.entities }, persona),
     stats: startingGateStats(world),
     ...(world.options ? { worldOptions: world.options } : {}),
     ...(optionValues ? { optionValues } : {}),
   };
+  return { ...base, active: picks ?? settleDefaults(base).active };
 }
 
-/** The Routine pick at a world's start under `playedEntityId` and the picked `optionValues`: Sample Placement's (Q18). */
-export const startRoutinePick = (world: StartWorld, playedEntityId: string | null = null, optionValues?: WorldOptionValues): RoutinePick =>
-  (world.entities.some(hasRoutineGate) ? gatePick(startGateInput(world, playedEntityId, optionValues)) : ungatedPick);
+/** The Routine pick at a world's start under `playedEntityId`, the picked `optionValues` and the start `picks`:
+ *  Sample Placement's (Q18). */
+export const startRoutinePick = (
+  world: StartWorld, playedEntityId: string | null = null, optionValues?: WorldOptionValues, picks?: GateActive,
+): RoutinePick =>
+  (world.entities.some(hasRoutineGate) ? gatePick(startGateInput(world, playedEntityId, optionValues, picks)) : ungatedPick);
 
 /** An authored world slice as play sees it at its start with `playedEntityId` as the player, for a reader with no
- *  playthrough. `optionValues` are the Test Bench's picks. */
-export function inPlayWorldOf<W extends StartWorld>(world: W, playedEntityId: string | null, optionValues?: WorldOptionValues): W {
-  return inPlayWorldData(world, startInPlay(world, playedEntityId, optionValues));
+ *  playthrough. `optionValues` and `picks` are the Test Bench's. */
+export function inPlayWorldOf<W extends StartWorld>(
+  world: W, playedEntityId: string | null, optionValues?: WorldOptionValues, picks?: GateActive,
+): W {
+  return inPlayWorldData(world, startInPlay(world, playedEntityId, optionValues, picks));
 }
 
 /** The In-Play World at a world's start, for a reader with no playthrough. */
-function startInPlay(world: StartWorld, playedEntityId: string | null, optionValues?: WorldOptionValues): InPlayWorld {
+function startInPlay(world: StartWorld, playedEntityId: string | null, optionValues?: WorldOptionValues, picks?: GateActive): InPlayWorld {
   const source = { entities: world.entities, locations: world.locations, connections: world.connections ?? [] };
-  const gate = worldHasGates(world.entities, world.locations) ? startGateInput(world, playedEntityId, optionValues) : undefined;
+  const gate = worldHasGates(world.entities, world.locations) ? startGateInput(world, playedEntityId, optionValues, picks) : undefined;
   return resolveInPlayWorld(source, { playedEntityId, gate });
 }
 

@@ -20,7 +20,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **World Options:**
     - **Worlds can offer World Options at new game.** Authors add choices, switches and number sliders on the new Options tab; the player sets them above the traits, and choices and switches pin placeholder text.
     - **Players can change a World Option during play on a new World Options tab.** It lists the Options the author allows to change. A change applies at once and **Undo** reverses it.
-    - **Authors can switch an entity on and off during a game with its new Enabled rows.** Set them on the entity's Presence tab. While off, it's hidden from the player and the AI, and its stats, scripts and routine pause until it returns.
+    - **Authors can switch an entity on and off during a game with its new Enabled rows.** Set them on the entity's Presence tab. While off, it's hidden from the player and the AI, and its stats, scripts and routine pause until it returns. Rows read each entity's starting traits, in the Test Bench too.
     - **Traits and images can require a World Option, and scripts can change one.** A Requires row checks a Choice value, On or Off, or a Number. Scripts read and write `options`, and the Test Bench lets you pick each value.
     - **Authors can switch a location and the locations inside it on and off during a game with Enabled rows.** Set them on the location's Presence tab. While off, it's gone from the map, the list and the AI, and no new game starts there.
     - **Authors can lock a location with Unlocked rows, so the player can't travel in until a row holds.** Set them on the location's Presence tab. The map and the list show a lock and the reason. The AI never moves the player in; a script still can.
