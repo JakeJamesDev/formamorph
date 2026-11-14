@@ -13,7 +13,7 @@ Model rationale: applies ticket 04's shared mark to a known set of surfaces.
 
 ## What to build
 
-The Patreon heart from ticket 04 becomes the standard mark for a Patreon item (R22). In the Mascot tab, a Supporter-only Mascot shows the heart in place of the lock icon, both before and after it is installed. The Formamorph AI preset shows the heart wherever its name appears in a list or picker, for every account state. Other lock icons in the app (traits, routines, read-only values, feedback threads) are not Patreon items and stay as they are.
+The Patreon Mark from ticket 04 (the shared Design System pattern) becomes the standard mark for a Patreon item (R22). In the Mascot tab, a Supporter-only Mascot shows the heart in place of the lock icon, both before and after it is installed. The Formamorph AI preset shows the heart wherever its name appears in a list or picker, for every account state. Other lock icons in the app (traits, routines, read-only values, feedback threads) are not Patreon items and stay as they are.
 
 ## Acceptance criteria
 
