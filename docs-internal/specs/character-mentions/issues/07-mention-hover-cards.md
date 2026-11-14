@@ -15,6 +15,11 @@ A resolved mention in narration links to its entity and opens a small card.
   - Met entities show under their true name.
   - Unmet strangers show under the label the player saw.
   - No hidden or AI-only content appears.
+- **Prototype:** follow variant A on `prototype/character-mentions` (spec, Further Notes).
+  - Mentions stay plain text and show a dotted underline in the character's color on hover.
+  - On a fine pointer, the card opens after about 300 ms of hover; click or tap opens it everywhere.
+  - The card shows an initial, the name and a one-line description, with "Wrong character?" under them.
+  - Clicking a quote opens its speaker's card.
 - **Design approval:** a hover card is a new visual pattern. Build it as a design-system entry with a dev-router showcase, and get the user's approval before it ships.
 - **Changelog:** a fragment for the feature.
 

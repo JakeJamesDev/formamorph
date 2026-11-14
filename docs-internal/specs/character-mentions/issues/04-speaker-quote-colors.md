@@ -15,6 +15,7 @@ Each quote in narration takes its speaker's color.
 - **Palette:** build a theme-safe palette that reads well in light and dark. The palette is a new visual pattern, so add it to the design system and get the user's approval.
 - Unresolved quotes keep today's theme dialogue color. The existing quote-color settings still control all coloring.
 - Colors apply once the reading arrives, with no layout shift.
+- **Prototype:** follow the look of variant A on `prototype/character-mentions` (spec, Further Notes). There, the whole quote, marks included, takes the speaker's color, and clicking a quote opens its speaker's card (ticket 07).
 - **Changelog:** a fragment for the feature.
 
 ## Acceptance criteria

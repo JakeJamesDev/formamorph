@@ -214,3 +214,15 @@ Each guard is proved by reinstating its bug once (test-bar skill). Prior art: `M
   The web app runs WASM on one thread. The small-model fallback there takes 0.7–1.4 s on a fast CPU, after the passage finishes. Integrated GPUs, Firefox, Safari and Android WebView are not measured yet.
 - **Accuracy today (e120 big model, with the parser rules):** blind set names 75/81, descriptors 24/43, pronouns 110/136 (7 wrong), traps 34/44, presence 27/29. That is below the OntoNotes model (descriptors 36/43, pronouns 132/136). The seed set and contributions exist to close that gap.
 - **Evaluation kit.** The scratch work (export, bench, gold sets, combo scorer) is the reference for the training kit and the Mention Reading tests.
+- **UI prototype (2026-11-14).**
+  - **Question:** how should speaker colors, mention links, the card and the correction look in narration?
+  - **Verdict:** the user picked variant A, "Tinted quotes + hover links":
+    - each quote takes its speaker's color;
+    - mentions stay plain text and show a dotted underline in the character's color on hover;
+    - the card opens on hover (after a short delay, on a fine pointer) or on click and tap;
+    - clicking a quote opens its speaker's card;
+    - the card shows an initial, the Player View name and a one-line description, with "Wrong character?" under it;
+    - "Wrong character?" swaps the card for a cast pick list plus "Nobody in the cast", titled "Who said this?" or "Who is this?".
+  - **Not chosen:** B (speaker chips before quotes) and C (name tags on pronouns).
+  - **Source:** branch `prototype/character-mentions`, commit `a6d451129`. Run `npx vite --port 5321` in its worktree and open `/?variant=A#dev?view=gameViewer&fixture=whiteRoom`.
+  - **Still needed:** the palette and the card still need design-system entries and the user's approval of the production build (tickets 04 and 07).

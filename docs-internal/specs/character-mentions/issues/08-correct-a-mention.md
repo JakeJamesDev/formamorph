@@ -13,6 +13,7 @@ The player fixes a wrong link at the place where it shows.
 - **Correction:** a correction is (turn id, mention span, entity id or none).
   - The correction is saved with the turn and overlays that turn's reading.
   - Colors, links and In Scene update at once.
+- **Prototype:** follow variant A on `prototype/character-mentions` (spec, Further Notes). "Wrong character?" swaps the card's content for the pick list, titled "Who said this?" for a quote and "Who is this?" for a mention, with a back button. Picking closes the card.
 - **Local only:** corrections work without an account and stay on the device in this ticket. Ticket 10 adds contributing.
 - **Export shape:** save turns gain corrections. The change is additive and the shape has not shipped, so no compatibility code is needed.
 - **Changelog:** a fragment for the feature.
