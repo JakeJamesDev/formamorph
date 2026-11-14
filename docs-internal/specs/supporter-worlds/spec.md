@@ -53,6 +53,8 @@ Settled in the grill on 2026-11-14. Numbered R so they don't collide with the ba
 | R26 | A marked library entry can't be duplicated, and the backup bundle leaves marked entries and Avatars out (R15). Update-review pushes from a marked entry reach only its source world (R9). Ticket 05 intent answer. |
 | R27 | R9 covers the play-time pickers too: Enter World and the in-game persona pick show a marked entry disabled outside its source world. A Supporter Copy never writes back into an unmarked library item it follows; its edits stay in the world. The player's own item stays theirs and exportable. Ticket 05 new evidence. |
 | R28 | A marked Avatar stays pickable as the Player Avatar in Enter World. It is a display choice and no export carries it. Ticket 05 landing. |
+| R29 | A Supporter Copy lives only in the world store, with the marker written on the first store. An update overwrites the copy in place, and a Supporter-only listing offers no second copy (story 9). The downscale offer is skipped, since it would re-encode the watermark away. Ticket 06 intent answer. |
+| R30 | A Supporter world's public required sources and add-ons install through the normal path, update review included. A dependency that is itself Supporter-only is skipped and named to the player. Ticket 06 intent answer. |
 
 ## User Stories
 

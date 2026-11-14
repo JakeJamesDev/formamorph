@@ -21,6 +21,7 @@ The gated route serves a Supporter-only world with every embedded image watermar
 - [ ] The gated route serves a world fixture with each embedded image replaced by a processed image object, and every non-image data URL byte-equal to the source.
 - [ ] Create, update and flag each refuse a Supporter-only world with a linked image and name each location; the same world without the flag is accepted.
 - [ ] The cold processing time of a large world (bundled-world size or larger) is measured and stated in the landing, with the world's size and image count.
+- [ ] The dependency routes serve a Supporter-only world's public required sources and add-ons, and refuse a Supporter-only dependency (R30; found in ticket 06's landing).
 - [ ] Each guard is shown to bite by reinstating the bug.
 
 For you: set the processing-time budget from the measured number.
