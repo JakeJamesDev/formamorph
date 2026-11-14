@@ -1,6 +1,6 @@
 # 10: A Disabled Follower Stays Where It Was Disabled
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: none
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -18,5 +18,11 @@ Spec rulings: Q9, Q38, Q41.
 
 ## Acceptance criteria
 
-- [ ] A `computeTurnCommit` test: a follower in `world.off` stays put when the player moves in that commit, and its follow ends. Red with the old order.
-- [ ] A re-enabled entity comes back at the place where it turned off.
+- [x] A `computeTurnCommit` test: a follower in `world.off` stays put when the player moves in that commit, and its follow ends. Red with the old order. Test "is not carried by the player's move in the commit that finds it off"; failed with the old order, passes now.
+- [x] A re-enabled entity comes back at the place where it turned off. Test "is back at the place where it turned off once it is re-enabled".
+
+## Landed
+
+**Not verified**: none.
+
+**For you**: nothing a player must judge. An entity that turns off through this turn's own commit is covered by the same fix, with no new state: the commit's `world.off` ends its follow before the moves apply.

@@ -643,6 +643,21 @@ describe('computeTurnCommit — entity movement', () => {
       expect(followersOf(state)).toEqual(['corvin']);
     });
 
+    it('is not carried by the player\'s move in the commit that finds it off', () => {
+      const stillInCast = { ...holding(atInn), off: new Set(['albus']) };
+      const { state } = commitEntityMoves(atInn, keepFollowing, { from: 'inn', to: 'chapel' }, stillInCast);
+      expect(followersOf(state)).toEqual(['corvin']);
+      expect(state.positions.albus).toBe('inn');
+      expect(state.positions.corvin).toBe('chapel');
+    });
+
+    it('is back at the place where it turned off once it is re-enabled', () => {
+      const off = commitEntityMoves(atInn, keepFollowing, { from: 'inn', to: 'chapel' }, { ...holding(atInn), off: new Set(['albus']) }).state;
+      const back = commitEntityMoves(off, autoCommit([]), { from: 'chapel', to: 'pier' }, holding(off)).state;
+      expect(back.positions.albus).toBe('inn');
+      expect(followersOf(back)).toEqual(['corvin']);
+    });
+
     it('keeps following while on', () => {
       const { state } = move(atInn, keepFollowing, 'inn', 'chapel');
       expect(followersOf(state)).toEqual(['albus', 'corvin']);

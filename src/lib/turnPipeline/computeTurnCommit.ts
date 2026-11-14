@@ -250,17 +250,8 @@ export function commitEntityMoves(
   move: PlayerMove,
   world: PositionWorld,
 ): { state: FollowerState; offer: EntityMoveOffer } {
-  const result = commitMovesOn(state, commit, move, world);
-  return world.off?.size ? { ...result, state: [...world.off].reduce(partWays, result.state) } : result;
-}
-
-/** The commit's entity replies and code writes laid over `state`, before any disabled entity's follow ends. */
-function commitMovesOn(
-  state: FollowerState,
-  commit: Pick<TurnCommit, 'entityMoves' | 'suggestedLocation' | 'codeWrites'>,
-  move: PlayerMove,
-  world: PositionWorld,
-): { state: FollowerState; offer: EntityMoveOffer } {
+  // The follow ends before the moves, so a disabled follower is not carried one last move.
+  state = world.off?.size ? [...world.off].reduce(partWays, state) : state;
   const { entityMoves } = commit;
   const code = commit.codeWrites?.entities;
   const moved = move.to !== undefined && move.to !== move.from;
