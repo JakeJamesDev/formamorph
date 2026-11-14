@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { bodyFixture } from '@/test/bodyFixture';
 import {
   castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, libraryCastIds, rekeyOwnedPicks, withLibraryDefaults,
-  withLocationPick, withPersonaPick, withSettledTraits, type EntryDraft, type EntryTraitWorld,
+  withLocationPick, withPersonaPick, withSettledEntry, withSettledTraits, type EntryDraft, type EntryTraitWorld,
 } from './entryDraft';
 import { gateOf, gateStates, settle, switchTrait } from './traitGates';
 import { cascadeOffInput } from './traitRuntime';
 import type { PersonaPickContext } from './personaPick';
-import type { Body, Entity, GameLocation, PersonaRef, Trait } from '@/types';
+import type { Body, Entity, GameLocation, PersonaRef, Trait, TraitGroup, TraitRequirementRow } from '@/types';
 
 const entity = (id: string, locations: string[]): Entity => ({
   id, name: id, playerDescription: '', aiDescription: '', aiSummary: '', persona: true, locations,
@@ -64,6 +64,47 @@ describe('withPersonaPick', () => {
   it('drops a library persona from the added characters', () => {
     const draft = { ...emptyEntryDraft(), entityIds: new Set(['lib', 'other']) };
     expect([...withPersonaPick(draft, library('lib'), context).entityIds]).toEqual(['other']);
+  });
+});
+
+describe('withSettledEntry', () => {
+  const sex: TraitGroup = { id: 'sex', name: 'Sex', parentId: null, minPicks: 1, maxPicks: 1 };
+  const not = (id: string): TraitRequirementRow => ({ all: [{ kind: 'trait', id, owner: { kind: 'entity', id: 'sadie' }, not: true }] });
+  const t = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], groupId: 'sex', ...extra });
+  const sadie: Entity = { id: 'sadie', name: 'Sadie', traitGroups: [sex], traits: [t('female', { isDefault: true }), t('futa')] };
+  // The partner's Futanari and Herm lock while Sadie is Futanari; Herm is her default.
+  const rapi: Entity = {
+    id: 'rapi', name: 'Rapi', traitGroups: [sex],
+    traits: [t('futa', { requires: [not('futa')] }), t('herm', { isDefault: true, requires: [not('futa')] }), t('female')],
+  };
+  // The other partner's Female locks while Sadie is Female; Futanari is her default, after Male in order.
+  const mud: Entity = {
+    id: 'mud', name: 'Mud', traitGroups: [sex],
+    traits: [t('male'), t('futa', { isDefault: true }), t('female', { requires: [not('female')] })],
+  };
+  // Wren's group starts empty and is never touched by a lock.
+  const wren: Entity = { id: 'wren', name: 'Wren', traitGroups: [sex], traits: [t('female'), t('male')] };
+  const w: EntryTraitWorld = { traits: [], traitGroups: [], entities: [sadie, rapi, mud, wren], library: [] };
+  const flip = (draft: EntryDraft, ownerId: string, traitId: string) =>
+    withSettledEntry(draft, switchTrait(entryGateInput(w, draft), ownerId, traitId, cascadeOffInput(draft.cascadeOffTraitIds))!, w);
+  const start = (): EntryDraft => ({ ...emptyEntryDraft(), ...entryDefaults(w, { source: 'none' }) });
+
+  it('fills a group a lock emptied: the default when it holds, else the first legal trait', () => {
+    const picked = flip(start(), 'rapi', 'futa');
+    expect(picked.ownedTraitIds.rapi).toEqual(['futa']);
+    const flipped = flip(picked, 'sadie', 'futa');
+    expect(flipped.ownedTraitIds.sadie).toEqual(['futa']);
+    expect(flipped.ownedTraitIds.rapi).toEqual(['female']);
+  });
+
+  it('fills with the default ahead of authored order when its lock holds', () => {
+    const picked = flip(flip(start(), 'sadie', 'futa'), 'mud', 'female');
+    expect(picked.ownedTraitIds.mud).toEqual(['female']);
+    expect(flip(picked, 'sadie', 'female').ownedTraitIds.mud).toEqual(['futa']);
+  });
+
+  it("leaves a group no lock emptied for the player to fill", () => {
+    expect(flip(flip(start(), 'rapi', 'futa'), 'sadie', 'futa').ownedTraitIds.wren ?? []).toEqual([]);
   });
 });
 

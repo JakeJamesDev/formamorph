@@ -2,7 +2,11 @@ import type { DictionarySelectionItem } from './dictionarySelection';
 import { locationForPersonaPick, withoutPersona, type PersonaPickContext } from './personaPick';
 import { resolveOwners } from './owners';
 import { startingGateStats } from './gateStats';
-import { settle, settleDefaults, type GateInput, type SettleResult } from './traitGates';
+import {
+  activeOf, gateTrees, groupPickState, settle, settleDefaults, switchTrait,
+  type GateInput, type GateScopeTree, type GateTraitRef, type SettleResult,
+} from './traitGates';
+import { traitOrderIndex } from './traitEffects';
 import { cascadeOffInput, settledCascadeOff } from './traitRuntime';
 import { scoped } from './scope';
 import { startingCopies } from './inventory';
@@ -109,6 +113,43 @@ export function withSettledTraits(draft: EntryDraft, result: Pick<SettleResult, 
   };
 }
 
+/**
+ * The draft with each group that `dropped` left below its minimum filled again: its default first, then the
+ * first trait in authored order that switches on without turning another off. A group nothing can fill stays
+ * short, and a group no drop touched is the player's to fill.
+ */
+export function withShortGroupsFilled(draft: EntryDraft, world: EntryTraitWorld, dropped: readonly GateTraitRef[]): EntryDraft {
+  let next = draft;
+  const stuck = new Set<string>();
+  const emptied = (tree: GateScopeTree, groupId: string) => dropped.some((ref) => ref.ownerId === tree.id
+    && tree.traits.some((t) => t.id === ref.traitId && (t.groupId ?? null) === groupId));
+  for (;;) {
+    const input = entryGateInput(world, next);
+    const short = gateTrees(input).flatMap((tree) => tree.groups
+      .filter((group) => !stuck.has(`${tree.id}:${group.id}`) && emptied(tree, group.id)
+        && groupPickState(group, tree.traits, activeOf(input.active, tree.id)).short)
+      .map((group) => ({ tree, group })));
+    if (!short.length) return next;
+    const { tree, group } = short[0];
+    const order = traitOrderIndex(tree.traits, tree.groups);
+    const on = new Set(activeOf(input.active, tree.id));
+    const candidates = tree.traits
+      .filter((t) => (t.groupId ?? null) === group.id && !on.has(t.id))
+      .sort((a, b) => Number(!!b.isDefault) - Number(!!a.isDefault) || (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+    const filled = candidates.some((trait) => {
+      const result = switchTrait(input, tree.id, trait.id, cascadeOffInput(next.cascadeOffTraitIds));
+      if (!result || result.turnedOff.length || !activeOf(result.active, tree.id).includes(trait.id)) return false;
+      next = withSettledTraits(next, result);
+      return true;
+    });
+    if (!filled) stuck.add(`${tree.id}:${group.id}`);
+  }
+}
+
+/** A settle of the draft on the setup screen: {@link withSettledTraits}, then {@link withShortGroupsFilled}. */
+export const withSettledEntry = (draft: EntryDraft, result: Pick<SettleResult, 'active' | 'cascadeOff' | 'turnedOff'>, world: EntryTraitWorld): EntryDraft =>
+  withShortGroupsFilled(withSettledTraits(draft, result), world, result.turnedOff);
+
 /** Every scope's default picks under `persona`. */
 export function entryDefaults(world: EntryTraitWorld, persona: PersonaRef): Pick<EntryDraft, 'traitIds' | 'ownedTraitIds'> {
   const { global, owners } = settleDefaults(entryGateBase(world, persona)).active;
@@ -131,7 +172,7 @@ export function withLibraryDefaults(draft: EntryDraft, world: EntryTraitWorld): 
     ...draft,
     ownedTraitIds: { ...draft.ownedTraitIds, ...Object.fromEntries(joined.map((e) => [e.id, defaults[e.id] ?? []])) },
   };
-  return withSettledTraits(next, settle(entryGateInput(world, next), cascadeOffInput(next.cascadeOffTraitIds)));
+  return withSettledEntry(next, settle(entryGateInput(world, next), cascadeOffInput(next.cascadeOffTraitIds)), world);
 }
 
 /** Picks keyed by library id moved to the ids of the copies that play. */

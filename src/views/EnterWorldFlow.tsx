@@ -28,7 +28,7 @@ import { libraryLines } from '@/lib/librarySources';
 import { followedLibraryId } from '@/lib/publishLinks';
 import {
   castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, entryTrees, libraryCastIds, rekeyOwnedPicks,
-  withLibraryDefaults, withLocationPick, withPersonaPick, withSettledTraits, type EntryDraft, type EntryTraitWorld,
+  withLibraryDefaults, withLocationPick, withPersonaPick, withSettledEntry, type EntryDraft, type EntryTraitWorld,
 } from '@/lib/entryDraft';
 import { optionPinLists, shownOptions } from '@/lib/worldOptions';
 import { bindLibraryEntity, blueprintBindWorld } from '@/lib/blueprintTravel';
@@ -280,7 +280,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const handleTraitSelection = (traitId: string, ownerId: OwnerId) => {
     const result = switchTrait(entryGateInput(entryWorld, entryDraft), ownerId, traitId, cascadeOffInput(entryDraft.cascadeOffTraitIds));
     if (!result) return;
-    reviseDraft((draft) => withSettledTraits(draft, result));
+    reviseDraft((draft) => withSettledEntry(draft, result, entryWorld));
     setTraitCascade(cascadeFrom(result, traitName(ownerId, traitId)));
   };
 
@@ -289,7 +289,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     const next = withPersonaPick(entryDraft, ref, personaPickContext);
     // A pick the last persona turned off returns once the new one opens its gate again.
     const result = settle(entryGateInput(entryWorld, next), cascadeOffInput(next.cascadeOffTraitIds));
-    reviseDraft(() => withSettledTraits(next, result));
+    reviseDraft(() => withSettledEntry(next, result, entryWorld));
     const picked = ref.source === 'world' ? worldPersonaOptions.find((p) => p.id === ref.entityId)
       : ref.source === 'library' ? personaOptions.find((p) => p.id === ref.entityId) : undefined;
     setTraitCascade(cascadeFrom(result, picked?.name ?? 'the persona change'));
@@ -299,7 +299,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const handleOptionChange = (id: string, value: WorldOptionValueOf) => {
     const next = { ...entryDraft, optionValues: { ...entryDraft.optionValues, [id]: value } };
     const result = settle(entryGateInput(entryWorld, next), cascadeOffInput(next.cascadeOffTraitIds));
-    reviseDraft(() => withSettledTraits(next, result));
+    reviseDraft(() => withSettledEntry(next, result, entryWorld));
     setTraitCascade(cascadeFrom(result, worldOptions.find((o) => o.id === id)?.name ?? 'the World Option change'));
   };
 
