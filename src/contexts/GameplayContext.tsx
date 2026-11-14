@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo, type ReactNode, type SetStateAction } from 'react';
 import { putSaveRecord, getSaveRecord, getAllSaveRecords, deleteSaveRecord } from '../components/modals/dbUtils';
 import { autosaveName, autosavesToTrim } from '../lib/autosave';
 import { toast } from 'react-toastify';
@@ -91,8 +91,10 @@ import type {
   CascadeOffTraitIds,
   OwnedTraitStates,
   WorldVrmStore,
+  SupporterCopyMarker,
 } from '@/types';
 import { remapChosenVrm } from '../lib/legacyVrm';
+import WorldStorageService from '../services/WorldStorageService';
 
 const historyFree = (snapshot: ActionSnapshot): ActionSnapshot => ({ ...snapshot, state: stripSnapshotHistory(snapshot.state) });
 
@@ -254,7 +256,14 @@ function useProvideGameplay() {
   const [runtimeItems, setRuntimeItems] = useState<readonly RuntimeItem[]>(NO_RUNTIME_ITEMS);
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
   // authored world's books live in GameDataContext and are never mutated by gameplay.
-  const [runtimeDictionaries, setRuntimeDictionaries] = useState<Dictionary[]>([]);
+  const [runtimeDictionaries, setRuntimeBooks] = useState<Dictionary[]>([]);
+  // The Supporter Copy marker a loaded save carried. Its books came from that world, whatever world plays them now.
+  const carriedSupporterCopy = useRef<SupporterCopyMarker | null>(null);
+  // Seeding a new playthrough's books drops the carried marker; a load sets its own.
+  const setRuntimeDictionaries = useCallback((books: SetStateAction<Dictionary[]>) => {
+    carriedSupporterCopy.current = null;
+    setRuntimeBooks(books);
+  }, []);
   // Frozen placeholder rolls for this playthrough (see lib/placeholders). Owned by the world session, which
   // opens before this provider mounts so the pre-game pickers share these values; re-exposed here because
   // the save envelope carries them and every gameplay reader already goes through this context.
@@ -279,7 +288,7 @@ function useProvideGameplay() {
   const { entity: storedPersona, pending: personaPending } = useLibraryEntity(
     personaRef?.source === 'library' ? personaRef.entityId : null,
   );
-  const { worldPlaceholders, placeholderGroups, dictionaries: worldBooks, stats: worldStats, statGroups: worldStatGroups } = useGameData();
+  const { worldPlaceholders, placeholderGroups, dictionaries: worldBooks, stats: worldStats, statGroups: worldStatGroups, supporterCopy: worldSupporterCopy, worldId: openWorldId } = useGameData();
   const libraryPersona = useMemo(
     () => storedPersona && bindCarriedBlueprints(
       playLibraryStats(storedPersona, { stats: worldStats, statGroups: worldStatGroups }),
@@ -582,6 +591,12 @@ function useProvideGameplay() {
     try {
       const gameState = saveCurrentGameState();
       gameState.worldName = worldName;
+      // A save holds its world's books, so a save of a Supporter Copy keeps the marker after the world is gone.
+      // The open world's answer stands only once read and only for that world; otherwise ask the store.
+      const known = worldId === openWorldId && worldSupporterCopy !== undefined;
+      const supporterCopy = carriedSupporterCopy.current ?? (known || !worldId
+        ? worldSupporterCopy ?? null
+        : await Promise.resolve().then(() => WorldStorageService.getSupporterCopy(worldId)).catch(() => null));
 
       const record: SaveRecord = {
         id: saveId ?? randomUUID(),
@@ -608,6 +623,7 @@ function useProvideGameplay() {
         ...(actionList.length ? { actionList: mapLiveSnapshots(actionList, historyFree) } : {}),
         ...(openingAction !== null ? { openingAction } : {}),
         ...(isAutosave ? { isAutosave: true } : {}),
+        ...(supporterCopy ? { supporterCopy } : {}),
       };
 
       await putSaveRecord(record);
@@ -625,7 +641,7 @@ function useProvideGameplay() {
       }
       return { ok: false, error };
     }
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, scriptTells, sentActions, actionList, openingAction, addSystemLogEntry]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, scriptTells, sentActions, actionList, openingAction, addSystemLogEntry, worldSupporterCopy, openWorldId]);
 
   const saveGame = useCallback(async (...args: Parameters<typeof writeSave>) => (await writeSave(...args)).ok, [writeSave]);
 
@@ -772,7 +788,8 @@ function useProvideGameplay() {
         if (success) {
           setGameStates(migrated.stateHistory.map((s) => held(backfilled(s, migrated.persona))));
           // Restore the per-playthrough dictionary set; older saves lack it, so keep the entry-seeded set.
-          if (Array.isArray(migrated.dictionaries)) setRuntimeDictionaries(migrated.dictionaries);
+          if (Array.isArray(migrated.dictionaries)) setRuntimeBooks(migrated.dictionaries);
+          carriedSupporterCopy.current = (savedData as SaveRecord).supporterCopy ?? null;
           setPlaceholderRolls(migrated.placeholderRolls ?? {});
           setMemoryPins(migrated.memoryPins ?? {});
           // Absent on saves written before the preference existed ⇒ every entity opens on its image.

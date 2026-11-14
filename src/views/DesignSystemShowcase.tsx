@@ -9,6 +9,7 @@ import { RoutineSentenceReference } from '@/components/design-system/RoutineSent
 import { FormaquestionReference } from '@/components/design-system/FormaquestionReference';
 import { FeedbackFilterRowReference } from '@/components/design-system/FeedbackFilterRowReference';
 import { SupporterFlairReference } from '@/components/design-system/SupporterFlairReference';
+import { PatreonMarkReference } from '@/components/design-system/PatreonMarkReference';
 import { PresetHeaderReference } from '@/components/design-system/PresetHeaderReference';
 import { LandingPulseReference } from '@/components/design-system/LandingPulseReference';
 import { PanelCrashCardReference } from '@/components/design-system/PanelCrashCardReference';
@@ -505,6 +506,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Supporter Flair',
     description: 'Tier colors, badges, names, and Profile Image rings',
     Component: SupporterFlairReference,
+  },
+  {
+    id: 'patreon-mark',
+    label: 'Patreon Mark',
+    description: 'The Patreon heart on every item that comes with Patreon support',
+    Component: PatreonMarkReference,
   },
   {
     id: 'preset-header',

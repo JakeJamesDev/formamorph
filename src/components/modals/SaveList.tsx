@@ -23,8 +23,10 @@ const formatGameTime = (time: number) => {
   return `${hours}h ${minutes}m`;
 };
 
-function SortableSaveRow<T extends SaveListItem>({ row, disabled, busy, pickLabel, onPick, onExport, onDelete }: {
+function SortableSaveRow<T extends SaveListItem>({ row, disabled, busy, pickLabel, exportBlock, onPick, onExport, onDelete }: {
   row: T;
+  /** Why the save may not be exported; the button then shows disabled with it as its tooltip. */
+  exportBlock: string | null;
   disabled: boolean;
   busy: boolean;
   pickLabel: string;
@@ -85,14 +87,16 @@ function SortableSaveRow<T extends SaveListItem>({ row, disabled, busy, pickLabe
           {formatSaveTimestamp(row.timestamp)} · Game time {formatGameTime(row.gameTime)}
         </div>
       </div>
-      <Tip tip="Export save">
+      <Tip tip={exportBlock ?? 'Export save'}>
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 w-7 shrink-0 p-0"
+          className={cn('h-7 w-7 shrink-0 p-0', exportBlock && 'cursor-not-allowed opacity-50')}
           aria-label={`Export save “${row.name}”`}
+          aria-disabled={exportBlock ? true : undefined}
+          aria-description={exportBlock ?? undefined}
           disabled={disabled || busy}
-          onClick={(event) => { event.stopPropagation(); onExport(row); }}
+          onClick={(event) => { event.stopPropagation(); if (!exportBlock) onExport(row); }}
         >
           <ActionIcon.export className="h-3.5 w-3.5" />
         </Button>
@@ -113,11 +117,13 @@ function SortableSaveRow<T extends SaveListItem>({ row, disabled, busy, pickLabe
   );
 }
 
-export function SaveList<T extends SaveListItem>({ rows, disabled = false, busy = false, getPickLabel, onPick, onExport, onDelete, onReorder }: {
+export function SaveList<T extends SaveListItem>({ rows, disabled = false, busy = false, getPickLabel, getExportBlock, onPick, onExport, onDelete, onReorder }: {
   rows: T[];
   disabled?: boolean;
   busy?: boolean;
   getPickLabel?: (row: T) => string;
+  /** Why a save may not be exported, or null. */
+  getExportBlock?: (row: T) => string | null;
   onPick: (row: T) => void;
   onExport: (row: T) => void;
   onDelete: (row: T) => void;
@@ -141,6 +147,7 @@ export function SaveList<T extends SaveListItem>({ rows, disabled = false, busy 
             disabled={disabled}
             busy={busy}
             pickLabel={getPickLabel?.(row) ?? `Load save “${row.name}”`}
+            exportBlock={getExportBlock?.(row) ?? null}
             onPick={onPick}
             onExport={onExport}
             onDelete={onDelete}

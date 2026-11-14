@@ -15,8 +15,9 @@ vi.mock('./dbUtils', () => db);
 const serializeJsonBlob = vi.hoisted(() => vi.fn());
 vi.mock('../../lib/jsonFileWorkerUtils', () => ({ serializeJsonBlob, terminateWorker: vi.fn() }));
 vi.mock('@/lib/downloadBlob', () => ({ downloadBlob: vi.fn() }));
+const worldMeta = vi.hoisted(() => ({ rows: [] as { id: string; name: string; supporterCopy?: unknown }[] }));
 vi.mock('../../services/WorldStorageService', () => ({
-  default: { getWorldMetadata: () => Promise.resolve([{ id: 'w1', name: 'Sedge Landing' }]) },
+  default: { getWorldMetadata: () => Promise.resolve(worldMeta.rows) },
 }));
 
 import { LoadGameDialog } from './LoadGameDialog';
@@ -33,6 +34,7 @@ beforeEach(() => {
   db.getAllSaveRecords.mockResolvedValue([save]);
   db.getOrder.mockResolvedValue([]);
   db.migrateLegacySaves.mockResolvedValue(undefined);
+  worldMeta.rows = [{ id: 'w1', name: 'Sedge Landing' }];
 });
 
 const renderDialog = (onLoad = vi.fn()) => {
@@ -99,5 +101,40 @@ describe('save failures', () => {
     await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
     expectToast("Couldn't delete the save. Try again.", 'quota exceeded');
     expect(screen.getByText('Harbor Night')).toBeInTheDocument();
+  });
+});
+
+describe('Supporter Copy saves', () => {
+  const exportButton = () => screen.getByRole('button', { name: 'Export save “Harbor Night”' });
+
+  it('exports a save of a plain world', async () => {
+    serializeJsonBlob.mockResolvedValue(new Blob(['{}']));
+    await renderDialog();
+    fireEvent.click(exportButton());
+    await waitFor(() => expect(serializeJsonBlob).toHaveBeenCalledTimes(1));
+  });
+
+  it('shows Export disabled with the reason for a save of a Supporter Copy', async () => {
+    worldMeta.rows = [{ id: 'w1', name: 'Sedge Landing', supporterCopy: { listingId: 'l1', accountId: 'a1', revision: 1 } }];
+    await renderDialog();
+
+    await waitFor(() => expect(exportButton()).toHaveAttribute('aria-disabled', 'true'));
+    fireEvent.click(exportButton());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(serializeJsonBlob).not.toHaveBeenCalled();
+  });
+
+  it('keeps Export disabled for a stamped save after its world is removed', async () => {
+    worldMeta.rows = [];
+    db.getAllSaveRecords.mockResolvedValue([{ ...save, supporterCopy: { listingId: 'l1', accountId: 'a1', revision: 1 } }]);
+    render(<LoadGameDialog open onOpenChange={() => {}} onLoad={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getAllByRole('button').length).toBeGreaterThan(0));
+    const folder = screen.queryByText('Harbor Night') ?? (await screen.findByText(/Sedge Landing/));
+    if (!screen.queryByText('Harbor Night')) fireEvent.click(folder);
+    await waitFor(() => expect(exportButton()).toHaveAttribute('aria-disabled', 'true'));
+    fireEvent.click(exportButton());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(serializeJsonBlob).not.toHaveBeenCalled();
   });
 });

@@ -8,6 +8,8 @@ import { toastError } from '@/lib/linkToast';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { useMountedRef } from '@/lib/useMountedRef';
+import { useSupporterCopyBlock } from '@/lib/useSupporterCopyBlock';
+import { Tip } from '@/components/ui/tooltip';
 import { mediaFileName, type MediaItem, type MediaKind } from '@/lib/mediaIndex';
 import type { MediaAsset, Placeholder } from '@/types';
 
@@ -23,11 +25,21 @@ const ACCEPT: Record<MediaKind, string> = {
 function DownloadButton({ item, placeholders }: { item: MediaItem; placeholders: readonly Placeholder[] }) {
   const mounted = useMountedRef();
   const [busy, setBusy] = useState(false);
+  const blocked = useSupporterCopyBlock('downloadMedia');
   if (item.linked) {
     return (
       <Button variant="outline" size="sm" asChild>
         <a href={item.value} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1 h-4 w-4" />Open Link</a>
       </Button>
+    );
+  }
+  if (blocked) {
+    return (
+      <Tip tip={blocked} labelsChild={false}>
+        <Button variant="outline" size="sm" aria-disabled aria-description={blocked} className="cursor-not-allowed opacity-50">
+          <Download className="mr-1 h-4 w-4" />Download
+        </Button>
+      </Tip>
     );
   }
   const save = async () => {

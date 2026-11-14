@@ -127,6 +127,8 @@ import { exportedComponentLinks } from '@/lib/componentExportLinks';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { toastSaveFailure } from '@/lib/saveFailureToast';
+import { openWorldBlock } from '@/lib/supporterCopy';
+import { SupporterCopyProvider } from '@/lib/useSupporterCopyBlock';
 import { useWorldExport } from '@/lib/useWorldExport';
 import { terminateWorker as terminateJsonWorker } from '@/lib/jsonFileWorkerUtils';
 import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
@@ -213,8 +215,13 @@ const WorldEditorInner = ({
     updateDictionary, addDictionaryEntry, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     setLocations, setEntities, setDictionaries,
     isWorldDirty, isWorldStored, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
-    worldChangedElsewhere, reloadWorld, keepWorldCopy,
+    worldChangedElsewhere, reloadWorld, keepWorldCopy, supporterCopy,
   } = useGameData();
+  const exportWorldBlock = openWorldBlock(supporterCopy, 'exportWorld');
+  const exportBlocks = useMemo(() => ({
+    entity: openWorldBlock(supporterCopy, 'exportEntity'),
+    dictionary: openWorldBlock(supporterCopy, 'exportDictionary'),
+  }), [supporterCopy]);
   const { editorAutoSave, setEditorAutoSave, editorAutoSaveIdleSeconds } = useSettings();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
 
@@ -691,10 +698,11 @@ const WorldEditorInner = ({
   });
   const benchPanel = <PanelErrorBoundary><TestBench {...bench.panelProps} /></PanelErrorBoundary>;
 
-  const exportCurrentWorld = () => exportWorld(buildCurrentWorld());
+  const exportCurrentWorld = () => { if (!exportWorldBlock) exportWorld(buildCurrentWorld()); };
 
   // Export one book to its own standalone `.json` (no image downscale — dictionaries are text only).
   const exportDictionary = async (book: Dictionary) => {
+    if (exportBlocks.dictionary) return;
     try {
       // The book's own placeholders go as they are; the shared ones its entries use ride along so its chips
       // resolve after import elsewhere. The link record travels as file relationships, never as a world.
@@ -709,6 +717,7 @@ const WorldEditorInner = ({
 
   // Export one entity as a shareable WebP character card (its portrait carrying the text fields).
   const exportEntity = async (entity: Entity) => {
+    if (exportBlocks.entity) return;
     try {
       // The card's own data keeps the chips; only the filename is flattened, since a placement id is not a name.
       const links = await exportedComponentLinks(entity.link);
@@ -744,6 +753,7 @@ const WorldEditorInner = ({
     },
     exportEntity: (entity) => { void exportEntity(entity); },
     exportDictionary: (book) => { void exportDictionary(book); },
+    exportBlocks,
   });
 
   // The Save face walks every save through its states, the tour's and autosaves included.
@@ -755,7 +765,7 @@ const WorldEditorInner = ({
       // The links made this session are now on disk, so they stop reading as pending.
       linking.clearPendingLinks();
     } else {
-      void toastSaveFailure(result.error, result.world);
+      void toastSaveFailure(result.error, result.world, exportWorldBlock);
     }
     return result.ok;
   });
@@ -1384,6 +1394,7 @@ const WorldEditorInner = ({
     label: 'Export World',
     icon: <ActionIcon.export className="mr-2 h-4 w-4 shrink-0" />,
     onClick: exportCurrentWorld,
+    disabledTip: exportWorldBlock,
   }, {
     label: 'Autosave',
     checked: editorAutoSave,
@@ -1501,6 +1512,7 @@ const WorldEditorInner = ({
   );
 
   return (
+    <SupporterCopyProvider value={supporterCopy}>
     <CodeCardNavigationContext.Provider value={codeCardNavigation}>
     <div className={`${embedded ? "h-full" : "app-viewport pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"} flex flex-col overflow-hidden`}>
       {!embedded && (
@@ -1762,6 +1774,7 @@ const WorldEditorInner = ({
       <TourSaveNote tour={tour} />
     </div>
     </CodeCardNavigationContext.Provider>
+    </SupporterCopyProvider>
   );
 };
 

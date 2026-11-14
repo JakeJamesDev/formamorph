@@ -14,6 +14,8 @@ export interface SplitButtonAction {
   icon?: ReactNode;
   /** Draws a checkbox row in place of the icon. `onClick` toggles it, and the menu stays open. */
   checked?: boolean;
+  /** Shows the row disabled, with this reason as its tooltip. */
+  disabledTip?: string | null;
 }
 
 const MENU_ITEM = 'justify-start text-meta h-8';
@@ -91,7 +93,17 @@ export function SplitButton({
         </Tip>
         <PopoverContent side={side} align={align} className="w-56 p-1">
           <div className="flex flex-col">
-            {menu.map((action) => (action.checked === undefined ? (
+            {menu.map((action) => (action.disabledTip ? (
+              // aria-disabled, not disabled, so the row still takes the hover and focus its tooltip needs.
+              <Tip key={action.label} tip={action.disabledTip} labelsChild={false}>
+                <Button
+                  variant="ghost" className={cn(MENU_ITEM, 'cursor-not-allowed opacity-50')} aria-disabled aria-description={action.disabledTip}
+                >
+                  {action.icon}
+                  {action.label}
+                </Button>
+              </Tip>
+            ) : action.checked === undefined ? (
               <Button
                 key={action.label}
                 variant="ghost"

@@ -1322,6 +1322,20 @@ export interface CommunityLink {
   sourceAuthorName?: string;
 }
 
+/** What makes a downloaded Supporter-only world a Supporter Copy. Local-only, never part of world data. */
+export interface SupporterCopyMarker {
+  listingId: string;
+  /** The account the copy was downloaded for. */
+  accountId: string;
+  /** The listing revision the copy holds. */
+  revision: number;
+}
+
+/** A library entry saved from a Supporter Copy: the same marker, plus the world it came from. */
+export interface LibrarySupporterCopyMarker extends SupporterCopyMarker {
+  sourceWorldId: string;
+}
+
 export interface WorldMetadata extends CommunityLink {
   id: string;
   name: string;
@@ -1331,6 +1345,7 @@ export interface WorldMetadata extends CommunityLink {
   createdAt?: string;
   lastAccessed?: string;
   tags?: string[];
+  supporterCopy?: SupporterCopyMarker;
 }
 
 /** Lightweight preview record used by the main-menu dictionary-library grid (no entries). */

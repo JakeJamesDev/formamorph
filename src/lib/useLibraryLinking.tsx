@@ -53,6 +53,8 @@ const HELP_TOPIC = 'library.linkedContent';
 export interface LinkMenuItem {
   label: string;
   onClick: () => void;
+  /** Shows the item disabled, with this reason as its tooltip. */
+  disabledTip?: string | null;
 }
 
 /** What the selected item's split button shows and does, for the state the item is in. */
@@ -102,6 +104,8 @@ interface LibraryLinkingOptions {
   /** Export the selected item through the editor's existing file flow. */
   exportEntity: (entity: Entity) => void;
   exportDictionary: (book: Dictionary) => void;
+  /** Why each kind may not be exported from this world, null when it may. */
+  exportBlocks?: { entity: string | null; dictionary: string | null };
 }
 
 /** One copy waiting on the connection step, with the library item it follows where it kept a link. */
@@ -137,7 +141,7 @@ interface ConnectFlow {
 export function useLibraryLinking(options: LibraryLinkingOptions) {
   // The list state and its setters are read through the ref below, so the synchronization pass can run
   // from an effect without re-running on every edit.
-  const { placeholders, locations, updateEntity, updateDictionary, exportEntity, exportDictionary } = options;
+  const { placeholders, locations, updateEntity, updateDictionary, exportEntity, exportDictionary, exportBlocks } = options;
   const { traits, traitGroups, entities, stats, statGroups, worldPlaceholders } = options;
   const traitWorld = useMemo(
     () => ({ traits, traitGroups, entities, stats, statGroups, placeholders: worldPlaceholders }),
@@ -508,7 +512,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         else toast.error('This copy follows a published source. It has no library item to open.');
       },
       menu: [
-        ...(advanced ? [{ label: `Export ${noun}…`, onClick: exportItem }] : []),
+        ...(advanced ? [{ label: `Export ${noun}…`, onClick: exportItem, disabledTip: exportBlocks?.[kind] }] : []),
         ...(linked
           ? [
             { label: 'About Linked Content…', onClick: () => setHelpOpen(true) },
@@ -524,7 +528,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
           : [{ label: 'Link to Library Item…', onClick: () => setLinkPickerFor(item) }]),
       ],
     };
-  }, [checkForUpdates, exportDictionary, exportEntity, pendingIds, repairConnections, saveToLibrary, unlinkItem]);
+  }, [checkForUpdates, exportBlocks, exportDictionary, exportEntity, pendingIds, repairConnections, saveToLibrary, unlinkItem]);
 
   /** Open the file picker for a kind's Import file… action. */
   const openImportFile = useCallback((kind: LibraryKind) => {

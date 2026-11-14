@@ -2075,6 +2075,43 @@ Open `#dev?modal=designSystem&tab=supporter-flair` for the light and dark panels
 
 Each badge shows its tier's Patreon name, or **Member** when no name is known. Copy says Profile Image, never avatar.
 
+## Pattern: Patreon Mark
+
+The Patreon Mark shows that an item comes with Patreon support. It is the **Patreon** button's heart, in that button's gradient. Approved for every Patreon item, in place of a lock icon.
+
+### Composition
+
+- ❤️ **One mark.** The heart icon on a small rounded square in the `orangeSoft` gradient, the same pair the **Patreon** button uses. The icon and the tone come from one module, so the mark and the button can't drift.
+- 📏 **Two sizes.** `sm` (20 px) on cards and rows. `md` (24 px) beside a heading.
+- 💬 **A tooltip.** It says what the item is and what the player can and can't do with it.
+- 🔒 **No lock.** A lock reads as "you can't open this". The heart reads as "this comes with your support".
+
+### When to use it
+
+- Use it on any item that comes with Patreon support: a Supporter world, a Supporter Mascot, the Formamorph AI preset.
+- Put it on the card's top-left badge slot in the grid layout, and at the start of the note line in the detailed layout.
+- Don't use it for a person. Supporter Flair marks people.
+- Don't use the gradient for anything else.
+
+### States
+
+The mark is static. It has no hover, focus, or disabled state of its own. It is not focusable, because it sits inside cards that are buttons. It carries an image role, a name, and the tooltip text as its description.
+
+### Production mapping
+
+| Part | Source |
+| --- | --- |
+| Mark, icon and tone | `PatreonMark`, `PatreonIcon` and `PATREON_TONE` in [`PatreonMark.tsx`](../src/components/PatreonMark.tsx) |
+| Gradient | `gradientClasses` in [`GradientButton.tsx`](../src/components/GradientButton.tsx) |
+| World card | `LibraryWorldCard` in [`LibraryWorldCard.tsx`](../src/components/LibraryWorldCard.tsx) |
+| The button it comes from | `SupporterListingButton` in [`SupporterListingButton.tsx`](../src/components/community/SupporterListingButton.tsx) |
+
+Open `#dev?modal=designSystem&tab=patreon-mark` for the light and dark panels side by side.
+
+### Writing review
+
+The name says what the item is, such as **Supporter world**. The tooltip follows the help-line test: two short sentences, second person, with a period.
+
 ## Pattern: Preset Header
 
 **Purpose:** Pick a preset and act on it with the same controls on every preset surface.

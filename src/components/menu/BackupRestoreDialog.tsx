@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Hint, Meta } from '@/components/ui/typography';
 import { BreadcrumbLabel, BreadcrumbTip } from '@/components/ui/breadcrumb-picker';
+import { Tip } from '@/components/ui/tooltip';
 import {
   buildBackup,
   saveBackup,
@@ -107,7 +108,8 @@ function CategoryTree({
         {groups.map(({ category, rows }) => {
           const sel = selected[category];
           const onCount = rows.filter((r) => sel.has(r.id)).length;
-          const parent = onCount === 0 ? false : onCount === rows.length ? true : 'indeterminate';
+          const open = rows.filter((r) => !r.blocked).length;
+          const parent = onCount === 0 ? false : onCount === open ? true : 'indeterminate';
           const hasConflicts = rows.some((r) => r.exists);
           return (
             <div key={category} className="rounded-md border">
@@ -116,7 +118,7 @@ function CategoryTree({
                   <Checkbox checked={parent} onCheckedChange={(v) => onToggleAll(category, v === true)} />
                   {CATEGORY_LABELS[category]}
                   <span className="font-normal text-muted-foreground">
-                    ({onCount}/{rows.length})
+                    ({onCount}/{open})
                   </span>
                 </label>
                 {overwrite && onToggleOverwrite && hasConflicts && (
@@ -130,7 +132,14 @@ function CategoryTree({
                 )}
               </div>
               <div className="flex flex-col p-1">
-                {rows.map((r) => (
+                {rows.map((r) => (r.blocked ? (
+                  <Tip key={r.id} tip={r.blocked} labelsChild={false}>
+                    <label tabIndex={0} aria-description={r.blocked} className="flex cursor-not-allowed items-center gap-2 rounded px-2 py-1 text-label opacity-50">
+                      <Checkbox checked={false} disabled />
+                      <BreadcrumbLabel name={r.label} breadcrumb={r.breadcrumb} />
+                    </label>
+                  </Tip>
+                ) : (
                   <BreadcrumbTip key={r.id} breadcrumb={r.breadcrumb}>
                     <label className="flex items-center gap-2 rounded px-2 py-1 text-label hover:bg-muted/50">
                       <Checkbox checked={sel.has(r.id)} onCheckedChange={(v) => onToggleItem(category, r.id, v === true)} />
@@ -142,7 +151,7 @@ function CategoryTree({
                       )}
                     </label>
                   </BreadcrumbTip>
-                ))}
+                )))}
               </div>
             </div>
           );
@@ -220,7 +229,7 @@ export function BackupRestoreDialog({ open, start, onOpenChange }: { open: boole
         if (!live) return;
         setItems(list);
         const sel = emptySel();
-        for (const c of BACKUP_CATEGORIES) sel[c] = new Set(list[c].map((i) => i.id));
+        for (const c of BACKUP_CATEGORIES) sel[c] = new Set(list[c].filter((i) => !i.blocked).map((i) => i.id));
         setExportSel(sel);
       })
       .catch(() => live && setItems({ worlds: [], saves: [], entities: [], dictionaries: [] }));
@@ -241,7 +250,7 @@ export function BackupRestoreDialog({ open, start, onOpenChange }: { open: boole
     setter: React.Dispatch<React.SetStateAction<SelState>>,
     groupsFor: () => Group[],
   ) => (c: BackupCategory, on: boolean) =>
-    setter((prev) => ({ ...prev, [c]: on ? new Set(groupsFor().find((g) => g.category === c)?.rows.map((r) => r.id)) : new Set() }));
+    setter((prev) => ({ ...prev, [c]: on ? new Set(groupsFor().find((g) => g.category === c)?.rows.filter((r) => !r.blocked).map((r) => r.id)) : new Set() }));
 
   const exportGroups: Group[] = items
     ? BACKUP_CATEGORIES.filter((c) => items[c].length > 0).map((c) => ({ category: c, rows: items[c] }))

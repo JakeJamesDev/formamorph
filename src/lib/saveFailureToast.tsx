@@ -55,13 +55,18 @@ export function toastAutosaveFailure(error: unknown): void {
  *
  * @param error - What the save rejected with
  * @param world - The world the save could not store
+ * @param exportBlock - Why the world may not be exported; the toast then states it in place of the button
  */
-export async function toastSaveFailure(error: unknown, world: World): Promise<void> {
+export async function toastSaveFailure(error: unknown, world: World, exportBlock: string | null = null): Promise<void> {
   if (!isQuotaError(error)) {
     toastError(error, { headline: SAVE_FAILED });
     return;
   }
   const space = await spaceLine();
+  if (exportBlock) {
+    toast.error([STORAGE_FULL, ...(space ? [space] : []), `${exportBlock}.`].join(' '), { autoClose: false });
+    return;
+  }
   linkToast(
     [STORAGE_FULL, ...(space ? [space] : []), EXPORT_TO_KEEP],
     'Export World',

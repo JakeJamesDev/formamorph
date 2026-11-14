@@ -13,6 +13,7 @@ import { downloadBlob } from '@/lib/downloadBlob';
 import { indexBackupInWorker, restoreBackupInWorker, serializeJsonBlobSplit } from '@/lib/jsonFileWorkerUtils';
 import { getAllSaveRecords } from '@/components/modals/dbUtils';
 import { APP_VERSION } from '@/lib/version';
+import { supporterCopyBlock, type SupporterCopyTarget } from '@/lib/supporterCopy';
 import {
   BACKUP_CATEGORIES,
   itemLabel,
@@ -76,18 +77,23 @@ export interface BackupItem {
   id: string;
   label: string;
   breadcrumb?: string[];
+  /** Why the item can't go in a backup; absent when it can. */
+  blocked?: string;
 }
+
+/** Why a record can't go in a backup, or null. A stamped save holds a Supporter world's books. */
+const backupBlock = (category: BackupCategory, record: IdRecord): string | null =>
+  supporterCopyBlock(record as SupporterCopyTarget, category === 'saves' ? 'exportSave' : 'backup');
 
 /** List every store's items (id + display label) so the UI can offer per-item selection, grouped by category. */
 export async function listBackupItems(): Promise<Record<BackupCategory, BackupItem[]>> {
   const out = { worlds: [], saves: [], entities: [], dictionaries: [] } as Record<BackupCategory, BackupItem[]>;
   await Promise.all(
     BACKUP_CATEGORIES.map(async (category) => {
-      out[category] = (await listCategory(category)).map((r) => ({
-        id: r.id,
-        label: itemLabel(r),
-        breadcrumb: itemBreadcrumb(category, r),
-      }));
+      out[category] = (await listCategory(category)).map((r) => {
+        const blocked = backupBlock(category, r);
+        return { id: r.id, label: itemLabel(r), breadcrumb: itemBreadcrumb(category, r), ...(blocked ? { blocked } : {}) };
+      });
     }),
   );
   return out;
@@ -104,7 +110,7 @@ export async function buildBackup(selection: BackupSelection): Promise<BackupBun
     BACKUP_CATEGORIES.map(async (category) => {
       const ids = selection[category];
       if (!ids || ids.size === 0) return;
-      data[category] = (await readCategory(category)).filter((r) => ids.has(r.id));
+      data[category] = (await readCategory(category)).filter((r) => ids.has(r.id) && !backupBlock(category, r));
     }),
   );
   return {

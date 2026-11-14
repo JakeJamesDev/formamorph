@@ -207,6 +207,34 @@ describe('backup round trip (IndexedDB)', () => {
     expect(items.dictionaries).toEqual([]);
   });
 
+  it('lists a Supporter Copy as blocked and leaves it out of the bundle even when selected', async () => {
+    const supporterCopy = { listingId: 'listing-1', accountId: 'account-1', revision: 1 };
+    await seed('worldsDB', 'worlds', [{ id: 'plain', name: 'Plain' }, { id: 'copy', name: 'Copy', supporterCopy } as { id: string }]);
+
+    const items = await listBackupItems();
+    expect(items.worlds).toEqual(expect.arrayContaining([
+      { id: 'plain', label: 'Plain' },
+      { id: 'copy', label: 'Copy', blocked: "You can't back up a Supporter world" },
+    ]));
+
+    const bundle = await buildBackup({ worlds: new Set(['plain', 'copy']) });
+    expect(bundle.data.worlds.map((r) => r.id)).toEqual(['plain']);
+  });
+
+  it('lists a stamped save as blocked and leaves it out of the bundle', async () => {
+    const supporterCopy = { listingId: 'listing-1', accountId: 'account-1', revision: 1 };
+    const saves = vi.spyOn(await import('@/components/modals/dbUtils'), 'getAllSaveRecords').mockResolvedValue([
+      { id: 's-plain', name: 'Plain' }, { id: 's-stamped', name: 'Stamped', supporterCopy },
+    ] as never);
+
+    const items = await listBackupItems();
+    expect(items.saves.find((r) => r.id === 's-stamped')?.blocked).toBe("You can't export saves of a Supporter world");
+    expect(items.saves.find((r) => r.id === 's-plain')?.blocked).toBeUndefined();
+    const bundle = await buildBackup({ saves: new Set(['s-plain', 's-stamped']) });
+    expect(bundle.data.saves.map((r) => r.id)).toEqual(['s-plain']);
+    saves.mockRestore();
+  });
+
   it('backs up the other worlds when one world file is lost', async () => {
     await seed('worldsDB', 'worlds', [{ id: 'w1', name: 'Keep' }, { id: 'lost', name: 'Lost' }]);
     const restore = refuseReads({ worlds: ['lost'] });

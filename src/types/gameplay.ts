@@ -1,4 +1,4 @@
-import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming, PlacementWhere, BodyPick, WorldOptionValueOf } from './world';
+import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming, PlacementWhere, BodyPick, WorldOptionValueOf, SupporterCopyMarker } from './world';
 import type { ChatMessage } from './ai';
 import type { ActionSnapshot, ListedAction, SentActionList } from '@/lib/actionList';
 
@@ -641,6 +641,8 @@ export interface SaveRecord extends SaveObject {
   /** Device-local: marks one of the world's rolling autosaves (as many as Autosaves Kept). Like `id`, it's
    *  stripped from the exported `.json` — a downloaded autosave re-imports as an ordinary manual save. */
   isAutosave?: boolean;
+  /** Device-local: the save holds a Supporter Copy's books, so it never exports. Stripped like `id`. */
+  supporterCopy?: SupporterCopyMarker;
 }
 
 /** v1.2.0: client-side community-browser hide preferences (persisted in localStorage). */

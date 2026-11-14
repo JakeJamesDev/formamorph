@@ -339,6 +339,10 @@ _Avoid_: perks, rewards, supporter status
 The list of linked accounts with a tier, Supporter+ first and longer tenure first. It is a page on formamorph.ai and a tab of the Credits dialog, and both render one component. It never lists a Patreon member who did not link.
 _Avoid_: hall of fame, donor list, credits
 
+**Supporter Copy**:
+A world downloaded from a Supporter-only listing, or a library entry saved from one. It plays and edits like any copy, but nothing exports, duplicates, publishes or downloads its media, and backups leave it out. A local-only marker on the stored record carries the listing, the account and the revision.
+_Avoid_: locked world, protected world, install (as a noun)
+
 **Patreon link**:
 The tie between one Formamorph account and one Patreon user, made in the account settings after the member approves it on Patreon. Unlink removes it at once.
 _Avoid_: Patreon login, connection (the AI endpoint word), integration

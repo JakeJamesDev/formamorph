@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { copyText } from '@/lib/clipboard';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { crashReportText } from '@/lib/crashReport';
-import { readUnsavedWorld } from '@/lib/unsavedWorld';
+import { readUnsavedWorld, unsavedWorldExportBlock } from '@/lib/unsavedWorld';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { serializeWorldFile } from '@/lib/worldFile';
 
@@ -22,7 +22,12 @@ export function RootCrashScreen({ error, componentStack }: RootCrashScreenProps)
   const mounted = useMountedRef();
   const [status, setStatus] = useState('');
   // Read once: the reference outlives every provider, so the button does not come and go with renders.
-  const [world] = useState(readUnsavedWorld);
+  const [held] = useState(() => {
+    const hold = unsavedWorldExportBlock();
+    // A block with no reason means the world's marker was never read: nothing to export, nothing to explain.
+    return hold && !hold.reason ? { world: null, block: null } : { world: readUnsavedWorld(), block: hold?.reason ?? null };
+  });
+  const { world, block } = held;
 
   const copyDetails = async () => {
     const copied = await copyText(crashReportText(error, componentStack));
@@ -30,7 +35,7 @@ export function RootCrashScreen({ error, componentStack }: RootCrashScreenProps)
   };
 
   const exportWorld = async () => {
-    if (!world) return;
+    if (!world || block) return;
     try {
       downloadBlob(await serializeWorldFile(world), `${world.worldOverview?.name || 'rpg_world'}.json`);
     } catch (exportError) {
@@ -45,13 +50,15 @@ export function RootCrashScreen({ error, componentStack }: RootCrashScreenProps)
         <TriangleAlert className="h-10 w-10 text-warning" aria-hidden />
         <h1 className="text-title font-semibold">Formamorph Stopped Working</h1>
         <p className="text-muted-foreground">
-          {world
-            ? 'Export your world to keep your unsaved edits, then reload the app.'
-            : 'Reload the app to continue.'}
+          {!world
+            ? 'Reload the app to continue.'
+            : block
+              ? `${block}, so your unsaved edits will be lost. Reload the app to continue.`
+              : 'Export your world to keep your unsaved edits, then reload the app.'}
         </p>
         <div className="flex flex-wrap justify-center gap-2">
           <Button variant="outline" onClick={() => void copyDetails()}>Copy Error Details</Button>
-          {world && <Button variant="outline" onClick={() => void exportWorld()}>Export World</Button>}
+          {world && <Button variant="outline" disabled={!!block} onClick={() => void exportWorld()}>Export World</Button>}
           <Button onClick={() => window.location.reload()}>Reload</Button>
         </div>
         <Meta as="p" role="status" className="min-h-5">{status}</Meta>

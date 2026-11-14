@@ -72,7 +72,13 @@ describe('World Editor app bar (desktop)', () => {
     expect(screen.queryByRole('button', { name: 'More world actions' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Export World' })).toBeNull();
     fireEvent.click(button('Save options'));
-    fireEvent.click(await screen.findByRole('button', { name: 'Export World' }));
+    // Export waits for the world's Supporter Copy read, as a player's click would.
+    const exportRow = await waitFor(() => {
+      const row = screen.getByRole('button', { name: 'Export World' });
+      expect(row).not.toHaveAttribute('aria-disabled');
+      return row;
+    });
+    fireEvent.click(exportRow);
     await waitFor(() => expect(downloadBlob).toHaveBeenCalledTimes(1));
     expect(vi.mocked(downloadBlob).mock.calls[0][1]).toBe('Sedge Landing.json');
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Export World' })).toBeNull());
@@ -219,6 +225,6 @@ describe('World Editor footer (mobile)', () => {
     expect(screen.queryByRole('button', { name: 'Optimize Images' })).toBeNull();
     expect(button('Save')).toBeInTheDocument();
     fireEvent.click(button('Save options'));
-    expect(await screen.findByRole('button', { name: 'Export World' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Export World' })).not.toHaveAttribute('aria-disabled'));
   });
 });

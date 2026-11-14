@@ -1,8 +1,9 @@
 import { useState, useSyncExternalStore } from 'react';
-import { Check, Download, Heart, Loader2, LogIn } from 'lucide-react';
+import { Check, Download, Loader2, LogIn } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 import { PATREON_PAGE_URL } from '@/components/PatreonSection';
+import { PATREON_TONE, PatreonIcon } from '@/components/PatreonMark';
 import { Tip } from '@/components/ui/tooltip';
 import { WorldActionButton } from '@/components/WorldActionButton';
 import { toastError } from '@/lib/linkToast';
@@ -39,7 +40,7 @@ const TIPS: Record<SupporterListingAction, string> = {
   patreon: 'Become a Supporter on Patreon to install this',
 };
 
-const ICONS = { 'sign-in': LogIn, checking: Loader2, install: Download, installed: Check, unsupported: Download, patreon: Heart } as const;
+const ICONS = { 'sign-in': LogIn, checking: Loader2, install: Download, installed: Check, unsupported: Download, patreon: PatreonIcon } as const;
 
 const subscribe = supporterContent.subscribe;
 const getSnapshot = supporterContent.getSnapshot;
@@ -92,7 +93,7 @@ export function SupporterListingButton({ world, kind, signedIn, onSignIn, varian
   }
 
   return (
-    <WorldActionButton tone={action === 'patreon' ? 'orangeSoft' : 'sky'} disabled={inert} onClick={() => void press()}>
+    <WorldActionButton tone={action === 'patreon' ? PATREON_TONE : 'sky'} disabled={inert} onClick={() => void press()}>
       <Icon className={installing || action === 'checking' ? 'mr-2 h-4 w-4 animate-spin' : 'mr-2 h-4 w-4'} /> {label}
     </WorldActionButton>
   );

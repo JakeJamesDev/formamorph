@@ -312,6 +312,8 @@ describe('an Avatar panel', () => {
     renderWorldEditorBench(WORLD, 'simple');
     openMedia();
     openAvatarCard(0);
+    // Download waits for the world's Supporter Copy read, as a player's click would.
+    await waitFor(() => expect(within(panel()).getByRole('button', { name: 'Download' })).not.toHaveAttribute('aria-disabled'));
     await act(async () => { fireEvent.click(within(panel()).getByRole('button', { name: 'Download' })); });
     await waitFor(() => expect(download).toHaveBeenCalled());
     const [blob, name] = download.mock.lastCall as [Blob, string];

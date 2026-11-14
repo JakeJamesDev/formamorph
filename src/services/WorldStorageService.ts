@@ -26,7 +26,8 @@ import type { AddonRow, DependencyRow } from '@/lib/worldDependencies';
 import type { SourceCheckStatus } from '@/lib/sourceChecks';
 import type { LikeState } from '@/lib/likeCount';
 import type {
-  AnonymousLikeRow, AnonymousLikesRemoved, LikerAuditRow, LikerRow, LikesMarkerReason, LikesSummary, VrmLicense, WorldMetadata,
+  AnonymousLikeRow, AnonymousLikesRemoved, LikerAuditRow, LikerRow, LikesMarkerReason, LikesSummary, SupporterCopyMarker, VrmLicense,
+  WorldMetadata,
 } from '@/types';
 import { likesMarkerOf } from '@/lib/likesMarker';
 import {
@@ -166,6 +167,8 @@ export interface StoredWorldRecord {
    *  tell whether the shipped content actually changed. Derived (never hand-written) and local-only, so it
    *  isn't exported and needs no version bump. Absent on copies seeded before hashing existed. */
   sourceHash?: string;
+  /** Present on a Supporter Copy. Local-only and sticky, like `sourceId`. */
+  supporterCopy?: SupporterCopyMarker;
   data: {
     version?: string; // stamped on save/export (see lib/version)
     worldOverview: unknown;
@@ -329,6 +332,17 @@ class WorldStorageService {
     if (!worldId) return {};
     const meta = await this.readMetaOf(worldId);
     return { sourceId: meta?.sourceId, downloadedAt: meta?.downloadedAt };
+  }
+
+  /**
+   * A stored world's Supporter Copy marker.
+   *
+   * @param worldId - The local record's id
+   * @returns The marker, or null for a plain world or a missing record
+   */
+  async getSupporterCopy(worldId: string): Promise<SupporterCopyMarker | null> {
+    if (!worldId) return null;
+    return (await this.readMetaOf(worldId))?.supporterCopy ?? null;
   }
 
   /**
@@ -510,6 +524,7 @@ class WorldStorageService {
         sourceUpdatedAt: world.sourceUpdatedAt ?? existing?.sourceUpdatedAt,
         sourceAuthorId: world.sourceAuthorId ?? existing?.sourceAuthorId,
         sourceHash: world.sourceHash ?? existing?.sourceHash,
+        supporterCopy: world.supporterCopy ?? existing?.supporterCopy,
         data: world.data,
         // createdAt is sticky: stamped once on first store, preserved across later saves.
         createdAt: existing?.createdAt ?? new Date().toISOString(),

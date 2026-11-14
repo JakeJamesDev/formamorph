@@ -1,9 +1,12 @@
 import SortableWorldCard from '@/components/SortableWorldCard';
 import { PlaceBadges } from '@/components/PlaceBadges';
+import { PatreonMark } from '@/components/PatreonMark';
+import { SUPPORTER_WORLD_TIP } from '@/lib/supporterCopy';
 import { placementsBy } from '@/lib/contests';
 import { useWorldOptimizeProgress } from '@/lib/worldOptimizeProgress';
 import type { WorldRecord } from '@/components/WorldDetails';
 import type { ServerEvent } from '@/types';
+
 
 /**
  * A world's tile in the local library — the shared card, plus whatever the contest archive says about it.
@@ -28,6 +31,9 @@ export function LibraryWorldCard({ world, contests, layout, onSelect, fill, comp
   const loading = !!world.isLoading;
   const placements = loading ? [] : placementsBy(world, contests);
   const progress = useWorldOptimizeProgress(world.id);
+  const supporter = !loading && world.supporterCopy
+    ? <PatreonMark label="Supporter world" tip={SUPPORTER_WORLD_TIP} />
+    : null;
 
   return (
     <SortableWorldCard
@@ -40,10 +46,12 @@ export function LibraryWorldCard({ world, contests, layout, onSelect, fill, comp
       // The grid tile is all thumbnail, so the badge overlays it; the detailed card has a body to put
       // the same line in. Only the overlay is guarded — that slot wraps whatever it is given in a
       // positioned box, and a box around nothing is still a box.
-      badge={placements.length > 0
-        ? <PlaceBadges placements={placements} />
+      badge={supporter || placements.length > 0
+        ? <div className="flex items-start gap-1">{supporter}{placements.length > 0 && <PlaceBadges placements={placements} />}</div>
         : undefined}
-      note={<PlaceBadges placements={placements} className="mb-2" />}
+      note={supporter
+        ? <div className="mb-2 flex items-start gap-1">{supporter}<PlaceBadges placements={placements} /></div>
+        : <PlaceBadges placements={placements} className="mb-2" />}
       onSelect={onSelect}
     />
   );

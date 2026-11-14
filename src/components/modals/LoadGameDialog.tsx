@@ -24,7 +24,8 @@ import {
   formatSaveTimestamp, groupSaves, mergeOrder, mergeVisibleSaveOrder, folderRefFor, FOLDER_ORDER_KEY,
   type SaveMeta, type SaveFolder, type WorldRef,
 } from '../../lib/saveOrdering';
-import type { SaveRecord } from "@/types";
+import type { SaveRecord, SupporterCopyMarker } from "@/types";
+import { supporterCopyBlock } from "@/lib/supporterCopy";
 import { Tip } from "@/components/ui/tooltip";
 import { Meta } from "@/components/ui/typography";
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
@@ -143,6 +144,8 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
 
   const [records, setRecords] = React.useState<SaveRecord[]>([]);
   const [worlds, setWorlds] = React.useState<WorldRef[]>([]);
+  // The stored worlds that are Supporter Copies, whose saves can't be exported.
+  const [supporterCopies, setSupporterCopies] = React.useState<ReadonlyMap<string, SupporterCopyMarker>>(new Map());
   const [folderOrder, setFolderOrder] = React.useState<string[]>([]);
   const [saveOrderByKey, setSaveOrderByKey] = React.useState<Record<string, string[]>>({});
   const [activeKey, setActiveKey] = React.useState<string>(current ? current.id : '');
@@ -180,6 +183,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
 
       const worldMeta = await WorldStorageService.getWorldMetadata();
       const worldRefs: WorldRef[] = worldMeta.map(w => ({ id: String(w.id), name: w.name }));
+      setSupporterCopies(new Map(worldMeta.flatMap(w => (w.supporterCopy ? [[String(w.id), w.supporterCopy] as const] : []))));
       const nameToId = new Map(worldRefs.map(w => [w.name, w.id] as const));
       await migrateLegacySaves(name => nameToId.get(name ?? ''));
 
@@ -260,14 +264,22 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
     }
   };
 
+  const exportBlockOf = (row: SaveRow): string | null => {
+    // The save's own stamp holds after its world is removed; the world lookup covers a save written before it.
+    const { worldId } = folderRefFor(row, nameToId, idToName);
+    const supporterCopy = row.record.supporterCopy ?? (worldId ? supporterCopies.get(worldId) : undefined);
+    return supporterCopyBlock({ supporterCopy }, 'exportSave');
+  };
+
   const doExport = async (row: SaveRow) => {
+    if (exportBlockOf(row)) return;
     try {
       setIsExporting(true);
       setExportingSaveName(row.name);
       setLoadingMessage(`Preparing “${row.name}” for export…`);
       // Strip device-local fields from the export: the record id and the autosave marker (an exported
       // autosave re-imports as an ordinary manual save).
-      const { id: _id, isAutosave: _auto, ...fileData } = row.record;
+      const { id: _id, isAutosave: _auto, supporterCopy: _marker, ...fileData } = row.record;
       const blob = await serializeJsonBlob({ formamorphKind: SAVE_FILE_KIND, ...fileData }, 2);
       downloadBlob(blob, `${fileData.name || 'save'}.json`);
     } catch (error) {
@@ -460,6 +472,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
                     busy={busy}
                     getPickLabel={onPickSave ? (row) => `Select save “${row.name}”` : undefined}
                     onPick={onPickSave ?? requestLoad}
+                    getExportBlock={exportBlockOf}
                     onExport={(row) => void doExport(row)}
                     onDelete={setPendingDelete}
                     onReorder={(next) => {

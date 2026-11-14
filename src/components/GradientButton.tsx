@@ -27,6 +27,9 @@ const GRADIENT_TONES = {
 
 export type GradientTone = keyof typeof GRADIENT_TONES;
 
+/** One tone's gradient, for a mark that wears a button's colors. */
+export const gradientClasses = (tone: GradientTone): string => cn('bg-gradient-to-r', GRADIENT_TONES[tone]);
+
 export interface GradientButtonProps extends ButtonProps {
   tone: GradientTone;
 }

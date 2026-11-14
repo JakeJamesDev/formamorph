@@ -6,6 +6,7 @@ import { dirtyDiff } from '@/lib/dirtyDiff';
 import { mapImages } from '@/lib/mapBackground';
 import { registerDevHook } from '@/lib/devRouter';
 import { holdUnsavedWorld } from '@/lib/unsavedWorld';
+import { supporterCopyBlock } from '@/lib/supporterCopy';
 import { onWorldChangedElsewhere, type WorldChange } from '@/lib/worldChangeSignal';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
@@ -74,6 +75,7 @@ import type {
   Script,
   Tool,
   World,
+  SupporterCopyMarker,
 } from '@/types';
 
 /** What a world save answers: done, or the error that stopped it with the world it could not store. */
@@ -155,6 +157,19 @@ function useProvideGameData() {
     setOwnedBookIds(ownedLibraryIds.current);
   }, [setOwnedBookIds]);
   const [worldId, setWorldId] = useState<string | null>(null);
+  // The marker read, keyed by the world it answers for, so a switch never shows the last world's answer.
+  const [markerRead, setMarkerRead] = useState<{ worldId: string; marker: SupporterCopyMarker | null } | null>(null);
+  // The open world's Supporter Copy marker: undefined until read, null for a plain or unsaved world.
+  const supporterCopy = !worldId ? null : markerRead?.worldId === worldId ? markerRead.marker : undefined;
+  useEffect(() => {
+    if (!worldId) return;
+    let live = true;
+    // A world whose metadata can't be read loaded from the same store, so a failed read means a plain world.
+    Promise.resolve().then(() => WorldStorageService.getSupporterCopy(worldId))
+      .then((marker) => marker, () => null)
+      .then((marker) => { if (live) setMarkerRead({ worldId, marker }); });
+    return () => { live = false; };
+  }, [worldId]);
   // The last saved or loaded world, compared against current data to flag pending edits. It shares every
   // record no edit has replaced, so it costs only the records edited since.
   const [savedWorld, setSavedWorld] = useState<WorldData | null>(null);
@@ -692,8 +707,11 @@ function useProvideGameData() {
   // only while it has unsaved edits, so nothing is built per commit and nothing is copied. Never released on
   // unmount: the crash unmounts this provider, and the screen reads the reference afterward.
   useEffect(() => {
-    holdUnsavedWorld(isWorldDirty ? () => ({ id: worldId ?? '', version: APP_VERSION, ...getWorldData() }) : null);
-  }, [isWorldDirty, worldId, getWorldData]);
+    const reader = isWorldDirty ? () => ({ id: worldId ?? '', version: APP_VERSION, ...getWorldData() }) : null;
+    // An unread marker blocks with no reason shown: the screen then offers only Reload.
+    const reason = supporterCopy === undefined ? null : supporterCopyBlock({ supporterCopy }, 'crashExport');
+    holdUnsavedWorld(reader, supporterCopy === undefined || reason ? { reason } : null);
+  }, [isWorldDirty, worldId, getWorldData, supporterCopy]);
   // DEV: names what `isWorldDirty` is reacting to.
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -881,6 +899,8 @@ function useProvideGameData() {
     placeholderGroups,
     getWorldData,
     worldId,
+    // The open world's Supporter Copy marker; undefined until read.
+    supporterCopy,
     // True once loadWorldData has run. A world file may have no id, so worldId can't signal this.
     worldLoaded,
     isWorldDirty,
@@ -898,7 +918,7 @@ function useProvideGameData() {
     placeholderOwners: placeholderOwnerIndex,
   }), [
     actions, worldMetadata, worldOverview, stats, statGroups, locations, connections, entities, entityGroups, playWorld, traits, traitGroups,
-    statUpdates, dictionaries, worldScripts, worldTools, items, slots, bodies, placements, currencies, worldOptions, placeholders, worldPlaceholders, placeholderGroups, getWorldData, worldId, worldLoaded,
+    statUpdates, dictionaries, worldScripts, worldTools, items, slots, bodies, placements, currencies, worldOptions, placeholders, worldPlaceholders, placeholderGroups, getWorldData, worldId, supporterCopy, worldLoaded,
     isWorldDirty, worldStored, worldChangedElsewhere, dictStore, phStore, placementLetters, placeholderOwnerIndex,
   ]);
 

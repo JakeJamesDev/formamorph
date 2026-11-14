@@ -116,6 +116,8 @@ import SortableWorldCard from "@/components/SortableWorldCard";
 import { PlaceBadges } from "@/components/PlaceBadges";
 import { LibraryWorldCard } from "@/components/LibraryWorldCard";
 import { WorldActionButton } from "@/components/WorldActionButton";
+import { BlockedActionTip } from "@/components/BlockedActionTip";
+import { supporterCopyBlock } from "@/lib/supporterCopy";
 import { GradientButton } from "@/components/GradientButton";
 import DictionaryEditorModal from "@/components/modals/DictionaryEditorModal";
 import EntityEditorModal from "@/components/modals/EntityEditorModal";
@@ -418,6 +420,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const record = readSourceCheck(selectedWorld.id);
     return sourceBlockReason(linkedSourceCopies(selectedWorld.data, record.required), record.results);
   }, [selectedWorld, showWorldEditor]);
+  const duplicateBlock = supporterCopyBlock(selectedWorld, 'duplicate');
+  const exportBlock = supporterCopyBlock(selectedWorld, 'exportWorld');
+  const publishBlock = supporterCopyBlock(selectedWorld, 'publish');
   const [worldToDelete, setWorldToDelete] = useState<string | null>(null);
   const [warmingOffline, setWarmingOffline] = useState(false);
   const [showCharacterCustomization, setShowCharacterCustomization] = useState(false);
@@ -716,6 +721,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   /** Publish the selected world, unless it is a bundled world the player never edited. */
   const publishWorld = (world: WorldRecord) => {
+    if (supporterCopyBlock(world, 'publish')) return;
     // A selected world always holds its migrated data (handleWorldSelection); WorldRecord is loose.
     const attempt = buildWorldPublish(world as WorldPublishTarget);
     if (!attempt.allowed) {
@@ -1619,6 +1625,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         toast.error('No world selected to duplicate');
         return;
       }
+      if (supporterCopyBlock(selectedWorld, 'duplicate')) return;
 
       // Get the current world data
       const worldToDuplicate = selectedWorld!.data;
@@ -2820,19 +2827,25 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                     <Pencil className="mr-2 h-4 w-4" /> Edit World
                   </WorldActionButton>
 
-                  <WorldActionButton
-                    tone="purpleSoft"
-                    onClick={() => handleDuplicateWorld()}
-                  >
-                    <ActionIcon.copy className="mr-2 h-4 w-4" /> Duplicate World
-                  </WorldActionButton>
+                  <BlockedActionTip reason={duplicateBlock}>
+                    <WorldActionButton
+                      tone="purpleSoft"
+                      disabled={!!duplicateBlock}
+                      onClick={() => handleDuplicateWorld()}
+                    >
+                      <ActionIcon.copy className="mr-2 h-4 w-4" /> Duplicate World
+                    </WorldActionButton>
+                  </BlockedActionTip>
 
-                  <WorldActionButton
-                    tone="emeraldSoft"
-                    onClick={() => { if (selectedWorld) void exportWorld(selectedWorld.data); }}
-                  >
-                    <ActionIcon.export className="mr-2 h-4 w-4" /> Export World
-                  </WorldActionButton>
+                  <BlockedActionTip reason={exportBlock}>
+                    <WorldActionButton
+                      tone="emeraldSoft"
+                      disabled={!!exportBlock}
+                      onClick={() => { if (selectedWorld) void exportWorld(selectedWorld.data); }}
+                    >
+                      <ActionIcon.export className="mr-2 h-4 w-4" /> Export World
+                    </WorldActionButton>
+                  </BlockedActionTip>
 
                   {/* Only worth offering for a world that links its pictures — one storing its own has nothing
                       to download. */}
@@ -2847,13 +2860,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                   )}
 
                   {isAuthenticated && (
-                    <WorldActionButton
-                      tone="redSoft"
-                      disabled={!!sourceBlock}
-                      onClick={() => { if (selectedWorld) publishWorld(selectedWorld); }}
-                    >
-                      <ActionIcon.publish className="mr-2 h-4 w-4" /> Publish World
-                    </WorldActionButton>
+                    <BlockedActionTip reason={publishBlock}>
+                      <WorldActionButton
+                        tone="redSoft"
+                        disabled={!!sourceBlock || !!publishBlock}
+                        onClick={() => { if (selectedWorld) publishWorld(selectedWorld); }}
+                      >
+                        <ActionIcon.publish className="mr-2 h-4 w-4" /> Publish World
+                      </WorldActionButton>
+                    </BlockedActionTip>
                   )}
                 </div>
               }

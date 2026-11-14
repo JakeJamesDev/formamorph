@@ -5,7 +5,7 @@
  * Every write goes through {@link putWorldRecord} or {@link deleteWorldRecord} inside one transaction over
  * both stores, so a list read never sees a world without its metadata, or the reverse.
  */
-import type { ContentLink, WorldMetadata } from '@/types';
+import type { ContentLink, SupporterCopyMarker, WorldMetadata } from '@/types';
 import { describePlaceholders } from './placeholders';
 import { allPlaceholders, type PlaceholderHomesWorld } from './placeholderHomes';
 import { migrateCarriedPlaceholders } from './version';
@@ -46,6 +46,7 @@ interface StoredWorldShape {
   sourceUpdatedAt?: string;
   sourceAuthorId?: string;
   sourceHash?: string;
+  supporterCopy?: SupporterCopyMarker;
   createdAt?: string;
   lastAccessed?: string;
   data?: object;
@@ -109,6 +110,7 @@ export function worldMetaOf(record: StoredWorldShape): WorldMetaRecord {
     sourceUpdatedAt: record.sourceUpdatedAt,
     sourceAuthorId: record.sourceAuthorId,
     sourceHash: record.sourceHash,
+    ...(record.supporterCopy ? { supporterCopy: record.supporterCopy } : {}),
     createdAt: record.createdAt,
     lastAccessed: record.lastAccessed,
     linkedCopies: [
