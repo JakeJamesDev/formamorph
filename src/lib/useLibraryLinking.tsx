@@ -38,10 +38,12 @@ import { blueprintChipsRemovedNotice, dropBookBlueprintChips, dropEntityBlueprin
 import { blueprintIds } from '@/lib/placeholderBlueprints';
 import { bindCarriedBlueprints, blueprintBindWorld } from '@/lib/blueprintTravel';
 import { useMountedRef } from '@/lib/useMountedRef';
+import { openWorldBlock } from '@/lib/supporterCopy';
 import { embedLibraryPicks, loadLibraryVrms, loadVrmLookup, storeHashes } from '@/lib/libraryVrm';
 import { libraryPickIds, placeLibraryPicks, type LibraryVrm } from '@/lib/vrmPickMatch';
 import type {
-  Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Stat, StatGroup, Trait, TraitGroup, WorldVrmStore,
+  Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Stat, StatGroup, SupporterCopyMarker, Trait, TraitGroup,
+  WorldVrmStore,
 } from '@/types';
 
 const NO_VRMS: ReadonlyMap<string, LibraryVrm> = new Map();
@@ -106,6 +108,8 @@ interface LibraryLinkingOptions {
   exportDictionary: (book: Dictionary) => void;
   /** Why each kind may not be exported from this world, null when it may. */
   exportBlocks?: { entity: string | null; dictionary: string | null };
+  /** The edited world's Supporter Copy marker: undefined while unread, null for a plain world. */
+  supporterCopy: SupporterCopyMarker | null | undefined;
 }
 
 /** One copy waiting on the connection step, with the library item it follows where it kept a link. */
@@ -297,8 +301,14 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
 
   const saveToLibrary = useCallback(async (item: LinkableContent) => {
     try {
-      const { traits, traitGroups, entities, stats, statGroups } = latest.current;
-      const source = await saveCopyToLibrary(item, placeholders, locations, undefined, { traits, traitGroups, entities, stats, statGroups }, liveStore.current);
+      const { traits, traitGroups, entities, stats, statGroups, supporterCopy, worldId } = latest.current;
+      // An unread marker can't be told from a plain world, so nothing is written until it is read.
+      const unread = openWorldBlock(supporterCopy, 'saveToLibrary');
+      if (unread) { toast.info(unread); return; }
+      const source = await saveCopyToLibrary(
+        item, placeholders, locations, undefined, { traits, traitGroups, entities, stats, statGroups }, liveStore.current,
+        supporterCopy ? { ...supporterCopy, sourceWorldId: worldId } : undefined,
+      );
       applyLink(item, source, false);
       toast.success(`“${source.name}” saved to your library.`);
     } catch (error) {

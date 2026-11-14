@@ -128,7 +128,7 @@ import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { toastSaveFailure } from '@/lib/saveFailureToast';
 import { openWorldBlock } from '@/lib/supporterCopy';
-import { SupporterCopyProvider } from '@/lib/useSupporterCopyBlock';
+import { OpenWorldIdProvider, SupporterCopyProvider } from '@/lib/useSupporterCopyBlock';
 import { useWorldExport } from '@/lib/useWorldExport';
 import { terminateWorker as terminateJsonWorker } from '@/lib/jsonFileWorkerUtils';
 import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
@@ -667,7 +667,7 @@ const WorldEditorInner = ({
     addEntity(entity);
     navigateToBenchItem('entities', entity.id);
   }, [getWorldData, addEntity, navigateToBenchItem]);
-  useHelpWorldSource(editorToolWorld, getWorldData, { lean: 'editor', world: getWorldData, open: openWorldSource, addEntity: addEntityDraft });
+  useHelpWorldSource(editorToolWorld, getWorldData, { lean: 'editor', world: getWorldData, open: openWorldSource, addEntity: addEntityDraft, supporterCopy: () => supporterCopy });
   // A Find All Uses row: select the box's stat or trait; its panel opens the Scripts tab and the box takes the caret.
   const goToCodeUse = useCallback(({ entityId, rowId, trait, world, tool, timing, scriptId, line }: CodeUse) => {
     requestCodeUseReveal({ entityId, rowId, ...(trait && { trait }), ...(world && { world }), ...(tool && { tool }), timing, scriptId, line });
@@ -754,6 +754,7 @@ const WorldEditorInner = ({
     exportEntity: (entity) => { void exportEntity(entity); },
     exportDictionary: (book) => { void exportDictionary(book); },
     exportBlocks,
+    supporterCopy,
   });
 
   // The Save face walks every save through its states, the tour's and autosaves included.
@@ -1513,6 +1514,7 @@ const WorldEditorInner = ({
 
   return (
     <SupporterCopyProvider value={supporterCopy}>
+    <OpenWorldIdProvider value={worldId ?? undefined}>
     <CodeCardNavigationContext.Provider value={codeCardNavigation}>
     <div className={`${embedded ? "h-full" : "app-viewport pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"} flex flex-col overflow-hidden`}>
       {!embedded && (
@@ -1774,6 +1776,7 @@ const WorldEditorInner = ({
       <TourSaveNote tour={tour} />
     </div>
     </CodeCardNavigationContext.Provider>
+    </OpenWorldIdProvider>
     </SupporterCopyProvider>
   );
 };

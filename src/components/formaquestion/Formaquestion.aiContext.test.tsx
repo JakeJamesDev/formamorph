@@ -9,7 +9,9 @@ import { helpSettingsCodec, helpSettingsOf } from '@/lib/formaquestion/helpSetti
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { openSseReply, sseFrame, sseReply, sseResponse } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
-import { isIntentRequest, storeMinimalWindow, stubHelpStream } from '@/test/helpFixtures';
+import { isIntentRequest, openWorld, storeMinimalWindow, stubHelpStream } from '@/test/helpFixtures';
+import { helpWorld } from '@/lib/formaquestion/helpWorld';
+import type { SupporterCopyMarker } from '@/types';
 import { renderReporting } from '@/test/surfaceReporter';
 import { AI_CONTEXT_COPY } from './formaquestionSettingsTabs';
 import type { HelpAi } from './useHelpAi';
@@ -189,6 +191,61 @@ describe('AI Context in Formaquestion', () => {
     expect(within(dialog).queryByRole('group', { name: 'How do I add a trait?' })).toBeNull();
     expect(within(dialog).getByText(AI_CONTEXT_COPY.empty)).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'Export' })).toBeDisabled();
+  });
+
+  describe('while a Supporter Copy is open', () => {
+    const exportButton = (dialog: HTMLElement) => within(dialog).getByRole('button', { name: 'Export' });
+    const register = (marker: SupporterCopyMarker | null | undefined) =>
+      helpWorld.register({ ...openWorld(), supporterCopy: () => marker });
+
+    it('disables Export with the reason, and exports nothing', async () => {
+      stubHelpStream(sseReply('Select **Add Trait**.'));
+      const leave = register({ listingId: 'L1', accountId: 'A1', revision: 1 });
+      const { field } = await openAsk();
+      await send(field, 'How do I add a trait?');
+      const dialog = await openAiContext();
+
+      expect(exportButton(dialog)).toHaveAttribute('aria-description', "You can't export the AI context of a Supporter world");
+      await userEvent.click(exportButton(dialog));
+      expect(download).not.toHaveBeenCalled();
+      leave();
+    });
+
+    it('keeps Export disabled for a question asked there after the world closes', async () => {
+      stubHelpStream(sseReply('Select **Add Trait**.'));
+      const leave = register({ listingId: 'L1', accountId: 'A1', revision: 1 });
+      const { field } = await openAsk();
+      await send(field, 'How do I add a trait?');
+      leave();
+      const dialog = await openAiContext();
+
+      await userEvent.click(exportButton(dialog));
+      expect(download).not.toHaveBeenCalled();
+    });
+
+    it('blocks while the marker is unread', async () => {
+      stubHelpStream(sseReply('Select **Add Trait**.'));
+      const leave = register(undefined);
+      const { field } = await openAsk();
+      await send(field, 'How do I add a trait?');
+      const dialog = await openAiContext();
+
+      await userEvent.click(exportButton(dialog));
+      expect(download).not.toHaveBeenCalled();
+      leave();
+    });
+
+    it('exports as usual from a plain world', async () => {
+      stubHelpStream(sseReply('Select **Add Trait**.'));
+      const leave = register(null);
+      const { field } = await openAsk();
+      await send(field, 'How do I add a trait?');
+      const dialog = await openAiContext();
+
+      await userEvent.click(exportButton(dialog));
+      expect(download).toHaveBeenCalledTimes(1);
+      leave();
+    });
   });
 
   it('shows one question per page, opens on the newest, and pages back to an earlier one', async () => {

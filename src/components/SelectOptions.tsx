@@ -1,12 +1,19 @@
 import { memo } from 'react';
+import { BlockedActionTip } from '@/components/BlockedActionTip';
 import { SelectItem } from '@/components/ui/select';
 
 export interface SelectOption {
   value: string;
   label: string;
+  /** Shows the option disabled, with this reason as its tooltip. */
+  blockedReason?: string | null;
 }
 
-const Option = memo(({ value, label }: SelectOption) => <SelectItem value={value}>{label}</SelectItem>);
+const Option = memo(({ value, label, blockedReason }: SelectOption) => (
+  <BlockedActionTip reason={blockedReason ?? null}>
+    <SelectItem value={value} disabled={!!blockedReason}>{label}</SelectItem>
+  </BlockedActionTip>
+));
 Option.displayName = 'SelectOption';
 
 /**
@@ -15,7 +22,7 @@ Option.displayName = 'SelectOption';
  */
 export const SelectOptions = memo(({ options }: { options: readonly SelectOption[] }) => (
   <>
-    {options.map((o) => <Option key={o.value} value={o.value} label={o.label} />)}
+    {options.map((o) => <Option key={o.value} value={o.value} label={o.label} blockedReason={o.blockedReason} />)}
   </>
 ));
 SelectOptions.displayName = 'SelectOptions';

@@ -255,6 +255,7 @@ function FolderHeader({ name, settings, onBack, onRename, isNameTaken }: {
  * @param onCheckUpdates - Checks one item for source updates, offered on the tabs worlds can follow
  * @param onPublish - Publishes one item, offered in the context menu on the tabs that can publish
  * @param onDuplicate - Copies one item into the library, offered in the context menu
+ * @param blockOf - Why Publish or Duplicate is blocked for one item; a blocked one shows disabled
  * @param onDelete - Deletes one item, offered as the context menu's last entry
  * @param canDelete - False while an item can't be deleted yet; its Delete shows disabled
  * @param itemActions - The tab's own context menu items for one item, drawn above Delete
@@ -280,6 +281,7 @@ export function LibraryTileGrid<T>({
   onCheckUpdates,
   onPublish,
   onDuplicate,
+  blockOf,
   onDelete,
   canDelete,
   itemActions,
@@ -308,6 +310,7 @@ export function LibraryTileGrid<T>({
   onCheckUpdates?: (id: string) => void;
   onPublish?: (id: string) => void;
   onDuplicate?: (id: string) => void;
+  blockOf?: (id: string, action: 'publish' | 'duplicate') => string | null;
   onDelete?: (id: string) => void;
   canDelete?: (id: string) => boolean;
   itemActions?: (id: string) => React.ReactNode;
@@ -887,6 +890,7 @@ export function LibraryTileGrid<T>({
         onCheckUpdates={onCheckUpdates}
         onPublish={onPublish}
         onDuplicate={onDuplicate}
+        blockOf={blockOf}
         onDelete={onDelete}
         canDelete={canDelete}
         itemActions={itemActions}

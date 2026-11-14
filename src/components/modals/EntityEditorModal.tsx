@@ -35,7 +35,8 @@ import { canonicalStringify } from '@/lib/canonicalStringify';
 import { useTreeCollapseStore } from '@/components/treeCollapse';
 import EntityStorageService from '@/services/EntityStorageService';
 import { EditorModeContext, type EditorModeValue } from '@/lib/editorMode';
-import type { Entity, LibraryDetails, FocusFieldHint, Placeholder } from '@/types';
+import type { Entity, EntityMetadata, LibraryDetails, FocusFieldHint, Placeholder } from '@/types';
+import { supporterCopyBlock } from '@/lib/supporterCopy';
 
 /** The baseline in the same canonical form the live value is compared in — a fresh cache each time, since
  *  a baseline is taken once and the graph it describes is about to be edited. */
@@ -68,6 +69,8 @@ const EntityEditorModal = ({
 }) => {
   const [entity, setEntity] = useState<Entity | null>(null);
   const [libraryDetails, setLibraryDetails] = useState<LibraryDetails | undefined>();
+  // The stored item's marker, read with its metadata. A draft has none.
+  const [marker, setMarker] = useState<EntityMetadata['supporterCopy']>();
   const [tab, setTab] = useState<EntityEditorTab>(initialTab);
   const [subTab, setSubTab] = useState<EntityEditorSubTab>(initialSubTab);
   useEffect(() => { setTab(initialTab); }, [initialTab]);
@@ -96,6 +99,7 @@ const EntityEditorModal = ({
   // Seed from the draft, or load the character from storage; clear when closed.
   useEffect(() => {
     setLibraryDetails(undefined);
+    setMarker(undefined);
     detailsBaselineRef.current = canon(undefined);
     if (draft) { setEntity(draft); baselineRef.current = canon(draft); return; }
     if (entityId === null) { setEntity(null); return; }
@@ -104,6 +108,7 @@ const EntityEditorModal = ({
       .then(([e, records]) => {
         if (cancelled) return;
         const details = records.find((record) => record.id === entityId)?.libraryDetails;
+        setMarker(records.find((record) => record.id === entityId)?.supporterCopy);
         setLibraryDetails(details);
         detailsBaselineRef.current = canon(details);
         setEntity(e);
@@ -184,8 +189,11 @@ const EntityEditorModal = ({
     }
   };
 
+  const exportBlock = supporterCopyBlock({ supporterCopy: marker }, 'exportEntity');
+  const publishBlock = supporterCopyBlock({ supporterCopy: marker }, 'publish');
+
   const handleExport = async () => {
-    if (!entity) return;
+    if (!entity || exportBlock) return;
     try {
       // A library item is its own source, so the card names it and the worlds that hold a linked copy.
       const blob = await exportEntityCard(entity, undefined, await exportedLibraryLinks('entity', entity.id), libraryDetails);
@@ -220,6 +228,8 @@ const EntityEditorModal = ({
         onSave={handleSave}
         onClose={onClose}
         onExport={handleExport}
+        exportBlock={exportBlock}
+        publishBlock={publishBlock}
         onPublish={onPublish && entity ? () => onPublish(entity, libraryDetails) : undefined}
       >
         {entity && tab === 'entity' ? (

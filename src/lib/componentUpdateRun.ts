@@ -5,6 +5,7 @@
  * world that fails keeps the content it had while the rest of the batch stands.
  */
 
+import { supporterCopyBlock, type SupporterCopyTarget } from '@/lib/supporterCopy';
 import {
   applyLibraryUpdate, routinePlacesOf, unlink, type LibrarySource, type LinkableContent, type RoutinePlaces,
 } from '@/lib/linkedContent';
@@ -82,7 +83,9 @@ function toRow({ link, ...held }: Candidate, source: LibrarySource): UpdateRow |
 }
 
 /** Every copy of `source` that is behind it, the in-memory worlds first. */
-export async function affectedCopies(source: LibrarySource, live: LiveWorld[] = []): Promise<UpdateRow[]> {
+export async function affectedCopies(
+  source: LibrarySource & SupporterCopyTarget, live: LiveWorld[] = [],
+): Promise<UpdateRow[]> {
   const inMemory: Candidate[] = live.flatMap((world) => liveCopies(world).map(({ item, kind }) => ({
     worldId: world.id, worldName: world.name, itemId: item.id, itemName: item.name, kind, link: item.link,
   })));
@@ -92,7 +95,8 @@ export async function affectedCopies(source: LibrarySource, live: LiveWorld[] = 
 
   return [...inMemory, ...stored]
     .map((candidate) => toRow(candidate, source))
-    .filter((row): row is UpdateRow => !!row);
+    // A source saved from a Supporter Copy reaches no world but the one it came from.
+    .filter((row): row is UpdateRow => !!row && !supporterCopyBlock(source, { addToWorld: row.worldId }));
 }
 
 /** The in-memory world one row names, where the review was given it. */

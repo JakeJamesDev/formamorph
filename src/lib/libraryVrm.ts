@@ -3,7 +3,7 @@ import { blobToDataUrl } from '@/lib/imageSource';
 import { withVrmPick } from '@/lib/worldVrmStore';
 import { libraryPickIds, placeLibraryPicks, type LibraryVrm, type NamedHash, type VrmLookup } from '@/lib/vrmPickMatch';
 import ModelStorageService from '@/services/ModelStorageService';
-import type { Entity, MediaAsset, VrmLicense, VrmPick, WorldVrmStore as Store } from '@/types';
+import type { Entity, LibrarySupporterCopyMarker, MediaAsset, VrmLicense, VrmPick, WorldVrmStore as Store } from '@/types';
 
 /** A library Avatar's file name: its display name, with the extension its format calls for. */
 export const libraryFileName = (name: string, license: VrmLicense | undefined) =>
@@ -75,19 +75,25 @@ export async function embedLibraryPicks<T extends Entity>(
  * `pick` in library form. A world Avatar becomes the library record with the same content, imported into the
  * library when it holds none. A store id the store lacks becomes none; other picks stay as they are.
  */
-export async function toLibraryPick(pick: VrmPick | undefined, store: Store | undefined): Promise<VrmPick | undefined> {
+export async function toLibraryPick(
+  pick: VrmPick | undefined, store: Store | undefined, supporterCopy?: LibrarySupporterCopyMarker,
+): Promise<VrmPick | undefined> {
   if (pick?.kind !== 'world') return pick;
   const entry = store?.[pick.id];
   if (!entry) return undefined;
-  const id = await ModelStorageService.importModelBlob(await fileBlob(entry.file), entry.file.name || libraryFileName(entry.name, undefined));
+  const id = await ModelStorageService.importModelBlob(
+    await fileBlob(entry.file), entry.file.name || libraryFileName(entry.name, undefined), supporterCopy,
+  );
   return { kind: 'library', id };
 }
 
-/** The entity with its pick in library form; anything else as it is. */
-export async function withLibraryPick<T extends object>(item: T, store: Store | undefined): Promise<T> {
+/** The entity with its pick in library form; anything else as it is. A new library Avatar takes `supporterCopy`. */
+export async function withLibraryPick<T extends object>(
+  item: T, store: Store | undefined, supporterCopy?: LibrarySupporterCopyMarker,
+): Promise<T> {
   // A dictionary has no pick, so it reads as one with the pick absent.
   const pick = (item as Partial<Entity>).vrmPick;
   if (pick?.kind !== 'world') return item;
-  const next = await toLibraryPick(pick, store);
+  const next = await toLibraryPick(pick, store, supporterCopy);
   return withVrmPick(item as T & Pick<Entity, 'vrmPick'>, next);
 }

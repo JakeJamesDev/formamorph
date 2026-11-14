@@ -34,6 +34,7 @@ class DictionaryStorageService {
         thumbnail: record.data?.thumbnail ?? undefined,
         entryCount: record.data?.entries?.length ?? 0,
         tags: record.data?.tags ?? [],
+        ...(record.supporterCopy ? { supporterCopy: record.supporterCopy } : {}),
         createdAt: record.createdAt,
         lastAccessed: record.lastAccessed,
         // The community link travels with the metadata: the library grid never shows it, but the download

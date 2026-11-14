@@ -15,6 +15,7 @@ import type { LibraryTiles } from '@/lib/useLibraryTiles';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { LibraryGroupPicker } from './LibraryGroupPicker';
 import { ActionIcon } from '@/lib/actionIcons';
+import { BlockedActionTip } from '@/components/BlockedActionTip';
 
 const SIZE_LABELS: { size: LibraryTileSize; label: string }[] = [
   { size: 'small', label: 'Small' },
@@ -49,6 +50,7 @@ export function LibraryTileContextMenu({
   onCheckUpdates,
   onPublish,
   onDuplicate,
+  blockOf,
   onDelete,
   canDelete,
   itemActions,
@@ -67,6 +69,8 @@ export function LibraryTileContextMenu({
   onCheckUpdates?: (id: string) => void;
   onPublish?: (id: string) => void;
   onDuplicate?: (id: string) => void;
+  /** Why Publish or Duplicate is blocked for this item, null when allowed. A blocked one shows disabled. */
+  blockOf?: (id: string, action: 'publish' | 'duplicate') => string | null;
   onDelete?: (id: string) => void;
   /** False while the item can't be deleted yet, which shows Delete disabled. */
   canDelete?: (id: string) => boolean;
@@ -176,14 +180,18 @@ export function LibraryTileContextMenu({
               </ContextMenuItem>
             )}
             {onPublish && (
-              <ContextMenuItem onSelect={() => onPublish(id)}>
-                <ActionIcon.publish className="h-4 w-4 shrink-0" /> Publish
-              </ContextMenuItem>
+              <BlockedActionTip reason={blockOf?.(id, 'publish') ?? null}>
+                <ContextMenuItem disabled={!!blockOf?.(id, 'publish')} onSelect={() => onPublish(id)}>
+                  <ActionIcon.publish className="h-4 w-4 shrink-0" /> Publish
+                </ContextMenuItem>
+              </BlockedActionTip>
             )}
             {onDuplicate && (
-              <ContextMenuItem onSelect={() => onDuplicate(id)}>
-                <ActionIcon.copy className="h-4 w-4 shrink-0" /> Duplicate
-              </ContextMenuItem>
+              <BlockedActionTip reason={blockOf?.(id, 'duplicate') ?? null}>
+                <ContextMenuItem disabled={!!blockOf?.(id, 'duplicate')} onSelect={() => onDuplicate(id)}>
+                  <ActionIcon.copy className="h-4 w-4 shrink-0" /> Duplicate
+                </ContextMenuItem>
+              </BlockedActionTip>
             )}
             {itemActions?.(id)}
             {onDelete && (

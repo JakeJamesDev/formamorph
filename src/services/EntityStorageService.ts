@@ -37,6 +37,7 @@ class EntityStorageService {
         author: record.libraryDetails?.author,
         libraryDetails: record.libraryDetails,
         ...(record.data?.persona ? { persona: true } : {}),
+        ...(record.supporterCopy ? { supporterCopy: record.supporterCopy } : {}),
         ...(record.data?.vrmPick?.kind === 'library' ? { vrmLibraryId: record.data.vrmPick.id } : {}),
         createdAt: record.createdAt,
         lastAccessed: record.lastAccessed,

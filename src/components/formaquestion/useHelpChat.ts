@@ -9,6 +9,7 @@ import type { HelpSettings } from '@/lib/formaquestion/helpSettings';
 import type { HelpTrace } from '@/lib/formaquestion/helpTrace';
 import type { AnswerSource } from '@/lib/formaquestion/helpWorldSource';
 import { helpWorld, type WorldLean } from '@/lib/formaquestion/helpWorld';
+import { openWorldBlock } from '@/lib/supporterCopy';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { turnActivity, useTurnGenerating } from '@/lib/turnActivity';
 import { useMountedRef } from '@/lib/useMountedRef';
@@ -41,6 +42,8 @@ export interface HelpExchange {
   status: HelpStatus;
   /** The screen's world lean when the question was sent; absent when no world was open. Its world sources follow it. */
   lean?: WorldLean;
+  /** Why the trace can't be exported: set when the question was asked while a Supporter Copy was open. */
+  exportBlock?: string;
   /** The docs sections that reached the model. */
   sources: readonly AnswerSource[];
   /** The open screen's section among the sources. */
@@ -103,6 +106,8 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi, settings: HelpS
     // The Surface, the open world and the settings at send time, before any wait.
     const surface = surfaceRegistry.get();
     const world = helpWorld.get();
+    // An unread marker blocks too, so a trace of the world never leaves before its marker is read.
+    const exportBlock = world?.supporterCopy ? openWorldBlock(world.supporterCopy(), 'exportAiContext') : null;
     const focus = helpFocus.get();
     const sentSettings = settingsRef.current;
     const added = takeEntityAdds();
@@ -114,7 +119,7 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi, settings: HelpS
     const change = (fields: Partial<HelpExchange>) => {
       if (mountedRef.current) setExchanges((all) => all.map((entry) => (entry.id === id ? { ...entry, ...fields } : entry)));
     };
-    setExchanges((all) => [...all, { id, question, images, answer: '', reasoning: '', status: 'writing', lean: world?.lean, sources: [], flagged: false, nearest: [] }]);
+    setExchanges((all) => [...all, { id, question, images, answer: '', reasoning: '', status: 'writing', lean: world?.lean, ...(exportBlock && { exportBlock }), sources: [], flagged: false, nearest: [] }]);
 
     void (async () => {
       try {

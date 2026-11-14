@@ -1,4 +1,4 @@
-import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming, PlacementWhere, BodyPick, WorldOptionValueOf, SupporterCopyMarker } from './world';
+import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming, PlacementWhere, BodyPick, WorldOptionValueOf, SupporterCopyMarker, LibrarySupporterCopyMarker } from './world';
 import type { ChatMessage } from './ai';
 import type { ActionSnapshot, ListedAction, SentActionList } from '@/lib/actionList';
 
@@ -280,6 +280,8 @@ export interface ModelMetadata extends CommunityLink {
   license?: VrmLicense;
   createdAt?: string;
   lastAccessed?: string;
+  /** Local-only: the Avatar came with content saved from a Supporter Copy, so it never leaves the app. */
+  supporterCopy?: LibrarySupporterCopyMarker;
 }
 
 /** An Avatar listing's stored content, fetched back on download. Matches the server's `contentData` shape

@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ActionIcon } from '@/lib/actionIcons';
+import { BlockedActionTip } from '@/components/BlockedActionTip';
+import { supporterCopyBlock } from '@/lib/supporterCopy';
 import { ModelDetailsPanel } from './ModelDetailsPanel';
 import ModelStorageService from '@/services/ModelStorageService';
 import { downloadBlob } from '@/lib/downloadBlob';
@@ -31,8 +33,11 @@ export function ModelDetailsModal({ model, onPublish, onClose }: {
   const license = readLicense ?? model?.license;
 
   /** Saves the model back out byte-for-byte, so its own metadata and license travel with it untouched. */
+  const exportBlock = supporterCopyBlock(model, 'exportEntity');
+  const publishBlock = supporterCopyBlock(model, 'publish');
+
   const handleExport = () => {
-    if (!blob || !model) return;
+    if (!blob || !model || exportBlock) return;
     downloadBlob(blob, libraryFileName(model.name || 'Avatar', license));
   };
 
@@ -47,15 +52,19 @@ export function ModelDetailsModal({ model, onPublish, onClose }: {
       onClose={onClose}
       footer={
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1" onClick={handleExport} disabled={!blob}>
-            <ActionIcon.export className="mr-2 h-4 w-4" /> Export
-          </Button>
+          <BlockedActionTip reason={exportBlock}>
+            <Button variant="outline" size="sm" className="flex-1" onClick={handleExport} disabled={!blob || !!exportBlock}>
+              <ActionIcon.export className="mr-2 h-4 w-4" /> Export
+            </Button>
+          </BlockedActionTip>
           {/* Offered whatever the file's license says. Pressing it on a model that cannot be shared is
               how the player learns which requirement it fails, so the gate runs on the press. */}
           {onPublish && model && (
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => onPublish(model)}>
-              <ActionIcon.publish className="mr-2 h-4 w-4" /> Publish
-            </Button>
+            <BlockedActionTip reason={publishBlock}>
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => onPublish(model)} disabled={!!publishBlock}>
+                <ActionIcon.publish className="mr-2 h-4 w-4" /> Publish
+              </Button>
+            </BlockedActionTip>
           )}
         </div>
       }

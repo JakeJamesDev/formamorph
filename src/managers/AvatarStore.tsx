@@ -16,6 +16,7 @@ import { libraryFileName } from '@/lib/libraryVrm';
 import ModelStorageService from '@/services/ModelStorageService';
 import type { Entity, MediaAsset, ModelMetadata } from '@/types';
 import { useMediaStep } from './useMediaItemActions';
+import { useLibraryAddBlock } from '@/lib/useSupporterCopyBlock';
 
 export const VRM_STORE_HINT = 'Add Avatars to this world, then choose one for each entity';
 
@@ -140,6 +141,7 @@ export function AvatarStoreControls() {
   const inputRef = useRef<HTMLInputElement>(null);
   const mounted = useMountedRef();
   const [library, setLibrary] = useState<ModelMetadata[]>([]);
+  const addBlock = useLibraryAddBlock();
 
   useEffect(() => {
     ModelStorageService.getModelMetadata()
@@ -162,7 +164,7 @@ export function AvatarStoreControls() {
 
   const copyFromLibrary = async (modelId: string) => {
     const model = library.find((m) => m.id === modelId);
-    if (!model) return;
+    if (!model || addBlock(model)) return;
     try {
       const { blob, type, hash } = await ModelStorageService.getModelData(modelId);
       const [data, fileHash] = await Promise.all([blobToDataUrl(blob), hash ?? blobHash(blob)]);
@@ -184,7 +186,7 @@ export function AvatarStoreControls() {
             <SelectValue placeholder="Copy From Library" />
           </SelectTrigger>
           <SelectContent>
-            <SelectOptions options={library.map((m) => ({ value: m.id, label: m.name }))} />
+            <SelectOptions options={library.map((m) => ({ value: m.id, label: m.name, blockedReason: addBlock(m) }))} />
           </SelectContent>
         </Select>
       </div>

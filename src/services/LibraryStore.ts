@@ -1,5 +1,5 @@
 import { getAllReadable, openDatabase, promisifyRequest, transactionDone, writeAfterRead } from '@/lib/idb';
-import type { CommunityLink, LibraryDetails } from '@/types';
+import type { CommunityLink, LibraryDetails, LibrarySupporterCopyMarker } from '@/types';
 
 /**
  * The wrapper shape every local library record shares: identity and library timestamps around an opaque
@@ -13,6 +13,8 @@ export interface StoredRecord<T> extends CommunityLink {
   lastAccessed?: string;
   data: T;
   libraryDetails?: LibraryDetails;
+  /** Local-only: set when the item was saved from a Supporter Copy. Once set it never clears. */
+  supporterCopy?: LibrarySupporterCopyMarker;
 }
 
 /** A selected library record no longer exists by the time its full data is requested. */
@@ -119,6 +121,8 @@ export class LibraryStore<T, M> {
         name: record.name,
         data: record.data,
         libraryDetails: record.libraryDetails ?? existing?.libraryDetails,
+        // Read-merged and never cleared, so an editor save or a plain re-save can't unmark the item.
+        supporterCopy: existing?.supporterCopy ?? record.supporterCopy,
         createdAt: existing?.createdAt ?? record.createdAt ?? new Date().toISOString(),
         lastAccessed: new Date().toISOString(),
         // Community link (publish/download): read-merged so an editor save that passes only id/name/data

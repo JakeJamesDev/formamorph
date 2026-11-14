@@ -697,6 +697,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
    * side already offers this choice; the publish side is where the big image actually comes from.
    */
   const publishEntity = async (entity: Entity, libraryDetails?: { author?: string }) => {
+    if (supporterCopyBlock(entities.find((record) => record.id === entity.id), 'publish')) return;
     openPublish(
       entityPublishPayload(await withCarriedVrm(await promptEntity(entity)), libraryDetails),
       entity.id,
@@ -711,6 +712,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
    * payload that could only be rejected, and the reason would arrive after the upload instead of before it.
    */
   const publishModel = async (model: { id: string; name: string }) => {
+    if (supporterCopyBlock(models.find((record) => record.id === model.id), 'publish')) return;
     const attempt = await buildAvatarPublish(model);
     if (!attempt.allowed) {
       toast.error(attempt.message);
@@ -1676,6 +1678,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   // The copy joins the original's folder, if it has one.
   const handleDuplicateEntity = async (id: string) => {
+    if (supporterCopyBlock(entities.find((entity) => entity.id === id), 'duplicate')) return;
     try {
       const folder = entityTiles.groupOfItem(id);
       const details = entities.find((entity) => entity.id === id)?.libraryDetails;
@@ -1691,6 +1694,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   };
 
   const handleDuplicateDictionary = async (id: string) => {
+    if (supporterCopyBlock(dictionaries.find((dictionary) => dictionary.id === id), 'duplicate')) return;
     try {
       const folder = dictionaryTiles.groupOfItem(id);
       const details = dictionaries.find((dictionary) => dictionary.id === id)?.libraryDetails;
@@ -2316,6 +2320,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             const target = models.find((m) => m.id === id);
             if (target) void publishModel(target);
           } : undefined}
+          blockOf={(id, action) => supporterCopyBlock(models.find((m) => m.id === id), action)}
           itemActions={(id) => {
             const model = models.find((m) => m.id === id);
             return model ? (
@@ -2382,6 +2387,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           )}
           onCheckUpdates={(id) => { void checkForUpdates('entity', id); }}
           onDuplicate={(id) => { void handleDuplicateEntity(id); }}
+          blockOf={(id, action) => supporterCopyBlock(entities.find((e) => e.id === id), action)}
           itemActions={(id) => {
             if (!entities.some((entity) => entity.id === id && entity.persona)) return null;
             return (
@@ -2423,6 +2429,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           )}
           onCheckUpdates={(id) => { void checkForUpdates('dictionary', id); }}
           onDuplicate={(id) => { void handleDuplicateDictionary(id); }}
+          blockOf={(id, action) => supporterCopyBlock(dictionaries.find((d) => d.id === id), action)}
           onDelete={setDictionaryToDelete}
         />
       ) : (
@@ -3021,7 +3028,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         initialTab={devRoute?.modal === 'dictionaryEditor' ? DICTIONARY_EDITOR_TABS.find((t) => t.value === devRoute.tab)?.value : undefined}
         draft={draftDictionary}
         onClose={() => { setEditingDictionaryId(null); setDraftDictionary(null); refreshDictionaries(); }}
-        onPublish={isAuthenticated ? (book, details) => openPublish(dictionaryPublishPayload(book, details), book.id, dictionaries.find((record) => record.id === book.id)?.sourceId) : undefined}
+        onPublish={isAuthenticated ? (book, details) => {
+          if (supporterCopyBlock(dictionaries.find((record) => record.id === book.id), 'publish')) return;
+          openPublish(dictionaryPublishPayload(book, details), book.id, dictionaries.find((record) => record.id === book.id)?.sourceId);
+        } : undefined}
       />
 
       <ConfirmDialog

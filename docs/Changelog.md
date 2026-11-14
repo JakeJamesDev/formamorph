@@ -32,6 +32,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **An entity switches routine in play when the world changes.** The first routine whose Requires holds applies. Each routine keeps the start it picked at new game, and saves now keep every routine's start. A follower parts ways when the new routine can't reach the player.
   - **Supporter Worlds:**
     - **A Supporter world plays and edits like any world, but its export, Duplicate, Publish and media Download are disabled.** Point at a disabled button to see why. Backups leave Supporter worlds out, and their saves can't be exported.
+    - **A character, dictionary or Avatar saved from a Supporter world stays in that world.** Its Export, Publish and Duplicate are disabled, and it can only be added back to that world. AI Context export in Formaquestion is disabled while a Supporter world is open.
 - **🛠️ Developer tooling**
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.
 

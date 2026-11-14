@@ -8,7 +8,9 @@ import { DictionaryIcon, EntityIcon } from '@/lib/elementIcons';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { Button } from '@/components/ui/button';
+import { BlockedActionTip } from '@/components/BlockedActionTip';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useLibraryAddBlock } from '@/lib/useSupporterCopyBlock';
 import { Hint, Meta } from '@/components/ui/typography';
 import { SearchField } from '@/components/ui/search-field';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -150,9 +152,11 @@ function reorderVisibleItems(
   ));
 }
 
-function DictionaryRow({ item, selected, worldAuthor, buttonRef, onInspect, onToggle }: {
+function DictionaryRow({ item, selected, blocked, worldAuthor, buttonRef, onInspect, onToggle }: {
   item: DictionarySelectionItem;
   selected: boolean;
+  /** Why the book can't join this game, null when it can. */
+  blocked: string | null;
   worldAuthor?: string;
   buttonRef: (node: HTMLButtonElement | null) => void;
   onInspect: () => void;
@@ -172,12 +176,13 @@ function DictionaryRow({ item, selected, worldAuthor, buttonRef, onInspect, onTo
         position: 'relative',
       }}
     >
+      <BlockedActionTip reason={blocked}>
       <EditorRow
         gripProps={{ ...attributes, ...listeners }}
         gripTitle={`Drag ${name} from ${sourceLabel(item.source)}`}
         selected={selected}
         onSelect={onInspect}
-        checkbox={{ checked: item.enabled, onChange: onToggle, ariaLabel: `Enable ${name} from ${sourceLabel(item.source)}` }}
+        checkbox={{ checked: item.enabled, onChange: onToggle, ariaLabel: `Enable ${name} from ${sourceLabel(item.source)}`, disabled: !!blocked }}
         icon={<Artwork src={item.book.thumbnail ?? undefined} name={name} fallback="cover" />}
         label={(
           <AdditionLabel
@@ -194,13 +199,15 @@ function DictionaryRow({ item, selected, worldAuthor, buttonRef, onInspect, onTo
           ? "This world's linked copy of a library dictionary"
           : item.source === 'world' ? 'Bundled with this world' : 'From your library'}
       />
+      </BlockedActionTip>
     </div>
   );
 }
 
-function DetailChoice({ id, checked, ariaLabel, label, onChange }: {
+function DetailChoice({ id, checked, disabled, ariaLabel, label, onChange }: {
   id: string;
   checked: boolean;
+  disabled?: boolean;
   ariaLabel: string;
   label: string;
   onChange: (checked: boolean) => void;
@@ -210,6 +217,7 @@ function DetailChoice({ id, checked, ariaLabel, label, onChange }: {
       <Checkbox
         id={id}
         checked={checked}
+        disabled={disabled}
         aria-label={ariaLabel}
         className="shrink-0"
         onCheckedChange={(value) => onChange(value === true)}
@@ -219,9 +227,11 @@ function DetailChoice({ id, checked, ariaLabel, label, onChange }: {
   );
 }
 
-function AdditionDetails({ addition, entitySelected, dictionaryTotal, worldAuthor, headingRef, showBack, onEntityToggle, onDictionaryToggle, onMove, onBack }: {
+function AdditionDetails({ addition, entitySelected, blocked, dictionaryTotal, worldAuthor, headingRef, showBack, onEntityToggle, onDictionaryToggle, onMove, onBack }: {
   addition: InspectedAddition | null;
   entitySelected: boolean;
+  /** Why the inspected item can't join this game, null when it can. */
+  blocked: string | null;
   dictionaryTotal: number;
   worldAuthor?: string;
   headingRef: RefObject<HTMLHeadingElement | null>;
@@ -278,6 +288,7 @@ function AdditionDetails({ addition, entitySelected, dictionaryTotal, worldAutho
         <DetailChoice
           id="addition-detail-entity-toggle"
           checked={entitySelected}
+          disabled={!!blocked}
           ariaLabel={`Include ${name} in This Game`}
           label="Included in This Game"
           onChange={(selected) => onEntityToggle(addition.entity.id, selected)}
@@ -287,6 +298,7 @@ function AdditionDetails({ addition, entitySelected, dictionaryTotal, worldAutho
           <DetailChoice
             id="addition-detail-dictionary-toggle"
             checked={addition.item.enabled}
+            disabled={!!blocked}
             ariaLabel={`Enable ${name} from ${sourceLabel(addition.item.source)} in This Game`}
             label="Enabled in This Game"
             onChange={(enabled) => onDictionaryToggle(addition.item.key, enabled)}
@@ -346,6 +358,7 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
     || name.toLocaleLowerCase().includes(normalizedQuery)
     || description?.toLocaleLowerCase().includes(normalizedQuery)
   );
+  const addBlock = useLibraryAddBlock();
   const visibleEntities = props.entities.filter((entity) => matchesQuery(entity.name, entity.description));
   const visibleDictionaryItems = props.dictionaryItems.filter((item) => (
     matchesQuery(item.book.name, item.book.description)
@@ -477,8 +490,10 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
                   {visibleEntities.map((entity) => {
                     const key = entityInspectionKey(entity.id);
                     const name = displayName(entity.name);
+                    const blocked = addBlock(entity);
                     return (
                       <div key={key} role="listitem">
+                        <BlockedActionTip reason={blocked}>
                         <EditorRow
                           grip={false}
                           selected={inspectedKey === key}
@@ -487,6 +502,7 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
                             checked: props.selectedEntityIds.has(entity.id),
                             onChange: (selected) => props.onEntityToggle(entity.id, selected),
                             ariaLabel: `Include ${name}`,
+                            disabled: !!blocked,
                           }}
                           icon={<Artwork src={entity.image} name={name} fallback="portrait" />}
                           label={(
@@ -501,6 +517,7 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
                           )}
                           meta={props.selectedEntityIds.has(entity.id) ? 'Included' : 'Excluded'}
                         />
+                        </BlockedActionTip>
                       </div>
                     );
                   })}
@@ -532,6 +549,7 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
                             key={item.key}
                             item={item}
                             selected={inspectedKey === key}
+                            blocked={addBlock(item)}
                             worldAuthor={props.worldAuthor}
                             buttonRef={setOpenerRef(key)}
                             onInspect={() => inspect(key)}
@@ -565,6 +583,7 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
           <AdditionDetails
             addition={inspected}
             entitySelected={inspected?.kind === 'entity' && props.selectedEntityIds.has(inspected.entity.id)}
+            blocked={inspected ? addBlock(inspected.kind === 'entity' ? inspected.entity : inspected.item) : null}
             dictionaryTotal={props.dictionaryItems.length}
             worldAuthor={props.worldAuthor}
             headingRef={headingRef}

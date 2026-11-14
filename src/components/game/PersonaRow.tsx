@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PersonaIcon } from '@/lib/elementIcons';
+import { supporterCopyBlock } from '@/lib/supporterCopy';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -49,12 +50,16 @@ export function PersonaRow({ onChange, disabled = false }: {
         if (!mounted) return;
         // The played world entity counts too: a library persona it copies stays out.
         const world = worldEntitiesOf(cast, persona);
-        setOptions(inGamePersonas(library, world, pickedAtStart(inPlay.discoveredOn(discoveredEntities))).map(({ id, name, image, description }) => ({ id, name, image, description })));
+        setOptions(inGamePersonas(library, world, pickedAtStart(inPlay.discoveredOn(discoveredEntities))).map((meta) => ({
+          id: meta.id, name: meta.name, image: meta.image, description: meta.description,
+          // A persona saved from a Supporter Copy plays only in its source world.
+          blockedReason: supporterCopyBlock(meta, { addToWorld: worldId ?? '' }),
+        })));
       },
       () => { if (mounted) setOptions([]); },
     );
     return () => { mounted = false; };
-  }, [open, cast, persona, discoveredEntities, inPlay]);
+  }, [open, cast, persona, discoveredEntities, inPlay, worldId]);
 
   const showPicker = (next: boolean) => { setDraft(null); setOpen(next); };
 

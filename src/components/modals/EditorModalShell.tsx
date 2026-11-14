@@ -7,6 +7,7 @@ import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
 import type { CollapsingSegmentOption } from '@/components/ui/collapsing-segments';
 import { Save } from 'lucide-react';
 import { ActionIcon } from '@/lib/actionIcons';
+import { BlockedActionTip } from '@/components/BlockedActionTip';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import type { SurfaceIdName, SurfaceLedgerName } from '@/components/ui/surface';
 
@@ -31,6 +32,9 @@ interface EditorModalShellProps {
   onSave: () => Promise<boolean>;
   onClose: () => void;
   onExport: () => void;
+  /** Why Export or Publish is blocked, null when allowed. A blocked button shows disabled with this as its tooltip. */
+  exportBlock?: string | null;
+  publishBlock?: string | null;
   /** When provided (signed in), renders a Publish button wired to this handler. */
   onPublish?: () => void;
   /** The loaded editor body (already tab-switched and, for dictionaries, store-wrapped by the caller). */
@@ -45,7 +49,7 @@ interface EditorModalShellProps {
  */
 const EditorModalShell = ({
   open, surface, surfaceTabs, title, contentClassName, loading, tabs, tab, onTabChange,
-  hasUnsavedChanges, onSave, onClose, onExport, onPublish, children,
+  hasUnsavedChanges, onSave, onClose, onExport, exportBlock, publishBlock, onPublish, children,
 }: EditorModalShellProps) => {
   const [showUnsaved, setShowUnsaved] = useState(false);
   const attemptClose = () => { if (hasUnsavedChanges) setShowUnsaved(true); else onClose(); };
@@ -77,15 +81,19 @@ const EditorModalShell = ({
                   </TabsContent>
                 ))}
                 <div className="px-4 py-3 border-t shrink-0 flex justify-between gap-2">
-                  <Button variant="outline" size="sm" onClick={onExport}>
-                    <ActionIcon.export className="h-4 w-4 mr-2" /> Export
-                  </Button>
+                  <BlockedActionTip reason={exportBlock ?? null}>
+                    <Button variant="outline" size="sm" onClick={onExport} disabled={!!exportBlock}>
+                      <ActionIcon.export className="h-4 w-4 mr-2" /> Export
+                    </Button>
+                  </BlockedActionTip>
                   <div className="flex gap-2">
                     {onPublish && (
                       // Publishes what's on screen, saved or not — the same thing Save would write.
-                      <Button variant="outline" size="sm" onClick={onPublish}>
-                        <ActionIcon.publish className="h-4 w-4 mr-2" /> Publish
-                      </Button>
+                      <BlockedActionTip reason={publishBlock ?? null}>
+                        <Button variant="outline" size="sm" onClick={onPublish} disabled={!!publishBlock}>
+                          <ActionIcon.publish className="h-4 w-4 mr-2" /> Publish
+                        </Button>
+                      </BlockedActionTip>
                     )}
                     <Button size="sm" onClick={onSave} disabled={!hasUnsavedChanges}>
                       <Save className="h-4 w-4 mr-2" /> Save

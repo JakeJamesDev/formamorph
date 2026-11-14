@@ -106,6 +106,11 @@ const PLAIN_WORLD = (): World => benchEditorWorld({
 const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
 const selectRow = (name: string) => fireEvent.click(screen.getByText(name));
 const clickButton = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }));
+/** Saves after the world's Supporter Copy marker is read: a save before it is held back until the answer. */
+const saveToLibrary = async () => {
+  await act(async () => {});
+  clickButton('Save to Library');
+};
 const openActionsMenu = () => fireEvent.click(screen.getByRole('button', { name: 'More library actions' }));
 /** The linked copy's state and source live in the footer button's tip, which focus opens. */
 const focusLinkFace = () => act(() => screen.getByRole('button', { name: 'Open in Library' }).focus());
@@ -140,7 +145,7 @@ describe('Linked Content help', () => {
     openTab(/Dictionary/);
     selectRow('Marsh Lore');
     expect(screen.queryByRole('dialog', { name: 'Linked Content' })).toBeNull();
-    clickButton('Save to Library');
+    await saveToLibrary();
 
     const help = await screen.findByRole('dialog', { name: 'Linked Content' });
     expect(within(help).getByRole('tab', { name: 'Linked Copies' })).toBeTruthy();
@@ -151,7 +156,7 @@ describe('Linked Content help', () => {
     renderWorldEditorBench(PLAIN_WORLD(), 'advanced');
     openTab(/Dictionary/);
     selectRow('Marsh Lore');
-    clickButton('Save to Library');
+    await saveToLibrary();
     await screen.findByRole('button', { name: 'Open in Library' });
     expect(screen.queryByRole('dialog', { name: 'Linked Content' })).toBeNull();
   });
@@ -160,7 +165,7 @@ describe('Linked Content help', () => {
     renderWorldEditorBench(PLAIN_WORLD(), 'advanced');
     openTab(/Dictionary/);
     selectRow('Marsh Lore');
-    clickButton('Save to Library');
+    await saveToLibrary();
     await screen.findByRole('button', { name: 'Open in Library' });
     openActionsMenu();
     clickButton('About Linked Content…');
@@ -173,7 +178,7 @@ describe('Save to Library', () => {
     renderWorldEditorBench(PLAIN_WORLD(), 'advanced');
     openTab(/Dictionary/);
     selectRow('Marsh Lore');
-    clickButton('Save to Library');
+    await saveToLibrary();
 
     await waitFor(() => expect(library.dictionaries.size).toBe(1));
     const stored = [...library.dictionaries.values()][0];
@@ -200,7 +205,7 @@ describe('Save to Library', () => {
     renderWorldEditorBench(PLAIN_WORLD(), 'advanced');
     openTab(tab);
     selectRow(name);
-    clickButton('Save to Library');
+    await saveToLibrary();
     await screen.findByRole('button', { name: 'Open in Library' });
 
     await hoverRowMarker('Link pending save');
@@ -217,7 +222,7 @@ describe('Save to Library', () => {
     renderWorldEditorBench(PLAIN_WORLD(), 'advanced');
     openTab(/Dictionary/);
     selectRow('Marsh Lore');
-    clickButton('Save to Library');
+    await saveToLibrary();
 
     expect(await screen.findByRole('button', { name: 'Open in Library' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Save to Library' })).toBeNull();
@@ -707,7 +712,7 @@ describe('Entities follow a source the same way', () => {
     const { ctx } = renderWorldEditorBench(LINKED_ENTITY(), 'advanced');
     openTab(/Entities/);
     selectRow('Wren');
-    clickButton('Save to Library');
+    await saveToLibrary();
 
     await waitFor(() => expect(library.entities.size).toBe(1));
     const stored = [...library.entities.values()][0];

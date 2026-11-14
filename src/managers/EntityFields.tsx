@@ -19,7 +19,8 @@ import { randomUUID } from '@/lib/uuid';
 import { customPersonaCounts, personaRole, personaRolePatch, unmarkLine, withPersonaRole, type PersonaRole } from '@/lib/customPersona';
 import type { RenameFieldHandlers } from '@/lib/useCodeRename';
 import type { ReactNode } from 'react';
-import type { Entity, Placeholder, VrmPick } from '@/types';
+import type { Entity, ModelMetadata, Placeholder, VrmPick } from '@/types';
+import { useLibraryAddBlock } from '@/lib/useSupporterCopyBlock';
 import { vrmPickFromValue, vrmPickValue } from '@/lib/worldVrmStore';
 import { pickLabel } from '@/lib/vrmPickMatch';
 import { WorldInput } from '@/components/editor/WorldField';
@@ -390,7 +391,7 @@ const AvatarPickField = ({ entityId, hint, named, stored, onPick }: {
   entityId: string;
   hint: string;
   /** The editor's own Avatars, as option values from `vrmPickValue`. */
-  named: { value: string; label: string }[];
+  named: { value: string; label: string; blockedReason?: string | null }[];
   stored: string;
   onPick: (pick: VrmPick | undefined) => void;
 }) => {
@@ -433,14 +434,18 @@ export const LIBRARY_ENTITY_VRM_HINT = 'Picks the Avatar this entity shows. Add 
 
 /** A library entity's Avatar: none, the player's default, or one from the player's Avatar library. */
 export const LibraryEntityVrmPickField = ({ value, onChange }: EntityFieldGroupProps) => {
-  const [library, setLibrary] = useState<{ id: string; name: string }[] | undefined>();
+  const [library, setLibrary] = useState<ModelMetadata[] | undefined>();
   const mounted = useMountedRef();
+  const addBlock = useLibraryAddBlock();
   useEffect(() => {
     ModelStorageService.getModelMetadata()
       .then((models) => { if (mounted.current) setLibrary(models); })
       .catch(() => { /* An unreadable library offers None and User's Default only. */ });
   }, [mounted]);
-  const named = (library ?? []).map((model) => ({ value: vrmPickValue({ kind: 'library', id: model.id }), label: model.name || 'Unnamed' }));
+  // A library Avatar saved from a Supporter Copy would ride into this entity's export, so it stays out of reach here.
+  const named: { value: string; label: string; blockedReason?: string | null }[] = (library ?? []).map((model) => ({
+    value: vrmPickValue({ kind: 'library', id: model.id }), label: model.name || 'Unnamed', blockedReason: addBlock(model),
+  }));
   const stored = vrmPickValue(value.vrmPick);
   // Once the library is read, a library id it lacks keeps its own option, named as the link review names it.
   if (library && value.vrmPick?.kind === 'library' && !named.some((o) => o.value === stored)) {

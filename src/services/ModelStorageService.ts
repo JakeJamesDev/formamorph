@@ -9,7 +9,7 @@ import {
   setUserDefaultAvatar, type BundledAvatar,
 } from '@/lib/defaultAvatar';
 import { LibraryStore, type StoredRecord } from './LibraryStore';
-import type { AvatarThumbnailSource, ModelMetadata, VrmData, VrmLicense } from '@/types';
+import type { AvatarThumbnailSource, LibrarySupporterCopyMarker, ModelMetadata, VrmData, VrmLicense } from '@/types';
 
 /** A locally-stored VRM plus its library timestamps. Local-only, like `StoredEntityRecord`. */
 export type StoredModelRecord = StoredRecord<VrmData>;
@@ -75,6 +75,7 @@ const toMetadata = (record: StoredModelRecord): ModelMetadata => ({
   thumbnailSource: record.data?.thumbnailSource,
   hasFileThumbnail: record.data?.fileThumbnail === undefined ? undefined : !!record.data.fileThumbnail,
   license: record.data?.license,
+  ...(record.supporterCopy ? { supporterCopy: record.supporterCopy } : {}),
   createdAt: record.createdAt,
   lastAccessed: record.lastAccessed,
   // The community link travels with the metadata: the library grid never shows it, but the download flow
@@ -204,7 +205,7 @@ class ModelStorageService {
    * cheap and pure — but leaves the thumbnail render to `ensureThumbnail`, since only files with no embedded
    * thumbnail need it and rendering costs a GPU context.
    */
-  async addModel(file: File): Promise<StoredModelRecord> {
+  async addModel(file: File, supporterCopy?: LibrarySupporterCopyMarker): Promise<StoredModelRecord> {
     await this.ensureMigrated();
     const [hash, { license, thumbnail }] = await Promise.all([blobHash(file), readVrmMeta(file)]);
     const record: StoredModelRecord = {
@@ -219,6 +220,7 @@ class ModelStorageService {
         license,
         ...await fileThumbnailFields(thumbnail),
       },
+      ...(supporterCopy ? { supporterCopy } : {}),
     };
     await this.store.store(record);
     return record;
@@ -323,13 +325,16 @@ class ModelStorageService {
     return new Map(hashed.filter((entry) => entry !== null));
   }
 
-  /** The id of the model holding `blob`'s bytes: an existing record with the same hash, else a new one. */
-  async importModelBlob(blob: Blob, fileName: string): Promise<string> {
+  /**
+   * The id of the model holding `blob`'s bytes: an existing record with the same hash, else a new one. A new
+   * record takes `supporterCopy`; an existing one keeps the marker state it has.
+   */
+  async importModelBlob(blob: Blob, fileName: string, supporterCopy?: LibrarySupporterCopyMarker): Promise<string> {
     const [hash, held] = await Promise.all([blobHash(blob), this.getModelHashes()]);
     const duplicate = [...held].find(([, model]) => model.hash === hash);
     if (duplicate) return duplicate[0];
     const file = new File([blob], fileName, { type: blob.type });
-    return (await this.addModel(file)).id;
+    return (await this.addModel(file, supporterCopy)).id;
   }
 
   /**

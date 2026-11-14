@@ -1,7 +1,7 @@
 import { libraryLines } from '@/lib/librarySources';
 import { followedLibraryId } from '@/lib/publishLinks';
 import { randomUUID } from "@/lib/uuid";
-import type { Dictionary, DictionaryMetadata } from '@/types';
+import type { Dictionary, DictionaryMetadata, LibrarySupporterCopyMarker } from '@/types';
 
 /**
  * One dictionary row in the Library Additions workspace: a world book or a library dictionary, with its
@@ -21,6 +21,8 @@ export interface DictionarySelectionItem {
   authorLine?: string;
   /** Library rows only: where the book came from. */
   sourceLine?: string;
+  /** Library rows only: set when the book was saved from a Supporter Copy, so it joins no other world. */
+  supporterCopy?: LibrarySupporterCopyMarker;
 }
 
 /** Composite dnd/react key for a selection row, unique across the world and library stores. */
@@ -89,6 +91,7 @@ export function buildInitialSelection(
       enabled: false,
       entryCount: meta.entryCount ?? 0,
       ...libraryLines(meta, userId),
+      ...(meta.supporterCopy ? { supporterCopy: meta.supporterCopy } : {}),
     }));
   return [...world, ...library];
 }

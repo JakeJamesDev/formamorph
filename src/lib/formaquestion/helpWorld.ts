@@ -6,7 +6,7 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import type { StatCodeWorld } from '@/lib/statCodeTestRun';
 import type { ToolSnapshot } from '@/lib/tools/toolSnapshot';
-import type { DictionaryEntry } from '@/types';
+import type { DictionaryEntry, SupporterCopyMarker } from '@/types';
 import type { EntityDraft } from './entityBlock';
 import type { GameWorldInput } from './gameWorld';
 import type { WorldSource } from './helpWorldSource';
@@ -36,10 +36,12 @@ export interface OpenWorld {
   open?: (source: WorldSource) => void;
   /** Adds an entity block's draft to the world and shows it: a World Editor's only. */
   addEntity?: (draft: EntityDraft) => void;
+  /** The world's Supporter Copy marker: undefined while unread, null for a plain world. */
+  supporterCopy?: () => SupporterCopyMarker | null | undefined;
 }
 
 /** How a screen registers its world. */
-export type OpenWorldOptions = Pick<OpenWorld, 'lean' | 'world' | 'game' | 'open' | 'addEntity'>;
+export type OpenWorldOptions = Pick<OpenWorld, 'lean' | 'world' | 'game' | 'open' | 'addEntity' | 'supporterCopy'>;
 
 export interface HelpWorldRegistry {
   /** Registers a world; the newest registered one is the open world. Returns the step that removes it. */
@@ -78,13 +80,14 @@ export const helpWorld = createHelpWorldRegistry();
  * Registers the open world while the caller is mounted. One registration per mount, reading the newest
  * builders, so the source mounted last stays the open world: the in-game editor over the game.
  */
-export function useHelpWorldSource(snapshot: ToolSnapshotSource, authored: StatCodeWorldSource, { lean, world, game, open, addEntity }: OpenWorldOptions): void {
-  const latest = useRef({ snapshot, authored, world, game, open, addEntity });
-  latest.current = { snapshot, authored, world, game, open, addEntity };
+export function useHelpWorldSource(snapshot: ToolSnapshotSource, authored: StatCodeWorldSource, { lean, world, game, open, addEntity, supporterCopy }: OpenWorldOptions): void {
+  const latest = useRef({ snapshot, authored, world, game, open, addEntity, supporterCopy });
+  latest.current = { snapshot, authored, world, game, open, addEntity, supporterCopy };
   const hasWorld = world !== undefined;
   const hasGame = game !== undefined;
   const opens = open !== undefined;
   const adds = addEntity !== undefined;
+  const marks = supporterCopy !== undefined;
   useEffect(() => helpWorld.register({
     lean,
     snapshot: (fired) => latest.current.snapshot(fired),
@@ -93,7 +96,8 @@ export function useHelpWorldSource(snapshot: ToolSnapshotSource, authored: StatC
     ...(hasGame && { game: () => latest.current.game!() }),
     ...(opens && { open: (source: WorldSource) => latest.current.open!(source) }),
     ...(adds && { addEntity: (draft: EntityDraft) => latest.current.addEntity!(draft) }),
-  }), [lean, hasWorld, hasGame, opens, adds]);
+    ...(marks && { supporterCopy: () => latest.current.supporterCopy!() }),
+  }), [lean, hasWorld, hasGame, opens, adds, marks]);
 }
 
 /** How long the World Index waits after the last edit before it rebuilds. */

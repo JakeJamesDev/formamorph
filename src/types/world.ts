@@ -1363,6 +1363,8 @@ export interface DictionaryMetadata extends CommunityLink {
   lastAccessed?: string;
   /** Listing tags, shown on the library card the way a world's are. */
   tags?: string[];
+  /** Local-only: saved from a Supporter Copy, so it never exports or publishes. */
+  supporterCopy?: LibrarySupporterCopyMarker;
 }
 
 /** Creator credit and imported tags stored only on the library record. */
@@ -1389,6 +1391,8 @@ export interface EntityMetadata extends CommunityLink {
   vrmLibraryId?: string;
   /** Imported attribution and tags kept outside world content. */
   libraryDetails?: LibraryDetails;
+  /** Local-only: saved from a Supporter Copy, so it never exports or publishes. */
+  supporterCopy?: LibrarySupporterCopyMarker;
 }
 
 /** A find-bar hit handed to a detail panel, so the panel can open the tab that holds the field. `itemId`

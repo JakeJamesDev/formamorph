@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { SearchField } from '@/components/ui/search-field';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Hint, Meta } from '@/components/ui/typography';
+import { BlockedActionTip } from '@/components/BlockedActionTip';
+import { cn } from '@/lib/utils';
+import { useLibraryAddBlock } from '@/lib/useSupporterCopyBlock';
 import { libraryItemData, libraryItems, LINK_EXPLANATIONS, type LibraryItemSummary, type LibraryKind } from '@/lib/librarySources';
 import type { LinkableContent } from '@/lib/linkedContent';
 import type { SurfaceIdName } from '@/components/ui/surface';
@@ -55,6 +58,7 @@ function AddFromLibraryModal({
   const [search, setSearch] = useState('');
   const [link, setLink] = useState(true);
   const [loading, setLoading] = useState(true);
+  const addBlock = useLibraryAddBlock();
 
   // Read through a ref: `resume` describes the opening this effect is reacting to, so a change to it alone
   // must not re-run the load.
@@ -128,25 +132,31 @@ function AddFromLibraryModal({
             />
             <ScrollArea className="max-h-[50dvh] pr-2">
               <div className="space-y-1">
-                {shown.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => toggle(item.id)}
-                    className="flex items-center gap-2 rounded-md p-2 cursor-pointer hover:bg-secondary"
-                  >
-                    <Checkbox
-                      checked={selectedIds.includes(item.id)}
-                      onCheckedChange={() => toggle(item.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="shrink-0"
-                    />
-                    {renderRow?.(item)}
-                    <div className="min-w-0 flex-grow">
-                      <p className="truncate">{item.name}</p>
-                      <Meta as="p" className="truncate">{item.authorLine} · {item.sourceLine}</Meta>
-                    </div>
-                  </div>
-                ))}
+                {shown.map((item) => {
+                  const blocked = addBlock(item);
+                  return (
+                    <BlockedActionTip key={item.id} reason={blocked}>
+                      <div
+                        onClick={() => { if (!blocked) toggle(item.id); }}
+                        aria-disabled={blocked ? true : undefined}
+                        className={cn('flex items-center gap-2 rounded-md p-2', blocked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-secondary')}
+                      >
+                        <Checkbox
+                          checked={selectedIds.includes(item.id)}
+                          disabled={!!blocked}
+                          onCheckedChange={() => toggle(item.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="shrink-0"
+                        />
+                        {renderRow?.(item)}
+                        <div className="min-w-0 flex-grow">
+                          <p className="truncate">{item.name}</p>
+                          <Meta as="p" className="truncate">{item.authorLine} · {item.sourceLine}</Meta>
+                        </div>
+                      </div>
+                    </BlockedActionTip>
+                  );
+                })}
                 {shown.length === 0 && (
                   <Meta as="p" className="py-6 text-center">No match for that search.</Meta>
                 )}

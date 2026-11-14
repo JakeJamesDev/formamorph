@@ -1,10 +1,10 @@
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
-import { planWriteBack, type LibrarySource, type LinkStamp, type WorldContent } from '@/lib/linkedContent';
+import { planWriteBack, type LinkStamp, type WorldContent } from '@/lib/linkedContent';
 import { kindOf, loadLinkedSources, replaceLibraryItemContent, toLibraryItem } from '@/lib/librarySources';
 import { traitWorldOf } from '@/lib/portableTraits';
 import { loadVrmLookup, withLibraryPick } from '@/lib/libraryVrm';
-import type { GameLocation, Placeholder, Stat, StatGroup, Trait, TraitGroup, WorldVrmStore } from '@/types';
+import type { GameLocation, Placeholder, Stat, StatGroup, SupporterCopyMarker, Trait, TraitGroup, WorldVrmStore } from '@/types';
 
 /** What a world save hands over: its content, the combined placeholder pool its chips point at, its
  *  locations, which an entity's membership is named against, and its traits, which owned trait requirements
@@ -19,6 +19,8 @@ export interface WorldToWriteBack extends WorldContent {
   statGroups?: StatGroup[];
   /** The world's Avatar store, which a copy's Avatar pick names. */
   vrmStore?: WorldVrmStore;
+  /** The world's Supporter Copy marker: undefined while unread, null for a plain world. */
+  supporterCopy: SupporterCopyMarker | null | undefined;
 }
 
 /** Writes each planned copy to its item, and returns the link records of the writes that landed. */
@@ -30,13 +32,16 @@ const NOTHING_TO_WRITE: OwnedWriteBack = async () => [];
  * Plan the writes of every edited copy of an owned library item to that item. Nothing is written until the
  * save calls the result, after the world is stored, so a failed save leaves the library as it was. One
  * revision stamp per save. Last save wins: nothing checks whether the item moved on since the world opened.
+ *
+ * A Supporter Copy (or a world whose marker is unread) writes only to items saved from it, so its edits
+ * never reach a library item the player can export; they stay in the world.
  */
 export async function planOwnedWriteBack(world: WorldToWriteBack): Promise<OwnedWriteBack> {
   const linkedIds = [...world.entities, ...world.dictionaries]
     .map((item) => item.link?.libraryId)
     .filter((id): id is string => !!id);
   if (!linkedIds.length) return NOTHING_TO_WRITE;
-  let sources: LibrarySource[];
+  let sources: Awaited<ReturnType<typeof loadLinkedSources>>;
   try {
     sources = await loadLinkedSources(linkedIds);
   } catch (error) {
@@ -45,7 +50,9 @@ export async function planOwnedWriteBack(world: WorldToWriteBack): Promise<Owned
     return NOTHING_TO_WRITE;
   }
   const vrm = await loadVrmLookup(world.vrmStore);
-  const plan = planWriteBack(world, sources, (copy) => toLibraryItem(copy, world.placeholders, world.locations, world), traitWorldOf(world), vrm);
+  const marked = new Map(sources.flatMap((source) => (source.supporterCopy ? [[source.id, source.supporterCopy] as const] : [])));
+  const plan = planWriteBack(world, sources, (copy) => toLibraryItem(copy, world.placeholders, world.locations, world), traitWorldOf(world), vrm)
+    .filter((step) => world.supporterCopy === null || marked.has(step.source.id));
   if (!plan.length) return NOTHING_TO_WRITE;
   const revision = new Date().toISOString();
   const planned = plan.map((step) => ({
@@ -59,7 +66,7 @@ export async function planOwnedWriteBack(world: WorldToWriteBack): Promise<Owned
     const written: LinkStamp[] = [];
     for (const { copy, source, content, stamp } of planned) {
       try {
-        await replaceLibraryItemContent(kindOf(copy), source.id, await withLibraryPick(content, world.vrmStore), revision);
+        await replaceLibraryItemContent(kindOf(copy), source.id, await withLibraryPick(content, world.vrmStore, world.supporterCopy ? marked.get(source.id) : undefined), revision);
         written.push(stamp);
       } catch (error) {
         toastError(error, { headline: `Could not write “${source.name}” to your library: ${error instanceof Error ? error.message : String(error)}` });

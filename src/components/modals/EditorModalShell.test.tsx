@@ -59,6 +59,20 @@ describe('EditorModalShell', () => {
     expect(onPublish).toHaveBeenCalledTimes(1);
   });
 
+  it('disables Export and Publish with the reason while they are blocked, and enables them otherwise', () => {
+    const { rerender } = render(
+      <EditorModalShell {...baseProps} onPublish={() => {}} exportBlock="No export" publishBlock="No publish"><div /></EditorModalShell>,
+    );
+    expect(screen.getByText('Export').closest('button')!.disabled).toBe(true);
+    expect(screen.getByText('Publish').closest('button')!.disabled).toBe(true);
+    expect(document.querySelector('[aria-description="No export"]')).not.toBeNull();
+    expect(document.querySelector('[aria-description="No publish"]')).not.toBeNull();
+
+    rerender(<EditorModalShell {...baseProps} onPublish={() => {}}><div /></EditorModalShell>);
+    expect(screen.getByText('Export').closest('button')!.disabled).toBe(false);
+    expect(screen.getByText('Publish').closest('button')!.disabled).toBe(false);
+  });
+
   it('save-and-exit closes only when the save succeeds', async () => {
     // Failing save: Escape opens the unsaved prompt; its Save must NOT close.
     const onClose = vi.fn();

@@ -40,6 +40,31 @@ beforeEach(async () => {
   for (const meta of await EntityStorageService.getEntityMetadata()) await EntityStorageService.deleteEntity(meta.id);
 });
 
+describe('the persona row with a persona saved from a Supporter Copy', () => {
+  const marker = { listingId: 'L1', accountId: 'A1', revision: 1, sourceWorldId: 'w-source' };
+  const storeMarked = () => EntityStorageService.storeEntity({ id: wren.id, name: wren.name, data: wren, supporterCopy: marker });
+
+  it("offers it disabled in another world's game", async () => {
+    await storeMarked();
+    const h = renderRightPanel({}, { turns: [{ narration: 'You meet Vos.', summary: 'The player met Vos.' }] });
+    await act(async () => { h.gameData().setWorldId('w-other'); });
+
+    const dialog = await openPicker();
+
+    expect(await within(dialog).findByRole('radio', { name: 'Wren' })).toBeDisabled();
+  });
+
+  it('offers it enabled in its source world', async () => {
+    await storeMarked();
+    const h = renderRightPanel({}, { turns: [{ narration: 'You meet Vos.', summary: 'The player met Vos.' }] });
+    await act(async () => { h.gameData().setWorldId('w-source'); });
+
+    const dialog = await openPicker();
+
+    expect(await within(dialog).findByRole('radio', { name: 'Wren' })).toBeEnabled();
+  });
+});
+
 describe('the persona row', () => {
   it('shows None for a save from before personas, and a Change gives it one', async () => {
     await store(wren);

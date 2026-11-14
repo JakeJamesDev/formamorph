@@ -33,7 +33,8 @@ import { canonicalStringify } from '@/lib/canonicalStringify';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
 import type { DictionaryPanelTab } from '@/views/dictionaryPanelTabs';
 import { DICTIONARY_EDITOR_TABS, type DictionaryEditorTab } from '@/views/dictionaryEditorTabs';
-import type { Dictionary, Placeholder, LibraryDetails } from '@/types';
+import type { Dictionary, DictionaryMetadata, Placeholder, LibraryDetails } from '@/types';
+import { supporterCopyBlock } from '@/lib/supporterCopy';
 import { Hint } from '@/components/ui/typography';
 
 /** The baseline in the same canonical form the live value is compared in — a fresh cache each time, since
@@ -128,6 +129,8 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
   const { dictionaries, setDictionaries } = store;
   const [book, setBook] = useState<Dictionary | null>(null);
   const [libraryDetails, setLibraryDetails] = useState<LibraryDetails | undefined>();
+  // The stored item's marker, read with its metadata. A draft has none.
+  const [marker, setMarker] = useState<DictionaryMetadata['supporterCopy']>();
   const detailsBaselineRef = useRef('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Opens on Dictionary: the entries are the work, the Overview is set once.
@@ -155,6 +158,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
     const seed = (b: Dictionary) => {
       setDictionaries([b]); setBook(b); setSelectedId(firstDictionaryEntryId(b)); baselineRef.current = canon([b]);
     };
+    setMarker(undefined);
     if (draft) { seed(draft); return; }
     if (dictionaryId === null) { setBook(null); return; }
     let cancelled = false;
@@ -162,6 +166,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
       .then(([b, records]) => {
         if (cancelled) return;
         const details = records.find((record) => record.id === dictionaryId)?.libraryDetails;
+        setMarker(records.find((record) => record.id === dictionaryId)?.supporterCopy);
         setLibraryDetails(details);
         detailsBaselineRef.current = canon(details);
         seed(b);
@@ -229,9 +234,12 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
     }
   };
 
+  const exportBlock = supporterCopyBlock({ supporterCopy: marker }, 'exportDictionary');
+  const publishBlock = supporterCopyBlock({ supporterCopy: marker }, 'publish');
+
   const handleExport = async () => {
     const current = dictionaries[0];
-    if (!current) return;
+    if (!current || exportBlock) return;
     // A library item is its own source, so the file names it and the worlds that hold a linked copy.
     const links = await exportedLibraryLinks('dictionary', current.id);
     const blob = new Blob([JSON.stringify(buildDictionaryFile(current, undefined, links, libraryDetails), null, 2)], { type: 'application/json' });
@@ -263,6 +271,8 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
         onSave={handleSave}
         onClose={onClose}
         onExport={handleExport}
+        exportBlock={exportBlock}
+        publishBlock={publishBlock}
         onPublish={onPublish ? () => { if (dictionaries[0]) onPublish(dictionaries[0], libraryDetails); } : undefined}
       >
         <DictionaryStoreProvider value={store}>

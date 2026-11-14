@@ -49,6 +49,8 @@ import { LibraryRecordNotFoundError } from '../services/LibraryStore';
 import type { WorldRecord } from '@/components/WorldDetails';
 import ReadmeModal from '@/components/game/ReadmeModal';
 import { readUserDefaultAvatar } from '@/lib/defaultAvatar';
+import { supporterCopyBlock } from '@/lib/supporterCopy';
+import { OpenWorldIdProvider } from '@/lib/useSupporterCopyBlock';
 import {
   buildEnterFlow, entryAvatarInUse, entryVrmPick, navigableSteps, type EntryVrmInput, type EnterMode, type EnterStep, type NavigableStep,
 } from '@/lib/enterFlow';
@@ -322,8 +324,12 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
 
   /** The library personas this entry offers: marked entities the world holds no copy of. */
   const personaOptions = useMemo(
-    () => additionEntities.filter((entity) => entity.persona === true).map(({ id, name, image, description }) => ({ id, name, image, description })),
-    [additionEntities],
+    () => additionEntities.filter((entity) => entity.persona === true).map((entity) => ({
+      id: entity.id, name: entity.name, image: entity.image, description: entity.description,
+      // A persona saved from a Supporter Copy plays only in its source world.
+      blockedReason: supporterCopyBlock(entity, { addToWorld: selectedWorld?.id ?? '' }),
+    })),
+    [additionEntities, selectedWorld?.id],
   );
   /** The world's entities the author marked as playable. */
   /** A persona card with the name of the location it starts at. */
@@ -376,7 +382,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     globalDefault: defaultPersona,
     available: {
       world: worldPersonaOptions.map((option) => option.id),
-      library: personaOptions.map((option) => option.id),
+      library: personaOptions.filter((option) => !option.blockedReason).map((option) => option.id),
       custom: !!customPersonaOption,
     },
   });
@@ -603,7 +609,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   }
 
   return (
-    <>
+    <OpenWorldIdProvider value={selectedWorld?.id}>
       {/* The world's Introduction, over whichever setup screen is behind it. Placeholders resolve because
           `beginSession` rolls them on the Enter World click, before this opens. */}
       {selectedWorld && (
@@ -678,7 +684,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
           resolving={resolvingEntry}
         />
       )}
-    </>
+    </OpenWorldIdProvider>
   );
 });
 

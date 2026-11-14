@@ -16,7 +16,7 @@ import { adoptListingVrm } from '@/lib/entityVrmCarry';
 import { namedPlacesOf } from '@/lib/entityPlaces';
 import type {
   CommunityLink, ContentLocationRef, Dictionary, DictionaryMetadata, Entity, EntityMetadata, LibraryDetails, GameLocation,
-  Placeholder, WorldVrmStore,
+  LibrarySupporterCopyMarker, Placeholder, WorldVrmStore,
 } from '@/types';
 
 /** What the link choice means for the content picked, by who owns it. */
@@ -39,6 +39,8 @@ export interface LibraryItemSummary extends LibrarySource {
   authorLine: string;
   /** Where the item came from. */
   sourceLine: string;
+  /** Set when the item was saved from a Supporter Copy; the pickers read it to disable the row elsewhere. */
+  supporterCopy?: LibrarySupporterCopyMarker;
   /** The character portrait, for the character picker's row. */
   image?: string;
   /** How many entries the book holds, for the dictionary picker's row. */
@@ -46,7 +48,7 @@ export interface LibraryItemSummary extends LibrarySource {
 }
 
 /** The library record fields these lines and states are read from. */
-type LibraryStamps = CommunityLink & { createdAt?: string; author?: string; libraryDetails?: LibraryDetails };
+type LibraryStamps = CommunityLink & { createdAt?: string; author?: string; libraryDetails?: LibraryDetails; supporterCopy?: LibrarySupporterCopyMarker };
 
 /** The two lines a picker prints under an item's name. */
 export interface LibraryLines {
@@ -96,6 +98,7 @@ function summarize(kind: LibraryKind, record: LibraryStamps & { id: string; name
     owned,
     ...(record.sourceId ? { sourceId: record.sourceId } : {}),
     ...(record.sourceUpdatedAt ? { sourceUpdatedAt: record.sourceUpdatedAt } : {}),
+    ...(record.supporterCopy ? { supporterCopy: record.supporterCopy } : {}),
     authorLine: libraryAuthorLine(record, owned),
     sourceLine: librarySourceLine(record),
   };
@@ -106,7 +109,7 @@ function summarize(kind: LibraryKind, record: LibraryStamps & { id: string; name
 const LIBRARIES: Record<LibraryKind, {
   list: () => Promise<(LibraryStamps & { id: string; name: string })[]>;
   load: (id: string) => Promise<LinkableContent>;
-  store: (record: CommunityLink & { id: string; name: string; createdAt: string; data: LinkableContent; libraryDetails?: LibraryDetails }) => Promise<void>;
+  store: (record: CommunityLink & { id: string; name: string; createdAt: string; data: LinkableContent; libraryDetails?: LibraryDetails; supporterCopy?: LibrarySupporterCopyMarker }) => Promise<void>;
   row: (meta: DictionaryMetadata & EntityMetadata) => Partial<LibraryItemSummary>;
 }> = {
   dictionary: {
@@ -193,15 +196,20 @@ export function toLibraryItem<T extends LinkableContent>(
  * Store a world's copy as a new library item owned by the author, and describe the item so the copy can
  * link to it. The item gets its own id: the world keeps the copy it already has. `vrmStore` is the world's
  * Avatar store, which the copy's Avatar pick names; the item picks the library Avatar with the same file.
+ * `supporterCopy` marks the item, and an Avatar it brings that the library did not hold, when the copy comes
+ * from a Supporter Copy.
  */
 export async function saveCopyToLibrary(
   item: LinkableContent, available: Placeholder[], worldLocations: readonly GameLocation[] = [],
   libraryDetails?: LibraryDetails, traitWorld?: TraitWorld, vrmStore?: WorldVrmStore,
+  supporterCopy?: LibrarySupporterCopyMarker,
 ): Promise<LibrarySource> {
   const id = randomUUID();
-  const data = { ...await withLibraryPick(toLibraryItem(item, available, worldLocations, traitWorld), vrmStore), id };
+  const data = { ...await withLibraryPick(toLibraryItem(item, available, worldLocations, traitWorld), vrmStore, supporterCopy), id };
   const now = new Date().toISOString();
-  await LIBRARIES[kindOf(item)].store({ id, name: data.name, createdAt: now, data, libraryDetails });
+  await LIBRARIES[kindOf(item)].store({
+    id, name: data.name, createdAt: now, data, libraryDetails, ...(supporterCopy ? { supporterCopy } : {}),
+  });
   // `store` stamps `lastAccessed` itself and leaves `editedAt` unset, so the revision this link holds is
   // the creation stamp — the same one a later read computes.
   return { id, name: data.name, revision: now, owned: true, data };
@@ -330,7 +338,9 @@ export async function replaceLibraryItemContent(
 /** The owned library items a world's copies follow, with their content, ready for the synchronization
  *  pass. Items belonging to another author are listed without content: their updates are reviewed, not
  *  pushed. */
-export async function loadLinkedSources(libraryIds: Iterable<string>): Promise<LibrarySource[]> {
+export async function loadLinkedSources(
+  libraryIds: Iterable<string>,
+): Promise<(LibrarySource & Pick<LibraryItemSummary, 'supporterCopy'>)[]> {
   const wanted = new Set(libraryIds);
   if (!wanted.size) return [];
   const [entities, dictionaries] = await Promise.all([libraryItems('entity'), libraryItems('dictionary')]);

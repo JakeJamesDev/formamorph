@@ -161,6 +161,9 @@ function useProvideGameData() {
   const [markerRead, setMarkerRead] = useState<{ worldId: string; marker: SupporterCopyMarker | null } | null>(null);
   // The open world's Supporter Copy marker: undefined until read, null for a plain or unsaved world.
   const supporterCopy = !worldId ? null : markerRead?.worldId === worldId ? markerRead.marker : undefined;
+  // Read at save time, so a save started before the marker arrives still sees the newest answer.
+  const supporterCopyRef = useRef(supporterCopy);
+  supporterCopyRef.current = supporterCopy;
   useEffect(() => {
     if (!worldId) return;
     let live = true;
@@ -748,6 +751,7 @@ function useProvideGameData() {
         entities: data.entities, dictionaries: data.dictionaries, placeholders, locations,
         traits: data.traits, traitGroups: data.traitGroups ?? [], stats: data.stats, statGroups: data.statGroups ?? [],
         vrmStore: worldOverview.vrmStore,
+        supporterCopy: supporterCopyRef.current,
       });
       const stamped = (stamps: LinkStamp[]) => (stamps.length
         ? { ...data, entities: stampLinks(data.entities, stamps), dictionaries: stampLinks(data.dictionaries, stamps) }

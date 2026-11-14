@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
+import { BlockedActionTip } from '@/components/BlockedActionTip';
 import { Hint } from '@/components/ui/typography';
 import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
@@ -19,6 +20,8 @@ export interface PersonaOption {
   description?: string;
   /** The name of the location a world persona names as its start. */
   startsAt?: string;
+  /** Why this persona can't be picked here, null or absent when it can. The row shows disabled with it as its tooltip. */
+  blockedReason?: string | null;
 }
 
 const keyOf = (ref: PersonaRef) => (ref.source === 'none' ? 'none' : `${ref.source}:${ref.entityId}`);
@@ -83,14 +86,16 @@ export function PersonaPicker({ world = [], library, none = true, custom, value,
     if (value.source === 'none') lastEntry.current = { name: value.name, description: value.description };
   }, [value]);
   const entry = value.source === 'none' ? value : lastEntry.current;
-  const row = (key: string, label: string, body: React.ReactNode, below?: React.ReactNode) => (
-    <div key={key} className={cn(rowClass(current === key), below && 'flex-wrap')}>
-      <RadioGroupItem id={`persona-${key}`} value={key} aria-label={label} className="shrink-0" />
-      <label htmlFor={`persona-${key}`} className="flex min-w-0 flex-1 cursor-pointer items-start gap-3">
-        {body}
-      </label>
-      {below}
-    </div>
+  const row = (key: string, label: string, body: React.ReactNode, below?: React.ReactNode, blocked?: string | null) => (
+    <BlockedActionTip key={key} reason={blocked ?? null}>
+      <div className={cn(rowClass(current === key), below && 'flex-wrap', blocked && 'cursor-not-allowed opacity-50')}>
+        <RadioGroupItem id={`persona-${key}`} value={key} aria-label={label} disabled={!!blocked} className="shrink-0" />
+        <label htmlFor={`persona-${key}`} className={cn('flex min-w-0 flex-1 items-start gap-3', blocked ? 'cursor-not-allowed' : 'cursor-pointer')}>
+          {body}
+        </label>
+        {below}
+      </div>
+    </BlockedActionTip>
   );
   const customRow = (option: PersonaOption) => row('none', option.name, (
     <>
@@ -142,7 +147,7 @@ export function PersonaPicker({ world = [], library, none = true, custom, value,
           )}
         </span>
       </>
-    ));
+    ), undefined, option.blockedReason);
   return (
     <RadioGroup
       aria-label="Persona"
