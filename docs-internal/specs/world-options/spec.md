@@ -75,6 +75,10 @@ Scripts never write Enabled or Locked directly. They write a World Option, and t
 - **Q50 Stranded readers.** An entity's places are its membership, routine rows and Traversable; one with no places is never stranded. A stranded entity is dropped from World Tools snapshots (the AI's reach) but kept in the script `entities` global. (Ticket 08 question.)
 - **Q51 Positions in a disabled place.** A stored position in a disabled location is dropped and the routine re-places the entity; nothing is held, unlike Q38. (Ticket 08 question.)
 - **Q52 Start fallback.** When every starting location is disabled, the start is the first enabled location in tree order; with every location off, today's authored pick. Location gates sit at the top of the location's Presence tab in Simple mode. (Ticket 08 question.)
+- **Q53 Locked subtree.** The children of a locked location are locked too. A child shows its own Locked text, else its nearest locked ancestor's line. Moves inside a locked subtree the player already stands in stay free. (Ticket 09 question.)
+- **Q54 Routes.** A locked place is neither a router candidate nor a waypoint, and it leaves the destinations chip. It stays in Nearby context and Known In (Q28). (Ticket 09 question.)
+- **Q55 Starts with locks.** The start pick skips off and locked starting locations, then falls back as Q52 to the first on and unlocked location; Enter World's list hides locked ones. (Ticket 09 question.)
+- **Q56 Who the lock binds.** Lock binds only the player's travel. Script and World Tool moves, entity routines and followers ignore it. The Move-to chip re-checks the gate at click. Locked text replaces the whole lock line and resolves placeholders. (Ticket 09 question.)
 
 ## User Stories
 
