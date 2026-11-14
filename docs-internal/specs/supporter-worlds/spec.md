@@ -41,6 +41,11 @@ Settled in the grill on 2026-11-14. Numbered R so they don't collide with the ba
 | R14 | Blocked actions stay visible but disabled, with a tooltip. A Supporter Copy world shows a Supporter badge on its card. |
 | R15 | The backup bundle and the crash-recovery export leave Supporter Copies out. |
 | R16 | Only Mascot and World listings can be timed or downloaded as Supporter content. Other kinds keep Not Supported Yet and get no switch. |
+| R17 | Export of a save whose world is a Supporter Copy is blocked, disabled with a tooltip, because a save holds the world's books in full. Saves still play. New evidence from ticket 04, under R7. |
+| R18 | R7's Duplicate means Duplicate World. Duplicating an entity, book or location inside the Supporter Copy's own editor stays allowed. |
+| R19 | Under R14, the crash screen shows Export World disabled with the reason as visible text, since it has no tooltip host. The backup checklist lists a Supporter Copy disabled with a tooltip, and the backup bundle drops it regardless. |
+| R20 | Ticket 04 owns the allowed-action rule for both targets: a world and a library entry (marker plus `sourceWorldId`), including add-to-world. Ticket 05 wires the library surfaces. |
+| R21 | R14's Supporter badge on a Supporter Copy world card is the Patreon button's heart icon in its gradient colors, with a tooltip. User ruling, 2026-11-14. |
 
 ## User Stories
 

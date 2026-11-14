@@ -5,7 +5,9 @@ Blocked by: 04
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
 
-Model rationale: extends ticket 04's rule to library records and the add-to-world paths.
+Model rationale: wires ticket 04's rule into library records and the add-to-world paths.
+
+Scope note (R20): ticket 04 owns the library-entry marker type and the rule for it, add-to-world included. This ticket wires the surfaces.
 
 ## Parent
 
