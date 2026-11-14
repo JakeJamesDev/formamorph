@@ -53,6 +53,14 @@ export class SupporterContentError extends Error {
   }
 }
 
+/** A world as the gated route sent it: layers still scrambled. */
+export interface SupporterWorldDownload {
+  contentData: unknown;
+  revision: number;
+  /** The account the server marked and scrambled it for. */
+  accountId: string;
+}
+
 interface Entitlement {
   qualifies: boolean;
   items: SupporterItemRef[];
@@ -182,6 +190,22 @@ export function createSupporterContent(deps: SupporterContentDeps) {
     items = [...items.filter((item) => item.id !== id), { ...record, key: itemKey(id, ref.revision) }];
   };
 
+  /** The signed-in session, once a good check lists `id` for it. Checks again first when none does. */
+  const entitledSession = async (id: string): Promise<SupporterSession> => {
+    await load();
+    const session = deps.session();
+    if (!session) throw new SupporterContentError('signed-out', 'Sign in to install Supporter content');
+    const listedNow = () => {
+      const usable = usableCheck();
+      return !!usable?.qualifies && usable.entitled.some((item) => item.id === id);
+    };
+    if (!listedNow()) await runCheck();
+    if (!listedNow()) {
+      throw new SupporterContentError('not-entitled', 'This account cannot install that Supporter content');
+    }
+    return session;
+  };
+
   const applyGoodCheck = async (session: SupporterSession, entitlement: Entitlement) => {
     const listed = new Map(entitlement.items.map((item) => [item.id, item]));
     const drop = items.filter((item) => item.accountId !== session.accountId || !listed.has(item.id));
@@ -259,19 +283,26 @@ export function createSupporterContent(deps: SupporterContentDeps) {
      * @throws SupporterContentError when signed out or the listing is not entitled; Error when the download fails
      */
     install: (id: string): Promise<void> => serial(async () => {
-      await load();
-      const session = deps.session();
-      if (!session) throw new SupporterContentError('signed-out', 'Sign in to install Supporter content');
-      const listedNow = () => {
-        const usable = usableCheck();
-        return !!usable?.qualifies && usable.entitled.some((item) => item.id === id);
-      };
-      if (!listedNow()) await runCheck();
-      if (!listedNow()) {
-        throw new SupporterContentError('not-entitled', 'This account cannot install that Supporter content');
-      }
+      const session = await entitledSession(id);
       await fetchAndStore(session, id);
       publish();
+    }),
+
+    /**
+     * Fetch one world listing from the gated route, still scrambled, without caching it. The caller stores
+     * the world, so nothing of it stays in this module's cache.
+     *
+     * @throws SupporterContentError when signed out or the listing is not entitled; Error when the download fails
+     */
+    fetchWorld: (id: string): Promise<SupporterWorldDownload> => serial(async () => {
+      const session = await entitledSession(id);
+      const response = await getJson(session, `/worlds/${encodeURIComponent(id)}/supporter-content`, timeouts.install);
+      if (!response.ok) throw new Error(`The Supporter content download failed with status ${response.status}`);
+      const data = asObject(asObject(response.body)?.data);
+      if (!data || data.contentData === undefined || !Number.isInteger(data.revision)) {
+        throw new Error('The Supporter content download returned no content');
+      }
+      return { contentData: data.contentData, revision: data.revision as number, accountId: session.accountId };
     }),
 
     /** The installed content of `id` with its layers still scrambled, or null when it is not usable now. */

@@ -1,5 +1,5 @@
 import { useState, useSyncExternalStore } from 'react';
-import { Check, Download, Loader2, LogIn } from 'lucide-react';
+import { Check, Download, Loader2, LogIn, RefreshCw } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 import { PATREON_PAGE_URL } from '@/components/PatreonSection';
@@ -10,6 +10,7 @@ import { toastError } from '@/lib/linkToast';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { supporterContent } from '@/lib/supporterContent';
 import { supporterListingAction, type SupporterListingAction } from '@/lib/supporterListingAction';
+import type { DownloadState } from '@/lib/downloadState';
 import type { WorldRecord } from '@/components/WorldDetails';
 
 interface SupporterListingButtonProps {
@@ -20,6 +21,10 @@ interface SupporterListingButtonProps {
   onSignIn?: (world: WorldRecord) => void;
   /** `card` is the corner icon on a thumbnail; `details` is the full-width button. */
   variant: 'card' | 'details';
+  /** A world's state in the world store, which picks Download, Update or Re-download. */
+  downloadState?: DownloadState;
+  /** Starts a world's download. Without it a world's button is inert. */
+  onDownload?: (world: WorldRecord, state: DownloadState) => void;
 }
 
 const LABELS: Record<SupporterListingAction, string> = {
@@ -27,6 +32,9 @@ const LABELS: Record<SupporterListingAction, string> = {
   checking: 'Checking…',
   install: 'Install',
   installed: 'Installed',
+  download: 'Download',
+  update: 'Update Available',
+  redownload: 'Re-download',
   unsupported: 'Not Supported Yet',
   patreon: 'Patreon',
 };
@@ -36,26 +44,31 @@ const TIPS: Record<SupporterListingAction, string> = {
   checking: 'Checking your Supporter status',
   install: 'Install this Supporter-only listing',
   installed: "You've installed this",
+  download: 'Download this Supporter-only world',
+  update: 'Download the newer version',
+  redownload: 'Re-download this world',
   unsupported: "You can't install this kind of listing yet",
   patreon: 'Become a Supporter on Patreon to install this',
 };
 
-const ICONS = { 'sign-in': LogIn, checking: Loader2, install: Download, installed: Check, unsupported: Download, patreon: PatreonIcon } as const;
+const ICONS = { 'sign-in': LogIn, checking: Loader2, install: Download, installed: Check, download: Download, update: Download, redownload: RefreshCw, unsupported: Download, patreon: PatreonIcon } as const;
 
 const subscribe = supporterContent.subscribe;
 const getSnapshot = supporterContent.getSnapshot;
 
 /** The one button that replaces Download on a Supporter-only listing. */
-export function SupporterListingButton({ world, kind, signedIn, onSignIn, variant }: SupporterListingButtonProps) {
+export function SupporterListingButton({ world, kind, signedIn, onSignIn, variant, downloadState, onDownload }: SupporterListingButtonProps) {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot);
   const [installing, setInstalling] = useState(false);
   const mounted = useMountedRef();
   const id = String(world._id || world.id);
-  const action = supporterListingAction({ signedIn, kind, id, snapshot });
+  const action = supporterListingAction({ signedIn, kind, id, snapshot, downloadState });
+  const worldAction = action === 'download' || action === 'update' || action === 'redownload';
   const inert = action === 'checking' || action === 'installed' || action === 'unsupported' || installing
+    || (worldAction && !onDownload)
     || (action === 'sign-in' && !onSignIn);
   const Icon = installing ? Loader2 : ICONS[action];
-  const label = installing ? 'Installing…' : LABELS[action];
+  const label = installing ? (worldAction ? 'Downloading…' : 'Installing…') : LABELS[action];
 
   const press = async () => {
     if (action === 'sign-in') onSignIn?.(world);
@@ -63,6 +76,14 @@ export function SupporterListingButton({ world, kind, signedIn, onSignIn, varian
       window.open(PATREON_PAGE_URL, '_blank', 'noopener');
       // A stale check may hide a pledge already made; this one lands by the time the player is back.
       void supporterContent.refresh();
+    }
+    else if (worldAction) {
+      setInstalling(true);
+      try {
+        await onDownload?.(world, downloadState ?? 'none');
+      } finally {
+        if (mounted.current) setInstalling(false);
+      }
     }
     else if (action === 'install') {
       setInstalling(true);

@@ -30,6 +30,7 @@ vi.mock('@/lib/useCachedThumbnail', () => ({ CachedThumbnail: () => <div data-te
 import { RemoteWorldCard } from './RemoteWorldCard';
 import { SupporterListingButton } from './SupporterListingButton';
 import { type WorldRecord } from '@/components/WorldDetails';
+import type { DownloadState } from '@/lib/downloadState';
 
 const ITEM = { id: 'excl', kind: 'mascot', revision: 1 };
 const world = (over: Record<string, unknown> = {}): WorldRecord => ({
@@ -37,8 +38,13 @@ const world = (over: Record<string, unknown> = {}): WorldRecord => ({
   author: { id: 'u1', username: 'wren_hallow' }, tags: [], downloads: 0, comment_count: 0, likes: 2, ...over,
 }) as unknown as WorldRecord;
 
-const button = (over: { signedIn?: boolean; kind?: string; onSignIn?: () => void } = {}) =>
-  render(<SupporterListingButton world={world()} kind={over.kind ?? 'mascot'} signedIn={over.signedIn ?? true} onSignIn={over.onSignIn} variant="details" />);
+const button = (over: { signedIn?: boolean; kind?: string; onSignIn?: () => void; downloadState?: DownloadState; onDownload?: () => void } = {}) =>
+  render(
+    <SupporterListingButton
+      world={world()} kind={over.kind ?? 'mascot'} signedIn={over.signedIn ?? true} onSignIn={over.onSignIn}
+      downloadState={over.downloadState} onDownload={over.onDownload} variant="details"
+    />,
+  );
 
 beforeEach(() => {
   store.state.install = async () => {};
@@ -107,10 +113,38 @@ describe('the Supporter-only button', () => {
   });
 
   it('is disabled with a not-supported label for a kind with no consumer', () => {
-    store.set({ status: 'ready', qualifies: true, entitled: [{ ...ITEM, kind: 'world' }], installed: [] });
-    button({ kind: 'world' });
+    store.set({ status: 'ready', qualifies: true, entitled: [{ ...ITEM, kind: 'entity' }], installed: [] });
+    button({ kind: 'entity' });
 
     expect(screen.getByRole('button', { name: 'Not Supported Yet' })).toBeDisabled();
+  });
+
+  it.each([
+    ['none', 'Download'],
+    ['update', 'Update Available'],
+    ['refresh', 'Re-download'],
+  ] as const)('reads %s as "%s" on a world and hands the download to the caller', (downloadState, label) => {
+    store.set({ status: 'ready', qualifies: true, entitled: [{ ...ITEM, kind: 'world' }], installed: [] });
+    const onDownload = vi.fn();
+    button({ kind: 'world', downloadState, onDownload });
+    fireEvent.click(screen.getByRole('button', { name: label }));
+
+    expect(onDownload).toHaveBeenCalledWith(expect.objectContaining({ id: 'excl' }), downloadState);
+    expect(screen.queryByRole('button', { name: 'Install' })).toBeNull();
+  });
+
+  it('shows a world listing the account is not entitled to as Patreon, whatever the world store holds', () => {
+    store.set({ status: 'ready', qualifies: true, entitled: [], installed: [] });
+    button({ kind: 'world', downloadState: 'update', onDownload: vi.fn() });
+
+    expect(screen.getByRole('button', { name: 'Patreon' })).toBeTruthy();
+  });
+
+  it('shows Sign In on a world when signed out', () => {
+    store.set({ status: 'ready', qualifies: true, entitled: [{ ...ITEM, kind: 'world' }], installed: [] });
+    button({ kind: 'world', signedIn: false, onSignIn: vi.fn(), onDownload: vi.fn() });
+
+    expect(screen.getByRole('button', { name: 'Sign In' })).toBeTruthy();
   });
 
   it('follows the store when the account stops qualifying', () => {

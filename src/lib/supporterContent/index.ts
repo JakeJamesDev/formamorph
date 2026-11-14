@@ -4,6 +4,7 @@ import AuthService from '@/services/AuthService';
 import { createSupporterContent, type SupporterSession } from './supporterContent';
 
 export * from './supporterContent';
+export { unscrambleWorldContent } from './worldContent';
 export { isScrambledLayer, unscramble, unscrambleToCanvas, type ScrambledLayer } from './scramble';
 
 const authSession = (): SupporterSession | null => {

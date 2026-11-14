@@ -212,7 +212,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
             </button>
           </Tip>}
           {supporterOnly && onContextualDownload && (
-            <SupporterListingButton world={world} kind={kindOf(world)} signedIn={isAuthenticated} onSignIn={onGuestLike} variant="card" />
+            <SupporterListingButton world={world} kind={kindOf(world)} signedIn={isAuthenticated} onSignIn={onGuestLike} variant="card" downloadState={dlState} onDownload={onContextualDownload} />
           )}
           {!supporterOnly && onContextualDownload && <Tip tip={dlState === 'update' ? "Download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}>
             <button

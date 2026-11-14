@@ -164,6 +164,43 @@ describe('the start check', () => {
   });
 });
 
+describe('fetching a world', () => {
+  it('returns the scrambled content, its revision and the account, and caches nothing', async () => {
+    server.list(['sw', 3]);
+    const app = await startAndCheck();
+
+    const download = await app.fetchWorld('sw');
+
+    expect(download).toEqual({ accountId: 'acct-a', revision: 3, contentData: contentFor('sw', 3) });
+    expect(app.getSnapshot().installed).toEqual([]);
+    expect(await storedKeys()).toEqual([]);
+    expect(server.requests.at(-1)?.authorization).toBe('Bearer token-a');
+  });
+
+  it('refuses a listing the account is not entitled to, without asking the gated route', async () => {
+    server.list(['other', 1]);
+    const app = await startAndCheck();
+
+    await expect(app.fetchWorld('sw')).rejects.toMatchObject({ reason: 'not-entitled' });
+    expect(server.requests.some((r) => r.url.includes('/worlds/'))).toBe(false);
+  });
+
+  it('refuses when signed out', async () => {
+    session = null;
+    const app = await startAndCheck();
+
+    await expect(app.fetchWorld('sw')).rejects.toMatchObject({ reason: 'signed-out' });
+  });
+
+  it('fails when the gated route answers with an error', async () => {
+    server.list(['sw', 1]);
+    const app = await startAndCheck();
+    server.gatedStatus = 500;
+
+    await expect(app.fetchWorld('sw')).rejects.toThrow('status 500');
+  });
+});
+
 describe('request time limits', () => {
   /** A fetch that never answers the routes matching `route` while `hang` is on; it rejects only when aborted. */
   const stalling = (route: RegExp) => {

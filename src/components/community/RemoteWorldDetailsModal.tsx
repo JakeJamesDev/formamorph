@@ -530,7 +530,11 @@ export function RemoteWorldDetailsModal({
     // A Supporter-only listing has no plain download; the in-app shell gets Install, Patreon or Sign In.
     if (isSupporterOnly(world)) {
       return capabilities.localLibrary && onContextualDownload
-        ? <SupporterListingButton world={world} kind={kindOf(world)} signedIn={isAuthenticated} onSignIn={onGuestLike} variant="details" />
+        ? <SupporterListingButton
+          world={world} kind={kindOf(world)} signedIn={isAuthenticated} onSignIn={onGuestLike} variant="details"
+          downloadState={downloadStateForWorld(world)}
+          onDownload={(target, state) => onContextualDownload(target, state, downloadPlan.plan)}
+        />
         : null;
     }
     // Mirror the contextual card button (none/refresh/update), icon and all.
