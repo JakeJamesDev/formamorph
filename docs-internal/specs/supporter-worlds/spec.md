@@ -47,6 +47,7 @@ Settled in the grill on 2026-11-14. Numbered R so they don't collide with the ba
 | R20 | Ticket 04 owns the allowed-action rule for both targets: a world and a library entry (marker plus `sourceWorldId`), including add-to-world. Ticket 05 wires the library surfaces. |
 | R21 | R14's Supporter badge on a Supporter Copy world card is the Patreon button's heart icon in its gradient colors, with a tooltip. User ruling, 2026-11-14. |
 | R22 | R21's heart is the standard mark for a Patreon item, in place of a lock icon. It marks the item wherever its name shows in a list or picker, whether or not the account has access: a Supporter Copy world card, a Supporter-only Mascot in the Mascot tab, and the Formamorph AI preset. Ticket 04 builds it as one shared component and adds it to the Design System; ticket 08 applies it to the Mascot tab and Formamorph AI. User ruling, 2026-11-14. |
+| R23 | In game, the AI Context export of a Supporter Copy is blocked under R7, since it holds the world's books as text. The story export stays allowed: it is the player's own playthrough. New evidence from ticket 04; user ruling on the story export, 2026-11-14. |
 
 ## User Stories
 
