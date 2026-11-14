@@ -19,6 +19,8 @@ import { placeAll, positionWorld } from '@/lib/positionPlay';
 import { runtimePositions } from '@/lib/entityFollowing';
 import { discoveredAsEntities } from '@/lib/runtimeCharacters';
 import type { Connection, Entity, GameLocation, SaveRecord, WorldOverview } from '@/types';
+import { migrateWorld } from '@/lib/version';
+import { oneRoutine } from '@/test/routines';
 
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
 
@@ -46,7 +48,7 @@ const mount = () => {
   };
 };
 
-const world = JSON.parse(raw) as { entities: Entity[]; locations: GameLocation[]; connections: Connection[] };
+const world = migrateWorld(JSON.parse(raw)) as { entities: Entity[]; locations: GameLocation[]; connections: Connection[] };
 const record = savedRecord as unknown as SaveRecord;
 
 describe('a stored save under Entity Places', () => {
@@ -103,8 +105,8 @@ describe('the opening placement in the save (Q24)', () => {
   const LINKS: Connection[] = [{ id: 'lane', a: 'dock', b: 'inn', aToB: {}, bToA: {} }];
   // Two Starts: the Sample Placement takes the inn, and a roll at the top of the range takes the dock.
   const ferryman: Entity = {
-    id: 'ferryman', name: 'Ferryman', kind: 'unique', traversable: 'anywhere',
-    starts: [{ id: 'at-inn', place: 'inn', weight: 1, schedule: [] }, { id: 'at-dock', place: 'dock', weight: 1, schedule: [] }],
+    id: 'ferryman', name: 'Ferryman', kind: 'unique',
+    routines: oneRoutine([{ id: 'at-inn', place: 'inn', weight: 1, schedule: [] }, { id: 'at-dock', place: 'dock', weight: 1, schedule: [] }], 'anywhere'),
     openings: [{ id: 'ferry-hello', text: 'The ferryman nods.', kind: 'action' }],
   };
   const cast = [ferryman];

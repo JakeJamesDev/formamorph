@@ -6,6 +6,7 @@ import WorldStorageService from '../services/WorldStorageService';
 import { reloadTourProgress, writeTourRecord } from '@/lib/authoringTour/progress';
 import { TOUR_STEPS } from '@/lib/authoringTour/steps';
 import type { Connection, World } from '@/types';
+import { withFirstStarts } from '@/lib/entityKind';
 
 /** After an undo or redo the editor opens the tab of the record that came back and selects it. */
 
@@ -240,7 +241,7 @@ describe('returning to where the edit was made', () => {
   /** The record the open panel holds, read from its Name field. */
   const openRecordName = () => screen.getByRole('textbox', { name: 'Name' }).textContent;
   const residentIn = (ctx: () => { entities: World['entities'] }, ...locations: string[]) =>
-    ({ ...ctx().entities.find((e) => e.id === 'resident')!, starts: locations.map((place) => ({ id: `at-${place}`, place, weight: 1, schedule: [] })) });
+    ({ ...withFirstStarts(ctx().entities.find((e) => e.id === 'resident')!, locations.map((place) => ({ id: `at-${place}`, place, weight: 1, schedule: [] }))) });
 
   it('records the place as it stood at the write when a tab switch commits with it', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');

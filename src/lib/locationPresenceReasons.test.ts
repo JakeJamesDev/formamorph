@@ -3,35 +3,37 @@ import { PLAYER_START, type Connection, type Entity, type GameLocation } from '@
 import { daypartEnd, daypartStart } from '@/lib/routineTime';
 import type { PlacesWorld } from '@/lib/entityPlaces';
 import { presenceLines as linesIn } from './locationPresenceReasons';
+import { startsOf, withFirstTraversable, withFirstStarts } from '@/lib/entityKind';
+import { oneRoutine } from '@/test/routines';
 
 const DAY = { start: daypartStart('morning'), end: daypartEnd('afternoon') };
 const NIGHT = { start: daypartStart('evening'), end: daypartEnd('night') };
 
 const crowd: Entity = {
-  id: 'crowd', name: 'Crowd', kind: 'generic', locations: ['tavern', 'market'], starts: [{ id: 's1', place: 'tavern', weight: 1, schedule: [] }, { id: 's2', place: 'market', weight: 1, schedule: [] }],
+  id: 'crowd', name: 'Crowd', kind: 'generic', locations: ['tavern', 'market'], routines: oneRoutine([{ id: 's1', place: 'tavern', weight: 1, schedule: [] }, { id: 's2', place: 'market', weight: 1, schedule: [] }]),
 };
-const moths: Entity = { id: 'moths', name: 'Moths', kind: 'generic', locations: ['market'], starts: [{ id: 's1', place: 'market', weight: 1, schedule: [] }] };
+const moths: Entity = { id: 'moths', name: 'Moths', kind: 'generic', locations: ['market'], routines: oneRoutine([{ id: 's1', place: 'market', weight: 1, schedule: [] }]) };
 
 /** Begins at the smithy or the tavern (3:1); works the smithy by day, wanders the tavern and the yard at night;
  *  may be led to the cellar. */
 const farrier: Entity = {
-  id: 'farrier', name: 'Farrier', kind: 'unique', traversable: ['cellar'],
+  id: 'farrier', name: 'Farrier', kind: 'unique',
   locations: ['smithy', 'tavern', 'yard', 'cellar'],
-  starts: [
+  routines: oneRoutine([
     { id: 's1', place: 'smithy', weight: 3, schedule: [
       { id: 'day', time: DAY, action: { kind: 'stay', place: 'smithy' } },
       { id: 'night', time: NIGHT, action: { kind: 'wander', places: [{ place: 'tavern', weight: 1 }, { place: 'yard', weight: 1 }], idle: 60 } },
     ] },
     { id: 's2', place: 'tavern', weight: 1, schedule: [] },
-  ],
+  ], ['cellar']),
 };
 
 /** One Start, a patrol of the tavern at all hours, free to go anywhere. */
 const guard: Entity = {
-  id: 'guard', name: 'Guard', kind: 'unique', traversable: 'anywhere', locations: ['gate', 'tavern'],
-  starts: [{ id: 'g1', place: 'gate', weight: 1, schedule: [
+  id: 'guard', name: 'Guard', kind: 'unique', locations: ['gate', 'tavern'],
+  routines: oneRoutine([{ id: 'g1', place: 'gate', weight: 1, schedule: [
     { id: 'round', time: 'allDay', action: { kind: 'patrol', stops: [{ place: 'gate', idle: 30 }, { place: 'tavern', idle: 30 }] } },
-  ] }],
+  ] }], 'anywhere'),
 };
 
 // Every place hangs off the tavern by road, so every row reaches; the island is linked to nothing.
@@ -55,21 +57,21 @@ describe('presenceLines', () => {
 
   it('merges the Starts of a Generic entity beginning here into one begins-here line and one line per distinct row', () => {
     const rows = (id: string) => ({ id, time: DAY, action: { kind: 'stay' as const, place: 'tavern' } });
-    const flock: Entity = { id: 'flock', name: 'Flock', kind: 'generic', starts: [
+    const flock: Entity = { id: 'flock', name: 'Flock', kind: 'generic', routines: oneRoutine([
       { id: 'a', place: 'tavern', weight: 1, schedule: [rows('r1')] }, { id: 'b', place: 'tavern', weight: 3, schedule: [rows('r2')] },
-    ] };
+    ]) };
     expect(presenceLines('tavern', [flock])[0].reasons).toEqual(['begins here', 'stays here (Morning – Afternoon)']);
   });
 
   it('lists a Generic entity that only patrols through the place, with the row’s time and no begins line', () => {
-    const patrol: Entity = { id: 'watch', name: 'Watch', kind: 'generic', starts: [{ id: 'w1', place: 'gate', weight: 1, schedule: [
+    const patrol: Entity = { id: 'watch', name: 'Watch', kind: 'generic', routines: oneRoutine([{ id: 'w1', place: 'gate', weight: 1, schedule: [
       { id: 'p', time: NIGHT, action: { kind: 'patrol', stops: [{ place: 'gate', idle: 30 }, { place: 'tavern', idle: 30 }] } },
-    ] }] };
+    ] }]) };
     expect(presenceLines('tavern', [patrol])[0].reasons).toEqual(['patrols here (Evening – Night)']);
   });
 
   it('gives a Generic entity no can-be-led-here line', () => {
-    const led: Entity = { ...crowd, traversable: ['cellar'] };
+    const led: Entity = withFirstTraversable(crowd, ['cellar']);
     expect(presenceLines('cellar', [led])).toEqual([]);
   });
 
@@ -82,9 +84,9 @@ describe('presenceLines', () => {
   });
 
   it('sums the weights of Starts at the same place and shows each distinct row once', () => {
-    const twin: Entity = { ...farrier, starts: [
-      { ...farrier.starts![0], id: 'a', weight: 1 }, { ...farrier.starts![0], id: 'b', weight: 1 },
-    ] };
+    const twin: Entity = withFirstStarts(farrier, [
+      { ...startsOf(farrier)[0], id: 'a', weight: 1 }, { ...startsOf(farrier)[0], id: 'b', weight: 1 },
+    ]);
     expect(presenceLines('smithy', [twin])[0].reasons).toEqual(['begins here (100%)', 'stays here (Morning – Afternoon)']);
   });
 
@@ -93,7 +95,7 @@ describe('presenceLines', () => {
   });
 
   it('puts every reason of one entity on one line, in the order begins, rows, led', () => {
-    const lines = presenceLines('tavern', [{ ...farrier, traversable: ['tavern'] }]);
+    const lines = presenceLines('tavern', [withFirstTraversable(farrier, ['tavern'])]);
     expect(lines).toHaveLength(1);
     expect(lines[0].reasons).toEqual(['begins here (25%)', 'wanders here (Evening – Night)', 'can be led here']);
   });
@@ -104,10 +106,10 @@ describe('presenceLines', () => {
   });
 
   it('words an All-day row beside timed rows as the rest of the day', () => {
-    const shift: Entity = { ...guard, starts: [{ id: 'g1', place: 'gate', weight: 1, schedule: [
+    const shift: Entity = { ...withFirstStarts(guard, [{ id: 'g1', place: 'gate', weight: 1, schedule: [
       { id: 'day', time: DAY, action: { kind: 'stay', place: 'gate' } },
       { id: 'rest', time: 'allDay', action: { kind: 'patrol', stops: [{ place: 'tavern', idle: 30 }] } },
-    ] }] };
+    ] }]) };
     expect(presenceLines('tavern', [shift])[0].reasons).toEqual(['patrols here (The rest of the day)']);
   });
 
@@ -129,7 +131,7 @@ describe('presenceLines', () => {
   });
 
   describe('an entity that begins at Player’s Starting Location', () => {
-    const follower: Entity = { id: 'follower', name: 'Follower', kind: 'unique', traversable: [], starts: [{ id: 'f1', place: PLAYER_START, weight: 1, schedule: [] }] };
+    const follower: Entity = { id: 'follower', name: 'Follower', kind: 'unique', routines: oneRoutine([{ id: 'f1', place: PLAYER_START, weight: 1, schedule: [] }], []) };
     const flagged = (...ids: string[]): PlacesWorld => ({
       ...WORLD, locations: WORLD.locations.map((l) => (ids.includes(l.id) ? { ...l, isStarting: true } : l)),
     });
@@ -145,7 +147,7 @@ describe('presenceLines', () => {
       for (const place of PLACES) expect(presenceLines(place, [follower])[0]?.reasons, place).toEqual(['begins here']);
     });
 
-    const split: Entity = { ...follower, starts: [follower.starts![0], { id: 'f2', place: 'smithy', weight: 3, schedule: [] }] };
+    const split: Entity = withFirstStarts(follower, [startsOf(follower)[0], { id: 'f2', place: 'smithy', weight: 3, schedule: [] }]);
 
     it('gives the chance of that Start among the others with one starting location', () => {
       expect(presenceLines('market', [split], flagged('market'))[0].reasons).toEqual(['begins here (25%)']);
@@ -162,17 +164,17 @@ describe('presenceLines', () => {
     });
 
     it('keeps every row place of that Start, linked or not', () => {
-      const roamer: Entity = { ...follower, starts: [{ ...follower.starts![0], schedule: [
+      const roamer: Entity = { ...withFirstStarts(follower, [{ ...startsOf(follower)[0], schedule: [
         { id: 'r', time: NIGHT, action: { kind: 'stay', place: 'island' } },
-      ] }] };
+      ] }]) };
       expect(presenceLines('island', [roamer], flagged('market'))[0].reasons).toEqual(['stays here (Evening – Night)']);
     });
   });
 
   it('gives no line for a row place with no path from its Start', () => {
-    const sailor: Entity = { id: 'sailor', name: 'Sailor', kind: 'unique', traversable: [], starts: [{ id: 's', place: 'tavern', weight: 1, schedule: [
+    const sailor: Entity = { id: 'sailor', name: 'Sailor', kind: 'unique', routines: oneRoutine([{ id: 's', place: 'tavern', weight: 1, schedule: [
       { id: 'r', time: NIGHT, action: { kind: 'stay', place: 'island' } },
-    ] }] };
+    ] }], []) };
     expect(presenceLines('island', [sailor])).toEqual([]);
     expect(presenceLines('tavern', [sailor])[0].reasons).toEqual(['begins here']);
   });

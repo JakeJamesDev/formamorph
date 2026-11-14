@@ -7,6 +7,7 @@ import {
   othersNeverDraw, ownerOpeningRows, setOpeningText, setOpeningWeight,
 } from './openings';
 import { AS_LISTED } from '@/test/asListed';
+import { oneRoutine } from '@/test/routines';
 
 /** Mulberry32: a small seeded source, so a draw test is repeatable without mocking a global. */
 const seeded = (seed: number) => () => {
@@ -621,8 +622,8 @@ describe('the editor view', () => {
       schedule: rowPlace ? [{ id: `${id}-r`, time: 'allDay' as const, action: { kind: 'stay' as const, place: rowPlace } }] : [],
     });
     // Its stored list holds the row place, as the derived list does.
-    const visitor = ent('visitor', ['cave', 'dock'], [action('v1')], { kind: 'unique', traversable: [], starts: [start('v', 'cave', 'dock')] });
-    const urchin = ent('urchin', undefined, [action('u1')], { kind: 'unique', traversable: [], starts: [start('u', PLAYER_START)] });
+    const visitor = ent('visitor', ['cave', 'dock'], [action('v1')], { kind: 'unique', routines: oneRoutine([start('v', 'cave', 'dock')], []) });
+    const urchin = ent('urchin', undefined, [action('u1')], { kind: 'unique', routines: oneRoutine([start('u', PLAYER_START)], []) });
     const v = view({ overview: overview({ openings: [action('w1')] }), entities: [visitor, urchin], locations: [loc('dock', true), loc('cave')] });
 
     it('leaves out a Unique entity whose only tie to the start is a Schedule row', () => {

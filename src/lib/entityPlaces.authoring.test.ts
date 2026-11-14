@@ -12,6 +12,8 @@ import { idsAt, samplePlacement } from '@/lib/entityPlaces';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { buildAiContext } from '@/lib/testBench/aiContext';
 import { buildLens } from '@/lib/testBench/lens';
+import { migrateWorld } from '@/lib/version';
+import { oneRoutine } from '@/test/routines';
 
 /**
  * Authoring reads the Sample Placement: the script hover card and a script run with no live positions place each
@@ -27,11 +29,11 @@ const row = (id: string, place: string): ScheduleRow => ({ id, time: { start: 60
 // The cast as a world stores it: the list derived from each routine rides along.
 const CAST: Entity[] = ([
   // Begins in the bakery; a late-morning row names the docks, which its stored list holds.
-  { id: 'baker', name: 'Baker', kind: 'unique', traversable: [], starts: [
+  { id: 'baker', name: 'Baker', kind: 'unique', routines: oneRoutine([
     { id: 'b1', place: 'bakery', weight: 1, schedule: [row('b1-am', 'docks')] },
-  ] },
+  ], []) },
   // Begins wherever the player does, which its stored list leaves out.
-  { id: 'urchin', name: 'Urchin', kind: 'unique', traversable: [], starts: [{ id: 'u1', place: PLAYER_START, weight: 1, schedule: [] }] },
+  { id: 'urchin', name: 'Urchin', kind: 'unique', routines: oneRoutine([{ id: 'u1', place: PLAYER_START, weight: 1, schedule: [] }], []) },
   // No kind: it belongs where it lists.
   { id: 'gull', name: 'Gull', locations: ['docks'] },
 ] satisfies Entity[]);
@@ -70,10 +72,10 @@ describe('the script hover card reads the Sample Placement', () => {
 describe('an entity the opening cannot place has no Sample Placement (Q26)', () => {
   // Every Start is at Player's Starting Location, and a row names the docks; the sample has no player start.
   const stray: Entity = {
-    id: 'stray', name: 'Stray', kind: 'unique', traversable: [],
-    starts: [{ id: 's1', place: PLAYER_START, weight: 1, schedule: [row('s1-am', 'docks')] }],
+    id: 'stray', name: 'Stray', kind: 'unique',
+    routines: oneRoutine([{ id: 's1', place: PLAYER_START, weight: 1, schedule: [row('s1-am', 'docks')] }], []),
   };
-  const noStarts: Entity = { id: 'ghost', name: 'Ghost', kind: 'unique', traversable: [], starts: [] };
+  const noStarts: Entity = { id: 'ghost', name: 'Ghost', kind: 'unique', routines: oneRoutine([], []) };
 
   it('places the stray nowhere, now that it stores no list', () => {
     expect(idsAt('docks', [stray], samplePlacement([stray], { locations: LOCATIONS, connections: CONNECTIONS }, undefined))).toEqual([]);
@@ -88,7 +90,7 @@ describe('an entity the opening cannot place has no Sample Placement (Q26)', () 
 
 // The comparison reads the Sample Placement at each location.
 const bundled = Object.entries(import.meta.glob<World>('@/defaultworlds/*.json', { import: 'default', eager: true }))
-  .map(([path, world]) => [path.replace(/^.*\/(.+)\.json$/, '$1'), world] as const);
+  .map(([path, world]) => [path.replace(/^.*\/(.+)\.json$/, '$1'), migrateWorld(structuredClone(world))] as const);
 
 describe.each(bundled)('the bundled world %s keeps its authoring cast', (_name, world) => {
   const locations = world.locations ?? [];

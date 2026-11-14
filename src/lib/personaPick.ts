@@ -2,6 +2,7 @@ import { createKeyedRecordStore, createStoredString } from './keyedStorage';
 import { customPersonaEntity } from './blueprints';
 import { startPlacesOf } from './entityPlaces';
 import { PLAYER_START, type AllowedPersonas, type Entity, type GameLocation, type PersonaRef, type StartPersona, type WorldOverview } from '@/types';
+import { startsOf, withFirstStarts } from '@/lib/entityKind';
 
 /** Every Allowed Personas value, in the order the World Editor shows them. */
 export const ALLOWED_PERSONAS: readonly AllowedPersonas[] = ['any', 'world'];
@@ -97,7 +98,7 @@ export function preselectPersona({ rules, remembered, globalDefault, available }
 
 /** The persona's Start places the world still has, in Start order, leaving out Player's Starting Location (Q28). */
 const namedStartPlaces = (entity: Entity, locations: readonly GameLocation[]): string[] => {
-  const named = { ...entity, starts: entity.starts?.filter((start) => start.place !== PLAYER_START) };
+  const named = withFirstStarts(entity, startsOf(entity).filter((start) => start.place !== PLAYER_START));
   return startPlacesOf(named, { locations }).filter((id) => locations.some((l) => l.id === id));
 };
 

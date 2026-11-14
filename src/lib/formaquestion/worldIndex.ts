@@ -7,7 +7,7 @@ import { worthText } from '@/lib/currency';
 import { createDocsIndex, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
 import { presenceOf, type PlacesWorld } from '@/lib/entityPlaces';
 import { PANEL_TRAVEL_LABELS, travelLabelText } from '@/components/editor/connectionTravel';
-import { isGeneric, isUnique, traversableOf } from '@/lib/entityKind';
+import { isGeneric, isUnique, traversableOf, startsOf } from '@/lib/entityKind';
 import { WHEN_EMPTY_LABEL, stateWord, whenEmptyOf } from '@/lib/items';
 import { isFar, isTwoWay } from '@/lib/locationGraph';
 import { presenceLines, timeText } from '@/lib/locationPresenceReasons';
@@ -154,7 +154,7 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
       : action.kind === 'wander' ? `wanders ${action.places.map((p) => placeName(p.place)).join(', ')}`
         : `patrols ${action.stops.map((s) => placeName(s.place)).join(', ')}`;
   const startsBlock = (entity: Entity): string | undefined => {
-    const starts = entity.starts ?? [];
+    const starts = startsOf(entity);
     if (!starts.length) return undefined;
     const unique = isUnique(entity);
     const items = starts.map((start) => {

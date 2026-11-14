@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { pickMarks, togglePick } from "./entityPicking";
 import { PLAYER_START, type Connection, type Entity, type EntityStart, type GameLocation } from "@/types";
+import { startsOf, withFirstTraversable } from "@/lib/entityKind";
+import { oneRoutine } from "@/test/routines";
 
 // rosewood > { keep > throne, inn } ; harbor and watchtower are top-level.
 const rosewood: GameLocation = { id: "rosewood", name: "Rosewood" };
@@ -60,7 +62,7 @@ describe("pickMarks under Nearby", () => {
   const start = (place: string, schedule: EntityStart["schedule"] = []): EntityStart => ({ id: place, place, weight: 1, schedule });
 
   it("marks where a staying entity begins and lightly marks each place one Nearby link from it", () => {
-    const guard: Entity = { id: "guard", name: "Guard", kind: "unique", locations: ["watchtower"], starts: [start("inn")] };
+    const guard: Entity = { id: "guard", name: "Guard", kind: "unique", locations: ["watchtower"], routines: oneRoutine([start("inn")]) };
     expect(kinds(guard)).toEqual({
       inn: "routine", rosewood: "nearby", keep: "nearby", harbor: "nearby",
       throne: "faded", watchtower: "faded", island: "faded", cove: "faded",
@@ -72,55 +74,55 @@ describe("pickMarks under Nearby", () => {
       { id: "r1", time: { start: 0, end: 600 }, action: { kind: "wander", places: [{ place: "throne", weight: 1 }, { place: "inn", weight: 1 }], idle: 30 } },
       { id: "r2", time: "allDay", action: { kind: "stay", place: "harbor" } },
     ];
-    const marks = kinds({ id: "bard", name: "Bard", kind: "unique", starts: [start("keep", rows)] });
+    const marks = kinds({ id: "bard", name: "Bard", kind: "unique", routines: oneRoutine([start("keep", rows)]) });
     expect(marks).toMatchObject({ keep: "routine", throne: "routine", inn: "routine", harbor: "routine", rosewood: "nearby" });
     expect(marks.watchtower).toBe("faded");
   });
 
   it("skips a row place the Start cannot reach, as the engine does", () => {
     const rows: EntityStart["schedule"] = [{ id: "r", time: "allDay", action: { kind: "stay", place: "island" } }];
-    expect(kinds({ id: "x", name: "X", kind: "unique", starts: [start("inn", rows)] }).island).toBe("faded");
+    expect(kinds({ id: "x", name: "X", kind: "unique", routines: oneRoutine([start("inn", rows)]) }).island).toBe("faded");
   });
 
   it("marks every Start of a Generic entity", () => {
-    const herd: Entity = { id: "herd", name: "Herd", kind: "generic", starts: [start("throne"), start("cove")] };
+    const herd: Entity = { id: "herd", name: "Herd", kind: "generic", routines: oneRoutine([start("throne"), start("cove")]) };
     expect(kinds(herd)).toMatchObject({ throne: "routine", cove: "routine", keep: "nearby", inn: "faded" });
   });
 
   it("stands Player's Starting Location for the world's starting locations, or every location with none", () => {
-    const follower: Entity = { id: "f", name: "F", kind: "unique", starts: [start(PLAYER_START)] };
+    const follower: Entity = { id: "f", name: "F", kind: "unique", routines: oneRoutine([start(PLAYER_START)]) };
     const flagged = map.map((l) => (l.id === "harbor" ? { ...l, isStarting: true } : l));
     expect(kinds(follower, flagged)).toMatchObject({ harbor: "routine", inn: "nearby", watchtower: "faded", cove: "faded" });
     expect(new Set(Object.values(kinds(follower)))).toEqual(new Set(["routine"]));
   });
 
   it("gives no mark across a Far Connection", () => {
-    const keeper: Entity = { id: "k", name: "K", kind: "unique", starts: [start("harbor")] };
+    const keeper: Entity = { id: "k", name: "K", kind: "unique", routines: oneRoutine([start("harbor")]) };
     expect(kinds(keeper)).toMatchObject({ harbor: "routine", inn: "nearby", watchtower: "faded" });
   });
 
   it("gives no mark to a child joined to its parent by a Far Connection", () => {
     const farKeep: Connection[] = [{ id: "stair", a: "keep", b: "throne", aToB: {}, bToA: {}, distance: "far" }];
-    const steward: Entity = { id: "s", name: "S", kind: "unique", starts: [start("keep")] };
+    const steward: Entity = { id: "s", name: "S", kind: "unique", routines: oneRoutine([start("keep")]) };
     expect(kinds(steward, map, farKeep)).toMatchObject({ keep: "routine", rosewood: "nearby", inn: "nearby", throne: "faded" });
   });
 
   it("draws Picked Locations while that choice has no pick yet, from the routine, not the stored list", () => {
-    const keeper: Entity = { id: "k", name: "K", kind: "unique", locations: ["cove"], starts: [start("harbor")] };
+    const keeper: Entity = { id: "k", name: "K", kind: "unique", locations: ["cove"], routines: oneRoutine([start("harbor")]) };
     const marks = pickMarks(keeper, map, roads, true);
     expect(marks.get("harbor")).toEqual({ kind: "member", pick: false });
     expect(marks.get("cove")).toEqual({ kind: "faded", pick: false });
   });
 
   it("marks a Can Also Go place, and nothing extra for Anywhere", () => {
-    const scout: Entity = { id: "s", name: "S", kind: "unique", traversable: ["island"], starts: [start("harbor")] };
+    const scout: Entity = { id: "s", name: "S", kind: "unique", routines: oneRoutine([start("harbor")], ["island"]) };
     expect(kinds(scout).island).toBe("routine");
-    const free = kinds({ ...scout, traversable: "anywhere" });
+    const free = kinds(withFirstTraversable(scout, "anywhere"));
     expect(Object.keys(free).filter((id) => free[id] === "routine")).toEqual(["harbor"]);
   });
 
   it("does not draw the entity's old locations", () => {
-    const marks = kinds({ id: "q", name: "Q", kind: "unique", locations: ["cove"], starts: [start("harbor")] });
+    const marks = kinds({ id: "q", name: "Q", kind: "unique", locations: ["cove"], routines: oneRoutine([start("harbor")]) });
     expect(marks.cove).toBe("faded");
   });
 });
@@ -134,16 +136,16 @@ describe("pickMarks under Known In picks", () => {
   const start = (place: string, schedule: EntityStart["schedule"] = []): EntityStart => ({ id: place, place, weight: 1, schedule });
 
   it("marks the starting locations for Player's Starting Location, or every location with none flagged", () => {
-    const follower: Entity = { id: "f", name: "F", kind: "unique", starts: [start(PLAYER_START)] };
+    const follower: Entity = { id: "f", name: "F", kind: "unique", routines: oneRoutine([start(PLAYER_START)]) };
     const flagged = map.map((l) => (l.id === "harbor" ? { ...l, isStarting: true } : l));
     expect(members(follower, flagged)).toEqual(["harbor"]);
     expect(members(follower)).toEqual(map.map((l) => l.id));
   });
 
   it("marks a Can Also Go place, and nothing extra for Anywhere", () => {
-    const scout: Entity = { id: "s", name: "S", kind: "unique", traversable: ["island"], starts: [start("harbor")] };
+    const scout: Entity = { id: "s", name: "S", kind: "unique", routines: oneRoutine([start("harbor")], ["island"]) };
     expect(members(scout)).toEqual(["harbor", "island"]);
-    expect(members({ ...scout, traversable: "anywhere" })).toEqual(["harbor"]);
+    expect(members(withFirstTraversable(scout, "anywhere"))).toEqual(["harbor"]);
   });
 
   it("skips a row place the Start cannot reach, as Nearby does", () => {
@@ -151,38 +153,38 @@ describe("pickMarks under Known In picks", () => {
       { id: "a", time: "allDay", action: { kind: "stay", place: "island" } },
       { id: "b", time: { start: 0, end: 600 }, action: { kind: "stay", place: "harbor" } },
     ];
-    expect(members({ id: "x", name: "X", kind: "unique", starts: [start("inn", rows)] })).toEqual(["inn", "harbor"]);
+    expect(members({ id: "x", name: "X", kind: "unique", routines: oneRoutine([start("inn", rows)]) })).toEqual(["inn", "harbor"]);
   });
 });
 
 describe("togglePick", () => {
   const captain: Entity = {
-    id: "captain", name: "Captain", kind: "generic", starts: [{ id: "c1", place: "keep", weight: 1, schedule: [] }],
+    id: "captain", name: "Captain", kind: "generic", routines: oneRoutine([{ id: "c1", place: "keep", weight: 1, schedule: [] }]),
   };
   const customPersona: Entity = { id: "me", name: "Me", customPersona: true, locations: ["keep"] };
   const scout: Entity = {
     id: "scout", name: "Scout", kind: "unique",
-    starts: [{ id: "s1", place: "keep", weight: 1, schedule: [] }, { id: "s2", place: "inn", weight: 2, schedule: [] }],
+    routines: oneRoutine([{ id: "s1", place: "keep", weight: 1, schedule: [] }, { id: "s2", place: "inn", weight: 2, schedule: [] }]),
   };
 
   it("moves a Unique entity's first Start to the clicked location in Locations mode, keeping the others", () => {
     const moved = togglePick(scout, "locations", "watchtower");
-    expect(moved.starts?.map((s) => [s.id, s.place, s.weight])).toEqual([["s1", "watchtower", 1], ["s2", "inn", 2]]);
+    expect(startsOf(moved).map((s) => [s.id, s.place, s.weight])).toEqual([["s1", "watchtower", 1], ["s2", "inn", 2]]);
     expect(moved).not.toHaveProperty("locations");
   });
 
   it("gives a Unique entity with no Start its first one at the clicked location", () => {
-    const placed = togglePick({ id: "new", name: "New", kind: "unique", traversable: "anywhere" }, "locations", "harbor");
-    expect(placed.starts).toEqual([expect.objectContaining({ place: "harbor", weight: 1, schedule: [] })]);
+    const placed = togglePick({ id: "new", name: "New", kind: "unique", routines: oneRoutine([], "anywhere") }, "locations", "harbor");
+    expect(startsOf(placed)).toEqual([expect.objectContaining({ place: "harbor", weight: 1, schedule: [] })]);
     expect(placed).not.toHaveProperty("locations");
   });
 
   it("adds a Generic entity's Start in Locations mode, and removes it on the next click", () => {
     const added = togglePick(captain, "locations", "watchtower");
-    expect(added.starts?.map((s) => [s.place, s.schedule])).toEqual([["keep", []], ["watchtower", []]]);
+    expect(startsOf(added).map((s) => [s.place, s.schedule])).toEqual([["keep", []], ["watchtower", []]]);
     expect(added).not.toHaveProperty("locations");
     const removed = togglePick(added, "locations", "watchtower");
-    expect(removed.starts?.map((s) => s.id)).toEqual(["c1"]);
+    expect(startsOf(removed).map((s) => s.id)).toEqual(["c1"]);
     expect(removed).not.toHaveProperty("locations");
   });
 
@@ -204,7 +206,7 @@ describe("togglePick", () => {
     expect(togglePick(captain, "knownIn", "rosewood").knownIn).toEqual(["rosewood"]);
     expect(togglePick({ ...captain, knownIn: "nowhere" }, "knownIn", "harbor").knownIn).toEqual(["harbor"]);
     expect(togglePick({ ...captain, knownIn: ["rosewood"] }, "knownIn", "harbor").knownIn).toEqual(["rosewood", "harbor"]);
-    expect(togglePick(captain, "knownIn", "rosewood").starts).toBe(captain.starts);
+    expect(startsOf(togglePick(captain, "knownIn", "rosewood"))).toBe(startsOf(captain));
   });
 
   it("falls back to Nearby when the last pick is removed", () => {

@@ -8,6 +8,7 @@ import {
 import { scriptWorldTool } from '@/test/worldToolFixtures';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { PLAYER_START, type Entity, type GameLocation, type PlayerStat, type SaveRecord, type World } from '@/types';
+import { oneRoutine } from '@/test/routines';
 
 /** What a script reads of the cast at each moment of a turn, on a mounted game (Q218, Q220, Q232, Q234). */
 
@@ -27,20 +28,20 @@ const flag = (id: string): PlayerStat => ({ id, name: id, type: 'number', descri
 /** Cora stays in her hut, and wanders to the well from 10:00 to 14:00. */
 const cora = {
   id: 'cora', name: 'Cora', kind: 'unique', locations: ['hut'],
-  starts: [{ id: 'home', place: 'hut', weight: 1, schedule: [
+  routines: oneRoutine([{ id: 'home', place: 'hut', weight: 1, schedule: [
     { id: 'home', time: 'allDay', action: { kind: 'stay', place: 'hut' } },
     { id: 'midday', time: { start: 10 * 60, end: 14 * 60 }, action: { kind: 'wander', places: [{ place: 'well', weight: 1 }], idle: 600 } },
-  ] }],
+  ] }]),
 } as unknown as Entity;
 /** Dan stays in the hut; the well is a place he may go. */
 const dan = {
-  id: 'dan', name: 'Dan', kind: 'unique', locations: ['hut'], traversable: ['well'],
-  starts: [{ id: 'home', place: 'hut', weight: 1, schedule: [{ id: 'home', time: 'allDay', action: { kind: 'stay', place: 'hut' } }] }],
+  id: 'dan', name: 'Dan', kind: 'unique', locations: ['hut'],
+  routines: oneRoutine([{ id: 'home', place: 'hut', weight: 1, schedule: [{ id: 'home', time: 'allDay', action: { kind: 'stay', place: 'hut' } }] }], ['well']),
 } as unknown as Entity;
 /** Pip begins the story following the player. */
 const pip = {
   id: 'pip', name: 'Pip', kind: 'unique', locations: [],
-  starts: [{ id: 'beside', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }],
+  routines: oneRoutine([{ id: 'beside', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }]),
 } as unknown as Entity;
 
 /** A script that records each read as a stat: 1 for true, 0 for false. Only on turn `turnNo` when given. */

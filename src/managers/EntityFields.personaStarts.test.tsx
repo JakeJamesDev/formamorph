@@ -7,6 +7,8 @@ import { useEditingDraft } from '@/lib/useEditingDraft';
 import { panelWorld, renderPanelBench } from '@/test/panelBench';
 import { PLAYER_START, type Entity, type EntityStart, type GameLocation } from '@/types';
 import { EntityPersonaField } from './EntityFields';
+import { startsOf } from '@/lib/entityKind';
+import { oneRoutine } from '@/test/routines';
 
 const LOCATIONS = ['inn', 'mill', 'keep'].map((id) => ({ id, name: id })) as GameLocation[];
 
@@ -34,8 +36,8 @@ const mount = (entity: Partial<Entity>) => {
 const switchTo = async (role: string) => { await userEvent.click(screen.getByRole('radio', { name: role })); };
 
 const playable: Partial<Entity> = {
-  persona: true, kind: 'unique', traversable: ['mill'], onMap: 'never', knownIn: ['keep'],
-  starts: [start('s1', 'inn', { schedule: [row] }), start('s2', PLAYER_START), start('s3', 'mill'), start('s4', 'inn')],
+  persona: true, kind: 'unique', onMap: 'never', knownIn: ['keep'],
+  routines: oneRoutine([start('s1', 'inn', { schedule: [row] }), start('s2', PLAYER_START), start('s3', 'mill'), start('s4', 'inn')], ['mill']),
 };
 
 describe('a role switch converts the start places', () => {
@@ -45,7 +47,7 @@ describe('a role switch converts the start places', () => {
     const e = stored();
     expect(e.locations).toEqual(['inn', 'mill']);
     expect(e).toMatchObject({ persona: true, personaOnly: true });
-    for (const gone of ['kind', 'starts', 'traversable', 'onMap', 'knownIn'] as const) expect(e[gone]).toBeUndefined();
+    for (const gone of ['kind', 'routines', 'onMap', 'knownIn'] as const) expect(e[gone]).toBeUndefined();
   });
 
   it('turns the list of a Persona-Only entity into one Unique Start per place, with empty Schedules', async () => {
@@ -53,21 +55,21 @@ describe('a role switch converts the start places', () => {
     await switchTo('Playable');
     const e = stored();
     expect(e.kind).toBe('unique');
-    expect(e.starts?.map((s) => [s.place, s.weight, s.schedule])).toEqual([['mill', 1, []], ['inn', 1, []]]);
-    expect(new Set(e.starts?.map((s) => s.id)).size).toBe(2);
+    expect(startsOf(e).map((s) => [s.place, s.weight, s.schedule])).toEqual([['mill', 1, []], ['inn', 1, []]]);
+    expect(new Set(startsOf(e).map((s) => s.id)).size).toBe(2);
     expect(e.locations).toBeUndefined();
     expect(e.personaOnly).toBeUndefined();
   });
 
   it('converts a Generic Cast entity to the Custom Persona list and back', async () => {
-    const generic = { kind: 'generic', starts: [start('g1', 'keep'), start('g2', 'inn')] } as Partial<Entity>;
+    const generic = { kind: 'generic', routines: oneRoutine([start('g1', 'keep'), start('g2', 'inn')]) } as Partial<Entity>;
     const { stored } = mount(generic);
     await switchTo('Custom Persona');
     expect(stored().locations).toEqual(['keep', 'inn']);
-    expect(stored().starts).toBeUndefined();
+    expect(stored().routines).toBeUndefined();
     await switchTo('Cast');
     expect(stored().kind).toBe('unique');
-    expect(stored().starts?.map((s) => s.place)).toEqual(['keep', 'inn']);
+    expect(startsOf(stored()).map((s) => s.place)).toEqual(['keep', 'inn']);
     expect(stored().locations).toBeUndefined();
     expect(stored().customPersona).toBeUndefined();
   });
@@ -75,7 +77,7 @@ describe('a role switch converts the start places', () => {
   it('keeps the Starts when the role stays Cast or Playable', async () => {
     const { stored } = mount(playable);
     await switchTo('Cast');
-    expect(stored().starts).toHaveLength(4);
+    expect(startsOf(stored())).toHaveLength(4);
     expect(stored().locations).toBeUndefined();
     expect(stored().onMap).toBe('never');
   });
@@ -91,7 +93,7 @@ describe('a role switch converts the start places', () => {
     const bench = mount(playable);
     const before = bench.stored();
     await switchTo('Persona-Only');
-    expect(bench.stored().starts).toBeUndefined();
+    expect(bench.stored().routines).toBeUndefined();
     await act(async () => { bench.history().undo(); });
     expect(bench.stored()).toEqual(before);
   });

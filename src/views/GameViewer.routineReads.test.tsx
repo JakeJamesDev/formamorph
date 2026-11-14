@@ -5,6 +5,7 @@ import { sseResponse, sseReply } from '@/test/aiTextFixtures';
 import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
 import { runTestCode, statCodeNames, statHomeNamed } from '@/lib/statCodeTestRun';
 import type { Connection, Entity, GameLocation, PlayerStat, World } from '@/types';
+import { oneRoutine } from '@/test/routines';
 
 /** The four routine reads on the opening turn of a mounted game equal what Test Code reads on the same world. */
 
@@ -42,16 +43,16 @@ const connections: Connection[] = [
 ];
 const entities: Entity[] = [
   {
-    id: 'tess', name: 'Tess', kind: 'unique', locations: ['harbor', 'inn'], knownIn: 'nowhere', traversable: [],
-    starts: [{ id: 's-tess', place: 'harbor', weight: 1, schedule: [{
+    id: 'tess', name: 'Tess', kind: 'unique', locations: ['harbor', 'inn'], knownIn: 'nowhere',
+    routines: oneRoutine([{ id: 's-tess', place: 'harbor', weight: 1, schedule: [{
       id: 'w', time: 'allDay', action: { kind: 'wander', places: [{ place: 'harbor', weight: 1 }, { place: 'inn', weight: 1 }], idle: 30 },
-    }] }],
+    }] }], []),
   },
   {
-    id: 'bram', name: 'Bram', kind: 'unique', locations: ['harbor'], knownIn: ['inn'], traversable: [],
-    starts: [{ id: 's-bram', place: 'harbor', weight: 1, schedule: [{ id: 'st', time: 'allDay', action: { kind: 'stay', place: 'harbor' } }] }],
+    id: 'bram', name: 'Bram', kind: 'unique', locations: ['harbor'], knownIn: ['inn'],
+    routines: oneRoutine([{ id: 's-bram', place: 'harbor', weight: 1, schedule: [{ id: 'st', time: 'allDay', action: { kind: 'stay', place: 'harbor' } }] }], []),
   },
-  { id: 'moths', name: 'Moths', kind: 'generic', locations: ['inn'], starts: [{ id: 's-moths', place: 'inn', weight: 1, schedule: [] }] },
+  { id: 'moths', name: 'Moths', kind: 'generic', locations: ['inn'], routines: oneRoutine([{ id: 's-moths', place: 'inn', weight: 1, schedule: [] }]) },
   { id: 'plain', name: 'Plain' },
 ];
 

@@ -8,6 +8,7 @@ import {
 import { reloadTourProgress } from '@/lib/authoringTour/progress';
 import type { World } from '@/types';
 import { boxScripts, codeAt } from '@/test/scriptFixtures';
+import { oneRoutine } from '@/test/routines';
 
 /** An edit made through a mirror returns the author to the tab and record they made it on. */
 
@@ -43,7 +44,7 @@ const WORLD: World = benchEditorWorld({
   entities: [
     {
       id: 'resident', name: 'Odd Wick', playerDescription: 'The lamp-keeper.', aiDescription: 'Keeps the lamps.', locations: ['harbor'], kind: 'generic',
-      starts: [{ id: 's1', place: 'harbor', weight: 1, schedule: [] }],
+      routines: oneRoutine([{ id: 's1', place: 'harbor', weight: 1, schedule: [] }]),
       openings: [{ id: 'o-lamp', text: 'Wick trims a lamp.', kind: 'narration' }],
     },
     {

@@ -1,4 +1,4 @@
-import { isGeneric, isUnique } from '@/lib/entityKind';
+import { isGeneric, isUnique, startsOf } from '@/lib/entityKind';
 import { presenceOf, type PlacesWorld } from '@/lib/entityPlaces';
 import { startingLocationIds } from '@/lib/locationGraph';
 import { chancePercent, rangeText } from '@/lib/routineTime';
@@ -20,7 +20,7 @@ export function timeText(row: ScheduleRow, schedule: readonly ScheduleRow[]): st
 
 /** The Presence reasons of `entity` at `locationId` in words. A Generic entity has no chance and no led-to line. */
 function reasonTexts(entity: Entity, locationId: string, world: PlacesWorld): string[] {
-  const starts = entity.starts ?? [];
+  const starts = startsOf(entity);
   // A Player's Starting Location Start is certain here only when it stands for one place.
   const playerStartCertain = startingLocationIds(world.locations).length === 1;
   const texts: string[] = [];

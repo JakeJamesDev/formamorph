@@ -1,7 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
   World, SaveObject, Stat, StatGroup, GameState, Trait, TraitGroup, Entity, PlayerStat, Connection, ConnectionLeg, GameLocation, Placeholder, PlaceholderValue,
-  Opening, TraitRequirement, EntityStart, ScheduleRow,
+  Opening, TraitRequirement, EntityStart, ScheduleRow, Traversable,
 } from '@/types';
 import { PLAYER_START } from '@/types';
 import { holdsStartList } from './customPersona';
@@ -22,6 +22,7 @@ import { migrateStatBoxes, migrateStatLinkBoxes, type OriginalOf } from './scrip
 import { allPlaceholders, placeholderOwners, type PlaceholderHomesWorld } from './placeholderHomes';
 import { blueprintItemIds, offeredWorldTraits } from './traitTree';
 import { mergeDuplicateStatLinks, mergeStatBlueprintsGroups, statBlueprintIds } from './statLinks';
+import { firstRoutine } from './entityKind';
 
 /** Current app version, derived from package.json (see vite.config.js `define`). User-managed. */
 export const APP_VERSION = __APP_VERSION__;
@@ -698,8 +699,20 @@ const allDayWander = (id: string, places: string[]): ScheduleRow => ({
   id, time: 'allDay', action: { kind: 'wander', places: places.map((place) => ({ place, weight: 1 })), idle: MIGRATED_IDLE_MINUTES },
 });
 
+/** An entity in the 3.7.0 shape: Starts and Traversable on the entity, before Routines. */
+type FlatRoutineEntity = Entity & { starts?: EntityStart[]; traversable?: Traversable };
+
+/** `entity` with one ungated Routine holding its flat Starts and Traversable (Routines Q10). An entity with a kind and
+ *  no Routines gets one, empty when it has no Starts (Q28). Idempotent; an entity with no kind passes through. */
+function withFlatRoutine(entity: FlatRoutineEntity): Entity {
+  if (!entity.kind) return entity;
+  const { starts, traversable, ...rest } = entity;
+  if (rest.routines?.length) return 'starts' in entity || 'traversable' in entity ? rest : entity;
+  return { ...rest, routines: [firstRoutine(Array.isArray(starts) ? starts : [], traversable)] };
+}
+
 /** The kind, Starts and Traversable of a released entity with several locations and no presence (Q143, Q144, Q146). */
-function migrateSeveralLocations(entity: Entity, places: string[], movement: unknown, world: RoutineMigrationWorld): Entity {
+function migrateSeveralLocations(entity: Entity, places: string[], movement: unknown, world: RoutineMigrationWorld): FlatRoutineEntity {
   const listed = new Set(places);
   if (world.locationIds.length > 1 && world.locationIds.every((id) => listed.has(id))) {
     const starts: EntityStart[] = [{ id: 'start-1', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }];
@@ -716,9 +729,10 @@ function migrateSeveralLocations(entity: Entity, places: string[], movement: unk
 
 /**
  * One entity's shipped `presence` and `movement` mapped to a kind, Starts and Traversable (NPC Schedules
- * migration table), read from its membership. An entity with a kind leaves without a stored list, whether it just got
- * its kind or already had one (Q32). Idempotent: an entity without the old fields keeps its kind. Without `world`, as
- * for a library entity, several locations always give the Wander.
+ * migration table), read from its membership, then its Starts and Traversable moved into one ungated Routine. An
+ * entity with a kind leaves without a stored list, whether it just got its kind or already had one (Q32). Idempotent:
+ * an entity without the old fields keeps its kind. Without `world`, as for a library entity, several locations always
+ * give the Wander.
  */
 export function migrateEntityRoutine<T>(raw: T, world?: RoutineMigrationWorld): T {
   if (!raw || typeof raw !== 'object') return raw;
@@ -727,19 +741,19 @@ export function migrateEntityRoutine<T>(raw: T, world?: RoutineMigrationWorld): 
   const legacy = presence !== undefined || movement !== undefined;
   // `raw` is any record a file holds; only its entity fields are read here.
   const kept = legacy ? entity : raw as unknown as Entity;
-  if (entity.kind) return withoutMembership(kept) as T;
+  if (entity.kind) return withFlatRoutine(withoutMembership(kept)) as T;
   const places = namedPlacesOf(entity);
   // A Persona-Only and a Custom Persona entity keep their list: they hold no kind or Starts.
   if (holdsStartList(entity) || !places.length) return kept as T;
   if (presence !== 'random' && places.length > 1) {
-    return withoutMembership(migrateSeveralLocations(entity, places, movement, world ?? { locationIds: [], usesPeopleFields: false })) as T;
+    return withFlatRoutine(withoutMembership(migrateSeveralLocations(entity, places, movement, world ?? { locationIds: [], usesPeopleFields: false }))) as T;
   }
   const startPlaces = presence === 'random' ? places : places.slice(0, 1);
   const schedule = (n: number): ScheduleRow[] => (movement === 'between' ? [allDayWander(`row-${n}`, places)] : []);
   const starts: EntityStart[] = startPlaces.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule: schedule(i + 1) }));
-  return withoutMembership({
+  return withFlatRoutine(withoutMembership<FlatRoutineEntity>({
     ...entity, kind: 'unique', starts, ...(movement === 'follow' && { traversable: 'anywhere' as const }),
-  }) as T;
+  })) as T;
 }
 
 function migrateEntityRoutines(world: Record<string, unknown>): void {

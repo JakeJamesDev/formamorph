@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Connection, Entity, EntityStart, GameLocation, UniqueStates } from '@/types';
+import type { Connection, Entity, EntityStart, GameLocation, Traversable, UniqueStates } from '@/types';
 import {
   applyEntityCodeWrites, chainEntityWrites, entityMoveIntents, entityMoveLabel, entityMoveOffers, entityMoveOptions, entityMoveSubjects, followersOf,
   joinEntityMoves, movedPositions, NO_ENTITY_MOVES, type FollowerState,
@@ -9,6 +9,8 @@ import { castRoutines } from './entityKind';
 import { storyMinute } from './gameClock';
 import { positionWorld } from './positionPlay';
 import type { EntityCodeWrite } from './statCodeExecutor';
+import { startsOf } from '@/lib/entityKind';
+import { oneRoutine } from '@/test/routines';
 
 // harbor > { inn, square, keep } ; a quay off the square through a one-way Connection ; the gate is top-level.
 const place = (id: string, parentId?: string): GameLocation => ({ id, name: id, ...(parentId && { parentId }) });
@@ -17,8 +19,8 @@ const QUAY: Connection = { id: 'quay', a: 'square', b: 'quay', aToB: {} };
 const NOON = storyMinute(4); // 12:00
 
 const start = (place: string, schedule: EntityStart['schedule'] = []): EntityStart => ({ id: `at-${place}`, place, weight: 1, schedule });
-const unique = (id: string, starts: EntityStart[], traversable: Entity['traversable'] = []): Entity =>
-  ({ id, name: id, kind: 'unique', starts, traversable, locations: [...new Set(starts.map((s) => s.place))] });
+const unique = (id: string, starts: EntityStart[], traversable: Traversable = []): Entity =>
+  ({ id, name: id, kind: 'unique', routines: oneRoutine(starts, traversable), locations: [...new Set(starts.map((s) => s.place))] });
 const wander = (...places: string[]) => [{
   id: 'w', time: 'allDay' as const, action: { kind: 'wander' as const, places: places.map((p) => ({ place: p, weight: 1 })), idle: 600 },
 }];
@@ -29,7 +31,7 @@ const tess = unique('tess', [start('inn', wander('inn', 'square', 'quay'))]); //
 const clerk = unique('clerk', [start('inn', [{ id: 'shift', time: 'allDay', strict: true, action: { kind: 'stay', place: 'inn' } }])], 'anywhere');
 const moths: Entity = {
   id: 'moths', name: 'moths', kind: 'generic', locations: ['inn', 'gate'],
-  starts: [{ id: 'm1', place: 'inn', weight: 1, schedule: [] }, { id: 'm2', place: 'gate', weight: 1, schedule: [] }],
+  routines: oneRoutine([{ id: 'm1', place: 'inn', weight: 1, schedule: [] }, { id: 'm2', place: 'gate', weight: 1, schedule: [] }]),
 };
 const albus = unique('albus', [start('keep')], 'anywhere');
 const CAST = [corvin, wenna, tess, clerk, moths, albus];
@@ -38,7 +40,7 @@ const world = (playerAt = 'inn', cast: Entity[] = CAST) => positionWorld(castRou
 const state = (positions: Record<string, string>, follow: string[] = []): FollowerState => ({
   positions,
   uniques: Object.fromEntries(CAST.filter((e) => e.kind === 'unique').map((e) => [e.id, {
-    startId: e.starts![0].id, lastRun: NOON, ...(e.id === 'tess' && { rowId: 'w', idleEnd: NOON + 600 }),
+    startId: startsOf(e)[0].id, lastRun: NOON, ...(e.id === 'tess' && { rowId: 'w', idleEnd: NOON + 600 }),
     ...(follow.includes(e.id) && { follow: { mode: 'following' as const } }),
   }])) as UniqueStates,
   generics: {},

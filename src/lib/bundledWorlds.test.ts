@@ -11,6 +11,7 @@ import { startingLocationIds } from './locationGraph';
 import { PLAYER_START } from '@/types';
 import { bundledWorldIds, bundledWorldText } from '@/test/bundledWorldFiles';
 import type { Entity, GalleryImage, Script, Tool, Trait, TraitGroup, TraitRequirementRow, World } from '@/types';
+import { startsOf, traversableOf } from '@/lib/entityKind';
 
 /** The shared suite over every bundled world, read as stored so the Test Bench pass sees the real images. */
 
@@ -152,8 +153,8 @@ describe.each(worlds)('the %s world', (id, raw) => {
       const now = new Set(presenceOf(entity, places).places.map((p) => p.place));
       // Q7 adds Player's Starting Location as the starting locations, and Can Also Go as a list.
       const added = new Set([
-        ...((entity.starts ?? []).some((s) => s.place === PLAYER_START) ? startingLocationIds(places.locations) : []),
-        ...(Array.isArray(entity.traversable) ? entity.traversable : []),
+        ...(startsOf(entity).some((s) => s.place === PLAYER_START) ? startingLocationIds(places.locations) : []),
+        ...(Array.isArray(traversableOf(entity)) ? traversableOf(entity) as string[] : []),
       ]);
       lost.push(...[...before].filter((place) => !now.has(place)).map((place) => `${entity.name}: ${place}`));
       extra.push(...[...now].filter((place) => !before.has(place) && !added.has(place)).map((place) => `${entity.name}: ${place}`));

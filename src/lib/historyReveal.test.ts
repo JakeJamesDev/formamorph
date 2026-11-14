@@ -4,8 +4,9 @@ import {
 } from '@/lib/editorHistory';
 import { revealForMove, revealTarget } from '@/lib/historyReveal';
 import type {
-  Connection, Dictionary, DictionaryEntry, Entity, GameLocation, Stat, StatUpdate, Trait, WorldOverview,
+  Connection, Dictionary, DictionaryEntry, Entity, EntityStart, GameLocation, Stat, StatUpdate, Trait, WorldOverview,
 } from '@/types';
+import { withFirstStarts } from '@/lib/entityKind';
 
 /** A moved Step names the tab and the record the editor shows the author afterward. */
 
@@ -263,8 +264,8 @@ describe('revealForMove', () => {
       const start = (id: string, row = 'stay') => ({
         id, place: 'harbor', weight: 1, schedule: [{ id: `${id}-row`, time: 'allDay', action: { kind: row, place: 'docks' } }],
       });
-      const twoStarts = { ...wick, starts: [start('a'), start('b')] } as unknown as Entity;
-      const edited = { ...twoStarts, starts: [start('a'), start('b', 'patrol')] } as unknown as Entity;
+      const twoStarts = withFirstStarts(wick, [start('a'), start('b')] as unknown as EntityStart[]);
+      const edited = withFirstStarts(twoStarts, [start('a'), start('b', 'patrol')] as unknown as EntityStart[]);
       const presence = (field?: string): StepOrigin => ({ tab: 'locations', ids: ['harbor'], subTab: 'presence', ...(field ? { field } : {}) });
       const stepOfEdit = (origin: StepOrigin) => stepFrom(origin, [diffSlice('entities', [twoStarts], [edited]) as SliceEdit]);
 

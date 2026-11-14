@@ -4,10 +4,11 @@
  * or replaying turns. Loaded via dynamic `import()` so each fixture is a separate chunk fetched only when
  * `loadDevFixture` runs (DEV-gated), never in the production bundle. See `devRouter.ts` / [[formamorph-dev-router]].
  */
-import type { Body, Currency, WorldOption, Entity, EntityStatValues, GameLocation, Item, Placement, ScheduleRow, Slot, Trait, World, SaveObject } from '@/types';
+import type { Body, Currency, WorldOption, Entity, EntityStatValues, GameLocation, Item, Placement, ScheduleRow, Slot, Traversable, Trait, World, SaveObject } from '@/types';
 import { withMembership } from './entityPlaces';
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 import { DEFAULT_WORLDS, seedWorldData, type DefaultWorldSeed } from './defaultWorlds';
+import { firstRoutine } from '@/lib/entityKind';
 
 /** `bundled-<world id>` boots a new game in that bundled world. */
 const BUNDLED_PREFIX = 'bundled-';
@@ -202,13 +203,15 @@ const DEV_VRM_STORE = {
 const AVATAR_PERSONA: Entity = { id: 'dev-wren', name: 'Wren', persona: true, vrmPick: { kind: 'default' } };
 
 /** A Unique entity with one Start per place in `places`, each running `schedule`. */
-const unique = (entity: Omit<Entity, 'kind' | 'starts'>, places: string[], schedule: ScheduleRow[] = []): Entity => ({
-  ...entity, kind: 'unique', starts: places.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule })),
+const unique = (entity: Omit<Entity, 'kind' | 'routines'>, places: string[], schedule: ScheduleRow[] = [], traversable?: Traversable): Entity => ({
+  ...entity, kind: 'unique',
+  routines: [firstRoutine(places.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule })), traversable)],
 });
 
 /** A Generic entity with one Start per place, no rows. */
-const generic = (entity: Omit<Entity, 'kind' | 'starts'>, places: string[]): Entity => ({
-  ...entity, kind: 'generic', starts: places.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule: [] })),
+const generic = (entity: Omit<Entity, 'kind' | 'routines'>, places: string[]): Entity => ({
+  ...entity, kind: 'generic',
+  routines: [firstRoutine(places.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule: [] })))],
 });
 
 /** The `entityPresence` fixture's cast, all but the last two at the White Room. */
@@ -233,7 +236,7 @@ const ENTITY_PRESENCE_CAST: Entity[] = [
   unique({ id: 'dev-queen', name: 'Queen', knownIn: ['dev-keep'] }, ['dev-keep']),
 ];
 /** The `entityFollowers` fixture's follower. */
-const ENTITY_FOLLOWER: Entity = { ...unique({ id: 'dev-scout', name: 'Scout' }, [WHITE_ROOM_ID]), traversable: 'anywhere' };
+const ENTITY_FOLLOWER: Entity = unique({ id: 'dev-scout', name: 'Scout' }, [WHITE_ROOM_ID], [], 'anywhere');
 const DEV_KEEP: GameLocation = { id: 'dev-keep', name: 'The Keep' };
 
 /** A hand-drawn-looking map for the `mapBackground` fixture: land, water and a road, labeled by fill. */

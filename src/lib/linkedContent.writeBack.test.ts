@@ -6,6 +6,8 @@ import {
 } from './linkedContent';
 import { toLibraryItem } from './librarySources';
 import { unresolvedReferences } from './worldReferences';
+import { startsOf, applyingRoutine, withFirstStarts, withFirstRoutine, withFirstTraversable } from '@/lib/entityKind';
+import { oneRoutine, withoutTraversable } from '@/test/routines';
 
 const stay = (id: string, place: string): ScheduleRow => ({ id, time: 'allDay', action: { kind: 'stay', place } });
 const start = (id: string, place: string, schedule: ScheduleRow[] = []): EntityStart => ({ id, place, weight: 1, schedule });
@@ -18,12 +20,11 @@ const REFS: ContentLocationRef[] = [
 ];
 const LIBRARY: Entity = {
   id: 'lib-content', name: 'Wren', kind: 'unique', locationRefs: REFS,
-  starts: [
+  routines: oneRoutine([
     start('s1', 'src-dock', [stay('r1', 'src-inn'), stay('r2', 'src-cellar')]),
     start('s2', 'src-pier'),
     start('s3', 'src-cellar', [stay('r3', 'src-cellar')]),
-  ],
-  traversable: ['src-inn', 'src-cellar'],
+  ], ['src-inn', 'src-cellar']),
 };
 
 interface World {
@@ -68,8 +69,8 @@ const update = (copy: Entity, item: Entity, world: World) => applyLibraryUpdate(
 /** World B's copy with a row added at the Garden, which B never connected to the library item. */
 function editedInB(): Entity {
   const copy = carried(LIBRARY, WORLD_B);
-  const [s1, ...rest] = copy.starts!;
-  return { ...copy, starts: [{ ...s1, schedule: [...s1.schedule, stay('r9', 'b-garden')] }, ...rest] };
+  const [s1, ...rest] = startsOf(copy);
+  return withFirstStarts(copy, [{ ...s1, schedule: [...s1.schedule, stay('r9', 'b-garden')] }, ...rest]);
 }
 
 describe("a write-back from one world, then an update in another (Q30, Q34)", () => {
@@ -82,29 +83,29 @@ describe("a write-back from one world, then an update in another (Q30, Q34)", ()
 
   it('keeps the Cellar Start, the Cellar row in its old place, and the Cellar in Can Also Go', () => {
     const { item } = writeBack(editedInB(), WORLD_B);
-    expect(item.starts).toEqual([
+    expect(startsOf(item)).toEqual([
       start('s1', 'src-dock', [stay('r1', 'src-inn'), stay('r2', 'src-cellar'), stay('r9', 'b-garden')]),
       start('s2', 'src-pier'),
       start('s3', 'src-cellar', [stay('r3', 'src-cellar')]),
     ]);
-    expect(item.traversable).toEqual(['src-inn', 'src-cellar']);
+    expect(applyingRoutine(item)?.traversable).toEqual(['src-inn', 'src-cellar']);
   });
 
   it('keeps the Dock and the Pier distinct though world B connected both to one place (Q35)', () => {
     const { item } = writeBack(editedInB(), WORLD_B);
-    expect(item.starts!.map((s) => s.place).slice(0, 2)).toEqual(['src-dock', 'src-pier']);
+    expect(startsOf(item).map((s) => s.place).slice(0, 2)).toEqual(['src-dock', 'src-pier']);
   });
 
   it('sends a moved Start back to the first library place carried to its new place (Q35)', () => {
     const copy = editedInB();
-    const moved = { ...copy, starts: copy.starts!.map((s) => (s.id === 's2' ? { ...s, place: 'b-bar' } : s)) };
-    expect(writeBack(moved, WORLD_B).item.starts![1].place).toBe('src-inn');
+    const moved = withFirstStarts(copy, startsOf(copy).map((s) => (s.id === 's2' ? { ...s, place: 'b-bar' } : s)));
+    expect(startsOf(writeBack(moved, WORLD_B).item)[1].place).toBe('src-inn');
   });
 
   it('drops the kept rows of a Start the author deleted in world B (Q34)', () => {
     const copy = editedInB();
-    const { item } = writeBack({ ...copy, starts: copy.starts!.filter((s) => s.id !== 's1') }, WORLD_B);
-    expect(item.starts).toEqual([start('s2', 'src-pier'), start('s3', 'src-cellar', [stay('r3', 'src-cellar')])]);
+    const { item } = writeBack(withFirstStarts(copy, startsOf(copy).filter((s) => s.id !== 's1')), WORLD_B);
+    expect(startsOf(item)).toEqual([start('s2', 'src-pier'), start('s3', 'src-cellar', [stay('r3', 'src-cellar')])]);
   });
 
   it('names a place added in world B as a new library place, which world A sees as unconnected (Q21, Q36)', () => {
@@ -121,54 +122,54 @@ describe("a write-back from one world, then an update in another (Q30, Q34)", ()
 describe('a fallback Start the carry minted (Q37)', () => {
   // World B connects only the Dock and the Inn, so no library Start carries and the carry mints a fallback.
   const cellarOnly = (kind: Entity['kind']): Entity => ({
-    ...LIBRARY, kind, starts: [start('s3', 'src-cellar', [stay('r3', 'src-cellar')])], traversable: undefined,
+    ...withFirstRoutine(LIBRARY, (routine) => ({ ...routine, starts: [start('s3', 'src-cellar', [stay('r3', 'src-cellar')])], traversable: undefined })), kind,
   });
   const described = (copy: Entity): Entity => ({ ...copy, playerDescription: 'A ferryman.' });
 
   it('stays out of the library item of a Unique entity', () => {
     const copy = carried(cellarOnly('unique'), WORLD_B);
-    expect(copy.starts).toEqual([expect.objectContaining({ place: 'b-quay', schedule: [] })]);
-    expect(writeBack(described(copy), WORLD_B, cellarOnly('unique')).item.starts).toEqual(cellarOnly('unique').starts);
+    expect(startsOf(copy)).toEqual([expect.objectContaining({ place: 'b-quay', schedule: [] })]);
+    expect(startsOf(writeBack(described(copy), WORLD_B, cellarOnly('unique')).item)).toEqual(startsOf(cellarOnly('unique')));
   });
 
   it('goes back once the author gives it a new weight', () => {
     const copy = carried(cellarOnly('unique'), WORLD_B);
-    const weighted = { ...copy, starts: [{ ...copy.starts![0], weight: 3 }] };
+    const weighted = withFirstStarts(copy, [{ ...startsOf(copy)[0], weight: 3 }]);
     const { item } = writeBack(weighted, WORLD_B, cellarOnly('unique'));
-    expect(item.starts!.map((s) => [s.place, s.weight])).toEqual([['src-cellar', 1], ['src-dock', 3]]);
+    expect(startsOf(item).map((s) => [s.place, s.weight])).toEqual([['src-cellar', 1], ['src-dock', 3]]);
   });
 
   it('stays out of the library item of a Generic entity, one per mapped place', () => {
     const copy = carried(cellarOnly('generic'), WORLD_B);
-    expect(copy.starts!.map((s) => s.place)).toEqual(['b-quay', 'b-bar']);
-    expect(writeBack(described(copy), WORLD_B, cellarOnly('generic')).item.starts).toEqual(cellarOnly('generic').starts);
+    expect(startsOf(copy).map((s) => s.place)).toEqual(['b-quay', 'b-bar']);
+    expect(startsOf(writeBack(described(copy), WORLD_B, cellarOnly('generic')).item)).toEqual(startsOf(cellarOnly('generic')));
   });
 });
 
 describe('a plain Start the author added while a library Start carried (Q40)', () => {
   // World B connects the Dock and not the Cellar, so s1 carries and s3 stays behind; the carry mints no fallback.
   const dockAndCellar: Entity = {
-    ...LIBRARY, kind: 'generic', starts: [start('s1', 'src-dock'), start('s3', 'src-cellar', [stay('r3', 'src-cellar')])], traversable: undefined,
+    ...withFirstRoutine(LIBRARY, (routine) => ({ ...routine, starts: [start('s1', 'src-dock'), start('s3', 'src-cellar', [stay('r3', 'src-cellar')])], traversable: undefined })), kind: 'generic',
   };
 
   it('goes back to the library item', () => {
     const copy = carried(dockAndCellar, WORLD_B);
-    expect(copy.starts!.map((s) => [s.id, s.place])).toEqual([['s1', 'b-quay']]);
-    const added = { ...copy, starts: [...copy.starts!, start('mine', 'b-bar')] };
+    expect(startsOf(copy).map((s) => [s.id, s.place])).toEqual([['s1', 'b-quay']]);
+    const added = withFirstStarts(copy, [...startsOf(copy), start('mine', 'b-bar')]);
     const { item } = writeBack(added, WORLD_B, dockAndCellar);
-    expect(item.starts!.map((s) => [s.id, s.place])).toEqual([['s1', 'src-dock'], ['s3', 'src-cellar'], ['mine', 'src-inn']]);
+    expect(startsOf(item).map((s) => [s.id, s.place])).toEqual([['s1', 'src-dock'], ['s3', 'src-cellar'], ['mine', 'src-inn']]);
   });
 });
 
 describe('Can Also Go written back (Q38)', () => {
   it('replaces the list with Anywhere', () => {
-    expect(writeBack({ ...editedInB(), traversable: 'anywhere' }, WORLD_B).item.traversable).toBe('anywhere');
+    expect(applyingRoutine(writeBack(withFirstTraversable(editedInB(), 'anywhere'), WORLD_B).item)?.traversable).toBe('anywhere');
   });
 
   it('keeps the uncarried entries when the author clears the list', () => {
-    const { traversable: _cleared, ...copy } = editedInB();
-    expect(writeBack(copy, WORLD_B).item.traversable).toEqual(['src-cellar']);
-    expect(writeBack({ ...copy, traversable: [] }, WORLD_B).item.traversable).toEqual(['src-cellar']);
+    const copy = withoutTraversable(editedInB());
+    expect(applyingRoutine(writeBack(copy, WORLD_B).item)?.traversable).toEqual(['src-cellar']);
+    expect(applyingRoutine(writeBack(withFirstTraversable(copy, []), WORLD_B).item)?.traversable).toEqual(['src-cellar']);
   });
 });
 

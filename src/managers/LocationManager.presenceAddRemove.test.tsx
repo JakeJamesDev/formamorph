@@ -10,6 +10,8 @@ import { EditorModeContext } from '@/lib/editorMode';
 import type { Entity, EntityStart, GameLocation, World } from '@/types';
 import type { PickState } from './EntityPickCard';
 import LocationManager from './LocationManager';
+import { startsOf } from '@/lib/entityKind';
+import { oneRoutine } from '@/test/routines';
 
 /** Add Entity and the remove button on a location's Presence tab, over the real provider and its history. */
 
@@ -25,8 +27,8 @@ vi.mock('../lib/UtilityComponents', () => ({ SoundUpload: () => null }));
 
 const place = (id: string, name: string): GameLocation => ({ id, name } as GameLocation);
 const start = (id: string, at: string): EntityStart => ({ id, place: at, weight: 1, schedule: [] });
-const generic = (id: string, starts: EntityStart[]): Entity => ({ id, name: id, kind: 'generic', starts, locations: [...new Set(starts.map((s) => s.place))] });
-const unique = (id: string, starts: EntityStart[]): Entity => ({ id, name: id, kind: 'unique', starts, locations: [...new Set(starts.map((s) => s.place))] });
+const generic = (id: string, starts: EntityStart[]): Entity => ({ id, name: id, kind: 'generic', routines: oneRoutine(starts), locations: [...new Set(starts.map((s) => s.place))] });
+const unique = (id: string, starts: EntityStart[]): Entity => ({ id, name: id, kind: 'unique', routines: oneRoutine(starts), locations: [...new Set(starts.map((s) => s.place))] });
 const persona: Entity = { id: 'Persona', name: 'Persona', customPersona: true };
 
 const WORLD = (entities: Entity[]): World => ({
@@ -71,7 +73,7 @@ const open = async (entities: Entity[], locationId = 'tavern') => {
   return { ctx: () => ctx, history: () => history };
 };
 
-const starts = (ctx: Handle, id: string) => ctx.entities.find((e) => e.id === id)!.starts!;
+const starts = (ctx: Handle, id: string) => startsOf(ctx.entities.find((e) => e.id === id)!)!;
 const rows = () => screen.queryAllByTestId('presence-row');
 const rowOf = (name: string) => rows().find((r) => within(r).queryByText(name))!;
 const addSelect = () => screen.getByRole('combobox', { name: 'Add an entity here' });
@@ -117,7 +119,7 @@ describe('Add Entity on the Presence tab', () => {
     const { ctx } = await open([warden]);
     await add('Warden');
     expect(starts(ctx(), 'Warden')).toHaveLength(3);
-    expect(starts(ctx(), 'Warden').slice(0, 2)).toEqual(warden.starts);
+    expect(starts(ctx(), 'Warden').slice(0, 2)).toEqual(startsOf(warden));
     expect(starts(ctx(), 'Warden')[2]).toMatchObject({ place: 'tavern', weight: 1, schedule: [] });
   });
 

@@ -7,6 +7,8 @@ import { CLEARS_ROUTINE_SELECTION, KEEPS_ROUTINE_SELECTION, resetRoutineSelectio
 import { panelWorld, renderPanelBench } from '@/test/panelBench';
 import type { Entity, GameLocation, ScheduleRow } from '@/types';
 import { RoutineTab } from './RoutineTab';
+import { oneRoutine } from '@/test/routines';
+import { startsOf } from '@/lib/entityKind';
 
 // Daypart edges in minutes: dawn 360, morning 480, midday 660, afternoon 780, evening 1020, night 1200.
 const DAWN = 360; const MORNING = 480; const MIDDAY = 660; const AFTERNOON = 780; const EVENING = 1020; const NIGHT = 1200;
@@ -14,8 +16,8 @@ const DAWN = 360; const MORNING = 480; const MIDDAY = 660; const AFTERNOON = 780
 const LOCATIONS = [{ id: 'smithy', name: 'Smithy' }, { id: 'inn', name: 'Inn' }] as GameLocation[];
 const stay = (id: string, time: ScheduleRow['time'], place = 'smithy'): ScheduleRow => ({ id, time, action: { kind: 'stay', place } });
 const mira = (schedule: ScheduleRow[]): Entity => ({
-  id: 'mira', name: 'Mira', playerDescription: '', aiDescription: '', kind: 'unique', traversable: 'anywhere',
-  starts: [{ id: 's1', place: 'smithy', weight: 1, schedule }],
+  id: 'mira', name: 'Mira', playerDescription: '', aiDescription: '', kind: 'unique',
+  routines: oneRoutine([{ id: 's1', place: 'smithy', weight: 1, schedule }], 'anywhere'),
 } as Entity);
 
 function Host() {
@@ -24,7 +26,7 @@ function Host() {
   return entity ? <RoutineTab entity={entity} onChange={updateEntity} /> : null;
 }
 const mount = (schedule: ScheduleRow[]) => renderPanelBench(panelWorld({ locations: LOCATIONS, entities: [mira(schedule)] }), 'simple', <Host />);
-const schedule = (bench: ReturnType<typeof mount>) => bench.ctx().entities.find((e) => e.id === 'mira')!.starts![0].schedule;
+const schedule = (bench: ReturnType<typeof mount>) => startsOf(bench.ctx().entities.find((e) => e.id === 'mira')!)![0].schedule;
 const timeOf = (bench: ReturnType<typeof mount>, id: string) => schedule(bench).find((r) => r.id === id)?.time;
 
 const bands = (id: string) => document.querySelectorAll(`[data-band="${id}"]`);

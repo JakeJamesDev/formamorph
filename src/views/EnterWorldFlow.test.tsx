@@ -14,6 +14,7 @@ import { readWorldPersona, rememberWorldPersona, setDefaultPersona } from '@/lib
 import { saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import { buildInitialSelection } from '@/lib/dictionarySelection';
 import type { Dictionary, GameLocation, PersonaRef, WorldOverview } from '@/types';
+import { oneRoutine } from '@/test/routines';
 
 vi.mock('react-toastify', () => ({
   toast: { error: vi.fn(), success: vi.fn(), info: vi.fn(), warn: vi.fn() },
@@ -683,10 +684,10 @@ describe('a world persona at world entry', () => {
     record.data.entities = [{
       id: 'keeper', name: 'Harbor Keeper', playerDescription: '', aiDescription: '', aiSummary: '',
       persona: true, kind: 'unique',
-      starts: [{
+      routines: oneRoutine([{
         id: 'start-1', place: 'hill', weight: 1,
         schedule: [{ id: 'row-1', time: 'allDay', action: { kind: 'stay', place: 'inn' } }],
-      }],
+      }]),
     }];
     return record;
   };

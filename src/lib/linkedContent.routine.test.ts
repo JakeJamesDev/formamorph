@@ -5,6 +5,8 @@ import { carryMap, placedIn, withCarriedRoutine } from './entityPresence';
 import {
   applyLibraryUpdate, contentMatchesSource, offeredRoutine, planWriteBack, routinePlacesOf, sameRoutine, type LibrarySource,
 } from './linkedContent';
+import { startsOf, applyingRoutine, withFirstStarts, withFirstTraversable, withFirstRoutine } from '@/lib/entityKind';
+import { oneRoutine, withoutTraversable } from '@/test/routines';
 
 // The source's world names its places src-*; the copy's world calls them pier and tavern and has no cellar.
 const REFS = [{ id: 'src-dock', name: 'Dock' }, { id: 'src-inn', name: 'Inn' }, { id: 'src-cellar', name: 'Cellar' }];
@@ -18,7 +20,7 @@ const start = (id: string, place: string, schedule: ScheduleRow[] = []): EntityS
 
 const wren = (over: Partial<Entity> = {}): Entity => ({
   id: 'lib-content', name: 'Wren', kind: 'unique', locationRefs: REFS,
-  starts: [start('s1', 'src-dock', [stay('r1', 'src-inn')])], traversable: ['src-inn', 'src-cellar'], ...over,
+  routines: oneRoutine([start('s1', 'src-dock', [stay('r1', 'src-inn')])], ['src-inn', 'src-cellar']), ...over,
 });
 
 /** The copy as a fresh add would leave it: the routine carried through the same connections. */
@@ -32,15 +34,15 @@ const update = (copy: Entity, source: Entity) => applyLibraryUpdate(copy, source
 
 describe('a library update of an entity with a kind', () => {
   it("moves a row to the copy's mapped place, replacing the copy's own routine edit", () => {
-    const copy = { ...carried(wren()), starts: [start('own', 'pier', [stay('mine', 'pier')])] };
-    const next = update(copy, wren({ starts: [start('s1', 'src-dock', [stay('r1', 'src-dock')])] }));
-    expect(next.starts).toEqual([start('s1', 'pier', [stay('r1', 'pier')])]);
-    expect(next.traversable).toEqual(['tavern']);
+    const copy = withFirstStarts(carried(wren()), [start('own', 'pier', [stay('mine', 'pier')])]);
+    const next = update(copy, withFirstStarts(wren(), [start('s1', 'src-dock', [stay('r1', 'src-dock')])]));
+    expect(startsOf(next)).toEqual([start('s1', 'pier', [stay('r1', 'pier')])]);
+    expect(applyingRoutine(next)?.traversable).toEqual(['tavern']);
   });
 
   it('drops a row whose place the world has no connection for', () => {
-    const next = update(carried(wren()), wren({ starts: [start('s1', 'src-dock', [stay('r1', 'src-cellar')])] }));
-    expect(next.starts).toEqual([start('s1', 'pier')]);
+    const next = update(carried(wren()), withFirstStarts(wren(), [start('s1', 'src-dock', [stay('r1', 'src-cellar')])]));
+    expect(startsOf(next)).toEqual([start('s1', 'pier')]);
   });
 
   it('stores no location list, even when the library item still holds one', () => {
@@ -56,7 +58,7 @@ describe('a library update that changes the kind (Q33)', () => {
   it("gives a copy that loses its kind the source's membership, mapped, and shows it in the review", () => {
     const copy = carried(wren());
     const next = update(copy, plain());
-    expect([next.kind, next.starts, next.traversable]).toEqual([undefined, undefined, undefined]);
+    expect([next.kind, next.routines]).toEqual([undefined, undefined]);
     expect(next.locations).toEqual(['pier']);
     const rows = diffContent(copy, plain(), undefined, LOCATIONS).changed;
     expect(rows.find((row) => row.field === 'locations')).toEqual({ field: 'locations', label: 'Locations', current: 'Not set', incoming: 'Pier' });
@@ -69,7 +71,7 @@ describe('a library update that changes the kind (Q33)', () => {
     const next = update(copy, wren());
     expect('locations' in next).toBe(false);
     // The copy connected only the Dock, so the row at the Inn has no place here.
-    expect(next.starts).toEqual([start('s1', 'pier')]);
+    expect(startsOf(next)).toEqual([start('s1', 'pier')]);
     const rows = diffContent(copy, wren(), undefined, LOCATIONS).changed;
     expect(rows.find((row) => row.field === 'locations')).toMatchObject({ current: 'Pier', incoming: 'Not set' });
     expect(rows.find((row) => row.field === 'starts')).toMatchObject({ current: 'Not set', incoming: 'Start 1 at Pier' });
@@ -85,21 +87,21 @@ describe('compare and review of a routine', () => {
   it('reads a copy equal to a fresh carry as matching, a fallback Start with a fresh id too', () => {
     expect(contentMatchesSource(carried(wren()), wren(), undefined, undefined, PLACES)).toBe(true);
     // No Start maps, so each carry mints its own fallback Start at the first mapped place.
-    const unplaced = wren({ starts: [start('s1', 'src-cellar')] });
+    const unplaced = withFirstStarts(wren(), [start('s1', 'src-cellar')]);
     const copy = carried(unplaced);
-    expect(copy.starts?.[0].place).toBe('pier');
-    expect(contentMatchesSource({ ...copy, starts: [{ ...copy.starts![0], id: 'minted-here' }] }, unplaced, undefined, undefined, PLACES)).toBe(true);
+    expect(startsOf(copy)[0].place).toBe('pier');
+    expect(contentMatchesSource(withFirstStarts(copy, [{ ...startsOf(copy)[0], id: 'minted-here' }]), unplaced, undefined, undefined, PLACES)).toBe(true);
   });
 
   it('reads a copy whose routine was edited in the world as differing', () => {
     const copy = carried(wren());
-    const edited = { ...copy, starts: [{ ...copy.starts![0], weight: 3 }] };
+    const edited = withFirstStarts(copy, [{ ...startsOf(copy)[0], weight: 3 }]);
     expect(contentMatchesSource(edited, wren(), undefined, undefined, PLACES)).toBe(false);
-    expect(contentMatchesSource({ ...copy, traversable: 'anywhere' }, wren(), undefined, undefined, PLACES)).toBe(false);
+    expect(contentMatchesSource(withFirstTraversable(copy, 'anywhere'), wren(), undefined, undefined, PLACES)).toBe(false);
   });
 
   it('lists the routine change in the review, in place names', () => {
-    const copy = { ...carried(wren()), starts: [start('own', 'pier', [stay('mine', 'pier')])] };
+    const copy = withFirstStarts(carried(wren()), [start('own', 'pier', [stay('mine', 'pier')])]);
     const diff = diffContent(copy, wren(), undefined, LOCATIONS);
     expect(diff.changed).toEqual([{
       field: 'starts', label: 'Starts',
@@ -122,9 +124,9 @@ describe('compare and review of a routine', () => {
 
 describe('carry, update, compare and repair', () => {
   it('give the same routine for the same source and connection map', () => {
-    for (const source of [wren(), wren({ starts: [start('s1', 'src-cellar')] }), wren({ kind: 'generic', traversable: undefined })]) {
+    for (const source of [wren(), withFirstStarts(wren(), [start('s1', 'src-cellar')]), withoutTraversable(wren({ kind: 'generic' }))]) {
       const fresh = carried(source);
-      const stale: Entity = { ...fresh, starts: [start('old', 'tavern')], traversable: 'anywhere' };
+      const stale: Entity = { ...withFirstRoutine(fresh, (routine) => ({ ...routine, starts: [start('old', 'tavern')], traversable: 'anywhere' })) };
       const updated = update(stale, source);
       const repaired = withCarriedRoutine(stale, source, CONNECTIONS, PLACES.known, source.kind!);
       const compared = offeredRoutine(stale, source, source.kind!, PLACES);

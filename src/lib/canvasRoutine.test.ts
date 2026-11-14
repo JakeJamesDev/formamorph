@@ -4,6 +4,8 @@ import { routineFlowEdge } from './canvasEdges';
 import { routineKeyEntries } from './canvasKey';
 import { routineView, type RoutineLine } from './canvasRoutine';
 import { rangeText } from './routineTime';
+import { withFirstStarts } from '@/lib/entityKind';
+import { oneRoutine, withoutTraversable } from '@/test/routines';
 
 // A village of sibling places, a ridge one Far Connection away, and an island nothing reaches.
 const locations = [
@@ -23,11 +25,11 @@ const day: ScheduleRow[] = [
   timed('patrol', 14, 18, { kind: 'patrol', stops: [{ place: 'wall', idle: 30 }, { place: 'gate', idle: 30 }, { place: 'wall', idle: 30 }] }),
 ];
 const farrier = (traversable: Traversable = 'anywhere', schedule = day): Entity => ({
-  id: 'farrier', name: 'Farrier', playerDescription: '', aiDescription: '', kind: 'unique', traversable,
-  starts: [
+  id: 'farrier', name: 'Farrier', playerDescription: '', aiDescription: '', kind: 'unique',
+  routines: oneRoutine([
     { id: 's1', place: 'smithy', weight: 1, schedule },
     { id: 's2', place: 'gate', weight: 1, schedule: [] },
-  ],
+  ], traversable),
 } as Entity);
 
 const view = (entity: Entity, rowId: string | null = null, startId: string | null = null) =>
@@ -38,7 +40,7 @@ const label = (from: number, to: number) => rangeText({ start: from * 60, end: t
 
 describe("a Start at the player's starting location", () => {
   const companion = (kind: 'unique' | 'generic'): Entity => ({
-    ...farrier(), kind, starts: [{ id: 'p', place: PLAYER_START, weight: 1, schedule: [timed('stay', 6, 10, { kind: 'stay', place: 'island' })] }],
+    ...withFirstStarts(farrier(), [{ id: 'p', place: PLAYER_START, weight: 1, schedule: [timed('stay', 6, 10, { kind: 'stay', place: 'island' })] }]), kind,
   });
 
   it('draws no Starts Here flag, so the key lists none, and offers every place', () => {
@@ -139,7 +141,7 @@ describe('reach', () => {
   });
 
   it('reads a missing Can Also Go as an empty list, as play does', () => {
-    const { traversable: _absent, ...migrated } = farrier();
+    const migrated = withoutTraversable(farrier());
     const v = view(migrated as Entity);
     expect(markOf(v, 'village')?.kind).toBe('faded');
     expect(markOf(v, 'inn')?.kind).toBe('routine');
@@ -157,8 +159,7 @@ describe('reach', () => {
 describe('a Generic entity with two Starts', () => {
   // The farrier's routine on its first Start, a second Start on the ridge, and a Can Also Go list a Generic entity ignores.
   const herd = (secondPlace = 'ridge'): Entity => ({
-    ...farrier(['island']), id: 'herd', kind: 'generic',
-    starts: [{ id: 's1', place: 'smithy', weight: 1, schedule: day }, { id: 's2', place: secondPlace, weight: 1, schedule: [] }],
+    ...withFirstStarts(farrier(['island']), [{ id: 's1', place: 'smithy', weight: 1, schedule: day }, { id: 's2', place: secondPlace, weight: 1, schedule: [] }]), id: 'herd', kind: 'generic',
   });
   const unique = view(farrier());
 

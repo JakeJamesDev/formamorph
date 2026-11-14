@@ -1,5 +1,5 @@
 import { PLAYER_START, type Connection, type Entity, type EntityStart, type GameLocation } from "@/types";
-import { isGeneric, isUnique, routinePlaces } from "@/lib/entityKind";
+import { everyStart, isGeneric, isUnique, routinePlaces, startsOf, traversableOf } from "@/lib/entityKind";
 import type { Standings } from "@/lib/entityPresence";
 import { startingLocationIds } from "@/lib/locationGraph";
 import { placesOf, startReach } from "@/lib/positionEngine";
@@ -14,7 +14,7 @@ import { openingBook } from "@/lib/positionPlay";
  */
 
 /** The entity fields every answer reads. */
-export type PlacedEntity = Pick<Entity, "id" | "kind" | "starts" | "traversable" | "locations">;
+export type PlacedEntity = Pick<Entity, "id" | "kind" | "routines" | "locations">;
 
 /** The places and links an answer reads. Starting locations count where Player's Starting Location stands. */
 export interface PlacesWorld {
@@ -98,7 +98,7 @@ function* rowPlaces(start: EntityStart, world: PlacesWorld) {
 export function unreachedRowPlaces(entity: PlacedEntity, world: PlacesWorld): string[] {
   if (!hasKind(entity)) return [];
   const known = new Set(world.locations.map((l) => l.id));
-  return unique((entity.starts ?? [])
+  return unique(startsOf(entity)
     .filter((start) => start.place === PLAYER_START || known.has(start.place))
     .flatMap((start) => [...rowPlaces(start, world)].filter(({ place, reached }) => !reached && known.has(place)).map(({ place }) => place)));
 }
@@ -117,13 +117,13 @@ export function presenceOf(entity: PlacedEntity, world: PlacesWorld): Presence {
     if (!entry) found.set(place, (entry = { begins: [], rows: [], traversable: false }));
     return entry;
   };
-  for (const start of entity.starts ?? []) {
+  for (const start of startsOf(entity)) {
     for (const place of beginsAt(start, world)) at(place).begins.push(start.id);
     for (const { row, place, reached } of rowPlaces(start, world)) {
       if (reached) at(place).rows.push({ kind: "row", startId: start.id, rowId: row.id });
     }
   }
-  const traversable = isUnique(entity) ? entity.traversable ?? [] : [];
+  const traversable = isUnique(entity) ? traversableOf(entity) : [];
   if (Array.isArray(traversable)) for (const place of traversable) at(place).traversable = true;
   const places = [...found].filter(([place]) => known.has(place)).map(([place, entry]): PresencePlace => ({
     place,
@@ -136,11 +136,12 @@ export function presenceOf(entity: PlacedEntity, world: PlacesWorld): Presence {
   return { places, anywhere: traversable === "anywhere" };
 }
 
-/** Every place id `entity` names, whether or not a world has it: its Starts (Player's Starting Location is no place),
- *  rows and Traversable list, or an entity with no kind's membership. No world and no path check (Q19). */
+/** Every place id `entity` names, whether or not a world has it: every Routine's Starts (Player's Starting Location is
+ *  no place), rows and Traversable list, or an entity with no kind's membership. No world and no path check (Q19). */
 export function namedPlacesOf(entity: PlacedEntity): string[] {
   if (!hasKind(entity)) return unique(membership(entity));
-  return unique([...routinePlaces(entity.starts ?? []), ...(Array.isArray(entity.traversable) ? entity.traversable : [])]);
+  const traversed = (entity.routines ?? []).flatMap((routine) => (Array.isArray(routine.traversable) ? routine.traversable : []));
+  return unique([...routinePlaces(everyStart(entity)), ...traversed]);
 }
 
 /** The Presence answer over `world`, as places alone. */
@@ -150,7 +151,7 @@ export const presenceIn = (world: PlacesWorld): PlacesOf => (entity) => presence
  *  locations (Q16). An entity with no kind begins at its membership. */
 export function startPlacesOf(entity: PlacedEntity, world: Pick<PlacesWorld, "locations">): string[] {
   if (!hasKind(entity)) return unique(membership(entity));
-  return unique((entity.starts ?? []).flatMap((start) => beginsAt(start, world)));
+  return unique(startsOf(entity).flatMap((start) => beginsAt(start, world)));
 }
 
 /** The ids of `cast` that `placesOf` puts at `place`, in cast order. Empty for no place. */

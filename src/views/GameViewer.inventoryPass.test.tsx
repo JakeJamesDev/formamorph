@@ -6,6 +6,7 @@ import { useGameplay } from '@/contexts/GameplayContext';
 import { parseTurnContent } from '@/lib/turnDigest';
 import { IN_SCENE_TURNS } from '@/lib/presence';
 import type { Entity, Item, ItemCopy, PlayerStat, Script, World } from '@/types';
+import { withFirstRoutine } from '@/lib/entityKind';
 
 /** The Inventory pass on a mounted game: its item timings, and the stats re-roll that replays it. */
 
@@ -133,7 +134,7 @@ describe('a turn that starts with a discovered character', () => {
       { id: 'landing', name: 'Sedge Landing' }, { id: 'harbor', name: 'Harbor', parentId: 'landing', isStarting: true }, { id: 'pier', name: 'Pier', parentId: 'landing' },
     ];
     // One body at the pier whose routine lets him go anywhere.
-    const ferryman: Entity = { ...ferrymanAt('pier'), kind: 'unique', starts: [{ id: 'pier', place: 'pier', weight: 1, schedule: [] }], traversable: 'anywhere' };
+    const ferryman: Entity = { ...withFirstRoutine(ferrymanAt('pier'), (routine) => ({ ...routine, starts: [{ id: 'pier', place: 'pier', weight: 1, schedule: [] }], traversable: 'anywhere' })), kind: 'unique' };
     renderGameViewer({ ...presenceWorld('', [ferryman]), locations: landing } as World, { inGameplay: <Probe /> });
     const box = await screen.findByPlaceholderText(/Type your action/);
     const calls = stubEndpoint(JSON.stringify({ operations: [] }));
@@ -217,7 +218,7 @@ describe('the stats re-roll', () => {
   it('lands a give to a character the narration calls over from the place around the player, as the live turn did', async () => {
     // The playtest's inn: the farrier stands in the village the inn sits in, and the scene is about her.
     const village = [{ id: 'village', name: 'Village' }, { id: 'harbor', name: 'Harbor', parentId: 'village', isStarting: true }];
-    const ferryman: Entity = { ...ferrymanAt('village'), kind: 'unique', starts: [{ id: 'v', place: 'village', weight: 1, schedule: [] }], traversable: 'anywhere' };
+    const ferryman: Entity = { ...withFirstRoutine(ferrymanAt('village'), (routine) => ({ ...routine, starts: [{ id: 'v', place: 'village', weight: 1, schedule: [] }], traversable: 'anywhere' })), kind: 'unique' };
     const world = { ...presenceWorld('', [ferryman]), locations: village, connections: [] } as World;
     renderGameViewer(world, { inGameplay: <Probe /> });
     const box = await screen.findByPlaceholderText(/Type your action/);

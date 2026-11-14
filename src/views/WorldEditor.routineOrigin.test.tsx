@@ -3,6 +3,8 @@ import { act, fireEvent, screen, within } from '@testing-library/react';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench, shownEditorTab } from '@/test/worldEditorBench';
 import { resetRoutineSelections } from '@/lib/routineSelection';
 import type { World } from '@/types';
+import { oneRoutine } from '@/test/routines';
+import { startsOf } from '@/lib/entityKind';
 
 /** An undo of a Routine editor edit returns to where the author made it. */
 
@@ -33,10 +35,10 @@ const WORLD: World = benchEditorWorld({
     // Both Starts name the tavern, so a fresh pick shows Start 1.
     {
       id: 'twin', name: 'Twin', kind: 'unique', locations: ['tavern'],
-      starts: [
+      routines: oneRoutine([
         { id: 'a', place: 'tavern', weight: 1, schedule: [{ id: 'a1', time: 'allDay', action: { kind: 'stay', place: 'yard' } }] },
         { id: 'b', place: 'tavern', weight: 1, schedule: [{ id: 'b1', time: 'allDay', action: { kind: 'stay', place: 'yard' } }] },
-      ],
+      ]),
     },
   ],
 } as Partial<World>);
@@ -60,7 +62,7 @@ const deleteRoutineRow = () => step(() => fireEvent.click(
   within(screen.getByRole('list', { name: 'Routine' })).getByRole('button', { name: /^Delete / }),
 ));
 const scheduleOf = (ctx: () => { entities: World['entities'] }, startId: string) =>
-  ctx().entities.find((e) => e.id === 'twin')!.starts!.find((s) => s.id === startId)!.schedule;
+  startsOf(ctx().entities.find((e) => e.id === 'twin')!)!.find((s) => s.id === startId)!.schedule;
 
 async function openPresenceOnTwin() {
   openEditorTab(/Locations/);

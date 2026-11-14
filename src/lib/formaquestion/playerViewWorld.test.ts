@@ -7,6 +7,7 @@ import { serializeTurnContent } from '@/lib/turnDigest';
 import { buildToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { buildPlayerView } from './playerView';
 import { playerViewMemory, playerViewScene, playerViewState, playerViewWorld, type PlayerViewReach } from './playerViewWorld';
+import { withFirstRoutine } from '@/lib/entityKind';
 
 const entity = (id: string, name: string, extra: Partial<Entity> = {}): Entity => ({
   id, name, playerDescription: `${name} player text.`, aiDescription: `${name} AI secret.`, aiSummary: `${name} AI summary.`, ...extra,
@@ -280,8 +281,7 @@ describe('playerViewWorld', () => {
   describe('where met entities stand (Q42)', () => {
     // The warden begins at the gate and stays in the hall; an unreleased world still stores both as its list (Q5).
     const routined: Entity = {
-      ...WARDEN, kind: 'unique', traversable: [], locations: ['gate', 'hall'],
-      starts: [{ id: 'w1', place: 'gate', weight: 1, schedule: [{ id: 'w1-day', time: 'allDay', action: { kind: 'stay', place: 'hall' } }] }],
+      ...withFirstRoutine(WARDEN, (routine) => ({ ...routine, starts: [{ id: 'w1', place: 'gate', weight: 1, schedule: [{ id: 'w1-day', time: 'allDay', action: { kind: 'stay', place: 'hall' } }] }], traversable: [] })), kind: 'unique', locations: ['gate', 'hall'],
     };
     const cutAt = (positions: Record<string, string>, entities = [routined, STRANGER]) => {
       const base = reach();

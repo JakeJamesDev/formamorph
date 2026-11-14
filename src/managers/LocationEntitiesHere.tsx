@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/
 import { Tip } from '@/components/ui/tooltip';
 import { Hint, Meta } from '@/components/ui/typography';
 import { SelectOptions } from '@/components/SelectOptions';
-import { canRemoveGenericStartsAt, isGeneric, isUnique, withoutGenericStartsAt } from '@/lib/entityKind';
+import { canRemoveGenericStartsAt, isGeneric, isUnique, withoutGenericStartsAt, startsOf } from '@/lib/entityKind';
 import { startsAt, withStartHere } from '@/lib/entityPresence';
 import { fieldFrame } from '@/lib/historyField';
 import { presenceLines } from '@/lib/locationPresenceReasons';
@@ -70,7 +70,7 @@ export default function LocationEntitiesHere({ locationId, entities, locations, 
     const next = withStartHere(entity, locationId);
     onChange(next);
     // The editor opens in Routine mode on the Start this added.
-    showRoutineStart(entity.id, next.starts?.[next.starts.length - 1]?.id ?? null);
+    showRoutineStart(entity.id, startsOf(next).at(-1)?.id ?? null);
     onPickChange?.({ entityId: entity.id, mode: 'locations' });
   };
 

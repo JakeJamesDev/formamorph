@@ -1,18 +1,22 @@
 import { describe, it, expect } from 'vitest';
 import { placesOf, startReach } from './positionEngine';
 import type { Entity, World } from '@/types';
+import { oneRoutine } from '@/test/routines';
+import { startsOf, traversableOf } from '@/lib/entityKind';
+import { migrateWorld } from './version';
 
 const worlds = import.meta.glob<World>('@/defaultworlds/*.json', { import: 'default', eager: true });
-const cases = Object.entries(worlds).map(([path, world]) => [path.replace(/^.*\/(.+)\.json$/, '$1'), world] as const);
+const cases = Object.entries(worlds).map(([path, world]) => [path.replace(/^.*\/(.+)\.json$/, '$1'), migrateWorld(structuredClone(world))] as const);
 
 /** Every place an entity's Start, rows and Traversable name that travel cannot reach from that Start. */
 function unreached(entity: Entity, world: World): string[] {
   const graph = { locations: world.locations ?? [], connections: world.connections ?? [] };
   const names = new Map(graph.locations.map((l) => [l.id, l.name]));
-  return (entity.starts ?? []).flatMap((start) => {
+  return startsOf(entity).flatMap((start) => {
     const reach = startReach(start.place, graph);
-    const traversable = entity.kind === 'unique' && Array.isArray(entity.traversable) ? entity.traversable : [];
-    const named = new Set([start.place, ...start.schedule.flatMap((row) => placesOf(row.action)), ...traversable]);
+    const traversable = entity.kind === 'unique' ? traversableOf(entity) : [];
+    const listed = Array.isArray(traversable) ? traversable : [];
+    const named = new Set([start.place, ...start.schedule.flatMap((row) => placesOf(row.action)), ...listed]);
     return [...named].filter((place) => !reach.has(place)).map((place) => `${entity.name}: ${names.get(place) ?? place}`);
   });
 }
@@ -21,8 +25,8 @@ describe('bundled world routines', () => {
   it('finds a row place with no path from its Start', () => {
     const place = (id: string) => ({ id, name: id }) as NonNullable<World['locations']>[number];
     const entity = {
-      id: 'e', name: 'Walker', kind: 'unique', traversable: ['island'],
-      starts: [{ id: 'start-1', place: 'home', weight: 1, schedule: [{ id: 'row-1', time: 'allDay', action: { kind: 'stay', place: 'island' } }] }],
+      id: 'e', name: 'Walker', kind: 'unique',
+      routines: oneRoutine([{ id: 'start-1', place: 'home', weight: 1, schedule: [{ id: 'row-1', time: 'allDay', action: { kind: 'stay', place: 'island' } }] }], ['island']),
     } as Entity;
     // A two-place map; the rest of World does not bear on reach.
     const world = { locations: [place('home'), place('island')], connections: [], entities: [entity] } as unknown as World;

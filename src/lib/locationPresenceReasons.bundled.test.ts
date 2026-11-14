@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { World } from '@/types';
 import { presenceLines } from './locationPresenceReasons';
 import before from './locationPresenceReasons.bundled.json';
+import { migrateWorld } from '@/lib/version';
 
 /**
  * The Presence tab of every bundled world against the recorded lines in the JSON beside this file. No bundled entity
@@ -10,7 +11,7 @@ import before from './locationPresenceReasons.bundled.json';
  */
 
 const worlds = import.meta.glob<World>('@/defaultworlds/*.json', { import: 'default', eager: true });
-const cases = Object.entries(worlds).map(([path, world]) => [path.replace(/^.*\/(.+)\.json$/, '$1'), world] as const);
+const cases = Object.entries(worlds).map(([path, world]) => [path.replace(/^.*\/(.+)\.json$/, '$1'), migrateWorld(structuredClone(world))] as const);
 const recorded: Record<string, Record<string, Record<string, string[]>>> = before;
 
 describe('bundled Presence tabs', () => {

@@ -5,6 +5,8 @@ import { chipValues, sceneEntityChipValues } from './chipValues';
 import { liveChipScene, type LiveSceneSources } from './liveScene';
 import type { ChipScene } from './chipScene';
 import type { Connection, Entity, FollowState, GameLocation, UniqueStates } from '@/types';
+import { startsOf, withFirstStarts } from '@/lib/entityKind';
+import { oneRoutine } from '@/test/routines';
 
 // The inn, the smithy one Nearby link away, and the ridge one Far link away.
 const inn: GameLocation = { id: 'inn', name: 'Inn', aiDescription: 'A low room.' };
@@ -18,7 +20,7 @@ const connections: Connection[] = [
 /** A Unique entity at `place` whose one All-day row stays there, Strict or not. */
 const unique = (id: string, place: string, strict: boolean): Entity => ({
   id, name: id[0].toUpperCase() + id.slice(1), kind: 'unique', locations: [place], aiSummary: `The ${id}.`,
-  starts: [{ id: 's1', place, weight: 1, schedule: [{ id: 'r1', time: 'allDay', action: { kind: 'stay', place }, ...(strict && { strict }) }] }],
+  routines: oneRoutine([{ id: 's1', place, weight: 1, schedule: [{ id: 'r1', time: 'allDay', action: { kind: 'stay', place }, ...(strict && { strict }) }] }]),
 });
 
 const clerk = unique('clerk', 'inn', true);
@@ -47,7 +49,7 @@ const uniques: UniqueStates = {
 const sources = (over: Partial<LiveSceneSources> = {}): LiveSceneSources => ({
   overview: '', stats: [], statPlacement: { groups: [], authored: [] }, traits: [], traitGroups: [],
   // Each Unique entity stands at its Start, as the engine places it.
-  standings: { positions: Object.fromEntries(cast.flatMap((e) => (e.kind ? [[e.id, e.starts![0].place]] : []))), generics: {} },
+  standings: { positions: Object.fromEntries(cast.flatMap((e) => (e.kind ? [[e.id, startsOf(e)[0].place]] : []))), generics: {} },
   resolve: (text) => text, resolveTrait: (_t, text) => text, resolveEntity: (_e, text) => text,
   persona: null, location: inn, locations: [inn, smithy, ridge], connections,
   entities: cast, allEntities: cast, participants: ['Clerk', 'Companion'], notes: '', time: null, placeholders: [],
@@ -136,7 +138,7 @@ describe('the Movement tag on the Entities chip', () => {
 
   it('drops the tag when the row in force is not Strict', () => {
     const offShift: Entity = {
-      ...clerk, starts: [{ id: 's1', place: 'inn', weight: 1, schedule: [{ id: 'r1', time: { start: 540, end: 1020 }, strict: true, action: { kind: 'stay', place: 'inn' } }] }],
+      ...withFirstStarts(clerk, [{ id: 's1', place: 'inn', weight: 1, schedule: [{ id: 'r1', time: { start: 540, end: 1020 }, strict: true, action: { kind: 'stay', place: 'inn' } }] }]),
     };
     const roster = [offShift, ...cast.slice(1)];
     const read = (now: number) => tagOf(lookup(liveChipScene(sources({

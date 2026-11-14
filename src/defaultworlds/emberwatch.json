@@ -907,36 +907,42 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "12fb7d50-05f3-557d-907a-8f1310d89790",
-          "weight": 1,
-          "schedule": [
+          "id": "routine-1",
+          "name": "Routine 1",
+          "traversable": [
+            "12fb7d50-05f3-557d-907a-8f1310d89790",
+            "7ea23cd8-d58b-59a8-a0e4-2f6b1cc01ea4"
+          ],
+          "starts": [
             {
-              "id": "row-1",
-              "time": "allDay",
-              "action": {
-                "kind": "wander",
-                "places": [
-                  {
-                    "place": "12fb7d50-05f3-557d-907a-8f1310d89790",
-                    "weight": 1
-                  },
-                  {
-                    "place": "7ea23cd8-d58b-59a8-a0e4-2f6b1cc01ea4",
-                    "weight": 1
+              "id": "start-1",
+              "place": "12fb7d50-05f3-557d-907a-8f1310d89790",
+              "weight": 1,
+              "schedule": [
+                {
+                  "id": "row-1",
+                  "time": "allDay",
+                  "action": {
+                    "kind": "wander",
+                    "places": [
+                      {
+                        "place": "12fb7d50-05f3-557d-907a-8f1310d89790",
+                        "weight": 1
+                      },
+                      {
+                        "place": "7ea23cd8-d58b-59a8-a0e4-2f6b1cc01ea4",
+                        "weight": 1
+                      }
+                    ],
+                    "idle": 240
                   }
-                ],
-                "idle": 240
-              }
+                }
+              ]
             }
           ]
         }
-      ],
-      "traversable": [
-        "12fb7d50-05f3-557d-907a-8f1310d89790",
-        "7ea23cd8-d58b-59a8-a0e4-2f6b1cc01ea4"
       ]
     },
     {
@@ -1070,47 +1076,53 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "12fb7d50-05f3-557d-907a-8f1310d89790",
-          "weight": 1,
-          "schedule": [
+          "id": "routine-1",
+          "name": "Routine 1",
+          "traversable": [
+            "12fb7d50-05f3-557d-907a-8f1310d89790",
+            "926ba2be-4e5d-53be-8b11-cda86f0e4be3"
+          ],
+          "starts": [
             {
-              "id": "row-1",
-              "time": "allDay",
-              "action": {
-                "kind": "wander",
-                "places": [
-                  {
-                    "place": "12fb7d50-05f3-557d-907a-8f1310d89790",
-                    "weight": 1
-                  },
-                  {
-                    "place": "926ba2be-4e5d-53be-8b11-cda86f0e4be3",
-                    "weight": 1
+              "id": "start-1",
+              "place": "12fb7d50-05f3-557d-907a-8f1310d89790",
+              "weight": 1,
+              "schedule": [
+                {
+                  "id": "row-1",
+                  "time": "allDay",
+                  "action": {
+                    "kind": "wander",
+                    "places": [
+                      {
+                        "place": "12fb7d50-05f3-557d-907a-8f1310d89790",
+                        "weight": 1
+                      },
+                      {
+                        "place": "926ba2be-4e5d-53be-8b11-cda86f0e4be3",
+                        "weight": 1
+                      }
+                    ],
+                    "idle": 240
                   }
-                ],
-                "idle": 240
-              }
-            },
-            {
-              "id": "row-2",
-              "time": {
-                "start": 1320,
-                "end": 480
-              },
-              "action": {
-                "kind": "stay",
-                "place": "926ba2be-4e5d-53be-8b11-cda86f0e4be3"
-              }
+                },
+                {
+                  "id": "row-2",
+                  "time": {
+                    "start": 1320,
+                    "end": 480
+                  },
+                  "action": {
+                    "kind": "stay",
+                    "place": "926ba2be-4e5d-53be-8b11-cda86f0e4be3"
+                  }
+                }
+              ]
             }
           ]
         }
-      ],
-      "traversable": [
-        "12fb7d50-05f3-557d-907a-8f1310d89790",
-        "926ba2be-4e5d-53be-8b11-cda86f0e4be3"
       ]
     },
     {
@@ -1304,12 +1316,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "7ea23cd8-d58b-59a8-a0e4-2f6b1cc01ea4",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "7ea23cd8-d58b-59a8-a0e4-2f6b1cc01ea4",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1476,47 +1494,53 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "926ba2be-4e5d-53be-8b11-cda86f0e4be3",
-          "weight": 1,
-          "schedule": [
+          "id": "routine-1",
+          "name": "Routine 1",
+          "traversable": [
+            "926ba2be-4e5d-53be-8b11-cda86f0e4be3",
+            "ceeed07b-7534-547a-9bb1-c80dfffb598b"
+          ],
+          "starts": [
             {
-              "id": "row-1",
-              "time": "allDay",
-              "action": {
-                "kind": "wander",
-                "places": [
-                  {
-                    "place": "926ba2be-4e5d-53be-8b11-cda86f0e4be3",
-                    "weight": 1
-                  },
-                  {
-                    "place": "ceeed07b-7534-547a-9bb1-c80dfffb598b",
-                    "weight": 1
+              "id": "start-1",
+              "place": "926ba2be-4e5d-53be-8b11-cda86f0e4be3",
+              "weight": 1,
+              "schedule": [
+                {
+                  "id": "row-1",
+                  "time": "allDay",
+                  "action": {
+                    "kind": "wander",
+                    "places": [
+                      {
+                        "place": "926ba2be-4e5d-53be-8b11-cda86f0e4be3",
+                        "weight": 1
+                      },
+                      {
+                        "place": "ceeed07b-7534-547a-9bb1-c80dfffb598b",
+                        "weight": 1
+                      }
+                    ],
+                    "idle": 240
                   }
-                ],
-                "idle": 240
-              }
-            },
-            {
-              "id": "row-2",
-              "time": {
-                "start": 1020,
-                "end": 120
-              },
-              "action": {
-                "kind": "stay",
-                "place": "926ba2be-4e5d-53be-8b11-cda86f0e4be3"
-              }
+                },
+                {
+                  "id": "row-2",
+                  "time": {
+                    "start": 1020,
+                    "end": 120
+                  },
+                  "action": {
+                    "kind": "stay",
+                    "place": "926ba2be-4e5d-53be-8b11-cda86f0e4be3"
+                  }
+                }
+              ]
             }
           ]
         }
-      ],
-      "traversable": [
-        "926ba2be-4e5d-53be-8b11-cda86f0e4be3",
-        "ceeed07b-7534-547a-9bb1-c80dfffb598b"
       ]
     },
     {
@@ -1544,49 +1568,55 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "12fb7d50-05f3-557d-907a-8f1310d89790",
-          "weight": 1,
-          "schedule": [
+          "id": "routine-1",
+          "name": "Routine 1",
+          "traversable": [
+            "12fb7d50-05f3-557d-907a-8f1310d89790",
+            "6e4d04b1-c137-5019-b976-808c75cd4d7b",
+            "463cbcc1-5843-5587-9a13-51227bf8bbf1"
+          ],
+          "starts": [
             {
-              "id": "row-1",
-              "time": "allDay",
-              "action": {
-                "kind": "stay",
-                "place": "12fb7d50-05f3-557d-907a-8f1310d89790"
-              }
-            },
-            {
-              "id": "row-2",
-              "time": {
-                "start": 1080,
-                "end": 1320
-              },
-              "action": {
-                "kind": "stay",
-                "place": "6e4d04b1-c137-5019-b976-808c75cd4d7b"
-              }
-            },
-            {
-              "id": "row-3",
-              "time": {
-                "start": 1320,
-                "end": 360
-              },
-              "action": {
-                "kind": "stay",
-                "place": "463cbcc1-5843-5587-9a13-51227bf8bbf1"
-              }
+              "id": "start-1",
+              "place": "12fb7d50-05f3-557d-907a-8f1310d89790",
+              "weight": 1,
+              "schedule": [
+                {
+                  "id": "row-1",
+                  "time": "allDay",
+                  "action": {
+                    "kind": "stay",
+                    "place": "12fb7d50-05f3-557d-907a-8f1310d89790"
+                  }
+                },
+                {
+                  "id": "row-2",
+                  "time": {
+                    "start": 1080,
+                    "end": 1320
+                  },
+                  "action": {
+                    "kind": "stay",
+                    "place": "6e4d04b1-c137-5019-b976-808c75cd4d7b"
+                  }
+                },
+                {
+                  "id": "row-3",
+                  "time": {
+                    "start": 1320,
+                    "end": 360
+                  },
+                  "action": {
+                    "kind": "stay",
+                    "place": "463cbcc1-5843-5587-9a13-51227bf8bbf1"
+                  }
+                }
+              ]
             }
           ]
         }
-      ],
-      "traversable": [
-        "12fb7d50-05f3-557d-907a-8f1310d89790",
-        "6e4d04b1-c137-5019-b976-808c75cd4d7b",
-        "463cbcc1-5843-5587-9a13-51227bf8bbf1"
       ]
     },
     {
@@ -1613,12 +1643,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "e0d6b1a4-3c27-4f58-b9e1-7a2d4c6f8b13",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "e0d6b1a4-3c27-4f58-b9e1-7a2d4c6f8b13",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1646,12 +1682,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "926ba2be-4e5d-53be-8b11-cda86f0e4be3",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "926ba2be-4e5d-53be-8b11-cda86f0e4be3",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1670,12 +1712,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "e4f542ae-3045-53c8-9125-d42ed8e5f0a6",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "e4f542ae-3045-53c8-9125-d42ed8e5f0a6",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "whenNearby"
@@ -1698,12 +1746,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "f56c9e4d-45a1-54cf-ae9a-54c11e467d8b",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "f56c9e4d-45a1-54cf-ae9a-54c11e467d8b",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1732,12 +1786,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "102c0b5f-c212-576e-8cc5-3bdfec964d30",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "102c0b5f-c212-576e-8cc5-3bdfec964d30",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1765,12 +1825,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "d066c214-a242-59ec-bdd7-86f9ade42be2",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "d066c214-a242-59ec-bdd7-86f9ade42be2",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1799,12 +1865,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "6599baee-9b2f-5420-838d-078aa2ee9ebf",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "6599baee-9b2f-5420-838d-078aa2ee9ebf",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1832,12 +1904,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "ceeed07b-7534-547a-9bb1-c80dfffb598b",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "ceeed07b-7534-547a-9bb1-c80dfffb598b",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1866,12 +1944,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "ceeed07b-7534-547a-9bb1-c80dfffb598b",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "ceeed07b-7534-547a-9bb1-c80dfffb598b",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1899,18 +1983,24 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "261b4a28-bf06-5478-8ca9-0b7dbd2d7d5a",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "6599baee-9b2f-5420-838d-078aa2ee9ebf",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "261b4a28-bf06-5478-8ca9-0b7dbd2d7d5a",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "6599baee-9b2f-5420-838d-078aa2ee9ebf",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1940,12 +2030,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "932c5160-2b93-5c10-b603-a6ab2ca7855c",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "932c5160-2b93-5c10-b603-a6ab2ca7855c",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "never"
@@ -1975,12 +2071,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "e4f542ae-3045-53c8-9125-d42ed8e5f0a6",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "e4f542ae-3045-53c8-9125-d42ed8e5f0a6",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "whenNearby"
@@ -2017,12 +2119,18 @@
         "id": "83c2490e-1f40-412d-99bc-bfd782762175"
       },
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "65727521-ae63-5c50-823f-a84f86b41048",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "65727521-ae63-5c50-823f-a84f86b41048",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "whenNearby"

@@ -7,14 +7,15 @@ import type { Entity, GameLocation, GameState } from '@/types';
 import { runTestCode, type StatCodeWorld } from '@/lib/statCodeTestRun';
 import { buildPlayerView } from './playerView';
 import { playerViewWorld, type PlayerViewReach } from './playerViewWorld';
+import { oneRoutine } from '@/test/routines';
 
 /** Morphie's Test Code in a game reads where met entities stand now, and only that (Q42). */
 
 const LOCATIONS: GameLocation[] = [{ id: 'gate', name: 'Gate' }, { id: 'hall', name: 'Hall' }, { id: 'vault', name: 'Vault' }];
 // The warden begins at the gate, so a Sample Placement would put it there.
 const WARDEN: Entity = {
-  id: 'warden', name: 'Warden', playerDescription: 'A guard.', kind: 'unique', traversable: [],
-  starts: [{ id: 'w1', place: 'gate', weight: 1, schedule: [] }],
+  id: 'warden', name: 'Warden', playerDescription: 'A guard.', kind: 'unique',
+  routines: oneRoutine([{ id: 'w1', place: 'gate', weight: 1, schedule: [] }], []),
 };
 // The stranger hides its name and stands in the vault, so the player has never met it.
 const STRANGER: Entity = { id: 'stranger', name: 'Stranger', strangerName: 'a passer-by', playerDescription: 'Someone.', locations: ['vault'] };

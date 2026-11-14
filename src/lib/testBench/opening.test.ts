@@ -3,13 +3,15 @@ import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { drawNewGameOpening } from '@/lib/newGameOpening';
 import { activeDescriptor } from '@/lib/statContext';
-import { PLAYER_START, type Entity, type GameLocation, type Stat, type Trait, type TraitGroup, type WorldOption, type WorldOptionValues, type WorldOverview } from '@/types';
+import { PLAYER_START, type Entity, type EntityStart, type GameLocation, type Stat, type Trait, type TraitGroup, type WorldOption, type WorldOptionValues, type WorldOverview } from '@/types';
 import type { PlaceholderPick } from '@/lib/placeholders';
 import { buildLens, type LensState } from './lens';
 import { phValueId, phValues } from '@/test/placeholderValues';
 import {
   buildOpening, EMPTY_OPENING, primeOpeningRolls, rerollOpeningRolls, type OpeningWorld, type OpeningChoice } from './opening';
 import { AS_LISTED } from '@/test/asListed';
+import {  } from '@/lib/entityKind';
+import { oneRoutine } from '@/test/routines';
 
 // Chip tokens, spelled as the editor inserts them.
 const chip = (id: string, mode: 'world' | 'unique', placement: string) => `{{ph:${id}:${mode}:${placement}}}`;
@@ -428,8 +430,8 @@ describe('the opening pool', () => {
   });
 
   it('draws from the cast the Sample Placement puts at the chosen start', () => {
-    const stall = (id: string, name: string, starts: Entity['starts']): Entity => ({
-      id, name, kind: 'unique', traversable: [], starts, openings: [{ id: `o-${id}`, text: `${name} is here.`, kind: 'narration' }],
+    const stall = (id: string, name: string, starts: EntityStart[]): Entity => ({
+      id, name, kind: 'unique', routines: oneRoutine(starts, []), openings: [{ id: `o-${id}`, text: `${name} is here.`, kind: 'narration' }],
     });
     const w = pooled();
     const sample = world({

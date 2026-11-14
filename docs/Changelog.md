@@ -23,6 +23,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Authors can switch an entity on and off during a game with its new Enabled rows.** Set them on the entity's Presence tab. While off, it's hidden from the player and the AI, and its stats, scripts and routine pause until it returns.
     - **Traits and images can require a World Option, and scripts can change one.** A Requires row checks a Choice value, On or Off, or a Number. Scripts read and write `options`, and the Test Bench lets you pick each value.
     - **Authors can switch a location and the locations inside it on and off during a game with Enabled rows.** Set them on the location's Presence tab. While off, it's gone from the map, the list and the AI, and no new game starts there.
+  - **Entity Routines:**
+    - **World files keep each entity's Starts and Can Also Go inside a Routine.** A world from 3.7.0 opens with one Routine per entity and plays as before.
 - **🛠️ Developer tooling**
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.
 

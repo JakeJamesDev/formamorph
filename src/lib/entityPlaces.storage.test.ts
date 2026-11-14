@@ -4,6 +4,8 @@ import { namedPlacesOf, presenceIn, presenceOf } from './entityPlaces';
 import { startingLocationIds } from './locationGraph';
 import { buildEntityCardData } from './entityFile';
 import released from '@/test/v3.6.2-veilwood-world.json';
+import { startsOf } from '@/lib/entityKind';
+import { oneRoutine } from '@/test/routines';
 
 // The export path serializes off the main thread; the worker is the transport, not the shape under test.
 const files = vi.hoisted(() => [] as string[]);
@@ -38,7 +40,7 @@ describe('a world from v3.6.2', () => {
     for (const { id } of placed) {
       const entity = world.entities.find((e) => e.id === id)!;
       expect(entity.kind, entity.name).toBeDefined();
-      expect(entity.starts?.length, entity.name).toBeGreaterThan(0);
+      expect(startsOf(entity).length, entity.name).toBeGreaterThan(0);
       expect(entity, entity.name).not.toHaveProperty('locations');
     }
   });
@@ -48,7 +50,7 @@ describe('a world from v3.6.2', () => {
     for (const old of before.entities) {
       const entity = world.entities.find((e) => e.id === old.id)!;
       // A Start at Player's Starting Location stands for the starting locations (Q7).
-      const added = (entity.starts ?? []).some((s) => s.place === PLAYER_START) ? startingLocationIds(world.locations) : [];
+      const added = startsOf(entity).some((s) => s.place === PLAYER_START) ? startingLocationIds(world.locations) : [];
       const now = presence(entity);
       expect(now.filter((place) => !(old.locations ?? []).includes(place) && !added.includes(place)), entity.name).toEqual([]);
       expect((old.locations ?? []).filter((place) => !now.includes(place)), entity.name).toEqual([]);
@@ -81,7 +83,7 @@ describe('an unreleased world whose entity with a kind still stores a list (Q5, 
   it('saves without the field', async () => {
     const saved = await savedAfterLoad(stale);
     expect(saved.entities[0]).not.toHaveProperty('locations');
-    expect(saved.entities[0].starts).toEqual(stale.entities[0].starts);
+    expect(startsOf(saved.entities[0])).toEqual(stale.entities[0].starts);
   });
 });
 
@@ -104,8 +106,8 @@ describe('the Custom Persona', () => {
 describe('an exported entity card', () => {
   it('holds no locations for an entity with a kind, even one that still stores a list', () => {
     const pilot: Entity = {
-      id: 'pilot', name: 'Pilot', kind: 'unique', traversable: [], locations: ['loft'],
-      starts: [{ id: 's1', place: 'quay', weight: 1, schedule: [] }],
+      id: 'pilot', name: 'Pilot', kind: 'unique', locations: ['loft'],
+      routines: oneRoutine([{ id: 's1', place: 'quay', weight: 1, schedule: [] }], []),
     };
     expect(namedPlacesOf(pilot)).toEqual(['quay']);
     expect(buildEntityCardData(pilot)).not.toHaveProperty('locations');

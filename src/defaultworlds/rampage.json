@@ -1045,24 +1045,30 @@
         }
       ],
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "542a8d1e-f045-432c-89e0-836be699b1dc",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "7669f491-6486-4012-b827-442f0b18c26d",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-3",
-          "place": "dde19988-f34e-4d9e-a6fe-8a86141d98c9",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "542a8d1e-f045-432c-89e0-836be699b1dc",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "7669f491-6486-4012-b827-442f0b18c26d",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-3",
+              "place": "dde19988-f34e-4d9e-a6fe-8a86141d98c9",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1086,24 +1092,30 @@
         }
       ],
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "542a8d1e-f045-432c-89e0-836be699b1dc",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-3",
-          "place": "1eae497d-dbd0-48e8-978b-8b67f93745f8",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "542a8d1e-f045-432c-89e0-836be699b1dc",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-3",
+              "place": "1eae497d-dbd0-48e8-978b-8b67f93745f8",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1127,24 +1139,30 @@
         }
       ],
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "fbf2ccb1-bee4-4273-89bf-8ed35ed2fbc3",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-3",
-          "place": "541721dc-e269-4539-9da7-9dd2be608a16",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "fbf2ccb1-bee4-4273-89bf-8ed35ed2fbc3",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-3",
+              "place": "541721dc-e269-4539-9da7-9dd2be608a16",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1168,12 +1186,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "545f34f6-5efc-4a96-918a-49fea1db9652",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "545f34f6-5efc-4a96-918a-49fea1db9652",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1201,12 +1225,18 @@
         "1739141048247"
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "545f34f6-5efc-4a96-918a-49fea1db9652",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "545f34f6-5efc-4a96-918a-49fea1db9652",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1261,12 +1291,18 @@
       "sound": null,
       "model": null,
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "545f34f6-5efc-4a96-918a-49fea1db9652",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "545f34f6-5efc-4a96-918a-49fea1db9652",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "whenNearby"
@@ -1296,24 +1332,30 @@
         "1739141048247"
       ],
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "1739141048247",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "542a8d1e-f045-432c-89e0-836be699b1dc",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-3",
-          "place": "7669f491-6486-4012-b827-442f0b18c26d",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "1739141048247",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "542a8d1e-f045-432c-89e0-836be699b1dc",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-3",
+              "place": "7669f491-6486-4012-b827-442f0b18c26d",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1339,24 +1381,30 @@
       "sound": null,
       "model": null,
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "7669f491-6486-4012-b827-442f0b18c26d",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-3",
-          "place": "f7a8a344-6986-42df-965b-0eac20820edc",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "7669f491-6486-4012-b827-442f0b18c26d",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-3",
+              "place": "f7a8a344-6986-42df-965b-0eac20820edc",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1380,18 +1428,24 @@
       "aiSummary": "Navy destroyer: deck guns and missiles from the harbor channel.",
       "imageTags": "navy destroyer, warship, deck gun firing, harbor channel, sea spray, gun smoke",
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "33edfb4b-2356-45fd-80b4-de75cbca7bb1",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "33edfb4b-2356-45fd-80b4-de75cbca7bb1",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1414,12 +1468,18 @@
       "aiSummary": "The last ferry: packed with evacuees, pulling out of the harbor.",
       "imageTags": "ferry, passenger ship, harbor, waves, ship wake, open water",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "33edfb4b-2356-45fd-80b4-de75cbca7bb1",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "33edfb4b-2356-45fd-80b4-de75cbca7bb1",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1445,18 +1505,24 @@
       "aiSummary": "Rooftop missile teams: shoulder-fired missiles from downtown's towers.",
       "imageTags": "soldiers, rooftop, rocket launcher, aiming up, skyscraper roof, smoke trail",
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "5873058f-ec2d-42f2-8c9e-3657181c90d3",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "542a8d1e-f045-432c-89e0-836be699b1dc",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "5873058f-ec2d-42f2-8c9e-3657181c90d3",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "542a8d1e-f045-432c-89e0-836be699b1dc",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "whenNearby"
@@ -1480,12 +1546,18 @@
       "aiSummary": "Stranded commuters: walking out of the subway tunnels toward Old Town.",
       "imageTags": "commuters, subway tunnel, flashlights, train tracks, falling dust",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "f7a8a344-6986-42df-965b-0eac20820edc",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "f7a8a344-6986-42df-965b-0eac20820edc",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1510,12 +1582,18 @@
       "aiSummary": "Combat engineers: rigging Harborgate Bridge to drop under the creature.",
       "imageTags": "soldiers, hard hats, demolition charges, bridge cables, detonator, bridge deck",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "dde19988-f34e-4d9e-a6fe-8a86141d98c9",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "dde19988-f34e-4d9e-a6fe-8a86141d98c9",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "whenNearby"
@@ -1539,12 +1617,18 @@
       "aiSummary": "Stalled drivers: running off Harborgate Bridge on foot.",
       "imageTags": "abandoned cars, open car doors, people running, bridge deck, traffic jam",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "dde19988-f34e-4d9e-a6fe-8a86141d98c9",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "dde19988-f34e-4d9e-a6fe-8a86141d98c9",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1567,12 +1651,18 @@
       "aiSummary": "Stadium crowd: fans evacuating Neonspire Stadium.",
       "imageTags": "stadium crowd, sports fans, team scarves, phones filming, stadium gates, floodlights",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "1eae497d-dbd0-48e8-978b-8b67f93745f8",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "1eae497d-dbd0-48e8-978b-8b67f93745f8",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1597,12 +1687,18 @@
       "aiSummary": "Refinery fire crew: foam crews holding back the refinery fires.",
       "imageTags": "firefighters, silver heat suits, fire truck, refinery fire",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "541721dc-e269-4539-9da7-9dd2be608a16",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "541721dc-e269-4539-9da7-9dd2be608a16",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1626,12 +1722,18 @@
       "aiSummary": "Artillery battery: howitzers shelling the creature from Cedar Hollow's ridge.",
       "imageTags": "self-propelled howitzers, artillery, muzzle flash, ridge, camouflage netting",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "18b34752-6fb9-4651-9c29-721af9dfd928",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "18b34752-6fb9-4651-9c29-721af9dfd928",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1654,12 +1756,18 @@
       "aiSummary": "Cedar Hollow evacuees: families leaving the suburb on the jammed highway.",
       "imageTags": "crowd, families, suburban street, packed cars, minivan, traffic jam, evacuation",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "18b34752-6fb9-4651-9c29-721af9dfd928",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "18b34752-6fb9-4651-9c29-721af9dfd928",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1684,12 +1792,18 @@
       "aiSummary": "Dr. Sorensen: the threat analyst at Fort Bastion who studies the creature's every move.",
       "imageTags": "scientist, lab coat, glasses, monitors, war room, tired eyes",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "545f34f6-5efc-4a96-918a-49fea1db9652",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "545f34f6-5efc-4a96-918a-49fea1db9652",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1715,12 +1829,18 @@
       "imageTags": "test pilot, flight suit, helmet, cockpit, hangar, determined",
       "knownIn": "nowhere",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "545f34f6-5efc-4a96-918a-49fea1db9652",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "545f34f6-5efc-4a96-918a-49fea1db9652",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "never"

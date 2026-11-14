@@ -4,6 +4,7 @@ import { authoredChipScene, type AuthoredWorld } from './authoredScene';
 import { ownerStatParts } from '../statContext';
 import { seedNewGameStats } from '../traitRuntime';
 import type { ChipScene } from './chipScene';
+import { firstRoutine } from '@/lib/entityKind';
 
 // Generic on purpose, so no one takes the preview for their own world. Code-only, never in the library.
 
@@ -57,9 +58,11 @@ const trait = (id: string, name: string, aiDescription: string): Trait => ({
 });
 
 /** A Unique entity's routine: one Start at `place`, where it stays all day. */
-const staysAt = (id: string, place: string): Pick<Entity, 'kind' | 'starts'> => ({
+const staysAt = (id: string, place: string): Pick<Entity, 'kind' | 'routines'> => ({
   kind: 'unique',
-  starts: [{ id: `${id}-home`, place, weight: 1, schedule: [{ id: `${id}-stay`, time: 'allDay', action: { kind: 'stay', place } }] }],
+  routines: [firstRoutine([
+    { id: `${id}-home`, place, weight: 1, schedule: [{ id: `${id}-stay`, time: 'allDay', action: { kind: 'stay', place } }] },
+  ])],
 });
 
 // Wren owns one stat and one trait, so the Entities chip's Only With and Include rows show lines in the sample.

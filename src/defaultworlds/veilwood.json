@@ -1042,18 +1042,24 @@
         }
       ],
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "343d2396-c459-44f2-bf1a-8df30863d44e",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "343d2396-c459-44f2-bf1a-8df30863d44e",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1076,12 +1082,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1104,18 +1116,24 @@
         }
       ],
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "343d2396-c459-44f2-bf1a-8df30863d44e",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "343d2396-c459-44f2-bf1a-8df30863d44e",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1136,12 +1154,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "343d2396-c459-44f2-bf1a-8df30863d44e",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "343d2396-c459-44f2-bf1a-8df30863d44e",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1164,18 +1188,24 @@
         }
       ],
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "343d2396-c459-44f2-bf1a-8df30863d44e",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "343d2396-c459-44f2-bf1a-8df30863d44e",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1231,30 +1261,36 @@
         }
       ],
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "343d2396-c459-44f2-bf1a-8df30863d44e",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-3",
-          "place": "3a691535-0953-45a1-adf6-4abe23339963",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-4",
-          "place": "74d1dad1-e1ce-41d4-b97d-15cca7b9ce41",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "343d2396-c459-44f2-bf1a-8df30863d44e",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-3",
+              "place": "3a691535-0953-45a1-adf6-4abe23339963",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-4",
+              "place": "74d1dad1-e1ce-41d4-b97d-15cca7b9ce41",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "whenNearby"
@@ -1311,36 +1347,42 @@
         }
       ],
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-3",
-          "place": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-4",
-          "place": "3a691535-0953-45a1-adf6-4abe23339963",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-5",
-          "place": "84dbce05-5d3c-469f-9217-4d4b78a98805",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-3",
+              "place": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-4",
+              "place": "3a691535-0953-45a1-adf6-4abe23339963",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-5",
+              "place": "84dbce05-5d3c-469f-9217-4d4b78a98805",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "whenNearby"
@@ -1365,42 +1407,48 @@
       "sound": null,
       "model": null,
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "1725037201878",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-3",
-          "place": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-4",
-          "place": "f0977527-8c51-47a3-b0d9-f2efdd11709c",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-5",
-          "place": "05d63f43-c798-4071-865d-7a99ed73de51",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-6",
-          "place": "74d1dad1-e1ce-41d4-b97d-15cca7b9ce41",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "1725037201878",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-3",
+              "place": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-4",
+              "place": "f0977527-8c51-47a3-b0d9-f2efdd11709c",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-5",
+              "place": "05d63f43-c798-4071-865d-7a99ed73de51",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-6",
+              "place": "74d1dad1-e1ce-41d4-b97d-15cca7b9ce41",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "never"
@@ -1424,12 +1472,18 @@
       "sound": null,
       "model": null,
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "64c2212e-cf1a-42b0-8d76-3b04252b4f43",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "64c2212e-cf1a-42b0-8d76-3b04252b4f43",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1452,12 +1506,18 @@
       "aiSummary": "Ghost Chanterelle: mushroom; calms stress, a little food.",
       "imageTags": "pale white mushroom, ruffled cap edge, small white mushrooms, mossy log, soft glow",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "05d63f43-c798-4071-865d-7a99ed73de51",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "05d63f43-c798-4071-865d-7a99ed73de51",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1478,12 +1538,18 @@
       "aiSummary": "Bleeding Tooth: mushroom; mends health, a little toxin.",
       "imageTags": "mushroom, white lumpy cap, dripping red liquid, bleeding tooth fungus",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "84dbce05-5d3c-469f-9217-4d4b78a98805",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "84dbce05-5d3c-469f-9217-4d4b78a98805",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1506,18 +1572,24 @@
       "aiSummary": "Sporeburst Puffball: hazard; bursts into spores that raise toxin and force a loud cough.",
       "imageTags": "cluster of round pale puffball mushrooms, faint glow",
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "05d63f43-c798-4071-865d-7a99ed73de51",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "343d2396-c459-44f2-bf1a-8df30863d44e",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "05d63f43-c798-4071-865d-7a99ed73de51",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "343d2396-c459-44f2-bf1a-8df30863d44e",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "never"
@@ -1541,30 +1613,36 @@
       "aiSummary": "Bark Frogs: harmless frogs whose chorus stops when a hunter is near.",
       "imageTags": "small tree frogs, mottled skin, clinging to a bare branch",
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "343d2396-c459-44f2-bf1a-8df30863d44e",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-3",
-          "place": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-4",
-          "place": "84dbce05-5d3c-469f-9217-4d4b78a98805",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "343d2396-c459-44f2-bf1a-8df30863d44e",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-3",
+              "place": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-4",
+              "place": "84dbce05-5d3c-469f-9217-4d4b78a98805",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "never"
@@ -1589,12 +1667,18 @@
       "imageTags": "black leech, slimy, glistening",
       "knownIn": "nowhere",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "84dbce05-5d3c-469f-9217-4d4b78a98805",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "84dbce05-5d3c-469f-9217-4d4b78a98805",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "never"
@@ -1616,12 +1700,18 @@
       "aiSummary": "The Drowned Bell: a church bell whose note draws the Dread Crawler from across the wood.",
       "imageTags": "old bronze church bell, carved wooden bell frame, heavy rope",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "419322fd-bb43-463f-99da-d650542ccaf7",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "419322fd-bb43-463f-99da-d650542ccaf7",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "never"
@@ -1643,12 +1733,18 @@
       "aiSummary": "The Map's Other Half: marks the open slope to the Veilbreak and warns that the hunters wake at dusk.",
       "imageTags": "torn hand-drawn paper map, weathered paper",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "ed37475f-a7c3-423c-abc7-3af3229764de",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "ed37475f-a7c3-423c-abc7-3af3229764de",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1671,12 +1767,18 @@
       "aiSummary": "The Bone Midden: bones and lost travelers' gear at the Dens, with a compass that points east.",
       "imageTags": "pile of old bones and skulls, dark",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "3a691535-0953-45a1-adf6-4abe23339963",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "3a691535-0953-45a1-adf6-4abe23339963",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1699,18 +1801,24 @@
       "aiSummary": "The Surveyor's Blazes: paint marks leading from the Hollow Fig to the cache at the Eastern Edge.",
       "imageTags": "orange paint marks on a tree trunk, trail blaze",
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "74d1dad1-e1ce-41d4-b97d-15cca7b9ce41",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "74d1dad1-e1ce-41d4-b97d-15cca7b9ce41",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "never"

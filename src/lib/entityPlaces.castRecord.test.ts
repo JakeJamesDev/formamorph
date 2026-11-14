@@ -14,6 +14,7 @@ import { resolveEntityText } from '@/lib/placeholders';
 import { playerViewScene, playerViewWorld, type PlayerViewReach } from '@/lib/formaquestion/playerViewWorld';
 import { runTestCode, type StatCodeWorld } from '@/lib/statCodeTestRun';
 import record from './__fixtures__/entity-places-cast-record.json';
+import { migrateWorld } from '@/lib/version';
 
 /**
  * Every reader that read a Position copy gives the cast the record holds, for each
@@ -24,7 +25,7 @@ import record from './__fixtures__/entity-places-cast-record.json';
 const ROSTER_TOKENS = ['<ENTITIES|markdown>', '<ENTITIES|sublocations.markdown>', '<ENTITIES|reachable.summary.markdown>', '<ENTITIES|known.summary.markdown>'];
 
 const bundled = Object.entries(import.meta.glob<World>('@/defaultworlds/*.json', { import: 'default', eager: true }))
-  .map(([path, world]) => [path.replace(/^.*\/(.+)\.json$/, '$1'), world] as const);
+  .map(([path, world]) => [path.replace(/^.*\/(.+)\.json$/, '$1'), migrateWorld(structuredClone(world))] as const);
 
 /** A name a roster rendered, or `<rolled>` for one a placeholder roll chose: each run rolls afresh. */
 const ROLLED = '<rolled>';

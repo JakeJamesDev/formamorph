@@ -9,6 +9,7 @@ import { sseReply, sseResponse } from '@/test/aiTextFixtures';
 import { scriptWorldTool } from '@/test/worldToolFixtures';
 import { useGameplay } from '@/contexts/GameplayContext';
 import type { Entity, GameLocation, PlayerStat, World } from '@/types';
+import { oneRoutine } from '@/test/routines';
 
 /** What an After the AI script reads of the places a turn settled, on a mounted game (Q212, Q218). */
 
@@ -139,10 +140,10 @@ describe('an After the AI script', () => {
   it('reads the routine of that same book: the pull’s hold, and no action for a follower or a waiting entity (Q225)', async () => {
     // Asha wanders her hut, and the well is a place she may go, so the pull holds her there until her idle runs out.
     const wanderer: Entity = {
-      id: 'asha', name: 'Asha', kind: 'unique', locations: ['hut'], traversable: ['well'],
-      starts: [{ id: 'hut', place: 'hut', weight: 1, schedule: [{
+      id: 'asha', name: 'Asha', kind: 'unique', locations: ['hut'],
+      routines: oneRoutine([{ id: 'hut', place: 'hut', weight: 1, schedule: [{
         id: 'w', time: 'allDay', action: { kind: 'wander', places: [{ place: 'hut', weight: 1 }], idle: 600 },
-      }] }],
+      }] }], ['well']),
     };
     const routineReads = {
       beforeAshaHeld: 'entities.Asha.held', ashaHeld: 'entities.Asha.held', ashaWanders: 'entities.Asha.action === "wander"',

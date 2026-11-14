@@ -863,24 +863,30 @@
         }
       ],
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "1739135858396",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "1739136073161",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-3",
-          "place": "b935ee97-679a-4686-92c3-59ee6588f7e3",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "1739135858396",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "1739136073161",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-3",
+              "place": "b935ee97-679a-4686-92c3-59ee6588f7e3",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "whenNearby"
@@ -904,18 +910,24 @@
         }
       ],
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "1739135858396",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "dbdb8a20-c1d5-4f51-859c-172baa173c5d",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "1739135858396",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "dbdb8a20-c1d5-4f51-859c-172baa173c5d",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -938,12 +950,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "dbdb8a20-c1d5-4f51-859c-172baa173c5d",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "dbdb8a20-c1d5-4f51-859c-172baa173c5d",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -966,18 +984,24 @@
         }
       ],
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "1739135858396",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "dbdb8a20-c1d5-4f51-859c-172baa173c5d",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "1739135858396",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "dbdb8a20-c1d5-4f51-859c-172baa173c5d",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "whenNearby"
@@ -1001,12 +1025,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "1739135858396",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "1739135858396",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1030,54 +1060,60 @@
       "sound": null,
       "model": null,
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "339009b2-6b28-4ff5-bba7-3de73283361b",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "1739135858396",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-3",
-          "place": "1739136073161",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-4",
-          "place": "dbdb8a20-c1d5-4f51-859c-172baa173c5d",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-5",
-          "place": "7ea9a26f-331c-43ca-9ffe-49689d2583f8",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-6",
-          "place": "b935ee97-679a-4686-92c3-59ee6588f7e3",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-7",
-          "place": "514bbdc4-24f4-42b6-9b5f-095b2b44bf2f",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-8",
-          "place": "6f3864be-8443-4c9e-941e-7c5f873ff267",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "339009b2-6b28-4ff5-bba7-3de73283361b",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "1739135858396",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-3",
+              "place": "1739136073161",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-4",
+              "place": "dbdb8a20-c1d5-4f51-859c-172baa173c5d",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-5",
+              "place": "7ea9a26f-331c-43ca-9ffe-49689d2583f8",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-6",
+              "place": "b935ee97-679a-4686-92c3-59ee6588f7e3",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-7",
+              "place": "514bbdc4-24f4-42b6-9b5f-095b2b44bf2f",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-8",
+              "place": "6f3864be-8443-4c9e-941e-7c5f873ff267",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "never"
@@ -1103,24 +1139,30 @@
       "sound": null,
       "model": null,
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "dbdb8a20-c1d5-4f51-859c-172baa173c5d",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "74a7d597-53c6-46e8-832d-b4247d208a7a",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-3",
-          "place": "514bbdc4-24f4-42b6-9b5f-095b2b44bf2f",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "dbdb8a20-c1d5-4f51-859c-172baa173c5d",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "74a7d597-53c6-46e8-832d-b4247d208a7a",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-3",
+              "place": "514bbdc4-24f4-42b6-9b5f-095b2b44bf2f",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "never"
@@ -1193,18 +1235,24 @@
         }
       ],
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "74a7d597-53c6-46e8-832d-b4247d208a7a",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "6f3864be-8443-4c9e-941e-7c5f873ff267",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "74a7d597-53c6-46e8-832d-b4247d208a7a",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "6f3864be-8443-4c9e-941e-7c5f873ff267",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "never"
@@ -1229,12 +1277,18 @@
       "sound": null,
       "model": null,
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "3e0e76a4-f49d-4781-b9b9-db86b83e6da8",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "3e0e76a4-f49d-4781-b9b9-db86b83e6da8",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1258,12 +1312,18 @@
       "model": null,
       "knownIn": "nowhere",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "7ea9a26f-331c-43ca-9ffe-49689d2583f8",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "7ea9a26f-331c-43ca-9ffe-49689d2583f8",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "never"
@@ -1288,12 +1348,18 @@
       "sound": null,
       "model": null,
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "7ea9a26f-331c-43ca-9ffe-49689d2583f8",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "7ea9a26f-331c-43ca-9ffe-49689d2583f8",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1318,12 +1384,18 @@
       "sound": null,
       "model": null,
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "b935ee97-679a-4686-92c3-59ee6588f7e3",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "b935ee97-679a-4686-92c3-59ee6588f7e3",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1345,12 +1417,18 @@
       "model": null,
       "knownIn": "nowhere",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "b935ee97-679a-4686-92c3-59ee6588f7e3",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "b935ee97-679a-4686-92c3-59ee6588f7e3",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "never"
@@ -1375,12 +1453,18 @@
       "sound": null,
       "model": null,
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "e1bf819b-5fb8-406f-9142-7feddd29b8bf",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "e1bf819b-5fb8-406f-9142-7feddd29b8bf",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1404,12 +1488,18 @@
       "model": null,
       "knownIn": "nowhere",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "e1bf819b-5fb8-406f-9142-7feddd29b8bf",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "e1bf819b-5fb8-406f-9142-7feddd29b8bf",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "never"
@@ -1433,12 +1523,18 @@
       "sound": null,
       "model": null,
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "514bbdc4-24f4-42b6-9b5f-095b2b44bf2f",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "514bbdc4-24f4-42b6-9b5f-095b2b44bf2f",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1460,12 +1556,18 @@
       "model": null,
       "knownIn": "nowhere",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "514bbdc4-24f4-42b6-9b5f-095b2b44bf2f",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "514bbdc4-24f4-42b6-9b5f-095b2b44bf2f",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "never"
@@ -1490,18 +1592,24 @@
       "sound": null,
       "model": null,
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "6f3864be-8443-4c9e-941e-7c5f873ff267",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "74a7d597-53c6-46e8-832d-b4247d208a7a",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "6f3864be-8443-4c9e-941e-7c5f873ff267",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "74a7d597-53c6-46e8-832d-b4247d208a7a",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1525,12 +1633,18 @@
       "sound": null,
       "model": null,
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "6f3864be-8443-4c9e-941e-7c5f873ff267",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "6f3864be-8443-4c9e-941e-7c5f873ff267",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "whenNearby"

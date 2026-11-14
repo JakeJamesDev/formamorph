@@ -7,11 +7,12 @@ import { GameplayProvider, useGameplay } from './GameplayContext';
 import { GameDataProvider } from './GameDataContext';
 import { PlaceholderSessionProvider } from './PlaceholderSessionContext';
 import { getSaveRecord, putSaveRecord } from '@/components/modals/dbUtils';
-import { castRoutines } from '@/lib/entityKind';
+import { castRoutines, startsOf, withFirstStarts } from '@/lib/entityKind';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { storyMinute } from '@/lib/gameClock';
 import { placeAll, positionWorld } from '@/lib/positionPlay';
 import { PLAYER_START, type ChatMessage, type Entity, type GameLocation, type UniqueStates, type SaveRecord } from '@/types';
+import { oneRoutine } from '@/test/routines';
 
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
 
@@ -48,18 +49,18 @@ const OPENING = storyMinute(0);
 // Two Starts, one at each place, and no schedule.
 const merchant: Entity = {
   id: 'merchant', name: 'Merchant', kind: 'unique', locations: ['keep', 'tower'],
-  starts: [{ id: 'at-keep', place: 'keep', weight: 1, schedule: [] }, { id: 'at-tower', place: 'tower', weight: 1, schedule: [] }],
+  routines: oneRoutine([{ id: 'at-keep', place: 'keep', weight: 1, schedule: [] }, { id: 'at-tower', place: 'tower', weight: 1, schedule: [] }]),
 };
 const guard: Entity = {
-  id: 'guard', name: 'Guard', kind: 'unique', locations: ['keep'], traversable: 'anywhere',
-  starts: [{ id: 'post', place: 'keep', weight: 1, schedule: [] }],
+  id: 'guard', name: 'Guard', kind: 'unique', locations: ['keep'],
+  routines: oneRoutine([{ id: 'post', place: 'keep', weight: 1, schedule: [] }], 'anywhere'),
 };
 // Walks the keep and the tower, an hour at each.
 const watch: Entity = {
   id: 'watch', name: 'Watch', kind: 'unique', locations: ['keep', 'tower'],
-  starts: [{ id: 'round', place: 'keep', weight: 1, schedule: [{
+  routines: oneRoutine([{ id: 'round', place: 'keep', weight: 1, schedule: [{
     id: 'walk', time: 'allDay', action: { kind: 'patrol', stops: [{ place: 'keep', idle: 60 }, { place: 'tower', idle: 60 }] },
-  }] }],
+  }] }]),
 };
 const WORLD = [merchant, guard, watch];
 
@@ -200,12 +201,12 @@ describe('Generic Entity Instances in the save', () => {
   // One Start walks the keep and the tower, an hour at each; the other stays at the tower.
   const herd: Entity = {
     id: 'herd', name: 'Herd', kind: 'generic', locations: ['keep', 'tower'],
-    starts: [
+    routines: oneRoutine([
       { id: 'walker', place: 'keep', weight: 1, schedule: [{
         id: 'walk', time: 'allDay', action: { kind: 'patrol', stops: [{ place: 'keep', idle: 60 }, { place: 'tower', idle: 60 }] },
       }] },
       { id: 'sitter', place: 'tower', weight: 1, schedule: [] },
-    ],
+    ]),
   };
   const generics = { herd: { walker: { position: 'tower', rowId: 'walk', lastRun: OPENING, idleEnd: OPENING + 30, stop: 1 }, sitter: { position: 'tower', lastRun: OPENING } } };
 
@@ -239,7 +240,7 @@ describe('Generic Entity Instances in the save', () => {
     const live = mount();
     await act(async () => { live().setGenericStates(generics); });
     await save(live, 'save-generic-grown');
-    const grown: Entity = { ...herd, starts: [herd.starts![0], { id: 'pup', place: 'keep', weight: 1, schedule: [] }] };
+    const grown: Entity = withFirstStarts(herd, [startsOf(herd)[0], { id: 'pup', place: 'keep', weight: 1, schedule: [] }]);
     await load(live, 'save-generic-grown', [grown], linked);
     expect(Object.keys(live().genericStates.herd)).toEqual(['walker', 'pup']);
     expect(live().genericStates.herd.pup.position).toBe('keep');
@@ -254,8 +255,8 @@ describe('Generic Entity Instances in the save', () => {
 describe("the player's starting location in the save", () => {
   const linked = [keep, { ...tower, parentId: 'keep' }];
   const companion: Entity = {
-    id: 'kit', name: 'Kit', kind: 'unique', traversable: 'anywhere',
-    starts: [{ id: 'beside', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }],
+    id: 'kit', name: 'Kit', kind: 'unique',
+    routines: oneRoutine([{ id: 'beside', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }], 'anywhere'),
   };
 
   it('round-trips the resolved place and the follow state', async () => {

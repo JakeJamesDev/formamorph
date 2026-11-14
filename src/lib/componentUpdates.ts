@@ -8,7 +8,7 @@
 
 import type { ContentLinkState } from '@/lib/contentLink';
 import {
-  offeredRoutine, routinePlacesOf, sameRoutine, withoutWorldFields, type LinkableContent,
+  offeredRoutine, routinePlacesOf, sameStarts, withoutWorldFields, type LinkableContent,
 } from '@/lib/linkedContent';
 import { carriedMembership, ROUTINE_FIELDS } from '@/lib/entityPresence';
 import { namedPlacesOf } from '@/lib/entityPlaces';
@@ -20,8 +20,9 @@ import { pickLabel, pickToken, type VrmLookup } from '@/lib/vrmPickMatch';
 import { placesOf } from '@/lib/positionEngine';
 import { PLAYER_START, PLAYER_START_LABEL } from '@/types';
 import type {
-  ContentLink, Dictionary, DictionaryEntry, Entity, EntityKind, EntityStart, GameLocation, ScheduleRow, VrmPick,
+  ContentLink, Dictionary, DictionaryEntry, EntityKind, EntityStart, GameLocation, ScheduleRow, Traversable, VrmPick,
 } from '@/types';
+import { applyingRoutine } from '@/lib/entityKind';
 
 /** What one world does with the update offered to its copy. */
 export type UpdateAction = 'update' | 'keep' | 'unlink';
@@ -241,7 +242,7 @@ function startsText(starts: readonly EntityStart[] | undefined, kind: EntityKind
   }).join('\n');
 }
 
-const traversableText = (value: Entity['traversable'], nameOf: (id: string) => string): string =>
+const traversableText = (value: Traversable | undefined, nameOf: (id: string) => string): string =>
   (value === 'anywhere' ? 'Anywhere' : formatValue('traversable', value?.map(nameOf)));
 
 /**
@@ -257,18 +258,20 @@ function routineChanges(
   const byId = new Map((locations ?? []).map((l) => [l.id, l.name]));
   const nameOf = (id: string) => (id === PLAYER_START ? PLAYER_START_LABEL : byId.get(id) || UNNAMED_LOCATION);
   const offered = source.kind ? offeredRoutine(copy, source, source.kind, locations && routinePlacesOf(locations)) : {};
-  const sameStarts = sameRoutine({ starts: copy.starts }, { starts: offered.starts });
+  // The first Routine's rows; per-Routine rows are not shown yet.
+  const held = applyingRoutine(copy);
+  const offers = applyingRoutine(offered);
   const rows = [{
-    row: { field: 'starts', label: 'Starts', current: startsText(copy.starts, kind, nameOf), incoming: startsText(offered.starts, kind, nameOf) },
-    same: sameStarts,
+    row: { field: 'starts', label: 'Starts', current: startsText(held?.starts, kind, nameOf), incoming: startsText(offers?.starts, kind, nameOf) },
+    same: sameStarts(held?.starts, offers?.starts),
   }];
   // A kind change moves the copy between a location list and a routine (Q33), so the list shows too.
   if (!copy.kind !== !source.kind) {
-    const held = copy.kind ? [] : namedPlacesOf(copy);
+    const member = copy.kind ? [] : namedPlacesOf(copy);
     const places = locations && routinePlacesOf(locations);
     const taken = source.kind || !places ? [] : carriedMembership(source, copy.link?.connections ?? {}, places.known);
     rows.push({
-      row: { field: 'locations', label: 'Locations', current: formatValue('locations', held.map(nameOf)), incoming: formatValue('locations', taken.map(nameOf)) },
+      row: { field: 'locations', label: 'Locations', current: formatValue('locations', member.map(nameOf)), incoming: formatValue('locations', taken.map(nameOf)) },
       same: false,
     });
   }
@@ -276,9 +279,9 @@ function routineChanges(
   return [...rows, {
     row: {
       field: 'traversable', label: 'Can Also Go',
-      current: traversableText(copy.traversable, nameOf), incoming: traversableText(offered.traversable, nameOf),
+      current: traversableText(held?.traversable, nameOf), incoming: traversableText(offers?.traversable, nameOf),
     },
-    same: sameRoutine({ traversable: copy.traversable }, { traversable: offered.traversable }),
+    same: JSON.stringify(held?.traversable) === JSON.stringify(offers?.traversable),
   }];
 }
 

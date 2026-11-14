@@ -6,6 +6,7 @@ import { useGameplay } from '@/contexts/GameplayContext';
 import { usePresence } from '@/lib/usePresence';
 import type { Presence } from '@/lib/presence';
 import type { Entity, GameLocation, PlayerStat, World } from '@/types';
+import { oneRoutine } from '@/test/routines';
 
 /**
  * A location's Enabled gate in play, through the real resolver: a gate on the global Veil stat takes Oldtown and
@@ -28,10 +29,10 @@ const HARBOR: GameLocation = { id: 'harbor', name: 'Harbor', isStarting: true };
 const OLDTOWN: GameLocation = { id: 'oldtown', name: 'Oldtown', enabledWhen: veilUp };
 const LANE: GameLocation = { id: 'lane', name: 'Lanternlane', parentId: 'oldtown' };
 const mira: Entity = { id: 'mira', name: 'Mira', kind: 'unique', knownIn: ['harbor'],
-  starts: [{ id: 'home', place: 'harbor', weight: 1, schedule: [] }] };
+  routines: oneRoutine([{ id: 'home', place: 'harbor', weight: 1, schedule: [] }]) };
 const pell: Entity = {
   id: 'pell', name: 'Pell', kind: 'unique', knownIn: ['harbor', 'lane'],
-  starts: [{ id: 'stall', place: 'lane', weight: 1, schedule: [] }],
+  routines: oneRoutine([{ id: 'stall', place: 'lane', weight: 1, schedule: [] }]),
   stats: [
     stat('count', 'Count', { scripts: [{ id: 'tick', timing: 'after', code: 'self.value += 1;' }] }),
     stat('energy', 'Energy', { regen: 5 }),

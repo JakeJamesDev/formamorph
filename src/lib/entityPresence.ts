@@ -1,6 +1,6 @@
 import type { ContentLocationRef, Entity, EntityKind, EntityPositions, GameLocation, GenericStates, PersonaRef } from "@/types";
 import { ancestors, parentLookup } from "@/lib/ancestors";
-import { isGeneric, placesReturned, withGenericStart, withoutRoutinePlace, withRoutineMapped, withRoutineReturned } from "@/lib/entityKind";
+import { isGeneric, placesReturned, startsOf, withGenericStart, withoutRoutinePlace, withRoutineMapped, withRoutineReturned } from "@/lib/entityKind";
 import { withNewStart } from "@/lib/routineEditing";
 import { idsAt, namedPlacesOf, positionsIn, withMembership } from "@/lib/entityPlaces";
 import { randomUUID } from "@/lib/uuid";
@@ -29,19 +29,16 @@ export function carryMap(
 }
 
 /** The routine fields of an entity with a kind. */
-export const ROUTINE_FIELDS = ["starts", "traversable"] as const;
-export type Routine = Pick<Entity, (typeof ROUTINE_FIELDS)[number]>;
+export const ROUTINE_FIELDS = ["routines"] as const;
+export type RoutineFields = Pick<Entity, (typeof ROUTINE_FIELDS)[number]>;
 
 /** The routine `source` holds once carried into a world as an entity of `kind`: its places through `connections`, kept
  *  where `known` holds them (Q11). The one mapping carry, update, compare and link repair share (Q30). */
 export function carriedRoutine(
   source: Entity, kind: EntityKind, connections: Readonly<Record<string, string>>, known: ReadonlySet<string>,
-): Routine {
+): RoutineFields {
   const carried = placedIn({ ...source, kind }, carryMap(source.locationRefs ?? [], connections, known));
-  return {
-    ...(carried.starts && { starts: carried.starts }),
-    ...(carried.traversable !== undefined && { traversable: carried.traversable }),
-  };
+  return carried.routines ? { routines: carried.routines } : {};
 }
 
 /**
@@ -57,7 +54,7 @@ export function returnedPlaces(
   const libraryRefs = new Map(sourceRefs.map((ref) => [ref.id, ref]));
   const worldRefs = new Map((item.locationRefs ?? []).map((ref) => [ref.id, ref]));
   const map = carryMap(sourceRefs, connections, known);
-  const { starts: _s, traversable: _t, locationRefs: _r, ...rest } = item;
+  const { routines: _routines, locationRefs: _r, ...rest } = item;
   const routine = item.kind ? withRoutineReturned(item, source, map) : {};
   const places = item.kind
     ? namedPlacesOf({ ...rest, ...routine })
@@ -83,12 +80,12 @@ export function withCarriedRoutine(
   copy: Entity, source: Entity, connections: Readonly<Record<string, string>>, known: ReadonlySet<string>,
   kind: EntityKind,
 ): Entity {
-  const { starts: _s, traversable: _t, ...rest } = copy;
+  const { routines: _routines, ...rest } = copy;
   return { ...rest, ...carriedRoutine(source, kind, connections, known) };
 }
 
 /** Whether a Start of `entity` begins at `locationId`. */
-export const startsAt =(entity: Entity, locationId: string) => (entity.starts ?? []).some((start) => start.place === locationId);
+export const startsAt = (entity: Entity, locationId: string) => startsOf(entity).some((start) => start.place === locationId);
 
 /** `entity` with one more Start at `locationId`, weight 1 and no rows. Its other Starts stay. */
 export const withStartHere = (entity: Entity, locationId: string): Entity =>

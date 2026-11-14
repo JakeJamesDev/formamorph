@@ -1,6 +1,7 @@
 import { randomUUID } from '@/lib/uuid';
 import { defaultDescriptorBands } from '@/lib/statDescriptors';
 import type { Entity, GameLocation, Stat, Trait, World } from '@/types';
+import { firstRoutine } from '@/lib/entityKind';
 
 /** The name New World gives a world. */
 export const NEW_WORLD_NAME = 'New World';
@@ -50,7 +51,8 @@ export const NEW_ENTITY_NAME = 'New Entity';
 /** An entity as the editor's Add button makes it, placed `order`th among the ungrouped entities. */
 export function newEntity(id: string, order: number, name = NEW_ENTITY_NAME): Entity {
   return {
-    id, name, playerDescription: '', aiDescription: '', aiSummary: '', type: '', groupId: null, order, kind: 'unique', traversable: 'anywhere',
+    id, name, playerDescription: '', aiDescription: '', aiSummary: '', type: '', groupId: null, order, kind: 'unique',
+    routines: [firstRoutine([], 'anywhere')],
   };
 }
 

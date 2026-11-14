@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { Entity, ScheduleAction, ScheduleRow, Traversable } from '@/types';
 import { pickKeyEntries, routineKeyEntries } from './canvasKey';
 import { routineView } from './canvasRoutine';
+import { withFirstStarts } from '@/lib/entityKind';
+import { oneRoutine } from '@/test/routines';
 
 const graph = {
   locations: [...['smithy', 'inn', 'market', 'square', 'wall', 'gate'].map((id) => ({ id, parentId: null })), { id: 'island', parentId: null }],
@@ -15,8 +17,8 @@ const day: ScheduleRow[] = [
   timed('patrol', 14, 18, { kind: 'patrol', stops: [{ place: 'wall', idle: 30 }, { place: 'gate', idle: 30 }] }),
 ];
 const farrier = (schedule: ScheduleRow[], traversable: Traversable = ['island']): Entity => ({
-  id: 'farrier', name: 'Farrier', playerDescription: '', aiDescription: '', kind: 'unique', traversable,
-  starts: [{ id: 's1', place: 'smithy', weight: 1, schedule }],
+  id: 'farrier', name: 'Farrier', playerDescription: '', aiDescription: '', kind: 'unique',
+  routines: oneRoutine([{ id: 's1', place: 'smithy', weight: 1, schedule }], traversable),
 } as Entity);
 const key = (entity: Entity, rowId: string | null = null) =>
   routineKeyEntries(routineView(entity, { startId: null, rowId }, graph));
@@ -43,8 +45,7 @@ describe('the key of the Routine view', () => {
 
   it('lists Is Here for a Generic entity’s other Start and never Can Also Go', () => {
     const herd = (places: string[]): Entity => ({
-      ...farrier(day), kind: 'generic',
-      starts: places.map((place, i) => ({ id: `s${i}`, place, weight: 1, schedule: i === 0 ? day : [] })),
+      ...withFirstStarts(farrier(day), places.map((place, i) => ({ id: `s${i}`, place, weight: 1, schedule: i === 0 ? day : [] }))), kind: 'generic',
     });
     expect(key(herd(['smithy', 'island']))).toEqual(['stay', 'wander', 'patrol', 'free', 'dayBar', 'start', 'here']);
     expect(key(herd(['smithy']))).not.toContain('here');

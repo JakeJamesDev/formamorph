@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { startToShowFor } from '@/lib/hereMarks';
 import type { Entity, EntityStart } from '@/types';
+import { oneRoutine } from '@/test/routines';
 
 const start = (id: string, place: string, rowPlace?: string): EntityStart => ({
   id, place, weight: 1,
   schedule: rowPlace ? [{ id: `${id}-row`, time: 'allDay', action: { kind: 'stay', place: rowPlace } }] : [],
 });
-const entity = (starts: EntityStart[]): Entity => ({ id: 'e', name: 'E', kind: 'unique', starts } as Entity);
+const entity = (starts: EntityStart[]): Entity => ({ id: 'e', name: 'E', kind: 'unique', routines: oneRoutine(starts) } as Entity);
 
 describe('startToShowFor', () => {
   const e = entity([start('a', 'yard'), start('b', 'yard', 'tavern'), start('c', 'tavern')]);

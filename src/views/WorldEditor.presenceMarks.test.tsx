@@ -3,6 +3,7 @@ import { act, fireEvent, screen, within } from '@testing-library/react';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { resetRoutineSelections } from '@/lib/routineSelection';
 import type { World } from '@/types';
+import { oneRoutine } from '@/test/routines';
 
 /** The marks on a location's Presence tab: what in an entity's routine names the location. */
 
@@ -36,7 +37,7 @@ const WORLD: World = benchEditorWorld({
     // Only the second Start names the tavern: a Stay, a Wander and a Patrol row; one more row names the yard.
     {
       id: 'twin', name: 'Twin', kind: 'unique', locations: ['yard', 'tavern'],
-      starts: [
+      routines: oneRoutine([
         { id: 'a', place: 'yard', weight: 1, schedule: [] },
         { id: 'b', place: 'yard', weight: 1, schedule: [
           { id: 'r1', time: { start: DAWN, end: MORNING }, action: { kind: 'stay', place: 'tavern' } },
@@ -44,12 +45,12 @@ const WORLD: World = benchEditorWorld({
           { id: 'r3', time: { start: MIDDAY, end: AFTERNOON }, action: { kind: 'patrol', stops: [{ place: 'yard', idle: 30 }, { place: 'tavern', idle: 30 }] } },
           { id: 'r4', time: { start: AFTERNOON, end: EVENING }, action: { kind: 'stay', place: 'yard' } },
         ] },
-      ],
+      ]),
     },
     // Here only through Can Also Go.
     {
-      id: 'courier', name: 'Courier', kind: 'unique', locations: ['yard'], traversable: ['tavern', 'cellar'],
-      starts: [{ id: 'k1', place: 'yard', weight: 1, schedule: [] }],
+      id: 'courier', name: 'Courier', kind: 'unique', locations: ['yard'],
+      routines: oneRoutine([{ id: 'k1', place: 'yard', weight: 1, schedule: [] }], ['tavern', 'cellar']),
     },
   ],
 } as Partial<World>);

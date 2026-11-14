@@ -7,7 +7,7 @@ import {
 } from '@/lib/entityPlaces';
 import { pickMarks, type PickMark } from '@/lib/entityPicking';
 import { presenceLines } from '@/lib/locationPresenceReasons';
-import { castRoutines } from '@/lib/entityKind';
+import { castRoutines, withFirstTraversable } from '@/lib/entityKind';
 import { placedIn, presentEntityIds, type Standings } from '@/lib/entityPresence';
 import { EMPTY_BOOK, runtimeRoutine, type PositionBook } from '@/lib/positionEngine';
 import { placeAll, positionWorld, scriptPlaces } from '@/lib/positionPlay';
@@ -40,6 +40,7 @@ import { buildWorldIndex } from '@/lib/formaquestion/worldIndex';
 import { playerViewWorld } from '@/lib/formaquestion/playerViewWorld';
 import type { PlayerView } from '@/lib/formaquestion/playerView';
 import type { GameState } from '@/types';
+import { oneRoutine } from '@/test/routines';
 const CARD_SELF: Stat = { id: 's', name: 'S', type: 'number', description: '', min: 0, max: 10, regen: 0, descriptors: [] };
 
 /**
@@ -62,17 +63,17 @@ const MORNING = { start: 360, end: 720 };
 
 // The cast as an unreleased world stores it: the baker and the gulls still carry a stale list (Q5).
 const CAST: Entity[] = ([
-  { id: 'baker', name: 'Baker', kind: 'unique', traversable: ['chapel'], locations: ['bakery', 'square', 'docks', 'lighthouse'], starts: [
+  { id: 'baker', name: 'Baker', kind: 'unique', locations: ['bakery', 'square', 'docks', 'lighthouse'], routines: oneRoutine([
     { id: 'b1', place: 'bakery', weight: 2, schedule: [row('b1-am', MORNING, 'square')] },
     { id: 'b2', place: 'docks', weight: 1, schedule: [row('b2-day', 'allDay', 'lighthouse')] },
-  ] },
-  { id: 'gulls', name: 'Gulls', kind: 'generic', locations: ['docks', 'square', 'chapel'], starts: [
+  ], ['chapel']) },
+  { id: 'gulls', name: 'Gulls', kind: 'generic', locations: ['docks', 'square', 'chapel'], routines: oneRoutine([
     { id: 'g1', place: 'docks', weight: 1, schedule: [] },
     { id: 'g2', place: 'docks', weight: 1, schedule: [row('g2-day', 'allDay', 'square')] },
     { id: 'g3', place: 'chapel', weight: 1, schedule: [] },
-  ] },
-  { id: 'friar', name: 'Friar', kind: 'unique', traversable: 'anywhere', starts: [{ id: 'f1', place: 'chapel', weight: 1, schedule: [] }] },
-  { id: 'urchin', name: 'Urchin', kind: 'unique', traversable: [], starts: [{ id: 'u1', place: PLAYER_START, weight: 1, schedule: [] }] },
+  ]) },
+  { id: 'friar', name: 'Friar', kind: 'unique', routines: oneRoutine([{ id: 'f1', place: 'chapel', weight: 1, schedule: [] }], 'anywhere') },
+  { id: 'urchin', name: 'Urchin', kind: 'unique', routines: oneRoutine([{ id: 'u1', place: PLAYER_START, weight: 1, schedule: [] }], []) },
 ] satisfies Entity[]);
 
 /** A character the story met at the docks this playthrough. */
@@ -212,7 +213,7 @@ const READERS: Reader[] = [
   {
     // The tour points at where the entity begins or a row sends it; Can Also Go only allows a place.
     name: "the authoring tour's entity places",
-    answer: () => ({ cast: CAST, placesOf: (entity) => presenceIn(WORLD)({ ...entity, traversable: [] }) }),
+    answer: () => ({ cast: CAST, placesOf: (entity) => presenceIn(WORLD)(withFirstTraversable(entity, [])) }),
     read: (place) => CAST.filter((entity) => tourEntityPresence({ ...authoredWorld, dictionaries: [], statUpdates: [] } as TourWorld, { entity: entity.id }).includes(place.id)).map((e) => e.id),
   },
   { name: 'the canvas marks under Nearby', answer: presence, read: canvasMarks(undefined, 'routine') },
@@ -393,7 +394,7 @@ describe('the Test Bench rules agree with Presence', () => {
   });
 
   it('"placed in no location" flags the entities with an empty Presence', () => {
-    const stranded: Entity = { id: 'ghost', name: 'Ghost', kind: 'unique', traversable: [], starts: [] };
+    const stranded: Entity = { id: 'ghost', name: 'Ghost', kind: 'unique', routines: oneRoutine([], []) };
     const world = { ...authoredWorld, entities: [...CAST, stranded], statUpdates: [], dictionaries: [], placeholders: [] };
     expect(found('entity-nowhere', world).map((f) => f.items[0].id)).toEqual(['ghost']);
   });
@@ -407,7 +408,7 @@ describe('the Test Bench rules agree with Presence', () => {
   });
 
   it('"entity-location-orphan" flags a named place the world lacks, which Presence leaves out', () => {
-    const lost: Entity = { id: 'lost', name: 'Lost', kind: 'unique', traversable: [], starts: [{ id: 'l1', place: 'gone', weight: 1, schedule: [] }] };
+    const lost: Entity = { id: 'lost', name: 'Lost', kind: 'unique', routines: oneRoutine([{ id: 'l1', place: 'gone', weight: 1, schedule: [] }], []) };
     const world = { ...authoredWorld, entities: [...CAST, lost], statUpdates: [], dictionaries: [], placeholders: [] };
     expect(found('entity-location-orphan', world).map((f) => f.items[0].id)).toEqual(['lost']);
     expect(presenceIn(WORLD)(lost)).toEqual([]);

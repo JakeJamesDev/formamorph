@@ -54,7 +54,7 @@ The import adds a new world. It never replaces the world you exported. Import sk
 1. Add an object to the top-level `entities` list.
 2. Give it a new `id` and a `name`.
 3. Write `playerDescription`, `aiDescription` and, for a long description, `aiSummary`.
-4. Set `locations` to the ids of the locations where the entity is. When the app opens the world, it turns the list into a `kind` and [Starts](#starts) and drops it. Leave it out for an entity with no fixed place.
+4. Set `locations` to the ids of the locations where the entity is. When the app opens the world, it turns the list into a `kind` and one [Routine](#routines) and drops it. Leave it out for an entity with no fixed place.
 5. To make the entity playable, set `persona` to `true`. See [Persona Marks](#persona-marks).
 
 ```json
@@ -135,6 +135,7 @@ Import runs every world through a migration. The migration changes an older shap
 | A script that uses `stats.find(…)` | The same code with the stat map |
 | A root `customPlayerVRM` | An Avatar in `worldOverview.vrmStore`. See [Avatar Picks](#avatar-picks) |
 | An entity `startingLocationId` | Removed. A persona's Starts are where it can start |
+| An entity `starts` and `traversable` (3.7.0 and older) | One Routine with no gate, named "Routine 1", that holds them |
 | A stat with `type: "list"` | A `number` stat at its `min`. The items are dropped |
 | A Stomach, Fatness or Breastsize stat with no `morphBindings` | The matching body morphs |
 | A `morphBindings` entry that is a bare name | `{ name }` |
@@ -437,11 +438,10 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `sound` | | [MediaAsset](#media-fields) | A sound |
 | `model` | | [MediaAsset](#media-fields) | A 3D model |
 | `vrmPick` | | [Avatar pick](#avatar-picks) | The entity's Avatar. Absent = none |
-| `locations` | | String[] | Only for the Persona-Only entity and the Custom Persona, which have no `kind`: the `id`s of the locations where the player can start as it. A Unique or a Generic entity has none; its `starts` and `traversable` say where it can be |
+| `locations` | | String[] | Only for the Persona-Only entity and the Custom Persona, which have no `kind`: the `id`s of the locations where the player can start as it. A Unique or a Generic entity has none; its `routines` say where it can be |
 | `enabledWhen` | | [Requirement Row](#trait-requirements)[] | The **Enabled** rows: the entity is in the game while any row holds. A condition with no `owner` reads the entity itself. Absent or empty = always on |
 | `kind` | | `"unique"` \| `"generic"` | A Unique entity is one body in one place. A Generic entity runs every Start at once, one presence each. Absent for the Persona-Only entity, the Custom Persona and an entity with no locations |
-| `starts` | | [Start](#starts)[] | The entity's beginnings, in author order. A Unique entity picks one by `weight` in each new game. A Generic entity runs all of them |
-| `traversable` | | `"anywhere"` \| String[] | Where a Unique entity may be led or called beyond its schedule: anywhere, or exact location `id`s. Absent = an empty list: its schedule places only. A Generic entity ignores it |
+| `routines` | | [Routine](#routines)[] | Only with a `kind`: the entity's Routines, in priority order. At least one |
 | `knownIn` | | `"nowhere"` \| String[] | **Known In**: where the AI knows of the entity while it isn't present. `"nowhere"`, or location `id`s, each with every location below it. Absent = **Nearby** |
 | `onMap` | | `"onceMet"` \| `"whenNearby"` \| `"never"` | **On Map**: how the player's map shows the entity. Absent = `"always"`. A value this build does not know reads as `"always"` |
 | `relationships` | | `{ "targetId", "label" }`[] | **Relationships**, in author order, at most one per target. `targetId` is another entity's `id`, or `"you"` for the played persona. `label` is the target's role toward this entity |
@@ -460,6 +460,27 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `statPlacement` | | `{ "groupId", "order" }` | Where the entity's node sits in the world's Stats tree, as `traitPlacement` does for Traits |
 | `link` | | [ContentLink](#linked-copies) | What library item this copy follows. Absent = it follows nothing |
 
+#### Routines
+
+A Routine is one way an entity with a `kind` lives. An entity with one Routine and no `requires` behaves as one set of Starts.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `id` | String | Unique within the entity |
+| `name` | String | The author's name, such as `"Routine 1"` |
+| `requires` | [Requirement Row](#trait-requirements)[] | When the Routine applies: while any row holds. A condition with no `owner` reads the entity itself. Absent or empty = always. This build stores it but doesn't read it yet; the first Routine always applies |
+| `traversable` | `"anywhere"` \| String[] | Where a Unique entity may be led or called beyond its schedule: anywhere, or exact location `id`s. Absent = an empty list: its schedule places only. A Generic entity ignores it |
+| `starts` | [Start](#starts)[] | The Routine's beginnings, in author order. A Unique entity picks one by `weight` in each new game. A Generic entity runs all of them |
+
+```json
+"routines": [{
+  "id": "routine-1", "name": "Routine 1", "traversable": [],
+  "starts": [{ "id": "start-1", "place": "loc-inn", "weight": 1, "schedule": [] }]
+}]
+```
+
+> 🔁 **A file from 3.7.0 or older has `starts` and `traversable` on the entity.** The app moves them into one Routine with no `requires`, named "Routine 1", when it opens the world. 3.7.0 and older read only those fields, so they show an entity from a newer file as placed nowhere.
+
 #### Starts
 
 | Field | Type | Meaning |
@@ -468,7 +489,7 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `place` | String | The location `id` where the entity begins, or `"@playerStart"`: wherever the player begins, fixed when the game starts |
 | `weight` | Number | A positive whole number. Higher is picked more often. A Generic entity ignores it |
 | `schedule` | Row[] | The daily routine kept from there. Empty = it stays at `place` |
-| `beginsFollowing` | `true` | Only with `"@playerStart"`, on a Unique entity: a game that picks this Start begins with the entity following the player, even on a `strict` row. `traversable` still applies. Absent = not following |
+| `beginsFollowing` | `true` | Only with `"@playerStart"`, on a Unique entity: a game that picks this Start begins with the entity following the player, even on a `strict` row. Its Routine's `traversable` still applies. Absent = not following |
 
 A Start at `"@playerStart"` stands for the starting locations, or every location when none is marked. Its schedule can name any location; play skips one the player's real start doesn't connect to.
 
@@ -489,7 +510,7 @@ In hours no row covers, the entity stays at its Start's `place`.
 
 A Generic entity is one entity with one set of stats, items and memories. Each of its Starts plays as its own presence on its own schedule, and two Starts can share a place. Where two presences meet, the entity is listed once. A Generic entity is never called over and never follows.
 
-> 🔁 An older world file used `presence` and `movement`. The app maps them when it opens the world: an entity at one location, or with **One, at Random**, becomes a Unique entity with one Start per location; **Moves Between** becomes an all-day wander over its locations; **Can Follow** becomes `traversable: "anywhere"`. An entity at several locations with no `presence` maps by what it looks like:
+> 🔁 An older world file used `presence` and `movement`. The app maps them when it opens the world: an entity at one location, or with **One, at Random**, becomes a Unique entity with one Start per location; **Moves Between** becomes an all-day wander over its locations; **Can Follow** becomes a Routine with `traversable: "anywhere"`. An entity at several locations with no `presence` maps by what it looks like:
 >
 > - Listed at every location: a Unique entity that begins at the player's starting location and follows the player.
 > - With `pronouns` that don't start with "it", or the persona mark: a Unique entity that begins at its first location and wanders over the list all day.

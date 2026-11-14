@@ -6,6 +6,7 @@ import { useGameplay } from '@/contexts/GameplayContext';
 import { usePresence } from '@/lib/usePresence';
 import type { Presence } from '@/lib/presence';
 import type { Entity, GameLocation, PlayerStat, World } from '@/types';
+import { oneRoutine } from '@/test/routines';
 
 /**
  * An entity's Enabled gate in play, through the real resolver: a gate on the global Veil stat turns Ghost off
@@ -29,9 +30,9 @@ const veil = stat('veil', 'Veil', { value: 1 });
 // turn and its Energy by regen.
 const ghost: Entity = {
   id: 'ghost', name: 'Ghost', kind: 'unique', locations: ['harbor', 'market'], knownIn: ['harbor', 'market'],
-  starts: [{ id: 'round', place: 'harbor', weight: 1, schedule: [{
+  routines: oneRoutine([{ id: 'round', place: 'harbor', weight: 1, schedule: [{
     id: 'walk', time: 'allDay', action: { kind: 'patrol', stops: [{ place: 'harbor', idle: 60 }, { place: 'market', idle: 60 }] },
-  }] }],
+  }] }]),
   stats: [
     stat('count', 'Count', { scripts: [{ id: 'tick', timing: 'after', code: 'self.value += 1;' }] }),
     stat('energy', 'Energy', { regen: 5 }),
@@ -39,7 +40,7 @@ const ghost: Entity = {
   enabledWhen: [{ all: [{ kind: 'stat', id: 'veil', operator: '>=', value: 1, unit: 'raw' }] }],
 };
 const mira: Entity = { id: 'mira', name: 'Mira', kind: 'unique', locations: ['harbor'], knownIn: ['harbor'],
-  starts: [{ id: 'home', place: 'harbor', weight: 1, schedule: [] }] };
+  routines: oneRoutine([{ id: 'home', place: 'harbor', weight: 1, schedule: [] }]) };
 const world: World = {
   ...harborWorld({ stats: [veil], entities: [mira, ghost] }),
   locations: [HARBOR, MARKET],

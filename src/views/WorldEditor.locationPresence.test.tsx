@@ -4,6 +4,8 @@ import { act, fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench, shownEditorTab } from '@/test/worldEditorBench';
 import type { World } from '@/types';
+import { oneRoutine } from '@/test/routines';
+import { startsOf } from '@/lib/entityKind';
 
 /** The location Presence tab: the Generic entities-only picker, and who can be here and why. */
 
@@ -33,25 +35,25 @@ const WORLD: World = benchEditorWorld({
   // The cellar is linked to the yard, so the Rats' row reaches it.
   connections: [{ id: 'c1', a: 'tavern', b: 'yard', aToB: {}, bToA: {} }, { id: 'c2', a: 'yard', b: 'cellar', aToB: {}, bToA: {} }],
   entities: [
-    { id: 'crowd', name: 'Crowd', kind: 'generic', locations: ['tavern'], starts: [{ id: 's1', place: 'tavern', weight: 1, schedule: [] }] },
+    { id: 'crowd', name: 'Crowd', kind: 'generic', locations: ['tavern'], routines: oneRoutine([{ id: 's1', place: 'tavern', weight: 1, schedule: [] }]) },
     { id: 'moths', name: 'Moths', kind: 'generic' },
     // Begins in the yard and only visits the cellar on a row.
     {
       id: 'rats', name: 'Rats', kind: 'generic', locations: ['yard', 'cellar'],
-      starts: [{ id: 'r1', place: 'yard', weight: 1, schedule: [{ id: 'dig', time: 'allDay', action: { kind: 'stay', place: 'cellar' } }] }],
+      routines: oneRoutine([{ id: 'r1', place: 'yard', weight: 1, schedule: [{ id: 'dig', time: 'allDay', action: { kind: 'stay', place: 'cellar' } }] }]),
     },
     {
-      id: 'farrier', name: 'Farrier', kind: 'unique', locations: ['yard', 'tavern', 'cellar'], traversable: ['cellar'],
-      starts: [
+      id: 'farrier', name: 'Farrier', kind: 'unique', locations: ['yard', 'tavern', 'cellar'],
+      routines: oneRoutine([
         { id: 's1', place: 'yard', weight: 3, schedule: [
           { id: 'r1', time: 'allDay', action: { kind: 'wander', places: [{ place: 'yard', weight: 1 }, { place: 'tavern', weight: 1 }], idle: 60 } },
         ] },
         { id: 's2', place: 'tavern', weight: 1, schedule: [] },
-      ],
+      ], ['cellar']),
     },
-    { id: 'queen', name: 'Queen', kind: 'unique', locations: ['yard'], traversable: 'anywhere', starts: [{ id: 'q1', place: 'yard', weight: 1, schedule: [] }] },
+    { id: 'queen', name: 'Queen', kind: 'unique', locations: ['yard'], routines: oneRoutine([{ id: 'q1', place: 'yard', weight: 1, schedule: [] }], 'anywhere') },
     // At the tavern only through Can Also Go.
-    { id: 'courier', name: 'Courier', kind: 'unique', locations: ['yard'], traversable: ['tavern'], starts: [{ id: 'k1', place: 'yard', weight: 1, schedule: [] }] },
+    { id: 'courier', name: 'Courier', kind: 'unique', locations: ['yard'], routines: oneRoutine([{ id: 'k1', place: 'yard', weight: 1, schedule: [] }], ['tavern']) },
     { id: 'me', name: 'Me', customPersona: true, locations: ['tavern'], starts: [{ id: 'm1', place: 'tavern', weight: 1, schedule: [] }] },
   ],
 } as Partial<World>);
@@ -92,8 +94,8 @@ describe('the Presence tab: Add Entity', () => {
     await user.click(screen.getByRole('combobox', { name: 'Add an entity here' }));
     expect(screen.queryByRole('option', { name: 'Rats' })).toBeNull();
     await user.click(await screen.findByRole('option', { name: 'Moths' }));
-    expect(ctx().entities.find((e) => e.id === 'rats')!.starts?.map((s) => s.place)).toEqual(['yard']);
-    expect(ctx().entities.find((e) => e.id === 'moths')!.starts?.map((s) => s.place)).toEqual(['cellar']);
+    expect(startsOf(ctx().entities.find((e) => e.id === 'rats')!)?.map((s) => s.place)).toEqual(['yard']);
+    expect(startsOf(ctx().entities.find((e) => e.id === 'moths')!)?.map((s) => s.place)).toEqual(['cellar']);
   });
 });
 
@@ -195,7 +197,7 @@ describe('the Presence tab: the list and its editor', () => {
     openPresence('Tavern');
     await user.click(row('Farrier'));
     await user.click(within(editor()!).getAllByRole('button', { name: 'Delete Start' })[0]);
-    expect(ctx().entities.find((e) => e.id === 'farrier')!.starts!.length).toBe(1);
+    expect(startsOf(ctx().entities.find((e) => e.id === 'farrier')!)!.length).toBe(1);
   });
 
   it('replaces the selection with a second row, and clears it from the selected row or the close button', async () => {

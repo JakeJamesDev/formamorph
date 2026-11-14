@@ -6,10 +6,10 @@ import { followedLibraryId } from '@/lib/publishLinks';
 import { entityTexts } from '@/lib/entityTexts';
 import { entityImages } from '@/lib/entityImages';
 import { randomUUID } from '@/lib/uuid';
-import { carriedMembership, carriedRoutine, returnedPlaces, withCarriedRoutine, type Routine } from '@/lib/entityPresence';
+import { carriedMembership, carriedRoutine, returnedPlaces, withCarriedRoutine, type RoutineFields } from '@/lib/entityPresence';
 import { withMembership, withoutMembership } from '@/lib/entityPlaces';
 import { pickToken, type VrmLookup } from '@/lib/vrmPickMatch';
-import type { CommunityLink, ContentLink, Dictionary, Entity, EntityKind, GameLocation, Placeholder, PlaceholderGroup } from '@/types';
+import type { CommunityLink, ContentLink, Dictionary, Entity, EntityKind, EntityStart, GameLocation, Placeholder, PlaceholderGroup } from '@/types';
 
 /** An entity or a dictionary — the two kinds of content a world copy can follow a source for. */
 export type LinkableContent = Entity | Dictionary;
@@ -168,8 +168,7 @@ function authoredContent(raw: LinkableContent, world?: TraitWorld, vrm?: VrmLook
   const shed: Record<string, unknown> = withoutWorldFields(item);
   // `routineMatches` compares the routine; a mapped one has consumed the place references too.
   if (!('entries' in item) && item.kind) {
-    delete shed.starts;
-    delete shed.traversable;
+    delete shed.routines;
     if (mapped) delete shed.locationRefs;
   }
   // With no kind the references name a membership, and the copy's membership is the world's (Q2).
@@ -186,18 +185,25 @@ function authoredContent(raw: LinkableContent, world?: TraitWorld, vrm?: VrmLook
   return stable(shed);
 }
 
-/** A routine as compare reads it: what each Start is, without the ids a carry mints. */
-function comparableRoutine({ starts, traversable }: Routine): string {
-  const bare = starts?.map(({ id: _start, schedule, ...start }) => ({ ...start, schedule: schedule.map(({ id: _row, ...row }) => row) }));
-  return JSON.stringify(stable({ starts: bare, traversable }));
+/** Starts as compare reads them: without the ids a carry mints. */
+const bareStarts = (starts: readonly EntityStart[] | undefined) =>
+  starts?.map(({ id: _start, schedule, ...start }) => ({ ...start, schedule: schedule.map(({ id: _row, ...row }) => row) }));
+
+/** A routine as compare reads it: each Routine with what each Start is. */
+function comparableRoutine({ routines }: RoutineFields): string {
+  return JSON.stringify(stable({ routines: routines?.map((routine) => ({ ...routine, starts: bareStarts(routine.starts) })) }));
 }
 
-/** Whether two routines hold the same Starts, rows and Can Also Go, whatever ids their Starts and rows carry. */
-export const sameRoutine = (a: Routine, b: Routine): boolean => comparableRoutine(a) === comparableRoutine(b);
+/** Whether two entities hold the same Routines, Starts, rows and Can Also Go, whatever ids their Starts and rows carry. */
+export const sameRoutine = (a: RoutineFields, b: RoutineFields): boolean => comparableRoutine(a) === comparableRoutine(b);
+
+/** Whether two Start lists are the same, whatever ids their Starts and rows carry. */
+export const sameStarts = (a: readonly EntityStart[] | undefined, b: readonly EntityStart[] | undefined): boolean =>
+  JSON.stringify(stable(bareStarts(a))) === JSON.stringify(stable(bareStarts(b)));
 
 /** The routine `source` offers a copy of `kind`: mapped into the copy's world when `places` is given, else as stored. */
-export function offeredRoutine(copy: Entity, source: Entity, kind: EntityKind, places?: RoutinePlaces): Routine {
-  if (!places) return { starts: source.starts, traversable: source.traversable };
+export function offeredRoutine(copy: Entity, source: Entity, kind: EntityKind, places?: RoutinePlaces): RoutineFields {
+  if (!places) return source.routines ? { routines: source.routines } : {};
   return carriedRoutine(source, kind, places.connections ?? copy.link?.connections ?? {}, places.known);
 }
 

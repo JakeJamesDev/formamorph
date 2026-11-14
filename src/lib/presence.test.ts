@@ -7,6 +7,7 @@ import {
   type PresenceInput, type SceneTurn,
 } from './presence';
 import { readNarration } from './turnPipeline/narrationReading';
+import { oneRoutine } from '@/test/routines';
 
 // The keep holds the hall, the smithy and the gate yard; the harbor connects to the gate yard by map.
 const LOCATIONS: Pick<GameLocation, 'id' | 'parentId'>[] = [
@@ -156,7 +157,7 @@ describe('start-met', () => {
     const start = startWithRow;
     const played = (starts: EntityStart[]): Entity =>
       // An unreleased world still stores every Start and row place as its list (Q5).
-      ({ id: 'me', name: 'Wren', kind: 'unique', starts, locations: namedPlacesOf({ id: 'me', kind: 'unique', starts }) });
+      ({ id: 'me', name: 'Wren', kind: 'unique', routines: oneRoutine(starts), locations: namedPlacesOf({ id: 'me', kind: 'unique', routines: oneRoutine(starts) }) });
     const places = LOCATIONS.map((l) => ({ ...l, isStarting: l.id === 'harbor' }));
 
     it('does not meet through a place only a routine row names', () => {
@@ -255,7 +256,7 @@ describe('the named sets', () => {
   it('lists a Generic entity once where two of its Generic Entity Instances stand, and not where its Generic Entity Instances are gone', () => {
     const rooks: Entity = {
       id: 'rooks', name: 'Rooks', kind: 'generic', locations: ['hall', 'smithy'],
-      starts: [{ id: 'a', place: 'hall', weight: 1, schedule: [] }, { id: 'b', place: 'smithy', weight: 1, schedule: [] }],
+      routines: oneRoutine([{ id: 'a', place: 'hall', weight: 1, schedule: [] }, { id: 'b', place: 'smithy', weight: 1, schedule: [] }]),
     };
     const both = { rooks: { a: { position: 'hall', lastRun: 0 }, b: { position: 'hall', lastRun: 0 } } };
     expect(ids(presence({ entities: [mara, rooks], generics: both }).lookAround)).toEqual(['mara', 'rooks']);

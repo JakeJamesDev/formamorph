@@ -7,6 +7,7 @@ import type { Stat, Tool, World } from '@/types';
 
 import { phValueId, phValues } from '@/test/placeholderValues';
 import { boxScripts } from '@/test/scriptFixtures';
+import { oneRoutine } from '@/test/routines';
 // The provider initializes IndexedDB storage on mount; stub it out so these tests exercise only
 // loadWorldData's normalization.
 vi.mock('../services/WorldStorageService', () => ({
@@ -289,7 +290,7 @@ describe('entity ↔ location membership', () => {
     ...world('w', {}),
     entities: entityIds.map((id) => ({
       id, name: id, kind: 'generic', locations: ['l1', 'l2'],
-      starts: ['l1', 'l2'].map((place) => ({ id: place, place, weight: 1, schedule: [] })),
+      routines: oneRoutine(['l1', 'l2'].map((place) => ({ id: place, place, weight: 1, schedule: [] }))),
     })),
     locations: [
       { id: 'l1', name: 'Dock' },

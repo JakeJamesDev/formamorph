@@ -6,6 +6,8 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { panelWorld, renderPanelBench } from '@/test/panelBench';
 import { PLAYER_START, type Connection, type Entity, type EntityStart, type GameLocation, type ScheduleRow } from '@/types';
 import { RoutineTab } from './RoutineTab';
+import { startsOf, applyingRoutine, withFirstTraversable } from '@/lib/entityKind';
+import { oneRoutine } from '@/test/routines';
 
 // Daypart edges in minutes: dawn 360, morning 480, midday 660, afternoon 780, evening 1020, night 1200.
 const MORNING = 480; const AFTERNOON_END = 1020; const NIGHT = 1200;
@@ -21,7 +23,7 @@ const stay = (id: string, place: string, time: ScheduleRow['time'], strict?: boo
   ({ id, time, action: { kind: 'stay', place }, ...(strict && { strict }) });
 
 const mira = (starts: EntityStart[], over: Partial<Entity> = {}): Entity => ({
-  id: 'mira', name: 'Mira', playerDescription: '', aiDescription: '', kind: 'unique', starts, traversable: 'anywhere', ...over,
+  id: 'mira', name: 'Mira', playerDescription: '', aiDescription: '', kind: 'unique', routines: oneRoutine(starts, 'anywhere'), ...over,
 } as Entity);
 
 const oneStart = (schedule: ScheduleRow[], place = 'smithy'): EntityStart[] => [{ id: 's1', place, weight: 1, schedule }];
@@ -37,7 +39,7 @@ const mount = (entity: Entity, connections: Connection[] = []) =>
 
 const lines = () => within(screen.getByRole('list', { name: 'Routine' })).getAllByRole('listitem').map((li) => li.textContent);
 const stored = (bench: ReturnType<typeof mount>) => bench.ctx().entities.find((e) => e.id === 'mira')!;
-const schedule = (bench: ReturnType<typeof mount>) => stored(bench).starts![0].schedule;
+const schedule = (bench: ReturnType<typeof mount>) => startsOf(stored(bench))[0].schedule;
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -317,7 +319,7 @@ describe('starts', () => {
     const bench = mount(mira(two));
     await userEvent.click(screen.getByRole('button', { name: 'Start 2 25%' }));
     await userEvent.click(screen.getByRole('button', { name: 'Delete Start' }));
-    expect(stored(bench).starts!.map((s) => s.id)).toEqual(['s1']);
+    expect(startsOf(stored(bench)).map((s) => s.id)).toEqual(['s1']);
     expect(stored(bench)).not.toHaveProperty('locations');
     expect(screen.queryByRole('button', { name: 'Delete Start' })).toBeNull();
   });
@@ -326,7 +328,7 @@ describe('starts', () => {
     const bench = mount(mira(oneStart([])));
     await userEvent.click(screen.getByRole('button', { name: 'Add Start' }));
     await userEvent.click(screen.getByRole('option', { name: /^Inn/ }));
-    expect(stored(bench).starts!.map((s) => s.place)).toEqual(['smithy', 'inn']);
+    expect(startsOf(stored(bench)).map((s) => s.place)).toEqual(['smithy', 'inn']);
     expect(stored(bench)).not.toHaveProperty('locations');
     expect(screen.getByRole('button', { name: 'Start location: Inn' })).toBeInTheDocument();
   });
@@ -342,11 +344,11 @@ describe("the player's starting location", () => {
     expect(follows()).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Start location: Smithy' }));
     await userEvent.click(screen.getByRole('option', { name: "Player's Starting Location" }));
-    expect(stored(bench).starts![0].place).toBe(PLAYER_START);
+    expect(startsOf(stored(bench))[0].place).toBe(PLAYER_START);
     expect(stored(bench)).not.toHaveProperty('locations');
     expect(lines()).toEqual(["All day, stays at the player's starting location."]);
     await userEvent.click(follows()!);
-    expect(stored(bench).starts![0].beginsFollowing).toBe(true);
+    expect(startsOf(stored(bench))[0].beginsFollowing).toBe(true);
   });
 
   it('clears Follows the Player when the start moves to a fixed location', async () => {
@@ -354,7 +356,7 @@ describe("the player's starting location", () => {
     expect(follows()).toBeChecked();
     await userEvent.click(screen.getByRole('button', { name: "Start location: the player's starting location" }));
     await userEvent.click(screen.getByRole('option', { name: /^Inn/ }));
-    expect(stored(bench).starts![0]).toEqual({ id: 's1', place: 'inn', weight: 1, schedule: [] });
+    expect(startsOf(stored(bench))[0]).toEqual({ id: 's1', place: 'inn', weight: 1, schedule: [] });
     expect(follows()).toBeNull();
   });
 
@@ -384,7 +386,7 @@ describe('placement', () => {
     const starts = oneStart([stay('day', 'inn', { start: MORNING, end: AFTERNOON_END })]);
     const bench = mount(mira(starts));
     await userEvent.click(screen.getByRole('radio', { name: 'Generic' }));
-    expect(stored(bench)).toEqual(expect.objectContaining({ kind: 'generic', starts, traversable: 'anywhere' }));
+    expect(stored(bench)).toEqual(expect.objectContaining({ kind: 'generic', routines: oneRoutine(starts, 'anywhere') }));
     expect(stored(bench)).not.toHaveProperty('locations');
   });
 
@@ -398,7 +400,7 @@ describe('placement', () => {
       { id: 's1', place: 'smithy', weight: 3, schedule: [stay('day', 'inn', { start: MORNING, end: AFTERNOON_END }, true)] },
       { id: 's2', place: 'market', weight: 1, schedule: [] },
     ];
-    const original = mira(starts, { traversable: ['farm'] });
+    const original = withFirstTraversable(mira(starts), ['farm']);
     const bench = mount(original);
     await userEvent.click(screen.getByRole('radio', { name: 'Generic' }));
     expect(stored(bench).kind).toBe('generic');
@@ -410,7 +412,7 @@ describe('placement', () => {
   });
 
   describe('a Generic entity\'s routine', () => {
-    const herd = (starts: EntityStart[]) => mira(starts, { kind: 'generic', traversable: ['farm'] });
+    const herd = (starts: EntityStart[]) => withFirstTraversable(mira(starts, { kind: 'generic' }), ['farm']);
     const twoStarts: EntityStart[] = [
       { id: 'g1', place: 'smithy', weight: 3, schedule: [stay('day', 'inn', { start: MORNING, end: AFTERNOON_END }, true)] },
       { id: 'g2', place: 'smithy', weight: 1, schedule: [stay('night', 'market', 'allDay')] },
@@ -440,30 +442,30 @@ describe('placement', () => {
       expect(screen.queryByRole('button', { name: 'Locked' })).toBeNull();
       expect(screen.queryByRole('button', { name: 'Lock Free Time' })).toBeNull();
       expect(document.querySelector('[data-band="day"] svg')).toBeNull();
-      expect(stored(bench).starts![0].schedule[0].strict).toBe(true);
+      expect(startsOf(stored(bench))[0].schedule[0].strict).toBe(true);
     });
 
     it('shows no Can Also Go, and keeps the stored list', () => {
       const bench = mount(herd(twoStarts));
       expect(screen.queryByRole('combobox', { name: 'Can Also Go' })).toBeNull();
-      expect(stored(bench).traversable).toEqual(['farm']);
+      expect(applyingRoutine(stored(bench))?.traversable).toEqual(['farm']);
     });
 
     it('edits a row of the shown start', async () => {
       const bench = mount(herd(twoStarts));
       await userEvent.click(screen.getByRole('button', { name: 'Action: stays at' }));
       await userEvent.click(screen.getByRole('radio', { name: 'Patrol' }));
-      expect(stored(bench).starts![0].schedule[0].action).toEqual({ kind: 'patrol', stops: [{ place: 'inn', idle: 60 }] });
+      expect(startsOf(stored(bench))[0].schedule[0].action).toEqual({ kind: 'patrol', stops: [{ place: 'inn', idle: 60 }] });
       await userEvent.click(screen.getByRole('button', { name: 'Add Wander' }));
-      expect(stored(bench).starts![0].schedule.map((r) => r.action.kind)).toEqual(['patrol', 'wander']);
-      expect(stored(bench).starts![1]).toEqual(twoStarts[1]);
+      expect(startsOf(stored(bench))[0].schedule.map((r) => r.action.kind)).toEqual(['patrol', 'wander']);
+      expect(startsOf(stored(bench))[1]).toEqual(twoStarts[1]);
     });
 
     it('adds a start with no rows at a picked location and shows it', async () => {
       const bench = mount(herd(twoStarts));
       await userEvent.click(screen.getByRole('button', { name: 'Add Start' }));
       await userEvent.click(screen.getByRole('option', { name: /^Farm/ }));
-      expect(stored(bench).starts!.map((s) => [s.place, s.schedule.length])).toEqual([['smithy', 1], ['smithy', 1], ['farm', 0]]);
+      expect(startsOf(stored(bench)).map((s) => [s.place, s.schedule.length])).toEqual([['smithy', 1], ['smithy', 1], ['farm', 0]]);
       expect(screen.getByRole('button', { name: 'Start location: Farm' })).toBeInTheDocument();
     });
 
@@ -471,7 +473,7 @@ describe('placement', () => {
       const bench = mount(herd(twoStarts));
       await userEvent.click(screen.getByRole('button', { name: 'Start 2' }));
       await userEvent.click(screen.getByRole('button', { name: 'Delete Start' }));
-      expect(stored(bench).starts).toEqual([twoStarts[0]]);
+      expect(startsOf(stored(bench))).toEqual([twoStarts[0]]);
       expect(stored(bench)).not.toHaveProperty('locations');
       expect(screen.queryByRole('button', { name: 'Delete Start' })).toBeNull();
     });
@@ -481,7 +483,7 @@ describe('placement', () => {
     ['custom persona', { customPersona: true }],
     ['Persona-Only entity', { persona: true, personaOnly: true }],
   ] as const)('gives a %s only its Start Locations, with no placement, On Map or routine', async (_name, marks) => {
-    const bench = mount(mira([], { ...marks, kind: undefined, starts: undefined, traversable: undefined, locations: ['inn'] }));
+    const bench = mount(mira([], { ...marks, kind: undefined, routines: undefined, locations: ['inn'] }));
     expect(screen.getByText('Start Locations')).toBeInTheDocument();
     expect(screen.queryByRole('radio', { name: 'Generic' })).toBeNull();
     expect(screen.queryByRole('radiogroup', { name: 'On Map' })).toBeNull();
@@ -493,13 +495,13 @@ describe('placement', () => {
     expect(offered.some((text) => /Player's Starting Location/.test(text ?? ''))).toBe(false);
     fireEvent.click(within(screen.getByRole('listbox', { name: 'Available options' })).getByRole('option', { name: /Market/ }));
     expect(stored(bench).locations).toEqual(['inn', 'market']);
-    expect(stored(bench).starts).toBeUndefined();
+    expect(stored(bench).routines).toBeUndefined();
   });
 
   it('limits where it can also go to listed locations', async () => {
     const bench = mount(mira(oneStart([])));
     fireEvent.click(screen.getByRole('combobox', { name: 'Can Also Go' }));
     fireEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: 'Only Listed Locations' }));
-    expect(stored(bench).traversable).toEqual([]);
+    expect(applyingRoutine(stored(bench))?.traversable).toEqual([]);
   });
 });

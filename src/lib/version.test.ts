@@ -10,6 +10,7 @@ import type { Connection, Entity, GameLocation, Placeholder, SaveObject, World }
 import { PLAYER_START } from '@/types';
 import { LEGACY_VRM_ID } from './legacyVrm';
 import { codeAt } from '@/test/scriptFixtures';
+import { startsOf, applyingRoutine } from '@/lib/entityKind';
 
 // Loose view of a migrated world for assertions (avoids `any`).
 type DescItem = {
@@ -189,41 +190,41 @@ describe('migrateWorld — entity kind and routine (NPC Schedules migration tabl
 
   it('makes an entity with no presence and one location a Unique entity with one Start there', () => {
     const e = one({ locations: ['keep'] });
-    expect(e).toMatchObject({ kind: 'unique', starts: [{ place: 'keep', weight: 1, schedule: [] }] });
-    expect(e).not.toHaveProperty('traversable');
+    expect(e).toMatchObject({ kind: 'unique', routines: [{ starts: [{ place: 'keep', weight: 1, schedule: [] }] }] });
+    expect(applyingRoutine(e)).not.toHaveProperty('traversable');
     expect(e).not.toHaveProperty('locations');
   });
 
   it('gives a random-presence entity one weight-1 Start per listed place', () => {
     const e = one({ locations: ['keep', 'tower', 'gate'], presence: 'random' });
     expect(e.kind).toBe('unique');
-    expect(e.starts?.map((s) => [s.place, s.weight, s.schedule])).toEqual([['keep', 1, []], ['tower', 1, []], ['gate', 1, []]]);
-    expect(new Set(e.starts?.map((s) => s.id)).size).toBe(3);
+    expect(startsOf(e).map((s) => [s.place, s.weight, s.schedule])).toEqual([['keep', 1, []], ['tower', 1, []], ['gate', 1, []]]);
+    expect(new Set(startsOf(e).map((s) => s.id)).size).toBe(3);
   });
 
   it('gives Free and Stays Put empty schedules and an empty Traversable list', () => {
     for (const movement of [undefined, 'stays']) {
       const e = one({ locations: ['keep', 'tower'], presence: 'random', ...(movement && { movement }) });
-      expect(e.starts?.every((s) => s.schedule.length === 0)).toBe(true);
-      expect(e.traversable ?? []).toEqual([]);
+      expect(startsOf(e).every((s) => s.schedule.length === 0)).toBe(true);
+      expect(applyingRoutine(e)?.traversable ?? []).toEqual([]);
     }
   });
 
   it('gives each Start of a Moves Between entity an all-day Wander over the listed places, idle one daypart', () => {
     const e = one({ locations: ['keep', 'tower'], presence: 'random', movement: 'between' });
-    for (const start of e.starts ?? []) {
+    for (const start of startsOf(e) ?? []) {
       expect(start.schedule).toEqual([{
         id: expect.any(String), time: 'allDay',
         action: { kind: 'wander', places: [{ place: 'keep', weight: 1 }, { place: 'tower', weight: 1 }], idle: MIGRATED_IDLE_MINUTES },
       }]);
     }
-    expect(e.traversable ?? []).toEqual([]);
+    expect(applyingRoutine(e)?.traversable ?? []).toEqual([]);
     expect(e).not.toHaveProperty('locations');
     expect(namedPlacesOf(e)).toEqual(['keep', 'tower']);
   });
 
   it('gives a Can Follow Unique entity Traversable = Anywhere', () => {
-    expect(one({ locations: ['keep'], movement: 'follow' }).traversable).toBe('anywhere');
+    expect(applyingRoutine(one({ locations: ['keep'], movement: 'follow' }))?.traversable).toBe('anywhere');
   });
 
   it('gives no kind to the Custom Persona or an entity with no locations, and drops their old fields', () => {
@@ -241,7 +242,7 @@ describe('migrateWorld — entity kind and routine (NPC Schedules migration tabl
     const once = migrateWorld(world(rows));
     const p = once.entities.find((e) => e.id === 'p')!;
     expect(p.locations).toEqual(['keep', 'tower']);
-    expect([p.kind, p.starts]).toEqual([undefined, undefined]);
+    expect([p.kind, p.routines]).toEqual([undefined, undefined]);
     // A Playable entity with the same list still converts, so the skip is the Persona-Only mark alone.
     expect(once.entities.find((e) => e.id === 'q')!.kind).toBe('unique');
     expect(migrateWorld(JSON.parse(JSON.stringify(once)))).toEqual(once);
@@ -289,24 +290,24 @@ describe('migrateWorld — a released entity with several locations and no prese
 
   it('makes a person with a home and a workplace one wandering Unique entity starting at the first', () => {
     const e = byId(migrate([narrator, { id: 'smith', name: 'Smith', pronouns: 'he/him', locations: ['mill', 'gate'] }]), 'smith');
-    expect(e).toMatchObject({ kind: 'unique', traversable: ['mill', 'gate'] });
+    expect(e).toMatchObject({ kind: 'unique', routines: [{ traversable: ['mill', 'gate'] }] });
     expect(e).not.toHaveProperty('locations');
-    expect(e.starts).toEqual([{ id: expect.any(String), place: 'mill', weight: 1, schedule: wander(['mill', 'gate']) }]);
+    expect(startsOf(e)).toEqual([{ id: expect.any(String), place: 'mill', weight: 1, schedule: wander(['mill', 'gate']) }]);
   });
 
   it('makes a persona-marked entity with several locations the same wandering Unique entity', () => {
     const e = byId(migrate([narrator, { id: 'p', name: 'P', persona: true, locations: ['keep', 'tower'] }]), 'p');
-    expect(e).toMatchObject({ kind: 'unique', traversable: ['keep', 'tower'] });
-    expect(e.starts?.[0].schedule).toEqual(wander(['keep', 'tower']));
+    expect(e).toMatchObject({ kind: 'unique', routines: [{ traversable: ['keep', 'tower'] }] });
+    expect(startsOf(e)[0].schedule).toEqual(wander(['keep', 'tower']));
   });
 
   it('makes an enemy with neither field a Generic entity with one rowless Start per place, in a world that uses pronouns', () => {
     const e = byId(migrate([narrator, { id: 'mimic', name: 'Mimic', locations: ['tower', 'gate'], movement: 'between' }]), 'mimic');
     expect(e).toMatchObject({
       kind: 'generic',
-      starts: [{ place: 'tower', weight: 1, schedule: [] }, { place: 'gate', weight: 1, schedule: [] }],
+      routines: [{ starts: [{ place: 'tower', weight: 1, schedule: [] }, { place: 'gate', weight: 1, schedule: [] }] }],
     });
-    expect(e).not.toHaveProperty('traversable');
+    expect(applyingRoutine(e)).not.toHaveProperty('traversable');
     expect(e).not.toHaveProperty('locations');
   });
 
@@ -328,9 +329,9 @@ describe('migrateWorld — a released entity with several locations and no prese
     ]);
     for (const e of entities) {
       expect(e.kind).toBe('unique');
-      expect(e.starts?.[0].place).toBe(lists[e.id][0]);
-      expect(e.starts?.[0].schedule).toEqual(wander(lists[e.id]));
-      expect(e.traversable).toEqual(lists[e.id]);
+      expect(startsOf(e)[0].place).toBe(lists[e.id][0]);
+      expect(startsOf(e)[0].schedule).toEqual(wander(lists[e.id]));
+      expect(applyingRoutine(e)?.traversable).toEqual(lists[e.id]);
     }
   });
 
@@ -342,7 +343,7 @@ describe('migrateWorld — a released entity with several locations and no prese
     ]);
     expect(byId(entities, 'slime')).toMatchObject({ kind: 'generic' });
     expect(namedPlacesOf(byId(entities, 'slime'))).toEqual(['tower', 'gate']);
-    expect(byId(entities, 'crew')).toMatchObject({ kind: 'unique', traversable: ['keep', 'mill'] });
+    expect(byId(entities, 'crew')).toMatchObject({ kind: 'unique', routines: [{ traversable: ['keep', 'mill'] }] });
   });
 
   it('counts "it" pronouns as the world using the fields', () => {
@@ -355,27 +356,27 @@ describe('migrateWorld — a released entity with several locations and no prese
 
   it('gives a wandering Unique entity that Can Follow Traversable = Anywhere (Q55)', () => {
     const e = byId(migrate([{ id: 'e', name: 'E', locations: ['keep', 'tower'], movement: 'follow' }]), 'e');
-    expect(e).toMatchObject({ kind: 'unique', traversable: 'anywhere' });
-    expect(e.starts?.[0].schedule).toEqual(wander(['keep', 'tower']));
+    expect(e).toMatchObject({ kind: 'unique', routines: [{ traversable: 'anywhere' }] });
+    expect(startsOf(e)[0].schedule).toEqual(wander(['keep', 'tower']));
   });
 
   it('adds no second Wander for Moves Between', () => {
     const e = byId(migrate([{ id: 'e', name: 'E', locations: ['keep', 'tower'], movement: 'between' }]), 'e');
-    expect(e.starts).toHaveLength(1);
-    expect(e.starts?.[0].schedule).toEqual(wander(['keep', 'tower']));
-    expect(e.traversable).toEqual(['keep', 'tower']);
+    expect(startsOf(e)).toHaveLength(1);
+    expect(startsOf(e)[0].schedule).toEqual(wander(['keep', 'tower']));
+    expect(applyingRoutine(e)?.traversable).toEqual(['keep', 'tower']);
   });
 
   it('makes a companion listed at every location begin Following from the Player\'s Starting Location', () => {
     const e = byId(migrate([narrator, { id: 'pal', name: 'Pal', locations: [...PLACES, 'gone'], movement: 'stays' }]), 'pal');
-    expect(e).toMatchObject({ kind: 'unique', traversable: 'anywhere' });
-    expect(e.starts).toEqual([{ id: expect.any(String), place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }]);
+    expect(e).toMatchObject({ kind: 'unique', routines: [{ traversable: 'anywhere' }] });
+    expect(startsOf(e)).toEqual([{ id: expect.any(String), place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }]);
     expect(e).not.toHaveProperty('locations');
   });
 
   it('makes a person at both locations of a two-location world a follower', () => {
     const e = byId(migrate([{ id: 'host', name: 'Host', pronouns: 'they/them', locations: ['keep', 'tower'] }], ['keep', 'tower']), 'host');
-    expect(e.starts).toEqual([{ id: expect.any(String), place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }]);
+    expect(startsOf(e)).toEqual([{ id: expect.any(String), place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }]);
   });
 
   it('makes no follower in a one-location world, even with a stale id beside it', () => {
@@ -383,15 +384,15 @@ describe('migrateWorld — a released entity with several locations and no prese
       { id: 'host', name: 'Host', locations: ['keep'] },
       { id: 'stale', name: 'Stale', locations: ['keep', 'gone'] },
     ], ['keep']);
-    expect(byId(entities, 'host').starts).toEqual([{ id: expect.any(String), place: 'keep', weight: 1, schedule: [] }]);
-    expect(byId(entities, 'stale').starts?.[0]).toMatchObject({ place: 'keep' });
-    expect(entities.some((e) => e.starts?.some((s) => s.beginsFollowing))).toBe(false);
+    expect(startsOf(byId(entities, 'host'))).toEqual([{ id: expect.any(String), place: 'keep', weight: 1, schedule: [] }]);
+    expect(startsOf(byId(entities, 'stale'))[0]).toMatchObject({ place: 'keep' });
+    expect(entities.some((e) => startsOf(e).some((s) => s.beginsFollowing))).toBe(false);
   });
 
   it('gives random presence a Start per place and never a follower, even at every location', () => {
     const e = byId(migrate([narrator, { id: 'r', name: 'R', presence: 'random', locations: PLACES }]), 'r');
-    expect(e.starts?.map((s) => s.place)).toEqual(PLACES);
-    expect(e.starts?.some((s) => s.beginsFollowing)).toBe(false);
+    expect(startsOf(e).map((s) => s.place)).toEqual(PLACES);
+    expect(startsOf(e).some((s) => s.beginsFollowing)).toBe(false);
   });
 
   it('changes nothing on a second run, and leaves a world that already has kinds alone', () => {
@@ -1622,7 +1623,7 @@ describe('migrateWorld — persona start locations', () => {
     };
     const [a, b] = migrateWorld(raw).entities;
     expect(a).not.toHaveProperty('startingLocationId');
-    expect(a).toMatchObject({ id: 'a', name: 'A', persona: true, kind: 'unique', starts: [{ place: 'x' }] });
+    expect(a).toMatchObject({ id: 'a', name: 'A', persona: true, kind: 'unique', routines: [{ starts: [{ place: 'x' }] }] });
     expect(b).toMatchObject({ id: 'b', name: 'B' });
   });
 });

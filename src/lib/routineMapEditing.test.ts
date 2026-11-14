@@ -3,6 +3,8 @@ import type { Connection, Entity, ScheduleAction, ScheduleRow, Traversable } fro
 import { placesOf } from './positionEngine';
 import { routineDragSources, routineMapClick, routineMapDrag, routineMapStatus, routineShownStatus } from './routineMapEditing';
 import { rangeText } from './routineTime';
+import { startsOf, applyingRoutine, withFirstStarts } from "@/lib/entityKind";
+import { oneRoutine, withoutTraversable } from "@/test/routines";
 
 // A village of sibling places, a ridge one Far Connection away, and an island nothing reaches.
 const locations = [
@@ -24,20 +26,22 @@ const day: ScheduleRow[] = [
   timed('emptyPatrol', 20, 22, { kind: 'patrol', stops: [] }),
 ];
 const farrier = (traversable: Traversable = 'anywhere', schedule = day): Entity => ({
-  id: 'farrier', name: 'Farrier', playerDescription: '', aiDescription: '', kind: 'unique', traversable,
-  starts: [
+  id: 'farrier', name: 'Farrier', playerDescription: '', aiDescription: '', kind: 'unique',
+  routines: oneRoutine([
     { id: 's1', place: 'smithy', weight: 1, schedule },
     { id: 's2', place: 'gate', weight: 1, schedule: [] },
-  ],
+  ], traversable),
 } as Entity);
 
 const at = (rowId: string | null) => ({ startId: null, rowId });
-const rowOf = (e: Entity | undefined, rowId: string) => e?.starts?.[0].schedule.find((r) => r.id === rowId);
+const rowOf = (e: Entity | undefined, rowId: string) => (e ? startsOf(e) : undefined)?.[0].schedule.find((r) => r.id === rowId);
 const placesAfter = (e: Entity | undefined, rowId: string) => {
   const row = rowOf(e, rowId);
   return row ? placesOf(row.action) : undefined;
 };
 const click = (rowId: string | null, place: string, entity = farrier()) => routineMapClick(entity, at(rowId), place, graph);
+/** The Starts an edit writes; null for no edit. */
+const startsIn = (edit: { entity: Entity } | null) => edit && startsOf(edit.entity);
 const drag = (rowId: string, from: string, to: string, entity = farrier()) => routineMapDrag(entity, at(rowId), from, to, graph);
 
 describe('a click with a row selected', () => {
@@ -111,23 +115,23 @@ describe('a click with a row selected', () => {
       graph,
     );
     expect(edit).toBeNull();
-    const withRow: Entity = { ...farrier(), starts: [farrier().starts![0], { id: 's2', place: 'gate', weight: 1, schedule: [timed('g', 6, 10, { kind: 'stay', place: 'gate' })] }] };
+    const withRow: Entity = { ...withFirstStarts(farrier(), [startsOf(farrier())[0], { id: 's2', place: 'gate', weight: 1, schedule: [timed('g', 6, 10, { kind: 'stay', place: 'gate' })] }]) };
     const moved = routineMapClick(withRow, { startId: 's2', rowId: 'g' }, 'inn', graph);
-    expect(moved?.entity.starts?.[1].schedule[0].action).toEqual({ kind: 'stay', place: 'inn' });
+    expect(startsOf(moved!.entity)[1].schedule[0].action).toEqual({ kind: 'stay', place: 'inn' });
   });
 });
 
 describe('a click with no row selected', () => {
   it('adds a place to the Can Also Go list and removes it again, connected or not', () => {
     const added = click(null, 'island', farrier(['inn']));
-    expect(added?.entity.traversable).toEqual(['inn', 'island']);
+    expect(applyingRoutine(added!.entity)?.traversable).toEqual(['inn', 'island']);
     expect(added?.label).toBe('Change Can Also Go');
-    expect(click(null, 'inn', farrier(['inn']))?.entity.traversable).toEqual([]);
+    expect(applyingRoutine(click(null, 'inn', farrier(['inn']))!.entity)?.traversable).toEqual([]);
   });
 
   it('reads a missing Can Also Go as an empty list, as play does', () => {
-    const { traversable: _absent, ...migrated } = farrier();
-    expect(click(null, 'inn', migrated as Entity)?.entity.traversable).toEqual(['inn']);
+    const migrated = withoutTraversable(farrier());
+    expect(applyingRoutine(click(null, 'inn', migrated as Entity)!.entity)?.traversable).toEqual(['inn']);
   });
 
   it('does nothing under Anywhere', () => {
@@ -137,8 +141,8 @@ describe('a click with no row selected', () => {
 
 describe('a Generic entity on the map', () => {
   // The farrier's two Starts, run at once; its Can Also Go list stays in the data and plays no part.
-  const herd = (starts = farrier().starts!): Entity => ({ ...farrier(['inn']), kind: 'generic', starts });
-  const startPlaces = (e: Entity | undefined) => e?.starts?.map((s) => s.place);
+  const herd = (starts = startsOf(farrier())): Entity => ({ ...withFirstStarts(farrier(['inn']), starts), kind: 'generic' });
+  const startPlaces = (e: Entity | undefined) => (e ? startsOf(e) : undefined)?.map((s) => s.place);
 
   it('edits a selected row by a Unique entity’s rules, clicks and drags alike', () => {
     const clicks: [string, string][] = [
@@ -146,11 +150,11 @@ describe('a Generic entity on the map', () => {
       ['emptyPatrol', 'inn'], ['stay', 'island'], ['stay', 'ridge'],
     ];
     for (const [row, place] of clicks) {
-      expect(click(row, place, herd())?.entity.starts).toEqual(click(row, place)?.entity.starts);
+      expect(startsIn(click(row, place, herd()))).toEqual(startsIn(click(row, place)));
     }
     const drags: [string, string, string][] = [['wander', 'market', 'inn'], ['patrol', 'wall', 'market'], ['patrol', 'wall', 'island'], ['stay', 'inn', 'market']];
     for (const [row, from, to] of drags) {
-      expect(drag(row, from, to, herd())?.entity.starts).toEqual(drag(row, from, to)?.entity.starts);
+      expect(startsIn(drag(row, from, to, herd()))).toEqual(startsIn(drag(row, from, to)));
     }
     expect([...routineDragSources(herd(), at('patrol'))].sort()).toEqual(['gate', 'wall']);
   });
@@ -158,18 +162,18 @@ describe('a Generic entity on the map', () => {
   it('adds a Start with no rows at any place, unconnected ones included, with no row selected', () => {
     const edit = click(null, 'island', herd());
     expect(startPlaces(edit?.entity)).toEqual(['smithy', 'gate', 'island']);
-    expect(edit?.entity.starts?.[2].schedule).toEqual([]);
-    expect(edit?.entity.traversable).toEqual(['inn']);
+    expect(startsOf(edit!.entity)[2].schedule).toEqual([]);
+    expect(applyingRoutine(edit!.entity)?.traversable).toEqual(['inn']);
     expect(edit?.label).toBe('Change Locations');
   });
 
   it('removes every Start that begins at the place, the one on show included', () => {
-    const twice = herd([...farrier().starts!, { id: 's3', place: 'smithy', weight: 1, schedule: [] }]);
+    const twice = herd([...startsOf(farrier()), { id: 's3', place: 'smithy', weight: 1, schedule: [] }]);
     expect(startPlaces(click(null, 'smithy', twice)?.entity)).toEqual(['gate']);
   });
 
   it('keeps the last Start', () => {
-    expect(click(null, 'smithy', herd([farrier().starts![0]]))).toBeNull();
+    expect(click(null, 'smithy', herd([startsOf(farrier())[0]]))).toBeNull();
   });
 });
 

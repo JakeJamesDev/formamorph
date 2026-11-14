@@ -5,6 +5,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { panelWorld, renderPanelBench } from '@/test/panelBench';
 import type { Entity, GameLocation } from '@/types';
 import EntityManager from './EntityManager';
+import { oneRoutine } from '@/test/routines';
 
 const LOCATIONS = [{ id: 'inn', name: 'Inn' }] as GameLocation[];
 
@@ -29,7 +30,7 @@ const mount = (over: Partial<Entity>) => renderPanelBench(
 
 describe("an entity's Presence tab", () => {
   it('shows the routine and Known In for a Playable entity', async () => {
-    mount({ persona: true, kind: 'unique', starts: [{ id: 's1', place: 'inn', weight: 1, schedule: [] }] });
+    mount({ persona: true, kind: 'unique', routines: oneRoutine([{ id: 's1', place: 'inn', weight: 1, schedule: [] }]) });
     expect(await screen.findByRole('combobox', { name: 'Known In' })).toBeInTheDocument();
     expect(screen.getByRole('radiogroup', { name: 'On Map' })).toBeInTheDocument();
     expect(screen.queryByText('Start Locations')).toBeNull();

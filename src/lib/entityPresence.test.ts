@@ -6,10 +6,12 @@ import {
 import type { Entity } from "@/types";
 import { idsAt, idsAtAny, namedPlacesOf, positionsIn, presenceOf, withMembership } from "@/lib/entityPlaces";
 import { APP_VERSION, migrateWorld } from "@/lib/version";
+import { startsOf, applyingRoutine, withFirstRoutine, withFirstStarts } from "@/lib/entityKind";
+import { oneRoutine } from "@/test/routines";
 
 /** A Generic entity with one Start per place, no rows. */
 const generic = (id: string, name: string, places: string[]): Entity => ({
-  id, name, kind: "generic", starts: places.map((place, i) => ({ id: `${id}-${i + 1}`, place, weight: 1, schedule: [] })),
+  id, name, kind: "generic", routines: oneRoutine(places.map((place, i) => ({ id: `${id}-${i + 1}`, place, weight: 1, schedule: [] }))),
 });
 /** An entity with no kind that belongs to `places`. */
 const member = (id: string, name: string, places: string[]): Entity => ({ id, name, locations: places });
@@ -19,14 +21,14 @@ const gull = member("gull", "Gull", ["docks"]);
 /** A Unique entity starting at the bar or the docks, standing at the bar by day and wandering the docks and the
  *  attic at night, and allowed into the cellar. */
 const sailor: Entity = {
-  id: "sailor", name: "Sailor", kind: "unique", traversable: ["cellar", "bar"],
-  starts: [
+  id: "sailor", name: "Sailor", kind: "unique",
+  routines: oneRoutine([
     { id: "s1", place: "bar", weight: 1, schedule: [
       { id: "day", time: { start: 360, end: 1080 }, action: { kind: "stay", place: "bar" } },
       { id: "night", time: { start: 1080, end: 360 }, action: { kind: "wander", places: [{ place: "docks", weight: 1 }, { place: "attic", weight: 1 }], idle: 60 } },
     ] },
     { id: "s2", place: "docks", weight: 1, schedule: [{ id: "pier", time: "allDay", action: { kind: "patrol", stops: [{ place: "bar", idle: 30 }] } }] },
-  ],
+  ], ["cellar", "bar"]),
 };
 const ghost: Entity = { id: "ghost", name: "Ghost" }; // placed nowhere
 const cast = [alice, bartender, gull, ghost];
@@ -71,15 +73,15 @@ describe("withMembership", () => {
 describe("withStartHere (Add Entity on a location)", () => {
   it("gives a Generic entity a Start here with weight 1 and no rows", () => {
     const next = withStartHere(generic("gull", "Gull", ["docks"]), "bar");
-    expect(next.starts?.map((s) => [s.place, s.weight, s.schedule])).toEqual([["docks", 1, []], ["bar", 1, []]]);
+    expect(startsOf(next).map((s) => [s.place, s.weight, s.schedule])).toEqual([["docks", 1, []], ["bar", 1, []]]);
     expect(next).not.toHaveProperty("locations");
   });
 
   it("gives a Unique entity one more Start here and keeps its other Starts as they are", () => {
     const next = withStartHere(sailor, "cellar");
-    expect(next.starts?.slice(0, 2)).toEqual(sailor.starts);
-    expect(next.starts).toHaveLength(3);
-    expect(next.starts?.[2]).toMatchObject({ place: "cellar", weight: 1, schedule: [] });
+    expect(startsOf(next).slice(0, 2)).toEqual(startsOf(sailor));
+    expect(startsOf(next)).toHaveLength(3);
+    expect(startsOf(next)[2]).toMatchObject({ place: "cellar", weight: 1, schedule: [] });
   });
 });
 
@@ -97,26 +99,26 @@ describe("dropLocationFromEntities", () => {
   it("drops the place from a Unique entity's Starts, rows and Traversable, with the Start and the row it emptied", () => {
     const [bar] = dropLocationFromEntities("bar", [sailor]);
     // Start s1 began at the bar, and s2's only patrol stop was the bar.
-    expect(bar.starts).toEqual([{ id: "s2", place: "docks", weight: 1, schedule: [] }]);
-    expect(bar.traversable).toEqual(["cellar"]);
+    expect(startsOf(bar)).toEqual([{ id: "s2", place: "docks", weight: 1, schedule: [] }]);
+    expect(applyingRoutine(bar)?.traversable).toEqual(["cellar"]);
     expect(bar).not.toHaveProperty("locations");
     const [docks] = dropLocationFromEntities("docks", [sailor]);
-    expect(docks.starts?.map((s) => s.id)).toEqual(["s1"]);
-    expect(docks.starts?.[0].schedule[1].action).toEqual({ kind: "wander", places: [{ place: "attic", weight: 1 }], idle: 60 });
+    expect(startsOf(docks).map((s) => s.id)).toEqual(["s1"]);
+    expect(startsOf(docks)[0].schedule[1].action).toEqual({ kind: "wander", places: [{ place: "attic", weight: 1 }], idle: 60 });
     expect(docks).not.toHaveProperty("locations");
   });
 
   it("drops a place named only in a Unique entity's Traversable list", () => {
     const [next] = dropLocationFromEntities("cellar", [sailor]);
-    expect(next.traversable).toEqual(["bar"]);
-    expect(next.starts).toBe(sailor.starts);
+    expect(applyingRoutine(next)?.traversable).toEqual(["bar"]);
+    expect(startsOf(next)).toBe(startsOf(sailor));
   });
 });
 
 describe("placedIn", () => {
   const herdsman = generic("bar-keep", "Bartender", ["bar", "docks"]);
   it("carries a Generic entity's Starts through the map, and lists any other entity at the mapped places", () => {
-    expect(placedIn(herdsman, { docks: "pier" }).starts).toEqual([{ id: "bar-keep-2", place: "pier", weight: 1, schedule: [] }]);
+    expect(startsOf(placedIn(herdsman, { docks: "pier" }))).toEqual([{ id: "bar-keep-2", place: "pier", weight: 1, schedule: [] }]);
     expect(placedIn(ghost, { a: "pier", b: "bar" }).locations).toEqual(["pier", "bar"]);
   });
 
@@ -127,18 +129,18 @@ describe("placedIn", () => {
     const connections = { bar: "tavern", docks: "pier", "ph-1": "ph-world" };
     const map = carryMap(refs, connections, known);
     expect(map).toEqual({ bar: "tavern", docks: "pier", attic: "attic" });
-    const stale: Entity = { ...sailor, name: "Old Salt", starts: [{ id: "x", place: "gone", weight: 1, schedule: [] }], traversable: "anywhere" };
+    const stale: Entity = { ...withFirstRoutine(sailor, (routine) => ({ ...routine, starts: [{ id: "x", place: "gone", weight: 1, schedule: [] }], traversable: "anywhere" })), name: "Old Salt" };
     const repaired = withCarriedRoutine(stale, source, connections, known, "unique");
     const fresh = placedIn(source, map);
     expect(repaired.name).toBe("Old Salt");
-    expect([repaired.starts, repaired.traversable, repaired.locations]).toEqual([fresh.starts, fresh.traversable, fresh.locations]);
+    expect([startsOf(repaired), applyingRoutine(repaired)?.traversable, repaired.locations]).toEqual([startsOf(fresh), applyingRoutine(fresh)?.traversable, fresh.locations]);
   });
 
   it("rebuilds a linked Generic copy's Starts from its source on repair, replacing a local Start", () => {
     const source: Entity = { ...herdsman, locationRefs: [{ id: "bar", name: "Bar" }, { id: "docks", name: "Docks" }] };
-    const local: Entity = { ...herdsman, starts: [...herdsman.starts!, { id: "mine", place: "tavern", weight: 1, schedule: [] }] };
+    const local: Entity = withFirstStarts(herdsman, [...startsOf(herdsman), { id: "mine", place: "tavern", weight: 1, schedule: [] }]);
     const repaired = withCarriedRoutine(local, source, { docks: "pier" }, new Set(["pier", "tavern"]), "generic");
-    expect(repaired.starts).toEqual([{ id: "bar-keep-2", place: "pier", weight: 1, schedule: [] }]);
+    expect(startsOf(repaired)).toEqual([{ id: "bar-keep-2", place: "pier", weight: 1, schedule: [] }]);
   });
 
   it("carries a Unique entity's routine, so its Presence names only places of the new world, after a reload too", () => {
@@ -173,7 +175,7 @@ describe("the rosters in play read Position", () => {
   });
 
   // A list a world stored before kinds owned their routine (Q10).
-  const stale: Entity = { id: "stale", name: "Stale", kind: "unique", starts: [], locations: ["bar", "docks"] };
+  const stale: Entity = { id: "stale", name: "Stale", kind: "unique", routines: oneRoutine([]), locations: ["bar", "docks"] };
   it("stand an entity with a kind, a stale stored list and no Position nowhere, through every roster", () => {
     const standings = { positions: { "bar-keep": "docks" }, generics: {} };
     const withStale = [...cast, stale];

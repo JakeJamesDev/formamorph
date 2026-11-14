@@ -9,6 +9,7 @@ import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { phValues } from '@/test/placeholderValues';
 import type { Presence } from '@/lib/presence';
 import type { DiscoveredEntity, Entity, GameLocation, Placeholder, PlayerStat, World } from '@/types';
+import { oneRoutine } from '@/test/routines';
 
 /**
  * Reader coverage: an entity and a location the In-Play World resolver turns off reach no in-play reader.
@@ -28,7 +29,7 @@ const MARKET = { id: 'market', name: 'Market' } as GameLocation;
 const CELLAR = { id: 'cellar', name: 'Cellar' } as GameLocation;
 const unique = (id: string, name: string, at: string): Entity => ({
   id, name, kind: 'unique', locations: [at], knownIn: ['harbor'],
-  starts: [{ id: `${id}-start`, place: at, weight: 1, schedule: [] }],
+  routines: oneRoutine([{ id: `${id}-start`, place: at, weight: 1, schedule: [] }]),
 });
 // Mira stands here; Wren and Ghost one step away at the Market, both known at the Harbor.
 const mira = unique('mira', 'Mira', 'harbor');

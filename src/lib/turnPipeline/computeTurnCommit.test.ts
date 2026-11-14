@@ -17,7 +17,8 @@ import { SchemaRefused, withTextFallback } from '@/lib/aiRequest/responseSchema'
 import type { TurnCommitContext } from './computeTurnCommit';
 import type { WorldWrites } from '@/lib/statCodeExecutor';
 import { parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
-import type { Entity, EntityStart, GameLocation, TurnToolCall } from '@/types';
+import type { Entity, EntityStart, GameLocation, Traversable, TurnToolCall } from '@/types';
+import { oneRoutine } from '@/test/routines';
 
 /**
  * The commit computation as a pure function: outcomes in, one state delta out. Outcomes are parsed by the
@@ -588,8 +589,8 @@ describe('computeTurnCommit — entity movement', () => {
   // Every place sits in one town, so travel joins them all.
   const PLACES = [{ id: 'town', name: 'town' }, ...['inn', 'square', 'keep', 'chapel', 'tower', 'pier', 'wall', 'barrow', 'gate']
     .map((id) => ({ id, name: id, parentId: 'town' }))];
-  const at = (id: string, place: string, traversable: Entity['traversable'], schedule: EntityStart['schedule'] = []): Entity =>
-    ({ id, name: id, kind: 'unique', locations: [place], starts: [{ id: 's', place, weight: 1, schedule }], traversable });
+  const at = (id: string, place: string, traversable: Traversable, schedule: EntityStart['schedule'] = []): Entity =>
+    ({ id, name: id, kind: 'unique', locations: [place], routines: oneRoutine([{ id: 's', place, weight: 1, schedule }], traversable) });
   // Blackwell is a shipped Moves Between: a Wander over the keep, the wall and the tower, and no Traversable.
   const route = (id: string): Entity => at(id, 'wall', [], [{
     id: 'w', time: 'allDay', action: { kind: 'wander', places: ['keep', 'wall', 'tower'].map((place) => ({ place, weight: 1 })), idle: 600 },
@@ -597,7 +598,7 @@ describe('computeTurnCommit — entity movement', () => {
   const stranger = { entity: { id: 'mira', name: 'Mira', aiDescription: 'A ferry hand.' }, locationId: 'inn', sourceTurnId: 't0' };
   const CAST = [
     at('wenna', 'inn', 'anywhere'), at('albus', 'inn', 'anywhere'), at('corvin', 'inn', 'anywhere'), at('sylvie', 'keep', 'anywhere'),
-    route('blackwell'), route('hale'), { id: 'moths', name: 'moths', kind: 'generic', locations: ['inn', 'gate'], starts: [{ id: 's1', place: 'inn', weight: 1, schedule: [] }, { id: 's2', place: 'gate', weight: 1, schedule: [] }] } as Entity,
+    route('blackwell'), route('hale'), { id: 'moths', name: 'moths', kind: 'generic', locations: ['inn', 'gate'], routines: oneRoutine([{ id: 's1', place: 'inn', weight: 1, schedule: [] }, { id: 's2', place: 'gate', weight: 1, schedule: [] }]) } as Entity,
   ];
   const world = positionWorld(castRoutines(CAST, [stranger]), NOON, 'inn', PLACES, [], () => 0);
   /** Everyone at `positions` with their engine state, `followers` following. */

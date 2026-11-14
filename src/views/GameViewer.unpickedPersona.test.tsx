@@ -5,6 +5,7 @@ import { sseResponse, sseReply } from '@/test/aiTextFixtures';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
 import type { Entity, EntityStart, World } from '@/types';
+import { oneRoutine } from '@/test/routines';
 
 /** A Persona-Only entity the player did not pick is never in the story: not present, not known. */
 
@@ -19,14 +20,14 @@ vi.mock('react-toastify', () => ({
 const NARRATOR_PROMPT = 'Narrate the scene.';
 
 const stay = (id: string, place: string): EntityStart[] => [{ id: `s-${id}`, place, weight: 1, schedule: [{ id: `w-${id}`, time: 'allDay', action: { kind: 'stay', place } }] }];
-const hero: Entity = { id: 'hero', name: 'Heroine', persona: true, personaOnly: true, kind: 'unique', locations: ['harbor'], starts: stay('hero', 'harbor') };
+const hero: Entity = { id: 'hero', name: 'Heroine', persona: true, personaOnly: true, kind: 'unique', locations: ['harbor'], routines: oneRoutine(stay('hero', 'harbor')) };
 // Placed at the player's start, with a Known In pick there.
 const ghost: Entity = {
-  id: 'ghost', name: 'Ghostwind', persona: true, personaOnly: true, kind: 'unique', locations: ['inn'], knownIn: ['harbor'], starts: stay('ghost', 'inn'),
+  id: 'ghost', name: 'Ghostwind', persona: true, personaOnly: true, kind: 'unique', locations: ['inn'], knownIn: ['harbor'], routines: oneRoutine(stay('ghost', 'inn')),
 };
-const bram: Entity = { id: 'bram', name: 'Bramwell', kind: 'unique', locations: ['harbor'], starts: stay('bram', 'harbor') };
+const bram: Entity = { id: 'bram', name: 'Bramwell', kind: 'unique', locations: ['harbor'], routines: oneRoutine(stay('bram', 'harbor')) };
 
-const cassia: Entity = { id: 'cassia', name: 'Cassia', kind: 'unique', locations: ['inn'], knownIn: ['harbor'], starts: stay('cassia', 'inn') };
+const cassia: Entity = { id: 'cassia', name: 'Cassia', kind: 'unique', locations: ['inn'], knownIn: ['harbor'], routines: oneRoutine(stay('cassia', 'inn')) };
 
 const world = (): World => {
   const base = harborWorld({ entities: [hero, ghost, bram, cassia] });

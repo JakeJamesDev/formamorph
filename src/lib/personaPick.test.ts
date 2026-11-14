@@ -10,6 +10,8 @@ import { PLAYER_START, type Entity, type EntityStart, type GameLocation, type Pe
 import { startWithRow } from '@/test/entityKindFixture';
 import { namedPlacesOf } from './entityPlaces';
 import { migrateEntityRoutine } from './version';
+import { withFirstStarts } from '@/lib/entityKind';
+import { oneRoutine } from '@/test/routines';
 
 const lib = (entityId: string): PersonaRef => ({ source: 'library', entityId });
 const world = (entityId: string): PersonaRef => ({ source: 'world', entityId });
@@ -191,7 +193,7 @@ describe('offeredStartLocations', () => {
 describe('a played entity with a kind offers its Starts only', () => {
   const start = startWithRow;
   const played = (id: string, starts: EntityStart[]): Entity =>
-    ({ ...entity(id), kind: 'unique', starts, locations: namedPlacesOf({ id, kind: 'unique', starts }) });
+    ({ ...withFirstStarts(entity(id), starts), kind: 'unique', locations: namedPlacesOf({ id, kind: 'unique', routines: oneRoutine(starts) }) });
   const context = (...worldEntities: Entity[]) => ({ worldEntities, locations: places });
 
   it('leaves a row place out of the list', () => {

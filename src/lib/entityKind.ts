@@ -1,4 +1,4 @@
-import { PLAYER_START, type DiscoveredEntity, type Entity, type EntityKind, type EntityStart, type ScheduleRow, type Traversable } from "@/types";
+import { PLAYER_START, type DiscoveredEntity, type Entity, type EntityKind, type EntityRoutine, type EntityStart, type ScheduleRow, type Traversable } from "@/types";
 import { namedPlacesOf, withoutMembership } from "@/lib/entityPlaces";
 import { placesOf, runtimeRoutine, type Routine } from "@/lib/positionEngine";
 
@@ -26,18 +26,54 @@ export function withBeginsFollowing(start: EntityStart, on: boolean): EntityStar
 export const withStartPlace = (start: EntityStart, place: string): EntityStart =>
   withBeginsFollowing({ ...start, place }, place === PLAYER_START && !!start.beginsFollowing);
 
-/** The entity fields a routine is read from. */
-export type RoutineEntity = Pick<Entity, "id" | "kind" | "starts" | "traversable">;
+/** The id a migrated or blank entity's one Routine takes. */
+export const FIRST_ROUTINE_ID = "routine-1";
+/** The default name of the `n`th Routine, from 1. */
+export const routineName = (n: number): string => `Routine ${n}`;
 
-/** The engine's view of an entity with a kind. Undefined for anything else. */
-export function routineOf(entity: RoutineEntity): Routine | undefined {
-  if (isGeneric(entity)) return { id: entity.id, starts: entity.starts ?? [], traversable: [], generic: true };
-  if (!isUnique(entity)) return undefined;
-  return { id: entity.id, starts: entity.starts ?? [], traversable: traversableOf(entity) };
+/** "Routine 1" with no gate. `traversable` absent = an empty list. */
+export const firstRoutine = (starts: EntityStart[] = [], traversable?: Traversable): EntityRoutine =>
+  ({ id: FIRST_ROUTINE_ID, name: routineName(1), starts, ...(traversable !== undefined && { traversable }) });
+
+/** The Routine that applies in play: the first. */
+export const applyingRoutine = (entity: Pick<Entity, "routines">): EntityRoutine | undefined => entity.routines?.[0];
+
+/** The applying Routine's Starts. */
+export const startsOf = (entity: Pick<Entity, "routines">): EntityStart[] => applyingRoutine(entity)?.starts ?? [];
+
+/** The applying Routine's Traversable. An absent field is an empty list, in play and in the editor. */
+export const traversableOf = (entity: Pick<Entity, "routines">): Traversable => applyingRoutine(entity)?.traversable ?? [];
+
+/** Every Start of every Routine, in order. */
+export const everyStart = (entity: Pick<Entity, "routines">): EntityStart[] => (entity.routines ?? []).flatMap((r) => r.starts);
+
+/** `entity`'s Routines, or one blank Routine when it has none. */
+const routinesOrFirst = (entity: Pick<Entity, "routines">): EntityRoutine[] =>
+  (entity.routines?.length ? entity.routines : [firstRoutine()]);
+
+/** `entity` with its first Routine replaced by `edit` of it; one with none starts from a blank Routine. */
+export function withFirstRoutine<E extends Pick<Entity, "routines">>(entity: E, edit: (routine: EntityRoutine) => EntityRoutine): E {
+  const [first, ...rest] = routinesOrFirst(entity);
+  return { ...entity, routines: [edit(first), ...rest] };
 }
 
-/** A Unique entity's Traversable. An absent field is an empty list, in play and in the editor. */
-export const traversableOf = (entity: Pick<Entity, "traversable">): Traversable => entity.traversable ?? [];
+/** `entity` with its first Routine's Starts set to `starts`. */
+export const withFirstStarts = <E extends Pick<Entity, "routines">>(entity: E, starts: EntityStart[]): E =>
+  withFirstRoutine(entity, (routine) => ({ ...routine, starts }));
+
+/** `entity` with its first Routine's Traversable set to `traversable`. */
+export const withFirstTraversable = <E extends Pick<Entity, "routines">>(entity: E, traversable: Traversable): E =>
+  withFirstRoutine(entity, (routine) => ({ ...routine, traversable }));
+
+/** The entity fields a routine is read from. */
+export type RoutineEntity = Pick<Entity, "id" | "kind" | "routines">;
+
+/** The engine's view of an entity with a kind: its applying Routine. Undefined for anything else. */
+export function routineOf(entity: RoutineEntity): Routine | undefined {
+  if (isGeneric(entity)) return { id: entity.id, starts: startsOf(entity), traversable: [], generic: true };
+  if (!isUnique(entity)) return undefined;
+  return { id: entity.id, starts: startsOf(entity), traversable: traversableOf(entity) };
+}
 
 /** The routines of every Unique entity and Generic entity in `cast`, then of every runtime character. */
 export function castRoutines(cast: readonly RoutineEntity[], runtime: readonly DiscoveredEntity[] = []): Routine[] {
@@ -61,40 +97,51 @@ function rowWithout(row: ScheduleRow, placeId: string): ScheduleRow | undefined 
   return stops.length ? { ...row, action: { ...action, stops } } : undefined;
 }
 
-/** Whether `entity`'s routine names `placeId` anywhere: a Start, a row or Traversable. */
-export const routineNames = (entity: Entity, placeId: string): boolean =>
-  (entity.starts ?? []).some((start) => routinePlaces([start]).includes(placeId))
-  || (Array.isArray(entity.traversable) && entity.traversable.includes(placeId));
+/** Whether a Start or row of `routine` names `placeId`. */
+const startsName = (routine: EntityRoutine, placeId: string): boolean =>
+  routine.starts.some((start) => routinePlaces([start]).includes(placeId));
 
-/** `entity` with `placeId` dropped from its Starts, rows and Traversable: a Start at the place goes, and so does
- *  a row left with no places. The same entity when it never named the place. */
+/** Whether `routine` names `placeId` anywhere: a Start, a row or Traversable. */
+const routineNamesPlace = (routine: EntityRoutine, placeId: string): boolean =>
+  startsName(routine, placeId) || (Array.isArray(routine.traversable) && routine.traversable.includes(placeId));
+
+/** Whether any of `entity`'s Routines names `placeId`: a Start, a row or Traversable. */
+export const routineNames = (entity: Pick<Entity, "routines">, placeId: string): boolean =>
+  (entity.routines ?? []).some((routine) => routineNamesPlace(routine, placeId));
+
+/** `routine` with `placeId` dropped from its Starts, rows and Traversable. */
+function routineWithoutPlace(routine: EntityRoutine, placeId: string): EntityRoutine {
+  if (!routineNamesPlace(routine, placeId)) return routine;
+  const starts = !startsName(routine, placeId) ? routine.starts : routine.starts
+    .filter((start) => start.place !== placeId)
+    .map((start) => ({ ...start, schedule: start.schedule.flatMap((row) => rowWithout(row, placeId) ?? []) }));
+  return {
+    ...routine, starts,
+    ...(Array.isArray(routine.traversable) && { traversable: routine.traversable.filter((id) => id !== placeId) }),
+  };
+}
+
+/** `entity` with `placeId` dropped from every Routine's Starts, rows and Traversable: a Start at the place goes, and
+ *  so does a row left with no places. The same entity when it never named the place. */
 export function withoutRoutinePlace(entity: Entity, placeId: string): Entity {
   if (!routineNames(entity, placeId)) return entity;
-  const next: Entity = { ...entity };
-  if (entity.starts?.some((start) => routinePlaces([start]).includes(placeId))) {
-    next.starts = entity.starts
-      .filter((start) => start.place !== placeId)
-      .map((start) => ({ ...start, schedule: start.schedule.flatMap((row) => rowWithout(row, placeId) ?? []) }));
-  }
-  if (Array.isArray(entity.traversable)) next.traversable = entity.traversable.filter((id) => id !== placeId);
-  return next;
+  return { ...entity, routines: entity.routines?.map((routine) => routineWithoutPlace(routine, placeId)) };
 }
 
 /** A new Start at `place` with an empty schedule. */
 const blankStart = (place: string, newId: () => string): EntityStart => ({ id: newId(), place, weight: 1, schedule: [] });
 
-/** A copy of `entity` of `kind`, keeping every Start, row, weight, Strict flag and Traversable (Q135). Without
- *  Starts, an entity with no kind becomes a Unique entity with one at its first place or a Generic entity with one
- *  per place; its membership goes. */
+/** A copy of `entity` of `kind`, keeping every Routine, Start, row, weight, Strict flag and Traversable (Q135). An
+ *  entity with no kind becomes one Routine: a Unique entity with a Start at its first place or a Generic entity with
+ *  one per place; its membership goes. */
 export function withKind(entity: Entity, kind: EntityKind, newId: () => string): Entity {
   if (entity.kind === kind) return entity;
   const places = entity.kind ? [] : namedPlacesOf(entity);
-  const starts = entity.starts?.length ? entity.starts
-    : (kind === "generic" ? places : places.slice(0, 1)).map((place) => blankStart(place, newId));
-  const { starts: _s, ...rest } = entity;
+  const routines = entity.routines?.length ? entity.routines
+    : [firstRoutine((kind === "generic" ? places : places.slice(0, 1)).map((place) => blankStart(place, newId)))];
   return withoutMembership({
-    ...rest, kind, ...(starts.length && { starts }),
-    ...(kind === "unique" && { traversable: entity.traversable ?? "anywhere" }),
+    ...entity, kind,
+    routines: kind === "unique" ? routines.map((routine) => ({ ...routine, traversable: routine.traversable ?? "anywhere" })) : routines,
   });
 }
 
@@ -115,16 +162,18 @@ function rowMapped(row: ScheduleRow, map: Readonly<Record<string, string>>): Sch
  *  (Q11). With no Start kept, a Generic entity takes one Start per mapped place and a Unique entity one at the first. */
 export function withRoutineMapped(entity: Entity, map: Readonly<Record<string, string>>, newId: () => string): Entity {
   const placeOf = (start: EntityStart) => (start.place === PLAYER_START ? PLAYER_START : map[start.place]);
-  const kept = (entity.starts ?? []).flatMap((start) => (placeOf(start)
-    ? [{ ...start, place: placeOf(start), schedule: start.schedule.flatMap((row) => rowMapped(row, map) ?? []) }]
-    : []));
   const mapped = [...new Set(Object.values(map))];
-  const starts = kept.length ? kept : (isGeneric(entity) ? mapped : mapped.slice(0, 1)).map((place) => blankStart(place, newId));
-  const { starts: _s, ...rest } = entity;
-  return {
-    ...rest, ...(starts.length && { starts }),
-    ...(Array.isArray(entity.traversable) && { traversable: [...new Set(entity.traversable.flatMap((id) => map[id] ?? []))] }),
-  };
+  const routines = routinesOrFirst(entity).map((routine): EntityRoutine => {
+    const kept = routine.starts.flatMap((start) => (placeOf(start)
+      ? [{ ...start, place: placeOf(start), schedule: start.schedule.flatMap((row) => rowMapped(row, map) ?? []) }]
+      : []));
+    const starts = kept.length ? kept : (isGeneric(entity) ? mapped : mapped.slice(0, 1)).map((place) => blankStart(place, newId));
+    return {
+      ...routine, starts,
+      ...(Array.isArray(routine.traversable) && { traversable: [...new Set(routine.traversable.flatMap((id) => map[id] ?? []))] }),
+    };
+  });
+  return { ...entity, routines };
 }
 
 /** `written` with each `library` entry that `isKept` holds put back after the nearest earlier library entry it still
@@ -170,11 +219,20 @@ function isMintedFallback(start: EntityStart, kind: Entity["kind"], map: Readonl
   return !libraryIds.has(start.id) && places.includes(start.place) && !start.schedule.length && start.weight === 1 && !start.beginsFollowing;
 }
 
-/** The inverse of `withRoutineMapped`: `copy`'s routine in world ids, written back over `library`'s through `map` (Q34, Q35).
- *  A fallback Start the carry minted stays out (Q37, Q40). */
+/** The inverse of `withRoutineMapped`: `copy`'s Routines in world ids, each written back over the library Routine with
+ *  its id through `map` (Q34, Q35). A fallback Start the carry minted stays out (Q37, Q40). */
 export function withRoutineReturned(
-  copy: Pick<Entity, "kind" | "starts" | "traversable">, library: Pick<Entity, "starts" | "traversable">, map: Readonly<Record<string, string>>,
-): Pick<Entity, "starts" | "traversable"> {
+  copy: Pick<Entity, "kind" | "routines">, library: Pick<Entity, "routines">, map: Readonly<Record<string, string>>,
+): Pick<Entity, "routines"> {
+  if (!copy.routines) return {};
+  const libraryById = new Map((library.routines ?? []).map((routine) => [routine.id, routine]));
+  return { routines: copy.routines.map((routine) => routineReturned(routine, copy.kind, libraryById.get(routine.id), map)) };
+}
+
+/** One Routine of {@link withRoutineReturned}: `copy` over `library`, the library Routine of the same id. */
+function routineReturned(
+  copy: EntityRoutine, kind: Entity["kind"], library: EntityRoutine | undefined, map: Readonly<Record<string, string>>,
+): EntityRoutine {
   const firstSource = firstSources(map);
   const carries = (place: string) => place === PLAYER_START || !!map[place];
   const toSource = (place: string, prior?: string) =>
@@ -198,12 +256,12 @@ export function withRoutineReturned(
     return { ...row, action: { ...action, stops: entriesBack(action.stops, was?.kind === "patrol" ? was.stops : []) } };
   };
 
-  const libraryStarts = library.starts ?? [];
+  const libraryStarts = library?.starts ?? [];
   const startById = new Map(libraryStarts.map((start) => [start.id, start]));
   // The carry minted a fallback only when no library Start carried (Q40).
   const mintedFallback = libraryStarts.length > 0 && !libraryStarts.some((start) => carries(start.place));
   const libraryIds = new Set(startById.keys());
-  const authored = (copy.starts ?? []).filter((start) => !mintedFallback || !isMintedFallback(start, copy.kind, map, libraryIds));
+  const authored = copy.starts.filter((start) => !mintedFallback || !isMintedFallback(start, kind, map, libraryIds));
   const written = authored.map((start) => {
     const libraryStart = startById.get(start.id);
     const libraryRows = libraryStart?.schedule ?? [];
@@ -216,46 +274,46 @@ export function withRoutineReturned(
   // Anywhere replaces the list; no list keeps the library's uncarried entries as the list (Q38).
   let traversable = copy.traversable;
   if (traversable !== "anywhere") {
-    const libraryPlaces = Array.isArray(library.traversable) ? library.traversable : [];
+    const libraryPlaces = Array.isArray(library?.traversable) ? library.traversable : [];
     const returned = placesReturned(traversable ?? [], libraryPlaces, map);
     if (traversable || returned.length) traversable = returned;
   }
-  return { ...(starts.length && { starts }), ...(traversable !== undefined && { traversable }) };
+  const { traversable: _t, ...rest } = copy;
+  return { ...rest, starts, ...(traversable !== undefined && { traversable }) };
 }
 
 /** A Generic entity with a new Start with no rows at `place`. */
-export function withGenericStart(entity: Entity, place: string, newId: () => string): Entity {
-  return { ...entity, starts: [...(entity.starts ?? []), blankStart(place, newId)] };
-}
+export const withGenericStart = (entity: Entity, place: string, newId: () => string): Entity =>
+  withFirstStarts(entity, [...startsOf(entity), blankStart(place, newId)]);
 
 /** Whether removing the Starts that begin at `place` leaves `entity` at least one. */
-export const canRemoveGenericStartsAt = (entity: Pick<Entity, "starts">, place: string): boolean =>
-  (entity.starts ?? []).some((start) => start.place !== place);
+export const canRemoveGenericStartsAt = (entity: Pick<Entity, "routines">, place: string): boolean =>
+  startsOf(entity).some((start) => start.place !== place);
 
 /** A Generic entity without the Starts that begin at `place`, rows and all. The same entity when that would remove its
  *  last Start, or none begins there. */
 export function withoutGenericStartsAt(entity: Entity, place: string): Entity {
-  const starts = entity.starts ?? [];
+  const starts = startsOf(entity);
   if (!starts.some((start) => start.place === place) || !canRemoveGenericStartsAt(entity, place)) return entity;
-  return { ...entity, starts: starts.filter((start) => start.place !== place) };
+  return withFirstStarts(entity, starts.filter((start) => start.place !== place));
 }
 
 /** A Generic entity without the Start `startId`, rows and all. The same entity when that is its last Start. */
 export function withoutGenericStart(entity: Entity, startId: string): Entity {
-  const starts = entity.starts ?? [];
+  const starts = startsOf(entity);
   if (starts.length < 2 || !starts.some((start) => start.id === startId)) return entity;
-  return { ...entity, starts: starts.filter((start) => start.id !== startId) };
+  return withFirstStarts(entity, starts.filter((start) => start.id !== startId));
 }
 
 /** A Generic entity with a Start added at `place`, or the Starts that begin there removed when there are any. */
 export const toggleGenericStart = (entity: Entity, place: string, newId: () => string): Entity =>
-  ((entity.starts ?? []).some((start) => start.place === place) ? withoutGenericStartsAt(entity, place) : withGenericStart(entity, place, newId));
+  (startsOf(entity).some((start) => start.place === place) ? withoutGenericStartsAt(entity, place) : withGenericStart(entity, place, newId));
 
 /** A Unique entity with its first Start at `placeId`, made when it has none. */
 export function withFirstStartPlace(entity: Entity, placeId: string, newId: () => string): Entity {
-  const starts = entity.starts ?? [];
+  const starts = startsOf(entity);
   const next = starts.length
     ? [withStartPlace(starts[0], placeId), ...starts.slice(1)]
     : [blankStart(placeId, newId)];
-  return { ...entity, starts: next };
+  return withFirstStarts(entity, next);
 }

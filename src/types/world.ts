@@ -491,6 +491,19 @@ export interface EntityStart {
 /** Where a Unique entity may go beyond its schedule. An empty list means schedule places only. */
 export type Traversable = 'anywhere' | string[];
 
+/** One way an entity with a kind lives: its own Starts and Traversable, applied while its Requires holds. */
+export interface EntityRoutine {
+  id: string;
+  /** The author's name, such as "Routine 1". */
+  name: string;
+  /** Holds while any row holds; absent or empty = always. A Condition with no owner reads the entity itself. */
+  requires?: TraitRequirementRow[];
+  /** A Unique entity's places beyond its schedule. Absent = an empty list. A Generic entity ignores it. */
+  traversable?: Traversable;
+  /** The beginnings, in author order. A Unique entity rolls one per playthrough; a Generic entity runs every one. */
+  starts: EntityStart[];
+}
+
 /** How the player's map shows an entity. Read it through `lib/onMap`. */
 export type OnMap = 'always' | 'onceMet' | 'whenNearby' | 'never';
 
@@ -551,10 +564,8 @@ export interface Entity {
   enabledWhen?: TraitRequirementRow[];
   /** Absent for an entity with no locations, the persona and the played entity. */
   kind?: EntityKind;
-  /** The beginnings, in author order. A Unique entity rolls one per playthrough; a Generic entity runs every one. */
-  starts?: EntityStart[];
-  /** A Unique entity's places beyond its schedule. Absent = an empty list. A Generic entity ignores it. */
-  traversable?: Traversable;
+  /** The Routines of an entity with a kind, in priority order; at least one. Absent for an entity with no kind. */
+  routines?: EntityRoutine[];
   /** Where the AI knows of the entity while it isn't present: `nowhere`, or the picked location ids, each
    *  covering its whole subtree. Absent = Nearby, one step from where it is. */
   knownIn?: 'nowhere' | string[];

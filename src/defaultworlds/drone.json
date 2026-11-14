@@ -956,12 +956,18 @@
       ],
       "pronouns": "he/him",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "0f968c0c-e2ab-4905-a9d1-dca90375957e",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "0f968c0c-e2ab-4905-a9d1-dca90375957e",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -984,12 +990,18 @@
       ],
       "pronouns": "she/her",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "beab09b0-447f-4b95-b91b-3a3af8bcbc43",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "beab09b0-447f-4b95-b91b-3a3af8bcbc43",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1011,36 +1023,42 @@
       ],
       "pronouns": "he/him",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "e699335f-a661-4aab-a158-0214b0bef613",
-          "weight": 1,
-          "schedule": [
+          "id": "routine-1",
+          "name": "Routine 1",
+          "traversable": [
+            "e699335f-a661-4aab-a158-0214b0bef613",
+            "6d2c3e8b-f7a1-414b-9800-787e68546510"
+          ],
+          "starts": [
             {
-              "id": "row-1",
-              "time": "allDay",
-              "action": {
-                "kind": "wander",
-                "places": [
-                  {
-                    "place": "e699335f-a661-4aab-a158-0214b0bef613",
-                    "weight": 1
-                  },
-                  {
-                    "place": "6d2c3e8b-f7a1-414b-9800-787e68546510",
-                    "weight": 1
+              "id": "start-1",
+              "place": "e699335f-a661-4aab-a158-0214b0bef613",
+              "weight": 1,
+              "schedule": [
+                {
+                  "id": "row-1",
+                  "time": "allDay",
+                  "action": {
+                    "kind": "wander",
+                    "places": [
+                      {
+                        "place": "e699335f-a661-4aab-a158-0214b0bef613",
+                        "weight": 1
+                      },
+                      {
+                        "place": "6d2c3e8b-f7a1-414b-9800-787e68546510",
+                        "weight": 1
+                      }
+                    ],
+                    "idle": 240
                   }
-                ],
-                "idle": 240
-              }
+                }
+              ]
             }
           ]
         }
-      ],
-      "traversable": [
-        "e699335f-a661-4aab-a158-0214b0bef613",
-        "6d2c3e8b-f7a1-414b-9800-787e68546510"
       ]
     },
     {
@@ -1062,46 +1080,52 @@
       ],
       "pronouns": "he/him",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "06fe055e-d812-4b77-bddd-e9bdba56dbd4",
-          "weight": 1,
-          "schedule": [
+          "id": "routine-1",
+          "name": "Routine 1",
+          "traversable": [
+            "92cf612e-88a5-48db-a1b7-81e569cc6d1d",
+            "06fe055e-d812-4b77-bddd-e9bdba56dbd4"
+          ],
+          "starts": [
             {
-              "id": "row-1",
-              "time": "allDay",
-              "action": {
-                "kind": "stay",
-                "place": "06fe055e-d812-4b77-bddd-e9bdba56dbd4"
-              }
-            },
-            {
-              "id": "row-2",
-              "time": {
-                "start": 480,
-                "end": 960
-              },
-              "action": {
-                "kind": "patrol",
-                "stops": [
-                  {
-                    "place": "06fe055e-d812-4b77-bddd-e9bdba56dbd4",
-                    "idle": 120
-                  },
-                  {
-                    "place": "92cf612e-88a5-48db-a1b7-81e569cc6d1d",
-                    "idle": 120
+              "id": "start-1",
+              "place": "06fe055e-d812-4b77-bddd-e9bdba56dbd4",
+              "weight": 1,
+              "schedule": [
+                {
+                  "id": "row-1",
+                  "time": "allDay",
+                  "action": {
+                    "kind": "stay",
+                    "place": "06fe055e-d812-4b77-bddd-e9bdba56dbd4"
                   }
-                ]
-              }
+                },
+                {
+                  "id": "row-2",
+                  "time": {
+                    "start": 480,
+                    "end": 960
+                  },
+                  "action": {
+                    "kind": "patrol",
+                    "stops": [
+                      {
+                        "place": "06fe055e-d812-4b77-bddd-e9bdba56dbd4",
+                        "idle": 120
+                      },
+                      {
+                        "place": "92cf612e-88a5-48db-a1b7-81e569cc6d1d",
+                        "idle": 120
+                      }
+                    ]
+                  }
+                }
+              ]
             }
           ]
         }
-      ],
-      "traversable": [
-        "92cf612e-88a5-48db-a1b7-81e569cc6d1d",
-        "06fe055e-d812-4b77-bddd-e9bdba56dbd4"
       ]
     },
     {
@@ -1123,12 +1147,18 @@
       ],
       "pronouns": "it/its",
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "6b874353-7259-4376-96a3-6ec7165f6795",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "6b874353-7259-4376-96a3-6ec7165f6795",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1153,12 +1183,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "beab09b0-447f-4b95-b91b-3a3af8bcbc43",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "beab09b0-447f-4b95-b91b-3a3af8bcbc43",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1180,12 +1216,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "dd1ca3c7-d12f-4631-a3e0-7f030707b1ff",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "dd1ca3c7-d12f-4631-a3e0-7f030707b1ff",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "whenNearby"
@@ -1205,12 +1247,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "6d2c3e8b-f7a1-414b-9800-787e68546510",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "6d2c3e8b-f7a1-414b-9800-787e68546510",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1233,12 +1281,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "6fe53180-1166-46ad-9c34-bbb850025f88",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "6fe53180-1166-46ad-9c34-bbb850025f88",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "whenNearby"
@@ -1261,12 +1315,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "06fe055e-d812-4b77-bddd-e9bdba56dbd4",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "06fe055e-d812-4b77-bddd-e9bdba56dbd4",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     },
@@ -1288,12 +1348,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "0f968c0c-e2ab-4905-a9d1-dca90375957e",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "0f968c0c-e2ab-4905-a9d1-dca90375957e",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "whenNearby"
@@ -1313,18 +1379,24 @@
         }
       ],
       "kind": "generic",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "92cf612e-88a5-48db-a1b7-81e569cc6d1d",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "4db34e20-891b-4b83-a75c-b8a4a5e83a93",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "92cf612e-88a5-48db-a1b7-81e569cc6d1d",
+              "weight": 1,
+              "schedule": []
+            },
+            {
+              "id": "start-2",
+              "place": "4db34e20-891b-4b83-a75c-b8a4a5e83a93",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "whenNearby"
@@ -1351,12 +1423,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "4db34e20-891b-4b83-a75c-b8a4a5e83a93",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "4db34e20-891b-4b83-a75c-b8a4a5e83a93",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ],
       "onMap": "whenNearby"
@@ -1380,36 +1458,42 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "1739142346750",
-          "weight": 1,
-          "schedule": [
+          "id": "routine-1",
+          "name": "Routine 1",
+          "traversable": [
+            "1739142346750",
+            "4ad98452-0237-4e08-8613-d2cbdb02d77c"
+          ],
+          "starts": [
             {
-              "id": "row-1",
-              "time": "allDay",
-              "action": {
-                "kind": "wander",
-                "places": [
-                  {
-                    "place": "1739142346750",
-                    "weight": 1
-                  },
-                  {
-                    "place": "4ad98452-0237-4e08-8613-d2cbdb02d77c",
-                    "weight": 1
+              "id": "start-1",
+              "place": "1739142346750",
+              "weight": 1,
+              "schedule": [
+                {
+                  "id": "row-1",
+                  "time": "allDay",
+                  "action": {
+                    "kind": "wander",
+                    "places": [
+                      {
+                        "place": "1739142346750",
+                        "weight": 1
+                      },
+                      {
+                        "place": "4ad98452-0237-4e08-8613-d2cbdb02d77c",
+                        "weight": 1
+                      }
+                    ],
+                    "idle": 240
                   }
-                ],
-                "idle": 240
-              }
+                }
+              ]
             }
           ]
         }
-      ],
-      "traversable": [
-        "1739142346750",
-        "4ad98452-0237-4e08-8613-d2cbdb02d77c"
       ]
     },
     {
@@ -1427,12 +1511,18 @@
         }
       ],
       "kind": "unique",
-      "starts": [
+      "routines": [
         {
-          "id": "start-1",
-          "place": "4ad98452-0237-4e08-8613-d2cbdb02d77c",
-          "weight": 1,
-          "schedule": []
+          "id": "routine-1",
+          "name": "Routine 1",
+          "starts": [
+            {
+              "id": "start-1",
+              "place": "4ad98452-0237-4e08-8613-d2cbdb02d77c",
+              "weight": 1,
+              "schedule": []
+            }
+          ]
         }
       ]
     }

@@ -134,6 +134,10 @@ _Avoid_: Group (entity kind), Everywhere Listed
 An entity that is one body in one place. One of its Starts is rolled per playthrough, and its Schedule moves it through the day. Not the Unique mode of a placeholder chip.
 _Avoid_: Individual, One, random presence
 
+**Routine**:
+One way an entity with a kind lives: a name, a Requires gate, its own Traversable and its own Starts. An entity holds an ordered list of them, and in play the first whose gate holds applies. An entity with one Routine and no gate behaves as one set of Starts. Also the name of the editor's Routine view, which edits them.
+_Avoid_: behavior, mode, schedule set
+
 **Start**:
 One beginning of an entity: a place plus a Schedule. A Unique entity rolls one by weight per playthrough and keeps it for the whole save; a Generic entity runs all of them. A Start with an empty Schedule stays at its place.
 _Avoid_: spawn, presence
@@ -160,7 +164,7 @@ _Avoid_: spawn points
 
 **Schedule**:
 A Start's daily routine: rows of a time and an action (Stay, Wander or Patrol). A timed row beats the All-day row for its hours; in hours no row covers, the character stays at its Start's place.
-_Avoid_: movement, routine (the editor tab's name)
+_Avoid_: movement
 
 **Stay**:
 A Schedule action: the character is at one place for the row's hours.
@@ -179,7 +183,7 @@ A Schedule row flag: during the row the character can't be called over by narrat
 _Avoid_: locked, busy
 
 **Traversable**:
-The places a Unique entity may go beyond its Schedule, or Anywhere. Pulls and follows reach only its current row's places plus these. An empty list means Schedule places only.
+The places a Unique entity may go beyond its Schedule, or Anywhere, set per Routine. Pulls and follows reach only its current row's places plus the applying Routine's list. An empty list means Schedule places only.
 _Avoid_: range, Can Follow
 
 **Look Around**:

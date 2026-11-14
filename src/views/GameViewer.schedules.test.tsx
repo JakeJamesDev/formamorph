@@ -5,6 +5,7 @@ import { playTurn as playOneTurn, resetMoveTurnStorage, stubMoveEndpoint } from 
 import { useGameplay } from '@/contexts/GameplayContext';
 import { storyMinute } from '@/lib/gameClock';
 import type { Entity, GameLocation, World } from '@/types';
+import { oneRoutine } from '@/test/routines';
 
 /** Routines in play on a mounted game: who moves while the player is elsewhere, and who stays while the player is there. */
 
@@ -21,9 +22,9 @@ const WELL = { id: 'well', name: 'Well', parentId: 'village' } as GameLocation;
 // Tess starts at the well and wanders between the well and the hut, an hour at each: one turn's time.
 const TESS: Entity = {
   id: 'tess', name: 'Tess', kind: 'unique', locations: ['well', 'hut'],
-  starts: [{ id: 'start', place: 'well', weight: 1, schedule: [{
+  routines: oneRoutine([{ id: 'start', place: 'well', weight: 1, schedule: [{
     id: 'rounds', time: 'allDay', action: { kind: 'wander', places: [{ place: 'well', weight: 1 }, { place: 'hut', weight: 1 }], idle: 60 },
-  }] }],
+  }] }]),
 };
 
 const worldStartingAt = (start: string): World => ({

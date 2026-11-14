@@ -5,6 +5,8 @@ import { PLAYER_START, type Currency, type Dictionary, type Entity, type GameSta
 import { buildPlayerView } from './playerView';
 import { playerViewWorld } from './playerViewWorld';
 import { buildWorldIndex, chipsFromText, worldIndexOf, worldTextOf, type WorldIndexInput } from './worldIndex';
+import { withFirstTraversable, withFirstStarts } from '@/lib/entityKind';
+import { oneRoutine, withoutTraversable } from '@/test/routines';
 
 const stat = (patch: Partial<Stat> = {}): Stat => ({ id: 'grit', name: 'Grit', type: 'number', description: 'How long you hold on.', min: 0, max: 100, value: 40, regen: 0, descriptors: [], ...patch });
 
@@ -201,16 +203,16 @@ describe('chipsFromText', () => {
 describe('routines and Connections in the World Index', () => {
   const place = (id: string, name: string) => ({ id, name, playerDescription: `${name} text.` });
   const warden: Entity = {
-    id: 'warden', name: 'Warden', kind: 'unique', traversable: ['loc-mill'],
-    starts: [
+    id: 'warden', name: 'Warden', kind: 'unique',
+    routines: oneRoutine([
       { id: 's1', place: 'loc-gate', weight: 3, schedule: [
         { id: 'r1', time: { start: 1200, end: 240 }, strict: true, action: { kind: 'patrol', stops: [{ place: 'loc-gate', idle: 60 }, { place: 'loc-mill', idle: 60 }] } },
         { id: 'r2', time: 'allDay', action: { kind: 'stay', place: 'loc-gate' } },
       ] },
       { id: 's2', place: PLAYER_START, weight: 1, beginsFollowing: true, schedule: [] },
-    ],
+    ], ['loc-mill']),
   };
-  const crowd: Entity = { id: 'crowd', name: 'Crowd', kind: 'generic', starts: [{ id: 'g1', place: 'loc-mill', weight: 1, schedule: [] }] };
+  const crowd: Entity = { id: 'crowd', name: 'Crowd', kind: 'generic', routines: oneRoutine([{ id: 'g1', place: 'loc-mill', weight: 1, schedule: [] }]) };
   const input = world({
     locations: [place('loc-gate', 'North Gate'), place('loc-mill', 'Old Mill'), place('loc-quay', 'Quay'), place('loc-vault', 'Vault')],
     entities: [warden, crowd],
@@ -271,7 +273,7 @@ describe('routines and Connections in the World Index', () => {
     });
 
     it('states Can Also Go set to Anywhere as such, and lists no place for it', () => {
-      const roamer: Entity = { ...warden, traversable: 'anywhere' };
+      const roamer: Entity = withFirstTraversable(warden, 'anywhere');
       const md = buildWorldIndex({ ...input, entities: [roamer], locations: quayStarts })
         .sectionsOf({ kind: 'world', worldKind: 'entity', id: 'warden', name: 'Warden' }).map((s) => s.markdown).join('\n\n');
       expect(md).toContain('**Can Also Go:** Anywhere');
@@ -279,14 +281,14 @@ describe('routines and Connections in the World Index', () => {
     });
 
     it('leaves out a row place its Start has no path to', () => {
-      const islander: Entity = { ...crowd, starts: [{ id: 'g1', place: 'loc-mill', weight: 1, schedule: [{ id: 'g1-day', time: 'allDay', action: { kind: 'stay', place: 'loc-isle' } }] }] };
+      const islander: Entity = { ...withFirstStarts(crowd, [{ id: 'g1', place: 'loc-mill', weight: 1, schedule: [{ id: 'g1-day', time: 'allDay', action: { kind: 'stay', place: 'loc-isle' } }] }]) };
       const isle = [...input.locations, place('loc-isle', 'Isle')];
       expect(canBeAt([islander], 'crowd', isle)).toEqual(['- Old Mill: begins here']);
     });
   });
 
   it('states Can Also Go for a Unique entity with no field as the Routine tab shows it: an empty list', () => {
-    const { traversable: _, ...unset } = warden;
+    const unset = withoutTraversable(warden);
     expect(page('entity', 'warden')).toContain('**Can Also Go:** Only Old Mill');
     const md = buildWorldIndex({ ...input, entities: [unset, crowd] })
       .sectionsOf({ kind: 'world', worldKind: 'entity', id: 'warden', name: 'Warden' }).map((s) => s.markdown).join('\n');
@@ -327,8 +329,7 @@ describe('routines and Connections in the World Index', () => {
     );
     const md = buildWorldIndex({ ...input, entities: cut.entities, locations: cut.locations ?? [] }).sectionsOf({ kind: 'world', worldKind: 'entity', id: 'warden', name: 'Warden' }).map((s) => s.markdown).join('\n');
     expect(md).not.toMatch(/Starts|Unique|Can Also Go|patrols|chance/);
-    expect(cut.entities[0]).not.toHaveProperty('starts');
+    expect(cut.entities[0]).not.toHaveProperty('routines');
     expect(cut.entities[0]).not.toHaveProperty('kind');
-    expect(cut.entities[0]).not.toHaveProperty('traversable');
   });
 });

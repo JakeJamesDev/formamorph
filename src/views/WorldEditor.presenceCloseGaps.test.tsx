@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { resetRoutineSelections } from '@/lib/routineSelection';
 import type { World } from '@/types';
+import { oneRoutine } from '@/test/routines';
+import { startsOf } from '@/lib/entityKind';
 
 /** The Presence tab's Start on a change of location, Add Entity's mode, and Picked Locations beside the panel. */
 
@@ -35,12 +37,12 @@ const WORLD: World = benchEditorWorld({
     // Start 1 begins at the tavern, Start 2 at the yard.
     {
       id: 'twin', name: 'Twin', kind: 'unique', locations: ['tavern', 'yard'],
-      starts: [
+      routines: oneRoutine([
         { id: 'a', place: 'tavern', weight: 1, schedule: [{ id: 'r1', time: 'allDay', action: { kind: 'stay', place: 'tavern' } }] },
         { id: 'b', place: 'yard', weight: 1, schedule: [] },
-      ],
+      ]),
     },
-    { id: 'crowd', name: 'Crowd', kind: 'generic', locations: ['tavern'], starts: [{ id: 'c1', place: 'tavern', weight: 1, schedule: [] }] },
+    { id: 'crowd', name: 'Crowd', kind: 'generic', locations: ['tavern'], routines: oneRoutine([{ id: 'c1', place: 'tavern', weight: 1, schedule: [] }]) },
     { id: 'moths', name: 'Moths', kind: 'generic' },
   ],
 } as Partial<World>);
@@ -106,12 +108,12 @@ describe('a pick kept across a change of location', () => {
     expect(startOnShow()).toBe(2);
     await step(() => fireEvent.click(startButton(1)));
     await deleteRoutineRow();
-    expect(ctx().entities.find((e) => e.id === 'twin')!.starts![0].schedule).toHaveLength(0);
+    expect(startsOf(ctx().entities.find((e) => e.id === 'twin')!)![0].schedule).toHaveLength(0);
     await openTreeRow('Tavern');
     expect(startOnShow()).toBe(1);
 
     await undo();
-    expect(ctx().entities.find((e) => e.id === 'twin')!.starts![0].schedule).toHaveLength(1);
+    expect(startsOf(ctx().entities.find((e) => e.id === 'twin')!)![0].schedule).toHaveLength(1);
     expect(presenceList().getByRole('button', { current: true }).getAttribute('aria-label')).toMatch(/^Twin, /);
     expect(startOnShow()).toBe(1);
   });

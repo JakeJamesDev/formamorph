@@ -3,12 +3,13 @@ import { PLAYER_START, type Connection, type Entity, type EntityStart, type Game
 import {
   idsAt, idsAtAny, namedPlacesOf, positionOf, positionsIn, presenceIn, presenceOf, samplePlacement, startPlacesOf, withMembership, type PlacesWorld,
 } from '@/lib/entityPlaces';
-import { castRoutines } from '@/lib/entityKind';
+import { castRoutines, withFirstStarts } from '@/lib/entityKind';
 import { EMPTY_BOOK } from '@/lib/positionEngine';
 import { placeAll, positionWorld } from '@/lib/positionPlay';
 import { discoveredAsEntities } from '@/lib/runtimeCharacters';
 import { runtimePositions } from '@/lib/entityFollowing';
 import { NOON } from '@/test/entityKindFixture';
+import { oneRoutine } from '@/test/routines';
 
 // Entities with a kind carry the derived list a world stores, which no answer may read.
 // town > { market, well }, flagged starting; the forest is linked to the town; the island has no path from anywhere.
@@ -23,16 +24,16 @@ const start = (id: string, place: string, schedule: ScheduleRow[] = [], weight =
 
 /** Begins at the market (weight 3) and wanders to the well; or begins in the forest and stays on the island. */
 const MARA: Entity = {
-  id: 'mara', name: 'Mara', kind: 'unique', traversable: ['forest', 'well'],
-  starts: [
+  id: 'mara', name: 'Mara', kind: 'unique',
+  routines: oneRoutine([
     start('s-market', 'market', [{ id: 'r-wander', time: 'allDay', action: { kind: 'wander', idle: 10, places: [{ place: 'market', weight: 1 }, { place: 'well', weight: 1 }] } }], 3),
     start('s-forest', 'forest', [stay('r-island', 'island')]),
-  ],
+  ], ['forest', 'well']),
 };
 /** Two Generic Entity Instances, both beginning at the well. */
-const CROWS: Entity = { id: 'crows', name: 'Crows', kind: 'generic', traversable: ['island'], starts: [start('c1', 'well'), start('c2', 'well', [stay('c2-r', 'forest')])] };
+const CROWS: Entity = { id: 'crows', name: 'Crows', kind: 'generic', routines: oneRoutine([start('c1', 'well'), start('c2', 'well', [stay('c2-r', 'forest')])], ['island']) };
 /** Begins wherever the player does. */
-const GUIDE: Entity = { id: 'guide', name: 'Guide', kind: 'unique', traversable: 'anywhere', starts: [start('g', PLAYER_START, [stay('g-r', 'forest')])] };
+const GUIDE: Entity = { id: 'guide', name: 'Guide', kind: 'unique', routines: oneRoutine([start('g', PLAYER_START, [stay('g-r', 'forest')])], 'anywhere') };
 /** No kind: plain membership. */
 const STATUE: Entity = { id: 'statue', name: 'Statue', locations: ['well', 'forest'] };
 const CAST = [MARA, CROWS, GUIDE, STATUE];
@@ -86,15 +87,15 @@ describe('Presence', () => {
   });
 
   it('counts every row place of a Player\'s Starting Location Start, with no path check', () => {
-    const wanderer = { ...GUIDE, starts: [start('g', PLAYER_START, [stay('to-island', 'island')])] };
+    const wanderer = withFirstStarts(GUIDE, [start('g', PLAYER_START, [stay('to-island', 'island')])]);
     expect(reasonsAt(wanderer, 'island')).toEqual([{ kind: 'row', startId: 'g', rowId: 'to-island' }]);
     expect(placeOf(wanderer)).toEqual(['town', 'island']);
   });
 
   it('holds only places the world has, for every reason', () => {
     const lost: Entity = {
-      id: 'lost', name: 'Lost', kind: 'unique', traversable: ['gone-b', 'well'],
-      starts: [start('l1', 'gone-a', [stay('l1-r', 'gone-c')]), start('l2', 'market', [stay('l2-r', 'gone-d')])],
+      id: 'lost', name: 'Lost', kind: 'unique',
+      routines: oneRoutine([start('l1', 'gone-a', [stay('l1-r', 'gone-c')]), start('l2', 'market', [stay('l2-r', 'gone-d')])], ['gone-b', 'well']),
     };
     expect(placeOf(lost)).toEqual(['market', 'well']);
     expect(placeOf({ ...STATUE, locations: ['gone-e', 'well'] })).toEqual(['well']);
@@ -117,7 +118,7 @@ describe('Presence', () => {
 describe('the named places', () => {
   it('lists every place id the routine names, with no world and no path check', () => {
     expect(namedPlacesOf(MARA)).toEqual(['market', 'well', 'forest', 'island']);
-    expect(namedPlacesOf({ ...MARA, starts: [start('x', 'gone', [stay('x-r', 'gone-too')])] })).toEqual(['gone', 'gone-too', 'forest', 'well']);
+    expect(namedPlacesOf(withFirstStarts(MARA, [start('x', 'gone', [stay('x-r', 'gone-too')])]))).toEqual(['gone', 'gone-too', 'forest', 'well']);
   });
 
   it('names no place for Player\'s Starting Location, and a Generic entity\'s Traversable too', () => {
@@ -195,7 +196,7 @@ describe('Sample Placement', () => {
   });
 
   it('places a Player\'s Starting Location entity at the given start', () => {
-    const resting = { ...GUIDE, starts: [start('g', PLAYER_START)] };
+    const resting = withFirstStarts(GUIDE, [start('g', PLAYER_START)]);
     expect(samplePlacement([resting], WORLD, 'market')(resting)).toEqual(['market']);
     expect(samplePlacement([resting], WORLD, 'island')(resting)).toEqual(['island']);
   });

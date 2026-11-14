@@ -6,6 +6,7 @@ import { storyMinute } from '../gameClock';
 import { placeAll, positionWorld, type PositionWorld } from '../positionPlay';
 import { startFollowing, startWaiting, type PositionBook } from '../positionEngine';
 import { migrateEntityRoutine } from '../version';
+import { withFirstRoutine, withFirstStarts, withFirstTraversable } from '@/lib/entityKind';
 
 const ent = (id: string, name: string): Entity => ({ id, name });
 const loc = (id: string, name: string, over: Partial<GameLocation> = {}): GameLocation =>
@@ -106,7 +107,7 @@ describe('selectVisitorAdditions', () => {
 
   /** A Unique entity starting at `place`, with an empty schedule unless `schedule` gives one. */
   const unique = (base: Entity, place: string, over: Partial<Entity> = {}, schedule: EntityStart['schedule'] = []): Entity => ({
-    ...base, kind: 'unique', locations: [place], starts: [{ id: 's', place, weight: 1, schedule }], traversable: 'anywhere', ...over,
+    ...withFirstRoutine(base, (routine) => ({ ...routine, starts: [{ id: 's', place, weight: 1, schedule }], traversable: 'anywhere' })), kind: 'unique', locations: [place], ...over,
   });
   const maren = unique(MAREN, 'l2');
 
@@ -168,8 +169,7 @@ describe('selectVisitorAdditions', () => {
 
   it('never pulls a Generic entity, and anchors no copy of it', () => {
     const herd: Entity = {
-      ...ent('e3', 'Tamsin Reed'), kind: 'generic', locations: ['l2', 'l3'],
-      starts: [{ id: 'a', place: 'l2', weight: 1, schedule: [] }, { id: 'b', place: 'l3', weight: 1, schedule: [] }],
+      ...withFirstStarts(ent('e3', 'Tamsin Reed'), [{ id: 'a', place: 'l2', weight: 1, schedule: [] }, { id: 'b', place: 'l3', weight: 1, schedule: [] }]), kind: 'generic', locations: ['l2', 'l3'],
     };
     const { book, after } = pull('Tamsin Reed comes over to the jetty.', [herd]);
     expect(after).toBe(book);
@@ -210,12 +210,12 @@ describe('selectVisitorAdditions', () => {
     });
 
     it('never pulls a character whose Traversable is empty into a place outside its schedule', () => {
-      expect(pullWith(named, [tamsin({ traversable: [] })])).toEqual([]);
+      expect(pullWith(named, [withFirstTraversable(tamsin({}), [])])).toEqual([]);
     });
 
     it("pulls into a place its row uses or its Traversable lists", () => {
-      expect(pullWith(named, [tamsin({ traversable: [] }, wander(from, 'l1'))])).toEqual(['Tamsin Reed']);
-      expect(pullWith(named, [tamsin({ traversable: ['l1'] })])).toEqual(['Tamsin Reed']);
+      expect(pullWith(named, [withFirstTraversable(tamsin({}, wander(from, 'l1')), [])])).toEqual(['Tamsin Reed']);
+      expect(pullWith(named, [withFirstTraversable(tamsin({}), ['l1'])])).toEqual(['Tamsin Reed']);
     });
 
     it('never pulls a character on a Strict row', () => {
@@ -245,8 +245,8 @@ describe('selectVisitorAdditions', () => {
     });
 
     it('is pulled once the author adds the place to Traversable', () => {
-      expect(pullWith(seen, [{ ...migrated, traversable: ['l1'] }])).toEqual(['Tamsin Reed']);
-      expect(pullWith(seen, [{ ...migrated, traversable: 'anywhere' }])).toEqual(['Tamsin Reed']);
+      expect(pullWith(seen, [withFirstTraversable(migrated, ['l1'])])).toEqual(['Tamsin Reed']);
+      expect(pullWith(seen, [withFirstTraversable(migrated, 'anywhere')])).toEqual(['Tamsin Reed']);
     });
   });
 

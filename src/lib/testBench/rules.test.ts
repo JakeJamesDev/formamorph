@@ -18,8 +18,9 @@ import { allPlaceholders } from '@/lib/placeholderHomes';
 import { placeholderSelection } from '@/lib/placeholderTree';
 import { boxScripts } from '@/test/scriptFixtures';
 import { scriptEntryKey } from '@/lib/worldScripts';
-import { routinePlaces } from '@/lib/entityKind';
+import { routinePlaces, startsOf, applyingRoutine } from '@/lib/entityKind';
 import { PLAYER_START, type EntityStart, type ScheduleRow } from '@/types';
+import { oneRoutine } from '@/test/routines';
 
 /** A described entity at the starting location — what keeps the completeness rules quiet about a fixture
  *  that is about something else entirely. */
@@ -2264,7 +2265,7 @@ describe('rules that read an entity routine', () => {
   const described = { playerDescription: 'Seen around.', aiDescription: 'A fen regular.' };
   /** An entity with a kind, `locations` as the routine derives it. */
   const kinded = (starts: EntityStart[], over: Partial<Entity> = {}): Entity => ({
-    id: 'k1', name: 'Pip', ...described, kind: 'unique', starts, locations: routinePlaces(starts), ...over,
+    id: 'k1', name: 'Pip', ...described, routines: oneRoutine(starts), kind: 'unique', locations: routinePlaces(starts), ...over,
   });
   const companion = kinded([start('s1', PLAYER_START)]);
 
@@ -2292,7 +2293,7 @@ describe('rules that read an entity routine', () => {
     const cases: [string, Entity][] = [
       ['a Start', kinded([start('s1', 'harbor'), start('s2', 'gone')])],
       ['a row', kinded([start('s1', 'harbor', [stayRow('gone')])])],
-      ['a Can Also Go entry', kinded([start('s1', 'harbor')], { traversable: ['gone'] })],
+      ['a Can Also Go entry', kinded([start('s1', 'harbor')], { routines: oneRoutine([], ['gone']) })],
     ];
 
     it.each(cases)('reports %s that names a missing location, fixes it, and finds nothing after', (_label, entity) => {
@@ -2302,7 +2303,7 @@ describe('rules that read an entity routine', () => {
       expect(only(fixed, 'entity-location-orphan')).toEqual([]);
       const after = fixed.entities.find((e) => e.id === 'k1')!;
       expect(after.locations).toBe(entity.locations);
-      expect(JSON.stringify({ starts: after.starts, traversable: after.traversable })).not.toContain('gone');
+      expect(JSON.stringify({ starts: startsOf(after), traversable: applyingRoutine(after)?.traversable })).not.toContain('gone');
     });
 
     it('does not report a Start at Player’s Starting Location', () => {

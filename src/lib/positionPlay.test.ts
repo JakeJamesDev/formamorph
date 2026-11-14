@@ -6,6 +6,7 @@ import { EMPTY_BOOK } from './positionEngine';
 import { placeAll, positionWorld, reconcileBook, reseatForOpening } from './positionPlay';
 
 import { herd, yardLocations as locations } from '@/test/entityKindFixture';
+import { oneRoutine } from '@/test/routines';
 
 const world = (now: number, playerAt?: string, cast: Entity[] = [herd]) => positionWorld(castRoutines(cast), now, playerAt, locations, []);
 const where = (book: typeof EMPTY_BOOK) => Object.fromEntries(Object.entries(book.generics.herd ?? {}).map(([id, p]) => [id, p.position]));
@@ -29,9 +30,9 @@ describe('a Generic entity in play', () => {
   it('starts a Generic Entity Instance away from the player on its Patrol afresh at the real hour, not from the opening hour\'s idle', () => {
     const flock: Entity = {
       id: 'herd', name: 'Flock', kind: 'generic', locations: ['barn', 'field'],
-      starts: [{ id: 'grazer', place: 'barn', weight: 1, schedule: [{
+      routines: oneRoutine([{ id: 'grazer', place: 'barn', weight: 1, schedule: [{
         id: 'round', time: 'allDay', action: { kind: 'patrol', stops: [{ place: 'barn', idle: 60 }, { place: 'field', idle: 60 }] },
-      }] }],
+      }] }]),
     };
     const opening = placeAll(EMPTY_BOOK, world(300, 'yard', [flock]));
     expect(where(reseatForOpening(opening, world(600, 'yard', [flock])))).toEqual({ grazer: 'barn' });

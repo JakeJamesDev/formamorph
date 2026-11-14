@@ -10,6 +10,7 @@ import type { WorldWrites } from '@/lib/statCodeExecutor';
 import { commitEntityMoves } from '@/lib/turnPipeline/computeTurnCommit';
 import { NO_ENTITY_MOVES, type FollowerState } from '@/lib/entityFollowing';
 import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
+import { oneRoutine } from '@/test/routines';
 
 /**
  * Script tests on entities with a kind and Starts: a cast placed by the real position engine, a script run through
@@ -35,7 +36,7 @@ export const startWithRow = (id: string, place: string, rowPlace?: string): Enti
 });
 /** A Unique entity with `starts` and no Traversable. */
 export const unique = (id: string, name: string, starts: EntityStart[]): Entity =>
-  ({ id, name, kind: 'unique', starts, traversable: [] });
+  ({ id, name, kind: 'unique', routines: oneRoutine(starts, []) });
 
 /** Tess wanders between the inn and the square all day, resting 10 minutes at each stop. */
 export const TESS = unique('tess', 'Tess', [start('inn', [{
@@ -48,7 +49,7 @@ export const CLERK = unique('clerk', 'Clerk', [start('inn', [{ id: 'shift', time
 /** Moths is Generic, with a Generic Entity Instance at each of its two Starts. */
 export const MOTHS: Entity = {
   id: 'moths', name: 'Moths', kind: 'generic',
-  starts: [{ id: 'm1', place: 'inn', weight: 1, schedule: [] }, { id: 'm2', place: 'gate', weight: 1, schedule: [] }],
+  routines: oneRoutine([{ id: 'm1', place: 'inn', weight: 1, schedule: [] }, { id: 'm2', place: 'gate', weight: 1, schedule: [] }]),
 };
 export const KIND_CAST: Entity[] = [TESS, WENNA, CLERK, MOTHS];
 
@@ -119,23 +120,23 @@ export const yardLocations = [
 /** A Generic entity: one Start grazes in the field from 08:00 to 18:00 and stays in the barn otherwise; one stays in the barn. */
 export const herd: Entity = {
   id: 'herd', name: 'Herd', kind: 'generic',
-  starts: [
+  routines: oneRoutine([
     { id: 'grazer', place: 'barn', weight: 1, schedule: [{ id: 'graze', time: { start: 480, end: 1080 }, action: { kind: 'stay', place: 'field' } }] },
     { id: 'sleeper', place: 'barn', weight: 1, schedule: [] },
-  ],
+  ]),
 };
 
 /** A Unique entity: its first Start keeps the smithy and drinks in the barn from 20:00 to 22:00; its second waits in the field. */
 export const smith: Entity = {
   id: 'smith', name: 'Smith', kind: 'unique',
-  starts: [
+  routines: oneRoutine([
     { id: 'forge', place: 'smithy', weight: 1, schedule: [{ id: 'drink', time: { start: 1200, end: 1320 }, action: { kind: 'stay', place: 'barn' } }] },
     { id: 'idle', place: 'field', weight: 1, schedule: [] },
-  ],
+  ]),
 };
 
 /** A Unique entity that begins at Player's Starting Location, Following. */
 export const companion: Entity = {
   id: 'companion', name: 'Companion', kind: 'unique',
-  starts: [{ id: 'beside', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }],
+  routines: oneRoutine([{ id: 'beside', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }]),
 };

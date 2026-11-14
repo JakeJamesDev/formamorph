@@ -1,8 +1,9 @@
 import { placesOf } from '@/lib/positionEngine';
 import { firstFreeRange, ONE_DAYPART_MINUTES } from '@/lib/routineTime';
 import { PLAYER_START, type Entity, type EntityStart, type ScheduleAction, type ScheduleRow } from '@/types';
+import { startsOf, withFirstStarts } from '@/lib/entityKind';
 
-// The Routine tab's writes to an entity's Starts and rows. Each returns the whole entity.
+// The Routine tab's writes to the Starts and rows of an entity's first Routine. Each returns the whole entity.
 
 export type ActionKind = ScheduleAction['kind'];
 
@@ -12,10 +13,8 @@ export const ACTION_LABELS: Record<ActionKind, string> = { stay: 'Stay', wander:
 /** How long a new Patrol stop idles, in minutes. */
 export const NEW_STOP_IDLE = 60;
 
-const write = (entity: Entity, starts: EntityStart[]): Entity => ({ ...entity, starts });
-
 export const withStart = (entity: Entity, startId: string, change: (start: EntityStart) => EntityStart): Entity =>
-  write(entity, (entity.starts ?? []).map((s) => (s.id === startId ? change(s) : s)));
+  withFirstStarts(entity, startsOf(entity).map((s) => (s.id === startId ? change(s) : s)));
 
 export const withRow = (entity: Entity, startId: string, rowId: string, change: (row: ScheduleRow) => ScheduleRow): Entity =>
   withStart(entity, startId, (s) => ({ ...s, schedule: s.schedule.map((r) => (r.id === rowId ? change(r) : r)) }));
@@ -50,7 +49,7 @@ export const rowPlaceOf = (start: Pick<EntityStart, 'place'>, firstPlace: string
 
 /** `entity` with a new timed row of `kind` in the first free time of the Start. The same entity when the day is full. */
 export function withNewRow(entity: Entity, startId: string, kind: ActionKind, newId: () => string, firstPlace?: string): Entity {
-  const start = entity.starts?.find((s) => s.id === startId);
+  const start = startsOf(entity).find((s) => s.id === startId);
   const time = start && firstFreeRange(start.schedule);
   const place = start && rowPlaceOf(start, firstPlace);
   if (!start || !time || !place) return entity;
@@ -61,7 +60,7 @@ export function withNewRow(entity: Entity, startId: string, kind: ActionKind, ne
 function withPlacedRow(
   entity: Entity, startId: string, newId: () => string, firstPlace: string | undefined, make: (place: string) => Omit<ScheduleRow, 'id'>,
 ): { entity: Entity; rowId: string | null } {
-  const start = entity.starts?.find((s) => s.id === startId);
+  const start = startsOf(entity).find((s) => s.id === startId);
   const place = start && rowPlaceOf(start, firstPlace);
   if (!place) return { entity, rowId: null };
   const rowId = newId();
@@ -78,10 +77,10 @@ export const withLockedRest = (entity: Entity, startId: string, newId: () => str
 
 /** `entity` with a new empty Start at `place`. */
 export const withNewStart = (entity: Entity, place: string, newId: () => string): Entity =>
-  write(entity, [...(entity.starts ?? []), { id: newId(), place, weight: 1, schedule: [] }]);
+  withFirstStarts(entity, [...startsOf(entity), { id: newId(), place, weight: 1, schedule: [] }]);
 
 /** `entity` without the Start. The last Start stays. */
 export function withoutStart(entity: Entity, startId: string): Entity {
-  const starts = entity.starts ?? [];
-  return starts.length > 1 ? write(entity, starts.filter((s) => s.id !== startId)) : entity;
+  const starts = startsOf(entity);
+  return starts.length > 1 ? withFirstStarts(entity, starts.filter((s) => s.id !== startId)) : entity;
 }

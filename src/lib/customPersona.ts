@@ -4,6 +4,7 @@
 import { customPersonaEntity } from './blueprints';
 import { namedPlacesOf, withMembership, withoutMembership } from './entityPlaces';
 import { PLAYER_START, type Entity } from '@/types';
+import { everyStart, firstRoutine } from '@/lib/entityKind';
 
 /** The four states the `persona`, `personaOnly` and `customPersona` marks can take together. */
 export type PersonaRole = 'cast' | 'playable' | 'only' | 'custom';
@@ -38,10 +39,11 @@ export function withPersonaRole(entity: Entity, next: PersonaRole, newId: () => 
     const places = namedPlacesOf(entity);
     const rest = withoutMembership(marked);
     if (!places.length) return rest;
-    return { ...rest, kind: 'unique', starts: places.map((place) => ({ id: newId(), place, weight: 1, schedule: [] })) };
+    const starts = places.map((place) => ({ id: newId(), place, weight: 1, schedule: [] }));
+    return { ...rest, kind: 'unique', routines: [firstRoutine(starts)] };
   }
-  const places = [...new Set((entity.starts ?? []).flatMap((s) => (s.place === PLAYER_START ? [] : [s.place])))];
-  const { kind: _k, starts: _s, traversable: _t, onMap: _m, knownIn: _i, ...rest } = marked;
+  const places = [...new Set(everyStart(entity).flatMap((s) => (s.place === PLAYER_START ? [] : [s.place])))];
+  const { kind: _k, routines: _r, onMap: _m, knownIn: _i, ...rest } = marked;
   return withMembership(rest, places);
 }
 

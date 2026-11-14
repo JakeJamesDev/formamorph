@@ -1,4 +1,4 @@
-import { isGeneric, traversableOf } from '@/lib/entityKind';
+import { isGeneric, traversableOf, startsOf } from '@/lib/entityKind';
 import { placesOf, startReach, type PlaceGraph } from '@/lib/positionEngine';
 import type { ActionKind } from '@/lib/routineEditing';
 import type { RoutineSelection } from '@/lib/routineSelection';
@@ -107,7 +107,7 @@ export function routineView(entity: Entity, selection: RoutineSelection, graph: 
   const mark = (id: string, next: RoutineMark) => { if (marks.has(id)) marks.set(id, next); };
 
   const generic = isGeneric(entity);
-  const starts = entity.starts ?? [];
+  const starts = startsOf(entity);
   const start = starts.find((s) => s.id === selection.startId) ?? starts[0];
   if (!start) return { marks, lines };
   const selected = start.schedule.find((r) => r.id === selection.rowId) ?? null;

@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import raw from '@/defaultworlds/drone.json?raw';
 import { gateOf, gateStates, settleDefaults, underfills, type SettleResult } from './traitGates';
 import { runStatCodeTurn } from './statCodeTurn';
-import type { PlayerStat, World } from '@/types';
+import type { PlayerStat } from '@/types';
 import { idsAt, presenceIn } from './entityPlaces';
 import { primeRolls, resolvePlaceholders, type PlaceholderPick } from './placeholders';
 import { bundledWorldHarness } from '@/test/bundledWorldHarness';
@@ -15,6 +15,7 @@ import { openWorldToolTurn } from './tools/worldToolTurn';
 import { visibleImages, visibleLocationImages } from './imageVisibility';
 import { scoped } from './scope';
 import type { GateInput, GateStatSet } from './traitGates';
+import { migrateWorld } from '@/lib/version';
 
 const { persona: drone, gate, idOf, activeNames: activeOf, build, personaStats, turn, personaStatsOut } = bundledWorldHarness(raw);
 
@@ -169,7 +170,7 @@ describe('the lock_target World Tool', () => {
 });
 
 describe('the drone\'s Visibility rules', () => {
-  const world = JSON.parse(raw) as World;
+  const world = migrateWorld(JSON.parse(raw));
   const hill = world.locations.find((location) => location.name === 'Mossback Hill')!;
   // The drone's Charge, as play reads it, at the given percent of its span.
   const chargeAt = (charge: number): GateInput => ({
@@ -192,7 +193,7 @@ describe('the drone\'s Visibility rules', () => {
 });
 
 describe('the drone map', () => {
-  const world = JSON.parse(raw) as World;
+  const world = migrateWorld(JSON.parse(raw));
   const locationNamed = (name: string) => world.locations.find((location) => location.name === name)!;
   const castAt = (name: string) =>
     idsAt(locationNamed(name).id, world.entities, presenceIn({ locations: world.locations, connections: world.connections ?? [] }))

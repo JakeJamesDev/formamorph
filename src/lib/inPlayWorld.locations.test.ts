@@ -3,6 +3,8 @@ import { resolveInPlayWorld } from './inPlayWorld';
 import { scoped } from './scope';
 import type { GateInput } from './traitGates';
 import type { Connection, Entity, GameLocation, Trait, TraitRequirement } from '@/types';
+import { withFirstTraversable } from '@/lib/entityKind';
+import { oneRoutine } from '@/test/routines';
 
 /**
  * Location Enabled gates in the In-Play World: a failing gate takes its whole subtree (Q2), the player's place
@@ -106,10 +108,10 @@ describe('an on entity whose every place is off', () => {
   it('counts a Unique entity’s routine places, and never one that may go anywhere', () => {
     const watch: Entity = {
       id: 'watch', name: 'watch', kind: 'unique',
-      starts: [{ id: 's', place: 'square', weight: 1, schedule: [] }],
+      routines: oneRoutine([{ id: 's', place: 'square', weight: 1, schedule: [] }]),
     };
     expect(play({ entities: [watch] }).isEntityOnstage(watch)).toBe(false);
-    const roamer: Entity = { ...watch, id: 'roamer', traversable: 'anywhere' };
+    const roamer: Entity = { ...withFirstTraversable(watch, 'anywhere'), id: 'roamer' };
     expect(play({ entities: [roamer] }).isEntityOnstage(roamer)).toBe(true);
   });
 });

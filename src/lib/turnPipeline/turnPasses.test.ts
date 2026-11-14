@@ -2,6 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { TURN_PASSES, TURN_PASS_CAPS, sceneTagsPass, SCENE_TAGS_EMPTY_CAST, milestoneSelectPass, statItemEffectsLine, statPassOmits } from './turnPasses';
 import { INVENTORY_JSON_FORMAT, INVENTORY_TEXT_FORMAT, inventoryPassSchema } from '@/lib/inventory/pass';
 import { defaultMilestoneSelectUserPrompt } from '@/components/game/GamePrompts';
+import {
+  INLINE_THINKING_DIRECTIVE, OPENING_SCENE_CUE, planDirective, defaultChoicesPrompt,
+  defaultStatUpdatesPrompt, defaultStatUpdatesUserPrompt,
+} from '@/components/game/GamePrompts';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { layerValues } from '@/lib/promptValues';
 import { planTurn } from './planTurn';
@@ -11,12 +15,9 @@ import type { SectionStyle } from '@/lib/promptPresets';
 import { runsTile } from '@/lib/requestAnatomy';
 import { CLOCK_SCHEMA_FORMAT, CLOCK_TEXT_FORMAT, clockReadingSchema } from '@/lib/gameClock';
 import { TEST_PROMPTS, testInput } from './turnTestInputs';
-import {
-  INLINE_THINKING_DIRECTIVE, OPENING_SCENE_CUE, planDirective, defaultChoicesPrompt,
-  defaultStatUpdatesPrompt, defaultStatUpdatesUserPrompt,
-} from '@/components/game/GamePrompts';
 import { builtinStatTextPrompts, statTextFor } from '@/lib/statTextPrompts';
 import { createStatRequest, statRequestSchema } from '@/lib/statRequest';
+import { oneRoutine } from '@/test/routines';
 
 // Each pass assembles its own request. These tests call the records directly, with templates whose tokens
 // are recognizable, so a token rendered from the wrong context (or a cap that drifts) is visible.
@@ -216,7 +217,7 @@ describe('turn pass requests', () => {
       'Wait here until 17:00, when evening begins',
       'Part ways',
     ];
-    const entity = (id: string, name: string): Entity => ({ id, name, kind: 'unique', traversable: 'anywhere' });
+    const entity = (id: string, name: string): Entity => ({ id, name, kind: 'unique', routines: oneRoutine([], 'anywhere') });
     const albus = { name: 'Albus', entity: entity('e1', 'Albus'), moves: FOLLOWER, moveClock: NOON };
     const sylvie = { name: 'Sylvie', entity: entity('e2', 'Sylvie'), moves: NEWCOMER, moveClock: NOON };
     const blackwell: TurnPassSubject = {

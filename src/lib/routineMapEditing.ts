@@ -1,4 +1,4 @@
-import { isGeneric, toggleGenericStart, traversableOf } from '@/lib/entityKind';
+import { isGeneric, toggleGenericStart, traversableOf, startsOf, withFirstTraversable } from '@/lib/entityKind';
 import { placesOf, startReach, type PlaceGraph } from '@/lib/positionEngine';
 import { NEW_STOP_IDLE, withRow } from '@/lib/routineEditing';
 import type { RoutineSelection } from '@/lib/routineSelection';
@@ -23,7 +23,7 @@ type Selected = Target & { row: ScheduleRow };
 
 function targetOf(entity: Entity, selection: RoutineSelection): Target | null {
   if (entity.customPersona) return null;
-  const starts = entity.starts ?? [];
+  const starts = startsOf(entity);
   const start = starts.find((s) => s.id === selection.startId) ?? starts[0];
   if (!start) return null;
   return { start, row: start.schedule.find((r) => r.id === selection.rowId) ?? null };
@@ -68,7 +68,7 @@ export function routineMapClick(entity: Entity, selection: RoutineSelection, pla
     const list = traversableOf(entity);
     if (list === 'anywhere') return null;
     const traversable = list.includes(place) ? list.filter((p) => p !== place) : [...list, place];
-    return { entity: { ...entity, traversable }, label: 'Change Can Also Go' };
+    return { entity: withFirstTraversable(entity, traversable), label: 'Change Can Also Go' };
   }
   const { action, reaches, write } = rowEdit(entity, selected, place, graph);
   if (!reaches) return null;

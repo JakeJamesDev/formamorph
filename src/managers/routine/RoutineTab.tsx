@@ -16,7 +16,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryStep } from '@/contexts/worldRecorder';
 import { chanceChipStyle, relativeChance } from '@/lib/chanceColor';
 import { holdsStartList } from '@/lib/customPersona';
-import { traversableOf, withBeginsFollowing, withGenericStart, withKind, withoutGenericStart, withStartPlace } from '@/lib/entityKind';
+import { traversableOf, withBeginsFollowing, withGenericStart, withKind, withoutGenericStart, withStartPlace, startsOf, withFirstTraversable } from '@/lib/entityKind';
 import { namedPlacesOf, withMembership } from '@/lib/entityPlaces';
 import { fieldFrame } from '@/lib/historyField';
 import { rowNamesLocation, startNamesLocation } from '@/lib/hereMarks';
@@ -176,14 +176,14 @@ function EntityRoutine({ entity, kind, book, locations, connections, commit, onC
 }) {
   const generic = kind === 'generic';
   const fields = KIND_FIELDS[kind];
-  const starts = entity.starts ?? [];
+  const starts = startsOf(entity);
   const { startId, showStart } = useRoutineSelection(entity.id);
   const start = starts.find((s) => s.id === startId) ?? starts[0];
   const weights = starts.map((s) => s.weight);
   const addStart = (place: string) => {
     const next = generic ? withGenericStart(entity, place, randomUUID) : withNewStart(entity, place, randomUUID);
     commit('Add Start', next);
-    showStart(next.starts?.[next.starts.length - 1]?.id ?? null);
+    showStart(startsOf(next).at(-1)?.id ?? null);
   };
   const addTrigger = (label: string) => (
     <Button variant="ghost" size="sm" className="h-8 gap-1 px-2" aria-label="Add Start"><Plus className="h-4 w-4" aria-hidden />{label}</Button>
@@ -222,7 +222,7 @@ function EntityRoutine({ entity, kind, book, locations, connections, commit, onC
       {fields.canAlsoGo && (
         <TraversableField
           value={traversableOf(entity)} book={book} hereMark={hereMark}
-          onChange={(traversable) => commit('Change Can Also Go', { ...entity, traversable })}
+          onChange={(traversable) => commit('Change Can Also Go', withFirstTraversable(entity, traversable))}
         />
       )}
     </>
@@ -233,7 +233,7 @@ function StartRoutine({ entity, kind, start, weights, book, connected, commit, o
   entity: Entity; kind: EntityKind; start: EntityStart; weights: number[]; book: PlaceBook; connected: string[];
   commit: (label: string, next: Entity) => void; onChange: (next: Entity) => void; onDeleted: () => void; hereMark?: string;
 }) {
-  const many = (entity.starts?.length ?? 0) > 1;
+  const many = startsOf(entity).length > 1;
   const fields = KIND_FIELDS[kind];
   const percent = chancePercent(start.weight, weights);
   const free = freeRanges(start.schedule);
