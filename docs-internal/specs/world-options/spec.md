@@ -1,7 +1,7 @@
 # Spec: World Options
 
 Status: done
-Status note: 2026-11-13. Tickets 01–09 done; last landing f45b2c0f7. Review: spec text corrected. Closed with gaps: ticket 10 (a disabled follower moves one step before its follow ends). Gates: test green, lint red only in gitignored worlds-wip/ files.
+Status note: 2026-11-13. Tickets 01–09 done; last landing f45b2c0f7. Review: spec text corrected. Ticket 10 closed the review gap (06034226e). Gates: test green, lint red only in gitignored worlds-wip/ files.
 Spec session: world-options — spec
 
 ## Problem Statement
