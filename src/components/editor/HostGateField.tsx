@@ -67,3 +67,17 @@ export function LocationEnabledField({ rows, onChange }: { rows: TraitRequiremen
     />
   );
 }
+
+/** A location's Lock gate: the player may travel in while any row holds (Q3). A Condition with no owner reads the
+ *  played persona. */
+export function LocationLockField({ rows, onChange }: { rows: TraitRequirementRow[]; onChange: (rows: TraitRequirementRow[]) => void }) {
+  return (
+    <HostGateField
+      host={LOCATION_RULE_HOST}
+      rows={rows}
+      onChange={onChange}
+      label="Unlocked"
+      hint="Lets the player travel into this location and the locations inside it while any row holds. With no rows, it’s never locked."
+    />
+  );
+}

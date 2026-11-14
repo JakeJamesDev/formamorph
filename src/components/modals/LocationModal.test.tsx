@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LocationModal } from './LocationModal';
 import type { GameLocation } from '@/types';
@@ -12,8 +12,16 @@ import type { GameLocation } from '@/types';
  */
 
 vi.mock('@/components/game/LocationMap', () => ({
-  default: ({ currentLocationId }: { currentLocationId: string | null }) => (
-    <div data-testid="location-map" data-current={currentLocationId ?? ''} />
+  default: ({ currentLocationId, locations, onTravel, lockLineOf }: {
+    currentLocationId: string | null; locations: GameLocation[]; onTravel: (l: GameLocation) => void;
+    lockLineOf?: (id: string) => unknown;
+  }) => (
+    <div data-testid="location-map" data-current={currentLocationId ?? ''}>
+      {/* A box click, as the real Map hands it up, and whether the Map was told the box is locked. */}
+      {locations.map((l) => (
+        <button key={l.id} type="button" data-locked={lockLineOf?.(l.id) ? '' : undefined} onClick={() => onTravel(l)}>{`map ${l.name}`}</button>
+      ))}
+    </div>
   ),
 }));
 
@@ -228,5 +236,49 @@ describe('the Change Location list folds the branches the player is not standing
     openDialog({ locations: FAR, currentLocationId: 'hall' });
     expect(screen.queryByRole('button', { name: /Tower$/ })).not.toHaveAttribute('aria-expanded');
     expect(screen.queryByRole('button', { name: 'Expand Tower' })).toBeNull();
+  });
+});
+
+describe('a location the travel gate refuses (Q3, Q11)', () => {
+  beforeEach(() => localStorage.clear());
+  const gated = { canEnter: (id: string) => id !== 'moor', lockLineOf: (id: string) => (id === 'moor' ? { text: 'The {{path}} is flooded' } : null) };
+
+  it('shows its Locked text, resolved, under the name and refuses the click', async () => {
+    const changeLocation = vi.fn();
+    const onOpenChange = vi.fn();
+    openDialog({ changeLocation, onOpenChange, ...gated, resolveText: (text) => text.replace('{{path}}', 'moor road') });
+    const moor = screen.getByRole('button', { name: /^Moor/ });
+    expect(moor).toHaveAttribute('aria-disabled', 'true');
+    expect(within(moor).getByRole('img', { name: 'Locked' })).toBeInTheDocument();
+    expect(moor).toHaveTextContent('The moor road is flooded');
+    await userEvent.click(moor);
+    expect(changeLocation).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it('shows the lock line with the You pill when there is no Locked text', () => {
+    openDialog({ canEnter: gated.canEnter, lockLineOf: () => ({ parts: ['Requires ', { persona: 'Ash' }, ' to hold a lantern'] }) });
+    expect(screen.getByRole('button', { name: /^Moor/ })).toHaveTextContent(/Requires Ash.*to hold a lantern/);
+  });
+
+  it('reads "Locked" when it has no line to give', () => {
+    openDialog({ canEnter: gated.canEnter });
+    expect(screen.getByRole('button', { name: /^Moor/ })).toHaveTextContent(/MoorLocked$/);
+  });
+
+  it('keeps every open row as it was', () => {
+    openDialog(gated);
+    expect(screen.getByRole('button', { name: 'Castle' })).not.toHaveAttribute('aria-disabled');
+  });
+
+  it('refuses a Map click on it, and travels from the Map elsewhere', async () => {
+    const changeLocation = vi.fn();
+    openDialog({ changeLocation, ...gated });
+    await userEvent.click(screen.getByRole('tab', { name: 'Map' }));
+    expect(screen.getByRole('button', { name: 'map Moor' })).toHaveAttribute('data-locked');
+    await userEvent.click(screen.getByRole('button', { name: 'map Moor' }));
+    expect(changeLocation).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'map Castle' }));
+    expect(changeLocation).toHaveBeenCalledWith(LOCATIONS.find((l) => l.id === 'castle'));
   });
 });

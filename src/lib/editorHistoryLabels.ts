@@ -40,6 +40,8 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     placeholderPins: "Placeholder Pins",
     openings: "Openings",
     enabledWhen: "Enabled",
+    unlockedWhen: "Unlocked",
+    lockedText: "Locked Text",
   },
   worldOverview: {
     name: "World Name",

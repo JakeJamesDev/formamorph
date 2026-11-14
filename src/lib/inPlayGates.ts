@@ -3,7 +3,7 @@ import { presenceOf } from './entityPlaces';
 import { locationRuleStates } from './imageVisibility';
 import { parentIndex } from './locationGraph';
 import { conditionsOf } from './requirementRows';
-import { ruleStates, type GateInput } from './traitGates';
+import { ruleStates, type GateInput, type GateState } from './traitGates';
 
 /** The authored lists the gates read. */
 export interface InPlaySource {
@@ -29,20 +29,29 @@ export interface InPlayState {
 export interface GateVerdicts {
   offEntityIds: ReadonlySet<string>;
   offLocationIds: ReadonlySet<string>;
+  /** Each locked location: one whose own Lock gate fails, and every location below it (Q53). */
   lockedLocationIds: ReadonlySet<string>;
+  /** The locations whose own Lock gate fails, each with its gate, which the lock line reads. */
+  lockRoots: ReadonlyMap<string, GateState>;
   /** On entities whose every place is off: in no scene and out of the AI's reach, their stats still running (Q27). */
   strandedEntityIds: ReadonlySet<string>;
 }
 
 const NONE: ReadonlySet<string> = new Set();
-export const ALL_OPEN: GateVerdicts = { offEntityIds: NONE, offLocationIds: NONE, lockedLocationIds: NONE, strandedEntityIds: NONE };
+export const ALL_OPEN: GateVerdicts = {
+  offEntityIds: NONE, offLocationIds: NONE, lockedLocationIds: NONE, lockRoots: new Map(), strandedEntityIds: NONE,
+};
 
 /** Whether the entity or location carries an Enabled gate with any row. */
 export const hasEnabledGate = (host: Pick<Entity | GameLocation, 'enabledWhen'>): boolean => !!host.enabledWhen?.length;
 
-/** Whether the world needs a gate input: some entity or location carries an Enabled gate. */
-export const worldHasGates = (entities: readonly Pick<Entity, 'enabledWhen'>[], locations: readonly Pick<GameLocation, 'enabledWhen'>[]) =>
-  entities.some(hasEnabledGate) || locations.some(hasEnabledGate);
+/** Whether the location carries a Lock gate with any row. */
+export const hasLockGate = (location: Pick<GameLocation, 'unlockedWhen'>): boolean => !!location.unlockedWhen?.length;
+
+/** Whether the world needs a gate input: some entity or location carries an Enabled gate, or a location a Lock gate. */
+export const worldHasGates = (
+  entities: readonly Pick<Entity, 'enabledWhen'>[], locations: readonly Pick<GameLocation, 'enabledWhen' | 'unlockedWhen'>[],
+) => entities.some(hasEnabledGate) || locations.some((l) => hasEnabledGate(l) || hasLockGate(l));
 
 /** Whether a location's Enabled rows hold: a blank owner reads the played persona (Q29). No rows = on. */
 export const locationGateHolds = (input: GateInput, rows: readonly TraitRequirementRow[] | undefined): boolean =>
@@ -66,6 +75,17 @@ function offLocations(source: InPlaySource, gate: GateInput, playerAt: string | 
   const off = withSubtrees(failed, source.locations);
   if (playerAt && off.has(playerAt)) for (const id of withSubtrees(new Set([playerAt]), source.locations)) off.delete(id);
   return off;
+}
+
+/** The locations whose own Lock gate fails, with its gate: a blank owner reads the played persona (Q29). */
+function lockRootsOf(source: InPlaySource, gate: GateInput): Map<string, GateState> {
+  const roots = new Map<string, GateState>();
+  for (const location of source.locations) {
+    if (!hasLockGate(location)) continue;
+    const rows = locationRuleStates(gate, location.unlockedWhen ?? []);
+    if (!rows.some((row) => row.holds)) roots.set(location.id, { unlocked: false, rows });
+  }
+  return roots;
 }
 
 /** The on entities whose places all lie in `offLocations`. One with no places, or Traversable anywhere, never is (Q50). */
@@ -97,15 +117,22 @@ export function evaluateGates(source: InPlaySource, state: InPlayState): GateVer
   }
   const offPlaces = offLocations(source, gate, state.playerAt);
   const stranded = offPlaces.size ? strandedEntities(source, offPlaces, off, state.playedEntityId) : NONE;
-  if (!off.size && !offPlaces.size) return ALL_OPEN;
-  return { ...ALL_OPEN, offEntityIds: off, offLocationIds: offPlaces, strandedEntityIds: stranded };
+  const lockRoots = lockRootsOf(source, gate);
+  if (!off.size && !offPlaces.size && !lockRoots.size) return ALL_OPEN;
+  const locked = lockRoots.size ? withSubtrees(new Set(lockRoots.keys()), source.locations) : NONE;
+  return { offEntityIds: off, offLocationIds: offPlaces, lockedLocationIds: locked, lockRoots, strandedEntityIds: stranded };
 }
+
+/** Whether the two lock-root maps hold the same ids with the same lines. */
+const sameLockRoots = (a: ReadonlyMap<string, GateState>, b: ReadonlyMap<string, GateState>) =>
+  a.size === b.size && [...a].every(([id, gate]) => b.has(id) && JSON.stringify(b.get(id)) === JSON.stringify(gate));
 
 /** Whether the two verdicts switch off, lock and strand the same ids. */
 export function sameVerdicts(a: GateVerdicts, b: GateVerdicts): boolean {
   const same = (x: ReadonlySet<string>, y: ReadonlySet<string>) => x.size === y.size && [...x].every((id) => y.has(id));
   return same(a.offEntityIds, b.offEntityIds) && same(a.offLocationIds, b.offLocationIds)
-    && same(a.lockedLocationIds, b.lockedLocationIds) && same(a.strandedEntityIds, b.strandedEntityIds);
+    && same(a.lockedLocationIds, b.lockedLocationIds) && same(a.strandedEntityIds, b.strandedEntityIds)
+    && sameLockRoots(a.lockRoots, b.lockRoots);
 }
 
 /** The ids a Condition reads as the entity's own: its traits and groups, linked ones under their original's id,

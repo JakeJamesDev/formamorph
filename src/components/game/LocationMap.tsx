@@ -17,6 +17,8 @@ import { Tip } from '@/components/ui/tooltip';
 import { MapBackgroundLayer } from '@/components/MapBackgroundLayer';
 import type { MapBackdrop } from '@/lib/useLocationBackdrop';
 import { cn } from '@/lib/utils';
+import { LockMark } from '@/components/game/LockLineText';
+import { lockLinePlain, type LockLine } from '@/lib/inPlayWorld';
 import type { MapPlace, MapRoster } from '@/lib/mapRoster';
 import type { Connection, GameLocation } from '@/types';
 
@@ -27,8 +29,9 @@ import type { Connection, GameLocation } from '@/types';
  *
  * What is dropped on the way across is the authoring: nothing here can be moved, connected or selected, and
  * the canvas's diagnostics — the start marker, the unreachable warning — stay with the author they were
- * written for. What is added is the player: the box they are standing in is marked, and clicking any box
- * travels there, from anywhere, arrows or no arrows (ADR-0006).
+ * written for. What is added is the player: the box they are standing in is marked, and clicking a box travels
+ * there, from anywhere, arrows or no arrows (ADR-0006). A locked box shows a lock and its line in the tip, and
+ * refuses the click (ADR-0018).
  */
 
 interface MapNodeData extends Record<string, unknown> {
@@ -37,6 +40,8 @@ interface MapNodeData extends Record<string, unknown> {
   here: boolean;
   /** The names and unknown entries standing in this box. */
   entities?: MapPlace;
+  /** Why the player may not travel here, as plain text. Absent when they may. */
+  lockedLine?: string;
 }
 
 type MapNode = Node<MapNodeData>;
@@ -57,17 +62,22 @@ const TravelButton = ({ id, data, className }: {
   const travel = useContext(TravelContext);
   return (
     // A small box clips a long name, so the tip spells it out; the button still names itself by it.
-    <Tip tip={data.label} labelsChild={false}>
+    <Tip tip={data.lockedLine ? `${data.label}
+${data.lockedLine}` : data.label} labelsChild={false}>
       <button
         type="button"
         aria-current={data.here ? 'location' : undefined}
+        aria-disabled={data.lockedLine ? true : undefined}
+        aria-description={data.lockedLine}
         onClick={(event) => travel(id, event)}
         className={cn(
-          'items-center gap-1.5 bg-card text-label text-card-foreground hover:bg-accent hover:text-accent-foreground',
+          'items-center gap-1.5 bg-card text-label',
+          data.lockedLine ? 'cursor-not-allowed text-muted-foreground' : 'text-card-foreground hover:bg-accent hover:text-accent-foreground',
           className,
         )}
       >
         {data.here && <LocationIcon className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />}
+        {data.lockedLine && <LockMark />}
         <span className="truncate">{data.label}</span>
       </button>
     </Tip>
@@ -127,7 +137,7 @@ const MapGroupNode = ({ id, data }: NodeProps<MapNode>) => (
 const nodeTypes = { location: MapLocationNode, locationGroup: MapGroupNode };
 const edgeTypes = { floating: FloatingEdge };
 
-const LocationMap = ({ locations, connections, currentLocationId, entitiesAt, background, onTravel }: {
+const LocationMap = ({ locations, connections, currentLocationId, entitiesAt, background, onTravel, lockLineOf, resolveText }: {
   locations: GameLocation[];
   connections: Connection[];
   currentLocationId: string | null;
@@ -135,6 +145,9 @@ const LocationMap = ({ locations, connections, currentLocationId, entitiesAt, ba
   /** The Map Background's visible image, drawn where the author placed it. */
   background?: MapBackdrop;
   onTravel: (location: GameLocation) => void;
+  /** Why the player may not travel to a box; null when they may. */
+  lockLineOf?: (locationId: string) => LockLine | null;
+  resolveText?: (text: string) => string;
 }) => {
   // The same shape the canvas draws arrows in — presentation, and one person's own preference, so someone who
   // both authors and plays reads one map rather than two.
@@ -147,6 +160,11 @@ const LocationMap = ({ locations, connections, currentLocationId, entitiesAt, ba
     const location = locations.find((l) => l.id === id);
     if (location) onTravel(location);
   }, [locations, onTravel]);
+
+  const lockedText = useCallback((id: string) => {
+    const line = lockLineOf?.(id);
+    return line ? lockLinePlain(line, resolveText ?? ((text) => text)) : undefined;
+  }, [lockLineOf, resolveText]);
 
   // The layout does not depend on who is focused, so a hover redraws arrows and never the boxes.
   const map = useMemo(
@@ -176,8 +194,8 @@ const LocationMap = ({ locations, connections, currentLocationId, entitiesAt, ba
     // A box nothing can be done *to* is a box xyflow stops sending clicks to — and being clicked is the
     // whole of what a box on the Map is for, so it takes its pointer events back.
     style: { pointerEvents: 'auto' as const },
-    data: { label: node.data.label, here: node.id === currentLocationId, entities: entitiesAt?.[node.id] },
-  })), [map, currentLocationId, entitiesAt]);
+    data: { label: node.data.label, here: node.id === currentLocationId, entities: entitiesAt?.[node.id], lockedLine: lockedText(node.id) },
+  })), [map, currentLocationId, entitiesAt, lockedText]);
 
   const edges = useMemo<Edge[]>(
     // Travel hints often spoil the route, so the player sees only the lines.

@@ -16,7 +16,7 @@ const BUNDLED_PREFIX = 'bundled-';
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
 export const DEV_FIXTURES = [
   'whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'avatarIcon',
-  'entityPresence', 'entityFollowers', 'mapStrangers', 'mapBackground', 'items', 'options',
+  'entityPresence', 'entityFollowers', 'mapStrangers', 'mapBackground', 'items', 'options', 'lockedPlaces',
   ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
 ];
 
@@ -429,6 +429,28 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
         world: { ...(world.default as unknown as World), options: DEV_OPTIONS },
         save: save.default as unknown as SaveObject,
         saveName: 'DEV: World Options',
+      };
+    }
+    case 'lockedPlaces': {
+      // A new game in the White Room with three locks: the Corridor behind Locked text, the Alcove on a shown
+      // Option, and the Vent inside it on a hidden one, which reads "Locked".
+      const world = (await import('./devFixtures/whiteRoomWorld.json')).default as unknown as World;
+      const unlockedBy = (id: string) => [{ all: [{ kind: 'option' as const, id }] }];
+      const locks: Record<string, Partial<GameLocation>> = {
+        [WHITE_ROOM_ID]: { isStarting: true },
+        'dev-corridor': { unlockedWhen: unlockedBy('dev-opt-alcove'), lockedText: 'The hatch is sealed from the other side.' },
+        'dev-alcove': { unlockedWhen: unlockedBy('dev-opt-alcove') },
+        'dev-vent': { unlockedWhen: unlockedBy('dev-opt-vent') },
+      };
+      return {
+        world: {
+          ...world,
+          options: [
+            { id: 'dev-opt-alcove', name: 'Alcove Open', type: 'boolean', shownToPlayer: true, midGame: false, default: false },
+            { id: 'dev-opt-vent', name: 'Vent Cleared', type: 'boolean', shownToPlayer: false, midGame: false, default: false },
+          ],
+          locations: world.locations.map((l) => ({ ...l, ...locks[l.id] })),
+        },
       };
     }
     case 'items': {

@@ -4,11 +4,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LocationMap from "@/components/game/LocationMap";
+import { LockLineText, LockMark } from "@/components/game/LockLineText";
 import { UNNAMED_LOCATION } from "@/lib/locationCanvas";
 import { defaultCollapsedLocations, locationRows, removeCollapsedChildren } from "@/lib/locationTree";
 import { ancestors, parentLookup } from "@/lib/ancestors";
 import { useTravelView, type TravelView } from "@/lib/travelPrefs";
 import { cn } from "@/lib/utils";
+import { LOCKED_LINE, type LockLine } from "@/lib/inPlayWorld";
 import type { MapRoster } from "@/lib/mapRoster";
 import type { MapBackdrop } from "@/lib/useLocationBackdrop";
 import type { Connection, GameLocation } from "@/types";
@@ -16,8 +18,8 @@ import type { Connection, GameLocation } from "@/types";
 /**
  * Where the player goes, in the two ways a world can be read: the List, which is the location tree with each
  * sublocation sitting under the place that holds it, and the Map, which is the world laid out as its author
- * arranged it. Travel from either is silent and instant, to anywhere, with no turn and no narration behind
- * it (ADR-0006).
+ * arranged it. Travel from either is silent and instant, with no turn and no narration behind it. Navigation rules
+ * never bind it (ADR-0006); a locked location refuses it and shows why (ADR-0018).
  */
 
 /** How far one level of nesting sets a row in, and where the shallowest row starts. */
@@ -26,6 +28,7 @@ const ROW_INSET_REM = 0.75;
 
 export const LocationModal = ({
   isOpen, onOpenChange, locations, connections, currentLocationId, entitiesAt, mapBackground, changeLocation, resolveText,
+  canEnter, lockLineOf,
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -38,6 +41,10 @@ export const LocationModal = ({
   mapBackground?: MapBackdrop;
   changeLocation: (location: GameLocation) => void;
   resolveText: (text: string) => string;
+  /** The travel gate from where the player stands. All open when absent. */
+  canEnter?: (locationId: string) => boolean;
+  /** Why a refused location is locked. */
+  lockLineOf?: (locationId: string) => LockLine | null;
 }) => {
   const [view, setView] = useTravelView();
 
@@ -72,9 +79,16 @@ export const LocationModal = ({
 
   // Held steady across renders: the Map hands it down to every box on it as context.
   const travel = useCallback((location: GameLocation) => {
+    if (canEnter && !canEnter(location.id)) return;
     changeLocation(location);
     onOpenChange(false);
-  }, [changeLocation, onOpenChange]);
+  }, [changeLocation, onOpenChange, canEnter]);
+
+  /** The lock line of each location the gate refuses. */
+  const refusedLine = useCallback(
+    (id: string): LockLine | null => (canEnter && !canEnter(id) ? lockLineOf?.(id) ?? LOCKED_LINE : null),
+    [canEnter, lockLineOf],
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -114,12 +128,14 @@ export const LocationModal = ({
                   const isParent = hidden > 0;
                   const isCollapsed = collapsed.has(id);
                   const Chevron = isCollapsed ? ChevronRight : ChevronDown;
+                  const lockLine = refusedLine(id);
                   return (
                     <li key={id} aria-level={depth + 1}>
                       <div
                         className={cn(
                           "flex items-center rounded-md",
-                          here ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground",
+                          here ? "bg-primary text-primary-foreground"
+                            : lockLine ? "text-muted-foreground" : "hover:bg-accent hover:text-accent-foreground",
                         )}
                         style={{ paddingLeft: `${ROW_INSET_REM + depth * INDENT_REM}rem` }}
                       >
@@ -139,11 +155,13 @@ export const LocationModal = ({
                         <button
                           type="button"
                           aria-current={here ? "location" : undefined}
+                          aria-disabled={lockLine ? true : undefined}
                           onClick={() => travel(location)}
-                          className="min-w-0 flex-1 rounded-md py-2 pr-3 text-left text-label"
+                          className={cn("min-w-0 flex-1 rounded-md py-2 pr-3 text-left text-label", lockLine && "cursor-not-allowed")}
                         >
                           <span className="flex items-center gap-1.5">
                             <span className="truncate font-semibold">{name}</span>
+                            {lockLine && <LockMark />}
                             {isCollapsed && (
                               <span
                                 className={cn(
@@ -166,6 +184,11 @@ export const LocationModal = ({
                               {description}
                             </span>
                           )}
+                          {lockLine && (
+                            <span className="block font-normal text-meta text-foreground">
+                              <LockLineText line={lockLine} resolveText={resolveText} />
+                            </span>
+                          )}
                         </button>
                       </div>
                     </li>
@@ -183,6 +206,8 @@ export const LocationModal = ({
                 entitiesAt={entitiesAt}
                 background={mapBackground}
                 onTravel={travel}
+                lockLineOf={refusedLine}
+                resolveText={resolveText}
               />
             </div>
           </TabsContent>

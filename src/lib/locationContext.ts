@@ -462,17 +462,19 @@ type NamedLink = LocationLink & { name: string };
 /**
  * The places a router or narrated move can carry the player to: every place up to 3 moves away, nearest
  * first. A name keeps only its nearest place; the current location counts as nearest, and a tie keeps none,
- * so an exact reply never names a place the game would have to guess at.
+ * so an exact reply never names a place the game would have to guess at. `canEnter` is the travel gate: a place it
+ * refuses is neither a destination nor a waypoint (Q3, Q54).
  */
 export function walkableDestinationEntries<L extends NamedLink = GameLocation>(
   current: NamedLink | null,
   locations: readonly L[],
   connections: readonly Connection[],
+  canEnter?: (id: string) => boolean,
 ): WalkableEntry<L>[] {
   if (!current) return [];
   const byId = new Map(locations.map((l) => [l.id, l]));
   const entries: WalkableEntry<L>[] = [];
-  for (const step of walkableReach(current.id, locations, connections)) {
+  for (const step of walkableReach(current.id, locations, connections, canEnter)) {
     const location = byId.get(step.id);
     const route = step.route.map((id) => byId.get(id)).filter((l): l is L => !!l);
     if (!location || route.length !== step.route.length) continue; // a Connection pointing at a deleted location reaches nowhere
@@ -523,8 +525,9 @@ export function walkableDestinations(
   current: MaybeLocation,
   locations: GameLocation[],
   connections: Connection[],
+  canEnter?: (id: string) => boolean,
 ): GameLocation[] {
-  return walkableDestinationEntries(current, locations, connections).map((e) => e.location);
+  return walkableDestinationEntries(current, locations, connections, canEnter).map((e) => e.location);
 }
 
 /**
@@ -538,9 +541,10 @@ export function buildDestinationsContext(
   locations: GameLocation[],
   connections: Connection[],
   opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
+  canEnter?: (id: string) => boolean,
 ): string {
   if (!current) return NONE_PLACEHOLDER;
-  const entries = walkableDestinationEntries(current, locations, connections);
+  const entries = walkableDestinationEntries(current, locations, connections, canEnter);
   if (entries.length === 0) return NONE_PLACEHOLDER;
   const hints = new Map(entries.flatMap((e) => {
     const tail = destinationTail(e);

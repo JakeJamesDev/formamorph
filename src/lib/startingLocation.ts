@@ -30,14 +30,14 @@ export function inTreeOrder<L extends Pick<GameLocation, "id" | "parentId">>(loc
 }
 
 /**
- * The new game's start under the Enabled gates (Q12, Q51): the chosen location when it is on, else a random on
- * starting location, else the first on location in tree order when every starting location is off, else a random
- * on location when none is flagged. With every location off, the authored pick.
+ * The new game's start under the Enabled and Lock gates (Q12, Q52): the chosen location when it is open, else a
+ * random open starting location, else the first open location in tree order when no starting location is, else a
+ * random open location when none is flagged. With no location open, the authored pick.
  */
 export function startingLocationIn(
-  locations: GameLocation[], isOn: (id: string) => boolean, chosenId?: string | null, random: () => number = Math.random,
+  locations: GameLocation[], isOpen: (id: string) => boolean, chosenId?: string | null, random: () => number = Math.random,
 ): GameLocation | undefined {
-  const on = locations.filter((l) => isOn(l.id));
+  const on = locations.filter((l) => isOpen(l.id));
   if (!on.length) return resolveStartingLocation(locations, chosenId);
   const chosen = chosenId ? on.find((l) => l.id === chosenId) : undefined;
   if (chosen) return chosen;

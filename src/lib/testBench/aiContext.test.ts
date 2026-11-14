@@ -309,6 +309,16 @@ describe('destinations', () => {
     expect(toMarket[0].via).toBe('connection');
   });
 
+  it('leaves out a locked place under the lens’s Options, and lists it once they open it (Q54)', () => {
+    const open = (on: boolean) => ({
+      options: [{ id: 'opt-gate', name: 'Market Open', type: 'boolean' as const, shownToPlayer: true, midGame: false, default: on }],
+      locations: locations.map((l) => (l.id === 'loc-market' ? { ...l, unlockedWhen: [{ all: [{ kind: 'option' as const, id: 'opt-gate' }] }] } : l)),
+    });
+    const ids = (on: boolean) => context(at('loc-harbor'), open(on)).destinations.map((d) => d.id);
+    expect(ids(false)).not.toContain('loc-market');
+    expect(ids(true)).toContain('loc-market');
+  });
+
   it('lists nothing at a location a connection points away from and nothing points into', () => {
     const island: GameLocation[] = [{ id: 'loc-rock', name: 'Bare Rock' }];
     expect(context(at('loc-rock'), { locations: island, connections: [], entities: [] }).destinations).toEqual([]);

@@ -77,7 +77,7 @@ While the player is at this location, the placeholder reads the pinned value. Se
 ## Nesting is the AI's map, not the player's
 <!-- keywords: trapped, cant leave, restrict movement, lock an area, story never moves, auto travel, fast travel, move prompt, up down sideways -->
 
-> 💡 **The player can always travel anywhere.** The in-game location list and the in-game map offer **every** location in your world. Nesting never limits the player, and no arrangement can trap them.
+> 💡 **The player can travel anywhere that isn't locked.** The in-game location list and the in-game map offer **every** location in your world. Nesting never limits the player, and no arrangement can trap them. Only a [locked](#unlocked) location turns them away.
 
 Nesting decides where **the story** can take the player. When the AI reads an action as movement, it considers only the places connected to the current one:
 
@@ -167,7 +167,7 @@ Select a location in the list to open its panel. The tab you pick stays open whe
 | Tab | Holds | Mode |
 |---|---|---|
 | **Details** | **Name**, **Starting Location** and the descriptions | Simple and Advanced |
-| **Presence** | When the location is on ([Enabled](#enabled)), **Entities Here**, **Add an entity here** and **Known Here** | Simple and Advanced |
+| **Presence** | When the location is on ([Enabled](#enabled)), when the player may enter it ([Unlocked](#unlocked)), **Entities Here**, **Add an entity here** and **Known Here** | Simple and Advanced |
 | **Connections** | The location's [Connections](#connections), one row each | Simple and Advanced |
 | **Items** | The location's [Starting Items](World-Editor-Items#starting-items) | Simple and Advanced |
 | **Media** | **Background Image**. In Advanced mode, also **Image Tags** and **Ambient Sound**. | Simple and Advanced |
@@ -186,6 +186,19 @@ Simple mode also hides **AI-Facing Summary**.
 - 🚪 **Entities with nowhere to be** leave the story. An entity whose every location is off is in no scene, and the AI doesn't read it. Its stats and scripts keep running. An entity with another location on goes there as its routine says.
 - 👤 **A condition with no owner** reads the **persona** the player plays, the same as a [Background Visibility rule](#background-visibility-rules).
 - 🏁 **A new game never starts here** while it's off. See [Starting Location](#starting-location).
+
+### Unlocked
+<!-- keywords: locked, lock a location, barred door, key, gate, can't enter, keep the player out, open later, locked text -->
+
+**Unlocked** decides when the player may enter the location. Add rows of conditions, the same kind a trait's **Requires** uses. The player may enter while any row holds. With no rows, it's never locked.
+
+- 🔒 **While it's locked,** the player still sees it on the list and the map, with a lock. Selecting it does nothing. The locations inside it are locked too.
+- 💬 **The line under it** is the **Locked Text** when you write one. Without it, the player reads what unlocks it, such as *Requires Alcove Open is on*. A hidden World Option never shows there; with nothing else to show, it reads *Locked*. A location inside shows its own **Locked Text**, or else the line of the lock around it.
+- 🤖 **The AI never moves the player in,** and the *Move to …?* bar never offers it. The AI still reads the location and who is inside, so the story can describe the closed door.
+- 🧍 **A player already inside** moves freely within it and can leave.
+- 🗝️ **A script opens it** by setting the [World Option](World-Editor-Options) its rows read. A script's `location.move` moves the player in even while it's locked. See [Scripts](Scripts-Reference#location).
+- 🏁 **A new game never starts here** while it's locked. See [Starting Location](#starting-location).
+- 👤 **A condition with no owner** reads the **persona** the player plays.
 
 ### Media
 
@@ -397,7 +410,7 @@ The **Starting Location** checkbox marks a place where a new game can start:
 | **One** | Every game starts there |
 | **Several** | The player picks one before they start, or the game picks one at random |
 
-A Starting Location that is [off](#enabled) when the game starts is skipped. If every Starting Location is off, the game starts at the first location that's on, in list order.
+A Starting Location that is [off](#enabled) or [locked](#unlocked) when the game starts is skipped. If every Starting Location is off or locked, the game starts at the first location that's on and unlocked, in list order.
 
 A world persona starts at the first of its starts that is a starting location, or else at its first start. The start step also lists the locations of its starts. See [Starts](World-Editor-Entities#starts).
 

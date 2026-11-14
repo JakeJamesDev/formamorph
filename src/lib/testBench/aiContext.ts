@@ -14,6 +14,7 @@
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues, knownPulledIds } from '@/lib/chipValues/chipValues';
 import type { CopyLookup } from '@/lib/blueprints';
+import { startTravelGate } from '@/lib/inPlayWorld';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { traitScopedPins } from '@/lib/placeholderPins';
 import {
@@ -37,7 +38,7 @@ import type { RuleWorld } from './rules';
 export type AiContextWorld = Pick<
   RuleWorld,
   'worldOverview' | 'stats' | 'statGroups' | 'locations' | 'connections' | 'entities' | 'traits' | 'traitGroups'
-  | 'dictionaries' | 'placeholders'
+  | 'dictionaries' | 'placeholders' | 'options'
 >;
 
 /** The blocks, in the order the prompts lay them out: the world, then who you are, then where you are. */
@@ -201,7 +202,7 @@ function lensStats(world: AiContextWorld, lens: BenchLens): PlayerStat[] {
 function lensScene(world: AiContextWorld, lens: BenchLens) {
   const placeholders = allPlaceholders(world);
   const scopeOf = lensOwnerScopes(world, lens);
-  return authoredChipScene(world, {
+  const scene = authoredChipScene(world, {
     location: lens.location,
     activeTraitIds: activeTraitIds(world, lens),
     stats: lensStats(world, lens),
@@ -216,6 +217,14 @@ function lensScene(world: AiContextWorld, lens: BenchLens) {
       });
     },
   });
+  return { ...scene, canEnter: lensTravelGate(world, lens) };
+}
+
+/** The travel gate from the lens location at the world's start, under the lens persona and Options (Q54). */
+function lensTravelGate(world: AiContextWorld, lens: BenchLens): (id: string) => boolean {
+  const start = { ...world, entities: world.entities ?? [], locations: world.locations ?? [] };
+  const canEnter = startTravelGate(start, lens.persona?.id ?? null, lens.state.optionValues);
+  return (id) => canEnter(lens.location?.id, id);
 }
 
 /**
@@ -279,7 +288,7 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
     location,
     locationName: location ? resolve(location.name) : '',
     blocks,
-    destinations: walkableDestinationEntries(location, locations, connections).map((entry) => ({
+    destinations: walkableDestinationEntries(location, locations, connections, scene.canEnter).map((entry) => ({
       id: entry.location.id,
       name: resolve(entry.location.name),
       hint: entry.hint ? resolve(entry.hint) : undefined,

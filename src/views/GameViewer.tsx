@@ -4,7 +4,7 @@ import {
   applyInventoryOps, applyInventoryPass, passOwners, equipRequirement, settleInventory, settleTraitsWithItems, statEffectItems, traitPicksInPlay, timedEffectViews, type ItemUse, type InventoryOp, type ItemScriptEvent,
 } from '@/lib/inventory';
 import { hasCode, isItemTiming } from '@/lib/scripts';
-import { inPlayWorldData, playedEntityIdOf, startLocationIdsOn } from '@/lib/inPlayWorld';
+import { inPlayWorldData, playedEntityIdOf, startLocationIdsOpen } from '@/lib/inPlayWorld';
 import { runRowKeys } from '@/lib/worldScripts';
 import { playedEntityIds } from '@/lib/scope';
 import type { InventoryPanelSettle, PanelActionList } from '@/components/game/useInventoryPanel';
@@ -2723,6 +2723,7 @@ const GameViewer = ({
     location: currentLocation,
     locations,
     connections,
+    canEnter: inPlay.canEnter,
     entities,
     allEntities,
     standings: liveStandings,
@@ -3311,7 +3312,7 @@ const GameViewer = ({
 
     // Places a move can reach from here. Nowhere to go means nothing to route: the router's reply is matched
     // against this exact list, so with it empty the call cannot produce a move however the model answers.
-    const reach = walkableDestinationEntries(currentLocation, locations, connections);
+    const reach = walkableDestinationEntries(currentLocation, locations, connections, (id) => inPlay.canEnter(currentLocation?.id, id));
     const destinations = reach.map((entry) => entry.location);
     // A Chat send tells nothing (Q31) and a scripted turn plays canned narration. The narration pass rides the
     // entries in the thinking-off lane only (Q10).
@@ -6038,6 +6039,8 @@ const GameViewer = ({
     },
     [setCurrentLocation, placeCast, positionWorldAt, storyNow, setVisibleEntities, currentFollowers, allEntities],
   );
+  /** The travel gate from where the player stands (Q3). */
+  const canEnterFromHere = useCallback((id: string) => inPlay.canEnter(currentLocation?.id, id), [inPlay, currentLocation]);
   /** Travel through the map, a listed action (Q42). */
   const travel = useCallback(
     (to: GameLocation) => {
@@ -6099,9 +6102,9 @@ const GameViewer = ({
       // A new game starts with no entity picked in the stat panel or the entity view.
       setSelectedEntityId(undefined);
 
-      // The player's chosen start, else a random one, skipping locations the gates turn off at the start (Q12).
-      const startOn = startLocationIdsOn(getWorldData(), playedEntityIdOf(initialPersona?.ref, authoredEntities), initialOptionValues);
-      const startId = startingLocationIn(authoredLocations, (id) => startOn.has(id), initialLocationId)?.id;
+      // The player's chosen start, else a random one, skipping locations the gates turn off or lock at the start (Q12).
+      const startOpen = startLocationIdsOpen(getWorldData(), playedEntityIdOf(initialPersona?.ref, authoredEntities), initialOptionValues);
+      const startId = startingLocationIn(authoredLocations, (id) => startOpen.has(id), initialLocationId)?.id;
       const startRaw = authoredLocations.find((l) => l.id === startId);
       const location = locations.find((l) => l.id === startId) ?? (startRaw && { ...startRaw, name: resolvePH(startRaw.name) });
       const authoredLocation = location ? authoredLocations.find((l) => l.id === location.id) ?? location : null;
@@ -6413,6 +6416,11 @@ const GameViewer = ({
       <Button
         size="sm"
         onClick={() => {
+          // The place may have locked since the offer (Q56).
+          if (!inPlay.canEnter(currentLocation?.id, suggestedLocation.id)) {
+            setSuggestedLocation(null);
+            return;
+          }
           changeLocation(suggestedLocation);
           addLogEntry(`Moved to location: ${suggestedLocation.name}`);
           const offer = entityOfferRef.current;
@@ -6823,6 +6831,8 @@ const GameViewer = ({
         mapBackground={mapBackdrop}
         changeLocation={travel}
         resolveText={resolvePH}
+        canEnter={canEnterFromHere}
+        lockLineOf={inPlay.lockLine}
       />
 
 

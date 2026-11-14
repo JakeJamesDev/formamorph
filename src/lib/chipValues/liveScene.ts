@@ -50,6 +50,8 @@ export interface LiveSceneSources {
   location: GameLocation | null;
   locations: GameLocation[];
   connections: Connection[];
+  /** The travel gate: whether the player at the first place may be moved into the second (Q3). */
+  canEnter?: (fromId: string | null | undefined, toId: string) => boolean;
   /** The authored cast. */
   entities: Entity[];
   /** The authored cast plus every runtime character this playthrough discovered. */
@@ -133,6 +135,7 @@ export function liveChipScene(
   const allEntities = ownText(underBox(box?.addedEntities ? [...sources.allEntities, ...box.addedEntities] : sources.allEntities));
   const persona = sources.persona && { ...sources.persona, entity: ownText([sources.persona.entity])[0] };
   const loc = location ?? sources.location;
+  const travelGate = sources.canEnter;
   const presentIds = idsAt(loc?.id, allEntities, placesOf);
   // Who has taken part lately, minus anyone the dialogue merely kept naming: an authored entity who lives
   // elsewhere is dropped, while ad-hoc and just-arrived characters stay (visitors reach `presentIds`
@@ -170,6 +173,7 @@ export function liveChipScene(
     location: loc,
     locations: sources.locations,
     connections: sources.connections,
+    ...(travelGate && { canEnter: (id: string) => travelGate(loc?.id, id) }),
     entities: allEntities,
     presentIds,
     inSceneIds,
@@ -220,16 +224,16 @@ const inForceByOwner = (states: OwnedTraitStates | undefined): OwnedTraitsInForc
 export function useLiveChipScene(sources: LiveSceneSources): (location?: GameLocation | null, box?: SceneWrites | null) => ChipScene {
   const {
     overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-    location, locations, connections, entities, allEntities, standings, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
+    location, locations, connections, canEnter, entities, allEntities, standings, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
   } = sources;
   return useCallback(
     (at?: GameLocation | null, box?: SceneWrites | null) => liveChipScene({
       overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-      location, locations, connections, entities, allEntities, standings, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
+      location, locations, connections, canEnter, entities, allEntities, standings, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
     }, at, box),
     [
       overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-      location, locations, connections, entities, allEntities, standings, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
+      location, locations, connections, canEnter, entities, allEntities, standings, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
     ],
   );
 }

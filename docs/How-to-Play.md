@@ -170,7 +170,7 @@ An earlier page is read-only. The side panel shows a banner, *Viewing turn n of 
 2. Select **Current Location**. The **Change Location** dialog opens.
 3. Select a place on the **List** tab, or a box on the **Map** tab.
 
-You move at once. Travel costs no turn and writes no narration. The narrator can also suggest a move: select **Go** in the *Move to …?* bar, or **Dismiss**.
+You move at once. Travel costs no turn and writes no narration. A place with a lock 🔒 is locked: the line under it says why, and you can't travel there yet. The narrator can also suggest a move: select **Go** in the *Move to …?* bar, or **Dismiss**.
 
 ## How to Export the Story
 <!-- keywords: save as text, download, txt, markdown, copy, transcript, share, print, log, novel, archive, read later, ebook, document, pdf, keep the text, post online -->

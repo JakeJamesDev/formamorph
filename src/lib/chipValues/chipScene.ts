@@ -55,6 +55,8 @@ export interface ChipScene {
   location: GameLocation | null;
   locations: GameLocation[];
   connections: Connection[];
+  /** The travel gate from `location`: the destinations chip leaves out what it refuses (Q54). All open when absent. */
+  canEnter?: (id: string) => boolean;
   /** The roster every entity scope draws from. */
   entities: Entity[];
   /** Who is at the location: the Here scope, and whom the lower scopes leave out. */

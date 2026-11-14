@@ -125,7 +125,7 @@ export function chipValues(scene: ChipScene): ValueLookup {
       sublocations: (opts) => buildSublocationsContext(location, locations, opts),
       parent: (opts) => buildParentLocationContext(location, locations, opts),
       reachable: (opts) => buildReachableLocationsContext(location, locations, opts),
-      destinations: (opts) => buildDestinationsContext(location, locations, connections, opts),
+      destinations: (opts) => buildDestinationsContext(location, locations, connections, opts, scene.canEnter),
     })],
     [ENTITIES, scopedChipRuns(ENTITIES.token, entityScopes(scene, cast))],
     [INVENTORY, chipFamilyValues(INVENTORY.token, (sel) => buildInventoryContext(inventoryScene(scene), chipFormat(sel.format)))],

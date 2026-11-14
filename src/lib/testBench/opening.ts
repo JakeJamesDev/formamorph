@@ -47,6 +47,7 @@ import type {
   Entity, GameLocation, Opening, PersonaRef, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, ThresholdUnit, Trait, WorldOptionValues,
 } from '@/types';
 import { offeredStartLocations, personaStartLocation, startingPersona } from '@/lib/personaPick';
+import { startTravelGate } from '@/lib/inPlayWorld';
 import { lensActiveTraits, lensPersonaPicks, lensPersonaRef, lensPinBlueprints, lensStartingStats, resolveLensText, type BenchLens } from './lens';
 import { ownerWorldOf, chipBearingTexts, type RuleWorld } from './rules';
 import { scannedEntries } from './triggers';
@@ -461,14 +462,20 @@ export function buildOpening(
   // The turn-one assembly, through the game's own builders: the chip values of this opening's scene, the
   // narration prompt over them with the real lore scan, and the cue framed as the opening user turn.
   // The scene has no notes and no clock yet, so both chips read as the uniform "none".
-  const ctx = chipValues(authoredChipScene(world, {
-    location,
-    activeTraitIds: active.map((t) => t.id),
-    stats: liveStats,
-    resolve,
-    resolveEntity,
-    persona: openingPersonaOf(personaRef),
-  }));
+  const canEnter = startTravelGate(
+    { ...world, entities: world.entities ?? [], locations: world.locations ?? [] }, lens.persona?.id ?? null, lens.state.optionValues,
+  );
+  const ctx = chipValues({
+    ...authoredChipScene(world, {
+      location,
+      activeTraitIds: active.map((t) => t.id),
+      stats: liveStats,
+      resolve,
+      resolveEntity,
+      persona: openingPersonaOf(personaRef),
+    }),
+    canEnter: (id) => canEnter(location?.id, id),
+  });
   // The opening pool for this persona at this start, as new-game play reads it. The Bench has no library, so
   // the persona is a world entity or None; picked library entities are a player choice.
   const { persona, cast, customPersona, pool: entries } = newGamePool({

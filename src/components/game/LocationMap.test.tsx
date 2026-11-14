@@ -5,6 +5,7 @@ import { CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH } from '@/lib/locationCanvas';
 import LocationMap from './LocationMap';
 import type { PresenceInput } from '@/lib/presence';
 import type { MapRoster } from '@/lib/mapRoster';
+import type { LockLine } from '@/lib/inPlayWorld';
 import { mapRosterOf } from '@/test/mapRosterOf';
 import type { Connection, Entity, GameLocation } from '@/types';
 
@@ -64,7 +65,7 @@ const implicitEdges = () => [...document.querySelectorAll('.react-flow__edge[dat
 
 const show = (props: {
   connections?: Connection[]; current: string | null; onTravel?: (l: GameLocation) => void;
-  entitiesAt?: MapRoster;
+  entitiesAt?: MapRoster; lockLineOf?: (id: string) => LockLine | null;
 }) => {
   const view = (current: string | null) => (
     <TooltipProvider>
@@ -75,6 +76,8 @@ const show = (props: {
           currentLocationId={current}
           entitiesAt={props.entitiesAt}
           onTravel={props.onTravel ?? (() => {})}
+          lockLineOf={props.lockLineOf}
+          resolveText={(text) => text.toUpperCase()}
         />
       </div>
     </TooltipProvider>
@@ -157,6 +160,16 @@ describe('the Map', () => {
       await drawnAt(2 * 149);
       fireEvent.click(box('Spoke 40'), { detail: 1 });
       expect(onTravel).toHaveBeenCalledWith(expect.objectContaining({ id: 's40' }));
+    });
+
+    it('marks a locked box with a lock and its line, and leaves the rest as they were (Q11)', async () => {
+      show({ current: 's7', lockLineOf: (id) => (id === 's40' ? { text: 'barred' } : id === 's41' ? { parts: ['Requires ', { persona: 'Ash' }, ' is on'] } : null) });
+      await drawnAt(2 * 149);
+      const locked = screen.getByRole('button', { name: 'Locked Spoke 40' });
+      expect(locked).toHaveAttribute('aria-disabled', 'true');
+      expect(locked).toHaveAttribute('aria-description', 'BARRED');
+      expect(screen.getByRole('button', { name: 'Locked Spoke 41' })).toHaveAttribute('aria-description', 'Requires Ash is on');
+      expect(box('Spoke 42')).not.toHaveAttribute('aria-disabled');
     });
 
     it('counts the entities on their box and lists them in the tip, on no other box', async () => {

@@ -393,6 +393,8 @@ The world group with `system: "blueprints"`, and every group below it, holds Blu
 | `isStarting` | | Boolean | A new game can start here. One marked = every game starts there. Several = the player picks. None = any location. A played entity's Start places join the choices |
 | `parentId` | | String \| `null` | The parent location's `id`. Absent or `null` = the top level. List order is the order among siblings |
 | `enabledWhen` | | [Requirement Row](#trait-requirements)[] | The **Enabled** rows: the location and the locations inside it are in the game while any row holds. A condition with no `owner` reads the played persona. Absent or empty = always on |
+| `unlockedWhen` | | [Requirement Row](#trait-requirements)[] | The **Unlocked** rows: the player may travel into the location and the locations inside it while any row holds. A condition with no `owner` reads the played persona. Absent or empty = never locked |
+| `lockedText` | | string | What the player reads on the location while it's locked, in place of what unlocks it. Placeholders fill in |
 | `canvasPosition` | | `{ "x", "y" }` | Editor-only. The location's place on the Locations canvas, relative to its parent. Absent = automatic |
 | `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values pinned while the player is here. A child location does not get its parent's pins |
 | `openings` | | [Opening](#openings)[] | Openings that draw when a game starts at this exact location |

@@ -573,6 +573,10 @@ _Avoid_: active, visible, spawned, present (that is presence)
 A location's gate: Requirement Rows that keep it in the world while any row holds; with no rows it is always on. A Condition with no owner reads the played persona. Off, the location is absent with its whole subtree, and connections through it break. The player's place and its subtree stay while they stand there. An on entity whose every place is off is **stranded**: in no scene and out of the AI's reach, its stats and scripts still running.
 _Avoid_: closed, hidden, locked (that is the Lock gate)
 
+**Locked** (location):
+A location whose Lock gate fails, or one inside such a location. The Lock gate is Requirement Rows (`unlockedWhen`) that let the player travel in while any row holds; with no rows it never locks. A Condition with no owner reads the played persona. Locked, it stays on and visible to the player and the AI, but the travel gate refuses every player move into it: the List, the Map, the Move-to chip, the router's walk and the start pick. A script's `location.move` ignores it. A player already inside moves freely within it. The player reads its Locked text, else the nearest lock's line with hidden Options left out.
+_Avoid_: closed, disabled, off (that is Enabled)
+
 **Placeholder Set**:
 The read side of a list of Placeholders, bound once to whichever list a text is read against: a world's, or the list an off-world entity or dictionary carries. It answers what a text describes at design time and, given a playthrough's Rolls, what it resolves to.
 _Avoid_: placeholder list, defs, vocabulary (that is the editor's chip menu)

@@ -8,7 +8,7 @@ const AND = new Intl.ListFormat('en', { type: 'conjunction' });
 export type GateLinePart = string | { persona: string };
 
 /** The line as plain text, the persona's name included. */
-const plainLine = (parts: readonly GateLinePart[]): string =>
+export const plainLine = (parts: readonly GateLinePart[]): string =>
   parts.map((part) => (typeof part === 'string' ? part : part.persona)).join('');
 
 /** A Condition's text, with the persona's name split off when the text opens with it. */

@@ -1127,6 +1127,8 @@ const exit = location.exits[Math.floor(Math.random() * location.exits.length)];
 if (exit) location.move(exit.name);
 ```
 
+`location.move` moves the player into a [locked](World-Editor-Locations#unlocked) location too. To open a locked location to the player, set the [World Option](#world-options) its **Unlocked** rows read.
+
 `location` and its `exits` keep reading the location where the script started, even after `location.move` in the same script. The scripts below it read the new location, with its `present` and `exits`.
 
 In **Test Code** and the **Test Bench**, each entity is where a new game puts it at the start of the story:
