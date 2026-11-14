@@ -1,6 +1,7 @@
 # Spec: Entity Routines
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-13, tickets 01–06, last landing 2cfb4c853. Review found two gaps, fixed by tickets 05–06, and one trivial gap fixed in 0c807a0a0. Gates on 2026-11-13 before 05–06: test exit 0; lint red only from gitignored worlds-wip scripts.
 Spec session: entity-routines — spec
 
 ## Problem Statement

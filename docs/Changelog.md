@@ -29,7 +29,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **An entity's routine row can be Away, taking it off the map and out of every scene for those hours.** Its stats and scripts keep running, and the AI still knows of it where Known In says. Saves can now hold a Generic entity at no place.
     - **An entity's Presence tab in the World Editor can hold several Routines, each with its own starts, schedule and Requires.** Add, rename, reorder and delete them in a list above the starts. Library updates list each Routine's changes.
     - **An entity switches routine in play when the world changes.** The first routine whose Requires holds applies. Each routine keeps the start it picked at new game, and saves now keep every routine's start. A follower parts ways when the new routine can't reach the player.
-    - **An older save with no stored opening cast now builds it from the routine whose Requires holds at the start.** Before, it used the first routine whatever its Requires said.
 - **🛠️ Developer tooling**
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.
 
