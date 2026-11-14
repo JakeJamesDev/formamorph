@@ -43,6 +43,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **In Game:**
     - **A stat change at Start or Before that renames an entity now reaches the AI on that turn.** Before, the AI read the old name and Stranger Name until the next turn.
+    - **Narration that fits Max Output Tokens now keeps its last paragraph.** Before, the app cut long replies short, even when the AI finished inside the limit.
   - **At new game, a trait group fills again when another pick locks its trait.** It takes the group's default, or else the first trait you can pick. Before, the group stayed empty and Begin stayed off.
   - **The Test Bench no longer calls a placeholder unused when its only chip is in a stranger field.** That covers Stranger Name and Stranger Description, which play already fills in.
 

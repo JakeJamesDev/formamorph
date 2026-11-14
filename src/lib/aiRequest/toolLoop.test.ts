@@ -748,7 +748,7 @@ describe('streamAiToolLoop: silent capture', () => {
 
 describe('streamAiToolLoop: Answer Cap', () => {
   const capped = (answerCap: number, tools: readonly Tool[] | null = null): ToolRequestSpec => ({ ...spec(tools), answerCap });
-  // At a cap of 5 the answer holds 20 characters, so the cut lands inside the second piece.
+  // At a cap of 4 the answer holds 20 characters, so the cut lands inside the second piece.
   const LONG_PROSE = ['The door opens. ', 'Bram looks up and ', 'waves. ', 'He smiles.'];
 
   /** A transport for one response that remembers the signal its request was sent with. */
@@ -763,7 +763,7 @@ describe('streamAiToolLoop: Answer Cap', () => {
     async (_label, tools) => {
       const transport = watched(proseFrames(...LONG_PROSE));
 
-      const events = await run(transport, {}, capped(5, tools));
+      const events = await run(transport, {}, capped(4, tools));
 
       expect(transport.signal()?.aborted).toBe(true);
       expect(doneOf(events)).toMatchObject({ content: 'The door opens.', finishReason: 'length', toolCalls: [] });
@@ -772,13 +772,13 @@ describe('streamAiToolLoop: Answer Cap', () => {
   );
 
   it('keeps the raw cut text on a prompt other than narration, still finishing on length', async () => {
-    const events = await run(watched(proseFrames(...LONG_PROSE)), {}, { ...capped(5), requestType: 'choices' });
+    const events = await run(watched(proseFrames(...LONG_PROSE)), {}, { ...capped(4), requestType: 'choices' });
 
     expect(doneOf(events)).toMatchObject({ content: 'The door opens. Bram', finishReason: 'length' });
   });
 
   it('keeps the cut text when the answer has no sentence end', async () => {
-    const events = await run(watched(proseFrames('The door opens and ', 'Bram looks up')), {}, capped(5));
+    const events = await run(watched(proseFrames('The door opens and ', 'Bram looks up')), {}, capped(4));
 
     expect(doneOf(events)).toMatchObject({ content: 'The door opens and B', finishReason: 'length' });
   });
@@ -787,7 +787,7 @@ describe('streamAiToolLoop: Answer Cap', () => {
     const thought = Array.from({ length: 10 }, () => frame({ reasoning: 'x'.repeat(400) }));
     const transport = watched([...thought, ...proseFrames('Bram waves.')]);
 
-    const events = await run(transport, {}, capped(5));
+    const events = await run(transport, {}, capped(4));
 
     expect(transport.signal()?.aborted).toBe(false);
     expect(doneOf(events)).toMatchObject({ content: 'Bram waves.', finishReason: 'stop' });
@@ -795,8 +795,8 @@ describe('streamAiToolLoop: Answer Cap', () => {
   });
 
   it('gives the same trimmed text when every event arrives in one chunk, or the answer in one frame', async () => {
-    const oneChunk = await run(watched(proseFrames(...LONG_PROSE).join('')), {}, capped(5));
-    const oneFrame = await run(watched(proseFrames(LONG_PROSE.join(''))), {}, capped(5));
+    const oneChunk = await run(watched(proseFrames(...LONG_PROSE).join('')), {}, capped(4));
+    const oneFrame = await run(watched(proseFrames(LONG_PROSE.join(''))), {}, capped(4));
 
     for (const events of [oneChunk, oneFrame]) {
       expect(doneOf(events)).toMatchObject({ content: 'The door opens.', finishReason: 'length' });
@@ -806,8 +806,8 @@ describe('streamAiToolLoop: Answer Cap', () => {
 
   it('counts the answer from the close of a leading <think> block', async () => {
     const think = `<think>${'x'.repeat(300)}</think>`;
-    const long = await run(watched(proseFrames('<think>', 'x'.repeat(300), '</think>', ...LONG_PROSE)), {}, capped(5));
-    const short = await run(watched(proseFrames('<think>', 'x'.repeat(300), '</think>', 'Bram waves.')), {}, capped(5));
+    const long = await run(watched(proseFrames('<think>', 'x'.repeat(300), '</think>', ...LONG_PROSE)), {}, capped(4));
+    const short = await run(watched(proseFrames('<think>', 'x'.repeat(300), '</think>', 'Bram waves.')), {}, capped(4));
 
     expect(doneOf(long)).toMatchObject({ content: `${think}The door opens.`, finishReason: 'length' });
     expect(doneOf(short)).toMatchObject({ content: `${think}Bram waves.`, finishReason: 'stop' });
@@ -815,7 +815,7 @@ describe('streamAiToolLoop: Answer Cap', () => {
 
   it("counts the answer from the close of Gemma's leading thought channel, with Tools offered", async () => {
     const thought = `<|channel>thought\n${'x'.repeat(300)}<channel|>`;
-    const events = await run(watched(proseFrames('<|channel>', 'thought\n', 'x'.repeat(300), '<channel|>', 'Bram waves.')), {}, capped(5, [GET_ENTITY]));
+    const events = await run(watched(proseFrames('<|channel>', 'thought\n', 'x'.repeat(300), '<channel|>', 'Bram waves.')), {}, capped(4, [GET_ENTITY]));
 
     expect(doneOf(events)).toMatchObject({ content: `${thought}Bram waves.`, finishReason: 'stop' });
   });
@@ -826,7 +826,7 @@ describe('streamAiToolLoop: Answer Cap', () => {
       proseFrames('The door opens.'),
     ]);
 
-    const events = await run(transport, {}, capped(5, [GET_ENTITY]));
+    const events = await run(transport, {}, capped(4, [GET_ENTITY]));
 
     expect(doneOf(events)).toMatchObject({ content: 'The door opens.', finishReason: 'stop' });
   });
@@ -836,7 +836,7 @@ describe('streamAiToolLoop: Answer Cap', () => {
     const transport = scripted([(signal) => hangingResponse(signal, [frame({ content: 'The ' })])]);
 
     const events: AiToolLoopEvent[] = [];
-    for await (const event of streamAiToolLoop(capped(5), { fetchImpl: transport.fetchImpl, reasoningThrottleMs: 0, signal: controller.signal })) {
+    for await (const event of streamAiToolLoop(capped(4), { fetchImpl: transport.fetchImpl, reasoningThrottleMs: 0, signal: controller.signal })) {
       events.push(event);
       if (event.type === 'delta') controller.abort();
     }
@@ -849,12 +849,45 @@ describe('streamAiToolLoop: Answer Cap', () => {
     const transport = watched(proseFrames(...LONG_PROSE));
 
     const events: AiToolLoopEvent[] = [];
-    for await (const event of streamAiToolLoop(capped(5), { fetchImpl: transport.fetchImpl, reasoningThrottleMs: 0, signal: controller.signal })) {
+    for await (const event of streamAiToolLoop(capped(4), { fetchImpl: transport.fetchImpl, reasoningThrottleMs: 0, signal: controller.signal })) {
       events.push(event);
       if (event.type === 'delta' && event.content.length >= 20) controller.abort();
     }
 
     expect(doneOf(events)).toMatchObject({ content: 'The door opens. Bram', finishReason: 'aborted', toolCalls: [] });
+  });
+
+  // 2,300 characters: a 512-token narration at the cloud model's 5.1 characters per token.
+  const NARRATION = Array.from({ length: 92 }, () => 'Bram looks up and waves. ');
+  const withMaxTokens = (answerCap: number, maxTokens: number): ToolRequestSpec => {
+    const base = capped(answerCap);
+    return { ...base, body: { ...base.body, max_tokens: maxTokens } };
+  };
+
+  it('leaves the answer to the server when the sent max_tokens is the cap', async () => {
+    // Denser than the estimate: the server counts it inside 512 real tokens.
+    const dense = [...NARRATION, ...NARRATION];
+    const transport = watched(proseFrames(...dense));
+
+    const events = await run(transport, {}, withMaxTokens(512, 512));
+
+    expect(transport.signal()?.aborted ?? false).toBe(false);
+    expect(doneOf(events)).toMatchObject({ content: dense.join(''), finishReason: 'stop' });
+  });
+
+  it('keeps a narration that fits the cap at prose density under a Thought Ceiling', async () => {
+    const events = await run(watched(proseFrames(...NARRATION)), {}, withMaxTokens(512, 1536));
+
+    expect(doneOf(events)).toMatchObject({ content: NARRATION.join(''), finishReason: 'stop' });
+  });
+
+  it('still cuts a narration past the cap under a Thought Ceiling', async () => {
+    const long = [...NARRATION, ...NARRATION];
+    const events = await run(watched(proseFrames(...long)), {}, withMaxTokens(512, 1536));
+
+    // The cut at 2,560 characters trims back to the end of the 102nd sentence.
+    expect(doneOf(events).content).toHaveLength(102 * 25 - 1);
+    expect(doneOf(events)).toMatchObject({ finishReason: 'length' });
   });
 });
 

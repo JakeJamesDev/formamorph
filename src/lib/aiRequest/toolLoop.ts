@@ -3,7 +3,6 @@ import { DEFAULT_TOOL_CALL_LIMIT } from '@/contexts/settingsDefaults';
 import type { ToolCallFailure, ToolCallResult } from '@/lib/tools/toolRunner';
 import type { OfferedFunction } from '@/lib/tools/toolSchema';
 import { answerStart, stripReasoning, stripToolCallMarkers } from '@/lib/aiResponse';
-import { CHARS_PER_TOKEN } from '@/lib/memoryUtils';
 import { trimToLastSentence } from '@/lib/outputLength';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 import { followsResponseSchema } from './responseSchema';
@@ -44,6 +43,9 @@ const sumOutput = (rounds: readonly AiStreamOutput[]): AiStreamOutput => ({
  * Every round runs under the spec's Answer Cap, counted on that round's answer text alone. A round with a
  * cut thought throws, so its reasoning reaches no later round and the request fails like any other.
  */
+
+/** Characters per answer token the Answer Cap counts at: the measured prose rate on the default cloud model. */
+export const ANSWER_CAP_CHARS_PER_TOKEN = 5;
 
 /** Requests one call of the loop may send, tool rounds and the final round together. */
 export const DEFAULT_TOOL_ROUND_CAP = 6;
@@ -113,16 +115,18 @@ function isCutThought(result: AiStreamResult): boolean {
 }
 
 /**
- * One request under the spec's Answer Cap. Answer text counts from the end of a leading reasoning block;
+ * One request under the spec's Answer Cap, where the sent `max_tokens` runs past it. Answer text counts from the end of a leading reasoning block;
  * reasoning events and call arguments never count. Past the cap, the request is aborted and no delta runs
  * past the cut. `done` then carries the cut answer with no calls; narration's ends on its last sentence end.
  */
 async function* streamCapped(spec: AiStreamSpec, options: AiStreamOptions): AsyncGenerator<AiStreamEvent, void, void> {
-  if (spec.answerCap === undefined) {
+  // A sent `max_tokens` within the cap already stops the answer at its real token count.
+  const serverCaps = spec.body.max_tokens !== undefined && spec.answerCap !== undefined && spec.body.max_tokens <= spec.answerCap;
+  if (spec.answerCap === undefined || serverCaps) {
     yield* streamAiRequest(spec, options);
     return;
   }
-  const limit = spec.answerCap * CHARS_PER_TOKEN;
+  const limit = spec.answerCap * ANSWER_CAP_CHARS_PER_TOKEN;
   const callerSignal = options.signal;
   const controller = new AbortController();
   const forwardStop = () => controller.abort();
