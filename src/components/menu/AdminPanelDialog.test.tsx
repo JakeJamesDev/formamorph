@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AdminPanelDialog } from './AdminPanelDialog';
 import ReportService from '@/services/ReportService';
 import ReviewService from '@/services/ReviewService';
+import CorefContributionService from '@/services/CorefContributionService';
 
 // Whether the server has listing review; each test sets it.
 const reviewMeta = vi.hoisted(() => ({ supported: false, enabled: false }));
@@ -44,6 +45,7 @@ beforeEach(() => {
   reviewMeta.supported = false;
   vi.spyOn(ReportService, 'fetchOpenCount').mockResolvedValue(0);
   vi.spyOn(ReviewService, 'fetchCount').mockResolvedValue(0);
+  vi.spyOn(CorefContributionService, 'fetchCount').mockResolvedValue(0);
 });
 
 afterEach(() => {
@@ -304,7 +306,7 @@ describe('the Moderation tab', () => {
     expect(ReviewService.fetchCount).not.toHaveBeenCalled();
   });
 
-  it('adds Auto-Approved as a third segment with no count', async () => {
+  it('adds Auto-Approved as a third segment with no count, then Mentions', async () => {
     reviewMeta.supported = true;
     vi.mocked(ReviewService.fetchCount).mockResolvedValue(3);
 
@@ -313,7 +315,7 @@ describe('the Moderation tab', () => {
     // The Feedback panel stays mounted with its own strip, so find the strip by its first segment.
     const strip = screen.getByRole('tab', { name: /^Reports/ }).closest('[role="tablist"]') as HTMLElement;
     const segments = within(strip).getAllByRole('tab').map((t) => t.textContent);
-    expect(segments).toEqual(['Reports', 'Review', 'Auto-Approved']);
+    expect(segments).toEqual(['Reports', 'Review', 'Auto-Approved', 'Mentions']);
     expect(await screen.findByRole('tab', { name: 'Review (3)' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Auto-Approved' })).toBeTruthy();
   });

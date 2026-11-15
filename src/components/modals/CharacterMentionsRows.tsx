@@ -8,6 +8,8 @@ import type { CharacterMentionsModel } from '@/contexts/settingsDefaults';
 import { isEnglishLanguage } from '@/lib/languages';
 import { characterMentions, useCharacterMentionsState } from '@/lib/coref/characterMentionsApp';
 import { usePlannedDownloadSize } from '@/lib/coref/usePlannedDownloadSize';
+import { useContributeAccess } from '@/lib/coref/useContributeAccess';
+import { contributesNow, type ContributeAccess } from '@/lib/coref/correctionContribution';
 import type { DisplaySettingsSource } from './settingsSource';
 
 const MODEL_OPTIONS: readonly SettingOptionCopy<CharacterMentionsModel>[] = SETTINGS_OPTIONS.characterMentionsModel;
@@ -22,12 +24,21 @@ export function MentionsDownloadError({ error }: { error: string | null }) {
   );
 }
 
-/** The Character Mentions toggle, its download rows, and the model choice. */
+const ACCESS_NOTES: Record<Exclude<ContributeAccess, 'ready'>, string> = {
+  signedOut: SETTINGS_NOTES.contributeSignIn,
+  unattested: SETTINGS_NOTES.contributeAgeGate,
+};
+
+/** The Character Mentions toggle, its download rows, the model choice, and Contribute Corrections. */
 export function CharacterMentionsRows({ source, advanced }: {
-  source: Pick<DisplaySettingsSource, 'characterMentions' | 'setCharacterMentions' | 'characterMentionsModel' | 'setCharacterMentionsModel' | 'language'>;
+  source: Pick<DisplaySettingsSource,
+    | 'characterMentions' | 'setCharacterMentions' | 'characterMentionsModel' | 'setCharacterMentionsModel' | 'language'
+    | 'contributeCorrections' | 'setContributeCorrections'>;
   advanced: boolean;
 }) {
   const { characterMentions: enabled, setCharacterMentions, characterMentionsModel: choice, setCharacterMentionsModel, language } = source;
+  const contributor = useContributeAccess();
+  const { access, accountId } = contributor;
   const english = isEnglishLanguage(language);
   const { status, progress, error } = useCharacterMentionsState();
   const size = usePlannedDownloadSize(choice, !enabled && english);
@@ -64,6 +75,16 @@ export function CharacterMentionsRows({ source, advanced }: {
         <Row>
           <MentionsDownloadError error={error} />
         </Row>
+      )}
+      {enabled && english && (
+        <CheckRow
+          htmlFor="contributeCorrections"
+          checked={contributesNow(source.contributeCorrections, contributor)}
+          disabled={access !== 'ready'}
+          onChange={(on) => source.setContributeCorrections(on ? accountId : null)}
+          below={access === 'ready' ? undefined : <Meta>{ACCESS_NOTES[access]}</Meta>}
+          {...rowCopy('contributeCorrections')}
+        />
       )}
       {advanced && english && (
         <Row top {...optionRowCopy('characterMentionsModel', selected)}>

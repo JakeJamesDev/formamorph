@@ -113,6 +113,16 @@ Pick a suggestion or type your own. A **style** works too, like *formal English*
     label: 'Mentions Model',
     description: 'Chooses the model that reads the narration',
   },
+  contributeCorrections: {
+    label: 'Contribute Corrections',
+    description: 'Sends the whole passage with each correction. Accepted ones are kept.',
+    info: `Helps train the model that reads the narration.
+
+- Each time you pick someone in **Wrong character?**, sends the **whole passage** and your corrections for it
+- Staff review each passage. Accepted passages are kept for training, even after you delete your account.
+- Needs a signed-in account and your 18+ confirmation
+- Turning it off stops future sends`,
+  },
   paragraphLimit: {
     label: 'Paragraph Limit',
     description: 'Caps how many paragraphs the model writes each turn',
@@ -824,6 +834,8 @@ export const SETTINGS_BUTTONS = {
 /** Status text the modal draws where a group of controls would be. */
 export const SETTINGS_NOTES = {
   characterMentionsEnglishOnly: 'Works only when “AI Language” is English',
+  contributeSignIn: 'Sign in to contribute',
+  contributeAgeGate: 'Confirm you’re 18 or older to contribute',
   imageGenerationOff: 'Image generation is off. Select “Enable Image Generation” to turn it on.',
   imageModelFromWorkflow: `Shows the model the workflow loads. Change it in **${SETTINGS_COPY.imageWorkflow.label}** under **Advanced**.`,
   imageFileNameNoPrefix: `Add \`%prefix%\` to the save node in **${SETTINGS_COPY.imageWorkflow.label}** to use this setting`,

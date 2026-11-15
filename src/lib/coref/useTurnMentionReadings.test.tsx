@@ -8,7 +8,7 @@ import { useTurnMentionReadings } from './useTurnMentionReadings';
 
 const turn = (turnId: string, narration: string): ChatMessage => ({ role: 'assistant', content: JSON.stringify({ turnId, narration, choices: [] }) });
 const MIRA = { id: 'mira', name: 'Mira', aliases: [], kind: 'unique' } as unknown as Entity;
-const reading = (text: string): PassageReading => ({ model: 'small', version: 1, reading: { mentions: [{ start: 0, end: text.indexOf(' '), entityId: 'mira' }], quotes: [] } });
+const reading = (text: string): PassageReading => ({ model: 'small', version: 1, reading: { mentions: [{ start: 0, end: text.indexOf(' '), entityId: 'mira' }], quotes: [] }, clusters: [], clusterEntities: [] });
 
 /** A controller whose readings resolve only when the test says so. */
 function controller() {

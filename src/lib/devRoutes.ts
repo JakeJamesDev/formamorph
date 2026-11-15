@@ -141,6 +141,7 @@ export const DEV_HISTORY_OPEN = 'open';
 export const DEV_MODAL_TABS = {
   // The Context Menu reference exposes both production group dialogs with isolated data.
   designSystemGroupPicker: ['picker', 'create'],
+  // `tab=display&fixture=contribute` shows Contribute Corrections for a signed-in, attested player (Character Mentions on).
   settings: ['display', 'output', 'prompts', 'tools', 'endpoints', 'data'],
   // Settings → Tools opens a New Tool draft on its edit tab with `subtab=…`
   // (`#dev?modal=settings&tab=tools&subtab=handler`). The Tools tab is Advanced only.
@@ -177,6 +178,7 @@ export const DEV_MODAL_TABS = {
   // `tab=serverSettings` is the Server tab: one box per server setting, read from the live server, so
   // against a server without the settings routes each row reports that it went unanswered.
   // `fixture=serverSettings` serves every row from memory (`devServerSettingsStub.ts`); a Burst Size under 2 is refused.
+  // `tab=moderation&subtab=mentions&fixture=review` serves a canned Mentions queue (`devMentionsStub.ts`).
   // `fixture=hostedAi` adds the Formamorph AI panel over canned routes (`devHostedAiSample.ts`).
   // `tab=usage&fixture=usage` draws the Usage tab over canned figures (`devUsageSample.ts`).
   // `tab=mail` with `fixture=mail` (healthy) or `fixture=mailReview` (SES under review) draws the Mail tab over canned figures (`devMailSample.ts`).
@@ -266,7 +268,7 @@ export const DEV_MODAL_TABS = {
   // `pick=<item id>` opens one item's dialog
   // (`#dev?modal=adminPanel&tab=moderation&subtab=review&fixture=review&pick=dev-review-new`;
   // `subtab=auto` lands on the auto-approvals).
-  adminPanelModeration: ['reports', 'review', 'auto'],
+  adminPanelModeration: ['reports', 'review', 'auto', 'mentions'],
   // The acknowledge poster renders one of an event's two phases; `tab=…` picks which the canned event is at.
   eventAck: ['start', 'end'],
   // `player.*` prompt shapes on the game view (`#dev?view=gameViewer&fixture=whiteRoom&modal=scriptPrompt&tab=askLong`).

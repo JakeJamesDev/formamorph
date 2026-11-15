@@ -6,6 +6,7 @@ import ReviewService, { ReviewConflictError, type AutoApproval, type ReviewQueue
 import WorldStorageService, { type CatalogFetch, type ListingDetailsRead } from '@/services/WorldStorageService';
 import type { CatalogWorld } from '@/lib/worldCatalog';
 import { DEV_REVIEW_FIXTURE } from '@/lib/dev/devReviewViewer';
+import { syncDevMentionsStub } from '@/lib/dev/devMentionsStub';
 
 const STUBBED_KEYS = [
   'fetchMeta', 'fetchQueue', 'fetchCount', 'fetchContent', 'approve', 'reject', 'fetchAutoApproved', 'setTrusted',
@@ -208,6 +209,7 @@ let stubbed = false;
 function sync(): void {
   const wanted = getDevRoute()?.fixture === DEV_REVIEW_FIXTURE;
   if (wanted === stubbed) return;
+  syncDevMentionsStub(wanted);
   if (wanted) {
     Object.assign(ReviewService, devReviewMethods(devReviewFixtures()));
     Object.assign(WorldStorageService, {

@@ -8,7 +8,7 @@ import { entrySize, parseCorefManifest, type CorefManifest, type CorefManifestEn
 import {
   downloadEntry, isEntryCached, pruneCache, readEntryFiles, type CorefDownloadProgress, type CorefStoreDeps,
 } from './corefModelStore';
-import { readMentions, type MentionCast, type MentionReading, type MentionSceneContext } from './mentionReading';
+import { readPassageMentions, type MentionCast, type MentionReading, type MentionSceneContext } from './mentionReading';
 import type { CharacterMentionsModel } from '@/contexts/settingsDefaults';
 import { PROBE_PASSAGE } from './probePassage';
 
@@ -66,6 +66,9 @@ export interface PassageReading {
   model: CorefModelId;
   version: number;
   reading: MentionReading;
+  /** The host's clusters, as character spans, and the entity each one's vote named. */
+  clusters: CorefCluster[];
+  clusterEntities: (string | null)[];
 }
 
 export interface CharacterMentions {
@@ -280,7 +283,8 @@ export function createCharacterMentions(deps: CharacterMentionsDeps): CharacterM
       const entry = loaded;
       if (state.status !== 'ready' || !entry) return null;
       const clusters = await deps.host.resolve(text);
-      return { model: entry.model, version: entry.version, reading: readMentions(text, clusters, cast, scene) };
+      const { reading, clusterEntities } = readPassageMentions(text, clusters, cast, scene);
+      return { model: entry.model, version: entry.version, reading, clusters, clusterEntities };
     },
   };
 }

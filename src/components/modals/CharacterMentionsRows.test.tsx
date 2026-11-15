@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { CharacterMentionsState } from '@/lib/coref/characterMentions';
 import type { CharacterMentionsModel } from '@/contexts/settingsDefaults';
+import type { Contributor } from '@/lib/coref/correctionContribution';
 
 const fake = vi.hoisted(() => ({
   state: { status: 'off', progress: null, error: null, model: null, version: null } as CharacterMentionsState,
@@ -14,11 +15,15 @@ vi.mock('@/lib/coref/characterMentionsApp', () => ({
   useCharacterMentionsState: () => fake.state,
 }));
 
+const viewer = vi.hoisted(() => ({ contributor: { access: 'signedOut', accountId: null } as Contributor }));
+vi.mock('@/lib/coref/useContributeAccess', () => ({ useContributeAccess: () => viewer.contributor }));
+
 import { CharacterMentionsRows } from './CharacterMentionsRows';
 
-function mount(over: Partial<{ characterMentions: boolean; language: string; model: CharacterMentionsModel; advanced: boolean }> = {}) {
+function mount(over: Partial<{ characterMentions: boolean; language: string; model: CharacterMentionsModel; advanced: boolean; contribute: string | null }> = {}) {
   const setCharacterMentions = vi.fn();
   const setCharacterMentionsModel = vi.fn();
+  const setContributeCorrections = vi.fn();
   render(
     <CharacterMentionsRows
       advanced={over.advanced ?? true}
@@ -26,14 +31,16 @@ function mount(over: Partial<{ characterMentions: boolean; language: string; mod
         characterMentions: over.characterMentions ?? false, setCharacterMentions,
         characterMentionsModel: over.model ?? 'auto', setCharacterMentionsModel,
         language: over.language ?? 'English',
+        contributeCorrections: over.contribute ?? null, setContributeCorrections,
       }}
     />,
   );
-  return { setCharacterMentions, setCharacterMentionsModel, toggle: () => screen.getByRole('checkbox', { name: /Character Mentions/ }) };
+  return { setCharacterMentions, setCharacterMentionsModel, setContributeCorrections, toggle: () => screen.getByRole('checkbox', { name: /Character Mentions/ }) };
 }
 
 beforeEach(() => {
   fake.state = { status: 'off', progress: null, error: null, model: null, version: null };
+  viewer.contributor = { access: 'signedOut', accountId: null };
   vi.clearAllMocks();
 });
 
@@ -80,5 +87,65 @@ describe('the Character Mentions settings rows', () => {
   it('hides the model choice in simple mode', () => {
     mount({ advanced: false });
     expect(screen.queryByText('Mentions Model')).toBeNull();
+  });
+});
+
+const ACCOUNT_A: Contributor = { access: 'ready', accountId: 'acct-a' };
+
+describe('the Contribute Corrections row', () => {
+  const contribute = () => screen.queryByRole('checkbox', { name: /Contribute Corrections/ });
+  const click = () => fireEvent.click(screen.getByRole('checkbox', { name: /Contribute Corrections/ }));
+
+  it('shows only while Character Mentions is on', () => {
+    viewer.contributor = ACCOUNT_A;
+    mount({ characterMentions: false });
+    expect(contribute()).toBeNull();
+  });
+
+  it('is off by default, and turning it on records the signed-in account', () => {
+    viewer.contributor = ACCOUNT_A;
+    const { setContributeCorrections } = mount({ characterMentions: true });
+    expect(contribute()?.getAttribute('aria-checked')).toBe('false');
+    expect(contribute()?.hasAttribute('disabled')).toBe(false);
+    click();
+    expect(setContributeCorrections).toHaveBeenCalledWith('acct-a');
+  });
+
+  it('reads on for the account that opted in, and turning it off clears it', () => {
+    viewer.contributor = ACCOUNT_A;
+    const { setContributeCorrections } = mount({ characterMentions: true, contribute: 'acct-a' });
+    expect(contribute()?.getAttribute('aria-checked')).toBe('true');
+    click();
+    expect(setContributeCorrections).toHaveBeenCalledWith(null);
+  });
+
+  it('reads off for another account on the device (Q60)', () => {
+    viewer.contributor = { access: 'ready', accountId: 'acct-b' };
+    mount({ characterMentions: true, contribute: 'acct-a' });
+    expect(contribute()?.getAttribute('aria-checked')).toBe('false');
+    expect(contribute()?.hasAttribute('disabled')).toBe(false);
+  });
+
+  it('says the whole passage is sent and that accepted ones are kept', () => {
+    viewer.contributor = ACCOUNT_A;
+    mount({ characterMentions: true });
+    expect(screen.getByText('Sends the whole passage with each correction. Accepted ones are kept.')).toBeTruthy();
+  });
+
+  it('is disabled with the reason for a signed-out player, even when the setting was on', () => {
+    const { setContributeCorrections } = mount({ characterMentions: true, contribute: 'acct-a' });
+    expect(contribute()?.hasAttribute('disabled')).toBe(true);
+    expect(contribute()?.getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByText('Sign in to contribute')).toBeTruthy();
+    click();
+    expect(setContributeCorrections).not.toHaveBeenCalled();
+  });
+
+  it('is disabled with the reason without the 18+ confirmation', () => {
+    viewer.contributor = { access: 'unattested', accountId: 'acct-a' };
+    mount({ characterMentions: true, contribute: 'acct-a' });
+    expect(contribute()?.hasAttribute('disabled')).toBe(true);
+    expect(contribute()?.getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByText('Confirm you’re 18 or older to contribute')).toBeTruthy();
   });
 });

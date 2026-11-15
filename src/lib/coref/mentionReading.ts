@@ -99,12 +99,13 @@ function topVote(votes: Map<string, number>): string | null {
 
 const add = (votes: Map<string, number>, id: string, n = 1) => votes.set(id, (votes.get(id) ?? 0) + n);
 
-/** Every span the reading asserts, cluster mentions first, in the evaluation's order. */
-function nameMentions(text: string, clusters: CorefCluster[], cast: CastEntity[]): MentionLink[] {
+/** Every span the reading asserts, cluster mentions first, in the evaluation's order, and each cluster's entity. */
+function nameMentions(text: string, clusters: CorefCluster[], cast: CastEntity[]): { links: MentionLink[]; clusterEntities: (string | null)[] } {
   // The matcher reads only the picked fields.
   const hits: Hit[] = findEntityMatches(text, cast as Entity[])
     .flatMap((m) => m.spans.map((s) => ({ entityId: m.entityId, start: s.start, end: s.end, text: s.text })));
   const links: MentionLink[] = [];
+  const clusterEntities: (string | null)[] = [];
   const used = new Set<number>();
   for (const cluster of clusters) {
     const votes = new Map<string, number>();
@@ -124,6 +125,7 @@ function nameMentions(text: string, clusters: CorefCluster[], cast: CastEntity[]
     });
     for (const [s, f] of cluster) for (const [id, n] of headVotes(text, s, f, cast)) add(votes, id, n);
     const entityId = topVote(votes);
+    clusterEntities.push(entityId);
     for (const [s, f] of cluster) links.push({ start: s, end: f, entityId });
   }
   const everyday = new Map(cast.map((e) => [e.id, isEverydayName(e.name)]));
@@ -133,7 +135,7 @@ function nameMentions(text: string, clusters: CorefCluster[], cast: CastEntity[]
     if (everyday.get(h.entityId) && !used.has(i)) return;
     links.push({ start: h.start, end: h.end, entityId: h.entityId });
   });
-  return links;
+  return { links, clusterEntities };
 }
 
 /**
@@ -299,11 +301,19 @@ function quoteSpeakers(text: string, mentions: MentionLink[], player: Set<string
 export function readMentions(
   text: string, clusters: CorefCluster[], cast: CastEntity[], scene: MentionSceneContext = {},
 ): MentionReading {
+  return readPassageMentions(text, clusters, cast, scene).reading;
+}
+
+/** The Mention Reading of one finished passage, with the entity each cluster's vote named (Q35). */
+export function readPassageMentions(
+  text: string, clusters: CorefCluster[], cast: CastEntity[], scene: MentionSceneContext = {},
+): { reading: MentionReading; clusterEntities: (string | null)[] } {
   const player = playerWords(scene, cast);
   const prose = stripQuotedSpeech(text);
+  const { links, clusterEntities } = nameMentions(text, clusters, cast);
   // Deduped by span; the first assertion of a span wins, as the evaluation's scorer reads them.
   const seen = new Set<string>();
-  const mentions = nameMentions(text, clusters, cast).filter((m) => {
+  const mentions = links.filter((m) => {
     const key = `${m.start}:${m.end}`;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -314,5 +324,5 @@ export function readMentions(
     const narratorI = FIRST_PERSON.test(word) && prose.slice(m.start, m.end) === text.slice(m.start, m.end);
     return SECOND_PERSON.test(word) || player.has(word) || narratorI ? { ...m, entityId: null } : m;
   });
-  return { mentions, quotes: quoteSpeakers(text, mentions, player) };
+  return { reading: { mentions, quotes: quoteSpeakers(text, mentions, player) }, clusterEntities };
 }

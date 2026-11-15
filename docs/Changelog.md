@@ -54,6 +54,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Authors can pick an entity's quote color in the World Editor.** Quote Color offers 20 colors that read well in light and dark themes. Auto keeps the color Character Mentions gives it.
     - **The card a name opens in narration now shows that character's picture when you can see one.** A picture the world keeps hidden stays hidden. A character with no picture shows their initial.
     - **"Wrong character?" on a card lets you pick who a name or quote really means, or choose Someone Else.** The quote color, card and In Scene change at once, and your save keeps the fix. Press Enter on a name to reach its card from the keyboard.
+    - **Signed-in adults can send their "Wrong character?" fixes to help train the mentions model.** Turn on Contribute Corrections under Character Mentions. Each fix sends the whole passage, which is kept for training. It's off until you turn it on.
   - **Item scripts read their event's Item Instance as `instance`, and its quantity and use target from `args`.** Every script has `args`; it's empty where nothing passes one. Worlds that use `self.event` or `.copies` are rewritten when they load.
 - **🛠️ Developer tooling**
   - **Item Instances:**

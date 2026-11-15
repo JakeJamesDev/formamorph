@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity } from '@/types';
 import type { CharSpan, CorefCluster } from './corefHost';
-import { entitiesInProse, mentionEntityAt, readMentions } from './mentionReading';
+import { entitiesInProse, mentionEntityAt, readMentions, readPassageMentions } from './mentionReading';
 
 // Synthetic passages written for these guards.
 const cast = (...members: Partial<Entity>[]): Entity[] =>
@@ -18,6 +18,17 @@ function at(text: string, piece: string, nth = 1): CharSpan {
 }
 
 const entityAt = (reading: ReturnType<typeof readMentions>, span: CharSpan) => mentionEntityAt(reading, ...span);
+
+describe('the entity each cluster sends with a contribution (Q35)', () => {
+  it('names one entity or null per cluster, in cluster order, matching the reading', () => {
+    const text = 'Mira met a stranger. She nodded at him.';
+    const clusters: CorefCluster[] = [[at(text, 'a stranger'), at(text, 'him')], [at(text, 'Mira'), at(text, 'She')]];
+    const { reading, clusterEntities } = readPassageMentions(text, clusters, cast({ id: 'mira', name: 'Mira' }));
+    expect(clusterEntities).toEqual([null, 'mira']);
+    expect(entityAt(reading, at(text, 'She'))).toBe('mira');
+    expect(reading).toEqual(readMentions(text, clusters, cast({ id: 'mira', name: 'Mira' })));
+  });
+});
 
 describe('readMentions cluster naming', () => {
   it('names a cluster from a parser hit that ends one of its mentions', () => {

@@ -79,8 +79,10 @@ import { toastError } from "@/lib/linkToast";
 import { cancelOpenPrompts, isNotice, noticeHost, scriptPrompts, silentPrompts, type ScriptPromptHost } from "@/lib/scriptPrompts";
 import { isScriptPromptSample, SCRIPT_PROMPT_SAMPLES } from "@/lib/devScriptPromptSamples";
 import { addTell, latestTurnId, pruneTells, REROLLED_TIMINGS, setTurnTells, turnTells, withoutTimings } from "@/lib/scriptTells";
-import { pruneByNarration } from "@/lib/coref/mentionReadings";
+import { pruneByNarration, turnNarration } from "@/lib/coref/mentionReadings";
 import { applyCardCorrection } from "@/lib/coref/mentionCorrections";
+import { contributeTurn } from "@/lib/coref/correctionContribution";
+import { useContributeAccess } from "@/lib/coref/useContributeAccess";
 import { knownNameFor, memoryNarrationFor, readingNamesFor } from "@/lib/coref/mentionMemory";
 import { speakerColors } from "@/lib/coref/speakerPalette";
 import { MentionCardsProvider, mentionCardRows, type CardCorrection } from "@/components/game/MentionCards";
@@ -918,6 +920,7 @@ const GameViewer = ({
     setScriptTells,
     mentionReadings,
     setMentionReadings,
+    mentionCorrections,
     setMentionCorrections,
     correctedReadings,
     openingAction: openingTurnAction,
@@ -6568,11 +6571,25 @@ const GameViewer = ({
     [settings.characterMentions, playerViewReach, liveGate],
   );
 
-  // A card's correction joins its turn, against the narration that turn's reading read.
-  const correctMention = useCallback(
-    (correction: CardCorrection) => setMentionCorrections((prev) => applyCardCorrection(prev, mentionReadings, correction)),
-    [mentionReadings, setMentionCorrections],
-  );
+  // A card's correction joins its turn, against the narration that turn's reading read. With Contribute
+  // Corrections on, the turn's passage and every correction for it so far go to the review queue.
+  const contributeAccess = useContributeAccess();
+  // The send reads the latest corrections even when two land before a render.
+  const correctionsRef = useRef(mentionCorrections);
+  correctionsRef.current = mentionCorrections;
+  const correctMention = useCallback((correction: CardCorrection) => {
+    setMentionCorrections((prev) => applyCardCorrection(prev, mentionReadings, correction));
+    const next = applyCardCorrection(correctionsRef.current, mentionReadings, correction);
+    correctionsRef.current = next;
+    const passage = turnNarration(fullMessageHistory, correction.turnId);
+    if (passage === undefined) return;
+    void contributeTurn(settings.contributeCorrections, contributeAccess, {
+      worldId: worldId ? String(worldId) : null,
+      passage,
+      entry: mentionReadings[correction.turnId],
+      corrections: next[correction.turnId]?.corrections ?? [],
+    });
+  }, [mentionReadings, setMentionCorrections, fullMessageHistory, settings.contributeCorrections, contributeAccess, worldId]);
 
   // The scene images belonging to the page being viewed (one turn per page).
   const viewedTurn = parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? "");

@@ -5,6 +5,7 @@ import type { ChatMessage } from '@/types';
 import { parseTurnContent } from '@/lib/turnDigest';
 import type { CorefModelId } from './corefManifest';
 import type { MentionReading } from './mentionReading';
+import type { CorefCluster } from './corefHost';
 
 /** A turn's reading, with the model that made it and the narration it read. */
 export interface TurnMentionReading {
@@ -13,6 +14,9 @@ export interface TurnMentionReading {
   /** FNV-1a of the narration the reading's spans index into. */
   textHash: string;
   reading: MentionReading;
+  /** The host's clusters and each one's entity, which a contribution sends (Q35). A reading without them sends nothing (Q59). */
+  clusters?: CorefCluster[];
+  clusterEntities?: (string | null)[];
 }
 
 export type MentionReadingMap = Record<string, TurnMentionReading>;
@@ -72,6 +76,10 @@ export function turnsToRead(
     .map(([turnId, narration]) => ({ turnId, narration }));
 }
 
+/** A turn's narration, or undefined when `history` no longer holds the turn. */
+export const turnNarration = (history: readonly ChatMessage[], turnId: string): string | undefined =>
+  turnNarrations(history).get(turnId);
+
 /** Whether `history` still holds `turnId` with this narration. */
 export const holdsTurn = (history: readonly ChatMessage[], turnId: string, narration: string): boolean =>
   turnNarrations(history).get(turnId) === narration;
@@ -89,6 +97,12 @@ const isSpanList = (value: unknown, field: 'entityId' | 'speaker'): boolean => A
     && (span[field] === null || typeof span[field] === 'string');
 });
 
+const isClusterList = (clusters: unknown, entities: unknown): clusters is CorefCluster[] =>
+  Array.isArray(clusters) && Array.isArray(entities) && clusters.length === entities.length
+  && entities.every((id) => id === null || typeof id === 'string')
+  && clusters.every((cluster) => Array.isArray(cluster) && cluster.length > 0 && cluster.every((span) =>
+    Array.isArray(span) && span.length === 2 && Number.isInteger(span[0]) && Number.isInteger(span[1]) && span[0] < span[1]));
+
 /** The map a save holds, read back. A save is a file the player can edit, so only well-formed readings stay. */
 export function restoreMentionReadings(raw: unknown): MentionReadingMap {
   const restored: MentionReadingMap = {};
@@ -98,13 +112,16 @@ export function restoreMentionReadings(raw: unknown): MentionReadingMap {
     if (!entry || (entry.model !== 'big' && entry.model !== 'small') || typeof entry.version !== 'number'
       || typeof entry.textHash !== 'string' || !entry.reading
       || !isSpanList(entry.reading.mentions, 'entityId') || !isSpanList(entry.reading.quotes, 'speaker')) continue;
-    const { model, version, textHash, reading } = entry as TurnMentionReading;
+    const { model, version, textHash, reading, clusters, clusterEntities } = entry as TurnMentionReading;
     restored[turnId] = {
       model, version, textHash,
       reading: {
         mentions: reading.mentions.map(({ start, end, entityId }) => ({ start, end, entityId })),
         quotes: reading.quotes.map(({ start, end, speaker }) => ({ start, end, speaker })),
       },
+      ...(isClusterList(clusters, clusterEntities)
+        ? { clusters: clusters.map((cluster) => cluster.map(([s, e]): [number, number] => [s, e])), clusterEntities: [...(clusterEntities ?? [])] }
+        : {}),
     };
   }
   return restored;

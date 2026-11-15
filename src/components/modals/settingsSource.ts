@@ -21,6 +21,7 @@ export type DisplaySettingsSource = Pick<SettingsValue,
   | 'quoteColor' | 'setQuoteColor' | 'quoteColorMode' | 'activeQuoteColor' | 'setActiveQuoteColor'
   | 'quoteItalic' | 'setQuoteItalic'
   | 'characterMentions' | 'setCharacterMentions' | 'characterMentionsModel' | 'setCharacterMentionsModel'
+  | 'contributeCorrections' | 'setContributeCorrections'
   | 'showReasoning' | 'setShowReasoning' | 'showSilentRequests' | 'setShowSilentRequests'
 > & ThemeValue & FontTuneSource & RevealAnimationSource & ThemePreviewSource;
 

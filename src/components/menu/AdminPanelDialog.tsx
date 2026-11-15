@@ -36,6 +36,7 @@ import { useMountedRef } from "@/lib/useMountedRef";
 import AuthService from "@/services/AuthService";
 import ReportService from "@/services/ReportService";
 import ReviewService from "@/services/ReviewService";
+import CorefContributionService from "@/services/CorefContributionService";
 
 interface AdminPanelDialogProps {
   open: boolean;
@@ -76,6 +77,7 @@ export function AdminPanelDialog({
   // simply carries no count rather than reporting a failure nobody can act on.
   const [openReports, setOpenReports] = useState(0);
   const [waitingReviews, setWaitingReviews] = useState(0);
+  const [waitingMentions, setWaitingMentions] = useState(0);
   const review = useListingReviewMeta(open);
   const mounted = useMountedRef();
 
@@ -88,6 +90,10 @@ export function AdminPanelDialog({
     void ReviewService.fetchCount().then((count) => { if (mounted.current) setWaitingReviews(count); });
     onQueuesChanged?.();
   }, [onQueuesChanged, mounted]);
+
+  const readWaitingMentions = useCallback(() => {
+    void CorefContributionService.fetchCount().then((count) => { if (mounted.current) setWaitingMentions(count); });
+  }, [mounted]);
 
   useResetOnOpen(open, () => setTab(initialTab));
 
@@ -102,6 +108,10 @@ export function AdminPanelDialog({
     if (!open || !review.supported) return;
     void ReviewService.fetchCount().then((count) => { if (mounted.current) setWaitingReviews(count); });
   }, [open, review.supported, mounted]);
+
+  useEffect(() => {
+    if (open && review.supported) readWaitingMentions();
+  }, [open, review.supported, readWaitingMentions]);
 
   // Also honor a *change* of `initialTab` while the dialog is already open — the dev-router points at a
   // tab by changing this prop, and without it a second `goto` at an open panel is silently ignored.
@@ -213,6 +223,8 @@ export function AdminPanelDialog({
                 reviewSupported={review.supported}
                 openReports={openReports}
                 waitingReviews={waitingReviews}
+                waitingMentions={waitingMentions}
+                onMentionsChanged={readWaitingMentions}
                 onOpenListing={onOpenListing}
                 onReportsResolved={readOpenReports}
                 onReviewChanged={readWaitingReviews}

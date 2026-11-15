@@ -406,6 +406,12 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** Whether the player has attested; false without a provider, so a surface that only reads it fails closed. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function useAgeAttested(): boolean {
+  return useContext(AgeGateContext)?.attested ?? false;
+}
+
 /**
  * The age attestation.
  *

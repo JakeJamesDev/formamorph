@@ -272,6 +272,8 @@ export const DEFAULT_CHARACTER_MENTIONS = false;
 export const CHARACTER_MENTIONS_MODELS = ['auto', 'big', 'small'] as const;
 export type CharacterMentionsModel = (typeof CHARACTER_MENTIONS_MODELS)[number];
 export const DEFAULT_CHARACTER_MENTIONS_MODEL: CharacterMentionsModel = 'auto';
+// Sending corrections to the training corpus is opt-in per account (Q9, Q60): the id of the account that opted in.
+export const DEFAULT_CONTRIBUTE_CORRECTIONS: string | null = null;
 
 // The global Tools switch. On sends each prompt its offered Tools; each Tool is still opt-in.
 export const DEFAULT_TOOLS_ENABLED = true;
