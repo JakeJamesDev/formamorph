@@ -59,14 +59,19 @@ export function createWorkerClient(createWorker: () => Worker) {
   };
 
   /** Send `payload` (plus a generated `id`) to the worker; resolves with its `result`. `onProgress` receives
-   *  each `{ type: 'progress' }` message the worker posts for this request. */
-  const run = (payload: Record<string, unknown>, onProgress?: (progress: unknown) => void): Promise<unknown> =>
+   *  each `{ type: 'progress' }` message the worker posts for this request. `transfer` moves buffers instead
+   *  of copying them. */
+  const run = (
+    payload: Record<string, unknown>,
+    onProgress?: (progress: unknown) => void,
+    transfer: Transferable[] = [],
+  ): Promise<unknown> =>
     new Promise((resolve, reject) => {
       try {
         const worker = getWorker();
         const id = randomUUID();
         pendingRequests.set(id, { resolve, reject, onProgress });
-        worker.postMessage({ ...payload, id });
+        worker.postMessage({ ...payload, id }, transfer);
       } catch (error) {
         reject(error as Error);
       }

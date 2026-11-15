@@ -11612,7 +11612,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### onnxruntime-web@1.22.0-dev.20250409-89f8206ba4
+### onnxruntime-web@1.31.1
 
 - License: **MIT** · Microsoft/onnxruntime
 

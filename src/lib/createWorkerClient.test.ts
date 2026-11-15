@@ -5,11 +5,15 @@ import { createWorkerClient } from './createWorkerClient';
 class FakeWorker {
   listeners: Record<string, ((e: MessageEvent) => void)[]> = {};
   lastMessage: Record<string, unknown> | null = null;
+  lastTransfer: Transferable[] | undefined;
   terminated = false;
   addEventListener(type: string, cb: (e: MessageEvent) => void) {
     (this.listeners[type] ||= []).push(cb);
   }
-  postMessage(msg: Record<string, unknown>) { this.lastMessage = msg; }
+  postMessage(msg: Record<string, unknown>, transfer?: Transferable[]) {
+    this.lastMessage = msg;
+    this.lastTransfer = transfer;
+  }
   terminate() { this.terminated = true; }
   emit(data: unknown) {
     (this.listeners['message'] || []).forEach((cb) => cb({ data } as MessageEvent));
@@ -48,6 +52,15 @@ describe('createWorkerClient', () => {
     worker!.emit({ type: 'success', id, result: 'done' });
     await expect(pending).resolves.toBe('done');
     expect(seen).toEqual([1, 2]);
+  });
+
+  it('moves the buffers a request names instead of copying them', () => {
+    let worker: FakeWorker | null = null;
+    const client = createWorkerClient(() => (worker = new FakeWorker()) as unknown as Worker);
+    const bytes = new ArrayBuffer(8);
+    void client.run({ bytes }, undefined, [bytes]);
+    expect(worker!.lastTransfer).toEqual([bytes]);
+    expect(worker!.lastTransfer![0]).toBe(bytes);
   });
 
   it('rejects pending requests when terminated before a response', async () => {

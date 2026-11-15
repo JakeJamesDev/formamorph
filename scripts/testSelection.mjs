@@ -54,6 +54,7 @@ export const ALWAYS_RUN = {
   'src/lib/viewportSizing.test.ts': 'reads view sources and src/index.css',
   'src/lib/worldSearchLabels.test.ts': 'scans src/managers sources',
   'src/test/tokenCorpus.ts': 'scans every src file and bundled world for prompt tokens; selects promptTokenGrammar.test.ts',
+  'src/test/corefGold.ts': 'reads the private coref gold sets beside the checkout, which no change here alters',
 };
 
 /** Tests, and modules that tests import, that read from disk, but only what the module graph already covers. */
@@ -143,6 +144,7 @@ export const PATH_TRIGGERS = {
   'testing/baseline/help-baseline-cases.json': ['testing/baseline/harness/help-baseline-cases.ts'],
   'testing/baseline/help-recall-blind-cases.json': ['testing/baseline/harness/help-recall-cases.ts'],
   'testing/baseline/help-intent-cases.json': ['testing/baseline/harness/help-intent-score.ts'],
+  'src/lib/coref/__fixtures__/*': ['src/lib/coref/corefHost.test.ts', 'src/lib/coref/wordTokenizer.test.ts'],
   // The proxy forks the host as a child process instead of importing it.
   'electron/llmEngineHost.cjs': ['electron/llmEngineProxy.cjs'],
   // The fake llama-server replays the run recorded at the pinned tag; the stream parser test reads the same files.

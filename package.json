@@ -160,6 +160,7 @@
     "lexical": "^0.50.0",
     "lucide-react": "^1.31.0",
     "next-themes": "^0.4.6",
+    "onnxruntime-web": "1.31.1",
     "patch-package": "^8.0.1",
     "playwright": "^1.48.0",
     "postcss": "^8.4.41",
@@ -189,5 +190,8 @@
     "vite-node": "^6.0.0",
     "vitest": "^5.0.5",
     "wasm-webp": "^0.1.0"
+  },
+  "overrides": {
+    "onnxruntime-web": "$onnxruntime-web"
   }
 }

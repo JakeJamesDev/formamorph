@@ -1,5 +1,5 @@
 import { env } from "@huggingface/transformers";
-// The runtime instance transformers imports, undeclared in package.json so the two cannot drift apart.
+// The runtime instance transformers imports; package.json's override keeps both on one version.
 import * as ort from "onnxruntime-web";
 import ortMjsUrl from "onnxruntime-web-dist/ort-wasm-simd-threaded.jsep.mjs?url";
 import ortWasmUrl from "onnxruntime-web-dist/ort-wasm-simd-threaded.jsep.wasm?url";
