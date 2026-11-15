@@ -16,6 +16,12 @@ The player's edit, delete and restore work with named memories, and the entry ve
 - The Memory Manager's edit, delete and restore buttons route through the module.
 - Ships its docs: the Scripts Reference Memory section and the Memory page describe these rules.
 
+From ticket 01's landing (49c0f5c83):
+
+- A Memory Manager edit of a named memory still overwrites its text directly, so a later prune loses it (Q18). Route it through the module as a player revision.
+- The run chain predicts a new memory's id as `named:<turnId>:<name>`, but commit adds a `#2` suffix when a deleted memory holds that id. Resolve the verbs on such an entry by name, not by the predicted id.
+- The blank entry's verbs exist and do not throw (Q17). Add their ignored-and-reported tests and docs.
+
 ## Acceptance criteria
 
 - [ ] A script `edit` on a named memory, then a rewind of that turn, restores the text before it; the same on an unnamed memory persists, as today.
