@@ -19,6 +19,14 @@ export interface Contributor {
 export const contributesNow = (optedInAccount: string | null, { access, accountId }: Contributor): boolean =>
   access === 'ready' && accountId !== null && optedInAccount === accountId;
 
+/** Whether to ask this contributor the Contribute Corrections question: they may contribute, have not opted in,
+ *  and their account never answered it (Q64). */
+export const asksToContribute = (
+  optedInAccount: string | null, contributor: Contributor, answered: (accountId: string) => boolean,
+): boolean =>
+  contributor.access === 'ready' && contributor.accountId !== null
+  && !contributesNow(optedInAccount, contributor) && !answered(contributor.accountId);
+
 /** What one send needs: the turn's narration, its reading, and every correction for the turn so far. */
 export interface TurnContribution {
   worldId: string | null;

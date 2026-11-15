@@ -834,7 +834,6 @@ export const SETTINGS_BUTTONS = {
 /** Status text the modal draws where a group of controls would be. */
 export const SETTINGS_NOTES = {
   characterMentionsEnglishOnly: 'Works only when “AI Language” is English',
-  contributeSignIn: 'Sign in to contribute',
   contributeAgeGate: 'Confirm you’re 18 or older to contribute',
   imageGenerationOff: 'Image generation is off. Select “Enable Image Generation” to turn it on.',
   imageModelFromWorkflow: `Shows the model the workflow loads. Change it in **${SETTINGS_COPY.imageWorkflow.label}** under **Advanced**.`,

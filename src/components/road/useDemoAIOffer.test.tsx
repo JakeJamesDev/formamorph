@@ -2,8 +2,9 @@ import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 import type { CharacterMentionsState } from '@/lib/coref/characterMentions';
+import type { Contributor } from '@/lib/coref/correctionContribution';
 import {
-  demoAITurnCount, engineTurnCount, isDemoAICardSeen, isEngineCardSeen, isMentionsCardSeen, isMentionsOfferAccepted, markDemoAICardSeen,
+  demoAITurnCount, engineTurnCount, isContributeAsked, isDemoAICardSeen, markContributeAsked, isEngineCardSeen, isMentionsCardSeen, isMentionsOfferAccepted, markDemoAICardSeen,
   markEngineCardSeen, markMentionsCardSeen, mentionsTurnCount,
 } from '@/lib/firstTimeFlowStore';
 import { hostedSession } from '@/lib/hostedAi/hostedSession';
@@ -32,6 +33,10 @@ const mentions = vi.hoisted(() => ({ state: null as CharacterMentionsState | nul
 vi.mock('@/lib/coref/characterMentionsApp', () => ({
   useCharacterMentionsState: () => mentions.state ?? { status: 'off', progress: null, error: null, model: null, version: null },
 }));
+
+// Who may contribute corrections at this device.
+const viewer = vi.hoisted(() => ({ contributor: { access: 'signedOut', accountId: null } as Contributor }));
+vi.mock('@/lib/coref/useContributeAccess', () => ({ useContributeAccess: () => viewer.contributor }));
 
 const STATE = {
   state: 'ready', window: 24000, maxTokens: 600, tokenMargin: 800,
@@ -74,6 +79,7 @@ async function readState(state: Record<string, unknown>) {
 beforeEach(() => {
   localStorage.clear();
   mentions.state = null;
+  viewer.contributor = { access: 'signedOut', accountId: null };
   vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('offline (test)'))));
 });
 
@@ -390,6 +396,56 @@ describe('useMentionsStoryCard', () => {
     download('downloading');
     act(() => settings.setCharacterMentions(false));
     expect(showing()).toBe(false);
+  });
+
+  describe('the ask-once question (Q64)', () => {
+    const readyAfterTurnOn = () => {
+      const view = mountMentions();
+      expect(card.asking).toBe(false);
+      act(() => card.accept());
+      download('ready');
+      view.update(3, true);
+      return view;
+    };
+
+    it('asks a signed-in, attested player after Turn On and stays open past ready until a yes opts in', () => {
+      viewer.contributor = { access: 'ready', accountId: 'acct-a' };
+      readyAfterTurnOn();
+      expect([card.asking, showing()]).toEqual([true, true]);
+      expect(settings.contributeCorrections).toBeNull();
+      act(() => { card.answer(true); });
+      expect(settings.contributeCorrections).toBe('acct-a');
+      expect(isContributeAsked('acct-a')).toBe(true);
+      expect([card.asking, showing()]).toEqual([false, false]);
+      expect(funnelPosts()).toEqual([]);
+    });
+
+    it('a no records the answer and leaves the opt-in off', () => {
+      viewer.contributor = { access: 'ready', accountId: 'acct-a' };
+      readyAfterTurnOn();
+      act(() => { card.answer(false); });
+      expect(settings.contributeCorrections).toBeNull();
+      expect(isContributeAsked('acct-a')).toBe(true);
+      expect(showing()).toBe(false);
+    });
+
+    it('never asks an account that already answered', () => {
+      viewer.contributor = { access: 'ready', accountId: 'acct-a' };
+      markContributeAsked('acct-a');
+      readyAfterTurnOn();
+      expect([card.asking, showing()]).toEqual([false, false]);
+    });
+
+    it('never asks a player who is signed out or not attested, and closes at ready', () => {
+      for (const contributor of [{ access: 'signedOut', accountId: null }, { access: 'unattested', accountId: 'acct-a' }] as Contributor[]) {
+        localStorage.clear();
+        viewer.contributor = contributor;
+        const view = readyAfterTurnOn();
+        expect([card.asking, showing()]).toEqual([false, false]);
+        expect(isContributeAsked('acct-a')).toBe(false);
+        view.unmount();
+      }
+    });
   });
 });
 

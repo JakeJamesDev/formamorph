@@ -77,3 +77,9 @@ export const isMentionsCardSeen = (): boolean => isSet(MENTIONS_CARD_SEEN_KEY);
 export const markMentionsCardSeen = (): void => mark(MENTIONS_CARD_SEEN_KEY);
 export const isMentionsOfferAccepted = (): boolean => isSet(MENTIONS_OFFER_ACCEPTED_KEY);
 export const markMentionsOfferAccepted = (): void => mark(MENTIONS_OFFER_ACCEPTED_KEY);
+
+const CONTRIBUTE_ASKED_PREFIX = 'FORMAMORPH_contributeAsked_';
+
+/** This account answered the Contribute Corrections question on this device (Q64, Q69). */
+export const isContributeAsked = (accountId: string): boolean => isSet(CONTRIBUTE_ASKED_PREFIX + accountId);
+export const markContributeAsked = (accountId: string): void => mark(CONTRIBUTE_ASKED_PREFIX + accountId);

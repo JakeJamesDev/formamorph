@@ -12,6 +12,7 @@ import type { PlayerView, PlayerViewEntity } from '@/lib/formaquestion/playerVie
 import { hasStrangerFace, type EntityPresence } from '@/lib/presence';
 import { parseSpanKey, spanKey, type QuoteSpeakerSource, type SpeakerColors, type TextSpan } from '@/lib/quoteSegments';
 import { MENU_ROW } from '@/components/menuRow';
+import { ContributeQuestion } from './ContributeQuestion';
 import { parseMentionMark, turnMentionLinks } from '@/lib/coref/mentionLinks';
 import type { MentionCorrection } from '@/lib/coref/mentionCorrections';
 import type { MentionLink, QuoteSpeaker } from '@/lib/coref/mentionReading';
@@ -228,18 +229,29 @@ export function MentionTurn({ turnId, children }: { turnId: string | undefined; 
 /**
  * The one card of a narration surface, and what its triggers read. `rows` is the Player View's entities: a
  * mention or speaker without a row stays plain text (Q46). `onCorrect` corrects the opened mention or quote; the
- * card shows "Wrong character?" only with it, and only for a trigger inside a {@link MentionTurn}.
+ * card shows "Wrong character?" only with it, and only for a trigger inside a {@link MentionTurn}. When
+ * `askContribute` says so after a correction, the card asks the Contribute Corrections question; closing it unanswered
+ * answers no (Q69).
  */
-export function MentionCardsProvider({ colors, rows, onCorrect, pickable, children }: {
+export function MentionCardsProvider({ colors, rows, onCorrect, pickable, askContribute, onContributeAnswer, children }: {
   colors: SpeakerColors;
   rows: ReadonlyMap<string, PlayerViewEntity>;
   onCorrect?: (correction: CardCorrection) => void;
   /** The ids a turn's pick list offers (Q68); every row without it. */
   pickable?: (turnId: string) => ReadonlySet<string>;
+  /** Whether a correction asks the Contribute Corrections question. */
+  askContribute?: boolean;
+  onContributeAnswer?: (yes: boolean, turnId: string) => void;
   children: ReactNode;
 }) {
   const [card, setCard] = useState<OpenCard | null>(null);
   const [picking, setPicking] = useState(false);
+  // The turn whose correction the open question is about.
+  const [asking, setAsking] = useState<string | null>(null);
+  const askingRef = useRef(asking);
+  askingRef.current = asking;
+  const answerRef = useRef(onContributeAnswer);
+  answerRef.current = onContributeAnswer;
   const cardRef = useRef(card);
   cardRef.current = card;
   const timer = useRef<number | undefined>(undefined);
@@ -249,10 +261,19 @@ export function MentionCardsProvider({ colors, rows, onCorrect, pickable, childr
   const clearTimer = () => { window.clearTimeout(timer.current); timer.current = undefined; };
   useEffect(() => clearTimer, []);
 
+  // Ends the open question with `yes`; a card closed or replaced unanswered ends it with no.
+  const endQuestion = useCallback((yes: boolean) => {
+    const turnId = askingRef.current;
+    if (turnId === null) return;
+    askingRef.current = null;
+    setAsking(null);
+    answerRef.current?.(yes, turnId);
+  }, []);
   const show = useCallback((next: OpenCard | null) => {
+    endQuestion(false);
     setPicking(false);
     setCard(next);
-  }, []);
+  }, [endQuestion]);
 
   const open = useCallback((next: OpenCard) => {
     clearTimer();
@@ -288,13 +309,23 @@ export function MentionCardsProvider({ colors, rows, onCorrect, pickable, childr
 
   const value = useMemo(() => ({ colors, rows, open, hoverOut, blur }), [colors, rows, open, hoverOut, blur]);
   const row = card ? rows.get(card.entityId) : undefined;
-  const anchorRef = useMemo(() => ({ current: card?.anchor ?? null }), [card]);
+  // A correction remounts the narration, so the card follows its target's new element.
+  const anchorRef = useMemo(() => ({
+    current: card && {
+      getBoundingClientRect: () => (card.anchor.isConnected || !card.target ? card.anchor
+        : document.querySelector<HTMLElement>(`[${TARGET_ATTRIBUTE}="${CSS.escape(targetKey(card.target))}"]`) ?? card.anchor
+      ).getBoundingClientRect(),
+    },
+  }), [card]);
   const byKey = card?.by === 'key';
   const target = card?.target;
   const correct = onCorrect && target && card
     ? (entityId: string | null) => {
       onCorrect({ turnId: target.turnId, kind: card.role === 'speaker' ? 'quote' : 'mention', start: target.start, end: target.end, entityId });
-      show(null);
+      if (!askContribute) { show(null); return; }
+      setPicking(false);
+      askingRef.current = target.turnId;
+      setAsking(target.turnId);
     }
     : undefined;
   return (
@@ -329,7 +360,15 @@ export function MentionCardsProvider({ colors, rows, onCorrect, pickable, childr
             // A press on the open trigger is its own toggle, not a press outside.
             onInteractOutside={(event) => { if (event.target instanceof Node && card.anchor.contains(event.target)) event.preventDefault(); }}
           >
-            {picking && correct ? (
+            {asking !== null ? (
+              <ContributeQuestion
+                focusFirst={byKey}
+                onAnswer={(yes) => {
+                  endQuestion(yes);
+                  show(null);
+                }}
+              />
+            ) : picking && correct ? (
               <MentionPickList
                 role={card.role}
                 rows={pickable && target ? pickRows(rows, pickable(target.turnId)) : rows}

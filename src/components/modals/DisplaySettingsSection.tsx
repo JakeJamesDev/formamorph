@@ -304,6 +304,23 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
           </Meta>
         </div>
       </Row>
+      {/* Directly under the two rows it resets (Q66). */}
+      <Row>
+        <div>
+          <ConfirmDialog
+            {...SETTINGS_CONFIRMS.resetSizeSpacing}
+            onConfirm={() => { setNarrationScale(DEFAULT_NARRATION_SCALE); setNarrationLineHeight(DEFAULT_NARRATION_LINE_HEIGHT); }}
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={narrationScale === DEFAULT_NARRATION_SCALE && narrationLineHeight === DEFAULT_NARRATION_LINE_HEIGHT}
+            >
+              {SETTINGS_BUTTONS.resetSizeSpacing}
+            </Button>
+          </ConfirmDialog>
+        </div>
+      </Row>
       <CheckRow
         htmlFor="quoteColor"
         checked={quoteColor}
@@ -321,22 +338,6 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
         {...rowCopy('quoteItalic')}
       />
       <CharacterMentionsRows source={source} advanced={advanced} />
-      <Row>
-        <div>
-          <ConfirmDialog
-            {...SETTINGS_CONFIRMS.resetSizeSpacing}
-            onConfirm={() => { setNarrationScale(DEFAULT_NARRATION_SCALE); setNarrationLineHeight(DEFAULT_NARRATION_LINE_HEIGHT); }}
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={narrationScale === DEFAULT_NARRATION_SCALE && narrationLineHeight === DEFAULT_NARRATION_LINE_HEIGHT}
-            >
-              {SETTINGS_BUTTONS.resetSizeSpacing}
-            </Button>
-          </ConfirmDialog>
-        </div>
-      </Row>
       </Section>
 
       {/* Both rows only decide whether a panel appears on screen — nothing about them changes what

@@ -11,6 +11,8 @@ import { sendFunnelStep, type FunnelStep } from '@/lib/funnel';
 import type { HostedSnapshot } from '@/lib/hostedAi/hostedSession';
 import { HOSTED_AI_AVAILABLE } from '@/lib/hostedAi/hostedUrls';
 import { useCharacterMentionsState } from '@/lib/coref/characterMentionsApp';
+import { useContributeAsk } from '@/lib/coref/useContributeAsk';
+import { useContributeAccess } from '@/lib/coref/useContributeAccess';
 import { isEnglishLanguage } from '@/lib/languages';
 import { flairTier } from '@/lib/supporterFlair';
 import { useVramClass } from '@/lib/vramClass';
@@ -126,7 +128,7 @@ export function useEngineStoryCard(turn: CardTurn) {
 
 /** The Character Mentions card (Q52). After Turn On it stays to show the download until the model is ready. */
 export function useMentionsStoryCard(turn: CardTurn) {
-  const { characterMentions: enabled, setCharacterMentions, language } = useSettings();
+  const { characterMentions: enabled, setCharacterMentions, language, contributeCorrections, setContributeCorrections } = useSettings();
   const english = isEnglishLanguage(language);
   const { status } = useCharacterMentionsState();
   const [accepted, setAccepted] = useState(false);
@@ -144,9 +146,14 @@ export function useMentionsStoryCard(turn: CardTurn) {
     setCharacterMentions(true);
   }, [setCharacterMentions]);
 
-  // Ready, or turned off again in Settings, ends the download view.
-  const finished = accepted && (status === 'ready' || !enabled || !english);
-  return { showing: card.showing && !finished, accepted, accept, dismiss: card.dismiss };
+  // After Turn On, a signed-in, attested player is asked Contribute Corrections once (Q64).
+  const ask = useContributeAsk(contributeCorrections, setContributeCorrections, useContributeAccess());
+  const asking = accepted && ask.asks;
+  const { answer } = ask;
+
+  // Ready once answered, or turned off again in Settings, ends the download view.
+  const finished = accepted && ((status === 'ready' && !asking) || !enabled || !english);
+  return { showing: card.showing && !finished, accepted, accept, dismiss: card.dismiss, asking, answer };
 }
 
 /**

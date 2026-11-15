@@ -15,11 +15,16 @@ vi.mock('@/lib/coref/characterMentionsApp', () => ({
 
 import { MentionsStoryCard } from './MentionsStoryCard';
 
-const mount = (accepted: boolean) => {
+const mount = (accepted: boolean, asking = false) => {
   const onTurnOn = vi.fn();
   const onNotNow = vi.fn();
-  render(<SettingsProvider><MentionsStoryCard accepted={accepted} onTurnOn={onTurnOn} onNotNow={onNotNow} /></SettingsProvider>);
-  return { onTurnOn, onNotNow, card: () => screen.getByTestId('mentions-story-card') };
+  const onAnswer = vi.fn();
+  render(
+    <SettingsProvider>
+      <MentionsStoryCard accepted={accepted} onTurnOn={onTurnOn} onNotNow={onNotNow} asking={asking} onAnswer={onAnswer} />
+    </SettingsProvider>,
+  );
+  return { onTurnOn, onNotNow, onAnswer, card: () => screen.getByTestId('mentions-story-card') };
 };
 
 beforeEach(() => {
@@ -42,7 +47,9 @@ describe('the Character Mentions card', () => {
     fake.state = { ...fake.state, status: 'downloading', progress: { loaded: 50 * 1048576, total: 143 * 1048576 } };
     const { card } = mount(true);
     expect(within(card()).getByText('50 / 143 MB')).toBeTruthy();
-    expect(within(card()).queryAllByRole('button')).toEqual([]);
+    // The preview's mentions and What's this? stay; the offer's own actions go.
+    const actions = within(card()).getAllByRole('button').filter((b) => !b.closest('[data-testid="mentions-preview"]'));
+    expect(actions.map((b) => b.textContent)).toEqual(['What’s this?']);
   });
 
   it('shows a failed download with Retry and Not Now', () => {
@@ -52,5 +59,36 @@ describe('the Character Mentions card', () => {
     fireEvent.click(within(card()).getByRole('button', { name: 'Retry' }));
     expect(fake.retry).toHaveBeenCalledTimes(1);
     expect(within(card()).getByRole('button', { name: 'Not Now' })).toBeTruthy();
+  });
+
+  it('shows the preview in place of Morphie, and What’s this? opens it larger', () => {
+    const { card } = mount(false);
+    expect(within(card()).getByTestId('mentions-preview')).toBeTruthy();
+    expect(card().querySelector('img')).toBeNull();
+    fireEvent.click(within(card()).getByRole('button', { name: 'What’s this?' }));
+    const dialog = screen.getByRole('dialog', { name: 'Character Mentions' });
+    expect(within(dialog).getByTestId('mentions-preview').textContent).toContain('"Then pour mine," you say.');
+  });
+
+  it('asks Contribute Corrections under the download once accepted, and passes the answer on', () => {
+    fake.state = { ...fake.state, status: 'ready' };
+    const { card, onAnswer } = mount(true, true);
+    const question = within(card()).getByTestId('contribute-question');
+    expect(question.textContent).toMatch(/whole passage goes to Formamorph.*Accepted passages are kept/);
+    fireEvent.click(within(question).getByRole('button', { name: 'No Thanks' }));
+    fireEvent.click(within(question).getByRole('button', { name: 'Contribute' }));
+    expect(onAnswer.mock.calls).toEqual([[false], [true]]);
+  });
+
+  it('asks nothing under a failed download, which offers Not Now', () => {
+    fake.state = { ...fake.state, status: 'error', error: 'offline' };
+    const { card } = mount(true, true);
+    expect(within(card()).queryByTestId('contribute-question')).toBeNull();
+    expect(within(card()).getByRole('button', { name: 'Not Now' })).toBeTruthy();
+  });
+
+  it('asks nothing before Turn On', () => {
+    const { card } = mount(false, true);
+    expect(within(card()).queryByTestId('contribute-question')).toBeNull();
   });
 });

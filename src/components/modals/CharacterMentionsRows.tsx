@@ -9,7 +9,8 @@ import { isEnglishLanguage } from '@/lib/languages';
 import { characterMentions, useCharacterMentionsState } from '@/lib/coref/characterMentionsApp';
 import { usePlannedDownloadSize } from '@/lib/coref/usePlannedDownloadSize';
 import { useContributeAccess } from '@/lib/coref/useContributeAccess';
-import { contributesNow, type ContributeAccess } from '@/lib/coref/correctionContribution';
+import { contributesNow } from '@/lib/coref/correctionContribution';
+import { markContributeAsked } from '@/lib/firstTimeFlowStore';
 import type { DisplaySettingsSource } from './settingsSource';
 
 const MODEL_OPTIONS: readonly SettingOptionCopy<CharacterMentionsModel>[] = SETTINGS_OPTIONS.characterMentionsModel;
@@ -24,12 +25,8 @@ export function MentionsDownloadError({ error }: { error: string | null }) {
   );
 }
 
-const ACCESS_NOTES: Record<Exclude<ContributeAccess, 'ready'>, string> = {
-  signedOut: SETTINGS_NOTES.contributeSignIn,
-  unattested: SETTINGS_NOTES.contributeAgeGate,
-};
-
-/** The Character Mentions toggle, its download rows, the model choice, and Contribute Corrections. */
+/** The Character Mentions toggle, its download rows, the model choice, and Contribute Corrections (Q64), which shows
+ *  only while the feature is on and the player is signed in. */
 export function CharacterMentionsRows({ source, advanced }: {
   source: Pick<DisplaySettingsSource,
     | 'characterMentions' | 'setCharacterMentions' | 'characterMentionsModel' | 'setCharacterMentionsModel' | 'language'
@@ -76,16 +73,6 @@ export function CharacterMentionsRows({ source, advanced }: {
           <MentionsDownloadError error={error} />
         </Row>
       )}
-      {enabled && english && (
-        <CheckRow
-          htmlFor="contributeCorrections"
-          checked={contributesNow(source.contributeCorrections, contributor)}
-          disabled={access !== 'ready'}
-          onChange={(on) => source.setContributeCorrections(on ? accountId : null)}
-          below={access === 'ready' ? undefined : <Meta>{ACCESS_NOTES[access]}</Meta>}
-          {...rowCopy('contributeCorrections')}
-        />
-      )}
       {advanced && english && (
         <Row top {...optionRowCopy('characterMentionsModel', selected)}>
           <div>
@@ -100,6 +87,20 @@ export function CharacterMentionsRows({ source, advanced }: {
             </div>
           </div>
         </Row>
+      )}
+      {enabled && english && access !== 'signedOut' && (
+        <CheckRow
+          htmlFor="contributeCorrections"
+          checked={contributesNow(source.contributeCorrections, contributor)}
+          disabled={access !== 'ready'}
+          onChange={(on) => {
+            // A change here answers the ask-once question (Q69).
+            if (accountId !== null) markContributeAsked(accountId);
+            source.setContributeCorrections(on ? accountId : null);
+          }}
+          below={access === 'unattested' ? <Meta>{SETTINGS_NOTES.contributeAgeGate}</Meta> : undefined}
+          {...rowCopy('contributeCorrections')}
+        />
       )}
     </>
   );

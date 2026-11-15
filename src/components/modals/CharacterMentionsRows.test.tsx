@@ -18,6 +18,7 @@ vi.mock('@/lib/coref/characterMentionsApp', () => ({
 const viewer = vi.hoisted(() => ({ contributor: { access: 'signedOut', accountId: null } as Contributor }));
 vi.mock('@/lib/coref/useContributeAccess', () => ({ useContributeAccess: () => viewer.contributor }));
 
+import { isContributeAsked } from '@/lib/firstTimeFlowStore';
 import { CharacterMentionsRows } from './CharacterMentionsRows';
 
 function mount(over: Partial<{ characterMentions: boolean; language: string; model: CharacterMentionsModel; advanced: boolean; contribute: string | null }> = {}) {
@@ -41,6 +42,7 @@ function mount(over: Partial<{ characterMentions: boolean; language: string; mod
 beforeEach(() => {
   fake.state = { status: 'off', progress: null, error: null, model: null, version: null };
   viewer.contributor = { access: 'signedOut', accountId: null };
+  localStorage.clear();
   vi.clearAllMocks();
 });
 
@@ -132,13 +134,28 @@ describe('the Contribute Corrections row', () => {
     expect(screen.getByText('Sends the whole passage with each correction. Accepted ones are kept.')).toBeTruthy();
   });
 
-  it('is disabled with the reason for a signed-out player, even when the setting was on', () => {
-    const { setContributeCorrections } = mount({ characterMentions: true, contribute: 'acct-a' });
-    expect(contribute()?.hasAttribute('disabled')).toBe(true);
-    expect(contribute()?.getAttribute('aria-checked')).toBe('false');
-    expect(screen.getByText('Sign in to contribute')).toBeTruthy();
+  it('is hidden for a signed-out player, even when the setting was on (Q64)', () => {
+    mount({ characterMentions: true, contribute: 'acct-a' });
+    expect(contribute()).toBeNull();
+  });
+
+  it('sits under the toggle and the model choice, in that order (Q64)', () => {
+    viewer.contributor = ACCOUNT_A;
+    mount({ characterMentions: true });
+    const order = ['Character Mentions', 'Mentions Model', 'Contribute Corrections']
+      .map((label) => screen.getAllByText(label)[0]);
+    order.slice(1).forEach((el, i) => {
+      expect(order[i].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+  });
+
+  it('records a change here as the answer to the ask-once question (Q69)', () => {
+    viewer.contributor = ACCOUNT_A;
+    mount({ characterMentions: true });
+    expect(isContributeAsked('acct-a')).toBe(false);
     click();
-    expect(setContributeCorrections).not.toHaveBeenCalled();
+    expect(isContributeAsked('acct-a')).toBe(true);
+    expect(isContributeAsked('acct-b')).toBe(false);
   });
 
   it('is disabled with the reason without the 18+ confirmation', () => {

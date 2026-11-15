@@ -82,6 +82,7 @@ import { addTell, latestTurnId, pruneTells, REROLLED_TIMINGS, setTurnTells, turn
 import { pruneByNarration, turnNarration } from "@/lib/coref/mentionReadings";
 import { applyCardCorrection } from "@/lib/coref/mentionCorrections";
 import { contributeTurn } from "@/lib/coref/correctionContribution";
+import { useCorrectionContribution } from "@/lib/coref/useContributeAsk";
 import { useContributeAccess } from "@/lib/coref/useContributeAccess";
 import { knownNameFor, memoryNarrationFor, readingNamesFor } from "@/lib/coref/mentionMemory";
 import { speakerColors } from "@/lib/coref/speakerPalette";
@@ -6589,35 +6590,41 @@ const GameViewer = ({
   );
 
   // A card's correction joins its turn, against the narration that turn's reading read. With Contribute
-  // Corrections on, the turn's passage and every correction for it so far go to the review queue.
+  // Corrections on, the turn's passage and every correction for it so far go to the review queue; the first
+  // correction of an account never asked asks once (Q64).
   const contributeAccess = useContributeAccess();
   // The send reads the latest corrections even when two land before a render.
   const correctionsRef = useRef(mentionCorrections);
   correctionsRef.current = mentionCorrections;
-  const correctMention = useCallback((correction: CardCorrection) => {
-    setMentionCorrections((prev) => applyCardCorrection(prev, mentionReadings, correction));
-    const next = applyCardCorrection(correctionsRef.current, mentionReadings, correction);
-    correctionsRef.current = next;
-    const passage = turnNarration(fullMessageHistory, correction.turnId);
+  const sendTurnCorrections = useCallback((optedInAccount: string, turnId: string) => {
+    const passage = turnNarration(fullMessageHistory, turnId);
     if (passage === undefined) return;
-    void contributeTurn(settings.contributeCorrections, contributeAccess, {
+    void contributeTurn(optedInAccount, contributeAccess, {
       worldId: worldId ? String(worldId) : null,
       passage,
-      entry: mentionReadings[correction.turnId],
-      corrections: next[correction.turnId]?.corrections ?? [],
+      entry: mentionReadings[turnId],
+      corrections: correctionsRef.current[turnId]?.corrections ?? [],
     });
-  }, [mentionReadings, setMentionCorrections, fullMessageHistory, settings.contributeCorrections, contributeAccess, worldId]);
+  }, [fullMessageHistory, contributeAccess, worldId, mentionReadings]);
+  const { corrected, asks: asksContribute, answerContribute } = useCorrectionContribution(
+    settings.contributeCorrections, settings.setContributeCorrections, contributeAccess, sendTurnCorrections,
+  );
+  const correctMention = useCallback((correction: CardCorrection) => {
+    setMentionCorrections((prev) => applyCardCorrection(prev, mentionReadings, correction));
+    correctionsRef.current = applyCardCorrection(correctionsRef.current, mentionReadings, correction);
+    corrected(correction.turnId);
+  }, [mentionReadings, setMentionCorrections, corrected]);
 
   // The scene images belonging to the page being viewed (one turn per page).
   const viewedTurn = parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? "");
 
   // DEV dev-router: the story card `modal=storyCard&tab=…` forces, whatever the counts say.
   const devStoryCard = import.meta.env.DEV && devRoute?.modal === 'storyCard'
-    ? (devRoute.tab === 'engine' || devRoute.tab === 'mentions' ? devRoute.tab : 'demo')
+    ? (devRoute.tab === 'engine' || devRoute.tab === 'mentions' || devRoute.tab === 'mentionsAsk' || devRoute.tab === 'mentionsPreview' ? devRoute.tab : 'demo')
     : null;
 
   const middlePanel = (
-    <MentionCardsProvider colors={shownQuoteColors} rows={cardRows} onCorrect={correctMention} pickable={pickable}>
+    <MentionCardsProvider colors={shownQuoteColors} rows={cardRows} onCorrect={correctMention} pickable={pickable} askContribute={asksContribute} onContributeAnswer={answerContribute}>
     <MiddlePanel
       parseAssistantMessage={parseAssistantMessage}
       narrationBadge={<DemoAIBadge onOpen={openDemoAIDialog} />}
@@ -6626,8 +6633,12 @@ const GameViewer = ({
         <StoryCard className="my-4" testId="engine-story-card" {...ENGINE_CARD_COPY} onNotNow={engineCard.dismiss} onAction={() => { engineCard.dismiss(); openRoadScene('engine'); }} />
       ) : storyCard.showing || devStoryCard === 'demo' ? (
         <StoryCard className="my-4" onNotNow={storyCard.dismiss} onAction={() => { storyCard.dismiss(); openRoadScene('demo'); }} />
+      ) : devStoryCard === 'mentionsAsk' ? (
+        <MentionsStoryCard className="my-4" accepted asking onTurnOn={() => {}} onNotNow={() => {}} onAnswer={() => {}} />
+      ) : devStoryCard === 'mentionsPreview' ? (
+        <MentionsStoryCard className="my-4" accepted={false} previewOpen onTurnOn={() => {}} onNotNow={() => {}} />
       ) : mentionsCard.showing || devStoryCard === 'mentions' ? (
-        <MentionsStoryCard className="my-4" accepted={mentionsCard.accepted} onTurnOn={mentionsCard.accept} onNotNow={mentionsCard.dismiss} />
+        <MentionsStoryCard className="my-4" accepted={mentionsCard.accepted} onTurnOn={mentionsCard.accept} onNotNow={mentionsCard.dismiss} asking={mentionsCard.asking} onAnswer={mentionsCard.answer} />
       ) : null}
       totalPages={totalPages}
       handlePageChange={handlePageChange}

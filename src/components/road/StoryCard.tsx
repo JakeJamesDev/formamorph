@@ -16,10 +16,11 @@ export const ENGINE_CARD_COPY = {
 };
 
 /** The offer in the story: under the latest narration, above the choices. It never takes focus. AI setup reuses it
- *  with its own words and no Not Now; the Character Mentions offer with its own action. With neither handler, no
- *  buttons show. */
+ *  with its own words and no Not Now; the Character Mentions offer with its own action and a picture in Morphie's
+ *  place. With neither handler, no buttons show. */
 export function StoryCard({
   onNotNow, onAction, actionLabel = 'See Levels', ariaLabel = 'Formamorph AI', className, testId = 'story-card',
+  media,
   title = 'Want Better Narration for This Story?',
   body = 'Formamorph AI writes sharper narration and keeps characters consistent. Your support includes it, and it helps fund new updates.',
   children,
@@ -34,35 +35,52 @@ export function StoryCard({
   body?: string;
   /** Rows under the body, such as a download bar. */
   children?: ReactNode;
+  /** Shown in Morphie's place. */
+  media?: ReactNode;
 }) {
   const [base, setBase] = useState<MascotSize | null>(null);
   // Always the stock Morphie, whatever Mascot the player picks.
   const images = useMemo(() => composeMascot(DEFAULT_MASCOT_RIG, 'initial', null), []);
+  const words = (
+    <>
+      <div className="text-label font-semibold">{title}</div>
+      <Meta as="p">{body}</Meta>
+    </>
+  );
   return (
     <div
       role="group"
       aria-label={ariaLabel}
       data-testid={testId}
       className={cn(
-        'flex flex-col gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm sm:flex-row sm:items-center',
+        'flex flex-col gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm',
+        !media && 'sm:flex-row sm:items-center',
         'animate-in fade-in slide-in-from-bottom-1 motion-reduce:animate-none',
         className,
       )}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="shrink-0">
-          <MascotPiece
-            images={images}
-            size={base && { w: Math.round((MORPHIE_HEIGHT * base.width) / base.height), h: MORPHIE_HEIGHT }}
-            onBase={setBase}
-          />
-        </div>
-        <div className="min-w-0">
-          <div className="text-label font-semibold">{title}</div>
-          <Meta as="p">{body}</Meta>
+      {media ? (
+        // A picture stacks under the words, so it keeps the narration's width.
+        <div className="min-w-0 space-y-3">
+          <div>{words}</div>
+          {media}
           {children}
         </div>
-      </div>
+      ) : (
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="shrink-0">
+            <MascotPiece
+              images={images}
+              size={base && { w: Math.round((MORPHIE_HEIGHT * base.width) / base.height), h: MORPHIE_HEIGHT }}
+              onBase={setBase}
+            />
+          </div>
+          <div className="min-w-0">
+            {words}
+            {children}
+          </div>
+        </div>
+      )}
       {/* Negative first, so the action sits on the right, and on top below `sm`. */}
       {(onNotNow || onAction) && (
         <div className="flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
