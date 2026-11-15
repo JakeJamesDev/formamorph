@@ -13,6 +13,7 @@ vi.mock('../services/WorldStorageService', () => ({
     initialize: vi.fn(),
     getWorldMetadata: vi.fn().mockResolvedValue([]),
     storeWorld: vi.fn().mockResolvedValue(undefined),
+    getSupporterCopy: vi.fn().mockResolvedValue(null),
   },
 }));
 
@@ -48,6 +49,13 @@ const WORLD = benchEditorWorld({
   items: [{ ...blankItem('lantern', 'Tin Lantern'), images: [{ data: ITEM_IMAGE }] }],
 });
 
+// Optimize waits for the world's Supporter Copy read, as a player's click would.
+const clickOptimize = async () => {
+  const button = screen.getByRole('button', { name: 'Optimize Images' });
+  await waitFor(() => expect(button).toHaveAttribute('aria-disabled', 'false'));
+  fireEvent.click(button);
+};
+
 beforeEach(() => {
   localStorage.clear();
   reloadTourProgress();
@@ -61,7 +69,7 @@ describe('Optimize Images over an item image', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/^Media$/);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Optimize Images' }));
+    await clickOptimize();
     expect(await screen.findByText(/This world has 2 images larger than recommended/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Downscale' }));
 
@@ -83,7 +91,7 @@ describe('Optimize Images over an item image', () => {
     }, 'advanced');
     openEditorTab(/^Media$/);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Optimize Images' }));
+    await clickOptimize();
     await screen.findByText(/This world has 2 images larger than recommended/);
     fireEvent.click(screen.getByRole('button', { name: 'Downscale' }));
 

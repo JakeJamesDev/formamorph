@@ -17,6 +17,7 @@ export type SupporterCopyAction =
   | 'backup'
   | 'crashExport'
   | 'saveToLibrary'
+  | 'optimizeImages'
   | { addToWorld: string };
 
 /** A world or a library entry, as far as the rule reads it. */
@@ -40,6 +41,7 @@ const WORLD_REASONS: Record<Exclude<SupporterCopyAction, object>, string | null>
   backup: "You can't back up a Supporter world",
   crashExport: "You can't export a Supporter world",
   saveToLibrary: null,
+  optimizeImages: "You can't optimize images in a Supporter world",
 };
 
 const ENTRY_REASONS: Record<Exclude<SupporterCopyAction, object>, string | null> = {
@@ -48,6 +50,7 @@ const ENTRY_REASONS: Record<Exclude<SupporterCopyAction, object>, string | null>
   exportSave: null,
   exportAiContext: null,
   crashExport: null,
+  optimizeImages: null,
   exportEntity: "You can't export content saved from a Supporter world",
   exportDictionary: "You can't export content saved from a Supporter world",
   duplicate: "You can't duplicate content saved from a Supporter world",

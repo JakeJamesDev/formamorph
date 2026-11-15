@@ -33,10 +33,24 @@ vi.mock('react-toastify', () => ({
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('@/views/ModelViewer', () => ({ default: () => <div data-testid="model-viewer" /> }));
 
+// Counts the encode pass Optimize Images starts.
+const encode = vi.hoisted(() => ({ starts: 0 }));
+vi.mock('@/lib/useDownscalePrompt', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/useDownscalePrompt')>();
+  return {
+    ...actual,
+    useDownscalePrompt: () => ({
+      ...actual.useDownscalePrompt(),
+      promptWorld: async () => { encode.starts += 1; return null; },
+    }),
+  };
+});
+
 const SUPPORTER = { listingId: 'listing-1', accountId: 'me', revision: 1 };
 
 beforeEach(() => {
   marker.pending = false;
+  encode.starts = 0;
   localStorage.clear();
   vi.mocked(downloadBlob).mockClear();
   holdUnsavedWorld(null);
@@ -95,6 +109,14 @@ describe('a Supporter Copy in the World Editor', () => {
     expect(downloadBlob).not.toHaveBeenCalled();
   });
 
+  it('disables Optimize Images in the Media tab and runs no encode', async () => {
+    await mount(true);
+    openEditorTab(/Media/);
+    await expectBlocked(screen.getByRole('button', { name: 'Optimize Images' }), "You can't optimize images in a Supporter world");
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    expect(encode.starts).toBe(0);
+  });
+
   it('holds the unsaved world for the crash screen with the export blocked', async () => {
     const { ctx } = await mount(true);
     act(() => { ctx().updateWorldOverview({ description: 'Edited.' }); });
@@ -132,6 +154,10 @@ describe('a plain world in the World Editor', () => {
     fireEvent.click(document.querySelector<HTMLElement>('[data-media-card="sound"]')!);
     fireEvent.click(within(document.querySelector<HTMLElement>('[data-media-panel]')!).getByRole('button', { name: 'Download' }));
     await waitFor(() => expect(downloadBlob).toHaveBeenCalledTimes(1));
+
+    openEditorTab(/Media/);
+    fireEvent.click(screen.getByRole('button', { name: 'Optimize Images' }));
+    await waitFor(() => expect(encode.starts).toBe(1));
 
     act(() => { ctx().updateWorldOverview({ description: 'Edited.' }); });
     await waitFor(() => expect(unsavedWorldExportBlock()).toBeNull());

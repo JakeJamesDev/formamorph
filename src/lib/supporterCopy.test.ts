@@ -6,7 +6,7 @@ const world = { supporterCopy: marker };
 const entry = { supporterCopy: { ...marker, sourceWorldId: 'world-1' } };
 
 const WORLD_BLOCKED: SupporterCopyAction[] = [
-  'exportWorld', 'exportEntity', 'exportDictionary', 'exportSave', 'exportAiContext', 'duplicate', 'publish', 'downloadMedia', 'backup', 'crashExport',
+  'exportWorld', 'exportEntity', 'exportDictionary', 'exportSave', 'exportAiContext', 'duplicate', 'publish', 'downloadMedia', 'backup', 'crashExport', 'optimizeImages',
 ];
 const ENTRY_BLOCKED: SupporterCopyAction[] = ['exportEntity', 'exportDictionary', 'duplicate', 'publish', 'downloadMedia', 'backup'];
 const EVERY: SupporterCopyAction[] = [...WORLD_BLOCKED, 'saveToLibrary', { addToWorld: 'world-1' }, { addToWorld: 'world-2' }];
@@ -15,6 +15,10 @@ describe('supporterCopyBlock', () => {
   it.each(WORLD_BLOCKED)('blocks %s on a Supporter Copy world, with a reason', (action) => {
     expect(supporterCopyBlock(world, action)).toMatch(/Supporter world/);
     expect(supporterCopyAllows(world, action)).toBe(false);
+  });
+
+  it('allows Optimize Images on a library entry', () => {
+    expect(supporterCopyAllows(entry, 'optimizeImages')).toBe(true);
   });
 
   it('allows Save to Library on a Supporter Copy world', () => {

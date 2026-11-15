@@ -15,6 +15,7 @@ vi.mock('../services/WorldStorageService', () => ({
     initialize: vi.fn(),
     getWorldMetadata: vi.fn().mockResolvedValue([]),
     storeWorld: vi.fn().mockResolvedValue(undefined),
+    getSupporterCopy: vi.fn().mockResolvedValue(null),
   },
 }));
 
@@ -73,12 +74,14 @@ const WORLD = benchEditorWorld({
   items: [{ ...blankItem('lantern', 'Tin Lantern'), images: [{ data: PNG }] }],
 } as Partial<World>);
 
-const renderMedia = (mode: 'simple' | 'advanced') => {
+const optimizeButton = () => screen.getByRole('button', { name: 'Optimize Images' });
+// Optimize waits for the world's Supporter Copy read, as a player's click would.
+const renderMedia = async (mode: 'simple' | 'advanced') => {
   const bench = renderWorldEditorBench(WORLD, mode);
   openEditorTab(/^Media$/);
+  await waitFor(() => expect(optimizeButton()).toHaveAttribute('aria-disabled', 'false'));
   return bench;
 };
-const optimizeButton = () => screen.getByRole('button', { name: 'Optimize Images' });
 
 beforeEach(() => {
   localStorage.clear();
@@ -90,7 +93,7 @@ beforeEach(() => {
 
 describe('Optimize Images', () => {
   it.each(['simple', 'advanced'] as const)('is the last icon of the Media header and runs in %s', async (mode) => {
-    const { ctx } = renderMedia(mode);
+    const { ctx } = await renderMedia(mode);
     const header = document.querySelector<HTMLElement>('[data-media-header]')!;
     expect(header.lastElementChild).toBe(optimizeButton());
 
@@ -106,7 +109,7 @@ describe('Optimize Images', () => {
   it('spins and reports progress in its tooltip while it runs, and ignores a second click', async () => {
     let finish!: () => void;
     run.hold = new Promise<void>((resolve) => { finish = resolve; });
-    renderMedia('advanced');
+    await renderMedia('advanced');
     const optimize = optimizeButton();
     expect(optimize.querySelector('.animate-spin')).toBeNull();
 
@@ -127,7 +130,7 @@ describe('Optimize Images', () => {
   });
 
   it('writes the dictionary thumbnail back with the other images, and the cards show the new sizes', async () => {
-    const { ctx } = renderMedia('simple');
+    const { ctx } = await renderMedia('simple');
     const dictionaries = screen.getByRole('region', { name: 'Dictionaries' });
     expect(dictionaries).toHaveTextContent(formatMediaBytes(storedBytes(PNG)));
 
@@ -142,7 +145,7 @@ describe('Optimize Images', () => {
   });
 
   it('undoes in one press', async () => {
-    const { ctx } = renderMedia('advanced');
+    const { ctx } = await renderMedia('advanced');
     fireEvent.click(optimizeButton());
     await waitFor(() => expect(ctx().locations[0].images?.[0]?.data).toBe(WEBP));
     expect(ctx().worldOverview.thumbnail).toBe(WEBP);
@@ -170,15 +173,15 @@ describe('Optimize Images', () => {
     expect(ctx().items[0].images).toEqual([{ data: WEBP }]);
   });
 
-  it('shows no gallery card for an item image', () => {
-    renderMedia('simple');
+  it('shows no gallery card for an item image', async () => {
+    await renderMedia('simple');
     expect(screen.queryByText('Tin Lantern')).toBeNull();
   });
 
   it('cancels when the editor closes mid-run and writes nothing', async () => {
     let finish!: () => void;
     run.hold = new Promise<void>((resolve) => { finish = resolve; });
-    const { ctx, unmount } = renderMedia('advanced');
+    const { ctx, unmount } = await renderMedia('advanced');
     fireEvent.click(optimizeButton());
     await waitFor(() => expect(optimizeButton()).toHaveAttribute('aria-disabled', 'true'));
     expect(run.signal?.aborted).toBe(false);
@@ -191,7 +194,7 @@ describe('Optimize Images', () => {
   });
 
   it('reveals what it touched on undo, not the tab the author ran it from', async () => {
-    const { ctx } = renderMedia('advanced');
+    const { ctx } = await renderMedia('advanced');
     fireEvent.click(optimizeButton());
     await waitFor(() => expect(ctx().locations[0].images?.[0]?.data).toBe(WEBP));
     openEditorTab(/Entities/);

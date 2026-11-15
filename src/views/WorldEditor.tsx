@@ -257,7 +257,9 @@ const WorldEditorInner = ({
   useEffect(() => () => optimizeAbortRef.current?.abort(), []);
   // Drop the import/export JSON worker when the editor unmounts — it's idle outside those two actions.
   useEffect(() => () => terminateJsonWorker(), []);
+  const optimizeBlock = openWorldBlock(supporterCopy, 'optimizeImages');
   const optimizeImages = async () => {
+    if (optimizeBlock) return;
     const controller = new AbortController();
     optimizeAbortRef.current = controller;
     setOptimizeProgress('scanning');
@@ -1168,7 +1170,7 @@ const WorldEditorInner = ({
   const mediaParts = useWorldMediaEditor({
     selectedId: selections.media ?? null, onSelect: selectMediaItem, search, onGoTo: goToMediaParent,
     publishBytes: bench.publishBytes,
-    optimize: { progress: optimizeProgress, onRun: () => { void optimizeImages(); } },
+    optimize: { progress: optimizeProgress, onRun: () => { void optimizeImages(); }, blocked: optimizeBlock },
   });
   const selectOpeningsOwner = useCallback((id: string | null) => select('openings', id), [select]);
   const openingsParts = useWorldOpeningsEditor({

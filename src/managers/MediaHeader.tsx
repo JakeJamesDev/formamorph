@@ -100,12 +100,14 @@ function FilterMenu({ filter, onChange }: { filter: MediaFilter; onChange: (filt
 export interface OptimizeControl {
   progress: { done: number; total: number } | 'scanning' | null;
   onRun: () => void;
+  /** Why the action is blocked, or null when it is allowed. */
+  blocked?: string | null;
 }
 
 /** Optimize Images: a spinner on the icon and the count in the tooltip while it runs. */
-function OptimizeButton({ progress, onRun }: OptimizeControl) {
-  const running = progress !== null;
-  const tip = progress === null ? OPTIMIZE_IMAGES_TIP
+function OptimizeButton({ progress, onRun, blocked }: OptimizeControl) {
+  const running = progress !== null || !!blocked;
+  const tip = blocked ? blocked : progress === null ? OPTIMIZE_IMAGES_TIP
     : progress === 'scanning' ? 'Scanning…' : `Optimizing ${progress.done}/${progress.total}…`;
   // aria-disabled keeps pointer events, so the tooltip shows the progress.
   return (
@@ -117,10 +119,10 @@ function OptimizeButton({ progress, onRun }: OptimizeControl) {
         className="h-9 w-9 shrink-0 aria-disabled:opacity-50"
         aria-label="Optimize Images"
         aria-disabled={running}
-        aria-busy={running}
+        aria-busy={progress !== null}
         onClick={() => { if (!running) onRun(); }}
       >
-        {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageDown className="h-4 w-4" />}
+        {progress !== null ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageDown className="h-4 w-4" />}
       </Button>
     </Tip>
   );
