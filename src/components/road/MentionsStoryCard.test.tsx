@@ -48,8 +48,8 @@ describe('the Character Mentions card', () => {
     const { card } = mount(true);
     expect(within(card()).getByText('50 / 143 MB')).toBeTruthy();
     // The preview's mentions and What's this? stay; the offer's own actions go.
-    const actions = within(card()).getAllByRole('button').filter((b) => !b.closest('[data-testid="mentions-preview"]'));
-    expect(actions.map((b) => b.textContent)).toEqual(['What’s this?']);
+    // Only What's this? stays; the offer's own actions go.
+    expect(within(card()).getAllByRole('button').map((b) => b.textContent)).toEqual(['What’s this?']);
   });
 
   it('shows a failed download with Retry and Not Now', () => {
@@ -61,9 +61,9 @@ describe('the Character Mentions card', () => {
     expect(within(card()).getByRole('button', { name: 'Not Now' })).toBeTruthy();
   });
 
-  it('shows the preview in place of Morphie, and What’s this? opens it larger', () => {
+  it('keeps the passage out of the card: What’s this? in Morphie’s place opens it in a dialog (Q65)', () => {
     const { card } = mount(false);
-    expect(within(card()).getByTestId('mentions-preview')).toBeTruthy();
+    expect(within(card()).queryByTestId('mentions-preview')).toBeNull();
     expect(card().querySelector('img')).toBeNull();
     fireEvent.click(within(card()).getByRole('button', { name: 'What’s this?' }));
     const dialog = screen.getByRole('dialog', { name: 'Character Mentions' });

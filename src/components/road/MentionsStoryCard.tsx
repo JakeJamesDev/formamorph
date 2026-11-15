@@ -4,10 +4,10 @@ import { MentionsDownloadError } from '@/components/modals/CharacterMentionsRows
 import { useSettings } from '@/contexts/SettingsContext';
 import { useCharacterMentionsState } from '@/lib/coref/characterMentionsApp';
 import { usePlannedDownloadSize } from '@/lib/coref/usePlannedDownloadSize';
-import { MentionsPreview, MentionsPreviewButton } from './MentionsPreview';
+import { MentionsPreviewButton } from './MentionsPreview';
 import { StoryCard } from './StoryCard';
 
-/** The Character Mentions offer: a preview of the feature in Morphie's place. Turn On starts the Settings toggle's
+/** The Character Mentions offer: What's this? in Morphie's place opens a preview of the feature (Q65). Turn On starts the Settings toggle's
  *  download, which then shows in the card, with the Contribute Corrections question when `asking`. */
 export function MentionsStoryCard({ accepted, onTurnOn, onNotNow, asking = false, onAnswer, previewOpen, className }: {
   accepted: boolean;
@@ -31,20 +31,13 @@ export function MentionsStoryCard({ accepted, onTurnOn, onNotNow, asking = false
       ariaLabel="Character Mentions"
       title="Turn On Character Mentions?"
       body={`Names and pronouns in the narration link to the characters they mean, and each quote takes its speaker's color. It runs on your device after ${download}.`}
-      media={(
-        <div>
-          <div className="text-helper">
-            <MentionsPreview />
-          </div>
-          <MentionsPreviewButton defaultOpen={previewOpen} />
-        </div>
-      )}
+      media={<MentionsPreviewButton defaultOpen={previewOpen} />}
       actionLabel="Turn On"
       onAction={accepted ? undefined : onTurnOn}
       onNotNow={accepted && status !== 'error' ? undefined : onNotNow}
     >
       {accepted && (
-        <div className="space-y-3">
+        <div className="mt-2 space-y-3">
           {status === 'error' ? <MentionsDownloadError error={error} />
             : status !== 'ready' && <ModelDownloadBar progress={progress} />}
           {/* A failed download offers Not Now instead; the first correction asks then. */}

@@ -1,6 +1,7 @@
 // The Character Mentions offer's picture: a passage written for it, with a fixed reading, through the real
 // narration renderer. It never runs the model (Q65).
 import { useState } from 'react';
+import { MessageSquareQuote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MarkdownRenderer, type RemarkPlugin } from '@/components/game/MarkdownRenderer';
@@ -84,12 +85,19 @@ export function MentionsPreview({ className }: { className?: string }) {
   );
 }
 
-/** "What's this?": the preview larger, in a dialog. */
+/** "What's this?": a small tile that opens the preview in a dialog. */
 export function MentionsPreviewButton({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <>
-      <Button variant="link" size="sm" className="mt-1 h-auto px-0 text-helper" onClick={() => setOpen(true)}>What’s this?</Button>
+      <Button
+        variant="outline"
+        className="h-[72px] w-[72px] flex-col gap-1 whitespace-normal px-1 text-meta leading-tight"
+        onClick={() => setOpen(true)}
+      >
+        <MessageSquareQuote aria-hidden className="size-5" />
+        What’s this?
+      </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
