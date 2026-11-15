@@ -128,10 +128,10 @@ describe('the Contribute Corrections row', () => {
     expect(contribute()?.hasAttribute('disabled')).toBe(false);
   });
 
-  it('says the whole passage is sent and that accepted ones are kept', () => {
+  it('says the passage is shared and that accepted ones are kept', () => {
     viewer.contributor = ACCOUNT_A;
     mount({ characterMentions: true });
-    expect(screen.getByText('Sends the whole passage with each correction. Accepted ones are kept.')).toBeTruthy();
+    expect(screen.getByText('Shares corrected passages to improve mentions for everyone. Accepted ones are kept.')).toBeTruthy();
   });
 
   it('is hidden for a signed-out player, even when the setting was on (Q64)', () => {

@@ -4,8 +4,8 @@ import { Meta } from '@/components/ui/typography';
 
 /** The Contribute Corrections question's words, asked once per account (Q64, Q69). */
 export const CONTRIBUTE_QUESTION_COPY = {
-  title: 'Contribute Corrections?',
-  body: 'Each time you correct a name or quote, the whole passage goes to Formamorph to help train the model. Accepted passages are kept. You can change this in Settings.',
+  title: 'Help Improve Character Mentions?',
+  body: 'Your corrections teach the model who’s who, so names and quotes link to the right character for everyone. Each correction shares the whole passage, and accepted passages are kept. You can change this in Settings.',
   no: 'No Thanks',
   yes: 'Contribute',
 };

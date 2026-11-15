@@ -64,8 +64,7 @@ describe('the ask-once question at the first correction', () => {
     const { send, view } = mount(READY);
     correct(view);
     expect(question()).not.toBeNull();
-    expect(screen.getByText(/the whole passage goes to Formamorph/)).toBeTruthy();
-    expect(screen.getByText(/Accepted passages are kept/)).toBeTruthy();
+    expect(screen.getByText(/shares the whole passage, and accepted passages are kept/)).toBeTruthy();
     expect(send).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Contribute' }));
     expect(send).toHaveBeenCalledExactlyOnceWith('acct-a', 't1');

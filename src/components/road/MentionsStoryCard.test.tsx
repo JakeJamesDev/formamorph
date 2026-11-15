@@ -74,7 +74,7 @@ describe('the Character Mentions card', () => {
     fake.state = { ...fake.state, status: 'ready' };
     const { card, onAnswer } = mount(true, true);
     const question = within(card()).getByTestId('contribute-question');
-    expect(question.textContent).toMatch(/whole passage goes to Formamorph.*Accepted passages are kept/);
+    expect(question.textContent).toMatch(/shares the whole passage, and accepted passages are kept/);
     fireEvent.click(within(question).getByRole('button', { name: 'No Thanks' }));
     fireEvent.click(within(question).getByRole('button', { name: 'Contribute' }));
     expect(onAnswer.mock.calls).toEqual([[false], [true]]);

@@ -115,8 +115,8 @@ Pick a suggestion or type your own. A **style** works too, like *formal English*
   },
   contributeCorrections: {
     label: 'Contribute Corrections',
-    description: 'Sends the whole passage with each correction. Accepted ones are kept.',
-    info: `Helps train the model that reads the narration.
+    description: 'Shares corrected passages to improve mentions for everyone. Accepted ones are kept.',
+    info: `Your corrections teach the model who’s who, so names and quotes link to the right character for everyone.
 
 - Each time you pick someone in **Wrong character?**, sends the **whole passage** and your corrections for it
 - Staff review each passage. Accepted passages are kept for training, even after you delete your account.
