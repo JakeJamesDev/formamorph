@@ -253,7 +253,7 @@ import { resolveDictionaryEntryNames, resolveEntityTexts, resolveStatGroupTexts,
 import { loreEntries, withLoreToggles, withLoreWrites } from "../lib/loreToggles";
 import { AiContextRequestCard, type AiContextCardSection, type AiContextTextSlot } from "@/components/aiContext/AiContextRequestCard";
 import { AiContextExportButton } from "@/components/aiContext/AiContextExportButton";
-import { openWorldBlock } from "@/lib/supporterCopy";
+import { playBlock } from "@/lib/supporterCopy";
 import type { AiRequestRecord } from "@/lib/aiContext/requestRecord";
 import { composeSceneTags, pickSceneCast, stripPlaces, splitTags, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
@@ -906,6 +906,7 @@ const GameViewer = ({
     setOpeningAction: setOpeningTurnAction,
     itemCopies: heldItemCopies,
     setActiveTab: setRightTab,
+    carriedSupporterCopy,
   } = useGameplay();
   const {
     show: showStatDeltas, add: addStatDeltas, hold: holdStatDeltas, settle: settleStatDeltas,
@@ -7373,7 +7374,7 @@ const GameViewer = ({
                     Current context only
                   </label>
                   {/* The full turn history, exactly the structure this viewer draws, for a bug report. */}
-                  <AiContextExportButton data={debugTurns} name={worldOverview?.name || "world"} tip="Download the full turn history as JSON" disabled={debugTurns.length === 0} blockedReason={openWorldBlock(supporterCopy, 'exportAiContext')} />
+                  <AiContextExportButton data={debugTurns} name={worldOverview?.name || "world"} tip="Download the full turn history as JSON" disabled={debugTurns.length === 0} blockedReason={playBlock(supporterCopy, carriedSupporterCopy, 'exportAiContext')} />
                 </div>
                 {showSilentRequests && currentSummary && (
                   <div className="flex-shrink-0 rounded-md border border-border bg-muted/40 p-2 text-meta">

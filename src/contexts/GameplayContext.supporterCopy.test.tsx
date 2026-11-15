@@ -104,4 +104,23 @@ describe('saves of a Supporter Copy', () => {
     await act(async () => { await live.play().saveGame('slot', 'plain-world', 'plain-world', 'fresh-run'); });
     expect('supporterCopy' in await saved('fresh-run')).toBe(false);
   });
+
+  it('exposes the carried marker while a stamped save is loaded, and drops it for a plain save and a new run', async () => {
+    await store('sc-world', MARKER);
+    await store('plain-world');
+    const live = mount();
+    await open(live, 'sc-world');
+    await act(async () => { await live.play().saveGame('slot', 'sc-world', 'sc-world', 'carried-sc'); });
+    await open(live, 'plain-world');
+    await act(async () => { await live.play().saveGame('slot', 'plain-world', 'plain-world', 'carried-plain'); });
+
+    expect(live.play().carriedSupporterCopy).toBeNull();
+    await act(async () => { await live.play().loadGame('carried-sc', []); });
+    expect(live.play().carriedSupporterCopy).toEqual(MARKER);
+    await act(async () => { await live.play().loadGame('carried-plain', []); });
+    expect(live.play().carriedSupporterCopy).toBeNull();
+    await act(async () => { await live.play().loadGame('carried-sc', []); });
+    act(() => { live.play().setRuntimeDictionaries(world('plain-world').dictionaries); });
+    expect(live.play().carriedSupporterCopy).toBeNull();
+  });
 });

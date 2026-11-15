@@ -88,6 +88,16 @@ export function openWorldBlock(marker: SupporterCopyMarker | null | undefined, a
   return marker === undefined ? SUPPORTER_COPY_READING : supporterCopyBlock({ supporterCopy: marker }, action);
 }
 
+/**
+ * Why `action` is blocked in play: the open world's marker or the loaded save's carried one, whichever blocks.
+ *
+ * @param open - The open world's marker: undefined while unread, null for a plain world
+ * @param carried - The marker a loaded save carried, null for a plain save
+ */
+export function playBlock(open: SupporterCopyMarker | null | undefined, carried: SupporterCopyMarker | null, action: SupporterCopyAction): string | null {
+  return openWorldBlock(open, action) ?? supporterCopyBlock({ supporterCopy: carried }, action);
+}
+
 /** Whether `action` is allowed on `target`. */
 export const supporterCopyAllows = (target: SupporterCopyTarget, action: SupporterCopyAction): boolean =>
   supporterCopyBlock(target, action) === null;

@@ -259,11 +259,17 @@ function useProvideGameplay() {
   const [runtimeDictionaries, setRuntimeBooks] = useState<Dictionary[]>([]);
   // The Supporter Copy marker a loaded save carried. Its books came from that world, whatever world plays them now.
   const carriedSupporterCopy = useRef<SupporterCopyMarker | null>(null);
+  // Reactive mirror of the ref, for surfaces that gate on the carried marker.
+  const [carriedMarker, setCarriedMarker] = useState<SupporterCopyMarker | null>(null);
+  const setCarriedSupporterCopy = useCallback((marker: SupporterCopyMarker | null) => {
+    carriedSupporterCopy.current = marker;
+    setCarriedMarker(marker);
+  }, []);
   // Seeding a new playthrough's books drops the carried marker; a load sets its own.
   const setRuntimeDictionaries = useCallback((books: SetStateAction<Dictionary[]>) => {
-    carriedSupporterCopy.current = null;
+    setCarriedSupporterCopy(null);
     setRuntimeBooks(books);
-  }, []);
+  }, [setCarriedSupporterCopy]);
   // Frozen placeholder rolls for this playthrough (see lib/placeholders). Owned by the world session, which
   // opens before this provider mounts so the pre-game pickers share these values; re-exposed here because
   // the save envelope carries them and every gameplay reader already goes through this context.
@@ -789,7 +795,7 @@ function useProvideGameplay() {
           setGameStates(migrated.stateHistory.map((s) => held(backfilled(s, migrated.persona))));
           // Restore the per-playthrough dictionary set; older saves lack it, so keep the entry-seeded set.
           if (Array.isArray(migrated.dictionaries)) setRuntimeBooks(migrated.dictionaries);
-          carriedSupporterCopy.current = (savedData as SaveRecord).supporterCopy ?? null;
+          setCarriedSupporterCopy((savedData as SaveRecord).supporterCopy ?? null);
           setPlaceholderRolls(migrated.placeholderRolls ?? {});
           setMemoryPins(migrated.memoryPins ?? {});
           // Absent on saves written before the preference existed ⇒ every entity opens on its image.
@@ -906,7 +912,7 @@ function useProvideGameplay() {
       addSystemLogEntry('Failed to load game');
       return false;
     }
-  }, [loadGameState, addSystemLogEntry, setPlaceholderRolls, worldStatGroups]);
+  }, [loadGameState, addSystemLogEntry, setPlaceholderRolls, worldStatGroups, setCarriedSupporterCopy]);
 
   // Cleanup web worker when component unmounts
   useEffect(() => {
@@ -1152,6 +1158,7 @@ function useProvideGameplay() {
     memoryPins,
     setMemoryPins,
     entityVisualPreference,
+    carriedSupporterCopy: carriedMarker,
     setEntityVisualPreference,
     entityImageIndex,
     setEntityImageIndex,

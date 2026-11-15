@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { supporterCopyAllows, supporterCopyBlock, type SupporterCopyAction } from './supporterCopy';
+import { playBlock, supporterCopyAllows, supporterCopyBlock, type SupporterCopyAction } from './supporterCopy';
 
 const marker = { listingId: 'listing-1', accountId: 'account-1', revision: 3 };
 const world = { supporterCopy: marker };
@@ -39,5 +39,19 @@ describe('supporterCopyBlock', () => {
 
   it('allows Save to Library on a marked library entry', () => {
     expect(supporterCopyAllows(entry, 'saveToLibrary')).toBe(true);
+  });
+});
+
+describe('playBlock', () => {
+  const marker = { listingId: 'l', accountId: 'a', revision: 1 };
+  it('blocks the AI context export of a Supporter save loaded into a plain world', () => {
+    expect(playBlock(null, marker, 'exportAiContext')).toBe("You can't export the AI context of a Supporter world");
+  });
+  it('allows it for a plain world with a plain save', () => {
+    expect(playBlock(null, null, 'exportAiContext')).toBeNull();
+  });
+  it('still blocks on the open world’s marker', () => {
+    expect(playBlock(marker, null, 'exportAiContext')).not.toBeNull();
+    expect(playBlock(undefined, null, 'exportAiContext')).not.toBeNull();
   });
 });
