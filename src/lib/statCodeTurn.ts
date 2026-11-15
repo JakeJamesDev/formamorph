@@ -1,5 +1,5 @@
 import type {
-  CascadeOffTraitIds, CodeBounds, CodePins, Connection, Currency, Dictionary, Entity, EntityPositions, EntityStatValues, GameLocation, Item, ItemCopy, LoreToggles,
+  CascadeOffTraitIds, CodeBounds, CodePins, Connection, Currency, Dictionary, Entity, EntityPositions, EntityStatValues, GameLocation, Item, ItemInstance, LoreToggles,
   OwnedTraitStates, Placeholder, Placement, PersonaRef, PlayerStat, Script, Slot, Trait,
 } from '@/types';
 import type { BodyWorld } from './bodies';
@@ -104,11 +104,11 @@ export interface SandboxState {
   turn?: SandboxTurn;
   /** What scripts switched on the books' entries in play. Absent ⇒ none. */
   loreToggles?: LoreToggles;
-  /** Every Item Copy in play. Absent ⇒ none. */
-  itemCopies?: readonly ItemCopy[];
+  /** Every Item Instance in play. Absent ⇒ none. */
+  itemInstances?: readonly ItemInstance[];
   /** The world's items, which `items` reads. Absent ⇒ none. */
   items?: readonly Item[];
-  /** The world's slots, which an equipped Item Copy names. Absent ⇒ none. */
+  /** The world's slots, which an equipped Item Instance names. Absent ⇒ none. */
   slots?: readonly Slot[];
   /** The world's Currencies and the Placements that track a shopkeeper's Currency Items, which `currencies` reads and pays
    *  over. Absent ⇒ no Currency. */
@@ -170,7 +170,7 @@ export interface StatCodeTurn {
    *  as its `rowOrder`. */
   switchRowOrder: readonly string[];
   /** The global stats as they stood at the start of the turn, matched by id. A stat missing here reads its
-   *  `previous` as a copy of its own current entry. */
+   *  `previous` as an instance of its own current entry. */
   previous: readonly PlayerStat[];
   /** The stats `previous` reads at a timing that reads the turn start, when the run began earlier than this call:
    *  a reply's first sentence (Q27). Absent ⇒ the state this call was handed. */
@@ -202,13 +202,13 @@ export interface StatCodeTurn {
   choicesOnly?: boolean;
   /** Saved World Tool writes laid on ahead of `triggers`, in this order, with no script run (Q41). */
   replayed?: readonly ReplayedTrigger[];
-  /** The Item Copy event an item run fires on: its item's scripts of the event's timing run alone. */
+  /** The Item Instance event an item run fires on: its item's scripts of the event's timing run alone. */
   itemEvent?: ItemEventRun;
   /** How a script's inventory writes apply, before the next script runs. */
   inventory: InventoryStep;
 }
 
-/** One Item Copy event and its item, with the item's name as the player reads it. */
+/** One Item Instance event and its item, with the item's name as the player reads it. */
 export interface ItemEventRun {
   event: ItemScriptEvent;
   item: Pick<Item, 'id' | 'name' | 'scripts'>;
@@ -230,7 +230,7 @@ export interface SavedScriptWrites {
   traits?: StatTraitWrites;
   /** Absent ⇒ none (Q50). */
   lore?: LoreWrite[];
-  /** Absent ⇒ none. A write naming a copy the turn made skips on replay, which makes new ids (Q49). */
+  /** Absent ⇒ none. A write naming an instance the turn made skips on replay, which makes new ids (Q49). */
   inventory?: InventoryOp[];
   /** World Option values, in write order. Absent ⇒ none. */
   options?: OptionWrite[];
@@ -299,19 +299,19 @@ export interface StatCodeTurnResult {
   triggerWrites?: SavedScriptWrites;
 }
 
-/** The Item Copies a run left. `worldWrites.inventory` holds the writes that made them, automatic unequips included. */
+/** The Item Instances a run left. `worldWrites.inventory` holds the writes that made them, automatic unequips included. */
 export interface ChainedItems {
-  /** The Item Copies the run began from. */
-  from: readonly ItemCopy[];
-  copies: readonly ItemCopy[];
+  /** The Item Instances the run began from. */
+  from: readonly ItemInstance[];
+  instances: readonly ItemInstance[];
   /** The module's skips, the settles' log lines, and a line per event that fired no script. */
   log: readonly string[];
   /** The uses the writes made, which start their After Use effects. */
   itemUses: readonly ItemUse[];
   /** The item events a During AI Output write holds back until the After batch. */
   heldEvents: readonly ItemScriptEvent[];
-  /** The Item Copies a Body took off in the chain's settles, which the commit's Body line names. */
-  offByBody: readonly ItemCopy[];
+  /** The Item Instances a Body took off in the chain's settles, which the commit's Body line names. */
+  offByBody: readonly ItemInstance[];
 }
 
 const mergedWorldWrites = (writers: readonly (WorldWrites | undefined)[]): WorldWrites | undefined =>
@@ -617,7 +617,7 @@ interface ActionRuns extends ActionTotals {
   runsSoFar: StatCodeTurnResult[];
   log: string[];
   itemUses: ItemUse[];
-  offByBody: ItemCopy[];
+  offByBody: ItemInstance[];
 }
 
 /** Where an action's own runs sit. */
@@ -657,7 +657,7 @@ export async function withSwitchRuns(turn: StatCodeTurn, result: StatCodeTurnRes
   const steps = [result];
   let now = fired.length ? await switchRuns(after, fired, ACTION_TOP, steps, action) : after;
   if (result.items) {
-    const unequips = settledCopies(now, action, result.items.itemUses);
+    const unequips = settledInstances(now, action, result.items.itemUses);
     if (unequips.ops.length) steps[0] = { ...result, worldWrites: mergeWorldWrites(result.worldWrites, { inventory: unequips.ops }) };
     now = await itemRuns(unequips.at, [...result.items.heldEvents, ...unequips.events], ACTION_TOP, steps, action);
   }
@@ -668,16 +668,16 @@ export async function withSwitchRuns(turn: StatCodeTurn, result: StatCodeTurnRes
 /** How many levels of item events fire item scripts: a turn's or a panel's event is level 1 (Q66). */
 export const ITEM_EVENT_DEPTH = 3;
 
-/** Lays inventory writes onto Item Copies through the Inventory module, with the events they fire. */
-export type ApplyInventory = (copies: readonly ItemCopy[], ops: readonly InventoryOp[], so?: StatCodeTurnResult) => Pick<InventoryResult, 'copies' | 'events' | 'diagnostics' | 'itemUses'>;
+/** Lays inventory writes onto Item Instances through the Inventory module, with the events they fire. */
+export type ApplyInventory = (instances: readonly ItemInstance[], ops: readonly InventoryOp[], so?: StatCodeTurnResult) => Pick<InventoryResult, 'instances' | 'events' | 'diagnostics' | 'itemUses'>;
 
 /**
- * The inventory settle over `copies`, as if the runs had stopped there: `itemUses` are every use so far, and
- * `so` is the runs so far as one result. Hands back the Item Copies with the automatic unequips applied, their
- * events, the settle's log lines, and the copies a Body took off.
+ * The inventory settle over `instances`, as if the runs had stopped there: `itemUses` are every use so far, and
+ * `so` is the runs so far as one result. Hands back the Item Instances with the automatic unequips applied, their
+ * events, the settle's log lines, and the instances a Body took off.
  */
-export type SettleCopies = (copies: readonly ItemCopy[], itemUses: readonly ItemUse[], so: StatCodeTurnResult) =>
-  { copies: readonly ItemCopy[]; events: readonly ItemScriptEvent[]; log: readonly string[]; offByBody?: readonly ItemCopy[] };
+export type SettleInstances = (instances: readonly ItemInstance[], itemUses: readonly ItemUse[], so: StatCodeTurnResult) =>
+  { instances: readonly ItemInstance[]; events: readonly ItemScriptEvent[]; log: readonly string[]; offByBody?: readonly ItemInstance[] };
 
 /** How a script's inventory writes apply in the chain. */
 export interface InventoryStep {
@@ -686,13 +686,13 @@ export interface InventoryStep {
   apply: ApplyInventory;
   itemNameOf: (item: Pick<Item, 'name'>) => string;
   /** Absent = no settle after a write. */
-  settle?: SettleCopies;
+  settle?: SettleInstances;
 }
 
 /** The step of a run with no game behind it: the Inventory module over the state's world, with no settle. */
 export const stateInventory = ({ items = [], slots, bodies }: Pick<SandboxState, 'items' | 'slots' | 'bodies'>): InventoryStep => ({
   items,
-  apply: (copies, ops) => applyInventoryOps(copies, ops, {
+  apply: (instances, ops) => applyInventoryOps(instances, ops, {
     world: { ...bodies?.world, items, ...(slots ? { slots } : {}) }, source: 'script', newId: randomUUID, ...(bodies?.persona ? { persona: bodies.persona } : {}),
   }),
   itemNameOf: (item) => item.name,
@@ -710,21 +710,21 @@ export interface ItemRunOptions {
 export interface ItemRunsResult {
   /** The runs as one result over the turn, their inventory writes taken out; null when no script ran. */
   result: StatCodeTurnResult | null;
-  /** The Item Copies after every run's inventory writes. */
-  copies: readonly ItemCopy[];
+  /** The Item Instances after every run's inventory writes. */
+  instances: readonly ItemInstance[];
   /** The module's skips, the settles' log lines, and one line per event past the depth cap. */
   diagnostics: string[];
   /** The uses the runs' writes made, which start their After Use effects. */
   itemUses: ItemUse[];
   /** Every inventory write the runs applied, the settle's unequips among them, in order, for a caller whose Item
-   *  Copies moved meanwhile. */
+   *  Instances moved meanwhile. */
   ops: InventoryOp[];
-  /** The Item Copies a Body took off in the runs' settles. */
-  offByBody: ItemCopy[];
+  /** The Item Instances a Body took off in the runs' settles. */
+  offByBody: ItemInstance[];
 }
 
 /**
- * Each event's item scripts, in order, over the state the run before left; `turn.state.itemCopies` is the state
+ * Each event's item scripts, in order, over the state the run before left; `turn.state.itemInstances` is the state
  * the events left. A run's inventory writes go through the step's `apply` at once, and their events nest one level
  * deeper, with the automatic unequips its `settle` finds after that write (Q66). Past {@link ITEM_EVENT_DEPTH} the
  * writes still apply, but their events fire nothing (Q66, Q140). A run's own trait switches fire their switch runs
@@ -737,7 +737,7 @@ export async function runItemScripts(
   const action = actionRunsOf(start, totals);
   const steps: StatCodeTurnResult[] = [];
   const end = await itemRuns(start, events, { ...ACTION_TOP, itemLevel: depth }, steps, action);
-  const base = { copies: end.state.itemCopies ?? [], diagnostics: action.log, itemUses: action.itemUses, offByBody: action.offByBody };
+  const base = { instances: end.state.itemInstances ?? [], diagnostics: action.log, itemUses: action.itemUses, offByBody: action.offByBody };
   if (!steps.length) return { ...base, result: null, ops: [] };
   const { items: _landed, worldWrites, ...chained } = chainedResult(start, steps, end);
   const rest = withoutInventory(worldWrites);
@@ -753,9 +753,9 @@ async function itemRuns(
   for (const event of events) {
     const item = byId.get(event.itemId);
     if (!item || !filledScriptsAt(item, event.timing).length) continue;
-    // The run names the item by the face its copy shows (Q17).
-    const copy = now.state.itemCopies?.find((c) => c.id === event.copyId) ?? event.was;
-    const itemName = turn.inventory.itemNameOf({ name: faceName(item, !!copy && isUnidentified(copy)) });
+    // The run names the item by the face its instance shows (Q17).
+    const instance = now.state.itemInstances?.find((c) => c.id === event.copyId) ?? event.was;
+    const itemName = turn.inventory.itemNameOf({ name: faceName(item, !!instance && isUnidentified(instance)) });
     if (itemLevel > ITEM_EVENT_DEPTH) {
       action.log.push(`Item scripts nested past ${ITEM_EVENT_DEPTH} levels; ${SCRIPT_TIMING_LABEL[event.timing]} of ${itemName} did not run`);
       continue;
@@ -768,15 +768,15 @@ async function itemRuns(
   return now;
 }
 
-/** `turn` after the settle of its Item Copies, with the automatic unequips as events and writes. */
-function settledCopies(turn: StatCodeTurn, action: ActionRuns, usedBefore: readonly ItemUse[] = []): { at: StatCodeTurn; events: readonly ItemScriptEvent[]; ops: InventoryOp[] } {
+/** `turn` after the settle of its Item Instances, with the automatic unequips as events and writes. */
+function settledInstances(turn: StatCodeTurn, action: ActionRuns, usedBefore: readonly ItemUse[] = []): { at: StatCodeTurn; events: readonly ItemScriptEvent[]; ops: InventoryOp[] } {
   const { settle } = turn.inventory;
   if (!settle) return { at: turn, events: [], ops: [] };
-  const settled = settle(turn.state.itemCopies ?? [], [...usedBefore, ...action.itemUses], chainedResult(action.root, action.runsSoFar, turn));
+  const settled = settle(turn.state.itemInstances ?? [], [...usedBefore, ...action.itemUses], chainedResult(action.root, action.runsSoFar, turn));
   action.log.push(...settled.log);
   action.offByBody.push(...(settled.offByBody ?? []));
   return {
-    at: { ...turn, state: { ...turn.state, itemCopies: settled.copies } },
+    at: { ...turn, state: { ...turn.state, itemInstances: settled.instances } },
     events: settled.events,
     ops: settled.events.map((e): InventoryOp => ({ kind: 'unequip', copyId: e.copyId })),
   };
@@ -788,14 +788,14 @@ function settledCopies(turn: StatCodeTurn, action: ActionRuns, usedBefore: reado
  */
 function landedInventory(
   next: StatCodeTurn, step: StatCodeTurnResult, action: ActionRuns,
-  { ops, from, holdsEvents }: { ops: readonly InventoryOp[]; from: readonly ItemCopy[]; holdsEvents: boolean },
+  { ops, from, holdsEvents }: { ops: readonly InventoryOp[]; from: readonly ItemInstance[]; holdsEvents: boolean },
 ): { step: StatCodeTurnResult; next: StatCodeTurn; events: readonly ItemScriptEvent[] } {
-  const landed = next.inventory.apply(next.state.itemCopies ?? [], ops, chainedResult(action.root, action.runsSoFar, next));
+  const landed = next.inventory.apply(next.state.itemInstances ?? [], ops, chainedResult(action.root, action.runsSoFar, next));
   action.log.push(...landed.diagnostics);
   action.itemUses.push(...landed.itemUses);
-  const applied = { ...next, state: { ...next.state, itemCopies: landed.copies } };
-  const settled = holdsEvents ? { at: applied, events: [], ops: [] } : settledCopies(applied, action);
-  const items: ChainedItems = { from, copies: settled.at.state.itemCopies ?? [], log: [], itemUses: [], heldEvents: holdsEvents ? landed.events : [], offByBody: [] };
+  const applied = { ...next, state: { ...next.state, itemInstances: landed.instances } };
+  const settled = holdsEvents ? { at: applied, events: [], ops: [] } : settledInstances(applied, action);
+  const items: ChainedItems = { from, instances: settled.at.state.itemInstances ?? [], log: [], itemUses: [], heldEvents: holdsEvents ? landed.events : [], offByBody: [] };
   const worldWrites = settled.ops.length ? mergeWorldWrites(step.worldWrites, { inventory: settled.ops }) : step.worldWrites;
   return {
     step: { ...step, items, ...(worldWrites ? { worldWrites } : {}) }, next: settled.at,
@@ -905,7 +905,7 @@ export function afterRun(turn: StatCodeTurn, result: StatCodeTurnResult): StatCo
       // A trait switch can turn a stat on or off, which the next script's turn reads.
       enabled: traits ? activeStatEnabled(result.stats, traits.inForce) : state.enabled,
       gateStats: result.gateStats,
-      ...(result.items ? { itemCopies: result.items.copies } : {}),
+      ...(result.items ? { itemInstances: result.items.instances } : {}),
       owners: state.owners?.map((owner) => {
         const ran = result.owners?.[owner.id];
         if (!ran) return owner;
@@ -967,7 +967,7 @@ export function chainedResult(start: StatCodeTurn, steps: readonly StatCodeTurnR
   }));
   const stepItems = steps.flatMap((step) => (step.items ? [step.items] : []));
   const items: ChainedItems | undefined = stepItems.length ? {
-    from: stepItems[0].from, copies: now.state.itemCopies ?? [], log: stepItems.flatMap((each) => each.log),
+    from: stepItems[0].from, instances: now.state.itemInstances ?? [], log: stepItems.flatMap((each) => each.log),
     itemUses: stepItems.flatMap((each) => each.itemUses), heldEvents: stepItems.flatMap((each) => each.heldEvents),
     offByBody: stepItems.flatMap((each) => each.offByBody),
   } : undefined;
@@ -1141,7 +1141,7 @@ export function afterScript(turn: StatCodeTurn, { unit, run }: PlannedUnit, resu
   const ops = writes.world?.inventory;
   if (!ops?.length) return next;
   // A check fires no nested run (Q38).
-  return { ...next, state: { ...next.state, itemCopies: next.inventory.apply(next.state.itemCopies ?? [], ops).copies } };
+  return { ...next, state: { ...next.state, itemInstances: next.inventory.apply(next.state.itemInstances ?? [], ops).instances } };
 }
 
 /**
@@ -1183,7 +1183,7 @@ async function runScripts(turn: StatCodeTurn, nesting: RunNesting = ACTION_TOP, 
     const fired = step.traits && timing !== 'output' ? switchesBetween(now, next) : [];
     const ops = writes.world?.inventory;
     const landed = ops?.length
-      ? landedInventory(next, step, action, { ops, from: now.state.itemCopies ?? [], holdsEvents: timing === 'output' }) : { step, next, events: [] };
+      ? landedInventory(next, step, action, { ops, from: now.state.itemInstances ?? [], holdsEvents: timing === 'output' }) : { step, next, events: [] };
     steps.push(landed.step);
     now = landed.next;
     plan = undefined;

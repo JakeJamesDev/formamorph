@@ -1122,7 +1122,7 @@ describe('Strip Links And Images at the request', () => {
 describe('the Inventory pass', () => {
   const due = { inventoryDue: true };
 
-  it('is due only in a world with items or Item Copies (Q37)', () => {
+  it('is due only in a world with items or Item Instances (Q37)', () => {
     expect(planTurn(input()).passes.map((p) => p.id)).not.toContain('inventory');
     expect(planTurn(input({}, due)).passes.map((p) => p.id)).toContain('inventory');
   });

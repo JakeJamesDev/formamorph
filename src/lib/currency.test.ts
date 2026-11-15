@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Currency, Entity, Stat, StatGroup, StatLink } from '@/types';
-import { copyWorthText, currencyOf, worthText } from './currency';
+import { instanceWorthText, currencyOf, worthText } from './currency';
 import { parseCurrencies } from './currency/parse';
 import { defaultCurrencyPatch } from './currency/rows';
 import { currencyStatGroups } from './currency/statGroups';
@@ -61,11 +61,11 @@ describe('worth', () => {
     expect(currencyOf({ currencyId: 'gone' }, currencies)).toBeUndefined();
   });
 
-  it('stays off an unidentified copy', () => {
+  it('stays off an unidentified instance', () => {
     const item = { value: 40, currencyId: 'credits' };
-    expect(copyWorthText({}, item, currencies, [])).toBe('40 Credits');
-    expect(copyWorthText({ state: { unidentified: true } }, item, currencies, [])).toBeNull();
-    expect(copyWorthText({}, undefined, currencies, [])).toBeNull();
+    expect(instanceWorthText({}, item, currencies, [])).toBe('40 Credits');
+    expect(instanceWorthText({ state: { unidentified: true } }, item, currencies, [])).toBeNull();
+    expect(instanceWorthText({}, undefined, currencies, [])).toBeNull();
   });
 });
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { enabledStats } from '@/lib/traitEffects';
-import type { ItemCopy, OwnedTraitState, PlayerStat, Trait } from '@/types';
+import type { ItemInstance, OwnedTraitState, PlayerStat, Trait } from '@/types';
 
 /** The right rail tabs that take a dot. */
 export const DOT_TABS = ['stats', 'traits', 'inventory'] as const;
@@ -10,24 +10,24 @@ export type DotTab = typeof DOT_TABS[number];
 export type StatusSignatures = Record<DotTab, string>;
 
 /** What the player's Stats, Traits and Inventory tabs show, read from live state. */
-export function statusSignatures({ stats, statEnabled, traits, disabledTraitIds, playedTraits, copies }: {
+export function statusSignatures({ stats, statEnabled, traits, disabledTraitIds, playedTraits, instances }: {
   stats: readonly PlayerStat[];
   statEnabled: Readonly<Record<string, boolean>>;
   traits: readonly Trait[];
   disabledTraitIds: readonly string[];
   /** The owned traits of each entity the player plays. */
   playedTraits: readonly (OwnedTraitState | undefined)[];
-  copies: readonly ItemCopy[];
+  instances: readonly ItemInstance[];
 }): StatusSignatures {
   const shownStats = enabledStats([...stats], statEnabled).filter((stat) => stat.hidden !== true);
-  const carried = copies.filter((copy) => copy.where.kind === 'you' && copy.visibility === 'visible');
+  const carried = instances.filter((instance) => instance.where.kind === 'you' && instance.visibility === 'visible');
   return {
     stats: JSON.stringify(shownStats.map((stat) => [stat.id, stat.value])),
     traits: JSON.stringify([
       traits.map((trait) => trait.id), [...disabledTraitIds].sort(),
       playedTraits.map((owned) => owned && [owned.chosen, owned.disabled ?? [], owned.granted ?? []]),
     ]),
-    inventory: JSON.stringify(carried.map((copy) => [copy.id, copy.item, copy.quantity, copy.equipped?.slotId ?? null, copy.state ?? null])),
+    inventory: JSON.stringify(carried.map((instance) => [instance.id, instance.item, instance.quantity, instance.equipped?.slotId ?? null, instance.state ?? null])),
   };
 }
 

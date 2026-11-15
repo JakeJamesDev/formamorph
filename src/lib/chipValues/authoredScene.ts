@@ -18,7 +18,7 @@ import { resolveStartingLocation } from '../startingLocation';
 import { seedNewGameStats, treeStatTraits } from '../traitRuntime';
 import { enabledOwnerStats, withTraitToggles } from '../statOwners';
 import { playStatWorld } from '../statLinks';
-import { startingCopies } from '../inventory';
+import { startingInstances } from '../inventory';
 import { openingPlayedEntity, type OpeningPersona } from '../openingState';
 import { startsMet, strangersInPlay } from '../presence';
 import type {
@@ -135,7 +135,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     Object.fromEntries(entities.filter((e) => e.stats?.length).map((e) => [e.id, seedNewGameStats(e.stats ?? [])])),
     treeStatTraits(trees, Object.fromEntries(trees.map((b) => [b.id, defaultsOf(b)]))),
   ));
-  let copyCount = 0;
+  let instanceCount = 0;
   const openingPlayed = openingPlayedEntity(entities, options.persona);
 
   return {
@@ -177,8 +177,8 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     items: world.items ?? [],
     currencies: world.currencies,
     placements: world.placements,
-    // The Item Copies a new game would start with, ids numbered since nothing keeps them.
-    itemCopies: startingCopies({ ...world, entities }, personaRef, () => `preview-copy-${copyCount++}`),
+    // The Item Instances a new game would start with, ids numbered since nothing keeps them.
+    itemInstances: startingInstances({ ...world, entities }, personaRef, () => `preview-instance-${instanceCount++}`),
     // The played Body is the persona's, else the Custom Persona entity's.
     equipment: { world: { bodies: world.bodies, slots: world.slots, entities }, persona: personaRef },
     // Turn one's labels: nobody is met in play yet, so the start rule alone leaves a stranger unmet.

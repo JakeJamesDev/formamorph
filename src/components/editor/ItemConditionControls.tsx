@@ -27,7 +27,7 @@ const withIdentity = (requirement: ItemRequirement, value: string): ItemRequirem
 };
 
 /**
- * The controls an item Condition chip carries: the State word a copy must have and whether the copy must be
+ * The controls an item Condition chip carries: the State word an instance must have and whether the instance must be
  * identified. `accepts` says whether a replacement would repeat another Condition in the row; such an
  * identity is disabled and such a word stays a draft until a blur puts the Condition's own word back.
  */

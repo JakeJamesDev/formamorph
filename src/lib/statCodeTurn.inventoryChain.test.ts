@@ -9,7 +9,7 @@ import { inPlayOwners } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
 import { ITEM_EVENT_DEPTH, ITEM_RUN_TOTAL, runItemScripts, runStatCodeTurn, stateInventory, SWITCH_RUN_TOTAL, type SavedScriptWrites, type StatCodeTurn, type StatCodeTurnResult } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
-import type { Currency, Entity, Item, ItemCopy, ItemScriptTiming, PersonaRef, PlayerStat, Script, ScriptTiming, Slot, Trait } from '@/types';
+import type { Currency, Entity, Item, ItemInstance, ItemScriptTiming, PersonaRef, PlayerStat, Script, ScriptTiming, Slot, Trait } from '@/types';
 import { bodyFixture } from '@/test/bodyFixture';
 import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
 
@@ -36,7 +36,7 @@ const world = (traits: Trait[] = []): StatCodeOwners => {
 const scripts = (timing: ScriptTiming | ItemScriptTiming, ...codes: string[]): Script[] => codes.map((code, i) => ({ id: `${timing}${i}`, timing, code }));
 const item = (id: string, name: string, over: Partial<Item> = {}): Item =>
   ({ id, name, stackable: false, statEffects: [], traitEffects: [], equipRequires: [], ...over });
-const copy = (id: string, itemId: string, quantity = 1): ItemCopy => ({ id, item: { kind: 'item', itemId }, where: { kind: 'you' }, quantity, visibility: 'visible' });
+const instance = (id: string, itemId: string, quantity = 1): ItemInstance => ({ id, item: { kind: 'item', itemId }, where: { kind: 'you' }, quantity, visibility: 'visible' });
 const trait = (id: string, name: string, own: Script[] = []): Trait => ({ id, name, statChanges: [], scripts: own });
 
 const CREDITS: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } };
@@ -49,13 +49,13 @@ const turnOf = (over: Partial<FlatStatCodeTurn>): StatCodeTurn => statCodeTurnOf
     { id: 'mira', stats: [funds(50)], enabled: {}, previous: [], regenApplied: {} },
     { id: 'rook', stats: [funds(5)], enabled: {}, previous: [], regenApplied: {} },
   ],
-  money: { currencies: [CREDITS, COIN], placements: [] }, items: COIN_ITEMS, itemCopies: [copy('c-gold', 'gold')],
+  money: { currencies: [CREDITS, COIN], placements: [] }, items: COIN_ITEMS, itemInstances: [instance('c-gold', 'gold')],
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name, ...over,
 });
 
 const echoOf = (out: { stats: readonly PlayerStat[] } | null | undefined) => out?.stats.find((s) => s.id === 'echo')?.value;
 const fundsOf = (out: StatCodeTurnResult, owner: string) => out.owners?.[owner]?.stats.find((s) => s.id === 'funds')?.value;
-const heldOf = (out: StatCodeTurnResult, itemId: string) => (out.items?.copies ?? [])
+const heldOf = (out: StatCodeTurnResult, itemId: string) => (out.items?.instances ?? [])
   .filter((c) => c.item.kind === 'item' && c.item.itemId === itemId).reduce((sum, c) => sum + c.quantity, 0);
 
 beforeEach(() => {
@@ -92,13 +92,13 @@ describe('a later script reads an earlier script’s inventory write', () => {
   });
 
   it('an equip', async () => {
-    const worn = copy('c-ring', 'ring');
+    const worn = instance('c-ring', 'ring');
     const out = await runStatCodeTurn(turnOf({
-      items: [ring], slots: [finger], itemCopies: [worn],
+      items: [ring], slots: [finger], itemInstances: [worn],
       bodies: { world: { bodies: [bodyFixture({ id: 'body', name: 'Body', entries: [{ slotId: 'finger' }] })], slots: [finger], entities: [rook, mira] }, persona: asMira },
       worldScripts: scripts('after', 'persona.items[0].equip();', 'stats.Echo.value = persona.items[0].equipped ? 1 : 2;'),
     }));
-    expect(out.items?.copies[0].equipped).toBeTruthy();
+    expect(out.items?.instances[0].equipped).toBeTruthy();
     expect(echoOf(out)).toBe(1);
   });
 });
@@ -115,7 +115,7 @@ describe('an item event a script fires', () => {
   it('stops at the depth cap with its line, and its writes still land', async () => {
     const box = item('box', 'Box', { scripts: scripts('gained', 'stats.Echo.value += 1; items.Box.give(persona);') });
     const out = await runStatCodeTurn(turnOf({ items: [box], worldScripts: scripts('after', 'items.Box.give(persona);', 'stats.Echo.value = stats.Echo.value * 10;') }));
-    // A script's event is level 1, so three levels run, and the fourth's copy lands with no script.
+    // A script's event is level 1, so three levels run, and the fourth's instance lands with no script.
     expect(echoOf(out)).toBe(ITEM_EVENT_DEPTH * 10);
     expect(heldOf(out, 'box')).toBe(1 + ITEM_EVENT_DEPTH);
     expect(out.items?.log).toEqual([`Item scripts nested past ${ITEM_EVENT_DEPTH} levels; When Gained of Box did not run`]);
@@ -142,18 +142,18 @@ describe('an item event a script fires', () => {
 
   it('settles after the write, so its automatic unequip fires a level below it', async () => {
     const ring = item('ring', 'Ring', { scripts: scripts('unequipped', 'stats.Echo.value = 9;') });
-    const worn: ItemCopy = { ...copy('c-ring', 'ring'), equipped: { slotId: 'finger', order: 1 } };
+    const worn: ItemInstance = { ...instance('c-ring', 'ring'), equipped: { slotId: 'finger', order: 1 } };
     const out = await runStatCodeTurn(turnOf({
-      items: [ring, item('gem', 'Gem')], itemCopies: [worn],
+      items: [ring, item('gem', 'Gem')], itemInstances: [worn],
       inventory: {
         ...stateInventory({ items: [ring, item('gem', 'Gem')] }),
-        settle: (copies, _uses, so) => {
-          const held = copies.find((c) => c.id === 'c-ring' && c.equipped);
-          if (!held) return { copies, events: [], log: [] };
+        settle: (instances, _uses, so) => {
+          const held = instances.find((c) => c.id === 'c-ring' && c.equipped);
+          if (!held) return { instances, events: [], log: [] };
           // The settle reads the writes so far.
-          if (so.stats.find((s) => s.id === 'echo')?.value !== 3) return { copies, events: [], log: [] };
+          if (so.stats.find((s) => s.id === 'echo')?.value !== 3) return { instances, events: [], log: [] };
           return {
-            copies: copies.map((c) => (c === held ? { ...c, equipped: undefined } : c)),
+            instances: instances.map((c) => (c === held ? { ...c, equipped: undefined } : c)),
             events: [{ timing: 'unequipped', itemId: 'ring', copyId: 'c-ring', where: { kind: 'you' }, quantity: 1 }],
             log: ['Unequipped Ring'],
           };
@@ -258,7 +258,7 @@ describe('money across scripts', () => {
 });
 
 describe('what the result holds', () => {
-  it('lists each inventory write once, in order, with the Item Copies they left', async () => {
+  it('lists each inventory write once, in order, with the Item Instances they left', async () => {
     const gem = item('gem', 'Gem', { scripts: scripts('gained', 'items.Gold.give(persona);') });
     const out = await runStatCodeTurn(turnOf({ items: [gem, ...COIN_ITEMS], worldScripts: scripts('after', 'items.Gem.give(persona);', 'items.Copper.give(persona, 2);') }));
     expect(out.worldWrites?.inventory).toEqual([
@@ -267,7 +267,7 @@ describe('what the result holds', () => {
       { kind: 'gain', itemId: 'copper', to: { kind: 'you' }, quantity: 2 },
     ]);
     expect([heldOf(out, 'gem'), heldOf(out, 'gold'), heldOf(out, 'copper')]).toEqual([1, 2, 2]);
-    expect(out.items?.from).toEqual([copy('c-gold', 'gold')]);
+    expect(out.items?.from).toEqual([instance('c-gold', 'gold')]);
   });
 
   it('holds no write for a turn whose scripts wrote none, or a choices-only run’s', async () => {
@@ -288,10 +288,10 @@ describe('what the result holds', () => {
     const items = [box, ...COIN_ITEMS];
     const apply = vi.fn(stateInventory({ items }).apply);
     const out = await runItemScripts(
-      turnOf({ items, ownerTraits: world([brave]), itemCopies: [copy('c-gold', 'gold'), copy('c-box', 'box')] }), [event], { items, apply, itemNameOf: (i) => i.name },
+      turnOf({ items, ownerTraits: world([brave]), itemInstances: [instance('c-gold', 'gold'), instance('c-box', 'box')] }), [event], { items, apply, itemNameOf: (i) => i.name },
     );
     expect(apply).toHaveBeenCalledTimes(1);
-    expect(out.copies.find((c) => c.id === 'c-gold')?.quantity).toBe(3);
+    expect(out.instances.find((c) => c.id === 'c-gold')?.quantity).toBe(3);
     expect(out.ops).toEqual([{ kind: 'gain', itemId: 'gold', to: { kind: 'you' }, quantity: 2 }]);
     // The runner hands the writes back apart, so a landing of the result can't apply them again.
     expect(out.result?.worldWrites?.inventory).toBeUndefined();
@@ -304,7 +304,7 @@ describe('During AI Output', () => {
   const sentence = { index: 0, full: 'One.', earlier: [] };
   const outputTurn = (...codes: string[]) => turnOf({ items: [gem], worldScripts: scripts('output', ...codes) });
 
-  it('reads the copies across scripts and sentences, and fires nothing until the landing', async () => {
+  it('reads the instances across scripts and sentences, and fires nothing until the landing', async () => {
     const run = openOutputRun(outputTurn('items.Gem.give(persona);', 'stats.Echo.value += items.Gem.copies.length;'));
     await run?.rewrite('One.', sentence);
     await run?.rewrite('Two.', { ...sentence, index: 1 });
@@ -318,21 +318,21 @@ describe('During AI Output', () => {
   });
 
   it('settles at the landing, for a write that fired no event, and hands the settle the reply’s uses', async () => {
-    const worn: ItemCopy = { ...copy('c-gem', 'gem'), equipped: { slotId: 'finger', order: 1 } };
+    const worn: ItemInstance = { ...instance('c-gem', 'gem'), equipped: { slotId: 'finger', order: 1 } };
     const settled: number[] = [];
     const out = openOutputRun(turnOf({
-      items: [gem], itemCopies: [worn], worldScripts: scripts('output', 'persona.items[0].setUses(0);'),
+      items: [gem], itemInstances: [worn], worldScripts: scripts('output', 'persona.items[0].setUses(0);'),
       inventory: {
         ...stateInventory({ items: [gem] }),
-        apply: (copies) => ({ copies: [...copies], events: [], diagnostics: [], itemUses: [{ copyId: 'c-gem' } as never] }),
-        settle: (copies, uses) => {
+        apply: (instances) => ({ instances: [...instances], events: [], diagnostics: [], itemUses: [{ copyId: 'c-gem' } as never] }),
+        settle: (instances, uses) => {
           settled.push(uses.length);
-          const held = copies.find((c) => c.equipped);
+          const held = instances.find((c) => c.equipped);
           return held ? {
-            copies: copies.map((c) => (c === held ? { ...c, equipped: undefined } : c)),
+            instances: instances.map((c) => (c === held ? { ...c, equipped: undefined } : c)),
             events: [{ timing: 'unequipped', itemId: 'gem', copyId: 'c-gem', where: { kind: 'you' }, quantity: 1 }],
             log: [],
-          } : { copies, events: [], log: [] };
+          } : { instances, events: [], log: [] };
         },
       },
     }));
@@ -340,7 +340,7 @@ describe('During AI Output', () => {
     expect(settled).toEqual([]);
     const landed = await out?.landing();
     expect(settled).toEqual([1]);
-    expect(landed?.items?.copies[0].equipped).toBeUndefined();
+    expect(landed?.items?.instances[0].equipped).toBeUndefined();
     expect(landed?.worldWrites?.inventory?.filter((op) => op.kind === 'unequip')).toEqual([{ kind: 'unequip', copyId: 'c-gem' }]);
   });
 
@@ -436,7 +436,7 @@ describe('an On Call Tool’s saved item writes', () => {
     expect(writes).not.toHaveProperty('inventory');
   });
 
-  it('skip a write that names a copy the replay can’t find, with a log line', async () => {
+  it('skip a write that names an instance the replay can’t find, with a log line', async () => {
     const { turn } = await savedFrom('');
     const out = await replay(turn, { inventory: [{ kind: 'lose', copyId: 'made-by-the-first-run' }, { kind: 'gain', itemId: 'gem', quantity: 1, to: { kind: 'you' } }] });
     expect(heldOf(out, 'gem')).toBe(1);

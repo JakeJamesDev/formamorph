@@ -4,8 +4,8 @@ import { Meta } from '@/components/ui/typography';
 import type { ShownItemIcon } from '@/lib/itemIcons';
 import { EntityCardBody, EntityDescription } from '../game/EntityCard';
 
-/** An Item Copy's popup: its image beside its description. `name`, `icon`, `image`, `description` and `facts` are what
- *  the player may see of the copy, so an unidentified copy stays on its unidentified face. */
+/** An Item Instance's popup: its image beside its description. `name`, `icon`, `image`, `description` and `facts` are what
+ *  the player may see of the instance, so an unidentified instance stays on its unidentified face. */
 export function ItemModal({ id, name, icon, image, description, facts, isOpen, onOpenChange }: {
   id: string;
   name: string;

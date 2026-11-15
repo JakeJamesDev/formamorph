@@ -80,7 +80,7 @@ describe('entity readers in play', () => {
     expect(source).toMatch(pattern);
   });
 
-  // The save-load orphan check and the opening fold read the authored world: a gated-off entity's item copies
+  // The save-load orphan check and the opening fold read the authored world: a gated-off entity's item instances
   // are no orphans, and its stats and starting traits seed the save for the day it turns on.
   it('hands the save load the authored entities', () => {
     expect(viewer.match(/loadGame\([^)]*authoredEntities/g)).toHaveLength(3);

@@ -5,7 +5,7 @@ import { TOOLTIP_DELAY_MS, TooltipProvider } from '@/components/ui/tooltip';
 import { dollColumnWidth } from '@/lib/bodyLayout';
 import { onFakeClock } from '@/test/fakeClock';
 import { InventoryTab, type InventoryTabProps } from './InventoryTab';
-import type { Body, Item, ItemCopy, Slot } from '@/types';
+import type { Body, Item, ItemInstance, Slot } from '@/types';
 
 const LONG = 'Greatsword of the Very Long Name That Never Fits';
 const slots: Slot[] = [{ id: 'hand', name: 'Hand' }, { id: 'head', name: 'Head' }];
@@ -20,10 +20,10 @@ const items = [
   item('halberd', 'Halberd', { slotRule: { mode: 'all', slotIds: ['hand', 'head'] } }),
   item('wand', 'Ash Wand', { uses: 3, whenEmpty: { kind: 'stays' }, slotRule: { mode: 'either', slotIds: ['hand'] } }),
 ];
-const worn = (id: string, itemId: string, slotId = 'hand', over: Partial<ItemCopy> = {}): ItemCopy =>
+const worn = (id: string, itemId: string, slotId = 'hand', over: Partial<ItemInstance> = {}): ItemInstance =>
   ({ id, item: { kind: 'item', itemId }, where: { kind: 'you' }, quantity: 1, visibility: 'visible', equipped: { slotId, order: 1 }, ...over });
 const props = (over: Partial<InventoryTabProps>): InventoryTabProps => ({
-  ownerName: null, copies: [], lying: [], items, body: body(0.5), slots: slots.map((slot) => ({ slot, capacity: 1 })), worldSlots: slots, present: [], locationId: 'yard',
+  ownerName: null, instances: [], lying: [], items, body: body(0.5), slots: slots.map((slot) => ({ slot, capacity: 1 })), worldSlots: slots, present: [], locationId: 'yard',
   disabled: false, resolveText: (text) => text, onOps: vi.fn(), ...over,
 });
 
@@ -60,13 +60,13 @@ describe('doll and Equipped layout', () => {
 
 describe('Equipped rows', () => {
   it('shows an All of item once, with both slot names', () => {
-    render(<InventoryTab {...props({ copies: [worn('a', 'halberd')] })} />);
+    render(<InventoryTab {...props({ instances: [worn('a', 'halberd')] })} />);
     expect(within(list()).getAllByRole('listitem')).toHaveLength(1);
     expect(within(list()).getByText('Hand, Head')).toBeInTheDocument();
   });
 
   it('shows the slot names instead of the uses line, and the popup keeps the uses line', async () => {
-    render(<InventoryTab {...props({ copies: [worn('w', 'wand')] })} />);
+    render(<InventoryTab {...props({ instances: [worn('w', 'wand')] })} />);
     expect(within(list()).getByText('Hand')).toBeInTheDocument();
     expect(within(list()).queryByText('3 of 3 uses')).toBeNull();
     await userEvent.click(within(list()).getByRole('button', { name: 'Ash Wand' }));
@@ -75,14 +75,14 @@ describe('Equipped rows', () => {
 
   it('unequips in one click, with no popover', async () => {
     const onOps = vi.fn();
-    render(<InventoryTab {...props({ copies: [worn('s', 'sword')], onOps })} />);
+    render(<InventoryTab {...props({ instances: [worn('s', 'sword')], onOps })} />);
     await userEvent.click(within(list()).getByRole('button', { name: `Unequip ${LONG}` }));
     expect(onOps).toHaveBeenCalledExactlyOnceWith([{ kind: 'unequip', copyId: 's' }]);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('opens the item popup from the row name in one press', async () => {
-    render(<InventoryTab {...props({ copies: [worn('s', 'sword')] })} />);
+    render(<InventoryTab {...props({ instances: [worn('s', 'sword')] })} />);
     await userEvent.click(within(list()).getByRole('button', { name: LONG }));
     const popup = await screen.findByRole('dialog');
     expect(within(popup).getByRole('heading', { name: LONG })).toBeInTheDocument();
@@ -90,13 +90,13 @@ describe('Equipped rows', () => {
   });
 
   it('keeps the row in the Slot Box popover, with Unequip', async () => {
-    render(<InventoryTab {...props({ copies: [worn('s', 'sword')] })} />);
+    render(<InventoryTab {...props({ instances: [worn('s', 'sword')] })} />);
     await userEvent.click(screen.getByRole('button', { name: `Hand: ${LONG}` }));
     expect(buttonNames(await screen.findByRole('dialog'))).toContain(`Unequip ${LONG}`);
   });
 
   it('shows the full name unclipped in the Slot Box popover', async () => {
-    render(<InventoryTab {...props({ copies: [worn('s', 'sword')] })} />);
+    render(<InventoryTab {...props({ instances: [worn('s', 'sword')] })} />);
     await userEvent.click(screen.getByRole('button', { name: `Hand: ${LONG}` }));
     const name = within(await screen.findByRole('dialog')).getByRole('button', { name: LONG });
     expect(name).not.toHaveClass('truncate');
@@ -104,7 +104,7 @@ describe('Equipped rows', () => {
   });
 
   it('opens the item popup from the name inside the Slot Box popover', async () => {
-    render(<InventoryTab {...props({ copies: [worn('s', 'sword')] })} />);
+    render(<InventoryTab {...props({ instances: [worn('s', 'sword')] })} />);
     await userEvent.click(screen.getByRole('button', { name: `Hand: ${LONG}` }));
     await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: LONG }));
     expect(await screen.findByRole('heading', { name: LONG })).toBeInTheDocument();
@@ -112,13 +112,13 @@ describe('Equipped rows', () => {
 
   it('shows a cut name in full in a tooltip', async () => {
     setWidths(300, 120);
-    render(<TooltipProvider><InventoryTab {...props({ copies: [worn('s', 'sword')] })} /></TooltipProvider>);
+    render(<TooltipProvider><InventoryTab {...props({ instances: [worn('s', 'sword')] })} /></TooltipProvider>);
     await userEvent.hover(within(list()).getByRole('button', { name: LONG }));
     expect(await screen.findByText(LONG, { selector: 'div' })).toBeVisible();
   });
 
   it.each([
-    ['Carried', { copies: [{ ...worn('s', 'sword'), equipped: undefined }] }],
+    ['Carried', { instances: [{ ...worn('s', 'sword'), equipped: undefined }] }],
     ['Here', { lying: [{ ...worn('s', 'sword'), equipped: undefined, where: { kind: 'location' as const, id: 'yard' } }] }],
   ])('shows a cut %s name in full in a tooltip', async (_where, over) => {
     setWidths(300, 120);
@@ -129,15 +129,15 @@ describe('Equipped rows', () => {
 
   it('shows no tooltip for a name that fits', async () => {
     setWidths(120, 120);
-    render(<TooltipProvider><InventoryTab {...props({ copies: [worn('s', 'sword')] })} /></TooltipProvider>);
+    render(<TooltipProvider><InventoryTab {...props({ instances: [worn('s', 'sword')] })} /></TooltipProvider>);
     vi.useFakeTimers();
     await onFakeClock((user) => user.hover(within(list()).getByRole('button', { name: LONG })));
     await act(() => vi.advanceTimersByTimeAsync(TOOLTIP_DELAY_MS));
     expect(screen.queryByText(LONG, { selector: 'div' })).toBeNull();
   });
 
-  it('leaves a copy with no box out of the list, under Carried', () => {
-    render(<InventoryTab {...props({ copies: [worn('a', 'sword'), worn('b', 'wand')] })} />);
+  it('leaves an instance with no box out of the list, under Carried', () => {
+    render(<InventoryTab {...props({ instances: [worn('a', 'sword'), worn('b', 'wand')] })} />);
     expect(within(list()).getAllByRole('listitem')).toHaveLength(1);
     expect(within(list()).queryByText('Ash Wand')).toBeNull();
     expect(screen.getByRole('button', { name: 'Unequip Ash Wand' })).toBeInTheDocument();

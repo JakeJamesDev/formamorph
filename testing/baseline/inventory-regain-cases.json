@@ -115,7 +115,7 @@
   "cases": [
     {
       "id": "unseal",
-      "copies": [
+      "instances": [
         {
           "runtime": "letter",
           "where": "you",
@@ -131,7 +131,7 @@
     {
       "id": "read-open",
       "group": "control",
-      "copies": [
+      "instances": [
         {
           "runtime": "letter",
           "where": "you",
@@ -144,7 +144,7 @@
     },
     {
       "id": "retouch-shown",
-      "copies": [
+      "instances": [
         {
           "runtime": "whistle",
           "where": "you"
@@ -157,7 +157,7 @@
     },
     {
       "id": "described-held",
-      "copies": [
+      "instances": [
         {
           "runtime": "compass",
           "where": "you"
@@ -172,7 +172,7 @@
       "id": "open-box",
       "group": "state",
       "stateOf": "Tin Box",
-      "copies": [
+      "instances": [
         {
           "runtime": "box",
           "where": "you"
@@ -186,7 +186,7 @@
       "id": "light-lantern",
       "group": "state",
       "stateOf": "Hooded Lantern",
-      "copies": [],
+      "instances": [],
       "action": "I light my lantern.",
       "narration": "You strike a match against the dock post and touch it to the wick of your hooded lantern. The flame catches and steadies. A stripe of yellow light leaks through the half-closed shutter and lies across the wet planks.",
       "expect": []
@@ -195,7 +195,7 @@
       "id": "soaked-cloak",
       "group": "state",
       "stateOf": "Oilskin Cloak",
-      "copies": [],
+      "instances": [],
       "action": "I lean out over the water to look for the ferry.",
       "narration": "You lean out past the last piling. A wave slaps the dock and throws a sheet of cold river water over you. Your oilskin cloak is soaked through and heavy on your shoulders, and water runs from its hem onto the boards.",
       "expect": []
@@ -203,7 +203,7 @@
     {
       "id": "drink-tonic",
       "group": "use",
-      "copies": [
+      "instances": [
         {
           "item": "tonic",
           "where": "you"
@@ -227,7 +227,7 @@
     {
       "id": "blow-horn",
       "group": "use",
-      "copies": [
+      "instances": [
         {
           "item": "horn",
           "where": "you"
@@ -240,7 +240,7 @@
     {
       "id": "read-writ",
       "group": "use",
-      "copies": [
+      "instances": [
         {
           "item": "writ",
           "where": "you",
@@ -261,7 +261,7 @@
     {
       "id": "reveal-signet",
       "group": "reveal",
-      "copies": [
+      "instances": [
         {
           "item": "signet",
           "where": "you",
@@ -280,7 +280,7 @@
     },
     {
       "id": "take-another",
-      "copies": [
+      "instances": [
         {
           "runtime": "pebble",
           "where": "you",
@@ -300,7 +300,7 @@
     },
     {
       "id": "second-eel",
-      "copies": [
+      "instances": [
         {
           "item": "eel",
           "where": "you"
@@ -328,7 +328,7 @@
       "noDose": [
         "writ"
       ],
-      "copies": [
+      "instances": [
         {
           "item": "writ",
           "where": "you",
@@ -351,7 +351,7 @@
       "noDose": [
         "draught"
       ],
-      "copies": [],
+      "instances": [],
       "action": "I throw a healing draught at the rat on the crate.",
       "narration": "You hurl one healing draught at the rat. It misses and shatters against the crate, and green tonic runs down the wood into the cracks of the dock. The rat drops into the water and swims away.",
       "expect": [

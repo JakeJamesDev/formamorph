@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import type { TraitRequirementRow } from '@/types';
 
 /** Whose images a rule shows: an entity's, read from that entity; a location's, read from the played persona
- *  (Q48); or an item's, read from its Item Copy's owner. */
+ *  (Q48); or an item's, read from its Item Instance's owner. */
 export type RuleHost = { kind: 'entity'; id: string } | { kind: 'location' } | { kind: 'item'; id: string };
 
 /** Every location's rule host, one object so a memo keyed on it holds. */
@@ -30,7 +30,7 @@ export const useEntityRuleHost = (id: string | undefined): RuleHost | undefined 
 /** An item's rule host, the same object while the id holds. */
 export const useItemRuleHost = (id: string): RuleHost => useMemo(() => ({ kind: 'item', id }), [id]);
 
-/** Each row's state of an image rule on `host`. The editor has no Item Copy, so an item's rows resolve their text
+/** Each row's state of an image rule on `host`. The editor has no Item Instance, so an item's rows resolve their text
  *  against the global scope and hold for no one. */
 const hostRuleStates = (input: GateInput, host: RuleHost, rows: readonly TraitRequirementRow[]) => {
   if (host.kind === 'location') return locationRuleStates(input, rows);

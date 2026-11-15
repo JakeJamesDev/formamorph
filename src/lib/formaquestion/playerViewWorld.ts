@@ -2,7 +2,7 @@
  * The Player View as a Formaquestion Tool and the code test read it in game (Q20): the Tool Snapshot's scene,
  * memory and script state, and the code test's world, cut down to what the player has met, in player text.
  */
-import type { Connection, DictionaryEntry, Entity, GameLocation, GameState, Item, ItemCopy, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
+import type { Connection, DictionaryEntry, Entity, GameLocation, GameState, Item, ItemInstance, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
 import type { ChipScene } from '@/lib/chipValues/chipScene';
 import type { SandboxState, StatePlaces } from '@/lib/statCodeTurn';
 import type { StatCodeOwners } from '@/lib/statCodeTraits';
@@ -91,7 +91,7 @@ function playerEntity(met: Met, entity: Entity, row: PlayerViewEntity, targets: 
     return link.kind === 'group' || (target !== undefined && statShown(met, target, entity.id));
   });
   const traitLinks = entity.traitLinks?.filter((link) => link.kind === 'trait' && met.traits.has(traitKey(entity.id, link.originalId)));
-  // The copy holds no places: a reader asks the met live places for its Position (Q42).
+  // The instance holds no places: a reader asks the met live places for its Position (Q42).
   return {
     id: entity.id, name: row.name, aliases: [...(row.seenAliases ?? [])],
     playerDescription: row.description, aiDescription: row.description,
@@ -172,18 +172,18 @@ const metFaces = <T extends { id: string }>(met: Met, items: readonly T[], build
 
 const playerItems = (met: Met, items: readonly Item[] = []): Item[] => metFaces(met, items, playerItem);
 
-/** A visible copy of a met item, held by the player or a met entity, or at a met place. */
-function copyShown(met: Met, copy: ItemCopy): boolean {
-  if (copy.visibility !== 'visible' || !met.items.has(playerItemId(copy))) return false;
-  const { where } = copy;
+/** A visible instance of a met item, held by the player or a met entity, or at a met place. */
+function instanceShown(met: Met, instance: ItemInstance): boolean {
+  if (instance.visibility !== 'visible' || !met.items.has(playerItemId(instance))) return false;
+  const { where } = instance;
   return where.kind === 'you' || (where.kind === 'entity' ? met.entities.has(where.id) : met.locations.has(where.id));
 }
 
-/** The shown copies, an unidentified one pointing at its face's row so it never names the true item. */
-const shownCopies = (met: Met, copies: readonly ItemCopy[]): ItemCopy[] => copies.flatMap((copy) => {
-  if (!copyShown(met, copy)) return [];
-  const itemId = playerItemId(copy);
-  return copy.item.kind === 'item' && itemId !== copy.item.itemId ? [{ ...copy, item: { kind: 'item', itemId } }] : [copy];
+/** The shown instances, an unidentified one pointing at its face's row so it never names the true item. */
+const shownInstances = (met: Met, instances: readonly ItemInstance[]): ItemInstance[] => instances.flatMap((instance) => {
+  if (!instanceShown(met, instance)) return [];
+  const itemId = playerItemId(instance);
+  return instance.item.kind === 'item' && itemId !== instance.item.itemId ? [{ ...instance, item: { kind: 'item', itemId } }] : [instance];
 });
 
 /** Only the keys of `record` in `keep`. */
@@ -217,7 +217,7 @@ export function playerViewScene(scene: ChipScene, reach: PlayerViewReach): ChipS
     placesOf: (entity) => scene.placesOf(entity).filter((id) => met.locations.has(id)),
     inSceneIds: metIds(scene.inSceneIds),
     items: playerItems(met, scene.items),
-    itemCopies: scene.itemCopies && shownCopies(met, scene.itemCopies),
+    itemInstances: scene.itemInstances && shownInstances(met, scene.itemInstances),
     runtimeItems: scene.runtimeItems?.flatMap((item) => {
       const row = met.items.get(item.id);
       return row ? [{ id: item.id, name: row.name, description: row.description }] : [];
@@ -273,7 +273,7 @@ function playerOwnerTraits(met: Met, owners: StatCodeOwners, keep: KeepStat, sta
       // Only the fields a Condition reads, so no other text of the item rides along.
       items: metFaces(met, world.items, (item, row) => ({ id: row.id, name: row.name, ...(item.slotRule && { slotRule: item.slotRule }) })),
     }),
-    ...(world.itemCopies && { itemCopies: shownCopies(met, world.itemCopies) }),
+    ...(world.itemInstances && { itemInstances: shownInstances(met, world.itemInstances) }),
   };
   return {
     acquired: global,
@@ -308,7 +308,7 @@ function playerPlaces(met: Met, places: StatePlaces): StatePlaces {
 }
 
 /**
- * The script state a help Tool reads: visible stats, met owners and the persona, met places and item copies, and
+ * The script state a help Tool reads: visible stats, met owners and the persona, met places and item instances, and
  * the dictionary entries in `fired`.
  */
 export function playerViewState(state: SandboxState, reach: PlayerViewReach, fired: ReadonlySet<string> = new Set()): SandboxState {
@@ -338,7 +338,7 @@ export function playerViewState(state: SandboxState, reach: PlayerViewReach, fir
         (met.entities.has(id) ? [[id, places.filter((place) => met.locations.has(place))]] : []))),
     }),
     ...(state.followers && { followers: state.followers.filter((id) => met.entities.has(id)) }),
-    ...(state.itemCopies && { itemCopies: shownCopies(met, state.itemCopies) }),
+    ...(state.itemInstances && { itemInstances: shownInstances(met, state.itemInstances) }),
     ...(state.items && { items: playerItems(met, state.items) }),
     // Custom lines include the ones scripts wrote, which stay out with diaries (Q21).
     ...(state.memories && { memories: state.memories.filter((memory) => !memory.custom) }),

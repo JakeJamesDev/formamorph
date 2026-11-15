@@ -1,6 +1,6 @@
 /**
  * The inventory settle: item trait grants, item stat effects, trait gates, equip requirements and Bodies,
- * brought in line with the Item Copies together. An equipped Item Copy whose requirement stops holding, or
+ * brought in line with the Item Instances together. An equipped Item Instance whose requirement stops holding, or
  * whose owner's Body no longer holds it, unequips and its effects reverse (Q12, Q48); the passes repeat to a
  * fixed point under a cap (Q66). Pure.
  */
@@ -8,7 +8,7 @@ import {
   bodyInForce, bodyMisfits, nextTraitsOn, slotOwnerKey, traitBodyPicks, type BodyWorld, type SlotOwner, type TraitBodyPicks,
 } from '@/lib/bodies';
 import { itemRuleStates } from '@/lib/imageVisibility';
-import { copySighting, sameWhere, seenItemName, type SourceSighting } from '@/lib/items';
+import { instanceSighting, sameWhere, seenItemName, type SourceSighting } from '@/lib/items';
 import { inAuthoredOrder, isHidden, traitOrderIndex } from '@/lib/traitEffects';
 import { playedEntityIds } from '@/lib/scope';
 import {
@@ -17,7 +17,7 @@ import {
 } from '@/lib/traitRuntime';
 import type { RowState } from '@/lib/traitGates';
 import type {
-  Body, BodyRuntime, BodyTraitOn, Item, ItemCopy, ItemEffectLedger, PersonaRef, Slot, TimedItemEffect, Trait,
+  Body, BodyRuntime, BodyTraitOn, Item, ItemInstance, ItemEffectLedger, PersonaRef, Slot, TimedItemEffect, Trait,
 } from '@/types';
 import { itemEffectLog, settleItemEffects, type ItemUse } from './effects';
 import type { ItemScriptEvent } from './index';
@@ -27,9 +27,9 @@ import { grantKey, wantedGrants } from './grants';
 export const SETTLE_CAP = 10;
 
 export interface InventorySettleState {
-  copies: readonly ItemCopy[];
-  /** The Item Copies before the change being settled, which name the items whose grants leave. */
-  previous?: readonly ItemCopy[];
+  instances: readonly ItemInstance[];
+  /** The Item Instances before the change being settled, which name the items whose grants leave. */
+  previous?: readonly ItemInstance[];
   traits: TraitRuntimeState;
   ledger: ItemEffectLedger | undefined;
   /** The uses this settle starts, from the validator's result. */
@@ -40,13 +40,13 @@ export interface InventorySettleState {
   bodies?: BodyRuntime;
   /** Base Bodies a script wrote since `bodies`, by owner key. They replace the owner's base and settle with the rest. */
   baseWrites?: TraitBodyPicks;
-  /** The Item Copies a Body took off earlier in a script chain, which this settle's Body line names too. */
-  chainOff?: readonly ItemCopy[];
+  /** The Item Instances a Body took off earlier in a script chain, which this settle's Body line names too. */
+  chainOff?: readonly ItemInstance[];
 }
 
 export interface InventorySettleWorld {
   items: readonly Item[];
-  /** The trait world. Its `itemCopies` are replaced by the settle's own. */
+  /** The trait world. Its `itemInstances` are replaced by the settle's own. */
   traits: TraitWorld;
   /** Who `you` is. Absent ⇒ the trait world's persona. */
   persona?: PersonaRef;
@@ -67,22 +67,22 @@ export interface InventorySettleWorld {
 export type SettleBodies = Omit<BodyWorld, 'traitPicks' | 'basePicks'> & { slots?: readonly Slot[] };
 
 export interface InventorySettleResult {
-  copies: readonly ItemCopy[];
+  instances: readonly ItemInstance[];
   traits: TraitRuntimeState;
   ledger: ItemEffectLedger;
   log: string[];
   /** The traits a gate cascade turned off, and their names as the banner reads them. */
   cascade: Trait[];
   cascadeNames: string[];
-  /** One When Unequipped event per Item Copy a failed requirement or a Body change unequipped. */
+  /** One When Unequipped event per Item Instance a failed requirement or a Body change unequipped. */
   events: ItemScriptEvent[];
   bodies: BodyRuntime;
   /** One line per owner whose Body in force changed, naming what that unequipped (Q41). Apart from `log`. */
   bodyLog: string[];
-  /** How many Item Copies the owners' Bodies no longer held. */
+  /** How many Item Instances the owners' Bodies no longer held. */
   bodyUnequipped: number;
-  /** The Item Copies the owners' Bodies no longer held. */
-  offByBody: readonly ItemCopy[];
+  /** The Item Instances the owners' Bodies no longer held. */
+  offByBody: readonly ItemInstance[];
 }
 
 interface Pass {
@@ -101,32 +101,32 @@ function reader(world: InventorySettleWorld) {
   const persona = world.persona ?? world.traits.persona;
   const nameOf = world.nameOf ?? ((trait: Trait) => trait.name);
   const resolve = world.resolve ?? same;
-  const traitWorld = (copies: readonly ItemCopy[]): TraitWorld => ({ ...world.traits, itemCopies: copies });
+  const traitWorld = (instances: readonly ItemInstance[]): TraitWorld => ({ ...world.traits, itemInstances: instances });
   // A grant that leaves takes its item along, so its switch-off names the item it last read.
   const lastSources = new Map<string, SourceSighting & { item: Item }>();
-  const grantsOf = (effectCopies: readonly ItemCopy[], tw: TraitWorld, ledger?: ItemEffectLedger, itemUses?: readonly ItemUse[], now?: number) =>
+  const grantsOf = (effectInstances: readonly ItemInstance[], tw: TraitWorld, ledger?: ItemEffectLedger, itemUses?: readonly ItemUse[], now?: number) =>
     wantedGrants(
-      effectCopies, { items, owners: tw.owners ?? [], persona, entities: world.entities }, ledger?.firstObtainTraits,
+      effectInstances, { items, owners: tw.owners ?? [], persona, entities: world.entities }, ledger?.firstObtainTraits,
       { entries: ledger?.timed, itemUses, now },
     );
-  const remember = (copies: readonly ItemCopy[], ledger: ItemEffectLedger | undefined) => {
-    for (const [key, source] of grantsOf(copies, traitWorld(copies), ledger).sources) lastSources.set(key, source);
+  const remember = (instances: readonly ItemInstance[], ledger: ItemEffectLedger | undefined) => {
+    for (const [key, source] of grantsOf(instances, traitWorld(instances), ledger).sources) lastSources.set(key, source);
   };
-  const itemOf = (copy: ItemCopy) => (copy.item.kind === 'item' ? items.get(copy.item.itemId) : undefined);
-  /** A copy as the log names it: "An item" when it is hidden (Q63), the unidentified face when unidentified (Q17). */
-  const copyName = (copy: ItemCopy) => {
-    const item = itemOf(copy);
-    const name = item && seenItemName(item, copySighting(copy));
+  const itemOf = (instance: ItemInstance) => (instance.item.kind === 'item' ? items.get(instance.item.itemId) : undefined);
+  /** An instance as the log names it: "An item" when it is hidden (Q63), the unidentified face when unidentified (Q17). */
+  const instanceName = (instance: ItemInstance) => {
+    const item = itemOf(instance);
+    const name = item && seenItemName(item, instanceSighting(instance));
     return name ? resolve(name) : 'An item';
   };
 
-  /** One pass: grants and stat effects from `effectCopies`, then the trait gates, which read `copies`. `itemUses` start
+  /** One pass: grants and stat effects from `effectInstances`, then the trait gates, which read `instances`. `itemUses` start
    *  their After Use rows, so only one pass gets them. */
   const pass = (
-    state: Omit<InventorySettleState, 'copies'>, effectCopies: readonly ItemCopy[], copies: readonly ItemCopy[], itemUses?: readonly ItemUse[],
+    state: Omit<InventorySettleState, 'instances'>, effectInstances: readonly ItemInstance[], instances: readonly ItemInstance[], itemUses?: readonly ItemUse[],
   ): Pass => {
-    const tw = traitWorld(copies);
-    const grants = grantsOf(effectCopies, tw, state.ledger, itemUses, state.now);
+    const tw = traitWorld(instances);
+    const grants = grantsOf(effectInstances, tw, state.ledger, itemUses, state.now);
     const granted = setGrantedTraits(state.traits, grants.held, tw);
     const log: string[] = [];
     for (const { ownerId, trait, on } of granted.switched) {
@@ -142,7 +142,7 @@ function reader(world: InventorySettleWorld) {
     const timed: Record<string, TimedItemEffect> = { ...Object.fromEntries(timedStats), ...grants.timedTraits };
     const effects = settleItemEffects(
       {
-        copies: effectCopies, entityStats: granted.state.entityStats ?? {}, ledger: { ...state.ledger, timed }, itemUses,
+        instances: effectInstances, entityStats: granted.state.entityStats ?? {}, ledger: { ...state.ledger, timed }, itemUses,
         ...(state.now !== undefined && { now: state.now }),
       },
       { items: world.items, entities: world.entities, ...(persona && { persona }) },
@@ -160,18 +160,18 @@ function reader(world: InventorySettleWorld) {
     };
   };
 
-  /** Each row's state of `copy`'s equip requirement under `copies`, read without the effects of every Item
-   *  Copy of that item at that owner (Q49, Q122); null when it has no requirement. */
-  const requirementStates = (state: Omit<InventorySettleState, 'copies'>, copy: ItemCopy, copies: readonly ItemCopy[]): RowState[] | null => {
-    const item = itemOf(copy);
+  /** Each row's state of `instance`'s equip requirement under `instances`, read without the effects of every Item
+   *  Instance of that item at that owner (Q49, Q122); null when it has no requirement. */
+  const requirementStates = (state: Omit<InventorySettleState, 'instances'>, instance: ItemInstance, instances: readonly ItemInstance[]): RowState[] | null => {
+    const item = itemOf(instance);
     if (!item?.equipRequires.length) return null;
-    const own = (c: ItemCopy) => c.item.kind === 'item' && c.item.itemId === item.id && sameWhere(c.where, copy.where);
-    const without = pass(state, copies.filter((c) => !own(c)), copies);
+    const own = (c: ItemInstance) => c.item.kind === 'item' && c.item.itemId === item.id && sameWhere(c.where, instance.where);
+    const without = pass(state, instances.filter((c) => !own(c)), instances);
     // The requirement reads the stats as they stand without the item, never a commit's snapshot.
-    return itemRuleStates(traitGateInput(without.traits, { ...traitWorld(copies), gateStats: undefined }), copy, item.equipRequires);
+    return itemRuleStates(traitGateInput(without.traits, { ...traitWorld(instances), gateStats: undefined }), instance, item.equipRequires);
   };
 
-  return { pass, requirementStates, remember, copyName: copyName };
+  return { pass, requirementStates, remember, instanceName: instanceName };
 }
 
 /** The rows' text, as a refused equip names it: each row's Conditions joined by "and", rows by "or". */
@@ -194,14 +194,14 @@ const picksOf = (traitsOn: readonly BodyTraitOn[], world: TraitWorld, acquired: 
 export const traitPicksInPlay = (bodies: BodyRuntime, traits: TraitRuntimeState, world: TraitWorld): TraitBodyPicks =>
   picksOf(bodies.traitsOn ?? [], world, traits.traits, world.persona);
 
-const unequipped = (copy: ItemCopy): ItemCopy => {
-  const { equipped: _off, ...rest } = copy;
+const unequipped = (instance: ItemInstance): ItemInstance => {
+  const { equipped: _off, ...rest } = instance;
   return rest;
 };
 
 /**
- * Brings grants, stat effects, trait gates and equipped items in line with `state.copies`. An equipped Item
- * Copy whose requirement fails unequips; the passes repeat until none does, or stop at the cap with a
+ * Brings grants, stat effects, trait gates and equipped items in line with `state.instances`. An equipped Item
+ * Instance whose requirement fails unequips; the passes repeat until none does, or stop at the cap with a
  * diagnostic. Never changes its inputs.
  */
 export function settleInventory(state: InventorySettleState, world: InventorySettleWorld): InventorySettleResult {
@@ -215,32 +215,32 @@ export function settleInventory(state: InventorySettleState, world: InventorySet
   const baseAfter: TraitBodyPicks = state.baseWrites ? { ...baseBefore, ...state.baseWrites } : baseBefore;
   let traitsOn: readonly BodyTraitOn[] = before;
   let picks: TraitBodyPicks = {};
-  let copies = state.copies;
-  let current: Omit<InventorySettleState, 'copies'> = state;
+  let instances = state.instances;
+  let current: Omit<InventorySettleState, 'instances'> = state;
   const log: string[] = [];
   const cascade: Trait[] = [];
   const cascadeNames: string[] = [];
   const events: ItemScriptEvent[] = [];
-  const offByBody: ItemCopy[] = [];
-  const fireUnequipped = (copy: ItemCopy) => {
-    if (copy.item.kind !== 'item') return;
-    events.push({ timing: 'unequipped', itemId: copy.item.itemId, copyId: copy.id, where: copy.where, quantity: copy.quantity });
+  const offByBody: ItemInstance[] = [];
+  const fireUnequipped = (instance: ItemInstance) => {
+    if (instance.item.kind !== 'item') return;
+    events.push({ timing: 'unequipped', itemId: instance.item.itemId, copyId: instance.id, where: instance.where, quantity: instance.quantity });
   };
   for (let n = 1; ; n += 1) {
-    const done = read.pass(current, copies, copies, n === 1 ? state.itemUses : undefined);
+    const done = read.pass(current, instances, instances, n === 1 ? state.itemUses : undefined);
     current = { ...done, ...(state.now !== undefined && { now: state.now }) };
     log.push(...done.log);
     cascade.push(...done.cascade);
     cascadeNames.push(...done.cascadeNames);
-    const tw: TraitWorld = { ...world.traits, itemCopies: copies };
+    const tw: TraitWorld = { ...world.traits, itemInstances: instances };
     const scope = traitForceScope(current.traits, tw);
     // Global traits are held in acquisition order; a same-commit tie goes by tree order (Q40).
     traitsOn = nextTraitsOn(traitsOn, { ...scope, global: inAuthoredOrder(scope.global, globalOrder) });
     picks = picksOf(traitsOn, tw, current.traits.traits, persona);
-    const misfits = world.bodies ? bodyMisfits(copies, { ...world.bodies, items: world.items, traitPicks: picks, basePicks: baseAfter }, persona) : [];
-    const failing = copies.filter((copy) => {
-      if (!copy.equipped || misfits.includes(copy)) return false;
-      const rows = read.requirementStates(current, copy, copies);
+    const misfits = world.bodies ? bodyMisfits(instances, { ...world.bodies, items: world.items, traitPicks: picks, basePicks: baseAfter }, persona) : [];
+    const failing = instances.filter((instance) => {
+      if (!instance.equipped || misfits.includes(instance)) return false;
+      const rows = read.requirementStates(current, instance, instances);
       return !!rows && !rows.some((row) => row.holds);
     });
     if (!failing.length && !misfits.length) break;
@@ -248,23 +248,23 @@ export function settleInventory(state: InventorySettleState, world: InventorySet
       log.push(`Inventory settle stopped after ${cap} passes`);
       break;
     }
-    copies = copies.map((copy) => (failing.includes(copy) || misfits.includes(copy) ? unequipped(copy) : copy));
-    for (const copy of failing) {
-      if (!world.quietUnequips) log.push(`Unequipped ${read.copyName(copy)}: requirement no longer holds`);
-      fireUnequipped(copy);
+    instances = instances.map((instance) => (failing.includes(instance) || misfits.includes(instance) ? unequipped(instance) : instance));
+    for (const instance of failing) {
+      if (!world.quietUnequips) log.push(`Unequipped ${read.instanceName(instance)}: requirement no longer holds`);
+      fireUnequipped(instance);
     }
-    for (const copy of misfits) fireUnequipped(copy);
+    for (const instance of misfits) fireUnequipped(instance);
     offByBody.push(...misfits);
   }
   const was = world.previousPersona ?? persona;
-  const stillOff = (state.chainOff ?? []).filter((copy) => !copies.some((now) => now.id === copy.id && now.equipped));
-  // A chain's copy that went back on is not off, and one that came off twice names once.
-  const named = [...new Map([...stillOff, ...offByBody].map((copy) => [copy.id, copy])).values()];
+  const stillOff = (state.chainOff ?? []).filter((instance) => !instances.some((now) => now.id === instance.id && now.equipped));
+  // A chain's instance that went back on is not off, and one that came off twice names once.
+  const named = [...new Map([...stillOff, ...offByBody].map((instance) => [instance.id, instance])).values()];
   const bodyLog = world.bodies ? bodyChangeLog({
     world: world.bodies,
     before: { picks: picksOf(before, world.traits, state.traits.traits, was), base: baseBefore, persona: was },
     after: { picks, base: baseAfter, persona },
-    offByBody: named, copyName: read.copyName, resolve: world.resolve ?? same,
+    offByBody: named, instanceName: read.instanceName, resolve: world.resolve ?? same,
   }) : [];
   const { traitsOn: _was, base: _base, ...rest } = state.bodies ?? {};
   const bodies: BodyRuntime = {
@@ -273,7 +273,7 @@ export function settleInventory(state: InventorySettleState, world: InventorySet
     ...(Object.keys(baseAfter).length ? { base: baseAfter } : {}),
   };
   return {
-    copies, traits: current.traits, ledger: current.ledger ?? {}, log, cascade, cascadeNames, events,
+    instances, traits: current.traits, ledger: current.ledger ?? {}, log, cascade, cascadeNames, events,
     bodies, bodyLog, bodyUnequipped: offByBody.length, offByBody,
   };
 }
@@ -282,8 +282,8 @@ interface BodyChange {
   world: SettleBodies;
   before: { picks: TraitBodyPicks; base: TraitBodyPicks; persona: PersonaRef | undefined };
   after: { picks: TraitBodyPicks; base: TraitBodyPicks; persona: PersonaRef | undefined };
-  offByBody: readonly ItemCopy[];
-  copyName: (copy: ItemCopy) => string;
+  offByBody: readonly ItemInstance[];
+  instanceName: (instance: ItemInstance) => string;
   resolve: (text: string) => string;
 }
 
@@ -293,7 +293,7 @@ function bodyChangeLog(change: BodyChange): string[] {
   const { world, before, after } = change;
   const entityIds = new Set([
     ...Object.keys(before.picks), ...Object.keys(after.picks), ...Object.keys(before.base), ...Object.keys(after.base),
-    ...change.offByBody.flatMap((copy) => (copy.where.kind === 'entity' ? [copy.where.id] : [])),
+    ...change.offByBody.flatMap((instance) => (instance.where.kind === 'entity' ? [instance.where.id] : [])),
   ]);
   const owners: SlotOwner[] = [{ kind: 'you' }, ...[...entityIds].filter(Boolean).map((id) => ({ kind: 'entity' as const, id }))];
   const nameOf = (body: Body | undefined) => (body ? change.resolve(body.name) : 'None');
@@ -302,21 +302,21 @@ function bodyChangeLog(change: BodyChange): string[] {
     const is = bodyInForce({ ...world, traitPicks: after.picks, basePicks: after.base }, owner, after.persona);
     if (was?.id === is?.id) return [];
     const key = slotOwnerKey(owner);
-    const off = change.offByBody.filter((copy) => copy.where.kind !== 'location' && slotOwnerKey(copy.where) === key).map(change.copyName);
+    const off = change.offByBody.filter((instance) => instance.where.kind !== 'location' && slotOwnerKey(instance.where) === key).map(change.instanceName);
     const entity = owner.kind === 'entity' ? world.entities?.find((e) => e.id === owner.id) : undefined;
     const who = owner.kind === 'entity' ? `${change.resolve(entity?.name ?? owner.id)}'s ` : '';
     return [`${who}Body: ${nameOf(is)}${off.length ? `. Unequipped ${off.join(', ')}` : ''}`];
   });
 }
 
-/** Why `copy` cannot be equipped under `copies` (Q49), or null when its requirement holds. For the validator's
+/** Why `instance` cannot be equipped under `instances` (Q49), or null when its requirement holds. For the validator's
  *  equip check. */
-export function equipRequirement(state: Omit<InventorySettleState, 'copies'>, world: InventorySettleWorld) {
+export function equipRequirement(state: Omit<InventorySettleState, 'instances'>, world: InventorySettleWorld) {
   const read = reader(world);
-  return (copy: ItemCopy, copies: readonly ItemCopy[]): string | null => {
-    const rows = read.requirementStates(state, copy, copies);
+  return (instance: ItemInstance, instances: readonly ItemInstance[]): string | null => {
+    const rows = read.requirementStates(state, instance, instances);
     if (!rows || rows.some((row) => row.holds)) return null;
-    return `${read.copyName(copy)} needs ${rowsText(rows)}`;
+    return `${read.instanceName(instance)} needs ${rowsText(rows)}`;
   };
 }
 
@@ -325,16 +325,16 @@ export function equipRequirement(state: Omit<InventorySettleState, 'copies'>, wo
  * The same state, and no `items`, when nothing moves.
  */
 export function settleTraitsWithItems(
-  state: TraitRuntimeState, held: Pick<InventorySettleState, 'copies' | 'ledger' | 'now' | 'bodies'>, world: InventorySettleWorld,
+  state: TraitRuntimeState, held: Pick<InventorySettleState, 'instances' | 'ledger' | 'now' | 'bodies'>, world: InventorySettleWorld,
 ): GatedTraitResult {
   const settled = settleInventory({ ...held, traits: state }, world);
-  const itemsMoved = settled.copies !== held.copies || JSON.stringify(settled.ledger) !== JSON.stringify(held.ledger ?? {})
+  const itemsMoved = settled.instances !== held.instances || JSON.stringify(settled.ledger) !== JSON.stringify(held.ledger ?? {})
     || JSON.stringify(settled.bodies) !== JSON.stringify(held.bodies) || settled.bodyLog.length > 0;
   if (settled.traits === state && !itemsMoved) return { state, log: settled.log, cascade: [], cascadeNames: [] };
   return {
     state: settled.traits === state ? { ...state } : settled.traits, log: settled.log, cascade: settled.cascade, cascadeNames: settled.cascadeNames,
     items: {
-      copies: settled.copies, ledger: settled.ledger, bodies: settled.bodies, bodyLog: settled.bodyLog,
+      instances: settled.instances, ledger: settled.ledger, bodies: settled.bodies, bodyLog: settled.bodyLog,
       bodyUnequipped: settled.bodyUnequipped, events: settled.events,
     },
   };

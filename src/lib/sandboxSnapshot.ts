@@ -3,10 +3,10 @@
  * `snapshotOf`, then call `run` per Script unit and `switchesOf` per result. Owner entries, `self`, the cast, the
  * placeholders, the dictionaries, the places and the switched trait are assembled here and nowhere else.
  */
-import type { Entity, Item, ItemCopy, ItemCopyWhere, Placeholder, Stat, Trait } from '@/types';
+import type { Entity, Item, ItemInstance, ItemInstanceWhere, Placeholder, Stat, Trait } from '@/types';
 import {
   EMPTY_REPLY, executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type NarrationInput, type SandboxEntity, type SandboxPlace,
-  type SandboxBodyDef, type SandboxCurrency, type SandboxItem, type SandboxMoney, type SandboxItemCopy, type SandboxLocationLinks, type SandboxPlaceholderNode, type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
+  type SandboxBodyDef, type SandboxCurrency, type SandboxItem, type SandboxMoney, type SandboxItemInstance, type SandboxLocationLinks, type SandboxPlaceholderNode, type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
   type SandboxTurn, type SwitchedTrait, type TraitWrite,
 } from './statCodeExecutor';
 import { bodyDefsOf, bodyReadingOf } from './bodies';
@@ -28,7 +28,7 @@ import { activeStatEnabled } from './traitEffects';
 import type { GateStats } from './traitGates';
 import type { RunTiming } from './statCodeTiming';
 import { isItemTiming } from './scripts';
-import { copyState, isUnidentified, occupiedSlots, usesLeft } from './items';
+import { instanceState, isUnidentified, occupiedSlots, usesLeft } from './items';
 import type { ScriptPromptHost } from './scriptPrompts';
 import type { ResolveText, SandboxState, StatePlaces } from './statCodeTurn';
 
@@ -45,8 +45,8 @@ export type UnitHome =
   | { kind: 'blueprintTrait'; trait: HomeTrait }
   | { kind: 'world' }
   | { kind: 'tool' }
-  /** An item's script, run on one Item Copy event at `where` (Q67). */
-  | { kind: 'item'; item: Pick<Item, 'id' | 'name'>; where: ItemCopyWhere };
+  /** An item's script, run on one Item Instance event at `where` (Q67). */
+  | { kind: 'item'; item: Pick<Item, 'id' | 'name'>; where: ItemInstanceWhere };
 
 /** Whose `owner` a Script runs under. */
 export type UnitOwner =
@@ -93,8 +93,8 @@ export interface ScriptRunUnit {
   readOnly?: boolean;
   /** The `turn.choices` the earlier scripts of the batch left, which this run reads in place of the state's (Q14). */
   choices?: readonly string[];
-  /** An item script's event: its Item Copy, how many it moved, and the Item Copy a use acted on. */
-  itemEvent?: { copyId: string; quantity: number; was?: ItemCopy; targetCopyId?: string };
+  /** An item script's event: its Item Instance, how many it moved, and the Item Instance a use acted on. */
+  itemEvent?: { copyId: string; quantity: number; was?: ItemInstance; targetCopyId?: string };
 }
 
 /** Each scope's stat turn inputs: the global run's and each Owner's, by id. The caller leaves them empty at a
@@ -265,7 +265,7 @@ interface Board {
   ownerStats: (id: string) => SandboxStats;
   placeholderDefs: readonly Placeholder[];
   items: SandboxItem[];
-  itemCopy: (copy: ItemCopy) => SandboxItemCopy;
+  itemInstance: (instance: ItemInstance) => SandboxItemInstance;
   bodyDefs: SandboxBodyDef[];
   currencies: SandboxCurrency[];
   /** A run's money, over the state as it stands at the start of the run. Absent, the world has no Currency. */
@@ -282,7 +282,7 @@ function withBodies(inPlay: CodeEntities, { world, persona }: NonNullable<Sandbo
 }
 
 /** The pending persona's placeholder node: every persona-capable entity's own placeholders under `persona`. Each
- *  node is a copy, so a write through it is told apart from one through the entity. */
+ *  node is an instance, so a write through it is told apart from one through the entity. */
 function personaPlaceholders(playables: readonly string[], owners: ReadonlyMap<string, SandboxPlaceholderNode> | undefined): SandboxPlaceholderNode {
   const rooted = (node: SandboxPlaceholderNode): SandboxPlaceholderNode =>
     ({ ...node, path: ['persona', ...node.path.slice(1)], ownedBy: 'persona', children: (node.children ?? []).map(rooted) });
@@ -342,29 +342,29 @@ function boardOf(state: SandboxState, { readings, pendingPersona, assumedStats =
   const globalEnabled = assumed.length ? { ...state.enabled, ...activeStatEnabled(assumed, []) } : state.enabled;
   const slotName = new Map((state.slots ?? []).map((slot) => [slot.id, slot.name]));
   const authoredItems = new Map((state.items ?? []).map((item) => [item.id, item]));
-  const itemCopy = (copy: ItemCopy): SandboxItemCopy => {
-    const item = copy.item.kind === 'item' ? authoredItems.get(copy.item.itemId) : undefined;
-    const uses = usesLeft(copy, item);
-    const occupies = occupiedSlots(copy, item).map((id) => slotName.get(id) ?? '');
-    const word = copyState(copy);
+  const itemInstance = (instance: ItemInstance): SandboxItemInstance => {
+    const item = instance.item.kind === 'item' ? authoredItems.get(instance.item.itemId) : undefined;
+    const uses = usesLeft(instance, item);
+    const occupies = occupiedSlots(instance, item).map((id) => slotName.get(id) ?? '');
+    const word = instanceState(instance);
     return {
-      id: copy.id, where: copy.where, quantity: copy.quantity, equipped: !!copy.equipped, slot: occupies[0] ?? '', occupies,
+      id: instance.id, where: instance.where, quantity: instance.quantity, equipped: !!instance.equipped, slot: occupies[0] ?? '', occupies,
       allowed: (item?.slotRule?.slotIds ?? []).map((id) => ({ id, name: slotName.get(id) ?? '' })),
-      hidden: copy.visibility === 'hidden', ...(isUnidentified(copy) && { unidentified: true }), ...(uses !== undefined && { uses }), ...(word && { state: word }),
+      hidden: instance.visibility === 'hidden', ...(isUnidentified(instance) && { unidentified: true }), ...(uses !== undefined && { uses }), ...(word && { state: word }),
     };
   };
   const items = (state.items ?? []).map((item): SandboxItem => ({
     id: item.id, name: statCodeName(item.name, placeholderDefs),
     ...(item.unidentifiedName && { unidentifiedName: item.unidentifiedName }), ...(item.unidentifiedDescription && { unidentifiedDescription: item.unidentifiedDescription }),
     ...(sandbox?.owners.get(item.id) ? { placeholders: sandbox.owners.get(item.id) } : {}),
-    copies: (state.itemCopies ?? []).filter((copy) => copy.item.kind === 'item' && copy.item.itemId === item.id).map(itemCopy),
+    copies: (state.itemInstances ?? []).filter((instance) => instance.item.kind === 'item' && instance.item.itemId === item.id).map(itemInstance),
   }));
   const currencyList = state.money?.currencies ?? [];
   const ownerEnabled = new Map((state.owners ?? []).map((owner) => [owner.id, owner.enabled]));
   const played = inPlay.persona.id;
   const money = currencyList.length ? (): SandboxMoney => scriptMoney({
     currencies: currencyList, items: state.items ?? [], itemNames: (state.items ?? []).map((item) => ({ id: item.id, name: resolve(item.name, null) })),
-    slots: state.slots ?? [], placements: state.money?.placements ?? [], copies: state.itemCopies ?? [],
+    slots: state.slots ?? [], placements: state.money?.placements ?? [], instances: state.itemInstances ?? [],
     stats: {
       globalStats: statCodeNamed(state.stats, placeholderDefs),
       entityStats: Object.fromEntries((state.owners ?? []).map((owner) => [owner.id, statCodeNamed(owner.stats, placeholderDefs)])),
@@ -374,7 +374,7 @@ function boardOf(state: SandboxState, { readings, pendingPersona, assumedStats =
   }) : undefined;
   return {
     stats: scopeStats(globalStats, globalEnabled, readings?.global),
-    traits, inPlay, placeholderDefs, ownerStats, items, itemCopy,
+    traits, inPlay, placeholderDefs, ownerStats, items, itemInstance,
     currencies: currencyList.map((currency): SandboxCurrency => ({ id: currency.id, name: statCodeName(currency.name, placeholderDefs), kind: currency.backing.kind })),
     ...(money ? { money } : {}),
     bodyDefs: state.bodies ? bodyDefsOf(state.bodies.world) : [],
@@ -468,7 +468,7 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
       ...(unit.home.kind === 'item' && unit.itemEvent && isItemTiming(unit.timing) && {
         itemEvent: {
           itemId: unit.home.item.id, timing: unit.timing, copyId: unit.itemEvent.copyId, quantity: unit.itemEvent.quantity,
-          ...(unit.itemEvent.was && { was: read.itemCopy(unit.itemEvent.was) }),
+          ...(unit.itemEvent.was && { was: read.itemInstance(unit.itemEvent.was) }),
           ...(unit.itemEvent.targetCopyId && { targetCopyId: unit.itemEvent.targetCopyId }),
         },
       }),

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { dollColumnWidth } from '@/lib/bodyLayout';
 import type { ShownItemIcon } from '@/lib/itemIcons';
 import { cn } from '@/lib/utils';
-import type { Body, ItemCopy } from '@/types';
+import type { Body, ItemInstance } from '@/types';
 import { BodyDoll } from './BodyDoll';
 import { PanelSubheader } from './PanelOwnerCard';
 
@@ -10,25 +10,25 @@ import { PanelSubheader } from './PanelOwnerCard';
 export function EquippedSection({ body, boxes, listed, slotName, nameOf, shownIconOf, listRow, popoverRow }: {
   /** The Body with only the entries that draw. */
   body: Body;
-  /** The Item Copy in each filled box. */
-  boxes: ReadonlyMap<string, ItemCopy>;
-  /** One Item Copy per row, so an All of item in two boxes lists once. */
-  listed: readonly ItemCopy[];
+  /** The Item Instance in each filled box. */
+  boxes: ReadonlyMap<string, ItemInstance>;
+  /** One Item Instance per row, so an All of item in two boxes lists once. */
+  listed: readonly ItemInstance[];
   slotName: (slotId: string) => string;
-  nameOf: (copy: ItemCopy) => string;
-  shownIconOf: (copy: ItemCopy) => ShownItemIcon;
-  listRow: (copy: ItemCopy) => ReactNode;
-  popoverRow: (copy: ItemCopy) => ReactNode;
+  nameOf: (instance: ItemInstance) => string;
+  shownIconOf: (instance: ItemInstance) => ShownItemIcon;
+  listRow: (instance: ItemInstance) => ReactNode;
+  popoverRow: (instance: ItemInstance) => ReactNode;
 }) {
   const doll = (
     <BodyDoll
       body={body}
       slotName={slotName}
-      fills={new Map([...boxes].map(([key, copy]) => [key, {
-        id: copy.id,
-        name: nameOf(copy),
-        icon: shownIconOf(copy),
-        detail: popoverRow(copy),
+      fills={new Map([...boxes].map(([key, instance]) => [key, {
+        id: instance.id,
+        name: nameOf(instance),
+        icon: shownIconOf(instance),
+        detail: popoverRow(instance),
       }]))}
     />
   );

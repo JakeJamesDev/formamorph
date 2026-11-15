@@ -338,6 +338,6 @@ describe('authoredChipScene', () => {
       placements: [{ id: 'p1', where: { kind: 'entity', id: 'wren' }, quantity: 1, equipped: true, source: { kind: 'item', itemId: 'lamp' } }],
       slots: [{ id: 'hand', name: 'Hand' }], bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] })],
     }));
-    expect(scene.itemCopies?.[0]).toMatchObject({ where: { kind: 'entity', id: 'wren' }, equipped: { slotId: 'hand' } });
+    expect(scene.itemInstances?.[0]).toMatchObject({ where: { kind: 'entity', id: 'wren' }, equipped: { slotId: 'hand' } });
   });
 });

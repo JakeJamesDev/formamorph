@@ -24,7 +24,7 @@ import type { GateInput } from './traitGates';
 import { daypartAt } from './gameClock';
 import { gatePick } from './inPlayGates';
 import type { PersonaPick } from './persona';
-import { equipRequirement, settleInventory, startingCopies, type NewId } from './inventory';
+import { equipRequirement, settleInventory, startingInstances, type NewId } from './inventory';
 import { randomUUID } from './uuid';
 import type { OwnerId } from './scope';
 import { resolveEntityText, type PlaceholderMode } from './placeholders';
@@ -77,7 +77,7 @@ export interface OpeningFold {
   startingTraits: { trait: Trait; ownerId: OwnerId }[];
   /** The trait slice as play's trait state holds it. */
   traitState: TraitRuntimeState;
-  /** What the seeded Item Copies' effects applied, for the ledger, and the start log with names unresolved. */
+  /** What the seeded Item Instances' effects applied, for the ledger, and the start log with names unresolved. */
   itemEffects: { ledger: ItemEffectLedger; log: string[] };
   /** Which Body-setting traits opened on, in order. */
   bodies: BodyRuntime;
@@ -93,7 +93,7 @@ function turnOneText(placeholders: Placeholder[]): ResolveText {
 }
 
 /** The state a new game opens with. Pure: the same inputs give the same state, its unrolled chips and its
- *  Item Copy ids aside. */
+ *  Item Instance ids aside. */
 export function openingFold(
   world: OpeningFoldWorld, picks: OpeningPicks = NO_OPENING_PICKS, persona?: OpeningPersona, newId: NewId = randomUUID,
 ): OpeningFold {
@@ -106,7 +106,7 @@ export function openingFold(
   const startWorld = { ...world, entities };
   // The trait picks read the start as Enter World showed it: equipped, before any requirement check (Q51).
   const traitWorld: TraitWorld = {
-    traits, groups: traitGroups, entities, persona: ref, items: world.items ?? [], itemCopies: startingCopies(startWorld, ref, newId),
+    traits, groups: traitGroups, entities, persona: ref, items: world.items ?? [], itemInstances: startingInstances(startWorld, ref, newId),
     options: world.options ?? [], ...(picks.options ? { optionValues: picks.options } : {}),
     ...inPlayOwners(ownerWorld, ref, library),
   };
@@ -126,14 +126,14 @@ export function openingFold(
   traitState = applyOwnedStatTraits(rows.state, traitWorld);
   // A starting equip that fails its requirement stays carried; none logs, and no script fires (Q37, Q50).
   const settleWorld = { items: world.items ?? [], traits: traitWorld, persona: ref, entities, quietUnequips: true };
-  const itemCopies = startingCopies(startWorld, ref, newId, equipRequirement({ traits: traitState, ledger: undefined }, settleWorld));
-  // Seeded Item Copies apply their effects, On First Obtain included (Q59).
+  const itemInstances = startingInstances(startWorld, ref, newId, equipRequirement({ traits: traitState, ledger: undefined }, settleWorld));
+  // Seeded Item Instances apply their effects, On First Obtain included (Q59).
   const items = settleInventory(
-    { copies: itemCopies, traits: traitState, ledger: undefined },
+    { instances: itemInstances, traits: traitState, ledger: undefined },
     { ...settleWorld, bodies: { bodies: world.bodies, slots: world.slots, entities: [...entities, ...library] } },
   );
   traitState = items.traits;
-  const playWorld: TraitWorld = { ...traitWorld, itemCopies: [...items.copies] };
+  const playWorld: TraitWorld = { ...traitWorld, itemInstances: [...items.instances] };
   const entityStats = traitState.entityStats ?? {};
   const ownedTraits = traitState.ownedTraits ?? {};
 
@@ -158,7 +158,7 @@ export function openingFold(
     places: { locations, location: start && { id: start.id, name: start.name }, connections: world.connections ?? [] },
     resolveText: turnOneText(allPlaceholders(world)),
     clock: { deltaHours: 0, elapsedHours: 0 },
-    itemCopies: playWorld.itemCopies,
+    itemInstances: playWorld.itemInstances,
     items: world.items ?? [],
     slots: world.slots ?? [],
     ...(world.currencies?.length ? { money: { currencies: world.currencies, placements: world.placements ?? [] } } : {}),

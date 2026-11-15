@@ -149,7 +149,7 @@ describe('a user Tool reads a balance and can’t pay', () => {
 
   it('stops on pay even when the script catches the throw, and settles nothing', async () => {
     const opened = state();
-    const copies = structuredClone(opened.itemCopies);
+    const instances = structuredClone(opened.itemInstances);
     const result = await snapshotOf(opened).run({
       home: { kind: 'tool' }, timing: 'before', readOnly: true, args: {},
       code: 'try { currencies.Coin.pay(persona, "Gatekeeper", 5); } catch (e) {} return currencies.Coin.balance(persona);',
@@ -157,7 +157,7 @@ describe('a user Tool reads a balance and can’t pay', () => {
     expect(result.error).toContain('pay isn’t available');
     expect(result.payments).toBeUndefined();
     expect(result.worldWrites?.inventory).toBeUndefined();
-    expect(opened.itemCopies).toEqual(copies);
+    expect(opened.itemInstances).toEqual(instances);
   });
 
   it('lists only the fields to a loop over an entry', async () => {

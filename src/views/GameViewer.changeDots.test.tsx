@@ -5,7 +5,7 @@ import { sseReply, sseResponse } from '@/test/aiTextFixtures';
 import userEvent from '@testing-library/user-event';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { deleteSaveRecord, getAllSaveRecords, putSaveRecord } from '@/components/modals/dbUtils';
-import type { Item, ItemCopy, PlayerStat, SaveRecord, Script, Trait, World } from '@/types';
+import type { Item, ItemInstance, PlayerStat, SaveRecord, Script, Trait, World } from '@/types';
 
 /** The right rail's dots: a turn's change to the player's stats, traits or inventory, made while that tab is out of sight. */
 
@@ -88,7 +88,7 @@ async function playTurn(landed: () => void = () => {}) {
   await screen.findByText('You wait by the water.');
   await waitFor(() => {
     expect(live?.globalStats.find((s) => s.id === 'vigor')?.value).toBe(expectVigor);
-    expect(live?.itemCopies.some((c) => c.where.kind === 'you')).toBe(expectKey);
+    expect(live?.itemInstances.some((c) => c.where.kind === 'you')).toBe(expectKey);
     expect(screen.getByPlaceholderText(/Type your action/)).toBeEnabled();
     landed();
   });
@@ -216,7 +216,7 @@ describe('a dot on the right rail', () => {
   it('starts a loaded game with none, on the loaded state', async () => {
     const view = play();
     fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
-    const carried: ItemCopy = { id: 'k', item: { kind: 'item', itemId: 'key' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' };
+    const carried: ItemInstance = { id: 'k', item: { kind: 'item', itemId: 'key' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' };
     const state = { ...live!.saveCurrentGameState(), fullMessageHistory: undefined, itemCopies: [carried] };
     view.unmount();
     cleanup();
@@ -224,7 +224,7 @@ describe('a dot on the right rail', () => {
 
     renderGameViewer(world(), { inGameplay: <Probe />, initialSaveId: 'dots' });
     await waitFor(() => expect(live?.logEntries.some((e) => e.text.startsWith('Game loaded'))).toBe(true));
-    await waitFor(() => expect(live?.itemCopies).toHaveLength(1));
+    await waitFor(() => expect(live?.itemInstances).toHaveLength(1));
     expect(railNames('Status')).toEqual(['Stats', 'Traits', 'Inventory', 'Location']);
   });
 

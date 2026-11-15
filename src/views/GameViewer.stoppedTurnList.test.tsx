@@ -81,7 +81,7 @@ const sendButton = () => screen.getByRole('button', { name: 'Send' });
 const tray = () => screen.queryByRole('region', { name: 'Since Last Turn' });
 const rowTexts = () => within(tray() as HTMLElement).getAllByRole('listitem').map((row) => row.textContent);
 const history = () => gameplay().fullMessageHistory;
-const tonics = () => gameplay().itemCopies.find((c) => c.item.kind === 'item' && c.item.itemId === 'tonic')?.quantity ?? 0;
+const tonics = () => gameplay().itemInstances.find((c) => c.item.kind === 'item' && c.item.itemId === 'tonic')?.quantity ?? 0;
 const turnDone = () => waitFor(() => {
   expect(gameplay().isWaitingForAI).toBe(false);
   expect(gameplay().narrationSettled).toBe(true);
@@ -121,7 +121,7 @@ async function start() {
   renderGameViewer(world, { inGameplay: <Probe /> });
   await screen.findByPlaceholderText(/Type your action/);
   stubEndpoint();
-  await waitFor(() => expect(gameplay().itemCopies).toHaveLength(2));
+  await waitFor(() => expect(gameplay().itemInstances).toHaveLength(2));
   await send();
   requests = [];
   gameplay().setActiveTab('inventory');

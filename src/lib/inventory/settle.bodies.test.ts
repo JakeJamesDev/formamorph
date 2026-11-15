@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { bodyFixture } from '@/test/bodyFixture';
 import { applyInventoryOps, settleInventory, type InventoryOp, type InventorySettleWorld } from '.';
 import { seedStatBases, type TraitRuntimeState, type TraitWorld } from '@/lib/traitRuntime';
-import type { Body, BodyRuntime, Item, ItemCopy, ItemCopyWhere, ItemEffectLedger, PersonaRef, PlayerStat, Slot, Trait } from '@/types';
+import type { Body, BodyRuntime, Item, ItemInstance, ItemInstanceWhere, ItemEffectLedger, PersonaRef, PlayerStat, Slot, Trait } from '@/types';
 
 const stat = (id: string, value: number): PlayerStat => ({ id, name: 'Strength', value, min: 0, max: 20 } as PlayerStat);
 const item = (id: string, name: string, over: Partial<Item> = {}): Item =>
@@ -63,7 +63,7 @@ const settleWorld = (persona: PersonaRef = heroRef, previousPersona?: PersonaRef
   ...(previousPersona && { previousPersona }),
 });
 
-interface Play { copies: readonly ItemCopy[]; traits: TraitRuntimeState; ledger: ItemEffectLedger | undefined; bodies: BodyRuntime }
+interface Play { instances: readonly ItemInstance[]; traits: TraitRuntimeState; ledger: ItemEffectLedger | undefined; bodies: BodyRuntime }
 type Settled = Play & ReturnType<typeof settleInventory>;
 
 const rex = { kind: 'entity', id: 'rex' } as const;
@@ -71,7 +71,7 @@ const you = { kind: 'you' } as const;
 
 /** Rex and the hero at Strength 5, nothing on. */
 const start = (): Play => ({
-  copies: [],
+  instances: [],
   traits: {
     stats: seedStatBases([stat('moon', 0)]), traits: [], disabledTraitIds: [], appliedValues: {},
     entityStats: { hero: seedStatBases([stat('strength', 5)]), rex: seedStatBases([stat('strength', 5)]) },
@@ -81,43 +81,43 @@ const start = (): Play => ({
 });
 
 const settle = (play: Play, world = settleWorld()): Settled => {
-  const settled = settleInventory({ copies: play.copies, traits: play.traits, ledger: play.ledger, bodies: play.bodies }, world);
+  const settled = settleInventory({ instances: play.instances, traits: play.traits, ledger: play.ledger, bodies: play.bodies }, world);
   return { ...settled, ledger: settled.ledger };
 };
 
 /** Gains and equips `itemIds` on `to` in order, then settles. */
-function wear(play: Play, to: ItemCopyWhere, ...itemIds: string[]): Settled {
-  let copies = play.copies;
-  let n = copies.length;
+function wear(play: Play, to: ItemInstanceWhere, ...itemIds: string[]): Settled {
+  let instances = play.instances;
+  let n = instances.length;
   for (const itemId of itemIds) {
-    const gained = applyInventoryOps(copies, [{ kind: 'gain', itemId, quantity: 1, to }], {
+    const gained = applyInventoryOps(instances, [{ kind: 'gain', itemId, quantity: 1, to }], {
       world: { items, slots, bodies, entities }, source: 'script', newId: () => `c${n++}`, persona: heroRef,
-    }).copies;
-    const copy = gained.find((c) => !copies.some((o) => o.id === c.id))!;
-    const equip: InventoryOp = { kind: 'equip', copyId: copy.id };
+    }).instances;
+    const instance = gained.find((c) => !instances.some((o) => o.id === c.id))!;
+    const equip: InventoryOp = { kind: 'equip', copyId: instance.id };
     const equipped = applyInventoryOps(gained, [equip], { world: { items, slots, bodies, entities }, source: 'script', newId: () => `c${n++}`, persona: heroRef });
     expect(equipped.diagnostics).toEqual([]);
-    copies = equipped.copies;
+    instances = equipped.instances;
   }
-  return settle({ ...play, copies });
+  return settle({ ...play, instances });
 }
 
 /** Rex's chosen traits set to `ids`, as a switch leaves them, then settled. */
 const rexOn = (play: Play, ids: string[]): Settled =>
   settle({ ...play, traits: { ...play.traits, ownedTraits: { rex: { chosen: ids } } } });
 
-const worn = (play: Play, where: ItemCopyWhere) => play.copies
+const worn = (play: Play, where: ItemInstanceWhere) => play.instances
   .filter((c) => c.equipped && JSON.stringify(c.where) === JSON.stringify(where))
   .map((c) => (c.item.kind === 'item' ? c.item.itemId : '')).sort();
 const strength = (play: Play, owner: string) => play.traits.entityStats![owner].find((s) => s.id === 'strength')!.value;
 
 describe("a script chain's Body line", () => {
-  const landing = (copies: readonly ItemCopy[], body: string, chainOff: readonly ItemCopy[]) => settleInventory(
-    { copies, traits: start().traits, ledger: undefined, bodies: {}, baseWrites: { '': { kind: 'body', id: body } }, chainOff }, settleWorld(),
+  const landing = (instances: readonly ItemInstance[], body: string, chainOff: readonly ItemInstance[]) => settleInventory(
+    { instances, traits: start().traits, ledger: undefined, bodies: {}, baseWrites: { '': { kind: 'body', id: body } }, chainOff }, settleWorld(),
   );
 
   it('names what the chain took off, once, and fires nothing for it', () => {
-    const [on] = wear(start(), you, 'helm').copies;
+    const [on] = wear(start(), you, 'helm').instances;
     const { equipped: _on, ...off } = on;
     const landed = landing([off], 'wolf', [on, on]);
     expect(landed.bodyLog).toEqual(['Body: Wolf. Unequipped Helm']);
@@ -125,10 +125,10 @@ describe("a script chain's Body line", () => {
     expect(landed.bodyUnequipped).toBe(0);
   });
 
-  it('leaves out a copy the chain equipped again', () => {
-    const { copies } = wear(start(), you, 'helm');
-    const landed = landing(copies, 'cat', copies);
-    expect(worn({ ...start(), copies: landed.copies }, you)).toEqual(['helm']);
+  it('leaves out an instance the chain equipped again', () => {
+    const { instances } = wear(start(), you, 'helm');
+    const landed = landing(instances, 'cat', instances);
+    expect(worn({ ...start(), instances: landed.instances }, you)).toEqual(['helm']);
     expect(landed.bodyLog).toEqual(['Body: Cat']);
   });
 });
@@ -143,7 +143,7 @@ describe('trait Body rows', () => {
     expect(wolf.bodyLog).toEqual(["Rex's Body: Wolf. Unequipped Sword, Helm"]);
     expect(wolf.events.map((e) => [e.timing, e.itemId])).toEqual([['unequipped', 'sword'], ['unequipped', 'helm']]);
     expect(wolf.bodyUnequipped).toBe(2);
-    expect(wolf.copies.every((c) => c.where.kind === 'entity')).toBe(true);
+    expect(wolf.instances.every((c) => c.where.kind === 'entity')).toBe(true);
   });
 
   it('changes the played Persona through a global trait, a Hidden one included', () => {
@@ -205,7 +205,7 @@ describe('trait Body rows', () => {
     expect(drow.bodyLog).toEqual([]);
   });
 
-  it('unequips the most recently equipped copy first when a capacity drops', () => {
+  it('unequips the most recently equipped instance first when a capacity drops', () => {
     const armed = wear(start(), rex, 'sword', 'dagger');
     const tiny = rexOn(armed, ['shrink']);
     expect(worn(tiny, rex)).toEqual(['sword']);
@@ -233,7 +233,7 @@ describe('trait Body rows', () => {
   it('leaves Bodies alone without a Body world', () => {
     const armed = wear(start(), rex, 'helm');
     const settled = settleInventory(
-      { copies: armed.copies, traits: { ...armed.traits, ownedTraits: { rex: { chosen: ['wolfForm'] } } }, ledger: armed.ledger },
+      { instances: armed.instances, traits: { ...armed.traits, ownedTraits: { rex: { chosen: ['wolfForm'] } } }, ledger: armed.ledger },
       { ...settleWorld(), bodies: undefined },
     );
     expect(worn(settled, rex)).toEqual(['helm']);
@@ -244,7 +244,7 @@ describe('trait Body rows', () => {
 describe('a script-written base Body', () => {
   const wolfBase = { rex: { kind: 'body', id: 'wolf' } } as const;
   const baseOn = (play: Play, baseWrites: NonNullable<Parameters<typeof settleInventory>[0]['baseWrites']>): Settled =>
-    ({ ...play, ...settleInventory({ copies: play.copies, traits: play.traits, ledger: play.ledger, bodies: play.bodies, baseWrites }, settleWorld()) }) as Settled;
+    ({ ...play, ...settleInventory({ instances: play.instances, traits: play.traits, ledger: play.ledger, bodies: play.bodies, baseWrites }, settleWorld()) }) as Settled;
 
   it('sets the base, unequips what it lacks, reverses the effects exactly and fires When Unequipped', () => {
     const armed = wear(start(), rex, 'sword', 'helm');
@@ -311,17 +311,17 @@ describe('the Slot Rule in the Body settle', () => {
     expect(worn(after, sir)).toEqual([]);
   });
 
-  it('keeps an Either of copy whose own slot stays, and takes off the one whose slot went', () => {
+  it('keeps an Either of instance whose own slot stays, and takes off the one whose slot went', () => {
     const on = wear(start(), sir, 'knife', 'knife');
-    expect(on.copies.map((c) => c.equipped?.slotId)).toEqual(['main', 'off']);
+    expect(on.instances.map((c) => c.equipped?.slotId)).toEqual(['main', 'off']);
     const after = sirOn(on, ['maim']);
-    expect(after.copies.map((c) => c.equipped?.slotId)).toEqual(['main', undefined]);
+    expect(after.instances.map((c) => c.equipped?.slotId)).toEqual(['main', undefined]);
   });
 
-  it('keeps an Either of copy in its slot across a save round trip', () => {
+  it('keeps an Either of instance in its slot across a save round trip', () => {
     const on = wear(start(), sir, 'knife', 'knife');
-    const reloaded = settle({ ...on, copies: JSON.parse(JSON.stringify(on.copies)) as ItemCopy[] });
-    expect(reloaded.copies.map((c) => c.equipped?.slotId)).toEqual(['main', 'off']);
+    const reloaded = settle({ ...on, instances: JSON.parse(JSON.stringify(on.instances)) as ItemInstance[] });
+    expect(reloaded.instances.map((c) => c.equipped?.slotId)).toEqual(['main', 'off']);
     expect(reloaded.events).toEqual([]);
   });
 
@@ -331,24 +331,24 @@ describe('the Slot Rule in the Body settle', () => {
       return { ...settleWorld(), items: edited };
     };
 
-    it('takes off an Either of copy whose stored slot the rule left (Q55)', () => {
+    it('takes off an Either of instance whose stored slot the rule left (Q55)', () => {
       const on = wear(start(), sir, 'knife');
       const after = settle(on, reruled({ mode: 'either', slotIds: ['off'] }));
       expect(worn(after, sir)).toEqual([]);
       expect(after.events.map((e) => e.timing)).toEqual(['unequipped']);
     });
 
-    it('takes off a copy whose item lost its rule', () => {
+    it('takes off an instance whose item lost its rule', () => {
       const after = settle(wear(start(), sir, 'knife'), reruled(undefined));
       expect(worn(after, sir)).toEqual([]);
     });
 
-    it('reads an All of copy from the rule, so it stays when its first slot leaves and the rest still fit', () => {
+    it('reads an All of instance from the rule, so it stays when its first slot leaves and the rest still fit', () => {
       const after = settle(wear(start(), sir, 'greatsword'), reruled({ mode: 'all', slotIds: ['off'] }));
       expect(worn(after, sir)).toEqual(['greatsword']);
     });
 
-    it('keeps an All of copy when only the order changed', () => {
+    it('keeps an All of instance when only the order changed', () => {
       const after = settle(wear(start(), sir, 'greatsword'), reruled({ mode: 'all', slotIds: ['off', 'main'] }));
       expect(worn(after, sir)).toEqual(['greatsword']);
       expect(after.events).toEqual([]);

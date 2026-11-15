@@ -49,14 +49,14 @@ const gameplay = () => {
 const value = (id: string) => gameplay().globalStats.find((s) => s.id === id)?.value;
 const nerve = () => gameplay().entityStats.ash?.find((s) => s.id === 'nerve')?.value;
 const isBrave = () => !!gameplay().ownedTraits.ash?.granted?.includes('brave');
-const tonics = () => gameplay().itemCopies.find((c) => c.item.kind === 'item' && c.item.itemId === 'tonic')?.quantity ?? 0;
+const tonics = () => gameplay().itemInstances.find((c) => c.item.kind === 'item' && c.item.itemId === 'tonic')?.quantity ?? 0;
 const tray = () => screen.queryByRole('region', { name: 'Since Last Turn' });
 const rows = () => within(tray() ?? document.body).queryAllByRole('listitem').map((li) => li.textContent);
 
 async function start() {
   renderGameViewer(world, { inGameplay: <Probe />, initialPersona: { ref: { source: 'world', entityId: 'ash' } } });
   await screen.findByPlaceholderText(/Type your action/);
-  await waitFor(() => expect(gameplay().itemCopies).toHaveLength(2));
+  await waitFor(() => expect(gameplay().itemInstances).toHaveLength(2));
   gameplay().setActiveTab('inventory');
   await screen.findByRole('button', { name: 'Use Tonic' });
 }
@@ -77,7 +77,7 @@ describe('the Action List in a game', () => {
     expect(rows()).toEqual(['Used Tonic']);
   });
 
-  it('undoes a use: the copy, the item effect and the script’s write all return', async () => {
+  it('undoes a use: the instance, the item effect and the script’s write all return', async () => {
     await start();
     fireEvent.click(screen.getByRole('button', { name: 'Use Tonic' }));
     await waitFor(() => expect(value('calm')).toBe(90));
@@ -113,7 +113,7 @@ describe('the Action List in a game', () => {
     fireEvent.click(await screen.findByRole('button', { name: /: Helm$/ }));
     fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Unequip Helm' }));
     await waitFor(() => expect(tray()).toBeNull());
-    expect(gameplay().itemCopies.some((c) => c.equipped)).toBe(false);
+    expect(gameplay().itemInstances.some((c) => c.equipped)).toBe(false);
     // The unequip script would set Calm to 10.
     await new Promise((r) => setTimeout(r, 50));
     expect(value('calm')).toBe(50);
@@ -165,7 +165,7 @@ describe('the Action List in a game', () => {
 });
 
 describe('the Action List across a save and load', () => {
-  const helmOn = () => gameplay().itemCopies.some((c) => c.equipped);
+  const helmOn = () => gameplay().itemInstances.some((c) => c.equipped);
 
   it('reloads the entries, hidden flags and counts, and undo still restores', async () => {
     await start();
@@ -214,7 +214,7 @@ describe('stat edits in the Action List', () => {
   async function editMode() {
     renderGameViewer(world, { inGameplay: <Probe />, initialPersona: { ref: { source: 'world', entityId: 'ash' } } });
     await screen.findByPlaceholderText(/Type your action/);
-    await waitFor(() => expect(gameplay().itemCopies).toHaveLength(2));
+    await waitFor(() => expect(gameplay().itemInstances).toHaveLength(2));
     // One turn's page snapshot, which a manual edit patches.
     act(() => gameplay().setGameStates([gameplay().saveCurrentGameState()]));
     gameplay().setActiveTab('stats');

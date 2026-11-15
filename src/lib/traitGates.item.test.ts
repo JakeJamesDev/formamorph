@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Entity, ItemCopy, ItemRequirement, PersonaRef, Trait, TraitRequirement } from '@/types';
+import type { Entity, ItemInstance, ItemRequirement, PersonaRef, Trait, TraitRequirement } from '@/types';
 import { gateOf, gateStates, requirementOptions, sameRequirement, settle, type GateInput, type GateStatSet } from './traitGates';
 import { buildEntityCardData, parseEntityCardData } from './entityFile';
 import { itemRuleStates } from './imageVisibility';
@@ -11,13 +11,13 @@ import { scoped, type OwnerId } from './scope';
 const T = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
 const ring = (status: ItemRequirement['status'] = 'owned', extra: Partial<ItemRequirement> = {}): ItemRequirement =>
   ({ kind: 'item', id: 'ring', status, ...extra });
-const copy = (id: string, where: ItemCopy['where'], over: Partial<ItemCopy> = {}): ItemCopy =>
+const instance = (id: string, where: ItemInstance['where'], over: Partial<ItemInstance> = {}): ItemInstance =>
   ({ id, item: { kind: 'item', itemId: 'ring' }, where, quantity: 1, visibility: 'visible', ...over });
 const worldItems = [{ id: 'ring', name: 'Cursed Ring', slotRule: { mode: 'either' as const, slotIds: ['finger'] } }, { id: 'cup', name: 'Cup' }];
 const entities = [{ id: 'ash', name: 'Ash' }];
 
 const input = (
-  traits: Trait[], itemCopies: ItemCopy[], extra: Partial<GateInput> = {},
+  traits: Trait[], itemInstances: ItemInstance[], extra: Partial<GateInput> = {},
 ): GateInput => ({
   global: { traits, groups: [] },
   owners: [],
@@ -25,42 +25,42 @@ const input = (
   entities,
   persona: { source: 'none' } as PersonaRef,
   worldItems,
-  itemCopies,
+  itemInstances,
   ...extra,
 });
 const gated = (...all: TraitRequirement[]) => T('Curse', { requires: [{ all }] });
-const unlocked = (req: TraitRequirement, copies: ItemCopy[], extra: Partial<GateInput> = {}, owner: OwnerId = null) =>
-  gateOf(gateStates(input([gated(req)], copies, extra)), owner, 'Curse')?.unlocked;
+const unlocked = (req: TraitRequirement, instances: ItemInstance[], extra: Partial<GateInput> = {}, owner: OwnerId = null) =>
+  gateOf(gateStates(input([gated(req)], instances, extra)), owner, 'Curse')?.unlocked;
 
 describe('item Conditions', () => {
   it('holds while the persona owns the item, carried or equipped, and not after it leaves', () => {
-    expect(unlocked(ring(), [copy('a', { kind: 'you' })])).toBe(true);
-    expect(unlocked(ring(), [copy('a', { kind: 'you' }, { equipped: { slotId: 'finger', order: 1 } })])).toBe(true);
-    expect(unlocked(ring(), [copy('a', { kind: 'location', id: 'cave' })])).toBe(false);
+    expect(unlocked(ring(), [instance('a', { kind: 'you' })])).toBe(true);
+    expect(unlocked(ring(), [instance('a', { kind: 'you' }, { equipped: { slotId: 'finger', order: 1 } })])).toBe(true);
+    expect(unlocked(ring(), [instance('a', { kind: 'location', id: 'cave' })])).toBe(false);
     expect(unlocked(ring(), [])).toBe(false);
   });
 
   it('fails an equipped Condition while the item is only carried', () => {
-    expect(unlocked(ring('equipped'), [copy('a', { kind: 'you' })])).toBe(false);
-    expect(unlocked(ring('equipped'), [copy('a', { kind: 'you' }, { equipped: { slotId: 'finger', order: 1 } })])).toBe(true);
+    expect(unlocked(ring('equipped'), [instance('a', { kind: 'you' })])).toBe(false);
+    expect(unlocked(ring('equipped'), [instance('a', { kind: 'you' }, { equipped: { slotId: 'finger', order: 1 } })])).toBe(true);
   });
 
-  it('counts a hidden Item Copy (Q63)', () => {
-    expect(unlocked(ring(), [copy('a', { kind: 'you' }, { visibility: 'hidden' })])).toBe(true);
+  it('counts a hidden Item Instance (Q63)', () => {
+    expect(unlocked(ring(), [instance('a', { kind: 'you' }, { visibility: 'hidden' })])).toBe(true);
   });
 
   it('flips under Not', () => {
     expect(unlocked(ring('owned', { not: true }), [])).toBe(true);
-    expect(unlocked(ring('owned', { not: true }), [copy('a', { kind: 'you' })])).toBe(false);
-    expect(unlocked(ring('equipped', { not: true }), [copy('a', { kind: 'you' })])).toBe(true);
+    expect(unlocked(ring('owned', { not: true }), [instance('a', { kind: 'you' })])).toBe(false);
+    expect(unlocked(ring('equipped', { not: true }), [instance('a', { kind: 'you' })])).toBe(true);
   });
 
   it('reads the named owner, and the persona for a played world entity (Q90)', () => {
-    const onAsh = [copy('a', { kind: 'entity', id: 'ash' })];
+    const onAsh = [instance('a', { kind: 'entity', id: 'ash' })];
     expect(unlocked(ring('owned', { owner: { kind: 'entity', id: 'ash' } }), onAsh)).toBe(true);
     expect(unlocked(ring('owned', { owner: { kind: 'you' } }), onAsh)).toBe(false);
     const played = { persona: { source: 'world', entityId: 'ash' } as PersonaRef };
-    const carried = [copy('a', { kind: 'you' })];
+    const carried = [instance('a', { kind: 'you' })];
     expect(unlocked(ring('owned', { owner: { kind: 'entity', id: 'ash' } }), carried, played)).toBe(true);
     expect(unlocked(ring('owned', { owner: { kind: 'entity', id: 'ash' } }), carried)).toBe(false);
   });
@@ -70,7 +70,7 @@ describe('item Conditions', () => {
     expect(unlocked(gone, [])).toBe(false);
     expect(unlocked({ ...gone, not: true }, [])).toBe(false);
     expect(unlocked(ring('owned', { not: true, owner: { kind: 'entity', id: 'nobody' } }), [])).toBe(false);
-    expect(unlocked(ring(), [copy('a', { kind: 'you' })], { worldItems: undefined })).toBe(false);
+    expect(unlocked(ring(), [instance('a', { kind: 'you' })], { worldItems: undefined })).toBe(false);
   });
 
   it('keeps a trait off while its Not item is gone or its owner is gone, through settle', () => {
@@ -82,7 +82,7 @@ describe('item Conditions', () => {
 
   it('turns an Automatic trait on when the ring is owned and off when it leaves', () => {
     const curse = T('Curse', { mode: 'alwaysOn', requires: [{ all: [ring()] }] });
-    const owned = settle(input([curse], [copy('a', { kind: 'you' })]));
+    const owned = settle(input([curse], [instance('a', { kind: 'you' })]));
     expect(owned.active.global).toEqual(['Curse']);
     const lost = settle(input([curse], [], { active: owned.active }));
     expect(lost.active.global).toEqual([]);
@@ -95,13 +95,13 @@ describe('item Conditions', () => {
     expect(sameRequirement(ring('owned'), ring('owned'))).toBe(true);
   });
 
-  it("keeps a hidden Item Copy's item out of the player's gate line while the Condition still holds (Q63, Q115)", () => {
-    const line = (copies: ItemCopy[]) => gateLine(gateOf(gateStates(input([gated(ring())], copies)), null, 'Curse'));
-    const hiddenOnly = [copy('a', { kind: 'you' }, { visibility: 'hidden' })];
+  it("keeps a hidden Item Instance's item out of the player's gate line while the Condition still holds (Q63, Q115)", () => {
+    const line = (instances: ItemInstance[]) => gateLine(gateOf(gateStates(input([gated(ring())], instances)), null, 'Curse'));
+    const hiddenOnly = [instance('a', { kind: 'you' }, { visibility: 'hidden' })];
     expect(unlocked(ring(), hiddenOnly)).toBe(true);
     expect(line(hiddenOnly)).toBeNull();
-    expect(line([copy('a', { kind: 'you' })])).toBe('Unlocked by owning Cursed Ring');
-    expect(line([copy('a', { kind: 'you' }, { visibility: 'hidden' }), copy('b', { kind: 'you' })])).toBe('Unlocked by owning Cursed Ring');
+    expect(line([instance('a', { kind: 'you' })])).toBe('Unlocked by owning Cursed Ring');
+    expect(line([instance('a', { kind: 'you' }, { visibility: 'hidden' }), instance('b', { kind: 'you' })])).toBe('Unlocked by owning Cursed Ring');
   });
 
   it('offers each item as owned, and as equipped when it fits a slot', () => {
@@ -116,9 +116,9 @@ describe('item Conditions', () => {
 describe('item Condition State and identity (Q22, Q45)', () => {
   const lantern = (status: ItemRequirement['status'] = 'owned', extra: Partial<ItemRequirement> = {}): ItemRequirement =>
     ({ kind: 'item', id: 'ring', status, ...extra });
-  const held = (id: string, state: ItemCopy['state'], over: Partial<ItemCopy> = {}) => copy(id, { kind: 'you' }, { state, ...over });
+  const held = (id: string, state: ItemInstance['state'], over: Partial<ItemInstance> = {}) => instance(id, { kind: 'you' }, { state, ...over });
 
-  it('requires a State word on a matching copy, trimmed and in any case', () => {
+  it('requires a State word on a matching instance, trimmed and in any case', () => {
     const req = lantern('owned', { state: ' Lit ' });
     expect(unlocked(req, [held('a', { state: 'lit' })])).toBe(true);
     expect(unlocked(req, [held('a', { state: 'unlit' })])).toBe(false);
@@ -126,7 +126,7 @@ describe('item Condition State and identity (Q22, Q45)', () => {
     expect(unlocked(lantern('owned', { state: '  ' }), [held('a', undefined)])).toBe(true);
   });
 
-  it('needs every check on the same copy', () => {
+  it('needs every check on the same instance', () => {
     const req = lantern('equipped', { state: 'lit', identity: 'identified' });
     const equipped = { slotId: 'finger', order: 1 };
     expect(unlocked(req, [held('a', { state: 'lit' }), held('b', undefined, { equipped })])).toBe(false);
@@ -135,14 +135,14 @@ describe('item Condition State and identity (Q22, Q45)', () => {
   });
 
   it('requires identified or unidentified', () => {
-    const copies = [held('a', { unidentified: true })];
-    expect(unlocked(lantern('owned', { identity: 'unidentified' }), copies)).toBe(true);
-    expect(unlocked(lantern('owned', { identity: 'identified' }), copies)).toBe(false);
+    const instances = [held('a', { unidentified: true })];
+    expect(unlocked(lantern('owned', { identity: 'unidentified' }), instances)).toBe(true);
+    expect(unlocked(lantern('owned', { identity: 'identified' }), instances)).toBe(false);
     expect(unlocked(lantern('owned', { identity: 'identified' }), [held('a', undefined)])).toBe(true);
   });
 
   it('combines with the owner and Not', () => {
-    const onAsh = [copy('a', { kind: 'entity', id: 'ash' }, { state: { state: 'lit' } })];
+    const onAsh = [instance('a', { kind: 'entity', id: 'ash' }, { state: { state: 'lit' } })];
     const ash = { kind: 'entity', id: 'ash' } as const;
     expect(unlocked(lantern('owned', { owner: ash, state: 'lit' }), onAsh)).toBe(true);
     expect(unlocked(lantern('owned', { owner: { kind: 'you' }, state: 'lit' }), onAsh)).toBe(false);
@@ -165,18 +165,18 @@ describe('item Condition State and identity (Q22, Q45)', () => {
 
   describe('the unidentified face', () => {
     const masked = { reader: 'player' as const, worldItems: [{ id: 'ring', name: 'Cursed Ring', unidentifiedName: 'Plain Ring' }] };
-    const text = (copies: ItemCopy[], extra: Partial<GateInput> = masked) =>
-      gateOf(gateStates(input([gated(ring())], copies, extra)), null, 'Curse')?.rows[0].conditions[0].text;
+    const text = (instances: ItemInstance[], extra: Partial<GateInput> = masked) =>
+      gateOf(gateStates(input([gated(ring())], instances, extra)), null, 'Curse')?.rows[0].conditions[0].text;
 
-    it('names the unidentified face while the owner holds no identified copy', () => {
+    it('names the unidentified face while the owner holds no identified instance', () => {
       expect(text([])).toBe('owning Plain Ring');
       expect(text([held('a', { unidentified: true })])).toBe('owning Plain Ring');
       expect(text([held('a', { unidentified: true }), held('b', undefined)])).toBe('owning Cursed Ring');
     });
 
-    it('ignores a hidden identified copy and another owner\'s identified copy', () => {
+    it('ignores a hidden identified instance and another owner\'s identified instance', () => {
       expect(text([held('a', undefined, { visibility: 'hidden' })])).toBe('owning Plain Ring');
-      expect(text([copy('a', { kind: 'entity', id: 'ash' })])).toBe('owning Plain Ring');
+      expect(text([instance('a', { kind: 'entity', id: 'ash' })])).toBe('owning Plain Ring');
     });
 
     it('keeps the true name for the author and for an item with no unidentified face', () => {
@@ -196,14 +196,14 @@ describe('item Condition State and identity (Q22, Q45)', () => {
 
 describe('item rules', () => {
   const rows = [{ all: [ring() as TraitRequirement] }];
-  const base = input([], [copy('a', { kind: 'entity', id: 'ash' })]);
+  const base = input([], [instance('a', { kind: 'entity', id: 'ash' })]);
 
-  it('reads an owner-less Condition as the Item Copy\'s owner', () => {
+  it('reads an owner-less Condition as the Item Instance\'s owner', () => {
     expect(itemRuleStates(base, { where: { kind: 'entity', id: 'ash' } }, rows)[0].holds).toBe(true);
     expect(itemRuleStates(base, { where: { kind: 'you' } }, rows)[0].holds).toBe(false);
   });
 
-  it('never holds an owner-less Condition while the copy lies at a location, under Not too (Q91)', () => {
+  it('never holds an owner-less Condition while the instance lies at a location, under Not too (Q91)', () => {
     const at = { where: { kind: 'location', id: 'cave' } } as const;
     expect(itemRuleStates(base, at, rows)[0].holds).toBe(false);
     expect(itemRuleStates(base, at, [{ all: [ring('owned', { not: true })] }])[0].holds).toBe(false);

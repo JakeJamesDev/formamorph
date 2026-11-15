@@ -37,7 +37,7 @@ describe('executeStatCode items', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
   afterEach(() => vi.restoreAllMocks());
 
-  it('reads who owns each Item Copy and where it lies', async () => {
+  it('reads who owns each Item Instance and where it lies', async () => {
     const res = await run(`
       const [mine, lying] = items["Brass Key"].copies;
       if (mine.owner !== 'Hero' || mine.location !== '') throw new Error('owner ' + mine.owner);
@@ -50,7 +50,7 @@ describe('executeStatCode items', () => {
     expect(res.error).toBeNull();
   });
 
-  it('lists the copies at an entity, the persona and a location', async () => {
+  it('lists the instances at an entity, the persona and a location', async () => {
     const res = await run(`
       if (entities.Keeper.items.map((c) => c.id).join() !== 'c-3') throw new Error('keeper');
       if (persona.items.map((c) => c.id).join() !== 'c-1') throw new Error('persona');
@@ -118,7 +118,7 @@ describe('executeStatCode items', () => {
     expect(res.worldWrites?.inventory).toEqual([{ kind: 'reveal', copyId: 'c-9' }]);
   });
 
-  it('lists a write to an Item Copy field as read-only', async () => {
+  it('lists a write to an Item Instance field as read-only', async () => {
     const res = await run('items.Wand.copies[0].quantity = 9;');
     expect(res.readOnlyWrites).toEqual(['items.Wand.copies[0].quantity']);
   });

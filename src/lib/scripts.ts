@@ -12,7 +12,7 @@ export const SCRIPT_TIMINGS = ['start', 'before', 'output', 'after', 'switch'] a
 /** The timings in the order the AI prompt text and the help tool's schema list them, which a byte test pins. */
 export const HELP_SCRIPT_TIMINGS = ['before', 'after', 'output', 'start', 'switch'] as const satisfies readonly ScriptTiming[];
 
-/** The timings an item's scripts run at, one per Item Copy event (Q33). */
+/** The timings an item's scripts run at, one per Item Instance event (Q33). */
 export const ITEM_SCRIPT_TIMINGS = ['gained', 'lost', 'equipped', 'unequipped', 'used'] as const satisfies readonly ItemScriptTiming[];
 
 /** Whether `timing` is one of an item's. */
@@ -40,11 +40,11 @@ export const SCRIPT_TIMING_DESCRIPTION: Record<ScriptTiming, string> = {
   output: 'Runs once for each narration sentence as it completes. Use it to rewrite or filter the narration.',
   start: 'Runs once on the opening turn of a new game, before Before the AI. Use it to roll starting values or pin placeholders.',
   switch: 'Runs each time a trait turns on or off in play. Use it to apply or undo what the trait changes.',
-  gained: 'Runs when an owner or a location gains one of its Item Copies. Use it to react to a pickup or a gift.',
-  lost: 'Runs when an owner or a location loses one of its Item Copies. Use it to undo what the item started.',
-  equipped: 'Runs when one of its Item Copies is equipped. Use it for effects the effect rows can’t express.',
-  unequipped: 'Runs when one of its Item Copies is unequipped, swapped out included. Use it to undo what equipping did.',
-  used: 'Runs when one of its Item Copies is used. Use it for what the use does.',
+  gained: 'Runs when an owner or a location gains one of its Item Instances. Use it to react to a pickup or a gift.',
+  lost: 'Runs when an owner or a location loses one of its Item Instances. Use it to undo what the item started.',
+  equipped: 'Runs when one of its Item Instances is equipped. Use it for effects the effect rows can’t express.',
+  unequipped: 'Runs when one of its Item Instances is unequipped, swapped out included. Use it to undo what equipping did.',
+  used: 'Runs when one of its Item Instances is used. Use it for what the use does.',
 };
 
 /** Anything that holds scripts: a stat, a trait, the world, an item. */

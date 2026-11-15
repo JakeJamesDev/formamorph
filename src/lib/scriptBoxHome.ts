@@ -83,7 +83,7 @@ export function scriptHomeOf(ref: ScriptHomeRef, world: ScriptBoxWorld, placehol
     }
     case 'traitLink':
       return { kind: 'trait', trait: codedTrait(world.traits.find((t) => t.id === ref.traitId), ref.traitId), entityId: ref.entityId };
-    // The editor knows no Item Copy, so the box runs as the persona's.
+    // The editor knows no Item Instance, so the box runs as the persona's.
     case 'item': {
       const found = world.items?.find((item) => item.id === ref.itemId);
       return { kind: 'item', item: { id: ref.itemId, name: statCodeName(found?.name, placeholders) }, where: { kind: 'you' } };

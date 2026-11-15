@@ -2627,14 +2627,14 @@ Editor detail panels, the game's side panels, the library editors' headers and t
 
 - 🗂️ **Owner card.** The played Persona's `PanelOwnerCard`, with the You pill. Under None it reads **You** with no pill.
 - 🛡️ **Equipped.** The [Body Layout](#pattern-body-layout) figure, with no labels, up to 320px tall. It takes a third of the width, between 120px and its full width, with the Equipped list beside it at every panel width. A Body wider than tall stacks: the figure centered, up to the panel's width, over the list.
-- 📋 **Equipped list.** One row per Item Copy in a box: the same icon or image as the box, the name on one line with its full text in a tooltip while cut, and the slot names as the second line. Use (when it applies) and Unequip act in one click. The name's button covers the row and opens the item popup. With nothing equipped it reads "Nothing is equipped."
+- 📋 **Equipped list.** One row per Item Instance in a box: the same icon or image as the box, the name on one line with its full text in a tooltip while cut, and the slot names as the second line. Use (when it applies) and Unequip act in one click. The name's button covers the row and opens the item popup. With nothing equipped it reads "Nothing is equipped."
 - 🖼️ **Filled box.** The item's icon, with its name in the tooltip. An item set to None shows its image at its own aspect, in a frame that fits it. With no image, or one that fails, None is a plain filled box. An All of item draws in each box it fills. The frame opens a popover with the item's row, and only the frame takes the pointer, so a tap on the margin reaches the box below.
 - ⬜ **Empty box.** A blank outline. Hover or tap shows the slot's name.
-- 🎒 **Carried.** One row per Item Copy: the same icon or image as the box, the name, ×count for a stack, a lock for Bound, and a uses line ("2 of 3 uses" for Uses 2+, "No uses left" for a spent Uses 1 copy). Icon buttons on the right: Use (only for an item with Uses, After Use effects or a When Used script), Equip (only for an item with a slot), Drop and Give.
+- 🎒 **Carried.** One row per Item Instance: the same icon or image as the box, the name, ×count for a stack, a lock for Bound, and a uses line ("2 of 3 uses" for Uses 2+, "No uses left" for a spent Uses 1 instance). Icon buttons on the right: Use (only for an item with Uses, After Use effects or a When Used script), Equip (only for an item with a slot), Drop and Give.
 - ✨ **Use.** A sparkles icon button on carried and equipped rows. It spends one use, and turns off at zero uses.
 - 💰 **Money.** Above Carried, while the played Persona has a Currency with Items or a visible stat. One row per Currency, built like an Effects row: the Currency's name, and its amount in meta text at the end.
-- ⏳ **Effects.** Between Carried and Here, only while an effect runs. One row per running After Use effect, soonest end first: the item name, the effect under it in meta text ("Strength +2", or the trait's name), and "1 h 20 min left" on the right. A hidden Item Copy's effect reads **An item**.
-- 🔢 **Count.** Drop on one Item Copy acts at once. Drop on a stack and Give open a popover. It holds a number field that starts at 1, an **All** button and "of N". Give adds the entities in the scene, each under its label, as `CompactSelectionRow`s, or "Nobody is in the scene."
+- ⏳ **Effects.** Between Carried and Here, only while an effect runs. One row per running After Use effect, soonest end first: the item name, the effect under it in meta text ("Strength +2", or the trait's name), and "1 h 20 min left" on the right. A hidden Item Instance's effect reads **An item**.
+- 🔢 **Count.** Drop on one Item Instance acts at once. Drop on a stack and Give open a popover. It holds a number field that starts at 1, an **All** button and "of N". Give adds the entities in the scene, each under its label, as `CompactSelectionRow`s, or "Nobody is in the scene."
 - 🔒 **Bound.** Drop and Give stay in place, disabled, with the reason in their tooltips.
 - 🔍 **Item popup.** The name's button covers the row, and the row's buttons sit above it. It opens an [Entity Popup](#pattern-entity-popup)'s layout with the item's image, description, with State, count and uses beside its name. With no image it is a short 520px window.
 - 🏷️ **Tab strip.** The side panels' strips are [collapsing tab strips](#as-a-tab-strip): every label, then only the selected tab's, then icons alone. A folded tab's tooltip names it.
@@ -2661,7 +2661,7 @@ The tab fills the right panel on desktop and the **Status** sheet on mobile. Row
 | --- | --- |
 | Turn running or past page | Every action button is disabled, and an open count popover closes. A figure's boxes still open, with their actions disabled. |
 | Bound | Drop and Give disabled; Equip still works. |
-| Hidden Item Copy | Never shown. A hidden equipped item takes capacity but draws in no box, so its box reads as empty. |
+| Hidden Item Instance | Never shown. A hidden equipped item takes capacity but draws in no box, so its box reads as empty. |
 | Equipped row | In the list and in the popover: Use (when it applies) and Unequip. Drop and Give act on carried rows. The popover's row wraps its name, keeps the uses line, and its name opens the item popup. |
 | No boxes on the Body, or no Body | No **Equipped** section. An equipped item with no box lists under **Carried**, with Unequip. |
 | Zero uses | Use stays in place, disabled: "Use Ash Wand: no uses left". |

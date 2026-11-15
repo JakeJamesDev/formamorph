@@ -2,7 +2,7 @@
 // <INVENTORY> chip carries worth and balances? Sedge Landing at the dock: Odette holds a hook and smoked eels and
 // keeps a purse; the player holds a knife and items.
 //
-// Arms, paired by run index: `control` (the same Item Copies with no Currencies, so no worth and no balance line)
+// Arms, paired by run index: `control` (the same Item Instances with no Currencies, so no worth and no balance line)
 // and `chip` (the world's Currency). Every other byte is shared, the items in Carried included. With --alt-pre,
 // an `alt` arm is the chip with this Prepend text in place of the shipped one. A prior turn opens the sale in
 // every arm, so a price is due in the reply.
@@ -25,7 +25,7 @@ import { chipValues } from '@/lib/chipValues/chipValues';
 import { resolveEntityText } from '@/lib/placeholders';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { migrateWorld } from '@/lib/version';
-import type { ChatMessage, Currency, Entity, Item, ItemCopy, ItemCopyWhere, Placement } from '@/types';
+import type { ChatMessage, Currency, Entity, Item, ItemInstance, ItemInstanceWhere, Placement } from '@/types';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
@@ -60,22 +60,22 @@ const CURRENCY: Currency = { id: 'river-coin', name: 'River Coin', backing: { ki
 const ODETTE = 'ent-odette';
 const PURSE: Placement = { id: 'purse', where: { kind: 'entity', id: ODETTE }, quantity: 10, source: { kind: 'item', itemId: 'silver' } };
 
-const copy = (itemId: string, where: ItemCopyWhere, quantity = 1): ItemCopy => ({
+const instance = (itemId: string, where: ItemInstanceWhere, quantity = 1): ItemInstance => ({
   id: `${itemId}-${where.kind}`, item: { kind: 'item', itemId }, where, quantity, visibility: 'visible',
 });
-const you: ItemCopyWhere = { kind: 'you' };
-const odette: ItemCopyWhere = { kind: 'entity', id: ODETTE };
-const shelf = [copy('hook', odette), copy('eel', odette, 3), copy('silver', odette, 10)];
-const RICH = [copy('knife', you), copy('silver', you, 5), ...shelf];
-const BROKE = [copy('knife', you), copy('copper', you, 8), ...shelf];
+const you: ItemInstanceWhere = { kind: 'you' };
+const odette: ItemInstanceWhere = { kind: 'entity', id: ODETTE };
+const shelf = [instance('hook', odette), instance('eel', odette, 3), instance('silver', odette, 10)];
+const RICH = [instance('knife', you), instance('silver', you, 5), ...shelf];
+const BROKE = [instance('knife', you), instance('copper', you, 8), ...shelf];
 
-type Case = { id: string; action: string; copies: ItemCopy[]; checks: string[] };
+type Case = { id: string; action: string; instances: ItemInstance[]; checks: string[] };
 const CASES: Case[] = [
-  { id: 'ask-eel', action: 'I point at the smoked eels Odette is holding. "How much for one? Name your price."', copies: RICH, checks: ['price-stated', 'fair-eel'] },
-  { id: 'ask-hook', action: 'I nod at the bone hook on Odette\'s wrist. "What would you charge me for one like that? Give me a number."', copies: RICH, checks: ['price-stated', 'fair-hook'] },
-  { id: 'sell-knife', action: 'I hold out my gutting knife to Odette. "What is this worth to you? Give me a number."', copies: RICH, checks: ['price-stated', 'fair-knife'] },
-  { id: 'buy-broke', action: 'I tell Odette I will take one smoked eel at her usual price. I count out my coins into her hand and we see if it is enough.', copies: BROKE, checks: ['sale-happens', 'short-of-money'] },
-  { id: 'buy-rich', action: 'I tell Odette I will take one smoked eel at her usual price. I count out my coins into her hand and we see if it is enough.', copies: RICH, checks: ['sale-happens', 'short-of-money'] },
+  { id: 'ask-eel', action: 'I point at the smoked eels Odette is holding. "How much for one? Name your price."', instances: RICH, checks: ['price-stated', 'fair-eel'] },
+  { id: 'ask-hook', action: 'I nod at the bone hook on Odette\'s wrist. "What would you charge me for one like that? Give me a number."', instances: RICH, checks: ['price-stated', 'fair-hook'] },
+  { id: 'sell-knife', action: 'I hold out my gutting knife to Odette. "What is this worth to you? Give me a number."', instances: RICH, checks: ['price-stated', 'fair-knife'] },
+  { id: 'buy-broke', action: 'I tell Odette I will take one smoked eel at her usual price. I count out my coins into her hand and we see if it is enough.', instances: BROKE, checks: ['sale-happens', 'short-of-money'] },
+  { id: 'buy-rich', action: 'I tell Odette I will take one smoked eel at her usual price. I count out my coins into her hand and we see if it is enough.', instances: RICH, checks: ['sale-happens', 'short-of-money'] },
 ];
 
 const baseScene = authoredChipScene(world, {
@@ -85,7 +85,7 @@ const baseScene = authoredChipScene(world, {
   resolveEntity: (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders: [], rolls: {} }),
 });
 const ctxFor = (arm: Arm, c: Case) => chipValues({
-  ...baseScene, items: ITEMS, itemCopies: c.copies, ...(arm !== 'control' && { currencies: [CURRENCY], placements: [PURSE] }),
+  ...baseScene, items: ITEMS, itemInstances: c.instances, ...(arm !== 'control' && { currencies: [CURRENCY], placements: [PURSE] }),
 });
 
 function request(arm: Arm, c: Case): ChatMessage[] {

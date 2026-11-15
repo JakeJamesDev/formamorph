@@ -1,5 +1,5 @@
 import type {
-  Connection, Currency, DictionaryEntry, Entity, GameLocation, Item, ItemCopy, PersonaRef, Placement, RuntimeItem, Placeholder, PlayerStat, Trait, TraitGroup,
+  Connection, Currency, DictionaryEntry, Entity, GameLocation, Item, ItemInstance, PersonaRef, Placement, RuntimeItem, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
 import type { slotsInForce } from '../bodies';
 import type { OwnedStatsInForce, OwnedTraitsInForce, StrangerLabels } from '../locationContext';
@@ -67,8 +67,8 @@ export interface ChipScene {
   inSceneIds: string[];
   /** The world's authored items. None when absent. */
   items?: readonly Item[];
-  /** Every Item Copy in play. None when absent. */
-  itemCopies?: readonly ItemCopy[];
+  /** Every Item Instance in play. None when absent. */
+  itemInstances?: readonly ItemInstance[];
   /** The runtime items the Inventory pass made. None when absent. */
   runtimeItems?: readonly RuntimeItem[];
   /** The world's Currencies. None when absent. */

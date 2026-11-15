@@ -20,10 +20,10 @@ import { personaStartLocation } from './personaPick';
 import { visibleImages, visibleLocationImages } from './imageVisibility';
 import { scoped } from './scope';
 import type { GateInput, GateStatSet } from './traitGates';
-import { applyInventoryOps, applyInventoryPass, seedItemCopies } from './inventory';
+import { applyInventoryOps, applyInventoryPass, seedItemInstances } from './inventory';
 import { openingFold } from './openingState';
 import { wantedGrants } from './inventory/grants';
-import type { Entity, InventoryPassOp, ItemCopy, PersonaRef, World } from '@/types';
+import type { Entity, InventoryPassOp, ItemInstance, PersonaRef, World } from '@/types';
 import { AS_LISTED } from '@/test/asListed';
 
 // The stored text through the world migration, images included: the Test Bench pass below reads them.
@@ -343,9 +343,9 @@ describe('the Emberwatch items', () => {
   };
   const seeded = (persona: PersonaRef) => {
     let next = 0;
-    return seedItemCopies(world, persona, () => `copy-${(next += 1)}`);
+    return seedItemInstances(world, persona, () => `instance-${(next += 1)}`);
   };
-  const copiesOf = (copies: readonly ItemCopy[], name: string) => copies.filter((copy) => copy.item.kind === 'item' && copy.item.itemId === itemNamed(name).id);
+  const instancesOf = (instances: readonly ItemInstance[], name: string) => instances.filter((instance) => instance.item.kind === 'item' && instance.item.itemId === itemNamed(name).id);
 
   it('lists a Blueprint stat once in the Currency stat picker', () => {
     const groups = currencyStatGroups({ stats: world.stats, statGroups: world.statGroups ?? [], entities: world.entities });
@@ -361,24 +361,24 @@ describe('the Emberwatch items', () => {
     const jory = { kind: 'entity', id: entityNamed(world, 'Jory Pike').id } as const;
     const bram = { kind: 'entity', id: entityNamed(world, 'Bram Oakes').id } as const;
     const you = { kind: 'you' } as const;
-    const amountAt = (copies: readonly ItemCopy[], owner: typeof you | typeof jory) =>
-      balanceOf(itemCurrency, owner, { copies, placements: world.placements ?? [], globalStats: [], statsOf: () => [] });
-    const quantityAt = (copies: readonly ItemCopy[], name: string, where: ItemCopy['where']) => copiesOf(copies, name)
-      .filter((copy) => sameWhere(copy.where, where)).reduce((sum, copy) => sum + copy.quantity, 0);
+    const amountAt = (instances: readonly ItemInstance[], owner: typeof you | typeof jory) =>
+      balanceOf(itemCurrency, owner, { instances, placements: world.placements ?? [], globalStats: [], statsOf: () => [] });
+    const quantityAt = (instances: readonly ItemInstance[], name: string, where: ItemInstance['where']) => instancesOf(instances, name)
+      .filter((instance) => sameWhere(instance.where, where)).reduce((sum, instance) => sum + instance.quantity, 0);
 
     /** One Inventory pass reply over a game Albus plays. */
-    const settle = (copies: ItemCopy[], op: Pick<InventoryPassOp, 'item' | 'owner' | 'to'> & Partial<InventoryPassOp>) => {
+    const settle = (instances: ItemInstance[], op: Pick<InventoryPassOp, 'item' | 'owner' | 'to'> & Partial<InventoryPassOp>) => {
       let next = 0;
-      return applyInventoryPass(copies, [{ op: 'buy', quantity: 1, ...op }], {
+      return applyInventoryPass(instances, [{ op: 'buy', quantity: 1, ...op }], {
         items, runtimeItems: [], playerNames: [albus.name], owners: world.entities.map(({ id, name }) => ({ id, name })),
         location: { id: world.locations[0].id, name: world.locations[0].name },
         money: {
           currencies, placements: world.placements ?? [], stats: { globalStats: [], entityStats: {} }, playedIds: [albus.id], statsOn: (_owner, stats) => stats,
         },
-      }, { world: { items }, newId: () => `bought-${(next += 1)}`, persona: asEntity(world, 'Albus') }).copies;
+      }, { world: { items }, newId: () => `bought-${(next += 1)}`, persona: asEntity(world, 'Albus') }).instances;
     };
     /** Albus's starting game, carrying one grave good to sell. */
-    const withCup = (): ItemCopy[] => [
+    const withCup = (): ItemInstance[] => [
       ...seeded(asEntity(world, 'Albus')),
       { id: 'cup', item: { kind: 'item', itemId: itemNamed('Gold Burial Cup').id }, where: you, quantity: 1, visibility: 'visible' },
     ];
@@ -461,21 +461,21 @@ describe('the Emberwatch items', () => {
   });
 
   it('starts the played persona with a draught and a full lantern, and hides the barrow finds', () => {
-    const copies = seeded(asEntity(world, 'Albus'));
-    expect(copiesOf(copies, 'Healing Draught').find((copy) => copy.where.kind === 'you')?.quantity).toBe(1);
-    expect(copiesOf(copies, 'Hooded Lantern').filter((copy) => copy.where.kind === 'you')).toMatchObject([{ state: { uses: 3 } }]);
-    expect(copiesOf(copies, 'Hooded Lantern').filter((copy) => copy.where.kind === 'location')).toHaveLength(2);
-    expect(copiesOf(copies, 'Cold Iron Sword')).toHaveLength(2);
+    const instances = seeded(asEntity(world, 'Albus'));
+    expect(instancesOf(instances, 'Healing Draught').find((instance) => instance.where.kind === 'you')?.quantity).toBe(1);
+    expect(instancesOf(instances, 'Hooded Lantern').filter((instance) => instance.where.kind === 'you')).toMatchObject([{ state: { uses: 3 } }]);
+    expect(instancesOf(instances, 'Hooded Lantern').filter((instance) => instance.where.kind === 'location')).toHaveLength(2);
+    expect(instancesOf(instances, 'Cold Iron Sword')).toHaveLength(2);
     const hall = world.locations.find((l) => l.name === 'The Hall of Shields')!.id;
-    expect(copiesOf(copies, "Old King's Coin").filter((copy) => copy.where.kind === 'location' && copy.where.id === hall))
+    expect(instancesOf(instances, "Old King's Coin").filter((instance) => instance.where.kind === 'location' && instance.where.id === hall))
       .toMatchObject([{ quantity: 12, visibility: 'hidden' }]);
-    expect(copiesOf(copies, "Haldren's Crown, Lower Half")).toMatchObject([{ visibility: 'hidden' }]);
-    expect(copiesOf(copies, "Haldren's Crown, Upper Half")).toMatchObject([{ where: { kind: 'entity', id: entityNamed(world, 'The Barrow Wight').id } }]);
+    expect(instancesOf(instances, "Haldren's Crown, Lower Half")).toMatchObject([{ visibility: 'hidden' }]);
+    expect(instancesOf(instances, "Haldren's Crown, Upper Half")).toMatchObject([{ where: { kind: 'entity', id: entityNamed(world, 'The Barrow Wight').id } }]);
   });
 
-  const carriedNames = (copies: readonly ItemCopy[], where: ItemCopy['where']) => copies
-    .filter((copy) => copy.item.kind === 'item' && JSON.stringify(copy.where) === JSON.stringify(where))
-    .map((copy) => items.find((item) => copy.item.kind === 'item' && item.id === copy.item.itemId)!.name);
+  const carriedNames = (instances: readonly ItemInstance[], where: ItemInstance['where']) => instances
+    .filter((instance) => instance.item.kind === 'item' && JSON.stringify(instance.where) === JSON.stringify(where))
+    .map((instance) => items.find((item) => instance.item.kind === 'item' && item.id === instance.item.itemId)!.name);
 
   it("lands each hero's own gear on the player only while that hero is played", () => {
     const you = { kind: 'you' } as const;
@@ -489,31 +489,31 @@ describe('the Emberwatch items', () => {
     const asSylvie = seeded(asEntity(world, 'Sylvie Thornwhistle'));
     expect(carriedNames(asSylvie, you)).not.toContain("Oath-Keeper's Shield");
     expect(carriedNames(asSylvie, { kind: 'entity', id: entityNamed(world, 'Albus').id })).toContain("Oath-Keeper's Shield");
-    expect(copiesOf(asSylvie, 'Walking Staff')).toEqual([]);
+    expect(instancesOf(asSylvie, 'Walking Staff')).toEqual([]);
   });
 
   it('hides the finds the story must reveal, and leaves the plain ones in view', () => {
-    const copies = seeded(NONE);
+    const instances = seeded(NONE);
     for (const name of ['Brass Spyglass', 'Sealed Letter', 'Beer-Stained Barrow Map', "Oath Ring of the King's Guard", "Maelis's Ward Scroll", 'Gold Burial Cup']) {
-      expect(copiesOf(copies, name).map((copy) => copy.visibility), name).toEqual(expect.arrayContaining(['hidden']));
-      expect(copiesOf(copies, name).every((copy) => copy.where.kind === 'location'), name).toBe(true);
+      expect(instancesOf(instances, name).map((instance) => instance.visibility), name).toEqual(expect.arrayContaining(['hidden']));
+      expect(instancesOf(instances, name).every((instance) => instance.where.kind === 'location'), name).toBe(true);
     }
     for (const name of ['Flask of Lamp Oil', "Rusted Guard's Shield"]) {
-      expect(copiesOf(copies, name).every((copy) => copy.visibility === 'visible'), name).toBe(true);
+      expect(instancesOf(instances, name).every((instance) => instance.visibility === 'visible'), name).toBe(true);
     }
   });
 
   it('seeds the ring and the scroll unidentified, and the letter sealed', () => {
-    const copies = seeded(NONE);
-    expect(copiesOf(copies, "Oath Ring of the King's Guard")).toMatchObject([{ state: { unidentified: true } }]);
-    expect(copiesOf(copies, "Maelis's Ward Scroll")).toMatchObject([{ state: { unidentified: true } }]);
-    expect(copiesOf(copies, 'Sealed Letter')).toMatchObject([{ state: { state: 'sealed' } }]);
+    const instances = seeded(NONE);
+    expect(instancesOf(instances, "Oath Ring of the King's Guard")).toMatchObject([{ state: { unidentified: true } }]);
+    expect(instancesOf(instances, "Maelis's Ward Scroll")).toMatchObject([{ state: { unidentified: true } }]);
+    expect(instancesOf(instances, 'Sealed Letter')).toMatchObject([{ state: { state: 'sealed' } }]);
     expect(itemNamed('Sealed Letter').whenEmpty).toEqual({ kind: 'changesState', state: 'opened' });
   });
 
   it('gives a human Paladin Darkvision only while the lantern is equipped', () => {
     const persona = asEntity(world, 'Albus');
-    const lantern = copiesOf(seeded(persona), 'Hooded Lantern')[0];
+    const lantern = instancesOf(seeded(persona), 'Hooded Lantern')[0];
     const grantWorld = {
       items: new Map(items.map((item) => [item.id, item])), owners: resolveOwners(ownerWorld(world), persona).gate.owners,
       persona, entities: world.entities,
@@ -550,14 +550,14 @@ describe('the Emberwatch items', () => {
       const staff = itemNamed('Spiral-Cut Staff');
       expect(staff.slotRule).toEqual({ mode: 'all', slotIds: hands.map((slot) => slot.id) });
       const owner = { kind: 'entity', id: entityNamed(world, 'Albus').id } as const;
-      const copyOf = (id: string, itemId: string) => ({ id, item: { kind: 'item', itemId } as const, where: owner, quantity: 1, visibility: 'visible' as const });
-      const { copies, diagnostics } = applyInventoryOps(
-        [copyOf('sword', itemNamed('Steel Longsword').id), copyOf('shield', itemNamed("Oath-Keeper's Shield").id), copyOf('staff', staff.id)],
+      const instanceOf = (id: string, itemId: string) => ({ id, item: { kind: 'item', itemId } as const, where: owner, quantity: 1, visibility: 'visible' as const });
+      const { instances, diagnostics } = applyInventoryOps(
+        [instanceOf('sword', itemNamed('Steel Longsword').id), instanceOf('shield', itemNamed("Oath-Keeper's Shield").id), instanceOf('staff', staff.id)],
         [{ kind: 'equip', copyId: 'sword' }, { kind: 'equip', copyId: 'shield' }, { kind: 'equip', copyId: 'staff' }],
         { world: { items, slots: world.slots, bodies: world.bodies, entities: world.entities }, source: 'panel', newId: () => 'new' },
       );
       expect(diagnostics).toEqual([]);
-      expect(copies.filter((c) => c.equipped).map((c) => c.id)).toEqual(['staff']);
+      expect(instances.filter((c) => c.equipped).map((c) => c.id)).toEqual(['staff']);
     });
 
     it('prefers the off hand for a held light or shield, and the main hand for a blade', () => {
@@ -570,14 +570,14 @@ describe('the Emberwatch items', () => {
     /** A new game as Enter World leaves it: every owner on its settled default traits. */
     const opened = (persona: PersonaRef) => {
       const owned = Object.fromEntries(world.entities.map((entity) => [entity.id, settledDefaults(world, entity.id, persona)]));
-      return openingFold(world, { traits: [], owned }, { ref: persona }).state.itemCopies ?? [];
+      return openingFold(world, { traits: [], owned }, { ref: persona }).state.itemInstances ?? [];
     };
     /** What one owner wears; 'You' is the played persona, whose own gear lands on the player. */
-    const wornBy = (copies: readonly ItemCopy[], ownerName: string) => copies
-      .filter((copy) => copy.equipped && (ownerName === 'You'
-        ? copy.where.kind === 'you'
-        : copy.where.kind === 'entity' && copy.where.id === entityNamed(world, ownerName).id))
-      .map((copy) => items.find((item) => copy.item.kind === 'item' && item.id === copy.item.itemId)!.name)
+    const wornBy = (instances: readonly ItemInstance[], ownerName: string) => instances
+      .filter((instance) => instance.equipped && (ownerName === 'You'
+        ? instance.where.kind === 'you'
+        : instance.where.kind === 'entity' && instance.where.id === entityNamed(world, ownerName).id))
+      .map((instance) => items.find((item) => instance.item.kind === 'item' && item.id === instance.item.itemId)!.name)
       .sort();
 
     it('gives the Grave Hounds the Hound Body and every other entity the Default', () => {
@@ -590,25 +590,25 @@ describe('the Emberwatch items', () => {
     });
 
     it('opens with every marked placement worn, none refused, under Albus', () => {
-      const copies = opened(asEntity(world, 'Albus'));
-      expect(wornBy(copies, 'You')).toEqual(['Ember Holy Symbol', "Oath-Keeper's Shield", 'Steel Longsword']);
-      expect(wornBy(copies, 'Mother Hesk')).toEqual(['Ember Holy Symbol']);
-      expect(wornBy(copies, 'Corvin Vale')).toEqual(['Folding Cane-Staff']);
-      expect(wornBy(copies, 'Sylvie Thornwhistle')).toEqual(['Elf-Steel Dagger']);
-      expect(wornBy(copies, 'The Barrow Wight')).toEqual(["Haldren's Crown, Upper Half"]);
+      const instances = opened(asEntity(world, 'Albus'));
+      expect(wornBy(instances, 'You')).toEqual(['Ember Holy Symbol', "Oath-Keeper's Shield", 'Steel Longsword']);
+      expect(wornBy(instances, 'Mother Hesk')).toEqual(['Ember Holy Symbol']);
+      expect(wornBy(instances, 'Corvin Vale')).toEqual(['Folding Cane-Staff']);
+      expect(wornBy(instances, 'Sylvie Thornwhistle')).toEqual(['Elf-Steel Dagger']);
+      expect(wornBy(instances, 'The Barrow Wight')).toEqual(["Haldren's Crown, Upper Half"]);
       // Every Equipped placement on a cast member ends up worn: the opening refused none.
       const marked = (world.placements ?? []).filter((placement) => placement.equipped && placement.where.kind === 'entity');
       for (const placement of marked) {
         const owner = world.entities.find((entity) => placement.where.kind === 'entity' && entity.id === placement.where.id)!;
         if (owner.name === 'Wanderer' || owner.name === 'Albus') continue;
-        expect(wornBy(copies, owner.name), owner.name).toContain(items.find((item) => item.id === placement.source.itemId)!.name);
+        expect(wornBy(instances, owner.name), owner.name).toContain(items.find((item) => item.id === placement.source.itemId)!.name);
       }
     });
 
     it('opens the Wanderer in its staff and cloak, and leaves Bram Oakes carrying his stock', () => {
-      const copies = opened(NONE);
-      expect(wornBy(copies, 'You')).toEqual(['Oilskin Cloak', 'Walking Staff']);
-      expect(wornBy(copies, 'Bram Oakes')).toEqual([]);
+      const instances = opened(NONE);
+      expect(wornBy(instances, 'You')).toEqual(['Oilskin Cloak', 'Walking Staff']);
+      expect(wornBy(instances, 'Bram Oakes')).toEqual([]);
     });
   });
 });

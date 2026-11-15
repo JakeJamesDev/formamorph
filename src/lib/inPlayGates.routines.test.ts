@@ -3,7 +3,7 @@ import { evaluateGates, sameVerdicts, worldHasGates } from './inPlayGates';
 import { resolveInPlayWorld } from './inPlayWorld';
 import { scoped } from './scope';
 import type { GateInput, GateStatSet } from './traitGates';
-import type { Entity, EntityRoutine, ItemCopy, Trait, TraitGroup, TraitRequirement, WorldOption } from '@/types';
+import type { Entity, EntityRoutine, ItemInstance, Trait, TraitGroup, TraitRequirement, WorldOption } from '@/types';
 
 const T = (id: string): Trait => ({ id, name: id, statChanges: [] });
 const brave = T('brave');
@@ -11,7 +11,7 @@ const watchful = T('watchful');
 const moods: TraitGroup = { id: 'moods', name: 'Moods', parentId: null };
 const noStats: GateStatSet = {};
 const LIT: WorldOption = { id: 'lit', name: 'Lanterns Lit', type: 'boolean', shownToPlayer: false, midGame: false, default: false };
-const ring = (where: ItemCopy['where']): ItemCopy => ({ id: 'c1', item: { kind: 'item', itemId: 'ring' }, where, quantity: 1, visibility: 'visible' });
+const ring = (where: ItemInstance['where']): ItemInstance => ({ id: 'c1', item: { kind: 'item', itemId: 'ring' }, where, quantity: 1, visibility: 'visible' });
 
 /** Mira owns Brave and an `hp` stat; the world holds Watchful globally, one ring and the Lanterns Lit Option. */
 const input = (over: Partial<GateInput> = {}): GateInput => ({
@@ -22,7 +22,7 @@ const input = (over: Partial<GateInput> = {}): GateInput => ({
   entities: [{ id: 'mira', name: 'Mira' }, { id: 'ash', name: 'Ash', persona: true }],
   persona: { source: 'none' },
   worldItems: [{ id: 'ring', name: 'Ring' }],
-  itemCopies: [],
+  itemInstances: [],
   daypart: 'morning',
   worldOptions: [LIT],
   ...over,
@@ -43,7 +43,7 @@ describe('the Routine gate', () => {
     }, { global: { traits: [{ ...watchful, groupId: 'moods' }], groups: [moods] } }],
     ['a stat', { kind: 'stat', id: 'hp', owner: { kind: 'entity', id: 'mira' }, operator: '>=', value: 2, unit: 'raw' }, {},
       { stats: scoped(noStats, { mira: { hp: { name: 'HP', value: 1, min: 0, max: 10 } } }) }],
-    ['an item', { kind: 'item', id: 'ring', status: 'owned', owner: { kind: 'entity', id: 'mira' } }, { itemCopies: [ring({ kind: 'entity', id: 'mira' })] }, {}],
+    ['an item', { kind: 'item', id: 'ring', status: 'owned', owner: { kind: 'entity', id: 'mira' } }, { itemInstances: [ring({ kind: 'entity', id: 'mira' })] }, {}],
     ['the time', { kind: 'time', dayparts: ['morning'] }, {}, { daypart: 'night' }],
     ['playing as', { kind: 'playingAs', id: 'ash' }, { persona: { source: 'world', entityId: 'ash' } }, {}],
     ['a World Option', { kind: 'option', id: 'lit' }, { optionValues: { lit: true } }, { optionValues: { lit: false } }],

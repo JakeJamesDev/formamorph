@@ -7,7 +7,7 @@ const messages = (code: string, surface = scriptSurface(ITEM_SCRIPT_SURFACE, 'ga
   codeDiagnostics(code, { surface, statNames: [] }).map((finding) => finding.message);
 
 describe('an item script in the editor', () => {
-  it.each(ITEM_SCRIPT_TIMINGS)('knows items, an owner’s items and the Item Copy verbs at %s', (timing) => {
+  it.each(ITEM_SCRIPT_TIMINGS)('knows items, an owner’s items and the Item Instance verbs at %s', (timing) => {
     const code = [
       'if (self.event.timing === "gained" && self.event.copy) self.event.copy.equip();',
       'items.Lamp.give(owner, 2);',

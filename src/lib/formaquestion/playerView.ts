@@ -3,11 +3,11 @@
  * Formaquestion reads (ADR-0014). No row type has an AI field; AI text written in play counts as player text.
  */
 import type {
-  ChatMessage, Currency, DiscoveredEntity, Entity, GameState, Item, ItemCopy, PlayerStat, RuntimeItem, Trait, World,
+  ChatMessage, Currency, DiscoveredEntity, Entity, GameState, Item, ItemInstance, PlayerStat, RuntimeItem, Trait, World,
 } from '@/types';
 import { activeDescriptor } from '@/lib/statContext';
-import { copyWorthText } from '@/lib/currency';
-import { copyFace, copyState, isUnidentified, stateKey } from '@/lib/items';
+import { instanceWorthText } from '@/lib/currency';
+import { instanceFace, instanceState, isUnidentified, stateKey } from '@/lib/items';
 import { resolveEntityByName } from '@/lib/entityMatch';
 import { parseTurnContent } from '@/lib/turnDigest';
 import { activeOwnedTraitIds } from '@/lib/ownedTraitsInPlay';
@@ -44,7 +44,7 @@ export interface PlayerViewItem {
   id: string;
   name: string;
   description: string;
-  /** The State word of the copies this row stands for. Absent = none. */
+  /** The State word of the instances this row stands for. Absent = none. */
   state?: string;
   /** What the item is worth, such as "40 Gold". Absent on an item with no price and on an unidentified face. */
   worth?: string;
@@ -229,29 +229,29 @@ function viewLocations(input: PlayerViewInput, current: GameState): PlayerViewLo
   });
 }
 
-/** A copy the player has met in this snapshot: visible, and held by the player or lying where the player stands. */
-const metCopy = (copy: ItemCopy, snapshot: GameState): boolean =>
-  copy.visibility === 'visible'
-  && (copy.where.kind === 'you' || (copy.where.kind === 'location' && copy.where.id === snapshot.locationId));
+/** An instance the player has met in this snapshot: visible, and held by the player or lying where the player stands. */
+const metInstance = (instance: ItemInstance, snapshot: GameState): boolean =>
+  instance.visibility === 'visible'
+  && (instance.where.kind === 'you' || (instance.where.kind === 'location' && instance.where.id === snapshot.locationId));
 
 /** The row id of an item's unidentified face, apart from its true face's so the two never link (Q40). */
 export const unidentifiedRowId = (itemId: string): string => `${itemId}:unidentified`;
 
-/** The row id the player knows `copy` by: its item's id, or the unidentified face's while it is unidentified. */
-export const playerItemId = (copy: ItemCopy): string => (copy.item.kind === 'runtime' ? copy.item.runtimeItemId
-  : isUnidentified(copy) ? unidentifiedRowId(copy.item.itemId) : copy.item.itemId);
+/** The row id the player knows `instance` by: its item's id, or the unidentified face's while it is unidentified. */
+export const playerItemId = (instance: ItemInstance): string => (instance.item.kind === 'runtime' ? instance.item.runtimeItemId
+  : isUnidentified(instance) ? unidentifiedRowId(instance.item.itemId) : instance.item.itemId);
 
-/** The item a copy is of as the player knows it, with its player text; undefined when the item is gone. */
+/** The item an instance is of as the player knows it, with its player text; undefined when the item is gone. */
 function copiedItem(
-  copy: ItemCopy, authored: ReadonlyMap<string, Item>, runtime: ReadonlyMap<string, RuntimeItem>, currencies: readonly Currency[], items: readonly Item[],
+  instance: ItemInstance, authored: ReadonlyMap<string, Item>, runtime: ReadonlyMap<string, RuntimeItem>, currencies: readonly Currency[], items: readonly Item[],
 ): { id: string; name: string; text?: string; worth?: string } | undefined {
-  const ref = copy.item;
+  const ref = instance.item;
   if (ref.kind === 'item') {
     const item = authored.get(ref.itemId);
     if (!item) return undefined;
-    const face = copyFace(item, copy);
-    const worth = copyWorthText(copy, item, currencies, items);
-    return { id: playerItemId(copy), name: face.name, text: face.description, ...(worth && { worth }) };
+    const face = instanceFace(item, instance);
+    const worth = instanceWorthText(instance, item, currencies, items);
+    return { id: playerItemId(instance), name: face.name, text: face.description, ...(worth && { worth }) };
   }
   // A runtime item's description is text the AI wrote in play, which counts as player text.
   const item = runtime.get(ref.runtimeItemId);
@@ -266,16 +266,16 @@ function viewItems(input: PlayerViewInput): PlayerViewItem[] {
   const met = new Map<string, { item: { id: string; name: string; text?: string; worth?: string }; at: number; states: Map<string, string | undefined> }>();
   input.chain.forEach((snapshot, at) => {
     for (const item of snapshot.runtimeItems ?? []) runtime.set(item.id, item);
-    for (const copy of snapshot.itemCopies ?? []) {
-      if (!metCopy(copy, snapshot)) continue;
-      const item = copiedItem(copy, authored, runtime, input.world.currencies ?? [], input.world.items ?? []);
+    for (const instance of snapshot.itemCopies ?? []) {
+      if (!metInstance(instance, snapshot)) continue;
+      const item = copiedItem(instance, authored, runtime, input.world.currencies ?? [], input.world.items ?? []);
       if (!item) continue;
-      const key = `${copy.item.kind}:${item.id}`;
+      const key = `${instance.item.kind}:${item.id}`;
       const row = met.get(key);
       const entry = row && row.at === at ? row : { item, at, states: new Map<string, string | undefined>() };
       if (entry !== row) met.set(key, entry);
-      const byState = stateKey(copy);
-      if (!entry.states.has(byState)) entry.states.set(byState, copyState(copy));
+      const byState = stateKey(instance);
+      if (!entry.states.has(byState)) entry.states.set(byState, instanceState(instance));
     }
   });
   return [...met.values()].flatMap(({ item, states }) => [...states.values()].map((state) => ({

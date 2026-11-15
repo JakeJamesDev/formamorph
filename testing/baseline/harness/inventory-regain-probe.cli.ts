@@ -1,4 +1,4 @@
-// Inventory re-gain probe — does the Inventory pass keep carried items right: no second copy of one already held,
+// Inventory re-gain probe — does the Inventory pass keep carried items right: no second instance of one already held,
 // no lost item for one that only changed, and the right result for a use or a reveal?
 // Two arms, paired by run index:
 //   shipped — the pass prompt and schema before `use`, `change` and identify-`reveal` (frozen in the fixture as
@@ -11,8 +11,8 @@
 //   control  — rereading an already-open letter: nothing changes.
 //   retouch  — the item is shown or handled: nothing changes.
 //   use      — drink (Becomes a bottle), blow a horn (unlimited), read a single-use writ (Changes State).
-//   reveal   — a carried unidentified ring's true nature becomes known: the copy is identified.
-//   regain   — `take-another` and `second-eel` must still add the copy the player takes again.
+//   reveal   — a carried unidentified ring's true nature becomes known: the instance is identified.
+//   regain   — `take-another` and `second-eel` must still add the instance the player takes again.
 //   useGuard — burning the writ and shattering a draught: the item is gone and no After Use dose fires.
 //   replay   — frozen requests from real play turns that duplicated a carried item, with the arm's operation list
 //              in place of theirs. A hit is a reply with no gain or transfer to the player of an item already carried.
@@ -30,12 +30,12 @@ import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import { applyInventoryPass, inventoryPassSchema, parseInventoryReply } from '@/lib/inventory';
 import { describeItemRequest } from '@/lib/inventory/describe';
-import { copyState, isUnidentified } from '@/lib/items';
+import { instanceState, isUnidentified } from '@/lib/items';
 import { resolveEntityText } from '@/lib/placeholders';
 import { PROMPT_SAMPLER_PINS } from '@/lib/promptSamplers';
 import { inventoryRequest } from '@/lib/turnPipeline/turnPasses';
 import { migrateWorld } from '@/lib/version';
-import type { ChatMessage, Entity, Item, ItemCopy, ItemCopyWhere, RuntimeItem, Slot } from '@/types';
+import type { ChatMessage, Entity, Item, ItemInstance, ItemInstanceWhere, RuntimeItem, Slot } from '@/types';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
@@ -56,11 +56,11 @@ type Arm = 'shipped' | 'new';
 const ARMS: Arm[] = ['shipped', 'new'];
 
 type Group = 'state' | 'control' | 'retouch' | 'use' | 'reveal' | 'regain' | 'useGuard';
-type CopySpec = { item?: string; runtime?: string; where: string; equipped?: boolean; quantity?: number; hidden?: boolean; state?: string; unidentified?: boolean };
+type InstanceSpec = { item?: string; runtime?: string; where: string; equipped?: boolean; quantity?: number; hidden?: boolean; state?: string; unidentified?: boolean };
 type BaseExpect = { item?: string; runtime?: string; where: string; quantity?: number; equipped?: boolean; visibility?: 'visible' | 'hidden' };
 type BaseCase = { id: string; action: string; narration: string; expect: BaseExpect[] };
 type SynthCase = {
-  id: string; group: Group; copies: CopySpec[]; action: string; narration: string;
+  id: string; group: Group; instances: InstanceSpec[]; action: string; narration: string;
   /** Net rows for these names; `state` also requires that State on one of them. */
   expect: { name: string; where: string; quantity: number; state?: string }[];
   /** The item whose State-set rate a state case reports. */
@@ -75,7 +75,7 @@ type FixtureItem = Omit<Item, 'statEffects' | 'traitEffects' | 'equipRequires'> 
 const BASELINE = path.resolve('testing/baseline');
 const world = migrateWorld(JSON.parse(readFileSync(path.join(BASELINE, 'sedge-landing.json'), 'utf8')));
 const base = JSON.parse(readFileSync(path.join(BASELINE, 'inventory-pass-cases.json'), 'utf8')) as {
-  items: FixtureItem[]; slots: Slot[]; copies: CopySpec[]; cases: BaseCase[];
+  items: FixtureItem[]; slots: Slot[]; instances: InstanceSpec[]; cases: BaseCase[];
 };
 const fixture = JSON.parse(readFileSync(path.join(BASELINE, 'inventory-regain-cases.json'), 'utf8')) as {
   shippedPrompt: string; items: FixtureItem[]; replays: Replay[]; runtime: { id: string; name: string; object: string }[];
@@ -83,10 +83,10 @@ const fixture = JSON.parse(readFileSync(path.join(BASELINE, 'inventory-regain-ca
 };
 const items: Item[] = [...base.items, ...fixture.items].map((item) => ({ statEffects: [], ...item, traitEffects: [], equipRequires: [] }));
 const runtimeItems: RuntimeItem[] = fixture.runtime.map((r) => ({ id: r.id, name: r.name, description: r.object }));
-const whereOf = (where: string): ItemCopyWhere => (
+const whereOf = (where: string): ItemInstanceWhere => (
   where === 'you' ? { kind: 'you' } : where.startsWith('loc-') ? { kind: 'location', id: where } : { kind: 'entity', id: where }
 );
-const copiesOf = (specs: CopySpec[], offset: number): ItemCopy[] => specs.map((spec, i) => ({
+const instancesOf = (specs: InstanceSpec[], offset: number): ItemInstance[] => specs.map((spec, i) => ({
   id: `c${offset + i}`,
   item: spec.runtime ? { kind: 'runtime', runtimeItemId: spec.runtime } : { kind: 'item', itemId: spec.item! },
   where: whereOf(spec.where), quantity: spec.quantity ?? 1, visibility: spec.hidden ? 'hidden' : 'visible',
@@ -158,8 +158,8 @@ async function send(systemPrompt: string, messages: ChatMessage[], maxTokens: nu
 }
 
 /** The pass over one start state under `arm`: the request, then the reply applied through the real validator. */
-function passRun(start: ItemCopy[], c: { action: string; narration: string }, arm: Arm) {
-  const ctx = chipValues({ ...baseScene, items, itemCopies: start, runtimeItems });
+function passRun(start: ItemInstance[], c: { action: string; narration: string }, arm: Arm) {
+  const ctx = chipValues({ ...baseScene, items, itemInstances: start, runtimeItems });
   const request = inventoryRequest(
     { system: promptOf(arm), user: arm === 'new' ? newUserPrompt : defaultInventoryUserPrompt }, { ctx, action: c.action, narration: c.narration }, { textPass: false, quiet: false },
   );
@@ -169,22 +169,22 @@ function passRun(start: ItemCopy[], c: { action: string; narration: string }, ar
   return { request: { ...request, responseSchema: schemaOf(arm) }, apply };
 }
 
-const nameOf = (copy: ItemCopy, runtime: readonly RuntimeItem[]) => (copy.item.kind === 'item'
-  ? items.find((it) => it.id === (copy.item as { itemId: string }).itemId)?.name ?? '?'
-  : runtime.find((r) => r.id === (copy.item as { runtimeItemId: string }).runtimeItemId)?.name ?? '?');
-const whereKey = (w: ItemCopyWhere) => (w.kind === 'you' ? 'you' : w.id);
+const nameOf = (instance: ItemInstance, runtime: readonly RuntimeItem[]) => (instance.item.kind === 'item'
+  ? items.find((it) => it.id === (instance.item as { itemId: string }).itemId)?.name ?? '?'
+  : runtime.find((r) => r.id === (instance.item as { runtimeItemId: string }).runtimeItemId)?.name ?? '?');
+const whereKey = (w: ItemInstanceWhere) => (w.kind === 'you' ? 'you' : w.id);
 /** Quantity per item name, owner, equipped, visibility and identity: the net state a turn leaves. */
-function tally(copies: readonly ItemCopy[], runtime: readonly RuntimeItem[]): Map<string, number> {
+function tally(instances: readonly ItemInstance[], runtime: readonly RuntimeItem[]): Map<string, number> {
   const out = new Map<string, number>();
-  for (const copy of copies) {
-    const key = `${nameOf(copy, runtime)}|${whereKey(copy.where)}|${copy.equipped ? 'eq' : ''}|${copy.visibility}${isUnidentified(copy) ? '|u' : ''}`;
-    out.set(key, (out.get(key) ?? 0) + copy.quantity);
+  for (const instance of instances) {
+    const key = `${nameOf(instance, runtime)}|${whereKey(instance.where)}|${instance.equipped ? 'eq' : ''}|${instance.visibility}${isUnidentified(instance) ? '|u' : ''}`;
+    out.set(key, (out.get(key) ?? 0) + instance.quantity);
   }
   return out;
 }
 const diff = (a: Map<string, number>, b: Map<string, number>) => [...new Set([...a.keys(), ...b.keys()])]
   .filter((k) => (a.get(k) ?? 0) !== (b.get(k) ?? 0)).map((k) => `${k} ${a.get(k) ?? 0}→${b.get(k) ?? 0}`);
-const stateKey = (copy: ItemCopy) => (copyState(copy) ?? '').toLowerCase();
+const stateKey = (instance: ItemInstance) => (instanceState(instance) ?? '').toLowerCase();
 
 type Row = {
   kind: 'synthetic' | 'replay' | 'base' | 'describe'; arm: string; case: string; group?: Group; run: number;
@@ -198,7 +198,7 @@ const want = (kind: string) => (only ? only === kind : kind !== 'describe' || ar
 const caseFilter = argVal('--cases', '').split(',').filter(Boolean);
 if (want('synthetic')) {
   for (const c of fixture.cases.filter((x) => !caseFilter.length || caseFilter.includes(x.id))) for (let run = 0; run < runs; run++) for (const arm of ARMS) jobs.push(async () => {
-    const start = [...copiesOf(base.copies, 0), ...copiesOf(c.copies, 100)];
+    const start = [...instancesOf(base.instances, 0), ...instancesOf(c.instances, 100)];
     const { request, apply } = passRun(start, c, arm);
     const raw = await send(request.systemPrompt, request.messages, request.maxTokens ?? 400, request.responseSchema, SEED + run);
     const result = apply(raw);
@@ -207,17 +207,17 @@ if (want('synthetic')) {
       for (const k of [...expected.keys()]) if (k.startsWith(`${e.name}|${e.where}|`)) expected.delete(k);
       if (e.quantity > 0) expected.set(`${e.name}|${e.where}||visible`, e.quantity);
     }
-    const off = diff(expected, tally(result.copies, runtimeItems));
-    const atYou = (copies: readonly ItemCopy[], name: string) => copies.filter((x) => nameOf(x, runtimeItems) === name && x.where.kind === 'you');
-    const stateMiss = c.expect.filter((e) => e.state && !atYou(result.copies, e.name).some((x) => stateKey(x) === e.state!.toLowerCase()))
+    const off = diff(expected, tally(result.instances, runtimeItems));
+    const atYou = (instances: readonly ItemInstance[], name: string) => instances.filter((x) => nameOf(x, runtimeItems) === name && x.where.kind === 'you');
+    const stateMiss = c.expect.filter((e) => e.state && !atYou(result.instances, e.name).some((x) => stateKey(x) === e.state!.toLowerCase()))
       .map((e) => `${e.name} not ${e.state}`);
     const doseMiss = result.doses.filter((d) => c.noDose?.includes(d.itemId)).map((d) => `dose ${d.itemId}`);
-    // A regain guard asks only whether the player gained the copy; the giver's side shows in the note.
+    // A regain guard asks only whether the player gained the instance; the giver's side shows in the note.
     const netRight = c.group === 'regain' ? !off.some((d) => d.includes('|you|')) : off.length === 0;
     const hit = netRight && !stateMiss.length && !doseMiss.length;
     const before = new Set(c.stateOf ? atYou(start, c.stateOf).map(stateKey) : []);
-    const stateSet = c.stateOf ? atYou(result.copies, c.stateOf).some((x) => !!stateKey(x) && !before.has(stateKey(x))) : undefined;
-    const states = c.stateOf ? atYou(result.copies, c.stateOf).map((x) => copyState(x) ?? '-').join(',') : '';
+    const stateSet = c.stateOf ? atYou(result.instances, c.stateOf).some((x) => !!stateKey(x) && !before.has(stateKey(x))) : undefined;
+    const states = c.stateOf ? atYou(result.instances, c.stateOf).map((x) => instanceState(x) ?? '-').join(',') : '';
     return {
       kind: 'synthetic', arm, case: c.id, group: c.group, run, hit, stateSet, raw,
       note: [...off, ...stateMiss, ...doseMiss, ...(states ? [`state ${states}`] : [])].join('; '),
@@ -242,7 +242,7 @@ if (want('replay')) {
 
 if (want('base')) {
   for (const c of base.cases.filter((x) => !caseFilter.length || caseFilter.includes(x.id))) for (let run = 0; run < runs; run++) for (const arm of ARMS) jobs.push(async () => {
-    const start = copiesOf(base.copies, 0);
+    const start = instancesOf(base.instances, 0);
     const { request, apply } = passRun(start, c, arm);
     const raw = await send(request.systemPrompt, request.messages, request.maxTokens ?? 400, request.responseSchema, SEED + run);
     const result = apply(raw);
@@ -252,7 +252,7 @@ if (want('base')) {
       for (const k of [...expected.keys()]) if (k.startsWith(`${name}|`)) expected.delete(k);
       expected.set(`${name}|${e.where}|${e.equipped ? 'eq' : ''}|${e.visibility ?? 'visible'}`, e.quantity ?? 1);
     }
-    const got = tally(result.copies, result.runtimeItems);
+    const got = tally(result.instances, result.runtimeItems);
     const wantRuntime = c.expect.filter((x) => x.runtime);
     const made = diff(expected, got).filter((d) => !items.some((it) => d.startsWith(`${it.name}|`)));
     const runtimeRight = made.length === wantRuntime.length
@@ -316,7 +316,7 @@ const pct = (x: number) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(0)}`;
 
 if (results.some((r) => r.kind === 'synthetic')) {
   const GROUPS: Group[] = ['state', 'control', 'retouch', 'use', 'reveal', 'regain', 'useGuard'];
-  console.log('\nSYNTHETIC (hit = right net state; regain guards must add the copy; use guards fire no dose)');
+  console.log('\nSYNTHETIC (hit = right net state; regain guards must add the instance; use guards fire no dose)');
   for (const group of GROUPS) {
     const ids = fixture.cases.filter((c) => c.group === group && results.some((r) => r.case === c.id)).map((c) => c.id);
     if (!ids.length) continue;

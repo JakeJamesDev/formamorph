@@ -32,7 +32,7 @@ import { resolveEntityText } from '@/lib/placeholders';
 import { PROMPT_SAMPLER_PINS } from '@/lib/promptSamplers';
 import { inventoryRequest } from '@/lib/turnPipeline/turnPasses';
 import { migrateWorld } from '@/lib/version';
-import type { Body, ChatMessage, Entity, InventoryPassOp, Item, ItemCopy, ItemCopyWhere, Slot } from '@/types';
+import type { Body, ChatMessage, Entity, InventoryPassOp, Item, ItemInstance, ItemInstanceWhere, Slot } from '@/types';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
@@ -56,9 +56,9 @@ const PROMPTS = {
   bare: noField.replace(EQUIP_LINE, '- equip: an owner wields or wears an item they carry.\n'),
 };
 
-type CopySpec = { item: string; where: string; equipped?: boolean; quantity?: number };
+type InstanceSpec = { item: string; where: string; equipped?: boolean; quantity?: number };
 type Case = {
-  id: string; picks: Record<string, string>; copies: CopySpec[]; action: string; narration: string;
+  id: string; picks: Record<string, string>; instances: InstanceSpec[]; action: string; narration: string;
   owner: string; item: string; want: 'equip' | 'no-equip'; wantSlot?: string;
 };
 const BASELINE = path.resolve('testing/baseline');
@@ -67,7 +67,7 @@ const fixture = JSON.parse(readFileSync(path.join(BASELINE, 'inventory-slots-cas
   items: Omit<Item, 'statEffects' | 'traitEffects' | 'equipRequires'>[]; slots: Slot[]; bodies: Body[]; cases: Case[];
 };
 const items: Item[] = fixture.items.map((item) => ({ ...item, statEffects: [], traitEffects: [], equipRequires: [] }));
-const whereOf = (where: string): ItemCopyWhere => (
+const whereOf = (where: string): ItemInstanceWhere => (
   where === 'you' ? { kind: 'you' } : where.startsWith('loc-') ? { kind: 'location', id: where } : { kind: 'entity', id: where }
 );
 const location = world.locations.find((candidate) => candidate.id === 'loc-sedge');
@@ -94,7 +94,7 @@ const equipmentOf = (c: Case): SceneEquipment => ({
     ],
   },
 });
-const startOf = (c: Case): ItemCopy[] => c.copies.map((spec, i) => ({
+const startOf = (c: Case): ItemInstance[] => c.instances.map((spec, i) => ({
   id: `c${i}`, item: { kind: 'item', itemId: spec.item }, where: whereOf(spec.where), quantity: spec.quantity ?? 1, visibility: 'visible',
   ...(spec.equipped && { equipped: { slotId: items.find((it) => it.id === spec.item)?.slotRule?.slotIds[0] ?? 'hand', order: i } }),
 }));
@@ -104,7 +104,7 @@ const ARMS = (['control', 'first', 'rule'] as Arm[]).filter((arm) => argVal('--a
 const firstSlotItems: Item[] = items.map((item) => (item.slotRule ? { ...item, slotRule: { mode: 'either', slotIds: item.slotRule.slotIds.slice(0, 1) } } : item));
 const requestOf = (arm: Arm, c: Case) => {
   const scene = {
-    ...baseScene, items: arm === 'first' ? firstSlotItems : items, itemCopies: startOf(c),
+    ...baseScene, items: arm === 'first' ? firstSlotItems : items, itemInstances: startOf(c),
     ...(arm !== 'control' && { equipment: equipmentOf(c) }),
   };
   const request = inventoryRequest(
@@ -156,8 +156,8 @@ function score(c: Case, raw: string): { hit: boolean; proposed: boolean; landed:
   const result = applyInventoryPass(start, ops, {
     items, runtimeItems: [], playerNames: ['Traveler'], owners, location: { id: location!.id, name: location!.name },
   }, { world: { items, ...equipmentOf(c).world }, newId: (() => { let i = 0; return () => `n${i++}`; })() });
-  const landed = result.copies.some((copy) => copy.item.kind === 'item' && copy.item.itemId === c.item && !!copy.equipped
-    && JSON.stringify(copy.where) === JSON.stringify(whereOf(c.owner)) && (!c.wantSlot || copy.equipped.slotId === c.wantSlot));
+  const landed = result.instances.some((instance) => instance.item.kind === 'item' && instance.item.itemId === c.item && !!instance.equipped
+    && JSON.stringify(instance.where) === JSON.stringify(whereOf(c.owner)) && (!c.wantSlot || instance.equipped.slotId === c.wantSlot));
   const named = ops.some((op) => equipsIt(c, op) && !!op.slot);
   return { hit: c.want === 'equip' ? proposed && landed : !proposed, proposed, landed, named, ops: ops.length };
 }

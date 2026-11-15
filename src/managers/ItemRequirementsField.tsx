@@ -1,7 +1,7 @@
 import { HostRuleRows, useItemRuleHost } from '@/components/editor/ImageRuleCog';
 import type { Item } from '@/types';
 
-/** The item's equip Requirement Rows. A Condition with no owner reads the Item Copy's owner (Q67). */
+/** The item's equip Requirement Rows. A Condition with no owner reads the Item Instance's owner (Q67). */
 export const ItemRequirementsField = ({ item, apply }: { item: Item; apply: (patch: Partial<Item>) => void }) => {
   const host = useItemRuleHost(item.id);
   return (

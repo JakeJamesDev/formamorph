@@ -20,7 +20,7 @@ import { chipValues } from '@/lib/chipValues/chipValues';
 import { resolveEntityText } from '@/lib/placeholders';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { migrateWorld } from '@/lib/version';
-import type { ChatMessage, Entity, Item, ItemCopy, ItemCopyWhere } from '@/types';
+import type { ChatMessage, Entity, Item, ItemInstance, ItemInstanceWhere } from '@/types';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
@@ -37,22 +37,22 @@ type Arm = 'both' | 'control';
 const ARMS: Arm[] = ['both', 'control'];
 
 type FixtureItem = Omit<Item, 'statEffects' | 'traitEffects' | 'equipRequires'>;
-type CopySpec = { item: string; where: string; equipped?: boolean };
-type Case = { id: string; action: string; copies: string; leak: string; nature: string; baited?: boolean };
+type InstanceSpec = { item: string; where: string; equipped?: boolean };
+type Case = { id: string; action: string; instances: string; leak: string; nature: string; baited?: boolean };
 const BASELINE = path.resolve('testing/baseline');
 const world = migrateWorld(JSON.parse(readFileSync(path.join(BASELINE, 'sedge-landing.json'), 'utf8')));
 const fixture = JSON.parse(readFileSync(path.join(BASELINE, 'inventory-leak-cases.json'), 'utf8')) as {
-  items: FixtureItem[]; copies: Record<string, CopySpec[]>; cases: Case[];
+  items: FixtureItem[]; instances: Record<string, InstanceSpec[]>; cases: Case[];
 };
 const withDefaults = (item: FixtureItem): Item => ({ ...item, statEffects: [], traitEffects: [], equipRequires: [] });
 const bothItems: Item[] = fixture.items.map(withDefaults);
 // The control holds only the unidentified face: it is the item's whole name and AI text.
 const controlItems: Item[] = fixture.items.map(({ unidentifiedName, unidentifiedDescription, aiSummary: _dropped, ...item }) => (
   withDefaults({ ...item, name: unidentifiedName ?? item.name, aiSummary: unidentifiedDescription })));
-const whereOf = (where: string): ItemCopyWhere => (
+const whereOf = (where: string): ItemInstanceWhere => (
   where === 'you' ? { kind: 'you' } : where.startsWith('loc-') ? { kind: 'location', id: where } : { kind: 'entity', id: where }
 );
-const copiesOf = (key: string, arm: Arm): ItemCopy[] => fixture.copies[key].map((spec, i) => ({
+const instancesOf = (key: string, arm: Arm): ItemInstance[] => fixture.instances[key].map((spec, i) => ({
   id: `${key}-${i}`, item: { kind: 'item', itemId: spec.item }, where: whereOf(spec.where), quantity: 1, visibility: 'visible',
   ...(spec.equipped && { equipped: { slotId: 'slot', order: i } }),
   ...(arm === 'both' && { state: { unidentified: true } }),
@@ -68,7 +68,7 @@ const baseScene = authoredChipScene(world, {
 });
 
 function request(arm: Arm, c: Case): ChatMessage[] {
-  const ctx = chipValues({ ...baseScene, items: arm === 'both' ? bothItems : controlItems, itemCopies: copiesOf(c.copies, arm) });
+  const ctx = chipValues({ ...baseScene, items: arm === 'both' ? bothItems : controlItems, itemInstances: instancesOf(c.instances, arm) });
   const system = buildNarrationPrompt({
     template: defaultSystemPrompt, ctx, action: c.action, history: [], dictionary: [],
     actionVec: null, semanticLore: false, embedVectors: new Map(),

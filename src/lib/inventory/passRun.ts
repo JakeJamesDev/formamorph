@@ -7,7 +7,7 @@ import type { SlotOwner } from '@/lib/bodies';
 import type { MoneyOwners, PaymentStats } from '@/lib/currency/payment';
 import { sameCharacterName } from '@/lib/entityMatch';
 import { isUnidentified, sameState, sameWhere, usesLeft } from '@/lib/items';
-import type { Currency, Entity, InventoryOwner, InventoryPassOpKind, Item, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
+import type { Currency, Entity, InventoryOwner, InventoryPassOpKind, Item, ItemInstance, ItemInstanceWhere, RuntimeItem } from '@/types';
 import { applyInventoryOps, type InventoryCall, type InventoryOp, type InventoryResult } from './index';
 
 /** The owner word the pass writes for the player character, and the one for the location. */
@@ -58,7 +58,7 @@ export interface PassRun {
   authored: readonly AuthoredName[];
   moneyNames: readonly { id: string; name: string }[];
   moneyCurrencies: readonly Currency[];
-  list: ItemCopy[];
+  list: ItemInstance[];
   runtimeItems: RuntimeItem[];
   moneyStats: PaymentStats | undefined;
   itemUses: InventoryResult['itemUses'];
@@ -66,7 +66,7 @@ export interface PassRun {
   diagnostics: string[];
 }
 
-export function startPass(copies: readonly ItemCopy[], scene: PassScene, call: Omit<InventoryCall, 'source'>): PassRun {
+export function startPass(instances: readonly ItemInstance[], scene: PassScene, call: Omit<InventoryCall, 'source'>): PassRun {
   const resolve = scene.resolve ?? ((s: string) => s);
   return {
     scene,
@@ -77,7 +77,7 @@ export function startPass(copies: readonly ItemCopy[], scene: PassScene, call: O
     })),
     moneyNames: scene.items.map((item) => ({ id: item.id, name: resolve(item.name) })),
     moneyCurrencies: (scene.money?.currencies ?? []).map((currency) => ({ ...currency, name: resolve(currency.name) })),
-    list: [...copies],
+    list: [...instances],
     runtimeItems: [...scene.runtimeItems],
     moneyStats: scene.money?.stats,
     itemUses: [],
@@ -90,13 +90,13 @@ export const skip = (pass: PassRun, why: string) => pass.diagnostics.push(`Inven
 
 export function runOps(pass: PassRun, ops: InventoryOp[]): void {
   const result = applyInventoryOps(pass.list, ops, { ...pass.call, source: 'pass', presence: pass.presence, runtimeItems: pass.runtimeItems });
-  pass.list = result.copies;
+  pass.list = result.instances;
   pass.itemUses.push(...result.itemUses);
   pass.diagnostics.push(...result.diagnostics);
   pass.events.push(...result.events);
 }
 
-export function ownerOf(pass: PassRun, name: string): ItemCopyWhere | null {
+export function ownerOf(pass: PassRun, name: string): ItemInstanceWhere | null {
   const { scene } = pass;
   const key = itemNameKey(name);
   if (!key) return null;
@@ -105,7 +105,7 @@ export function ownerOf(pass: PassRun, name: string): ItemCopyWhere | null {
   // A Name beats an Alias; an Alias or a loose match counts only when it points at one owner.
   const exact = scene.owners.find((o) => itemNameKey(o.name) === key);
   if (exact) return { kind: 'entity', id: exact.id };
-  const soleOwner = (hits: readonly PassOwner[]): ItemCopyWhere | null => (hits.length === 1 ? { kind: 'entity', id: hits[0].id } : null);
+  const soleOwner = (hits: readonly PassOwner[]): ItemInstanceWhere | null => (hits.length === 1 ? { kind: 'entity', id: hits[0].id } : null);
   const aliased = scene.owners.filter((o) => o.aliases?.some((a) => itemNameKey(a) === key));
   if (aliased.length) return soleOwner(aliased);
   const loose = scene.owners.filter((o) => sameCharacterName(o.name, name));
@@ -139,29 +139,29 @@ const isFace = (authored: AuthoredName, key: string) => !!authored.face && autho
 
 const runtimeNamed = (pass: PassRun, key: string) => pass.runtimeItems.find((r) => itemNameKey(r.name) === key);
 
-/** A copy goes by its true name, and by its Unidentified Name while unidentified. */
-export function nameMatches(pass: PassRun, copy: ItemCopy, key: string): boolean {
-  if (copy.item.kind === 'item') {
-    const id = copy.item.itemId;
-    return pass.authored.some((a) => a.item.id === id && (a.key === key || (isFace(a, key) && isUnidentified(copy))));
+/** An instance goes by its true name, and by its Unidentified Name while unidentified. */
+export function nameMatches(pass: PassRun, instance: ItemInstance, key: string): boolean {
+  if (instance.item.kind === 'item') {
+    const id = instance.item.itemId;
+    return pass.authored.some((a) => a.item.id === id && (a.key === key || (isFace(a, key) && isUnidentified(instance))));
   }
-  return runtimeNamed(pass, key)?.id === copy.item.runtimeItemId;
+  return runtimeNamed(pass, key)?.id === instance.item.runtimeItemId;
 }
 
-/** The Item Copies at `where` named `key`, the likeliest target first. */
-export function candidates(pass: PassRun, key: string, where: ItemCopyWhere, kind: InventoryPassOpKind, state = ''): ItemCopy[] {
+/** The Item Instances at `where` named `key`, the likeliest target first. */
+export function candidates(pass: PassRun, key: string, where: ItemInstanceWhere, kind: InventoryPassOpKind, state = ''): ItemInstance[] {
   const here = pass.list.filter((c) => nameMatches(pass, c, key) && sameWhere(c.where, where));
-  const rank = (c: ItemCopy) => (c.visibility === 'hidden' ? 2 : 0) + (c.equipped ? 1 : 0);
+  const rank = (c: ItemInstance) => (c.visibility === 'hidden' ? 2 : 0) + (c.equipped ? 1 : 0);
   switch (kind) {
-    // Hidden copies first, then visible unidentified ones.
+    // Hidden instances first, then visible unidentified ones.
     case 'reveal': return [...here.filter((c) => c.visibility === 'hidden'), ...here.filter((c) => c.visibility === 'visible' && isUnidentified(c))];
     case 'equip': return here.filter((c) => !c.equipped).sort((a, b) => rank(a) - rank(b));
     case 'unequip': return here.filter((c) => c.equipped).sort((a, b) => rank(a) - rank(b));
-    // A copy already at the new State is not changed again.
+    // An instance already at the new State is not changed again.
     case 'change': return here.filter((c) => !sameState(c, { state: { state } })).sort((a, b) => rank(a) - rank(b));
-    // A spent copy goes last, so a charged one beside it is used first.
+    // A spent instance goes last, so a charged one beside it is used first.
     case 'use': {
-      const spent = (c: ItemCopy) => (c.item.kind === 'item'
+      const spent = (c: ItemInstance) => (c.item.kind === 'item'
         && usesLeft(c, pass.authored.find((a) => c.item.kind === 'item' && a.item.id === c.item.itemId)?.item) === 0 ? 4 : 0);
       return here.sort((a, b) => spent(a) + rank(a) - spent(b) - rank(b));
     }
@@ -213,13 +213,13 @@ export function actionKeyNamed(pass: PassRun, name: string): string | null {
 /** What a name means across a reply: the authored item it names, else the name itself. */
 export const itemIdentity = (pass: PassRun, name: string): string => authoredNamed(pass, name)?.id ?? itemNameKey(listedName(pass, name));
 
-/** Splits `quantity` over `copies` in order, each taking what it holds. */
-export function distribute(copies: readonly ItemCopy[], quantity: number, take: (copy: ItemCopy, quantity: number) => void): void {
+/** Splits `quantity` over `instances` in order, each taking what it holds. */
+export function distribute(instances: readonly ItemInstance[], quantity: number, take: (instance: ItemInstance, quantity: number) => void): void {
   let left = quantity;
-  for (const copy of copies) {
+  for (const instance of instances) {
     if (left <= 0) break;
-    const share = Math.min(left, copy.quantity);
-    take(copy, share);
+    const share = Math.min(left, instance.quantity);
+    take(instance, share);
     left -= share;
   }
 }

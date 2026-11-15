@@ -13,7 +13,7 @@ import { allPlaceholders } from '@/lib/placeholderHomes';
 import { resolvePlaceholders } from '@/lib/placeholders';
 import { parseTurns } from '@/lib/turnBanding';
 import { escapeRegExp } from '@/lib/utils';
-import type { ChatMessage, DictionaryEntry, Entity, GameState, ItemCopy, PlayerStat, World } from '@/types';
+import type { ChatMessage, DictionaryEntry, Entity, GameState, ItemInstance, PlayerStat, World } from '@/types';
 import type { Check, Opinion } from './world-question-score';
 
 export const WORLD_IDS = ['drone', 'emberwatch', 'open-chat', 'rampage', 'slime', 'sugarscape', 'valentines', 'veilwood'] as const;
@@ -188,10 +188,10 @@ const playerStats = (stats: readonly PlayerStat[] | undefined): PlayerStat[] => 
 function chainOf(world: World, save: Save, history: readonly ChatMessage[]): GameState[] {
   const persona = personaOf(world);
   const met = save.met.map((name) => entityNamed(world, name).id);
-  const held: ItemCopy[] = (save.held ?? []).map((name, at) => {
+  const held: ItemInstance[] = (save.held ?? []).map((name, at) => {
     const item = (world.items ?? []).find((i) => i.name === name);
     if (!item) throw new Error(`world-question: no item named ${name}`);
-    return { id: `copy-${at}`, item: { kind: 'item', itemId: item.id }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' };
+    return { id: `instance-${at}`, item: { kind: 'item', itemId: item.id }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' };
   });
   const last = JSON.parse(history.at(-1)!.content) as { locationId: string };
   const snapshot: GameState = {

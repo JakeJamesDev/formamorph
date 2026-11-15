@@ -169,7 +169,7 @@ const devItems = (valueStatId: string | undefined): Item[] => [
   // None with no image.
   devItem('dev-item-trinket', 'Strange Trinket', 'dev-slot-ring', { slotRule: undefined, icon: 'none' }),
 ];
-/** The `items` fixture's starting Item Copies, on the player. The equipped ones fill the doll. */
+/** The `items` fixture's starting Item Instances, on the player. The equipped ones fill the doll. */
 const DEV_PLACEMENTS = ([
   ['dev-item-sword', 1, true], ['dev-item-ring', 1, true], ['dev-item-signet', 1, true], ['dev-item-helmet', 1, true], ['dev-item-amulet', 1, true],
   ['dev-item-cuirass', 1, true], ['dev-item-belt', 1, true], ['dev-item-breeches', 1, true], ['dev-item-boots', 1, true],
@@ -319,8 +319,8 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
             metEntities: ['dev-bram', 'dev-mara'],
             ownedTraits: { 'dev-bram': { chosen: ['dev-trait-oath'] } },
             itemCopies: [
-              { id: 'dev-copy-worn', item: { kind: 'item', itemId: 'dev-item-wand' }, where: { kind: 'entity', id: 'dev-bram' }, quantity: 1, visibility: 'visible', equipped: { slotId: 'dev-slot-hand', order: 0 } },
-              { id: 'dev-copy-carried', item: { kind: 'item', itemId: 'dev-item-tonic' }, where: { kind: 'entity', id: 'dev-bram' }, quantity: 1, visibility: 'visible' },
+              { id: 'dev-instance-worn', item: { kind: 'item', itemId: 'dev-item-wand' }, where: { kind: 'entity', id: 'dev-bram' }, quantity: 1, visibility: 'visible', equipped: { slotId: 'dev-slot-hand', order: 0 } },
+              { id: 'dev-instance-carried', item: { kind: 'item', itemId: 'dev-item-tonic' }, where: { kind: 'entity', id: 'dev-bram' }, quantity: 1, visibility: 'visible' },
             ],
             // The latest turn names who took part, which is what puts them In Scene.
             fullMessageHistory: history.map((message, index) => (

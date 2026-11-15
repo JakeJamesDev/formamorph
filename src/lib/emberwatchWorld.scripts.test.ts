@@ -17,7 +17,7 @@ import { clockReading } from './gameClock';
 import type { StatCodeTurnResult } from './statCodeTurn';
 import type { SandboxMemory } from './statCodeExecutor';
 import { applyInventoryOps } from './inventory';
-import type { Item, ItemCopy, ItemCopyWhere, LoreToggles } from '@/types';
+import type { Item, ItemInstance, ItemInstanceWhere, LoreToggles } from '@/types';
 
 // The world as play reads it: each persona owns its copy of the Blueprint stats it links.
 const authored = migrateWorld(JSON.parse(raw));
@@ -165,21 +165,21 @@ describe("Haldren's Crown scripts", () => {
   const itemNamed = (name: string) => items.find((item) => item.name === name)!;
   const lower = itemNamed("Haldren's Crown, Lower Half");
   const upper = itemNamed("Haldren's Crown, Upper Half");
-  const bier: ItemCopyWhere = { kind: 'location', id: locationNamed('The Bier Chamber').id };
-  const carried: ItemCopyWhere = { kind: 'you' };
-  const copyOf = (item: Item, where: ItemCopyWhere): ItemCopy =>
-    ({ id: `copy-${item.id}`, item: { kind: 'item', itemId: item.id }, where, quantity: 1, visibility: 'visible' });
+  const bier: ItemInstanceWhere = { kind: 'location', id: locationNamed('The Bier Chamber').id };
+  const carried: ItemInstanceWhere = { kind: 'you' };
+  const instanceOf = (item: Item, where: ItemInstanceWhere): ItemInstance =>
+    ({ id: `instance-${item.id}`, item: { kind: 'item', itemId: item.id }, where, quantity: 1, visibility: 'visible' });
   // The crown scripts write no inventory, so no operation ever reaches this.
-  const applyNothing: ApplyInventory = (copies) => ({ copies: [...copies], diagnostics: [], events: [], itemUses: [] });
+  const applyNothing: ApplyInventory = (instances) => ({ instances: [...instances], diagnostics: [], events: [], itemUses: [] });
 
   /** The lore writes after `arrived` lands at `where`, with the other half at `otherAt`. */
-  const crownWrites = async (arrived: Item, where: ItemCopyWhere, otherAt: ItemCopyWhere) => {
+  const crownWrites = async (arrived: Item, where: ItemInstanceWhere, otherAt: ItemInstanceWhere) => {
     const other = arrived === lower ? upper : lower;
-    const copies = [copyOf(arrived, where), copyOf(other, otherAt)];
+    const instances = [instanceOf(arrived, where), instanceOf(other, otherAt)];
     const base = turnAt('The Bier Chamber', {});
     const out = await runItemScripts(
-      { ...base, state: { ...base.state, items, itemCopies: copies } },
-      [{ timing: 'gained', itemId: arrived.id, copyId: copies[0].id, where, quantity: 1 }],
+      { ...base, state: { ...base.state, items, itemInstances: instances } },
+      [{ timing: 'gained', itemId: arrived.id, copyId: instances[0].id, where, quantity: 1 }],
       { items, apply: applyNothing, itemNameOf: (item) => item.name },
     );
     return out.result?.loreWrites ?? [];
@@ -209,27 +209,27 @@ describe('the Flask of Lamp Oil script', () => {
   const itemNamed = (name: string) => items.find((item) => item.name === name)!;
   const flask = itemNamed('Flask of Lamp Oil');
   const lantern = itemNamed('Hooded Lantern');
-  const you: ItemCopyWhere = { kind: 'you' };
-  const wall: ItemCopyWhere = { kind: 'location', id: locationNamed('The Boundary Wall').id };
-  const lanternAt = (id: string, where: ItemCopyWhere, uses: number): ItemCopy =>
+  const you: ItemInstanceWhere = { kind: 'you' };
+  const wall: ItemInstanceWhere = { kind: 'location', id: locationNamed('The Boundary Wall').id };
+  const lanternAt = (id: string, where: ItemInstanceWhere, uses: number): ItemInstance =>
     ({ id, item: { kind: 'item', itemId: lantern.id }, where, quantity: 1, visibility: 'visible', state: { uses } });
-  const apply: ApplyInventory = (copies, ops) =>
-    applyInventoryOps(copies, ops, { world: { items, slots: world.slots }, source: 'script', newId: () => 'new' });
+  const apply: ApplyInventory = (instances, ops) =>
+    applyInventoryOps(instances, ops, { world: { items, slots: world.slots }, source: 'script', newId: () => 'new' });
 
-  const sword: ItemCopy = { id: 'sword', item: { kind: 'item', itemId: itemNamed('Steel Longsword').id }, where: you, quantity: 1, visibility: 'visible' };
+  const sword: ItemInstance = { id: 'sword', item: { kind: 'item', itemId: itemNamed('Steel Longsword').id }, where: you, quantity: 1, visibility: 'visible' };
 
   /** The lanterns' uses left after the flask, used up at `usedAt` on `target`, runs its When Used script. */
-  const afterPour = async (usedAt: ItemCopyWhere, target?: ItemCopy) => {
-    const copies = [lanternAt('mine', you, 0), lanternAt('other', you, 0), lanternAt('spare', wall, 1), sword];
-    const was: ItemCopy = { id: 'flask', item: { kind: 'item', itemId: flask.id }, where: usedAt, quantity: 1, visibility: 'visible' };
+  const afterPour = async (usedAt: ItemInstanceWhere, target?: ItemInstance) => {
+    const instances = [lanternAt('mine', you, 0), lanternAt('other', you, 0), lanternAt('spare', wall, 1), sword];
+    const was: ItemInstance = { id: 'flask', item: { kind: 'item', itemId: flask.id }, where: usedAt, quantity: 1, visibility: 'visible' };
     const base = turnAt('The Boundary Wall', {});
     const out = await runItemScripts(
-      { ...base, state: { ...base.state, items, itemCopies: copies } },
+      { ...base, state: { ...base.state, items, itemInstances: instances } },
       [{ timing: 'used', itemId: flask.id, copyId: 'flask', where: usedAt, quantity: 1, was, ...(target && { target }) }],
       { items, apply, itemNameOf: (item) => item.name },
     );
-    return Object.fromEntries(out.copies.filter((copy) => copy.item.kind === 'item' && copy.item.itemId === lantern.id)
-      .map((copy) => [copy.id, copy.state?.uses ?? lantern.uses]));
+    return Object.fromEntries(out.instances.filter((instance) => instance.item.kind === 'item' && instance.item.itemId === lantern.id)
+      .map((instance) => [instance.id, instance.state?.uses ?? lantern.uses]));
   };
 
   it("refills the owner's own lanterns to three nights and leaves the rest alone", async () => {

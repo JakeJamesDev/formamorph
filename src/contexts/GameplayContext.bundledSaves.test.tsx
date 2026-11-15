@@ -60,21 +60,21 @@ interface Live {
 /** The view's load settle: the real hook and the real settle, over the live state and `world`'s gates. */
 function Play({ world, expose, onSettle }: { world: World; expose: (live: Live) => void; onSettle: () => void }) {
   const gameplay = useGameplay();
-  const { personaRef, itemCopies, itemEffects, bodies, gameTime, calendar, globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats } = gameplay;
-  const { setGlobalStats, setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, setEntityStats, setItemCopies, setItemEffects, setBodies, gameStates, setGameStates } = gameplay;
+  const { personaRef, itemInstances, itemEffects, bodies, gameTime, calendar, globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats } = gameplay;
+  const { setGlobalStats, setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, setEntityStats, setItemInstances, setItemEffects, setBodies, gameStates, setGameStates } = gameplay;
   const { entities } = useMemo(() => playWorldOf(world), [world]);
 
   const gates = useCallback((ref: PersonaRef = personaRef ?? NO_PERSONA): TraitWorld => ({
-    traits: world.traits ?? [], groups: world.traitGroups ?? [], persona: ref, daypart: daypartAt(gameTime, calendar), items: world.items ?? [], itemCopies, entities,
+    traits: world.traits ?? [], groups: world.traitGroups ?? [], persona: ref, daypart: daypartAt(gameTime, calendar), items: world.items ?? [], itemInstances, entities,
     ...inPlayOwners({ traits: world.traits ?? [], traitGroups: world.traitGroups ?? [], entities }, ref),
-  }), [world, personaRef, gameTime, calendar, itemCopies, entities]);
+  }), [world, personaRef, gameTime, calendar, itemInstances, entities]);
   const state = useMemo<TraitRuntimeState>(() => ({
     stats: globalStats, traits: globalTraits, disabledTraitIds, appliedValues: appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats,
   }), [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats]);
   const settle = useCallback((from: TraitRuntimeState, at: TraitWorld, name: (trait: Trait) => string) => settleTraitsWithItems(
-    from, { copies: itemCopies, ledger: itemEffects, now: gameTime, bodies },
+    from, { instances: itemInstances, ledger: itemEffects, now: gameTime, bodies },
     { items: world.items ?? [], traits: at, entities, nameOf: name, bodies: { slots: world.slots, bodies: world.bodies, entities } },
-  ), [world, entities, itemCopies, itemEffects, gameTime, bodies]);
+  ), [world, entities, itemInstances, itemEffects, gameTime, bodies]);
   const countedSettle = useCallback<typeof settle>((...args) => { onSettle(); return settle(...args); }, [settle, onSettle]);
   const commit = useCallback((result: GatedTraitResult) => {
     setGlobalStats(result.state.stats);
@@ -85,10 +85,10 @@ function Play({ world, expose, onSettle }: { world: World; expose: (live: Live) 
     setOwnedTraits(result.state.ownedTraits ?? {});
     setEntityStats(result.state.entityStats ?? {});
     if (!result.items) return;
-    setItemCopies([...result.items.copies]);
+    setItemInstances([...result.items.instances]);
     setItemEffects(result.items.ledger);
     setBodies(result.items.bodies);
-  }, [setGlobalStats, setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, setEntityStats, setItemCopies, setItemEffects, setBodies]);
+  }, [setGlobalStats, setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, setEntityStats, setItemInstances, setItemEffects, setBodies]);
   const history = useMemo(() => ({ states: gameStates, commit: setGameStates }), [gameStates, setGameStates]);
 
   useSettleOnSaveLoad(gameplay.saveLoads, true, state, gates, nameOf, commit, history, countedSettle);
@@ -144,7 +144,7 @@ async function saveTwoTurns(world: World): Promise<string> {
     gameplay.setAppliedTraitValues(opening.traitState.appliedValues);
     gameplay.setOwnedTraits(opening.traitState.ownedTraits ?? {});
     gameplay.resetEntityStats(opening.entityStats);
-    gameplay.setItemCopies(opening.state.itemCopies ?? []);
+    gameplay.setItemInstances(opening.state.itemInstances ?? []);
     gameplay.setItemEffects(opening.itemEffects.ledger);
     gameplay.setBodies(opening.bodies);
     gameplay.setPersonaRef(NO_PERSONA);

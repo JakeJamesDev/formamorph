@@ -2,13 +2,13 @@ import { remintScopedPlaceholders } from '@/lib/placeholderHomes';
 import { remapPlaceholderIds, remintPlaceholdersDeep } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
 import { isAlwaysOn } from '@/lib/traitEffects';
-import type { Item, ItemCopy, ItemCopyState, ItemRequirement, ItemWhenEmpty, Placement, PlacementWhere, RuntimeItem, Slot, SlotRule, Trait } from '@/types';
+import type { Item, ItemInstance, ItemInstanceState, ItemRequirement, ItemWhenEmpty, Placement, PlacementWhere, RuntimeItem, Slot, SlotRule, Trait } from '@/types';
 
 /** A new item with every list empty. */
 export const blankItem = (id: string, name = 'New Item'): Item =>
   ({ id, name, statEffects: [], traitEffects: [], equipRequires: [] });
 
-/** Uses 2 or more rule stacking out, since each copy counts its own; otherwise stacking is on unless switched off. */
+/** Uses 2 or more rule stacking out, since each instance counts its own; otherwise stacking is on unless switched off. */
 export const itemStackable = (item: Item): boolean => (item.uses === undefined || item.uses <= 1) && item.stackable !== false;
 
 /** Use applies to it: it has Uses, After Use effects or a When Used script (Q20). */
@@ -16,43 +16,43 @@ export const itemUsable = (item: Item): boolean => item.uses !== undefined
   || item.statEffects.some((row) => row.timing === 'used') || item.traitEffects.some((row) => row.timing === 'used')
   || !!item.scripts?.some((script) => script.timing === 'used');
 
-/** The uses an Item Copy of `item` has left: full when it records none. Undefined when the item has no Uses. */
-export const usesLeft = (copy: Pick<ItemCopy, 'state'>, item: Pick<Item, 'uses'> | undefined): number | undefined =>
-  (item?.uses === undefined ? undefined : copy.state?.uses ?? item.uses);
+/** The uses an Item Instance of `item` has left: full when it records none. Undefined when the item has no Uses. */
+export const usesLeft = (instance: Pick<ItemInstance, 'state'>, item: Pick<Item, 'uses'> | undefined): number | undefined =>
+  (item?.uses === undefined ? undefined : instance.state?.uses ?? item.uses);
 
-/** Uses left: "N of M uses" for Uses 2+; a Uses 1 copy shows a line only once spent (Q30). */
-export const usesLine = (copy: Pick<ItemCopy, 'state'>, item: Pick<Item, 'uses'> | undefined): string | null => {
-  const left = usesLeft(copy, item);
+/** Uses left: "N of M uses" for Uses 2+; a Uses 1 instance shows a line only once spent (Q30). */
+export const usesLine = (instance: Pick<ItemInstance, 'state'>, item: Pick<Item, 'uses'> | undefined): string | null => {
+  const left = usesLeft(instance, item);
   if (left === undefined || item?.uses === undefined) return null;
   if (item.uses > 1) return `${left} of ${item.uses} uses`;
   return left === 0 ? 'No uses left' : null;
 };
 
-/** Its copies start unidentified: it has an Unidentified Name or Unidentified Description (Q16). */
+/** Its instances start unidentified: it has an Unidentified Name or Unidentified Description (Q16). */
 export const itemHasUnidentifiedFace = (item: Pick<Item, 'unidentifiedName' | 'unidentifiedDescription'>): boolean => !!item.unidentifiedName?.trim() || !!item.unidentifiedDescription?.trim();
 
-/** The Item Copy shows the unidentified face. */
-export const isUnidentified = (copy: Pick<ItemCopy, 'state'>): boolean => copy.state?.unidentified === true;
+/** The Item Instance shows the unidentified face. */
+export const isUnidentified = (instance: Pick<ItemInstance, 'state'>): boolean => instance.state?.unidentified === true;
 
-/** A copy that counts as money: visible and identified. */
-export const isSpendable = (copy: Pick<ItemCopy, 'state' | 'visibility'>): boolean => copy.visibility === 'visible' && !isUnidentified(copy);
+/** An instance that counts as money: visible and identified. */
+export const isSpendable = (instance: Pick<ItemInstance, 'state' | 'visibility'>): boolean => instance.visibility === 'visible' && !isUnidentified(instance);
 
-/** The name the player sees on `copy`: a runtime item's name, else its item's face through `resolve`. */
-export function copyName(
-  copy: ItemCopy, items: readonly Item[], runtimeItems: readonly Pick<RuntimeItem, 'id' | 'name'>[], resolve: (text: string) => string,
+/** The name the player sees on `instance`: a runtime item's name, else its item's face through `resolve`. */
+export function instanceName(
+  instance: ItemInstance, items: readonly Item[], runtimeItems: readonly Pick<RuntimeItem, 'id' | 'name'>[], resolve: (text: string) => string,
 ): string {
-  const ref = copy.item;
+  const ref = instance.item;
   if (ref.kind === 'runtime') return runtimeItems.find((r) => r.id === ref.runtimeItemId)?.name || 'Unknown Item';
   const item = items.find((i) => i.id === ref.itemId);
-  return (item && resolve(copyFace(item, copy).name)) || 'Unknown Item';
+  return (item && resolve(instanceFace(item, instance).name)) || 'Unknown Item';
 }
 
-/** The name and player description the player sees on `copy`: the unidentified face while it is unidentified,
+/** The name and player description the player sees on `instance`: the unidentified face while it is unidentified,
  *  a blank unidentified field falling back to the normal value (Q16). */
-export function copyFace(item: Pick<Item, 'name' | 'playerDescription' | 'unidentifiedName' | 'unidentifiedDescription'>, copy: Pick<ItemCopy, 'state'>): {
+export function instanceFace(item: Pick<Item, 'name' | 'playerDescription' | 'unidentifiedName' | 'unidentifiedDescription'>, instance: Pick<ItemInstance, 'state'>): {
   name: string; description: string | undefined;
 } {
-  const unidentified = isUnidentified(copy);
+  const unidentified = isUnidentified(instance);
   return {
     name: faceName(item, unidentified),
     description: unidentified && item.unidentifiedDescription?.trim() ? item.unidentifiedDescription : item.playerDescription,
@@ -67,21 +67,21 @@ export const faceName = (item: Pick<Item, 'name' | 'unidentifiedName'>, unidenti
 export const seenItemName = (item: Pick<Item, 'name' | 'unidentifiedName'>, seen: StoredSighting): string | null =>
   (seen.hidden ? null : faceName(item, !!seen.unidentified));
 
-/** How the log sees a source behind several Item Copies, folded copy by copy. */
+/** How the log sees a source behind several Item Instances, folded instance by instance. */
 export interface SourceSighting { hidden: boolean; unidentified: boolean }
 
 /** A sighting as a stored record keeps it: an absent flag is false. */
 export interface StoredSighting { hidden?: boolean; unidentified?: boolean }
 
-/** What one Item Copy shows the player. */
-export const copySighting = (copy: Pick<ItemCopy, 'visibility' | 'state'>): SourceSighting =>
-  ({ hidden: copy.visibility === 'hidden', unidentified: isUnidentified(copy) });
+/** What one Item Instance shows the player. */
+export const instanceSighting = (instance: Pick<ItemInstance, 'visibility' | 'state'>): SourceSighting =>
+  ({ hidden: instance.visibility === 'hidden', unidentified: isUnidentified(instance) });
 
 /** A sighting's set flags alone, for a stored record. */
 export const storedSighting = (seen: StoredSighting): StoredSighting =>
   ({ ...(seen.hidden && { hidden: true }), ...(seen.unidentified && { unidentified: true }) });
 
-/** Folds one more copy into `seen`: hidden while every copy is, unidentified while every visible copy is (Q39). */
+/** Folds one more instance into `seen`: hidden while every instance is, unidentified while every visible instance is (Q39). */
 export function foldSighting(seen: SourceSighting, next: SourceSighting): void {
   if (!next.hidden) seen.unidentified = seen.hidden ? next.unidentified : seen.unidentified && next.unidentified;
   seen.hidden &&= next.hidden;
@@ -95,25 +95,25 @@ export const WHEN_EMPTY_LABEL: Record<ItemWhenEmpty['kind'], string> = {
 /** A State word as stored: trimmed, or undefined when blank. */
 export const stateWord = (text: string | undefined): string | undefined => text?.trim() || undefined;
 
-/** An Item Copy's State word, or undefined when it has none. */
-export const copyState = (copy: Pick<ItemCopy, 'state'>): string | undefined => stateWord(copy.state?.state);
+/** An Item Instance's State word, or undefined when it has none. */
+export const instanceState = (instance: Pick<ItemInstance, 'state'>): string | undefined => stateWord(instance.state?.state);
 
 /** A State word as stacking and conditions compare it: trimmed and case-insensitive (Q31). Empty when blank. */
 export const stateTextKey = (text: string | undefined): string => (stateWord(text) ?? '').toLowerCase();
 
-/** An Item Copy's State as stacking compares it. Empty when it has none. */
-export const stateKey = (copy: Pick<ItemCopy, 'state'>): string => stateTextKey(copy.state?.state);
+/** An Item Instance's State as stacking compares it. Empty when it has none. */
+export const stateKey = (instance: Pick<ItemInstance, 'state'>): string => stateTextKey(instance.state?.state);
 
 /** An item condition's identity check from untrusted input, or undefined when it holds none. */
 export const itemIdentity = (value: unknown): ItemRequirement['identity'] =>
   (value === 'identified' || value === 'unidentified' ? value : undefined);
 
-/** Whether two Item Copies have the same State for stacking. */
-export const sameState = (a: Pick<ItemCopy, 'state'>, b: Pick<ItemCopy, 'state'>): boolean => stateKey(a) === stateKey(b);
+/** Whether two Item Instances have the same State for stacking. */
+export const sameState = (a: Pick<ItemInstance, 'state'>, b: Pick<ItemInstance, 'state'>): boolean => stateKey(a) === stateKey(b);
 
-/** The per-copy state a new Item Copy of `item` starts with: the starting State, full uses when it doesn't stack, and
+/** The per-instance state a new Item Instance of `item` starts with: the starting State, full uses when it doesn't stack, and
  *  unidentified when the item has an unidentified face (Q16). Undefined when none. */
-export function seededState(item: Item): ItemCopyState | undefined {
+export function seededState(item: Item): ItemInstanceState | undefined {
   const state = stateWord(item.state);
   const uses = itemStackable(item) ? undefined : item.uses;
   const unidentified = itemHasUnidentifiedFace(item);
@@ -121,24 +121,24 @@ export function seededState(item: Item): ItemCopyState | undefined {
   return { ...(uses !== undefined && { uses }), ...(state && { state }), ...(unidentified && { unidentified: true }) };
 }
 
-/** What a copy of `item` leaves on its last use (Q26). */
+/** What an instance of `item` leaves on its last use (Q26). */
 export const whenEmptyOf = (item: Item): ItemWhenEmpty => item.whenEmpty ?? { kind: 'gone' };
 
-/** The slots a copy takes under its rule: every listed slot for All of, else `chosen`. */
+/** The slots an instance takes under its rule: every listed slot for All of, else `chosen`. */
 export const ruleSlots = (rule: SlotRule | undefined, chosen: string): readonly string[] =>
   (rule?.mode === 'all' ? rule.slotIds : [chosen]);
 
-/** Whether a copy stored in `slotId` still fits its rule: always for All of, a listed slot for Either of. */
+/** Whether an instance stored in `slotId` still fits its rule: always for All of, a listed slot for Either of. */
 export const ruleKeeps = (rule: SlotRule | undefined, slotId: string): boolean =>
   rule?.mode === 'all' || !!rule?.slotIds.includes(slotId);
 
 /**
- * The slots an equipped Item Copy occupies, one unit in each: every listed slot under All of, else its stored one.
- * Empty for a carried copy. The first is the slot a reader names when it names one.
+ * The slots an equipped Item Instance occupies, one unit in each: every listed slot under All of, else its stored one.
+ * Empty for a carried instance. The first is the slot a reader names when it names one.
  */
-export const occupiedSlots = (copy: Pick<ItemCopy, 'equipped'>, item: Pick<Item, 'slotRule'> | undefined): readonly string[] => {
-  if (!copy.equipped) return [];
-  return ruleSlots(item?.slotRule, copy.equipped.slotId);
+export const occupiedSlots = (instance: Pick<ItemInstance, 'equipped'>, item: Pick<Item, 'slotRule'> | undefined): readonly string[] => {
+  if (!instance.equipped) return [];
+  return ruleSlots(item?.slotRule, instance.equipped.slotId);
 };
 
 /** A Slot Rule as the prompt writes it: `A or B` for Either of, `A + B` for All of. Empty when no listed slot exists. */
@@ -151,8 +151,8 @@ export function ruleGaps(rule: SlotRule, held: (slotId: string) => boolean): str
   return rule.mode === 'all' || missing.length === rule.slotIds.length ? missing : [];
 }
 
-/** Sorts equipped Item Copies longest equipped first. */
-export const byEquipOrder = (a: ItemCopy, b: ItemCopy): number => (a.equipped?.order ?? 0) - (b.equipped?.order ?? 0);
+/** Sorts equipped Item Instances longest equipped first. */
+export const byEquipOrder = (a: ItemInstance, b: ItemInstance): number => (a.equipped?.order ?? 0) - (b.equipped?.order ?? 0);
 
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object';
 const hasId = (value: unknown): value is { id: string } => isRecord(value) && typeof value.id === 'string';
@@ -279,8 +279,8 @@ export function itemTraitOptions(owners: readonly { id: string; name: string; tr
 }
 
 /** What an item popup lists beside the name: State, count, uses left. */
-export const copyFacts = (copy: ItemCopy, item: Pick<Item, 'uses'> | undefined): string[] => {
-  const state = copyState(copy);
-  const uses = usesLine(copy, item);
-  return [...(state ? [state] : []), ...(copy.quantity > 1 ? [`×${copy.quantity}`] : []), ...(uses ? [uses] : [])];
+export const instanceFacts = (instance: ItemInstance, item: Pick<Item, 'uses'> | undefined): string[] => {
+  const state = instanceState(instance);
+  const uses = usesLine(instance, item);
+  return [...(state ? [state] : []), ...(instance.quantity > 1 ? [`×${instance.quantity}`] : []), ...(uses ? [uses] : [])];
 };

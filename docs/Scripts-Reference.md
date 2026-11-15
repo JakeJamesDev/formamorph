@@ -558,7 +558,7 @@ When the player plays no entity, `persona` is an empty entry:
 | `traits` | The entity's own traits by name, owned or linked |
 | `placeholders` | The placeholders the entity owns. See [Owned Placeholders](#owned-placeholders) |
 | `stats` | The entity's own stats by name. Entries take writes |
-| `items` | The Item Copies the entity owns. See [Items](#items). Read-only |
+| `items` | The Item Instances the entity owns. See [Items](#items). Read-only |
 | `body` | The entity's Body in force, or `null`. Assign a Body name to set its base Body. See [Bodies](#bodies) |
 | `move()` | Moves a Unique entity to a location. Ignored on a Generic entity. See [Moving Entities](#moving-entities) |
 | `follow()` | Makes a Unique entity follow the player. Ignored on a Generic entity |
@@ -752,17 +752,17 @@ if (traits["Vault Key"].enabled) dictionaries.Lore.entries["Sealed Vault"].enabl
 - **A user Tool cannot write it.** The write is ignored and reported, as is every user Tool write.
 
 ### Items
-<!-- keywords: items, item copies, inventory, give item, take item, who owns, has key, equip from code, recharge, set uses, set state, use from code, reveal item, identify item, unidentified, item script, when gained, when lost, when equipped, when unequipped, when consumed -->
+<!-- keywords: items, item instances, inventory, give item, take item, who owns, has key, equip from code, recharge, set uses, set state, use from code, reveal item, identify item, unidentified, item script, when gained, when lost, when equipped, when unequipped, when consumed -->
 
-`items` holds every item of the world by code name. Each entry has `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, its own `placeholders`, and `copies`: its Item Copies in the game. An unidentified field is `''` when the item leaves it blank.
+`items` holds every item of the world by code name. Each entry has `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, its own `placeholders`, and `copies`: its Item Instances in the game. An unidentified field is `''` when the item leaves it blank.
 
-Each Item Copy has these members. They are read-only.
+Each Item Instance has these members. They are read-only.
 
 | Member | What it is |
 | --- | --- |
 | `id` | Unique identifier |
 | `item` | Code name of its item, a key of `items` |
-| `owner` | Code name of the entity that owns it, the persona included. It is `''` while the Item Copy lies at a location, or when the persona has no code name |
+| `owner` | Code name of the entity that owns it, the persona included. It is `''` while the Item Instance lies at a location, or when the persona has no code name |
 | `location` | Code name of the location it lies at, or `''` while an entity owns it |
 | `quantity` | How many it holds |
 | `equipped` and `slot` | Whether it is equipped, and the slot's name. An **All of** item reads its first listed slot |
@@ -771,7 +771,7 @@ Each Item Copy has these members. They are read-only.
 | `uses` | Uses left, or `null` when the item has no **Uses** |
 | `state` | Its **State** word, or `null` when it has none |
 
-An entity's entry, `persona` and a location's entry each have `items`: the Item Copies that it holds.
+An entity's entry, `persona` and a location's entry each have `items`: the Item Instances that it holds.
 
 ```javascript
 // The cellar door opens for whoever carries the key.
@@ -782,23 +782,23 @@ Change the inventory through verbs. A target is an entity, the persona or a loca
 
 | Verb | What it does |
 | --- | --- |
-| `items.<Item>.give(to, n?)` | Gives `to` a new Item Copy, or `n` of them. `n` is 1 when left out |
-| `copy.lose(n?)` | Removes the Item Copy, or `n` of it |
-| `copy.moveTo(to, n?)` | Moves the Item Copy, or `n` of it, to `to` |
+| `items.<Item>.give(to, n?)` | Gives `to` a new Item Instance, or `n` of them. `n` is 1 when left out |
+| `copy.lose(n?)` | Removes the Item Instance, or `n` of it |
+| `copy.moveTo(to, n?)` | Moves the Item Instance, or `n` of it, to `to` |
 | `copy.equip(slot?)` and `copy.unequip()` | Equips or unequips it, as the panel does. `slot` is a slot's name from the item's list; left out, the first free one |
 | `copy.use()` | Uses it once, as **Use** does |
-| `copy.reveal(n?)` | Makes a hidden Item Copy visible. On a visible unidentified one, identifies it |
+| `copy.reveal(n?)` | Makes a hidden Item Instance visible. On a visible unidentified one, identifies it |
 | `copy.setUses(n)` | Sets its uses left, from 0 up to the item's **Uses** |
 | `copy.setState(word)` | Sets its **State**. `''` clears it |
 
 - **The writes apply when the script ends**, in run order, through the same checks as the panel. A check that fails skips that write and logs the reason.
-- **The next script reads the Item Copies with these writes applied.** A `give` in one script is in `items` and `persona.items` in the scripts below it. So is an equip, and any item that unequips as a result.
+- **The next script reads the Item Instances with these writes applied.** A `give` in one script is in `items` and `persona.items` in the scripts below it. So is an equip, and any item that unequips as a result.
 - **The item scripts a write fires run before the next script.** **When Gained** and the other item timings run at once, up to 3 levels deep. One action runs item scripts at most 100 times in all, counting the runs it starts between turns. Past either limit, the write still applies and no item script runs. The log says so.
-- **During AI Output waits.** Scripts read the Item Copies from sentence to sentence, but item scripts run once, when the reply ends. A stopped reply applies none of it.
-- **An item's stat effects and granted traits wait for the end of the turn.** A later script reads the new Item Copy, but not the effects it brings.
+- **During AI Output waits.** Scripts read the Item Instances from sentence to sentence, but item scripts run once, when the reply ends. A stopped reply applies none of it.
+- **An item's stat effects and granted traits wait for the end of the turn.** A later script reads the new Item Instance, but not the effects it brings.
 - **An equip's requirement reads what the scripts above it wrote.** A script can raise a stat, and the next script can equip the item that needs it.
 - **An equip fits the Body that a script above it wrote.** A script can set `persona.body`, then equip an item in a slot of that Body. Items the new Body has no slot for unequip at once.
-- **Bound stops the player only.** A script can remove or move a **Bound** Item Copy.
+- **Bound stops the player only.** A script can remove or move a **Bound** Item Instance.
 - **A script can give to an entity that is not present.**
 - **Under a library persona, the Custom Persona entity means the player.** A `give` or a `pay` that names it reaches the player.
 - **An unknown target stops the script with an error.** So does `give` on an unknown item name.
@@ -875,7 +875,7 @@ if (turn.action.includes('lever')) options["Vault Open"] = true;
 | `name` | The Body's name. Read-only |
 | `slots` | The Body's slots, in the Body's order. A list. Read-only |
 
-Each slot has `name`, `capacity` and `items`: the Item Copies equipped in it. An **All of** item is listed under every slot it takes. They have the [members of an Item Copy](#items).
+Each slot has `name`, `capacity` and `items`: the Item Instances equipped in it. An **All of** item is listed under every slot it takes. They have the [members of an Item Instance](#items).
 
 ```javascript
 // A curse turns the player into a wolf for good.
@@ -983,7 +983,7 @@ When a script switches a trait, its **When a Trait Switches** scripts run at onc
 ### Order of Effects
 <!-- keywords: which script wins, priority, precedence, conflict, race condition, execution sequence, overwrite each other, see other scripts changes -->
 
-Each timing is a separate run. Within one run, scripts run one by one, in the order of the **Scripts** tab (see [Run Order](ScriptsGuide#run-order)). Each script reads what the scripts above it wrote: stats, trait switches, placeholder pins, dictionary entries, Item Copies, Currency balances, the sentence in During AI Output and `turn.choices` in After the AI.
+Each timing is a separate run. Within one run, scripts run one by one, in the order of the **Scripts** tab (see [Run Order](ScriptsGuide#run-order)). Each script reads what the scripts above it wrote: stats, trait switches, placeholder pins, dictionary entries, Item Instances, Currency balances, the sentence in During AI Output and `turn.choices` in After the AI.
 
 Two scripts that each write `stats.Health.value -= 5` take 10 from Health.
 
@@ -1111,7 +1111,7 @@ if (stats.Bridge.value === 0) turn.choices = turn.choices.filter((choice) => !/b
 | `parent` | The code name of the location that holds this one. Empty at the top level |
 | `children` | The code names of the locations inside this one, in the editor's order |
 | `exits` | The direct ways out of here, each with a `name` (a code name), a `hint` (the Connection's travel hint, or empty), a `distance` (`'nearby'`, or `'far'` across a Far Connection) and `oneWay` (true when the Connection runs this way only). A parent, child or sibling with no Connection is `'nearby'` and two-way. A move can carry the player further than these |
-| `items` | The Item Copies lying at the location. See [Items](#items) |
+| `items` | The Item Instances lying at the location. See [Items](#items) |
 
 In a world with no location, `location.id` and `location.name` are empty, and `location.present` is an empty list. An unknown location name reads as a blank entry.
 

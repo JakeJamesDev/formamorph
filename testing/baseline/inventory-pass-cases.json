@@ -55,7 +55,7 @@
       "name": "Hand"
     }
   ],
-  "copies": [
+  "instances": [
     {
       "item": "lantern",
       "where": "you"

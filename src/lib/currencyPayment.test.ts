@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SlotOwner } from '@/lib/bodies';
 import { applyInventoryOps } from '@/lib/inventory';
-import type { Currency, Item, ItemCopy, ItemCopyWhere, Placement, PlayerStat } from '@/types';
+import type { Currency, Item, ItemInstance, ItemInstanceWhere, Placement, PlayerStat } from '@/types';
 import { balanceOf, backingStatIds, currenciesSettle } from './currency';
 import { applyPaymentStats, planPayment, type PaymentStat, type PaymentState } from './currency/payment';
 import { readStatedPrice } from './currency/price';
@@ -20,19 +20,19 @@ const you = { kind: 'you' } as const;
 const mara = { kind: 'entity', id: 'mara' } as const;
 const stranger = { kind: 'entity', id: 'stranger' } as const;
 
-const heldCopy = (itemId: string, where: ItemCopyWhere, quantity: number, over: Partial<ItemCopy> = {}): ItemCopy =>
+const heldInstance = (itemId: string, where: ItemInstanceWhere, quantity: number, over: Partial<ItemInstance> = {}): ItemInstance =>
   ({ id: `${itemId}-${where.kind === 'entity' ? where.id : where.kind}${over.visibility ?? ''}`, item: { kind: 'item', itemId }, where, quantity, visibility: 'visible', ...over });
 const placedOnMara: Placement[] = [{ id: 'p', source: { kind: 'item', itemId: 'copper' }, where: mara, quantity: 1 }];
 
-const state = (copies: ItemCopy[], over: Partial<PaymentState> = {}): PaymentState =>
-  ({ copies, placements: placedOnMara, globalStats: [], statsOf: () => [], ...over });
+const state = (instances: ItemInstance[], over: Partial<PaymentState> = {}): PaymentState =>
+  ({ instances, placements: placedOnMara, globalStats: [], statsOf: () => [], ...over });
 
 /** The item counts each owner holds once the plan's ops run through the real validator. */
-function settle(copies: ItemCopy[], payer: SlotOwner | null, payee: SlotOwner | null, amount: number, currency = MONEY) {
-  const plan = planPayment(currency, payer, payee, amount, state(copies), items);
+function settle(instances: ItemInstance[], payer: SlotOwner | null, payee: SlotOwner | null, amount: number, currency = MONEY) {
+  const plan = planPayment(currency, payer, payee, amount, state(instances), items);
   if (!plan.settled) throw new Error(plan.reason);
   let next = 0;
-  const { copies: after, diagnostics, events } = applyInventoryOps(copies, plan.ops, { world: { items }, source: 'pass', newId: () => `new${next++}` });
+  const { instances: after, diagnostics, events } = applyInventoryOps(instances, plan.ops, { world: { items }, source: 'pass', newId: () => `new${next++}` });
   expect(diagnostics).toEqual([]);
   const count = (where: SlotOwner) => Object.fromEntries(after
     .filter((c) => c.where.kind === where.kind && (where.kind === 'you' || (c.where.kind === 'entity' && c.where.id === where.id)))
@@ -42,26 +42,26 @@ function settle(copies: ItemCopy[], payer: SlotOwner | null, payee: SlotOwner | 
 
 describe('planPayment with Currency Items', () => {
   it('pays exact items and moves them to a tracked payee', () => {
-    const { you: mine, mara: hers } = settle([heldCopy('copper', you, 5)], you, mara, 5);
+    const { you: mine, mara: hers } = settle([heldInstance('copper', you, 5)], you, mara, 5);
     expect(mine).toEqual({});
     expect(hers).toEqual({ copper: 5 });
   });
 
   it('spends the smallest items first', () => {
-    const { you: mine, mara: hers } = settle([heldCopy('copper', you, 3), heldCopy('silver', you, 2), heldCopy('gold', you, 1)], you, mara, 13);
+    const { you: mine, mara: hers } = settle([heldInstance('copper', you, 3), heldInstance('silver', you, 2), heldInstance('gold', you, 1)], you, mara, 13);
     expect(mine).toEqual({ silver: 1, gold: 1 });
     expect(hers).toEqual({ copper: 3, silver: 1 });
   });
 
   it('returns change in the fewest items, created when the payee lacks it, and the payee keeps only the amount', () => {
-    const { you: mine, mara: hers } = settle([heldCopy('gold', you, 1)], you, mara, 5);
+    const { you: mine, mara: hers } = settle([heldInstance('gold', you, 1)], you, mara, 5);
     // 95 back reads 9 Silver, 5 Copper, never 95 Copper.
     expect(mine).toEqual({ silver: 9, copper: 5 });
     expect(hers).toEqual({ copper: 5 });
   });
 
   it('draws change from what a tracked payee holds, and the payee ends up by the amount', () => {
-    const { you: mine, mara: hers } = settle([heldCopy('silver', you, 1), heldCopy('copper', mara, 2)], you, mara, 5);
+    const { you: mine, mara: hers } = settle([heldInstance('silver', you, 1), heldInstance('copper', mara, 2)], you, mara, 5);
     expect(mine).toEqual({ copper: 5 });
     expect(hers).toEqual({ copper: 7 });
   });
@@ -69,14 +69,14 @@ describe('planPayment with Currency Items', () => {
   describe('value between tracked parties (Q54)', () => {
     const worth = { copper: 1, silver: 10, gold: 100 };
     const value = (held: Record<string, number>) => Object.entries(held).reduce((sum, [id, n]) => sum + worth[id as keyof typeof worth] * n, 0);
-    const purses: [string, ItemCopy[], ItemCopy[], number][] = [
-      ['one big item against an empty purse', [heldCopy('gold', you, 1)], [], 5],
-      ['two big items and a remainder', [heldCopy('gold', you, 2)], [], 150],
-      ['a payee with part of the change', [heldCopy('silver', you, 1)], [heldCopy('copper', mara, 2)], 5],
-      ['a payee with all the change', [heldCopy('gold', you, 1)], [heldCopy('silver', mara, 9), heldCopy('copper', mara, 5)], 5],
-      ['a payee with the wrong items', [heldCopy('gold', you, 1)], [heldCopy('gold', mara, 3)], 5],
-      ['mixed items and overpay', [heldCopy('copper', you, 3), heldCopy('silver', you, 1), heldCopy('gold', you, 1)], [heldCopy('silver', mara, 1)], 17],
-      ['exact items', [heldCopy('copper', you, 5)], [], 5],
+    const purses: [string, ItemInstance[], ItemInstance[], number][] = [
+      ['one big item against an empty purse', [heldInstance('gold', you, 1)], [], 5],
+      ['two big items and a remainder', [heldInstance('gold', you, 2)], [], 150],
+      ['a payee with part of the change', [heldInstance('silver', you, 1)], [heldInstance('copper', mara, 2)], 5],
+      ['a payee with all the change', [heldInstance('gold', you, 1)], [heldInstance('silver', mara, 9), heldInstance('copper', mara, 5)], 5],
+      ['a payee with the wrong items', [heldInstance('gold', you, 1)], [heldInstance('gold', mara, 3)], 5],
+      ['mixed items and overpay', [heldInstance('copper', you, 3), heldInstance('silver', you, 1), heldInstance('gold', you, 1)], [heldInstance('silver', mara, 1)], 17],
+      ['exact items', [heldInstance('copper', you, 5)], [], 5],
     ];
     it.each(purses)('moves exactly the amount, you to Mara: %s', (_shape, mine, hers, amount) => {
       const after = settle([...mine, ...hers], you, mara, amount);
@@ -85,16 +85,16 @@ describe('planPayment with Currency Items', () => {
       expect(value(after.mara)).toBe(before.mara + amount);
     });
     it.each(purses)('moves exactly the amount, Mara to you: %s', (_shape, mine, hers, amount) => {
-      const swap = (c: ItemCopy, where: ItemCopyWhere) => heldCopy((c.item as { itemId: string }).itemId, where, c.quantity);
+      const swap = (c: ItemInstance, where: ItemInstanceWhere) => heldInstance((c.item as { itemId: string }).itemId, where, c.quantity);
       const hersNow = mine.map((c) => swap(c, mara));
       const minesNow = hers.map((c) => swap(c, you));
       const after = settle([...hersNow, ...minesNow], mara, you, amount);
-      const total = (list: ItemCopy[]) => value(Object.fromEntries(list.map((c) => [(c.item as { itemId: string }).itemId, c.quantity])));
+      const total = (list: ItemInstance[]) => value(Object.fromEntries(list.map((c) => [(c.item as { itemId: string }).itemId, c.quantity])));
       expect(value(after.mara)).toBe(total(hersNow) - amount);
       expect(value(after.you)).toBe(total(minesNow) + amount);
     });
     it('still creates and destroys money with an untracked party', () => {
-      expect(settle([heldCopy('gold', you, 1)], you, stranger, 5).you).toEqual({ silver: 9, copper: 5 });
+      expect(settle([heldInstance('gold', you, 1)], you, stranger, 5).you).toEqual({ silver: 9, copper: 5 });
       expect(settle([], stranger, you, 5).you).toEqual({ copper: 5 });
     });
   });
@@ -106,18 +106,18 @@ describe('planPayment with Currency Items', () => {
   });
 
   it('refuses a payer who is short, with no op', () => {
-    expect(planPayment(MONEY, you, mara, 6, state([heldCopy('copper', you, 5)]), items).settled).toBe(false);
+    expect(planPayment(MONEY, you, mara, 6, state([heldInstance('copper', you, 5)]), items).settled).toBe(false);
   });
 
   it('does not count hidden or unidentified items, so they cannot pay (Q18)', () => {
-    const hidden = heldCopy('copper', you, 5, { visibility: 'hidden' });
-    const veiled = heldCopy('silver', you, 1, { state: { unidentified: true } });
+    const hidden = heldInstance('copper', you, 5, { visibility: 'hidden' });
+    const veiled = heldInstance('silver', you, 1, { state: { unidentified: true } });
     expect(planPayment(MONEY, you, mara, 1, state([hidden, veiled]), items).settled).toBe(false);
   });
 
   it('spends around a hidden smaller item, which stays put', () => {
-    const hidden = heldCopy('copper', you, 5, { visibility: 'hidden' });
-    const plan = planPayment(MONEY, you, null, 5, state([hidden, heldCopy('silver', you, 1)]), items);
+    const hidden = heldInstance('copper', you, 5, { visibility: 'hidden' });
+    const plan = planPayment(MONEY, you, null, 5, state([hidden, heldInstance('silver', you, 1)]), items);
     expect(plan).toEqual({
       settled: true, stats: [],
       ops: expect.arrayContaining([{ kind: 'lose', copyId: 'silver-you', quantity: 1 }, { kind: 'gain', itemId: 'copper', quantity: 5, to: you }]),
@@ -126,22 +126,22 @@ describe('planPayment with Currency Items', () => {
   });
 
   it('lets the player spend a Bound item, because Bound stops the panel only', () => {
-    const { you: mine } = settle([heldCopy('copper', you, 2, { id: 'bound' })], you, null, 2);
+    const { you: mine } = settle([heldInstance('copper', you, 2, { id: 'bound' })], you, null, 2);
     expect(mine).toEqual({});
   });
 
   it('runs an item move as an ordinary op, so the item fires its item events', () => {
-    const { events } = settle([heldCopy('copper', you, 2)], you, mara, 1);
+    const { events } = settle([heldInstance('copper', you, 2)], you, mara, 1);
     expect(events.map((event) => [event.timing, event.itemId])).toContainEqual(['lost', 'copper']);
   });
 
   it('removes items paid to an untracked entity, and leaves none on it', () => {
-    const { plan } = settle([heldCopy('copper', you, 2)], you, stranger, 2);
+    const { plan } = settle([heldInstance('copper', you, 2)], you, stranger, 2);
     expect(plan).toMatchObject({ ops: [{ kind: 'lose', quantity: 2 }] });
   });
 
   it('removes money that leaves the world', () => {
-    expect(settle([heldCopy('copper', you, 2)], you, null, 2).you).toEqual({});
+    expect(settle([heldInstance('copper', you, 2)], you, null, 2).you).toEqual({});
   });
 
   it('creates what an untracked entity pays, and income in the fewest items', () => {
@@ -156,12 +156,12 @@ describe('planPayment with Currency Items', () => {
   it('refuses an amount the items cannot make', () => {
     const tens: Currency = { id: 't', name: 'T', backing: { kind: 'items', items: [{ itemId: 'silver', worth: 10 }] } };
     expect(planPayment(tens, null, you, 5, state([]), items).settled).toBe(false);
-    expect(planPayment(tens, you, null, 5, state([heldCopy('silver', you, 1)]), items).settled).toBe(false);
+    expect(planPayment(tens, you, null, 5, state([heldInstance('silver', you, 1)]), items).settled).toBe(false);
   });
 
   it('refuses no parties, and one owner on both sides', () => {
     expect(planPayment(MONEY, null, null, 1, state([]), items).settled).toBe(false);
-    expect(planPayment(MONEY, you, you, 1, state([heldCopy('copper', you, 1)]), items).settled).toBe(false);
+    expect(planPayment(MONEY, you, you, 1, state([heldInstance('copper', you, 1)]), items).settled).toBe(false);
   });
 });
 
@@ -309,10 +309,10 @@ describe('the Inventory pass and the stat pass read the same money', () => {
   });
 
   it('agrees with Balance on what the plan can spend', () => {
-    const copies = [heldCopy('copper', you, 5), heldCopy('gold', you, 1, { visibility: 'hidden' })];
-    const balance = balanceOf(MONEY, you, state(copies));
+    const instances = [heldInstance('copper', you, 5), heldInstance('gold', you, 1, { visibility: 'hidden' })];
+    const balance = balanceOf(MONEY, you, state(instances));
     expect(balance).toEqual({ tracked: true, amount: 5 });
-    expect(planPayment(MONEY, you, null, 5, state(copies), items).settled).toBe(true);
-    expect(planPayment(MONEY, you, null, 6, state(copies), items).settled).toBe(false);
+    expect(planPayment(MONEY, you, null, 5, state(instances), items).settled).toBe(true);
+    expect(planPayment(MONEY, you, null, 6, state(instances), items).settled).toBe(false);
   });
 });

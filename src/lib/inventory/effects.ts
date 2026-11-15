@@ -1,22 +1,22 @@
 /**
- * Item stat effects: one settle turns the Item Copies into the effects in force on each owner's own stats.
+ * Item stat effects: one settle turns the Item Instances into the effects in force on each owner's own stats.
  * Value changes are recorded and reverse exactly what they moved (Q6); min, max and regen derive from the
- * Item Copies as trait contributions do (Q51), and a cap carry rides on the value record (Q110). The seed,
+ * Item Instances as trait contributions do (Q51), and a cap carry rides on the value record (Q110). The seed,
  * the panel and the orphan drop share it. Pure.
  */
-import { copySighting, faceName, foldSighting, isUnidentified, seenItemName, storedSighting, type StoredSighting } from '@/lib/items';
+import { instanceSighting, faceName, foldSighting, isUnidentified, seenItemName, storedSighting, type StoredSighting } from '@/lib/items';
 import { deriveEffectiveStats, movement, negated, settleValues } from '@/lib/traitRuntime';
 import { playedEntityIds } from '@/lib/scope';
 import { formatStatDelta } from '@/lib/statBar';
 import type {
-  AppliedItemEffect, CodeBounds, EntityStatValues, Item, ItemCopy, ItemCopyWhere, ItemEffectLedger, ItemStatEffect,
+  AppliedItemEffect, CodeBounds, EntityStatValues, Item, ItemInstance, ItemInstanceWhere, ItemEffectLedger, ItemStatEffect,
   ItemStatFacet, PersonaRef, PlayerStat, TimedItemEffect, Trait,
 } from '@/types';
 
-/** One use of an authored item: what starts its After Use effects on the Item Copy's owner. */
+/** One use of an authored item: what starts its After Use effects on the Item Instance's owner. */
 export interface ItemUse {
   itemId: string;
-  where: ItemCopyWhere;
+  where: ItemInstanceWhere;
   hidden: boolean;
   /** Absent = identified. */
   unidentified?: boolean;
@@ -32,7 +32,7 @@ export interface ItemEffectWorld {
 }
 
 export interface ItemEffectState {
-  copies: readonly ItemCopy[];
+  instances: readonly ItemInstance[];
   entityStats: EntityStatValues;
   ledger: ItemEffectLedger | undefined;
   /** The uses to start this settle. */
@@ -43,7 +43,7 @@ export interface ItemEffectState {
 
 /** One stat facet an item effect moved, for the log. */
 export interface ItemEffectChange {
-  /** Null for a hidden Item Copy (Q63); the unidentified face for an unidentified one (Q17). */
+  /** Null for a hidden Item Instance (Q63); the unidentified face for an unidentified one (Q17). */
   itemName: string | null;
   statName: string;
   facet: ItemStatFacet;
@@ -82,31 +82,31 @@ const rowsOf = (item: Item | undefined, timing: ItemStatEffect['timing']) =>
 
 /** The entity whose own stats a `where` moves: the entity, or for `you` the played entity holding stats (Q107).
  *  `you` with no played entity keeps the key `you`, which holds no stats. */
-function statOwnerOf(where: ItemCopyWhere, world: ItemEffectWorld, entityStats: EntityStatValues): string | null {
+function statOwnerOf(where: ItemInstanceWhere, world: ItemEffectWorld, entityStats: EntityStatValues): string | null {
   if (where.kind === 'location') return null;
   if (where.kind === 'entity') return where.id;
   const played = world.persona ? playedEntityIds(world.persona, world.entities) : [];
   return played.find((id) => entityStats[id]) ?? played[0] ?? 'you';
 }
 
-/** The sources the Item Copies put in force, in copy order: one While Owned per owner and item (Q11), one
- *  While Equipped per equipped Item Copy (Q109). Hidden Item Copies count (Q63). */
-function wantedSources(copies: readonly ItemCopy[], items: ReadonlyMap<string, Item>, world: ItemEffectWorld, entityStats: EntityStatValues): Map<string, Wanted> {
+/** The sources the Item Instances put in force, in instance order: one While Owned per owner and item (Q11), one
+ *  While Equipped per equipped Item Instance (Q109). Hidden Item Instances count (Q63). */
+function wantedSources(instances: readonly ItemInstance[], items: ReadonlyMap<string, Item>, world: ItemEffectWorld, entityStats: EntityStatValues): Map<string, Wanted> {
   const wanted = new Map<string, Wanted>();
-  for (const copy of copies) {
-    if (copy.item.kind !== 'item' || !(copy.quantity > 0)) continue;
-    const item = items.get(copy.item.itemId);
-    const ownerId = statOwnerOf(copy.where, world, entityStats);
+  for (const instance of instances) {
+    if (instance.item.kind !== 'item' || !(instance.quantity > 0)) continue;
+    const item = items.get(instance.item.itemId);
+    const ownerId = statOwnerOf(instance.where, world, entityStats);
     if (!item || ownerId === null) continue;
-    const sighting = copySighting(copy);
+    const sighting = instanceSighting(instance);
     if (rowsOf(item, 'owned').length) {
       const key = `owned:${ownerId}:${item.id}`;
       const seen = wanted.get(key);
       if (seen) foldSighting(seen, sighting);
       else wanted.set(key, { key, ownerId, item, timing: 'owned', ...sighting });
     }
-    if (copy.equipped && rowsOf(item, 'equipped').length) {
-      const key = `equipped:${ownerId}:${copy.id}`;
+    if (instance.equipped && rowsOf(item, 'equipped').length) {
+      const key = `equipped:${ownerId}:${instance.id}`;
       wanted.set(key, { key, ownerId, item, timing: 'equipped', ...sighting });
     }
   }
@@ -162,7 +162,7 @@ const valueRowDeltas = (rows: readonly ItemStatEffect[]): Map<string, number> =>
 };
 
 /**
- * Brings the item effects in line with the Item Copies: each source no longer in force reverses its record,
+ * Brings the item effects in line with the Item Instances: each source no longer in force reverses its record,
  * each new one applies and records what moved, and each owner's On First Obtain effects apply once (Q4). An
  * owner without a row's stat skips that row with a diagnostic. Never changes its inputs.
  */
@@ -175,7 +175,7 @@ export function settleItemEffects(state: ItemEffectState, world: ItemEffectWorld
   const orphaned: string[] = [];
   const changes: ItemEffectChange[] = [];
   const diagnostics: string[] = [];
-  const wanted = wantedSources(state.copies, items, world, entityStats);
+  const wanted = wantedSources(state.instances, items, world, entityStats);
 
   /** Re-derives one owner's bounds under the sources now in `applied`, then lands `deltas`. */
   const settleOwner = (ownerId: string, deltas: Map<string, number>, followCap: boolean): Record<string, number> => {
@@ -248,15 +248,15 @@ export function settleItemEffects(state: ItemEffectState, world: ItemEffectWorld
     logMoves(seenItemName(item, seen), ownerId, movement(stats, next), rows.filter((row) => row.facet !== 'value'), 1);
   };
 
-  for (const copy of state.copies) {
-    if (copy.item.kind !== 'item' || !(copy.quantity > 0)) continue;
-    const item = items.get(copy.item.itemId);
-    const ownerId = statOwnerOf(copy.where, world, entityStats);
+  for (const instance of state.instances) {
+    if (instance.item.kind !== 'item' || !(instance.quantity > 0)) continue;
+    const item = items.get(instance.item.itemId);
+    const ownerId = statOwnerOf(instance.where, world, entityStats);
     // An owner with no stats yet, such as `you` before a persona, keeps its First Obtain for later.
     const stats = ownerId === null ? undefined : entityStats[ownerId];
     if (!item || ownerId === null || !stats || firstObtained[ownerId]?.includes(item.id) || !rowsOf(item, 'firstObtain').length) continue;
     firstObtained[ownerId] = [...firstObtained[ownerId] ?? [], item.id];
-    applyForGood(ownerId, item, ownedRows(item, ownerId, rowsOf(item, 'firstObtain'), isUnidentified(copy)), copySighting(copy));
+    applyForGood(ownerId, item, ownedRows(item, ownerId, rowsOf(item, 'firstObtain'), isUnidentified(instance)), instanceSighting(instance));
   }
 
   // A timed effect ends once the clock reaches its end, or once its item or owner is gone, and reverses what it moved.
@@ -327,7 +327,7 @@ export function itemEffectLine(change: ItemEffectChange, resolve: (text: string)
 /** One running timed effect as the panel shows it. */
 export interface TimedEffectView {
   key: string;
-  /** Null for a use from a hidden Item Copy (Q63); the unidentified face for an unidentified one. */
+  /** Null for a use from a hidden Item Instance (Q63); the unidentified face for an unidentified one. */
   itemName: string | null;
   /** "Strength +2", or the granted trait's name. */
   effect: string;

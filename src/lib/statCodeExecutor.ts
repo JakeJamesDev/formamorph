@@ -1,5 +1,5 @@
 import type {
-  BodyPick, CodeBounds, CurrencyBacking, EntityKind, ItemCopyWhere, ItemScriptTiming, ScheduleAction, Stat, WorldOption, WorldOptionValueOf, WorldOptionValues,
+  BodyPick, CodeBounds, CurrencyBacking, EntityKind, ItemInstanceWhere, ItemScriptTiming, ScheduleAction, Stat, WorldOption, WorldOptionValueOf, WorldOptionValues,
 } from '@/types';
 import { optionValue, snapNumber } from './worldOptions';
 import type { SlotOwner } from './bodies';
@@ -240,7 +240,7 @@ export interface WorldWrites {
   entities?: EntityCodeWrite[];
   /** Every `pin`, `forget`, `edit` and `remove` on a `memories` entry, in call order. */
   memoryWrites?: MemoryWrite[];
-  /** Every verb on `items` and its Item Copy entries, in call order (Q41). */
+  /** Every verb on `items` and its Item Instance entries, in call order (Q41). */
   inventory?: InventoryOp[];
   /** Every `body` assignment on an entity entry or the persona, in call order (Q14). */
   bodies?: BodyWrite[];
@@ -986,7 +986,7 @@ export function keyedEntities<T extends SandboxEntity>(entities: readonly T[], p
 const isPlayed = (entity: SandboxEntity, persona: SandboxEntity): boolean =>
   entity === persona || (!!persona.id && entity.id === persona.id);
 
-/** Whether Item Copies and money at `entity` are the player's. */
+/** Whether Item Instances and money at `entity` are the player's. */
 const holdsForPlayer = (entity: SandboxEntity, persona: SandboxEntity): boolean => isPlayed(entity, persona) || !!entity.holdsAsPlayer;
 
 /** JS source of `(fields, entries, blank, build) => [map, readWrites, entry]`: frozen entries with read-only
@@ -1182,15 +1182,15 @@ const dictionariesPrelude = (
   ]);
 };
 
-/** One Item Copy as `items` reads it. */
-export interface SandboxItemCopy {
+/** One Item Instance as `items` reads it. */
+export interface SandboxItemInstance {
   id: string;
-  where: ItemCopyWhere;
+  where: ItemInstanceWhere;
   quantity: number;
   equipped: boolean;
   /** The slot's name; empty when carried. */
   slot: string;
-  /** Every slot an equipped copy occupies, by name. */
+  /** Every slot an equipped instance occupies, by name. */
   occupies: readonly string[];
   /** The slots the item's rule lists, which `equip` names pick from. */
   allowed: readonly { id: string; name: string }[];
@@ -1204,7 +1204,7 @@ export interface SandboxItemCopy {
 }
 
 /** One entry of the sandbox's `items`: an authored item, its owner node in the placeholder tree, and its Item
- *  Copies in play. */
+ *  Instances in play. */
 export interface SandboxItem {
   id: string;
   name: string;
@@ -1214,30 +1214,30 @@ export interface SandboxItem {
   unidentifiedDescription?: string;
   /** Absent, its `placeholders` holds no names. */
   placeholders?: SandboxPlaceholderNode;
-  copies: readonly SandboxItemCopy[];
+  copies: readonly SandboxItemInstance[];
 }
 
-/** The Item Copy event an item script runs on (Q33). */
+/** The Item Instance event an item script runs on (Q33). */
 export interface SandboxItemEvent {
   itemId: string;
   timing: ItemScriptTiming;
   copyId: string;
   quantity: number;
-  /** The Item Copy as it stood before the event, which `self.event.copy` reads once the copy is gone. */
-  was?: SandboxItemCopy;
-  /** The Item Copy a use acted on, which `self.event.target` reads. */
+  /** The Item Instance as it stood before the event, which `self.event.copy` reads once the copy is gone. */
+  was?: SandboxItemInstance;
+  /** The Item Instance a use acted on, which `self.event.target` reads. */
   targetCopyId?: string;
 }
 
-/** The fields on an Item Copy entry; none takes a write. */
-const ITEM_COPY_KEYS = ['id', 'item', 'owner', 'location', 'quantity', 'equipped', 'slot', 'hidden', 'unidentified', 'uses', 'state'] as const;
+/** The fields on an Item Instance entry; none takes a write. */
+const ITEM_INSTANCE_KEYS = ['id', 'item', 'owner', 'location', 'quantity', 'equipped', 'slot', 'hidden', 'unidentified', 'uses', 'state'] as const;
 
-// The prelude's reader of the Item Copies at one owner or location, which entity and location entries call.
+// The prelude's reader of the Item Instances at one owner or location, which entity and location entries call.
 const ITEMS_AT = '__formamorphItemsAt';
-// The entry of an event's Item Copy that is gone, which `self.event.copy` reads.
+// The entry of an event's Item Instance that is gone, which `self.event.copy` reads.
 const GONE_COPY = '__formamorphGoneCopy';
 
-/** The `items` prelude, after the entity, location and dictionary preludes. Each Item Copy has one entry, which
+/** The `items` prelude, after the entity, location and dictionary preludes. Each Item Instance has one entry, which
  *  `items[x].copies`, an entity's `items` and a location's `items` share. A verb lists an inventory write; a
  *  target names an entity, the persona or a location by entry or by name. An unknown target is listed and thrown,
  *  as `location.move` does. With `event`, `self` takes the event's item entry and its `event`. */
@@ -1245,27 +1245,27 @@ const itemsPrelude = (
   items: readonly SandboxItem[], { byName, persona }: KeyedEntities, { locations }: SandboxPlaces, { indexOf }: FlatPlaceholderMap,
   event: SandboxItemEvent | undefined,
 ): string => {
-  const you: ItemCopyWhere = { kind: 'you' };
-  const whereOf = (entity: SandboxEntity): ItemCopyWhere | null =>
+  const you: ItemInstanceWhere = { kind: 'you' };
+  const whereOf = (entity: SandboxEntity): ItemInstanceWhere | null =>
     (holdsForPlayer(entity, persona) ? you : entity.id ? { kind: 'entity', id: entity.id } : null);
   const nameById = new Map([...byName].flatMap(([name, entity]) => (entity.id && !isPlayed(entity, persona) ? [[entity.id, name]] : [])));
   const personaName = hasEntityKey(persona.name) && byName.get(persona.name) === persona ? persona.name : '';
   const placeName = new Map(locations.map((place) => [place.id, place.name]));
-  const ownerName = (where: ItemCopyWhere) =>
+  const ownerName = (where: ItemInstanceWhere) =>
     (where.kind === 'you' ? personaName : where.kind === 'entity' ? nameById.get(where.id) ?? '' : '');
   const named = [...new Map(items.map((item) => [item.name, item]))];
-  const copyData = (item: SandboxItem, copy: SandboxItemCopy) => ({
-    id: copy.id, item: item.name, owner: ownerName(copy.where), location: copy.where.kind === 'location' ? placeName.get(copy.where.id) ?? '' : '',
-    quantity: copy.quantity, equipped: copy.equipped, slot: copy.slot, occupies: copy.occupies, allowed: copy.allowed, hidden: copy.hidden, unidentified: copy.unidentified === true, uses: copy.uses ?? null, state: copy.state ?? null,
-    at: copy.where.kind === 'you' ? 'you' : `${copy.where.kind}:${copy.where.id}`,
+  const instanceData = (item: SandboxItem, instance: SandboxItemInstance) => ({
+    id: instance.id, item: item.name, owner: ownerName(instance.where), location: instance.where.kind === 'location' ? placeName.get(instance.where.id) ?? '' : '',
+    quantity: instance.quantity, equipped: instance.equipped, slot: instance.slot, occupies: instance.occupies, allowed: instance.allowed, hidden: instance.hidden, unidentified: instance.unidentified === true, uses: instance.uses ?? null, state: instance.state ?? null,
+    at: instance.where.kind === 'you' ? 'you' : `${instance.where.kind}:${instance.where.id}`,
   });
-  const targets: [string, ItemCopyWhere][] = [
-    ...[...byName].flatMap(([name, entity]) => { const where = whereOf(entity); return where ? [[name, where] as [string, ItemCopyWhere]] : []; }),
-    ...locations.map((place): [string, ItemCopyWhere] => [place.name, { kind: 'location', id: place.id }]),
+  const targets: [string, ItemInstanceWhere][] = [
+    ...[...byName].flatMap(([name, entity]) => { const where = whereOf(entity); return where ? [[name, where] as [string, ItemInstanceWhere]] : []; }),
+    ...locations.map((place): [string, ItemInstanceWhere] => [place.name, { kind: 'location', id: place.id }]),
   ];
   const spec = {
     items: named.map(([name, item]) => [name, {
-      id: item.id, ph: ownerIndex(indexOf, item.placeholders), copies: item.copies.map((copy) => copyData(item, copy)),
+      id: item.id, ph: ownerIndex(indexOf, item.placeholders), copies: item.copies.map((instance) => instanceData(item, instance)),
       unidentifiedName: item.unidentifiedName, unidentifiedDescription: item.unidentifiedDescription,
     }]),
     // By id first: an entry names its target by id. By name for a target written as text.
@@ -1277,7 +1277,7 @@ const itemsPrelude = (
     names: Object.fromEntries(targets),
     event: event ? {
       ...event, name: named.find(([, item]) => item.id === event.itemId)?.[0] ?? null,
-      was: event.was && copyData(items.find((item) => item.id === event.itemId) ?? { id: '', name: '', copies: [] }, event.was),
+      was: event.was && instanceData(items.find((item) => item.id === event.itemId) ?? { id: '', name: '', copies: [] }, event.was),
     } : null,
   };
   return [
@@ -1300,10 +1300,10 @@ const itemsPrelude = (
     `  const byPlace = Object.create(null);`,
     `  const occupying = new Map();`,
     `  const copyEntry = (data, path, listed = true) => {`,
-    `    const out = lock({ ${ITEM_COPY_KEYS.map((field) => `${field}: data.${field}`).join(', ')} }, ${JSON.stringify(ITEM_COPY_KEYS)}, path, note);`,
-    `    const copyId = data.id;`,
+    `    const out = lock({ ${ITEM_INSTANCE_KEYS.map((field) => `${field}: data.${field}`).join(', ')} }, ${JSON.stringify(ITEM_INSTANCE_KEYS)}, path, note);`,
+    `    const instanceId = data.id;`,
     `    occupying.set(out, data.occupies);`,
-    `    const op = (kind, extra = {}) => { writes.inventory.push({ kind, copyId, ...extra }); };`,
+    `    const op = (kind, extra = {}) => { writes.inventory.push({ kind, copyId: instanceId, ...extra }); };`,
     `    verb(out, path, 'lose', (quantity) => op('lose', count(quantity, path + 'lose')));`,
     `    verb(out, path, 'moveTo', (to, quantity) => op('transfer', { to: whereOf(to, path + 'moveTo'), ...count(quantity, path + 'moveTo') }));`,
     // A name outside the rule goes through as given, and the validator refuses it.
@@ -1348,7 +1348,7 @@ const itemsPrelude = (
     `      : strays[key] || (strays[key] = entry(key, { id: '', ph: -1, copies: [], unidentifiedName: '', unidentifiedDescription: '' }, true)),`,
     `  });`,
     `  const none = Object.freeze([]);`,
-    // With a slot name, only the equipped copies that occupy it.
+    // With a slot name, only the equipped instances that occupy it.
     `  const at = (kind, id, slot) => {`,
     `    const list = byPlace[kind === 'you' ? 'you' : kind + ':' + id] || none;`,
     `    return slot === undefined ? list : Object.freeze(list.filter((copy) => copy.equipped && (occupying.get(copy) || []).includes(slot)));`,
@@ -1897,7 +1897,7 @@ export interface StatCodeRunOptions {
   readOnly?: boolean;
   /** The four 32-bit words that seed `Math.random` for the run. Absent, they come from `crypto.getRandomValues`. */
   randomSeed?: readonly number[];
-  /** The world's items with their Item Copies in play. Absent, `items` is empty. */
+  /** The world's items with their Item Instances in play. Absent, `items` is empty. */
   items?: readonly SandboxItem[];
   /** An item script's event: `self` reads the item's entry and the event. */
   itemEvent?: SandboxItemEvent;

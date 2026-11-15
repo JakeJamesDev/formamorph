@@ -147,7 +147,7 @@ describe('PlaceholderSessionProvider', () => {
     h.begin();
     const rolled = h.rolls().world?.[GLOW.id];
     expect(['g1', 'g2', 'amber', 'green']).toContain(rolled);
-    // A world chip has one roll per playthrough, so every Item Copy reads the same value.
+    // A world chip has one roll per playthrough, so every Item Instance reads the same value.
     h.begin();
     expect(h.rolls().world?.[GLOW.id]).toBe(rolled);
   });

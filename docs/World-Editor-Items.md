@@ -44,7 +44,7 @@ The item panel works like the entity panel.
 
 An image's **Visibility Rule** reads whoever owns the item. A Condition with no owner reads as **Item Owner**.
 
-An item's placeholders roll once per playthrough. Every Item Copy shows the same value.
+An item's placeholders roll once per playthrough. Every Item Instance shows the same value.
 
 ## Icon
 <!-- keywords: item icon, icon field, auto icon, pick an icon, wrong icon, no icon, show item image on doll, inventory icon -->
@@ -59,7 +59,7 @@ The **Icon** field picks what the **Inventory** tab shows for the item, on the f
 | **None** | The item's image. With no image, a filled box on the figure and no icon in a row. |
 
 - 🖼️ The item's popup keeps its image under every choice.
-- 🔒 An unidentified copy ignores this field and the item's image. Its icon comes from what the player sees, so it reveals nothing.
+- 🔒 An unidentified instance ignores this field and the item's image. Its icon comes from what the player sees, so it reveals nothing.
 - 🎲 The field reads a placeholder in the name by its label. During the game, Auto reads the rolled value, so the icon can differ.
 
 ## Unidentified items
@@ -76,12 +76,12 @@ The name the player sees until the item is identified. It sits beside **Name** o
 
 The description the player sees until the item is identified. It sits directly under **Player-Facing Description** on the **Descriptions** tab.
 
-- 🔒 Fill either field, and every copy of the item starts unidentified. A blank field shows the normal value. Clearing one field never clears the other.
+- 🔒 Fill either field, and every instance of the item starts unidentified. A blank field shows the normal value. Clearing one field never clears the other.
 - 👁️ The player sees only the unidentified face: in the **Inventory** tab, in the log and in Formaquestion.
 - 📖 The narrator sees both faces, with the true one marked unknown to the player. It can reveal the truth when the story does.
 - ✨ The item's effects apply while it's unidentified.
-- 🔍 A reveal identifies a visible unidentified copy, from the story or from a script's `reveal()`. A hidden copy first comes into view and stays unidentified; a second reveal identifies it.
-- 📦 Unidentified and identified copies never stack. An identified copy joins a matching stack in the same place.
+- 🔍 A reveal identifies a visible unidentified instance, from the story or from a script's `reveal()`. A hidden instance first comes into view and stays unidentified; a second reveal identifies it.
+- 📦 Unidentified and identified instances never stack. An identified instance joins a matching stack in the same place.
 
 ## Properties
 <!-- keywords: value, price, worth, stack, consumable, charges, uses, when empty, empty bottle, becomes, changes state, single use, state, sealed, opened, lit, bound, quest item, slot, equip -->
@@ -90,15 +90,15 @@ The description the player sees until the item is identified. It sits directly u
 | Property | What it does |
 |---|---|
 | **Value** | What the item is worth, and the [Currency](#currencies) it is priced in. With **No Currency**, the item has no price. |
-| **Stackable** | Item Copies group into one row with a quantity. On by default. |
-| **Uses** | How many times each Item Copy can be used. Leave it blank for unlimited. |
-| **When Empty** | What a copy's last use leaves: **Stays** (kept at zero uses), **Gone** (removed), **Becomes** (turns into another item you pick) or **Changes State** (kept at zero uses with the word you type). Shows once **Uses** is set; it starts at **Gone**. |
-| **State** | The word each Item Copy starts with, such as *sealed* or *unlit*. The story and scripts can change it. Leave it blank for none. |
+| **Stackable** | Item Instances group into one row with a quantity. On by default. |
+| **Uses** | How many times each Item Instance can be used. Leave it blank for unlimited. |
+| **When Empty** | What an instance's last use leaves: **Stays** (kept at zero uses), **Gone** (removed), **Becomes** (turns into another item you pick) or **Changes State** (kept at zero uses with the word you type). Shows once **Uses** is set; it starts at **Gone**. |
+| **State** | The word each Item Instance starts with, such as *sealed* or *unlit*. The story and scripts can change it. Leave it blank for none. |
 | **Bound** | The player can't drop the item or give it away. The player can still pick it up, and the story can still move it. |
 | **Slots** | The slots the item equips into, in the order it tries them. With no slots, it can't be worn or held. |
 | **Either of / All of** | Shows once **Slots** lists two. **Either of** takes one of them, such as a dagger in Main Hand or Off Hand. **All of** takes every one, such as a greatsword in both. |
 
-> ⚠️ An item with **Uses** 2 or more never stacks, because each copy counts its own. Setting it turns **Stackable** off. Clearing it leaves it off until you turn it on. **Uses** 1 still stacks.
+> ⚠️ An item with **Uses** 2 or more never stacks, because each instance counts its own. Setting it turns **Stackable** off. Clearing it leaves it off until you turn it on. **Uses** 1 still stacks.
 
 | Item | Uses | When Empty |
 |---|---|---|
@@ -112,8 +112,8 @@ The description the player sees until the item is identified. It sits directly u
 
 ### State
 
-- 🏷️ The player sees each copy's **State** beside its name in the **Inventory** tab. The AI sees it beside the name too.
-- 🧱 Copies with different States never stack. "Lit" and "lit" count as the same.
+- 🏷️ The player sees each instance's **State** beside its name in the **Inventory** tab. The AI sees it beside the name too.
+- 🧱 Instances with different States never stack. "Lit" and "lit" count as the same.
 - ✋ The **Inventory** tab has no control to change it. The story and scripts do.
 
 ## Effects
@@ -130,8 +130,8 @@ An effect row changes one of the owner's own stats. Each row picks a stat, a fac
 
 | Timing | When it applies |
 |---|---|
-| ⚔️ **While Equipped** | While the item is equipped. Two equipped copies apply twice. |
-| 🎒 **While Owned** | While the owner has the item. Three copies still count once. |
+| ⚔️ **While Equipped** | While the item is equipped. Two equipped instances apply twice. |
+| 🎒 **While Owned** | While the owner has the item. Three instances still count once. |
 | 🧪 **After Use** | When the owner uses the item, for a set time or for good. A row here makes the item usable, even with **Uses** blank. |
 | ✨ **On First Obtain** | Once, the first time the owner gets the item. It stays after the item is gone. |
 
@@ -147,12 +147,12 @@ An effect row changes one of the owner's own stats. Each row picks a stat, a fac
 An **After Use** row also picks a **Duration**: **Permanent**, or an amount of story time in minutes, hours, days or weeks.
 
 - 🧪 **Use** shows on an item with **Uses**, **After Use** effects or a **When Used** script. It spends one use.
-- 🔋 The last use runs **When Empty** on that one copy. A copy that **Stays** keeps **Use** off until a script recharges it.
+- 🔋 The last use runs **When Empty** on that one instance. An instance that **Stays** keeps **Use** off until a script recharges it.
 - 📯 An item with **Uses** blank can be used any number of times and never changes.
 - ⏳ A timed effect ends once the story clock passes its duration, and gives back exactly what it gave.
 - 🔁 A second dose while the effect runs restarts its timer. The effect doesn't stack.
 - ♾️ A **Permanent** effect never ends, and each dose applies it again.
-- 🎲 Each Item Copy keeps its own uses. Giving one wand away moves only its own count.
+- 🎲 Each Item Instance keeps its own uses. Giving one wand away moves only its own count.
 
 ### Trait effects
 <!-- keywords: trait effects, grant trait, cursed ring, give trait, item trait -->
@@ -175,7 +175,7 @@ A trait effect row gives the owner a trait while its timing holds. Each row pick
 Requirement Rows on the **Requirements** tab set what an owner needs to equip the item. Any one row that holds is enough. With no rows, any owner can equip it.
 
 - 🧑 A Condition with no owner reads the item's owner.
-- 🗡️ The item's own effects never count, in either direction. A +2 Strength sword cannot meet its own Strength 5 requirement, and a cursed -2 Strength sword cannot fail it. Every copy of the same item on that owner is left out.
+- 🗡️ The item's own effects never count, in either direction. A +2 Strength sword cannot meet its own Strength 5 requirement, and a cursed -2 Strength sword cannot fail it. Every instance of the same item on that owner is left out.
 - ⛔ Equipping fails, and the log names the requirement, when no row holds.
 - 🔄 An equipped item unequips on its own once no row holds, and its effects reverse. One unequip can set off another; the game settles them all, up to 10 rounds.
 
@@ -187,13 +187,13 @@ The **Scripts** tab runs code on the item's events. It shows in Advanced mode.
 
 | Timing | Runs when |
 | --- | --- |
-| **When Gained** | An owner or a location gains an Item Copy |
-| **When Lost** | An owner or a location loses an Item Copy |
-| **When Equipped** | An Item Copy is equipped |
-| **When Unequipped** | An Item Copy is unequipped |
-| **When Used** | An Item Copy is used |
+| **When Gained** | An owner or a location gains an Item Instance |
+| **When Lost** | An owner or a location loses an Item Instance |
+| **When Equipped** | An Item Instance is equipped |
+| **When Unequipped** | An Item Instance is unequipped |
+| **When Used** | An Item Instance is used |
 
-- 🧑 `owner` is the Item Copy's owner, and empty while it lies at a location. `self` is the item.
+- 🧑 `owner` is the Item Instance's owner, and empty while it lies at a location. `self` is the item.
 - 🔗 A script that gives or takes items runs those items' scripts too, 3 levels deep at most.
 - 🌱 Starting items run no script.
 
@@ -222,7 +222,7 @@ An item priced in an Items Currency shows one **Value** field per item. Type 1 i
 
 - 🥇 A new item takes the first Currency in the list. Drag a row to change which one comes first.
 - 🔗 The stat list holds your global stats, the stats your Personas link, and each Persona's own stats. A stat that many Personas link shows once.
-- 💰 The player sees an item's worth in its popup, such as "Worth 40 Credits" or "Worth 1 Gold, 5 Copper". An unidentified copy shows no worth.
+- 💰 The player sees an item's worth in its popup, such as "Worth 40 Credits" or "Worth 1 Gold, 5 Copper". An unidentified instance shows no worth.
 - 👛 The **Inventory** tab lists the player's money under **Money**: one row for each Currency with Items or a stat the player has. A **Name Only** Currency has no row. A hidden stat has no row either.
 - 🤖 The **Inventory** chip tells the AI each listed item's worth, and how much money the player and each entity have.
 - 🏪 To limit how much an entity can pay, place one of the Currency's items on it, or give it the stat. An entity with neither has no money to run out of. A Global Stat is the player's money only.
@@ -341,7 +341,7 @@ Each row picks an item, a quantity and **Hidden**. A hidden item is there, but t
 On the player or an entity, a row whose item has a slot also shows **Equipped**. ⚔️ An Equipped item starts the game equipped, and its **While Equipped** effects apply from the first turn.
 
 - Rows equip in list order. When a slot is full, a later row unequips the earlier item, which starts carried.
-- A row with a quantity equips each copy in turn. Three rings in a slot that holds two leave one carried.
+- A row with a quantity equips each instance in turn. Three rings in a slot that holds two leave one carried.
 - An item that can't be equipped starts carried. The row warns you when its Body lacks the slots it needs.
 - An item whose [Requirements](#requirements) fail at the start also starts carried.
 - An Equipped item can also be **Hidden**. It fills its slot, but the player doesn't see it.
@@ -352,7 +352,7 @@ On the player or an entity, a row whose item has a slot also shows **Equipped**.
 After each turn's narration, the **Inventory** prompt reads the turn and records what it did to items. It can give, take, move, equip, unequip and use an item, change its State, and reveal a hidden or unidentified one. It sees the items of the player, of the entities in the scene, and of the location.
 
 - 🧪 A use follows the item's **When Empty**. For a plain item the story made, the story says whether the use kept it or used it up.
-- 🔤 A name in the story matches your item when it's the same name, ignoring case and the spaces at the ends. "iron sword" is your **Iron Sword**. "iron swords" is not. An unidentified copy also matches its **Unidentified Name**.
+- 🔤 A name in the story matches your item when it's the same name, ignoring case and the spaces at the ends. "iron sword" is your **Iron Sword**. "iron swords" is not. An unidentified instance also matches its **Unidentified Name**.
 - ➕ A name that matches no item makes a plain item with that name: it stacks, it can be used, and it has no slot and no effects. The same name later reuses it.
 - 🎒 The step runs only while the world has items, the game holds any, or the world has a **Stat** or **Items** Currency.
 - ⚖️ The story can take a **Bound** item. Only the player's buttons can't.
@@ -360,7 +360,7 @@ After each turn's narration, the **Inventory** prompt reads the turn and records
 - 🛒 Buying and selling move the item and the money together. The price is the one the story states, or else the item's **Value** times how many. A price that names no item or Currency uses the item's own Currency, then the first in your **Currencies** list.
 - 🚫 A payment the player can't afford moves nothing, and so does one that would break a stat's lock or take it below its minimum. The story isn't told. A trade that fails moves neither the item nor the money.
 - 🏷️ A trade fails when the item has no price: no price in the story, and no **Value** or no Currency on the item. A **Value** of 0 and a **Name Only** Currency move the item with no money. So does any trade in a world with no **Stat** or **Items** Currency.
-- 🛍️ A seller doesn't need the item in stock. The game takes it from the seller, then from what lies at the location, then makes a new one. Hidden copies never sell. The player can sell only what they hold.
+- 🛍️ A seller doesn't need the item in stock. The game takes it from the seller, then from what lies at the location, then makes a new one. Hidden instances never sell. The player can sell only what they hold.
 - 🧾 While this step runs, the stats step can't change a stat that backs a Currency, so a payment counts once.
 - 🏪 An entity with no Items or stat of its own keeps nothing it is paid, and what it pays out is new money. A name the world doesn't know works the same way. Between two entities with money, the payer loses and the payee gains the exact amount, even when one lacks change.
 

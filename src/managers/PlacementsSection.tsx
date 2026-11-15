@@ -46,7 +46,7 @@ const withFlag = (p: Placement, flag: 'hidden' | 'equipped', on: boolean): Place
   return flag === 'equipped' ? withSlot(rest, undefined) : rest;
 };
 
-/** The starting Item Copies placed at one place: item, quantity, Hidden and, on an owner, Equipped per row. */
+/** The starting Item Instances placed at one place: item, quantity, Hidden and, on an owner, Equipped per row. */
 const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
   const { items, placements, setPlacements, placeholders, slots, bodies, entities } = useGameData();
   const labelId = useId();

@@ -31,7 +31,7 @@ describe('executeStatCode slot names', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
   afterEach(() => vi.restoreAllMocks());
 
-  it('reads the slot a copy sits in; an All of copy reads its first slot', async () => {
+  it('reads the slot an instance sits in; an All of instance reads its first slot', async () => {
     const res = await run(`
       if (items.Dagger.copies[0].slot !== 'Off Hand') throw new Error('dagger');
       if (items.Greatsword.copies[0].slot !== 'Main Hand') throw new Error('sword');
@@ -39,7 +39,7 @@ describe('executeStatCode slot names', () => {
     expect(res.error).toBeNull();
   });
 
-  it('lists an All of copy under each slot it occupies', async () => {
+  it('lists an All of instance under each slot it occupies', async () => {
     const res = await run(`
       const [main, off] = persona.body.slots;
       if (main.items.map((c) => c.id).join() !== 'c-sword') throw new Error('main ' + main.items.map((c) => c.id));

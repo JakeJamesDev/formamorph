@@ -1,7 +1,7 @@
 import { slotOwnerKey, type SlotOwner } from '@/lib/bodies';
-import { copiesAt, type InventoryOp } from '@/lib/inventory';
+import { instancesAt, type InventoryOp } from '@/lib/inventory';
 import { isSpendable } from '@/lib/items';
-import type { Currency, CurrencyItem, EntityStatValues, ItemCopy, Placement, PlayerStat } from '@/types';
+import type { Currency, CurrencyItem, EntityStatValues, ItemInstance, Placement, PlayerStat } from '@/types';
 import { balanceOf, refuse, UNTRACKED, usableItems, balanceStat, type BalanceState, type ItemName, type Refusal } from './index';
 
 /** A stat as a payment reads it. */
@@ -53,22 +53,22 @@ function fewestItems(amount: number, rows: readonly Pick<CurrencyItem, 'itemId' 
   return counts;
 }
 
-/** The copies of a Currency Item `owner` can hand over: the ones Balance counts, carried before equipped. */
-const spendableCopies = (itemId: string, owner: SlotOwner, copies: readonly ItemCopy[]): ItemCopy[] =>
-  copiesAt(copies, owner)
-    .filter((copy) => copy.item.kind === 'item' && copy.item.itemId === itemId && isSpendable(copy))
+/** The instances of a Currency Item `owner` can hand over: the ones Balance counts, carried before equipped. */
+const spendableInstances = (itemId: string, owner: SlotOwner, instances: readonly ItemInstance[]): ItemInstance[] =>
+  instancesAt(instances, owner)
+    .filter((instance) => instance.item.kind === 'item' && instance.item.itemId === itemId && isSpendable(instance))
     .sort((a, b) => Number(!!a.equipped) - Number(!!b.equipped));
 
-/** Ops that take `count` of a Currency Item from `owner`, and how many of the count its copies could not cover. */
+/** Ops that take `count` of a Currency Item from `owner`, and how many of the count its instances could not cover. */
 function takeItems(
-  itemId: string, count: number, owner: SlotOwner, copies: readonly ItemCopy[], op: (copyId: string, quantity: number) => InventoryOp[],
+  itemId: string, count: number, owner: SlotOwner, instances: readonly ItemInstance[], op: (instanceId: string, quantity: number) => InventoryOp[],
 ): { ops: InventoryOp[]; short: number } {
   const ops: InventoryOp[] = [];
   let short = count;
-  for (const copy of spendableCopies(itemId, owner, copies)) {
+  for (const instance of spendableInstances(itemId, owner, instances)) {
     if (short <= 0) break;
-    const quantity = Math.min(short, copy.quantity);
-    ops.push(...op(copy.id, quantity));
+    const quantity = Math.min(short, instance.quantity);
+    ops.push(...op(instance.id, quantity));
     short -= quantity;
   }
   return { ops, short };
@@ -90,7 +90,7 @@ function itemPlan(currency: Currency, payer: SlotOwner | null, payee: SlotOwner 
   let rest = amount;
   for (const row of rows) {
     if (rest <= 0) break;
-    const held = spendableCopies(row.itemId, payer, state.copies).reduce((sum, copy) => sum + copy.quantity, 0);
+    const held = spendableInstances(row.itemId, payer, state.instances).reduce((sum, instance) => sum + instance.quantity, 0);
     const take = Math.min(held, Math.ceil(rest / row.worth));
     net.set(row.itemId, take);
     rest -= take * row.worth;
@@ -100,7 +100,7 @@ function itemPlan(currency: Currency, payer: SlotOwner | null, payee: SlotOwner 
   if (!change) return refuse(`the items can't make ${-rest} in change`);
   for (const [itemId, count] of change) net.set(itemId, (net.get(itemId) ?? 0) - count);
   const returned = new Map([...net].filter(([, count]) => count < 0).map(([itemId, count]) => [itemId, tracked
-    ? takeItems(itemId, -count, tracked, state.copies, (copyId, quantity) => [{ kind: 'transfer', copyId, to: payer, quantity }])
+    ? takeItems(itemId, -count, tracked, state.instances, (instanceId, quantity) => [{ kind: 'transfer', copyId: instanceId, to: payer, quantity }])
     : { ops: [], short: -count }]));
   // Change the payee lacks is created, and a tracked payee gives up that worth from the handover, so value is conserved.
   const worthOf = (itemId: string) => rows.find((row) => row.itemId === itemId)?.worth ?? 0;
@@ -119,11 +119,11 @@ function itemPlan(currency: Currency, payer: SlotOwner | null, payee: SlotOwner 
   for (const [itemId, count] of net) {
     if (count > 0) {
       let kept = tracked ? count - (dropped.get(itemId) ?? 0) : 0;
-      ops.push(...takeItems(itemId, count, payer, state.copies, (copyId, quantity) => {
+      ops.push(...takeItems(itemId, count, payer, state.instances, (instanceId, quantity) => {
         const moved = Math.min(kept, quantity);
         kept -= moved;
-        const handed: InventoryOp[] = moved > 0 && tracked ? [{ kind: 'transfer', copyId, to: tracked, quantity: moved }] : [];
-        return moved < quantity ? [...handed, { kind: 'lose', copyId, quantity: quantity - moved }] : handed;
+        const handed: InventoryOp[] = moved > 0 && tracked ? [{ kind: 'transfer', copyId: instanceId, to: tracked, quantity: moved }] : [];
+        return moved < quantity ? [...handed, { kind: 'lose', copyId: instanceId, quantity: quantity - moved }] : handed;
       }).ops);
     } else if (count < 0) {
       const back = returned.get(itemId)!;
@@ -196,12 +196,12 @@ export interface MoneyOwners {
   statsOn: (ownerId: string | null, stats: readonly PlayerStat[]) => readonly PlayerStat[];
 }
 
-/** `stats` as a payment reads them: its state over `copies`, and the played entity whose stat is the player's. */
+/** `stats` as a payment reads them: its state over `instances`, and the played entity whose stat is the player's. */
 export function moneyReading(owners: MoneyOwners, stats: PaymentStats) {
   const onFor = (id: string) => owners.statsOn(id, stats.entityStats[id] ?? []);
   return {
-    stateOver: (copies: readonly ItemCopy[]): PaymentState => ({
-      copies, placements: owners.placements, globalStats: owners.statsOn(null, stats.globalStats),
+    stateOver: (instances: readonly ItemInstance[]): PaymentState => ({
+      instances, placements: owners.placements, globalStats: owners.statsOn(null, stats.globalStats),
       statsOf: (owner) => (owner.kind === 'entity' ? onFor(owner.id) : owners.playedIds.flatMap(onFor)),
     }),
     // A switched-off stat reads as untracked, so the charge lands on the played entity whose stat was read.

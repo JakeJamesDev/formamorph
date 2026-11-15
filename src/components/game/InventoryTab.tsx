@@ -11,11 +11,11 @@ import { useDevRoute } from '@/lib/devRouter';
 import { formatTimeLeft } from '@/lib/gameClock';
 import type { BodySlot } from '@/lib/bodies';
 import { fillBoxes } from '@/lib/bodyLayout';
-import { copyWorthFacts, type BalanceRow } from '@/lib/currency';
-import { copyItemIcon } from '@/lib/itemIcons';
-import { byEquipOrder, copyFace, copyName, copyFacts, copyState, itemUsable, occupiedSlots, ruleGaps, usesLeft, usesLine, wholeCount } from '@/lib/items';
+import { instanceWorthFacts, type BalanceRow } from '@/lib/currency';
+import { instanceItemIcon } from '@/lib/itemIcons';
+import { byEquipOrder, instanceFace, instanceName, instanceFacts, instanceState, itemUsable, occupiedSlots, ruleGaps, usesLeft, usesLine, wholeCount } from '@/lib/items';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
-import type { Body, Currency, Item, ItemCopy, ItemCopyWhere, RuntimeItem, Slot } from '@/types';
+import type { Body, Currency, Item, ItemInstance, ItemInstanceWhere, RuntimeItem, Slot } from '@/types';
 import { ItemModal } from '../modals/ItemModal';
 import { EquippedSection } from './EquippedSection';
 import { BOUND_TIP, ItemRow } from './ItemRow';
@@ -24,10 +24,10 @@ import { PanelOwnerCard, PanelSubheader } from './PanelOwnerCard';
 export interface InventoryTabProps {
   /** The played Persona's name for the card header. Null under None, where the header reads You. */
   ownerName: string | null;
-  /** The played Persona's Item Copies. */
-  copies: readonly ItemCopy[];
-  /** The Item Copies lying at the player's location. Hidden ones are filtered out here. */
-  lying: readonly ItemCopy[];
+  /** The played Persona's Item Instances. */
+  instances: readonly ItemInstance[];
+  /** The Item Instances lying at the player's location. Hidden ones are filtered out here. */
+  lying: readonly ItemInstance[];
   items: readonly Item[];
   /** What the items are priced in. Absent ⇒ none. */
   currencies?: readonly Currency[];
@@ -49,8 +49,8 @@ export interface InventoryTabProps {
   /** Off while a turn runs (Q61) and on a past page. */
   disabled: boolean;
   resolveText: (text: string) => string;
-  /** The image an Item Copy shows now, through its item's rules (Q113). Absent = no thumbnails. */
-  imageOf?: (copy: ItemCopy) => string | undefined;
+  /** The image an Item Instance shows now, through its item's rules (Q113). Absent = no thumbnails. */
+  imageOf?: (instance: ItemInstance) => string | undefined;
   /** The After Use effects running on the played Persona (Q40). */
   timed?: readonly TimedEffectView[];
   onOps: (ops: InventoryOp[]) => void;
@@ -58,7 +58,7 @@ export interface InventoryTabProps {
   entityCard?: ReactNode;
 }
 
-const YOU: ItemCopyWhere = { kind: 'you' };
+const YOU: ItemInstanceWhere = { kind: 'you' };
 
 /** One small labeled icon button on an item row. */
 const ItemRowButton = forwardRef<HTMLButtonElement, ComponentProps<typeof Button> & { label: string; icon: typeof Shirt }>(
@@ -106,13 +106,13 @@ function useCountPopover(disabled: boolean) {
   return { open, onOpenChange, close: () => setOpen(false), text, setText };
 }
 
-/** Drop or Pick Up: at once for one Item Copy, through a count for a stack. */
-function MoveButton({ verb, icon, copy, name, disabled, onMove }: {
-  verb: 'Drop' | 'Pick Up'; icon: typeof Shirt; copy: ItemCopy; name: string; disabled: boolean; onMove: (quantity: number) => void;
+/** Drop or Pick Up: at once for one Item Instance, through a count for a stack. */
+function MoveButton({ verb, icon, instance, name, disabled, onMove }: {
+  verb: 'Drop' | 'Pick Up'; icon: typeof Shirt; instance: ItemInstance; name: string; disabled: boolean; onMove: (quantity: number) => void;
 }) {
   const { open, onOpenChange, close, text, setText } = useCountPopover(disabled);
   const label = `${verb} ${name}`;
-  if (copy.quantity === 1) return <ItemRowButton label={label} icon={icon} disabled={disabled} onClick={() => onMove(1)} />;
+  if (instance.quantity === 1) return <ItemRowButton label={label} icon={icon} disabled={disabled} onClick={() => onMove(1)} />;
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
@@ -120,9 +120,9 @@ function MoveButton({ verb, icon, copy, name, disabled, onMove }: {
       </PopoverTrigger>
       <PopoverContent align="end" className="w-64 space-y-3 p-3">
         <p className="text-label font-medium">{label}</p>
-        <CountField max={copy.quantity} text={text} onChange={setText} />
+        <CountField max={instance.quantity} text={text} onChange={setText} />
         <div className="flex justify-end">
-          <Button size="xs" onClick={() => { onMove(countOf(text, copy.quantity)); close(); }}>{verb}</Button>
+          <Button size="xs" onClick={() => { onMove(countOf(text, instance.quantity)); close(); }}>{verb}</Button>
         </div>
       </PopoverContent>
     </Popover>
@@ -130,8 +130,8 @@ function MoveButton({ verb, icon, copy, name, disabled, onMove }: {
 }
 
 /** Give: pick an In Scene entity by its label, and a count for a stack. */
-function GiveButton({ copy, name, present, disabled, onGive }: {
-  copy: ItemCopy; name: string; present: InventoryTabProps['present']; disabled: boolean;
+function GiveButton({ instance, name, present, disabled, onGive }: {
+  instance: ItemInstance; name: string; present: InventoryTabProps['present']; disabled: boolean;
   onGive: (entityId: string, quantity: number) => void;
 }) {
   const { open, onOpenChange, close, text, setText } = useCountPopover(disabled);
@@ -142,13 +142,13 @@ function GiveButton({ copy, name, present, disabled, onGive }: {
       </PopoverTrigger>
       <PopoverContent align="end" className="w-64 space-y-2 p-3">
         <p className="text-label font-medium">Give {name}</p>
-        {copy.quantity > 1 && <CountField max={copy.quantity} text={text} onChange={setText} />}
+        {instance.quantity > 1 && <CountField max={instance.quantity} text={text} onChange={setText} />}
         {present.length === 0 ? (
           <Meta as="p" role="status">No entities are in the scene.</Meta>
         ) : (
           <div role="list" aria-label="Give to">
             {present.map((entity) => (
-              <CompactSelectionRow key={entity.id} onClick={() => { onGive(entity.id, countOf(text, copy.quantity)); close(); }}>
+              <CompactSelectionRow key={entity.id} onClick={() => { onGive(entity.id, countOf(text, instance.quantity)); close(); }}>
                 {entity.name}
               </CompactSelectionRow>
             ))}
@@ -161,32 +161,32 @@ function GiveButton({ copy, name, present, disabled, onGive }: {
 
 /** Use, for an item with Uses, After Use effects or a When Used script, or a runtime item (Q20, Q56). Off at
  *  zero uses. */
-function UseButton({ copy, item, name, disabled, onOps }: {
-  copy: ItemCopy; item: Item | undefined; name: string; disabled: boolean; onOps: InventoryTabProps['onOps'];
+function UseButton({ instance, item, name, disabled, onOps }: {
+  instance: ItemInstance; item: Item | undefined; name: string; disabled: boolean; onOps: InventoryTabProps['onOps'];
 }) {
-  if (copy.item.kind === 'item' && (!item || !itemUsable(item))) return null;
-  const spent = usesLeft(copy, item) === 0;
+  if (instance.item.kind === 'item' && (!item || !itemUsable(item))) return null;
+  const spent = usesLeft(instance, item) === 0;
   return (
     <ItemRowButton
       label={spent ? `Use ${name}: no uses left` : `Use ${name}`} icon={Sparkles} disabled={disabled || spent}
-      onClick={() => onOps([{ kind: 'use', copyId: copy.id }])}
+      onClick={() => onOps([{ kind: 'use', copyId: instance.id }])}
     />
   );
 }
 
 /** Equip: at once with no choice of slot, through a list of the slots when Either of leaves two or more (Q37). */
-function EquipButton({ copy, item, name, slots, disabled, resolveText, onOps }: {
-  copy: ItemCopy; item: Item | undefined; name: string; slots: readonly BodySlot[]; disabled: boolean;
+function EquipButton({ instance, item, name, slots, disabled, resolveText, onOps }: {
+  instance: ItemInstance; item: Item | undefined; name: string; slots: readonly BodySlot[]; disabled: boolean;
   resolveText: (text: string) => string; onOps: InventoryTabProps['onOps'];
 }) {
   const [open, setOpen] = useState(false);
   useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
   const rule = item?.slotRule;
-  if (copy.equipped || !rule || ruleGaps(rule, (slotId) => slots.some((s) => s.slot.id === slotId)).length) return null;
+  if (instance.equipped || !rule || ruleGaps(rule, (slotId) => slots.some((s) => s.slot.id === slotId)).length) return null;
   const choices = rule.mode === 'either' ? rule.slotIds.flatMap((slotId) => slots.filter((s) => s.slot.id === slotId)) : [];
   const label = `Equip ${name}`;
   if (choices.length < 2) {
-    return <ItemRowButton label={label} icon={Shirt} disabled={disabled} onClick={() => onOps([{ kind: 'equip', copyId: copy.id }])} />;
+    return <ItemRowButton label={label} icon={Shirt} disabled={disabled} onClick={() => onOps([{ kind: 'equip', copyId: instance.id }])} />;
   }
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -197,7 +197,7 @@ function EquipButton({ copy, item, name, slots, disabled, resolveText, onOps }: 
         <p className="text-label font-medium">{label}</p>
         <div role="list" aria-label="Equip in">
           {choices.map(({ slot }) => (
-            <CompactSelectionRow key={slot.id} onClick={() => { onOps([{ kind: 'equip', copyId: copy.id, slotId: slot.id }]); setOpen(false); }}>
+            <CompactSelectionRow key={slot.id} onClick={() => { onOps([{ kind: 'equip', copyId: instance.id, slotId: slot.id }]); setOpen(false); }}>
               {resolveText(slot.name)}
             </CompactSelectionRow>
           ))}
@@ -210,72 +210,72 @@ function EquipButton({ copy, item, name, slots, disabled, resolveText, onOps }: 
 /** The game panel's Inventory tab: the played Persona's figure with their equipped items, then carried items,
  *  then a card for what lies at the location. */
 export function InventoryTab({
-  ownerName, copies, lying, items, currencies = [], balances = [], runtimeItems = [], body, slots, worldSlots, present, locationId, locationName, disabled, resolveText, imageOf, timed = [], onOps, entityCard,
+  ownerName, instances, lying, items, currencies = [], balances = [], runtimeItems = [], body, slots, worldSlots, present, locationId, locationName, disabled, resolveText, imageOf, timed = [], onOps, entityCard,
 }: InventoryTabProps) {
   const byId = new Map(items.map((item) => [item.id, item]));
   const runtimeById = new Map(runtimeItems.map((item) => [item.id, item]));
-  // Hidden Item Copies never show in the panel (story 79).
-  const shown = copies.filter((c) => c.visibility === 'visible');
-  const itemOf = (copy: ItemCopy) => (copy.item.kind === 'item' ? byId.get(copy.item.itemId) : undefined);
-  // An unidentified copy goes by its unidentified face (Q17).
-  const nameOf = (copy: ItemCopy) => copyName(copy, items, runtimeItems, resolveText);
-  const shownIconOf = (copy: ItemCopy) => {
-    return copyItemIcon(copy, itemOf(copy), { name: nameOf(copy), slots: worldSlots, readText: resolveText, image: imageOf?.(copy) });
+  // Hidden Item Instances never show in the panel (story 79).
+  const shown = instances.filter((c) => c.visibility === 'visible');
+  const itemOf = (instance: ItemInstance) => (instance.item.kind === 'item' ? byId.get(instance.item.itemId) : undefined);
+  // An unidentified instance goes by its unidentified face (Q17).
+  const nameOf = (instance: ItemInstance) => instanceName(instance, items, runtimeItems, resolveText);
+  const shownIconOf = (instance: ItemInstance) => {
+    return instanceItemIcon(instance, itemOf(instance), { name: nameOf(instance), slots: worldSlots, readText: resolveText, image: imageOf?.(instance) });
   };
-  const occupies = (c: ItemCopy, slotId: string) => occupiedSlots(c, itemOf(c)).includes(slotId);
+  const occupies = (c: ItemInstance, slotId: string) => occupiedSlots(c, itemOf(c)).includes(slotId);
   const equipped = shown.filter((c) => slots.some((s) => occupies(c, s.slot.id))).sort(byEquipOrder);
   // An entry whose slot is gone draws nothing.
   const entries = body?.entries.filter((e) => e.boxes.length > 0 && slots.some((s) => s.slot.id === e.slotId)) ?? [];
   const inBoxes = fillBoxes(entries, (slotId) => equipped.filter((c) => occupies(c, slotId)));
   const boxed = new Set([...inBoxes.values()].map((c) => c.id));
-  // A copy with no box to draw in shows as carried, so it never hides (Q35).
+  // An instance with no box to draw in shows as carried, so it never hides (Q35).
   const carried = shown.filter((c) => !boxed.has(c.id));
   const lyingHere = lying.filter((c) => c.visibility === 'visible');
-  const here: ItemCopyWhere | null = locationId ? { kind: 'location', id: locationId } : null;
+  const here: ItemInstanceWhere | null = locationId ? { kind: 'location', id: locationId } : null;
   const [viewingId, setViewingId] = useState<string | null>(null);
   const devRoute = useDevRoute();
   const firstShown = shown[0]?.id;
   useEffect(() => {
     if (import.meta.env.DEV && devRoute?.modal === 'item' && firstShown) setViewingId(firstShown);
   }, [devRoute?.modal, firstShown]);
-  // A copy that left the panel closes its popup.
+  // An instance that left the panel closes its popup.
   const viewing = [...shown, ...lyingHere].find((c) => c.id === viewingId);
-  const descriptionOf = (copy: ItemCopy) => {
-    const item = itemOf(copy);
-    return (copy.item.kind === 'runtime'
-      ? runtimeById.get(copy.item.runtimeItemId)?.description : resolveText(item ? copyFace(item, copy).description ?? '' : '')) ?? '';
+  const descriptionOf = (instance: ItemInstance) => {
+    const item = itemOf(instance);
+    return (instance.item.kind === 'runtime'
+      ? runtimeById.get(instance.item.runtimeItemId)?.description : resolveText(item ? instanceFace(item, instance).description ?? '' : '')) ?? '';
   };
-  const factsOf = (copy: ItemCopy) => {
-    const item = itemOf(copy);
-    return [...copyFacts(copy, item), ...copyWorthFacts(copy, item, currencies, resolveText, items), ...(item?.bound ? [BOUND_TIP] : [])];
+  const factsOf = (instance: ItemInstance) => {
+    const item = itemOf(instance);
+    return [...instanceFacts(instance, item), ...instanceWorthFacts(instance, item, currencies, resolveText, items), ...(item?.bound ? [BOUND_TIP] : [])];
   };
 
   /** `slotLine` replaces the row's second line. */
-  const row = (copy: ItemCopy, actions: ReactNode, { slotLine, wrapName }: { slotLine?: string; wrapName?: boolean } = {}) => {
-    const item = itemOf(copy);
+  const row = (instance: ItemInstance, actions: ReactNode, { slotLine, wrapName }: { slotLine?: string; wrapName?: boolean } = {}) => {
+    const item = itemOf(instance);
     return (
       <ItemRow
-        key={copy.id}
-        name={nameOf(copy)}
-        shown={shownIconOf(copy)}
-        state={copyState(copy)}
-        quantity={copy.quantity}
+        key={instance.id}
+        name={nameOf(instance)}
+        shown={shownIconOf(instance)}
+        state={instanceState(instance)}
+        quantity={instance.quantity}
         bound={item?.bound}
-        line={slotLine ?? (copy.item.kind === 'runtime' ? runtimeById.get(copy.item.runtimeItemId)?.description : usesLine(copy, item))}
+        line={slotLine ?? (instance.item.kind === 'runtime' ? runtimeById.get(instance.item.runtimeItemId)?.description : usesLine(instance, item))}
         wrapName={wrapName}
-        onOpen={() => setViewingId(copy.id)}
+        onOpen={() => setViewingId(instance.id)}
         actions={actions}
       />
     );
   };
 
   const slotNameOf = (slotId: string) => resolveText(slots.find((s) => s.slot.id === slotId)?.slot.name ?? '');
-  const equippedActions = (copy: ItemCopy) => (
+  const equippedActions = (instance: ItemInstance) => (
     <div className="flex shrink-0 items-center">
-      <UseButton copy={copy} item={itemOf(copy)} name={nameOf(copy)} disabled={disabled} onOps={onOps} />
+      <UseButton instance={instance} item={itemOf(instance)} name={nameOf(instance)} disabled={disabled} onOps={onOps} />
       <ItemRowButton
-        label={`Unequip ${nameOf(copy)}`} icon={Undo2} disabled={disabled}
-        onClick={() => onOps([{ kind: 'unequip', copyId: copy.id }])}
+        label={`Unequip ${nameOf(instance)}`} icon={Undo2} disabled={disabled}
+        onClick={() => onOps([{ kind: 'unequip', copyId: instance.id }])}
       />
     </div>
   );
@@ -293,8 +293,8 @@ export function InventoryTab({
             slotName={slotNameOf}
             nameOf={nameOf}
             shownIconOf={shownIconOf}
-            listRow={(copy) => row(copy, equippedActions(copy), { slotLine: occupiedSlots(copy, itemOf(copy)).map(slotNameOf).filter(Boolean).join(', ') })}
-            popoverRow={(copy) => row(copy, equippedActions(copy), { wrapName: true })}
+            listRow={(instance) => row(instance, equippedActions(instance), { slotLine: occupiedSlots(instance, itemOf(instance)).map(slotNameOf).filter(Boolean).join(', ') })}
+            popoverRow={(instance) => row(instance, equippedActions(instance), { wrapName: true })}
           />
         )}
         {balances.length > 0 && (
@@ -315,20 +315,20 @@ export function InventoryTab({
           <p role="status" className="px-2 py-2 text-label text-muted-foreground">You carry nothing.</p>
         ) : (
           <ul>
-            {carried.map((copy) => {
-              const item = itemOf(copy);
-              const name = nameOf(copy);
+            {carried.map((instance) => {
+              const item = itemOf(instance);
+              const name = nameOf(instance);
               const bound = !!item?.bound;
-              return row(copy, (
+              return row(instance, (
                 <div className="flex shrink-0 items-center">
-                  <UseButton copy={copy} item={item} name={name} disabled={disabled} onOps={onOps} />
-                  {copy.equipped && (
+                  <UseButton instance={instance} item={item} name={name} disabled={disabled} onOps={onOps} />
+                  {instance.equipped && (
                     <ItemRowButton
                       label={`Unequip ${name}`} icon={Undo2} disabled={disabled}
-                      onClick={() => onOps([{ kind: 'unequip', copyId: copy.id }])}
+                      onClick={() => onOps([{ kind: 'unequip', copyId: instance.id }])}
                     />
                   )}
-                  <EquipButton copy={copy} item={item} name={name} slots={slots} disabled={disabled} resolveText={resolveText} onOps={onOps} />
+                  <EquipButton instance={instance} item={item} name={name} slots={slots} disabled={disabled} resolveText={resolveText} onOps={onOps} />
                   {bound ? (
                     <>
                       <ItemRowButton label={`Drop ${name}: Bound`} icon={ArrowDownToLine} disabled />
@@ -337,12 +337,12 @@ export function InventoryTab({
                   ) : (
                     <>
                       <MoveButton
-                        verb="Drop" icon={ArrowDownToLine} copy={copy} name={name} disabled={disabled || !here}
-                        onMove={(quantity) => here && onOps([{ kind: 'transfer', copyId: copy.id, to: here, quantity }])}
+                        verb="Drop" icon={ArrowDownToLine} instance={instance} name={name} disabled={disabled || !here}
+                        onMove={(quantity) => here && onOps([{ kind: 'transfer', copyId: instance.id, to: here, quantity }])}
                       />
                       <GiveButton
-                        copy={copy} name={name} present={present} disabled={disabled}
-                        onGive={(id, quantity) => onOps([{ kind: 'transfer', copyId: copy.id, to: { kind: 'entity', id }, quantity }])}
+                        instance={instance} name={name} present={present} disabled={disabled}
+                        onGive={(id, quantity) => onOps([{ kind: 'transfer', copyId: instance.id, to: { kind: 'entity', id }, quantity }])}
                       />
                     </>
                   )}
@@ -375,10 +375,10 @@ export function InventoryTab({
           <p role="status" className="px-2 py-2 text-label text-muted-foreground">Nothing lies here.</p>
         ) : (
           <ul aria-label="Lying here">
-            {lyingHere.map((copy) => row(copy, (
+            {lyingHere.map((instance) => row(instance, (
               <MoveButton
-                verb="Pick Up" icon={ArrowUpFromLine} copy={copy} name={nameOf(copy)} disabled={disabled}
-                onMove={(quantity) => onOps([{ kind: 'transfer', copyId: copy.id, to: YOU, quantity }])}
+                verb="Pick Up" icon={ArrowUpFromLine} instance={instance} name={nameOf(instance)} disabled={disabled}
+                onMove={(quantity) => onOps([{ kind: 'transfer', copyId: instance.id, to: YOU, quantity }])}
               />
             )))}
           </ul>

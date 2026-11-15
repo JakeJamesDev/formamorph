@@ -9,8 +9,8 @@ import { ScriptsSection } from "./ScriptsSection";
 import { useScriptBoxContext } from "./useScriptBoxContext";
 
 /**
- * An item's Scripts tab. Its scripts run on its Item Copies' events, one timing per event (Q33), with `self` as the
- * item and `owner` as the Item Copy's owner (Q67).
+ * An item's Scripts tab. Its scripts run on its Item Instances' events, one timing per event (Q33), with `self` as the
+ * item and `owner` as the Item Instance's owner (Q67).
  */
 export function ItemScripts({ item, ownerName, onChange }: {
   item: Item;
@@ -28,7 +28,7 @@ export function ItemScripts({ item, ownerName, onChange }: {
           <Label>Scripts</Label>
           <HelpButton topicId="worldEditor.scriptBox" className="h-6 w-6" />
         </div>
-        <Hint>Runs code when one of this item’s Item Copies is gained, lost, equipped, unequipped or used. Code can give or take items, set a stat, or switch a trait.</Hint>
+        <Hint>Runs code when one of this item’s Item Instances is gained, lost, equipped, unequipped or used. Code can give or take items, set a stat, or switch a trait.</Hint>
       </div>
       <ScriptsSection
         scripts={item.scripts ?? []}

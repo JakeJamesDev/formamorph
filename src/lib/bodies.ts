@@ -6,7 +6,7 @@ import { boxLabel, parseAspect, parseBackdrop, parseEntryLayout, type BoxRef } f
 import { itemsInSlot, occupiedSlots, ruleGaps, ruleKeeps } from '@/lib/items';
 import { usedByText } from '@/lib/usedByText';
 import { sameTraitOn } from '@/lib/avatarLook';
-import type { Body, BodyEntry, BodyPick, BodyTraitOn, Item, ItemCopy, ItemCopyWhere, PersonaRef, Slot, SlotRule, Trait, TraitBodyRow } from '@/types';
+import type { Body, BodyEntry, BodyPick, BodyTraitOn, Item, ItemInstance, ItemInstanceWhere, PersonaRef, Slot, SlotRule, Trait, TraitBodyRow } from '@/types';
 
 /** The authored slice the resolver reads. An absent slice reads as empty. */
 export interface BodyWorld {
@@ -28,7 +28,7 @@ export interface BodySlot {
 }
 
 /** An owner that can equip: the played Persona or an entity. */
-export type SlotOwner = Exclude<ItemCopyWhere, { kind: 'location' }>;
+export type SlotOwner = Exclude<ItemInstanceWhere, { kind: 'location' }>;
 
 /** The key an owner's trait pick sits under: the empty string for the played Persona, else the entity id. */
 export const slotOwnerKey = (owner: SlotOwner): string => (owner.kind === 'you' ? '' : owner.id);
@@ -231,33 +231,33 @@ export function traitBodyPicks(
   return picks;
 }
 
-/** The equipped Item Copies the owners' Bodies in force no longer hold: every copy that occupies a slot its Body
- *  lacks, the most recently equipped where a capacity dropped (Q12, Q40), and a copy its item's rule no longer
+/** The equipped Item Instances the owners' Bodies in force no longer hold: every instance that occupies a slot its Body
+ *  lacks, the most recently equipped where a capacity dropped (Q12, Q40), and an instance its item's rule no longer
  *  allows (Q55). */
 export function bodyMisfits(
-  copies: readonly ItemCopy[], world: BodyWorld & { slots?: readonly Slot[]; items: readonly Item[] }, persona: PersonaRef | undefined,
-): ItemCopy[] {
+  instances: readonly ItemInstance[], world: BodyWorld & { slots?: readonly Slot[]; items: readonly Item[] }, persona: PersonaRef | undefined,
+): ItemInstance[] {
   const items = new Map(world.items.map((item) => [item.id, item]));
-  const itemOf = (copy: ItemCopy) => (copy.item.kind === 'item' ? items.get(copy.item.itemId) : undefined);
-  const worn = copies.flatMap((copy) => (copy.equipped && copy.where.kind !== 'location' ? [{ copy, owner: copy.where, stored: copy.equipped.slotId }] : []));
+  const itemOf = (instance: ItemInstance) => (instance.item.kind === 'item' ? items.get(instance.item.itemId) : undefined);
+  const worn = instances.flatMap((instance) => (instance.equipped && instance.where.kind !== 'location' ? [{ instance, owner: instance.where, stored: instance.equipped.slotId }] : []));
   const used = new Map<string, number>();
   const ownerSlotKey = (owner: SlotOwner, slotId: string) => `${slotOwnerKey(owner)}|${slotId}`;
   const count = (owner: SlotOwner, slotId: string, by: number) => used.set(ownerSlotKey(owner, slotId), (used.get(ownerSlotKey(owner, slotId)) ?? 0) + by);
-  for (const { copy, owner } of worn) for (const slotId of occupiedSlots(copy, itemOf(copy))) count(owner, slotId, 1);
+  for (const { instance, owner } of worn) for (const slotId of occupiedSlots(instance, itemOf(instance))) count(owner, slotId, 1);
   const bodySlotsOf = new Map<string, readonly BodySlot[]>();
   const capacityOf = (owner: SlotOwner, slotId: string) => {
     const held = bodySlotsOf.get(slotOwnerKey(owner)) ?? slotsInForce(world, owner, persona);
     bodySlotsOf.set(slotOwnerKey(owner), held);
     return held.find((s) => s.slot.id === slotId)?.capacity ?? 0;
   };
-  const out: ItemCopy[] = [];
-  for (const { copy, owner, stored } of worn.sort((a, b) => (b.copy.equipped?.order ?? 0) - (a.copy.equipped?.order ?? 0))) {
-    const item = itemOf(copy);
-    const taken = occupiedSlots(copy, item);
+  const out: ItemInstance[] = [];
+  for (const { instance, owner, stored } of worn.sort((a, b) => (b.instance.equipped?.order ?? 0) - (a.instance.equipped?.order ?? 0))) {
+    const item = itemOf(instance);
+    const taken = occupiedSlots(instance, item);
     const allowed = !item || ruleKeeps(item.slotRule, stored);
     if (allowed && taken.every((slotId) => (used.get(ownerSlotKey(owner, slotId)) ?? 0) <= capacityOf(owner, slotId))) continue;
-    out.push(copy);
+    out.push(instance);
     for (const slotId of taken) count(owner, slotId, -1);
   }
-  return copies.filter((copy) => out.includes(copy));
+  return instances.filter((instance) => out.includes(instance));
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { bodyFixture } from '@/test/bodyFixture';
 import { defaultInventoryPrompt, defaultInventoryUserPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
-import type { Body, Item, ItemCopy, ItemCopyWhere, Slot } from '@/types';
+import type { Body, Item, ItemInstance, ItemInstanceWhere, Slot } from '@/types';
 import { authoredChipScene } from './chipValues/authoredScene';
 import { chipValues } from './chipValues/chipValues';
 import type { ChipScene, SceneEquipment } from './chipValues/chipScene';
@@ -13,7 +13,7 @@ const item = (id: string, name: string, text: Partial<Item> = {}): Item => ({
   id, name, statEffects: [], traitEffects: [], equipRequires: [], ...text,
 });
 let next = 0;
-const copy = (itemId: string, where: ItemCopyWhere, extra: Partial<ItemCopy> = {}): ItemCopy => ({
+const instance = (itemId: string, where: ItemInstanceWhere, extra: Partial<ItemInstance> = {}): ItemInstance => ({
   id: `s${next++}`, item: { kind: 'item', itemId }, where, quantity: 1, visibility: 'visible', ...extra,
 });
 
@@ -37,17 +37,17 @@ const equipment = (bodies: Body[], picks: Record<string, Body | 'none'> = {}): S
     ],
   },
 });
-/** The sample scene, at the Landing with Wren and the gull, holding `copies` under `gear`. */
-const scene = (copies: ItemCopy[], gear?: SceneEquipment): ChipScene => ({
-  ...sampleChipScene(), items: ITEMS, itemCopies: copies, currencies: undefined, ...(gear && { equipment: gear }),
+/** The sample scene, at the Landing with Wren and the gull, holding `instances` under `gear`. */
+const scene = (instances: ItemInstance[], gear?: SceneEquipment): ChipScene => ({
+  ...sampleChipScene(), items: ITEMS, itemInstances: instances, currencies: undefined, ...(gear && { equipment: gear }),
 });
-const render = (copies: ItemCopy[], gear?: SceneEquipment, key = '<INVENTORY|markdown>') => chipValues(scene(copies, gear))(key);
+const render = (instances: ItemInstance[], gear?: SceneEquipment, key = '<INVENTORY|markdown>') => chipValues(scene(instances, gear))(key);
 
 describe("the Inventory chip's slots (Q52, Q53)", () => {
   it("opens each owner block with that owner's slots in force, the count shown above 1", () => {
     expect(render([
-      copy('coin', { kind: 'you' }),
-      copy('coin', { kind: 'entity', id: 'wren' }),
+      instance('coin', { kind: 'you' }),
+      instance('coin', { kind: 'entity', id: 'wren' }),
     ], equipment([HUMANOID, BEAST], { wren: BEAST }))).toBe([
       '- **Traveler**',
       '  - **slots:** Head, Hand ×2',
@@ -61,10 +61,10 @@ describe("the Inventory chip's slots (Q52, Q53)", () => {
 
   it("names an equippable item's Slot Rule on every face, and a one-slot item's single slot", () => {
     const out = render([
-      copy('helm', { kind: 'you' }),
-      copy('pike', { kind: 'you' }, { equipped: { slotId: 'hand', order: 1 } }),
-      copy('veil', { kind: 'you' }, { state: { unidentified: true } }),
-      copy('helm', { kind: 'location', id: 'landing' }),
+      instance('helm', { kind: 'you' }),
+      instance('pike', { kind: 'you' }, { equipped: { slotId: 'hand', order: 1 } }),
+      instance('veil', { kind: 'you' }, { state: { unidentified: true } }),
+      instance('helm', { kind: 'location', id: 'landing' }),
     ], equipment([HUMANOID]));
     expect(out).toContain('**equipped:** Long Pike (Hand + Head): A pike taller than a man.');
     expect(out).toContain('**carried:** Iron Helm (Head)');
@@ -78,16 +78,16 @@ describe("the Inventory chip's slots (Q52, Q53)", () => {
     ['<INVENTORY>', '  carried: Stone Knife (Hand or Head), Iron Helm (Head)', '  equipped: Long Pike (Hand + Head)'],
   ])('writes both modes in %s', (key, carried, equipped) => {
     const out = render([
-      copy('knife', { kind: 'you' }),
-      copy('helm', { kind: 'you' }),
-      copy('pike', { kind: 'you' }, { equipped: { slotId: 'hand', order: 1 } }),
+      instance('knife', { kind: 'you' }),
+      instance('helm', { kind: 'you' }),
+      instance('pike', { kind: 'you' }, { equipped: { slotId: 'hand', order: 1 } }),
     ], equipment([HUMANOID]), key);
     expect(out).toContain(carried);
     expect(out).toContain(equipped);
   });
 
   it('writes none for an owner under None, and never a Body name', () => {
-    const out = render([copy('helm', { kind: 'entity', id: 'wren' })], equipment([HUMANOID, BEAST], { wren: 'none' }));
+    const out = render([instance('helm', { kind: 'entity', id: 'wren' })], equipment([HUMANOID, BEAST], { wren: 'none' }));
     expect(out).toContain('- **Wren**\n  - **slots:** none\n');
     expect(out).not.toMatch(/Humanoid|Beast/);
   });
@@ -97,7 +97,7 @@ describe("the Inventory chip's slots (Q52, Q53)", () => {
   });
 
   it('names no slot in a world with no Bodies', () => {
-    expect(render([copy('helm', { kind: 'you' })], equipment([]))).toBe('- **Traveler**\n  - **carried:** Iron Helm\n');
+    expect(render([instance('helm', { kind: 'you' })], equipment([]))).toBe('- **Traveler**\n  - **carried:** Iron Helm\n');
     expect(render([], equipment([]))).toBe('N/A');
   });
 
@@ -108,7 +108,7 @@ describe("the Inventory chip's slots (Q52, Q53)", () => {
 
   it("lists the slots of a trait's Body over the authored pick (Q54)", () => {
     const gear = equipment([HUMANOID, BEAST]);
-    const out = render([copy('coin', { kind: 'entity', id: 'wren' })], {
+    const out = render([instance('coin', { kind: 'entity', id: 'wren' })], {
       ...gear, world: { ...gear.world, traitPicks: { '': { kind: 'body', id: 'beast' }, wren: { kind: 'none' } } },
     });
     expect(out).toContain('- **Traveler**\n  - **slots:** Collar\n');
@@ -124,7 +124,7 @@ describe("the Inventory chip's slots (Q52, Q53)", () => {
 describe('the narration prompt', () => {
   it("sends each owner's slots in Items Here", () => {
     const prompt = buildNarrationPrompt({
-      template: defaultSystemPrompt, ctx: chipValues(scene([copy('helm', { kind: 'entity', id: 'wren' })], equipment([HUMANOID, BEAST], { wren: BEAST }))),
+      template: defaultSystemPrompt, ctx: chipValues(scene([instance('helm', { kind: 'entity', id: 'wren' })], equipment([HUMANOID, BEAST], { wren: BEAST }))),
       action: 'I look around.', history: [], dictionary: [], actionVec: null, semanticLore: false, embedVectors: new Map(), language: 'English',
       paragraphLimit: 'single', maxTokens: 1024, markdownOutput: false, sectionStyle: 'markdown', resolvePH: (text) => text,
     }).prompt;

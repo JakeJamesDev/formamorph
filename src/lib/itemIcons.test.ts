@@ -1,30 +1,30 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { GENERIC_ITEM_ICON, ITEM_ICONS, ITEM_ICON_AUTHORS, ITEM_ICON_NONE, copyItemIcon, deriveItemIcon, itemIconById, itemIconName, resolveItemIcon, searchItemIcons } from './itemIcons';
+import { GENERIC_ITEM_ICON, ITEM_ICONS, ITEM_ICON_AUTHORS, ITEM_ICON_NONE, instanceItemIcon, deriveItemIcon, itemIconById, itemIconName, resolveItemIcon, searchItemIcons } from './itemIcons';
 import { parseNotices } from './noticesFormat';
 
 const IMAGE = 'data:image/png;base64,AAAA';
 const icon = (id: string) => ({ kind: 'icon', id });
 
-describe('copyItemIcon', () => {
+describe('instanceItemIcon', () => {
   const slots = [{ id: 'head', name: 'Head' }];
   const item = { icon: 'crown', slotRule: { mode: 'either' as const, slotIds: ['head'] } };
   const face = { name: 'Stormcaller', slots, readText: (text: string) => text, image: IMAGE };
 
-  it('uses the item\'s icon on an identified copy', () => {
-    expect(copyItemIcon({}, item, face)).toEqual(icon('crown'));
+  it('uses the item\'s icon on an identified instance', () => {
+    expect(instanceItemIcon({}, item, face)).toEqual(icon('crown'));
   });
 
-  it('derives from the name and the item\'s slots on an unidentified copy', () => {
-    expect(copyItemIcon({ state: { unidentified: true } }, item, face)).toEqual(icon('helmet'));
+  it('derives from the name and the item\'s slots on an unidentified instance', () => {
+    expect(instanceItemIcon({ state: { unidentified: true } }, item, face)).toEqual(icon('helmet'));
   });
 
   it('reads slot names through readText', () => {
-    expect(copyItemIcon({}, { slotRule: item.slotRule }, { ...face, readText: () => 'Neck' })).toEqual(icon('necklace'));
+    expect(instanceItemIcon({}, { slotRule: item.slotRule }, { ...face, readText: () => 'Neck' })).toEqual(icon('necklace'));
   });
 
   it('derives with no item, as for a runtime item', () => {
-    expect(copyItemIcon({}, undefined, face)).toEqual(icon(GENERIC_ITEM_ICON));
+    expect(instanceItemIcon({}, undefined, face)).toEqual(icon(GENERIC_ITEM_ICON));
   });
 });
 
@@ -47,7 +47,7 @@ describe('resolveItemIcon', () => {
     ['specific', 'crown'],
     ['None', ITEM_ICON_NONE],
     ['an unknown id', 'retired-art'],
-  ])('an unidentified copy with %s derives from its unidentified name and shows no image', (_label, authored) => {
+  ])('an unidentified instance with %s derives from its unidentified name and shows no image', (_label, authored) => {
     expect(resolveItemIcon({ icon: authored, name: 'Cloudy Vial', slotNames: ['Head'], unidentified: true, image: IMAGE })).toEqual(icon('vial'));
   });
 
@@ -55,7 +55,7 @@ describe('resolveItemIcon', () => {
     ['Auto', undefined],
     ['specific', 'crown'],
     ['None', ITEM_ICON_NONE],
-  ])('an unidentified copy with %s falls to its slot, then the generic icon', (_label, authored) => {
+  ])('an unidentified instance with %s falls to its slot, then the generic icon', (_label, authored) => {
     expect(resolveItemIcon({ icon: authored, name: 'Odd Thing', slotNames: ['Head'], unidentified: true, image: IMAGE })).toEqual(icon('helmet'));
     expect(resolveItemIcon({ icon: authored, name: 'Odd Thing', slotNames: [], unidentified: true, image: IMAGE })).toEqual(icon(GENERIC_ITEM_ICON));
   });

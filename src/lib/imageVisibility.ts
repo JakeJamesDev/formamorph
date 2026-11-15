@@ -1,6 +1,6 @@
 // Visibility rules in play: which of an entity's, a location's or the Map Background's gallery images the story shows right now.
 
-import type { Base64Data, Entity, GalleryImage, Item, ItemCopy, RequirementOwner, TraitRequirement, TraitRequirementRow, WorldOverview } from '@/types';
+import type { Base64Data, Entity, GalleryImage, Item, ItemInstance, RequirementOwner, TraitRequirement, TraitRequirementRow, WorldOverview } from '@/types';
 import { entityImages } from './entityImages';
 import { locationImages, type LocationImageBearing } from './locationImages';
 import { mapImages } from './mapBackground';
@@ -44,17 +44,17 @@ function locationRuleRows(input: GateInput, rows: readonly TraitRequirementRow[]
 export const locationRuleStates = (input: GateInput, rows: readonly TraitRequirementRow[]) =>
   ruleStates(input, null, locationRuleRows(input, rows));
 
-/** The owner an Item Copy's rule reads for a Condition with no owner (Q67); none while it lies at a location. */
-const copyOwner = (where: ItemCopy['where']): RequirementOwner | null =>
+/** The owner an Item Instance's rule reads for a Condition with no owner (Q67); none while it lies at a location. */
+const instanceOwner = (where: ItemInstance['where']): RequirementOwner | null =>
   (where.kind === 'you' ? PERSONA : where.kind === 'entity' ? { kind: 'entity', id: where.id } : null);
 
 /**
- * Each row's state of an item image's rule, for one Item Copy. A Condition with no owner reads the copy's
- * owner, and never holds while the copy lies at a location, Not included (Q67, Q91). An item has no owner of
+ * Each row's state of an item image's rule, for one Item Instance. A Condition with no owner reads the instance's
+ * owner, and never holds while the instance lies at a location, Not included (Q67, Q91). An item has no owner of
  * its own, so global scope hosts the rule.
  */
-export function itemRuleStates(input: GateInput, copy: Pick<ItemCopy, 'where'>, rows: readonly TraitRequirementRow[]): RowState[] {
-  const owner = copyOwner(copy.where);
+export function itemRuleStates(input: GateInput, instance: Pick<ItemInstance, 'where'>, rows: readonly TraitRequirementRow[]): RowState[] {
+  const owner = instanceOwner(instance.where);
   const ownerless = (req: TraitRequirement) => req.kind !== 'playingAs' && req.kind !== 'time' && req.owner === undefined;
   const states = ruleStates(input, null, mapConditions(rows, (req): TraitRequirement =>
     (owner && ownerless(req) ? { ...req, owner } as TraitRequirement : req)));
@@ -65,9 +65,9 @@ export function itemRuleStates(input: GateInput, copy: Pick<ItemCopy, 'where'>, 
   });
 }
 
-/** The item's first image visible for one Item Copy in play, or undefined when none shows. */
-export const visibleItemImage = (item: Pick<Item, 'images'>, copy: Pick<ItemCopy, 'where'>, input: GateInput): Base64Data | undefined =>
-  visibleBy(item.images ?? [], (rows) => itemRuleStates(input, copy, rows))[0]?.data;
+/** The item's first image visible for one Item Instance in play, or undefined when none shows. */
+export const visibleItemImage = (item: Pick<Item, 'images'>, instance: Pick<ItemInstance, 'where'>, input: GateInput): Base64Data | undefined =>
+  visibleBy(item.images ?? [], (rows) => itemRuleStates(input, instance, rows))[0]?.data;
 
 /** The location's images visible in play, in author order. An unresolved Condition never holds. */
 export const visibleLocationImages = (location: LocationImageBearing, input: GateInput): VisibleImage[] =>

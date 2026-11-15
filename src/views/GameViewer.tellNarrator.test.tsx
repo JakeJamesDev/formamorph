@@ -84,7 +84,7 @@ async function start(played: World = world) {
   renderGameViewer(played, { inGameplay: <Probe /> });
   await screen.findByPlaceholderText(/Type your action/);
   stubEndpoint();
-  await waitFor(() => expect(gameplay().itemCopies).toHaveLength(2));
+  await waitFor(() => expect(gameplay().itemInstances).toHaveLength(2));
   await send();
   requests = [];
   gameplay().setActiveTab('inventory');
@@ -188,7 +188,7 @@ describe('sending the Action List', () => {
 });
 
 const calmValue = () => gameplay().globalStats.find((s) => s.id === 'calm')?.value;
-const tonics = () => gameplay().itemCopies.find((c) => c.item.kind === 'item' && c.item.itemId === 'tonic')?.quantity ?? 0;
+const tonics = () => gameplay().itemInstances.find((c) => c.item.kind === 'item' && c.item.itemId === 'tonic')?.quantity ?? 0;
 const rowTexts = () => within(tray() as HTMLElement).getAllByRole('listitem').map((row) => row.textContent);
 const regenerate = () => fireEvent.click(screen.getByRole('button', { name: 'Regenerate Narration' }));
 

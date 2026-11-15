@@ -1,7 +1,7 @@
 import type { SlotOwner } from '@/lib/bodies';
-import { copiesAt } from '@/lib/inventory';
+import { instancesAt } from '@/lib/inventory';
 import { isSpendable, isUnidentified } from '@/lib/items';
-import type { Currency, CurrencyItem, Item, ItemCopy, Placement, PlayerStat } from '@/types';
+import type { Currency, CurrencyItem, Item, ItemInstance, Placement, PlayerStat } from '@/types';
 
 /** Why money can't be read or moved. A refused step changes nothing. */
 export interface Refusal {
@@ -91,19 +91,19 @@ export const worthText = (item: Pick<Item, 'value' | 'currencyId'>, currencies: 
   return amountText(item.value, currency, items);
 };
 
-/** The worth an Item Copy shows the player. An unidentified copy shows none, because a price can reveal the item. */
-export const copyWorthText = (copy: Pick<ItemCopy, 'state'>, item: Pick<Item, 'value' | 'currencyId'> | undefined, currencies: readonly Currency[], items: readonly ItemName[]): string | null =>
-  (item && !isUnidentified(copy) ? worthText(item, currencies, items) : null);
+/** The worth an Item Instance shows the player. An unidentified instance shows none, because a price can reveal the item. */
+export const instanceWorthText = (instance: Pick<ItemInstance, 'state'>, item: Pick<Item, 'value' | 'currencyId'> | undefined, currencies: readonly Currency[], items: readonly ItemName[]): string | null =>
+  (item && !isUnidentified(instance) ? worthText(item, currencies, items) : null);
 
-/** The item popup's worth fact, when the copy shows one. */
-export const copyWorthFacts = (copy: Pick<ItemCopy, 'state'>, item: Pick<Item, 'value' | 'currencyId'> | undefined, currencies: readonly Currency[], resolveText: (text: string) => string, items: readonly ItemName[]): string[] => {
-  const worth = copyWorthText(copy, item, currencies, items);
+/** The item popup's worth fact, when the instance shows one. */
+export const instanceWorthFacts = (instance: Pick<ItemInstance, 'state'>, item: Pick<Item, 'value' | 'currencyId'> | undefined, currencies: readonly Currency[], resolveText: (text: string) => string, items: readonly ItemName[]): string[] => {
+  const worth = instanceWorthText(instance, item, currencies, items);
   return worth ? [`Worth ${resolveText(worth)}`] : [];
 };
 
 /** What Balance reads. Each stat list holds the stats its reader may count, so a stat left out reads as untracked. */
 export interface BalanceState {
-  copies: readonly ItemCopy[];
+  instances: readonly ItemInstance[];
   placements: readonly Placement[];
   globalStats: readonly Pick<PlayerStat, 'id' | 'value'>[];
   statsOf: (owner: SlotOwner) => readonly Pick<PlayerStat, 'id' | 'value'>[];
@@ -114,12 +114,12 @@ export type Balance = { tracked: false } | { tracked: true; amount: number };
 
 export const UNTRACKED: Balance = { tracked: false };
 
-/** The worth of the Currency Items at `owner`. Only visible, identified copies count, Bound ones included. */
-function itemAmount(rows: readonly CurrencyItem[], owner: SlotOwner, copies: readonly ItemCopy[]): number {
+/** The worth of the Currency Items at `owner`. Only visible, identified instances count, Bound ones included. */
+function itemAmount(rows: readonly CurrencyItem[], owner: SlotOwner, instances: readonly ItemInstance[]): number {
   const worthOf = new Map(rows.map((row) => [row.itemId, row.worth]));
-  return copiesAt(copies, owner).reduce((sum, copy) => {
-    const worth = copy.item.kind === 'item' ? worthOf.get(copy.item.itemId) : undefined;
-    return worth !== undefined && isSpendable(copy) ? sum + worth * copy.quantity : sum;
+  return instancesAt(instances, owner).reduce((sum, instance) => {
+    const worth = instance.item.kind === 'item' ? worthOf.get(instance.item.itemId) : undefined;
+    return worth !== undefined && isSpendable(instance) ? sum + worth * instance.quantity : sum;
   }, 0);
 }
 
@@ -130,7 +130,7 @@ export function balanceOf(currency: Currency, owner: SlotOwner, state: BalanceSt
   if (backing.kind === 'items') {
     const authored = owner.kind === 'you' || state.placements.some((placement) => placement.where.kind === 'entity'
       && placement.where.id === owner.id && backing.items.some((row) => row.itemId === placement.source.itemId));
-    return authored ? { tracked: true, amount: itemAmount(backing.items, owner, state.copies) } : UNTRACKED;
+    return authored ? { tracked: true, amount: itemAmount(backing.items, owner, state.instances) } : UNTRACKED;
   }
   const held = balanceStat(backing.statId, owner, state);
   return held ? { tracked: true, amount: held.stat.value } : UNTRACKED;

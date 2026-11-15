@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { blankItem } from '@/lib/items';
 import type { Currency, CurrencyItem, Item } from '@/types';
-import { breakdown, breakdownText, itemFields, copyWorthFacts, valueOfItems, worthText } from './currency';
+import { breakdown, breakdownText, itemFields, instanceWorthFacts, valueOfItems, worthText } from './currency';
 import { addCurrencyItem, currencyItemChoices, lacksBaseItem, setItemWorth } from './currency/rows';
 
 const ITEMS: Item[] = [blankItem('copper', 'Copper'), blankItem('silver', 'Silver'), blankItem('gold', 'Gold'), blankItem('rope', 'Rope')];
@@ -78,7 +78,7 @@ describe('worth with an Items Currency', () => {
   });
 
   it('shows in the popup facts', () => {
-    expect(copyWorthFacts({}, { value: 105, currencyId: 'coin' }, [MONEY], (text) => text, ITEMS)).toEqual(['Worth 1 Gold, 5 Copper']);
+    expect(instanceWorthFacts({}, { value: 105, currencyId: 'coin' }, [MONEY], (text) => text, ITEMS)).toEqual(['Worth 1 Gold, 5 Copper']);
   });
 });
 

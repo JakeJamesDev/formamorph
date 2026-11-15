@@ -3,7 +3,7 @@ import { slotOwnerKey, type SlotOwner } from '@/lib/bodies';
 import { currencyOf, isRefusal, refuse, type Refusal } from '@/lib/currency';
 import { applyPaymentStats, moneyReading, planPayment } from '@/lib/currency/payment';
 import { namesMoney, quoteBuy, readStatedPrice, type BuyQuote, type StatedPrice } from '@/lib/currency/price';
-import type { Currency, InventoryPassOp, ItemCopy, ItemCopyWhere } from '@/types';
+import type { Currency, InventoryPassOp, ItemInstance, ItemInstanceWhere } from '@/types';
 import { authoredNamed, candidates, distribute, gainId, itemIdentity, itemNameKey, listedName, ownerOf, partyOf, runOps, skip, type PassRun } from './passRun';
 
 /** Moves the money, or answers why it can't move. */
@@ -84,11 +84,11 @@ function settleBuy(pass: PassRun, op: InventoryPassOp, quote: BuyQuote): void {
     skip(pass, `${label}: ${why}`);
   };
   const key = itemNameKey(listedName(pass, op.item));
-  const visibleAt = (where: ItemCopyWhere) => candidates(pass, key, where, 'transfer').filter((copy) => copy.visibility === 'visible');
+  const visibleAt = (where: ItemInstanceWhere) => candidates(pass, key, where, 'transfer').filter((instance) => instance.visibility === 'visible');
   const sellerPlace = seller ?? ownerOf(pass, op.owner);
   const held = sellerPlace ? visibleAt(sellerPlace) : [];
-  // The new-copy rule stocks shops, so a player sells only what they hold (Q63).
-  if (sold && held.reduce((sum, copy) => sum + copy.quantity, 0) < op.quantity) {
+  // The new-instance rule stocks shops, so a player sells only what they hold (Q63).
+  if (sold && held.reduce((sum, instance) => sum + instance.quantity, 0) < op.quantity) {
     undo(`none or too few at "${op.owner}"`);
     return;
   }
@@ -100,9 +100,9 @@ function settleBuy(pass: PassRun, op: InventoryPassOp, quote: BuyQuote): void {
     }
   }
   let left = op.quantity;
-  const takeFrom = (copies: readonly ItemCopy[]) => distribute(copies, left, (copy, quantity) => {
+  const takeFrom = (instances: readonly ItemInstance[]) => distribute(instances, left, (instance, quantity) => {
     left -= quantity;
-    runOps(pass, [buyer ? { kind: 'transfer', copyId: copy.id, to: buyer, quantity } : { kind: 'lose', copyId: copy.id, quantity }]);
+    runOps(pass, [buyer ? { kind: 'transfer', copyId: instance.id, to: buyer, quantity } : { kind: 'lose', copyId: instance.id, quantity }]);
   });
   takeFrom(held);
   if (left > 0 && pass.scene.location) takeFrom(visibleAt({ kind: 'location', id: pass.scene.location.id }));

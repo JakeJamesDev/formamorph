@@ -434,7 +434,7 @@ describe("Morphie's readers agree with Entity Places", () => {
   // only these fields of a snapshot, so the rest stay unset.
   const current = (book: PositionBook) => ({
     metEntities: CAST.map((entity) => entity.id), locationId: 'square', visibleEntities: [], globalStats: [], globalTraits: [],
-    disabledTraitIds: [], itemCopies: [], entityPositions: book.positions, genericStates: book.generics,
+    disabledTraitIds: [], itemInstances: [], entityPositions: book.positions, genericStates: book.generics,
   } as unknown as GameState);
   const view: PlayerView = {
     entities: CAST.map((entity) => ({ kind: 'entity', id: entity.id, name: entity.name, description: '' })),
@@ -455,7 +455,7 @@ describe("Morphie's readers agree with Entity Places", () => {
 
   describe.each(BOOKS)("the player view's places with $name", ({ book }) => {
     it.each(LOCATIONS)('at $id read Position', (place) => {
-      // A script run reads each met copy's places from the view's live places, as the sandbox snapshot does.
+      // A script run reads each met instance's places from the view's live places, as the sandbox snapshot does.
       const { entities, livePlaces } = cut(book);
       const placesOf: PlacesOf = (entity) => positionAmong(entity, livePlaces?.positions ?? {}, livePlaces?.genericPositions ?? {});
       expect(idsAt(place.id, entities, placesOf)).toEqual(idsAt(place.id, CAST, positionsIn(book)));

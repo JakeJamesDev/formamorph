@@ -90,7 +90,7 @@ const world = {
 // One stat-backed Currency on the persona's own stat, so a pay in the guide's form lands as that stat's write.
 const currency = { id: 'currency', name: 'Currency', backing: { kind: 'stat' as const, statId: 'hero-stat' } };
 const money = () => scriptMoney({
-  currencies: [currency], items: [], itemNames: [], slots: [], placements: [], copies: [],
+  currencies: [currency], items: [], itemNames: [], slots: [], placements: [], instances: [],
   stats: { globalStats: [], entityStats: { hero: world.persona.stats.stats.map((s) => ({ ...s, value: 50 })) } },
   playedIds: ['hero'], statsOn: (_id, list) => list,
 });

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type {
-  Connection, Currency, Entity, EntityPositions, GameLocation, GenericStates, InventoryOwner, UniqueStates, Item, ItemCopy, Placement, RuntimeItem, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
+  Connection, Currency, Entity, EntityPositions, GameLocation, GenericStates, InventoryOwner, UniqueStates, Item, ItemInstance, Placement, RuntimeItem, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
 import { movementStates } from '../movementTag';
 import type { Course } from '../positionEngine';
@@ -66,8 +66,8 @@ export interface LiveSceneSources {
   placeholders: readonly Placeholder[];
   /** The world's authored items. None when absent. */
   items?: readonly Item[];
-  /** Every Item Copy in play. None when absent. */
-  itemCopies?: readonly ItemCopy[];
+  /** Every Item Instance in play. None when absent. */
+  itemInstances?: readonly ItemInstance[];
   /** The runtime items the Inventory pass made. None when absent. */
   runtimeItems?: readonly RuntimeItem[];
   /** The world's Currencies. None when absent. */
@@ -185,7 +185,7 @@ export function liveChipScene(
     resolveEntity,
     placeholders: sources.placeholders,
     items: sources.items,
-    itemCopies: sources.itemCopies,
+    itemInstances: sources.itemInstances,
     runtimeItems: sources.runtimeItems,
     currencies: sources.currencies,
     placements: sources.placements,
@@ -224,16 +224,16 @@ const inForceByOwner = (states: OwnedTraitStates | undefined): OwnedTraitsInForc
 export function useLiveChipScene(sources: LiveSceneSources): (location?: GameLocation | null, box?: SceneWrites | null) => ChipScene {
   const {
     overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-    location, locations, connections, canEnter, entities, allEntities, standings, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
+    location, locations, connections, canEnter, entities, allEntities, standings, participants, notes, time, placeholders, items, itemInstances, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
   } = sources;
   return useCallback(
     (at?: GameLocation | null, box?: SceneWrites | null) => liveChipScene({
       overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-      location, locations, connections, canEnter, entities, allEntities, standings, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
+      location, locations, connections, canEnter, entities, allEntities, standings, participants, notes, time, placeholders, items, itemInstances, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
     }, at, box),
     [
       overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-      location, locations, connections, canEnter, entities, allEntities, standings, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
+      location, locations, connections, canEnter, entities, allEntities, standings, participants, notes, time, placeholders, items, itemInstances, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
     ],
   );
 }

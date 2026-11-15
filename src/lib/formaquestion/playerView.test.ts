@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ChatMessage, DiscoveredEntity, Entity, GameState, ItemCopy, PlayerStat, Trait, World } from '@/types';
+import type { ChatMessage, DiscoveredEntity, Entity, GameState, ItemInstance, PlayerStat, Trait, World } from '@/types';
 import { buildPlayerView, type PlayerViewInput } from './playerView';
 
 const entity = (id: string, name: string, extra: Partial<Entity> = {}): Entity => ({
@@ -45,7 +45,7 @@ const turn = (turnId: string, extra: Record<string, unknown> = {}): ChatMessage 
   role: 'assistant', content: JSON.stringify({ narration: `Turn ${turnId}.`, choices: [], stat_changes: [], turnId, ...extra }),
 });
 
-const copy = (id: string, itemId: string, where: ItemCopy['where'], visibility: ItemCopy['visibility'] = 'visible'): ItemCopy => ({
+const instance = (id: string, itemId: string, where: ItemInstance['where'], visibility: ItemInstance['visibility'] = 'visible'): ItemInstance => ({
   id, item: { kind: 'item', itemId }, where, quantity: 1, visibility,
 });
 
@@ -188,7 +188,7 @@ describe('buildPlayerView items', () => {
   it('counts an item once held or once visible where the player stood', () => {
     const v = view({ chain: [state({
       locationId: 'gate',
-      itemCopies: [copy('c1', 'key', { kind: 'you' }), copy('c2', 'coin', { kind: 'location', id: 'gate' }), copy('c3', 'gem', { kind: 'location', id: 'vault' }), copy('c4', 'map', { kind: 'entity', id: 'warden' })],
+      itemCopies: [instance('c1', 'key', { kind: 'you' }), instance('c2', 'coin', { kind: 'location', id: 'gate' }), instance('c3', 'gem', { kind: 'location', id: 'vault' }), instance('c4', 'map', { kind: 'entity', id: 'warden' })],
     })] });
     expect(v.items).toEqual([
       { kind: 'item', id: 'key', name: 'key', description: 'key player text.' },
@@ -196,22 +196,22 @@ describe('buildPlayerView items', () => {
     ]);
   });
 
-  it('keeps a hidden copy out until it is revealed', () => {
-    const hidden = state({ itemCopies: [copy('c1', 'key', { kind: 'you' }, 'hidden')] });
+  it('keeps a hidden instance out until it is revealed', () => {
+    const hidden = state({ itemCopies: [instance('c1', 'key', { kind: 'you' }, 'hidden')] });
     expect(view({ chain: [hidden] }).items).toEqual([]);
-    const revealed = state({ itemCopies: [copy('c1', 'key', { kind: 'you' })] });
+    const revealed = state({ itemCopies: [instance('c1', 'key', { kind: 'you' })] });
     expect(names(view({ chain: [hidden, revealed] }).items)).toEqual(['key']);
   });
 
   it('keeps an item the player held in an earlier snapshot', () => {
-    const held = state({ itemCopies: [copy('c1', 'key', { kind: 'you' })] });
+    const held = state({ itemCopies: [instance('c1', 'key', { kind: 'you' })] });
     expect(names(view({ chain: [held, state()] }).items)).toEqual(['key']);
   });
 
   it('gives one row per item and State, from the latest snapshot the player met the item in', () => {
-    const lamp = (id: string, word: string) => ({ ...copy(id, 'key', { kind: 'you' }), state: { state: word } });
+    const lamp = (id: string, word: string) => ({ ...instance(id, 'key', { kind: 'you' }), state: { state: word } });
     const before = state({ itemCopies: [lamp('c1', 'unlit')] });
-    const now = state({ itemCopies: [lamp('c1', 'Lit'), lamp('c2', 'lit'), lamp('c3', 'broken'), copy('c4', 'key', { kind: 'you' })] });
+    const now = state({ itemCopies: [lamp('c1', 'Lit'), lamp('c2', 'lit'), lamp('c3', 'broken'), instance('c4', 'key', { kind: 'you' })] });
     expect(view({ chain: [before, now] }).items.map((row) => row.state)).toEqual(['Lit', 'broken', undefined]);
     expect(view({ chain: [now, before] }).items.map((row) => row.state)).toEqual(['unlit']);
   });
@@ -267,7 +267,7 @@ describe('buildPlayerView never holds hidden text', () => {
     const v = view({
       chain: [state({
         locationId: 'gate', metEntities: ['warden'], globalStats: [stat('health')], globalTraits: [trait('brave')],
-        itemCopies: [copy('c1', 'key', { kind: 'you' })],
+        itemCopies: [instance('c1', 'key', { kind: 'you' })],
       })],
       history,
     });
@@ -286,7 +286,7 @@ describe('buildPlayerView after an undo', () => {
   it('drops what the undone turn added', () => {
     const before = state({ locationId: 'gate', metEntities: [] });
     const after = state({
-      locationId: 'vault', metEntities: ['warden'], itemCopies: [copy('c1', 'gem', { kind: 'location', id: 'vault' })],
+      locationId: 'vault', metEntities: ['warden'], itemCopies: [instance('c1', 'gem', { kind: 'location', id: 'vault' })],
     });
     const history = [turn('t1', { locationId: 'gate' }), turn('t2', { locationId: 'vault' })];
 

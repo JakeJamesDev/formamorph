@@ -37,7 +37,7 @@ const gameplay = () => {
   return live;
 };
 const statNow = (id: string) => gameplay().globalStats.find((s) => s.id === id)?.value;
-const copiesOf = (itemId: string) => gameplay().itemCopies.filter((copy) => copy.item.kind === 'item' && copy.item.itemId === itemId);
+const instancesOf = (itemId: string) => gameplay().itemInstances.filter((instance) => instance.item.kind === 'item' && instance.item.itemId === itemId);
 
 function stubEndpoint() {
   const calls = { stats: 0 };
@@ -106,7 +106,7 @@ describe('a switch script a panel toggle fires', () => {
     await screen.findByPlaceholderText(/Type your action/);
     await clickTrait('Sworn');
     await waitFor(() => expect(statNow('vigor')).toBe(7));
-    await waitFor(() => expect(copiesOf('gem')).toHaveLength(1));
+    await waitFor(() => expect(instancesOf('gem')).toHaveLength(1));
   });
 });
 
@@ -119,7 +119,7 @@ describe('a turn’s script inventory writes', () => {
 
   it('land once, with each item event run once, when the turn commits', async () => {
     await playOneTurn(world);
-    await waitFor(() => expect(copiesOf('gem')).toHaveLength(2));
+    await waitFor(() => expect(instancesOf('gem')).toHaveLength(2));
     await waitFor(() => expect(statNow('vigor')).toBe(62));
   });
 
@@ -127,11 +127,11 @@ describe('a turn’s script inventory writes', () => {
     const calls = await playOneTurn(world);
     await waitFor(() => expect(statNow('vigor')).toBe(62));
     await rerollStats(calls);
-    expect(copiesOf('gem')).toHaveLength(2);
+    expect(instancesOf('gem')).toHaveLength(2);
     expect(statNow('vigor')).toBe(62);
   });
 
-  it('keep a later script’s write on a copy an earlier script made, in a switch run the commit fires', async () => {
+  it('keep a later script’s write on an instance an earlier script made, in a switch run the commit fires', async () => {
     // The commit's settle grants the trait, and the run it fires starts before the commit renders.
     const charm = item('charm', 'Charm', { traitEffects: [{ id: 'grant', traitId: 'sworn', timing: 'owned' }] });
     await playOneTurn(WORLD_WITH({
@@ -139,12 +139,12 @@ describe('a turn’s script inventory writes', () => {
       scripts: [
         script('b', 'before', 'items.Charm.give(persona);'),
         script('sw1', 'switch', 'items.Box.give(persona);'),
-        script('sw2', 'switch', 'persona.items.find((copy) => copy.item === "Box").lose(); stats.Vigor.value = 33;'),
+        script('sw2', 'switch', 'persona.items.find((instance) => instance.item === "Box").lose(); stats.Vigor.value = 33;'),
       ],
     }, [{ ...ash, traits: [{ ...sworn, playerToggle: false }] }]));
     await waitFor(() => expect(statNow('vigor')).toBe(33));
-    await waitFor(() => expect(copiesOf('charm')).toHaveLength(1));
-    expect(copiesOf('box')).toHaveLength(0);
+    await waitFor(() => expect(instancesOf('charm')).toHaveLength(1));
+    expect(instancesOf('box')).toHaveLength(0);
   });
 
   it('check an equip’s requirement against what an earlier script wrote', async () => {
@@ -158,7 +158,7 @@ describe('a turn’s script inventory writes', () => {
       scripts: [script('a1', 'after', 'stats.Vigor.value = 95;'), script('a2', 'after', 'persona.items[0].equip();')],
     }));
     await waitFor(() => expect(statNow('vigor')).toBe(95));
-    await waitFor(() => expect(copiesOf('sword')[0]?.equipped).toBeTruthy());
+    await waitFor(() => expect(instancesOf('sword')[0]?.equipped).toBeTruthy());
   });
 });
 

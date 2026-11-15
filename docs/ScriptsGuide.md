@@ -262,7 +262,7 @@ A script runs in a sandbox at its own point in the turn (see [The Five Timings](
 - **Read a dictionary's placeholders and entries** (see [Dictionaries](Scripts-Reference#dictionaries))
 - **Read the locations**, and the entities at each (see [Location](Scripts-Reference#location))
 - **Move the turn or an entity** to a location (see [Location](Scripts-Reference#location) and [Moving Entities](Scripts-Reference#moving-entities))
-- **Read and change items**: give an Item Copy, move it, equip it or use it (see [Items](Scripts-Reference#items))
+- **Read and change items**: give an Item Instance, move it, equip it or use it (see [Items](Scripts-Reference#items))
 - **Pass time** (see [Passing Time](Scripts-Reference#passing-time))
 - **Change the choices** after the AI (see [Change the choices](Scripts-Reference#change-the-choices))
 - **Read the memories**, pin or forget one, and add a line (see [Memory](Scripts-Reference#memory))
@@ -292,7 +292,7 @@ A script's home sets two things: what `self` is, and when the script runs.
 | A stat | The stat | Always. A stat that is off pauses its scripts: authored off, or switched off by a trait |
 | A trait | The trait's own entry. It is read-only, and a return value is ignored | While the trait is active. A global trait runs once, with `owner` empty. An entity's trait runs once for each entity that holds it, with that entity as `owner` |
 | The world | An empty object. A return value and a write to `self` are ignored | Always |
-| An item | The item's entry in `items`, plus `event`. It is read-only, and a return value is ignored | On the events of its Item Copies only. `owner` is the entity that owns the Item Copy. It is empty while the Item Copy lies at a location |
+| An item | The item's entry in `items`, plus `event`. It is read-only, and a return value is ignored | On the events of its Item Instances only. `owner` is the entity that owns the Item Instance. It is empty while the Item Instance lies at a location |
 
 A Blueprint stat's script runs once for each owner, in every timing.
 
@@ -374,19 +374,19 @@ Setup picks and a loaded save skip these scripts. So does a trait that switches 
 
 #### Item Timings
 
-An item's scripts use five timings of their own. Each one runs once for each event of one of the item's Item Copies. The cause of the event does not matter: the Inventory pass, the **Inventory** panel or a script.
+An item's scripts use five timings of their own. Each one runs once for each event of one of the item's Item Instances. The cause of the event does not matter: the Inventory pass, the **Inventory** panel or a script.
 
 | Timing | When it runs |
 | --- | --- |
-| **When Gained** | An owner or a location gains an Item Copy. A pickup, a gift and a drop each count |
-| **When Lost** | An owner or a location loses an Item Copy. A drop is When Lost for the owner, then When Gained at the location |
-| **When Equipped** | An Item Copy is equipped. To equip one from a stack runs it once |
-| **When Unequipped** | An Item Copy is unequipped: by hand, by a full slot, or by a requirement that stops holding |
-| **When Used** | An Item Copy is used. The last use runs this timing only, not When Lost. A **Becomes** result runs its own When Gained |
+| **When Gained** | An owner or a location gains an Item Instance. A pickup, a gift and a drop each count |
+| **When Lost** | An owner or a location loses an Item Instance. A drop is When Lost for the owner, then When Gained at the location |
+| **When Equipped** | An Item Instance is equipped. To equip one from a stack runs it once |
+| **When Unequipped** | An Item Instance is unequipped: by hand, by a full slot, or by a requirement that stops holding |
+| **When Used** | An Item Instance is used. The last use runs this timing only, not When Lost. A **Becomes** result runs its own When Gained |
 
-- `self.event` holds `timing`, `quantity` (the number the event moved) and `copy` (the Item Copy's entry). After the Item Copy is gone, `copy` reads it as it was before the event.
-- On **When Used**, `self.event.target` is the entry of the Item Copy the item was used on, such as the lantern the oil went into. It is `null` when the story named no other item, or when that Item Copy is gone.
-- The item timings are skipped for a reveal of an Item Copy, a write to its uses, a write to its State, and starting items.
+- `self.event` holds `timing`, `quantity` (the number the event moved) and `copy` (the Item Instance's entry). After the Item Instance is gone, `copy` reads it as it was before the event.
+- On **When Used**, `self.event.target` is the entry of the Item Instance the item was used on, such as the lantern the oil went into. It is `null` when the story named no other item, or when that Item Instance is gone.
+- The item timings are skipped for a reveal of an Item Instance, a write to its uses, a write to its State, and starting items.
 - Their writes apply when each script ends, not when the turn ends. A script's inventory write runs the item timings it causes, to a depth of 3. Past that depth, the write still applies, no timing runs, and the turn log says so.
 
 ### When Your Code Runs

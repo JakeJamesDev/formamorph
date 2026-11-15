@@ -259,7 +259,7 @@ A script reads `args` and the same globals a world script reads. Each entry has 
 | `location` | The entry of the current location | [Location](Scripts-Reference#location) |
 | `memories` | The Memory panel's rows, oldest first | [Memory](Scripts-Reference#memory) |
 | `dictionaries` | Every dictionary, with `entries`. Disabled entries read `enabled: false` | [Dictionaries](Scripts-Reference#dictionaries) |
-| `items` | Every item in the world by name, with its placeholders and its Item Copies in play | [Items](Scripts-Reference#items) |
+| `items` | Every item in the world by name, with its placeholders and its Item Instances in play | [Items](Scripts-Reference#items) |
 | `currencies` | Every Currency by name, with `balance()`. A Tool can't call `pay()` | [Currencies](Scripts-Reference#currencies) |
 | `stats`, `traits`, `placeholders`, `persona` | The global stats and traits, the placeholders, and the persona | [Stats](Scripts-Reference#stats), [Traits](Scripts-Reference#traits), [Placeholders](Scripts-Reference#placeholders), [Persona](Scripts-Reference#persona) |
 | `clock` | The story clock. It reads the opening outside a game | [The Story Clock](Scripts-Reference#the-story-clock) |

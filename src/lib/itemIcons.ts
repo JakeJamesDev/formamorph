@@ -1,6 +1,6 @@
 import catalog from '@/data/itemIcons.json';
 import { isUnidentified } from '@/lib/items';
-import type { Item, ItemCopy, Slot } from '@/types';
+import type { Item, ItemInstance, Slot } from '@/types';
 
 /** One icon of the catalog. `id` is ours, never the art's name. `body` is the SVG inside a 512 viewBox. */
 export interface ItemIconEntry {
@@ -88,18 +88,18 @@ export function searchItemIcons(search: string): readonly ItemIconEntry[] {
   return ITEM_ICONS.filter((icon) => terms.every((term) => icon.words.some((word) => word.startsWith(term))));
 }
 
-/** What an Item Copy shows on the doll and in rows. */
+/** What an Item Instance shows on the doll and in rows. */
 export type ShownItemIcon = { kind: 'icon'; id: string } | { kind: 'image'; src: string } | { kind: 'nothing' };
 
 export interface ItemIconInput {
   /** `Item.icon`. Absent, or an id the catalog lacks, reads as Auto. */
   icon?: string;
-  /** The name the player sees on this copy. */
+  /** The name the player sees on this instance. */
   name: string;
   /** The names of the item's slots, in its rule's order. */
   slotNames: readonly string[];
   unidentified?: boolean;
-  /** The Item image this copy would show. */
+  /** The Item image this instance would show. */
   image?: string;
 }
 
@@ -110,15 +110,15 @@ export function resolveItemIcon({ icon, name, slotNames, unidentified, image }: 
   return { kind: 'icon', id: deriveItemIcon(name, slotNames) };
 }
 
-/** What one Item Copy shows on a play surface. `name` and `image` are what the player may see of the copy. */
-export const copyItemIcon = (
-  copy: Pick<ItemCopy, 'state'>,
+/** What one Item Instance shows on a play surface. `name` and `image` are what the player may see of the instance. */
+export const instanceItemIcon = (
+  instance: Pick<ItemInstance, 'state'>,
   item: Pick<Item, 'icon' | 'slotRule'> | undefined,
   { name, slots, readText, image }: { name: string; slots: readonly Slot[]; readText: (text: string) => string; image?: string },
 ): ShownItemIcon => resolveItemIcon({
   icon: item?.icon,
   name,
   slotNames: itemSlotNames(item, slots, readText),
-  unidentified: isUnidentified(copy),
+  unidentified: isUnidentified(instance),
   image,
 });

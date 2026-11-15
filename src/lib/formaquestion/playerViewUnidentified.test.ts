@@ -3,7 +3,7 @@ import type { ChipScene } from '@/lib/chipValues/chipScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import { sampleChipScene } from '@/lib/chipValues/sampleScene';
 import type { SandboxState } from '@/lib/statCodeTurn';
-import type { GameState, Item, ItemCopy } from '@/types';
+import type { GameState, Item, ItemInstance } from '@/types';
 import { playerViewPages } from './gameWorld';
 import { buildPlayerView, unidentifiedRowId } from './playerView';
 import { playerViewScene, playerViewState, type PlayerViewReach } from './playerViewWorld';
@@ -12,14 +12,14 @@ const RING: Item = {
   id: 'ring', name: 'Ring of Curses', playerDescription: 'It binds the wearer.', aiDescription: 'Cursed by the lich.',
   unidentifiedName: 'Plain Ring', unidentifiedDescription: 'A dull band.', statEffects: [], traitEffects: [], equipRequires: [],
 };
-const copy = (id: string, unidentified: boolean): ItemCopy => ({
+const copy = (id: string, unidentified: boolean): ItemInstance => ({
   id, item: { kind: 'item', itemId: 'ring' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible', ...(unidentified && { state: { unidentified: true } }),
 });
-const state = (itemCopies: ItemCopy[]): GameState => ({
+const state = (itemInstances: ItemInstance[]): GameState => ({
   globalStats: [], globalTraits: [], visibleEntities: [], logEntries: [], gameplayText: '', gameTime: 0, characterData: null, choices: [],
-  isGameStarted: true, timestamp: '', worldName: null, playerNotes: '', previousStateIndex: null, stateVersion: 1, itemCopies,
+  isGameStarted: true, timestamp: '', worldName: null, playerNotes: '', previousStateIndex: null, stateVersion: 1, itemCopies: itemInstances,
 });
-const reach = (copies: ItemCopy[]): PlayerViewReach => {
+const reach = (copies: ItemInstance[]): PlayerViewReach => {
   const current = state(copies);
   const view = buildPlayerView({
     world: { entities: [], locations: [], traits: [], items: [RING] }, chain: [current], history: [], persona: null, resolve: (text) => text,
@@ -42,16 +42,16 @@ describe('the player view of an unidentified item (Q19, Q40)', () => {
 
   it('keeps the true face out of the scene, the Inventory chip and the script state', () => {
     const at = reach([copy('a', true)]);
-    const scene: ChipScene = { ...sampleChipScene(), items: [RING], itemCopies: [copy('a', true)] };
+    const scene: ChipScene = { ...sampleChipScene(), items: [RING], itemInstances: [copy('a', true)] };
     const cut = playerViewScene(scene, at);
     expect((cut.items ?? []).map((item) => [item.id, item.name])).toEqual([[unidentifiedRowId('ring'), 'Plain Ring']]);
-    expect(cut.itemCopies?.map((c) => c.item)).toEqual([{ kind: 'item', itemId: unidentifiedRowId('ring') }]);
+    expect(cut.itemInstances?.map((c) => c.item)).toEqual([{ kind: 'item', itemId: unidentifiedRowId('ring') }]);
     expect(chipValues(cut)('<INVENTORY|markdown>')).toContain('Plain Ring');
     expect(JSON.stringify(cut.items ?? []) + chipValues(cut)('<INVENTORY|markdown>')).not.toMatch(TRUE_FACE);
 
     const script = playerViewState({
-      stats: [], enabled: {}, clock: {}, items: [RING], itemCopies: [copy('a', true)],
-      ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [], items: [RING], itemCopies: [copy('a', true)] } },
+      stats: [], enabled: {}, clock: {}, items: [RING], itemInstances: [copy('a', true)],
+      ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [], items: [RING], itemInstances: [copy('a', true)] } },
     } as unknown as SandboxState, at);
     expect(JSON.stringify(script)).not.toMatch(TRUE_FACE);
     expect(script.items?.map((item) => item.name)).toEqual(['Plain Ring']);
@@ -59,7 +59,7 @@ describe('the player view of an unidentified item (Q19, Q40)', () => {
 
   describe('worth', () => {
     const priced = { ...RING, value: 40, currencyId: 'goats' };
-    const worthView = (copies: ItemCopy[]) => {
+    const worthView = (copies: ItemInstance[]) => {
       const current = state(copies);
       return {
         current,

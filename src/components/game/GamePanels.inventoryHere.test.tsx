@@ -3,7 +3,7 @@ import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderRightPanel, renderInGame, type Gameplay } from '@/test/gamePanels';
 import { EntityEquipped } from './EntityEquipped';
-import type { Currency, Entity, GameLocation, Item, ItemCopy, Slot, Stat, World } from '@/types';
+import type { Currency, Entity, GameLocation, Item, ItemInstance, Slot, Stat, World } from '@/types';
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
@@ -37,15 +37,15 @@ const hall = { id: 'hall', name: 'Hall' } as GameLocation;
 const bram = { id: 'bram', name: 'Bram', locations: ['yard'] } as Entity;
 const you = { kind: 'you' } as const;
 const at = (id: string) => ({ kind: 'location', id }) as const;
-const copy = (id: string, itemId: string, over: Partial<ItemCopy> = {}): ItemCopy =>
+const instance = (id: string, itemId: string, over: Partial<ItemInstance> = {}): ItemInstance =>
   ({ id, item: { kind: 'item', itemId }, where: you, quantity: 1, visibility: 'visible', ...over });
 
-const stage = (copies: ItemCopy[]) => ({
+const stage = (instances: ItemInstance[]) => ({
   world: { items, slots, entities: [bram], locations: [yard, hall] },
   turns: [{ narration: 'One.', turnId: 't1' }],
   seed: (g: Gameplay) => {
     g.setCurrentLocation(yard);
-    g.setItemCopies(copies);
+    g.setItemInstances(instances);
     g.setActiveTab('inventory');
   },
 });
@@ -62,8 +62,8 @@ describe('Inventory tab — Money', () => {
   const coins = [item('copper', 'Copper'), item('gold', 'Gold')];
   const money = () => screen.queryByRole('list', { name: 'Money' });
   const rows = () => within(money()!).getAllByRole('listitem').map((row) => row.textContent);
-  const withMoney = (copies: ItemCopy[], world: Partial<World>, withItems = true) => {
-    const base = stage(copies);
+  const withMoney = (instances: ItemInstance[], world: Partial<World>, withItems = true) => {
+    const base = stage(instances);
     return {
       ...base,
       world: { ...base.world, ...(withItems ? { items: [...items, ...coins] } : { items: [] }), ...world },
@@ -75,16 +75,16 @@ describe('Inventory tab — Money', () => {
   };
 
   it('shows an item and a stat balance, name-only left out', async () => {
-    renderRightPanel({}, withMoney([copy('a', 'copper', { quantity: 105 })], { currencies: [CREDITS, GOATS, MONEY], stats: [funds()] }));
+    renderRightPanel({}, withMoney([instance('a', 'copper', { quantity: 105 })], { currencies: [CREDITS, GOATS, MONEY], stats: [funds()] }));
     await within(region()).findByRole('list', { name: 'Money' });
     expect(rows()).toEqual(['Credits40', 'Crowns1 Gold, 5 Copper']);
   });
 
   it('updates when items move', async () => {
-    const harness = renderRightPanel({}, withMoney([copy('a', 'copper', { quantity: 7 }), copy('b', 'gold')], { currencies: [MONEY] }));
+    const harness = renderRightPanel({}, withMoney([instance('a', 'copper', { quantity: 7 }), instance('b', 'gold')], { currencies: [MONEY] }));
     await within(region()).findByRole('list', { name: 'Money' });
     expect(rows()).toEqual(['Crowns1 Gold, 7 Copper']);
-    await act(async () => { harness.gameplay().setItemCopies([copy('a', 'copper', { quantity: 7 })]); });
+    await act(async () => { harness.gameplay().setItemInstances([instance('a', 'copper', { quantity: 7 })]); });
     expect(rows()).toEqual(['Crowns7 Copper']);
   });
 
@@ -92,7 +92,7 @@ describe('Inventory tab — Money', () => {
     ['hidden', { hidden: true }],
     ['switched off', { enabled: false }],
   ])('shows no row for a %s backing stat', async (_case, over) => {
-    renderRightPanel({}, withMoney([copy('a', 'copper')], { currencies: [CREDITS, MONEY], stats: [funds(over)] }));
+    renderRightPanel({}, withMoney([instance('a', 'copper')], { currencies: [CREDITS, MONEY], stats: [funds(over)] }));
     await within(region()).findByRole('list', { name: 'Money' });
     expect(rows()).toEqual(['Crowns1 Copper']);
   });
@@ -112,7 +112,7 @@ describe('Inventory tab — Money', () => {
 
 describe('Inventory tab — Here', () => {
   it('shows a carried item’s worth from the world’s Currencies in its popup', async () => {
-    const base = stage([copy('a', 'dagger')]);
+    const base = stage([instance('a', 'dagger')]);
     renderRightPanel({}, {
       ...base,
       world: {
@@ -125,12 +125,12 @@ describe('Inventory tab — Here', () => {
     expect(within(await screen.findByRole('dialog')).getByText('Worth 12 Goats')).toBeInTheDocument();
   });
 
-  it('lists the visible Item Copies lying at the location and omits hidden ones and other places', async () => {
+  it('lists the visible Item Instances lying at the location and omits hidden ones and other places', async () => {
     renderRightPanel({}, stage([
-      copy('a', 'coin', { where: at('yard'), quantity: 4 }),
-      copy('b', 'dagger', { where: at('yard'), visibility: 'hidden' }),
-      copy('c', 'dagger', { where: at('hall') }),
-      copy('d', 'coin'),
+      instance('a', 'coin', { where: at('yard'), quantity: 4 }),
+      instance('b', 'dagger', { where: at('yard'), visibility: 'hidden' }),
+      instance('c', 'dagger', { where: at('hall') }),
+      instance('d', 'coin'),
     ]));
     const here = await screen.findByRole('list', { name: 'Lying here' });
     expect(within(here).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Coin×4']);
@@ -138,66 +138,66 @@ describe('Inventory tab — Here', () => {
   });
 
   it("draws what lies here in its own card, named for the location, outside the player's card", async () => {
-    renderRightPanel({}, stage([copy('a', 'coin', { where: at('yard') })]));
+    renderRightPanel({}, stage([instance('a', 'coin', { where: at('yard') })]));
     const card = await screen.findByRole('region', { name: 'Here' });
     expect(within(card).getByRole('button', { name: 'Yard' })).toBeInTheDocument();
     expect(region()).not.toContainElement(card);
     expect(within(region()).queryByText('Coin')).not.toBeInTheDocument();
   });
 
-  it('picks up a single Item Copy at once, and one of a stack through its count', async () => {
-    const h = renderRightPanel({}, stage([copy('a', 'dagger', { where: at('yard') }), copy('b', 'coin', { where: at('yard'), quantity: 3 })]));
+  it('picks up a single Item Instance at once, and one of a stack through its count', async () => {
+    const h = renderRightPanel({}, stage([instance('a', 'dagger', { where: at('yard') }), instance('b', 'coin', { where: at('yard'), quantity: 3 })]));
     await userEvent.click(await screen.findByRole('button', { name: 'Pick Up Dagger' }));
-    expect(h.gameplay().itemCopies.find((c) => c.id === 'a')?.where).toEqual(you);
+    expect(h.gameplay().itemInstances.find((c) => c.id === 'a')?.where).toEqual(you);
     await userEvent.click(screen.getByRole('button', { name: 'Pick Up Coin' }));
     await userEvent.click(screen.getByRole('button', { name: 'Pick Up' }));
-    expect(h.gameplay().itemCopies.filter((c) => c.item.kind === 'item' && c.item.itemId === 'coin').map((c) => [c.where.kind, c.quantity]))
+    expect(h.gameplay().itemInstances.filter((c) => c.item.kind === 'item' && c.item.itemId === 'coin').map((c) => [c.where.kind, c.quantity]))
       .toEqual([['location', 2], ['you', 1]]);
   });
 
-  it('picks up a Bound Item Copy, which then cannot be dropped', async () => {
-    const h = renderRightPanel({}, stage([copy('k', 'crown', { where: at('yard') })]));
+  it('picks up a Bound Item Instance, which then cannot be dropped', async () => {
+    const h = renderRightPanel({}, stage([instance('k', 'crown', { where: at('yard') })]));
     await userEvent.click(await screen.findByRole('button', { name: 'Pick Up Old Crown' }));
-    expect(h.gameplay().itemCopies).toEqual([copy('k', 'crown')]);
+    expect(h.gameplay().itemInstances).toEqual([instance('k', 'crown')]);
     expect(await screen.findByRole('button', { name: 'Drop Old Crown: Bound' })).toBeDisabled();
   });
 
-  it('says nothing lies here when only hidden Item Copies do', async () => {
-    renderRightPanel({}, stage([copy('b', 'dagger', { where: at('yard'), visibility: 'hidden' })]));
+  it('says nothing lies here when only hidden Item Instances do', async () => {
+    renderRightPanel({}, stage([instance('b', 'dagger', { where: at('yard'), visibility: 'hidden' })]));
     expect(await screen.findByText('Nothing lies here.')).toBeInTheDocument();
   });
 
-  it('never shows a hidden owned Item Copy', async () => {
-    renderRightPanel({}, stage([copy('x', 'dagger', { visibility: 'hidden' }), copy('c', 'coin')]));
+  it('never shows a hidden owned Item Instance', async () => {
+    renderRightPanel({}, stage([instance('x', 'dagger', { visibility: 'hidden' }), instance('c', 'coin')]));
     await screen.findByText('Coin');
     expect(screen.queryByText('Dagger')).not.toBeInTheDocument();
   });
 });
 
 describe('Inventory tab — thumbnails', () => {
-  it('picks the item image through its rules for each Item Copy (Q113)', async () => {
-    const withBackingItem = renderRightPanel({}, stage([copy('r', 'ring'), copy('c', 'coin')]));
+  it('picks the item image through its rules for each Item Instance (Q113)', async () => {
+    const withBackingItem = renderRightPanel({}, stage([instance('r', 'ring'), instance('c', 'coin')]));
     const row = (await screen.findByText('Silver Ring')).closest('li')!;
     expect(row.querySelector('img')).toHaveAttribute('src', CURSED);
     withBackingItem.unmount();
-    renderRightPanel({}, stage([copy('r', 'ring')]));
+    renderRightPanel({}, stage([instance('r', 'ring')]));
     const bare = (await screen.findByText('Silver Ring')).closest('li')!;
     expect(bare.querySelector('img')).toHaveAttribute('src', PLAIN);
   });
 
   it('shows no thumbnail on a row whose item has no image', async () => {
-    renderRightPanel({}, stage([copy('c', 'coin')]));
+    renderRightPanel({}, stage([instance('c', 'coin')]));
     expect((await screen.findByText('Coin')).closest('li')!.querySelector('img')).toBeNull();
   });
 });
 
 describe('Entity Equipped', () => {
-  const show = (copies: ItemCopy[]) => renderInGame(<EntityEquipped entity={bram} />, {
+  const show = (instances: ItemInstance[]) => renderInGame(<EntityEquipped entity={bram} />, {
     world: { items, slots, entities: [bram], locations: [yard] },
-    seed: (g) => g.setItemCopies(copies),
+    seed: (g) => g.setItemInstances(instances),
   });
-  const bramHas = (id: string, itemId: string, over: Partial<ItemCopy> = {}) =>
-    copy(id, itemId, { where: { kind: 'entity', id: 'bram' }, ...over });
+  const bramHas = (id: string, itemId: string, over: Partial<ItemInstance> = {}) =>
+    instance(id, itemId, { where: { kind: 'entity', id: 'bram' }, ...over });
 
   it("lists an entity's equipped items with their slot and none of its carried items", async () => {
     show([bramHas('a', 'dagger', { equipped: { slotId: 'hand', order: 1 } }), bramHas('b', 'coin', { quantity: 9 })]);
@@ -237,7 +237,7 @@ describe('Entity Equipped', () => {
         items: items.map((i) => (i.id === 'dagger' ? { ...i, value: 12, currencyId: 'goats' } : i)), slots, entities: [bram], locations: [yard],
         currencies: [{ id: 'goats', name: 'Goats', backing: { kind: 'name' } }],
       },
-      seed: (g) => g.setItemCopies([bramHas('a', 'dagger', { equipped: { slotId: 'hand', order: 1 } })]),
+      seed: (g) => g.setItemInstances([bramHas('a', 'dagger', { equipped: { slotId: 'hand', order: 1 } })]),
     });
     await userEvent.click(await screen.findByRole('button', { name: 'Dagger' }));
     expect(within(await screen.findByRole('dialog')).getByText('Worth 12 Goats')).toBeInTheDocument();
@@ -259,7 +259,7 @@ describe('Entity Equipped', () => {
   });
 
   it('shows the image the rules fall back to when the entity lacks what they need', async () => {
-    show([bramHas('a', 'band', { equipped: { slotId: 'hand', order: 1 } }), copy('b', 'coin')]);
+    show([bramHas('a', 'band', { equipped: { slotId: 'hand', order: 1 } }), instance('b', 'coin')]);
     await userEvent.click(await screen.findByRole('button', { name: 'Pale Band' }));
     expect(within(await screen.findByRole('dialog')).getByAltText('Pale Band')).toHaveAttribute('src', PLAIN);
   });

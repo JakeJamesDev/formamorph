@@ -88,10 +88,10 @@ describe('a script that switches a trait', () => {
       id: 'gem', name: 'Gem', stackable: false, statEffects: [], traitEffects: [], equipRequires: [], scripts: scripts('gained', SWITCH_ON, READ),
     };
     const event: ItemScriptEvent = { timing: 'gained', itemId: 'gem', copyId: 'c', where: { kind: 'you' }, quantity: 1 };
-    const apply: ApplyInventory = (copies, ops) => applyInventoryOps(copies, ops, { world: { items: [gem] }, source: 'script', newId: () => 'new' });
+    const apply: ApplyInventory = (instances, ops) => applyInventoryOps(instances, ops, { world: { items: [gem] }, source: 'script', newId: () => 'new' });
     const brave = trait('brave', 'Brave', scripts('switch', 'stats.HP.value = 7;'));
     const out = await runItemScripts(
-      turnOf({ ownerTraits: held([brave]), items: [gem], itemCopies: [{ id: 'c', item: { kind: 'item', itemId: 'gem' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' }] }),
+      turnOf({ ownerTraits: held([brave]), items: [gem], itemInstances: [{ id: 'c', item: { kind: 'item', itemId: 'gem' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' }] }),
       [event], { items: [gem], apply, itemNameOf: (item) => item.name },
     );
     expect(valueOf(out.result, 'echo')).toBe(7);
@@ -161,7 +161,7 @@ describe('the total of switch runs in one action', () => {
       id: 'ring', name: 'Ring', stackable: false, statEffects: [], traitEffects: [], equipRequires: [], scripts: scripts('gained', switchAll(60, 120)),
     };
     const event = (itemId: string): ItemScriptEvent => ({ timing: 'gained', itemId, copyId: 'c', where: { kind: 'you' }, quantity: 1 });
-    const apply: ApplyInventory = (copies, ops) => applyInventoryOps(copies, ops, { world: { items: [gem, ring] }, source: 'script', newId: () => 'new' });
+    const apply: ApplyInventory = (instances, ops) => applyInventoryOps(instances, ops, { world: { items: [gem, ring] }, source: 'script', newId: () => 'new' });
     const out = await runItemScripts(
       turnOf({ ownerTraits: held(manyTraits(120)), items: [gem, ring], worldScripts: scripts('switch', COUNT) }),
       [event('gem'), event('ring')], { items: [gem, ring], apply, itemNameOf: (item) => item.name },

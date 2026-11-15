@@ -5,7 +5,7 @@ import { groupPickStates } from '@/lib/traitGates';
 import { activeOwnedTraitIds } from '@/lib/ownedTraitsInPlay';
 import { applyCodeTraitSwitches, seedStatBases, switchPlayerTrait, traitGateInput, type TraitRuntimeState, type TraitWorld } from '@/lib/traitRuntime';
 import type {
-  Body, Item, ItemCopy, ItemCopyWhere, ItemEffectLedger, ItemStatEffect, ItemTraitEffect, PlayerStat, Slot, StatChange, Trait, TraitGroup,
+  Body, Item, ItemInstance, ItemInstanceWhere, ItemEffectLedger, ItemStatEffect, ItemTraitEffect, PlayerStat, Slot, StatChange, Trait, TraitGroup,
   TraitRequirementRow,
 } from '@/types';
 
@@ -51,16 +51,16 @@ const items = [ring, idol, charm, halo, relic, fate, strongSword, weakSword, gau
 const hero = { kind: 'entity', id: 'hero' } as const;
 const you = { kind: 'you' } as const;
 const owners = [{ id: 'hero', name: 'Hero', traits: heroTraits, groups: [stance] }];
-const traitWorld = (copies: readonly ItemCopy[] = []): TraitWorld => ({
+const traitWorld = (instances: readonly ItemInstance[] = []): TraitWorld => ({
   traits: [], groups: [], entities: [{ id: 'hero', name: 'Hero' }], persona: { source: 'world', entityId: 'hero' },
-  global: { traits: [], groups: [] }, owners, items, itemCopies: copies,
+  global: { traits: [], groups: [] }, owners, items, itemInstances: instances,
 });
 const world = (cap?: number): InventorySettleWorld => ({ items, traits: traitWorld(), ...(cap && { cap }) });
 
-interface Play { copies: readonly ItemCopy[]; traits: TraitRuntimeState; ledger: ItemEffectLedger | undefined; log: string[]; skipped: string[] }
+interface Play { instances: readonly ItemInstance[]; traits: TraitRuntimeState; ledger: ItemEffectLedger | undefined; log: string[]; skipped: string[] }
 
 const start = (stats: PlayerStat[], picks: string[] = []): Play => ({
-  copies: [],
+  instances: [],
   traits: {
     stats: [], traits: [], disabledTraitIds: [], appliedValues: {},
     entityStats: { hero: seedStatBases(stats) }, ownedTraits: { hero: { chosen: picks } },
@@ -70,18 +70,18 @@ const start = (stats: PlayerStat[], picks: string[] = []): Play => ({
 
 /** Every writer's path: the validator with the equip check, then the inventory settle. */
 function act(play: Play, ops: InventoryOp[], cap?: number): Play {
-  let n = play.copies.length;
+  let n = play.instances.length;
   const check = equipRequirement({ traits: play.traits, ledger: play.ledger }, world());
-  const { copies, diagnostics } = applyInventoryOps(play.copies, ops, {
+  const { instances, diagnostics } = applyInventoryOps(play.instances, ops, {
     world: { items, slots: [hand, body, finger], bodies: [humanoid] }, source: 'script', newId: () => `c${n++}`, requirement: check,
   });
-  const settled = settleInventory({ copies, previous: play.copies, traits: play.traits, ledger: play.ledger }, world(cap));
-  return { copies: settled.copies, traits: settled.traits, ledger: settled.ledger, log: settled.log, skipped: diagnostics };
+  const settled = settleInventory({ instances, previous: play.instances, traits: play.traits, ledger: play.ledger }, world(cap));
+  return { instances: settled.instances, traits: settled.traits, ledger: settled.ledger, log: settled.log, skipped: diagnostics };
 }
-const gain = (itemId: string, to: ItemCopyWhere = hero): InventoryOp => ({ kind: 'gain', itemId, quantity: 1, to });
-const copyOf = (play: Play, itemId: string) => play.copies.find((c) => c.item.kind === 'item' && c.item.itemId === itemId)!;
-const lose = (play: Play, itemId: string): InventoryOp => ({ kind: 'lose', copyId: copyOf(play, itemId).id });
-const equip = (play: Play, itemId: string): InventoryOp => ({ kind: 'equip', copyId: copyOf(play, itemId).id });
+const gain = (itemId: string, to: ItemInstanceWhere = hero): InventoryOp => ({ kind: 'gain', itemId, quantity: 1, to });
+const instanceOf = (play: Play, itemId: string) => play.instances.find((c) => c.item.kind === 'item' && c.item.itemId === itemId)!;
+const lose = (play: Play, itemId: string): InventoryOp => ({ kind: 'lose', copyId: instanceOf(play, itemId).id });
+const equip = (play: Play, itemId: string): InventoryOp => ({ kind: 'equip', copyId: instanceOf(play, itemId).id });
 const on = (play: Play) => activeOwnedTraitIds(play.traits.ownedTraits ?? {}).hero ?? [];
 const heroStat = (play: Play, id: string) => play.traits.entityStats!.hero.find((s) => s.id === id)!.value;
 /** Moves a stat's value as the stat pass would. */
@@ -90,8 +90,8 @@ const withStat = (play: Play, id: string, value: number): Play => ({
   traits: { ...play.traits, entityStats: { hero: play.traits.entityStats!.hero.map((s) => (s.id === id ? { ...s, value } : s)) } },
 });
 const settle = (play: Play, cap?: number): Play => {
-  const settled = settleInventory({ copies: play.copies, traits: play.traits, ledger: play.ledger }, world(cap));
-  return { ...play, copies: settled.copies, traits: settled.traits, ledger: settled.ledger, log: settled.log };
+  const settled = settleInventory({ instances: play.instances, traits: play.traits, ledger: play.ledger }, world(cap));
+  return { ...play, instances: settled.instances, traits: settled.traits, ledger: settled.ledger, log: settled.log };
 };
 
 describe('item trait grants', () => {
@@ -123,20 +123,20 @@ describe('item trait grants', () => {
   it('switches off no group sibling and counts toward no Pick Count', () => {
     const play = act(start([], ['brave']), [gain('charm')]);
     expect(on(play)).toEqual(['brave', 'bold']);
-    const input = traitGateInput(play.traits, traitWorld(play.copies));
+    const input = traitGateInput(play.traits, traitWorld(play.instances));
     expect(groupPickStates(input).owners.hero.get('stance')).toMatchObject({ count: 1, full: true });
   });
 
   it('keeps a picked and granted sibling on, stats and all, when a pick retires the sibling', () => {
     const play = act(start([stat('luck', 5)], ['bold']), [gain('charm')]);
-    const switched = switchPlayerTrait(play.traits, 'brave', true, traitWorld(play.copies), undefined, 'hero')!;
+    const switched = switchPlayerTrait(play.traits, 'brave', true, traitWorld(play.instances), undefined, 'hero')!;
     expect(activeOwnedTraitIds(switched.state.ownedTraits ?? {}).hero).toEqual(['brave', 'bold']);
     expect(switched.state.entityStats!.hero.find((s) => s.id === 'luck')!.value).toBe(heroStat(play, 'luck'));
   });
 
   it('lets stat code pick a granted trait, so it stays when the item leaves', () => {
     let play = act(start([stat('luck', 5)]), [gain('charm')]);
-    const coded = applyCodeTraitSwitches(play.traits, [{ traitId: 'bold', enabled: true, by: 'Luck', ownerId: 'hero' }], traitWorld(play.copies));
+    const coded = applyCodeTraitSwitches(play.traits, [{ traitId: 'bold', enabled: true, by: 'Luck', ownerId: 'hero' }], traitWorld(play.instances));
     play = act({ ...play, traits: coded.state }, [lose(play, 'charm')]);
     expect(on(play)).toEqual(['bold']);
     expect(heroStat(play, 'luck')).toBe(6);
@@ -144,7 +144,7 @@ describe('item trait grants', () => {
 
   it('refuses the player switching off a granted trait', () => {
     const play = act(start([]), [gain('charm')]);
-    expect(switchPlayerTrait(play.traits, 'bold', false, traitWorld(play.copies), undefined, 'hero')).toBeNull();
+    expect(switchPlayerTrait(play.traits, 'bold', false, traitWorld(play.instances), undefined, 'hero')).toBeNull();
   });
 
   it('waits on a granted trait gate that fails, and turns it on once the gate holds', () => {
@@ -162,35 +162,35 @@ describe('item trait grants', () => {
     expect(play.ledger?.firstObtainTraits).toEqual({ hero: ['cursed'] });
   });
 
-  it('names no item for a hidden Item Copy', () => {
+  it('names no item for a hidden Item Instance', () => {
     let play = start([stat('luck', 5)]);
-    play = { ...play, copies: [{ id: 'h', item: { kind: 'item', itemId: 'ring' }, where: hero, quantity: 1, visibility: 'hidden' }] };
+    play = { ...play, instances: [{ id: 'h', item: { kind: 'item', itemId: 'ring' }, where: hero, quantity: 1, visibility: 'hidden' }] };
     expect(settle(play).log).toContain('Trait switched on: Cursed (by An item)');
   });
 
-  it('names an unidentified Item Copy by its unidentified face, on and off (Q17)', () => {
+  it('names an unidentified Item Instance by its unidentified face, on and off (Q17)', () => {
     let play = start([stat('luck', 5)]);
-    play = { ...play, copies: [{ id: 'v', item: { kind: 'item', itemId: 'veil' }, where: hero, quantity: 1, visibility: 'visible', state: { unidentified: true } }] };
+    play = { ...play, instances: [{ id: 'v', item: { kind: 'item', itemId: 'veil' }, where: hero, quantity: 1, visibility: 'visible', state: { unidentified: true } }] };
     play = settle(play);
     expect(play.log).toContain('Trait switched on: Cursed (by Lace Veil)');
     play = act(play, [lose(play, 'veil')]);
     expect(play.log).toContain('Trait switched off: Cursed (by Lace Veil)');
   });
 
-  it('names the true item once any Item Copy behind a grant is identified', () => {
-    const veilCopy = (id: string, unidentified: boolean): ItemCopy => ({
+  it('names the true item once any Item Instance behind a grant is identified', () => {
+    const veilInstance = (id: string, unidentified: boolean): ItemInstance => ({
       id, item: { kind: 'item', itemId: 'veil' }, where: hero, quantity: 1, visibility: 'visible', ...(unidentified && { state: { unidentified: true as const } }),
     });
-    const play = settle({ ...start([stat('luck', 5)]), copies: [veilCopy('a', true), veilCopy('b', false)] });
+    const play = settle({ ...start([stat('luck', 5)]), instances: [veilInstance('a', true), veilInstance('b', false)] });
     expect(play.log).toContain('Trait switched on: Cursed (by Hex Veil)');
   });
 
-  it('keeps the unidentified face while the only identified copy is hidden (Q39)', () => {
-    const copies: ItemCopy[] = [
+  it('keeps the unidentified face while the only identified instance is hidden (Q39)', () => {
+    const instances: ItemInstance[] = [
       { id: 'h', item: { kind: 'item', itemId: 'veil' }, where: hero, quantity: 1, visibility: 'hidden' },
       { id: 'v', item: { kind: 'item', itemId: 'veil' }, where: hero, quantity: 1, visibility: 'visible', state: { unidentified: true } },
     ];
-    expect(settle({ ...start([stat('luck', 5)]), copies }).log).toContain('Trait switched on: Cursed (by Lace Veil)');
+    expect(settle({ ...start([stat('luck', 5)]), instances }).log).toContain('Trait switched on: Cursed (by Lace Veil)');
   });
 
   it('skips an Automatic trait and a trait the owner lacks, with a diagnostic', () => {
@@ -198,22 +198,22 @@ describe('item trait grants', () => {
     const play = act(start([]), [gain('fate')]);
     expect(play.log).toContain('Item Fate Coin: trait Fated is Automatic');
     const odd = settleInventory(
-      { copies: [{ id: 'o', item: { kind: 'item', itemId: 'odd' }, where: hero, quantity: 1, visibility: 'visible' }], traits: start([]).traits, ledger: undefined },
+      { instances: [{ id: 'o', item: { kind: 'item', itemId: 'odd' }, where: hero, quantity: 1, visibility: 'visible' }], traits: start([]).traits, ledger: undefined },
       { ...world(), items: [...items, lacking] },
     );
     expect(odd.log).toContain('Item Odd Stone: owner hero has no trait missing');
   });
 
-  it('reverses the effects and grants of an Item Copy the load dropped, from the ledger it left (Q60)', () => {
+  it('reverses the effects and grants of an Item Instance the load dropped, from the ledger it left (Q60)', () => {
     const owned = act(start([stat('luck', 5), stat('strength', 5)]), [gain('ring'), gain('strong')]);
     const play = act(owned, [equip(owned, 'strong')]);
     expect([on(play), heroStat(play, 'strength')]).toEqual([['cursed'], 7]);
-    const loaded = settle({ ...play, copies: [] });
+    const loaded = settle({ ...play, instances: [] });
     expect([on(loaded), heroStat(loaded, 'luck'), heroStat(loaded, 'strength')]).toEqual([[], 5, 5]);
     expect(loaded.ledger).toEqual({});
   });
 
-  it('grants a `you` Item Copy from the played entity tree', () => {
+  it('grants a `you` Item Instance from the played entity tree', () => {
     const play = act(start([stat('luck', 5)]), [gain('ring', you)]);
     expect(on(play)).toEqual(['cursed']);
   });
@@ -223,7 +223,7 @@ describe('equip requirements', () => {
   it('refuses an equip whose requirement does not hold, with a diagnostic', () => {
     let play = act(start([stat('strength', 4)]), [gain('strong')]);
     play = act(play, [equip(play, 'strong')]);
-    expect(copyOf(play, 'strong').equipped).toBeUndefined();
+    expect(instanceOf(play, 'strong').equipped).toBeUndefined();
     expect(play.skipped).toEqual(['Inventory (script) skipped equip: Strong Sword needs Hero: Strength >= 5']);
   });
 
@@ -232,8 +232,8 @@ describe('equip requirements', () => {
     play = act(play, [equip(play, 'band')]);
     play = act(play, [equip(play, 'signet')]);
     expect(play.skipped).toEqual(['Inventory (script) skipped equip: Signet needs Hero: Strength >= 5']);
-    expect(copyOf(play, 'band').equipped).toBeDefined();
-    expect(copyOf(play, 'signet').equipped).toBeUndefined();
+    expect(instanceOf(play, 'band').equipped).toBeDefined();
+    expect(instanceOf(play, 'signet').equipped).toBeUndefined();
   });
 
   it('never lets a +Strength sword keep itself equipped', () => {
@@ -241,7 +241,7 @@ describe('equip requirements', () => {
     play = act(play, [equip(play, 'strong')]);
     expect(heroStat(play, 'strength')).toBe(7);
     play = settle(withStat(play, 'strength', 6));
-    expect(copyOf(play, 'strong').equipped).toBeUndefined();
+    expect(instanceOf(play, 'strong').equipped).toBeUndefined();
     expect(heroStat(play, 'strength')).toBe(4);
     expect(play.log).toContain('Unequipped Strong Sword: requirement no longer holds');
   });
@@ -251,14 +251,14 @@ describe('equip requirements', () => {
     play = act(play, [equip(play, 'weak')]);
     expect(heroStat(play, 'strength')).toBe(4);
     play = settle(play);
-    expect(copyOf(play, 'weak').equipped).toBeDefined();
+    expect(instanceOf(play, 'weak').equipped).toBeDefined();
   });
 
   it('unequips an item whose requirement stops holding and reverses its effects', () => {
     let play = act(start([stat('strength', 6)]), [gain('strong')]);
     play = act(play, [equip(play, 'strong')]);
     play = settle(withStat(play, 'strength', 4));
-    expect(copyOf(play, 'strong').equipped).toBeUndefined();
+    expect(instanceOf(play, 'strong').equipped).toBeUndefined();
     expect(heroStat(play, 'strength')).toBe(2);
     expect(play.ledger?.applied).toBeUndefined();
   });
@@ -269,8 +269,8 @@ describe('equip requirements', () => {
     play = act(play, [equip(play, 'strong')]);
     expect(heroStat(play, 'strength')).toBe(7);
     play = settle(withStat(play, 'luck', 0));
-    expect(copyOf(play, 'gauntlet').equipped).toBeUndefined();
-    expect(copyOf(play, 'strong').equipped).toBeUndefined();
+    expect(instanceOf(play, 'gauntlet').equipped).toBeUndefined();
+    expect(instanceOf(play, 'strong').equipped).toBeUndefined();
     expect(heroStat(play, 'strength')).toBe(3);
   });
 
@@ -280,6 +280,6 @@ describe('equip requirements', () => {
     play = act(play, [equip(play, 'strong')]);
     play = settle(withStat(play, 'luck', 0), 2);
     expect(play.log).toContain('Inventory settle stopped after 2 passes');
-    expect(copyOf(play, 'strong').equipped).toBeDefined();
+    expect(instanceOf(play, 'strong').equipped).toBeDefined();
   });
 });

@@ -17,7 +17,7 @@ export async function prepareGame(context, scene, source = 'src/defaultworlds/dr
   const location = world.locations.find((item) => item.name === scene.location);
   const entity = world.entities.find((item) => item.name === scene.entity);
   if (!location || !entity || !entity.locations.includes(location.id)) throw new Error('Capture scene does not match the world');
-  const itemCopies = (scene.items ?? []).map(([name, quantity]) => {
+  const itemInstances = (scene.items ?? []).map(([name, quantity]) => {
     const item = world.items?.find((candidate) => candidate.name === name);
     if (!item) throw new Error(`Capture scene item is not in the world: ${name}`);
     return { id: randomUUID(), item: { kind: 'item', itemId: item.id }, where: { kind: 'you' }, quantity, visibility: 'visible' };
@@ -30,7 +30,7 @@ export async function prepareGame(context, scene, source = 'src/defaultworlds/dr
   const turns = openingOnly ? [] : sceneTurns;
   const base = {
     globalStats: scene.noGlobalStats ? [] : world.stats.map((stat) => ({ ...stat, value: stat.starting ?? stat.value })),
-    ...(itemCopies.length && { itemCopies }),
+    ...(itemInstances.length && { itemCopies: itemInstances }),
     globalTraits: [], visibleEntities: [{ name: entity.name, revealed: true }], discoveredEntities: [],
     logEntries: [], locationId: location.id, characterData: null, isGameStarted: true,
     timestamp: new Date().toISOString(), worldName: world.worldOverview.name, playerNotes: '', stateVersion: 2,

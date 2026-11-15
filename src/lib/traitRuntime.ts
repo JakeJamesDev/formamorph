@@ -12,7 +12,7 @@
 
 import type { ItemScriptEvent } from './inventory';
 import type {
-  BodyRuntime, CascadeOffTraitIds, CodeBoundDeltas, CodeBounds, Daypart, EntityStatValues, ItemCopy, ItemEffectLedger, LegacyCodeBoundsStat, OwnedTraitPicks, OwnedTraitStates, PersonaRef,
+  BodyRuntime, CascadeOffTraitIds, CodeBoundDeltas, CodeBounds, Daypart, EntityStatValues, ItemInstance, ItemEffectLedger, LegacyCodeBoundsStat, OwnedTraitPicks, OwnedTraitStates, PersonaRef,
   PlayerStat, Stat, StatChange, Trait, TraitGroup,
 } from '@/types';
 import { clamp } from './utils';
@@ -59,8 +59,8 @@ export type TraitWorld = {
   daypart?: Daypart;
   /** The authored items an item Condition names. Absent ⇒ every item Condition is unresolved. */
   items?: GateInput['worldItems'];
-  /** Every Item Copy in play, hidden ones included. Absent ⇒ no one owns anything. */
-  itemCopies?: readonly ItemCopy[];
+  /** Every Item Instance in play, hidden ones included. Absent ⇒ no one owns anything. */
+  itemInstances?: readonly ItemInstance[];
   /** The world's Options an Option Condition reads. Absent ⇒ every Option Condition is unresolved. */
   options?: GateInput['worldOptions'];
   /** The playthrough's Option values. Absent ⇒ each Option's default. */
@@ -78,7 +78,7 @@ export function activeTraits(traits: readonly Trait[], disabledTraitIds: readonl
   return traits.filter((t) => !off.has(t.id));
 }
 
-/** The slice the traits in force are read from; a saved or viewed copy fits as well as the live state. */
+/** The slice the traits in force are read from; a saved or viewed instance fits as well as the live state. */
 export interface TraitForceState {
   traits: readonly Trait[];
   disabledTraitIds: readonly string[];
@@ -718,7 +718,7 @@ export const traitGateInput = (state: GateStatState, world: TraitWorld): GateInp
   stats: world.gateStats ?? gateStatsOf(state, world),
   ...(world.daypart ? { daypart: world.daypart } : {}),
   ...(world.items ? { worldItems: world.items } : {}),
-  ...(world.itemCopies ? { itemCopies: world.itemCopies } : {}),
+  ...(world.itemInstances ? { itemInstances: world.itemInstances } : {}),
   ...(world.options ? { worldOptions: world.options } : {}),
   ...(world.optionValues ? { optionValues: world.optionValues } : {}),
   ...grantInput(state.ownedTraits),
@@ -954,13 +954,13 @@ export interface GatedTraitResult {
   cascadeNames: string[];
   /** What a settle that ran the inventory settle left. Absent ⇒ unchanged. */
   items?: {
-    copies: readonly ItemCopy[];
+    instances: readonly ItemInstance[];
     ledger: ItemEffectLedger;
     bodies: BodyRuntime;
     /** The Body change lines, apart from `log` (Q41, Q42). */
     bodyLog: readonly string[];
     bodyUnequipped: number;
-    /** The When Unequipped events of the copies it unequipped. */
+    /** The When Unequipped events of the instances it unequipped. */
     events: readonly ItemScriptEvent[];
   };
 }

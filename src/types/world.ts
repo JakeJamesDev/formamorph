@@ -34,7 +34,7 @@ export type RegenUnit = 'minutes' | 'hours' | 'days' | 'weeks';
  *  narration sentence, once at a new playthrough's start, when a trait switches in play, or on an item's events. */
 export type ScriptTiming = 'before' | 'after' | 'output' | 'start' | 'switch' | ItemScriptTiming;
 
-/** When an item's script runs: its Item Copy is gained, lost, equipped, unequipped or used (Q33). */
+/** When an item's script runs: its Item Instance is gained, lost, equipped, unequipped or used (Q33). */
 export type ItemScriptTiming = 'gained' | 'lost' | 'equipped' | 'unequipped' | 'used';
 
 /** One box of code with a timing, on a stat, a trait, the world or an item. */
@@ -268,10 +268,10 @@ export interface OptionRequirement {
   not?: true;
 }
 
-/** An item Condition: an owner has a copy of the item, or has one equipped. `name` is the item's name when it
+/** An item Condition: an owner has an instance of the item, or has one equipped. `name` is the item's name when it
  *  was stored, so an unresolved one still reads. An owner-less one means the host's owner; on an item it is
- *  the Item Copy's owner, and never holds while the copy lies at a location. `state` and `identity` narrow it
- *  to a copy with that State word (trimmed, any case) or that identity (Q22). */
+ *  the Item Instance's owner, and never holds while the instance lies at a location. `state` and `identity` narrow it
+ *  to an instance with that State word (trimmed, any case) or that identity (Q22). */
 export interface ItemRequirement {
   kind: 'item';
   id: string;
@@ -652,7 +652,7 @@ export interface EntityGroup {
   order?: number;
 }
 
-/** When an item effect row acts: while its Item Copy is equipped, while it is owned, after it is used, or
+/** When an item effect row acts: while its Item Instance is equipped, while it is owned, after it is used, or
  *  once on the owner's first obtain. */
 export type ItemTiming = 'equipped' | 'owned' | 'used' | 'firstObtain';
 
@@ -699,11 +699,11 @@ export interface Currency {
   backing: CurrencyBacking;
 }
 
-/** What a copy's last use leaves: the copy at zero uses, nothing, one copy of another authored item, or the copy
+/** What an instance's last use leaves: the instance at zero uses, nothing, one instance of another authored item, or the instance
  *  at zero uses with a new State. */
 export type ItemWhenEmpty = { kind: 'stays' } | { kind: 'gone' } | { kind: 'becomes'; itemId: string } | { kind: 'changesState'; state: string };
 
-/** An authored item kind. In play the save holds Item Copies of it. */
+/** An authored item kind. In play the save holds Item Instances of it. */
 export interface Item {
   id: string;
   name: string;
@@ -713,18 +713,18 @@ export interface Item {
   aiDescription?: string;
   /** Short description sent to the AI where the full one is too long. */
   aiSummary?: string;
-  /** The name an unidentified Item Copy shows. Either unidentified field set ⇒ every copy starts unidentified (Q16). */
+  /** The name an unidentified Item Instance shows. Either unidentified field set ⇒ every instance starts unidentified (Q16). */
   unidentifiedName?: string;
-  /** The description an unidentified Item Copy shows. Blank shows `playerDescription`. */
+  /** The description an unidentified Item Instance shows. Blank shows `playerDescription`. */
   unidentifiedDescription?: string;
-  /** The item's gallery, in author order. A rule's owner-less Condition reads the Item Copy's owner. */
+  /** The item's gallery, in author order. A rule's owner-less Condition reads the Item Instance's owner. */
   images?: GalleryImage[];
   /** Booru tags used for AI image generation; editor-only, not sent to the narrative AI. */
   imageTags?: string;
   /** What it shows on the doll and in rows: an icon id, or `'none'` for its image. Absent = Auto. */
   icon?: string;
   /** Placeholders of this item's own, live beside the world's through the combined view. They resolve once
-   *  per playthrough, shared by every Item Copy. */
+   *  per playthrough, shared by every Item Instance. */
   placeholders?: Placeholder[];
   /** What it's worth, in its Currency's base unit. */
   value?: number;
@@ -732,13 +732,13 @@ export interface Item {
   currencyId?: string;
   /** Absent = stackable. Never read while `uses` is 2 or more. */
   stackable?: boolean;
-  /** The uses each Item Copy starts with, from 1. Absent = unlimited. */
+  /** The uses each Item Instance starts with, from 1. Absent = unlimited. */
   uses?: number;
-  /** What a copy's last use leaves. Read only while `uses` is set; absent = Gone (Q26). */
+  /** What an instance's last use leaves. Read only while `uses` is set; absent = Gone (Q26). */
   whenEmpty?: ItemWhenEmpty;
-  /** The State each Item Copy starts with: a short free-text word. Absent = none. */
+  /** The State each Item Instance starts with: a short free-text word. Absent = none. */
   state?: string;
-  /** The player cannot drop or give its Item Copies. */
+  /** The player cannot drop or give its Item Instances. */
   bound?: boolean;
   /** The slots it equips into. Absent = not equippable. */
   slotRule?: SlotRule;
@@ -746,7 +746,7 @@ export interface Item {
   traitEffects: ItemTraitEffect[];
   /** Any one row that holds lets an owner equip it. Empty = always. */
   equipRequires: TraitRequirementRow[];
-  /** Runs on its Item Copies' events, only at the item timings. */
+  /** Runs on its Item Instances' events, only at the item timings. */
   scripts?: Script[];
 }
 
@@ -795,16 +795,16 @@ export interface Body {
 /** An entity's Body pick. Absent = the Default Body, the world's first. */
 export type BodyPick = { kind: 'none' } | { kind: 'body'; id: string };
 
-/** Where a placement puts its Item Copies: on the played Persona, on an entity, or at a location. */
+/** Where a placement puts its Item Instances: on the played Persona, on an entity, or at a location. */
 export type PlacementWhere =
   | { kind: 'you' }
   | { kind: 'entity'; id: string }
   | { kind: 'location'; id: string };
 
-/** What a placement makes Item Copies of. */
+/** What a placement makes Item Instances of. */
 export type PlacementSource = { kind: 'item'; itemId: string };
 
-/** An authored starting Item Copy. The new-game seed is its only reader. */
+/** An authored starting Item Instance. The new-game seed is its only reader. */
 export interface Placement {
   id: string;
   where: PlacementWhere;
@@ -1133,7 +1133,7 @@ export interface World {
   slots?: Slot[];
   /** Bodies, in order. The first is the Default. Absent = none, so no owner has a slot. */
   bodies?: Body[];
-  /** Starting Item Copies. Absent = none. */
+  /** Starting Item Instances. Absent = none. */
   placements?: Placement[];
   /** World Options, in Options-tab order. Absent = none. */
   options?: WorldOption[];

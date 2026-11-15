@@ -12,7 +12,7 @@ export type StatCodeTiming = 'before' | 'after';
 
 /** The timings the runner runs over a turn's stats: the two boxes, At Game Start before the opening, During
  *  AI Output, which runs one narration sentence at a time, When a Trait Switches, once per switch, and the item
- *  timings, once per Item Copy event. */
+ *  timings, once per Item Instance event. */
 export type RunTiming = StatCodeTiming | 'start' | 'output' | 'switch' | ItemScriptTiming;
 
 /** Whether a run reads the turn's starting state: no ask, no regen and every delta zero. */

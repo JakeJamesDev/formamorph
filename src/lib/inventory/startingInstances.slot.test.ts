@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { bodyFixture } from '@/test/bodyFixture';
-import { startingCopies, type StartWorld } from '.';
+import { startingInstances, type StartWorld } from '.';
 import { parsePlacements } from '@/lib/items';
 import type { Entity, Item, Placement } from '@/types';
 
@@ -15,10 +15,10 @@ const world = (placements: Placement[]): StartWorld => ({
   slots: [{ id: 'main', name: 'Main Hand' }, { id: 'off', name: 'Off Hand' }],
   bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'main' }, { slotId: 'off' }] })],
 });
-const slots = (placements: Placement[]) => startingCopies(world(placements), undefined, ids()).map((c) => c.equipped?.slotId);
+const slots = (placements: Placement[]) => startingInstances(world(placements), undefined, ids()).map((c) => c.equipped?.slotId);
 
-describe('startingCopies with a placement slot', () => {
-  it('starts the copy in the named slot', () => {
+describe('startingInstances with a placement slot', () => {
+  it('starts the instance in the named slot', () => {
     expect(slots([place({ slotId: 'off' })])).toEqual(['off']);
   });
 
@@ -30,14 +30,14 @@ describe('startingCopies with a placement slot', () => {
     expect(slots([place({ slotId: 'tail' })])).toEqual(['main']);
   });
 
-  it('swaps out the earlier copy when a later placement names a full slot', () => {
+  it('swaps out the earlier instance when a later placement names a full slot', () => {
     expect(slots([place({ slotId: 'off' }), place({ id: 'q', slotId: 'off' })])).toEqual([undefined, 'off']);
   });
 
   it('keeps both when the named slot has room for two', () => {
     const wide = world([place({ slotId: 'off' }), place({ id: 'q', slotId: 'off' })]);
     wide.bodies = [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'main' }, { slotId: 'off', capacity: 2 }] })];
-    expect(startingCopies(wide, undefined, ids()).map((c) => c.equipped?.slotId)).toEqual(['off', 'off']);
+    expect(startingInstances(wide, undefined, ids()).map((c) => c.equipped?.slotId)).toEqual(['off', 'off']);
   });
 
   it('sends the first unit of a quantity-2 placement to the named slot and the next to the first free one (Q78)', () => {

@@ -3,7 +3,7 @@ import { bodyFixture } from '@/test/bodyFixture';
 import { applyInventoryOps, settleInventory, timedEffectViews, timedKey, withoutOrphanTimedTraits, type InventoryOp, type InventorySettleWorld } from '.';
 import { activeOwnedTraitIds } from '@/lib/ownedTraitsInPlay';
 import { seedStatBases, type TraitRuntimeState, type TraitWorld } from '@/lib/traitRuntime';
-import type { Item, ItemCopy, ItemCopyWhere, ItemEffectLedger, ItemStatEffect, ItemTraitEffect, PlayerStat, StatChange, Trait } from '@/types';
+import type { Item, ItemInstance, ItemInstanceWhere, ItemEffectLedger, ItemStatEffect, ItemTraitEffect, PlayerStat, StatChange, Trait } from '@/types';
 
 const stat = (id: string, value: number, max = 10): PlayerStat => ({ id, name: id[0].toUpperCase() + id.slice(1), value, min: 0, max } as PlayerStat);
 let r = 0;
@@ -31,32 +31,32 @@ const items = [might, elixir, giant, haste, wand, flask, rock];
 const hero = { kind: 'entity', id: 'hero' } as const;
 const room = { kind: 'location', id: 'room' } as const;
 const owners = [{ id: 'hero', name: 'Hero', traits: [hasted], groups: [] }];
-const traitWorld = (copies: readonly ItemCopy[] = []): TraitWorld => ({
+const traitWorld = (instances: readonly ItemInstance[] = []): TraitWorld => ({
   traits: [], groups: [], entities: [{ id: 'hero', name: 'Hero' }, { id: 'ally', name: 'Ally' }], persona: { source: 'world', entityId: 'hero' },
-  global: { traits: [], groups: [] }, owners, items, itemCopies: copies,
+  global: { traits: [], groups: [] }, owners, items, itemInstances: instances,
 });
 const world = (list: readonly Item[] = items): InventorySettleWorld => ({ items: list, traits: { ...traitWorld(), items: list } });
 
-interface Play { copies: readonly ItemCopy[]; traits: TraitRuntimeState; ledger: ItemEffectLedger | undefined; log: string[]; skipped: string[]; now: number }
+interface Play { instances: readonly ItemInstance[]; traits: TraitRuntimeState; ledger: ItemEffectLedger | undefined; log: string[]; skipped: string[]; now: number }
 
 const start = (stats: PlayerStat[]): Play => ({
-  copies: [],
+  instances: [],
   traits: { stats: [], traits: [], disabledTraitIds: [], appliedValues: {}, entityStats: { hero: seedStatBases(stats) }, ownedTraits: { hero: { chosen: [] } } },
   ledger: undefined, log: [], skipped: [], now: 0,
 });
 
 /** Every writer's path: the validator, then the inventory settle with its uses at the play's clock. */
 function act(play: Play, ops: InventoryOp[], list: readonly Item[] = items): Play {
-  let n = play.copies.length;
-  const { copies, itemUses, diagnostics } = applyInventoryOps(play.copies, ops, { world: { items: list }, source: 'panel', newId: () => `c${n++}-${play.now}` });
-  const settled = settleInventory({ copies, previous: play.copies, traits: play.traits, ledger: play.ledger, itemUses, now: play.now }, world(list));
-  return { ...play, copies: settled.copies, traits: settled.traits, ledger: settled.ledger, log: settled.log, skipped: diagnostics };
+  let n = play.instances.length;
+  const { instances, itemUses, diagnostics } = applyInventoryOps(play.instances, ops, { world: { items: list }, source: 'panel', newId: () => `c${n++}-${play.now}` });
+  const settled = settleInventory({ instances, previous: play.instances, traits: play.traits, ledger: play.ledger, itemUses, now: play.now }, world(list));
+  return { ...play, instances: settled.instances, traits: settled.traits, ledger: settled.ledger, log: settled.log, skipped: diagnostics };
 }
 /** The clock advances, then the turn commit settles. */
 const advance = (play: Play, by: number, list: readonly Item[] = items): Play => act({ ...play, now: play.now + by }, [], list);
-const gain = (itemId: string, quantity = 1, to: ItemCopyWhere = hero): InventoryOp => ({ kind: 'gain', itemId, quantity, to });
-const copiesOf = (play: Play, itemId: string) => play.copies.filter((c) => c.item.kind === 'item' && c.item.itemId === itemId);
-const use = (play: Play, itemId: string, at = 0): InventoryOp => ({ kind: 'use', copyId: copiesOf(play, itemId)[at].id });
+const gain = (itemId: string, quantity = 1, to: ItemInstanceWhere = hero): InventoryOp => ({ kind: 'gain', itemId, quantity, to });
+const instancesOf = (play: Play, itemId: string) => play.instances.filter((c) => c.item.kind === 'item' && c.item.itemId === itemId);
+const use = (play: Play, itemId: string, at = 0): InventoryOp => ({ kind: 'use', copyId: instancesOf(play, itemId)[at].id });
 const heroStat = (play: Play, id: string) => play.traits.entityStats!.hero.find((s) => s.id === id)!;
 const on = (play: Play) => activeOwnedTraitIds(play.traits.ownedTraits ?? {}).hero ?? [];
 
@@ -64,7 +64,7 @@ describe('using an item', () => {
   it('leaves two of a stack of three and starts its After Use effects', () => {
     let play = act(start([stat('strength', 3)]), [gain('might', 3)]);
     play = act(play, [use(play, 'might')]);
-    expect(copiesOf(play, 'might').map((c) => c.quantity)).toEqual([2]);
+    expect(instancesOf(play, 'might').map((c) => c.quantity)).toEqual([2]);
     expect(heroStat(play, 'strength').value).toBe(5);
     expect(play.log).toContain('Potion of Might: Strength +2');
   });
@@ -72,17 +72,17 @@ describe('using an item', () => {
   it('removes the last one of a stack', () => {
     let play = act(start([stat('strength', 3)]), [gain('might')]);
     play = act(play, [use(play, 'might')]);
-    expect(copiesOf(play, 'might')).toEqual([]);
+    expect(instancesOf(play, 'might')).toEqual([]);
   });
 
   it('skips an item that can’t be used, and one lying at a location', () => {
     let play = act(start([]), [gain('rock'), gain('might', 1, room)]);
     play = act(play, [use(play, 'rock'), use(play, 'might')]);
     expect(play.skipped).toEqual([
-      `Inventory (panel) skipped use: Item Copy ${copiesOf(play, 'rock')[0].id} can't be used`,
-      `Inventory (panel) skipped use: Item Copy ${copiesOf(play, 'might')[0].id} has no owner`,
+      `Inventory (panel) skipped use: Item Instance ${instancesOf(play, 'rock')[0].id} can't be used`,
+      `Inventory (panel) skipped use: Item Instance ${instancesOf(play, 'might')[0].id} has no owner`,
     ]);
-    expect(copiesOf(play, 'might')[0].quantity).toBe(1);
+    expect(instancesOf(play, 'might')[0].quantity).toBe(1);
   });
 });
 
@@ -117,10 +117,10 @@ describe('timed effects', () => {
     let n = 0;
     const slots = [{ id: 'hand', name: 'Hand' }];
     let play = act(start([stat('strength', 5)]), [gain('sword'), gain('sap')], list);
-    const equipped = applyInventoryOps(play.copies, [{ kind: 'equip', copyId: copiesOf(play, 'sword')[0].id }], { world: { items: list, slots, bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] })] }, source: 'panel', newId: () => `e${n++}` });
-    play = { ...play, copies: equipped.copies };
+    const equipped = applyInventoryOps(play.instances, [{ kind: 'equip', copyId: instancesOf(play, 'sword')[0].id }], { world: { items: list, slots, bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] })] }, source: 'panel', newId: () => `e${n++}` });
+    play = { ...play, instances: equipped.instances };
     play = act(play, [use(play, 'sap')], list);
-    expect(copiesOf(play, 'sword')[0].equipped).toBeUndefined();
+    expect(instancesOf(play, 'sword')[0].equipped).toBeUndefined();
     expect(heroStat(play, 'strength').value).toBe(4);
   });
 
@@ -175,8 +175,8 @@ describe('timed effects', () => {
     play = act(play, [use(play, 'haste')]);
     play = advance(play, 0.5);
     play = act(play, [use(play, 'might')]);
-    const hiddenMight: ItemCopy = { id: 'hx', item: { kind: 'item', itemId: 'giant' }, where: hero, quantity: 1, visibility: 'hidden' };
-    play = act({ ...play, copies: [...play.copies, hiddenMight] }, [{ kind: 'use', copyId: 'hx' }]);
+    const hiddenMight: ItemInstance = { id: 'hx', item: { kind: 'item', itemId: 'giant' }, where: hero, quantity: 1, visibility: 'hidden' };
+    play = act({ ...play, instances: [...play.instances, hiddenMight] }, [{ kind: 'use', copyId: 'hx' }]);
     const names = { stat: (_o: string, id: string) => id.toUpperCase(), trait: (_o: string, id: string) => `Trait ${id}` };
     expect(timedEffectViews(play.ledger, items, ['hero'], play.now, names).map((v) => [v.itemName, v.effect, v.hoursLeft])).toEqual([
       [null, 'Max STRENGTH +5', 1], ['Haste Tonic', 'Trait hasted', 1.5], ['Potion of Might', 'STRENGTH +2', 2],
@@ -184,17 +184,17 @@ describe('timed effects', () => {
     expect(timedEffectViews(play.ledger, items, ['ally'], play.now, names)).toEqual([]);
   });
 
-  it('names no item for a use from a hidden Item Copy', () => {
+  it('names no item for a use from a hidden Item Instance', () => {
     const play = start([stat('strength', 3)]);
-    const hidden: ItemCopy = { id: 'h', item: { kind: 'item', itemId: 'might' }, where: hero, quantity: 1, visibility: 'hidden' };
-    const used = act({ ...play, copies: [hidden] }, [{ kind: 'use', copyId: 'h' }]);
+    const hidden: ItemInstance = { id: 'h', item: { kind: 'item', itemId: 'might' }, where: hero, quantity: 1, visibility: 'hidden' };
+    const used = act({ ...play, instances: [hidden] }, [{ kind: 'use', copyId: 'h' }]);
     expect(used.log).toContain('An item: Strength +2');
   });
 
   it('survives a save round trip and still ends on time', () => {
     let play = act(start([stat('strength', 3)]), [gain('might')]);
     play = act(play, [use(play, 'might')]);
-    const saved = JSON.parse(JSON.stringify({ copies: play.copies, traits: play.traits, ledger: play.ledger })) as Pick<Play, 'copies' | 'traits' | 'ledger'>;
+    const saved = JSON.parse(JSON.stringify({ instances: play.instances, traits: play.traits, ledger: play.ledger })) as Pick<Play, 'instances' | 'traits' | 'ledger'>;
     play = advance({ ...play, ...saved }, 2);
     expect(heroStat(play, 'strength').value).toBe(3);
   });
@@ -226,18 +226,18 @@ describe('uses and When Empty', () => {
   it('keeps a three-use wand that Stays at zero, and refuses a fourth use', () => {
     let play = act(start([stat('strength', 3)]), [gain('wand')]);
     for (let i = 0; i < 3; i += 1) play = act(play, [use(play, 'wand')]);
-    expect(copiesOf(play, 'wand').map((c) => c.state?.uses)).toEqual([0]);
+    expect(instancesOf(play, 'wand').map((c) => c.state?.uses)).toEqual([0]);
     play = act(play, [use(play, 'wand')]);
-    expect(play.skipped).toEqual([`Inventory (panel) skipped use: Item Copy ${copiesOf(play, 'wand')[0].id} has no uses left`]);
+    expect(play.skipped).toEqual([`Inventory (panel) skipped use: Item Instance ${instancesOf(play, 'wand')[0].id} has no uses left`]);
   });
 
   it('removes a three-use item that is Gone after the third use', () => {
     let play = act(start([]), [gain('flask')]);
     play = act(play, [use(play, 'flask')]);
     play = act(play, [use(play, 'flask')]);
-    expect(copiesOf(play, 'flask').map((c) => c.state?.uses)).toEqual([1]);
+    expect(instancesOf(play, 'flask').map((c) => c.state?.uses)).toEqual([1]);
     play = act(play, [use(play, 'flask')]);
-    expect(copiesOf(play, 'flask')).toEqual([]);
+    expect(instancesOf(play, 'flask')).toEqual([]);
   });
 
   it('reads a blank When Empty as Gone', () => {
@@ -246,91 +246,91 @@ describe('uses and When Empty', () => {
     let play = act(start([]), [gain('scroll')], list);
     play = act(play, [use(play, 'scroll')], list);
     play = act(play, [use(play, 'scroll')], list);
-    expect(copiesOf(play, 'scroll')).toEqual([]);
+    expect(instancesOf(play, 'scroll')).toEqual([]);
   });
 
   it('keeps each wand its own count when one is given away', () => {
     let play = act(start([stat('strength', 3)]), [gain('wand', 2)]);
     play = act(play, [use(play, 'wand', 0), use(play, 'wand', 0)]);
-    const [spent, full] = copiesOf(play, 'wand');
+    const [spent, full] = instancesOf(play, 'wand');
     play = act(play, [{ kind: 'transfer', copyId: full.id, to: { kind: 'entity', id: 'ally' } }]);
-    expect(play.copies.find((c) => c.id === spent.id)?.state?.uses).toBe(1);
-    expect(play.copies.find((c) => c.id === full.id)).toMatchObject({ where: { kind: 'entity', id: 'ally' }, state: { uses: 3 } });
+    expect(play.instances.find((c) => c.id === spent.id)?.state?.uses).toBe(1);
+    expect(play.instances.find((c) => c.id === full.id)).toMatchObject({ where: { kind: 'entity', id: 'ally' }, state: { uses: 3 } });
   });
 
   it('stacks an item with Uses 1 and keeps one with Uses 2 apart', () => {
     const pair = item('pair', 'Pair Charm', { uses: 2 });
     const list = [...items, pair];
     const play = act(start([]), [gain('might', 3), gain('pair', 2)], list);
-    expect(copiesOf(play, 'might').map((c) => c.quantity)).toEqual([3]);
-    expect(copiesOf(play, 'pair').map((c) => [c.quantity, c.state?.uses])).toEqual([[1, 2], [1, 2]]);
+    expect(instancesOf(play, 'might').map((c) => c.quantity)).toEqual([3]);
+    expect(instancesOf(play, 'pair').map((c) => [c.quantity, c.state?.uses])).toEqual([[1, 2], [1, 2]]);
   });
 
-  it('splits a spent Uses 1 copy that Stays off its stack, and merges a second spent one into it', () => {
+  it('splits a spent Uses 1 instance that Stays off its stack, and merges a second spent one into it', () => {
     const lamp = item('lamp', 'Oil Lamp', { uses: 1, whenEmpty: { kind: 'stays' } });
     const list = [...items, lamp];
     let play = act(start([]), [gain('lamp', 3)], list);
     play = act(play, [use(play, 'lamp')], list);
-    expect(copiesOf(play, 'lamp').map((c) => [c.quantity, c.state?.uses ?? 1])).toEqual([[2, 1], [1, 0]]);
+    expect(instancesOf(play, 'lamp').map((c) => [c.quantity, c.state?.uses ?? 1])).toEqual([[2, 1], [1, 0]]);
     play = act(play, [use(play, 'lamp')], list);
-    expect(copiesOf(play, 'lamp').map((c) => [c.quantity, c.state?.uses ?? 1])).toEqual([[1, 1], [2, 0]]);
+    expect(instancesOf(play, 'lamp').map((c) => [c.quantity, c.state?.uses ?? 1])).toEqual([[1, 1], [2, 0]]);
     play = act(play, [use(play, 'lamp', 1)], list);
-    expect(play.skipped).toEqual([`Inventory (panel) skipped use: Item Copy ${copiesOf(play, 'lamp')[1].id} has no uses left`]);
+    expect(play.skipped).toEqual([`Inventory (panel) skipped use: Item Instance ${instancesOf(play, 'lamp')[1].id} has no uses left`]);
   });
 
-  it('turns one copy of a stack into a carried copy of its Becomes target, seeded with its own Uses', () => {
+  it('turns one instance of a stack into a carried instance of its Becomes target, seeded with its own Uses', () => {
     const bottle = item('bottle', 'Empty Bottle', { uses: 2, whenEmpty: { kind: 'stays' } });
     const potion = item('potion', 'Potion', { uses: 1, whenEmpty: { kind: 'becomes', itemId: 'bottle' }, statEffects: [after('strength', 1, PERMANENT)] });
     const list = [...items, bottle, potion];
     let play = act(start([stat('strength', 3)]), [gain('potion', 2)], list);
     play = act(play, [use(play, 'potion')], list);
-    expect(copiesOf(play, 'potion').map((c) => c.quantity)).toEqual([1]);
-    expect(copiesOf(play, 'bottle')).toMatchObject([{ where: hero, quantity: 1, state: { uses: 2 } }]);
+    expect(instancesOf(play, 'potion').map((c) => c.quantity)).toEqual([1]);
+    expect(instancesOf(play, 'bottle')).toMatchObject([{ where: hero, quantity: 1, state: { uses: 2 } }]);
     expect(heroStat(play, 'strength').value).toBe(4);
   });
 
-  it('keeps a hidden copy’s Becomes result hidden', () => {
+  it('keeps a hidden instance’s Becomes result hidden', () => {
     const bottle = item('bottle', 'Empty Bottle');
     const potion = item('potion', 'Potion', { uses: 1, whenEmpty: { kind: 'becomes', itemId: 'bottle' } });
     const list = [...items, bottle, potion];
-    const hidden: ItemCopy = { id: 'hp', item: { kind: 'item', itemId: 'potion' }, where: hero, quantity: 1, visibility: 'hidden' };
-    const play = act({ ...start([]), copies: [hidden] }, [{ kind: 'use', copyId: 'hp' }], list);
-    expect(copiesOf(play, 'bottle')).toMatchObject([{ where: hero, visibility: 'hidden' }]);
+    const hidden: ItemInstance = { id: 'hp', item: { kind: 'item', itemId: 'potion' }, where: hero, quantity: 1, visibility: 'hidden' };
+    const play = act({ ...start([]), instances: [hidden] }, [{ kind: 'use', copyId: 'hp' }], list);
+    expect(instancesOf(play, 'bottle')).toMatchObject([{ where: hero, visibility: 'hidden' }]);
   });
 
-  it('carries the Becomes result even when the used copy was equipped', () => {
+  it('carries the Becomes result even when the used instance was equipped', () => {
     const shard = item('shard', 'Cracked Gem');
     const gem = item('gem', 'Focus Gem', { slotRule: { mode: 'either', slotIds: ['hand'] }, stackable: false, uses: 1, whenEmpty: { kind: 'becomes', itemId: 'shard' } });
     const list = [...items, shard, gem];
     let n = 0;
     let play = act(start([]), [gain('gem')], list);
-    const equipped = applyInventoryOps(play.copies, [{ kind: 'equip', copyId: copiesOf(play, 'gem')[0].id }], { world: { items: list, slots: [{ id: 'hand', name: 'Hand' }], bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] })] }, source: 'panel', newId: () => `e${n++}` });
-    play = { ...play, copies: equipped.copies };
-    expect(copiesOf(play, 'gem')[0].equipped).toBeDefined();
+    const equipped = applyInventoryOps(play.instances, [{ kind: 'equip', copyId: instancesOf(play, 'gem')[0].id }], { world: { items: list, slots: [{ id: 'hand', name: 'Hand' }], bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] })] }, source: 'panel', newId: () => `e${n++}` });
+    play = { ...play, instances: equipped.instances };
+    expect(instancesOf(play, 'gem')[0].equipped).toBeDefined();
     play = act(play, [use(play, 'gem')], list);
-    expect(copiesOf(play, 'gem')).toEqual([]);
-    expect(copiesOf(play, 'shard')).toMatchObject([{ where: hero, quantity: 1 }]);
-    expect(copiesOf(play, 'shard')[0].equipped).toBeUndefined();
+    expect(instancesOf(play, 'gem')).toEqual([]);
+    expect(instancesOf(play, 'shard')).toMatchObject([{ where: hero, quantity: 1 }]);
+    expect(instancesOf(play, 'shard')[0].equipped).toBeUndefined();
   });
 
-  it('removes the copy as Gone with a diagnostic when its Becomes target is missing', () => {
+  it('removes the instance as Gone with a diagnostic when its Becomes target is missing', () => {
     const potion = item('potion', 'Potion', { uses: 1, whenEmpty: { kind: 'becomes', itemId: 'gone-item' } });
     const list = [...items, potion];
     let play = act(start([]), [gain('potion')], list);
-    const id = copiesOf(play, 'potion')[0].id;
+    const id = instancesOf(play, 'potion')[0].id;
     play = act(play, [use(play, 'potion')], list);
-    expect(copiesOf(play, 'potion')).toEqual([]);
-    expect(play.skipped).toEqual([`Inventory (panel) removed Item Copy ${id} as Gone: gain: no item gone-item`]);
+    expect(instancesOf(play, 'potion')).toEqual([]);
+    expect(play.skipped).toEqual([`Inventory (panel) removed Item Instance ${id} as Gone: gain: no item gone-item`]);
   });
 
-  it('fires the effects of an item with no Uses and leaves the copy as it was', () => {
+  it('fires the effects of an item with no Uses and leaves the instance as it was', () => {
     const horn = item('horn', 'War Horn', { statEffects: [after('strength', 1, PERMANENT)] });
     const list = [...items, horn];
     let play = act(start([stat('strength', 3)]), [gain('horn')], list);
-    const before = copiesOf(play, 'horn');
+    const before = instancesOf(play, 'horn');
     play = act(play, [use(play, 'horn')], list);
     play = act(play, [use(play, 'horn')], list);
-    expect(copiesOf(play, 'horn')).toEqual(before);
+    expect(instancesOf(play, 'horn')).toEqual(before);
     expect(heroStat(play, 'strength').value).toBe(5);
   });
 
@@ -340,7 +340,7 @@ describe('uses and When Empty', () => {
     let play = act(start([]), [gain('bell')], list);
     play = act(play, [use(play, 'bell')], list);
     expect(play.skipped).toEqual([]);
-    expect(copiesOf(play, 'bell')).toHaveLength(1);
+    expect(instancesOf(play, 'bell')).toHaveLength(1);
   });
 
   it('removes one of a runtime item on use', () => {
@@ -348,20 +348,20 @@ describe('uses and When Empty', () => {
     let n = 0;
     const call = { world: { items }, source: 'pass' as const, newId: () => `r${n++}`, runtimeItems };
     const gained = applyInventoryOps([], [{ kind: 'gain', itemId: 'rt-cake', quantity: 2, to: hero }], call);
-    const used = applyInventoryOps(gained.copies, [{ kind: 'use', copyId: gained.copies[0].id }], call);
-    expect(used.copies.map((c) => c.quantity)).toEqual([1]);
+    const used = applyInventoryOps(gained.instances, [{ kind: 'use', copyId: gained.instances[0].id }], call);
+    expect(used.instances.map((c) => c.quantity)).toEqual([1]);
     expect(used.itemUses).toEqual([]);
   });
 
-  it('clamps setUses to the item’s Uses and merges a refilled copy back into its stack', () => {
+  it('clamps setUses to the item’s Uses and merges a refilled instance back into its stack', () => {
     const lamp = item('lamp', 'Oil Lamp', { uses: 1, whenEmpty: { kind: 'stays' } });
     const list = [...items, lamp];
     let play = act(start([]), [gain('lamp', 2), gain('rock')], list);
     play = act(play, [use(play, 'lamp')], list);
-    play = act(play, [{ kind: 'setUses', copyId: copiesOf(play, 'lamp')[1].id, uses: 9 }], list);
-    expect(copiesOf(play, 'lamp').map((c) => [c.quantity, c.state?.uses ?? 1])).toEqual([[2, 1]]);
-    const rockId = copiesOf(play, 'rock')[0].id;
+    play = act(play, [{ kind: 'setUses', copyId: instancesOf(play, 'lamp')[1].id, uses: 9 }], list);
+    expect(instancesOf(play, 'lamp').map((c) => [c.quantity, c.state?.uses ?? 1])).toEqual([[2, 1]]);
+    const rockId = instancesOf(play, 'rock')[0].id;
     play = act(play, [{ kind: 'setUses', copyId: rockId, uses: 1 }], list);
-    expect(play.skipped).toEqual([`Inventory (panel) skipped setUses: Item Copy ${rockId} has no Uses`]);
+    expect(play.skipped).toEqual([`Inventory (panel) skipped setUses: Item Instance ${rockId} has no Uses`]);
   });
 });

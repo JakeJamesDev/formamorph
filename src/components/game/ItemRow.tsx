@@ -25,7 +25,7 @@ function CutRowName({ name, onOpen }: { name: string; onOpen: () => void }) {
   );
 }
 
-/** One Item Copy in a list. Pressing the row opens the item popup. `line` is the second line, and `wrapName` wraps the name instead of cutting it. */
+/** One Item Instance in a list. Pressing the row opens the item popup. `line` is the second line, and `wrapName` wraps the name instead of cutting it. */
 export function ItemRow({ name, shown, state, quantity, bound, line, wrapName, onOpen, actions }: {
   name: string;
   shown: ShownItemIcon;

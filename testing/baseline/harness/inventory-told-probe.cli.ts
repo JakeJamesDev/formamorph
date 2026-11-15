@@ -25,7 +25,7 @@ import { resolveEntityText } from '@/lib/placeholders';
 import { PROMPT_SAMPLER_PINS } from '@/lib/promptSamplers';
 import { inventoryRequest } from '@/lib/turnPipeline/turnPasses';
 import { migrateWorld } from '@/lib/version';
-import type { ChatMessage, Entity, Item, ItemCopy, ItemCopyWhere, Slot } from '@/types';
+import type { ChatMessage, Entity, Item, ItemInstance, ItemInstanceWhere, Slot } from '@/types';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
@@ -39,19 +39,19 @@ const pool = Number(argVal('--pool', '4'));
 const only = argVal('--only', '');
 const SEED = 313131;
 
-type CopySpec = { item: string; where: string; equipped?: boolean; quantity?: number; hidden?: boolean };
+type InstanceSpec = { item: string; where: string; equipped?: boolean; quantity?: number; hidden?: boolean };
 type Expect = { item: string; where: string; quantity?: number };
-type Case = { id: string; action: string; narration: string; told: ToldAction[]; held: Record<string, CopySpec[]>; expect: Expect[] };
+type Case = { id: string; action: string; narration: string; told: ToldAction[]; held: Record<string, InstanceSpec[]>; expect: Expect[] };
 
 const BASELINE = path.resolve('testing/baseline');
 const world = migrateWorld(JSON.parse(readFileSync(path.join(BASELINE, 'sedge-landing.json'), 'utf8')));
 const fixture = JSON.parse(readFileSync(path.join(BASELINE, 'inventory-pass-cases.json'), 'utf8')) as {
   items: Omit<Item, 'statEffects' | 'traitEffects' | 'equipRequires'>[];
   slots: Slot[];
-  copies: CopySpec[];
+  instances: InstanceSpec[];
 };
 const items: Item[] = fixture.items.map((item) => ({ ...item, statEffects: [], traitEffects: [], equipRequires: [] }));
-const whereOf = (where: string): ItemCopyWhere => (
+const whereOf = (where: string): ItemInstanceWhere => (
   where === 'you' ? { kind: 'you' } : where.startsWith('loc-') ? { kind: 'location', id: where } : { kind: 'entity', id: where }
 );
 
@@ -88,8 +88,8 @@ const CASES: Case[] = [
   },
 ].filter((c) => !only || c.id === only);
 
-const startOf = (c: Case): ItemCopy[] => [
-  ...fixture.copies.filter((spec) => !c.held[spec.item]),
+const startOf = (c: Case): ItemInstance[] => [
+  ...fixture.instances.filter((spec) => !c.held[spec.item]),
   ...Object.values(c.held).flat(),
 ].map((spec, i) => ({
   id: `c${i}`, item: { kind: 'item', itemId: spec.item }, where: whereOf(spec.where), quantity: spec.quantity ?? 1,
@@ -114,7 +114,7 @@ const pin = PROMPT_SAMPLER_PINS.inventory;
 async function send(c: Case, seed: number): Promise<string> {
   const request = inventoryRequest(
     { system: defaultInventoryPrompt, user: defaultInventoryUserPrompt },
-    { ctx: chipValues({ ...baseScene, items, itemCopies: startOf(c) }), action: c.action, narration: c.narration },
+    { ctx: chipValues({ ...baseScene, items, itemInstances: startOf(c) }), action: c.action, narration: c.narration },
     { textPass: false, quiet: false },
   );
   for (let attempt = 0; ; attempt++) {
@@ -136,9 +136,9 @@ async function send(c: Case, seed: number): Promise<string> {
   }
 }
 
-const rowsOf = (copies: readonly ItemCopy[], itemId: string) => copies
-  .filter((copy) => copy.item.kind === 'item' && copy.item.itemId === itemId)
-  .map((copy) => JSON.stringify([copy.where, copy.quantity])).sort();
+const rowsOf = (instances: readonly ItemInstance[], itemId: string) => instances
+  .filter((instance) => instance.item.kind === 'item' && instance.item.itemId === itemId)
+  .map((instance) => JSON.stringify([instance.where, instance.quantity])).sort();
 
 /** Whether the reply, applied with or without the guard, leaves exactly the expected rows. */
 function right(c: Case, raw: string, rule: boolean): boolean {
@@ -148,8 +148,8 @@ function right(c: Case, raw: string, rule: boolean): boolean {
     ...(rule && { told: c.told }),
   }, { world: { items, slots: fixture.slots }, newId: (() => { let i = 0; return () => `n${i++}`; })() });
   const named = new Set([...c.expect.map((e) => e.item), ...Object.keys(c.held)]);
-  const others = items.every((item) => named.has(item.id) || JSON.stringify(rowsOf(result.copies, item.id)) === JSON.stringify(rowsOf(start, item.id)));
-  return others && [...named].every((id) => JSON.stringify(rowsOf(result.copies, id))
+  const others = items.every((item) => named.has(item.id) || JSON.stringify(rowsOf(result.instances, item.id)) === JSON.stringify(rowsOf(start, item.id)));
+  return others && [...named].every((id) => JSON.stringify(rowsOf(result.instances, id))
     === JSON.stringify(c.expect.filter((e) => e.item === id).map((e) => JSON.stringify([whereOf(e.where), e.quantity ?? 1])).sort()));
 }
 

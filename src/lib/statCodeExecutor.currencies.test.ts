@@ -5,7 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { executeStatCode, type SandboxEntity, type SandboxItem, type StatCodeRunOptions } from './statCodeExecutor';
 import { scriptMoney, type ScriptMoneyState } from './scriptMoney';
-import type { Currency, Item, ItemCopy, ItemCopyWhere, PlayerStat, Stat } from '@/types';
+import type { Currency, Item, ItemInstance, ItemInstanceWhere, PlayerStat, Stat } from '@/types';
 
 const item = (id: string, name: string): Item => ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], stackable: true });
 const items = [item('copper', 'Copper'), item('silver', 'Silver'), item('gold', 'Gold')];
@@ -23,10 +23,10 @@ const hero: SandboxEntity = { id: 'e-hero', name: 'Hero', traits: [] };
 const funds = (value: number, over: Partial<PlayerStat> = {}): PlayerStat =>
   ({ id: 'funds', name: 'Funds', type: 'number', description: '', min: 0, max: 1000, value, regen: 0, descriptors: [], ...over });
 
-const moneyCopy = (id: string, itemId: string, where: ItemCopyWhere, quantity: number): ItemCopy =>
+const moneyInstance = (id: string, itemId: string, where: ItemInstanceWhere, quantity: number): ItemInstance =>
   ({ id, item: { kind: 'item', itemId }, where, quantity, visibility: 'visible' });
 
-const sandboxBackingItem = (copy: ItemCopy): SandboxItem['copies'][number] =>
+const sandboxBackingItem = (copy: ItemInstance): SandboxItem['copies'][number] =>
   ({ id: copy.id, where: copy.where, quantity: copy.quantity, equipped: false, slot: '', occupies: [], allowed: [], hidden: false });
 
 const health: Stat = { id: 'h', name: 'Health', type: 'number', description: '', min: 0, max: 100, value: 10, regen: 0, descriptors: [] };
@@ -35,11 +35,11 @@ const kinds = (currencies: readonly Currency[]) => currencies.map((c) => ({ id: 
 
 /** A run over a world with one Currency of each backing. The player holds 1 Gold; the Keeper is placed with Copper. */
 function run(code: string, state: Partial<ScriptMoneyState> = {}, over: Partial<StatCodeRunOptions> = {}) {
-  const copies = state.copies ?? [moneyCopy('c-gold', 'gold', { kind: 'you' }, 1), moneyCopy('c-copper', 'copper', { kind: 'entity', id: 'e-keeper' }, 3)];
+  const copies = state.instances ?? [moneyInstance('c-gold', 'gold', { kind: 'you' }, 1), moneyInstance('c-copper', 'copper', { kind: 'entity', id: 'e-keeper' }, 3)];
   const money = scriptMoney({
     currencies: [MONEY, CREDITS, GOATS], items, itemNames: items, slots: [],
     placements: [{ id: 'p', source: { kind: 'item', itemId: 'copper' }, where: { kind: 'entity', id: 'e-keeper' }, quantity: 3 }],
-    copies, stats: { globalStats: [], entityStats: { 'e-hero': [funds(50)], 'e-keeper': [funds(5)] } },
+    instances: copies, stats: { globalStats: [], entityStats: { 'e-hero': [funds(50)], 'e-keeper': [funds(5)] } },
     playedIds: ['e-hero'], statsOn: (_id, stats) => stats,
     ...state,
   });
@@ -165,7 +165,7 @@ describe('executeStatCode currencies', () => {
   it('does not let a second payment spend the change the first made, and says the next script can', async () => {
     const res = await run(`
       if (!currencies.Coin.pay(persona, null, 5).paid) throw new Error('first');
-      // 95 of change is held now, and the run cannot name those copies yet.
+      // 95 of change is held now, and the run cannot name those instances yet.
       const second = currencies.Coin.pay(persona, null, 50);
       if (second.paid) throw new Error('second should refuse');
       if (second.reason !== "this script can't spend the items it just made, but the next script can") throw new Error(second.reason);
@@ -180,7 +180,7 @@ describe('executeStatCode currencies', () => {
       const over = currencies.Coin.pay(persona, null, 103);
       if (over.reason !== "this script can't spend the items it just made, but the next script can") throw new Error(over.reason);
       const never = currencies.Coin.pay(persona, null, 500);
-      if (never.paid || never.reason === over.reason) throw new Error('a sum no copy covers keeps its own reason');
+      if (never.paid || never.reason === over.reason) throw new Error('a sum no instance covers keeps its own reason');
     `);
     expect(res.error).toBeNull();
   });
@@ -189,7 +189,7 @@ describe('executeStatCode currencies', () => {
     const res = await run(`
       persona.items[0].lose();
       if (currencies.Coin.balance(persona) !== 0) throw new Error('balance');
-      if (currencies.Coin.pay(persona, null, 5).paid) throw new Error('a lost copy should not pay');
+      if (currencies.Coin.pay(persona, null, 5).paid) throw new Error('a lost instance should not pay');
     `);
     expect(res.error).toBeNull();
   });
@@ -219,7 +219,7 @@ describe('executeStatCode currencies', () => {
   it('reads a script’s own `self.value` write in balance', async () => {
     const purse = funds(50);
     const money = scriptMoney({
-      currencies: [CREDITS], items, itemNames: items, slots: [], placements: [], copies: [],
+      currencies: [CREDITS], items, itemNames: items, slots: [], placements: [], instances: [],
       stats: { globalStats: [purse], entityStats: {} }, playedIds: ['e-hero'], statsOn: (_id, stats) => stats,
     });
     const res = await executeStatCode(`

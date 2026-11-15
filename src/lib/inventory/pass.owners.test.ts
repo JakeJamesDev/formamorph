@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { encodePlaceholderToken, resolvePlaceholders } from '@/lib/placeholders';
 import { resolveEntityNames } from '@/lib/resolveWorldNames';
 import { phValues } from '@/test/placeholderValues';
-import type { Entity, InventoryPassOp, Item, ItemCopy } from '@/types';
+import type { Entity, InventoryPassOp, Item, ItemInstance } from '@/types';
 import { applyInventoryPass, passOwners, type PassScene } from '.';
 
 const FIRST = { id: 'ph-first', name: 'First Name', values: phValues(['Wren']) };
@@ -13,7 +13,7 @@ const entity = (over: Partial<Entity>): Entity =>
 
 const tonic: Item = { id: 'tonic', name: 'Tonic', statEffects: [], traitEffects: [], equipRequires: [] };
 const you = { kind: 'you' } as const;
-const copy = (id: string, where: ItemCopy['where']): ItemCopy =>
+const instance = (id: string, where: ItemInstance['where']): ItemInstance =>
   ({ id, item: { kind: 'item', itemId: 'tonic' }, where, quantity: 1, visibility: 'visible' });
 const op = (kind: InventoryPassOp['op'], over: Partial<InventoryPassOp>): InventoryPassOp =>
   ({ op: kind, item: 'Tonic', quantity: 1, owner: '', to: '', ...over });
@@ -23,42 +23,42 @@ const [captain] = resolveEntityNames([entity({ id: 'captain', name: 'The Captain
 const stranger = entity({ id: 'hood', name: 'Odile', strangerName: 'a hooded woman' });
 const stored = [{ id: 'captain', name: captain.name }, { id: 'hood', name: 'Odile' }];
 
-const run = (copies: ItemCopy[], ops: InventoryPassOp[], storyAliases: Record<string, string> = {}, owners = stored, entities = [captain, stranger]) => {
+const run = (instances: ItemInstance[], ops: InventoryPassOp[], storyAliases: Record<string, string> = {}, owners = stored, entities = [captain, stranger]) => {
   const scene: PassScene = { items: [tonic], runtimeItems: [], playerNames: ['Ash'], owners: passOwners(owners, entities, storyAliases), location: null };
-  return applyInventoryPass(copies, ops, scene, { world: { items: [tonic] }, newId: () => 'n' });
+  return applyInventoryPass(instances, ops, scene, { world: { items: [tonic] }, newId: () => 'n' });
 };
-const whereOf = (result: ReturnType<typeof run>) => result.copies.map((c) => c.where);
+const whereOf = (result: ReturnType<typeof run>) => result.instances.map((c) => c.where);
 
 describe('Inventory owners by Alias (Q17)', () => {
   it('applies an op owned by an Alias built from a placeholder', () => {
     expect(captain.aliases).toEqual(['Wren']);
-    const result = run([copy('t', { kind: 'entity', id: 'captain' })], [op('lose', { owner: 'wren' })]);
+    const result = run([instance('t', { kind: 'entity', id: 'captain' })], [op('lose', { owner: 'wren' })]);
     expect(result.diagnostics).toEqual([]);
-    expect(result.copies).toEqual([]);
+    expect(result.instances).toEqual([]);
   });
 
   it('applies a transfer whose `to` is an Alias, and a gain to one', () => {
-    const result = run([copy('t', you)], [op('transfer', { owner: 'you', to: 'Wren' }), op('gain', { to: 'Wren' })]);
+    const result = run([instance('t', you)], [op('transfer', { owner: 'you', to: 'Wren' }), op('gain', { to: 'Wren' })]);
     expect(result.diagnostics).toEqual([]);
     expect(whereOf(result)).toEqual([{ kind: 'entity', id: 'captain' }]);
-    expect(result.copies[0].quantity).toBe(2);
+    expect(result.instances[0].quantity).toBe(2);
   });
 
   it("applies an op owned by a stranger's Stranger Name, and by its latest story alias, met or not (Q19)", () => {
-    const byName = run([copy('t', you)], [op('transfer', { owner: 'you', to: 'A Hooded Woman' })]);
+    const byName = run([instance('t', you)], [op('transfer', { owner: 'you', to: 'A Hooded Woman' })]);
     expect(byName.diagnostics).toEqual([]);
     expect(whereOf(byName)).toEqual([{ kind: 'entity', id: 'hood' }]);
     const aliased = { hood: 'the veiled courier' };
-    const both = run([copy('t', you), copy('u', you)], [
+    const both = run([instance('t', you), instance('u', you)], [
       op('transfer', { owner: 'you', to: 'the veiled courier' }), op('transfer', { owner: 'you', to: 'a hooded woman' }),
     ], aliased);
     expect(both.diagnostics).toEqual([]);
     expect(whereOf(both)).toEqual([{ kind: 'entity', id: 'hood' }]);
-    expect(both.copies[0].quantity).toBe(2);
+    expect(both.instances[0].quantity).toBe(2);
   });
 
   it('still skips a name no present owner carries, with the same reason', () => {
-    const result = run([copy('t', you)], [op('transfer', { owner: 'you', to: 'Odette' })]);
+    const result = run([instance('t', you)], [op('transfer', { owner: 'you', to: 'Odette' })]);
     expect(result.diagnostics).toEqual(['Inventory (pass) skipped transfer "Tonic": nothing present is named "Odette"']);
     expect(whereOf(result)).toEqual([you]);
   });
@@ -68,9 +68,9 @@ describe('Inventory owners by Alias (Q17)', () => {
     const twin = entity({ id: 'twin', name: 'The Twin', aliases: ['Wren'] });
     const entities = [captain, wren, twin];
     const give = [op('transfer', { owner: 'you', to: 'Wren' })];
-    const named = run([copy('t', you)], give, {}, [{ id: 'captain', name: captain.name }, { id: 'wren', name: 'Wren' }], entities);
+    const named = run([instance('t', you)], give, {}, [{ id: 'captain', name: captain.name }, { id: 'wren', name: 'Wren' }], entities);
     expect(whereOf(named)).toEqual([{ kind: 'entity', id: 'wren' }]);
-    const shared = run([copy('t', you)], give, {}, [{ id: 'captain', name: captain.name }, { id: 'twin', name: 'The Twin' }], entities);
+    const shared = run([instance('t', you)], give, {}, [{ id: 'captain', name: captain.name }, { id: 'twin', name: 'The Twin' }], entities);
     expect(shared.diagnostics).toEqual(['Inventory (pass) skipped transfer "Tonic": nothing present is named "Wren"']);
   });
 

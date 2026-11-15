@@ -304,7 +304,7 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = withAccess([
 
 /** The members of one Item Copy, in `items[x].copies`, an entity's `items` or a location's `items`. The fields are
  *  read-only; a verb's change applies when the script ends. */
-export const ITEM_COPY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
+export const ITEM_INSTANCE_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'Unique id of the Item Copy' },
   { name: 'item', detail: 'string', info: 'Code name of its item, a key of items' },
   { name: 'owner', detail: 'string', info: 'Code name of the entity that owns it, the persona included, or empty while it lies at a location' },

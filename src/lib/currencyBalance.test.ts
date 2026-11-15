@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { SlotOwner } from '@/lib/bodies';
 import { seedWorldEntityStats } from '@/lib/entityStats';
 import { blankItem } from '@/lib/items';
-import type { Currency, Entity, EntityStatValues, ItemCopy, Placement, PlayerStat, Stat, StatGroup, StatLink } from '@/types';
+import type { Currency, Entity, EntityStatValues, ItemInstance, Placement, PlayerStat, Stat, StatGroup, StatLink } from '@/types';
 import { balanceOf, balanceRows, balanceText, type BalanceState } from './currency';
 
 const ITEMS = [blankItem('copper', 'Copper'), blankItem('gold', 'Gold'), blankItem('ruby', 'Ruby'), blankItem('rope', 'Rope')];
@@ -14,39 +14,39 @@ const GOATS: Currency = { id: 'goats', name: 'Goats', backing: { kind: 'name' } 
 const YOU: SlotOwner = { kind: 'you' };
 const MERCHANT: SlotOwner = { kind: 'entity', id: 'merchant' };
 let next = 0;
-const copy = (itemId: string, where: ItemCopy['where'], quantity: number, over: Partial<ItemCopy> = {}): ItemCopy =>
+const instance = (itemId: string, where: ItemInstance['where'], quantity: number, over: Partial<ItemInstance> = {}): ItemInstance =>
   ({ id: `c${next++}`, item: { kind: 'item', itemId }, where, quantity, visibility: 'visible', ...over });
 const placed = (itemId: string, where: Placement['where'], hidden = false): Placement =>
   ({ id: `p${next++}`, where, quantity: 1, ...(hidden && { hidden }), source: { kind: 'item', itemId } });
 const row = (id: string, value: number): Pick<PlayerStat, 'id' | 'value'> => ({ id, value });
-const state = (over: Partial<BalanceState> = {}): BalanceState => ({ copies: [], placements: [], globalStats: [], statsOf: () => [], ...over });
+const state = (over: Partial<BalanceState> = {}): BalanceState => ({ instances: [], placements: [], globalStats: [], statsOf: () => [], ...over });
 
 describe('Balance by Currency Items', () => {
   it('adds each item stack at the owner by its worth, and leaves other owners and items out', () => {
     expect(balanceOf(MONEY, YOU, state({
-      copies: [copy('copper', YOU, 5), copy('gold', YOU, 2), copy('rope', YOU, 3), copy('gold', MERCHANT, 9), copy('gold', { kind: 'location', id: 'yard' }, 9)],
+      instances: [instance('copper', YOU, 5), instance('gold', YOU, 2), instance('rope', YOU, 3), instance('gold', MERCHANT, 9), instance('gold', { kind: 'location', id: 'yard' }, 9)],
     }))).toEqual({ tracked: true, amount: 205 });
   });
 
   it('leaves out a hidden coin', () => {
-    expect(balanceOf(MONEY, YOU, state({ copies: [copy('copper', YOU, 5), copy('gold', YOU, 1, { visibility: 'hidden' })] })))
+    expect(balanceOf(MONEY, YOU, state({ instances: [instance('copper', YOU, 5), instance('gold', YOU, 1, { visibility: 'hidden' })] })))
       .toEqual({ tracked: true, amount: 5 });
   });
 
   it('leaves out an unidentified coin', () => {
-    expect(balanceOf(MONEY, YOU, state({ copies: [copy('copper', YOU, 5), copy('gold', YOU, 1, { state: { unidentified: true } })] })))
+    expect(balanceOf(MONEY, YOU, state({ instances: [instance('copper', YOU, 5), instance('gold', YOU, 1, { state: { unidentified: true } })] })))
       .toEqual({ tracked: true, amount: 5 });
   });
 
   it('counts a Bound coin', () => {
     const bound = { ...blankItem('copper', 'Copper'), bound: true };
-    const rows = balanceRows([MONEY], state({ copies: [copy(bound.id, YOU, 3)] }), [bound]);
+    const rows = balanceRows([MONEY], state({ instances: [instance(bound.id, YOU, 3)] }), [bound]);
     expect(rows).toEqual([{ currencyId: 'coin', name: 'Coin', amount: '3 Copper' }]);
   });
 
   it('leaves out a runtime item', () => {
-    const runtime: ItemCopy = { ...copy('copper', YOU, 5), item: { kind: 'runtime', runtimeItemId: 'copper' } };
-    expect(balanceOf(MONEY, YOU, state({ copies: [runtime] }))).toEqual({ tracked: true, amount: 0 });
+    const runtime: ItemInstance = { ...instance('copper', YOU, 5), item: { kind: 'runtime', runtimeItemId: 'copper' } };
+    expect(balanceOf(MONEY, YOU, state({ instances: [runtime] }))).toEqual({ tracked: true, amount: 0 });
   });
 
   it('reads the player with no items as 0, not untracked', () => {
@@ -54,7 +54,7 @@ describe('Balance by Currency Items', () => {
   });
 
   it('reads an entity with no Placement of an item as untracked, even holding items it gained in play', () => {
-    expect(balanceOf(MONEY, MERCHANT, state({ copies: [copy('gold', MERCHANT, 4)] }))).toEqual({ tracked: false });
+    expect(balanceOf(MONEY, MERCHANT, state({ instances: [instance('gold', MERCHANT, 4)] }))).toEqual({ tracked: false });
   });
 
   it('reads a merchant who spent an authored purse as 0, so they can run out', () => {
@@ -63,8 +63,8 @@ describe('Balance by Currency Items', () => {
 
   it('tracks a hidden purse, and reads its items only once they are revealed', () => {
     const placements = [placed('gold', MERCHANT, true)];
-    expect(balanceOf(MONEY, MERCHANT, state({ placements, copies: [copy('gold', MERCHANT, 2, { visibility: 'hidden' })] }))).toEqual({ tracked: true, amount: 0 });
-    expect(balanceOf(MONEY, MERCHANT, state({ placements, copies: [copy('gold', MERCHANT, 2)] }))).toEqual({ tracked: true, amount: 200 });
+    expect(balanceOf(MONEY, MERCHANT, state({ placements, instances: [instance('gold', MERCHANT, 2, { visibility: 'hidden' })] }))).toEqual({ tracked: true, amount: 0 });
+    expect(balanceOf(MONEY, MERCHANT, state({ placements, instances: [instance('gold', MERCHANT, 2)] }))).toEqual({ tracked: true, amount: 200 });
   });
 
   it.each<[string, Placement]>([
@@ -134,7 +134,7 @@ describe('balanceText', () => {
 
 describe('balanceRows', () => {
   it('lists each tracked Currency in world order, name-only and untracked left out', () => {
-    const rows = balanceRows([CREDITS, GOATS, MONEY, GEMS], state({ copies: [copy('copper', YOU, 105)], statsOf: () => [row('funds', 40.4)] }), ITEMS);
+    const rows = balanceRows([CREDITS, GOATS, MONEY, GEMS], state({ instances: [instance('copper', YOU, 105)], statsOf: () => [row('funds', 40.4)] }), ITEMS);
     expect(rows).toEqual([
       { currencyId: 'credits', name: 'Credits', amount: '40' },
       { currencyId: 'coin', name: 'Coin', amount: '1 Gold, 5 Copper' },

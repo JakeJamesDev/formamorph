@@ -34,7 +34,7 @@ let live: ReturnType<typeof useGameplay> | null = null;
 const Probe = () => { live = useGameplay(); return null; };
 const balance = (owner: SlotOwner) => {
   if (!live) throw new Error('no gameplay yet');
-  return balanceOf(money, owner, { copies: live.itemCopies, placements: world.placements ?? [], globalStats: [], statsOf: () => [] });
+  return balanceOf(money, owner, { instances: live.itemInstances, placements: world.placements ?? [], globalStats: [], statsOf: () => [] });
 };
 
 /** Every owner's picks at setup, as Enter World gives them: their defaults under `persona`, with each named

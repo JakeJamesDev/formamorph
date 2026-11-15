@@ -45,7 +45,7 @@ const gameplay = () => {
   return live;
 };
 const statNow = (id: string) => gameplay().globalStats.find((s) => s.id === id)?.value;
-const moneyOf = (where: string) => Object.fromEntries(gameplay().itemCopies
+const moneyOf = (where: string) => Object.fromEntries(gameplay().itemInstances
   .filter((c) => (c.where.kind === 'entity' ? c.where.id : c.where.kind) === where)
   .map((c) => [c.item.kind === 'item' ? c.item.itemId : '', c.quantity]));
 

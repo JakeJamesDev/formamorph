@@ -34,7 +34,7 @@ const flipping = script('flip', 'switch', `
   stats.Runs.value += 1;
   if (stats.Runs.value < ${SWITCH_RUN_TOTAL * 3}) {
     if (trait.name === 'Lever' && trait.enabled) items.Charm.give(persona);
-    if (trait.name === 'Sworn' && trait.enabled) persona.items.find((copy) => copy.item === 'Charm').lose();
+    if (trait.name === 'Sworn' && trait.enabled) persona.items.find((instance) => instance.item === 'Charm').lose();
     if (trait.name === 'Sworn' && !trait.enabled) items.Charm.give(persona);
   }
 `);
@@ -51,7 +51,7 @@ const gameplay = () => {
   return live;
 };
 const statNow = (id: string) => gameplay().globalStats.find((s) => s.id === id)?.value ?? 0;
-const charms = () => gameplay().itemCopies.filter((copy) => copy.item.kind === 'item' && copy.item.itemId === 'charm');
+const charms = () => gameplay().itemInstances.filter((instance) => instance.item.kind === 'item' && instance.item.itemId === 'charm');
 const swornOn = () => !!gameplay().ownedTraits.ash?.granted?.includes('sworn');
 
 async function clickTrait(name: string) {
@@ -107,7 +107,7 @@ describe('a flip loop from a panel toggle', () => {
     expect(await runsWhenQuiet(SWITCH_RUN_TOTAL)).toBe(SWITCH_RUN_TOTAL);
     expect(totalWarnings(warn)).toBe(1);
     expect(error).not.toHaveBeenCalled();
-    // The last switch applied with no script, so the trait follows what the Item Copies hold.
+    // The last switch applied with no script, so the trait follows what the Item Instances hold.
     expect(swornOn()).toBe(charms().length > 0);
   });
 
@@ -146,7 +146,7 @@ describe('a flip loop from a panel toggle', () => {
       placements: [{ id: 'p-ring', where: { kind: 'you' }, quantity: 1, equipped: true, source: { kind: 'item', itemId: 'ring' } }],
       traits: [toggle('lever', 'Lever'), { ...toggle('spark', 'Spark'), playerToggle: false }],
     }), ['lever']);
-    await waitFor(() => expect(gameplay().itemCopies.filter((copy) => copy.equipped)).toHaveLength(1));
+    await waitFor(() => expect(gameplay().itemInstances.filter((instance) => instance.equipped)).toHaveLength(1));
     await clickTrait('Lever');
     expect(await runsWhenQuiet(SWITCH_RUN_TOTAL)).toBe(SWITCH_RUN_TOTAL);
   });

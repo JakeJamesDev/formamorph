@@ -86,7 +86,7 @@ import { HelpButton } from '../HelpButton';
 import { AllowanceRing } from './AllowanceRing';
 import { EditTextModal } from '../modals/EditTextModal';
 import { visibleItemImage } from '@/lib/imageVisibility';
-import type { Entity, ItemCopy, PersonaRef, Stat, StatGroup, Trait } from '@/types';
+import type { Entity, ItemInstance, PersonaRef, Stat, StatGroup, Trait } from '@/types';
 import { gateStates } from '@/lib/traitGates';
 import { worldEntitiesOf } from '@/lib/persona';
 import type { TraitCascade } from './SetupTraitList';
@@ -1418,7 +1418,7 @@ export const RightPanel = ({
     statDeltas,
     personaRef,
     setSelectedEntityId,
-    itemCopies,
+    itemInstances,
     viewWorldOptionValues,
   } = useGameplay();
   const worldItems = useGameDataOptional()?.items;
@@ -1498,9 +1498,9 @@ export const RightPanel = ({
   const daypart = daypartAt(gameTime, calendar);
   const gateWorld = React.useMemo<TraitWorld>(() => ({
     traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' }, daypart,
-    ...(worldItems ? { items: worldItems } : {}), itemCopies, options: worldOptions, optionValues: viewWorldOptionValues,
+    ...(worldItems ? { items: worldItems } : {}), itemInstances, options: worldOptions, optionValues: viewWorldOptionValues,
     ...inPlayOwners(ownerWorld, personaRef, traitLibrary),
-  }), [traits, traitGroups, cast, persona, personaRef, daypart, worldItems, itemCopies, worldOptions, viewWorldOptionValues, ownerWorld, traitLibrary]);
+  }), [traits, traitGroups, cast, persona, personaRef, daypart, worldItems, itemInstances, worldOptions, viewWorldOptionValues, ownerWorld, traitLibrary]);
   const viewTraitState = React.useMemo(
     () => ({ traits: globalTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits }),
     [globalTraits, viewDisabledTraitIds, viewOwnedTraits],
@@ -1521,10 +1521,10 @@ export const RightPanel = ({
     (ownerId: string) => entityStatTraitsInForce(viewOwnedTraits, gateWorld, ownerId),
     [viewOwnedTraits, gateWorld],
   );
-  const itemImageOf = React.useCallback((copy: ItemCopy) => {
-    const ref = copy.item;
+  const itemImageOf = React.useCallback((instance: ItemInstance) => {
+    const ref = instance.item;
     const item = ref.kind === 'item' ? worldItems?.find((i) => i.id === ref.itemId) : undefined;
-    return item && visibleItemImage(item, copy, gateInput);
+    return item && visibleItemImage(item, instance, gateInput);
   }, [worldItems, gateInput]);
   const inventory = useInventoryPanel(inventorySettle, itemImageOf);
   // Listed actions wait while a turn or an earlier action's scripts run (Q13).
@@ -1543,7 +1543,7 @@ export const RightPanel = ({
   // The listed entities the player doesn't play. Each tab shows the picker only when one of them has something there.
   const otherOptions = entityOptions.filter((option) => !playedOwners.some((owner) => owner.entity.id === option.id));
   const entitiesShowTraits = otherOptions.some((option) => traitTree.entityNodes.has(option.id));
-  const entitiesShowWorn = otherOptions.some((option) => visibleWorn(itemCopies, { kind: 'entity', id: option.id }).length > 0);
+  const entitiesShowWorn = otherOptions.some((option) => visibleWorn(itemInstances, { kind: 'entity', id: option.id }).length > 0);
   // Only listed entities follow the pick: a library owner out of the scene has no picker row to reach it by.
   const hiddenTraitOwners = new Set(otherOptions.filter((option) => option.id !== shownEntity?.id).map((option) => option.id));
   const entityPicker = (
@@ -1574,10 +1574,10 @@ export const RightPanel = ({
     .filter(({ stat }) => statEnabled[stat.id] !== false && stat.hidden !== true);
   // Only stats the player can see count here, so a hidden or switched-off backing stat has no row.
   const balances = balanceRows(inventory.currencies ?? [], {
-    copies: inventory.copies, placements: [], globalStats: visibleStats.map(({ stat }) => stat), statsOf: () => playedOwners.flatMap((owner) => owner.rows),
+    instances: inventory.instances, placements: [], globalStats: visibleStats.map(({ stat }) => stat), statsOf: () => playedOwners.flatMap((owner) => owner.rows),
   }, inventory.items);
   // A world with no items and no money keeps its three tabs.
-  const hasInventory = inventory.items.length > 0 || inventory.copies.length > 0 || balances.length > 0;
+  const hasInventory = inventory.items.length > 0 || inventory.instances.length > 0 || balances.length > 0;
   // Whether the descriptor line is part of this world's stat list at all. Held across every row so the list
   // keeps its shape as values move in and out of bands; a world that names none of them pays nothing, and a
   // stat the player never sees can't put the line there for the ones they do.
@@ -1806,7 +1806,7 @@ export const RightPanel = ({
                     entity
                     className="mt-2"
                   >
-                    {visibleWorn(itemCopies, { kind: 'entity', id: entitySection.entity.id }).length === 0 ? (
+                    {visibleWorn(itemInstances, { kind: 'entity', id: entitySection.entity.id }).length === 0 ? (
                       <p role="status" className="px-2 py-2 text-label text-muted-foreground">Nothing equipped.</p>
                     ) : (
                       <div className="px-2 py-1"><EntityEquipped entity={entitySection.entity} /></div>

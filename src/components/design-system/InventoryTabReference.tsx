@@ -11,7 +11,7 @@ import { applyInventoryOps, type InventoryOp, type TimedEffectView } from '@/lib
 import { ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
 import { randomUUID } from '@/lib/uuid';
 import { bodySlots, parseBodies } from '@/lib/bodies';
-import type { Body, Item, ItemCopy, Slot } from '@/types';
+import type { Body, Item, ItemInstance, Slot } from '@/types';
 
 const SLOTS: Slot[] = [{ id: 'hand', name: 'Main Hand' }, { id: 'off-hand', name: 'Off Hand' }, { id: 'ring', name: 'Ring' }];
 const BODIES: Body[] = parseBodies([{
@@ -36,7 +36,7 @@ const art = (width: number, height: number, fill: string) =>
   `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="${fill}"/></svg>`)}`;
 const ART: Record<string, string> = { sword: art(360, 720, '#8a9bb0'), ring: art(240, 720, '#c9b458') };
 const you = { kind: 'you' } as const;
-const START: ItemCopy[] = [
+const START: ItemInstance[] = [
   { id: 's', item: { kind: 'item', itemId: 'sword' }, where: you, quantity: 1, visibility: 'visible', equipped: { slotId: 'hand', order: 1 } },
   { id: 't', item: { kind: 'item', itemId: 'tonic' }, where: you, quantity: 5, visibility: 'visible' },
   { id: 'w', item: { kind: 'item', itemId: 'wand' }, where: you, quantity: 1, visibility: 'visible', state: { uses: 2 } },
@@ -71,15 +71,15 @@ const Strip = ({ width }: { width: number }) => (
   </div>
 );
 
-/** The game panel's Inventory tab on sample Item Copies. Its buttons run the real Inventory module on local
- *  state, and Drop leaves Item Copies in the Here section. */
+/** The game panel's Inventory tab on sample Item Instances. Its buttons run the real Inventory module on local
+ *  state, and Drop leaves Item Instances in the Here section. */
 export function InventoryTabReference() {
-  const [copies, setCopies] = useState(START);
+  const [instances, setInstances] = useState(START);
   const [busy, setBusy] = useState(false);
-  const onOps = (ops: InventoryOp[]) => setCopies((now) => applyInventoryOps(now, ops, {
+  const onOps = (ops: InventoryOp[]) => setInstances((now) => applyInventoryOps(now, ops, {
     world: { items: ITEMS, slots: SLOTS, bodies: BODIES }, source: 'panel', newId: randomUUID,
     presence: { locationId: HERE, entityIds: new Set(PRESENT.map((e) => e.id)) },
-  }).copies);
+  }).instances);
   return (
     <Card>
       <CardHeader>
@@ -109,14 +109,14 @@ export function InventoryTabReference() {
           </div>
           <InventoryTab
             ownerName="Kate"
-            copies={copies.filter((c) => c.where.kind === 'you')}
-            lying={copies.filter((c) => c.where.kind === 'location')}
+            instances={instances.filter((c) => c.where.kind === 'you')}
+            lying={instances.filter((c) => c.where.kind === 'location')}
             items={ITEMS}
             balances={BALANCES}
             body={BODIES[0]}
             slots={BODY_SLOTS}
             worldSlots={SLOTS}
-            imageOf={(copy) => (copy.item.kind === 'item' ? ART[copy.item.itemId] : undefined)}
+            imageOf={(instance) => (instance.item.kind === 'item' ? ART[instance.item.itemId] : undefined)}
             present={PRESENT}
             locationId={HERE}
             locationName="Sample Room"

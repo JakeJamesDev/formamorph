@@ -66,7 +66,7 @@ export interface TurnSettings {
   characterDiaries: boolean;
   /** The Describe New Characters setting, which governs the discovery pass. */
   describeCharacters: boolean;
-  /** The world has authored items or the game has Item Copies (Q37). */
+  /** The world has authored items or the game has Item Instances (Q37). */
   inventoryDue: boolean;
   /** The inventory endpoint refused a response schema before, so the pass sends its text request alone. */
   inventoryTextPass: boolean;

@@ -51,7 +51,7 @@ export function personaHostStatSections(input: Pick<GateInput, 'owners' | 'entit
 }
 
 /**
- * The stats an item rule's Condition can read. The Item Copy's owner hosts the rule, so a Condition with no
+ * The stats an item rule's Condition can read. The Item Instance's owner hosts the rule, so a Condition with no
  * owner reads it (Q67): the first section gathers every stat an owner can have, global ones included, and
  * names no owner. Then the persona and each entity, for a Condition that names its owner.
  */

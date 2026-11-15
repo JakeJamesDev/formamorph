@@ -21,7 +21,7 @@ import { resolveEntityText } from '@/lib/placeholders';
 import { PROMPT_SAMPLER_PINS } from '@/lib/promptSamplers';
 import { inventoryRequest } from '@/lib/turnPipeline/turnPasses';
 import { migrateWorld } from '@/lib/version';
-import type { ChatMessage, Entity, Item, ItemCopy } from '@/types';
+import type { ChatMessage, Entity, Item, ItemInstance } from '@/types';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
@@ -45,7 +45,7 @@ const items: Item[] = [
   item('chest', 'Iron-Bound Chest', { stackable: false }),
   item('draught', 'Healing Draught', { uses: 1 }),
 ];
-const start: ItemCopy[] = [
+const start: ItemInstance[] = [
   ['oil', 'you'], ['lantern', 'you'], ['whetstone', 'you'], ['knife', 'you'], ['key', 'you'], ['draught', 'you'], ['chest', 'loc-sedge'],
 ].map(([itemId, where], i) => ({
   id: `c${i}`, item: { kind: 'item', itemId }, quantity: 1, visibility: 'visible',
@@ -75,7 +75,7 @@ const baseScene = authoredChipScene(world, {
   resolve: (text: string) => text,
   resolveEntity: (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders: [], rolls: {} }),
 });
-const ctx = chipValues({ ...baseScene, items, itemCopies: start });
+const ctx = chipValues({ ...baseScene, items, itemInstances: start });
 const owners = baseScene.presentIds.flatMap((id) => {
   const entity = world.entities.find((e) => e.id === id);
   return entity ? [{ id, name: entity.name }] : [];
@@ -121,8 +121,8 @@ async function send(request: ReturnType<typeof requestOf>, seed: number): Promis
   }
 }
 
-const itemIdOf = (copy: ItemCopy | undefined) => (copy?.item.kind === 'item' ? copy.item.itemId : undefined);
-const rows = (copies: readonly ItemCopy[]) => copies.map((c) => JSON.stringify([c.id, c.where, c.quantity, c.state ?? null])).sort();
+const itemIdOf = (instance: ItemInstance | undefined) => (instance?.item.kind === 'item' ? instance.item.itemId : undefined);
+const rows = (instances: readonly ItemInstance[]) => instances.map((c) => JSON.stringify([c.id, c.where, c.quantity, c.state ?? null])).sort();
 
 function score(c: Case, raw: string) {
   const result = applyInventoryPass(start, parseInventoryReply(raw), {
@@ -130,10 +130,10 @@ function score(c: Case, raw: string) {
   }, { world: { items }, newId: (() => { let i = 0; return () => `n${i++}`; })() });
   const used = result.events.filter((e) => e.timing === 'used');
   const spentIds = used.map((e) => e.itemId);
-  // Only the spent item's copy may change; a use leaves every other row as it was.
-  const spentCopy = start.find((s) => itemIdOf(s) === c.spent)!.id;
-  const others = (copies: readonly ItemCopy[]) => rows(copies.filter((x) => x.id !== spentCopy));
-  const spent = spentIds.length === 1 && spentIds[0] === c.spent && JSON.stringify(others(result.copies)) === JSON.stringify(others(start));
+  // Only the spent item's instance may change; a use leaves every other row as it was.
+  const spentInstance = start.find((s) => itemIdOf(s) === c.spent)!.id;
+  const others = (instances: readonly ItemInstance[]) => rows(instances.filter((x) => x.id !== spentInstance));
+  const spent = spentIds.length === 1 && spentIds[0] === c.spent && JSON.stringify(others(result.instances)) === JSON.stringify(others(start));
   const target = used.length === 1 && (itemIdOf(used[0].target) ?? null) === c.target;
   return { spent, target, note: `used ${spentIds.join(',') || '-'} → ${used.map((e) => itemIdOf(e.target) ?? '-').join(',') || '-'}` };
 }

@@ -176,8 +176,8 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Stat Condition](World-Editor-Traits#stat-conditions) | A Condition that compares a stat to a number, raw or as a percent of the stat's range. *Rage >= 80* |
 | [Visibility Rule](World-Editor-Entities#visibility-rules) | Rows on a gallery image that decide when it shows during the game. With no rows, it always shows. |
 | [Item](World-Editor-Items) | An object the player or an entity can own, with its own description, image and rules |
-| [Item Copy](World-Editor-Items) | One copy of an item in a game. An owner holds it, or it lies at a location. |
-| [Starting Items](World-Editor-Items#starting-items) | The Item Copies a new game starts with. Each one goes to the player, an entity or a location. |
+| [Item Instance](World-Editor-Items) | One instance of an item in a game. An owner holds it, or it lies at a location. |
+| [Starting Items](World-Editor-Items#starting-items) | The Item Instances a new game starts with. Each one goes to the player, an entity or a location. |
 | [Slot](World-Editor-Items#slots) | A named place that an item equips into, such as Hand |
 | [Body](World-Editor-Items#bodies) | The slots an owner has, and how many items each slot holds |
 | [Owner](World-Editor-Traits#whose-trait-counts) | The entity or dictionary that has a trait, a stat or a placeholder, as its own or through a link or copy. The played persona is the owner **Persona**. An item with no owner is global. |

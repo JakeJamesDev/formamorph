@@ -5,7 +5,7 @@ import { sseResponse, sseReply } from '@/test/aiTextFixtures';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { parseTurnContent } from '@/lib/turnDigest';
 import { IN_SCENE_TURNS } from '@/lib/presence';
-import type { Entity, Item, ItemCopy, PlayerStat, Script, World } from '@/types';
+import type { Entity, Item, ItemInstance, PlayerStat, Script, World } from '@/types';
 import { withFirstRoutine } from '@/lib/entityKind';
 
 /** The Inventory pass on a mounted game: its item timings, and the stats re-roll that replays it. */
@@ -36,8 +36,8 @@ const gameplay = () => {
   if (!live) throw new Error('no gameplay yet');
   return live;
 };
-/** Each Item Copy as item and place. */
-const held = (copies: readonly ItemCopy[]) => copies
+/** Each Item Instance as item and place. */
+const held = (instances: readonly ItemInstance[]) => instances
   .map((c) => `${c.item.kind === 'item' ? c.item.itemId : 'runtime'}@${c.where.kind}`).sort();
 const vigorNow = () => gameplay().globalStats.find((s) => s.id === 'vigor')?.value;
 
@@ -99,7 +99,7 @@ const presenceWorld = (code: string, entities: Entity[] = []): World => ({
 const ferrymanAt = (locationId: string) =>
   ({ id: 'ferryman', name: 'Ferryman', description: 'A gruff ferryman.', locations: [locationId] }) as Entity;
 const GIVE_KEY = JSON.stringify({ operations: [{ op: 'gain', item: 'Brass Key', quantity: 1, owner: '', to: 'Ferryman' }] });
-const placeOf = (itemId: string) => gameplay().itemCopies.find((c) => c.item.kind === 'item' && c.item.itemId === itemId)?.where;
+const placeOf = (itemId: string) => gameplay().itemInstances.find((c) => c.item.kind === 'item' && c.item.itemId === itemId)?.where;
 
 describe('a turn that starts with a discovered character', () => {
   it('asks whether they move while a recent turn names them, and never discovers them again', async () => {
@@ -150,7 +150,7 @@ describe('the Inventory pass in a turn', () => {
   it("lands the story's item, fires its When Gained script, and stores the operations on the turn", async () => {
     const calls = await playOneTurn();
     expect(calls.inventory).toBe(1);
-    await waitFor(() => expect(held(gameplay().itemCopies)).toEqual(['key@you', 'lantern@location']));
+    await waitFor(() => expect(held(gameplay().itemInstances)).toEqual(['key@you', 'lantern@location']));
     await waitFor(() => expect(vigorNow()).toBe(55));
     const turn = parseTurnContent(gameplay().fullMessageHistory.findLast((m) => m.role === 'assistant')?.content ?? '');
     expect(turn?.inventoryOps).toEqual([{ op: 'gain', item: 'Brass Key', quantity: 1, owner: '', to: 'you' }]);
@@ -172,7 +172,7 @@ describe('the stats re-roll', () => {
     await waitFor(() => expect(calls.stats).toBe(2));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
     await waitFor(() => expect(vigorNow()).toBe(55));
-    expect(held(gameplay().itemCopies)).toEqual(['key@you', 'lantern@location']);
+    expect(held(gameplay().itemInstances)).toEqual(['key@you', 'lantern@location']);
     // The re-roll replays the saved operations; it sends no second Inventory request.
     expect(calls.inventory).toBe(1);
   });

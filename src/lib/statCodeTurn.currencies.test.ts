@@ -7,7 +7,7 @@ import { runStatCodeTurn, type StatCodeTurnResult } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
-import type { Currency, Entity, Item, ItemCopy, PersonaRef, PlayerStat } from '@/types';
+import type { Currency, Entity, Item, ItemInstance, PersonaRef, PlayerStat } from '@/types';
 import { statCodeTurnOf } from '@/test/statCodeTurnFixture';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
@@ -30,12 +30,12 @@ const world = (): StatCodeOwners => {
 const CREDITS: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } };
 const MONEY: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
 const item = (id: string, name: string): Item => ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], stackable: true });
-const moneyCopy = (id: string, itemId: string, quantity: number): ItemCopy =>
+const moneyInstance = (id: string, itemId: string, quantity: number): ItemInstance =>
   ({ id, item: { kind: 'item', itemId }, where: { kind: 'you' }, quantity, visibility: 'visible' });
 
 const funds = (value: number, over: Partial<PlayerStat> = {}) => stat({ id: 'funds', name: 'Funds', value, ...over });
 
-const run = (code: string, over: { mira?: PlayerStat; moneyCopies?: ItemCopy[] } = {}): Promise<StatCodeTurnResult> => runStatCodeTurn(statCodeTurnOf({
+const run = (code: string, over: { mira?: PlayerStat; moneyInstances?: ItemInstance[] } = {}): Promise<StatCodeTurnResult> => runStatCodeTurn(statCodeTurnOf({
   stats: [], enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: world(),
   owners: [
     { id: 'mira', stats: [over.mira ?? funds(50)], enabled: {}, previous: [], regenApplied: {} },
@@ -43,7 +43,7 @@ const run = (code: string, over: { mira?: PlayerStat; moneyCopies?: ItemCopy[] }
   ],
   worldScripts: [{ id: 'w', timing: 'after', code }],
   money: { currencies: [CREDITS, MONEY], placements: [] },
-  items: [item('copper', 'Copper'), item('gold', 'Gold')], itemCopies: over.moneyCopies ?? [moneyCopy('c-gold', 'gold', 1)],
+  items: [item('copper', 'Copper'), item('gold', 'Gold')], itemInstances: over.moneyInstances ?? [moneyInstance('c-gold', 'gold', 1)],
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
 }));
 

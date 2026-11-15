@@ -101,7 +101,7 @@ describe('the At Game Start timing', () => {
     expect(console.error).toHaveBeenCalled();
   });
 
-  it("reads an Equipped placement's Item Copy as equipped, in its slot", async () => {
+  it("reads an Equipped placement's Item Instance as equipped, in its slot", async () => {
     const helm = { id: 'helm', name: 'Helm', slotRule: { mode: 'either' as const, slotIds: ['head'] }, statEffects: [], traitEffects: [], equipRequires: [] };
     const slots = [{ id: 'head', name: 'Head' }];
     const { state } = openingFold({
@@ -111,7 +111,7 @@ describe('the At Game Start timing', () => {
     const out = await runStatCodeTurn(start({
       stats: [stat({ id: 'a', name: 'Health' })],
       worldScripts: [script('start', "const [c] = items.Helm.copies; stats.Health.value = c.equipped && c.slot === 'Head' ? 9 : 1;")],
-      items: [helm], slots, itemCopies: state.itemCopies,
+      items: [helm], slots, itemInstances: state.itemInstances,
     }));
     expect(valueOf(out.stats, 'a')).toBe(9);
   });

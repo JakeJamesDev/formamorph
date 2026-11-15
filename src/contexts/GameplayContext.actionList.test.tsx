@@ -51,7 +51,7 @@ const snapshotHistories = (record: SaveRecord) => [
 ].map((snapshot) => snapshot.state.fullMessageHistory);
 
 describe('the live Action List across a save/load round trip', () => {
-  it('saves the list and the newest sent snapshots without their history copies, and loads the list back', async () => {
+  it('saves the list and the newest sent snapshots without their history instances, and loads the list back', async () => {
     const live = mount();
     const list = liveList(live);
     await act(async () => {

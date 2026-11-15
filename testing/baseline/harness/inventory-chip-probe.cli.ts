@@ -27,7 +27,7 @@ import { chipValues } from '@/lib/chipValues/chipValues';
 import { resolveEntityText } from '@/lib/placeholders';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { migrateWorld } from '@/lib/version';
-import type { ChatMessage, Entity, Item, ItemCopy, ItemCopyWhere } from '@/types';
+import type { ChatMessage, Entity, Item, ItemInstance, ItemInstanceWhere } from '@/types';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
@@ -45,23 +45,23 @@ type Arm = 'none' | 'chip' | 'event' | 'alt';
 // With --alt-pre, every case gains an `alt` arm: the chip with this Prepend text in place of the shipped one.
 const altPre = argVal('--alt-pre', '');
 
-type CopySpec = { item: string; where: string; equipped?: boolean; quantity?: number; hidden?: boolean };
+type InstanceSpec = { item: string; where: string; equipped?: boolean; quantity?: number; hidden?: boolean };
 type Case = {
-  id: string; action: string; checks: string[]; copies?: string; arms?: Arm[];
+  id: string; action: string; checks: string[]; instances?: string; arms?: Arm[];
   history?: { role: 'user' | 'assistant'; content: string }[]; event?: string;
 };
 const BASELINE = path.resolve('testing/baseline');
 const world = migrateWorld(JSON.parse(readFileSync(path.join(BASELINE, 'sedge-landing.json'), 'utf8')));
 const fixture = JSON.parse(readFileSync(path.join(BASELINE, 'inventory-chip-cases.json'), 'utf8')) as {
   items: Omit<Item, 'statEffects' | 'traitEffects' | 'equipRequires'>[];
-  copies: Record<string, CopySpec[]>;
+  instances: Record<string, InstanceSpec[]>;
   cases: Case[];
 };
 const items: Item[] = fixture.items.map((item) => ({ ...item, statEffects: [], traitEffects: [], equipRequires: [] }));
-const whereOf = (where: string): ItemCopyWhere => (
+const whereOf = (where: string): ItemInstanceWhere => (
   where === 'you' ? { kind: 'you' } : where.startsWith('loc-') ? { kind: 'location', id: where } : { kind: 'entity', id: where }
 );
-const copiesOf = (key: string): ItemCopy[] => fixture.copies[key].map((spec, i) => ({
+const instancesOf = (key: string): ItemInstance[] => fixture.instances[key].map((spec, i) => ({
   id: `${key}-${i}`, item: { kind: 'item', itemId: spec.item }, where: whereOf(spec.where), quantity: spec.quantity ?? 1,
   visibility: spec.hidden ? 'hidden' : 'visible', ...(spec.equipped && { equipped: { slotId: 'slot', order: i } }),
 }));
@@ -74,7 +74,7 @@ const baseScene = authoredChipScene(world, {
   resolve: (text: string) => text,
   resolveEntity: (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders: [], rolls: {} }),
 });
-const ctxFor = (key: string) => chipValues({ ...baseScene, items, itemCopies: copiesOf(key) });
+const ctxFor = (key: string) => chipValues({ ...baseScene, items, itemInstances: instancesOf(key) });
 if (!CHIP.test(defaultSystemPrompt)) throw new Error('The shipped narration prompt lacks the Inventory chip.');
 
 function request(arm: Arm, c: Case): ChatMessage[] {
@@ -82,7 +82,7 @@ function request(arm: Arm, c: Case): ChatMessage[] {
     : arm === 'alt' ? defaultSystemPrompt.replace(CHIP, (token) => token.replace(/pre="[^"]*"/, `pre="${altPre}\n\n"`))
     : defaultSystemPrompt;
   const system = buildNarrationPrompt({
-    template, ctx: ctxFor(c.copies ?? 'base'), action: c.action, history: [], dictionary: [],
+    template, ctx: ctxFor(c.instances ?? 'base'), action: c.action, history: [], dictionary: [],
     actionVec: null, semanticLore: false, embedVectors: new Map(),
     language: 'English', paragraphLimit: 'single', maxTokens: 1024, markdownOutput: false,
     sectionStyle: 'markdown', resolvePH: (text) => text,

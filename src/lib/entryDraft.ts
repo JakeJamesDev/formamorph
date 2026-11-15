@@ -9,7 +9,7 @@ import {
 import { traitOrderIndex } from './traitEffects';
 import { cascadeOffInput, settledCascadeOff } from './traitRuntime';
 import { scoped } from './scope';
-import { startingCopies } from './inventory';
+import { startingInstances } from './inventory';
 import type {
   Body, CascadeOffTraitIds, Entity, GameLocation, Item, OwnedTraitPicks, PersonaRef, Placement, Slot, Stat, StatGroup, Trait,
   TraitGroup, WorldOption, WorldOptionValues,
@@ -61,7 +61,7 @@ export interface EntryTraitWorld {
   /** The world's stats, which stat Conditions read at their authored start. Absent, those stay unresolved. */
   stats?: readonly Stat[];
   statGroups?: readonly StatGroup[];
-  /** The authored items and their starting placements: item Conditions read the copies the new game seeds. */
+  /** The authored items and their starting placements: item Conditions read the instances the new game seeds. */
   items?: readonly Item[];
   placements?: readonly Placement[];
   /** The slots and Bodies that starting equips fill. */
@@ -72,10 +72,10 @@ export interface EntryTraitWorld {
   options?: readonly WorldOption[];
 }
 
-/** The Item Copies a new game would hold under `persona`, so an item Condition reads the start. The ids only tell copies apart. */
-function seededCopies(world: EntryTraitWorld, persona: PersonaRef) {
+/** The Item Instances a new game would hold under `persona`, so an item Condition reads the start. The ids only tell instances apart. */
+function seededInstances(world: EntryTraitWorld, persona: PersonaRef) {
   let n = 0;
-  return startingCopies({ ...world, entities: [...world.entities, ...world.library] }, persona, () => `seed-${n++}`);
+  return startingInstances({ ...world, entities: [...world.entities, ...world.library] }, persona, () => `seed-${n++}`);
 }
 
 /** The gate input over every present owner under `persona`, without the active sets. */
@@ -84,7 +84,7 @@ const entryGateBase = (world: EntryTraitWorld, persona: PersonaRef): Omit<GateIn
   ...(world.options ? { worldOptions: world.options } : {}),
   stats: startingGateStats(world, world.library),
   reader: 'player',
-  ...(world.items ? { worldItems: world.items, itemCopies: seededCopies(world, persona) } : {}),
+  ...(world.items ? { worldItems: world.items, itemInstances: seededInstances(world, persona) } : {}),
 });
 
 /** Global scope's tree and every present entity owner under `persona`: the world's entities, then the library
@@ -176,8 +176,8 @@ export function withLibraryDefaults(draft: EntryDraft, world: EntryTraitWorld): 
 }
 
 /** Picks keyed by library id moved to the ids of the copies that play. */
-export const rekeyOwnedPicks = (picks: OwnedTraitPicks, copyIds: ReadonlyMap<string, string>): OwnedTraitPicks =>
-  Object.fromEntries(Object.entries(picks).map(([id, ids]) => [copyIds.get(id) ?? id, ids]));
+export const rekeyOwnedPicks = (picks: OwnedTraitPicks, instanceIds: ReadonlyMap<string, string>): OwnedTraitPicks =>
+  Object.fromEntries(Object.entries(picks).map(([id, ids]) => [instanceIds.get(id) ?? id, ids]));
 
 /** The owned picks the game starts with: those of the present owners that picked anything. */
 export function castOwnedTraits(draft: Pick<EntryDraft, 'ownedTraitIds' | 'persona'>, world: EntryTraitWorld): OwnedTraitPicks {

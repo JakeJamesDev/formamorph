@@ -21,7 +21,7 @@ export function useInPlayWorld(): InPlayWorld {
   const { locations, connections, playEntities, traits, traitGroups, items, options } = useGameData();
   const {
     personaRef, libraryPersona, discoveredEntities, globalStats, globalTraits, disabledTraitIds, ownedTraits, entityStats,
-    gameTime, calendar, itemCopies, worldOptionValues, currentLocation,
+    gameTime, calendar, itemInstances, worldOptionValues, currentLocation,
   } = useGameplay();
   const playerAt = currentLocation?.id ?? null;
   const playedEntityId = playedEntityIdOf(personaRef, playEntities);
@@ -47,12 +47,12 @@ export function useInPlayWorld(): InPlayWorld {
     { traits: refreshChosenTraits(globalTraits, traits), disabledTraitIds, ownedTraits, stats: globalStats, entityStats },
     {
       traits, groups: traitGroups, entities: [...playEntities, ...others], persona: personaRef ?? { source: 'none' }, daypart,
-      ...(items.length ? { items } : {}), itemCopies, options, optionValues: worldOptionValues,
+      ...(items.length ? { items } : {}), itemInstances, options, optionValues: worldOptionValues,
       ...inPlayOwners({ traits, traitGroups, entities: playEntities }, personaRef, library),
     },
   ) : undefined), [
     gated, globalTraits, traits, disabledTraitIds, ownedTraits, globalStats, entityStats, traitGroups, playEntities, others, library,
-    personaRef, daypart, items, itemCopies, options, worldOptionValues,
+    personaRef, daypart, items, itemInstances, options, worldOptionValues,
   ]);
   const verdicts = useSameVerdicts(useMemo(() => evaluateGates(source, { playedEntityId, playerAt, gate }), [source, playedEntityId, playerAt, gate]));
   return useMemo(() => inPlayWorldFrom(source, verdicts, playedEntityId), [source, verdicts, playedEntityId]);

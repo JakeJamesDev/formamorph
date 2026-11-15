@@ -27,7 +27,7 @@ import {
 import { matchChoicesToAction, CONTINUE_CHOICE } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/traitRuntime';
-import { settleItemEffects, withoutOrphanCopies, withoutOrphanTimedTraits, type OwnerStatTraits } from '../lib/inventory';
+import { settleItemEffects, withoutOrphanInstances, withoutOrphanTimedTraits, type OwnerStatTraits } from '../lib/inventory';
 import { heldEntityIds, withHeldOwners } from '../lib/ownedTraitState';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats, refreshGameStateBindings } from '../lib/statBackfill';
@@ -68,7 +68,7 @@ import type {
   OpeningPlacement,
   ImageAttachment,
   Item,
-  ItemCopy,
+  ItemInstance,
   RuntimeItem,
   ItemEffectLedger,
   BodyRuntime,
@@ -111,7 +111,7 @@ const EMPTY_CHOICES: Choice[] = [];
 const NO_LOOK_STATS: LookStats = { stats: [], authored: [] };
 const EMPTY_INDICES: number[] = [];
 const EMPTY_PINS: CodePins = {};
-const NO_ITEM_COPIES: readonly ItemCopy[] = [];
+const NO_ITEM_INSTANCES: readonly ItemInstance[] = [];
 const NO_ITEM_EFFECTS: ItemEffectLedger = {};
 const NO_BODIES: BodyRuntime = {};
 const NO_RUNTIME_ITEMS: readonly RuntimeItem[] = [];
@@ -246,13 +246,13 @@ function useProvideGameplay() {
   const [loreToggles, setLoreToggles] = useState<LoreToggles>(NO_LORE_TOGGLES);
   // The playthrough's World Option values; an Option missing here reads its default.
   const [worldOptionValues, setWorldOptionValues] = useState<WorldOptionValues>(NO_WORLD_OPTION_VALUES);
-  // Every Item Copy in play. Snapshotted per turn, so undo and re-roll restore it.
-  const [itemCopies, setItemCopies] = useState<readonly ItemCopy[]>(NO_ITEM_COPIES);
-  // What item effects have applied, beside the Item Copies they follow.
+  // Every Item Instance in play. Snapshotted per turn, so undo and re-roll restore it.
+  const [itemInstances, setItemInstances] = useState<readonly ItemInstance[]>(NO_ITEM_INSTANCES);
+  // What item effects have applied, beside the Item Instances they follow.
   const [itemEffects, setItemEffects] = useState<ItemEffectLedger>(NO_ITEM_EFFECTS);
   // The Body state beyond the authored picks. Snapshotted per turn, so undo and re-roll restore it.
   const [bodies, setBodies] = useState<BodyRuntime>(NO_BODIES);
-  // The runtime items the Inventory pass made, which runtime Item Copies point at.
+  // The runtime items the Inventory pass made, which runtime Item Instances point at.
   const [runtimeItems, setRuntimeItems] = useState<readonly RuntimeItem[]>(NO_RUNTIME_ITEMS);
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
   // authored world's books live in GameDataContext and are never mutated by gameplay.
@@ -450,7 +450,7 @@ function useProvideGameplay() {
       ...(Object.keys(codePins).length ? { codePins } : {}),
       ...(Object.keys(loreToggles).length ? { loreToggles } : {}),
       ...(Object.keys(worldOptionValues).length ? { worldOptionValues } : {}),
-      ...(itemCopies.length ? { itemCopies: [...itemCopies] } : {}),
+      ...(itemInstances.length ? { itemCopies: [...itemInstances] } : {}),
       ...(runtimeItems.length ? { runtimeItems: [...runtimeItems] } : {}),
       ...(Object.keys(itemEffects).length ? { itemEffects } : {}),
       ...(Object.keys(bodies).length ? { bodies } : {}),
@@ -476,7 +476,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, uniqueStates, genericStates, metEntities, strangerAliases, entityStatChanges, codePins, loreToggles, worldOptionValues, itemCopies, runtimeItems, itemEffects, bodies, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
+  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, uniqueStates, genericStates, metEntities, strangerAliases, entityStatChanges, codePins, loreToggles, worldOptionValues, itemInstances, runtimeItems, itemEffects, bodies, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
       currentLocation, gameTime, startHour, playerStartLocationId, openingPlacement, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -509,7 +509,7 @@ function useProvideGameplay() {
       setCodePins(gameState.codePins ?? EMPTY_PINS);
       setLoreToggles(gameState.loreToggles ?? NO_LORE_TOGGLES);
       setWorldOptionValues(gameState.worldOptionValues ?? NO_WORLD_OPTION_VALUES);
-      setItemCopies(gameState.itemCopies ?? NO_ITEM_COPIES);
+      setItemInstances(gameState.itemCopies ?? NO_ITEM_INSTANCES);
       setItemEffects(gameState.itemEffects ?? NO_ITEM_EFFECTS);
       setBodies(gameState.bodies ?? NO_BODIES);
       setRuntimeItems(gameState.runtimeItems ?? NO_RUNTIME_ITEMS);
@@ -684,32 +684,32 @@ function useProvideGameplay() {
   ) => {
     const locationIds = locations.map((l) => l.id);
     const orphanIds = new Set<string>();
-    /** The state without Item Copies whose item, owner entity or location the playthrough no longer holds, and its
+    /** The state without Item Instances whose item, owner entity or location the playthrough no longer holds, and its
      *  item effects settled, the dropped ones reversed (Q60). */
     const withoutOrphans = (state: GameState, persona?: PersonaRef): GameState => {
       if (!items || !worldEntities || (!state.itemCopies?.length && !state.itemEffects?.applied && !state.itemEffects?.timed)) return state;
       const entityIds = heldEntityIds(worldEntities.map((e) => e.id), state, persona);
-      const { copies, dropped } = withoutOrphanCopies(state.itemCopies ?? [], {
+      const { instances, dropped } = withoutOrphanInstances(state.itemCopies ?? [], {
         itemIds: new Set(items.map((item) => item.id)), entityIds, locationIds: new Set(locationIds),
         runtimeItemIds: new Set((state.runtimeItems ?? []).map((r) => r.id)),
       });
-      for (const copy of dropped) orphanIds.add(copy.id);
+      for (const instance of dropped) orphanIds.add(instance.id);
       const traits = withoutOrphanTimedTraits(state.itemEffects ?? {}, { entityIds }, items);
       for (const key of traits.dropped) orphanIds.add(`timed:${key}`);
       // Without the owners' traits the bounds can't derive; the ledger keeps the entries, and the next settle reverses them.
       if (!ownerStatTraits) {
         return dropped.length || traits.dropped.length
-          ? { ...state, itemCopies: [...copies], ...(traits.dropped.length && { itemEffects: traits.ledger }) } : state;
+          ? { ...state, itemCopies: [...instances], ...(traits.dropped.length && { itemEffects: traits.ledger }) } : state;
       }
       // Settled on every load, so the item bounds follow the world's current rows.
       const settled = settleItemEffects(
-        { copies, entityStats: state.entityStats ?? {}, ledger: traits.ledger },
+        { instances, entityStats: state.entityStats ?? {}, ledger: traits.ledger },
         { items, entities: worldEntities, ...(persona && { persona }) },
         ownerStatTraits(state, persona),
       );
       for (const key of settled.orphaned) orphanIds.add(`timed:${key}`);
       return {
-        ...state, ...(dropped.length && { itemCopies: [...copies] }), entityStats: settled.entityStats, itemEffects: settled.ledger,
+        ...state, ...(dropped.length && { itemCopies: [...instances] }), entityStats: settled.entityStats, itemEffects: settled.ledger,
       };
     };
     /** One log line for every orphan the load dropped, across the state and its history. */
@@ -1127,8 +1127,8 @@ function useProvideGameplay() {
     setLoreToggles,
     worldOptionValues,
     setWorldOptionValues,
-    itemCopies,
-    setItemCopies,
+    itemInstances,
+    setItemInstances,
     itemEffects,
     setItemEffects,
     bodies,

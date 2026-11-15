@@ -152,7 +152,7 @@ function inventoryScene(scene: ChipScene): InventoryScene {
     return entity ? [{ id, name: entity.name }] : [];
   });
   const balances: BalanceState = {
-    copies: scene.itemCopies ?? [],
+    instances: scene.itemInstances ?? [],
     placements: scene.placements ?? [],
     globalStats: scene.stats,
     // Played entities own through `you`.
@@ -160,7 +160,7 @@ function inventoryScene(scene: ChipScene): InventoryScene {
   };
   return {
     items: scene.items ?? [],
-    copies: scene.itemCopies ?? [],
+    instances: scene.itemInstances ?? [],
     currencies: scene.currencies,
     balanceOf: (currency, owner) => balanceOf(currency, owner, balances),
     runtimeItems: scene.runtimeItems,

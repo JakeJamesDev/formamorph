@@ -8,7 +8,7 @@
     { "id": "oar", "name": "Broken Oar" },
     { "id": "token", "name": "Silver Ferry Token" }
   ],
-  "copies": {
+  "instances": {
     "base": [
       { "item": "lantern", "where": "you", "equipped": true },
       { "item": "knife", "where": "you" },
@@ -36,7 +36,7 @@
     { "id": "wait", "action": "I wait by the ferry post.", "checks": ["hidden-leak"] },
     { "id": "search", "action": "I kneel and search between the dock planks.", "checks": ["reveal"] },
     {
-      "id": "gave", "copies": "gave", "arms": ["none", "chip", "event"],
+      "id": "gave", "instances": "gave", "arms": ["none", "chip", "event"],
       "history": [
         { "role": "user", "content": "I step onto the dock." },
         { "role": "assistant", "content": "Mist lies on the black water. Your gutting knife knocks against your hip as you walk the planks, and your lantern throws its broken stripe of light ahead. Odette sits on a crate by the ferry post, watching you come." }

@@ -42,15 +42,15 @@ const gameplay = () => {
   if (!live) throw new Error('no gameplay yet');
   return live;
 };
-const worn = () => gameplay().itemCopies.filter((c) => c.equipped).length;
-const wornItems = () => gameplay().itemCopies.filter((c) => c.equipped).map((c) => (c.item.kind === 'item' ? c.item.itemId : ''));
+const worn = () => gameplay().itemInstances.filter((c) => c.equipped).length;
+const wornItems = () => gameplay().itemInstances.filter((c) => c.equipped).map((c) => (c.item.kind === 'item' ? c.item.itemId : ''));
 const logLines = () => gameplay().logEntries.map((e) => e.text);
 
 /** Plays one turn of `world`, the Inventory pass answering `inventoryReply`. Answers the choices requests so far. */
 async function playTurn(world: World, inventoryReply?: string) {
   renderGameViewer(world, { inGameplay: <Probe /> });
   const box = await screen.findByPlaceholderText(/Type your action/);
-  await waitFor(() => expect(gameplay().itemCopies.length).toBeGreaterThan(0));
+  await waitFor(() => expect(gameplay().itemInstances.length).toBeGreaterThan(0));
   const calls = { choices: 0 };
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
     if (!init?.body) return new Response(JSON.stringify({ data: [{ id: 'm' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -97,7 +97,7 @@ describe('a Body written by a script between turns', () => {
     await waitFor(() => expect(worn()).toBe(1));
     await clickHowl();
     await waitFor(() => expect(worn()).toBe(0));
-    expect(gameplay().itemCopies).toHaveLength(1);
+    expect(gameplay().itemInstances).toHaveLength(1);
     await waitFor(() => expect(gameplay().globalStats.find((s) => s.id === 'calm')?.value).toBe(99));
     expect(gameplay().logEntries.map((e) => e.text)).toContain('Body: Wolf. Unequipped Helm');
     expect(gameplay().saveCurrentGameState().bodies?.base).toEqual({ '': { kind: 'body', id: 'wolf' } });
@@ -138,7 +138,7 @@ describe('a Body written by a script between turns', () => {
 });
 
 describe('an equip right after a Body write', () => {
-  const EQUIP = 'persona.items.find((copy) => copy.item === "Collar").equip();';
+  const EQUIP = 'persona.items.find((instance) => instance.item === "Collar").equip();';
   const gem: Item = { id: 'gem', name: 'Gem', stackable: false, statEffects: [], traitEffects: [], equipRequires: [], scripts: [] };
   // A give, since a landing can lay a stat write over a second run's.
   const counted: Item = { ...helm, scripts: [{ id: 'off', timing: 'unequipped', code: 'stats.Calm.value += 1; items.Gem.give(location);' }] };
@@ -147,7 +147,7 @@ describe('an equip right after a Body write', () => {
   const bodyLines = () => logLines().filter((line) => line.startsWith('Body:'));
   /** Helm's When Unequipped has run once, and no second run lands after it. */
   const ranOnce = async () => {
-    const gems = () => gameplay().itemCopies.filter((c) => c.item.kind === 'item' && c.item.itemId === 'gem').reduce((sum, c) => sum + c.quantity, 0);
+    const gems = () => gameplay().itemInstances.filter((c) => c.item.kind === 'item' && c.item.itemId === 'gem').reduce((sum, c) => sum + c.quantity, 0);
     await waitFor(() => expect(gems()).toBeGreaterThan(0));
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 300)); });
     expect(gems()).toBe(1);
@@ -205,7 +205,7 @@ describe('an equip right after a Body write', () => {
   it('refuses what only the old Body held', async () => {
     renderGameViewer({
       ...worldWith(''), items: [counted], placements: [{ ...placements[0], equipped: false }],
-      scripts: [onHowl('persona.body = "Wolf"; persona.items.find((copy) => copy.item === "Helm").equip();')],
+      scripts: [onHowl('persona.body = "Wolf"; persona.items.find((instance) => instance.item === "Helm").equip();')],
     }, { inGameplay: <Probe /> });
     await screen.findByPlaceholderText(/Type your action/);
     await clickHowl();
@@ -254,7 +254,7 @@ describe('the Inventory pass after a script’s Body write', () => {
   });
 
   it('fits it the same way when Regenerate Choices replays the turn', async () => {
-    const after: Script = { id: 'b', timing: 'after', code: 'turn.choices = [...turn.choices, "Worn " + persona.items.filter((copy) => copy.equipped).map((copy) => copy.item).join()];' };
+    const after: Script = { id: 'b', timing: 'after', code: 'turn.choices = [...turn.choices, "Worn " + persona.items.filter((instance) => instance.equipped).map((instance) => instance.item).join()];' };
     const calls = await playTurn(worldOf({ scripts: [wolfBefore, after] }), equipOf('Collar'));
     await waitFor(() => expect(gameplay().choices).toEqual(['Wait', 'Go', 'Worn Collar']));
     fireEvent.click(await screen.findByRole('button', { name: 'Regenerate Choices' }));

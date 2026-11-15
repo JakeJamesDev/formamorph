@@ -28,7 +28,7 @@ import { PROMPT_SAMPLER_PINS } from '@/lib/promptSamplers';
 import { createStatRequest, readStatResponse } from '@/lib/statRequest';
 import { inventoryRequest, statUpdatesRequest } from '@/lib/turnPipeline/turnPasses';
 import { migrateWorld } from '@/lib/version';
-import type { ChatMessage, Currency, Entity, Item, ItemCopy, ItemCopyWhere, Placement, PlayerStat } from '@/types';
+import type { ChatMessage, Currency, Entity, Item, ItemInstance, ItemInstanceWhere, Placement, PlayerStat } from '@/types';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
@@ -61,13 +61,13 @@ const ODETTE = 'ent-odette';
 const PURSE: Placement = { id: 'purse', where: { kind: 'entity', id: ODETTE }, quantity: 10, source: { kind: 'item', itemId: 'silver' } };
 const WALLET: PlayerStat = { id: 'stat-scrip', name: 'Scrip', type: 'number', description: 'Money the player carries, in scrip.', min: 0, max: 1000, value: 40, regen: 0, descriptors: [] };
 
-const copy = (itemId: string, where: ItemCopyWhere, quantity = 1): ItemCopy => ({
+const instance = (itemId: string, where: ItemInstanceWhere, quantity = 1): ItemInstance => ({
   id: `${itemId}-${where.kind}`, item: { kind: 'item', itemId }, where, quantity, visibility: 'visible',
 });
-const you: ItemCopyWhere = { kind: 'you' };
-const odette: ItemCopyWhere = { kind: 'entity', id: ODETTE };
-const BACKING_COPIES = [copy('silver', you, 5), copy('silver', odette, 10), copy('knife', you), copy('lantern', odette), copy('net', odette)];
-const STAT_COPIES = [copy('knife', you), copy('lantern', odette), copy('net', odette)];
+const you: ItemInstanceWhere = { kind: 'you' };
+const odette: ItemInstanceWhere = { kind: 'entity', id: ODETTE };
+const BACKING_INSTANCES = [instance('silver', you, 5), instance('silver', odette, 10), instance('knife', you), instance('lantern', odette), instance('net', odette)];
+const STAT_COPIES = [instance('knife', you), instance('lantern', odette), instance('net', odette)];
 
 type Money = 'items' | 'stat';
 /** `change` is the player's balance change the story states; `holds` is how many of `itemId` the player ends with. */
@@ -141,17 +141,17 @@ const baseScene = authoredChipScene(world, {
   resolveEntity: (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders: [], rolls: {} }),
 });
 const itemsOf = (c: Case) => (c.money === 'items' ? BACKING_ITEMS : STAT_ITEMS);
-const copiesOf = (c: Case) => (c.money === 'items' ? BACKING_COPIES : STAT_COPIES);
+const instancesOf = (c: Case) => (c.money === 'items' ? BACKING_INSTANCES : STAT_COPIES);
 const statsOf = (c: Case): PlayerStat[] => (c.money === 'stat' ? [WALLET, ...baseScene.stats] : baseScene.stats);
 const currenciesOf = (c: Case) => [c.money === 'stat' ? SCRIP : MONEY];
 const ctxFor = (c: Case) => chipValues({
-  ...baseScene, stats: statsOf(c), items: itemsOf(c), itemCopies: copiesOf(c), currencies: currenciesOf(c), placements: c.money === 'items' ? [PURSE] : [],
+  ...baseScene, stats: statsOf(c), items: itemsOf(c), itemInstances: instancesOf(c), currencies: currenciesOf(c), placements: c.money === 'items' ? [PURSE] : [],
 });
-const balance = (c: Case, copies: readonly ItemCopy[], stats: readonly PlayerStat[]) => {
-  const read = balanceOf(currenciesOf(c)[0], you as { kind: 'you' }, { copies, placements: [PURSE], globalStats: stats, statsOf: () => [] });
+const balance = (c: Case, instances: readonly ItemInstance[], stats: readonly PlayerStat[]) => {
+  const read = balanceOf(currenciesOf(c)[0], you as { kind: 'you' }, { instances, placements: [PURSE], globalStats: stats, statsOf: () => [] });
   return read.tracked ? read.amount : 0;
 };
-const held = (copies: readonly ItemCopy[], itemId: string) => copies
+const held = (instances: readonly ItemInstance[], itemId: string) => instances
   .filter((c) => c.where.kind === 'you' && c.item.kind === 'item' && c.item.itemId === itemId).reduce((sum, c) => sum + c.quantity, 0);
 
 async function complete(body: Record<string, unknown>): Promise<string> {
@@ -187,7 +187,7 @@ async function runCase(arm: Arm, c: Case, run: number) {
   ]);
   const ops = parseInventoryReply(invRaw);
   let next = 0;
-  const landed = applyInventoryPass(copiesOf(c), ops, {
+  const landed = applyInventoryPass(instancesOf(c), ops, {
     items: itemsOf(c), runtimeItems: [], playerNames: [], owners: baseScene.entities.filter((e) => e.id === ODETTE).map((e) => ({ id: e.id, name: e.name })),
     location: { id: location!.id, name: location!.name },
     money: {
@@ -195,8 +195,8 @@ async function runCase(arm: Arm, c: Case, run: number) {
     },
   }, { world: { items: itemsOf(c) }, newId: () => `n${next++}` });
   const statMove = readStatResponse(statRaw, statRequest).updates.filter((u) => u.id === WALLET.id).reduce((sum, u) => sum + u.value, 0);
-  const moved = balance(c, landed.copies, landed.stats?.globalStats ?? statsOf(c)) - balance(c, copiesOf(c), statsOf(c)) + statMove;
-  return { arm, case: c.id, run, ops, moved, statMove, holds: held(landed.copies, c.itemId), diagnostics: landed.diagnostics, invRaw, statRaw };
+  const moved = balance(c, landed.instances, landed.stats?.globalStats ?? statsOf(c)) - balance(c, instancesOf(c), statsOf(c)) + statMove;
+  return { arm, case: c.id, run, ops, moved, statMove, holds: held(landed.instances, c.itemId), diagnostics: landed.diagnostics, invRaw, statRaw };
 }
 type Result = Awaited<ReturnType<typeof runCase>>;
 
@@ -244,11 +244,11 @@ for (const c of cases) {
 const itemCase = CASES.find((c) => c.id === 'buy-value')!;
 const settleCanned = (ops: ReturnType<typeof parseInventoryReply>, presentIds?: string[]) => {
   let id = 0;
-  const landed = applyInventoryPass(copiesOf(itemCase), ops, {
+  const landed = applyInventoryPass(instancesOf(itemCase), ops, {
     items: itemsOf(itemCase), runtimeItems: [], playerNames: [], owners: [{ id: ODETTE, name: 'Odette' }], location: { id: location.id, name: location.name },
     money: { currencies: [MONEY], placements: [PURSE], stats: { globalStats: [], entityStats: {} }, playedIds: [], statsOn: (_owner, stats) => stats },
   }, { world: { items: itemsOf(itemCase) }, newId: () => `c${id++}`, ...(presentIds && { presence: { locationId: location.id, entityIds: new Set(presentIds) } }) });
-  return { moved: balance(itemCase, landed.copies, []) - balance(itemCase, copiesOf(itemCase), []), holds: held(landed.copies, 'lantern') };
+  return { moved: balance(itemCase, landed.instances, []) - balance(itemCase, instancesOf(itemCase), []), holds: held(landed.instances, 'lantern') };
 };
 const op = (kind: 'buy' | 'pay' | 'gain', over: Record<string, unknown>) => ({ op: kind, item: '', quantity: 1, owner: '', to: '', ...over }) as ReturnType<typeof parseInventoryReply>[number];
 const lantern = op('buy', { item: 'Tin Lantern', owner: 'Odette', to: 'you' });

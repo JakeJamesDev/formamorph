@@ -168,7 +168,7 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
     const texts = [
       ...overviewTexts(worldOverview),
       ...entities.flatMap(entityTexts),
-      // One roll per item, shared by every Item Copy of it.
+      // One roll per item, shared by every Item Instance of it.
       ...items.flatMap(itemTexts),
       ...locations.flatMap((l) => [l.name, l.playerDescription, l.aiDescription, l.aiSummary, l.description, l.imageTags]),
       ...connections.flatMap(connectionHints),

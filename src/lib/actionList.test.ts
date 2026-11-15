@@ -57,7 +57,7 @@ describe('the Action List', () => {
     expect(lines(play([equip, sword2]).list)).toEqual(['Equipped Iron Sword', 'Equipped Iron Sword']);
   });
 
-  it('treats unequip of the copy the newest equip left as its undo', () => {
+  it('treats unequip of the instance the newest equip left as its undo', () => {
     const { list, restored } = play([use, equip, unequip]);
     expect(lines(list)).toEqual(['Used Healing Potion']);
     expect(restored).toEqual(['s1']);
@@ -74,7 +74,7 @@ describe('the Action List', () => {
     expect(play([pickup(1), drop(1)])).toMatchObject({ list: [], restored: ['s0'] });
   });
 
-  it('adds a near reversal that differs in copy, quantity or place', () => {
+  it('adds a near reversal that differs in instance, quantity or place', () => {
     expect(lines(play([equip, { ...unequip, copyId: 'other' } as ListedActionFacts]).list)).toHaveLength(2);
     expect(lines(play([drop(2), pickup(1)]).list)).toEqual(['Dropped 2× Arrow', 'Picked up Arrow']);
     expect(lines(play([drop(1, 'yard'), pickup(1, 'hall')]).list)).toHaveLength(2);

@@ -31,10 +31,10 @@ export interface ActionRef {
 
 /** What one panel action did, in facts. */
 export type ListedActionFacts =
-  /** `copyId` is the Item Copy acted on; `resultId` the row it ended in. */
+  /** `copyId` is the Item Instance acted on; `resultId` the row it ended in. */
   | { kind: 'use' | 'equip' | 'unequip'; item: ActionItem; copyId: string; resultId?: string }
   | { kind: 'give'; item: ActionItem; quantity: number; to: ActionRef }
-  /** `place` is the location the copy went to (drop) or came from (pick up). */
+  /** `place` is the location the instance went to (drop) or came from (pick up). */
   | { kind: 'drop' | 'pickup'; item: ActionItem; quantity: number; place: string }
   /** A manual stat edit: `owner` is absent for a global stat; `from` and `to` are the values before and after (Q20). */
   | { kind: 'stat'; stat: { id: string; name: string }; owner?: { id: string; name: string }; from: number; to: number }
@@ -89,7 +89,7 @@ export type StatFacts = Extract<ListedActionFacts, { kind: 'stat' }>;
 const sameStat = (a: ListedActionFacts, b: StatFacts): a is StatFacts =>
   a.kind === 'stat' && a.stat.id === b.stat.id && a.owner?.id === b.owner?.id;
 
-/** Whether `next` exactly reverses `newest` (Q17, Q28). Equip and unequip match on the copy `newest` left. */
+/** Whether `next` exactly reverses `newest` (Q17, Q28). Equip and unequip match on the instance `newest` left. */
 function reverses(newest: ListedActionFacts, next: ListedActionFacts): boolean {
   if (newest.kind === 'trait' && next.kind === 'trait') {
     return newest.trait.id === next.trait.id && newest.owner?.id === next.owner?.id && newest.enabled !== next.enabled;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ChatMessage, Connection, Entity, GameLocation, GameState, Item, ItemCopy, PlayerStat, Trait } from '@/types';
+import type { ChatMessage, Connection, Entity, GameLocation, GameState, Item, ItemInstance, PlayerStat, Trait } from '@/types';
 import type { ChipScene } from '@/lib/chipValues/chipScene';
 import type { SandboxState } from '@/lib/statCodeTurn';
 import type { StatCodeWorld } from '@/lib/statCodeTestRun';
@@ -22,7 +22,7 @@ const item = (id: string): Item => ({
   // One effect on a hidden stat, which the cut must drop; its other fields don't matter here.
   statEffects: [{ statId: 'dread' }] as unknown as Item['statEffects'], traitEffects: [], equipRequires: [],
 });
-const copy = (id: string, itemId: string, where: ItemCopy['where'], visibility: ItemCopy['visibility'] = 'visible'): ItemCopy => ({
+const instance = (id: string, itemId: string, where: ItemInstance['where'], visibility: ItemInstance['visibility'] = 'visible'): ItemInstance => ({
   id, item: { kind: 'item', itemId }, where, quantity: 1, visibility,
 });
 
@@ -43,7 +43,7 @@ const BRAVE = trait('brave');
 const CURSED = trait('cursed', { mode: 'hidden' });
 const IDLE = trait('idle');
 const STATS = [stat('nerve'), stat('dread', { hidden: true }), stat('numb', { enabled: false })];
-const COPIES = [copy('c1', 'key', { kind: 'you' }), copy('c2', 'gem', { kind: 'location', id: 'vault' }), copy('c3', 'key', { kind: 'location', id: 'gate' }, 'hidden')];
+const INSTANCES = [instance('c1', 'key', { kind: 'you' }), instance('c2', 'gem', { kind: 'location', id: 'vault' }), instance('c3', 'key', { kind: 'location', id: 'gate' }, 'hidden')];
 
 const turn = (locationId: string): ChatMessage => ({
   role: 'assistant', content: JSON.stringify({ narration: 'A turn.', choices: [], stat_changes: [], turnId: locationId, locationId }),
@@ -54,7 +54,7 @@ function reach(): PlayerViewReach {
   const current: GameState = {
     globalStats: STATS, globalTraits: [BRAVE, CURSED, IDLE], disabledTraitIds: ['idle'], visibleEntities: [{ name: 'Warden', alias: 'the hooded one', revealed: true }],
     logEntries: [], gameplayText: '', gameTime: 0, characterData: null, choices: [], isGameStarted: true, timestamp: '', worldName: null,
-    playerNotes: '', previousStateIndex: null, stateVersion: 1, metEntities: ['warden'], locationId: 'gate', itemCopies: COPIES,
+    playerNotes: '', previousStateIndex: null, stateVersion: 1, metEntities: ['warden'], locationId: 'gate', itemCopies: INSTANCES,
     entityStats: { warden: WARDEN.stats as PlayerStat[] },
   };
   const view = buildPlayerView({
@@ -70,7 +70,7 @@ describe('playerViewScene', () => {
   const scene: ChipScene = {
     overview: 'The heir hides in the vault.', stats: STATS, traits: [BRAVE, CURSED], traitGroups: [], persona: null,
     location: LOCATIONS[0], locations: LOCATIONS, connections: CONNECTIONS, entities: [WARDEN, STRANGER],
-    presentIds: ['warden', 'stranger'], placesOf: () => [], inSceneIds: ['stranger'], items: [item('key'), item('gem')], itemCopies: COPIES,
+    presentIds: ['warden', 'stranger'], placesOf: () => [], inSceneIds: ['stranger'], items: [item('key'), item('gem')], itemInstances: INSTANCES,
     lore: [{ id: 'l1', name: 'Pact', key: ['pact'], value: 'The pact binds the heir.' }], notes: 'My notes.', time: null,
     resolve: (text) => text,
   };
@@ -111,9 +111,9 @@ describe('playerViewScene', () => {
     expect(cut.connections).toEqual([{ id: 'c-hall', a: 'gate', b: 'hall', aToB: {}, distance: 'far' }]);
   });
 
-  it('holds met items and visible copies, with no effects', () => {
+  it('holds met items and visible instances, with no effects', () => {
     expect(cut.items).toEqual([expect.objectContaining({ id: 'key', aiDescription: 'key player text.', statEffects: [] })]);
-    expect(ids(cut.itemCopies)).toEqual(['c1']);
+    expect(ids(cut.itemInstances)).toEqual(['c1']);
   });
 
   it('keeps a met item’s Uses, When Empty and State', () => {
@@ -177,7 +177,7 @@ describe('playerViewState', () => {
     },
     places: { locations: LOCATIONS, location: { id: 'gate', name: 'Gate' }, connections: CONNECTIONS },
     positions: { warden: 'gate', stranger: 'gate' }, genericPositions: { warden: ['gate', 'vault'], stranger: ['gate'] }, followers: ['stranger'],
-    itemCopies: COPIES, items: [item('key'), item('gem')], clock: {},
+    itemInstances: INSTANCES, items: [item('key'), item('gem')], clock: {},
     memories: [
       { id: 'm1', turn: 1, timestamp: 0, day: 1, daypart: '', text: 'Digest 1.', custom: false, kept: false, inContext: true, pinned: false, forgotten: false },
       { id: 'm2', turn: 1, timestamp: 0, day: 1, daypart: '', text: 'A script line.', custom: true, kept: false, inContext: true, pinned: false, forgotten: false },
@@ -202,13 +202,13 @@ describe('playerViewState', () => {
     expect(ids(cut.ownerTraits.entities)).toEqual(['warden']);
   });
 
-  it('holds met places, met positions and followers, and visible copies of met items', () => {
+  it('holds met places, met positions and followers, and visible instances of met items', () => {
     expect(ids(cut.places?.locations)).toEqual(['gate', 'hall']);
     expect(cut.places?.locations[0].aiDescription).toBe('Gate player text.');
     expect(cut.positions).toEqual({ warden: 'gate' });
     expect(cut.genericPositions).toEqual({ warden: ['gate'] });
     expect(cut.followers).toEqual([]);
-    expect(ids(cut.itemCopies)).toEqual(['c1']);
+    expect(ids(cut.itemInstances)).toEqual(['c1']);
     expect(ids(cut.items)).toEqual(['key']);
     expect(ids(cut.memories)).toEqual(['m1']);
     expect(JSON.stringify(cut)).not.toMatch(/AI secret|AI meaning|Stranger|Vault|\b(dread|numb|cursed)\b/);
@@ -288,7 +288,7 @@ describe('playerViewWorld', () => {
       return playerViewWorld({ ...world, entities }, { ...base, current: { ...base.current, entityPositions: positions } });
     };
 
-    it('gives no copy a list of places', () => {
+    it('gives no instance a list of places', () => {
       expect(cutAt({ warden: 'hall' }).entities.map((e) => 'locations' in e)).toEqual([false]);
     });
 

@@ -8,7 +8,7 @@ export function ItemIconArt({ id, className }: { id: string; className?: string 
   return <svg viewBox="0 0 512 512" aria-hidden data-item-icon={id} className={cn('block', className)} dangerouslySetInnerHTML={{ __html: body }} />;
 }
 
-/** What an item row shows for its Item Copy: its icon, its image or nothing. */
+/** What an item row shows for its Item Instance: its icon, its image or nothing. */
 export function ItemRowArt({ shown }: { shown: ShownItemIcon }) {
   if (shown.kind === 'icon') return <ItemIconArt id={shown.id} className="h-6 w-6 shrink-0" />;
   if (shown.kind === 'nothing') return null;

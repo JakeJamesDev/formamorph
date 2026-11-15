@@ -342,13 +342,13 @@ Each requirement has a `kind`:
 | `"group"` | `id`, `name`, `owner` | The owner has any trait in the group with this `id` |
 | `"playingAs"` | `id`, `name` | The player plays as the entity with this `id` |
 | `"stat"` | `id`, `name`, `owner`, `operator`, `value`, `unit` | The owner's stat with this `id` compares true against `value` |
-| `"item"` | `id`, `name`, `owner`, `status`, `state`, `identity` | The owner has a copy of the [item](#items) with this `id`: any copy under `status: "owned"`, or an equipped one under `"equipped"` |
+| `"item"` | `id`, `name`, `owner`, `status`, `state`, `identity` | The owner has an instance of the [item](#items) with this `id`: any instance under `status: "owned"`, or an equipped one under `"equipped"` |
 | `"time"` | `dayparts` | The story clock's time of day is one of `dayparts` |
 
 - `name` is optional. It holds the target's name, so a requirement still reads when the target is gone.
 - A `"stat"` requirement's `operator` is one of `">"`, `"<"`, `">="`, `"<="`, `"="` or `"≠"`. Its `unit` is `"raw"` for the stat's own units or `"percent"` for a share of the stat's min→max span. `{ "kind": "stat", "id": "health", "operator": "<", "value": 20, "unit": "percent" }` holds while Health is under 20% of its range.
 - `owner` is optional. It applies only to a trait, group, stat or item an entity owns. A requirement whose target is global (a root trait, a root group or a global stat) reads the global scope. The app drops any `owner` stored with it. Absent = the trait's own owner. `{ "kind": "you" }` checks the entity the player plays, and never holds when the player plays none. `{ "kind": "entity", "id": "<entity id>", "name": "…" }` checks that entity.
-- An `"item"` requirement's `state` and `identity` are optional. They narrow it to a copy with that State word (any case, ends trimmed) or that identity, `"identified"` or `"unidentified"`. On an item, a requirement with no `owner` reads the Item Copy's owner, and never holds while the copy lies at a location.
+- An `"item"` requirement's `state` and `identity` are optional. They narrow it to an instance with that State word (any case, ends trimmed) or that identity, `"identified"` or `"unidentified"`. On an item, a requirement with no `owner` reads the Item Instance's owner, and never holds while the instance lies at a location.
 - A `"time"` requirement's `dayparts` lists one or more of `"night"`, `"dawn"`, `"morning"`, `"midday"`, `"afternoon"` and `"evening"`. It has no `id`, `owner` or `not`. `{ "kind": "time", "dayparts": ["evening", "night"] }` holds from evening until dawn.
 - `not` is optional. `true` flips the requirement: it holds while its target is off. `{ "kind": "trait", "id": "paladin", "not": true }` holds while the owner doesn't have Paladin.
 - A requirement whose target is gone never holds, with or without `not`.
@@ -733,7 +733,7 @@ An entity or a book in a world can follow a library item. Its `link` object reco
 ## Items
 <!-- keywords: item object, item fields, effects array, equip requirements key, uses, when empty, stackable flag, bound flag, slot rule, either of, all of, unidentified name, item scripts -->
 
-An item is a kind of object. During the game, a save holds Item Copies of it. See [World Editor: Items](World-Editor-Items) for how items behave.
+An item is a kind of object. During the game, a save holds Item Instances of it. See [World Editor: Items](World-Editor-Items) for how items behave.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -742,24 +742,24 @@ An item is a kind of object. During the game, a save holds Item Copies of it. Se
 | `playerDescription` | | String | What the player reads |
 | `aiDescription` | | String | The full description the AI reads |
 | `aiSummary` | | String | A short description the AI reads where the full one is too long |
-| `unidentifiedName` | | String | The name an unidentified Item Copy shows. With it or `unidentifiedDescription` set, every copy starts unidentified |
-| `unidentifiedDescription` | | String | The description an unidentified Item Copy shows. Blank = `playerDescription` |
-| `images` | | [Gallery image](#media-fields)[] | The gallery, in author order. A condition with no `owner` reads the Item Copy's owner |
+| `unidentifiedName` | | String | The name an unidentified Item Instance shows. With it or `unidentifiedDescription` set, every instance starts unidentified |
+| `unidentifiedDescription` | | String | The description an unidentified Item Instance shows. Blank = `playerDescription` |
+| `images` | | [Gallery image](#media-fields)[] | The gallery, in author order. A condition with no `owner` reads the Item Instance's owner |
 | `imageTags` | | String | Comma-separated tags for image generation |
 | `icon` | | String | What the Inventory panel shows: an icon id, or `"none"` for the item's image. Absent, or an id the game doesn't know, derives an icon from the name, then the slot |
-| `placeholders` | | [Placeholder](#placeholders)[] | Placeholders the item owns. They roll once per game, and every Item Copy shows the same value |
+| `placeholders` | | [Placeholder](#placeholders)[] | Placeholders the item owns. They roll once per game, and every Item Instance shows the same value |
 | `value` | | Number | What the item is worth, in the base unit of its Currency |
 | `currencyId` | | String | The id of the [Currency](#currencies) it is priced in. Absent, or an id the world doesn't have = no price |
-| `stackable` | | Boolean | `false` = copies never group into one row. Absent = stackable. Ignored while `uses` is 2 or more |
-| `uses` | | Number | The uses each Item Copy starts with, from 1. Absent = unlimited |
-| `whenEmpty` | | Object | What a copy's last use leaves: `{ "kind": "stays" }`, `{ "kind": "gone" }`, `{ "kind": "becomes", "itemId": "<item id>" }` or `{ "kind": "changesState", "state": "…" }`. Used only while `uses` is set. Absent = gone |
-| `state` | | String | The State word each Item Copy starts with. Absent = none |
-| `bound` | | Boolean | `true` = the player can't drop or give its copies |
+| `stackable` | | Boolean | `false` = instances never group into one row. Absent = stackable. Ignored while `uses` is 2 or more |
+| `uses` | | Number | The uses each Item Instance starts with, from 1. Absent = unlimited |
+| `whenEmpty` | | Object | What an instance's last use leaves: `{ "kind": "stays" }`, `{ "kind": "gone" }`, `{ "kind": "becomes", "itemId": "<item id>" }` or `{ "kind": "changesState", "state": "…" }`. Used only while `uses` is set. Absent = gone |
+| `state` | | String | The State word each Item Instance starts with. Absent = none |
+| `bound` | | Boolean | `true` = the player can't drop or give its instances |
 | `slotRule` | | Object | The [slots](#slots-and-bodies) it equips into: `{ "mode": "either", "slotIds": ["<slot id>", …] }` takes one of them, the first free in this order. `"mode": "all"` takes all of them. Absent = not equippable |
 | `statEffects` | ✓ | Stat effect[] | Changes to the owner's own stats. See below |
 | `traitEffects` | ✓ | Trait effect[] | Traits the owner holds. See below |
 | `equipRequires` | ✓ | [Requirement row](#trait-requirements)[] | Any one row that holds lets an owner equip it. Empty = any owner can |
-| `scripts` | | [Script](#scripts)[] | Code that runs on an event of one of its Item Copies. `timing` is `"gained"`, `"lost"`, `"equipped"`, `"unequipped"` or `"used"` |
+| `scripts` | | [Script](#scripts)[] | Code that runs on an event of one of its Item Instances. `timing` is `"gained"`, `"lost"`, `"equipped"`, `"unequipped"` or `"used"` |
 
 Each stat effect:
 
@@ -851,15 +851,15 @@ A trait's `body` row overrides this while the trait is active. A world trait set
 ## Starting Items
 <!-- keywords: placements, starting items key, starting gear json, give item at start, place item at location, hidden item, start equipped -->
 
-`placements` lists the [Starting Items](World-Editor-Items#starting-items): the Item Copies a new game begins with. A saved game never reads it.
+`placements` lists the [Starting Items](World-Editor-Items#starting-items): the Item Instances a new game begins with. A saved game never reads it.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
 | `id` | ✓ | String | Unique id |
 | `where` | ✓ | Object | `{ "kind": "you" }` for the player, `{ "kind": "entity", "id": "<entity id>" }`, or `{ "kind": "location", "id": "<location id>" }` |
-| `quantity` | ✓ | Number | How many copies |
-| `hidden` | | Boolean | `true` = the player doesn't see the copies until the story reveals them |
-| `equipped` | | Boolean | `true` = the copies start equipped. Never on a location |
+| `quantity` | ✓ | Number | How many instances |
+| `hidden` | | Boolean | `true` = the player doesn't see the instances until the story reveals them |
+| `equipped` | | Boolean | `true` = the instances start equipped. Never on a location |
 | `source` | ✓ | Object | `{ "kind": "item", "itemId": "<item id>" }` |
 
 ## World Options

@@ -4,13 +4,13 @@
  */
 import { toldInventoryActions, type InventoryActionFacts } from '@/lib/actionList';
 import { sameWhere } from '@/lib/items';
-import type { InventoryPassOp, ItemCopyWhere } from '@/types';
+import type { InventoryPassOp, ItemInstanceWhere } from '@/types';
 import { actionKeyNamed, ownerOf, skip, type PassRun } from './passRun';
 
-const at = (where: ItemCopyWhere | null, place: ItemCopyWhere) => !!where && sameWhere(where, place);
-const isYou = (where: ItemCopyWhere | null) => at(where, { kind: 'you' });
-const isEntity = (where: ItemCopyWhere | null, id: string) => at(where, { kind: 'entity', id });
-const isPlace = (where: ItemCopyWhere | null, id: string) => at(where, { kind: 'location', id });
+const at = (where: ItemInstanceWhere | null, place: ItemInstanceWhere) => !!where && sameWhere(where, place);
+const isYou = (where: ItemInstanceWhere | null) => at(where, { kind: 'you' });
+const isEntity = (where: ItemInstanceWhere | null, id: string) => at(where, { kind: 'entity', id });
+const isPlace = (where: ItemInstanceWhere | null, id: string) => at(where, { kind: 'location', id });
 
 /** Whether `op` has the shape that reports `facts` (Q44). The item is checked apart. */
 function reports(pass: PassRun, op: InventoryPassOp, facts: InventoryActionFacts): boolean {

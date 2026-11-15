@@ -7,7 +7,7 @@ import { parseJsonReply } from '@/lib/aiRequest/jsonReply';
 import type { PaymentStats } from '@/lib/currency/payment';
 import { sameWhere, stateWord } from '@/lib/items';
 import { escapeRegExp } from '@/lib/utils';
-import type { InventoryPassOp, InventoryPassOpKind, InventoryUseAfter, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
+import type { InventoryPassOp, InventoryPassOpKind, InventoryUseAfter, ItemInstance, ItemInstanceWhere, RuntimeItem } from '@/types';
 import type { InventoryCall, InventoryResult } from './index';
 import { guardTold } from './passGuard';
 import { coveredByMoney, settleListedBuy, settlePays } from './passMoney';
@@ -146,9 +146,9 @@ export interface InventoryPassResult extends InventoryResult {
 
 /** One whole reply through the validator, in order (Q22). Presence comes from `scene` unless `call` sets it. */
 export function applyInventoryPass(
-  copies: readonly ItemCopy[], passOps: readonly InventoryPassOp[], scene: PassScene, call: Omit<InventoryCall, 'source'>,
+  instances: readonly ItemInstance[], passOps: readonly InventoryPassOp[], scene: PassScene, call: Omit<InventoryCall, 'source'>,
 ): InventoryPassResult {
-  const pass = startPass(copies, scene, call);
+  const pass = startPass(instances, scene, call);
   const ops = guardTold(pass, passOps);
   const money = settlePays(pass, ops);
   const handMoves = new Set<string>();
@@ -158,7 +158,7 @@ export function applyInventoryPass(
     else if (!coveredByMoney(pass, named, money, handMoves)) applyItemOp(pass, named);
   }
   const { list, itemUses, diagnostics, events, runtimeItems, moneyStats } = pass;
-  return { copies: list, itemUses, diagnostics, events, runtimeItems, ops, ...(moneyStats && { stats: moneyStats }) };
+  return { instances: list, itemUses, diagnostics, events, runtimeItems, ops, ...(moneyStats && { stats: moneyStats }) };
 }
 
 type ItemOp = InventoryPassOp & { op: Exclude<InventoryPassOpKind, 'pay' | 'buy'> };
@@ -195,26 +195,26 @@ function applyGain(pass: PassRun, op: ItemOp, key: string): void {
   const held = giver && giver.kind !== 'location' && !sameWhere(giver, to)
     ? candidates(pass, key, giver, 'transfer').filter((c) => c.visibility === 'visible') : [];
   if (held.length) {
-    distribute(held, op.quantity, (copy, quantity) => runOps(pass, [{ kind: 'transfer', copyId: copy.id, to, quantity }]));
+    distribute(held, op.quantity, (instance, quantity) => runOps(pass, [{ kind: 'transfer', copyId: instance.id, to, quantity }]));
     return;
   }
   // Taking what lies here moves it rather than making a second one.
   const lying = to.kind !== 'location' && here
     ? candidates(pass, key, { kind: 'location', id: here.id }, 'transfer').filter((c) => c.visibility === 'visible') : [];
   if (lying.length) {
-    distribute(lying, op.quantity, (copy, quantity) => runOps(pass, [{ kind: 'transfer', copyId: copy.id, to, quantity }]));
+    distribute(lying, op.quantity, (instance, quantity) => runOps(pass, [{ kind: 'transfer', copyId: instance.id, to, quantity }]));
     return;
   }
   // Taking a hidden one finds it first.
   const hidden = to.kind !== 'location' && here
     ? candidates(pass, key, { kind: 'location', id: here.id }, 'reveal').filter((c) => c.visibility === 'hidden') : [];
   if (hidden.length) {
-    distribute(hidden, op.quantity, (copy, quantity) => {
+    distribute(hidden, op.quantity, (instance, quantity) => {
       const before = new Set(pass.list.map((c) => c.id));
-      runOps(pass, [{ kind: 'reveal', copyId: copy.id, quantity }]);
+      runOps(pass, [{ kind: 'reveal', copyId: instance.id, quantity }]);
       // A partial reveal splits a new row off; a whole one keeps its id or merges into a visible stack.
-      const shown = pass.list.find((c) => !before.has(c.id)) ?? pass.list.find((c) => c.id === copy.id && c.visibility === 'visible')
-        ?? pass.list.find((c) => nameMatches(pass, c, key) && sameWhere(c.where, copy.where) && c.visibility === 'visible');
+      const shown = pass.list.find((c) => !before.has(c.id)) ?? pass.list.find((c) => c.id === instance.id && c.visibility === 'visible')
+        ?? pass.list.find((c) => nameMatches(pass, c, key) && sameWhere(c.where, instance.where) && c.visibility === 'visible');
       if (shown) runOps(pass, [{ kind: 'transfer', copyId: shown.id, to, quantity }]);
     });
     return;
@@ -232,7 +232,7 @@ function applyGain(pass: PassRun, op: ItemOp, key: string): void {
   runOps(pass, [{ kind: 'gain', itemId, quantity: op.quantity, to }]);
 }
 
-/** Lose, transfer, reveal, equip, unequip, use and change: each acts on copies `op.owner` holds. */
+/** Lose, transfer, reveal, equip, unequip, use and change: each acts on instances `op.owner` holds. */
 function applyHeldOp(pass: PassRun, op: HeldOp, key: string): void {
   const label = `${op.op} "${op.item}"`;
   const where = ownerOf(pass, op.owner);
@@ -244,7 +244,7 @@ function applyHeldOp(pass: PassRun, op: HeldOp, key: string): void {
     skip(pass, `${label}: nothing present is named "${op.to}"`);
     return;
   }
-  // A change needs any copy here; its State check follows.
+  // A change needs any instance here; its State check follows.
   const held = op.op === 'change' ? pass.list.some((c) => nameMatches(pass, c, key) && sameWhere(c.where, where)) : candidates(pass, key, where, op.op).length > 0;
   if (!held) {
     skip(pass, `${label}: none at "${op.owner}"`);
@@ -262,37 +262,37 @@ function applyHeldOp(pass: PassRun, op: HeldOp, key: string): void {
   }
   if (op.op === 'lose' || op.op === 'transfer' || op.op === 'reveal') {
     const to = op.op === 'transfer' ? ownerOf(pass, op.to) : null;
-    distribute(candidates(pass, key, where, op.op), op.quantity, (copy, quantity) => runOps(pass, [
-      op.op === 'transfer' && to ? { kind: 'transfer', copyId: copy.id, to, quantity }
-        : op.op === 'reveal' ? { kind: 'reveal', copyId: copy.id, quantity }
-        : { kind: 'lose', copyId: copy.id, quantity },
+    distribute(candidates(pass, key, where, op.op), op.quantity, (instance, quantity) => runOps(pass, [
+      op.op === 'transfer' && to ? { kind: 'transfer', copyId: instance.id, to, quantity }
+        : op.op === 'reveal' ? { kind: 'reveal', copyId: instance.id, quantity }
+        : { kind: 'lose', copyId: instance.id, quantity },
     ]));
     return;
   }
-  // Equip, unequip, use and change act on one Item Copy at a time, read again after each.
+  // Equip, unequip, use and change act on one Item Instance at a time, read again after each.
   for (let i = 0; i < op.quantity; i += 1) {
-    const [copy] = candidates(pass, key, where, op.op, op.state);
-    if (!copy) break;
+    const [instance] = candidates(pass, key, where, op.op, op.state);
+    if (!instance) break;
     // A use's `to` names no receiver, so an item named there is the target the reply misplaced.
     const aimed = op.op !== 'use' ? '' : op.target || (op.to && !ownerOf(pass, op.to) ? op.to : '');
     // The item named as its own target is a plain use.
-    const target = aimed && itemNameKey(listedName(pass, aimed.replace(/^the\s+/i, ''))) !== key ? targetOf(pass, aimed, where, copy.id) : undefined;
+    const target = aimed && itemNameKey(listedName(pass, aimed.replace(/^the\s+/i, ''))) !== key ? targetOf(pass, aimed, where, instance.id) : undefined;
     if (target === null) skip(pass, `target "${aimed}" of ${label}: none at "${op.owner}" or here`);
-    // The name holds one copy; a further one takes the first free slot.
-    const slotId = op.op === 'equip' && i === 0 ? namedSlot(pass, copy, op.slot) : undefined;
+    // The name holds one instance; a further one takes the first free slot.
+    const slotId = op.op === 'equip' && i === 0 ? namedSlot(pass, instance, op.slot) : undefined;
     if (slotId === null) {
       skip(pass, `${label}: no slot is named "${op.slot}"`);
       break;
     }
-    runOps(pass, [op.op === 'change' ? { kind: 'change', copyId: copy.id, state: op.state ?? '' }
-      : op.op === 'use' ? { kind: 'use', copyId: copy.id, ...(op.after && { after: op.after }), ...(target && { targetCopyId: target.id }) }
-      : op.op === 'equip' ? { kind: 'equip', copyId: copy.id, ...(slotId && { slotId }) }
-      : { kind: op.op, copyId: copy.id }]);
+    runOps(pass, [op.op === 'change' ? { kind: 'change', copyId: instance.id, state: op.state ?? '' }
+      : op.op === 'use' ? { kind: 'use', copyId: instance.id, ...(op.after && { after: op.after }), ...(target && { targetCopyId: target.id }) }
+      : op.op === 'equip' ? { kind: 'equip', copyId: instance.id, ...(slotId && { slotId }) }
+      : { kind: op.op, copyId: instance.id }]);
   }
 }
 
-/** The visible copy a use acts on: one `where` holds, else one lying here; never the used copy itself. */
-function targetOf(pass: PassRun, name: string, where: ItemCopyWhere, usedId: string): ItemCopy | null {
+/** The visible instance a use acts on: one `where` holds, else one lying here; never the used instance itself. */
+function targetOf(pass: PassRun, name: string, where: ItemInstanceWhere, usedId: string): ItemInstance | null {
   const key = itemNameKey(listedName(pass, name.replace(/^the\s+/i, '')));
   const { location } = pass.scene;
   const places = [where, ...(location ? [{ kind: 'location' as const, id: location.id }] : [])];
@@ -304,11 +304,11 @@ function targetOf(pass: PassRun, name: string, where: ItemCopyWhere, usedId: str
 }
 
 /** The slot id a reply named: undefined for no name or two or more of the item's own slots joined (Q65), null for a name no slot has. */
-function namedSlot(pass: PassRun, copy: ItemCopy, name: string | undefined): string | undefined | null {
+function namedSlot(pass: PassRun, instance: ItemInstance, name: string | undefined): string | undefined | null {
   const key = itemNameKey(name ?? '');
   if (!key) return undefined;
   const slots = pass.call.world.slots ?? [];
-  const ref = copy.item;
+  const ref = instance.item;
   const rule = ref.kind === 'item' ? pass.authored.find((a) => a.item.id === ref.itemId)?.item.slotRule : undefined;
   const own = slots.filter((s) => rule?.slotIds.includes(s.id)).map((s) => itemNameKey(s.name)).sort((a, b) => b.length - a.length);
   // Longest first, so `hand` never counts inside `off hand`. Whole names only, so `off handle` holds no `off hand`.

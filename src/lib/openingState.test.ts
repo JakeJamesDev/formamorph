@@ -107,7 +107,7 @@ describe('openingStateOf', () => {
     expect(fold.traitState.entityStats).toBe(fold.entityStats);
   });
 
-  it("carries the seeded Item Copies, with the played Persona entity's placements on the player", () => {
+  it("carries the seeded Item Instances, with the played Persona entity's placements on the player", () => {
     const lamp = { id: 'lamp', name: 'Lamp', statEffects: [], traitEffects: [], equipRequires: [] };
     const state = openingStateOf({
       ...world,
@@ -117,12 +117,12 @@ describe('openingStateOf', () => {
         { id: 'p2', where: { kind: 'location', id: 'gate' }, quantity: 2, hidden: true, source: { kind: 'item', itemId: 'lamp' } },
       ],
     }, undefined, { ref: { source: 'world', entityId: 'albus' } });
-    expect(state.itemCopies?.map(({ where, quantity, visibility }) => ({ where, quantity, visibility }))).toEqual([
+    expect(state.itemInstances?.map(({ where, quantity, visibility }) => ({ where, quantity, visibility }))).toEqual([
       { where: { kind: 'you' }, quantity: 1, visibility: 'visible' },
       { where: { kind: 'location', id: 'gate' }, quantity: 2, visibility: 'hidden' },
     ]);
   });
-  it("puts the seeded Item Copies' effects in place on the first turn, On First Obtain included (Q59)", () => {
+  it("puts the seeded Item Instances' effects in place on the first turn, On First Obtain included (Q59)", () => {
     const row = (id: string, statId: string, amount: number, timing: 'owned' | 'firstObtain', facet: 'value' | 'max' = 'value') =>
       ({ id, statId, amount, timing, facet, op: 'add' as const });
     const ledger = { id: 'ledger', name: 'Ledger', statEffects: [row('r1', 'stock', 2, 'owned')], traitEffects: [], equipRequires: [] };
@@ -135,7 +135,7 @@ describe('openingStateOf', () => {
         { id: 'p2', where: { kind: 'entity', id: 'bram' }, quantity: 1, source: { kind: 'item', itemId: 'charm' } },
       ],
     }, { traits: [], owned: { bram: ['hardy'] } }, { ref: { source: 'world', entityId: 'albus' } });
-    // Albus's Stock 4 + the ledger once, for three Item Copies; Bram's Vigor 3 + Hardy 2 + the charm 1, under a cap raised by 5.
+    // Albus's Stock 4 + the ledger once, for three Item Instances; Bram's Vigor 3 + Hardy 2 + the charm 1, under a cap raised by 5.
     expect(valueOf(fold.entityStats.albus, 'stock')).toBe(6);
     expect(fold.entityStats.bram.find((s) => s.id === 'vigor')).toMatchObject({ value: 6, max: 105 });
     expect(fold.itemEffects.ledger.firstObtained).toEqual({ bram: ['charm'] });
@@ -156,8 +156,8 @@ describe('openingFold — Equipped placements', () => {
     slots: [{ id: 'hand', name: 'Hand' }, { id: 'ring', name: 'Ring' }, { id: 'head', name: 'Head' }, { id: 'collar', name: 'Collar' }],
     bodies: [humanoid, dog],
   };
-  /** Each copy of `itemId` as [where kind, equipped slot or null, quantity], in list order. */
-  const copiesOf = (fold: ReturnType<typeof openingFold>, itemId: string) => (fold.state.itemCopies ?? [])
+  /** Each instance of `itemId` as [where kind, equipped slot or null, quantity], in list order. */
+  const instancesOf = (fold: ReturnType<typeof openingFold>, itemId: string) => (fold.state.itemInstances ?? [])
     .filter((c) => c.item.kind === 'item' && c.item.itemId === itemId)
     .map((c) => [c.where.kind, c.equipped?.slotId ?? null, c.quantity]);
 
@@ -167,23 +167,23 @@ describe('openingFold — Equipped placements', () => {
       items: [gear('sword', 'hand'), gear('axe', 'hand')],
       placements: [place('p1', you, 'sword'), place('p2', you, 'axe')],
     });
-    expect(copiesOf(fold, 'sword')).toEqual([['you', null, 1]]);
-    expect(copiesOf(fold, 'axe')).toEqual([['you', 'hand', 1]]);
+    expect(instancesOf(fold, 'sword')).toEqual([['you', null, 1]]);
+    expect(instancesOf(fold, 'axe')).toEqual([['you', 'hand', 1]]);
   });
 
   it('equips once per unit, so Ring ×3 into a capacity of 2 leaves one carried (Q36)', () => {
     const rings = openingFold({ ...kit, items: [gear('ring', 'ring')], placements: [place('p1', you, 'ring', { quantity: 3 })] });
-    expect(copiesOf(rings, 'ring').filter(([, slot]) => slot === 'ring')).toHaveLength(2);
-    expect(copiesOf(rings, 'ring').filter(([, slot]) => slot === null)).toHaveLength(1);
+    expect(instancesOf(rings, 'ring').filter(([, slot]) => slot === 'ring')).toHaveLength(2);
+    expect(instancesOf(rings, 'ring').filter(([, slot]) => slot === null)).toHaveLength(1);
     const arrows = openingFold({
       ...kit, items: [gear('arrow', 'hand', { stackable: true })], placements: [place('p1', you, 'arrow', { quantity: 3 })],
     });
-    expect(copiesOf(arrows, 'arrow')).toEqual([['you', null, 2], ['you', 'hand', 1]]);
+    expect(instancesOf(arrows, 'arrow')).toEqual([['you', null, 2], ['you', 'hand', 1]]);
   });
 
   it('leaves an unmarked placement carried', () => {
     const fold = openingFold({ ...kit, items: [gear('sword', 'hand')], placements: [place('p1', you, 'sword', { equipped: undefined })] });
-    expect(copiesOf(fold, 'sword')).toEqual([['you', null, 1]]);
+    expect(instancesOf(fold, 'sword')).toEqual([['you', null, 1]]);
   });
 
   it("applies While Equipped effects on the first turn, and an Equipped item's state is the one scripts read", () => {
@@ -192,8 +192,8 @@ describe('openingFold — Equipped placements', () => {
     // Albus's Stock 4 + the equipped helm's 2.
     expect(valueOf(fold.entityStats.albus, 'stock')).toBe(6);
     expect(fold.itemEffects.log).toEqual(['helm: stock +2']);
-    expect(fold.state.itemCopies?.[0].equipped?.slotId).toBe('head');
-    expect(fold.state.ownerTraits.world.itemCopies?.[0].equipped?.slotId).toBe('head');
+    expect(fold.state.itemInstances?.[0].equipped?.slotId).toBe('head');
+    expect(fold.state.ownerTraits.world.itemInstances?.[0].equipped?.slotId).toBe('head');
   });
 
   it("starts carried when the owner's Body lacks the slot, with no log line (Q2)", () => {
@@ -205,15 +205,15 @@ describe('openingFold — Equipped placements', () => {
       items: [gear('helm', 'head'), gear('collar', 'collar')],
       placements: [place('p1', { kind: 'entity', id: 'rex' }, 'helm'), place('p2', { kind: 'entity', id: 'rex' }, 'collar'), place('p3', { kind: 'entity', id: 'ghost' }, 'collar')],
     });
-    expect(copiesOf(fold, 'helm')).toEqual([['entity', null, 1]]);
-    expect(copiesOf(fold, 'collar')).toEqual([['entity', 'collar', 1], ['entity', null, 1]]);
+    expect(instancesOf(fold, 'helm')).toEqual([['entity', null, 1]]);
+    expect(instancesOf(fold, 'collar')).toEqual([['entity', 'collar', 1], ['entity', null, 1]]);
     expect(fold.itemEffects.log).toEqual([]);
   });
 
   it('refuses an equip whose requirement fails up front: carried, no log line (Q37)', () => {
     const heavy = gear('heavy', 'hand', { equipRequires: [{ all: [{ kind: 'stat', id: 'gold', operator: '>=', value: 50, unit: 'raw' }] }] });
     const fold = openingFold({ ...kit, items: [heavy], placements: [place('p1', you, 'heavy')] });
-    expect(copiesOf(fold, 'heavy')).toEqual([['you', null, 1]]);
+    expect(instancesOf(fold, 'heavy')).toEqual([['you', null, 1]]);
     expect(fold.itemEffects.log).toEqual([]);
   });
 
@@ -224,19 +224,19 @@ describe('openingFold — Equipped placements', () => {
     const fold = openingFold({
       ...kit, items: [helm, sword], placements: [place('p1', you, 'sword'), place('p2', you, 'helm')],
     }, undefined, { ref: { source: 'world', entityId: 'albus' } });
-    expect(copiesOf(fold, 'sword')).toEqual([['you', null, 1]]);
-    expect(copiesOf(fold, 'helm')).toEqual([['you', 'head', 1]]);
+    expect(instancesOf(fold, 'sword')).toEqual([['you', null, 1]]);
+    expect(instancesOf(fold, 'helm')).toEqual([['you', 'head', 1]]);
     expect(fold.itemEffects.log).toEqual(['helm: stock -2']);
   });
 
   it('starts a Hidden Equipped placement equipped and hidden (Q38)', () => {
     const fold = openingFold({ ...kit, items: [gear('ring', 'ring')], placements: [place('p1', you, 'ring', { hidden: true })] });
-    expect(fold.state.itemCopies?.[0]).toMatchObject({ visibility: 'hidden', equipped: { slotId: 'ring' } });
+    expect(fold.state.itemInstances?.[0]).toMatchObject({ visibility: 'hidden', equipped: { slotId: 'ring' } });
   });
 
   it('never equips at a location, even when the placement carries the flag', () => {
     const fold = openingFold({ ...kit, items: [gear('sword', 'hand')], placements: [place('p1', { kind: 'location', id: 'gate' }, 'sword')] });
-    expect(copiesOf(fold, 'sword')).toEqual([['location', null, 1]]);
+    expect(instancesOf(fold, 'sword')).toEqual([['location', null, 1]]);
   });
 
   it("reads the played Persona's Body: a world persona's own pick, else the Custom Persona entity's (Q31)", () => {
@@ -245,8 +245,8 @@ describe('openingFold — Equipped placements', () => {
     const fold = (persona?: Parameters<typeof openingFold>[2]) => openingFold({
       ...kit, entities: [knight, custom], items: [gear('sword', 'hand')], placements: [place('p1', you, 'sword')],
     }, undefined, persona);
-    expect(copiesOf(fold({ ref: { source: 'world', entityId: 'albus' } }), 'sword')).toEqual([['you', 'hand', 1]]);
-    expect(copiesOf(fold(), 'sword')).toEqual([['you', null, 1]]);
-    expect(copiesOf(fold({ ref: { source: 'library', entityId: 'lib' } }), 'sword')).toEqual([['you', null, 1]]);
+    expect(instancesOf(fold({ ref: { source: 'world', entityId: 'albus' } }), 'sword')).toEqual([['you', 'hand', 1]]);
+    expect(instancesOf(fold(), 'sword')).toEqual([['you', null, 1]]);
+    expect(instancesOf(fold({ ref: { source: 'library', entityId: 'lib' } }), 'sword')).toEqual([['you', null, 1]]);
   });
 });

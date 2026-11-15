@@ -1,4 +1,4 @@
-import type { Currency, Entity, GameLocation, Item, ItemCopy, Placeholder, Stat, StatGroup, Trait, TraitGroup, WorldOverview } from '@/types';
+import type { Currency, Entity, GameLocation, Item, ItemInstance, Placeholder, Stat, StatGroup, Trait, TraitGroup, WorldOverview } from '@/types';
 import type { ResolvedPersona } from '../persona';
 import { authoredChipScene, type AuthoredWorld } from './authoredScene';
 import { ownerStatParts } from '../statContext';
@@ -179,7 +179,7 @@ const persona: ResolvedPersona = {
 };
 
 /** What the traveler has: the compass in hand, a rope at the belt. */
-const travelerItems: ItemCopy[] = [
+const travelerItems: ItemInstance[] = [
   { id: 'c-compass', item: { kind: 'item', itemId: compass.id }, where: { kind: 'you' }, quantity: 1, visibility: 'visible', equipped: { slotId: 'hand', order: 1 } },
   { id: 'c-rope', item: { kind: 'item', itemId: 'rope' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' },
   { id: 'c-bits', item: { kind: 'item', itemId: 'tide-bit' }, where: { kind: 'you' }, quantity: 14, visibility: 'visible' },
@@ -203,7 +203,7 @@ export function sampleChipScene(): ChipScene {
     ownedStats: { ...authored.ownedStats, [persona.entity.id]: travelerStats },
     playedStats: ownerStatParts([persona.entity], { [persona.entity.id]: travelerStats }),
     inSceneIds: [wren.id],
-    itemCopies: [...travelerItems, ...(authored.itemCopies ?? [])],
+    itemInstances: [...travelerItems, ...(authored.itemInstances ?? [])],
     notes: 'Traveler is looking for the person who sold them a false map.',
     // Day 3, evening on the default calendar.
     time: { elapsed: 58 },

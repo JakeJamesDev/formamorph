@@ -44,8 +44,8 @@ const gameplay = () => {
   return live;
 };
 const vigor = () => gameplay().globalStats.find((s) => s.id === 'vigor')?.value;
-const held = (itemId: string) => gameplay().itemCopies
-  .filter((copy) => copy.item.kind === 'item' && copy.item.itemId === itemId).reduce((sum, copy) => sum + copy.quantity, 0);
+const held = (itemId: string) => gameplay().itemInstances
+  .filter((instance) => instance.item.kind === 'item' && instance.item.itemId === itemId).reduce((sum, instance) => sum + instance.quantity, 0);
 
 /** The AI calls the Tool once in its narration request. `pass` is the Inventory pass's first answer. */
 function stubEndpoint(pass: object[] = []) {
@@ -174,7 +174,7 @@ describe('a stat re-roll of an On Call Tool’s turn', () => {
 });
 
 describe('Regenerate Choices', () => {
-  // One copy from each stage ahead of the batch. A script's own give has no copy until the script lands.
+  // One instance from each stage ahead of the batch. A script's own give has no instance until the script lands.
   const code = 'items.Gem.give(persona); stats.Vigor.value += 1; turn.choices = [...turn.choices, "Held " + items.Gem.copies.length];';
   const world = worldOf({
     items: [GEM], tools: [tool('items.Gem.give(persona);')],
@@ -182,7 +182,7 @@ describe('Regenerate Choices', () => {
   });
   const gain = [{ op: 'gain', item: 'Gem', quantity: 1, owner: '', to: 'you' }];
 
-  it('gives a script the Item Copies a real After the AI run read, and its writes land nothing', async () => {
+  it('gives a script the Item Instances a real After the AI run read, and its writes land nothing', async () => {
     const calls = await playOneTurn(world, gain);
     await waitFor(() => expect(gameplay().choices).toEqual(['Walk on', 'Wait', 'Held 3']));
     expect(held('gem')).toBe(4);

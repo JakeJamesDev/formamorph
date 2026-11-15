@@ -142,7 +142,7 @@ export type PlayerStat = Omit<Stat, 'value'> & {
   aiMaxDelta?: number;
   /** How far stat code has moved each bound, kept apart like `aiMaxDelta` so every layer stays derived. */
   codeDelta?: CodeBoundDeltas;
-  /** What the item effects in force add to each bound, recomputed from the Item Copies on every change. */
+  /** What the item effects in force add to each bound, recomputed from the Item Instances on every change. */
   itemDelta?: CodeBounds;
 };
 
@@ -295,7 +295,7 @@ export interface AvatarListingContent {
   hash?: string;
 }
 
-/** What an Item Copy is a copy of: an authored item, or a runtime item the Inventory pass made. */
+/** What an Item Instance is an instance of: an authored item, or a runtime item the Inventory pass made. */
 export type ItemRef = { kind: 'item'; itemId: string } | { kind: 'runtime'; runtimeItemId: string };
 
 /** An item the Inventory pass named that the world does not define: Stackable and Consumable, no slot, no
@@ -336,32 +336,32 @@ export interface InventoryOwner {
   name: string;
 }
 
-/** Where an Item Copy is: owned by the played Persona or an entity, or lying at a location. */
-export type ItemCopyWhere = PlacementWhere;
+/** Where an Item Instance is: owned by the played Persona or an entity, or lying at a location. */
+export type ItemInstanceWhere = PlacementWhere;
 
-export type ItemCopyVisibility = 'visible' | 'hidden';
+export type ItemInstanceVisibility = 'visible' | 'hidden';
 
-/** State one Item Copy keeps of its own. */
-export interface ItemCopyState {
+/** State one Item Instance keeps of its own. */
+export interface ItemInstanceState {
   /** Uses left. Absent = full, or the item has no Uses. */
   uses?: number;
-  /** The copy's current State word. Absent = none. */
+  /** The instance's current State word. Absent = none. */
   state?: string;
   /** Shows the item's unidentified face to the player. Apart from visibility (Q15). */
   unidentified?: true;
 }
 
-/** One item in play: a stack of `quantity` copies of an item in one place. */
-export interface ItemCopy {
+/** One item in play: a stack of `quantity` instances of an item in one place. */
+export interface ItemInstance {
   id: string;
   item: ItemRef;
-  where: ItemCopyWhere;
+  where: ItemInstanceWhere;
   quantity: number;
   /** The slot it is equipped in and when, as a rising order. Absent = carried. */
   equipped?: { slotId: string; order: number };
-  visibility: ItemCopyVisibility;
+  visibility: ItemInstanceVisibility;
   /** Absent = none. */
-  state?: ItemCopyState;
+  state?: ItemInstanceState;
 }
 
 /** One While Owned or While Equipped source in force on an owner, and the values it actually moved. */
@@ -372,9 +372,9 @@ export interface AppliedItemEffect {
   timing: 'owned' | 'equipped';
   /** Stat id → value delta, cap carry included. Reversal negates this. */
   values: Record<string, number>;
-  /** Every Item Copy behind it is hidden, so its log lines name no item. */
+  /** Every Item Instance behind it is hidden, so its log lines name no item. */
   hidden?: boolean;
-  /** Every Item Copy behind it is unidentified, so its log lines use the unidentified face. */
+  /** Every Item Instance behind it is unidentified, so its log lines use the unidentified face. */
   unidentified?: boolean;
 }
 
@@ -390,13 +390,13 @@ export interface TimedItemEffect {
   endsAt: number;
   /** Stat rows: stat id → value delta. Expiry negates this. */
   values?: Record<string, number>;
-  /** The use came from a hidden Item Copy, so its lines name no item. */
+  /** The use came from a hidden Item Instance, so its lines name no item. */
   hidden?: boolean;
-  /** The use came from an unidentified Item Copy, so its lines use the unidentified face. */
+  /** The use came from an unidentified Item Instance, so its lines use the unidentified face. */
   unidentified?: boolean;
 }
 
-/** The item effects in force. Bound facets are derived from the Item Copies and recorded nowhere. */
+/** The item effects in force. Bound facets are derived from the Item Instances and recorded nowhere. */
 export interface ItemEffectLedger {
   /** Source key → what it applied. */
   applied?: Record<string, AppliedItemEffect>;
@@ -452,8 +452,8 @@ export interface GameState {
   strangerAliases?: Record<string, string>;
   /** What this turn moved each entity stat, AI, regen and code together. Absent ⇒ none. */
   entityStatChanges?: EntityStatChanges;
-  /** Every Item Copy in play. A new game seeds them; an older save never gains any. Absent ⇒ none. */
-  itemCopies?: ItemCopy[];
+  /** Every Item Instance in play. A new game seeds them; an older save never gains any. Absent ⇒ none. */
+  itemCopies?: ItemInstance[];
   /** The runtime items the Inventory pass made. Absent ⇒ none. */
   runtimeItems?: RuntimeItem[];
   /** What item effects have applied. Absent ⇒ none. */
