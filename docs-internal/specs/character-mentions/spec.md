@@ -88,6 +88,7 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q56 | An authored quote color is a pick from a fixed, vetted palette, not a free hex (the user's pick: less customization, trusted colors). Each swatch has a light and a dark value that passes 4.5:1 on every theme's background and card in its mode. The palette is large (about 16–24 swatches) and contains ticket 04's eight. The world stores the swatch key. |
 | Q57 | The Quote Color field shows in Advanced editor mode only, beside Aliases and Type; Simple mode uses Auto. A pin may match another speaker's auto slot; that is the author's choice. Character cards carry the key too. |
 | Q58 | The pick list's "not anyone listed" option reads "Someone Else" (the user's pick), replacing "Nobody in the cast", which breaks the Writing Guide. It still stores entity id none. |
+| Q59 | A turn's saved reading also keeps the host's clusters and each cluster's entity id, so a contribution can send Q35's payload. Turns read before that have no clusters and send nothing. "Contribute Corrections" sits under the Character Mentions toggle, both modes, shown while the feature is on, disabled with a reason when signed out or not age-attested. Staff review is a "Mentions (n)" segment in the Admin Panel's Moderation tab. A contribution's world id is the open world's id; the model id and version are the reading's. |
 
 ## User Stories
 
