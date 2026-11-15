@@ -12,14 +12,6 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.7.0** (just released below)._
 
-### Major Changes
-
-#### ➕ Added
-
-- **👤 User-facing**
-  - **Supporter Worlds:**
-    - **A Supporter download keeps a plain copy of the same world as it is.** It makes a second Supporter world. Downloading again updates only that one.
-
 ### Minor Changes
 
 #### ➕ Added
@@ -39,9 +31,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **An entity's Presence tab in the World Editor can hold several Routines, each with its own starts, schedule and Requires.** Add, rename, reorder and delete them in a list above the starts. Library updates list each Routine's changes.
     - **An entity switches routine in play when the world changes.** The first routine whose Requires holds applies. Each routine keeps the start it picked at new game, and saves now keep every routine's start. A follower parts ways when the new routine can't reach the player.
   - **Supporter Worlds:**
-    - **A Supporter world plays and edits like any world, but its export, Duplicate, Publish and media Download are disabled.** Point at a disabled button to see why. Backups leave Supporter worlds out, and their saves can't be exported.
+    - **A Supporter world plays and edits like any world, but its export, Duplicate, Publish and media Download are disabled.** Point at a disabled button to see why. Backups leave Supporter worlds out. Their saves can't be exported, and AI Context export stays disabled for them in any world.
     - **A character, dictionary or Avatar saved from a Supporter world stays in that world.** Its Export, Publish and Duplicate are disabled, and it can only be added back to that world. AI Context export in Formaquestion is disabled while a Supporter world is open.
-    - **Supporters can download a Supporter-only world from its listing.** It lands in your Worlds list as a Supporter world. A newer revision shows Update Available. Public sources download with it; Supporter-only ones are left out and named.
+    - **Supporters can download a Supporter-only world from its listing.** It lands in your Worlds list as a Supporter world. A newer revision shows Update Available. A plain copy you already have stays as it is. Public sources download with it; Supporter-only ones are left out and named.
     - **Patreon items wear a heart where a lock used to show.** Supporter Mascots in the Mascot tab and Formamorph AI in every endpoint list now carry the Patreon heart.
     - **Supporter-only listings can show when they open to everyone.** Community Creations cards and details windows say "Supporter-only until" and the date. After it, the listing shows the normal Download.
     - **Supporter worlds leave your Worlds list when your support ends.** Copies of listings that opened to everyone stay while you support. Your saves stay. Copies from another account are hidden, then removed.
@@ -56,8 +48,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **In Game:**
     - **A stat change at Start or Before that renames an entity now reaches the AI on that turn.** Before, the AI read the old name and Stranger Name until the next turn.
     - **Narration that fits Max Output Tokens now keeps its last paragraph.** Before, the app cut long replies short, even when the AI finished inside the limit.
-  - **Supporter Worlds:**
-    - **AI Context export stays disabled for a Supporter save loaded into another world.** After your support ends, a save of the removed world can still load into a plain world. Its AI Context can't be exported.
   - **At new game, a trait group fills again when another pick locks its trait.** It takes the group's default, or else the first trait you can pick. Before, the group stayed empty and Begin stayed off.
   - **The Test Bench no longer calls a placeholder unused when its only chip is in a stranger field.** That covers Stranger Name and Stranger Description, which play already fills in.
 

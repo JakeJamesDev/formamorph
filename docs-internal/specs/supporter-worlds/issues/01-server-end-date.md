@@ -1,6 +1,6 @@
 # 01: Server: Timed Supporter-only end date
 
-Status: ready-for-human
+Status: done
 Base: 8abd888
 Repo: FormamorphServer
 Blocked by: None (can start immediately)

@@ -1,6 +1,7 @@
 # Spec: Timed Supporter Content and Supporter Worlds
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-14. Tickets 01-13 done; last landing 1c6fb7583, plus the picker fix 224bbbfd3. Review: the first pass found five gaps, fixed in tickets 09-13; the second pass is clean. Closed red: lint fails only in worlds-wip/, another effort; tests green.
 Spec session: supporter-worlds — spec
 
 Let staff publish a Supporter-only listing with an end date, after which it becomes a normal public listing. Let a Supporter-only listing be a world that a Supporter can download, play and edit, but whose media can't leave the app. Builds on the Supporter Content spec (`docs-internal/specs/supporter-content/spec.md`, rulings Q1–Q47). Spans both repos: the Formamorph client and FormamorphServer.

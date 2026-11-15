@@ -1,6 +1,6 @@
 # 13: Client: Keep a plain copy plain
 
-Status: ready-for-human
+Status: done
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -24,7 +24,7 @@ Found in the close review. A Supporter download of a listing the player already 
 ## Landed
 
 **Not verified**
-- With two or more Supporter Copies of one listing (different accounts), the overwrite picker still lists every copy, plain ones included. Not covered by this ticket.
+- With two or more Supporter Copies of one listing (different accounts), the overwrite picker still lists every copy, plain ones included. Not covered by this ticket. Fixed at the close in 224bbbfd3: the picker lists only Supporter Copies.
 
 **For you**
 - Download a world publicly, then as a Supporter: two worlds appear, and the plain one still exports.

@@ -1,6 +1,6 @@
 # 08: Client: Supporter heart on the Mascot tab and Formamorph AI
 
-Status: ready-for-human
+Status: done
 Blocked by: 04
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
