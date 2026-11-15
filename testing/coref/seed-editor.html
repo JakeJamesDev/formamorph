@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seed Correction</title>
+<style>
+  :root { --bg: #fafaf9; --panel: #fff; --fg: #1c1917; --muted: #78716c; --line: #e7e5e4; --accent: #2563eb; --ok: #15803d; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0c0a09; --panel: #1c1917; --fg: #f5f5f4; --muted: #a8a29e; --line: #292524; --accent: #60a5fa; --ok: #4ade80; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 system-ui, sans-serif; background: var(--bg); color: var(--fg); height: 100vh; display: flex; flex-direction: column; }
+  header { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+  header .grow { flex: 1; }
+  button { font: inherit; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--fg); cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.on { background: var(--ok); color: #fff; border-color: var(--ok); }
+  main { flex: 1; display: grid; grid-template-columns: 240px 1fr 300px; min-height: 0; }
+  nav, aside { overflow: auto; border-right: 1px solid var(--line); background: var(--panel); }
+  aside { border-right: 0; border-left: 1px solid var(--line); padding: 12px; }
+  nav button { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; border-bottom: 1px solid var(--line); padding: 6px 10px; }
+  nav button.current { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+  nav .done::before { content: "✓ "; color: var(--ok); }
+  section { overflow: auto; padding: 16px 24px; }
+  .meta { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+  .text { font-size: 17px; line-height: 2.2; white-space: pre-wrap; max-width: 72ch; user-select: text; }
+  .m { cursor: pointer; background-repeat: no-repeat; background-size: 100% 2px; }
+  .m.sel { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 2px; }
+  .pending { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+  .bar { position: sticky; bottom: 0; margin-top: 16px; padding: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .bar:empty { display: none; }
+  .chip { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .cluster { padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .cluster b { font-weight: 600; }
+  .cluster .ms { color: var(--muted); font-size: 13px; }
+  .cluster select { font: inherit; font-size: 12px; margin-top: 4px; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; }
+  .errors { color: #dc2626; white-space: pre-wrap; padding: 16px 24px; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 16px; }
+  .empty { color: var(--muted); padding: 48px 24px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } nav { max-height: 160px; } }
+</style>
+</head>
+<body>
+<header>
+  <button id="open" class="primary">Open</button>
+  <button id="save" disabled>Save</button>
+  <span id="file"></span>
+  <span class="grow"></span>
+  <label><input type="checkbox" id="todo"> Unreviewed only</label>
+  <span id="progress"></span>
+  <input type="file" id="picker" accept=".jsonl,.json,.txt" hidden>
+</header>
+<main>
+  <nav id="list"></nav>
+  <section id="view"><div class="empty">Open a seed file (<code>coref/seed/dev.jsonl</code> in the training-data repo).</div></section>
+  <aside id="clusters"></aside>
+</main>
+<script src="seedEditor.cjs"></script>
+<script>
+'use strict';
+const E = window.SeedEditor;
+const COLORS = ['#e11d48', '#2563eb', '#16a34a', '#d97706', '#9333ea', '#0891b2', '#db2777', '#65a30d', '#ea580c', '#4f46e5', '#0d9488', '#a16207'];
+const color = (ci) => COLORS[ci % COLORS.length];
+const $ = (id) => document.getElementById(id);
+
+let passages = [];
+let current = 0;
+let handle = null;
+let fileName = '';
+let dirty = false;
+let selected = null; // {s, e, cluster} of a mention, or {s, e, cluster: null} for a new span
+let undo = [];
+
+const chars = (text) => Array.from(text);
+const spanText = (p, s, e) => chars(p.text).slice(s, e).join('');
+
+async function openFile() {
+  if (window.showOpenFilePicker) {
+    try {
+      [handle] = await window.showOpenFilePicker({ types: [{ description: 'Seed set', accept: { 'application/json': ['.jsonl', '.json'] } }] });
+    } catch { return; }
+    load(await (await handle.getFile()).text(), handle.name);
+  } else $('picker').click();
+}
+
+function load(content, name) {
+  const { passages: loaded, errors } = E.parseFile(content);
+  if (errors.length) {
+    $('view').innerHTML = '';
+    const div = document.createElement('div');
+    div.className = 'errors';
+    div.textContent = `${name} was not opened:\n` + errors.join('\n');
+    $('view').append(div);
+    return;
+  }
+  passages = loaded;
+  fileName = name;
+  dirty = false;
+  undo = [];
+  current = Math.max(0, passages.findIndex((p) => p.reviewed === false));
+  selected = null;
+  render();
+}
+
+async function save() {
+  let text;
+  try {
+    text = E.serialize(passages);
+  } catch (err) {
+    alert(`Not saved: ${err.message}`);
+    return;
+  }
+  if (handle && handle.createWritable) {
+    try {
+      const w = await handle.createWritable();
+      await w.write(text);
+      await w.close();
+    } catch (err) {
+      alert(`Not saved: ${err.message}`);
+      return;
+    }
+  } else {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    a.download = fileName || 'dev.jsonl';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  dirty = false;
+  renderHeader();
+}
+
+function edit(next) {
+  undo.push({ index: current, passage: passages[current] });
+  passages[current] = next;
+  dirty = true;
+  selected = null;
+  render();
+}
+
+function go(index) {
+  if (index < 0 || index >= passages.length) return;
+  current = index;
+  selected = null;
+  render();
+}
+
+function step(dir) {
+  const todo = $('todo').checked;
+  for (let i = current + dir; i >= 0 && i < passages.length; i += dir) {
+    if (!todo || passages[i].reviewed === false) return go(i);
+  }
+}
+
+function renderHeader() {
+  $('save').disabled = !passages.length;
+  $('file').textContent = fileName ? fileName + (dirty ? ' •' : '') : '';
+  const done = passages.filter((p) => p.reviewed !== false).length;
+  $('progress').textContent = passages.length ? `${done}/${passages.length} reviewed` : '';
+}
+
+function render() {
+  renderHeader();
+  const list = $('list');
+  list.innerHTML = '';
+  const todo = $('todo').checked;
+  passages.forEach((p, i) => {
+    if (todo && p.reviewed !== false && i !== current) return;
+    const b = document.createElement('button');
+    const src = p.source || {};
+    b.textContent = src.world ? `${src.world} · run ${src.run} · turn ${src.turn}` : p.id;
+    if (p.reviewed !== false) b.classList.add('done');
+    if (i === current) b.classList.add('current');
+    b.onclick = () => go(i);
+    list.append(b);
+  });
+  list.querySelector('.current')?.scrollIntoView({ block: 'nearest' });
+  if (!passages.length) return;
+  renderPassage();
+  renderClusters();
+}
+
+function renderPassage() {
+  const p = passages[current];
+  const src = p.source || {};
+  const view = $('view');
+  view.innerHTML = '';
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  meta.textContent = `${p.id}${src.action ? ` — action: “${src.action}”` : ''}`;
+  const reviewed = document.createElement('button');
+  reviewed.textContent = p.reviewed === false ? 'Mark Reviewed (R)' : 'Reviewed ✓ (R)';
+  if (p.reviewed !== false) reviewed.classList.add('on');
+  reviewed.onclick = toggleReviewed;
+  meta.append(' ', reviewed);
+  view.append(meta);
+
+  const text = document.createElement('div');
+  text.className = 'text';
+  for (const seg of E.segments(p.text, p.clusters)) {
+    const span = document.createElement('span');
+    span.textContent = seg.text;
+    span.dataset.s = seg.s;
+    span.dataset.e = seg.e;
+    if (seg.mentions.length) {
+      span.className = 'm';
+      // One underline per covering mention, innermost closest to the text.
+      span.style.backgroundImage = seg.mentions.map(([ci]) => `linear-gradient(${color(ci)}, ${color(ci)})`).join(', ');
+      span.style.backgroundPosition = seg.mentions.map((_, k) => `0 calc(100% - ${4 * k}px)`).join(', ');
+      span.style.paddingBottom = `${4 * seg.mentions.length}px`;
+      span.onclick = (ev) => { if (window.getSelection().isCollapsed) { ev.stopPropagation(); pick(seg); } };
+      if (selected && selected.cluster !== null && seg.mentions.some(([ci, s, e]) => ci === selected.cluster && s === selected.s && e === selected.e)) span.classList.add('sel');
+    }
+    if (selected && selected.cluster === null && seg.s >= selected.s && seg.e <= selected.e) span.classList.add('pending');
+    text.append(span);
+  }
+  text.onmouseup = () => selectRange(text);
+  view.append(text);
+  view.append(actionBar(p));
+  const hint = document.createElement('p');
+  hint.className = 'hint';
+  hint.textContent = 'Click a mention to select it (click again for the mention around it). Drag across words to add a mention. Keys: 1–9 move to that cluster, N new cluster, Delete remove, R reviewed, ← → passages, Ctrl+Z undo, Ctrl+S save.';
+  view.append(hint);
+}
+
+function pick(seg) {
+  const ms = seg.mentions;
+  let k = 0;
+  if (selected && selected.cluster !== null) {
+    const at = ms.findIndex(([ci, s, e]) => ci === selected.cluster && s === selected.s && e === selected.e);
+    if (at >= 0) k = (at + 1) % ms.length;
+  }
+  const [cluster, s, e] = ms[k];
+  selected = { s, e, cluster };
+  renderPassage();
+}
+
+function selectRange(container) {
+  const sel = window.getSelection();
+  if (sel.isCollapsed || !container.contains(sel.anchorNode)) return;
+  const edge = (node) => (node.nodeType === 3 ? node.parentElement : node).closest('[data-s]');
+  const a = edge(sel.anchorNode);
+  const b = edge(sel.focusNode);
+  if (!a || !b) return;
+  const span = E.trimSpan(passages[current].text, Math.min(+a.dataset.s, +b.dataset.s), Math.max(+a.dataset.e, +b.dataset.e));
+  sel.removeAllRanges();
+  if (!span) return;
+  const [s, e] = span;
+  const ci = passages[current].clusters.findIndex((c) => c.some(([x, y]) => x === s && y === e));
+  selected = { s, e, cluster: ci >= 0 ? ci : null };
+  renderPassage();
+}
+
+function actionBar(p) {
+  const bar = document.createElement('div');
+  bar.className = 'bar';
+  if (!selected) return bar;
+  const label = document.createElement('b');
+  label.textContent = `“${spanText(p, selected.s, selected.e)}”`;
+  bar.append(label, selected.cluster === null ? ' add to:' : ' move to:');
+  p.clusters.forEach((c, ci) => {
+    if (ci === selected.cluster) return;
+    const b = document.createElement('button');
+    b.innerHTML = `<span class="chip" style="background:${color(ci)}"></span>`;
+    b.append(`${ci + 1} ${spanText(p, c[0][0], c[0][1])}`);
+    b.onclick = () => place(ci);
+    bar.append(b);
+  });
+  const fresh = document.createElement('button');
+  fresh.textContent = 'New Cluster';
+  fresh.onclick = () => place('new');
+  bar.append(fresh);
+  if (selected.cluster !== null) {
+    const drop = document.createElement('button');
+    drop.textContent = 'Remove';
+    drop.onclick = () => place(null);
+    bar.append(drop);
+  }
+  return bar;
+}
+
+function place(target) {
+  if (!selected) return;
+  edit(E.placeSpan(passages[current], selected.s, selected.e, target));
+}
+
+function renderClusters() {
+  const p = passages[current];
+  const aside = $('clusters');
+  aside.innerHTML = `<b>Clusters</b> <span class="ms">(${p.clusters.length})</span>`;
+  p.clusters.forEach((c, ci) => {
+    const div = document.createElement('div');
+    div.className = 'cluster';
+    div.innerHTML = `<span class="chip" style="background:${color(ci)}"></span><b>${ci + 1}</b> `;
+    const ms = document.createElement('span');
+    ms.className = 'ms';
+    ms.textContent = c.map(([s, e]) => spanText(p, s, e)).join(' · ') + (c.length < 2 ? '  (one mention: the corpus drops it)' : '');
+    div.append(ms);
+    if (p.clusters.length > 1) {
+      const merge = document.createElement('select');
+      merge.innerHTML = '<option value="">Merge into…</option>' + p.clusters.map((o, oi) => (oi === ci ? '' : `<option value="${oi}">${oi + 1}</option>`)).join('');
+      merge.onchange = () => { if (merge.value !== '') edit(E.mergeClusters(p, ci, +merge.value)); };
+      div.append(document.createElement('br'), merge);
+    }
+    aside.append(div);
+  });
+}
+
+function toggleReviewed() {
+  const p = passages[current];
+  edit({ ...p, reviewed: p.reviewed === false });
+}
+
+document.addEventListener('keydown', (ev) => {
+  if (!passages.length || ev.target.closest('select, input')) return;
+  if ((ev.ctrlKey || ev.metaKey) && ev.key === 'z') {
+    const last = undo.pop();
+    if (last) {
+      passages[last.index] = last.passage;
+      current = last.index;
+      selected = null;
+      dirty = true;
+      render();
+    }
+    ev.preventDefault();
+  } else if ((ev.ctrlKey || ev.metaKey) && ev.key === 's') {
+    ev.preventDefault();
+    save();
+  } else if (ev.ctrlKey || ev.metaKey || ev.altKey) {
+    return;
+  } else if (ev.key === 'ArrowRight') step(1);
+  else if (ev.key === 'ArrowLeft') step(-1);
+  else if (ev.key === 'r' || ev.key === 'R') toggleReviewed();
+  else if (ev.key === 'Escape') { selected = null; renderPassage(); }
+  else if (selected && (ev.key === 'n' || ev.key === 'N')) place('new');
+  else if (selected && selected.cluster !== null && (ev.key === 'Delete' || ev.key === 'Backspace')) place(null);
+  else if (selected && /^[1-9]$/.test(ev.key) && +ev.key - 1 < passages[current].clusters.length && +ev.key - 1 !== selected.cluster) place(+ev.key - 1);
+});
+
+$('open').onclick = openFile;
+$('save').onclick = save;
+$('todo').onchange = render;
+$('picker').onchange = async () => {
+  const f = $('picker').files[0];
+  if (f) load(await f.text(), f.name);
+  handle = null;
+};
+window.addEventListener('beforeunload', (ev) => { if (dirty) ev.preventDefault(); });
+</script>
+</body>
+</html>

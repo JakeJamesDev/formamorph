@@ -76,7 +76,7 @@ export async function startDevServer(repoRoot, pinned = 0) {
 
 // Each enter step's primary button is labeled with the NEXT step's name, so whichever advance label is present
 // gets clicked. "Got It" first: the contest popup overlays the enter dialog.
-const ADVANCE = ["Got It", "Next", "Location", "Characters", "Dictionaries", "Avatar", "Start Game", "Start", "Continue", "Random", "Skip"];
+const ADVANCE = ["Got It", "Next", "Location", "Characters", "Dictionaries", "Avatar", "Start Game", "Start", "Continue", "Random", "Skip", "Finalize Avatar"];
 
 /** Import `worldPath` through the hidden file input, enter it with the default picks, and wait for the game
  *  screen's `window.__baseline`. Throws with what is on screen when the game never mounts. */
@@ -120,4 +120,37 @@ export async function enterWorld(page, worldPath, label) {
     dialogs: [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')].map((d) => d.textContent?.trim().slice(0, 300)),
   }));
   throw new Error(`${label}: window.__baseline never registered (did the game screen mount?)\n  buttons: ${JSON.stringify(seen.buttons)}\n  dialogs: ${JSON.stringify(seen.dialogs)}`);
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Play one action through `window.__baseline` and wait for its turn to settle, or reject after `timeoutMs`. */
+export function act(page, action, timeoutMs) {
+  let timer;
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`"${action.slice(0, 40)}" timed out`)), timeoutMs); });
+  return Promise.race([page.evaluate((a) => window.__baseline.runScript([a]), action), timeout]).finally(() => clearTimeout(timer));
+}
+
+/** Play the opening: an Opening Narration starts the game on its own within `graceMs`; an Opening Action waits
+ *  in the input box, and anything else gets START GAME. */
+export async function playOpening(page, { graceMs, timeoutMs }) {
+  const status = () => page.evaluate(() => {
+    const b = window.__baseline;
+    const prefilled = [...document.querySelectorAll("textarea")].some((t) => t.value.trim().length > 0);
+    return { running: b.isTurnRunning(), started: b.isGameStarted(), prefilled };
+  });
+  for (let waited = 0; waited < graceMs; waited += 500) {
+    const { running, started, prefilled } = await status();
+    if (prefilled && !running && !started) break;
+    if (running || started) {
+      const deadline = Date.now() + timeoutMs;
+      while ((await status()).running) {
+        if (Date.now() > deadline) throw new Error("the opening narration timed out");
+        await sleep(500);
+      }
+      return;
+    }
+    await sleep(500);
+  }
+  await act(page, "START GAME", timeoutMs);
 }

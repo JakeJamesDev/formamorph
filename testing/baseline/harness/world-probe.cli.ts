@@ -15,10 +15,10 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium, type Browser, type Page } from 'playwright';
+import { chromium, type Browser } from 'playwright';
 import { readTavernJson } from '@/lib/tavernCard';
 import { PRE_EXPANSION_SHA } from '@/test/bundledRevisions';
-import { enterWorld, startDevServer } from './appDriver.mjs';
+import { act, enterWorld, playOpening, startDevServer } from './appDriver.mjs';
 import { scoreTurn, summarizeArm, type ArmSummary, type DumpTurn, type TurnScore } from './world-probe-score';
 import { commonFlags, WORLD_SCRIPTS } from './world-probe-worlds';
 
@@ -107,47 +107,8 @@ const SEED: Record<string, string> = {
 interface BaselineWindow {
   __baseline: {
     getDebugTurns: () => (DumpTurn & { regenerated?: boolean; pruned?: boolean })[];
-    runScript: (actions: string[]) => Promise<void>;
-    isTurnRunning: () => boolean;
-    isGameStarted: () => boolean;
   };
 }
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const withTimeout = <T>(promise: Promise<T>, what: string): Promise<T> => {
-  let timer: NodeJS.Timeout | undefined;
-  const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(`${what} timed out`)), TURN_TIMEOUT_MS); });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-};
-
-/** Play the opening: an Opening Narration starts the game on its own, an Opening Action waits to be sent. */
-async function playOpening(page: Page): Promise<void> {
-  const status = () => page.evaluate(() => {
-    const b = (window as unknown as BaselineWindow).__baseline;
-    // An Opening Action waits in the input box for the player.
-    const prefilled = [...document.querySelectorAll('textarea')].some((t) => t.value.trim().length > 0);
-    return { running: b.isTurnRunning(), started: b.isGameStarted(), prefilled };
-  });
-  for (let waited = 0; waited < OPENING_GRACE_MS; waited += 500) {
-    const { running, started, prefilled } = await status();
-    if (prefilled && !running && !started) break;
-    if (running || started) {
-      const deadline = Date.now() + TURN_TIMEOUT_MS;
-      while ((await status()).running) {
-        if (Date.now() > deadline) throw new Error('the opening narration timed out');
-        await sleep(500);
-      }
-      return;
-    }
-    await sleep(500);
-  }
-  await act(page, 'START GAME');
-}
-
-const act = (page: Page, action: string) => withTimeout(
-  page.evaluate((a) => (window as unknown as BaselineWindow).__baseline.runScript([a]), action),
-  `"${action.slice(0, 40)}"`,
-);
 
 const messageOf = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
@@ -173,8 +134,8 @@ async function playRun(browser: Browser, baseUrl: string, id: string, arm: strin
     await enterWorld(page, worldFile, `${id} ${arm}`);
     let error: string | undefined;
     try {
-      await playOpening(page);
-      for (const action of WORLD_SCRIPTS[id].actions) await act(page, action);
+      await playOpening(page, { graceMs: OPENING_GRACE_MS, timeoutMs: TURN_TIMEOUT_MS });
+      for (const action of WORLD_SCRIPTS[id].actions) await act(page, action, TURN_TIMEOUT_MS);
     } catch (err) {
       error = messageOf(err);
     }

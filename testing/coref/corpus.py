@@ -71,12 +71,14 @@ def to_tokens(doc, nlp):
 
 
 def read_annotations(path):
+    """The file's passages, without those marked "reviewed": false (pre-labels not yet corrected), and how many were left out."""
     docs = kit.read_jsonlines(path)
     for d in docs:
         missing = {'id', 'text', 'clusters'} - set(d)
         if missing:
             sys.exit(f'{path}: a line lacks {sorted(missing)}.')
-    return docs
+    kept = [d for d in docs if d.get('reviewed') is not False]
+    return kept, len(docs) - len(kept)
 
 
 def main():
@@ -99,14 +101,18 @@ def main():
         nlp = spacy.load('en_core_web_sm', exclude=['tagger', 'parser', 'lemmatizer', 'ner', 'textcat'])
         for target, path in extra:
             docs, skipped = [], []
-            for d in read_annotations(path):
+            annotated, unreviewed = read_annotations(path)
+            for d in annotated:
                 doc, bad = to_tokens(d, nlp)
                 docs.append(doc)
                 skipped += bad
             out.setdefault('train' if target == 'train' else 'narration.dev', []).extend(docs)
-            print(f'{path}: {len(docs)} passages -> {target}' + (f'; skipped {len(skipped)} spans off word boundaries:' if skipped else ''))
+            print(f'{path}: {len(docs)} passages -> {target}' + (f'; {unreviewed} not reviewed, left out' if unreviewed else '')
+                  + (f'; skipped {len(skipped)} spans off word boundaries:' if skipped else ''))
             for s in skipped:
                 print('  ' + s)
+    if not out.get('narration.dev'):
+        out.pop('narration.dev', None)  # an empty dev set would score as a set
     keys = [d['doc_key'] for docs in out.values() for d in docs]
     dupes = sorted({k for k in keys if keys.count(k) > 1})
     if dupes:

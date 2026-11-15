@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import type { MutableRefObject } from "react";
+import type { ChatMessage } from "@/types";
+import { parseTurnContent } from "./turnDigest";
 import { getParityFixture, startParityRecording, stopParityRecording } from "./turnPipeline/parityRecorder";
 
 type SendAction = (action: string) => Promise<void>;
@@ -10,6 +12,7 @@ type SendAction = (action: string) => Promise<void>;
  * without fragile DOM waits:
  *   - `runScript(actions)` runs each action through `sendGameAction`, awaiting turn completion between them.
  *   - `getDebugTurns()` returns the current AI-context turns (the same array the Export button downloads).
+ *   - `getNarrations()` returns each stored turn's id and narration, the text the Mention Reading reads.
  *   - `isTurnRunning()` and `isGameStarted()` let a script wait out a turn the game started on its own (an
  *     Opening Narration) before it sends the next action. A partial regenerate counts as a running turn.
  *   - `startParityRecording(info)` / `finishParityRecording()` capture the Turn Pipeline parity fixture —
@@ -22,12 +25,18 @@ export function useBaselineTestHook(
   sendGameActionRef: MutableRefObject<SendAction>,
   turnControllerRef: MutableRefObject<AbortController | null>,
   isGameStartedRef: MutableRefObject<boolean>,
+  historyRef: MutableRefObject<readonly ChatMessage[]>,
 ): void {
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     const w = window as unknown as { __baseline?: unknown };
     w.__baseline = {
       getDebugTurns: () => debugTurnsRef.current,
+      getNarrations: () => historyRef.current.flatMap((message) => {
+        if (message.role !== "assistant") return [];
+        const turn = parseTurnContent(message.content);
+        return turn?.turnId ? [{ turnId: turn.turnId, narration: turn.narration ?? "" }] : [];
+      }),
       isTurnRunning: () => turnControllerRef.current !== null,
       isGameStarted: () => isGameStartedRef.current,
       startParityRecording: (info: { label?: string; world?: string }) => startParityRecording(info),
@@ -49,5 +58,5 @@ export function useBaselineTestHook(
       stopParityRecording();
       delete (w as { __baseline?: unknown }).__baseline;
     };
-  }, [debugTurnsRef, sendGameActionRef, turnControllerRef, isGameStartedRef]);
+  }, [debugTurnsRef, sendGameActionRef, turnControllerRef, isGameStartedRef, historyRef]);
 }

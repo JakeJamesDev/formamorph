@@ -93,6 +93,33 @@ node testing/coref/manifest.mjs publish --model small --export .scratch/coref/ex
 
 Upload `publish/small/<version>/` first, then `publish/manifest.json`. When `--current` does not exist yet (HTTP 404, or no file), nothing is published, and the first publish passes.
 
+## 🌱 The narration seed set
+
+About 100 passages of real narration from the bundled worlds, labeled by a model and then corrected by hand. Once corrected, they are the `narration-dev` set. They live in the data repo at `coref/seed/dev.jsonl`.
+
+**1. Play.** Plays the bundled worlds in the real dev build on the cloud endpoint, with scripts that pull several characters into talk ([`seed-worlds.ts`](seed-worlds.ts)). Each turn's stored narration becomes one passage, with its world, run, turn and action:
+
+```powershell
+npx vite-node testing/coref/seed-play.cli.ts -- --worlds all
+```
+
+- It writes `coref/seed/play/<batch>.jsonl` in the data repo. `--worlds` and `--runs` narrow a batch; `--endpoint` and `--model` change the target.
+- An opening page the world wrote itself is left out: only model narration counts. Turn numbers still count it.
+
+**2. Pre-label.** Labels the new passages with the current big model (LitBank e120) on the CPU and adds them to the seed file as `"reviewed": false`. Passages already in the file keep their labels:
+
+```powershell
+.scratch/coref/env/Scripts/python testing/coref/seed_label.py --checkpoint <e120 checkpoint> --export .scratch/coref/exports/big-e120 ../formamorph-training-data/coref/seed/play/<batch>.jsonl
+```
+
+**3. Correct.** Open [`seed-editor.html`](seed-editor.html) in Chrome, then open the seed file with **Open**. Chrome saves back to the same file.
+
+- Click a mention to select it; click again for the mention around it. Drag across words to add a mention.
+- `1`–`9` moves the selection to that cluster, `N` starts a new cluster, `Delete` removes it.
+- `R` marks the passage reviewed, `←` `→` change passages, `Ctrl+Z` undoes, `Ctrl+S` saves.
+
+**4. Score.** Build the corpus with the seed file as `narration-dev` (step 1 of a retrain), then score. Passages still marked `"reviewed": false` are left out of the corpus, and `corpus.py` prints how many.
+
 ## 🧪 A local manifest for the dev server
 
 The dev server serves `.scratch/coref/publish` at `/coref-dev/`, and the app reads its manifest there until the public bucket exists. Publish each export there with `--base-url /coref-dev`:
@@ -147,7 +174,9 @@ JSON Lines, one passage per line:
 - `id` is unique across the whole corpus.
 - Each cluster lists `[start, end)` character offsets into `text`.
 - A span that does not fall on spaCy word boundaries is skipped, and `corpus.py` lists it. The build goes on.
-- Clusters with one mention are dropped. Other fields are ignored.
+- Clusters with one mention are dropped.
+- A passage with `"reviewed": false` is a pre-label not yet corrected, and the corpus leaves it out.
+- Other fields are ignored. Seed passages also carry `source` (world, run, turn, action, model, batch) and `labeledBy`.
 
 ### Corpus (token form)
 
