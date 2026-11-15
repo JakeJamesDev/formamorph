@@ -59,6 +59,7 @@ Settled in the grill on 2026-11-14. Numbered R so they don't collide with the ba
 | R32 | Supporter world processing has no time budget. Ticket 02 measured 7.6 s cold for the largest bundled world (61.5 MB, 42 images) on a fast desktop. User ruling, 2026-11-14. |
 | R33 | Under R11, turning the Supporter-only flag on also checks a pending update of the listing for linked images. Found in ticket 02's landing; user ruling puts it in ticket 01, 2026-11-14. |
 | R34 | A Supporter world's gated response size is accepted as is. Processed images are lossless PNG, the Mascot's format, so the largest bundled world comes to 166 MB. User ruling, 2026-11-14. |
+| R35 | Base Q39 applies to Supporter Copies as written: copies marked for another account are hidden from every world and library listing while a different account is signed in. The signed-in account's first good check removes them. The filter sits in the storage listings, with an unfiltered read for sync and removal. Signed-out behavior matches the base module. Ticket 07 intent answer. |
 
 ## User Stories
 
