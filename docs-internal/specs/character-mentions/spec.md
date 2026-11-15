@@ -74,6 +74,7 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q42 | Readings live on the save envelope as a per-turn map, beside `scriptTells`, pruned on rewind and replaced when a turn's passage changes. Only newly settled turns get one; older turns are not backfilled. Corrections (ticket 08) get their own per-turn map. |
 | Q43 | Weights and the manifest are hosted on `assets.formamorph.ai` (manifest at `/coref/manifest.json`), with a `VITE_COREF_MANIFEST_URL` override. |
 | Q44 | Quote Color on/off gates all quote coloring. A resolved speaker's color beats the player's custom Quote Color; quotes with no resolved speaker keep the custom color, or the theme color. |
+| Q45 | A speaker's palette slot is the entity's position among the world's entities that can speak, mod 8, so the first eight never share a color. Runtime characters continue the count after the world's entities, in their save order. A pure id hash is out: three speakers collide about a third of the time. |
 
 ## User Stories
 
