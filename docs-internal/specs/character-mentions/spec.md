@@ -77,6 +77,7 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q45 | A speaker's palette slot is the entity's position among the world's entities that can speak, mod 8, so the first eight never share a color. Runtime characters continue the count after the world's entities, in their save order. A pure id hash is out: three speakers collide about a third of the time. |
 | Q46 | A mention linked to an entity with no Player View row stays plain text: no link, no card. Cards read the Player View as it is when opened, so a past turn's card shows what the player knows now. |
 | Q47 | Ticket 07's card shows "Wrong character?" only when a correction handler is passed (ticket 08 passes it). No inert control ships in between. |
+| Q48 | Quote colors follow Q46: only a speaker with a Player View row gets a color or a speaker mark in the DOM. Others render as unresolved quotes. Palette slots stay by cast order (Q45), so a color never shifts when a character becomes visible. |
 
 ## User Stories
 
