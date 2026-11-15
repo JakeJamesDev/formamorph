@@ -1,4 +1,5 @@
 import type { MentionReadingMap } from '@/lib/coref/mentionReadings';
+import type { MentionCorrectionMap } from '@/lib/coref/mentionCorrections';
 import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming, PlacementWhere, BodyPick, WorldOptionValueOf, SupporterCopyMarker, LibrarySupporterCopyMarker } from './world';
 import type { ChatMessage } from './ai';
 import type { ActionSnapshot, ListedAction, SentActionList } from '@/lib/actionList';
@@ -588,6 +589,9 @@ export interface SaveObject {
   /** Each turn's Mention Reading by turn id, with the model that made it and a hash of the narration it read.
    *  Never sent in a request. Absent ⇒ none. */
   mentionReadings?: MentionReadingMap;
+  /** The player's corrections to those readings by turn id, with a hash of the narration their spans index
+   *  into. Never sent in a request. Absent ⇒ none. */
+  mentionCorrections?: MentionCorrectionMap;
   /** The Action List each turn was sent with, by turn id. Only the newest turn's entries keep their
    *  snapshots, whose states carry no `fullMessageHistory`. Absent ⇒ none. */
   sentActions?: Record<string, SentActionList<ActionSnapshot>>;

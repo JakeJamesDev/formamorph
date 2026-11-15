@@ -103,6 +103,19 @@ function rehypePluginsFor(tinted: boolean, dialogue: boolean): ComponentProps<ty
 const speakerRehypePlugins = (speakers: QuoteSpeakerSource): ComponentProps<typeof Streamdown>['rehypePlugins'] =>
   [...(REHYPE_PLUGINS ?? []), [rehypeQuoteSpans, { speakers }]];
 
+// A number per plugin list or component map, so a renderer can key on which ones it got.
+const identities = new WeakMap<object, number>();
+let nextIdentity = 0;
+const identity = (value: object | undefined): number => {
+  if (!value) return -1;
+  let id = identities.get(value);
+  if (id === undefined) {
+    id = nextIdentity++;
+    identities.set(value, id);
+  }
+  return id;
+};
+
 /** Renderers for markdown elements, by tag name. */
 export type MarkdownComponents = NonNullable<ComponentProps<typeof Streamdown>['components']>;
 
@@ -170,11 +183,15 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
   );
   // Fixed at mount: Streamdown keys its reveal state on the animated options, so a change would replay it.
   const [skipInitial] = useState(resume);
+  // Streamdown's blocks memoize on their source alone, so new plugins (a reading, a correction) only show
+  // through a fresh mount. They are memoized, so this key holds through a reveal.
+  const pluginsKey = `${identity(remarkPlugins)}:${identity(rehypePlugins)}:${identity(allComponents)}`;
   // Read the current fade timing at render (a new sentence's release re-renders us via the text prop),
   // so the words just added animate at the model's current smoothed rate.
   return (
     <div ref={root} className="relative [overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6">
       <Streamdown
+        key={pluginsKey}
         remarkPlugins={remarkPlugins}
         rehypePlugins={rehypePlugins}
         components={allComponents}

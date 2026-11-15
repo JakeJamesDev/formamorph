@@ -1577,7 +1577,8 @@ Mention Cards let the player check whom or what a name, pronoun or quote in narr
 ### Composition
 
 - 🔗 **Plain-text mentions.** A linked mention reads as prose. A dotted underline in the entity's speaker color shows on hover, on keyboard focus, and while its card is open.
-- 🪪 **A small card.** The entity's picture as a 48×56 rounded portrait, cropped from the top, then the name and up to two lines of description. With no picture the player can see, a circle with the entity's initial in its speaker color takes its place. "Wrong character?" sits under them once correction exists.
+- 🪪 **A small card.** The entity's picture as a 48×56 rounded portrait, cropped from the top, then the name and up to two lines of description. With no picture the player can see, a circle with the entity's initial in its speaker color takes its place. "Wrong character?" sits under them.
+- 🔁 **A pick list in the same card.** "Wrong character?" swaps the card's content for the cast: "Who said this?" for a quote, "Who is this?" for a mention. A back button returns to the card, a check marks the current pick, and the last row, "Someone Else", unlinks it. Rows are menu rows (`MENU_ROW`). Picking closes the card, and the colors and links change at once.
 - 💬 **Quotes open their speaker.** Clicking or tapping a colored quote opens its speaker's card. A mention inside a quote opens its own card.
 - 🕶️ **Player View only.** The card shows what the player knows now: a met entity's name and player description, or a stranger's label. An entity the player has never seen gets no link.
 
@@ -1593,7 +1594,8 @@ Mention Cards let the player check whom or what a name, pronoun or quote in narr
 | Rest | Plain text, no underline. |
 | Hover (mouse) | Dotted underline. The card opens after 300 ms and closes 200 ms after the pointer leaves both. |
 | Click or tap | The card opens and stays. A second click closes it. |
-| Keyboard focus | Focus ring and underline. The card opens and closes on blur. Enter pins it. |
+| Keyboard focus | Focus ring and underline. The card opens and closes on blur. |
+| Enter or Space | The card opens and stays, and focus moves into it. Escape or a pick closes it and returns focus to the mention, if it is still linked. |
 
 Touch never opens a card on pass-over: only a tap does.
 
@@ -1604,12 +1606,14 @@ Touch never opens a card on pass-over: only a tap does.
 | Mention links in the markdown | [`mentionLinks.ts`](../src/lib/coref/mentionLinks.ts), through `MarkdownRenderer`'s `links` prop |
 | Card, triggers and the one shared popover | [`MentionCards.tsx`](../src/components/game/MentionCards.tsx) |
 | Card rows from the Player View | `mentionCardRows` in [`MentionCards.tsx`](../src/components/game/MentionCards.tsx), built in [`GameViewer.tsx`](../src/views/GameViewer.tsx) |
+| Pick list | `MentionPickList` in [`MentionCards.tsx`](../src/components/game/MentionCards.tsx) |
+| Corrections over the reading | [`mentionCorrections.ts`](../src/lib/coref/mentionCorrections.ts), wired in [`GameViewer.tsx`](../src/views/GameViewer.tsx) |
 
 Open `#dev?modal=designSystem&tab=mention-cards` for the light and dark panels side by side. `#dev?view=gameViewer&fixture=speakerQuotes` shows the cards in a game, with Character Mentions on.
 
 ### Writing review
 
-The panel labels are "Cards", "Hovered Mention" and "In a Turn". "Wrong character?" comes from the approved prototype. The sample narration and card text are creative prose and exempt.
+The panel labels are "Cards", "Pick List", "Hovered Mention" and "In a Turn". "Wrong character?", the pick-list titles and the unlink row come from the approved prototype. The sample narration and card text are creative prose and exempt.
 
 ## Pattern: Inline Prompt Line
 

@@ -1,10 +1,20 @@
 // Mention links: a turn's resolved mentions as links in its rendered narration, for the hover cards.
 import { LINK_MARK_PROPERTY, type RemarkPlugin } from '@/components/game/MarkdownRenderer';
+import { parseSpanKey, spanKey, type TextSpan } from '@/lib/quoteSegments';
 import type { MentionLink, MentionReading } from './mentionReading';
 import { turnMentionReading, type MentionReadingMap } from './mentionReadings';
 
-/** The mark a mention link carries, before its entity id. */
+/** The mark a mention link carries, before `<start>:<end>:<entity id>` (its span in the narration). */
 export const MENTION_MARK = 'mention:';
+
+/** A mention mark's entity and narration span, or null for any other mark. */
+export function parseMentionMark(mark: string): (TextSpan & { entityId: string }) | null {
+  if (!mark.startsWith(MENTION_MARK)) return null;
+  const rest = mark.slice(MENTION_MARK.length);
+  const span = parseSpanKey(rest);
+  const entityId = rest.slice(rest.indexOf(':', rest.indexOf(':') + 1) + 1);
+  return span && entityId ? { ...span, entityId } : null;
+}
 /** A fragment, so the renderer's link hardening lets it through. */
 const MENTION_HREF = '#mention';
 
@@ -24,15 +34,15 @@ interface MdastNode {
   data?: { hProperties?: Record<string, string> };
 }
 
-/** A mention with its span relative to the rendered block. */
-interface BlockMention { start: number; end: number; entityId: string }
+/** A mention with its span relative to the rendered block, and its span in the narration. */
+interface BlockMention { start: number; end: number; entityId: string; from: number; to: number }
 
 /** The resolved mentions of `source`, outermost first where spans nest. */
-function resolvedMentions(source: MentionLinkSource): BlockMention[] {
+function resolvedMentions(source: MentionLinkSource): (MentionLink & { entityId: string })[] {
   const sorted = source.mentions
-    .filter((m): m is BlockMention => m.entityId !== null && m.end > m.start)
+    .filter((m): m is MentionLink & { entityId: string } => m.entityId !== null && m.end > m.start)
     .sort((a, b) => a.start - b.start || b.end - a.end);
-  const kept: BlockMention[] = [];
+  const kept: (MentionLink & { entityId: string })[] = [];
   for (const mention of sorted) if (!kept.length || mention.start >= kept[kept.length - 1].end) kept.push(mention);
   return kept;
 }
@@ -49,7 +59,7 @@ export function blockMentions(source: MentionLinkSource, block: string): BlockMe
   const mentions = resolvedMentions(source);
   const inBlock = (at: number) => mentions
     .filter((m) => m.start >= at && m.end <= at + body.length)
-    .map((m) => ({ start: m.start - at + lead, end: m.end - at + lead, entityId: m.entityId }));
+    .map((m) => ({ start: m.start - at + lead, end: m.end - at + lead, entityId: m.entityId, from: m.start, to: m.end }));
   const found: BlockMention[][] = [];
   for (let at = source.text.indexOf(body); at >= 0; at = source.text.indexOf(body, at + 1)) found.push(inBlock(at));
   const [first, ...rest] = found;
@@ -59,11 +69,11 @@ export function blockMentions(source: MentionLinkSource, block: string): BlockMe
   return rest.every(same) ? first : [];
 }
 
-const marked = (entityId: string, typed: string): MdastNode => ({
+const marked = (mention: BlockMention, typed: string): MdastNode => ({
   type: 'link',
   url: MENTION_HREF,
   children: [{ type: 'text', value: typed }],
-  data: { hProperties: { [LINK_MARK_PROPERTY]: `${MENTION_MARK}${entityId}` } },
+  data: { hProperties: { [LINK_MARK_PROPERTY]: `${MENTION_MARK}${spanKey({ start: mention.from, end: mention.to })}:${mention.entityId}` } },
 });
 
 const WORD = /[\p{L}\p{N}]/u;
@@ -79,7 +89,7 @@ function placeIn(value: string, sourceText: string, typed: string, offset: numbe
 }
 
 /**
- * Remark plugin that marks each resolved mention as `<a data-link-mark="mention:<id>">`, so the renderer can
+ * Remark plugin that marks each resolved mention as `<a data-link-mark="mention:<start>:<end>:<id>">`, so the renderer can
  * draw it as a card trigger. Text inside a link or code stays as it is.
  *
  * Runs before any transformer that rebuilds text nodes, since a match needs the node's source offsets.
@@ -110,7 +120,7 @@ export function remarkMentionLinks({ source }: { source: MentionLinkSource }) {
             const at = placeIn(value, sourceText, typed, mention.start - from, cursor);
             if (at < 0) continue;
             if (at > cursor) next.push({ type: 'text', value: value.slice(cursor, at) });
-            next.push(marked(mention.entityId, typed));
+            next.push(marked(mention, typed));
             cursor = at + typed.length;
           }
           if (cursor === 0) next.push(node);

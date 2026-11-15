@@ -48,8 +48,9 @@ function turnNarrations(history: readonly ChatMessage[]): Map<string, string> {
   return turns;
 }
 
-/** The map without readings of turns that left the history or whose narration changed. Unchanged when nothing drops. */
-export function pruneMentionReadings(map: MentionReadingMap, history: readonly ChatMessage[]): MentionReadingMap {
+/** The map without entries of turns that left the history or whose narration changed. Unchanged when nothing
+ *  drops. Readings and corrections both prune this way. */
+export function pruneByNarration<T extends { textHash: string }>(map: Record<string, T>, history: readonly ChatMessage[]): Record<string, T> {
   const ids = Object.keys(map);
   if (!ids.length) return map;
   const turns = turnNarrations(history);

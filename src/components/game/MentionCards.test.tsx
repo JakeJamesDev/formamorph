@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Entity, GameState } from '@/types';
 import { buildPlayerView } from '@/lib/formaquestion/playerView';
 import { speakerColors } from '@/lib/coref/speakerPalette';
@@ -8,7 +8,9 @@ import { narrationHash, type MentionReadingMap } from '@/lib/coref/mentionReadin
 import type { MentionLink } from '@/lib/coref/mentionReading';
 import { spokenQuotes, type QuoteSpeakerSource } from '@/lib/quoteSegments';
 import { MarkdownRenderer, type RemarkPlugin } from './MarkdownRenderer';
-import { MentionCardsProvider, cardTriggers, mentionCardRows } from './MentionCards';
+import { MentionCardsProvider, MentionTurn, cardTriggers, mentionCardRows, turnCardTriggers, type CardCorrection } from './MentionCards';
+import { applyCardCorrection, correctedMentionReadings, type MentionCorrectionMap } from '@/lib/coref/mentionCorrections';
+import { useState } from 'react';
 
 // The real renderer with a fake reading, and card rows from the real Player View: what counts is what the
 // player can reach in the DOM.
@@ -51,10 +53,12 @@ function mentionsOf(passage: string, hits: [string, string | null][]): MentionLi
 const linksOf = (passage: string, hits: [string, string | null][]): RemarkPlugin =>
   [remarkMentionLinks, { source: { text: passage, mentions: mentionsOf(passage, hits) } }];
 
-function show(text: string, links?: RemarkPlugin, speakers?: QuoteSpeakerSource, onWrong?: () => void) {
+function show(text: string, links?: RemarkPlugin, speakers?: QuoteSpeakerSource, onCorrect?: (c: CardCorrection) => void) {
   return render(
-    <MentionCardsProvider colors={COLORS} rows={ROWS} onWrong={onWrong}>
-      <MarkdownRenderer text={text} dialogue {...cardTriggers(speakers, links)} />
+    <MentionCardsProvider colors={COLORS} rows={ROWS} onCorrect={onCorrect}>
+      <MentionTurn turnId="t1">
+        <MarkdownRenderer text={text} dialogue {...cardTriggers(speakers, links)} />
+      </MentionTurn>
     </MentionCardsProvider>,
   );
 }
@@ -111,7 +115,7 @@ describe('mention links in narration', () => {
   it('places a block by its text, and gives up on one that repeats with different mentions', () => {
     const text = 'She nods.\n\nShe nods.\n\nMira waits.';
     const source = { text, mentions: mentionsOf(text, [['She', 'mira'], ['She', 'kessa'], ['Mira', 'mira']]) };
-    expect(blockMentions(source, '\nMira waits.')).toEqual([{ start: 1, end: 5, entityId: 'mira' }]);
+    expect(blockMentions(source, '\nMira waits.')).toEqual([{ start: 1, end: 5, entityId: 'mira', from: 22, to: 26 }]);
     expect(blockMentions(source, 'She nods.')).toEqual([]);
   });
 
@@ -217,10 +221,173 @@ describe('mention cards', () => {
     fireEvent.click(container.querySelector<HTMLElement>('[data-mention]')!);
     expect(screen.queryByText('Wrong character?')).toBeNull();
     cleanup();
-    const onWrong = vi.fn();
-    fireEvent.click(show(COURIER_TEXT, courierLinks, undefined, onWrong).container.querySelector<HTMLElement>('[data-mention]')!);
+    fireEvent.click(show(COURIER_TEXT, courierLinks, undefined, vi.fn()).container.querySelector<HTMLElement>('[data-mention]')!);
+    expect(screen.getByText('Wrong character?')).toBeTruthy();
+  });
+
+  it('offers no correction for narration outside a turn', () => {
+    render(
+      <MentionCardsProvider colors={COLORS} rows={ROWS} onCorrect={vi.fn()}>
+        <MarkdownRenderer text={COURIER_TEXT} dialogue {...cardTriggers(undefined, courierLinks)} />
+      </MentionCardsProvider>,
+    );
+    fireEvent.click(document.querySelector<HTMLElement>('[data-mention]')!);
+    expect(card()).not.toBeNull();
+    expect(screen.queryByText('Wrong character?')).toBeNull();
+  });
+});
+
+const COURIER_LINE = 'The courier lifts one hand without standing.';
+const courierLine = linksOf(COURIER_LINE, [['The courier', 'courier']]);
+
+describe('correcting from a card', () => {
+  const names = () => [...card()!.querySelectorAll('button')].map((b) => b.textContent);
+
+  it('swaps the card for the cast by Player View name, with a way back', () => {
+    const { container } = show(COURIER_LINE, courierLine, undefined, vi.fn());
+    fireEvent.click(container.querySelector<HTMLElement>('[data-mention]')!);
     fireEvent.click(screen.getByText('Wrong character?'));
-    expect(onWrong).toHaveBeenCalledWith(expect.objectContaining({ entityId: 'courier', role: 'mention' }));
+    expect(card()!.textContent).toContain('Who is this?');
+    // The unseen wraith has no Player View row, so it is no choice.
+    expect(names()).toEqual(['', 'MMira', 'KKessa', 'Cthe courier', '–Someone Else']);
+    fireEvent.click(screen.getByLabelText('Back'));
+    expect(screen.getByText('Wrong character?')).toBeTruthy();
+  });
+
+  it("corrects the opened mention's span in its turn, and closes the card", () => {
+    const onCorrect = vi.fn();
+    const { container } = show(COURIER_LINE, courierLine, undefined, onCorrect);
+    fireEvent.click(container.querySelector<HTMLElement>('[data-mention]')!);
+    fireEvent.click(screen.getByText('Wrong character?'));
+    fireEvent.click(screen.getByText('Kessa'));
+    const start = COURIER_LINE.indexOf('The courier');
+    expect(onCorrect).toHaveBeenCalledWith({ turnId: 't1', kind: 'mention', start, end: start + 'The courier'.length, entityId: 'kessa' });
+    expect(card()).toBeNull();
+  });
+
+  it("asks who said a quote, and corrects the quote's span", () => {
+    const text = 'Mira turns. "Go," she says.';
+    const speakers: QuoteSpeakerSource = { text, colors: COLORS, quotes: spokenQuotes(text, [['"Go,"', 'mira']]) };
+    const onCorrect = vi.fn();
+    const { container } = show(text, undefined, speakers, onCorrect);
+    fireEvent.click(container.querySelector<HTMLElement>('[data-speaker="mira"][role="button"]')!);
+    fireEvent.click(screen.getByText('Wrong character?'));
+    expect(card()!.textContent).toContain('Who said this?');
+    fireEvent.click(screen.getByText('Someone Else'));
+    expect(onCorrect).toHaveBeenCalledWith({ turnId: 't1', kind: 'quote', start: 12, end: 17, entityId: null });
+  });
+});
+
+describe('a correction on a played turn', () => {
+  const TEXT = 'Mira turns to her sister. "Go," she says.';
+  const span = (word: string) => ({ start: TEXT.indexOf(word), end: TEXT.indexOf(word) + word.length });
+  const READINGS: MentionReadingMap = {
+    t1: {
+      model: 'small', version: 1, textHash: narrationHash(TEXT),
+      reading: {
+        mentions: [{ ...span('Mira'), entityId: 'mira' }, { ...span('her sister'), entityId: null }, { ...span('she'), entityId: 'mira' }],
+        quotes: [{ ...span('"Go,"'), speaker: 'mira' }],
+      },
+    },
+  };
+
+  /** The game view's loop: a card's correction joins the turn's map, which overlays the reading the turn renders from. */
+  function Turn() {
+    const [corrections, setCorrections] = useState<MentionCorrectionMap>({});
+    const readings = correctedMentionReadings(READINGS, corrections);
+    return (
+      <MentionCardsProvider
+        colors={COLORS}
+        rows={ROWS}
+        onCorrect={(c) => setCorrections((prev) => applyCardCorrection(prev, READINGS, c))}
+      >
+        <MentionTurn turnId="t1">
+          <MarkdownRenderer text={TEXT} dialogue {...turnCardTriggers(false, true, readings, COLORS, 't1', TEXT)} />
+        </MentionTurn>
+      </MentionCardsProvider>
+    );
+  }
+
+  const pick = (trigger: HTMLElement, name: string) => {
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByText('Wrong character?'));
+    fireEvent.click(screen.getByText(name));
+  };
+  const quote = (root: HTMLElement) => root.querySelector<HTMLElement>('.dialogue-quote')!;
+
+  it("recolors a quote at once when its speaker is corrected", () => {
+    const { container } = render(<Turn />);
+    expect(quote(container).style.getPropertyValue('--quote-speaker')).toBe(COLORS.get('mira'));
+    pick(quote(container), 'Kessa');
+    expect(quote(container).dataset.speaker).toBe('kessa');
+    expect(quote(container).style.getPropertyValue('--quote-speaker')).toBe(COLORS.get('kessa'));
+  });
+
+  it("relinks a mention at once, and its card shows the new character", () => {
+    const { container } = render(<Turn />);
+    pick(container.querySelectorAll<HTMLElement>('[data-mention]')[1], 'Kessa');
+    expect(triggers(container)).toEqual([['Mira', 'mira'], ['she', 'kessa']]);
+    fireEvent.click(container.querySelectorAll<HTMLElement>('[data-mention]')[1]);
+    expect(card()!.textContent).toContain('Kessa');
+  });
+
+  it('hands keyboard focus to the corrected mention after the narration remounts', async () => {
+    const { container } = render(<Turn />);
+    const she = container.querySelectorAll<HTMLElement>('[data-mention]')[1];
+    she.focus();
+    fireEvent.keyDown(she, { key: 'Enter' });
+    fireEvent.click(document.activeElement!);
+    fireEvent.click(screen.getByText('Kessa'));
+    expect(she.isConnected).toBe(false);
+    await waitFor(() => expect((document.activeElement as HTMLElement).dataset.mention).toBe('kessa'));
+    expect(document.activeElement!.textContent).toBe('she');
+    expect(card()).toBeNull();
+  });
+
+  it('unlinks a mention with "Someone Else"', () => {
+    const { container } = render(<Turn />);
+    pick(container.querySelectorAll<HTMLElement>('[data-mention]')[1], 'Someone Else');
+    expect(triggers(container)).toEqual([['Mira', 'mira']]);
+    expect(container.textContent).toBe(TEXT);
+  });
+});
+
+describe('the card from the keyboard', () => {
+  it('moves focus into the card on Enter, through the pick list, and back to the mention after a pick', async () => {
+    const onCorrect = vi.fn();
+    const { container } = show(COURIER_LINE, courierLine, undefined, onCorrect);
+    const trigger = container.querySelector<HTMLElement>('[data-mention]')!;
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    expect(document.activeElement?.textContent).toBe('Wrong character?');
+    fireEvent.click(document.activeElement!);
+    expect(document.activeElement?.textContent).toBe('MMira');
+    fireEvent.click(document.activeElement!);
+    expect(onCorrect).toHaveBeenCalledWith(expect.objectContaining({ entityId: 'mira' }));
+    expect(card()).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+    expect(card()).toBeNull();
+  });
+
+  it('moves focus into a card that was already open when Enter comes', () => {
+    vi.useFakeTimers();
+    const trigger = show(COURIER_LINE, courierLine, undefined, vi.fn()).container.querySelector<HTMLElement>('[data-mention]')!;
+    fireEvent.pointerEnter(trigger, { pointerType: 'mouse' });
+    act(() => { vi.advanceTimersByTime(300); });
+    trigger.focus();
+    expect(card()).not.toBeNull();
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    expect(document.activeElement?.textContent).toBe('Wrong character?');
+  });
+
+  it('closes a key-opened card on Escape and hands focus back', async () => {
+    const { container } = show(COURIER_LINE, courierLine, undefined, vi.fn());
+    const trigger = container.querySelector<HTMLElement>('[data-mention]')!;
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: ' ' });
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(card()).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
     expect(card()).toBeNull();
   });
 });

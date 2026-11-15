@@ -20,6 +20,20 @@ export interface SpokenQuote {
   speaker: string | null;
 }
 
+/** A span in a narration. */
+export interface TextSpan { start: number; end: number }
+
+/** A span as the DOM carries it: `<start>:<end>`. */
+export const spanKey = ({ start, end }: TextSpan): string => `${start}:${end}`;
+
+const SPAN_KEY = /^(\d+):(\d+)(?::|$)/;
+
+/** The span a {@link spanKey} begins with, or null. */
+export function parseSpanKey(value: unknown): TextSpan | null {
+  const match = typeof value === 'string' ? SPAN_KEY.exec(value) : null;
+  return match ? { start: Number(match[1]), end: Number(match[2]) } : null;
+}
+
 /** Each speaker's quote color, by entity id. */
 export type SpeakerColors = ReadonlyMap<string, string>;
 
@@ -41,10 +55,13 @@ export function spokenQuotes(text: string, lines: readonly (readonly [string, st
   });
 }
 
-/** One quote's speaker within a rendered block, keyed by its text without markdown syntax. */
+/** One quote's speaker within a rendered block, keyed by its text without markdown syntax, with its span in
+ *  the narration. */
 export interface BlockQuote {
   key: string;
   speaker: string | null;
+  start: number;
+  end: number;
 }
 
 /** Quote text as the renderer shows it: markdown syntax dropped, whitespace collapsed. */
@@ -60,7 +77,7 @@ export function blockQuotes(source: QuoteSpeakerSource, block: string): BlockQuo
   if (!body) return [];
   const inBlock = (at: number) => source.quotes
     .filter((quote) => quote.start >= at && quote.end <= at + body.length)
-    .map((quote) => ({ key: quoteKey(source.text.slice(quote.start, quote.end)), speaker: quote.speaker }));
+    .map((quote) => ({ key: quoteKey(source.text.slice(quote.start, quote.end)), speaker: quote.speaker, start: quote.start, end: quote.end }));
   const found: BlockQuote[][] = [];
   for (let at = source.text.indexOf(body); at >= 0; at = source.text.indexOf(body, at + 1)) found.push(inBlock(at));
   const [first, ...rest] = found;
@@ -70,18 +87,18 @@ export function blockQuotes(source: QuoteSpeakerSource, block: string): BlockQuo
 }
 
 /**
- * Give each rendered quote the speaker of the next reading quote with the same text, in order. A rendered
- * quote that a line break cut short (`open`) matches the start of its reading quote. Unmatched runs stay
- * unattributed, so a mismatch costs a color, never a wrong one from a skipped pairing.
+ * Pair each rendered quote with the next reading quote with the same text, in order. A rendered quote that a
+ * line break cut short (`open`) matches the start of its reading quote. Unmatched runs pair with null, so a
+ * mismatch costs a color, never a wrong one from a skipped pairing.
  */
-export function matchQuoteSpeakers(rendered: readonly { text: string; open: boolean }[], quotes: readonly BlockQuote[]): (string | null)[] {
+export function matchQuotes(rendered: readonly { text: string; open: boolean }[], quotes: readonly BlockQuote[]): (BlockQuote | null)[] {
   let cursor = 0;
   return rendered.map(({ text, open }) => {
     const key = quoteKey(text);
     for (let i = cursor; i < quotes.length; i++) {
       if (quotes[i].key === key || (open && key && quotes[i].key.startsWith(key))) {
         cursor = i + 1;
-        return quotes[i].speaker;
+        return quotes[i];
       }
     }
     return null;

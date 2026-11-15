@@ -26,7 +26,7 @@ export function usePresence(viewedPage?: number): Presence {
   const { entities: cast, locations, connections, persona, currentLocation, inPlay } = useResolvedWorld();
   const {
     gameStates, fullMessageHistory, totalPages, discoveredEntities,
-    entityPositions, genericStates, entityFollowers, metEntities, strangerAliases, mentionReadings,
+    entityPositions, genericStates, entityFollowers, metEntities, strangerAliases, correctedReadings,
   } = useGameplay();
   const { characterMentions } = useSettings();
 
@@ -53,8 +53,8 @@ export function usePresence(viewedPage?: number): Presence {
   const personaEntity = persona?.entity ?? null;
 
   const readingNames = useMemo(
-    () => readingNamesFor(characterMentions, mentionReadings, [...cast, ...runtime]),
-    [characterMentions, mentionReadings, cast, runtime],
+    () => readingNamesFor(characterMentions, correctedReadings, [...cast, ...runtime]),
+    [characterMentions, correctedReadings, cast, runtime],
   );
 
   return useMemo(() => computePresence({

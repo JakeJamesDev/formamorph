@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
-import { turnCardTriggers } from './MentionCards';
+import { MentionTurn, turnCardTriggers } from './MentionCards';
 import type { SpeakerColors } from '@/lib/quoteSegments';
 import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
@@ -705,7 +705,7 @@ export const MiddlePanel = ({
     pendingAttachments,
     setPendingAttachments,
     scriptTells,
-    mentionReadings,
+    correctedReadings,
   } = useGameplay();
   const gameplayText = useGameplayText();
   const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceMode, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests, characterMentions } = useSettings();
@@ -854,7 +854,7 @@ export const MiddlePanel = ({
     else if (!isRevealingNarration) setPagedAway(false);
   }, [isViewingPast, isRevealingNarration]);
   const pageNarration = pageLive ? gameplayText : currentAssistantMessage ? parseAssistantMessage(currentAssistantMessage.content) : '';
-  const pageTriggers = turnCardTriggers(pageLive, characterMentions, mentionReadings, speakerColors, sceneTurnId, pageNarration);
+  const pageTriggers = turnCardTriggers(pageLive, characterMentions, correctedReadings, speakerColors, sceneTurnId, pageNarration);
   const pageReasoningLive = !isViewingPast && !!liveReasoning.text;
   const pageReasoning = pageReasoningLive
     ? liveReasoning
@@ -1109,17 +1109,19 @@ export const MiddlePanel = ({
                 {currentAssistantMessage && pageNarration && (
                   <div ref={narrationRef} data-testid="narration">
                     {/* Streamdown memoizes on source position, not text, so committed text keys by its content. */}
-                    <MarkdownRenderer
-                      key={pageLive ? 'live' : `committed:${pageNarration}`}
-                      text={pageNarration}
-                      animate={pageLive && revealOn}
-                      resume={pagedAway}
-                      fitShown
-                      animation={revealAnim}
-                      easing={revealEasing}
-                      dialogue
-                      {...pageTriggers}
-                    />
+                    <MentionTurn turnId={sceneTurnId}>
+                      <MarkdownRenderer
+                        key={pageLive ? 'live' : `committed:${pageNarration}`}
+                        text={pageNarration}
+                        animate={pageLive && revealOn}
+                        resume={pagedAway}
+                        fitShown
+                        animation={revealAnim}
+                        easing={revealEasing}
+                        dialogue
+                        {...pageTriggers}
+                      />
+                    </MentionTurn>
                   </div>
                 )}
               </TurnCard>

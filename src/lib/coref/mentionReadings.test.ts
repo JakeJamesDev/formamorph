@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ChatMessage } from '@/types';
 import {
-  narrationHash, newestTurnNarration, pruneMentionReadings, restoreMentionReadings, turnMentionReading, type MentionReadingMap,
+  narrationHash, newestTurnNarration, pruneByNarration, restoreMentionReadings, turnMentionReading, type MentionReadingMap,
 } from './mentionReadings';
 
 const turn = (turnId: string, narration: string): ChatMessage => ({ role: 'assistant', content: JSON.stringify({ turnId, narration, choices: [] }) });
@@ -19,12 +19,12 @@ describe('turn mention readings', () => {
   it('drops readings of rewound turns and of turns whose narration changed', () => {
     const map: MentionReadingMap = { t1: entry('Mira left.'), t2: entry('She ran.'), t3: entry('Gone.') };
     const history = [{ role: 'user' as const, content: 'go' }, turn('t1', 'Mira left.'), turn('t2', 'She walked.')];
-    expect(Object.keys(pruneMentionReadings(map, history))).toEqual(['t1']);
+    expect(Object.keys(pruneByNarration(map, history))).toEqual(['t1']);
   });
 
   it('keeps the same map when nothing drops', () => {
     const map: MentionReadingMap = { t1: entry('Mira left.') };
-    expect(pruneMentionReadings(map, [turn('t1', 'Mira left.')])).toBe(map);
+    expect(pruneByNarration(map, [turn('t1', 'Mira left.')])).toBe(map);
   });
 
   it('names the newest turn', () => {

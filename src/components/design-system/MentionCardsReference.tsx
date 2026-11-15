@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meta, SectionTitle } from '@/components/ui/typography';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
-import { MentionCard, MentionCardsProvider, cardTriggers } from '@/components/game/MentionCards';
+import { MentionCard, MentionCardsProvider, MentionPickList, cardTriggers } from '@/components/game/MentionCards';
 import { TurnCard } from '@/components/game/TurnCard';
 import { remarkMentionLinks } from '@/lib/coref/mentionLinks';
 import { speakerColors } from '@/lib/coref/speakerPalette';
@@ -74,6 +74,12 @@ function ThemePanel({ mode }: { mode: 'light' | 'dark' }) {
               <MentionCard row={r} color={COLORS.get(r.id)} onWrong={() => {}} />
             </div>
           ))}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Meta>Pick List</Meta>
+        <div className="w-64 rounded-md border bg-popover p-3 text-popover-foreground shadow-md">
+          <MentionPickList role="speaker" rows={ROWS} colors={COLORS} current="mira" onPick={() => {}} onBack={() => {}} />
         </div>
       </div>
       <div className="space-y-2">

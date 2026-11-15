@@ -79,10 +79,11 @@ import { toastError } from "@/lib/linkToast";
 import { cancelOpenPrompts, isNotice, noticeHost, scriptPrompts, silentPrompts, type ScriptPromptHost } from "@/lib/scriptPrompts";
 import { isScriptPromptSample, SCRIPT_PROMPT_SAMPLES } from "@/lib/devScriptPromptSamples";
 import { addTell, latestTurnId, pruneTells, REROLLED_TIMINGS, setTurnTells, turnTells, withoutTimings } from "@/lib/scriptTells";
-import { pruneMentionReadings } from "@/lib/coref/mentionReadings";
+import { pruneByNarration } from "@/lib/coref/mentionReadings";
+import { applyCardCorrection } from "@/lib/coref/mentionCorrections";
 import { knownNameFor, memoryNarrationFor, readingNamesFor } from "@/lib/coref/mentionMemory";
 import { speakerColors } from "@/lib/coref/speakerPalette";
-import { MentionCardsProvider, mentionCardRows } from "@/components/game/MentionCards";
+import { MentionCardsProvider, mentionCardRows, type CardCorrection } from "@/components/game/MentionCards";
 import type { PlayerViewEntity } from "@/lib/formaquestion/playerView";
 import { characterMentions, useCharacterMentionsState } from "@/lib/coref/characterMentionsApp";
 import { useTurnMentionReadings } from "@/lib/coref/useTurnMentionReadings";
@@ -917,6 +918,8 @@ const GameViewer = ({
     setScriptTells,
     mentionReadings,
     setMentionReadings,
+    setMentionCorrections,
+    correctedReadings,
     openingAction: openingTurnAction,
     setOpeningAction: setOpeningTurnAction,
     itemInstances: heldItemInstances,
@@ -1112,14 +1115,14 @@ const GameViewer = ({
   // What each turn's Mention Reading adds: participants for In Scene and the diary passes, and the bracketed
   // narration the digest and diary passes read (Q53). Undefined with the feature off.
   const readingNames = useMemo(
-    () => readingNamesFor(settings.characterMentions, mentionReadings, allEntities),
-    [settings.characterMentions, mentionReadings, allEntities],
+    () => readingNamesFor(settings.characterMentions, correctedReadings, allEntities),
+    [settings.characterMentions, correctedReadings, allEntities],
   );
   const memoryNarration = useMemo(() => {
     const isMet = metCheckFor(metEntities);
     const { labels } = strangersInPlay(allEntities, isMet, strangerAliases);
-    return memoryNarrationFor(settings.characterMentions, mentionReadings, knownNameFor(allEntities, isMet, labels));
-  }, [settings.characterMentions, mentionReadings, allEntities, metCheckFor, metEntities, strangerAliases]);
+    return memoryNarrationFor(settings.characterMentions, correctedReadings, knownNameFor(allEntities, isMet, labels));
+  }, [settings.characterMentions, correctedReadings, allEntities, metCheckFor, metEntities, strangerAliases]);
   // An edit to the latest page can name someone too.
   const rescanNarration = useCallback((page: number, narration: string): string[] => {
     const participants = rescanScene(page, narration);
@@ -1517,10 +1520,11 @@ const GameViewer = ({
     }
     setActionAttachments((prev) => pruneAttachments(prev, fullMessageHistory));
     setScriptTells((prev) => pruneTells(prev, fullMessageHistory));
-    setMentionReadings((prev) => pruneMentionReadings(prev, fullMessageHistory));
+    setMentionReadings((prev) => pruneByNarration(prev, fullMessageHistory));
+    setMentionCorrections((prev) => pruneByNarration(prev, fullMessageHistory));
     setSentActions((prev) => pruneTurnMap(prev, fullMessageHistory));
     setMemoryNotes((prev) => pruneNamedMemories(pruneScriptPins(prev, fullMessageHistory), fullMessageHistory));
-  }, [isWaitingForAI, fullMessageHistory, setActionAttachments, setScriptTells, setMentionReadings, setSentActions, setMemoryNotes, setActionList, setPlayerInput, setPendingAttachments]);
+  }, [isWaitingForAI, fullMessageHistory, setActionAttachments, setScriptTells, setMentionReadings, setMentionCorrections, setSentActions, setMemoryNotes, setActionList, setPlayerInput, setPendingAttachments]);
   const characterMentionsState = useCharacterMentionsState();
   useTurnMentionReadings({
     controller: characterMentions(),
@@ -6564,6 +6568,12 @@ const GameViewer = ({
     [settings.characterMentions, playerViewReach, liveGate],
   );
 
+  // A card's correction joins its turn, against the narration that turn's reading read.
+  const correctMention = useCallback(
+    (correction: CardCorrection) => setMentionCorrections((prev) => applyCardCorrection(prev, mentionReadings, correction)),
+    [mentionReadings, setMentionCorrections],
+  );
+
   // The scene images belonging to the page being viewed (one turn per page).
   const viewedTurn = parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? "");
 
@@ -6573,7 +6583,7 @@ const GameViewer = ({
     : null;
 
   const middlePanel = (
-    <MentionCardsProvider colors={quoteColors} rows={cardRows}>
+    <MentionCardsProvider colors={quoteColors} rows={cardRows} onCorrect={correctMention}>
     <MiddlePanel
       parseAssistantMessage={parseAssistantMessage}
       narrationBadge={<DemoAIBadge onOpen={openDemoAIDialog} />}

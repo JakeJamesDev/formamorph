@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { NARRATION_END_SPACE, NARRATION_FADE, NARRATION_FADE_UNDER_STRIP, useEdgeFades } from './narrationFade';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { turnCardTriggers } from './MentionCards';
+import { MentionTurn, turnCardTriggers } from './MentionCards';
 import { useChatPin } from './useChatPin';
 import { useReadingLine } from './useReadingLine';
 import { READING_LINE } from '@/lib/chatReadingLine';
@@ -97,7 +97,7 @@ export function ChatNarration({ parseAssistantMessage, speakerColors, latestFoot
   /** Fades the turns out above the request status strip, which floats over the bottom. */
   fadeUnderStrip?: boolean;
 }) {
-  const { fullMessageHistory, isRevealingNarration, narrationSettled, isWaitingForAI, sceneImages, actionAttachments, scriptTells, mentionReadings, currentPage, totalPages, setUserPage } = useGameplay();
+  const { fullMessageHistory, isRevealingNarration, narrationSettled, isWaitingForAI, sceneImages, actionAttachments, scriptTells, correctedReadings, currentPage, totalPages, setUserPage } = useGameplay();
   const { revealSpec, revealEasing, showReasoning, characterMentions } = useSettings();
   const gameplayText = useGameplayText();
   const liveReasoning = useLiveReasoning();
@@ -238,16 +238,18 @@ export function ChatNarration({ parseAssistantMessage, speakerColors, latestFoot
                     {turn.narration && (
                       <div data-testid="narration">
                         {/* Streamdown memoizes on source position, not text, so committed text keys by its content. */}
-                        <MarkdownRenderer
-                          key={liveReveal ? 'live' : `committed:${narrationText}`}
-                          text={narrationText}
-                          animate={liveReveal && revealOn}
-                          fitShown
-                          animation={revealAnim}
-                          easing={revealEasing}
-                          dialogue
-                          {...turnCardTriggers(liveReveal, characterMentions, mentionReadings, speakerColors, turnId, narrationText)}
-                        />
+                        <MentionTurn turnId={turnId}>
+                          <MarkdownRenderer
+                            key={liveReveal ? 'live' : `committed:${narrationText}`}
+                            text={narrationText}
+                            animate={liveReveal && revealOn}
+                            fitShown
+                            animation={revealAnim}
+                            easing={revealEasing}
+                            dialogue
+                            {...turnCardTriggers(liveReveal, characterMentions, correctedReadings, speakerColors, turnId, narrationText)}
+                          />
+                        </MentionTurn>
                       </div>
                     )}
                     {turnId && (

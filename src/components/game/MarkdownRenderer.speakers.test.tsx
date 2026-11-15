@@ -92,6 +92,15 @@ describe('speaker colors in the markdown renderer', () => {
     expect(result.every((span) => !span.dataset.speaker)).toBe(true);
   });
 
+  it('repaints a mounted passage when a new reading changes its speakers', () => {
+    const live = render(<MarkdownRenderer text={PASSAGE} dialogue speakers={source(PASSAGE, [['"You said noon,"', 'kessa']])} />);
+    const next = source(PASSAGE, [['"You said noon,"', 'mira']]);
+    live.rerender(<MarkdownRenderer text={PASSAGE} dialogue speakers={next} />);
+    const fresh = render(<MarkdownRenderer text={PASSAGE} dialogue speakers={next} />);
+    expect(live.container.innerHTML).toBe(fresh.container.innerHTML);
+    expect(live.container.querySelector<HTMLElement>(`.${QUOTE_CLASS}`)!.dataset.speaker).toBe('mira');
+  });
+
   it('keeps speakers off a renderer without dialogue', () => {
     expect(spans(PASSAGE, source(PASSAGE, [['"You said noon,"', 'kessa']]), false)).toEqual([]);
   });

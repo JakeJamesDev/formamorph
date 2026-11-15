@@ -1,6 +1,6 @@
 # 08: Correct a Mention
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 04, 07
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -20,7 +20,17 @@ The player fixes a wrong link at the place where it shows.
 
 ## Acceptance criteria
 
-- [ ] Correcting a quote's speaker changes its color at once. Correcting a mention changes its link and card.
-- [ ] "Nobody in the cast" unlinks the mention.
-- [ ] Corrections survive save, reload, and undo/redo of other turns.
-- [ ] Frames: `.scratch/frames/correct-pick.png`, light and dark.
+- [x] Correcting a quote's speaker changes its color at once. Correcting a mention changes its link and card. (`MentionCards.test.tsx` "a correction on a played turn"; live preview DOM read: Kessa's quote went from `--speaker-2` to `--speaker-1` on picking Mira.)
+- [x] "Nobody in the cast" unlinks the mention. The label is "Someone Else" per Q58. ("unlinks a mention with "Someone Else"", in the card tests and in `mentionCorrections.test.ts`.)
+- [ ] Corrections survive save, reload, and undo/redo of other turns. Save and reload: `GameplayContext.mentionCorrections.test.tsx`. Undo/redo: unit-level only (see Not verified).
+- [x] Frames: `.scratch/frames/correct-pick.png`, light and dark. (`correct-pick.png` holds light and dark side by side; `correct-pick-light.png` and `correct-pick-dark.png` hold each one.)
+
+## Landed
+
+**Not verified**
+- Undo/redo of other turns: `pruneByNarration` keeps a turn's corrections while its narration stays in the history (`mentionCorrections.test.ts`). No test drives a real rollback or redo through GameViewer.
+
+**For you**
+- The pick list in a real turn: open a colored quote or a name's card, click "Wrong character?", and pick someone. Use `#dev?view=gameViewer&fixture=speakerQuotes` with Character Mentions on.
+- Keyboard: Tab to a name, press Enter, and pick. Focus returns to the name.
+- Narration now remounts when its reading changes, so colors also show when a reading lands after its turn is on screen. Watch for any flicker on the newest turn when its reading arrives.
