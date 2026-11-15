@@ -376,12 +376,12 @@ describe('verbs last in a group (R7)', () => {
     expect(levelAt(tree, 'Entities', 'Mira').slice(-5)).toEqual(['move', 'follow', 'unfollow', 'meet', 'diary']);
   });
 
-  it('reads the memory entry’s eleven fields, then pin, forget, edit, remove', () => {
+  it('reads the memory entry’s twelve fields, then pin, forget, edit, remove', () => {
     const level = levelAt(tree, 'Memories', 'memories[0]');
     const verbs = ['pin', 'forget', 'edit', 'remove'];
     const names = MEMORY_ENTRY_FIELDS.map((entry) => entry.name);
     expect(level).toEqual([...names.filter((name) => !verbs.includes(name)), ...verbs]);
-    expect(level.length - verbs.length).toBe(11);
+    expect(level.length - verbs.length).toBe(12);
   });
 
 });

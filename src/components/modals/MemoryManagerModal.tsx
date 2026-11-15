@@ -399,6 +399,7 @@ export const MemoryManagerModal = ({
                         </div>
                         <div className="mt-1 flex flex-wrap items-center gap-1">
                           {row.isNote && <Badge variant="secondary" className="h-4 px-1 text-[9px]">Yours</Badge>}
+                          {row.name && <Badge variant="outline" className="h-4 px-1 text-[9px]">{row.name}</Badge>}
                           {/* Rehydration replaces the digest with the turn's original prose, so this row
                               reached the model as a great deal more than the sentence shown here. */}
                           {row.asScene && <Badge variant="outline" className="h-4 px-1 text-[9px]">Scene</Badge>}

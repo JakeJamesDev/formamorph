@@ -16,6 +16,8 @@ export interface MemoryRow {
   text: string;
   /** True for a player-written memory (never judged, never trimmed, keeps until deleted). */
   isNote: boolean;
+  /** The name a script keeps a Custom memory under. */
+  name?: string;
   /** The AI's original summary, when the row's text is an override of it. */
   original?: string;
   /** How the row's text came to differ from the AI's first summary. */
@@ -193,6 +195,7 @@ export function buildMemoryLedger(args: {
       id: n.id,
       text: n.text,
       isNote: true,
+      ...(n.name ? { name: n.name } : {}),
       kept: !deletedSet.has(n.id),
       deleted: deletedSet.has(n.id),
       turnNumber: 0,
@@ -259,7 +262,7 @@ export function scriptMemories(ledger: MemoryLedger, history: ChatMessage[], cal
     const { day, hour } = dayAndHour(timestamp, calendar);
     return {
       id: row.id, turn: Math.ceil(row.pos / 2), timestamp, day, daypart: daypart(hour, calendar), text: row.text,
-      custom: row.isNote, kept: row.kept, inContext: row.inContext, pinned: row.pin === 'keep', forgotten: row.pin === 'drop',
+      ...(row.name ? { name: row.name } : {}), custom: row.isNote, kept: row.kept, inContext: row.inContext, pinned: row.pin === 'keep', forgotten: row.pin === 'drop',
     };
   });
 }

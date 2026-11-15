@@ -87,10 +87,10 @@ export const LOCATION_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'move', detail: '(nameOrId) => void', info: 'Moves the turn to a location of the world, in place of the AI’s move. A name the world has no location for stops the script with an error.' },
 ]);
 
-/** The verbs on `memories`: a line appended to this turn, and a pinned line. */
+/** The verbs on `memories`: a line appended to this turn, and a pinned line, named or not. */
 export const MEMORY_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'append', detail: '(line) => void', info: 'Adds a line to this turn’s memory, after the AI’s summary. Recall finds it on later turns when it fits, and it isn’t sent with every request.' },
-  { name: 'pin', detail: '(line) => void', info: 'Adds a memory that’s sent with every request, listed under Custom as in the Memory Manager. The memory limit never removes it.' },
+  { name: 'pin', detail: '(nameOrLine, line?) => void', info: 'Adds a memory that’s sent with every request, listed under Custom as in the Memory Manager. The memory limit never removes it. With a name and a line, it overwrites the text of the memory with that name, or adds one. Read it on a later turn with memories["Name"].' },
 ]);
 
 /** The members of one entry in `memories`: its read-only fields, then the Memory Manager's verbs. */
@@ -101,6 +101,7 @@ export const MEMORY_ENTRY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'day', detail: 'number', info: 'Day number at the end of that turn' },
   { name: 'daypart', detail: 'string', info: 'Time of day at the end of that turn: night, dawn, morning, midday, afternoon or evening' },
   { name: 'text', detail: 'string', info: 'Text of the memory as the Memory panel shows it, edits included' },
+  { name: 'name', detail: 'string', info: 'Name a script pinned the memory under with memories.pin(name, line), or empty' },
   { name: 'custom', detail: 'boolean', info: 'True for a memory listed under Custom: one the player wrote or a script pinned' },
   { name: 'kept', detail: 'boolean', info: 'True when the story keeps the memory, though recall can still leave it out of a turn' },
   { name: 'inContext', detail: 'boolean', info: 'True when the memory went to the AI on the last turn' },
@@ -130,7 +131,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'discover', detail: '(name, description?) => void', info: 'Adds a new entity to the turn, described by the AI unless you pass a description. A name an entity already has is ignored.' },
   {
     name: 'memories', detail: 'array', access: 'readOnly',
-    info: 'The story’s memories as the Memory panel lists them, oldest first, or empty in Test Code and the Test Bench. Each entry has its id, turn, day, daypart, text, Custom flag and pins. Call memories.append or memories.pin to add one.',
+    info: 'The story’s memories as the Memory panel lists them, oldest first, or empty in Test Code and the Test Bench. Each entry has its id, turn, day, daypart, text, name, Custom flag and pins. Call memories.append or memories.pin to add one. Use memories["Name"] for a memory pinned under a name.',
   },
   { name: 'notes', detail: 'string', info: 'The player’s notes. It’s empty in Test Code and the Test Bench.', access: 'readOnly' },
   { name: 'placeholders', detail: 'object', info: 'The world’s own placeholders by name. An entity’s or a dictionary’s are on its entry. Use placeholders["Two Words"] for a name with a space.' },

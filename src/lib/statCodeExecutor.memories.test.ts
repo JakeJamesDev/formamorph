@@ -73,9 +73,9 @@ describe('executeStatCode memories', () => {
       ...entry(`t${i}`, i + 1, 'night'), original: `ORIGINAL ${'x'.repeat(200)}`, importance: 3,
     }));
     const res = await read(`const text = JSON.stringify(memories);
-      return Object.keys(memories[0]).length === 11 && !text.includes('ORIGINAL') && !text.includes('importance') ? text.length : -1;`, held);
+      return Object.keys(memories[0]).length === 12 && !text.includes('ORIGINAL') && !text.includes('importance') ? text.length : -1;`, held);
     expect(res.value).toBeGreaterThan(0);
-    expect(res.value).toBeLessThan(400 * 170);
+    expect(res.value).toBeLessThan(400 * 180);
   });
 
   it('has no `memory` alias', async () => {

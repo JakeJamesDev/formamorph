@@ -194,7 +194,7 @@ const worldWriteLines = (
   writes: WorldWrites | undefined, locations: readonly SandboxPlace[], entityNames: ReadonlyMap<string, string>,
 ): string[] => {
   if (!writes) return [];
-  const { location, minutes, discover = [], memory = [], pins = [], diary = [], entities: entityWrites = [] } = writes;
+  const { location, minutes, discover = [], memory = [], pins = [], namedPins = [], diary = [], entities: entityWrites = [] } = writes;
   const entityName = (entity: string) => entityNames.get(entity) ?? entity;
   const placeName = (id: string) => locations.find((place) => place.id === id)?.name ?? id;
   return [
@@ -203,6 +203,7 @@ const worldWriteLines = (
     ...discover.map(({ name, description }) => `discover: ${name}${description === undefined ? '' : ', described'}`),
     ...memory.map((line) => `memories.append: ${line}`),
     ...pins.map((line) => `memories.pin: ${line}`),
+    ...namedPins.map(({ name, text }) => `memories.pin: ${name}: ${text}`),
     ...diary.map(({ entity, line }) => `diary: ${entityName(entity)}: ${line}`),
     ...entityWrites.map((write) => `${memberPath('entities', entityName(write.entity))}.${write.kind === 'move' ? `move: ${placeName(write.location)}` : `${write.kind}()`}`),
   ];

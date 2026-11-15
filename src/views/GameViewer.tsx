@@ -34,6 +34,7 @@ import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { EMPTY_REPLY, type SandboxMemory, type SandboxTurn, type StatClock, type WorldWrites } from "@/lib/statCodeExecutor";
 import { advancedClock, baseWritesOf, mergeWorldWrites } from "@/lib/worldWrites";
 import { addScriptPins, pruneScriptPins, withScriptPins } from "@/lib/scriptPins";
+import { addNamedPins, pruneNamedMemories, withNamedPins } from "@/lib/namedMemories";
 import { deletedAfter, editsAfter, notesAfter, pinsAfter } from "@/lib/memoryWrites";
 import {
   actionTotals, type ActionTotals, changedAnyStat, overlayStatCodeResult, playthroughPlaceholderSet, runItemScripts, runStatCodeTurn, runSwitchScripts, splitOwnerTurns, stateInventory, withoutInventory, withPinWrites, withoutBodies,
@@ -1484,7 +1485,7 @@ const GameViewer = ({
     setActionAttachments((prev) => pruneAttachments(prev, fullMessageHistory));
     setScriptTells((prev) => pruneTells(prev, fullMessageHistory));
     setSentActions((prev) => pruneTurnMap(prev, fullMessageHistory));
-    setMemoryNotes((prev) => pruneScriptPins(prev, fullMessageHistory));
+    setMemoryNotes((prev) => pruneNamedMemories(pruneScriptPins(prev, fullMessageHistory), fullMessageHistory));
   }, [isWaitingForAI, fullMessageHistory, setActionAttachments, setScriptTells, setSentActions, setMemoryNotes, setActionList, setPlayerInput, setPendingAttachments]);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
@@ -2316,6 +2317,8 @@ const GameViewer = ({
     [memoryEdits, memoryDeleted, memoryNotes],
   );
   const effectiveNotes = useMemo(() => activeNotes(memoryOverrides), [memoryOverrides]);
+  const memoryDeletedRef = useRef(memoryDeleted);
+  memoryDeletedRef.current = memoryDeleted;
   const parseEffectiveTurns = useCallback(
     (history: ChatMessage[]) => applyMemoryOverrides(parseTurns(history), memoryOverrides),
     [memoryOverrides],
@@ -3227,6 +3230,11 @@ const GameViewer = ({
     if (committedTurnId && pins?.length) {
       const anchor = fullMessageHistoryRef.current.length;
       setMemoryNotes((prev) => withScriptPins(prev, committedTurnId, pins, anchor));
+    }
+    const namedPins = final.codeWrites?.namedPins;
+    if (committedTurnId && namedPins?.length) {
+      const anchor = fullMessageHistoryRef.current.length;
+      setMemoryNotes((prev) => withNamedPins(prev, memoryDeletedRef.current, committedTurnId, namedPins, anchor));
     }
     landMemoryWrites(final.codeWrites);
 
@@ -4424,6 +4432,8 @@ const GameViewer = ({
       return next;
     });
     if (writes.pins?.length) setMemoryNotes((prev) => addScriptPins(prev, turnId, writes.pins ?? [], history.length));
+    const namedPins = writes.namedPins;
+    if (namedPins?.length) setMemoryNotes((prev) => addNamedPins(prev, memoryDeletedRef.current, turnId, namedPins, history.length));
   }, [setFullMessageHistory, setMemoryNotes, diaryNames, landMemoryWrites]);
   // The writes of runs that ended while a turn ran: the turn's stream and commit rewrite its message.
   const heldWritesRef = useRef<WorldWrites | undefined>(undefined);

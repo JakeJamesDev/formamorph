@@ -8,7 +8,7 @@ export function advancedClock(turnStart: number, writes: WorldWrites | undefined
 }
 
 /** `later` laid over `earlier`: the later move wins, advances add, discoveries join once per name, a
- *  described one filling in a bare one, and memory lines, pins, diary lines, entity writes and memory entry writes
+ *  described one filling in a bare one, and memory lines, pins, named pins, diary lines, entity writes and memory entry writes
  *  join in order, as do inventory writes. */
 export function mergeWorldWrites(earlier: WorldWrites | undefined, later: WorldWrites | undefined): WorldWrites | undefined {
   if (!earlier || !later) return later ?? earlier;
@@ -22,6 +22,7 @@ export function mergeWorldWrites(earlier: WorldWrites | undefined, later: WorldW
   const discover = [...byName.values()];
   const memory = [...earlier.memory ?? [], ...later.memory ?? []];
   const pins = [...earlier.pins ?? [], ...later.pins ?? []];
+  const namedPins = [...earlier.namedPins ?? [], ...later.namedPins ?? []];
   const diary = [...earlier.diary ?? [], ...later.diary ?? []];
   const entities = [...earlier.entities ?? [], ...later.entities ?? []];
   const memoryWrites = [...earlier.memoryWrites ?? [], ...later.memoryWrites ?? []];
@@ -33,6 +34,7 @@ export function mergeWorldWrites(earlier: WorldWrites | undefined, later: WorldW
     ...(discover.length ? { discover } : {}),
     ...(memory.length ? { memory } : {}),
     ...(pins.length ? { pins } : {}),
+    ...(namedPins.length ? { namedPins } : {}),
     ...(diary.length ? { diary } : {}),
     ...(entities.length ? { entities } : {}),
     ...(memoryWrites.length ? { memoryWrites } : {}),

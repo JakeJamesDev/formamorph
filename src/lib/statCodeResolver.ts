@@ -329,6 +329,8 @@ export function codeResolver(
     const base = object ? valueOf(object) : null;
     const stepped = base && stepValue(base, key?.name ?? null);
     if (stepped) return stepped;
+    // A text key that is no list member reads a memory by its name: `memories["Nursery"]`.
+    if (array?.of === 'memory' && bracket && key) return { is: 'element', of: 'memory' };
     const path = dottedPath(node, code);
     return path !== null && surface.members.has(path) ? { is: 'listed', path } : null;
   }

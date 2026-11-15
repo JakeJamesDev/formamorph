@@ -30,7 +30,7 @@ const wren: SandboxEntity = { id: 'wren', name: 'Wren', traits: [], description:
 const keeper: SandboxEntity = { id: 'keeper', name: 'Keeper', traits: [], description: TEXT.keeper, summary: '' };
 
 const memory = (id: string, text: string): SandboxMemory => ({
-  id, turn: 1, timestamp: 1, day: 1, daypart: 'morning', text, custom: false, kept: true, inContext: true, pinned: false, forgotten: false,
+  id, turn: 1, timestamp: 1, day: 1, daypart: 'morning', text, name: '', custom: false, kept: true, inContext: true, pinned: false, forgotten: false,
 });
 
 const lore: SandboxDictionary = {
@@ -96,7 +96,7 @@ describe('heavy text in the sandbox', () => {
         ['id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'kind', 'action', 'held', 'knownIn', 'knownInPlaces', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items', 'body', 'move', 'follow', 'unfollow', 'meet', 'diary'],
         ['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits', 'items'],
         ['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits', 'items', 'move'],
-        ['id', 'turn', 'timestamp', 'day', 'daypart', 'text', 'custom', 'kept', 'inContext', 'pinned', 'forgotten'],
+        ['id', 'turn', 'timestamp', 'day', 'daypart', 'text', 'name', 'custom', 'kept', 'inContext', 'pinned', 'forgotten'],
         ['id', 'name', 'enabled', 'entries', 'placeholders'],
         ['Tides', 'The Wreck'],
         ['id', 'name', 'keys', 'value', 'enabled', 'constant'],

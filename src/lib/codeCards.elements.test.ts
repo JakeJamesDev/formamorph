@@ -77,7 +77,7 @@ describe('an array element’s card', () => {
     ['an array of no known shape', 'entities.Tor.aliases[0].len|gth;', options],
     ['the author’s own array', 'const memories = []; memories[0].te|xt;', options],
     ['a name bound to two element shapes', 'memories.map((x) => x.text); location.present.map((x) => x.na|me);', options],
-    ['a member the element lacks', 'memories[0].na|me;', options],
+    ['a member the element lacks', 'memories[0].ag|e;', options],
     ['a name the code also declares', 'memories.forEach((x) => x.text); const x = {}; x.te|xt;', options],
     ['a joined array', 'memories.concat(location.present)[0].te|xt;', options],
   ])('gives %s no card', (_case, doc, at) => {

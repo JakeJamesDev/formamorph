@@ -18,7 +18,7 @@ A script can use only these objects. In the table, a word in angle brackets is a
 | `locations` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items` | `locations.<Location>.present` | Read-only |
 | `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
-| `memories` | `id`, `turn`, `timestamp`, `day`, `daypart`, `text`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `append()`, `pin()`, `forget()`, `edit()`, `remove()` | `memories.length` | `memories.pin(<text>)` |
+| `memories` | `id`, `turn`, `timestamp`, `day`, `daypart`, `text`, `name`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `append()`, `pin()`, `forget()`, `edit()`, `remove()` | `memories.length` | `memories.pin(<text>)` |
 | `notes` | — | `notes` | Read-only |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
 | `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
@@ -1179,6 +1179,26 @@ Two calls add to it. Each takes one line of text.
 
 > ℹ️ **A pinned summary can still lose to the memory limit. A pinned line never does.** A summary that `pin()` keeps still competes for the room that the memory limit sets. A line that `memories.pin` adds is sent on every request, whatever the limit.
 
+#### Named Memories
+
+A name lets a script find the same Custom memory again on a later turn. Use it to keep one memory current in place of a new line for each event.
+
+- **`memories.pin(<name>, <text>)`** adds a memory under that name. When a memory with that name already exists, it overwrites its text instead.
+- **`memories["<Name>"]`** resolves to the memory with that name. Names match with outer spaces removed and in any case, so `memories["nursery "]` resolves to **Nursery**.
+- **An unknown name reads as a blank entry.** Its `id`, `name` and `text` are `""`, and every flag is false. Test with `memories["Nursery"].id` to see whether the memory exists.
+- **A named pin reads under its name in the scripts below it** in the same turn. A second named pin in the turn overwrites the first.
+- **A named write rewinds with its turn.** A rewind or a regenerate restores the text from before that turn. Rewinding the turn that created the memory removes it.
+- **The memory's place in the timeline is its latest write.** It moves back when that write rewinds.
+- **The AI reads the text only, never the name.** The Memory Manager shows the name as a label on the Custom row.
+- **A blank or non-text name or text throws a TypeError.** So does a name that `memories` already reads as a list member, such as `length`, `filter` or `3`.
+
+```js
+// One memory lists every child at the nursery.
+const nursery = memories["Nursery"].text;
+const child = player.input("Name the child");
+memories.pin("Nursery", nursery ? `${nursery} ${child} lives there too.` : `${child} lives at the nursery.`);
+```
+
 #### Memory Entries
 
 Each memory in the list has these fields. All are read-only.
@@ -1191,6 +1211,7 @@ Each memory in the list has these fields. All are read-only.
 | `day` | Day number at that time |
 | `daypart` | Time of day at that time. It is one of the six `clock.daypart` words |
 | `text` | The text as the Memory panel shows it, edits included |
+| `name` | The name a script pinned the memory under, or `""` |
 | `custom` | True for a **Custom** memory |
 | `kept` | True when the story keeps the memory. Recall can still leave it out of a turn |
 | `inContext` | True when the memory went to the AI on the last turn |

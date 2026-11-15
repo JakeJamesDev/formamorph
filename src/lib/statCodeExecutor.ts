@@ -17,6 +17,7 @@ import {
 import { clockReading, FLAT_HOURS_PER_TURN, type WorldCalendar } from './gameClock';
 import { SCRIPT_TIMING_LABEL } from './scripts';
 import { namedEntries, type LoreWrite } from './loreToggles';
+import type { NamedPin } from './namedMemories';
 
 /** A lore write with the path code wrote it through. */
 export type PathedLoreWrite = LoreWrite & { path: string };
@@ -195,6 +196,8 @@ export interface SandboxMemory {
   day: number;
   daypart: string;
   text: string;
+  /** The name a script pinned the memory under. Absent or empty, the memory has none. */
+  name?: string;
   custom: boolean;
   kept: boolean;
   inContext: boolean;
@@ -205,7 +208,7 @@ export interface SandboxMemory {
 /** `row` with only the fields an entry reads, so nothing else a caller holds crosses into the VM; its text as a host slot. */
 const memoryData = (row: SandboxMemory, reads: HostReads) => ({
   id: row.id, turn: row.turn, timestamp: row.timestamp, day: row.day, daypart: row.daypart, text: reads.text(row.text),
-  custom: row.custom, kept: row.kept, inContext: row.inContext, pinned: row.pinned, forgotten: row.forgotten,
+  name: row.name ?? '', custom: row.custom, kept: row.kept, inContext: row.inContext, pinned: row.pinned, forgotten: row.forgotten,
 });
 
 /** One `discover` call. With a description the entity is created at once; without, the discover pass
@@ -227,6 +230,8 @@ export interface WorldWrites {
   memory?: string[];
   /** Every `memories.pin` line, in call order. */
   pins?: string[];
+  /** Every `memories.pin(name, text)`, in call order. */
+  namedPins?: NamedPin[];
   /** Every `diary` line, in call order. */
   diary?: DiaryWrite[];
   /** Every `move`, `follow`, `unfollow` and `meet` on an entity entry, in call order. */
@@ -1987,13 +1992,14 @@ const reseedRandom = (seed: readonly number[]): string => [
 /** The prelude of `discover`, `memories`, the hooks `location.move` and `clock.advance` call and the hook an entity
  *  entry's writes call. An unknown location or entity is listed as well as thrown, so a script that catches the
  *  throw still fails. An unknown entry's diary finds its key in `cast` by id, else by name; in an `openCast` run a
- *  miss is listed as a maybe instead. `memories` is frozen: its own writes land at commit and never read back. */
+ *  miss is listed as a maybe instead. `memories` is frozen: its own writes land at commit and never read back. A
+ *  string key that is no list member reads a memory by name. */
 const worldPrelude = (
   { locations, location }: SandboxPlaces, cast: readonly SandboxPlace[], openCast: boolean, memories: readonly SandboxMemory[], reads: HostReads,
   bodies: readonly SandboxBodyDef[],
 ): string => [
   `const [${MOVE_TURN}, discover, memories, ${ADVANCE_CLOCK}, ${ENTITY_WRITE}, ${WORLD_WRITES}] = ((places, cast, open, rows, lockEntry, note, bodies) => {`,
-  `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], diary: [], entities: [], memoryWrites: [], inventory: [], bodies: [], unknown: [], maybe: [] };`,
+  `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], namedPins: [], diary: [], entities: [], memoryWrites: [], inventory: [], bodies: [], unknown: [], maybe: [] };`,
   `  const fail = (message) => {`,
   `    writes.unknown.push(message);`,
   `    throw new Error(message);`,
@@ -2063,8 +2069,31 @@ const worldPrelude = (
   `  });`,
   `  const listVerb = (name, call) => verb(memories, 'memories.', name, call);`,
   `  listVerb('append', (value) => { writes.memory.push(line('memories.append', value)); });`,
-  `  listVerb('pin', (value) => { writes.pins.push(line('memories.pin', value)); });`,
-  `  return [move, Object.freeze(discover), Object.freeze(memories), advance, entityWrite, writes];`,
+  // A digit-only key is a list index, so no name can take one.
+  `  const isIndex = (key) => /^\\d+$/.test(key);`,
+  `  const nameKey = (name) => name.trim().toLowerCase();`,
+  `  const blanks = Object.create(null);`,
+  // An unknown name reads as a blank entry whose verbs are ignored and listed (Q12).
+  `  const blank = (key) => {`,
+  `    const path = 'memories[' + JSON.stringify(key) + '].';`,
+  `    const entry = lockEntry({ id: '', turn: 0, timestamp: 0, day: 0, daypart: '', text: '', name: '', custom: false, kept: false, inContext: false, pinned: false, forgotten: false }, [], path, note);`,
+  `    for (const kind of ['pin', 'forget', 'edit', 'remove']) verb(entry, path, kind, () => note(path + kind + '()'));`,
+  `    return Object.freeze(entry);`,
+  `  };`,
+  `  const byName = (key) => list.find((entry) => entry.name && nameKey(entry.name) === nameKey(key)) || blanks[key] || (blanks[key] = blank(key));`,
+  `  listVerb('pin', (...args) => {`,
+  `    if (args.length < 2) return void writes.pins.push(line('memories.pin', args[0]));`,
+  `    const [name, value] = args;`,
+  `    if (!text(name)) throw new TypeError('memories.pin needs a name as text');`,
+  // A list member's name would read the member, never the memory (Q6).
+  `    if (text(name) in list || isIndex(text(name))) throw new TypeError('memories.pin cannot use the name "' + text(name) + '", a member of memories');`,
+  `    writes.namedPins.push({ name: text(name), text: line('memories.pin', value) });`,
+  `  });`,
+  `  const list = Object.freeze(memories);`,
+  `  const named = new Proxy(list, {`,
+  `    get: (target, key) => (typeof key !== 'string' || key in target || isIndex(key) ? target[key] : byName(key)),`,
+  `  });`,
+  `  return [move, Object.freeze(discover), named, advance, entityWrite, writes];`,
   `})(${JSON.stringify({ locations: locations.map(({ id, name }) => ({ id, name })), location })}, ${JSON.stringify(cast)}, ${openCast},`,
   `  JSON.parse(${JSON.stringify(JSON.stringify(memories.map((row) => memoryData(row, reads))))}), ${LOCK_ENTRY}, ${LOOSE_NOTE},`,
   `  JSON.parse(${JSON.stringify(JSON.stringify(bodies.map(({ id, name }) => ({ id, name }))))}));`,
@@ -2212,8 +2241,8 @@ const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing
 function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: string[] } | { error: string } {
   const parsed: unknown = JSON.parse(dump);
   if (!parsed || typeof parsed !== 'object') return {};
-  const { location, minutes, advanced, discover, memory, pins, diary, entities, memoryWrites, inventory, bodies, unknown, maybe } = parsed as {
-    location: string | null; minutes: number; advanced: boolean; discover: DiscoverWrite[]; memory: string[]; pins: string[];
+  const { location, minutes, advanced, discover, memory, pins, namedPins, diary, entities, memoryWrites, inventory, bodies, unknown, maybe } = parsed as {
+    location: string | null; minutes: number; advanced: boolean; discover: DiscoverWrite[]; memory: string[]; pins: string[]; namedPins: NamedPin[];
     diary: DiaryWrite[]; entities: EntityCodeWrite[]; memoryWrites: MemoryWrite[]; inventory: InventoryOp[]; bodies: BodyWrite[];
     unknown: string[]; maybe: string[];
   };
@@ -2224,6 +2253,7 @@ function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: str
     ...(discover.length ? { discover } : {}),
     ...(memory.length ? { memory } : {}),
     ...(pins.length ? { pins } : {}),
+    ...(namedPins.length ? { namedPins } : {}),
     ...(diary.length ? { diary } : {}),
     ...(entities.length ? { entities } : {}),
     ...(memoryWrites.length ? { memoryWrites } : {}),

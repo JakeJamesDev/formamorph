@@ -123,6 +123,8 @@ Memories under the **Recent** divider still go to the AI word for word. A pin on
 
 **Add Memory** writes a memory for something that never happened in a turn: a standing fact, a promise, a detail you want carried. Yours carry a **Yours** badge, and the story never judges them.
 
+A world's script can keep a Custom memory up to date under a name, such as one memory that lists every child at a nursery. That memory shows its name as a label next to **Yours**. You can't change the name. When you rewind or regenerate a turn, the memory goes back to its text from before that turn. Rewind past the turn that made it, and it goes away. The AI reads the memory's text, never its name.
+
 **Search memories…** and the filter chips find a memory in a long story. The chips are **All · Verbatim · Summary · Held · Let Go · Edited · Custom · Deleted**. **Verbatim**, **Summary** and **Held** name the *form* the story holds a memory in, and a memory is only ever one of them.
 
 > [!TIP]

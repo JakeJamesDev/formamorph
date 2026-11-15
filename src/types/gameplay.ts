@@ -595,8 +595,12 @@ export interface SaveObject {
   openingAction?: string;
   /** v2.x memory editing: memories the player wrote by hand. `anchorTurn` is the message-history length
    *  at creation, which places the note chronologically among the digests. Never judged by the selector —
-   *  a player-written memory rides until deleted. Absent (or empty) on older saves ⇒ none. */
-  memoryNotes?: Array<{ id: string; text: string; anchorTurn: number }>;
+   *  a player-written memory rides until deleted. Absent (or empty) on older saves ⇒ none. A named memory adds
+   *  its `name` and its `revisions`, and its `text` and `anchorTurn` mirror the newest revision. */
+  memoryNotes?: Array<{
+    id: string; text: string; anchorTurn: number;
+    name?: string; revisions?: Array<{ turnId?: string; text: string; anchorTurn: number }>;
+  }>;
   /** Who the player plays in this playthrough (see lib/persona). Sits beside `dictionaries` and does not
    *  rewind with an undo. Absent on saves written before personas ⇒ no persona. */
   persona?: PersonaRef;

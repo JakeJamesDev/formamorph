@@ -29,6 +29,17 @@ export interface MemoryNote {
   id: string;
   text: string;
   anchorTurn: number;
+  /** A named memory's name as the script first wrote it. `text` and `anchorTurn` then mirror its newest revision. */
+  name?: string;
+  /** A named memory's writes, oldest first. The first is the script pin that created it. */
+  revisions?: NamedRevision[];
+}
+
+/** One write to a named memory: a script's, keyed by its turn, or the player's, with no turn. */
+export interface NamedRevision {
+  turnId?: string;
+  text: string;
+  anchorTurn: number;
 }
 
 export interface MemoryOverrides {
