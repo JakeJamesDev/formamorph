@@ -17,10 +17,13 @@ const contentFor = (id: string, revision: number) => ({ name: `${id} r${revision
 class FakeServer {
   qualifies = true;
   listed: SupporterItemRef[] = [];
+  expired: SupporterItemRef[] = [];
   offline = false;
   entitlementStatus = 200;
   gatedStatus = 200;
   revisions = new Map<string, number>();
+  /** The kind the gated route serves per id; `mascot` when unset. */
+  kinds = new Map<string, string>();
   requests: { url: string; authorization: string | undefined }[] = [];
 
   list(...items: [id: string, revision: number][]) {
@@ -34,7 +37,7 @@ class FakeServer {
     if (this.offline) throw new TypeError('Failed to fetch');
     if (url === `${API}/supporter-content/entitlement`) {
       return Response.json(
-        { success: true, data: { qualifies: this.qualifies, items: this.qualifies ? this.listed : [], expired: [] } },
+        { success: true, data: { qualifies: this.qualifies, items: this.qualifies ? this.listed : [], expired: this.expired } },
         { status: this.entitlementStatus },
       );
     }
@@ -43,7 +46,7 @@ class FakeServer {
       const id = decodeURIComponent(gated[1]);
       const revision = this.revisions.get(id) ?? 1;
       if (this.gatedStatus !== 200) return Response.json({ success: false }, { status: this.gatedStatus });
-      return Response.json({ success: true, data: { id, kind: 'mascot', revision, contentData: contentFor(id, revision) } });
+      return Response.json({ success: true, data: { id, kind: this.kinds.get(id) ?? 'mascot', revision, contentData: contentFor(id, revision) } });
     }
     return Response.json({ success: false }, { status: 404 });
   });
@@ -109,6 +112,34 @@ describe('the start check', () => {
     expect(installedIds(next)).toEqual(['other@1']);
     expect(await next.readItem('excl')).toBeNull();
     expect(await storedKeys()).toEqual(['other@1']);
+  });
+
+  it('keeps an installed Mascot whose listing a good check lists as expired', async () => {
+    server.list(['excl', 1], ['gone', 1]);
+    const first = await startAndCheck();
+    await first.install('excl');
+    await first.install('gone');
+
+    server.list();
+    server.expired = [{ id: 'excl', kind: 'mascot', revision: 1 }];
+    const next = await startAndCheck();
+
+    expect(installedIds(next)).toEqual(['excl@1']);
+    expect(await storedKeys()).toEqual(['excl@1']);
+  });
+
+  it('removes an installed item of another kind whose listing is expired', async () => {
+    server.list(['world', 1]);
+    server.kinds.set('world', 'world');
+    const first = await startAndCheck();
+    await first.install('world');
+    expect(installedIds(first)).toEqual(['world@1']);
+
+    server.list();
+    server.expired = [{ id: 'world', kind: 'world', revision: 1 }];
+    const next = await startAndCheck();
+
+    expect(installedIds(next)).toEqual([]);
   });
 
   it('removes everything when the pledge ended', async () => {

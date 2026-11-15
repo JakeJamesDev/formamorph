@@ -236,7 +236,10 @@ export function createSupporterContent(deps: SupporterContentDeps) {
 
   const applyGoodCheck = async (session: SupporterSession, entitlement: Entitlement) => {
     const listed = new Map(entitlement.items.map((item) => [item.id, item]));
-    const drop = items.filter((item) => item.accountId !== session.accountId || !listed.has(item.id));
+    const formerly = new Set(entitlement.expired.map((item) => item.id));
+    // An installed Mascot outlives its listing (R1, R4); other kinds go with it.
+    const stays = (item: ItemRecord) => listed.has(item.id) || (item.kind === 'mascot' && formerly.has(item.id));
+    const drop = items.filter((item) => item.accountId !== session.accountId || !stays(item));
     await cache.deleteItems(drop.map((item) => item.key));
     items = items.filter((item) => !drop.includes(item));
     const good: CheckRecord = { accountId: session.accountId, checkedAt: deps.now(), qualifies: entitlement.qualifies, entitled: entitlement.items, expired: entitlement.expired };

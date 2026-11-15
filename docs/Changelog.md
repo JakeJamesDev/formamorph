@@ -37,6 +37,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Patreon items wear a heart where a lock used to show.** Supporter Mascots in the Mascot tab and Formamorph AI in every endpoint list now carry the Patreon heart.
     - **Supporter-only listings can show when they open to everyone.** Community Creations cards and details windows say "Supporter-only until" and the date. After it, the listing shows the normal Download.
     - **Supporter worlds leave your Worlds list when your support ends.** Copies of listings that opened to everyone stay while you support. Your saves stay. Copies from another account are hidden, then removed.
+    - **An installed Supporter Mascot stays after its listing opens to everyone.** Support checks no longer remove it while you support.
 - **🛠️ Developer tooling**
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.
 
