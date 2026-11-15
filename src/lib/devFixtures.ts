@@ -9,6 +9,8 @@ import { withMembership } from './entityPlaces';
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 import { DEFAULT_WORLDS, seedWorldData, type DefaultWorldSeed } from './defaultWorlds';
 import { firstRoutine } from '@/lib/entityKind';
+import { narrationHash } from '@/lib/coref/mentionReadings';
+import { spokenQuotes } from '@/lib/quoteSegments';
 
 /** `bundled-<world id>` boots a new game in that bundled world. */
 const BUNDLED_PREFIX = 'bundled-';
@@ -16,7 +18,7 @@ const BUNDLED_PREFIX = 'bundled-';
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
 export const DEV_FIXTURES = [
   'whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'avatarIcon',
-  'entityPresence', 'entityFollowers', 'mapStrangers', 'mapBackground', 'items', 'options', 'lockedPlaces',
+  'entityPresence', 'entityFollowers', 'mapStrangers', 'mapBackground', 'items', 'options', 'lockedPlaces', 'speakerQuotes',
   ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
 ];
 
@@ -250,6 +252,19 @@ export const WORLD_OPENING_TEXT = 'I look around the white room.';
 /** The `pickedOpening` picked entity's opening. */
 export const PICKED_OPENING_TEXT = 'I wave to the courier by the door.';
 
+const SPEAKER_QUOTE_LINES: [string, string | null][] = [
+  ['"You said noon,"', 'dev-kessa'], ['"I said after the tide."', 'dev-mira'], ['"Ask the courier if you don\'t believe me."', 'dev-mira'],
+  ['"Don\'t drag me into this."', 'dev-courier'], ['"Too late."', 'dev-kessa'], ['"Both of you, the tide won\'t wait."', null],
+];
+const SPEAKER_QUOTES_TEXT = [
+  'The ferry bumps the dock as Mira throws the line. "You said noon," Kessa says, coming down the plank.',
+  '"I said after the tide." Mira knots the rope twice. "Ask the courier if you don\'t believe me."',
+  'The courier lifts one hand from the bench. "Don\'t drag me into this."',
+  '"Too late." Kessa drops onto the bench beside him. From the wheelhouse, someone calls out: "Both of you, the tide won\'t wait."',
+].join('\n\n');
+
+
+
 /** Load a fixture's world+save (dynamic import → own chunk). Null outside DEV or for an unknown name. */
 export async function loadDevFixture(name: string): Promise<DevFixture | null> {
   if (!import.meta.env.DEV) return null;
@@ -263,6 +278,39 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
         world: world.default as unknown as World,
         save: save.default as unknown as SaveObject,
         saveName: 'DEV: White Room (8 turns)',
+      };
+    }
+    case 'speakerQuotes': {
+      // The white room whose last turn has three speakers and one unresolved quote, read already. Quote colors
+      // show with Character Mentions on.
+      const [world, save] = await Promise.all([
+        import('./devFixtures/whiteRoomWorld.json'),
+        import('./devFixtures/whiteRoomSave.json'),
+      ]);
+      const saved = save.default as unknown as SaveObject;
+      const history = saved.currentState.fullMessageHistory ?? [];
+      const last = history.length - 1;
+      const turn = JSON.parse(history[last].content) as { turnId: string };
+      const base = world.default as unknown as World;
+      const speaker = (id: string, name: string): Entity => ({ ...base.entities[0], id, name });
+      return {
+        world: {
+          ...base,
+          entities: [...base.entities, speaker('dev-mira', 'Mira'), speaker('dev-kessa', 'Kessa'), speaker('dev-courier', 'Ilan')],
+        },
+        save: {
+          ...saved,
+          currentState: {
+            ...saved.currentState,
+            fullMessageHistory: history.map((message, index) => (
+              index === last ? { ...message, content: JSON.stringify({ ...turn, narration: SPEAKER_QUOTES_TEXT }) } : message
+            )),
+          },
+          mentionReadings: {
+            [turn.turnId]: { model: 'small', version: 1, textHash: narrationHash(SPEAKER_QUOTES_TEXT), reading: { mentions: [], quotes: spokenQuotes(SPEAKER_QUOTES_TEXT, SPEAKER_QUOTE_LINES) } },
+          },
+        },
+        saveName: 'DEV: Speaker Quotes',
       };
     }
     case 'thousandTurns': {

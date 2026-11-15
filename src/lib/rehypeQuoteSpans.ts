@@ -1,4 +1,6 @@
-import { segmentQuotes, QUOTE_CLASS } from './quoteSegments';
+import { segmentQuotes, QUOTE_CLASS, blockQuotes, matchQuoteSpeakers, type QuoteSpeakerSource } from './quoteSegments';
+
+export type { QuoteSpeakerSource };
 
 /**
  * Wraps quoted speech in the markdown renderer in a span the stylesheet can color.
@@ -11,6 +13,8 @@ import { segmentQuotes, QUOTE_CLASS } from './quoteSegments';
  * when emphasis splits it into several text nodes. Each block-level element starts fresh, and so does each
  * line break, which is what stops a quote the model never closed at the end of its line. Code is left
  * alone.
+ *
+ * With `speakers`, a quote the turn's Mention Reading attributes carries its speaker's id and color.
  */
 
 /** The hast subset this walks. Only the fields actually read are declared (see remarkSubSuper). */
@@ -38,6 +42,18 @@ const ENDS_QUOTE = new Set([
 /** Code keeps its quotes as written: a quotation mark there is syntax, not speech. */
 const SKIP = new Set(['code', 'pre', 'kbd', 'samp']);
 
+/** One rendered quote: its spans (emphasis can split it), its text, and whether it ran out unclosed. */
+interface QuoteRun {
+  spans: HastNode[];
+  text: string;
+  open: boolean;
+}
+
+interface WalkState {
+  open: boolean;
+  run: QuoteRun | null;
+}
+
 function spanNode(text: string): HastNode {
   return {
     type: 'element',
@@ -48,8 +64,8 @@ function spanNode(text: string): HastNode {
 }
 
 /** Rebuild one element's children with quoted runs wrapped. `state` carries an open quote across the
- *  inline elements inside a block. */
-function walk(node: HastNode, state: { open: boolean }): void {
+ *  inline elements inside a block; `runs` collects every quote in document order. */
+function walk(node: HastNode, state: WalkState, runs: QuoteRun[]): void {
   const children = node.children;
   if (!children?.length) return;
   const out: HastNode[] = [];
@@ -57,26 +73,47 @@ function walk(node: HastNode, state: { open: boolean }): void {
     if (child.type === 'text' && child.value !== undefined) {
       const { segments, open } = segmentQuotes(child.value, state.open);
       state.open = open;
-      for (const segment of segments) {
-        out.push(segment.quoted ? spanNode(segment.text) : { type: 'text', value: segment.text });
-      }
+      segments.forEach((segment, i) => {
+        if (!segment.quoted) { out.push({ type: 'text', value: segment.text }); return; }
+        const span = spanNode(segment.text);
+        out.push(span);
+        if (!state.run) { state.run = { spans: [], text: '', open: true }; runs.push(state.run); }
+        state.run.spans.push(span);
+        state.run.text += segment.text;
+        // A quoted segment closes its quote unless it is the last one and the quote is still standing.
+        if (i < segments.length - 1 || !open) { state.run.open = false; state.run = null; }
+      });
       continue;
     }
     out.push(child);
     if (child.type !== 'element') continue;
     const tag = child.tagName ?? '';
     if (SKIP.has(tag)) continue;
-    if (!ENDS_QUOTE.has(tag)) { walk(child, state); continue; }
+    if (!ENDS_QUOTE.has(tag)) { walk(child, state, runs); continue; }
     // The element ends the run it sits in and starts its own, so a `<br>` cuts the quote even though it
     // holds nothing, and a block nested in a block does not leak a quote back out.
     state.open = false;
-    walk(child, { open: false });
+    state.run = null;
+    walk(child, { open: false, run: null }, runs);
   }
   node.children = out;
 }
 
 /** Wraps quoted runs in `<span class="dialogue-quote">`. Runs last in the renderer's rehype pipeline, and
  *  only on the surfaces that read as story text. */
-export function rehypeQuoteSpans() {
-  return (tree: HastNode) => walk(tree, { open: false });
+export function rehypeQuoteSpans(options?: { speakers?: QuoteSpeakerSource }) {
+  const speakers = options?.speakers;
+  return (tree: HastNode, file?: { value?: unknown }) => {
+    const runs: QuoteRun[] = [];
+    walk(tree, { open: false, run: null }, runs);
+    if (!speakers || !runs.length) return;
+    const quotes = blockQuotes(speakers, String(file?.value ?? ''));    matchQuoteSpeakers(runs, quotes).forEach((speaker, i) => {
+      // A speaker who left the cast has no color, so the quote reads as unresolved.
+      const color = speaker ? speakers.colors.get(speaker) : undefined;
+      if (!speaker || !color) return;
+      for (const span of runs[i].spans) {
+        span.properties = { ...span.properties, dataSpeaker: speaker, style: `--quote-speaker: ${color}` };
+      }
+    });
+  };
 }

@@ -8,7 +8,7 @@ import remarkFlexibleMarkers from 'remark-flexible-markers';
 import { remarkSubSuper } from '@/lib/remarkSubSuper';
 import { remarkNoIndentedCode } from '@/lib/remarkNoIndentedCode';
 import { rehypePreviewTint } from '@/lib/previewTint';
-import { rehypeQuoteSpans } from '@/lib/rehypeQuoteSpans';
+import { rehypeQuoteSpans, type QuoteSpeakerSource } from '@/lib/rehypeQuoteSpans';
 import { getRevealTiming, type RevealTiming } from '@/lib/revealTimingStore';
 import { cn } from '@/lib/utils';
 import { ExternalLinkDialog } from './ExternalLinkDialog';
@@ -99,6 +99,10 @@ function rehypePluginsFor(tinted: boolean, dialogue: boolean): ComponentProps<ty
   return dialogue ? QUOTE_REHYPE_PLUGINS : REHYPE_PLUGINS;
 }
 
+/** The dialogue chain with speaker colors. Built once per reading, for the same memoization reason. */
+const speakerRehypePlugins = (speakers: QuoteSpeakerSource): ComponentProps<typeof Streamdown>['rehypePlugins'] =>
+  [...(REHYPE_PLUGINS ?? []), [rehypeQuoteSpans, { speakers }]];
+
 /** Renderers for markdown elements, by tag name. */
 export type MarkdownComponents = NonNullable<ComponentProps<typeof Streamdown>['components']>;
 
@@ -133,6 +137,9 @@ const COMPONENTS: MarkdownComponents = {
  * player's own echoed lines — and off for the reasoning aside, the command preview, and every pane outside
  * the game view.
  *
+ * `speakers` colors each `dialogue` quote by its speaker, from the turn's Mention Reading. Pass a stable
+ * value, like `components`.
+ *
  * `components` replaces the renderer of the tags it names, such as the reader's links. Pass a stable
  * object: Streamdown memoizes each block on its identity.
  *
@@ -151,12 +158,16 @@ const COMPONENTS: MarkdownComponents = {
  * `lineNumbers` numbers the lines of a fence, on by default. A license text turns it off.
  */
 export const MarkdownRenderer = memo(function MarkdownRenderer(
-  { text, animate = false, animation = 'fadeIn', easing, timing, tinted = false, dialogue = false, components, links, resume = false, fitShown = false, lineNumbers = true }: { lineNumbers?: boolean; text: string; animate?: boolean; animation?: string; easing?: string; timing?: RevealTiming; tinted?: boolean; dialogue?: boolean; components?: MarkdownComponents; links?: RemarkPlugin; resume?: boolean; fitShown?: boolean },
+  { text, animate = false, animation = 'fadeIn', easing, timing, tinted = false, dialogue = false, components, links, speakers, resume = false, fitShown = false, lineNumbers = true }: { lineNumbers?: boolean; text: string; animate?: boolean; animation?: string; easing?: string; timing?: RevealTiming; tinted?: boolean; dialogue?: boolean; components?: MarkdownComponents; links?: RemarkPlugin; speakers?: QuoteSpeakerSource; resume?: boolean; fitShown?: boolean },
 ) {
   const root = useRef<HTMLDivElement>(null);
   useFitShown(root, animate && fitShown, text);
   const allComponents = useMemo(() => (components ? { ...COMPONENTS, ...components } : COMPONENTS), [components]);
   const remarkPlugins = useMemo(() => (links ? remarkPluginsWith(links) : REMARK_PLUGINS), [links]);
+  const rehypePlugins = useMemo(
+    () => (speakers && dialogue && !tinted ? speakerRehypePlugins(speakers) : rehypePluginsFor(tinted, dialogue)),
+    [speakers, dialogue, tinted],
+  );
   // Fixed at mount: Streamdown keys its reveal state on the animated options, so a change would replay it.
   const [skipInitial] = useState(resume);
   // Read the current fade timing at render (a new sentence's release re-renders us via the text prop),
@@ -165,7 +176,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
     <div ref={root} className="relative [overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6">
       <Streamdown
         remarkPlugins={remarkPlugins}
-        rehypePlugins={rehypePluginsFor(tinted, dialogue)}
+        rehypePlugins={rehypePlugins}
         components={allComponents}
         plugins={PLUGINS}
         linkSafety={LINK_SAFETY}

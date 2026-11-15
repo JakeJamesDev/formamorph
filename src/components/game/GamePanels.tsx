@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
+import { turnQuoteSpeakers } from '@/lib/coref/quoteSpeakers';
+import type { SpeakerColors } from '@/lib/quoteSegments';
 import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -574,6 +576,7 @@ export const MiddlePanel = ({
   sceneImages,
   sceneTags,
   sceneTurnId,
+  speakerColors,
   sceneImageJob,
   sceneImageProgress,
   sceneImagePreview,
@@ -633,6 +636,8 @@ export const MiddlePanel = ({
   /** The viewed page's committed turn id (undefined while none) — there is something to draw or tag,
    *  and the scene panel is remounted per turn so its tag draft can't leak across page navigation. */
   sceneTurnId?: string;
+  /** Each cast entity's quote color, by id. */
+  speakerColors: SpeakerColors;
   /** Which half of the scene pipeline is running, or null. */
   sceneImageJob: 'tags' | 'image' | null;
   sceneImageProgress: number | null;
@@ -700,9 +705,10 @@ export const MiddlePanel = ({
     pendingAttachments,
     setPendingAttachments,
     scriptTells,
+    mentionReadings,
   } = useGameplay();
   const gameplayText = useGameplayText();
-  const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceMode, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests } = useSettings();
+  const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceMode, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests, characterMentions } = useSettings();
   const imageAttachments = useImageAttachments();
   // On mobile the focused field takes Help's and the ring's room; Send stays.
   const isMobileWidth = useIsMobile();
@@ -848,6 +854,7 @@ export const MiddlePanel = ({
     else if (!isRevealingNarration) setPagedAway(false);
   }, [isViewingPast, isRevealingNarration]);
   const pageNarration = pageLive ? gameplayText : currentAssistantMessage ? parseAssistantMessage(currentAssistantMessage.content) : '';
+  const pageSpeakers = pageLive ? undefined : turnQuoteSpeakers(characterMentions, mentionReadings, speakerColors, sceneTurnId, pageNarration);
   const pageReasoningLive = !isViewingPast && !!liveReasoning.text;
   const pageReasoning = pageReasoningLive
     ? liveReasoning
@@ -1043,6 +1050,7 @@ export const MiddlePanel = ({
               ) : (
               <ChatNarration
                 parseAssistantMessage={parseAssistantMessage}
+                speakerColors={speakerColors}
                 actionsFor={actionsFor}
                 playerActionsFor={playerActionsFor}
                 onDeleteSceneImage={onDeleteSceneImage}
@@ -1110,6 +1118,7 @@ export const MiddlePanel = ({
                       animation={revealAnim}
                       easing={revealEasing}
                       dialogue
+                      speakers={pageSpeakers}
                     />
                   </div>
                 )}

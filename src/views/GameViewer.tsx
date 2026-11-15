@@ -80,6 +80,7 @@ import { cancelOpenPrompts, isNotice, noticeHost, scriptPrompts, silentPrompts, 
 import { isScriptPromptSample, SCRIPT_PROMPT_SAMPLES } from "@/lib/devScriptPromptSamples";
 import { addTell, latestTurnId, pruneTells, REROLLED_TIMINGS, setTurnTells, turnTells, withoutTimings } from "@/lib/scriptTells";
 import { pruneMentionReadings } from "@/lib/coref/mentionReadings";
+import { speakerColors } from "@/lib/coref/speakerPalette";
 import { characterMentions, useCharacterMentionsState } from "@/lib/coref/characterMentionsApp";
 import { useTurnMentionReadings } from "@/lib/coref/useTurnMentionReadings";
 import { MentionReadingDevDialog } from "@/components/dev/MentionReadingDevDialog";
@@ -1018,6 +1019,13 @@ const GameViewer = ({
   const allEntities = useMemo(
     () => [...entities, ...discoveredAsEntities(discoveredInPlay)],
     [entities, discoveredInPlay],
+  );
+  const quoteColors = useMemo(
+    () => speakerColors(
+      [...authoredEntities, ...discoveredAsEntities(discoveredEntities)],
+      personaRef?.source === 'none' ? undefined : personaRef?.entityId,
+    ),
+    [authoredEntities, discoveredEntities, personaRef],
   );
   // Where the cast stands now, runtime characters included.
   const liveStandings = useMemo<Standings>(
@@ -6555,6 +6563,7 @@ const GameViewer = ({
       sceneImages={(viewedTurn?.turnId && sceneImages[viewedTurn.turnId]) || EMPTY_IMAGES}
       sceneTags={viewedTurn?.sceneTags ?? ""}
       sceneTurnId={viewedTurn?.turnId}
+      speakerColors={quoteColors}
       sceneImageJob={sceneImageJob}
       sceneImageProgress={sceneImageProgress}
       sceneImagePreview={sceneImagePreview}

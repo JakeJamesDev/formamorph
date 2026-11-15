@@ -56,6 +56,7 @@ import { LocationsCanvasReference } from '@/components/design-system/LocationsCa
 import { ContextMenuReferences } from '@/components/design-system/ContextMenuReferences';
 import { FooterActionOrderReference } from '@/components/design-system/FooterActionOrderReference';
 import { NarrationTurnReference } from '@/components/design-system/NarrationTurnReference';
+import { SpeakerQuotesReference } from '@/components/design-system/SpeakerQuotesReference';
 import { ScriptPromptLineReference } from '@/components/design-system/ScriptPromptLineReference';
 import { RequestStatusStripReference } from '@/components/design-system/RequestStatusStripReference';
 import { PanelTabStripReference } from '@/components/design-system/PanelTabStripReference';
@@ -440,6 +441,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Narration Turn',
     description: 'Turn Card, Scene Plate, and choice rows',
     Component: NarrationTurnReference,
+  },
+  {
+    id: 'speaker-quotes',
+    label: 'Speaker Quote Colors',
+    description: 'Each speaker’s quotes in their own palette color',
+    Component: SpeakerQuotesReference,
   },
   {
     id: 'prompt-line',

@@ -4,6 +4,8 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useGameplayText } from '@/lib/gameplayTextStore';
+import { turnQuoteSpeakers } from '@/lib/coref/quoteSpeakers';
+import type { SpeakerColors } from '@/lib/quoteSegments';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
 import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
 import { parseTurnContent } from '@/lib/turnDigest';
@@ -81,8 +83,10 @@ export const PLAYER_ACTION_BUBBLE = 'ml-auto w-fit max-w-[85%] rounded-2xl round
  * right and the narration as a full-width block. Opens at the latest turn. `latestFooter` renders under the
  * latest turn's narration.
  */
-export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor, playerActionsFor, onDeleteSceneImage, fadeUnderStrip = false }: {
+export function ChatNarration({ parseAssistantMessage, speakerColors, latestFooter, actionsFor, playerActionsFor, onDeleteSceneImage, fadeUnderStrip = false }: {
   parseAssistantMessage: (content: string) => string;
+  /** Each cast entity's quote color, by id. */
+  speakerColors: SpeakerColors;
   latestFooter?: React.ReactNode;
   /** The actions of one committed narration bubble. */
   actionsFor?: (turn: ChatBubbleTurn) => BubbleAction[];
@@ -93,8 +97,8 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
   /** Fades the turns out above the request status strip, which floats over the bottom. */
   fadeUnderStrip?: boolean;
 }) {
-  const { fullMessageHistory, isRevealingNarration, narrationSettled, isWaitingForAI, sceneImages, actionAttachments, scriptTells, currentPage, totalPages, setUserPage } = useGameplay();
-  const { revealSpec, revealEasing, showReasoning } = useSettings();
+  const { fullMessageHistory, isRevealingNarration, narrationSettled, isWaitingForAI, sceneImages, actionAttachments, scriptTells, mentionReadings, currentPage, totalPages, setUserPage } = useGameplay();
+  const { revealSpec, revealEasing, showReasoning, characterMentions } = useSettings();
   const gameplayText = useGameplayText();
   const liveReasoning = useLiveReasoning();
   const revealOn = revealActive(revealSpec);
@@ -242,6 +246,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
                           animation={revealAnim}
                           easing={revealEasing}
                           dialogue
+                          speakers={liveReveal ? undefined : turnQuoteSpeakers(characterMentions, mentionReadings, speakerColors, turnId, narrationText)}
                         />
                       </div>
                     )}

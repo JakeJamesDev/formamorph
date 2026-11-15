@@ -1528,6 +1528,48 @@ The live reference renders the production card, plate, action line, rows, and St
 - The pair's labels and tooltips come from `StatsActions`, and the action line's menu from `playerBubbleActions`, so the reference and the game cannot drift.
 - **Unverified:** the description's "Right-click a card or the action line for its menu", the past page's "The Stats panel actions are disabled", and the "Stats Panel" label have terminology review only; vocabulary and grammar evidence is not recorded. The sample action text is creative prose and exempt.
 
+## Pattern: Speaker Quote Colors
+
+Speaker Quote Colors give each character's quotes their own color, so the player can tell who speaks at a glance. Character Mentions finds the speaker.
+
+### Composition
+
+- 🎨 **Eight palette tokens.** `--speaker-0` to `--speaker-7`: orange, green, violet, rose, teal, ochre, olive and indigo. One set for light mode and one for dark. They stay the same in every palette, so a character keeps one color when the player changes the palette.
+- 🔑 **A stable slot.** The entity's place in the cast picks the slot: world entities first, then runtime characters in the order they joined. The player takes no slot. A character keeps its color in every turn and after a reload, and the first eight never share one. Reordering the world's entities changes the colors.
+- 💬 **The whole quote.** The color covers the quote and its marks, across bold and italic inside it.
+- ⚪ **Unresolved quotes.** A quote with no speaker keeps the player's Quote Color, or the palette's dialogue color.
+
+### When to use it
+
+- Use it only on story narration that Character Mentions has read.
+- Quote Color in Display › Accessibility turns it off with every other quote color.
+- A speaker's color beats the player's own custom quote color.
+- Don't use the speaker tokens for anything that is not about that character.
+
+### States
+
+The color is static. It shows once the turn's reading arrives, and changes no layout. It has no hover, focus, or disabled state of its own.
+
+### Contrast
+
+Each token meets 4.5:1 as text on the background and card surface of every palette, in its mode. Lightness differs by hue, so every color sits near the same contrast. [`speakerPalette.test.ts`](../src/lib/coref/speakerPalette.test.ts) reads [`src/index.css`](../src/index.css) and checks every palette.
+
+### Production mapping
+
+| Part | Source |
+| --- | --- |
+| Tokens and the quote rule | [`src/index.css`](../src/index.css) |
+| Slot and color of each cast entity | [`speakerPalette.ts`](../src/lib/coref/speakerPalette.ts), built once in [`GameViewer.tsx`](../src/views/GameViewer.tsx) |
+| A turn's speakers | [`quoteSpeakers.ts`](../src/lib/coref/quoteSpeakers.ts) |
+| Quote spans and their speakers | [`rehypeQuoteSpans.ts`](../src/lib/rehypeQuoteSpans.ts) and [`quoteSegments.ts`](../src/lib/quoteSegments.ts) |
+| Renderer | `MarkdownRenderer`'s `speakers` prop in [`MarkdownRenderer.tsx`](../src/components/game/MarkdownRenderer.tsx) |
+
+Open `#dev?modal=designSystem&tab=speaker-quotes` for the light and dark panels side by side. `#dev?view=gameViewer&fixture=speakerQuotes` shows the colors in a game, with Character Mentions on.
+
+### Writing review
+
+The panel labels are "Palette" and "In a Turn". The sample narration is creative prose and exempt.
+
 ## Pattern: Inline Prompt Line
 
 **Purpose:** Show a script's question or message as part of the turn, not as a window over it.

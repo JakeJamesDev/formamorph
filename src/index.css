@@ -600,8 +600,32 @@
    root attribute the Quote Color setting writes is what paints it, so switching the setting off leaves the
    span with nothing to read rather than re-rendering the markdown. */
 :root[data-quote-color] .dialogue-quote {
-  /* `--dialogue-custom` is the player's color for the active mode, set on the root only while one exists. */
-  color: var(--dialogue-custom, hsl(var(--dialogue)));
+  /* `--quote-speaker` is on a quote with a known speaker; `--dialogue-custom` is the player's own color. */
+  color: var(--quote-speaker, var(--dialogue-custom, hsl(var(--dialogue))));
+}
+
+/* Speaker quote colors, one set per mode in every palette. `.light` serves a pinned-light panel in the dark app. */
+:root,
+.light {
+  --speaker-0: 24 75% 34%;
+  --speaker-1: 145 65% 25%;
+  --speaker-2: 280 55% 44%;
+  --speaker-3: 340 65% 40%;
+  --speaker-4: 195 80% 27%;
+  --speaker-5: 45 85% 25%;
+  --speaker-6: 95 60% 26%;
+  --speaker-7: 250 55% 50%;
+}
+
+.dark {
+  --speaker-0: 24 85% 70%;
+  --speaker-1: 145 55% 62%;
+  --speaker-2: 280 75% 78%;
+  --speaker-3: 340 80% 76%;
+  --speaker-4: 195 70% 62%;
+  --speaker-5: 45 75% 62%;
+  --speaker-6: 95 50% 62%;
+  --speaker-7: 250 85% 78%;
 }
 
 /* Real italic only, no skew: a quote is often a whole sentence, and the skew's inline-block would stop it wrapping. */

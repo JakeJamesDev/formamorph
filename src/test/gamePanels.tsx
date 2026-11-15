@@ -329,6 +329,7 @@ export function middlePanelProps(
     sceneImages: [],
     sceneTags: turns[page - 1]?.sceneTags ?? '',
     sceneTurnId: turns[page - 1]?.turnId,
+    speakerColors: new Map(),
     sceneImageJob: job,
     sceneImageProgress: null,
     sceneImagePreview: null,
