@@ -255,18 +255,24 @@ export const PICKED_OPENING_TEXT = 'I wave to the courier by the door.';
 const SPEAKER_QUOTE_LINES: [string, string | null][] = [
   ['"You said noon,"', 'dev-kessa'], ['"I said after the tide."', 'dev-mira'], ['"Ask the courier if you don\'t believe me."', 'dev-mira'],
   ['"Don\'t drag me into this."', 'dev-courier'], ['"Too late."', 'dev-kessa'], ['"Both of you, the tide won\'t wait."', null],
+  ['"Then we go now,"', 'dev-ash'],
 ];
 const SPEAKER_QUOTES_TEXT = [
   'The ferry bumps the dock as Mira throws the line. "You said noon," Kessa says, coming down the plank.',
   '"I said after the tide." Mira knots the rope twice. "Ask the courier if you don\'t believe me."',
   'The courier lifts one hand from the bench. "Don\'t drag me into this."',
   '"Too late." Kessa drops onto the bench beside him. From the wheelhouse, someone calls out: "Both of you, the tide won\'t wait."',
+  'You step onto the plank. "Then we go now," you say.',
 ].join('\n\n');
 // The fixture's linked mentions, in order, for the mention cards.
 const SPEAKER_QUOTE_MENTIONS = spokenQuotes(SPEAKER_QUOTES_TEXT, [
   ['Mira', 'dev-mira'], ['Kessa', 'dev-kessa'], ['Mira', 'dev-mira'], ['the courier', 'dev-courier'],
-  ['The courier', 'dev-courier'], ['Kessa', 'dev-kessa'], ['him', 'dev-courier'],
+  ['The courier', 'dev-courier'], ['Kessa', 'dev-kessa'], ['him', 'dev-courier'], ['You', 'dev-ash'], ['you', 'dev-ash'],
 ]).map(({ start, end, speaker }) => ({ start, end, entityId: speaker }));
+/** A flat portrait for the fixture's cast, so the cards and pick list show images. */
+const fixturePortrait = (hue: number): NonNullable<Entity['images']> => [{
+  data: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="120"><rect width="80" height="120" fill="hsl(${hue} 45% 55%)"/><circle cx="40" cy="34" r="18" fill="hsl(${hue} 35% 85%)"/><rect x="14" y="60" width="52" height="60" rx="20" fill="hsl(${hue} 40% 35%)"/></svg>`)}`,
+}];
 
 
 
@@ -297,14 +303,21 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       const last = history.length - 1;
       const turn = JSON.parse(history[last].content) as { turnId: string };
       const base = world.default as unknown as World;
-      const speaker = (id: string, name: string): Entity => ({ ...base.entities[0], id, name });
+      const speaker = (id: string, name: string, extra: Partial<Entity> = {}): Entity => ({ ...base.entities[0], id, name, ...extra });
       return {
         world: {
           ...base,
-          entities: [...base.entities, speaker('dev-mira', 'Mira'), speaker('dev-kessa', 'Kessa'), speaker('dev-courier', 'Ilan')],
+          entities: [
+            ...base.entities,
+            speaker('dev-ash', 'Ash', { persona: true, personaOnly: true, playerDescription: 'A ferryman who keeps to the tide.', images: fixturePortrait(30) }),
+            speaker('dev-mira', 'Mira', { images: fixturePortrait(200) }),
+            speaker('dev-kessa', 'Kessa'),
+            speaker('dev-courier', 'Ilan', { strangerName: 'the courier', strangerDescription: 'A stranger in a gray coat.', images: fixturePortrait(280) }),
+          ],
         },
         save: {
           ...saved,
+          persona: { source: 'world', entityId: 'dev-ash' },
           currentState: {
             ...saved.currentState,
             fullMessageHistory: history.map((message, index) => (

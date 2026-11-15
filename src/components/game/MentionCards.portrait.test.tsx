@@ -5,7 +5,9 @@ import { buildPlayerView, type PlayerViewEntity, type PlayerViewInput } from '@/
 import { playerViewPages } from '@/lib/formaquestion/gameWorld';
 import { scoped } from '@/lib/scope';
 import type { GateInput } from '@/lib/traitGates';
-import { MentionCard, mentionCardRows } from './MentionCards';
+import { computePresence } from '@/lib/presence';
+import { visibleImages } from '@/lib/imageVisibility';
+import { MentionCard, MentionPickList, mentionCardRows } from './MentionCards';
 
 // Card rows from the real Player View under a real gate input: an image whose rule fails must never reach the card.
 
@@ -20,7 +22,8 @@ const COURIER = entity('courier', 'Ilan', { strangerName: 'the courier', images:
 const WOLF = entity('wolf', 'Wolf', { images: [{ data: 'data:wolf-night', requires: atNight }, { data: 'data:wolf-day' }] });
 const SHADE = entity('shade', 'Shade', { images: [{ data: 'data:shade-night', requires: atNight }] });
 const KESSA = entity('kessa', 'Kessa');
-const CAST = [MIRA, COURIER, WOLF, SHADE, KESSA];
+const HOODED = entity('hooded', 'Corvin', { strangerName: 'a hooded figure', images: [{ data: 'data:hooded-plain' }] });
+const CAST = [MIRA, COURIER, WOLF, SHADE, KESSA, HOODED];
 
 const state = (extra: Partial<GameState> = {}): GameState => ({
   globalStats: [], globalTraits: [], visibleEntities: [], logEntries: [], gameplayText: '', gameTime: 0,
@@ -44,7 +47,15 @@ const input = (extra: Partial<PlayerViewInput> = {}): PlayerViewInput => ({
   history: [], persona: null, resolve: (text) => text, ...extra,
 });
 
-const rows = (night: boolean) => mentionCardRows(buildPlayerView(input({ gate: gate(night) })));
+const MET = ['mira', 'wolf', 'shade', 'kessa'];
+const presence = computePresence({
+  entities: CAST, runtime: [], positions: {}, generics: {}, followers: [], locationId: null, locations: [], connections: [],
+  persona: null, met: MET, strangerAliases: {}, turns: [],
+}).byId;
+
+const rows = (night: boolean) => mentionCardRows(
+  buildPlayerView(input({ gate: gate(night) })), presence, { imageOf: (e) => visibleImages(e, gate(night))[0]?.data },
+);
 
 /** The portrait the card for `id` shows, or null when it shows the initial. */
 function portraitOf(id: string, night: boolean): string | null {
@@ -59,9 +70,10 @@ function portraitOf(id: string, night: boolean): string | null {
 afterEach(cleanup);
 
 describe('mention card portrait', () => {
-  it('shows the image of a met entity and of a stranger seen under an alias', () => {
+  it('shows the image of a met entity, of a stranger seen under an alias, and of one known by its Stranger Name', () => {
     expect(portraitOf('mira', false)).toBe('data:mira-plain');
     expect(portraitOf('courier', false)).toBe('data:courier-plain');
+    expect(portraitOf('hooded', false)).toBe('data:hooded-plain');
   });
 
   it('shows the initial when the entity has no image', () => {
@@ -76,6 +88,31 @@ describe('mention card portrait', () => {
     expect(portraitOf('shade', false)).toBeNull();
     expect(portraitOf('shade', true)).toBe('data:shade-night');
     expect(JSON.stringify([...rows(false).values()])).not.toContain('night');
+  });
+});
+
+describe('pick list portraits (Q62)', () => {
+  const pick = (night: boolean) => {
+    const shown = rows(night);
+    render(<MentionPickList role="mention" rows={shown} colors={new Map()} current="mira" onPick={() => {}} onBack={() => {}} />);
+    return [...screen.getAllByRole('button')].slice(1, -1)
+      .map((b) => [b.textContent, b.querySelector('img')?.getAttribute('src') ?? null, b.querySelector('img')?.className ?? null]);
+  };
+
+  it('shows each image as a square, top-aligned crop, and the initial when there is none', () => {
+    const square = 'h-6 w-6 shrink-0 rounded-md object-cover object-top';
+    expect(pick(false)).toEqual([
+      ['Mira', 'data:mira-plain', square],
+      ['the courier', 'data:courier-plain', square],
+      ['Wolf', 'data:wolf-day', square],
+      ['SShade', null, null],
+      ['KKessa', null, null],
+      ['a hooded figure', 'data:hooded-plain', square],
+    ]);
+  });
+
+  it("follows the image's rule, as the card does (Q51)", () => {
+    expect(pick(true).slice(2, 4).map(([, src]) => src)).toEqual(['data:wolf-night', 'data:shade-night']);
   });
 });
 

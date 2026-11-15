@@ -2,13 +2,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Entity, GameState } from '@/types';
 import { buildPlayerView } from '@/lib/formaquestion/playerView';
-import { speakerColors } from '@/lib/coref/speakerPalette';
-import { blockMentions, remarkMentionLinks, turnMentionLinks } from '@/lib/coref/mentionLinks';
+import { PLAYER_QUOTE_COLOR, speakerColors } from '@/lib/coref/speakerPalette';
+import { computePresence } from '@/lib/presence';
+import { blockMentions, remarkMentionLinks, turnMentionLinks, type MentionLinkSource } from '@/lib/coref/mentionLinks';
 import { narrationHash, type MentionReadingMap } from '@/lib/coref/mentionReadings';
 import type { MentionLink } from '@/lib/coref/mentionReading';
 import { spokenQuotes, type QuoteSpeakerSource } from '@/lib/quoteSegments';
 import { MarkdownRenderer, type RemarkPlugin } from './MarkdownRenderer';
-import { MentionCardsProvider, MentionTurn, cardTriggers, mentionCardRows, turnCardTriggers, type CardCorrection } from './MentionCards';
+import {
+  MentionCardsProvider, MentionTurn, cardColors, cardTriggers, mentionCardRows, pickListBase, turnCardTriggers, turnPickList, type CardCorrection,
+} from './MentionCards';
 import { applyCardCorrection, correctedMentionReadings, type MentionCorrectionMap } from '@/lib/coref/mentionCorrections';
 import { useState } from 'react';
 
@@ -20,10 +23,15 @@ const entity = (id: string, name: string, extra: Partial<Entity> = {}): Entity =
 });
 const MIRA = entity('mira', 'Mira');
 const KESSA = entity('kessa', 'Kessa');
-const COURIER = entity('courier', 'Ilan', { strangerName: 'the courier', strangerDescription: 'Ilan stranger text.' });
+const COURIER = entity('courier', 'Ilan', { strangerName: 'the courier', strangerDescription: 'A stranger in a gray coat.' });
 const GHOST = entity('ghost', 'Wraith', { strangerName: 'a pale shape' });
-const CAST = [MIRA, KESSA, COURIER, GHOST];
-const COLORS = speakerColors(CAST);
+// Hides its name with nothing in its place: the player has no label for it.
+const NOBODY = entity('nobody', 'Ondra', { strangerName: '' });
+const ASH = entity('ash', 'Ash', { playerDescription: 'A tired ferryman.' });
+// Hides nothing, but the player has never met or seen it.
+const TOMAS = entity('tomas', 'Tomas');
+const CAST = [MIRA, KESSA, COURIER, GHOST, NOBODY, TOMAS];
+const ALL_COLORS = speakerColors([ASH, ...CAST], ASH);
 
 const state = (extra: Partial<GameState> = {}): GameState => ({
   globalStats: [], globalTraits: [], visibleEntities: [], logEntries: [], gameplayText: '', gameTime: 0,
@@ -31,12 +39,21 @@ const state = (extra: Partial<GameState> = {}): GameState => ({
   previousStateIndex: null, stateVersion: 1, ...extra,
 });
 
-/** Mira and Kessa met; the courier seen only as "the courier", never named; the wraith never seen. */
-const ROWS = mentionCardRows(buildPlayerView({
-  world: { entities: CAST, locations: [], traits: [] },
+/** Ash played; Mira and Kessa met; the courier seen only as "the courier", never named; the wraith and Ondra never
+ *  seen. The wraith still shows its Stranger Name; Ondra shows nothing (Q63). */
+const VIEW = buildPlayerView({
+  world: { entities: [ASH, ...CAST], locations: [], traits: [] },
   chain: [state({ metEntities: ['mira', 'kessa'], visibleEntities: [{ name: 'Ilan', alias: 'the courier', revealed: false }] })],
-  history: [], persona: null, resolve: (text) => text,
-}));
+  history: [], persona: ASH, resolve: (text) => text,
+});
+const PRESENCE = computePresence({
+  entities: CAST, runtime: [], positions: {}, generics: {}, followers: [], locationId: null, locations: [], connections: [],
+  persona: ASH, met: ['mira', 'kessa'], strangerAliases: { courier: 'the courier' }, turns: [],
+}).byId;
+const ROWS = mentionCardRows(VIEW, PRESENCE);
+/** The colors the game view passes: only speakers with a card row (Q48). */
+const COLORS = cardColors(ALL_COLORS, ROWS);
+const PICK_BASE = pickListBase(VIEW, PRESENCE, ['mira', 'kessa']);
 
 /** Each `[text, entity]` found as a whole word in `passage`, in order, as the reading's mentions. */
 function mentionsOf(passage: string, hits: [string, string | null][]): MentionLink[] {
@@ -53,9 +70,17 @@ function mentionsOf(passage: string, hits: [string, string | null][]): MentionLi
 const linksOf = (passage: string, hits: [string, string | null][]): RemarkPlugin =>
   [remarkMentionLinks, { source: { text: passage, mentions: mentionsOf(passage, hits) } }];
 
+/** The turn's reading the links and speakers stand for, as the game view's pick list reads it. */
+const readingFrom = (links?: RemarkPlugin, speakers?: QuoteSpeakerSource) => ({
+  // `linksOf` builds the plugin as [plugin, options]; the type is unified's general Pluggable.
+  mentions: (links as unknown as [unknown, { source: MentionLinkSource }] | undefined)?.[1].source.mentions ?? [],
+  quotes: speakers?.quotes ?? [],
+});
+
 function show(text: string, links?: RemarkPlugin, speakers?: QuoteSpeakerSource, onCorrect?: (c: CardCorrection) => void) {
+  const pickable = () => turnPickList(PICK_BASE, readingFrom(links, speakers));
   return render(
-    <MentionCardsProvider colors={COLORS} rows={ROWS} onCorrect={onCorrect}>
+    <MentionCardsProvider colors={COLORS} rows={ROWS} onCorrect={onCorrect} pickable={pickable}>
       <MentionTurn turnId="t1">
         <MarkdownRenderer text={text} dialogue {...cardTriggers(speakers, links)} />
       </MentionTurn>
@@ -85,11 +110,34 @@ describe('mention links in narration', () => {
     expect(show(PASSAGE).container.innerHTML).toBe(plain);
   });
 
-  it('keeps a mention with no Player View row as plain text (Q46)', () => {
-    const text = 'Behind the rail, the wraith waits.';
-    const { container } = show(text, linksOf(text, [['the wraith', 'ghost']]));
+  it('keeps a mention of someone the player cannot name as plain text (Q46, Q63)', () => {
+    const text = 'Behind the rail, the stranger waits.';
+    const { container } = show(text, linksOf(text, [['the stranger', 'nobody']]));
     expect(triggers(container)).toEqual([]);
+    expect(container.querySelector('a')).toBeNull();
     expect(container.textContent).toBe(text);
+  });
+
+  it('gives a speaker the player cannot name no color and no speaker mark (Q48, Q63)', () => {
+    const text = 'A voice rises. "Leave now," it says.';
+    const speakers: QuoteSpeakerSource = { text, colors: COLORS, quotes: spokenQuotes(text, [['"Leave now,"', 'nobody']]) };
+    const { container } = show(text, undefined, speakers);
+    const quote = container.querySelector<HTMLElement>('.dialogue-quote')!;
+    expect(quote.dataset.speaker).toBeUndefined();
+    expect(quote.style.getPropertyValue('--quote-speaker')).toBe('');
+    expect(container.querySelector('[data-speaker]')).toBeNull();
+  });
+
+  it('shows a speaker known only by its Stranger Name under that label, never the true name (Q63)', () => {
+    const text = '"Turn back," the pale shape whispers.';
+    const speakers: QuoteSpeakerSource = { text, colors: COLORS, quotes: spokenQuotes(text, [['"Turn back,"', 'ghost']]) };
+    const { container } = show(text, linksOf(text, [['the pale shape', 'ghost']]), speakers, vi.fn());
+    expect(container.querySelector<HTMLElement>('.dialogue-quote')!.dataset.speaker).toBe('ghost');
+    fireEvent.click(container.querySelector<HTMLElement>('[data-mention="ghost"]')!);
+    expect(card()!.textContent).toContain('a pale shape');
+    fireEvent.click(screen.getByText('Wrong character?'));
+    expect(card()!.textContent).toContain('a pale shape');
+    expect(container.ownerDocument.body.textContent).not.toMatch(/Wraith|Ondra/);
   });
 
   it('places each mention by its offset, not by the first matching letters', () => {
@@ -144,7 +192,15 @@ describe('mention cards', () => {
     fireEvent.click(container.querySelector<HTMLElement>('[data-mention="courier"]')!);
     const shown = card()!;
     expect(shown.textContent).toContain('the courier');
-    expect(shown.textContent).not.toMatch(/Ilan|AI secret|stranger text/);
+    // Its Stranger Description is written for this view (Q67).
+    expect(shown.textContent).toContain('A stranger in a gray coat.');
+    expect(shown.textContent).not.toMatch(/Ilan|AI secret|player text/);
+  });
+
+  it("reads a stranger's description through the caller's resolver, so a placeholder never shows raw", () => {
+    const rows = mentionCardRows({ entities: [] }, new Map([['courier', { entity: COURIER, known: false, label: 'the courier' }]]),
+      { describe: (e) => `${e.strangerDescription} (resolved)` });
+    expect(rows.get('courier')?.description).toBe('A stranger in a gray coat. (resolved)');
   });
 
   it('shows a met character under its name with its player description', () => {
@@ -248,10 +304,19 @@ describe('correcting from a card', () => {
     fireEvent.click(container.querySelector<HTMLElement>('[data-mention]')!);
     fireEvent.click(screen.getByText('Wrong character?'));
     expect(card()!.textContent).toContain('Who is this?');
-    // The unseen wraith has no Player View row, so it is no choice.
-    expect(names()).toEqual(['', 'MMira', 'KKessa', 'Cthe courier', '–Someone Else']);
+    // The persona first, then the met and the scene-alias rows. Unseen Tomas and the wraith are no choice (Q68), nor
+    // Ondra, with nothing to show.
+    expect(names()).toEqual(['', 'AAsh', 'MMira', 'KKessa', 'Cthe courier', '–Someone Else']);
     fireEvent.click(screen.getByLabelText('Back'));
     expect(screen.getByText('Wrong character?')).toBeTruthy();
+  });
+
+  it('offers an unseen entity only when the turn links it, under its label (Q68)', () => {
+    const text = 'The courier nods to Tomas while the pale shape waits.';
+    const links = linksOf(text, [['The courier', 'courier'], ['Tomas', 'tomas'], ['the pale shape', 'ghost']]);
+    fireEvent.click(show(text, links, undefined, vi.fn()).container.querySelector<HTMLElement>('[data-mention="courier"]')!);
+    fireEvent.click(screen.getByText('Wrong character?'));
+    expect(names()).toEqual(['', 'AAsh', 'MMira', 'KKessa', 'Cthe courier', 'Pa pale shape', 'TTomas', '–Someone Else']);
   });
 
   it("corrects the opened mention's span in its turn, and closes the card", () => {
@@ -275,6 +340,33 @@ describe('correcting from a card', () => {
     expect(card()!.textContent).toContain('Who said this?');
     fireEvent.click(screen.getByText('Someone Else'));
     expect(onCorrect).toHaveBeenCalledWith({ turnId: 't1', kind: 'quote', start: 12, end: 17, entityId: null });
+  });
+});
+
+describe('the played persona (Q61)', () => {
+  const TEXT = 'You step off the ferry. "Where to?" you ask.';
+
+  it("links its mentions, colors its quotes with the player's Quote Color, and opens its card", () => {
+    const speakers: QuoteSpeakerSource = { text: TEXT, colors: COLORS, quotes: spokenQuotes(TEXT, [['"Where to?"', 'ash']]) };
+    const { container } = show(TEXT, linksOf(TEXT, [['You', 'ash'], ['you', 'ash']]), speakers, vi.fn());
+    expect(triggers(container)).toEqual([['You', 'ash'], ['you', 'ash']]);
+    const quote = container.querySelector<HTMLElement>('.dialogue-quote')!;
+    expect(quote.dataset.speaker).toBe('ash');
+    expect(quote.style.getPropertyValue('--quote-speaker')).toBe(PLAYER_QUOTE_COLOR);
+    fireEvent.click(quote);
+    expect(card()!.textContent).toContain('A tired ferryman.');
+    expect(screen.getByText('Wrong character?')).toBeTruthy();
+  });
+
+  it('lets a quote be corrected to the persona', () => {
+    const text = '"Where to?" Mira asks.';
+    const speakers: QuoteSpeakerSource = { text, colors: COLORS, quotes: spokenQuotes(text, [['"Where to?"', 'mira']]) };
+    const onCorrect = vi.fn();
+    const { container } = show(text, undefined, speakers, onCorrect);
+    fireEvent.click(container.querySelector<HTMLElement>('[data-speaker="mira"]')!);
+    fireEvent.click(screen.getByText('Wrong character?'));
+    fireEvent.click(screen.getByText('Ash'));
+    expect(onCorrect).toHaveBeenCalledWith(expect.objectContaining({ kind: 'quote', entityId: 'ash' }));
   });
 });
 
@@ -361,9 +453,9 @@ describe('the card from the keyboard', () => {
     fireEvent.keyDown(trigger, { key: 'Enter' });
     expect(document.activeElement?.textContent).toBe('Wrong character?');
     fireEvent.click(document.activeElement!);
-    expect(document.activeElement?.textContent).toBe('MMira');
+    expect(document.activeElement?.textContent).toBe('AAsh');
     fireEvent.click(document.activeElement!);
-    expect(onCorrect).toHaveBeenCalledWith(expect.objectContaining({ entityId: 'mira' }));
+    expect(onCorrect).toHaveBeenCalledWith(expect.objectContaining({ entityId: 'ash' }));
     expect(card()).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(trigger));
     expect(card()).toBeNull();

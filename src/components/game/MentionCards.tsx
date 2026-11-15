@@ -7,11 +7,14 @@ import { Check, ChevronLeft } from 'lucide-react';
 import { defaultComponents, type ExtraProps } from 'streamdown';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
+import type { Base64Data, Entity } from '@/types';
 import type { PlayerView, PlayerViewEntity } from '@/lib/formaquestion/playerView';
+import { hasStrangerFace, type EntityPresence } from '@/lib/presence';
 import { parseSpanKey, spanKey, type QuoteSpeakerSource, type SpeakerColors, type TextSpan } from '@/lib/quoteSegments';
 import { MENU_ROW } from '@/components/menuRow';
 import { parseMentionMark, turnMentionLinks } from '@/lib/coref/mentionLinks';
 import type { MentionCorrection } from '@/lib/coref/mentionCorrections';
+import type { MentionLink, QuoteSpeaker } from '@/lib/coref/mentionReading';
 import type { MentionReadingMap } from '@/lib/coref/mentionReadings';
 import { turnQuoteSpeakers } from '@/lib/coref/quoteSpeakers';
 import { cn } from '@/lib/utils';
@@ -100,7 +103,9 @@ export function MentionPickList({ role, rows, colors, current, focusFirst = fals
       </div>
       {[...rows.values()].map((row, i) => (
         <button key={row.id} type="button" autoFocus={focusFirst && i === 0} onClick={() => onPick(row.id)} className={MENU_ROW}>
-          <Initial name={row.name} color={colors.get(row.id)} className="h-6 w-6 text-meta" />
+          {row.image
+            ? <img src={row.image} alt="" className={cn('h-6 w-6 shrink-0 rounded-md', thumbFit('portrait'))} />
+            : <Initial name={row.name} color={colors.get(row.id)} className="h-6 w-6 text-meta" />}
           <span className="flex-1">{row.name}</span>
           {row.id === current && <Check aria-label="Current" className="h-4 w-4 text-muted-foreground" />}
         </button>
@@ -113,9 +118,72 @@ export function MentionPickList({ role, rows, colors, current, focusFirst = fals
   );
 }
 
-/** The card rows of a Player View: every entity but the player's own, by id. */
-export const mentionCardRows = (view: Pick<PlayerView, 'entities'>): ReadonlyMap<string, PlayerViewEntity> =>
-  new Map(view.entities.filter((row) => !row.player).map((row) => [row.id, row]));
+/** Scene Presence as the cards read it: each cast member's label, by id, in cast order. */
+export type CardPresence = ReadonlyMap<string, Pick<EntityPresence, 'entity' | 'known' | 'label'>>;
+
+/** What a stranger's card row reads beyond its label: its visible image and its resolved Stranger Description. */
+export interface StrangerReads {
+  imageOf?: (entity: Entity) => Base64Data | undefined;
+  describe?: (entity: Entity) => string;
+}
+
+/**
+ * The card rows, by id: the played persona first (Q61), then everyone Scene Presence labels (Q63). A name the
+ * player knows keeps its Player View row; an unmet stranger shows its label and Stranger Description (Q67), with
+ * its Player View image, else `imageOf`'s. An entity with no label has no row.
+ */
+export function mentionCardRows(
+  view: Pick<PlayerView, 'entities'>, presence: CardPresence, { imageOf, describe }: StrangerReads = {},
+): ReadonlyMap<string, PlayerViewEntity> {
+  const viewRows = new Map(view.entities.map((row) => [row.id, row]));
+  const rows = new Map<string, PlayerViewEntity>();
+  const persona = view.entities.find((row) => row.player);
+  if (persona) rows.set(persona.id, persona);
+  for (const [id, { entity, known, label }] of presence) {
+    const row = viewRows.get(id);
+    if (label === null || rows.has(id)) continue;
+    if (known) {
+      if (row) rows.set(id, row);
+      continue;
+    }
+    const image = row?.image ?? imageOf?.(entity);
+    rows.set(id, {
+      kind: 'entity', id, name: label, description: (describe ?? strangerText)(entity).trim(), alias: true, ...(image && { image }),
+    });
+  }
+  return rows;
+}
+
+const strangerText = (entity: Entity) => entity.strangerDescription ?? '';
+
+/** Who the pick list offers in every turn (Q68): the persona, every scene-alias row, everyone on the met-in-play
+ *  list, and a stranger the start rule meets. The start rule's meeting of a name it never hid is not seeing it. */
+export function pickListBase(
+  view: Pick<PlayerView, 'entities'>, presence: ReadonlyMap<string, Pick<EntityPresence, 'entity' | 'met'>>, metInPlay: readonly string[],
+): ReadonlySet<string> {
+  const ids = new Set([...view.entities.filter((row) => row.player || row.alias).map((row) => row.id), ...metInPlay]);
+  for (const [id, { entity, met }] of presence) if (met && hasStrangerFace(entity)) ids.add(id);
+  return ids;
+}
+
+/** A turn's pick list ids: {@link pickListBase} and every entity the turn's reading links or names as a speaker. */
+export function turnPickList(
+  base: ReadonlySet<string>,
+  reading: { mentions: readonly Pick<MentionLink, 'entityId'>[]; quotes: readonly Pick<QuoteSpeaker, 'speaker'>[] } | null | undefined,
+): ReadonlySet<string> {
+  if (!reading) return base;
+  const ids = new Set(base);
+  for (const m of reading.mentions) if (m.entityId) ids.add(m.entityId);
+  for (const q of reading.quotes) if (q.speaker) ids.add(q.speaker);
+  return ids;
+}
+
+/** The colors of the speakers that have a card row: a speaker the player cannot name gets none (Q48, Q63). */
+export const cardColors = (colors: SpeakerColors, rows: ReadonlyMap<string, unknown>): SpeakerColors =>
+  new Map([...colors].filter(([id]) => rows.has(id)));
+
+const pickRows = (rows: ReadonlyMap<string, PlayerViewEntity>, ids: ReadonlySet<string>): ReadonlyMap<string, PlayerViewEntity> =>
+  new Map([...rows].filter(([id]) => ids.has(id)));
 
 /** How the open card was opened: a hover closes when the pointer leaves, a focus on blur, a click stays. A key
  *  press stays too and moves focus into the card. */
@@ -162,10 +230,12 @@ export function MentionTurn({ turnId, children }: { turnId: string | undefined; 
  * mention or speaker without a row stays plain text (Q46). `onCorrect` corrects the opened mention or quote; the
  * card shows "Wrong character?" only with it, and only for a trigger inside a {@link MentionTurn}.
  */
-export function MentionCardsProvider({ colors, rows, onCorrect, children }: {
+export function MentionCardsProvider({ colors, rows, onCorrect, pickable, children }: {
   colors: SpeakerColors;
   rows: ReadonlyMap<string, PlayerViewEntity>;
   onCorrect?: (correction: CardCorrection) => void;
+  /** The ids a turn's pick list offers (Q68); every row without it. */
+  pickable?: (turnId: string) => ReadonlySet<string>;
   children: ReactNode;
 }) {
   const [card, setCard] = useState<OpenCard | null>(null);
@@ -262,7 +332,7 @@ export function MentionCardsProvider({ colors, rows, onCorrect, children }: {
             {picking && correct ? (
               <MentionPickList
                 role={card.role}
-                rows={rows}
+                rows={pickable && target ? pickRows(rows, pickable(target.turnId)) : rows}
                 colors={colors}
                 current={card.entityId}
                 focusFirst={byKey}

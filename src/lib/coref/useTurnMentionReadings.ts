@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 
 import type { ChatMessage } from '@/types';
 import { useMountedRef } from '@/lib/useMountedRef';
 import type { CharacterMentions } from './characterMentions';
-import type { MentionCast } from './mentionReading';
+import type { MentionCast, MentionPlayer } from './mentionReading';
 import { holdsTurn, narrationHash, turnsToRead, type MentionReadingMap } from './mentionReadings';
 
 interface Options {
@@ -14,16 +14,16 @@ interface Options {
   readings: MentionReadingMap;
   setReadings: Dispatch<SetStateAction<MentionReadingMap>>;
   cast: MentionCast;
-  playerName: string | undefined;
+  player: MentionPlayer | undefined;
 }
 
 /** Reads finished passages in the background, one at a time, once the model is ready. No turn waits for it. */
-export function useTurnMentionReadings({ controller, ready, history, busy, readings, setReadings, cast, playerName }: Options): void {
+export function useTurnMentionReadings({ controller, ready, history, busy, readings, setReadings, cast, player }: Options): void {
   const mounted = useMountedRef();
   const historyRef = useRef(history);
   historyRef.current = history;
-  const castRef = useRef({ cast, playerName });
-  castRef.current = { cast, playerName };
+  const castRef = useRef({ cast, player });
+  castRef.current = { cast, player };
   // Turns that had a reading, so an edit or regenerate of one reads it again (Q42).
   const read = useRef(new Set<string>());
   for (const turnId of Object.keys(readings)) read.current.add(turnId);
@@ -39,8 +39,8 @@ export function useTurnMentionReadings({ controller, ready, history, busy, readi
       .find((turn) => !failed.current.has(`${turn.turnId}:${narrationHash(turn.narration)}`));
     if (!next) return;
     running.current = true;
-    const { cast: entities, playerName: player } = castRef.current;
-    controller.readPassage(next.narration, entities, { playerName: player })
+    const { cast: entities, player: played } = castRef.current;
+    controller.readPassage(next.narration, entities, played ? { player: played } : {})
       .then((result) => {
         if (!result || !mounted.current) return;
         // A rewind or a regenerate may have dropped the turn while the reading ran.

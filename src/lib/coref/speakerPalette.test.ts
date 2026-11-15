@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { QUOTE_SWATCHES, SPEAKER_PALETTE_SIZE, slotColor, speakerColors, swatchColor } from './speakerPalette';
+import { PLAYER_QUOTE_COLOR, QUOTE_SWATCHES, SPEAKER_PALETTE_SIZE, slotColor, speakerColors, swatchColor } from './speakerPalette';
 
 type Vars = Record<string, string>;
 type Block = { selectors: string[]; vars: Vars; body: string };
@@ -101,10 +101,11 @@ describe('speaker colors', () => {
     expect(after.get('runtime-1')).toBe(slotColor(3));
   });
 
-  it('gives the player no slot, so the cast after them keeps the first colors', () => {
-    const colors = speakerColors([{ id: 'player' }, ...cast(2)], 'player');
-    expect(colors.has('player')).toBe(false);
+  it("gives the persona no slot, so the cast after them keeps the first colors, and the player's Quote Color on Auto", () => {
+    const colors = speakerColors([{ id: 'player' }, ...cast(2)], { id: 'player' });
+    expect(colors.get('player')).toBe(PLAYER_QUOTE_COLOR);
     expect(colors.get('entity-0')).toBe(slotColor(0));
+    expect(speakerColors(cast(1), { id: 'player', quoteColor: 'slate' }).get('player')).toBe(swatchColor('slate'));
   });
 
   it('gives a pinned entity its swatch and keeps the auto slots of the rest', () => {

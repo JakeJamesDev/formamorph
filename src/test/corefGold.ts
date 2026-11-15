@@ -147,3 +147,15 @@ export function scoreQuotes(passages: GoldPassage[], read: (p: GoldPassage) => M
 /** The reading the app would make of a gold passage from recorded clusters. */
 export const readGold = (clusters: Record<string, CorefCluster[]>, set: GoldSetName) => (p: GoldPassage) =>
   readMentions(p.text, clusters[`${set}:${p.id}`] ?? [], goldCast(p.cast));
+
+/** The persona id {@link readGoldAsPlayer} plays; the gold sets have no player name. */
+export const GOLD_PLAYER = '__player__';
+
+/** {@link readGold} with a played persona (Q61), its links scored as no entity, as the gold sets label the player. */
+export const readGoldAsPlayer = (clusters: Record<string, CorefCluster[]>, set: GoldSetName) => (p: GoldPassage): MentionReading => {
+  const reading = readMentions(p.text, clusters[`${set}:${p.id}`] ?? [], goldCast(p.cast), { player: { id: GOLD_PLAYER, names: [] } });
+  return {
+    mentions: reading.mentions.map((m) => (m.entityId === GOLD_PLAYER ? { ...m, entityId: null } : m)),
+    quotes: reading.quotes.map((q) => (q.speaker === GOLD_PLAYER ? { ...q, speaker: null } : q)),
+  };
+};

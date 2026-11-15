@@ -13,9 +13,11 @@ import type { RemarkPlugin } from '@/components/game/MarkdownRenderer';
 
 const PASSAGE = `The ferry bumps the dock as Mira throws the line. She doesn't look at her sister when Kessa comes down the plank.
 
-"Ask the courier if you don't believe me." The courier lifts one hand from the bench.`;
+"Ask the courier if you don't believe me." The courier lifts one hand from the bench.
 
-const COLORS = speakerColors([{ id: 'mira' }, { id: 'kessa' }, { id: 'courier' }]);
+"Then we go now," you say.`;
+
+const COLORS = speakerColors([{ id: 'mira' }, { id: 'kessa' }, { id: 'courier' }], { id: 'ash' });
 
 /** A tall placeholder portrait with a head near the top, so the top-anchored crop shows. */
 const portraitData = (back: string, figure: string) => `data:image/svg+xml,${encodeURIComponent(
@@ -25,10 +27,11 @@ const portraitData = (back: string, figure: string) => `data:image/svg+xml,${enc
 
 const row = (id: string, name: string, description: string, alias?: true): PlayerViewEntity =>
   ({ kind: 'entity', id, name, description, ...(alias && { alias }) });
-const MIRA = row('mira', 'Mira', 'Ferry captain. Keeps the ledger and the grudges.');
+const ASH: PlayerViewEntity = { ...row('ash', 'Ash', 'A ferryman who keeps to the tide.'), player: true, image: portraitData('#3e5c6b', '#b9d3dc') };
+const MIRA: PlayerViewEntity = { ...row('mira', 'Mira', 'Ferry captain. Keeps the ledger and the grudges.'), image: portraitData('#5a4a6b', '#d4c4e0') };
 const KESSA = row('kessa', 'Kessa', "Mira's younger sister. Runs the tackle shop on the pier.");
 const COURIER: PlayerViewEntity = { ...row('courier', 'the courier', '', true), image: portraitData('#6b5a48', '#d8c3a5') };
-const ROWS = new Map([MIRA, KESSA, COURIER].map((r) => [r.id, r]));
+const ROWS = new Map([ASH, MIRA, KESSA, COURIER].map((r) => [r.id, r]));
 
 /** The first span of each `[text, entity]` in order: a canned reading. */
 function mentions(hits: [string, string][]): MentionLink[] {
@@ -41,9 +44,9 @@ function mentions(hits: [string, string][]): MentionLink[] {
 }
 
 const LINKS: RemarkPlugin = [remarkMentionLinks, {
-  source: { text: PASSAGE, mentions: mentions([['Mira', 'mira'], ['She', 'mira'], ['her sister', 'kessa'], ['Kessa', 'kessa'], ['the courier', 'courier'], ['The courier', 'courier']]) },
+  source: { text: PASSAGE, mentions: mentions([['Mira', 'mira'], ['She', 'mira'], ['her sister', 'kessa'], ['Kessa', 'kessa'], ['the courier', 'courier'], ['The courier', 'courier'], ['you', 'ash']]) },
 }];
-const SPEAKERS: QuoteSpeakerSource = { text: PASSAGE, colors: COLORS, quotes: spokenQuotes(PASSAGE, [['"Ask the courier if you don\'t believe me."', 'mira']]) };
+const SPEAKERS: QuoteSpeakerSource = { text: PASSAGE, colors: COLORS, quotes: spokenQuotes(PASSAGE, [['"Ask the courier if you don\'t believe me."', 'mira'], ['"Then we go now,"', 'ash']]) };
 
 /** A mention in the state its card shows it: underlined in its entity's color. */
 function UnderlinedMention({ id, children }: { id: string; children: string }) {
@@ -69,7 +72,7 @@ function ThemePanel({ mode }: { mode: 'light' | 'dark' }) {
       <div className="space-y-2">
         <Meta>Cards</Meta>
         <div className="flex flex-wrap gap-3">
-          {[MIRA, COURIER].map((r) => (
+          {[KESSA, COURIER].map((r) => (
             <div key={r.id} className="w-64 rounded-md border bg-popover p-3 text-popover-foreground shadow-md">
               <MentionCard row={r} color={COLORS.get(r.id)} onWrong={() => {}} />
             </div>

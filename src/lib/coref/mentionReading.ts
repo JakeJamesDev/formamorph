@@ -28,8 +28,15 @@ export interface MentionReading {
 
 /** What the reading needs from the scene beyond the cast. */
 export interface MentionSceneContext {
-  /** The player character's name: it and "I"/"you" never resolve to a cast entity. */
-  playerName?: string;
+  /** The played persona: its names, "you" and the narrator's "I" resolve to it (Q61). */
+  player?: MentionPlayer;
+}
+
+/** The played persona as the reading sees it. */
+export interface MentionPlayer {
+  id: string;
+  /** Its name, then its aliases. */
+  names: readonly string[];
 }
 
 type CastEntity = Pick<Entity, 'id' | 'name' | 'aliases' | 'strangerName' | 'kind'>;
@@ -193,13 +200,16 @@ const BEFORE_VERB = new RegExp(String.raw`${VERB}(?:\s+\w+ly)?(?:\s+(?:to|at)\s+
 const SECOND_PERSON = /^(?:you|your|yours|yourself|yourselves)$/;
 const FIRST_PERSON = /^(?:i|me|my|mine|myself)$/;
 
-/** The player's name and its words, lowercased, minus any word a cast member's name also holds. */
+/** The persona's name, its words minus any word a cast member's name also holds, and its aliases, lowercased. */
 const playerWords = (scene: MentionSceneContext, cast: CastEntity[]): Set<string> => {
-  const name = scene.playerName?.trim().toLowerCase();
+  const [name, ...aliases] = (scene.player?.names ?? []).map((n) => playerForm(n.trim()));
   if (!name) return new Set();
   const castWords = new Set(cast.flatMap((e) => e.name.toLowerCase().split(/\s+/)));
-  return new Set([name, ...name.split(/\s+/).filter((w) => !castWords.has(w))]);
+  return new Set([name, ...name.split(/\s+/).filter((w) => !castWords.has(w)), ...aliases.filter(Boolean)]);
 };
+
+/** A mention's text as the player test reads it: lowercased, past a possessive and a leading article. */
+const playerForm = (text: string) => text.replace(POSSESSIVE_RE, '').toLowerCase().replace(LEADING_ARTICLE_RE, '');
 
 interface Paragraph {
   start: number;
@@ -222,9 +232,9 @@ function paragraphs(text: string): Paragraph[] {
  * The speaker of each quote: the mention at a speech verb attached to the quote, else the nearest preceding
  * subject mention in the paragraph, else none.
  */
-function quoteSpeakers(text: string, mentions: MentionLink[], player: Set<string>): QuoteSpeaker[] {
+function quoteSpeakers(text: string, mentions: MentionLink[], player: Set<string>, playerId: string | null): QuoteSpeaker[] {
   const isPlayer = (m: MentionLink) => {
-    const t = text.slice(m.start, m.end).replace(POSSESSIVE_RE, '').toLowerCase();
+    const t = playerForm(text.slice(m.start, m.end));
     return SECOND_PERSON.test(t) || FIRST_PERSON.test(t) || player.has(t);
   };
   // The mention that best covers [start, end): exact first, then the one ending there.
@@ -236,7 +246,7 @@ function quoteSpeakers(text: string, mentions: MentionLink[], player: Set<string
     return pool.reduce((a, b) => (b.end > a.end || (b.end === a.end && b.end - b.start < a.end - a.start) ? b : a));
   };
   const speakerOf = (m: MentionLink | undefined): string | null | undefined =>
-    (m === undefined ? undefined : isPlayer(m) ? null : m.entityId);
+    (m === undefined ? undefined : isPlayer(m) ? playerId : m.entityId);
   // A player word at the verb ("you ask") names the player even where no cluster holds it.
   const playerSubject = (words: string) => {
     const last = words.trim().split(/\s+/).pop()?.toLowerCase() ?? '';
@@ -255,7 +265,7 @@ function quoteSpeakers(text: string, mentions: MentionLink[], player: Set<string
       const sv = AFTER_SUBJECT_VERB.exec(after);
       if (sv) {
         const subjStart = run.end + sv.index + sv[0].indexOf(sv[1]);
-        speaker = playerSubject(sv[1]) ? null : speakerOf(mentionAt(subjStart, subjStart + sv[1].length));
+        speaker = playerSubject(sv[1]) ? playerId : speakerOf(mentionAt(subjStart, subjStart + sv[1].length));
       }
       if (speaker === undefined) {
         const vs = AFTER_VERB_SUBJECT.exec(after);
@@ -275,7 +285,7 @@ function quoteSpeakers(text: string, mentions: MentionLink[], player: Set<string
         if (bv) {
           const verbAt = sentenceStart + bv.index;
           const wordBeforeVerb = /(\S+)\s+(?:\w+ly\s+)?$/.exec(text.slice(sentenceStart, verbAt));
-          if (wordBeforeVerb && playerSubject(wordBeforeVerb[1])) speaker = null;
+          if (wordBeforeVerb && playerSubject(wordBeforeVerb[1])) speaker = playerId;
           const candidates = mentions.filter((m) => m.end <= verbAt && m.start >= sentenceStart
             && /^\s*(?:\w+ly\s+)?$/.test(text.slice(m.end, verbAt)));
           if (speaker === undefined) speaker = speakerOf(candidates.sort((a, b) => b.end - a.end)[0]);
@@ -309,8 +319,18 @@ export function readPassageMentions(
   text: string, clusters: CorefCluster[], cast: CastEntity[], scene: MentionSceneContext = {},
 ): { reading: MentionReading; clusterEntities: (string | null)[] } {
   const player = playerWords(scene, cast);
+  const playerId = scene.player?.id ?? null;
   const prose = stripQuotedSpeech(text);
-  const { links, clusterEntities } = nameMentions(text, clusters, cast);
+  // The persona names clusters and is a parser hit like any cast member.
+  const [name, ...aliases] = scene.player?.names ?? [];
+  const voters = playerId && name?.trim() ? [...cast, { id: playerId, name, aliases }] : cast;
+  const { links, clusterEntities } = nameMentions(text, clusters, voters);
+  const isPlayerWord = ({ start, end }: { start: number; end: number }) => {
+    const word = playerForm(text.slice(start, end));
+    // The player: "you", their names, and the narrator's own "I" (a speaker's "I" sits inside a quote).
+    const narratorI = FIRST_PERSON.test(word) && prose.slice(start, end) === text.slice(start, end);
+    return SECOND_PERSON.test(word) || player.has(word) || narratorI;
+  };
   // Deduped by span; the first assertion of a span wins, as the evaluation's scorer reads them.
   const seen = new Set<string>();
   const mentions = links.filter((m) => {
@@ -318,11 +338,10 @@ export function readPassageMentions(
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).map((m) => {
-    const word = text.slice(m.start, m.end).replace(POSSESSIVE_RE, '').toLowerCase();
-    // The player: "you", their name, and the narrator's own "I" (a speaker's "I" sits inside a quote).
-    const narratorI = FIRST_PERSON.test(word) && prose.slice(m.start, m.end) === text.slice(m.start, m.end);
-    return SECOND_PERSON.test(word) || player.has(word) || narratorI ? { ...m, entityId: null } : m;
-  });
-  return { reading: { mentions, quotes: quoteSpeakers(text, mentions, player) }, clusterEntities };
+  }).map((m) => (isPlayerWord(m) ? { ...m, entityId: playerId } : m));
+  // A cluster no cast member won, made only of player words, is the player's (Q67); a mixed one stays unnamed.
+  const named = playerId
+    ? clusterEntities.map((id, i) => id ?? (clusters[i].every(([start, end]) => isPlayerWord({ start, end })) ? playerId : null))
+    : clusterEntities;
+  return { reading: { mentions, quotes: quoteSpeakers(text, mentions, player, playerId) }, clusterEntities: named };
 }

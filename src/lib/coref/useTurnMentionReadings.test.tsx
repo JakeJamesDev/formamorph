@@ -8,6 +8,7 @@ import { useTurnMentionReadings } from './useTurnMentionReadings';
 
 const turn = (turnId: string, narration: string): ChatMessage => ({ role: 'assistant', content: JSON.stringify({ turnId, narration, choices: [] }) });
 const MIRA = { id: 'mira', name: 'Mira', aliases: [], kind: 'unique' } as unknown as Entity;
+const ASH = { id: 'ash', names: ['Ash'] };
 const reading = (text: string): PassageReading => ({ model: 'small', version: 1, reading: { mentions: [{ start: 0, end: text.indexOf(' '), entityId: 'mira' }], quotes: [] }, clusters: [], clusterEntities: [] });
 
 /** A controller whose readings resolve only when the test says so. */
@@ -22,7 +23,7 @@ type Props = { history: ChatMessage[]; busy: boolean; ready: boolean };
 function mount(c: CharacterMentions, initial: Props, start: MentionReadingMap = {}) {
   return renderHook((props: Props) => {
     const [readings, setReadings] = useState<MentionReadingMap>(start);
-    useTurnMentionReadings({ controller: c, ...props, readings, setReadings, cast: [MIRA], playerName: 'Ash' });
+    useTurnMentionReadings({ controller: c, ...props, readings, setReadings, cast: [MIRA], player: ASH });
     return readings;
   }, { initialProps: initial });
 }
@@ -34,7 +35,7 @@ describe('reading finished passages on their turn', () => {
     expect(c.readPassage).not.toHaveBeenCalled(); // still running
 
     hook.rerender({ history: [turn('t1', 'Mira left.')], busy: false, ready: true });
-    expect(c.readPassage).toHaveBeenCalledWith('Mira left.', [MIRA], { playerName: 'Ash' });
+    expect(c.readPassage).toHaveBeenCalledWith('Mira left.', [MIRA], { player: ASH });
     await act(async () => c.pending[0].resolve(reading('Mira left.')));
     expect(hook.result.current.t1).toMatchObject({ model: 'small', textHash: narrationHash('Mira left.') });
   });
@@ -46,7 +47,7 @@ describe('reading finished passages on their turn', () => {
     hook.rerender({ history: [turn('t1', 'Mira left.')], busy: true, ready: true });
     hook.rerender({ history: [turn('t1', 'Mira left.'), turn('t2', 'Mira came back.')], busy: false, ready: true });
     await act(async () => c.pending[0].resolve(reading('Mira left.')));
-    await waitFor(() => expect(c.readPassage).toHaveBeenLastCalledWith('Mira came back.', [MIRA], { playerName: 'Ash' }));
+    await waitFor(() => expect(c.readPassage).toHaveBeenLastCalledWith('Mira came back.', [MIRA], { player: ASH }));
     await act(async () => c.pending[1].resolve(reading('Mira came back.')));
     expect(Object.keys(hook.result.current).sort()).toEqual(['t1', 't2']);
   });
@@ -70,7 +71,7 @@ describe('reading finished passages on their turn', () => {
     // t2 never had a reading; t1 is edited.
     const history = [turn('t1', 'Mira ran.'), turn('t2', 'Mira hid.'), turn('t3', 'Mira slept.')];
     mount(c.controller, { history, busy: false, ready: true }, start);
-    expect(c.readPassage).toHaveBeenCalledWith('Mira ran.', [MIRA], { playerName: 'Ash' });
+    expect(c.readPassage).toHaveBeenCalledWith('Mira ran.', [MIRA], { player: ASH });
     await act(async () => c.pending[0].resolve(reading('Mira ran.')));
     expect(c.readPassage).toHaveBeenCalledTimes(1);
   });

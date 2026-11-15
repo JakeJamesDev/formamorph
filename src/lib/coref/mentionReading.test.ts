@@ -20,6 +20,24 @@ function at(text: string, piece: string, nth = 1): CharSpan {
 const entityAt = (reading: ReturnType<typeof readMentions>, span: CharSpan) => mentionEntityAt(reading, ...span);
 
 describe('the entity each cluster sends with a contribution (Q35)', () => {
+  it("names the persona's cluster when no cast member won it, and keeps a cast member's vote (Q67)", () => {
+    const text = 'You wave at Mira. She grins, and you laugh.';
+    const clusters: CorefCluster[] = [[at(text, 'You'), at(text, 'you')], [at(text, 'Mira'), at(text, 'She')]];
+    const persona = { player: { id: 'ash', names: ['Ash'] } };
+    expect(readPassageMentions(text, clusters, cast({ id: 'mira', name: 'Mira' }), persona).clusterEntities).toEqual(['ash', 'mira']);
+    expect(readPassageMentions(text, clusters, cast({ id: 'mira', name: 'Mira' })).clusterEntities).toEqual([null, 'mira']);
+  });
+
+  it("leaves a mixed cluster unnamed: the player's words merged into someone else's pronouns (Q67)", () => {
+    const text = 'The woman turns. You meet her eyes, and she smiles at you.';
+    const clusters: CorefCluster[] = [[at(text, 'The woman'), at(text, 'You'), at(text, 'her'), at(text, 'she'), at(text, 'you')]];
+    const { reading, clusterEntities } = readPassageMentions(text, clusters, cast({ id: 'mira', name: 'Mira' }),
+      { player: { id: 'ash', names: ['Ash'] } });
+    expect(clusterEntities).toEqual([null]);
+    expect(entityAt(reading, at(text, 'You'))).toBe('ash');
+    expect(entityAt(reading, at(text, 'her'))).toBeNull();
+  });
+
   it('names one entity or null per cluster, in cluster order, matching the reading', () => {
     const text = 'Mira met a stranger. She nodded at him.';
     const clusters: CorefCluster[] = [[at(text, 'a stranger'), at(text, 'him')], [at(text, 'Mira'), at(text, 'She')]];
@@ -104,26 +122,47 @@ describe('readMentions cluster naming', () => {
     expect(entityAt(backed, [12, 15])).toBe('hope');
   });
 
-  it('never links the player: "you", the narrator\'s "I", or the player name', () => {
+  it('links the persona: "you", the narrator\'s "I", and its name, even inside a cast member\'s cluster (Q61)', () => {
     const text = 'You follow Mira inside. I hear Ash call out. "I know," Mira says.';
     const clusters: CorefCluster[] = [[at(text, 'You'), at(text, 'Mira'), at(text, 'I'), at(text, 'Ash'), at(text, 'I', 2)]];
-    const reading = readMentions(text, clusters, cast({ id: 'mira', name: 'Mira' }), { playerName: 'Ash' });
+    const reading = readMentions(text, clusters, cast({ id: 'mira', name: 'Mira' }), { player: { id: 'ash', names: ['Ash'] } });
+    expect(entityAt(reading, at(text, 'You'))).toBe('ash');
+    expect(entityAt(reading, at(text, 'I'))).toBe('ash');
+    expect(entityAt(reading, at(text, 'Ash'))).toBe('ash');
+    expect(entityAt(reading, at(text, 'I', 2))).toBe('mira');
+  });
+
+  it('links the player to nobody without a persona', () => {
+    const text = 'You follow Mira inside. I hear her call out.';
+    const reading = readMentions(text, [[at(text, 'You'), at(text, 'I')]], cast({ id: 'mira', name: 'Mira' }));
     expect(entityAt(reading, at(text, 'You'))).toBeNull();
     expect(entityAt(reading, at(text, 'I'))).toBeNull();
-    expect(entityAt(reading, at(text, 'Ash'))).toBeNull();
-    expect(entityAt(reading, at(text, 'I', 2))).toBe('mira');
+  });
+
+  it("links the persona's aliases and a bare mention of its name (Q67)", () => {
+    const text = 'Kessa bows to the Matron. Corvina smiles back.';
+    const reading = readMentions(text, [[at(text, 'the Matron')]], cast({ id: 'kessa', name: 'Kessa' }),
+      { player: { id: 'corvina', names: ['Corvina', 'Matron'] } });
+    expect(entityAt(reading, at(text, 'the Matron'))).toBe('corvina');
+    expect(entityAt(reading, at(text, 'Corvina'))).toBe('corvina');
+    expect(entityAt(reading, at(text, 'Kessa'))).toBe('kessa');
+    // An alias the host merged into a cast member's cluster is still the persona.
+    const merged = readMentions(text, [[at(text, 'Kessa'), at(text, 'the Matron')]], cast({ id: 'kessa', name: 'Kessa' }),
+      { player: { id: 'corvina', names: ['Corvina', 'Matron'] } });
+    expect(entityAt(merged, at(text, 'the Matron'))).toBe('corvina');
   });
 
   it("keeps a cast member who shares a word of the player's name", () => {
     const text = 'Ash Vale waits. Ash Rowan leans on the rail.';
-    const reading = readMentions(text, [], cast({ id: 'rowan', name: 'Ash Rowan' }), { playerName: 'Ash Vale' });
+    const vale = { player: { id: 'vale', names: ['Ash Vale'] } };
+    const reading = readMentions(text, [], cast({ id: 'rowan', name: 'Ash Rowan' }), vale);
     expect(entityAt(reading, at(text, 'Ash Rowan'))).toBe('rowan');
     const short = 'Ash Rowan waits. Ash nods.';
     const named = readMentions(short, [[at(short, 'Ash Rowan'), at(short, 'Ash', 2)]],
-      cast({ id: 'rowan', name: 'Ash Rowan' }), { playerName: 'Ash Vale' });
+      cast({ id: 'rowan', name: 'Ash Rowan' }), vale);
     expect(entityAt(named, at(short, 'Ash', 2))).toBe('rowan');
-    expect(readMentions('Vale waits.', [[[0, 4]]], cast({ id: 'rowan', name: 'Ash Rowan' }), { playerName: 'Ash Vale' })
-      .mentions[0].entityId).toBeNull();
+    expect(readMentions('Vale waits.', [[[0, 4]]], cast({ id: 'rowan', name: 'Ash Rowan' }), vale)
+      .mentions[0].entityId).toBe('vale');
   });
 });
 
@@ -156,9 +195,13 @@ describe('readMentions quote speakers', () => {
     expect(reading.quotes.map((q) => q.speaker)).toEqual(['brannock']);
   });
 
-  it('gives the player\'s quotes no speaker', () => {
-    const text = 'Odile looks up. "Who sent you?" you ask.';
-    expect(readMentions(text, [], two).quotes.map((q) => q.speaker)).toEqual([null]);
+  it("gives the persona's quotes the persona, and no speaker without one", () => {
+    const text = 'Odile looks up. "Who sent you?" you ask.\n\nYou lean in and whisper, "Tell me."\n\n"Not here," I say.';
+    // The host clusters the player's "you" mentions.
+    const clusters: CorefCluster[] = [[at(text, 'you', 2), at(text, 'You', 1), at(text, 'I', 1)]];
+    const persona = { player: { id: 'ash', names: ['Ash'] } };
+    expect(readMentions(text, clusters, two, persona).quotes.map((q) => q.speaker)).toEqual(['ash', 'ash', 'ash']);
+    expect(readMentions(text, clusters, two).quotes.map((q) => q.speaker)).toEqual([null, null, null]);
   });
 });
 

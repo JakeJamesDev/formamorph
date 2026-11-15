@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  loadGoldClusters, loadGoldSet, readGold, scoreQuotes, scoreReadings, trainingDataDir, type GoldSetName, type Tally,
+  loadGoldClusters, loadGoldSet, readGold, readGoldAsPlayer, scoreQuotes, scoreReadings, trainingDataDir, type GoldSetName, type Tally,
 } from '@/test/corefGold';
 
 // The Mention Reading over the private gold sets with the e120 model's recorded clusters. The floors are the
@@ -20,8 +20,13 @@ const FLOORS: Record<'real' | 'hard' | 'blind', Partial<Record<'name' | 'descrip
 const meets = (t: Tally, [ok, maxWrong]: Floor) => ({ ok: t.ok >= ok, wrong: t.wrong <= maxWrong });
 
 describe.skipIf(!ready)('Mention Reading on the gold sets (e120 clusters)', () => {
-  it.each(['blind', 'hard', 'real'] as const)('holds the %s set at or above the evaluation', (set) => {
-    const score = scoreReadings(loadGoldSet(dir!, set)!, readGold(clusters!, set));
+  it.each([
+    ...(['blind', 'hard', 'real'] as const).map((set) => [set, '', readGold] as const),
+    // The persona rule (Q61) moves only player spans, which the gold labels as no one. ff-13 merges "You" into
+    // Keshari's cluster, a miss either way.
+    ...(['blind', 'hard', 'real'] as const).map((set) => [set, ' with a persona', readGoldAsPlayer] as const),
+  ])('holds the %s set%s at or above the evaluation', (set, _persona, read) => {
+    const score = scoreReadings(loadGoldSet(dir!, set)!, read(clusters!, set));
     for (const [kind, floor] of Object.entries(FLOORS[set])) {
       const t = score[kind as keyof typeof FLOORS[typeof set]];
       expect(meets(t, floor!), `${set} ${kind} ${t.ok}/${t.total}, ${t.wrong} wrong\n${score.fails.join('\n')}`)
@@ -29,8 +34,8 @@ describe.skipIf(!ready)('Mention Reading on the gold sets (e120 clusters)', () =
     }
   });
 
-  it('attributes the labeled quotes', () => {
-    const score = scoreQuotes(loadGoldSet(dir!, 'quotes')!, readGold(clusters!, 'real'));
+  it.each([['', readGold], [' with a persona', readGoldAsPlayer]] as const)('attributes the labeled quotes%s', (_persona, read) => {
+    const score = scoreQuotes(loadGoldSet(dir!, 'quotes')!, read(clusters!, 'real'));
     expect(score.total).toBeGreaterThanOrEqual(60);
     expect({ ok: score.ok >= 65, wrong: score.wrong }, score.fails.join('\n')).toEqual({ ok: true, wrong: 0 });
   });

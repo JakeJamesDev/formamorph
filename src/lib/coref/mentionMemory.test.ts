@@ -4,7 +4,7 @@ import { serializeTurnContent, recentSceneTurns } from '@/lib/turnDigest';
 import { computePresence, introducedIds, metCheck, strangersInPlay } from '@/lib/presence';
 import { bracketedNarration, knownNameFor, memoryNarrationFor, readingNamesFor, readingParticipants } from './mentionMemory';
 import { narrationHash, type MentionReadingMap } from './mentionReadings';
-import type { MentionReading } from './mentionReading';
+import { readMentions, type MentionReading } from './mentionReading';
 
 // Passages written for these tests.
 const ODILE: Entity = { id: 'odile', name: 'Odile', locations: ['mill'] };
@@ -81,6 +81,25 @@ describe('In Scene from a reading', () => {
   it('ignores a reading of other text', () => {
     const stale: MentionReadingMap = { t1: entry(`${STRANGER} More.`, STRANGER_READING) };
     expect(presenceWith(readingNamesFor(true, stale, CAST)).inScene).toEqual([]);
+  });
+});
+
+describe('the played persona in a reading (Q61)', () => {
+  // The cast these passes read never holds the persona: the persona resolver takes it out of the world's cast.
+  const TEXT = 'You hand Odile the sack. She thanks you and I nod.';
+  const clusters: [number, number][][] = [
+    [[0, 3], [TEXT.indexOf('you'), TEXT.indexOf('you') + 3], [TEXT.indexOf('I '), TEXT.indexOf('I ') + 1]],
+    [[TEXT.indexOf('Odile'), TEXT.indexOf('Odile') + 5], [TEXT.indexOf('She'), TEXT.indexOf('She') + 3]],
+  ];
+  const withPersona = readMentions(TEXT, clusters, CAST, { player: { id: 'wren', names: ['Wren'] } });
+  const without = readMentions(TEXT, clusters, CAST);
+
+  it('links the persona, and In Scene and memory read the passage as they do without one', () => {
+    expect(withPersona.mentions.filter((m) => m.entityId === 'wren')).toHaveLength(3);
+    expect(readingParticipants(TEXT, withPersona, CAST)).toEqual(readingParticipants(TEXT, without, CAST));
+    const names = knownNameFor(CAST, () => true, {});
+    expect(bracketedNarration(TEXT, withPersona, names)?.text).toBe('You hand Odile the sack. She [Odile] thanks you and I nod.');
+    expect(bracketedNarration(TEXT, withPersona, names)?.text).toBe(bracketedNarration(TEXT, without, names)?.text);
   });
 });
 

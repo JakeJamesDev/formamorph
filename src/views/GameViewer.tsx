@@ -85,7 +85,8 @@ import { contributeTurn } from "@/lib/coref/correctionContribution";
 import { useContributeAccess } from "@/lib/coref/useContributeAccess";
 import { knownNameFor, memoryNarrationFor, readingNamesFor } from "@/lib/coref/mentionMemory";
 import { speakerColors } from "@/lib/coref/speakerPalette";
-import { MentionCardsProvider, mentionCardRows, type CardCorrection } from "@/components/game/MentionCards";
+import { MentionCardsProvider, cardColors, mentionCardRows, pickListBase, turnPickList, type CardCorrection } from "@/components/game/MentionCards";
+import { visibleImages } from "@/lib/imageVisibility";
 import type { PlayerViewEntity } from "@/lib/formaquestion/playerView";
 import { characterMentions, useCharacterMentionsState } from "@/lib/coref/characterMentionsApp";
 import { useTurnMentionReadings } from "@/lib/coref/useTurnMentionReadings";
@@ -541,6 +542,7 @@ type MobilePanel = (typeof MOBILE_PANEL_TABS)[number]["value"];
 // How many of a character's own recent diary entries to feed into its motivation pass (its memory).
 const DIARY_MEMORY_ENTRIES = 5;
 const NO_CARD_ROWS: ReadonlyMap<string, PlayerViewEntity> = new Map();
+const NO_PICK_IDS: ReadonlySet<string> = new Set();
 
 // What each named turn failure tells the player. `connection` and `emptyNarration` speak for themselves at
 // the call site, so they get their own text there rather than a row here.
@@ -1037,9 +1039,9 @@ const GameViewer = ({
   const quoteColors = useMemo(
     () => speakerColors(
       [...authoredEntities, ...discoveredAsEntities(discoveredEntities)],
-      personaRef?.source === 'none' ? undefined : personaRef?.entityId,
+      persona?.entity,
     ),
-    [authoredEntities, discoveredEntities, personaRef],
+    [authoredEntities, discoveredEntities, persona],
   );
   // Where the cast stands now, runtime characters included.
   const liveStandings = useMemo<Standings>(
@@ -1529,6 +1531,8 @@ const GameViewer = ({
     setMemoryNotes((prev) => pruneNamedMemories(pruneScriptPins(prev, fullMessageHistory), fullMessageHistory));
   }, [isWaitingForAI, fullMessageHistory, setActionAttachments, setScriptTells, setMentionReadings, setMentionCorrections, setSentActions, setMemoryNotes, setActionList, setPlayerInput, setPendingAttachments]);
   const characterMentionsState = useCharacterMentionsState();
+  const personaId = persona?.entity.id;
+  const mentionPlayer = useMemo(() => (personaId ? { id: personaId, names: playerNames } : undefined), [personaId, playerNames]);
   useTurnMentionReadings({
     controller: characterMentions(),
     ready: characterMentionsState.status === 'ready',
@@ -1537,7 +1541,7 @@ const GameViewer = ({
     readings: mentionReadings,
     setReadings: setMentionReadings,
     cast: allEntities,
-    playerName: playerNames[0],
+    player: mentionPlayer,
   });
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
@@ -6565,10 +6569,23 @@ const GameViewer = ({
   );
   const leftPanel = leftPanelAt('docked');
 
-  // The Player View's entities, for mention cards (Q46). Rebuilt on game-state changes, only while Character Mentions is on.
-  const cardRows = useMemo(
-    () => (settings.characterMentions ? mentionCardRows(playerViewReach(liveGate).view) : NO_CARD_ROWS),
-    [settings.characterMentions, playerViewReach, liveGate],
+  // The mention cards' rows (Q46, Q63) and the speaker colors they allow. Rebuilt on game-state changes, only while
+  // Character Mentions is on.
+  const { cardRows, pickBase } = useMemo(() => {
+    if (!settings.characterMentions) return { cardRows: NO_CARD_ROWS, pickBase: NO_PICK_IDS };
+    const { view } = playerViewReach(liveGate);
+    return {
+      cardRows: mentionCardRows(view, presenceById, {
+        imageOf: (entity) => visibleImages(entity, liveGate)[0]?.data,
+        describe: (entity) => (entity.strangerDescription ? resolveEntityText(entity, entity.strangerDescription) : ''),
+      }),
+      pickBase: pickListBase(view, presenceById, metEntities),
+    };
+  }, [settings.characterMentions, playerViewReach, liveGate, presenceById, resolveEntityText, metEntities]);
+  const shownQuoteColors = useMemo(() => cardColors(quoteColors, cardRows), [quoteColors, cardRows]);
+  const pickable = useCallback(
+    (turnId: string) => turnPickList(pickBase, correctedReadings[turnId]?.reading),
+    [pickBase, correctedReadings],
   );
 
   // A card's correction joins its turn, against the narration that turn's reading read. With Contribute
@@ -6600,7 +6617,7 @@ const GameViewer = ({
     : null;
 
   const middlePanel = (
-    <MentionCardsProvider colors={quoteColors} rows={cardRows} onCorrect={correctMention}>
+    <MentionCardsProvider colors={shownQuoteColors} rows={cardRows} onCorrect={correctMention} pickable={pickable}>
     <MiddlePanel
       parseAssistantMessage={parseAssistantMessage}
       narrationBadge={<DemoAIBadge onOpen={openDemoAIDialog} />}
@@ -6627,7 +6644,7 @@ const GameViewer = ({
       sceneImages={(viewedTurn?.turnId && sceneImages[viewedTurn.turnId]) || EMPTY_IMAGES}
       sceneTags={viewedTurn?.sceneTags ?? ""}
       sceneTurnId={viewedTurn?.turnId}
-      speakerColors={quoteColors}
+      speakerColors={shownQuoteColors}
       sceneImageJob={sceneImageJob}
       sceneImageProgress={sceneImageProgress}
       sceneImagePreview={sceneImagePreview}

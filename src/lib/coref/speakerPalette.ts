@@ -23,10 +23,17 @@ export const isQuoteSwatch = (key: unknown): key is QuoteSwatch => (QUOTE_SWATCH
 export const swatchColor = (key: string | undefined): string | undefined =>
   isQuoteSwatch(key) ? `hsl(var(--speaker-${QUOTE_SWATCHES.indexOf(key)}))` : undefined;
 
+/** The played persona's Auto color: the player's Quote Color for the active mode, else the theme's (Q61). */
+export const PLAYER_QUOTE_COLOR = 'var(--dialogue-custom, hsl(var(--dialogue)))';
+
+type Speaker = { id: string; quoteColor?: string };
+
 /** Each entity's color: its pinned swatch, else the auto slot of its place in `cast`. `cast` is every world
- *  entity, then every runtime character in save order, ungated, so a gate never moves a color. `playerId`
- *  takes no slot. */
-export function speakerColors(cast: readonly { id: string; quoteColor?: string }[], playerId?: string): SpeakerColors {
-  const speakers = cast.filter((entity) => entity.id !== playerId);
-  return new Map(speakers.map((entity, index) => [entity.id, swatchColor(entity.quoteColor) ?? slotColor(index)]));
+ *  entity, then every runtime character in save order, ungated, so a gate never moves a color. The played
+ *  persona takes no slot: its pinned swatch, else {@link PLAYER_QUOTE_COLOR}. */
+export function speakerColors(cast: readonly Speaker[], player?: Speaker): SpeakerColors {
+  const speakers = cast.filter((entity) => entity.id !== player?.id);
+  const colors = new Map(speakers.map((entity, index) => [entity.id, swatchColor(entity.quoteColor) ?? slotColor(index)]));
+  if (player) colors.set(player.id, swatchColor(player.quoteColor) ?? PLAYER_QUOTE_COLOR);
+  return colors;
 }
