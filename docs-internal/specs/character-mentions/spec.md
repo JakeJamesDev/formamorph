@@ -79,6 +79,10 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q47 | Ticket 07's card shows "Wrong character?" only when a correction handler is passed (ticket 08 passes it). No inert control ships in between. |
 | Q48 | Quote colors follow Q46: only a speaker with a Player View row gets a color or a speaker mark in the DOM. Others render as unresolved quotes. Palette slots stay by cast order (Q45), so a color never shifts when a character becomes visible. |
 | Q49 | The annotation format gains an optional `reviewed` flag. Seed pre-labels start `reviewed: false`; the corpus build drops those lines and prints the count. A missing flag counts as reviewed, so accepted contributions need none. One file per set, no separate working copy. |
+| Q50 | "Character Mentions" and "Wrong character?" keep the word "character". The Writing Guide's entity row names them as exceptions, beside the character pass and diary. |
+| Q51 | The mention card shows the entity's image as a 48×56 rounded portrait crop (the user's pick, after ticket 07 landed); the initial is the fallback. Any entity with a Player View row shows its image when the image's `requires` gate passes. The Player View gains the image the player can see. Ticket 13. |
+| Q52 | The first-time offer is due after 3 settled player turns on any AI, one card on screen at a time, yielding to a Formamorph AI card due on the same turn. Shown and accepted are recorded on the device only; no server funnel step. The card reuses the StoryCard frame with "Not Now" and "Turn On", and after accept shows the download bar until the model is ready, then closes. |
+| Q53 | In Scene and the diary queue union the turn's reading at read time; stored `entities` stay name-based, so corrections (ticket 08) apply at once. The milestone pass gains names through the digests. Bracket tags the bracketed view inserted are stripped from digest and diary replies before they are stored. |
 
 ## User Stories
 
