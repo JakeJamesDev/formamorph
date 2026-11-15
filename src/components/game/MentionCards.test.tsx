@@ -370,6 +370,71 @@ describe('the played persona (Q61)', () => {
   });
 });
 
+describe('every quote can be corrected (Q70)', () => {
+  const pickNames = () => [...card()!.querySelectorAll('button')].map((b) => b.textContent);
+  const quoteButton = (container: HTMLElement) => container.querySelector<HTMLElement>('.dialogue-quote[role="button"]');
+
+  it("corrects the persona's quote through its card", () => {
+    const text = '"Over here," she states.';
+    const speakers: QuoteSpeakerSource = { text, colors: COLORS, quotes: spokenQuotes(text, [['"Over here,"', 'ash']]) };
+    const onCorrect = vi.fn();
+    const { container } = show(text, undefined, speakers, onCorrect);
+    fireEvent.click(quoteButton(container)!);
+    fireEvent.click(screen.getByText('Wrong character?'));
+    fireEvent.click(screen.getByText('Mira'));
+    expect(onCorrect).toHaveBeenCalledWith({ turnId: 't1', kind: 'quote', start: 0, end: 12, entityId: 'mira' });
+  });
+
+  it('opens an unresolved quote straight to the pick list, the persona first', () => {
+    const text = 'Mira turns. "Over here," she states.';
+    const speakers: QuoteSpeakerSource = { text, colors: COLORS, quotes: spokenQuotes(text, [['"Over here,"', null]]) };
+    const onCorrect = vi.fn();
+    const { container } = show(text, undefined, speakers, onCorrect);
+    const quote = quoteButton(container)!;
+    expect(quote.dataset.speaker).toBeUndefined();
+    fireEvent.click(quote);
+    expect(card()!.textContent).toContain('Who said this?');
+    expect(screen.queryByText('Wrong character?')).toBeNull();
+    expect(screen.queryByLabelText('Back')).toBeNull();
+    expect(pickNames()).toEqual(['AAsh', 'MMira', 'KKessa', 'Cthe courier', '–Someone Else']);
+    fireEvent.click(screen.getByText('Mira'));
+    expect(onCorrect).toHaveBeenCalledWith({ turnId: 't1', kind: 'quote', start: 12, end: 24, entityId: 'mira' });
+    expect(card()).toBeNull();
+  });
+
+  it('opens a quote whose speaker the player cannot name to the pick list, with nothing hidden', () => {
+    const text = 'A voice rises. "Leave now," it says.';
+    const speakers: QuoteSpeakerSource = { text, colors: COLORS, quotes: spokenQuotes(text, [['"Leave now,"', 'nobody']]) };
+    const { container } = show(text, undefined, speakers, vi.fn());
+    fireEvent.click(quoteButton(container)!);
+    expect(card()!.textContent).toContain('Who said this?');
+    expect(card()!.querySelector('[aria-label="Current"]')).toBeNull();
+    expect(container.ownerDocument.body.textContent).not.toMatch(/Ondra/);
+  });
+
+  it('offers no trigger on an unresolved quote without a correction handler', () => {
+    const text = '"Over here," she states.';
+    const speakers: QuoteSpeakerSource = { text, colors: COLORS, quotes: spokenQuotes(text, [['"Over here,"', null]]) };
+    expect(quoteButton(show(text, undefined, speakers).container)).toBeNull();
+  });
+
+  it('gives a turn whose quotes all read as unresolved its triggers', () => {
+    const text = '"Over here," she states.';
+    const readings: MentionReadingMap = {
+      t1: { model: 'small', version: 1, textHash: narrationHash(text), reading: { mentions: [], quotes: spokenQuotes(text, [['"Over here,"', null]]) } },
+    };
+    const { container } = render(
+      <MentionCardsProvider colors={COLORS} rows={ROWS} onCorrect={vi.fn()}>
+        <MentionTurn turnId="t1">
+          <MarkdownRenderer text={text} dialogue {...turnCardTriggers(false, true, readings, COLORS, 't1', text)} />
+        </MentionTurn>
+      </MentionCardsProvider>,
+    );
+    fireEvent.click(quoteButton(container)!);
+    expect(card()!.textContent).toContain('Who said this?');
+  });
+});
+
 describe('a correction on a played turn', () => {
   const TEXT = 'Mira turns to her sister. "Go," she says.';
   const span = (word: string) => ({ start: TEXT.indexOf(word), end: TEXT.indexOf(word) + word.length });

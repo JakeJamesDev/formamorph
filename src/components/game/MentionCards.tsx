@@ -88,18 +88,21 @@ export function MentionPickList({ role, rows, colors, current, focusFirst = fals
   role: MentionCardRole;
   rows: ReadonlyMap<string, PlayerViewEntity>;
   colors: SpeakerColors;
-  current: string;
+  current: string | null;
   focusFirst?: boolean;
   onPick: (entityId: string | null) => void;
-  onBack: () => void;
+  /** Returns to the card; a list opened without a card has none. */
+  onBack?: () => void;
 }) {
   const title = role === 'speaker' ? 'Who said this?' : 'Who is this?';
   return (
     <div className="flex flex-col gap-1" role="group" aria-label={title}>
       <div className="mb-1 flex items-center gap-1">
-        <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Back" onClick={onBack}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
+        {onBack && (
+          <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Back" onClick={onBack}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        )}
         <span className="text-label font-medium">{title}</span>
       </div>
       {[...rows.values()].map((row, i) => (
@@ -199,7 +202,8 @@ const targetKey = (target: CardTarget) => `${spanKey(target)}:${target.turnId}`;
 
 interface OpenCard {
   anchor: HTMLElement;
-  entityId: string;
+  /** Null for a quote with no speaker the player can name: it opens straight to the pick list (Q70). */
+  entityId: string | null;
   role: MentionCardRole;
   by: OpenedBy;
   target: CardTarget | null;
@@ -208,6 +212,7 @@ interface OpenCard {
 interface MentionCardsValue {
   colors: SpeakerColors;
   rows: ReadonlyMap<string, PlayerViewEntity>;
+  correctable: boolean;
   open: (card: OpenCard) => void;
   hoverOut: () => void;
   blur: (anchor: HTMLElement) => void;
@@ -307,8 +312,9 @@ export function MentionCardsProvider({ colors, rows, onCorrect, pickable, askCon
     return () => card.anchor.removeAttribute('data-card-open');
   }, [card]);
 
-  const value = useMemo(() => ({ colors, rows, open, hoverOut, blur }), [colors, rows, open, hoverOut, blur]);
-  const row = card ? rows.get(card.entityId) : undefined;
+  const correctable = !!onCorrect;
+  const value = useMemo(() => ({ colors, rows, correctable, open, hoverOut, blur }), [colors, rows, correctable, open, hoverOut, blur]);
+  const row = card?.entityId ? rows.get(card.entityId) : undefined;
   // A correction remounts the narration, so the card follows its target's new element.
   const anchorRef = useMemo(() => ({
     current: card && {
@@ -331,9 +337,9 @@ export function MentionCardsProvider({ colors, rows, onCorrect, pickable, askCon
   return (
     <MentionCardsContext.Provider value={value}>
       {children}
-      <Popover open={!!card && !!row} onOpenChange={(next) => { if (!next) show(null); }}>
+      <Popover open={!!card && (!!row || !!correct)} onOpenChange={(next) => { if (!next) show(null); }}>
         <PopoverAnchor virtualRef={anchorRef} />
-        {card && row && (
+        {card && (row || correct) && (
           <PopoverContent
             // A key press on a focus-opened card remounts it, so focus moves in.
             key={byKey ? 'key' : 'pointer'}
@@ -368,7 +374,7 @@ export function MentionCardsProvider({ colors, rows, onCorrect, pickable, askCon
                   show(null);
                 }}
               />
-            ) : picking && correct ? (
+            ) : (picking || !row) && correct ? (
               <MentionPickList
                 role={card.role}
                 rows={pickable && target ? pickRows(rows, pickable(target.turnId)) : rows}
@@ -376,12 +382,12 @@ export function MentionCardsProvider({ colors, rows, onCorrect, pickable, askCon
                 current={card.entityId}
                 focusFirst={byKey}
                 onPick={correct}
-                onBack={() => setPicking(false)}
+                onBack={row && (() => setPicking(false))}
               />
-            ) : (
+            ) : row && (
               <MentionCard
                 row={row}
-                color={colors.get(card.entityId)}
+                color={colors.get(row.id)}
                 focusWrong={byKey}
                 onWrong={correct && (() => {
                   // A hover-opened card stays while the player picks.
@@ -399,15 +405,16 @@ export function MentionCardsProvider({ colors, rows, onCorrect, pickable, askCon
 
 /** The handlers that open a card from `entityId`'s trigger: hover on a mouse, click or tap, keyboard focus, and
  *  Enter or Space, which also moves focus into the card. */
-function useCardTrigger(entityId: string, role: MentionCardRole, span: TextSpan | null, hover: boolean) {
+function useCardTrigger(entityId: string | null, role: MentionCardRole, span: TextSpan | null, hover: boolean) {
   const cards = useContext(MentionCardsContext);
   const turnId = useContext(MentionTurnContext);
-  if (!cards?.rows.has(entityId)) return null;
-  const { open, hoverOut, blur } = cards;
   const target = turnId && span ? { turnId, ...span } : null;
+  // Without a row, the only thing to open is the pick list, so a correctable target is needed.
+  if (!cards || (entityId ? !cards.rows.has(entityId) : !(cards.correctable && target))) return null;
+  const { open, hoverOut, blur } = cards;
   const at = (anchor: HTMLElement, by: OpenedBy) => open({ anchor, entityId, role, by, target });
   return {
-    color: cards.colors.get(entityId),
+    color: entityId ? cards.colors.get(entityId) : undefined,
     handlers: {
       ...(target && { [TARGET_ATTRIBUTE]: targetKey(target) }),
       onKeyDown: (event: KeyboardEvent<HTMLSpanElement>) => {
@@ -461,8 +468,9 @@ function MentionTrigger({ entityId, span, children }: { entityId: string; span: 
   );
 }
 
-/** A quote with a resolved speaker opens its speaker's card on click, tap, keyboard focus, or a key press. */
-function SpeakerQuoteTrigger({ speaker, props }: { speaker: string; props: ComponentPropsWithoutRef<'span'> }) {
+/** A quote opens its speaker's card on click, tap, keyboard focus, or a key press; one with no speaker the player
+ *  can name opens the pick list (Q70). */
+function SpeakerQuoteTrigger({ speaker, props }: { speaker: string | null; props: ComponentPropsWithoutRef<'span'> }) {
   const trigger = useCardTrigger(speaker, 'speaker', parseSpanKey((props as Record<string, unknown>)['data-quote-span']), false);
   const inMention = useContext(InMentionContext);
   if (!trigger || inMention) return <span {...props} />;
@@ -479,8 +487,9 @@ function MentionAnchor(props: ComponentPropsWithoutRef<'a'> & ExtraProps) {
 }
 
 function QuoteSpan({ node: _node, ...props }: ComponentPropsWithoutRef<'span'> & ExtraProps) {
-  const speaker = (props as Record<string, unknown>)['data-speaker'];
-  return typeof speaker === 'string' ? <SpeakerQuoteTrigger speaker={speaker} props={props} /> : <span {...props} />;
+  const { 'data-speaker': speaker, 'data-quote-span': span } = props as Record<string, unknown>;
+  if (typeof speaker === 'string') return <SpeakerQuoteTrigger speaker={speaker} props={props} />;
+  return typeof span === 'string' ? <SpeakerQuoteTrigger speaker={null} props={props} /> : <span {...props} />;
 }
 
 /** The renderer components that draw mention links and speaker quotes as card triggers, inside a

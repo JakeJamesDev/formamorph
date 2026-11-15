@@ -14,8 +14,8 @@ export type { QuoteSpeakerSource };
  * line break, which is what stops a quote the model never closed at the end of its line. Code is left
  * alone.
  *
- * With `speakers`, a quote the turn's Mention Reading attributes carries its speaker's id and color, and its
- * span in the narration as `data-quote-span="<start>:<end>"`.
+ * With `speakers`, every quote the turn's Mention Reading holds carries its span in the narration as
+ * `data-quote-span="<start>:<end>"`, and one with a colored speaker carries that speaker's id and color.
  */
 
 /** The hast subset this walks. Only the fields actually read are declared (see remarkSubSuper). */
@@ -110,13 +110,11 @@ export function rehypeQuoteSpans(options?: { speakers?: QuoteSpeakerSource }) {
     if (!speakers || !runs.length) return;
     const quotes = blockQuotes(speakers, String(file?.value ?? ''));
     matchQuotes(runs, quotes).forEach((quote, i) => {
-      const speaker = quote?.speaker;
-      // A speaker who left the cast has no color, so the quote reads as unresolved.
-      const color = speaker ? speakers.colors.get(speaker) : undefined;
-      if (!quote || !speaker || !color) return;
-      for (const span of runs[i].spans) {
-        span.properties = { ...span.properties, dataSpeaker: speaker, dataQuoteSpan: spanKey(quote), style: `--quote-speaker: ${color}` };
-      }
+      if (!quote) return;
+      // A speaker without a color (unresolved, unnamed, or gone from the cast) keeps only its span, so it can be corrected.
+      const color = quote.speaker ? speakers.colors.get(quote.speaker) : undefined;
+      const mark = color && quote.speaker ? { dataSpeaker: quote.speaker, style: `--quote-speaker: ${color}` } : {};
+      for (const span of runs[i].spans) span.properties = { ...span.properties, dataQuoteSpan: spanKey(quote), ...mark };
     });
   };
 }
