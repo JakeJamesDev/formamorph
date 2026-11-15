@@ -89,6 +89,7 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q57 | The Quote Color field shows in Advanced editor mode only, beside Aliases and Type; Simple mode uses Auto. A pin may match another speaker's auto slot; that is the author's choice. Character cards carry the key too. |
 | Q58 | The pick list's "not anyone listed" option reads "Someone Else" (the user's pick), replacing "Nobody in the cast", which breaks the Writing Guide. It still stores entity id none. |
 | Q59 | A turn's saved reading also keeps the host's clusters and each cluster's entity id, so a contribution can send Q35's payload. Turns read before that have no clusters and send nothing. "Contribute Corrections" sits under the Character Mentions toggle, both modes, shown while the feature is on, disabled with a reason when signed out or not age-attested. Staff review is a "Mentions (n)" segment in the Admin Panel's Moderation tab. A contribution's world id is the open world's id; the model id and version are the reading's. |
+| Q60 | The contribution opt-in belongs to the account that gave it: the setting stores that account's id, and the toggle reads on and sends go out only while that account is signed in. Another account on the same device starts off. |
 
 ## User Stories
 
