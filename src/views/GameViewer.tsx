@@ -179,6 +179,8 @@ import {
 } from "../lib/formaquestion/playerViewWorld";
 import type { ChipSceneTime } from "../lib/chipValues/chipScene";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
+import { useLiveGateInput } from "@/lib/useViewedGateInput";
+import type { GateInput } from "@/lib/traitGates";
 import { useLocationBackdrop, useMapBackdrop } from "@/lib/useLocationBackdrop";
 import { useSeedAvatarOnSaveLoad } from "@/lib/useLibraryAvatars";
 import { usePersonaNotice } from "@/lib/usePersonaNotice";
@@ -936,6 +938,7 @@ const GameViewer = ({
     resolveTraitFor, resolveEntityText, resolveEntityFor, entitiesFor, playerNames, persona, traitEntities, traitLibrary, codeEntities,
     presentEntitiesUnder, worldPersonas, customPersona: resolvedCustomPersona, pinBlueprints, inPlay,
   } = useResolvedWorld();
+  const liveGate = useLiveGateInput();
   usePersonaNotice();
   // The authored slice inventory operations read, with every entity whose Body pick play reads.
   const inventoryWorld = useMemo(() => ({
@@ -2870,11 +2873,12 @@ const GameViewer = ({
   // The authored world minus what the gates turn off, for every in-play reader of `getWorldData`.
   const getInPlayWorldData = useCallback(() => inPlayWorldData(getWorldData(), inPlay), [getWorldData, inPlay]);
   /** The Player View of the current snapshot, with its chain of the turns up to it. */
-  const playerViewReach = useCallback((): PlayerViewReach => {
+  const playerViewReach = useCallback((gate?: GateInput): PlayerViewReach => {
     const current = saveCurrentGameState();
     const chain = [...gameStates.slice(0, closedTurns(fullMessageHistory)), current];
     const view = buildPlayerView({
       world: getInPlayWorldData(), chain, history: fullMessageHistory, persona: persona?.entity ?? null, resolve: resolvePH, isEntityOn: inPlay.isEntityOn,
+      ...(gate && { gate }),
     });
     return { view, current };
   }, [saveCurrentGameState, gameStates, fullMessageHistory, getInPlayWorldData, persona, resolvePH, inPlay]);
@@ -6556,8 +6560,8 @@ const GameViewer = ({
 
   // The Player View's entities, for mention cards (Q46). Rebuilt on game-state changes, only while Character Mentions is on.
   const cardRows = useMemo(
-    () => (settings.characterMentions ? mentionCardRows(playerViewReach().view) : NO_CARD_ROWS),
-    [settings.characterMentions, playerViewReach],
+    () => (settings.characterMentions ? mentionCardRows(playerViewReach(liveGate).view) : NO_CARD_ROWS),
+    [settings.characterMentions, playerViewReach, liveGate],
   );
 
   // The scene images belonging to the page being viewed (one turn per page).

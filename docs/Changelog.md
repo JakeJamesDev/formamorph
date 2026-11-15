@@ -51,6 +51,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A card in the story offers to turn on Character Mentions after your first few turns.** It shows once, when AI Language is English. Turn On starts the download and shows its progress in the card.
     - **A character the story calls only “she” or “the courier” now counts as in the scene.** The stat picker, Traits tab and Give list them, and they get diary entries. Memory summaries name who acted.
     - **Authors can pick an entity's quote color in the World Editor.** Quote Color offers 20 colors that read well in light and dark themes. Auto keeps the color Character Mentions gives it.
+    - **The card a name opens in narration now shows that character's picture when you can see one.** A picture the world keeps hidden stays hidden. A character with no picture shows their initial.
   - **Item scripts read their event's Item Instance as `instance`, and its quantity and use target from `args`.** Every script has `args`; it's empty where nothing passes one. Worlds that use `self.event` or `.copies` are rewritten when they load.
 - **🛠️ Developer tooling**
   - **Item Instances:**

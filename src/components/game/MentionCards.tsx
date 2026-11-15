@@ -11,6 +11,7 @@ import { MENTION_MARK, turnMentionLinks } from '@/lib/coref/mentionLinks';
 import type { MentionReadingMap } from '@/lib/coref/mentionReadings';
 import { turnQuoteSpeakers } from '@/lib/coref/quoteSpeakers';
 import { cn } from '@/lib/utils';
+import { thumbFit } from '@/lib/thumbAspect';
 import { LINK_MARK_PROPERTY, type MarkdownComponents, type RemarkPlugin } from './MarkdownRenderer';
 
 /** A card opens for a mention in the prose or for a quote's speaker. */
@@ -23,19 +24,29 @@ const HOVER_CLOSE_MS = 200;
 /** The card's initial: the name's first letter, past a leading article. */
 const initialOf = (name: string): string => name.replace(/^(?:the|a|an)\s+/i, '').charAt(0).toUpperCase() || '?';
 
-/** The card body: the entity's initial, its Player View name and description, and the correction action when
- *  one is wired. */
+/** The card's picture: the Player View image as a top-anchored portrait crop, else the colored initial. */
+function MentionBadge({ row, color }: { row: PlayerViewEntity; color?: string }) {
+  if (row.image) {
+    return <img src={row.image} alt="" data-testid="mention-card-portrait" className={cn('h-14 w-12 shrink-0 rounded-md', thumbFit('portrait'))} />;
+  }
+  return (
+    <span
+      aria-hidden
+      style={color ? { backgroundColor: color } : undefined}
+      className={cn('inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-label font-semibold text-background', !color && 'bg-muted-foreground')}
+    >
+      {initialOf(row.name)}
+    </span>
+  );
+}
+
+/** The card body: the entity's portrait or initial, its Player View name and description, and the correction
+ *  action when one is wired. */
 export function MentionCard({ row, color, onWrong }: { row: PlayerViewEntity; color?: string; onWrong?: () => void }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start gap-3">
-        <span
-          aria-hidden
-          style={color ? { backgroundColor: color } : undefined}
-          className={cn('inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-label font-semibold text-background', !color && 'bg-muted-foreground')}
-        >
-          {initialOf(row.name)}
-        </span>
+        <MentionBadge row={row} color={color} />
         <div className="min-w-0">
           <div className="text-label font-semibold">{row.name}</div>
           {row.description && <div className="line-clamp-2 text-helper text-muted-foreground">{row.description}</div>}

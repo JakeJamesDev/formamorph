@@ -3,9 +3,11 @@
  * Formaquestion reads (ADR-0014). No row type has an AI field; AI text written in play counts as player text.
  */
 import type {
-  ChatMessage, Currency, DiscoveredEntity, Entity, GameState, Item, ItemInstance, PlayerStat, RuntimeItem, Trait, World,
+  Base64Data, ChatMessage, Currency, DiscoveredEntity, Entity, GameState, Item, ItemInstance, PlayerStat, RuntimeItem, Trait, World,
 } from '@/types';
 import { activeDescriptor } from '@/lib/statContext';
+import { visibleImages } from '@/lib/imageVisibility';
+import type { GateInput } from '@/lib/traitGates';
 import { instanceWorthText } from '@/lib/currency';
 import { instanceFace, instanceState, isUnidentified, stateKey } from '@/lib/items';
 import { resolveEntityByName } from '@/lib/entityMatch';
@@ -28,6 +30,8 @@ export interface PlayerViewEntity {
   alias?: true;
   /** The other scene aliases the player saw it under, first seen first. */
   seenAliases?: string[];
+  /** The first image whose Visibility rule passes. Present only when the input carries a `gate`. */
+  image?: Base64Data;
 }
 
 export interface PlayerViewLocation {
@@ -92,6 +96,8 @@ export interface PlayerViewInput {
   resolve: (text: string) => string;
   /** Whether a runtime character is on. `world` arrives already gated; the snapshots' runtime characters do not. */
   isEntityOn?: (entity: Entity) => boolean;
+  /** Reads each entity's image Visibility rules. Without it, no row carries an image. */
+  gate?: GateInput;
 }
 
 /** Player text with chips resolved; empty when there is none. */
@@ -183,6 +189,12 @@ function viewEntities(input: PlayerViewInput, current: GameState): PlayerViewEnt
   const aliases = aliasesInChain(input.chain, [...pool.values()], known);
   const seenAliases = seenAliasesInChain(input.chain, [...pool.values()]);
 
+  const { gate } = input;
+  const withImage = (row: PlayerViewEntity, entity: Entity): PlayerViewEntity => {
+    const image = gate && visibleImages(entity, gate)[0]?.data;
+    return image ? { ...row, image } : row;
+  };
+
   const rows: PlayerViewEntity[] = [];
   const seen = new Set<string>(personaId ? [personaId] : []);
   // An unmet entity the player knows by name shows its Stranger Description.
@@ -196,11 +208,11 @@ function viewEntities(input: PlayerViewInput, current: GameState): PlayerViewEnt
       ? { kind: 'entity', id: entity.id, name: alias, description: '', alias: true }
       : { kind: 'entity', id: entity.id, name: resolve(entity.name), description: textOf(resolve, playerText(entity)) };
     const others = (seenAliases.get(entity.id) ?? []).filter((name) => name !== row.name);
-    rows.push(others.length ? { ...row, seenAliases: others } : row);
+    rows.push(withImage(others.length ? { ...row, seenAliases: others } : row, entity));
   };
 
   if (persona) {
-    rows.push({ kind: 'entity', id: persona.id, name: resolve(persona.name), description: textOf(resolve, persona.playerDescription), player: true });
+    rows.push(withImage({ kind: 'entity', id: persona.id, name: resolve(persona.name), description: textOf(resolve, persona.playerDescription), player: true }, persona));
   }
   for (const id of [...known, ...aliases.keys()]) {
     const entity = pool.get(id);

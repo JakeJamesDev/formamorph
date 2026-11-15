@@ -17,11 +17,17 @@ const PASSAGE = `The ferry bumps the dock as Mira throws the line. She doesn't l
 
 const COLORS = speakerColors([{ id: 'mira' }, { id: 'kessa' }, { id: 'courier' }]);
 
+/** A tall placeholder portrait with a head near the top, so the top-anchored crop shows. */
+const portraitData = (back: string, figure: string) => `data:image/svg+xml,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="360"><rect width="240" height="360" fill="${back}"/>`
+  + `<circle cx="120" cy="80" r="44" fill="${figure}"/><rect x="56" y="136" width="128" height="224" rx="40" fill="${figure}"/></svg>`,
+)}`;
+
 const row = (id: string, name: string, description: string, alias?: true): PlayerViewEntity =>
   ({ kind: 'entity', id, name, description, ...(alias && { alias }) });
 const MIRA = row('mira', 'Mira', 'Ferry captain. Keeps the ledger and the grudges.');
 const KESSA = row('kessa', 'Kessa', "Mira's younger sister. Runs the tackle shop on the pier.");
-const COURIER = row('courier', 'the courier', '', true);
+const COURIER: PlayerViewEntity = { ...row('courier', 'the courier', '', true), image: portraitData('#6b5a48', '#d8c3a5') };
 const ROWS = new Map([MIRA, KESSA, COURIER].map((r) => [r.id, r]));
 
 /** The first span of each `[text, entity]` in order: a canned reading. */
