@@ -30,9 +30,9 @@ The server side of contributed corrections.
 
 ## Landed
 
-**Not verified**
+**Checked after landing**
 
-- The real corpus build has not read the export. `corpus.py` from ticket 01 has not run on a line from `GET /api/coref-contributions/export`. The tests check the documented annotation format only.
+- The kit's conversion (`corpus.read_annotations` + `to_tokens`) read three lines that the server's `toAnnotation` made from a written passage with curly quotes and an emoji. It skipped no spans and produced the expected clusters for a move, an overlap, a cluster with no entity and a skipped quote.
 
 **For you**
 
