@@ -1,4 +1,5 @@
 import { getAllReadable, openDatabase, promisifyRequest, transactionDone, writeAfterRead } from '@/lib/idb';
+import { isHiddenCopy } from '@/lib/supporterCopyVisibility';
 import type { CommunityLink, LibraryDetails, LibrarySupporterCopyMarker } from '@/types';
 
 /**
@@ -84,11 +85,15 @@ export class LibraryStore<T, M> {
     return this.db!.transaction([this.storeName], mode).objectStore(this.storeName);
   }
 
-  /** List stored records as grid metadata, projected by `toMetadata`. */
-  async getMetadata(): Promise<M[]> {
+  /**
+   * List stored records as grid metadata, projected by `toMetadata`.
+   *
+   * @param options.includeHidden - Also list copies marked for another account; only the Supporter Copy sync asks
+   */
+  async getMetadata({ includeHidden = false }: { includeHidden?: boolean } = {}): Promise<M[]> {
     await this.ensureInitialized();
     const records = await getAllReadable<StoredRecord<T>>(this.db!, this.storeName);
-    return records.map((record) => this.toMetadata(record));
+    return records.filter((record) => includeHidden || !isHiddenCopy(record.supporterCopy)).map((record) => this.toMetadata(record));
   }
 
   /** How many records are stored, without reading them. */

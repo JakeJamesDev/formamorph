@@ -1,5 +1,6 @@
 /** The app's one Supporter content module, bound to the real fetch, clock and session. */
 import { API_BASE_URL } from '@/lib/apiBase';
+import { bindCopyViewer } from '@/lib/supporterCopyVisibility';
 import AuthService from '@/services/AuthService';
 import { createSupporterContent, type SupporterSession } from './supporterContent';
 
@@ -12,6 +13,8 @@ const authSession = (): SupporterSession | null => {
   const token = AuthService.token;
   return token && (typeof id === 'string' || typeof id === 'number') ? { accountId: String(id), token } : null;
 };
+
+bindCopyViewer(() => authSession()?.accountId ?? null);
 
 const RETRY_FAILED_MS = 60 * 1000;
 

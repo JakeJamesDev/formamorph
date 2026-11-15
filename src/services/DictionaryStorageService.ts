@@ -56,8 +56,8 @@ class DictionaryStorageService {
   }
 
   /** List stored dictionaries as lightweight metadata (no entries), for the library grid. */
-  getDictionaryMetadata(): Promise<DictionaryMetadata[]> {
-    return this.store.getMetadata();
+  getDictionaryMetadata(options?: { includeHidden?: boolean }): Promise<DictionaryMetadata[]> {
+    return this.store.getMetadata(options);
   }
 
   /**

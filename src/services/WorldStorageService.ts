@@ -14,6 +14,7 @@ import {
 } from '@/lib/worldLibrary';
 import { clearUnreadableWorld, reportUnreadableWorld, syncUnreadableWorlds } from '@/lib/unreadableWorlds';
 import { contentHash } from '@/lib/contentHash';
+import { isHiddenCopy } from '@/lib/supporterCopyVisibility';
 import { announceWorldDeleted, announceWorldSaved } from '@/lib/worldChangeSignal';
 import {
   forgetDeletedDefaultWorld, readDeletedDefaultWorlds, seedWorldData, tombstoneDefaultWorld, type BundledWorlds, type DefaultWorldSeed,
@@ -318,8 +319,9 @@ class WorldStorageService {
   }
 
   /** List all stored worlds' list fields, for menu/library rendering. Reads no world data. */
-  async getWorldMetadata(): Promise<WorldMetadata[]> {
-    return (await this.readMeta()).map(listFieldsOf);
+  async getWorldMetadata({ includeHidden = false }: { includeHidden?: boolean } = {}): Promise<WorldMetadata[]> {
+    const meta = await this.readMeta();
+    return meta.filter((world) => includeHidden || !isHiddenCopy(world.supporterCopy)).map(listFieldsOf);
   }
 
   /**

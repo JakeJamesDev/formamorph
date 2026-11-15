@@ -5,6 +5,7 @@ import { AndroidBackHandler } from './components/AndroidBackHandler';
 import { recordView } from './lib/backAction';
 import { watchSessionForClaim } from './lib/anonymousLikeClaim';
 import { watchSupporterContent } from './lib/supporterContent';
+import { watchSupporterCopies } from './lib/supporterCopyWatch';
 import { watchSupporterMascots } from './components/formaquestion/supporterMascots';
 import { COMMUNITY_ENABLED } from './lib/featureFlags';
 import { HOSTED_AI_AVAILABLE } from './lib/hostedAi/hostedUrls';
@@ -110,8 +111,9 @@ function AppViews() {
   useEffect(() => {
     if (!COMMUNITY_ENABLED) return;
     const stopMascots = watchSupporterMascots();
+    const stopCopies = watchSupporterCopies();
     const stopContent = watchSupporterContent();
-    return () => { stopContent(); stopMascots(); };
+    return () => { stopContent(); stopCopies(); stopMascots(); };
   }, []);
 
   // Track the visual viewport into `--app-h` so full-height screens shrink for the on-screen keyboard

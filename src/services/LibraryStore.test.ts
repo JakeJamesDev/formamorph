@@ -5,6 +5,7 @@ import { LibraryRecordNotFoundError, LibraryStore, type StoredRecord } from './L
 import { failWritesOnQuota } from '@/test/quotaAbort';
 import { refuseReads } from '@/test/idbRefusal';
 import { transactionDone } from '@/lib/idb';
+import { bindCopyViewer } from '@/lib/supporterCopyVisibility';
 
 interface Payload {
   entries?: string[];
@@ -192,6 +193,21 @@ describe('getMetadata', () => {
         { id: 'b2', name: 'Beta', count: 0 },
       ]),
     );
+  });
+
+  it("leaves out another account's Supporter Copy unless hidden ones are asked for", async () => {
+    const store = makeStore();
+    const marker = (accountId: string) => ({ listingId: 'l1', accountId, revision: 1, sourceWorldId: 'w1' });
+    await store.store(record({ id: 'plain', name: 'Plain' }));
+    await store.store(record({ id: 'mine', name: 'Mine', supporterCopy: marker('acct-b') }));
+    await store.store(record({ id: 'theirs', name: 'Theirs', supporterCopy: marker('acct-a') }));
+    bindCopyViewer(() => 'acct-b');
+    try {
+      expect((await store.getMetadata()).map((m) => m.id).sort()).toEqual(['mine', 'plain']);
+      expect((await store.getMetadata({ includeHidden: true })).map((m) => m.id).sort()).toEqual(['mine', 'plain', 'theirs']);
+    } finally {
+      bindCopyViewer(() => null);
+    }
   });
 
   it('returns an empty list for an empty store', async () => {

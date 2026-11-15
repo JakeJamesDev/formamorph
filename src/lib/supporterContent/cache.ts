@@ -18,6 +18,8 @@ export interface CheckRecord {
   checkedAt: number;
   qualifies: boolean;
   entitled: SupporterItemRef[];
+  /** Formerly Supporter-only listings; a copy of one stays while the account qualifies. */
+  expired: SupporterItemRef[];
 }
 
 /** One installed listing revision, keyed `<id>@<revision>`. */

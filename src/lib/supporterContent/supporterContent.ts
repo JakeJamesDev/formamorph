@@ -42,7 +42,16 @@ export interface SupporterContentSnapshot {
   /** What the account may install, as the last good check listed it. */
   entitled: SupporterItemRef[];
   installed: SupporterItemRef[];
+  /** What Supporter Copies may stay, as the last good check and the offline window decide. Null or absent while unknown. */
+  copyRule?: SupporterCopyRule | null;
 }
+
+/**
+ * Which stored Supporter Copies stay. `removeAll`: no check inside the offline window backs any copy.
+ * Otherwise a copy stays when it is marked for `accountId` and its listing is in `keep` (current and expired
+ * listings of a qualifying account, none for one that does not qualify).
+ */
+export type SupporterCopyRule = { removeAll: true } | { accountId: string; keep: string[] };
 
 export type SupporterContentRefusal = 'signed-out' | 'not-entitled';
 
@@ -64,6 +73,7 @@ export interface SupporterWorldDownload {
 interface Entitlement {
   qualifies: boolean;
   items: SupporterItemRef[];
+  expired: SupporterItemRef[];
 }
 
 const asObject = (value: unknown): Record<string, unknown> | null =>
@@ -84,7 +94,9 @@ export function createSupporterContent(deps: SupporterContentDeps) {
   let items: ItemRecord[] = [];
   let loaded: Promise<void> | null = null;
   let status: SupporterContentSnapshot['status'] = 'idle';
-  let snapshot: SupporterContentSnapshot = { status, qualifies: false, entitled: [], installed: [] };
+  let snapshot: SupporterContentSnapshot = { status, qualifies: false, entitled: [], installed: [], copyRule: null };
+  /** Whether the stored check was read; a failed read must never look like "no check". */
+  let stored = false;
   let queue: Promise<unknown> = Promise.resolve();
   let lastAttemptAt = Number.NEGATIVE_INFINITY;
   let lastAttemptFailed = false;
@@ -104,6 +116,15 @@ export function createSupporterContent(deps: SupporterContentDeps) {
     return usable ? items.filter((item) => item.accountId === usable.accountId) : [];
   };
 
+  const copyRule = (): SupporterCopyRule | null => {
+    if (!stored) return null;
+    if (!withinWindow(check)) return { removeAll: true };
+    const usable = usableCheck();
+    if (!usable) return null;
+    // The lists are empty for an account that does not qualify, so the rule keeps nothing for it.
+    return { accountId: usable.accountId, keep: [...usable.entitled, ...usable.expired].map((item) => item.id) };
+  };
+
   const publish = () => {
     const usable = usableCheck();
     snapshot = {
@@ -111,6 +132,7 @@ export function createSupporterContent(deps: SupporterContentDeps) {
       qualifies: !!usable?.qualifies,
       entitled: usable ? usable.entitled.map(refOf) : [],
       installed: usableItems().map(refOf),
+      copyRule: copyRule(),
     };
     listeners.forEach((listener) => listener());
   };
@@ -125,6 +147,7 @@ export function createSupporterContent(deps: SupporterContentDeps) {
     loaded ??= Promise.all([cache.readCheck(), cache.readItems()]).then(([storedCheck, storedItems]) => {
       check = storedCheck;
       items = storedItems;
+      stored = true;
     }).catch((error: unknown) => {
       loaded = null;
       throw error;
@@ -169,10 +192,15 @@ export function createSupporterContent(deps: SupporterContentDeps) {
       const response = await getJson(session, '/supporter-content/entitlement', timeouts.check);
       if (!response.ok) return null;
       const data = asObject(asObject(response.body)?.data);
-      if (!data || typeof data.qualifies !== 'boolean' || !Array.isArray(data.items)) return null;
+      if (!data || typeof data.qualifies !== 'boolean' || !Array.isArray(data.items) || !Array.isArray(data.expired)) return null;
       const listed = data.items.map(asItemRef);
-      if (listed.some((item) => !item)) return null;
-      return { qualifies: data.qualifies, items: data.qualifies ? listed as SupporterItemRef[] : [] };
+      const formerly = data.expired.map(asItemRef);
+      if (listed.some((item) => !item) || formerly.some((item) => !item)) return null;
+      return {
+        qualifies: data.qualifies,
+        items: data.qualifies ? listed as SupporterItemRef[] : [],
+        expired: data.qualifies ? formerly as SupporterItemRef[] : [],
+      };
     } catch {
       return null;
     }
@@ -211,7 +239,7 @@ export function createSupporterContent(deps: SupporterContentDeps) {
     const drop = items.filter((item) => item.accountId !== session.accountId || !listed.has(item.id));
     await cache.deleteItems(drop.map((item) => item.key));
     items = items.filter((item) => !drop.includes(item));
-    const good: CheckRecord = { accountId: session.accountId, checkedAt: deps.now(), qualifies: entitlement.qualifies, entitled: entitlement.items };
+    const good: CheckRecord = { accountId: session.accountId, checkedAt: deps.now(), qualifies: entitlement.qualifies, entitled: entitlement.items, expired: entitlement.expired };
     await cache.writeCheck(good);
     check = good;
     publish();

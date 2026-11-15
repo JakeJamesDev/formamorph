@@ -60,8 +60,8 @@ class EntityStorageService {
   }
 
   /** List stored characters as grid metadata; `image` is the portrait so the grid can render it. */
-  getEntityMetadata(): Promise<EntityMetadata[]> {
-    return this.store.getMetadata();
+  getEntityMetadata(options?: { includeHidden?: boolean }): Promise<EntityMetadata[]> {
+    return this.store.getMetadata(options);
   }
 
   /** Whether the library holds at least one entity. */

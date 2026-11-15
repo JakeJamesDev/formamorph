@@ -34,7 +34,7 @@ class FakeServer {
     if (this.offline) throw new TypeError('Failed to fetch');
     if (url === `${API}/supporter-content/entitlement`) {
       return Response.json(
-        { success: true, data: { qualifies: this.qualifies, items: this.qualifies ? this.listed : [] } },
+        { success: true, data: { qualifies: this.qualifies, items: this.qualifies ? this.listed : [], expired: [] } },
         { status: this.entitlementStatus },
       );
     }

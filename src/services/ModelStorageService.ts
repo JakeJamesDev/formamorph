@@ -366,9 +366,9 @@ class ModelStorageService {
   }
 
   /** List stored models as grid metadata, newest first. */
-  async getModelMetadata(): Promise<ModelMetadata[]> {
+  async getModelMetadata(options?: { includeHidden?: boolean }): Promise<ModelMetadata[]> {
     await this.ensureMigrated();
-    const models = await this.store.getMetadata();
+    const models = await this.store.getMetadata(options);
     return models.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
   }
 

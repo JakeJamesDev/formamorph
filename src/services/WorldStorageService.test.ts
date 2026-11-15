@@ -3,6 +3,7 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import WorldStorageService, { type StoredWorldRecord } from './WorldStorageService';
+import { bindCopyViewer } from '@/lib/supporterCopyVisibility';
 import { clearDeletedDefaultWorlds, readDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import AuthService from './AuthService';
@@ -439,6 +440,21 @@ describe('local world storage (IndexedDB)', () => {
     expect(await WorldStorageService.getSupporterCopy('rt-missing')).toBeNull();
 
     await WorldStorageService.deleteWorld('supporter-1');
+  });
+
+  it("lists another account's Supporter Copy only when asked for hidden ones", async () => {
+    const supporterCopy = { listingId: 'listing-2', accountId: 'account-a', revision: 1 };
+    await WorldStorageService.storeWorld({ ...validWorld, id: 'supporter-hidden', sourceId: 'listing-2', supporterCopy });
+    bindCopyViewer(() => 'account-b');
+    try {
+      expect((await WorldStorageService.getWorldMetadata()).some((m) => m.id === 'supporter-hidden')).toBe(false);
+      expect((await WorldStorageService.getWorldMetadata({ includeHidden: true })).some((m) => m.id === 'supporter-hidden')).toBe(true);
+      bindCopyViewer(() => 'account-a');
+      expect((await WorldStorageService.getWorldMetadata()).some((m) => m.id === 'supporter-hidden')).toBe(true);
+    } finally {
+      bindCopyViewer(() => null);
+      await WorldStorageService.deleteWorld('supporter-hidden');
+    }
   });
 
   it('keeps sourceHash sticky across a save that omits it', async () => {
