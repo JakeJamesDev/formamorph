@@ -4,7 +4,6 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useGameplayText } from '@/lib/gameplayTextStore';
-import { turnQuoteSpeakers } from '@/lib/coref/quoteSpeakers';
 import type { SpeakerColors } from '@/lib/quoteSegments';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
 import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
@@ -14,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { NARRATION_END_SPACE, NARRATION_FADE, NARRATION_FADE_UNDER_STRIP, useEdgeFades } from './narrationFade';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { turnCardTriggers } from './MentionCards';
 import { useChatPin } from './useChatPin';
 import { useReadingLine } from './useReadingLine';
 import { READING_LINE } from '@/lib/chatReadingLine';
@@ -246,7 +246,7 @@ export function ChatNarration({ parseAssistantMessage, speakerColors, latestFoot
                           animation={revealAnim}
                           easing={revealEasing}
                           dialogue
-                          speakers={liveReveal ? undefined : turnQuoteSpeakers(characterMentions, mentionReadings, speakerColors, turnId, narrationText)}
+                          {...turnCardTriggers(liveReveal, characterMentions, mentionReadings, speakerColors, turnId, narrationText)}
                         />
                       </div>
                     )}

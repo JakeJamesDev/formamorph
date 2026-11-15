@@ -57,6 +57,7 @@ import { ContextMenuReferences } from '@/components/design-system/ContextMenuRef
 import { FooterActionOrderReference } from '@/components/design-system/FooterActionOrderReference';
 import { NarrationTurnReference } from '@/components/design-system/NarrationTurnReference';
 import { SpeakerQuotesReference } from '@/components/design-system/SpeakerQuotesReference';
+import { MentionCardsReference } from '@/components/design-system/MentionCardsReference';
 import { ScriptPromptLineReference } from '@/components/design-system/ScriptPromptLineReference';
 import { RequestStatusStripReference } from '@/components/design-system/RequestStatusStripReference';
 import { PanelTabStripReference } from '@/components/design-system/PanelTabStripReference';
@@ -447,6 +448,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Speaker Quote Colors',
     description: 'Each speaker’s quotes in their own palette color',
     Component: SpeakerQuotesReference,
+  },
+  {
+    id: 'mention-cards',
+    label: 'Mention Cards',
+    description: 'A card for whoever a name or quote in narration refers to',
+    Component: MentionCardsReference,
   },
   {
     id: 'prompt-line',

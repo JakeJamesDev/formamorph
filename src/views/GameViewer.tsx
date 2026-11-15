@@ -81,6 +81,8 @@ import { isScriptPromptSample, SCRIPT_PROMPT_SAMPLES } from "@/lib/devScriptProm
 import { addTell, latestTurnId, pruneTells, REROLLED_TIMINGS, setTurnTells, turnTells, withoutTimings } from "@/lib/scriptTells";
 import { pruneMentionReadings } from "@/lib/coref/mentionReadings";
 import { speakerColors } from "@/lib/coref/speakerPalette";
+import { MentionCardsProvider, mentionCardRows } from "@/components/game/MentionCards";
+import type { PlayerViewEntity } from "@/lib/formaquestion/playerView";
 import { characterMentions, useCharacterMentionsState } from "@/lib/coref/characterMentionsApp";
 import { useTurnMentionReadings } from "@/lib/coref/useTurnMentionReadings";
 import { MentionReadingDevDialog } from "@/components/dev/MentionReadingDevDialog";
@@ -531,6 +533,7 @@ type MobilePanel = (typeof MOBILE_PANEL_TABS)[number]["value"];
 
 // How many of a character's own recent diary entries to feed into its motivation pass (its memory).
 const DIARY_MEMORY_ENTRIES = 5;
+const NO_CARD_ROWS: ReadonlyMap<string, PlayerViewEntity> = new Map();
 
 // What each named turn failure tells the player. `connection` and `emptyNarration` speak for themselves at
 // the call site, so they get their own text there rather than a row here.
@@ -6535,10 +6538,17 @@ const GameViewer = ({
   );
   const leftPanel = leftPanelAt('docked');
 
+  // The Player View's entities, for mention cards (Q46). Rebuilt on game-state changes, only while Character Mentions is on.
+  const cardRows = useMemo(
+    () => (settings.characterMentions ? mentionCardRows(playerViewReach().view) : NO_CARD_ROWS),
+    [settings.characterMentions, playerViewReach],
+  );
+
   // The scene images belonging to the page being viewed (one turn per page).
   const viewedTurn = parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? "");
 
   const middlePanel = (
+    <MentionCardsProvider colors={quoteColors} rows={cardRows}>
     <MiddlePanel
       parseAssistantMessage={parseAssistantMessage}
       narrationBadge={<DemoAIBadge onOpen={openDemoAIDialog} />}
@@ -6599,6 +6609,7 @@ const GameViewer = ({
       storyWidth={isMobile ? undefined : storyWidth}
       onStoryWidthChange={setStoryWidth}
     />
+    </MentionCardsProvider>
   );
 
   const rightPanelAt = (placement: PanelPlacement, asRail = false) => (

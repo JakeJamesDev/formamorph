@@ -262,6 +262,11 @@ const SPEAKER_QUOTES_TEXT = [
   'The courier lifts one hand from the bench. "Don\'t drag me into this."',
   '"Too late." Kessa drops onto the bench beside him. From the wheelhouse, someone calls out: "Both of you, the tide won\'t wait."',
 ].join('\n\n');
+// The fixture's linked mentions, in order, for the mention cards.
+const SPEAKER_QUOTE_MENTIONS = spokenQuotes(SPEAKER_QUOTES_TEXT, [
+  ['Mira', 'dev-mira'], ['Kessa', 'dev-kessa'], ['Mira', 'dev-mira'], ['the courier', 'dev-courier'],
+  ['The courier', 'dev-courier'], ['Kessa', 'dev-kessa'], ['him', 'dev-courier'],
+]).map(({ start, end, speaker }) => ({ start, end, entityId: speaker }));
 
 
 
@@ -307,7 +312,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
             )),
           },
           mentionReadings: {
-            [turn.turnId]: { model: 'small', version: 1, textHash: narrationHash(SPEAKER_QUOTES_TEXT), reading: { mentions: [], quotes: spokenQuotes(SPEAKER_QUOTES_TEXT, SPEAKER_QUOTE_LINES) } },
+            [turn.turnId]: { model: 'small', version: 1, textHash: narrationHash(SPEAKER_QUOTES_TEXT), reading: { mentions: SPEAKER_QUOTE_MENTIONS, quotes: spokenQuotes(SPEAKER_QUOTES_TEXT, SPEAKER_QUOTE_LINES) } },
           },
         },
         saveName: 'DEV: Speaker Quotes',

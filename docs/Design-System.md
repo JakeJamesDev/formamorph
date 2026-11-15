@@ -1570,6 +1570,47 @@ Open `#dev?modal=designSystem&tab=speaker-quotes` for the light and dark panels 
 
 The panel labels are "Palette" and "In a Turn". The sample narration is creative prose and exempt.
 
+## Pattern: Mention Cards
+
+Mention Cards let the player check whom or what a name, pronoun or quote in narration refers to. Character Mentions finds the link.
+
+### Composition
+
+- 🔗 **Plain-text mentions.** A linked mention reads as prose. A dotted underline in the entity's speaker color shows on hover, on keyboard focus, and while its card is open.
+- 🪪 **A small card.** A circle with the entity's initial in its speaker color, the name, and up to two lines of description. "Wrong character?" sits under them once correction exists.
+- 💬 **Quotes open their speaker.** Clicking or tapping a colored quote opens its speaker's card. A mention inside a quote opens its own card.
+- 🕶️ **Player View only.** The card shows what the player knows now: a met entity's name and player description, or a stranger's label. An entity the player has never seen gets no link.
+
+### When to use it
+
+- Use it only on story narration that Character Mentions has read.
+- Don't use the card for anything the Player View does not hold.
+
+### States
+
+| State | Look |
+| --- | --- |
+| Rest | Plain text, no underline. |
+| Hover (mouse) | Dotted underline. The card opens after 300 ms and closes 200 ms after the pointer leaves both. |
+| Click or tap | The card opens and stays. A second click closes it. |
+| Keyboard focus | Focus ring and underline. The card opens and closes on blur. Enter pins it. |
+
+Touch never opens a card on pass-over: only a tap does.
+
+### Production mapping
+
+| Part | Source |
+| --- | --- |
+| Mention links in the markdown | [`mentionLinks.ts`](../src/lib/coref/mentionLinks.ts), through `MarkdownRenderer`'s `links` prop |
+| Card, triggers and the one shared popover | [`MentionCards.tsx`](../src/components/game/MentionCards.tsx) |
+| Card rows from the Player View | `mentionCardRows` in [`MentionCards.tsx`](../src/components/game/MentionCards.tsx), built in [`GameViewer.tsx`](../src/views/GameViewer.tsx) |
+
+Open `#dev?modal=designSystem&tab=mention-cards` for the light and dark panels side by side. `#dev?view=gameViewer&fixture=speakerQuotes` shows the cards in a game, with Character Mentions on.
+
+### Writing review
+
+The panel labels are "Cards", "Hovered Mention" and "In a Turn". "Wrong character?" comes from the approved prototype. The sample narration and card text are creative prose and exempt.
+
 ## Pattern: Inline Prompt Line
 
 **Purpose:** Show a script's question or message as part of the turn, not as a window over it.

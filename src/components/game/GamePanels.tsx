@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
-import { turnQuoteSpeakers } from '@/lib/coref/quoteSpeakers';
+import { turnCardTriggers } from './MentionCards';
 import type { SpeakerColors } from '@/lib/quoteSegments';
 import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
@@ -854,7 +854,7 @@ export const MiddlePanel = ({
     else if (!isRevealingNarration) setPagedAway(false);
   }, [isViewingPast, isRevealingNarration]);
   const pageNarration = pageLive ? gameplayText : currentAssistantMessage ? parseAssistantMessage(currentAssistantMessage.content) : '';
-  const pageSpeakers = pageLive ? undefined : turnQuoteSpeakers(characterMentions, mentionReadings, speakerColors, sceneTurnId, pageNarration);
+  const pageTriggers = turnCardTriggers(pageLive, characterMentions, mentionReadings, speakerColors, sceneTurnId, pageNarration);
   const pageReasoningLive = !isViewingPast && !!liveReasoning.text;
   const pageReasoning = pageReasoningLive
     ? liveReasoning
@@ -1118,7 +1118,7 @@ export const MiddlePanel = ({
                       animation={revealAnim}
                       easing={revealEasing}
                       dialogue
-                      speakers={pageSpeakers}
+                      {...pageTriggers}
                     />
                   </div>
                 )}
