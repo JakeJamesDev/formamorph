@@ -78,6 +78,7 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q46 | A mention linked to an entity with no Player View row stays plain text: no link, no card. Cards read the Player View as it is when opened, so a past turn's card shows what the player knows now. |
 | Q47 | Ticket 07's card shows "Wrong character?" only when a correction handler is passed (ticket 08 passes it). No inert control ships in between. |
 | Q48 | Quote colors follow Q46: only a speaker with a Player View row gets a color or a speaker mark in the DOM. Others render as unresolved quotes. Palette slots stay by cast order (Q45), so a color never shifts when a character becomes visible. |
+| Q49 | The annotation format gains an optional `reviewed` flag. Seed pre-labels start `reviewed: false`; the corpus build drops those lines and prints the count. A missing flag counts as reviewed, so accepted contributions need none. One file per set, no separate working copy. |
 
 ## User Stories
 
