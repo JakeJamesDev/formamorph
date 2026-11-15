@@ -157,10 +157,10 @@ Suggest 3 to 5 distinct things I could do next - each a genuinely different way 
 <LOCATION|summary.markdown|header="Current Location">\
 <LOCATION|sublocations.summary.markdown|header="Sublocations">\
 <LOCATION|reachable.summary.markdown|header="Reachable Locations">\
-<ENTITIES|summary.norange.nodescription.markdown|pre="An entity is a character, creature, or object. These entries describe entities that may appear in the current location.\n\n"|header="Entities in the Current Location">\
-<ENTITIES|sublocations.summary.markdown|pre="Entries for entities associated with sublocations.\n\n"|header="Entities in Sublocations">\
-<ENTITIES|reachable.summary.markdown|pre="Entries for entities associated with reachable locations.\n\n"|header="Entities in Reachable Locations">\
-<ENTITIES|known.summary.markdown|pre="Entries for entities the player may know of here. Each is elsewhere right now: people here may speak of it.\n\n"|header="Entities Known Here">\
+<ENTITIES|summary.knownname.norange.nodescription.markdown|pre="An entity is a character, creature, or object. These entries describe entities that may appear in the current location.\n\n"|header="Entities in the Current Location">\
+<ENTITIES|sublocations.summary.knownname.markdown|pre="Entries for entities associated with sublocations.\n\n"|header="Entities in Sublocations">\
+<ENTITIES|reachable.summary.knownname.markdown|pre="Entries for entities associated with reachable locations.\n\n"|header="Entities in Reachable Locations">\
+<ENTITIES|known.summary.knownname.markdown|pre="Entries for entities the player may know of here. Each is elsewhere right now: people here may speak of it.\n\n"|header="Entities Known Here">\
 <STATS DESCRIPTION|descriptions.markdown|header="Global Stats">\
 <PERSONA|summary.norange.nodescription.markdown|header="Player Character">
 <LANGUAGE>`;

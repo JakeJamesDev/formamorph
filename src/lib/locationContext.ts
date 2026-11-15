@@ -161,6 +161,8 @@ export type RosterOpts = {
   movementLabels?: MovementLabels;
   /** Leave the Movement tags out. */
   noMovement?: boolean;
+  /** Head each labeled stranger with its label alone: no true name and no aliases. */
+  knownNameOnly?: boolean;
 };
 
 /** Entity id → a stranger's label. */
@@ -286,15 +288,17 @@ export function entityRosterRuns(
 ): MarkedRun[] {
   const {
     preferSummary = false, format = "simple", nameOnly = false, ownedTraits, ownedStats, noTraits, noStats, statPieces, relationshipLines, strangerLabels,
-    movementLabels, noMovement,
+    movementLabels, noMovement, knownNameOnly,
   } = opts;
   const movementOf = (id: string) => (noMovement ? undefined : movementLabels?.[id]);
   const entityIds = allIds.filter((id) => passesOnlyWith(id, opts));
   if (nameOnly) {
     const named = entityIds.flatMap((id) => {
-      const name = entities.find((e) => e.id === id)?.name;
-      if (!name) return [];
-      const label = strangerLabels?.[id];
+      const trueName = entities.find((e) => e.id === id)?.name;
+      if (!trueName) return [];
+      const stranger = strangerLabels?.[id];
+      const name = knownNameOnly && stranger ? stranger : trueName;
+      const label = name === trueName ? stranger : undefined;
       const movement = movementOf(id);
       const kinds = ["content" as const, ...ownedKinds(id, opts)];
       if (!movement) return [mark(kinds, label ? `${name} (${label})` : name)];
@@ -317,12 +321,13 @@ export function entityRosterRuns(
     const descKey = descriptionKey(preferSummary, entityItem.aiSummary);
     // Aliases render explicitly (not via the scalar allowlist): joined, and under a spaced label the
     // small models read naturally — except in xml, where a tag name can't contain spaces.
-    const aliases = (entityItem.aliases ?? []).map((a) => a.trim()).filter(Boolean);
+    const strangerLabel = strangerLabels?.[entityItem.id];
+    const knownName = knownNameOnly && strangerLabel ? strangerLabel : undefined;
+    const aliases = knownName ? [] : (entityItem.aliases ?? []).map((a) => a.trim()).filter(Boolean);
     const aliasLine = aliases.length
       ? field(xml ? "aliases" : "also known as", aliases.join(", "))
       : "";
-    const strangerLabel = strangerLabels?.[entityItem.id];
-    const strangerLine = strangerLabel ? field(xml ? "stranger_name" : "stranger name", strangerLabel) : "";
+    const strangerLine = strangerLabel && !knownName ? field(xml ? "stranger_name" : "stranger name", strangerLabel) : "";
     const pronouns = entityItem.pronouns?.trim();
     const pronounLine = pronouns ? field("pronouns", pronouns) : "";
     const movement = movementOf(entityItem.id);
@@ -341,8 +346,8 @@ export function entityRosterRuns(
       movement ? mark(["movement"], field("movement", movement)) : "",
     );
     const block = xml
-      ? runs("<entity>\n", field("name", entityItem.name), fields, "</entity>\n")
-      : runs(head(entityItem.name), fields);
+      ? runs("<entity>\n", field("name", knownName ?? entityItem.name), fields, "</entity>\n")
+      : runs(head(knownName ?? entityItem.name), fields);
     output.push(...mark(ownedKinds(entityItem.id, opts), block));
   });
 
@@ -722,7 +727,7 @@ export function reachableEntityRuns(
  *  `statsOn` is the stored stats-on pick, which the scopes that default to no stats read. */
 export type ContextOpts = {
   preferSummary?: boolean; nameOnly?: boolean; format?: ContextFormat; noStats?: boolean; statsOn?: boolean;
-  onlyWith?: OnlyWith; noTraits?: boolean; statPieces?: StatPieces; noMovement?: boolean;
+  onlyWith?: OnlyWith; noTraits?: boolean; statPieces?: StatPieces; noMovement?: boolean; knownNameOnly?: boolean;
 };
 
 // What each registry option means to the builders. The ids come from the registry; only their meaning is
@@ -763,6 +768,7 @@ function chipRoster(selection: Record<string, string | null | undefined>): Conte
     ...(onlyWith.stats || onlyWith.traits ? { onlyWith } : {}),
     ...(selection.traits != null ? { noTraits: true } : {}),
     ...(selection.movement != null ? { noMovement: true } : {}),
+    ...(selection.knownname != null ? { knownNameOnly: true } : {}),
     ...(pieces.values && pieces.status && pieces.meaning ? {} : { statPieces: pieces }),
   };
 }

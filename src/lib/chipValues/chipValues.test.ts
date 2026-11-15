@@ -322,9 +322,14 @@ describe("a scene's stranger labels", () => {
   it('differs from a scene without labels only by the labels, in every Entities token', () => {
     const base = chipValues(scene());
     const values = chipValues(scene({ strangerLabels }));
+    // Known Name Only heads each stranger with its label, so those tokens map the label back to the true name.
+    const trueNames: Record<string, string> = { 'a gate guard': 'Guard', 'a man with a lantern': 'Merchant' };
     for (const token of spelledTokens('<ENTITIES>')) {
       const unlabeled = Object.values(strangerLabels).reduce(
-        (text, label) => text.replaceAll(` (${label})`, ''),
+        (text, label) => {
+          const stripped = text.replaceAll(` (${label})`, '');
+          return token.includes('knownname') ? stripped.replaceAll(label, trueNames[label]) : stripped;
+        },
         values(token)!.replace(/^.*stranger[ _]name.*\n/gm, ''),
       );
       expect(unlabeled, token).toBe(base(token));

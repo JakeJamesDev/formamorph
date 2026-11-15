@@ -128,7 +128,7 @@ describe('Chip Options', () => {
     const user = userEvent.setup();
     renderReporting(<Field initial="<ENTITIES|withstats.notraits.nodescriptor>" />);
     const options = await open(user);
-    expect(within(options).getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['Only With', 'Include', 'Stat Detail']);
+    expect(within(options).getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['Only With', 'Include', 'Strangers', 'Stat Detail']);
     expect(box('Only With', 'Stats')).toBeChecked();
     expect(box('Only With', 'Traits')).not.toBeChecked();
     expect(box('Include', 'Traits')).not.toBeChecked();
@@ -143,12 +143,14 @@ describe('Chip Options', () => {
     await open(user);
     await user.click(box('Only With', 'Traits'));
     await user.click(box('Include', 'Traits'));
+    await user.click(box('Strangers', 'Known Name Only'));
     await user.click(box('Stat Detail', 'Range'));
-    expect(stored()).toBe('<ENTITIES|withtraits.notraits.norange>');
+    expect(stored()).toBe('<ENTITIES|withtraits.notraits.knownname.norange>');
     await user.keyboard('{Escape}');
     await open(user);
     expect(box('Only With', 'Traits')).toBeChecked();
     expect(box('Include', 'Traits')).not.toBeChecked();
+    expect(box('Strangers', 'Known Name Only')).toBeChecked();
     expect(box('Stat Detail', 'Range')).not.toBeChecked();
   });
 

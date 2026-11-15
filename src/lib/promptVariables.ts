@@ -205,6 +205,10 @@ const ENTITY_MOVEMENT_AXIS = rosterToggle('movement', 'Movement', 'nomovement',
     onByDefault: true, keptInNames: true, row: 'Include', lights: 'movement',
   });
 
+// The Entities chip's stranger piece: off in a bare token, `knownname` heads each unmet stranger with its label.
+const ENTITY_KNOWN_NAME_AXIS = rosterToggle('knownname', 'Known Name Only', 'knownname',
+  'Sends each stranger under the name the player knows', { keptInNames: true, row: 'Strangers' });
+
 // The Persona chip's stats piece: on in a bare token, `nostats` turns it off.
 const PERSONA_STATS_AXIS: PromptVariantAxis = {
   ...ENTITY_STATS_AXIS, onByDefaultWhen: undefined, help: "Sends the persona's own stats: range, descriptor and description",
@@ -245,7 +249,7 @@ const MARKDOWN: PromptVariable = {
 const ACTIVE_CHARACTER: PromptVariable = { token: '<ACTIVE CHARACTER GUIDANCE>', label: 'Active Character Guidance', color: HIGHLIGHT_PALETTE[13] };
 // Entities are one chip whose `scope` axis picks here / sub-locations / reachable siblings.
 const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color: HIGHLIGHT_PALETTE[8], axes: [
-  ENTITY_SCOPE_AXIS, ONLY_WITH_STATS_AXIS, ONLY_WITH_TRAITS_AXIS, CONTENT_AXIS, INCLUDE_TRAITS_AXIS, ENTITY_STATS_AXIS, ENTITY_MOVEMENT_AXIS, ...ROSTER_STAT_DETAIL_AXES, FORMAT_AXIS,
+  ENTITY_SCOPE_AXIS, ONLY_WITH_STATS_AXIS, ONLY_WITH_TRAITS_AXIS, CONTENT_AXIS, INCLUDE_TRAITS_AXIS, ENTITY_STATS_AXIS, ENTITY_MOVEMENT_AXIS, ENTITY_KNOWN_NAME_AXIS, ...ROSTER_STAT_DETAIL_AXES, FORMAT_AXIS,
 ], affixable: true };
 // The activated-dictionary lore for the turn — supplied by GameViewer per turn (narration prompt only). The
 // `before` variant renders the early "## Background Lore" block; the default renders the late "## Foreground Lore".
