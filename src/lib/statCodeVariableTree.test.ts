@@ -502,7 +502,7 @@ describe('array elements', () => {
   ];
 
   it('lists the memory element’s group, then the memories calls, with the verbs last', () => {
-    expect(levelAt(tree, 'Memories')).toEqual(['memories[0]', 'add', 'pin']);
+    expect(levelAt(tree, 'Memories')).toEqual(['memories[0]', 'append', 'pin']);
     expect(levelAt(tree, 'Memories', 'memories[0]')).toEqual(MEMORY_ENTRY_FIELDS.map((entry) => entry.name));
   });
 

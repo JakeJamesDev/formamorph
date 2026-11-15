@@ -167,7 +167,7 @@ describe('a stat re-roll', () => {
   const scene = (who: string) => [
     'location.move({ Harbor: "Dock", Dock: "Far", Far: "Harbor" }[location.name]);',
     'clock.advance(60);',
-    `memories.add("${who} " + Math.random());`,
+    `memories.append("${who} " + Math.random());`,
     `memories.pin("${who} " + Math.random());`,
     `entities.Guard.diary("${who} " + Math.random());`,
     'discover("Stranger" + Math.floor(Math.random() * 1e9), "A stranger.");',

@@ -45,9 +45,9 @@ describe('tryWorldToolScript', () => {
   });
 
   it('answers the empty result when an On Call script returns nothing', async () => {
-    const result = await tryWorldToolScript(tool({ code: 'memories.add("Noted.");' }), '{}', world);
+    const result = await tryWorldToolScript(tool({ code: 'memories.append("Noted.");' }), '{}', world);
     expect(result.text).toBe('{}');
-    expect(result.writes).toEqual(['memories.add: Noted.']);
+    expect(result.writes).toEqual(['memories.append: Noted.']);
   });
 
   it('rejects arguments that miss the parameters, as the AI would be told', async () => {

@@ -5394,7 +5394,7 @@ const GameViewer = ({
         const digest = await sendAiRequestRef.current({ ...buildDigestRequestRef.current(target), signal: queueSignal });
         const trimmed = (digest ?? "").trim();
         if (!trimmed || queueSignal.aborted || !mounted.current) return false;
-        // The fresh digest replaces the AI's text only; the turn's `memories.add` lines still follow it.
+        // The fresh digest replaces the AI's text only; the turn's `memories.append` lines still follow it.
         const codeMemory = parsedTurnById(fullMessageHistoryRef.current, turnId)?.codeMemory;
         const text = turnMemory({ summary: trimmed, codeMemory }) ?? trimmed;
         setMemoryEdits((prev) => ({ ...prev, [turnId]: { text, source: 'ai' } }));

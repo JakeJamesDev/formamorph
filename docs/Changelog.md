@@ -39,6 +39,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Supporter worlds leave your Worlds list when your support ends.** Copies of listings that opened to everyone stay while you support. Your saves stay. Copies from another account are hidden, then removed.
     - **An installed Supporter Mascot stays after its listing opens to everyone.** Support checks no longer remove it while you support.
     - **Optimize Images is disabled in a Supporter world.** Point at the button to see why.
+  - **Scripts:**
+    - **Scripts now add a turn's memory line with `memories.append`, which replaces `memories.add`.** It works as `add` did, and worlds with `memories.add` are rewritten when they load.
 - **🛠️ Developer tooling**
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.
 

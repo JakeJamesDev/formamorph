@@ -91,7 +91,7 @@ describe('a later script reads an earlier script’s world write', () => {
   it('reads a memory line on the turn’s own row, and a row verb on it names the id the turn commits', async () => {
     const out = await read(
       { memories: [] },
-      'memories.add("Tor lied.");',
+      'memories.append("Tor lied.");',
       'const row = memories[memories.length - 1]; stats.Echo.value = memories.length * 10 + (row.text === "Tor lied." ? 1 : 0); row.pin();',
     );
     expect(echoOf(out)).toBe(11);
@@ -154,7 +154,7 @@ describe('a stat re-roll’s chain', () => {
     // The write is in the result for the caller, GameViewer, to drop; it never reaches the state a run is handed.
     expect(moved.worldWrites?.location).toBe('dock');
     // A Tool call's saved writes carry no scene write, so its replay never moves the kept location, clock or cast.
-    const scene = 'location.move("Hill"); clock.advance(60); memories.add("Tor lied."); entities.Bram.diary("Hid."); discover("Wick", "A courier."); entities.Bram.move("Dock");';
+    const scene = 'location.move("Hill"); clock.advance(60); memories.append("Tor lied."); entities.Bram.diary("Hid."); discover("Wick", "A courier."); entities.Bram.move("Dock");';
     const called = await runStatCodeTurn(turnOf({ triggers: [{ name: 'Tool', code: `${scene} stats.Echo.value = 5;`, args: {} }] }));
     expect(called.worldWrites?.location).toBe('hill');
     const replayed = await runStatCodeTurn(turnOf({

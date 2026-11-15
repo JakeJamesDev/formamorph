@@ -56,7 +56,7 @@ describe('the World Tool script surface', () => {
   });
 
   it('accepts every write a World Tool can make', () => {
-    expect(messages('location.move(args.place); clock.advance(5); discover("Tor"); memories.add("x"); memories.pin("y"); entities.Tor.diary("z");')).toEqual([]);
+    expect(messages('location.move(args.place); clock.advance(5); discover("Tor"); memories.append("x"); memories.pin("y"); entities.Tor.diary("z");')).toEqual([]);
   });
 
   it('lists a turn.choices write as read-only at every timing, an After the AI Tool included', () => {

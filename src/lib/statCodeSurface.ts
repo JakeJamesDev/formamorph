@@ -87,9 +87,9 @@ export const LOCATION_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'move', detail: '(nameOrId) => void', info: 'Moves the turn to a location of the world, in place of the AI’s move. A name the world has no location for stops the script with an error.' },
 ]);
 
-/** The verbs on `memories`: a line for this turn, and a pinned line. */
+/** The verbs on `memories`: a line appended to this turn, and a pinned line. */
 export const MEMORY_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
-  { name: 'add', detail: '(line) => void', info: 'Adds a line to this turn’s memory, after the AI’s summary. Recall finds it on later turns when it fits, and it isn’t sent with every request.' },
+  { name: 'append', detail: '(line) => void', info: 'Adds a line to this turn’s memory, after the AI’s summary. Recall finds it on later turns when it fits, and it isn’t sent with every request.' },
   { name: 'pin', detail: '(line) => void', info: 'Adds a memory that’s sent with every request, listed under Custom as in the Memory Manager. The memory limit never removes it.' },
 ]);
 
@@ -130,7 +130,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'discover', detail: '(name, description?) => void', info: 'Adds a new entity to the turn, described by the AI unless you pass a description. A name an entity already has is ignored.' },
   {
     name: 'memories', detail: 'array', access: 'readOnly',
-    info: 'The story’s memories as the Memory panel lists them, oldest first, or empty in Test Code and the Test Bench. Each entry has its id, turn, day, daypart, text, Custom flag and pins. Call memories.add or memories.pin to add one.',
+    info: 'The story’s memories as the Memory panel lists them, oldest first, or empty in Test Code and the Test Bench. Each entry has its id, turn, day, daypart, text, Custom flag and pins. Call memories.append or memories.pin to add one.',
   },
   { name: 'notes', detail: 'string', info: 'The player’s notes. It’s empty in Test Code and the Test Bench.', access: 'readOnly' },
   { name: 'placeholders', detail: 'object', info: 'The world’s own placeholders by name. An entity’s or a dictionary’s are on its entry. Use placeholders["Two Words"] for a name with a space.' },

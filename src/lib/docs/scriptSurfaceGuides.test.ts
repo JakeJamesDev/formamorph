@@ -44,7 +44,7 @@ describe('the Scripts Reference', () => {
   it.each(SURFACE)('gives every field and verb of %s a row or a bullet with a help line', (_label, id, expected) => {
     const markdown = sectionMarkdown(id);
     const rows = tableRows(markdown);
-    // A verb that takes a name or a line has a bullet or a paragraph: "- **`memories.add(<text>)`** adds a line".
+    // A verb that takes a name or a line has a bullet or a paragraph: "- **`memories.append(<text>)`** adds a line".
     const bullet = (name: string) => new RegExp(`^(- \\*\\*)?\`\\w+\\.${name}\\([^\`]*\`(\\*\\*)? \\S`, 'm').test(markdown);
     const missing = [...new Set(expected)].filter((name) => !rows.has(name) && !bullet(name));
     expect(missing).toEqual([]);
@@ -71,7 +71,7 @@ describe('the Tools guide', () => {
   it('says a Tool script is read-only and names the names it lacks', () => {
     const markdown = sectionMarkdown('Tools#what-a-script-can-read');
     expect(markdown).toContain('Every value is read-only');
-    for (const name of ['memories.add', 'memories.pin', 'location.move', 'diary', 'self', 'owner', 'trait', 'narration', 'player', 'discover', 'clock.advance']) {
+    for (const name of ['memories.append', 'memories.pin', 'location.move', 'diary', 'self', 'owner', 'trait', 'narration', 'player', 'discover', 'clock.advance']) {
       expect(markdown, name).toContain(name);
     }
   });
@@ -85,6 +85,6 @@ describe('the Tools guide', () => {
       '`world.dictionary`', '`scene.persona`', '`scene.present`', '`scene.inScene`',
     ]) expect(oldForms, form).toContain(form);
     expect(rows.size).toBeGreaterThan(0);
-    expect(migration).toContain('`memory.add(` to `memories.add(`');
+    expect(migration).toContain('`memory.add(` and `memories.add(` to `memories.append(`');
   });
 });

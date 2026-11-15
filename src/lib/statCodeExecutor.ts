@@ -223,7 +223,7 @@ export interface WorldWrites {
   minutes?: number;
   /** Once per name, in first-call order; a call with a description fills in one without. */
   discover?: DiscoverWrite[];
-  /** Every `memories.add` line, in call order. */
+  /** Every `memories.append` line, in call order. */
   memory?: string[];
   /** Every `memories.pin` line, in call order. */
   pins?: string[];
@@ -2062,7 +2062,7 @@ const worldPrelude = (
   `    return Object.freeze(entry);`,
   `  });`,
   `  const listVerb = (name, call) => verb(memories, 'memories.', name, call);`,
-  `  listVerb('add', (value) => { writes.memory.push(line('memories.add', value)); });`,
+  `  listVerb('append', (value) => { writes.memory.push(line('memories.append', value)); });`,
   `  listVerb('pin', (value) => { writes.pins.push(line('memories.pin', value)); });`,
   `  return [move, Object.freeze(discover), Object.freeze(memories), advance, entityWrite, writes];`,
   `})(${JSON.stringify({ locations: locations.map(({ id, name }) => ({ id, name })), location })}, ${JSON.stringify(cast)}, ${openCast},`,

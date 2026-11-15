@@ -22,14 +22,14 @@ describe('executeStatCode memory writes', () => {
   });
 
   it('adds each turn line in call order, trimmed, apart from the pins', async () => {
-    expect((await run('memories.add(" Tor lied. "); memories.pin("Kept."); memories.add("The gate fell.");')).worldWrites)
+    expect((await run('memories.append(" Tor lied. "); memories.pin("Kept."); memories.append("The gate fell.");')).worldWrites)
       .toEqual({ memory: ['Tor lied.', 'The gate fell.'], pins: ['Kept.'] });
   });
 
   it.each([
     ['a blank pin', 'memories.pin("  ");', /memories\.pin needs a line as text/],
     ['a pin that is not text', 'memories.pin(5);', /memories\.pin needs a line as text/],
-    ['a blank turn line', 'memories.add("");', /memories\.add needs a line as text/],
+    ['a blank turn line', 'memories.append("");', /memories\.append needs a line as text/],
   ])('fails the script on %s and drops its other writes', async (_case, code, message) => {
     const res = await executeStatCode(`stats.Health.value = 50; memories.pin("Kept."); ${code}`, [health], null);
     expect(res.error).toMatch(message);

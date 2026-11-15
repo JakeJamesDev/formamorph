@@ -160,7 +160,7 @@ describe('a shipped user Tool script on settings load', () => {
 
   it('takes the world scripts’ rewrites too, once', () => {
     const once = migrateUserToolScript('memory.add(scene.notes);\nreturn scene.stats.Health;');
-    expect(once).toBe('memories.add(notes);\nreturn stats.Health.value;');
+    expect(once).toBe('memories.append(notes);\nreturn stats.Health.value;');
     expect(migrateUserToolScript(once)).toBe(once);
   });
 });

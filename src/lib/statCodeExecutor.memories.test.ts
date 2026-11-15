@@ -48,7 +48,7 @@ describe('executeStatCode memories', () => {
   });
 
   it('never reads back a line the run added', async () => {
-    const res = await read('memories.add("Seen."); memories.pin("Kept."); return memories.length;');
+    const res = await read('memories.append("Seen."); memories.pin("Kept."); return memories.length;');
     expect(res.value).toBe(4);
     expect(res.worldWrites).toEqual({ memory: ['Seen.'], pins: ['Kept.'] });
   });
@@ -64,7 +64,7 @@ describe('executeStatCode memories', () => {
   });
 
   it('names the new call in a bad line’s error', async () => {
-    expect((await read('memories.add(" ");')).error).toMatch(/memories\.add needs a line as text/);
+    expect((await read('memories.append(" ");')).error).toMatch(/memories\.append needs a line as text/);
     expect((await read('memories.pin(5);')).error).toMatch(/memories\.pin needs a line as text/);
   });
 

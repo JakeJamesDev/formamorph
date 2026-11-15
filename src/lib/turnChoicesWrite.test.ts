@@ -156,7 +156,7 @@ describe('the After the AI batch’s choices', () => {
 
     it('lands the choices write and drops a stat write, a trait switch, a discover and a memory', async () => {
       const out = await batch([
-        after('a', 'stats.Count.value = 7; traits.Brave.enabled = true; discover("Stranger"); memories.add("Seen.");'),
+        after('a', 'stats.Count.value = 7; traits.Brave.enabled = true; discover("Stranger"); memories.append("Seen.");'),
         after('b', 'turn.choices.splice(0, 1);'),
       ], [brave], choicesOnly);
       expect(out.choices).toEqual(['Sit down.']);

@@ -30,7 +30,7 @@ describe('the memories cards', () => {
   });
 
   it.each([
-    ['add', 'memories.ad|d("Tor lied.");', /after the AI’s summary/],
+    ['append', 'memories.appe|nd("Tor lied.");', /after the AI’s summary/],
     ['pin', 'memories.pi|n("The bridge is out.");', /sent with every request/],
   ])('shows the %s verb', (verb, doc, line) => {
     const card = cardAt(doc);
@@ -39,7 +39,7 @@ describe('the memories cards', () => {
   });
 
   it('reads a list and an element pick with no complaint', () => {
-    expect(codeDiagnostics('memories.add("a"); memories.pin("b"); return memories.filter((m) => m.daypart === "night").length + memories[0].turn;', options))
+    expect(codeDiagnostics('memories.append("a"); memories.pin("b"); return memories.filter((m) => m.daypart === "night").length + memories[0].turn;', options))
       .toEqual([]);
   });
 

@@ -18,7 +18,7 @@ A script can use only these objects. In the table, a word in angle brackets is a
 | `locations` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items` | `locations.<Location>.present` | Read-only |
 | `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
-| `memories` | `id`, `turn`, `timestamp`, `day`, `daypart`, `text`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `add()`, `pin()`, `forget()`, `edit()`, `remove()` | `memories.length` | `memories.pin(<text>)` |
+| `memories` | `id`, `turn`, `timestamp`, `day`, `daypart`, `text`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `append()`, `pin()`, `forget()`, `edit()`, `remove()` | `memories.length` | `memories.pin(<text>)` |
 | `notes` | — | `notes` | Read-only |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
 | `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
@@ -1172,7 +1172,7 @@ if (stats.Energy.value <= 0) location.move("Camp");
 
 Two calls add to it. Each takes one line of text.
 
-- **`memories.add(<text>)`** adds a line to this turn's memory, after the AI's summary of the turn. The AI still writes its summary. Recall finds both on later turns when they fit. The line is not sent with every request.
+- **`memories.append(<text>)`** adds a line to this turn's memory, after the AI's summary of the turn. The AI still writes its summary. Recall finds both on later turns when they fit. The line is not sent with every request.
 - **`memories.pin(<text>)`** adds a memory that is sent with every request, like one you write in the Memory Manager. It shows there under **Custom**, where the player can edit or delete it.
 - **Both clear with their turn.** A regenerate or a stopped turn discards them.
 - **A blank or non-text line throws a TypeError.** Lines are trimmed.
@@ -1197,7 +1197,7 @@ Each memory in the list has these fields. All are read-only.
 | `pinned` | True when the memory is pinned to stay |
 | `forgotten` | True when the memory is pinned to go |
 
-Four calls on a memory write the Memory panel's verdicts. The writes apply when the turn ends. A later call in the same turn overwrites an earlier one. A line that `memories.add` made reads in the scripts below it as the turn's own memory, and a line that `memories.pin` made reads as a Custom memory. A verdict or an edit on either one applies to it when the turn ends.
+Four calls on a memory write the Memory panel's verdicts. The writes apply when the turn ends. A later call in the same turn overwrites an earlier one. A line that `memories.append` made reads in the scripts below it as the turn's own memory, and a line that `memories.pin` made reads as a Custom memory. A verdict or an edit on either one applies to it when the turn ends.
 
 | Call | What it does |
 | --- | --- |

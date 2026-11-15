@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { migrateDiaryCalls, migrateEntityScriptText, migrateMemoryCalls, migratePlayerInput, migrateWorldScriptText, type ScriptTextRewrite } from '@/lib/scriptTextMigration';
+import { migrateDiaryCalls, migrateEntityScriptText, migrateMemoriesAppend, migrateMemoryCalls, migratePlayerInput, migrateWorldScriptText, type ScriptTextRewrite } from '@/lib/scriptTextMigration';
 import { migrateWorld } from '@/lib/version';
 import { executeStatCode } from '@/lib/statCodeExecutor';
 import type { Script, World } from '@/types';
@@ -83,8 +83,44 @@ describe('migrateMemoryCalls', () => {
   });
 
   it('runs the rewritten calls as the old ones ran', async () => {
-    const res = await executeStatCode(migrateMemoryCalls('memory.add(" Tor lied. "); memory.pin("Kept.");'), [], null);
+    const res = await executeStatCode(migrateMemoriesAppend(migrateMemoryCalls('memory.add(" Tor lied. "); memory.pin("Kept.");')), [], null);
     expect(res.worldWrites).toEqual({ memory: ['Tor lied.'], pins: ['Kept.'] });
+  });
+});
+
+describe('migrateMemoriesAppend', () => {
+  it.each([
+    ['an add', 'memories.add("Tor lied.");', 'memories.append("Tor lied.");'],
+    ['a call in a branch', 'if (x) memories.add(line);', 'if (x) memories.append(line);'],
+    ['a spaced dot', 'memories . add("x");', 'memories . append("x");'],
+    ['two adds and a pin', 'memories.add(a); memories.pin(b); memories.add(c);', 'memories.append(a); memories.pin(b); memories.append(c);'],
+    ['a bare read of the verb', 'const f = memories.add;', 'const f = memories.append;'],
+  ])('rewrites %s', (_case, code, expected) => {
+    expect(migrateMemoriesAppend(code)).toBe(expected);
+  });
+
+  it.each([
+    ['a script that declares its own memories', 'const memories = { add: (x) => x };\nmemories.add(1);'],
+    ['a parameter named memories', 'function f(memories) { memories.add(1); }'],
+    ['another member', 'memories.pin("x");'],
+    ['an element verb', 'memories[0].add("x");'],
+    ['a member of something else', 'notes.memories.add("x");'],
+    ['a bracketed member', 'memories["add"]("x");'],
+    ['the word in a string', 'const s = "memories.add(x)";'],
+    ['the new verb', 'memories.append("x");'],
+  ])('leaves %s as written', (_case, code) => {
+    expect(migrateMemoriesAppend(code)).toBe(code);
+  });
+
+  it('changes nothing on a second run', () => {
+    const once = migrateMemoriesAppend('memories.add("a");\nmemories.pin("b");');
+    expect(once).toBe('memories.append("a");\nmemories.pin("b");');
+    expect(migrateMemoriesAppend(once)).toBe(once);
+  });
+
+  it('runs the rewritten call as the old one ran', async () => {
+    const res = await executeStatCode(migrateMemoriesAppend('memories.add(" Tor lied. ");'), [], null);
+    expect(res.worldWrites).toEqual({ memory: ['Tor lied.'] });
   });
 });
 
@@ -225,12 +261,22 @@ describe('migrateWorld', () => {
     expect(codesOf(again)).toEqual({ lookup, ...codes });
   });
 
+  it('rewrites memories.add in every script of a shipped world, and a second load changes nothing', () => {
+    const code = 'memories.add("Tor lied.");\nmemories.pin(line);';
+    const migrated = migrateWorld(worldWith(code)) as unknown as Record<string, unknown>;
+    const { lookup, ...codes } = codesOf(migrated);
+    expect(Object.keys(codes)).toEqual(expect.arrayContaining(['stat', 'trait', 'world', 'tool', 'entityStat', 'entityTrait']));
+    for (const [home, text] of Object.entries(codes)) expect(text, home).toBe('memories.append("Tor lied.");\nmemories.pin(line);');
+    const again = migrateWorld(JSON.parse(JSON.stringify(migrated))) as unknown as Record<string, unknown>;
+    expect(codesOf(again)).toEqual({ lookup, ...codes });
+  });
+
   it('rewrites the old memory calls in every script, and a second load changes nothing', () => {
     const code = 'memory.add("Tor lied.");\nmemory.pin(line);';
     const migrated = migrateWorld(worldWith(code)) as unknown as Record<string, unknown>;
     const { lookup, ...codes } = codesOf(migrated);
     expect(Object.keys(codes)).toEqual(expect.arrayContaining(['stat', 'trait', 'world', 'tool', 'entityStat', 'entityTrait']));
-    for (const [home, text] of Object.entries(codes)) expect(text, home).toBe('memories.add("Tor lied.");\nmemories.pin(line);');
+    for (const [home, text] of Object.entries(codes)) expect(text, home).toBe('memories.append("Tor lied.");\nmemories.pin(line);');
     const again = migrateWorld(JSON.parse(JSON.stringify(migrated))) as unknown as Record<string, unknown>;
     expect(codesOf(again)).toEqual({ lookup, ...codes });
   });

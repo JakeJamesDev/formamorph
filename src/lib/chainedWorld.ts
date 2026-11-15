@@ -30,7 +30,7 @@ function withMemoryVerbs(rows: readonly SandboxMemory[], writes: NonNullable<Wor
 }
 
 /**
- * `state` as the next script reads it after `writes`. A `memories.add` line joins the turn's digest row and a
+ * `state` as the next script reads it after `writes`. A `memories.append` line joins the turn's digest row and a
  * `memories.pin` line is a Custom row under its commit-time note id, so a later row verb resolves at commit.
  */
 export function withWorldWrites(state: SandboxState, writes: WorldWrites | undefined): SandboxState {

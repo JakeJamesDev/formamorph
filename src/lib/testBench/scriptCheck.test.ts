@@ -74,7 +74,7 @@ describe('the on-demand script check', () => {
     const world = (code: string): RuleWorld => ({
       ...base([]), entities: [{ id: 'tor', name: 'Tor', description: '' } as Entity], scripts: [{ id: 'w', timing: 'after', code }],
     });
-    expect(await checkScripts(world('memories.add("The gate fell."); memories.pin("Tor lied."); entities.Tor.diary("I lied.");'))).toEqual([]);
+    expect(await checkScripts(world('memories.append("The gate fell."); memories.pin("Tor lied."); entities.Tor.diary("I lied.");'))).toEqual([]);
     const rows = async (code: string) => (await checkScripts(world(code))).map((f) => [f.ruleId, f.message]);
     expect(await rows('entities.Mira.diary("Hello.");')).toEqual([[
       SCRIPT_UNKNOWN_NAME.id, '“World · After the AI” writes a diary for “Mira”, a name no entity has yet. An entity with that name can appear during play.',

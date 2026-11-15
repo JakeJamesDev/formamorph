@@ -69,7 +69,7 @@ describe('an array element’s card', () => {
   });
 
   it('keeps the list’s own verbs on the list', () => {
-    expect(cardAt('memories.ad|d("Tor lied.");')?.signature).toMatchObject({ kind: 'method', path: 'memories.add' });
+    expect(cardAt('memories.appe|nd("Tor lied.");')?.signature).toMatchObject({ kind: 'method', path: 'memories.append' });
   });
 
   it.each([

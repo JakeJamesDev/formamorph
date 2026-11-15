@@ -44,11 +44,11 @@ describe('runTestCode world writes', () => {
   });
 
   it('lists each memory line, pin and diary line', async () => {
-    const report = await run('memories.add("Tor lied."); memories.pin("The bridge is out."); entities.Tor.diary("I lied.");', {
+    const report = await run('memories.append("Tor lied."); memories.pin("The bridge is out."); entities.Tor.diary("I lied.");', {
       ...world, entities: [{ id: 'e-tor', name: 'Tor' }],
     });
     expect(report.error).toBeNull();
-    expect(report.writes).toEqual(['memories.add: Tor lied.', 'memories.pin: The bridge is out.', 'diary: Tor: I lied.']);
+    expect(report.writes).toEqual(['memories.append: Tor lied.', 'memories.pin: The bridge is out.', 'diary: Tor: I lied.']);
   });
 
   it('lists each lore write as code spelled it, and an unknown entry as dropped', async () => {
@@ -93,7 +93,7 @@ describe('runTestCode world writes', () => {
   });
 
   it('reports no reply for a run given no arguments', async () => {
-    const report = await run('memories.add("Noted.");');
+    const report = await run('memories.append("Noted.");');
     expect(report.reply).toBeUndefined();
   });
 
