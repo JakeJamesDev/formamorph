@@ -1,0 +1,100 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Coref parity bench</title>
+<pre id="log">loading…</pre>
+<script type="module">
+// ?export=<folder under /exports/>&ep=wasm|webgpu&threads=1
+// Runs an export's shipped graphs on its parity case and compares them with the case's onnxruntime CPU outputs.
+import * as ort from '/ort/ort.all.min.mjs';
+
+const q = new URLSearchParams(location.search);
+const name = q.get('export'), ep = q.get('ep') ?? 'wasm';
+ort.env.wasm.wasmPaths = new URL('/ort/', location.href).href;
+ort.env.wasm.numThreads = +(q.get('threads') ?? 1);
+const result = { export: name, ep, threads: ort.env.wasm.numThreads, ort: ort.env.versions?.web };
+window.__result = result;
+const log = (s) => { document.getElementById('log').textContent += `\n${s}`; };
+
+const TYPES = { float32: Float32Array, int64: BigInt64Array, int32: Int32Array };
+async function load(dir, meta) {
+  const out = {};
+  for (const [n, v] of Object.entries(meta)) {
+    const data = new TYPES[v.dtype](await (await fetch(`${dir}/${v.file}`)).arrayBuffer());
+    out[n] = { data, dims: v.dims, type: v.dtype };
+  }
+  return out;
+}
+
+// Masked entries (padding, invalid spans) sit near -3.4e38; they never count.
+const valid = (x) => Math.abs(x) < 1e30;
+function maxDiff(ref, got) {
+  let max = 0;
+  for (let i = 0; i < ref.length; i++) if (valid(ref[i]) && valid(got[i])) max = Math.max(max, Math.abs(ref[i] - got[i]));
+  return +max.toPrecision(3);
+}
+
+// Top-k spans of [1, S, S] mention logits, skipping positions whose attention mask is 0 (the host's padding rule).
+function topK(logits, S, mask, k) {
+  const idx = [];
+  for (let i = 0; i < S; i++) {
+    if (!mask[i]) continue;
+    for (let j = 0; j < S; j++) if (mask[j] && valid(logits[i * S + j])) idx.push(i * S + j);
+  }
+  idx.sort((x, y) => logits[y] - logits[x]);
+  return new Set(idx.slice(0, k));
+}
+function overlap(a, b) {
+  if (!a.size) throw new Error('the reference keeps no mention spans');
+  let n = 0; for (const x of a) n += b.has(x); return +(n / a.size).toFixed(4);
+}
+
+function argmaxAgree(ref, got, dims, spanMask) {
+  const [, k, k1] = dims; let same = 0, n = 0;
+  for (let i = 0; i < k; i++) {
+    if (!spanMask[i]) continue;
+    let ra = 0, ga = 0;
+    for (let j = 1; j < k1; j++) {
+      if (ref[i * k1 + j] > ref[i * k1 + ra]) ra = j;
+      if (got[i * k1 + j] > got[i * k1 + ga]) ga = j;
+    }
+    same += ra === ga; n++;
+  }
+  if (!n) throw new Error('span_mask keeps no spans');
+  return +(same / n).toFixed(4);
+}
+
+try {
+  const dir = `/exports/${name}`;
+  const c = await (await fetch(`${dir}/parity/case.json`)).json();
+  const opts = { executionProviders: [ep], graphOptimizationLevel: 'all' };
+  let t = performance.now();
+  const sessions = { a: await ort.InferenceSession.create(`${dir}/graph_a.onnx`, opts), b: await ort.InferenceSession.create(`${dir}/graph_b.onnx`, opts) };
+  result.loadSec = +((performance.now() - t) / 1000).toFixed(1);
+  for (const g of ['a', 'b']) {
+    const cg = c.graphs[g];
+    const inputs = await load(`${dir}/parity`, cg.inputs);
+    const feeds = Object.fromEntries(Object.entries(inputs).map(([n, x]) => [n, new ort.Tensor(x.type, x.data, x.dims)]));
+    t = performance.now();
+    const out = await sessions[g].run(feeds);
+    result[`ms_${g}`] = Math.round(performance.now() - t);
+    for (const form of ['reference', 'fp32']) {
+      const ref = await load(`${dir}/parity`, cg[form]);
+      const r = (result[`${form}_${g}`] = {});
+      for (const n of Object.keys(ref)) r[`maxdiff_${n}`] = maxDiff(ref[n].data, out[n].data);
+      if (g === 'a') {
+        const m = ref.mention_logits, S = m.dims[1];
+        const mask = Array.from(inputs.attention_mask.data, Number).slice(0, S);
+        r.topk = overlap(topK(m.data, S, mask, c.k), topK(out.mention_logits.data, S, mask, c.k));
+      } else {
+        r.argmax = argmaxAgree(ref.final_logits.data, out.final_logits.data, ref.final_logits.dims, inputs.span_mask.data);
+      }
+    }
+  }
+  result.pass = result.reference_a.topk === 1 && result.reference_b.argmax === 1;
+  result.done = true;
+  log(JSON.stringify(result, null, 1));
+} catch (e) {
+  result.error = String(e?.message ?? e);
+  log(`ERROR: ${result.error}`);
+}
+</script>

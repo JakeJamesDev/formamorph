@@ -1,6 +1,6 @@
 # 01: Training Kit and Small Model
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -25,11 +25,37 @@ A tracked training kit that trains both architectures on one shared corpus: Ling
 
 ## Acceptance criteria
 
-- [ ] The kit trains, scores and exports the existing e120 checkpoint. Its exported graphs match the scratch export's outputs on the parity case.
-- [ ] A small FCoref model trained on LitBank only exists, with its scores on all sets reported in the ticket.
-- [ ] Exported graphs of both models pass the browser parity bench on WebGPU and WASM. The bar is top-k mention overlap 1.0 and antecedent argmax agreement 1.0 against CPU fp32.
-- [ ] The manifest generator writes a manifest for both models, and the publish gate refuses a model that scores lower.
-- [ ] The kit's README documents the graph contract and the manifest format.
-- [ ] No OntoNotes-trained weights serve as a starting point or teacher.
+- [x] The kit trains, scores and exports the existing e120 checkpoint. Its exported graphs match the scratch export's outputs on the parity case. — `export.py --compare .scratch/webbench/litbank`: max diff 0 on `sequence_output`, `mention_logits` and `final_logits`; fp32 ONNX clusters equal PyTorch on the parity passage; fp32 graphs score LitBank dev 0.6948, the run's own `best_f1`. Training: `--smoke` runs of both architectures, stopped mid-run (exit 3) and resumed to the end.
+- [x] A small FCoref model trained on LitBank only exists, with its scores on all sets reported in the ticket. — `runs/small-litbank`, 120 epochs in 40 min on the 4090; scores below.
+- [x] Exported graphs of both models pass the browser parity bench on WebGPU and WASM. The bar is top-k mention overlap 1.0 and antecedent argmax agreement 1.0 against CPU fp32. — `bench/run.mjs`, onnxruntime-web 1.31.1, Chrome: small and big each 1.0 / 1.0 on WebGPU (NVIDIA Lovelace) and WASM, against the same int8 graphs on onnxruntime CPU (ruling 6).
+- [x] The manifest generator writes a manifest for both models, and the publish gate refuses a model that scores lower. — `manifest.test.ts` (12 tests; tie, lower, changed dev set and missing manifest each proved by reinstating the bug); live run: both models first-published, a tie refused, the smoke model (dev 0.0005) refused.
+- [x] The kit's README documents the graph contract and the manifest format. — `testing/coref/README.md`, plus the corpus, annotation and gold formats.
+- [x] No OntoNotes-trained weights serve as a starting point or teacher. — bases `allenai/longformer-large-4096` (e120) and `distilroberta-base` (small); no teacher.
 
 For you: agree on a GPU window for the small-model training run.
+
+### Scores
+
+Shipped int8 graphs, onnxruntime CPU with optimizations off. Gold sets are cluster-only (README, "What gets scored"); narration dev does not exist until ticket 12.
+
+| Set | Big (e120) | Small (LitBank) |
+|---|---|---|
+| LitBank dev, CoNLL F1 | 0.6895 | 0.5924 |
+| Real: link F1 · pronouns · negatives | 0.985 · 151/153 · 41/41 | 0.901 · 150/153 (1 wrong) · 27/41 |
+| Hard: link F1 · names · descriptors · pronouns · negatives | 0.857 · 14/16 · 9/15 · 43/50 · 8/8 | 0.818 · 15/16 · 13/15 · 50/50 · 6/8 |
+| Blind: link F1 · names · descriptors · pronouns · negatives | 0.830 · 74/81 · 27/43 (1 wrong) · 124/136 (1 wrong) · 39/44 | 0.556 · 63/81 (3 wrong) · 27/43 (4 wrong) · 120/136 (8 wrong) · 32/44 |
+
+PyTorch for reference: big 0.6948, small 0.5963 on LitBank dev. Graph sizes: small 139 + 4 MB, big 369 + 148 MB.
+
+## Landed
+
+**Not verified**
+
+- The corpus guard test (`test_corpus.py`, Q39) is Python and runs only in the kit's venv, so the app's gates never run it. Ran green here, and red with the old `sys.exit`.
+- Distillation from e120 (ruling 7) was not tried; the supervised run is the bar.
+
+**For you**
+
+- For you: agree on a GPU window for the small-model training run.
+- The small model is well behind the big one on the blind set (link F1 0.556 vs 0.830, pronouns 8 wrong). Decide whether a distilled small model is worth a GPU window before ticket 03 ships it.
+- LitBank (CC BY 4.0) needs a Credits entry once weights ship; no ticket owns it yet.

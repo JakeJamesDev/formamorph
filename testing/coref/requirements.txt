@@ -1,0 +1,15 @@
+# Install PyTorch first from its CUDA index (https://pytorch.org/get-started/locally/), then the rest:
+torch==2.15.0
+transformers==4.57.6
+tokenizers==0.22.2
+fastcoref==2.1.6
+datasets==3.6.0
+numpy==2.5.4
+scipy==1.18.1
+pandas==3.1.1
+tqdm==4.70.1
+spacy==3.8.18
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl#sha256=1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85
+onnx==1.23.2
+onnxruntime==1.32.0
+wandb==0.31.0

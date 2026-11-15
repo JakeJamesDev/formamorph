@@ -71,6 +71,8 @@ export const GRAPH_COVERED = {
   'scripts/versionSiteImages.test.mjs': 'reads only its own temp folder',
   'scripts/moveReach.test.mjs':'reads its own temp folder and walks src/lib/uuid.ts, whose closure it never asserts',
   'testing/baseline/harness/planning-parser-probe.test.ts': 'reads files only under PARSER_PROBE=1',
+  'testing/coref/manifest.test.ts': 'reads only its own temp folder',
+  'testing/coref/manifest.mjs': 'reads only the paths its caller passes',
   'src/test/bundledRevisions.ts': 'reads the worlds from fixed commits, which no change alters',
   'electron/modelDownload.cjs': 'reads only the paths its caller passes',
   'electron/modelMove.cjs': 'reads only the paths its caller passes',
