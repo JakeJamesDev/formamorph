@@ -119,9 +119,9 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 
 **Sandbox surface (Q1–Q4, Q13, Q14).** One `args` global, frozen and read-only, built per run from the run's trigger: the World Tool call's values, the item event's side fields, the switch's cause, or nothing. `instance` exists only in item timings. Item timing fields that don't apply to a timing are absent (When Gained has no `to`). This widens the sandbox by these read-only values, settled by this grill. The prelude that defines `self.event` goes. `self` takes the item entry only.
 
-**Migration (Q6, Q16, Q17).** `migrateWorld` gains one step for script text, in every script home (stats, traits, world, items, Blueprints, World Tools): the `self.event` rewrites, `.copies` → `.instances` on item entries. The rewrite is token-bounded, rewrites exact forms only, and leaves the rest. A save migration renames the keys that name an Item Copy: the snapshot list, the copy id fields in saved inventory operations, and any ledger key that holds one. Both steps sit after the version short-circuit, beside the existing steps. They run once the version is bumped.
+**Migration (Q6, Q16, Q17).** `migrateWorld` gains one step for script text, in every script home (stats, traits, world, items, Blueprints, World Tools): the `self.event` rewrites, `.copies` → `.instances` on item entries. The rewrite is token-bounded, rewrites exact forms only, and leaves the rest. A save migration renames the keys that name an Item Copy: the snapshot list, the copy id fields in saved inventory operations, and any ledger key that holds one. The script-text step runs before the version short-circuit, beside the existing script-text rewrites, because worlds stamped with the current version carry the old forms. It is idempotent. The save step in `migrateSave` is also ungated: presence-based and idempotent, and a record holding both keys keeps the new one.
 
-**Rename (Q15).** Types, functions, fields, tests and fixtures say Item Instance, `instance`, `instanceId`. The glossary entry is renamed and its `_Avoid_` line lists "Item Copy". UI copy follows the Writing Guide.
+**Rename (Q15).** Types, functions, fields, tests and fixtures say Item Instance, `instance`, `instanceId`. The glossary entry is renamed and its `_Avoid_` line lists "Item Copy". UI copy follows the Writing Guide. Ticket 01 renames everything except what a save writes (`itemCopies`, `copyId` on persisted operations) and what the sandbox reads by name. Those wait for tickets 02 and 03. Other efforts' specs and released changelog entries stay as history. Placeholder, Blueprint and Supporter Copy and the clipboard "copy" are not Item Instances. Ticket 03 rebuilds the help vectors.
 
 **Editor (Q11, Q18).** The surface entries gain `args` (per timing) and `instance`; the tree shows a box's own timing's fields. The Test Code samples gain an item event sample beside the switched-trait sample. The Templates menu gains a gift-style template for When Gained. The help vectors are rebuilt.
 
@@ -146,6 +146,6 @@ Good tests run a real script through the real QuickJS executor and assert what t
 
 ## Further Notes
 
-- ⚠️ Export shape: the save shape changes (Q17), and world script text is rewritten on load (Q6). Both need the user's version bump to run on shipped files.
+- ⚠️ Export shape: the save shape changes (Q17), and world script text is rewritten on load (Q6). The script-text rewrite runs on every load, ungated.
 - The rename touches about a thousand code lines. It should land first and alone, so the other tickets build on the new names.
 - Related specs: `docs-internal/specs/inventory/`, `docs-internal/specs/item-use-and-identity/`, `docs-internal/specs/script-run-order/`, `docs-internal/specs/currency/`.
