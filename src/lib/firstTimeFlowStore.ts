@@ -65,3 +65,15 @@ export const engineTurnCount = (): number => turnCount(ENGINE_TURN_COUNT_KEY);
 export const recordEngineTurn = (): number => recordTurn(ENGINE_TURN_COUNT_KEY);
 export const isEngineCardSeen = (): boolean => isSet(ENGINE_CARD_SEEN_KEY);
 export const markEngineCardSeen = (): void => mark(ENGINE_CARD_SEEN_KEY);
+
+const MENTIONS_TURN_COUNT_KEY = 'FORMAMORPH_mentionsTurnCount';
+const MENTIONS_CARD_SEEN_KEY = 'FORMAMORPH_mentionsCardSeen';
+const MENTIONS_OFFER_ACCEPTED_KEY = 'FORMAMORPH_mentionsOfferAccepted';
+
+/** The Character Mentions card's records. They stay on the device; the card sends no funnel step. */
+export const mentionsTurnCount = (): number => turnCount(MENTIONS_TURN_COUNT_KEY);
+export const recordMentionsTurn = (): number => recordTurn(MENTIONS_TURN_COUNT_KEY);
+export const isMentionsCardSeen = (): boolean => isSet(MENTIONS_CARD_SEEN_KEY);
+export const markMentionsCardSeen = (): void => mark(MENTIONS_CARD_SEEN_KEY);
+export const isMentionsOfferAccepted = (): boolean => isSet(MENTIONS_OFFER_ACCEPTED_KEY);
+export const markMentionsOfferAccepted = (): void => mark(MENTIONS_OFFER_ACCEPTED_KEY);

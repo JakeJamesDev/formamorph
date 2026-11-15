@@ -14,10 +14,16 @@ vi.mock('react-toastify', () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn(), info: vi.fn(), warn: vi.fn(), dismiss: vi.fn(), isActive: vi.fn() }),
   ToastContainer: () => null,
 }));
-vi.mock('@/components/road/useDemoAIOffer', async (orig) => ({
-  ...(await orig<typeof import('@/components/road/useDemoAIOffer')>()),
-  useEngineStoryCard: () => ({ showing: true, dismiss: () => {} }),
-}));
+vi.mock('@/components/road/useDemoAIOffer', async (orig) => {
+  const real = await orig<typeof import('@/components/road/useDemoAIOffer')>();
+  return {
+    ...real,
+    useStoryCards: (...args: Parameters<typeof real.useStoryCards>) => ({
+      ...real.useStoryCards(...args),
+      engine: { showing: true, claimed: true, dismiss: () => {} },
+    }),
+  };
+});
 
 afterEach(() => {
   act(() => closeRoadScene());

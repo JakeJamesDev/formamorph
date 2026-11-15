@@ -1,19 +1,26 @@
-import { useEffect, useState } from 'react';
 import { CheckRow, Row, OptionSwitcher } from '@/components/SettingsRows';
 import { Button } from '@/components/ui/button';
-import { ModelDownloadBar } from '@/components/formaquestion/ModelDownloadBar';
+import { ModelDownloadBar, toMegabytes } from '@/components/formaquestion/ModelDownloadBar';
 import { FieldError, Meta } from '@/components/ui/typography';
 import { SETTINGS_COPY, SETTINGS_NOTES, SETTINGS_OPTIONS, type SettingOptionCopy } from '@/components/modals/settingsCopy';
 import { optionRowCopy, rowCopy } from '@/components/modals/settingsRowCopy';
 import type { CharacterMentionsModel } from '@/contexts/settingsDefaults';
 import { isEnglishLanguage } from '@/lib/languages';
-import { useMountedRef } from '@/lib/useMountedRef';
 import { characterMentions, useCharacterMentionsState } from '@/lib/coref/characterMentionsApp';
+import { usePlannedDownloadSize } from '@/lib/coref/usePlannedDownloadSize';
 import type { DisplaySettingsSource } from './settingsSource';
 
 const MODEL_OPTIONS: readonly SettingOptionCopy<CharacterMentionsModel>[] = SETTINGS_OPTIONS.characterMentionsModel;
 
-const megabytes = (bytes: number) => Math.round(bytes / 1048576);
+/** A failed model download, with Retry. */
+export function MentionsDownloadError({ error }: { error: string | null }) {
+  return (
+    <div className="flex items-center gap-2">
+      <FieldError as="span">Model download failed: {error}</FieldError>
+      <Button variant="outline" size="sm" onClick={() => characterMentions().retry()}>Retry</Button>
+    </div>
+  );
+}
 
 /** The Character Mentions toggle, its download rows, and the model choice. */
 export function CharacterMentionsRows({ source, advanced }: {
@@ -23,14 +30,7 @@ export function CharacterMentionsRows({ source, advanced }: {
   const { characterMentions: enabled, setCharacterMentions, characterMentionsModel: choice, setCharacterMentionsModel, language } = source;
   const english = isEnglishLanguage(language);
   const { status, progress, error } = useCharacterMentionsState();
-  const mounted = useMountedRef();
-  const [size, setSize] = useState<number | null>(null);
-  useEffect(() => {
-    if (enabled || !english) return;
-    void characterMentions().plannedSize(choice).then((bytes) => {
-      if (mounted.current) setSize(bytes);
-    });
-  }, [enabled, english, choice, mounted]);
+  const size = usePlannedDownloadSize(choice, !enabled && english);
 
   const pickModel = (next: CharacterMentionsModel) => {
     // Picking Auto again probes again (Q5).
@@ -41,7 +41,7 @@ export function CharacterMentionsRows({ source, advanced }: {
   const below = !english
     ? <Meta>{SETTINGS_NOTES.characterMentionsEnglishOnly}</Meta>
     : !enabled && size !== null
-      ? <Meta>{megabytes(size)} MB download</Meta>
+      ? <Meta>{toMegabytes(size)} MB download</Meta>
       : undefined;
   const selected = MODEL_OPTIONS.find((o) => o.value === choice);
 
@@ -62,10 +62,7 @@ export function CharacterMentionsRows({ source, advanced }: {
       )}
       {enabled && english && status === 'error' && (
         <Row>
-          <div className="flex items-center gap-2">
-            <FieldError as="span">Model download failed: {error}</FieldError>
-            <Button variant="outline" size="sm" onClick={() => characterMentions().retry()}>Retry</Button>
-          </div>
+          <MentionsDownloadError error={error} />
         </Row>
       )}
       {advanced && english && (

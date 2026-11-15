@@ -314,7 +314,8 @@ import { DemoAIBadge, DemoAIEntryLine, DemoAINotice, type DemoAINoticeHandle } f
 import { useDemoAIEntryLine } from "../components/game/demoAISeen";
 import { ENGINE_CARD_COPY, StoryCard } from "../components/road/StoryCard";
 import { openRoadScene } from "../components/road/roadSceneStore";
-import { useCardTurnCounts, useDemoAIStoryCard, useEngineStoryCard } from "../components/road/useDemoAIOffer";
+import { useCardTurnCounts, useStoryCards } from "../components/road/useDemoAIOffer";
+import { MentionsStoryCard } from "../components/road/MentionsStoryCard";
 import { LikePrompt } from "../components/game/LikePrompt";
 import { useLikePrompt } from "../components/game/useLikePrompt";
 import { useNarrationRescan } from "../components/game/useNarrationRescan";
@@ -1410,8 +1411,7 @@ const GameViewer = ({
 
   const cardTurns = useCardTurnCounts();
   const turnSettled = totalPages > 0 && !isWaitingForAI && !isRevealingNarration && !isViewingPast;
-  const storyCard = useDemoAIStoryCard({ turnCount: cardTurns.demoAI, settled: turnSettled });
-  const engineCard = useEngineStoryCard({ turnCount: cardTurns.engine, settled: turnSettled });
+  const { demo: storyCard, engine: engineCard, mentions: mentionsCard } = useStoryCards({ turns: cardTurns, settled: turnSettled });
 
   // DEV dev-router: open an in-game modal when the hash asks for it (Menu routes via MenuModal's own
   // devOpenLoad prop below). Tree-shaken in prod.
@@ -6549,16 +6549,23 @@ const GameViewer = ({
   // The scene images belonging to the page being viewed (one turn per page).
   const viewedTurn = parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? "");
 
+  // DEV dev-router: the story card `modal=storyCard&tab=…` forces, whatever the counts say.
+  const devStoryCard = import.meta.env.DEV && devRoute?.modal === 'storyCard'
+    ? (devRoute.tab === 'engine' || devRoute.tab === 'mentions' ? devRoute.tab : 'demo')
+    : null;
+
   const middlePanel = (
     <MentionCardsProvider colors={quoteColors} rows={cardRows}>
     <MiddlePanel
       parseAssistantMessage={parseAssistantMessage}
       narrationBadge={<DemoAIBadge onOpen={openDemoAIDialog} />}
       narrationLine={demoAIEntryLine ? <DemoAIEntryLine /> : null}
-      storyCard={engineCard.showing || (import.meta.env.DEV && devRoute?.modal === 'storyCard' && devRoute.tab === 'engine') ? (
-        <StoryCard className="my-4" testId="engine-story-card" {...ENGINE_CARD_COPY} onNotNow={engineCard.dismiss} onSeeLevels={() => { engineCard.dismiss(); openRoadScene('engine'); }} />
-      ) : storyCard.showing || (import.meta.env.DEV && devRoute?.modal === 'storyCard') ? (
-        <StoryCard className="my-4" onNotNow={storyCard.dismiss} onSeeLevels={() => { storyCard.dismiss(); openRoadScene('demo'); }} />
+      storyCard={engineCard.showing || devStoryCard === 'engine' ? (
+        <StoryCard className="my-4" testId="engine-story-card" {...ENGINE_CARD_COPY} onNotNow={engineCard.dismiss} onAction={() => { engineCard.dismiss(); openRoadScene('engine'); }} />
+      ) : storyCard.showing || devStoryCard === 'demo' ? (
+        <StoryCard className="my-4" onNotNow={storyCard.dismiss} onAction={() => { storyCard.dismiss(); openRoadScene('demo'); }} />
+      ) : mentionsCard.showing || devStoryCard === 'mentions' ? (
+        <MentionsStoryCard className="my-4" accepted={mentionsCard.accepted} onTurnOn={mentionsCard.accept} onNotNow={mentionsCard.dismiss} />
       ) : null}
       totalPages={totalPages}
       handlePageChange={handlePageChange}

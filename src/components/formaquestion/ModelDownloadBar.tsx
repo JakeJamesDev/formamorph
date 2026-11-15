@@ -4,6 +4,9 @@ import type { EmbeddingLoadProgress } from '@/lib/embeddingWorkerClient';
 
 const MB = 1048576;
 
+/** Whole megabytes, for download sizes. */
+export const toMegabytes = (bytes: number): number => Math.round(bytes / MB);
+
 /** The progress bar of the embedding model download, with the megabytes loaded. */
 export function ModelDownloadBar({ progress }: { progress: EmbeddingLoadProgress | null }) {
   const known = progress !== null && progress.total > 0;
@@ -11,7 +14,7 @@ export function ModelDownloadBar({ progress }: { progress: EmbeddingLoadProgress
     <div className="flex items-center gap-2">
       <Progress className="h-2 flex-1" aria-label="Model Download" value={known ? (progress.loaded / progress.total) * 100 : 0} />
       <Meta className="whitespace-nowrap">
-        {known ? `${Math.round(progress.loaded / MB)} / ${Math.round(progress.total / MB)} MB` : 'Preparing…'}
+        {known ? `${toMegabytes(progress.loaded)} / ${toMegabytes(progress.total)} MB` : 'Preparing…'}
       </Meta>
     </div>
   );

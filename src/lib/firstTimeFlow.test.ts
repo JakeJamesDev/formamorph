@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   aiSetupLeadsWithHostedAi, cardDue, countsAsCardTurn, engineCardDue, engineOfferAvailable, entryLineDue,
-  firstRunStepDue, offerAvailable, type CardFacts, type CardTurnFacts, type EngineCardFacts, type EngineOfferFacts,
+  firstRunStepDue, mentionsCardDue, offerAvailable, type CardFacts, type CardTurnFacts, type EngineCardFacts,
+  type EngineOfferFacts, type MentionsCardFacts,
 } from './firstTimeFlow';
 
 // Each card runs the one count rule with its own facts.
@@ -155,6 +156,24 @@ describe('engineOfferAvailable', () => {
     ['a build without hosted AI', { hostedAvailable: false }],
   ])('is off for %s', (_, change) => {
     expect(engineOfferAvailable({ ...offered, ...change })).toBe(false);
+  });
+});
+
+describe('mentionsCardDue', () => {
+  const due: MentionsCardFacts = { english: true, enabled: false, turnCount: 3, cardSeen: false };
+
+  it('is due at 3 turns, and still due past that', () => {
+    expect(mentionsCardDue(due)).toBe(true);
+    expect(mentionsCardDue({ ...due, turnCount: 2 })).toBe(false);
+    expect(mentionsCardDue({ ...due, turnCount: 12 })).toBe(true);
+  });
+
+  it.each<[string, Partial<MentionsCardFacts>]>([
+    ['an AI Language other than English', { english: false }],
+    ['Character Mentions already on', { enabled: true }],
+    ['a seen card', { cardSeen: true }],
+  ])('is not due for %s', (_, change) => {
+    expect(mentionsCardDue({ ...due, ...change })).toBe(false);
   });
 });
 

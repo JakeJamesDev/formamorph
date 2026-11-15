@@ -48,6 +48,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A new setting works out who each “she”, “he” or “the courier” in English narration means.** Turn on Character Mentions under Display › Accessibility. It downloads a model once and runs on your device. Turning it off deletes the download.
     - **With Character Mentions on, each character's quotes show in their own color.** A character keeps one color in every turn. Quotes with no known speaker keep your Quote Color, and turning Quote Color off turns these off too.
     - **Names and pronouns in narration open a card when you hover, tap or focus them.** The card shows the name and description you know. Clicking a colored quote opens its speaker's card.
+    - **A card in the story offers to turn on Character Mentions after your first few turns.** It shows once, when AI Language is English. Turn On starts the download and shows its progress in the card.
   - **Item scripts read their event's Item Instance as `instance`, and its quantity and use target from `args`.** Every script has `args`; it's empty where nothing passes one. Worlds that use `self.event` or `.copies` are rewritten when they load.
 - **🛠️ Developer tooling**
   - **Item Instances:**

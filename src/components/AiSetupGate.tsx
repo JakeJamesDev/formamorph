@@ -43,7 +43,7 @@ function SetupLead({ className }: { className?: string }) {
       className={className}
       title="Better Narration, Nothing to Download"
       body="Formamorph AI writes better narration and keeps characters more consistent than the models that fit your computer. Your support also helps fund new updates."
-      onSeeLevels={() => openRoadScene('setup')}
+      onAction={() => openRoadScene('setup')}
     />
   );
 }

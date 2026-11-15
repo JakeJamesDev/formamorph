@@ -81,6 +81,8 @@ afterEach(() => {
 describe('the card', () => {
   it('stays away through the fourth turn, then shows on the fifth', async () => {
     await playFromStart(3);
+    // The Character Mentions card comes first, at three turns, and holds the one card slot until answered (Q55).
+    fireEvent.click(within(await screen.findByTestId('mentions-story-card')).getByRole('button', { name: 'Not Now' }));
     await playTurn('Action 4');
     expect(card()).toBeNull();
     expect(isDemoAICardSeen()).toBe(false);

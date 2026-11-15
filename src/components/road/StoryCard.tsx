@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { MascotPiece } from '@/components/formaquestion/MascotPiece';
 import { Button } from '@/components/ui/button';
 import { Meta } from '@/components/ui/typography';
@@ -16,18 +16,24 @@ export const ENGINE_CARD_COPY = {
 };
 
 /** The offer in the story: under the latest narration, above the choices. It never takes focus. AI setup reuses it
- *  with its own words and no Not Now. */
+ *  with its own words and no Not Now; the Character Mentions offer with its own action. With neither handler, no
+ *  buttons show. */
 export function StoryCard({
-  onNotNow, onSeeLevels, className, testId = 'story-card',
+  onNotNow, onAction, actionLabel = 'See Levels', ariaLabel = 'Formamorph AI', className, testId = 'story-card',
   title = 'Want Better Narration for This Story?',
   body = 'Formamorph AI writes sharper narration and keeps characters consistent. Your support includes it, and it helps fund new updates.',
+  children,
 }: {
   onNotNow?: () => void;
-  onSeeLevels: () => void;
+  onAction?: () => void;
+  actionLabel?: string;
+  ariaLabel?: string;
   className?: string;
   testId?: string;
   title?: string;
   body?: string;
+  /** Rows under the body, such as a download bar. */
+  children?: ReactNode;
 }) {
   const [base, setBase] = useState<MascotSize | null>(null);
   // Always the stock Morphie, whatever Mascot the player picks.
@@ -35,7 +41,7 @@ export function StoryCard({
   return (
     <div
       role="group"
-      aria-label="Formamorph AI"
+      aria-label={ariaLabel}
       data-testid={testId}
       className={cn(
         'flex flex-col gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm sm:flex-row sm:items-center',
@@ -54,13 +60,16 @@ export function StoryCard({
         <div className="min-w-0">
           <div className="text-label font-semibold">{title}</div>
           <Meta as="p">{body}</Meta>
+          {children}
         </div>
       </div>
-      {/* Negative first, so See Levels sits on the right, and on top below `sm`. */}
-      <div className="flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        {onNotNow && <Button variant="ghost" size="sm" onClick={onNotNow}>Not Now</Button>}
-        <Button size="sm" onClick={() => onSeeLevels()}>See Levels</Button>
-      </div>
+      {/* Negative first, so the action sits on the right, and on top below `sm`. */}
+      {(onNotNow || onAction) && (
+        <div className="flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          {onNotNow && <Button variant="ghost" size="sm" onClick={onNotNow}>Not Now</Button>}
+          {onAction && <Button size="sm" onClick={() => onAction()}>{actionLabel}</Button>}
+        </div>
+      )}
     </div>
   );
 }
