@@ -93,6 +93,9 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q61 | Reverses Q32 and Q34 for display (the user's call, 2026-11-15): the played persona is a speaker and a mention target. Its quotes get a color and "Wrong character?"; "you", "I" and its name link to it with a card; it appears in the pick list. On Auto, its quote color is the player's Quote Color setting. In Scene and memory keep treating the player as today. Ticket 14. |
 | Q62 | Pick-list rows show the entity's image as a square, top-aligned crop like the persona square, with the initial as fallback, under Q51's visibility rule. Ticket 14. |
 | Q63 | Q48 stands and uses the one naming standard, `presence.ts`: an entity shows its name once met or when its name is not hidden, else its Stranger Name, else nothing. A speaker or mention with nothing to show stays uncolored and unlinked; one with a Stranger Name shows that label everywhere (card, pick list). Ticket 14. |
+| Q64 | Contribute Corrections stays off by default (Q9; a pre-checked box is not consent) but is asked once, yes or no: in the first-time offer when the player is signed in and age-attested, else at their first correction while signed in and attested. The row shows only while Character Mentions is on and the player is signed in, in this order: the toggle, the model choice, Contribute Corrections. The user's pick after the default-on request. Ticket 15. |
+| Q65 | The first-time offer card drops Morphie for a preview of the feature: a fixed, hand-made passage with three cast members and the player conversing, every quote speaker-colored, rendered through the real narration renderer with a fixed reading, never the model. A "What's this?" control opens it larger. A new visual pattern: frames need the user's approval. Ticket 15. |
+| Q66 | "Reset Size & Spacing" sits directly under Line Spacing, the rows it resets. Ticket 15. |
 
 ## User Stories
 
