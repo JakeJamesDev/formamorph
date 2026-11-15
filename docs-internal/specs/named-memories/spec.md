@@ -49,6 +49,11 @@ Settled with the user on 2026-11-14.
 | Q17 | Ticket 01 gives the blank entry its verbs, ignored and reported, never thrown. Ticket 02 owns their full tests and docs (ticket 01) |
 | Q18 | Between tickets 01 and 02, a Memory Manager edit of a named memory can be lost to a rewind. That gap is acceptable because neither ticket ships before the effort closes. Ticket 01's Landed section names it (ticket 01) |
 | Q19 | A named write outside a turn keys to the latest turn's id, with the anchor at the current history length, as unnamed `pin(text)` does (ticket 01) |
+| Q20 | A script `remove()` on a named memory is a removal revision. The name stays held, and a later `pin(name, t)` revives the same memory with the same id. `edit` and `remove` join the named-write stream in call order and resolve by name at commit (ticket 02) |
+| Q21 | A script-removed named memory shows under Deleted with Restore. Restore adds a player revision with the text from before the removal. A rewind of the remove turn also brings the memory back (ticket 02) |
+| Q22 | A restore whose name is taken (Q7) gives a plain unnamed player memory with its current text and anchor. Its revisions are dropped, so no rewind takes it (ticket 02) |
+| Q23 | A player edit keeps the current anchor. Q10 moves the anchor on script writes only (ticket 02) |
+| Q24 | A rewind past the creating turn drops the named memory even when a player revision exists, as Implementation Decisions sets (ticket 02) |
 
 ## User Stories
 
