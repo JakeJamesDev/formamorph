@@ -10,6 +10,8 @@ import type { GameLocation, Placeholder, Stat, StatGroup, SupporterCopyMarker, T
  *  locations, which an entity's membership is named against, and its traits, which owned trait requirements
  *  are named against. */
 export interface WorldToWriteBack extends WorldContent {
+  /** The writing world's id, which a marked item's source world must match. */
+  worldId: string;
   placeholders: Placeholder[];
   locations: GameLocation[];
   traits: Trait[];
@@ -33,8 +35,8 @@ const NOTHING_TO_WRITE: OwnedWriteBack = async () => [];
  * save calls the result, after the world is stored, so a failed save leaves the library as it was. One
  * revision stamp per save. Last save wins: nothing checks whether the item moved on since the world opened.
  *
- * A Supporter Copy (or a world whose marker is unread) writes only to items saved from it, so its edits
- * never reach a library item the player can export; they stay in the world.
+ * A Supporter Copy (or a world whose marker is unread) writes only to items marked for this world (R9), so
+ * its edits never reach a library item the player can export or one from another source world.
  */
 export async function planOwnedWriteBack(world: WorldToWriteBack): Promise<OwnedWriteBack> {
   const linkedIds = [...world.entities, ...world.dictionaries]
@@ -52,7 +54,7 @@ export async function planOwnedWriteBack(world: WorldToWriteBack): Promise<Owned
   const vrm = await loadVrmLookup(world.vrmStore);
   const marked = new Map(sources.flatMap((source) => (source.supporterCopy ? [[source.id, source.supporterCopy] as const] : [])));
   const plan = planWriteBack(world, sources, (copy) => toLibraryItem(copy, world.placeholders, world.locations, world), traitWorldOf(world), vrm)
-    .filter((step) => world.supporterCopy === null || marked.has(step.source.id));
+    .filter((step) => world.supporterCopy === null || marked.get(step.source.id)?.sourceWorldId === world.worldId);
   if (!plan.length) return NOTHING_TO_WRITE;
   const revision = new Date().toISOString();
   const planned = plan.map((step) => ({

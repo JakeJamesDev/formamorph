@@ -2,6 +2,8 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { ChangelogEntryDialog } from '@/components/community/ChangelogEntryDialog';
 import { RemoteWorldDetailsModal } from '@/components/community/RemoteWorldDetailsModal';
+import { SupporterEndDateDialog } from '@/components/community/SupporterEndDateDialog';
+import type { WorldRecord } from '@/components/WorldDetails';
 import { BodyLayoutReference } from '@/components/design-system/BodyLayoutReference';
 import { PendingUpdateSection } from '@/components/community/PendingUpdateSection';
 import PlaceholderSectionList from '@/components/editor/PlaceholderSectionList';
@@ -102,6 +104,10 @@ export default function DevPaneRoutes() {
           </DialogContent>
         </Dialog>
       );
+    }
+    case 'supporterEnd': {
+      const until = route.tab === 'none' ? undefined : new Date(Date.now() + 30 * 86_400_000).toISOString();
+      return <SupporterEndDateDialog world={{ ...devListingSample().world, supporter_only: true, supporter_until: until } as WorldRecord} busy={false} onClose={() => clearRouteOnClose(false)} onSave={ignore} />;
     }
     case 'changelogEntry': return <ChangelogEntryDialog open onOpenChange={clearRouteOnClose} entry={devChangelogDraft()} onSubmit={ignore} />;
     case 'bodyLayout': return (

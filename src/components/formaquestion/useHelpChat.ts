@@ -8,9 +8,7 @@ import { askHelp, type HelpStage } from '@/lib/formaquestion/helpSession';
 import type { HelpSettings } from '@/lib/formaquestion/helpSettings';
 import type { HelpTrace } from '@/lib/formaquestion/helpTrace';
 import type { AnswerSource } from '@/lib/formaquestion/helpWorldSource';
-import { helpWorld, type WorldLean } from '@/lib/formaquestion/helpWorld';
-import { openWorldBlock } from '@/lib/supporterCopy';
-import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
+import { aiContextExportBlock, helpWorld, type WorldLean } from '@/lib/formaquestion/helpWorld';import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { turnActivity, useTurnGenerating } from '@/lib/turnActivity';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { randomUUID } from '@/lib/uuid';
@@ -107,7 +105,7 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi, settings: HelpS
     const surface = surfaceRegistry.get();
     const world = helpWorld.get();
     // An unread marker blocks too, so a trace of the world never leaves before its marker is read.
-    const exportBlock = world?.supporterCopy ? openWorldBlock(world.supporterCopy(), 'exportAiContext') : null;
+    const exportBlock = aiContextExportBlock(world);
     const focus = helpFocus.get();
     const sentSettings = settingsRef.current;
     const added = takeEntityAdds();

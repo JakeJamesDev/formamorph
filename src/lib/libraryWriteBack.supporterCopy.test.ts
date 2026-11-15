@@ -15,14 +15,14 @@ const ENTRY_MARKER: LibrarySupporterCopyMarker = { ...WORLD_MARKER, sourceWorldI
 const original = { id: 'e1', name: 'Wren', aiDescription: 'Original.' } as Entity;
 
 /** Saves `original` to the library, then plays the world save of an edited copy that follows it. */
-async function editAndSave(libraryMarker: LibrarySupporterCopyMarker | undefined, worldMarker: SupporterCopyMarker | null | undefined) {
+async function editAndSave(libraryMarker: LibrarySupporterCopyMarker | undefined, worldMarker: SupporterCopyMarker | null | undefined, worldId = 'w-source') {
   const source = await saveCopyToLibrary(original, [], [], undefined, undefined, undefined, libraryMarker);
   const copy = {
     ...original, id: 'copy', aiDescription: 'Edited in the world.',
     link: { libraryId: source.id, sourceRevision: source.revision },
   } as Entity;
   const write = await planOwnedWriteBack({
-    entities: [copy], dictionaries: [], placeholders: [], locations: [], traits: [], traitGroups: [], supporterCopy: worldMarker,
+    worldId, entities: [copy], dictionaries: [], placeholders: [], locations: [], traits: [], traitGroups: [], supporterCopy: worldMarker,
   });
   const written = await write();
   return { written, library: (await EntityStorageService.getEntityData(source.id)).aiDescription };
@@ -59,5 +59,12 @@ describe('the write-back of a world save to the library items its copies follow'
 
     expect(written).toHaveLength(1);
     expect(library).toBe('Edited in the world.');
+  });
+
+  it('keeps a Supporter Copy world from writing into an item marked for another source world', async () => {
+    const { written, library } = await editAndSave(ENTRY_MARKER, WORLD_MARKER, 'w-other');
+
+    expect(written).toHaveLength(0);
+    expect(library).toBe('Original.');
   });
 });

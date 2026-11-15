@@ -2854,7 +2854,7 @@ const GameViewer = ({
       resolve: resolvePH,
     };
   }, [parseEffectiveTurns, fullMessageHistory, playerViewReach, memoryDigests, narrationVerbatimTurns, getMilestoneDrop, stripMedia, dictionary, semanticLore, resolvePH]);
-  useHelpWorldSource(helpToolWorld, helpAuthoredWorld, { lean: 'game', game: helpGameWorld, supporterCopy: () => supporterCopy });
+  useHelpWorldSource(helpToolWorld, helpAuthoredWorld, { lean: 'game', game: helpGameWorld, supporterCopy: () => supporterCopy, carriedSupporterCopy: () => carriedSupporterCopy });
   // Each request's round between its Tool calls and the next round's first token, as the called Tool names.
   const [toolLookups, setToolLookups] = useState<readonly (readonly string[])[]>([]);
 

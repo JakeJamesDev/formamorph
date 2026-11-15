@@ -39,7 +39,7 @@ describe('the write-back of a Supporter Copy world that gives its entity a new A
       link: { libraryId: source.id, sourceRevision: source.revision },
     } as Entity;
     const write = await planOwnedWriteBack({
-      entities: [copy], dictionaries: [], placeholders: [], locations: [], traits: [], traitGroups: [],
+      worldId: 'w-source', entities: [copy], dictionaries: [], placeholders: [], locations: [], traits: [], traitGroups: [],
       vrmStore: { w1: { name: 'Crane', file: { data: await blobToDataUrl(file), type: 'model/vrm', name: file.name, size: file.size } } },
       supporterCopy: WORLD_MARKER,
     });

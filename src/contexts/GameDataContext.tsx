@@ -748,6 +748,7 @@ function useProvideGameData() {
     const heardBefore = elsewhere.current.heard;
     try {
       const writeBack = await planOwnedWriteBack({
+        worldId: worldId ?? '',
         entities: data.entities, dictionaries: data.dictionaries, placeholders, locations,
         traits: data.traits, traitGroups: data.traitGroups ?? [], stats: data.stats, statGroups: data.statGroups ?? [],
         vrmStore: worldOverview.vrmStore,

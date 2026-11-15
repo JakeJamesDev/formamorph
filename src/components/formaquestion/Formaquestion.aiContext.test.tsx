@@ -211,6 +211,39 @@ describe('AI Context in Formaquestion', () => {
       leave();
     });
 
+    it('disables Export for a Supporter save loaded into a plain world', async () => {
+      stubHelpStream(sseReply('Select **Add Trait**.'));
+      const leave = helpWorld.register({
+        ...openWorld(),
+        supporterCopy: () => null,
+        carriedSupporterCopy: () => ({ listingId: 'L1', accountId: 'A1', revision: 1 }),
+      });
+      const { field } = await openAsk();
+      await send(field, 'How do I add a trait?');
+      const dialog = await openAiContext();
+
+      expect(exportButton(dialog)).toHaveAttribute('aria-description', "You can't export the AI context of a Supporter world");
+      await userEvent.click(exportButton(dialog));
+      expect(download).not.toHaveBeenCalled();
+      leave();
+    });
+
+    it('keeps Export disabled for a question asked under a Supporter save after the game closes', async () => {
+      stubHelpStream(sseReply('Select **Add Trait**.'));
+      const leave = helpWorld.register({
+        ...openWorld(),
+        supporterCopy: () => null,
+        carriedSupporterCopy: () => ({ listingId: 'L1', accountId: 'A1', revision: 1 }),
+      });
+      const { field } = await openAsk();
+      await send(field, 'How do I add a trait?');
+      leave();
+      const dialog = await openAiContext();
+
+      await userEvent.click(exportButton(dialog));
+      expect(download).not.toHaveBeenCalled();
+    });
+
     it('keeps Export disabled for a question asked there after the world closes', async () => {
       stubHelpStream(sseReply('Select **Add Trait**.'));
       const leave = register({ listingId: 'L1', accountId: 'A1', revision: 1 });

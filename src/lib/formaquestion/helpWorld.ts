@@ -4,6 +4,7 @@
  * open: a Tool runs on an empty snapshot, and the code test checks no names.
  */
 import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { playBlock } from '@/lib/supporterCopy';
 import type { StatCodeWorld } from '@/lib/statCodeTestRun';
 import type { ToolSnapshot } from '@/lib/tools/toolSnapshot';
 import type { DictionaryEntry, SupporterCopyMarker } from '@/types';
@@ -38,10 +39,12 @@ export interface OpenWorld {
   addEntity?: (draft: EntityDraft) => void;
   /** The world's Supporter Copy marker: undefined while unread, null for a plain world. */
   supporterCopy?: () => SupporterCopyMarker | null | undefined;
+  /** The marker the loaded save carried: null for a plain save. Set by the game view only. */
+  carriedSupporterCopy?: () => SupporterCopyMarker | null;
 }
 
 /** How a screen registers its world. */
-export type OpenWorldOptions = Pick<OpenWorld, 'lean' | 'world' | 'game' | 'open' | 'addEntity' | 'supporterCopy'>;
+export type OpenWorldOptions = Pick<OpenWorld, 'lean' | 'world' | 'game' | 'open' | 'addEntity' | 'supporterCopy' | 'carriedSupporterCopy'>;
 
 export interface HelpWorldRegistry {
   /** Registers a world; the newest registered one is the open world. Returns the step that removes it. */
@@ -73,6 +76,15 @@ export function createHelpWorldRegistry(): HelpWorldRegistry {
   };
 }
 
+/**
+ * Why a trace of `world` can't be exported, or null when it can. An unread marker blocks, and a loaded
+ * Supporter save blocks even in a plain world.
+ */
+export function aiContextExportBlock(world: OpenWorld | undefined): string | null {
+  if (!world?.supporterCopy) return null;
+  return playBlock(world.supporterCopy(), world.carriedSupporterCopy?.() ?? null, 'exportAiContext');
+}
+
 /** The app's one registry. */
 export const helpWorld = createHelpWorldRegistry();
 
@@ -80,14 +92,15 @@ export const helpWorld = createHelpWorldRegistry();
  * Registers the open world while the caller is mounted. One registration per mount, reading the newest
  * builders, so the source mounted last stays the open world: the in-game editor over the game.
  */
-export function useHelpWorldSource(snapshot: ToolSnapshotSource, authored: StatCodeWorldSource, { lean, world, game, open, addEntity, supporterCopy }: OpenWorldOptions): void {
-  const latest = useRef({ snapshot, authored, world, game, open, addEntity, supporterCopy });
-  latest.current = { snapshot, authored, world, game, open, addEntity, supporterCopy };
+export function useHelpWorldSource(snapshot: ToolSnapshotSource, authored: StatCodeWorldSource, { lean, world, game, open, addEntity, supporterCopy, carriedSupporterCopy }: OpenWorldOptions): void {
+  const latest = useRef({ snapshot, authored, world, game, open, addEntity, supporterCopy, carriedSupporterCopy });
+  latest.current = { snapshot, authored, world, game, open, addEntity, supporterCopy, carriedSupporterCopy };
   const hasWorld = world !== undefined;
   const hasGame = game !== undefined;
   const opens = open !== undefined;
   const adds = addEntity !== undefined;
   const marks = supporterCopy !== undefined;
+  const carries = carriedSupporterCopy !== undefined;
   useEffect(() => helpWorld.register({
     lean,
     snapshot: (fired) => latest.current.snapshot(fired),
@@ -97,7 +110,8 @@ export function useHelpWorldSource(snapshot: ToolSnapshotSource, authored: StatC
     ...(opens && { open: (source: WorldSource) => latest.current.open!(source) }),
     ...(adds && { addEntity: (draft: EntityDraft) => latest.current.addEntity!(draft) }),
     ...(marks && { supporterCopy: () => latest.current.supporterCopy!() }),
-  }), [lean, hasWorld, hasGame, opens, adds, marks]);
+    ...(carries && { carriedSupporterCopy: () => latest.current.carriedSupporterCopy!() }),
+  }), [lean, hasWorld, hasGame, opens, adds, marks, carries]);
 }
 
 /** How long the World Index waits after the last edit before it rebuilds. */

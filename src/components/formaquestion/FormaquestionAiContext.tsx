@@ -8,8 +8,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Pager } from '@/components/ui/pagination';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
-import { useHelpWorld } from '@/lib/formaquestion/helpWorld';
-import { openWorldBlock } from '@/lib/supporterCopy';
+import { aiContextExportBlock, useHelpWorld } from '@/lib/formaquestion/helpWorld';
 import type { HelpQueryTrace, HelpRequestTrace, HelpTrace, HelpTraceSource } from '@/lib/formaquestion/helpTrace';
 import { isWorldSource, sourceKey } from '@/lib/formaquestion/helpWorldSource';
 import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
@@ -132,9 +131,10 @@ export function FormaquestionAiContext({ open, onOpenChange, exchanges }: {
   const setOpen = (key: string, next: boolean) => setCollapsed((prev) => ({ ...prev, [key]: !next }));
   const exportData = traced.map(({ question, trace }) => ({ question, trace }));
   // A trace holds the excerpts of the world its question was asked in, so a Supporter Copy blocks it now or later.
+  // In play, a loaded Supporter save blocks it too, as in the game view's export.
   const openWorld = useHelpWorld();
   const exportBlock = traced.find((exchange) => exchange.exportBlock)?.exportBlock
-    ?? (openWorld?.supporterCopy ? openWorldBlock(openWorld.supporterCopy(), 'exportAiContext') : null);
+    ?? aiContextExportBlock(openWorld);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
