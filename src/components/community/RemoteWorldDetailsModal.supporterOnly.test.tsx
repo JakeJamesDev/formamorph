@@ -72,4 +72,29 @@ describe('the details window of a Supporter-only listing', () => {
       shown.unmount();
     }
   });
+
+  it('shows the end date of a timed listing to a reader, and nothing for an untimed one', async () => {
+    const until = new Date(Date.now() + 5 * 86_400_000).toISOString();
+    const { unmount } = show(player, { world: listing({ supporter_until: until }) });
+    expect(await screen.findByText(/^Supporter-only until/)).toBeTruthy();
+    unmount();
+
+    show(player);
+    await screen.findByRole('button', { name: 'Patreon' });
+    expect(screen.queryByText(/Supporter-only until/)).toBeNull();
+  });
+
+  it('gives an admin an End Date control, and a moderator none', async () => {
+    const capabilities = { localLibrary: true, deviceDownloads: false, likes: true, comments: true, moderation: true, reports: true };
+    const onEdit = vi.fn();
+    const { unmount } = show(staff, { onEditSupporterEnd: onEdit, capabilities });
+    (await screen.findByRole('button', { name: /Change when it opens to everyone/ })).click();
+    expect(onEdit).toHaveBeenCalledTimes(1);
+    unmount();
+
+    const mod = { id: 'm1', username: 'a-mod', accountType: 'mod' } as unknown as WorldRecord;
+    show(mod, { onEditSupporterEnd: onEdit, capabilities });
+    await screen.findByRole('button', { name: 'Patreon' });
+    expect(screen.queryByRole('button', { name: /Change when it opens to everyone/ })).toBeNull();
+  });
 });

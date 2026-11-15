@@ -40,6 +40,8 @@ export interface PublishPayload {
   models?: string[];
   /** Create the listing Supporter-only and pinned. New listings only; the server takes it from an admin alone. */
   supporterOnly?: boolean;
+  /** Days until a new Supporter-only Mascot or World listing opens to everyone. Omitted means no end date. */
+  supporterDays?: number;
 }
 
 /**

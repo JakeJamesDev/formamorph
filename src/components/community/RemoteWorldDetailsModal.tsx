@@ -4,8 +4,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogTitleControl, d
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
-import { Columns2, RectangleVertical, Pencil, Heart, HeartOff, Pin, PinOff, Trash2, X, Flag, EyeOff, Check, Play } from "lucide-react";
+import { CalendarClock, Columns2, RectangleVertical, Pencil, Heart, HeartOff, Pin, PinOff, Trash2, X, Flag, EyeOff, Check, Play } from "lucide-react";
 import { PinnedMark } from "@/components/community/PinnedMark";
+import { SupporterUntilMark } from "@/components/community/SupporterUntilMark";
+import { canHaveEndDate } from "@/lib/supporterEndDate";
 import { SupporterListingButton } from "@/components/community/SupporterListingButton";
 import { isSupporterOnly } from "@/lib/supporterListingAction";
 import { isPinned } from "@/lib/pinning";
@@ -110,6 +112,8 @@ interface RemoteWorldDetailsModalProps {
   onTogglePin?: (world: WorldRecord) => void;
   /** Marks the listing Supporter-only, or clears the mark. Staff only. */
   onToggleSupporterOnly?: (world: WorldRecord) => void;
+  /** Opens the end-date editor of a Supporter-only listing. Admins only. */
+  onEditSupporterEnd?: (world: WorldRecord) => void;
   /** DEV only: raise the likers dialog as soon as the modal opens, for the dev route. */
   openLikersOnMount?: boolean;
   /** A read-only action supplied by the surface that opened this listing. */
@@ -145,7 +149,7 @@ export function RemoteWorldDetailsModal({
   open, onOpenChange, world, collapsed, onToggleCollapsed,
   isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload, onDeviceDownload,
   currentUser, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onAnonymousLikes,
-  contests = [], onOpenContest, onLikesChanged, onMarkerChanged, onPendingUpdateChange, onTogglePin, onToggleSupporterOnly, openLikersOnMount = false,
+  contests = [], onOpenContest, onLikesChanged, onMarkerChanged, onPendingUpdateChange, onTogglePin, onToggleSupporterOnly, onEditSupporterEnd, openLikersOnMount = false,
   capabilities = APP_DETAILS_CAPABILITIES,
   detailsAction, onOpenListing, presetUse,
 }: RemoteWorldDetailsModalProps) {
@@ -650,6 +654,14 @@ export function RemoteWorldDetailsModal({
                 </Button>
               </Tip>
             )}
+            {world && onEditSupporterEnd && isSupporterOnly(world) && canHaveEndDate(kindOf(world)) && capabilities.moderation && isAdmin(currentUser) && (
+              <Tip tip="Change when it opens to everyone">
+                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => onEditSupporterEnd(world)}>
+                  <CalendarClock className="h-4 w-4" />
+                  End Date
+                </Button>
+              </Tip>
+            )}
             {world && onToggleSupporterOnly && capabilities.moderation && isAdmin(currentUser) && (
               <Tip tip={isSupporterOnly(world) ? "Let everyone download it" : "Limit the download to Supporters"}>
                 <Button variant="ghost" size="sm" className="shrink-0" onClick={() => onToggleSupporterOnly(world)}>
@@ -672,6 +684,7 @@ export function RemoteWorldDetailsModal({
           {/* Under the title, as on the card: opening a winning card must not lose what the card said. */}
           {world && <PlaceBadges placements={placementsBy(world, contests)} className="mr-8" shine onSelect={onOpenContest} />}
           {world && <PinnedMark listing={world} className="mr-8" />}
+          {world && <SupporterUntilMark listing={world} className="mr-8" />}
           {markedListing && <ModerationMarker listing={markedListing} showStaffQuarantine={false} className="mr-8" />}
           {canSeeLikers && likesMarkerReasons.length > 0 && (
             <LikesMarker reasons={likesMarkerReasons} onOpen={() => { setAuditLikers(true); setShowLikers(true); }} className="mr-8 w-auto self-start" />

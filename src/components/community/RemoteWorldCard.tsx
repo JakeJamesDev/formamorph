@@ -1,6 +1,8 @@
 import { memo } from "react";
-import { Check, EyeOff, Download, Heart, HeartOff, MessageSquare, Pin, PinOff, Puzzle, Trash2, ShieldAlert, ShieldCheck, TicketX, X } from "lucide-react";
+import { CalendarClock, Check, EyeOff, Download, Heart, HeartOff, MessageSquare, Pin, PinOff, Puzzle, Trash2, ShieldAlert, ShieldCheck, TicketX, X } from "lucide-react";
 import { PinnedMark } from "@/components/community/PinnedMark";
+import { SupporterUntilMark } from "@/components/community/SupporterUntilMark";
+import { canHaveEndDate } from "@/lib/supporterEndDate";
 import { HiddenGemMark } from "@/components/community/HiddenGemMark";
 import { SupporterListingButton } from "@/components/community/SupporterListingButton";
 import { isSupporterOnly } from "@/lib/supporterListingAction";
@@ -74,6 +76,8 @@ interface RemoteWorldCardProps {
   onTogglePin?: (world: WorldRecord) => void;
   /** Marks the listing Supporter-only, or clears the mark. Staff surfaces only. */
   onToggleSupporterOnly?: (world: WorldRecord) => void;
+  /** Opens the end-date editor of a Supporter-only listing. Admins only. */
+  onEditSupporterEnd?: (world: WorldRecord) => void;
   /** Where this listing placed — the badge travels with the world, not with the tab it was won in. */
   placements?: ContestPlacement[];
   /** Opens a contest this listing placed in, from its place chip. */
@@ -105,7 +109,7 @@ interface RemoteWorldCardProps {
  *  Memoized: a catalog refresh that keeps a row's object skips its card. */
 export const RemoteWorldCard = memo(function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
-  onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onQuarantine, onRelease, onTogglePin, onToggleSupporterOnly,
+  onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onQuarantine, onRelease, onTogglePin, onToggleSupporterOnly, onEditSupporterEnd,
   placements = [], onOpenContest, onWithdraw, onManageAddons, likeTutorial, likeTutorialNav, inReviewGroup = false,
   onApprove, onReject, reviewBusy = false, onOpenLikes, hiddenGem = false,
 }: RemoteWorldCardProps) {
@@ -319,6 +323,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
       </div>
 
       <PinnedMark listing={world} className="mb-2" />
+      <SupporterUntilMark listing={world} className="mb-2" />
       {hiddenGem && <HiddenGemMark className="mb-2" />}
       <ModerationMarker listing={world} titleOnly={inReviewGroup} className="mb-2" />
       {viewerIsStaff && onOpenLikes && <LikesMarker reasons={likesMarkerOf(world)} onOpen={() => onOpenLikes(world)} className="mb-2" />}
@@ -357,6 +362,17 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
                 aria-label={`${pinned ? 'Unpin' : 'Pin'} ${world.name || noun}`}
               >
                 {pinned ? <PinOff className="h-5 w-5" /> : <Pin className="h-5 w-5" />}
+              </button>
+            </Tip>
+          )}
+          {canMarkSupporterOnly && supporterOnly && onEditSupporterEnd && canHaveEndDate(kindOf(world)) && (
+            <Tip tip="Change when it opens to everyone">
+              <button
+                className="p-1 text-muted-foreground hover:text-foreground"
+                onClick={(e) => { e.stopPropagation(); onEditSupporterEnd(world); }}
+                aria-label={`Change the end date of ${world.name || noun}`}
+              >
+                <CalendarClock className="h-5 w-5" />
               </button>
             </Tip>
           )}

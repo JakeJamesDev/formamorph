@@ -980,6 +980,27 @@ class WorldStorageService {
     return held;
   }
 
+  /**
+   * Change or clear the end date of a Supporter-only listing. Staff only.
+   *
+   * @param worldId - The listing's server id
+   * @param days - Days from now until it opens to everyone, or null for no end date
+   * @returns The end date the server now holds, or null when there is none
+   */
+  async setRemoteWorldSupporterEnd(worldId: string, days: number | null): Promise<string | null> {
+    const response = await fetch(`${this.API_URL}/worlds/${worldId}/supporter-only`, {
+      method: 'PUT',
+      headers: authHeaders(true),
+      body: JSON.stringify({ supporterOnly: true, supporterDays: days }),
+    });
+
+    if (!response.ok) throw await responseError(response, 'Failed to change the end date');
+    const body = await response.json().catch(() => ({}));
+    const held = (body.data ?? body)?.supporterUntil;
+
+    return typeof held === 'string' ? held : null;
+  }
+
   /** Fetch a page of comments for a published world; auth is optional. Never throws — errors resolve to
    *  a `{success:false}` shape. */
   async fetchComments(worldId: string, page = 1, limit = 20, signal?: AbortSignal) {
