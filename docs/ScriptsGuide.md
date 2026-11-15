@@ -384,8 +384,10 @@ An item's scripts use five timings of their own. Each one runs once for each eve
 | **When Unequipped** | An Item Instance is unequipped: by hand, by a full slot, or by a requirement that stops holding |
 | **When Used** | An Item Instance is used. The last use runs this timing only, not When Lost. A **Becomes** result runs its own When Gained |
 
-- `self.event` holds `timing`, `quantity` (the number the event moved) and `copy` (the Item Instance's entry). After the Item Instance is gone, `copy` reads it as it was before the event.
-- On **When Used**, `self.event.target` is the entry of the Item Instance the item was used on, such as the lantern the oil went into. It is `null` when the story named no other item, or when that Item Instance is gone.
+- `self` is the item. `instance` is the entry of the Item Instance the event happened to. After the Item Instance is gone, `instance` reads it as it was before the event (see [Instance](Scripts-Reference#instance)).
+- `args.quantity` is the number the event moved.
+- On **When Used**, `args.target` is the entry of the Item Instance the item was used on, such as the lantern the oil went into. It is `null` when the story named no other item, or when that Item Instance is gone.
+- The script's own timing tells it which event ran. `args` has no timing field.
 - The item timings are skipped for a reveal of an Item Instance, a write to its uses, a write to its State, and starting items.
 - Their writes apply when each script ends, not when the turn ends. A script's inventory write runs the item timings it causes, to a depth of 3. Past that depth, the write still applies, no timing runs, and the turn log says so.
 

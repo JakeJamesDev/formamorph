@@ -12,9 +12,12 @@ import { statCodeName } from './statCodeNames';
 import { allPlaceholders, type PlaceholderHomesWorld } from './placeholderHomes';
 import type { Placeholder } from '@/types';
 
-/** What a rewrite may read of the code's home: each entity's code name by its id. */
+/** What a rewrite may read of the code's home: each entity's code name by its id, the script's own timing, and
+ *  whether an item holds it. */
 export interface ScriptTextContext {
   entityNames: ReadonlyMap<string, string>;
+  timing?: string;
+  itemScript?: boolean;
 }
 
 /** One rewrite of a script's text. Idempotent: a second run returns its input. */
@@ -143,8 +146,63 @@ export function migratePlayerInput(code: string): string {
   return declared || !edits.length ? code : spliced(code, edits);
 }
 
+/** `node`'s object and property when it is an `object.property` or `object?.property` read, else null. */
+function dotted(node: SyntaxNode, code: string): { object: SyntaxNode; at: SyntaxNode; property: string } | null {
+  if (node.name !== 'MemberExpression') return null;
+  const [object, dot, at, ...rest] = children(node);
+  const step = dot ? code.slice(dot.from, dot.to) : '';
+  if (rest.length || !object || (step !== '.' && step !== '?.') || at?.name !== 'PropertyName') return null;
+  return { object, at, property: code.slice(at.from, at.to) };
+}
+
+/** What `self.event.<property>` reads now; null for the timing of a script that has none. */
+function eventRead(property: string, timing: string | undefined): string | null {
+  if (property === 'copy') return 'instance';
+  if (property === 'timing') return timing ? JSON.stringify(timing) : null;
+  return `args.${property}`;
+}
+
+/** Whether `node` is the variable `name`. */
+const isVariable = (node: SyntaxNode, code: string, name: string) => node.name === 'VariableName' && code.slice(node.from, node.to) === name;
+
+/** Whether `node` reads an entry of `items`, dotted or bracketed. */
+const isItemsEntry = (node: SyntaxNode, code: string) => node.name === 'MemberExpression' && isVariable(children(node)[0], code, 'items');
+
+/**
+ * Rewrite the retired item event surface: `self.event.copy` to `instance`, `self.event.timing` to the script's own
+ * timing as a string literal, every other `self.event.X` to `args.X`, and `.copies` on an item entry to `.instances`.
+ * An item entry is `items.<Item>`, `items[...]`, or `self` in an item script. A script that declares `instance` or
+ * `args` keeps its `self.event` text; one that declares `items` keeps its `items` text.
+ */
+export function migrateItemEvent(code: string, { timing, itemScript = false }: ScriptTextContext = NO_CONTEXT): string {
+  if (!code.includes('self.event') && !code.includes('copies')) return code;
+  // Each edit with the name a declaration of which keeps it.
+  const edits: { splice: CodeSplice; unless: readonly string[] }[] = [];
+  const declared = new Set<string>();
+  javascriptLanguage.parser.parse(code).iterate({
+    enter: (ref) => {
+      if (ref.name === 'VariableDefinition') declared.add(code.slice(ref.from, ref.to));
+      const read = dotted(ref.node, code);
+      if (!read) return true;
+      const event = dotted(read.object, code);
+      if (event?.property === 'event' && isVariable(event.object, code, 'self')) {
+        const insert = eventRead(read.property, timing);
+        if (insert !== null) edits.push({ splice: { from: ref.from, to: ref.to, insert }, unless: ['instance', 'args'] });
+        return false;
+      }
+      if (read.property !== 'copies') return true;
+      const splice = { from: read.at.from, to: read.at.to, insert: 'instances' };
+      if (isItemsEntry(read.object, code)) edits.push({ splice, unless: ['items'] });
+      else if (itemScript && isVariable(read.object, code, 'self')) edits.push({ splice, unless: [] });
+      return true;
+    },
+  });
+  const kept = edits.filter(({ unless }) => !unless.some((name) => declared.has(name))).map(({ splice }) => splice);
+  return kept.length ? spliced(code, kept) : code;
+}
+
 /** Every script-text rewrite, in the order they run. */
-export const SCRIPT_TEXT_REWRITES: readonly ScriptTextRewrite[] = [migrateDiaryCalls, migrateMemoryCalls, migrateMemoriesAppend, migratePlayerInput];
+export const SCRIPT_TEXT_REWRITES: readonly ScriptTextRewrite[] = [migrateDiaryCalls, migrateMemoryCalls, migrateMemoriesAppend, migratePlayerInput, migrateItemEvent];
 
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 
@@ -168,9 +226,15 @@ function withFields(record: unknown, edits: Record<string, (value: unknown) => u
 
 /** The field edits that apply `rewrites` to each script under a record. */
 function scriptEdits(rewrites: readonly ScriptTextRewrite[], context: ScriptTextContext) {
-  const text = (code: unknown) => (typeof code === 'string' ? rewrites.reduce((out, rewrite) => rewrite(out, context), code) : code);
-  const scripts = (list: unknown) => mapped(list, (script) => withFields(script, { code: text }));
+  const textIn = (at: ScriptTextContext) => (code: unknown) =>
+    (typeof code === 'string' ? rewrites.reduce((out, rewrite) => rewrite(out, at), code) : code);
+  const text = textIn(context);
+  const scriptsIn = (itemScript: boolean) => (list: unknown) => mapped(list, (script) => withFields(script, {
+    code: textIn({ ...context, ...(itemScript && { itemScript }), ...(isRecord(script) && typeof script.timing === 'string' && { timing: script.timing }) }),
+  }));
+  const scripts = scriptsIn(false);
   const owned = (list: unknown) => mapped(list, (item) => withFields(item, { scripts }));
+  const items = (list: unknown) => mapped(list, (item) => withFields(item, { scripts: scriptsIn(true) }));
   const overridden = (list: unknown) => mapped(list, (link) => withFields(link, {
     overrides: (overrides) => {
       if (!isRecord(overrides)) return overrides;
@@ -180,7 +244,7 @@ function scriptEdits(rewrites: readonly ScriptTextRewrite[], context: ScriptText
     },
   }));
   const entity = { stats: owned, traits: owned, statLinks: overridden, traitLinks: overridden };
-  return { text, scripts, owned, entity };
+  return { text, scripts, owned, items, entity };
 }
 
 /** Each entity's code name by its id, for a list as authored. */
@@ -196,17 +260,18 @@ export function migrateEntityScriptText<T>(entity: T, rewrites: readonly ScriptT
 }
 
 /**
- * Apply `rewrites` to every script of the world: the stats', the traits', the world's own, the World Tools' script
+ * Apply `rewrites` to every script of the world: the stats', the traits', the items', the world's own, the World Tools' script
  * handlers, and each entity's own stats', own traits' and link overrides', the override's Blueprint side included.
  * A record whose text no rewrite changes keeps its reference. Not version-gated, since shipped worlds carry the old
  * forms under the current version.
  */
 export function migrateWorldScriptText(world: Record<string, unknown>, rewrites: readonly ScriptTextRewrite[] = SCRIPT_TEXT_REWRITES): void {
   const placeholders = allPlaceholders(world as PlaceholderHomesWorld);
-  const { text, scripts, owned, entity } = scriptEdits(rewrites, { entityNames: entityNamesOf(world.entities, placeholders) });
+  const { text, scripts, owned, items, entity } = scriptEdits(rewrites, { entityNames: entityNamesOf(world.entities, placeholders) });
   Object.assign(world, withFields(world, {
     stats: owned,
     traits: owned,
+    items,
     scripts,
     tools: (list) => mapped(list, (tool) => withFields(tool, {
       handler: (handler) => (isRecord(handler) && handler.kind === 'script' ? withFields(handler, { code: text }) : handler),

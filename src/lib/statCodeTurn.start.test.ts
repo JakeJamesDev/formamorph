@@ -110,7 +110,7 @@ describe('the At Game Start timing', () => {
     });
     const out = await runStatCodeTurn(start({
       stats: [stat({ id: 'a', name: 'Health' })],
-      worldScripts: [script('start', "const [c] = items.Helm.copies; stats.Health.value = c.equipped && c.slot === 'Head' ? 9 : 1;")],
+      worldScripts: [script('start', "const [c] = items.Helm.instances; stats.Health.value = c.equipped && c.slot === 'Head' ? 9 : 1;")],
       items: [helm], slots, itemInstances: state.itemInstances,
     }));
     expect(valueOf(out.stats, 'a')).toBe(9);

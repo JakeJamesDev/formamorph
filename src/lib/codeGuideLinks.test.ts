@@ -4,7 +4,7 @@ import { STAT_CODE_GUIDE_LINKS, TOOL_GUIDE_LINKS } from '@/lib/codeGuideLinks';
 import type { CodeSurface } from '@/lib/codeSurface';
 import { helpTopicProblems, pageNameOf, type DocsPages } from '@/lib/docs/docsChecks';
 import { docTargetId } from '@/lib/docs/docsLinks';
-import { scriptSurface, STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
+import { ITEM_SCRIPT_SURFACE, scriptSurface, STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
 import type { ScriptTiming } from '@/types';
 import { toolScriptSurface } from '@/lib/tools/toolScriptSurface';
 
@@ -21,8 +21,12 @@ const asTopics = (table: Readonly<Record<string, { page: string; anchor?: string
 const globalsOf = (surface: CodeSurface) => surface.globals.map((entry) => entry.name).filter((name) => name !== 'console');
 
 const TIMINGS: readonly ScriptTiming[] = ['before', 'after', 'output', 'start', 'switch'];
-/** Every global a script reads in some timing: the base surface's, then `narration`, `player` and `trait`. */
-const TIMING_GLOBALS = new Set(TIMINGS.flatMap((timing) => globalsOf(scriptSurface(STAT_CODE_SURFACE, timing))));
+/** Every global a script reads in some timing: the base surface's, then `narration`, `player`, `trait`, `args`, and an
+ *  item timing's `instance`. */
+const TIMING_GLOBALS = new Set([
+  ...TIMINGS.flatMap((timing) => globalsOf(scriptSurface(STAT_CODE_SURFACE, timing))),
+  ...globalsOf(scriptSurface(ITEM_SCRIPT_SURFACE, 'used')),
+]);
 
 describe('the Guide link table', () => {
   it('resolves every stat code row to a heading of the Guide', () => {

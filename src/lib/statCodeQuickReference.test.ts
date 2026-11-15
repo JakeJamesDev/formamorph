@@ -28,10 +28,11 @@ interface Row { object: string; members: string[]; read: string; write: string }
 
 const codeOf = (cell: string) => [...cell.matchAll(/`([^`]+)`/g)].map((match) => match[1]);
 
+/** The whole section, every part of a split one joined. */
 function sectionMarkdown(id: string): string {
-  const [section] = bundledDocsIndex().get([id]);
-  if (!section) throw new Error(`${id} is missing`);
-  return section.markdown;
+  const parts = bundledDocsIndex().get([id, ...Array.from({ length: 8 }, (_, at) => `${id}-part-${at + 2}`)]);
+  if (!parts.length) throw new Error(`${id} is missing`);
+  return parts.map((part) => part.markdown).join('\n');
 }
 
 const quickReferenceMarkdown = () => sectionMarkdown(SECTION_ID);
@@ -85,7 +86,7 @@ const world = {
   owner: { id: 'owner', name: 'Owner', traits: [trait()], stats: { stats } },
   dictionaries: [{ name: 'Dictionary', id: 'dictionary', placeholders: dictionaryOwns, entries: [entry] }],
   places: { locations: [{ id: 'location', name: 'Location' }], location: { id: 'location', name: 'Location' } },
-  items: [{ id: 'item', name: 'Item', copies: [{ id: 'copy', where: { kind: 'you' as const }, quantity: 1, equipped: false, slot: '', occupies: [], allowed: [], hidden: false }] }],
+  items: [{ id: 'item', name: 'Item', instances: [{ id: 'copy', where: { kind: 'you' as const }, quantity: 1, equipped: false, slot: '', occupies: [], allowed: [], hidden: false }] }],
 };
 // One stat-backed Currency on the persona's own stat, so a pay in the guide's form lands as that stat's write.
 const currency = { id: 'currency', name: 'Currency', backing: { kind: 'stat' as const, statId: 'hero-stat' } };

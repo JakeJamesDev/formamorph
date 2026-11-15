@@ -39,7 +39,7 @@ const USER_TOOL_GLOBAL: Readonly<Record<string, Partial<SurfaceEntry>>> = {
     info: 'The story’s memories as the Memory panel lists them, oldest first. Each entry has its id, turn, day, daypart, text, Custom flag and pins. It’s empty in the World Editor and with no world open.',
   },
   notes: { info: 'The player’s notes. It’s empty in the World Editor and with no world open.' },
-  items: { info: 'Every item in the world by name, with its own placeholders and every Item Copy of it. Use items["Two Words"] for a name with a space.' },
+  items: { info: 'Every item in the world by name, with its own placeholders and every Item Instance of it. Use items["Two Words"] for a name with a space.' },
   currencies: { info: 'Every Currency in the world by name. Call currencies.Gold.balance to read what an entity or the persona has. A Tool can’t pay. Use currencies["Two Words"] for a name with a space.' },
   options: {
     access: 'readOnly',

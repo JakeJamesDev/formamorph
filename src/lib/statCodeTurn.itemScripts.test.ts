@@ -108,11 +108,47 @@ describe('runItemScripts', () => {
   });
 
   it('hands a When Lost script the Item Instance that left, as it stood', async () => {
-    const coin = item('i-coin', 'Coin', [['lost', 'stats.Gold.value += self.event.copy.quantity;']]);
+    const coin = item('i-coin', 'Coin', [['lost', 'stats.Gold.value += instance.quantity;']]);
     const start = [{ ...instance('c-1', 'i-coin', { kind: 'you' }), quantity: 4 }];
     const lost = applyWith([coin])(start, [{ kind: 'lose', instanceId: 'c-1' }]);
     const out = await runItemScripts(turnOf([coin], lost.instances), lost.events, { items: [coin], apply: applyWith([coin]), itemNameOf: (i) => i.name });
     expect(out.result?.stats.find((s) => s.id === 'gold')?.value).toBe(4);
+  });
+
+  describe('instance and args', () => {
+    const run = (items: Item[], start: ItemInstance[], ops: Parameters<ApplyInventory>[1]) => {
+      const done = applyWith(items)(start, ops);
+      return runItemScripts(turnOf(items, done.instances), done.events, { items, apply: applyWith(items), itemNameOf: (i) => i.name });
+    };
+    const gold = (out: Awaited<ReturnType<typeof run>>) => out.result?.stats.find((s) => s.id === 'gold')?.value;
+
+    it('reads how many a gain moved as args.quantity, with no self.event and no use target', async () => {
+      const gem = { ...item('i-gem', 'Gem', [['gained', `
+        if (self.event !== undefined || 'target' in args || 'to' in args) throw new Error('surface');
+        stats.Gold.value += args.quantity * 10 + (instance.quantity === args.quantity ? 1 : 0);
+      `]]), stackable: true };
+      const out = await run([gem], [], [{ kind: 'gain', itemId: 'i-gem', to: { kind: 'you' }, quantity: 3 }]);
+      expect(out.diagnostics).toEqual([]);
+      expect(gold(out)).toBe(31);
+    });
+
+    it('reads the Item Instance a use acted on as args.target, and the used one as instance', async () => {
+      const oil = item('i-oil', 'Oil', [['used', `
+        if (instance.id !== 'c-oil' || args.target.id !== 'c-lamp') throw new Error('target');
+        args.target.setState('lit');
+      `]]);
+      const lamp = item('i-lamp', 'Lamp', []);
+      const start = [instance('c-oil', 'i-oil', { kind: 'you' }), instance('c-lamp', 'i-lamp', { kind: 'you' })];
+      const out = await run([oil, lamp], start, [{ kind: 'use', instanceId: 'c-oil', targetInstanceId: 'c-lamp' }]);
+      expect(out.diagnostics).toEqual([]);
+      expect(out.instances.find((c) => c.id === 'c-lamp')?.state).toEqual({ state: 'lit' });
+    });
+
+    it('reads a use with no target as args.target null', async () => {
+      const oil = item('i-oil', 'Oil', [['used', 'stats.Gold.value += args.target === null ? 1 : 100;']]);
+      const out = await run([oil], [instance('c-oil', 'i-oil', { kind: 'you' })], [{ kind: 'use', instanceId: 'c-oil' }]);
+      expect(gold(out)).toBe(1);
+    });
   });
 
   it('starts at the depth it is given, and lists the writes it landed', async () => {
@@ -149,7 +185,7 @@ describe('runItemScripts', () => {
   });
 
   it('removes a Bound Item Instance, since Bound stops the panel only', async () => {
-    const curse = { ...item('i-curse', 'Curse', [['gained', 'self.event.copy.lose();']]), bound: true };
+    const curse = { ...item('i-curse', 'Curse', [['gained', 'instance.lose();']]), bound: true };
     const out = await runItemScripts(
       turnOf([curse], [instance('c-1', 'i-curse', { kind: 'you' })]),
       [event('gained', 'i-curse', 'c-1', { kind: 'you' })], { items: [curse], apply: applyWith([curse]), itemNameOf: (i) => i.name },
@@ -160,7 +196,7 @@ describe('runItemScripts', () => {
 
   it('reads an instance’s State and sets it through the validator', async () => {
     const lantern = item('i-lantern', 'Lantern', [['gained', `
-      const lamp = self.copies[0];
+      const lamp = self.instances[0];
       if (lamp.state !== 'unlit') throw new Error('state ' + lamp.state);
       lamp.setState('lit');
     `]]);
@@ -173,8 +209,8 @@ describe('runItemScripts', () => {
   it('gives an item script both faces and the flag, and its reveal() identifies the instance (Q19)', async () => {
     const ring = {
       ...item('i-ring', 'Ring of Curses', [['gained', `
-        if (self.unidentifiedName !== 'Plain Ring' || self.event.copy.unidentified !== true) throw new Error('faces');
-        self.event.copy.reveal();
+        if (self.unidentifiedName !== 'Plain Ring' || instance.unidentified !== true) throw new Error('faces');
+        instance.reveal();
       `]]), unidentifiedName: 'Plain Ring',
     };
     const start = [{ ...instance('c-1', 'i-ring', { kind: 'you' }), state: { unidentified: true as const } }];

@@ -18,6 +18,7 @@ import { blueprintItemIds } from '@/lib/traitTree';
 import { placeholderPathExpression, placeholderPathLabel } from '@/lib/statCodePaths';
 import { turnOneClock } from '@/lib/statCodeTiming';
 import { sampleTurn } from '@/lib/scriptTestSamples';
+import { isItemTiming } from '@/lib/scripts';
 import type { ScriptPromptHost } from '@/lib/scriptPrompts';
 import type { ToolArgs } from '@/lib/tools/toolRunner';
 import {
@@ -249,7 +250,8 @@ export async function runTestCode(
   const unit: ScriptRunUnit = {
     home: seeded, timing, code,
     ...(timing === 'output' && { narration: sentence ?? '' }),
-    ...(timing === 'switch' && { switched: 'sample' as const }), ...(prompts && { prompts }), ...(args && { args }),
+    ...(timing === 'switch' && { switched: 'sample' as const }), ...(isItemTiming(timing) && { itemEvent: 'sample' as const }),
+    ...(prompts && { prompts }), ...(args && { args }),
   };
   const outcome = await snapshot.run(unit);
   const assumedField = missing ? { assumed } : {};

@@ -25,20 +25,21 @@ A script can use only these objects. In the table, a word in angle brackets is a
 | `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
 | `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
 | `dictionaries` | `id`, `name`, `enabled`, `entries`, `placeholders` | `dictionaries.<Dictionary>.enabled` | `dictionaries.<Dictionary>.enabled = true` |
-| `items` | `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, `placeholders`, `copies`, `give()` | `items.<Item>.copies.length` | `items.<Item>.give(persona)` |
+| `items` | `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, `placeholders`, `instances`, `give()` | `items.<Item>.instances.length` | `items.<Item>.give(persona)` |
 | `currencies` | `id`, `name`, `kind`, `balance()`, `pay()` | `currencies.<Currency>.balance(persona)` | `currencies.<Currency>.pay(persona, null, <n>)` |
 | `options` | — | `options.<Option>` | `options.<Option> = true` |
 | `console` | `log()` | — | `console.log(<text>)` |
 
-A timing adds one name to those objects. A script reads only the name its own timing adds:
+A timing adds names to those objects. A script reads only the names its own timing adds:
 
 | Name | Timing | Members | Read | Write |
 | --- | --- | --- | --- | --- |
 | **`narration`** | During AI Output only | `sentence`, `sent`, `buffered`, `full`, `index` | `narration.sentence` | `narration.sentence = <text>` |
 | **`player`** | Every timing but During AI Output | `tell()`, `toast()`, `confirm()`, `ask()`, `input()` | `player.confirm(<text>)` | Calls, not writes |
 | **`trait`** | When a Trait Switches only | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle`, `owner` | `trait.enabled` | Read-only |
+| **`instance`** | The five item timings only | `id`, `item`, `owner`, `location`, `quantity`, `equipped`, `slot`, `hidden`, `unidentified`, `uses`, `state`, `lose()`, `moveTo()`, `equip()`, `unequip()`, `use()`, `reveal()`, `setUses()`, `setState()` | `instance.quantity` | Verbs, not writes |
 
-A [World Tool](ScriptsGuide#world-tools)'s script also reads `args`, the values the AI sent, such as `args.<Parameter>`. It is read-only.
+`args` holds what started the run (see [Args](#args)). A [World Tool](ScriptsGuide#world-tools)'s script reads the values the AI sent, such as `args.<Parameter>`.
 
 Follow these rules:
 
@@ -754,7 +755,7 @@ if (traits["Vault Key"].enabled) dictionaries.Lore.entries["Sealed Vault"].enabl
 ### Items
 <!-- keywords: items, item instances, inventory, give item, take item, who owns, has key, equip from code, recharge, set uses, set state, use from code, reveal item, identify item, unidentified, item script, when gained, when lost, when equipped, when unequipped, when consumed -->
 
-`items` holds every item of the world by code name. Each entry has `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, its own `placeholders`, and `copies`: its Item Instances in the game. An unidentified field is `''` when the item leaves it blank.
+`items` holds every item of the world by code name. Each entry has `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, its own `placeholders`, and `instances`: its Item Instances in the game. An unidentified field is `''` when the item leaves it blank.
 
 Each Item Instance has these members. They are read-only.
 
@@ -775,7 +776,7 @@ An entity's entry, `persona` and a location's entry each have `items`: the Item 
 
 ```javascript
 // The cellar door opens for whoever carries the key.
-const hasKey = persona.items.some((copy) => copy.item === 'Cellar Key');
+const hasKey = persona.items.some((entry) => entry.item === 'Cellar Key');
 ```
 
 Change the inventory through verbs. A target is an entity, the persona or a location, as an entry or by name:
@@ -783,13 +784,13 @@ Change the inventory through verbs. A target is an entity, the persona or a loca
 | Verb | What it does |
 | --- | --- |
 | `items.<Item>.give(to, n?)` | Gives `to` a new Item Instance, or `n` of them. `n` is 1 when left out |
-| `copy.lose(n?)` | Removes the Item Instance, or `n` of it |
-| `copy.moveTo(to, n?)` | Moves the Item Instance, or `n` of it, to `to` |
-| `copy.equip(slot?)` and `copy.unequip()` | Equips or unequips it, as the panel does. `slot` is a slot's name from the item's list; left out, the first free one |
-| `copy.use()` | Uses it once, as **Use** does |
-| `copy.reveal(n?)` | Makes a hidden Item Instance visible. On a visible unidentified one, identifies it |
-| `copy.setUses(n)` | Sets its uses left, from 0 up to the item's **Uses** |
-| `copy.setState(word)` | Sets its **State**. `''` clears it |
+| `instance.lose(n?)` | Removes the Item Instance, or `n` of it |
+| `instance.moveTo(to, n?)` | Moves the Item Instance, or `n` of it, to `to` |
+| `instance.equip(slot?)` and `instance.unequip()` | Equips or unequips it, as the panel does. `slot` is a slot's name from the item's list; left out, the first free one |
+| `instance.use()` | Uses it once, as **Use** does |
+| `instance.reveal(n?)` | Makes a hidden Item Instance visible. On a visible unidentified one, identifies it |
+| `instance.setUses(n)` | Sets its uses left, from 0 up to the item's **Uses** |
+| `instance.setState(word)` | Sets its **State**. `''` clears it |
 
 - **The writes apply when the script ends**, in run order, through the same checks as the panel. A check that fails skips that write and logs the reason.
 - **The next script reads the Item Instances with these writes applied.** A `give` in one script is in `items` and `persona.items` in the scripts below it. So is an equip, and any item that unequips as a result.
@@ -806,8 +807,22 @@ Change the inventory through verbs. A target is an entity, the persona or a loca
 
 ```javascript
 // Resting at the shrine refills every wand the player carries.
-if (location.name === 'Shrine') for (const copy of persona.items) if (copy.item === 'Wand') copy.setUses(3);
+if (location.name === 'Shrine') for (const entry of persona.items) if (entry.item === 'Wand') entry.setUses(3);
 ```
+
+#### Instance
+<!-- keywords: instance, item instance the event happened to, item script instance, self.event.copy, gone item, lost item quantity, item event -->
+
+`instance` is the Item Instance an item script's event happened to. It exists in the five item timings only. It has the members and verbs of every Item Instance entry. `self` is the item.
+
+After the Item Instance is gone, `instance` reads it as it was before the event. Its verbs then name an Item Instance the game no longer has.
+
+```javascript
+// When Lost: count the coins that left.
+stats.Spent.value += instance.quantity;
+```
+
+**Test Code** reads a sample: one Item Instance of the item at the persona, with a quantity of 1.
 
 ### Currencies
 <!-- keywords: currencies, money, balance, pay, toll, gold, items, price, afford, fee, bribe, income, change, refuse -->
@@ -979,6 +994,33 @@ A stat or world script sees every switch through `trait`. A trait's own script s
 When a script switches a trait, its **When a Trait Switches** scripts run at once, before the next script in the list. The next script reads their full result. A switch that one of these scripts makes runs the same way, up to 8 levels deep. One action runs these scripts at most 100 times in all, counting the runs it starts between turns. Past either limit, the switch still applies, its scripts are skipped, and the console reports it. See [Order of Effects](#order-of-effects).
 
 **Test Code** reads a sample. In a trait's own script, `trait` is that trait. In other scripts, it is the world's first trait in tree order, read as switched on, or a blank trait.
+
+### Args
+<!-- keywords: args, arguments, trigger, what started the run, item event quantity, use target, self.event, args empty, args read-only -->
+
+`args` holds what started the run. It's read-only, and it exists in every script.
+
+| Script | `args` holds |
+| --- | --- |
+| A [World Tool](ScriptsGuide#world-tools) script | The values the AI sent, such as `args.<Parameter>` |
+| An item script | The fields of the item event, below |
+| Any other script | Nothing. It's an empty object |
+
+An item script's `args`:
+
+| Field | Timings | What it is |
+| --- | --- | --- |
+| `quantity` | All five | How many the event moved |
+| `target` | When Used | The Item Instance the use acted on, or `null` when none or gone |
+
+A field is absent in a timing it doesn't apply to. `args.target` in a **When Gained** script reads `undefined`.
+
+```javascript
+// When Used: oil lights the lantern it went into.
+if (args.target && args.target.item === 'Lantern') args.target.setState('lit');
+```
+
+**Test Code** gives an item script a sample event: a quantity of 1 and no target.
 
 ### Order of Effects
 <!-- keywords: which script wins, priority, precedence, conflict, race condition, execution sequence, overwrite each other, see other scripts changes -->

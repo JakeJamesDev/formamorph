@@ -47,9 +47,9 @@ describe('the on-demand script check', () => {
       ...base([stat({ id: 'seen', name: 'Seen' })]), items: [gem],
       scripts: [{ id: 'w1', timing: 'after', code: 'items.Gem.give(locations["Harbor Steps"]);' }, { id: 'w2', timing: 'after', code: second }],
     });
-    expect(await checkScripts(world('if (items.Gem.copies.length !== 1) throw new Error("copies"); if (stats.Seen.value !== 0) throw new Error("fired");'))).toEqual([]);
+    expect(await checkScripts(world('if (items.Gem.instances.length !== 1) throw new Error("copies"); if (stats.Seen.value !== 0) throw new Error("fired");'))).toEqual([]);
     // The control: the same read throws when the copy is there, so the clean run above did read it.
-    const [found] = await checkScripts(world('if (items.Gem.copies.length === 1) throw new Error("copies");'));
+    const [found] = await checkScripts(world('if (items.Gem.instances.length === 1) throw new Error("copies");'));
     expect(found?.ruleId).toBe(SCRIPT_EXECUTION.id);
   });
 

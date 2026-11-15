@@ -8,8 +8,9 @@ import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from './st
 import {
   CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, CURRENCY_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
   NARRATION_FIELDS, PLAYER_CALL_ENTRIES, PREVIOUS_FIELDS, SANDBOX_GLOBALS, STAT_CODE_SURFACE, STAT_FIELDS, TRAIT_ENTRY_FIELDS,
-  placeholderEntryFields, scriptSurface,
+  placeholderEntryFields, scriptSurface, ITEM_INSTANCE_FIELDS, ITEM_SCRIPT_SURFACE, WORLD_SCRIPT_SURFACE,
 } from './statCodeSurface';
+import type { CodeSurface } from './codeSurface';
 import { codeDiagnostics } from './statCodeAnalysis';
 import { codeCard } from './codeCards';
 import { entityTraitNames, sandboxTraits, unplayedEntities, worldTraitPlaces } from './statCodeTraits';
@@ -602,7 +603,7 @@ describe('every leaf against the sandbox', () => {
     dictionaries: sandboxDictionaries(names.placeholders!.dictionaries ?? [], placeholders.owners),
     // Test Code stands at the world's starting location.
     places: { locations: [{ id: 'dock', name: 'Dock' }, { id: 'mill', name: 'Old Mill' }], location: { id: 'dock', name: 'Dock' } },
-    items: [{ id: 'lamp', name: 'Brass Lamp', placeholders: placeholders.owners.get('lamp'), copies: [] }],
+    items: [{ id: 'lamp', name: 'Brass Lamp', placeholders: placeholders.owners.get('lamp'), instances: [] }],
     currencies: [{ id: 'coin', name: 'Coin', kind: 'name' }],
   });
 
@@ -677,6 +678,42 @@ describe('every leaf against the sandbox', () => {
   it('reads a real stat through the owner’s and the world’s routes', async () => {
     await expect(asTrust('return owner.stats["Cold Streak"].name === "Cold Streak" && stats.Health.name === "Health" ? 1 : 0;'))
       .resolves.toMatchObject({ value: 1, error: null });
+  });
+});
+
+describe('the names an item timing adds', () => {
+  const treeAt = (timing: ScriptTiming) => {
+    const surface = scriptSurface(ITEM_SCRIPT_SURFACE, timing);
+    return { surface, built: buildVariableTree(editorNames(), null, 'empty', timingGlobalsOf(surface)) };
+  };
+
+  it('lists Item Instance and its timing’s Arguments in an item timing only', () => {
+    expect(levelAt(treeAt('gained').built, 'Item Instance')).toEqual(ITEM_INSTANCE_FIELDS.map((field) => field.name));
+    // One field reads as a leaf of its own, as every one-child group does.
+    expect(leaf(treeAt('gained').built, 'quantity').insert).toBe('args.quantity');
+    expect(levelAt(treeAt('used').built, 'Arguments')).toEqual(['quantity', 'target']);
+    expect(inserts(treeAt('used').built, 'Arguments', 'target')).toBe('args.target');
+    expect(inserts(treeAt('lost').built, 'Item Instance', 'quantity')).toBe('instance.quantity');
+    for (const timing of ['before', 'after', 'output', 'start', 'switch'] as const) {
+      expect(treeAt(timing).built.map(labelOf)).not.toContain('Item Instance');
+      expect(treeAt(timing).built.map(labelOf)).not.toContain('Arguments');
+    }
+  });
+
+  it('reads instance and the timing’s args fields clean, and marks instance outside an item timing', () => {
+    const errorsAt = (surface: CodeSurface, code: string) =>
+      codeDiagnostics(code, { surface, statNames: [] }).map((d) => d.message);
+    expect(errorsAt(treeAt('used').surface, 'const read = [instance.quantity, args.quantity, args.target, self.name];')).toEqual([]);
+    expect(errorsAt(scriptSurface(WORLD_SCRIPT_SURFACE, 'after'), 'const read = [args, instance];')).toEqual([expect.stringContaining('“instance”')]);
+  });
+
+  it('gives each timing’s args fields a card, and args its fields', () => {
+    const cardAt = (timing: ScriptTiming, code: string, at: string) =>
+      codeCard(code, code.lastIndexOf(at) + 1, { surface: treeAt(timing).surface });
+    expect(cardAt('used', 'args.target', 'target')?.signature).toMatchObject({ type: 'object | null' });
+    expect(cardAt('used', 'args', 'args')?.signature).toMatchObject({ type: '{ quantity, target }' });
+    expect(cardAt('gained', 'args', 'args')?.signature).toMatchObject({ type: '{ quantity }' });
+    expect(cardAt('gained', 'instance.owner', 'owner')?.signature).toMatchObject({ type: 'string' });
   });
 });
 

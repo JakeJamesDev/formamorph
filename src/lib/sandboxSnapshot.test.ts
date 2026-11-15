@@ -110,6 +110,19 @@ describe('the options a snapshot assembles', () => {
     expect((await snapshot.run(read)).value).toBe(0);
   });
 
+  it.each(['before', 'start', 'after', 'output'] as const)('gives a run nothing fires a frozen empty args at %s', async (timing) => {
+    const code = 'if (!Object.isFrozen(args) || Object.keys(args).length || typeof instance !== "undefined") throw new Error("args"); return 1;';
+    for (const name of ['global stat', 'world script', 'global trait']) {
+      const result = await snapshot.run({ home: HOMES[name], timing, code, narration: 'She waits.' });
+      expect(result.error).toBeNull();
+    }
+  });
+
+  it('keeps a World Tool’s args as the AI sent them', async () => {
+    const result = await snapshot.run({ home: HOMES['World Tool'], timing: 'after', code: 'return String(args.n + 1) + Object.isFrozen(args);', args: { n: 1 } });
+    expect(result.reply).toBe('2true');
+  });
+
   it('reads an untouched turn when built with no turn readings', () => {
     const options = optionsFor(snapshotOf(state), unitAt(HOMES['entity stat'], 'after'));
     expect(options.readings).toBeUndefined();

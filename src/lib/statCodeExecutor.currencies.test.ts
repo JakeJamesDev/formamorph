@@ -26,7 +26,7 @@ const funds = (value: number, over: Partial<PlayerStat> = {}): PlayerStat =>
 const moneyInstance = (id: string, itemId: string, where: ItemInstanceWhere, quantity: number): ItemInstance =>
   ({ id, item: { kind: 'item', itemId }, where, quantity, visibility: 'visible' });
 
-const sandboxBackingItem = (copy: ItemInstance): SandboxItem['copies'][number] =>
+const sandboxBackingItem = (copy: ItemInstance): SandboxItem['instances'][number] =>
   ({ id: copy.id, where: copy.where, quantity: copy.quantity, equipped: false, slot: '', occupies: [], allowed: [], hidden: false });
 
 const health: Stat = { id: 'h', name: 'Health', type: 'number', description: '', min: 0, max: 100, value: 10, regen: 0, descriptors: [] };
@@ -44,7 +44,7 @@ function run(code: string, state: Partial<ScriptMoneyState> = {}, over: Partial<
     ...state,
   });
   const sandboxItems: SandboxItem[] = items.map(({ id, name }) => ({
-    id, name, copies: copies.filter((c) => c.item.kind === 'item' && c.item.itemId === id).map(sandboxBackingItem),
+    id, name, instances: copies.filter((c) => c.item.kind === 'item' && c.item.itemId === id).map(sandboxBackingItem),
   }));
   return executeStatCode(code, [health], null, {
     entities: [keeper, stranger, hero], persona: hero, items: sandboxItems, currencies: kinds([MONEY, CREDITS, GOATS]), money, ...over,

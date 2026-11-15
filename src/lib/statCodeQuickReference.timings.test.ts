@@ -9,12 +9,12 @@ import { codeDiagnostics } from './statCodeAnalysis';
 import { executeStatCode, type StatCodeRunOptions } from './statCodeExecutor';
 import { PromptCanceled, type ScriptPromptHost } from './scriptPrompts';
 import {
-  NARRATION_FIELDS, PLAYER_CALL_ENTRIES, scriptSurface, STAT_CODE_SURFACE, SWITCHED_TRAIT_FIELDS,
+  ITEM_INSTANCE_FIELDS, ITEM_SCRIPT_SURFACE, NARRATION_FIELDS, PLAYER_CALL_ENTRIES, scriptSurface, STAT_CODE_SURFACE, SWITCHED_TRAIT_FIELDS,
 } from './statCodeSurface';
 import type { SurfaceEntry } from './codeSurface';
 
 /**
- * The Scripts Guide's second Quick Reference table names what a timing adds: `narration`, `player` and `trait`.
+ * The Scripts Guide's second Quick Reference table names what a timing adds: `narration`, `player`, `trait` and `instance`.
  * Its members are held to the surface lists, and its code forms run in the sandbox of the timing that adds the
  * name and read clean in that timing's editor. `statCodeQuickReference.test.ts` holds the first table.
  */
@@ -27,7 +27,7 @@ const codeOf = (cell: string) => [...cell.matchAll(/`([^`]+)`/g)].map((match) =>
 const [section] = bundledDocsIndex().get([SECTION_ID]);
 if (!section) throw new Error(`${SECTION_ID} is missing`);
 
-const TIMING_OF: Record<string, ScriptTiming> = { narration: 'output', player: 'before', trait: 'switch' };
+const TIMING_OF: Record<string, ScriptTiming> = { narration: 'output', player: 'before', trait: 'switch', instance: 'gained' };
 
 const rows: TimingRow[] = section.markdown.split('\n')
   .filter((line) => line.startsWith('| **`'))
@@ -41,7 +41,7 @@ const rows: TimingRow[] = section.markdown.split('\n')
   });
 
 const SURFACE_MEMBERS: Record<string, readonly SurfaceEntry[]> = {
-  narration: NARRATION_FIELDS, player: PLAYER_CALL_ENTRIES, trait: SWITCHED_TRAIT_FIELDS,
+  narration: NARRATION_FIELDS, player: PLAYER_CALL_ENTRIES, trait: SWITCHED_TRAIT_FIELDS, instance: ITEM_INSTANCE_FIELDS,
 };
 
 const stat: Stat = { id: 's', name: 'Self', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [] };
@@ -60,16 +60,21 @@ const host: ScriptPromptHost = {
 const optionsOf = (name: string): StatCodeRunOptions => {
   if (name === 'narration') return { narration: { sentence: 'The door creaks.', full: 'The door creaks.', index: 0, sent: [], buffered: [] } };
   if (name === 'trait') return { switchedTrait: { name: 'Brave', enabled: true, acquired: true, id: 'brave', mode: 'optional', owner: '' } };
+  if (name === 'instance') {
+    const held = { id: 'c', where: { kind: 'you' as const }, quantity: 2, equipped: false, slot: '', occupies: [], allowed: [], hidden: false };
+    return { items: [{ id: 'gem', name: 'Gem', instances: [held] }], itemEvent: { itemId: 'gem', timing: 'gained', instanceId: 'c', args: { quantity: 2 } } };
+  }
   return { prompts: host };
 };
 
 const runnable = (form: string) => form.replaceAll('<n>', '1').replaceAll('<text>', '"x"');
-const editorFindings = (code: string, timing: ScriptTiming) =>
-  codeDiagnostics(code, { surface: scriptSurface(STAT_CODE_SURFACE, timing), statNames: [stat.name], selfName: stat.name }).map((d) => d.message);
+const editorFindings = (code: string, timing: ScriptTiming) => codeDiagnostics(code, {
+  surface: scriptSurface(timing === 'gained' ? ITEM_SCRIPT_SURFACE : STAT_CODE_SURFACE, timing), statNames: [stat.name], selfName: stat.name,
+}).map((d) => d.message);
 
 describe('the Scripts Guide’s table of names a timing adds', () => {
   it('has one row for each name a timing adds, and no other', () => {
-    expect(rows.map((row) => row.name).sort()).toEqual(['narration', 'player', 'trait']);
+    expect(rows.map((row) => row.name).sort()).toEqual(['instance', 'narration', 'player', 'trait']);
   });
 
   it.each(rows)('lists every member of $name, and no other', ({ name, members }) => {
@@ -98,6 +103,16 @@ describe('the Scripts Guide’s table of names a timing adds', () => {
     const result = await executeStatCode(`${runnable(row.read)} = false;`, [stat], stat, optionsOf('trait'));
     expect(result.error).toBeNull();
     expect(result.traits).toBeUndefined();
+  });
+
+  it('gives instance verbs, not writes: a field write drops and a verb lands', async () => {
+    const row = rows.find((candidate) => candidate.name === 'instance')!;
+    expect(row.write).toBe('Verbs, not writes');
+    const result = await executeStatCode('instance.quantity = 9; instance.lose(1);', [stat], null, optionsOf('instance'));
+    expect(result.error).toBeNull();
+    // `instance` is the item's listed entry, so the write names that path.
+    expect(result.readOnlyWrites).toEqual(['items.Gem.instances[0].quantity']);
+    expect(result.worldWrites?.inventory).toHaveLength(1);
   });
 
   it('gives player calls, not writes, and its calls run on the engine', async () => {

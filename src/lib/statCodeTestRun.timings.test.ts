@@ -5,7 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runTestCode, type StatCodeWorld } from './statCodeTestRun';
 import { editorPromptRun } from './editorScriptPrompts';
-import type { Stat, Trait } from '@/types';
+import type { Item, Stat, Trait } from '@/types';
 
 const health: Stat = { id: 'h', name: 'Health', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [] };
 const brave: Trait = { id: 'b', name: 'Brave', statChanges: [], groupId: 'g' };
@@ -71,6 +71,30 @@ describe('Test Code on a When a Trait Switches script', () => {
     const report = await runTestCode('stats.Health.value = trait.name === "" ? 70 : 10;', 'switch', { kind: 'world' }, bare);
     expect(report.error).toBeNull();
     expect(report.writes).toEqual(['stats.Health.value = 70']);
+  });
+});
+
+describe('Test Code on an item script', () => {
+  const gem: Item = { id: 'gem', name: 'Gem', stackable: false, statEffects: [], traitEffects: [], equipRequires: [] };
+  const home = { kind: 'item' as const, item: gem, where: { kind: 'you' as const } };
+  const code = `
+    if (self.name !== 'Gem' || instance.quantity !== 1 || instance.item !== 'Gem' || !persona.items.includes(instance)) throw new Error('instance');
+    stats.Health.value = args.quantity * 10 + (args.target ? 2 : 1);
+  `;
+
+  it.each(['gained', 'lost', 'equipped', 'unequipped', 'used'] as const)('runs %s on one sample instance at the persona', async (timing) => {
+    const report = await runTestCode(code, timing, home, { ...world, items: [gem] });
+    expect(report.error).toBeNull();
+    expect(report.writes).toEqual(['stats.Health.value = 11']);
+  });
+
+  it('gives the sample its timing’s fields only', async () => {
+    const keys = async (timing: 'gained' | 'lost' | 'used') => (await runTestCode(
+      'stats.Health.value = 0; throw new Error(Object.keys(args).map((k) => k + "=" + JSON.stringify(args[k])).join());', timing, home, { ...world, items: [gem] },
+    )).error;
+    expect(await keys('gained')).toMatch(/^Error: quantity=1\n/);
+    expect(await keys('lost')).toMatch(/^Error: quantity=1\n/);
+    expect(await keys('used')).toMatch(/^Error: quantity=1,target=null\n/);
   });
 });
 

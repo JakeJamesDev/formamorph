@@ -3,10 +3,10 @@
  * `snapshotOf`, then call `run` per Script unit and `switchesOf` per result. Owner entries, `self`, the cast, the
  * placeholders, the dictionaries, the places and the switched trait are assembled here and nowhere else.
  */
-import type { Entity, Item, ItemInstance, ItemInstanceWhere, Placeholder, Stat, Trait } from '@/types';
+import type { Entity, Item, ItemInstance, ItemInstanceWhere, ItemScriptTiming, Placeholder, Stat, Trait } from '@/types';
 import {
   EMPTY_REPLY, executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type NarrationInput, type SandboxEntity, type SandboxPlace,
-  type SandboxBodyDef, type SandboxCurrency, type SandboxItem, type SandboxMoney, type SandboxItemInstance, type SandboxLocationLinks, type SandboxPlaceholderNode, type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
+  type SandboxBodyDef, type SandboxCurrency, type SandboxItem, type SandboxItemEvent, type SandboxMoney, type SandboxItemInstance, type SandboxLocationLinks, type SandboxPlaceholderNode, type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
   type SandboxTurn, type SwitchedTrait, type TraitWrite,
 } from './statCodeExecutor';
 import { bodyDefsOf, bodyReadingOf } from './bodies';
@@ -28,6 +28,7 @@ import { activeStatEnabled } from './traitEffects';
 import type { GateStats } from './traitGates';
 import type { RunTiming } from './statCodeTiming';
 import { isItemTiming } from './scripts';
+import { SAMPLE_ITEM_ARGS, type ItemEventArgs } from './triggerArgs';
 import { instanceState, isUnidentified, occupiedSlots, usesLeft } from './items';
 import type { ScriptPromptHost } from './scriptPrompts';
 import type { ResolveText, SandboxState, StatePlaces } from './statCodeTurn';
@@ -93,8 +94,9 @@ export interface ScriptRunUnit {
   readOnly?: boolean;
   /** The `turn.choices` the earlier scripts of the batch left, which this run reads in place of the state's (Q14). */
   choices?: readonly string[];
-  /** An item script's event: its Item Instance, how many it moved, and the Item Instance a use acted on. */
-  itemEvent?: { instanceId: string; quantity: number; was?: ItemInstance; targetInstanceId?: string };
+  /** An item script's event: its Item Instance, as it stood before when gone, and its side fields. `sample` is an
+   *  editor run's (Q11): one instance of the home item at the persona. */
+  itemEvent?: { instanceId: string; was?: ItemInstance; args: ItemEventArgs } | 'sample';
 }
 
 /** Each scope's stat turn inputs: the global run's and each Owner's, by id. The caller leaves them empty at a
@@ -357,7 +359,7 @@ function boardOf(state: SandboxState, { readings, pendingPersona, assumedStats =
     id: item.id, name: statCodeName(item.name, placeholderDefs),
     ...(item.unidentifiedName && { unidentifiedName: item.unidentifiedName }), ...(item.unidentifiedDescription && { unidentifiedDescription: item.unidentifiedDescription }),
     ...(sandbox?.owners.get(item.id) ? { placeholders: sandbox.owners.get(item.id) } : {}),
-    copies: (state.itemInstances ?? []).filter((instance) => instance.item.kind === 'item' && instance.item.itemId === item.id).map(itemInstance),
+    instances: (state.itemInstances ?? []).filter((instance) => instance.item.kind === 'item' && instance.item.itemId === item.id).map(itemInstance),
   }));
   const currencyList = state.money?.currencies ?? [];
   const ownerEnabled = new Map((state.owners ?? []).map((owner) => [owner.id, owner.enabled]));
@@ -427,6 +429,28 @@ const turnRead = (turn: SandboxTurn, { timing, readOnly, choices }: ScriptRunUni
 const takesChoicesWrite = ({ home, timing, readOnly }: ScriptRunUnit, turn: SandboxTurn | undefined): boolean =>
   timing === 'after' && home.kind !== 'tool' && !readOnly && !turn?.choicesOff;
 
+/** The sample Item Instance's id, which no instance in play has. */
+const SAMPLE_INSTANCE_ID = 'sample-instance';
+
+/** An item run's event and the items it reads: the board's, with the sample instance added to its item's. */
+function itemEventOf(
+  read: Board, itemId: string, timing: ItemScriptTiming, event: NonNullable<ScriptRunUnit['itemEvent']>,
+): { event: SandboxItemEvent; items: SandboxItem[] } {
+  if (event !== 'sample') {
+    return {
+      event: { itemId, timing, instanceId: event.instanceId, args: event.args, ...(event.was && { was: read.itemInstance(event.was) }) },
+      items: read.items,
+    };
+  }
+  const sample = read.itemInstance({
+    id: SAMPLE_INSTANCE_ID, item: { kind: 'item', itemId }, where: { kind: 'you' }, quantity: 1, visibility: 'visible',
+  });
+  return {
+    event: { itemId, timing, instanceId: SAMPLE_INSTANCE_ID, args: SAMPLE_ITEM_ARGS },
+    items: read.items.map((item) => (item.id === itemId ? { ...item, instances: [...item.instances, sample] } : item)),
+  };
+}
+
 const optionsOfSnapshot = new WeakMap<SandboxSnapshot, (unit: ScriptRunUnit) => StatCodeRunOptions>();
 
 /** The snapshot of `state`, which every Script of the turn or check runs through. */
@@ -442,6 +466,8 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
     // A trait's entry as its Owner's map holds it; one no map holds reads as not held.
     const selfTrait = trait && ((owner ? owner.traits : read.traits).find((entry) => entry.id === trait.id)
       ?? { id: trait.id, name: statCodeName(trait.name, read.placeholderDefs), enabled: false, acquired: false });
+    const itemEvent = unit.home.kind === 'item' && unit.itemEvent && isItemTiming(unit.timing)
+      ? itemEventOf(read, unit.home.item.id, unit.timing, unit.itemEvent) : undefined;
     const switchedTrait = unit.timing !== 'switch' || !unit.switched ? undefined
       : unit.switched === 'sample' ? sampleSwitchedTrait(read.traits, firstTraitId(), selfTrait && { entry: selfTrait, owner: owner?.name ?? '' })
         : switchedTraitEntry(read, unit.switched);
@@ -461,17 +487,11 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
       ...(selfTrait && { selfTrait }), ...(switchedTrait && { switchedTrait }), ...(unit.args && { args: unit.args }),
       ...(options.openCast && { openCast: true }), ...(state.memories && { memories: state.memories }),
       ...(state.notes && { notes: state.notes }), ...(unit.readOnly && { readOnly: true }),
-      ...(read.items.length && { items: read.items }),
+      ...(itemEvent ? { items: itemEvent.items } : read.items.length && { items: read.items }),
       ...(read.currencies.length && { currencies: read.currencies }),
       ...(read.money && { money: read.money() }),
       ...(read.bodyDefs.length && { bodies: read.bodyDefs }),
-      ...(unit.home.kind === 'item' && unit.itemEvent && isItemTiming(unit.timing) && {
-        itemEvent: {
-          itemId: unit.home.item.id, timing: unit.timing, instanceId: unit.itemEvent.instanceId, quantity: unit.itemEvent.quantity,
-          ...(unit.itemEvent.was && { was: read.itemInstance(unit.itemEvent.was) }),
-          ...(unit.itemEvent.targetInstanceId && { targetInstanceId: unit.itemEvent.targetInstanceId }),
-        },
-      }),
+      ...(itemEvent && { itemEvent: itemEvent.event }),
     };
   };
   const snapshot: SandboxSnapshot = {

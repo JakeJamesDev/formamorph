@@ -118,7 +118,7 @@ describe('an On Call Tool called during the reply', () => {
   it('reaches a During AI Output script through the game’s own landing', async () => {
     await playOneTurn(worldOf({
       items: [GEM], tools: [tool('items.Gem.give(persona);')],
-      scripts: [script('out', 'output', 'stats.Vigor.value = items.Gem.copies.length * 10;')],
+      scripts: [script('out', 'output', 'stats.Vigor.value = items.Gem.instances.length * 10;')],
     }));
     await waitFor(() => expect(vigor()).toBe(10));
     expect(held('gem')).toBe(1);
@@ -175,7 +175,7 @@ describe('a stat re-roll of an On Call Tool’s turn', () => {
 
 describe('Regenerate Choices', () => {
   // One instance from each stage ahead of the batch. A script's own give has no instance until the script lands.
-  const code = 'items.Gem.give(persona); stats.Vigor.value += 1; turn.choices = [...turn.choices, "Held " + items.Gem.copies.length];';
+  const code = 'items.Gem.give(persona); stats.Vigor.value += 1; turn.choices = [...turn.choices, "Held " + items.Gem.instances.length];';
   const world = worldOf({
     items: [GEM], tools: [tool('items.Gem.give(persona);')],
     scripts: [script('b', 'before', 'items.Gem.give(persona);'), script('a', 'after', code)],
@@ -229,8 +229,8 @@ describe('Regenerate Choices', () => {
     const calls = await playOneTurn(worldOf({
       items: [GEM],
       scripts: [
-        script('o', 'output', 'if (items.Gem.copies.length === 0) items.Gem.give(persona);'),
-        script('a', 'after', 'turn.choices = [...turn.choices, "Held " + items.Gem.copies.length];'),
+        script('o', 'output', 'if (items.Gem.instances.length === 0) items.Gem.give(persona);'),
+        script('a', 'after', 'turn.choices = [...turn.choices, "Held " + items.Gem.instances.length];'),
       ],
     }));
     await reroll(calls, 'Held 1');

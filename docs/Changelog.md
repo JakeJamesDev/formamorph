@@ -46,6 +46,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Your Memory Manager edits to a named memory stay when you rewind a turn.** The script's next update starts from your text. After you delete the memory, the script starts a new one.
   - **Character Mentions:**
     - **A new setting works out who each “she”, “he” or “the courier” in English narration means.** Turn on Character Mentions under Display › Accessibility. It downloads a model once and runs on your device. Turning it off deletes the download.
+  - **Item scripts read their event's Item Instance as `instance`, and its quantity and use target from `args`.** Every script has `args`; it's empty where nothing passes one. Worlds that use `self.event` or `.copies` are rewritten when they load.
 - **🛠️ Developer tooling**
   - **Item Instances:**
     - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.

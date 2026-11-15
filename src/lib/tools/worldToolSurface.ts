@@ -24,7 +24,7 @@ export function worldToolSurface(params: readonly ToolParam[], timing: ToolScrip
     label: 'a World Tool script',
     globals: [
       { name: 'args', detail: shapeOf(argEntries.map((entry) => entry.name)), info: ARGS_INFO, access: 'readOnly' },
-      ...surface.globals,
+      ...surface.globals.filter((entry) => entry.name !== 'args'),
     ],
     // A Tool's `turn.choices` write drops at every timing (Q21).
     members: new Map([...surface.members, ['turn', TURN_MEMBERS], ['args', argEntries.map((entry) => ({ ...entry, access: 'readOnly' as const }))]]),

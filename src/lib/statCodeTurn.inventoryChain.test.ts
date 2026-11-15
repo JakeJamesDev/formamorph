@@ -71,7 +71,7 @@ describe('a later script reads an earlier script’s inventory write', () => {
 
   it.each(['before', 'after', 'start'] as const)('a give at %s', async (timing) => {
     const out = await runStatCodeTurn(turnOf({
-      timing, items: [gem], worldScripts: scripts(timing, 'items.Gem.give(persona, 2);', 'stats.Echo.value = persona.items.filter((c) => c.item === "Gem").length + items.Gem.copies.length * 10;'),
+      timing, items: [gem], worldScripts: scripts(timing, 'items.Gem.give(persona, 2);', 'stats.Echo.value = persona.items.filter((c) => c.item === "Gem").length + items.Gem.instances.length * 10;'),
     }));
     expect(echoOf(out)).toBe(22);
     expect(heldOf(out, 'gem')).toBe(2);
@@ -305,7 +305,7 @@ describe('During AI Output', () => {
   const outputTurn = (...codes: string[]) => turnOf({ items: [gem], worldScripts: scripts('output', ...codes) });
 
   it('reads the instances across scripts and sentences, and fires nothing until the landing', async () => {
-    const run = openOutputRun(outputTurn('items.Gem.give(persona);', 'stats.Echo.value += items.Gem.copies.length;'));
+    const run = openOutputRun(outputTurn('items.Gem.give(persona);', 'stats.Echo.value += items.Gem.instances.length;'));
     await run?.rewrite('One.', sentence);
     await run?.rewrite('Two.', { ...sentence, index: 1 });
     // 1 after the first sentence, 2 after the second, and no item event yet.
@@ -361,7 +361,7 @@ describe('an On Call Tool’s write during a reply', () => {
     runStatCodeTurn({ ...turn, triggers: [{ name: 'tool', code, args: {} }], triggersOnly: true });
 
   it('reaches a later sentence’s script', async () => {
-    const turn = turnOf({ items: [gem], worldScripts: scripts('output', 'stats.Echo.value = items.Gem.copies.length;') });
+    const turn = turnOf({ items: [gem], worldScripts: scripts('output', 'stats.Echo.value = items.Gem.instances.length;') });
     const run = openOutputRun(turn)!;
     run.onCallLanded(await toolRun(turn, 'items.Gem.give(persona);'));
     await run.rewrite('One.', sentence);
@@ -377,7 +377,7 @@ describe('an On Call Tool’s write during a reply', () => {
   });
 
   it('survives a retract, which drops only the sentences’ writes', async () => {
-    const turn = turnOf({ items: [gem], worldScripts: scripts('output', 'stats.Echo.value += 1 + items.Gem.copies.length * 10;') });
+    const turn = turnOf({ items: [gem], worldScripts: scripts('output', 'stats.Echo.value += 1 + items.Gem.instances.length * 10;') });
     const run = openOutputRun(turn)!;
     await run.rewrite('Lost.', sentence);
     run.listener({ type: 'retract', hadPartial: false });
@@ -388,7 +388,7 @@ describe('an On Call Tool’s write during a reply', () => {
   });
 
   it('reaches a held item run at the landing', async () => {
-    const counted = item('gem', 'Gem', { scripts: scripts('gained', 'stats.Echo.value = items.Gem.copies.length;') });
+    const counted = item('gem', 'Gem', { scripts: scripts('gained', 'stats.Echo.value = items.Gem.instances.length;') });
     const turn = turnOf({ items: [counted], worldScripts: scripts('output', 'items.Gem.give(persona);') });
     const run = openOutputRun(turn)!;
     run.onCallLanded(await toolRun(turn, 'items.Gem.give(persona);'));

@@ -1208,8 +1208,8 @@ async function runScripts(turn: StatCodeTurn, nesting: RunNesting = ACTION_TOP, 
       ...(timing === 'switch' && turn.switched && { switched: { event: turn.switched, world: switchedWorldOf(now, turn.switched) } }),
       ...(itemEvent && {
         itemEvent: {
-          instanceId: itemEvent.event.instanceId, quantity: itemEvent.event.quantity, ...(itemEvent.event.was && { was: itemEvent.event.was }),
-          ...(itemEvent.event.target && { targetInstanceId: itemEvent.event.target.id }),
+          instanceId: itemEvent.event.instanceId, ...(itemEvent.event.was && { was: itemEvent.event.was }),
+          args: { quantity: itemEvent.event.quantity, target: itemEvent.event.target?.id ?? null },
         },
       }),
       ...(sentence === undefined || !turn.narration ? {} : { narration: { ...turn.narration, sentence } }),

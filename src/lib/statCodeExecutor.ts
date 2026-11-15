@@ -4,6 +4,7 @@ import type {
 import { optionValue, snapNumber } from './worldOptions';
 import type { SlotOwner } from './bodies';
 import type { InventoryOp } from './inventory';
+import { itemArgsAt, type ItemEventArgs } from './triggerArgs';
 import { clamp } from './utils';
 import { activeDescriptor } from './statContext';
 import { runInSandbox, type SandboxEngine, type SandboxHostFunction } from './scriptSandbox';
@@ -1214,7 +1215,7 @@ export interface SandboxItem {
   unidentifiedDescription?: string;
   /** Absent, its `placeholders` holds no names. */
   placeholders?: SandboxPlaceholderNode;
-  copies: readonly SandboxItemInstance[];
+  instances: readonly SandboxItemInstance[];
 }
 
 /** The Item Instance event an item script runs on (Q33). */
@@ -1222,11 +1223,9 @@ export interface SandboxItemEvent {
   itemId: string;
   timing: ItemScriptTiming;
   instanceId: string;
-  quantity: number;
-  /** The Item Instance as it stood before the event, which `self.event.copy` reads once the copy is gone. */
+  /** The Item Instance as it stood before the event, which `instance` reads once it is gone. */
   was?: SandboxItemInstance;
-  /** The Item Instance a use acted on, which `self.event.target` reads. */
-  targetInstanceId?: string;
+  args: ItemEventArgs;
 }
 
 /** The fields on an Item Instance entry; none takes a write. */
@@ -1234,13 +1233,13 @@ const ITEM_INSTANCE_KEYS = ['id', 'item', 'owner', 'location', 'quantity', 'equi
 
 // The prelude's reader of the Item Instances at one owner or location, which entity and location entries call.
 const ITEMS_AT = '__formamorphItemsAt';
-// The entry of an event's Item Instance that is gone, which `self.event.copy` reads.
-const GONE_COPY = '__formamorphGoneCopy';
+// The entry of an event's Item Instance that is gone, which `instance` reads.
+const GONE_INSTANCE = '__formamorphGoneInstance';
 
 /** The `items` prelude, after the entity, location and dictionary preludes. Each Item Instance has one entry, which
- *  `items[x].copies`, an entity's `items` and a location's `items` share. A verb lists an inventory write; a
+ *  `items[x].instances`, an entity's `items` and a location's `items` share. A verb lists an inventory write; a
  *  target names an entity, the persona or a location by entry or by name. An unknown target is listed and thrown,
- *  as `location.move` does. With `event`, `self` takes the event's item entry and its `event`. */
+ *  as `location.move` does. With `event`, `self` takes the event's item entry, and `instance` and `args` exist. */
 const itemsPrelude = (
   items: readonly SandboxItem[], { byName, persona }: KeyedEntities, { locations }: SandboxPlaces, { indexOf }: FlatPlaceholderMap,
   event: SandboxItemEvent | undefined,
@@ -1265,7 +1264,7 @@ const itemsPrelude = (
   ];
   const spec = {
     items: named.map(([name, item]) => [name, {
-      id: item.id, ph: ownerIndex(indexOf, item.placeholders), copies: item.copies.map((instance) => instanceData(item, instance)),
+      id: item.id, ph: ownerIndex(indexOf, item.placeholders), instances: item.instances.map((instance) => instanceData(item, instance)),
       unidentifiedName: item.unidentifiedName, unidentifiedDescription: item.unidentifiedDescription,
     }]),
     // By id first: an entry names its target by id. By name for a target written as text.
@@ -1277,11 +1276,12 @@ const itemsPrelude = (
     names: Object.fromEntries(targets),
     event: event ? {
       ...event, name: named.find(([, item]) => item.id === event.itemId)?.[0] ?? null,
-      was: event.was && instanceData(items.find((item) => item.id === event.itemId) ?? { id: '', name: '', copies: [] }, event.was),
+      was: event.was && instanceData(items.find((item) => item.id === event.itemId) ?? { id: '', name: '', instances: [] }, event.was),
+      args: itemArgsAt(event.timing, event.args),
     } : null,
   };
   return [
-    `const [items, ${ITEMS_AT}, ${GONE_COPY}] = ((spec, lock, note, writes, view) => {`,
+    `const [items, ${ITEMS_AT}, ${GONE_INSTANCE}] = ((spec, lock, note, writes, view) => {`,
     `  const fail = (message) => {`,
     `    writes.unknown.push(message);`,
     `    throw new Error(message);`,
@@ -1299,7 +1299,7 @@ const itemsPrelude = (
     `  };`,
     `  const byPlace = Object.create(null);`,
     `  const occupying = new Map();`,
-    `  const copyEntry = (data, path, listed = true) => {`,
+    `  const instanceEntry = (data, path, listed = true) => {`,
     `    const out = lock({ ${ITEM_INSTANCE_KEYS.map((field) => `${field}: data.${field}`).join(', ')} }, ${JSON.stringify(ITEM_INSTANCE_KEYS)}, path, note);`,
     `    const instanceId = data.id;`,
     `    occupying.set(out, data.occupies);`,
@@ -1332,8 +1332,8 @@ const itemsPrelude = (
     // An unknown name reads as a blank entry, whose give stops the script.
     `  const entry = (key, data, unknown) => {`,
     `    const path = (/^[A-Za-z_$][\\w$]*$/.test(key) ? 'items.' + key : 'items[' + JSON.stringify(key) + ']') + '.';`,
-    `    const copies = Object.freeze(data.copies.map((copy, at) => copyEntry(copy, path + 'copies[' + at + '].')));`,
-    `    const out = lock({ id: data.id, name: unknown ? '' : key, unidentifiedName: data.unidentifiedName || '', unidentifiedDescription: data.unidentifiedDescription || '', placeholders: view(data.ph, ['item', key], unknown), copies }, ['id', 'name', 'unidentifiedName', 'unidentifiedDescription', 'placeholders', 'copies'], path, note);`,
+    `    const instances = Object.freeze(data.instances.map((instance, at) => instanceEntry(instance, path + 'instances[' + at + '].')));`,
+    `    const out = lock({ id: data.id, name: unknown ? '' : key, unidentifiedName: data.unidentifiedName || '', unidentifiedDescription: data.unidentifiedDescription || '', placeholders: view(data.ph, ['item', key], unknown), instances }, ['id', 'name', 'unidentifiedName', 'unidentifiedDescription', 'placeholders', 'instances'], path, note);`,
     `    verb(out, path, 'give', (to, quantity) => {`,
     `      if (unknown) fail('The world has no item named "' + key + '"');`,
     `      writes.inventory.push({ kind: 'gain', itemId: data.id, to: whereOf(to, path + 'give'), quantity: count(quantity, path + 'give').quantity || 1 });`,
@@ -1345,27 +1345,30 @@ const itemsPrelude = (
     `  const strays = Object.create(null);`,
     `  const items = new Proxy(Object.freeze(map), {`,
     `    get: (target, key) => typeof key !== 'string' || key in target ? target[key]`,
-    `      : strays[key] || (strays[key] = entry(key, { id: '', ph: -1, copies: [], unidentifiedName: '', unidentifiedDescription: '' }, true)),`,
+    `      : strays[key] || (strays[key] = entry(key, { id: '', ph: -1, instances: [], unidentifiedName: '', unidentifiedDescription: '' }, true)),`,
     `  });`,
     `  const none = Object.freeze([]);`,
     // With a slot name, only the equipped instances that occupy it.
     `  const at = (kind, id, slot) => {`,
     `    const list = byPlace[kind === 'you' ? 'you' : kind + ':' + id] || none;`,
-    `    return slot === undefined ? list : Object.freeze(list.filter((copy) => copy.equipped && (occupying.get(copy) || []).includes(slot)));`,
+    `    return slot === undefined ? list : Object.freeze(list.filter((entry) => entry.equipped && (occupying.get(entry) || []).includes(slot)));`,
     `  };`,
-    `  const gone = spec.event && spec.event.was ? copyEntry(spec.event.was, 'self.event.copy.', false) : null;`,
+    `  const gone = spec.event && spec.event.was ? instanceEntry(spec.event.was, 'instance.', false) : null;`,
     `  return [items, at, gone];`,
     `})(JSON.parse(${JSON.stringify(JSON.stringify(spec))}), ${LOCK_FIELDS}, ${LOOSE_NOTE}, ${WORLD_WRITES}, ${OWNER_VIEW});`,
     ...(spec.event ? [
       // `self` is declared before the entries exist, so it takes the item entry's fields here.
-      `((self, entry, event, define, gone) => {`,
+      `const [instance, args] = ((self, entry, event, define, gone) => {`,
       `  if (entry) for (const key of Reflect.ownKeys(entry)) define(self, key, Object.getOwnPropertyDescriptor(entry, key));`,
-      `  const copy = (entry && entry.copies.find((c) => c.id === event.instanceId)) || gone;`,
-      // A target that is gone reads as null.
-      `  const target = event.targetInstanceId ? Object.values(items).flatMap((e) => e.copies).find((c) => c.id === event.targetInstanceId) || null : null;`,
-      `  define(self, 'event', { enumerable: true, value: Object.freeze({ timing: event.timing, quantity: event.quantity, copy, target }) });`,
       `  Object.freeze(self);`,
-      `})(self, items[${JSON.stringify(spec.event.name ?? '')}], ${JSON.stringify({ timing: event?.timing, quantity: event?.quantity, instanceId: event?.instanceId, targetInstanceId: event?.targetInstanceId })}, Object.defineProperty, ${GONE_COPY});`,
+      `  const out = {};`,
+      `  for (const [key, value] of Object.entries(event.args)) {`,
+      // A target that is gone reads as null.
+      `    out[key] = key === 'target' ? (value && Object.values(items).flatMap((e) => e.instances).find((e) => e.id === value)) || null`,
+      `      : value && typeof value === 'object' ? Object.freeze(value) : value;`,
+      `  }`,
+      `  return [(entry && entry.instances.find((e) => e.id === event.instanceId)) || gone, Object.freeze(out)];`,
+      `})(self, items[${JSON.stringify(spec.event.name ?? '')}], ${JSON.stringify({ instanceId: spec.event.instanceId, args: spec.event.args })}, Object.defineProperty, ${GONE_INSTANCE});`,
     ] : []),
   ].join('\n');
 };
@@ -1883,7 +1886,7 @@ export interface StatCodeRunOptions {
   places?: SandboxPlaces;
   /** The entities play discovered, which an unknown entry's `diary` can name beside `entities`. */
   discovered?: readonly SandboxPlace[];
-  /** A World Tool run's call arguments, frozen. Absent on a Script, where `args` does not exist. */
+  /** A World Tool run's call arguments, which `args` reads frozen. Absent, `args` is empty, or an item event's. */
   args?: Readonly<Record<string, unknown>>;
   /** The editor's run, which has no discovered cast: a `diary` on an entity the cast lacks is listed in `maybeDiary`, not
    *  thrown (Q46). Play leaves it off, so an unknown name fails. */
@@ -1899,7 +1902,7 @@ export interface StatCodeRunOptions {
   randomSeed?: readonly number[];
   /** The world's items with their Item Instances in play. Absent, `items` is empty. */
   items?: readonly SandboxItem[];
-  /** An item script's event: `self` reads the item's entry and the event. */
+  /** An item script's event: `self` reads the item's entry, `instance` its Item Instance and `args` its side fields. */
   itemEvent?: SandboxItemEvent;
   /** The world's Currencies, which `currencies` lists. Absent, it lists none. */
   currencies?: readonly SandboxCurrency[];
@@ -1970,10 +1973,10 @@ const HIDDEN_GLOBALS = [
   'self', 'owner', 'discover', MOVE_TURN, ADVANCE_CLOCK, ENTITY_WRITE, WORLD_WRITES, SELF_ASSIGNED, STRINGIFY, READ_ONLY_VIEW_OF,
 ] as const;
 
-/** `code` as a read-only run runs it: the hidden names shadowed, each surface global, `args` with them when the run
- *  has it, read through its view. The inner function lets code declare a name the outer one shadows. */
-const readOnlyCode = (code: string, withArgs: boolean): string => {
-  const viewed = [...READ_ONLY_GLOBALS, ...(withArgs ? ['args'] : [])];
+/** `code` as a read-only run runs it: the hidden names shadowed, each surface global and `args` read through its
+ *  view. The inner function lets code declare a name the outer one shadows. */
+const readOnlyCode = (code: string): string => {
+  const viewed = [...READ_ONLY_GLOBALS, 'args'];
   return [
     `return (function (${[...HIDDEN_GLOBALS, ...viewed].join(', ')}) {`,
     `  return (function () {`,
@@ -2487,7 +2490,8 @@ export const executeStatCode = async (
       ] : []),
       ...(engine === 'async' ? [PLAYER_PRELUDE] : []),
       // A JSON string parsed in the VM, so a `__proto__` argument stays a plain key.
-      ...(args ? [`const args = Object.freeze(JSON.parse(${JSON.stringify(JSON.stringify(args))}));`] : []),
+      // An item run's `args` comes with its event.
+      ...(itemEvent ? [] : [`const args = Object.freeze(JSON.parse(${JSON.stringify(JSON.stringify(args ?? {}))}));`]),
       placeholdersPrelude(placeholderMap),
       trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
       entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf, standing, reads, bodies),
@@ -2502,7 +2506,7 @@ export const executeStatCode = async (
       `Object.defineProperty(globalThis, 'notes', { enumerable: true, get: () => ${JSON.stringify(notes)}, set: () => ${LOOSE_NOTE}('notes') });`,
       ...(readOnly ? [`const ${READ_ONLY_VIEW_OF} = (${READ_ONLY_VIEW})(${LOOSE_NOTE});`] : []),
       `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}, ${OWNER_STATS}, ${OWNER_STAT_WRITES}, ${ENTITY_STAT_WRITES}, ${HOST_READ}) {`,
-      readOnly ? readOnlyCode(code, !!args) : code,
+      readOnly ? readOnlyCode(code) : code,
       `})(), ${selfRead('value')}, ${CODE_BOUND_FIELDS.map(selfRead).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
       `  ${STAT_WRITES}(), ${DICTIONARY_WRITES}(), ${STRINGIFY}(${SELF_ASSIGNED}), ${OWNER_STAT_WRITES}(), ${STRINGIFY}(${LOOSE_WRITES}),`,
       `  ${ENTITY_STAT_WRITES}(), ${narration ? 'narration.sentence' : 'undefined'}, ${STRINGIFY}(${WORLD_WRITES}), ${selfRead('hidden')},`,

@@ -36,6 +36,8 @@ export const STAT_CODE_GUIDE_LINKS: Readonly<Record<string, DocTarget>> = {
   narration: scripts('narration'),
   player: scripts('player'),
   trait: scripts('trait'),
+  args: scripts('args'),
+  instance: scripts('instance'),
 };
 
 /** The Tools doc heading of `args`, which only a Tool's script reads. */

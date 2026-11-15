@@ -16,6 +16,7 @@ import {
   CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, CURRENCY_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, ITEM_FIELDS, NARRATION_FIELDS,
   NARRATION_GLOBAL, PERSONA_FIELDS, PLAYER_CALL_ENTRIES, PLAYER_GLOBAL, PREVIOUS_FIELDS, SANDBOX_GLOBALS, SELF_TRAIT_FIELDS,
   STAT_CODE_SURFACE, STAT_FIELDS, SWITCHED_TRAIT_FIELDS, SWITCHED_TRAIT_GLOBAL, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
+  INSTANCE_GLOBAL, ITEM_ARGS_INFO, ITEM_INSTANCE_FIELDS,
 } from '@/lib/statCodeSurface';
 
 /** The names the tree lists, as the editor's session holds them, with each world trait in its groups. */
@@ -306,11 +307,13 @@ const traitRows = (path: Path, traits: readonly TraitPlace[]): VariableNameRow[]
     ...trait, children: fields(keyed(path, trait.name), TRAIT_ENTRY_FIELDS),
   }));
 
-/** Which of the names a script's timing adds its surface injects: `narration`, `player` and `trait`. */
+/** Which of the names a script's timing adds its surface injects: `narration`, `player`, `trait` and `instance`. */
 export interface TimingGlobals {
   narration: boolean;
   player: boolean;
   trait: boolean;
+  /** An item timing's `args` fields. Absent outside an item timing. */
+  itemArgs?: readonly SurfaceEntry[];
   /** `turn`'s members with the access the timing gives them. Absent, every one is read-only. */
   turn?: readonly SurfaceEntry[];
 }
@@ -322,6 +325,7 @@ export const timingGlobalsOf = (surface: CodeSurface): TimingGlobals => {
     narration: surfaceHasGlobal(surface, 'narration'),
     player: surfaceHasGlobal(surface, 'player'),
     trait: surfaceHasGlobal(surface, 'trait'),
+    ...(surfaceHasGlobal(surface, 'instance') && { itemArgs: surface.members.get('args') ?? [] }),
     ...(turn && { turn }),
   };
 };
@@ -342,6 +346,10 @@ function timingGroups(globals: TimingGlobals): VariableNode[] {
     ...(globals.narration ? [{ kind: 'group' as const, label: 'Narration', info: NARRATION_GLOBAL.info, children: fields(root('narration'), NARRATION_FIELDS) }] : []),
     ...(globals.player ? [{ kind: 'group' as const, label: 'Player', info: PLAYER_GLOBAL.info, children: playerFields() }] : []),
     ...(globals.trait ? [{ kind: 'group' as const, label: 'Switched Trait', info: SWITCHED_TRAIT_GLOBAL.info, children: fields(root('trait'), SWITCHED_TRAIT_FIELDS) }] : []),
+    ...(globals.itemArgs ? [
+      { kind: 'group' as const, label: 'Item Instance', info: INSTANCE_GLOBAL.info, children: fields(root('instance'), ITEM_INSTANCE_FIELDS) },
+      { kind: 'group' as const, label: 'Arguments', info: ITEM_ARGS_INFO, children: fields(root('args'), globals.itemArgs) },
+    ] : []),
   ];
 }
 
