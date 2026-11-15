@@ -379,6 +379,7 @@ const RESULT_WARNINGS = {
   disabledStatWrites: 'wrote switched-off stats',
   unknownEntities: 'switched traits of entities not in the game',
   unknownLore: 'wrote dictionary entries the game does not have',
+  unknownMemories: 'called memory verbs on unknown memory names',
   unknownOptions: 'wrote World Options the world does not have',
 } as const satisfies Partial<Record<keyof StatCodeResult, string>>;
 

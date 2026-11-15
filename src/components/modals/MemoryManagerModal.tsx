@@ -16,6 +16,7 @@ import { HelpButton } from '@/components/HelpButton';
 import { Pin, PinOff, RotateCcw, Trash2, Undo2, Pencil, RefreshCw, Plus, Loader2, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { randomUUID } from '@/lib/uuid';
+import { playerEdit, restoreAll, restoreMemory } from '@/lib/namedMemories';
 
 /**
  * The Memory Manager: the full surface for the story's long-term memory. The side panel stays the
@@ -117,7 +118,7 @@ export const MemoryManagerModal = ({
     const text = draft.trim();
     if (!text) return;
     if (row.isNote) {
-      setMemoryNotes((prev) => prev.map((n) => (n.id === row.id ? { ...n, text } : n)));
+      setMemoryNotes((prev) => playerEdit(prev, row.id, text));
     } else {
       // A player rewrite is intent: force-keep it, so the selector never quietly lets go of text the
       // player wrote. Clearing the pin later falls back to the stored verdict; the text stays edited.
@@ -155,7 +156,11 @@ export const MemoryManagerModal = ({
     setMemoryDeleted((prev) => (prev.includes(row.id) ? prev : [...prev, row.id]));
   };
 
-  const restore = (row: MemoryRow) => setMemoryDeleted((prev) => prev.filter((id) => id !== row.id));
+  // The notes update reads the latest notes, so a turn that lands while the dialog is open keeps its writes.
+  const restore = (row: MemoryRow) => {
+    setMemoryNotes((prev) => restoreMemory(prev, memoryDeleted, row.id).notes);
+    setMemoryDeleted((prev) => prev.filter((id) => id !== row.id));
+  };
 
   const regenerate = async (row: MemoryRow) => {
     if (!onRegenerate) return;
@@ -180,6 +185,7 @@ export const MemoryManagerModal = ({
 
   const resetAll = () => {
     setMemoryEdits({});
+    setMemoryNotes((prev) => restoreAll(prev, memoryDeleted).notes);
     setMemoryDeleted([]);
     setMemoryPins({});
     setConfirmReset(false);

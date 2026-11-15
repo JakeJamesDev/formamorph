@@ -22,7 +22,7 @@ export function mergeWorldWrites(earlier: WorldWrites | undefined, later: WorldW
   const discover = [...byName.values()];
   const memory = [...earlier.memory ?? [], ...later.memory ?? []];
   const pins = [...earlier.pins ?? [], ...later.pins ?? []];
-  const namedPins = [...earlier.namedPins ?? [], ...later.namedPins ?? []];
+  const namedWrites = [...earlier.namedWrites ?? [], ...later.namedWrites ?? []];
   const diary = [...earlier.diary ?? [], ...later.diary ?? []];
   const entities = [...earlier.entities ?? [], ...later.entities ?? []];
   const memoryWrites = [...earlier.memoryWrites ?? [], ...later.memoryWrites ?? []];
@@ -34,7 +34,7 @@ export function mergeWorldWrites(earlier: WorldWrites | undefined, later: WorldW
     ...(discover.length ? { discover } : {}),
     ...(memory.length ? { memory } : {}),
     ...(pins.length ? { pins } : {}),
-    ...(namedPins.length ? { namedPins } : {}),
+    ...(namedWrites.length ? { namedWrites } : {}),
     ...(diary.length ? { diary } : {}),
     ...(entities.length ? { entities } : {}),
     ...(memoryWrites.length ? { memoryWrites } : {}),

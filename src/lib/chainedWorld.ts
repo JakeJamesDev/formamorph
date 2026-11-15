@@ -56,7 +56,7 @@ export function withWorldWrites(state: SandboxState, writes: WorldWrites | undef
     next = { ...next, clock: { ...clock, advancedHours: advanced, deltaHours: advanced, elapsedHours: (clock.elapsedHours ?? delta) - delta + advanced } };
   }
 
-  if (writes.memory?.length || writes.pins?.length || writes.namedPins?.length || writes.memoryWrites?.length) {
+  if (writes.memory?.length || writes.pins?.length || writes.namedWrites?.length || writes.memoryWrites?.length) {
     let rows = next.memories ?? [];
     const turnId = next.turn?.id ?? FALLBACK_TURN_ID;
     const timestamp = next.clock.elapsedHours ?? next.clock.deltaHours ?? FLAT_HOURS_PER_TURN;
@@ -73,10 +73,12 @@ export function withWorldWrites(state: SandboxState, writes: WorldWrites | undef
     }
     const heldPins = rows.filter((held) => isScriptPinOf(held.id, turnId)).length;
     rows = [...rows, ...(writes.pins ?? []).map((line, i) => row(pinId(turnId, heldPins + i), line, true))];
-    // A named pin overwrites the memory that holds its name, now anchored at this turn, or adds one.
-    for (const { name, text } of writes.namedPins ?? []) {
+    // A named write overwrites the memory that holds its name, now anchored at this turn, or adds one; a removal drops it.
+    for (const write of writes.namedWrites ?? []) {
+      const { name } = write;
       const held = rows.find((at) => at.name && nameKey(at.name) === nameKey(name));
-      rows = [...rows.filter((at) => at !== held), { ...row(held?.id ?? namedId(turnId, name), text, true), name: held?.name ?? name }];
+      const others = rows.filter((at) => at !== held);
+      rows = 'remove' in write ? others : [...others, { ...row(held?.id ?? namedId(turnId, name), write.text, true), name: held?.name ?? name }];
     }
     if (writes.memoryWrites?.length) rows = withMemoryVerbs(rows, writes.memoryWrites);
     next = { ...next, memories: rows };

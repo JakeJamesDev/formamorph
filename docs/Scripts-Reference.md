@@ -1186,8 +1186,12 @@ A name lets a script find the same Custom memory again on a later turn. Use it t
 - **`memories.pin(<name>, <text>)`** adds a memory under that name. When a memory with that name already exists, it overwrites its text instead.
 - **`memories["<Name>"]`** resolves to the memory with that name. Names match with outer spaces removed and in any case, so `memories["nursery "]` resolves to **Nursery**.
 - **An unknown name reads as a blank entry.** Its `id`, `name` and `text` are `""`, and every flag is false. Test with `memories["Nursery"].id` to see whether the memory exists.
+- **Calls on a blank entry are ignored.** **Test Code** and the **Test Bench** list the name.
 - **A named pin reads under its name in the scripts below it** in the same turn. A second named pin in the turn overwrites the first.
-- **A named write rewinds with its turn.** A rewind or a regenerate restores the text from before that turn. Rewinding the turn that created the memory removes it.
+- **A named write rewinds with its turn**, and so do `edit(text)` and `remove()` on the entry. A rewind restores the text from before that turn. Rewinding the turn that created the memory removes it.
+- **A removed named memory keeps its name.** The next named pin brings it back with the same `id`.
+- **Scripts read the player's edit.** The next named write replaces it, and rewinding that write brings the edit back.
+- **A player's delete frees the name.** The next named pin makes a new memory. A restore while another memory has the name brings the old one back unnamed.
 - **The memory's place in the timeline is its latest write.** It moves back when that write rewinds.
 - **The AI reads the text only, never the name.** The Memory Manager shows the name as a label on the Custom row.
 - **A blank or non-text name or text throws a TypeError.** So does a name that `memories` already reads as a list member, such as `length`, `filter` or `3`.
@@ -1225,10 +1229,10 @@ Four calls on a memory write the Memory panel's verdicts. The writes apply when 
 | `pin()` | Pins the memory to stay, as **Pin This Memory** does |
 | `forget()` | Pins the memory to go, as **Forget This Memory** does |
 | `edit(text)` | Rewrites the memory, as an edit in the Memory Manager does. A summary keeps its original and is pinned to stay |
-| `remove()` | Erases the memory, as **Delete This Memory** does. The player can restore it in the Memory Manager |
+| `remove()` | Erases the memory, as **Delete This Memory** does. The player can restore it in the Memory Manager. A named memory keeps its name |
 
 - **`pin()` and `forget()` are ignored on a Custom memory.** The run lists each one as ignored. `edit(text)` and `remove()` work on a Custom memory.
-- **A verdict, an edit or a removal persists through a rewind**, as the player's does.
+- **A verdict, an edit or a removal persists through a rewind**, as the player's does, except an edit or a removal on a [named memory](#named-memories).
 - **A World Tool can write a verdict too.** An On Call Tool's verdict applies when the turn ends. An After the AI Tool's verdict applies with the After the AI scripts.
 
 ```js

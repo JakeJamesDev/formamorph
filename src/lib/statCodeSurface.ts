@@ -109,8 +109,8 @@ export const MEMORY_ENTRY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'forgotten', detail: 'boolean', info: 'True when the memory is pinned to go' },
   { name: 'pin', detail: '() => void', info: 'Pins the memory to stay when the turn ends, as Pin This Memory in the Memory Manager does. On a Custom memory the call is ignored, and the run lists it.' },
   { name: 'forget', detail: '() => void', info: 'Pins the memory to go when the turn ends, as Forget This Memory in the Memory Manager does. On a Custom memory the call is ignored, and the run lists it.' },
-  { name: 'edit', detail: '(text) => void', info: 'Rewrites the memory when the turn ends, as an edit in the Memory Manager does. A summary keeps its original and is pinned to stay.' },
-  { name: 'remove', detail: '() => void', info: 'Erases the memory when the turn ends, as Delete This Memory in the Memory Manager does. You can restore it there.' },
+  { name: 'edit', detail: '(text) => void', info: 'Rewrites the memory when the turn ends, as an edit in the Memory Manager does. A summary keeps its original and stays pinned, and on a named memory the edit rewinds with its turn.' },
+  { name: 'remove', detail: '() => void', info: 'Erases the memory when the turn ends, as Delete This Memory in the Memory Manager does. You can restore it there, and on a named memory the removal rewinds with its turn.' },
 ]);
 
 /** The fields of the clock object that `path` names, or null when `path` is no clock object. */

@@ -17,7 +17,7 @@ import {
 import { clockReading, FLAT_HOURS_PER_TURN, type WorldCalendar } from './gameClock';
 import { SCRIPT_TIMING_LABEL } from './scripts';
 import { namedEntries, type LoreWrite } from './loreToggles';
-import type { NamedPin } from './namedMemories';
+import type { NamedWrite } from './namedMemories';
 
 /** A lore write with the path code wrote it through. */
 export type PathedLoreWrite = LoreWrite & { path: string };
@@ -143,6 +143,8 @@ export interface StatCodeResult {
   worldWrites?: WorldWrites;
   /** The `diary` names an `openCast` run found outside its cast, once each. */
   maybeDiary?: string[];
+  /** The unknown memory names a verb was called on, once each. Those calls are ignored (Q12, Q25). */
+  unknownMemories?: string[];
   /** A World Tool run's return value as text: a string as is, any other value as JSON, null for nothing. */
   reply?: string | null;
 }
@@ -231,7 +233,7 @@ export interface WorldWrites {
   /** Every `memories.pin` line, in call order. */
   pins?: string[];
   /** Every `memories.pin(name, text)`, in call order. */
-  namedPins?: NamedPin[];
+  namedWrites?: NamedWrite[];
   /** Every `diary` line, in call order. */
   diary?: DiaryWrite[];
   /** Every `move`, `follow`, `unfollow` and `meet` on an entity entry, in call order. */
@@ -1999,7 +2001,7 @@ const worldPrelude = (
   bodies: readonly SandboxBodyDef[],
 ): string => [
   `const [${MOVE_TURN}, discover, memories, ${ADVANCE_CLOCK}, ${ENTITY_WRITE}, ${WORLD_WRITES}] = ((places, cast, open, rows, lockEntry, note, bodies) => {`,
-  `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], namedPins: [], diary: [], entities: [], memoryWrites: [], inventory: [], bodies: [], unknown: [], maybe: [] };`,
+  `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], namedWrites: [], diary: [], entities: [], memoryWrites: [], inventory: [], bodies: [], unknown: [], maybe: [], unknownMemories: [] };`,
   `  const fail = (message) => {`,
   `    writes.unknown.push(message);`,
   `    throw new Error(message);`,
@@ -2056,15 +2058,20 @@ const worldPrelude = (
   `  };`,
   `  const verb = (target, path, name, call) => Object.defineProperty(target, name, { get: () => call, set: () => note(path + name) });`,
   `  const memories = rows.map((row, at) => {`,
-  `    const { id, custom } = row;`,
+  `    const { id, custom, name } = row;`,
   `    const path = 'memories[' + at + '].';`,
   `    const entry = lockEntry(row, ['text'], path, note);`,
   // A verdict on a Custom line changes nothing, so it is listed as a dropped write (Q15).
   `    const verdict = (kind) => () => (custom ? note(path + kind + '()') : void writes.memoryWrites.push({ id, kind }));`,
   `    verb(entry, path, 'pin', verdict('pin'));`,
   `    verb(entry, path, 'forget', verdict('forget'));`,
-  `    verb(entry, path, 'edit', (value) => { writes.memoryWrites.push({ id, kind: 'edit', text: line(path + 'edit', value), custom }); });`,
-  `    verb(entry, path, 'remove', () => { writes.memoryWrites.push({ id, kind: 'remove' }); });`,
+  // A named memory's edit and removal are named writes, resolved by name at commit, so they rewind with the turn (Q11).
+  `    verb(entry, path, 'edit', (value) => {`,
+  `      const edited = line(path + 'edit', value);`,
+  `      if (name) writes.namedWrites.push({ name, text: edited });`,
+  `      else writes.memoryWrites.push({ id, kind: 'edit', text: edited, custom });`,
+  `    });`,
+  `    verb(entry, path, 'remove', () => { if (name) writes.namedWrites.push({ name, remove: true }); else writes.memoryWrites.push({ id, kind: 'remove' }); });`,
   `    return Object.freeze(entry);`,
   `  });`,
   `  const listVerb = (name, call) => verb(memories, 'memories.', name, call);`,
@@ -2077,7 +2084,8 @@ const worldPrelude = (
   `  const blank = (key) => {`,
   `    const path = 'memories[' + JSON.stringify(key) + '].';`,
   `    const entry = lockEntry({ id: '', turn: 0, timestamp: 0, day: 0, daypart: '', text: '', name: '', custom: false, kept: false, inContext: false, pinned: false, forgotten: false }, [], path, note);`,
-  `    for (const kind of ['pin', 'forget', 'edit', 'remove']) verb(entry, path, kind, () => note(path + kind + '()'));`,
+  `    const ignored = () => { if (!writes.unknownMemories.includes(key)) writes.unknownMemories.push(key); };`,
+  `    for (const kind of ['pin', 'forget', 'edit', 'remove']) verb(entry, path, kind, ignored);`,
   `    return Object.freeze(entry);`,
   `  };`,
   `  const byName = (key) => list.find((entry) => entry.name && nameKey(entry.name) === nameKey(key)) || blanks[key] || (blanks[key] = blank(key));`,
@@ -2087,7 +2095,7 @@ const worldPrelude = (
   `    if (!text(name)) throw new TypeError('memories.pin needs a name as text');`,
   // A list member's name would read the member, never the memory (Q6).
   `    if (text(name) in list || isIndex(text(name))) throw new TypeError('memories.pin cannot use the name "' + text(name) + '", a member of memories');`,
-  `    writes.namedPins.push({ name: text(name), text: line('memories.pin', value) });`,
+  `    writes.namedWrites.push({ name: text(name), text: line('memories.pin', value) });`,
   `  });`,
   `  const list = Object.freeze(memories);`,
   `  const named = new Proxy(list, {`,
@@ -2238,13 +2246,13 @@ const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing
 };
 
 /** The world writes a run's dump holds, or the error of the first unknown name it named. */
-function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: string[] } | { error: string } {
+function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: string[]; unknownMemories?: string[] } | { error: string } {
   const parsed: unknown = JSON.parse(dump);
   if (!parsed || typeof parsed !== 'object') return {};
-  const { location, minutes, advanced, discover, memory, pins, namedPins, diary, entities, memoryWrites, inventory, bodies, unknown, maybe } = parsed as {
-    location: string | null; minutes: number; advanced: boolean; discover: DiscoverWrite[]; memory: string[]; pins: string[]; namedPins: NamedPin[];
+  const { location, minutes, advanced, discover, memory, pins, namedWrites, diary, entities, memoryWrites, inventory, bodies, unknown, maybe, unknownMemories } = parsed as {
+    location: string | null; minutes: number; advanced: boolean; discover: DiscoverWrite[]; memory: string[]; pins: string[]; namedWrites: NamedWrite[];
     diary: DiaryWrite[]; entities: EntityCodeWrite[]; memoryWrites: MemoryWrite[]; inventory: InventoryOp[]; bodies: BodyWrite[];
-    unknown: string[]; maybe: string[];
+    unknown: string[]; maybe: string[]; unknownMemories: string[];
   };
   if (unknown.length) return { error: unknown[0] };
   const writes: WorldWrites = {
@@ -2253,7 +2261,7 @@ function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: str
     ...(discover.length ? { discover } : {}),
     ...(memory.length ? { memory } : {}),
     ...(pins.length ? { pins } : {}),
-    ...(namedPins.length ? { namedPins } : {}),
+    ...(namedWrites.length ? { namedWrites } : {}),
     ...(diary.length ? { diary } : {}),
     ...(entities.length ? { entities } : {}),
     ...(memoryWrites.length ? { memoryWrites } : {}),
@@ -2263,6 +2271,7 @@ function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: str
   return {
     ...(Object.keys(writes).length ? { writes } : {}),
     ...(maybe.length ? { maybeDiary: maybe } : {}),
+    ...(unknownMemories.length ? { unknownMemories } : {}),
   };
 }
 
@@ -2675,6 +2684,7 @@ export const executeStatCode = async (
         ...(inventoryWrites ? { worldWrites: inventoryWrites } : {}),
         ...(paid?.payments.length ? { payments: paid.payments } : {}),
         ...(worldWrites.maybeDiary ? { maybeDiary: worldWrites.maybeDiary } : {}),
+        ...(worldWrites.unknownMemories ? { unknownMemories: worldWrites.unknownMemories } : {}),
         ...(args ? { reply: replyOf() } : {}),
       });
       if (!currentStat || returnsSentence) return settled(null);

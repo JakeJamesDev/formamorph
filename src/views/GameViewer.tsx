@@ -34,7 +34,7 @@ import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { EMPTY_REPLY, type SandboxMemory, type SandboxTurn, type StatClock, type WorldWrites } from "@/lib/statCodeExecutor";
 import { advancedClock, baseWritesOf, mergeWorldWrites } from "@/lib/worldWrites";
 import { addScriptPins, pruneScriptPins, withScriptPins } from "@/lib/scriptPins";
-import { addNamedPins, pruneNamedMemories, withNamedPins } from "@/lib/namedMemories";
+import { addNamedWrites, pruneNamedMemories, withNamedWrites } from "@/lib/namedMemories";
 import { deletedAfter, editsAfter, notesAfter, pinsAfter } from "@/lib/memoryWrites";
 import {
   actionTotals, type ActionTotals, changedAnyStat, overlayStatCodeResult, playthroughPlaceholderSet, runItemScripts, runStatCodeTurn, runSwitchScripts, splitOwnerTurns, stateInventory, withoutInventory, withPinWrites, withoutBodies,
@@ -3231,10 +3231,10 @@ const GameViewer = ({
       const anchor = fullMessageHistoryRef.current.length;
       setMemoryNotes((prev) => withScriptPins(prev, committedTurnId, pins, anchor));
     }
-    const namedPins = final.codeWrites?.namedPins;
-    if (committedTurnId && namedPins?.length) {
+    const namedWrites = final.codeWrites?.namedWrites;
+    if (committedTurnId && namedWrites?.length) {
       const anchor = fullMessageHistoryRef.current.length;
-      setMemoryNotes((prev) => withNamedPins(prev, memoryDeletedRef.current, committedTurnId, namedPins, anchor));
+      setMemoryNotes((prev) => withNamedWrites(prev, memoryDeletedRef.current, committedTurnId, namedWrites, anchor));
     }
     landMemoryWrites(final.codeWrites);
 
@@ -4432,8 +4432,8 @@ const GameViewer = ({
       return next;
     });
     if (writes.pins?.length) setMemoryNotes((prev) => addScriptPins(prev, turnId, writes.pins ?? [], history.length));
-    const namedPins = writes.namedPins;
-    if (namedPins?.length) setMemoryNotes((prev) => addNamedPins(prev, memoryDeletedRef.current, turnId, namedPins, history.length));
+    const namedWrites = writes.namedWrites;
+    if (namedWrites?.length) setMemoryNotes((prev) => addNamedWrites(prev, memoryDeletedRef.current, turnId, namedWrites, history.length));
   }, [setFullMessageHistory, setMemoryNotes, diaryNames, landMemoryWrites]);
   // The writes of runs that ended while a turn ran: the turn's stream and commit rewrite its message.
   const heldWritesRef = useRef<WorldWrites | undefined>(undefined);

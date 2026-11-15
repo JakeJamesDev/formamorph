@@ -194,7 +194,7 @@ const worldWriteLines = (
   writes: WorldWrites | undefined, locations: readonly SandboxPlace[], entityNames: ReadonlyMap<string, string>,
 ): string[] => {
   if (!writes) return [];
-  const { location, minutes, discover = [], memory = [], pins = [], namedPins = [], diary = [], entities: entityWrites = [] } = writes;
+  const { location, minutes, discover = [], memory = [], pins = [], namedWrites = [], diary = [], entities: entityWrites = [] } = writes;
   const entityName = (entity: string) => entityNames.get(entity) ?? entity;
   const placeName = (id: string) => locations.find((place) => place.id === id)?.name ?? id;
   return [
@@ -203,7 +203,7 @@ const worldWriteLines = (
     ...discover.map(({ name, description }) => `discover: ${name}${description === undefined ? '' : ', described'}`),
     ...memory.map((line) => `memories.append: ${line}`),
     ...pins.map((line) => `memories.pin: ${line}`),
-    ...namedPins.map(({ name, text }) => `memories.pin: ${name}: ${text}`),
+    ...namedWrites.map((write) => ('remove' in write ? `memories[${JSON.stringify(write.name)}].remove()` : `memories.pin: ${write.name}: ${write.text}`)),
     ...diary.map(({ entity, line }) => `diary: ${entityName(entity)}: ${line}`),
     ...entityWrites.map((write) => `${memberPath('entities', entityName(write.entity))}.${write.kind === 'move' ? `move: ${placeName(write.location)}` : `${write.kind}()`}`),
   ];
@@ -293,6 +293,7 @@ export async function runTestCode(
     ...droppedLine('acquired is read-only.', outcome.acquiredWrites),
     ...droppedLine('Unknown entity names.', outcome.unknownEntities?.filter(keep.entity)),
     ...droppedLine('Unknown dictionary entries.', outcome.unknownLore),
+    ...droppedLine('Unknown memory names.', outcome.unknownMemories?.map((name) => `memories[${JSON.stringify(name)}]`)),
     ...readOnlyWritesLines(outcome.readOnlyWrites),
     ...(outcome.maybeDiary ?? []).map((name) => `Diary target “${name}” may be discovered in play.`),
     ...(outcome.entities ?? []).flatMap((row) => {

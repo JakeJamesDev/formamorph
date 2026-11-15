@@ -51,6 +51,13 @@ describe('runTestCode world writes', () => {
     expect(report.writes).toEqual(['memories.append: Tor lied.', 'memories.pin: The bridge is out.', 'diary: Tor: I lied.']);
   });
 
+  it('lists a named pin, and an edit or remove through an unknown memory name as dropped (Q12, Q25)', async () => {
+    const report = await run('memories.pin("Nursery", "Ash."); memories.Nursery.edit("Bree."); memories.Stable.remove(); return 0;');
+    expect(report.error).toBeNull();
+    expect(report.writes).toEqual(['memories.pin: Nursery: Ash.']);
+    expect(report.dropped).toEqual(['Unknown memory names. Writes ignored: memories["Nursery"], memories["Stable"].']);
+  });
+
   it('lists each lore write as code spelled it, and an unknown entry as dropped', async () => {
     const report = await run('dictionaries.Lore.entries["Old Gate"].enabled = true; dictionaries.Lore.entries.Nope.constant = true;', {
       ...world, dictionaries: [{ id: 'lore', name: 'Lore', entries: [{ id: 'g', name: 'Old Gate', key: ['gate'], value: 'Shut.', enabled: false }] }],

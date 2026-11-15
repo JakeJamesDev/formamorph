@@ -125,6 +125,11 @@ Memories under the **Recent** divider still go to the AI word for word. A pin on
 
 A world's script can keep a Custom memory up to date under a name, such as one memory that lists every child at a nursery. That memory shows its name as a label next to **Yours**. You can't change the name. When you rewind or regenerate a turn, the memory goes back to its text from before that turn. Rewind past the turn that made it, and it goes away. The AI reads the memory's text, never its name.
 
+- ✏️ **Your edits stay.** A rewind never undoes your edit. The script's next update starts from your text. Rewind that update, and your edit comes back.
+- 🗑️ **A delete lets the script start over.** After you delete a named memory, the script's next update makes a new memory under the name.
+- ♻️ **A restore never takes a name in use.** Restore the old memory while a newer one has its name, and the old one comes back without a name.
+- When the script itself removes a named memory, it shows under **Deleted**, and you can restore it.
+
 **Search memories…** and the filter chips find a memory in a long story. The chips are **All · Verbatim · Summary · Held · Let Go · Edited · Custom · Deleted**. **Verbatim**, **Summary** and **Held** name the *form* the story holds a memory in, and a memory is only ever one of them.
 
 > [!TIP]

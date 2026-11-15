@@ -81,6 +81,13 @@ const diaryNames = ({ maybeDiary = [] }: StatCodeResult): string | null => {
   return `a diary for ${quoteAll(maybeDiary)}, ${one ? 'a name' : 'names'} no entity has yet. ${one ? 'An entity with that name' : 'Entities with those names'} can appear during play.`;
 };
 
+/** The memory names an empty-list run found no memory under, phrased for the row; null when there are none (Q25). */
+const memoryNames = ({ unknownMemories = [] }: StatCodeResult): string | null => {
+  if (!unknownMemories.length) return null;
+  const one = unknownMemories.length === 1;
+  return `to ${one ? 'the memory' : 'the memories'} ${quoteAll(unknownMemories)}, ${one ? 'a name' : 'names'} no memory has yet. A script can pin ${one ? 'it' : 'them'} during play.`;
+};
+
 /** Every filled script in the world, in check order: the world's, then each stat's, then each trait's. A linked
  *  stat runs only scripts its link overrides; a Blueprint box runs once, under the Owner its home derives (Q11). */
 const scriptUnits = (world: RuleWorld): ScriptUnit[] => {
@@ -119,9 +126,10 @@ function findingOf(unit: ScriptUnit, result: StatCodeResult): Finding | null {
   const unknown = unknownNames(result);
   const diary = diaryNames(result);
   const ignored = `${ref} writes to unknown names. Writes ignored: ${unknown}`;
-  if (unknown && diary) return scriptFinding(SCRIPT_UNKNOWN_NAME, `${ignored}. It also writes ${diary}`, item);
-  if (unknown) return scriptFinding(SCRIPT_UNKNOWN_NAME, ignored, item);
-  if (diary) return scriptFinding(SCRIPT_UNKNOWN_NAME, `${ref} writes ${diary}`, item);
+  const named = memoryNames(result);
+  const maybes = [diary, named].filter((part) => part !== null);
+  if (unknown) return scriptFinding(SCRIPT_UNKNOWN_NAME, [ignored, ...maybes.map((part) => `It also writes ${part}`)].join('. '), item);
+  if (maybes.length) return scriptFinding(SCRIPT_UNKNOWN_NAME, maybes.map((part, i) => `${i ? 'It also writes' : `${ref} writes`} ${part}`).join(' '), item);
   return null;
 }
 

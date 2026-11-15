@@ -48,7 +48,34 @@ describe('executeStatCode named memories', () => {
     expect(res.error).toBeNull();
     expect(res.value).toBe(1);
     expect(res.worldWrites).toBeUndefined();
-    expect(res.readOnlyWrites).toEqual(['memories["Stable"].edit()', 'memories["Stable"].remove()', 'memories["Stable"].pin()', 'memories["Stable"].forget()']);
+    expect(res.readOnlyWrites).toBeUndefined();
+    expect(res.unknownMemories).toEqual(['Stable']);
+  });
+
+  it('lists each unknown name its verbs went through, once', async () => {
+    const res = await run('memories.Stable.edit("x"); memories.Stable.remove(); memories.Barn.remove(); return 0;');
+    expect(res.unknownMemories).toEqual(['Stable', 'Barn']);
+  });
+
+  it('records edit and remove on a named memory as named writes, in call order', async () => {
+    const res = await run('memories.Nursery.edit(" Ash and Bree. "); memories.pin("Stable", "Dot."); memories[1].remove(); return 0;');
+    expect(res.worldWrites).toEqual({
+      namedWrites: [{ name: 'Nursery', text: 'Ash and Bree.' }, { name: 'Stable', text: 'Dot.' }, { name: 'Nursery', remove: true }],
+    });
+  });
+
+  it('keeps edit and remove on an unnamed memory as memory writes', async () => {
+    const res = await run('memories[2].edit("Changed."); memories[0].remove(); return 0;');
+    expect(res.worldWrites).toEqual({
+      memoryWrites: [{ id: 'n1', kind: 'edit', text: 'Changed.', custom: true }, { id: 't1', kind: 'remove' }],
+    });
+  });
+
+  it('drops a named memory a script removed from the scripts after it', async () => {
+    const state = { memories, turn: { id: 't2', number: 2 }, clock: { deltaHours: 1, elapsedHours: 13 } } as unknown as SandboxState;
+    const after = withWorldWrites(state, { namedWrites: [{ name: 'NURSERY', remove: true }] });
+    const res = await run('return memories.Nursery.id === "" && memories.length === 2 ? 1 : 0;', after.memories);
+    expect(res.value).toBe(1);
   });
 
   it('keeps list reads as they were', async () => {
@@ -58,12 +85,12 @@ describe('executeStatCode named memories', () => {
 
   it('records a named pin, trimmed, beside an unnamed one', async () => {
     const res = await run('memories.pin(" Nursery ", " Ash and Bree. "); memories.pin("The bridge is out."); return 0;');
-    expect(res.worldWrites).toEqual({ pins: ['The bridge is out.'], namedPins: [{ name: 'Nursery', text: 'Ash and Bree.' }] });
+    expect(res.worldWrites).toEqual({ pins: ['The bridge is out.'], namedWrites: [{ name: 'Nursery', text: 'Ash and Bree.' }] });
   });
 
   it('takes a name that differs from a list member only in case', async () => {
     const res = await run('memories.pin("Length", "Long."); return 0;');
-    expect(res.worldWrites).toEqual({ namedPins: [{ name: 'Length', text: 'Long.' }] });
+    expect(res.worldWrites).toEqual({ namedWrites: [{ name: 'Length', text: 'Long.' }] });
   });
 
   const typeError = async (code: string) => {
@@ -87,8 +114,8 @@ describe('executeStatCode named memories', () => {
 
   it('reads a named pin under its name in a later script of the same turn', async () => {
     const state = { memories, turn: { id: 't2', number: 2 }, clock: { deltaHours: 1, elapsedHours: 13 } } as unknown as SandboxState;
-    const replaced = withWorldWrites(state, { namedPins: [{ name: 'nursery', text: 'Ash and Bree.' }] });
-    const added = withWorldWrites(replaced, { namedPins: [{ name: 'Stable', text: 'Dot.' }, { name: 'Stable', text: 'Dot and Eve.' }] });
+    const replaced = withWorldWrites(state, { namedWrites: [{ name: 'nursery', text: 'Ash and Bree.' }] });
+    const added = withWorldWrites(replaced, { namedWrites: [{ name: 'Stable', text: 'Dot.' }, { name: 'Stable', text: 'Dot and Eve.' }] });
     const res = await run(`
       return memories.Nursery.text === 'Ash and Bree.' && memories.Nursery.id === 'named:t1:nursery'
         && memories.Stable.text === 'Dot and Eve.' && memories.length === 4 ? 1 : 0;`, added.memories);

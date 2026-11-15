@@ -1,7 +1,7 @@
 import type { ChatMessage } from '@/types';
 import { parseTurns } from './turnBanding';
 import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneKeep, type MemoryPinMap, type MilestoneSelection } from './milestoneMemory';
-import { applyMemoryOverrides, type MemoryOverrides } from './memoryOverrides';
+import { applyMemoryOverrides, isRemoved, type MemoryOverrides } from './memoryOverrides';
 import { dayAndHour, daypart, formatStampPlain, hoursByPosition, type WorldCalendar } from './gameClock';
 import type { SandboxMemory } from './statCodeExecutor';
 
@@ -191,13 +191,14 @@ export function buildMemoryLedger(args: {
     });
   }
   for (const n of overrides.notes ?? []) {
+    const gone = deletedSet.has(n.id) || isRemoved(n);
     rows.push({
       id: n.id,
       text: n.text,
       isNote: true,
       ...(n.name ? { name: n.name } : {}),
-      kept: !deletedSet.has(n.id),
-      deleted: deletedSet.has(n.id),
+      kept: !gone,
+      deleted: gone,
       turnNumber: 0,
       pos: n.anchorTurn,
       inContext: false,

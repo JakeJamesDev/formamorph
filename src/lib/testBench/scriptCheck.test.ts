@@ -88,6 +88,19 @@ describe('the on-demand script check', () => {
     ]]);
   });
 
+  it('reports an edit or remove through a memory name as a maybe, never as an unknown name (Q12, Q25)', async () => {
+    const world = (code: string): RuleWorld => ({ ...base([]), scripts: [{ id: 'w', timing: 'after', code }] });
+    const rows = async (code: string) => (await checkScripts(world(code))).map((f) => [f.ruleId, f.message]);
+    expect(await rows('memories.pin("Nursery", "Ash.");')).toEqual([]);
+    expect(await rows('memories.Nursery.edit("Ash.");')).toEqual([[
+      SCRIPT_UNKNOWN_NAME.id, '“World · After the AI” writes to the memory “Nursery”, a name no memory has yet. A script can pin it during play.',
+    ]]);
+    expect(await rows('memories.Nursery.edit("Ash."); memories.Stable.remove(); entities.Mira.diary("Hi.");')).toEqual([[
+      SCRIPT_UNKNOWN_NAME.id,
+      '“World · After the AI” writes a diary for “Mira”, a name no entity has yet. An entity with that name can appear during play. It also writes to the memories “Nursery”, “Stable”, names no memory has yet. A script can pin them during play.',
+    ]]);
+  });
+
   it('runs a persona-only entity’s trait Script outside the opening cast, as play with no persona does (ticket 04 ruling)', async () => {
     const albus: Entity = {
       id: 'albus', name: 'Albus', persona: true, personaOnly: true,

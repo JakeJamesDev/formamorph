@@ -1,6 +1,6 @@
 # 02: Player Edits and Entry Verbs on Named Memories
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -24,13 +24,27 @@ From ticket 01's landing (49c0f5c83):
 
 ## Acceptance criteria
 
-- [ ] A script `edit` on a named memory, then a rewind of that turn, restores the text before it; the same on an unnamed memory persists, as today.
-- [ ] A script `remove` on a named memory, then a rewind of that turn, brings the memory back.
-- [ ] Player edit → script pin → rewind of the script turn shows the player's edit; a script reading `.text` after the player edit sees the edit.
-- [ ] Player delete → `memories['Nursery']` is blank → `pin('Nursery', t)` makes a new memory with a new id.
-- [ ] Restore of the deleted memory while the new one lives returns it unnamed; with no live holder, it returns named.
-- [ ] `edit` and `remove` through an unknown name are ignored and reported.
-- [ ] Reinstating today's persist rule for named verbs fails the rewind tests.
-- [ ] Docs updated; changelog fragment written.
+- [x] A script `edit` on a named memory, then a rewind of that turn, restores the text before it; the same on an unnamed memory persists, as today. *namedMemories.test "rewinds an edit of a named memory…", "keeps an edit of an unnamed memory…"; executor test "records edit and remove on a named memory as named writes".*
+- [x] A script `remove` on a named memory, then a rewind of that turn, brings the memory back. *"hides a removed memory, then brings it back…"*
+- [x] Player edit → script pin → rewind of the script turn shows the player's edit; a script reading `.text` after the player edit sees the edit. *"shows the player's edit to scripts…" (through `scriptMemories`); Memory Manager test "saves an edit of a named memory as a player revision…".*
+- [x] Player delete → `memories['Nursery']` is blank → `pin('Nursery', t)` makes a new memory with a new id. *"frees the name: the lookup misses…"*
+- [x] Restore of the deleted memory while the new one lives returns it unnamed; with no live holder, it returns named. *Module tests for both cases; Memory Manager test "restores a deleted named memory unnamed…".*
+- [x] `edit` and `remove` through an unknown name are ignored and reported. *Executor "reads an unknown name as a blank entry…"; statCodeTestRun.worldWrites "lists a named pin, and an edit or remove through an unknown memory name as dropped"; scriptCheck "reports an edit or remove through a memory name as a maybe" (Q25).*
+- [x] Reinstating today's persist rule for named verbs fails the rewind tests. *Routing named edit/remove back to `memoryWrites` turns the executor test red; a player revision given a turn id turns three rewind tests red. Ten mutations in all, each red on its guard.*
+- [x] Docs updated; changelog fragment written. *Scripts Reference Named Memories and Memory Entries, Memory page, two hover cards, `changelog.d/named-memories-02.md`.*
 
-For you: edit a named memory in the Memory Manager, play a turn whose script rewrites it, rewind that turn, and check your edit is back.
+## Landed
+
+**Not verified**
+- None. No in-game run: the GameViewer wiring is unchanged beyond the rename, and the module and Memory Manager tests cover the rules, as the spec's Testing Decisions set.
+
+**For you**
+- For you: edit a named memory in the Memory Manager, play a turn whose script rewrites it, rewind that turn, and check your edit is back.
+
+**Notes**
+- `namedPins` is now `namedWrites` (`NamedWrite`): a pin, an entry edit or an entry removal, in call order, resolved by name at commit, so the `#2` id gap is gone. `NamedRevision` gains `removed?: true` (save shape, unreleased).
+- A new id also skips ids in the deleted list, so a re-landed turn never makes a memory that reads as deleted.
+- Reset All restores script removals too, and runs each restore through the Q7 rule.
+- Known gap: inside one turn's run chain, a pin after a script removal shows later scripts a predicted `named:<turn>:<name>` id; the committed memory keeps its original id (Q20). Only the in-chain `entry.id` differs.
+- Known gap: a player edit made between a turn's stream and its commit, on a memory that turn created, goes when the turn re-lands (Q24's rule).
+- Delete stays the tombstone it was; the name frees through `findNamed`, which skips deleted ids.
