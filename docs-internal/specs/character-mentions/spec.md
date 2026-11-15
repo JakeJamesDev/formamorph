@@ -64,6 +64,8 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q32 | Scene context holds the player character's name only. "you", "I" and the player's name resolve to no entity. |
 | Q33 | Tracked test fixtures use passages written for them, never gold or real narration. The quote-speaker gold set lives with the other gold sets in the training-data repo (Q23). |
 | Q34 | Q32 applies to mention links and presence too, not only to quote speakers. A gold hit that came only through a wrong link (for example a "you" merged into a cast member's cluster) is the ruling's cost, not a failing rule change. The ticket names each such case. |
+| Q35 | A contribution is one row per passage: the original clusters (char spans), the reading's entity id or null per cluster, and every correction for that turn so far as `{kind, start, end, entityId \| null}`. A new send for the same account, world and passage text replaces the pending row. The export applies mention corrections to the clusters: the span leaves its cluster, joins the clusters named that entity (merged when several) or starts a new one, and null leaves it out. Singletons drop. |
+| Q36 | A quote-speaker correction is sent and stored with `kind: "quote"` and its quote span. Staff see it. The coref export skips it; it is kept for a later quote-speaker set. |
 
 ## User Stories
 
@@ -174,7 +176,7 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 
 **Server (FormamorphServer)**
 
-- A new table for contributed corrections: account, world id, passage text, model id and version, original clusters, the correction, created time, review state (pending, accepted, rejected), reviewed by.
+- A new table for contributed corrections, one row per passage (Q35): account, world id, passage text, model id and version, original clusters with their entity ids, the corrections, created time, review state (pending, accepted, rejected), reviewed by.
 - `POST` a contribution: signed-in, age-attested, rate-limited, with a size cap per passage.
 - Staff routes behind the existing staff gate: queue, count, accept, reject. A staff UI tab in the admin panel, beside Review and Reports.
 - A staff export of accepted contributions in the training format.

@@ -16,7 +16,7 @@ A signed-in adult player can send corrections to the training corpus, and staff 
 - **Sending:** with the setting on, each correction also sends:
   - the full passage;
   - the model id and version;
-  - the original clusters and the correction.
+  - the original clusters with their entity ids, and every correction for that turn so far (spec Q35, Q36).
 - **Staff tab:** a review tab in the admin panel, beside Review and Reports. It shows the passage with the original and corrected links, and accept and reject buttons.
 - **Copy:** write the opt-in copy from the Writing Guide.
 - **Changelog:** a fragment for the feature.
