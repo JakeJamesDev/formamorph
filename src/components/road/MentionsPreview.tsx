@@ -85,7 +85,7 @@ export function MentionsPreview({ className }: { className?: string }) {
   );
 }
 
-/** "What's this?": a small tile that opens the preview in a dialog. */
+/** "Show Me": a small tile that opens the preview in a dialog. */
 export function MentionsPreviewButton({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -96,7 +96,7 @@ export function MentionsPreviewButton({ defaultOpen = false }: { defaultOpen?: b
         onClick={() => setOpen(true)}
       >
         <MessageSquareQuote aria-hidden className="size-5" />
-        What’s this?
+        Show Me
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[560px]">

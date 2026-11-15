@@ -16,7 +16,7 @@ export const ENGINE_CARD_COPY = {
 };
 
 /** The offer in the story: under the latest narration, above the choices. It never takes focus. AI setup reuses it
- *  with its own words and no Not Now; the Character Mentions offer with its own action and its What's this? control in
+ *  with its own words and no Not Now; the Character Mentions offer with its own action and its Show Me control in
  *  Morphie's place. With neither handler, no buttons show. */
 export function StoryCard({
   onNotNow, onAction, actionLabel = 'See Levels', ariaLabel = 'Formamorph AI', className, testId = 'story-card',

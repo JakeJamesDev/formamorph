@@ -7,7 +7,7 @@ import { usePlannedDownloadSize } from '@/lib/coref/usePlannedDownloadSize';
 import { MentionsPreviewButton } from './MentionsPreview';
 import { StoryCard } from './StoryCard';
 
-/** The Character Mentions offer: What's this? in Morphie's place opens a preview of the feature (Q65). Turn On starts the Settings toggle's
+/** The Character Mentions offer: Show Me in Morphie's place opens a preview of the feature (Q65). Turn On starts the Settings toggle's
  *  download, which then shows in the card, with the Contribute Corrections question when `asking`. */
 export function MentionsStoryCard({ accepted, onTurnOn, onNotNow, asking = false, onAnswer, previewOpen, className }: {
   accepted: boolean;

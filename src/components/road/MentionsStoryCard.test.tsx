@@ -47,9 +47,9 @@ describe('the Character Mentions card', () => {
     fake.state = { ...fake.state, status: 'downloading', progress: { loaded: 50 * 1048576, total: 143 * 1048576 } };
     const { card } = mount(true);
     expect(within(card()).getByText('50 / 143 MB')).toBeTruthy();
-    // The preview's mentions and What's this? stay; the offer's own actions go.
-    // Only What's this? stays; the offer's own actions go.
-    expect(within(card()).getAllByRole('button').map((b) => b.textContent)).toEqual(['What’s this?']);
+    // The preview's mentions and Show Me stay; the offer's own actions go.
+    // Only Show Me stays; the offer's own actions go.
+    expect(within(card()).getAllByRole('button').map((b) => b.textContent)).toEqual(['Show Me']);
   });
 
   it('shows a failed download with Retry and Not Now', () => {
@@ -61,11 +61,11 @@ describe('the Character Mentions card', () => {
     expect(within(card()).getByRole('button', { name: 'Not Now' })).toBeTruthy();
   });
 
-  it('keeps the passage out of the card: What’s this? in Morphie’s place opens it in a dialog (Q65)', () => {
+  it('keeps the passage out of the card: Show Me in Morphie’s place opens it in a dialog (Q65)', () => {
     const { card } = mount(false);
     expect(within(card()).queryByTestId('mentions-preview')).toBeNull();
     expect(card().querySelector('img')).toBeNull();
-    fireEvent.click(within(card()).getByRole('button', { name: 'What’s this?' }));
+    fireEvent.click(within(card()).getByRole('button', { name: 'Show Me' }));
     const dialog = screen.getByRole('dialog', { name: 'Character Mentions' });
     expect(within(dialog).getByTestId('mentions-preview').textContent).toContain('"Then pour mine," you say.');
   });

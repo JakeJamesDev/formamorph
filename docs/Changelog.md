@@ -56,7 +56,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **"Wrong character?" on a card lets you pick who a name or quote really means, or choose Someone Else.** The quote color, card and In Scene change at once, and your save keeps the fix. Press Enter on a name to reach its card from the keyboard.
     - **Signed-in adults can send their "Wrong character?" fixes to help train the mentions model.** Turn on Contribute Corrections under Character Mentions. Each fix sends the whole passage, and accepted passages are kept for training. It's off until you turn it on.
     - **Your character's quotes and mentions in narration now get a color and a card, like the rest of the cast.** On Auto, your quotes use your Quote Color. The "Wrong character?" list puts you first and shows each character's picture. A character you can't name yet gets no color or card.
-    - **What's this? on the Character Mentions card shows a sample passage with colored quotes and linked names.** Signed-in adults are asked once whether to contribute corrections, in the card or at their first fix.
+    - **Show Me on the Character Mentions card opens a sample passage with colored quotes and linked names.** Signed-in adults are asked once whether to contribute corrections, in the card or at their first fix.
   - **Item scripts read their event's Item Instance as `instance`, and its quantity and use target from `args`.** Every script has `args`; it's empty where nothing passes one. Worlds that use `self.event` or `.copies` are rewritten when they load.
 - **🛠️ Developer tooling**
   - **Item Instances:**
