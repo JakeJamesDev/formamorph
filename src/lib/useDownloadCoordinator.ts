@@ -569,8 +569,14 @@ export function useDownloadCoordinator(
   const handleContextualDownload = (world: WorldRecord, state: DownloadState, plan: DownloadPlan = { addons: [] }) => {
     planRef.current = plan;
     if (state === 'none') { void handleDownloadWorld(world, plan); return; }
-    // A Supporter-only listing has one Supporter Copy per account: it replaces the copy, never adds another.
-    if (isSupporterOnly(world)) { chooseOverwrite(world); return; }
+    if (isSupporterOnly(world)) {
+      // Only a Supporter Copy is replaced in place; a plain copy stays plain and the download makes a new world.
+      const marked = copiesForWorld(world).filter((copy) => copy.supporterCopy);
+      if (!marked.length) { void handleDownloadWorld(world, plan); return; }
+      if (marked.length === 1) { void openWorldUpdateReview(world, marked[0].id); return; }
+      chooseOverwrite(world);
+      return;
+    }
     setContextualAction({ world, mode: state });
   };
 

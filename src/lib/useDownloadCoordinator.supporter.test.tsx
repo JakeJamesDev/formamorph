@@ -129,7 +129,10 @@ describe('downloading a Supporter-only world', () => {
 
   it('updates the existing copy in place without offering a second copy, and keeps the marker', async () => {
     fetchWorld.mockResolvedValue(sent(4));
-    const held = { id: 'local-1', name: 'Supporter World', sourceId: 'sw-1', sourceUpdatedAt: 'T1' } as WorldRecord;
+    const held = {
+      id: 'local-1', name: 'Supporter World', sourceId: 'sw-1', sourceUpdatedAt: 'T1',
+      supporterCopy: { listingId: 'sw-1', accountId: 'acct-1', revision: 3 },
+    } as WorldRecord;
     const { result } = renderHook(() => useHarness([held]));
     await act(async () => { result.current.coord.handleContextualDownload(listing, 'update'); });
 
@@ -138,6 +141,32 @@ describe('downloading a Supporter-only world', () => {
     expect(stored().id).toBe('local-1');
     expect(stored().supporterCopy).toEqual({ listingId: 'sw-1', accountId: 'acct-1', revision: 4 });
     expect(result.current.worlds).toHaveLength(1);
+  });
+
+  it('makes a second, marked world when only a plain copy is held, and leaves the plain copy unmarked', async () => {
+    const plainCopy = { id: 'local-plain', name: 'Supporter World', sourceId: 'sw-1', sourceUpdatedAt: 'T1' } as WorldRecord;
+    const { result } = renderHook(() => useHarness([plainCopy]));
+    await act(async () => { await result.current.coord.handleContextualDownload(listing, 'update'); });
+
+    await waitFor(() => expect(storeWorld).toHaveBeenCalled());
+    expect(stored().id).not.toBe('local-plain');
+    expect(stored().supporterCopy).toEqual({ listingId: 'sw-1', accountId: 'acct-1', revision: 3 });
+    await waitFor(() => expect(result.current.worlds).toHaveLength(2));
+    expect(result.current.worlds.find((w) => w.id === 'local-plain')).not.toHaveProperty('supporterCopy');
+  });
+
+  it('overwrites the Supporter Copy, not the plain copy, when both are held', async () => {
+    const plainCopy = { id: 'local-plain', name: 'Supporter World', sourceId: 'sw-1', sourceUpdatedAt: 'T1' } as WorldRecord;
+    const marked = {
+      id: 'local-marked', name: 'Supporter World', sourceId: 'sw-1', sourceUpdatedAt: 'T1',
+      supporterCopy: { listingId: 'sw-1', accountId: 'acct-1', revision: 3 },
+    } as WorldRecord;
+    const { result } = renderHook(() => useHarness([plainCopy, marked]));
+    await act(async () => { await result.current.coord.handleContextualDownload(listing, 'update'); });
+
+    await waitFor(() => expect(storeWorld).toHaveBeenCalled());
+    expect(stored().id).toBe('local-marked');
+    expect(result.current.coord.showOverwriteSelect).toBe(false);
   });
 
   it('still fetches a Supporter-only required source for a world that is not Supporter-only', async () => {

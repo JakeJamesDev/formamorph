@@ -12,6 +12,14 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.7.0** (just released below)._
 
+### Major Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Supporter Worlds:**
+    - **A Supporter download keeps a plain copy of the same world as it is.** It makes a second Supporter world. Downloading again updates only that one.
+
 ### Minor Changes
 
 #### ➕ Added
