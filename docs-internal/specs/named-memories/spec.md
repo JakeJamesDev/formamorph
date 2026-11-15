@@ -54,6 +54,7 @@ Settled with the user on 2026-11-14.
 | Q22 | A restore whose name is taken (Q7) gives a plain unnamed player memory with its current text and anchor. Its revisions are dropped, so no rewind takes it (ticket 02) |
 | Q23 | A player edit keeps the current anchor. Q10 moves the anchor on script writes only (ticket 02) |
 | Q24 | A rewind past the creating turn drops the named memory even when a player revision exists, as Implementation Decisions sets (ticket 02) |
+| Q25 | A verb on a blank entry goes to a list of unknown memory names. Test Code lists it. The Test Bench, whose memory list is empty, reports it as a maybe, like a diary call to an unknown entity, never as an error. In play, the turn warning lists it with the other dropped writes (ticket 02) |
 
 ## User Stories
 
