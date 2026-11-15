@@ -60,6 +60,7 @@ Settled in the grill on 2026-11-14. Numbered R so they don't collide with the ba
 | R33 | Under R11, turning the Supporter-only flag on also checks a pending update of the listing for linked images. Found in ticket 02's landing; user ruling puts it in ticket 01, 2026-11-14. |
 | R34 | A Supporter world's gated response size is accepted as is. Processed images are lossless PNG, the Mascot's format, so the largest bundled world comes to 166 MB. User ruling, 2026-11-14. |
 | R35 | Base Q39 applies to Supporter Copies as written: copies marked for another account are hidden from every world and library listing while a different account is signed in. The signed-in account's first good check removes them. The filter sits in the storage listings, with an unfiltered read for sync and removal. Signed-out behavior matches the base module. Ticket 07 intent answer. |
+| R36 | A plain copy downloaded while a listing was public stays plain. A later Supporter download of that listing makes a second world, the Supporter Copy, and R29's overwrite applies only to the Supporter Copy. User ruling from the close review, 2026-11-14. |
 
 ## User Stories
 
