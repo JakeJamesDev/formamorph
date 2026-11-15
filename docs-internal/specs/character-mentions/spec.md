@@ -90,6 +90,9 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q58 | The pick list's "not anyone listed" option reads "Someone Else" (the user's pick), replacing "Nobody in the cast", which breaks the Writing Guide. It still stores entity id none. |
 | Q59 | A turn's saved reading also keeps the host's clusters and each cluster's entity id, so a contribution can send Q35's payload. Turns read before that have no clusters and send nothing. "Contribute Corrections" sits under the Character Mentions toggle, both modes, shown while the feature is on, disabled with a reason when signed out or not age-attested. Staff review is a "Mentions (n)" segment in the Admin Panel's Moderation tab. A contribution's world id is the open world's id; the model id and version are the reading's. |
 | Q60 | The contribution opt-in belongs to the account that gave it: the setting stores that account's id, and the toggle reads on and sends go out only while that account is signed in. Another account on the same device starts off. |
+| Q61 | Reverses Q32 and Q34 for display (the user's call, 2026-11-15): the played persona is a speaker and a mention target. Its quotes get a color and "Wrong character?"; "you", "I" and its name link to it with a card; it appears in the pick list. On Auto, its quote color is the player's Quote Color setting. In Scene and memory keep treating the player as today. Ticket 14. |
+| Q62 | Pick-list rows show the entity's image as a square, top-aligned crop like the persona square, with the initial as fallback, under Q51's visibility rule. Ticket 14. |
+| Q63 | Q48 stands and uses the one naming standard, `presence.ts`: an entity shows its name once met or when its name is not hidden, else its Stranger Name, else nothing. A speaker or mention with nothing to show stays uncolored and unlinked; one with a Stranger Name shows that label everywhere (card, pick list). Ticket 14. |
 
 ## User Stories
 
