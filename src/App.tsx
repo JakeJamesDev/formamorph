@@ -21,6 +21,7 @@ import { RootErrorBoundary } from './components/RootErrorBoundary';
 import { GameDataProvider } from './contexts/GameDataContext';
 import { UserProfileProvider } from './contexts/UserProfileContext';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { useCharacterMentionsSync } from './lib/coref/characterMentionsApp';
 import { GameplayProvider } from './contexts/GameplayContext';
 import { PlaceholderSessionProvider, usePlaceholderSession } from './contexts/PlaceholderSessionContext';
 import { AgeGateProvider } from './contexts/AgeGateContext';
@@ -56,6 +57,7 @@ function AppViews() {
   const [currentView, setCurrentView] = useState<DevView>('mainMenu');
   const devRoute = useDevRoute();
   const { beginSession, endSession } = usePlaceholderSession();
+  useCharacterMentionsSync();
 
   // The trail of views this run has passed through, oldest first, so the Android back button knows
   // whether there is anywhere to go back to. Returning to a view already in the trail pops back to it.

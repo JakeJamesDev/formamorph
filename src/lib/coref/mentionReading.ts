@@ -34,6 +34,9 @@ export interface MentionSceneContext {
 
 type CastEntity = Pick<Entity, 'id' | 'name' | 'aliases' | 'strangerName' | 'kind'>;
 
+/** The cast a reading names clusters with. */
+export type MentionCast = CastEntity[];
+
 interface Hit {
   entityId: string;
   start: number;

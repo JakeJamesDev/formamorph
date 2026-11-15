@@ -6,7 +6,7 @@ import { readHostedDevice, writeHostedDevice } from '@/lib/hostedAi/hostedAllowa
 import { isHostedChatUrl } from '@/lib/hostedAi/hostedUrls';
 import { PROMPT_TEXT_DEFAULTS } from '../components/game/GamePrompts';
 import { EXPERIMENTAL_PROMPT_VALUES } from '../components/game/ExperimentalPrompts';
-import { DEFAULT_EDITOR_AUTO_SAVE_IDLE_S, clampEditorAutoSaveIdle, DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_UNIFIED_KV_CACHE, DEFAULT_LOCAL_K_CACHE_TYPE, DEFAULT_LOCAL_V_CACHE_TYPE, DEFAULT_LOCAL_KV_CACHE_IN_RAM, LOCAL_CACHE_TYPES, DEFAULT_LOCAL_CONTEXT_OVERFLOW, LOCAL_CONTEXT_OVERFLOW_POLICIES, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_LOCAL_GPU_DEVICE, DEFAULT_LOCAL_ENGINE_BACKEND, LOCAL_ENGINE_BACKENDS, DEFAULT_LOCAL_AUTO_LOAD, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, DEFAULT_FONT_TUNINGS, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, DEFAULT_QUOTE_COLOR, DEFAULT_QUOTE_ITALIC, DEFAULT_QUOTE_COLOR_LIGHT, DEFAULT_QUOTE_COLOR_DARK, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_CONTINUE_CHOICE, DEFAULT_IMAGE_ATTACHMENTS, CONTINUE_CHOICE_MODES, DEFAULT_NARRATION_LAYOUT, NARRATION_LAYOUTS, DEFAULT_TOOLS_ENABLED, DEFAULT_EDITOR_AUTO_SAVE, DEFAULT_DAILY_SEND_ENABLED, type LocalCacheType, type LocalContextOverflow, type LocalEngineBackend, type ContinueChoiceMode, type NarrationLayout, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
+import { DEFAULT_EDITOR_AUTO_SAVE_IDLE_S, clampEditorAutoSaveIdle, DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_UNIFIED_KV_CACHE, DEFAULT_LOCAL_K_CACHE_TYPE, DEFAULT_LOCAL_V_CACHE_TYPE, DEFAULT_LOCAL_KV_CACHE_IN_RAM, LOCAL_CACHE_TYPES, DEFAULT_LOCAL_CONTEXT_OVERFLOW, LOCAL_CONTEXT_OVERFLOW_POLICIES, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_LOCAL_GPU_DEVICE, DEFAULT_LOCAL_ENGINE_BACKEND, LOCAL_ENGINE_BACKENDS, DEFAULT_LOCAL_AUTO_LOAD, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, DEFAULT_FONT_TUNINGS, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, DEFAULT_QUOTE_COLOR, DEFAULT_QUOTE_ITALIC, DEFAULT_QUOTE_COLOR_LIGHT, DEFAULT_QUOTE_COLOR_DARK, DEFAULT_CHARACTER_MENTIONS, DEFAULT_CHARACTER_MENTIONS_MODEL, CHARACTER_MENTIONS_MODELS, type CharacterMentionsModel, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_CONTINUE_CHOICE, DEFAULT_IMAGE_ATTACHMENTS, CONTINUE_CHOICE_MODES, DEFAULT_NARRATION_LAYOUT, NARRATION_LAYOUTS, DEFAULT_TOOLS_ENABLED, DEFAULT_EDITOR_AUTO_SAVE, DEFAULT_DAILY_SEND_ENABLED, type LocalCacheType, type LocalContextOverflow, type LocalEngineBackend, type ContinueChoiceMode, type NarrationLayout, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
 import { isDesktop, setDesktopComfyEndpoint } from '../lib/imageGen/desktop';
 import { resolveImageEndpoint, type ImageProviderId } from '../lib/imageGen';
 import { useLocalLlmStatus } from '../lib/useLocalLlmStatus';
@@ -1674,6 +1674,14 @@ function useProvideSettings() {
     else root.removeAttribute('data-quote-color');
   }, [quoteColor]);
 
+  // Character Mentions: the on-device coreference model that links narration to the cast.
+  const [characterMentions, setCharacterMentions] = usePersistentState<boolean>(`${APP_ID}_characterMentions`, DEFAULT_CHARACTER_MENTIONS, boolCodec);
+  const characterMentionsModelCodec = useMemo(() => ({
+    parse: (r: string): CharacterMentionsModel => (CHARACTER_MENTIONS_MODELS.includes(r as CharacterMentionsModel) ? (r as CharacterMentionsModel) : DEFAULT_CHARACTER_MENTIONS_MODEL),
+    serialize: (v: CharacterMentionsModel): string => v,
+  }), []);
+  const [characterMentionsModel, setCharacterMentionsModel] = usePersistentState<CharacterMentionsModel>(`${APP_ID}_characterMentionsModel`, DEFAULT_CHARACTER_MENTIONS_MODEL, characterMentionsModelCodec);
+
   // Quote Italic reads the same always-present span, through its own root attribute.
   const [quoteItalic, setQuoteItalic] = usePersistentState<boolean>(`${APP_ID}_quoteItalic`, DEFAULT_QUOTE_ITALIC, boolCodec);
   useEffect(() => {
@@ -1756,6 +1764,10 @@ function useProvideSettings() {
     setNarrationLineHeight,
     quoteColor,
     setQuoteColor,
+    characterMentions,
+    setCharacterMentions,
+    characterMentionsModel,
+    setCharacterMentionsModel,
     quoteItalic,
     setQuoteItalic,
     quoteColorLight,

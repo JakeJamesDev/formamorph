@@ -107,6 +107,7 @@ export const GRAPH_COVERED = {
   'scripts/shipNotices.mjs': 'reads the notices file its caller names and the package.json of each module; a change to it runs the full suite',
   'scripts/bundledAvatarCheck.mjs': 'checks only the output folder its build names; a change to it runs the full suite',
   'scripts/espeakCheck.mjs': 'checks only the output folder its build names; a change to it runs the full suite',
+  'scripts/corefDevManifest.mjs': 'reads files only in the dev server, which no test runs; a change to it runs the full suite',
   'scripts/noticesList.mjs': 'reads only the folders its caller names',
   'scripts/noticesList.test.ts': 'reads only its own temp folders',
   'scripts/bundledWorldHashes.mjs': 'reads only the world file an import names; a change to it runs the full suite',

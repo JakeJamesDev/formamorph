@@ -58,6 +58,7 @@ const ENTRIES: [string, string][] = [
   ['worldEditor', 'World Editor'],
   ['worldUpdate', 'Update This World'],
   ['aiContext', 'AI Context'],
+  ['mentionReading', 'Mention Reading'],
   ['tts', 'Text to Speech'],
   ['demoAI', "You're Playing on the Demo AI"],
   ['road', 'Formamorph AI Levels'],

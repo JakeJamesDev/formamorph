@@ -93,6 +93,17 @@ node testing/coref/manifest.mjs publish --model small --export .scratch/coref/ex
 
 Upload `publish/small/<version>/` first, then `publish/manifest.json`. When `--current` does not exist yet (HTTP 404, or no file), nothing is published, and the first publish passes.
 
+## 🧪 A local manifest for the dev server
+
+The dev server serves `.scratch/coref/publish` at `/coref-dev/`, and the app reads its manifest there until the public bucket exists. Publish each export there with `--base-url /coref-dev`:
+
+```powershell
+node testing/coref/manifest.mjs publish --model small --export .scratch/coref/exports/small-litbank --scores .scratch/coref/scores/small-litbank.json --current .scratch/coref/publish/manifest.json --base-url /coref-dev --out .scratch/coref/publish
+```
+
+- Run it once per model. The second run keeps the first model's entry.
+- `COREF_DEV_DIR` serves another folder. `VITE_COREF_MANIFEST_URL` points the app at any manifest.
+
 ## 🚦 The publish gate
 
 Each model publishes on its own. `publish` refuses a model unless, on every dev set the published version has:

@@ -1,3 +1,4 @@
+import type { MentionReadingMap } from '@/lib/coref/mentionReadings';
 import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming, PlacementWhere, BodyPick, WorldOptionValueOf, SupporterCopyMarker, LibrarySupporterCopyMarker } from './world';
 import type { ChatMessage } from './ai';
 import type { ActionSnapshot, ListedAction, SentActionList } from '@/lib/actionList';
@@ -584,6 +585,9 @@ export interface SaveObject {
   /** What scripts told the player with `player.tell`, by turn id, in call order, each with its script's
    *  timing. Never sent in a request. Absent ⇒ none. */
   scriptTells?: Record<string, { text: string; timing: ScriptTiming }[]>;
+  /** Each turn's Mention Reading by turn id, with the model that made it and a hash of the narration it read.
+   *  Never sent in a request. Absent ⇒ none. */
+  mentionReadings?: MentionReadingMap;
   /** The Action List each turn was sent with, by turn id. Only the newest turn's entries keep their
    *  snapshots, whose states carry no `fullMessageHistory`. Absent ⇒ none. */
   sentActions?: Record<string, SentActionList<ActionSnapshot>>;

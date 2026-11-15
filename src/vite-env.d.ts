@@ -24,4 +24,6 @@ interface ImportMetaEnv {
   readonly VITE_DEV_ROUTE?: string;
   /** DEV only: hold HMR updates until the page applies them (see `heldUpdatesBanner.ts`). */
   readonly VITE_FM_HOLD_UPDATES?: string;
+  /** The Character Mentions model manifest, in place of the published one. */
+  readonly VITE_COREF_MANIFEST_URL?: string;
 }

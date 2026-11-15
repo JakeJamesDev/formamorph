@@ -21,6 +21,7 @@ import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { hslTripleToHex } from '@/lib/hslColor';
 import type { SettingsMode } from '@/lib/settingsMode';
 import type { DisplaySettingsSource } from './settingsSource';
+import { CharacterMentionsRows } from './CharacterMentionsRows';
 
 // These bindings narrow each option's `value` to the setting's union, so a drifted option fails to compile.
 const THEME_OPTIONS: readonly SettingOptionCopy<'light' | 'dark' | 'system'>[] = SETTINGS_OPTIONS.theme;
@@ -319,6 +320,7 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
         onChange={setQuoteItalic}
         {...rowCopy('quoteItalic')}
       />
+      <CharacterMentionsRows source={source} advanced={advanced} />
       <Row>
         <div>
           <ConfirmDialog

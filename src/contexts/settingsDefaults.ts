@@ -266,6 +266,13 @@ export const DEFAULT_QUOTE_ITALIC = false;
 export const DEFAULT_QUOTE_COLOR_LIGHT: string | null = null;
 export const DEFAULT_QUOTE_COLOR_DARK: string | null = null;
 
+// Character Mentions: off until the player turns it on, since it downloads a model (Q4). Auto lets the probe
+// pick the model (Q5).
+export const DEFAULT_CHARACTER_MENTIONS = false;
+export const CHARACTER_MENTIONS_MODELS = ['auto', 'big', 'small'] as const;
+export type CharacterMentionsModel = (typeof CHARACTER_MENTIONS_MODELS)[number];
+export const DEFAULT_CHARACTER_MENTIONS_MODEL: CharacterMentionsModel = 'auto';
+
 // The global Tools switch. On sends each prompt its offered Tools; each Tool is still opt-in.
 export const DEFAULT_TOOLS_ENABLED = true;
 // The World Editor's Autosave. Off saves only on Save and Ctrl+S.

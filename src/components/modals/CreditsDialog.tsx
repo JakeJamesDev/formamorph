@@ -88,6 +88,14 @@ function CreditsTabs() {
                 {' '}Your theme sets their colors.
               </Hint>
             </li>
+            <li>
+              <div className={NAME}>LitBank</div>
+              <Hint>
+                Training data for the Character Mentions models, by David Bamman and others, from{' '}
+                <ExternalLink href="https://github.com/dbamman/litbank">github.com/dbamman/litbank</ExternalLink>. Licensed under CC BY 4.0:{' '}
+                <ExternalLink href="https://creativecommons.org/licenses/by/4.0/">creativecommons.org/licenses/by/4.0</ExternalLink>.
+              </Hint>
+            </li>
             {isDesktop() && (
               <li>
                 <div className={NAME}>llama.cpp</div>

@@ -79,6 +79,10 @@ import { toastError } from "@/lib/linkToast";
 import { cancelOpenPrompts, isNotice, noticeHost, scriptPrompts, silentPrompts, type ScriptPromptHost } from "@/lib/scriptPrompts";
 import { isScriptPromptSample, SCRIPT_PROMPT_SAMPLES } from "@/lib/devScriptPromptSamples";
 import { addTell, latestTurnId, pruneTells, REROLLED_TIMINGS, setTurnTells, turnTells, withoutTimings } from "@/lib/scriptTells";
+import { pruneMentionReadings } from "@/lib/coref/mentionReadings";
+import { characterMentions, useCharacterMentionsState } from "@/lib/coref/characterMentionsApp";
+import { useTurnMentionReadings } from "@/lib/coref/useTurnMentionReadings";
+import { MentionReadingDevDialog } from "@/components/dev/MentionReadingDevDialog";
 import { useScriptPromptListener } from "@/lib/useScriptPromptListener";
 import { ThemedToastContainer } from "@/components/ThemedToastContainer";
 import "react-toastify/dist/ReactToastify.css";
@@ -903,6 +907,8 @@ const GameViewer = ({
     setSentActions,
     scriptTells,
     setScriptTells,
+    mentionReadings,
+    setMentionReadings,
     openingAction: openingTurnAction,
     setOpeningAction: setOpeningTurnAction,
     itemInstances: heldItemInstances,
@@ -1409,6 +1415,7 @@ const GameViewer = ({
       case 'export': setIsExportModalOpen(true); break;
       case 'location': setIsLocationModalOpen(true); break;
       case 'aiContext': setIsDebugOpen(true); break;
+      case 'mentionReading': setDevMentionReadingOpen(true); break;
       case 'tts': setIsTTSModalOpen(true); break;
       case 'demoAI': demoAINoticeRef.current?.open(); break;
     }
@@ -1484,9 +1491,21 @@ const GameViewer = ({
     }
     setActionAttachments((prev) => pruneAttachments(prev, fullMessageHistory));
     setScriptTells((prev) => pruneTells(prev, fullMessageHistory));
+    setMentionReadings((prev) => pruneMentionReadings(prev, fullMessageHistory));
     setSentActions((prev) => pruneTurnMap(prev, fullMessageHistory));
     setMemoryNotes((prev) => pruneNamedMemories(pruneScriptPins(prev, fullMessageHistory), fullMessageHistory));
-  }, [isWaitingForAI, fullMessageHistory, setActionAttachments, setScriptTells, setSentActions, setMemoryNotes, setActionList, setPlayerInput, setPendingAttachments]);
+  }, [isWaitingForAI, fullMessageHistory, setActionAttachments, setScriptTells, setMentionReadings, setSentActions, setMemoryNotes, setActionList, setPlayerInput, setPendingAttachments]);
+  const characterMentionsState = useCharacterMentionsState();
+  useTurnMentionReadings({
+    controller: characterMentions(),
+    ready: characterMentionsState.status === 'ready',
+    history: fullMessageHistory,
+    busy: isWaitingForAI,
+    readings: mentionReadings,
+    setReadings: setMentionReadings,
+    cast: allEntities,
+    playerName: playerNames[0],
+  });
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
   const [leftCollapsed, setLeftCollapsed] = useGameLeftCollapsed();
@@ -1533,6 +1552,7 @@ const GameViewer = ({
   const [aiRequestType, setAiRequestType] = useState<AIRequestType | null>(null);
   const [choicesReady, setChoicesReady] = useState(false);
   const [isDebugOpen, setIsDebugOpen] = useState(false);
+  const [devMentionReadingOpen, setDevMentionReadingOpen] = useState(false);
   // One entry per game turn, each holding the AI requests captured that turn (newest last).
   const [debugTurns, setDebugTurns] = useState<DebugTurn[]>([]);
   const [debugPage, setDebugPage] = useState(1); // 1-based page = index into visibleDebugTurns
@@ -6922,6 +6942,15 @@ const GameViewer = ({
       />
 
       {/* Full AI context sent each turn, paginated by turn */}
+      {import.meta.env.DEV && devMentionReadingOpen && (
+        <MentionReadingDevDialog
+          open
+          onOpenChange={setDevMentionReadingOpen}
+          history={fullMessageHistory}
+          readings={mentionReadings}
+          cast={allEntities}
+        />
+      )}
       <Dialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>
         <DialogContent surface="aiContext" aria-describedby={undefined} className={AI_CONTEXT_DIALOG_SIZE}>
           <RenderMounted render={() => {

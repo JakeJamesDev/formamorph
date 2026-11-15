@@ -20,6 +20,7 @@ export type DisplaySettingsSource = Pick<SettingsValue,
   | 'narrationLineHeight' | 'setNarrationLineHeight'
   | 'quoteColor' | 'setQuoteColor' | 'quoteColorMode' | 'activeQuoteColor' | 'setActiveQuoteColor'
   | 'quoteItalic' | 'setQuoteItalic'
+  | 'characterMentions' | 'setCharacterMentions' | 'characterMentionsModel' | 'setCharacterMentionsModel'
   | 'showReasoning' | 'setShowReasoning' | 'showSilentRequests' | 'setShowSilentRequests'
 > & ThemeValue & FontTuneSource & RevealAnimationSource & ThemePreviewSource;
 

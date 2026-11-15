@@ -20,6 +20,7 @@ import type { LookStats, LookTraits } from '../lib/avatarLook';
 import type { StrangerLabels } from '../lib/locationContext';
 import { restoreAttachments, type AttachmentMap } from '../lib/actionAttachments';
 import { restoreTells, type TellMap } from '../lib/scriptTells';
+import { restoreMentionReadings, type MentionReadingMap } from '../lib/coref/mentionReadings';
 import {
   isActionSnapshot, mapLiveSnapshots, mapSentSnapshots, restoreLive, restoreSent,
   type ActionSnapshot, type ListedAction, type SentActionMap,
@@ -337,6 +338,8 @@ function useProvideGameplay() {
   const [pendingAttachments, setPendingAttachments] = useState<ImageAttachment[]>([]);
   // What scripts told the player, by turn id, beside the history so no request carries it (Q23).
   const [scriptTells, setScriptTells] = useState<TellMap>({});
+  // Each turn's Mention Reading, by turn id, beside the history like the tells (Q42).
+  const [mentionReadings, setMentionReadings] = useState<MentionReadingMap>({});
   // The player's panel actions since the last turn, each with the state from just before it (Q6).
   const [actionList, setActionList] = useState<ListedAction<ActionSnapshot>[]>([]);
   // The list each turn was sent with, by turn id; only the newest keeps its snapshots (Q34).
@@ -625,6 +628,7 @@ function useProvideGameplay() {
         ...(keepSceneImages && Object.keys(sceneImages).length ? { sceneImages } : {}),
         ...(Object.keys(actionAttachments).length ? { actionAttachments } : {}),
         ...(Object.keys(scriptTells).length ? { scriptTells } : {}),
+        ...(Object.keys(mentionReadings).length ? { mentionReadings } : {}),
         ...(Object.keys(sentActions).length ? { sentActions: mapSentSnapshots(sentActions, historyFree) } : {}),
         ...(actionList.length ? { actionList: mapLiveSnapshots(actionList, historyFree) } : {}),
         ...(openingAction !== null ? { openingAction } : {}),
@@ -647,7 +651,7 @@ function useProvideGameplay() {
       }
       return { ok: false, error };
     }
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, scriptTells, sentActions, actionList, openingAction, addSystemLogEntry, worldSupporterCopy, openWorldId]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, scriptTells, mentionReadings, sentActions, actionList, openingAction, addSystemLogEntry, worldSupporterCopy, openWorldId]);
 
   const saveGame = useCallback(async (...args: Parameters<typeof writeSave>) => (await writeSave(...args)).ok, [writeSave]);
 
@@ -816,6 +820,7 @@ function useProvideGameplay() {
           // Absent on a save written with no attachments ⇒ none.
           setActionAttachments(restoreAttachments(migrated.actionAttachments));
           setScriptTells(restoreTells(migrated.scriptTells));
+          setMentionReadings(restoreMentionReadings(migrated.mentionReadings));
           // Snapshots load like stateHistory, held against their own persona; undo keeps the live history.
           const loadedSnapshot = ({ state, persona }: ActionSnapshot): ActionSnapshot => ({
             state: held(backfilled(state, persona ?? undefined), persona ?? undefined), persona,
@@ -875,6 +880,7 @@ function useProvideGameplay() {
             // A legacy save predates attachments ⇒ none.
             setActionAttachments({});
             setScriptTells({});
+            setMentionReadings({});
             setSentActions({});
             setOpeningAction(null);
             setPendingAttachments([]);
@@ -1146,6 +1152,8 @@ function useProvideGameplay() {
     setActionAttachments,
     scriptTells,
     setScriptTells,
+    mentionReadings,
+    setMentionReadings,
     openingAction,
     setOpeningAction,
     pendingAttachments,

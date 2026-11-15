@@ -1,6 +1,6 @@
 # 03: Enable Character Mentions
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01, 02
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -32,13 +32,36 @@ The first slice the player sees. The player turns Character Mentions on, the mod
 
 ## Acceptance criteria
 
-- [ ] Turning the toggle on downloads, verifies and caches the files, and progress shows in MB. A hash mismatch shows the error row.
-- [ ] Turning it off deletes the cached files.
-- [ ] The probe picks Big on WebGPU under the limit and Small otherwise, and the override beats it. Tests use a faked adapter and timing.
-- [ ] A non-English AI Language disables the toggle, and nothing downloads.
-- [ ] A finished passage gets a reading on its turn, and a new turn never waits for it.
-- [ ] A turn with the feature off is byte-equal to today's turn result.
-- [ ] Frames: `.scratch/frames/settings-off.png`, `settings-downloading.png` and `settings-on.png`, light and dark, at desktop and mobile width.
+- [x] Turning the toggle on downloads, verifies and caches the files, and progress shows in MB. A hash mismatch shows the error row. `characterMentions.test.ts` (download with byte progress, files split into cache parts and read back intact; hash mismatch → error and nothing cached; Retry recovers) and `CharacterMentionsRows.test.tsx` (MB row, error row). Live in the browser pane: the local manifest's big model (496 MB) downloaded, verified and loaded on WebGPU.
+- [x] Turning it off deletes the cached files. `characterMentions.test.ts` "deletes the cached files…" and "finishes a delete an earlier session left undone"; live: the cache held 0 entries after the toggle went off.
+- [x] The probe picks Big on WebGPU under the limit and Small otherwise, and the override beats it. Tests use a faked adapter and timing. `characterMentions.test.ts` "model choice" (5 tests: under/over the limit, no adapter, override both ways, per-device verdict with reruns on a new big version and a fresh Auto pick). The probe passage is 300 model tokens; live on an RTX 4090 the probe passed.
+- [x] A non-English AI Language disables the toggle, and nothing downloads. `CharacterMentionsRows.test.tsx` (disabled, reason shown, no size fetch) and `characterMentions.test.ts` "downloads nothing while AI Language is not English" (no request made).
+- [x] A finished passage gets a reading on its turn, and a new turn never waits for it. `useTurnMentionReadings.test.tsx` (reading stored once the passage finishes; the next turn runs while a reading is unanswered and both turns get one; a regenerate drops the stale result). Live: the `whiteRoom` fixture's newest turn got a big-model reading, shown at `#dev?view=gameViewer&fixture=whiteRoom&modal=mentionReading`.
+- [x] A turn with the feature off is byte-equal to today's turn result. By construction: readings live in a side map on the save envelope and never touch the history or the turn pipeline. `GameplayContext.mentionReadings.test.tsx` shows a save without readings has no `mentionReadings` field.
+- [x] Frames: `.scratch/frames/settings-off.png`, `settings-downloading.png` and `settings-on.png`, light and dark, at desktop and mobile width. Taken with Playwright on the worktree dev server; 12 files named `settings-<state>-<theme>-<width>.png`.
 
 For you: create the public R2 bucket on a custom domain, and upload the first manifest and weights.
 For you: play a few turns with the feature on, and check that narration never stalls.
+
+## Notes
+
+- **Storage (Q42):** `SaveObject.mentionReadings` maps turn id → `{ model, version, textHash, reading }`. Readings are stored, not recomputed: a reading costs 50 ms to 1.4 s per passage, a stored one is a few hundred bytes. `turnMentionReading(map, turnId, narration)` is the read helper for tickets 04, 06 and 07; it returns null when the narration changed since the reading.
+- **Which turns get read:** the newest settled turn, plus any turn that had a reading and whose narration changed (edit or regenerate). Older turns are never backfilled. One reading runs at a time.
+- **Cache parts:** Chromium refuses one CacheStorage entry near 370 MB (tested: 200 MB stores, 370 MB fails, streamed or not), so each file is cached as parts of at most 64 MB.
+- **Updates:** a failed update or no network keeps the cached model reading; the error row shows only when no model is usable.
+- **Dev manifest:** the dev server serves `.scratch/coref/publish` at `/coref-dev/` (`testing/coref/README.md`). The current dev manifest holds `small-litbank` and `big-e120` as version 1.
+
+## Landed
+
+**Not verified**
+
+- Narration from a real AI turn with cast mentions was not read live; the live reading ran on the `whiteRoom` fixture, whose newest turn names no cast member.
+- The probe's fail path and the WASM path ran only in tests and in headless Chromium (no WebGPU → Small). Integrated GPUs, Firefox, Safari and Android WebView are not checked.
+- Opening the cached big model at app start took more than 6 s in the browser pane (reading 496 MB from the cache and loading it onto the GPU). Nothing waits for it, but it holds that memory from the main menu on.
+
+**For you**
+
+- Create the public R2 bucket on a custom domain, and upload the first manifest and weights.
+- Play a few turns with the feature on, and check that narration never stalls.
+- Look at the Settings frames: `.scratch/character-mentions-03/frames/settings-<off|downloading|on>-<light|dark>-<desktop|mobile>.png`.
+- `VITE_COREF_MANIFEST_URL` is a new optional `.env.local` variable; leave it unset to use the published manifest.
