@@ -1186,7 +1186,7 @@ A name lets a script find the same Custom memory again on a later turn. Use it t
 - **`memories.pin(<name>, <text>)`** adds a memory under that name. When a memory with that name already exists, it overwrites its text instead.
 - **`memories["<Name>"]`** resolves to the memory with that name. Names match with outer spaces removed and in any case, so `memories["nursery "]` resolves to **Nursery**.
 - **An unknown name reads as a blank entry.** Its `id`, `name` and `text` are `""`, and every flag is false. Test with `memories["Nursery"].id` to see whether the memory exists.
-- **Calls on a blank entry are ignored.** **Test Code** and the **Test Bench** list the name.
+- **Calls on a blank entry are ignored.** **Test Code** and the **Test Bench** list the name, and so does the turn's warning in play.
 - **A named pin reads under its name in the scripts below it** in the same turn. A second named pin in the turn overwrites the first.
 - **A named write rewinds with its turn**, and so do `edit(text)` and `remove()` on the entry. A rewind restores the text from before that turn. Rewinding the turn that created the memory removes it.
 - **A removed named memory keeps its name.** The next named pin brings it back with the same `id`.

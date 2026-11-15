@@ -599,7 +599,7 @@ export interface SaveObject {
    *  its `name` and its `revisions`, and its `text` and `anchorTurn` mirror the newest revision. */
   memoryNotes?: Array<{
     id: string; text: string; anchorTurn: number;
-    name?: string; revisions?: Array<{ turnId?: string; text: string; anchorTurn: number }>;
+    name?: string; revisions?: Array<{ turnId?: string; text: string; anchorTurn: number; removed?: true }>;
   }>;
   /** Who the player plays in this playthrough (see lib/persona). Sits beside `dictionaries` and does not
    *  rewind with an undo. Absent on saves written before personas ⇒ no persona. */

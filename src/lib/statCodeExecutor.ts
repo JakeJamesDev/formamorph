@@ -232,7 +232,7 @@ export interface WorldWrites {
   memory?: string[];
   /** Every `memories.pin` line, in call order. */
   pins?: string[];
-  /** Every `memories.pin(name, text)`, in call order. */
+  /** Every `memories.pin(name, text)` and every `edit` or `remove` on a named entry, in call order. */
   namedWrites?: NamedWrite[];
   /** Every `diary` line, in call order. */
   diary?: DiaryWrite[];
