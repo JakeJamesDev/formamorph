@@ -70,7 +70,7 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q38 | A corrected span removes every original span that overlaps it, not only an exact match. |
 | Q39 | The server refuses a span whose start or end falls inside a word (a letter or digit on both sides of the edge). The kit's corpus build skips and reports a span off its word boundaries instead of stopping. |
 | Q40 | On Auto with a WebGPU adapter, the store downloads the big model, probes it, and keeps it when the probe passes; otherwise it downloads the small model and deletes the big one. Without an adapter it downloads the small model only. The toggle's size hint shows the model Auto tries first. |
-| Q41 | The toggle sits in Display › Narration beside Quote Color, in both settings modes. The model choice (Auto, Big, Small) shows in advanced mode only. |
+| Q41 | The toggle sits in Display › Accessibility under Quote Color and Quote Italic, in both settings modes (the user's pick once Quote Color was found there, not in Narration). The model choice (Auto, Big, Small) shows in advanced mode only. |
 | Q42 | Readings live on the save envelope as a per-turn map, beside `scriptTells`, pruned on rewind and replaced when a turn's passage changes. Only newly settled turns get one; older turns are not backfilled. Corrections (ticket 08) get their own per-turn map. |
 | Q43 | Weights and the manifest are hosted on `assets.formamorph.ai` (manifest at `/coref/manifest.json`), with a `VITE_COREF_MANIFEST_URL` override. |
 
