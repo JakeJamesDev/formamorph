@@ -156,7 +156,8 @@ export const MemoryManagerModal = ({
     setMemoryDeleted((prev) => (prev.includes(row.id) ? prev : [...prev, row.id]));
   };
 
-  // The notes update reads the latest notes, so a turn that lands while the dialog is open keeps its writes.
+  // The notes update reads the latest notes, so a turn that lands while the dialog is open keeps its writes. The
+  // taken-name check reads the deletions of this render.
   const restore = (row: MemoryRow) => {
     setMemoryNotes((prev) => restoreMemory(prev, memoryDeleted, row.id).notes);
     setMemoryDeleted((prev) => prev.filter((id) => id !== row.id));
