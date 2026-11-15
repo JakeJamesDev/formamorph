@@ -86,6 +86,7 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q54 | A memory bracket uses the name the player knows: the true name once met, else the stranger label, else no bracket. Digests reach the Memory panel, so a true name there would spoil an unmet stranger. |
 | Q55 | The one card slot is first come, first served (the user's pick). A Formamorph AI card that comes due while the offer card shows waits, and shows on the first settled turn after the offer card closes. |
 | Q56 | An authored quote color is a pick from a fixed, vetted palette, not a free hex (the user's pick: less customization, trusted colors). Each swatch has a light and a dark value that passes 4.5:1 on every theme's background and card in its mode. The palette is large (about 16–24 swatches) and contains ticket 04's eight. The world stores the swatch key. |
+| Q57 | The Quote Color field shows in Advanced editor mode only, beside Aliases and Type; Simple mode uses Auto. A pin may match another speaker's auto slot; that is the author's choice. Character cards carry the key too. |
 
 ## User Stories
 
