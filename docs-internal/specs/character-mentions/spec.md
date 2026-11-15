@@ -73,6 +73,7 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q41 | The toggle sits in Display › Accessibility under Quote Color and Quote Italic, in both settings modes (the user's pick once Quote Color was found there, not in Narration). The model choice (Auto, Big, Small) shows in advanced mode only. |
 | Q42 | Readings live on the save envelope as a per-turn map, beside `scriptTells`, pruned on rewind and replaced when a turn's passage changes. Only newly settled turns get one; older turns are not backfilled. Corrections (ticket 08) get their own per-turn map. |
 | Q43 | Weights and the manifest are hosted on `assets.formamorph.ai` (manifest at `/coref/manifest.json`), with a `VITE_COREF_MANIFEST_URL` override. |
+| Q44 | Quote Color on/off gates all quote coloring. A resolved speaker's color beats the player's custom Quote Color; quotes with no resolved speaker keep the custom color, or the theme color. |
 
 ## User Stories
 
