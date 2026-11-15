@@ -1,6 +1,7 @@
 # Spec: Named Memories
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-11-15. Tickets 01–03 landed; the last landing is a2fe75b78. Review: spec text corrected. Tests green on 2026-11-15; lint errors only in the untracked worlds-wip folder.
 Spec session: named-memories — spec
 
 ## Problem Statement
@@ -97,7 +98,7 @@ Settled with the user on 2026-11-14.
 
 - Apply a turn's named writes (`pin(name, text)`, `edit`, `remove`) at turn end, keyed by the turn's id and anchor.
 - Prune the script revisions of turns that left the history (rewind, regenerate, failed or stopped turn). This joins the existing script-pin prune, which runs at the same point.
-- Apply a player edit, a player delete and a player restore, with the Q7 rule on restore.
+- Apply a player edit and a player restore, with the Q7 rule on restore. A player delete stays the Memory Manager's tombstone; the module skips deleted ids, which frees the name.
 - Resolve the effective text and anchor of each named memory for every consumer.
 - Resolve a name to a live memory, matched trimmed and case-insensitive.
 
@@ -106,9 +107,9 @@ GameViewer only wires it in, where it already applies script pins, memory verbs 
 **Record shape.** A Custom memory today is an id, a text and an anchor turn, stored in the save's memory overrides. A named memory adds:
 
 - `name`: the name as the script first wrote it.
-- A list of revisions. Each revision records the turn that wrote it (or the player), the text (or a removal) and the anchor turn.
+- A list of revisions. Each revision records the turn that wrote it (or the player), the text, the anchor turn, and for a script `remove()` a removal flag that keeps the removed text.
 
-The effective text is the newest surviving revision. Script revisions prune with their turn. Player revisions never prune. When the creating script revision leaves the history, the memory goes, as an unnamed script pin does today. An unnamed memory keeps today's shape and rules. The exact field names are the implementer's.
+The effective text is the newest surviving revision. Script revisions prune with their turn. Player revisions never prune. When no script revision survives the history, the memory goes, as an unnamed script pin does today. In a linear history that is when the creating write leaves. An unnamed memory keeps today's shape and rules. The exact field names are the implementer's.
 
 **Identity.** A named memory keeps the id of the pin that created it for its whole life. So `entry.id` is a stable handle too. Only a fresh memory after a player delete (Q7) gets a new id.
 
@@ -127,11 +128,11 @@ The effective text is the newest surviving revision. Script revisions prune with
 
 **Load-time rewrite.** The script-text migration gains one rewrite: `memories.add(` becomes `memories.append(`. It is idempotent and leaves code it does not recognize byte for byte, as the existing rewrites do. Emberwatch and Slime are updated in source.
 
-**Memory Manager.** A Custom row shows its name as a read-only label. The player edit, delete and restore buttons route through the new module.
+**Memory Manager.** A Custom row shows its name as a read-only label. The player edit and restore buttons, and Reset All, route through the new module.
 
 **Editor surface.** Completions and hover cards cover `memories.append`, the two-argument `memories.pin` and the entry's `name`. Names are runtime values, so the editor never underlines an unknown name in brackets.
 
-**Docs.** The Memory section of the Scripts Reference and the Memory page cover names, brackets, the upsert, the blank entry, the rewind rules and `append`. The Tools page's surface list and its load-rewrite paragraph name `append`. The changelog gets one Added entry.
+**Docs.** The Memory section of the Scripts Reference and the Memory page cover names, brackets, the upsert, the blank entry, the rewind rules and `append`. The Tools page's surface list and its load-rewrite paragraph name `append`. The changelog gets a Named Memories group and a Scripts entry for `append`.
 
 **Export shape (constraint #2).** The save's memory overrides change: Custom memories gain the optional name and revision list. The world file is unchanged; only script text is rewritten on load.
 
