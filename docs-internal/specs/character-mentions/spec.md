@@ -63,6 +63,7 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q31 | Per model, the manifest lists graph A, graph B, tokenizer.json and a host-config JSON (architecture, top_lambda, max_span_length, max_segment_len, graph-contract version). The host takes them from its caller. |
 | Q32 | Scene context holds the player character's name only. "you", "I" and the player's name resolve to no entity. |
 | Q33 | Tracked test fixtures use passages written for them, never gold or real narration. The quote-speaker gold set lives with the other gold sets in the training-data repo (Q23). |
+| Q34 | Q32 applies to mention links and presence too, not only to quote speakers. A gold hit that came only through a wrong link (for example a "you" merged into a cast member's cluster) is the ruling's cost, not a failing rule change. The ticket names each such case. |
 
 ## User Stories
 
@@ -196,7 +197,7 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 A good test checks behavior at a seam through its public interface. It never asserts internal steps. Three seams:
 
 1. **Coref Host.** Recorded graph outputs (from the Python reference run) stand in for onnxruntime sessions. The test feeds a real passage and asserts the clusters equal the Python clusters. A separate browser check (outside the gates) runs the real graphs in Chrome on WebGPU and WASM and checks parity, like the scratch bench.
-2. **Mention Reading.** Pure tests with fixed clusters and a cast. The accuracy bar comes from the gold sets (real narration, the hard set and the blind set) ported from the evaluation: names, descriptors, pronouns, traps and presence scored against the e120 numbers. A rule change that lowers any score fails.
+2. **Mention Reading.** Pure tests with fixed clusters and a cast. The accuracy bar comes from the gold sets (real narration, the hard set and the blind set) ported from the evaluation: names, descriptors, pronouns, traps and presence scored against the e120 numbers. A rule change that lowers any score fails, except a hit lost only because it came through a wrong link (Q34).
 3. **Consumers.** Through `readNarration` and `MarkdownRenderer` with a fake Mention Reading: quote colors per speaker, unresolved quotes keep the theme color, hover cards show only Player View facts, In Scene gains pronoun-only entities, Met is unchanged, and the feature-off path matches today byte for byte. Bracket-leak tests run every non-memory surface (display, narration history prompt, read-aloud text, choices, exports) with a reading present and assert no bracket appears.
 
 Each guard is proved by reinstating its bug once (test-bar skill). Prior art: `MarkdownRenderer.dialogue.test.tsx` and `GamePanels.quoteColor.test.tsx` for quotes, the `readNarration` tests in the turn pipeline, the embedding download tests for the Model Store, and the review and reports controller tests on the server.
