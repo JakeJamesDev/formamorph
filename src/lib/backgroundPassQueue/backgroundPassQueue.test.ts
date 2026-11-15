@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { ChatMessage, InventoryPassOp, RuntimeItem } from '@/types';
+import type { ChatMessage, Entity, InventoryPassOp, RuntimeItem } from '@/types';
+import type { MentionReading } from '@/lib/coref/mentionReading';
+import { narrationHash, type MentionReadingMap } from '@/lib/coref/mentionReadings';
+import { knownNameFor, memoryNarrationFor, readingNamesFor } from '@/lib/coref/mentionMemory';
+import { metCheck, strangersInPlay } from '@/lib/presence';
 import type { TransportRequest } from '@/lib/aiRequest/requestTransport';
-import { parseTurns } from '@/lib/turnBanding';
+import { buildBandedHistory, buildVerbatimHistory, parseTurns } from '@/lib/turnBanding';
 import { parseIncrementalMilestoneReply } from '@/lib/milestoneMemory';
 import { parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
 import { withItemDescription } from '@/lib/inventory/describe';
@@ -106,7 +110,10 @@ function host(initial: ChatMessage[], over: Partial<QueueSnapshot> = {}) {
     // A diary carries the entity text that exists when the pass starts.
     diaryRequest: (target) => ({
       type: 'diary', systemPrompt: 'DIARY', silent: true, attachTurnId: target.turnId,
-      messages: [{ role: 'user', content: `${target.name} | ${descriptions.get(target.name) ?? 'no description'}` }],
+      messages: [
+        { role: 'user', content: `${target.name} | ${descriptions.get(target.name) ?? 'no description'}` },
+        { role: 'user', content: target.narration },
+      ],
     }),
     // The entity joins the cast at the next render, as React state does.
     addDiscovered: (target, description) => {
@@ -1007,5 +1014,107 @@ describe('foreground jobs', () => {
     await h.sent[0].answer('First.');
     expect(seen[0]).toBe(true);
     expect(seen[seen.length - 1]).toBe(false);
+  });
+});
+
+describe('Character Mentions', () => {
+  // A passage written for these tests: Odile by name and pronoun, an unmet stranger by description.
+  const NARRATION = 'Odile sets the sack down. She wipes her hands while the hooded woman watches her, and she smiles.';
+  const ODILE: Entity = { id: 'odile', name: 'Odile' };
+  const HOODED: Entity = { id: 'hooded', name: 'Sabine Thorne', strangerName: 'a hooded woman' };
+  const CAST = [ODILE, HOODED];
+  const at = (word: string, from = 0) => {
+    const start = NARRATION.indexOf(word, from);
+    return { start, end: start + word.length };
+  };
+  const reading: MentionReading = {
+    mentions: [
+      { ...at('Odile'), entityId: 'odile' },
+      { ...at('She'), entityId: 'odile' },
+      { ...at('her'), entityId: 'odile' },
+      { ...at('the hooded woman'), entityId: 'hooded' },
+      { ...at('her', NARRATION.indexOf('watches')), entityId: 'odile' },
+      { ...at('she', NARRATION.indexOf('and')), entityId: 'hooded' },
+    ],
+    quotes: [],
+  };
+  const readings: MentionReadingMap = { t1: { model: 'small', version: 1, textHash: narrationHash(NARRATION), reading } };
+  const isMet = metCheck([], null, [], new Set());
+  const mentions = {
+    readingNames: readingNamesFor(true, readings, CAST),
+    memoryNarration: memoryNarrationFor(true, readings, knownNameFor(CAST, isMet, strangersInPlay(CAST, isMet, {}).labels)),
+  };
+  // The unmet stranger's bracket holds her label, never her true name (Q54).
+  const BRACKETED = 'Odile sets the sack down. She [Odile] wipes her [Odile] hands while the hooded woman watches her [Odile], and she [a hooded woman] smiles.';
+  const memory = { memoryDigests: true, characterDiaries: true, entityNames: ['Odile', 'Sabine Thorne'] };
+
+  it('gives an entity the reading alone shows a diary pass', () => {
+    const history = historyOf({ id: 't1', narration: NARRATION, entities: [] });
+    const off = host(history, { ...memory, memoryDigests: false });
+    off.render();
+    expect(off.sent).toHaveLength(0);
+
+    const on = host(history, { ...memory, memoryDigests: false, ...mentions });
+    on.render();
+    expect(on.names()).toEqual(['diary:t1:Odile']);
+  });
+
+  it('feeds the digest and diary the bracketed narration and stores their replies without the tags', async () => {
+    const h = host(historyOf({ id: 't1', narration: NARRATION, entities: ['Odile'] }), { ...memory, ...mentions });
+    h.render();
+    expect(h.names()).toEqual(['summary:t1:Action for t1']);
+    expect(String(h.sent[0].request.messages[0].content)).toBe(`Action for t1 | ${BRACKETED}`);
+    await h.sent[0].answer('She [Odile] put down the sack.');
+    expect(h.summaryOf('t1')).toBe('She put down the sack.');
+
+    const diary = h.sent.find((s) => s.request.type === 'diary')!;
+    expect(diary.request.messages[1].content).toBe(BRACKETED);
+    await diary.answer('I [Odile] wiped my hands.');
+    expect(h.diaryOf('t1', 'Odile')).toBe('I wiped my hands.');
+  });
+
+  it('reads the plain text with no reading, or with the feature off', async () => {
+    const other = host(historyOf({ id: 't2', narration: NARRATION, entities: ['Odile'] }), { ...memory, ...mentions });
+    other.render();
+    expect(String(other.sent[0].request.messages[0].content)).toBe(`Action for t2 | ${NARRATION}`);
+
+    expect(memoryNarrationFor(false, readings, () => 'Odile')).toBeUndefined();
+    const off = host(historyOf({ id: 't1', narration: NARRATION, entities: ['Odile'] }), memory);
+    off.render();
+    expect(String(off.sent[0].request.messages[0].content)).toBe(`Action for t1 | ${NARRATION}`);
+    await off.sent[0].answer('Odile [sighs] and sets the sack down.');
+    expect(off.summaryOf('t1')).toBe('Odile [sighs] and sets the sack down.');
+  });
+
+  it('leaves no bracket in the history and never names the unmet stranger', async () => {
+    const h = host(historyOf({ id: 't1', narration: NARRATION, entities: ['Odile'] }), { ...memory, ...mentions });
+    h.render();
+    for (let i = 0; i < 4 && h.sent[i]; i++) {
+      const reply = h.sent[i].request.type === 'milestoneSelect' ? '1' : 'She [Odile] left; she [a hooded woman] smiled.';
+      await h.sent[i].answer(reply);
+    }
+    expect(h.sent.map((s) => s.request.type)).toEqual(expect.arrayContaining(['summary', 'diary']));
+    // The narration each pass reads; a diary's subject line carries the true name, as a name-based one does.
+    const narrationRead = (s: { request: TransportRequest }) =>
+      String(s.request.messages[s.request.type === 'diary' ? 1 : 0].content);
+    const read = h.sent.filter((s) => s.request.type !== 'milestoneSelect').map(narrationRead).join('\n');
+    expect(read).toContain('[a hooded woman]');
+    expect(read).not.toContain('Sabine');
+    // Display, read-aloud, choices, exports and the Narration Stream read the stored turn.
+    for (const message of h.history()) {
+      if (message.role !== 'assistant') continue;
+      const turn = parseTurnContent(message.content)!;
+      expect(turn.narration).toBe(NARRATION);
+      for (const text of [turn.summary, ...Object.values(turn.diaries ?? {})]) expect(text).not.toMatch(/\[/);
+    }
+    // The narration prompt's history: the digest band, and the verbatim history.
+    const turns = parseTurns(h.history());
+    const band = buildBandedHistory({
+      turns, contextWindow: 100_000, promptTokens: 0, maxTokens: 0, verbatimFloor: 0, keywords: [], actionEntities: [],
+      rehydrateCap: 0, recapPrompt: 'What happened so far?',
+    });
+    expect(band.bandTurnIds).toEqual(['t1']);
+    const verbatim = buildVerbatimHistory(turns, 100_000, 0, 0);
+    for (const message of [...band.messages, ...verbatim.messages]) expect(String(message.content)).not.toMatch(/\[/);
   });
 });

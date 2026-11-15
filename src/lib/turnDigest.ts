@@ -1,6 +1,8 @@
 import json5 from 'json5';
 import type { AITurnResult, ChatMessage } from '@/types';
 import type { SceneTurn } from './presence';
+import type { ReadingNames } from './coref/mentionMemory';
+import { sameCharacterName } from './entityMatch';
 
 /**
  * Pure helpers for the per-turn memory digest (the "summary step").
@@ -148,14 +150,19 @@ export function recentParticipants(history: ChatMessage[], turns: number): strin
 }
 
 /** The last `turns` assistant turns, oldest first, as presence reads them. A turn that recorded no
- *  participants still counts toward the window. */
-export function recentSceneTurns(history: ChatMessage[], turns: number): SceneTurn[] {
+ *  participants still counts toward the window, joined by those its Mention Reading adds. */
+export function recentSceneTurns(history: ChatMessage[], turns: number, readingNames?: ReadingNames): SceneTurn[] {
   const out: SceneTurn[] = [];
   for (let i = history.length - 1; i >= 0 && out.length < turns; i--) {
     if (history[i].role !== 'assistant') continue;
     const parsed = parseTurnContent(history[i].content);
     if (!parsed) continue;
-    out.push({ participants: parsed.entities ?? [], ...(parsed.locationId ? { locationId: parsed.locationId } : {}) });
+    const stored = parsed.entities ?? [];
+    const added = readingNames && parsed.turnId
+      ? readingNames(parsed.turnId, parsed.narration ?? '').filter((name) => !stored.some((s) => sameCharacterName(s, name)))
+      : [];
+    const participants = added.length ? [...stored, ...added] : stored;
+    out.push({ participants, ...(parsed.locationId ? { locationId: parsed.locationId } : {}) });
   }
   return out.reverse();
 }

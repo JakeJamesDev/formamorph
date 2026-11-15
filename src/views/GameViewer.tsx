@@ -80,6 +80,7 @@ import { cancelOpenPrompts, isNotice, noticeHost, scriptPrompts, silentPrompts, 
 import { isScriptPromptSample, SCRIPT_PROMPT_SAMPLES } from "@/lib/devScriptPromptSamples";
 import { addTell, latestTurnId, pruneTells, REROLLED_TIMINGS, setTurnTells, turnTells, withoutTimings } from "@/lib/scriptTells";
 import { pruneMentionReadings } from "@/lib/coref/mentionReadings";
+import { knownNameFor, memoryNarrationFor, readingNamesFor } from "@/lib/coref/mentionMemory";
 import { speakerColors } from "@/lib/coref/speakerPalette";
 import { MentionCardsProvider, mentionCardRows } from "@/components/game/MentionCards";
 import type { PlayerViewEntity } from "@/lib/formaquestion/playerView";
@@ -1105,6 +1106,17 @@ const GameViewer = ({
     const isMet = metCheckFor(metEntitiesRef.current);
     return allEntities.filter(isMet).map((entity) => entity.id);
   }, [allEntities, metCheckFor]);
+  // What each turn's Mention Reading adds: participants for In Scene and the diary passes, and the bracketed
+  // narration the digest and diary passes read (Q53). Undefined with the feature off.
+  const readingNames = useMemo(
+    () => readingNamesFor(settings.characterMentions, mentionReadings, allEntities),
+    [settings.characterMentions, mentionReadings, allEntities],
+  );
+  const memoryNarration = useMemo(() => {
+    const isMet = metCheckFor(metEntities);
+    const { labels } = strangersInPlay(allEntities, isMet, strangerAliases);
+    return memoryNarrationFor(settings.characterMentions, mentionReadings, knownNameFor(allEntities, isMet, labels));
+  }, [settings.characterMentions, mentionReadings, allEntities, metCheckFor, metEntities, strangerAliases]);
   // An edit to the latest page can name someone too.
   const rescanNarration = useCallback((page: number, narration: string): string[] => {
     const participants = rescanScene(page, narration);
@@ -5396,8 +5408,10 @@ const GameViewer = ({
       entityNames: allEntities.map((e) => e.name),
       suppressedNames: suppressedCharacterNames,
       runtimeItems,
+      readingNames,
+      memoryNarration,
     });
-  }, [passQueue, settledHistory, parseEffectiveTurns, milestoneSelection, memoryPins, isWaitingForAI, sceneImageJob, concurrentTurnRequests, memoryDigests, describeCharacters, characterDiaries, thinkingMode, allEntities, suppressedCharacterNames, runtimeItems]);
+  }, [passQueue, settledHistory, parseEffectiveTurns, milestoneSelection, memoryPins, isWaitingForAI, sceneImageJob, concurrentTurnRequests, memoryDigests, describeCharacters, characterDiaries, thinkingMode, allEntities, suppressedCharacterNames, runtimeItems, readingNames, memoryNarration]);
 
   const fullMessageHistoryRef = useRef(fullMessageHistory);
   fullMessageHistoryRef.current = fullMessageHistory;

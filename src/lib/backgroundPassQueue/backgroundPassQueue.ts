@@ -5,6 +5,7 @@ import { sameCharacterName } from '@/lib/entityMatch';
 import { cleanDiscoveredDescription } from '@/lib/runtimeCharacters';
 import { cleanItemDescription, dueItemDescriptions, type DescribeItemTarget } from '@/lib/inventory/describe';
 import type { BandTurn } from '@/lib/turnBanding';
+import type { MemoryNarrationFor, ReadingNames } from '@/lib/coref/mentionMemory';
 import {
   applyIncrementalVerdict, milestoneCandidates, resolveMilestoneKeep,
   type IncrementalVerdict, type MemoryPinMap,
@@ -44,6 +45,10 @@ export interface QueueSnapshot {
   suppressedNames: readonly string[];
   /** The save's runtime items; one with no description is due for one. Absent ⇒ none. */
   runtimeItems?: readonly RuntimeItem[];
+  /** A stored turn's participants from its Mention Reading, beside its stored ones. Absent ⇒ none. */
+  readingNames?: ReadingNames;
+  /** The bracketed narration the digest and diary passes read. Absent, or null for a turn ⇒ the plain text. */
+  memoryNarration?: MemoryNarrationFor;
 }
 
 /** What every pass target names: a stored turn and the narration the pass reads. */
@@ -146,6 +151,14 @@ const storeOnTurn = (write: PassWriter, store: (history: ChatMessage[]) => ChatM
   return true;
 };
 
+/** What a memory pass sends for `target`: its bracketed view when one exists, and the scrub for the reply. */
+function memoryInput<T extends TurnTarget>(snapshot: QueueSnapshot, target: T): { target: T; scrub(reply: string): string } {
+  const view = snapshot.memoryNarration?.(target.turnId, target.narration);
+  return view
+    ? { target: { ...target, narration: view.text }, scrub: view.scrub }
+    : { target, scrub: (reply) => reply };
+}
+
 /** The digest target at `index`, paired with the user message before it as stored. */
 const targetAt = (history: ChatMessage[], index: number, turnId: string, narration: string): DigestTarget => {
   const paired = history[index - 1];
@@ -219,24 +232,28 @@ function narrationOf(history: ChatMessage[], turnId: string): string | undefined
 
 const isKnown = (name: string, names: readonly string[]) => names.some((known) => sameCharacterName(name, known));
 
-/** The assistant turns a pass can read: an id, narration and participants. Oldest first. */
-function participantTurns(history: ChatMessage[]) {
+/** The assistant turns a pass can read: an id, narration and participants, `readingNames` among them. Oldest first. */
+function participantTurns(history: ChatMessage[], readingNames?: ReadingNames) {
   const turns: Array<{
     turnId: string; narration: string; names: string[]; diaries: Record<string, string> | undefined; locationId?: string;
   }> = [];
   for (const message of history) {
     if (message.role !== 'assistant') continue;
     const turn = parseTurnContent(message.content);
-    if (!turn?.turnId || !turn.narration?.trim() || !turn.entities?.length) continue;
-    turns.push({ turnId: turn.turnId, narration: turn.narration, names: turn.entities, diaries: turn.diaries, locationId: turn.locationId });
+    if (!turn?.turnId || !turn.narration?.trim()) continue;
+    const stored = turn.entities ?? [];
+    const added = readingNames?.(turn.turnId, turn.narration).filter((name) => !stored.some((s) => sameCharacterName(s, name))) ?? [];
+    const names = added.length ? [...stored, ...added] : stored;
+    if (!names.length) continue;
+    turns.push({ turnId: turn.turnId, narration: turn.narration, names, diaries: turn.diaries, locationId: turn.locationId });
   }
   return turns;
 }
 
 /** Every (turn, name) pair a name no entity backs makes due for a description, oldest turn first. */
-export function dueDiscoveries(history: ChatMessage[], knownNames: readonly string[]): DiscoverTarget[] {
+export function dueDiscoveries(history: ChatMessage[], knownNames: readonly string[], readingNames?: ReadingNames): DiscoverTarget[] {
   const due: DiscoverTarget[] = [];
-  for (const turn of participantTurns(history)) {
+  for (const turn of participantTurns(history, readingNames)) {
     for (const name of turn.names) {
       if (name.trim() && !isKnown(name, knownNames)) {
         due.push({ turnId: turn.turnId, name, narration: turn.narration, locationId: turn.locationId });
@@ -247,9 +264,9 @@ export function dueDiscoveries(history: ChatMessage[], knownNames: readonly stri
 }
 
 /** Every (turn, name) pair still missing a diary entry, oldest turn first. */
-export function dueDiaries(history: ChatMessage[]): DiaryTarget[] {
+export function dueDiaries(history: ChatMessage[], readingNames?: ReadingNames): DiaryTarget[] {
   const due: DiaryTarget[] = [];
-  for (const turn of participantTurns(history)) {
+  for (const turn of participantTurns(history, readingNames)) {
     for (const name of turn.names) {
       if (turn.diaries?.[name] === undefined) due.push({ turnId: turn.turnId, name, narration: turn.narration });
     }
@@ -265,7 +282,7 @@ function dueItems(snapshot: QueueSnapshot, env: QueueEnv): { items: DueItem[]; p
   const items: DueItem[] = [];
   if (snapshot.describeCharacters) {
     const known = [...snapshot.entityNames, ...snapshot.suppressedNames];
-    for (const target of dueDiscoveries(snapshot.history, known)) {
+    for (const target of dueDiscoveries(snapshot.history, known, snapshot.readingNames)) {
       items.push({
         kind: 'discover',
         key: `discover:${target.turnId}:${target.name}`,
@@ -311,14 +328,17 @@ function dueItems(snapshot: QueueSnapshot, env: QueueEnv): { items: DueItem[]; p
       turnId: target.turnId,
       narration: target.narration,
       signature: target.narration,
-      prepare: () => ({
-        request: env.digestRequest(target),
-        apply: (reply, write) => storeOnTurn(write, (prev) => applyDigest(prev, target.turnId, reply)),
-      }),
+      prepare: () => {
+        const input = memoryInput(snapshot, target);
+        return {
+          request: env.digestRequest(input.target),
+          apply: (reply, write) => storeOnTurn(write, (prev) => applyDigest(prev, target.turnId, input.scrub(reply))),
+        };
+      },
     });
   }
   if (snapshot.characterDiaries) {
-    for (const target of dueDiaries(snapshot.history)) {
+    for (const target of dueDiaries(snapshot.history, snapshot.readingNames)) {
       // A new name waits until its entity shows in a snapshot, so the request reads the description. A name
       // no entity backs and no discover is coming for never gets one.
       if (!isKnown(target.name, snapshot.entityNames)) continue;
@@ -328,11 +348,14 @@ function dueItems(snapshot: QueueSnapshot, env: QueueEnv): { items: DueItem[]; p
         turnId: target.turnId,
         narration: target.narration,
         signature: target.narration,
-        prepare: () => ({
-          request: env.diaryRequest(target),
-          // An empty entry is stored too, so the participant is not asked again.
-          apply: (reply, write) => storeOnTurn(write, (prev) => applyDiary(prev, target.turnId, target.name, reply)),
-        }),
+        prepare: () => {
+          const input = memoryInput(snapshot, target);
+          return {
+            request: env.diaryRequest(input.target),
+            // An empty entry is stored too, so the participant is not asked again.
+            apply: (reply, write) => storeOnTurn(write, (prev) => applyDiary(prev, target.turnId, target.name, input.scrub(reply))),
+          };
+        },
       });
     }
   }

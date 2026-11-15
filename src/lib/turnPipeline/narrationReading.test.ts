@@ -7,6 +7,7 @@ import { placeAll, positionWorld, type PositionWorld } from '../positionPlay';
 import { startFollowing, startWaiting, type PositionBook } from '../positionEngine';
 import { migrateEntityRoutine } from '../version';
 import { withFirstRoutine, withFirstStarts, withFirstTraversable } from '@/lib/entityKind';
+import type { MentionReading } from '@/lib/coref/mentionReading';
 
 const ent = (id: string, name: string): Entity => ({ id, name });
 const loc = (id: string, name: string, over: Partial<GameLocation> = {}): GameLocation =>
@@ -384,5 +385,38 @@ describe('readEditedNarration', () => {
       const names = scene('The deckhand mutters, "for Professor Serana\'s review, then."', []).map((se) => se.name);
       expect(names).not.toContain('Professor Serana');
     });
+  });
+});
+
+describe('readNarration with a Mention Reading', () => {
+  const NARRATION = 'Maren Vosk coils the rope. Behind her, she hears the tide. "Serana will want this," Maren says.';
+  const span = (word: string) => {
+    const start = NARRATION.indexOf(word);
+    return { start, end: start + word.length };
+  };
+  // Serana shows only by a pronoun in the prose; her name inside the quote stays dialogue.
+  const reading: MentionReading = {
+    mentions: [
+      { ...span('Maren Vosk'), entityId: 'e1' },
+      { ...span('her'), entityId: 'e2' },
+      { ...span('Serana'), entityId: 'e2' },
+    ],
+    quotes: [],
+  };
+
+  it('adds an entity shown only by pronoun, which then gets a diary pass', () => {
+    const { participants } = read(NARRATION, { mentionReading: reading });
+    expect(participants).toEqual(expect.arrayContaining(['Maren Vosk', 'Professor Serana']));
+    expect(splitParticipants(participants, [MAREN, SERANA], []).diary.map((s) => s.name)).toContain('Professor Serana');
+  });
+
+  it('never removes a name-based participant', () => {
+    const unlinked: MentionReading = { mentions: [{ ...span('Maren Vosk'), entityId: null }], quotes: [] };
+    expect(read(NARRATION, { mentionReading: unlinked }).participants).toEqual(read(NARRATION).participants);
+  });
+
+  it('matches today without a reading', () => {
+    expect(read(NARRATION, { mentionReading: null })).toEqual(read(NARRATION));
+    expect(read(NARRATION).participants).not.toContain('Professor Serana');
   });
 });

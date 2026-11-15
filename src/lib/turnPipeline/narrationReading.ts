@@ -8,6 +8,8 @@ import { nearbyPlaces } from "../locationGraph";
 import { pullUnique, type PositionBook } from "../positionEngine";
 import { withPlayerAt, type PositionWorld } from "../positionPlay";
 import type { TurnPassSubject } from "./turnPlan";
+import type { MentionReading } from "../coref/mentionReading";
+import { readingParticipants } from "../coref/mentionMemory";
 
 export interface NarrationReadingInput {
   narration: string;
@@ -21,6 +23,8 @@ export interface NarrationReadingInput {
   exclusions: CandidateExclusions;
   /** The planner's cast, which the live scene list is sourced from. Null when no planner ran (Off/Inline). */
   sceneCast: DirectorCastMember[] | null;
+  /** This narration's Mention Reading; its prose links only add participants (Q21). */
+  mentionReading?: MentionReading | null;
 }
 
 export interface NarrationReading {
@@ -48,7 +52,7 @@ export interface NarrationReading {
  * governs.
  */
 export function readNarration(input: NarrationReadingInput): NarrationReading {
-  const { narration, priorNarration, entities, directorCandidates, adHocCandidates, exclusions, sceneCast } = input;
+  const { narration, priorNarration, entities, directorCandidates, adHocCandidates, exclusions, sceneCast, mentionReading } = input;
 
   const prose = stripQuotedSpeech(narration);
   const narratedNames = extractCharacterCandidates(prose, exclusions, collectCandidateEvidence(priorNarration));
@@ -58,6 +62,7 @@ export function readNarration(input: NarrationReadingInput): NarrationReading {
       ...matchNamesLoose(narration, directorCandidates),
       ...matchNames(narration, adHocCandidates),
       ...narratedNames,
+      ...readingParticipants(narration, mentionReading, entities),
     ]),
   ];
 

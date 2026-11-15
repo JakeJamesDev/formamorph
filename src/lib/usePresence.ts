@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import type { DiscoveredEntity, GenericStates } from '@/types';
 import { useGameplay } from '@/contexts/GameplayContext';
+import { useSettings } from '@/contexts/SettingsContext';
+import { readingNamesFor } from '@/lib/coref/mentionMemory';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { computePresence, IN_SCENE_TURNS, type Presence } from '@/lib/presence';
 import type { StrangerLabels } from '@/lib/locationContext';
@@ -24,8 +26,9 @@ export function usePresence(viewedPage?: number): Presence {
   const { entities: cast, locations, connections, persona, currentLocation, inPlay } = useResolvedWorld();
   const {
     gameStates, fullMessageHistory, totalPages, discoveredEntities,
-    entityPositions, genericStates, entityFollowers, metEntities, strangerAliases,
+    entityPositions, genericStates, entityFollowers, metEntities, strangerAliases, mentionReadings,
   } = useGameplay();
+  const { characterMentions } = useSettings();
 
   const snapshot = viewedPage !== undefined && viewedPage < totalPages ? (gameStates[viewedPage - 1] ?? null) : null;
   const history = useMemo(
@@ -49,9 +52,14 @@ export function usePresence(viewedPage?: number): Presence {
   const locationId = snapshot?.locationId ?? currentLocation?.id;
   const personaEntity = persona?.entity ?? null;
 
+  const readingNames = useMemo(
+    () => readingNamesFor(characterMentions, mentionReadings, [...cast, ...runtime]),
+    [characterMentions, mentionReadings, cast, runtime],
+  );
+
   return useMemo(() => computePresence({
     entities: cast, runtime, positions, generics, followers, locationId, locations, connections,
     persona: personaEntity, met, strangerAliases: aliases,
-    turns: recentSceneTurns(history, IN_SCENE_TURNS),
-  }), [cast, runtime, positions, generics, followers, locationId, locations, connections, personaEntity, met, aliases, history]);
+    turns: recentSceneTurns(history, IN_SCENE_TURNS, readingNames),
+  }), [cast, runtime, positions, generics, followers, locationId, locations, connections, personaEntity, met, aliases, history, readingNames]);
 }
