@@ -44,6 +44,11 @@ Settled with the user on 2026-11-14.
 | Q12 | An unknown name reads as a blank entry, the script standard: `id`, `name` and `text` are `''`, every flag is false. `edit` and `remove` through it are ignored and reported |
 | Q13 | Surfaces in scope: Scripts Reference and Memory docs, editor completions and hover cards, a changelog entry. The Help vector rebuild is not part of this effort |
 | Q14 | The AI sees the text only. The name never goes in a request |
+| Q15 | A name made only of digits throws the Q6 TypeError, because brackets read it as a list index (ticket 01) |
+| Q16 | The Q6 check matches list members exactly after trimming: `pin('length', t)` throws, `pin('Length', t)` does not, since `memories['Length']` reaches the memory (ticket 01) |
+| Q17 | Ticket 01 gives the blank entry its verbs, ignored and reported, never thrown. Ticket 02 owns their full tests and docs (ticket 01) |
+| Q18 | Between tickets 01 and 02, a Memory Manager edit of a named memory can be lost to a rewind. That gap is acceptable because neither ticket ships before the effort closes. Ticket 01's Landed section names it (ticket 01) |
+| Q19 | A named write outside a turn keys to the latest turn's id, with the anchor at the current history length, as unnamed `pin(text)` does (ticket 01) |
 
 ## User Stories
 
