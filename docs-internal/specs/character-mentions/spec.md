@@ -75,6 +75,8 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q43 | Weights and the manifest are hosted on `assets.formamorph.ai` (manifest at `/coref/manifest.json`), with a `VITE_COREF_MANIFEST_URL` override. |
 | Q44 | Quote Color on/off gates all quote coloring. A resolved speaker's color beats the player's custom Quote Color; quotes with no resolved speaker keep the custom color, or the theme color. |
 | Q45 | A speaker's palette slot is the entity's position among the world's entities that can speak, mod 8, so the first eight never share a color. Runtime characters continue the count after the world's entities, in their save order. A pure id hash is out: three speakers collide about a third of the time. |
+| Q46 | A mention linked to an entity with no Player View row stays plain text: no link, no card. Cards read the Player View as it is when opened, so a past turn's card shows what the player knows now. |
+| Q47 | Ticket 07's card shows "Wrong character?" only when a correction handler is passed (ticket 08 passes it). No inert control ships in between. |
 
 ## User Stories
 
