@@ -604,7 +604,8 @@
   color: var(--quote-speaker, var(--dialogue-custom, hsl(var(--dialogue))));
 }
 
-/* Speaker quote colors, one set per mode in every palette. `.light` serves a pinned-light panel in the dark app. */
+/* Speaker quote colors, one set per mode in every palette. `.light` serves a pinned-light panel in the dark app.
+   0–7 are the auto palette; every token is a swatch an author can pin, in `QUOTE_SWATCHES` order. */
 :root,
 .light {
   --speaker-0: 24 75% 34%;
@@ -615,6 +616,18 @@
   --speaker-5: 45 85% 25%;
   --speaker-6: 95 60% 26%;
   --speaker-7: 250 55% 50%;
+  --speaker-8: 0 70% 41%;
+  --speaker-9: 12 75% 37%;
+  --speaker-10: 30 40% 33%;
+  --speaker-11: 62 60% 23%;
+  --speaker-12: 165 70% 24%;
+  --speaker-13: 182 75% 23%;
+  --speaker-14: 210 80% 36%;
+  --speaker-15: 228 70% 50%;
+  --speaker-16: 295 35% 40%;
+  --speaker-17: 310 65% 38%;
+  --speaker-18: 325 70% 39%;
+  --speaker-19: 215 22% 38%;
 }
 
 .dark {
@@ -626,6 +639,18 @@
   --speaker-5: 45 75% 62%;
   --speaker-6: 95 50% 62%;
   --speaker-7: 250 85% 78%;
+  --speaker-8: 0 85% 78%;
+  --speaker-9: 12 90% 74%;
+  --speaker-10: 30 45% 67%;
+  --speaker-11: 62 55% 47%;
+  --speaker-12: 165 55% 50%;
+  --speaker-13: 182 60% 49%;
+  --speaker-14: 210 85% 71%;
+  --speaker-15: 228 90% 79%;
+  --speaker-16: 295 45% 74%;
+  --speaker-17: 310 75% 75%;
+  --speaker-18: 325 85% 77%;
+  --speaker-19: 215 25% 71%;
 }
 
 /* Real italic only, no skew: a quote is often a whole sentence, and the skew's inline-block would stop it wrapping. */

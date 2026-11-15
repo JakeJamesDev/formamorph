@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { SPEAKER_PALETTE_SIZE, slotColor, speakerColors } from './speakerPalette';
+import { QUOTE_SWATCHES, SPEAKER_PALETTE_SIZE, slotColor, speakerColors, swatchColor } from './speakerPalette';
 
 type Vars = Record<string, string>;
 type Block = { selectors: string[]; vars: Vars; body: string };
@@ -50,7 +50,8 @@ const contrast = (a: Rgb, b: Rgb) => {
 /** Narration sits on the turn card; the page background shows around it. */
 const SURFACES = ['background', 'card'];
 const TEXT_CONTRAST = 4.5;
-const SLOTS = Array.from({ length: SPEAKER_PALETTE_SIZE }, (_, i) => i);
+/** Every token, the auto palette's eight and the pinnable rest. */
+const SLOTS = QUOTE_SWATCHES.map((_, i) => i);
 
 describe('the speaker palette', () => {
   it.each(['light', 'dark'] as const)('reads as text on every %s theme surface', (mode) => {
@@ -67,7 +68,7 @@ describe('the speaker palette', () => {
     expect(failures).toEqual([]);
   });
 
-  it('defines one token per slot in each mode, and no more', () => {
+  it('defines one token per swatch in each mode, and no more', () => {
     for (const selector of [':root', '.dark']) {
       const tokens = Object.keys(varsOf(selector)).filter((name) => /^speaker-\d+$/.test(name)).sort();
       expect(tokens).toEqual(SLOTS.map((slot) => `speaker-${slot}`).sort());
@@ -104,6 +105,17 @@ describe('speaker colors', () => {
     const colors = speakerColors([{ id: 'player' }, ...cast(2)], 'player');
     expect(colors.has('player')).toBe(false);
     expect(colors.get('entity-0')).toBe(slotColor(0));
+  });
+
+  it('gives a pinned entity its swatch and keeps the auto slots of the rest', () => {
+    const colors = speakerColors([{ id: 'a' }, { id: 'b', quoteColor: 'slate' }, { id: 'c' }]);
+    expect(colors.get('b')).toBe('hsl(var(--speaker-19))');
+    expect(colors.get('c')).toBe(slotColor(2));
+  });
+
+  it('falls back to the auto slot for an unknown swatch key', () => {
+    expect(speakerColors([{ id: 'a', quoteColor: 'chartreuse' }]).get('a')).toBe(slotColor(0));
+    expect(swatchColor(undefined)).toBeUndefined();
   });
 
   it('wraps to the first color after eight', () => {

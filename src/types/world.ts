@@ -518,6 +518,8 @@ export interface Entity {
   aliases?: string[];
   /** Free text, such as "she/her". The AI's entity context shows it for any entity that has it. */
   pronouns?: string;
+  /** The swatch key its quotes take in narration (see lib/coref/speakerPalette). Absent = the auto palette. */
+  quoteColor?: string;
   /** Marks the entity as a Persona. In the library it is one of the player's personas; in a world the
    *  player can play as it. */
   persona?: boolean;

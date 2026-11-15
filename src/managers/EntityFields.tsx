@@ -24,7 +24,8 @@ import { useLibraryAddBlock } from '@/lib/useSupporterCopyBlock';
 import { vrmPickFromValue, vrmPickValue } from '@/lib/worldVrmStore';
 import { pickLabel } from '@/lib/vrmPickMatch';
 import { WorldInput } from '@/components/editor/WorldField';
-import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { QUOTE_SWATCHES, isQuoteSwatch, swatchColor } from '@/lib/coref/speakerPalette';
 import { SelectOptions } from "@/components/SelectOptions";
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { useWorldHistoryStep } from '@/contexts/worldRecorder';
@@ -117,6 +118,7 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
           placeholder="she/her, he/him, it/its"
         />
       </div>
+      {advanced && <EntityQuoteColorField value={value} onChange={onChange} />}
       {advanced && (
         <div className="space-y-2" {...fieldFrame('type')}>
           <Label>Type</Label>
@@ -130,6 +132,31 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
     </>
   );
 };
+
+const AUTO_QUOTE_COLOR = 'auto';
+const QUOTE_COLOR_OPTIONS = QUOTE_SWATCHES.map((key) => ({ key, label: key[0].toUpperCase() + key.slice(1), color: swatchColor(key) }));
+
+/** The swatch the entity's quotes take in narration. Each option shows in its own color, like the Font list. */
+const EntityQuoteColorField = ({ value, onChange }: Pick<EntityFieldGroupProps, 'value' | 'onChange'>) => (
+  <div className="space-y-2" {...fieldFrame('quoteColor')}>
+    <Label htmlFor="entity-quote-color">Quote Color</Label>
+    <Hint>Colors this entity’s quotes in the narration. Auto picks one.</Hint>
+    <Select
+      value={isQuoteSwatch(value.quoteColor) ? value.quoteColor : AUTO_QUOTE_COLOR}
+      onValueChange={(v) => onChange('quoteColor', v === AUTO_QUOTE_COLOR ? undefined : v)}
+    >
+      <SelectTrigger id="entity-quote-color" className="w-48">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={AUTO_QUOTE_COLOR}>Auto</SelectItem>
+        {QUOTE_COLOR_OPTIONS.map((o) => (
+          <SelectItem key={o.key} value={o.key} style={{ color: o.color }}>{o.label}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
+);
 
 /** What the player reads before meeting the entity, for `afterPlayer` on the Descriptions tab. World Editor and Advanced only. */
 export const EntityStrangerDescriptionField = ({ value, onChange, placeholders = [], ownerId, home }: EntityFieldGroupProps & { home: EntityHome }) => {

@@ -3,7 +3,7 @@ import { Meta, SectionTitle } from '@/components/ui/typography';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { TurnCard } from '@/components/game/TurnCard';
 import { QUOTE_CLASS, spokenQuotes, type QuoteSpeakerSource } from '@/lib/quoteSegments';
-import { SPEAKER_PALETTE_SIZE, slotColor, speakerColors } from '@/lib/coref/speakerPalette';
+import { QUOTE_SWATCHES, SPEAKER_PALETTE_SIZE, speakerColors, swatchColor } from '@/lib/coref/speakerPalette';
 
 const PASSAGE = `The ferry bumps the dock as Mira throws the line. "You said noon," Kessa says, coming down the plank.
 
@@ -16,14 +16,12 @@ const LINES: [string, string | null][] = [
   ['"Don\'t drag me into this."', 'courier'], ['"Both of you, the tide won\'t wait."', null],
 ];
 
-/** A canned reading of the passage: three speakers and one quote nobody in the cast said. */
+/** A canned reading of the passage: three speakers, Kessa pinned to a swatch, and one quote nobody in the cast said. */
 const SPEAKERS: QuoteSpeakerSource = {
   text: PASSAGE,
-  colors: speakerColors([{ id: 'mira' }, { id: 'kessa' }, { id: 'courier' }]),
+  colors: speakerColors([{ id: 'mira' }, { id: 'kessa', quoteColor: 'teal' }, { id: 'courier' }]),
   quotes: spokenQuotes(PASSAGE, LINES),
 };
-
-const SLOTS = Array.from({ length: SPEAKER_PALETTE_SIZE }, (_, slot) => slot);
 
 /** One mode of the sample. The class and `data-theme` pin the mode, so both render at once. */
 function ThemePanel({ mode }: { mode: 'light' | 'dark' }) {
@@ -35,12 +33,12 @@ function ThemePanel({ mode }: { mode: 'light' | 'dark' }) {
     >
       <SectionTitle>{mode === 'light' ? 'Light' : 'Dark'}</SectionTitle>
       <div className="space-y-2">
-        <Meta>Palette</Meta>
+        <Meta>Swatches (the first {SPEAKER_PALETTE_SIZE} are Auto)</Meta>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-          {SLOTS.map((slot) => (
-            <div key={slot} className="flex items-baseline justify-between gap-2">
-              <span className={QUOTE_CLASS} style={{ '--quote-speaker': slotColor(slot) } as React.CSSProperties}>{'"Quote"'}</span>
-              <Meta>--speaker-{slot}</Meta>
+          {QUOTE_SWATCHES.map((key) => (
+            <div key={key} className="flex items-baseline justify-between gap-2">
+              <span className={QUOTE_CLASS} style={{ '--quote-speaker': swatchColor(key) } as React.CSSProperties}>{'"Quote"'}</span>
+              <Meta>{key}</Meta>
             </div>
           ))}
         </div>
@@ -55,7 +53,7 @@ function ThemePanel({ mode }: { mode: 'light' | 'dark' }) {
   );
 }
 
-/** Speaker quote colors: the auto palette and a turn read by Character Mentions, both modes at once. */
+/** Speaker quote colors: the swatches and a turn read by Character Mentions, both modes at once. */
 export function SpeakerQuotesReference() {
   return (
     <Card role="region" aria-labelledby="speaker-quotes-reference-title" className="min-w-0">

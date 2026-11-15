@@ -28,6 +28,7 @@ import { portableEnabledGate, portableImages, portableOwnedTraits, type TraitWor
 import { carriedBlueprints } from './blueprintTravel';
 import { notFlag } from './requirementRows';
 import { daypartSet, isDaypart } from './gameClock';
+import { isQuoteSwatch } from './coref/speakerPalette';
 import { itemIdentity } from './items';
 import { adoptCarriedVrm, withCarriedVrm, type CarriedVrm, type PortableEntity } from './entityVrmCarry';
 
@@ -42,6 +43,8 @@ export interface EntityCardData {
   author?: string;
   aliases?: string[];
   pronouns?: string;
+  /** The pinned quote swatch key. */
+  quoteColor?: string;
   /** The Persona mark. A shared persona arrives as a persona. */
   persona?: boolean;
   /** How the map shows the entity; absent = Always. */
@@ -120,6 +123,7 @@ export function buildEntityCardData(
     ...(libraryDetails?.author ? { author: libraryDetails.author } : {}),
     ...(entity.aliases?.length ? { aliases: entity.aliases } : {}),
     ...(entity.pronouns ? { pronouns: entity.pronouns } : {}),
+    ...(entity.quoteColor ? { quoteColor: entity.quoteColor } : {}),
     ...(entity.persona ? { persona: true } : {}),
     ...storedOnMap(entity.onMap),
     ...(entity.type ? { type: entity.type } : {}),
@@ -195,6 +199,7 @@ export function parseEntityCardData(raw: unknown, pixels?: Base64Data): Entity {
     name: typeof obj.name === 'string' && obj.name ? obj.name : 'Imported Character',
     ...(aliases.length ? { aliases } : {}),
     ...(typeof obj.pronouns === 'string' && obj.pronouns ? { pronouns: obj.pronouns } : {}),
+    ...(isQuoteSwatch(obj.quoteColor) ? { quoteColor: obj.quoteColor } : {}),
     ...(obj.persona === true ? { persona: true } : {}),
     ...storedOnMap(obj.onMap),
     ...(typeof obj.type === 'string' && obj.type ? { type: obj.type } : {}),
