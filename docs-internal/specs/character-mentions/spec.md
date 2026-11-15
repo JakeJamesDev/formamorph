@@ -84,6 +84,7 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q52 | The first-time offer is due after 3 settled player turns on any AI, one card on screen at a time, yielding to a Formamorph AI card due on the same turn. Shown and accepted are recorded on the device only; no server funnel step. The card reuses the StoryCard frame with "Not Now" and "Turn On", and after accept shows the download bar until the model is ready, then closes. |
 | Q53 | In Scene and the diary queue union the turn's reading at read time; stored `entities` stay name-based, so corrections (ticket 08) apply at once. The milestone pass gains names through the digests. Bracket tags the bracketed view inserted are stripped from digest and diary replies before they are stored. |
 | Q54 | A memory bracket uses the name the player knows: the true name once met, else the stranger label, else no bracket. Digests reach the Memory panel, so a true name there would spoil an unmet stranger. |
+| Q55 | The one card slot is first come, first served (the user's pick). A Formamorph AI card that comes due while the offer card shows waits, and shows on the first settled turn after the offer card closes. |
 
 ## User Stories
 
