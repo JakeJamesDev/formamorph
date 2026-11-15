@@ -56,7 +56,7 @@ const whereOf = (where: string): ItemInstanceWhere => (
 );
 
 const draught = { key: 'item:draught', name: 'Healing Draught' };
-const drank: ToldAction = { facts: { kind: 'use', item: draught, copyId: 'c4' }, count: 1 };
+const drank: ToldAction = { facts: { kind: 'use', item: draught, instanceId: 'c4' }, count: 1 };
 const DRINK = 'You pull the stopper from one of your healing draughts and drink it down. It is bitter and green on the tongue, and warmth spreads through your chest until the ache in your legs fades.';
 const CASES: Case[] = [
   {

@@ -188,7 +188,7 @@ describe('buildPlayerView items', () => {
   it('counts an item once held or once visible where the player stood', () => {
     const v = view({ chain: [state({
       locationId: 'gate',
-      itemCopies: [instance('c1', 'key', { kind: 'you' }), instance('c2', 'coin', { kind: 'location', id: 'gate' }), instance('c3', 'gem', { kind: 'location', id: 'vault' }), instance('c4', 'map', { kind: 'entity', id: 'warden' })],
+      itemInstances: [instance('c1', 'key', { kind: 'you' }), instance('c2', 'coin', { kind: 'location', id: 'gate' }), instance('c3', 'gem', { kind: 'location', id: 'vault' }), instance('c4', 'map', { kind: 'entity', id: 'warden' })],
     })] });
     expect(v.items).toEqual([
       { kind: 'item', id: 'key', name: 'key', description: 'key player text.' },
@@ -197,21 +197,21 @@ describe('buildPlayerView items', () => {
   });
 
   it('keeps a hidden instance out until it is revealed', () => {
-    const hidden = state({ itemCopies: [instance('c1', 'key', { kind: 'you' }, 'hidden')] });
+    const hidden = state({ itemInstances: [instance('c1', 'key', { kind: 'you' }, 'hidden')] });
     expect(view({ chain: [hidden] }).items).toEqual([]);
-    const revealed = state({ itemCopies: [instance('c1', 'key', { kind: 'you' })] });
+    const revealed = state({ itemInstances: [instance('c1', 'key', { kind: 'you' })] });
     expect(names(view({ chain: [hidden, revealed] }).items)).toEqual(['key']);
   });
 
   it('keeps an item the player held in an earlier snapshot', () => {
-    const held = state({ itemCopies: [instance('c1', 'key', { kind: 'you' })] });
+    const held = state({ itemInstances: [instance('c1', 'key', { kind: 'you' })] });
     expect(names(view({ chain: [held, state()] }).items)).toEqual(['key']);
   });
 
   it('gives one row per item and State, from the latest snapshot the player met the item in', () => {
     const lamp = (id: string, word: string) => ({ ...instance(id, 'key', { kind: 'you' }), state: { state: word } });
-    const before = state({ itemCopies: [lamp('c1', 'unlit')] });
-    const now = state({ itemCopies: [lamp('c1', 'Lit'), lamp('c2', 'lit'), lamp('c3', 'broken'), instance('c4', 'key', { kind: 'you' })] });
+    const before = state({ itemInstances: [lamp('c1', 'unlit')] });
+    const now = state({ itemInstances: [lamp('c1', 'Lit'), lamp('c2', 'lit'), lamp('c3', 'broken'), instance('c4', 'key', { kind: 'you' })] });
     expect(view({ chain: [before, now] }).items.map((row) => row.state)).toEqual(['Lit', 'broken', undefined]);
     expect(view({ chain: [now, before] }).items.map((row) => row.state)).toEqual(['unlit']);
   });
@@ -219,7 +219,7 @@ describe('buildPlayerView items', () => {
   it('uses a runtime item description', () => {
     const v = view({ chain: [state({
       runtimeItems: [{ id: 'rt-rope', name: 'rope', description: 'A coil of rope.' }],
-      itemCopies: [{ id: 'c1', item: { kind: 'runtime', runtimeItemId: 'rt-rope' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' }],
+      itemInstances: [{ id: 'c1', item: { kind: 'runtime', runtimeItemId: 'rt-rope' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' }],
     })] });
     expect(v.items).toEqual([{ kind: 'item', id: 'rt-rope', name: 'rope', description: 'A coil of rope.' }]);
   });
@@ -267,7 +267,7 @@ describe('buildPlayerView never holds hidden text', () => {
     const v = view({
       chain: [state({
         locationId: 'gate', metEntities: ['warden'], globalStats: [stat('health')], globalTraits: [trait('brave')],
-        itemCopies: [instance('c1', 'key', { kind: 'you' })],
+        itemInstances: [instance('c1', 'key', { kind: 'you' })],
       })],
       history,
     });
@@ -286,7 +286,7 @@ describe('buildPlayerView after an undo', () => {
   it('drops what the undone turn added', () => {
     const before = state({ locationId: 'gate', metEntities: [] });
     const after = state({
-      locationId: 'vault', metEntities: ['warden'], itemCopies: [instance('c1', 'gem', { kind: 'location', id: 'vault' })],
+      locationId: 'vault', metEntities: ['warden'], itemInstances: [instance('c1', 'gem', { kind: 'location', id: 'vault' })],
     });
     const history = [turn('t1', { locationId: 'gate' }), turn('t2', { locationId: 'vault' })];
 

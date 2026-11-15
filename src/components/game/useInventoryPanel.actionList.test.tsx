@@ -57,36 +57,36 @@ describe('the Inventory tab lists its actions', () => {
   it('lists a use with the item and its display name, and the state from before it', async () => {
     const { h, run, added, snapshot } = panelOver([instance('t', 'tonic', { quantity: 3 })]);
     await waitFor(() => expect(h.gameplay().itemInstances).toHaveLength(1));
-    run({ kind: 'use', copyId: 't' });
+    run({ kind: 'use', instanceId: 't' });
     expect(h.gameplay().itemInstances[0].quantity).toBe(2);
-    expect(added).toEqual([{ facts: { kind: 'use', item: { key: 'item:tonic', name: 'Tonic' }, copyId: 't' }, snapshot }]);
+    expect(added).toEqual([{ facts: { kind: 'use', item: { key: 'item:tonic', name: 'Tonic' }, instanceId: 't' }, snapshot }]);
   });
 
   it('names an unidentified instance by its unidentified face', async () => {
     const { h, run, added } = panelOver([instance('r', 'ring', { state: { unidentified: true } })]);
     await waitFor(() => expect(h.gameplay().itemInstances).toHaveLength(1));
-    run({ kind: 'use', copyId: 'r' });
+    run({ kind: 'use', instanceId: 'r' });
     expect(added[0].facts).toMatchObject({ item: { name: 'Plain Ring' } });
   });
 
   it('lists an equip with the instance it left, and an unequip with the row it left', async () => {
     const { h, run, added } = panelOver([instance('d', 'dagger', { quantity: 2 })]);
     await waitFor(() => expect(h.gameplay().itemInstances).toHaveLength(1));
-    run({ kind: 'equip', copyId: 'd' });
+    run({ kind: 'equip', instanceId: 'd' });
     const worn = h.gameplay().itemInstances.find((c) => c.equipped);
     expect(worn && worn.id).not.toBe('d');
-    expect(added[0].facts).toEqual({ kind: 'equip', item: { key: 'item:dagger', name: 'Dagger' }, copyId: 'd', resultId: worn?.id });
-    run({ kind: 'unequip', copyId: worn?.id ?? '' });
+    expect(added[0].facts).toEqual({ kind: 'equip', item: { key: 'item:dagger', name: 'Dagger' }, instanceId: 'd', resultId: worn?.id });
+    run({ kind: 'unequip', instanceId: worn?.id ?? '' });
     // The unequipped dagger merges back into the stack it split from.
-    expect(added[1].facts).toEqual({ kind: 'unequip', item: { key: 'item:dagger', name: 'Dagger' }, copyId: worn?.id, resultId: 'd' });
+    expect(added[1].facts).toEqual({ kind: 'unequip', item: { key: 'item:dagger', name: 'Dagger' }, instanceId: worn?.id, resultId: 'd' });
   });
 
   it('lists a give with the receiving entity, and a drop and a pick up with the place and quantity', async () => {
     const { h, run, added } = panelOver([instance('c', 'coin', { quantity: 5 }), instance('l', 'coin', { where: { kind: 'location', id: 'yard' }, quantity: 4 })]);
     await waitFor(() => expect(h.gameplay().itemInstances).toHaveLength(2));
-    run({ kind: 'transfer', copyId: 'c', to: { kind: 'entity', id: 'bram' }, quantity: 1 });
-    run({ kind: 'transfer', copyId: 'c', to: { kind: 'location', id: 'yard' }, quantity: 2 });
-    run({ kind: 'transfer', copyId: 'l', to: you, quantity: 3 });
+    run({ kind: 'transfer', instanceId: 'c', to: { kind: 'entity', id: 'bram' }, quantity: 1 });
+    run({ kind: 'transfer', instanceId: 'c', to: { kind: 'location', id: 'yard' }, quantity: 2 });
+    run({ kind: 'transfer', instanceId: 'l', to: you, quantity: 3 });
     const coin = { key: 'item:coin', name: 'Coin' };
     expect(added.map((a) => a.facts)).toEqual([
       { kind: 'give', item: coin, quantity: 1, to: { id: 'bram', name: 'Bram' } },
@@ -98,14 +98,14 @@ describe('the Inventory tab lists its actions', () => {
   it('lists nothing for an action the module skips', async () => {
     const { h, run, added } = panelOver([instance('c', 'coin')]);
     await waitFor(() => expect(h.gameplay().itemInstances).toHaveLength(1));
-    run({ kind: 'equip', copyId: 'c' });
+    run({ kind: 'equip', instanceId: 'c' });
     expect(added).toEqual([]);
   });
 
   it('runs nothing when the action reverses the newest entry', async () => {
     const { h, run, added, actions } = panelOver([instance('c', 'coin')], () => true);
     await waitFor(() => expect(h.gameplay().itemInstances).toHaveLength(1));
-    run({ kind: 'transfer', copyId: 'c', to: { kind: 'location', id: 'yard' }, quantity: 1 });
+    run({ kind: 'transfer', instanceId: 'c', to: { kind: 'location', id: 'yard' }, quantity: 1 });
     expect(actions.reverse).toHaveBeenCalledWith({ kind: 'drop', item: { key: 'item:coin', name: 'Coin' }, quantity: 1, place: 'yard' });
     expect(h.gameplay().itemInstances.map((c) => c.where)).toEqual([you]);
     expect(added).toEqual([]);

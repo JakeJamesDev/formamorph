@@ -54,7 +54,7 @@ function reach(): PlayerViewReach {
   const current: GameState = {
     globalStats: STATS, globalTraits: [BRAVE, CURSED, IDLE], disabledTraitIds: ['idle'], visibleEntities: [{ name: 'Warden', alias: 'the hooded one', revealed: true }],
     logEntries: [], gameplayText: '', gameTime: 0, characterData: null, choices: [], isGameStarted: true, timestamp: '', worldName: null,
-    playerNotes: '', previousStateIndex: null, stateVersion: 1, metEntities: ['warden'], locationId: 'gate', itemCopies: INSTANCES,
+    playerNotes: '', previousStateIndex: null, stateVersion: 1, metEntities: ['warden'], locationId: 'gate', itemInstances: INSTANCES,
     entityStats: { warden: WARDEN.stats as PlayerStat[] },
   };
   const view = buildPlayerView({

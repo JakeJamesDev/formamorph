@@ -106,7 +106,7 @@ function seedPlacements(world: SeedWorld, persona: PersonaRef | undefined, newId
     if (!placement.equipped) return;
     // Only the first unit takes the named slot (Q78). A slot the rule no longer lists falls back to the first free one.
     const slotId = unit === 0 && placement.slotId && item.slotRule?.slotIds.includes(placement.slotId) ? placement.slotId : undefined;
-    equips.push({ kind: 'equip', copyId: instanceId, ...(slotId && { slotId }) });
+    equips.push({ kind: 'equip', instanceId, ...(slotId && { slotId }) });
   };
   for (const placement of world.placements ?? []) {
     const item = items.get(placement.source.itemId);
@@ -142,24 +142,24 @@ export type InventorySource = 'pass' | 'panel' | 'script';
  *  names an authored item or one of the call's runtime items. */
 export type InventoryOp =
   | { kind: 'gain'; itemId: string; quantity: number; to: ItemInstanceWhere; /** Absent = visible. */ visibility?: ItemInstanceVisibility }
-  | { kind: 'lose'; copyId: string; quantity?: number }
-  | { kind: 'transfer'; copyId: string; to: ItemInstanceWhere; quantity?: number }
+  | { kind: 'lose'; instanceId: string; quantity?: number }
+  | { kind: 'transfer'; instanceId: string; to: ItemInstanceWhere; quantity?: number }
   /** `slotId` names one of the item's slots; absent = the first free one (Q37). */
-  | { kind: 'equip'; copyId: string; slotId?: string }
-  | { kind: 'unequip'; copyId: string }
-  /** `after` is read only for a runtime item; absent = used up (Q10, Q56). `targetCopyId` is the instance it is used on. */
-  | { kind: 'use'; copyId: string; after?: InventoryUseAfter; targetCopyId?: string }
-  | { kind: 'reveal'; copyId: string; quantity?: number }
-  | { kind: 'setUses'; copyId: string; uses: number }
+  | { kind: 'equip'; instanceId: string; slotId?: string }
+  | { kind: 'unequip'; instanceId: string }
+  /** `after` is read only for a runtime item; absent = used up (Q10, Q56). `targetInstanceId` is the instance it is used on. */
+  | { kind: 'use'; instanceId: string; after?: InventoryUseAfter; targetInstanceId?: string }
+  | { kind: 'reveal'; instanceId: string; quantity?: number }
+  | { kind: 'setUses'; instanceId: string; uses: number }
   /** Sets one instance's State; a blank `state` clears it. */
-  | { kind: 'change'; copyId: string; state: string };
+  | { kind: 'change'; instanceId: string; state: string };
 
 /** One Item Instance event an item's scripts of that timing run on (Q33). `where` is the owner or location it
  *  happened at; `quantity` is how many it moved. */
 export interface ItemScriptEvent {
   timing: ItemScriptTiming;
   itemId: string;
-  copyId: string;
+  instanceId: string;
   where: ItemInstanceWhere;
   quantity: number;
   /** The Item Instance as it stood before a When Lost or When Used event, which can leave it gone. */
@@ -249,7 +249,7 @@ export function applyInventoryOps(instances: readonly ItemInstance[], ops: reado
   const events: ItemScriptEvent[] = [];
   /** Records an event of `ref`'s item; none for a runtime item. */
   const fire = (timing: ItemScriptTiming, ref: ItemRef, instanceId: string, where: ItemInstanceWhere, quantity: number, was?: ItemInstance, target?: ItemInstance) => {
-    if (ref.kind === 'item') events.push({ timing, itemId: ref.itemId, copyId: instanceId, where, quantity, ...(was && { was }), ...(target && { target }) });
+    if (ref.kind === 'item') events.push({ timing, itemId: ref.itemId, instanceId, where, quantity, ...(was && { was }), ...(target && { target }) });
   };
   const itemOf = (instance: ItemInstance): Item | undefined => (instance.item.kind === 'item' ? items.get(instance.item.itemId) : undefined);
   /** Whether carried `c` is a stack `instance` merges into: same item, visibility, place, uses left (Q27), State and identity (Q18). */
@@ -314,8 +314,8 @@ export function applyInventoryOps(instances: readonly ItemInstance[], ops: reado
       return null;
     }
 
-    const instance = list.find((c) => c.id === op.copyId);
-    if (!instance) return `${op.kind}: no Item Instance ${op.copyId}`;
+    const instance = list.find((c) => c.id === op.instanceId);
+    if (!instance) return `${op.kind}: no Item Instance ${op.instanceId}`;
     if (!isPresent(instance.where, call.presence)) return `${op.kind}: Item Instance ${instance.id} is not present`;
     const item = instance.item.kind === 'item' ? items.get(instance.item.itemId) : undefined;
     // Bound stops the panel letting go of an Item Instance, never picking one up.
@@ -366,8 +366,8 @@ export function applyInventoryOps(instances: readonly ItemInstance[], ops: reado
         if (item && !itemUsable(item)) return `use: Item Instance ${instance.id} can't be used`;
         const left = usesLeft(instance, item);
         if (left !== undefined && !(left > 0)) return `use: Item Instance ${instance.id} has no uses left`;
-        const target = op.targetCopyId !== undefined ? list.find((c) => c.id === op.targetCopyId && c !== instance) : undefined;
-        if (op.targetCopyId !== undefined && !target) diagnostics.push(`Inventory (${call.source}) used Item Instance ${instance.id} on nothing: no Item Instance ${op.targetCopyId}`);
+        const target = op.targetInstanceId !== undefined ? list.find((c) => c.id === op.targetInstanceId && c !== instance) : undefined;
+        if (op.targetInstanceId !== undefined && !target) diagnostics.push(`Inventory (${call.source}) used Item Instance ${instance.id} on nothing: no Item Instance ${op.targetInstanceId}`);
         if (item) itemUses.push({ itemId: item.id, where: instance.where, hidden: instance.visibility === 'hidden', ...(isUnidentified(instance) && { unidentified: true }) });
         fire('used', instance.item, instance.id, instance.where, 1, instance, target);
         const empty = item ? (left === 1 ? whenEmptyOf(item) : undefined) : op.after === 'kept' ? undefined : { kind: 'gone' as const };

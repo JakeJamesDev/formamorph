@@ -453,7 +453,7 @@ export interface GameState {
   /** What this turn moved each entity stat, AI, regen and code together. Absent ⇒ none. */
   entityStatChanges?: EntityStatChanges;
   /** Every Item Instance in play. A new game seeds them; an older save never gains any. Absent ⇒ none. */
-  itemCopies?: ItemInstance[];
+  itemInstances?: ItemInstance[];
   /** The runtime items the Inventory pass made. Absent ⇒ none. */
   runtimeItems?: RuntimeItem[];
   /** What item effects have applied. Absent ⇒ none. */

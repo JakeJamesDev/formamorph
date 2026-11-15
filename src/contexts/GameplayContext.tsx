@@ -450,7 +450,7 @@ function useProvideGameplay() {
       ...(Object.keys(codePins).length ? { codePins } : {}),
       ...(Object.keys(loreToggles).length ? { loreToggles } : {}),
       ...(Object.keys(worldOptionValues).length ? { worldOptionValues } : {}),
-      ...(itemInstances.length ? { itemCopies: [...itemInstances] } : {}),
+      ...(itemInstances.length ? { itemInstances: [...itemInstances] } : {}),
       ...(runtimeItems.length ? { runtimeItems: [...runtimeItems] } : {}),
       ...(Object.keys(itemEffects).length ? { itemEffects } : {}),
       ...(Object.keys(bodies).length ? { bodies } : {}),
@@ -509,7 +509,7 @@ function useProvideGameplay() {
       setCodePins(gameState.codePins ?? EMPTY_PINS);
       setLoreToggles(gameState.loreToggles ?? NO_LORE_TOGGLES);
       setWorldOptionValues(gameState.worldOptionValues ?? NO_WORLD_OPTION_VALUES);
-      setItemInstances(gameState.itemCopies ?? NO_ITEM_INSTANCES);
+      setItemInstances(gameState.itemInstances ?? NO_ITEM_INSTANCES);
       setItemEffects(gameState.itemEffects ?? NO_ITEM_EFFECTS);
       setBodies(gameState.bodies ?? NO_BODIES);
       setRuntimeItems(gameState.runtimeItems ?? NO_RUNTIME_ITEMS);
@@ -687,9 +687,9 @@ function useProvideGameplay() {
     /** The state without Item Instances whose item, owner entity or location the playthrough no longer holds, and its
      *  item effects settled, the dropped ones reversed (Q60). */
     const withoutOrphans = (state: GameState, persona?: PersonaRef): GameState => {
-      if (!items || !worldEntities || (!state.itemCopies?.length && !state.itemEffects?.applied && !state.itemEffects?.timed)) return state;
+      if (!items || !worldEntities || (!state.itemInstances?.length && !state.itemEffects?.applied && !state.itemEffects?.timed)) return state;
       const entityIds = heldEntityIds(worldEntities.map((e) => e.id), state, persona);
-      const { instances, dropped } = withoutOrphanInstances(state.itemCopies ?? [], {
+      const { instances, dropped } = withoutOrphanInstances(state.itemInstances ?? [], {
         itemIds: new Set(items.map((item) => item.id)), entityIds, locationIds: new Set(locationIds),
         runtimeItemIds: new Set((state.runtimeItems ?? []).map((r) => r.id)),
       });
@@ -699,7 +699,7 @@ function useProvideGameplay() {
       // Without the owners' traits the bounds can't derive; the ledger keeps the entries, and the next settle reverses them.
       if (!ownerStatTraits) {
         return dropped.length || traits.dropped.length
-          ? { ...state, itemCopies: [...instances], ...(traits.dropped.length && { itemEffects: traits.ledger }) } : state;
+          ? { ...state, itemInstances: [...instances], ...(traits.dropped.length && { itemEffects: traits.ledger }) } : state;
       }
       // Settled on every load, so the item bounds follow the world's current rows.
       const settled = settleItemEffects(
@@ -709,7 +709,7 @@ function useProvideGameplay() {
       );
       for (const key of settled.orphaned) orphanIds.add(`timed:${key}`);
       return {
-        ...state, ...(dropped.length && { itemCopies: [...instances] }), entityStats: settled.entityStats, itemEffects: settled.ledger,
+        ...state, ...(dropped.length && { itemInstances: [...instances] }), entityStats: settled.entityStats, itemEffects: settled.ledger,
       };
     };
     /** One log line for every orphan the load dropped, across the state and its history. */

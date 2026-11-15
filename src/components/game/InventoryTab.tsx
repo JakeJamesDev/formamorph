@@ -169,7 +169,7 @@ function UseButton({ instance, item, name, disabled, onOps }: {
   return (
     <ItemRowButton
       label={spent ? `Use ${name}: no uses left` : `Use ${name}`} icon={Sparkles} disabled={disabled || spent}
-      onClick={() => onOps([{ kind: 'use', copyId: instance.id }])}
+      onClick={() => onOps([{ kind: 'use', instanceId: instance.id }])}
     />
   );
 }
@@ -186,7 +186,7 @@ function EquipButton({ instance, item, name, slots, disabled, resolveText, onOps
   const choices = rule.mode === 'either' ? rule.slotIds.flatMap((slotId) => slots.filter((s) => s.slot.id === slotId)) : [];
   const label = `Equip ${name}`;
   if (choices.length < 2) {
-    return <ItemRowButton label={label} icon={Shirt} disabled={disabled} onClick={() => onOps([{ kind: 'equip', copyId: instance.id }])} />;
+    return <ItemRowButton label={label} icon={Shirt} disabled={disabled} onClick={() => onOps([{ kind: 'equip', instanceId: instance.id }])} />;
   }
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -197,7 +197,7 @@ function EquipButton({ instance, item, name, slots, disabled, resolveText, onOps
         <p className="text-label font-medium">{label}</p>
         <div role="list" aria-label="Equip in">
           {choices.map(({ slot }) => (
-            <CompactSelectionRow key={slot.id} onClick={() => { onOps([{ kind: 'equip', copyId: instance.id, slotId: slot.id }]); setOpen(false); }}>
+            <CompactSelectionRow key={slot.id} onClick={() => { onOps([{ kind: 'equip', instanceId: instance.id, slotId: slot.id }]); setOpen(false); }}>
               {resolveText(slot.name)}
             </CompactSelectionRow>
           ))}
@@ -275,7 +275,7 @@ export function InventoryTab({
       <UseButton instance={instance} item={itemOf(instance)} name={nameOf(instance)} disabled={disabled} onOps={onOps} />
       <ItemRowButton
         label={`Unequip ${nameOf(instance)}`} icon={Undo2} disabled={disabled}
-        onClick={() => onOps([{ kind: 'unequip', copyId: instance.id }])}
+        onClick={() => onOps([{ kind: 'unequip', instanceId: instance.id }])}
       />
     </div>
   );
@@ -325,7 +325,7 @@ export function InventoryTab({
                   {instance.equipped && (
                     <ItemRowButton
                       label={`Unequip ${name}`} icon={Undo2} disabled={disabled}
-                      onClick={() => onOps([{ kind: 'unequip', copyId: instance.id }])}
+                      onClick={() => onOps([{ kind: 'unequip', instanceId: instance.id }])}
                     />
                   )}
                   <EquipButton instance={instance} item={item} name={name} slots={slots} disabled={disabled} resolveText={resolveText} onOps={onOps} />
@@ -338,11 +338,11 @@ export function InventoryTab({
                     <>
                       <MoveButton
                         verb="Drop" icon={ArrowDownToLine} instance={instance} name={name} disabled={disabled || !here}
-                        onMove={(quantity) => here && onOps([{ kind: 'transfer', copyId: instance.id, to: here, quantity }])}
+                        onMove={(quantity) => here && onOps([{ kind: 'transfer', instanceId: instance.id, to: here, quantity }])}
                       />
                       <GiveButton
                         instance={instance} name={name} present={present} disabled={disabled}
-                        onGive={(id, quantity) => onOps([{ kind: 'transfer', copyId: instance.id, to: { kind: 'entity', id }, quantity }])}
+                        onGive={(id, quantity) => onOps([{ kind: 'transfer', instanceId: instance.id, to: { kind: 'entity', id }, quantity }])}
                       />
                     </>
                   )}
@@ -378,7 +378,7 @@ export function InventoryTab({
             {lyingHere.map((instance) => row(instance, (
               <MoveButton
                 verb="Pick Up" icon={ArrowUpFromLine} instance={instance} name={nameOf(instance)} disabled={disabled}
-                onMove={(quantity) => onOps([{ kind: 'transfer', copyId: instance.id, to: YOU, quantity }])}
+                onMove={(quantity) => onOps([{ kind: 'transfer', instanceId: instance.id, to: YOU, quantity }])}
               />
             )))}
           </ul>

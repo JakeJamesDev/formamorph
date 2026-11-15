@@ -34,7 +34,7 @@ const applyWith = (items: Item[]): ApplyInventory => (instances, ops) =>
   applyInventoryOps(instances, ops, { world: { items }, source: 'script', newId: () => `new-${(ids += 1)}` });
 
 const event = (timing: ItemScriptTiming, itemId: string, instanceId: string, where: ItemInstance['where']): ItemScriptEvent =>
-  ({ timing, itemId, copyId: instanceId, where, quantity: 1 });
+  ({ timing, itemId, instanceId, where, quantity: 1 });
 
 describe('runItemScripts', () => {
   beforeEach(() => {
@@ -77,7 +77,7 @@ describe('runItemScripts', () => {
       turnOf([box, ring], [instance('c-0', 'i-box', { kind: 'location', id: 'loc-vault' }), worn]),
       [event('gained', 'i-box', 'c-0', { kind: 'location', id: 'loc-vault' })], { items: [box, ring], apply: applyWith([box, ring]), itemNameOf: (i) => i.name, settle },
     );
-    const unequipOp = { kind: 'unequip', copyId: 'c-ring' };
+    const unequipOp = { kind: 'unequip', instanceId: 'c-ring' };
 
     it('fires an unequip that a depth-2 write caused at depth 3', async () => {
       // The depth-1 write makes the second box; the depth-2 write makes the third, which unequips the Ring.
@@ -110,7 +110,7 @@ describe('runItemScripts', () => {
   it('hands a When Lost script the Item Instance that left, as it stood', async () => {
     const coin = item('i-coin', 'Coin', [['lost', 'stats.Gold.value += self.event.copy.quantity;']]);
     const start = [{ ...instance('c-1', 'i-coin', { kind: 'you' }), quantity: 4 }];
-    const lost = applyWith([coin])(start, [{ kind: 'lose', copyId: 'c-1' }]);
+    const lost = applyWith([coin])(start, [{ kind: 'lose', instanceId: 'c-1' }]);
     const out = await runItemScripts(turnOf([coin], lost.instances), lost.events, { items: [coin], apply: applyWith([coin]), itemNameOf: (i) => i.name });
     expect(out.result?.stats.find((s) => s.id === 'gold')?.value).toBe(4);
   });

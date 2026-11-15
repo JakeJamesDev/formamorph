@@ -17,7 +17,7 @@ const copy = (id: string, unidentified: boolean): ItemInstance => ({
 });
 const state = (itemInstances: ItemInstance[]): GameState => ({
   globalStats: [], globalTraits: [], visibleEntities: [], logEntries: [], gameplayText: '', gameTime: 0, characterData: null, choices: [],
-  isGameStarted: true, timestamp: '', worldName: null, playerNotes: '', previousStateIndex: null, stateVersion: 1, itemCopies: itemInstances,
+  isGameStarted: true, timestamp: '', worldName: null, playerNotes: '', previousStateIndex: null, stateVersion: 1, itemInstances: itemInstances,
 });
 const reach = (copies: ItemInstance[]): PlayerViewReach => {
   const current = state(copies);

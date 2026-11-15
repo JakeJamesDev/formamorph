@@ -553,7 +553,7 @@ describe('the Emberwatch items', () => {
       const instanceOf = (id: string, itemId: string) => ({ id, item: { kind: 'item', itemId } as const, where: owner, quantity: 1, visibility: 'visible' as const });
       const { instances, diagnostics } = applyInventoryOps(
         [instanceOf('sword', itemNamed('Steel Longsword').id), instanceOf('shield', itemNamed("Oath-Keeper's Shield").id), instanceOf('staff', staff.id)],
-        [{ kind: 'equip', copyId: 'sword' }, { kind: 'equip', copyId: 'shield' }, { kind: 'equip', copyId: 'staff' }],
+        [{ kind: 'equip', instanceId: 'sword' }, { kind: 'equip', instanceId: 'shield' }, { kind: 'equip', instanceId: 'staff' }],
         { world: { items, slots: world.slots, bodies: world.bodies, entities: world.entities }, source: 'panel', newId: () => 'new' },
       );
       expect(diagnostics).toEqual([]);

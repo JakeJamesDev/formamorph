@@ -20,7 +20,7 @@ describe('reveal', () => {
   it('makes a hidden Item Instance visible and merges it into the visible stack of the same item', () => {
     const { instances, diagnostics } = applyInventoryOps(
       [instance('a', 'coin', { quantity: 2 }), instance('b', 'coin', { quantity: 3, visibility: 'hidden' })],
-      [{ kind: 'reveal', copyId: 'b' }], call(),
+      [{ kind: 'reveal', instanceId: 'b' }], call(),
     );
     expect(diagnostics).toEqual([]);
     expect(instances).toEqual([instance('a', 'coin', { quantity: 5 })]);
@@ -37,14 +37,14 @@ describe('reveal', () => {
   it('reveals part of a row and merges that part into the visible stack', () => {
     const { instances } = applyInventoryOps(
       [instance('a', 'coin'), instance('b', 'coin', { quantity: 3, visibility: 'hidden' })],
-      [{ kind: 'reveal', copyId: 'b', quantity: 2 }], call(),
+      [{ kind: 'reveal', instanceId: 'b', quantity: 2 }], call(),
     );
     expect(instances.map((c) => [c.id, c.quantity, c.visibility])).toEqual([['a', 3, 'visible'], ['b', 1, 'hidden']]);
   });
 
   it('reveals a hidden Item Instance lying at the present location', () => {
     const { instances } = applyInventoryOps(
-      [instance('r', 'ring', { where: cellar, visibility: 'hidden' })], [{ kind: 'reveal', copyId: 'r' }],
+      [instance('r', 'ring', { where: cellar, visibility: 'hidden' })], [{ kind: 'reveal', instanceId: 'r' }],
       call({ presence: { locationId: 'cellar', entityIds: new Set() } }),
     );
     expect(instances).toEqual([instance('r', 'ring', { where: cellar })]);
@@ -53,7 +53,7 @@ describe('reveal', () => {
   it('keeps a revealed equipped Item Instance equipped and unmerged', () => {
     const worn = { slotId: 'finger', order: 1 };
     const { instances } = applyInventoryOps(
-      [instance('r', 'ring', { visibility: 'hidden', equipped: worn })], [{ kind: 'reveal', copyId: 'r' }], call(),
+      [instance('r', 'ring', { visibility: 'hidden', equipped: worn })], [{ kind: 'reveal', instanceId: 'r' }], call(),
     );
     expect(instances).toEqual([instance('r', 'ring', { equipped: worn })]);
   });
@@ -61,7 +61,7 @@ describe('reveal', () => {
   it('lets a swap-out unequip a hidden equipped Item Instance, which stays hidden and carried (Q112)', () => {
     const { instances } = applyInventoryOps(
       [instance('old', 'ring', { visibility: 'hidden', equipped: { slotId: 'finger', order: 1 } }), instance('new', 'ring')],
-      [{ kind: 'equip', copyId: 'new' }], call({ source: 'panel' }),
+      [{ kind: 'equip', instanceId: 'new' }], call({ source: 'panel' }),
     );
     expect(instances).toEqual([
       instance('old', 'ring', { visibility: 'hidden' }), instance('new', 'ring', { equipped: { slotId: 'finger', order: 2 } }),
@@ -71,7 +71,7 @@ describe('reveal', () => {
   it('skips a visible Item Instance, a bad quantity and an absent location, and still applies the rest', () => {
     const { instances, diagnostics } = applyInventoryOps(
       [instance('a', 'coin'), instance('b', 'coin', { visibility: 'hidden', where: cellar }), instance('c', 'ring', { visibility: 'hidden' })],
-      [{ kind: 'reveal', copyId: 'a' }, { kind: 'reveal', copyId: 'c', quantity: 2 }, { kind: 'reveal', copyId: 'b' }, { kind: 'reveal', copyId: 'c' }],
+      [{ kind: 'reveal', instanceId: 'a' }, { kind: 'reveal', instanceId: 'c', quantity: 2 }, { kind: 'reveal', instanceId: 'b' }, { kind: 'reveal', instanceId: 'c' }],
       call({ presence: { locationId: 'hall', entityIds: new Set() } }),
     );
     expect(diagnostics).toHaveLength(3);

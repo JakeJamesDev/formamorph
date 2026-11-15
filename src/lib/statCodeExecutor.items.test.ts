@@ -78,15 +78,15 @@ describe('executeStatCode items', () => {
       { kind: 'gain', itemId: 'i-wand', to: { kind: 'entity', id: 'e-keeper' }, quantity: 2 },
       { kind: 'gain', itemId: 'i-key', to: { kind: 'location', id: 'loc-gate' }, quantity: 1 },
       { kind: 'gain', itemId: 'i-key', to: { kind: 'you' }, quantity: 1 },
-      { kind: 'transfer', copyId: 'c-2', to: { kind: 'you' }, quantity: 1 },
-      { kind: 'lose', copyId: 'c-1' },
-      { kind: 'reveal', copyId: 'c-2', quantity: 1 },
-      { kind: 'unequip', copyId: 'c-3' },
-      { kind: 'equip', copyId: 'c-3' },
-      { kind: 'use', copyId: 'c-3' },
-      { kind: 'setUses', copyId: 'c-3', uses: 3 },
-      { kind: 'change', copyId: 'c-3', state: 'spent' },
-      { kind: 'change', copyId: 'c-3', state: '' },
+      { kind: 'transfer', instanceId: 'c-2', to: { kind: 'you' }, quantity: 1 },
+      { kind: 'lose', instanceId: 'c-1' },
+      { kind: 'reveal', instanceId: 'c-2', quantity: 1 },
+      { kind: 'unequip', instanceId: 'c-3' },
+      { kind: 'equip', instanceId: 'c-3' },
+      { kind: 'use', instanceId: 'c-3' },
+      { kind: 'setUses', instanceId: 'c-3', uses: 3 },
+      { kind: 'change', instanceId: 'c-3', state: 'spent' },
+      { kind: 'change', instanceId: 'c-3', state: '' },
     ]);
   });
 
@@ -115,7 +115,7 @@ describe('executeStatCode items', () => {
       ring.copies[0].reveal();
     `, { items: [key, wand, ring] });
     expect(res.error).toBeNull();
-    expect(res.worldWrites?.inventory).toEqual([{ kind: 'reveal', copyId: 'c-9' }]);
+    expect(res.worldWrites?.inventory).toEqual([{ kind: 'reveal', instanceId: 'c-9' }]);
   });
 
   it('lists a write to an Item Instance field as read-only', async () => {
@@ -128,14 +128,14 @@ describe('executeStatCode items', () => {
       if (self.name !== 'Wand' || self.event.timing !== 'equipped' || self.event.quantity !== 1) throw new Error('self');
       if (self.event.copy.id !== 'c-3') throw new Error('copy');
       self.give(owner);
-    `, { owner: keeper, itemEvent: { itemId: 'i-wand', timing: 'equipped', copyId: 'c-3', quantity: 1 } });
+    `, { owner: keeper, itemEvent: { itemId: 'i-wand', timing: 'equipped', instanceId: 'c-3', quantity: 1 } });
     expect(res.error).toBeNull();
     expect(res.worldWrites?.inventory).toEqual([{ kind: 'gain', itemId: 'i-wand', to: { kind: 'entity', id: 'e-keeper' }, quantity: 1 }]);
   });
 
   it('reads an event copy that is gone as null', async () => {
     const res = await run('if (self.event.copy !== null) throw new Error("copy");',
-      { itemEvent: { itemId: 'i-wand', timing: 'lost', copyId: 'gone', quantity: 1 } });
+      { itemEvent: { itemId: 'i-wand', timing: 'lost', instanceId: 'gone', quantity: 1 } });
     expect(res.error).toBeNull();
   });
 
@@ -145,7 +145,7 @@ describe('executeStatCode items', () => {
       const copy = self.event.copy;
       if (copy.id !== 'gone' || copy.quantity !== 2 || copy.owner !== 'Hero' || copy.uses !== 1) throw new Error('copy');
       if (persona.items.some((c) => c.id === 'gone')) throw new Error('listed');
-    `, { itemEvent: { itemId: 'i-wand', timing: 'lost', copyId: 'gone', quantity: 2, was } });
+    `, { itemEvent: { itemId: 'i-wand', timing: 'lost', instanceId: 'gone', quantity: 2, was } });
     expect(res.error).toBeNull();
   });
 

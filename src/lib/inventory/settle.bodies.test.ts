@@ -94,7 +94,7 @@ function wear(play: Play, to: ItemInstanceWhere, ...itemIds: string[]): Settled 
       world: { items, slots, bodies, entities }, source: 'script', newId: () => `c${n++}`, persona: heroRef,
     }).instances;
     const instance = gained.find((c) => !instances.some((o) => o.id === c.id))!;
-    const equip: InventoryOp = { kind: 'equip', copyId: instance.id };
+    const equip: InventoryOp = { kind: 'equip', instanceId: instance.id };
     const equipped = applyInventoryOps(gained, [equip], { world: { items, slots, bodies, entities }, source: 'script', newId: () => `c${n++}`, persona: heroRef });
     expect(equipped.diagnostics).toEqual([]);
     instances = equipped.instances;

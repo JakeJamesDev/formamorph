@@ -100,7 +100,7 @@ function itemPlan(currency: Currency, payer: SlotOwner | null, payee: SlotOwner 
   if (!change) return refuse(`the items can't make ${-rest} in change`);
   for (const [itemId, count] of change) net.set(itemId, (net.get(itemId) ?? 0) - count);
   const returned = new Map([...net].filter(([, count]) => count < 0).map(([itemId, count]) => [itemId, tracked
-    ? takeItems(itemId, -count, tracked, state.instances, (instanceId, quantity) => [{ kind: 'transfer', copyId: instanceId, to: payer, quantity }])
+    ? takeItems(itemId, -count, tracked, state.instances, (instanceId, quantity) => [{ kind: 'transfer', instanceId, to: payer, quantity }])
     : { ops: [], short: -count }]));
   // Change the payee lacks is created, and a tracked payee gives up that worth from the handover, so value is conserved.
   const worthOf = (itemId: string) => rows.find((row) => row.itemId === itemId)?.worth ?? 0;
@@ -122,8 +122,8 @@ function itemPlan(currency: Currency, payer: SlotOwner | null, payee: SlotOwner 
       ops.push(...takeItems(itemId, count, payer, state.instances, (instanceId, quantity) => {
         const moved = Math.min(kept, quantity);
         kept -= moved;
-        const handed: InventoryOp[] = moved > 0 && tracked ? [{ kind: 'transfer', copyId: instanceId, to: tracked, quantity: moved }] : [];
-        return moved < quantity ? [...handed, { kind: 'lose', copyId: instanceId, quantity: quantity - moved }] : handed;
+        const handed: InventoryOp[] = moved > 0 && tracked ? [{ kind: 'transfer', instanceId, to: tracked, quantity: moved }] : [];
+        return moved < quantity ? [...handed, { kind: 'lose', instanceId, quantity: quantity - moved }] : handed;
       }).ops);
     } else if (count < 0) {
       const back = returned.get(itemId)!;

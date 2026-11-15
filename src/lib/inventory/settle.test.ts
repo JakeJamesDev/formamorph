@@ -80,8 +80,8 @@ function act(play: Play, ops: InventoryOp[], cap?: number): Play {
 }
 const gain = (itemId: string, to: ItemInstanceWhere = hero): InventoryOp => ({ kind: 'gain', itemId, quantity: 1, to });
 const instanceOf = (play: Play, itemId: string) => play.instances.find((c) => c.item.kind === 'item' && c.item.itemId === itemId)!;
-const lose = (play: Play, itemId: string): InventoryOp => ({ kind: 'lose', copyId: instanceOf(play, itemId).id });
-const equip = (play: Play, itemId: string): InventoryOp => ({ kind: 'equip', copyId: instanceOf(play, itemId).id });
+const lose = (play: Play, itemId: string): InventoryOp => ({ kind: 'lose', instanceId: instanceOf(play, itemId).id });
+const equip = (play: Play, itemId: string): InventoryOp => ({ kind: 'equip', instanceId: instanceOf(play, itemId).id });
 const on = (play: Play) => activeOwnedTraitIds(play.traits.ownedTraits ?? {}).hero ?? [];
 const heroStat = (play: Play, id: string) => play.traits.entityStats!.hero.find((s) => s.id === id)!.value;
 /** Moves a stat's value as the stat pass would. */

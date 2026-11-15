@@ -179,7 +179,7 @@ describe("Haldren's Crown scripts", () => {
     const base = turnAt('The Bier Chamber', {});
     const out = await runItemScripts(
       { ...base, state: { ...base.state, items, itemInstances: instances } },
-      [{ timing: 'gained', itemId: arrived.id, copyId: instances[0].id, where, quantity: 1 }],
+      [{ timing: 'gained', itemId: arrived.id, instanceId: instances[0].id, where, quantity: 1 }],
       { items, apply: applyNothing, itemNameOf: (item) => item.name },
     );
     return out.result?.loreWrites ?? [];
@@ -225,7 +225,7 @@ describe('the Flask of Lamp Oil script', () => {
     const base = turnAt('The Boundary Wall', {});
     const out = await runItemScripts(
       { ...base, state: { ...base.state, items, itemInstances: instances } },
-      [{ timing: 'used', itemId: flask.id, copyId: 'flask', where: usedAt, quantity: 1, was, ...(target && { target }) }],
+      [{ timing: 'used', itemId: flask.id, instanceId: 'flask', where: usedAt, quantity: 1, was, ...(target && { target }) }],
       { items, apply, itemNameOf: (item) => item.name },
     );
     return Object.fromEntries(out.instances.filter((instance) => instance.item.kind === 'item' && instance.item.itemId === lantern.id)

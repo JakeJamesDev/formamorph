@@ -22,7 +22,7 @@ function run(instances: readonly ItemInstance[], ops: InventoryOp[]) {
   return applyInventoryOps(instances, ops, { world: { items }, source: 'pass', newId: () => `n${n++}`, runtimeItems: [cake] });
 }
 const gain = (itemId: string, quantity = 1, to: ItemInstance['where'] = hero): InventoryOp => ({ kind: 'gain', itemId, quantity, to });
-const change = (instanceId: string, state: string): InventoryOp => ({ kind: 'change', copyId: instanceId, state });
+const change = (instanceId: string, state: string): InventoryOp => ({ kind: 'change', instanceId, state });
 const rows = (instances: readonly ItemInstance[]) => instances.map((c) => ({ quantity: c.quantity, state: c.state?.state, uses: c.state?.uses }));
 
 describe('seeding State', () => {
@@ -87,14 +87,14 @@ describe('change', () => {
 
 describe('Changes State', () => {
   it('sets the State word on the last use and keeps the instance at zero uses, which refuses another use', () => {
-    const { instances: opened } = run([], [gain('letter', 2), { kind: 'use', copyId: 'n0' }]);
+    const { instances: opened } = run([], [gain('letter', 2), { kind: 'use', instanceId: 'n0' }]);
     expect(rows(opened)).toEqual([{ quantity: 1, state: 'sealed', uses: undefined }, { quantity: 1, state: 'opened', uses: 0 }]);
-    const { diagnostics } = run(opened, [{ kind: 'use', copyId: opened[1].id }]);
+    const { diagnostics } = run(opened, [{ kind: 'use', instanceId: opened[1].id }]);
     expect(diagnostics).toEqual([`Inventory (pass) skipped use: Item Instance ${opened[1].id} has no uses left`]);
   });
 
   it('seeds a Becomes result with its own starting State', () => {
-    const { instances } = run([], [gain('potion'), { kind: 'use', copyId: 'n0' }]);
+    const { instances } = run([], [gain('potion'), { kind: 'use', instanceId: 'n0' }]);
     expect(instances).toMatchObject([{ item: { itemId: 'bottle' }, state: { state: 'empty' } }]);
   });
 });

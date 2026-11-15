@@ -55,9 +55,9 @@ describe('executeStatCode slot names', () => {
     `);
     expect(res.error).toBeNull();
     expect(res.worldWrites?.inventory).toEqual([
-      { kind: 'equip', copyId: 'c-spare', slotId: 'main' },
-      { kind: 'equip', copyId: 'c-spare' },
-      { kind: 'equip', copyId: 'c-spare', slotId: 'Tail' },
+      { kind: 'equip', instanceId: 'c-spare', slotId: 'main' },
+      { kind: 'equip', instanceId: 'c-spare' },
+      { kind: 'equip', instanceId: 'c-spare', slotId: 'Tail' },
     ]);
   });
 

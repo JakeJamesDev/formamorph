@@ -195,14 +195,14 @@ function applyGain(pass: PassRun, op: ItemOp, key: string): void {
   const held = giver && giver.kind !== 'location' && !sameWhere(giver, to)
     ? candidates(pass, key, giver, 'transfer').filter((c) => c.visibility === 'visible') : [];
   if (held.length) {
-    distribute(held, op.quantity, (instance, quantity) => runOps(pass, [{ kind: 'transfer', copyId: instance.id, to, quantity }]));
+    distribute(held, op.quantity, (instance, quantity) => runOps(pass, [{ kind: 'transfer', instanceId: instance.id, to, quantity }]));
     return;
   }
   // Taking what lies here moves it rather than making a second one.
   const lying = to.kind !== 'location' && here
     ? candidates(pass, key, { kind: 'location', id: here.id }, 'transfer').filter((c) => c.visibility === 'visible') : [];
   if (lying.length) {
-    distribute(lying, op.quantity, (instance, quantity) => runOps(pass, [{ kind: 'transfer', copyId: instance.id, to, quantity }]));
+    distribute(lying, op.quantity, (instance, quantity) => runOps(pass, [{ kind: 'transfer', instanceId: instance.id, to, quantity }]));
     return;
   }
   // Taking a hidden one finds it first.
@@ -211,11 +211,11 @@ function applyGain(pass: PassRun, op: ItemOp, key: string): void {
   if (hidden.length) {
     distribute(hidden, op.quantity, (instance, quantity) => {
       const before = new Set(pass.list.map((c) => c.id));
-      runOps(pass, [{ kind: 'reveal', copyId: instance.id, quantity }]);
+      runOps(pass, [{ kind: 'reveal', instanceId: instance.id, quantity }]);
       // A partial reveal splits a new row off; a whole one keeps its id or merges into a visible stack.
       const shown = pass.list.find((c) => !before.has(c.id)) ?? pass.list.find((c) => c.id === instance.id && c.visibility === 'visible')
         ?? pass.list.find((c) => nameMatches(pass, c, key) && sameWhere(c.where, instance.where) && c.visibility === 'visible');
-      if (shown) runOps(pass, [{ kind: 'transfer', copyId: shown.id, to, quantity }]);
+      if (shown) runOps(pass, [{ kind: 'transfer', instanceId: shown.id, to, quantity }]);
     });
     return;
   }
@@ -263,9 +263,9 @@ function applyHeldOp(pass: PassRun, op: HeldOp, key: string): void {
   if (op.op === 'lose' || op.op === 'transfer' || op.op === 'reveal') {
     const to = op.op === 'transfer' ? ownerOf(pass, op.to) : null;
     distribute(candidates(pass, key, where, op.op), op.quantity, (instance, quantity) => runOps(pass, [
-      op.op === 'transfer' && to ? { kind: 'transfer', copyId: instance.id, to, quantity }
-        : op.op === 'reveal' ? { kind: 'reveal', copyId: instance.id, quantity }
-        : { kind: 'lose', copyId: instance.id, quantity },
+      op.op === 'transfer' && to ? { kind: 'transfer', instanceId: instance.id, to, quantity }
+        : op.op === 'reveal' ? { kind: 'reveal', instanceId: instance.id, quantity }
+        : { kind: 'lose', instanceId: instance.id, quantity },
     ]));
     return;
   }
@@ -284,10 +284,10 @@ function applyHeldOp(pass: PassRun, op: HeldOp, key: string): void {
       skip(pass, `${label}: no slot is named "${op.slot}"`);
       break;
     }
-    runOps(pass, [op.op === 'change' ? { kind: 'change', copyId: instance.id, state: op.state ?? '' }
-      : op.op === 'use' ? { kind: 'use', copyId: instance.id, ...(op.after && { after: op.after }), ...(target && { targetCopyId: target.id }) }
-      : op.op === 'equip' ? { kind: 'equip', copyId: instance.id, ...(slotId && { slotId }) }
-      : { kind: op.op, copyId: instance.id }]);
+    runOps(pass, [op.op === 'change' ? { kind: 'change', instanceId: instance.id, state: op.state ?? '' }
+      : op.op === 'use' ? { kind: 'use', instanceId: instance.id, ...(op.after && { after: op.after }), ...(target && { targetInstanceId: target.id }) }
+      : op.op === 'equip' ? { kind: 'equip', instanceId: instance.id, ...(slotId && { slotId }) }
+      : { kind: op.op, instanceId: instance.id }]);
   }
 }
 

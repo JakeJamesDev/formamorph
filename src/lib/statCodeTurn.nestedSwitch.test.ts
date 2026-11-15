@@ -87,7 +87,7 @@ describe('a script that switches a trait', () => {
     const gem: Item = {
       id: 'gem', name: 'Gem', stackable: false, statEffects: [], traitEffects: [], equipRequires: [], scripts: scripts('gained', SWITCH_ON, READ),
     };
-    const event: ItemScriptEvent = { timing: 'gained', itemId: 'gem', copyId: 'c', where: { kind: 'you' }, quantity: 1 };
+    const event: ItemScriptEvent = { timing: 'gained', itemId: 'gem', instanceId: 'c', where: { kind: 'you' }, quantity: 1 };
     const apply: ApplyInventory = (instances, ops) => applyInventoryOps(instances, ops, { world: { items: [gem] }, source: 'script', newId: () => 'new' });
     const brave = trait('brave', 'Brave', scripts('switch', 'stats.HP.value = 7;'));
     const out = await runItemScripts(
@@ -160,7 +160,7 @@ describe('the total of switch runs in one action', () => {
     const ring: Item = {
       id: 'ring', name: 'Ring', stackable: false, statEffects: [], traitEffects: [], equipRequires: [], scripts: scripts('gained', switchAll(60, 120)),
     };
-    const event = (itemId: string): ItemScriptEvent => ({ timing: 'gained', itemId, copyId: 'c', where: { kind: 'you' }, quantity: 1 });
+    const event = (itemId: string): ItemScriptEvent => ({ timing: 'gained', itemId, instanceId: 'c', where: { kind: 'you' }, quantity: 1 });
     const apply: ApplyInventory = (instances, ops) => applyInventoryOps(instances, ops, { world: { items: [gem, ring] }, source: 'script', newId: () => 'new' });
     const out = await runItemScripts(
       turnOf({ ownerTraits: held(manyTraits(120)), items: [gem, ring], worldScripts: scripts('switch', COUNT) }),

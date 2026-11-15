@@ -31,8 +31,8 @@ export interface ActionRef {
 
 /** What one panel action did, in facts. */
 export type ListedActionFacts =
-  /** `copyId` is the Item Instance acted on; `resultId` the row it ended in. */
-  | { kind: 'use' | 'equip' | 'unequip'; item: ActionItem; copyId: string; resultId?: string }
+  /** `instanceId` is the Item Instance acted on; `resultId` the row it ended in. */
+  | { kind: 'use' | 'equip' | 'unequip'; item: ActionItem; instanceId: string; resultId?: string }
   | { kind: 'give'; item: ActionItem; quantity: number; to: ActionRef }
   /** `place` is the location the instance went to (drop) or came from (pick up). */
   | { kind: 'drop' | 'pickup'; item: ActionItem; quantity: number; place: string }
@@ -98,7 +98,7 @@ function reverses(newest: ListedActionFacts, next: ListedActionFacts): boolean {
   if (newest.kind === 'persona' && next.kind === 'persona') return newest.from.id === next.to.id;
   if (REVERSE[newest.kind] !== next.kind) return false;
   if ((newest.kind === 'equip' || newest.kind === 'unequip') && (next.kind === 'equip' || next.kind === 'unequip')) {
-    return newest.resultId !== undefined && newest.resultId === next.copyId;
+    return newest.resultId !== undefined && newest.resultId === next.instanceId;
   }
   return itemKeyOf(newest) === itemKeyOf(next) && quantityOf(newest) === quantityOf(next) && targetOf(newest) === targetOf(next);
 }

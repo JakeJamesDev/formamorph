@@ -1221,12 +1221,12 @@ export interface SandboxItem {
 export interface SandboxItemEvent {
   itemId: string;
   timing: ItemScriptTiming;
-  copyId: string;
+  instanceId: string;
   quantity: number;
   /** The Item Instance as it stood before the event, which `self.event.copy` reads once the copy is gone. */
   was?: SandboxItemInstance;
   /** The Item Instance a use acted on, which `self.event.target` reads. */
-  targetCopyId?: string;
+  targetInstanceId?: string;
 }
 
 /** The fields on an Item Instance entry; none takes a write. */
@@ -1303,7 +1303,7 @@ const itemsPrelude = (
     `    const out = lock({ ${ITEM_INSTANCE_KEYS.map((field) => `${field}: data.${field}`).join(', ')} }, ${JSON.stringify(ITEM_INSTANCE_KEYS)}, path, note);`,
     `    const instanceId = data.id;`,
     `    occupying.set(out, data.occupies);`,
-    `    const op = (kind, extra = {}) => { writes.inventory.push({ kind, copyId: instanceId, ...extra }); };`,
+    `    const op = (kind, extra = {}) => { writes.inventory.push({ kind, instanceId, ...extra }); };`,
     `    verb(out, path, 'lose', (quantity) => op('lose', count(quantity, path + 'lose')));`,
     `    verb(out, path, 'moveTo', (to, quantity) => op('transfer', { to: whereOf(to, path + 'moveTo'), ...count(quantity, path + 'moveTo') }));`,
     // A name outside the rule goes through as given, and the validator refuses it.
@@ -1360,12 +1360,12 @@ const itemsPrelude = (
       // `self` is declared before the entries exist, so it takes the item entry's fields here.
       `((self, entry, event, define, gone) => {`,
       `  if (entry) for (const key of Reflect.ownKeys(entry)) define(self, key, Object.getOwnPropertyDescriptor(entry, key));`,
-      `  const copy = (entry && entry.copies.find((c) => c.id === event.copyId)) || gone;`,
+      `  const copy = (entry && entry.copies.find((c) => c.id === event.instanceId)) || gone;`,
       // A target that is gone reads as null.
-      `  const target = event.targetCopyId ? Object.values(items).flatMap((e) => e.copies).find((c) => c.id === event.targetCopyId) || null : null;`,
+      `  const target = event.targetInstanceId ? Object.values(items).flatMap((e) => e.copies).find((c) => c.id === event.targetInstanceId) || null : null;`,
       `  define(self, 'event', { enumerable: true, value: Object.freeze({ timing: event.timing, quantity: event.quantity, copy, target }) });`,
       `  Object.freeze(self);`,
-      `})(self, items[${JSON.stringify(spec.event.name ?? '')}], ${JSON.stringify({ timing: event?.timing, quantity: event?.quantity, copyId: event?.copyId, targetCopyId: event?.targetCopyId })}, Object.defineProperty, ${GONE_COPY});`,
+      `})(self, items[${JSON.stringify(spec.event.name ?? '')}], ${JSON.stringify({ timing: event?.timing, quantity: event?.quantity, instanceId: event?.instanceId, targetInstanceId: event?.targetInstanceId })}, Object.defineProperty, ${GONE_COPY});`,
     ] : []),
   ].join('\n');
 };

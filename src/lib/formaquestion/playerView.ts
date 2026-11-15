@@ -266,7 +266,7 @@ function viewItems(input: PlayerViewInput): PlayerViewItem[] {
   const met = new Map<string, { item: { id: string; name: string; text?: string; worth?: string }; at: number; states: Map<string, string | undefined> }>();
   input.chain.forEach((snapshot, at) => {
     for (const item of snapshot.runtimeItems ?? []) runtime.set(item.id, item);
-    for (const instance of snapshot.itemCopies ?? []) {
+    for (const instance of snapshot.itemInstances ?? []) {
       if (!metInstance(instance, snapshot)) continue;
       const item = copiedItem(instance, authored, runtime, input.world.currencies ?? [], input.world.items ?? []);
       if (!item) continue;

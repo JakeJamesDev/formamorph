@@ -77,6 +77,6 @@ describe('runStatCodeTurn script pay', () => {
 
   it('writes the items of an item pay as inventory writes for the host to land', async () => {
     const out = await run('currencies.Coin.pay(persona, null, 5);');
-    expect(out.worldWrites?.inventory).toEqual(expect.arrayContaining([{ kind: 'lose', copyId: 'c-gold', quantity: 1 }]));
+    expect(out.worldWrites?.inventory).toEqual(expect.arrayContaining([{ kind: 'lose', instanceId: 'c-gold', quantity: 1 }]));
   });
 });

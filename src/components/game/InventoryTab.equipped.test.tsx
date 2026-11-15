@@ -77,7 +77,7 @@ describe('Equipped rows', () => {
     const onOps = vi.fn();
     render(<InventoryTab {...props({ instances: [worn('s', 'sword')], onOps })} />);
     await userEvent.click(within(list()).getByRole('button', { name: `Unequip ${LONG}` }));
-    expect(onOps).toHaveBeenCalledExactlyOnceWith([{ kind: 'unequip', copyId: 's' }]);
+    expect(onOps).toHaveBeenCalledExactlyOnceWith([{ kind: 'unequip', instanceId: 's' }]);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 

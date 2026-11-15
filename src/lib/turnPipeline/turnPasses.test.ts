@@ -391,7 +391,7 @@ describe('turn pass requests', () => {
     describe('told panel actions', () => {
       const potion = { key: 'potion', name: 'Healing Potion' };
       const told: TurnPlanInput['toldActions'] = [
-        { facts: { kind: 'use', item: potion, copyId: 'c1' }, count: 2 },
+        { facts: { kind: 'use', item: potion, instanceId: 'c1' }, count: 2 },
         { facts: { kind: 'give', item: { key: 'coin', name: 'Coin' }, quantity: 3, to: { id: 'bram', name: 'Bram' } }, count: 1 },
       ];
 

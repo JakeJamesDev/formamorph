@@ -18,6 +18,7 @@ import { normalizeLinkedItem } from './contentLink';
 import { migrateStatLookups } from './statLookupMigration';
 import { migrateStatCodeRoutes } from './statCodeRoutes';
 import { migrateWorldScriptText } from './scriptTextMigration';
+import { migrateActionListKeys, migrateItemInstanceKeys, migrateMessageInstanceKeys, migrateSentActionKeys } from './itemInstanceKeys';
 import { migrateStatBoxes, migrateStatLinkBoxes, type OriginalOf } from './scripts';
 import { allPlaceholders, placeholderOwners, type PlaceholderHomesWorld } from './placeholderHomes';
 import { blueprintItemIds, offeredWorldTraits } from './traitTree';
@@ -1057,6 +1058,8 @@ function migrateBodyMorphs(state: GameState): GameState {
  *      `globalTraits`, and the cascade-off and applied-value maps split into global and owners parts.
  *   6. Scripts (presence-based, every snapshot): each saved stat's two code boxes become scripts.
  *   7. Stat bindings (presence-based, every snapshot): each saved stat's bare binding names become `{ name }`.
+ *   8. Item Instance keys (presence-based, every snapshot and message): `itemCopies`, `copyId` and `targetCopyId`
+ *      become `itemInstances`, `instanceId` and `targetInstanceId`, in the Action List and saved Tool writes too.
  * The appended current page stays `=== currentState`, so `gameStates[page - 1]` resolves the current page
  * identically. Pure — callers decide whether to persist the result (import) or just load it (load).
  */
@@ -1092,9 +1095,9 @@ export function migrateSave(save: SaveObject): SaveObject {
   const migratedCurrent = isLegacy ? migrateLegacySaveState(save.currentState) : save.currentState;
   const migratedHistory = isLegacy ? save.stateHistory.map(migrateLegacySaveState) : save.stateHistory;
   // Canonical flat history: an already-hoisted top-level copy, else the current snapshot's own copy.
-  const messageHistory = save.messageHistory ?? migratedCurrent.fullMessageHistory ?? [];
+  const messageHistory = (save.messageHistory ?? migratedCurrent.fullMessageHistory ?? []).map(migrateMessageInstanceKeys);
   const normalizeSnapshot = (s: GameState) =>
-    migrateSnapshotMorphBindings(migrateSnapshotScripts(migrateBodyMorphs(migrateDefaultAvatarId(migrateGlobalFields(s)))));
+    migrateItemInstanceKeys(migrateSnapshotMorphBindings(migrateSnapshotScripts(migrateBodyMorphs(migrateDefaultAvatarId(migrateGlobalFields(s))))));
   const currentState = normalizeSnapshot(stripSnapshotHistory(migratedCurrent));
   const history = isLegacy
     ? appendCurrentToHistory(migratedHistory.map(stripSnapshotHistory), currentState)
@@ -1106,11 +1109,15 @@ export function migrateSave(save: SaveObject): SaveObject {
     ...book,
     entries: (book.entries ?? []).map(migrateEntryKeys),
   }));
+  const actionList = migrateActionListKeys(save.actionList);
+  const sentActions = migrateSentActionKeys(save.sentActions);
   return {
     ...save,
     currentState,
     stateHistory,
     messageHistory,
+    ...(actionList ? { actionList } : {}),
+    ...(sentActions ? { sentActions } : {}),
     ...(dictionaries ? { dictionaries } : {}),
     version: isLegacy ? APP_VERSION : save.version,
   };

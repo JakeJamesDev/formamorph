@@ -45,6 +45,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Scripts can keep one Custom memory up to date under a name.** `memories.pin("Nursery", text)` adds it or replaces its text, and `memories["Nursery"]` reads it. A rewind brings back the earlier text.
     - **Your Memory Manager edits to a named memory stay when you rewind a turn.** The script's next update starts from your text. After you delete the memory, the script starts a new one.
 - **🛠️ Developer tooling**
+  - **Item Instances:**
+    - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.
 
 #### 🔧 Fixed

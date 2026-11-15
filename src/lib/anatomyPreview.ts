@@ -150,7 +150,7 @@ const FIXTURE_BRACKET = ' [keep the tide going out through this scene]';
 
 /** The panel actions a send tells the AI. */
 const FIXTURE_TOLD: ToldAction[] = [
-  { facts: { kind: 'use', item: { key: 'lamp-oil', name: 'Lamp Oil' }, copyId: 'c1' }, count: 1 },
+  { facts: { kind: 'use', item: { key: 'lamp-oil', name: 'Lamp Oil' }, instanceId: 'c1' }, count: 1 },
   { facts: { kind: 'give', item: { key: 'map', name: 'Tide Map' }, quantity: 1, to: { id: 'wren', name: 'Wren' } }, count: 1 },
 ];
 

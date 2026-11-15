@@ -198,7 +198,7 @@ function chainOf(world: World, save: Save, history: readonly ChatMessage[]): Gam
     globalStats: playerStats(world.stats as PlayerStat[]), globalTraits: [], visibleEntities: [], logEntries: [], gameplayText: '', gameTime: 0,
     characterData: null, choices: [], isGameStarted: true, timestamp: '', worldName: world.worldOverview?.name ?? null, playerNotes: '',
     previousStateIndex: null, stateVersion: 1,
-    metEntities: met, locationId: last.locationId, itemCopies: held,
+    metEntities: met, locationId: last.locationId, itemInstances: held,
     entityStats: { [persona.id]: playerStats(persona.stats as PlayerStat[] | undefined) },
   };
   return save.turns.map(() => snapshot).concat(snapshot);

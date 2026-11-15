@@ -2098,7 +2098,7 @@ const GameViewer = ({
     if (!preTurnState?.globalStats) return { ran: false };
     const preTurn = liveSnapshotOf(preTurnState);
     const turnHours = prev.timeDelta ?? FLAT_HOURS_PER_TURN;
-    const preTurnItems = heldItemsOf({ instances: preTurnState.itemCopies ?? [], ledger: preTurnState.itemEffects ?? {}, bodies: preTurnState.bodies ?? {} });
+    const preTurnItems = heldItemsOf({ instances: preTurnState.itemInstances ?? [], ledger: preTurnState.itemEffects ?? {}, bodies: preTurnState.bodies ?? {} });
     const replay = await replayToAfter("quiet", { prev, action, page, preTurn, turnHours, afterChoices: drawn, quietItems: preTurnItems });
     if (!replay) return { ran: false };
     const replayed = replay.items ?? preTurnItems;
@@ -2213,7 +2213,7 @@ const GameViewer = ({
         setRuntimeItems(preTurnItems.runtimeItems);
       };
       const preTurnItems = {
-        instances: preTurnState.itemCopies ?? [], ledger: preTurnState.itemEffects, bodies: preTurnState.bodies,
+        instances: preTurnState.itemInstances ?? [], ledger: preTurnState.itemEffects, bodies: preTurnState.bodies,
         runtimeItems: preTurnState.runtimeItems ?? [],
       };
       toPreTurn();
@@ -5676,7 +5676,7 @@ const GameViewer = ({
     if (!loadGameState({ ...state, ...handWritten }, locations, { keepLiveHistory: true })) return;
     // Item script runs still in flight belong to the undone action.
     itemRunGenerationRef.current += 1;
-    liveItemsRef.current = heldItemsOf({ instances: state.itemCopies ?? [], ledger: state.itemEffects ?? {}, bodies: state.bodies ?? {} });
+    liveItemsRef.current = heldItemsOf({ instances: state.itemInstances ?? [], ledger: state.itemEffects ?? {}, bodies: state.bodies ?? {} });
     setTraitCascade(null);
     if (ref ? !(personaRef && samePersonaRef(ref, personaRef)) : personaRef) setPersonaRef(ref ?? undefined);
   }, [saveCurrentGameState, loadGameState, locations, personaRef, setPersonaRef]);

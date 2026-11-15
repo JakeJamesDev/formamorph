@@ -120,7 +120,7 @@ describe('planPayment with Currency Items', () => {
     const plan = planPayment(MONEY, you, null, 5, state([hidden, heldInstance('silver', you, 1)]), items);
     expect(plan).toEqual({
       settled: true, stats: [],
-      ops: expect.arrayContaining([{ kind: 'lose', copyId: 'silver-you', quantity: 1 }, { kind: 'gain', itemId: 'copper', quantity: 5, to: you }]),
+      ops: expect.arrayContaining([{ kind: 'lose', instanceId: 'silver-you', quantity: 1 }, { kind: 'gain', itemId: 'copper', quantity: 5, to: you }]),
     });
     expect(plan.settled && plan.ops).toHaveLength(2);
   });

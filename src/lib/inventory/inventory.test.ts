@@ -159,7 +159,7 @@ describe('applyInventoryOps', () => {
   const presence = { locationId: 'cellar', entityIds: new Set(['bram']) };
 
   it('equips one dagger from a stack of five and leaves four in the stack', () => {
-    const { instances } = applyInventoryOps([of('dagger', 'd', { quantity: 5 })], [{ kind: 'equip', copyId: 'd' }], call());
+    const { instances } = applyInventoryOps([of('dagger', 'd', { quantity: 5 })], [{ kind: 'equip', instanceId: 'd' }], call());
     expect(instances).toEqual([
       of('dagger', 'd', { quantity: 4 }),
       of('dagger', 'c0', { equipped: { slotId: 'hand', order: 1 } }),
@@ -168,7 +168,7 @@ describe('applyInventoryOps', () => {
 
   it('swaps out the item equipped there longest, and it stays owned', () => {
     const start = [of('helm', 'old', { equipped: { slotId: 'head', order: 3 } }), of('helm', 'new')];
-    const { instances } = applyInventoryOps(start, [{ kind: 'equip', copyId: 'new' }], call());
+    const { instances } = applyInventoryOps(start, [{ kind: 'equip', instanceId: 'new' }], call());
     expect(instances).toEqual([of('helm', 'old'), of('helm', 'new', { equipped: { slotId: 'head', order: 4 } })]);
   });
 
@@ -178,20 +178,20 @@ describe('applyInventoryOps', () => {
       of('dagger', 'early', { equipped: { slotId: 'hand', order: 2 } }),
       of('dagger', 'pack'),
     ];
-    const { instances } = applyInventoryOps(start, [{ kind: 'equip', copyId: 'pack' }], call());
+    const { instances } = applyInventoryOps(start, [{ kind: 'equip', instanceId: 'pack' }], call());
     expect(instances.filter((c) => c.equipped).map((c) => c.equipped?.order).sort()).toEqual([5, 6]);
     expect(instances.filter((c) => !c.equipped).map((c) => c.quantity)).toEqual([1]);
   });
 
   it('keeps an item equipped while the slot has room', () => {
     const start = [of('dagger', 'a', { equipped: { slotId: 'hand', order: 1 } }), of('dagger', 'b')];
-    const { instances } = applyInventoryOps(start, [{ kind: 'equip', copyId: 'b' }], call());
+    const { instances } = applyInventoryOps(start, [{ kind: 'equip', instanceId: 'b' }], call());
     expect(instances.every((c) => c.equipped)).toBe(true);
   });
 
   it("keeps another owner's equipped items out of the swap", () => {
     const start = [of('helm', 'theirs', { where: bramWhere, equipped: { slotId: 'head', order: 1 } }), of('helm', 'mine')];
-    const { instances } = applyInventoryOps(start, [{ kind: 'equip', copyId: 'mine' }], call());
+    const { instances } = applyInventoryOps(start, [{ kind: 'equip', instanceId: 'mine' }], call());
     expect(instances.every((c) => c.equipped)).toBe(true);
   });
 
@@ -200,7 +200,7 @@ describe('applyInventoryOps', () => {
       of('dagger', 'a', { equipped: { slotId: 'hand', order: 1 } }), of('dagger', 'b', { equipped: { slotId: 'hand', order: 2 } }),
       of('dagger', 's'),
     ];
-    const { instances } = applyInventoryOps(start, [{ kind: 'equip', copyId: 's' }], call());
+    const { instances } = applyInventoryOps(start, [{ kind: 'equip', instanceId: 's' }], call());
     expect(instances.find((c) => c.id === 's')).toEqual(of('dagger', 's'));
     expect(instances.filter((c) => c.equipped).map((c) => c.equipped?.order)).toEqual([2, 3]);
   });
@@ -210,46 +210,46 @@ describe('applyInventoryOps', () => {
       of('dagger', 'e', { equipped: { slotId: 'hand', order: 1 } }), of('dagger', 'stack', { quantity: 2 }),
       of('dagger', 'hid', { visibility: 'hidden' }),
     ];
-    const { instances } = applyInventoryOps(start, [{ kind: 'unequip', copyId: 'e' }], call());
+    const { instances } = applyInventoryOps(start, [{ kind: 'unequip', instanceId: 'e' }], call());
     expect(instances).toEqual([of('dagger', 'stack', { quantity: 3 }), of('dagger', 'hid', { visibility: 'hidden' })]);
   });
 
   it('drops part of a stack at the location, and the rest stays carried', () => {
     const { instances } = applyInventoryOps(
-      [instance('p', { quantity: 5 })], [{ kind: 'transfer', copyId: 'p', to: cellar, quantity: 2 }], call({ presence }),
+      [instance('p', { quantity: 5 })], [{ kind: 'transfer', instanceId: 'p', to: cellar, quantity: 2 }], call({ presence }),
     );
     expect(instances).toEqual([instance('p', { quantity: 3 }), instance('c0', { where: cellar, quantity: 2 })]);
   });
 
   it('gives a whole equipped instance: it unequips and merges into the receiver stack', () => {
     const start = [of('dagger', 'e', { equipped: { slotId: 'hand', order: 1 } }), of('dagger', 'theirs', { where: bramWhere })];
-    const { instances } = applyInventoryOps(start, [{ kind: 'transfer', copyId: 'e', to: bramWhere }], call({ presence }));
+    const { instances } = applyInventoryOps(start, [{ kind: 'transfer', instanceId: 'e', to: bramWhere }], call({ presence }));
     expect(instances).toEqual([of('dagger', 'theirs', { where: bramWhere, quantity: 2 })]);
   });
 
   it('keeps each instance of an item that does not stack its own row', () => {
     const start = [of('wand', 'w1', { state: { uses: 1 } }), of('wand', 'w2', { where: bramWhere, state: { uses: 3 } })];
-    const { instances } = applyInventoryOps(start, [{ kind: 'transfer', copyId: 'w1', to: bramWhere }], call());
+    const { instances } = applyInventoryOps(start, [{ kind: 'transfer', instanceId: 'w1', to: bramWhere }], call());
     expect(instances.map((c) => c.state?.uses)).toEqual([3, 1]);
   });
 
   it('refuses a panel drop or give of a Bound instance, and lets the pass and scripts move it', () => {
     const start = [of('crown', 'k')];
-    const ops = [{ kind: 'transfer', copyId: 'k', to: cellar } as const];
+    const ops = [{ kind: 'transfer', instanceId: 'k', to: cellar } as const];
     const panel = applyInventoryOps(start, ops, call());
     expect(panel.instances).toEqual(start);
     expect(panel.diagnostics).toEqual(['Inventory (panel) skipped transfer: Item Instance k is Bound']);
-    expect(applyInventoryOps(start, [{ kind: 'lose', copyId: 'k' }], call()).instances).toEqual(start);
+    expect(applyInventoryOps(start, [{ kind: 'lose', instanceId: 'k' }], call()).instances).toEqual(start);
     for (const source of ['pass', 'script'] as const) {
       expect(applyInventoryOps(start, ops, call({ source })).instances).toEqual([of('crown', 'k', { where: cellar })]);
-      expect(applyInventoryOps(start, [{ kind: 'lose', copyId: 'k' }], call({ source })).instances).toEqual([]);
+      expect(applyInventoryOps(start, [{ kind: 'lose', instanceId: 'k' }], call({ source })).instances).toEqual([]);
     }
-    expect(applyInventoryOps(start, [{ kind: 'equip', copyId: 'k' }], call()).instances[0].equipped).toBeDefined();
+    expect(applyInventoryOps(start, [{ kind: 'equip', instanceId: 'k' }], call()).instances[0].equipped).toBeDefined();
   });
 
   it('lets the panel pick up a Bound instance lying here', () => {
     const lying = [of('crown', 'k', { where: cellar })];
-    const { instances, diagnostics } = applyInventoryOps(lying, [{ kind: 'transfer', copyId: 'k', to: { kind: 'you' } }], call({ presence }));
+    const { instances, diagnostics } = applyInventoryOps(lying, [{ kind: 'transfer', instanceId: 'k', to: { kind: 'you' } }], call({ presence }));
     expect(diagnostics).toEqual([]);
     expect(instances).toEqual([of('crown', 'k')]);
   });
@@ -258,9 +258,9 @@ describe('applyInventoryOps', () => {
     const away = { locationId: 'hall', entityIds: new Set<string>() };
     const start = [instance('p'), instance('b', { where: bramWhere })];
     const result = applyInventoryOps(start, [
-      { kind: 'transfer', copyId: 'p', to: bramWhere },
-      { kind: 'transfer', copyId: 'p', to: cellar },
-      { kind: 'lose', copyId: 'b' },
+      { kind: 'transfer', instanceId: 'p', to: bramWhere },
+      { kind: 'transfer', instanceId: 'p', to: cellar },
+      { kind: 'lose', instanceId: 'b' },
       { kind: 'gain', itemId: 'potion', quantity: 1, to: cellar },
     ], call({ presence: away }));
     expect(result.instances).toEqual(start);
@@ -274,15 +274,15 @@ describe('applyInventoryOps', () => {
 
   it('skips an invalid operation with a diagnostic and applies the rest', () => {
     const result = applyInventoryOps([instance('p', { quantity: 2 }), of('helm', 'h')], [
-      { kind: 'lose', copyId: 'p', quantity: 1 },
-      { kind: 'equip', copyId: 'p' },
-      { kind: 'lose', copyId: 'missing' },
-      { kind: 'lose', copyId: 'p', quantity: 9 },
-      { kind: 'unequip', copyId: 'h' },
+      { kind: 'lose', instanceId: 'p', quantity: 1 },
+      { kind: 'equip', instanceId: 'p' },
+      { kind: 'lose', instanceId: 'missing' },
+      { kind: 'lose', instanceId: 'p', quantity: 9 },
+      { kind: 'unequip', instanceId: 'h' },
       { kind: 'gain', itemId: 'gone', quantity: 1, to: you },
       { kind: 'gain', itemId: 'potion', quantity: 0, to: you },
-      { kind: 'transfer', copyId: 'p', to: you },
-      { kind: 'equip', copyId: 'h' },
+      { kind: 'transfer', instanceId: 'p', to: you },
+      { kind: 'equip', instanceId: 'h' },
     ], call());
     expect(result.instances).toEqual([instance('p'), of('helm', 'h', { equipped: { slotId: 'head', order: 1 } })]);
     expect(result.diagnostics).toEqual([
@@ -305,7 +305,7 @@ describe('applyInventoryOps', () => {
 
     it("refuses an equip into a slot the owner's Body lacks, and the instance stays carried", () => {
       const result = applyInventoryOps(
-        [of('helm', 'h', { where: bramWhere })], [{ kind: 'equip', copyId: 'h' }], withPicks([{ id: 'bram', body: { kind: 'body', id: 'dog' } }]),
+        [of('helm', 'h', { where: bramWhere })], [{ kind: 'equip', instanceId: 'h' }], withPicks([{ id: 'bram', body: { kind: 'body', id: 'dog' } }]),
       );
       expect(result.instances).toEqual([of('helm', 'h', { where: bramWhere })]);
       expect(result.diagnostics).toEqual(['Inventory (panel) skipped equip: no Head slot on entity bram']);
@@ -313,7 +313,7 @@ describe('applyInventoryOps', () => {
 
     it('refuses every equip for an owner whose pick is None', () => {
       const result = applyInventoryOps(
-        [of('dagger', 'd', { where: bramWhere })], [{ kind: 'equip', copyId: 'd' }], withPicks([{ id: 'bram', body: { kind: 'none' } }]),
+        [of('dagger', 'd', { where: bramWhere })], [{ kind: 'equip', instanceId: 'd' }], withPicks([{ id: 'bram', body: { kind: 'none' } }]),
       );
       expect(result.instances[0].equipped).toBeUndefined();
       expect(result.diagnostics).toEqual(['Inventory (panel) skipped equip: no Hand slot on entity bram']);
@@ -321,24 +321,24 @@ describe('applyInventoryOps', () => {
 
     it("reads capacity from the owner's Body entry: one Hand swaps out where two Hands keep both", () => {
       const start = [of('dagger', 'a', { where: bramWhere, equipped: { slotId: 'hand', order: 1 } }), of('dagger', 'b', { where: bramWhere })];
-      const two = applyInventoryOps(start, [{ kind: 'equip', copyId: 'b' }], withPicks([{ id: 'bram' }])).instances;
+      const two = applyInventoryOps(start, [{ kind: 'equip', instanceId: 'b' }], withPicks([{ id: 'bram' }])).instances;
       expect(two.every((c) => c.equipped)).toBe(true);
-      const one = applyInventoryOps(start, [{ kind: 'equip', copyId: 'b' }], withPicks([{ id: 'bram', body: { kind: 'body', id: 'imp' } }])).instances;
+      const one = applyInventoryOps(start, [{ kind: 'equip', instanceId: 'b' }], withPicks([{ id: 'bram', body: { kind: 'body', id: 'imp' } }])).instances;
       expect(one.filter((c) => c.equipped).map((c) => c.quantity)).toEqual([1]);
     });
 
     it('equips the played Persona through the Custom Persona pick under None, and a world persona through its own', () => {
       const entities = [{ id: 'me', customPersona: true, body: { kind: 'body', id: 'dog' } as const }, { id: 'knight' }];
-      const none = applyInventoryOps([of('helm', 'h')], [{ kind: 'equip', copyId: 'h' }], withPicks(entities, { persona: { source: 'none' } }));
+      const none = applyInventoryOps([of('helm', 'h')], [{ kind: 'equip', instanceId: 'h' }], withPicks(entities, { persona: { source: 'none' } }));
       expect(none.diagnostics).toEqual(['Inventory (panel) skipped equip: no Head slot on you']);
       const knight = applyInventoryOps(
-        [of('helm', 'h')], [{ kind: 'equip', copyId: 'h' }], withPicks(entities, { persona: { source: 'world', entityId: 'knight' } }),
+        [of('helm', 'h')], [{ kind: 'equip', instanceId: 'h' }], withPicks(entities, { persona: { source: 'world', entityId: 'knight' } }),
       );
       expect(knight.instances[0].equipped).toEqual({ slotId: 'head', order: 1 });
     });
 
     it('gives no owner a slot in a world with no Bodies', () => {
-      const result = applyInventoryOps([of('helm', 'h')], [{ kind: 'equip', copyId: 'h' }], call({ world: { items, slots: [hand, head] } }));
+      const result = applyInventoryOps([of('helm', 'h')], [{ kind: 'equip', instanceId: 'h' }], call({ world: { items, slots: [hand, head] } }));
       expect(result.diagnostics).toEqual(['Inventory (panel) skipped equip: no Head slot on you']);
     });
   });
@@ -346,7 +346,7 @@ describe('applyInventoryOps', () => {
   it('refuses to equip an instance lying at a location, or one already equipped', () => {
     const result = applyInventoryOps(
       [of('helm', 'here', { where: cellar }), of('helm', 'on', { equipped: { slotId: 'head', order: 1 } })],
-      [{ kind: 'equip', copyId: 'here' }, { kind: 'equip', copyId: 'on' }], call(),
+      [{ kind: 'equip', instanceId: 'here' }, { kind: 'equip', instanceId: 'on' }], call(),
     );
     expect(result.diagnostics).toEqual([
       'Inventory (panel) skipped equip: Item Instance here has no owner',
@@ -369,7 +369,7 @@ describe('applyInventoryOps', () => {
   it('never changes the Item Instances it was given', () => {
     const start = [of('dagger', 'd', { quantity: 5 })];
     const frozen = structuredClone(start);
-    applyInventoryOps(start, [{ kind: 'equip', copyId: 'd' }, { kind: 'lose', copyId: 'd', quantity: 1 }], call());
+    applyInventoryOps(start, [{ kind: 'equip', instanceId: 'd' }, { kind: 'lose', instanceId: 'd', quantity: 1 }], call());
     expect(start).toEqual(frozen);
   });
 });
@@ -390,16 +390,16 @@ describe('a use on a target', () => {
   const instance = (id: string, itemId: string): ItemInstance => ({ id, item: { kind: 'item', itemId }, where: you, quantity: 1, visibility: 'visible' });
 
   it('carries the target instance, as it stood, on the used event', () => {
-    const result = applyInventoryOps([instance('w', 'wand'), instance('p', 'potion')], [{ kind: 'use', copyId: 'w', targetCopyId: 'p' }], call);
+    const result = applyInventoryOps([instance('w', 'wand'), instance('p', 'potion')], [{ kind: 'use', instanceId: 'w', targetInstanceId: 'p' }], call);
     expect(result.events.map((e) => [e.timing, e.target])).toEqual([['used', instance('p', 'potion')]]);
   });
 
   it('uses the item on nothing when the target is missing or is the used instance itself', () => {
-    for (const targetCopyId of ['gone', 'w']) {
-      const result = applyInventoryOps([instance('w', 'wand')], [{ kind: 'use', copyId: 'w', targetCopyId }], call);
+    for (const targetInstanceId of ['gone', 'w']) {
+      const result = applyInventoryOps([instance('w', 'wand')], [{ kind: 'use', instanceId: 'w', targetInstanceId }], call);
       expect(result.events.map((e) => e.target)).toEqual([undefined]);
       expect(result.instances.map((c) => c.state?.uses)).toEqual([2]);
-      expect(result.diagnostics).toEqual([`Inventory (script) used Item Instance w on nothing: no Item Instance ${targetCopyId}`]);
+      expect(result.diagnostics).toEqual([`Inventory (script) used Item Instance w on nothing: no Item Instance ${targetInstanceId}`]);
     }
   });
 });

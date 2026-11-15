@@ -103,8 +103,8 @@ describe('the Options panel of each prompt', () => {
     await user.click(within(screen.getByTestId('help-preset-header-row')).getByRole('button', { name: 'Duplicate' }));
     expect(slider('lookup', 'Custom Temperature')).toHaveAttribute('aria-valuenow', '0.7');
     await user.click(box('lookup', 'Custom Temperature'));
-    const copyId = help.presets.activeId;
+    const instanceId = help.presets.activeId;
     expect(help.presets.presets.find((preset) => preset.id === 'mine')?.options.lookup.temperature).toBe(0.7);
-    expect(help.presets.presets.find((preset) => preset.id === copyId)?.options.lookup.temperature).toBe(DEFAULT_HELP_OPTIONS.lookup.temperature);
+    expect(help.presets.presets.find((preset) => preset.id === instanceId)?.options.lookup.temperature).toBe(DEFAULT_HELP_OPTIONS.lookup.temperature);
   });
 });

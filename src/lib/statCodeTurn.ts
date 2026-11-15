@@ -754,7 +754,7 @@ async function itemRuns(
     const item = byId.get(event.itemId);
     if (!item || !filledScriptsAt(item, event.timing).length) continue;
     // The run names the item by the face its instance shows (Q17).
-    const instance = now.state.itemInstances?.find((c) => c.id === event.copyId) ?? event.was;
+    const instance = now.state.itemInstances?.find((c) => c.id === event.instanceId) ?? event.was;
     const itemName = turn.inventory.itemNameOf({ name: faceName(item, !!instance && isUnidentified(instance)) });
     if (itemLevel > ITEM_EVENT_DEPTH) {
       action.log.push(`Item scripts nested past ${ITEM_EVENT_DEPTH} levels; ${SCRIPT_TIMING_LABEL[event.timing]} of ${itemName} did not run`);
@@ -778,7 +778,7 @@ function settledInstances(turn: StatCodeTurn, action: ActionRuns, usedBefore: re
   return {
     at: { ...turn, state: { ...turn.state, itemInstances: settled.instances } },
     events: settled.events,
-    ops: settled.events.map((e): InventoryOp => ({ kind: 'unequip', copyId: e.copyId })),
+    ops: settled.events.map((e): InventoryOp => ({ kind: 'unequip', instanceId: e.instanceId })),
   };
 }
 
@@ -1208,8 +1208,8 @@ async function runScripts(turn: StatCodeTurn, nesting: RunNesting = ACTION_TOP, 
       ...(timing === 'switch' && turn.switched && { switched: { event: turn.switched, world: switchedWorldOf(now, turn.switched) } }),
       ...(itemEvent && {
         itemEvent: {
-          copyId: itemEvent.event.copyId, quantity: itemEvent.event.quantity, ...(itemEvent.event.was && { was: itemEvent.event.was }),
-          ...(itemEvent.event.target && { targetCopyId: itemEvent.event.target.id }),
+          instanceId: itemEvent.event.instanceId, quantity: itemEvent.event.quantity, ...(itemEvent.event.was && { was: itemEvent.event.was }),
+          ...(itemEvent.event.target && { targetInstanceId: itemEvent.event.target.id }),
         },
       }),
       ...(sentence === undefined || !turn.narration ? {} : { narration: { ...turn.narration, sentence } }),

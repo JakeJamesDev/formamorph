@@ -30,7 +30,7 @@ export async function prepareGame(context, scene, source = 'src/defaultworlds/dr
   const turns = openingOnly ? [] : sceneTurns;
   const base = {
     globalStats: scene.noGlobalStats ? [] : world.stats.map((stat) => ({ ...stat, value: stat.starting ?? stat.value })),
-    ...(itemInstances.length && { itemCopies: itemInstances }),
+    ...(itemInstances.length && { itemInstances }),
     globalTraits: [], visibleEntities: [{ name: entity.name, revealed: true }], discoveredEntities: [],
     logEntries: [], locationId: location.id, characterData: null, isGameStarted: true,
     timestamp: new Date().toISOString(), worldName: world.worldOverview.name, playerNotes: '', stateVersion: 2,

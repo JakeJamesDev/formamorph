@@ -77,14 +77,14 @@ describe('Item Instances in a save', () => {
     expect(live().gameplay.itemInstances).toEqual(held);
   });
 
-  it('write the same keys a save carried before the rename', async () => {
+  it('write under the itemInstances key, never the old itemCopies', async () => {
     const live = mount();
     await loadWorld(live);
     await act(async () => { live().gameplay.setItemInstances(held); });
     await act(async () => { await live().gameplay.saveGame('slot', 'World', 'w1', 'items-keys'); });
     const state = ((await getSaveRecord('items-keys')) as SaveRecord).currentState as unknown as Record<string, unknown>;
-    expect(state.itemCopies).toEqual(held);
-    expect('itemInstances' in state).toBe(false);
+    expect(state.itemInstances).toEqual(held);
+    expect('itemCopies' in state).toBe(false);
   });
 
   it("go back to the turn's own when a snapshot is restored, as a re-roll does", async () => {
@@ -140,7 +140,7 @@ describe('Item Instances in a save', () => {
     const live = mount();
     await loadWorld(live);
     await act(async () => { await live().gameplay.saveGame('slot', 'World', 'w1', 'before-items'); });
-    expect('itemCopies' in ((await getSaveRecord('before-items')) as SaveRecord).currentState).toBe(false);
+    expect('itemInstances' in ((await getSaveRecord('before-items')) as SaveRecord).currentState).toBe(false);
 
     await loadWorld(live, [lampOnYou]);
     await load(live, 'before-items');
@@ -156,13 +156,13 @@ describe('Item Instances in a save', () => {
     const goneLocation = instance('z', { where: { kind: 'location', id: 'gone' } });
     await putSaveRecord({
       id: 'orphans', name: 'orphans', version: '3.0.1',
-      currentState: { ...base, fullMessageHistory: undefined, itemCopies: [...held, goneItem, goneOwner] },
-      stateHistory: [{ ...base, fullMessageHistory: undefined, itemCopies: [held[0], goneItem, goneLocation] }],
+      currentState: { ...base, fullMessageHistory: undefined, itemInstances: [...held, goneItem, goneOwner] },
+      stateHistory: [{ ...base, fullMessageHistory: undefined, itemInstances: [held[0], goneItem, goneLocation] }],
     } as unknown as SaveRecord);
 
     await load(live, 'orphans');
     expect(live().gameplay.itemInstances).toEqual(held);
-    expect(live().gameplay.gameStates[0].itemCopies).toEqual([held[0]]);
+    expect(live().gameplay.gameStates[0].itemInstances).toEqual([held[0]]);
     const lines = live().gameplay.logEntries.map((e) => e.text).filter((t) => t.startsWith('Removed'));
     expect(lines).toEqual(['Removed 3 items whose item, owner or location no longer exists']);
   });
@@ -175,13 +175,28 @@ describe('Item Instances in a save', () => {
     await putSaveRecord({
       id: 'discovered', name: 'discovered', version: '3.0.1', stateHistory: [],
       currentState: {
-        ...base, fullMessageHistory: undefined, itemCopies: [found],
+        ...base, fullMessageHistory: undefined, itemInstances: [found],
         discoveredEntities: [{ entity: { id: 'runtime-wren', name: 'Wren' }, locationId: 'cellar', sourceTurnId: 't1' }],
       },
     } as unknown as SaveRecord);
 
     await load(live, 'discovered');
     expect(live().gameplay.itemInstances).toEqual([found]);
+  });
+
+  it('load from a save written under the old itemCopies key, in the state and its history', async () => {
+    const live = mount();
+    await loadWorld(live);
+    const { itemInstances: _now, ...base } = live().gameplay.saveCurrentGameState();
+    await putSaveRecord({
+      id: 'old-keys', name: 'old-keys', version: '3.0.1',
+      currentState: { ...base, fullMessageHistory: undefined, itemCopies: held },
+      stateHistory: [{ ...base, fullMessageHistory: undefined, itemCopies: [held[0]] }],
+    } as unknown as SaveRecord);
+
+    await load(live, 'old-keys');
+    expect(live().gameplay.itemInstances).toEqual(held);
+    expect(live().gameplay.gameStates[0].itemInstances).toEqual([held[0]]);
   });
   it('keep a running timed trait on a played library persona, and drop one whose owner is gone (Q132)', async () => {
     const live = mount();

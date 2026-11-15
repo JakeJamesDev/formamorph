@@ -102,7 +102,7 @@ function settleBuy(pass: PassRun, op: InventoryPassOp, quote: BuyQuote): void {
   let left = op.quantity;
   const takeFrom = (instances: readonly ItemInstance[]) => distribute(instances, left, (instance, quantity) => {
     left -= quantity;
-    runOps(pass, [buyer ? { kind: 'transfer', copyId: instance.id, to: buyer, quantity } : { kind: 'lose', copyId: instance.id, quantity }]);
+    runOps(pass, [buyer ? { kind: 'transfer', instanceId: instance.id, to: buyer, quantity } : { kind: 'lose', instanceId: instance.id, quantity }]);
   });
   takeFrom(held);
   if (left > 0 && pass.scene.location) takeFrom(visibleAt({ kind: 'location', id: pass.scene.location.id }));

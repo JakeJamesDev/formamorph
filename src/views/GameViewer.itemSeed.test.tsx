@@ -76,7 +76,7 @@ describe('a loaded save', () => {
   it('drops an Item Instance of an item the world deleted, with a log line', async () => {
     const kept: ItemInstance = { id: 'k', item: { kind: 'item', itemId: 'lantern' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' };
     const gone: ItemInstance = { ...kept, id: 'g', item: { kind: 'item', itemId: 'oar' } };
-    const saveId = await saveOf(worldWith(), { itemCopies: [kept, gone] });
+    const saveId = await saveOf(worldWith(), { itemInstances: [kept, gone] });
     renderGameViewer(worldWith({ items: [lantern] }), { inGameplay: <Probe />, initialSaveId: saveId });
     await waitFor(() => expect(gameplay().logEntries.some((e) => e.text.startsWith('Game loaded'))).toBe(true));
     expect(gameplay().itemInstances).toEqual([kept]);

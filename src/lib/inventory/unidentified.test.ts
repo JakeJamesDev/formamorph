@@ -37,40 +37,40 @@ describe('unidentified Item Instances', () => {
   });
 
   it('keeps the flag through a transfer', () => {
-    const { instances } = applyInventoryOps([instance('a', 'ring', unknown)], [{ kind: 'transfer', copyId: 'a', to: cellar }], call());
+    const { instances } = applyInventoryOps([instance('a', 'ring', unknown)], [{ kind: 'transfer', instanceId: 'a', to: cellar }], call());
     expect(instances).toEqual([instance('a', 'ring', { where: cellar, ...unknown })]);
   });
 
   it('identifies a visible unidentified instance and merges it into the identified stack in the same place', () => {
     const { instances, diagnostics } = applyInventoryOps(
-      [instance('a', 'ring', { quantity: 2 }), instance('b', 'ring', unknown)], [{ kind: 'reveal', copyId: 'b' }], call(),
+      [instance('a', 'ring', { quantity: 2 }), instance('b', 'ring', unknown)], [{ kind: 'reveal', instanceId: 'b' }], call(),
     );
     expect(diagnostics).toEqual([]);
     expect(instances).toEqual([instance('a', 'ring', { quantity: 3 })]);
   });
 
   it('identifies part of a stack, which splits off as its own identified row', () => {
-    const { instances } = applyInventoryOps([instance('a', 'ring', { quantity: 3, ...unknown })], [{ kind: 'reveal', copyId: 'a', quantity: 1 }], call());
+    const { instances } = applyInventoryOps([instance('a', 'ring', { quantity: 3, ...unknown })], [{ kind: 'reveal', instanceId: 'a', quantity: 1 }], call());
     expect(instances.map((c) => [c.id, c.quantity, c.state])).toEqual([['a', 2, { unidentified: true }], ['n0', 1, undefined]]);
   });
 
   it('keeps other state when it identifies an instance', () => {
     const wand = item('wand', { uses: 3, unidentifiedName: 'Stick' });
     const { instances } = applyInventoryOps(
-      [instance('w', 'wand', { state: { uses: 2, unidentified: true } })], [{ kind: 'reveal', copyId: 'w' }], call({ world: { items: [wand] } }),
+      [instance('w', 'wand', { state: { uses: 2, unidentified: true } })], [{ kind: 'reveal', instanceId: 'w' }], call({ world: { items: [wand] } }),
     );
     expect(instances).toEqual([instance('w', 'wand', { state: { uses: 2 } })]);
   });
 
   it('shows a hidden unidentified instance first and identifies it on a second reveal (Q8)', () => {
     const start = [instance('a', 'ring', { visibility: 'hidden', ...unknown })];
-    const once = applyInventoryOps(start, [{ kind: 'reveal', copyId: 'a' }], call()).instances;
+    const once = applyInventoryOps(start, [{ kind: 'reveal', instanceId: 'a' }], call()).instances;
     expect(once).toEqual([instance('a', 'ring', unknown)]);
-    expect(applyInventoryOps(once, [{ kind: 'reveal', copyId: 'a' }], call()).instances).toEqual([instance('a', 'ring')]);
+    expect(applyInventoryOps(once, [{ kind: 'reveal', instanceId: 'a' }], call()).instances).toEqual([instance('a', 'ring')]);
   });
 
   it('skips a reveal of an instance that is neither hidden nor unidentified', () => {
-    const { instances, diagnostics } = applyInventoryOps([instance('a', 'ring')], [{ kind: 'reveal', copyId: 'a' }], call());
+    const { instances, diagnostics } = applyInventoryOps([instance('a', 'ring')], [{ kind: 'reveal', instanceId: 'a' }], call());
     expect(diagnostics).toHaveLength(1);
     expect(instances).toEqual([instance('a', 'ring')]);
   });

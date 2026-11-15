@@ -58,17 +58,17 @@ describe('SettingsContext: preset Overview', () => {
     seed('mine');
     const { result } = renderHook(() => useSettings(), { wrapper });
     act(() => result.current.setPresetOverview({ description: 'For small models', models: ['Cydonia-24B'] }));
-    let copyId = '';
-    act(() => { copyId = result.current.addPreset('Mine (copy)'); });
-    expect(result.current.activePresetId).toBe(copyId);
+    let instanceId = '';
+    act(() => { instanceId = result.current.addPreset('Mine (copy)'); });
+    expect(result.current.activePresetId).toBe(instanceId);
     expect(result.current.presetOverview).toMatchObject({ description: 'For small models', models: ['Cydonia-24B'] });
   });
 
   it('a copy of a preset without an Overview stores none', () => {
     seed('mine');
     const { result } = renderHook(() => useSettings(), { wrapper });
-    let copyId = '';
-    act(() => { copyId = result.current.addPreset('Mine (copy)'); });
-    expect(stored().presets.find((p) => p.id === copyId)).not.toHaveProperty('overview');
+    let instanceId = '';
+    act(() => { instanceId = result.current.addPreset('Mine (copy)'); });
+    expect(stored().presets.find((p) => p.id === instanceId)).not.toHaveProperty('overview');
   });
 });

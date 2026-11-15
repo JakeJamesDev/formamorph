@@ -21,7 +21,7 @@ const op = (kind: InventoryPassOp['op'], name: string, over: Partial<InventoryPa
 
 const tonicRef = { kind: 'item', itemId: 'tonic' } as const;
 const coinRef = { kind: 'item', itemId: 'coin' } as const;
-const used: ListedActionFacts = { kind: 'use', item: { key: 'item:tonic', name: 'Tonic' }, copyId: 't' };
+const used: ListedActionFacts = { kind: 'use', item: { key: 'item:tonic', name: 'Tonic' }, instanceId: 't' };
 
 /** The told entries a list of `facts` sends, `hide` naming the entries the player hid. */
 const sent = (facts: ListedActionFacts[], hide: number[] = []): ToldAction[] => {
@@ -106,17 +106,17 @@ describe('the Inventory pass guard (Q7, Q44, Q45)', () => {
 
   it('drops an equip or unequip that reports a shown one', () => {
     const worn = (): ItemInstance[] => [{ ...instance('t', tonicRef, you), equipped: { slotId: 'hand', order: 0 } }];
-    const unequipped: ListedActionFacts = { kind: 'unequip', item: { key: 'item:tonic', name: 'Tonic' }, copyId: 't' };
+    const unequipped: ListedActionFacts = { kind: 'unequip', item: { key: 'item:tonic', name: 'Tonic' }, instanceId: 't' };
     const reply = [op('unequip', 'Tonic', { owner: 'you' })];
     expect(run(worn(), reply, sent([unequipped])).instances[0].equipped).toBeTruthy();
     expect(run(worn(), reply, []).instances[0].equipped).toBeFalsy();
-    const equipped: ListedActionFacts = { kind: 'equip', item: { key: 'item:tonic', name: 'Tonic' }, copyId: 't' };
+    const equipped: ListedActionFacts = { kind: 'equip', item: { key: 'item:tonic', name: 'Tonic' }, instanceId: 't' };
     const result = run(tonics(), [op('equip', 'Tonic', { owner: 'you' })], sent([equipped]));
     expect([result.ops, result.diagnostics]).toEqual([[], ['Inventory (pass) skipped equip "Tonic": the player already did it']]);
   });
 
   it('matches a runtime item by its name', () => {
-    const lit: ListedActionFacts = { kind: 'use', item: { key: 'runtime:rt-lantern', name: 'Lantern' }, copyId: 'l' };
+    const lit: ListedActionFacts = { kind: 'use', item: { key: 'runtime:rt-lantern', name: 'Lantern' }, instanceId: 'l' };
     const result = run([instance('l', { kind: 'runtime', runtimeItemId: 'rt-lantern' }, you)], [op('use', 'lantern', { owner: 'you', after: 'used up' })], sent([lit]));
     expect(result.instances).toHaveLength(1);
     expect(result.ops).toEqual([]);

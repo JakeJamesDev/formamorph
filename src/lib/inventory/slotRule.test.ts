@@ -32,7 +32,7 @@ const call = (bodyId = 'humanoid'): InventoryCall => ({
   world: { items, slots, bodies: bodies.filter((b) => b.id === bodyId) }, source: 'panel', newId: () => 'new',
 });
 const equip = (instances: ItemInstance[], instanceId: string, slotId?: string, bodyId?: string) =>
-  applyInventoryOps(instances, [{ kind: 'equip', copyId: instanceId, ...(slotId && { slotId }) } as InventoryOp], call(bodyId));
+  applyInventoryOps(instances, [{ kind: 'equip', instanceId, ...(slotId && { slotId }) } as InventoryOp], call(bodyId));
 const slotOf = (instances: readonly ItemInstance[], id: string) => instances.find((c) => c.id === id)?.equipped?.slotId;
 
 describe('Either of', () => {
@@ -75,7 +75,7 @@ describe('Either of', () => {
     expect(slotOf(instances, 'a')).toBe('main');
     expect(slotOf(instances, 'b')).toBeUndefined();
     expect(slotOf(instances, 't')).toBe('off');
-    expect(events.map((e) => [e.timing, e.copyId])).toEqual([['unequipped', 'b'], ['equipped', 't']]);
+    expect(events.map((e) => [e.timing, e.instanceId])).toEqual([['unequipped', 'b'], ['equipped', 't']]);
   });
 
   it('fills a capacity slot unit by unit, then swaps out the longest equipped', () => {
@@ -89,7 +89,7 @@ describe('Either of', () => {
 
   it('refuses a slot with no room for anyone, which only a hand-edited capacity of 0 gives', () => {
     const world = { items, slots, bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'main', capacity: 0 }] })] };
-    const { instances, diagnostics } = applyInventoryOps([instance('dagger', 'd')], [{ kind: 'equip', copyId: 'd' }], { ...call(), world });
+    const { instances, diagnostics } = applyInventoryOps([instance('dagger', 'd')], [{ kind: 'equip', instanceId: 'd' }], { ...call(), world });
     expect(slotOf(instances, 'd')).toBeUndefined();
     expect(diagnostics).toEqual(['Inventory (panel) skipped equip: no room in Main Hand on you']);
   });
@@ -97,7 +97,7 @@ describe('Either of', () => {
   it('refuses an already equipped instance, so moving is unequip then equip (Q54)', () => {
     const start = [instance('dagger', 'd', at('main', 1))];
     expect(equip(start, 'd', 'off').diagnostics).toEqual(['Inventory (panel) skipped equip: Item Instance d is already equipped']);
-    const moved = applyInventoryOps(start, [{ kind: 'unequip', copyId: 'd' }, { kind: 'equip', copyId: 'd', slotId: 'off' }], call());
+    const moved = applyInventoryOps(start, [{ kind: 'unequip', instanceId: 'd' }, { kind: 'equip', instanceId: 'd', slotId: 'off' }], call());
     expect(slotOf(moved.instances, 'd')).toBe('off');
     expect(moved.events.map((e) => e.timing)).toEqual(['unequipped', 'equipped']);
   });
@@ -122,7 +122,7 @@ describe('All of', () => {
     const { instances, events } = equip(start, 'g');
     expect(slotOf(instances, 'a')).toBeUndefined();
     expect(slotOf(instances, 'b')).toBeUndefined();
-    expect(events.map((e) => [e.timing, e.copyId])).toEqual([['unequipped', 'a'], ['unequipped', 'b'], ['equipped', 'g']]);
+    expect(events.map((e) => [e.timing, e.instanceId])).toEqual([['unequipped', 'a'], ['unequipped', 'b'], ['equipped', 'g']]);
   });
 
   it('counts a worn All of item in every slot it occupies, so a later equip sees those units full', () => {
@@ -147,7 +147,7 @@ describe('All of', () => {
     const { instances, events } = equip(start, 'f');
     expect(slotOf(instances, 'x')).toBeUndefined();
     expect(slotOf(instances, 'old')).toBe('ring');
-    expect(events.map((e) => [e.timing, e.copyId])).toEqual([['unequipped', 'x'], ['equipped', 'f']]);
+    expect(events.map((e) => [e.timing, e.instanceId])).toEqual([['unequipped', 'x'], ['equipped', 'f']]);
   });
 });
 

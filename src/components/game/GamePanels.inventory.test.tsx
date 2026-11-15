@@ -332,7 +332,7 @@ describe('RightPanel — Inventory tab', () => {
 
   describe('the panel write guard', () => {
     const crowd = [...entities, { id: 'ilsa', name: 'Ilsa', locations: ['yard'] }] as Entity[];
-    const give = (to: string) => [{ kind: 'transfer' as const, copyId: 'c', to: { kind: 'entity' as const, id: to }, quantity: 1 }];
+    const give = (to: string) => [{ kind: 'transfer' as const, instanceId: 'c', to: { kind: 'entity' as const, id: to }, quantity: 1 }];
     const probe = () => {
       let panel!: InventoryTabProps;
       const Probe = () => { panel = useInventoryPanel(); return null; };

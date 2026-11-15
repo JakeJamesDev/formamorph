@@ -56,7 +56,7 @@ function act(play: Play, ops: InventoryOp[], list: readonly Item[] = items): Pla
 const advance = (play: Play, by: number, list: readonly Item[] = items): Play => act({ ...play, now: play.now + by }, [], list);
 const gain = (itemId: string, quantity = 1, to: ItemInstanceWhere = hero): InventoryOp => ({ kind: 'gain', itemId, quantity, to });
 const instancesOf = (play: Play, itemId: string) => play.instances.filter((c) => c.item.kind === 'item' && c.item.itemId === itemId);
-const use = (play: Play, itemId: string, at = 0): InventoryOp => ({ kind: 'use', copyId: instancesOf(play, itemId)[at].id });
+const use = (play: Play, itemId: string, at = 0): InventoryOp => ({ kind: 'use', instanceId: instancesOf(play, itemId)[at].id });
 const heroStat = (play: Play, id: string) => play.traits.entityStats!.hero.find((s) => s.id === id)!;
 const on = (play: Play) => activeOwnedTraitIds(play.traits.ownedTraits ?? {}).hero ?? [];
 
@@ -117,7 +117,7 @@ describe('timed effects', () => {
     let n = 0;
     const slots = [{ id: 'hand', name: 'Hand' }];
     let play = act(start([stat('strength', 5)]), [gain('sword'), gain('sap')], list);
-    const equipped = applyInventoryOps(play.instances, [{ kind: 'equip', copyId: instancesOf(play, 'sword')[0].id }], { world: { items: list, slots, bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] })] }, source: 'panel', newId: () => `e${n++}` });
+    const equipped = applyInventoryOps(play.instances, [{ kind: 'equip', instanceId: instancesOf(play, 'sword')[0].id }], { world: { items: list, slots, bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] })] }, source: 'panel', newId: () => `e${n++}` });
     play = { ...play, instances: equipped.instances };
     play = act(play, [use(play, 'sap')], list);
     expect(instancesOf(play, 'sword')[0].equipped).toBeUndefined();
@@ -176,7 +176,7 @@ describe('timed effects', () => {
     play = advance(play, 0.5);
     play = act(play, [use(play, 'might')]);
     const hiddenMight: ItemInstance = { id: 'hx', item: { kind: 'item', itemId: 'giant' }, where: hero, quantity: 1, visibility: 'hidden' };
-    play = act({ ...play, instances: [...play.instances, hiddenMight] }, [{ kind: 'use', copyId: 'hx' }]);
+    play = act({ ...play, instances: [...play.instances, hiddenMight] }, [{ kind: 'use', instanceId: 'hx' }]);
     const names = { stat: (_o: string, id: string) => id.toUpperCase(), trait: (_o: string, id: string) => `Trait ${id}` };
     expect(timedEffectViews(play.ledger, items, ['hero'], play.now, names).map((v) => [v.itemName, v.effect, v.hoursLeft])).toEqual([
       [null, 'Max STRENGTH +5', 1], ['Haste Tonic', 'Trait hasted', 1.5], ['Potion of Might', 'STRENGTH +2', 2],
@@ -187,7 +187,7 @@ describe('timed effects', () => {
   it('names no item for a use from a hidden Item Instance', () => {
     const play = start([stat('strength', 3)]);
     const hidden: ItemInstance = { id: 'h', item: { kind: 'item', itemId: 'might' }, where: hero, quantity: 1, visibility: 'hidden' };
-    const used = act({ ...play, instances: [hidden] }, [{ kind: 'use', copyId: 'h' }]);
+    const used = act({ ...play, instances: [hidden] }, [{ kind: 'use', instanceId: 'h' }]);
     expect(used.log).toContain('An item: Strength +2');
   });
 
@@ -253,7 +253,7 @@ describe('uses and When Empty', () => {
     let play = act(start([stat('strength', 3)]), [gain('wand', 2)]);
     play = act(play, [use(play, 'wand', 0), use(play, 'wand', 0)]);
     const [spent, full] = instancesOf(play, 'wand');
-    play = act(play, [{ kind: 'transfer', copyId: full.id, to: { kind: 'entity', id: 'ally' } }]);
+    play = act(play, [{ kind: 'transfer', instanceId: full.id, to: { kind: 'entity', id: 'ally' } }]);
     expect(play.instances.find((c) => c.id === spent.id)?.state?.uses).toBe(1);
     expect(play.instances.find((c) => c.id === full.id)).toMatchObject({ where: { kind: 'entity', id: 'ally' }, state: { uses: 3 } });
   });
@@ -294,7 +294,7 @@ describe('uses and When Empty', () => {
     const potion = item('potion', 'Potion', { uses: 1, whenEmpty: { kind: 'becomes', itemId: 'bottle' } });
     const list = [...items, bottle, potion];
     const hidden: ItemInstance = { id: 'hp', item: { kind: 'item', itemId: 'potion' }, where: hero, quantity: 1, visibility: 'hidden' };
-    const play = act({ ...start([]), instances: [hidden] }, [{ kind: 'use', copyId: 'hp' }], list);
+    const play = act({ ...start([]), instances: [hidden] }, [{ kind: 'use', instanceId: 'hp' }], list);
     expect(instancesOf(play, 'bottle')).toMatchObject([{ where: hero, visibility: 'hidden' }]);
   });
 
@@ -304,7 +304,7 @@ describe('uses and When Empty', () => {
     const list = [...items, shard, gem];
     let n = 0;
     let play = act(start([]), [gain('gem')], list);
-    const equipped = applyInventoryOps(play.instances, [{ kind: 'equip', copyId: instancesOf(play, 'gem')[0].id }], { world: { items: list, slots: [{ id: 'hand', name: 'Hand' }], bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] })] }, source: 'panel', newId: () => `e${n++}` });
+    const equipped = applyInventoryOps(play.instances, [{ kind: 'equip', instanceId: instancesOf(play, 'gem')[0].id }], { world: { items: list, slots: [{ id: 'hand', name: 'Hand' }], bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] })] }, source: 'panel', newId: () => `e${n++}` });
     play = { ...play, instances: equipped.instances };
     expect(instancesOf(play, 'gem')[0].equipped).toBeDefined();
     play = act(play, [use(play, 'gem')], list);
@@ -348,7 +348,7 @@ describe('uses and When Empty', () => {
     let n = 0;
     const call = { world: { items }, source: 'pass' as const, newId: () => `r${n++}`, runtimeItems };
     const gained = applyInventoryOps([], [{ kind: 'gain', itemId: 'rt-cake', quantity: 2, to: hero }], call);
-    const used = applyInventoryOps(gained.instances, [{ kind: 'use', copyId: gained.instances[0].id }], call);
+    const used = applyInventoryOps(gained.instances, [{ kind: 'use', instanceId: gained.instances[0].id }], call);
     expect(used.instances.map((c) => c.quantity)).toEqual([1]);
     expect(used.itemUses).toEqual([]);
   });
@@ -358,10 +358,10 @@ describe('uses and When Empty', () => {
     const list = [...items, lamp];
     let play = act(start([]), [gain('lamp', 2), gain('rock')], list);
     play = act(play, [use(play, 'lamp')], list);
-    play = act(play, [{ kind: 'setUses', copyId: instancesOf(play, 'lamp')[1].id, uses: 9 }], list);
+    play = act(play, [{ kind: 'setUses', instanceId: instancesOf(play, 'lamp')[1].id, uses: 9 }], list);
     expect(instancesOf(play, 'lamp').map((c) => [c.quantity, c.state?.uses ?? 1])).toEqual([[2, 1]]);
     const rockId = instancesOf(play, 'rock')[0].id;
-    play = act(play, [{ kind: 'setUses', copyId: rockId, uses: 1 }], list);
+    play = act(play, [{ kind: 'setUses', instanceId: rockId, uses: 1 }], list);
     expect(play.skipped).toEqual([`Inventory (panel) skipped setUses: Item Instance ${rockId} has no Uses`]);
   });
 });

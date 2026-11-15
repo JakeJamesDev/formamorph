@@ -154,7 +154,7 @@ describe('an item event a script fires', () => {
           if (so.stats.find((s) => s.id === 'echo')?.value !== 3) return { instances, events: [], log: [] };
           return {
             instances: instances.map((c) => (c === held ? { ...c, equipped: undefined } : c)),
-            events: [{ timing: 'unequipped', itemId: 'ring', copyId: 'c-ring', where: { kind: 'you' }, quantity: 1 }],
+            events: [{ timing: 'unequipped', itemId: 'ring', instanceId: 'c-ring', where: { kind: 'you' }, quantity: 1 }],
             log: ['Unequipped Ring'],
           };
         },
@@ -163,7 +163,7 @@ describe('an item event a script fires', () => {
     }));
     expect(echoOf(out)).toBe(10);
     expect(out.items?.log).toEqual(['Unequipped Ring']);
-    expect(out.worldWrites?.inventory?.filter((op) => op.kind === 'unequip')).toEqual([{ kind: 'unequip', copyId: 'c-ring' }]);
+    expect(out.worldWrites?.inventory?.filter((op) => op.kind === 'unequip')).toEqual([{ kind: 'unequip', instanceId: 'c-ring' }]);
   });
 
   it('reads the turn’s choices and hands the next script their chain, as a switch run does', async () => {
@@ -284,7 +284,7 @@ describe('what the result holds', () => {
   it('lands a nested switch script’s write once, at its item level', async () => {
     const box = item('box', 'Box', { scripts: scripts('gained', 'traits.Brave.enabled = true;') });
     const brave = trait('brave', 'Brave', scripts('switch', 'items.Gold.give(persona, 2);'));
-    const event: ItemScriptEvent = { timing: 'gained', itemId: 'box', copyId: 'c-box', where: { kind: 'you' }, quantity: 1 };
+    const event: ItemScriptEvent = { timing: 'gained', itemId: 'box', instanceId: 'c-box', where: { kind: 'you' }, quantity: 1 };
     const items = [box, ...COIN_ITEMS];
     const apply = vi.fn(stateInventory({ items }).apply);
     const out = await runItemScripts(
@@ -324,13 +324,13 @@ describe('During AI Output', () => {
       items: [gem], itemInstances: [worn], worldScripts: scripts('output', 'persona.items[0].setUses(0);'),
       inventory: {
         ...stateInventory({ items: [gem] }),
-        apply: (instances) => ({ instances: [...instances], events: [], diagnostics: [], itemUses: [{ copyId: 'c-gem' } as never] }),
+        apply: (instances) => ({ instances: [...instances], events: [], diagnostics: [], itemUses: [{ instanceId: 'c-gem' } as never] }),
         settle: (instances, uses) => {
           settled.push(uses.length);
           const held = instances.find((c) => c.equipped);
           return held ? {
             instances: instances.map((c) => (c === held ? { ...c, equipped: undefined } : c)),
-            events: [{ timing: 'unequipped', itemId: 'gem', copyId: 'c-gem', where: { kind: 'you' }, quantity: 1 }],
+            events: [{ timing: 'unequipped', itemId: 'gem', instanceId: 'c-gem', where: { kind: 'you' }, quantity: 1 }],
             log: [],
           } : { instances, events: [], log: [] };
         },
@@ -341,7 +341,7 @@ describe('During AI Output', () => {
     const landed = await out?.landing();
     expect(settled).toEqual([1]);
     expect(landed?.items?.instances[0].equipped).toBeUndefined();
-    expect(landed?.worldWrites?.inventory?.filter((op) => op.kind === 'unequip')).toEqual([{ kind: 'unequip', copyId: 'c-gem' }]);
+    expect(landed?.worldWrites?.inventory?.filter((op) => op.kind === 'unequip')).toEqual([{ kind: 'unequip', instanceId: 'c-gem' }]);
   });
 
   it('drops every write on a retract', async () => {
@@ -438,7 +438,7 @@ describe('an On Call Tool’s saved item writes', () => {
 
   it('skip a write that names an instance the replay can’t find, with a log line', async () => {
     const { turn } = await savedFrom('');
-    const out = await replay(turn, { inventory: [{ kind: 'lose', copyId: 'made-by-the-first-run' }, { kind: 'gain', itemId: 'gem', quantity: 1, to: { kind: 'you' } }] });
+    const out = await replay(turn, { inventory: [{ kind: 'lose', instanceId: 'made-by-the-first-run' }, { kind: 'gain', itemId: 'gem', quantity: 1, to: { kind: 'you' } }] });
     expect(heldOf(out, 'gem')).toBe(1);
     expect(out.items?.log.join(' ')).toContain('made-by-the-first-run');
   });

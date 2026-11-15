@@ -50,10 +50,10 @@ describe('settleItemEffects', () => {
   it('raises Strength by 2 while the sword is equipped, and unequipping returns it', () => {
     let play = act(start(statsOf(stat('strength', 5))), { kind: 'gain', itemId: 'sword', quantity: 1, to: hero });
     expect(heroStat(play, 'strength').value).toBe(5);
-    play = act(play, { kind: 'equip', copyId: instanceOf(play, 'sword').id });
+    play = act(play, { kind: 'equip', instanceId: instanceOf(play, 'sword').id });
     expect(heroStat(play, 'strength').value).toBe(7);
     expect(play.lines).toEqual(['Iron Sword: Strength +2']);
-    play = act(play, { kind: 'unequip', copyId: instanceOf(play, 'sword').id });
+    play = act(play, { kind: 'unequip', instanceId: instanceOf(play, 'sword').id });
     expect(heroStat(play, 'strength').value).toBe(5);
     expect(play.lines).toEqual(['Iron Sword: Strength -2']);
     expect(play.ledger).toEqual({});
@@ -61,9 +61,9 @@ describe('settleItemEffects', () => {
 
   it('returns exactly what a clamped gain moved', () => {
     let play = act(start(statsOf(stat('strength', 9))), { kind: 'gain', itemId: 'sword', quantity: 1, to: hero });
-    play = act(play, { kind: 'equip', copyId: instanceOf(play, 'sword').id });
+    play = act(play, { kind: 'equip', instanceId: instanceOf(play, 'sword').id });
     expect(heroStat(play, 'strength').value).toBe(10);
-    play = act(play, { kind: 'unequip', copyId: instanceOf(play, 'sword').id });
+    play = act(play, { kind: 'unequip', instanceId: instanceOf(play, 'sword').id });
     expect(heroStat(play, 'strength').value).toBe(9);
   });
 
@@ -72,7 +72,7 @@ describe('settleItemEffects', () => {
     expect(heroStat(play, 'health')).toMatchObject({ value: 6, max: 15 });
     expect(Object.values(play.ledger?.applied ?? {}).map((e) => e.values)).toEqual([{}]);
     expect(play.lines).toEqual(['amulet: Max Health +5']);
-    play = act(play, { kind: 'lose', copyId: instanceOf(play, 'amulet').id });
+    play = act(play, { kind: 'lose', instanceId: instanceOf(play, 'amulet').id });
     expect(heroStat(play, 'health')).toMatchObject({ value: 6, max: 10 });
   });
 
@@ -81,7 +81,7 @@ describe('settleItemEffects', () => {
     expect(heroStat(play, 'health')).toMatchObject({ value: 15, max: 15 });
     // Spent below the old cap: the record still gives back only the carry.
     play = { ...play, entityStats: { hero: play.entityStats.hero.map((s) => (s.id === 'health' ? { ...s, value: 12 } : s)) } };
-    play = act(play, { kind: 'lose', copyId: instanceOf(play, 'amulet').id });
+    play = act(play, { kind: 'lose', instanceId: instanceOf(play, 'amulet').id });
     expect(heroStat(play, 'health')).toMatchObject({ value: 7, max: 10 });
   });
 
@@ -91,13 +91,13 @@ describe('settleItemEffects', () => {
     expect(play.instances).toHaveLength(4);
     expect(heroStat(play, 'luck').value).toBe(2);
     // Losing one of three charms keeps its effect.
-    play = act(play, { kind: 'lose', copyId: instanceOf(play, 'charm').id });
+    play = act(play, { kind: 'lose', instanceId: instanceOf(play, 'charm').id });
     expect(heroStat(play, 'luck').value).toBe(2);
   });
 
   it('applies While Equipped once per equipped Item Instance (Q109)', () => {
     let play = act(start(statsOf(stat('luck', 0))), { kind: 'gain', itemId: 'band', quantity: 2, to: hero });
-    play = act(play, ...play.instances.map((c): InventoryOp => ({ kind: 'equip', copyId: c.id })));
+    play = act(play, ...play.instances.map((c): InventoryOp => ({ kind: 'equip', instanceId: c.id })));
     expect(heroStat(play, 'luck').value).toBe(2);
   });
 
@@ -105,7 +105,7 @@ describe('settleItemEffects', () => {
     let play = act(start(statsOf(stat('health', 6), stat('luck', 0))), { kind: 'gain', itemId: 'relic', quantity: 1, to: hero });
     expect(heroStat(play, 'health')).toMatchObject({ max: 15, baseMax: 15 });
     expect(heroStat(play, 'luck').value).toBe(1);
-    play = act(play, { kind: 'lose', copyId: instanceOf(play, 'relic').id });
+    play = act(play, { kind: 'lose', instanceId: instanceOf(play, 'relic').id });
     expect(heroStat(play, 'health').max).toBe(15);
     play = act(play, { kind: 'gain', itemId: 'relic', quantity: 1, to: hero });
     expect(heroStat(play, 'health').max).toBe(15);
@@ -134,7 +134,7 @@ describe('settleItemEffects', () => {
     expect(heroStat(play, 'luck').value).toBe(1);
     const lone = settleItemEffects({ instances: play.instances, entityStats: {}, ledger: undefined }, { items }, noTraits);
     expect(lone.diagnostics).toEqual(['Item coin: owner you has no stat luck']);
-    play = act(play, { kind: 'lose', copyId: instanceOf(play, 'coin').id });
+    play = act(play, { kind: 'lose', instanceId: instanceOf(play, 'coin').id });
     expect(heroStat(play, 'luck').value).toBe(0);
   });
 
@@ -148,7 +148,7 @@ describe('settleItemEffects', () => {
   it('reverses the effects of an Item Instance that disappears, even when its item no longer exists', () => {
     let play = act(start(statsOf(stat('strength', 5), stat('health', 6))),
       { kind: 'gain', itemId: 'sword', quantity: 1, to: hero }, { kind: 'gain', itemId: 'amulet', quantity: 1, to: hero });
-    play = act(play, { kind: 'equip', copyId: instanceOf(play, 'sword').id });
+    play = act(play, { kind: 'equip', instanceId: instanceOf(play, 'sword').id });
     const dropped = settleItemEffects({ instances: [], entityStats: play.entityStats, ledger: play.ledger }, { ...world, items: [] }, noTraits);
     expect(dropped.entityStats.hero.map((s) => [s.id, s.value, s.max])).toEqual([['strength', 5, 10], ['health', 6, 10]]);
     expect(dropped.ledger).toEqual({});

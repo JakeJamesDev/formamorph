@@ -318,7 +318,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
             locationId: WHITE_ROOM_ID,
             metEntities: ['dev-bram', 'dev-mara'],
             ownedTraits: { 'dev-bram': { chosen: ['dev-trait-oath'] } },
-            itemCopies: [
+            itemInstances: [
               { id: 'dev-instance-worn', item: { kind: 'item', itemId: 'dev-item-wand' }, where: { kind: 'entity', id: 'dev-bram' }, quantity: 1, visibility: 'visible', equipped: { slotId: 'dev-slot-hand', order: 0 } },
               { id: 'dev-instance-carried', item: { kind: 'item', itemId: 'dev-item-tonic' }, where: { kind: 'entity', id: 'dev-bram' }, quantity: 1, visibility: 'visible' },
             ],

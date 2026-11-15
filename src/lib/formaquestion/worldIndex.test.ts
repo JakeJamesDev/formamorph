@@ -347,7 +347,7 @@ describe('routines and Connections in the World Index', () => {
 
     // The game lean builds its pages from the Player View, whose inputs carry no Options: no Option page can reach it.
     it('adds no Option page to the in-game view', () => {
-      const current = { metEntities: [], locationId: 'gate', visibleEntities: [], globalStats: [], globalTraits: [], disabledTraitIds: [], itemCopies: [] } as unknown as GameState;
+      const current = { metEntities: [], locationId: 'gate', visibleEntities: [], globalStats: [], globalTraits: [], disabledTraitIds: [], itemInstances: [] } as unknown as GameState;
       const view = buildPlayerView({ world: { entities: [], locations: withOptions.locations, traits: [] }, chain: [current], history: [], persona: null, resolve: (t) => t });
       const kinds = playerViewPages(view).map((p) => p.source.worldKind);
       expect(kinds).not.toContain('option');
@@ -358,7 +358,7 @@ describe('routines and Connections in the World Index', () => {
   it('keeps the in-game view free of routines', () => {
     const cut = playerViewWorld(
       { stats: [], statGroups: [], traits: [], traitGroups: [], entities: [warden], entityGroups: [], placeholders: [], placeholderGroups: [], dictionaries: [], locations: input.locations ?? [] },
-      { view: buildPlayerView({ world: { entities: [warden], locations: input.locations ?? [], traits: [] }, chain: [{ metEntities: ['warden'], locationId: 'loc-gate', visibleEntities: [], globalStats: [], globalTraits: [], disabledTraitIds: [], itemCopies: [] } as unknown as GameState], history: [], persona: null, resolve: (t) => t }), current: { metEntities: ['warden'], locationId: 'loc-gate', visibleEntities: [], globalStats: [], globalTraits: [], disabledTraitIds: [], itemCopies: [] } as unknown as GameState },
+      { view: buildPlayerView({ world: { entities: [warden], locations: input.locations ?? [], traits: [] }, chain: [{ metEntities: ['warden'], locationId: 'loc-gate', visibleEntities: [], globalStats: [], globalTraits: [], disabledTraitIds: [], itemInstances: [] } as unknown as GameState], history: [], persona: null, resolve: (t) => t }), current: { metEntities: ['warden'], locationId: 'loc-gate', visibleEntities: [], globalStats: [], globalTraits: [], disabledTraitIds: [], itemInstances: [] } as unknown as GameState },
     );
     const md = buildWorldIndex({ ...input, entities: cut.entities, locations: cut.locations ?? [] }).sectionsOf({ kind: 'world', worldKind: 'entity', id: 'warden', name: 'Warden' }).map((s) => s.markdown).join('\n');
     expect(md).not.toMatch(/Starts|Unique|Can Also Go|patrols|chance/);

@@ -217,7 +217,7 @@ describe('a dot on the right rail', () => {
     const view = play();
     fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     const carried: ItemInstance = { id: 'k', item: { kind: 'item', itemId: 'key' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' };
-    const state = { ...live!.saveCurrentGameState(), fullMessageHistory: undefined, itemCopies: [carried] };
+    const state = { ...live!.saveCurrentGameState(), fullMessageHistory: undefined, itemInstances: [carried] };
     view.unmount();
     cleanup();
     await putSaveRecord({ id: 'dots', name: 'dots', version: '3.0.1', currentState: state, stateHistory: [] } as unknown as SaveRecord);

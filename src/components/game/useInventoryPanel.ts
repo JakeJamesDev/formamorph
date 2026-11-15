@@ -48,14 +48,14 @@ const itemKey = (instance: ItemInstance): string => actionItemKey(instance.item)
 /** What a panel `op` does, before it runs; null for an op the panel never lists. */
 function plannedFacts(op: InventoryOp, instances: readonly ItemInstance[], name: (instance: ItemInstance) => string, entityName: (id: string) => string): ListedActionFacts | null {
   if (op.kind === 'gain') return null;
-  const instance = instances.find((c) => c.id === op.copyId);
+  const instance = instances.find((c) => c.id === op.instanceId);
   if (!instance) return null;
   const item = { key: itemKey(instance), name: name(instance) };
   switch (op.kind) {
     case 'use':
     case 'equip':
     case 'unequip':
-      return { kind: op.kind, item, copyId: instance.id };
+      return { kind: op.kind, item, instanceId: instance.id };
     case 'transfer': {
       const quantity = op.quantity ?? instance.quantity;
       if (op.to.kind === 'entity') return { kind: 'give', item, quantity, to: { id: op.to.id, name: entityName(op.to.id) } };
@@ -71,7 +71,7 @@ function plannedFacts(op: InventoryOp, instances: readonly ItemInstance[], name:
 function ranFacts(facts: ListedActionFacts, before: readonly ItemInstance[], after: readonly ItemInstance[]): ListedActionFacts {
   if (facts.kind !== 'equip' && facts.kind !== 'unequip') return facts;
   const equip = facts.kind === 'equip';
-  const grew = (c: ItemInstance) => c.id === facts.copyId || c.quantity > (before.find((b) => b.id === c.id)?.quantity ?? 0);
+  const grew = (c: ItemInstance) => c.id === facts.instanceId || c.quantity > (before.find((b) => b.id === c.id)?.quantity ?? 0);
   const row = after.find((c) => !!c.equipped === equip && itemKey(c) === facts.item.key && grew(c));
   return row ? { ...facts, resultId: row.id } : facts;
 }
