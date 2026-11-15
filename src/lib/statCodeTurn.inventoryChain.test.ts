@@ -154,7 +154,7 @@ describe('an item event a script fires', () => {
           if (so.stats.find((s) => s.id === 'echo')?.value !== 3) return { instances, events: [], log: [] };
           return {
             instances: instances.map((c) => (c === held ? { ...c, equipped: undefined } : c)),
-            events: [{ timing: 'unequipped', itemId: 'ring', instanceId: 'c-ring', where: { kind: 'you' }, quantity: 1 }],
+            events: [{ timing: 'unequipped', itemId: 'ring', instanceId: 'c-ring', where: { kind: 'you' }, quantity: 1, by: 'rule' }],
             log: ['Unequipped Ring'],
           };
         },
@@ -284,7 +284,7 @@ describe('what the result holds', () => {
   it('lands a nested switch script’s write once, at its item level', async () => {
     const box = item('box', 'Box', { scripts: scripts('gained', 'traits.Brave.enabled = true;') });
     const brave = trait('brave', 'Brave', scripts('switch', 'items.Gold.give(persona, 2);'));
-    const event: ItemScriptEvent = { timing: 'gained', itemId: 'box', instanceId: 'c-box', where: { kind: 'you' }, quantity: 1 };
+    const event: ItemScriptEvent = { timing: 'gained', itemId: 'box', instanceId: 'c-box', where: { kind: 'you' }, quantity: 1, by: 'story' };
     const items = [box, ...COIN_ITEMS];
     const apply = vi.fn(stateInventory({ items }).apply);
     const out = await runItemScripts(
@@ -330,7 +330,7 @@ describe('During AI Output', () => {
           const held = instances.find((c) => c.equipped);
           return held ? {
             instances: instances.map((c) => (c === held ? { ...c, equipped: undefined } : c)),
-            events: [{ timing: 'unequipped', itemId: 'gem', instanceId: 'c-gem', where: { kind: 'you' }, quantity: 1 }],
+            events: [{ timing: 'unequipped', itemId: 'gem', instanceId: 'c-gem', where: { kind: 'you' }, quantity: 1, by: 'rule' }],
             log: [],
           } : { instances, events: [], log: [] };
         },

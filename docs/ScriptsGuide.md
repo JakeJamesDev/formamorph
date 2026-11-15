@@ -374,7 +374,7 @@ Setup picks and a loaded save skip these scripts. So does a trait that switches 
 
 #### Item Timings
 
-An item's scripts use five timings of their own. Each one runs once for each event of one of the item's Item Instances. The cause of the event does not matter: the Inventory pass, the **Inventory** panel or a script.
+An item's scripts use five timings of their own. Each one runs once for each event of one of the item's Item Instances, whatever caused it: the story, the **Inventory** panel, a script or a rule. `args.by` tells them apart.
 
 | Timing | When it runs |
 | --- | --- |
@@ -386,6 +386,9 @@ An item's scripts use five timings of their own. Each one runs once for each eve
 
 - `self` is the item. `instance` is the entry of the Item Instance the event happened to. After the Item Instance is gone, `instance` reads it as it was before the event (see [Instance](Scripts-Reference#instance)).
 - `args.quantity` is the number the event moved.
+- `args.by` is what caused the event: `'story'`, `'player'` (the **Inventory** panel), `'script'` or `'rule'`. A script's own write reads `'script'`, even when the story started the chain. A **Becomes** result and an unequip forced by a full slot, a Body change or a requirement read `'rule'`.
+- On **When Gained**, `args.from` is the entry the Item Instance came from: `persona`, an entity or a location. It is `null` for a new one. `args.from === persona` means the player gave it.
+- On **When Lost**, `args.to` is the entry the Item Instance went to, or `null` when it is gone for good.
 - On **When Used**, `args.target` is the entry of the Item Instance the item was used on, such as the lantern the oil went into. It is `null` when the story named no other item, or when that Item Instance is gone.
 - The script's own timing tells it which event ran. `args` has no timing field.
 - The item timings are skipped for a reveal of an Item Instance, a write to its uses, a write to its State, and starting items.

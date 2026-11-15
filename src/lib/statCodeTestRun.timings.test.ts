@@ -92,9 +92,9 @@ describe('Test Code on an item script', () => {
     const keys = async (timing: 'gained' | 'lost' | 'used') => (await runTestCode(
       'stats.Health.value = 0; throw new Error(Object.keys(args).map((k) => k + "=" + JSON.stringify(args[k])).join());', timing, home, { ...world, items: [gem] },
     )).error;
-    expect(await keys('gained')).toMatch(/^Error: quantity=1\n/);
-    expect(await keys('lost')).toMatch(/^Error: quantity=1\n/);
-    expect(await keys('used')).toMatch(/^Error: quantity=1,target=null\n/);
+    expect(await keys('gained')).toMatch(/^Error: by="story",from=null,quantity=1\n/);
+    expect(await keys('lost')).toMatch(/^Error: by="story",to=null,quantity=1\n/);
+    expect(await keys('used')).toMatch(/^Error: by="story",quantity=1,target=null\n/);
   });
 });
 

@@ -365,7 +365,7 @@ describe('two scripts on one item event', () => {
         { id: 'b', timing: 'gained', code: READ },
       ],
     };
-    const event: ItemScriptEvent = { timing: 'gained', itemId: 'gem', instanceId: 'c', where: { kind: 'you' }, quantity: 1 };
+    const event: ItemScriptEvent = { timing: 'gained', itemId: 'gem', instanceId: 'c', where: { kind: 'you' }, quantity: 1, by: 'story' };
     const apply: ApplyInventory = (instances, ops) => applyInventoryOps(instances, ops, { world: { items: [gem] }, source: 'script', newId: () => 'new' });
     const out = await runItemScripts(
       turnOf({ stats: [hp(), echo()], items: [gem], itemInstances: [{ id: 'c', item: { kind: 'item', itemId: 'gem' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' }] }),

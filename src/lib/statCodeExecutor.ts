@@ -1365,6 +1365,9 @@ const itemsPrelude = (
       `  for (const [key, value] of Object.entries(event.args)) {`,
       // A target that is gone reads as null.
       `    out[key] = key === 'target' ? (value && Object.values(items).flatMap((e) => e.instances).find((e) => e.id === value)) || null`,
+      // A side reads the persona, or the entity or location entry with its id.
+      `      : key === 'from' || key === 'to' ? (value && (value.kind === 'you' ? persona`,
+      `        : Object.values(value.kind === 'entity' ? entities : locations).find((e) => e.id === value.id))) || null`,
       `      : value && typeof value === 'object' ? Object.freeze(value) : value;`,
       `  }`,
       `  return [(entry && entry.instances.find((e) => e.id === event.instanceId)) || gone, Object.freeze(out)];`,

@@ -224,7 +224,7 @@ export function settleInventory(state: InventorySettleState, world: InventorySet
   const offByBody: ItemInstance[] = [];
   const fireUnequipped = (instance: ItemInstance) => {
     if (instance.item.kind !== 'item') return;
-    events.push({ timing: 'unequipped', itemId: instance.item.itemId, instanceId: instance.id, where: instance.where, quantity: instance.quantity });
+    events.push({ timing: 'unequipped', itemId: instance.item.itemId, instanceId: instance.id, where: instance.where, quantity: instance.quantity, by: 'rule' });
   };
   for (let n = 1; ; n += 1) {
     const done = read.pass(current, instances, instances, n === 1 ? state.itemUses : undefined);

@@ -11,6 +11,7 @@ import type {
   Entity, GameLocation, Item, ItemInstance, ItemInstanceState, ItemInstanceVisibility, ItemInstanceWhere, ItemEffectLedger, ItemRef, ItemScriptTiming, PersonaRef, Placement,
   InventoryUseAfter, RuntimeItem, Slot,
 } from '@/types';
+import type { ItemEventArgs, TriggerCause } from '@/lib/triggerArgs';
 import { timedTraitRow, type ItemUse } from './effects';
 
 export {
@@ -154,14 +155,18 @@ export type InventoryOp =
   /** Sets one instance's State; a blank `state` clears it. */
   | { kind: 'change'; instanceId: string; state: string };
 
+/** The cause an operation's events read, by who sent the list. */
+const SOURCE_CAUSE: Readonly<Record<InventorySource, TriggerCause>> = { pass: 'story', panel: 'player', script: 'script' };
+
 /** One Item Instance event an item's scripts of that timing run on (Q33). `where` is the owner or location it
  *  happened at; `quantity` is how many it moved. */
-export interface ItemScriptEvent {
+export interface ItemScriptEvent extends Pick<ItemEventArgs, 'from' | 'to'> {
   timing: ItemScriptTiming;
   itemId: string;
   instanceId: string;
   where: ItemInstanceWhere;
   quantity: number;
+  by: TriggerCause;
   /** The Item Instance as it stood before a When Lost or When Used event, which can leave it gone. */
   was?: ItemInstance;
   /** The Item Instance a use acted on, as it stood before the use. */
@@ -248,8 +253,11 @@ export function applyInventoryOps(instances: readonly ItemInstance[], ops: reado
   const itemUses: ItemUse[] = [];
   const events: ItemScriptEvent[] = [];
   /** Records an event of `ref`'s item; none for a runtime item. */
-  const fire = (timing: ItemScriptTiming, ref: ItemRef, instanceId: string, where: ItemInstanceWhere, quantity: number, was?: ItemInstance, target?: ItemInstance) => {
-    if (ref.kind === 'item') events.push({ timing, itemId: ref.itemId, instanceId, where, quantity, ...(was && { was }), ...(target && { target }) });
+  const fire = (
+    timing: ItemScriptTiming, ref: ItemRef, instanceId: string, where: ItemInstanceWhere, quantity: number,
+    side: Pick<ItemScriptEvent, 'by' | 'from' | 'to' | 'was' | 'target'>,
+  ) => {
+    if (ref.kind === 'item') events.push({ timing, itemId: ref.itemId, instanceId, where, quantity, ...side });
   };
   const itemOf = (instance: ItemInstance): Item | undefined => (instance.item.kind === 'item' ? items.get(instance.item.itemId) : undefined);
   /** Whether carried `c` is a stack `instance` merges into: same item, visibility, place, uses left (Q27), State and identity (Q18). */
@@ -285,7 +293,7 @@ export function applyInventoryOps(instances: readonly ItemInstance[], ops: reado
     return put(rest, { ...changed, id: call.newId(), quantity: 1 });
   };
 
-  const one = (op: InventoryOp): string | null => {
+  const one = (op: InventoryOp, by: TriggerCause = SOURCE_CAUSE[call.source]): string | null => {
     if (op.kind === 'gain') {
       const item = items.get(op.itemId);
       const runtime = item ? undefined : call.runtimeItems?.find((r) => r.id === op.itemId);
@@ -303,14 +311,14 @@ export function applyInventoryOps(instances: readonly ItemInstance[], ops: reado
       if (itemStackable(item)) {
         const gained: ItemInstance = { id: call.newId(), item: ref, where: op.to, quantity, visibility: op.visibility ?? 'visible', ...(state && { state }) };
         list = put(list, gained);
-        fire('gained', ref, rowOf(gained), op.to, quantity);
+        fire('gained', ref, rowOf(gained), op.to, quantity, { by, from: null });
         return null;
       }
       const first = list.length;
       for (let i = 0; i < quantity; i += 1) {
         list.push({ id: call.newId(), item: ref, where: op.to, quantity: 1, visibility: op.visibility ?? 'visible', ...(state && { state }) });
       }
-      fire('gained', ref, list[first].id, op.to, quantity);
+      fire('gained', ref, list[first].id, op.to, quantity, { by, from: null });
       return null;
     }
 
@@ -335,12 +343,12 @@ export function applyInventoryOps(instances: readonly ItemInstance[], ops: reado
         list = left > 0
           ? list.map((c) => (c === instance ? { ...c, quantity: left } : c))
           : list.filter((c) => c !== instance);
-        if (instance.equipped) fire('unequipped', instance.item, instance.id, instance.where, instance.quantity);
-        fire('lost', instance.item, instance.id, instance.where, quantity, instance);
+        if (instance.equipped) fire('unequipped', instance.item, instance.id, instance.where, instance.quantity, { by });
+        fire('lost', instance.item, instance.id, instance.where, quantity, { by, to: op.kind === 'transfer' ? op.to : null, was: instance });
         if (op.kind === 'transfer') {
           const moved = { ...unequipped(instance), where: op.to, quantity, ...(left > 0 && { id: call.newId() }) };
           list = put(list, moved);
-          fire('gained', instance.item, rowOf(moved), op.to, quantity);
+          fire('gained', instance.item, rowOf(moved), op.to, quantity, { by, from: instance.where });
         }
         return null;
       }
@@ -369,7 +377,7 @@ export function applyInventoryOps(instances: readonly ItemInstance[], ops: reado
         const target = op.targetInstanceId !== undefined ? list.find((c) => c.id === op.targetInstanceId && c !== instance) : undefined;
         if (op.targetInstanceId !== undefined && !target) diagnostics.push(`Inventory (${call.source}) used Item Instance ${instance.id} on nothing: no Item Instance ${op.targetInstanceId}`);
         if (item) itemUses.push({ itemId: item.id, where: instance.where, hidden: instance.visibility === 'hidden', ...(isUnidentified(instance) && { unidentified: true }) });
-        fire('used', instance.item, instance.id, instance.where, 1, instance, target);
+        fire('used', instance.item, instance.id, instance.where, 1, { by, was: instance, ...(target && { target }) });
         const empty = item ? (left === 1 ? whenEmptyOf(item) : undefined) : op.after === 'kept' ? undefined : { kind: 'gone' as const };
         if (left !== undefined && left > 1) list = withOneInstance(instance, { uses: left - 1 });
         else if (empty?.kind === 'stays') list = withOneInstance(instance, { uses: 0 });
@@ -378,7 +386,7 @@ export function applyInventoryOps(instances: readonly ItemInstance[], ops: reado
           list = instance.quantity > 1 ? list.map((c) => (c === instance ? { ...instance, quantity: instance.quantity - 1 } : c)) : list.filter((c) => c !== instance);
           if (empty.kind === 'becomes') {
             // The result is carried by the same owner, keeps the instance's visibility and seeds like any gain (Q12, Q28).
-            const missing = one({ kind: 'gain', itemId: empty.itemId, quantity: 1, to: instance.where, visibility: instance.visibility });
+            const missing = one({ kind: 'gain', itemId: empty.itemId, quantity: 1, to: instance.where, visibility: instance.visibility }, 'rule');
             if (missing) diagnostics.push(`Inventory (${call.source}) removed Item Instance ${instance.id} as Gone: ${missing}`);
           }
         }
@@ -403,7 +411,7 @@ export function applyInventoryOps(instances: readonly ItemInstance[], ops: reado
       case 'unequip': {
         if (!instance.equipped) return `unequip: Item Instance ${instance.id} is not equipped`;
         list = put(list, unequipped(instance));
-        fire('unequipped', instance.item, rowOf(instance), instance.where, instance.quantity);
+        fire('unequipped', instance.item, rowOf(instance), instance.where, instance.quantity, { by });
         return null;
       }
       case 'equip': {
@@ -444,7 +452,8 @@ export function applyInventoryOps(instances: readonly ItemInstance[], ops: reado
         const refused = call.requirement?.(swapped.find((c) => c.id === instance.id) ?? instance, swapped);
         if (refused) return `equip: ${refused}`;
         list = swapped;
-        for (const out of leaving) fire('unequipped', out.item, rowOf(unequipped(out)), out.where, out.quantity);
+        // A full slot forces the swap-out, so it reads as a rule's.
+        for (const out of leaving) fire('unequipped', out.item, rowOf(unequipped(out)), out.where, out.quantity, { by: 'rule' });
         order += 1;
         const equipped = { slotId: taken[0], order };
         // A swapped-out instance can merge into this stack, so read its quantity now. One splits off (Q65).
@@ -452,10 +461,10 @@ export function applyInventoryOps(instances: readonly ItemInstance[], ops: reado
           const split = call.newId();
           list = list.map((c) => (c.id === instance.id ? { ...c, quantity: c.quantity - 1 } : c));
           list.push({ ...instance, id: split, quantity: 1, equipped });
-          fire('equipped', instance.item, split, instance.where, 1);
+          fire('equipped', instance.item, split, instance.where, 1, { by });
         } else {
           list = list.map((c) => (c.id === instance.id ? { ...c, equipped } : c));
-          fire('equipped', instance.item, instance.id, instance.where, instance.quantity);
+          fire('equipped', instance.item, instance.id, instance.where, instance.quantity, { by });
         }
         return null;
       }

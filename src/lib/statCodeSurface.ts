@@ -542,6 +542,18 @@ export const PLAYER_GLOBAL: SurfaceEntry = {
 
 /** The `args` fields an item event records, by name. The surface lists only the fields named here. */
 const ITEM_ARGS_ENTRIES: Partial<Record<ItemArgsField, SurfaceEntry>> = {
+  by: {
+    name: 'by', detail: "'story' | 'player' | 'script' | 'rule'", access: 'readOnly',
+    info: 'What caused the event: the story, the player’s Inventory panel, a script’s write, or a rule such as a Becomes result or a forced unequip',
+  },
+  from: {
+    name: 'from', detail: 'object | null', access: 'readOnly',
+    info: 'Where the Item Instance came from: persona, an entity or a location. It’s null when the Item Instance is new.',
+  },
+  to: {
+    name: 'to', detail: 'object | null', access: 'readOnly',
+    info: 'Where the Item Instance went: persona, an entity or a location. It’s null when the Item Instance is gone for good.',
+  },
   quantity: { name: 'quantity', detail: 'number', info: 'How many the event moved', access: 'readOnly' },
   target: {
     name: 'target', detail: 'object | null', access: 'readOnly',

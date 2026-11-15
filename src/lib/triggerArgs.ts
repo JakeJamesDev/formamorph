@@ -42,8 +42,8 @@ export interface SwitchEventArgs {
   by?: Exclude<TriggerCause, 'story'>;
 }
 
-/** The fixed item event an editor run reads (Q11): one instance at the persona, used on nothing. */
-export const SAMPLE_ITEM_ARGS: ItemEventArgs = { quantity: 1, target: null };
+/** The fixed item event an editor run reads (Q11): one instance at the persona, from and to nowhere, used on nothing. */
+export const SAMPLE_ITEM_ARGS: ItemEventArgs = { quantity: 1, by: 'story', from: null, to: null, target: null };
 
 /** `args` as `timing` reads it: the fields outside the timing's list dropped. */
 export const itemArgsAt = (timing: ItemScriptTiming, args: ItemEventArgs): Partial<ItemEventArgs> =>

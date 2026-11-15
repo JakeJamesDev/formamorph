@@ -34,7 +34,7 @@ const applyWith = (items: Item[]): ApplyInventory => (instances, ops) =>
   applyInventoryOps(instances, ops, { world: { items }, source: 'script', newId: () => `new-${(ids += 1)}` });
 
 const event = (timing: ItemScriptTiming, itemId: string, instanceId: string, where: ItemInstance['where']): ItemScriptEvent =>
-  ({ timing, itemId, instanceId, where, quantity: 1 });
+  ({ timing, itemId, instanceId, where, quantity: 1, by: 'story' });
 
 describe('runItemScripts', () => {
   beforeEach(() => {

@@ -35,6 +35,7 @@ import type { OwnerId, Scoped } from './scope';
 import { silentPrompts, type ScriptPromptHost } from './scriptPrompts';
 import { sameChoices } from './scriptedChoices';
 import { randomUUID } from './uuid';
+import type { ItemEventArgs } from './triggerArgs';
 
 /** The trait state a run's switches left, and the log lines they wrote. */
 export interface StatCodeTraitResult {
@@ -214,6 +215,11 @@ export interface ItemEventRun {
   item: Pick<Item, 'id' | 'name' | 'scripts'>;
   itemName: string;
 }
+
+/** The `args` an item event passes its scripts. */
+const itemEventArgs = ({ quantity, by, from, to, target }: ItemScriptEvent): ItemEventArgs => ({
+  quantity, by, target: target?.id ?? null, ...(from !== undefined && { from }), ...(to !== undefined && { to }),
+});
 
 /** One World Tool call a run fires: the Tool's name, its script, and the call's arguments. */
 export interface ScriptTrigger {
@@ -1209,7 +1215,7 @@ async function runScripts(turn: StatCodeTurn, nesting: RunNesting = ACTION_TOP, 
       ...(itemEvent && {
         itemEvent: {
           instanceId: itemEvent.event.instanceId, ...(itemEvent.event.was && { was: itemEvent.event.was }),
-          args: { quantity: itemEvent.event.quantity, target: itemEvent.event.target?.id ?? null },
+          args: itemEventArgs(itemEvent.event),
         },
       }),
       ...(sentence === undefined || !turn.narration ? {} : { narration: { ...turn.narration, sentence } }),
