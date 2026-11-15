@@ -169,6 +169,28 @@ describe('downloading a Supporter-only world', () => {
     expect(result.current.coord.showOverwriteSelect).toBe(false);
   });
 
+  it('offers only the Supporter Copies, never a plain copy, when two Supporter Copies are held', async () => {
+    const plainCopy = { id: 'local-plain', name: 'Supporter World', sourceId: 'sw-1', sourceUpdatedAt: 'T1' } as WorldRecord;
+    const markedFor = (id: string, accountId: string) => ({
+      id, name: 'Supporter World', sourceId: 'sw-1', sourceUpdatedAt: 'T1',
+      supporterCopy: { listingId: 'sw-1', accountId, revision: 3 },
+    } as WorldRecord);
+    const { result } = renderHook(() => useHarness([plainCopy, markedFor('local-a', 'acct-1'), markedFor('local-b', 'acct-2')]));
+    await act(async () => { await result.current.coord.handleContextualDownload(listing, 'update'); });
+
+    expect(result.current.coord.showOverwriteSelect).toBe(true);
+    expect(result.current.coord.overwriteCopiesForWorld(listing).map((w) => w.id)).toEqual(['local-a', 'local-b']);
+    expect(result.current.coord.overwriteSelectedId).not.toBe('local-plain');
+    expect(storeWorld).not.toHaveBeenCalled();
+  });
+
+  it('still offers every copy of a listing that is not Supporter-only', () => {
+    const plain = { _id: 'pw-1', name: 'Plain', updated_at: 'T2', author: { id: 'u-bob', username: 'bob' } } as WorldRecord;
+    const copy = (id: string) => ({ id, name: 'Plain', sourceId: 'pw-1', sourceUpdatedAt: 'T1' } as WorldRecord);
+    const { result } = renderHook(() => useHarness([copy('p-1'), copy('p-2')]));
+    expect(result.current.coord.overwriteCopiesForWorld(plain).map((w) => w.id)).toEqual(['p-1', 'p-2']);
+  });
+
   it('still fetches a Supporter-only required source for a world that is not Supporter-only', async () => {
     fetchDependencies.mockResolvedValue([
       { id: 'd-locked', status: 'ok', listing: { _id: 'd-locked', name: 'Locked Cast', kind: 'entity', supporter_only: true } as WorldRecord },

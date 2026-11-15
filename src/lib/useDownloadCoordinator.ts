@@ -173,6 +173,12 @@ export function useDownloadCoordinator(
   const copiesForWorld = (world: WorldRecord): WorldRecord[] =>
     localCopiesBySource.get(listingId(world)) ?? [];
 
+  /** The copies a re-download may replace. A Supporter-only listing replaces only its Supporter Copies. */
+  const overwriteCopiesForWorld = (world: WorldRecord): WorldRecord[] => {
+    const copies = copiesForWorld(world);
+    return isSupporterOnly(world) ? copies.filter((copy) => copy.supporterCopy) : copies;
+  };
+
   const downloadStateForWorld = (world: WorldRecord): DownloadState =>
     getDownloadState(world.updated_at, copiesForWorld(world));
 
@@ -571,7 +577,7 @@ export function useDownloadCoordinator(
     if (state === 'none') { void handleDownloadWorld(world, plan); return; }
     if (isSupporterOnly(world)) {
       // Only a Supporter Copy is replaced in place; a plain copy stays plain and the download makes a new world.
-      const marked = copiesForWorld(world).filter((copy) => copy.supporterCopy);
+      const marked = overwriteCopiesForWorld(world);
       if (!marked.length) { void handleDownloadWorld(world, plan); return; }
       if (marked.length === 1) { void openWorldUpdateReview(world, marked[0].id); return; }
       chooseOverwrite(world);
@@ -582,7 +588,7 @@ export function useDownloadCoordinator(
 
   // "Overwrite an existing copy": review the one match, else pick which copy first.
   const chooseOverwrite = (world: WorldRecord) => {
-    const copies = copiesForWorld(world);
+    const copies = overwriteCopiesForWorld(world);
     if (copies.length <= 1) {
       if (copies[0]) void openWorldUpdateReview(world, copies[0].id);
       setContextualAction(null);
@@ -614,6 +620,7 @@ export function useDownloadCoordinator(
     showOverwriteSelect, setShowOverwriteSelect,
     localCopiesBySource,
     copiesForWorld,
+    overwriteCopiesForWorld,
     downloadStateForWorld,
     handleContextualDownload,
     handleChooseOverwrite,

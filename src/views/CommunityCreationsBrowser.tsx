@@ -304,7 +304,7 @@ const CommunityCreationsBrowser = ({
   const {
     downloadProgress, contextualAction, setContextualAction,
     overwriteSelectedId, setOverwriteSelectedId, showOverwriteSelect, setShowOverwriteSelect,
-    localCopiesBySource, copiesForWorld, downloadStateForWorld,
+    localCopiesBySource, overwriteCopiesForWorld, downloadStateForWorld,
     handleContextualDownload, handleChooseOverwrite, handleConfirmOverwrite, handleDownloadWorld,
     pendingDownload, retryDownload, dismissPendingDownload,
     worldUpdateReview, applyWorldUpdate, cancelWorldUpdate,
@@ -1717,7 +1717,7 @@ const CommunityCreationsBrowser = ({
           </DialogHeader>
           <div className="py-2">
             <RadioGroup value={overwriteSelectedId ?? undefined} onValueChange={setOverwriteSelectedId}>
-              {(shownAction ? copiesForWorld(shownAction.world) : []).map((copy) => {
+              {(shownAction ? overwriteCopiesForWorld(shownAction.world) : []).map((copy) => {
                 const radioId = `overwrite-${copy.id}`;
                 const edited = copy.lastAccessed ? new Date(copy.lastAccessed).toLocaleString() : 'Unknown';
                 // In the update flow only, flag copies that already hold the current source version
