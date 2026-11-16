@@ -4,6 +4,7 @@
 // overlay computed fresh from the current state.
 //
 // Precedence: Code Pin > descriptor > location > trait > World Option > value pin. An entity's traits and bands pin every text.
+// Per-owner values need a Blueprint: `ownerPinPlan` traces a pin on one to the owner's copy, so a plain placeholder's pin is world-wide.
 // Inside one kind: global, then the played persona, then the entity later in the list (`ownerPins`).
 // Within one source the later row wins.
 

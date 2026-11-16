@@ -192,6 +192,8 @@ A pin keeps a placeholder at one value while a condition is true. The playthroug
 
 An entity's pins work like the world's. Its stat bands and traits pin every text: world text, each entity's text and the player's, whoever the player plays. They hold while the entity is out of the scene.
 
+> 💡 **One trait, a different value on each character.** A pin on a regular placeholder changes it for everyone, so one character's trait would change every character's text. To give each character a value of its own, pin a [blueprint](#blueprints) or put its chip in the trait's text. Each character with the trait then reads its own [copy](#copies). A character with no copy reads the blueprint itself, and a pin from that character sets it for everyone, so give a copy to each character who can take the trait.
+
 When two sources pin the same placeholder, the higher row in this table wins. Within one kind, the order is:
 
 1. A world source: a world stat or a world trait.

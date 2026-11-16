@@ -222,7 +222,7 @@ export const pinBlueprintsOf = (world: StatLinkWorld & PlaceholderHomesWorld): P
 
 /** The pins in force per owner. */
 export interface PinSet {
-  /** The pins every text reads: global, persona and every entity's traits and bands. */
+  /** The pins every text reads: global, persona and every entity's traits and bands. Only a Blueprint pin lands per owner, on its copy. */
   world: Record<string, string>;
   /** One owner's own text. Every owner reads `world`; only its copies differ. */
   of: (ownerId: string | null | undefined) => Record<string, string>;
