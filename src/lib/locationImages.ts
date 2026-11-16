@@ -1,17 +1,17 @@
-import type { Base64Data, GalleryImage } from '@/types';
+import type { Base64Data, GalleryImage, GalleryLink, MediaList } from '@/types';
 import { entityImages, migrateEntityImages } from './entityImages';
 
 /** A location's picture list as the app stores it, or as a record written before the gallery holds it. */
 export type LocationImageBearing = {
-  images?: readonly (GalleryImage | Base64Data)[];
+  images?: readonly (GalleryLink | Base64Data)[];
   /** The pre-gallery single background, still present on files written before the gallery. */
   backgroundImage?: Base64Data | null;
 };
 
-/** One location's gallery, the pre-gallery background included, with blanks dropped. */
-export function locationImages(location?: LocationImageBearing | null): GalleryImage[] {
+/** One location's gallery, the pre-gallery background included, with blanks dropped and links resolved through `media`. */
+export function locationImages(location?: LocationImageBearing | null, media?: MediaList): GalleryImage[] {
   if (!location) return [];
-  return entityImages(Array.isArray(location.images) ? { images: location.images } : { image: location.backgroundImage ?? undefined });
+  return entityImages(Array.isArray(location.images) ? { images: location.images } : { image: location.backgroundImage ?? undefined }, media);
 }
 
 /**

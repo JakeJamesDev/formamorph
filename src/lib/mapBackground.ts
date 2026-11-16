@@ -2,6 +2,7 @@
 
 import type { GalleryImage, GameLocation, MapBackground, MapFrame, WorldOverview } from '@/types';
 import { canvasRects } from './locationCanvas';
+import { entityImages } from './entityImages';
 
 /** The width of a first frame with nothing to cover (Q78). */
 export const EMPTY_MAP_WIDTH = 1280;
@@ -9,9 +10,9 @@ export const EMPTY_MAP_WIDTH = 1280;
 /** The smallest edge a resize leaves, in canvas units. */
 export const MIN_MAP_EDGE = 40;
 
-/** The Map Background's images in author order, blanks dropped. */
-export const mapImages = (overview?: Pick<WorldOverview, 'mapBackground'> | null): GalleryImage[] =>
-  (overview?.mapBackground?.images ?? []).filter((img) => !!img?.data);
+/** The Map Background's images in author order, blanks dropped and links resolved through the world's Media List. */
+export const mapImages = (overview?: Pick<WorldOverview, 'mapBackground'> & Partial<Pick<WorldOverview, 'mediaList'>> | null): GalleryImage[] =>
+  entityImages({ images: overview?.mapBackground?.images }, overview?.mediaList);
 
 /**
  * The background with `images` in place of its own. The field goes with the last image (Q77), and a first

@@ -5,6 +5,7 @@ import { mediaFixtureWorld } from '@/test/mediaFixture';
 import { formatMediaBytes, mediaSections, sectionTitle, totalBytes, type MediaItem } from '@/lib/mediaIndex';
 import type { useGameData } from '@/contexts/GameDataContext';
 import { measureInWorker, encodeInWorker } from '@/lib/imageOptimWorkerClient';
+import { entityImages } from '@/lib/entityImages';
 
 /** The Media tab's item panel: Replace and Remove, each one History Step, and the reveal that returns to the tab. */
 
@@ -79,7 +80,7 @@ const SLOTS: Slot[] = [
     read: (c) => c.entities.find((e) => e.id === 'wick')!.model?.data,
     file: () => new File(['new-model'], 'new.glb', { type: 'model/gltf-binary' }), label: '3D Model: Odd Wick',
   },
-  { what: 'a location background', section: 'Locations', kind: 'image', id: 'location:marsh:image:0', read: (c) => c.locations.find((l) => l.id === 'marsh')!.images?.[0]?.data, file: webp, label: 'Image 1: Marsh' },
+  { what: 'a location background', section: 'Locations', kind: 'image', id: 'location:marsh:image:0', read: (c) => entityImages(c.locations.find((l) => l.id === 'marsh')!)[0]?.data, file: webp, label: 'Image 1: Marsh' },
   { what: 'a location ambient sound', section: 'Locations › Harbor Steps', kind: 'sound', id: 'location:lamp:ambientSound', read: (c) => c.locations.find((l) => l.id === 'lamp')!.ambientSound?.data, file: audio, label: 'Ambient Sound: Lamp Room' },
   { what: 'a dictionary cover', section: 'Dictionaries', kind: 'image', id: 'dictionary:lore:thumbnail', read: (c) => c.dictionaries.find((d) => d.id === 'lore')!.thumbnail, file: webp, label: 'Cover Image: Fen Lore' },
 ];
@@ -179,7 +180,7 @@ describe('Media tab Replace', () => {
 
     await pickFile(webp());
 
-    await waitFor(() => expect(bench.ctx().locations.find((l) => l.id === 'marsh')!.images?.[0]?.data).toMatch(/^data:image\/webp;base64,/));
+    await waitFor(() => expect(entityImages(bench.ctx().locations.find((l) => l.id === 'marsh')!)[0]?.data).toMatch(/^data:image\/webp;base64,/));
   });
 });
 

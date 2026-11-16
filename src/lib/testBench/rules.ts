@@ -72,7 +72,7 @@ import { isAlwaysOn } from '@/lib/traitEffects';
 import { blueprintItemIds, offeredWorldTraits, statRows, statRowSide, type StatRow } from '@/lib/traitTree';
 import { globalStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import type {
-  DictionaryEntry, Entity, GalleryImage, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Script, Stat, StatDescriptor,
+  DictionaryEntry, Entity, GalleryImage, GalleryLink, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Script, Stat, StatDescriptor,
   StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement, TraitRequirementRow, World,
 } from '@/types';
 
@@ -3827,7 +3827,7 @@ const imageMislabeled: Rule = {
     const nextThumb = thumb ? relabelDataUrl(thumb) : thumb;
     let out = nextThumb === thumb ? world
       : { ...world, worldOverview: { ...world.worldOverview, thumbnail: nextThumb } };
-    const relabelGalleries = <T extends { images?: GalleryImage[] }>(list: T[], imagesOf: (record: T) => GalleryImage[]): T[] =>
+    const relabelGalleries = <T extends { images?: GalleryLink[] }>(list: T[], imagesOf: (record: T) => GalleryImage[]): T[] =>
       mapChanged(list, (record) => {
         const images = imagesOf(record);
         const next = mapChanged(images, (img) => {

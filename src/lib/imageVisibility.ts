@@ -67,7 +67,7 @@ export function itemRuleStates(input: GateInput, instance: Pick<ItemInstance, 'w
 
 /** The item's first image visible for one Item Instance in play, or undefined when none shows. */
 export const visibleItemImage = (item: Pick<Item, 'images'>, instance: Pick<ItemInstance, 'where'>, input: GateInput): Base64Data | undefined =>
-  visibleBy(item.images ?? [], (rows) => itemRuleStates(input, instance, rows))[0]?.data;
+  visibleBy(entityImages(item), (rows) => itemRuleStates(input, instance, rows))[0]?.data;
 
 /** The location's images visible in play, in author order. An unresolved Condition never holds. */
 export const visibleLocationImages = (location: LocationImageBearing, input: GateInput): VisibleImage[] =>

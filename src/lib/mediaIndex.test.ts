@@ -21,16 +21,16 @@ function withoutMedia(world: World): World {
   w.worldOverview.bgm = '';
   for (const vrm of Object.values(w.worldOverview.vrmStore ?? {})) vrm.file.data = '';
   for (const e of w.entities) {
-    for (const img of e.images ?? []) img.data = '';
+    for (const img of e.images ?? []) if ('data' in img) img.data = '';
     if (e.sound) e.sound.data = '';
     if (e.model) e.model.data = '';
   }
   for (const l of w.locations) {
-    for (const img of l.images ?? []) img.data = '';
+    for (const img of l.images ?? []) if ('data' in img) img.data = '';
     if (l.ambientSound) l.ambientSound.data = '';
   }
   for (const d of w.dictionaries) if (d.thumbnail) d.thumbnail = '';
-  for (const img of w.worldOverview.mapBackground?.images ?? []) img.data = '';
+  for (const img of w.worldOverview.mapBackground?.images ?? []) if ('data' in img) img.data = '';
   return w;
 }
 

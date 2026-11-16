@@ -9,6 +9,7 @@ import EntityStorageService from '@/services/EntityStorageService';
 import { readWorldPersona } from '@/lib/personaPick';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import type { Entity, PersonaRef } from '@/types';
+import { entityImages } from '@/lib/entityImages';
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
@@ -81,7 +82,7 @@ describe('the persona row', () => {
     expect(h.gameplay().personaRef).toEqual(ref);
     expect(readWorldPersona('w1')).toEqual(ref);
     await waitFor(() => expect(within(row()).getByText('Wren')).toBeTruthy());
-    expect(row().querySelector('img')?.getAttribute('src')).toBe(wren.images?.[0].data);
+    expect(row().querySelector('img')?.getAttribute('src')).toBe(entityImages(wren)[0]?.data);
     // No re-attribution: the memory written before the change keeps its words.
     expect(h.gameplay().fullMessageHistory).toBe(history);
     expect(warn).not.toHaveBeenCalled();

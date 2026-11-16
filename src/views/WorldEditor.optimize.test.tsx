@@ -7,6 +7,7 @@ import { fakeDataUrl } from '@/test/mediaFixture';
 import { blankItem } from '@/lib/items';
 import { formatMediaBytes, storedBytes } from '@/lib/mediaIndex';
 import type { World } from '@/types';
+import { entityImages } from '@/lib/entityImages';
 
 /** Optimize Images runs from the Media tab header and is one history step. */
 
@@ -138,7 +139,7 @@ describe('Optimize Images', () => {
     await waitFor(() => expect(ctx().dictionaries[0].thumbnail).toBe(WEBP));
     expect(ctx().worldOverview.thumbnail).toBe(WEBP);
     expect(ctx().entities[0].images).toEqual([{ data: WEBP }]);
-    expect(ctx().locations[0].images?.[0]?.data).toBe(WEBP);
+    expect(entityImages(ctx().locations[0])[0]?.data).toBe(WEBP);
     expect(ctx().items[0].images).toEqual([{ data: WEBP }]);
     await waitFor(() => expect(screen.getByRole('region', { name: 'Dictionaries' })).toHaveTextContent(formatMediaBytes(storedBytes(WEBP))));
     expect(screen.getByRole('region', { name: 'Dictionaries' })).not.toHaveTextContent(formatMediaBytes(storedBytes(PNG)));
@@ -147,7 +148,7 @@ describe('Optimize Images', () => {
   it('undoes in one press', async () => {
     const { ctx } = await renderMedia('advanced');
     fireEvent.click(optimizeButton());
-    await waitFor(() => expect(ctx().locations[0].images?.[0]?.data).toBe(WEBP));
+    await waitFor(() => expect(entityImages(ctx().locations[0])[0]?.data).toBe(WEBP));
     expect(ctx().worldOverview.thumbnail).toBe(WEBP);
     expect(ctx().worldOverview.mapBackground?.images).toEqual([{ data: WEBP }]);
     expect(ctx().entities[0].images).toEqual([{ data: WEBP }]);
@@ -158,7 +159,7 @@ describe('Optimize Images', () => {
     expect(ctx().worldOverview.thumbnail).toBe(PNG);
     expect(ctx().worldOverview.mapBackground?.images).toEqual([{ data: PNG }]);
     expect(ctx().entities[0].images).toEqual([{ data: PNG }]);
-    expect(ctx().locations[0].images?.[0]?.data).toBe(PNG);
+    expect(entityImages(ctx().locations[0])[0]?.data).toBe(PNG);
     expect(ctx().dictionaries[0].thumbnail).toBe(PNG);
     expect(ctx().items[0].images).toEqual([{ data: PNG }]);
 
@@ -168,7 +169,7 @@ describe('Optimize Images', () => {
     await act(async () => { fireEvent.keyDown(document.body, { key: 'y', ctrlKey: true }); });
     expect(ctx().worldOverview.thumbnail).toBe(WEBP);
     expect(ctx().dictionaries[0].thumbnail).toBe(WEBP);
-    expect(ctx().locations[0].images?.[0]?.data).toBe(WEBP);
+    expect(entityImages(ctx().locations[0])[0]?.data).toBe(WEBP);
     expect(ctx().worldOverview.mapBackground?.images).toEqual([{ data: WEBP }]);
     expect(ctx().items[0].images).toEqual([{ data: WEBP }]);
   });
@@ -196,7 +197,7 @@ describe('Optimize Images', () => {
   it('reveals what it touched on undo, not the tab the author ran it from', async () => {
     const { ctx } = await renderMedia('advanced');
     fireEvent.click(optimizeButton());
-    await waitFor(() => expect(ctx().locations[0].images?.[0]?.data).toBe(WEBP));
+    await waitFor(() => expect(entityImages(ctx().locations[0])[0]?.data).toBe(WEBP));
     openEditorTab(/Entities/);
 
     await act(async () => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });

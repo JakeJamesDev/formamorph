@@ -1,0 +1,177 @@
+/**
+ * The world's Media List: named images and sounds that media fields link by id. Pure helpers for naming,
+ * resolving, placing and comparing; the one async step is `mediaHash`.
+ */
+import type { GalleryImage, GalleryLink, MediaAsset, MediaEntry, MediaList, MediaRef } from '@/types';
+import { randomUUID } from '@/lib/uuid';
+import { blobHash } from '@/lib/blobHash';
+import { dataUrlMime, dataUrlToBuffer, isRemoteImage } from '@/lib/imageBytes';
+
+export type MediaEntryKind = MediaEntry['kind'];
+
+/** Whether a stored value links a Media Entry. */
+export const isMediaRef = (value: unknown): value is MediaRef =>
+  !!value && typeof value === 'object' && typeof (value as Partial<MediaRef>).mediaId === 'string';
+
+// ── Names ────────────────────────────────────────────────────────────────────
+
+/** How names compare for uniqueness: trimmed, case-insensitive (Q5). */
+export const mediaNameKey = (name: string): string => name.trim().toLowerCase();
+
+const takenKeys = (list: MediaList | undefined, exceptId?: string): Set<string> =>
+  new Set(Object.values(list ?? {}).filter((entry) => entry.id !== exceptId).map((entry) => mediaNameKey(entry.name)));
+
+/** A file's name without its extension (Q9), or '' when it has none. */
+export const mediaNameFromFile = (fileName: string | undefined): string =>
+  (fileName ?? '').trim().replace(/\.[^./\\]+$/, '').trim();
+
+/** `name`, or `name (2)`, `name (3)`… when the list already holds it (Q5). */
+export function uniqueMediaName(name: string, list: MediaList | undefined, exceptId?: string): string {
+  const base = name.trim();
+  const taken = takenKeys(list, exceptId);
+  if (!taken.has(mediaNameKey(base))) return base;
+  let n = 2;
+  while (taken.has(mediaNameKey(`${base} (${n})`))) n++;
+  return `${base} (${n})`;
+}
+
+/** The subject's name plus the next free number, starting at 1 (Q10). A blank subject reads as the kind. */
+export function fallbackMediaName(subject: string | undefined, kind: MediaEntryKind, list: MediaList | undefined): string {
+  const base = subject?.trim() || (kind === 'image' ? 'Image' : 'Sound');
+  const taken = takenKeys(list);
+  let n = 1;
+  while (taken.has(mediaNameKey(`${base} ${n}`))) n++;
+  return `${base} ${n}`;
+}
+
+/** A new entry's name: the file's name, else the subject fallback, made unique in `list`. */
+export const newMediaName = (fileName: string | undefined, subject: string | undefined, kind: MediaEntryKind, list: MediaList | undefined): string =>
+  uniqueMediaName(mediaNameFromFile(fileName) || fallbackMediaName(subject, kind, list), list);
+
+// ── Hash ─────────────────────────────────────────────────────────────────────
+
+/** The content hash of embedded data, with the Avatar store's hasher. A linked (http) value has none. */
+export async function mediaHash(data: string): Promise<string | undefined> {
+  if (!data || isRemoteImage(data)) return undefined;
+  return blobHash(new Blob([await dataUrlToBuffer(data)]));
+}
+
+/** Data value → content hash, built ahead of the sync steps below. */
+export type MediaHashes = ReadonlyMap<string, string>;
+
+/** The hashes of every embedded value in `values`, for placement and comparison. */
+export async function mediaHashes(values: Iterable<string>): Promise<Map<string, string>> {
+  const unique = [...new Set(values)].filter((value) => value && !isRemoteImage(value));
+  const hashes = await Promise.all(unique.map(mediaHash));
+  return new Map(unique.flatMap((value, i) => (hashes[i] ? [[value, hashes[i]] as [string, string]] : [])));
+}
+
+// ── Resolver ─────────────────────────────────────────────────────────────────
+
+/** The entry `id` names, when it is of `kind` (any kind when unset). */
+export function mediaEntry(list: MediaList | undefined, id: string, kind?: MediaEntryKind): MediaEntry | undefined {
+  const entry = list?.[id];
+  return entry && entry.data && (!kind || entry.kind === kind) ? entry : undefined;
+}
+
+/** A single media field's value: a link, an embedded file, or embedded data. */
+export type MediaValue = MediaRef | MediaAsset | string | null | undefined;
+
+/**
+ * The one resolver: a link or an embedded value in, the displayable file out. An id with no entry, or an
+ * entry of another kind, resolves to nothing.
+ */
+export function resolveMedia(value: MediaValue, list: MediaList | undefined, kind?: MediaEntryKind): MediaAsset | undefined {
+  if (!value) return undefined;
+  if (typeof value === 'string') return { data: value, type: dataUrlMime(value) };
+  if (isMediaRef(value)) {
+    const entry = mediaEntry(list, value.mediaId, kind);
+    return entry ? { data: entry.data, type: entry.type ?? dataUrlMime(entry.data), name: entry.name } : undefined;
+  }
+  return value.data ? value : undefined;
+}
+
+/** A gallery link as an embedded picture, its rule kept; an entry's name rides along. Missing id = null. */
+export function resolveGalleryImage(link: GalleryLink, list: MediaList | undefined): GalleryImage | null {
+  const rules = link.requires?.length ? { requires: link.requires } : {};
+  if (!('mediaId' in link)) return link.data ? { data: link.data, ...(link.name ? { name: link.name } : {}), ...rules } : null;
+  const entry = mediaEntry(list, link.mediaId, 'image');
+  return entry ? { data: entry.data, name: entry.name, ...rules } : null;
+}
+
+/** A gallery link's displayable data, or undefined for a missing id. */
+export const galleryLinkData = (link: GalleryLink, list: MediaList | undefined): string | undefined =>
+  resolveGalleryImage(link, list)?.data;
+
+// ── Placement (into a world) ─────────────────────────────────────────────────
+
+/** A file entering a world: its data, MIME type and original name. */
+export type PlacedFile = Pick<MediaAsset, 'data'> & Partial<Pick<MediaAsset, 'type' | 'name'>>;
+
+export interface PlaceOptions {
+  kind: MediaEntryKind;
+  /** Whose media this is, for the Q10 name when the file has none. */
+  subject?: string;
+  /** Hashes of embedded data, from `mediaHashes`. */
+  hashes: MediaHashes;
+}
+
+/**
+ * The list with `file` in it, and the id that holds it (Q14, Q18). An entry of the same kind with the same
+ * content hash, or the same URL for a link, is reused; otherwise a new entry joins under a unique name.
+ * Embedded data missing from `hashes` throws, since it could not be matched.
+ */
+export function placeMedia(list: MediaList | undefined, file: PlacedFile, { kind, subject, hashes }: PlaceOptions): { list: MediaList; id: string } {
+  const linked = isRemoteImage(file.data);
+  const hash = linked ? undefined : hashes.get(file.data);
+  if (!linked && !hash) throw new Error('placeMedia: embedded data has no hash in `hashes`');
+  const held = Object.values(list ?? {}).find((entry) => entry.kind === kind
+    && (linked ? entry.data === file.data : !!hash && (entry.hash ?? hashes.get(entry.data)) === hash));
+  if (held) return { list: list ?? {}, id: held.id };
+  const id = randomUUID();
+  const entry: MediaEntry = {
+    id, name: newMediaName(file.name, subject, kind, list), kind, data: file.data,
+    ...(file.type ? { type: file.type } : {}),
+    ...(hash ? { hash } : {}),
+  };
+  return { list: { ...list, [id]: entry }, id };
+}
+
+// ── Resolution (out of a world) ──────────────────────────────────────────────
+
+/** A gallery with every link turned back into an embedded picture named as its entry (Q18). Missing ids drop. */
+export const embedGallery = (links: readonly GalleryLink[], list: MediaList | undefined): GalleryImage[] =>
+  links.flatMap((link) => resolveGalleryImage(link, list) ?? []);
+
+// ── Comparison ───────────────────────────────────────────────────────────────
+
+/**
+ * A media value as a comparable token, the way Avatar picks compare (`lib/vrmPickMatch`). Embedded data and
+ * an entry compare by content hash, so the same file reads equal in either form; a link compares by URL. A
+ * missing id is undefined. Data with no known hash matches only the same string.
+ */
+export function mediaToken(value: MediaValue | GalleryLink, list: MediaList | undefined, hashes: MediaHashes): string | undefined {
+  let data: string | undefined;
+  let hash: string | undefined;
+  if (typeof value === 'string') data = value;
+  else if (value && 'mediaId' in value) {
+    const entry = mediaEntry(list, value.mediaId);
+    data = entry?.data;
+    hash = entry?.hash;
+  } else data = value?.data;
+  if (!data) return undefined;
+  if (isRemoteImage(data)) return `url:${data}`;
+  hash ??= hashes.get(data);
+  return hash ? `media:${hash}` : `data:${data}`;
+}
+
+/** Every embedded value a token needs hashed: the given values and the list's entries without a hash. */
+export function unhashedData(values: Iterable<MediaValue | GalleryLink>, list: MediaList | undefined): string[] {
+  const out: string[] = [];
+  for (const value of values) {
+    if (typeof value === 'string') out.push(value);
+    else if (value && !('mediaId' in value) && value.data) out.push(value.data);
+  }
+  for (const entry of Object.values(list ?? {})) if (!entry.hash) out.push(entry.data);
+  return out;
+}

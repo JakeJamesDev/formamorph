@@ -8,6 +8,7 @@ import { NEW_LOCATION_NAME } from '@/lib/blankWorld';
 import { connectionLegs } from '@/lib/locationGraph';
 import WorldStorageService from '../services/WorldStorageService';
 import type { World } from '@/types';
+import { entityImages } from '@/lib/entityImages';
 
 /**
  * The Authoring Tour's Locations steps, driven through the real editor: the add steps and the tour items
@@ -341,7 +342,7 @@ describe('In Game — Locations', () => {
 
     fireEvent.click(noteButton('Use Example')!);
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
-    expect(ctx().locations.at(-1)?.images?.[0]?.data).toBe('data:image/webp;base64,tidewell');
+    expect(entityImages(ctx().locations.at(-1))[0]?.data).toBe('data:image/webp;base64,tidewell');
     expect(within(playerSees()).getByTestId('location-backdrop-image'))
       .toHaveStyle({ backgroundImage: 'url(data:image/webp;base64,tidewell)' });
     // The location block stays, with nothing of the picture in it.

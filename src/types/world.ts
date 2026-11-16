@@ -427,12 +427,44 @@ export interface TraitBodyRow {
 /** A trait's non-Optional mode. */
 export type TraitMode = 'alwaysOn' | 'hidden';
 
-/** One picture in an entity's gallery. */
+/** One embedded picture in a gallery. */
 export interface GalleryImage {
   data: Base64Data;
+  /** The Media Entry name it carries outside a world. */
+  name?: string;
   /** The Visibility rule: in play any one row that holds shows the image. Absent or empty = always shown. */
   requires?: TraitRequirementRow[];
 }
+
+/** One gallery picture that links a Media Entry. */
+export interface LinkedGalleryImage extends MediaRef {
+  /** The Visibility rule, as on an embedded picture. */
+  requires?: TraitRequirementRow[];
+}
+
+/** One stored gallery picture: embedded, or a link to a Media Entry. Read it through `lib/entityImages`. */
+export type GalleryLink = GalleryImage | LinkedGalleryImage;
+
+/** A single media field's link to a Media Entry. */
+export interface MediaRef {
+  mediaId: string;
+}
+
+/** One named image or sound in a world's Media List. */
+export interface MediaEntry {
+  id: string;
+  name: string;
+  kind: 'image' | 'sound';
+  /** A data URL, or an http(s) URL for a linked entry. */
+  data: string;
+  /** The MIME type of the placed file. */
+  type?: string;
+  /** The embedded bytes' content hash (`lib/mediaList`). Absent on a linked entry. */
+  hash?: string;
+}
+
+/** A world's Media List, keyed by entry id. */
+export type MediaList = Record<string, MediaEntry>;
 
 /** Generic: every Start runs at once, one Generic Entity Instance each. Unique: one body, from one Start rolled per playthrough. */
 export type EntityKind = 'generic' | 'unique';
@@ -546,7 +578,7 @@ export interface Entity {
   /** The entity's gallery, in author order. Slot 0 is the primary — the one picture shown wherever only one
    *  fits (library grid, listing art, character-card pixels) — and in game the player pages through the rest.
    *  Read it through `lib/entityImages`, which also covers records written before the gallery. */
-  images?: GalleryImage[];
+  images?: GalleryLink[];
   /**
    * Listing tags, the same kind a world carries — how somebody browsing Community Creations finds this.
    *
@@ -720,7 +752,7 @@ export interface Item {
   /** The description an unidentified Item Instance shows. Blank shows `playerDescription`. */
   unidentifiedDescription?: string;
   /** The item's gallery, in author order. A rule's owner-less Condition reads the Item Instance's owner. */
-  images?: GalleryImage[];
+  images?: GalleryLink[];
   /** Booru tags used for AI image generation; editor-only, not sent to the narrative AI. */
   imageTags?: string;
   /** What it shows on the doll and in rows: an icon id, or `'none'` for its image. Absent = Auto. */
@@ -773,7 +805,7 @@ export interface SlotBox {
 }
 
 /** What a Body's Slot Boxes are laid out on. */
-export type Backdrop = { kind: 'humanoid' | 'quadruped' | 'plain' } | { kind: 'image'; image: GalleryImage; /** 0 to 1. Absent = 1. */ opacity?: number };
+export type Backdrop = { kind: 'humanoid' | 'quadruped' | 'plain' } | { kind: 'image'; image: GalleryLink; /** 0 to 1. Absent = 1. */ opacity?: number };
 
 /** One slot a Body holds. */
 export interface BodyEntry {
@@ -834,7 +866,7 @@ export interface GameLocation {
   /** The location's gallery, in author order. In play the backdrop shows the first visible image. A rule's
    *  owner-less Condition reads the played persona. Read it through `lib/locationImages`, which also covers
    *  records written before the gallery. */
-  images?: GalleryImage[];
+  images?: GalleryLink[];
   /** Booru tags used for AI image generation; editor-only, not sent to the narrative AI. */
   imageTags?: string;
   ambientSound?: MediaAsset;
@@ -1031,6 +1063,8 @@ export interface WorldOverview {
   tags: string[];
   /** The world's Avatars, keyed by id. Entities refer to one through `Entity.vrmPick`. */
   vrmStore?: WorldVrmStore;
+  /** The world's named images and sounds, which media fields link by id. Absent = empty. */
+  mediaList?: MediaList;
   /** The played side's last resort, set only by the migration of a world whose old 3D Player Avatar flag
    *  was on (see lib/legacyVrm). Never shown in the editor. */
   legacyVrmFallback?: VrmPick;
@@ -1068,7 +1102,7 @@ export interface MapFrame {
  */
 export interface MapBackground {
   /** At least one image; the field goes with the last one. */
-  images: GalleryImage[];
+  images: GalleryLink[];
   frame: MapFrame;
   /** 0 to 1. */
   opacity: number;

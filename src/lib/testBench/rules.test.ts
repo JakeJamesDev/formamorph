@@ -21,6 +21,7 @@ import { scriptEntryKey } from '@/lib/worldScripts';
 import { routinePlaces, startsOf, applyingRoutine } from '@/lib/entityKind';
 import { PLAYER_START, type EntityStart, type ScheduleRow } from '@/types';
 import { oneRoutine } from '@/test/routines';
+import { entityImages } from '@/lib/entityImages';
 
 /** A described entity at the starting location — what keeps the completeness rules quiet about a fixture
  *  that is about something else entirely. */
@@ -5026,7 +5027,7 @@ describe('the mislabeled-image rule', () => {
     expect(only(flagged, 'image-mislabeled')[0].items[0]).toMatchObject({ id: 'lantern', section: 'items' });
 
     const fixed = applyRuleFix(flagged, 'image-mislabeled');
-    expect(fixed.items?.[0].images?.[0].data.startsWith('data:image/jpeg;')).toBe(true);
+    expect(entityImages(fixed.items?.[0])[0]?.data.startsWith('data:image/jpeg;')).toBe(true);
     expect(fixed.items?.[0].images?.[0].requires).toEqual(MAREN_RULE);
     expect(only(fixed, 'image-mislabeled')).toEqual([]);
   });
@@ -5034,9 +5035,9 @@ describe('the mislabeled-image rule', () => {
   it('Fix relabels the thumbnail, a gallery image and a background in one pass', () => {
     const fixed = applyRuleFix(lying(), 'image-mislabeled');
     expect(fixed.worldOverview?.thumbnail?.startsWith('data:image/jpeg;')).toBe(true);
-    expect(fixed.entities?.[0].images?.[0].data.startsWith('data:image/png;')).toBe(true);
+    expect(entityImages(fixed.entities?.[0])[0]?.data.startsWith('data:image/png;')).toBe(true);
     expect(fixed.entities?.[0].images?.[0].requires).toEqual(MAREN_RULE);
-    expect(fixed.locations?.[0].images?.[0].data.startsWith('data:image/jpeg;')).toBe(true);
+    expect(entityImages(fixed.locations?.[0])[0]?.data.startsWith('data:image/jpeg;')).toBe(true);
     expect(only(fixed, 'image-mislabeled')).toEqual([]);
   });
 

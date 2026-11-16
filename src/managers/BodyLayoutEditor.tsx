@@ -16,6 +16,7 @@ import { useMountedRef } from '@/lib/useMountedRef';
 import { ImageUpload } from '@/lib/UtilityComponents';
 import { cn } from '@/lib/utils';
 import type { Body, SlotBox } from '@/types';
+import { galleryLinkData } from '@/lib/mediaList';
 
 const OUTLINES: { kind: OutlineKind; label: string }[] = [
   { kind: 'humanoid', label: 'Humanoid' },
@@ -287,7 +288,7 @@ export function BodyLayoutEditor({ body, onChange, labelOf, selected, onSelect, 
         <div className="grid max-w-[260px] gap-1">
           <ImageUpload
             id={`body-backdrop-${body.id}`}
-            value={body.backdrop.kind === 'image' ? body.backdrop.image.data : ''}
+            value={body.backdrop.kind === 'image' ? galleryLinkData(body.backdrop.image, undefined) ?? '' : ''}
             cap={IMAGE_CAPS.entity}
             onChange={(data) => void setImage(data)}
           />

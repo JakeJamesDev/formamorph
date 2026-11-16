@@ -6,6 +6,7 @@
  * the point of linking them.
  */
 import type { Body, GalleryImage, World } from '@/types';
+import { galleryLinkData } from './mediaList';
 import { IMAGE_CAPS, type ImageCap } from './imageOptim';
 import { entityImageData, entityImages } from './entityImages';
 import { locationImages } from './locationImages';
@@ -27,7 +28,10 @@ export function remoteWorldImages(world: World): string[] {
   for (const e of world.entities ?? []) urls.push(...entityImageData(e).filter(isRemoteImage));
   for (const l of world.locations ?? []) urls.push(...locationImages(l).map((img) => img.data).filter(isRemoteImage));
   urls.push(...mapImages(world.worldOverview).map((img) => img.data).filter(isRemoteImage));
-  for (const b of world.bodies ?? []) if (b.backdrop.kind === 'image' && isRemoteImage(b.backdrop.image.data)) urls.push(b.backdrop.image.data);
+  for (const b of world.bodies ?? []) {
+    const data = b.backdrop.kind === 'image' ? galleryLinkData(b.backdrop.image, world.worldOverview?.mediaList) : undefined;
+    if (data && isRemoteImage(data)) urls.push(data);
+  }
   return urls;
 }
 
@@ -94,7 +98,7 @@ export async function embedWorldRemoteImages(
 
   const bodies: Body[] = [];
   for (const b of world.bodies ?? []) {
-    if (b.backdrop.kind !== 'image') { bodies.push(b); continue; }
+    if (b.backdrop.kind !== 'image' || 'mediaId' in b.backdrop.image) { bodies.push(b); continue; }
     const { image } = b.backdrop;
     bodies.push({ ...b, backdrop: { ...b.backdrop, image: { ...image, data: (await embed(image.data, IMAGE_CAPS.entity)) ?? image.data } } });
   }

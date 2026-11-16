@@ -1,6 +1,6 @@
 # 01: Media List Core
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -20,13 +20,25 @@ The expand step. The World type gains the Media List, and media fields learn to 
 
 ## Acceptance criteria
 
-- [ ] A world with no Media List and only embedded media reads the same through every helper as it did before.
-- [ ] The resolver returns the entry's data for an id, the data itself for an embedded value, and nothing for a missing id.
-- [ ] Placing the same file twice returns one id and adds one entry.
-- [ ] Placing a file whose name is taken adds `name (2)`.
-- [ ] Names drop the extension; a missing file name gives the subject plus the next free number.
-- [ ] Resolution gives back the embedded file with its entry's name.
-- [ ] The compare reads an embedded file and an id holding the same bytes as equal, and different bytes as different. The test fails if the compare uses raw strings.
-- [ ] The usage index lists every field that links an entry.
+- [x] A world with no Media List and only embedded media reads the same through every helper as it did before. Existing `entityImages`, `locationImages`, `mapBackground`, `mediaIndex` suites and the affected-tests gate pass unchanged.
+- [x] The resolver returns the entry's data for an id, the data itself for an embedded value, and nothing for a missing id. `mediaList.test.ts` › resolveMedia.
+- [x] Placing the same file twice returns one id and adds one entry. `placeMedia` › "reuses the entry holding the same bytes".
+- [x] Placing a file whose name is taken adds `name (2)`. `placeMedia` › "adds `name (2)`".
+- [x] Names drop the extension; a missing file name gives the subject plus the next free number. `names` suite (Q9, Q10).
+- [x] Resolution gives back the embedded file with its entry's name. `embedGallery` test; `resolveMedia` names sounds.
+- [x] The compare reads an embedded file and an id holding the same bytes as equal, and different bytes as different. The test fails if the compare uses raw strings. `mediaToken` test; mutation to a raw-string compare goes red.
+- [x] The usage index lists every field that links an entry. `mediaUsage.test.ts`.
 
 > ⚠️ Export shape: World JSON gains an optional Media List and optional id-form links. Remind the user.
+
+## Landed
+
+**Not verified:** nothing; every criterion has a test, and each guard was mutation-tested.
+
+**For you:**
+- Nothing to judge in play: ticket 01 writes no ids, so no world looks or behaves differently.
+
+**For later tickets:**
+- `placeMedia` takes the list and precomputed `mediaHashes`, and throws on embedded data it has no hash for. Callers write the returned list back to `worldOverview.mediaList`.
+- Readers with no list in scope pass none, so a link reads as empty there: the body backdrop readers, `mediaIndex` entity and location galleries, and gallery write-backs such as `embedRemoteImages` and the image fixes, which rebuild `images` from resolved pictures. Tickets 03 and 05 thread the list and keep links on write-back.
+- `mediaToken` ignores entry kind; compares are field-scoped today.

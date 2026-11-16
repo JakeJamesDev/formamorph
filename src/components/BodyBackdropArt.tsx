@@ -1,5 +1,6 @@
 import { RemoteImg } from '@/lib/useRemoteImage';
 import type { Backdrop } from '@/types';
+import { galleryLinkData } from '@/lib/mediaList';
 
 const OUTLINE_PROPS = {
   'aria-hidden': true,
@@ -38,7 +39,7 @@ export function BodyBackdropArt({ backdrop }: { backdrop: Backdrop }) {
     // Fit inside the stage: an image past the aspect clamp gets bars, never a stretch (Q71).
     return (
       <RemoteImg
-        src={backdrop.image.data}
+        src={galleryLinkData(backdrop.image, undefined) ?? ''}
         alt=""
         draggable={false}
         style={{ opacity: backdrop.opacity ?? 1 }}

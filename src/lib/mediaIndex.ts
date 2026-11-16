@@ -13,6 +13,7 @@ import type { ImageCap } from './imageSlots';
 import type { ThumbAspect } from './thumbAspect';
 import { mediaParentSpec } from './mediaParents';
 import { dataUrlBytes, isRemoteImage } from './imageBytes';
+import { galleryLinkData } from './mediaList';
 
 export type MediaKind = 'image' | 'sound' | 'model' | 'avatar';
 export type MediaParentKind = 'world' | 'map' | 'entity' | 'location' | 'dictionary' | 'body' | 'item';
@@ -178,9 +179,10 @@ function dictionaryMedia(w: MediaWorld): MediaItem[] {
 function bodyMedia(w: MediaWorld): MediaItem[] {
   return (w.bodies ?? []).flatMap((b: Body) => {
     const backdrop = b.backdrop;
-    if (backdrop.kind !== 'image' || !backdrop.image.data) return [];
+    const data = backdrop.kind === 'image' ? galleryLinkData(backdrop.image, w.worldOverview.mediaList) : undefined;
+    if (!data) return [];
     const parent: MediaParent = { kind: 'body', id: b.id, name: bodyLabel(b) };
-    return [image(parent, 'backdrop', 'Backdrop', backdrop.image.data, capOf(parent))];
+    return [image(parent, 'backdrop', 'Backdrop', data, capOf(parent))];
   });
 }
 

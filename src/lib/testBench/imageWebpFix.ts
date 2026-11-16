@@ -8,7 +8,7 @@
  */
 import { entityImages } from '@/lib/entityImages';
 import { locationImages } from '@/lib/locationImages';
-import type { GalleryImage } from '@/types';
+import type { GalleryImage, GalleryLink } from '@/types';
 import { dataUrlMime, isConvertibleImage, reencodeKeepsAnimation, relabelDataUrl } from '@/lib/imageBytes';
 import { describeKeptImages, reencodeImageDataUrl } from '@/lib/imageOptim';
 import type { RuleWorld } from './rules';
@@ -65,7 +65,7 @@ export async function convertWorldImagesToWebp(world: RuleWorld): Promise<WebpFi
   // Each slice keeps its identity unless this run actually rebuilt it, so the write-back touches only what
   // changed — and an entity whose pictures were all left alone never has its legacy `image` field normalized
   // into `images` as a side effect of fixing a different one.
-  const convertGalleries = async <T extends { images?: GalleryImage[] }>(list: T[], imagesOf: (record: T) => GalleryImage[]) => {
+  const convertGalleries = async <T extends { images?: GalleryLink[] }>(list: T[], imagesOf: (record: T) => GalleryImage[]) => {
     let changed = false;
     const records: T[] = [];
     for (const record of list) {

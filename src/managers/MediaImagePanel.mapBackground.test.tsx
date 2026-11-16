@@ -5,6 +5,7 @@ import { fakeDataUrl, mediaFixtureWorld } from '@/test/mediaFixture';
 import { measureInWorker, encodeInWorker } from '@/lib/imageOptimWorkerClient';
 import { firstMapFrame } from '@/lib/mapBackground';
 import type { MapBackground, Stat, World } from '@/types';
+import { entityImages } from '@/lib/entityImages';
 
 /** The Media tab's World › Map Background cards: the stack, its image panel, its actions, and its blank card. */
 
@@ -107,8 +108,8 @@ describe('Media tab Map Background', () => {
     await act(async () => { fireEvent.change(input, { target: { files: [webp()] } }); });
 
     // The old image is WebP data too, so wait for the change itself.
-    await waitFor(() => expect(map(bench)!.images[1].data).not.toBe(RUINED));
-    expect(map(bench)!.images[1].data).toMatch(/^data:image\/webp;base64,/);
+    await waitFor(() => expect(entityImages(map(bench)!)[1]?.data).not.toBe(RUINED));
+    expect(entityImages(map(bench)!)[1]?.data).toMatch(/^data:image\/webp;base64,/);
     expect(map(bench)!.images[1].requires).toEqual([ruled]);
     expect(map(bench)).toMatchObject({ frame: FRAME, opacity: 0.6 });
     expect(lastLabel(bench)).toBe('Replace Image 2: Map Background');

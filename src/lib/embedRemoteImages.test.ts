@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { TraitRequirementRow, World } from '@/types';
+import { entityImages } from '@/lib/entityImages';
 
 const KNIGHT: TraitRequirementRow[] = [{ all: [{ kind: 'trait', id: 'knight' }] }];
 
@@ -131,7 +132,7 @@ describe('embedWorldRemoteImages', () => {
     const original = world();
     await embedWorldRemoteImages(original);
     expect(original.worldOverview.thumbnail).toBe('https://host/thumb.png');
-    expect(original.entities[0].images?.[0].data).toBe('https://host/a1.png');
+    expect(entityImages(original.entities[0])[0]?.data).toBe('https://host/a1.png');
   });
 
   it('reports progress once per linked image', async () => {

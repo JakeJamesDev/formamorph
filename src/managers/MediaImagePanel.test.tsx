@@ -6,6 +6,7 @@ import { fakeDataUrl, mediaFixtureWorld } from '@/test/mediaFixture';
 import { measureInWorker, encodeInWorker } from '@/lib/imageOptimWorkerClient';
 import ModelStorageService from '@/services/ModelStorageService';
 import type { Entity, Stat, World } from '@/types';
+import { entityImages } from '@/lib/entityImages';
 
 /** The Media tab's image panel: one entity's or location's gallery, framed on one image, with its details below. */
 
@@ -117,8 +118,8 @@ describe('Media tab image panel actions', () => {
 
     await replaceWith(webp());
 
-    await waitFor(() => expect(wick(bench).images![1].data).toMatch(/^data:image\/webp;base64,/));
-    expect(wick(bench).images![1].data).not.toBe(was);
+    await waitFor(() => expect(entityImages(wick(bench))[1]?.data).toMatch(/^data:image\/webp;base64,/));
+    expect(entityImages(wick(bench))[1]?.data).not.toBe(was);
     expect(wick(bench).images![1].requires).toEqual(was.requires);
     expect(wick(bench).images).toHaveLength(4);
     expect(lastLabel(bench)).toBe('Replace Image 2: Odd Wick');
@@ -130,14 +131,14 @@ describe('Media tab image panel actions', () => {
 
   it('removes the framed image with its rule, keeps the frame on its position, and undoes in one step', async () => {
     const bench = open();
-    const before = wick(bench).images!;
+    const before = entityImages(wick(bench));
     fireEvent.click(card('Entities', 'stack'));
     fireEvent.click(tile(/^Image 2/));
     const steps = bench.historyState().cursor;
 
     await step(() => fireEvent.click(within(framed()!).getByRole('button', { name: 'Remove' })));
 
-    expect(wick(bench).images!.map((i) => i.data)).toEqual([before[0], before[2], before[3]].map((i) => i.data));
+    expect(entityImages(wick(bench)).map((i) => i.data)).toEqual([before[0], before[2], before[3]].map((i) => i.data));
     expect(wick(bench).images!.some((i) => i.requires)).toBe(false);
     expect(lastLabel(bench)).toBe('Remove Image 2: Odd Wick');
     expect(panel()).toHaveAttribute('data-media-panel', 'entity:wick:image:1');
@@ -167,7 +168,7 @@ describe('Media tab image panel actions', () => {
     }));
     const user = userEvent.setup();
     const bench = open();
-    const before = wick(bench).images!;
+    const before = entityImages(wick(bench));
     fireEvent.click(card('Entities', 'stack'));
     fireEvent.click(tile('Image 3'));
     const steps = bench.historyState().cursor;

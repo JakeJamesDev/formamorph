@@ -40,6 +40,7 @@ vi.mock('@/lib/imageOptimWorkerClient', () => ({
 
 import { toast } from 'react-toastify';
 import { encodeInWorker } from '@/lib/imageOptimWorkerClient';
+import { entityImages } from '@/lib/entityImages';
 
 const image = (mime: string, seed = 'A') => `data:${mime};base64,${seed.repeat(64)}`;
 const PNG = image('image/png');
@@ -77,7 +78,7 @@ type WorldPayload = Omit<World, 'id' | 'version'>;
 
 const imagesOf = (ctx: () => { getWorldData: () => WorldPayload }) => {
   const world = ctx().getWorldData();
-  return { portrait: world.entities[0].images?.[0].data, background: world.locations[0].images?.[0]?.data };
+  return { portrait: entityImages(world.entities[0])[0]?.data, background: entityImages(world.locations[0])[0]?.data };
 };
 
 beforeEach(() => {
@@ -203,7 +204,7 @@ describe('WorldEditor — a world whose pictures live in more than one place', (
     const world = ctx().getWorldData();
     expect(world.worldOverview.thumbnail).toBe(WEBP);
     expect(world.entities[0].images).toEqual([{ data: WEBP }, { data: WEBP }]);
-    expect(world.locations[0].images?.[0]?.data).toBe(WEBP);
+    expect(entityImages(world.locations[0])[0]?.data).toBe(WEBP);
   });
 
   it('writes a converted item image back and clears its row', async () => {
@@ -251,7 +252,7 @@ describe('WorldEditor — converting a GIF the browser can’t re-encode as anim
 
     await act(async () => { fireEvent.click(button); });
 
-    expect(ctx().getWorldData().locations[0].images?.[0]?.data).toBe(GIF);
+    expect(entityImages(ctx().getWorldData().locations[0])[0]?.data).toBe(GIF);
     expect(encodeInWorker).not.toHaveBeenCalled();
     // Said as the reason it actually is: this GIF isn't one WebP couldn't shrink, it is one this browser
     // can't convert without costing the author the animation.
@@ -267,6 +268,6 @@ describe('WorldEditor — converting a GIF the browser can’t re-encode as anim
 
     await act(async () => { fireEvent.click(button); });
 
-    expect(ctx().getWorldData().locations[0].images?.[0]?.data).toBe(WEBP);
+    expect(entityImages(ctx().getWorldData().locations[0])[0]?.data).toBe(WEBP);
   });
 });
