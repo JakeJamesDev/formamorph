@@ -9,6 +9,8 @@ import { buildBandedHistory, buildVerbatimHistory, parseTurns } from '@/lib/turn
 import { parseIncrementalMilestoneReply } from '@/lib/milestoneMemory';
 import { parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
 import { withItemDescription } from '@/lib/inventory/describe';
+import { collectCandidateEvidence, extractCharacterCandidates } from '@/lib/characterCandidates';
+import { stripQuotedSpeech } from '@/lib/entityMatch';
 import {
   createBackgroundPassQueue, dueDiaries, dueDiscoveries, type QueueEnv, type QueueSnapshot, type StoredMilestoneSelection,
 } from './backgroundPassQueue';
@@ -484,6 +486,101 @@ describe('the due selectors', () => {
     ];
     expect(dueDiscoveries(history, [])).toEqual([]);
     expect(dueDiaries(history)).toEqual([]);
+  });
+
+  it('discovers a character on the first turn its clusters qualify (Q73)', () => {
+    // Written passages: a species label used as a name, two spellings, only "paused" and "listened" for verbs.
+    const first = 'An Anthro Zorvak waited beside the well. You watched as the Zorvak paused, and she listened to the wind. '
+      + 'Rain dripped while the Zorvac kept her eyes on the road. "Rain soon," she says.';
+    const second = 'Later the Zorvak nodded to you, and you thanked the Zorvak.';
+    const stored = (narration: string, prior: string) =>
+      extractCharacterCandidates(stripQuotedSpeech(narration), {}, collectCandidateEvidence(prior));
+    const history = [
+      rawTurn({ turnId: 't1', narration: first, entities: stored(first, '') }),
+      rawTurn({ turnId: 't2', narration: second, entities: stored(second, first) }),
+    ];
+    let from = 0;
+    const spans = ['An Anthro Zorvak', 'the Zorvak', 'she', 'the Zorvac', 'her', 'she'].map((mention): [number, number] => {
+      const start = first.indexOf(mention, from);
+      from = start + mention.length;
+      return [start, from];
+    });
+    const read = (clusters?: [number, number][][]): MentionReadingMap => ({
+      t1: { model: 'small', version: 1, textHash: narrationHash(first), reading: { mentions: [], quotes: [] }, ...(clusters ? { clusters, clusterEntities: [null] } : {}) },
+    });
+    const firstDue = (readings: MentionReadingMap) =>
+      dueDiscoveries(history, [], readingNamesFor(true, readings, [], {}))[0];
+    expect(firstDue(read([spans]))).toMatchObject({ turnId: 't1', name: 'Anthro Zorvak' });
+    expect(firstDue(read())).toMatchObject({ turnId: 't2', name: 'Zorvak' });
+    expect(firstDue({})).toMatchObject({ turnId: 't2', name: 'Zorvak' });
+  });
+
+  it('judges a turn\'s clusters against the turns before it', () => {
+    const before = 'You first saw the Zorvak at the market.';
+    const now = 'Rain fell while the Zorvak paused. She listened. "Rain soon," she says.';
+    const spans = ['the Zorvak', 'She', 'she'].map((mention): [number, number] => [now.indexOf(mention), now.indexOf(mention) + mention.length]);
+    const readings: MentionReadingMap = {
+      t2: { model: 'small', version: 1, textHash: narrationHash(now), reading: { mentions: [], quotes: [] }, clusters: [spans], clusterEntities: [null] },
+    };
+    const names = readingNamesFor(true, readings, [], {});
+    const turns = (prior: string) => [rawTurn({ turnId: 't1', narration: prior, entities: [] }), rawTurn({ turnId: 't2', narration: now, entities: [] })];
+    expect(dueDiscoveries(turns(before), [], names).map((due) => due.name)).toEqual(['Zorvak']);
+    expect(dueDiscoveries(turns('The market was quiet.'), [], names)).toEqual([]);
+    expect(dueDiscoveries(turns(before), ['Zorvak'], names)).toEqual([]);
+  });
+
+  it('names a misspelling an earlier turn pooled as that turn\'s character', () => {
+    const first = 'You met the Zorvak at noon, and later the Zorvak again. You saw the Zorvac paused. She listened. '
+      + '"Rain soon," she says.';
+    // The name rule finds the misspelling on this turn, from "nodded".
+    const second = 'Rain fell while the Zorvac nodded. You watched the Zorvac. She listened. "Rain soon," she says.';
+    const spansOf = (text: string, mentions: string[]) => {
+      let from = 0;
+      return mentions.map((mention): [number, number] => {
+        const start = text.indexOf(mention, from);
+        from = start + mention.length;
+        return [start, from];
+      });
+    };
+    const entry = (text: string, mentions: string[]) => ({
+      model: 'small' as const, version: 1, textHash: narrationHash(text), reading: { mentions: [], quotes: [] },
+      clusters: [spansOf(text, mentions)], clusterEntities: [null],
+    });
+    const readings: MentionReadingMap = {
+      t1: entry(first, ['the Zorvak', 'the Zorvak', 'the Zorvac', 'She', 'she']),
+      t2: entry(second, ['the Zorvac', 'the Zorvac', 'She', 'she']),
+    };
+    const storedNames = extractCharacterCandidates(stripQuotedSpeech(second), {}, collectCandidateEvidence(first));
+    expect(storedNames).toEqual(['Zorvac']);
+    const history = [
+      rawTurn({ turnId: 't1', narration: first, entities: [] }),
+      rawTurn({ turnId: 't2', narration: second, entities: storedNames }),
+    ];
+    expect(dueDiscoveries(history, [], readingNamesFor(true, readings, [], {})).map((due) => [due.turnId, due.name]))
+      .toEqual([['t1', 'Zorvak'], ['t2', 'Zorvak']]);
+    expect(dueDiscoveries(history, [], readingNamesFor(true, {}, [], {})).map((due) => [due.turnId, due.name]))
+      .toEqual([['t2', 'Zorvac']]);
+    // Once discovered or deleted, the pooled name blocks the misspelling the name rule stored.
+    expect(dueDiscoveries(history, ['Zorvak'], readingNamesFor(true, readings, [], {}))).toEqual([]);
+  });
+
+  it('adds nobody for a pool that holds a discovered character', () => {
+    // "Zorvak" was discovered earlier; this turn uses a misspelling more often than the name.
+    const text = 'You met the Zorvak at dawn. You met the Zorvac at noon, and you met the Zorvac at dusk. '
+      + '"Rain soon," she says.';
+    let from = 0;
+    const spans = ['the Zorvak', 'the Zorvac', 'the Zorvac', 'she'].map((mention): [number, number] => {
+      const start = text.indexOf(mention, from);
+      from = start + mention.length;
+      return [start, from];
+    });
+    const readings: MentionReadingMap = {
+      t1: { model: 'small', version: 1, textHash: narrationHash(text), reading: { mentions: [], quotes: [] }, clusters: [spans], clusterEntities: [null] },
+    };
+    const history = [rawTurn({ turnId: 't1', narration: text, entities: [] })];
+    const names = readingNamesFor(true, readings, [], {});
+    expect(dueDiscoveries(history, [], names).map((due) => due.name)).toEqual(['Zorvac']);
+    expect(dueDiscoveries(history, ['Zorvak'], names)).toEqual([]);
   });
 
   it('lists a diary for every participant missing an entry, oldest turn first', () => {

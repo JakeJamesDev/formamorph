@@ -236,9 +236,11 @@ export function quoteSpans(text: string): { start: number; end: number; paragrap
 
 /**
  * The speaker of each quote: the mention at a speech verb attached to the quote, else the nearest preceding
- * subject mention in the paragraph, else none.
+ * subject mention in the paragraph (unless `verbOnly`), else none.
  */
-function quoteSpeakers(text: string, mentions: MentionLink[], player: Set<string>, playerId: string | null): QuoteSpeaker[] {
+function quoteSpeakers(
+  text: string, mentions: MentionLink[], player: Set<string>, playerId: string | null, verbOnly = false,
+): QuoteSpeaker[] {
   const isPlayer = (m: MentionLink) => {
     const t = playerForm(text.slice(m.start, m.end));
     return SECOND_PERSON.test(t) || FIRST_PERSON.test(t) || player.has(t);
@@ -297,7 +299,7 @@ function quoteSpeakers(text: string, mentions: MentionLink[], player: Set<string
           if (speaker === undefined) speaker = speakerOf(candidates.sort((a, b) => b.end - a.end)[0]);
         }
       }
-      if (speaker === undefined) speaker = nearestSubject(para, run.start, runs);
+      if (speaker === undefined && !verbOnly) speaker = nearestSubject(para, run.start, runs);
       quotes.push({ start: run.start, end: run.end, speaker: speaker ?? null });
     });
   }
@@ -311,6 +313,19 @@ function quoteSpeakers(text: string, mentions: MentionLink[], player: Set<string
     const last = subjects.sort((a, b) => b.start - a.start || (b.entityId ? 1 : 0) - (a.entityId ? 1 : 0))[0];
     return speakerOf(last);
   }
+}
+
+/** The clusters a speech verb ties to a quote in `text`, by index (Q73). The paragraph-subject fallback is left
+ *  out: it hands scare quotes to whoever the paragraph describes. */
+export function quoteSpeakingClusters(text: string, clusters: readonly CorefCluster[]): Set<number> {
+  const seen = new Set<string>();
+  const mentions: MentionLink[] = clusters.flatMap((cluster, i) => cluster.flatMap(([start, end]) => {
+    const key = `${start}:${end}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [{ start, end, entityId: String(i) }];
+  }));
+  return new Set(quoteSpeakers(text, mentions, new Set(), null, true).flatMap((q) => (q.speaker === null ? [] : [Number(q.speaker)])));
 }
 
 /** The Mention Reading of one finished passage. */

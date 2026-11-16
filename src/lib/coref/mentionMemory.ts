@@ -4,8 +4,13 @@
 import type { Entity } from '@/types';
 import type { StrangerLabels } from '@/lib/locationContext';
 import { escapeRegExp } from '@/lib/utils';
+import { sameCharacterName } from '@/lib/entityMatch';
+import {
+  clusterCandidates, collectCandidateEvidence, mergeCandidateEvidence,
+  type CandidateEvidence, type CandidateExclusions, type ClusterCandidates,
+} from '@/lib/characterCandidates';
 import { entitiesInProse, type MentionReading } from './mentionReading';
-import { turnMentionReading, type MentionReadingMap } from './mentionReadings';
+import { narrationHash, turnMentionReading, type MentionReadingMap } from './mentionReadings';
 
 /** Names of the cast entities a reading links in the prose, outside quoted speech. */
 export function readingParticipants(
@@ -16,15 +21,92 @@ export function readingParticipants(
   return entitiesInProse(narration, reading).flatMap((id) => byId.get(id) ?? []);
 }
 
-/** A stored turn's extra participants from its reading; empty when there is none. */
-export type ReadingNames = (turnId: string, narration: string) => readonly string[];
+/** One stored turn, as `ReadingNames` reads the turns before another. */
+export interface StoredTurn {
+  turnId: string;
+  narration: string;
+}
 
-/** The extra participants of each stored turn, or undefined when the feature is off. */
+/** A stored turn's extra participants from its reading; empty when there is none. `prior` is the turns before
+ *  it, oldest first. */
+export interface ReadingNames {
+  (turnId: string, narration: string, prior?: readonly StoredTurn[]): readonly string[];
+  /** The name each pooled spelling counts under once the turn is read (Q73). */
+  spellings?(turnId: string, narration: string, prior: readonly StoredTurn[]): ReadonlyMap<string, string>;
+}
+
+/**
+ * The extra participants of each stored turn, or undefined when the feature is off. With `discovery`, a turn's
+ * clusters also name the characters they qualify (Q73), judged against `prior` like a live turn, with the
+ * spellings earlier turns' clusters linked. `discovery` holds the world's own names only: a pool's name must
+ * not change once it is discovered or deleted, and the discover pass blocks those names itself.
+ */
 export function readingNamesFor(
   enabled: boolean, readings: MentionReadingMap, entities: readonly Pick<Entity, 'id' | 'name'>[],
+  discovery?: CandidateExclusions,
 ): ReadingNames | undefined {
   if (!enabled) return undefined;
-  return (turnId, narration) => readingParticipants(narration, turnMentionReading(readings, turnId, narration), entities);
+  const participants = (turnId: string, narration: string) =>
+    readingParticipants(narration, turnMentionReading(readings, turnId, narration), entities);
+  if (!discovery) return participants;
+  const passes = new WeakMap<readonly StoredTurn[], DiscoveryPass>();
+  const judged = (turnId: string, narration: string, prior: readonly StoredTurn[]) => {
+    let pass = passes.get(prior);
+    if (!pass) passes.set(prior, pass = discoveryPass(readings, discovery));
+    return pass.at(prior, { turnId, narration });
+  };
+  const names: ReadingNames = (turnId, narration, prior = []) => {
+    const linked = participants(turnId, narration);
+    const found = judged(turnId, narration, prior).found.names;
+    return [...linked, ...found.filter((name) => !linked.some((known) => sameCharacterName(known, name)))];
+  };
+  names.spellings = (turnId, narration, prior) => judged(turnId, narration, prior).links;
+  return names;
+}
+
+/** One judged turn: what its clusters found, and every spelling link up to and including it. */
+interface JudgedTurn {
+  key: string;
+  found: ClusterCandidates;
+  links: ReadonlyMap<string, string>;
+}
+
+/** Q73 discovery over one walk of the history, oldest first: each turn is judged once, with the tally and the
+ *  spelling links of the turns before it. A walk passes one `prior` list and appends each turn after reading it. */
+interface DiscoveryPass {
+  at(prior: readonly StoredTurn[], turn: StoredTurn): JudgedTurn;
+}
+
+function discoveryPass(readings: MentionReadingMap, exclusions: CandidateExclusions): DiscoveryPass {
+  const judged: JudgedTurn[] = [];
+  const links = new Map<string, string>();
+  const tally = new Map<string, CandidateEvidence>();
+  let tallied = 0;
+  const keyOf = (turn: StoredTurn) => `${turn.turnId}:${narrationHash(turn.narration)}`;
+  const judge = (prior: readonly StoredTurn[], turn: StoredTurn): JudgedTurn => {
+    const i = judged.length;
+    const clusters = turnMentionReading(readings, turn.turnId, turn.narration) ? readings[turn.turnId].clusters : undefined;
+    const before = () => {
+      for (; tallied < i; tallied++) mergeCandidateEvidence(tally, collectCandidateEvidence(prior[tallied].narration));
+      return tally;
+    };
+    const found = clusters?.length
+      ? clusterCandidates(turn.narration, clusters, exclusions, before, links)
+      : { names: [], links: new Map<string, string>() };
+    for (const [spelling, name] of found.links) if (!links.has(spelling)) links.set(spelling, name);
+    const entry = { key: keyOf(turn), found, links: found.links.size ? new Map(links) : judged.at(-1)?.links ?? new Map<string, string>() };
+    judged.push(entry);
+    return entry;
+  };
+  return {
+    at(prior, turn) {
+      while (judged.length < prior.length) judge(prior, prior[judged.length]);
+      const entry = judged[prior.length];
+      if (!entry) return judge(prior, turn);
+      // A list read out of walk order gets its own pass.
+      return entry.key === keyOf(turn) ? entry : discoveryPass(readings, exclusions).at(prior, turn);
+    },
+  };
 }
 
 /** The narration a memory pass reads, and the scrub for that pass's reply. */

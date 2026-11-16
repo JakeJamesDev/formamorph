@@ -5,7 +5,7 @@ import { sameCharacterName } from '@/lib/entityMatch';
 import { cleanDiscoveredDescription } from '@/lib/runtimeCharacters';
 import { cleanItemDescription, dueItemDescriptions, type DescribeItemTarget } from '@/lib/inventory/describe';
 import type { BandTurn } from '@/lib/turnBanding';
-import type { MemoryNarrationFor, ReadingNames } from '@/lib/coref/mentionMemory';
+import type { MemoryNarrationFor, ReadingNames, StoredTurn } from '@/lib/coref/mentionMemory';
 import {
   applyIncrementalVerdict, milestoneCandidates, resolveMilestoneKeep,
   type IncrementalVerdict, type MemoryPinMap,
@@ -236,26 +236,38 @@ const isKnown = (name: string, names: readonly string[]) => names.some((known) =
 function participantTurns(history: ChatMessage[], readingNames?: ReadingNames) {
   const turns: Array<{
     turnId: string; narration: string; names: string[]; diaries: Record<string, string> | undefined; locationId?: string;
+    spellings?: ReadonlyMap<string, string>;
   }> = [];
+  const prior: StoredTurn[] = [];
   for (const message of history) {
     if (message.role !== 'assistant') continue;
     const turn = parseTurnContent(message.content);
-    if (!turn?.turnId || !turn.narration?.trim()) continue;
-    const stored = turn.entities ?? [];
-    const added = readingNames?.(turn.turnId, turn.narration).filter((name) => !stored.some((s) => sameCharacterName(s, name))) ?? [];
+    const narration = turn?.narration ?? '';
+    if (!turn?.turnId || !narration.trim()) {
+      prior.push({ turnId: turn?.turnId ?? '', narration });
+      continue;
+    }
+    // A stored name a reading pooled under another spelling counts under that one (Q73).
+    const spellings = readingNames?.spellings?.(turn.turnId, narration, prior);
+    const stored = [...new Set((turn.entities ?? []).map((name) => spellings?.get(name) ?? name))];
+    const added = readingNames?.(turn.turnId, narration, prior).filter((name) => !stored.some((s) => sameCharacterName(s, name))) ?? [];
+    prior.push({ turnId: turn.turnId, narration });
     const names = added.length ? [...stored, ...added] : stored;
     if (!names.length) continue;
-    turns.push({ turnId: turn.turnId, narration: turn.narration, names, diaries: turn.diaries, locationId: turn.locationId });
+    turns.push({ turnId: turn.turnId, narration, names, diaries: turn.diaries, locationId: turn.locationId, spellings });
   }
   return turns;
 }
 
-/** Every (turn, name) pair a name no entity backs makes due for a description, oldest turn first. */
+/** Every (turn, name) pair a name no entity backs makes due for a description, oldest turn first. A pooled name
+ *  is backed when any spelling pooled under it is (Q73). */
 export function dueDiscoveries(history: ChatMessage[], knownNames: readonly string[], readingNames?: ReadingNames): DiscoverTarget[] {
   const due: DiscoverTarget[] = [];
   for (const turn of participantTurns(history, readingNames)) {
+    const pooledKnown = (name: string) =>
+      [...(turn.spellings ?? [])].some(([spelling, pooled]) => pooled === name && isKnown(spelling, knownNames));
     for (const name of turn.names) {
-      if (name.trim() && !isKnown(name, knownNames)) {
+      if (name.trim() && !isKnown(name, knownNames) && !pooledKnown(name)) {
         due.push({ turnId: turn.turnId, name, narration: turn.narration, locationId: turn.locationId });
       }
     }

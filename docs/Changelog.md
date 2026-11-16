@@ -61,6 +61,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Your character's quotes and mentions in narration now get a color and a card, like the rest of the cast.** On Auto, your quotes use your Quote Color. The "Wrong character?" list puts you first and shows each character's picture. A character you can't name yet gets no color or card.
     - **Show Me on the Character Mentions card opens a sample passage with colored quotes and linked names.** Signed-in adults are asked once whether to contribute corrections, in the card or at their first fix.
     - **With Fade-in Narration on, each quote now shows in its speaker's color as it first appears.** The reveal slows a little ahead of a quote whose color isn't ready. If the finished turn reads a speaker differently, that quote fades to its new color.
+    - **A new character the story keeps calling “she” or “he” now shows in the Entities tab sooner.** Character Mentions counts those pronouns toward the name. A misspelled name counts as the same character.
 - **🛠️ Developer tooling**
   - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.

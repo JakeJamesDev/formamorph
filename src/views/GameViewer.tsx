@@ -1095,6 +1095,15 @@ const GameViewer = ({
     [characterExclusions, suppressedCharacterNames],
   );
   const rescanScene = useNarrationRescan({ entities: allEntities, exclusions: rescanExclusions });
+  // Cluster pools read the world's own names only, so a pool keeps its name after a discovery or a deletion;
+  // the discover pass blocks discovered and suppressed names itself (Q73).
+  const clusterExclusions = useMemo(
+    () => ({
+      ...characterExclusions,
+      characters: [...entities.map((e) => e.name), ...playerNames].map((n) => (n ?? '').trim()).filter(Boolean),
+    }),
+    [characterExclusions, entities, playerNames],
+  );
 
   /** Who belongs at `loc` — authored cast plus any discovered/visiting character anchored there. */
   const presentIdsAt = useCallback(
@@ -1121,11 +1130,12 @@ const GameViewer = ({
     const isMet = metCheckFor(metEntitiesRef.current);
     return allEntities.filter(isMet).map((entity) => entity.id);
   }, [allEntities, metCheckFor]);
-  // What each turn's Mention Reading adds: participants for In Scene and the diary passes, and the bracketed
-  // narration the digest and diary passes read (Q53). Undefined with the feature off.
+  // What each turn's Mention Reading adds: participants for In Scene and the diary passes, characters its
+  // clusters qualify for the discover pass (Q73), and the bracketed narration the digest and diary passes read
+  // (Q53). Undefined with the feature off.
   const readingNames = useMemo(
-    () => readingNamesFor(settings.characterMentions, correctedReadings, allEntities),
-    [settings.characterMentions, correctedReadings, allEntities],
+    () => readingNamesFor(settings.characterMentions, correctedReadings, allEntities, clusterExclusions),
+    [settings.characterMentions, correctedReadings, allEntities, clusterExclusions],
   );
   const memoryNarration = useMemo(() => {
     const isMet = metCheckFor(metEntities);
