@@ -131,7 +131,7 @@ export function readTemplate(entry: unknown): CodeTemplate | null {
   };
   if (row.kind === undefined) return { ...fields, kind: 'script', timings: [row.timing === 'before' ? 'before' : 'after'] };
   if (row.kind !== 'script' && row.kind !== 'worldScript' && row.kind !== 'itemScript' && row.kind !== 'worldTool') return null;
-  const template = withTimings({ ...fields, kind: row.kind, timings: [] },Array.isArray(row.timings) ? row.timings : []);
+  const template = withTimings({ ...fields, kind: row.kind, timings: [] }, Array.isArray(row.timings) ? row.timings : []);
   return template.timings.length ? template : null;
 }
 

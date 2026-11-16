@@ -1,7 +1,7 @@
 /**
- * Save migration for the Item Instance rename (trigger-args Q17): `itemCopies` became `itemInstances`, and
- * the `copyId` and `targetCopyId` of a saved inventory write or listed action became `instanceId` and
- * `targetInstanceId`. Presence-based and idempotent: a record already carrying the new key keeps it.
+ * Save migration for Item Instance keys: renames `itemCopies` to `itemInstances`, and the `copyId` and
+ * `targetCopyId` of a saved inventory write or listed action to `instanceId` and `targetInstanceId`.
+ * Presence-based and idempotent: a record already carrying the new key keeps it.
  */
 
 import type { ChatMessage, GameState } from '@/types';
@@ -32,6 +32,7 @@ function mapSame<T>(list: readonly T[], fix: (item: T) => T): T[] {
 
 function fixSnapshot(snapshot: unknown): unknown {
   if (!isRec(snapshot) || !isRec(snapshot.state)) return snapshot;
+  // A loaded save's state is unchecked; migrateItemInstanceKeys guards it as a record.
   const state: unknown = migrateItemInstanceKeys(snapshot.state as unknown as GameState);
   return state === snapshot.state ? snapshot : { ...snapshot, state };
 }
@@ -53,6 +54,7 @@ function fixSent(sent: unknown): unknown {
 /** A snapshot with its Item Instances under `itemInstances`. The same snapshot when it holds no old key. */
 export function migrateItemInstanceKeys(state: GameState): GameState {
   if (!isRec(state) || !('itemCopies' in state)) return state;
+  // GameState no longer types the old key, so the rename works on the raw record.
   const { itemCopies, ...rest } = state as unknown as Rec;
   return { ...rest, ...('itemInstances' in rest ? {} : { itemInstances: itemCopies }) } as unknown as GameState;
 }

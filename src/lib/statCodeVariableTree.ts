@@ -312,7 +312,6 @@ export interface TimingGlobals {
   narration: boolean;
   player: boolean;
   trait: boolean;
-  /** Absent ⇒ false. */
   instance?: boolean;
   /** The timing's `args` card line and fields. Absent in a timing whose `args` is empty. */
   args?: { info: string; fields: readonly SurfaceEntry[] };
