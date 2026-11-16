@@ -44,6 +44,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Item scripts can tell who caused an item event, and where the item came from or went.** `args.by` reads story, player, script or rule. `args.from === persona` means the player gave it, so a gift script can skip shop buys and pickups.
     - **When a Trait Switches scripts can tell what switched the trait.** `args.by` reads player for a Traits tab switch, script for a script's write, and rule for gates, group picks and persona or World Option changes.
     - **Item scripts read `args.purchase` when an item is bought, with its price and Currency.** A gift script can skip shop buys and sales. Item boxes get a **Templates** menu, with a **Gift Raises a Stat** template.
+    - **Item scripts read their event's Item Instance as `instance`, and its quantity and use target from `args`.** Every script has `args`; it's empty where nothing passes one. Worlds that use `self.event` or `.copies` are rewritten when they load.
   - **Named Memories:**
     - **Scripts can keep one Custom memory up to date under a name.** `memories.pin("Nursery", text)` adds it or replaces its text, and `memories["Nursery"]` reads it. A rewind brings back the earlier text.
     - **Your Memory Manager edits to a named memory stay when you rewind a turn.** The script's next update starts from your text. After you delete the memory, the script starts a new one.
@@ -59,10 +60,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Signed-in adults can send their "Wrong character?" fixes to help train the mentions model.** Turn on Contribute Corrections under Character Mentions. Each fix sends the whole passage, and accepted passages are kept for training. It's off until you turn it on.
     - **Your character's quotes and mentions in narration now get a color and a card, like the rest of the cast.** On Auto, your quotes use your Quote Color. The "Wrong character?" list puts you first and shows each character's picture. A character you can't name yet gets no color or card.
     - **Show Me on the Character Mentions card opens a sample passage with colored quotes and linked names.** Signed-in adults are asked once whether to contribute corrections, in the card or at their first fix.
-  - **Item scripts read their event's Item Instance as `instance`, and its quantity and use target from `args`.** Every script has `args`; it's empty where nothing passes one. Worlds that use `self.event` or `.copies` are rewritten when they load.
 - **🛠️ Developer tooling**
-  - **Item Instances:**
-    - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.
+  - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.
 
 #### 🔧 Fixed

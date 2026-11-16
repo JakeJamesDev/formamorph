@@ -1,6 +1,7 @@
 # Spec: Trigger Args and Item Instances
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-15, tickets 01–06, last landing 19a930d9d. Review clean. Tests green on 2026-11-15; lint red only outside the effort (26 errors in `worlds-wip/`).
 Spec session: trigger-args — spec
 
 Give a script the context of what fired its run: an `args` global, as World Tool scripts already have. Item timings learn who caused the event, where the item came from or went, and whether it was a purchase. When a Trait Switches learns who switched the trait. The item event's subject becomes the `instance` global, and "Item Copy" becomes **Item Instance** everywhere: glossary, docs, UI copy, the script surface, code and save keys.
