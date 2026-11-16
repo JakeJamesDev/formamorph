@@ -15,7 +15,7 @@ import { readComponentFileLinks, type ComponentFileLinks, type ComponentFileSour
 import { chipTexts } from './linkedContent';
 import { carriedPlaceholders, sharedPlaceholdersUsed } from './placeholderHomes';
 import { portablePlaceholders } from './placeholderGroups';
-import type { Dictionary, OnMap } from '@/types';
+import type { Dictionary, MediaList, OnMap } from '@/types';
 import { storedOnMap } from './onMap';
 import { embedEntityCard, readEntityCard } from './entityCard';
 import { readTavernCard, readTavernJson } from './tavernCard';
@@ -62,6 +62,8 @@ export interface EntityCardData {
   extraImages?: GalleryImage[];
   /** The primary's Visibility rule, which has no other home since the primary travels as the card's pixels. */
   primaryImageRequires?: TraitRequirementRow[];
+  /** The primary's Media Entry name, for the same reason. */
+  primaryImageName?: string;
   /** The entity's Enabled gate. */
   enabledWhen?: TraitRequirementRow[];
   /** The entity's own placeholders, as they are (see lib/placeholders). A card with no
@@ -100,13 +102,15 @@ export interface EntityCardData {
  *  `available` is the placeholder pool to resolve the entity's used chips from — the world's combined list
  *  for a world entity, or the entity's own carried pool for a library one. `links` is what the card says
  *  about its source and the worlds it suits; a card written without it says nothing about either. `world` is
- *  the world a world entity's requirements point into, for their names. */
+ *  the world a world entity's requirements point into, for their names. `media` is a world entity's Media List,
+ *  which its gallery links resolve against. */
 export function buildEntityCardData(
   entity: PortableEntity,
   available: Placeholder[] = carriedPlaceholders(entity),
   links: ComponentFileLinks = {},
   libraryDetails?: LibraryDetails,
   world?: TraitWorld,
+  media?: MediaList,
 ): EntityCardData {
   // Folders are the world's: a def leaves its folder reference behind.
   const owned = portablePlaceholders(entity.placeholders ?? []);
@@ -114,7 +118,7 @@ export function buildEntityCardData(
   // The blueprints' values, and the copies' reworded ones, reach shared placeholders too.
   const reworded = owned.flatMap((p) => Object.values(p.valueOverrides ?? {}).flatMap((o) => (o.text ? [o.text.value] : [])));
   const shared = portablePlaceholders(sharedPlaceholdersUsed([...chipTexts(entity), ...reworded], [...owned, ...blueprints], available));
-  const [primary, ...extras] = portableImages(entity, world);
+  const [primary, ...extras] = portableImages(entity, world, media);
   const enabledWhen = portableEnabledGate(entity, world);
   return {
     formamorphKind: ENTITY_FILE_KIND,
@@ -134,6 +138,7 @@ export function buildEntityCardData(
     ...(entity.imageTags ? { imageTags: entity.imageTags } : {}),
     ...(extras.length ? { extraImages: extras } : {}),
     ...(primary?.requires?.length ? { primaryImageRequires: primary.requires } : {}),
+    ...(primary?.name ? { primaryImageName: primary.name } : {}),
     ...(enabledWhen ? { enabledWhen } : {}),
     ...(owned.length ? { placeholders: owned } : {}),
     ...(shared.length ? { sharedPlaceholders: shared } : {}),
@@ -186,7 +191,8 @@ export function parseEntityCardData(raw: unknown, pixels?: Base64Data): Entity {
     : [];
   const extras = Array.isArray(obj.extraImages) ? (obj.extraImages as unknown[]).flatMap(cardImage) : [];
   const primaryRows = Array.isArray(obj.primaryImageRequires) ? cardRows(obj.primaryImageRequires) : [];
-  const images = pixels ? [{ data: pixels, ...(primaryRows.length ? { requires: primaryRows } : {}) }, ...extras] : extras;
+  const primaryName = typeof obj.primaryImageName === 'string' && obj.primaryImageName.trim() ? { name: obj.primaryImageName } : {};
+  const images = pixels ? [{ data: pixels, ...primaryName, ...(primaryRows.length ? { requires: primaryRows } : {}) }, ...extras] : extras;
   const enabledWhen = Array.isArray(obj.enabledWhen) ? cardRows(obj.enabledWhen) : [];
   const openings = Array.isArray(obj.openings) ? (obj.openings as unknown[]).flatMap(cardOpening) : [];
   const weights = obj.openingWeights && typeof obj.openingWeights === 'object' && !Array.isArray(obj.openingWeights)
@@ -279,7 +285,8 @@ function cardImage(raw: unknown): GalleryImage[] {
   if (typeof raw === 'string') return raw ? [{ data: raw }] : [];
   if (!isRecord(raw) || typeof raw.data !== 'string' || !raw.data) return [];
   const requires = Array.isArray(raw.requires) ? cardRows(raw.requires) : [];
-  return [{ data: raw.data, ...(requires.length ? { requires } : {}) }];
+  const name = typeof raw.name === 'string' && raw.name.trim() ? { name: raw.name } : {};
+  return [{ data: raw.data, ...name, ...(requires.length ? { requires } : {}) }];
 }
 
 /** The card's Requirement Rows. A bare Condition reads as a row of its own; a row left with no Condition is
@@ -438,14 +445,14 @@ function cardOpening(raw: unknown): Opening[] {
 /**
  * Encode an entity as a shareable WebP character card: its portrait carrying the text fields in a metadata chunk.
  * Entities without a portrait get Morph art so export always yields a valid image. The card carries the picked
- * Avatar's file; `vrmStore` is the world's store, for a world entity.
+ * Avatar's file; `vrmStore` and `media` are the world's Avatar store and Media List, for a world entity.
  */
 export async function exportEntityCard(
   entity: PortableEntity, available?: Placeholder[], links: ComponentFileLinks = {}, libraryDetails?: LibraryDetails, world?: TraitWorld,
-  vrmStore?: WorldVrmStore,
+  vrmStore?: WorldVrmStore, media?: MediaList,
 ): Promise<Blob> {
   // The art follows the listing, else the library item, so a card matches the tile it came from.
-  let imageUrl = primaryImage(entity) || await morphCardImage(
+  let imageUrl = primaryImage(entity, media) || await morphCardImage(
     links.source?.sourceId || links.source?.libraryId || entity.id,
     entity.name,
     available ?? carriedPlaceholders(entity),
@@ -459,7 +466,7 @@ export async function exportEntityCard(
   if (dataUrlMime(imageUrl) !== 'image/webp') throw new Error('Could not encode the portrait as WebP.');
   const { w, h } = await measureDataUrl(imageUrl);
   const bytes = new Uint8Array(await (await fetch(imageUrl)).arrayBuffer());
-  const card = embedEntityCard(bytes, JSON.stringify(buildEntityCardData(await withCarriedVrm(entity, vrmStore), available, links, libraryDetails, world)), { w, h });
+  const card = embedEntityCard(bytes, JSON.stringify(buildEntityCardData(await withCarriedVrm(entity, vrmStore), available, links, libraryDetails, world, media)), { w, h });
   return new Blob([card], { type: 'image/webp' });
 }
 

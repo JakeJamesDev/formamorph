@@ -40,6 +40,9 @@ import { useLatestRun } from './useLatestRun';
 import { checkWorldSize } from './worldTooLarge';
 import { useSourceChecks } from './useSourceChecks';
 import { applyRepair, type MissingSource, type RepairAction, type ReplacementPick } from '@/lib/sourceChecks';
+import { loadMediaHashes } from '@/lib/libraryMedia';
+import { useMountedRef } from '@/lib/useMountedRef';
+import { toastError } from '@/lib/linkToast';
 
 /** What the Bench needs from the view — the editor's own knowledge, nothing Bench-owned. */
 export interface TestBenchWiring {
@@ -361,6 +364,9 @@ export function useTestBench({
   // A repair is a hand edit like a quick fix, and goes back through the same write-through. Replace is the
   // one that needs an answer first: the author picks the library item, and the repair applies to their pick.
   const [replaceSource, setReplaceSource] = useState<MissingSource | null>(null);
+  const mounted = useMountedRef();
+  const latestWorld = useRef(getWorldData);
+  useEffect(() => { latestWorld.current = getWorldData; });
   const repairSource = useCallback((copyId: string, action: RepairAction) => {
     if (action === 'replace') {
       setReplaceSource(sources.missing.find((row) => row.id === copyId) ?? null);
@@ -369,13 +375,21 @@ export function useTestBench({
     const before = getWorldData();
     writeFixedWorld(before, applyRepair(before, copyId, action));
   }, [sources.missing, getWorldData, writeFixedWorld]);
-  const replacePicked = useCallback((pick: ReplacementPick) => {
+  const replacePicked = useCallback(async (pick: ReplacementPick) => {
     const copyId = replaceSource?.id;
     setReplaceSource(null);
     if (!copyId) return;
-    const before = getWorldData();
-    writeFixedWorld(before, applyRepair(before, copyId, 'replace', pick));
-  }, [replaceSource, getWorldData, writeFixedWorld]);
+    try {
+      const list = getWorldData().worldOverview?.mediaList;
+      const hashes = list && !('entries' in pick.data) ? await loadMediaHashes([pick.data], list) : undefined;
+      if (!mounted.current) return;
+      // The world as it stands after the hashing, so an edit made meanwhile is kept.
+      const before = latestWorld.current();
+      writeFixedWorld(before, applyRepair(before, copyId, 'replace', pick, hashes));
+    } catch (error) {
+      toastError(error, 'Could not read the replacement images.');
+    }
+  }, [replaceSource, getWorldData, writeFixedWorld, mounted]);
   const applyBenchFix = useCallback((ruleId: string) => {
     if (ruleId === IMAGE_WEBP_RULE_ID) {
       if (!fixingRuleId) void runImageWebpFix();

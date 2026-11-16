@@ -19,9 +19,11 @@ import { routineLabel } from '@/lib/routineList';
 import { chancePercent, rangeText } from '@/lib/routineTime';
 import { pickLabel, pickToken, type VrmLookup } from '@/lib/vrmPickMatch';
 import { placesOf } from '@/lib/positionEngine';
+import { galleryLinks } from '@/lib/entityImages';
+import { comparableGallery, type MediaLookup } from '@/lib/libraryMedia';
 import { PLAYER_START, PLAYER_START_LABEL } from '@/types';
 import type {
-  ContentLink, Dictionary, DictionaryEntry, EntityKind, EntityRoutine, EntityStart, GameLocation, ScheduleRow, TraitRequirement,
+  ContentLink, Dictionary, DictionaryEntry, EntityKind, EntityRoutine, EntityStart, GalleryLink, GameLocation, ScheduleRow, TraitRequirement,
   TraitRequirementRow, Traversable, VrmPick,
 } from '@/types';
 
@@ -347,7 +349,13 @@ function routineChanges(
  */
 export function diffContent(
   copy: LinkableContent, source: LinkableContent, vrm: VrmLookup = NO_LOOKUP, locations?: readonly Pick<GameLocation, 'id' | 'name'>[],
+  media?: MediaLookup,
 ): ContentDiff {
+  // Gallery pictures compare by hash token, so a linked copy and its embedded source read the same.
+  const sameImages = (a: unknown, b: unknown) => (media
+    ? JSON.stringify(comparableGallery(galleryLinks({ images: a as GalleryLink[] }), media))
+      === JSON.stringify(comparableGallery(galleryLinks({ images: b as GalleryLink[] }), media))
+    : JSON.stringify(a ?? null) === JSON.stringify(b ?? null));
   const held = withoutWorldFields(copy) as Record<string, unknown>;
   const offered = withoutWorldFields(source) as Record<string, unknown>;
   const routine = routineChanges(copy, source, locations);
@@ -368,6 +376,7 @@ export function diffContent(
     };
     const same = pick
       ? pickToken(held[field] as VrmPick | undefined, vrm) === pickToken(offered[field] as VrmPick | undefined, vrm)
+      : field === 'images' ? sameImages(held[field], offered[field])
       : JSON.stringify(held[field] ?? null) === JSON.stringify(offered[field] ?? null);
     (same ? unchanged : changed).push(row);
   }

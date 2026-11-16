@@ -4,12 +4,13 @@ import { adoptOwnedTraits, bindOwnedRules, comparableOwnedTraits, traitWorldOf, 
 import { bindCarriedBlueprints } from '@/lib/blueprintTravel';
 import { followedLibraryId } from '@/lib/publishLinks';
 import { entityTexts } from '@/lib/entityTexts';
-import { entityImages } from '@/lib/entityImages';
+import { entityImages, galleryLinks } from '@/lib/entityImages';
+import { comparableGallery, type MediaLookup } from '@/lib/libraryMedia';
 import { randomUUID } from '@/lib/uuid';
 import { carriedMembership, carriedRoutine, returnedPlaces, withCarriedRoutine, type RoutineFields } from '@/lib/entityPresence';
 import { withMembership, withoutMembership } from '@/lib/entityPlaces';
 import { pickToken, type VrmLookup } from '@/lib/vrmPickMatch';
-import type { CommunityLink, ContentLink, Dictionary, Entity, EntityKind, EntityStart, GameLocation, Placeholder, PlaceholderGroup } from '@/types';
+import type { CommunityLink, ContentLink, Dictionary, Entity, EntityKind, EntityStart, GalleryLink, GameLocation, Placeholder, PlaceholderGroup } from '@/types';
 
 /** An entity or a dictionary — the two kinds of content a world copy can follow a source for. */
 export type LinkableContent = Entity | Dictionary;
@@ -162,7 +163,7 @@ export function chipTexts(item: LinkableContent): string[] {
 
 /** The authored content of one item, ready to compare. Dictionary entry ids go too: every copy mints its
  *  own, so two identical books never share them. */
-function authoredContent(raw: LinkableContent, world?: TraitWorld, vrm?: VrmLookup, mapped = false): unknown {
+function authoredContent(raw: LinkableContent, world?: TraitWorld, vrm?: VrmLookup, mapped = false, media?: MediaLookup): unknown {
   // Both sides read the owners the copy's world drops, whichever side stored one (Q19).
   const item = world && !('entries' in raw) ? bindOwnedRules(raw, world) : raw;
   const shed: Record<string, unknown> = withoutWorldFields(item);
@@ -174,11 +175,13 @@ function authoredContent(raw: LinkableContent, world?: TraitWorld, vrm?: VrmLook
   // With no kind the references name a membership, and the copy's membership is the world's (Q2).
   if (!('entries' in item) && !item.kind) delete shed.locationRefs;
   // A world file read before migration still holds data strings; the library copy holds images.
-  if (!('entries' in item) && item.images) shed.images = entityImages(item);
+  if (!('entries' in item) && item.images) shed.images = media ? galleryLinks(item) : entityImages(item);
   if (!('entries' in item) && (item.traits || item.traitLinks || item.images || item.enabledWhen)) Object.assign(shed, comparableOwnedTraits(item));
   if (!('entries' in item) && item.statLinks) Object.assign(shed, comparableOwnedStats(item));
   // A world copy picks a store id and its library item a library id; the two match when they show the same file.
   if (!('entries' in item) && vrm) shed.vrmPick = pickToken(item.vrmPick, vrm);
+  // A world copy links Media Entries and its library item embeds files; the two match when they show the same files.
+  if (media && Array.isArray(shed.images)) shed.images = comparableGallery(shed.images as GalleryLink[], media);
   if (Array.isArray(shed.entries)) {
     shed.entries = (shed.entries as { id?: string }[]).map(({ id: _entryId, ...entry }) => entry);
   }
@@ -219,12 +222,14 @@ function routineMatches(copy: LinkableContent, source: LinkableContent, world?: 
 /** Whether the copy still holds exactly what the source holds. Names alone prove nothing, so this reads
  *  the whole authored payload. `world` is the copy's: it binds each side's trait requirements, so an owner the
  *  world drops cannot make the two differ. `vrm` matches an Avatar pick across the world and library forms.
- *  `places` names the copy's world, so a routine compares as a fresh carry of the source would hold it (Q30). */
+ *  `places` names the copy's world, so a routine compares as a fresh carry of the source would hold it (Q30).
+ *  `media` matches gallery pictures by hash token across the world and library forms. */
 export function contentMatchesSource(
   copy: LinkableContent, source: LinkableContent, world?: TraitWorld, vrm?: VrmLookup, places?: RoutinePlaces,
+  media?: MediaLookup,
 ): boolean {
   const mapped = !!places;
-  return JSON.stringify(authoredContent(copy, world, vrm, mapped)) === JSON.stringify(authoredContent(source, world, vrm, mapped))
+  return JSON.stringify(authoredContent(copy, world, vrm, mapped, media)) === JSON.stringify(authoredContent(source, world, vrm, mapped, media))
     && routineMatches(copy, source, world, places);
 }
 
@@ -341,7 +346,7 @@ export interface WriteBack {
  */
 export function planWriteBack(
   world: WorldContent, sources: LibrarySource[], shape: (copy: LinkableContent) => LinkableContent, traitWorld?: TraitWorld,
-  vrm?: VrmLookup,
+  vrm?: VrmLookup, media?: MediaLookup,
 ): WriteBack[] {
   const byId = new Map(sources.map((source) => [source.id, source]));
   return [...world.entities, ...world.dictionaries].flatMap((copy) => {
@@ -352,7 +357,7 @@ export function planWriteBack(
     // Compared in library form, which names what the copy's owned traits require, as the item stores them.
     const content = shape(copy);
     const places = world.locations && { ...routinePlacesOf(world.locations), connections: copy.link?.connections };
-    if (contentMatchesSource(content, source.data, traitWorld, vrm, places)) return [];
+    if (contentMatchesSource(content, source.data, traitWorld, vrm, places, media)) return [];
     if (!places || 'entries' in content || 'entries' in source.data) return [{ copy, source, content }];
     const back = returnedPlaces(content, source.data, places.connections ?? {}, places.known);
     return [{ copy, source, content: back.item, ...(Object.keys(back.connections).length && { connections: back.connections }) }];

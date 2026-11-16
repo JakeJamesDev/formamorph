@@ -41,8 +41,10 @@ import { useMountedRef } from '@/lib/useMountedRef';
 import { openWorldBlock } from '@/lib/supporterCopy';
 import { embedLibraryPicks, loadLibraryVrms, loadVrmLookup, storeHashes } from '@/lib/libraryVrm';
 import { libraryPickIds, placeLibraryPicks, type LibraryVrm } from '@/lib/vrmPickMatch';
+import { loadMediaHashes, loadMediaLookup, placeEntityMedia } from '@/lib/libraryMedia';
+import type { MediaHashes } from '@/lib/mediaList';
 import type {
-  Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Stat, StatGroup, SupporterCopyMarker, Trait, TraitGroup,
+  Dictionary, Entity, GameLocation, MediaList, Placeholder, PlaceholderGroup, Stat, StatGroup, SupporterCopyMarker, Trait, TraitGroup,
   WorldVrmStore,
 } from '@/types';
 
@@ -99,6 +101,9 @@ interface LibraryLinkingOptions {
   /** The world's Avatar store, which copies' Avatar picks name and library Avatars are embedded in. */
   vrmStore: WorldVrmStore | undefined;
   setVrmStore: (store: WorldVrmStore | undefined) => void;
+  /** The world's Media List, which arriving copies' pictures are placed in and saved copies' links resolve against. */
+  mediaList: MediaList | undefined;
+  setMediaList: (list: MediaList | undefined) => void;
   /** Tell the world which library items the author owns, so an edit to a copy of one stays Linked. */
   setOwnedLibraryIds: (ids: Iterable<string>) => void;
   /** Reopen the library picker on the picks the author already made, for Back out of the connection step. */
@@ -119,6 +124,8 @@ interface PendingAdd {
   source?: LibrarySource;
   /** The library Avatars the item picks, read for embedding, and the store's hashes they match against. */
   vrms?: VrmPlacement;
+  /** The hashes of the item's pictures, read when the world has a Media List to place them in. */
+  mediaHashes?: MediaHashes;
 }
 
 interface VrmPlacement {
@@ -182,6 +189,17 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     liveStore.current = store;
     latest.current.setVrmStore(store);
   }, []);
+  // The Media List the same way: placements chain before the world re-renders.
+  const liveMedia = useRef(options.mediaList);
+  const renderedMedia = useRef(options.mediaList);
+  if (renderedMedia.current !== options.mediaList) {
+    renderedMedia.current = options.mediaList;
+    liveMedia.current = options.mediaList;
+  }
+  const setMediaList = useCallback((list: MediaList | undefined) => {
+    liveMedia.current = list;
+    latest.current.setMediaList(list);
+  }, []);
 
   // The editor's own world, so an update review reads and writes its copy in memory rather than reaching
   // for what the last world save left in storage.
@@ -199,6 +217,8 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     statGroups: options.statGroups,
     getVrmStore: () => liveStore.current,
     setVrmStore,
+    getMediaList: () => liveMedia.current,
+    setMediaList,
     writeItem: (item) => (kindOf(item) === 'dictionary'
       ? updateDictionary(item as Dictionary)
       : updateEntity(item as Entity)),
@@ -237,6 +257,17 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     if (!next.updated && !next.unlinked) return;
     // An updated copy brings its item's library Avatar, which the world embeds in its own store.
     let entities = next.entities;
+    // An updated copy's images join the world's Media List; copies the pass left alone are not touched. Hashed
+    // before anything is written, so a failed read leaves the world as it was.
+    const changed = liveMedia.current ? entities.filter((entity, i) => entity !== current.entities[i]) : [];
+    let hashes: MediaHashes | null = null;
+    if (changed.length) {
+      hashes = await loadMediaHashes(changed, liveMedia.current).catch((error: unknown) => {
+        toastError(error, 'Could not read the updated images.');
+        return null;
+      });
+      if (!hashes || !mounted.current) return;
+    }
     if (libraryPickIds(entities).length) {
       const store = liveStore.current;
       const embedded = await embedLibraryPicks(entities, store).catch((error: unknown) => {
@@ -246,6 +277,17 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       if (!embedded || !mounted.current) return;
       if (embedded.store !== store) setVrmStore(embedded.store);
       entities = embedded.entities;
+    }
+    if (hashes) {
+      const before = liveMedia.current;
+      let list: MediaList | undefined = before;
+      entities = entities.map((entity, i) => {
+        if (entity === current.entities[i]) return entity;
+        const placed = placeEntityMedia(entity, list, hashes);
+        list = placed.list;
+        return placed.entity;
+      });
+      if (list !== before) setMediaList(list);
     }
     if (entities !== current.entities) current.setEntities(entities);
     if (next.dictionaries !== current.dictionaries) current.setDictionaries(next.dictionaries);
@@ -267,7 +309,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         ? `“${name}” is now an independent copy. Its library item is gone.`
         : `${fresh.length} copies are now independent. Their library items are gone.`);
     }
-  }, [mounted, setVrmStore]);
+  }, [mounted, setMediaList, setVrmStore]);
 
   // Which library items this world follows, as a value an effect can watch. Keyed on the set rather than
   // run once on mount: the world may still be loading when the editor mounts, and a copy linked later
@@ -307,7 +349,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       if (unread) { toast.info(unread); return; }
       const source = await saveCopyToLibrary(
         item, placeholders, locations, undefined, { traits, traitGroups, entities, stats, statGroups }, liveStore.current,
-        supporterCopy ? { ...supporterCopy, sourceWorldId: worldId } : undefined,
+        supporterCopy ? { ...supporterCopy, sourceWorldId: worldId } : undefined, liveMedia.current,
       );
       applyLink(item, source, false);
       toast.success(`“${source.name}” saved to your library.`);
@@ -343,6 +385,8 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     let dropped = 0;
     const storeBefore = liveStore.current;
     let vrmStore = storeBefore;
+    const mediaBefore = liveMedia.current;
+    let mediaList = mediaBefore;
     for (const entry of pending) {
       const shared = [...current.worldPlaceholders, ...gained];
       if (entry.kind === 'dictionary') {
@@ -355,7 +399,12 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         // A library Avatar is embedded in the world store once, and the pick names the store entry.
         const picked = placeLibraryPicks([entry.item as Entity], vrmStore, entry.vrms?.hashes ?? NO_HASHES, entry.vrms?.vrms ?? NO_VRMS);
         vrmStore = picked.store;
-        const bound = bindCarriedBlueprints(picked.entities[0], bindWorld);
+        // Its images join the world's Media List, reusing an entry that holds the same file.
+        const media = entry.mediaHashes
+          ? placeEntityMedia(picked.entities[0], mediaList, entry.mediaHashes)
+          : { entity: picked.entities[0], list: mediaList };
+        mediaList = media.list;
+        const bound = bindCarriedBlueprints(media.entity, bindWorld);
         const adopted = adoptEntityPlaceholders(bound.entity, shared, plan.placeholders);
         gained.push(...adopted.toAdd);
         const kept = dropEntityBlueprintChips(adopted.entity, blueprints);
@@ -373,23 +422,35 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     }
     gained.forEach(current.addPlaceholder);
     if (vrmStore !== storeBefore) setVrmStore(vrmStore);
+    if (mediaList !== mediaBefore) setMediaList(mediaList);
     if (dropped) toast.info(blueprintChipsRemovedNotice(dropped, 'import'));
-  }, [notePendingLink, setVrmStore]);
+  }, [notePendingLink, setMediaList, setVrmStore]);
 
   /**
    * Start adding copies. Content whose references this world already answers goes straight in; anything
    * else waits on the connection step, which is where the author says what each reference means here.
    */
   const beginAdd = useCallback(async (arriving: PendingAdd[]) => {
-    const ids = libraryPickIds(arriving.flatMap((entry) => (entry.kind === 'entity' ? [entry.item as Entity] : [])));
+    const arrivingEntities = arriving.flatMap((entry) => (entry.kind === 'entity' ? [entry.item as Entity] : []));
+    const ids = libraryPickIds(arrivingEntities);
     let pending = arriving;
     if (ids.length) {
       try {
         const [vrms, hashes] = await Promise.all([loadLibraryVrms(ids), storeHashes(liveStore.current)]);
         if (!mounted.current) return;
-        pending = arriving.map((entry) => ({ ...entry, vrms: { vrms, hashes } }));
+        pending = pending.map((entry) => ({ ...entry, vrms: { vrms, hashes } }));
       } catch (error) {
         toastError(error, 'Could not read your Avatar library.');
+        return;
+      }
+    }
+    if (liveMedia.current && arrivingEntities.length) {
+      try {
+        const mediaHashes = await loadMediaHashes(arrivingEntities, liveMedia.current);
+        if (!mounted.current) return;
+        pending = pending.map((entry) => ({ ...entry, mediaHashes }));
+      } catch (error) {
+        toastError(error, 'Could not read the images to add.');
         return;
       }
     }
@@ -491,9 +552,12 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     const item = linkPickerFor;
     setLinkPickerFor(null);
     if (!item) return;
-    const vrm = await loadVrmLookup(liveStore.current);
+    const [vrm, media] = await Promise.all([
+      loadVrmLookup(liveStore.current),
+      loadMediaLookup([item, pick.data].flatMap((side) => ('entries' in side ? [] : [side as Entity])), liveMedia.current),
+    ]);
     if (!mounted.current) return;
-    applyLink(item, pick.source, !contentMatchesSource(item, pick.data, traitWorld, vrm, routinePlacesOf(latest.current.locations)));
+    applyLink(item, pick.source, !contentMatchesSource(item, pick.data, traitWorld, vrm, routinePlacesOf(latest.current.locations), media));
   }, [applyLink, linkPickerFor, mounted, traitWorld]);
 
   /**

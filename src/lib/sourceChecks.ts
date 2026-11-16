@@ -9,7 +9,9 @@ import { listNames } from '@/lib/utils';
 import { applyLibraryUpdate, routinePlacesOf, unlink, type LibrarySource, type LinkableContent } from '@/lib/linkedContent';
 import type { LibraryKind } from '@/lib/librarySources';
 import { traitWorldOf } from '@/lib/portableTraits';
-import type { Dictionary, Entity, GameLocation, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import { NO_MEDIA_HASHES, placeEntityMedia } from '@/lib/libraryMedia';
+import type { MediaHashes } from '@/lib/mediaList';
+import type { Dictionary, Entity, GameLocation, MediaList, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 
 /**
  * What a check said about one source.
@@ -34,6 +36,8 @@ export interface SourceCheckWorld {
   traitGroups?: TraitGroup[];
   stats?: Stat[];
   statGroups?: StatGroup[];
+  /** Holds the Media List a replacement's pictures are placed in. */
+  worldOverview?: { mediaList?: MediaList };
 }
 
 /** One copy in a world that follows a published source. */
@@ -180,10 +184,11 @@ function replacing<T extends { id: string }>(list: T[] | undefined, id: string, 
  * @param copyId - The copy to repair
  * @param action - What to do about it
  * @param replacement - The picked library item, required by Replace and ignored by the others
+ * @param mediaHashes - The hashes of the replacement's pictures, for placing them in the world's Media List
  * @returns The repaired world
  */
 export function applyRepair<T extends SourceCheckWorld>(
-  world: T, copyId: string, action: RepairAction, replacement?: ReplacementPick,
+  world: T, copyId: string, action: RepairAction, replacement?: ReplacementPick, mediaHashes: MediaHashes = NO_MEDIA_HASHES,
 ): T {
   if (action === 'remove') {
     const entities = without(world.entities, copyId);
@@ -202,10 +207,15 @@ export function applyRepair<T extends SourceCheckWorld>(
   if (!replacement) return world;
   const shared = world.placeholders ?? [];
   const added: Placeholder[] = [];
+  const listBefore = world.worldOverview?.mediaList;
+  let mediaList = listBefore;
   const relink = <I extends LinkableContent>(item: I): I => {
     const applied = applyLibraryUpdate(item, replacement.data as I, replacement.source, shared, routinePlacesOf(world.locations ?? []), traitWorldOf(world));
     added.push(...applied.toAdd);
-    return applied.item;
+    if ('entries' in applied.item) return applied.item;
+    const placed = placeEntityMedia(applied.item as Entity, mediaList, mediaHashes);
+    mediaList = placed.list;
+    return placed.entity as I;
   };
   const isBook = 'entries' in replacement.data;
   const entities = isBook ? world.entities : replacing(world.entities, copyId, relink);
@@ -216,5 +226,6 @@ export function applyRepair<T extends SourceCheckWorld>(
     entities,
     dictionaries,
     ...(added.length ? { placeholders: [...shared, ...added] } : {}),
+    ...(mediaList !== listBefore ? { worldOverview: { ...world.worldOverview, mediaList } } : {}),
   };
 }

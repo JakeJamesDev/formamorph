@@ -14,7 +14,8 @@ import {
   bundledListingIds, bundledSources, followBundled, resolveBundledLinks,
   type LocalLibraryItem,
 } from '@/lib/worldBundle';
-import type { Dictionary, Entity, GameLocation, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import { loadMediaLookup, type MediaLookup } from '@/lib/libraryMedia';
+import type { Dictionary, Entity, GameLocation, MediaList, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 
 /** The slices of a world this pass reads and rewrites. A stored record's `data` satisfies it. */
 export interface BundleWorld {
@@ -26,6 +27,8 @@ export interface BundleWorld {
   traitGroups?: TraitGroup[];
   stats?: Stat[];
   statGroups?: StatGroup[];
+  /** Holds the Media List the copies' gallery links name. */
+  worldOverview?: { mediaList?: MediaList };
 }
 
 /**
@@ -62,12 +65,20 @@ export async function localLibraryFor(world: BundleWorld): Promise<LocalLibraryI
  */
 export async function resolveImportedWorld<T extends BundleWorld>(world: T): Promise<T> {
   try {
-    return resolveBundledLinks(world, await localLibraryFor(world));
+    const library = await localLibraryFor(world);
+    return resolveBundledLinks(world, library, await bundleMedia(world, library.map((item) => item.data)));
   } catch (error) {
     console.error('Could not read the library to resolve this world\'s links:', error);
     return resolveBundledLinks(world, []);
   }
 }
+
+/** The lookup that compares the world's copies with library content by hash token. */
+const bundleMedia = (world: BundleWorld, content: readonly (LinkableContent | undefined)[]): Promise<MediaLookup> =>
+  loadMediaLookup(
+    [...world.entities ?? [], ...content.flatMap((item) => (item && !('entries' in item) ? [item as Entity] : []))],
+    world.worldOverview?.mediaList,
+  );
 
 /** The first copy of one bundled group, which is the content its library item is written from. */
 function groupContent(world: BundleWorld, kind: LibraryKind, itemIds: readonly string[]): LinkableContent | null {
@@ -106,9 +117,10 @@ export async function linkBundledContent<T extends BundleWorld>(
     placed.set(group.bundledFrom, await saveCopyToLibrary(content, available, world.locations ?? [], undefined, {
       traits: world.traits ?? [], traitGroups: world.traitGroups ?? [], entities: world.entities ?? [],
       ...(world.stats ? { stats: world.stats, statGroups: world.statGroups ?? [] } : {}),
-    }));
+    }, undefined, undefined, world.worldOverview?.mediaList));
     created += 1;
   }
 
-  return { world: followBundled(world, placed), placed: created };
+  const media = await bundleMedia(world, [...placed.values()].map((source) => source.data));
+  return { world: followBundled(world, placed, media), placed: created };
 }

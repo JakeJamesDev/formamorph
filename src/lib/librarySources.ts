@@ -16,8 +16,9 @@ import { adoptListingVrm } from '@/lib/entityVrmCarry';
 import { namedPlacesOf } from '@/lib/entityPlaces';
 import type {
   CommunityLink, ContentLocationRef, Dictionary, DictionaryMetadata, Entity, EntityMetadata, LibraryDetails, GameLocation,
-  LibrarySupporterCopyMarker, Placeholder, WorldVrmStore,
+  LibrarySupporterCopyMarker, MediaList, Placeholder, WorldVrmStore,
 } from '@/types';
+import { withEmbeddedMedia } from '@/lib/libraryMedia';
 
 /** What the link choice means for the content picked, by who owns it. */
 export const LINK_EXPLANATIONS = {
@@ -169,10 +170,12 @@ function carriedPlaces(entity: Entity, worldLocations: readonly GameLocation[]):
  * `available` is the world's combined placeholder pool, which is what those chips currently point at.
  * `worldLocations` names the places an entity stood in; the entity keeps the references, and the world
  * receiving it decides which of its own locations each one means. `traitWorld` names what an entity's owned
- * trait requirements point at outside it (see lib/portableTraits).
+ * trait requirements point at outside it (see lib/portableTraits). `mediaList` is the world's, which an entity's
+ * gallery links resolve against: the item holds the files, each named as its entry (Q18).
  */
 export function toLibraryItem<T extends LinkableContent>(
   item: T, available: Placeholder[], worldLocations: readonly GameLocation[] = [], traitWorld?: TraitWorld,
+  mediaList?: MediaList,
 ): T {
   const carried = kindOf(item) === 'dictionary'
     ? buildDictionaryFile(item as Dictionary, available)
@@ -181,8 +184,9 @@ export function toLibraryItem<T extends LinkableContent>(
   const traits = 'traits' in carried ? carried.traits : undefined;
   const traitLinks = 'traitLinks' in carried ? carried.traitLinks : undefined;
   // The world's own fields go, including its id: the caller stamps the library record's own.
+  const own = withoutWorldFields(item);
   return {
-    ...withoutWorldFields(item),
+    ...(kindOf(item) === 'entity' ? withEmbeddedMedia(own as Partial<Entity>, mediaList) : own),
     ...(carried.placeholders?.length ? { placeholders: carried.placeholders } : {}),
     ...(carried.sharedPlaceholders?.length ? { sharedPlaceholders: carried.sharedPlaceholders } : {}),
     ...('blueprints' in carried && carried.blueprints?.length ? { blueprints: carried.blueprints } : {}),
@@ -197,15 +201,16 @@ export function toLibraryItem<T extends LinkableContent>(
  * link to it. The item gets its own id: the world keeps the copy it already has. `vrmStore` is the world's
  * Avatar store, which the copy's Avatar pick names; the item picks the library Avatar with the same file.
  * `supporterCopy` marks the item, and an Avatar it brings that the library did not hold, when the copy comes
- * from a Supporter Copy.
+ * from a Supporter Copy. `mediaList` is the world's, which the copy's gallery links resolve against.
  */
 export async function saveCopyToLibrary(
   item: LinkableContent, available: Placeholder[], worldLocations: readonly GameLocation[] = [],
   libraryDetails?: LibraryDetails, traitWorld?: TraitWorld, vrmStore?: WorldVrmStore,
-  supporterCopy?: LibrarySupporterCopyMarker,
+  supporterCopy?: LibrarySupporterCopyMarker, mediaList?: MediaList,
 ): Promise<LibrarySource> {
   const id = randomUUID();
-  const data = { ...await withLibraryPick(toLibraryItem(item, available, worldLocations, traitWorld), vrmStore, supporterCopy), id };
+  const shaped = toLibraryItem(item, available, worldLocations, traitWorld, mediaList);
+  const data = { ...await withLibraryPick(shaped, vrmStore, supporterCopy), id };
   const now = new Date().toISOString();
   await LIBRARIES[kindOf(item)].store({
     id, name: data.name, createdAt: now, data, libraryDetails, ...(supporterCopy ? { supporterCopy } : {}),

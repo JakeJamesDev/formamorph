@@ -106,7 +106,10 @@ export const galleryLinkData = (link: GalleryLink, list: MediaList | undefined):
 // ── Placement (into a world) ─────────────────────────────────────────────────
 
 /** A file entering a world: its data, MIME type and original name. */
-export type PlacedFile = Pick<MediaAsset, 'data'> & Partial<Pick<MediaAsset, 'type' | 'name'>>;
+export type PlacedFile = Pick<MediaAsset, 'data'> & Partial<Pick<MediaAsset, 'type' | 'name'>> & {
+  /** An entry name carried from outside a world, taken as-is (no extension drop) and made unique. */
+  entryName?: string;
+};
 
 export interface PlaceOptions {
   kind: MediaEntryKind;
@@ -130,7 +133,7 @@ export function placeMedia(list: MediaList | undefined, file: PlacedFile, { kind
   if (held) return { list: list ?? {}, id: held.id };
   const id = randomUUID();
   const entry: MediaEntry = {
-    id, name: newMediaName(file.name, subject, kind, list), kind, data: file.data,
+    id, name: file.entryName?.trim() ? uniqueMediaName(file.entryName, list) : newMediaName(file.name, subject, kind, list), kind, data: file.data,
     ...(file.type ? { type: file.type } : {}),
     ...(hash ? { hash } : {}),
   };

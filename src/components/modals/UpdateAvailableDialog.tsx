@@ -19,9 +19,10 @@ import { applyUpdate, liveCopyFor, liveWorldFor, type LiveWorld } from '@/lib/co
 import { CONTENT_LINK_LABELS } from '@/lib/contentLink';
 import type { LibrarySource, LinkableContent } from '@/lib/linkedContent';
 import { loadVrmLookup } from '@/lib/libraryVrm';
+import { loadMediaLookup } from '@/lib/libraryMedia';
 import { useMountedRef } from '@/lib/useMountedRef';
 import WorldStorageService from '@/services/WorldStorageService';
-import type { Dictionary, Entity, GameLocation, WorldOverview, WorldVrmStore } from '@/types';
+import type { Dictionary, Entity, GameLocation, MediaList, WorldOverview, WorldVrmStore } from '@/types';
 
 /** A row's key. A world can hold the same library item twice, so the copy is part of the identity. */
 const rowKey = (row: UpdateRow) => `${row.worldId}:${row.itemId}`;
@@ -223,12 +224,15 @@ export function UpdateAvailableDialog({
     setDiffs((held) => ({ ...held, [key]: undefined }));
     try {
       const world = liveWorldFor(live, row);
-      const { copy, vrmStore, locations } = world
-        ? { copy: liveCopyFor(world, row), vrmStore: world.getVrmStore?.(), locations: world.locations }
+      const { copy, vrmStore, mediaList, locations } = world
+        ? { copy: liveCopyFor(world, row), vrmStore: world.getVrmStore?.(), mediaList: world.getMediaList?.(), locations: world.locations }
         : await readStoredCopy(row);
-      const vrm = await loadVrmLookup(vrmStore);
+      const [vrm, media] = await Promise.all([
+        loadVrmLookup(vrmStore),
+        loadMediaLookup([copy, sourceData].flatMap((side) => (side && !('entries' in side) ? [side] : [])), mediaList),
+      ]);
       if (!mounted.current) return;
-      setDiffs((held) => ({ ...held, [key]: copy ? diffContent(copy, sourceData, vrm, locations) : null }));
+      setDiffs((held) => ({ ...held, [key]: copy ? diffContent(copy, sourceData, vrm, locations, media) : null }));
     } catch {
       setDiffs((held) => ({ ...held, [key]: null }));
     }
@@ -336,11 +340,14 @@ export function UpdateAvailableDialog({
 
 /** One stored world's copy, for a comparison. */
 async function readStoredCopy(row: UpdateRow): Promise<{
-  copy: LinkableContent | undefined; vrmStore: WorldVrmStore | undefined; locations: GameLocation[];
+  copy: LinkableContent | undefined; vrmStore: WorldVrmStore | undefined; mediaList: MediaList | undefined; locations: GameLocation[];
 }> {
   const data = await WorldStorageService.getWorldData(row.worldId) as {
     entities?: Entity[]; dictionaries?: Dictionary[]; worldOverview?: WorldOverview; locations?: GameLocation[];
   };
   const list = row.kind === 'dictionary' ? data.dictionaries : data.entities;
-  return { copy: list?.find((item) => item.id === row.itemId), vrmStore: data.worldOverview?.vrmStore, locations: data.locations ?? [] };
+  return {
+    copy: list?.find((item) => item.id === row.itemId), vrmStore: data.worldOverview?.vrmStore,
+    mediaList: data.worldOverview?.mediaList, locations: data.locations ?? [],
+  };
 }

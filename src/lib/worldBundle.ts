@@ -15,6 +15,7 @@ import { contentMatchesSource, linkToSource, routinePlacesOf, type LibrarySource
 import type { LibraryKind } from '@/lib/librarySources';
 import { traitWorldOf } from '@/lib/portableTraits';
 import type { LinkedWorldContent } from '@/lib/publishLinks';
+import type { MediaLookup } from '@/lib/libraryMedia';
 import type { ContentLink, Dictionary, Entity } from '@/types';
 
 /** One local library item, as the resolution reads it. `data` is needed only to tell whether the file's
@@ -109,10 +110,11 @@ function follow(link: ContentLink, item: LocalLibraryItem, differs: boolean): Co
  *
  * @param world - The world as its file was parsed
  * @param library - This machine's entity and dictionary items, with content for the ones a record names
+ * @param media - Compares gallery pictures by hash token across the world and library forms
  * @returns The world with each record resolved. Content is never changed
  */
 export function resolveBundledLinks<T extends LinkedWorldContent>(
-  world: T, library: readonly LocalLibraryItem[],
+  world: T, library: readonly LocalLibraryItem[], media?: MediaLookup,
 ): T {
   const byId = new Map(library.map((item) => [item.id, item]));
   const byListing = new Map(library.flatMap((item) => (item.sourceId ? [[item.sourceId, item] as const] : [])));
@@ -130,7 +132,7 @@ export function resolveBundledLinks<T extends LinkedWorldContent>(
     }
     // Without the item's content the copy cannot be shown to match it, and claiming a match it may not
     // have would hide the player's own version behind a silent update.
-    const differs = !held.data || !contentMatchesSource(copy, held.data, traitWorldOf(world), undefined, routinePlacesOf(world.locations ?? []));
+    const differs = !held.data || !contentMatchesSource(copy, held.data, traitWorldOf(world), undefined, routinePlacesOf(world.locations ?? []), media);
     return { ...copy, link: follow(link, held, differs) };
   });
 }
@@ -195,10 +197,11 @@ export function bundledContentLinked(world: LinkedWorldContent): boolean | null 
  *
  * @param world - The world as it is stored
  * @param placed - The library item placed for each bundled source, by that source's id
+ * @param media - Compares gallery pictures by hash token across the world and library forms
  * @returns The world with each matched copy linked. Content is never changed
  */
 export function followBundled<T extends LinkedWorldContent>(
-  world: T, placed: ReadonlyMap<string, LibrarySource>,
+  world: T, placed: ReadonlyMap<string, LibrarySource>, media?: MediaLookup,
 ): T {
   if (!placed.size) return world;
   return mapContent(world, (copy) => {
@@ -206,7 +209,7 @@ export function followBundled<T extends LinkedWorldContent>(
     const source = from ? placed.get(from) : undefined;
     if (!source) return copy;
     // The item was written from this copy unless the player already had one, so a difference is real.
-    const differs = !!source.data && !contentMatchesSource(copy, source.data, traitWorldOf(world), undefined, routinePlacesOf(world.locations ?? []));
+    const differs = !!source.data && !contentMatchesSource(copy, source.data, traitWorldOf(world), undefined, routinePlacesOf(world.locations ?? []), media);
     // The copy's own record is kept under the new one, so the world references it already connected
     // survive being linked.
     return {

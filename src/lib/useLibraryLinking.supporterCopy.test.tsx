@@ -20,7 +20,7 @@ function setup(supporterCopy: SupporterCopyMarker | null | undefined) {
     placeholderGroups: [], locations: [], traits: [], traitGroups: [], stats: [], statGroups: [],
     updateEntity: noop, updateDictionary: noop, setEntities: noop, setDictionaries: noop,
     addEntityToWorld: noop, addBookToWorld: noop, addPlaceholder: noop, addLocation: noop,
-    vrmStore: undefined, setVrmStore: noop, setOwnedLibraryIds: noop, reopenPicker: noop,
+    vrmStore: undefined, setVrmStore: noop, mediaList: undefined, setMediaList: noop, setOwnedLibraryIds: noop, reopenPicker: noop,
     exportEntity: noop, exportDictionary: noop, supporterCopy,
   }));
 }

@@ -10,6 +10,7 @@ import {
 import { contentMatchesSource, type LibrarySource, type LinkableContent } from '@/lib/linkedContent';
 import type { LibraryDetails } from '@/types';
 import { libraryItemDetails } from '@/lib/librarySources';
+import { loadMediaLookup } from '@/lib/libraryMedia';
 
 /** One review in progress: the item checked, its content, and the worlds behind it. */
 interface Review {
@@ -74,7 +75,9 @@ export function useComponentUpdates(live?: LiveWorld[]) {
     const held = await libraryItemData(kind, libraryId);
     const existingDetails = libraryDetails ? await libraryItemDetails(kind, libraryId) : undefined;
     const details = libraryDetails ? { ...existingDetails, ...libraryDetails } : undefined;
-    if (held && contentMatchesSource(content, held)) {
+    // Images compare by file and rule, never by name (Q30).
+    const media = held && await loadMediaLookup([content, held].flatMap((side) => ('entries' in side ? [] : [side])), undefined);
+    if (held && contentMatchesSource(content, held, undefined, undefined, undefined, media || undefined)) {
       if (details && JSON.stringify(details) !== JSON.stringify(existingDetails)) {
         await replaceLibraryItemContent(kind, libraryId, content, new Date().toISOString(), details);
         toast.success(`“${item.name}” updated from the imported file.`);

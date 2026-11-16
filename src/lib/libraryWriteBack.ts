@@ -4,7 +4,8 @@ import { planWriteBack, type LinkStamp, type WorldContent } from '@/lib/linkedCo
 import { kindOf, loadLinkedSources, replaceLibraryItemContent, toLibraryItem } from '@/lib/librarySources';
 import { traitWorldOf } from '@/lib/portableTraits';
 import { loadVrmLookup, withLibraryPick } from '@/lib/libraryVrm';
-import type { GameLocation, Placeholder, Stat, StatGroup, SupporterCopyMarker, Trait, TraitGroup, WorldVrmStore } from '@/types';
+import { loadMediaLookup } from '@/lib/libraryMedia';
+import type { Entity, GameLocation, MediaList, Placeholder, Stat, StatGroup, SupporterCopyMarker, Trait, TraitGroup, WorldVrmStore } from '@/types';
 
 /** What a world save hands over: its content, the combined placeholder pool its chips point at, its
  *  locations, which an entity's membership is named against, and its traits, which owned trait requirements
@@ -21,6 +22,8 @@ export interface WorldToWriteBack extends WorldContent {
   statGroups?: StatGroup[];
   /** The world's Avatar store, which a copy's Avatar pick names. */
   vrmStore?: WorldVrmStore;
+  /** The world's Media List, which a copy's gallery links name. */
+  mediaList?: MediaList;
   /** The world's Supporter Copy marker: undefined while unread, null for a plain world. */
   supporterCopy: SupporterCopyMarker | null | undefined;
 }
@@ -51,9 +54,12 @@ export async function planOwnedWriteBack(world: WorldToWriteBack): Promise<Owned
     toastError(error, { headline: 'Could not read your library, so nothing was written to it.' });
     return NOTHING_TO_WRITE;
   }
-  const vrm = await loadVrmLookup(world.vrmStore);
+  const sourceEntities = sources.flatMap((source) => (source.data && !('entries' in source.data) ? [source.data as Entity] : []));
+  // Only linked copies are compared, so only theirs are hashed.
+  const linkedEntities = world.entities.filter((entity) => entity.link?.libraryId);
+  const [vrm, media] = await Promise.all([loadVrmLookup(world.vrmStore), loadMediaLookup([...linkedEntities, ...sourceEntities], world.mediaList)]);
   const marked = new Map(sources.flatMap((source) => (source.supporterCopy ? [[source.id, source.supporterCopy] as const] : [])));
-  const plan = planWriteBack(world, sources, (copy) => toLibraryItem(copy, world.placeholders, world.locations, world), traitWorldOf(world), vrm)
+  const plan = planWriteBack(world, sources, (copy) => toLibraryItem(copy, world.placeholders, world.locations, world, world.mediaList), traitWorldOf(world), vrm, media)
     .filter((step) => world.supporterCopy === null || marked.get(step.source.id)?.sourceWorldId === world.worldId);
   if (!plan.length) return NOTHING_TO_WRITE;
   const revision = new Date().toISOString();
