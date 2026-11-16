@@ -6,7 +6,7 @@ import { useGameplay } from '@/contexts/GameplayContext';
 import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
 import { parseTurnContent } from '@/lib/turnDigest';
 import type { MemoryNote } from '@/lib/memoryOverrides';
-import type { ChatMessage, Entity, PlayerStat, Script, Trait, World } from '@/types';
+import type { ChatMessage, Entity, PlayerStat, Script, Trait, World, WorldOption } from '@/types';
 
 /** When a Trait Switches on a mounted game: the player's toggle fires it both ways; setup and a load do not. */
 
@@ -29,6 +29,7 @@ let stats: PlayerStat[] = [];
 let traitsOn: string[] = [];
 let showTraits = () => {};
 let showStats = () => {};
+let showOptions = () => {};
 let history: ChatMessage[] = [];
 let notes: MemoryNote[] = [];
 function Probe() {
@@ -37,6 +38,7 @@ function Probe() {
   traitsOn = play.globalTraits.filter((t) => !play.disabledTraitIds.includes(t.id)).map((t) => t.id).sort();
   showTraits = () => play.setActiveTab('traits');
   showStats = () => play.setActiveTab('stats');
+  showOptions = () => play.setActiveTab('options');
   history = play.fullMessageHistory;
   notes = play.memoryNotes;
   return null;
@@ -193,5 +195,58 @@ describe('When a Trait Switches in play', () => {
     renderGameViewer(world(), { inGameplay: <Probe />, initialSaveId: save.id });
     await screen.findByRole('button', { name: 'Regenerate Narration' });
     expect(vigorNow()).toBe(50);
+  });
+});
+
+describe('args.by in play (Q12)', () => {
+  /** Each trait's switch writes its cause to its own stat: 1 player, 2 script, 3 rule. */
+  const byStat = (id: string, name: string): PlayerStat => ({ ...vigor, id, name, value: 0 });
+  const cause = 'const by = { player: 1, script: 2, rule: 3 }[args.by] ?? 9;';
+  const record: Script = { id: 'by', timing: 'switch', code: `${cause} stats[trait.name + "By"].value = by;` };
+  const byOf = (id: string) => stats.find((s) => s.id === id)?.value;
+  const mood = { id: 'mood', name: 'Mood', parentId: null, maxPicks: 1 };
+  const meek: Trait = { id: 'meek', name: 'Meek', statChanges: [], playerToggle: true, groupId: 'mood' };
+
+  it('reads player for the toggled trait and rule for the sibling it turned off and its cascade', async () => {
+    // Hush needs Meek, so it turns off with it.
+    const hush: Trait = { id: 'hush', name: 'Hush', statChanges: [], requires: [{ all: [{ kind: 'trait', id: 'meek' }] }] };
+    const pick: World = {
+      ...harborWorld({ stats: [byStat('braveBy', 'BraveBy'), byStat('meekBy', 'MeekBy'), byStat('hushBy', 'HushBy')] }),
+      traits: [{ ...brave, groupId: 'mood' }, meek, hush], traitGroups: [mood], scripts: [record],
+    };
+    renderGameViewer(pick, { inGameplay: <Probe />, initialTraits: ['meek', 'hush'] });
+    await screen.findByPlaceholderText(/Type your action/);
+    showTraits();
+    const global = await screen.findByRole('group', { name: 'Global' });
+    fireEvent.click(within(global).getByRole('button', { name: /^Global,/ }));
+    // A pick-one group's switch is a radio, under the closed Disabled list while off.
+    fireEvent.click(within(global).getByRole('button', { name: /^Disabled/ }));
+    fireEvent.click(await within(global).findByRole('radio', { name: /Brave/ }));
+    await waitFor(() => expect(byOf('braveBy')).toBe(1));
+    expect(byOf('meekBy')).toBe(3);
+    expect(byOf('hushBy')).toBe(3);
+    expect(traitsOn).toEqual(['brave']);
+  });
+
+  it('reads rule for a gate that closes at the turn’s end', async () => {
+    const gated: Trait = { ...brave, requires: [{ all: [{ kind: 'stat', id: 'vigor', operator: '>=', value: 40, unit: 'raw' }] }] };
+    const drop = { ...vigor, scripts: [{ id: 'drop', timing: 'before' as const, code: 'return 10;' }] };
+    const settled: World = { ...harborWorld({ stats: [drop, byStat('braveBy', 'BraveBy')] }), traits: [gated], scripts: [record] };
+    renderGameViewer(settled, { inGameplay: <Probe />, initialTraits: ['brave'] });
+    await playTurn();
+    await waitFor(() => expect(byOf('braveBy')).toBe(3));
+  });
+
+  it('reads rule for a gate an Option change opens', async () => {
+    const lit: WorldOption = { id: 'o-lit', name: 'Lit', type: 'boolean', shownToPlayer: true, midGame: true, default: false };
+    const gated: Trait = { ...brave, requires: [{ all: [{ kind: 'option', id: 'o-lit' }] }] };
+    const opted = { ...harborWorld({ stats: [byStat('braveBy', 'BraveBy')] }), traits: [gated], scripts: [record], options: [lit] } as World;
+    renderGameViewer(opted, { inGameplay: <Probe />, initialTraits: ['brave'] });
+    await screen.findByPlaceholderText(/Type your action/);
+    expect(traitsOn).toEqual([]);
+    act(() => showOptions());
+    fireEvent.click(within(await screen.findByTestId('world-options-tab')).getByRole('checkbox', { name: 'Lit' }));
+    await waitFor(() => expect(byOf('braveBy')).toBe(3));
+    expect(traitsOn).toEqual(['brave']);
   });
 });

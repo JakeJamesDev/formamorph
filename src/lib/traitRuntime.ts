@@ -11,6 +11,7 @@
 //   that trait reverses it, rather than the authored number.
 
 import type { ItemScriptEvent } from './inventory';
+import type { SwitchCause } from './triggerArgs';
 import type {
   BodyRuntime, CascadeOffTraitIds, CodeBoundDeltas, CodeBounds, Daypart, EntityStatValues, ItemInstance, ItemEffectLedger, LegacyCodeBoundsStat, OwnedTraitPicks, OwnedTraitStates, PersonaRef,
   PlayerStat, Stat, StatChange, Trait, TraitGroup,
@@ -663,6 +664,22 @@ export interface TraitSwitchEvent {
   traitId: string;
   ownerId: OwnerId;
   enabled: boolean;
+  /** Who switched it. Absent ⇒ `'rule'`. */
+  by?: SwitchCause;
+}
+
+/** A switch someone asked for by id. Absent `ownerId` ⇒ a global trait. */
+export interface CausedSwitch {
+  traitId: string;
+  enabled: boolean;
+  ownerId?: string | null;
+}
+
+/** `events` with `by` on each one `asked` names: the last ask per trait, where the trait ended that way. Every other
+ *  event keeps its cause, so a sibling or cascade it brought along reads `'rule'` (Q12). Order is unchanged. */
+export function causedSwitches(events: readonly TraitSwitchEvent[], by: SwitchCause, asked: readonly CausedSwitch[]): TraitSwitchEvent[] {
+  const last = new Map(asked.map((ask) => [recordKey(ask.ownerId ?? null, ask.traitId), ask.enabled]));
+  return events.map((event) => (last.get(recordKey(event.ownerId, event.traitId)) === event.enabled ? { ...event, by } : event));
 }
 
 /** The traits whose in-force state differs from `before` under `beforeWorld` to `after` under `world`: offs

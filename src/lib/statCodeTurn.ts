@@ -17,7 +17,7 @@ import type { StatCodePlaceholderSet } from './statCodePlaceholders';
 import { recordKey } from './ownedTraitState';
 import type { StatCodeOwners } from './statCodeTraits';
 import {
-  applyCodeTraitSwitches, codeDeltaFor, gateStatsOf, ownerStatTraitsInForce, sameCodeDelta, sameHidden, settleTraits, traitForceScope, traitSwitchEvents, withCodeDelta,
+  applyCodeTraitSwitches, causedSwitches, codeDeltaFor, gateStatsOf, ownerStatTraitsInForce, sameCodeDelta, sameHidden, settleTraits, traitForceScope, traitSwitchEvents, withCodeDelta,
   type AppliedTraitValues, type CodeTraitSwitch, type GatedTraitResult, type TraitForceState, type TraitSwitchEvent, type TraitWorld,
 } from './traitRuntime';
 import { withOptionWrites } from './worldOptions';
@@ -282,6 +282,8 @@ export interface StatCodeTurnResult {
   pinWrites: PinWrites;
   /** Absent when code switched no trait. */
   traits?: StatCodeTraitResult;
+  /** The trait switches the run's scripts and its nested runs wrote, in run order, which read `'script'`. Absent when none wrote one. */
+  traitWrites?: readonly TraitSwitchWrite[];
   /** Each entity owner's result by owner id; absent when the turn named none. */
   owners?: Readonly<Record<string, OwnerCodeResult>>;
   /** The one stat snapshot every settle in the run read (Q19): asks, regen, `penalties` and code writes applied,
@@ -657,7 +659,7 @@ export const runStatCodeTurn = (turn: StatCodeTurn): Promise<StatCodeTurnResult>
 /** An `output` run's `result` with the runs its switches and inventory writes fire, as one result over `turn`. */
 export async function withSwitchRuns(turn: StatCodeTurn, result: StatCodeTurnResult): Promise<StatCodeTurnResult> {
   const after = afterRun(turn, result);
-  const fired = switchesBetween(turn, after);
+  const fired = scriptSwitchesBetween(turn, after, result);
   if (!fired.length && !result.items) return result;
   const action = { ...actionRunsOf(turn), runsSoFar: [result] };
   const steps = [result];
@@ -838,6 +840,10 @@ export async function runSwitchScripts(turn: StatCodeTurn, events: readonly Trai
 const switchesBetween = (from: StatCodeTurn, to: StatCodeTurn): TraitSwitchEvent[] =>
   traitSwitchEvents(forceStateOf(from), forceStateOf(to), to.state.ownerTraits.world);
 
+/** The switches `result`'s scripts made from one turn's state to the next's: a trait they wrote reads `'script'`. */
+const scriptSwitchesBetween = (from: StatCodeTurn, to: StatCodeTurn, result: StatCodeTurnResult): TraitSwitchEvent[] =>
+  causedSwitches(switchesBetween(from, to), 'script', result.traitWrites ?? []);
+
 /** `turn` as the switch run of `switched` runs over it: only the state and the turn's readings carry over. A World
  *  Tool's call, a sentence and an item event belong to the run that fired it. */
 function switchRunOf(turn: StatCodeTurn, switched: TraitSwitchEvent): StatCodeTurn {
@@ -960,6 +966,7 @@ export function chainedResult(start: StatCodeTurn, steps: readonly StatCodeTurnR
   const worldWrites = mergedWorldWrites(steps.map((step) => step.worldWrites));
   const loreWrites = steps.flatMap((step) => step.loreWrites ?? []);
   const optionWrites = steps.flatMap((step) => step.optionWrites ?? []);
+  const traitWrites = steps.flatMap((step) => step.traitWrites ?? []);
   const last = steps.findLast((step) => step.traits)?.traits;
   const logs = steps.map((step) => step.traits?.log ?? []);
   const traits: StatCodeTraitResult | undefined = last && {
@@ -979,7 +986,7 @@ export function chainedResult(start: StatCodeTurn, steps: readonly StatCodeTurnR
   } : undefined;
   return {
     stats: now.state.stats, ...changedStats(start.state.stats, now.state.stats), pinWrites, gateStats: finalStep.gateStats,
-    ...(traits ? { traits } : {}), ...(owners ? { owners } : {}), ...(worldWrites ? { worldWrites } : {}),
+    ...(traits ? { traits } : {}), ...(traitWrites.length ? { traitWrites } : {}), ...(owners ? { owners } : {}), ...(worldWrites ? { worldWrites } : {}),
     ...(loreWrites.length ? { loreWrites } : {}), ...(optionWrites.length ? { optionWrites } : {}), ...(items ? { items } : {}),
   };
 }
@@ -1124,7 +1131,8 @@ const switcherName = (turn: StatCodeTurn, { stat, trait, itemName, script }: Scr
 /** `turn` with `unit`'s writes applied, as the next script finds it. */
 function afterWrites(turn: StatCodeTurn, began: TimingStart, unit: ScriptUnit, writes: ScriptWrites, snapshot: SandboxSnapshot): { step: StatCodeTurnResult; next: StatCodeTurn } {
   const written = writes.traits ? snapshot.switchesOf(unit, { traits: writes.traits.world, entities: writes.traits.entities }) : [];
-  const step = settledStep(turn, began, writes, traitSwitchesOf(switcherName(turn, unit), written));
+  const settled = settledStep(turn, began, writes, traitSwitchesOf(switcherName(turn, unit), written));
+  const step = written.length ? { ...settled, traitWrites: written } : settled;
   return { step, next: afterRun(turn, step) };
 }
 
@@ -1186,7 +1194,7 @@ async function runScripts(turn: StatCodeTurn, nesting: RunNesting = ACTION_TOP, 
   const land = async (unit: ScriptUnit, writes: ScriptWrites, snapshot: SandboxSnapshot) => {
     const { step, next } = afterWrites(now, began, unit, writes, snapshot);
     action.runsSoFar.push(step);
-    const fired = step.traits && timing !== 'output' ? switchesBetween(now, next) : [];
+    const fired = step.traits && timing !== 'output' ? scriptSwitchesBetween(now, next, step) : [];
     const ops = writes.world?.inventory;
     const landed = ops?.length
       ? landedInventory(next, step, action, { ops, from: now.state.itemInstances ?? [], holdsEvents: timing === 'output' }) : { step, next, events: [] };

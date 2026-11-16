@@ -565,8 +565,15 @@ const ITEM_ARGS_ENTRIES: Partial<Record<ItemArgsField, SurfaceEntry>> = {
 export const itemArgsMembers = (timing: ItemScriptTiming): SurfaceEntry[] =>
   ITEM_ARGS_FIELDS[timing].flatMap((field) => ITEM_ARGS_ENTRIES[field] ?? []);
 
-export const ITEM_ARGS_INFO = 'What the item event passed this script';
+const ITEM_ARGS_INFO = 'What the item event passed this script';
 const ITEM_ARGS_GLOBAL: SurfaceEntry = { name: 'args', detail: '{}', info: ITEM_ARGS_INFO, access: 'readOnly' };
+
+/** The `args` fields a trait switch passes. */
+const SWITCH_ARGS_MEMBERS: SurfaceEntry[] = [{
+  name: 'by', detail: "'player' | 'script' | 'rule'", access: 'readOnly',
+  info: 'What switched the trait: the player in the Traits tab, a script’s write, or a rule such as a gate or another trait turning it off',
+}];
+const SWITCH_ARGS_GLOBAL: SurfaceEntry = { name: 'args', detail: '{}', info: 'What the trait switch passed this script', access: 'readOnly' };
 const EMPTY_ARGS_GLOBAL: SurfaceEntry = { name: 'args', detail: '{}', info: 'Empty in this timing', access: 'readOnly' };
 
 /** `instance`, which an item timing's script reads. */
@@ -586,12 +593,14 @@ const timingObject = (timing: ScriptTiming) => (timing === 'output'
 export const scriptSurface = (surface: CodeSurface, timing: ScriptTiming): CodeSurface => {
   const { global, members } = timingObject(timing);
   const item = isItemTiming(timing);
-  const args = item ? itemArgsMembers(timing) : [];
+  const switched = timing === 'switch';
+  const args = item ? itemArgsMembers(timing) : switched ? SWITCH_ARGS_MEMBERS : [];
+  const argsGlobal = item ? ITEM_ARGS_GLOBAL : switched ? SWITCH_ARGS_GLOBAL : EMPTY_ARGS_GLOBAL;
   return {
     ...surface,
     globals: [
-      ...surface.globals, global, ...(timing === 'switch' ? [SWITCHED_TRAIT_GLOBAL] : []),
-      { ...(item ? ITEM_ARGS_GLOBAL : EMPTY_ARGS_GLOBAL), detail: args.length ? shapeOf(args) : '{}' },
+      ...surface.globals, global, ...(switched ? [SWITCHED_TRAIT_GLOBAL] : []),
+      { ...argsGlobal, detail: args.length ? shapeOf(args) : '{}' },
       ...(item ? [INSTANCE_GLOBAL] : []),
     ],
     members: new Map([

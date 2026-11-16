@@ -28,7 +28,7 @@ import { activeStatEnabled } from './traitEffects';
 import type { GateStats } from './traitGates';
 import type { RunTiming } from './statCodeTiming';
 import { isItemTiming } from './scripts';
-import { SAMPLE_ITEM_ARGS, type ItemEventArgs } from './triggerArgs';
+import { SAMPLE_ITEM_ARGS, SAMPLE_SWITCH_ARGS, type ItemEventArgs, type SwitchEventArgs } from './triggerArgs';
 import { instanceState, isUnidentified, occupiedSlots, usesLeft } from './items';
 import type { ScriptPromptHost } from './scriptPrompts';
 import type { ResolveText, SandboxState, StatePlaces } from './statCodeTurn';
@@ -468,9 +468,13 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
       ?? { id: trait.id, name: statCodeName(trait.name, read.placeholderDefs), enabled: false, acquired: false });
     const itemEvent = unit.home.kind === 'item' && unit.itemEvent && isItemTiming(unit.timing)
       ? itemEventOf(read, unit.home.item.id, unit.timing, unit.itemEvent) : undefined;
-    const switchedTrait = unit.timing !== 'switch' || !unit.switched ? undefined
-      : unit.switched === 'sample' ? sampleSwitchedTrait(read.traits, firstTraitId(), selfTrait && { entry: selfTrait, owner: owner?.name ?? '' })
-        : switchedTraitEntry(read, unit.switched);
+    const switched = unit.timing === 'switch' ? unit.switched : undefined;
+    const switchedTrait = !switched ? undefined
+      : switched === 'sample' ? sampleSwitchedTrait(read.traits, firstTraitId(), selfTrait && { entry: selfTrait, owner: owner?.name ?? '' })
+        : switchedTraitEntry(read, switched);
+    const switchArgs: SwitchEventArgs | undefined = !switched ? undefined
+      : switched === 'sample' ? SAMPLE_SWITCH_ARGS : { by: switched.event.by ?? 'rule' };
+    const args = unit.args ?? switchArgs;
     return {
       clock: state.clock, ...(read.stats.readings ? { readings: read.stats.readings } : {}), ...(state.turn && { turn: turnRead(state.turn, unit) }),
       ...(takesChoicesWrite(unit, state.turn) && { choicesWritable: true }),
@@ -484,7 +488,7 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
       ...(unit.timing === 'output' && unit.narration !== undefined && {
         narration: typeof unit.narration === 'string' ? sampleNarration(unit.narration) : unit.narration,
       }),
-      ...(selfTrait && { selfTrait }), ...(switchedTrait && { switchedTrait }), ...(unit.args && { args: unit.args }),
+      ...(selfTrait && { selfTrait }), ...(switchedTrait && { switchedTrait }), ...(args && { args }),
       ...(options.openCast && { openCast: true }), ...(state.memories && { memories: state.memories }),
       ...(state.notes && { notes: state.notes }), ...(unit.readOnly && { readOnly: true }),
       ...(itemEvent ? { items: itemEvent.items } : read.items.length && { items: read.items }),

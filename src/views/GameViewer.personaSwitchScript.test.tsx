@@ -86,6 +86,15 @@ describe('a persona change’s switch run', () => {
     await waitFor(() => expect(vigorNow()).toBe(23));
   });
 
+  it('reads rule as args.by', async () => {
+    renderGameViewer(world('stats.Vigor.value = args.by === "rule" ? 7 : 1;'), {
+      inGameplay: <Probe />, initialTraits: ['sworn'], initialPersona: { ref: { source: 'world', entityId: 'ash' } },
+    });
+    await screen.findByPlaceholderText(/Type your action/);
+    await changePersona('Mira');
+    await waitFor(() => expect(vigorNow()).toBe(7));
+  });
+
   it('reads the new cast: the persona that left is gone from `entities`, the one that came is in it', async () => {
     await EntityStorageService.storeEntity({ id: wren.id, name: wren.name, data: wren });
     renderGameViewer(world(`${inCast} stats.Vigor.value = (inCast("Wren") ? 1 : 0) + (inCast("Mira") ? 10 : 0);`, [drifter]), {

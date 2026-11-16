@@ -306,7 +306,7 @@ A turn runs scripts at five points:
 | **After the AI** | After the AI's changes and Regen apply | When the turn ends | `player` |
 | **During AI Output** | Once for each narration sentence, when it completes | The sentence, then the stats with the After the AI scripts | `narration` |
 | **At Game Start** | Once, on the opening turn of a new game, before the Before the AI scripts | In the opening prompt | `player` |
-| **When a Trait Switches** | Each time a trait turns on or off during a game | At once | `player` and `trait` |
+| **When a Trait Switches** | Each time a trait turns on or off during a game | At once | `player`, `trait` and `args.by` |
 
 A timing adds names to the ones every script reads. The editor's **Variable** menu lists them in one group near the top: **Narration**, **Player** and **Switched Trait**. The group comes after **This Stat** (or **This Trait**) and **Owner**. In a trait's script, **This Trait** replaces **This Stat**. A world script has neither.
 
@@ -368,6 +368,7 @@ The script runs once for each trait that turns on or off during a game, whatever
 Setup picks and a loaded save skip these scripts. So does a trait that switches and switches back inside one script, or across one reply in During AI Output.
 
 - A script in this timing reads `trait`: the trait that switched, with `enabled` set to its new state (see [Trait](Scripts-Reference#trait)).
+- `args.by` tells what switched it: `'player'` for the player's switch in the **Traits** tab, `'script'` for a script, and `'rule'` for every other source. A trait a group switched off with the player's pick reads `'rule'`.
 - A trait's own script also has `self`. It runs on its own switch-off too. That is the one time a trait's script runs while the trait is off.
 - Several switches from one action run one at a time, the switch-offs first. Each run reads the state the run before it left.
 - A switch that a script makes runs its own scripts, to a depth of 8. Past that depth, the switch applies, no script runs, and the browser console warns.

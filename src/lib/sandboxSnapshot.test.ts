@@ -68,7 +68,7 @@ const OWNER_ROWS: [string, unknown, unknown][] = [
 
 const TIMINGS: RunTiming[] = ['before', 'start', 'after', 'output', 'switch'];
 const narration = { sentence: 'She waits.', full: 'She waits.', index: 0, sent: [], buffered: [] };
-const switched = { event: { traitId: 'calm', ownerId: null, enabled: true }, world: state.ownerTraits.world };
+const switched = { event: { traitId: 'calm', ownerId: null, enabled: true, by: 'script' as const }, world: state.ownerTraits.world };
 const unitAt = (home: UnitHome, timing: RunTiming): ScriptRunUnit => ({
   home, timing, code: 'return 1;', narration, switched, ...(home.kind === 'tool' ? { args: { n: 1 } } : {}),
 });
@@ -90,7 +90,7 @@ describe('the options a snapshot assembles', () => {
       expect(options.places).toEqual({
         locations: [{ id: 'dock', name: 'Dock', description: '', summary: '', starting: false, links: expect.any(Function) }], location: { id: 'dock', name: 'Dock' },
       });
-      expect(options.args).toEqual(name === 'World Tool' ? { n: 1 } : undefined);
+      expect(options.args).toEqual(name === 'World Tool' ? { n: 1 } : timing === 'switch' ? { by: 'script' } : undefined);
       expect(options.narration).toEqual(timing === 'output' ? narration : undefined);
       expect(options.switchedTrait).toEqual(timing === 'switch'
         ? { id: 'calm', name: 'Calm', enabled: true, acquired: false, mode: 'optional', available: true, group: '', playerToggle: false, owner: '' }
@@ -183,6 +183,12 @@ describe('the readings and overlays an editor run takes', () => {
     expect(optionsFor(snapshotOf(state), sample(HOMES['world script'])).switchedTrait).toMatchObject({ id: 'brave', enabled: true, owner: '' });
     const bare: SandboxState = { ...state, ownerTraits: { ...state.ownerTraits, acquired: [], world: { ...state.ownerTraits.world, traits: [] } } };
     expect(optionsFor(snapshotOf(bare), sample(HOMES['world script'])).switchedTrait).toEqual({ name: '', enabled: true, acquired: true, owner: '' });
+  });
+
+  it('reads a sample switch as the player’s, and a switch with no cause as a rule’s', () => {
+    expect(optionsFor(snapshotOf(state), sample(HOMES['world script'])).args).toEqual({ by: 'player' });
+    const ruled = { ...switched, event: { traitId: 'calm', ownerId: null, enabled: true } };
+    expect(optionsFor(snapshotOf(state), { ...unitAt(HOMES['world script'], 'switch'), switched: ruled }).args).toEqual({ by: 'rule' });
   });
 });
 

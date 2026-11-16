@@ -697,6 +697,8 @@ describe('the names an item timing adds', () => {
     expect(inserts(treeAt('lost').built, 'Item Instance', 'quantity')).toBe('instance.quantity');
     for (const timing of ['before', 'after', 'output', 'start', 'switch'] as const) {
       expect(treeAt(timing).built.map(labelOf)).not.toContain('Item Instance');
+    }
+    for (const timing of ['before', 'after', 'output', 'start'] as const) {
       expect(treeAt(timing).built.map(labelOf)).not.toContain('Arguments');
     }
   });
@@ -736,6 +738,15 @@ describe('the names a script’s timing adds', () => {
     }
     expect(tree.map(labelOf)).not.toContain('Narration');
     expect(tree.map(labelOf)).not.toContain('Player');
+  });
+
+  it('lists a switch’s one argument as a leaf and gives args.by its card', () => {
+    // A group with one field lists as that field.
+    expect(treeAt('switch').built.find((node) => labelOf(node) === 'by')).toMatchObject({ kind: 'field', insert: 'args.by' });
+    expect(treeAt('after').built.map(labelOf)).not.toContain('by');
+    const card = (code: string, at: string) => codeCard(code, code.lastIndexOf(at) + 1, { surface: treeAt('switch').surface });
+    expect(card('args.by', 'by')?.signature).toMatchObject({ type: "'player' | 'script' | 'rule'" });
+    expect(card('args', 'args')?.signature).toMatchObject({ type: '{ by }' });
   });
 
   it('opens Narration to its fields and Player to its calls, each inserted whole', () => {

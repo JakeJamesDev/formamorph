@@ -42,6 +42,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Scripts:**
     - **Scripts now add a turn's memory line with `memories.append`, which replaces `memories.add`.** It works as `add` did, and worlds with `memories.add` are rewritten when they load.
     - **Item scripts can tell who caused an item event, and where the item came from or went.** `args.by` reads story, player, script or rule. `args.from === persona` means the player gave it, so a gift script can skip shop buys and pickups.
+    - **When a Trait Switches scripts can tell what switched the trait.** `args.by` reads player for a Traits tab switch, script for a script's write, and rule for gates, group picks and persona or World Option changes.
   - **Named Memories:**
     - **Scripts can keep one Custom memory up to date under a name.** `memories.pin("Nursery", text)` adds it or replaces its text, and `memories["Nursery"]` reads it. A rewind brings back the earlier text.
     - **Your Memory Manager edits to a named memory stay when you rewind a turn.** The script's next update starts from your text. After you delete the memory, the script starts a new one.

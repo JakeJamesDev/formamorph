@@ -972,7 +972,7 @@ A message belongs to the turn that runs when the script makes it:
 **Test Code** and the **Test Bench** show the real question, one after another, as in a game. An edit to the code, or a close of the editor, closes an open prompt. `tell` and `toast` show as lines in the report.
 
 ### Trait
-<!-- keywords: trait that switched, switch script, trait switched on, trait switched off, trait enabled, which trait changed, when a trait switches, trait is not defined, trait read-only, error underline on trait -->
+<!-- keywords: trait that switched, switch script, trait switched on, trait switched off, trait enabled, which trait changed, when a trait switches, trait is not defined, trait read-only, error underline on trait, who switched the trait, player toggle or script, args.by switch cause -->
 <!-- route: worldEditorStat.code -->
 
 `trait` is the trait that switched, in its state after the switch. It exists in a **When a Trait Switches** script only. In any other timing, the name is unknown. It is read-only. The editor underlines a write to it as an error. In a run, the write is ignored and reported.
@@ -991,9 +991,24 @@ if (trait.name === 'Wounded' && trait.enabled) stats.Vigor.value -= 5;
 
 A stat or world script sees every switch through `trait`. A trait's own script sees its own switches, with `self` as the trait and `trait` as the same entry.
 
+`args.by` tells what switched the trait:
+
+| `args.by` | Cause |
+| --- | --- |
+| `'player'` | The player switched this trait in the **Traits** tab |
+| `'script'` | A script switched this trait, a World Tool's included |
+| `'rule'` | Anything else: a gate, a trait that turns its siblings off, a trait that turns off with another, a World Option change or a persona change |
+
+Only the trait the player or the script named reads `'player'` or `'script'`. A sibling that turned off with it reads `'rule'`.
+
+```javascript
+// Only the player's own switch costs Gold.
+if (trait.name === 'Rage' && trait.enabled && args.by === 'player') stats.Gold.value -= 10;
+```
+
 When a script switches a trait, its **When a Trait Switches** scripts run at once, before the next script in the list. The next script reads their full result. A switch that one of these scripts makes runs the same way, up to 8 levels deep. One action runs these scripts at most 100 times in all, counting the runs it starts between turns. Past either limit, the switch still applies, its scripts are skipped, and the console reports it. See [Order of Effects](#order-of-effects).
 
-**Test Code** reads a sample. In a trait's own script, `trait` is that trait. In other scripts, it is the world's first trait in tree order, read as switched on, or a blank trait.
+**Test Code** reads a sample. In a trait's own script, `trait` is that trait. In other scripts, it is the world's first trait in tree order, read as switched on, or a blank trait. `args.by` reads `'player'`.
 
 ### Args
 <!-- keywords: args, arguments, trigger, what started the run, item event quantity, use target, who gave it, gift from player, where it came from, where it went, cause, by story player script rule, self.event, args empty, args read-only -->
@@ -1004,6 +1019,7 @@ When a script switches a trait, its **When a Trait Switches** scripts run at onc
 | --- | --- |
 | A [World Tool](ScriptsGuide#world-tools) script | The values the AI sent, such as `args.<Parameter>` |
 | An item script | The fields of the item event, below |
+| A **When a Trait Switches** script | `by`: what switched the trait (see [Trait](#trait)) |
 | Any other script | Nothing. It's an empty object |
 
 An item script's `args`:

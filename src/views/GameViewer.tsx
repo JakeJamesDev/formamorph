@@ -288,9 +288,9 @@ import {
 } from "../lib/traitEffects";
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
-  activeTraits as traitsInForce, entityStatTraitsInForce, heldGlobalTraits, globalRowTraits, startingTraitLog,
+  activeTraits as traitsInForce, causedSwitches, entityStatTraitsInForce, heldGlobalTraits, globalRowTraits, startingTraitLog,
   gateStatsOf, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitForceScope, traitNameIn, traitSwitchEvents,
-  type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
+  type CausedSwitch, type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
 import type { GateStats } from "../lib/traitGates";
 import { starvationLoss } from "../lib/starvation";
@@ -4510,9 +4510,13 @@ const GameViewer = ({
   // The When a Trait Switches runs of every trait an in-play action switched, over the state the action left;
   // their writes land at once (Q12, Q47). A run's own switches fire inside the run.
   const fireSwitchScripts = useCallback(
-    /** `world` is the one `to` holds under; a persona change passes the one `from` held under as `fromWorld`. */
-    async (from: TraitRuntimeState, to: TraitRuntimeState, world: TraitWorld, totals: ActionTotals, fromWorld: TraitWorld = world) => {
-      const events = traitSwitchEvents(from, to, world, fromWorld);
+    /** `world` is the one `to` holds under; a persona change passes the one `from` held under as `fromWorld`.
+     *  `toggled` is the trait the player switched, which reads `'player'`. */
+    async (
+      from: TraitRuntimeState, to: TraitRuntimeState, world: TraitWorld, totals: ActionTotals,
+      { fromWorld = world, toggled }: { fromWorld?: TraitWorld; toggled?: CausedSwitch } = {},
+    ) => {
+      const events = causedSwitches(traitSwitchEvents(from, to, world, fromWorld), 'player', toggled ? [toggled] : []);
       if (!events.length) return;
       const prepared = prepareStatCode(to.stats, to.stats, [], { deltaHours: 0, elapsedHours: gameTime, calendar }, {
         codePins: liveCodeStateRef.current.codePins, loreToggles: liveCodeStateRef.current.loreToggles, globalTraits: to.traits, disabledTraitIds: to.disabledTraitIds,
@@ -5792,7 +5796,7 @@ const GameViewer = ({
       };
       const totals = startActionTotals();
       trackPanelRun(commitGatedTraits(result, name, totals));
-      trackPanelRun(fireSwitchScripts(traitState, result.state, world, totals));
+      trackPanelRun(fireSwitchScripts(traitState, result.state, world, totals, { toggled: { traitId, enabled, ownerId } }));
       addListedAction(facts, snapshot);
     },
     [isWaitingForAI, listBusy, traitState, gatedWorld, traitName, commitGatedTraits, fireSwitchScripts, settleWithItems, startActionTotals,
@@ -6075,7 +6079,7 @@ const GameViewer = ({
       const settled = settleWithItems(moved.state, to, traitName, from.persona);
       const totals = startActionTotals();
       trackPanelRun(commitGatedTraits({ ...settled, log: [...moved.log, ...settled.log] }, name ?? 'the persona change', totals));
-      trackPanelRun(fireSwitchScripts(traitState, settled.state, to, totals, from));
+      trackPanelRun(fireSwitchScripts(traitState, settled.state, to, totals, { fromWorld: from }));
     },
     [traitState, gatedWorld, traitName, commitGatedTraits, fireSwitchScripts, settleWithItems, startActionTotals, trackPanelRun],
   );

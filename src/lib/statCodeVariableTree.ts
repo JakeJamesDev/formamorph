@@ -16,7 +16,7 @@ import {
   CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, CURRENCY_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, ITEM_FIELDS, NARRATION_FIELDS,
   NARRATION_GLOBAL, PERSONA_FIELDS, PLAYER_CALL_ENTRIES, PLAYER_GLOBAL, PREVIOUS_FIELDS, SANDBOX_GLOBALS, SELF_TRAIT_FIELDS,
   STAT_CODE_SURFACE, STAT_FIELDS, SWITCHED_TRAIT_FIELDS, SWITCHED_TRAIT_GLOBAL, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
-  INSTANCE_GLOBAL, ITEM_ARGS_INFO, ITEM_INSTANCE_FIELDS,
+  INSTANCE_GLOBAL, ITEM_INSTANCE_FIELDS,
 } from '@/lib/statCodeSurface';
 
 /** The names the tree lists, as the editor's session holds them, with each world trait in its groups. */
@@ -312,8 +312,10 @@ export interface TimingGlobals {
   narration: boolean;
   player: boolean;
   trait: boolean;
-  /** An item timing's `args` fields. Absent outside an item timing. */
-  itemArgs?: readonly SurfaceEntry[];
+  /** Absent ⇒ false. */
+  instance?: boolean;
+  /** The timing's `args` card line and fields. Absent in a timing whose `args` is empty. */
+  args?: { info: string; fields: readonly SurfaceEntry[] };
   /** `turn`'s members with the access the timing gives them. Absent, every one is read-only. */
   turn?: readonly SurfaceEntry[];
 }
@@ -321,11 +323,17 @@ export interface TimingGlobals {
 /** The timing globals of a surface, read off the one list the editor and the menu share. */
 export const timingGlobalsOf = (surface: CodeSurface): TimingGlobals => {
   const turn = surface.members.get('turn');
+  const trait = surfaceHasGlobal(surface, 'trait');
+  const instance = surfaceHasGlobal(surface, 'instance');
+  // A timing's args come with its subject; a Tool lists its own Arguments.
+  const args = trait || instance ? surface.members.get('args') ?? [] : [];
+  const argsInfo = surface.globals.find((entry) => entry.name === 'args')?.info;
   return {
     narration: surfaceHasGlobal(surface, 'narration'),
     player: surfaceHasGlobal(surface, 'player'),
-    trait: surfaceHasGlobal(surface, 'trait'),
-    ...(surfaceHasGlobal(surface, 'instance') && { itemArgs: surface.members.get('args') ?? [] }),
+    trait,
+    instance,
+    ...(args.length && argsInfo !== undefined && { args: { info: argsInfo, fields: args } }),
     ...(turn && { turn }),
   };
 };
@@ -346,10 +354,9 @@ function timingGroups(globals: TimingGlobals): VariableNode[] {
     ...(globals.narration ? [{ kind: 'group' as const, label: 'Narration', info: NARRATION_GLOBAL.info, children: fields(root('narration'), NARRATION_FIELDS) }] : []),
     ...(globals.player ? [{ kind: 'group' as const, label: 'Player', info: PLAYER_GLOBAL.info, children: playerFields() }] : []),
     ...(globals.trait ? [{ kind: 'group' as const, label: 'Switched Trait', info: SWITCHED_TRAIT_GLOBAL.info, children: fields(root('trait'), SWITCHED_TRAIT_FIELDS) }] : []),
-    ...(globals.itemArgs ? [
-      { kind: 'group' as const, label: 'Item Instance', info: INSTANCE_GLOBAL.info, children: fields(root('instance'), ITEM_INSTANCE_FIELDS) },
-      { kind: 'group' as const, label: 'Arguments', info: ITEM_ARGS_INFO, children: fields(root('args'), globals.itemArgs) },
-    ] : []),
+    ...(globals.instance
+      ? [{ kind: 'group' as const, label: 'Item Instance', info: INSTANCE_GLOBAL.info, children: fields(root('instance'), ITEM_INSTANCE_FIELDS) }] : []),
+    ...(globals.args ? [{ kind: 'group' as const, label: 'Arguments', info: globals.args.info, children: fields(root('args'), globals.args.fields) }] : []),
   ];
 }
 

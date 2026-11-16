@@ -37,10 +37,14 @@ export const ITEM_ARGS_FIELDS: Readonly<Record<ItemScriptTiming, readonly ItemAr
   used: ['by', 'quantity', 'target'],
 };
 
+/** Who switched a trait: the player's toggle, a script's write, or a rule (Q12). */
+export type SwitchCause = Exclude<TriggerCause, 'story'>;
+
 /** What a When a Trait Switches run passes. */
-export interface SwitchEventArgs {
-  by?: Exclude<TriggerCause, 'story'>;
-}
+export type SwitchEventArgs = { by: SwitchCause };
+
+/** The switch an editor run reads: the player's toggle, as the sample trait switches on. */
+export const SAMPLE_SWITCH_ARGS: SwitchEventArgs = { by: 'player' };
 
 /** The fixed item event an editor run reads (Q11): one instance at the persona, from and to nowhere, used on nothing. */
 export const SAMPLE_ITEM_ARGS: ItemEventArgs = { quantity: 1, by: 'story', from: null, to: null, target: null };

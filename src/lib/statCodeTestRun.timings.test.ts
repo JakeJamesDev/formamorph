@@ -52,7 +52,7 @@ describe('Test Code on a During AI Output script', () => {
 describe('Test Code on a When a Trait Switches script', () => {
   it('fires a stat or world script on the world’s first trait in tree order, switched on', async () => {
     const report = await runTestCode(
-      'stats.Health.value = trait.name === "Brave" && trait.enabled && trait.owner === "" ? 70 : 10;', 'switch', { kind: 'world' }, world,
+      'stats.Health.value = trait.name === "Brave" && trait.enabled && trait.owner === "" && args.by === "player" ? 70 : 10;', 'switch', { kind: 'world' }, world,
     );
     expect(report.error).toBeNull();
     expect(report.writes).toEqual(['stats.Health.value = 70']);
