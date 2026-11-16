@@ -54,6 +54,12 @@ Settled with the user on 2026-11-16, in grill order.
 | Q23 | Ticket 01 adds the optional `name` on embedded gallery images and fills it in resolution; ticket 02 wires the flows (ticket 01) |
 | Q24 | An entry carries an optional MIME `type`, kept from the placed file, so resolution returns a full sound asset (ticket 01) |
 | Q25 | A linked (http/https) entry has no hash. Placement reuses the entry with the exact same URL, and the compare token for a URL is the URL. Fallback numbering starts at 1: `Wren 1`, then the next free number (ticket 01) |
+| Q26 | A library flow places media only into a world that already has a Media List. Ticket 03's migration gives every loaded world one (ticket 02) |
+| Q27 | Enter World cast additions stay embedded in the save. Gameplay never writes the world, and readers resolve embedded images (ticket 02) |
+| Q28 | Card JSON gains an optional `primaryImageName` beside `primaryImageRequires`; extra images carry `name` (ticket 02) |
+| Q29 | Entities publish from the library, so resolution at Save to Library covers publish. The world-bundle source compare moves to hash tokens with the library compare (ticket 02) |
+| Q30 | The media compare reads hash token and Visibility rule, in order. Names don't compare, so renaming an entry in a world doesn't write back to its library item (ticket 02) |
+| Q31 | A carried name (from a library entity or card) is taken as-is, made unique, with no extension drop. Q9 applies to file names only (ticket 02) |
 
 ## Prototype
 
@@ -122,7 +128,7 @@ Question: what an image slot looks like when images live in a shared, named list
 **Portable form and the boundary (Avatar pattern)**
 
 - Library entities, character cards, published entity listings and downloads keep the embedded form. An embedded gallery image gains an optional `name`, so a round trip keeps names. Embedded sound keeps its `MediaAsset` `name`.
-- Entering a world (Add from Library, library sync and reviewed updates, Replace Source, card import into a world, Enter World cast additions) runs one placement step. It hashes each embedded file, reuses the entry with the same hash or adds one (suffixing the name), and rewrites the field to the id. It sits beside the existing Avatar placement in the add commit and in every `applyLibraryUpdate` caller.
+- Entering a world (Add from Library, library sync and reviewed updates, Replace Source, card import into a world) runs one placement step. Enter World cast additions stay embedded (Q27). It hashes each embedded file, reuses the entry with the same hash or adds one (suffixing the name), and rewrites the field to the id. It sits beside the existing Avatar placement in the add commit and in every `applyLibraryUpdate` caller.
 - Leaving a world (Save to Library, owned write-back, card export, entity publish) resolves ids back to embedded files with their names.
 - Comparing a world copy with its source uses hash tokens for media, as Avatar picks already do. Byte strings are never compared across the two forms.
 
@@ -152,7 +158,7 @@ Question: what an image slot looks like when images live in a shared, named list
 
 - World JSON changes: a new Media List, and link fields in place of embedded media.
 - Save JSON changes: a new overrides field.
-- Card JSON changes: embedded gallery images gain an optional `name`.
+- Card JSON changes: embedded gallery images gain an optional `name`, and the card gains an optional `primaryImageName` (Q28).
 
 ## Testing Decisions
 

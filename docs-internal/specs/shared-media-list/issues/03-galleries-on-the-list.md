@@ -25,6 +25,7 @@ The first flip. Entity and location galleries move into the Media List when a wo
 - [ ] Removing a gallery image unlinks it and leaves the entry.
 - [ ] Optimize Images re-encodes a shared entry once.
 - [ ] Every flow from ticket 02 still round-trips a migrated world's entity.
+- [ ] Ticket 02 left this wiring untested, and a migrated world is its first real run, so check each here: saving the world writes an owned linked copy back to the library with embedded named images; the update review dialog shows no image change for an unchanged source; card export from the World Editor carries the images (a read of the card JSON is enough where the WebP encode can't run).
 - [ ] Frames of the entity editor gallery and the in-play entity view on a migrated bundled world, dark theme, 1440 wide: `.scratch/frames/gallery-editor.png`, `.scratch/frames/gallery-play.png`.
 
 For you: open two or three of your own worlds and check their portraits and location backdrops look right.
