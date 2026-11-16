@@ -1,6 +1,7 @@
 # Spec: Shared Media List
 
 Status: ready-for-agent
+Spec session: shared-media-list — spec
 
 ## Problem Statement
 
