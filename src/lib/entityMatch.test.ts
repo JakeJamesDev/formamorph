@@ -44,6 +44,43 @@ describe('matchNames — multi-word names (no capital guard)', () => {
     expect(matchNames('The old woman is gone; a young man tends the mill.', ['Old Man'])).toEqual([]);
   });
 
+  it('does not read a possessive inside the name as the name', () => {
+    expect(matchNames("The weathered paper in the Captain's Hall announced it.", ['Captain Hall'])).toEqual([]);
+    expect(matchNames('The weathered paper in the Captain’s Hall announced it.', ['Captain Hall'])).toEqual([]);
+    expect(matchNames("The Captains' Hall is quiet.", ['Captain Hall'])).toEqual([]);
+  });
+
+  it('still matches a name whose last word takes the possessive', () => {
+    expect(matchNames("Captain Hall's sword gleams.", ['Captain Hall'])).toEqual(['Captain Hall']);
+    expect(matchNames('Captain Hall nods.', ['Captain Hall'])).toEqual(['Captain Hall']);
+  });
+
+  it('keeps a lone possessive word a partial reference when no proper noun follows', () => {
+    expect(matchNames("Vashti's sword gleams.", ['Vashti Guard'])).toEqual(['Vashti Guard']);
+  });
+
+  it("keeps a partial reference whose possessive opens a word outside the name", () => {
+    expect(matchNames("Emily's Mom waves.", ['Emily Foster'])).toEqual(['Emily Foster']);
+  });
+
+  it('keeps a name that is itself possessive', () => {
+    expect(matchNames("Mary's Tavern is loud.", ["Mary's Tavern"])).toEqual(["Mary's Tavern"]);
+  });
+
+  it("does not hide a partial reference behind another person's possessive", () => {
+    expect(matchNames("Bob's Captain nods.", ['Captain Hall'])).toEqual(['Captain Hall']);
+  });
+
+  it('keeps a single-word name matching with its possessive', () => {
+    expect(matchNames("Vashti's sword gleams.", ['Vashti'])).toEqual(['Vashti']);
+  });
+
+  it('holds for a multi-word alias', () => {
+    const e = withAliases('Hallkeeper', ['Captain Hall']);
+    expect(findEntityNames("The Captain's Hall is quiet.", [e])).toEqual([]);
+    expect(findEntityNames("Captain Hall's sword gleams.", [e])).toEqual(['Hallkeeper']);
+  });
+
   it('excludes a candidate when a word is missing', () => {
     expect(matchNames('the officer flees', ['a fleeing officer'])).toEqual([]);
   });

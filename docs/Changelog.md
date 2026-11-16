@@ -75,6 +75,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A stat change at Start or Before that renames an entity now reaches the AI on that turn.** Before, the AI read the old name and Stranger Name until the next turn.
     - **Choices no longer give away the real name of someone you haven't met.** They see that person only by their Stranger Name. In Custom Prompts, any Entities chip can do the same with **Known Name Only** in Chip Options.
     - **Narration that fits Max Output Tokens now keeps its last paragraph.** Before, the app cut long replies short, even when the AI finished inside the limit.
+    - **"The Captain's Hall" no longer links to or counts as Captain Hall in narration.** A possessive now closes only the last word of a name, so "Captain Hall's sword" still matches.
   - **At new game, a trait group fills again when another pick locks its trait.** It takes the group's default, or else the first trait you can pick. Before, the group stayed empty and Begin stayed off.
   - **The Test Bench no longer calls a placeholder unused when its only chip is in a stranger field.** That covers Stranger Name and Stranger Description, which play already fills in.
 
