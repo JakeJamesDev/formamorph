@@ -206,7 +206,7 @@ describe('TriggersInstrument history', () => {
     expect(screen.getByRole('button', { name: /History/ }).textContent).toContain('2 messages');
     await userEvent.click(screen.getByRole('button', { name: /History/ }));
     await userEvent.type(screen.getByRole('textbox', { name: 'History messages' }), '!');
-    expect(onHistoryChange).toHaveBeenCalled();
+    expect(onHistoryChange).toHaveBeenLastCalledWith(`${joinHistory(['One turn.', 'Two turns.'])}!`);
   });
 
   it('labels a history hit with how far back it was and the depth window that let it count', () => {

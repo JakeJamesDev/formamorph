@@ -20,7 +20,7 @@ Rulings: Q4, Q5, Q8, Q9, Q22, Q23.
 ## Acceptance criteria
 
 - [x] A deletion list names each test and its reason. See Deletions and merges.
-- [x] Each strengthened test is listed, and it fails when its behavior is broken. See Strengthened; the rewritten tour Play assertion goes red under its gate bug. Weak assertions were not swept (Kinds scanned).
+- [x] Each strengthened test is listed, and it fails when its behavior is broken. See Strengthened in both batches; each goes red under its reinstated bug, and batch 2's old forms stayed green under the same bugs.
 - [x] Time saved is recorded, along with any candidates left unswept. See Time and Left unswept.
 
 ## Results
@@ -88,8 +88,56 @@ Ranked by a fresh run where one exists:
 - **Fixed sleeps,** about 3 s in all: `FeedbackSuggestPlugin` (5 × 250 ms), `RemoteWorldDetailsModal.autocomplete`, `CodeArea`, `MainMenu.firstRun`, `GameViewer.bodyWrites`.
 - `GameViewer.bundledSaves` stays under Q51.
 
+## Results, batch 2
+
+Q66 chose more batches. Batch 2 took the tooltip delay, then weak assertions, mirrored logic and change detectors. The spec session ruled the weak-assertion bar and scope (see Kinds scanned). All proofs use fresh runs on this tree.
+
+### Speed-up: the tooltip open delay (Q63)
+
+- `src/test/setup.ts` sets the shared tip delay to 0 through a new seam, `src/components/ui/tooltipTiming.ts`. The seam has no imports, so setup loads no Base UI. Production still passes 400 ms; the group timeout is unchanged.
+- No assertion changed in any sped-up file.
+- The real delay keeps one test: `tooltip.test.tsx` > the open delay > opens a hovered tip after the shared delay, not before. It goes red when the provider passes 0 and when it drops `delay` (Base UI's default).
+- Coverage pair over the 34 component and view files that hover: every module kept, 0 lost lines and 0 lost branches. `tooltip.tsx` lost one line by text, the constant that moved to `tooltipTiming.ts`.
+- Time, two alternating pairs on the 34 files: 16 files dropped in both pairs, 32.6 s → 20.2 s (12.4 s saved). Total body time was 212.5 s → 207.2 s; the WorldEditor files' noise hides the rest.
+
+### Deletions
+
+| Test | File | Reason |
+|---|---|---|
+| Narration Layout: Pages > renders the latest page unchanged | `GamePanels.chatLayout.test.tsx` | Change detector: a 51 KB DOM snapshot that UI changes rewrote 8 times in two months. It was parity for the Pages-to-Turn-Card move of 2026-09-19, inside a file that stays, so Q49 sends it through Q8. |
+| Narration Layout: Pages > renders a past page unchanged | Same | Same. The snapshot file goes too. |
+
+- Q8 evidence: a coverage pair over the 28 GamePanels and glyph test files kept `GamePanels.tsx`, 0 lost lines and 0 lost branches. Gone tests listed: exactly these two. The file's other tests still check what the Pages layout shows and where.
+- No real-bug history: `--real-bug` lists neither test. The one `Fix` commit to touch the snapshot (4d3172ff3) only rewrote it and did not add the test, so Q42 does not count it.
+- The `TOOL_GLYPH` pin in `glyphMap.test.ts` stays. It is the only check of the glyph the view shows for a Tool round, like the hand-written glyph table beside it.
+
+### Strengthened
+
+| Test | Change | Proof |
+|---|---|---|
+| TriggersInstrument history > takes earlier messages and reports how many are being traced | Asserts the typed history text, not only a call. | Red when the box reports the old history; the old form stayed green. |
+| UnreadableWorldsDialog > reports a bundled world that fails to reseed | Asserts the error and the headline that names the world. | Red when the name drops its bundled-world fallback; the old form stayed green. |
+| ModelViewer teardown > stops the mixer and the render loop on unmount | Asserts the cancel gets the loop's frame id. | Red when the loop drops its frame id; the old form stayed green. |
+| a buy at the turn commit > moves items and item together, and the items fire their When Lost script | Vigor is exactly 49, not below 50. When Lost runs once per Item Instance (Scripts Reference, Instance). | Red when When Lost fires once per unit; the old bound held at 48. |
+
+### Kinds scanned (Q64)
+
+| Kind | Scope | Result |
+|---|---|---|
+| Weak assertions | An AST filter over every test in both folders for tests whose only non-getBy assertions are a bare `toHaveBeenCalled()`, a loose bound or `toBeDefined` (57 hits). Then any weak matcher in the batch 1 Left-unswept files and the 20 slowest files (42 hits in 31 files). Each hit read. | 4 strengthened, above. The rest carry their behavior: ordering and range checks, timing budgets, zero-argument callbacks, gate checks where the publish payload is not the claim, and preconditions next to exact checks. |
+| Mirrored logic | An AST filter for expectations whose expected side calls the same production function as the actual side. | None. The 3 hits compare one function across inputs (two equivalences, one memo identity). |
+| Change detectors | Snapshot matchers and constant pins in both folders. | 2 deletions, above. The three constant pins stay: `glyphMap` holds the only check of the Tool glyph, `ToolsTab` pins the catalog against mutation, and `GameViewer.storyCard.noHosted` checks its build flag. |
+
+Not scanned: duplicates outside batch 1's three files; weak assertions outside the ruled scope; mirrors written as test-local reimplementations; class-name assertions as change detectors.
+
+### Left unswept, batch 2
+
+- Everything on the batch 1 list, apart from the weak-assertion read above.
+- Fixed sleeps, about 3 s, unchanged. Two more: `collapsing-tabs-list` and `collapsing-toggle-group` sleep `TOOLTIP_DELAY_MS + 100` real time to show a tip stays shut, which the zero delay now makes longer than needed.
+- `FormaquestionMascotTab` (91 s): a shared mount is still the lever.
+
 ## Landed
 
-**Not verified:** alternating before and after timing runs; the times above are single runs.
+**Not verified:** batch 1 used single timing runs; batch 2's delay speed-up used two alternating pairs, and its deletion times are single runs.
 
-**For you:** nothing; no product code changed.
+**For you:** nothing. Batch 2's one product change is the tooltip delay seam, which ships the same 400 ms.

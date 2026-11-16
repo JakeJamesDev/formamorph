@@ -250,7 +250,7 @@ describe('a buy at the turn commit', () => {
     await playOneTurn(shop(2), buy());
     await waitFor(() => expect(moneyOf('you')).toEqual({ sword: 1, copper: 50 }));
     expect(moneyOf('merchant')).toEqual({});
-    await waitFor(() => expect(statNow('vigor')).toBeLessThan(50));
+    await waitFor(() => expect(statNow('vigor')).toBe(49));
   });
 
   it('counts a stated price over Value', async () => {

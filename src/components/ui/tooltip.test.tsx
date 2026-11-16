@@ -8,6 +8,7 @@ import { Slot } from '@radix-ui/react-slot';
 import {
   FlashTip, Tip, TOOLTIP_DELAY_MS, Tooltip, TooltipPopup, TooltipPortal, TooltipPositioner, TooltipProvider, TooltipTrigger,
 } from './tooltip';
+import { setTooltipOpenDelayForTests, tooltipOpenDelay } from './tooltipTiming';
 
 /** Live Base UI tooltip roots and portals, counted by pass-through wrappers. */
 const mounted = vi.hoisted(() => ({ roots: 0, portals: 0 }));
@@ -190,6 +191,28 @@ describe('tips nobody has used', () => {
     const second = await screen.findByText('Rename world', { selector: 'div' });
     expect(second.closest('[data-side]')).toHaveAttribute('data-side', 'bottom');
     expect(screen.queryByText('Delete world', { selector: 'div' })).toBeNull();
+  });
+});
+
+describe('the open delay', () => {
+  // The suite setup zeroes the delay; this case runs the one the app ships.
+  const suiteDelay = tooltipOpenDelay();
+  afterEach(() => setTooltipOpenDelayForTests(suiteDelay));
+
+  it('opens a hovered tip after the shared delay, not before', async () => {
+    setTooltipOpenDelayForTests(TOOLTIP_DELAY_MS);
+    renderTip(<Tip tip="Delete world"><button type="button">x</button></Tip>);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      await onFakeClock((user) => user.hover(screen.getByRole('button')));
+      await act(() => vi.advanceTimersByTimeAsync(TOOLTIP_DELAY_MS - 1));
+      expect(screen.queryByText('Delete world', { selector: 'div' })).toBeNull();
+
+      await act(() => vi.advanceTimersByTimeAsync(1));
+      expect(screen.getByText('Delete world', { selector: 'div' })).toBeVisible();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

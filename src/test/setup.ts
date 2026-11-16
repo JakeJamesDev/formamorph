@@ -23,6 +23,9 @@ net.Socket.prototype.connect = function guardedConnect(this: net.Socket, ...args
 // `findBy*` and `waitFor` give up after this; a starved run must not read as a miss.
 testingLibrary?.configure({ asyncUtilTimeout: 10_000 });
 
+// A hovered tip opens at once; `tooltip.test.tsx` keeps the real delay.
+if (testingLibrary) (await import('@/components/ui/tooltipTiming')).setTooltipOpenDelayForTests(0);
+
 // jsdom doesn't implement ResizeObserver; provide a no-op so components that observe element size
 // (e.g. MarkdownField's edit/preview height sharing) can render under test.
 if (typeof globalThis.ResizeObserver === 'undefined') {

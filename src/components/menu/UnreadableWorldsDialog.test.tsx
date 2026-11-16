@@ -135,7 +135,9 @@ describe('UnreadableWorldsDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
     confirmIn('Restore');
 
-    await waitFor(() => expect(mocks.toastError).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(
+      expect.any(AggregateError), { headline: `Couldn't repair "${seed.defaultName}".` },
+    ));
   });
 
   it('opens the listing after removing a downloaded copy', async () => {

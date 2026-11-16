@@ -2,12 +2,9 @@ import * as React from "react"
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 
 import { cn } from "@/lib/utils"
+import { TOOLTIP_DELAY_MS, tooltipOpenDelay } from "./tooltipTiming"
 
-/** Shared open delay, and the window in which moving to a neighboring trigger opens instantly. Both
- *  live on the provider so no call site can retune them. Native `title` waited about a second; this is
- *  fast enough to feel like part of the app and slow enough not to fire while the pointer crosses.
- *  The code editor's hover cards wait the same. */
-export const TOOLTIP_DELAY_MS = 400
+export { TOOLTIP_DELAY_MS }
 
 type TipPayload = Pick<TipProps, "side" | "align"> & { tip: string }
 
@@ -84,7 +81,7 @@ function TooltipProvider({ children }: { children: React.ReactNode }) {
   usePointerHold()
   useTipDismissal(() => { if (tipHandle.isOpen) tipHandle.close() })
   return (
-    <TooltipPrimitive.Provider delay={TOOLTIP_DELAY_MS} timeout={TOOLTIP_DELAY_MS}>
+    <TooltipPrimitive.Provider delay={tooltipOpenDelay()} timeout={TOOLTIP_DELAY_MS}>
       {children}
       <TooltipPrimitive.Root handle={tipHandle} onOpenChange={cancelHoverOpenWhileHeld}>
         {({ payload }) => payload && (

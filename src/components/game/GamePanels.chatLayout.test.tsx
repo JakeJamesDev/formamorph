@@ -16,19 +16,6 @@ const TURNS: TurnFixture[] = [
 const before = (first: Element, second: Element) => (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
 
 describe('Narration Layout: Pages', () => {
-  // Recorded from the Turn Card body, so any Pages change fails here.
-  it('renders the latest page unchanged', async () => {
-    const view = renderMiddlePanel({}, { turns: TURNS });
-    await screen.findByText('The gull does not wave back.');
-    expect(view.container).toMatchSnapshot();
-  });
-
-  it('renders a past page unchanged', async () => {
-    const view = renderMiddlePanel({}, { turns: TURNS, page: 2 });
-    await screen.findByText('Boards creak. A gull watches you.');
-    expect(view.container).toMatchSnapshot();
-  });
-
   it('puts the story card under the latest narration and above the choices, and off a past page', async () => {
     const latest = renderMiddlePanel({ storyCard: <div data-testid="story-card" /> }, { turns: TURNS });
     const narration = await screen.findByText('The gull does not wave back.');

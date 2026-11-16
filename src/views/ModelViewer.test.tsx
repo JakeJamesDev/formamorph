@@ -215,7 +215,7 @@ describe('ModelViewer teardown', () => {
     unmount();
 
     expect(stop).toHaveBeenCalled();
-    expect(cancelAnimationFrame).toHaveBeenCalled();
+    expect(cancelAnimationFrame).toHaveBeenCalledWith(1);
   });
 });
 
