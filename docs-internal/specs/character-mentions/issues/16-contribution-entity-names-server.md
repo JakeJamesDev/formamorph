@@ -1,6 +1,7 @@
 # 16: Contribution Entity Names (Server)
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 7a4f873
 Repo: FormamorphServer
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
@@ -19,6 +20,16 @@ Staff see raw entity ids in the Mentions review tab, because a contribution carr
 
 ## Acceptance criteria
 
-- [ ] A submit with names stores them, and the queue returns them; a submit without names still works.
-- [ ] Oversized or malformed maps are refused or trimmed, each case tested.
-- [ ] The export output is byte-identical with and without names.
+- [x] A submit with names stores them, and the queue returns them; a submit without names still works. Tests `stores the names and the queue returns them`, `takes a submit without names`, `replaces the names with a replacing send`.
+- [x] Oversized or malformed maps are refused or trimmed, each case tested. A non-object map or an empty, non-string or over-200-character name is refused (400); unreferenced keys are dropped. Tests `refuses a map sent as %s`, `refuses a referenced name that is %s`, `drops names of entities the contribution does not reference`.
+- [x] The export output is byte-identical with and without names. Test `leaves the export byte-identical` compares the raw export text before and after the row's names are cleared.
+
+## Landed
+
+**Not verified**
+
+- Nothing left unticked. The migration on production's real database runs at deploy: step `corefEntityNames` adds `entity_names` (default `{}`) to the existing table, tested on an old-shape table.
+
+**For you**
+
+- Deploy the server before ticket 17 ships.
