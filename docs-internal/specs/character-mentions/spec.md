@@ -1,7 +1,7 @@
 # Spec: Character Mentions
 
 Status: done
-Status note: Reopened 2026-11-15 for tickets 18–25 (Q72–Q76). Closed 2026-11-15; tickets 01–17 done, last landing 968e7f384 (server 63e9a44). Review: spec text corrected. Tests green on 2026-11-15 (36812 passed) before tickets 16–17; those two closed without a full run, on their prepare gates. Lint red only on untracked worlds-wip/ check scripts, outside this effort.
+Status note: Closed 2026-11-16; tickets 01–25 done, last landing 58b249cd8 (server 63e9a44, 425c0c3). Review of 18–24: one gap, fixed by ticket 25; spec text corrected. Tests green on 2026-11-15 (36922 passed) before ticket 25, which closed on its prepare gates. Lint red only on untracked worlds-wip/ check scripts, outside this effort.
 Spec session: character-mentions — spec
 
 Resolve every name, pronoun and descriptor in narration to the cast entity it means, with an on-device coreference model. Use the result for per-character quote colors, mention hover cards, In Scene, and memory. Players correct wrong links in place and can contribute corrections to a shared training corpus. Spans both repos: the Formamorph client and FormamorphServer.

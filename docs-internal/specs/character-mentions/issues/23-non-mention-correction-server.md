@@ -1,6 +1,6 @@
 # 23: Non-Mention Correction (Server)
 
-Status: ready-for-human
+Status: done
 Base: 63e9a44
 Repo: FormamorphServer
 Blocked by: None (can start immediately)
