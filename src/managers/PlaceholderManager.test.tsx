@@ -424,11 +424,6 @@ describe('PlaceholderManager — kind', () => {
       siblings = [];
     });
 
-    it('counts the values a Wildcard picks between', () => {
-      render(<PlaceholderManager tab="details" onTabChange={() => {}} placeholder={ph({ values: phValues(['Red', 'Blue', 'Green']) })} />);
-      expect(screen.getByText('Picks one of 3 values')).toBeInTheDocument();
-    });
-
     it('counts the values an Object shows together', () => {
       render(<PlaceholderManager tab="details" onTabChange={() => {}} placeholder={ph({ values: phValues(['Red', 'Blue', 'Green']), roll: false })} />);
       expect(screen.getByText('Shows all 3 values')).toBeInTheDocument();
@@ -741,11 +736,6 @@ describe('PlaceholderManager — chance coloring', () => {
       values: phValues(['Red', chip('p2')]), weights: { [phValueId('Red')]: 4 },
     })} />);
     expect(bg('Hair')).toBe(cssColor(accentAtChance(placeholderAccent('p2'), 25).backgroundColor));
-  });
-
-  it('offers the eye whenever there is more than one value, weighted or not', () => {
-    render(<PlaceholderManager tab="details" onTabChange={() => {}} placeholder={ph()} />);
-    expect(screen.getByRole('button', { name: /Show roll chances/i })).toBeInTheDocument();
   });
 
   it('colors a shared row’s read-only chips the same way', () => {

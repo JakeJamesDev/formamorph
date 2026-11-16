@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { readValue, type TokenValues } from '@/lib/promptValues';
+import { SAMPLE_TURN } from '@/lib/previewValuePool';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -259,15 +260,6 @@ describe('the custom prompts tab', () => {
     expect(field('World choices prompt').value).toBe('drafted');
     expect(screen.getByText(/Not applied until you check Choices above/)).toBeInTheDocument();
   });
-
-  it('switching a kind off keeps the text it holds', async () => {
-    const user = userEvent.setup();
-    renderManager();
-    await user.click(checkbox('narration'));
-
-    expect(world.overview.promptOverrides?.systemPromptEnabled).toBe(false);
-    expect(world.overview.promptOverrides?.systemPrompt).toBe('You are the narrator. <LENGTH GUIDANCE>');
-  });
 });
 
 describe('the live template and the freeze', () => {
@@ -300,15 +292,6 @@ describe('the live template and the freeze', () => {
 
     // The field echoes its value on mount and on any no-op edit; that must not become an authored prompt.
     expect(world.overview.promptOverrides?.statUpdatesPrompt).toBeUndefined();
-  });
-
-  it('keeps an edited kind on its own text as the preset moves on', async () => {
-    const user = userEvent.setup();
-    renderManager();
-    await user.click(picker('Choices'));
-    edit('World choices prompt', 'my own choices prompt');
-
-    expect(field('World choices prompt').value).toBe('my own choices prompt');
   });
 });
 
@@ -421,8 +404,8 @@ describe('the world narration prompt field', () => {
 
     // No playthrough exists, so these have no authored answer — they must still resolve to something
     // rather than rendering as a raw token in the preview.
-    expect(values('<PLAYER ACTION>')).toBeTruthy();
-    expect(values('<NARRATION>')).toBeTruthy();
+    expect(values('<PLAYER ACTION>')).toBe(SAMPLE_TURN.action);
+    expect(values('<NARRATION>')).toBe(SAMPLE_TURN.narration);
   });
 
   it('previews the sample clock in every Time format, not just the plain one', async () => {

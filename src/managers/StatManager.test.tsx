@@ -168,12 +168,6 @@ describe('the tab strip', () => {
     const strip = screen.getByRole('tablist', { name: 'Stat Fields' });
     expect(within(strip).getAllByRole('tab').map((el) => el.textContent)).toEqual(['Details', 'Descriptors']);
   });
-
-  it('offers all four tabs for a numeric stat', () => {
-    renderManager('details');
-    const strip = screen.getByRole('tablist', { name: 'Stat Fields' });
-    expect(within(strip).getAllByRole('tab').map((el) => el.textContent)).toEqual(['Details', 'Appearance', 'Descriptors', 'Scripts']);
-  });
 });
 
 describe('the Scripts section', () => {

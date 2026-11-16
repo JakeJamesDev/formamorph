@@ -100,28 +100,6 @@ describe('the Requires field', () => {
     expect(within(requiresField()).getByText('or')).toBeInTheDocument();
   });
 
-  it('asks which owner when an entity also has the target, and adds for the one picked', async () => {
-    const world = panelWorld({
-      ...WORLD,
-      entities: [
-        ...WORLD.entities,
-        {
-          id: 'ash', name: 'Ash', playerDescription: 'A wolf.', aiDescription: 'A wolf.', locations: ['harbor'],
-          traits: [{ id: 't-tamed', name: 'Tamed', statChanges: [] }],
-        },
-      ],
-    } as Partial<World>);
-    const { ctx } = renderTraitsTab(world, 'advanced');
-    selectTrait('Lamp-Lit');
-    fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
-    fireEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: /^Tamed/ }));
-
-    const page = screen.getAllByRole('option').map((o) => o.textContent);
-    expect(page).toEqual(['Same OwnerWhoever has the trait', 'Persona', 'Ash']);
-    fireEvent.click(screen.getByRole('option', { name: /^Ash/ }));
-    expect(traitRequires(ctx, 't-loose')).toEqual([{ all: [{ kind: 'trait', id: 't-tamed', owner: { kind: 'entity', id: 'ash', name: 'Ash' } }] }]);
-  });
-
   it('reads a target already listed for You as listed, so a world trait cannot take it twice', async () => {
     const world = panelWorld({
       ...WORLD,

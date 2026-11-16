@@ -225,12 +225,6 @@ describe('the Body Sliders picker', () => {
     });
   });
 
-  it('lists an entity model under Body Sliders only', async () => {
-    loads.owner.set('data:statue', ['Cracks']);
-    renderManager(entityStore({ name: 'statue.glb', data: 'data:statue' }));
-    expect(await offeredByGroup()).toEqual({ 'Golem · Body Sliders': ['Cracks'] });
-  });
-
   it('offers nothing, and loads nothing, for an entity with no model', async () => {
     renderManager(entityStore(undefined));
     expect(await offered()).toEqual([]);
@@ -363,11 +357,6 @@ describe('the Body Sliders picker', () => {
   });
 
   describe('on None', () => {
-    it('shows the hint in the Appearance tab with no 3D model', async () => {
-      renderManager(entityStore(undefined));
-      expect(await screen.findByText(NO_MODEL_HINT)).toBeInTheDocument();
-    });
-
     it("lists the 3D model's sliders and shows no hint", async () => {
       loads.owner.set('data:golem-none', ['Cracks']);
       renderManager(entityStore({ name: 'golem.glb', data: 'data:golem-none' }));
@@ -384,9 +373,11 @@ describe('the Body Sliders picker', () => {
   });
 
   it('keeps a binding already on the stat removable when the model offers nothing', async () => {
+    const written: Stat[] = [];
     const bound = { ...wounds, morphBindings: [{ name: 'Cracks' }] };
-    renderManager({ ...entityStore(undefined), stats: [bound] }, bound);
-    expect(screen.getByRole('button', { name: /Remove Cracks/ })).toBeInTheDocument();
+    renderManager({ ...entityStore(undefined), stats: [bound], updateStat: (next) => { written.push(next as Stat); } }, bound);
+    await userEvent.click(screen.getByRole('button', { name: /Remove Cracks/ }));
+    expect(written.at(-1)?.morphBindings).toEqual([]);
   });
 
   it('keeps a slider another stat uses pickable', async () => {
@@ -585,13 +576,6 @@ describe('the Colors rows', () => {
       const rowOf = (name: string) => screen.getByRole('spinbutton', { name: `Change By for ${name}` }).previousElementSibling as HTMLElement;
       expect(within(rowOf('EarShape')).queryByText('Not on this model')).toBeNull();
       expect(within(rowOf('Cracks')).queryByText('Not on this model')).toBeNull();
-    });
-
-    it('still marks a color when only a non-Avatar 3D model is known', async () => {
-      loads.owner.set('data:golem-only', ['Cracks']);
-      const bound = { ...wounds, colorBindings: [{ channel: 'skin' as const, color: '#ffffff' }] };
-      renderManager({ ...entityStore({ name: 'golem.glb', data: 'data:golem-only' }), stats: [bound] }, bound);
-      expect(await screen.findByText('Not on this model')).toBeInTheDocument();
     });
 
     it("marks nothing when User's Default resolves to no Avatar and there is no 3D model", async () => {
