@@ -8,7 +8,7 @@ import { encodePlaceholderToken } from '@/lib/placeholders';
 import { worldPlaceholderPlaces } from '@/lib/statCodePlaceholderPlaces';
 import { StatCodeTemplateDialog } from './StatCodeTemplateDialog';
 import type { ScriptTiming } from '@/types';
-import type { CodeTemplate } from '@/lib/statCodeTemplates';
+import type { CodeTemplate, ScriptTemplateKind } from '@/lib/statCodeTemplates';
 
 /** What a template asks for is a form the author writes by typing slots into code, and the form has to
  *  agree with the code it generates underneath — that agreement is what these cover. */
@@ -76,7 +76,7 @@ const placeholders: Placeholder[] = [
 ];
 const placeholderOwners = new Map([['secret', { kind: 'entity' as const, id: 'e1', name: 'Mira' }]]);
 
-type DialogProps = Extract<React.ComponentProps<typeof StatCodeTemplateDialog>, { kind?: 'script' | 'worldScript' }>;
+type DialogProps = Extract<React.ComponentProps<typeof StatCodeTemplateDialog>, { kind?: ScriptTemplateKind }>;
 
 const open = (timing: ScriptTiming = 'after', cast: Entity[] = entities, extra: Partial<DialogProps> = {}) => render(
   <StatCodeTemplateDialog
@@ -584,6 +584,23 @@ describe('which templates a box offers', () => {
     open(timing);
     for (const name of names) expect(await screen.findByRole('button', { name })).toBeInTheDocument();
     if (timing === 'output') expect(screen.queryByRole('button', { name: 'Weighted Blend' })).toBeNull();
+  });
+
+  it('lists the gift template in an item’s When Gained box and in no other box', async () => {
+    const gift = { name: 'Gift Raises a Stat' };
+    const shown = async (timing: ScriptTiming, kind: DialogProps['kind']) => {
+      const view = open(timing, entities, { kind });
+      await screen.findByRole('button', { name: /New Template/i });
+      const hit = !!screen.queryByRole('button', gift);
+      view.unmount();
+      return hit;
+    };
+    expect(await shown('gained', 'itemScript')).toBe(true);
+    for (const timing of ['lost', 'equipped', 'unequipped', 'used'] as const) expect(await shown(timing, 'itemScript')).toBe(false);
+    for (const timing of ['start', 'before', 'after', 'switch'] as const) {
+      expect(await shown(timing, 'script')).toBe(false);
+      expect(await shown(timing, 'worldScript')).toBe(false);
+    }
   });
 
   it('keeps a start-only template out of the output menu', async () => {

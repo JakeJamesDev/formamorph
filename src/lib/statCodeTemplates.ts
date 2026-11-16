@@ -11,8 +11,9 @@
  * `trait(persona)` and `stat(persona)` list the persona's, unless the template declares an `entity` slot named `persona`.
  */
 
-import type { ScriptTiming, ToolParam, ToolParamType, ToolScriptTiming } from '@/types';
-import { SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from './scripts';
+import type { ItemScriptTiming, ScriptTiming, ToolParam, ToolParamType, ToolScriptTiming } from '@/types';
+import { ITEM_SCRIPT_TIMINGS, SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from './scripts';
+import { ITEM_SCRIPT_TEMPLATES } from './itemScriptTemplates';
 import { WORLD_SCRIPT_TEMPLATES } from './worldScriptTemplates';
 import { WORLD_TOOL_TEMPLATES } from './worldToolTemplates';
 
@@ -49,22 +50,29 @@ export interface TemplateSlot {
 /** The `trait(…)` or `stat(…)` owner that lists the persona's traits or stats. */
 export const PERSONA_SLOT_OWNER = 'persona';
 
-/** The surface a template is written for: a stat script box, a world script box, or a World Tool's Script box. */
-export type TemplateKind = 'script' | 'worldScript' | 'worldTool';
+/** The surface a template is written for: a stat script box, a world script box, an item's script box, or a World Tool's Script box. */
+export type TemplateKind = 'script' | 'worldScript' | 'itemScript' | 'worldTool';
+
+/** The kinds whose boxes run at a script timing. */
+export type ScriptTemplateKind = Exclude<TemplateKind, 'worldTool'>;
 
 /** The timings each kind's boxes run at, in the order its picker lists them. */
 export const TEMPLATE_TIMINGS = {
   script: SCRIPT_TIMINGS,
   worldScript: SCRIPT_TIMINGS,
+  itemScript: ITEM_SCRIPT_TIMINGS,
   worldTool: ['call', 'output', 'after'],
-} as const satisfies { script: readonly ScriptTiming[]; worldScript: readonly ScriptTiming[]; worldTool: readonly ToolScriptTiming[] };
+} as const satisfies {
+  script: readonly ScriptTiming[]; worldScript: readonly ScriptTiming[]; itemScript: readonly ItemScriptTiming[]; worldTool: readonly ToolScriptTiming[];
+};
 
 /** Each kind's timing names wherever an author reads them. */
 export const TEMPLATE_TIMING_LABEL: {
-  script: Record<ScriptTiming, string>; worldScript: Record<ScriptTiming, string>; worldTool: Record<ToolScriptTiming, string>;
+  script: Record<ScriptTiming, string>; worldScript: Record<ScriptTiming, string>; itemScript: Record<ScriptTiming, string>; worldTool: Record<ToolScriptTiming, string>;
 } = {
   script: SCRIPT_TIMING_LABEL,
   worldScript: SCRIPT_TIMING_LABEL,
+  itemScript: SCRIPT_TIMING_LABEL,
   worldTool: { call: 'On Call', output: 'During AI Output', after: 'After the AI' },
 };
 
@@ -95,6 +103,7 @@ interface TemplateFields {
 export type CodeTemplate =
   | TemplateFields & { kind: 'script'; timings: ScriptTiming[] }
   | TemplateFields & { kind: 'worldScript'; timings: ScriptTiming[] }
+  | TemplateFields & { kind: 'itemScript'; timings: ItemScriptTiming[] }
   | TemplateFields & { kind: 'worldTool'; timings: ToolScriptTiming[] };
 
 /** The templates of `kind` whose timings hold `timing`, in their given order: one box's menu. */
@@ -121,8 +130,8 @@ export function readTemplate(entry: unknown): CodeTemplate | null {
     code: row.code,
   };
   if (row.kind === undefined) return { ...fields, kind: 'script', timings: [row.timing === 'before' ? 'before' : 'after'] };
-  if (row.kind !== 'script' && row.kind !== 'worldScript' && row.kind !== 'worldTool') return null;
-  const template = withTimings({ ...fields, kind: row.kind, timings: [] }, Array.isArray(row.timings) ? row.timings : []);
+  if (row.kind !== 'script' && row.kind !== 'worldScript' && row.kind !== 'itemScript' && row.kind !== 'worldTool') return null;
+  const template = withTimings({ ...fields, kind: row.kind, timings: [] },Array.isArray(row.timings) ? row.timings : []);
   return template.timings.length ? template : null;
 }
 
@@ -362,12 +371,13 @@ export function fillTemplate(code: string, values: Record<string, string>): stri
  * soft-capped regen. A template that reads `clock.deltaHours` lists After the AI alone, since every other
  * timing reads a zero delta.
  *
- * Each reads its own bounds from the stat it belongs to instead of assuming 0–100. The World Tool and world
- * script sets lead, from their own files.
+ * Each reads its own bounds from the stat it belongs to instead of assuming 0–100. The World Tool, world
+ * script and item script sets lead, from their own files.
  */
 export const BUILT_IN_TEMPLATES: readonly CodeTemplate[] = [
   ...WORLD_TOOL_TEMPLATES,
   ...WORLD_SCRIPT_TEMPLATES,
+  ...ITEM_SCRIPT_TEMPLATES,
   {
     id: 'builtin-weighted-blend',
     kind: 'script',

@@ -43,12 +43,14 @@ import {
   withTimings,
   type CodeTemplate,
   type NameSlotType,
+  type ScriptTemplateKind,
   type TemplateKind,
   type TemplateSlot,
 } from '@/lib/statCodeTemplates';
 import { REPLACE_CODE_DESCRIPTION, REPLACE_CODE_TITLE } from '@/lib/statCodeTiming';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { SCRIPT_SURFACES, scriptSurface } from '@/lib/statCodeSurface';
+import { isItemTiming } from '@/lib/scripts';
 import type { VariableTreeOwner } from '@/lib/statCodeVariableTree';
 import { keyedEntity, type CodeEntityNames, type CodeTraitPlace } from '@/lib/statCodeAnalysis';
 import type { SandboxPlace } from '@/lib/statCodeExecutor';
@@ -68,9 +70,9 @@ import { FieldError, Hint, Meta } from '@/components/ui/typography';
 import { namedParams } from '@/lib/tools/toolDraft';
 import { worldToolArgsNodes, worldToolSurface } from '@/lib/tools/worldToolSurface';
 
-/** The box a menu fills: a stat or world script's timing, or a World Tool's timing and Parameters. */
+/** The box a menu fills: a stat, world or item script's timing, or a World Tool's timing and Parameters. */
 type TemplateBox =
-  | { kind: 'script' | 'worldScript'; timing: ScriptTiming }
+  | { kind: ScriptTemplateKind; timing: ScriptTiming }
   | { kind: 'worldTool'; timing: ToolScriptTiming; params: readonly ToolParam[] };
 
 /** The templates that `box`'s menu lists. */
@@ -85,6 +87,7 @@ const blankTemplate = (box: TemplateBox): CodeTemplate => {
   switch (box.kind) {
     case 'script': return { ...fields, kind: 'script', code: 'return {{amount:number=1}};', timings: [box.timing] };
     case 'worldScript': return { ...fields, kind: 'worldScript', code: 'stats[{{stat:stat}}].value += {{amount:number=1}};', timings: [box.timing] };
+    case 'itemScript': return { ...fields, kind: 'itemScript', code: 'stats[{{stat:stat}}].value += args.quantity * {{amount:number=1}};', timings: isItemTiming(box.timing) ? [box.timing] : [] };
     case 'worldTool': return { ...fields, kind: 'worldTool', code: 'return String(args[{{parameter:param}}]);', timings: [box.timing] };
   }
 };
@@ -381,10 +384,10 @@ function TemplateForm({ code, kind, names, values, onChange }: {
   );
 }
 
-/** The box a dialog fills: a stat script's by default, a world script's, or a World Tool's with its Parameters. */
+/** The box a dialog fills: a stat script's by default, a world or item script's, or a World Tool's with its Parameters. */
 type BoxProps =
   | {
-    kind?: 'script' | 'worldScript';
+    kind?: ScriptTemplateKind;
     /** The box this menu fills. It lists the templates that run in that box, and a template saved here
      *  starts out running in it. */
     timing: ScriptTiming;
@@ -516,7 +519,7 @@ export function StatCodeTemplateDialog({
   const toolTiming = draft?.kind === 'worldTool' ? draft.timings[0] : undefined;
   const draftSurface = useMemo(() => {
     if (box.kind === 'worldTool') return worldToolSurface(box.params, toolTiming ?? box.timing);
-    const surface = SCRIPT_SURFACES[box.kind === 'worldScript' ? 'world' : 'stat'];
+    const surface = SCRIPT_SURFACES[box.kind === 'worldScript' ? 'world' : box.kind === 'itemScript' ? 'item' : 'stat'];
     return scriptTiming ? scriptSurface(surface, scriptTiming) : surface;
   }, [box, scriptTiming, toolTiming]);
   const argsMenu = useMemo(

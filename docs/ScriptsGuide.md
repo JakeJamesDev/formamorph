@@ -215,10 +215,26 @@ A world script has no stat or trait of its own. Its templates never read `self` 
 
 World script templates share the library and the pack file with the other templates. Each menu lists only its own kind:
 
-- A stat's or a World Tool's **Templates** menu never lists a world script template.
-- A trait's or an item's **Scripts** tab has no **Templates** button.
+- A stat's, an item's or a World Tool's **Templates** menu never lists a world script template.
+- A trait's **Scripts** tab has no **Templates** button.
 
 To save your own, select **New Template** or **Duplicate** in a world script's menu.
+
+## How to Insert an Item Script Template
+<!-- keywords: item script template, item template, gift template, gift raises a stat, affection from gifts, gift from the player, starter item script code -->
+<!-- route: worldEditorItem.scripts -->
+
+1. Open an item's **Scripts** tab. Add a script, or open one.
+2. Select **Templates** beside the box's **Test Code** button. The menu lists the item script templates for the box's timing.
+3. Fill in the inputs, then select **Insert Code**.
+
+| Timing | Built-in templates in its menu |
+|---|---|
+| 🎁 **When Gained** | **Gift Raises a Stat** |
+
+**Gift Raises a Stat** raises a stat of whoever gets the item, when the player gives it. A buy, a sale, a gift from someone else and a script's transfer raise nothing. Type the stat's name in the **stat** input.
+
+Item script templates share the library and the pack file with the other templates. To save your own, select **New Template** or **Duplicate** in an item's menu.
 
 ## How to Review Every Script in One Place
 <!-- keywords: scripts tab, all scripts, list of scripts, run order, order of scripts, drag script, reorder scripts, which script runs first, world script, add a world script, find a script, scripts by timing -->
@@ -390,6 +406,7 @@ An item's scripts use five timings of their own. Each one runs once for each eve
 - `args.by` is what caused the event: `'story'`, `'player'` (the **Inventory** panel), `'script'` or `'rule'`. A script's own write reads `'script'`, even when the story started the chain. A **Becomes** result and an unequip forced by a full slot, a Body change or a requirement read `'rule'`.
 - On **When Gained**, `args.from` is the entry the Item Instance came from: `persona`, an entity or a location. It is `null` for a new one. `args.from === persona` means the player gave it.
 - On **When Lost**, `args.to` is the entry the Item Instance went to, or `null` when it is gone for good.
+- On **When Gained** and **When Lost**, `args.purchase` is `{ price, currency }` when the story bought it, and `null` otherwise. A sale by the player reads `args.from === persona` too, so a gift script checks both.
 - On **When Used**, `args.target` is the entry of the Item Instance the item was used on, such as the lantern the oil went into. It is `null` when the story named no other item, or when that Item Instance is gone.
 - The script's own timing tells it which event ran. `args` has no timing field.
 - The item timings are skipped for a reveal of an Item Instance, a write to its uses, a write to its State, and starting items.
@@ -483,7 +500,7 @@ The sketch matches the exact name only. The drone world has the full **lock_targ
 - The code is plain JavaScript in a sandbox. Its only globals are the script objects, `console.log` and the standard built-ins, such as `Math`, `JSON` and `Object`.
 - Code writes `value`, `min`, `max`, `regen` and `hidden` only. Every other field of a stat entry is read-only on every path.
 - A write is ignored and reported when its target is an entity that is not in the game, an unknown stat, or a stat a trait switched off.
-- A stat's, a world script's or a World Tool's **Templates** menu lists only the templates that work at its timing.
+- A stat's, a world script's, an item's or a World Tool's **Templates** menu lists only the templates that work at its timing.
 
 **Test Code** runs one box with no player traits:
 

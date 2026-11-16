@@ -1011,7 +1011,7 @@ When a script switches a trait, its **When a Trait Switches** scripts run at onc
 **Test Code** reads a sample. In a trait's own script, `trait` is that trait. In other scripts, it is the world's first trait in tree order, read as switched on, or a blank trait. `args.by` reads `'player'`.
 
 ### Args
-<!-- keywords: args, arguments, trigger, what started the run, item event quantity, use target, who gave it, gift from player, where it came from, where it went, cause, by story player script rule, self.event, args empty, args read-only -->
+<!-- keywords: args, arguments, trigger, what started the run, item event quantity, use target, who gave it, gift from player, where it came from, where it went, cause, by story player script rule, purchase, bought, sold, price paid, shop buy, sale not a gift, self.event, args empty, args read-only -->
 
 `args` holds what started the run. It's read-only, and it exists in every script.
 
@@ -1029,6 +1029,7 @@ An item script's `args`:
 | `by` | All five | What caused the event: `'story'`, `'player'`, `'script'` or `'rule'` (table below) |
 | `from` | When Gained | Where the Item Instance came from: the `persona` entry, an entity's entry or a location's entry. `null` when it is new |
 | `to` | When Lost | Where the Item Instance went, as `from` reads it. `null` when it is gone for good |
+| `purchase` | When Gained, When Lost | The buy that moved it, as `{ price, currency }`. `null` when no one bought it |
 | `quantity` | All five | How many the event moved |
 | `target` | When Used | The Item Instance the use acted on, or `null` when none or gone |
 
@@ -1042,8 +1043,8 @@ An item script's `args`:
 A field is absent in a timing it doesn't apply to. `args.target` in a **When Gained** script reads `undefined`.
 
 ```javascript
-// When Gained: only a gift from the player counts.
-if (args.from !== persona) return;
+// When Gained: only a gift from the player counts, not a sale or a script's transfer.
+if (args.from !== persona || args.purchase || args.by === 'script') return;
 stats.Affection.value += 5;
 ```
 
@@ -1054,7 +1055,13 @@ if (args.target && args.target.item === 'Lantern') args.target.setState('lit');
 
 A pickup from the ground reads the location as `args.from`. A drop reads it as `args.to`.
 
-**Test Code** gives an item script a sample event: a quantity of 1, `by` as `'story'`, `from` and `to` as `null`, and no target.
+Only the story buys. A buy runs When Gained for the buyer and, when the seller's Item Instance moved, When Lost for the seller. Both read the same `args.purchase`:
+
+- `price` is what the whole buy cost, in the Currency's base unit. A buy of 2 that runs When Gained twice reads the same price both times. `currency` is the Currency's name.
+- Both are `null` when the buy moved no money: the story set no price, the item's **Value** is 0, or the Currency is **Name Only**.
+- A sale by the player reads `args.from === persona` with a purchase. Check `args.purchase` to tell a sale from a gift.
+
+**Test Code** gives an item script a sample event: a quantity of 1, `by` as `'story'`, `from` and `to` as `null`, no purchase, and no target.
 
 ### Order of Effects
 <!-- keywords: which script wins, priority, precedence, conflict, race condition, execution sequence, overwrite each other, see other scripts changes -->

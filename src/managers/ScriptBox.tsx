@@ -106,8 +106,8 @@ export function ScriptBox({ script, label, onChange, context, reveal, autoFocus,
   const selfKind = selfKindOf(home);
   const isStat = selfKind === 'stat';
   const isOutput = timing === 'output';
-  // Stat and world scripts have a Templates menu; a trait's and an item's have none.
-  const hasTemplates = selfKind === 'stat' || selfKind === 'world';
+  // Stat, world and item scripts have a Templates menu; a trait's has none.
+  const hasTemplates = selfKind === 'stat' || selfKind === 'world' || selfKind === 'item';
   const { codeNamedStats: worldStats, traitPlaces, entities } = names;
   // An entity stat's own traits, which a template's trait slot lists under Owner. A Blueprint's owners vary, so none.
   const ownerTraits = useMemo(
@@ -241,7 +241,7 @@ export function ScriptBox({ script, label, onChange, context, reveal, autoFocus,
           locations={names.places?.locations}
           {...('stat' in home
             ? { owner: owner?.kind, ownerStats, currentStatId: home.stat.id, ownerTraits }
-            : { kind: 'worldScript' as const })}
+            : { kind: selfKind === 'item' ? 'itemScript' as const : 'worldScript' as const })}
         />
       )}
 

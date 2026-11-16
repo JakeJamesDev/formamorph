@@ -46,8 +46,8 @@ export type SwitchEventArgs = { by: SwitchCause };
 /** The switch an editor run reads: the player's toggle, as the sample trait switches on. */
 export const SAMPLE_SWITCH_ARGS: SwitchEventArgs = { by: 'player' };
 
-/** The fixed item event an editor run reads (Q11): one instance at the persona, from and to nowhere, used on nothing. */
-export const SAMPLE_ITEM_ARGS: ItemEventArgs = { quantity: 1, by: 'story', from: null, to: null, target: null };
+/** The fixed item event an editor run reads (Q11): one instance at the persona, from and to nowhere, no buy, used on nothing. */
+export const SAMPLE_ITEM_ARGS: ItemEventArgs = { quantity: 1, by: 'story', from: null, to: null, purchase: null, target: null };
 
 /** `args` as `timing` reads it: the fields outside the timing's list dropped. */
 export const itemArgsAt = (timing: ItemScriptTiming, args: ItemEventArgs): Partial<ItemEventArgs> =>

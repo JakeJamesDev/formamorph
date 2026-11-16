@@ -11,7 +11,7 @@ import type {
   Entity, GameLocation, Item, ItemInstance, ItemInstanceState, ItemInstanceVisibility, ItemInstanceWhere, ItemEffectLedger, ItemRef, ItemScriptTiming, PersonaRef, Placement,
   InventoryUseAfter, RuntimeItem, Slot,
 } from '@/types';
-import type { ItemEventArgs, TriggerCause } from '@/lib/triggerArgs';
+import type { ItemEventArgs, TriggerCause, TriggerPurchase } from '@/lib/triggerArgs';
 import { timedTraitRow, type ItemUse } from './effects';
 
 export {
@@ -142,9 +142,9 @@ export type InventorySource = 'pass' | 'panel' | 'script';
 /** One inventory change. A missing `quantity` on lose or transfer means the whole Item Instance. A gain's `itemId`
  *  names an authored item or one of the call's runtime items. */
 export type InventoryOp =
-  | { kind: 'gain'; itemId: string; quantity: number; to: ItemInstanceWhere; /** Absent = visible. */ visibility?: ItemInstanceVisibility }
-  | { kind: 'lose'; instanceId: string; quantity?: number }
-  | { kind: 'transfer'; instanceId: string; to: ItemInstanceWhere; quantity?: number }
+  | { kind: 'gain'; itemId: string; quantity: number; to: ItemInstanceWhere; /** Absent = visible. */ visibility?: ItemInstanceVisibility; purchase?: TriggerPurchase }
+  | { kind: 'lose'; instanceId: string; quantity?: number; purchase?: TriggerPurchase }
+  | { kind: 'transfer'; instanceId: string; to: ItemInstanceWhere; quantity?: number; purchase?: TriggerPurchase }
   /** `slotId` names one of the item's slots; absent = the first free one (Q37). */
   | { kind: 'equip'; instanceId: string; slotId?: string }
   | { kind: 'unequip'; instanceId: string }
@@ -160,7 +160,7 @@ const SOURCE_CAUSE: Readonly<Record<InventorySource, TriggerCause>> = { pass: 's
 
 /** One Item Instance event an item's scripts of that timing run on (Q33). `where` is the owner or location it
  *  happened at; `quantity` is how many it moved. */
-export interface ItemScriptEvent extends Pick<ItemEventArgs, 'from' | 'to'> {
+export interface ItemScriptEvent extends Pick<ItemEventArgs, 'from' | 'to' | 'purchase'> {
   timing: ItemScriptTiming;
   itemId: string;
   instanceId: string;
@@ -255,7 +255,7 @@ export function applyInventoryOps(instances: readonly ItemInstance[], ops: reado
   /** Records an event of `ref`'s item; none for a runtime item. */
   const fire = (
     timing: ItemScriptTiming, ref: ItemRef, instanceId: string, where: ItemInstanceWhere, quantity: number,
-    side: Pick<ItemScriptEvent, 'by' | 'from' | 'to' | 'was' | 'target'>,
+    side: Pick<ItemScriptEvent, 'by' | 'from' | 'to' | 'purchase' | 'was' | 'target'>,
   ) => {
     if (ref.kind === 'item') events.push({ timing, itemId: ref.itemId, instanceId, where, quantity, ...side });
   };
@@ -311,14 +311,14 @@ export function applyInventoryOps(instances: readonly ItemInstance[], ops: reado
       if (itemStackable(item)) {
         const gained: ItemInstance = { id: call.newId(), item: ref, where: op.to, quantity, visibility: op.visibility ?? 'visible', ...(state && { state }) };
         list = put(list, gained);
-        fire('gained', ref, rowOf(gained), op.to, quantity, { by, from: null });
+        fire('gained', ref, rowOf(gained), op.to, quantity, { by, from: null, purchase: op.purchase ?? null });
         return null;
       }
       const first = list.length;
       for (let i = 0; i < quantity; i += 1) {
         list.push({ id: call.newId(), item: ref, where: op.to, quantity: 1, visibility: op.visibility ?? 'visible', ...(state && { state }) });
       }
-      fire('gained', ref, list[first].id, op.to, quantity, { by, from: null });
+      fire('gained', ref, list[first].id, op.to, quantity, { by, from: null, purchase: op.purchase ?? null });
       return null;
     }
 
@@ -344,11 +344,12 @@ export function applyInventoryOps(instances: readonly ItemInstance[], ops: reado
           ? list.map((c) => (c === instance ? { ...c, quantity: left } : c))
           : list.filter((c) => c !== instance);
         if (instance.equipped) fire('unequipped', instance.item, instance.id, instance.where, instance.quantity, { by });
-        fire('lost', instance.item, instance.id, instance.where, quantity, { by, to: op.kind === 'transfer' ? op.to : null, was: instance });
+        const purchase = op.purchase ?? null;
+        fire('lost', instance.item, instance.id, instance.where, quantity, { by, to: op.kind === 'transfer' ? op.to : null, purchase, was: instance });
         if (op.kind === 'transfer') {
           const moved = { ...unequipped(instance), where: op.to, quantity, ...(left > 0 && { id: call.newId() }) };
           list = put(list, moved);
-          fire('gained', instance.item, rowOf(moved), op.to, quantity, { by, from: instance.where });
+          fire('gained', instance.item, rowOf(moved), op.to, quantity, { by, from: instance.where, purchase });
         }
         return null;
       }

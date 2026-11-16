@@ -3,6 +3,7 @@ import { slotOwnerKey, type SlotOwner } from '@/lib/bodies';
 import { currencyOf, isRefusal, refuse, type Refusal } from '@/lib/currency';
 import { applyPaymentStats, moneyReading, planPayment } from '@/lib/currency/payment';
 import { namesMoney, quoteBuy, readStatedPrice, type BuyQuote, type StatedPrice } from '@/lib/currency/price';
+import type { TriggerPurchase } from '@/lib/triggerArgs';
 import type { Currency, InventoryPassOp, ItemInstance, ItemInstanceWhere } from '@/types';
 import { authoredNamed, candidates, distribute, gainId, itemIdentity, itemNameKey, listedName, ownerOf, partyOf, runOps, skip, type PassRun } from './passRun';
 
@@ -99,10 +100,11 @@ function settleBuy(pass: PassRun, op: InventoryPassOp, quote: BuyQuote): void {
       return;
     }
   }
+  const purchase: TriggerPurchase = quote.kind === 'priced' ? { price: quote.amount, currency: quote.currency.name } : { price: null, currency: null };
   let left = op.quantity;
   const takeFrom = (instances: readonly ItemInstance[]) => distribute(instances, left, (instance, quantity) => {
     left -= quantity;
-    runOps(pass, [buyer ? { kind: 'transfer', instanceId: instance.id, to: buyer, quantity } : { kind: 'lose', instanceId: instance.id, quantity }]);
+    runOps(pass, [buyer ? { kind: 'transfer', instanceId: instance.id, to: buyer, quantity, purchase } : { kind: 'lose', instanceId: instance.id, quantity, purchase }]);
   });
   takeFrom(held);
   if (left > 0 && pass.scene.location) takeFrom(visibleAt({ kind: 'location', id: pass.scene.location.id }));
@@ -112,7 +114,7 @@ function settleBuy(pass: PassRun, op: InventoryPassOp, quote: BuyQuote): void {
       undo('the world has no item of that name');
       return;
     }
-    runOps(pass, [{ kind: 'gain', itemId, quantity: left, to: buyer }]);
+    runOps(pass, [{ kind: 'gain', itemId, quantity: left, to: buyer, purchase }]);
   }
   if (pass.diagnostics.length > before.lines) undo(pass.diagnostics[pass.diagnostics.length - 1]);
 }

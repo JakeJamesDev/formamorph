@@ -554,6 +554,10 @@ const ITEM_ARGS_ENTRIES: Partial<Record<ItemArgsField, SurfaceEntry>> = {
     name: 'to', detail: 'object | null', access: 'readOnly',
     info: 'Where the Item Instance went: persona, an entity or a location. It’s null when the Item Instance is gone for good.',
   },
+  purchase: {
+    name: 'purchase', detail: '{ price, currency } | null', access: 'readOnly',
+    info: 'The buy that moved the Item Instance: the whole buy’s price in the Currency’s base unit, and the Currency’s name. Both are null when the buy moved no money. purchase is null when no one bought it.',
+  },
   quantity: { name: 'quantity', detail: 'number', info: 'How many the event moved', access: 'readOnly' },
   target: {
     name: 'target', detail: 'object | null', access: 'readOnly',

@@ -689,8 +689,8 @@ describe('the names an item timing adds', () => {
 
   it('lists Item Instance and its timing’s Arguments in an item timing only', () => {
     expect(levelAt(treeAt('gained').built, 'Item Instance')).toEqual(ITEM_INSTANCE_FIELDS.map((field) => field.name));
-    expect(levelAt(treeAt('gained').built, 'Arguments')).toEqual(['by', 'from', 'quantity']);
-    expect(levelAt(treeAt('lost').built, 'Arguments')).toEqual(['by', 'to', 'quantity']);
+    expect(levelAt(treeAt('gained').built, 'Arguments')).toEqual(['by', 'from', 'purchase', 'quantity']);
+    expect(levelAt(treeAt('lost').built, 'Arguments')).toEqual(['by', 'to', 'purchase', 'quantity']);
     expect(inserts(treeAt('gained').built, 'Arguments', 'from')).toBe('args.from');
     expect(levelAt(treeAt('used').built, 'Arguments')).toEqual(['by', 'quantity', 'target']);
     expect(inserts(treeAt('used').built, 'Arguments', 'target')).toBe('args.target');
@@ -715,8 +715,9 @@ describe('the names an item timing adds', () => {
       codeCard(code, code.lastIndexOf(at) + 1, { surface: treeAt(timing).surface });
     expect(cardAt('used', 'args.target', 'target')?.signature).toMatchObject({ type: 'object | null' });
     expect(cardAt('used', 'args', 'args')?.signature).toMatchObject({ type: '{ by, quantity, target }' });
-    expect(cardAt('gained', 'args', 'args')?.signature).toMatchObject({ type: '{ by, from, quantity }' });
-    expect(cardAt('lost', 'args', 'args')?.signature).toMatchObject({ type: '{ by, to, quantity }' });
+    expect(cardAt('gained', 'args', 'args')?.signature).toMatchObject({ type: '{ by, from, purchase, quantity }' });
+    expect(cardAt('lost', 'args', 'args')?.signature).toMatchObject({ type: '{ by, to, purchase, quantity }' });
+    expect(cardAt('lost', 'args.purchase', 'purchase')?.signature).toMatchObject({ type: '{ price, currency } | null' });
     expect(cardAt('equipped', 'args.by', 'by')?.signature).toMatchObject({ type: "'story' | 'player' | 'script' | 'rule'" });
     expect(cardAt('gained', 'args.from', 'from')?.signature).toMatchObject({ type: 'object | null' });
     expect(cardAt('gained', 'instance.owner', 'owner')?.signature).toMatchObject({ type: 'string' });

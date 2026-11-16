@@ -217,8 +217,8 @@ export interface ItemEventRun {
 }
 
 /** The `args` an item event passes its scripts. */
-const itemEventArgs = ({ quantity, by, from, to, target }: ItemScriptEvent): ItemEventArgs => ({
-  quantity, by, target: target?.id ?? null, ...(from !== undefined && { from }), ...(to !== undefined && { to }),
+const itemEventArgs = ({ quantity, by, from, to, purchase, target }: ItemScriptEvent): ItemEventArgs => ({
+  quantity, by, target: target?.id ?? null, purchase: purchase ?? null, ...(from !== undefined && { from }), ...(to !== undefined && { to }),
 });
 
 /** One World Tool call a run fires: the Tool's name, its script, and the call's arguments. */
