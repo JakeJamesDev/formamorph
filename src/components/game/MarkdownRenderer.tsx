@@ -1,4 +1,4 @@
-import { memo, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type RefObject } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type RefObject } from 'react';
 import { Streamdown, defaultRehypePlugins, defaultRemarkPlugins } from 'streamdown';
 import { createCodePlugin } from '@streamdown/code';
 import { markdownCodeThemes } from '@/lib/markdownCodeTheme';
@@ -8,7 +8,7 @@ import remarkFlexibleMarkers from 'remark-flexible-markers';
 import { remarkSubSuper } from '@/lib/remarkSubSuper';
 import { remarkNoIndentedCode } from '@/lib/remarkNoIndentedCode';
 import { rehypePreviewTint } from '@/lib/previewTint';
-import { rehypeQuoteSpans, type QuoteSpeakerSource } from '@/lib/rehypeQuoteSpans';
+import { rehypeQuoteSpans, paintLateQuoteColors, type QuoteSpeakerSource } from '@/lib/rehypeQuoteSpans';
 import { getRevealTiming, type RevealTiming } from '@/lib/revealTimingStore';
 import { cn } from '@/lib/utils';
 import { ExternalLinkDialog } from './ExternalLinkDialog';
@@ -175,6 +175,13 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
 ) {
   const root = useRef<HTMLDivElement>(null);
   useFitShown(root, animate && fitShown, text);
+  // Quotes read after their block drew take their color in place.
+  useEffect(() => {
+    if (!speakers?.subscribe || !dialogue) return;
+    const paint = () => { if (root.current) paintLateQuoteColors(root.current, speakers); };
+    paint(); // a run may have ended between the render and this effect
+    return speakers.subscribe(paint);
+  }, [speakers, dialogue]);
   const allComponents = useMemo(() => (components ? { ...COMPONENTS, ...components } : COMPONENTS), [components]);
   const remarkPlugins = useMemo(() => (links ? remarkPluginsWith(links) : REMARK_PLUGINS), [links]);
   const rehypePlugins = useMemo(

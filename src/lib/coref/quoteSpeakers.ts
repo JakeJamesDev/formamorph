@@ -1,4 +1,4 @@
-import { spanKey, type QuoteSpeakerSource, type SpeakerColors } from '@/lib/quoteSegments';
+import { spanKey, UNCOLORED, type QuoteSpeakerSource, type SpeakerColors } from '@/lib/quoteSegments';
 import type { MentionReading } from './mentionReading';
 import { turnMentionReading, type MentionReadingMap } from './mentionReadings';
 import type { LiveQuotes } from './streamingQuotes';
@@ -25,10 +25,8 @@ export const liveQuoteSpeakers = (live: LiveQuotes, colors: SpeakerColors): Quot
     get text() { return live.text; },
     get quotes() { return live.quotes; },
     colors,
+    subscribe: (listener) => live.subscribe?.(listener) ?? (() => {}),
   }));
-
-// The default dialogue color, which an early quote without a speaker showed.
-const UNCOLORED = 'var(--dialogue-custom, hsl(var(--dialogue)))';
 
 /** The color each quote of `early` showed, by span, where `reading` gives that quote another color. */
 function recolorOf(early: LiveQuotes, reading: MentionReading, colors: SpeakerColors): Map<string, string> {

@@ -34,6 +34,9 @@ export function parseSpanKey(value: unknown): TextSpan | null {
   return match ? { start: Number(match[1]), end: Number(match[2]) } : null;
 }
 
+/** The default dialogue color, which a quote without a speaker shows. */
+export const UNCOLORED = 'var(--dialogue-custom, hsl(var(--dialogue)))';
+
 /** Each speaker's quote color, by entity id. */
 export type SpeakerColors = ReadonlyMap<string, string>;
 
@@ -44,6 +47,8 @@ export interface QuoteSpeakerSource {
   quotes: readonly SpokenQuote[];
   colors: SpeakerColors;
   recolor?: ReadonlyMap<string, string>;
+  /** Called when quotes gain speakers after the text rendered, so the renderer can color them in place. */
+  subscribe?(listener: () => void): () => void;
 }
 
 /** The spans of `lines` (each a quote and its speaker) found in `text` in order. For canned readings. */

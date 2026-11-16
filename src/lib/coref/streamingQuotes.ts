@@ -16,6 +16,8 @@ export type ReadQuotes = (passage: string) => Promise<readonly QuoteSpeaker[] | 
 export interface LiveQuotes {
   text: string;
   quotes: SpokenQuote[];
+  /** Called when a run finishes, after `quotes` holds its speakers. */
+  subscribe?(listener: () => void): () => void;
 }
 
 const HOLD_RE = /[.!?](?=\s)|["“]|\n\s*\n/;
@@ -36,6 +38,8 @@ interface TrackedQuote {
   end: number;
   /** Null until the quote's hold point has arrived. */
   hold: number | null;
+  /** Its closing mark has arrived, so its span is final. */
+  closed: boolean;
   /** Undefined until a run reads it. */
   speaker: string | null | undefined;
 }
@@ -64,13 +68,22 @@ export function createStreamingQuoteReader(now: () => number = Date.now): Stream
   let finished = false;
   let tracked: TrackedQuote[] = [];
   let running: { startedAt: number; cut: number } | null = null;
-  let live: LiveQuotes = { text: '', quotes: [] };
   const listeners = new Set<() => void>();
   const notify = () => listeners.forEach((listener) => listener());
+  const subscribe = (listener: () => void) => {
+    listeners.add(listener);
+    return () => { listeners.delete(listener); };
+  };
+  const emptyLive = (): LiveQuotes => ({ text: '', quotes: [], subscribe });
+  let live = emptyLive();
 
+  // A closed quote is listed before its run ends (no speaker yet), so its span carries the key a late color
+  // finds it by.
   const publish = () => {
     live.text = text;
-    live.quotes = tracked.flatMap((q) => (q.speaker === undefined ? [] : [{ start: q.start, end: q.end, speaker: q.speaker }]));
+    live.quotes = tracked.flatMap((q) => (q.speaker === undefined && !q.closed
+      ? []
+      : [{ start: q.start, end: q.end, speaker: q.speaker ?? null }]));
   };
 
   const scan = () => {
@@ -79,7 +92,7 @@ export function createStreamingQuoteReader(now: () => number = Date.now): Stream
       const prev = before.get(start);
       if (prev && prev.end === end && prev.hold !== null) return prev;
       const closed = finished || paragraphEnd < text.length || CLOSES_RE.test(text.slice(start + 1, end));
-      return { start, end, hold: closed ? holdPoint(text, end, finished) : null, speaker: read ? undefined : null };
+      return { start, end, closed, hold: closed ? holdPoint(text, end, finished) : null, speaker: read ? undefined : null };
     });
   };
 
@@ -140,10 +153,7 @@ export function createStreamingQuoteReader(now: () => number = Date.now): Stream
       });
     },
     runMs: () => runMs,
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => { listeners.delete(listener); };
-    },
+    subscribe,
   };
 
   return {
@@ -154,7 +164,7 @@ export function createStreamingQuoteReader(now: () => number = Date.now): Stream
       finished = false;
       tracked = [];
       running = null;
-      live = { text: '', quotes: [] };
+      live = emptyLive();
     },
     update(next, done) {
       if (next === text && done === finished) return;

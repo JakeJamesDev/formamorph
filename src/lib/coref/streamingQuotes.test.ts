@@ -65,6 +65,24 @@ describe('createStreamingQuoteReader', () => {
     expect(reader.live().quotes.map((q) => q.speaker)).toEqual(['s0', 's24', 's48']);
   });
 
+  it('lists a closed quote without a speaker at once, and tells subscribers when its run ends (Q74)', async () => {
+    const reader = createStreamingQuoteReader();
+    reader.begin(timedRead(100).read);
+    const live = reader.live();
+    const heard = vi.fn();
+    live.subscribe!(heard);
+    // An open quote has no final span yet; a closed one is keyed before its hold point arrives.
+    reader.update('"You\'re late', false);
+    expect(live.quotes).toEqual([]);
+    reader.update('"You\'re late," he said', false);
+    expect(live.quotes).toEqual([{ start: 0, end: 14, speaker: null }]);
+    reader.update('"You\'re late," he said. "The', false);
+    expect(heard).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(heard).toHaveBeenCalledTimes(1);
+    expect(live.quotes).toEqual([{ start: 0, end: 14, speaker: 's0' }]);
+  });
+
   it('dates a running quote at the run end and a queued one a run later', async () => {
     const reader = createStreamingQuoteReader();
     reader.begin(timedRead(100).read);
@@ -111,7 +129,7 @@ describe('createStreamingQuoteReader', () => {
     const live = reader.live();
     reader.cancel();
     await vi.advanceTimersByTimeAsync(100);
-    expect(live.quotes).toEqual([]);
+    expect(live.quotes.map((q) => [q.start, q.speaker])).toEqual([[0, null], [24, null], [48, null]]);
     expect(reader.gate.quotes(Date.now()).every((q) => q.eta === null)).toBe(true);
   });
 });

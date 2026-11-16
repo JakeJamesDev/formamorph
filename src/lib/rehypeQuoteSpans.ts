@@ -1,4 +1,4 @@
-import { segmentQuotes, QUOTE_CLASS, blockQuotes, matchQuotes, spanKey, type QuoteSpeakerSource } from './quoteSegments';
+import { segmentQuotes, QUOTE_CLASS, blockQuotes, matchQuotes, spanKey, parseSpanKey, UNCOLORED, type QuoteSpeakerSource } from './quoteSegments';
 
 export type { QuoteSpeakerSource };
 
@@ -98,6 +98,27 @@ function walk(node: HastNode, state: WalkState, runs: QuoteRun[]): void {
     walk(child, { open: false, run: null }, runs);
   }
   node.children = out;
+}
+
+/**
+ * Colors the rendered quotes whose speaker arrived after they were drawn (Q74). Streamdown does not redraw a
+ * finished block, so the span takes its color in place; `data-quote-recolor` plays the 300 ms fade from the
+ * default dialogue color. A quote that already has a speaker is left alone.
+ */
+export function paintLateQuoteColors(root: ParentNode, source: QuoteSpeakerSource): void {
+  const bySpan = new Map(source.quotes.map((q) => [spanKey(q), q.speaker]));
+  for (const el of root.querySelectorAll<HTMLElement>(`.${QUOTE_CLASS}[data-quote-span]:not([data-speaker])`)) {
+    const span = parseSpanKey(el.dataset.quoteSpan);
+    const speaker = span ? bySpan.get(spanKey(span)) : null;
+    const color = speaker ? source.colors.get(speaker) : undefined;
+    if (!speaker || !color) continue;
+    el.style.setProperty('--quote-from', UNCOLORED);
+    el.style.setProperty('--quote-speaker', color);
+    el.dataset.speaker = speaker;
+    el.setAttribute('data-quote-recolor', '');
+    // Dropped once played, so a later recolor by the full-turn reading starts its own fade.
+    el.addEventListener('animationend', () => el.removeAttribute('data-quote-recolor'), { once: true });
+  }
 }
 
 /** Wraps quoted runs in `<span class="dialogue-quote">`. Runs last in the renderer's rehype pipeline, and

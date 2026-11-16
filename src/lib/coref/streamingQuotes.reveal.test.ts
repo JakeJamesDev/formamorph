@@ -68,7 +68,7 @@ async function playTurn(
     for (let i = shownWords; i < words; i++) wordAt.push(now + (i - shownWords) * pace);
     shownWords = words;
     if (reader && read) {
-      const back = new Set(reader.live().quotes.map((q) => q.start));
+      const back = new Set(reader.gate.quotes(Date.now()).filter((q) => q.eta === null).map((q) => q.start));
       uncolored += quoteSpans(shown).filter((q) => !back.has(q.start)).length;
     }
   };
