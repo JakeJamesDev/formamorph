@@ -48,6 +48,12 @@ Settled with the user on 2026-11-16, in grill order.
 | Q17 | Sound slots take the same pick-or-import treatment, plus a basic sound URL: a link box, a linked marker and a broken-link state. Linked sounds get no offline cache and no export embedding |
 | Q18 | Library entities follow the Avatar pattern: embedded media is the portable form (library, cards, publish, downloads), ids are the world form, and a content hash converts between them |
 | Q19 | When an entry is deleted, a save's override that named it falls back to the rules |
+| Q20 | Item images, map images and the body backdrop image are galleries in code and take the gallery link `{ mediaId, requires? }`. The single fields are entity sound, location ambient sound, world cover and world music (ticket 01) |
+| Q21 | A single field's id form is `{ mediaId }`, never a bare string, so it can't be mistaken for a URL (ticket 01) |
+| Q22 | Ticket 01 widens only the gallery entry type and defines the single-field link type. Tickets 05 and 06 widen each single field when they route its readers (ticket 01) |
+| Q23 | Ticket 01 adds the optional `name` on embedded gallery images and fills it in resolution; ticket 02 wires the flows (ticket 01) |
+| Q24 | An entry carries an optional MIME `type`, kept from the placed file, so resolution returns a full sound asset (ticket 01) |
+| Q25 | A linked (http/https) entry has no hash. Placement reuses the entry with the exact same URL, and the compare token for a URL is the URL. Fallback numbering starts at 1: `Wren 1`, then the next free number (ticket 01) |
 
 ## Prototype
 
@@ -109,7 +115,7 @@ Question: what an image slot looks like when images live in a shared, named list
 **World shape**
 
 - The World gains a Media List: entries keyed by id, each `{ id, name, kind: 'image' | 'sound', data }`. `data` is a data URL or an http(s) URL, as image fields hold today. An entry may carry a content hash for embedded data, computed with the same hasher the Avatar store uses.
-- Every covered field links by id. A gallery entry becomes `{ mediaId, requires? }`. Single fields (entity sound, location ambience, item image, map images, backdrop image, cover, music) hold a media id.
+- Every covered field links by id. A gallery entry (entity, location, item, map, backdrop) becomes `{ mediaId, requires? }`. Single fields (entity sound, location ambience, cover, music) hold `{ mediaId }` (Q20, Q21).
 - Names are unique per world, compared trimmed and case-insensitive. The suffix rule is shared by import, rename, migration and library placement.
 - One resolver turns a link into displayable media. Every reader goes through it: editor slots, play panels, the map, backdrops, audio, the Media tab and exports. An id with no entry resolves to nothing, and readers treat it like an empty slot.
 

@@ -13,6 +13,7 @@ Library entities keep embedded media; worlds will hold ids (Q18). Every flow tha
 - Out of a world: Save to Library, owned write-back, card export, and entity publish. Each id is resolved to an embedded file carrying its entry's name.
 - Embedded gallery images gain an optional `name`, so a round trip keeps names.
 - The source comparison and the update review's diff compare media by hash token.
+- From ticket 01's landing: `placeMedia` needs precomputed hashes and throws on embedded data it has none for, so each flow hashes before placing and writes the returned list back to the world. `mediaToken` ignores entry kind, so compare per field.
 
 ## Acceptance criteria
 

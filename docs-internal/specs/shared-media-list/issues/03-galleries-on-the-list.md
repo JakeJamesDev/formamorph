@@ -14,6 +14,7 @@ The first flip. Entity and location galleries move into the Media List when a wo
 - Editing in the current gallery UI still works: an upload places into the list and links it. Ticket 04 replaces the empty-slot UI.
 - Linked (http) images keep their badges and offline cache.
 - Saves load unchanged.
+- From ticket 01's landing: some readers pass no list yet, so a link reads empty there. Thread the list into the Media tab's entity and location galleries, and keep links (not resolved pictures) on gallery write-backs such as remote-image embedding and the image fixes. Body backdrop readers are ticket 05's. Migration hashes before calling `placeMedia`, which throws on embedded data with no hash.
 
 ## Acceptance criteria
 
