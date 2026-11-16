@@ -1,6 +1,6 @@
 # 15: Settings Order and Offer Preview
 
-Status: ready-for-human
+Status: done
 Blocked by: 14
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -19,9 +19,9 @@ Changes from the user's review of the Settings rows and the first-time offer.
   - otherwise at their first correction made while signed in and age-attested.
   - The answer sets the per-account opt-in (Q60), and the question never comes back.
 - **Offer preview (Q65):**
-  - The offer card drops Morphie. Its picture is a preview of the feature: a hand-made passage with three cast members and the player conversing, every quote speaker-colored, the player's in their Quote Color.
+  - The offer card keeps its small size; a "Show Me" control takes Morphie's place and opens a preview of the feature (Q65 as amended): a hand-made passage with three cast members and the player conversing, every quote speaker-colored, the player's in their Quote Color.
   - It renders through the real narration renderer with a fixed reading and fixed entities, never the model, so it is always right.
-  - A "What's this?" control opens the preview larger.
+  - The preview shows only in the dialog "Show Me" opens.
   - The passage is written for this preview, never taken from gold or real narration (Q33).
 - **Copy:** from the Writing Guide, including the ask-once question.
 - **Changelog:** fold into the unreleased Character Mentions entries.

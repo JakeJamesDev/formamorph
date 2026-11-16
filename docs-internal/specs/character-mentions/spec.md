@@ -1,6 +1,7 @@
 # Spec: Character Mentions
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-15; tickets 01–15 done, last landing d97f010d4. Review: spec text corrected. Tests green on 2026-11-15 (36812 passed); lint red only on untracked worlds-wip/ check scripts, outside this effort.
 Spec session: character-mentions — spec
 
 Resolve every name, pronoun and descriptor in narration to the cast entity it means, with an on-device coreference model. Use the result for per-character quote colors, mention hover cards, In Scene, and memory. Players correct wrong links in place and can contribute corrections to a shared training corpus. Spans both repos: the Formamorph client and FormamorphServer.
@@ -21,7 +22,7 @@ The tested off-the-shelf coreference models were trained on OntoNotes, which can
 - **Per-character quote colors.** Each quote gets its speaker's color. An author can pin a color on an entity; every other speaker gets a stable color from a theme-safe palette. A quote with no resolved speaker keeps today's single dialogue color.
 - **Mention hover cards.** A resolved mention in narration links to its entity. Hovering or tapping shows a card for that character.
 - **In Scene and memory.** A character that the prose shows only by pronoun or descriptor counts toward In Scene and the diary passes. Memory passes read the narration with bracketed names ("she [Mira] left"), so stored memory knows who acted.
-- **Correction.** A "Wrong character?" action on a colored quote or hover card lets the player pick the right character. The fix applies to that turn at once. A signed-in player who opted in to contribute also sends the passage to a staff review queue. Accepted passages join the training corpus.
+- **Correction.** A "Wrong character?" action on any quote or a hover card lets the player pick the right character (Q70). The fix applies to that turn at once. A signed-in player who opted in to contribute also sends the passage to a staff review queue. Accepted passages join the training corpus.
 - **Model updates.** Weights live in a public R2 bucket behind a versioned manifest. The app picks up new weights without an app release. Retrains run by hand on the shared corpus, and new weights ship only when both models beat the current dev scores.
 
 ## Rulings
@@ -96,7 +97,7 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q64 | Contribute Corrections stays off by default (Q9; a pre-checked box is not consent) but is asked once, yes or no: in the first-time offer when the player is signed in and age-attested, else at their first correction while signed in and attested. The row shows only while Character Mentions is on and the player is signed in, in this order: the toggle, the model choice, Contribute Corrections. The user's pick after the default-on request. Ticket 15. |
 | Q65 | The first-time offer card drops Morphie for a preview of the feature: a fixed, hand-made passage with three cast members and the player conversing, every quote speaker-colored, rendered through the real narration renderer with a fixed reading, never the model. A "What's this?" control opens it larger. The card stays its usual small size: a small "What's this?" control takes Morphie's place, and the passage with its colors shows only in the dialog it opens (the user's correction after reviewing ticket 15's frames). The control reads "Show Me" (the user's rename). |
 | Q70 | Every quote in narration can be corrected, not only quotes with a colored speaker. A quote whose speaker is the persona or is unresolved opens "Who said this?" on click; an unresolved one opens straight to the pick list. Found by the user: purple dialogue in play could not be corrected. A new visual pattern: frames need the user's approval. Ticket 15. |
-| Q66 | "Reset Size & Spacing" sits directly under Line Spacing, the rows it resets. Ticket 15. |
+| Q66 | "Reset Size & Spacing" sits directly under Line Spacing, the rows it resets. The "gap under Mentions Model" in ticket 15 was the spec session's misreading of a cropped screenshot, not a bug. Ticket 15. |
 | Q69 | In the offer, the contribution question shows after Turn On, under the download bar, and the card stays until it is answered. At the first correction, picking a row swaps the card to the question; the correction applies at once and only a yes sends it. Closing the card without answering counts as no, so the player is asked once. Asked is recorded per account on the device, and any change to the Settings row counts as the answer. The question states that the whole passage is sent and kept. "What's this?" opens the preview read-only in a dialog. Ticket 15. |
 | Q67 | An unmet stranger's card shows its Stranger Description when it has one, else no description, the same as known-by-name unmet rows. A cluster the vote left unnamed whose every mention is "you", the narrator's "I" or a persona name stores the persona id (a mixed cluster stays unnamed: in ff-13 a merged "You" would otherwise label ten of Keshari's pronouns as the player), so contributions send it labeled; a cluster a cast member won keeps its vote. The persona's authored aliases resolve to it like its name, the same rule cast entities follow. Ticket 14. |
 | Q68 | The persona votes on clusters by the cast's rule: a cluster it wins links its pronouns to the persona and is stored as the persona's. The pick list lists the persona, every met entity, every scene-alias row, and any entity this turn's reading links, each under its presence label. An unmet entity the turn does not link is never listed, even when its name is not hidden (the Player View's rows include those, so the list does not use them all). Ticket 14. |
@@ -128,7 +129,7 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 18. As a player, I want unresolved quotes to keep today's dialogue color, so that a guess never paints a quote wrong.
 19. As a player who turned quote coloring off, I want the feature to respect that, so that my display setting still wins.
 20. As an author, I want to pin a quote color on an entity, so that my main characters have the colors I designed.
-21. As an author, I want a pinned color checked for contrast in both themes, so that I don't ship an unreadable color.
+21. As an author, I want to pin a quote color from vetted swatches that read well in both themes, so that I never ship an unreadable color (Q56).
 22. As a player, I want colors to appear once a passage finishes, without the text jumping, so that reading is not disturbed.
 
 **Hover cards**
@@ -151,7 +152,7 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 
 33. As a player, I want a "Wrong character?" action on a colored quote and on a hover card, so that I can fix a wrong link where I see it.
 34. As a player, I want to pick the right character from the cast, so that the fix is one or two clicks.
-35. As a player, I want "nobody in the cast" as a choice, so that I can unlink a mention that names no entity.
+35. As a player, I want "Someone Else" as a choice (Q58), so that I can unlink a mention that names no entity.
 36. As a player, I want my fix to update colors, In Scene and links for that turn at once, so that I see it took effect.
 37. As a player, I want my fix kept with the save, so that it survives a reload.
 38. As a player, I want to correct without an account, so that fixing my own game never requires signing in.
@@ -186,11 +187,11 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 - **Coref Host.** A worker built with `createWorkerClient`. Input: one passage (text plus tokens). Output: clusters as character spans. It owns tokenization, the two-graph split (graph A: encoder and mention logits; graph B: antecedent logits), top-k pruning, the LingMess category masks for the big model, and cluster building. That host logic ports the fastcoref host code that ran in the Python evaluation. It runs one passage at a time and processes finished passages only, never streaming text.
 - **Model choice.** A one-time probe on enable: a WebGPU adapter must exist and a 300-token passage must run under 300 ms on the big model. The result is stored per device. A Settings override (Auto, Big, Small) beats it. The probe runs again when the player picks Auto again or the manifest's big-model version changes.
 - **Mention Reading.** A pure module: `(passage text, clusters, cast entities, scene context) → Mention Reading`. The reading holds each linked mention (span, entity id) and each quote's speaker (quote span, entity id or none). It names clusters with the existing parser (`findEntityMatches` and related matchers), following the combination rules proved in the evaluation: a cluster takes a name from parser hits that end a mention, from distinctive head words, aliases and Stranger Name words; a head two cast members share names nobody; one-word person names keep the capital guard; and "I'm <name>" ties to the speaker's "I". Parser hits outside any cluster keep today's behavior, except a hit on an everyday-word name, which the reading drops (Q29). Speaker attribution picks the mention next to a speech verb attached to the quote, then the nearest preceding subject mention in the same paragraph, else none.
-- **Corrections.** A correction is (turn id, mention span, entity id or none). Corrections live in the save with the turn and overlay the Mention Reading for that turn.
+- **Corrections.** A correction is (turn id, kind, span, entity id or none), where kind is mention or quote (Q35, Q36). Corrections live in the save with the turn and overlay the Mention Reading for that turn.
 
 **Consumers**
 
-- **Quote colors.** The quote segmenter gains an optional speaker per quoted run. The renderer adds the speaker's color through a CSS custom property on the quote span. The existing quote-color settings still gate all coloring. The color comes from the entity's pinned quote color, else a stable palette index keyed by entity id. The palette is theme-safe in both themes.
+- **Quote colors.** The quote segmenter gains an optional speaker per quoted run. The renderer adds the speaker's color through a CSS custom property on the quote span. The existing quote-color settings still gate all coloring. The color comes from the entity's pinned quote color, else a palette slot by cast position (Q45). The palette is theme-safe in both themes.
 - **Hover cards.** Mention links go through the renderer's existing remark-plugin and component props, as stable references. The card content comes from the Player View, so it shows only met, player-visible facts. A hover card is a new visual pattern: it needs a design-system entry and the user's approval before it ships.
 - **In Scene.** `readNarration` takes an optional Mention Reading. Entities with a linked mention in the prose (outside quoted speech) join the participant union. Met stays name-based: a pronoun or descriptor never makes an entity met.
 - **Memory.** A bracketed view of the narration ("she [Mira] left") is the input to the digest, diary and milestone passes only. The display text, the narration prompt history, read-aloud, choices, exports and the Narration Stream never carry brackets.
@@ -198,9 +199,9 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 
 **Settings and first-time flow**
 
-- New settings: feature on/off, model choice (Auto, Big, Small), and contribute corrections (on/off, needs a signed-in, age-attested account). Defaults live in the settings defaults module.
+- New settings: feature on/off, model choice (Auto, Big, Small), and contribute corrections (an opt-in that stores the account that gave it, needs a signed-in, age-attested account; Q60, Q64). Defaults live in the settings defaults module.
 - When AI Language is not English (`isEnglishLanguage`), the toggle is disabled with a reason, and the feature does not run.
-- The first-time flow gets one new offer card through the existing earned-card mechanism, with its own funnel step.
+- The first-time flow gets one new offer card through the existing earned-card mechanism; shown and accepted are recorded on the device only (Q52).
 
 **Export shape (world and save)**
 
@@ -214,7 +215,7 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 - `POST` a contribution: signed-in, age-attested, rate-limited, with a size cap per passage.
 - Staff routes behind the existing staff gate: queue, count, accept, reject. A staff UI tab in the admin panel, beside Review and Reports.
 - A staff export of accepted contributions in the training format.
-- Account deletion and consent withdrawal leave accepted rows in place (Q15). Pending rows are dropped on deletion.
+- Account deletion and consent withdrawal leave accepted rows in place (Q15). Pending and rejected rows are dropped on deletion (Q37).
 
 **Training kit**
 

@@ -1,6 +1,6 @@
 # 09: Contribution Queue (Server)
 
-Status: ready-for-human
+Status: done
 Base: 090652c
 Repo: FormamorphServer
 Blocked by: None (can start immediately)

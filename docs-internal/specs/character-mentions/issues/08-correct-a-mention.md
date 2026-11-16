@@ -1,6 +1,6 @@
 # 08: Correct a Mention
 
-Status: ready-for-human
+Status: done
 Blocked by: 04, 07
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium

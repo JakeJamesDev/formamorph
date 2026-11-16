@@ -1,6 +1,6 @@
 # 14: Persona Speaker and Pick-List Portraits
 
-Status: ready-for-human
+Status: done
 Blocked by: 08, 13
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
