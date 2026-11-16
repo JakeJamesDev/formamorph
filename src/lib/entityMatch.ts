@@ -2,6 +2,7 @@ import pluralize from 'pluralize-esm';
 import commonWordsCore from 'wordlist-english/english-words-10.json';
 import commonWordsExtra from 'wordlist-english/english-words-20.json';
 import type { Entity } from '@/types';
+import { editDistance } from './editDistance';
 import { escapeRegExp } from './utils';
 
 /**
@@ -411,6 +412,26 @@ export function sameCharacterName(a: string, b: string): boolean {
   const [small, large] = aw.size <= bw.size ? [aw, bw] : [bw, aw];
   for (const w of small) if (!large.has(w)) return false;
   return true;
+}
+
+/** The fewest letters a word needs to stay one spelling two edits away instead of one (Q76). */
+const LONG_SPELLING_LENGTH = 5;
+const spellingSlack = (a: string, b: string): number => (Math.min(a.length, b.length) < LONG_SPELLING_LENGTH ? 1 : 2);
+
+/**
+ * Whether two names are spellings of one name (Q76): `sameCharacterName`, or every significant word of the
+ * name with fewer words within a few edits of a word of the other ("Miensao" of "Anthro Mienshao").
+ */
+export function sameNameSpelling(a: string, b: string): boolean {
+  if (sameCharacterName(a, b)) return true;
+  const aw = [...new Set(significantWords(a))];
+  const bw = [...new Set(significantWords(b))];
+  if (aw.length === 0 || bw.length === 0) return false;
+  const [small, large] = aw.length <= bw.length ? [aw, bw] : [bw, aw];
+  return small.every((w) => large.some((v) => {
+    const slack = spellingSlack(w, v);
+    return editDistance(w, v, slack) <= slack;
+  }));
 }
 
 /**

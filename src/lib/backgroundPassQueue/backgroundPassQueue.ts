@@ -1,7 +1,7 @@
 import type { ChatMessage, RuntimeItem } from '@/types';
 import type { TransportRequest } from '@/lib/aiRequest/requestTransport';
 import { applyDiary, applyDigest, applyImportance, parseTurnContent } from '@/lib/turnDigest';
-import { sameCharacterName } from '@/lib/entityMatch';
+import { sameCharacterName, sameNameSpelling } from '@/lib/entityMatch';
 import { cleanDiscoveredDescription } from '@/lib/runtimeCharacters';
 import { cleanItemDescription, dueItemDescriptions, type DescribeItemTarget } from '@/lib/inventory/describe';
 import type { BandTurn } from '@/lib/turnBanding';
@@ -247,9 +247,13 @@ function participantTurns(history: ChatMessage[], readingNames?: ReadingNames) {
       prior.push({ turnId: turn?.turnId ?? '', narration });
       continue;
     }
-    // A stored name a reading pooled under another spelling counts under that one (Q73).
+    // A stored name a reading pooled under another spelling of it counts under that one (Q73, Q76).
     const spellings = readingNames?.spellings?.(turn.turnId, narration, prior);
-    const stored = [...new Set((turn.entities ?? []).map((name) => spellings?.get(name) ?? name))];
+    const pooledAs = (name: string) => {
+      const pooled = spellings?.get(name);
+      return pooled !== undefined && sameNameSpelling(name, pooled) ? pooled : name;
+    };
+    const stored = [...new Set((turn.entities ?? []).map(pooledAs))];
     const added = readingNames?.(turn.turnId, narration, prior).filter((name) => !stored.some((s) => sameCharacterName(s, name))) ?? [];
     prior.push({ turnId: turn.turnId, narration });
     const names = added.length ? [...stored, ...added] : stored;
@@ -264,8 +268,8 @@ function participantTurns(history: ChatMessage[], readingNames?: ReadingNames) {
 export function dueDiscoveries(history: ChatMessage[], knownNames: readonly string[], readingNames?: ReadingNames): DiscoverTarget[] {
   const due: DiscoverTarget[] = [];
   for (const turn of participantTurns(history, readingNames)) {
-    const pooledKnown = (name: string) =>
-      [...(turn.spellings ?? [])].some(([spelling, pooled]) => pooled === name && isKnown(spelling, knownNames));
+    const pooledKnown = (name: string) => [...(turn.spellings ?? [])]
+      .some(([spelling, pooled]) => pooled === name && sameNameSpelling(spelling, pooled) && isKnown(spelling, knownNames));
     for (const name of turn.names) {
       if (name.trim() && !isKnown(name, knownNames) && !pooledKnown(name)) {
         due.push({ turnId: turn.turnId, name, narration: turn.narration, locationId: turn.locationId });

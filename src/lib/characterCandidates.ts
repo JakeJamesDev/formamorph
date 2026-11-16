@@ -12,7 +12,7 @@
  * yields no candidates, which is exactly the pre-feature behavior.
  */
 
-import { SELF_INTRO_BEFORE, isEverydayName, sameCharacterName, stripQuotedSpeech } from './entityMatch';
+import { SELF_INTRO_BEFORE, isEverydayName, sameCharacterName, sameNameSpelling, stripQuotedSpeech } from './entityMatch';
 import { quoteSpeakingClusters } from './coref/mentionReading';
 import type { CorefCluster } from './coref/corefHost';
 
@@ -366,8 +366,8 @@ export interface ClusterCandidates {
 /**
  * Character names a turn's coref clusters qualify (Q73). Only a cluster a speech verb ties to a quote on
  * this page proposes a name. A capitalized run that shares a cluster with a he/she pronoun counts as a
- * person, and the runs in one cluster pool their uses under the most-used spelling no exclusion blocks,
- * ties to the first in the text. A spelling an earlier turn pooled keeps that turn's name in `priorLinks`,
+ * person, and the runs in one cluster that spell one name (Q76) pool their uses under the most-used spelling
+ * no exclusion blocks, ties to the first in the text. Different names in one cluster stay apart. A spelling an earlier turn pooled keeps that turn's name in `priorLinks`,
  * and is blocked with it. A cluster that holds a known character adds nothing. Evidence only adds: a name
  * the name rule finds stays found.
  *
@@ -404,25 +404,46 @@ export function clusterCandidates(
   for (const { index, gendered, names } of read) {
     if (!speaking.has(index)) continue;
     if (names.some(isKnown)) continue;
-    const linked = names.map((name) => priorLinks.get(name)).find((name) => name !== undefined);
-    const spellings = linked && !names.includes(linked) ? [...names, linked] : names;
-    const records = spellings.flatMap((name) => evidence.get(name) ?? []);
-    const eligible = records.filter((record) => !excluded(record.name));
-    if (!eligible.length) continue;
-    const named = linked ?? eligible.reduce((best, record) => (record.total > best.total ? record : best)).name;
-    const pooled: CandidateEvidence = {
-      name: named,
-      mid: records.reduce((sum, record) => sum + record.mid, 0),
-      total: records.reduce((sum, record) => sum + record.total, 0),
-      titled: records.some((record) => record.titled),
-      person: gendered || records.some((record) => record.person),
-      inProse: records.some((record) => record.inProse),
-      bodied: records.some((record) => record.bodied),
-      introduced: records.some((record) => record.introduced),
-    };
-    if (!qualifiesAsCharacter(pooled)) continue;
-    if (!found.names.includes(named)) found.names.push(named);
-    for (const spelling of spellings) found.links.set(spelling, named);
+    for (const group of spellingGroups(names, evidence)) {
+      const linked = group.map((name) => priorLinks.get(name))
+        .find((name) => name !== undefined && spellsAll(name, group));
+      const spellings = linked && !group.includes(linked) ? [...group, linked] : group;
+      const records = spellings.flatMap((name) => evidence.get(name) ?? []);
+      const eligible = records.filter((record) => !excluded(record.name));
+      if (!eligible.length) continue;
+      const named = linked ?? eligible.reduce((best, record) => (record.total > best.total ? record : best)).name;
+      const pooled: CandidateEvidence = {
+        name: named,
+        mid: records.reduce((sum, record) => sum + record.mid, 0),
+        total: records.reduce((sum, record) => sum + record.total, 0),
+        titled: records.some((record) => record.titled),
+        person: gendered || records.some((record) => record.person),
+        inProse: records.some((record) => record.inProse),
+        bodied: records.some((record) => record.bodied),
+        introduced: records.some((record) => record.introduced),
+      };
+      if (!qualifiesAsCharacter(pooled)) continue;
+      if (!found.names.includes(named)) found.names.push(named);
+      for (const spelling of spellings) found.links.set(spelling, named);
+    }
   }
   return found;
+}
+
+/** Whether `name` spells every name in `group` (Q76). */
+const spellsAll = (name: string, group: readonly string[]) => group.every((member) => sameNameSpelling(name, member));
+
+/**
+ * A cluster's names split into spellings of one name (Q76), most-used first, ties in text order. Each name joins
+ * the first group it spells every member of, so a name two others share ("Smith") never chains them together.
+ */
+function spellingGroups(names: readonly string[], evidence: ReadonlyMap<string, CandidateEvidence>): string[][] {
+  const used = (name: string) => evidence.get(name)?.total ?? 0;
+  const groups: string[][] = [];
+  for (const name of [...names].sort((a, b) => used(b) - used(a))) {
+    const group = groups.find((members) => spellsAll(name, members));
+    if (group) group.push(name);
+    else groups.push([name]);
+  }
+  return groups;
 }

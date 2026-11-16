@@ -335,6 +335,49 @@ describe('clusterCandidates (Q73)', () => {
     expect(clusterNames(text, pooled, {})).toEqual(['Zorvak']);
   });
 
+  it('keeps two different names in one cluster apart (Q76)', () => {
+    const text = 'You saw the Zorvak at the gate, and later the Zorvak paused. '
+      + `You saw the Tessaly at the well, and the Tessaly listened.${SPEAKS}`;
+    const merged = clustersOf(text, [['the Zorvak', 'the Zorvak', 'the Tessaly', 'the Tessaly', 'she']]);
+    const found = clusterCandidates(text, merged, {});
+    expect(found.names).toEqual(['Zorvak', 'Tessaly']);
+    expect(found.links.get('Tessaly')).toBe('Tessaly');
+    // A name with too little evidence of its own is not carried by the other's.
+    const once = text.replace('and the Tessaly listened', 'and the well listened');
+    expect(clusterNames(once, clustersOf(once, [['the Zorvak', 'the Zorvak', 'the Tessaly', 'she']]), {})).toEqual(['Zorvak']);
+  });
+
+  it('pools a close spelling of one word of a longer name', () => {
+    const text = `An Anthro Zorvak waited at the gate. Later the Zorvac paused, and the Zorvac listened.${SPEAKS}`;
+    const found = clusterCandidates(text, clustersOf(text, [['An Anthro Zorvak', 'the Zorvac', 'the Zorvac', 'she']]), {});
+    expect(found.names).toEqual(['Zorvac']);
+    expect(found.links.get('Anthro Zorvak')).toBe('Zorvac');
+  });
+
+  it('never chains two names through a third they both contain', () => {
+    const text = 'You met Anna Smith at the gate, and Anna Smith paused. You met John Smith at the well, '
+      + `and John Smith listened. Smith waited.${SPEAKS}`;
+    const clusters = clustersOf(text, [['Anna Smith', 'Anna Smith', 'John Smith', 'John Smith', 'Smith', 'she']]);
+    expect(clusterNames(text, clusters, {})).toEqual(['Anna Smith', 'John Smith']);
+  });
+
+  it('never chains two names through a third used more than either', () => {
+    const text = 'You met Smith at the gate, and Smith paused. Later Smith listened, and Anna Smith waved. '
+      + `John Smith nodded.${SPEAKS}`;
+    const clusters = clustersOf(text, [['Smith', 'Smith', 'Smith', 'Anna Smith', 'John Smith', 'she']]);
+    const found = clusterCandidates(text, clusters, {});
+    expect(found.links.get('Anna Smith')).toBe(found.links.get('Smith'));
+    expect(found.links.get('John Smith')).not.toBe(found.links.get('Smith'));
+  });
+
+  it("names a group by an earlier turn's link only when that name spells every member", () => {
+    const text = `You met John Smith at the gate, and John Smith paused. Smith listened.${SPEAKS}`;
+    const clusters = clustersOf(text, [['John Smith', 'John Smith', 'Smith', 'she']]);
+    const found = clusterCandidates(text, clusters, {}, undefined, new Map([['Smith', 'Anna Smith']]));
+    expect(found.names).toEqual(['John Smith']);
+    expect(found.links.get('John Smith')).toBe('John Smith');
+  });
+
   it('names the most-used spelling no exclusion blocks', () => {
     const text = `You met the Zorvac at dawn. You met the Zorvak at noon, and you met the Zorvak at dusk.${SPEAKS}`;
     const clusters = clustersOf(text, [['the Zorvac', 'the Zorvak', 'the Zorvak', 'she']]);

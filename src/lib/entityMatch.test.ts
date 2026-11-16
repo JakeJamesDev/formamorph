@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchNames, findNameMatches, findEntityNames, findEntityMatches, matchNamesLoose, sameCharacterName, stripQuotedSpeech, resolveEntityByName } from './entityMatch';
+import { matchNames, findNameMatches, findEntityNames, findEntityMatches, matchNamesLoose, sameCharacterName, sameNameSpelling, stripQuotedSpeech, resolveEntityByName } from './entityMatch';
 import type { Entity } from '@/types';
 
 const ent = (name: string): Entity => ({ id: name, name });
@@ -388,6 +388,28 @@ describe('findEntityMatches — Stranger Name', () => {
     expect(findEntityMatches('Sylvie Thornwhistle nods.', [both])[0].via).toBe('name');
     expect(findEntityNames('the matron nods.', [both])).toEqual([]);
     expect(findEntityMatches('The Matron nods.', [both])[0].via).toBe('alias');
+  });
+});
+
+describe('sameNameSpelling (Q76)', () => {
+  it('joins a word subset and a close spelling of each word', () => {
+    expect(sameNameSpelling('Zorvak', 'Anthro Zorvak')).toBe(true);
+    expect(sameNameSpelling('Zorvac', 'Zorvak')).toBe(true);
+    expect(sameNameSpelling('Zorvac', 'Anthro Zorvak')).toBe(true);
+    expect(sameNameSpelling('Zorvaak', 'Zorvk')).toBe(true);
+  });
+
+  it('allows two edits from 5 letters up and one below', () => {
+    expect(sameNameSpelling('Tessaly', 'Tesily')).toBe(true);
+    expect(sameNameSpelling('Tessaly', 'Tesil')).toBe(false);
+    expect(sameNameSpelling('Mira', 'Mika')).toBe(true);
+    expect(sameNameSpelling('Mia', 'Max')).toBe(false);
+    expect(sameNameSpelling('Ann', 'Amy')).toBe(false);
+  });
+
+  it('keeps two different people apart', () => {
+    expect(sameNameSpelling('Anna Smith', 'John Smith')).toBe(false);
+    expect(sameNameSpelling('Zorvak', 'Tessaly')).toBe(false);
   });
 });
 

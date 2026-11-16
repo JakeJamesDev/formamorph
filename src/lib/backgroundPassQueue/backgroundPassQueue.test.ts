@@ -564,6 +564,32 @@ describe('the due selectors', () => {
     expect(dueDiscoveries(history, ['Zorvak'], readingNamesFor(true, readings, [], {}))).toEqual([]);
   });
 
+  it('discovers both people of a cluster the model merged (Q76)', () => {
+    const text = 'You saw the Zorvak at the gate, and later the Zorvak paused. '
+      + 'You saw the Tessaly at the well, and the Tessaly nodded. "Rain soon," she says.';
+    let from = 0;
+    const spans = ['the Zorvak', 'the Zorvak', 'the Tessaly', 'the Tessaly', 'she'].map((mention): [number, number] => {
+      const start = text.indexOf(mention, from);
+      from = start + mention.length;
+      return [start, from];
+    });
+    const readings: MentionReadingMap = {
+      t1: { model: 'small', version: 1, textHash: narrationHash(text), reading: { mentions: [], quotes: [] }, clusters: [spans], clusterEntities: [null] },
+    };
+    // The name rule finds the Tessaly alone, from "nodded".
+    const stored = extractCharacterCandidates(stripQuotedSpeech(text), {});
+    expect(stored).toEqual(['Tessaly']);
+    const history = [rawTurn({ turnId: 't1', narration: text, entities: stored })];
+    expect(dueDiscoveries(history, [], readingNamesFor(true, readings, [], {})).map((due) => due.name).sort())
+      .toEqual(['Tessaly', 'Zorvak']);
+    // A link to a different name never takes a stored name's place.
+    const crossLinked = Object.assign(() => [], { spellings: () => new Map([['Tessaly', 'Zorvak']]) });
+    expect(dueDiscoveries(history, [], crossLinked).map((due) => due.name)).toEqual(['Tessaly']);
+    // Nor does a known name linked to it block it.
+    const knownLinked = Object.assign(() => [], { spellings: () => new Map([['Zorvak', 'Tessaly']]) });
+    expect(dueDiscoveries(history, ['Zorvak'], knownLinked).map((due) => due.name)).toEqual(['Tessaly']);
+  });
+
   it('adds nobody for a pool that holds a discovered character', () => {
     // "Zorvak" was discovered earlier; this turn uses a misspelling more often than the name.
     const text = 'You met the Zorvak at dawn. You met the Zorvac at noon, and you met the Zorvac at dusk. '
