@@ -6,12 +6,14 @@ import { characterMentions } from './characterMentionsApp';
 export function usePlannedDownloadSize(choice: CorefModelChoice, active: boolean): number | null {
   const [size, setSize] = useState<number | null>(null);
   useEffect(() => {
+    setSize(null);
     if (!active) return;
     // A later choice's answer wins over a slow earlier one.
     let current = true;
-    void characterMentions().plannedSize(choice).then((bytes) => {
-      if (current) setSize(bytes);
-    });
+    characterMentions().plannedSize(choice).then(
+      (bytes) => { if (current) setSize(bytes); },
+      () => { if (current) setSize(null); },
+    );
     return () => { current = false; };
   }, [choice, active]);
   return size;

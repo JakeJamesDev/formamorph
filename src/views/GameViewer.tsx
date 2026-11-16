@@ -7043,7 +7043,6 @@ const GameViewer = ({
         }}
       />
 
-      {/* Full AI context sent each turn, paginated by turn */}
       {import.meta.env.DEV && devMentionReadingOpen && (
         <MentionReadingDevDialog
           open
@@ -7053,6 +7052,7 @@ const GameViewer = ({
           cast={allEntities}
         />
       )}
+      {/* Full AI context sent each turn, paginated by turn */}
       <Dialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>
         <DialogContent surface="aiContext" aria-describedby={undefined} className={AI_CONTEXT_DIALOG_SIZE}>
           <RenderMounted render={() => {

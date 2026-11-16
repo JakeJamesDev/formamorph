@@ -199,6 +199,10 @@ interface CardTarget extends TextSpan { turnId: string }
 /** The attribute a trigger carries its target in, so focus can find a trigger a correction remounted. */
 const TARGET_ATTRIBUTE = 'data-card-target';
 const targetKey = (target: CardTarget) => `${spanKey(target)}:${target.turnId}`;
+/** The trigger at `target`: `anchor` while it is mounted, else the element a remount put there. */
+const currentTrigger = (anchor: HTMLElement, target: CardTarget | null): HTMLElement | null =>
+  anchor.isConnected || !target ? anchor
+    : document.querySelector<HTMLElement>(`[${TARGET_ATTRIBUTE}="${CSS.escape(targetKey(target))}"]`);
 
 interface OpenCard {
   anchor: HTMLElement;
@@ -318,9 +322,7 @@ export function MentionCardsProvider({ colors, rows, onCorrect, pickable, askCon
   // A correction remounts the narration, so the card follows its target's new element.
   const anchorRef = useMemo(() => ({
     current: card && {
-      getBoundingClientRect: () => (card.anchor.isConnected || !card.target ? card.anchor
-        : document.querySelector<HTMLElement>(`[${TARGET_ATTRIBUTE}="${CSS.escape(targetKey(card.target))}"]`) ?? card.anchor
-      ).getBoundingClientRect(),
+      getBoundingClientRect: () => (currentTrigger(card.anchor, card.target) ?? card.anchor).getBoundingClientRect(),
     },
   }), [card]);
   const byKey = card?.by === 'key';
@@ -351,8 +353,7 @@ export function MentionCardsProvider({ colors, rows, onCorrect, pickable, askCon
               const back = returnTo.current;
               returnTo.current = null;
               // A correction remounts the narration, so the trigger may be a new element at the same target.
-              const anchor = back?.anchor.isConnected || !back?.target ? back?.anchor
-                : document.querySelector<HTMLElement>(`[${TARGET_ATTRIBUTE}="${CSS.escape(targetKey(back.target))}"]`);
+              const anchor = back ? currentTrigger(back.anchor, back.target) : undefined;
               // A press elsewhere keeps the focus it gave; only focus the card dropped goes back to the anchor.
               const active = document.activeElement;
               const dropped = !active || active === document.body || !!active.closest('[data-testid="mention-card"]');
