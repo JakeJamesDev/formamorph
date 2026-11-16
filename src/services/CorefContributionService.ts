@@ -12,6 +12,8 @@ export interface CorefContributionBody {
   clusters: CharSpan[][];
   clusterEntities: (string | null)[];
   corrections: MentionCorrection[];
+  /** The resolved name of each referenced entity, by id. An id without one has no name to show. */
+  entityNames: Record<string, string>;
 }
 
 /** A contribution in the staff queue. */

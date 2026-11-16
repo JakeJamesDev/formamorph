@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import AuthService from '@/services/AuthService';
-import { contributeTurn, type Contributor, type TurnContribution } from './correctionContribution';
+import { contributeTurn, contributionNames, type Contributor, type TurnContribution } from './correctionContribution';
 import { addMentionCorrection, type MentionCorrection } from './mentionCorrections';
 import { narrationHash, type TurnMentionReading } from './mentionReadings';
 import { useContributeAccess } from './useContributeAccess';
@@ -22,8 +22,10 @@ const entry: TurnMentionReading = {
   clusterEntities: ['mira', null],
 };
 const herIsKessa: MentionCorrection = { kind: 'mention', start: span('She')[0], end: span('She')[1], entityId: 'kessa' };
+// The cast and the persona by id, as play resolved them; the reading never linked Ash.
+const NAMES = new Map([['mira', 'Mira'], ['kessa', 'Kessa'], ['ash', 'Ash']]);
 const turn = (over: Partial<TurnContribution> = {}): TurnContribution => ({
-  worldId: 'world-1', passage: PASSAGE, entry, corrections: [herIsKessa], ...over,
+  worldId: 'world-1', passage: PASSAGE, entry, corrections: [herIsKessa], names: NAMES, ...over,
 });
 const A: Contributor = { access: 'ready', accountId: 'acct-a' };
 const B: Contributor = { access: 'ready', accountId: 'acct-b' };
@@ -83,7 +85,26 @@ describe('sending a correction to the review queue', () => {
       clusters: [[span('Mira'), span('She')], [span('the courier'), span('him')]],
       clusterEntities: ['mira', null],
       corrections: [herIsKessa],
+      entityNames: { mira: 'Mira', kessa: 'Kessa' },
     });
+  });
+
+  it('names only the entities the clusters and corrections reference, the persona included', async () => {
+    const toPersona: MentionCorrection = { ...herIsKessa, entityId: 'ash' };
+    await contributeTurn('acct-a', A, turn({ corrections: [toPersona], names: contributionNames([{ id: 'mira', name: 'Mira' }], { id: 'ash', name: 'Ash' }) }));
+    expect(JSON.parse(String(posts()[0][1]?.body)).entityNames).toEqual({ mira: 'Mira', ash: 'Ash' });
+  });
+
+  it('leaves out a name the server would refuse, so the send still goes out', async () => {
+    const names = new Map([['mira', '   '], ['kessa', 'K'.repeat(201)]]);
+    expect(await contributeTurn('acct-a', A, turn({ names }))).toBe(true);
+    expect(JSON.parse(String(posts()[0][1]?.body)).entityNames).toEqual({});
+  });
+
+  it('sends a 200-character name whole, as play resolved it', async () => {
+    const long = 'K'.repeat(200);
+    await contributeTurn('acct-a', A, turn({ names: new Map([['kessa', long], ['mira', ' Mira ']]) }));
+    expect(JSON.parse(String(posts()[0][1]?.body)).entityNames).toEqual({ kessa: long, mira: ' Mira ' });
   });
 
   it('sends every correction of the turn so far, with its kind', async () => {

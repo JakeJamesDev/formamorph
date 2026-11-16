@@ -81,7 +81,7 @@ import { isScriptPromptSample, SCRIPT_PROMPT_SAMPLES } from "@/lib/devScriptProm
 import { addTell, latestTurnId, pruneTells, REROLLED_TIMINGS, setTurnTells, turnTells, withoutTimings } from "@/lib/scriptTells";
 import { pruneByNarration, turnNarration } from "@/lib/coref/mentionReadings";
 import { applyCardCorrection } from "@/lib/coref/mentionCorrections";
-import { contributeTurn } from "@/lib/coref/correctionContribution";
+import { contributeTurn, contributionNames } from "@/lib/coref/correctionContribution";
 import { useCorrectionContribution } from "@/lib/coref/useContributeAsk";
 import { useContributeAccess } from "@/lib/coref/useContributeAccess";
 import { knownNameFor, memoryNarrationFor, readingNamesFor } from "@/lib/coref/mentionMemory";
@@ -6600,6 +6600,7 @@ const GameViewer = ({
   // The send reads the latest corrections even when two land before a render.
   const correctionsRef = useRef(mentionCorrections);
   correctionsRef.current = mentionCorrections;
+  const personaEntity = persona?.entity;
   const sendTurnCorrections = useCallback((optedInAccount: string, turnId: string) => {
     const passage = turnNarration(fullMessageHistory, turnId);
     if (passage === undefined) return;
@@ -6608,8 +6609,9 @@ const GameViewer = ({
       passage,
       entry: mentionReadings[turnId],
       corrections: correctionsRef.current[turnId]?.corrections ?? [],
+      names: contributionNames(allEntities, personaEntity),
     });
-  }, [fullMessageHistory, contributeAccess, worldId, mentionReadings]);
+  }, [fullMessageHistory, contributeAccess, worldId, mentionReadings, allEntities, personaEntity]);
   const { corrected, asks: asksContribute, answerContribute } = useCorrectionContribution(
     settings.contributeCorrections, settings.setContributeCorrections, contributeAccess, sendTurnCorrections,
   );

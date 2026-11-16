@@ -46,6 +46,7 @@ export const ALWAYS_RUN = {
   'src/lib/aiRequest/localEngineImageDrop.test.ts': 'reads electron/llmEngine.cjs',
   'src/lib/bundledFingerprint.test.ts': 'scans src/defaultworlds and reads the shipped avatars',
   'src/lib/codeHighlight.test.ts': 'reads src/index.css',
+  'src/lib/coref/contributionNames.test.tsx': 'pins the names src/views/GameViewer.tsx hands a contribution',
   'src/lib/coref/speakerPalette.test.ts': 'reads src/index.css',
   'src/lib/helpTopics.test.ts': 'checks that each help topic page exists in docs/',
   'src/lib/personaReaders.test.ts': 'pins the lists GameViewer.tsx, GamePanels.tsx and liveScene.ts hand each reader',

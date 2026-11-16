@@ -1,7 +1,7 @@
 // What staff read on a contributed correction: each changed span with its original and corrected entity.
 import type { CorefContribution } from '@/services/CorefContributionService';
 
-/** One correction as the review shows it. Entity ids stay raw: staff have no copy of the world. */
+/** One correction as the review shows it, by entity id. */
 export interface ReviewedCorrection {
   kind: 'mention' | 'quote';
   start: number;
@@ -17,6 +17,10 @@ export interface PassageRun {
   text: string;
   corrected: boolean;
 }
+
+/** The name a contribution sent for an entity, else its id: staff have no copy of the world (Q71). */
+export const entityLabel = (names: Readonly<Record<string, string>>, id: string): string =>
+  (Object.hasOwn(names, id) ? names[id] : id);
 
 const overlaps = (s: number, e: number, start: number, end: number) => s < end && start < e;
 

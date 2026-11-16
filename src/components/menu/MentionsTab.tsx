@@ -3,7 +3,7 @@ import { ArrowRight, MessageSquareQuote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Meta } from "@/components/ui/typography";
-import { passageRuns, reviewedCorrections } from "@/lib/coref/contributionReview";
+import { entityLabel, passageRuns, reviewedCorrections } from "@/lib/coref/contributionReview";
 import { formatServerDateTime } from "@/lib/serverDate";
 import { toastError } from "@/lib/linkToast";
 import { useMountedRef } from "@/lib/useMountedRef";
@@ -23,6 +23,7 @@ function ContributionItem({ item, busy, onDecide }: {
   onDecide: (item: CorefContribution, action: ContributionDecision) => void;
 }) {
   const corrections = reviewedCorrections(item);
+  const label = (id: string | null, none: string) => (id === null ? none : entityLabel(item.entityNames, id));
   return (
     <li className="rounded-lg border border-border p-3 min-w-0 space-y-2">
       <Meta as="p">
@@ -39,9 +40,9 @@ function ContributionItem({ item, busy, onDecide }: {
             <span className="font-semibold">{c.kind === 'quote' ? 'Quote' : 'Mention'}</span>
             {/* A quote span holds its own quotation marks. */}
             <span className="truncate max-w-[16rem]">{c.kind === 'quote' ? c.text : `“${c.text}”`}</span>
-            {c.kind === 'mention' && <span className="text-muted-foreground">{c.from ?? 'Unlinked'}</span>}
+            {c.kind === 'mention' && <span className="text-muted-foreground">{label(c.from, 'Unlinked')}</span>}
             <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="corrected to" />
-            <span>{c.to ?? 'Not Listed'}</span>
+            <span>{label(c.to, 'Not Listed')}</span>
           </li>
         ))}
       </ul>

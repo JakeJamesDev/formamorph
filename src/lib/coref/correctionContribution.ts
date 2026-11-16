@@ -1,5 +1,6 @@
 // Contributing a turn's corrections to the shared training corpus (Q9, Q14, Q35, Q59).
 import CorefContributionService, { type CorefContributionBody } from '@/services/CorefContributionService';
+import type { Entity } from '@/types';
 import type { MentionCorrection } from './mentionCorrections';
 import { narrationHash, type TurnMentionReading } from './mentionReadings';
 
@@ -27,18 +28,39 @@ export const asksToContribute = (
   contributor.access === 'ready' && contributor.accountId !== null
   && !contributesNow(optedInAccount, contributor) && !answered(contributor.accountId);
 
-/** What one send needs: the turn's narration, its reading, and every correction for the turn so far. */
+/** What one send needs; `names` holds each entity's placeholder-resolved name, the persona's included (Q71). */
 export interface TurnContribution {
   worldId: string | null;
   passage: string;
   entry: TurnMentionReading | undefined;
   corrections: readonly MentionCorrection[];
+  names: ReadonlyMap<string, string>;
+}
+
+type Named = Pick<Entity, 'id' | 'name'>;
+
+/** Each entity's name by id: the reading's cast and the played persona, both as play resolved them. */
+export const contributionNames = (cast: readonly Named[], persona: Named | undefined): ReadonlyMap<string, string> =>
+  new Map([...cast, ...(persona ? [persona] : [])].map(({ id, name }) => [id, name]));
+
+/** The server refuses a name longer than this, and with it the whole send. */
+const ENTITY_NAME_MAX = 200;
+
+/** The referenced entities' names; one the server would refuse is left out, so staff read the id. */
+function referencedNames(ids: readonly (string | null)[], names: ReadonlyMap<string, string>): Record<string, string> {
+  const entries: [string, string][] = [];
+  for (const id of new Set(ids)) {
+    const name = id === null ? undefined : names.get(id);
+    if (id !== null && name?.trim() && name.length <= ENTITY_NAME_MAX) entries.push([id, name]);
+  }
+  return Object.fromEntries(entries);
 }
 
 /** The body for a turn's corrections, or null when the reading kept no clusters or read another narration. */
-export function contributionBody({ worldId, passage, entry, corrections }: TurnContribution): CorefContributionBody | null {
+export function contributionBody({ worldId, passage, entry, corrections, names }: TurnContribution): CorefContributionBody | null {
   if (!worldId || !entry?.clusters || !entry.clusterEntities || !corrections.length) return null;
   if (entry.textHash !== narrationHash(passage)) return null;
+  const wireCorrections = corrections.map(({ kind, start, end, entityId }) => ({ kind, start, end, entityId }));
   return {
     worldId,
     passage,
@@ -46,7 +68,8 @@ export function contributionBody({ worldId, passage, entry, corrections }: TurnC
     modelVersion: entry.version,
     clusters: entry.clusters,
     clusterEntities: entry.clusterEntities,
-    corrections: corrections.map(({ kind, start, end, entityId }) => ({ kind, start, end, entityId })),
+    corrections: wireCorrections,
+    entityNames: referencedNames([...entry.clusterEntities, ...wireCorrections.map((c) => c.entityId)], names),
   };
 }
 

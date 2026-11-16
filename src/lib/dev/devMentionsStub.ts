@@ -6,8 +6,9 @@ type Stubbed = Pick<typeof CorefContributionService, (typeof STUBBED_KEYS)[numbe
 
 const hoursAgo = (hours: number): string => new Date(Date.now() - hours * 3_600_000).toISOString();
 
-/** A pending contribution over a passage written for the fixture. `fix` names each corrected piece and its entity. */
-function contribution(id: string, passage: string, clusters: string[][], clusterEntities: (string | null)[], fixes: [string, string | null, 'mention' | 'quote'][], hours: number): CorefContribution {
+/** A pending contribution over a passage written for the fixture. `fix` names each corrected piece and its entity;
+ *  `names` holds the entity names it sent. */
+function contribution(id: string, passage: string, clusters: string[][], clusterEntities: (string | null)[], fixes: [string, string | null, 'mention' | 'quote'][], names: Record<string, string>, hours: number): CorefContribution {
   const at = (piece: string): [number, number] => {
     const start = passage.indexOf(piece);
     if (start < 0) throw new Error(`"${piece}" not in the fixture passage`);
@@ -18,6 +19,7 @@ function contribution(id: string, passage: string, clusters: string[][], cluster
     worldId: 'dev-world', passage, modelId: 'small', modelVersion: 2,
     clusters: clusters.map((pieces) => pieces.map(at)), clusterEntities,
     corrections: fixes.map(([piece, entityId, kind]) => ({ kind, start: at(piece)[0], end: at(piece)[1], entityId })),
+    entityNames: names,
   };
 }
 
@@ -27,11 +29,11 @@ export function devMentionsFixtures(): CorefContribution[] {
     contribution('dev-mention-1',
       'Mira set the lantern down beside the courier. “You’re late,” she said. He shrugged and handed her the letter.',
       [['Mira', 'she', 'her'], ['the courier', 'He']], ['mira', null],
-      [['the courier', 'kessa', 'mention'], ['He', 'kessa', 'mention']], 6),
+      [['the courier', 'kessa', 'mention'], ['He', 'kessa', 'mention'], ['her', 'kessa', 'mention']], { mira: 'Mira Vell', kessa: 'Kessa' }, 6),
     contribution('dev-mention-2',
       'The ferryman waited at the dock. “No coin, no crossing,” the old man said, and the girl stepped back.',
       [['The ferryman', 'the old man'], ['the girl']], ['ferryman', null],
-      [['“No coin, no crossing,”', 'ferryman', 'quote'], ['the girl', null, 'mention']], 2),
+      [['“No coin, no crossing,”', 'ferryman', 'quote'], ['the girl', null, 'mention']], {}, 2),
   ];
 }
 

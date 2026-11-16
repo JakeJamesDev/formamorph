@@ -35,6 +35,7 @@ const item = (id: string): CorefContribution => ({
   clusters: [[at('Mira'), at('She')]],
   clusterEntities: ['mira'],
   corrections: [{ kind: 'mention', start: at('She')[0], end: at('She')[1], entityId: 'kessa' }],
+  entityNames: {},
 });
 
 /** The server's queue: decisions take items out, and the count reads what is left. */
@@ -79,6 +80,22 @@ describe('the Mentions review tab', () => {
     expect(within(first).getByText('She', { selector: 'mark' })).toBeTruthy();
     const correction = within(within(first).getByRole('list', { name: 'Corrections' })).getByRole('listitem');
     expect(correction.textContent).toMatch(/Mention.*“She”.*mira.*kessa/);
+  });
+
+  it('shows the names the contribution sent, and the id where it sent none (Q71)', async () => {
+    queue = [{ ...item('c1'), entityNames: { kessa: 'Kessa Dorne' } }];
+    render(<Panel />);
+    const list = await screen.findByRole('list', { name: 'Mentions' });
+    const correction = within(within(items(list)[0]).getByRole('list', { name: 'Corrections' })).getByRole('listitem');
+    expect(correction.textContent).toMatch(/“She”mira.*Kessa Dorne$/);
+    expect(correction.textContent).not.toContain('kessa');
+  });
+
+  it('reads an entity id that names an object member as the id', async () => {
+    queue = [{ ...item('c1'), clusterEntities: ['constructor'], entityNames: { kessa: 'Kessa' } }];
+    render(<Panel />);
+    const list = await screen.findByRole('list', { name: 'Mentions' });
+    expect(within(items(list)[0]).getByText('constructor')).toBeTruthy();
   });
 
   it('accepts an item, takes it off the list, and the count updates', async () => {
