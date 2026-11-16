@@ -132,6 +132,34 @@ describe('createStreamingQuoteReader', () => {
     expect(live.quotes.map((q) => [q.start, q.speaker])).toEqual([[0, null], [24, null], [48, null]]);
     expect(reader.gate.quotes(Date.now()).every((q) => q.eta === null)).toBe(true);
   });
+
+  it('keeps the quotes read before a fallback, reads nothing after it, and still times the run in flight', async () => {
+    const reader = createStreamingQuoteReader();
+    const passages: string[] = [];
+    const runs = [100, 200];
+    reader.begin((passage) => {
+      passages.push(passage);
+      return new Promise((resolve) => setTimeout(() => {
+        resolve([...passage.matchAll(/"[^"]*"/g)].map((m) => ({ start: m.index, end: m.index + m[0].length, speaker: `s${m.index}` })));
+      }, runs[passages.length - 1]));
+    });
+    reader.update('"You\'re late," he said. "The', false);
+    await vi.advanceTimersByTimeAsync(100);
+    reader.update(TWO, false);
+    expect(passages).toHaveLength(2);
+    const notified = vi.fn();
+    reader.gate.subscribe(notified);
+    reader.gate.fallBack();
+    expect(notified).toHaveBeenCalledOnce();
+    expect(reader.gate.quotes(Date.now()).every((q) => q.eta === null)).toBe(true);
+    await vi.advanceTimersByTimeAsync(200);
+    reader.update(TWO, true);
+    expect(passages).toHaveLength(2);
+    expect(reader.live().quotes.map((q) => q.speaker)).toEqual(['s0', null, null]);
+    // The 200 ms run in flight at the fallback still moves the carried run time.
+    reader.begin(null);
+    expect(reader.gate.runMs()).toBeGreaterThan(100);
+  });
 });
 
 describe('turnCardTriggers with early quotes', () => {

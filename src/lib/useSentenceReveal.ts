@@ -3,7 +3,7 @@ import { getRevealReleased, getRevealTiming, setRevealReleased, setRevealTiming 
 import {
   flooredTiming, pacedStagger, FADE_SPREAD, DEFAULT_STAGGER, DEFAULT_DURATION,
   ARRIVAL_MIN_GAP_MS, ARRIVAL_EMA_ALPHA, TARGET_BUFFER_WORDS, DRAIN_CORRECTION_MIN,
-  STAGGER_MAX, PACE_EASE_MS, QUOTE_HOLD_MAX_MS,
+  STAGGER_MAX, PACE_EASE_MS, QUOTE_HOLD_MAX_MS, QUOTE_FALLBACK_RUN_WORDS,
 } from './narrationRevealConfig';
 
 const countWords = (text: string): number => {
@@ -25,6 +25,8 @@ export interface QuoteGate {
   runMs(): number;
   /** Called when a color comes back. */
   subscribe(listener: () => void): () => void;
+  /** Stops reading early for the rest of the turn (Q74); quotes read so far keep their colors. */
+  fallBack(): void;
 }
 
 /** A cumulative prefix waiting to show, with the count of sentences it holds. */
@@ -85,8 +87,10 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
   // The quote the reveal holds at, and when the hold began.
   const holdRef = useRef<{ start: number; since: number } | null>(null);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // A hold reached its cap this turn.
+  // A hold reached its cap, or the turn fell back, this turn.
   const gaveUpRef = useRef(false);
+  // Some turn has measured the arrival rate, so the fallback can trust it.
+  const measuredRef = useRef(false);
 
   const clearHold = () => {
     if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
@@ -178,6 +182,15 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
     const deepest = queueRef.current[queueRef.current.length - 1];
     const backlogWords = countWords(deepest.text) - countWords(shownRef.current);
     const gate = gaveUpRef.current ? undefined : gateRef.current?.gate;
+    // A model that cannot read quotes as fast as they arrive drops the gate for the rest of the turn (Q74).
+    if (gate && measuredRef.current && gate.runMs() > QUOTE_FALLBACK_RUN_WORDS * msPerWordRef.current) {
+      gaveUpRef.current = true;
+      clearHold();
+      // The gate's notify may already pump; a second pump then waits on busy.
+      gate.fallBack();
+      pump();
+      return;
+    }
     const stagger = gate
       ? gatedStagger(gate, next, backlogWords, pump)
       : pacedStagger(msPerWordRef.current, backlogWords, finishedRef.current);
@@ -225,6 +238,7 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
         // A turn's first real sample beats the carried rate outright; later ones smooth into it.
         msPerWordRef.current = sampledRef.current ? msPerWordRef.current + ARRIVAL_EMA_ALPHA * (sample - msPerWordRef.current) : sample;
         sampledRef.current = true;
+        measuredRef.current = true;
       }
     }
     lastArrivalAtRef.current = now;

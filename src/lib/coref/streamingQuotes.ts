@@ -109,6 +109,12 @@ export function createStreamingQuoteReader(now: () => number = Date.now): Stream
     }
   };
 
+  /** Reads nothing more this turn: every unread quote shows as it is until the full-turn reading. */
+  const stopReading = () => {
+    read = null;
+    for (const q of tracked) if (q.speaker === undefined) q.speaker = null;
+  };
+
   const pump = () => {
     if (!read || running) return;
     const due = tracked.filter((q) => q.speaker === undefined && q.hold !== null);
@@ -122,9 +128,8 @@ export function createStreamingQuoteReader(now: () => number = Date.now): Stream
         if (id !== turn) return;
         sample(now() - startedAt);
         if (speakers === null) {
-          // The model went away: every quote shows as it is, and colors come with the full-turn reading.
-          read = null;
-          for (const q of tracked) if (q.speaker === undefined) q.speaker = null;
+          // The model went away.
+          stopReading();
         } else settle(cut, speakers);
       },
       (error: unknown) => {
@@ -154,6 +159,13 @@ export function createStreamingQuoteReader(now: () => number = Date.now): Stream
     },
     runMs: () => runMs,
     subscribe,
+    fallBack() {
+      if (!read) return;
+      // A run in flight still times this device; with no quote left unread, its speakers land nowhere.
+      stopReading();
+      publish();
+      notify();
+    },
   };
 
   return {

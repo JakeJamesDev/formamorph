@@ -21,13 +21,23 @@ const fakeRead = (runMs: number): ReadQuotes => (passage) => new Promise((resolv
   setTimeout(() => resolve(readPassageMentions(passage, [], CAST).reading.quotes), runMs);
 });
 
-/** A steady stream at `tokensPerSecond`, in eight-char steps, as the reveal scripts step. */
-const tokenStream = (tokensPerSecond: number) => (length: number): RevealArrivalEvent[] => {
-  const cps = tokensPerSecond * 3.9;
+const CHARS_PER_TOKEN = 3.9;
+
+/** A stream in eight-char steps, as the reveal scripts step: each step runs at its tokens/s until its share of the text. */
+const changingStream = (steps: [until: number, tokensPerSecond: number][]) => (length: number): RevealArrivalEvent[] => {
   const events: RevealArrivalEvent[] = [];
-  for (let c = 8; c < length + 8; c += 8) events.push({ atMs: Math.round((Math.min(c, length) / cps) * 1000), chars: Math.min(c, length) });
+  let atMs = 0;
+  for (let c = 8; c < length + 8; c += 8) {
+    const chars = Math.min(c, length);
+    const step = steps.find(([until]) => chars <= until * length) ?? steps[steps.length - 1];
+    atMs += ((chars - (events.at(-1)?.chars ?? 0)) / (step[1] * CHARS_PER_TOKEN)) * 1000;
+    events.push({ atMs: Math.round(atMs), chars });
+  }
   return events;
 };
+
+/** A steady stream at `tokensPerSecond`. */
+const tokenStream = (tokensPerSecond: number) => changingStream([[1, tokensPerSecond]]);
 
 interface Run {
   /** Each word's reveal start, ms from the stream's start. */
@@ -37,6 +47,9 @@ interface Run {
   /** Quotes that showed before their color was back. */
   uncolored: number;
 }
+
+// True while the test itself reads the gate, so a spy can tell its calls from the pacer's.
+let checking = false;
 
 /** One turn through the real pacer, fed as the preview feeds it: the reader first, then the pacer. */
 async function playTurn(
@@ -68,7 +81,9 @@ async function playTurn(
     for (let i = shownWords; i < words; i++) wordAt.push(now + (i - shownWords) * pace);
     shownWords = words;
     if (reader && read) {
+      checking = true;
       const back = new Set(reader.gate.quotes(Date.now()).filter((q) => q.eta === null).map((q) => q.start));
+      checking = false;
       uncolored += quoteSpans(shown).filter((q) => !back.has(q.start)).length;
     }
   };
@@ -109,13 +124,23 @@ function setup() {
   return { reveal: () => result.current, released };
 }
 
-/** A warm-up turn, as the second turn of a session, then the measured one. */
+/** A warm-up turn, as the second turn of a session, then the measured one, with the fallbacks of each. */
 async function measure(read: ReadQuotes | null, schedule: (length: number) => RevealArrivalEvent[], text = PROBE_PASSAGE) {
   const { reveal, released } = setup();
   const reader = createStreamingQuoteReader();
+  const fallBack = vi.spyOn(reader.gate, 'fallBack');
   await playTurn(reveal(), released, reader, read, text, schedule(text.length));
-  return playTurn(reveal(), released, reader, read, text, schedule(text.length));
+  const warmUpFallBacks = fallBack.mock.calls.length;
+  fallBack.mockClear();
+  const run = await playTurn(reveal(), released, reader, read, text, schedule(text.length));
+  return { ...run, warmUpFallBacks, fallBacks: fallBack.mock.calls.length };
 }
+
+// Twelve lines of two speakers, a quote on every line.
+const DIALOGUE = Array.from({ length: 12 }, (_, i) => (i % 2
+  ? '"Then we wait here until the tide turns," Wren said.'
+  : '"The boat leaves at dawn," the old keeper said.')).join('\n\n');
+const PASSAGES = [['probe', PROBE_PASSAGE], ['12-line dialogue', DIALOGUE]] as const;
 
 const maxGap = (times: number[]) => Math.max(...times.slice(1).map((t, i) => t - times[i]));
 const report = (label: string, run: Run) =>
@@ -127,9 +152,11 @@ describe('streaming quote colors through the paced reveal (Q72)', () => {
   afterEach(() => vi.useRealTimers());
 
   for (const profile of ['steady', 'burst'] as const) {
-    for (const runMs of [60, 1250]) {
+    // GPU runs take 17–119 ms; on these scripts a 1.25 s run stays gated too.
+    for (const runMs of [17, 60, 119, 1250]) {
       it(`shows no quote before its color on the ${profile} script with a ${runMs} ms run`, async () => {
         const run = await measure(fakeRead(runMs), REVEAL_TEST_PROFILES[profile].schedule);
+        expect([run.warmUpFallBacks, run.fallBacks]).toEqual([0, 0]);
         expect(run.wordAt).toHaveLength(countWords(PROBE_PASSAGE));
         expect(run.uncolored).toBe(0);
       });
@@ -141,17 +168,78 @@ describe('streaming quote colors through the paced reveal (Q72)', () => {
   for (const profile of ['steady', 'burst'] as const) {
     it(`holds a turn that opens on a quote until its color is back (${profile})`, async () => {
       const run = await measure(fakeRead(1250), REVEAL_TEST_PROFILES[profile].schedule, OPENS_ON_A_QUOTE);
+      expect(run.fallBacks).toBe(0);
       expect(run.uncolored).toBe(0);
       expect(run.wordAt[0]).toBeGreaterThanOrEqual(1250);
     });
   }
 
-  it('keeps every word under 150 ms with a 1.25 s run at 50 tokens/s', async () => {
-    const smooth = await measure(fakeRead(1250), tokenStream(50));
-    const today = await measure(null, tokenStream(50));
-    console.info(`${report('smooth', smooth)}\n${report('today', today)}`);
-    expect(smooth.uncolored).toBe(0);
-    expect(maxGap(smooth.wordAt)).toBeLessThanOrEqual(150);
+  for (const [name, text] of PASSAGES) {
+    it(`keeps streaming colors with every word under 150 ms, 1.25 s run at 50 tokens/s (${name})`, async () => {
+      const smooth = await measure(fakeRead(1250), tokenStream(50), text);
+      const today = await measure(null, tokenStream(50), text);
+      console.info(`${report('smooth', smooth)}\n${report('today', today)}`);
+      expect(smooth.fallBacks).toBe(0);
+      expect(smooth.uncolored).toBe(0);
+      expect(maxGap(smooth.wordAt)).toBeLessThanOrEqual(150);
+    });
+
+    it(`falls back to today's pace with a 1.25 s run at 100 tokens/s (${name})`, async () => {
+      const fast = await measure(fakeRead(1250), tokenStream(100), text);
+      const today = await measure(null, tokenStream(100), text);
+      console.info(`${report('fallback', fast)}\n${report('today', today)}`);
+      // The session's first turn falls back too, once its first run returns.
+      expect([fast.warmUpFallBacks, fast.fallBacks]).toEqual([1, 1]);
+      expect(Math.abs(maxGap(fast.wordAt) - maxGap(today.wordAt))).toBeLessThanOrEqual(maxGap(today.wordAt) * 0.1);
+      expect(Math.abs(fast.wordAt.at(-1)! - today.wordAt.at(-1)!)).toBeLessThanOrEqual(today.wordAt.at(-1)! * 0.1);
+    });
+
+    it(`never falls back with a 60 ms run (${name})`, async () => {
+      for (const tokensPerSecond of [25, 50, 100]) {
+        const run = await measure(fakeRead(60), tokenStream(tokensPerSecond), text);
+        expect([run.warmUpFallBacks, run.fallBacks, run.uncolored]).toEqual([0, 0, 0]);
+      }
+    });
+  }
+
+  it('keeps the colors read before a mid-turn fallback and never gates again', async () => {
+    const { reveal, released } = setup();
+    const reader = createStreamingQuoteReader();
+    let reads = 0;
+    // Names every quote it reads, so a read quote and a dropped one differ.
+    const read: ReadQuotes = (passage) => {
+      reads++;
+      return new Promise((resolve) => setTimeout(() => resolve(quoteSpans(passage).map(({ start, end }) => ({ start, end, speaker: `s${start}` }))), 1250));
+    };
+    const slow = tokenStream(25);
+    await playTurn(reveal(), released, reader, read, PROBE_PASSAGE, slow(PROBE_PASSAGE.length));
+    // Slow, then a burst the model cannot keep up with, then slow again.
+    let before: { start: number; speaker: string | null }[] = [];
+    let readsAtFallBack = 0;
+    let gateChecks = 0;
+    let gateChecksAtFallBack = -1;
+    const quotes = reader.gate.quotes;
+    vi.spyOn(reader.gate, 'quotes').mockImplementation((now) => {
+      if (!checking) gateChecks++;
+      return quotes(now);
+    });
+    const fallBack = reader.gate.fallBack;
+    const fellBack = vi.spyOn(reader.gate, 'fallBack').mockImplementation(() => {
+      before = reader.live().quotes.map(({ start, speaker }) => ({ start, speaker }));
+      readsAtFallBack = reads;
+      gateChecksAtFallBack = gateChecks;
+      fallBack();
+    });
+    const schedule = changingStream([[0.55, 25], [0.8, 200], [1, 25]]);
+    await playTurn(reveal(), released, reader, read, PROBE_PASSAGE, schedule(PROBE_PASSAGE.length));
+    expect(fellBack).toHaveBeenCalledOnce();
+    expect(before.some((q) => q.speaker !== null)).toBe(true);
+    const after = reader.live().quotes;
+    expect(after.length).toBeGreaterThan(before.length);
+    // Read quotes keep their colors; the rest wait for the full-turn reading.
+    for (const q of after) expect(q.speaker).toBe(before.find((b) => b.start === q.start)?.speaker ?? null);
+    expect(reads).toBe(readsAtFallBack);
+    expect(gateChecks).toBe(gateChecksAtFallBack);
   });
 
   it('costs at most 5% of the reveal time with a 60 ms run', async () => {

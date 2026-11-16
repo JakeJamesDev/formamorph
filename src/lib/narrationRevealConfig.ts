@@ -162,6 +162,9 @@ export const PACE_EASE_MS = 500;
 export const DEFAULT_QUOTE_RUN_MS = 250;
 //  - The longest the reveal holds at one quote before it shows it uncolored, in ms.
 export const QUOTE_HOLD_MAX_MS = 5000;
+//  - A turn falls back to coloring after narration once one run takes longer than the stream needs to bring
+//    this many words (Q74).
+export const QUOTE_FALLBACK_RUN_WORDS = 50;
 
 export { clamp }; // re-exported (from ./utils) so existing importers/tests keep their path
 
