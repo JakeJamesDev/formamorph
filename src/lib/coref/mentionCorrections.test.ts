@@ -35,6 +35,12 @@ describe('correctReading', () => {
     expect(fixed.mentions.find((m) => m.start === at('She').start)?.entityId).toBeNull();
   });
 
+  it('removes the link of a non-mention and adds none', () => {
+    const fixed = correctReading(READING, [{ kind: 'nonMention', ...at('She'), entityId: null }]);
+    expect(fixed.mentions).toEqual([READING.mentions[0], READING.mentions[2]]);
+    expect(fixed.quotes).toBe(READING.quotes);
+  });
+
   it('replaces every span its correction overlaps (Q38)', () => {
     const wide = { start: at('the courier').start, end: at('the courier').end };
     const reading = { ...READING, mentions: [...READING.mentions, { ...at('courier'), entityId: 'courier' }] };
@@ -108,6 +114,22 @@ describe('the corrections map', () => {
     expect(Object.keys(pruneByNarration(map, [turn('t1', TEXT), turn('t2', 'Rewritten.')]))).toEqual(['t1']);
     const whole = { t1: map.t1 };
     expect(pruneByNarration(whole, [turn('t1', TEXT)])).toBe(whole);
+  });
+
+  it('lets a later mention pick replace a non-mention of the same span, and the reverse', () => {
+    const none = { kind: 'nonMention', ...at('She'), entityId: null } as const;
+    const kessa = { kind: 'mention', ...at('She'), entityId: 'kessa' } as const;
+    const first = addMentionCorrection({}, 't1', HASH, none);
+    expect(addMentionCorrection(first, 't1', HASH, kessa).t1.corrections).toEqual([kessa]);
+    expect(addMentionCorrection(addMentionCorrection({}, 't1', HASH, kessa), 't1', HASH, none).t1.corrections).toEqual([none]);
+  });
+
+  it('keeps a non-mention through a save, and drops one that names an entity', () => {
+    const none = { kind: 'nonMention', start: 0, end: 4, entityId: null };
+    const restored = restoreMentionCorrections(JSON.parse(JSON.stringify({
+      t1: { textHash: HASH, corrections: [none, { ...none, entityId: 'mira' }] },
+    })));
+    expect(restored).toEqual({ t1: { textHash: HASH, corrections: [none] } });
   });
 
   it('restores only well-formed corrections from a save', () => {

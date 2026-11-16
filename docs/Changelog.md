@@ -64,6 +64,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A new character the story keeps calling “she” or “he” now shows in the Entities tab sooner.** Character Mentions counts those pronouns toward the name. A misspelled name counts as the same character.
     - **A quote already on screen now fades into its speaker's color the moment it's ready.** This covers a skipped reveal and a quote that waited too long. It no longer waits for the turn to end.
     - **When your device can't color quotes as fast as the story arrives, Fade-in Narration keeps its usual pace.** Quotes that already have a color keep it. The rest get their colors when the turn finishes.
+    - **"Wrong character?" on a name now offers Not a Character.** The pick removes the link and the card from that word. Your save keeps it, and it counts as a fix when you contribute corrections.
 - **🛠️ Developer tooling**
   - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.

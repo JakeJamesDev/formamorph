@@ -1,5 +1,6 @@
 /** DEV only: serves the staff side of `CorefContributionService` from an in-memory queue, beside the review stub. */
 import CorefContributionService, { type CorefContribution } from '@/services/CorefContributionService';
+import type { MentionCorrection } from '@/lib/coref/mentionCorrections';
 
 const STUBBED_KEYS = ['fetchQueue', 'fetchCount', 'accept', 'reject'] as const satisfies readonly (keyof typeof CorefContributionService)[];
 type Stubbed = Pick<typeof CorefContributionService, (typeof STUBBED_KEYS)[number]>;
@@ -8,7 +9,7 @@ const hoursAgo = (hours: number): string => new Date(Date.now() - hours * 3_600_
 
 /** A pending contribution over a passage written for the fixture. `fix` names each corrected piece and its entity;
  *  `names` holds the entity names it sent. */
-function contribution(id: string, passage: string, clusters: string[][], clusterEntities: (string | null)[], fixes: [string, string | null, 'mention' | 'quote'][], names: Record<string, string>, hours: number): CorefContribution {
+function contribution(id: string, passage: string, clusters: string[][], clusterEntities: (string | null)[], fixes: [string, string | null, MentionCorrection['kind']][], names: Record<string, string>, hours: number): CorefContribution {
   const at = (piece: string): [number, number] => {
     const start = passage.indexOf(piece);
     if (start < 0) throw new Error(`"${piece}" not in the fixture passage`);
@@ -33,7 +34,7 @@ export function devMentionsFixtures(): CorefContribution[] {
     contribution('dev-mention-2',
       'The ferryman waited at the dock. “No coin, no crossing,” the old man said, and the girl stepped back.',
       [['The ferryman', 'the old man'], ['the girl']], ['ferryman', null],
-      [['“No coin, no crossing,”', 'ferryman', 'quote'], ['the girl', null, 'mention']], {}, 2),
+      [['“No coin, no crossing,”', 'ferryman', 'quote'], ['the girl', null, 'mention'], ['the old man', null, 'nonMention']], {}, 2),
   ];
 }
 

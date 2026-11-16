@@ -4,10 +4,10 @@ import type { MentionReading } from './mentionReading';
 import type { TextSpan } from '@/lib/quoteSegments';
 import type { MentionReadingMap, TurnMentionReading } from './mentionReadings';
 
-/** A mention's entity or a quote's speaker, set by the player; null is "Not Listed". Spans index into
- *  the turn's narration. */
+/** A mention's entity or a quote's speaker, set by the player; null is "Not Listed". A `nonMention` marks
+ *  the span as no person and has no entity. Spans index into the turn's narration. */
 export interface MentionCorrection {
-  kind: 'mention' | 'quote';
+  kind: 'mention' | 'quote' | 'nonMention';
   start: number;
   end: number;
   entityId: string | null;
@@ -29,19 +29,23 @@ const byStart = (a: TextSpan, b: TextSpan) => a.start - b.start || b.end - a.end
 export function correctReading(reading: MentionReading, corrections: readonly MentionCorrection[]): MentionReading {
   let { mentions, quotes } = reading;
   for (const { kind, start, end, entityId } of corrections) {
-    if (kind === 'mention') mentions = [...mentions.filter((m) => !overlaps(m, { start, end })), { start, end, entityId }].sort(byStart);
+    if (kind === 'nonMention') mentions = mentions.filter((m) => !overlaps(m, { start, end }));
+    else if (kind === 'mention') mentions = [...mentions.filter((m) => !overlaps(m, { start, end })), { start, end, entityId }].sort(byStart);
     else quotes = [...quotes.filter((q) => !overlaps(q, { start, end })), { start, end, speaker: entityId }].sort(byStart);
   }
   return { mentions, quotes };
 }
 
-/** `map` with `correction` added to its turn. A later correction of the same span and kind replaces the earlier
- *  one. Corrections for another narration of the turn are dropped. */
+const isMentionSide = (kind: MentionCorrection['kind']) => kind !== 'quote';
+
+/** `map` with `correction` added to its turn. A later correction of the same span replaces the earlier one of its
+ *  side: a mention and a `nonMention` answer the same question. Corrections for another narration of the turn are
+ *  dropped. */
 export function addMentionCorrection(
   map: MentionCorrectionMap, turnId: string, textHash: string, correction: MentionCorrection,
 ): MentionCorrectionMap {
   const prior = map[turnId]?.textHash === textHash ? map[turnId].corrections : [];
-  const kept = prior.filter((c) => c.kind !== correction.kind || c.start !== correction.start || c.end !== correction.end);
+  const kept = prior.filter((c) => isMentionSide(c.kind) !== isMentionSide(correction.kind) || c.start !== correction.start || c.end !== correction.end);
   return { ...map, [turnId]: { textHash, corrections: [...kept, correction] } };
 }
 
@@ -82,8 +86,8 @@ export function correctedMentionReadings(readings: MentionReadingMap, correction
 
 const isCorrection = (value: unknown): value is MentionCorrection => {
   const c = value as Record<string, unknown> | null;
-  return !!c && (c.kind === 'mention' || c.kind === 'quote') && Number.isInteger(c.start) && Number.isInteger(c.end)
-    && (c.start as number) < (c.end as number) && (c.entityId === null || typeof c.entityId === 'string');
+  return !!c && (c.kind === 'mention' || c.kind === 'quote' || c.kind === 'nonMention') && Number.isInteger(c.start) && Number.isInteger(c.end)
+    && (c.start as number) < (c.end as number) && (c.kind === 'nonMention' ? c.entityId === null : c.entityId === null || typeof c.entityId === 'string');
 };
 
 /** The map a save holds, read back. A save is a file the player can edit, so only well-formed corrections stay. */

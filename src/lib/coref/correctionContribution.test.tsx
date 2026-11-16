@@ -115,6 +115,15 @@ describe('sending a correction to the review queue', () => {
     expect(JSON.parse(String(posts()[0][1]?.body)).corrections).toEqual([herIsKessa, quote]);
   });
 
+  it('sends a non-mention with its kind and a null entity, and a "Not Listed" mention as a null mention', async () => {
+    const notPerson: MentionCorrection = { ...herIsKessa, kind: 'nonMention', entityId: null };
+    const notListed: MentionCorrection = { ...herIsKessa, entityId: null };
+    await contributeTurn('acct-a', A, turn({ corrections: [notPerson] }));
+    await contributeTurn('acct-a', A, turn({ corrections: [notListed] }));
+    expect(JSON.parse(String(posts()[0][1]?.body)).corrections).toEqual([notPerson]);
+    expect(JSON.parse(String(posts()[1][1]?.body)).corrections).toEqual([notListed]);
+  });
+
   it('sends nothing for a reading without clusters, another narration, or no world', async () => {
     const { clusters: _c, clusterEntities: _e, ...older } = entry;
     expect(await contributeTurn('acct-a', A, turn({ entry: older }))).toBe(false);

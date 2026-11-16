@@ -1,9 +1,10 @@
 // What staff read on a contributed correction: each changed span with its original and corrected entity.
 import type { CorefContribution } from '@/services/CorefContributionService';
+import type { MentionCorrection } from './mentionCorrections';
 
 /** One correction as the review shows it, by entity id. */
 export interface ReviewedCorrection {
-  kind: 'mention' | 'quote';
+  kind: MentionCorrection['kind'];
   start: number;
   end: number;
   text: string;
@@ -28,7 +29,7 @@ const overlaps = (s: number, e: number, start: number, end: number) => s < end &
 export function reviewedCorrections(c: Pick<CorefContribution, 'passage' | 'clusters' | 'clusterEntities' | 'corrections'>): ReviewedCorrection[] {
   return c.corrections
     .map(({ kind, start, end, entityId }) => {
-      const cluster = kind === 'mention' ? c.clusters.findIndex((spans) => spans.some(([s, e]) => overlaps(s, e, start, end))) : -1;
+      const cluster = kind !== 'quote' ? c.clusters.findIndex((spans) => spans.some(([s, e]) => overlaps(s, e, start, end))) : -1;
       return { kind, start, end, text: c.passage.slice(start, end), from: cluster < 0 ? null : c.clusterEntities[cluster], to: entityId };
     })
     .sort((a, b) => a.start - b.start || a.end - b.end);

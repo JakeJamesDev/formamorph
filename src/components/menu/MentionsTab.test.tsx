@@ -82,6 +82,19 @@ describe('the Mentions review tab', () => {
     expect(correction.textContent).toMatch(/Mention.*“She”.*mira.*kessa/);
   });
 
+  it('shows a non-mention as "Not a Character", and a null mention as "Not Listed"', async () => {
+    const [start, end] = at('She');
+    queue = [
+      { ...item('c1'), corrections: [{ kind: 'nonMention', start, end, entityId: null }] },
+      { ...item('c2'), corrections: [{ kind: 'mention', start, end, entityId: null }] },
+    ];
+    render(<Panel />);
+    const list = await screen.findByRole('list', { name: 'Mentions' });
+    const row = (i: number) => within(within(items(list)[i]).getByRole('list', { name: 'Corrections' })).getByRole('listitem').textContent;
+    expect(row(0)).toMatch(/“She”mira.*Not a Character$/);
+    expect(row(1)).toMatch(/“She”mira.*Not Listed$/);
+  });
+
   it('shows the names the contribution sent, and the id where it sent none (Q71)', async () => {
     queue = [{ ...item('c1'), entityNames: { kessa: 'Kessa Dorne' } }];
     render(<Panel />);

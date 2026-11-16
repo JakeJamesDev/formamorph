@@ -12,7 +12,7 @@ import { MarkdownRenderer, type RemarkPlugin } from './MarkdownRenderer';
 import {
   MentionCardsProvider, MentionTurn, cardColors, cardTriggers, mentionCardRows, pickListBase, turnCardTriggers, turnPickList, type CardCorrection,
 } from './MentionCards';
-import { applyCardCorrection, correctedMentionReadings, type MentionCorrectionMap } from '@/lib/coref/mentionCorrections';
+import { applyCardCorrection, correctedMentionReadings, restoreMentionCorrections, type MentionCorrectionMap } from '@/lib/coref/mentionCorrections';
 import { useState } from 'react';
 
 // The real renderer with a fake reading, and card rows from the real Player View: what counts is what the
@@ -306,7 +306,7 @@ describe('correcting from a card', () => {
     expect(card()!.textContent).toContain('Who is this?');
     // The persona first, then the met and the scene-alias rows. Unseen Tomas and the wraith are no choice (Q68), nor
     // Ondra, with nothing to show.
-    expect(names()).toEqual(['', 'AAsh', 'MMira', 'KKessa', 'Cthe courier', '–Not Listed']);
+    expect(names()).toEqual(['', 'AAsh', 'MMira', 'KKessa', 'Cthe courier', '–Not Listed', '–Not a Character']);
     fireEvent.click(screen.getByLabelText('Back'));
     expect(screen.getByText('Wrong character?')).toBeTruthy();
   });
@@ -316,7 +316,7 @@ describe('correcting from a card', () => {
     const links = linksOf(text, [['The courier', 'courier'], ['Tomas', 'tomas'], ['the pale shape', 'ghost']]);
     fireEvent.click(show(text, links, undefined, vi.fn()).container.querySelector<HTMLElement>('[data-mention="courier"]')!);
     fireEvent.click(screen.getByText('Wrong character?'));
-    expect(names()).toEqual(['', 'AAsh', 'MMira', 'KKessa', 'Cthe courier', 'Pa pale shape', 'TTomas', '–Not Listed']);
+    expect(names()).toEqual(['', 'AAsh', 'MMira', 'KKessa', 'Cthe courier', 'Pa pale shape', 'TTomas', '–Not Listed', '–Not a Character']);
   });
 
   it("corrects the opened mention's span in its turn, and closes the card", () => {
@@ -328,6 +328,24 @@ describe('correcting from a card', () => {
     const start = COURIER_LINE.indexOf('The courier');
     expect(onCorrect).toHaveBeenCalledWith({ turnId: 't1', kind: 'mention', start, end: start + 'The courier'.length, entityId: 'kessa' });
     expect(card()).toBeNull();
+  });
+
+  it('marks a mention as no person with "Not a Character", and a quote has no such row', () => {
+    const onCorrect = vi.fn();
+    const { container } = show(COURIER_LINE, courierLine, undefined, onCorrect);
+    fireEvent.click(container.querySelector<HTMLElement>('[data-mention]')!);
+    fireEvent.click(screen.getByText('Wrong character?'));
+    fireEvent.click(screen.getByText('Not a Character'));
+    const start = COURIER_LINE.indexOf('The courier');
+    expect(onCorrect).toHaveBeenCalledWith({ turnId: 't1', kind: 'nonMention', start, end: start + 'The courier'.length, entityId: null });
+    expect(card()).toBeNull();
+    cleanup();
+    const text = 'Mira turns. "Go," she says.';
+    const speakers: QuoteSpeakerSource = { text, colors: COLORS, quotes: spokenQuotes(text, [['"Go,"', 'mira']]) };
+    const quote = show(text, undefined, speakers, vi.fn());
+    fireEvent.click(quote.container.querySelector<HTMLElement>('[data-speaker="mira"][role="button"]')!);
+    fireEvent.click(screen.getByText('Wrong character?'));
+    expect(screen.queryByText('Not a Character')).toBeNull();
   });
 
   it("asks who said a quote, and corrects the quote's span", () => {
@@ -499,6 +517,16 @@ describe('a correction on a played turn', () => {
     await waitFor(() => expect((document.activeElement as HTMLElement).dataset.mention).toBe('kessa'));
     expect(document.activeElement!.textContent).toBe('she');
     expect(card()).toBeNull();
+  });
+
+  it('removes a mention link and its card with "Not a Character", and the choice survives a reload', () => {
+    const { container } = render(<Turn />);
+    pick(container.querySelectorAll<HTMLElement>('[data-mention]')[1], 'Not a Character');
+    expect(triggers(container)).toEqual([['Mira', 'mira']]);
+    expect(container.textContent).toBe(TEXT);
+    const saved = { t1: { textHash: narrationHash(TEXT), corrections: [{ kind: 'nonMention', ...span('she'), entityId: null }] } };
+    const reloaded = correctedMentionReadings(READINGS, restoreMentionCorrections(JSON.parse(JSON.stringify(saved))));
+    expect(reloaded.t1.reading.mentions.map((m) => m.entityId)).toEqual(['mira', null]);
   });
 
   it('unlinks a mention with "Not Listed"', () => {

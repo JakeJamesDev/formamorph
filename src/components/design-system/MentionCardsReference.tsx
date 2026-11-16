@@ -86,6 +86,12 @@ function ThemePanel({ mode }: { mode: 'light' | 'dark' }) {
         </div>
       </div>
       <div className="space-y-2">
+        <Meta>Pick List, Mention</Meta>
+        <div className="w-64 rounded-md border bg-popover p-3 text-popover-foreground shadow-md">
+          <MentionPickList role="mention" rows={ROWS} colors={COLORS} current="mira" onPick={() => {}} onNotCharacter={() => {}} onBack={() => {}} />
+        </div>
+      </div>
+      <div className="space-y-2">
         <Meta>Hovered Mention</Meta>
         <p>The ferry bumps the dock as <UnderlinedMention id="mira">Mira</UnderlinedMention> throws the line.</p>
       </div>

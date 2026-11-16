@@ -84,14 +84,17 @@ export function MentionCard({ row, color, onWrong, focusWrong = false }: {
   );
 }
 
-/** The pick list "Wrong character?" swaps the card for: the cast by Player View name, then "Not Listed". */
-export function MentionPickList({ role, rows, colors, current, focusFirst = false, onPick, onBack }: {
+/** The pick list "Wrong character?" swaps the card for: the cast by Player View name, then "Not Listed", then
+ *  "Not a Character" for a mention. */
+export function MentionPickList({ role, rows, colors, current, focusFirst = false, onPick, onNotCharacter, onBack }: {
   role: MentionCardRole;
   rows: ReadonlyMap<string, PlayerViewEntity>;
   colors: SpeakerColors;
   current: string | null;
   focusFirst?: boolean;
   onPick: (entityId: string | null) => void;
+  /** Marks a mention as no person; its row shows for a mention only. */
+  onNotCharacter?: () => void;
   /** Returns to the card; a list opened without a card has none. */
   onBack?: () => void;
 }) {
@@ -119,6 +122,12 @@ export function MentionPickList({ role, rows, colors, current, focusFirst = fals
         <Initial name={null} className="h-6 w-6 text-meta" />
         <span className="flex-1">Not Listed</span>
       </button>
+      {role === 'mention' && onNotCharacter && (
+        <button type="button" onClick={onNotCharacter} className={cn(MENU_ROW, 'text-muted-foreground')}>
+          <Initial name={null} className="h-6 w-6 text-meta" />
+          <span className="flex-1">Not a Character</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -329,14 +338,15 @@ export function MentionCardsProvider({ colors, rows, onCorrect, pickable, askCon
   const byKey = card?.by === 'key';
   const target = card?.target;
   const correct = onCorrect && target && card
-    ? (entityId: string | null) => {
-      onCorrect({ turnId: target.turnId, kind: card.role === 'speaker' ? 'quote' : 'mention', start: target.start, end: target.end, entityId });
+    ? (kind: MentionCorrection['kind'], entityId: string | null) => {
+      onCorrect({ turnId: target.turnId, kind, start: target.start, end: target.end, entityId });
       if (!askContribute) { show(null); return; }
       setPicking(false);
       askingRef.current = target.turnId;
       setAsking(target.turnId);
     }
     : undefined;
+  const pickKind = card?.role === 'speaker' ? 'quote' : 'mention';
   return (
     <MentionCardsContext.Provider value={value}>
       {children}
@@ -383,7 +393,8 @@ export function MentionCardsProvider({ colors, rows, onCorrect, pickable, askCon
                 colors={colors}
                 current={card.entityId}
                 focusFirst={byKey}
-                onPick={correct}
+                onPick={(entityId) => correct(pickKind, entityId)}
+                onNotCharacter={() => correct('nonMention', null)}
                 onBack={row && (() => setPicking(false))}
               />
             ) : row && (
