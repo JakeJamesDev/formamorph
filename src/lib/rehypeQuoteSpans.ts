@@ -113,7 +113,13 @@ export function rehypeQuoteSpans(options?: { speakers?: QuoteSpeakerSource }) {
       if (!quote) return;
       // A speaker without a color (unresolved, unnamed, or gone from the cast) keeps only its span, so it can be corrected.
       const color = quote.speaker ? speakers.colors.get(quote.speaker) : undefined;
-      const mark = color && quote.speaker ? { dataSpeaker: quote.speaker, style: `--quote-speaker: ${color}` } : {};
+      const from = speakers.recolor?.get(spanKey(quote));
+      const styles = [color && `--quote-speaker: ${color}`, from && `--quote-from: ${from}`].filter(Boolean).join('; ');
+      const mark = {
+        ...(color && quote.speaker ? { dataSpeaker: quote.speaker } : {}),
+        ...(styles ? { style: styles } : {}),
+        ...(from ? { dataQuoteRecolor: '' } : {}),
+      };
       for (const span of runs[i].spans) span.properties = { ...span.properties, dataQuoteSpan: spanKey(quote), ...mark };
     });
   };

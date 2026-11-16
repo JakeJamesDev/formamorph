@@ -79,7 +79,7 @@ import { toastError } from "@/lib/linkToast";
 import { cancelOpenPrompts, isNotice, noticeHost, scriptPrompts, silentPrompts, type ScriptPromptHost } from "@/lib/scriptPrompts";
 import { isScriptPromptSample, SCRIPT_PROMPT_SAMPLES } from "@/lib/devScriptPromptSamples";
 import { addTell, latestTurnId, pruneTells, REROLLED_TIMINGS, setTurnTells, turnTells, withoutTimings } from "@/lib/scriptTells";
-import { pruneByNarration, turnNarration } from "@/lib/coref/mentionReadings";
+import { newestTurnNarration, pruneByNarration, turnMentionReading, turnNarration } from "@/lib/coref/mentionReadings";
 import { applyCardCorrection } from "@/lib/coref/mentionCorrections";
 import { contributeTurn, contributionNames } from "@/lib/coref/correctionContribution";
 import { useCorrectionContribution } from "@/lib/coref/useContributeAsk";
@@ -91,6 +91,7 @@ import { visibleImages } from "@/lib/imageVisibility";
 import type { PlayerViewEntity } from "@/lib/formaquestion/playerView";
 import { characterMentions, useCharacterMentionsState } from "@/lib/coref/characterMentionsApp";
 import { useTurnMentionReadings } from "@/lib/coref/useTurnMentionReadings";
+import { createStreamingQuoteReader, type LiveQuotes, type ReadQuotes } from "@/lib/coref/streamingQuotes";
 import { MentionReadingDevDialog } from "@/components/dev/MentionReadingDevDialog";
 import { useScriptPromptListener } from "@/lib/useScriptPromptListener";
 import { ThemedToastContainer } from "@/components/ThemedToastContainer";
@@ -122,7 +123,7 @@ import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import AuthService from "@/services/AuthService";
 import { useDevRoute } from "../lib/devRouter";
 import { DEV_ATTACH_SAMPLE } from "../lib/devRoutes";
-import { loadDevFixture } from "../lib/devFixtures";
+import { loadDevFixture, speakerQuotesPassage } from "../lib/devFixtures";
 import { putSaveRecord } from "../components/modals/dbUtils";
 import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
@@ -542,6 +543,8 @@ type MobilePanel = (typeof MOBILE_PANEL_TABS)[number]["value"];
 
 // How many of a character's own recent diary entries to feed into its motivation pass (its memory).
 const DIARY_MEMORY_ENTRIES = 5;
+// Past the 300 ms quote recolor fade, so dropping a turn's early quotes changes nothing on screen.
+const RECOLOR_SETTLE_MS = 400;
 const NO_CARD_ROWS: ReadonlyMap<string, PlayerViewEntity> = new Map();
 const NO_PICK_IDS: ReadonlySet<string> = new Set();
 
@@ -1149,6 +1152,26 @@ const GameViewer = ({
     setFadeRevealSkipping(isViewingPast && isRevealingNarration);
   }, [isViewingPast, isRevealingNarration, setFadeRevealSkipping]);
 
+  // Quote colors stream in with the paced reveal (Q72): each quote is read early and the pacer holds for it.
+  const [quoteReader] = useState(createStreamingQuoteReader);
+  // The live turn's early quotes; the committed turn keeps them until its full-turn reading lands.
+  const [liveQuotes, setLiveQuotes] = useState<LiveQuotes | null>(null);
+  // How this turn reads a quote early, or null when it does not; set below, once the model state is known.
+  const quoteReadRef = useRef<ReadQuotes | null>(null);
+  const setQuoteGate = fadeReveal.setGate;
+  const beginQuoteReading = useCallback((read: ReadQuotes | null = quoteReadRef.current) => {
+    quoteReader.begin(read);
+    setQuoteGate(read ? quoteReader.gate : null);
+    setLiveQuotes(read ? quoteReader.live() : null);
+  }, [quoteReader, setQuoteGate]);
+  const quoteReadingListener: NarrationListener = (event) => {
+    if (event.type === "opened" || event.type === "retract") beginQuoteReading();
+    else if (event.type === "display") quoteReader.update(event.text, false);
+    else if (event.type === "finished") quoteReader.update(event.text, true);
+    else if (event.type === "canceled") quoteReader.cancel();
+  };
+  useEffect(() => () => quoteReader.cancel(), [quoteReader]);
+
   // Slash-command preview (e.g. `/markdown test`): drives the narration reveal with local text, off the AI path.
   const [commandPreview, setCommandPreview] = useState(false);
   // The `/choices test` choices; null for a narration-only preview.
@@ -1165,9 +1188,11 @@ const GameViewer = ({
       clearTimeout(commandTimer.current);
       commandTimer.current = null;
     }
+    quoteReader.cancel();
+    setLiveQuotes(null);
     setCommandPreview(false);
     setCommandChoices(null);
-  }, []);
+  }, [quoteReader]);
 
   // Replays `text` at `schedule`'s wall-clock times through `onArrive`, then calls `onEnd`.
   const replaySchedule = useCallback((
@@ -1194,31 +1219,36 @@ const GameViewer = ({
   }, []);
 
   const pushPreviewNarration = useCallback((slice: string) => {
+    // The reader sees each arrival before the pacer, so a new quote is gated before it can show.
+    quoteReader.update(slice, false);
     // Whole sentences only, so the fade never shows a late trim of the unfinished tail.
     if (fadeRevealActive) fadeReveal.push(completeSentencePrefix(slice), completeSentenceCount(slice));
     else smoothReveal.push(slice);
-  }, [fadeReveal, smoothReveal, fadeRevealActive]);
+  }, [fadeReveal, smoothReveal, fadeRevealActive, quoteReader]);
 
   const finishPreviewNarration = useCallback((text: string) => {
+    quoteReader.update(text, true);
     if (fadeRevealActive) fadeReveal.finish(text);
     else smoothReveal.finish(text);
-  }, [fadeReveal, smoothReveal, fadeRevealActive]);
+  }, [fadeReveal, smoothReveal, fadeRevealActive, quoteReader]);
 
-  const startCommandPreview = useCallback((choices: CommandChoices | null) => {
+  // `read` reads a preview's quotes early; without it the preview reads none.
+  const startCommandPreview = useCallback((choices: CommandChoices | null, read: ReadQuotes | null = null) => {
     stopCommandPreview();
     setCommandRunId(commandRun.current);
     setCommandPreview(true);
     setCommandChoices(choices);
+    beginQuoteReading(fadeRevealActive ? read : null);
     fadeReveal.reset();
     smoothReveal.reset();
-  }, [stopCommandPreview, fadeReveal, smoothReveal]);
+  }, [stopCommandPreview, fadeReveal, smoothReveal, beginQuoteReading, fadeRevealActive]);
 
   // Replay a fixed narration through the REAL reveal path (pacer → renderer) at a scripted arrival
   // timing, so the reveal can be eyeballed/recorded reproducibly without the AI. The profile (see
   // revealTestScripts) picks the arrival pattern — default `burst` reproduces the LM Studio signature.
   // The pacer measures arrival timing itself (via Date.now on each push), so replaying the schedule at
   // real wall-clock times reproduces production pacing exactly, with no estimator to mirror here.
-  const runMarkdownTest = useCallback((profileName?: string) => {
+  const runMarkdownTest = useCallback((profileName?: string, variant?: string, runArg?: string) => {
     // No profile (and the explicit `render`) previews the markdown sample at a steady pace — the reading
     // this command's name implies. Naming an arrival-timing profile instead replays the prose narration to
     // test the reveal pacer.
@@ -1226,6 +1256,17 @@ const GameViewer = ({
     const profile = isRender ? REVEAL_TEST_PROFILES.steady : REVEAL_TEST_PROFILES[profileName];
     if (!profile) {
       toast.info(`Unknown profile. Try: render, ${Object.keys(REVEAL_TEST_PROFILES).join(', ')}`);
+      return;
+    }
+    if (import.meta.env.DEV && variant === 'quotes') {
+      // Dev only: the speakerQuotes fixture's passage, with its speakers read back after a fake run time.
+      const passage = speakerQuotesPassage();
+      const runMs = Number(runArg ?? 1250);
+      const read: ReadQuotes = (slice) => new Promise((resolve) => {
+        setTimeout(() => resolve(passage.quotes.filter((q) => q.end <= slice.length)), runMs);
+      });
+      startCommandPreview(null, read);
+      replaySchedule(passage.text, profile.schedule(passage.text.length), pushPreviewNarration, () => finishPreviewNarration(passage.text));
       return;
     }
     const text = isRender ? MARKDOWN_SAMPLE : REVEAL_TEST_NARRATION;
@@ -1274,8 +1315,8 @@ const GameViewer = ({
     if (!parsed) return false;
     if (parsed.command === "markdown" && parsed.args[0] === "test") {
       // No arg renders the markdown sample; a profile name replays the prose reveal test instead.
-      // /markdown test [render|burst|steady|slow|fast|erratic]
-      runMarkdownTest(parsed.args[1]);
+      // /markdown test [render|burst|steady|slow|fast|erratic]; in dev, `<profile> quotes [run ms]` streams quote colors.
+      runMarkdownTest(parsed.args[1], parsed.args[2], parsed.args[3]);
       return true;
     }
     if (parsed.command === "choices" && parsed.args[0] === "test") {
@@ -1534,6 +1575,18 @@ const GameViewer = ({
   const characterMentionsState = useCharacterMentionsState();
   const personaId = persona?.entity.id;
   const mentionPlayer = useMemo(() => (personaId ? { id: personaId, names: playerNames } : undefined), [personaId, playerNames]);
+  quoteReadRef.current = fadeRevealActive && settings.characterMentions && characterMentionsState.status === 'ready'
+    ? (passage) => characterMentions().readPassage(passage, allEntities, mentionPlayer ? { player: mentionPlayer } : {})
+      .then((result) => result?.reading.quotes ?? null)
+    : null;
+  // The early quotes go once the newest turn's full-turn reading has shown and any recolor fade has played.
+  useEffect(() => {
+    if (!liveQuotes || isWaitingForAI) return;
+    const newest = newestTurnNarration(fullMessageHistory);
+    if (newest?.narration !== liveQuotes.text || !turnMentionReading(mentionReadings, newest.turnId, newest.narration)) return;
+    const timer = setTimeout(() => setLiveQuotes(null), RECOLOR_SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [liveQuotes, isWaitingForAI, fullMessageHistory, mentionReadings]);
   useTurnMentionReadings({
     controller: characterMentions(),
     ready: characterMentionsState.status === 'ready',
@@ -4978,7 +5031,8 @@ const GameViewer = ({
   const narrationSink = (): { sink: TransportSink; settled: () => Promise<string | undefined> } => {
     const output = startOutputRun();
     // An output script rewrites whole sentences, so the crawl must not show the raw tail.
-    const listeners = [revealListenerFor(output !== null), landingListener, sceneListListener, historyListener];
+    // The quote reader goes first: it must see each arrival before the pacer does.
+    const listeners = [quoteReadingListener, revealListenerFor(output !== null), landingListener, sceneListListener, historyListener];
     // Opt-in streaming read-aloud needs a loaded model.
     if (streamNarrationAudio && ttsLoaded) listeners.push(readAloudListener);
     const rewriting = output && rewriteSentences(output.rewrite, ...listeners);
@@ -6662,6 +6716,7 @@ const GameViewer = ({
       sceneTags={viewedTurn?.sceneTags ?? ""}
       sceneTurnId={viewedTurn?.turnId}
       speakerColors={shownQuoteColors}
+      liveQuotes={liveQuotes}
       sceneImageJob={sceneImageJob}
       sceneImageProgress={sceneImageProgress}
       sceneImagePreview={sceneImagePreview}

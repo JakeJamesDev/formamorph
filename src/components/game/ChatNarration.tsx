@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { NARRATION_END_SPACE, NARRATION_FADE, NARRATION_FADE_UNDER_STRIP, useEdgeFades } from './narrationFade';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { MentionTurn, turnCardTriggers } from './MentionCards';
+import type { LiveQuotes } from '@/lib/coref/streamingQuotes';
 import { useChatPin } from './useChatPin';
 import { useReadingLine } from './useReadingLine';
 import { READING_LINE } from '@/lib/chatReadingLine';
@@ -83,10 +84,12 @@ export const PLAYER_ACTION_BUBBLE = 'ml-auto w-fit max-w-[85%] rounded-2xl round
  * right and the narration as a full-width block. Opens at the latest turn. `latestFooter` renders under the
  * latest turn's narration.
  */
-export function ChatNarration({ parseAssistantMessage, speakerColors, latestFooter, actionsFor, playerActionsFor, onDeleteSceneImage, fadeUnderStrip = false }: {
+export function ChatNarration({ parseAssistantMessage, speakerColors, liveQuotes = null, latestFooter, actionsFor, playerActionsFor, onDeleteSceneImage, fadeUnderStrip = false }: {
   parseAssistantMessage: (content: string) => string;
   /** Each cast entity's quote color, by id. */
   speakerColors: SpeakerColors;
+  /** The live turn's quotes read while it streams (Q72). */
+  liveQuotes?: LiveQuotes | null;
   latestFooter?: React.ReactNode;
   /** The actions of one committed narration bubble. */
   actionsFor?: (turn: ChatBubbleTurn) => BubbleAction[];
@@ -247,7 +250,7 @@ export function ChatNarration({ parseAssistantMessage, speakerColors, latestFoot
                             animation={revealAnim}
                             easing={revealEasing}
                             dialogue
-                            {...turnCardTriggers(liveReveal, characterMentions, correctedReadings, speakerColors, turnId, narrationText)}
+                            {...turnCardTriggers(liveReveal, characterMentions, correctedReadings, speakerColors, turnId, narrationText, isLatest ? liveQuotes : null)}
                           />
                         </MentionTurn>
                       </div>

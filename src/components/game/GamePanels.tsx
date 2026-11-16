@@ -3,6 +3,7 @@ import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
 import { MentionTurn, turnCardTriggers } from './MentionCards';
+import type { LiveQuotes } from '@/lib/coref/streamingQuotes';
 import type { SpeakerColors } from '@/lib/quoteSegments';
 import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
@@ -577,6 +578,7 @@ export const MiddlePanel = ({
   sceneTags,
   sceneTurnId,
   speakerColors,
+  liveQuotes = null,
   sceneImageJob,
   sceneImageProgress,
   sceneImagePreview,
@@ -638,6 +640,8 @@ export const MiddlePanel = ({
   sceneTurnId?: string;
   /** Each cast entity's quote color, by id. */
   speakerColors: SpeakerColors;
+  /** The live turn's quotes read while it streams (Q72); null with none. */
+  liveQuotes?: LiveQuotes | null;
   /** Which half of the scene pipeline is running, or null. */
   sceneImageJob: 'tags' | 'image' | null;
   sceneImageProgress: number | null;
@@ -854,7 +858,7 @@ export const MiddlePanel = ({
     else if (!isRevealingNarration) setPagedAway(false);
   }, [isViewingPast, isRevealingNarration]);
   const pageNarration = pageLive ? gameplayText : currentAssistantMessage ? parseAssistantMessage(currentAssistantMessage.content) : '';
-  const pageTriggers = turnCardTriggers(pageLive, characterMentions, correctedReadings, speakerColors, sceneTurnId, pageNarration);
+  const pageTriggers = turnCardTriggers(pageLive, characterMentions, correctedReadings, speakerColors, sceneTurnId, pageNarration, liveQuotes);
   const pageReasoningLive = !isViewingPast && !!liveReasoning.text;
   const pageReasoning = pageReasoningLive
     ? liveReasoning
@@ -947,7 +951,7 @@ export const MiddlePanel = ({
       {gameplayText && (
         <div data-testid="preview-narration">
           {/* A reused renderer keeps the last run's shown text and would show the next run's first sentence at once. */}
-          <MarkdownRenderer key={commandRunId} text={gameplayText} animate={revealOn} animation={revealAnim} easing={revealEasing} dialogue fitShown />
+          <MarkdownRenderer key={commandRunId} text={gameplayText} animate={revealOn} animation={revealAnim} easing={revealEasing} dialogue fitShown {...turnCardTriggers(true, characterMentions, correctedReadings, speakerColors, undefined, gameplayText, liveQuotes)} />
         </div>
       )}
     </TurnCard>
@@ -1051,6 +1055,7 @@ export const MiddlePanel = ({
               <ChatNarration
                 parseAssistantMessage={parseAssistantMessage}
                 speakerColors={speakerColors}
+                liveQuotes={liveQuotes}
                 actionsFor={actionsFor}
                 playerActionsFor={playerActionsFor}
                 onDeleteSceneImage={onDeleteSceneImage}

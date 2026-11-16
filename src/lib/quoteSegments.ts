@@ -37,11 +37,13 @@ export function parseSpanKey(value: unknown): TextSpan | null {
 /** Each speaker's quote color, by entity id. */
 export type SpeakerColors = ReadonlyMap<string, string>;
 
-/** A narration, its reading's quotes (whose spans index into it), and each speaker's color by entity id. */
+/** A narration, its reading's quotes (whose spans index into it), and each speaker's color by entity id.
+ *  `recolor` holds, by {@link spanKey}, the color a quote showed before this reading named it differently. */
 export interface QuoteSpeakerSource {
   text: string;
   quotes: readonly SpokenQuote[];
   colors: SpeakerColors;
+  recolor?: ReadonlyMap<string, string>;
 }
 
 /** The spans of `lines` (each a quote and its speaker) found in `text` in order. For canned readings. */
@@ -68,15 +70,16 @@ export interface BlockQuote {
 export const quoteKey = (text: string): string => text.replace(/[*_~=`\\]/g, '').replace(/\s+/g, ' ').trim();
 
 /**
- * The reading's quotes inside one markdown block, in order. The renderer parses each block apart, so the
- * block is found in the narration by its source. A block it cannot place gets no speakers, and so does a
- * block that occurs more than once with different speakers.
+ * The reading's quotes that open inside one markdown block, in order. The renderer parses each block apart,
+ * so the block is found in the narration by its source. A block it cannot place gets no speakers, and so does
+ * a block that occurs more than once with different speakers. A quote that runs past the block's end is a
+ * streaming block cut mid-quote; its rendered run is open and matches the quote's start.
  */
 export function blockQuotes(source: QuoteSpeakerSource, block: string): BlockQuote[] {
   const body = block.trim();
   if (!body) return [];
   const inBlock = (at: number) => source.quotes
-    .filter((quote) => quote.start >= at && quote.end <= at + body.length)
+    .filter((quote) => quote.start >= at && quote.start < at + body.length)
     .map((quote) => ({ key: quoteKey(source.text.slice(quote.start, quote.end)), speaker: quote.speaker, start: quote.start, end: quote.end }));
   const found: BlockQuote[][] = [];
   for (let at = source.text.indexOf(body); at >= 0; at = source.text.indexOf(body, at + 1)) found.push(inBlock(at));

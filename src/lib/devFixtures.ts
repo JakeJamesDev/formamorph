@@ -264,6 +264,8 @@ const SPEAKER_QUOTES_TEXT = [
   '"Too late." Kessa drops onto the bench beside him. From the wheelhouse, someone calls out: "Both of you, the tide won\'t wait."',
   'You step onto the plank. "Then we go now," you say.',
 ].join('\n\n');
+/** The speakerQuotes fixture's last narration and its quotes' speakers, for the streaming quote preview. */
+export const speakerQuotesPassage = () => ({ text: SPEAKER_QUOTES_TEXT, quotes: spokenQuotes(SPEAKER_QUOTES_TEXT, SPEAKER_QUOTE_LINES) });
 // The fixture's linked mentions, in order, for the mention cards.
 const SPEAKER_QUOTE_MENTIONS = spokenQuotes(SPEAKER_QUOTES_TEXT, [
   ['Mira', 'dev-mira'], ['Kessa', 'dev-kessa'], ['Mira', 'dev-mira'], ['the courier', 'dev-courier'],

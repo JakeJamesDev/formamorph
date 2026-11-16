@@ -228,6 +228,12 @@ function paragraphs(text: string): Paragraph[] {
   return out;
 }
 
+/** Each quote run the reading attributes, with the end of the paragraph that holds it. */
+export function quoteSpans(text: string): { start: number; end: number; paragraphEnd: number }[] {
+  return paragraphs(text).flatMap((para) => [...text.slice(para.start, para.end).matchAll(QUOTE_RE)]
+    .map((m) => ({ start: para.start + m.index, end: para.start + m.index + m[0].length, paragraphEnd: para.end })));
+}
+
 /**
  * The speaker of each quote: the mention at a speech verb attached to the quote, else the nearest preceding
  * subject mention in the paragraph, else none.

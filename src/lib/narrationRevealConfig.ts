@@ -155,6 +155,14 @@ export const PACE_CORRECTION_MAX = 2;
 //  - The tail's speed-up is capped lower: a sprint at the end reads as uneven pace.
 export const DRAIN_CORRECTION_MIN = 0.75;
 
+// Quote-aware pacing (Q72): the reveal slows ahead of a quote whose speaker color is not back yet.
+//  - A gated pace eases toward each new value over about this many ms.
+export const PACE_EASE_MS = 500;
+//  - The run time this device starts from before its first measured run, in ms.
+export const DEFAULT_QUOTE_RUN_MS = 250;
+//  - The longest the reveal holds at one quote before it shows it uncolored, in ms.
+export const QUOTE_HOLD_MAX_MS = 5000;
+
 export { clamp }; // re-exported (from ./utils) so existing importers/tests keep their path
 
 /** Apply the user's minimum floors to a timing (0 = no floor): stagger can't drop below `minStagger`,
@@ -169,10 +177,14 @@ export function flooredTiming(t: RevealTiming, minStagger: number, minDuration: 
  *  ms/word, nudged toward holding a target backlog — faster when the backlog is over target, slower when
  *  under — then clamped to the readable bounds. While streaming, the target is `TARGET_BUFFER_WORDS` (a
  *  cushion against starving). Once `drainingOnly` (arrival finished), it targets the much smaller
- *  `DRAIN_TARGET_WORDS` and never slows below the measured rate, so the tail empties promptly. */
-export function pacedStagger(msPerWord: number, backlogWords: number, drainingOnly: boolean): number {
-  const target = drainingOnly ? DRAIN_TARGET_WORDS : TARGET_BUFFER_WORDS;
-  let correction = clamp(target / Math.max(backlogWords, 1), PACE_CORRECTION_MIN, PACE_CORRECTION_MAX);
+ *  `DRAIN_TARGET_WORDS` and never slows below the measured rate, so the tail empties promptly.
+ *  `bufferWords` and `correctionMin` replace the streaming target and the catch-up bound. */
+export function pacedStagger(
+  msPerWord: number, backlogWords: number, drainingOnly: boolean,
+  bufferWords = TARGET_BUFFER_WORDS, correctionMin = PACE_CORRECTION_MIN,
+): number {
+  const target = drainingOnly ? DRAIN_TARGET_WORDS : bufferWords;
+  let correction = clamp(target / Math.max(backlogWords, 1), correctionMin, PACE_CORRECTION_MAX);
   if (drainingOnly) correction = clamp(correction, DRAIN_CORRECTION_MIN, 1);
   return clamp(msPerWord * correction, STAGGER_MIN, STAGGER_MAX);
 }

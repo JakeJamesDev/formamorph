@@ -604,6 +604,15 @@
   color: var(--quote-speaker, var(--dialogue-custom, hsl(var(--dialogue))));
 }
 
+/* A quote the full-turn reading names differently fades from the color it streamed in with. */
+:root[data-quote-color] .dialogue-quote[data-quote-recolor] {
+  animation: quote-recolor 300ms ease;
+}
+
+@keyframes quote-recolor {
+  from { color: var(--quote-from); }
+}
+
 /* Speaker quote colors, one set per mode in every palette. `.light` serves a pinned-light panel in the dark app.
    0–7 are the auto palette; every token is a swatch an author can pin, in `QUOTE_SWATCHES` order. */
 :root,

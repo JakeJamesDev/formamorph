@@ -104,4 +104,20 @@ describe('speaker colors in the markdown renderer', () => {
   it('keeps speakers off a renderer without dialogue', () => {
     expect(spans(PASSAGE, source(PASSAGE, [['"You said noon,"', 'kessa']]), false)).toEqual([]);
   });
+
+  it('colors a streaming quote that the shown text cuts after its first sentence (Q72)', () => {
+    const arrived = 'The keeper shrugs. "North, toward the mill. She had a boy with her."';
+    const shown = 'The keeper shrugs. "North, toward the mill.';
+    const result = spans(shown, source(arrived, [['"North, toward the mill. She had a boy with her."', 'mira']]));
+    expect(result.map(said)).toEqual([['"North, toward the mill.', 'mira', colorOf('mira')]]);
+  });
+
+  it('marks a quote the full-turn reading recolors with the color it streamed in with', () => {
+    const text = '"You said noon," Kessa says.';
+    const reading: QuoteSpeakerSource = { ...source(text, [['"You said noon,"', 'kessa']]), recolor: new Map([['0:16', colorOf('mira')!]]) };
+    const [span] = spans(text, reading);
+    expect(span.hasAttribute('data-quote-recolor')).toBe(true);
+    expect(span.style.getPropertyValue('--quote-from')).toBe(colorOf('mira'));
+    expect(span.style.getPropertyValue('--quote-speaker')).toBe(colorOf('kessa'));
+  });
 });

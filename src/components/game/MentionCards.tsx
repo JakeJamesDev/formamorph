@@ -17,7 +17,8 @@ import { parseMentionMark, turnMentionLinks } from '@/lib/coref/mentionLinks';
 import type { MentionCorrection } from '@/lib/coref/mentionCorrections';
 import type { MentionLink, QuoteSpeaker } from '@/lib/coref/mentionReading';
 import type { MentionReadingMap } from '@/lib/coref/mentionReadings';
-import { turnQuoteSpeakers } from '@/lib/coref/quoteSpeakers';
+import { liveQuoteSpeakers, turnQuoteSpeakers } from '@/lib/coref/quoteSpeakers';
+import type { LiveQuotes } from '@/lib/coref/streamingQuotes';
 import { cn } from '@/lib/utils';
 import { thumbFit } from '@/lib/thumbAspect';
 import { LINK_MARK_PROPERTY, type MarkdownComponents, type RemarkPlugin } from './MarkdownRenderer';
@@ -501,10 +502,15 @@ const MENTION_COMPONENTS: MarkdownComponents = { a: MentionAnchor, span: QuoteSp
 export const cardTriggers = (speakers: QuoteSpeakerSource | undefined, links: RemarkPlugin | undefined) =>
   speakers || links ? { speakers, links, components: MENTION_COMPONENTS } : {};
 
-/** {@link cardTriggers} for a committed turn from its reading; none while the turn still streams. */
+/** {@link cardTriggers} for a committed turn from its reading. While the turn streams, only the colors of the
+ *  quotes read early (`early`); the committed turn keeps them until its full-turn reading lands. */
 export const turnCardTriggers = (
   live: boolean, enabled: boolean, readings: MentionReadingMap, colors: SpeakerColors, turnId: string | undefined, narration: string,
-) => (live ? {} : cardTriggers(
-  turnQuoteSpeakers(enabled, readings, colors, turnId, narration),
-  turnMentionLinks(enabled, readings, turnId, narration),
-));
+  early?: LiveQuotes | null,
+) => {
+  if (live) return enabled && early ? { speakers: liveQuoteSpeakers(early, colors) } : {};
+  return cardTriggers(
+    turnQuoteSpeakers(enabled, readings, colors, turnId, narration, early?.text === narration ? early : undefined),
+    turnMentionLinks(enabled, readings, turnId, narration),
+  );
+};
