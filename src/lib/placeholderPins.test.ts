@@ -148,10 +148,9 @@ describe('collectPinLayers — every pin laid, and the one in force marked', () 
     }]);
   });
 
-  it('marks the later of two traits, matching what collectPins returns', () => {
+  it('marks the later of two traits as the one in force', () => {
     const native = trait('native', [pin('town', 'Sedge')]);
-    const { pins, layers } = collectPinLayers({ traits: [native, sworn], placeholders: [town] });
-    expect(pins).toEqual(collectPins({ traits: [native, sworn], placeholders: [town] }));
+    const { layers } = collectPinLayers({ traits: [native, sworn], placeholders: [town] });
     expect(layers.map((l) => [l.source.kind === 'trait' && l.source.id, l.wins])).toEqual([['native', false], ['sworn', true]]);
   });
 

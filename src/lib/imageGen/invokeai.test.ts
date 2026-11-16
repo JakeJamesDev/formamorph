@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import {
   toInvokeScheduler,
   resolveInvokeSeed,
@@ -212,10 +212,23 @@ function stubServer(
   return { enqueued: enqueued as Array<{ batch: { graph: { nodes: Record<string, { type: string }> } } }> };
 }
 
+/** Skips the real poll interval: each wait fires as soon as the run yields. */
+function autoAdvancePolls() {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  vi.setTimerTickMode('nextTimerAsync');
+}
+
+function restoreTimersAndGlobals() {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+}
+
 describe('invokeaiProvider', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  beforeEach(autoAdvancePolls);
+  afterEach(restoreTimersAndGlobals);
 
   it('enqueues an SDXL graph, polls to completion, and returns a data-URL', async () => {
+    vi.useRealTimers(); // one run waits out the real poll interval
     const server = stubServer([sdxl]);
     const progress: number[] = [];
     const url = await invokeaiProvider(params, {
@@ -337,6 +350,7 @@ describe('invokeaiProvider', () => {
       if (url.endsWith('/enqueue_batch')) return { ok: true, json: async () => ({ item_ids: [7] }), text: async () => JSON.stringify(({ item_ids: [7] })) } as Response;
       return { ok: false, status: 500 } as Response; // poll always fails
     }));
+    vi.stubGlobal('WebSocket', FakeSocket);
     await expect(invokeaiProvider(params, { endpointUrl: 'http://127.0.0.1:9090', apiToken: '' }))
       .rejects.toThrow(/stopped responding/);
   });
@@ -356,7 +370,8 @@ describe('resolveBoardId', () => {
 });
 
 describe('invokeaiProvider board filing', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  beforeEach(autoAdvancePolls);
+  afterEach(restoreTimersAndGlobals);
 
   /** The `board` field the enqueued graph put on its l2i node, or undefined. */
   const l2iBoard = (server: { enqueued: Array<{ batch: { graph: { nodes: Record<string, unknown> } } }> }) =>
@@ -454,7 +469,8 @@ describe('readInvokeProgress', () => {
 });
 
 describe('invokeaiProvider live progress', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  beforeEach(autoAdvancePolls);
+  afterEach(restoreTimersAndGlobals);
 
   it('reports socket percentages + preview frames instead of a coarse status guess', async () => {
     const updates: Array<{ progress: number; preview?: string }> = [];
@@ -503,6 +519,23 @@ describe('invokeaiProvider live progress', () => {
       endpointUrl: 'http://127.0.0.1:9090', apiToken: '', onProgress: (p) => progress.push(p.progress),
     });
     expect(progress).toEqual([...progress].sort((a, b) => a - b));
+  });
+
+  it('ignores queue events that are not invocation progress', async () => {
+    const progress: number[] = [];
+    stubServer([sdxl], {
+      beforePoll: (n) => {
+        const ws = FakeSocket.last;
+        if (n !== 0 || !ws) return;
+        ws.handshake();
+        ws.emit(`42${JSON.stringify(['queue_item_status_changed', { item_id: 7, percentage: 0.9 }])}`);
+      },
+    });
+    await invokeaiProvider(params, {
+      endpointUrl: 'http://127.0.0.1:9090', apiToken: '', onProgress: (p) => progress.push(p.progress),
+    });
+    expect(progress).not.toContain(0.9);
+    expect(progress.at(-1)).toBe(1);
   });
 
   it('sends the API token in the socket.io connect frame', async () => {
