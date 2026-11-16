@@ -1578,7 +1578,7 @@ Mention Cards let the player check whom or what a name, pronoun or quote in narr
 
 - 🔗 **Plain-text mentions.** A linked mention reads as prose. A dotted underline in the entity's speaker color shows on hover, on keyboard focus, and while its card is open.
 - 🪪 **A small card.** The entity's picture as a 48×56 rounded portrait, cropped from the top, then the name and up to two lines of description. With no picture the player can see, a circle with the entity's initial in its speaker color takes its place. "Wrong character?" sits under them.
-- 🔁 **A pick list in the same card.** "Wrong character?" swaps the card's content for the cast: "Who said this?" for a quote, "Who is this?" for a mention. A back button returns to the card, a check marks the current pick, and the last row, "Someone Else", unlinks it. Rows are menu rows (`MENU_ROW`). Picking closes the card, and the colors and links change at once.
+- 🔁 **A pick list in the same card.** "Wrong character?" swaps the card's content for the cast: "Who said this?" for a quote, "Who is this?" for a mention. A back button returns to the card, a check marks the current pick, and the last row, "Not Listed", unlinks it. Rows are menu rows (`MENU_ROW`). Picking closes the card, and the colors and links change at once.
 - 💬 **Quotes open their speaker.** Clicking or tapping a colored quote opens its speaker's card. A mention inside a quote opens its own card.
 - 🕶️ **Player View only.** The card shows what the player knows now: a met entity's name and player description, or a stranger's label. An entity the player has never seen gets no link.
 

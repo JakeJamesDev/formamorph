@@ -1,7 +1,7 @@
 # Spec: Character Mentions
 
 Status: done
-Status note: Closed 2026-11-15; tickets 01–15 done, last landing d97f010d4. Review: spec text corrected. Tests green on 2026-11-15 (36812 passed); lint red only on untracked worlds-wip/ check scripts, outside this effort.
+Status note: Reopened 2026-11-15 for tickets 16–17 (Q71). Closed 2026-11-15; tickets 01–15 done, last landing d97f010d4. Review: spec text corrected. Tests green on 2026-11-15 (36812 passed); lint red only on untracked worlds-wip/ check scripts, outside this effort.
 Spec session: character-mentions — spec
 
 Resolve every name, pronoun and descriptor in narration to the cast entity it means, with an on-device coreference model. Use the result for per-character quote colors, mention hover cards, In Scene, and memory. Players correct wrong links in place and can contribute corrections to a shared training corpus. Spans both repos: the Formamorph client and FormamorphServer.
@@ -88,7 +88,8 @@ Settled in the grill on 2026-11-14. A ruling reopens on new evidence, never on a
 | Q55 | The one card slot is first come, first served (the user's pick). A Formamorph AI card that comes due while the offer card shows waits, and shows on the first settled turn after the offer card closes. |
 | Q56 | An authored quote color is a pick from a fixed, vetted palette, not a free hex (the user's pick: less customization, trusted colors). Each swatch has a light and a dark value that passes 4.5:1 on every theme's background and card in its mode. The palette is large (about 16–24 swatches) and contains ticket 04's eight. The world stores the swatch key. |
 | Q57 | The Quote Color field shows in Advanced editor mode only, beside Aliases and Type; Simple mode uses Auto. A pin may match another speaker's auto slot; that is the author's choice. Character cards carry the key too. |
-| Q58 | The pick list's "not anyone listed" option reads "Someone Else" (the user's pick), replacing "Nobody in the cast", which breaks the Writing Guide. It still stores entity id none. |
+| Q58 | The pick list's "not anyone listed" option reads "Someone Else" (the user's pick), replacing "Nobody in the cast", which breaks the Writing Guide. It still stores entity id none. After the close, the user renamed it "Not Listed": the guide also bars "someone" for entities. |
+| Q71 | A contribution also sends `entityNames`, the placeholder-resolved name of every entity it references, so the staff review tab shows names, not raw ids. The corpus export ignores them. Found by the user after the close. Tickets 16 (server, deploys first) and 17. |
 | Q59 | A turn's saved reading also keeps the host's clusters and each cluster's entity id, so a contribution can send Q35's payload. Turns read before that have no clusters and send nothing. "Contribute Corrections" sits under the Character Mentions toggle, both modes, shown while the feature is on, disabled with a reason when signed out or not age-attested. Staff review is a "Mentions (n)" segment in the Admin Panel's Moderation tab. A contribution's world id is the open world's id; the model id and version are the reading's. |
 | Q60 | The contribution opt-in belongs to the account that gave it: the setting stores that account's id, and the toggle reads on and sends go out only while that account is signed in. Another account on the same device starts off. |
 | Q61 | Reverses Q32 and Q34 for display (the user's call, 2026-11-15): the played persona is a speaker and a mention target. Its quotes get a color and "Wrong character?"; "you", "I" and its name link to it with a card; it appears in the pick list. On Auto, its quote color is the player's Quote Color setting. In Scene and memory keep treating the player as today. Ticket 14. |

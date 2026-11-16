@@ -4,7 +4,7 @@ import type { MentionReading } from './mentionReading';
 import type { TextSpan } from '@/lib/quoteSegments';
 import type { MentionReadingMap, TurnMentionReading } from './mentionReadings';
 
-/** A mention's entity or a quote's speaker, set by the player; null is "Someone Else". Spans index into
+/** A mention's entity or a quote's speaker, set by the player; null is "Not Listed". Spans index into
  *  the turn's narration. */
 export interface MentionCorrection {
   kind: 'mention' | 'quote';

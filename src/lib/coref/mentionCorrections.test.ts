@@ -30,7 +30,7 @@ describe('correctReading', () => {
     expect(fixed.quotes).toBe(READING.quotes);
   });
 
-  it('unlinks a mention with "Someone Else"', () => {
+  it('unlinks a mention with "Not Listed"', () => {
     const fixed = correctReading(READING, [{ kind: 'mention', ...at('She'), entityId: null }]);
     expect(fixed.mentions.find((m) => m.start === at('She').start)?.entityId).toBeNull();
   });

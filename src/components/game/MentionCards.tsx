@@ -83,7 +83,7 @@ export function MentionCard({ row, color, onWrong, focusWrong = false }: {
   );
 }
 
-/** The pick list "Wrong character?" swaps the card for: the cast by Player View name, then "Someone Else". */
+/** The pick list "Wrong character?" swaps the card for: the cast by Player View name, then "Not Listed". */
 export function MentionPickList({ role, rows, colors, current, focusFirst = false, onPick, onBack }: {
   role: MentionCardRole;
   rows: ReadonlyMap<string, PlayerViewEntity>;
@@ -116,7 +116,7 @@ export function MentionPickList({ role, rows, colors, current, focusFirst = fals
       ))}
       <button type="button" autoFocus={focusFirst && rows.size === 0} onClick={() => onPick(null)} className={cn(MENU_ROW, 'text-muted-foreground')}>
         <Initial name={null} className="h-6 w-6 text-meta" />
-        <span className="flex-1">Someone Else</span>
+        <span className="flex-1">Not Listed</span>
       </button>
     </div>
   );

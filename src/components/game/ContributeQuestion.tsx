@@ -5,7 +5,7 @@ import { Meta } from '@/components/ui/typography';
 /** The Contribute Corrections question's words, asked once per account (Q64, Q69). */
 export const CONTRIBUTE_QUESTION_COPY = {
   title: 'Help Improve Character Mentions?',
-  body: 'Your corrections teach the model who’s who, so names and quotes link to the right character for everyone. Each correction shares the whole passage, and accepted passages are kept. You can change this in Settings.',
+  body: 'Your corrections help the model link names and quotes to the right speaker for everyone. Each correction shares the whole passage, and accepted passages are kept. You can change this in Settings.',
   no: 'No Thanks',
   yes: 'Contribute',
 };

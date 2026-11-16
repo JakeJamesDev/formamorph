@@ -306,7 +306,7 @@ describe('correcting from a card', () => {
     expect(card()!.textContent).toContain('Who is this?');
     // The persona first, then the met and the scene-alias rows. Unseen Tomas and the wraith are no choice (Q68), nor
     // Ondra, with nothing to show.
-    expect(names()).toEqual(['', 'AAsh', 'MMira', 'KKessa', 'Cthe courier', '–Someone Else']);
+    expect(names()).toEqual(['', 'AAsh', 'MMira', 'KKessa', 'Cthe courier', '–Not Listed']);
     fireEvent.click(screen.getByLabelText('Back'));
     expect(screen.getByText('Wrong character?')).toBeTruthy();
   });
@@ -316,7 +316,7 @@ describe('correcting from a card', () => {
     const links = linksOf(text, [['The courier', 'courier'], ['Tomas', 'tomas'], ['the pale shape', 'ghost']]);
     fireEvent.click(show(text, links, undefined, vi.fn()).container.querySelector<HTMLElement>('[data-mention="courier"]')!);
     fireEvent.click(screen.getByText('Wrong character?'));
-    expect(names()).toEqual(['', 'AAsh', 'MMira', 'KKessa', 'Cthe courier', 'Pa pale shape', 'TTomas', '–Someone Else']);
+    expect(names()).toEqual(['', 'AAsh', 'MMira', 'KKessa', 'Cthe courier', 'Pa pale shape', 'TTomas', '–Not Listed']);
   });
 
   it("corrects the opened mention's span in its turn, and closes the card", () => {
@@ -338,7 +338,7 @@ describe('correcting from a card', () => {
     fireEvent.click(container.querySelector<HTMLElement>('[data-speaker="mira"][role="button"]')!);
     fireEvent.click(screen.getByText('Wrong character?'));
     expect(card()!.textContent).toContain('Who said this?');
-    fireEvent.click(screen.getByText('Someone Else'));
+    fireEvent.click(screen.getByText('Not Listed'));
     expect(onCorrect).toHaveBeenCalledWith({ turnId: 't1', kind: 'quote', start: 12, end: 17, entityId: null });
   });
 });
@@ -396,7 +396,7 @@ describe('every quote can be corrected (Q70)', () => {
     expect(card()!.textContent).toContain('Who said this?');
     expect(screen.queryByText('Wrong character?')).toBeNull();
     expect(screen.queryByLabelText('Back')).toBeNull();
-    expect(pickNames()).toEqual(['AAsh', 'MMira', 'KKessa', 'Cthe courier', '–Someone Else']);
+    expect(pickNames()).toEqual(['AAsh', 'MMira', 'KKessa', 'Cthe courier', '–Not Listed']);
     fireEvent.click(screen.getByText('Mira'));
     expect(onCorrect).toHaveBeenCalledWith({ turnId: 't1', kind: 'quote', start: 12, end: 24, entityId: 'mira' });
     expect(card()).toBeNull();
@@ -501,9 +501,9 @@ describe('a correction on a played turn', () => {
     expect(card()).toBeNull();
   });
 
-  it('unlinks a mention with "Someone Else"', () => {
+  it('unlinks a mention with "Not Listed"', () => {
     const { container } = render(<Turn />);
-    pick(container.querySelectorAll<HTMLElement>('[data-mention]')[1], 'Someone Else');
+    pick(container.querySelectorAll<HTMLElement>('[data-mention]')[1], 'Not Listed');
     expect(triggers(container)).toEqual([['Mira', 'mira']]);
     expect(container.textContent).toBe(TEXT);
   });

@@ -30,7 +30,7 @@ const ROWS = new Map([
   entity('preview-brann', 'Brann', 'Runs the inn and pours the drinks.'),
   entity('preview-ilse', 'Ilse', 'A courier who stops here between runs.'),
   entity('preview-pell', 'Pell', 'A regular who keeps the seat by the fire.'),
-  entity(PREVIEW_PLAYER, 'You', 'The character you play.', true),
+  entity(PREVIEW_PLAYER, 'You', 'Your persona.', true),
 ].map((row) => [row.id, row]));
 
 const COLORS = speakerColors(

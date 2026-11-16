@@ -30,7 +30,7 @@ export function MentionsStoryCard({ accepted, onTurnOn, onNotNow, asking = false
       testId="mentions-story-card"
       ariaLabel="Character Mentions"
       title="Turn On Character Mentions?"
-      body={`Names and pronouns in the narration link to the characters they mean, and each quote takes its speaker's color. It runs on your device after ${download}.`}
+      body={`Names and pronouns in the narration link to who they mean, and each quote takes its speaker's color. It runs on your device after ${download}.`}
       media={<MentionsPreviewButton defaultOpen={previewOpen} />}
       actionLabel="Turn On"
       onAction={accepted ? undefined : onTurnOn}
