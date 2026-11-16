@@ -60,6 +60,9 @@ Settled with the user on 2026-11-16, in grill order.
 | Q29 | Entities publish from the library, so resolution at Save to Library covers publish. The world-bundle source compare moves to hash tokens with the library compare (ticket 02) |
 | Q30 | The media compare reads hash token and Visibility rule, in order. Names don't compare, so renaming an entry in a world doesn't write back to its library item (ticket 02) |
 | Q31 | A carried name (from a library entity or card) is taken as-is, made unique, with no extension drop. Q9 applies to file names only (ticket 02) |
+| Q32 | The server's Supporter linked-image check learns the Media List in its own ticket (10, FormamorphServer). It deploys before a client release that holds ticket 03 (user, 2026-11-16) |
+| Q33 | Released clients can't read list-form worlds. On the release that holds ticket 03, the server's client minimum rises to that version, so old apps get Update Required instead of a world without pictures (user, 2026-11-16) |
+| Q34 | Migration takes a carried embedded `name` as the entry name (Q31); the subject fallback applies only when there is none. Every loaded world gets a Media List, even an empty one (ticket 03) |
 
 ## Prototype
 
@@ -189,5 +192,6 @@ Every guard gets a test that fails when its bug returns (`test-bar` skill). The 
 ## Further Notes
 
 - **Open intent question for tickets:** does an item override apply per Item or per Item Instance? Q12 settled that scripts can switch item images, not where the override lives. Ask the spec session before building it.
+- **Release steps for the release that holds ticket 03:** deploy ticket 10 first, then raise the server's client minimum to that release's version (Q32, Q33).
 - The Media List grows the published world's JSON by a name per entry and shrinks it by every merged duplicate.
 - Related: the Avatar store and its pick matching (the pattern this follows), Linked Images (URL values), Image Visibility Rules (rules on each link).
