@@ -1,6 +1,6 @@
 # 16: Contribution Entity Names (Server)
 
-Status: ready-for-human
+Status: done
 Base: 7a4f873
 Repo: FormamorphServer
 Blocked by: None (can start immediately)
