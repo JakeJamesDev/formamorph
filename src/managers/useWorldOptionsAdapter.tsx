@@ -151,7 +151,7 @@ function TargetRowValue({ items, value, label, onChange }: {
 
 const TRAIT_STATES = [{ id: 'on', name: 'On' }, { id: 'off', name: 'Off' }];
 
-/** One Preset value's rows: each sets one shown Option to a value, or turns one trait on or off. */
+/** One Preset value's rows: each sets a shown Option, a trait, the persona or the Starting Location. */
 function PresetRowsField({ rows, targets, label, onChange }: {
   rows: readonly PresetRow[];
   targets: RowTargets;
@@ -180,7 +180,7 @@ function PresetRowsField({ rows, targets, label, onChange }: {
               value={known ? key : ''}
               onValueChange={(k) => { const next = choices.find((c) => targetKey(c) === k); if (next) set(index, next); }}
             >
-              <SelectTrigger aria-label={`${rowLabel} Target`} className="w-56 min-w-0"><SelectValue placeholder="Pick an Option or Trait" /></SelectTrigger>
+              <SelectTrigger aria-label={`${rowLabel} Target`} className="w-56 min-w-0"><SelectValue placeholder="Pick What to Set" /></SelectTrigger>
               <SelectContent>
                 {targets.options.length > 0 && (
                   <SelectGroup>

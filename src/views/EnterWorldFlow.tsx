@@ -318,12 +318,12 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
       const owner = ownerId === null ? undefined : owners.find((e) => e.id === ownerId);
       const trait = (ownerId === null ? entryWorld.traits : owner?.traits ?? []).find((t) => t.id === traitId);
       if (!trait || isHidden(trait)) return [];
-      return [owner && ownerId !== playedEntityId(entryDraft.persona) ? `${owner.name}: ${trait.name}` : trait.name];
+      return [owner && ownerId !== playedEntityId(applied.draft.persona) ? `${owner.name}: ${trait.name}` : trait.name];
     };
     const traitsNotApplied = notice.skipped.flatMap((row) => (row.kind === 'trait' ? presetTraitName(presetRowRef(row)) : []));
     const notSet = notice.skipped.flatMap((row) => {
-      if (row.kind === 'persona') return ['Persona'];
-      if (row.kind === 'location') return ['Starting Location'];
+      if (row.kind === 'persona') return entryWorld.entities.some((e) => e.id === row.entityId) ? ['Persona'] : [];
+      if (row.kind === 'location') return locations.some((l) => l.id === row.locationId) ? ['Starting Location'] : [];
       const option = row.kind === 'option' ? worldOptions.find((o) => o.id === row.optionId) : undefined;
       return option ? [resolvePH(option.name)] : [];
     });

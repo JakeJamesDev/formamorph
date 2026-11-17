@@ -142,7 +142,7 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
   const optionPage = (option: WorldOption) => add('option', option.id, option.name, [], lines(
     `# ${option.name}`,
     option.type === 'preset'
-      ? facts('World Option (preset)', option.mode === 'snapshot' ? 'Resets unset Options to the defaults' : 'Keeps unset Options')
+      ? facts('World Option (preset)', option.mode === 'snapshot' ? 'Resets unset Options and traits to the defaults' : 'Keeps unset Options and traits')
       : facts(`World Option (${option.type})`, !option.shownToPlayer && 'Hidden', option.midGame && 'Player can change it in play'),
     field('Player Description', text(option.playerDescription)),
     option.type === 'preset' && `**Values:**\n${option.values.map((value) => `- ${text(value.name)}${value.description.trim() ? `: ${text(value.description)}` : ''}`).join('\n')}`,

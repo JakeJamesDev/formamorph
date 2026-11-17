@@ -70,7 +70,7 @@ The player sees a notice of what the value turned on and off, and of a new perso
 
 - Its trait is **Always On** or **Hidden**, or a requirement blocks it.
 - Two rows block each other, or the rows pick more traits than their category allows.
-- Its entity isn't in the cast at the start.
+- Its entity isn't in the story at the start, such as a Persona-Only entity the player doesn't play.
 - It sets a hidden Option, another Preset, or a value the Option no longer has.
 - Its persona is no longer marked as one, or the Starting Location step wouldn't offer its location.
 - You deleted its trait, Option, persona or location. The warning counts these, such as **2 deleted traits**.

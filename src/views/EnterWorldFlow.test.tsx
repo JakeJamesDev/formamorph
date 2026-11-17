@@ -1026,11 +1026,16 @@ describe('a Preset with persona and location rows at world entry', () => {
       id: 'start', name: 'Start', type: 'preset', mode: 'snapshot',
       values: [{ id: 'watch', name: 'Night Watch', description: 'Keep the harbor', rows: [
         { kind: 'persona', entityId: 'keeper' }, { kind: 'location', locationId: 'harbor' },
+      ] }, { id: 'lamp', name: 'Lamplighter', description: '', rows: [
+        { kind: 'persona', entityId: 'keeper' }, { kind: 'trait', traitId: 'lantern', ownerId: 'keeper', on: true },
+      ] }, { id: 'lost', name: 'Lost Watch', description: '', rows: [
+        { kind: 'persona', entityId: 'deleted' }, { kind: 'location', locationId: 'harbor' },
       ] }],
     }];
     // The keeper starts on the hill, so the location row must win over the persona's own start.
     const keeper = {
       id: 'keeper', name: 'Harbor Keeper', playerDescription: '', aiDescription: '', aiSummary: '', persona: true, locations: ['hill'],
+      traits: [{ id: 'lantern', name: 'Lantern', statChanges: [] }],
     };
     Object.assign(record.data, { options, entities: [keeper] });
     await WorldStorageService.storeWorld(record);
@@ -1051,5 +1056,21 @@ describe('a Preset with persona and location rows at world entry', () => {
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][3]).toBe('harbor');
     expect(onStartGame.mock.calls[0][6]).toEqual({ ref: { source: 'world', entityId: 'keeper' } });
+  });
+
+  it('names the new persona’s own traits without an owner, since that persona is now played', async () => {
+    renderEnterWorld({ onStartGame: vi.fn() });
+    await enter();
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'World setup categories' })).getByRole('button', { name: /^World Options/ }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Lamplighter' }));
+    expect(screen.getByRole('status')).toHaveTextContent(/^Applied Lamplighter\. Turned on Lantern\. Persona set to Harbor Keeper\./);
+  });
+
+  it('leaves a row whose persona was deleted out of the notice', async () => {
+    renderEnterWorld({ onStartGame: vi.fn() });
+    await enter();
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'World setup categories' })).getByRole('button', { name: /^World Options/ }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Lost Watch' }));
+    expect(screen.getByRole('status')).toHaveTextContent(/^Applied Lost Watch\. Starting Location set to Harbor\.Dismiss$/);
   });
 });
