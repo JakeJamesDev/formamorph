@@ -600,6 +600,17 @@ function hostReads(): HostReads {
   };
 }
 
+/** One lazy map's host slots (Q3, Q6): a slot per entry, in `entries` order, and one slot holding, in that order,
+ *  the data of each entry its own slot has not sent, null for the rest. Data is built on the read that sends it. */
+function lazyEntrySlots<T>(reads: HostReads, entries: readonly T[], build: (entry: T) => unknown): { slots: number[]; all: number } {
+  const sent: boolean[] = [];
+  const send = (at: number) => { sent[at] = true; return build(entries[at]); };
+  return {
+    slots: entries.map((_, at) => reads.deferred(() => send(at))),
+    all: reads.deferred(() => entries.map((_, at) => (sent[at] ? null : send(at)))),
+  };
+}
+
 /** The prelude that binds `HOST_READ`: a slot's value from the host on first read, from its cache after. */
 const HOST_READ_PRELUDE = [
   `const ${HOST_READ} = ((hook, parse) => {`,
@@ -629,6 +640,10 @@ const ENTITY_WRITES = '__formamorphEntityWrites';
 const DICTIONARY_WRITES = '__formamorphDictionaryWrites';
 // The `placeholders` prelude's view of one owner node, which the owner entries' `placeholders` read.
 const OWNER_VIEW = '__formamorphOwnerPlaceholders';
+// The `placeholders` prelude's reserver of an empty owner's place in its reader.
+const OWNER_RESERVE = '__formamorphReserveOwner';
+/** The Proxy traps besides `get` that a placeholder root's view loads its subtree on. */
+const LAZY_VIEW_TRAPS = ['has', 'ownKeys', 'getOwnPropertyDescriptor', 'set', 'defineProperty', 'deleteProperty', 'preventExtensions', 'isExtensible'] as const;
 const STAT_WRITES = '__formamorphStatWrites';
 // `owner.stats`, which the entities prelude hangs on the owner's entry, and the reader of its writes.
 const OWNER_STATS = '__formamorphOwnerStats';
@@ -784,6 +799,8 @@ interface FlatPlaceholderMap {
   /** Every node, each once, in the order a walk from the top reaches them. */
   nodes: readonly SandboxPlaceholderNode[];
   indexOf: ReadonlyMap<SandboxPlaceholderNode, number>;
+  /** The top nodes and the owner nodes, each once: the nodes whose subtree loads on its first read (Q1, Q15). */
+  roots: readonly SandboxPlaceholderNode[];
 }
 
 /** Flatten the map and the owner nodes the entries carry. A node shared by two routes takes one index, so it
@@ -801,7 +818,26 @@ function flattenPlaceholderMap(
   };
   for (const node of top) visit(node);
   for (const node of owned) if (node) visit(node);
-  return { top, nodes, indexOf };
+  const roots = [...new Set([...top, ...owned.filter((node) => !!node)])];
+  return { top, nodes, indexOf, roots };
+}
+
+/** Each node `root` reaches, itself first, as `[index, spec]`: its path, its entry, and its children by key. */
+function placeholderSubtree(root: SandboxPlaceholderNode, indexOf: FlatPlaceholderMap['indexOf']): [number, unknown][] {
+  const seen = new Set<SandboxPlaceholderNode>();
+  const out: [number, unknown][] = [];
+  const walk = (node: SandboxPlaceholderNode) => {
+    if (seen.has(node)) return;
+    seen.add(node);
+    out.push([indexOf.get(node)!, {
+      p: [node.ownedBy ?? '', ...node.path],
+      ...(node.entry ? { e: { id: node.entry.id, name: node.name, value: node.entry.value, values: node.entry.values, text: node.entry.text } } : {}),
+      ...(node.children?.length ? { c: node.children.map((child) => [child.name, indexOf.get(child)]) } : {}),
+    }]);
+    for (const child of node.children ?? []) walk(child);
+  };
+  walk(root);
+  return out;
 }
 
 /**
@@ -816,26 +852,33 @@ function flattenPlaceholderMap(
  * `[index, 'unpin']`; an entry a run replaced wholesale is a write of itself when it is a string or a list,
  * else of its own value.
  *
- * It also hands back an owner node's view by index, each owner entry's `placeholders`.
+ * It also hands back an owner node's view by index, each owner entry's `placeholders`, and a reserver that
+ * keeps a lazily built entry's empty owner in the reader's order.
+ *
+ * Each top node and owner node is a root: its subtree comes from the host on the first touch of its view
+ * (Q1, Q15), and a listing of the map loads every top subtree in one call (Q6). A row names its node by the
+ * index the host gave it, so a subtree loaded late reads back in the same order as one built at once.
  *
  * `stats` and `traits` are flat maps and share `trackedMapPrelude`. This one does not: its objects nest, one
  * node sits at two keys, and a key a run adds has to be told apart from the members its node was built with.
  * A factory serving both shapes would carry every one of those cases for the two maps that never meet them.
  */
-const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): string => {
-  const keyed = (children: readonly SandboxPlaceholderNode[]) =>
-    children.map((child) => [child.name, indexOf.get(child)]);
+const placeholdersPrelude = ({ top, nodes, indexOf, roots }: FlatPlaceholderMap, reads: HostReads): string => {
+  // A listing sends only the top subtrees no root read has sent (Q6).
+  const sent = new Set<SandboxPlaceholderNode>();
+  const send = (root: SandboxPlaceholderNode) => { sent.add(root); return placeholderSubtree(root, indexOf); };
   const spec = {
-    nodes: nodes.map((node) => ({
-      p: [node.ownedBy ?? '', ...node.path],
-      ...(node.entry ? { e: { id: node.entry.id, name: node.name, value: node.entry.value, values: node.entry.values, text: node.entry.text } } : {}),
-      ...(node.children?.length ? { c: keyed(node.children) } : {}),
-    })),
-    top: keyed(top),
+    count: nodes.length,
+    // A top key with whether its node holds an entry, which a wholesale replacement reads without a load.
+    top: top.map((node) => [node.name, indexOf.get(node), !!node.entry]),
+    roots: Object.fromEntries(roots.map((root) => [indexOf.get(root), reads.deferred(() => send(root))])),
+    all: reads.deferred(() => top.filter((node) => !sent.has(node)).flatMap(send)),
   };
   return [
-    `const [placeholders, ${PLACEHOLDER_WRITES}, ${OWNER_VIEW}] = ((stringify, keys, isArray, define, roll) => {`,
+    `const [placeholders, ${PLACEHOLDER_WRITES}, ${OWNER_VIEW}, ${OWNER_RESERVE}] = ((stringify, keys, isArray, define, roll, read, reflect) => {`,
     `  const spec = JSON.parse(${JSON.stringify(JSON.stringify(spec))});`,
+    `  const nodes = [];`,
+    `  const built = [];`,
     `  const states = [];`,
     `  const strays = Object.create(null);`,
     `  const track = (target, state, id, name) => {`,
@@ -865,19 +908,6 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
     `  const view = (target, path, absent = false) => new Proxy(target, {`,
     `    get: (t, key) => (typeof key !== 'string' || key in t ? t[key] : strayAt(path, key, absent)),`,
     `  });`,
-    `  const targets = spec.nodes.map(() => Object.create(null));`,
-    `  const views = spec.nodes.map((n, i) => view(targets[i], n.p));`,
-    `  const members = (parent, pairs) => { for (const [key, at] of pairs) parent[key] = views[at]; };`,
-    `  spec.nodes.forEach((n, i) => members(targets[i], n.c || []));`,
-    `  spec.nodes.forEach((n, i) => {`,
-    `    if (!n.e) return;`,
-    `    states[i] = { value: n.e.value, text: n.e.text, assigned: false, unpinned: false, readOnly: [] };`,
-    `    targets[i].values = n.e.values;`,
-    `    targets[i].roll = () => roll(i);`,
-    `    track(targets[i], states[i], n.e.id, n.e.name);`,
-    `  });`,
-    `  const root = Object.create(null);`,
-    `  members(root, spec.top);`,
     // Every key each object is meant to carry. A run can also write a key no node answers, which lands on
     // the object itself rather than on a blank entry, so the reader diffs against these to find it.
     `  const expected = (pairs, entry) => {`,
@@ -886,36 +916,74 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
     `    if (entry) for (const member of ${JSON.stringify(PLACEHOLDER_ENTRY_MEMBERS)}) set[member] = 1;`,
     `    return set;`,
     `  };`,
-    `  const scanned = [{ object: root, built: expected(spec.top, false), path: [''] }]`,
-    `    .concat(spec.nodes.map((n, i) => ({ object: targets[i], built: expected(n.c || [], !!n.e), path: n.p })));`,
+    `  const targets = [];`,
+    `  const views = [];`,
+    // Each built node's object for the reader, by index.
+    `  const scans = [];`,
     // Every key an entry actually sits at, so a run that replaced one wholesale is read back as a write of
     // it. A child whose name lost to a member of its parent sits at no key, so it has no site here.
     `  const sites = [];`,
-    `  const site = (parent, pairs) => {`,
-    `    for (const [key, at] of pairs) if (parent[key] === views[at] && spec.nodes[at].e) {`,
-    `      sites.push({ parent, key, at });`,
+    `  const targetOf = (i) => targets[i] || (targets[i] = Object.create(null));`,
+    `  const viewOf = (i) => views[i] || (views[i] = built[i] ? view(targetOf(i), nodes[i].p) : lazyView(i));`,
+    // One batch at a time: every node's members, then every entry's own, then the sites, as one build of the whole map does.
+    `  const build = (batch) => {`,
+    `    const fresh = [];`,
+    `    for (const [i, n] of batch) if (!built[i]) { nodes[i] = n; built[i] = true; fresh.push([i, n]); }`,
+    `    for (const [i, n] of fresh) for (const [key, at] of n.c || []) targetOf(i)[key] = viewOf(at);`,
+    `    for (const [i, n] of fresh) {`,
+    `      if (!n.e) continue;`,
+    `      states[i] = { value: n.e.value, text: n.e.text, assigned: false, unpinned: false, readOnly: [] };`,
+    `      targetOf(i).values = n.e.values;`,
+    `      targets[i].roll = () => roll(i);`,
+    `      track(targets[i], states[i], n.e.id, n.e.name);`,
+    `    }`,
+    `    for (const [i, n] of fresh) {`,
+    `      scans[i] = { object: targetOf(i), built: expected(n.c || [], !!n.e), path: n.p };`,
+    `      for (const [key, at] of n.c || []) if (targets[i][key] === views[at] && nodes[at].e) sites.push({ parent: targets[i], key, at, rank: i });`,
     `    }`,
     `  };`,
-    `  site(root, spec.top);`,
-    `  spec.nodes.forEach((n, i) => site(targets[i], n.c || []));`,
+    `  const load = (i) => { if (!built[i]) build(read(spec.roots[i])); };`,
+    // A root's view before its subtree is in: any touch loads the subtree, then acts on the filled object.
+    `  const lazyView = (i) => {`,
+    `    const handler = { get: (t, key) => { load(i); return typeof key !== 'string' || key in t ? t[key] : strayAt(nodes[i].p, key, false); } };`,
+    `    for (const trap of keys(reflect)) handler[trap] = (...args) => { load(i); return reflect[trap](...args); };`,
+    `    return new Proxy(targetOf(i), handler);`,
+    `  };`,
+    `  const root = Object.create(null);`,
+    `  for (const [key, at] of spec.top) root[key] = viewOf(at);`,
+    `  for (const [key, at, entry] of spec.top) if (entry && root[key] === views[at]) sites.push({ parent: root, key, at, rank: -1 });`,
+    `  const rootView = new Proxy(root, {`,
+    `    get: (t, key) => (typeof key !== 'string' || key in t ? t[key] : strayAt([''], key, false)),`,
+    `    ownKeys: (t) => {`,
+    `      if (spec.top.some(([, at]) => !built[at])) build(read(spec.all));`,
+    `      return reflect.ownKeys(t);`,
+    `    },`,
+    `  });`,
+    // Empty owners, in the order a build of every entry at once makes them; a lazy entry reserves its place.
+    `  const owned = [];`,
+    `  const reserve = () => { const rec = { object: null }; owned.push(rec); return rec; };`,
     `  const readWrites = () => {`,
     `    const replaced = Object.create(null);`,
-    `    for (const { parent, key, at } of sites) {`,
+    // Root first, then by parent index, as one build of the whole map walks them, so the same replacement wins.
+    `    for (const { parent, key, at } of [...sites].sort((a, b) => a.rank - b.rank)) {`,
     `      const held = parent[key];`,
     `      if (held === views[at]) continue;`,
     `      replaced[at] = typeof held === 'string' || held == null || isArray(held) ? held : held.value;`,
     `    }`,
     `    const rows = [];`,
-    `    spec.nodes.forEach((n, i) => {`,
-    `      if (!n.e) return;`,
+    `    for (let i = 0; i < spec.count; i += 1) {`,
     `      if (i in replaced) rows.push([i, 'set', replaced[i]]);`,
+    `      else if (!states[i]) continue;`,
     `      else if (states[i].unpinned) rows.push([i, 'unpin']);`,
     `      else if (states[i].assigned) rows.push([i, 'set', states[i].value]);`,
-    `    });`,
+    `    }`,
     `    const missed = [];`,
     `    const missedOwners = [];`,
     `    const seen = Object.create(null);`,
     `    const miss = (path, absent) => { const at = stringify(path); if (!seen[at]) { seen[at] = 1; (absent ? missedOwners : missed).push(path); } };`,
+    `    const scanned = [{ object: root, built: expected(spec.top, false), path: [''] }];`,
+    `    for (let i = 0; i < spec.count; i += 1) if (scans[i]) scanned.push(scans[i]);`,
+    `    for (const rec of owned) if (rec.object) scanned.push(rec);`,
     `    for (const { object, built, path, absent } of scanned) {`,
     `      for (const key of keys(object)) if (!(key in built)) miss([...path, key], absent);`,
     `    }`,
@@ -924,20 +992,23 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
     `      if (state.assigned || state.unpinned) miss(state.path, state.absent);`,
     `    }`,
     `    const readOnly = [];`,
-    `    spec.nodes.forEach((n, i) => { if (n.e) for (const field of states[i].readOnly) readOnly.push([...n.p, field]); });`,
+    `    for (let i = 0; i < spec.count; i += 1) if (states[i]) for (const field of states[i].readOnly) readOnly.push([...nodes[i].p, field]);`,
     `    for (const at of keys(strays)) for (const field of strays[at].state.readOnly) readOnly.push([...strays[at].state.path, field]);`,
     `    return stringify([rows, missed, readOnly, missedOwners]);`,
     `  };`,
     // An owner entry's `placeholders`: its node's view, or an empty owner of its own whose writes the reader
-    // scans like any node's. `absent` marks the owner no run can know: an unknown name or the empty persona.
-    `  const ownerView = (at, path, absent) => {`,
-    `    if (at >= 0) return views[at];`,
+    // scans like any node's, in the place `rec` reserved. `absent` marks the owner no run can know: an unknown
+    // name or the empty persona.
+    `  const ownerView = (at, path, absent, rec) => {`,
+    `    if (at >= 0) return viewOf(at);`,
     `    const target = Object.create(null);`,
-    `    scanned.push({ object: target, built: Object.create(null), path, absent });`,
+    `    const scan = rec || reserve();`,
+    `    scan.object = target; scan.built = Object.create(null); scan.path = path; scan.absent = absent;`,
     `    return view(target, path, absent);`,
     `  };`,
-    `  return [view(root, ['']), readWrites, ownerView];`,
-    `})(JSON.stringify, Object.keys, Array.isArray, Object.defineProperty, globalThis.${ROLL_HOOK});`,
+    `  return [rootView, readWrites, ownerView, reserve];`,
+    `})(JSON.stringify, Object.keys, Array.isArray, Object.defineProperty, globalThis.${ROLL_HOOK}, ${HOST_READ},`,
+    `  ${JSON.stringify(LAZY_VIEW_TRAPS)}.reduce((out, trap) => (out[trap] = Reflect[trap], out), Object.create(null)));`,
     `delete globalThis.${ROLL_HOOK};`,
   ].join('\n');
 };
@@ -966,6 +1037,9 @@ const TRAIT_MAP: TrackedMapKind = {
 const traitData = (entries: readonly SandboxTrait[]) =>
   Object.fromEntries(entries.map(({ name, enabled, acquired, id = '', mode = 'optional', available = true, group = '', playerToggle = false }) =>
     [name, { enabled, acquired, id, name, mode, available, group, playerToggle }]));
+
+/** An entity entry's verbs, in the order its `moves` holds them. */
+const ENTITY_VERBS = ['move', 'follow', 'unfollow', 'meet', 'diary'] as const;
 
 /** The fields on an entity entry that a write never reaches. */
 const ENTITY_READ_ONLY_FIELDS = [
@@ -1001,41 +1075,86 @@ const isPlayed = (entity: SandboxEntity, persona: SandboxEntity): boolean =>
 /** Whether Item Instances and money at `entity` are the player's. */
 const holdsForPlayer = (entity: SandboxEntity, persona: SandboxEntity): boolean => isPlayed(entity, persona) || !!entity.holdsAsPlayer;
 
-/** JS source of `(fields, entries, blank, build) => [map, readWrites, entry]`: frozen entries with read-only
- *  `fields`, built by `build(key, data, unknown) => [values, rows, hidden?, setters?]`, where `hidden` fields are
- *  left out of the entry's keys and a field in `setters` takes its write there; an unknown name builds from `blank`.
- *  `entry(key, data, unknown, tag)` builds one more, whose reader row carries `tag`. */
-const READ_ONLY_ENTRY_MAP = `(fields, entries, blank, build) => {
+/** JS source of `(fields, hidden, fixed, fill, note) => entry`: a frozen entry whose `fields` are accessors made
+ *  before its data. A read or a write of a field calls `fill()` for `{ values, setters }` and acts on those; a field
+ *  with no setter calls `note(field)`. `hidden` fields are left out of the entry's keys; a field of `fixed` reads
+ *  its value there without a fill. */
+const LAZY_ENTRY = `(fields, hidden, fixed, fill, note) => {
+  const out = {};
+  for (const field of fields) {
+    const get = fixed && field in fixed ? () => fixed[field] : () => fill().values[field];
+    const set = (next) => { const { setters } = fill(); return setters[field] ? setters[field](next) : note(field); };
+    define(out, field, { enumerable: !hidden.includes(field), get, set });
+  }
+  return freeze(out);
+}`;
+
+/** JS source of `(map, stray, fillAll) => proxy`: `map` frozen, an unknown name read as `stray(name)` once per name,
+ *  and a listing calling `fillAll()` before it lists (Q6). */
+const LAZY_MAP = `(map, stray, fillAll) => {
+  const strays = Object.create(null);
+  return new Proxy(freeze(map), {
+    get: (target, key) => typeof key !== 'string' || key in target ? target[key] : strays[key] || (strays[key] = stray(key)),
+    ownKeys: (target) => { fillAll(); return ownKeys(target); },
+  });
+}`;
+
+/** JS source of `(fields, entries, blank, build, lazy?) => [map, readWrites, entry, readRows]`: frozen entries with
+ *  read-only `fields`, built by `build(key, data, unknown, reserved) => [values, rows, hidden?, setters?]`, where
+ *  `hidden` fields are left out of the entry's keys and a field in `setters` takes its write there; an unknown name
+ *  builds from `blank`. An entry's data is an object, or a host slot whose data loads on the first field read, with
+ *  its `hidden` fields given beside it. `lazy.all` is the slot of every entry's data in `entries` order, which a
+ *  listing loads in one call; `lazy.reserve(key, unknown)` runs as each entry is made, before its data, and its
+ *  result reaches `build`. `entry(key, data, unknown, tag, hidden, fixed)` makes one more, whose reader row carries
+ *  `tag`. Rows keep the order the entries were made in, loaded or not. */
+const READ_ONLY_ENTRY_MAP = `(fields, entries, blank, build, lazy = {}) => {
   const readers = [];
-  const entry = (key, data, unknown, tag = null) => {
-    const [values, rows, hidden = [], setters = {}] = build(key, data, unknown);
+  const reserve = lazy.reserve || (() => null);
+  let made = null;
+  const entry = (key, data, unknown, tag = null, hidden = [], fixed = null) => {
+    const reserved = reserve(key, unknown);
     const written = [];
-    readers.push([key, unknown, rows, written, tag]);
-    const out = {};
-    for (const field of fields) {
-      const set = setters[field] || (() => (${ADD_ONCE})(written, field));
-      define(out, field, { enumerable: !hidden.includes(field), get: () => values[field], set });
-    }
-    return freeze(out);
+    let built = null;
+    const fill = (given) => {
+      if (built) return built;
+      const [values, rows, hiddenFields = [], setters = {}] = build(key, given === undefined ? ${HOST_READ}(data) : given, unknown, reserved);
+      return (built = { values, rows, hiddenFields, setters });
+    };
+    readers.push([key, unknown, () => (built ? built.rows() : []), written, tag]);
+    const eager = typeof data !== 'number';
+    if (eager) fill(data);
+    made = { fill, loaded: () => !!built };
+    return (${LAZY_ENTRY})(fields, eager ? built.hiddenFields : hidden, fixed, fill, (field) => (${ADD_ONCE})(written, field));
   };
   const map = Object.create(null);
-  for (const [name, data] of entries) map[name] = entry(name, data, false);
-  const strays = Object.create(null);
-  const proxy = new Proxy(freeze(map), {
-    get: (target, key) => typeof key !== 'string' || key in target ? target[key]
-      : strays[key] || (strays[key] = entry(key, blank, true)),
-  });
+  const filled = [];
+  for (const [name, data, hidden, fixed] of entries) {
+    map[name] = entry(name, data, false, null, hidden, fixed);
+    filled.push(made);
+  }
+  const fillAll = () => {
+    if (!filled.some((one) => !one.loaded())) return;
+    const all = ${HOST_READ}(lazy.all);
+    filled.forEach((one, at) => { if (all[at] !== null) one.fill(all[at]); });
+  };
+  const proxy = (${LAZY_MAP})(map, (key) => entry(key, blank, true), fillAll);
   const readRows = () => readers
     .map(([key, unknown, rows, written, tag]) => [key, unknown, rows(), written, tag])
     .filter((row) => row[2].length || row[3].length);
   return [proxy, () => stringify(readRows()), entry, readRows];
 }`;
 
+// The read-only entry-map factory, bound once for every prelude that builds one.
+const ENTRY_MAP = '__formamorphEntryMap';
+
+/** The prelude that binds `ENTRY_MAP`. */
+const ENTRY_MAP_PRELUDE = `const ${ENTRY_MAP} = ((stringify, freeze, define, ownKeys) => ${READ_ONLY_ENTRY_MAP})(JSON.stringify, Object.freeze, Object.defineProperty, Reflect.ownKeys);`;
+
 /** The prelude that binds `names` to what `body` returns, with the read-only entry-map factory in scope as
  *  `entryMap` and the spec as `spec`. */
 const readOnlyEntryMapPrelude = (names: string, spec: unknown, body: readonly string[]): string => [
   `const [${names}] = ((stringify, freeze, define) => {`,
-  `  const entryMap = ${READ_ONLY_ENTRY_MAP};`,
+  `  const entryMap = ${ENTRY_MAP};`,
   `  const spec = JSON.parse(${JSON.stringify(JSON.stringify(spec))});`,
   ...body.map((line) => `  ${line}`),
   `})(JSON.stringify, Object.freeze, Object.defineProperty);`,
@@ -1080,12 +1199,19 @@ const entitiesPrelude = (
     };
   };
   const own = place.kind === 'own' ? place.entity : undefined;
+  const named = [...byName];
+  // Each entry's data loads from its host slot on the first read of a field (Q1, Q3).
+  const slots = lazyEntrySlots(reads, named, ([name, entity]) => data(entity, place.kind === 'entity' && place.name === name));
   const spec = {
-    entities: [...byName].map(([name, entity]) => [name, data(entity, place.kind === 'entity' && place.name === name)]),
-    persona: hasEntityKey(persona.name) ? null : data(persona, place.kind === 'persona'),
+    entities: named.map(([name, entity], at) => [name, slots.slots[at], isPlayed(entity, persona)]),
+    all: slots.all,
+    persona: hasEntityKey(persona.name) ? null : reads.deferred(() => data(persona, place.kind === 'persona')),
     ownerName: place.kind === 'entity' ? place.name : null,
+    personaOwner: place.kind === 'persona',
     // An owner entry of its own carries its name; the empty owner's placeholders belong to no one.
-    ownEntry: own === undefined ? null : { ...(own ? { ...data(own, true), name: own.name } : { owner: true, absent: true }), own: true },
+    ownEntry: own === undefined ? null : own
+      ? { slot: reads.deferred(() => ({ ...data(own, true), name: own.name, own: true })), played: isPlayed(own, persona) }
+      : { data: { owner: true, absent: true, own: true } },
     bodies,
   };
   return readOnlyEntryMapPrelude(`entities, persona, owner, ${ENTITY_WRITES}, ${ENTITY_STAT_WRITES}`, spec, [
@@ -1094,19 +1220,27 @@ const entitiesPrelude = (
     `const statMapOf = ((keys) => ${trackedMapFactory(statMapKind(blankStat, null))})(Object.keys);`,
     `const statReaders = [];`,
     `const meets = new Set();`,
-    `const statMap = (key, unknown, data) => {`,
-    `  const [map, rows] = statMapOf(data);`,
-    `  statReaders.push([key, unknown, rows]);`,
-    `  return map;`,
+    // The played entry's verbs are left out of its keys.
+    `const hiddenOf = (played) => (played ? ${JSON.stringify(ENTITY_VERBS)} : []);`,
+    // `owner.stats` is eager, so reading it loads no entry (Q16).
+    `const ownerFixed = Object.assign(Object.create(null), { stats: ${OWNER_STATS} });`,
+    // Each entry's reader places, taken as the entry is made, so the rows keep that order whenever its data loads.
+    `const reserve = (key, unknown) => {`,
+    `  const stats = { key, unknown, rows: null };`,
+    `  statReaders.push(stats);`,
+    `  return { stats, scan: ${OWNER_RESERVE}() };`,
     `};`,
-    `const [entities, readWrites, entry] = entryMap(${JSON.stringify(ENTITY_READ_ONLY_FIELDS)}, spec.entities, {}, (key, data, unknown) => {`,
+    `const entries = spec.entities.map(([name, slot, played]) => [name, slot, hiddenOf(played), name === spec.ownerName ? ownerFixed : null]);`,
+    `const [entities, readWrites, entry] = entryMap(${JSON.stringify(ENTITY_READ_ONLY_FIELDS)}, entries, {}, (key, data, unknown, reserved) => {`,
     `  const [traits, rows] = traitMap(data.traits || {});`,
-    `  const placeholders = data.own ? ${OWNER_VIEW}(data.ph ?? -1, ['owner', 'owner'], !!data.absent)`,
-    `    : ${OWNER_VIEW}(data.ph ?? -1, key ? ['entity', key] : ['persona', 'persona'], unknown || !key);`,
-    `  const stats = data.owner ? ${OWNER_STATS} : statMap(key, unknown, data.stats || {});`,
+    `  const placeholders = data.own ? ${OWNER_VIEW}(data.ph ?? -1, ['owner', 'owner'], !!data.absent, reserved.scan)`,
+    `    : ${OWNER_VIEW}(data.ph ?? -1, key ? ['entity', key] : ['persona', 'persona'], unknown || !key, reserved.scan);`,
+    `  let stats = ${OWNER_STATS};`,
+    `  if (!data.owner) [stats, reserved.stats.rows] = statMapOf(data.stats || {});`,
     `  const who = { id: data.id || '', name: data.own ? data.name || '' : key, played: !!data.played, unknown: unknown || !!data.absent };`,
     `  const write = (kind) => (target) => { ${ENTITY_WRITE}(who, kind, target); if (kind === 'meet') meets.add(who.id || who.name); };`,
-    `  const moves = { move: write('move'), follow: write('follow'), unfollow: write('unfollow'), meet: write('meet'), diary: write('diary') };`,
+    `  const moves = {};`,
+    `  for (const verb of ${JSON.stringify(ENTITY_VERBS)}) moves[verb] = write(verb);`,
     `  const blank = { id: '', type: '', pronouns: '', inScene: false, met: false, location: '', following: false, waiting: false, kind: '', action: '', held: false, knownIn: '', knownInPlaces: [], description: -1, summary: -1 };`,
     `  const aliases = Object.freeze([...(data.aliases || [])]);`,
     `  const knownInPlaces = Object.freeze([...(data.knownInPlaces || [])]);`,
@@ -1157,12 +1291,15 @@ const entitiesPrelude = (
     `    return freeze(out);`,
     `  };`,
     `  define(values, 'instances', { enumerable: true, get: () => generic || (generic = freeze((data.generic || []).map(instanceEntry))) });`,
-    `  return [lazy(values, ['description', 'summary'], '', ${NO_NOTE}), rows, who.played ? Object.keys(moves) : [], setters];`,
-    `});`,
-    `const persona = spec.persona ? entry('', spec.persona, false) : entities[${JSON.stringify(persona.name)}];`,
-    `const owner = spec.ownEntry ? entry('', spec.ownEntry, false, ${JSON.stringify(OWN_OWNER_TAG)})`,
+    `  return [lazy(values, ['description', 'summary'], '', ${NO_NOTE}), rows, hiddenOf(who.played), setters];`,
+    `}, { reserve, all: spec.all });`,
+    `const persona = spec.persona === null ? entities[${JSON.stringify(persona.name)}]`,
+    `  : entry('', spec.persona, false, null, hiddenOf(true), spec.personaOwner ? ownerFixed : null);`,
+    `const own = spec.ownEntry;`,
+    `const owner = own ? entry('', own.data || own.slot, false, ${JSON.stringify(OWN_OWNER_TAG)}, hiddenOf(!!own.played), own.data ? null : ownerFixed)`,
     `  : spec.ownerName !== null ? entities[spec.ownerName] : persona;`,
-    `const readStatWrites = () => stringify(statReaders.map(([key, unknown, rows]) => [key, unknown, rows()]).filter((row) => row[2].length));`,
+    `const readStatWrites = () => stringify(statReaders.filter((rec) => rec.rows)`,
+    `  .map((rec) => [rec.key, rec.unknown, rec.rows()]).filter((row) => row[2].length));`,
     `return [entities, persona, owner, readWrites, readStatWrites];`,
   ]);
 };
@@ -2583,6 +2720,7 @@ export const executeStatCode = async (
       reseedRandom(randomSeed ?? [...crypto.getRandomValues(new Uint32Array(4))]),
       `const ${STRINGIFY} = JSON.stringify;`,
       HOST_READ_PRELUDE,
+      ENTRY_MAP_PRELUDE,
       `const ${SELF_ASSIGNED} = [];`,
       statsPrelude({ root: 'stats', reader: STAT_WRITES, entries: keyedStats, blank: blankStat, selfName: selfNameIn('stats') }),
       statsPrelude({
@@ -2630,7 +2768,7 @@ export const executeStatCode = async (
       // A JSON string parsed in the VM, so a `__proto__` argument stays a plain key.
       // An item run's `args` comes with its event.
       ...(itemEvent ? [] : [`const args = Object.freeze(JSON.parse(${JSON.stringify(JSON.stringify(args ?? {}))}));`]),
-      placeholdersPrelude(placeholderMap),
+      placeholdersPrelude(placeholderMap, reads),
       trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
       entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf, standing, reads, bodies, instanceRowsOf(media, places)),
       locationsPrelude(places, standing, reads),
@@ -2643,7 +2781,7 @@ export const executeStatCode = async (
       // An accessor, so `notes = x` drops and lists the write as a locked field does.
       `Object.defineProperty(globalThis, 'notes', { enumerable: true, get: () => ${JSON.stringify(notes)}, set: () => ${LOOSE_NOTE}('notes') });`,
       ...(readOnly ? [`const ${READ_ONLY_VIEW_OF} = (${READ_ONLY_VIEW})(${LOOSE_NOTE});`] : []),
-      `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}, ${OWNER_STATS}, ${OWNER_STAT_WRITES}, ${ENTITY_STAT_WRITES}, ${HOST_READ}) {`,
+      `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}, ${OWNER_STATS}, ${OWNER_STAT_WRITES}, ${ENTITY_STAT_WRITES}, ${HOST_READ}, ${OWNER_RESERVE}, ${ENTRY_MAP}) {`,
       readOnly ? readOnlyCode(code) : code,
       `})(), ${selfRead('value')}, ${CODE_BOUND_FIELDS.map(selfRead).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
       `  ${STAT_WRITES}(), ${DICTIONARY_WRITES}(), ${STRINGIFY}(${SELF_ASSIGNED}), ${OWNER_STAT_WRITES}(), ${STRINGIFY}(${LOOSE_WRITES}),`,

@@ -159,15 +159,17 @@ describe('heavy text in the sandbox', () => {
   });
 
   describe('asks the host', () => {
-    it('never for a run that reads no heavy field', async () => {
+    it('only to load entries for a run that reads no heavy field', async () => {
       await read(`return [entities.Mira.name, locations.Dock.id, location.starting, memories[0].turn, dictionaries.Lore.id,
         Object.keys(entities), Object.keys(dictionaries)];`);
-      expect(hostCalls).toEqual([]);
+      // Mira's entry loads on its first read, and the listing loads the rest of `entities` in one call.
+      expect(hostCalls).toHaveLength(2);
     });
 
     it('once for a field read twice', async () => {
       await read('return [entities.Mira.description, entities.Mira.description, memories[1].text, memories[1].text];');
-      expect(hostCalls).toHaveLength(2);
+      // One call loads Mira's entry; each text is one more.
+      expect(hostCalls).toHaveLength(3);
     });
 
     it('once for one text two paths read', async () => {

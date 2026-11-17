@@ -80,6 +80,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Narration that fits Max Output Tokens now keeps its last paragraph.** Before, the app cut long replies short, even when the AI finished inside the limit.
     - **Narration keeps its line breaks when the words finish fading in.** Words wrap the same way while they appear as after. With Move or Scale on, a line can still shift now and then.
     - **"The Captain's Hall" no longer links to or counts as Captain Hall in narration.** A possessive now closes only the last word of a name, so "Captain Hall's sword" still matches.
+    - **Scripts now run faster on worlds with many entities and placeholders.** Each script pays only for the entities and placeholders it reads, so a large world no longer slows every turn.
   - **At new game, a trait group fills again when another pick locks its trait.** It takes the group's default, or else the first trait you can pick. Before, the group stayed empty and Begin stayed off.
   - **The Test Bench no longer calls a placeholder unused when its only chip is in a stranger field.** That covers Stranger Name and Stranger Description, which play already fills in.
 
