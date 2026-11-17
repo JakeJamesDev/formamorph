@@ -491,6 +491,10 @@ _Avoid_: linter (internal only), validator
 The Test Bench instrument where an author pastes prose and sees what would fire — entity presence and dictionary activation — including non-activations with their near-miss reason.
 _Avoid_: matcher preview, dry run
 
+**Media List**:
+A world's one store of images and sounds, each a **Media Entry** with a unique name. Entity, location, item, map, backdrop, cover and music fields link an entry by id, so one file can serve many places. Scripts switch what a field shows or plays by naming an entry. Library entities, cards and published entities keep their files embedded; a world converts at the boundary, the way it does Avatars. **Remove From Slot** unlinks one place; **Delete From World** removes the entry everywhere.
+_Avoid_: asset list, media library (the library is the player's local collection), unlink (names a library entity's linked copy)
+
 **Media tab**:
 The World Editor tab that lists every media item in a world (images, sounds, 3D Models and Avatars) with its stored size. It shows and manages two stores, the Media List and the Avatar store, plus the fields that still embed their files (3D Models, dictionary covers). Copy names the entity, location or dictionary that keeps an item by its name, never as its owner; "owner" is the glossary term for traits, stats and placeholders.
 _Avoid_: assets tab, files, owner (for the entity, location or dictionary that keeps a media item)

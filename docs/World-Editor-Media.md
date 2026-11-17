@@ -89,7 +89,7 @@ Visibility rules belong to each place, so you set them in the image panel with *
 **Import Media** in the header adds files before you decide where they go. Pick several at once.
 
 - 🖼️ Images and 🔊 sounds join the world under their file names, without the extension. They show as **Unused** until a slot uses them. Pick them with **Choose** in any slot.
-- 🧍 A `.vrm` or `.glb` file becomes an Avatar in **World › Avatars**.
+- 🧍 A `.vrm` file, or a `.glb` with VRM data, becomes an Avatar in **World › Avatars**. A `.glb` without VRM data isn't imported.
 - ♻️ A file the world already holds adds nothing new.
 - 📐 A large image first asks whether to optimize it, at the background budget.
 
@@ -117,11 +117,11 @@ The panel opens on the first new file.
 
 Select a card to open it in the panel. An entity's, location's or Map Background image opens the image panel, described below. Every other card opens on its own.
 
-- **Preview.** An image shows large. A 3D Model and an Avatar turn in the viewer. A sound shows its [sound slot](World-Editor-Entities#sound-slots), with its name, **Remove From Slot** and **Delete From World**.
+- **Preview.** An image shows large. A 3D Model and an Avatar turn in the viewer. A sound, the thumbnail and a Body's backdrop show their slot, with its name, **Remove From Slot** and **Delete From World**.
 - **Size and budget.** The file's size, and an image's size budget.
-- **Replace** swaps in a file you pick, on the thumbnail, a Body's backdrop, a 3D Model or a dictionary cover image. The file stays in the same slot. An image that is over budget, stored lossless, or smaller as a WebP first asks whether to optimize it, as an upload does.
+- **Replace** swaps in a file you pick, on a 3D Model or a dictionary cover image. The file stays in the same slot. An image that is over budget, stored lossless, or smaller as a WebP first asks whether to optimize it, as an upload does.
 - **Download** saves the file. A linked image or sound shows **Open Link**, which opens its address.
-- **Remove** clears the slot on those same cards, and the card leaves the gallery. Undo brings it back. A sound uses its slot's **Remove From Slot**.
+- **Remove** clears the slot on those same cards, and the card leaves the gallery. Undo brings it back. A slot uses its own **Remove From Slot**.
 - **Go to** opens the entity, location or dictionary that holds the file. World files show **Go to Overview**.
 
 ## Avatars

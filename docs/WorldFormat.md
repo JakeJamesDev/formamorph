@@ -154,8 +154,9 @@ Write new files in the current shape. A file with `scripts` loads in an older ve
 | `name` | ✓ | String | The world's name |
 | `description` | ✓ | String | The **Player-Facing Description**: card and listing text. The AI never reads it |
 | `author` | ✓ | String | Free text that names the author |
-| `thumbnail` | ✓ | [Image](#media-fields) \| `null` | The card image |
+| `thumbnail` | ✓ | [Image link](#media-fields) \| `null` | The card image |
 | `bgm` | ✓ | [Sound link](#media-fields) \| `null` | Background music |
+| `mediaList` | | Object | The world's [Media List](#media-fields): its named images and sounds, keyed by `id`. Absent = none |
 | `systemPrompt` | ✓ | String | The **AI-Facing Description**: what the AI reads about the world. Players never see it |
 | `tags` | ✓ | String[] | Listing tags |
 | `vrmStore` | | Object | The world's Avatars, keyed by `id`. Each value is `{ "name": String, "file": MediaAsset, "hash": String }`. `hash` is optional. Entities refer to an entry by `id` through `vrmPick` |
@@ -923,12 +924,27 @@ Each param has `name`, `type` (`"string"`, `"number"`, `"boolean"` or `"enum"`),
 - A base64 data URL, such as `data:image/png;base64,…`
 - Or an `http` or `https` URL. The app loads the image from that address
 
-**Gallery images** (entity, location and item `images`, and `mapBackground.images`) are objects:
+**The Media List** (`worldOverview.mediaList`) holds the world's images and sounds once each, keyed by `id`. Fields link to an entry by its `id`. Each entry:
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
-| `data` | ✓ | Image | The picture |
+| `id` | ✓ | String | The key the entry sits under |
+| `name` | ✓ | String | Unique in the world. Scripts set media by this name |
+| `kind` | ✓ | `"image"` \| `"sound"` | What it holds |
+| `data` | ✓ | String | A base64 data URL, or an `http` or `https` URL |
+| `type` | | String | The file's MIME type |
+| `hash` | | String | The file's content hash. Absent on a URL entry |
+
+**Gallery images** (entity, location and item `images`, `mapBackground.images`, and a Body backdrop's `image`) are objects. A world with a Media List writes the link form; a file without one holds the picture itself:
+
+| Field | Req. | Type | Meaning |
+|---|---|---|---|
+| `mediaId` | | String | The `id` of an image in `mediaList`. A link to an `id` the list lacks reads as no image |
+| `data` | | Image | The picture itself, in a file written before the Media List or a library entity. Either `mediaId` or `data` is set |
+| `name` | | String | The picture's name, carried with `data` so a library or card round trip keeps it |
 | `requires` | | [Requirement rows](#trait-requirements) | The Visibility rule. Absent = always shown. On a location or the Map Background, a condition with no `owner` reads the played persona |
+
+**Image links** (`thumbnail`) are `{ "mediaId": "<id>" }`, or an [Image](#media-fields) string in a file written before the Media List. The app moves embedded pictures into the list on load.
 
 **Sound links** (`bgm`, location `ambientSound`, entity `sound`) are `{ "mediaId": "<id>" }`: the `id` of a sound in `worldOverview.mediaList`. A link to an `id` the list lacks reads as no sound. A file written before the Media List holds the sound itself, a data URL for `bgm` and a `MediaAsset` for the others. The app moves it into the list on load.
 
