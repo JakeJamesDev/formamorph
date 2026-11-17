@@ -7,7 +7,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { formatMediaBytes, mediaParentKey, totalBytes, type MediaItem, type MediaParent } from '@/lib/mediaIndex';
 import { mediaParentSpec } from '@/lib/mediaParents';
 import ModelStorageService from '@/services/ModelStorageService';
-import type { Entity, MediaAsset, Placeholder, TraitRequirementRow } from '@/types';
+import type { Entity, Placeholder, TraitRequirementRow } from '@/types';
 import { EntityImageWidget } from './EntityFields';
 import { ImageGallery, ImageTags } from './ImageTagsField';
 import { LocationImageField } from './LocationImageField';
@@ -66,7 +66,7 @@ export function MediaImagePanel({ parent, images, framed, onFrame, avatar, place
   const { entities, editEntity, locations, updateLocation, worldOverview, updateWorldOverview, addMedia } = useGameData();
   const map = useMapBackground({ worldOverview, updateWorldOverview, addMedia, locations });
   const isMap = parent.kind === 'map';
-  const { replace, remove, setRules } = useMediaItemActions();
+  const { setRules } = useMediaItemActions();
   const entity = parent.kind === 'entity' ? entities.find((e) => e.id === parent.id) : undefined;
   const location = parent.kind === 'location' ? locations.find((l) => l.id === parent.id) : undefined;
   const item = images[framed];
@@ -78,12 +78,6 @@ export function MediaImagePanel({ parent, images, framed, onFrame, avatar, place
   const entityHost = useEntityRuleHost(entity?.id);
   const hostKind = mediaParentSpec(parent.kind).ruleHost;
   const ruleHost = hostKind === 'location' ? LOCATION_RULE_HOST : hostKind === 'entity' ? entityHost : undefined;
-  const removeFramed = (target: MediaItem) => {
-    // The frame stays on the same position, clamped. Ids are positional, so the id holds before and after.
-    const left = images.length - 1;
-    if (target.galleryIndex !== undefined && left > 0) onSelect(images[Math.min(target.galleryIndex, left - 1)].id);
-    void remove(target);
-  };
 
   return (
     <div className="space-y-4" data-media-panel={item?.id ?? ''} data-media-image-panel={mediaParentKey(parent)}>
@@ -136,12 +130,8 @@ export function MediaImagePanel({ parent, images, framed, onFrame, avatar, place
             <span className="font-medium text-foreground">{item.slot}</span>
             <span aria-hidden>·</span>
           </MediaFacts>
-          <MediaActionRow
-            item={item}
-            placeholders={placeholders}
-            onReplace={(media: MediaAsset) => void replace(item, media)}
-            onRemove={() => removeFramed(item)}
-          />
+          {/* The gallery's slot owns Import, Choose and removal (Q45). */}
+          <MediaActionRow item={item} placeholders={placeholders} />
           {ruleHost && item.galleryIndex !== undefined && <ImageRuleEditor host={ruleHost} rows={item.rules ?? []} onChange={setRule} />}
         </div>
       )}

@@ -1,3 +1,4 @@
+import type { TraitRequirementRow } from '@/types';
 import { bodyLabel } from './bodies';
 import { galleryLink } from './entityImages';
 import { isMediaRef } from './mediaList';
@@ -11,6 +12,8 @@ export interface MediaUse {
   owner: MediaParent;
   field: MediaUseField;
   index?: number;
+  /** The link's Visibility rule rows (Q11). */
+  requires?: TraitRequirementRow[];
 }
 
 const WORLD_OWNER: MediaParent = { kind: 'world', id: 'world', name: 'World' };
@@ -36,7 +39,7 @@ export function mediaUsage(w: MediaWorld): Map<string, MediaUse[]> {
   // `index` is the stored position, blanks included.
   const gallery = (owner: MediaParent, images: readonly unknown[] | undefined) => images?.forEach((raw, index) => {
     const link = galleryLink(raw);
-    if (link && 'mediaId' in link) add(link.mediaId, { owner, field: 'images', index });
+    if (link && 'mediaId' in link) add(link.mediaId, { owner, field: 'images', index, ...(link.requires ? { requires: link.requires } : {}) });
   });
 
   single(WORLD_OWNER, 'thumbnail', w.worldOverview.thumbnail);

@@ -176,6 +176,18 @@ function editorOver(initial: World) {
 describe('writing a slot places the file into the list', () => {
   const NEW = 'data:image/png;base64,TkVX';
 
+  it('names the backdrop of an unnamed Body "Body", as migration does', () => {
+    const raw = rawWorld();
+    raw.bodies[0].name = '';
+    const migrated = migrateWorld(raw as unknown as World);
+    expect(listOf(migrated)[idOf((migrated.bodies![0].backdrop as { image: unknown }).image)].name).toBe('Body 1');
+
+    const { editor, get } = editorOver(migrated);
+    writeMediaSlot(editor, { parent: { kind: 'body', id: 'imp', name: 'Unnamed Body' }, key: 'backdrop' }, { data: NEW });
+    const written = get().bodies![0].backdrop as { image: { mediaId: string } };
+    expect(listOf(get())[written.image.mediaId].name).toBe('Body 2');
+  });
+
   it('a replaced cover is a new entry named by its file, and the cover links it', () => {
     const { editor, get } = editorOver(world());
     writeMediaSlot(editor, { parent: { kind: 'world', id: 'world', name: 'World' }, key: 'thumbnail' }, { data: NEW, name: 'sunrise.png' });

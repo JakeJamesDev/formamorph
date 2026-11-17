@@ -17,6 +17,8 @@ const isEmbedded = (value: unknown): value is string => typeof value === 'string
 /** The subject names the fallback uses: the map and the cover have no record to name them. */
 export const MAP_SUBJECT = 'Map';
 export const COVER_SUBJECT = 'Cover';
+/** An unnamed Body's fallback subject (Q42). */
+export const BODY_SUBJECT = 'Body';
 
 /** The world cover's displayable data, whatever form it is stored in. A link the list lacks reads empty. */
 export const coverData = (overview: Pick<WorldOverview, 'thumbnail' | 'mediaList'> | null | undefined): string | undefined =>
@@ -62,7 +64,7 @@ export function migrateOtherImagesToMediaList(world: Fields): void {
   if (Array.isArray(world.bodies)) {
     world.bodies = world.bodies.map((body) => {
       if (!isRecord(body) || !isRecord(body.backdrop) || body.backdrop.kind !== 'image' || !isRecord(body.backdrop.image)) return body;
-      const [link] = linkAll(galleryLinks({ images: [body.backdrop.image as unknown as GalleryLink] }), subjectOf(body));
+      const [link] = linkAll(galleryLinks({ images: [body.backdrop.image as unknown as GalleryLink] }), subjectOf(body) || BODY_SUBJECT);
       return link ? { ...body, backdrop: { ...body.backdrop, image: link } } : body;
     });
   }

@@ -63,7 +63,8 @@ function AvatarPreview({ value }: { value: string }) {
   return url ? <VRMViewer key={url} modelUrl={url} /> : <Hint className="m-auto">Loading Avatar…</Hint>;
 }
 
-function Preview({ item }: { item: MediaItem }) {
+/** A large preview by kind. */
+export function Preview({ item }: { item: MediaItem }) {
   switch (item.kind) {
     case 'image':
       return <RemoteImg src={item.value} alt="" className="mx-auto max-h-[50vh] max-w-full rounded object-contain" />;
@@ -168,7 +169,7 @@ export function MediaItemPanel({ item, placeholders, onGoTo }: {
           className="contents"
           item={item}
           placeholders={placeholders}
-          {...(actsInItemPanel(item) ? { onReplace: (media: MediaAsset) => void replace(item, media), ...(item.blank ? {} : { onRemove: () => void remove(item) }) } : {})}
+          {...(actsInItemPanel(item) && !soundSlot ? { onReplace: (media: MediaAsset) => void replace(item, media), ...(item.blank ? {} : { onRemove: () => void remove(item) }) } : {})}
         />
         <GoToButton parent={item.parent} placeholders={placeholders} onGoTo={onGoTo} />
       </div>

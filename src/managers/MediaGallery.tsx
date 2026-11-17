@@ -67,6 +67,9 @@ function MediaCard({ item, images, selected, onSelect, placeholders }: {
       {rules > 0 && (
         <Badge variant="secondary" className="absolute left-1 top-1 px-1.5 py-0 text-meta font-normal">{rulesLabel(rules)}</Badge>
       )}
+      {item.unused && (
+        <Badge variant="outline" className="absolute left-1 top-1 bg-card px-1.5 py-0 text-meta font-normal">Unused</Badge>
+      )}
       {stacked && <Badge className="absolute right-1 top-1 px-1.5 py-0 text-meta" aria-label={`${images.length} images`}>{images.length}</Badge>}
       <span className="flex items-center justify-between gap-1 rounded-b-md px-1.5 py-1 text-meta">
         <span className="truncate"><MediaName item={item} placeholders={placeholders} /></span>

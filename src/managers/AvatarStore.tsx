@@ -61,10 +61,12 @@ export function useAvatarStore() {
   const step = useMediaStep();
   const mounted = useMountedRef();
 
-  const add = (name: string, file: MediaAsset, hash: string) => {
-    const next = addWorldVrm(storeRef.current, name, file, hash).store;
+  /** Returns the new Avatar's id. */
+  const add = (name: string, file: MediaAsset, hash: string): string => {
+    const { store: next, id } = addWorldVrm(storeRef.current, name, file, hash);
     storeRef.current = next;
     void step(`Add Avatar: ${labelName(name)}`, () => updateWorldOverview({ vrmStore: next }));
+    return id;
   };
 
   const rename = (id: string, name: string) =>

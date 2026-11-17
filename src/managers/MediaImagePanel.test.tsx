@@ -70,12 +70,12 @@ const lastLabel = (bench: ReturnType<typeof open>) => {
   return steps[cursor - 1]?.label;
 };
 const step = (action: () => void) => act(async () => { action(); });
-const undo = undoMediaEdit;
-const replaceWith = async (file: File) => {
-  const input = framed()!.querySelector<HTMLInputElement>('input[data-media-replace]')!;
-  await act(async () => { fireEvent.change(input, { target: { files: [file] } }); });
-};
+/** The framed slot's Remove From Slot: the gallery renders every slot and hides all but the framed one. */
+const unlinkFramed = () => within(Array.from(panel()!.querySelectorAll<HTMLElement>('[data-media-entry-bar]'))
+  .find((bar) => !bar.parentElement!.classList.contains('hidden'))!).getByRole('button', { name: 'Remove From Slot' });
 const webp = () => new File(['new-image'], 'new.webp', { type: 'image/webp' });
+const undo = undoMediaEdit;
+
 
 describe('Media tab image panel framing', () => {
   it('opens a stack framed on its primary, with the count and total in the header', () => {
@@ -112,31 +112,6 @@ describe('Media tab image panel framing', () => {
 });
 
 describe('Media tab image panel actions', () => {
-  it('replaces the framed image in place, keeps its rule, and undoes in one step', async () => {
-    const bench = open();
-    const was = wick(bench).images![1];
-    const wasData = pictures(bench)[1].data;
-    const entries = Object.keys(bench.ctx().worldOverview.mediaList ?? {}).length;
-    fireEvent.click(card('Entities', 'stack'));
-    fireEvent.click(tile(/^Image 2/));
-    const steps = bench.historyState().cursor;
-
-    await replaceWith(webp());
-
-    await waitFor(() => expect(pictures(bench)[1]?.data).toMatch(/^data:image\/webp;base64,/));
-    expect(pictures(bench)[1]?.data).not.toBe(wasData);
-    // The new picture joins the list under its file's name; the replaced entry stays.
-    expect(pictures(bench)[1]?.name).toBe('new');
-    expect(Object.keys(bench.ctx().worldOverview.mediaList ?? {})).toHaveLength(entries + 1);
-    expect(wick(bench).images![1].requires).toEqual(was.requires);
-    expect(wick(bench).images).toHaveLength(4);
-    expect(lastLabel(bench)).toBe('Replace Image 2: Odd Wick');
-    expect(bench.historyState().cursor).toBe(steps + 1);
-
-    await undo();
-    expect(wick(bench).images![1]).toEqual(was);
-  });
-
   it('removes the framed image with its rule, keeps the frame on its position, and undoes in one step', async () => {
     const bench = open();
     const before = pictures(bench);
@@ -144,11 +119,12 @@ describe('Media tab image panel actions', () => {
     fireEvent.click(tile(/^Image 2/));
     const steps = bench.historyState().cursor;
 
-    await step(() => fireEvent.click(within(framed()!).getByRole('button', { name: 'Remove' })));
+    await step(() => fireEvent.click(unlinkFramed()));
 
     expect(pictures(bench).map((i) => i.data)).toEqual([before[0], before[2], before[3]].map((i) => i.data));
     expect(wick(bench).images!.some((i) => i.requires)).toBe(false);
-    expect(lastLabel(bench)).toBe('Remove Image 2: Odd Wick');
+    // The slot's Remove From Slot (Q45) is the gallery's own edit, one step with no label of its own.
+    expect(bench.historyState().cursor).toBe(steps + 1);
     expect(panel()).toHaveAttribute('data-media-panel', 'entity:wick:image:1');
 
     await undo();
@@ -161,7 +137,7 @@ describe('Media tab image panel actions', () => {
     fireEvent.click(card('Entities', 'stack'));
     fireEvent.click(tile('Image 4'));
 
-    await step(() => fireEvent.click(within(framed()!).getByRole('button', { name: 'Remove' })));
+    await step(() => fireEvent.click(unlinkFramed()));
 
     expect(wick(bench).images).toHaveLength(3);
     expect(panel()).toHaveAttribute('data-media-panel', 'entity:wick:image:2');
@@ -246,7 +222,8 @@ describe('Media tab image panel modes and parents', () => {
     expect(panel()).toHaveAttribute('data-media-image-panel', 'location:marsh');
     expect(panel()).toHaveAttribute('data-media-panel', 'location:marsh:image:0');
     expect(framed()).toHaveTextContent(/^Image 1/);
-    expect(within(framed()!).getByRole('button', { name: 'Replace' })).toBeInTheDocument();
+    expect(unlinkFramed()).toBeInTheDocument();
+    expect(within(framed()!).queryByRole('button', { name: 'Replace' })).toBeNull();
     expect(within(framed()!).getByRole('button', { name: 'Add Requirement' })).toBeInTheDocument();
     expect(inPanel().getByRole('button', { name: 'Go to Marsh' })).toBeInTheDocument();
   });

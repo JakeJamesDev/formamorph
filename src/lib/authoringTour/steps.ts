@@ -30,7 +30,7 @@ import { EDITOR_MODE_TUTORIAL_ID, markTutorialSeen } from '@/lib/tutorials';
 import type { InPlaySpec, ReaderSpec } from './inPlay';
 import { loadTourImage, type TourImage } from './tourImages';
 import { editGallery } from '@/lib/mediaGallery';
-import { coverData } from '@/lib/mediaImages';
+import { COVER_SUBJECT, coverData, linkSingle, storedCover } from '@/lib/mediaImages';
 
 /** The world as the editor holds it while the tour reads it. */
 export type TourWorld = Omit<World, 'id' | 'version'>;
@@ -374,7 +374,10 @@ const OVERVIEW_STEPS: readonly TourStep[] = [
     title: 'Thumbnail',
     body: 'Add an image for the library card. Players see it beside the name, and the AI never reads it.',
     isComplete: (world) => !!coverData(world.worldOverview),
-    useExample: async (api) => api.updateWorldOverview({ thumbnail: await loadTourImage('brinewell') }),
+    useExample: async (api, world) => {
+      const example = linkSingle(world.worldOverview.mediaList, { data: await loadTourImage('brinewell') }, COVER_SUBJECT);
+      linkExample(api, example, () => api.updateWorldOverview({ thumbnail: storedCover(example.link) }));
+    },
     inPlay: { sees: 'libraryCard', readers: [{ prompt: 'Narration Prompt', reads: 'world' }] },
   },
 ];

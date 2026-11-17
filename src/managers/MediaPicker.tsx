@@ -169,9 +169,12 @@ export function useMediaEntryActions() {
   return { rename, askDelete: setDeleting, confirm };
 }
 
-/** Under a filled slot: the entry's name, which renames it on blur or Enter, then Remove (an unlink) and Delete From World. */
-export function MediaEntryBar({ entry, onUnlink }: { entry: MediaEntry; onUnlink: () => void }) {
-  const { rename, askDelete, confirm } = useMediaEntryActions();
+/** An entry's name, which renames it on blur or Enter (Q38). */
+export function MediaNameField({ entry, rename, className }: {
+  entry: MediaEntry;
+  rename: (id: string, name: string) => void;
+  className?: string;
+}) {
   const [draft, setDraft] = useState(entry.name);
   useEffect(() => { setDraft(entry.name); }, [entry.name]);
   const commit = () => {
@@ -180,19 +183,27 @@ export function MediaEntryBar({ entry, onUnlink }: { entry: MediaEntry; onUnlink
     setDraft(entry.name);
   };
   return (
+    <Input
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
+        if (e.key === 'Escape') setDraft(entry.name);
+      }}
+      aria-label={`${KIND_WORDS[entry.kind].one} Name`}
+      className={className}
+    />
+  );
+}
+
+/** Under a filled slot: the entry's name, then Remove (an unlink) and Delete From World. */
+export function MediaEntryBar({ entry, onUnlink }: { entry: MediaEntry; onUnlink: () => void }) {
+  const { rename, askDelete, confirm } = useMediaEntryActions();
+  return (
     <div className="flex items-center gap-1" data-media-entry-bar={entry.id}>
       {confirm}
-      <Input
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
-          if (e.key === 'Escape') setDraft(entry.name);
-        }}
-        aria-label={`${KIND_WORDS[entry.kind].one} Name`}
-        className="h-8 flex-1"
-      />
+      <MediaNameField entry={entry} rename={rename} className="h-8 flex-1" />
       <Tip tip={`Removes the ${KIND_WORDS[entry.kind].one.toLowerCase()} here and keeps it in the world`}>
         <Button type="button" variant="ghost" size="icon" aria-label="Remove From Slot" onClick={onUnlink}>
           <X className="h-4 w-4" />

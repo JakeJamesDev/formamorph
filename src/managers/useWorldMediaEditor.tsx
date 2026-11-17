@@ -8,15 +8,18 @@ import type { ListSearch } from '@/components/listToolbarHooks';
 import { matchesListSearch } from '@/lib/listSearch';
 import { cn } from '@/lib/utils';
 import {
-  blankSections, canStack, filterSections, groupSections, isAvatarSection, mediaParentKey, mediaSections, sectionSelection, sectionTitle, sortSectionsLargestFirst, withAvatarsSection,
+  blankSections, canStack, galleryParentKeyOf, filterSections, groupSections, isAvatarSection, mediaParentKey, mediaSections, sectionSelection, sectionTitle, sortSectionsLargestFirst, withAvatarsSection,
   type MediaFilter, type MediaParent,
 } from '@/lib/mediaIndex';
 import { useMediaViewPrefs } from '@/lib/useMediaViewPrefs';
+import { mediaEntryItems, mediaSearchText } from '@/lib/mediaEntries';
 import { AvatarStoreControls } from './AvatarStore';
 import { MediaGallery } from './MediaGallery';
 import { MediaHeader, type OptimizeControl } from './MediaHeader';
 import { MediaItemPanel, MediaSummaryPanel } from './MediaPanels';
 import { MediaImagePanel } from './MediaImagePanel';
+import { MediaEntryPanel } from './MediaEntryPanel';
+import { useImportMedia } from './useImportMedia';
 
 /**
  * The Media tab's List Editor parts: a gallery of every media item in the world, and the panel for the
@@ -34,11 +37,17 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
   /** The Optimize Images run: its progress, and the click that starts it. */
   optimize: OptimizeControl;
 }): ListEditorParts {
-  const { worldOverview, entities, entityGroups, locations, dictionaries, bodies, placeholders } = useGameData();
+  const { worldOverview, entities, entityGroups, locations, dictionaries, bodies, items: worldItems, placeholders } = useGameData();
   const allSections = useMemo(
     () => mediaSections({ worldOverview, entities, entityGroups, locations, dictionaries, bodies }),
     [worldOverview, entities, entityGroups, locations, dictionaries, bodies],
   );
+  // One card per Media List entry, with its uses; item pictures show only here, having no card of their own.
+  const entryItems = useMemo(
+    () => mediaEntryItems({ worldOverview, entities, locations, dictionaries, bodies, items: worldItems }),
+    [worldOverview, entities, locations, dictionaries, bodies, worldItems],
+  );
+  const importMedia = useImportMedia(onSelect);
   const { grouping, setGrouping, largestFirst, setLargestFirst } = useMediaViewPrefs();
   // The filter lasts while the editor is open.
   const [filter, setFilter] = useState<MediaFilter>('all');
@@ -50,29 +59,35 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
   );
   // What the gallery lays out, before the search narrows it.
   const shownSections = useMemo(() => {
-    const filtered = filterSections(groupSections(blankOnly ? blankSource : allSections, grouping), filter);
+    const filtered = filterSections(groupSections(blankOnly ? blankSource : allSections, grouping, blankOnly ? [] : entryItems), filter);
     const sorted = largestFirst ? sortSectionsLargestFirst(filtered) : filtered;
     // Unfiltered, the Avatars section always shows, so the first Avatar has a way in.
     return filter === 'all' ? withAvatarsSection(sorted, grouping) : sorted;
-  }, [allSections, blankSource, blankOnly, grouping, filter, largestFirst]);
+  }, [allSections, entryItems, blankSource, blankOnly, grouping, filter, largestFirst]);
   const term = search.term.trim();
   const sections = useMemo(() => {
     if (!term) return shownSections;
     const names = { placeholders };
     return shownSections
-      .map((s) => ({ ...s, items: s.items.filter((i) => matchesListSearch(`${i.parent.name} ${i.slot}`, term, names)) }))
+      .map((s) => ({ ...s, items: s.items.filter((i) => matchesListSearch(mediaSearchText(i), term, names)) }))
       .filter((s) => s.items.length);
   }, [shownSections, term, placeholders]);
 
   const allItems = useMemo(() => allSections.flatMap((s) => s.items), [allSections]);
+  const selectable = useMemo(() => [...allItems, ...entryItems], [allItems, entryItems]);
+  // Uses already count a linked entry's bytes, so only Unused entries add to the world's totals.
+  const totalItems = useMemo(() => [...allItems, ...entryItems.filter((e) => e.unused)], [allItems, entryItems]);
   // A blank card's id is the one its filled slot takes, so an upload hands the selection to the real item.
   const blankItems = useMemo(() => blankSource.flatMap((s) => s.items), [blankSource]);
-  const item = selectedId ? allItems.find((i) => i.id === selectedId) ?? blankItems.find((i) => i.id === selectedId) : undefined;
+  const item = selectedId ? selectable.find((i) => i.id === selectedId) ?? blankItems.find((i) => i.id === selectedId) : undefined;
   const section = selectedId && !item ? shownSections.find((s) => sectionSelection(s.id) === selectedId && (s.items.length || !term)) : undefined;
   const held = !!item || !!section;
   // An undo or a removal elsewhere can take the selected item away.
   const stale = !!selectedId && !held;
-  useEffect(() => { if (stale) onSelect(null); }, [stale, onSelect]);
+  // A gallery that loses its framed last image keeps its frame, on the new last one.
+  const galleryKey = stale ? galleryParentKeyOf(selectedId) : undefined;
+  const fallback = galleryKey ? allItems.filter((i) => canStack(i) && mediaParentKey(i.parent) === galleryKey).at(-1)?.id : undefined;
+  useEffect(() => { if (stale) onSelect(fallback ?? null); }, [stale, fallback, onSelect]);
 
   // A gallery's image opens its parent's image panel, framed on that image.
   const panelParent = item && canStack(item) ? item.parent : undefined;
@@ -112,6 +127,8 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
         onSelect={onSelect}
       />
     )
+    : item?.uses
+    ? <MediaEntryPanel key={item.id} item={item} placeholders={placeholders} onGoTo={onGoTo} />
     : item
     ? <MediaItemPanel item={item} placeholders={placeholders} onGoTo={onGoTo} />
     : section && blankOnly
@@ -131,10 +148,10 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
           controls={isAvatarSection(section) ? <AvatarStoreControls /> : undefined}
         />
       )
-      : allItems.length
+      : totalItems.length
         ? (
           <div className="space-y-3">
-            <MediaSummaryPanel title="World Media" items={allItems} placeholders={placeholders} onSelect={onSelect} />
+            <MediaSummaryPanel title="World Media" items={totalItems} placeholders={placeholders} onSelect={onSelect} />
             <Hint>Select a card to see it here</Hint>
           </div>
         )
@@ -145,7 +162,7 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
     : (
       // The list pane deselects on a bubbled click; cards select through their own handlers.
       <div onClick={(e) => e.stopPropagation()}>
-        {!allItems.length && !blankOnly && <Hint className="p-2">This world has no images, sounds, 3D Models or Avatars yet</Hint>}
+        {!totalItems.length && !blankOnly && <Hint className="p-2">This world has no images, sounds, 3D Models or Avatars yet</Hint>}
         <MediaGallery sections={sections} selectedId={selectedId} onSelect={onSelect} placeholders={placeholders} />
       </div>
     );
@@ -154,6 +171,8 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
     search,
     toolbar: (className, extras) => (
       <div className={cn('flex flex-shrink-0 flex-col gap-2', className)}>
+        {importMedia.input}
+        {importMedia.dialog}
         <MediaHeader
           publishBytes={publishBytes}
           grouping={grouping}
@@ -162,6 +181,7 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
           onLargestFirstChange={setLargestFirst}
           filter={filter}
           onFilterChange={setFilter}
+          onImport={importMedia.open}
           optimize={optimize}
         />
         <ListToolbar target={extras?.target}>

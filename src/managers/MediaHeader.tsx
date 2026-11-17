@@ -1,5 +1,5 @@
 import { useId, useState, type ReactNode } from 'react';
-import { ArrowDownWideNarrow, Check, ImageDown, Layers, ListFilter, Loader2 } from 'lucide-react';
+import { ArrowDownWideNarrow, Check, ImageDown, Layers, ListFilter, Loader2, Upload } from 'lucide-react';
 import { OPTIMIZE_IMAGES_TIP } from '@/components/editor/appBarCopy';
 import { HintInfo } from '@/components/SettingsRows';
 import { BAND_FILL, PUBLISH_SIZE_INFO } from '@/components/editor/IssuesInstrument';
@@ -128,8 +128,8 @@ function OptimizeButton({ progress, onRun, blocked }: OptimizeControl) {
   );
 }
 
-/** The Media tab's header row: the Publish Size meter, then grouping, Largest First, the filter and Optimize Images. */
-export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestFirst, onLargestFirstChange, filter, onFilterChange, optimize }: {
+/** The Media tab's header row: the Publish Size meter, then grouping, Largest First, the filter, Import Media and Optimize Images. */
+export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestFirst, onLargestFirstChange, filter, onFilterChange, onImport, optimize }: {
   publishBytes: number | null;
   grouping: MediaGrouping;
   onGroupingChange: (grouping: MediaGrouping) => void;
@@ -137,6 +137,8 @@ export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestF
   onLargestFirstChange: (largestFirst: boolean) => void;
   filter: MediaFilter;
   onFilterChange: (filter: MediaFilter) => void;
+  /** Raises Import Media's file picker. */
+  onImport: () => void;
   optimize: OptimizeControl;
 }) {
   const byType = grouping === 'type';
@@ -154,6 +156,11 @@ export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestF
         <ArrowDownWideNarrow className="h-4 w-4" />
       </IconToggle>
       <FilterMenu filter={filter} onChange={onFilterChange} />
+      <Tip tip="Import Media">
+        <Button type="button" variant="ghost" size="icon" aria-label="Import Media" onClick={onImport} className="h-9 w-9 shrink-0">
+          <Upload className="h-4 w-4" />
+        </Button>
+      </Tip>
       <OptimizeButton {...optimize} />
     </div>
   );

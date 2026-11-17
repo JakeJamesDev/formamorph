@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderMediaTab } from '@/test/mediaTabBench';
 import { fakeDataUrl, mediaFixtureWorld } from '@/test/mediaFixture';
-import { buildMediaIndex, formatMediaBytes, totalBytes } from '@/lib/mediaIndex';
+import { buildMediaIndex, formatMediaBytes, storedBytes, totalBytes } from '@/lib/mediaIndex';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { resolveSound } from '@/lib/mediaSounds';
 
@@ -169,21 +169,30 @@ describe('Media tab header', () => {
   it('holds the meter and the icon controls in one row above the search', () => {
     openMedia('advanced');
 
-    expect(within(header()).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['More info', 'Group by Type', 'Largest First', 'Filter', 'Optimize Images']);
+    expect(within(header()).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['More info', 'Group by Type', 'Largest First', 'Filter', 'Import Media', 'Optimize Images']);
     expect(header().compareDocumentPosition(screen.getByPlaceholderText('Search media')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('groups by type with parent names on the cards, and back by parent', () => {
-    openMedia('advanced');
+  it('groups by type with each entry once under its name, and back by parent', () => {
+    const bench = openMedia('advanced');
     fireEvent.click(screen.getByRole('button', { name: 'Group by Type' }));
+    const { worldOverview, entities, locations, dictionaries } = bench.ctx();
+    const list = worldOverview.mediaList;
+    const soundCard = (value: Parameters<typeof resolveSound>[0]) => {
+      const sound = resolveSound(value, list)!;
+      return `sound: ${sound.name}${formatMediaBytes(storedBytes(sound.data))}`;
+    };
 
     expect(sectionNames()).toEqual(['Images', 'Sounds', '3D Models', 'Avatars']);
     expect(cards('Sounds')).toEqual([
-      `sound: Background Music${size('World', 'Background Music')}`,
-      `sound: Odd Wick${size('Odd Wick', 'Sound')}`,
-      `sound: Lamp Room${size('Lamp Room', 'Ambient Sound')}`,
+      soundCard(worldOverview.bgm),
+      soundCard(entities.find((e) => e.id === 'wick')!.sound),
+      soundCard(locations.find((l) => l.id === 'lamp')!.ambientSound),
     ]);
-    expect(cards('Images').filter((c) => c.startsWith('stack'))).toHaveLength(1);
+    // Entries never stack; the dictionary covers stay off the list, one card per use.
+    const imageEntries = Object.values(list ?? {}).filter((e) => e.kind === 'image');
+    expect(cards('Images').filter((c) => c.startsWith('stack'))).toHaveLength(0);
+    expect(cards('Images')).toHaveLength(imageEntries.length + dictionaries.filter((d) => d.thumbnail).length);
 
     fireEvent.click(screen.getByRole('button', { name: 'Group by Type' }));
     expect(sectionNames()[0]).toBe('World');

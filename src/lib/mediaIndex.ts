@@ -17,6 +17,8 @@ import { mediaParentSpec } from './mediaParents';
 import { dataUrlBytes, isRemoteImage } from './imageBytes';
 import { galleryLinkData, isMediaRef } from './mediaList';
 import { resolveSound, type SoundValue } from './mediaSounds';
+import type { MediaUse } from './mediaUsage';
+import { IMAGE_CAPS } from './imageSlots';
 
 export type MediaKind = 'image' | 'sound' | 'model' | 'avatar';
 export type MediaParentKind = 'world' | 'map' | 'entity' | 'location' | 'dictionary' | 'body' | 'item';
@@ -30,7 +32,7 @@ export interface MediaParent {
 
 /** A slot inside its parent: a field, a gallery position, or an Avatar's store id. */
 export type MediaSlotKey =
-  | 'thumbnail' | 'bgm' | 'sound' | 'model' | 'ambientSound' | 'backdrop' | `image:${number}` | `avatar:${string}`;
+  | 'thumbnail' | 'bgm' | 'sound' | 'model' | 'ambientSound' | 'backdrop' | `image:${number}` | `avatar:${string}` | `entry:${string}`;
 
 export interface MediaItem {
   /** Stable for the item's slot: parent and slot key. */
@@ -59,6 +61,10 @@ export interface MediaItem {
   mediaId?: string;
   /** An empty image slot, reported only by `blankSections`. It holds no bytes and the id the filled slot will have. */
   blank?: true;
+  /** A Media List entry's card (`mediaEntryItems`): every place that links it, in world order. */
+  uses?: MediaUse[];
+  /** An entry nothing links (Q7). */
+  unused?: true;
 }
 
 export type MediaWorld = Pick<World, 'worldOverview' | 'entities' | 'locations' | 'dictionaries'> & Pick<Partial<World>, 'entityGroups' | 'bodies' | 'items'>;
@@ -85,6 +91,12 @@ export function storedBytes(value: string): number {
 export const mediaParentKey = (parent: MediaParent): string => `${parent.kind}:${parent.id}`;
 
 const itemId = (parent: MediaParent, key: MediaSlotKey) => `${mediaParentKey(parent)}:${key}`;
+
+/** The parent key of a gallery image's item id, or undefined for any other id. */
+export const galleryParentKeyOf = (id: string): string | undefined => /^(.+):image:\d+$/.exec(id)?.[1];
+
+/** Of two budgets, the one with the longer edge; `held` wins a tie. */
+export const largerCap = (held: ImageCap | undefined, cap: ImageCap): ImageCap => (!held || cap.maxDim > held.maxDim ? cap : held);
 
 function image(parent: MediaParent, key: MediaSlotKey, slot: string, value: string, budget: ImageCap, extra: Partial<MediaItem> = {}): MediaItem {
   const linked = isRemoteImage(value);
@@ -190,6 +202,9 @@ function worldMedia(w: MediaWorld): MediaItem[] {
   return items;
 }
 
+/** A world Avatar's card id. */
+export const avatarItemId = (id: string): string => itemId(WORLD_PARENT, `avatar:${id}`);
+
 function avatarMedia(w: MediaWorld): MediaItem[] {
   return Object.entries(w.worldOverview.vrmStore ?? {}).filter(([, vrm]) => vrm.file?.data).map(([id, vrm]) => ({
     ...file(WORLD_PARENT, 'avatar', `avatar:${id}`, vrm.name, vrm.file.data, vrm.file.name),
@@ -283,9 +298,10 @@ export const sectionTitle = (section: MediaSection): string => section.path.join
 /** World media goes by its slot ("Thumbnail", an Avatar's name); everything else by its parent's name. */
 export const namedBySlot = (item: MediaItem): boolean => item.parent.kind === 'world';
 
-/** A card's frame: character art for Avatars and entity media, scene art for the rest. */
+/** A card's frame: character art for Avatars, entity media and entries an entity or nothing uses; scene art for the rest. */
 export const mediaAspect = (item: MediaItem): ThumbAspect =>
-  item.kind === 'avatar' || item.parent.kind === 'entity' ? 'portrait' : 'landscape';
+  item.kind === 'avatar' || item.parent.kind === 'entity' || (item.uses && (!item.uses.length || item.uses.some((u) => u.owner.kind === 'entity')))
+    ? 'portrait' : 'landscape';
 
 /** Every media item in the world, in section order. Each Avatar appears once. */
 export const buildMediaIndex = (w: MediaWorld): MediaItem[] => mediaSections(w).flatMap((s) => s.items);
@@ -310,16 +326,19 @@ export function worldImageItems(w: Partial<MediaWorld>): (MediaItem & { budget: 
 export const worldImageSlots = (w: Partial<MediaWorld>): ImageSlot[] =>
   worldImageItems(w).map((i) => ({ url: i.value, cap: i.budget, path: i.id }));
 
-/** What Optimize Images walks: every embedded image slot, and each linked entry once at its largest use's budget. */
+/** The budget an image entry nothing links is measured and optimized against: the largest non-map cap (Q48). */
+export const UNUSED_IMAGE_CAP: ImageCap = IMAGE_CAPS.background;
+
+/** What Optimize Images walks: every embedded image slot, and each image entry once at its largest use's budget, Unused ones at `UNUSED_IMAGE_CAP`. */
 export function worldOptimizeTargets(w: Partial<MediaWorld>): { slots: (MediaItem & { budget: ImageCap })[]; entries: { id: string; data: string; budget: ImageCap }[] } {
   const items = worldImageItems(w);
   const budgets = new Map<string, ImageCap>();
   for (const item of items) {
     if (!item.mediaId) continue;
-    const held = budgets.get(item.mediaId);
-    if (!held || item.budget.maxDim > held.maxDim) budgets.set(item.mediaId, item.budget);
+    budgets.set(item.mediaId, largerCap(budgets.get(item.mediaId), item.budget));
   }
   const list = w.worldOverview?.mediaList ?? {};
+  for (const entry of Object.values(list)) if (entry.kind === 'image' && !budgets.has(entry.id)) budgets.set(entry.id, UNUSED_IMAGE_CAP);
   return {
     slots: items.filter((item) => !item.mediaId),
     entries: [...budgets].flatMap(([id, budget]) => (list[id] ? [{ id, data: list[id].data, budget }] : [])),
@@ -352,6 +371,8 @@ export function withAvatarsSection(sections: readonly MediaSection[], grouping: 
 /** Whether the gallery holds a selection: a card's id or a section header's. The Avatars header always stands. */
 export function mediaHolds(w: MediaWorld, id: string): boolean {
   return AVATAR_SECTION_IDS.some((s) => sectionSelection(s) === id)
+    || sectionSelection(UNUSED_SECTION_ID) === id
+    || (id.startsWith(ENTRY_ITEM_PREFIX) && !!w.worldOverview.mediaList?.[id.slice(ENTRY_ITEM_PREFIX.length)])
     || mediaSections(w).some((s) => sectionSelection(s.id) === id || s.items.some((i) => i.id === id));
 }
 
@@ -414,10 +435,41 @@ export function typeSections(sections: readonly MediaSection[]): MediaSection[] 
   });
 }
 
-export const groupSections = (sections: MediaSection[], grouping: MediaGrouping): MediaSection[] =>
-  grouping === 'type' ? typeSections(sections) : sections;
+/** An entry card's item id prefix; the entry id follows. */
+export const ENTRY_ITEM_PREFIX = 'entry:';
+/** The default view's last section: the entries nothing links. */
+export const UNUSED_SECTION_ID = 'unused';
 
-export type MediaFilter = 'all' | 'linked' | 'embedded' | 'rules' | 'overBudget' | 'noImages';
+/** Each use of a Media List entry folded into the entry's one card, at its first use; entries with no card in the sections follow. */
+function entriesOnce(sections: readonly MediaSection[], entries: readonly MediaItem[]): MediaItem[] {
+  const byId = new Map(entries.map((e) => [e.mediaId, e]));
+  const seen = new Set<string>();
+  const out: MediaItem[] = [];
+  const once = (entry: MediaItem) => {
+    if (seen.has(entry.id)) return;
+    seen.add(entry.id);
+    out.push(entry);
+  };
+  for (const item of sections.flatMap((s) => s.items)) {
+    const entry = item.mediaId ? byId.get(item.mediaId) : undefined;
+    if (entry) once(entry);
+    else out.push(item);
+  }
+  entries.forEach(once);
+  return out;
+}
+
+/**
+ * By type (Q15), each Media List entry shows once in its kind's section, and media off the list keeps one card per use.
+ * By parent, the sections stay as they are, with the Unused entries in a last section.
+ */
+export function groupSections(sections: MediaSection[], grouping: MediaGrouping, entries: readonly MediaItem[] = []): MediaSection[] {
+  if (grouping === 'type') return typeSections([{ id: 'all', path: [], items: entriesOnce(sections, entries) }]);
+  const unused = entries.filter((e) => e.unused);
+  return unused.length ? [...sections, { id: UNUSED_SECTION_ID, path: ['Unused'], items: unused }] : sections;
+}
+
+export type MediaFilter = 'all' | 'linked' | 'embedded' | 'rules' | 'overBudget' | 'unused' | 'noImages';
 
 export const MEDIA_FILTERS: readonly { value: MediaFilter; label: string }[] = [
   { value: 'all', label: 'All Media' },
@@ -425,6 +477,7 @@ export const MEDIA_FILTERS: readonly { value: MediaFilter; label: string }[] = [
   { value: 'embedded', label: 'Embedded' },
   { value: 'rules', label: 'Has Visibility Rules' },
   { value: 'overBudget', label: 'Over Size Budget' },
+  { value: 'unused', label: 'Unused' },
   { value: 'noImages', label: 'No Images' },
 ];
 
@@ -437,6 +490,7 @@ export function matchesMediaFilter(item: MediaItem, filter: MediaFilter): boolea
   switch (filter) {
     case 'all': return true;
     case 'noImages': return false;
+    case 'unused': return !!item.unused;
     case 'linked': return item.linked;
     case 'embedded': return !item.linked;
     case 'rules': return item.kind === 'image' && !!item.rules?.length;

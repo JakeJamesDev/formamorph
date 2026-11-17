@@ -4,6 +4,7 @@
  * hidden tabs, and every Advanced-only field.
  */
 import { hasValue } from './editorMode';
+import { resolveSound } from './mediaSounds';
 import { memoByRecord } from './memoByRecord';
 import { allPlaceholders } from './placeholderHomes';
 import { openingTexts } from './openings';
@@ -39,7 +40,7 @@ const entityIsAdvanced = memoByRecord((e: Entity) =>
   !!e.persona || hasValue(e.aliases) || hasValue(e.aiSummary) || hasValue(e.type) || hasValue(e.model) ||
   hasValue(e.imageTags) || openingTexts(e).length > 0);
 const locationIsAdvanced = memoByRecord((l: GameLocation) =>
-  hasValue(l.aiSummary) || hasValue(l.ambientSound) || hasValue(l.imageTags) || openingTexts(l).length > 0);
+  hasValue(l.aiSummary) || hasValue(l.imageTags) || openingTexts(l).length > 0);
 const traitIsAdvanced = memoByRecord((t: Trait) => hasValue(t.statToggles) || hasValue(t.placeholderPins));
 
 /**
@@ -53,7 +54,9 @@ export function worldUsesAdvancedFeatures(w: AdvancedDataInput): boolean {
   if (w.worldOverview && overviewIsAdvanced(w.worldOverview)) return true;
   if ((w.stats ?? []).some(statIsAdvanced)) return true;
   if ((w.entities ?? []).some(entityIsAdvanced)) return true;
-  if ((w.locations ?? []).some(locationIsAdvanced)) return true;
+  // An ambience link with no entry reads as empty, as its slot shows it.
+  const media = w.worldOverview?.mediaList;
+  if ((w.locations ?? []).some((l) => locationIsAdvanced(l) || !!resolveSound(l.ambientSound, media)?.data)) return true;
   if ((w.traits ?? []).some(traitIsAdvanced)) return true;
   return false;
 }

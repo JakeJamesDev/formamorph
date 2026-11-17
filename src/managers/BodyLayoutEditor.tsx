@@ -15,7 +15,7 @@ import { IMAGE_CAPS } from '@/lib/imageSlots';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { LinkedImageUpload } from './MediaPicker';
 import { useGameData } from '@/contexts/GameDataContext';
-import { bodyLabel } from '@/lib/bodies';
+import { BODY_SUBJECT } from '@/lib/mediaImages';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { cn } from '@/lib/utils';
 import type { Body, GalleryLink, SlotBox } from '@/types';
@@ -295,7 +295,7 @@ export function BodyLayoutEditor({ body, onChange, labelOf, selected, onSelect, 
           <LinkedImageUpload
             id={`body-backdrop-${body.id}`}
             value={body.backdrop.kind === 'image' ? body.backdrop.image : null}
-            subject={labelPlaceholders(bodyLabel(body), placeholders)}
+            subject={labelPlaceholders(body.name || BODY_SUBJECT, placeholders)}
             cap={IMAGE_CAPS.entity}
             onChange={(link, data) => void setImage(link, data)}
           />

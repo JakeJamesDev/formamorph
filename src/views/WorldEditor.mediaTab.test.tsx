@@ -284,7 +284,7 @@ describe('the Media tab history and the editor', () => {
     it('returns to the Media tab with the card selected when its edit is undone from another tab', async () => {
       openMedia();
       fireEvent.click(card('Locations › Harbor Steps', 'sound'));
-      await step(() => fireEvent.click(panelButton('Remove')!));
+      await step(() => fireEvent.click(panelButton('Remove From Slot')!));
       openEditorTab(/^Overview$/);
 
       await undo();
@@ -296,7 +296,7 @@ describe('the Media tab history and the editor', () => {
     it('opens the Media tab with no card when the redo takes the card away', async () => {
       openMedia();
       fireEvent.click(card('Locations › Harbor Steps', 'sound'));
-      await step(() => fireEvent.click(panelButton('Remove')!));
+      await step(() => fireEvent.click(panelButton('Remove From Slot')!));
       await undo();
       openEditorTab(/^Overview$/);
 

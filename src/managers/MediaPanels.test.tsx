@@ -9,7 +9,8 @@ import { locationImages } from '@/lib/locationImages';
 import { coverData } from '@/lib/mediaImages';
 import { resolveSound } from '@/lib/mediaSounds';
 
-/** The Media tab's item panel: Replace and Remove, each one History Step, and the reveal that returns to the tab. */
+/** The Media tab's item panel: Replace and Remove, or a list slot's Remove From Slot, each one History Step. */
+/** Sound and gallery slots offer no Replace (Q45); their Import is the slot's, tested with the slot. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -62,6 +63,8 @@ const pickFile = async (file: File) => {
 
 /** A slot the item panel acts on: where its card sits, how to read the field, and a file that replaces it. */
 interface Slot {
+  /** The control that clears it: the panel's Remove, or the list slot's Remove From Slot (Q45). */
+  remove?: string;
   what: string;
   section: string;
   kind: string;
@@ -87,6 +90,11 @@ const SLOTS: Slot[] = [
   { what: 'a dictionary cover', section: 'Dictionaries', kind: 'image', id: 'dictionary:lore:thumbnail', read: (c) => c.dictionaries.find((d) => d.id === 'lore')!.thumbnail, file: webp, label: 'Cover Image: Fen Lore' },
 ];
 
+/** Slots on the Media List act through their slot (Q45): no Replace, and Remove From Slot clears them. */
+const onList = (slot: Slot) => slot.kind === 'sound' || slot.id.startsWith('location:marsh:image');
+const PANEL_SLOTS = SLOTS.filter((slot) => !onList(slot));
+const REMOVE_SLOTS = SLOTS.map((slot) => (onList(slot) ? { ...slot, remove: 'Remove From Slot' } : slot));
+
 const SECTIONS = mediaSections(mediaFixtureWorld());
 const sectionItems = (name: string) => SECTIONS.find((s) => sectionTitle(s) === name)!.items;
 const sectionTotal = (name: string, items: MediaItem[]) => `${name} ${formatMediaBytes(totalBytes(items))}`;
@@ -96,7 +104,7 @@ const lastLabel = (bench: ReturnType<typeof openMedia>) => {
 };
 
 describe('Media tab Remove', () => {
-  it.each(SLOTS)('clears $what, drops its card and total, and undoes in one step', async (slot) => {
+  it.each(REMOVE_SLOTS)('clears $what, drops its card and total, and undoes in one step', async (slot) => {
     const bench = openMedia();
     const was = slot.read(bench.ctx());
     const others = sectionItems(slot.section).filter((i) => i.id !== slot.id);
@@ -104,10 +112,11 @@ describe('Media tab Remove', () => {
     fireEvent.click(card(slot.section, slot.kind));
     expect(panel()).toHaveAttribute('data-media-panel', slot.id);
 
-    await step(() => fireEvent.click(panelButton('Remove')!));
+    await step(() => fireEvent.click(panelButton(slot.remove ?? 'Remove')!));
 
     expect(slot.read(bench.ctx())).toBeFalsy();
-    expect(lastLabel(bench)).toBe(`Remove ${slot.label}`);
+    // A gallery slot's Remove From Slot is the field's own edit, which carries no step label.
+    expect(lastLabel(bench)).toBe(slot.remove && slot.kind === 'image' ? undefined : `Remove ${slot.label}`);
     expect(cardsOf(slot.section, slot.kind)).toHaveLength(kindCards - 1);
     if (others.length) {
       expect(within(section(slot.section)!).getByRole('button', { name: sectionTotal(slot.section, others) })).toBeInTheDocument();
@@ -121,6 +130,18 @@ describe('Media tab Remove', () => {
     expect(slot.read(bench.ctx())).toBe(was);
   });
 
+  it.each([
+    ['a sound', 'Entities', 'sound'],
+    ['a gallery image', 'Locations', 'image'],
+  ])('offers %s only its slot controls, with no Replace or Remove of its own', (_what, sectionName, kind) => {
+    openMedia();
+    fireEvent.click(card(sectionName, kind));
+    expect(panelButton('Replace')).toBeNull();
+    expect(panelButton('Remove')).toBeNull();
+    expect(panelButton('Remove From Slot')).not.toBeNull();
+    expect(panelButton('Delete From World')).not.toBeNull();
+  });
+
   it('offers an Avatar Replace, Download and Delete in place of Remove', () => {
     openMedia();
     fireEvent.click(card('World › Avatars', 'avatar'));
@@ -132,7 +153,7 @@ describe('Media tab Remove', () => {
 });
 
 describe('Media tab Replace', () => {
-  it.each(SLOTS)('writes the picked file into $what, keeps the card selected, and undoes in one step', async (slot) => {
+  it.each(PANEL_SLOTS)('writes the picked file into $what, keeps the card selected, and undoes in one step', async (slot) => {
     const bench = openMedia();
     const was = slot.read(bench.ctx());
     fireEvent.click(card(slot.section, slot.kind));
@@ -151,17 +172,6 @@ describe('Media tab Replace', () => {
     expect(slot.read(bench.ctx())).toBe(was);
   });
 
-  it('links a replacing sound as an entry named for the file, its type kept', async () => {
-    const bench = openMedia();
-    fireEvent.click(card('Entities', 'sound'));
-    await pickFile(audio());
-
-    await waitFor(() => {
-      const { sound } = bench.ctx().entities.find((e) => e.id === 'wick')!;
-      expect(sound && 'mediaId' in sound && bench.ctx().worldOverview.mediaList?.[sound.mediaId]).toMatchObject({ name: 'new', kind: 'sound', type: 'audio/ogg' });
-    });
-  });
-
   it('puts a replacing image through the downscale consent', async () => {
     vi.mocked(measureInWorker).mockResolvedValue(OVERSIZED);
     const bench = openMedia();
@@ -176,17 +186,6 @@ describe('Media tab Replace', () => {
     expect(lastLabel(bench)).toBe('Replace Thumbnail');
   });
 
-  it('embeds a file over a linked image', async () => {
-    const world = mediaFixtureWorld();
-    world.locations.find((l) => l.id === 'marsh')!.images = [{ data: 'https://example.com/marsh.png' }];
-    const bench = renderMediaTab(world, 'simple');
-    fireEvent.click(card('Locations', 'image'));
-    expect(panel()!.querySelector('a[href="https://example.com/marsh.png"]')).toHaveTextContent('Open Link');
-
-    await pickFile(webp());
-
-    await waitFor(() => expect(locationImages(bench.ctx().locations.find((l) => l.id === 'marsh')!, bench.ctx().worldOverview.mediaList)[0]?.data).toMatch(/^data:image\/webp;base64,/));
-  });
 });
 
 describe('Media tab slot names', () => {

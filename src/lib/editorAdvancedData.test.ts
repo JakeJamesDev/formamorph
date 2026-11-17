@@ -23,6 +23,14 @@ const plain = (over: Partial<AdvancedDataInput> = {}): AdvancedDataInput => ({
 });
 
 describe('worldUsesAdvancedFeatures', () => {
+  it('says yes about an ambience linking an entry, and no about a link whose entry is gone', () => {
+    const ambience = { mediaId: 'tide' };
+    const locations = [{ id: 'l1', name: 'Harbor Steps', ambientSound: ambience } as unknown as GameLocation];
+    const list = { tide: { id: 'tide', name: 'Tide', kind: 'sound' as const, data: 'data:audio/ogg;base64,dGlkZQ==' } };
+    expect(worldUsesAdvancedFeatures(plain({ locations, worldOverview: overview({ mediaList: list }) }))).toBe(true);
+    expect(worldUsesAdvancedFeatures(plain({ locations, worldOverview: overview({ mediaList: {} }) }))).toBe(false);
+  });
+
   it('says no about a world whose every field Simple mode can show', () => {
     expect(worldUsesAdvancedFeatures(plain())).toBe(false);
   });

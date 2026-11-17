@@ -7,7 +7,7 @@ import { withBackdropImage, withOutline } from './bodyLayout';
 import { galleryLinks } from './entityImages';
 import { addedEntries, editGallery, galleryView, locationLinks } from './mediaGallery';
 import { isMediaRef, mediaNameFromFile } from './mediaList';
-import { COVER_SUBJECT, MAP_SUBJECT, linkSingle, storedCover } from './mediaImages';
+import { BODY_SUBJECT, COVER_SUBJECT, MAP_SUBJECT, linkSingle, storedCover } from './mediaImages';
 import { MUSIC_SUBJECT, placeSound, storedMusic } from './mediaSounds';
 import { mapGalleryStepLabel, mapImages, withMapImages } from './mapBackground';
 import { IMAGE_CAPS, type ImageCap } from './imageSlots';
@@ -123,7 +123,8 @@ const MAP_GALLERY: GalleryWriter = {
 
 /** Sets or clears a Body's Custom Image, placing a file into the list. `aspect` is the file's, read by a replace. */
 export function writeBackdrop(editor: MediaEditor, parent: Pick<MediaParent, 'id' | 'name'>, next: MediaWrite, aspect?: number): void {
-  const placed = next ? placeSingle(editor, next, editor.read.subject(parent.name)) : undefined;
+  const name = editor.read.body(parent.id)?.name;
+  const placed = next ? placeSingle(editor, next, name ? editor.read.subject(name) : BODY_SUBJECT) : undefined;
   editor.body(parent.id, (b) => (placed ? withBackdropImage(b, placed.link, aspect) : withOutline(b, 'humanoid')));
   if (placed && Object.keys(placed.added).length) editor.addMedia(placed.added);
 }
