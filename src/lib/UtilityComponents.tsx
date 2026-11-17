@@ -15,7 +15,7 @@ import { ImageConvertOverlay } from '../components/ImageConvertOverlay';
 import type { ImageCap } from './imageOptim';
 import { readSdPromptFromFile } from './sdMetadata';
 import { imageHost, isRemoteImage } from './imageSource';
-import { isExpiringImageHost } from './imageBytes';
+import { isExpiringImageHost, WEB_LINK_ERROR } from './imageBytes';
 import { useRemoteImage } from './useRemoteImage';
 import { fileToDataUrl } from './imageDrop';
 import { useImageDropTarget } from './useImageDropTarget';
@@ -227,7 +227,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
     const trimmed = urlDraft.trim();
     if (!trimmed) return;
     if (!isRemoteImage(trimmed)) {
-      setUrlError('Enter a link starting with http:// or https://');
+      setUrlError(WEB_LINK_ERROR);
       return;
     }
     setUrlError(null);

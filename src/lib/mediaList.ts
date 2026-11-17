@@ -52,9 +52,15 @@ export function uniqueMediaName(name: string, list: MediaList | undefined, excep
   return `${base} (${n})`;
 }
 
+/** Copy that names an entry's kind. */
+export const MEDIA_KIND_WORDS: Record<MediaEntryKind, { one: string; many: string }> = {
+  image: { one: 'Image', many: 'Images' },
+  sound: { one: 'Sound', many: 'Sounds' },
+};
+
 /** The subject's name plus the next free number, starting at 1 (Q10). A blank subject reads as the kind. */
 export function fallbackMediaName(subject: string | undefined, kind: MediaEntryKind, list: MediaList | undefined): string {
-  const base = subject?.trim() || (kind === 'image' ? 'Image' : 'Sound');
+  const base = subject?.trim() || MEDIA_KIND_WORDS[kind].one;
   const taken = takenKeys(list);
   let n = 1;
   while (taken.has(mediaNameKey(`${base} ${n}`))) n++;

@@ -65,7 +65,7 @@ describe('ImageUpload URL entry', () => {
     fireEvent.change(urlBox(), { target: { value: 'mara.png' } });
     fireEvent.keyDown(urlBox(), { key: 'Enter' });
 
-    expect(await screen.findByText(/starting with http/i)).toBeTruthy();
+    expect(await screen.findByText(/isn't a web link/i)).toBeTruthy();
     expect(onChange).not.toHaveBeenCalled();
   });
 

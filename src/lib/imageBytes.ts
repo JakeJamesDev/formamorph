@@ -188,11 +188,17 @@ export function relabelDataUrl(url: string): string {
 }
 
 /**
- * True when a stored image value points at a remote host rather than carrying its own bytes. Lives in this
+ * True when a stored media value points at a remote host rather than carrying its own bytes. Lives in this
  * leaf module so the optimize pipeline can ask without importing the fetch/DOM side of `imageSource`.
  */
-export const isRemoteImage = (url: string | null | undefined): boolean =>
+export const isRemoteUrl = (url: string | null | undefined): boolean =>
   typeof url === 'string' && /^https?:\/\//i.test(url.trim());
+
+/** The error a link box shows for text that isn't an http(s) link. */
+export const WEB_LINK_ERROR = "That isn't a web link. Enter one that starts with http:// or https://";
+
+/** `isRemoteUrl` under the name image fields read it by. */
+export const isRemoteImage = isRemoteUrl;
 
 /**
  * True for a link that will stop resolving on its own. Discord signs attachment URLs with `ex`/`is`/`hm`

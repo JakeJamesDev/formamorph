@@ -12,9 +12,9 @@ import { Tip } from '@/components/ui/tooltip';
 import AudioPlayer from '@/components/game/AudioPlayer';
 import { useGameData } from '@/contexts/GameDataContext';
 import { addedEntries } from '@/lib/mediaGallery';
-import { isMediaRef, urlFileName } from '@/lib/mediaList';
+import { isMediaRef, mediaEntry, urlFileName } from '@/lib/mediaList';
 import { placeSound, resolveSound, type SoundValue } from '@/lib/mediaSounds';
-import { isRemoteImage } from '@/lib/imageBytes';
+import { isRemoteUrl, WEB_LINK_ERROR } from '@/lib/imageBytes';
 import { readMediaFile, SoundUpload, UrlCommitField } from '@/lib/UtilityComponents';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { cn } from '@/lib/utils';
@@ -38,7 +38,7 @@ export function MediaSoundSlot({ id, value, subject, onChange }: {
   const mounted = useMountedRef();
   const list = worldOverview.mediaList;
   const sound = resolveSound(value, list);
-  const entry = isMediaRef(value) ? list?.[value.mediaId] : undefined;
+  const entry = isMediaRef(value) ? mediaEntry(list, value.mediaId, 'sound') : undefined;
   const [urlDraft, setUrlDraft] = useState('');
   const [urlError, setUrlError] = useState<string | null>(null);
   // The file that failed to load; a new file gets a fresh chance.
@@ -64,8 +64,8 @@ export function MediaSoundSlot({ id, value, subject, onChange }: {
   const commitUrl = () => {
     const url = urlDraft.trim();
     if (!url) return;
-    if (!isRemoteImage(url)) {
-      setUrlError('Enter a link starting with http:// or https://');
+    if (!isRemoteUrl(url)) {
+      setUrlError(WEB_LINK_ERROR);
       return;
     }
     setUrlDraft('');
@@ -74,7 +74,7 @@ export function MediaSoundSlot({ id, value, subject, onChange }: {
   };
 
   if (sound) {
-    const linked = isRemoteImage(sound.data);
+    const linked = isRemoteUrl(sound.data);
     return (
       <div className="space-y-2" data-sound-slot={id}>
         <div className="flex items-center gap-2">

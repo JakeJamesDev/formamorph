@@ -95,9 +95,9 @@ describe('Media List image slot', () => {
     frameOpenSlot();
     openChoose();
 
-    fireEvent.change(within(grid()).getByRole('textbox', { name: 'Search Images' }), { target: { value: 'harbor' } });
+    fireEvent.change(within(grid()).getByRole('searchbox', { name: 'Search Images' }), { target: { value: 'harbor' } });
     expect(gridNames()).toEqual(['Harbor Steps 1']);
-    fireEvent.change(within(grid()).getByRole('textbox', { name: 'Search Images' }), { target: { value: 'BRAM' } });
+    fireEvent.change(within(grid()).getByRole('searchbox', { name: 'Search Images' }), { target: { value: 'BRAM' } });
     fireEvent.click(within(grid()).getByRole('button', { name: 'Bram 1' }));
 
     expect(ids(bench, 'wick')[3]).toBe(bram.mediaId);
@@ -207,7 +207,7 @@ describe('Media List image slot', () => {
 
     fireEvent.click(within(panel()).getAllByRole('button', { name: 'Delete From World' })[0]);
     const dialog = await screen.findByRole('alertdialog');
-    expect(within(dialog).getByRole('heading')).toHaveTextContent('Delete Odd Wick 1 From the World?');
+    expect(within(dialog).getByRole('heading')).toHaveTextContent('Delete Odd Wick 1 From World?');
     expect([...dialog.querySelectorAll('[data-media-uses] li')].map((li) => li.textContent)).toEqual(['Odd Wick, Image 1', 'Bram, Image 2']);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
 

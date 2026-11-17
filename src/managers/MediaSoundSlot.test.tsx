@@ -72,7 +72,7 @@ describe('Media List sound slot', () => {
     fireEvent.change(within(slot()).getByRole('textbox', { name: 'Sound URL' }), { target: { value: 'ftp://host/a.ogg' } });
     await act(async () => { fireEvent.keyDown(within(slot()).getByRole('textbox', { name: 'Sound URL' }), { key: 'Enter' }); });
     expect(music(bench)).toBeNull();
-    expect(screen.getByText('Enter a link starting with http:// or https://')).toBeInTheDocument();
+    expect(screen.getByText("That isn't a web link. Enter one that starts with http:// or https://")).toBeInTheDocument();
   });
 
   it('shows the broken state when a linked sound fails to load', async () => {
