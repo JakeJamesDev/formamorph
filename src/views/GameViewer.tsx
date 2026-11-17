@@ -88,7 +88,7 @@ import { useContributeAccess } from "@/lib/coref/useContributeAccess";
 import { knownNameFor, memoryNarrationFor, readingNamesFor } from "@/lib/coref/mentionMemory";
 import { speakerColors } from "@/lib/coref/speakerPalette";
 import { MentionCardsProvider, cardColors, mentionCardRows, pickListBase, turnPickList, type CardCorrection } from "@/components/game/MentionCards";
-import { entityExclusions } from "@/lib/characterCandidates";
+import { entityExclusions, worldNameExclusions } from "@/lib/characterCandidates";
 import { visibleImages } from "@/lib/imageVisibility";
 import type { PlayerViewEntity } from "@/lib/formaquestion/playerView";
 import { characterMentions, useCharacterMentionsState } from "@/lib/coref/characterMentionsApp";
@@ -1081,24 +1081,10 @@ const GameViewer = ({
   // trait would block candidates for nothing (measured on real worlds: `office`, `demi-human`,
   // `studio`, `skill`). Location names cover the whole world, not just here — the narration routinely
   // names somewhere the player isn't.
-  const characterExclusions = useMemo(() => {
-    const clean = (xs: string[]) => xs.map((n) => (n ?? '').trim()).filter(Boolean);
-    const cast = entityExclusions(allEntities);
-    return {
-      // The persona is a person the narration names, so it takes the surname rule too.
-      characters: [...cast.characters, ...clean(playerNames)],
-      terms: clean([
-        ...cast.terms,
-        ...locations.map((l) => l.name),
-        ...stats.map((s) => s.name),
-        ...traits.map((t) => t.name),
-        ...dictionary.flatMap((entry) => [entry.name ?? '', ...parseKeywords(entry)]),
-        ...placeholders.flatMap((p) => [p.name, ...p.values.map((v) => v.text)]),
-        // The player's name lives in free-text notes, so every capitalized run there is off-limits.
-        ...(playerNotes.match(/\b[A-Z][A-Za-z'’-]+/g) ?? []),
-      ]),
-    };
-  }, [allEntities, playerNames, locations, stats, traits, dictionary, placeholders, playerNotes]);
+  const characterExclusions = useMemo(
+    () => worldNameExclusions({ entities: allEntities, playerNames, locations, stats, traits, dictionary, placeholders, playerNotes }),
+    [allEntities, playerNames, locations, stats, traits, dictionary, placeholders, playerNotes],
+  );
 
   const rescanExclusions = useMemo(
     () => ({ ...characterExclusions, suppressed: suppressedCharacterNames }),

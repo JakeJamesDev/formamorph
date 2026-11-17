@@ -8,7 +8,9 @@ import {
   mergeCandidateEvidence,
   qualifiesAsCharacter,
   MID_SENTENCE_THRESHOLD,
+  worldNameExclusions,
   type CandidateEvidence,
+  type WorldNameSources,
 } from './characterCandidates';
 
 /** Accumulate several turns the way the app does, then extract. */
@@ -81,6 +83,30 @@ describe('extractCharacterCandidates', () => {
       Being a Deer Demi-Human, the walk tires you. Your Arousal settles.
       You cross Praetoria Academy again, and Art History waits. Porsia sighs. Deer Demi-Human legs ache. Arousal fades.`;
     expect(extractCharacterCandidates(text, { terms })).toEqual([]);
+  });
+
+  describe('worldNameExclusions', () => {
+    const world = (over: Partial<WorldNameSources> = {}): WorldNameSources => ({
+      entities: [{ name: 'Townsfolk Pokemon' }], playerNames: [], locations: [], stats: [], traits: [],
+      dictionary: [], placeholders: [{ name: 'Pokemon Name', values: [{ id: 'v1', text: 'Cinder' }, { id: 'v2', text: 'Nutmeg' }] }], playerNotes: '', ...over,
+    });
+    // Verbatim shape from a live turn: the stand-in's rolled name introduced in speech.
+    const intro = `She steps back. "I'm Cinder. I've lived here long enough." Cinder crosses her arms.`;
+
+    it('lets a rolled placeholder value introduce a new character', () => {
+      expect(extractCharacterCandidates(intro, worldNameExclusions(world()))).toEqual(['Cinder']);
+    });
+
+    it('still excludes an entity whose name resolved from a placeholder', () => {
+      const named = world({ entities: [{ name: 'Cinder' }] });
+      expect(extractCharacterCandidates(intro, worldNameExclusions(named))).toEqual([]);
+    });
+
+    it("still excludes a placeholder's own name", () => {
+      const text = 'You greet Pokemon Name. "I\'m Pokemon Name," she says.';
+      expect(extractCharacterCandidates(text, {})).toEqual(['Pokemon Name']);
+      expect(extractCharacterCandidates(text, worldNameExclusions(world()))).toEqual([]);
+    });
   });
 
   it('treats a fragment of a known name as that name, not a new character', () => {

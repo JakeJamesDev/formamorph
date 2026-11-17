@@ -15,7 +15,8 @@
 import { SELF_INTRO_BEFORE, isEverydayName, sameCharacterName, sameNameSpelling, stripQuotedSpeech } from './entityMatch';
 import { quoteSpeakingClusters } from './coref/mentionReading';
 import type { CorefCluster } from './coref/corefHost';
-import type { Entity } from '@/types';
+import { parseKeywords } from './dictionaryUtils';
+import type { DictionaryEntry, Entity, Placeholder } from '@/types';
 
 /** Mid-sentence uses (accumulated across turns) before an untitled name counts as a character.
  *  Sentence-initial uses are ignored because every sentence opener is capitalized: measured over
@@ -124,6 +125,41 @@ export function entityExclusions(
   return {
     characters: clean(entities.flatMap((e) => [e.name, ...(e.aliases ?? [])])),
     terms: clean(entities.map((e) => e.strangerName)),
+  };
+}
+
+export interface WorldNameSources {
+  /** Names already resolved, so an entity named by a placeholder arrives as its rolled value. */
+  entities: readonly Pick<Entity, 'name' | 'aliases' | 'strangerName'>[];
+  playerNames: readonly string[];
+  locations: readonly { name: string }[];
+  stats: readonly { name: string }[];
+  traits: readonly { name: string }[];
+  dictionary: readonly DictionaryEntry[];
+  placeholders: readonly Pick<Placeholder, 'name' | 'values'>[];
+  playerNotes: string;
+}
+
+/**
+ * Everything in the world a capitalized narration word might be other than a new character. A placeholder's
+ * values are absent: a rolled name ("Cinder") is someone the narration may introduce.
+ */
+export function worldNameExclusions(world: WorldNameSources): Required<Pick<CandidateExclusions, 'characters' | 'terms'>> {
+  const clean = (xs: readonly (string | undefined)[]) => xs.map((n) => (n ?? '').trim()).filter(Boolean);
+  const cast = entityExclusions(world.entities);
+  return {
+    // The persona is a person the narration names, so it takes the surname rule too.
+    characters: [...cast.characters, ...clean(world.playerNames)],
+    terms: clean([
+      ...cast.terms,
+      ...world.locations.map((l) => l.name),
+      ...world.stats.map((s) => s.name),
+      ...world.traits.map((t) => t.name),
+      ...world.dictionary.flatMap((entry) => [entry.name, ...parseKeywords(entry)]),
+      ...world.placeholders.map((p) => p.name),
+      // The player's name lives in free-text notes, so every capitalized run there is off-limits.
+      ...(world.playerNotes.match(/\b[A-Z][A-Za-z'’-]+/g) ?? []),
+    ]),
   };
 }
 

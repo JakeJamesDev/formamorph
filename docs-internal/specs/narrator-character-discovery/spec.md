@@ -126,8 +126,8 @@ kinship word → reject; kinship word + name → title path.
 - **every location name in the world**, not just the current one and its neighbors;
 - dictionary entry names and keywords;
 - **trait names and stat names**;
-- **placeholder / wildcard values** (author-defined Variables and Wildcards, whose resolved values
-  are often capitalized proper nouns);
+- **placeholder names** (a placeholder's values are not excluded: a rolled name is someone the
+  narration may introduce; an entity named by a placeholder is excluded under its resolved name);
 - the player's own name;
 - the suppression list (see deletion flow).
 
