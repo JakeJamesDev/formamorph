@@ -180,13 +180,16 @@ export function pickListBase(
   return ids;
 }
 
-/** A turn's pick list ids: {@link pickListBase} and every entity the turn's reading links or names as a speaker. */
+/** A turn's pick list ids: {@link pickListBase}, everyone at the turn's location (Q77), and every entity the turn's
+ *  reading links or names as a speaker. */
 export function turnPickList(
   base: ReadonlySet<string>,
   reading: { mentions: readonly Pick<MentionLink, 'entityId'>[]; quotes: readonly Pick<QuoteSpeaker, 'speaker'>[] } | null | undefined,
+  here: readonly string[] = [],
 ): ReadonlySet<string> {
-  if (!reading) return base;
-  const ids = new Set(base);
+  if (!reading && !here.length) return base;
+  const ids = new Set([...base, ...here]);
+  if (!reading) return ids;
   for (const m of reading.mentions) if (m.entityId) ids.add(m.entityId);
   for (const q of reading.quotes) if (q.speaker) ids.add(q.speaker);
   return ids;

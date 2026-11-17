@@ -1,4 +1,5 @@
-import type { ContentLocationRef, Entity, EntityKind, EntityPositions, GameLocation, GenericStates, PersonaRef } from "@/types";
+import type { ContentLocationRef, Entity, EntityKind, EntityPositions, GameLocation, GameState, GenericStates, PersonaRef } from "@/types";
+import { runtimePositions } from "@/lib/entityFollowing";
 import { ancestors, parentLookup } from "@/lib/ancestors";
 import { isGeneric, placesReturned, startsOf, withGenericStart, withoutRoutinePlace, withRoutineMapped, withRoutineReturned } from "@/lib/entityKind";
 import { withNewStart } from "@/lib/routineEditing";
@@ -102,6 +103,16 @@ export interface Standings {
 export const presentEntityIds = (
   entities: Entity[], standings: Standings, locationId: string | null | undefined,
 ): string[] => idsAt(locationId, entities, positionsIn(standings));
+
+/** The saved fields that place the cast. */
+export type StandingState = Pick<GameState, 'locationId' | 'entityPositions' | 'genericStates' | 'discoveredEntities'>;
+
+/** The ids at the location `state` stood at, by its own positions. A state with no location reads `fallbackLocationId`. */
+export const presentInState = (entities: Entity[], state: StandingState, fallbackLocationId?: string): string[] =>
+  presentEntityIds(entities, {
+    positions: { ...runtimePositions(state.discoveredEntities ?? []), ...state.entityPositions },
+    generics: state.genericStates ?? {},
+  }, state.locationId ?? fallbackLocationId);
 
 /** The entities that can hold a position under `persona`: the cast, as `inCast` reads it. */
 export function positionedCast<E extends Pick<Entity, 'id' | 'customPersona' | 'persona' | 'personaOnly'>>(entities: readonly E[], persona: PersonaRef | undefined): E[] {

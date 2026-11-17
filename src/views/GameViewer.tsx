@@ -148,7 +148,7 @@ import {
 } from "../lib/stagedPlanning";
 import { selectRelevantDiary } from "../lib/semanticDiary";
 import { findEntityByCharacterName, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription, pruneDiscoveredToHistory, pickedAtStart, INITIAL_SOURCE_TURN_ID } from "../lib/runtimeCharacters";
-import { positionedCast, presentEntityIds, type Standings } from "../lib/entityPresence";
+import { positionedCast, presentEntityIds, presentInState, type Standings } from "../lib/entityPresence";
 import { castCourses, withoutRoutinePlace } from "../lib/entityKind";
 import { placeAll, positionWorld, reseatForOpening, scriptPlaces, withPlayerAt, type PositionWorld } from "../lib/positionPlay";
 import { EMPTY_BOOK } from "../lib/positionEngine";
@@ -278,7 +278,7 @@ import type { AiRequestRecord } from "@/lib/aiContext/requestRecord";
 import { composeSceneTags, pickSceneCast, stripPlaces, splitTags, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
 import { addSceneImage, removeSceneImage, pruneSceneImages, setSceneTags as patchSceneTags, sceneDrawTags } from "../lib/sceneImages";
-import { addToPending, setTurnAttachments, latestTurnAttachments, pageTurnId, pruneAttachments } from "../lib/actionAttachments";
+import { addToPending, setTurnAttachments, latestTurnAttachments, pageTurnId, pruneAttachments, turnPage } from "../lib/actionAttachments";
 import { useImageAttachments } from "../lib/useImageAttachments";
 import { useMountedRef } from "../lib/useMountedRef";
 import { generateImage, buildImageRequest, takesCharacterPrompts } from "../lib/imageGen";
@@ -6710,8 +6710,14 @@ const GameViewer = ({
   const steadyCardRows = useKeepEqualMap(cardRows, shallowEqualRow);
   const shownQuoteColors = useKeepEqualMap(useMemo(() => cardColors(quoteColors, steadyCardRows), [quoteColors, steadyCardRows]));
   const pickable = useCallback(
-    (turnId: string) => turnPickList(pickBase, correctedReadings[turnId]?.reading),
-    [pickBase, correctedReadings],
+    (turnId: string) => {
+      // An older page reads its saved state, as Look Around does; the newest reads the live one.
+      const page = turnPage(fullMessageHistory, turnId);
+      const saved = page !== undefined && page < totalPages ? gameStates[page - 1] : undefined;
+      const here = saved ? presentInState(allEntities, saved, currentLocationId) : presentIdsAt(currentLocation);
+      return turnPickList(pickBase, correctedReadings[turnId]?.reading, here);
+    },
+    [pickBase, correctedReadings, fullMessageHistory, totalPages, gameStates, allEntities, currentLocationId, presentIdsAt, currentLocation],
   );
 
   // A card's correction joins its turn, against the narration that turn's reading read. With Contribute

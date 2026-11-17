@@ -111,6 +111,12 @@ export const latestTurnAttachments = (map: AttachmentMap, history: ChatMessage[]
 export const pageTurnId = (history: ChatMessage[], page: number): string | undefined =>
   turnIdOf(history[pageAssistantIndex(page, 2)]);
 
+/** The page of the turn `turnId`. Undefined when no narration in the history carries it. */
+export function turnPage(history: ChatMessage[], turnId: string): number | undefined {
+  const at = history.findIndex((message) => turnIdOf(message) === turnId);
+  return at < 0 ? undefined : Math.ceil(at / 2);
+}
+
 const turnIdOf = (message: ChatMessage | undefined): string | undefined =>
   message?.role === 'assistant' ? parseTurnContent(message.content)?.turnId : undefined;
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  withStartHere, dropLocationFromEntities, positionedCast, placedIn, carryMap, withCarriedRoutine, presentEntityIds,
+  withStartHere, dropLocationFromEntities, positionedCast, placedIn, carryMap, withCarriedRoutine, presentEntityIds, presentInState,
   knownInOf, withKnownIn, toggleKnownInPick, knownHere, type Standings,
 } from "./entityPresence";
 import type { Entity } from "@/types";
@@ -184,6 +184,28 @@ describe("the rosters in play read Position", () => {
       expect(presentEntityIds(withStale, standings, place)).not.toContain("stale");
     }
     expect(idsAtAny(["bar", "docks"], withStale, positionsIn(standings))).not.toContain("stale");
+  });
+});
+
+describe("presentInState", () => {
+  const keeper = member("keeper", "Keeper", ["nursery"]);
+  const roo = member("roo", "Roo", ["nursery"]);
+  const found: Entity = { id: "found", name: "Found" };
+
+  it("reads the saved location and positions, not the live ones", () => {
+    const saved = { locationId: "nursery", entityPositions: { roo: "square" } };
+    expect(presentInState([keeper, roo], saved, "square")).toEqual(["keeper"]);
+    expect(presentInState([keeper, roo], { ...saved, locationId: "square" })).toEqual(["roo"]);
+  });
+
+  it("places a discovered character where the saved state found it", () => {
+    const saved = { locationId: "nursery", discoveredEntities: [{ entity: found, locationId: "nursery", sourceTurnId: "t1" }] };
+    expect(presentInState([keeper, found], saved)).toEqual(["keeper", "found"]);
+  });
+
+  it("reads the fallback location for a state saved without one", () => {
+    expect(presentInState([keeper, roo], {}, "nursery")).toEqual(["keeper", "roo"]);
+    expect(presentInState([keeper, roo], {})).toEqual([]);
   });
 });
 

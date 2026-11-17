@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ATTACHMENT_MAX_DIM, MAX_ATTACHMENTS, addToPending, joinPending, pruneAttachments, withoutAttachment, restoreAttachments, turnAttachments,
-  latestTurnAttachments, pageTurnId, setTurnAttachments,
+  latestTurnAttachments, pageTurnId, setTurnAttachments, turnPage,
 } from './actionAttachments';
 import type { ChatMessage, ImageAttachment } from '@/types';
 import { decodedFake, fakeImageFile, installFakeImageCodec } from '@/test/fakeImageCodec';
@@ -131,6 +131,11 @@ describe('the turn map', () => {
   it('names the turn on each page, and none for a page past the history', () => {
     const history = [...turn('first'), ...turn('second')];
     expect([1, 2, 3].map((page) => pageTurnId(history, page))).toEqual(['first', 'second', undefined]);
+  });
+
+  it('finds the page of each turn, and none for a turn the history lacks', () => {
+    const history = [...turn('first'), ...turn('second')];
+    expect(['first', 'second', 'gone'].map((id) => turnPage(history, id))).toEqual([1, 2, undefined]);
   });
 
   it("replaces a turn's images and drops the entry when none are left", () => {

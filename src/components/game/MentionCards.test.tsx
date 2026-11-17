@@ -77,8 +77,10 @@ const readingFrom = (links?: RemarkPlugin, speakers?: QuoteSpeakerSource) => ({
   quotes: speakers?.quotes ?? [],
 });
 
-function show(text: string, links?: RemarkPlugin, speakers?: QuoteSpeakerSource, onCorrect?: (c: CardCorrection) => void) {
-  const pickable = () => turnPickList(PICK_BASE, readingFrom(links, speakers));
+function show(
+  text: string, links?: RemarkPlugin, speakers?: QuoteSpeakerSource, onCorrect?: (c: CardCorrection) => void, here: string[] = [],
+) {
+  const pickable = () => turnPickList(PICK_BASE, readingFrom(links, speakers), here);
   return render(
     <MentionCardsProvider colors={COLORS} rows={ROWS} onCorrect={onCorrect} pickable={pickable}>
       <MentionTurn turnId="t1">
@@ -316,6 +318,14 @@ describe('correcting from a card', () => {
     const links = linksOf(text, [['The courier', 'courier'], ['Tomas', 'tomas'], ['the pale shape', 'ghost']]);
     fireEvent.click(show(text, links, undefined, vi.fn()).container.querySelector<HTMLElement>('[data-mention="courier"]')!);
     fireEvent.click(screen.getByText('Wrong character?'));
+    expect(names()).toEqual(['', 'AAsh', 'MMira', 'KKessa', 'Cthe courier', 'Pa pale shape', 'TTomas', '–Not Listed', '–Not a Character']);
+  });
+
+  it("offers everyone at the turn's location under their label, linked or not (Q77)", () => {
+    const { container } = show(COURIER_LINE, courierLine, undefined, vi.fn(), ['tomas', 'ghost', 'ondra']);
+    fireEvent.click(container.querySelector<HTMLElement>('[data-mention]')!);
+    fireEvent.click(screen.getByText('Wrong character?'));
+    // Ondra stands there too, but has nothing to show.
     expect(names()).toEqual(['', 'AAsh', 'MMira', 'KKessa', 'Cthe courier', 'Pa pale shape', 'TTomas', '–Not Listed', '–Not a Character']);
   });
 
