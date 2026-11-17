@@ -552,6 +552,36 @@ describe('reference-integrity rules', () => {
     });
   });
 
+  describe('a script naming a Media Entry', () => {
+    const mediaWorld = (code: string, names: string[] = ['Wounded']) => {
+      const world = base({ stats: [stat({ id: 's1', name: 'Mana', scripts: boxScripts({ after: code }) })] });
+      const mediaList = Object.fromEntries(names.map((name, i) => [`m${i}`, { id: `m${i}`, name, kind: 'image' as const, data: 'data:image/webp;base64,AA==' }]));
+      return { ...world, worldOverview: { ...world.worldOverview, mediaList } };
+    };
+
+    it('flags a name the list lacks, once, naming it', () => {
+      const found = only(mediaWorld('entities.Rex.image = "Woundd"; if (persona.image === "Woundd") {}'), 'script-unknown-media');
+      expect(found).toHaveLength(1);
+      expect(found[0].severity).toBe('warning');
+      expect(found[0].message).toContain('“Woundd”');
+      expect(found[0].items.map((i) => i.id)).toEqual(['s1']);
+    });
+
+    it('reads a comparison on either side and a branch no run reaches', () => {
+      expect(only(mediaWorld('if (false) { if ("Gone" != location.image) {} }'), 'script-unknown-media')).toHaveLength(1);
+    });
+
+    it('stays quiet on a real name, a computed name, and a literal beside no media member', () => {
+      expect(only(mediaWorld('entities.Rex.image = "Wounded"; world.music = pick; persona.image = `Wo${1}`;'), 'script-unknown-media')).toEqual([]);
+      expect(only(mediaWorld('const o = { image: "x" }; o.image = "Nope"; persona.name = "Nope"; stats.Mana.image = "x";'), 'script-unknown-media')).toEqual([]);
+    });
+
+    it('flags every name when the world has no list', () => {
+      expect(only(base({ stats: [stat({ id: 's1', name: 'Mana', scripts: boxScripts({ after: 'persona.image = "Wounded";' }) })] }), 'script-unknown-media'))
+        .toHaveLength(1);
+    });
+  });
+
   it('flags a script looking up a stat name that doesn’t exist, in either comparison direction', () => {
     const coded = (code: string) => base({
       stats: [
@@ -5450,6 +5480,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'script-overrides-trait': 'advanced',
   'script-unknown-stat': 'advanced',
   'script-unknown-body': 'advanced',
+  'script-unknown-media': 'advanced',
   'script-unknown-blueprint-owner-stat': 'advanced',
   'script-before-reads-delta': 'advanced',
   'script-two-writers': 'advanced',

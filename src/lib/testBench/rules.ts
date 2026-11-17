@@ -28,6 +28,7 @@ import {
   allPlaceholders, mapAllPlaceholders, placeholderOwners, withoutPlaceholders, type PlaceholderSlices,
 } from '@/lib/placeholderHomes';
 import { matchKey } from '@/lib/entityMatch';
+import { mediaNameKeys } from '@/lib/codeRenameChains';
 import { activeDescriptor } from '@/lib/statContext';
 import {
   describeInThresholdUnits, describeThreshold, descriptorSpans, isThresholdOutOfRange, sortedDescriptors,
@@ -1182,6 +1183,21 @@ const scriptUnknownBody: Rule = {
     return ruleScripts(world).flatMap(({ listed, label, item }) => [...new Set(assignedBodyNames(listed.box.code))]
       .filter((name) => !known.has(name))
       .map((name) => scriptFinding(scriptUnknownBody, `${label} assigns the unknown Body name ${quote(name)}`, item)));
+  },
+};
+
+const scriptUnknownMedia: Rule = {
+  id: 'script-unknown-media',
+  severity: 'warning',
+  section: 'stats',
+  advanced: true,
+  summary: (count) => `${count} scripts name media the world doesn’t have`,
+  // Judged on the literals, so a branch no run reaches is read too.
+  check: (world) => {
+    const known = new Set(Object.values(world.worldOverview?.mediaList ?? {}).map((entry) => entry.name));
+    return ruleScripts(world).flatMap(({ listed, label, item }) => [...new Set(mediaNameKeys(listed.box.code).map((key) => key.name))]
+      .filter((name) => !known.has(name))
+      .map((name) => scriptFinding(scriptUnknownMedia, `${label} names the unknown media entry ${quote(name)}`, item)));
   },
 };
 
@@ -3847,7 +3863,7 @@ const imageMislabeled: Rule = {
 export const RULES: readonly Rule[] = [
   aliasLeadingArticle, entityMatchCollision, aliasSelfDuplicate,
   entityLocationOrphan, linkConnectionBroken, traitToggleMissingStat, itemBecomesMissingItem, placeholderPinBroken,
-  chipUnknownPlaceholder, placeholderUnused, placeholderPinnedUnused, scriptUnknownStat, scriptUnknownBlueprintOwnerStat, scriptUnknownBody,
+  chipUnknownPlaceholder, placeholderUnused, placeholderPinnedUnused, scriptUnknownStat, scriptUnknownBlueprintOwnerStat, scriptUnknownBody, scriptUnknownMedia,
   scriptBeforeReadsDelta, scriptTwoWriters,
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,
   noStartingLocation, legacyStartLocation, entityNowhere, entityRowUnreachable, entityNoCodeName, statDisabledForever,

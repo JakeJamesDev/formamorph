@@ -144,6 +144,51 @@ describe('Media List image slot', () => {
     expect(nameFields()[0].value).toBe('bram 1 (2)');
   });
 
+  describe('a rename of an entry a script names', () => {
+    const scripted = () => {
+      const world = { ...mediaFixtureWorld(), scripts: [{ id: 'w1', timing: 'after' as const, code: 'persona.image = "Odd Wick 1"; persona.name = "Odd Wick 1";' }] };
+      const bench = renderMediaTab(world, 'simple');
+      fireEvent.click(section('Entities').querySelector<HTMLElement>('[data-media-card="stack"]')!);
+      return bench;
+    };
+    const rename = (to: string) => {
+      const [field] = nameFields();
+      fireEvent.change(field, { target: { value: to } });
+      fireEvent.blur(field);
+    };
+    const code = (bench: Bench) => bench.ctx().worldScripts?.[0].code;
+
+    it('offers to rewrite the script, and Update Code moves the media literal alone', async () => {
+      const bench = scripted();
+      rename('Wick Lit');
+      expect(await screen.findByText(/names the image “Odd Wick 1” 1 time/)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Update Code' }));
+      await waitFor(() => expect(code(bench)).toBe('persona.image = "Wick Lit"; persona.name = "Odd Wick 1";'));
+    });
+
+    it('leaves the script as it is on Leave Code', async () => {
+      const bench = scripted();
+      rename('Wick Lit');
+      fireEvent.click(await screen.findByRole('button', { name: 'Leave Code' }));
+      expect(code(bench)).toBe('persona.image = "Odd Wick 1"; persona.name = "Odd Wick 1";');
+    });
+
+    it('offers the name the list kept when the new one was taken', async () => {
+      const bench = scripted();
+      rename('bram 1');
+      expect(await screen.findByText(/to “bram 1 \(2\)”/)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Update Code' }));
+      await waitFor(() => expect(code(bench)).toBe('persona.image = "bram 1 (2)"; persona.name = "Odd Wick 1";'));
+    });
+
+    it('asks nothing when no script names the entry', async () => {
+      openWick();
+      rename('Wick Lit');
+      await act(async () => {});
+      expect(screen.queryByRole('button', { name: 'Update Code' })).toBeNull();
+    });
+  });
+
   it('unlinks the framed image and keeps its entry', () => {
     const bench = openWick();
     const [first, ...rest] = ids(bench, 'wick');

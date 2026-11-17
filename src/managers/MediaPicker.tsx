@@ -16,6 +16,8 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { isMediaRef, mediaEntry, mediaNameFromFile, mediaNameKey, resolveMedia, urlFileName } from '@/lib/mediaList';
 import { linkSingle } from '@/lib/mediaImages';
+import { renameMediaEntry } from '@/lib/mediaUnlink';
+import { useCodeRenameOffer } from '@/lib/useCodeRename';
 import { isRemoteImage } from '@/lib/imageBytes';
 import { ImageUpload } from '@/lib/UtilityComponents';
 import { mediaUsage, mediaUseLabel } from '@/lib/mediaUsage';
@@ -144,9 +146,13 @@ export function useMediaEntryActions() {
   const step = useMediaStep();
   const [deleting, setDeleting] = useState<string | null>(null);
   const list = worldOverview.mediaList;
+  const offerCodeRename = useCodeRenameOffer();
   const rename = (id: string, name: string) => {
     if (!list?.[id] || !name.trim() || name.trim() === list[id].name) return;
+    // The name the list keeps, made unique, is the one scripts follow.
+    const kept = renameMediaEntry(list, id, name)?.[id]?.name ?? name.trim();
     void step(`Rename ${KIND_WORDS[list[id].kind].one}: ${name.trim()}`, () => renameMedia({ mediaId: id, name }));
+    offerCodeRename({ root: 'media', oldName: list[id].name, newName: kept, otherNames: [], noun: list[id].kind });
   };
   const uses = deleting
     ? (mediaUsage({ worldOverview, entities, locations, items, bodies, dictionaries }).get(deleting) ?? [])

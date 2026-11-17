@@ -15,7 +15,7 @@
 
 import type { Entity, Placeholder, Script, Stat, StatGroup, Tool, TraitGroup } from '@/types';
 import { canBePlayer } from './owners';
-import { codeRenameChains, locationMoveKeys, type ChainRoot, type CodeRenameKey } from './codeRenameChains';
+import { codeRenameChains, locationMoveKeys, mediaNameKeys, type ChainRoot, type CodeRenameKey } from './codeRenameChains';
 import type { PlaceholderOwnerRef, PlaceholderOwners } from './placeholderHomes';
 import {
   placeholderPathMap, walkPlaceholderPath,
@@ -31,10 +31,10 @@ import {
 } from './statCodeTargets';
 
 /** The name-keyed maps a rename can reach. */
-export type RenameRoot = 'stats' | 'placeholders' | 'traits' | 'locations' | 'options';
+export type RenameRoot = 'stats' | 'placeholders' | 'traits' | 'locations' | 'options' | 'media';
 
-/** The roots that are maps code looks a name up in; a location is named by `location.move`'s argument instead. */
-type MapRoot = Exclude<RenameRoot, 'locations'>;
+/** The roots that are maps code looks a name up in; a location and a Media Entry are named by a literal instead. */
+type MapRoot = Exclude<RenameRoot, 'locations' | 'media'>;
 
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 
@@ -251,6 +251,8 @@ export interface CodeRenamePlan {
   root: RenameRoot;
   /** What was renamed, where the rename moved a node of the placeholder tree. The offer names it. */
   subject?: CodeRenameSubject;
+  /** What the offer calls the renamed thing where the root alone does not say: a Media Entry's kind. */
+  noun?: string;
   oldName: string;
   newName: string;
   /** The stats whose code changes: the world's in authored order, then each entity's. */
@@ -305,6 +307,8 @@ export interface CodeRenameInput {
   subject?: CodeRenameSubject;
   /** The renamed stat. With it, a stat rename follows every route to that stat, in every box. */
   stat?: RenamedStat;
+  /** The noun the offer says for a renamed Media Entry: `image` or `sound`. */
+  noun?: string;
 }
 
 /** `owners` with every reference to one owner renamed. */
@@ -468,6 +472,16 @@ function locationRenameEdits(input: CodeRenameInput, from: string, to: string): 
     .map((key) => rewrittenKey(key, to)));
 }
 
+/** Every literal naming Media Entry `from` in a media assignment or comparison, in every box, rewritten to `to`. */
+function mediaRenameEdits(input: CodeRenameInput, from: string, to: string): { edits: CodeRenameEdit[]; references: number } {
+  const owners = statCodeOwners({
+    stats: input.stats, statGroups: input.statGroups, entities: input.entities ?? [], placeholders: input.placeholders?.list ?? [],
+  });
+  return boxEdits(renameBoxes(input, owners), (box) => mediaNameKeys(box.code)
+    .filter((key) => key.name === from)
+    .map((key) => rewrittenKey(key, to)));
+}
+
 /**
  * The rewrite a committed rename should offer, or null where there is nothing to offer: an unchanged or
  * blank name, a name another entry of the same kind already carries, or a name no stat's code references.
@@ -488,6 +502,10 @@ export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
     if (otherNames.some((name) => name.trim() === from)) return null;
     const found = locationRenameEdits(input, from, to);
     return found.references ? { root, oldName: from, newName: to, ...found } : null;
+  }
+  if (root === 'media') {
+    const found = mediaRenameEdits(input, from, to);
+    return found.references ? { root, oldName: from, newName: to, noun: input.noun, ...found } : null;
   }
   // A rename that names its node follows the tree. Without one — a caller that knows only the name — the
   // bare-name form is all that can be proven, which is what every root but `placeholders` has anyway.

@@ -24,6 +24,8 @@ export interface CodeRenameRequest {
   traitId?: string;
   /** The renamed stat, so the rename follows every route that reaches it and no other. */
   stat?: RenamedStat;
+  /** What the offer calls the renamed thing, where the root alone does not say: a Media Entry's kind. */
+  noun?: string;
 }
 
 export type OfferCodeRename = (request: CodeRenameRequest) => void;

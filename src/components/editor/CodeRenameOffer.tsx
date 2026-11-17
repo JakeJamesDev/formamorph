@@ -25,12 +25,12 @@ import { CodeRenameContext, type CodeRenameRequest, type OfferCodeRename } from 
  */
 
 /** The noun each map's entries go by, for the question the dialog asks. */
-const NOUNS: Record<RenameRoot, string> = { stats: 'stat', placeholders: 'placeholder', traits: 'trait', locations: 'location', options: 'World Option' };
+const NOUNS: Record<RenameRoot, string> = { stats: 'stat', placeholders: 'placeholder', traits: 'trait', locations: 'location', options: 'World Option', media: 'media entry' };
 
 /** What the dialog calls the thing that was renamed. An owner of placeholders is reached through the
  *  `placeholders` map but is an entity or a dictionary. "Placeholder" would name the wrong row. */
 const renamedNoun = (plan: CodeRenamePlan) =>
-  (plan.subject && plan.subject.kind !== 'placeholder' ? plan.subject.kind : NOUNS[plan.root]);
+  plan.noun ?? (plan.subject && plan.subject.kind !== 'placeholder' ? plan.subject.kind : NOUNS[plan.root]);
 
 const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
 
