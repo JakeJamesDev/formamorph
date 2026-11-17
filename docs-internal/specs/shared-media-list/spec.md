@@ -81,6 +81,7 @@ Settled with the user on 2026-11-16, in grill order.
 | Q50 | `entities.X.image` sets an entity-wide override; a new `entities.X.instances` list sets one Generic Entity Instance, which beats the entity-wide one. A panel shows the instance at the player's place, first by Start order (user, 2026-11-16) |
 | Q51 | While an image override is set, play shows it first, with the rule-visible images after it (user, 2026-11-16) |
 | Q52 | Reading `image` with no override gives the first rule-visible linked entry's name, or null; `sound`, `ambience` and `music` give the linked entry's name, or null. A read-only `world` global holds `music` (ticket 08) |
+| Q55 | World music's script member stays `world.music` (Q52), though `world` is a retired Tool-script global: a leftover `world.entities` still fails, with a less clear error, and the editor still marks it retired. Tools read `world.music` only (user, 2026-11-16) |
 | Q53 | Override names match exactly. A name of the wrong kind throws as a missing name (ticket 08) |
 | Q54 | The Media tab's cover and Body backdrop panels hold their picker slot like the other list fields (Q45), and Import Media takes a `.glb` as an Avatar only when it carries VRM data; a plain 3D model is refused (fix after ticket 07) |
 
