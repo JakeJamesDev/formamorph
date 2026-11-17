@@ -4,6 +4,7 @@ import { ReplaceAllConfirm } from '@/components/editor/EditorFindBar';
 import { ChangedElsewhereDialog } from '@/components/editor/ChangedElsewhereDialog';
 import { ReplaceImageDialog } from '@/managers/ImageTagsField';
 import { DeleteVrmConfirm } from '@/managers/AvatarStore';
+import { DeleteMediaConfirm } from '@/managers/MediaPicker';
 import { AppearancePreviewDialog } from '@/components/editor/AppearancePreviewDialog';
 import type { RowAvatar } from '@/lib/useSliderPicker';
 import ModelStorageService from '@/services/ModelStorageService';
@@ -78,6 +79,14 @@ export function DevEditorPrompts({ modal }: { modal: string | undefined }) {
   }
   if (modal === 'deleteWorldAvatar') {
     return <DeleteVrmConfirm open name="Fen Walker" users={AVATAR_USERS} onConfirm={close} onOpenChange={(open) => { if (!open) close(); }} />;
+  }
+  if (modal === 'deleteMediaEntry') {
+    return (
+      <DeleteMediaConfirm
+        open name="knight_portrait" uses={['Wren, Image 1', 'Marsh Warden, Image 2', 'Old Keep, Image 1']}
+        onConfirm={close} onOpenChange={(open) => { if (!open) close(); }}
+      />
+    );
   }
   if (modal === 'replaceAll') {
     return (

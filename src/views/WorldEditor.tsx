@@ -204,7 +204,7 @@ const WorldEditorInner = ({
 }) => {
   const showBackButton = backButton ?? !embedded;
   const {
-    updateWorldOverview, worldId, worldOverview,
+    updateWorldOverview, addMedia, worldId, worldOverview,
     loadWorldData, getWorldData,
     stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, dictionaries, placeholders, placementLetters,
     worldPlaceholders, placeholderOwners, placeholderGroups, worldTools, worldScripts, items, setItems, setBodies, updateItem, updateWorldTool,
@@ -944,11 +944,11 @@ const WorldEditorInner = ({
   const tourApi = useMemo(
     () => ({
       updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, openConnection, addEntity,
-      updateEntity, addStat, updateStat, addTrait, updateTrait, addDictionaryEntry, updateDictionaryEntry,
+      updateEntity, addStat, updateStat, addTrait, updateTrait, addDictionaryEntry, updateDictionaryEntry, addMedia,
     }),
     [
       updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, openConnection, addEntity,
-      updateEntity, addStat, updateStat, addTrait, updateTrait, addDictionaryEntry, updateDictionaryEntry,
+      updateEntity, addStat, updateStat, addTrait, updateTrait, addDictionaryEntry, updateDictionaryEntry, addMedia,
     ],
   );
   const tourWorld = useMemo(() => getWorldData(), [getWorldData]);

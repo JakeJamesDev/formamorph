@@ -454,6 +454,28 @@ An image field takes an uploaded file or a web address. See [Upload or link](Wor
 
 An entity's gallery has no slot limit, so a generated image always gets a new slot. A one-image field that already holds an image, such as an item's image, asks **Replace which image?** first. **Cancel** changes nothing.
 
+## Image slots
+<!-- keywords: reuse image, same picture on two entities, shared image, pick existing image, image library, rename image, image name, delete image everywhere, remove image from entity -->
+<!-- route: deleteMediaEntry -->
+
+A world keeps one list of its images. Entity and location galleries pick from that list, so one image can show on many entities and is stored once.
+
+An empty slot offers three ways in:
+
+| Control | What it does |
+|---|---|
+| 📥 **Import** | Adds one or more files to the world's images, named after each file. The first fills this slot, the rest fill the slots after it. |
+| 🖼️ **Choose** | Opens a grid of the world's images. Type in **Search Images** to filter by name. Images this entity or location already uses are dimmed, and you can still pick one. |
+| 🔗 **Or paste an image URL** | Adds a linked image, named after the last part of the address |
+
+You can also drop a file or a link onto the slot. A generated image is named after the entity or location, such as *Wren 1*.
+
+Under a filled slot:
+
+- **Image Name** renames the image everywhere it shows. Press Enter or click away to keep the name. A name another image has gets a number, such as *knight (2)*.
+- ✖️ **Remove From Slot** takes the image out of this slot. It stays in the world, ready to pick again.
+- 🗑️ **Delete From World** lists every place that uses the image, then asks. **Delete** takes it out of all of them and drops it from the world. One undo brings it all back.
+
 ## Visibility rules
 <!-- keywords: show image when hurt, wounded portrait, portrait only when injured, image changes with health, hide image, change image in game, art follows story, transformation art, armored portrait, conditional image, image per state, stat threshold image, form change image -->
 <!-- route: worldEditorEntity.profile -->

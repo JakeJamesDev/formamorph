@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState, type ChangeEvent, type MouseEvent, ty
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertTriangle, CornerDownLeft, ImagePlus, Link as LucideLink, Box as LucideBox, Music, X } from "lucide-react";
+import { AlertTriangle, CornerDownLeft, ImagePlus, Link as LucideLink, Box as LucideBox, Music, Upload, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Tip } from "@/components/ui/tooltip";
 import { Meta } from "@/components/ui/typography";
 import ModelViewer from '../views/ModelViewer';
@@ -19,6 +19,7 @@ import { isExpiringImageHost } from './imageBytes';
 import { useRemoteImage } from './useRemoteImage';
 import { fileToDataUrl } from './imageDrop';
 import { useImageDropTarget } from './useImageDropTarget';
+import { urlFileName } from './mediaList';
 import type { MediaAsset } from '@/types';
 
 /** An uploaded media file, base64-encoded as a data URL. */
@@ -95,8 +96,10 @@ export const resolveModelType = (model: Partial<MediaAsset>): ModelType => {
 /** The shared dashed "click to upload" frame for the media uploaders (image / sound / 3D model). Pass
  *  `frameClassName` to give it a fixed size (e.g. the thumbnail crop); without it the box is compact and
  *  auto-sized. The dashed look lives here so every uploader stays in sync. */
-const Dropzone = ({ htmlFor, frameClassName, dragOver, overlay, children }: {
+const Dropzone = ({ htmlFor, frameClassName, dragOver, overlay, asLabel = true, children }: {
   htmlFor: string;
+  /** False keeps a click on the frame from opening the file picker, for a frame that holds its own buttons. */
+  asLabel?: boolean;
   frameClassName?: string;
   /** A droppable drag is overhead — the frame says so rather than leaving the gesture to guesswork. */
   dragOver?: boolean;
@@ -118,10 +121,10 @@ const Dropzone = ({ htmlFor, frameClassName, dragOver, overlay, children }: {
       {overlay && <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>{overlay}</div>}
     </div>
   );
-  return <Label htmlFor={htmlFor} className="cursor-pointer">{frame}</Label>;
+  return asLabel ? <Label htmlFor={htmlFor} className="cursor-pointer">{frame}</Label> : frame;
 };
 
-export const ImageUpload = ({ onChange, id, value, cap, previewClassName, objectFit = 'contain', onPromptExtracted, onFiles, onFile }: {
+export const ImageUpload = ({ onChange, id, value, cap, previewClassName, objectFit = 'contain', onPromptExtracted, onFiles, onFile, choose }: {
   /** A picked file's name rides along, for a slot that names its picture. */
   onChange: (value: string, fileName?: string) => void;
   // Several pictures arriving at once (a multi-file drop). A caller holding more than one slot takes them
@@ -139,6 +142,9 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   // Takes files only, for a slot that stores blobs: a file arrives here as is, the link field hides, and a
   // dropped link is refused. `onChange` still receives the empty string on remove.
   onFile?: (file: File) => void;
+  // A Media List slot's Choose control. Set, the empty frame offers Import and Choose above the link field,
+  // and a filled one drops its remove button for the host's Unlink.
+  choose?: ReactNode;
 }) => {
   const { promptImage, dialog } = useDownscalePrompt();
   const [zoomOpen, setZoomOpen] = useState(false);
@@ -167,7 +173,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
     }
     setUrlError(null);
     setUrlDraft('');
-    onChange(trimmed);
+    onChange(trimmed, urlFileName(trimmed));
   }, [urlDraft, onChange]);
 
   /** Store one picked or dropped file into this slot. */
@@ -208,11 +214,11 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   // works. Dropping onto a picture and silently replacing it is the hard gesture to take back.
   const { dragOver, dropProps } = useImageDropTarget({
     enabled: !value,
-    onUrl: onFile ? () => setUrlError("This slot doesn't take links. Drop an image file instead.") : onChange,
+    onUrl: onFile ? () => setUrlError("This slot doesn't take links. Drop an image file instead.") : (url) => onChange(url, urlFileName(url)),
     onFiles: takeDropped,
   });
 
-  const removeButton = (
+  const removeButton = !choose && (
     <Tip tip="Remove image">
       <button
         type="button"
@@ -292,6 +298,20 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   // A file-only slot has no link field, only the line that refuses a dropped link.
   const linkSlot = onFile ? <p className="min-h-4 text-meta text-destructive">{urlError}</p> : urlBox;
 
+  // A Media List slot: Import (a label on the file input) and Choose side by side, the link field below.
+  const pickerSlot = (
+    <div className="flex w-full max-w-[280px] flex-col gap-2">
+      <div className="grid grid-cols-2 gap-2">
+        <Label htmlFor={`image-upload-${id}`} className={cn(buttonVariants({ variant: 'outline' }), 'cursor-pointer')}>
+          <Upload className="mr-2 h-4 w-4" />Import
+        </Label>
+        {choose}
+      </div>
+      {dragOver && <span className="text-label text-muted-foreground">Drop to add</span>}
+      {linkSlot}
+    </div>
+  );
+
   // Marks a filled slot as pointing somewhere rather than carrying its own bytes, and says when that link
   // comes with a catch. An expiring host outranks an unreadable one: it breaks everything, just later.
   const badge = expiring
@@ -355,6 +375,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
         htmlFor={`image-upload-${id}`}
         frameClassName={previewClassName}
         dragOver={dragOver}
+        asLabel={!choose || !!value}
         overlay={encoding && <ImageConvertOverlay thumb={encoding} done={0} total={1} objectFit={objectFit} />}
       >
         {previewClassName ? (
@@ -377,7 +398,9 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
             // The link field lives in the empty frame rather than under it: the frame is already this tall,
             // so nothing below the slot moves when an empty one comes into view.
             // The overlay's thumbnail is dimmed rather than opaque, so anything left underneath shows through it.
-            encoding ? null : (
+            encoding ? null : choose ? (
+              <div className="absolute inset-0 flex items-center justify-center p-3">{pickerSlot}</div>
+            ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
                 <span className="text-label">
                   {dragOver ? 'Drop to add' : 'Click to upload image'}
@@ -404,7 +427,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
               {removeButton}
             </div>
           ) : (
-            encoding ? null : (
+            encoding ? null : choose ? pickerSlot : (
               <>
                 <ImagePlus className="mr-2" />
                 <span>{dragOver ? 'Drop to add' : 'Add Image'}</span>

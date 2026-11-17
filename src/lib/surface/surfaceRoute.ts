@@ -83,6 +83,7 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   codeRename: { ancestor: 'worldEditor' },
   replaceAll: { ancestor: 'worldEditor' },
   deleteWorldAvatar: { ancestor: 'worldEditor.overview' },
+  deleteMediaEntry: { ancestor: 'worldEditor' },
   appearancePreview: { ancestor: 'worldEditorTrait.appearance' },
   statAppearancePreview: { ancestor: 'worldEditorStat.appearance' },
   savedElsewhere: { ancestor: 'worldEditor' },

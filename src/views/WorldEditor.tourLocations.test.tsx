@@ -220,8 +220,10 @@ describe('Authoring Tour — add steps', () => {
       name: 'The Salt Lantern',
       playerDescription: 'The village inn, warm and smelling of peat smoke and fried fish.',
       aiDescription: expect.stringMatching(/^A two-story inn on the harbor\./),
-      images: [{ data: 'data:image/webp;base64,saltLantern' }],
     });
+    const [lantern] = ctx().locations.at(-1)?.images ?? [];
+    expect(ctx().worldOverview.mediaList?.[(lantern as { mediaId: string }).mediaId])
+      .toMatchObject({ name: 'The Salt Lantern 1', data: 'data:image/webp;base64,saltLantern' });
     // The first tour location keeps its own text.
     expect(ctx().locations.filter((l) => l.name === 'The Tidewell')).toHaveLength(1);
     // In Game stands at the new place.
@@ -342,7 +344,9 @@ describe('In Game — Locations', () => {
 
     fireEvent.click(noteButton('Use Example')!);
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
-    expect(entityImages(ctx().locations.at(-1))[0]?.data).toBe('data:image/webp;base64,tidewell');
+    expect(entityImages(ctx().locations.at(-1), ctx().worldOverview.mediaList)[0])
+      .toEqual({ data: 'data:image/webp;base64,tidewell', name: 'The Tidewell 1' });
+    expect(ctx().locations.at(-1)?.images?.[0]).toHaveProperty('mediaId');
     expect(within(playerSees()).getByTestId('location-backdrop-image'))
       .toHaveStyle({ backgroundImage: 'url(data:image/webp;base64,tidewell)' });
     // The location block stays, with nothing of the picture in it.

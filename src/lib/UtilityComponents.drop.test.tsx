@@ -51,7 +51,7 @@ describe('ImageUpload drag and drop', () => {
 
     fireEvent.drop(zone(), { dataTransfer: transfer({ data: { 'text/uri-list': 'https://files.example/a.png' } }) });
 
-    await waitFor(() => expect(onChange).toHaveBeenCalledWith('https://files.example/a.png'));
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('https://files.example/a.png', 'a.png'));
     expect(promptImage).not.toHaveBeenCalled();
   });
 

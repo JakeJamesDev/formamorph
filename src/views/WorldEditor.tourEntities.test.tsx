@@ -232,7 +232,10 @@ describe('In Game — Entities', () => {
 
     fireEvent.click(noteButton('Use Example')!);
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
-    expect(ctx().entities.at(-1)?.images).toEqual([{ data: 'data:image/webp;base64,maren' }]);
+    // It joins the Media List as an entry named after the entity, and the entity links it.
+    const [link] = ctx().entities.at(-1)?.images ?? [];
+    expect(ctx().worldOverview.mediaList?.[(link as { mediaId: string }).mediaId])
+      .toMatchObject({ name: 'Maren 1', data: 'data:image/webp;base64,maren' });
     expect(within(playerSees()).getByRole('img', { name: 'Maren' })).toHaveAttribute('src', 'data:image/webp;base64,maren');
     // The roster stays, with nothing of the picture in it.
     expect(narration().textContent).toContain('- **Maren**');

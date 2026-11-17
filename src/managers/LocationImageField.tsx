@@ -27,6 +27,7 @@ export function LocationImageField({ location, onChange, placeholders, imageId =
       tourAnchor={tourAnchor}
       images={gallery.images}
       onImagesChange={gallery.onImagesChange}
+      media={gallery.media}
       slots={Infinity}
       imageId={imageId}
       cap={IMAGE_CAPS.background}

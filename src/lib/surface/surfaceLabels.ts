@@ -50,6 +50,7 @@ const ENTRIES: [string, string][] = [
   ['codeRename', 'Update Code References'],
   ['replaceAll', 'Replace All'],
   ['deleteWorldAvatar', 'Delete Avatar'],
+  ['deleteMediaEntry', 'Delete From World'],
   ['appearancePreview', 'Preview'],
   ['statAppearancePreview', 'Preview'],
   ['savedElsewhere', 'World Saved in Another Tab'],

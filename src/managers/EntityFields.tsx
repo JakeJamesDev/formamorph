@@ -14,6 +14,7 @@ import { IMAGE_CAPS } from '../lib/imageOptim';
 import { entityImages, galleryLinks } from '../lib/entityImages';
 import { useLinkedGallery } from '@/lib/useLinkedGallery';
 import { ImageGallery, ImageTags, ImageWidget, type GalleryFrameProps } from './ImageTagsField';
+import type { GalleryMedia } from '@/lib/mediaGallery';
 import { useEditorMode } from '@/lib/editorMode';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { randomUUID } from '@/lib/uuid';
@@ -379,8 +380,8 @@ const LinkedEntityImageWidget = (props: Omit<EntityImageWidgetProps, 'linked'>) 
 };
 
 const EntityImageBody = ({
-  value, onChange, placeholders = [], ownerId, children, frame, imageId = `entity-image-${value.id}`, ruleHost, images, onImagesChange,
-}: Omit<EntityImageWidgetProps, 'linked'> & { images: GalleryImage[]; onImagesChange: (next: GalleryImage[]) => void }) => {
+  value, onChange, placeholders = [], ownerId, children, frame, imageId = `entity-image-${value.id}`, ruleHost, images, onImagesChange, media,
+}: Omit<EntityImageWidgetProps, 'linked'> & { images: GalleryImage[]; onImagesChange: (next: GalleryImage[]) => void; media?: GalleryMedia }) => {
   const entityHost = useEntityRuleHost(value.id);
   return (
     <ImageWidget
@@ -388,6 +389,7 @@ const EntityImageBody = ({
       tourAnchor={ruleHost ? undefined : 'entity-image'}
       images={images}
       onImagesChange={onImagesChange}
+      media={media}
       slots={Infinity}
       imageId={imageId}
       cap={IMAGE_CAPS.entity}

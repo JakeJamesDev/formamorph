@@ -46,6 +46,9 @@ import {
 } from '@/lib/items';
 import { parseBodies, withoutBodyRows, withoutEntityBodyRefs, withoutSlotEntries } from '@/lib/bodies';
 import { parseCurrencies } from '@/lib/currency/parse';
+import {
+  bodyWithoutMedia, entityWithoutMedia, itemWithoutMedia, locationWithoutMedia, overviewWithoutMedia, renameMediaEntry,
+} from '@/lib/mediaUnlink';
 import { parseWorldOptions } from '@/lib/worldOptions';
 import { lostStatIds, withoutBackingStats, withoutCurrencyItem, withoutCurrencyRefs } from '@/lib/currencyDeletes';
 import { useWorldRecorder, WorldHistoryContext } from '@/contexts/worldRecorder';
@@ -281,12 +284,17 @@ function useProvideGameData() {
         setWorldOverview((prev) => ({ ...prev, ...updates }))),
       addMedia: keyedTo('worldOverview', (entries: MediaList) =>
         setWorldOverview((prev) => ({ ...prev, mediaList: { ...prev.mediaList, ...entries } }))),
+      // Takes no string or id first, so the step keys to the overview rather than to a record.
+      renameMedia: keyedTo('worldOverview', ({ mediaId, name }: { mediaId: string; name: string }) => setWorldOverview((prev) => {
+        const mediaList = renameMediaEntry(prev.mediaList, mediaId, name);
+        return mediaList === prev.mediaList ? prev : { ...prev, mediaList };
+      })),
     };
   }, [keyNext, updateBookUnkeyed, updateEntryUnkeyed, dropBackings]);
   const {
     keyedTo, updateDictionary, updateDictionaryEntry, updateStat, updateStatGroup, updateLocation, updateConnection, updateEntity, editEntity,
     updateEntityGroup, updateTrait, updateTraitGroup, updatePlaceholderGroup, updateWorldOverview, updateWorldScript, updateItem, updateSlot, updateCurrency, updateWorldOption,
-    updateWorldTool, addMedia,
+    updateWorldTool, addMedia, renameMedia,
   } = keyed;
   const dictStore = useMemo(() => ({
     dictionaries, setDictionaries, addDictionary, updateDictionary, removeDictionary,
@@ -423,6 +431,19 @@ function useProvideGameData() {
     setItems(prev => prev.filter(item => item.id !== itemId));
     setPlacements(prev => withoutItemPlacements(prev, itemId));
     setCurrencies(prev => withoutCurrencyItem(prev, itemId));
+  }, []);
+
+  // Delete From World: every field that links the entry drops it, then the entry goes (Q6).
+  const removeMedia = useCallback((mediaId: string) => {
+    const each = <T,>(drop: (record: T, id: string) => T) => (prev: T[]) => {
+      const next = prev.map((record) => drop(record, mediaId));
+      return next.some((record, i) => record !== prev[i]) ? next : prev;
+    };
+    setEntities(each(entityWithoutMedia));
+    setLocations(each(locationWithoutMedia));
+    setItems(each(itemWithoutMedia));
+    setBodies(each(bodyWithoutMedia));
+    setWorldOverview((prev) => overviewWithoutMedia(prev, mediaId));
   }, []);
 
   // Items priced in a removed Currency lose it and keep their Value.
@@ -840,7 +861,7 @@ function useProvideGameData() {
 
   // One identity for the provider's life, so a component that only writes never re-renders on an edit.
   const actions = useMemo(() => ({
-    updateWorldOverview, addMedia, loadWorldMetadata,
+    updateWorldOverview, addMedia, renameMedia, removeMedia, loadWorldMetadata,
     addStat, updateStat, removeStat,
     addStatGroup, updateStatGroup, removeStatGroup,
     addLocation, updateLocation, removeLocation,
@@ -859,7 +880,7 @@ function useProvideGameData() {
     setWorldOptions, updateOption: updateWorldOption,
     loadWorldData, setWorldId, saveWorld, discardChanges, setOwnedLibraryIds, reloadWorld, keepWorldCopy,
   }), [
-    updateWorldOverview, addMedia, loadWorldMetadata,
+    updateWorldOverview, addMedia, renameMedia, removeMedia, loadWorldMetadata,
     addStat, updateStat, removeStat,
     addStatGroup, updateStatGroup, removeStatGroup,
     addLocation, updateLocation, removeLocation,

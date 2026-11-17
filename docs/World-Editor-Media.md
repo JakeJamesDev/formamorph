@@ -115,7 +115,7 @@ An entity's or location's images open in one panel. A stack opens on its primary
 
 - 🧾 **Header.** The name, the image count and their total, and **Go to**. An entity shows the Avatar it picks: select a world Avatar to open its card.
 - 🖼️ **Gallery.** The same gallery as the entity's **Profile** tab or the location's **Media** tab. Select a tile in the strip to frame it. Drag a tile to reorder; drag it to the front to make it the primary image. **Generate with AI** shows in both modes, and **Image Tags** in Advanced.
-- ➕ **Add tile.** It frames the empty slot. Upload there, and the frame moves to the new image.
+- ➕ **Add tile.** It frames the empty slot. **Import** or **Choose** there, and the frame moves to the new image. See [Image slots](World-Editor-Entities#image-slots).
 - 📋 **Framed image.** Under the gallery: its slot name, size and budget, then **Replace**, **Download** and **Remove**. Replace keeps the image's place and its Visibility rule.
 - 🎚️ **Visibility rule.** The framed image shows its rule editor here, so the strip has no cog. A rule you set here shows on the entity's **Profile** tab or the location's **Media** tab, and a rule set there shows here. On a location, a condition with no owner reads the persona.
 

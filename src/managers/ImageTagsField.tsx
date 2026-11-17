@@ -33,6 +33,8 @@ import type { ImageCap } from '../lib/imageOptim';
 import type { ImageSubjectKind } from '@/lib/imagePrompt';
 import { useEditorMode } from '@/lib/editorMode';
 import type { GalleryImage, Placeholder, TraitRequirementRow } from '@/types';
+import type { GalleryMedia } from '@/lib/mediaGallery';
+import { MediaChooseButton, MediaEntryBar } from './MediaPicker';
 import { Tip } from '@/components/ui/tooltip';
 import { fieldFrame } from '@/lib/historyField';
 
@@ -71,6 +73,8 @@ interface ImageWidgetProps {
   onFramedChange?: (index: number) => void;
   /** False hides the strip's rule cog and the framed rule's summary, for a host that edits the rule itself. */
   ruleCog?: boolean;
+  /** A gallery on the world's Media List: its slots offer Choose, and a filled one names its entry. */
+  media?: GalleryMedia;
 }
 
 /** The inputs a host passes to control the gallery's frame and cog. */
@@ -175,7 +179,8 @@ const ImageTile = ({ id, url, index, framed, onSelect, ruled, rule }: {
 /** The strip's trailing tile: press it to add, or drop onto it. A label on the open slot's file input, so
  *  one press opens the picker. */
 const AddTile = ({ htmlFor, selected, onSelect, onUrl, onFiles }: {
-  htmlFor: string;
+  /** The open slot's file input. Unset, a press only frames the slot, whose own buttons then import or choose. */
+  htmlFor?: string;
   selected: boolean;
   onSelect: () => void;
   onUrl: (url: string) => void;
@@ -234,7 +239,7 @@ function withSlotData(list: readonly GalleryImage[], index: number, data: string
 export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   const {
     label, images, onImagesChange, slots = 1, imageId, cap, description, kind, fileSubject, tags, onTagsChange, tourAnchor, ruleHost,
-    framed, onFramedChange, ruleCog = true,
+    framed, onFramedChange, ruleCog = true, media,
   } = useImageWidget();
   const ruleSourced = useHasRuleSource();
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
@@ -355,6 +360,13 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   });
   const paneProps = gallery ? pane.dropProps : {};
 
+  // The entry behind each filled slot, and the ones this subject links, which Choose dims.
+  const entryAt = (i: number) => {
+    const link = media?.links[i];
+    return link && 'mediaId' in link ? media?.list?.[link.mediaId] : undefined;
+  };
+  const linkedIds = new Set((media?.links ?? []).flatMap((link) => ('mediaId' in link ? [link.mediaId] : [])));
+
   // Ids that follow the picture, not the position. Keyed by position, React rewrites each tile's contents
   // instead of moving any node, so on drop the dragged tile snapped back before the new order appeared.
   // The picture itself can't be the id: it is a data URL megabytes long, and two copies of one picture
@@ -389,7 +401,9 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
       {/* Keyed by the image, not the position. Keyed by position, a reorder hands each slot a different
           value instead of moving it — and an uploader's resolved src lags its value by a render, so the
           newly framed slot showed the previous image for a frame before swapping. */}
-      {rows.map((url, i) => (
+      {rows.map((url, i) => {
+        const entry = url ? entryAt(i) : undefined;
+        return (
         <div key={url ? tileIds[i] : 'empty-slot'} className={cn('space-y-1', gallery && i !== showing && 'hidden')}>
           <ImageUpload
             onChange={(value, fileName) => setSlot(i, value, fileName)}
@@ -403,9 +417,16 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
             onPromptExtracted={i === 0 && advanced ? setPendingPrompt : undefined}
             // Only a gallery can take several at once; a single-slot subject keeps the first file.
             onFiles={gallery ? (files) => void takeFiles(i, files) : undefined}
+            // A picked entry relinks by its content, so the slot links that entry rather than a copy. A filled
+            // slot with no entry behind it keeps its plain remove button.
+            choose={media && (!url || entry) && (
+              <MediaChooseButton list={media.list} linkedIds={linkedIds} onPick={(entry) => { setSlot(i, entry.data); setShowing(i); }} />
+            )}
           />
+          {entry && <MediaEntryBar entry={entry} onUnlink={() => setSlot(i, '')} />}
         </div>
-      ))}
+        );
+      })}
       {batch && <ImageConvertOverlay thumb={batch.thumb} done={batch.done} total={batch.total} />}
       </div>
 
@@ -436,7 +457,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
           {/* Outside the sortable set: dropping a picture onto "add" would mean nothing. */}
           {openSlot !== -1 && (
             <AddTile
-              htmlFor={`image-upload-${slotId(openSlot)}`}
+              htmlFor={media ? undefined : `image-upload-${slotId(openSlot)}`}
               selected={openSlot === showing}
               onSelect={() => setShowing(openSlot)}
               onUrl={(dropped) => setSlot(openSlot, dropped)}

@@ -204,7 +204,7 @@ Simple mode also hides **AI-Facing Summary**.
 
 | Field | What it does |
 |---|---|
-| **Background Image** | A gallery of images behind the story while the player is here. Upload a file, or paste an address into **Or paste an image URL**. See [Upload or link](World-Editor-Overview#upload-or-link). **Generate with AI** makes one when [image generation](Image-Generation#how-to-turn-on-image-generation) is on in Settings. Drag a thumbnail to reorder. |
+| **Background Image** | A gallery of images behind the story while the player is here. **Import** a file, **Choose** one the world already has, or paste an address into **Or paste an image URL**. See [Image slots](World-Editor-Entities#image-slots) and [Upload or link](World-Editor-Overview#upload-or-link). **Generate with AI** makes one when [image generation](Image-Generation#how-to-turn-on-image-generation) is on in Settings. Drag a thumbnail to reorder. |
 | **Image Tags** | **Advanced mode only.** Booru tags for AI image generation |
 | **Ambient Sound** | **Advanced mode only.** A sound that plays while the player is here. Select **Add Sound** to pick a file. |
 

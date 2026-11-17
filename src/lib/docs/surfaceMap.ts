@@ -82,6 +82,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   codeRename: { page: 'Scripts-Reference', anchor: 'accessing-other-stats' },
   replaceAll: { page: 'WorldEditor', anchor: 'find-and-replace' },
   deleteWorldAvatar: { page: 'World-Editor-Overview', anchor: '-world-editor-overview' },
+  deleteMediaEntry: { page: 'World-Editor-Entities', anchor: 'image-slots' },
   appearancePreview: { page: 'World-Editor-Traits', anchor: 'preview' },
   statAppearancePreview: { page: 'World-Editor-Stats', anchor: 'preview' },
   savedElsewhere: { page: 'WorldEditor', anchor: 'editing-in-two-tabs' },

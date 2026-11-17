@@ -15,6 +15,16 @@ export interface MediaUse {
 
 const WORLD_OWNER: MediaParent = { kind: 'world', id: 'world', name: 'World' };
 
+const FIELD_LABELS: Record<Exclude<MediaUseField, 'images'>, string> = {
+  sound: 'Sound', ambientSound: 'Ambient Sound', backdrop: 'Backdrop', thumbnail: 'Cover', bgm: 'Music',
+};
+
+/** One use as copy names it: "Wren, Image 2", "World, Cover". `ownerName` labels the owner's placeholders. */
+export function mediaUseLabel(use: MediaUse, ownerName: (name: string) => string = (name) => name): string {
+  const slot = use.field === 'images' ? `Image ${(use.index ?? 0) + 1}` : FIELD_LABELS[use.field];
+  return `${ownerName(use.owner.name) || 'Unnamed'}, ${slot}`;
+}
+
 /** Each Media Entry id with every entity, location, item, map, backdrop and world field that links it, in world order. */
 export function mediaUsage(w: MediaWorld): Map<string, MediaUse[]> {
   const usage = new Map<string, MediaUse[]>();

@@ -9,7 +9,7 @@ import type { LocationPanelTab } from '@/views/locationPanelTabs';
 import type { EntityPanelTab } from '@/views/entityPanelTabs';
 import type { TraitPanelTab } from '@/views/traitPanelTabs';
 import type {
-  Connection, DictionaryEntry, Entity, GameLocation, Stat, Trait, WorldOverview, World,
+  Connection, DictionaryEntry, Entity, GalleryLink, GameLocation, MediaList, Stat, Trait, WorldOverview, World,
 } from '@/types';
 import { hasValue } from '@/lib/editorMode';
 import {
@@ -28,7 +28,8 @@ import { connectionLegs, isTwoWay, travelEnds } from '@/lib/locationGraph';
 import { followRename } from '@/lib/statDescriptors';
 import { EDITOR_MODE_TUTORIAL_ID, markTutorialSeen } from '@/lib/tutorials';
 import type { InPlaySpec, ReaderSpec } from './inPlay';
-import { loadTourImage } from './tourImages';
+import { loadTourImage, type TourImage } from './tourImages';
+import { editGallery } from '@/lib/mediaGallery';
 
 /** The world as the editor holds it while the tour reads it. */
 export type TourWorld = Omit<World, 'id' | 'version'>;
@@ -79,6 +80,8 @@ export interface TourEditApi {
   updateTrait: (trait: Trait) => void;
   addDictionaryEntry: (bookId: string, entry: DictionaryEntry) => void;
   updateDictionaryEntry: (entry: DictionaryEntry) => void;
+  /** Adds entries to the world's Media List. */
+  addMedia: (entries: MediaList) => void;
 }
 
 export interface TourStep {
@@ -141,6 +144,17 @@ type LocationItem = 'location' | 'secondLocation';
 
 const tourLocation = (world: TourWorld, items: TourItems, item: LocationItem) =>
   (world.locations ?? []).find((l) => l.id === items[item]);
+
+/** An example picture brought in as the image slot's Import does: placed into the list under `subject`, linked by id. */
+async function importExample(world: TourWorld, image: TourImage, subject: string): Promise<{ links: GalleryLink[]; added: MediaList }> {
+  return editGallery([], world.worldOverview.mediaList, [{ data: await loadTourImage(image) }], subject);
+}
+
+/** Writes the record's links first, so the History Step is the record's, then adds the entries they need. */
+function linkExample(api: TourEditApi, example: { added: MediaList }, write: () => void) {
+  write();
+  if (Object.keys(example.added).length) api.addMedia(example.added);
+}
 
 function patchLocation(
   api: TourEditApi, world: TourWorld, items: TourItems, item: LocationItem, patch: Partial<GameLocation>,
@@ -432,9 +446,10 @@ const LOCATION_STEPS: readonly TourStep[] = [
     title: 'Background Image',
     body: 'Add an image of the place. Players see it behind the story while they’re here, and the AI never reads it.',
     isComplete: (world, items) => locationImages(tourLocation(world, items, 'location'), world.worldOverview.mediaList).length > 0,
-    useExample: async (api, world, items) => patchLocation(api, world, items, 'location', {
-      images: [{ data: await loadTourImage('tidewell') }],
-    }),
+    useExample: async (api, world, items) => {
+      const example = await importExample(world, 'tidewell', tourLocation(world, items, 'location')?.name ?? '');
+      linkExample(api, example, () => patchLocation(api, world, items, 'location', { images: example.links }));
+    },
     inPlay: { sees: 'locationTab', readers: [{ prompt: 'Narration Prompt', reads: 'location' }] },
   },
   {
@@ -465,12 +480,15 @@ const LOCATION_STEPS: readonly TourStep[] = [
     body: 'Name this place too. Players see the name while they’re here, and the AI reads it. Use Example also '
       + 'fills in its descriptions and picture.',
     isComplete: (world, items) => isChosenName(tourLocation(world, items, 'secondLocation')?.name, NEW_LOCATION_NAME),
-    useExample: async (api, world, items) => patchLocation(api, world, items, 'secondLocation', {
-      name: SALT_LANTERN.name,
-      playerDescription: SALT_LANTERN.playerDescription,
-      aiDescription: SALT_LANTERN.aiDescription,
-      images: [{ data: await loadTourImage('saltLantern') }],
-    }),
+    useExample: async (api, world, items) => {
+      const example = await importExample(world, 'saltLantern', SALT_LANTERN.name);
+      linkExample(api, example, () => patchLocation(api, world, items, 'secondLocation', {
+        name: SALT_LANTERN.name,
+        playerDescription: SALT_LANTERN.playerDescription,
+        aiDescription: SALT_LANTERN.aiDescription,
+        images: example.links,
+      }));
+    },
     inPlay: {
       sees: 'locationTab',
       scene: 'secondLocation',
@@ -593,7 +611,10 @@ const ENTITY_STEPS: readonly TourStep[] = [
     title: 'Image',
     body: 'Add an image of the entity. Players see it on the entity’s card, and the AI never reads it.',
     isComplete: (world, items) => entityImages(tourEntity(world, items), world.worldOverview.mediaList).length > 0,
-    useExample: async (api, world, items) => patchEntity(api, world, items, { images: [{ data: await loadTourImage('maren') }] }),
+    useExample: async (api, world, items) => {
+      const example = await importExample(world, 'maren', tourEntity(world, items)?.name ?? '');
+      linkExample(api, example, () => patchEntity(api, world, items, { images: example.links }));
+    },
     inPlay: { sees: 'entityCard', scene: 'entity', readers: [{ prompt: 'Narration Prompt', reads: 'entities' }] },
   },
   {
@@ -856,6 +877,9 @@ export async function replayTourSteps(world: TourWorld, index: number): Promise<
     (list ?? []).map((x) => (x.id === next.id ? next : x));
   const api: TourEditApi = {
     updateWorldOverview: (updates) => { draft = { ...draft, worldOverview: { ...draft.worldOverview, ...updates } }; },
+    addMedia: (entries) => {
+      draft = { ...draft, worldOverview: { ...draft.worldOverview, mediaList: { ...draft.worldOverview.mediaList, ...entries } } };
+    },
     addLocation: (location) => { draft = { ...draft, locations: [...(draft.locations ?? []), location] }; },
     updateLocation: (location) => { draft = { ...draft, locations: replace(draft.locations, location) }; },
     addConnection: (connection) => { draft = { ...draft, connections: [...(draft.connections ?? []), connection] }; },

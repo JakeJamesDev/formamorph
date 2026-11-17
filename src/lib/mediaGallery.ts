@@ -86,6 +86,12 @@ export function migrateGalleriesToMediaList(world: Fields): void {
 
 // ── The editor's bridge ──────────────────────────────────────────────────────
 
+/** The world's list and the stored link behind each picture a gallery widget shows, position for position. */
+export interface GalleryMedia {
+  list: MediaList;
+  links: GalleryLink[];
+}
+
 /** A stored gallery's pictures for the widget, with the link each came from. A link the list lacks drops. */
 export function galleryView(links: readonly GalleryLink[], list: MediaList | undefined): { images: GalleryImage[]; links: GalleryLink[] } {
   const images: GalleryImage[] = [];

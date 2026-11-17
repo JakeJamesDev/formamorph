@@ -25,6 +25,16 @@ const takenKeys = (list: MediaList | undefined, exceptId?: string): Set<string> 
 export const mediaNameFromFile = (fileName: string | undefined): string =>
   (fileName ?? '').trim().replace(/\.[^./\\]+$/, '').trim();
 
+/** A link's last path segment, decoded, as the file name a pasted URL carries; '' when it has none. */
+export function urlFileName(url: string): string {
+  try {
+    const segment = new URL(url.trim()).pathname.split('/').filter(Boolean).pop() ?? '';
+    return decodeURIComponent(segment);
+  } catch {
+    return '';
+  }
+}
+
 /** `name`, or `name (2)`, `name (3)`… when the list already holds it (Q5). */
 export function uniqueMediaName(name: string, list: MediaList | undefined, exceptId?: string): string {
   const base = name.trim();
