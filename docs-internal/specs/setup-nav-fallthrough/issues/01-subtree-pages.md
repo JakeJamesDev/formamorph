@@ -1,6 +1,6 @@
 # 01: Subtree Pages
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -20,19 +20,31 @@ Prior art: prototype `prototype/setup-nav-fallthrough` (`07da61d2e`), which has 
 
 ## Acceptance criteria
 
-- [ ] Clicking an entity row shows that entity's heading, then every one of its groups in authored order, each nested group under a separator that names its path below the entity.
-- [ ] Clicking a world parent group shows its own traits (if any), then every descendant group under separators.
-- [ ] Clicking a leaf group shows only that group, as today.
-- [ ] A label-only group is a clickable row, and its page lists its descendants under a heading with its name and description.
-- [ ] Each section shows its own group's player description and pick rule, and the "Choose N more" hint when it is short.
-- [ ] A parent row's count is the sum over its subtree, with unseen traits excluded the same way as the per-group counts.
-- [ ] A row shows the short marker when a group in its subtree is below its minimum, and loses it once the picks are met.
-- [ ] Selecting a trait in any section of a subtree page updates that section, the parent row's count, and the Begin state.
-- [ ] Unit tests on the trait workspace module cover children, ancestors, subtree order, label-only groups, and the rollup counts.
-- [ ] Component tests on the Enter World workspace cover the entity page, the world parent page, the leaf page and the label-only page. Each guard is shown to bite by restoring the old one-group page.
-- [ ] Frames: `.scratch/frames/entity-subtree-dark.png` and `.scratch/frames/entity-subtree-light.png` at 1440×900, showing an entity page with nested sections.
-- [ ] Changelog fragment under 👤 Added for the Enter World setup screen.
+- [x] Clicking an entity row shows that entity's heading, then every one of its groups in authored order, each nested group under a separator that names its path below the entity. (test "opens an entity on its heading…"; frames)
+- [x] Clicking a world parent group shows its own traits (if any), then every descendant group under separators. (test "opens a world parent group…")
+- [x] Clicking a leaf group shows only that group, as today. (test "opens a leaf group on only that group")
+- [x] A label-only group is a clickable row, and its page lists its descendants under a heading with its name and description. (tests "opens a label-only group…", "heads a nested label-only page…")
+- [x] Each section shows its own group's player description and pick rule, and the "Choose N more" hint when it is short. (tests "opens a label-only group…", "updates a section's hint…"; Q19, Q23 in the entity test)
+- [x] A parent row's count is the sum over its subtree, with unseen traits excluded the same way as the per-group counts. (unit "sums shown and selected traits…"; component counts)
+- [x] A row shows the short marker when a group in its subtree is below its minimum, and loses it once the picks are met. (test "updates a section's hint…")
+- [x] Selecting a trait in any section of a subtree page updates that section, the parent row's count, and the Begin state. (test "updates a section's hint…")
+- [x] Unit tests on the trait workspace module cover children, ancestors, subtree order, label-only groups, and the rollup counts. (`setupTraitWorkspace.test.ts`, nav nodes and subtreeRollup blocks)
+- [x] Component tests on the Enter World workspace cover the entity page, the world parent page, the leaf page and the label-only page. Each guard is shown to bite by restoring the old one-group page. (old page restored: entity, world parent, label-only and selection tests went red; leaf stayed green as expected)
+- [x] Frames: `.scratch/frames/entity-subtree-dark.png` and `.scratch/frames/entity-subtree-light.png` at 1440×900, showing an entity page with nested sections. (Playwright, both themes)
+- [x] Changelog fragment under 👤 Added for the Enter World setup screen. (`docs-internal/changelog.d/setup-nav-fallthrough-01.md`)
 
 For you: open Enter World on a world with a large cast and check that a character's single page reads well.
+
+## Landed
+
+**Not verified**
+
+- None. Every criterion is ticked.
+
+**For you**
+
+- For you: open Enter World on a world with a large cast and check that a character's single page reads well.
+- Frames: `.scratch/setup-nav-fallthrough-01/frames/entity-subtree-dark.png` and `entity-subtree-light.png` show Albus's page with its nested sections.
+- The "Needs more picks" dot (Q18) is new on every row; check it reads clearly on the selected row's fill.
 
 ## Comments

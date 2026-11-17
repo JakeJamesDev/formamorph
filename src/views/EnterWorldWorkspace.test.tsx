@@ -224,7 +224,7 @@ describe('EnterWorldWorkspace', () => {
     expect(current).toHaveClass('bg-primary', 'text-primary-foreground', 'font-medium');
     expect(current).not.toHaveClass('bg-muted', 'font-semibold', 'hover:bg-accent');
     // The pick count sits on the fill, so it takes the fill's text color.
-    expect(within(current).getByLabelText('1 of 2 selected')).toHaveClass('text-primary-foreground');
+    expect(within(current).getByLabelText('1 of 3 selected')).toHaveClass('text-primary-foreground');
     const other = within(navigation).getByRole('button', { name: /Practice/ });
     expect(other).toHaveClass('hover:bg-accent', 'hover:text-foreground', 'text-muted-foreground');
     expect(other).not.toHaveClass('bg-primary');
@@ -234,11 +234,12 @@ describe('EnterWorldWorkspace', () => {
     render(<Harness />);
 
     const navigation = screen.getByRole('navigation', { name: 'World setup categories' });
-    expect(within(navigation).getByText('Origin').closest('button')).toBeNull();
-    expect(within(navigation).getByRole('button', { name: /Culture/ })).toHaveAttribute('aria-current', 'page');
-    expect(within(navigation).getByLabelText('1 of 2 selected')).toHaveTextContent('1/2');
-    expect(within(navigation).getByText('Calling').closest('button')).toBeNull();
-    expect(within(navigation).getByText('Discipline').closest('button')).toBeNull();
+    expect(within(navigation).getByRole('button', { name: /Origin/ })).toBeInTheDocument();
+    const culture = within(navigation).getByRole('button', { name: /Culture/ });
+    expect(culture).toHaveAttribute('aria-current', 'page');
+    expect(within(culture).getByLabelText('1 of 3 selected')).toHaveTextContent('1/3');
+    expect(within(navigation).getByRole('button', { name: /Calling/ })).toBeInTheDocument();
+    expect(within(navigation).getByRole('button', { name: /Discipline/ })).toBeInTheDocument();
     expect(within(navigation).getByRole('button', { name: /Practice/ })).toBeInTheDocument();
     expect(within(navigation).queryByText('Empty branch')).not.toBeInTheDocument();
     expect(within(navigation).queryByText('General')).not.toBeInTheDocument();
@@ -561,7 +562,7 @@ describe('EnterWorldWorkspace', () => {
     expect(content).not.toContainElement(continueButton);
 
     await user.click(screen.getByRole('radio', { name: 'Local' }));
-    expect(screen.getByLabelText('0 of 2 selected')).toHaveTextContent('0/2');
+    expect(within(screen.getByRole('button', { name: /^Culture/ })).getByLabelText('0 of 3 selected')).toHaveTextContent('0/3');
 
     await user.click(within(dialog).getByRole('button', { name: 'Read Introduction' }));
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
@@ -569,6 +570,119 @@ describe('EnterWorldWorkspace', () => {
     expect(onIntroduction).toHaveBeenCalledOnce();
     expect(onCancel).toHaveBeenCalledOnce();
     expect(onContinue).toHaveBeenCalledOnce();
+  });
+});
+
+describe('subtree pages', () => {
+  const nav = () => screen.getByRole('navigation', { name: 'World setup categories' });
+  const main = () => screen.getByRole('main');
+  const separators = () => within(main()).queryAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+
+  it("opens a world parent group on its own traits, then each descendant group under a path separator", () => {
+    render(<Harness />);
+    expect(within(main()).getByRole('heading', { level: 2, name: 'Culture' })).toBeInTheDocument();
+    expect(within(main()).getByText('Local')).toBeInTheDocument();
+    expect(separators()).toEqual(['Calling / Discipline / Practice']);
+    expect(within(main()).getByText('Artisan')).toBeInTheDocument();
+  });
+
+  it('opens a leaf group on only that group', () => {
+    render(<Harness />);
+    fireEvent.click(within(nav()).getByRole('button', { name: /^Practice/ }));
+    expect(within(main()).getByRole('heading', { level: 2, name: 'Practice' })).toBeInTheDocument();
+    expect(within(main()).getByText('Artisan')).toBeInTheDocument();
+    expect(within(main()).queryByText('Local')).not.toBeInTheDocument();
+    expect(separators()).toEqual([]);
+  });
+
+  it('opens a label-only group on its name and description, then its descendants, each with only its own description', () => {
+    render(<Harness />);
+    const origin = within(nav()).getByRole('button', { name: /^Origin/ });
+    fireEvent.click(origin);
+    expect(origin).toHaveAttribute('aria-current', 'page');
+    expect(within(main()).getByRole('heading', { level: 2, name: 'Origin' })).toBeInTheDocument();
+    expect(within(main()).getAllByText('Where you came from.')).toHaveLength(1);
+    expect(within(main()).getByText('shaped', { selector: '[data-streamdown="strong"]' })).toBeInTheDocument();
+    expect(separators()).toEqual(['Culture', 'Culture / Calling / Discipline / Practice']);
+    expect(within(main()).getByText('Local')).toBeInTheDocument();
+    expect(within(main()).getByText('Artisan')).toBeInTheDocument();
+    expect(within(nav()).getByRole('button', { name: /^Practice/ })).toBeInTheDocument();
+  });
+
+  it("heads a nested label-only page with its whole group path's descriptions", () => {
+    render(<Harness />);
+    fireEvent.click(within(nav()).getByRole('button', { name: /^Calling/ }));
+    expect(within(main()).getByRole('heading', { level: 2, name: 'Calling' })).toBeInTheDocument();
+    expect(within(main()).getByText('Where you came from.')).toBeInTheDocument();
+    expect(within(main()).getByText('shaped', { selector: '[data-streamdown="strong"]' })).toBeInTheDocument();
+    expect(separators()).toEqual(['Discipline / Practice']);
+  });
+
+  it('names a label-only page on the phone category button', async () => {
+    mockPhoneViewport();
+    const user = userEvent.setup();
+    render(<Harness />);
+    const disclosure = screen.getByRole('button', { name: /Categories/ });
+    await user.click(disclosure);
+    await user.click(within(nav()).getByRole('button', { name: /^Origin/ }));
+    expect(disclosure).toHaveTextContent('Origin');
+  });
+
+  it("opens an entity on its heading, then every one of its groups in authored order under paths below the entity", () => {
+    const wolf: Entity = {
+      id: 'wolf', name: 'Wolf', playerDescription: 'A grey wolf.',
+      traitGroups: [
+        { id: 'temper', name: 'Temper', parentId: null, order: 0 },
+        { id: 'martial', name: 'Martial', parentId: null, order: 1, playerDescription: 'How it fights.' },
+        { id: 'style', name: 'Weapon Style', parentId: 'martial', order: 0, playerDescription: 'Its weapon.' },
+        { id: 'footwork', name: 'Footwork', parentId: 'martial', order: 1, playerDescription: 'How it moves.' },
+      ],
+      traits: [
+        { id: 'calm', name: 'Calm', groupId: 'temper', statChanges: [] },
+        { id: 'claws', name: 'Claws', groupId: 'style', statChanges: [] },
+        { id: 'pounce', name: 'Pounce', groupId: 'footwork', statChanges: [] },
+      ],
+    };
+    render(<Harness traitEntities={[wolf]} />);
+    fireEvent.click(within(nav()).getByRole('button', { name: /^Wolf/ }));
+    expect(within(main()).getByRole('heading', { level: 2, name: /^Wolf/ })).toBeInTheDocument();
+    expect(within(main()).getByText('A grey wolf.')).toBeInTheDocument();
+    expect(separators()).toEqual(['Temper', 'Martial / Weapon Style', 'Martial / Footwork']);
+    expect(within(main()).getByText('Calm')).toBeInTheDocument();
+    expect(within(main()).getByText('Claws')).toBeInTheDocument();
+    expect(within(within(nav()).getByRole('button', { name: /^Wolf/ })).getByLabelText('0 of 3 selected')).toBeInTheDocument();
+    // A label-only group's description shows once, on the first section under it, before that section's own.
+    const sections = within(main()).getAllByRole('heading', { level: 3 }).map((h) => h.closest('section')!);
+    expect(within(main()).getAllByText('How it fights.')).toHaveLength(1);
+    expect(sections[1]).toHaveTextContent(/How it fights\..*Its weapon\./);
+    expect(sections[2]).toHaveTextContent('How it moves.');
+    expect(sections[2]).not.toHaveTextContent('How it fights.');
+  });
+
+  it("updates a section's hint, its parents' counts and markers, and Begin when a subtree page pick meets a minimum", async () => {
+    const user = userEvent.setup();
+    const counted = groups.map((g) => (g.id === 'practice' ? { ...g, minPicks: 1 } : g));
+    render(<Harness traitGroups={counted} />);
+    const row = (name: RegExp) => within(nav()).getByRole('button', { name });
+    const begin = screen.getByRole('button', { name: 'Start Game' });
+    expect(within(main()).getByText('Choose 1 more trait')).toBeInTheDocument();
+    for (const name of [/^Origin/, /^Culture/, /^Practice/]) {
+      expect(within(row(name)).getByRole('img', { name: 'Needs more picks' })).toBeInTheDocument();
+    }
+    expect(begin).toBeDisabled();
+
+    await user.click(within(main()).getByRole('checkbox', { name: 'Artisan' }));
+    expect(within(main()).queryByText('Choose 1 more trait')).not.toBeInTheDocument();
+    expect(within(nav()).queryByRole('img', { name: 'Needs more picks' })).not.toBeInTheDocument();
+    expect(within(row(/^Culture/)).getByLabelText('2 of 3 selected')).toBeInTheDocument();
+    expect(within(row(/^Origin/)).getByLabelText('2 of 3 selected')).toBeInTheDocument();
+    expect(begin).toBeEnabled();
+  });
+
+  it('shows the cascade notice once on a page of several sections', () => {
+    render(<Harness traitCascade={{ off: ['Outsider'], because: 'Local' }} onDismissTraitCascade={vi.fn()} />);
+    fireEvent.click(within(nav()).getByRole('button', { name: /^Origin/ }));
+    expect(within(main()).getAllByText(/Turned off/)).toHaveLength(1);
   });
 });
 

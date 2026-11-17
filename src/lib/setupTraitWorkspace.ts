@@ -1,6 +1,8 @@
-/** The setup screen's trait categories: one per group that holds traits directly, plus General for root traits.
- *  An entity node is always a category: its page shows the entity even when all its traits sit in groups. */
+/** The setup screen's trait categories and nav. A category is a group that holds traits directly, plus General
+ *  for root traits; an entity node is always one. Every nav node opens a page with its whole subtree. */
 import type { Trait, TraitGroup } from '@/types';
+import { isShown } from './traitEffects';
+import { groupPickState } from './traitGates';
 
 export interface TraitCategory {
   kind: 'traits';
@@ -16,16 +18,47 @@ export interface TraitCategory {
   entityNode?: true;
 }
 
-export interface NavigationGroup {
+/** One group row of the setup nav. Every node has a page, a label-only group included. */
+export interface TraitNavNode {
   group: TraitGroup;
   depth: number;
+  /** The node's own category, or -1 for a group that holds only child groups. */
   categoryIndex: number;
+  hasChildren: boolean;
+  /** From the root down to the parent. */
+  ancestorIds: string[];
+  /** The categories the node's page shows: its own, then every descendant's, in authored order. */
+  subtree: number[];
 }
 
 export interface TraitWorkspace {
   categories: TraitCategory[];
-  navigationGroups: NavigationGroup[];
+  navigationNodes: TraitNavNode[];
 }
+
+/** What a nav row shows for its subtree. */
+export interface SubtreeRollup {
+  shown: number;
+  selected: number;
+  short: boolean;
+}
+
+/** Sums `subtree` the way a single category's row counts: unseen traits drop out, picks read under each category's owner. */
+export const subtreeRollup = (
+  categories: readonly TraitCategory[], subtree: readonly number[], picksOf: (entityId: string | undefined) => readonly string[],
+): SubtreeRollup => {
+  const rollup: SubtreeRollup = { shown: 0, selected: 0, short: false };
+  for (const index of subtree) {
+    const category = categories[index];
+    if (!category) continue;
+    const picks = picksOf(category.entityId);
+    const shown = category.traits.filter((trait) => isShown(trait, picks));
+    rollup.shown += shown.length;
+    rollup.selected += shown.filter((trait) => picks.includes(trait.id)).length;
+    if (category.group && groupPickState(category.group, category.traits, picks).short) rollup.short = true;
+  }
+  return rollup;
+};
 
 const authoredOrder = <T extends { order?: number }>(items: T[]): T[] =>
   [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -52,20 +85,21 @@ export const buildTraitWorkspace = (
   };
 
   const categories: TraitCategory[] = [];
-  const navigationGroups: NavigationGroup[] = [];
+  const navigationNodes: TraitNavNode[] = [];
   const general = directTraits(null);
   if (showsAny(null)) {
     categories.push({ kind: 'traits', id: null, name: 'General', path: [], depth: 0, traits: general });
   }
 
-  const walk = (parentId: string | null, path: TraitGroup[], depth: number, within?: string) => {
+  const walk = (parentId: string | null, path: TraitGroup[], ancestorIds: string[], depth: number, within?: string) => {
     for (const group of children(parentId).filter((candidate) => hasTraits(candidate.id, within))) {
       const entity = entityNodeIds.has(group.id);
       const owner = ownerIn(group.id, within);
       // An entity's pages describe the entity, so the world groups around its node drop out of the path.
       const nextPath = entity ? [group] : [...path, group];
       const ownTraits = directTraits(group.id);
-      const categoryIndex = showsAny(group.id, owner) || entity ? categories.length : -1;
+      const firstCategory = categories.length;
+      const categoryIndex = showsAny(group.id, owner) || entity ? firstCategory : -1;
       if (categoryIndex >= 0) {
         categories.push({
           kind: 'traits', id: group.id, name: group.name, group, path: nextPath, depth, traits: ownTraits,
@@ -73,10 +107,14 @@ export const buildTraitWorkspace = (
           ...(entity ? { entityNode: true as const } : {}),
         });
       }
-      navigationGroups.push({ group, depth, categoryIndex });
-      walk(group.id, nextPath, depth + 1, owner);
+      const node: TraitNavNode = { group, depth, categoryIndex, hasChildren: false, ancestorIds, subtree: [] };
+      const nodeIndex = navigationNodes.push(node);
+      walk(group.id, nextPath, [...ancestorIds, group.id], depth + 1, owner);
+      // Preorder keeps a subtree's categories contiguous.
+      node.hasChildren = navigationNodes.length > nodeIndex;
+      node.subtree = Array.from({ length: categories.length - firstCategory }, (_, offset) => firstCategory + offset);
     }
   };
-  walk(null, [], 0);
-  return { categories, navigationGroups };
+  walk(null, [], [], 0);
+  return { categories, navigationNodes };
 };
