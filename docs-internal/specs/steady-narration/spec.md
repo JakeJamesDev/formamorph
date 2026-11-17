@@ -28,7 +28,7 @@ Settled with the user on 2026-11-16, in grill order.
 |---|---|
 | Q1 | Fix every eager consumer of the save-state getter and the Player View reach, not only the mention path. The eager consumers today are the card rows and pick list memo, and the panel actions and inventory settle memos through the action snapshot. |
 | Q2 | No stopgap patch ships ahead of this spec. |
-| Q3 | Done means: during a turn, zero rebuilds of the card rows and speaker colors while choices and history stream, and the narration never remounts; plus a test that fails if the churn returns. |
+| Q3 | Done means: during a turn, zero rebuilds of the card rows and speaker colors while choices and history stream, and the narration never remounts while it reveals; plus a test that fails if the churn returns. Amended at the close (ticket 06): the node swaps when the reveal ends and when the full-turn reading lands, and frame captures show no visible change at either. |
 | Q4 | The card rows and pick list use an exported entities-only builder, fed only the state the entity rows read. They stop calling the Player View reach. |
 | Q5 | The save-state getter becomes a stable getter that reads the latest state from a ref. A comment and a test guard against a future eager memo on it. |
 | Q6 | Presence recomputes only when the recent scene turns' content changes, not on every history write. |
@@ -69,7 +69,7 @@ Settled with the user on 2026-11-16, in grill order.
 ## Testing Decisions
 
 - A good test drives the game the way play does and checks what the player sees. It does not read memo internals.
-- **Game viewer seam (main).** Use the existing game viewer render harness with Character Mentions on and a turn with a colored quote. Stream choices and write to the history mid-turn. Assert the narration's root DOM node is the same node before and after. Then make a new speaker visible and assert the node is replaced once. Prove the test bites by reinstating the old dependency on the save-state getter: it must fail. Ticket 02 reinstated the Player View reach and the test failed on a build count, not on the node; ticket 07 closes that gap.
+- **Game viewer seam (main).** Use the existing game viewer render harness with Character Mentions on and a turn with a colored quote. Stream choices and write to the history mid-turn. Assert the narration's root DOM node is the same node before and after. Then make a new speaker visible and assert the node is replaced once. Prove the test bites by reinstating the old dependency on the save-state getter: it must fail. Ticket 02 reinstated the Player View reach and the test failed on a build count, not on the node; ticket 07 closes that gap. It mocks the backstop to pass maps through, asserts on the node, drops the build count, and drives the writes while the narration is in live reveal, whether or not the turn has committed.
 - **Player View seam.** In the existing Player View module tests, assert the entities-only builder returns the same rows as the full builder for the fixtures already there, including unidentified entities.
 - **Stable getter.** A test asserts the getter keeps its identity across state changes and returns the current state.
 - **Backstop helper.** Same content gives the previous map; an added, removed or changed entry gives a new one.
@@ -79,7 +79,7 @@ Settled with the user on 2026-11-16, in grill order.
 ## Out of Scope
 
 - Changing how quote colors are read or painted while streaming.
-- Changing the renderer's plugin keying, except as ticket 06 decides for the reading's arrival (opened at the close against Q3).
+- Changing the renderer's plugin keying, except as ticket 06 decides for the reading's arrival (opened at the close against Q3). Ticket 06 lands only its verdict and frames; the spec session sets its final status and amends Q3 or takes a keying ruling to the user.
 - The inventory settle memo's rebuild on history writes. It comes through the live scene feeding stat-code preparation and item events, not through the save-state getter, and does not reach the narration renderer (ticket 04; a follow-up).
 - Reworking the Player View reach or the help world sources beyond what Q1 needs.
 - Performance work on the full Player View builder.
