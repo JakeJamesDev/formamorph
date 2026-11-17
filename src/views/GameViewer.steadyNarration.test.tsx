@@ -6,7 +6,7 @@ import { oneRoutine } from '@/test/routines';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { narrationHash } from '@/lib/coref/mentionReadings';
 import { sseFrame } from '@/test/aiTextFixtures';
-import { parseTurnContent } from '@/lib/turnDigest';
+import { parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
 import type { Entity } from '@/types';
 
 /**
@@ -122,7 +122,7 @@ describe('steady narration with Character Mentions on', () => {
     act(() => {
       gameplay().setFullMessageHistory((history) => history.map((m) => {
         const turn = m.role === 'assistant' ? parseTurnContent(m.content) : null;
-        return turn?.turnId === turnId ? { ...m, content: JSON.stringify({ ...turn, summary: 'Mira greets the player.' }) } : m;
+        return turn?.turnId === turnId ? { ...m, content: serializeTurnContent({ ...turn, summary: 'Mira greets the player.' }) } : m;
       }));
     });
     expect(gameplay().fullMessageHistory.some((m) => parseTurnContent(m.content)?.summary === 'Mira greets the player.')).toBe(true);
@@ -192,7 +192,7 @@ describe('steady narration with Character Mentions on', () => {
     act(() => {
       gameplay().setFullMessageHistory((history) => history.map((m) => {
         const turn = m.role === 'assistant' ? parseTurnContent(m.content) : null;
-        return turn?.turnId === turnId ? { ...m, content: JSON.stringify({ ...turn, summary: 'Mira greets the player.' }) } : m;
+        return turn?.turnId === turnId ? { ...m, content: serializeTurnContent({ ...turn, summary: 'Mira greets the player.' }) } : m;
       }));
     });
   };

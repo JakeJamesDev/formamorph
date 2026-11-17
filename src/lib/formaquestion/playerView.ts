@@ -110,11 +110,9 @@ export type PlayerViewEntityState = Pick<GameState,
 /** Everything the entity rows read, and nothing else: no history, choices, log, page or notes. */
 export interface PlayerViewEntitiesInput {
   world: Pick<World, 'entities' | 'locations'> & Partial<Pick<World, 'connections'>>;
-  /** The current snapshot's entity state. */
   current: PlayerViewEntityState;
   /** The scene rows of the saved snapshots before the current one, oldest first. */
   savedVisible: readonly (readonly SceneEntity[])[];
-  /** The current snapshot's scene rows. */
   currentVisible: readonly SceneEntity[];
   persona: Entity | null;
   resolve: (text: string) => string;
