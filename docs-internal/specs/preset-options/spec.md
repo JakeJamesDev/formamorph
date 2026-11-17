@@ -35,6 +35,11 @@ A Preset Option stores nothing. No gate, pin or script can read it, so it can ne
 - **Q18 Notice.** After a Preset applies, the player sees a short notice of what changed in other categories. It extends the existing cascade notice.
 - **Q19 Trait rows.** A trait row turns a trait on or off.
 - **Q20 Setup only.** Preset Options appear on the setup screen only, never in game.
+- **Q21 Empty value.** A Preset value with no rows never matches, in either mode. The same applies to a value whose rows are all skipped as stale (Q24).
+- **Q22 New Preset.** A new Preset Option, or an Option switched to Preset, starts in snapshot mode with two values, "Value 1" and "Value 2". The values have no rows and empty descriptions.
+- **Q23 Option description.** A Preset Option keeps `playerDescription`, shown under its name on the setup screen, the same as for other types.
+- **Q24 Stale rows at apply.** Apply skips a row whose target was deleted, is now hidden, is itself a Preset, or no longer accepts the value. The skipped row is listed in the notice result.
+- **Q25 Row shape.** The row union is `option` (optionId, value), `trait` (traitId, optional ownerId, on), `location` (locationId) and `persona` (entityId). An absent ownerId means a root trait. Otherwise ownerId is the authored entity id. There is no "you" owner.
 
 ## User Stories
 

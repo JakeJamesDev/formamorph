@@ -11,7 +11,7 @@ A Preset value can turn root and entity-owned traits on or off. Apply then settl
 
 - **Apply.** Extend ticket 01's apply function for trait rows. For a snapshot, reset the traits to the world's defaults. Overlay the trait rows; a row in a max-1 group swaps the pick. Then settle once through the existing fixpoint, with the Preset's picks ordered as the latest picks, and run the short-group fill. Unlisted picks that fail go to cascade-off. A trait row that does not hold after the settle is reported as skipped.
 - **Match.** Extend match to compare traits. A snapshot compares every trait. An overlay compares its listed rows only.
-- **Notice.** Extend the cascade notice. After a Preset applies, the notice names the Preset value, the traits it turned on or off in other categories, the picks it turned off, and any skipped rows.
+- **Notice.** Extend the cascade notice. After a Preset applies, the notice names the Preset value, the traits it turned on or off in other categories, the picks it turned off, and any skipped rows. The notice must also show on the World Options page, where Presets are clicked. Today the cascade notice shows only on the trait and persona pages.
 - **Editor.** The row editor offers root traits and entity-owned traits as targets, each with an on/off value.
 - **Docs.** Update [World-Editor-Options.md](docs/World-Editor-Options.md) for trait rows. Write a changelog fragment.
 
