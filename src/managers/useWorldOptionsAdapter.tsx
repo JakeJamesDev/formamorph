@@ -8,18 +8,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Hint, Meta } from '@/components/ui/typography';
 import { useGameData } from '@/contexts/GameDataContext';
 import { fieldFrame } from '@/lib/historyField';
 import { useRenameField } from '@/lib/useCodeRename';
+import { isAlwaysOn } from '@/lib/traitEffects';
 import { randomUUID } from '@/lib/uuid';
 import {
   BOOLEAN_OFF, BOOLEAN_ON, blankOption, choiceDefault, optionDefault, optionRange, reorderOptions, shownValuedOptions, snapNumber, withOptionType,
 } from '@/lib/worldOptions';
 import type {
-  PlaceholderPin, PresetRow, PresetValue, PresetWorldOption, ValuedWorldOption, WorldOption, WorldOptionType, WorldOptionValueOf,
+  Entity, PlaceholderPin, PresetRow, PresetValue, PresetWorldOption, Trait, ValuedWorldOption, WorldOption, WorldOptionType, WorldOptionValueOf,
 } from '@/types';
 
 const TYPE_LABELS: Record<WorldOptionType, string> = { choice: 'Choice', boolean: 'On or Off', number: 'Number', preset: 'Preset' };
@@ -85,44 +86,105 @@ function OptionRowValue({ option, value, label, onChange }: {
   );
 }
 
-/** One Preset value's rows: each sets one shown Option to a value. */
+/** A trait a row can turn on or off: a root trait, or one an authored entity owns. */
+interface TraitTarget {
+  traitId: string;
+  ownerId?: string;
+  name: string;
+}
+
+/** What a Preset row can set: the shown Options that hold a value, and the traits the player can toggle, by owner. */
+interface RowTargets {
+  options: readonly ValuedWorldOption[];
+  traits: readonly { owner: string; traits: readonly TraitTarget[] }[];
+}
+
+/** The world's row targets. A trait whose mode stops the player toggling it is left out (Q29). */
+function rowTargets(world: Pick<ReturnType<typeof useGameData>, 'options' | 'traits' | 'entities'>): RowTargets {
+  const toggled = (traits: readonly Trait[] | undefined, owner?: Entity) => (traits ?? []).filter((t) => !isAlwaysOn(t))
+    .map((t): TraitTarget => ({ traitId: t.id, name: owner ? `${owner.name}’s ${t.name}` : t.name, ...(owner ? { ownerId: owner.id } : {}) }));
+  return {
+    options: shownValuedOptions(world.options),
+    traits: [
+      { owner: 'World Traits', traits: toggled(world.traits) },
+      ...world.entities.map((e) => ({ owner: e.name, traits: toggled(e.traits, e) })),
+    ].filter((g) => g.traits.length),
+  };
+}
+
+/** One key per row target, so a row and the target it names compare by it. */
+const optionKey = (optionId: string) => JSON.stringify(['option', optionId]);
+const traitKey = (traitId: string, ownerId?: string) => JSON.stringify(['trait', ownerId ?? '', traitId]);
+const targetKey = (row: PresetRow): string => (row.kind === 'option' ? optionKey(row.optionId)
+  : row.kind === 'trait' ? traitKey(row.traitId, row.ownerId) : JSON.stringify([row.kind]));
+
+const TRAIT_STATES = [{ id: 'on', name: 'On' }, { id: 'off', name: 'Off' }];
+
+/** One Preset value's rows: each sets one shown Option to a value, or turns one trait on or off. */
 function PresetRowsField({ rows, targets, label, onChange }: {
   rows: readonly PresetRow[];
-  /** The Options a row can set: the shown ones that hold a value. */
-  targets: readonly ValuedWorldOption[];
+  targets: RowTargets;
   label: string;
   onChange: (rows: PresetRow[]) => void;
 }) {
-  const rowFor = (option: ValuedWorldOption): OptionRow => ({ kind: 'option', optionId: option.id, value: optionDefault(option) });
-  const unused = targets.find((o) => !rows.some((r) => r.kind === 'option' && r.optionId === o.id));
+  const choices: PresetRow[] = [
+    ...targets.options.map((o): OptionRow => ({ kind: 'option', optionId: o.id, value: optionDefault(o) })),
+    ...targets.traits.flatMap((g) => g.traits.map((t): PresetRow => ({ kind: 'trait', traitId: t.traitId, on: true, ...(t.ownerId ? { ownerId: t.ownerId } : {}) }))),
+  ];
+  const unused = choices.find((c) => !rows.some((r) => targetKey(r) === targetKey(c)));
   const set = (index: number, row: PresetRow) => onChange(rows.map((r, i) => (i === index ? row : r)));
   return (
     <div className="space-y-2">
       <Meta as="p" className="font-medium">Sets</Meta>
       {rows.map((row, index) => {
-        if (row.kind !== 'option') return null;
-        const option = targets.find((o) => o.id === row.optionId);
+        if (row.kind !== 'option' && row.kind !== 'trait') return null;
+        const key = targetKey(row);
+        const known = choices.some((c) => targetKey(c) === key);
+        const option = row.kind === 'option' ? targets.options.find((o) => o.id === row.optionId) : undefined;
         const rowLabel = `${label} Row ${index + 1}`;
         return (
-          <div key={`${index}-${row.optionId}`} className="flex flex-wrap items-center gap-2">
+          <div key={`${index}-${key}`} className="flex flex-wrap items-center gap-2">
             <Select
-              value={option ? option.id : ''}
-              onValueChange={(id) => { const next = targets.find((o) => o.id === id); if (next) set(index, rowFor(next)); }}
+              value={known ? key : ''}
+              onValueChange={(k) => { const next = choices.find((c) => targetKey(c) === k); if (next) set(index, next); }}
             >
-              <SelectTrigger aria-label={`${rowLabel} Option`} className="w-48 min-w-0"><SelectValue placeholder="Pick an Option" /></SelectTrigger>
+              <SelectTrigger aria-label={`${rowLabel} Target`} className="w-56 min-w-0"><SelectValue placeholder="Pick an Option or Trait" /></SelectTrigger>
               <SelectContent>
-                {targets.map((o) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                {targets.options.length > 0 && (
+                  <SelectGroup>
+                    <SelectLabel>Options</SelectLabel>
+                    {targets.options.map((o) => <SelectItem key={o.id} value={optionKey(o.id)}>{o.name}</SelectItem>)}
+                  </SelectGroup>
+                )}
+                {targets.traits.map((g) => (
+                  <SelectGroup key={g.owner}>
+                    <SelectLabel>{g.owner}</SelectLabel>
+                    {g.traits.map((t) => (
+                      <SelectItem key={`${t.ownerId ?? ''}-${t.traitId}`} value={traitKey(t.traitId, t.ownerId)}>{t.name}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
               </SelectContent>
             </Select>
-            {option && <OptionRowValue option={option} value={row.value} label={rowLabel} onChange={(value) => set(index, { ...row, value })} />}
+            {row.kind === 'option' && option && (
+              <OptionRowValue option={option} value={row.value} label={rowLabel} onChange={(value) => set(index, { ...row, value })} />
+            )}
+            {row.kind === 'trait' && known && (
+              <Select value={row.on ? 'on' : 'off'} onValueChange={(v) => set(index, { ...row, on: v === 'on' })}>
+                <SelectTrigger aria-label={`${rowLabel} Value`} className="w-28"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {TRAIT_STATES.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
             <Button variant="ghost" size="icon" aria-label={`Delete ${rowLabel}`} onClick={() => onChange(rows.filter((_, i) => i !== index))}>
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         );
       })}
-      {targets.length === 0 && <Hint>Add a shown Option to set it here</Hint>}
-      <Button variant="outline" size="sm" disabled={!unused} onClick={() => unused && onChange([...rows, rowFor(unused)])}>
+      {choices.length === 0 && <Hint>Add a shown Option or a trait to set it here</Hint>}
+      <Button variant="outline" size="sm" disabled={!unused} onClick={() => unused && onChange([...rows, unused])}>
         <Plus className="mr-1 h-4 w-4" />Add Row
       </Button>
     </div>
@@ -132,7 +194,7 @@ function PresetRowsField({ rows, targets, label, onChange }: {
 /** A Preset's fields: what a pick does to the other choices, and its values. */
 function PresetFields({ option, targets, onChange }: {
   option: PresetWorldOption;
-  targets: readonly ValuedWorldOption[];
+  targets: RowTargets;
   onChange: (next: WorldOption) => void;
 }) {
   const setValues = (values: PresetValue[]) => onChange({ ...option, values });
@@ -144,8 +206,8 @@ function PresetFields({ option, targets, onChange }: {
         <OptionSwitcher ariaLabel="Other Choices" value={option.mode} options={MODES} onChange={(mode) => onChange({ ...option, mode })} />
         <Hint>
           {option.mode === 'snapshot'
-            ? 'Resets every Option this value doesn\u2019t set to its default'
-            : 'Changes only the Options this value sets'}
+            ? 'Resets every Option and trait this value doesn\u2019t set to its default'
+            : 'Changes only what this value sets'}
         </Hint>
       </div>
       <div className="space-y-3">
@@ -193,7 +255,7 @@ function OptionDetail({ option, onChange }: { option: WorldOption; onChange: (ne
   const withPins = (pins: PlaceholderPin[]) => (pins.length ? pins : undefined);
 
   const typeFields = () => {
-    if (option.type === 'preset') return <PresetFields option={option} targets={shownValuedOptions(world.options)} onChange={onChange} />;
+    if (option.type === 'preset') return <PresetFields option={option} targets={rowTargets(world)} onChange={onChange} />;
     if (option.type === 'number') {
       const { lo, hi } = optionRange(option);
       return (

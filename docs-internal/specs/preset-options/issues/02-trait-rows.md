@@ -1,6 +1,6 @@
 # 02: Trait Rows
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -17,14 +17,29 @@ A Preset value can turn root and entity-owned traits on or off. Apply then settl
 
 ## Acceptance criteria
 
-- [ ] The Elf/Orc/Evil case: with Elf picked and Elf blocking Evil, a Preset that lists Orc and Evil applies both.
-- [ ] A Preset pick wins a Not conflict against an unlisted pick, and that pick moves to cascade-off.
-- [ ] A trait-off row removes a pick. A row in a max-1 group swaps the pick. A group left short is filled.
-- [ ] A snapshot resets unlisted traits to the defaults. An overlay keeps them.
-- [ ] A row for an owned trait applies to that entity's picks.
-- [ ] A row that fails after the settle is named as skipped in the notice, and the other rows still apply.
-- [ ] Match clears when the player changes a trait that a Preset value set.
-- [ ] Setup render test: a click changes picks in another category, and the notice names them.
-- [ ] Frame: `.scratch/frames/preset-notice-light.png` at desktop width, with the notice showing.
+- [x] The Elf/Orc/Evil case: with Elf picked and Elf blocking Evil, a Preset that lists Orc and Evil applies both. (`entryDraft.preset.test.ts` "applies Orc and Evil from Elf".)
+- [x] A Preset pick wins a Not conflict against an unlisted pick, and that pick moves to cascade-off. (`entryDraft.preset.test.ts` "wins a Not conflict"; goes red with the Q26 blocker pass removed.)
+- [x] A trait-off row removes a pick. A row in a max-1 group swaps the pick. A group left short is filled. (`entryDraft.preset.test.ts` off-row, Orc swap and "fills a group its off-row leaves short"; the fill test goes red without `keepOff`.)
+- [x] A snapshot resets unlisted traits to the defaults. An overlay keeps them. (`entryDraft.preset.test.ts` snapshot and overlay cases.)
+- [x] A row for an owned trait applies to that entity's picks. (`entryDraft.preset.test.ts` "applies an owned row".)
+- [x] A row that fails after the settle is named as skipped in the notice, and the other rows still apply. (`entryDraft.preset.test.ts` "skips a row that fails after the settle"; `EnterWorldFlow.test.tsx` notice text.)
+- [x] Match clears when the player changes a trait that a Preset value set. (`entryDraft.preset.test.ts` "matchPreset trait rows".)
+- [x] Setup render test: a click changes picks in another category, and the notice names them. (`EnterWorldFlow.test.tsx` "a Preset with trait rows at world entry".)
+- [x] Frame: `.scratch/frames/preset-notice-light.png` at desktop width, with the notice showing. (1440×900 in the worktree preview.)
 
 For you: Apply a Preset that changes traits in several categories, and judge whether the notice says enough without being too long.
+
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
+- For you: Apply a Preset that changes traits in several categories, and judge whether the notice says enough without being too long. Frame: `.scratch/preset-options-02/frames/preset-notice-light.png`.
+- Read the row editor's target list (Options, **World Traits**, then one group per entity) and the **Pick an Option or Trait** placeholder on the Options tab.
+
+**Notes**
+- Rulings Q26–Q31 from this ticket's questions; the "latest picks" wording in this ticket's Apply line is superseded by Q26.
+- The Preset notice names owned traits "Wolf: Feral" (Q30); the older cascade notice and the editor's target list still read "Wolf’s Feral".
+- The notice leaves out Hidden traits, as the cascade notice does.
+- The editor hint for **Reset to Defaults** now says it resets traits too.

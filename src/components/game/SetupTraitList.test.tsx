@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
-import { SetupTraitList } from './SetupTraitList';
+import { SetupTraitList, TraitCascadeNotice } from './SetupTraitList';
 import { groupPickState, type ConditionState } from '@/lib/traitGates';
 import { scoped } from '@/lib/scope';
 import type { Stat, Trait, TraitGroup } from '@/types';
@@ -237,5 +237,13 @@ describe('SetupTraitList gates', () => {
       expect(screen.getByText('Locked')).toBeInTheDocument();
       expect(screen.queryByText(/Secret Bond/)).toBeNull();
     });
+  });
+});
+
+describe('the Preset notice', () => {
+  it('names six traits per sentence and counts the rest', () => {
+    const on = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    render(<TraitCascadeNotice cascade={{ kind: 'preset', value: 'Hard', on, off: ['I'], traitsNotApplied: [], optionsNotSet: ['Size'] }} onDismiss={() => {}} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Applied Hard. Turned on A, B, C, D, E, F, and 2 more. Turned off I. Couldn’t set Size.');
   });
 });

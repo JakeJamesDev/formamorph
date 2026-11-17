@@ -17,16 +17,32 @@ import { traitAvatarChanges } from '@/lib/avatarChanges';
 import { AvatarChangeIcon } from './AvatarChangeIcon';
 import type { Stat, StatChange, Trait, TraitGroup } from '@/types';
 
-/** What the last selection change turned off, by name, and the pick that caused it. */
-export interface TraitCascade {
-  off: string[];
-  because: string;
-}
+/** What the last selection change turned off, by name, and the pick that caused it; or, after a Preset click,
+ *  the value applied, the traits it turned on and off, and the rows it could not apply or set. */
+export type TraitCascade =
+  | { kind?: 'cascade'; off: string[]; because: string }
+  | { kind: 'preset'; value: string; on: string[]; off: string[]; traitsNotApplied: string[]; optionsNotSet: string[] };
 
 const LIST = new Intl.ListFormat('en', { type: 'conjunction' });
+const LISTED_NAMES = 6;
 
-/** The banner after a selection change turns gated traits off. It renders last in its scroll host and sticks
- *  to the host's bottom edge, so the rows above it never move when it appears. */
+/** Names joined as a list, the rest counted after the first six (Q30). */
+const listedNames = (names: readonly string[]) => (names.length > LISTED_NAMES
+  ? LIST.format([...names.slice(0, LISTED_NAMES), `${names.length - LISTED_NAMES} more`])
+  : LIST.format(names));
+
+function PresetLines({ cascade }: { cascade: Extract<TraitCascade, { kind: 'preset' }> }) {
+  const line = (lead: string, names: readonly string[]) => (names.length ? <> {lead} <strong>{listedNames(names)}</strong>.</> : null);
+  return (
+    <>
+      Applied <strong>{cascade.value}</strong>.{line('Turned on', cascade.on)}{line('Turned off', cascade.off)}
+      {line('Couldn’t apply', cascade.traitsNotApplied)}{line('Couldn’t set', cascade.optionsNotSet)}
+    </>
+  );
+}
+
+/** The banner after a selection change turns gated traits off, or after a Preset click. It renders last in its
+ *  scroll host and sticks to the host's bottom edge, so the rows above it never move when it appears. */
 export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCascade; onDismiss: () => void }) {
   return (
     <div
@@ -34,7 +50,10 @@ export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCasca
       className="sticky bottom-0 z-10 mt-4 flex items-start gap-2 rounded-lg border bg-background p-3 text-helper shadow-md animate-in fade-in slide-in-from-bottom-1 motion-reduce:animate-none"
     >
       <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
-      <span className="flex-1">Turned off <strong>{LIST.format(cascade.off)}</strong>, because of {cascade.because}.</span>
+      <span className="flex-1">
+        {cascade.kind === 'preset' ? <PresetLines cascade={cascade} />
+          : <>Turned off <strong>{LIST.format(cascade.off)}</strong>, because of {cascade.because}.</>}
+      </span>
       <Button type="button" variant="ghost" size="sm" className="-my-1 h-7" onClick={onDismiss}>Dismiss</Button>
     </div>
   );

@@ -589,6 +589,9 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               presetMatch={(preset) => props.presetMatch?.(preset) ?? null} onPreset={(preset, valueId) => props.onPreset?.(preset, valueId)}
             />
           )}
+          {current?.kind === 'options' && props.traitCascade && props.onDismissTraitCascade && (
+            <TraitCascadeNotice cascade={props.traitCascade} onDismiss={props.onDismissTraitCascade} />
+          )}
           {current?.kind === 'persona' && props.persona && props.onPersonaChange && (
             <>
               <Meta as="p" className="mb-1 font-medium tracking-wide">World Setup</Meta>

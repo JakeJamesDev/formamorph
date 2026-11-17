@@ -25,7 +25,12 @@ const options: WorldOption[] = [
   { id: 'secret', name: 'Secret', type: 'boolean', shownToPlayer: false, midGame: false, default: false },
   { id: 'start', name: 'Start', type: 'choice', shownToPlayer: true, midGame: false, values: [{ id: 'a', name: 'A' }], default: 'a' },
 ];
-const WORLD: World = benchEditorWorld({ options } as Partial<World>);
+const traits = [
+  { id: 'brave', name: 'Brave', statChanges: [] },
+  { id: 'blessed', name: 'Blessed', statChanges: [], mode: 'alwaysOn' },
+];
+const wolf = { id: 'wolf', name: 'Wolf', traits: [{ id: 'feral', name: 'Feral', statChanges: [] }] };
+const WORLD: World = benchEditorWorld({ options, traits, entities: [wolf] } as Partial<World>);
 
 /** Pick a Select's option by keyboard: a click needs pointer capture, which jsdom lacks. */
 const pickOption = (trigger: HTMLElement, name: string) => {
@@ -50,10 +55,10 @@ describe('a Preset Option on the Options tab', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Big Start Description' }), { target: { value: 'Everything is big' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'Add Row' })[0]);
 
-    const target = screen.getByRole('combobox', { name: 'Big Start Row 1 Option' });
+    const target = screen.getByRole('combobox', { name: 'Big Start Row 1 Target' });
     fireEvent.keyDown(target, { key: 'Enter' });
     const offered = within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent);
-    expect(offered).toEqual(['Size']);
+    expect(offered).toEqual(['Size', 'Brave', 'Wolf’s Feral']);
     fireEvent.keyDown(screen.getByRole('option', { name: 'Size' }), { key: 'Enter' });
     pickOption(screen.getByRole('combobox', { name: 'Big Start Row 1 Value' }), 'Big');
 
@@ -64,5 +69,25 @@ describe('a Preset Option on the Options tab', () => {
         { id: expect.any(String), name: 'Value 2', description: '', rows: [] },
       ],
     });
+  });
+
+  it('turns a root or an entity-owned trait on or off', () => {
+    const bench = renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Options/);
+    fireEvent.click(screen.getByRole('button', { name: 'Select Start' }));
+    pickOption(screen.getByRole('combobox', { name: 'Type' }), 'Preset');
+    const rows = () => (bench.ctx().options.find((o) => o.id === 'start') as Extract<WorldOption, { type: 'preset' }>).values[0].rows;
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add Row' })[0]);
+    pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 1 Target' }), 'Brave');
+    expect(rows()).toEqual([{ kind: 'trait', traitId: 'brave', on: true }]);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add Row' })[0]);
+    pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 2 Target' }), 'Wolf’s Feral');
+    pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 2 Value' }), 'Off');
+    expect(rows()).toEqual([
+      { kind: 'trait', traitId: 'brave', on: true },
+      { kind: 'trait', traitId: 'feral', ownerId: 'wolf', on: false },
+    ]);
   });
 });

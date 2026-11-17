@@ -7,7 +7,7 @@ import { DEV_MISSING_PICK } from '@/lib/dev/devAvatars';
 import { useLingeringMount } from '@/lib/useLingeringMount';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
-import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
+import { inAuthoredOrder, isHidden, traitOrderIndex } from '@/lib/traitEffects';
 import { ownerPins, inPlayOwners, pinBlueprintsOf, playedEntityId } from '@/lib/ownedTraitsInPlay';
 import { playedEntityIdOf, startLocationIdsOpen } from '@/lib/inPlayWorld';
 import { cascadeOffInput, startingStatsWith } from '@/lib/traitRuntime';
@@ -18,7 +18,7 @@ import { seededCharacterData } from '@/lib/legacyVrm';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
 import { startingLocations } from '@/lib/startingLocation';
 import {
-  gateTrees, gateStates, gateTreeOf, settle, shownRefs, switchTrait, type SettleResult,
+  gateTrees, gateStates, gateTreeOf, settle, shownRefs, switchTrait, type GateTraitRef, type SettleResult,
 } from '@/lib/traitGates';
 import { playedEntityIds, scoped, type OwnerId } from '@/lib/scope';
 import { checkedAvatarLock } from '@/lib/customizationLock';
@@ -27,7 +27,7 @@ import { buildInitialSelection, finalizeSelection, shouldShowDictionaryChoices }
 import { libraryLines } from '@/lib/librarySources';
 import { followedLibraryId } from '@/lib/publishLinks';
 import {
-  applyPreset, castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, entryTrees, libraryCastIds, matchPreset, rekeyOwnedPicks,
+  applyPreset, castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, entryTrees, libraryCastIds, matchPreset, presetRowRef, rekeyOwnedPicks,
   withLibraryDefaults, withLocationPick, withPersonaPick, withSettledEntry, type EntryDraft, type EntryTraitWorld,
 } from '@/lib/entryDraft';
 import { isPreset, optionPinLists, shownOptions } from '@/lib/worldOptions';
@@ -311,7 +311,24 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     const applied = applyPreset(entryDraft, entryWorld, preset, valueId);
     if (!applied) return;
     reviseDraft(() => applied.draft);
-    setTraitCascade(cascadeFrom(applied.notice, resolvePH(applied.notice.value.name)));
+    const { notice } = applied;
+    // Authored names, owned ones as "Owner: Trait" (Q30); a target that no longer exists, or a Hidden trait, goes unnamed.
+    const owners = [...entryWorld.entities, ...entryWorld.library];
+    const presetTraitName = ({ ownerId, traitId }: GateTraitRef): string[] => {
+      const owner = ownerId === null ? undefined : owners.find((e) => e.id === ownerId);
+      const trait = (ownerId === null ? entryWorld.traits : owner?.traits ?? []).find((t) => t.id === traitId);
+      if (!trait || isHidden(trait)) return [];
+      return [owner && ownerId !== playedEntityId(entryDraft.persona) ? `${owner.name}: ${trait.name}` : trait.name];
+    };
+    const traitsNotApplied = notice.skipped.flatMap((row) => (row.kind === 'trait' ? presetTraitName(presetRowRef(row)) : []));
+    const optionsNotSet = notice.skipped.flatMap((row) => {
+      const option = row.kind === 'option' ? worldOptions.find((o) => o.id === row.optionId) : undefined;
+      return option ? [resolvePH(option.name)] : [];
+    });
+    const on = notice.on.flatMap(presetTraitName);
+    const off = notice.off.flatMap(presetTraitName);
+    setTraitCascade(on.length || off.length || traitsNotApplied.length || optionsNotSet.length
+      ? { kind: 'preset', value: resolvePH(notice.value.name), on, off, traitsNotApplied, optionsNotSet } : null);
   };
   // Each Preset's match settles once per value, so it runs only when the draft or the world changes.
   const presetMatches = useMemo(

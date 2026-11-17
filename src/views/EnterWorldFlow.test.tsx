@@ -927,7 +927,7 @@ describe('a Preset Option at world entry', () => {
     expect(screen.getByRole('slider', { name: 'Heat' })).toHaveAttribute('aria-valuenow', '9');
     fireEvent.click(nav().getByRole('button', { name: /^General/ }));
     expect(screen.getByRole('checkbox', { name: 'Torch' })).not.toBeChecked();
-    expect(screen.getByText(/Turned off/)).toHaveTextContent('Turned off Torch, because of Dark Start.');
+    expect(screen.getByRole('status')).toHaveTextContent('Applied Dark Start. Turned off Torch.');
 
     fireEvent.click(nav().getByRole('button', { name: /^World Options/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Lanterns Lit' }));
@@ -968,5 +968,53 @@ describe('a default trait gated on a World Option', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][0]).toEqual(['default', 'torch']);
+  });
+});
+
+describe('a Preset with trait rows at world entry', () => {
+  beforeEach(async () => {
+    const record = world();
+    const options: WorldOption[] = [{
+      id: 'start', name: 'Start', type: 'preset', mode: 'overlay',
+      values: [{ id: 'raider', name: 'Raider', description: 'An orc who serves no one', rows: [
+        { kind: 'trait', traitId: 'orc', on: true }, { kind: 'trait', traitId: 'evil', on: true },
+        { kind: 'trait', traitId: 'default', on: false }, { kind: 'trait', traitId: 'gone', on: true },
+        { kind: 'trait', traitId: 'feral', ownerId: 'wolf', on: true },
+      ] }],
+    }];
+    // The wolf is Persona-Only and not played, so it is out of the cast.
+    const wolf = {
+      id: 'wolf', name: 'Wolf', playerDescription: '', aiDescription: '', aiSummary: '', persona: true, personaOnly: true,
+      traits: [{ id: 'feral', name: 'Feral', statChanges: [] }],
+    };
+    Object.assign(record.data, { options, entities: [wolf] });
+    // Elf blocks Evil, so by hand the player must swap Elf for Orc first.
+    record.data.traitGroups = [...(record.data.traitGroups ?? []), { id: 'race', name: 'Race', minPicks: 1, maxPicks: 1 }];
+    record.data.traits = [
+      ...record.data.traits,
+      { id: 'elf', name: 'Elf', groupId: 'race', isDefault: true, statChanges: [] },
+      { id: 'orc', name: 'Orc', groupId: 'race', statChanges: [] },
+      { id: 'evil', name: 'Evil', groupId: 'group', statChanges: [], requires: [{ all: [{ kind: 'trait', id: 'elf', not: true }] }] },
+    ];
+    await WorldStorageService.storeWorld(record);
+  });
+
+  it('changes picks in other categories and names them in the notice on the World Options page', async () => {
+    renderEnterWorld({ onStartGame: vi.fn() });
+    await enter();
+    const nav = () => within(screen.getByRole('navigation', { name: 'World setup categories' }));
+    fireEvent.click(nav().getByRole('button', { name: /^Race/ }));
+    expect(screen.getByRole('radio', { name: 'Elf' })).toBeChecked();
+
+    fireEvent.click(nav().getByRole('button', { name: /^World Options/ }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Raider' }));
+    expect(screen.getByRole('radio', { name: 'Raider' })).toBeChecked();
+    const notice = screen.getByRole('status');
+    expect(notice).toHaveTextContent(/^Applied Raider\. Turned on Orc and Evil\. Turned off (Default trait and Elf|Elf and Default trait)\. Couldn’t apply Wolf: Feral\.Dismiss$/);
+
+    fireEvent.click(nav().getByRole('button', { name: /^Race/ }));
+    expect(screen.getByRole('radio', { name: 'Orc' })).toBeChecked();
+    fireEvent.click(nav().getByRole('button', { name: /^Other traits/ }));
+    expect(screen.getByRole('checkbox', { name: 'Evil' })).toBeChecked();
   });
 });
