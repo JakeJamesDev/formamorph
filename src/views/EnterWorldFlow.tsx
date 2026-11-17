@@ -247,6 +247,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   );
   const rawEntryWorld: EntryTraitWorld = {
     traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, library: libraryCast, stats: rawStats, statGroups: rawStatGroups,
+    options: worldOptions,
   };
   // A library entity that joins the cast starts on its own defaults.
   useEffect(() => {

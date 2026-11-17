@@ -939,3 +939,34 @@ describe('a Preset Option at world entry', () => {
     expect(onStartGame.mock.calls[0][8]).toEqual({ lit: true, heat: 9 });
   });
 });
+
+describe('a default trait gated on a World Option', () => {
+  beforeEach(async () => {
+    const record = world();
+    const options: WorldOption[] = [
+      { id: 'lit', name: 'Lanterns Lit', type: 'boolean', shownToPlayer: true, midGame: false, default: true },
+    ];
+    Object.assign(record.data, { options });
+    record.data.traits = [
+      ...record.data.traits,
+      { id: 'torch', name: 'Torch', isDefault: true, statChanges: [], requires: [{ all: [{ kind: 'option', id: 'lit' }] }] },
+    ];
+    await WorldStorageService.storeWorld(record);
+  });
+
+  it('starts on in setup when the Option default opens its gate', async () => {
+    renderEnterWorld({ onStartGame: vi.fn() });
+    await enter();
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'World setup categories' })).getByRole('button', { name: /^General/ }));
+    expect(screen.getByRole('checkbox', { name: 'Torch' })).toBeChecked();
+  });
+
+  it('starts on with Quick Start when the Option default opens its gate', async () => {
+    const onStartGame = vi.fn();
+    renderEnterWorld({ onStartGame });
+    fireEvent.click(await screen.findByText('Entry World'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][0]).toEqual(['default', 'torch']);
+  });
+});
