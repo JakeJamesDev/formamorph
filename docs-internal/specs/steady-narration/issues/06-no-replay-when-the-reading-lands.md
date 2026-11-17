@@ -1,20 +1,25 @@
-# 06: No Replay When the Reading Lands
+# 06: Check the Swap When the Reading Lands
 
-Status: needs-triage
+Status: ready-for-agent
 Blocked by: None (can start immediately)
-Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
-Reasoning effort: high
+Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
+Reasoning effort: medium
 
 ## What to build
 
-Opened at the spec close as a gap against Q3 ("the narration never remounts"). Ticket 04's live probe recorded one remount per turn: after the choices finish, the full-turn mention reading replaces the live reading, the renderer's plugins change (`links` and `speakers`), and the reveal replays.
+Opened at the spec close as a gap against Q3 ("the narration never remounts"). Ticket 04's live probe recorded one remount per turn: after the choices finish, the full-turn mention reading replaces the live reading, the renderer's plugins change (`links` and `speakers`), and the renderer remounts.
 
-The spec's Out of Scope leaves the renderer's plugin keying as it is, so this ticket needs triage first: decide how a new reading reaches text already on screen without a remount, or rule the one replay acceptable and amend Q3.
+Triage (2026-11-16, user): check first. The probe shows the reveal already ended at that moment (`animate` false), so the text may swap in place with nothing visible. Capture the frames around the swap.
+
+- Nothing visible: set this ticket to `wontfix` and report to the spec session, which amends Q3 to "never remounts while the narration reveals".
+- A visible flash or replay: report it with the frames to the spec session. A fix reopens the renderer's plugin keying, which is a new ruling.
+
+No production code changes in this ticket.
 
 ## Acceptance criteria
 
-- [ ] The live probe shows no remount when the full-turn reading lands, and quotes and mention links still take the reading's colors and targets.
-- [ ] A test fails if the reading's arrival remounts the narration.
+- [ ] Playwright per-frame capture of one real turn with dialogue and Character Mentions on, from the end of the choices through the reading's arrival, in the Pages and chat layouts. Frames go to `.scratch/frames/reading-swap-<layout>-<n>.png`, light theme, 1280 px wide.
+- [ ] The Landed section states whether any frame differs in visible text, color or position around the swap, beyond the quote colors and mention links the reading adds.
 
 For you:
-- Play a turn with dialogue and Character Mentions on: no replay after the choices finish.
+- Look at the frames and confirm the verdict.
