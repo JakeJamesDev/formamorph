@@ -20,10 +20,10 @@ import { chancePercent, rangeText } from '@/lib/routineTime';
 import { pickLabel, pickToken, type VrmLookup } from '@/lib/vrmPickMatch';
 import { placesOf } from '@/lib/positionEngine';
 import { galleryLinks } from '@/lib/entityImages';
-import { comparableGallery, type MediaLookup } from '@/lib/libraryMedia';
+import { comparableGallery, comparableSound, type MediaLookup } from '@/lib/libraryMedia';
 import { PLAYER_START, PLAYER_START_LABEL } from '@/types';
 import type {
-  ContentLink, Dictionary, DictionaryEntry, EntityKind, EntityRoutine, EntityStart, GalleryLink, GameLocation, ScheduleRow, TraitRequirement,
+  ContentLink, Dictionary, DictionaryEntry, EntityKind, EntityRoutine, EntityStart, GalleryLink, GameLocation, MediaAsset, MediaRef, ScheduleRow, TraitRequirement,
   TraitRequirementRow, Traversable, VrmPick,
 } from '@/types';
 
@@ -356,6 +356,10 @@ export function diffContent(
     ? JSON.stringify(comparableGallery(galleryLinks({ images: a as GalleryLink[] }), media))
       === JSON.stringify(comparableGallery(galleryLinks({ images: b as GalleryLink[] }), media))
     : JSON.stringify(a ?? null) === JSON.stringify(b ?? null));
+  // A sound compares by hash token too.
+  const sameSound = (a: unknown, b: unknown) => (media
+    ? comparableSound(a as MediaAsset | MediaRef | undefined, media) === comparableSound(b as MediaAsset | MediaRef | undefined, media)
+    : JSON.stringify(a ?? null) === JSON.stringify(b ?? null));
   const held = withoutWorldFields(copy) as Record<string, unknown>;
   const offered = withoutWorldFields(source) as Record<string, unknown>;
   const routine = routineChanges(copy, source, locations);
@@ -377,6 +381,7 @@ export function diffContent(
     const same = pick
       ? pickToken(held[field] as VrmPick | undefined, vrm) === pickToken(offered[field] as VrmPick | undefined, vrm)
       : field === 'images' ? sameImages(held[field], offered[field])
+      : field === 'sound' ? sameSound(held[field], offered[field])
       : JSON.stringify(held[field] ?? null) === JSON.stringify(offered[field] ?? null);
     (same ? unchanged : changed).push(row);
   }

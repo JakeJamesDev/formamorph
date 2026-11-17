@@ -23,7 +23,7 @@ Each location's background is on its **Media** tab. See [World Editor: Locations
 <!-- route: worldEditor.overview#background-music -->
 
 1. Open the **Overview** tab.
-2. Under **Background Music**, select **Add Sound** and pick an audio file.
+2. Under **Background Music**, select **Import** and pick an audio file. **Choose** picks a sound the world already has, and **Or paste a sound URL** links one.
 3. Select **Save**.
 
 ## The left column: how your world is listed
@@ -39,7 +39,7 @@ The world's Avatars are on the **Media** tab. See [World Editor: Media](World-Ed
 | **Thumbnail** | The card's image. **Generate with AI** under the frame makes one from your Player-Facing Description, or from the AI-Facing Description when that is empty. |
 | **Allowed Personas** | **Advanced mode only.** Decides which personas the player can pick: **Any** or **World Only**. See [Personas for Authors](Persona-Authoring#persona-rules). |
 | **Starts On** | **Advanced mode only.** Decides which persona a new player starts on. See [Personas for Authors](Persona-Authoring#persona-rules). |
-| **Background Music** | The track the world plays. Select **Add Sound** to pick a file. **Remove sound** clears it. |
+| **Background Music** | The track the world plays. A [sound slot](World-Editor-Entities#sound-slots): **Import**, **Choose** or paste a sound URL. **Remove From Slot** clears it. |
 
 ## The right column: Details
 <!-- keywords: blurb, synopsis, system prompt, setting lore, welcome text, instructions page, markdown intro, what you write -->

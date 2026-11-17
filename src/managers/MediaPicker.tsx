@@ -1,9 +1,10 @@
 /**
- * The Media List's image slot pieces: Choose (a searchable thumbnail grid of the list), the filled slot's name
- * field with Remove and Delete From World, and the delete confirm that lists every use.
+ * The Media List's slot pieces: Choose (a searchable thumbnail grid of the list's images, or a name list of its
+ * sounds), the filled slot's name field with Remove and Delete From World, and the delete confirm that lists
+ * every use.
  */
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
-import { Images, Search, Trash2, X } from 'lucide-react';
+import { Images, Music, Search, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -21,29 +22,41 @@ import { mediaUsage, mediaUseLabel } from '@/lib/mediaUsage';
 import { RemoteImg } from '@/lib/useRemoteImage';
 import { cn } from '@/lib/utils';
 import type { GalleryLink, MediaEntry, MediaList, MediaRef } from '@/types';
+import type { MediaEntryKind } from '@/lib/mediaList';
 import { useMediaStep } from './useMediaItemActions';
 
-/** The list's images, sorted by name. */
-const imageEntries = (list: MediaList | undefined): MediaEntry[] =>
-  Object.values(list ?? {}).filter((entry) => entry.kind === 'image' && entry.data)
+/** Copy that names an entry's kind. */
+const KIND_WORDS: Record<MediaEntryKind, { one: string; many: string }> = {
+  image: { one: 'Image', many: 'Images' },
+  sound: { one: 'Sound', many: 'Sounds' },
+};
+
+/** The list's entries of `kind`, sorted by name. */
+const entriesOf = (list: MediaList | undefined, kind: MediaEntryKind): MediaEntry[] =>
+  Object.values(list ?? {}).filter((entry) => entry.kind === kind && entry.data)
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }));
 
-/** Choose: a popover grid of the list's images. Entries in `linkedIds` are dimmed, and still pickable. */
-export function MediaChooseButton({ list, linkedIds, onPick }: {
+/** Choose: a popover of the list's entries of `kind`, a thumbnail grid for images and a name list for sounds.
+ *  Entries in `linkedIds` are dimmed, and still pickable. */
+export function MediaChooseButton({ list, linkedIds, onPick, kind = 'image' }: {
   list: MediaList | undefined;
   linkedIds: ReadonlySet<string>;
   onPick: (entry: MediaEntry) => void;
+  kind?: MediaEntryKind;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   useEffect(() => { if (!open) setQuery(''); }, [open]);
-  const entries = useMemo(() => imageEntries(list), [list]);
+  const entries = useMemo(() => entriesOf(list, kind), [list, kind]);
+  const words = KIND_WORDS[kind];
   const key = mediaNameKey(query);
   const shown = key ? entries.filter((entry) => mediaNameKey(entry.name).includes(key)) : entries;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline"><Images className="mr-2 h-4 w-4" />Choose</Button>
+        <Button type="button" variant="outline">
+          {kind === 'image' ? <Images className="mr-2 h-4 w-4" /> : <Music className="mr-2 h-4 w-4" />}Choose
+        </Button>
       </PopoverTrigger>
       {/* Inline, not portaled: the slot sits in the entity editor's dialog, whose scroll lock eats a portal's wheel. */}
       <PopoverContent portal={false} className="w-[360px] space-y-2 p-3" data-media-choose="">
@@ -52,14 +65,14 @@ export function MediaChooseButton({ list, linkedIds, onPick }: {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search Images"
-            aria-label="Search Images"
+            placeholder={`Search ${words.many}`}
+            aria-label={`Search ${words.many}`}
             className="pl-8"
             autoFocus
           />
         </div>
         <ScrollArea className="max-h-80">
-          <div className="grid grid-cols-3 gap-2 pr-2">
+          <div className={cn('grid gap-2 pr-2', kind === 'image' ? 'grid-cols-3' : 'grid-cols-1')}>
             {shown.map((entry) => {
               const here = linkedIds.has(entry.id);
               return (
@@ -69,16 +82,22 @@ export function MediaChooseButton({ list, linkedIds, onPick }: {
                   onClick={() => { onPick(entry); setOpen(false); }}
                   aria-label={here ? `${entry.name}, already used here` : entry.name}
                   data-media-entry={entry.id}
-                  className={cn('space-y-1 rounded-md p-1 text-left hover:bg-muted', here && 'opacity-50')}
+                  className={cn(
+                    'rounded-md p-1 text-left hover:bg-muted',
+                    kind === 'image' ? 'space-y-1' : 'flex items-center gap-2',
+                    here && 'opacity-50',
+                  )}
                 >
-                  <RemoteImg src={entry.data} alt="" loading="lazy" className="aspect-[3/4] w-full rounded bg-muted object-cover" />
+                  {kind === 'image'
+                    ? <RemoteImg src={entry.data} alt="" loading="lazy" className="aspect-[3/4] w-full rounded bg-muted object-cover" />
+                    : <Music className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />}
                   <span className="line-clamp-2 break-words text-meta">{entry.name}</span>
                 </button>
               );
             })}
             {!shown.length && (
               <Meta className="col-span-full py-4 text-center">
-                {entries.length ? 'No images match' : 'No images yet'}
+                {entries.length ? `No ${words.many.toLowerCase()} match` : `No ${words.many.toLowerCase()} yet`}
               </Meta>
             )}
           </div>
@@ -89,9 +108,10 @@ export function MediaChooseButton({ list, linkedIds, onPick }: {
 }
 
 /** The confirm Delete From World raises, naming every place that loses the entry. */
-export function DeleteMediaConfirm({ open, name, uses, onConfirm, onOpenChange }: {
+export function DeleteMediaConfirm({ open, name, kind = 'image', uses, onConfirm, onOpenChange }: {
   open: boolean;
   name: string;
+  kind?: MediaEntryKind;
   /** Each use as copy names it. */
   uses: string[];
   onConfirm: () => void;
@@ -109,7 +129,7 @@ export function DeleteMediaConfirm({ open, name, uses, onConfirm, onOpenChange }
             {uses.map((use) => <li key={use}>{use}</li>)}
           </ul>
         </>
-      ) : 'Nothing uses this image.'}
+      ) : `Nothing uses this ${KIND_WORDS[kind].one.toLowerCase()}.`}
       confirmLabel="Delete"
       destructive
       surface="deleteMediaEntry"
@@ -126,7 +146,7 @@ export function useMediaEntryActions() {
   const list = worldOverview.mediaList;
   const rename = (id: string, name: string) => {
     if (!list?.[id] || !name.trim() || name.trim() === list[id].name) return;
-    void step(`Rename Image: ${name.trim()}`, () => renameMedia({ mediaId: id, name }));
+    void step(`Rename ${KIND_WORDS[list[id].kind].one}: ${name.trim()}`, () => renameMedia({ mediaId: id, name }));
   };
   const uses = deleting
     ? (mediaUsage({ worldOverview, entities, locations, items, bodies, dictionaries }).get(deleting) ?? [])
@@ -136,11 +156,12 @@ export function useMediaEntryActions() {
     <DeleteMediaConfirm
       open={!!deleting}
       name={(deleting && list?.[deleting]?.name) || ''}
+      kind={(deleting && list?.[deleting]?.kind) || 'image'}
       uses={uses}
       onConfirm={() => {
         const id = deleting;
         setDeleting(null);
-        if (id) void step(`Delete Image: ${list?.[id]?.name ?? ''}`, () => removeMedia(id));
+        if (id) void step(`Delete ${KIND_WORDS[list?.[id]?.kind ?? 'image'].one}: ${list?.[id]?.name ?? ''}`, () => removeMedia(id));
       }}
       onOpenChange={(open) => { if (!open) setDeleting(null); }}
     />
@@ -169,10 +190,10 @@ export function MediaEntryBar({ entry, onUnlink }: { entry: MediaEntry; onUnlink
           if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
           if (e.key === 'Escape') setDraft(entry.name);
         }}
-        aria-label="Image Name"
+        aria-label={`${KIND_WORDS[entry.kind].one} Name`}
         className="h-8 flex-1"
       />
-      <Tip tip="Removes the image here and keeps it in the world">
+      <Tip tip={`Removes the ${KIND_WORDS[entry.kind].one.toLowerCase()} here and keeps it in the world`}>
         <Button type="button" variant="ghost" size="icon" aria-label="Remove From Slot" onClick={onUnlink}>
           <X className="h-4 w-4" />
         </Button>

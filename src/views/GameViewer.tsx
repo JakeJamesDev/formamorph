@@ -1,3 +1,4 @@
+import { resolveSound, type SoundValue } from '@/lib/mediaSounds';
 import { randomUUID } from "@/lib/uuid";
 import { openingFold, openingPersonaOf, standaloneStateOf } from '@/lib/openingState';
 import {
@@ -129,7 +130,7 @@ import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import WorldEditor, { type EditorExit } from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemInstance, ItemEffectLedger, RuntimeItem, BodyRuntime, BodyPick, WorldOption, WorldOptionValueOf, WorldOptionValues } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemInstance, ItemEffectLedger, RuntimeItem, BodyRuntime, BodyPick, WorldOption, WorldOptionValueOf, WorldOptionValues } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { narrationOf, storyText, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -1429,7 +1430,7 @@ const GameViewer = ({
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
   const [isEntityModalOpen, setIsEntityModalOpen] = useState(false);
   const [selectedStranger, setSelectedStranger] = useState<{ entityId: string; label: string } | null>(null);
-  const [ambientSound, setAmbientSound] = useState<MediaAsset | null>(null);
+  const [ambientSound, setAmbientSound] = useState<SoundValue>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   // Filing needs an account, so the in-game entry point is only offered to someone signed in.
   const [showBugReport, setShowBugReport] = useState(false);
@@ -6423,8 +6424,8 @@ const GameViewer = ({
     scrollToBottom();
   }, [logEntries, scrollToBottom]);
 
-  useLoopingAudio(bgmEnabled ? worldOverview?.bgm : null);
-  useLoopingAudio(ambientSound?.data);
+  useLoopingAudio(bgmEnabled ? resolveSound(worldOverview?.bgm, worldOverview?.mediaList)?.data : null);
+  useLoopingAudio(resolveSound(ambientSound, worldOverview?.mediaList)?.data);
 
   // Extract the displayed narration from an assistant message (see lib/aiResponse).
   const parseAssistantMessage = (content: string) => narrationOf(content) ?? "";

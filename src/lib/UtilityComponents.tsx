@@ -31,7 +31,7 @@ interface UploadedMedia {
 }
 
 /** Read an uploaded file into the base64 data-URL envelope the media uploaders emit. */
-function readMediaFile(file: File): Promise<UploadedMedia> {
+export function readMediaFile(file: File): Promise<UploadedMedia> {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve({ name: file.name, type: file.type, size: file.size, data: reader.result as string });
@@ -124,6 +124,68 @@ const Dropzone = ({ htmlFor, frameClassName, dragOver, overlay, asLabel = true, 
   return asLabel ? <Label htmlFor={htmlFor} className="cursor-pointer">{frame}</Label> : frame;
 };
 
+/** A link box with its commit cell and a held error line, for a media slot that takes an http(s) URL. */
+export const UrlCommitField = ({ noun, value, onChange, onCommit, error }: {
+  noun: 'image' | 'sound';
+  value: string;
+  onChange: (value: string) => void;
+  onCommit: () => void;
+  error: string | null;
+}) => {
+  // Lit only once the draft is a link the slot could take.
+  const committable = isRemoteImage(value.trim());
+  return (
+    <div className="w-full space-y-1">
+      {/* Field and button are one widget: the button fills the field's right edge, divided from it by a
+          border rather than a gap, so it reads as a second cell and not a second control. `pr-10` keeps
+          typed text clear of it. */}
+      <div className="group relative">
+        <Input
+          type="url"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onCommit(); } }}
+          placeholder={`Or paste ${noun === 'image' ? 'an image' : 'a sound'} URL`}
+          aria-label={noun === 'image' ? 'Image URL' : 'Sound URL'}
+          // The focus ring is drawn by the overlay below instead, so it covers both cells rather than
+          // being covered by the button along the edge they share.
+          className="pr-10 focus-visible:ring-0"
+        />
+        {/* Icon-only: the Enter key already commits, and the icon says so. Inert until the draft is a link,
+            so the cell says whether pressing it would do anything. */}
+        <Tip tip={`Use this ${noun} URL`}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={!committable}
+            className={cn(
+              // Only the divider edge is bordered, so the cell shares the field's own frame on its other three
+              // sides. `disabled:opacity-100` keeps that divider at full strength while inert — the muted
+              // foreground carries the off state on its own.
+              'absolute inset-y-0 right-0 h-auto w-10 rounded-l-none border-y-0 border-r-0 border-l border-l-input disabled:opacity-100',
+              committable
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'bg-transparent text-muted-foreground',
+            )}
+            onClick={onCommit}
+          >
+            <CornerDownLeft className="h-4 w-4" />
+          </Button>
+        </Tip>
+        {/* Last child, so the focus ring paints over the button cell too and reads as one widget's glow
+            rather than stopping at the divider. Inert to the pointer, so it never eats a click. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-md ring-ring ring-inset group-focus-within:ring-2"
+        />
+      </div>
+      {/* The line is held whether or not it says anything, so a rejected link doesn't shift the box either. */}
+      <p className="min-h-4 text-meta text-destructive">{error}</p>
+    </div>
+  );
+};
+
 export const ImageUpload = ({ onChange, id, value, cap, previewClassName, objectFit = 'contain', onPromptExtracted, onFiles, onFile, choose }: {
   /** A picked file's name rides along, for a slot that names its picture. */
   onChange: (value: string, fileName?: string) => void;
@@ -159,9 +221,6 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   const { src: displaySrc, status } = useRemoteImage(value);
   // Known before any request, so this shows the instant the link is pasted.
   const expiring = isExpiringImageHost(value);
-
-  // Whether the draft is something the slot could take, which lights the commit button.
-  const urlCommittable = isRemoteImage(urlDraft.trim());
 
   // A pasted link is stored verbatim — no downscale pass, since a remote image costs the payload nothing.
   const commitUrl = useCallback(() => {
@@ -239,54 +298,14 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
     // picker is the label's default action for the click, so halting the React event does not cancel it.
     // The input and the button are exempt already — a label never activates for interactive content — but
     // the gap between them and the line held for an error are not.
-    <div className="w-full space-y-1" onClick={(e) => e.preventDefault()}>
-      {/* Field and button are one widget: the button fills the field's right edge, divided from it by a
-          border rather than a gap, so it reads as a second cell and not a second control. `pr-10` keeps
-          typed text clear of it. */}
-      <div className="group relative">
-        <Input
-          type="url"
-          value={urlDraft}
-          onChange={(e) => { setUrlDraft(e.target.value); setUrlError(null); }}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitUrl(); } }}
-          placeholder="Or paste an image URL"
-          aria-label="Image URL"
-          // The focus ring is drawn by the overlay below instead, so it covers both cells rather than
-          // being covered by the button along the edge they share.
-          className="pr-10 focus-visible:ring-0"
-        />
-        {/* Icon-only: the label was the width of the word for an action the Enter key already performs, and
-            the icon says so. Lit only once the draft is a link it can take — until then it's inert, so the
-            cell says whether pressing it would do anything. */}
-        <Tip tip="Use this image URL">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            disabled={!urlCommittable}
-            className={cn(
-              // Only the divider edge is bordered, so the cell shares the field's own frame on its other three
-              // sides. `disabled:opacity-100` keeps that divider at full strength while inert — the muted
-              // foreground carries the off state on its own.
-              'absolute inset-y-0 right-0 h-auto w-10 rounded-l-none border-y-0 border-r-0 border-l border-l-input disabled:opacity-100',
-              urlCommittable
-                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                : 'bg-transparent text-muted-foreground',
-            )}
-            onClick={commitUrl}
-          >
-            <CornerDownLeft className="h-4 w-4" />
-          </Button>
-        </Tip>
-        {/* Last child, so the focus ring paints over the button cell too and reads as one widget's glow
-            rather than stopping at the divider. Inert to the pointer, so it never eats a click. */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-md ring-ring ring-inset group-focus-within:ring-2"
-        />
-      </div>
-      {/* The line is held whether or not it says anything, so a rejected link doesn't shift the box either. */}
-      <p className="min-h-4 text-meta text-destructive">{urlError}</p>
+    <div className="w-full" onClick={(e) => e.preventDefault()}>
+      <UrlCommitField
+        noun="image"
+        value={urlDraft}
+        onChange={(v) => { setUrlDraft(v); setUrlError(null); }}
+        onCommit={commitUrl}
+        error={urlError}
+      />
     </div>
   );
 

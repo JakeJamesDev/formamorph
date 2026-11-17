@@ -23,6 +23,9 @@ import { MediaName, MediaSize, MediaThumb } from './MediaGallery';
 import { MediaActionRow } from './MediaActionRow';
 import { actsInItemPanel, useMediaItemActions } from './useMediaItemActions';
 import { AvatarNameField, useAvatarDelete, useAvatarStore } from './AvatarStore';
+import { MediaSoundSlot } from './MediaSoundSlot';
+import { MUSIC_SUBJECT } from '@/lib/mediaSounds';
+import { labelPlaceholders } from '@/lib/placementLetters';
 
 /** How many items a summary lists as the largest. */
 const LARGEST_COUNT = 5;
@@ -127,8 +130,17 @@ export function MediaItemPanel({ item, placeholders, onGoTo }: {
   onGoTo: (parent: MediaParent) => void;
 }) {
   const titled = !namedBySlot(item);
-  const { replace, remove } = useMediaItemActions();
+  const { replace, remove, writeSound } = useMediaItemActions();
   if (item.kind === 'avatar') return <AvatarPanel key={item.id} item={item} placeholders={placeholders} onGoTo={onGoTo} />;
+  // A sound panel holds the field's own slot, as its editor does (Q43).
+  const soundSlot = item.kind === 'sound' && (
+    <MediaSoundSlot
+      id={`media-${item.id}`}
+      value={item.mediaId ? { mediaId: item.mediaId } : item.value}
+      subject={item.parent.kind === 'world' ? MUSIC_SUBJECT : labelPlaceholders(item.parent.name, placeholders)}
+      onChange={(next) => void writeSound(item, next ?? null)}
+    />
+  );
   return (
     <div className="space-y-4" data-media-panel={item.id}>
       <div>
@@ -150,7 +162,7 @@ export function MediaItemPanel({ item, placeholders, onGoTo }: {
             </MediaFacts>
           )}
       </div>
-      {!item.blank && <div className="flex justify-center rounded-md bg-muted/40 p-2"><Preview item={item} /></div>}
+      {soundSlot || (!item.blank && <div className="flex justify-center rounded-md bg-muted/40 p-2"><Preview item={item} /></div>)}
       <div className="flex flex-wrap gap-2">
         <MediaActionRow
           className="contents"

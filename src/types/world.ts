@@ -588,7 +588,8 @@ export interface Entity {
   tags?: string[];
   /** Booru tags used for AI image generation; editor-only, not sent to the narrative AI. */
   imageTags?: string;
-  sound?: MediaAsset;
+  /** Embedded on a library entity; a Media List link in a world with a list. Read it through `lib/mediaSounds`. */
+  sound?: MediaAsset | MediaRef;
   model?: MediaAsset;
   /** The entity's Avatar. Absent = none. */
   vrmPick?: VrmPick;
@@ -869,7 +870,8 @@ export interface GameLocation {
   images?: GalleryLink[];
   /** Booru tags used for AI image generation; editor-only, not sent to the narrative AI. */
   imageTags?: string;
-  ambientSound?: MediaAsset;
+  /** A Media List link, or an embedded file before migration. Read it through `lib/mediaSounds`. */
+  ambientSound?: MediaAsset | MediaRef;
   /** v1.2.0: a candidate starting location (one chosen at random on new game). */
   isStarting?: boolean;
   /** Parent location id for sub-location nesting; null/absent = top-level. Editor-only for now — not
@@ -1059,7 +1061,8 @@ export interface WorldOverview {
   author: string;
   /** The world cover: embedded data, or a link to a Media Entry. Read it through `lib/mediaImages`. */
   thumbnail: Base64Data | MediaRef | null;
-  bgm: Base64Data | null;
+  /** A Media List link, or embedded data before migration. Read it through `lib/mediaSounds`. */
+  bgm: Base64Data | MediaRef | null;
   systemPrompt: string;
   tags: string[];
   /** The world's Avatars, keyed by id. Entities refer to one through `Entity.vrmPick`. */

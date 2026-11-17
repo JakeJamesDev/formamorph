@@ -25,6 +25,13 @@ const takenKeys = (list: MediaList | undefined, exceptId?: string): Set<string> 
 export const mediaNameFromFile = (fileName: string | undefined): string =>
   (fileName ?? '').trim().replace(/\.[^./\\]+$/, '').trim();
 
+/** File extensions a media file name sheds; any other dot is part of the name ("v1.5 sketch"). */
+const MEDIA_EXTENSION = /\.(mp3|ogg|oga|opus|wav|m4a|aac|flac|weba|webm|mp4|png|webp|jpe?g|gif|avif|bmp|svg)$/i;
+
+/** A stored file name without a recognized media extension (Q43), or '' when it has none. */
+export const mediaNameFromAsset = (fileName: string | undefined): string =>
+  (fileName ?? '').trim().replace(MEDIA_EXTENSION, '').trim();
+
 /** A link's last path segment, decoded, as the file name a pasted URL carries; '' when it has none. */
 export function urlFileName(url: string): string {
   try {

@@ -10,7 +10,7 @@ import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
 import AiGenerateButton from "@/components/AiGenerateButton";
 import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { SoundUpload } from '../lib/UtilityComponents';
+import { MediaSoundSlot } from './MediaSoundSlot';
 import { LocationImageField } from './LocationImageField';
 import LocationConnections, { type ConnectionOpen } from './LocationConnections';
 import LocationKnownHere from './LocationKnownHere';
@@ -237,10 +237,11 @@ const LocationManager = ({ location, tab, onTabChange, focusField, connectionOpe
         {advanced && (
           <div className="space-y-2">
             <Label>Ambient Sound</Label>
-            <SoundUpload
-              onChange={(file) => handleChange('ambientSound', file)}
+            <MediaSoundSlot
+              onChange={(next) => handleChange('ambientSound', next)}
               id={`location-sound-${editingLocation.id}`}
               value={editingLocation.ambientSound}
+              subject={label(editingLocation.name)}
             />
           </div>
         )}

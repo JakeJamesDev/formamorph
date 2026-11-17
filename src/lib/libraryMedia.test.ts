@@ -155,3 +155,69 @@ describe('character cards', () => {
     expect(parsed.images).toEqual([{ data: ABC_PNG, name: 'Portrait' }, { data: XYZ_PNG, name: 'Wounded', requires: KNIGHT }]);
   });
 });
+
+describe('entity sounds across the boundary', () => {
+  const GROWL = 'data:audio/ogg;base64,R1JPV0w=';
+  const GROWL_RAW = 'data:application/octet-stream;base64,R1JPV0w=';
+  const HISS = 'data:audio/ogg;base64,SElTUw==';
+  const soundEntry = async (): Promise<MediaList> => {
+    const hashes = await loadMediaHashes([{ sound: { data: GROWL, type: 'audio/ogg' } }], undefined);
+    return listOf({ id: 'm-growl', name: 'Growl', kind: 'sound', data: GROWL, type: 'audio/ogg', hash: hashes.get(GROWL) });
+  };
+  const soundId = (entity: Entity) => (entity.sound && 'mediaId' in entity.sound ? entity.sound.mediaId : undefined);
+
+  it('keeps the sound and its name through Save to Library and Add from Library', async () => {
+    const list = await soundEntry();
+    const item = toLibraryItem(wren({ sound: { mediaId: 'm-growl' } }), [], [], undefined, list);
+    expect(item.sound).toEqual({ data: GROWL, type: 'audio/ogg', name: 'Growl' });
+    expect(JSON.stringify(item)).not.toContain('mediaId');
+
+    // Into another world: a new entry under the carried name, linked by id.
+    const other = listOf(entry('m-abc', 'Portrait', ABC_PNG));
+    const placed = placeEntityMedia(item as Entity, other, await loadMediaHashes([item as Entity], other));
+    const id = soundId(placed.entity)!;
+    expect(placed.list![id]).toMatchObject({ name: 'Growl', kind: 'sound', data: GROWL, type: 'audio/ogg' });
+  });
+
+  it('reuses the sound entry holding the same bytes, and drops only a media extension from a file name (Q43)', async () => {
+    const list = await soundEntry();
+    const same = wren({ sound: { data: GROWL_RAW, type: 'audio/ogg', name: 'growl.ogg' } });
+    expect(soundId(placeEntityMedia(same, list, await loadMediaHashes([same], list)).entity)).toBe('m-growl');
+    const fresh = wren({ sound: { data: HISS, type: 'audio/ogg', name: 'hiss.mp3' } });
+    const placed = placeEntityMedia(fresh, list, await loadMediaHashes([fresh], list));
+    expect(placed.list![soundId(placed.entity)!].name).toBe('hiss');
+  });
+
+  it('drops a sound whose entry is gone on the way out', () => {
+    const resolved = withEmbeddedMedia(wren({ sound: { mediaId: 'gone' } }), {});
+    expect(resolved.sound).toBeUndefined();
+  });
+
+  it('compares a linked sound and its embedded source by content, so only a changed file reads changed', async () => {
+    const list = await soundEntry();
+    const copy = wren({ sound: { mediaId: 'm-growl' } });
+    const sameFile = wren({ id: 'lib-1', sound: { data: GROWL_RAW, type: 'audio/ogg', name: 'growl.ogg' } });
+    const changed = wren({ id: 'lib-1', sound: { data: HISS, type: 'audio/ogg' } });
+    const media = await loadMediaLookup([copy, sameFile, changed], list);
+    expect(contentMatchesSource(copy, sameFile, undefined, undefined, undefined, media)).toBe(true);
+    expect(diffHasChanges(diffContent(copy, sameFile, undefined, undefined, media))).toBe(false);
+    expect(contentMatchesSource(copy, changed, undefined, undefined, undefined, media)).toBe(false);
+    expect(diffHasChanges(diffContent(copy, changed, undefined, undefined, media))).toBe(true);
+  });
+
+  it('adds a changed sound to the list on Check for Updates', async () => {
+    const list = await soundEntry();
+    let written: Entity | undefined;
+    let nextList: MediaList | undefined;
+    const row = { worldId: 'world-1', worldName: 'Sedge', itemId: 'w1', itemName: 'Wren', kind: 'entity' as const, state: 'linked' as const };
+    const world: LiveWorld = {
+      id: 'world-1', name: 'Sedge', entities: [wren({ sound: { mediaId: 'm-growl' }, link: { libraryId: 'lib-1', sourceRevision: 'r1' } })],
+      dictionaries: [], placeholders: [], locations: [],
+      getMediaList: () => list, setMediaList: (next) => { nextList = next; },
+      writeItem: (item) => { written = item as Entity; }, addPlaceholder: () => {},
+    };
+    await applyUpdate(row, 'update', { id: 'lib-1', name: 'Wren', revision: 'r2', owned: true }, wren({ id: 'lib-1', sound: { data: HISS, type: 'audio/ogg', name: 'Hiss' } }), [world]);
+    const id = soundId(written!)!;
+    expect(nextList![id]).toMatchObject({ name: 'Hiss', kind: 'sound', data: HISS });
+  });
+});

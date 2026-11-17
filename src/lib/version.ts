@@ -26,6 +26,7 @@ import { mergeDuplicateStatLinks, mergeStatBlueprintsGroups, statBlueprintIds } 
 import { firstRoutine } from './entityKind';
 import { migrateGalleriesToMediaList } from './mediaGallery';
 import { migrateOtherImagesToMediaList } from './mediaImages';
+import { migrateSoundsToMediaList } from './mediaSounds';
 
 /** Current app version, derived from package.json (see vite.config.js `define`). User-managed. */
 export const APP_VERSION = __APP_VERSION__;
@@ -931,6 +932,7 @@ export function migrateWorld(raw: unknown): World {
   migrateWorldMorphBindings(world);
   migrateGalleriesToMediaList(world);
   migrateOtherImagesToMediaList(world);
+  migrateSoundsToMediaList(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 
   if (Array.isArray(world.stats)) {

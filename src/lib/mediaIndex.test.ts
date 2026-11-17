@@ -22,12 +22,12 @@ function withoutMedia(world: World): World {
   for (const vrm of Object.values(w.worldOverview.vrmStore ?? {})) vrm.file.data = '';
   for (const e of w.entities) {
     for (const img of e.images ?? []) if ('data' in img) img.data = '';
-    if (e.sound) e.sound.data = '';
+    if (e.sound && 'data' in e.sound) e.sound.data = '';
     if (e.model) e.model.data = '';
   }
   for (const l of w.locations) {
     for (const img of l.images ?? []) if ('data' in img) img.data = '';
-    if (l.ambientSound) l.ambientSound.data = '';
+    if (l.ambientSound && 'data' in l.ambientSound) l.ambientSound.data = '';
   }
   for (const d of w.dictionaries) if (d.thumbnail) d.thumbnail = '';
   for (const img of w.worldOverview.mapBackground?.images ?? []) if ('data' in img) img.data = '';
@@ -430,6 +430,14 @@ describe('filterSections', () => {
     expect(embedded).not.toContain('Odd Wick Image 3');
     expect(embedded).toEqual(expect.arrayContaining(['World Background Music', 'Odd Wick 3D Model', 'World Spare', 'Odd Wick Image 1']));
     expect(embedded).toHaveLength(buildMediaIndex(mediaFixtureWorld()).length - 1);
+  });
+
+  it('keeps a linked sound under Linked and out of Embedded', () => {
+    const world = mediaFixtureWorld();
+    world.worldOverview.bgm = 'https://host.example/theme.ogg';
+    const filtered = (filter: MediaFilter) => names(filterSections(mediaSections(world), filter).flatMap((s) => s.items));
+    expect(filtered('linked')).toContain('World Background Music');
+    expect(filtered('embedded')).not.toContain('World Background Music');
   });
 
   it('keeps images with Visibility rules under Has Visibility Rules', () => {

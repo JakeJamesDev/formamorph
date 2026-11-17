@@ -1,7 +1,12 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { EntityCardBody, EntityDescription } from './EntityCard';
-import type { Entity } from '@/types';
+import { SettingsProvider } from '@/contexts/SettingsContext';
+import type { Entity, MediaList } from '@/types';
+
+// The open world's Media List, which the card reads through its context hook.
+const media = vi.hoisted(() => ({ list: undefined as MediaList | undefined }));
+vi.mock('@/lib/useMediaList', () => ({ useMediaList: () => media.list }));
 
 /**
  * The entity card body renders from the entity alone. In Game shows it inside the World Editor, where no
@@ -39,6 +44,21 @@ describe('EntityCardBody outside a running game', () => {
     expect(container.firstElementChild).not.toHaveClass('lg:flex-row');
     rerender(<EntityCardBody entity={sedge} sideBySide>text</EntityCardBody>);
     expect(container.firstElementChild).toHaveClass('lg:flex-row');
+  });
+
+  it("plays the entity's sound through the world's Media List, and none for a missing entry", () => {
+    const GROWL = 'data:audio/ogg;base64,R1JPV0w=';
+    media.list = { growl: { id: 'growl', name: 'Growl', kind: 'sound', data: GROWL, type: 'audio/ogg' } };
+    try {
+      // The player reads its volume from Settings.
+      const card = (sound: Entity['sound']) => <SettingsProvider><EntityCardBody entity={{ ...sedge, sound }}>text</EntityCardBody></SettingsProvider>;
+      const { container, rerender } = render(card({ mediaId: 'growl' }));
+      expect(container.querySelector('audio')).toHaveAttribute('src', GROWL);
+      rerender(card({ mediaId: 'gone' }));
+      expect(container.querySelector('audio')).toBeNull();
+    } finally {
+      media.list = undefined;
+    }
   });
 
   it('draws no picture area for an entity with nothing to show', () => {

@@ -4,6 +4,7 @@ import { renderMediaTab } from '@/test/mediaTabBench';
 import { fakeDataUrl, mediaFixtureWorld } from '@/test/mediaFixture';
 import { buildMediaIndex, formatMediaBytes, totalBytes } from '@/lib/mediaIndex';
 import { downloadBlob } from '@/lib/downloadBlob';
+import { resolveSound } from '@/lib/mediaSounds';
 
 /** The Media tab: a gallery of every media item in the world, and the panel for the picked card. */
 
@@ -122,7 +123,7 @@ describe('Media tab panels', () => {
     fireEvent.click(card('Entities', 'sound'));
 
     expect(within(panel()!).getByRole('heading')).toHaveTextContent('Odd WickSound');
-    expect(panel()!.querySelector('audio')).toHaveAttribute('src', mediaFixtureWorld().entities[0].sound!.data);
+    expect(panel()!.querySelector('audio')).toHaveAttribute('src', resolveSound(mediaFixtureWorld().entities[0].sound, undefined)?.data);
     fireEvent.click(within(panel()!).getByRole('button', { name: 'Download' }));
     await waitFor(() => expect(downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'Odd Wick Sound.ogg'));
   });

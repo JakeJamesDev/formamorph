@@ -2,12 +2,13 @@
  * One entry per media parent kind: its image cap, how its slots are written, which rule host its rows use, where
  * Go to lands and how a step is labeled. DOM-free, so the editor and the Optimize walk read the same table.
  */
-import type { Body, Dictionary, Entity, GalleryImage, GalleryLink, GameLocation, Item, MediaAsset, MediaList, WorldOverview } from '@/types';
+import type { Body, Dictionary, Entity, GalleryImage, GalleryLink, GameLocation, Item, MediaAsset, MediaList, MediaRef, WorldOverview } from '@/types';
 import { withBackdropImage, withOutline } from './bodyLayout';
 import { galleryLinks } from './entityImages';
-import { editGallery, galleryView, locationLinks } from './mediaGallery';
-import { mediaNameFromFile } from './mediaList';
+import { addedEntries, editGallery, galleryView, locationLinks } from './mediaGallery';
+import { isMediaRef, mediaNameFromFile } from './mediaList';
 import { COVER_SUBJECT, MAP_SUBJECT, linkSingle, storedCover } from './mediaImages';
+import { MUSIC_SUBJECT, placeSound, storedMusic } from './mediaSounds';
 import { mapGalleryStepLabel, mapImages, withMapImages } from './mapBackground';
 import { IMAGE_CAPS, type ImageCap } from './imageSlots';
 import type { MediaItem, MediaParent, MediaParentKind } from './mediaIndex';
@@ -133,19 +134,48 @@ function placeSingle(editor: MediaEditor, next: NonNullable<MediaWrite>, subject
   return linkSingle(editor.read.mediaList(), { data: next.data, ...(name ? { name } : {}) }, subject);
 }
 
+/** A sound slot's new value: a link, a file, or null to clear it. */
+export type SoundSlotWrite = MediaRef | MediaWrite;
+
+/** The value a sound field stores: a link as is, a file placed into the list when the world has one (Q17). */
+function storedSound(editor: MediaEditor, next: SoundSlotWrite, subject: string): MediaRef | MediaAsset | undefined {
+  if (!next) return undefined;
+  if (isMediaRef(next)) return next;
+  const list = editor.read.mediaList();
+  if (!list) return next as MediaAsset;
+  const placed = placeSound(list, next, subject);
+  const added = addedEntries(list, placed.list);
+  if (Object.keys(added).length) editor.addMedia(added);
+  return placed.link;
+}
+
+/** Writes a sound field (entity sound, ambience, world music), placing a file into the list. */
+export function writeSoundSlot(editor: MediaEditor, { parent, key }: Pick<MediaItem, 'parent' | 'key'>, next: SoundSlotWrite): void {
+  if (parent.kind === 'world' && key === 'bgm') {
+    const value = storedSound(editor, next, MUSIC_SUBJECT);
+    editor.overview(() => ({ bgm: storedMusic(value) }));
+  } else if (parent.kind === 'entity' && key === 'sound') {
+    const value = storedSound(editor, next, editor.read.subject(editor.read.entity(parent.id)?.name ?? parent.name));
+    editor.entity(parent.id, (e) => ({ ...e, sound: value }));
+  } else if (parent.kind === 'location' && key === 'ambientSound') {
+    const value = storedSound(editor, next, editor.read.subject(editor.read.location(parent.id)?.name ?? parent.name));
+    editor.location(parent.id, (l) => ({ ...l, ambientSound: value }));
+  }
+}
+
 const MEDIA_PARENTS: Record<MediaParentKind, MediaParentSpec> = {
   world: {
     cap: IMAGE_CAPS.thumbnail,
     stacks: false,
     goTo: { to: 'overview' },
     goToLabel: 'Go to Overview',
-    write: (editor, { key }, next) => {
-      if (key === 'thumbnail') {
+    write: (editor, item, next) => {
+      if (item.key === 'thumbnail') {
         const placed = next ? placeSingle(editor, next, COVER_SUBJECT) : undefined;
         editor.overview(() => ({ thumbnail: storedCover(placed?.link ?? null) }));
         if (placed && Object.keys(placed.added).length) editor.addMedia(placed.added);
       }
-      else if (key === 'bgm') editor.overview(() => ({ bgm: next?.data ?? null }));
+      else if (item.key === 'bgm') writeSoundSlot(editor, item, next);
     },
   },
   map: {
@@ -171,7 +201,8 @@ const MEDIA_PARENTS: Record<MediaParentKind, MediaParentSpec> = {
     gallery: ENTITY_GALLERY,
     write: (editor, item, next) => {
       const { parent, key } = item;
-      if (key === 'sound' || key === 'model') editor.entity(parent.id, (e) => ({ ...e, [key]: (next as MediaAsset | null) ?? undefined }));
+      if (key === 'sound') writeSoundSlot(editor, item, next);
+      if (key === 'model') editor.entity(parent.id, (e) => ({ ...e, model: (next as MediaAsset | null) ?? undefined }));
       writeGallerySlot(ENTITY_GALLERY, editor, item, next);
     },
   },
@@ -183,7 +214,7 @@ const MEDIA_PARENTS: Record<MediaParentKind, MediaParentSpec> = {
     gallery: LOCATION_GALLERY,
     write: (editor, item, next) => {
       if (item.galleryIndex !== undefined) writeGallerySlot(LOCATION_GALLERY, editor, item, next);
-      else if (item.key === 'ambientSound') editor.location(item.parent.id, (l) => ({ ...l, ambientSound: (next as MediaAsset | null) ?? undefined }));
+      else if (item.key === 'ambientSound') writeSoundSlot(editor, item, next);
     },
   },
   dictionary: {

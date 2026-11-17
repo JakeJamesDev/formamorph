@@ -9,7 +9,9 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import PlaceholderText from "@/components/prompt/PlaceholderText";
 import AiGenerateButton from "@/components/AiGenerateButton";
 import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
-import { ModelUpload } from '../lib/UtilityComponents';
+import { ModelUpload, SoundUpload } from '../lib/UtilityComponents';
+import { isMediaRef } from '@/lib/mediaList';
+import { MediaSoundSlot } from './MediaSoundSlot';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { entityImages, galleryLinks } from '../lib/entityImages';
 import { useLinkedGallery } from '@/lib/useLinkedGallery';
@@ -415,6 +417,21 @@ export const EntityGalleryField = (props: EntityFieldGroupProps) => (
   </EntityImageWidget>
 );
 
+/** The entity's sound, played from its card. Advanced only. A library entity keeps its file embedded (Q41). */
+export const EntitySoundField = ({ value, onChange, placeholders = [], home }: EntityFieldGroupProps & { home: EntityHome }) => {
+  const { advanced } = useEditorMode();
+  if (!advanced) return null;
+  const id = `entity-${value.id}`;
+  return (
+    <div className="space-y-2" {...fieldFrame('sound')}>
+      <Label htmlFor={home === 'world' ? `sound-import-${id}` : `sound-upload-${id}`}>Sound</Label>
+      {home === 'world'
+        ? <MediaSoundSlot id={id} value={value.sound} subject={labelPlaceholders(value.name, placeholders)} onChange={(next) => onChange('sound', next)} />
+        : <SoundUpload id={id} value={isMediaRef(value.sound) ? undefined : value.sound} onChange={(next) => onChange('sound', next)} />}
+    </div>
+  );
+};
+
 /** The 3D model slot. Advanced only. */
 export const EntityModelField = ({ value, onChange }: EntityFieldGroupProps) => {
   const { advanced } = useEditorMode();
@@ -526,6 +543,7 @@ export const EntityProfileFields = ({ columnsClassName, nameHandlers, locations,
     <EntityPersonaField {...props} home={home} customPersonaEntityName={customPersonaEntityName} />
     {locations}
     {home === 'world' ? <EntityVrmPickField {...props} /> : <LibraryEntityVrmPickField {...props} />}
+    <EntitySoundField {...props} home={home} />
     <EntityModelField {...props} />
   </>
 );

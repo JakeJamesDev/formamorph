@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
 import { namedBySlot, type MediaItem } from '@/lib/mediaIndex';
-import { mediaParentSpec, writeBackdrop, writeMediaSlot, type MediaEditor, type MediaWrite } from '@/lib/mediaParents';
+import { mediaParentSpec, writeBackdrop, writeMediaSlot, writeSoundSlot, type MediaEditor, type MediaWrite, type SoundSlotWrite } from '@/lib/mediaParents';
 import { withImageRule } from '@/lib/entityImages';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { readImageAspect } from '@/lib/imageAspect';
@@ -75,10 +75,13 @@ export function useMediaItemActions() {
     return run(verb, item, media, () => writeBackdrop(editor, item.parent, media, aspect ?? undefined));
   }, [run, editor, mounted]);
   const remove = useCallback((item: MediaItem) => run('Remove', item, null), [run]);
+  /** A sound slot's write: a link it placed, a file in a world with no list, or none. */
+  const writeSound = useCallback((item: MediaItem, next: SoundSlotWrite) =>
+    step(mediaStepLabel(next ? 'Replace' : 'Remove', item), () => writeSoundSlot(editor, item, next)), [editor, step]);
   /** Sets a gallery image's Visibility rule rows, an ordinary edit with no step of its own. */
   const setRules = useCallback((item: MediaItem, rows: TraitRequirementRow[]) => {
     const at = item.galleryIndex;
     if (at !== undefined) mediaParentSpec(item.parent.kind).gallery?.write(editor, item.parent, (images) => withImageRule(images, at, rows));
   }, [editor]);
-  return { replace, remove, setRules };
+  return { replace, remove, setRules, writeSound };
 }

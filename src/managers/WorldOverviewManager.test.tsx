@@ -141,33 +141,37 @@ describe('the Overview persona rules', () => {
 });
 
 describe('the Overview background music widget', () => {
-  it('offers the shared sound dropzone while the world has no music', async () => {
+  it('offers the sound slot while the world has no music', async () => {
     renderOverviewTab(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
-    expect(screen.getByText('Add Sound')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Remove sound' })).toBeNull();
+    const slot = document.querySelector<HTMLElement>('[data-sound-slot="world-bgm"]')!;
+    expect(within(slot).getByText('Import')).toBeInTheDocument();
+    expect(within(slot).getByRole('button', { name: 'Choose' })).toBeInTheDocument();
+    expect(within(slot).getByRole('textbox', { name: 'Sound URL' })).toBeInTheDocument();
   });
 
-  it('shows the player and the remove control once a track is added, and clears both on remove', async () => {
+  it('links an imported track as a Media List entry, plays it, and clears it on Remove From Slot', async () => {
     const { ctx } = renderOverviewTab(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
 
-    const input = document.querySelector<HTMLInputElement>('#sound-upload-world-bgm');
+    const input = document.querySelector<HTMLInputElement>('#sound-import-world-bgm');
     if (!input) throw new Error('No background music input');
     fireEvent.change(input, {
       target: { files: [new File(['fen-drone'], 'Drone.mp3', { type: 'audio/mpeg' })] },
     });
 
-    const remove = await screen.findByRole('button', { name: 'Remove sound' });
+    const remove = await screen.findByRole('button', { name: 'Remove From Slot' });
     expect(document.querySelector('audio')).not.toBeNull();
-    // Still the bare data URL the world has always stored, not the widget's media record.
-    expect(typeof ctx().worldOverview.bgm).toBe('string');
+    const bgm = ctx().worldOverview.bgm;
+    const id = bgm && typeof bgm === 'object' ? bgm.mediaId : '';
+    expect(ctx().worldOverview.mediaList?.[id]).toMatchObject({ name: 'Drone', kind: 'sound' });
 
     fireEvent.click(remove);
 
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Remove sound' })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Remove From Slot' })).toBeNull());
     expect(ctx().worldOverview.bgm).toBeNull();
-    expect(screen.getByText('Add Sound')).toBeInTheDocument();
+    // The entry stays in the world.
+    expect(ctx().worldOverview.mediaList?.[id]).toBeDefined();
   });
 });
 

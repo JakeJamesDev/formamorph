@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { EntityVisual } from './EntityVisual';
 import { hasEntityVisual, type EntityVisualSource } from '@/lib/entityVisual';
 import { useMediaList } from '@/lib/useMediaList';
+import { resolveSound } from '@/lib/mediaSounds';
 import AudioPlayer from './AudioPlayer';
 import type { Entity } from '@/types';
 
@@ -39,6 +40,7 @@ export function EntityCardBody({ entity, children, sideBySide = false, images, a
   sideBySide?: boolean;
 } & Pick<ComponentProps<typeof EntityVisual>, 'images' | 'avatar' | 'preference' | 'onPreferenceChange' | 'imageIndex' | 'onImageStep' | 'morphValues' | 'onMorphNames'>) {
   const media = useMediaList();
+  const sound = resolveSound(entity.sound, media);
   return (
     <div className={cn('flex-grow min-h-0 flex flex-col gap-4 p-4', sideBySide && 'lg:flex-row lg:gap-6')}>
       {/* Picture takes 3/4 of the height, or 3/5 of the width side by side (aspect ratio preserved). */}
@@ -64,9 +66,7 @@ export function EntityCardBody({ entity, children, sideBySide = false, images, a
         <div className={cn('min-h-full flex flex-col justify-center', sideBySide && 'lg:justify-start')}>
           <div className="flex flex-col gap-4">
             {children}
-            {entity.sound && (
-              <AudioPlayer src={entity.sound.data} className="w-full" />
-            )}
+            {sound && <AudioPlayer src={sound.data} className="w-full" />}
           </div>
         </div>
       </ScrollArea>

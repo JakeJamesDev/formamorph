@@ -16,6 +16,7 @@ import type { ThumbAspect } from './thumbAspect';
 import { mediaParentSpec } from './mediaParents';
 import { dataUrlBytes, isRemoteImage } from './imageBytes';
 import { galleryLinkData, isMediaRef } from './mediaList';
+import { resolveSound, type SoundValue } from './mediaSounds';
 
 export type MediaKind = 'image' | 'sound' | 'model' | 'avatar';
 export type MediaParentKind = 'world' | 'map' | 'entity' | 'location' | 'dictionary' | 'body' | 'item';
@@ -54,7 +55,7 @@ export interface MediaItem {
   users?: MediaParent[];
   /** The uploaded file's name, on a field that keeps one. */
   fileName?: string;
-  /** The Media List entry a gallery picture links. */
+  /** The Media List entry a gallery picture or a sound field links. */
   mediaId?: string;
   /** An empty image slot, reported only by `blankSections`. It holds no bytes and the id the filled slot will have. */
   blank?: true;
@@ -101,6 +102,17 @@ const file = (parent: MediaParent, kind: MediaKind, key: MediaSlotKey, slot: str
   ...(fileName ? { fileName } : {}),
 });
 
+/** A sound field's item, resolved through the list; a link the list lacks gives none. */
+function soundItem(parent: MediaParent, key: MediaSlotKey, slot: string, value: SoundValue, media: MediaList | undefined): MediaItem | undefined {
+  const sound = resolveSound(value, media);
+  if (!sound?.data) return undefined;
+  return {
+    ...file(parent, 'sound', key, slot, sound.data, sound.name),
+    linked: isRemoteImage(sound.data),
+    ...(isMediaRef(value) ? { mediaId: value.mediaId } : {}),
+  };
+}
+
 /** The size budget of a parent's images. */
 const capOf = (parent: MediaParent): ImageCap => mediaParentSpec(parent.kind).cap;
 
@@ -126,7 +138,8 @@ const linkedGalleryMedia = (parent: MediaParent, links: GalleryLink[], media: Me
 function entityMedia(e: Entity, media: MediaList | undefined): MediaItem[] {
   const parent = entityParent(e);
   const items = linkedGalleryMedia(parent, galleryLinks(e), media);
-  if (e.sound?.data) items.push(file(parent, 'sound', 'sound', 'Sound', e.sound.data, e.sound.name));
+  const sound = soundItem(parent, 'sound', 'Sound', e.sound, media);
+  if (sound) items.push(sound);
   if (e.model?.data) items.push(file(parent, 'model', 'model', '3D Model', e.model.data, e.model.name));
   return items;
 }
@@ -135,7 +148,8 @@ function entityMedia(e: Entity, media: MediaList | undefined): MediaItem[] {
 function locationMedia(l: GameLocation, media: MediaList | undefined): MediaItem[] {
   const parent = locationParent(l);
   const items = linkedGalleryMedia(parent, locationLinks(l), media);
-  if (l.ambientSound?.data) items.push(file(parent, 'sound', 'ambientSound', 'Ambient Sound', l.ambientSound.data, l.ambientSound.name));
+  const sound = soundItem(parent, 'ambientSound', 'Ambient Sound', l.ambientSound, media);
+  if (sound) items.push(sound);
   return items;
 }
 
@@ -171,7 +185,8 @@ function worldMedia(w: MediaWorld): MediaItem[] {
   const items: MediaItem[] = [];
   const cover = coverData(o);
   if (cover) items.push(image(WORLD_PARENT, 'thumbnail', 'Thumbnail', cover, capOf(WORLD_PARENT), isMediaRef(o.thumbnail) ? { mediaId: o.thumbnail.mediaId } : {}));
-  if (o.bgm) items.push(file(WORLD_PARENT, 'sound', 'bgm', 'Background Music', o.bgm));
+  const music = soundItem(WORLD_PARENT, 'bgm', 'Background Music', o.bgm, o.mediaList);
+  if (music) items.push(music);
   return items;
 }
 
@@ -422,7 +437,7 @@ export function matchesMediaFilter(item: MediaItem, filter: MediaFilter): boolea
   switch (filter) {
     case 'all': return true;
     case 'noImages': return false;
-    case 'linked': return item.kind === 'image' && item.linked;
+    case 'linked': return item.linked;
     case 'embedded': return !item.linked;
     case 'rules': return item.kind === 'image' && !!item.rules?.length;
     case 'overBudget': return item.kind === 'image' && item.overBudget;

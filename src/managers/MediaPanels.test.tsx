@@ -7,6 +7,7 @@ import type { useGameData } from '@/contexts/GameDataContext';
 import { measureInWorker, encodeInWorker } from '@/lib/imageOptimWorkerClient';
 import { locationImages } from '@/lib/locationImages';
 import { coverData } from '@/lib/mediaImages';
+import { resolveSound } from '@/lib/mediaSounds';
 
 /** The Media tab's item panel: Replace and Remove, each one History Step, and the reveal that returns to the tab. */
 
@@ -74,15 +75,15 @@ const audio = () => new File(['new-sound'], 'new.ogg', { type: 'audio/ogg' });
 const webp = () => new File(['new-image'], 'new.webp', { type: 'image/webp' });
 const SLOTS: Slot[] = [
   { what: 'the world thumbnail', section: 'World', kind: 'image', id: 'world:world:thumbnail', read: (c) => coverData(c.worldOverview), file: webp, label: 'Thumbnail' },
-  { what: 'Background Music', section: 'World', kind: 'sound', id: 'world:world:bgm', read: (c) => c.worldOverview.bgm, file: audio, label: 'Background Music' },
-  { what: 'an entity sound', section: 'Entities', kind: 'sound', id: 'entity:wick:sound', read: (c) => c.entities.find((e) => e.id === 'wick')!.sound?.data, file: audio, label: 'Sound: Odd Wick' },
+  { what: 'Background Music', section: 'World', kind: 'sound', id: 'world:world:bgm', read: (c) => resolveSound(c.worldOverview.bgm, c.worldOverview.mediaList)?.data, file: audio, label: 'Background Music' },
+  { what: 'an entity sound', section: 'Entities', kind: 'sound', id: 'entity:wick:sound', read: (c) => resolveSound(c.entities.find((e) => e.id === 'wick')!.sound, c.worldOverview.mediaList)?.data, file: audio, label: 'Sound: Odd Wick' },
   {
     what: 'an entity 3D Model', section: 'Entities', kind: 'model', id: 'entity:wick:model',
     read: (c) => c.entities.find((e) => e.id === 'wick')!.model?.data,
     file: () => new File(['new-model'], 'new.glb', { type: 'model/gltf-binary' }), label: '3D Model: Odd Wick',
   },
   { what: 'a location background', section: 'Locations', kind: 'image', id: 'location:marsh:image:0', read: (c) => locationImages(c.locations.find((l) => l.id === 'marsh')!, c.worldOverview.mediaList)[0]?.data, file: webp, label: 'Image 1: Marsh' },
-  { what: 'a location ambient sound', section: 'Locations › Harbor Steps', kind: 'sound', id: 'location:lamp:ambientSound', read: (c) => c.locations.find((l) => l.id === 'lamp')!.ambientSound?.data, file: audio, label: 'Ambient Sound: Lamp Room' },
+  { what: 'a location ambient sound', section: 'Locations › Harbor Steps', kind: 'sound', id: 'location:lamp:ambientSound', read: (c) => resolveSound(c.locations.find((l) => l.id === 'lamp')!.ambientSound, c.worldOverview.mediaList)?.data, file: audio, label: 'Ambient Sound: Lamp Room' },
   { what: 'a dictionary cover', section: 'Dictionaries', kind: 'image', id: 'dictionary:lore:thumbnail', read: (c) => c.dictionaries.find((d) => d.id === 'lore')!.thumbnail, file: webp, label: 'Cover Image: Fen Lore' },
 ];
 
@@ -150,12 +151,15 @@ describe('Media tab Replace', () => {
     expect(slot.read(bench.ctx())).toBe(was);
   });
 
-  it("keeps a replaced sound's field a media record with the new file's name", async () => {
+  it('links a replacing sound as an entry named for the file, its type kept', async () => {
     const bench = openMedia();
     fireEvent.click(card('Entities', 'sound'));
     await pickFile(audio());
 
-    await waitFor(() => expect(bench.ctx().entities.find((e) => e.id === 'wick')!.sound).toMatchObject({ name: 'new.ogg', type: 'audio/ogg' }));
+    await waitFor(() => {
+      const { sound } = bench.ctx().entities.find((e) => e.id === 'wick')!;
+      expect(sound && 'mediaId' in sound && bench.ctx().worldOverview.mediaList?.[sound.mediaId]).toMatchObject({ name: 'new', kind: 'sound', type: 'audio/ogg' });
+    });
   });
 
   it('puts a replacing image through the downscale consent', async () => {

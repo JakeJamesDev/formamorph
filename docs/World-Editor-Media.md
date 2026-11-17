@@ -30,8 +30,8 @@ The row above the search box holds the **Publish Size** meter and four buttons. 
 - **Group by Type** sorts the cards into **Images**, **Sounds**, **3D Models** and **Avatars**. Each card names the entity, location, dictionary or world slot it belongs to.
 - **Largest First** puts the biggest cards first in each section. Turn it off to return to your order. A stack sorts by its total.
 - **Filter** narrows the gallery to **Linked**, **Embedded**, **Has Visibility Rules**, **Over Size Budget** or **No Images** items. **All Media** turns the filter off. The button shows the filter's name while it's on.
-  - **Embedded** keeps every file that isn't a linked image, sounds, 3D Models and Avatars included.
-  - **Linked**, **Has Visibility Rules** and **Over Size Budget** look at images, so they hide sounds, 3D Models and Avatars.
+  - **Linked** keeps images and sounds that play from an address. **Embedded** keeps every other file, 3D Models and Avatars included.
+  - **Has Visibility Rules** and **Over Size Budget** look at images, so they hide sounds, 3D Models and Avatars.
 - The **No Images** filter shows one blank card for each entity or location with no image, an empty world thumbnail, and an empty **Map Background**.
   - Blank cards show only their name, with no size. Dictionaries without a cover image have no blank card.
   - Select an entity or location card to open its image panel on the add tile.
@@ -85,10 +85,10 @@ Only files that exist show. An empty slot makes no card.
 
 Select a card to open it in the panel. An entity's, location's or Map Background image opens the image panel, described below. Every other card opens on its own.
 
-- **Preview.** An image shows large. A sound plays. A 3D Model and an Avatar turn in the viewer.
+- **Preview.** An image shows large. A 3D Model and an Avatar turn in the viewer. A sound shows its [sound slot](World-Editor-Entities#sound-slots), with its name, **Remove From Slot** and **Delete From World**.
 - **Size and budget.** The file's size, and an image's size budget.
 - **Replace** swaps in a file you pick. The file stays in the same slot. An image that is over budget, stored lossless, or smaller as a WebP first asks whether to optimize it, as an upload does.
-- **Download** saves the file. A linked image shows **Open Link**, which opens its address.
+- **Download** saves the file. A linked image or sound shows **Open Link**, which opens its address.
 - **Remove** clears the slot, and the card leaves the gallery. Undo brings it back.
 - **Go to** opens the entity, location or dictionary that holds the file. World files show **Go to Overview**.
 

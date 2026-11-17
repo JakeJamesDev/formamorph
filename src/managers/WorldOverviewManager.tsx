@@ -4,9 +4,10 @@ import { Label } from "@/components/ui/label";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { useDanbooruTags } from "@/lib/useDanbooruTags";
 import { Hint } from "@/components/ui/typography";
-import { SoundUpload } from '../lib/UtilityComponents';
 import { LinkedImageUpload, useSinglePlacement } from './MediaPicker';
 import { COVER_SUBJECT, storedCover } from '@/lib/mediaImages';
+import { MediaSoundSlot } from './MediaSoundSlot';
+import { MUSIC_SUBJECT, storedMusic } from '@/lib/mediaSounds';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { GenerateImageButton } from '../components/GenerateImageButton';
@@ -154,13 +155,12 @@ const WorldOverviewManager = () => {
       </div>
       {advanced && <PersonaRulesFields />}
       <div className="space-y-2" {...targetAttribute('worldEditor.overview', 'background-music')}>
-        <Label htmlFor="sound-upload-world-bgm">Background Music</Label>
-        {/* The world stores a bare data URL where a location stores a media record, so the shared widget
-            is fed one and read back for its bytes alone. */}
-        <SoundUpload
+        <Label htmlFor="sound-import-world-bgm">Background Music</Label>
+        <MediaSoundSlot
           id="world-bgm"
-          value={worldOverview.bgm ? { data: worldOverview.bgm } : null}
-          onChange={(media) => updateWorldOverview({ bgm: media?.data ?? null })}
+          value={worldOverview.bgm}
+          subject={MUSIC_SUBJECT}
+          onChange={(next) => updateWorldOverview({ bgm: storedMusic(next) })}
         />
       </div>
     </div>

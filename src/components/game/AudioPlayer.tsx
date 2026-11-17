@@ -10,10 +10,12 @@ import { Meta } from "@/components/ui/typography";
 // Compact, on-theme player replacing the native <audio controls> so it matches the app's
 // Button/Slider styling. `src` is a URL / data URL (e.g. uploaded background music or entity
 // sound). `autoPlay` starts playback on mount.
-export default function AudioPlayer({ src, autoPlay = false, className }: {
+export default function AudioPlayer({ src, autoPlay = false, className, onError }: {
   src?: string;
   autoPlay?: boolean;
   className?: string;
+  /** The audio element's error event: the file failed to load or decode. */
+  onError?: () => void;
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -51,6 +53,7 @@ export default function AudioPlayer({ src, autoPlay = false, className }: {
       <audio
         ref={audioRef}
         src={url}
+        onError={onError}
         onLoadedMetadata={(e) => {
           e.currentTarget.volume = ttsVolume;
           setDuration(e.currentTarget.duration);

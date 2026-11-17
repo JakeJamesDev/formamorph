@@ -155,7 +155,7 @@ Write new files in the current shape. A file with `scripts` loads in an older ve
 | `description` | ✓ | String | The **Player-Facing Description**: card and listing text. The AI never reads it |
 | `author` | ✓ | String | Free text that names the author |
 | `thumbnail` | ✓ | [Image](#media-fields) \| `null` | The card image |
-| `bgm` | ✓ | [Audio](#media-fields) \| `null` | Background music, as a data URL |
+| `bgm` | ✓ | [Sound link](#media-fields) \| `null` | Background music |
 | `systemPrompt` | ✓ | String | The **AI-Facing Description**: what the AI reads about the world. Players never see it |
 | `tags` | ✓ | String[] | Listing tags |
 | `vrmStore` | | Object | The world's Avatars, keyed by `id`. Each value is `{ "name": String, "file": MediaAsset, "hash": String }`. `hash` is optional. Entities refer to an entry by `id` through `vrmPick` |
@@ -389,7 +389,7 @@ The world group with `system: "blueprints"`, and every group below it, holds Blu
 | `description` | | String | An older field. The player reads it when `playerDescription` is absent |
 | `images` | | [Gallery image](#media-fields)[] | The gallery, in author order. During the game, the backdrop shows the first visible image |
 | `imageTags` | | String | Comma-separated tags for image generation |
-| `ambientSound` | | [MediaAsset](#media-fields) | Looping sound |
+| `ambientSound` | | [Sound link](#media-fields) | Looping sound |
 | `isStarting` | | Boolean | A new game can start here. One marked = every game starts there. Several = the player picks. None = any location. A played entity's Start places join the choices |
 | `parentId` | | String \| `null` | The parent location's `id`. Absent or `null` = the top level. List order is the order among siblings |
 | `enabledWhen` | | [Requirement Row](#trait-requirements)[] | The **Enabled** rows: the location and the locations inside it are in the game while any row holds. A condition with no `owner` reads the played persona. Absent or empty = always on |
@@ -437,7 +437,7 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `images` | | [Gallery image](#media-fields)[] | The gallery, in author order. The first image is the main one |
 | `tags` | | String[] | Listing tags for Community Creations |
 | `imageTags` | | String | Comma-separated tags for image generation |
-| `sound` | | [MediaAsset](#media-fields) | A sound |
+| `sound` | | [Sound link](#media-fields) | A sound. A library entity holds a `MediaAsset` |
 | `model` | | [MediaAsset](#media-fields) | A 3D model |
 | `vrmPick` | | [Avatar pick](#avatar-picks) | The entity's Avatar. Absent = none |
 | `locations` | | String[] | Only for the Persona-Only entity and the Custom Persona, which have no `kind`: the `id`s of the locations where the player can start as it. A Unique or a Generic entity has none; its `routines` say where it can be |
@@ -930,9 +930,9 @@ Each param has `name`, `type` (`"string"`, `"number"`, `"boolean"` or `"enum"`),
 | `data` | ✓ | Image | The picture |
 | `requires` | | [Requirement rows](#trait-requirements) | The Visibility rule. Absent = always shown. On a location or the Map Background, a condition with no `owner` reads the played persona |
 
-**Background music** (`bgm`) is a base64 data URL.
+**Sound links** (`bgm`, location `ambientSound`, entity `sound`) are `{ "mediaId": "<id>" }`: the `id` of a sound in `worldOverview.mediaList`. A link to an `id` the list lacks reads as no sound. A file written before the Media List holds the sound itself, a data URL for `bgm` and a `MediaAsset` for the others. The app moves it into the list on load.
 
-**Uploaded audio and models** (the `file` of a `vrmStore` entry, location `ambientSound`, entity `sound` and `model`) are a `MediaAsset`:
+**Uploaded models** (the `file` of a `vrmStore` entry, entity `model`, and a library entity's `sound`) are a `MediaAsset`:
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|

@@ -5,12 +5,12 @@ import { bindCarriedBlueprints } from '@/lib/blueprintTravel';
 import { followedLibraryId } from '@/lib/publishLinks';
 import { entityTexts } from '@/lib/entityTexts';
 import { entityImages, galleryLinks } from '@/lib/entityImages';
-import { comparableGallery, type MediaLookup } from '@/lib/libraryMedia';
+import { comparableGallery, comparableSound, type MediaLookup } from '@/lib/libraryMedia';
 import { randomUUID } from '@/lib/uuid';
 import { carriedMembership, carriedRoutine, returnedPlaces, withCarriedRoutine, type RoutineFields } from '@/lib/entityPresence';
 import { withMembership, withoutMembership } from '@/lib/entityPlaces';
 import { pickToken, type VrmLookup } from '@/lib/vrmPickMatch';
-import type { CommunityLink, ContentLink, Dictionary, Entity, EntityKind, EntityStart, GalleryLink, GameLocation, Placeholder, PlaceholderGroup } from '@/types';
+import type { CommunityLink, ContentLink, Dictionary, Entity, EntityKind, EntityStart, GalleryLink, GameLocation, MediaAsset, MediaRef, Placeholder, PlaceholderGroup } from '@/types';
 
 /** An entity or a dictionary — the two kinds of content a world copy can follow a source for. */
 export type LinkableContent = Entity | Dictionary;
@@ -182,6 +182,7 @@ function authoredContent(raw: LinkableContent, world?: TraitWorld, vrm?: VrmLook
   if (!('entries' in item) && vrm) shed.vrmPick = pickToken(item.vrmPick, vrm);
   // A world copy links Media Entries and its library item embeds files; the two match when they show the same files.
   if (media && Array.isArray(shed.images)) shed.images = comparableGallery(shed.images as GalleryLink[], media);
+  if (media && shed.sound) shed.sound = comparableSound(shed.sound as MediaAsset | MediaRef, media);
   if (Array.isArray(shed.entries)) {
     shed.entries = (shed.entries as { id?: string }[]).map(({ id: _entryId, ...entry }) => entry);
   }
