@@ -14,6 +14,7 @@ The image slot from prototype variant B (Q16), on entity and location galleries.
 - Delete from World lists every place that uses the entry (ticket 01's usage index) and asks first. Confirming unlinks it everywhere and removes the entry (Q6).
 - Generate with AI adds its picture under the subject fallback name and links it, keeping the "Replace which image?" step.
 - Drop targets keep working: a dropped file or link imports and links.
+- From ticket 03's landing: the Authoring Tour's example image still writes an embedded picture that only the next load moves into the list. Route it through the slot's import so it lands as an entry at once.
 - Labels are working names: run the copy sweep on the new copy.
 - Ships its docs: the wiki's World Editor image pages.
 
