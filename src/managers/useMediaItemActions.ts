@@ -7,7 +7,10 @@ import { withImageRule } from '@/lib/entityImages';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { readImageAspect } from '@/lib/imageAspect';
 import { useMountedRef } from '@/lib/useMountedRef';
-import type { MediaAsset, TraitRequirementRow } from '@/types';
+import { galleryLinkData } from '@/lib/mediaList';
+import { storedCover } from '@/lib/mediaImages';
+import { withBackdropImage, withOutline } from '@/lib/bodyLayout';
+import type { GalleryLink, MediaAsset, TraitRequirementRow } from '@/types';
 
 /** "Remove Ambient Sound: Lamp Room", or "Replace Background Music" for world media. */
 export const mediaStepLabel = (verb: string, item: MediaItem): string =>
@@ -78,10 +81,21 @@ export function useMediaItemActions() {
   /** A sound slot's write: a link it placed, a file in a world with no list, or none. */
   const writeSound = useCallback((item: MediaItem, next: SoundSlotWrite) =>
     step(mediaStepLabel(next ? 'Replace' : 'Remove', item), () => writeSoundSlot(editor, item, next)), [editor, step]);
+  /** A picker slot's write for the world cover or a Body's Custom Image: the link it placed, or null to clear it. */
+  const writeImageLink = useCallback(async (item: MediaItem, link: GalleryLink | null, placed?: string) => {
+    const label = mediaStepLabel(link ? (item.blank ? 'Add' : 'Replace') : 'Remove', item);
+    if (item.parent.kind !== 'body') return step(label, () => editor.overview(() => ({ thumbnail: storedCover(link) })));
+    const data = link ? placed ?? galleryLinkData(link, worldOverview.mediaList) : undefined;
+    // A Custom Image sets the Backdrop's aspect (Q15), in the same step as the link.
+    const aspect = data ? await readImageAspect(data, null) : null;
+    if (!mounted.current) return;
+    const id = item.parent.id;
+    return step(label, () => editor.body(id, (b) => (link && data ? withBackdropImage(b, link, aspect ?? undefined) : withOutline(b, 'humanoid'))));
+  }, [editor, step, worldOverview.mediaList, mounted]);
   /** Sets a gallery image's Visibility rule rows, an ordinary edit with no step of its own. */
   const setRules = useCallback((item: MediaItem, rows: TraitRequirementRow[]) => {
     const at = item.galleryIndex;
     if (at !== undefined) mediaParentSpec(item.parent.kind).gallery?.write(editor, item.parent, (images) => withImageRule(images, at, rows));
   }, [editor]);
-  return { replace, remove, setRules, writeSound };
+  return { replace, remove, setRules, writeSound, writeImageLink };
 }

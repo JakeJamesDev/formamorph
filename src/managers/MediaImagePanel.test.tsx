@@ -314,7 +314,8 @@ describe('Media tab No Images filter', () => {
     fireEvent.click(blankEls()[0]);
 
     expect(inPanel().queryByRole('button', { name: 'Remove' })).toBeNull();
-    const input = panel()!.querySelector<HTMLInputElement>('input[data-media-replace]')!;
+    // The cover is on the list, so its panel holds the picker slot's own file input (Q45).
+    const input = panel()!.querySelector<HTMLInputElement>('input[type="file"]')!;
     await act(async () => { fireEvent.change(input, { target: { files: [webp()] } }); });
 
     await waitFor(() => expect(coverData(bench.ctx().worldOverview)).toMatch(/^data:/));

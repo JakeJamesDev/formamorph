@@ -45,6 +45,22 @@ const listWorld = (): World => {
   return world;
 };
 
+/** A minimal binary glTF holding only `json`, so a VRM reader sees its extensions. */
+const glb = (json: object): Uint8Array<ArrayBuffer> => {
+  let text = JSON.stringify(json);
+  while (text.length % 4) text += ' ';
+  const body = new TextEncoder().encode(text);
+  const out = new Uint8Array(new ArrayBuffer(20 + body.length));
+  const view = new DataView(out.buffer);
+  view.setUint32(0, 0x46546c67, true); // "glTF"
+  view.setUint32(4, 2, true);
+  view.setUint32(8, out.length, true);
+  view.setUint32(12, body.length, true);
+  view.setUint32(16, 0x4e4f534a, true); // "JSON"
+  out.set(body, 20);
+  return out;
+};
+
 const header = () => document.querySelector<HTMLElement>('[data-media-header]')!;
 const section = (name: string) => screen.queryByRole('region', { name });
 const cardNamed = (sectionName: string, name: string) => Array.from(section(sectionName)?.querySelectorAll<HTMLElement>('[data-media-card]') ?? [])
@@ -159,6 +175,23 @@ describe('Media tab Import Media', () => {
     // Nothing links them yet, so they land Unused, and the first is selected.
     expect(cardNamed('Unused', 'Pier at Dusk')).toHaveLength(1);
     expect(screen.getByLabelText('Image Name')).toHaveValue('Pier at Dusk');
+  });
+
+  it('adds a .glb with VRM data as an Avatar and refuses a plain 3D model .glb', async () => {
+    const bench = renderMediaTab(listWorld(), 'advanced');
+    const avatars = Object.keys(bench.ctx().worldOverview.vrmStore ?? {}).length;
+    const input = document.querySelector<HTMLInputElement>('input[data-media-import]')!;
+    const files = [
+      new File([glb({ extensions: { VRMC_vrm: { meta: { name: 'Heron' } } } })], 'Heron.glb', { type: 'model/gltf-binary' }),
+      new File([glb({ asset: { version: '2.0' } })], 'Crate.glb', { type: 'model/gltf-binary' }),
+    ];
+
+    await act(async () => { fireEvent.change(input, { target: { files } }); });
+
+    await waitFor(() => expect(Object.keys(bench.ctx().worldOverview.vrmStore ?? {})).toHaveLength(avatars + 1));
+    const names = Object.values(bench.ctx().worldOverview.vrmStore ?? {}).map((v) => v.name);
+    expect(names).toContain('Heron');
+    expect(names).not.toContain('Crate');
   });
 
   it('reuses the entry that holds the same bytes', async () => {

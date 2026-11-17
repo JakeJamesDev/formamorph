@@ -77,6 +77,12 @@ Settled with the user on 2026-11-16, in grill order.
 | Q46 | The unlink control is labeled **Remove From Slot**, since "Unlink" already names a library entity's linked copy (user, 2026-11-16) |
 | Q47 | A linked sound's badge says **Linked**, matching linked images (user, 2026-11-16) |
 | Q48 | Ticket 07, Media tab:<br>• Optimize and Import Media budget entries with no slot at the background cap. Import Media reuses a byte-identical entry.<br>• Unused entries get a trailing Unused section in the default view, and an Unused badge in Group by Type.<br>• Group by Type lists list entries once. Embedded fields stay one card per use.<br>• The entry panel holds name, preview, size, Download, Delete From World and Used by buttons, with no rule editor, because rules live on links.<br>• Filters read across an entry's links. Search matches names and Used by.<br>• Import Media is a header icon button.<br>• Only list-backed panels drop Replace and Remove |
+| Q49 | Item image overrides are per Item Instance: instances gain a writable `image`, and there is no item-wide override (user, 2026-11-16) |
+| Q50 | `entities.X.image` sets an entity-wide override; a new `entities.X.instances` list sets one Generic Entity Instance, which beats the entity-wide one. A panel shows the instance at the player's place, first by Start order (user, 2026-11-16) |
+| Q51 | While an image override is set, play shows it first, with the rule-visible images after it (user, 2026-11-16) |
+| Q52 | Reading `image` with no override gives the first rule-visible linked entry's name, or null; `sound`, `ambience` and `music` give the linked entry's name, or null. A read-only `world` global holds `music` (ticket 08) |
+| Q53 | Override names match exactly. A name of the wrong kind throws as a missing name (ticket 08) |
+| Q54 | The Media tab's cover and Body backdrop panels hold their picker slot like the other list fields (Q45), and Import Media takes a `.glb` as an Avatar only when it carries VRM data; a plain 3D model is refused (fix after ticket 07) |
 
 ## Prototype
 

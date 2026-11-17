@@ -91,7 +91,7 @@ const SLOTS: Slot[] = [
 ];
 
 /** Slots on the Media List act through their slot (Q45): no Replace, and Remove From Slot clears them. */
-const onList = (slot: Slot) => slot.kind === 'sound' || slot.id.startsWith('location:marsh:image');
+const onList = (slot: Slot) => slot.kind === 'sound' || slot.id.startsWith('location:marsh:image') || slot.id === 'world:world:thumbnail';
 const PANEL_SLOTS = SLOTS.filter((slot) => !onList(slot));
 const REMOVE_SLOTS = SLOTS.map((slot) => (onList(slot) ? { ...slot, remove: 'Remove From Slot' } : slot));
 
@@ -116,7 +116,7 @@ describe('Media tab Remove', () => {
 
     expect(slot.read(bench.ctx())).toBeFalsy();
     // A gallery slot's Remove From Slot is the field's own edit, which carries no step label.
-    expect(lastLabel(bench)).toBe(slot.remove && slot.kind === 'image' ? undefined : `Remove ${slot.label}`);
+    expect(lastLabel(bench)).toBe(slot.remove && slot.id.includes(':image:') ? undefined : `Remove ${slot.label}`);
     expect(cardsOf(slot.section, slot.kind)).toHaveLength(kindCards - 1);
     if (others.length) {
       expect(within(section(slot.section)!).getByRole('button', { name: sectionTotal(slot.section, others) })).toBeInTheDocument();
@@ -133,6 +133,7 @@ describe('Media tab Remove', () => {
   it.each([
     ['a sound', 'Entities', 'sound'],
     ['a gallery image', 'Locations', 'image'],
+    ['the world cover', 'World', 'image'],
   ])('offers %s only its slot controls, with no Replace or Remove of its own', (_what, sectionName, kind) => {
     openMedia();
     fireEvent.click(card(sectionName, kind));
@@ -175,15 +176,16 @@ describe('Media tab Replace', () => {
   it('puts a replacing image through the downscale consent', async () => {
     vi.mocked(measureInWorker).mockResolvedValue(OVERSIZED);
     const bench = openMedia();
-    fireEvent.click(card('World', 'image'));
+    // A dictionary cover keeps the panel's Replace; list slots consent through their own uploader.
+    fireEvent.click(card('Dictionaries', 'image'));
 
     await pickFile(new File(['huge'], 'huge.png', { type: 'image/png' }));
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog).toHaveTextContent('Large image');
     await step(() => fireEvent.click(within(dialog).getByRole('button', { name: 'Downscale' })));
 
-    await waitFor(() => expect(coverData(bench.ctx().worldOverview)).toBe('data:image/webp;base64,c21hbGw='));
-    expect(lastLabel(bench)).toBe('Replace Thumbnail');
+    await waitFor(() => expect(bench.ctx().dictionaries.find((d) => d.id === 'lore')!.thumbnail).toBe('data:image/webp;base64,c21hbGw='));
+    expect(lastLabel(bench)).toBe('Replace Cover Image: Fen Lore');
   });
 
 });

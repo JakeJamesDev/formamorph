@@ -12,6 +12,7 @@ import { readMediaFile } from '@/lib/UtilityComponents';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { vrmDisplayName } from '@/lib/worldVrmStore';
+import { readVrmMeta } from '@/lib/vrmMeta';
 import type { MediaList } from '@/types';
 import { useAvatarStore } from './AvatarStore';
 import { useMediaStep } from './useMediaItemActions';
@@ -36,7 +37,11 @@ export function useImportMedia(onSelect: (id: string) => void) {
   listRef.current = worldOverview.mediaList;
 
   const take = async (files: File[]) => {
-    const avatars = files.filter(isAvatarFile);
+    // A .glb is an Avatar only when it carries VRM data; a plain 3D model has no place in the list (Q8).
+    const vrmFlags = await Promise.all(files.map(async (f) => isAvatarFile(f) && (/\.vrm$/i.test(f.name) || (await readVrmMeta(f)).license.metaVersion !== null)));
+    const avatars = files.filter((_, i) => vrmFlags[i]);
+    const skipped = files.filter((f, i) => isAvatarFile(f) && !vrmFlags[i]);
+    if (skipped.length) toastError(new Error(`${skipped.map((f) => f.name).join(', ')} ${skipped.length === 1 ? 'has' : 'have'} no VRM data, so ${skipped.length === 1 ? 'it was' : 'they were'} not imported.`), { headline: 'Not an Avatar' });
     const media = files.filter((f) => !isAvatarFile(f) && /^(image|audio)\//.test(f.type));
     const read = await Promise.all(media.map(readMediaFile));
     // An image the list already holds is reused as is, so only new ones meet the downscale prompt.
