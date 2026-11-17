@@ -7,6 +7,7 @@ import { toastError } from '@/lib/linkToast';
 import { toastAutosaveFailure } from '@/lib/saveFailureToast';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
 import { useTtsPlayback } from '../lib/useTtsPlayback';
+import { useStableCallback } from '@/lib/useStableCallback';
 import { APP_VERSION, isSaveEnvelope, migrateSave, migrateLegacySaveState, stripSnapshotHistory } from '../lib/version';
 import { loreEntries, NO_LORE_TOGGLES, playthroughBooks } from '../lib/loreToggles';
 import { NO_WORLD_OPTION_VALUES } from '../lib/worldOptions';
@@ -433,10 +434,7 @@ function useProvideGameplay() {
 
   // Note: flattenNestedGameStates has been moved to a web worker to prevent UI freezing
 
-  /** Snapshot the live gameplay state into a single `GameState` (stamped `stateVersion: 2`), deliberately
-   *  omitting the `gameStates` history array and instead recording `previousStateIndex`; `worldName` is left
-   *  null for the caller (GameViewer) to fill at save time. */
-  const saveCurrentGameState = useCallback((): GameState => {
+  const snapshotThisRender = useCallback((): GameState => {
     const savedApplied = savedAppliedValues(appliedTraitValues);
     const savedCascade = savedCascadeOff(cascadeOffTraitIds);
     // Create a state object without the gameStates array
@@ -485,6 +483,13 @@ function useProvideGameplay() {
     };
   }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, uniqueStates, genericStates, metEntities, strangerAliases, entityStatChanges, codePins, loreToggles, worldOptionValues, itemInstances, runtimeItems, itemEffects, bodies, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
       currentLocation, gameTime, startHour, playerStartLocationId, openingPlacement, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
+  /** Snapshot the live gameplay state into a single `GameState` (stamped `stateVersion: 2`), deliberately
+   *  omitting the `gameStates` history array and instead recording `previousStateIndex`; `worldName` is left
+   *  null for the caller (GameViewer) to fill at save time.
+   *
+   *  One identity for the session, reading the latest committed state. Call it on demand only: no eager memo
+   *  or effect may depend on it to follow state. */
+  const saveCurrentGameState = useStableCallback(snapshotThisRender);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
    *  recovering `playerNotes` from the newest nested state when the top-level field is absent (legacy saves).
