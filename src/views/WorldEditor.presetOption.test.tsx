@@ -40,6 +40,17 @@ const pickOption = (trigger: HTMLElement, name: string) => {
   fireEvent.keyDown(screen.getByRole('option', { name }), { key: 'Enter' });
 };
 
+/** Open a row's target picker and return its rows' names, the breadcrumb left out. */
+const openTargets = (name: string) => {
+  fireEvent.click(screen.getByRole('combobox', { name }));
+  return screen.getAllByRole('option').map((o) => o.querySelector(':scope > span.min-w-0')?.textContent ?? o.textContent);
+};
+/** Pick a row's target in its drill-down picker. */
+const pickTarget = (name: string, target: string) => {
+  openTargets(name);
+  fireEvent.click(screen.getAllByRole('option').find((o) => (o.querySelector(':scope > span.min-w-0')?.textContent ?? o.textContent) === target)!);
+};
+
 beforeEach(() => { localStorage.clear(); });
 
 describe('a Preset Option on the Options tab', () => {
@@ -57,11 +68,9 @@ describe('a Preset Option on the Options tab', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Big Start Description' }), { target: { value: 'Everything is big' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'Add Row' })[0]);
 
-    const target = screen.getByRole('combobox', { name: 'Big Start Row 1 Target' });
-    fireEvent.keyDown(target, { key: 'Enter' });
-    const offered = within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent);
-    expect(offered).toEqual(['Size', 'Starting Location', 'Brave', 'Wolf: Feral']);
-    fireEvent.keyDown(screen.getByRole('option', { name: 'Size' }), { key: 'Enter' });
+    expect(openTargets('Big Start Row 1 Target')).toEqual(['Size', 'Starting Location', 'Brave', 'Wolf: Feral']);
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    pickTarget('Big Start Row 1 Target', 'Size');
     pickOption(screen.getByRole('combobox', { name: 'Big Start Row 1 Value' }), 'Big');
 
     expect(preset()).toEqual({
@@ -81,11 +90,11 @@ describe('a Preset Option on the Options tab', () => {
     const rows = () => (bench.ctx().options.find((o) => o.id === 'start') as Extract<WorldOption, { type: 'preset' }>).values[0].rows;
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Add Row' })[0]);
-    pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 1 Target' }), 'Brave');
+    pickTarget('Value 1 Row 1 Target', 'Brave');
     expect(rows()).toEqual([{ kind: 'trait', traitId: 'brave', on: true }]);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Add Row' })[0]);
-    pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 2 Target' }), 'Wolf: Feral');
+    pickTarget('Value 1 Row 2 Target', 'Wolf: Feral');
     pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 2 Value' }), 'Off');
     expect(rows()).toEqual([
       { kind: 'trait', traitId: 'brave', on: true },
@@ -117,13 +126,13 @@ describe('a Preset Option on the Options tab', () => {
     };
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Add Row' })[0]);
-    pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 1 Target' }), 'Persona');
+    pickTarget('Value 1 Row 1 Target', 'Persona');
     // Marked personas and the Custom Persona only: the Wolf is no persona, and library personas are the player's.
     expect(offered('Value 1 Row 1 Value')).toEqual(['Knight', 'Hermit']);
     pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 1 Value' }), 'Hermit');
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Add Row' })[0]);
-    pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 2 Target' }), 'Starting Location');
+    pickTarget('Value 1 Row 2 Target', 'Starting Location');
     // Starting locations and every persona's start places.
     expect(offered('Value 1 Row 2 Value')).toEqual(['town', 'keep']);
     pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 2 Value' }), 'keep');
@@ -188,10 +197,11 @@ describe('a Preset Option on the Options tab', () => {
     const box = (name: string) => screen.getByRole('combobox', { name }).textContent;
     expect([box('V Row 1 Target'), box('V Row 3 Target'), box('V Row 3 Value'), box('V Row 4 Value')])
       .toEqual(['Kin: Kin Smite', 'Kin Size', 'Kin Big', 'Kin']);
-    fireEvent.keyDown(screen.getByRole('combobox', { name: 'V Row 1 Target' }), { key: 'Enter' });
+    expect(openTargets('V Row 1 Target')).toEqual(['Kin Size', 'Starting Location', 'Brave', 'Kin: Kin Smite']);
+    // Fifteen rows or fewer show flat, each with the page it lives on as its breadcrumb.
+    const crumbs = screen.getAllByRole('option').map((o) => o.textContent?.slice(o.querySelector(':scope > span.min-w-0')?.textContent?.length));
+    expect(crumbs).toEqual(['Options', 'Start', 'World', 'Kin']);
     const list = screen.getByRole('listbox');
-    expect(within(list).getAllByRole('option').map((o) => o.textContent)).toEqual(['Kin Size', 'Starting Location', 'Brave', 'Kin: Kin Smite']);
-    expect(within(list).getAllByRole('group').map((g) => g.firstElementChild?.textContent)).toEqual(['Options', 'Start', 'World Traits', 'Kin']);
     fireEvent.keyDown(list, { key: 'Escape' });
 
     // The Kin hound is no persona.
@@ -214,5 +224,24 @@ describe('a Preset Option on the Options tab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Select Start' }));
     // The Wolf is no persona, and the Cave is no starting location.
     expect(screen.getByText(/^Can't apply/).textContent).toBe("Can't apply: Persona: Wolf, Starting Location: Cave");
+  });
+
+  it('drills into Options and traits by owner once the targets pass fifteen', () => {
+    const many = Array.from({ length: 16 }, (_, i) => ({ id: `t${i}`, name: `Trait ${i}`, statChanges: [] }));
+    renderWorldEditorBench(benchEditorWorld({ options, traits: many, entities: [wolf] } as Partial<World>), 'advanced');
+    openEditorTab(/Options/);
+    fireEvent.click(screen.getByRole('button', { name: 'Select Start' }));
+    pickOption(screen.getByRole('combobox', { name: 'Type' }), 'Preset');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add Row' })[0]);
+
+    // A page with one row shows that row in its place.
+    fireEvent.click(screen.getByRole('combobox', { name: 'Value 1 Row 1 Target' }));
+    expect(screen.getAllByRole('option').map((o) => o.getAttribute('aria-label') ?? o.querySelector(':scope > span.min-w-0')?.textContent)).toEqual([
+      'Size', 'Starting Location', 'Traits, 17 available, opens a page',
+    ]);
+    fireEvent.click(screen.getByRole('option', { name: /^Traits,/ }));
+    expect(screen.getAllByRole('option').map((o) => o.getAttribute('aria-label') ?? o.querySelector(':scope > span.min-w-0')?.textContent)).toEqual([
+      'World, 16 available, opens a page', 'Wolf: Feral',
+    ]);
   });
 });

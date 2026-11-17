@@ -9,7 +9,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BreadcrumbPicker, type BreadcrumbPickerNode, type BreadcrumbPickerRow } from '@/components/ui/breadcrumb-picker';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { labelPlaceholders } from '@/lib/placementLetters';
 import { Textarea } from '@/components/ui/textarea';
 import { Hint, Meta } from '@/components/ui/typography';
 import { useGameData } from '@/contexts/GameDataContext';
@@ -126,7 +128,7 @@ function rowTargets(world: Pick<PresetCheckWorld, 'options' | 'entities' | 'loca
   return {
     options: shownValuedOptions(world.options),
     traits: [
-      { key: 'world', owner: 'World Traits', traits: toggled(trees.global) },
+      { key: 'world', owner: 'World', traits: toggled(trees.global) },
       ...trees.owners.map((o) => ({ key: o.id, owner: o.name, traits: toggled(o.traits, o) })),
     ].filter((g) => g.traits.length),
     personas,
@@ -141,6 +143,27 @@ const PERSONA_KEY = JSON.stringify(['persona']);
 const LOCATION_KEY = JSON.stringify(['location']);
 const targetKey = (row: PresetRow): string => (row.kind === 'option' ? optionKey(row.optionId)
   : row.kind === 'trait' ? traitKey(row.traitId, row.ownerId) : row.kind === 'persona' ? PERSONA_KEY : LOCATION_KEY);
+
+/** The row targets as drill-down pages, in the order the row editor lists them: Options, Start, then traits by owner. */
+function targetTree(targets: RowTargets): BreadcrumbPickerNode<string>[] {
+  const row = (key: string, name: string, place: string): BreadcrumbPickerRow<string> => ({ key, value: key, name, breadcrumb: [place] });
+  const start = [
+    ...(targets.personas.length ? [row(PERSONA_KEY, 'Persona', 'Start')] : []),
+    ...(targets.locations.length ? [row(LOCATION_KEY, 'Starting Location', 'Start')] : []),
+  ];
+  const traitPages = targets.traits.map((g): BreadcrumbPickerNode<string> => ({
+    kind: 'page', key: `traits:${g.key}`, heading: g.owner,
+    children: [{ kind: 'section', rows: g.traits.map((t) => row(traitKey(t.traitId, t.ownerId), t.name, g.owner)) }],
+  }));
+  return [
+    ...(targets.options.length ? [{
+      kind: 'page' as const, key: 'options', heading: 'Options',
+      children: [{ kind: 'section' as const, rows: targets.options.map((o) => row(optionKey(o.id), o.name, 'Options')) }],
+    }] : []),
+    ...(start.length ? [{ kind: 'page' as const, key: 'start', heading: 'Start', children: [{ kind: 'section' as const, rows: start }] }] : []),
+    ...(traitPages.length ? [{ kind: 'page' as const, key: 'traits', heading: 'Traits', children: traitPages }] : []),
+  ];
+}
 
 /** The value box for a persona or location row: one of the world's targets of that kind. */
 function TargetRowValue({ items, value, label, onChange }: {
@@ -175,7 +198,11 @@ function PresetRowsField({ rows, targets, label, onChange }: {
     ...targets.locations.slice(0, 1).map((l): PresetRow => ({ kind: 'location', locationId: l.id })),
   ];
   const unused = choices.find((c) => !rows.some((r) => targetKey(r) === targetKey(c)));
-  const set = (index: number, row: PresetRow) => onChange(rows.map((r, i) => (i === index ? row : r)));
+  const placeholders = useContext(PresetPlaceholders);
+  const renderText = (text: string) => <PlaceholderText text={text} placeholders={placeholders} />;
+  const plainText = (text: string) => labelPlaceholders(text, placeholders);
+  const tree = targetTree(targets);
+  const set =(index: number, row: PresetRow) => onChange(rows.map((r, i) => (i === index ? row : r)));
   return (
     <div className="space-y-2">
       <Meta as="p" className="font-medium">Sets</Meta>
@@ -186,35 +213,17 @@ function PresetRowsField({ rows, targets, label, onChange }: {
         const rowLabel = `${label} Row ${index + 1}`;
         return (
           <div key={`${index}-${key}`} className="flex flex-wrap items-center gap-2">
-            <Select
-              value={known ? key : ''}
-              onValueChange={(k) => { const next = choices.find((c) => targetKey(c) === k); if (next) set(index, next); }}
-            >
-              <SelectTrigger aria-label={`${rowLabel} Target`} className="w-56 min-w-0"><SelectValue placeholder="Pick What to Set" /></SelectTrigger>
-              <SelectContent>
-                {targets.options.length > 0 && (
-                  <SelectGroup>
-                    <SelectLabel>Options</SelectLabel>
-                    {targets.options.map((o) => <SelectItem key={o.id} value={optionKey(o.id)}><ChipName text={o.name} /></SelectItem>)}
-                  </SelectGroup>
-                )}
-                {(targets.personas.length > 0 || targets.locations.length > 0) && (
-                  <SelectGroup>
-                    <SelectLabel>Start</SelectLabel>
-                    {targets.personas.length > 0 && <SelectItem value={PERSONA_KEY}>Persona</SelectItem>}
-                    {targets.locations.length > 0 && <SelectItem value={LOCATION_KEY}>Starting Location</SelectItem>}
-                  </SelectGroup>
-                )}
-                {targets.traits.map((g) => (
-                  <SelectGroup key={g.key}>
-                    <SelectLabel><ChipName text={g.owner} /></SelectLabel>
-                    {g.traits.map((t) => (
-                      <SelectItem key={`${t.ownerId ?? ''}-${t.traitId}`} value={traitKey(t.traitId, t.ownerId)}><ChipName text={t.name} /></SelectItem>
-                    ))}
-                  </SelectGroup>
-                ))}
-              </SelectContent>
-            </Select>
+            <BreadcrumbPicker
+              tree={tree}
+              value={known ? key : undefined}
+              onPick={(k) => { const next = choices.find((c) => targetKey(c) === k); if (next) set(index, next); }}
+              searchPlaceholder="Search Options, traits and start"
+              renderText={renderText}
+              plainText={plainText}
+              placeholder="Pick What to Set"
+              ariaLabel={`${rowLabel} Target`}
+              className="w-56 min-w-0"
+            />
             {row.kind === 'persona' && known && (
               <TargetRowValue
                 items={targets.personas} value={row.entityId} label={`${rowLabel} Value`}
