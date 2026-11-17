@@ -106,10 +106,13 @@ export function SetupTraitList({
     const changes = trait.statChanges
       .map((change) => ({ change, stat: statOf(change) }))
       .filter((row): row is { change: StatChange; stat: Stat } => row.stat !== undefined && row.stat.hidden !== true);
+    // The whole framed row is the label, so every point that highlights on hover also toggles.
+    const Row = fixed ? 'div' : 'label';
     return (
-      <div
+      <Row
         key={trait.id}
-        className={cn(choiceRowClass(selected), disabled && 'cursor-not-allowed opacity-60 hover:border-border hover:bg-card')}
+        htmlFor={fixed ? undefined : `setup-trait-${trait.id}`}
+        className={cn(choiceRowClass(selected), fixed && 'cursor-default', disabled && 'cursor-not-allowed opacity-60 hover:border-border hover:bg-card')}
       >
         {fixed ? (
           <Check role="img" aria-label="Automatic" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
@@ -137,10 +140,7 @@ export function SetupTraitList({
             onCheckedChange={() => onTraitSelect(trait.id, ownerId)}
           />
         )}
-        <label
-          htmlFor={`setup-trait-${trait.id}`}
-          className={cn('min-w-0 flex-1', fixed ? undefined : disabled ? 'cursor-not-allowed' : 'cursor-pointer')}
-        >
+        <span className="block min-w-0 flex-1">
           <strong className="flex items-center gap-2 text-label font-semibold">
             {trait.name}
             {locked && <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />}
@@ -163,8 +163,8 @@ export function SetupTraitList({
               ))}
             </ul>
           )}
-        </label>
-      </div>
+        </span>
+      </Row>
     );
   });
 

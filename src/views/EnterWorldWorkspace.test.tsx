@@ -292,6 +292,23 @@ describe('EnterWorldWorkspace', () => {
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
   });
 
+  it('toggles a trait from the row frame itself, not only its indicator and text', async () => {
+    const user = userEvent.setup();
+    const onTraitSelect = vi.fn();
+    render(<Harness onTraitSelect={onTraitSelect} />);
+
+    // The frame is the indicator's parent: a click on its padding lands on it, not on a child.
+    await user.click(screen.getByRole('radio', { name: 'Local' }).parentElement!);
+    expect(onTraitSelect).toHaveBeenLastCalledWith('local', null);
+    expect(onTraitSelect).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: /Practice/ }));
+    onTraitSelect.mockClear();
+    await user.click(screen.getByRole('checkbox', { name: 'Artisan' }).parentElement!);
+    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan', null);
+    expect(onTraitSelect).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps exclusive trait choices optional and changes them as one selection', async () => {
     const user = userEvent.setup();
     render(<Harness />);

@@ -34,16 +34,16 @@ export function OptionControl({ option, value, onChange, resolveText, disabled, 
     const checked = value === true;
     const id = `setup-option-${option.id}`;
     return (
-      <div className={choiceRowClass(checked)}>
+      <label htmlFor={id} className={choiceRowClass(checked)}>
         <Checkbox
           id={id} checked={checked} onCheckedChange={(next) => onChange(next === true)}
           aria-describedby={descriptionId} className="mt-0.5 shrink-0" disabled={disabled}
         />
-        <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer">
+        <span className="block min-w-0 flex-1">
           <strong className="block break-words text-label font-semibold">{name}</strong>
           {description && <Hint as="span" id={descriptionId} className="mt-1 block">{description}</Hint>}
-        </label>
-      </div>
+        </span>
+      </label>
     );
   }
   const heading = (trailing?: string) => (
@@ -84,12 +84,12 @@ export function OptionControl({ option, value, onChange, resolveText, disabled, 
         {option.values.map((v) => {
           const id = `setup-option-${option.id}-${v.id}`;
           return (
-            <div key={v.id} className={choiceRowClass(value === v.id)}>
+            <label key={v.id} htmlFor={id} className={choiceRowClass(value === v.id)}>
               <RadioGroupItem id={id} value={v.id} aria-label={resolveText(v.name)} className="mt-0.5 shrink-0" />
-              <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer break-words text-label font-semibold">
+              <span className="block min-w-0 flex-1 break-words text-label font-semibold">
                 {resolveText(v.name)}
-              </label>
-            </div>
+              </span>
+            </label>
           );
         })}
       </RadioGroup>

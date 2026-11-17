@@ -506,18 +506,19 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
                 onValueChange={(locationId) => props.onLocationChange(locationId === 'random' ? null : locationId)}
                 className="space-y-3"
               >
-                <div className={choiceRowClass(props.selectedLocationId === null)}>
+                <label htmlFor="setup-location-random" className={choiceRowClass(props.selectedLocationId === null)}>
                   <RadioGroupItem id="setup-location-random" value="random" aria-label="Random" className="mt-0.5 shrink-0" />
-                  <label htmlFor="setup-location-random" className="min-w-0 flex-1 cursor-pointer">
+                  <span className="block min-w-0 flex-1">
                     <strong className="block text-label font-semibold">Random</strong>
                     <Hint as="span" className="mt-1 block">Starts at a random location</Hint>
-                  </label>
-                </div>
+                  </span>
+                </label>
                 {props.locations.map((location) => {
                   const description = location.playerDescription?.trim() || location.description?.trim();
                   return (
-                    <div
+                    <label
                       key={location.id}
+                      htmlFor={`setup-location-${location.id}`}
                       className={choiceRowClass(props.selectedLocationId === location.id)}
                     >
                       <RadioGroupItem
@@ -526,15 +527,15 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
                         aria-label={location.name}
                         className="mt-0.5 shrink-0"
                       />
-                      <label htmlFor={`setup-location-${location.id}`} className="min-w-0 flex-1 cursor-pointer">
+                      <span className="block min-w-0 flex-1">
                         <strong className="block text-label font-semibold">{location.name}</strong>
                         {description && (
                           <Hint as="span" className="mt-1 block">
                             {props.resolveText(description)}
                           </Hint>
                         )}
-                      </label>
-                    </div>
+                      </span>
+                    </label>
                   );
                 })}
               </RadioGroup>

@@ -88,6 +88,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A new character whose name is one of a placeholder's values now shows in the Entities tab.** Before, a townsperson who introduced herself with a rolled name, such as "I'm Cinder," was never added.
     - **Scripts now run faster on large worlds.** Each script pays only for the entities, placeholders, items, locations, dictionaries and currencies it reads, so a large world no longer slows every turn.
   - **At new game, a trait group fills again when another pick locks its trait.** It takes the group's default, or else the first trait you can pick. Before, the group stayed empty and Begin stayed off.
+  - **In Enter World, a click anywhere in a trait, option or location box now selects it.** Before, the box's edges and corners lit up on hover but ignored the click.
   - **The Test Bench no longer calls a placeholder unused when its only chip is in a stranger field.** That covers Stranger Name and Stranger Description, which play already fills in.
 
 ---
