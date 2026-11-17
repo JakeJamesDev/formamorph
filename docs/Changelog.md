@@ -72,7 +72,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Renaming a Media List entry now offers to update the scripts that name it.** Update Code rewrites `image`, `sound`, `ambience` and `world.music` assignments and comparisons. The Test Bench now flags scripts that name an entry the world lacks.
   - **Enter World:**
     - **Clicking an entity or a group opens one page with every trait inside it.** Each group within it sits under a labeled divider with its own rules. A row's count covers everything inside it, and a dot marks a group that needs more picks.
-    - **The category list folds a character or group with its arrow, and folds itself to fit your screen.** Clicking a folded row still opens its page. Collapse All and Expand All sit on the Starting Traits line. Once you fold a row yourself, the list keeps your choice.
+    - **The category list folds an entity or group with its arrow, and folds itself to fit your screen.** Clicking a folded row still opens its page. Collapse All and Expand All sit on the Starting Traits line. Once you fold a row yourself, the list keeps your choice.
 - **🛠️ Developer tooling**
   - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.

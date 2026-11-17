@@ -192,6 +192,8 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const [clickedPageId, setClickedPageId] = useState<string | null>(null);
   const traitIndex = current?.kind === 'traits' ? currentIndex - traitOffset : -1;
   const clickedPage = clickedPageId ? nodeById.get(clickedPageId) : undefined;
+  // Once the index leaves the clicked subtree, the hold ends, so a later return lands on the index's own node (Q21).
+  if (clickedPage && !clickedPage.subtree.includes(traitIndex)) setClickedPageId(null);
   const page = traitIndex < 0 ? undefined
     : clickedPage?.subtree.includes(traitIndex) ? clickedPage
     : navNodes.find((node) => node.categoryIndex === traitIndex);
@@ -255,7 +257,8 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     setFold({ mode: 'manual', folded });
   };
   const parents = navNodes.filter((node) => node.hasChildren);
-  const anyExpanded = parents.some((node) => !foldedIds.has(node.group.id));
+  // Only a parent the player can see counts, so Collapse All never makes a dead click (Q13).
+  const anyExpanded = parents.some((node) => !foldedIds.has(node.group.id) && !isHidden(node));
   const toggleAll = () => setFold({ mode: 'manual', folded: new Set(anyExpanded ? parents.map((node) => node.group.id) : []) });
 
   const closeNavigation = () => {

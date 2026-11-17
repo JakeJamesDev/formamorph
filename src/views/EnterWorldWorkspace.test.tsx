@@ -773,6 +773,33 @@ describe('collapsible nav', () => {
     expect(rowNames()).toEqual(['Origin', 'Culture', 'Calling', 'Discipline', 'Practice', 'Library Additions']);
   });
 
+  it('shows a folded row its whole subtree count and the short marker of a group hidden inside it', () => {
+    const counted = groups.map((g) => (g.id === 'practice' ? { ...g, minPicks: 1 } : g));
+    render(<Harness traitGroups={counted} />);
+    fireEvent.click(chevron(/^Collapse Origin$/));
+    expect(rowNames()).not.toContain('Practice');
+    expect(within(row('Origin')).getByLabelText('1 of 3 selected')).toBeInTheDocument();
+    expect(within(row('Origin')).getByRole('img', { name: 'Needs more picks' })).toBeInTheDocument();
+  });
+
+  it('offers Expand All once every parent the player can see is folded', () => {
+    render(<Harness />);
+    fireEvent.click(chevron(/^Collapse Origin$/));
+    expect(within(nav()).queryByRole('button', { name: 'Collapse All' })).not.toBeInTheDocument();
+    fireEvent.click(within(nav()).getByRole('button', { name: 'Expand All' }));
+    expect(rowNames()).toEqual(['Origin', 'Culture', 'Calling', 'Discipline', 'Practice', 'Library Additions']);
+  });
+
+  it('ends a clicked page once the index leaves it, so an outside index later opens its own node', () => {
+    const { rerender } = render(<Harness categoryIndex={0} />);
+    fireEvent.click(row('Origin'));
+    expect(within(main()).getByRole('heading', { level: 2, name: 'Origin' })).toBeInTheDocument();
+    rerender(<Harness categoryIndex={2} />);
+    rerender(<Harness categoryIndex={1} />);
+    expect(within(main()).getByRole('heading', { level: 2, name: 'Practice' })).toBeInTheDocument();
+    expect(row('Practice')).toHaveAttribute('aria-current', 'page');
+  });
+
   it('offers no Collapse All when no row has children', () => {
     render(<Harness traitGroups={[{ id: 'culture', name: 'Culture', parentId: null, order: 0 }]} />);
     expect(within(nav()).queryByRole('button', { name: /^(Collapse|Expand) All$/ })).not.toBeInTheDocument();
