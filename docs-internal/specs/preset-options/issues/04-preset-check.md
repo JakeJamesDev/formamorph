@@ -14,6 +14,8 @@ The editor flags a Preset value that cannot fully apply, so the author finds it 
   - rows that over-fill a group's Pick Count
   - rows for a trait whose Mode stops the player toggling it, such as Automatic
   - rows that name a deleted trait, Option, location or persona
+  - rows whose target apply would skip (Q24, Q28, Q35, Q36): a hidden or Preset Option, an owner not in the default cast, a persona that is no longer a persona or not in Allowed Personas, and a location that the Starting Location step would not offer
+- Reuse apply's own skip result where you can, so the check and the setup screen never disagree.
 - **Editor.** The Options tab shows the check's results as a warning on the Preset value, and names each failing row.
 - **Docs.** Update [World-Editor-Options.md](docs/World-Editor-Options.md). Write a changelog fragment.
 
