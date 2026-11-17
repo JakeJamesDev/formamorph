@@ -1,4 +1,4 @@
-import { spanKey, UNCOLORED, type QuoteSpeakerSource, type SpeakerColors } from '@/lib/quoteSegments';
+import { spanKey, speakerSourceJSON, UNCOLORED, type QuoteSpeakerSource, type SpeakerColors } from '@/lib/quoteSegments';
 import type { MentionReading } from './mentionReading';
 import { turnMentionReading, type MentionReadingMap } from './mentionReadings';
 import type { LiveQuotes } from './streamingQuotes';
@@ -18,10 +18,14 @@ const cached = <K extends object, V>(map: WeakMap<K, V>, key: K, make: () => V):
   return value;
 };
 
+/** `source`, serializing to everything the quote plugin reads, so a color change changes the renderer's key. */
+const withSpeakerJSON = (source: QuoteSpeakerSource): QuoteSpeakerSource =>
+  Object.defineProperty(source, 'toJSON', { value: () => speakerSourceJSON(source) });
+
 /** The quotes read early as a renderer source. It reads `live` at each render, so it keeps one identity while
  *  the reader adds speakers. */
 export const liveQuoteSpeakers = (live: LiveQuotes, colors: SpeakerColors): QuoteSpeakerSource =>
-  cached(cached(liveSources, live, () => new WeakMap()), colors, () => ({
+  cached(cached(liveSources, live, () => new WeakMap()), colors, () => withSpeakerJSON({
     get text() { return live.text; },
     get quotes() { return live.quotes; },
     colors,
@@ -57,9 +61,9 @@ export function turnQuoteSpeakers(
     const byReading = cached(cached(recolored, early, () => new WeakMap()), colors, () => new WeakMap());
     const source = cached(byReading, reading, () => {
       const recolor = recolorOf(early, reading, colors);
-      return recolor.size ? { text: narration, quotes: reading.quotes, colors, recolor } : null;
+      return recolor.size ? withSpeakerJSON({ text: narration, quotes: reading.quotes, colors, recolor }) : null;
     });
     if (source) return source;
   }
-  return cached(cached(sources, colors, () => new WeakMap()), reading, () => ({ text: narration, quotes: reading.quotes, colors }));
+  return cached(cached(sources, colors, () => new WeakMap()), reading, () => withSpeakerJSON({ text: narration, quotes: reading.quotes, colors }));
 }

@@ -49,7 +49,17 @@ export interface QuoteSpeakerSource {
   recolor?: ReadonlyMap<string, string>;
   /** Called when quotes gain speakers after the text rendered, so the renderer can color them in place. */
   subscribe?(listener: () => void): () => void;
+  /** {@link speakerSourceJSON}, for a source whose colors change: the renderer keys its processor on this JSON. */
+  toJSON?(): unknown;
 }
+
+/** Everything the quote plugin reads from `source`, with its Maps as entry lists. */
+export const speakerSourceJSON = (source: QuoteSpeakerSource) => ({
+  text: source.text,
+  quotes: source.quotes,
+  colors: [...source.colors],
+  recolor: source.recolor ? [...source.recolor] : undefined,
+});
 
 /** The spans of `lines` (each a quote and its speaker) found in `text` in order. For canned readings. */
 export function spokenQuotes(text: string, lines: readonly (readonly [string, string | null])[]): SpokenQuote[] {

@@ -1,6 +1,6 @@
 # 05: Quote Repaint on a Color Change
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -17,11 +17,16 @@ The renderer's markdown library caches its processor under the plugin's name plu
 
 ## Acceptance criteria
 
-- [ ] Two speaker sources with the same text and quotes but different colors serialize differently; the same content serializes the same.
-- [ ] A recolor change also changes the serialized form.
-- [ ] In the game viewer render harness, a newly visible speaker's quote carries its speaker after the remount. Extend ticket 02's harness case.
-- [ ] Removing the serializer makes that harness test fail.
-- [ ] Existing quote speaker and late quote color tests pass unchanged.
+- [x] Two speaker sources with the same text and quotes but different colors serialize differently; the same content serializes the same. `quoteSpeakers.test.ts` "serializes the colors…", committed and live sources.
+- [x] A recolor change also changes the serialized form. `quoteSpeakers.test.ts` "serializes a recolor change differently".
+- [x] In the game viewer render harness, a newly visible speaker's quote carries its speaker after the remount. Extend ticket 02's harness case. `GameViewer.steadyNarration.test.tsx` asserts `data-speaker="wren"` after the remount.
+- [x] Removing the serializer makes that harness test fail. Mutation run: without `toJSON` the harness fails with `expected '' to be 'wren'`, and both unit cases fail too. Dropping only `recolor` from the JSON fails the recolor case.
+- [x] Existing quote speaker and late quote color tests pass unchanged. `quoteSpeakers.test.ts` and `lateQuoteColors.test.tsx` green with no existing line edited.
 
-For you:
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
 - Play a turn where a new character starts speaking mid-turn with Character Mentions on: their quotes take their color.

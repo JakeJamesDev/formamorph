@@ -124,6 +124,7 @@ describe('steady narration with Character Mentions on', () => {
     expect(repainted).toBeDefined();
     act(() => { gameplay().setChoices(['Wave']); });
     expect(narrationNode()).toBe(repainted);
+    expect(quoteColor('Mind the ropes')).toBe('wren');
     await waitFor(() => expect(unmounts).toBeGreaterThan(0));
     removals.disconnect();
     expect(unmounts).toBe(1);
