@@ -128,4 +128,45 @@ describe('a Preset Option on the Options tab', () => {
 
     expect(rows()).toEqual([{ kind: 'persona', entityId: 'hermit' }, { kind: 'location', locationId: 'keep' }]);
   });
+
+  it('warns on a value with rows that can’t apply, and names each row', () => {
+    const preset: WorldOption = {
+      id: 'start', name: 'Start', type: 'preset', mode: 'snapshot', values: [
+        { id: 'bad', name: 'Bad', description: '', rows: [
+          { kind: 'trait', traitId: 'brave', on: true },
+          { kind: 'trait', traitId: 'blessed', on: false },
+          { kind: 'trait', traitId: 'gone', on: true },
+          { kind: 'trait', traitId: 'feral', ownerId: 'wolf', on: true },
+          { kind: 'option', optionId: 'secret', value: true },
+          { kind: 'trait', traitId: 'gone-too', ownerId: 'wolf', on: false },
+          { kind: 'location', locationId: 'nowhere' },
+        ] },
+        { id: 'good', name: 'Good', description: '', rows: [{ kind: 'trait', traitId: 'feral', ownerId: 'wolf', on: true }] },
+      ],
+    };
+    renderWorldEditorBench(benchEditorWorld({ options: [options[0], options[1], preset], traits, entities: [wolf] } as Partial<World>), 'advanced');
+    openEditorTab(/Options/);
+    fireEvent.click(screen.getByRole('button', { name: 'Select Start' }));
+    // Only the bad value warns.
+    expect(screen.getAllByText(/^Can't apply/).map((s) => s.textContent)).toEqual([
+      "Can't apply: Blessed, Secret: On, 2 deleted traits, a deleted location",
+    ]);
+  });
+
+  it('names a persona or location row by its value', () => {
+    const preset: WorldOption = {
+      id: 'start', name: 'Start', type: 'preset', mode: 'overlay', values: [{ id: 'v', name: 'V', description: '', rows: [
+        { kind: 'persona', entityId: 'wolf' },
+        { kind: 'location', locationId: 'cave' },
+      ] }],
+    };
+    const world = benchEditorWorld({
+      options: [preset], entities: [wolf], locations: [{ id: 'cave', name: 'Cave', description: '', isStarting: false }],
+    } as Partial<World>);
+    renderWorldEditorBench(world, 'advanced');
+    openEditorTab(/Options/);
+    fireEvent.click(screen.getByRole('button', { name: 'Select Start' }));
+    // The Wolf is no persona, and the Cave is no starting location.
+    expect(screen.getByText(/^Can't apply/).textContent).toBe("Can't apply: Persona: Wolf, Starting Location: Cave");
+  });
 });

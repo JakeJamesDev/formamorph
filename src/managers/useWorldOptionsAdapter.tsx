@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, TriangleAlert, X } from 'lucide-react';
 import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
 import { OptionSwitcher } from '@/components/SettingsRows';
@@ -17,6 +17,7 @@ import { useRenameField } from '@/lib/useCodeRename';
 import { isAlwaysOn } from '@/lib/traitEffects';
 import { startPlacesOf } from '@/lib/entityPlaces';
 import { presetPersonaTargets } from '@/lib/entryDraft';
+import { checkPreset, type PresetCheckWorld, type PresetRowIssue } from '@/lib/presetCheck';
 import { randomUUID } from '@/lib/uuid';
 import {
   BOOLEAN_OFF, BOOLEAN_ON, blankOption, choiceDefault, optionDefault, optionRange, reorderOptions, shownValuedOptions, snapNumber, withOptionType,
@@ -241,12 +242,52 @@ function PresetRowsField({ rows, targets, label, onChange }: {
   );
 }
 
+const DELETED_NOUN: Record<PresetRow['kind'], [one: string, many: string]> = {
+  trait: ['trait', 'traits'], option: ['Option', 'Options'], persona: ['persona', 'personas'], location: ['location', 'locations'],
+};
+
+/** A row as its controls read: "Elf", "Wolf: Feral" (Q32), "Size: Big", "Persona: Mira", "Starting Location: Ashgate". */
+function rowName(row: PresetRow, world: PresetCheckWorld): string {
+  if (row.kind === 'persona') return `Persona: ${world.entities.find((e) => e.id === row.entityId)?.name ?? ''}`;
+  if (row.kind === 'location') return `Starting Location: ${world.locations.find((l) => l.id === row.locationId)?.name ?? ''}`;
+  if (row.kind === 'option') {
+    const option = world.options.find((o) => o.id === row.optionId);
+    const value = option?.type === 'boolean' ? (row.value === true ? 'On' : 'Off')
+      : option?.type === 'choice' ? option.values.find((v) => v.id === row.value)?.name : String(row.value);
+    return value ? `${option?.name}: ${value}` : option?.name ?? '';
+  }
+  const owner = row.ownerId === undefined ? undefined : world.entities.find((e) => e.id === row.ownerId);
+  const name = (owner ? owner.traits : world.traits)?.find((t) => t.id === row.traitId)?.name ?? '';
+  return owner ? `${owner.name}: ${name}` : name;
+}
+
+/** The warning on a Preset value naming each row that can't apply, then a count of deleted rows by kind (Q40). */
+function PresetValueWarning({ issues, world }: { issues: readonly PresetRowIssue[]; world: PresetCheckWorld }) {
+  const deleted = (Object.keys(DELETED_NOUN) as PresetRow['kind'][]).flatMap((kind) => {
+    const n = issues.filter((i) => i.deleted && i.row.kind === kind).length;
+    return n === 0 ? [] : [n === 1 ? `a deleted ${DELETED_NOUN[kind][0]}` : `${n} deleted ${DELETED_NOUN[kind][1]}`];
+  });
+  const named = [...issues.filter((i) => !i.deleted).map((i) => rowName(i.row, world)), ...deleted];
+  return (
+    <p role="status" className="flex items-start gap-1 text-helper text-warning">
+      <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+      Can&apos;t apply: {named.join(', ')}
+    </p>
+  );
+}
+
 /** A Preset's fields: what a pick does to the other choices, and its values. */
-function PresetFields({ option, targets, onChange }: {
+function PresetFields({ option, targets, world, onChange }: {
   option: PresetWorldOption;
   targets: RowTargets;
+  world: PresetCheckWorld;
   onChange: (next: WorldOption) => void;
 }) {
+  const { worldOverview, entities, locations, traits, traitGroups, stats, statGroups, items, placements, slots, bodies, options } = world;
+  // Keyed on the slices the check reads, so an edit elsewhere in the world does not rerun it.
+  const issues = useMemo(() => checkPreset(option, {
+    worldOverview, entities, locations, traits, traitGroups, stats, statGroups, items, placements, slots, bodies, options,
+  }), [option, worldOverview, entities, locations, traits, traitGroups, stats, statGroups, items, placements, slots, bodies, options]);
   const setValues = (values: PresetValue[]) => onChange({ ...option, values });
   const setValue = (id: string, patch: Partial<PresetValue>) => setValues(option.values.map((v) => (v.id === id ? { ...v, ...patch } : v)));
   return (
@@ -264,6 +305,7 @@ function PresetFields({ option, targets, onChange }: {
         <Label>Values</Label>
         {option.values.map((value, index) => {
           const label = value.name || `Value ${index + 1}`;
+          const valueIssues = issues.get(value.id);
           return (
             <div key={value.id} className="space-y-3 rounded-lg border p-3" {...fieldFrame('values', value.id)}>
               <div className="flex items-center gap-2">
@@ -283,6 +325,7 @@ function PresetFields({ option, targets, onChange }: {
                 onChange={(e) => setValue(value.id, { description: e.target.value })}
               />
               <PresetRowsField rows={value.rows} targets={targets} label={label} onChange={(rows) => setValue(value.id, { rows })} />
+              {valueIssues && <PresetValueWarning issues={valueIssues} world={world} />}
             </div>
           );
         })}
@@ -305,7 +348,7 @@ function OptionDetail({ option, onChange }: { option: WorldOption; onChange: (ne
   const withPins = (pins: PlaceholderPin[]) => (pins.length ? pins : undefined);
 
   const typeFields = () => {
-    if (option.type === 'preset') return <PresetFields option={option} targets={rowTargets(world)} onChange={onChange} />;
+    if (option.type === 'preset') return <PresetFields option={option} targets={rowTargets(world)} world={world} onChange={onChange} />;
     if (option.type === 'number') {
       const { lo, hi } = optionRange(option);
       return (

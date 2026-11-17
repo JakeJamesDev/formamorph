@@ -1,6 +1,6 @@
 # 04: Preset Check
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -21,7 +21,15 @@ The editor flags a Preset value that cannot fully apply, so the author finds it 
 
 ## Acceptance criteria
 
-- [ ] The check reports each case in the list above. Each test fails when its branch of the check is removed.
-- [ ] A value whose rows all apply reports nothing.
-- [ ] The Options tab shows a warning on a failing value and names the row.
-- [ ] Frame: `.scratch/frames/preset-warning-light.png` at desktop width.
+- [x] The check reports each case in the list above. Each test fails when its branch of the check is removed. `presetCheck.test.ts`; 13 mutations (the check's own guards and apply's skip guards) each turned a test red. The Allowed Personas case is unreachable: it limits only library personas, which rows never name.
+- [x] A value whose rows all apply reports nothing. `presetCheck.test.ts` "reports nothing for a value whose rows all apply, or that has no rows".
+- [x] The Options tab shows a warning on a failing value and names the row. `WorldEditor.presetOption.test.tsx` "warns on a value with rows that can't apply"; wording per Q40 as revised (row names, deleted rows counted).
+- [x] Frame: `.scratch/frames/preset-warning-light.png` at desktop width. 1440 px, light theme.
+
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
+- The warning text in light theme: the yellow warning token reads faintly on the near-white card. It is the existing `text-warning` pattern (see `.scratch/preset-options-04/frames/preset-warning-light.png`).

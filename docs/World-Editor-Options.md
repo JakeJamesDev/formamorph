@@ -66,6 +66,15 @@ A value wins against the player's other picks, whatever order they were made in:
 
 The player sees a notice of what the value turned on and off, and of a new persona or Starting Location. If a row can't apply, such as a trait whose requirements still fail, the notice names it and the rest still apply.
 
+⚠️ A value shows **Can't apply** when some of its rows fail on a new game's starting setup. It names each row the way the row reads, such as **Wolf: Feral** or **Persona: Mira**. A row fails when:
+
+- Its trait is **Always On** or **Hidden**, or a requirement blocks it.
+- Two rows block each other, or the rows pick more traits than their category allows.
+- Its entity isn't in the cast at the start.
+- It sets a hidden Option, another Preset, or a value the Option no longer has.
+- Its persona is no longer marked as one, or the Starting Location step wouldn't offer its location.
+- You deleted its trait, Option, persona or location. The warning counts these, such as **2 deleted traits**.
+
 The player's radio stays on a value while the setup still matches it. If the player changes something the value set, the radio clears.
 
 > 💡 A Preset holds nothing of its own. Requirements, pins and scripts never see it, and it never shows during play.
