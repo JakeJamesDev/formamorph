@@ -20,6 +20,21 @@ export function useKeepEqualMap<K, V>(next: ReadonlyMap<K, V>, equal: (a: V, b: 
   }, [next, equal]);
 }
 
+/** `next`, or `previous` when both hold the same values in the same order. */
+export function keepEqualList<L extends readonly unknown[]>(previous: L | undefined, next: L): L {
+  if (!previous || previous.length !== next.length) return next;
+  return next.every((value, i) => Object.is(value, previous[i])) ? previous : next;
+}
+
+/** {@link keepEqualList} across renders: the list last returned while each new one holds equal content. */
+export function useKeepEqualList<L extends readonly unknown[]>(next: L): L {
+  const kept = useRef<L | undefined>(undefined);
+  return useMemo(() => {
+    kept.current = keepEqualList(kept.current, next);
+    return kept.current;
+  }, [next]);
+}
+
 /** Equal when both objects hold the same fields, each the same value; an array field compares element by element. */
 export function shallowEqualRow<T extends object>(a: T, b: T): boolean {
   if (a === b) return true;

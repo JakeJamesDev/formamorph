@@ -179,7 +179,7 @@ import { openWorldToolTurn, replayedToolEffects, type WorldToolTurn } from "../l
 import { onCallRunner } from "../lib/tools/onCallRunner";
 import { useHelpWorldSource } from "../lib/formaquestion/helpWorld";
 import { buildPlayerView, buildPlayerViewEntities } from "../lib/formaquestion/playerView";
-import { shallowEqualRow, useKeepEqualMap } from "@/lib/keepEqualMap";
+import { shallowEqualRow, useKeepEqualList, useKeepEqualMap } from "@/lib/keepEqualMap";
 import type { GameWorldInput } from "../lib/formaquestion/gameWorld";
 import { storySoFar } from "../lib/formaquestion/storySoFar";
 import {
@@ -2810,10 +2810,11 @@ const GameViewer = ({
     () => (timeContext && !openingHourPending ? { elapsed: gameTime, calendar } : null),
     [timeContext, openingHourPending, gameTime, calendar],
   );
-  const participants = useMemo(
+  // Kept while the names hold, so a streamed sentence leaves the live scene and its readers alone.
+  const participants = useKeepEqualList(useMemo(
     () => recentParticipants(fullMessageHistory, IN_SCENE_TURNS),
     [fullMessageHistory],
-  );
+  ));
   // The world's shared placeholders: the combined list minus the ones an entity or a book owns.
   const sharedPlaceholders = useMemo(
     () => worldPlaceholders.filter((p) => !placeholderOwners.has(p.id)),

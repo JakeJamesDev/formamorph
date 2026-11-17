@@ -4,7 +4,7 @@ import { harborWorld, renderGameViewer } from '@/test/gameViewer';
 import { useGameplay } from '@/contexts/GameplayContext';
 import type { InventoryPanelSettle } from '@/components/game/useInventoryPanel';
 
-/** The panel actions keep their identity while choices and history stream; the inventory settle while choices do. */
+/** The panel actions and the inventory settle keep their identity while choices and history stream. */
 
 vi.hoisted(() => { vi.stubEnv('VITE_DEFAULT_ENDPOINT', ''); });
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -62,5 +62,26 @@ describe('panel actions through a turn', () => {
     const { state } = actions.snapshot();
     expect(state.choices).toEqual(['Wave', 'Ask about the ship', 'Leave']);
     expect(state.fullMessageHistory?.at(-1)?.content).toBe('Look around');
+  });
+
+  it('keep the inventory settle through streamed sentences, and rebuild it when the scene names someone new', async () => {
+    renderGameViewer(harborWorld(), { inGameplay: <Probe /> });
+    await screen.findByPlaceholderText(/Type your action/);
+    const partial = (narration: string) => ({ role: 'assistant' as const, content: JSON.stringify({ narration, choices: [], stat_changes: [] }) });
+    act(() => { gameplay().setFullMessageHistory((history) => [...history, { role: 'user', content: 'Look around' }, partial('The tide turns.')]); });
+    const settle = latestSettle();
+
+    for (const narration of ['The tide turns. Gulls wheel.', 'The tide turns. Gulls wheel. A bell rings.']) {
+      act(() => { gameplay().setFullMessageHistory((history) => [...history.slice(0, -1), partial(narration)]); });
+    }
+    expect(latestSettle()).toBe(settle);
+
+    act(() => {
+      gameplay().setFullMessageHistory((history) => [...history.slice(0, -1), {
+        role: 'assistant',
+        content: JSON.stringify({ narration: 'The tide turns. Gulls wheel. Mira waves.', choices: [], stat_changes: [], entities: ['Mira'] }),
+      }]);
+    });
+    expect(latestSettle()).not.toBe(settle);
   });
 });

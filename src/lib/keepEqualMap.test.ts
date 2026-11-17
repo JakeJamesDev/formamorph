@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { keepEqualMap, shallowEqualRow } from '@/lib/keepEqualMap';
+import { keepEqualList, keepEqualMap, shallowEqualRow } from '@/lib/keepEqualMap';
 
 describe('keepEqualMap', () => {
   const colors = new Map([['mira', 'teal'], ['wren', 'amber']]);
@@ -35,5 +35,21 @@ describe('keepEqualMap', () => {
 
   it('tells shallow row equality apart from a nested object change', () => {
     expect(shallowEqualRow({ tags: [{ a: 1 }] }, { tags: [{ a: 1 }] })).toBe(false);
+  });
+});
+
+describe('keepEqualList', () => {
+  const names = ['Mira', 'Wren'];
+
+  it('returns the previous list for equal content', () => {
+    expect(keepEqualList(names, ['Mira', 'Wren'])).toBe(names);
+  });
+
+  it('returns the new list for an added, removed, changed or reordered name', () => {
+    for (const next of [['Mira', 'Wren', 'Ash'], ['Mira'], ['Mira', 'Ash'], ['Wren', 'Mira'], []]) expect(keepEqualList(names, next)).toBe(next);
+  });
+
+  it('returns the new list with no previous one', () => {
+    expect(keepEqualList(undefined, names)).toBe(names);
   });
 });
