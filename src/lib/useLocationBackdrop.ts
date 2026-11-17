@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { visibleLocationImages, visibleMapImages } from './imageVisibility';
 import { useViewedGateInput } from './useViewedGateInput';
 import { useMediaList } from './useMediaList';
+import { useViewedMediaOverrides } from './useMediaOverrides';
 import type { Base64Data, GameLocation, MapFrame, WorldOverview } from '@/types';
 
 /** The picture play paints when there is no current location. */
@@ -11,10 +12,14 @@ export const DEFAULT_BACKGROUND = './default-background.jpg';
  * The backdrop for the turn on screen: the location's first visible image in author order, nothing when none
  * passes its rule (Q65), or the default background when there is no location.
  */
-export function useLocationBackdrop(location: Pick<GameLocation, 'images'> | null | undefined): Base64Data | undefined {
+export function useLocationBackdrop(location: Pick<GameLocation, 'id' | 'images'> | null | undefined): Base64Data | undefined {
   const input = useViewedGateInput();
   const media = useMediaList();
-  return useMemo(() => (location ? visibleLocationImages(location, input, media)[0]?.data : DEFAULT_BACKGROUND), [location, input, media]);
+  const overrides = useViewedMediaOverrides();
+  return useMemo(
+    () => (location ? visibleLocationImages(location, input, media, overrides.location(location.id, 'image'))[0]?.data : DEFAULT_BACKGROUND),
+    [location, input, media, overrides],
+  );
 }
 
 /** What the player's Map draws behind its boxes: the first visible image, in the shared frame (Q74, Q75). */

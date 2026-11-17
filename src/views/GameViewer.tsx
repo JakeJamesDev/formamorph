@@ -292,9 +292,11 @@ import {
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
   activeTraits as traitsInForce, causedSwitches, entityStatTraitsInForce, heldGlobalTraits, globalRowTraits, startingTraitLog,
-  gateStatsOf, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitForceScope, traitNameIn, traitSwitchEvents,
+  gateStatsOf, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitForceScope, traitGateInput, traitNameIn, traitSwitchEvents,
   type CausedSwitch, type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
+import { mediaOverrideReader, personaEntityId, soundWithOverride, withMediaWrites } from "../lib/mediaOverrides";
+import { sandboxMediaOf } from "../lib/sandboxMedia";
 import type { GateStats } from "../lib/traitGates";
 import { starvationLoss } from "../lib/starvation";
 import { useSettleOnSaveLoad } from "../lib/useSettleOnSaveLoad";
@@ -432,7 +434,7 @@ type ChoicesRerun = { ran: false } | { ran: true; changed: false } | { ran: true
 
 /** The pre-turn state a stat re-roll hands stat code, so code reads and switches as the turn it replaces did. */
 type PreTurnCodeState = Pick<
-  LiveSnapshot, 'codePins' | 'loreToggles' | 'globalTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits'
+  LiveSnapshot, 'codePins' | 'loreToggles' | 'mediaOverrides' | 'globalTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits'
   | 'entityStats'
 >;
 
@@ -465,8 +467,8 @@ const worldHolding = (world: TraitWorld, items: HeldItems | undefined): TraitWor
   (items ? { ...world, itemInstances: items.instances } : world);
 
 /** `traits` in the shape a code run hands on, with the pins and lore of `pins`. */
-const codeStateOf = (traits: TraitRuntimeState, pins: Pick<PreTurnCodeState, 'codePins' | 'loreToggles'>): TurnCodeState => ({
-  codePins: pins.codePins, loreToggles: pins.loreToggles,
+const codeStateOf = (traits: TraitRuntimeState, pins: Pick<PreTurnCodeState, 'codePins' | 'loreToggles' | 'mediaOverrides'>): TurnCodeState => ({
+  codePins: pins.codePins, loreToggles: pins.loreToggles, mediaOverrides: pins.mediaOverrides,
   globalStats: traits.stats, globalTraits: traits.traits, disabledTraitIds: traits.disabledTraitIds,
   appliedTraitValues: traits.appliedValues, cascadeOffTraitIds: traits.cascadeOffTraitIds,
   ownedTraits: traits.ownedTraits, entityStats: traits.entityStats,
@@ -827,6 +829,8 @@ const GameViewer = ({
     setCodePins,
     loreToggles,
     setLoreToggles,
+    mediaOverrides,
+    setMediaOverrides,
     worldOptionValues,
     setWorldOptionValues,
     itemInstances,
@@ -2324,6 +2328,7 @@ const GameViewer = ({
         resetEntityStats(preTurn.entityStats ?? {});
         setCodePins(preTurn.codePins ?? {});
         setLoreToggles(preTurn.loreToggles ?? {});
+        setMediaOverrides(preTurn.mediaOverrides ?? {});
         setGlobalTraits(preTurn.globalTraits);
         setDisabledTraitIds(preTurn.disabledTraitIds ?? []);
         setAppliedTraitValues(preTurn.appliedTraitValues ?? {});
@@ -3594,7 +3599,7 @@ const GameViewer = ({
       // `codeView`, which React has not re-rendered for.
       beforeBoxDeltasRef.current = {};
       const preBox: TurnCodeState = {
-        globalStats: rawGlobalStatsRef.current, codePins, loreToggles, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds,
+        globalStats: rawGlobalStatsRef.current, codePins, loreToggles, mediaOverrides, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds,
         ownedTraits, entityStats: entityStatsRef.current,
       };
       turnStartItemsRef.current = { ...liveItemsRef.current, instances: [...liveItemsRef.current.instances] };
@@ -4193,10 +4198,10 @@ const GameViewer = ({
   // The pin and trait state a run reads, by ref. A turn's after box runs out of the closure its render
   // minted, which is older than the before box's writes — the same reason the stats ride in on a ref.
   const liveCodeStateRef = useRef({
-    codePins, loreToggles, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, statTraits,
+    codePins, loreToggles, mediaOverrides, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, statTraits,
   });
   liveCodeStateRef.current = {
-    codePins, loreToggles, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, statTraits,
+    codePins, loreToggles, mediaOverrides, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, statTraits,
   };
   // The trait state play stands at, which a switch run lands onto. A commit writes it at once, so a landing
   // before the next render builds on that commit.
@@ -4328,6 +4333,7 @@ const GameViewer = ({
         const inForce = preTurn ? inForceOn(held, entityBase) : live.statTraits;
         const basePins = preTurn ? preTurn.codePins ?? {} : live.codePins;
         const baseLore = preTurn ? preTurn.loreToggles ?? {} : live.loreToggles;
+        const baseMedia = preTurn ? preTurn.mediaOverrides ?? {} : live.mediaOverrides;
         // The run's stat text resolves under the pins its `placeholders` read, so the two agree.
         const runPins = preTurn ? pinsFor(basePins).world : live.pins;
         const resolveRun = (text: string) => resolveFor(runPins, text);
@@ -4384,6 +4390,16 @@ const GameViewer = ({
           notes: liveScene().notes,
           turn: currentTurnRead(),
           loreToggles: baseLore,
+          media: sandboxMediaOf({
+            list: worldOverview?.mediaList, overrides: baseMedia, entities: codeEntities.world,
+            personaId: personaEntityId(personaRef),
+            locations, items: worldItems ?? [], itemInstances: itemsNow.instances, music: worldOverview?.bgm,
+            generics: (scriptBookRef.current?.book ?? currentBook()).generics,
+            gate: () => traitGateInput(
+              { traits: [...held.acquired], disabledTraitIds: [...held.disabledTraitIds], ownedTraits: held.ownedTraits, stats, entityStats: entityBase },
+              { ...world, itemInstances: itemsNow.instances },
+            ),
+          }),
           itemInstances: itemsNow.instances, items: worldItems, slots: worldSlots,
           ...(worldCurrencies.length ? { money: { currencies: worldCurrencies, placements: worldPlacements } } : {}),
           bodies: {
@@ -4417,14 +4433,16 @@ const GameViewer = ({
         const writtenBy = (result: StatCodeTurnResult): TurnCodeState | null => {
           const nextPins = withPinWrites(basePins, result.pinWrites);
           const nextLore = withLoreWrites(baseLore, result.loreWrites);
+          const nextMedia = withMediaWrites(baseMedia, result.mediaWrites);
           const ownersInForce = entityInForceUnder(result.traits?.ownedTraits ?? held.ownedTraits ?? {});
           const nextEntityStats = withOwnerCodeResults(entityBase, result.owners, ownersInForce);
           if (!result.traits && !changedAnyStat(result)
-            && nextPins === basePins && nextLore === baseLore && nextEntityStats === entityPrevious) return null;
+            && nextPins === basePins && nextLore === baseLore && nextMedia === baseMedia && nextEntityStats === entityPrevious) return null;
           return {
             globalStats: overlayStatCodeResult(afterAsks, result, inForce),
             codePins: nextPins,
             loreToggles: nextLore,
+            mediaOverrides: nextMedia,
             globalTraits: [...(result.traits?.acquired ?? held.acquired)],
             disabledTraitIds: [...(result.traits?.disabledTraitIds ?? held.disabledTraitIds)],
             appliedTraitValues: result.traits?.appliedValues ?? held.appliedValues,
@@ -4451,6 +4469,7 @@ const GameViewer = ({
             result = { ...result, worldWrites: withoutBodies(result.worldWrites) };
           }
           setLoreToggles((prev) => withLoreWrites(prev, result.loreWrites));
+          setMediaOverrides((prev) => withMediaWrites(prev, result.mediaWrites));
           setWorldOptionValues((prev) => withOptionWrites(prev, result.optionWrites));
           // Onto the latest values, as the player's stats below: the regen tick can apply while the run awaits.
           const ownersInForce = entityInForceUnder(result.traits?.ownedTraits ?? held.ownedTraits ?? {});
@@ -4504,6 +4523,7 @@ const GameViewer = ({
           if (inventory?.length && result.items) landScriptInventoryRef.current?.(inventory, result.items, totals, undefined, baseWrites);
           setCodePins((prev) => withPinWrites(prev, result.pinWrites));
           setLoreToggles((prev) => withLoreWrites(prev, result.loreWrites));
+          setMediaOverrides((prev) => withMediaWrites(prev, result.mediaWrites));
           setWorldOptionValues((prev) => withOptionWrites(prev, result.optionWrites));
           ranTraits?.log.forEach((line, i) => {
             const trait = ranTraits.logTraits?.[i];
@@ -4520,7 +4540,7 @@ const GameViewer = ({
         return null;
       }
     },
-    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, setLoreToggles, resolvePH, resolveFor, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, scriptTabWorld, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene, presence, libraryIn, locations, currentLocation, discoveredEntities,
+    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, setLoreToggles, setMediaOverrides, worldOverview?.mediaList, worldOverview?.bgm, currentBook, resolvePH, resolveFor, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, scriptTabWorld, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene, presence, libraryIn, locations, currentLocation, discoveredEntities,
       scriptPlacesNow, resolveEntityText, setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry, playPrompts, commitTraitState,
       worldItems, worldSlots, inventoryWorld, personaRef, startActionTotals],
   );
@@ -4586,7 +4606,8 @@ const GameViewer = ({
       const events = causedSwitches(traitSwitchEvents(from, to, world, fromWorld), 'player', toggled ? [toggled] : []);
       if (!events.length) return;
       const prepared = prepareStatCode(to.stats, to.stats, [], { deltaHours: 0, elapsedHours: gameTime, calendar }, {
-        codePins: liveCodeStateRef.current.codePins, loreToggles: liveCodeStateRef.current.loreToggles, globalTraits: to.traits, disabledTraitIds: to.disabledTraitIds,
+        codePins: liveCodeStateRef.current.codePins, loreToggles: liveCodeStateRef.current.loreToggles, mediaOverrides: liveCodeStateRef.current.mediaOverrides,
+        globalTraits: to.traits, disabledTraitIds: to.disabledTraitIds,
         appliedTraitValues: to.appliedValues, cascadeOffTraitIds: to.cascadeOffTraitIds ?? {}, ownedTraits: to.ownedTraits ?? {},
         entityStats: to.entityStats ?? {},
         // The render that committed `to` has not run yet, so the run reads `world` rather than the live one.
@@ -4695,6 +4716,7 @@ const GameViewer = ({
       setGlobalStats(undo.globalStats ?? []);
       setCodePins(undo.codePins ?? {});
       setLoreToggles(undo.loreToggles ?? {});
+      setMediaOverrides(undo.mediaOverrides ?? {});
       setGlobalTraits(undo.globalTraits ?? []);
       setDisabledTraitIds(undo.disabledTraitIds ?? []);
       setAppliedTraitValues(undo.appliedTraitValues ?? {});
@@ -5950,7 +5972,7 @@ const GameViewer = ({
     const live = liveTraitStateRef.current;
     const code = liveCodeStateRef.current;
     const prepared = prepareStatCode(live.stats, live.stats, [], { deltaHours: 0, elapsedHours: gameTime, calendar }, {
-      codePins: code.codePins, loreToggles: code.loreToggles, globalTraits: live.traits, disabledTraitIds: live.disabledTraitIds,
+      codePins: code.codePins, loreToggles: code.loreToggles, mediaOverrides: code.mediaOverrides, globalTraits: live.traits, disabledTraitIds: live.disabledTraitIds,
       appliedTraitValues: live.appliedValues, cascadeOffTraitIds: live.cascadeOffTraitIds ?? {}, ownedTraits: live.ownedTraits ?? {},
       entityStats: live.entityStats ?? {},
     }, events[0].timing);
@@ -6293,6 +6315,7 @@ const GameViewer = ({
       setMemoryPins({});
       setCodePins({});
       setLoreToggles({});
+      setMediaOverrides({});
       setWorldOptionValues(initialOptionValues);
       setEntityVisualPreference({});
       // A new game always holds a reference; None is a choice, and absence means a save from before personas.
@@ -6425,8 +6448,19 @@ const GameViewer = ({
     scrollToBottom();
   }, [logEntries, scrollToBottom]);
 
-  useLoopingAudio(bgmEnabled ? resolveSound(worldOverview?.bgm, worldOverview?.mediaList)?.data : null);
-  useLoopingAudio(resolveSound(ambientSound, worldOverview?.mediaList)?.data);
+  // What scripts set in place of the authored media, as play stands now.
+  const liveMediaOverrides = useMemo(() => mediaOverrideReader(mediaOverrides, worldOverview?.mediaList, {
+    genericStates, locationId: currentLocation?.id, personaId: personaEntityId(personaRef),
+  }), [mediaOverrides, worldOverview?.mediaList, genericStates, currentLocation?.id, personaRef]);
+  // Mention cards rebuild only when an override changes, so they read no per-place copy (positions move every turn).
+  const mentionMediaOverrides = useMemo(
+    () => mediaOverrideReader(mediaOverrides, worldOverview?.mediaList, { personaId: personaEntityId(personaRef) }),
+    [mediaOverrides, worldOverview?.mediaList, personaRef],
+  );
+  useLoopingAudio(bgmEnabled ? resolveSound(soundWithOverride(worldOverview?.bgm, liveMediaOverrides.music()), worldOverview?.mediaList)?.data : null);
+  useLoopingAudio(resolveSound(
+    soundWithOverride(ambientSound, currentLocation ? liveMediaOverrides.location(currentLocation.id, 'ambience') : undefined), worldOverview?.mediaList,
+  )?.data);
 
   // Extract the displayed narration from an assistant message (see lib/aiResponse).
   const parseAssistantMessage = (content: string) => narrationOf(content) ?? "";
@@ -6658,18 +6692,18 @@ const GameViewer = ({
         world: mentionWorld,
         current: { discoveredEntities, entityPositions, genericStates, uniqueStates, locationId: currentLocationId, metEntities: [...metEntities], strangerAliases },
         savedVisible, currentVisible: visibleEntities, persona: persona?.entity ?? null, resolve: resolvePH, isEntityOn: inPlay.isEntityOn,
-        gate: liveGate, media: worldOverview.mediaList,
+        gate: liveGate, media: worldOverview.mediaList, mediaOverrides: mentionMediaOverrides,
       }),
     };
     return {
       cardRows: mentionCardRows(view, presenceById, {
-        imageOf: (entity) => visibleImages(entity, liveGate, worldOverview.mediaList)[0]?.data,
+        imageOf: (entity) => visibleImages(entity, liveGate, worldOverview.mediaList, mentionMediaOverrides.entity(entity.id, 'image'))[0]?.data,
         describe: (entity) => (entity.strangerDescription ? resolveEntityText(entity, entity.strangerDescription) : ''),
       }),
       pickBase: pickListBase(view, presenceById, metEntities),
     };
   }, [settings.characterMentions, mentionWorld, discoveredEntities, entityPositions, genericStates, uniqueStates, currentLocationId, metEntities,
-    strangerAliases, savedVisible, visibleEntities, persona, resolvePH, inPlay, liveGate, worldOverview.mediaList, presenceById, resolveEntityText]);
+    strangerAliases, savedVisible, visibleEntities, persona, resolvePH, inPlay, liveGate, worldOverview.mediaList, mentionMediaOverrides, presenceById, resolveEntityText]);
   const steadyCardRows = useKeepEqualMap(cardRows, shallowEqualRow);
   const shownQuoteColors = useKeepEqualMap(useMemo(() => cardColors(quoteColors, steadyCardRows), [quoteColors, steadyCardRows]));
   const pickable = useCallback(

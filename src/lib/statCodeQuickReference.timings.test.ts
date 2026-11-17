@@ -107,7 +107,7 @@ describe('the Scripts Guide’s table of names a timing adds', () => {
 
   it('gives instance verbs, not writes: a field write drops and a verb lands', async () => {
     const row = rows.find((candidate) => candidate.name === 'instance')!;
-    expect(row.write).toBe('Verbs, not writes');
+    expect(row.write).toBe('Verbs, and an image name');
     const result = await executeStatCode('instance.quantity = 9; instance.lose(1);', [stat], null, optionsOf('instance'));
     expect(result.error).toBeNull();
     // `instance` is the item's listed entry, so the write names that path.

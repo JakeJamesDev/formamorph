@@ -5,7 +5,7 @@ import { DEFAULT_BACKGROUND, useLocationBackdrop, useMapBackdrop } from './useLo
 import type { GateInput } from './traitGates';
 import type { GalleryImage, StatRequirement } from '@/types';
 
-const state = vi.hoisted(() => ({ health: 50 }));
+const state = vi.hoisted(() => ({ health: 50, override: undefined as string | undefined }));
 
 // The turn on screen: Wren is the played persona, and her Health is the stat the rules read.
 vi.mock('./useViewedGateInput', () => ({
@@ -19,14 +19,22 @@ vi.mock('./useViewedGateInput', () => ({
   }),
 }));
 
-beforeEach(() => { state.health = 50; });
+// A script's override of the square's image, by entry id, and the list it names.
+vi.mock('./useMediaOverrides', () => ({
+  useViewedMediaOverrides: () => ({
+    entity: () => undefined, location: (id: string) => (id === 'square' ? state.override : undefined), item: () => undefined, music: () => undefined,
+  }),
+}));
+vi.mock('./useMediaList', () => ({ useMediaList: () => ({ 'm-storm': { id: 'm-storm', name: 'Storm', kind: 'image', data: 'storm' } }) }));
+
+beforeEach(() => { state.health = 50; state.override = undefined; });
 
 const hurt: StatRequirement = { kind: 'stat', id: 'health', operator: '<', value: 20, unit: 'raw' };
 const when = (data: string, req: StatRequirement): GalleryImage => ({ data, requires: [{ all: [req] }] });
 
 describe('useLocationBackdrop', () => {
   it('swaps the backdrop as the persona’s Health crosses the line', () => {
-    const square = { images: [when('wounded', hurt), { data: 'healthy' }] };
+    const square = { id: 'square', images: [when('wounded', hurt), { data: 'healthy' }] };
     const { result, rerender } = renderHook(() => useLocationBackdrop(square));
     expect(result.current).toBe('healthy');
     state.health = 10;
@@ -34,13 +42,24 @@ describe('useLocationBackdrop', () => {
     expect(result.current).toBe('wounded');
   });
 
+  it('paints a script’s override over the rules until it clears', () => {
+    const square = { id: 'square', images: [when('wounded', hurt), { data: 'healthy' }] };
+    state.health = 10;
+    state.override = 'm-storm';
+    const { result, rerender } = renderHook(() => useLocationBackdrop(square));
+    expect(result.current).toBe('storm');
+    state.override = undefined;
+    rerender();
+    expect(result.current).toBe('wounded');
+  });
+
   it('paints no backdrop when no image passes its rule', () => {
-    const square = { images: [when('wounded', hurt)] };
+    const square = { id: 'square', images: [when('wounded', hurt)] };
     expect(renderHook(() => useLocationBackdrop(square)).result.current).toBeUndefined();
   });
 
   it('paints no backdrop for a location with no images', () => {
-    expect(renderHook(() => useLocationBackdrop({})).result.current).toBeUndefined();
+    expect(renderHook(() => useLocationBackdrop({ id: 'empty' })).result.current).toBeUndefined();
   });
 
   it('shows the default background only when there is no location', () => {

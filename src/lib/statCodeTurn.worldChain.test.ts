@@ -63,6 +63,19 @@ describe('a later script reads an earlier script’s world write', () => {
     expect(out.worldWrites?.bodies).toEqual([{ owner: 'bram', pick: { kind: 'body', id: 'b-wolf' } }]);
   });
 
+  it('reads a media write, and the turn hands every write on in order', async () => {
+    const media = {
+      entries: [{ id: 'm-calm', name: 'Calm', kind: 'image' as const }, { id: 'm-hurt', name: 'Hurt', kind: 'image' as const }],
+      overrides: {}, defaults: () => ({ entities: { bram: { image: 'm-calm' } } }),
+    };
+    const code = 'stats.Echo.value = entities.Bram.image === "Hurt" ? 1 : 0;';
+    const chained = await read({ media }, 'entities.Bram.image = "Hurt";', code);
+    const control = await read({ media }, code);
+    expect(echoOf(control)).toBe(0);
+    expect(echoOf(chained)).toBe(1);
+    expect(chained.mediaWrites).toEqual([{ owner: { kind: 'entity', id: 'bram' }, field: 'image', mediaId: 'm-hurt' }]);
+  });
+
   it('reads a location write, with who is present and the exits from there', async () => {
     const code = 'stats.Echo.value = (location.name === "Hill" ? 1000 : 0) + location.present.length * 100 + location.exits.length;';
     const chained = await read({}, 'location.move("Hill");', code);

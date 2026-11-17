@@ -12,22 +12,23 @@ A script can use only these objects. In the table, a word in angle brackets is a
 | --- | --- | --- | --- |
 | `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `self.value` | `self.value = <n>` |
 | `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
-| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
+| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `image`, `sound`, `instances`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `hour`, `minute`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
 | `turn` | `action`, `number`, `narration`, `choices` | `turn.number` | `turn.choices = [<text>]`, After the AI only |
-| `locations` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items` | `locations.<Location>.present` | Read-only |
-| `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items`, `move()` | `location.name` | `location.move("<Location>")` |
+| `locations` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items`, `image`, `ambience` | `locations.<Location>.present` | `locations.<Location>.image = "<Image>"` |
+| `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items`, `image`, `ambience`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
 | `memories` | `id`, `turn`, `timestamp`, `day`, `daypart`, `text`, `name`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `append()`, `pin()`, `forget()`, `edit()`, `remove()` | `memories.length` | `memories.pin(<text>)` |
 | `notes` | — | `notes` | Read-only |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
-| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
-| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
+| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `image`, `sound`, `instances` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
+| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `image`, `sound`, `instances`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
 | `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
 | `dictionaries` | `id`, `name`, `enabled`, `entries`, `placeholders` | `dictionaries.<Dictionary>.enabled` | `dictionaries.<Dictionary>.enabled = true` |
 | `items` | `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, `placeholders`, `instances`, `give()` | `items.<Item>.instances.length` | `items.<Item>.give(persona)` |
 | `currencies` | `id`, `name`, `kind`, `balance()`, `pay()` | `currencies.<Currency>.balance(persona)` | `currencies.<Currency>.pay(persona, null, <n>)` |
 | `options` | — | `options.<Option>` | `options.<Option> = true` |
+| `world` | `music` | `world.music` | `world.music = "<Sound>"` |
 | `console` | `log()` | — | `console.log(<text>)` |
 
 A timing adds names to those objects. A script reads only the names its own timing adds:
@@ -37,7 +38,7 @@ A timing adds names to those objects. A script reads only the names its own timi
 | **`narration`** | During AI Output only | `sentence`, `sent`, `buffered`, `full`, `index` | `narration.sentence` | `narration.sentence = <text>` |
 | **`player`** | Every timing but During AI Output | `tell()`, `toast()`, `confirm()`, `ask()`, `input()` | `player.confirm(<text>)` | Calls, not writes |
 | **`trait`** | When a Trait Switches only | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle`, `owner` | `trait.enabled` | Read-only |
-| **`instance`** | The five item timings only | `id`, `item`, `owner`, `location`, `quantity`, `equipped`, `slot`, `hidden`, `unidentified`, `uses`, `state`, `lose()`, `moveTo()`, `equip()`, `unequip()`, `use()`, `reveal()`, `setUses()`, `setState()` | `instance.quantity` | Verbs, not writes |
+| **`instance`** | The five item timings only | `id`, `item`, `owner`, `location`, `quantity`, `equipped`, `slot`, `hidden`, `unidentified`, `uses`, `state`, `image`, `lose()`, `moveTo()`, `equip()`, `unequip()`, `use()`, `reveal()`, `setUses()`, `setState()` | `instance.quantity` | Verbs, and an image name |
 
 `args` holds what started the run (see [Args](#args)). A [World Tool](ScriptsGuide#world-tools)'s script reads the values the AI sent, such as `args.<Parameter>`.
 
@@ -94,7 +95,7 @@ Each entry has the [same members as `self`](#stat-properties). Each entry takes 
 <!-- keywords: own stats, read the entity's other stats, script on a monster's stat, this entity, entity's own stat, self entity, creature code, npc code, blueprint owner, empty owner, owner is blank, owner stats, owner traits, owner placeholders -->
 <!-- route: worldEditorStat.code -->
 
-`owner` is the entity that owns the running stat. It has the same members as an [entity entry](#entities): `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()` and `diary()`.
+`owner` is the entity that owns the running stat. It has the same members as an [entity entry](#entities): `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `image`, `sound`, `instances`, `move()`, `follow()`, `unfollow()`, `meet()` and `diary()`.
 
 The entity's own stats are under `owner.stats`, its own traits under `owner.traits`, and its own placeholders under `owner.placeholders`.
 
@@ -499,7 +500,7 @@ A write to an unknown trait name is ignored. **Test Code** and the **Test Bench*
 | `placeholders` | The placeholders the persona owns. See [Owned Placeholders](#owned-placeholders) |
 | `stats` | The persona's own stats by name, as an [entity's `stats`](#entities). Entries take writes |
 
-`persona` also has the `id`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `items` and `body` of an [entity entry](#entities).
+`persona` also has the `id`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `items`, `body`, `image`, `sound` and `instances` of an [entity entry](#entities).
 
 - `inScene` and `met` are always true for the played persona.
 - `location` is where the player is. `following` is always false.
@@ -561,6 +562,9 @@ When the player plays no entity, `persona` is an empty entry:
 | `stats` | The entity's own stats by name. Entries take writes |
 | `items` | The Item Instances the entity owns. See [Items](#items). Read-only |
 | `body` | The entity's Body in force, or `null`. Assign a Body name to set its base Body. See [Bodies](#bodies) |
+| `image` | The name of the Media List image the entity shows first, or `null`. Assign an image's name to show it. See [Media](#media) |
+| `sound` | The name of the Media List sound the entity plays, or `null`. Assign a sound's name to play it. See [Media](#media) |
+| `instances` | A Generic entity's copies, one per Start, each with its own `image` and `sound`. Empty for any other entity. See [Media](#media) |
 | `move()` | Moves a Unique entity to a location. Ignored on a Generic entity. See [Moving Entities](#moving-entities) |
 | `follow()` | Makes a Unique entity follow the player. Ignored on a Generic entity |
 | `unfollow()` | Stops a Unique entity following or waiting, so it goes back to its usual places. Ignored on a Generic entity |
@@ -757,7 +761,7 @@ if (traits["Vault Key"].enabled) dictionaries.Lore.entries["Sealed Vault"].enabl
 
 `items` holds every item of the world by code name. Each entry has `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, its own `placeholders`, and `instances`: its Item Instances in the game. An unidentified field is `''` when the item leaves it blank.
 
-Each Item Instance has these members. They are read-only.
+Each Item Instance has these members. They are read-only, except `image`.
 
 | Member | What it is |
 | --- | --- |
@@ -771,6 +775,7 @@ Each Item Instance has these members. They are read-only.
 | `unidentified` | True when the player sees the item's unidentified face |
 | `uses` | Uses left, or `null` when the item has no **Uses** |
 | `state` | Its **State** word, or `null` when it has none |
+| `image` | The name of the Media List image it shows, or `null`. Assign an image's name to show it. See [Media](#media) |
 
 An entity's entry, `persona` and a location's entry each have `items`: the Item Instances that it holds.
 
@@ -903,6 +908,43 @@ persona.body = "Wolf";
 - **The write settles at once.** Items in a slot the new Body lacks, or past a smaller capacity, unequip and stay carried. Their effects reverse, **When Unequipped** runs and the log names the Body and the items. This holds in a **When a Trait Switches** script and an item script.
 - **`body` reads the new Body in the same run,** with the items equipped in its slots.
 - **The base Body is saved with the game.** A script cannot return the base to the Body the world picked. Assign that Body's name.
+
+### Media
+<!-- keywords: change picture, swap image, show image from code, change portrait, wounded portrait, change outfit, set sound, change music, change ambience, media list, override image, clear image, per guard image -->
+
+A script shows or plays any entry of the world's **Media List** by naming it, the way `persona.body = "Wolf"` sets a Body.
+
+| Member | On | Takes |
+| --- | --- | --- |
+| `image` | An entity's entry, `persona`, `owner`, each entry of `instances`, a location's entry, `location`, each Item Instance | An image's name |
+| `sound` | An entity's entry, `persona`, `owner`, each entry of `instances` | A sound's name |
+| `ambience` | A location's entry, `location` | A sound's name |
+| `music` | `world` | A sound's name |
+
+```javascript
+// Mira looks hurt while her Health is low.
+entities.Mira.image = stats.Health.value < 20 ? "Mira Wounded" : null;
+
+// The storm rolls in.
+locations["Old Mill"].ambience = "Thunder";
+world.music = "Storm Theme";
+```
+
+- **Reading gives the name of the entry shown, or `null`.** With nothing assigned, `image` reads the first image the [Visibility rules](World-Editor-Entities) show, and the other members read the entry the field links. A picture or sound kept in the world, not on the Media List, reads `null`.
+- **Assign a name to show that entry.** It shows first, over every Visibility rule, wherever the image appears. The rule-picked images follow it, so the player can still page to them.
+- **Assign `null` to clear it.** The Visibility rules and the authored sound return.
+- **Names match exactly.** A name the Media List has no entry for stops the script with an error that names it. So does an image's name on `sound`, `ambience` or `music`, or a sound's name on `image`.
+- **The member reads the new name in the same run.**
+- **The change is saved with the game,** and a rewind past its turn undoes it. It holds the entry, not its name, so renaming the entry keeps it. When the entry is deleted from the world, the owner goes back to its rules.
+- **An Item Instance's image is its own.** Two Item Instances of one item can show different images.
+- **`image` and `sound` on a Generic entity set every copy of it.** A Generic entity runs one copy per Start. To set one copy, use its entry in `instances`, which wins over the entity's. Each entry has `id`, its Start's id, and `location`, the code name of the place it stands, or `''`. The panel shows the copy standing where the player is.
+- **An entity the player plays keeps its own image and sound apart.** While the player plays an entity, `persona` and that entity's entry set the persona's, and the entity's own come back when the player plays someone else.
+
+```javascript
+// The guard at the gate wears the captain's armor; the others keep theirs.
+const atGate = entities.Guard.instances.find((guard) => guard.location === "Gate");
+if (atGate) atGate.image = "Captain";
+```
 
 ### Narration
 <!-- keywords: rewrite a sentence, sentence hook, during ai output, narration object, narration sentence, sent, buffered, full, index, filter narration, replace words in the story, narration is not defined, error underline on narration -->
@@ -1181,7 +1223,7 @@ if (stats.Bridge.value === 0) turn.choices = turn.choices.filter((choice) => !/b
 ### Location
 <!-- keywords: move player, teleport, change scene, travel, where am i, current place, go to -->
 
-`locations` holds every location of the world by its code name, as `entities` holds the entities. A name with a space needs brackets: `locations["Old Mill"]`. `location` is the entry of the location the turn is at. Both have the same fields. All fields are read-only.
+`locations` holds every location of the world by its code name, as `entities` holds the entities. A name with a space needs brackets: `locations["Old Mill"]`. `location` is the entry of the location the turn is at. Both have the same fields. All fields are read-only, except `image` and `ambience`.
 
 | Field | What it is |
 | --- | --- |
@@ -1195,6 +1237,8 @@ if (stats.Bridge.value === 0) turn.choices = turn.choices.filter((choice) => !/b
 | `children` | The code names of the locations inside this one, in the editor's order |
 | `exits` | The direct ways out of here, each with a `name` (a code name), a `hint` (the Connection's travel hint, or empty), a `distance` (`'nearby'`, or `'far'` across a Far Connection) and `oneWay` (true when the Connection runs this way only). A parent, child or sibling with no Connection is `'nearby'` and two-way. A move can carry the player further than these |
 | `items` | The Item Instances lying at the location. See [Items](#items) |
+| `image` | The name of the Media List image the location shows first, or `null`. Assign an image's name to show it. See [Media](#media) |
+| `ambience` | The name of the Media List sound the location plays, or `null`. Assign a sound's name to play it. See [Media](#media) |
 
 In a world with no location, `location.id` and `location.name` are empty, and `location.present` is an empty list. An unknown location name reads as a blank entry.
 

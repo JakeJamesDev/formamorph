@@ -64,7 +64,7 @@ export type CodeValue =
   | { is: 'listed'; path: string };
 
 /** The element shapes an array can hold: a `memories` entry, an entity entry as `present` holds, or an exit. */
-export type ArrayElement = 'memory' | 'entity' | 'exit';
+export type ArrayElement = 'memory' | 'entity' | 'exit' | 'genericInstance';
 
 export type CodeStatValue = Extract<CodeValue, { is: 'stat' }>;
 type ArrayValue = Extract<CodeValue, { is: 'array' }>;
@@ -286,6 +286,7 @@ export function codeResolver(
     if (key === 'stats') return { is: 'statMap', owner };
     if (key === 'traits') return { is: 'traitMap', owner };
     if (key === 'placeholders') return { is: 'placeholders', owner, path: [] };
+    if (key === 'instances') return { is: 'array', of: 'genericInstance', path: null };
     return null;
   }
 

@@ -89,6 +89,7 @@ import { HelpButton } from '../HelpButton';
 import { AllowanceRing } from './AllowanceRing';
 import { EditTextModal } from '../modals/EditTextModal';
 import { visibleItemImage } from '@/lib/imageVisibility';
+import { useViewedMediaOverrides } from '@/lib/useMediaOverrides';
 import type { Entity, ItemInstance, PersonaRef, Stat, StatGroup, Trait } from '@/types';
 import { gateStates } from '@/lib/traitGates';
 import { worldEntitiesOf } from '@/lib/persona';
@@ -1532,6 +1533,7 @@ export const RightPanel = ({
     [viewTraitState, globalStats, viewEntityStats, gateWorld],
   );
   const traitGates = React.useMemo(() => gateStates(gateInput), [gateInput]);
+  const mediaOverrides = useViewedMediaOverrides();
   // Each entity's own traits switch its stats on and off, on the viewed turn.
   const entityInForce = React.useCallback(
     (ownerId: string) => entityStatTraitsInForce(viewOwnedTraits, gateWorld, ownerId),
@@ -1540,8 +1542,8 @@ export const RightPanel = ({
   const itemImageOf = React.useCallback((instance: ItemInstance) => {
     const ref = instance.item;
     const item = ref.kind === 'item' ? worldItems?.find((i) => i.id === ref.itemId) : undefined;
-    return item && visibleItemImage(item, instance, gateInput, gameData?.worldOverview.mediaList);
-  }, [worldItems, gateInput, gameData?.worldOverview.mediaList]);
+    return item && visibleItemImage(item, instance, gateInput, gameData?.worldOverview.mediaList, mediaOverrides.item(instance.id));
+  }, [worldItems, gateInput, gameData?.worldOverview.mediaList, mediaOverrides]);
   const inventory = useInventoryPanel(inventorySettle, itemImageOf);
   // Listed actions wait while a turn or an earlier action's scripts run (Q13).
   const actionsBlocked = isWaitingForAI || actionsBusy;

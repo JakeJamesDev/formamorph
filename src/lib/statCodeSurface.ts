@@ -52,8 +52,11 @@ export const TURN_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
 /** `turn`'s members in an After the AI script, where `choices` takes a write (Q21). */
 export const AFTER_TURN_MEMBERS: readonly SurfaceEntry[] = withAccess(TURN_MEMBERS, ['choices'], 'writable');
 
-/** The members of one entry in `locations`. None takes a write. */
-export const LOCATION_ENTRY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
+const LOCATION_IMAGE_INFO = 'Name of the image the location shows first, or null; assign an image’s name to show it';
+const LOCATION_AMBIENCE_INFO = 'Name of the sound the location plays as ambience, or null; assign a sound’s name to play it';
+
+/** The members of one entry in `locations`. Only `image` and `ambience` take a write. */
+export const LOCATION_ENTRY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'Unique id of the location' },
   { name: 'name', detail: 'string', info: 'Code name of the location' },
   { name: 'description', detail: 'string', info: 'Full AI description of the location, its placeholders filled in' },
@@ -64,7 +67,9 @@ export const LOCATION_ENTRY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'children', detail: 'string[]', info: 'Code names of the locations inside this one, in the order the editor lists them' },
   { name: 'exits', detail: 'array', info: 'The direct ways out of the location, each exit with a code name, travel hint, distance and direction' },
   { name: 'items', detail: 'array', info: 'The Item Instances lying at the location, each with the fields of an Item Instance entry' },
-]);
+  { name: 'image', detail: 'string | null', info: LOCATION_IMAGE_INFO },
+  { name: 'ambience', detail: 'string | null', info: LOCATION_AMBIENCE_INFO },
+], ['image', 'ambience'], 'writable');
 
 /** The members of one entry in a location's `exits`. */
 export const LOCATION_EXIT_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
@@ -75,7 +80,7 @@ export const LOCATION_EXIT_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
 ]);
 
 /** The members of `location`: the fields of a `locations` entry for the turn's location, and the move. */
-export const LOCATION_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
+export const LOCATION_MEMBERS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'Unique id of the location the turn is at, or empty in a world with no location' },
   { name: 'name', detail: 'string', info: 'Code name of the location the turn is at, or empty in a world with no location' },
   { name: 'description', detail: 'string', info: 'Full AI description of the location the turn is at, its placeholders filled in' },
@@ -86,8 +91,15 @@ export const LOCATION_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'children', detail: 'string[]', info: 'Code names of the locations inside the turn’s location, in the order the editor lists them' },
   { name: 'exits', detail: 'array', info: 'The direct ways out of the turn’s location, each exit with a code name, travel hint, distance and direction' },
   { name: 'items', detail: 'array', info: 'The Item Instances lying at the turn’s location, each with the fields of an Item Instance entry' },
+  { name: 'image', detail: 'string | null', info: LOCATION_IMAGE_INFO },
+  { name: 'ambience', detail: 'string | null', info: LOCATION_AMBIENCE_INFO },
   { name: 'move', detail: '(nameOrId) => void', info: 'Moves the turn to a location of the world, in place of the AI’s move. A name the world has no location for stops the script with an error.' },
-]);
+], ['image', 'ambience'], 'writable');
+
+/** The members of `world`. */
+export const WORLD_MEMBERS: readonly SurfaceEntry[] = withAccess([
+  { name: 'music', detail: 'string | null', info: 'Name of the sound playing as the world’s music, or null; assign a sound’s name to play it' },
+], ['music'], 'writable');
 
 /** The verbs on `memories`: a line appended to this turn, and a pinned line, named or not. */
 export const MEMORY_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
@@ -147,6 +159,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
     name: 'options', detail: 'object',
     info: 'Every World Option by name, hidden ones included. A Choice reads its value’s name, an On or Off reads true or false, and a Number reads its number. Set one to change it. Use options["Two Words"] for a name with a space.',
   },
+  { name: 'world', detail: shapeOf(WORLD_MEMBERS), info: 'The world’s music. Assign world.music to change it.', access: 'readOnly' },
   { name: 'console', detail: 'object', info: 'Only console.log. Output shows in the browser console.' },
 ];
 
@@ -243,6 +256,17 @@ export const TRAIT_ENTRY_FIELDS: readonly SurfaceEntry[] = withAccess([
 const OWNER_MAPS = ['traits', 'placeholders', 'stats'];
 
 const BODY_INFO = 'The Body in force, slots and equipped Item Instances included, or null; assign a Body name to set it';
+const ENTITY_IMAGE_INFO = 'Name of the image the entity shows first, or null; assign an image’s name to show it';
+const ENTITY_SOUND_INFO = 'Name of the sound the entity plays, or null; assign a sound’s name to play it';
+const INSTANCES_INFO = 'A Generic entity’s copies, one per Start in order, each with its own image and sound';
+
+/** The members of one entry in an entity's `instances`. Only `image` and `sound` take a write. */
+export const GENERIC_INSTANCE_FIELDS: readonly SurfaceEntry[] = withAccess([
+  { name: 'id', detail: 'string', info: 'Unique id of the Start this copy runs' },
+  { name: 'location', detail: 'string', info: 'Code name of the location it stands at, or empty when it stands nowhere' },
+  { name: 'image', detail: 'string | null', info: 'Name of the image this instance shows first, or null; an assigned name beats the entity’s own' },
+  { name: 'sound', detail: 'string | null', info: 'Name of the sound this instance plays, or null; an assigned name beats the entity’s own' },
+], ['image', 'sound'], 'writable');
 
 /** The members of `persona`. The members are read-only except `body`; a trait switches through its own `enabled`, and a
  *  stats entry takes writes to its value, min, max, regen and hidden while its identity fields stay read-only. */
@@ -269,7 +293,10 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'stats', detail: 'object', info: 'The persona’s own stats by name, each a stats entry, or empty when the player plays no entity' },
   { name: 'items', detail: 'array', info: 'The Item Instances the player owns, carried and equipped, each with the fields of an Item Instance entry' },
   { name: 'body', detail: 'object | null', info: BODY_INFO },
-], ['body'], 'writable', OWNER_MAPS);
+  { name: 'image', detail: 'string | null', info: ENTITY_IMAGE_INFO },
+  { name: 'sound', detail: 'string | null', info: ENTITY_SOUND_INFO },
+  { name: 'instances', detail: 'array', info: INSTANCES_INFO },
+], ['body', 'image', 'sound'], 'writable', OWNER_MAPS);
 
 /** The members of one entry in `entities`, and of `owner`. The members are read-only; a trait switches through
  *  its own `enabled`, and a stats entry takes writes to its value, min, max, regen and hidden while its identity fields
@@ -297,16 +324,19 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'stats', detail: 'object', info: 'The entity’s own stats by name, each with the fields of a stats entry. Entries take writes to value, min, max, regen and hidden. Use entities.Mira.stats["Two Words"] for a name with a space.' },
   { name: 'items', detail: 'array', info: 'The Item Instances the entity owns, carried and equipped, each with the fields of an Item Instance entry' },
   { name: 'body', detail: 'object | null', info: BODY_INFO },
+  { name: 'image', detail: 'string | null', info: ENTITY_IMAGE_INFO },
+  { name: 'sound', detail: 'string | null', info: ENTITY_SOUND_INFO },
+  { name: 'instances', detail: 'array', info: INSTANCES_INFO },
   { name: 'move', detail: '(nameOrId) => void', info: 'Moves a Unique entity to a location when the turn ends and ends a follow, for a while. A Generic entity ignores it, and a name the world has no location for stops the script with an error.' },
   { name: 'follow', detail: '() => void', info: 'Makes a Unique entity follow the player when the turn ends, past a locked row and Can Also Go. A Generic entity ignores it.' },
   { name: 'unfollow', detail: '() => void', info: 'Stops a Unique entity following or waiting when the turn ends, so it goes back to its usual places. A Generic entity ignores it.' },
   { name: 'meet', detail: '() => void', info: 'Makes the player meet the entity, so they see its name. Ignored when met is already true.' },
   { name: 'diary', detail: '(line) => void', info: 'Adds a line to the entity’s diary for this turn, after the AI’s entry. An entity the game doesn’t have stops the script with an error.' },
-], ['body'], 'writable', OWNER_MAPS);
+], ['body', 'image', 'sound'], 'writable', OWNER_MAPS);
 
-/** The members of one Item Instance, in `items[x].instances`, an entity's `items` or a location's `items`. The fields are
- *  read-only; a verb's change applies when the script ends. */
-export const ITEM_INSTANCE_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
+/** The members of one Item Instance, in `items[x].instances`, an entity's `items` or a location's `items`. Only `image`
+ *  takes a write; a verb's change applies when the script ends. */
+export const ITEM_INSTANCE_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'Unique id of the Item Instance' },
   { name: 'item', detail: 'string', info: 'Code name of its item, a key of items' },
   { name: 'owner', detail: 'string', info: 'Code name of the entity that owns it, the persona included, or empty while it lies at a location' },
@@ -318,6 +348,7 @@ export const ITEM_INSTANCE_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'unidentified', detail: 'boolean', info: 'True when the player sees its item’s unidentified face' },
   { name: 'uses', detail: 'number', info: 'Uses left, or null when its item has no Uses' },
   { name: 'state', detail: 'string', info: 'Its State word, or null when it has none' },
+  { name: 'image', detail: 'string | null', info: 'Name of the image it shows, or null; assign an image’s name to show it' },
   { name: 'lose', detail: '(quantity?) => void', info: 'Removes it, or the quantity you pass. Bound doesn’t stop a script.' },
   { name: 'moveTo', detail: '(to, quantity?) => void', info: 'Moves it, or the quantity you pass, to an entity, the persona or a location, by entry or by name' },
   { name: 'equip', detail: '(slot?) => void', info: 'Equips it in the slot you name, by name, or in the first free slot its item lists. Unequips the one equipped longest when the slot is full.' },
@@ -326,7 +357,7 @@ export const ITEM_INSTANCE_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'reveal', detail: '(quantity?) => void', info: 'Makes it visible to the player when it’s hidden, else identifies it when it’s unidentified. Acts on the quantity you pass, or all of it.' },
   { name: 'setUses', detail: '(uses) => void', info: 'Sets its uses left, from 0 up to its item’s Uses' },
   { name: 'setState', detail: '(state) => void', info: 'Sets its State word. An empty string clears it.' },
-]);
+], ['image'], 'writable');
 
 /** The members of one entry in `items`, and of an item script's `self`. */
 export const ITEM_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
@@ -469,7 +500,7 @@ export const STAT_CODE_SURFACE: CodeSurface = {
   label: 'a stat script',
   globals: SANDBOX_GLOBALS,
   builtins: SANDBOX_BUILTINS,
-  members: new Map([...BUILTIN_MEMBERS, ['location', LOCATION_MEMBERS], ['memories', MEMORY_MEMBERS], ['turn', TURN_MEMBERS]]),
+  members: new Map([...BUILTIN_MEMBERS, ['location', LOCATION_MEMBERS], ['memories', MEMORY_MEMBERS], ['turn', TURN_MEMBERS], ['world', WORLD_MEMBERS]]),
   languageNames: LANGUAGE_NAMES,
   // The Variable menu is the drill tree in `statCodeVariableTree`.
   missingReturn: 'This script never returns a number or sets self.value. The stat keeps its value.',

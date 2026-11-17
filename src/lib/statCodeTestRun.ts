@@ -27,7 +27,8 @@ import {
 import {
   ownerOfHome, PENDING_PERSONA_ID, snapshotOf, type SandboxSnapshot, type ScriptRunUnit, type SnapshotOptions, type UnitHome,
 } from '@/lib/sandboxSnapshot';
-import type { ScriptTiming, Stat, Trait, World } from '@/types';
+import type { MediaList, ScriptTiming, Stat, Trait, World } from '@/types';
+import type { MediaWrite } from '@/lib/mediaOverrides';
 
 /** Test Code names each bound a run wrote with its Details field label. */
 const BOUND_LABELS: Record<CodeBoundField, string> = { min: 'Min', max: 'Max', regen: 'Regen' };
@@ -210,6 +211,18 @@ const worldWriteLines = (
   ];
 };
 
+/** One line per media assignment, as code would write it. */
+const mediaWriteLines = (
+  writes: readonly MediaWrite[], list: MediaList | undefined, locations: readonly SandboxPlace[], entityNames: ReadonlyMap<string, string>,
+): string[] => writes.map(({ owner, field, mediaId }) => {
+  const entity = (id: string) => (id ? memberPath('entities', entityNames.get(id) ?? id) : 'persona');
+  const at = owner.kind === 'entity' ? entity(owner.id)
+    : owner.kind === 'instance' ? `${entity(owner.entityId)}.instances`
+      : owner.kind === 'location' ? memberPath('locations', locations.find((place) => place.id === owner.id)?.name ?? owner.id)
+        : owner.kind === 'item' ? 'instance' : 'world';
+  return `${at}.${field} = ${mediaId === null ? 'null' : JSON.stringify(list?.[mediaId]?.name ?? mediaId)}`;
+});
+
 /** One line per `pay` call as code names its Currency: the amount and parties, and why a refused one failed. */
 const paymentLines = (
   payments: readonly ScriptPayment[], currencyName: (id: string) => string, entityNames: ReadonlyMap<string, string>,
@@ -283,6 +296,7 @@ export async function runTestCode(
     ...(outcome.lore ?? []).map(({ path, value }) => `${path} = ${value}`),
     ...(outcome.choices ? [`turn.choices = ${JSON.stringify(outcome.choices)}`] : []),
     ...worldWriteLines(outcome.worldWrites, locations, entityNames),
+    ...mediaWriteLines(outcome.mediaWrites ?? [], world.worldOverview?.mediaList, locations, entityNames),
     ...paymentLines(outcome.payments ?? [], currencyName, entityNames),
   ];
   const keep = missing ? droppedFilter(missing) : KEEP_DROPPED;

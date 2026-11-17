@@ -16,6 +16,7 @@ import { activeOwnedTraitIds } from '@/lib/ownedTraitsInPlay';
 import { INITIAL_SOURCE_TURN_ID, discoveredAsEntities } from '@/lib/runtimeCharacters';
 import { computePresence } from '@/lib/presence';
 import { followerIds } from '@/lib/positionPlay';
+import { mediaOverrideReader, type MediaOverrideReader } from '@/lib/mediaOverrides';
 import { runtimePositions } from '@/lib/entityFollowing';
 
 export interface PlayerViewEntity {
@@ -120,6 +121,8 @@ export interface PlayerViewEntitiesInput {
   isEntityOn?: (entity: Entity) => boolean;
   gate?: GateInput;
   media?: MediaList;
+  /** The script overrides the snapshot shows. Absent ⇒ none. */
+  mediaOverrides?: MediaOverrideReader;
 }
 
 /** Player text with chips resolved; empty when there is none. */
@@ -215,7 +218,7 @@ export function buildPlayerViewEntities(input: PlayerViewEntitiesInput): PlayerV
 
   const { gate } = input;
   const withImage = (row: PlayerViewEntity, entity: Entity): PlayerViewEntity => {
-    const image = gate && visibleImages(entity, gate, input.media)[0]?.data;
+    const image = gate && visibleImages(entity, gate, input.media, input.mediaOverrides?.entity(entity.id, 'image'))[0]?.data;
     return image ? { ...row, image } : row;
   };
 
@@ -367,6 +370,9 @@ export function buildPlayerView(input: PlayerViewInput): PlayerView {
     entities: buildPlayerViewEntities({
       world: input.world, current, savedVisible: input.chain.slice(0, -1).map((s) => s.visibleEntities), currentVisible: current.visibleEntities,
       persona: input.persona, resolve: input.resolve, isEntityOn: input.isEntityOn, gate: input.gate, media: input.media,
+      mediaOverrides: mediaOverrideReader(current.mediaOverrides, input.media, {
+        genericStates: current.genericStates, locationId: current.locationId, personaId: input.persona?.id,
+      }),
     }),
     locations: viewLocations(input, current),
     items: viewItems(input),

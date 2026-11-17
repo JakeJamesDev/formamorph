@@ -18,7 +18,7 @@ describe('the user Tool script’s Variable menu', () => {
 
   it('lists the converged globals and no old ones', () => {
     expect(labels(menu(names))).toEqual([
-      'Arguments', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Items', 'Currencies', 'World Options', 'Clock', 'Turn', 'Locations', 'Location', 'Memories', 'notes',
+      'Arguments', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Items', 'Currencies', 'World Options', 'Clock', 'Turn', 'Locations', 'Location', 'Memories', 'Music', 'notes',
     ]);
   });
 
@@ -28,7 +28,8 @@ describe('the user Tool script’s Variable menu', () => {
       expect(leaves.length).toBeGreaterThan(20);
       expect(leaves.filter((leaf) => /\(/.test(leaf.insert.replace(/\[".*?"\]/g, '')))).toEqual([]);
       expect(leaves.every((leaf) => leaf.access === 'readOnly')).toBe(true);
-      expect(leaves.some((leaf) => /^(world|scene)\b/.test(leaf.insert))).toBe(false);
+      // `world.music` is the one `world` read left (Q55).
+      expect(leaves.filter((leaf) => /^(world|scene)\b/.test(leaf.insert)).map((leaf) => leaf.insert)).toEqual(['world.music']);
     }
   });
 

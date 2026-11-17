@@ -36,9 +36,9 @@ const world: RuleWorld = {
 };
 
 /** `options` with each closure as what it makes, since each snapshot holds its own: the entry-value resolver's
- *  text and each location's links. */
-const comparable = ({ resolveEntryValue, places, ...options }: StatCodeRunOptions) => ({
-  ...options, resolved: resolveEntryValue?.('The tide'),
+ *  text, each location's links and what the media members show with no override. */
+const comparable = ({ resolveEntryValue, places, media, ...options }: StatCodeRunOptions) => ({
+  ...options, resolved: resolveEntryValue?.('The tide'), media: media && { ...media, defaults: media.defaults() },
   places: places && { ...places, locations: places.locations.map(({ links, ...place }) => ({ ...place, links: links?.() })) },
 });
 

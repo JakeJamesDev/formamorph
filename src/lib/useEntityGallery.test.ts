@@ -3,17 +3,29 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useEntityGallery } from './useEntityGallery';
 import type { GateInput } from './traitGates';
-import type { GalleryImage, StatRequirement } from '@/types';
+import type { GalleryImage, GenericStates, MediaOverrides, StatRequirement } from '@/types';
 
 type IndexMap = Record<string, number>;
-const state = vi.hoisted(() => ({ index: {} as IndexMap, health: 50 }));
+const state = vi.hoisted(() => ({
+  index: {} as IndexMap, health: 50, overrides: {} as MediaOverrides, generics: {} as GenericStates, here: undefined as string | undefined,
+}));
 
-vi.mock('@/contexts/GameplayContext', () => ({
-  useGameplay: () => ({
+vi.mock('@/contexts/GameplayContext', () => {
+  const play = () => ({
     entityImageIndex: state.index,
     setEntityImageIndex: (update: IndexMap | ((prev: IndexMap) => IndexMap)) => {
       state.index = typeof update === 'function' ? update(state.index) : update;
     },
+    viewMediaOverrides: state.overrides, viewGenericStates: state.generics, viewLocationId: state.here, personaRef: { source: 'none' },
+  });
+  return { useGameplay: play, useGameplayOptional: play };
+});
+
+// The world's Media List: the pictures a script can name.
+vi.mock('./useMediaList', () => ({
+  useMediaList: () => ({
+    'm-captain': { id: 'm-captain', name: 'Captain', kind: 'image', data: 'captain' },
+    'm-scout': { id: 'm-scout', name: 'Scout', kind: 'image', data: 'scout' },
   }),
 }));
 
@@ -29,7 +41,7 @@ vi.mock('./useViewedGateInput', () => ({
   }),
 }));
 
-beforeEach(() => { state.index = {}; state.health = 50; });
+beforeEach(() => { state.index = {}; state.health = 50; state.overrides = {}; state.generics = {}; state.here = undefined; });
 
 const three = { id: 'sedge', images: [{ data: 'a' }, { data: 'b' }, { data: 'c' }] };
 const hurt: StatRequirement = { kind: 'stat', id: 'health', operator: '<', value: 20, unit: 'raw' };
@@ -152,6 +164,28 @@ describe('useEntityGallery — visibility rules', () => {
     const { result } = renderHook(() => useEntityGallery(gated));
     act(() => result.current.onImageStep(1));
     expect(state.index.sedge).toBe(2);
+  });
+
+  it('shows a script’s override first, over a rule that picks another image, until it clears', () => {
+    state.health = 10;
+    state.overrides = { entities: { sedge: { image: 'm-captain' } } };
+    const { result, rerender } = renderHook(() => useEntityGallery(gated));
+    expect(result.current.images).toEqual(['captain', 'a', 'wounded', 'c']);
+    expect(shownOf(result.current)).toBe('captain');
+    state.overrides = {};
+    rerender();
+    expect(result.current.images).toEqual(['a', 'wounded', 'c']);
+  });
+
+  it('shows each Generic Entity Instance’s own override, for the one standing where the player is', () => {
+    state.generics = { sedge: { north: { position: 'gate', lastRun: 0 }, south: { position: 'hall', lastRun: 0 } } };
+    state.overrides = { instances: { sedge: { north: { image: 'm-captain' }, south: { image: 'm-scout' } } } };
+    state.here = 'gate';
+    const { result, rerender } = renderHook(() => useEntityGallery(three));
+    expect(shownOf(result.current)).toBe('captain');
+    state.here = 'hall';
+    rerender();
+    expect(shownOf(result.current)).toBe('scout');
   });
 
   it('shows nothing when every image hides', () => {

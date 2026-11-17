@@ -16,7 +16,7 @@ import {
   CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, CURRENCY_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, ITEM_FIELDS, NARRATION_FIELDS,
   NARRATION_GLOBAL, PERSONA_FIELDS, PLAYER_CALL_ENTRIES, PLAYER_GLOBAL, PREVIOUS_FIELDS, SANDBOX_GLOBALS, SELF_TRAIT_FIELDS,
   STAT_CODE_SURFACE, STAT_FIELDS, SWITCHED_TRAIT_FIELDS, SWITCHED_TRAIT_GLOBAL, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
-  INSTANCE_GLOBAL, ITEM_INSTANCE_FIELDS,
+  INSTANCE_GLOBAL, ITEM_INSTANCE_FIELDS, WORLD_MEMBERS,
 } from '@/lib/statCodeSurface';
 
 /** The names the tree lists, as the editor's session holds them, with each world trait in its groups. */
@@ -497,6 +497,8 @@ export function buildVariableTree(
     { kind: 'group', label: 'Turn', info: globalInfo('turn'), children: fields(root('turn'), timing.turn ?? TURN_MEMBERS) },
     nameList('Locations', locationRows, 'No locations in this world', globalInfo('locations')),
     { kind: 'group', label: 'Location', info: globalInfo('location'), children: locationFields() },
+    // `world` holds one member, so the menu offers it as a field of its own.
+    { ...field(root('world'), WORLD_MEMBERS[0]), label: 'Music' },
     { kind: 'group', label: 'Discover', info: globalInfo('discover'), children: [topCallField('discover', '"Name"')] },
     { kind: 'group', label: 'Memories', info: globalInfo('memories'), children: memoryFields() },
     { kind: 'field', label: 'notes', detail: 'string', info: globalInfo('notes') ?? '', access: 'readOnly', insert: 'notes' },

@@ -4,9 +4,11 @@ import type {
 } from '@/types';
 import type { BodyWorld } from './bodies';
 import { bareLoreWrite, withLoreWrites, type LoreWrite } from './loreToggles';
+import { withMediaWrites, type MediaWrite } from './mediaOverrides';
 import {
   CODE_BOUND_FIELDS, type EntityTraitWrites, type NarrationInput, type OptionWrite, type PlaceholderWrite, type StatClock, type StatCodeResult,
   type StatTurnInputs, type StatWrite, type SandboxTurn, type TraitWrite, type ValueAndMax, type SandboxMemory, type SandboxPlace, type WorldWrites,
+  type SandboxMedia,
 } from './statCodeExecutor';
 import { mergeWorldWrites } from './worldWrites';
 import { withWorldWrites } from './chainedWorld';
@@ -105,6 +107,8 @@ export interface SandboxState {
   turn?: SandboxTurn;
   /** What scripts switched on the books' entries in play. Absent ⇒ none. */
   loreToggles?: LoreToggles;
+  /** What the media members read and name, the overrides in force included. Absent ⇒ no entry. */
+  media?: SandboxMedia;
   /** Every Item Instance in play. Absent ⇒ none. */
   itemInstances?: readonly ItemInstance[];
   /** The world's items, which `items` reads. Absent ⇒ none. */
@@ -240,6 +244,8 @@ export interface SavedScriptWrites {
   inventory?: InventoryOp[];
   /** World Option values, in write order. Absent ⇒ none. */
   options?: OptionWrite[];
+  /** Media member assignments, in write order. Absent ⇒ none. */
+  media?: MediaWrite[];
 }
 
 /** A World Tool call replayed from its saved writes: the Tool's name, for the switch log, and the writes. */
@@ -299,6 +305,8 @@ export interface StatCodeTurnResult {
   loreWrites?: LoreWrite[];
   /** Every World Option value the run's scripts wrote, in run order, so the later write wins. Absent when none wrote one. */
   optionWrites?: OptionWrite[];
+  /** Every media member the run's scripts assigned, in run order, so the later write wins. Absent when none assigned one. */
+  mediaWrites?: MediaWrite[];
   /** What the run's inventory writes left. Absent when no script wrote one. */
   items?: ChainedItems;
   /** Present on a run with triggers. */
@@ -450,6 +458,7 @@ interface ScriptWrites {
   world?: WorldWrites;
   lore?: readonly LoreWrite[];
   options?: readonly OptionWrite[];
+  media?: readonly MediaWrite[];
 }
 
 /** One stat's fields a box wrote. */
@@ -477,7 +486,7 @@ function targetWrites(stat: PlayerStat | null, result: StatCodeResult, ownerId: 
 }
 
 /** `writes` as a save keeps them; empty fields are left out. */
-function savedWrites({ stats, placeholders, traits, lore, world, options }: ScriptWrites): SavedScriptWrites {
+function savedWrites({ stats, placeholders, traits, lore, world, options, media }: ScriptWrites): SavedScriptWrites {
   return {
     ...(stats.size ? { stats: [...stats].map(([owner, writes]) => ({ owner, writes: [...writes] })) } : {}),
     ...(placeholders.length ? { placeholders: [...placeholders] } : {}),
@@ -485,13 +494,14 @@ function savedWrites({ stats, placeholders, traits, lore, world, options }: Scri
     ...(lore?.length ? { lore: [...lore] } : {}),
     ...(world?.inventory?.length ? { inventory: [...world.inventory] } : {}),
     ...(options?.length ? { options: [...options] } : {}),
+    ...(media?.length ? { media: [...media] } : {}),
   };
 }
 
 /** Saved writes as a run lays them on. */
-const scriptWritesOf = ({ stats = [], placeholders = [], traits, lore, inventory, options }: SavedScriptWrites): ScriptWrites => ({
+const scriptWritesOf = ({ stats = [], placeholders = [], traits, lore, inventory, options, media }: SavedScriptWrites): ScriptWrites => ({
   stats: new Map(stats.map(({ owner, writes }) => [owner, writes])), placeholders, ...(traits ? { traits } : {}), ...(lore ? { lore } : {}),
-  ...(inventory ? { world: { inventory } } : {}), ...(options ? { options } : {}),
+  ...(inventory ? { world: { inventory } } : {}), ...(options ? { options } : {}), ...(media ? { media } : {}),
 });
 
 /** One script's writes by target scope, each target stat's merged field by field, its later write winning a field. */
@@ -928,6 +938,7 @@ export function afterRun(turn: StatCodeTurn, result: StatCodeTurnResult): StatCo
         : ownerTraits,
       placeholders: set && { ...set, codePins, ...(pins ? { pins } : {}) },
       ...(result.loreWrites ? { loreToggles: withLoreWrites(state.loreToggles ?? {}, result.loreWrites) } : {}),
+      ...(result.mediaWrites && state.media ? { media: { ...state.media, overrides: withMediaWrites(state.media.overrides, result.mediaWrites) } } : {}),
       // The switch runs of a commit read the choices the batch left.
       ...(result.choices && state.turn ? { turn: { ...state.turn, choices: result.choices } } : {}),
     },
@@ -966,6 +977,7 @@ export function chainedResult(start: StatCodeTurn, steps: readonly StatCodeTurnR
   const worldWrites = mergedWorldWrites(steps.map((step) => step.worldWrites));
   const loreWrites = steps.flatMap((step) => step.loreWrites ?? []);
   const optionWrites = steps.flatMap((step) => step.optionWrites ?? []);
+  const mediaWrites = steps.flatMap((step) => step.mediaWrites ?? []);
   const traitWrites = steps.flatMap((step) => step.traitWrites ?? []);
   const last = steps.findLast((step) => step.traits)?.traits;
   const logs = steps.map((step) => step.traits?.log ?? []);
@@ -987,7 +999,8 @@ export function chainedResult(start: StatCodeTurn, steps: readonly StatCodeTurnR
   return {
     stats: now.state.stats, ...changedStats(start.state.stats, now.state.stats), pinWrites, gateStats: finalStep.gateStats,
     ...(traits ? { traits } : {}), ...(traitWrites.length ? { traitWrites } : {}), ...(owners ? { owners } : {}), ...(worldWrites ? { worldWrites } : {}),
-    ...(loreWrites.length ? { loreWrites } : {}), ...(optionWrites.length ? { optionWrites } : {}), ...(items ? { items } : {}),
+    ...(loreWrites.length ? { loreWrites } : {}), ...(optionWrites.length ? { optionWrites } : {}), ...(mediaWrites.length ? { mediaWrites } : {}),
+    ...(items ? { items } : {}),
   };
 }
 
@@ -1038,8 +1051,8 @@ function keyedPlan(entries: readonly PlannedUnit[]): Map<string, PlannedUnit> {
 const beganOf = (turn: StatCodeTurn): TimingStart => turn.timingStart ?? timingStartOf(turn.state);
 
 /** Whether a script's writes change anything the next script reads or the turn commits. */
-const landsAnything = ({ stats, placeholders, traits, world, lore, options }: ScriptWrites) =>
-  stats.size > 0 || placeholders.length > 0 || !!traits || !!world || !!lore?.length || !!options?.length;
+const landsAnything = ({ stats, placeholders, traits, world, lore, options, media }: ScriptWrites) =>
+  stats.size > 0 || placeholders.length > 0 || !!traits || !!world || !!lore?.length || !!options?.length || !!media?.length;
 
 /** The Sandbox Snapshot `turn`'s next script runs over. */
 export const chainSnapshotOf = (turn: StatCodeTurn, options: Omit<SnapshotOptions, 'readings'> = {}): SandboxSnapshot =>
@@ -1122,6 +1135,7 @@ const scriptWritesFrom = (stat: PlayerStat | null, result: StatCodeResult, owner
   ...(result.worldWrites ? { world: result.worldWrites } : {}),
   ...(result.lore ? { lore: result.lore.map(bareLoreWrite) } : {}),
   ...(result.optionWrites ? { options: result.optionWrites } : {}),
+  ...(result.mediaWrites ? { media: result.mediaWrites } : {}),
 });
 
 /** The name a trait switch's log line gives a script: its stat's or trait's as the player reads it, else its own. */
@@ -1291,6 +1305,7 @@ function settledStep(
     ...(writes?.world ? { worldWrites: writes.world } : {}),
     ...(writes?.lore?.length ? { loreWrites: [...writes.lore] } : {}),
     ...(optionWrites.length ? { optionWrites: [...optionWrites] } : {}),
+    ...(writes?.media?.length ? { mediaWrites: [...writes.media] } : {}),
   };
 
   // Merged per target before the first settle, so the gate snapshot and the penalties see every owner's writes.

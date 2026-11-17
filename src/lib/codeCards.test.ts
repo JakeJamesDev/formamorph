@@ -253,7 +253,7 @@ describe('codeCard: a Tool script', () => {
   it.each([
     'location.mo|ve("Dock");', 'memories.ad|d("x");', 'entities.Mara.mo|ve("Dock");', 'entities.Mara.dia|ry("x");',
     'clock.adv|ance(5);', 'placeholders.Mood.pi|n("x");', 'disc|over("Kit");', 'return se|lf;', 'return ow|ner;',
-    'return wor|ld.entities;', 'return sce|ne.present;',
+    'return sce|ne.present;',
   ])('gives no card on %s, which the surface lacks', (doc) => {
     expect(cardAt(doc, tool)).toBeNull();
   });

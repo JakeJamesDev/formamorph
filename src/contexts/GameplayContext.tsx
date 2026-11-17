@@ -60,6 +60,7 @@ import type {
   CharacterData,
   CodePins,
   LoreToggles,
+  MediaOverrides,
   WorldOptionValues,
   Entity,
   Connection,
@@ -117,6 +118,8 @@ const EMPTY_PINS: CodePins = {};
 const NO_ITEM_INSTANCES: readonly ItemInstance[] = [];
 const NO_ITEM_EFFECTS: ItemEffectLedger = {};
 const NO_BODIES: BodyRuntime = {};
+const NO_MEDIA_OVERRIDES: MediaOverrides = {};
+const NO_GENERIC_STATES: GenericStates = {};
 const NO_RUNTIME_ITEMS: readonly RuntimeItem[] = [];
 
 const EMPTY_ENTITY_STATS: EntityStatValues = {};
@@ -247,6 +250,8 @@ function useProvideGameplay() {
   const [codePins, setCodePins] = useState<CodePins>(EMPTY_PINS);
   // What scripts switched on dictionary entries. Snapshotted per turn, so undo and re-roll restore it.
   const [loreToggles, setLoreToggles] = useState<LoreToggles>(NO_LORE_TOGGLES);
+  // The Media Entries scripts set. Snapshotted per turn, so undo and re-roll restore it.
+  const [mediaOverrides, setMediaOverrides] = useState<MediaOverrides>(NO_MEDIA_OVERRIDES);
   // The playthrough's World Option values; an Option missing here reads its default.
   const [worldOptionValues, setWorldOptionValues] = useState<WorldOptionValues>(NO_WORLD_OPTION_VALUES);
   // Every Item Instance in play. Snapshotted per turn, so undo and re-roll restore it.
@@ -454,6 +459,7 @@ function useProvideGameplay() {
       ...(Object.keys(entityStatChanges).length ? { entityStatChanges } : {}),
       ...(Object.keys(codePins).length ? { codePins } : {}),
       ...(Object.keys(loreToggles).length ? { loreToggles } : {}),
+      ...(Object.keys(mediaOverrides).length ? { mediaOverrides } : {}),
       ...(Object.keys(worldOptionValues).length ? { worldOptionValues } : {}),
       ...(itemInstances.length ? { itemInstances: [...itemInstances] } : {}),
       ...(runtimeItems.length ? { runtimeItems: [...runtimeItems] } : {}),
@@ -481,7 +487,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, uniqueStates, genericStates, metEntities, strangerAliases, entityStatChanges, codePins, loreToggles, worldOptionValues, itemInstances, runtimeItems, itemEffects, bodies, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
+  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, uniqueStates, genericStates, metEntities, strangerAliases, entityStatChanges, codePins, loreToggles, mediaOverrides, worldOptionValues, itemInstances, runtimeItems, itemEffects, bodies, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
       currentLocation, gameTime, startHour, playerStartLocationId, openingPlacement, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
   /** Snapshot the live gameplay state into a single `GameState` (stamped `stateVersion: 2`), deliberately
    *  omitting the `gameStates` history array and instead recording `previousStateIndex`; `worldName` is left
@@ -520,6 +526,7 @@ function useProvideGameplay() {
       setStrangerAliases(gameState.strangerAliases ?? {});
       setCodePins(gameState.codePins ?? EMPTY_PINS);
       setLoreToggles(gameState.loreToggles ?? NO_LORE_TOGGLES);
+      setMediaOverrides(gameState.mediaOverrides ?? NO_MEDIA_OVERRIDES);
       setWorldOptionValues(gameState.worldOptionValues ?? NO_WORLD_OPTION_VALUES);
       setItemInstances(gameState.itemInstances ?? NO_ITEM_INSTANCES);
       setItemEffects(gameState.itemEffects ?? NO_ITEM_EFFECTS);
@@ -965,6 +972,8 @@ function useProvideGameplay() {
   const viewEntityStatChanges = viewedSnapshot ? (viewedSnapshot.entityStatChanges ?? EMPTY_ENTITY_CHANGES) : entityStatChanges;
   const viewCodePins = viewedSnapshot ? (viewedSnapshot.codePins ?? EMPTY_PINS) : codePins;
   const viewWorldOptionValues = viewedSnapshot ? (viewedSnapshot.worldOptionValues ?? NO_WORLD_OPTION_VALUES) : worldOptionValues;
+  const viewMediaOverrides = viewedSnapshot ? (viewedSnapshot.mediaOverrides ?? NO_MEDIA_OVERRIDES) : mediaOverrides;
+  const viewGenericStates = viewedSnapshot ? (viewedSnapshot.genericStates ?? NO_GENERIC_STATES) : genericStates;
   const viewEntityFollowers: readonly string[] = useMemo(
     () => (viewedSnapshot ? followerIds(viewedSnapshot.uniqueStates ?? {}) : entityFollowers), [viewedSnapshot, entityFollowers],
   );
@@ -1143,6 +1152,8 @@ function useProvideGameplay() {
     setCodePins,
     loreToggles,
     setLoreToggles,
+    mediaOverrides,
+    setMediaOverrides,
     worldOptionValues,
     setWorldOptionValues,
     itemInstances,
@@ -1240,6 +1251,8 @@ function useProvideGameplay() {
     viewEntityStatChanges,
     viewCodePins,
     viewWorldOptionValues,
+    viewMediaOverrides,
+    viewGenericStates,
     viewCharacterData,
     viewVisibleEntities,
     viewGameTime,
@@ -1281,6 +1294,10 @@ export const useGameplay = () => {
   }
   return context;
 };
+
+/** The live playthrough state, or null outside a `GameplayProvider`, such as in the World Editor. */
+// eslint-disable-next-line react-refresh/only-export-components
+export const useGameplayOptional = () => useContext(GameplayContext);
 
 /** Provides the live gameplay state (see `useGameplay`); terminates the save-conversion worker on unmount. */
 export const GameplayProvider = ({ children }: { children: ReactNode }) => {

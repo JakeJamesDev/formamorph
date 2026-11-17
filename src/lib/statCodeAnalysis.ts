@@ -21,7 +21,7 @@ import {
 import type { SandboxDictionaryEntry } from '@/lib/statCodeExecutor';
 import {
   clockFieldsAt, DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SELF_WRITABLE_FIELDS, STAT_CODE_SURFACE, STAT_FIELDS,
-  DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, DICTIONARY_WRITABLE_FIELD, ENTITY_FIELDS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, MEMORY_ENTRY_FIELDS, PERSONA_FIELDS, SELF_TRAIT_FIELDS, SWITCHED_TRAIT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
+  DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, DICTIONARY_WRITABLE_FIELD, ENTITY_FIELDS, GENERIC_INSTANCE_FIELDS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, MEMORY_ENTRY_FIELDS, PERSONA_FIELDS, SELF_TRAIT_FIELDS, SWITCHED_TRAIT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 import {
   isIdentifier, isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathLabel, placeholderPathMap,
@@ -489,7 +489,9 @@ function placeholderMembersAt(
 }
 
 /** The members of one element of each array shape. */
-const ELEMENT_FIELDS: Record<ArrayElement, readonly SurfaceEntry[]> = { memory: MEMORY_ENTRY_FIELDS, entity: ENTITY_FIELDS, exit: LOCATION_EXIT_FIELDS };
+const ELEMENT_FIELDS: Record<ArrayElement, readonly SurfaceEntry[]> = {
+  memory: MEMORY_ENTRY_FIELDS, entity: ENTITY_FIELDS, exit: LOCATION_EXIT_FIELDS, genericInstance: GENERIC_INSTANCE_FIELDS,
+};
 
 /** What a resolved expression carries after its dot, or null where nothing can be shown. A wrong list would
  *  claim the sandbox holds something it doesn't. */
@@ -1471,13 +1473,14 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
     if (cursor.type.name !== 'VariableName') continue;
 
     const name = code.slice(from, to);
-    if (declared.has(name) || known.has(name)) continue;
-    if (overlapsAny(from, to, ranges)) continue;
+    if (declared.has(name) || overlapsAny(from, to, ranges)) continue;
+    // A retired member is marked even on a global that lives on, as `world.entities` beside `world.music` (Q55).
     const retired = retiredRead(cursor.node, code, surface);
     if (retired) {
       diagnostics.push({ ...retired, severity: 'error', message: `“${code.slice(retired.from, retired.to)}” isn’t available in ${surface.label}. ${retired.newForm}` });
       continue;
     }
+    if (known.has(name)) continue;
     const suggestion = nearestName(name, [...known, ...declared]);
     diagnostics.push(suggested({
       from,

@@ -1,6 +1,8 @@
 import type {
-  BodyPick, CodeBounds, CurrencyBacking, EntityKind, ItemInstanceWhere, ItemScriptTiming, ScheduleAction, Stat, WorldOption, WorldOptionValueOf, WorldOptionValues,
+  BodyPick, CodeBounds, CurrencyBacking, EntityKind, ItemInstanceWhere, ItemScriptTiming, MediaEntry, MediaOverrides, ScheduleAction, Stat, WorldOption,
+  WorldOptionValueOf, WorldOptionValues,
 } from '@/types';
+import { MEDIA_MEMBER_KIND, MEDIA_NAME_MEMBERS, type MediaWrite } from './mediaOverrides';
 import { optionValue, snapNumber } from './worldOptions';
 import type { SlotOwner } from './bodies';
 import type { InventoryOp } from './inventory';
@@ -142,6 +144,8 @@ export interface StatCodeResult {
   sentence?: string;
   /** What the code did to the location, the clock and the discovered cast. Absent when it did none of it. */
   worldWrites?: WorldWrites;
+  /** The media members the code assigned, in order. Absent when it assigned none. */
+  mediaWrites?: MediaWrite[];
   /** The `diary` names an `openCast` run found outside its cast, once each. */
   maybeDiary?: string[];
   /** The unknown memory names a verb was called on, once each. Those calls are ignored (Q12, Q25). */
@@ -966,8 +970,15 @@ const traitData = (entries: readonly SandboxTrait[]) =>
 /** The fields on an entity entry that a write never reaches. */
 const ENTITY_READ_ONLY_FIELDS = [
   'id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'kind', 'action', 'held', 'knownIn', 'knownInPlaces', 'description', 'summary', 'aliases', 'traits', 'placeholders',
-  'stats', 'items', 'body', 'move', 'follow', 'unfollow', 'meet', 'diary',
+  'stats', 'items', 'body', ...MEDIA_NAME_MEMBERS.entity, 'instances', 'move', 'follow', 'unfollow', 'meet', 'diary',
 ] as const;
+
+/** Each Generic entity's Generic Entity Instances as its `instances` reads them: `[Start id, location code name]`. */
+function instanceRowsOf(media: SandboxMedia | undefined, { locations }: SandboxPlaces): Record<string, [string, string][]> {
+  const nameOf = new Map(locations.map((place) => [place.id, place.name]));
+  return Object.fromEntries(Object.entries(media?.instances ?? {}).map(([id, list]) =>
+    [id, list.map((instance): [string, string] => [instance.id, (instance.locationId && nameOf.get(instance.locationId)) || ''])]));
+}
 
 /** The entities in play keyed by code name, and the played persona, which may be one of them. */
 export interface KeyedEntities<T extends SandboxEntity = SandboxEntity> {
@@ -1053,6 +1064,7 @@ const OWN_OWNER_TAG = 'owner';
 const entitiesPrelude = (
   { byName, persona }: KeyedEntities, { indexOf }: FlatPlaceholderMap, blankStat: unknown, place: OwnerPlace,
   statEntriesOf: (entity: SandboxEntity) => StatEntry[], standing: Standing, reads: HostReads, bodies: readonly SandboxBodyDef[],
+  generics: Readonly<Record<string, [string, string][]>>,
 ): string => {
   const data = (entity: SandboxEntity, owner: boolean) => {
     const { id = '', type = '', pronouns = '', inScene = false, met = false, description, summary, aliases = [], traits, placeholders } = entity;
@@ -1064,6 +1076,7 @@ const entitiesPrelude = (
       knownIn: played ? '' : entity.knownIn ?? 'nearby', knownInPlaces: played ? [] : entity.knownInPlaces ?? [],
       description: reads.text(description), summary: reads.text(summary), aliases, traits: traitData(traits), ph: ownerIndex(indexOf, placeholders),
       stats: owner ? {} : statMapData(statEntriesOf(entity)), owner, played, body: entity.body ?? null,
+      generic: played || !id ? [] : generics[id] ?? [],
     };
   };
   const own = place.kind === 'own' ? place.entity : undefined;
@@ -1118,6 +1131,32 @@ const entitiesPrelude = (
     `    return shown.view;`,
     `  } });`,
     `  const setters = { body: (next) => { assigned = ${ENTITY_WRITE}(who, 'body', next); } };`,
+    // The played persona's media key is empty, as its Body's is, so it follows whoever the player plays.
+    `  const mediaKey = 'e:' + (who.played ? '' : who.id);`,
+    `  const mediaOwner = { kind: 'entity', id: who.played ? '' : who.id };`,
+    `  const absent = () => who.unknown || (!who.played && !who.id);`,
+    `  for (const field of ${JSON.stringify(MEDIA_NAME_MEMBERS.entity)}) {`,
+    `    define(values, field, { enumerable: true, get: () => (absent() ? null : ${MEDIA}.get([mediaKey], field)) });`,
+    `    setters[field] = (next) => {`,
+    `      if (absent()) ${MEDIA}.fail('The game has no entity named "' + who.name + '"');`,
+    `      ${MEDIA}.set(mediaKey, mediaOwner, field, next);`,
+    `    };`,
+    `  }`,
+    // One entry per Generic Entity Instance, whose override beats the entity's (Q50).
+    `  let generic = null;`,
+    `  const instanceEntry = ([startId, place], at) => {`,
+    `    const path = 'entities.' + who.name + '.instances[' + at + '].';`,
+    `    const key = 'i:' + who.id + ':' + startId;`,
+    `    const owner = { kind: 'instance', entityId: who.id, startId };`,
+    `    const out = {};`,
+    `    define(out, 'id', { enumerable: true, get: () => startId, set: () => ${LOOSE_NOTE}(path + 'id') });`,
+    `    define(out, 'location', { enumerable: true, get: () => place, set: () => ${LOOSE_NOTE}(path + 'location') });`,
+    `    for (const field of ${JSON.stringify(MEDIA_NAME_MEMBERS.entity)}) {`,
+    `      define(out, field, { enumerable: true, get: () => ${MEDIA}.get([key, mediaKey], field), set: (next) => ${MEDIA}.set(key, owner, field, next) });`,
+    `    }`,
+    `    return freeze(out);`,
+    `  };`,
+    `  define(values, 'instances', { enumerable: true, get: () => generic || (generic = freeze((data.generic || []).map(instanceEntry))) });`,
     `  return [lazy(values, ['description', 'summary'], '', ${NO_NOTE}), rows, who.played ? Object.keys(moves) : [], setters];`,
     `});`,
     `const persona = spec.persona ? entry('', spec.persona, false) : entities[${JSON.stringify(persona.name)}];`,
@@ -1323,6 +1362,12 @@ const itemsPrelude = (
     `    verb(out, path, 'setState', (state) => {`,
     `      if (typeof state !== 'string') throw new TypeError(path + 'setState needs a string');`,
     `      op('change', { state });`,
+    `    });`,
+    // The instance's own override, which beats its item's rules (Q49).
+    `    const mediaKey = 't:' + instanceId;`,
+    `    Object.defineProperty(out, 'image', {`,
+    `      enumerable: true, get: () => ${MEDIA}.get([mediaKey], 'image'),`,
+    `      set: (next) => ${MEDIA}.set(mediaKey, { kind: 'item', id: instanceId }, 'image', next),`,
     `    });`,
     `    Object.freeze(out);`,
     `    if (listed) (byPlace[data.at] || (byPlace[data.at] = [])).push(out);`,
@@ -1913,7 +1958,85 @@ export interface StatCodeRunOptions {
   money?: SandboxMoney;
   /** The world's Bodies, which `body` reads and a `body` assignment can name. Absent, no name is a Body. */
   bodies?: readonly SandboxBodyDef[];
+  /** What the media members read and name. Absent, they read null and no name is an entry. */
+  media?: SandboxMedia;
 }
+
+/** What the media members read: each entry's name, the overrides in force, each owner's media with none, and each
+ *  Generic entity's Generic Entity Instances. */
+export interface SandboxMedia {
+  entries: readonly Pick<MediaEntry, 'id' | 'name' | 'kind'>[];
+  overrides: MediaOverrides;
+  /** The entries each owner shows with no override (Q52), keyed as overrides are. Built on the first read. */
+  defaults: () => Omit<MediaOverrides, 'instances'>;
+  /** Generic entity id → its Generic Entity Instances in Start order. Absent ⇒ none. */
+  instances?: Readonly<Record<string, readonly { id: string; locationId?: string }[]>>;
+}
+
+/** Overrides keyed as the media prelude reads them: `e:<entity>`, `i:<entity>:<start>`, `l:<location>`, `t:<instance>`, `w`. */
+function flatMedia({ entities, instances, locations, items, music }: MediaOverrides): Record<string, Record<string, string>> {
+  return {
+    ...Object.fromEntries(Object.entries(entities ?? {}).map(([id, row]) => [`e:${id}`, { ...row }])),
+    ...Object.fromEntries(Object.entries(instances ?? {}).flatMap(([id, starts]) =>
+      Object.entries(starts).map(([startId, row]) => [`i:${id}:${startId}`, { ...row }]))),
+    ...Object.fromEntries(Object.entries(locations ?? {}).map(([id, row]) => [`l:${id}`, { ...row }])),
+    ...Object.fromEntries(Object.entries(items ?? {}).map(([id, image]) => [`t:${id}`, { image }])),
+    ...(music ? { w: { music } } : {}),
+  };
+}
+
+// The prelude's media reader and writer, which entity, location, item and `world` entries call.
+const MEDIA = '__formamorphMedia';
+
+/** The media prelude, after the world prelude, and `world`. `get(keys, field)` reads the first override in force
+ *  along `keys`, else what the last key shows with none; `set` checks the name and lists the write, which reads
+ *  back in the run. A name of the wrong kind is a missing name (Q53). */
+const mediaPrelude = (media: SandboxMedia | undefined, reads: HostReads): string => {
+  const entries = media?.entries ?? [];
+  const byName: Record<MediaEntry['kind'], Record<string, string>> = { image: {}, sound: {} };
+  for (const { id, name, kind } of entries) byName[kind][name] ??= id;
+  const spec = {
+    entries: Object.fromEntries(entries.map(({ id, name, kind }) => [id, { name, kind }])), byName, kinds: MEDIA_MEMBER_KIND,
+    overrides: flatMedia(media?.overrides ?? {}), defaults: media ? reads.deferred(() => flatMedia(media.defaults())) : -1,
+  };
+  return [
+    `const ${MEDIA} = ((spec, writes, read) => {`,
+    `  const own = (map, key) => Object.prototype.hasOwnProperty.call(map, key);`,
+    `  const fail = (message) => {`,
+    `    writes.unknown.push(message);`,
+    `    throw new Error(message);`,
+    `  };`,
+    `  const held = spec.overrides;`,
+    `  let shown = null;`,
+    `  const fallback = (key, field) => {`,
+    `    if (!shown) shown = spec.defaults < 0 ? {} : read(spec.defaults);`,
+    `    return own(shown, key) ? shown[key][field] : undefined;`,
+    `  };`,
+    `  const nameOf = (id, kind) => (typeof id === 'string' && own(spec.entries, id) && spec.entries[id].kind === kind ? spec.entries[id].name : null);`,
+    `  const get = (keys, field) => {`,
+    `    const kind = spec.kinds[field];`,
+    `    for (const key of keys) {`,
+    `      const name = own(held, key) ? nameOf(held[key][field], kind) : null;`,
+    `      if (name !== null) return name;`,
+    `    }`,
+    `    return nameOf(fallback(keys[keys.length - 1], field), kind);`,
+    `  };`,
+    `  const set = (key, owner, field, target) => {`,
+    `    const kind = spec.kinds[field];`,
+    `    const id = target === null ? null : typeof target === 'string' && own(spec.byName[kind], target) ? spec.byName[kind][target] : undefined;`,
+    `    if (id === undefined) fail('The world has no ' + kind + ' named "' + String(target) + '"');`,
+    `    const row = own(held, key) ? held[key] : (held[key] = {});`,
+    `    if (id === null) delete row[field];`,
+    `    else row[field] = id;`,
+    `    writes.media.push({ owner, field, mediaId: id });`,
+    `  };`,
+    `  return { get, set, fail };`,
+    `})(JSON.parse(${JSON.stringify(JSON.stringify(spec))}), ${WORLD_WRITES}, ${HOST_READ});`,
+    `const world = Object.freeze(Object.defineProperty({}, 'music', {`,
+    `  enumerable: true, get: () => ${MEDIA}.get(['w'], 'music'), set: (next) => ${MEDIA}.set('w', { kind: 'world' }, 'music', next),`,
+    `}));`,
+  ].join('\n');
+};
 
 const WORLD_WRITES = '__formamorphWorldWrites';
 const ENTITY_WRITE = '__formamorphEntityWrite';
@@ -1922,7 +2045,7 @@ const ADVANCE_CLOCK = '__formamorphAdvanceClock';
 const MOVE_TURN = '__formamorphMoveTurn';
 
 /** The globals a read-only run reads through its view, the surface of a user Tool (Q24). */
-const READ_ONLY_GLOBALS = ['entities', 'persona', 'locations', 'location', 'memories', 'clock', 'turn', 'stats', 'traits', 'placeholders', 'dictionaries', 'items', 'options'] as const;
+const READ_ONLY_GLOBALS = ['entities', 'persona', 'locations', 'location', 'memories', 'clock', 'turn', 'stats', 'traits', 'placeholders', 'dictionaries', 'items', 'options', 'world'] as const;
 
 const READ_ONLY_VIEW_OF = '__formamorphReadOnlyView';
 
@@ -2007,7 +2130,7 @@ const worldPrelude = (
   bodies: readonly SandboxBodyDef[],
 ): string => [
   `const [${MOVE_TURN}, discover, memories, ${ADVANCE_CLOCK}, ${ENTITY_WRITE}, ${WORLD_WRITES}] = ((places, cast, open, rows, lockEntry, note, bodies) => {`,
-  `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], namedWrites: [], diary: [], entities: [], memoryWrites: [], inventory: [], bodies: [], unknown: [], maybe: [], unknownMemories: [] };`,
+  `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], namedWrites: [], diary: [], entities: [], memoryWrites: [], inventory: [], bodies: [], media: [], unknown: [], maybe: [], unknownMemories: [] };`,
   `  const fail = (message) => {`,
   `    writes.unknown.push(message);`,
   `    throw new Error(message);`,
@@ -2234,6 +2357,16 @@ const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing
     `    const out = { id: data.id, name: data.name, description: data.description, summary: data.summary, starting: data.starting, present };`,
     `    const read = linked(lockEntry(out, ['description', 'summary'], data.prefix, note), data.links, data.prefix);`,
     `    Object.defineProperty(read, 'items', { enumerable: true, get: () => ${ITEMS_AT}('location', data.id), set: () => note(data.prefix + 'items') });`,
+    `    const mediaKey = 'l:' + data.id;`,
+    `    for (const field of ${JSON.stringify(MEDIA_NAME_MEMBERS.location)}) {`,
+    `      Object.defineProperty(read, field, {`,
+    `        enumerable: true, get: () => (data.id ? ${MEDIA}.get([mediaKey], field) : null),`,
+    `        set: (next) => {`,
+    `          if (!data.id) ${MEDIA}.fail('The world has no location named "' + (data.key || data.name) + '"');`,
+    `          ${MEDIA}.set(mediaKey, { kind: 'location', id: data.id }, field, next);`,
+    `        },`,
+    `      });`,
+    `    }`,
     `    for (const [field, held] of Object.entries(extra)) {`,
     `      Object.defineProperty(read, field, { enumerable: true, get: () => held, set: () => note(data.prefix + field) });`,
     `    }`,
@@ -2242,7 +2375,7 @@ const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing
     `  const map = Object.create(null);`,
     `  for (const [key, data] of spec.locations) map[key] = entry(data, {});`,
     `  const strays = Object.create(null);`,
-    `  const stray = (key) => entry({ ...spec.blank, prefix: (/^[A-Za-z_$][\\w$]*$/.test(key) ? 'locations.' + key : 'locations[' + JSON.stringify(key) + ']') + '.' }, {});`,
+    `  const stray = (key) => entry({ ...spec.blank, key, prefix: (/^[A-Za-z_$][\\w$]*$/.test(key) ? 'locations.' + key : 'locations[' + JSON.stringify(key) + ']') + '.' }, {});`,
     `  const locations = new Proxy(Object.freeze(map), {`,
     `    get: (target, key) => typeof key !== 'string' || key in target ? target[key] : strays[key] || (strays[key] = stray(key)),`,
     `  });`,
@@ -2252,12 +2385,12 @@ const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing
 };
 
 /** The world writes a run's dump holds, or the error of the first unknown name it named. */
-function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: string[]; unknownMemories?: string[] } | { error: string } {
+function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: string[]; unknownMemories?: string[]; media?: MediaWrite[] } | { error: string } {
   const parsed: unknown = JSON.parse(dump);
   if (!parsed || typeof parsed !== 'object') return {};
-  const { location, minutes, advanced, discover, memory, pins, namedWrites, diary, entities, memoryWrites, inventory, bodies, unknown, maybe, unknownMemories } = parsed as {
+  const { location, minutes, advanced, discover, memory, pins, namedWrites, diary, entities, memoryWrites, inventory, bodies, media, unknown, maybe, unknownMemories } = parsed as {
     location: string | null; minutes: number; advanced: boolean; discover: DiscoverWrite[]; memory: string[]; pins: string[]; namedWrites: NamedWrite[];
-    diary: DiaryWrite[]; entities: EntityCodeWrite[]; memoryWrites: MemoryWrite[]; inventory: InventoryOp[]; bodies: BodyWrite[];
+    diary: DiaryWrite[]; entities: EntityCodeWrite[]; memoryWrites: MemoryWrite[]; inventory: InventoryOp[]; bodies: BodyWrite[]; media: MediaWrite[];
     unknown: string[]; maybe: string[]; unknownMemories: string[];
   };
   if (unknown.length) return { error: unknown[0] };
@@ -2278,6 +2411,7 @@ function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: str
     ...(Object.keys(writes).length ? { writes } : {}),
     ...(maybe.length ? { maybeDiary: maybe } : {}),
     ...(unknownMemories.length ? { unknownMemories } : {}),
+    ...(media.length ? { media } : {}),
   };
 }
 
@@ -2350,7 +2484,7 @@ export const executeStatCode = async (
     clock, readings, turn = NO_TURN, choicesWritable = false, worldOptions = [], optionValues, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner,
     dictionaries = [], resolveEntryValue, narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES, discovered = [], args,
     openCast = false, memories = [], notes = '', readOnly = false, items = [], itemEvent, bodies = [], randomSeed,
-    currencies = [], money,
+    currencies = [], money, media,
   }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
@@ -2460,6 +2594,7 @@ export const executeStatCode = async (
       ...(selfMap || !currentStat ? [] : [`(${LOCK_STAT})(self, ${SELF_ASSIGNED}, (path) => ${LOOSE_NOTE}('self.' + path));`]),
       ...(!currentStat && selfTrait ? [`Object.freeze((${LOCK_FIELDS})(self, Object.keys(self), 'self.', ${LOOSE_NOTE}));`] : []),
       worldPrelude(places, diaryCast(entities, persona, discovered), openCast, memories, reads, bodies),
+      mediaPrelude(media, reads),
       `const clock = ((lock, advance) => {`,
       `  const clock = ${JSON.stringify(clockObject(clock))};`,
       `  Object.freeze(lock(clock.previous, ['day', 'daypart', 'hour', 'minute'], 'clock.previous.', ${LOOSE_NOTE}));`,
@@ -2497,7 +2632,7 @@ export const executeStatCode = async (
       ...(itemEvent ? [] : [`const args = Object.freeze(JSON.parse(${JSON.stringify(JSON.stringify(args ?? {}))}));`]),
       placeholdersPrelude(placeholderMap),
       trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
-      entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf, standing, reads, bodies),
+      entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf, standing, reads, bodies, instanceRowsOf(media, places)),
       locationsPrelude(places, standing, reads),
       dictionariesPrelude(dictionaries, placeholderMap, reads, resolveEntryValue),
       itemsPrelude(items, keyed, places, placeholderMap, itemEvent),
@@ -2692,6 +2827,7 @@ export const executeStatCode = async (
         ...(paid?.payments.length ? { payments: paid.payments } : {}),
         ...(worldWrites.maybeDiary ? { maybeDiary: worldWrites.maybeDiary } : {}),
         ...(worldWrites.unknownMemories ? { unknownMemories: worldWrites.unknownMemories } : {}),
+        ...(worldWrites.media ? { mediaWrites: worldWrites.media } : {}),
         ...(args ? { reply: replyOf() } : {}),
       });
       if (!currentStat || returnsSentence) return settled(null);

@@ -28,7 +28,7 @@ describe('the Tool script surface matches the sandbox', () => {
   it('lists every global the script can reach, and each is really there', async () => {
     const globals = surface.globals.map((g) => g.name);
     expect(globals).toEqual([
-      'args', 'stats', 'clock', 'turn', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'items', 'currencies', 'options', 'console',
+      'args', 'stats', 'clock', 'turn', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'items', 'currencies', 'options', 'world', 'console',
     ]);
     const probe = `return [${globals.map((g) => `typeof ${g}`).join(', ')}];`;
     const result = await runToolScript(probe, { name: 'Wren' }, snapshot);
@@ -38,15 +38,15 @@ describe('the Tool script surface matches the sandbox', () => {
   it('leaves out every name a world script has that the Tool surface lacks, and the sandbox lacks each too', async () => {
     const absent = WORLD_SCRIPT_SURFACE.globals.map((g) => g.name).filter((name) => !surface.globals.some((g) => g.name === name));
     expect(absent.sort()).toEqual(['discover', 'owner', 'self']);
-    const probe = `return [${[...absent, 'player', 'world', 'scene'].map((g) => `typeof ${g}`).join(', ')}];`;
+    const probe = `return [${[...absent, 'player', 'scene'].map((g) => `typeof ${g}`).join(', ')}];`;
     const result = await runToolScript(probe, {}, snapshot);
-    expect(JSON.parse((result as { text: string }).text)).toEqual(Array(6).fill('undefined'));
+    expect(JSON.parse((result as { text: string }).text)).toEqual(Array(5).fill('undefined'));
   });
 });
 
 describe('no verb on the surface', () => {
   it('offers the fields of each world value and none of its calls', () => {
-    expect(labelsAt('return location.|')).toEqual(['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits', 'items']);
+    expect(labelsAt('return location.|')).toEqual(['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits', 'items', 'image', 'ambience']);
     expect(labelsAt('return clock.|')).toEqual(['day', 'daypart', 'hour', 'minute', 'deltaHours', 'elapsedHours', 'previous']);
     expect(labelsAt('return memories.|')).toEqual([]);
     expect(labelsAt('return entities.Mara.|', named)).not.toEqual(expect.arrayContaining(['move']));
@@ -78,7 +78,7 @@ describe('diagnostics read the surface', () => {
   it('marks the retired globals unknown', () => {
     expect(messages('return world.entities;')).toEqual(['“world.entities” isn’t available in a Tool script. Use “entities”.']);
     expect(messages('return scene.present;')).toEqual(['“scene.present” isn’t available in a Tool script. Use “location.present”.']);
-    expect(messages('return world;')).toEqual(['“world” isn’t available in a Tool script.']);
+    expect(messages('return world.music;')).toEqual([]);
   });
 
   it('accepts a script that reads the script surface and warns when it returns nothing', () => {

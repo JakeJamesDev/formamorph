@@ -495,6 +495,7 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
       ...(read.currencies.length && { currencies: read.currencies }),
       ...(read.money && { money: read.money() }),
       ...(read.bodyDefs.length && { bodies: read.bodyDefs }),
+      ...(state.media && { media: state.media }),
       ...(itemEvent && { itemEvent: itemEvent.event }),
     };
   };

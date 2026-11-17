@@ -424,6 +424,32 @@ export interface BodyRuntime {
   base?: Record<string, BodyPick>;
 }
 
+/** An entity's or Generic Entity Instance's script-set media, by Media Entry id. */
+export interface EntityMediaOverride {
+  image?: string;
+  sound?: string;
+}
+
+/** A location's script-set media, by Media Entry id. */
+export interface LocationMediaOverride {
+  image?: string;
+  ambience?: string;
+}
+
+/** The Media Entries scripts set, by owner. An id the Media List lacks reads as unset (Q19). */
+export interface MediaOverrides {
+  /** Entity id → its override; the empty key is the played persona. */
+  entities?: Record<string, EntityMediaOverride>;
+  /** Generic entity id → Start id → that Generic Entity Instance's override, which beats the entity's (Q50). */
+  instances?: Record<string, Record<string, EntityMediaOverride>>;
+  /** Location id → its override. */
+  locations?: Record<string, LocationMediaOverride>;
+  /** Item Instance id → its image's entry id (Q49). */
+  items?: Record<string, string>;
+  /** World music's entry id. */
+  music?: string;
+}
+
 /** One saved snapshot of a play session (see GameplayContext.saveCurrentGameState). */
 export interface GameState {
   globalStats: PlayerStat[];
@@ -466,6 +492,8 @@ export interface GameState {
   codePins?: CodePins;
   /** Absent ⇒ none. */
   loreToggles?: LoreToggles;
+  /** The Media Entries scripts set in place of the authored media. Absent ⇒ none. */
+  mediaOverrides?: MediaOverrides;
   /** The playthrough's World Option values. An Option missing here reads its default. Absent ⇒ every default. */
   worldOptionValues?: WorldOptionValues;
   /** The live scene list — who is physically present this turn, with alias/reveal state for the tab. Legacy

@@ -93,9 +93,9 @@ describe('heavy text in the sandbox', () => {
         Object.keys(dictionaries.Lore), Object.keys(dictionaries.Lore.entries), Object.keys(dictionaries.Lore.entries.Tides),
         JSON.stringify(memories[1]), JSON.stringify(dictionaries.Lore.entries.Tides), Object.values(locations.Hill).slice(0, 5),
       ];`)).toEqual([
-        ['id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'kind', 'action', 'held', 'knownIn', 'knownInPlaces', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items', 'body', 'move', 'follow', 'unfollow', 'meet', 'diary'],
-        ['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits', 'items'],
-        ['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits', 'items', 'move'],
+        ['id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'kind', 'action', 'held', 'knownIn', 'knownInPlaces', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items', 'body', 'image', 'sound', 'instances', 'move', 'follow', 'unfollow', 'meet', 'diary'],
+        ['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits', 'items', 'image', 'ambience'],
+        ['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits', 'items', 'image', 'ambience', 'move'],
         ['id', 'turn', 'timestamp', 'day', 'daypart', 'text', 'name', 'custom', 'kept', 'inContext', 'pinned', 'forgotten'],
         ['id', 'name', 'enabled', 'entries', 'placeholders'],
         ['Tides', 'The Wreck'],

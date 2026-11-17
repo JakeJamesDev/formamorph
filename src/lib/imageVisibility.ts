@@ -1,11 +1,12 @@
 // Visibility rules in play: which of an entity's, a location's or the Map Background's gallery images the story shows right now.
 
-import type { Base64Data, Entity, GalleryImage, Item, ItemInstance, MediaList, RequirementOwner, TraitRequirement, TraitRequirementRow, WorldOverview } from '@/types';
-import { entityImages } from './entityImages';
+import type { Base64Data, Entity, GalleryImage, GalleryLink, Item, ItemInstance, MediaList, RequirementOwner, TraitRequirement, TraitRequirementRow, WorldOverview } from '@/types';
+import { entityImages, galleryLinks } from './entityImages';
 import { locationImages, type LocationImageBearing } from './locationImages';
 import { mapImages } from './mapBackground';
 import { mapConditions } from './requirementRows';
 import { globalItems, ruleStates, type GateInput, type RowState } from './traitGates';
+import { withImageOverride } from './mediaOverrides';
 
 /** One image visible in play, with its slot in the authored gallery. */
 export interface VisibleImage {
@@ -20,10 +21,11 @@ const visibleBy = (images: readonly GalleryImage[], statesOf: (rows: TraitRequir
 
 /**
  * The entity's images visible in play, in author order, so the first is the primary. An image with no rule is
- * visible; one with a rule is visible while any row holds, and an unresolved Condition never holds (Q12).
+ * visible; one with a rule is visible while any row holds, and an unresolved Condition never holds (Q12). A script's
+ * override, by entry id, shows first (Q51).
  */
-export const visibleImages = (entity: Pick<Entity, 'id' | 'images'>, input: GateInput, media: MediaList | undefined): VisibleImage[] =>
-  visibleBy(entityImages(entity, media), (rows) => ruleStates(input, entity.id, rows));
+export const visibleImages = (entity: Pick<Entity, 'id' | 'images'>, input: GateInput, media: MediaList | undefined, overrideId?: string): VisibleImage[] =>
+  withImageOverride(visibleBy(entityImages(entity, media), (rows) => ruleStates(input, entity.id, rows)), media, overrideId);
 
 /**
  * A location rule's rows as the gate module reads them: a Condition with no owner names the played persona
@@ -65,13 +67,33 @@ export function itemRuleStates(input: GateInput, instance: Pick<ItemInstance, 'w
   });
 }
 
-/** The item's first image visible for one Item Instance in play, or undefined when none shows. */
-export const visibleItemImage = (item: Pick<Item, 'images'>, instance: Pick<ItemInstance, 'where'>, input: GateInput, media: MediaList | undefined): Base64Data | undefined =>
-  visibleBy(entityImages(item, media), (rows) => itemRuleStates(input, instance, rows))[0]?.data;
+/** The item's first image visible for one Item Instance in play, or undefined when none shows. The instance's
+ *  override, by entry id, wins (Q49). */
+export const visibleItemImage = (
+  item: Pick<Item, 'images'>, instance: Pick<ItemInstance, 'where'>, input: GateInput, media: MediaList | undefined, overrideId?: string,
+): Base64Data | undefined =>
+  withImageOverride(visibleBy(entityImages(item, media), (rows) => itemRuleStates(input, instance, rows)), media, overrideId)[0]?.data;
 
-/** The location's images visible in play, in author order. An unresolved Condition never holds. */
-export const visibleLocationImages = (location: LocationImageBearing, input: GateInput, media: MediaList | undefined): VisibleImage[] =>
-  visibleBy(locationImages(location, media), (rows) => locationRuleStates(input, rows));
+/** The location's images visible in play, in author order, after a script's override. An unresolved Condition never holds. */
+export const visibleLocationImages = (location: LocationImageBearing, input: GateInput, media: MediaList | undefined, overrideId?: string): VisibleImage[] =>
+  withImageOverride(visibleBy(locationImages(location, media), (rows) => locationRuleStates(input, rows)), media, overrideId);
+
+/** The entry id of the first rule-visible link to an image entry in `links`, or undefined (Q52). */
+const firstVisibleLink = (links: readonly GalleryLink[], media: MediaList | undefined, statesOf: (rows: TraitRequirementRow[]) => RowState[]): string | undefined =>
+  links.flatMap((link) => ('mediaId' in link && media?.[link.mediaId]?.kind === 'image'
+    && (!link.requires?.length || statesOf(link.requires).some((row) => row.holds)) ? [link.mediaId] : []))[0];
+
+/** The entry the entity's rules show with no override, as a script's `image` reads it. */
+export const ruleImageId = (entity: Pick<Entity, 'id' | 'images'>, input: GateInput, media: MediaList | undefined): string | undefined =>
+  firstVisibleLink(galleryLinks(entity), media, (rows) => ruleStates(input, entity.id, rows));
+
+/** The entry the location's rules show with no override. */
+export const locationRuleImageId = (location: LocationImageBearing, input: GateInput, media: MediaList | undefined): string | undefined =>
+  firstVisibleLink(Array.isArray(location.images) ? galleryLinks({ images: location.images }) : [], media, (rows) => locationRuleStates(input, rows));
+
+/** The entry the item's rules show for one Item Instance with no override. */
+export const itemRuleImageId = (item: Pick<Item, 'images'>, instance: Pick<ItemInstance, 'where'>, input: GateInput, media: MediaList | undefined): string | undefined =>
+  firstVisibleLink(galleryLinks(item), media, (rows) => itemRuleStates(input, instance, rows));
 
 /** The Map Background's images visible in play, in author order. Its rows read as a location's do (Q74). */
 export const visibleMapImages = (overview: Pick<WorldOverview, 'mapBackground' | 'mediaList'>, input: GateInput): VisibleImage[] =>

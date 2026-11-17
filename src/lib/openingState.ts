@@ -26,6 +26,7 @@ import { gatePick } from './inPlayGates';
 import type { PersonaPick } from './persona';
 import { equipRequirement, settleInventory, startingInstances, type NewId } from './inventory';
 import { randomUUID } from './uuid';
+import { genericInstancesOf, sandboxMediaOf } from './sandboxMedia';
 import type { OwnerId } from './scope';
 import { resolveEntityText, type PlaceholderMode } from './placeholders';
 import type {
@@ -162,6 +163,10 @@ export function openingFold(
     items: world.items ?? [],
     slots: world.slots ?? [],
     ...(world.currencies?.length ? { money: { currencies: world.currencies, placements: world.placements ?? [] } } : {}),
+    media: sandboxMediaOf({
+      list: world.worldOverview?.mediaList, overrides: {}, entities, personaId: played?.id, locations, items: world.items ?? [],
+      itemInstances: playWorld.itemInstances ?? [], music: world.worldOverview?.bgm, gate: () => gate,
+    }),
   };
   const startingTraits = [...held.map((trait) => ({ trait, ownerId: null })), ...rows.appliedRows];
   const gate = traitGateInput(traitState, { ...playWorld, daypart: daypartAt(0) });
@@ -179,7 +184,11 @@ export function authoringStateOf(world: OpeningFoldWorld, picks?: OpeningPicks, 
   const { state } = fold;
   const cast = positionedCast(state.ownerTraits.entities ?? [], persona?.ref);
   const placed = openingWorld(cast, world.locations ?? [], world.connections ?? [], state.places?.location?.id, gatePick(fold.gate));
-  return { ...state, ...scriptPlaces(placeAll(EMPTY_BOOK, placed), placed) };
+  const book = placeAll(EMPTY_BOOK, placed);
+  return {
+    ...state, ...scriptPlaces(book, placed),
+    ...(state.media && { media: { ...state.media, instances: genericInstancesOf(book.generics) } }),
+  };
 }
 
 /** What a script reads of where the cast stands in a live game. */

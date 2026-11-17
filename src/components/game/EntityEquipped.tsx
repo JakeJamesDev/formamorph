@@ -11,6 +11,7 @@ import { visibleWorn } from '@/lib/inventory';
 import { playsAs } from '@/lib/owners';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
 import { useViewedGateInput } from '@/lib/useViewedGateInput';
+import { useViewedMediaOverrides } from '@/lib/useMediaOverrides';
 import type { Entity, ItemInstance } from '@/types';
 import { ItemModal } from '../modals/ItemModal';
 
@@ -23,6 +24,7 @@ export function EntityEquipped({ entity }: { entity: Entity }) {
   const data = useGameDataOptional();
   const resolveText = usePlaceholderResolver();
   const gateInput = useViewedGateInput();
+  const overrides = useViewedMediaOverrides();
   const [viewingId, setViewingId] = useState<string | null>(null);
   const worn = visibleWorn(itemInstances, playsAs(entity, personaRef) ? { kind: 'you' } : { kind: 'entity', id: entity.id });
   if (worn.length === 0) return null;
@@ -31,7 +33,7 @@ export function EntityEquipped({ entity }: { entity: Entity }) {
   const nameOf = (instance: ItemInstance) => instanceName(instance, data?.items ?? [], [], resolveText);
   const imageOf = (instance: ItemInstance) => {
     const item = itemOf(instance);
-    return item && visibleItemImage(item, instance, gateInput, data?.worldOverview.mediaList);
+    return item && visibleItemImage(item, instance, gateInput, data?.worldOverview.mediaList, overrides.item(instance.id));
   };
   const shownIconOf = (instance: ItemInstance) =>
     instanceItemIcon(instance, itemOf(instance), { name: nameOf(instance), slots: data?.slots ?? [], readText: resolveText, image: imageOf(instance) });

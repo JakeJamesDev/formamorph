@@ -120,7 +120,7 @@ const asLevel = (entries: readonly { name: string }[]) => entries.map((entry) =>
 
 describe('the top level', () => {
   it('lists the sandbox’s globals in the order an author meets them, without console', () => {
-    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Items', 'Currencies', 'World Options', 'Clock', 'Turn', 'Locations', 'Location', 'Memories', 'notes', 'discover']);
+    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Items', 'Currencies', 'World Options', 'Clock', 'Turn', 'Locations', 'Location', 'Memories', 'Music', 'notes', 'discover']);
   });
 
   it('keeps the in-group order of a stat’s fields', () => {
@@ -499,7 +499,7 @@ describe('array elements', () => {
   // The fields only: the persona has no verbs and stands first where the player is.
   const presentFields = [
     'id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'kind', 'action', 'held', 'knownIn', 'knownInPlaces',
-    'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items', 'body',
+    'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items', 'body', 'image', 'sound', 'instances',
   ];
 
   it('lists the memory element’s group, then the memories calls, with the verbs last', () => {
