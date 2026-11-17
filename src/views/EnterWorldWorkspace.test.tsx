@@ -715,6 +715,9 @@ describe('collapsible nav', () => {
   it('gives parent rows a chevron and leaf rows an empty slot of the same width', () => {
     render(<Harness />);
     expect(chevron(/^Collapse Origin$/)).toHaveAttribute('aria-expanded', 'true');
+    // Like every other expander, hover lights only the icon, never a fill behind it.
+    expect(chevron(/^Collapse Origin$/)).toHaveClass('hover:text-foreground');
+    expect(chevron(/^Collapse Origin$/).className).not.toMatch(/hover:bg-/);
     expect(within(nav()).queryByRole('button', { name: /Practice$/, expanded: true })).not.toBeInTheDocument();
     const leadOf = (name: string) => row(name).previousElementSibling!;
     expect(leadOf('Origin')).toHaveClass('w-6');

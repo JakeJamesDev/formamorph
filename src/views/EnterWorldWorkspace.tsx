@@ -105,7 +105,7 @@ type NavFold =
   | { mode: 'auto'; cut: number; held: ReadonlySet<string> }
   | { mode: 'manual'; folded: ReadonlySet<string> };
 
-const navIconButton = 'flex shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring';
+const navIconButton = 'flex shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring';
 
 export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const viewportMobile = useIsMobile();
@@ -496,7 +496,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           <span>Starting Traits</span><span className="h-px flex-1 bg-border" />
           {parents.length > 0 && (
             <Tip tip={anyExpanded ? 'Collapse All' : 'Expand All'}>
-              <button type="button" className={cn(navIconButton, 'h-6 w-6')} onClick={toggleAll}>
+              <button type="button" className={cn(navIconButton, 'h-6 w-6 hover:bg-accent')} onClick={toggleAll}>
                 {anyExpanded ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
               </button>
             </Tip>
