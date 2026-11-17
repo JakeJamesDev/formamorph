@@ -33,7 +33,7 @@ Settled with the user on 2026-11-16, in grill order.
 | Q5 | The save-state getter becomes a stable getter that reads the latest state from a ref. A comment and a test guard against a future eager memo on it. |
 | Q6 | Presence recomputes only when the recent scene turns' content changes, not on every history write. |
 | Q7 | The card rows and speaker colors keep their previous identity when a rebuild gives equal content. |
-| Q8 | New evidence from ticket 02: the markdown library caches its processor by plugin name plus the JSON of its options, and the colors Map serializes as `{}`, so a new speaker's quote stays uncolored after the remount. Ticket 05 fixes it in this effort: the speaker source serializes everything the quote plugin reads. The renderer's plugin keying stays out of scope. |
+| Q8 | New evidence from ticket 02: the markdown library caches its processor by plugin name plus the JSON of its options, and the colors Map serializes as `{}`, so a new speaker's quote stays uncolored after the remount. Ticket 05 fixes it in this effort: the speaker source serializes everything the quote plugin reads. The renderer's plugin keying stays out of scope. One shared serializer covers the sources the game builds (live, committed, recolored); canned reference and preview sources stay plain literals. Map entries serialize in insertion order (ticket 05). |
 | S1 | The two test seams are the game viewer render harness and the Player View module tests (confirmed with the user). |
 
 ## User Stories
@@ -80,6 +80,7 @@ Settled with the user on 2026-11-16, in grill order.
 
 - Changing how quote colors are read or painted while streaming.
 - Changing the renderer's plugin keying.
+- The inventory settle memo's rebuild on history writes. It comes through the live scene feeding stat-code preparation and item events, not through the save-state getter, and does not reach the narration renderer (ticket 04; a follow-up).
 - Reworking the Player View reach or the help world sources beyond what Q1 needs.
 - Performance work on the full Player View builder.
 
