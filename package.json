@@ -46,6 +46,7 @@
     "changelog:notes": "node scripts/extractReleaseNotes.mjs",
     "copy:sweep": "node scripts/copySweep.mjs",
     "fingerprints": "vite-node scripts/genBundledFingerprints.ts",
+    "bench:lazy-world": "vite-node --config scripts/lazyWorldBench.vite.mjs scripts/lazyWorldBench.ts",
     "strip-worlds": "node scripts/stripWorldImages.mjs",
     "build:help-vectors": "vite-node scripts/buildHelpVectors.ts",
     "baseline": "node testing/baseline/harness/run.mjs",
