@@ -3,7 +3,7 @@
  * Formaquestion reads (ADR-0014). No row type has an AI field; AI text written in play counts as player text.
  */
 import type {
-  Base64Data, ChatMessage, Currency, DiscoveredEntity, Entity, GameState, Item, ItemInstance, MediaList, PlayerStat, RuntimeItem, Trait, World,
+  Base64Data, ChatMessage, Currency, DiscoveredEntity, Entity, GameState, Item, ItemInstance, MediaList, PlayerStat, RuntimeItem, SceneEntity, Trait, World,
 } from '@/types';
 import { activeDescriptor } from '@/lib/statContext';
 import { visibleImages } from '@/lib/imageVisibility';
@@ -102,6 +102,26 @@ export interface PlayerViewInput {
   media?: MediaList;
 }
 
+/** The state the entity rows read; a game state satisfies it. */
+export type PlayerViewEntityState = Pick<GameState,
+  'discoveredEntities' | 'entityPositions' | 'genericStates' | 'uniqueStates' | 'locationId' | 'metEntities' | 'strangerAliases'>;
+
+/** Everything the entity rows read, and nothing else: no history, choices, log, page or notes. */
+export interface PlayerViewEntitiesInput {
+  world: Pick<World, 'entities' | 'locations'> & Partial<Pick<World, 'connections'>>;
+  /** The current snapshot's entity state. */
+  current: PlayerViewEntityState;
+  /** The scene rows of the saved snapshots before the current one, oldest first. */
+  savedVisible: readonly (readonly SceneEntity[])[];
+  /** The current snapshot's scene rows. */
+  currentVisible: readonly SceneEntity[];
+  persona: Entity | null;
+  resolve: (text: string) => string;
+  isEntityOn?: (entity: Entity) => boolean;
+  gate?: GateInput;
+  media?: MediaList;
+}
+
 /** Player text with chips resolved; empty when there is none. */
 const textOf = (resolve: PlayerViewInput['resolve'], text: string | undefined): string => (text ? resolve(text) : '');
 
@@ -118,9 +138,9 @@ function discoveredText(record: DiscoveredEntity, world: ReadonlyMap<string, Ent
 }
 
 /** Every aliased scene row of the chain that resolves to one of `candidates`, oldest first. */
-function* aliasedRows(chain: readonly GameState[], candidates: readonly Entity[]): Generator<{ entity: Entity; alias: string; revealed: boolean }> {
-  for (const snapshot of chain) {
-    for (const row of snapshot.visibleEntities) {
+function* aliasedRows(scenes: readonly (readonly SceneEntity[])[], candidates: readonly Entity[]): Generator<{ entity: Entity; alias: string; revealed: boolean }> {
+  for (const scene of scenes) {
+    for (const row of scene) {
       const alias = row.alias?.trim();
       const entity = alias ? resolveEntityByName(row.name, candidates) : undefined;
       if (alias && entity) yield { entity, alias, revealed: row.revealed };
@@ -129,16 +149,16 @@ function* aliasedRows(chain: readonly GameState[], candidates: readonly Entity[]
 }
 
 /** Entity id → the alias each unrevealed scene row knew it by, newest last, for entities not met by name. */
-function aliasesInChain(chain: readonly GameState[], candidates: readonly Entity[], met: ReadonlySet<string>): Map<string, string> {
+function aliasesInChain(scenes: readonly (readonly SceneEntity[])[], candidates: readonly Entity[], met: ReadonlySet<string>): Map<string, string> {
   const aliases = new Map<string, string>();
-  for (const { entity, alias, revealed } of aliasedRows(chain, candidates)) if (!revealed && !met.has(entity.id)) aliases.set(entity.id, alias);
+  for (const { entity, alias, revealed } of aliasedRows(scenes, candidates)) if (!revealed && !met.has(entity.id)) aliases.set(entity.id, alias);
   return aliases;
 }
 
 /** Entity id → every scene alias the player saw it under, revealed or not, first seen first. */
-function seenAliasesInChain(chain: readonly GameState[], candidates: readonly Entity[]): Map<string, string[]> {
+function seenAliasesInChain(scenes: readonly (readonly SceneEntity[])[], candidates: readonly Entity[]): Map<string, string[]> {
   const seen = new Map<string, string[]>();
-  for (const { entity, alias } of aliasedRows(chain, candidates)) {
+  for (const { entity, alias } of aliasedRows(scenes, candidates)) {
     const list = seen.get(entity.id) ?? [];
     if (!list.includes(alias)) seen.set(entity.id, [...list, alias]);
   }
@@ -148,7 +168,7 @@ function seenAliasesInChain(chain: readonly GameState[], candidates: readonly En
 /** The ids of everyone the player knows by name in cast order, and the unmet ones among them, read from the
  *  Presence module on `current`. */
 function knownIds(
-  input: PlayerViewInput, current: GameState, cast: readonly Entity[], discovered: readonly DiscoveredEntity[],
+  input: PlayerViewEntitiesInput, current: PlayerViewEntityState, cast: readonly Entity[], discovered: readonly DiscoveredEntity[],
 ): { known: string[]; unmet: Set<string> } {
   const { world, persona, resolve } = input;
   const worldIds = new Set(world.entities.map((e) => e.id));
@@ -169,8 +189,10 @@ function knownIds(
   return { known: known.map((p) => p.entity.id), unmet: new Set(known.filter((p) => !p.met).map((p) => p.entity.id)) };
 }
 
-function viewEntities(input: PlayerViewInput, current: GameState): PlayerViewEntity[] {
-  const { world, persona, resolve } = input;
+/** The entity rows alone, from the entity state only. The full Player View builds its rows through this. */
+export function buildPlayerViewEntities(input: PlayerViewEntitiesInput): PlayerViewEntity[] {
+  const { world, persona, resolve, current } = input;
+  const scenes = [...input.savedVisible, input.currentVisible];
   const personaId = persona?.id ?? null;
   const worldById = new Map(world.entities.map((e) => [e.id, e]));
   // A deleted character leaves the discovered list, so its met id resolves to nothing.
@@ -188,8 +210,8 @@ function viewEntities(input: PlayerViewInput, current: GameState): PlayerViewEnt
   const { known: knownList, unmet } = knownIds(input, current, [...pool.values()], discovered);
   const known = new Set(knownList);
   // An entity known only by an alias shows the alias alone: its player description could name it.
-  const aliases = aliasesInChain(input.chain, [...pool.values()], known);
-  const seenAliases = seenAliasesInChain(input.chain, [...pool.values()]);
+  const aliases = aliasesInChain(scenes, [...pool.values()], known);
+  const seenAliases = seenAliasesInChain(scenes, [...pool.values()]);
 
   const { gate } = input;
   const withImage = (row: PlayerViewEntity, entity: Entity): PlayerViewEntity => {
@@ -342,7 +364,10 @@ export function buildPlayerView(input: PlayerViewInput): PlayerView {
   const current = input.chain.at(-1);
   if (!current) return { entities: [], locations: [], items: [], stats: [], traits: [] };
   return {
-    entities: viewEntities(input, current),
+    entities: buildPlayerViewEntities({
+      world: input.world, current, savedVisible: input.chain.slice(0, -1).map((s) => s.visibleEntities), currentVisible: current.visibleEntities,
+      persona: input.persona, resolve: input.resolve, isEntityOn: input.isEntityOn, gate: input.gate, media: input.media,
+    }),
     locations: viewLocations(input, current),
     items: viewItems(input),
     stats: viewStats(input, current),

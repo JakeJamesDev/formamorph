@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ChatMessage, DiscoveredEntity, Entity, GameState, ItemInstance, PlayerStat, Trait, World } from '@/types';
-import { buildPlayerView, type PlayerViewInput } from './playerView';
+import { buildPlayerView, buildPlayerViewEntities, type PlayerViewInput } from './playerView';
 
 const entity = (id: string, name: string, extra: Partial<Entity> = {}): Entity => ({
   id, name, playerDescription: `${name} player text.`, aiDescription: `${name} AI secret.`, aiSummary: `${name} AI summary.`, ...extra,
@@ -49,8 +49,22 @@ const instance = (id: string, itemId: string, where: ItemInstance['where'], visi
   id, item: { kind: 'item', itemId }, where, quantity: 1, visibility,
 });
 
-const view = (input: Partial<PlayerViewInput> & Pick<PlayerViewInput, 'chain'>) =>
-  buildPlayerView({ world: WORLD, history: [], persona: null, resolve: (text) => text, ...input });
+/** The entities-only builder fed from the same input, so every fixture below also checks it. */
+const entitiesOnly = (full: PlayerViewInput) => {
+  const current = full.chain[full.chain.length - 1];
+  if (!current) return [];
+  return buildPlayerViewEntities({
+    world: full.world, current, savedVisible: full.chain.slice(0, -1).map((s) => s.visibleEntities), currentVisible: current.visibleEntities,
+    persona: full.persona, resolve: full.resolve, isEntityOn: full.isEntityOn, gate: full.gate, media: full.media,
+  });
+};
+
+const view = (input: Partial<PlayerViewInput> & Pick<PlayerViewInput, 'chain'>) => {
+  const full = { world: WORLD, history: [], persona: null, resolve: (text: string) => text, ...input };
+  const built = buildPlayerView(full);
+  expect(entitiesOnly(full)).toEqual(built.entities);
+  return built;
+};
 
 const names = <T extends { name: string }>(rows: readonly T[]) => rows.map((r) => r.name);
 

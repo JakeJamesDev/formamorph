@@ -1,6 +1,6 @@
 # 01: Entities-Only Player View Builder
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -14,6 +14,14 @@ The prefactor (spec, Implementation Decisions, Q4). The Player View module expor
 
 ## Acceptance criteria
 
-- [ ] The full Player View builder gets its entity rows from the new builder.
-- [ ] For every fixture in the existing Player View tests, unidentified entities included, the new builder returns the same rows as the full builder.
-- [ ] The new builder reads no history, choices, log, page or notes. Its input type does not hold them.
+- [x] The full Player View builder gets its entity rows from the new builder. `buildPlayerView` calls `buildPlayerViewEntities`.
+- [x] For every fixture in the existing Player View tests, unidentified entities included, the new builder returns the same rows as the full builder. The `view` helper in `playerView.test.ts` asserts it on every call; affected tests green.
+- [x] The new builder reads no history, choices, log, page or notes. Its input type does not hold them. Typecheck green.
+
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
+- Nothing. Play is unchanged and nothing calls the new builder yet.
