@@ -8,6 +8,8 @@ import { blankItem } from '@/lib/items';
 import { formatMediaBytes, storedBytes } from '@/lib/mediaIndex';
 import type { World } from '@/types';
 import { entityImages } from '@/lib/entityImages';
+import { coverData } from '@/lib/mediaImages';
+import { mapImages } from '@/lib/mapBackground';
 
 /** Optimize Images runs from the Media tab header and is one history step. */
 
@@ -99,7 +101,7 @@ describe('Optimize Images', () => {
     expect(header.lastElementChild).toBe(optimizeButton());
 
     fireEvent.click(optimizeButton());
-    await waitFor(() => expect(ctx().worldOverview.thumbnail).toBe(WEBP));
+    await waitFor(() => expect(coverData(ctx().worldOverview)).toBe(WEBP));
   });
 
   it('is gone from every other tab', () => {
@@ -137,10 +139,10 @@ describe('Optimize Images', () => {
 
     fireEvent.click(optimizeButton());
     await waitFor(() => expect(ctx().dictionaries[0].thumbnail).toBe(WEBP));
-    expect(ctx().worldOverview.thumbnail).toBe(WEBP);
+    expect(coverData(ctx().worldOverview)).toBe(WEBP);
     expect(ctx().entities[0].images).toEqual([{ data: WEBP }]);
     expect(entityImages(ctx().locations[0])[0]?.data).toBe(WEBP);
-    expect(ctx().items[0].images).toEqual([{ data: WEBP }]);
+    expect(entityImages(ctx().items[0], ctx().worldOverview.mediaList).map((img) => img.data)).toEqual([WEBP]);
     await waitFor(() => expect(screen.getByRole('region', { name: 'Dictionaries' })).toHaveTextContent(formatMediaBytes(storedBytes(WEBP))));
     expect(screen.getByRole('region', { name: 'Dictionaries' })).not.toHaveTextContent(formatMediaBytes(storedBytes(PNG)));
   });
@@ -149,29 +151,29 @@ describe('Optimize Images', () => {
     const { ctx } = await renderMedia('advanced');
     fireEvent.click(optimizeButton());
     await waitFor(() => expect(entityImages(ctx().locations[0])[0]?.data).toBe(WEBP));
-    expect(ctx().worldOverview.thumbnail).toBe(WEBP);
-    expect(ctx().worldOverview.mapBackground?.images).toEqual([{ data: WEBP }]);
+    expect(coverData(ctx().worldOverview)).toBe(WEBP);
+    expect(mapImages(ctx().worldOverview).map((img) => img.data)).toEqual([WEBP]);
     expect(ctx().entities[0].images).toEqual([{ data: WEBP }]);
     expect(ctx().dictionaries[0].thumbnail).toBe(WEBP);
-    expect(ctx().items[0].images).toEqual([{ data: WEBP }]);
+    expect(entityImages(ctx().items[0], ctx().worldOverview.mediaList).map((img) => img.data)).toEqual([WEBP]);
 
     await act(async () => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
-    expect(ctx().worldOverview.thumbnail).toBe(PNG);
-    expect(ctx().worldOverview.mapBackground?.images).toEqual([{ data: PNG }]);
+    expect(coverData(ctx().worldOverview)).toBe(PNG);
+    expect(mapImages(ctx().worldOverview).map((img) => img.data)).toEqual([PNG]);
     expect(entityImages(ctx().entities[0], ctx().worldOverview.mediaList)).toEqual([{ data: PNG, name: 'Odd Wick 1' }]);
     expect(entityImages(ctx().locations[0], ctx().worldOverview.mediaList)[0]?.data).toBe(PNG);
     expect(ctx().dictionaries[0].thumbnail).toBe(PNG);
-    expect(ctx().items[0].images).toEqual([{ data: PNG }]);
+    expect(entityImages(ctx().items[0], ctx().worldOverview.mediaList).map((img) => img.data)).toEqual([PNG]);
 
     // Nothing earlier is left to undo.
     await act(async () => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
-    expect(ctx().worldOverview.thumbnail).toBe(PNG);
+    expect(coverData(ctx().worldOverview)).toBe(PNG);
     await act(async () => { fireEvent.keyDown(document.body, { key: 'y', ctrlKey: true }); });
-    expect(ctx().worldOverview.thumbnail).toBe(WEBP);
+    expect(coverData(ctx().worldOverview)).toBe(WEBP);
     expect(ctx().dictionaries[0].thumbnail).toBe(WEBP);
     expect(entityImages(ctx().locations[0])[0]?.data).toBe(WEBP);
-    expect(ctx().worldOverview.mapBackground?.images).toEqual([{ data: WEBP }]);
-    expect(ctx().items[0].images).toEqual([{ data: WEBP }]);
+    expect(mapImages(ctx().worldOverview).map((img) => img.data)).toEqual([WEBP]);
+    expect(entityImages(ctx().items[0], ctx().worldOverview.mediaList).map((img) => img.data)).toEqual([WEBP]);
   });
 
   it('shows no gallery card for an item image', async () => {
@@ -190,7 +192,7 @@ describe('Optimize Images', () => {
     unmount();
     expect(run.signal?.aborted).toBe(true);
     await act(async () => { finish(); });
-    expect(ctx().worldOverview.thumbnail).toBe(PNG);
+    expect(coverData(ctx().worldOverview)).toBe(PNG);
     expect(ctx().dictionaries[0].thumbnail).toBe(PNG);
   });
 
@@ -201,7 +203,7 @@ describe('Optimize Images', () => {
     openEditorTab(/Entities/);
 
     await act(async () => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
-    expect(ctx().worldOverview.thumbnail).toBe(PNG);
+    expect(coverData(ctx().worldOverview)).toBe(PNG);
     expect(shownEditorTab()).toMatch(/Overview/);
   });
 });

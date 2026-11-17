@@ -30,7 +30,7 @@ function recorder() {
     dictionary: (_id, edit) => { out.dictionary = edit(book); },
     body: (_id, edit) => { out.body = edit(body); },
     item: () => {},
-    read: { entity: () => entity, location: () => location, mediaList: () => overview.mediaList, subject: (name) => name },
+    read: { entity: () => entity, location: () => location, body: () => body, item: () => undefined, overview: () => overview, mediaList: () => overview.mediaList, subject: (name) => name },
     addMedia: (entries) => { out.added = { ...out.added, ...entries }; },
   };
   return { out, editor };

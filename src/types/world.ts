@@ -1057,7 +1057,8 @@ export interface WorldOverview {
   name: string;
   description: string;
   author: string;
-  thumbnail: Base64Data | null;
+  /** The world cover: embedded data, or a link to a Media Entry. Read it through `lib/mediaImages`. */
+  thumbnail: Base64Data | MediaRef | null;
   bgm: Base64Data | null;
   systemPrompt: string;
   tags: string[];

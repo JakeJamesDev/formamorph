@@ -66,13 +66,13 @@ export function itemRuleStates(input: GateInput, instance: Pick<ItemInstance, 'w
 }
 
 /** The item's first image visible for one Item Instance in play, or undefined when none shows. */
-export const visibleItemImage = (item: Pick<Item, 'images'>, instance: Pick<ItemInstance, 'where'>, input: GateInput): Base64Data | undefined =>
-  visibleBy(entityImages(item), (rows) => itemRuleStates(input, instance, rows))[0]?.data;
+export const visibleItemImage = (item: Pick<Item, 'images'>, instance: Pick<ItemInstance, 'where'>, input: GateInput, media: MediaList | undefined): Base64Data | undefined =>
+  visibleBy(entityImages(item, media), (rows) => itemRuleStates(input, instance, rows))[0]?.data;
 
 /** The location's images visible in play, in author order. An unresolved Condition never holds. */
 export const visibleLocationImages = (location: LocationImageBearing, input: GateInput, media: MediaList | undefined): VisibleImage[] =>
   visibleBy(locationImages(location, media), (rows) => locationRuleStates(input, rows));
 
 /** The Map Background's images visible in play, in author order. Its rows read as a location's do (Q74). */
-export const visibleMapImages = (overview: Pick<WorldOverview, 'mapBackground'>, input: GateInput): VisibleImage[] =>
+export const visibleMapImages = (overview: Pick<WorldOverview, 'mapBackground' | 'mediaList'>, input: GateInput): VisibleImage[] =>
   visibleBy(mapImages(overview), (rows) => locationRuleStates(input, rows));

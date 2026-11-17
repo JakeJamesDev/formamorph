@@ -22,6 +22,7 @@ import { routinePlaces, startsOf, applyingRoutine } from '@/lib/entityKind';
 import { PLAYER_START, type EntityStart, type ScheduleRow } from '@/types';
 import { oneRoutine } from '@/test/routines';
 import { entityImages } from '@/lib/entityImages';
+import { coverData } from '@/lib/mediaImages';
 
 /** A described entity at the starting location — what keeps the completeness rules quiet about a fixture
  *  that is about something else entirely. */
@@ -5034,7 +5035,7 @@ describe('the mislabeled-image rule', () => {
 
   it('Fix relabels the thumbnail, a gallery image and a background in one pass', () => {
     const fixed = applyRuleFix(lying(), 'image-mislabeled');
-    expect(fixed.worldOverview?.thumbnail?.startsWith('data:image/jpeg;')).toBe(true);
+    expect(coverData(fixed.worldOverview)?.startsWith('data:image/jpeg;')).toBe(true);
     expect(entityImages(fixed.entities?.[0])[0]?.data.startsWith('data:image/png;')).toBe(true);
     expect(fixed.entities?.[0].images?.[0].requires).toEqual(MAREN_RULE);
     expect(entityImages(fixed.locations?.[0])[0]?.data.startsWith('data:image/jpeg;')).toBe(true);

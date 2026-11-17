@@ -2,9 +2,9 @@
  * Body Layout: one Slot Box per capacity unit on a Backdrop. Pure: box sync to entries, stacking order, snap lines
  * and clamps. Every position and size is a fraction of the Backdrop.
  */
-import { entityImages } from '@/lib/entityImages';
+import { galleryLinks } from '@/lib/entityImages';
 import { clamp } from '@/lib/utils';
-import type { Backdrop, Body, BodyEntry, GalleryImage, SlotBox } from '@/types';
+import type { Backdrop, Body, BodyEntry, GalleryImage, GalleryLink, SlotBox } from '@/types';
 
 /** The Backdrops a Body can pick without an image of its own. */
 export type OutlineKind = Exclude<Backdrop['kind'], 'image'>;
@@ -64,11 +64,10 @@ export function withOutline(body: Body, kind: OutlineKind): Body {
   return { ...body, backdrop: { kind }, aspect: kind === 'plain' ? body.aspect : OUTLINE_ASPECT[kind] };
 }
 
-/** The Body on a Custom Image. A new file keeps the image's other fields; `aspect` is the clamped aspect of the file (Q15). */
-export function withBackdropImage(body: Body, data: string, aspect: number = body.aspect): Body {
-  const had = body.backdrop.kind === 'image' ? body.backdrop.image : {};
+/** The Body on a Custom Image, stored as a Media List link or embedded data. `aspect` is the clamped aspect of the file (Q15). */
+export function withBackdropImage(body: Body, image: GalleryLink, aspect: number = body.aspect): Body {
   const opacity = body.backdrop.kind === 'image' ? body.backdrop.opacity : undefined;
-  return { ...body, backdrop: { kind: 'image', image: { ...had, data }, ...(opacity === undefined ? {} : { opacity }) }, aspect: clampAspect(aspect) };
+  return { ...body, backdrop: { kind: 'image', image, ...(opacity === undefined ? {} : { opacity }) }, aspect: clampAspect(aspect) };
 }
 
 /** The Body with its Custom Image faded to `opacity` (0 to 1, clamped). Any other Backdrop stays as it is. */
@@ -241,8 +240,8 @@ export function parseBackdrop(raw: unknown): Backdrop {
   if (isRecord(raw)) {
     if (raw.kind === 'humanoid' || raw.kind === 'quadruped' || raw.kind === 'plain') return { kind: raw.kind };
     if (raw.kind === 'image' && isRecord(raw.image)) {
-      // entityImages checks the stored shape; the cast only satisfies its input type.
-      const [image] = entityImages({ images: [raw.image as unknown as GalleryImage] });
+      // galleryLinks checks the stored shape and keeps a link as a link; the cast only satisfies its input type.
+      const [image] = galleryLinks({ images: [raw.image as unknown as GalleryImage] });
       if (image) return { kind: 'image', image, ...(isNumber(raw.opacity) ? { opacity: clamp(raw.opacity, 0, 1) } : {}) };
     }
   }

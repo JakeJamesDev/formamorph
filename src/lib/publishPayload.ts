@@ -7,6 +7,7 @@ import { entityPlacementLetters, labelPlaceholders } from '@/lib/placementLetter
 import { primaryImage } from '@/lib/entityImages';
 import type { PresetOverview } from '@/lib/promptPresets';
 import type { SharedPreset } from '@/lib/promptPresetShare';
+import { coverData } from '@/lib/mediaImages';
 
 /**
  * What a publish request carries, whatever kind it is. The server takes the same body for all three; only
@@ -60,7 +61,7 @@ export function worldPublishPayload(world: Omit<World, 'id'>): PublishPayload {
     kind: 'world',
     name: overview.name || 'Untitled World',
     description: describePlaceholders(overview.description || '', allPlaceholders(world)),
-    thumbnail: overview.thumbnail || undefined,
+    thumbnail: coverData(overview) || undefined,
     contentData: { ...world, worldOverview: { ...overview, tags: overview.tags ?? [] } },
     tags: overview.tags ?? [],
   };

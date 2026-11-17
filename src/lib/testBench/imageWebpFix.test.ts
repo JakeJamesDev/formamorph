@@ -12,6 +12,7 @@ vi.mock('@/lib/imageOptim', async (importOriginal) => ({
 
 const { convertWorldImagesToWebp, describeWebpFixRun } = await import('./imageWebpFix');
 import type { RuleWorld } from './rules';
+import { coverData } from '@/lib/mediaImages';
 
 const dataUrl = (label: string, bytes: number[]): string =>
   `data:${label};base64,${Buffer.from(bytes).toString('base64')}`;
@@ -33,7 +34,7 @@ beforeEach(() => {
 describe('convertWorldImagesToWebp — correcting a lying format label', () => {
   it('relabels a JPEG marked image/png and writes the world back, without encoding anything', async () => {
     const run = await convertWorldImagesToWebp(worldWithThumbnail(dataUrl('image/png', JPEG)));
-    expect(run.world.worldOverview?.thumbnail?.startsWith('data:image/jpeg;base64,')).toBe(true);
+    expect(coverData(run.world.worldOverview)?.startsWith('data:image/jpeg;base64,')).toBe(true);
     expect(run).toMatchObject({ relabeled: 1, converted: 0, kept: 0 });
     expect(reencodeImageDataUrl).not.toHaveBeenCalled();
   });

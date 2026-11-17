@@ -230,7 +230,7 @@ const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdCha
       surfaceTabs="worldEditorItem"
     >
       <PanelTabContent value="profile">
-        <EntityImageWidget {...groupProps} ruleHost={ruleHost} imageId={`item-image-${item.id}`}>
+        <EntityImageWidget {...groupProps} ruleHost={ruleHost} imageId={`item-image-${item.id}`} linked>
           <div className="grid gap-4 sm:grid-cols-[18rem_minmax(0,1fr)] md:grid-cols-1 xl:grid-cols-[18rem_minmax(0,1fr)]">
             <ImageGallery />
             <div className="space-y-4">

@@ -216,7 +216,9 @@ describe('the Bodies section', () => {
         expect(within(humanoidFields()).getByLabelText('Image URL')).toBeInTheDocument();
 
         await link('https://host/imp.png');
-        expect(ctx().bodies[0]).toEqual({ ...before, backdrop: { kind: 'image', image: { data: 'https://host/imp.png' } }, aspect: 1.25 });
+        expect(ctx().bodies[0]).toEqual({ ...before, backdrop: { kind: 'image', image: { mediaId: expect.any(String) } }, aspect: 1.25 });
+        // The picture joined the world's list, named by its link's file.
+        expect(Object.values(ctx().worldOverview.mediaList ?? {})).toMatchObject([{ name: 'imp', data: 'https://host/imp.png' }]);
         expect(humanoidFields().querySelector('[data-body-layout-stage]')).toHaveStyle({ aspectRatio: '1.25' });
         expect(humanoidFields().querySelector('[data-body-layout-stage] img')).toHaveClass('object-contain');
         expect(within(humanoidFields()).queryByRole('slider', { name: 'Backdrop Height' })).toBeNull();
@@ -228,7 +230,7 @@ describe('the Bodies section', () => {
         const { aspect } = ctx().bodies[0];
         pickOption(backdrop(), 'Custom Image');
         await link('https://host/gone.png');
-        expect(ctx().bodies[0].backdrop).toEqual({ kind: 'image', image: { data: 'https://host/gone.png' } });
+        expect(ctx().bodies[0].backdrop).toEqual({ kind: 'image', image: { mediaId: expect.any(String) } });
         expect(ctx().bodies[0].aspect).toBe(aspect);
       });
 
@@ -259,7 +261,7 @@ describe('the Bodies section', () => {
         const { ctx } = renderBodiesSection(WORLD, 'simple');
         pickOption(backdrop(), 'Custom Image');
         await link('https://host/imp.png');
-        fireEvent.click(within(humanoidFields()).getByRole('button', { name: /remove image/i }));
+        fireEvent.click(within(humanoidFields()).getByRole('button', { name: /remove from slot/i }));
         expect(ctx().bodies[0]).toMatchObject({ backdrop: { kind: 'humanoid' }, aspect: 0.5 });
       });
 
@@ -287,7 +289,7 @@ describe('the Bodies section', () => {
         expect(image()).toHaveStyle({ opacity: '1' });
         const thumb = within(humanoidFields()).getByRole('slider', { name: 'Opacity' });
         fireEvent.keyDown(thumb, { key: 'ArrowLeft' });
-        expect(ctx().bodies[0].backdrop).toEqual({ kind: 'image', image: { data: 'https://host/imp.png' }, opacity: 0.99 });
+        expect(ctx().bodies[0].backdrop).toEqual({ kind: 'image', image: { mediaId: expect.any(String) }, opacity: 0.99 });
         expect(image()).toHaveStyle({ opacity: '0.99' });
       });
 

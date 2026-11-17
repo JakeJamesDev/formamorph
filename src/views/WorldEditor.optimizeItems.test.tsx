@@ -34,6 +34,9 @@ vi.mock('@/lib/imageOptimWorkerClient', () => ({
 }));
 
 import { encodeInWorker, measureInWorker } from '@/lib/imageOptimWorkerClient';
+import { coverData } from '@/lib/mediaImages';
+import { entityImages } from '@/lib/entityImages';
+import { galleryLinkData } from '@/lib/mediaList';
 
 const THUMBNAIL = fakeDataUrl('image/webp', 900, 'B');
 const ITEM_IMAGE = fakeDataUrl('image/webp', 900, 'C');
@@ -73,13 +76,14 @@ describe('Optimize Images over an item image', () => {
     expect(await screen.findByText(/This world has 2 images larger than recommended/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Downscale' }));
 
-    await waitFor(() => expect(ctx().items[0].images).toEqual([{ data: SHRUNK }]));
-    expect(ctx().worldOverview.thumbnail).toBe(SHRUNK);
+    const itemData = () => entityImages(ctx().items[0], ctx().worldOverview.mediaList).map((img) => img.data);
+    await waitFor(() => expect(itemData()).toEqual([SHRUNK]));
+    expect(coverData(ctx().worldOverview)).toBe(SHRUNK);
     expect(vi.mocked(encodeInWorker).mock.calls.find(([url]) => url === ITEM_IMAGE)?.[1]).toBe(IMAGE_CAPS.entity.maxDim);
 
     await act(async () => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
-    expect(ctx().items[0].images).toEqual([{ data: ITEM_IMAGE }]);
-    expect(ctx().worldOverview.thumbnail).toBe(THUMBNAIL);
+    expect(itemData()).toEqual([ITEM_IMAGE]);
+    expect(coverData(ctx().worldOverview)).toBe(THUMBNAIL);
   });
 
   it('writes a Body\'s Custom Image back and undoes it with the rest of the run', async () => {
@@ -95,11 +99,12 @@ describe('Optimize Images over an item image', () => {
     await screen.findByText(/This world has 2 images larger than recommended/);
     fireEvent.click(screen.getByRole('button', { name: 'Downscale' }));
 
-    await waitFor(() => expect(ctx().bodies[0].backdrop).toEqual({ kind: 'image', image: { data: SHRUNK } }));
+    const backdropData = () => { const { backdrop } = ctx().bodies[0]; return backdrop.kind === 'image' ? galleryLinkData(backdrop.image, ctx().worldOverview.mediaList) : undefined; };
+    await waitFor(() => expect(backdropData()).toBe(SHRUNK));
     expect(ctx().bodies[0].aspect).toBe(2);
 
     await act(async () => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
-    expect(ctx().bodies[0].backdrop).toEqual(backdrop);
-    expect(ctx().worldOverview.thumbnail).toBe(THUMBNAIL);
+    expect(backdropData()).toBe(ITEM_IMAGE);
+    expect(coverData(ctx().worldOverview)).toBe(THUMBNAIL);
   });
 });

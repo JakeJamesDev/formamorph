@@ -31,6 +31,7 @@ import type {
   WorldMetadata,
 } from '@/types';
 import { likesMarkerOf } from '@/lib/likesMarker';
+import { coverData } from '@/lib/mediaImages';
 import {
   INSTALL_HEADER_NAME, installHeaderInUse, noteInstallHeaderRefused, readerInstallId, storedInstallId,
 } from '@/lib/anonymousLikes';
@@ -596,7 +597,7 @@ class WorldStorageService {
             name: data.worldOverview?.name || world.defaultName,
             description: data.worldOverview?.description || `Default ${world.defaultName} world`,
             author: data.worldOverview?.author || '',
-            thumbnail: data.worldOverview?.thumbnail || '',
+            thumbnail: coverData(data.worldOverview) || '',
             data,
           };
           await this.storeWorld({ ...fullWorld, sourceHash: hash });

@@ -2,10 +2,9 @@ import { useCallback, useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
 import { namedBySlot, type MediaItem } from '@/lib/mediaIndex';
-import { mediaParentSpec, writeMediaSlot, type MediaEditor, type MediaWrite } from '@/lib/mediaParents';
+import { mediaParentSpec, writeBackdrop, writeMediaSlot, type MediaEditor, type MediaWrite } from '@/lib/mediaParents';
 import { withImageRule } from '@/lib/entityImages';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { withBackdropImage } from '@/lib/bodyLayout';
 import { readImageAspect } from '@/lib/imageAspect';
 import { useMountedRef } from '@/lib/useMountedRef';
 import type { MediaAsset, TraitRequirementRow } from '@/types';
@@ -55,7 +54,7 @@ export function useMediaItemActions() {
       const item = items.find((i) => i.id === id);
       if (item) updateItem(edit(item));
     },
-    read: { entity: (id) => entities.find((e) => e.id === id), location: (id) => locations.find((l) => l.id === id), mediaList: () => worldOverview.mediaList, subject: (name) => labelPlaceholders(name, placeholders) },
+    read: { entity: (id) => entities.find((e) => e.id === id), location: (id) => locations.find((l) => l.id === id), body: (id) => bodies.find((b) => b.id === id), item: (id) => items.find((i) => i.id === id), overview: () => worldOverview, mediaList: () => worldOverview.mediaList, subject: (name) => labelPlaceholders(name, placeholders) },
     addMedia,
   }), [editEntity, locations, updateLocation, dictionaries, updateDictionary, items, updateItem, worldOverview, updateWorldOverview, bodies, setBodies, entities, addMedia, placeholders]);
 
@@ -73,7 +72,7 @@ export function useMediaItemActions() {
     // A Custom Image sets the Backdrop's aspect (Q15), in the same step as the file.
     const aspect = await readImageAspect(media.data, null);
     if (!mounted.current) return;
-    return run(verb, item, media, () => editor.body(item.parent.id, (b) => withBackdropImage(b, media.data, aspect ?? undefined)));
+    return run(verb, item, media, () => writeBackdrop(editor, item.parent, media, aspect ?? undefined));
   }, [run, editor, mounted]);
   const remove = useCallback((item: MediaItem) => run('Remove', item, null), [run]);
   /** Sets a gallery image's Visibility rule rows, an ordinary edit with no step of its own. */

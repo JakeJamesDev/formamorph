@@ -1540,8 +1540,8 @@ export const RightPanel = ({
   const itemImageOf = React.useCallback((instance: ItemInstance) => {
     const ref = instance.item;
     const item = ref.kind === 'item' ? worldItems?.find((i) => i.id === ref.itemId) : undefined;
-    return item && visibleItemImage(item, instance, gateInput);
-  }, [worldItems, gateInput]);
+    return item && visibleItemImage(item, instance, gateInput, gameData?.worldOverview.mediaList);
+  }, [worldItems, gateInput, gameData?.worldOverview.mediaList]);
   const inventory = useInventoryPanel(inventorySettle, itemImageOf);
   // Listed actions wait while a turn or an earlier action's scripts run (Q13).
   const actionsBlocked = isWaitingForAI || actionsBusy;

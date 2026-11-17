@@ -6,6 +6,7 @@ import { formatMediaBytes, mediaSections, sectionTitle, totalBytes, type MediaIt
 import type { useGameData } from '@/contexts/GameDataContext';
 import { measureInWorker, encodeInWorker } from '@/lib/imageOptimWorkerClient';
 import { locationImages } from '@/lib/locationImages';
+import { coverData } from '@/lib/mediaImages';
 
 /** The Media tab's item panel: Replace and Remove, each one History Step, and the reveal that returns to the tab. */
 
@@ -72,7 +73,7 @@ interface Slot {
 const audio = () => new File(['new-sound'], 'new.ogg', { type: 'audio/ogg' });
 const webp = () => new File(['new-image'], 'new.webp', { type: 'image/webp' });
 const SLOTS: Slot[] = [
-  { what: 'the world thumbnail', section: 'World', kind: 'image', id: 'world:world:thumbnail', read: (c) => c.worldOverview.thumbnail, file: webp, label: 'Thumbnail' },
+  { what: 'the world thumbnail', section: 'World', kind: 'image', id: 'world:world:thumbnail', read: (c) => coverData(c.worldOverview), file: webp, label: 'Thumbnail' },
   { what: 'Background Music', section: 'World', kind: 'sound', id: 'world:world:bgm', read: (c) => c.worldOverview.bgm, file: audio, label: 'Background Music' },
   { what: 'an entity sound', section: 'Entities', kind: 'sound', id: 'entity:wick:sound', read: (c) => c.entities.find((e) => e.id === 'wick')!.sound?.data, file: audio, label: 'Sound: Odd Wick' },
   {
@@ -167,7 +168,7 @@ describe('Media tab Replace', () => {
     expect(dialog).toHaveTextContent('Large image');
     await step(() => fireEvent.click(within(dialog).getByRole('button', { name: 'Downscale' })));
 
-    await waitFor(() => expect(bench.ctx().worldOverview.thumbnail).toBe('data:image/webp;base64,c21hbGw='));
+    await waitFor(() => expect(coverData(bench.ctx().worldOverview)).toBe('data:image/webp;base64,c21hbGw='));
     expect(lastLabel(bench)).toBe('Replace Thumbnail');
   });
 

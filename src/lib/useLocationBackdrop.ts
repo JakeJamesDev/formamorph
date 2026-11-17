@@ -25,12 +25,12 @@ export interface MapBackdrop {
 }
 
 /** The Map Background for the turn on screen, or nothing when no image passes its rule. */
-export function useMapBackdrop(overview: Pick<WorldOverview, 'mapBackground'>): MapBackdrop | undefined {
+export function useMapBackdrop(overview: Pick<WorldOverview, 'mapBackground' | 'mediaList'>): MapBackdrop | undefined {
   const input = useViewedGateInput();
   const background = overview.mapBackground;
   return useMemo(() => {
     if (!background) return undefined;
-    const data = visibleMapImages({ mapBackground: background }, input)[0]?.data;
+    const data = visibleMapImages({ mapBackground: background, mediaList: overview.mediaList }, input)[0]?.data;
     return data ? { data, frame: background.frame, opacity: background.opacity } : undefined;
-  }, [background, input]);
+  }, [background, overview.mediaList, input]);
 }

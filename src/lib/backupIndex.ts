@@ -6,6 +6,7 @@ import type { Entity, World } from '@/types';
 import { BackupShapeError, BackupSyntaxError, scanBackupSpans, type Span } from './backupScan';
 import { countWorldImages } from './mediaIndex';
 import { entityImages } from './entityImages';
+import { coverData } from './mediaImages';
 import { applyEntityImagesOptimize, applyWorldOptimize, type ImageCodec, type OptimizeMode } from './imageOptimCore';
 
 const NOT_JSON = 'Not a valid JSON file.';
@@ -72,7 +73,7 @@ export const RECORD_IMAGES: Partial<Record<BackupCategory, RecordImages>> = {
     optimize: async (codec, record, mode, onImage) => {
       const data = await applyWorldOptimize(codec, record.data as World, mode, onImage);
       // The library card keeps its own copy of the thumbnail.
-      return { ...record, data, thumbnail: data.worldOverview?.thumbnail ?? record.thumbnail };
+      return { ...record, data, thumbnail: coverData(data.worldOverview) ?? record.thumbnail };
     },
   },
   entities: {

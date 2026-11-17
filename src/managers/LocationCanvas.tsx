@@ -778,7 +778,7 @@ type CanvasData = Pick<ReturnType<typeof useGameData>,
   // The cast, for picking an entity on the full-screen canvas. A canvas without one has no entity card.
   & Partial<Pick<ReturnType<typeof useGameData>, 'entities' | 'updateEntity'>>
   // The Map Background's home. A canvas without one draws and offers none.
-  & Partial<Pick<ReturnType<typeof useGameData>, 'worldOverview' | 'updateWorldOverview'>>;
+  & Partial<Pick<ReturnType<typeof useGameData>, 'worldOverview' | 'updateWorldOverview' | 'addMedia'>>;
 
 export interface LocationCanvasInputs {
   data: CanvasData;
@@ -802,7 +802,7 @@ const CanvasInner = ({
 } & Pick<LocationCanvasInputs, 'data' | 'preferences'> & Pick<CanvasReveal, 'revealSelection' | 'onSelectionRevealed'>) => {
   const {
     locations, setLocations, connections, setConnections, placeholders, placementLetters, placeholderOwners,
-    entities, updateEntity, worldOverview, updateWorldOverview,
+    entities, updateEntity, worldOverview, updateWorldOverview, addMedia,
   } = data;
   const { pick: pickState, onPickChange: setPickState } = entityPick;
   // Full screen picks: the canvas is a read-only picker. Beside the panel it only shows a pick on show.
@@ -845,7 +845,7 @@ const CanvasInner = ({
   const [gridVisible, setGridVisible] = preferences.grid;
   const [connectionStyle, setConnectionStyle] = preferences.connectionStyle;
   const mapBackground = useMapBackground({
-    worldOverview: worldOverview ?? NO_OVERVIEW, updateWorldOverview: updateWorldOverview ?? IGNORE_OVERVIEW, locations,
+    worldOverview: worldOverview ?? NO_OVERVIEW, updateWorldOverview: updateWorldOverview ?? IGNORE_OVERVIEW, addMedia: addMedia ?? IGNORE_OVERVIEW, locations,
   });
   // Authoring always shows slot 0, whatever its rule says.
   const mapPrimary = worldOverview ? mapImages(worldOverview)[0] : undefined;

@@ -4,6 +4,7 @@ import WorldStorageService from '../services/WorldStorageService';
 import { canonicalEqual } from '@/lib/canonicalStringify';
 import { dirtyDiff } from '@/lib/dirtyDiff';
 import { mapImages } from '@/lib/mapBackground';
+import { coverData } from '@/lib/mediaImages';
 import { registerDevHook } from '@/lib/devRouter';
 import { holdUnsavedWorld } from '@/lib/unsavedWorld';
 import { supporterCopyBlock } from '@/lib/supporterCopy';
@@ -789,7 +790,7 @@ function useProvideGameData() {
         name: worldOverview.name,
         description: worldOverview.description,
         author: worldOverview.author,
-        thumbnail: worldOverview.thumbnail ?? undefined,
+        thumbnail: coverData(worldOverview),
         // A save means the local copy was edited; flag it dirty and stamp the edit time (sourceId and
         // other sticky fields are preserved by storeWorld).
         dirty: true,

@@ -445,7 +445,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
         </p>
       )}
       {/* A frame sized by its caller holds this inside itself; a compact box has no room, so it sits below. */}
-      {!value && !previewClassName && !encoding && linkSlot}
+      {!value && !previewClassName && !choose && !encoding && linkSlot}
     </div>
   );
 };

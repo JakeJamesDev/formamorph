@@ -4,9 +4,10 @@
  */
 import type { Body, Dictionary, Entity, GalleryImage, GalleryLink, GameLocation, Item, MediaAsset, MediaList, WorldOverview } from '@/types';
 import { withBackdropImage, withOutline } from './bodyLayout';
-import { entityImages, galleryLinks } from './entityImages';
+import { galleryLinks } from './entityImages';
 import { editGallery, galleryView, locationLinks } from './mediaGallery';
 import { mediaNameFromFile } from './mediaList';
+import { COVER_SUBJECT, MAP_SUBJECT, linkSingle, storedCover } from './mediaImages';
 import { mapGalleryStepLabel, mapImages, withMapImages } from './mapBackground';
 import { IMAGE_CAPS, type ImageCap } from './imageSlots';
 import type { MediaItem, MediaParent, MediaParentKind } from './mediaIndex';
@@ -26,6 +27,9 @@ export interface MediaEditor {
   read: {
     entity: (id: string) => Entity | undefined;
     location: (id: string) => GameLocation | undefined;
+    body: (id: string) => Body | undefined;
+    item: (id: string) => Item | undefined;
+    overview: () => WorldOverview | undefined;
     mediaList: () => MediaList | undefined;
     /** A record's name as a new entry's subject, placeholders labeled. */
     subject: (name: string) => string;
@@ -81,9 +85,6 @@ const writeGallerySlot = (gallery: GalleryWriter, editor: MediaEditor, item: Pic
   if (at !== undefined) gallery.write(editor, item.parent, (images) => writeGalleryImage(images, at, next));
 };
 
-const MAP_GALLERY: GalleryWriter = {
-  write: (editor, _parent, edit) => editor.overview((o) => ({ mapBackground: withMapImages(o.mapBackground, edit(mapImages(o))) })),
-};
 /** A gallery's pictures edited and relinked: the record's write first, so the History Step is the record's. */
 function editLinked(
   editor: MediaEditor, links: GalleryLink[], name: string, edit: (images: GalleryImage[]) => GalleryImage[], write: (links: GalleryLink[]) => void,
@@ -107,8 +108,30 @@ const LOCATION_GALLERY: GalleryWriter = {
   },
 };
 const ITEM_GALLERY: GalleryWriter = {
-  write: (editor, parent, edit) => editor.item(parent.id, (i) => ({ ...i, images: edit(entityImages(i)) })),
+  write: (editor, parent, edit) => {
+    const item = editor.read.item(parent.id);
+    if (item) editLinked(editor, galleryLinks(item), item.name, edit, (images) => editor.item(parent.id, (i) => ({ ...i, images })));
+  },
 };
+const MAP_GALLERY: GalleryWriter = {
+  write: (editor, _parent, edit) => {
+    const links = galleryLinks({ images: editor.read.overview()?.mapBackground?.images });
+    editLinked(editor, links, MAP_SUBJECT, edit, (next) => editor.overview((o) => ({ mapBackground: withMapImages(o.mapBackground, next) })));
+  },
+};
+
+/** Sets or clears a Body's Custom Image, placing a file into the list. `aspect` is the file's, read by a replace. */
+export function writeBackdrop(editor: MediaEditor, parent: Pick<MediaParent, 'id' | 'name'>, next: MediaWrite, aspect?: number): void {
+  const placed = next ? placeSingle(editor, next, editor.read.subject(parent.name)) : undefined;
+  editor.body(parent.id, (b) => (placed ? withBackdropImage(b, placed.link, aspect) : withOutline(b, 'humanoid')));
+  if (placed && Object.keys(placed.added).length) editor.addMedia(placed.added);
+}
+
+/** A single field's new picture placed into the list: the stored value, and the entries to add after the record's write. */
+function placeSingle(editor: MediaEditor, next: NonNullable<MediaWrite>, subject: string) {
+  const name = mediaNameFromFile(next.name);
+  return linkSingle(editor.read.mediaList(), { data: next.data, ...(name ? { name } : {}) }, subject);
+}
 
 const MEDIA_PARENTS: Record<MediaParentKind, MediaParentSpec> = {
   world: {
@@ -117,7 +140,11 @@ const MEDIA_PARENTS: Record<MediaParentKind, MediaParentSpec> = {
     goTo: { to: 'overview' },
     goToLabel: 'Go to Overview',
     write: (editor, { key }, next) => {
-      if (key === 'thumbnail') editor.overview(() => ({ thumbnail: next?.data ?? '' }));
+      if (key === 'thumbnail') {
+        const placed = next ? placeSingle(editor, next, COVER_SUBJECT) : undefined;
+        editor.overview(() => ({ thumbnail: storedCover(placed?.link ?? null) }));
+        if (placed && Object.keys(placed.added).length) editor.addMedia(placed.added);
+      }
       else if (key === 'bgm') editor.overview(() => ({ bgm: next?.data ?? null }));
     },
   },
@@ -175,7 +202,7 @@ const MEDIA_PARENTS: Record<MediaParentKind, MediaParentSpec> = {
     // A removed file leaves the Humanoid outline (Q72).
     write: (editor, { parent, key }, next) => {
       if (key !== 'backdrop') return;
-      editor.body(parent.id, (b) => (next ? withBackdropImage(b, next.data) : withOutline(b, 'humanoid')));
+      writeBackdrop(editor, parent, next);
     },
   },
   item: {

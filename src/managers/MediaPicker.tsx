@@ -2,7 +2,7 @@
  * The Media List's image slot pieces: Choose (a searchable thumbnail grid of the list), the filled slot's name
  * field with Remove and Delete From World, and the delete confirm that lists every use.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { Images, Search, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,11 +13,14 @@ import { Meta } from '@/components/ui/typography';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useGameData } from '@/contexts/GameDataContext';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { mediaNameKey } from '@/lib/mediaList';
+import { isMediaRef, mediaEntry, mediaNameFromFile, mediaNameKey, resolveMedia, urlFileName } from '@/lib/mediaList';
+import { linkSingle } from '@/lib/mediaImages';
+import { isRemoteImage } from '@/lib/imageBytes';
+import { ImageUpload } from '@/lib/UtilityComponents';
 import { mediaUsage, mediaUseLabel } from '@/lib/mediaUsage';
 import { RemoteImg } from '@/lib/useRemoteImage';
 import { cn } from '@/lib/utils';
-import type { MediaEntry, MediaList } from '@/types';
+import type { GalleryLink, MediaEntry, MediaList, MediaRef } from '@/types';
 import { useMediaStep } from './useMediaItemActions';
 
 /** The list's images, sorted by name. */
@@ -179,6 +182,55 @@ export function MediaEntryBar({ entry, onUnlink }: { entry: MediaEntry; onUnlink
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
       </Tip>
+    </div>
+  );
+}
+
+/** A stored single-image value: embedded data or a link to an entry. */
+type SingleImage = GalleryLink | MediaRef | string | null | undefined;
+
+/**
+ * Places one picture for a single-image field: `write` gets the link to store, then the new entries join the
+ * list. A pasted link is named by its last path segment (Q36).
+ */
+export function useSinglePlacement(subject: string | undefined) {
+  const { worldOverview, addMedia } = useGameData();
+  const list = worldOverview.mediaList;
+  return useCallback((data: string, fileName: string | undefined, write: (link: GalleryLink, data: string) => void) => {
+    const name = mediaNameFromFile(fileName) || (isRemoteImage(data) ? mediaNameFromFile(urlFileName(data)) : '');
+    const placed = linkSingle(list, { data, ...(name ? { name } : {}) }, subject);
+    write(placed.link, data);
+    if (Object.keys(placed.added).length) addMedia(placed.added);
+  }, [list, addMedia, subject]);
+}
+
+/**
+ * The picker slot for a field that holds one picture (the world cover, a Body's Custom Image): Import and
+ * Choose when empty, the entry's name with Remove From Slot and Delete From World when filled. `onChange`
+ * gets the link to store and its picture's data (the entry may not be in the list yet), or null once the slot is freed.
+ */
+export function LinkedImageUpload({ value, onChange, subject, ...upload }: {
+  value: SingleImage;
+  onChange: (link: GalleryLink | null, data?: string) => void;
+  subject: string | undefined;
+} & Omit<ComponentProps<typeof ImageUpload>, 'value' | 'onChange' | 'choose'>) {
+  const { worldOverview } = useGameData();
+  const list = worldOverview.mediaList;
+  const place = useSinglePlacement(subject);
+  const data = resolveMedia(value && typeof value === 'object' && 'data' in value ? value.data : value, list, 'image')?.data ?? '';
+  const entry = isMediaRef(value) ? mediaEntry(list, value.mediaId, 'image') : undefined;
+  const linkedIds = new Set(entry ? [entry.id] : []);
+  return (
+    <div className="space-y-1">
+      <ImageUpload
+        {...upload}
+        value={data}
+        onChange={(next, fileName) => (next ? place(next, fileName, onChange) : onChange(null))}
+        choose={list && (!data || entry) && (
+          <MediaChooseButton list={list} linkedIds={linkedIds} onPick={(picked) => onChange({ mediaId: picked.id }, picked.data)} />
+        )}
+      />
+      {entry && <MediaEntryBar entry={entry} onUnlink={() => onChange(null)} />}
     </div>
   );
 }

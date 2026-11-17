@@ -4,7 +4,9 @@ import { Label } from "@/components/ui/label";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { useDanbooruTags } from "@/lib/useDanbooruTags";
 import { Hint } from "@/components/ui/typography";
-import { ImageUpload, SoundUpload } from '../lib/UtilityComponents';
+import { SoundUpload } from '../lib/UtilityComponents';
+import { LinkedImageUpload, useSinglePlacement } from './MediaPicker';
+import { COVER_SUBJECT, storedCover } from '@/lib/mediaImages';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { GenerateImageButton } from '../components/GenerateImageButton';
@@ -93,6 +95,7 @@ const PersonaRulesFields = () => {
 
 const WorldOverviewManager = () => {
   const { worldOverview, updateWorldOverview } = useGameData();
+  const placeCover = useSinglePlacement(COVER_SUBJECT);
   const { advanced } = useEditorMode();
   const tagOptions = useDanbooruTags();
 
@@ -132,10 +135,11 @@ const WorldOverviewManager = () => {
         {/* The frame and its Generate button share one box, so the button is as wide as the picture it
             makes rather than centered under it. */}
         <div className="mx-auto w-full max-w-[400px] space-y-2">
-          <ImageUpload
+          <LinkedImageUpload
             id="thumbnail"
             value={worldOverview.thumbnail}
-            onChange={(v) => updateWorldOverview({ thumbnail: v })}
+            subject={COVER_SUBJECT}
+            onChange={(link) => updateWorldOverview({ thumbnail: storedCover(link) })}
             cap={IMAGE_CAPS.thumbnail}
             objectFit="cover"
             previewClassName="w-full aspect-video relative rounded-md"
@@ -143,7 +147,7 @@ const WorldOverviewManager = () => {
           <GenerateImageButton
             subject={{ description: worldOverview.description || worldOverview.systemPrompt || '', kind: 'world' }}
             cap={IMAGE_CAPS.thumbnail}
-            onChange={(v) => updateWorldOverview({ thumbnail: v })}
+            onChange={(v) => placeCover(v, undefined, (link) => updateWorldOverview({ thumbnail: storedCover(link) }))}
             className="w-full"
           />
         </div>

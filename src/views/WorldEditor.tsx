@@ -240,6 +240,7 @@ const WorldEditorInner = ({
   const applyDownscaled = (w: World) => {
     updateWorldOverview({
       thumbnail: w.worldOverview.thumbnail,
+      ...(w.worldOverview.mediaList ? { mediaList: w.worldOverview.mediaList } : {}),
       ...(w.worldOverview.mapBackground ? { mapBackground: w.worldOverview.mapBackground } : {}),
     });
     setEntities(w.entities);

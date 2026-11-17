@@ -43,6 +43,7 @@ import { DEFAULT_MASCOT_RIG, type MascotImageRef, type MascotRig } from './forma
 import { buildMascotCardData } from './formaquestion/mascotCard';
 import { readMascotCard, storeMascotCard } from './formaquestion/mascotCardFile';
 import { useDeviceDownload } from './useDeviceDownload';
+import { coverData } from './mediaImages';
 
 const worldListing = {
   _id: 'world-listing', id: 'world-listing', kind: 'world', name: 'Sedge Landing', listingChangelog: 'Website-only metadata',
@@ -132,7 +133,7 @@ describe('useDeviceDownload', () => {
     expect(payload).not.toHaveProperty('listingChangelog');
     expect(payload.worldOverview.thumbnail).toBe('https://cdn.example/sedge.webp');
     expect(payload.locations[0].backgroundImage).toBe('https://cdn.example/shore.webp');
-    expect(migrateWorld(payload).worldOverview.thumbnail).toBe('https://cdn.example/sedge.webp');
+    expect(coverData(migrateWorld(payload).worldOverview)).toBe('https://cdn.example/sedge.webp');
     expect(toast.success).toHaveBeenCalledWith('"Sedge Landing" downloaded');
   });
 

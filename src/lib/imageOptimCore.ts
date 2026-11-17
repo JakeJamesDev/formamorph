@@ -172,6 +172,9 @@ function worldEditor(get: () => World, set: (next: World) => void): MediaEditor 
     read: {
       entity: (id) => get().entities?.find((e) => e.id === id),
       location: (id) => get().locations?.find((l) => l.id === id),
+      body: (id) => get().bodies?.find((b) => b.id === id),
+      item: (id) => get().items?.find((i) => i.id === id),
+      overview: () => get().worldOverview,
       mediaList: () => get().worldOverview?.mediaList,
       subject: (name) => labelPlaceholders(name, get().placeholders ?? []),
     },

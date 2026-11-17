@@ -13,9 +13,12 @@ import {
 import { readImageAspect } from '@/lib/imageAspect';
 import { IMAGE_CAPS } from '@/lib/imageSlots';
 import { useMountedRef } from '@/lib/useMountedRef';
-import { ImageUpload } from '@/lib/UtilityComponents';
+import { LinkedImageUpload } from './MediaPicker';
+import { useGameData } from '@/contexts/GameDataContext';
+import { bodyLabel } from '@/lib/bodies';
+import { labelPlaceholders } from '@/lib/placementLetters';
 import { cn } from '@/lib/utils';
-import type { Body, SlotBox } from '@/types';
+import type { Body, GalleryLink, SlotBox } from '@/types';
 import { galleryLinkData } from '@/lib/mediaList';
 
 const OUTLINES: { kind: OutlineKind; label: string }[] = [
@@ -252,8 +255,11 @@ export function BodyLayoutEditor({ body, onChange, labelOf, selected, onSelect, 
     onChange(withOutline(body, outline.kind));
   };
 
-  const setImage = async (data: string) => {
-    if (!data) {
+  const { placeholders, worldOverview } = useGameData();
+  const mediaList = worldOverview.mediaList;
+  const setImage = async (link: GalleryLink | null, placed?: string) => {
+    const data = link ? placed ?? galleryLinkData(link, mediaList) : undefined;
+    if (!link || !data) {
       setAsking(false);
       if (latest.current.backdrop.kind === 'image') onChange(withOutline(latest.current, 'humanoid'));
       return;
@@ -261,7 +267,7 @@ export function BodyLayoutEditor({ body, onChange, labelOf, selected, onSelect, 
     const aspect = await readImageAspect(data, null);
     if (!mounted.current) return;
     setAsking(false);
-    onChange(withBackdropImage(latest.current, data, aspect ?? undefined));
+    onChange(withBackdropImage(latest.current, link, aspect ?? undefined));
   };
 
   return (
@@ -286,11 +292,12 @@ export function BodyLayoutEditor({ body, onChange, labelOf, selected, onSelect, 
       </div>
       {choosing && (
         <div className="grid max-w-[260px] gap-1">
-          <ImageUpload
+          <LinkedImageUpload
             id={`body-backdrop-${body.id}`}
-            value={body.backdrop.kind === 'image' ? galleryLinkData(body.backdrop.image, undefined) ?? '' : ''}
+            value={body.backdrop.kind === 'image' ? body.backdrop.image : null}
+            subject={labelPlaceholders(bodyLabel(body), placeholders)}
             cap={IMAGE_CAPS.entity}
-            onChange={(data) => void setImage(data)}
+            onChange={(link, data) => void setImage(link, data)}
           />
           <Hint>The image sets the shape of the Backdrop</Hint>
         </div>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { migrateWorld } from './version';
 import { migrateGalleriesToMediaList } from './mediaGallery';
+import { migrateOtherImagesToMediaList } from './mediaImages';
 import { runRules } from './testBench/rules';
 import { entityImages } from './entityImages';
 import { locationImages } from './locationImages';
@@ -134,11 +135,12 @@ describe.each(worlds)('the %s world', (id, raw) => {
   const world = migrateWorld(structuredClone(file));
 
   it('is stored in the current shape', () => {
-    // Every load stamps the running version and moves galleries into the Media List; the file is shipped, so it
+    // Every load stamps the running version and moves galleries and the other image fields into the Media List; the file is shipped, so it
     // keeps its embedded pictures (constraint: shipped files are never migrated on disk). Nothing else may differ.
     const { version: _loaded, ...loaded } = stored(world) as Record<string, unknown>;
     const moved = structuredClone(file);
     migrateGalleriesToMediaList(moved);
+    migrateOtherImagesToMediaList(moved);
     const { version: _stored, ...onDisk } = moved;
     expect(loaded).toEqual(onDisk);
   });

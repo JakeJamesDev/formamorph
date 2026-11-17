@@ -6,6 +6,7 @@ import type { Body, Entity, GalleryImage, GalleryLink, GameLocation, MediaList, 
 import { bodyLabel } from './bodies';
 import { entityImages, galleryLinks } from './entityImages';
 import { galleryView, locationLinks } from './mediaGallery';
+import { coverData } from './mediaImages';
 import { locationImages } from './locationImages';
 import { mapImages } from './mapBackground';
 import { buildEntityTree, type EntityTreeNode } from './entityGroupTree';
@@ -154,7 +155,7 @@ interface MediaSource {
 }
 
 const BLANK_SOURCE: MediaSource = {
-  world: (w) => (w.worldOverview.thumbnail ? [] : [blankImage(WORLD_PARENT, 'thumbnail', 'Thumbnail')]),
+  world: (w) => (coverData(w.worldOverview) ? [] : [blankImage(WORLD_PARENT, 'thumbnail', 'Thumbnail')]),
   avatars: () => [],
   map: (w) => (mapImages(w.worldOverview).length ? [] : [blankImage(MAP_PARENT, 'image:0', 'Image 1')]),
   entity: (e, media) => (entityImages(e, media).length ? [] : [blankImage(entityParent(e), 'image:0', 'Image 1')]),
@@ -168,7 +169,8 @@ const BLANK_SOURCE: MediaSource = {
 function worldMedia(w: MediaWorld): MediaItem[] {
   const o = w.worldOverview;
   const items: MediaItem[] = [];
-  if (o.thumbnail) items.push(image(WORLD_PARENT, 'thumbnail', 'Thumbnail', o.thumbnail, capOf(WORLD_PARENT)));
+  const cover = coverData(o);
+  if (cover) items.push(image(WORLD_PARENT, 'thumbnail', 'Thumbnail', cover, capOf(WORLD_PARENT), isMediaRef(o.thumbnail) ? { mediaId: o.thumbnail.mediaId } : {}));
   if (o.bgm) items.push(file(WORLD_PARENT, 'sound', 'bgm', 'Background Music', o.bgm));
   return items;
 }
@@ -191,10 +193,11 @@ function dictionaryMedia(w: MediaWorld): MediaItem[] {
 function bodyMedia(w: MediaWorld): MediaItem[] {
   return (w.bodies ?? []).flatMap((b: Body) => {
     const backdrop = b.backdrop;
-    const data = backdrop.kind === 'image' ? galleryLinkData(backdrop.image, w.worldOverview.mediaList) : undefined;
-    if (!data) return [];
+    const link = backdrop.kind === 'image' ? backdrop.image : undefined;
+    const data = link ? galleryLinkData(link, w.worldOverview.mediaList) : undefined;
+    if (!link || !data) return [];
     const parent: MediaParent = { kind: 'body', id: b.id, name: bodyLabel(b) };
-    return [image(parent, 'backdrop', 'Backdrop', data, capOf(parent))];
+    return [image(parent, 'backdrop', 'Backdrop', data, capOf(parent), isMediaRef(link) ? { mediaId: link.mediaId } : {})];
   });
 }
 
@@ -253,7 +256,7 @@ function sectionsFrom(w: MediaWorld, source: MediaSource): MediaSection[] {
 }
 
 const MEDIA_SOURCE: MediaSource = {
-  world: worldMedia, avatars: avatarMedia, map: (w) => galleryMedia(MAP_PARENT, mapImages(w.worldOverview)), entity: entityMedia, location: locationMedia, dictionaries: dictionaryMedia, bodies: bodyMedia,
+  world: worldMedia, avatars: avatarMedia, map: (w) => linkedGalleryMedia(MAP_PARENT, galleryLinks({ images: w.worldOverview.mapBackground?.images }), w.worldOverview.mediaList), entity: entityMedia, location: locationMedia, dictionaries: dictionaryMedia, bodies: bodyMedia,
 };
 
 /** The selection id of a section's header, apart from any item's. */
@@ -284,7 +287,7 @@ export function worldImageItems(w: Partial<MediaWorld>): (MediaItem & { budget: 
     entityGroups: w.entityGroups,
     bodies: w.bodies,
   });
-  const itemImages = (w.items ?? []).flatMap((item) => galleryMedia({ kind: 'item', id: item.id, name: item.name }, entityImages(item)));
+  const itemImages = (w.items ?? []).flatMap((item) => linkedGalleryMedia({ kind: 'item', id: item.id, name: item.name }, galleryLinks(item), w.worldOverview?.mediaList));
   return [...index, ...itemImages].filter((i): i is MediaItem & { budget: ImageCap } => i.kind === 'image' && !!i.budget);
 }
 

@@ -200,6 +200,7 @@ import { currentHelpSettings, useHelpSettings } from "@/components/formaquestion
 import PatreonIcon from "@/components/PatreonIcon";
 import GithubIcon from "@/components/GithubIcon";
 import { describePlaceholders } from '@/lib/placeholders';
+import { coverData } from '@/lib/mediaImages';
 
 interface MainMenuProps {
   onStartGame: StartGame;
@@ -1200,8 +1201,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             data.id = id;
             const name = data.worldOverview?.name || 'Uploaded World';
             const description = data.worldOverview?.description || 'Custom uploaded world';
-            await WorldStorageService.storeWorld({ id, name, description, thumbnail: data.worldOverview?.thumbnail ?? undefined, data });
-            setWorlds(prev => [...prev, { id, name, description, thumbnail: data.worldOverview?.thumbnail, tags: data.worldOverview?.tags || [], createdAt: now, lastAccessed: now, isLoading: false }]);
+            await WorldStorageService.storeWorld({ id, name, description, thumbnail: coverData(data.worldOverview), data });
+            setWorlds(prev => [...prev, { id, name, description, thumbnail: coverData(data.worldOverview), tags: data.worldOverview?.tags || [], createdAt: now, lastAccessed: now, isLoading: false }]);
             stored++;
             last = { id, data };
           } catch (error) {
@@ -1217,7 +1218,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       if (files.length === 1 && last) {
         const d = last.data;
         loadWorldData(d, true, { stored: true });
-        setSelectedWorld({ id: last.id, name: d.worldOverview?.name || 'Uploaded World', description: d.worldOverview?.description || 'Custom uploaded world', thumbnail: d.worldOverview?.thumbnail, createdAt: now, lastAccessed: now, data: d });
+        setSelectedWorld({ id: last.id, name: d.worldOverview?.name || 'Uploaded World', description: d.worldOverview?.description || 'Custom uploaded world', thumbnail: coverData(d.worldOverview), createdAt: now, lastAccessed: now, data: d });
         setShowWorldModal(true);
       }
     }
@@ -1499,7 +1500,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         id: worldId,
         name: migrated.worldOverview?.name || seed.defaultName,
         description: migrated.worldOverview?.description || '',
-        thumbnail: migrated.worldOverview?.thumbnail,
+        thumbnail: coverData(migrated.worldOverview),
         createdAt: now,
         lastAccessed: now,
         data: migrated,
@@ -1651,7 +1652,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         id: worldId,
         name: duplicatedWorld.worldOverview.name,
         description: duplicatedWorld.worldOverview.description || 'Duplicated world',
-        thumbnail: duplicatedWorld.worldOverview.thumbnail,
+        thumbnail: coverData(duplicatedWorld.worldOverview),
         data: duplicatedWorld
       });
 
@@ -1660,7 +1661,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         id: worldId,
         name: duplicatedWorld.worldOverview.name,
         description: duplicatedWorld.worldOverview.description || 'Duplicated world',
-        thumbnail: duplicatedWorld.worldOverview.thumbnail,
+        thumbnail: coverData(duplicatedWorld.worldOverview),
         tags: duplicatedWorld.worldOverview.tags || [],
         isLoading: false
       }]);

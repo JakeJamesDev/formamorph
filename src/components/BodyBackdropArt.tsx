@@ -1,6 +1,7 @@
 import { RemoteImg } from '@/lib/useRemoteImage';
 import type { Backdrop } from '@/types';
 import { galleryLinkData } from '@/lib/mediaList';
+import { useMediaList } from '@/lib/useMediaList';
 
 const OUTLINE_PROPS = {
   'aria-hidden': true,
@@ -20,6 +21,7 @@ const QUADRUPED_TAIL = 'M50 44C38 42 26 46 16 58C10 66 8 74 12 80C20 76 32 72 42
 
 /** The figure behind a Body's Slot Boxes, in theme colors. It fills its positioned parent. Each viewBox offset centers its figure. */
 export function BodyBackdropArt({ backdrop }: { backdrop: Backdrop }) {
+  const media = useMediaList();
   if (backdrop.kind === 'humanoid') {
     return (
       <svg viewBox="0 -6.5 100 200" {...OUTLINE_PROPS}>
@@ -39,7 +41,7 @@ export function BodyBackdropArt({ backdrop }: { backdrop: Backdrop }) {
     // Fit inside the stage: an image past the aspect clamp gets bars, never a stretch (Q71).
     return (
       <RemoteImg
-        src={galleryLinkData(backdrop.image, undefined) ?? ''}
+        src={galleryLinkData(backdrop.image, media) ?? ''}
         alt=""
         draggable={false}
         style={{ opacity: backdrop.opacity ?? 1 }}

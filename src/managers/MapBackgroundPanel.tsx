@@ -16,7 +16,7 @@ export type MapBackgroundPanelMode = 'set' | 'adjust';
  */
 export function MapBackgroundPanel({ mode, overview, placeholders, opacity, onImagesChange, onOpacity, onRemove, onClose }: {
   mode: MapBackgroundPanelMode;
-  overview: Pick<WorldOverview, 'mapBackground' | 'description' | 'name'>;
+  overview: Pick<WorldOverview, 'mapBackground' | 'mediaList' | 'description' | 'name'>;
   placeholders: Placeholder[];
   opacity: number;
   onImagesChange: (images: GalleryImage[]) => void;

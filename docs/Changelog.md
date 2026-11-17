@@ -63,6 +63,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **"Wrong character?" on a name now offers Not a Character.** The pick removes the link and the card from that word. Your save keeps it, and it counts as a fix when you contribute corrections.
   - **Worlds that reuse a picture are smaller: each entity and location picture is stored once.** Several entities or locations showing the same picture now share one copy in the world file.
   - **Entity and location image slots in the World Editor can reuse any image the world already has.** An empty slot offers Import, Choose and an image URL. A filled slot names its image, with Remove and Delete From World.
+  - **Item, map, body backdrop and world cover pictures in the World Editor can reuse any image the world already has.** Their slots offer Import, Choose and an image URL, and share one stored copy with the entities and locations that show the same picture.
 - **🛠️ Developer tooling**
   - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.

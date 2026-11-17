@@ -6,12 +6,12 @@
  * the point of linking them.
  */
 import type { Body, GalleryImage, GalleryLink, World } from '@/types';
-import { galleryLinkData, isMediaRef } from './mediaList';
+import { isMediaRef } from './mediaList';
 import { IMAGE_CAPS, type ImageCap } from './imageOptim';
 import { entityImageData, galleryLinks } from './entityImages';
 import { locationLinks, rewriteMediaImages } from './mediaGallery';
 import { worldOptimizeTargets } from './mediaIndex';
-import { mapImages, rewriteMapImages } from './mapBackground';
+import { rewriteMapImages } from './mapBackground';
 import { isRemoteImage } from './imageBytes';
 import { fetchAsDataUrl } from './imageSource';
 
@@ -25,15 +25,15 @@ export interface EmbedFailure {
 export function remoteWorldImages(world: World): string[] {
   const urls: string[] = [];
   const thumb = world.worldOverview?.thumbnail;
-  if (isRemoteImage(thumb)) urls.push(thumb as string);
+  if (typeof thumb === 'string' && isRemoteImage(thumb)) urls.push(thumb);
   // A linked entry counts once, however many places link it.
   const embeddedData = (links: GalleryLink[]) => links.flatMap((link) => (isMediaRef(link) ? [] : [link.data]));
   for (const e of world.entities ?? []) urls.push(...embeddedData(galleryLinks(e)).filter(isRemoteImage));
   for (const l of world.locations ?? []) urls.push(...embeddedData(locationLinks(l)).filter(isRemoteImage));
   for (const entry of Object.values(world.worldOverview?.mediaList ?? {})) if (entry.kind === 'image' && isRemoteImage(entry.data)) urls.push(entry.data);
-  urls.push(...mapImages(world.worldOverview).map((img) => img.data).filter(isRemoteImage));
+  urls.push(...embeddedData(galleryLinks({ images: world.worldOverview?.mapBackground?.images })).filter(isRemoteImage));
   for (const b of world.bodies ?? []) {
-    const data = b.backdrop.kind === 'image' ? galleryLinkData(b.backdrop.image, world.worldOverview?.mediaList) : undefined;
+    const data = b.backdrop.kind === 'image' && !isMediaRef(b.backdrop.image) ? b.backdrop.image.data : undefined;
     if (data && isRemoteImage(data)) urls.push(data);
   }
   return urls;
@@ -86,7 +86,8 @@ export async function embedWorldRemoteImages(
     }
   };
 
-  const thumbnail = await embed(world.worldOverview?.thumbnail, IMAGE_CAPS.thumbnail);
+  const cover = world.worldOverview?.thumbnail;
+  const thumbnail = isMediaRef(cover) ? cover : await embed(cover, IMAGE_CAPS.thumbnail);
   // Links keep their ids: their entries are embedded once, below.
   const embedGallery = async (links: GalleryLink[], cap: ImageCap): Promise<GalleryLink[]> => {
     const out: GalleryLink[] = [];
@@ -103,7 +104,7 @@ export async function embedWorldRemoteImages(
 
   const bodies: Body[] = [];
   for (const b of world.bodies ?? []) {
-    if (b.backdrop.kind !== 'image' || 'mediaId' in b.backdrop.image) { bodies.push(b); continue; }
+    if (b.backdrop.kind !== 'image' || isMediaRef(b.backdrop.image)) { bodies.push(b); continue; }
     const { image } = b.backdrop;
     bodies.push({ ...b, backdrop: { ...b.backdrop, image: { ...image, data: (await embed(image.data, IMAGE_CAPS.entity)) ?? image.data } } });
   }

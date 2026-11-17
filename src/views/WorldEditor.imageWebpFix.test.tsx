@@ -41,6 +41,7 @@ vi.mock('@/lib/imageOptimWorkerClient', () => ({
 import { toast } from 'react-toastify';
 import { encodeInWorker } from '@/lib/imageOptimWorkerClient';
 import { entityImages } from '@/lib/entityImages';
+import { coverData } from '@/lib/mediaImages';
 
 const image = (mime: string, seed = 'A') => `data:${mime};base64,${seed.repeat(64)}`;
 // Distinct bytes per file: identical bytes are one file, which the Media List stores once.
@@ -204,7 +205,7 @@ describe('WorldEditor — a world whose pictures live in more than one place', (
     await act(async () => { fireEvent.click(button); });
 
     const world = ctx().getWorldData();
-    expect(world.worldOverview.thumbnail).toBe(WEBP);
+    expect(coverData(world.worldOverview)).toBe(WEBP);
     const media = world.worldOverview.mediaList;
     expect(entityImages(world.entities[0], media).map((img) => img.data)).toEqual([WEBP, WEBP]);
     expect(entityImages(world.locations[0], media)[0]?.data).toBe(WEBP);
@@ -218,7 +219,8 @@ describe('WorldEditor — a world whose pictures live in more than one place', (
 
     await act(async () => { fireEvent.click(button); });
 
-    expect(ctx().getWorldData().items?.[0].images).toEqual([{ data: WEBP }]);
+    const data = ctx().getWorldData();
+    expect(entityImages(data.items![0], data.worldOverview.mediaList).map((img) => img.data)).toEqual([WEBP]);
     await waitFor(() => expect(screen.queryByRole('button', { name: /^Fix/ })).toBeNull());
   });
 

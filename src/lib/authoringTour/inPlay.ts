@@ -22,6 +22,7 @@ import {
   liveTourItem, tourConnectionStart, tourEntity, tourEntityPlaces, tourEntityPresence, tourEntry, tourStat, type TourItems, type TourWorld,
 } from './steps';
 import { readTestLine, type TestLineScan } from './testLine';
+import { coverData } from '../mediaImages';
 
 /** The AI requests In Game can name, as the pane titles them. */
 export type TourPrompt = 'Narration Prompt' | 'Location Change Prompt' | 'Stat Updates Prompt';
@@ -156,7 +157,7 @@ function libraryCardRecord(world: TourWorld, worldId: string): WorldRecord {
     name: overview.name,
     description: describePlaceholders(overview.description ?? '', allPlaceholders(world)),
     author: overview.author || '',
-    thumbnail: overview.thumbnail,
+    thumbnail: coverData(overview),
     tags: overview.tags || [],
   };
 }

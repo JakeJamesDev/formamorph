@@ -108,8 +108,9 @@ describe('Media tab Map Background', () => {
     await act(async () => { fireEvent.change(input, { target: { files: [webp()] } }); });
 
     // The old image is WebP data too, so wait for the change itself.
-    await waitFor(() => expect(entityImages(map(bench)!)[1]?.data).not.toBe(RUINED));
-    expect(entityImages(map(bench)!)[1]?.data).toMatch(/^data:image\/webp;base64,/);
+    const shown = () => entityImages(map(bench)!, bench.ctx().worldOverview.mediaList)[1]?.data;
+    await waitFor(() => expect(shown()).not.toBe(RUINED));
+    expect(shown()).toMatch(/^data:image\/webp;base64,/);
     expect(map(bench)!.images[1].requires).toEqual([ruled]);
     expect(map(bench)).toMatchObject({ frame: FRAME, opacity: 0.6 });
     expect(lastLabel(bench)).toBe('Replace Image 2: Map Background');
@@ -125,7 +126,7 @@ describe('Media tab Map Background', () => {
     fireEvent.click(section().querySelector<HTMLElement>('[data-media-card="stack"]')!);
 
     await step(() => fireEvent.click(within(framed()!).getByRole('button', { name: 'Remove' })));
-    expect(map(bench)).toEqual({ ...was, images: [{ data: RUINED }] });
+    expect(map(bench)).toEqual({ ...was, images: [was!.images[1]] });
     expect(lastLabel(bench)).toBe('Remove Image 1: Map Background');
     await undo();
     expect(map(bench)).toEqual(was);
@@ -160,11 +161,13 @@ describe('Media tab Map Background under No Images', () => {
 
     await waitFor(() => expect(map(bench)).toBeDefined());
     expect(map(bench)).toEqual({
-      // The picture keeps its file's name (Q23).
-      images: [{ data: expect.stringMatching(/^data:image\//), name: 'map' }],
+      images: [{ mediaId: expect.any(String) }],
       frame: firstMapFrame(world.locations, 2),
       opacity: 1,
     });
+    // The picture joined the list under its file's name (Q23).
+    const placed = bench.ctx().worldOverview.mediaList![(map(bench)!.images[0] as { mediaId: string }).mediaId];
+    expect(placed).toMatchObject({ name: 'map', data: expect.stringMatching(/^data:image\//) });
     expect(blankCard()).toBeUndefined();
 
     await undo();

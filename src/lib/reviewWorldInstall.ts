@@ -4,6 +4,7 @@ import { resolveImportedWorld } from '@/lib/worldBundleRun';
 import { randomUUID } from '@/lib/uuid';
 import WorldStorageService, { assertWorldFields } from '@/services/WorldStorageService';
 import type { ReviewQueueItem } from '@/services/ReviewService';
+import { coverData } from '@/lib/mediaImages';
 
 /** Library name of a copy taken from the review queue. */
 export const reviewCopyName = (name: string) => `${name} (Pending Review)`;
@@ -35,7 +36,7 @@ export async function installReviewWorld(
     name,
     description: world.worldOverview?.description || '',
     author: uploader || '',
-    thumbnail: world.worldOverview?.thumbnail ?? undefined,
+    thumbnail: coverData(world.worldOverview),
     data: world,
   });
   return name;

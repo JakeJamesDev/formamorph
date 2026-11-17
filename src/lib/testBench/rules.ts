@@ -3824,7 +3824,7 @@ const imageMislabeled: Rule = {
   // Format decisions everywhere already read the bytes, so the label is corrected, never trusted.
   fix: (world) => {
     const thumb = world.worldOverview?.thumbnail;
-    const nextThumb = thumb ? relabelDataUrl(thumb) : thumb;
+    const nextThumb = typeof thumb === 'string' && thumb ? relabelDataUrl(thumb) : thumb;
     const media = world.worldOverview?.mediaList;
     const nextMedia = mapMediaImages(media, relabelDataUrl);
     let out = nextThumb === thumb && nextMedia === media ? world

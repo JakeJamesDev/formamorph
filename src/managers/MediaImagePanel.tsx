@@ -63,8 +63,8 @@ export function MediaImagePanel({ parent, images, framed, onFrame, avatar, place
   onGoTo: (parent: MediaParent) => void;
   onSelect: (id: string) => void;
 }) {
-  const { entities, editEntity, locations, updateLocation, worldOverview, updateWorldOverview } = useGameData();
-  const map = useMapBackground({ worldOverview, updateWorldOverview, locations });
+  const { entities, editEntity, locations, updateLocation, worldOverview, updateWorldOverview, addMedia } = useGameData();
+  const map = useMapBackground({ worldOverview, updateWorldOverview, addMedia, locations });
   const isMap = parent.kind === 'map';
   const { replace, remove, setRules } = useMediaItemActions();
   const entity = parent.kind === 'entity' ? entities.find((e) => e.id === parent.id) : undefined;

@@ -12,6 +12,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { randomUUID } from '@/lib/uuid';
+import { coverData } from '@/lib/mediaImages';
 
 // A node-side test can import this module through a hook, and has no window.
 const DEV = import.meta.env.DEV && typeof window !== 'undefined';
@@ -216,7 +217,7 @@ export function installDevRouter(): () => void {
         name: data.worldOverview?.name || 'Untitled',
         description: data.worldOverview?.description || '',
         author: data.worldOverview?.author || '',
-        thumbnail: data.worldOverview?.thumbnail || '',
+        thumbnail: coverData(data.worldOverview) || '',
         dirty: true,
         ...wrapper,
         data: data as unknown as { worldOverview: unknown; stats: unknown[]; locations: unknown[];

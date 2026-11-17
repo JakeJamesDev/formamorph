@@ -66,36 +66,36 @@ describe('Custom Image Backdrop', () => {
   const placed = { ...newBody('b', 'B'), aspect: 0.9, entries: [entry('hand', box(0.1, 0.2, 0.3, 0.4))] };
 
   it('takes the image, its aspect and keeps the boxes', () => {
-    const next = withBackdropImage(placed, 'data:a', 1.25);
+    const next = withBackdropImage(placed, { data: 'data:a' }, 1.25);
     expect(next.backdrop).toEqual({ kind: 'image', image: { data: 'data:a' } });
     expect(next.aspect).toBe(1.25);
     expect(next.entries).toEqual(placed.entries);
   });
 
   it('clamps an aspect past the drag range, so the image gets bars rather than a stretch', () => {
-    expect(withBackdropImage(placed, 'data:a', 9).aspect).toBe(MAX_ASPECT);
-    expect(withBackdropImage(placed, 'data:a', 0.05).aspect).toBe(MIN_ASPECT);
+    expect(withBackdropImage(placed, { data: 'data:a' }, 9).aspect).toBe(MAX_ASPECT);
+    expect(withBackdropImage(placed, { data: 'data:a' }, 0.05).aspect).toBe(MIN_ASPECT);
   });
 
   it('keeps the aspect when no new one is given', () => {
-    expect(withBackdropImage(placed, 'data:a').aspect).toBe(0.9);
+    expect(withBackdropImage(placed, { data: 'data:a' }).aspect).toBe(0.9);
   });
 
   it('leaves for an outline with the image gone and the boxes kept; Plain keeps the image aspect (Q72)', () => {
-    const custom = withBackdropImage(placed, 'data:a', 1.25);
+    const custom = withBackdropImage(placed, { data: 'data:a' }, 1.25);
     expect(withOutline(custom, 'humanoid')).toMatchObject({ backdrop: { kind: 'humanoid' }, aspect: 0.5, entries: placed.entries });
     expect(withOutline(custom, 'quadruped').aspect).toBe(1.6);
     expect(withOutline(custom, 'plain')).toMatchObject({ backdrop: { kind: 'plain' }, aspect: 1.25, entries: placed.entries });
   });
 
   it('keeps its opacity when the file is replaced, and starts without one', () => {
-    const faded = { ...withBackdropImage(placed, 'data:a', 1.25), backdrop: { kind: 'image' as const, image: { data: 'data:a' }, opacity: 0.3 } };
-    expect(withBackdropImage(faded, 'data:b').backdrop).toEqual({ kind: 'image', image: { data: 'data:b' }, opacity: 0.3 });
-    expect(withBackdropImage(placed, 'data:a').backdrop).toEqual({ kind: 'image', image: { data: 'data:a' } });
+    const faded = { ...withBackdropImage(placed, { data: 'data:a' }, 1.25), backdrop: { kind: 'image' as const, image: { data: 'data:a' }, opacity: 0.3 } };
+    expect(withBackdropImage(faded, { data: 'data:b' }).backdrop).toEqual({ kind: 'image', image: { data: 'data:b' }, opacity: 0.3 });
+    expect(withBackdropImage(placed, { data: 'data:a' }).backdrop).toEqual({ kind: 'image', image: { data: 'data:a' } });
   });
 
   it('sets the opacity of a Custom Image, clamped, and leaves an outline Backdrop alone', () => {
-    const custom = withBackdropImage(placed, 'data:a', 1.25);
+    const custom = withBackdropImage(placed, { data: 'data:a' }, 1.25);
     expect(withBackdropOpacity(custom, 0.3).backdrop).toEqual({ kind: 'image', image: { data: 'data:a' }, opacity: 0.3 });
     expect(withBackdropOpacity(custom, 0).backdrop).toMatchObject({ opacity: 0 });
     expect(withBackdropOpacity(custom, 4).backdrop).toMatchObject({ opacity: 1 });

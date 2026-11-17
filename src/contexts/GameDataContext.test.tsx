@@ -8,6 +8,7 @@ import type { Stat, Tool, World } from '@/types';
 import { phValueId, phValues } from '@/test/placeholderValues';
 import { boxScripts } from '@/test/scriptFixtures';
 import { oneRoutine } from '@/test/routines';
+import { mapImages } from '@/lib/mapBackground';
 // The provider initializes IndexedDB storage on mount; stub it out so these tests exercise only
 // loadWorldData's normalization.
 vi.mock('../services/WorldStorageService', () => ({
@@ -674,7 +675,10 @@ describe('loadWorldData', () => {
       opacity: 0.6,
     };
     act(() => { result.current.loadWorldData(JSON.parse(JSON.stringify(world('a', { mapBackground })))); });
-    expect(result.current.worldOverview.mapBackground).toEqual(mapBackground);
+    // The pictures join the world's list on load; read back through it, the map holds what was loaded.
+    const loaded = result.current.worldOverview;
+    expect(loaded.mapBackground).toMatchObject({ frame: mapBackground.frame, opacity: mapBackground.opacity });
+    expect(mapImages(loaded)).toEqual(mapBackground.images.map((img) => ({ ...img, name: expect.any(String) })));
 
     act(() => { result.current.loadWorldData(world('b', {})); });
     expect(result.current.worldOverview.mapBackground).toBeUndefined();

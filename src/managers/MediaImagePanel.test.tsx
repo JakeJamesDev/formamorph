@@ -7,6 +7,7 @@ import { measureInWorker, encodeInWorker } from '@/lib/imageOptimWorkerClient';
 import ModelStorageService from '@/services/ModelStorageService';
 import type { Entity, Stat, World } from '@/types';
 import { entityImages } from '@/lib/entityImages';
+import { coverData } from '@/lib/mediaImages';
 
 /** The Media tab's image panel: one entity's or location's gallery, framed on one image, with its details below. */
 
@@ -339,7 +340,7 @@ describe('Media tab No Images filter', () => {
     const input = panel()!.querySelector<HTMLInputElement>('input[data-media-replace]')!;
     await act(async () => { fireEvent.change(input, { target: { files: [webp()] } }); });
 
-    await waitFor(() => expect(bench.ctx().worldOverview.thumbnail).toMatch(/^data:/));
+    await waitFor(() => expect(coverData(bench.ctx().worldOverview)).toMatch(/^data:/));
     expect(blankCards()).toEqual(['Map Background', 'Hollow', 'Bare Flat']);
     expect(lastLabel(bench)).toBe('Add Thumbnail');
   });

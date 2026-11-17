@@ -23,6 +23,7 @@ import type { SupporterCopyMarker, World } from "@/types";
 import { supporterContent, unscrambleWorldContent } from "@/lib/supporterContent";
 import { isSupporterOnly } from "@/lib/supporterListingAction";
 import { endWorldOptimize, reportWorldOptimize } from "@/lib/worldOptimizeProgress";
+import { coverData } from "@/lib/mediaImages";
 
 /** One add-on the player ticked. The name travels with the id so a row the world has since stopped
  *  offering can still be named in the report rather than shown as a listing id. */
@@ -214,8 +215,9 @@ export function useDownloadCoordinator(
     // embedding by the thumbnail response's `Cross-Origin-Resource-Policy: same-origin` header. Fall back to
     // the server URL only if the content somehow carries no embedded thumbnail.
     let thumbnailUrl = '';
-    if (migrated.worldOverview?.thumbnail) {
-      thumbnailUrl = migrated.worldOverview.thumbnail;
+    const embeddedCover = coverData(migrated.worldOverview);
+    if (embeddedCover) {
+      thumbnailUrl = embeddedCover;
     } else if (world.thumbnail_file) {
       thumbnailUrl = `${WorldStorageService.API_URL}/thumbnails/${world.thumbnail_file}`;
     } else if (world.thumbnail) {

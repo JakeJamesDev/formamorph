@@ -61,7 +61,7 @@ export async function convertWorldImagesToWebp(world: RuleWorld): Promise<WebpFi
   };
 
   const thumbnail = world.worldOverview?.thumbnail;
-  const nextThumbnail = thumbnail ? await convert(thumbnail) : thumbnail;
+  const nextThumbnail = typeof thumbnail === 'string' && thumbnail ? await convert(thumbnail) : thumbnail;
 
   // Each slice keeps its identity unless this run actually rebuilt it, so the write-back touches only what
   // changed — and an entity whose pictures were all left alone never has its legacy `image` field normalized

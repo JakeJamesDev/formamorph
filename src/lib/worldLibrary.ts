@@ -5,7 +5,8 @@
  * Every write goes through {@link putWorldRecord} or {@link deleteWorldRecord} inside one transaction over
  * both stores, so a list read never sees a world without its metadata, or the reverse.
  */
-import type { ContentLink, SupporterCopyMarker, WorldMetadata } from '@/types';
+import type { ContentLink, MediaList, MediaRef, SupporterCopyMarker, WorldMetadata } from '@/types';
+import { coverData } from './mediaImages';
 import { describePlaceholders } from './placeholders';
 import { allPlaceholders, type PlaceholderHomesWorld } from './placeholderHomes';
 import { migrateCarriedPlaceholders } from './version';
@@ -54,7 +55,7 @@ interface StoredWorldShape {
 
 /** The parts of a world's content its metadata reads. */
 interface ContentShape {
-  worldOverview?: { thumbnail?: string | null; tags?: string[] } | null;
+  worldOverview?: { thumbnail?: string | MediaRef | null; mediaList?: MediaList; tags?: string[] } | null;
   placeholders?: unknown;
   entities?: unknown;
   dictionaries?: unknown;
@@ -101,7 +102,7 @@ export function worldMetaOf(record: StoredWorldShape): WorldMetaRecord {
     // A remote thumbnail can't render offline and is blocked cross-origin, so the embedded one wins over a URL.
     thumbnail: (record.thumbnail && !/^https?:\/\//i.test(record.thumbnail))
       ? record.thumbnail
-      : (overview?.thumbnail || record.thumbnail || ''),
+      : (coverData(overview ? { thumbnail: overview.thumbnail ?? null, mediaList: overview.mediaList } : undefined) || record.thumbnail || ''),
     tags: overview?.tags || [],
     sourceId: record.sourceId,
     dirty: record.dirty,
