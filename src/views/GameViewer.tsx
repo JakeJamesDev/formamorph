@@ -88,6 +88,7 @@ import { useContributeAccess } from "@/lib/coref/useContributeAccess";
 import { knownNameFor, memoryNarrationFor, readingNamesFor } from "@/lib/coref/mentionMemory";
 import { speakerColors } from "@/lib/coref/speakerPalette";
 import { MentionCardsProvider, cardColors, mentionCardRows, pickListBase, turnPickList, type CardCorrection } from "@/components/game/MentionCards";
+import { entityExclusions } from "@/lib/characterCandidates";
 import { visibleImages } from "@/lib/imageVisibility";
 import type { PlayerViewEntity } from "@/lib/formaquestion/playerView";
 import { characterMentions, useCharacterMentionsState } from "@/lib/coref/characterMentionsApp";
@@ -1082,10 +1083,12 @@ const GameViewer = ({
   // names somewhere the player isn't.
   const characterExclusions = useMemo(() => {
     const clean = (xs: string[]) => xs.map((n) => (n ?? '').trim()).filter(Boolean);
+    const cast = entityExclusions(allEntities);
     return {
       // The persona is a person the narration names, so it takes the surname rule too.
-      characters: clean([...allEntities.map((e) => e.name), ...playerNames]),
+      characters: [...cast.characters, ...clean(playerNames)],
       terms: clean([
+        ...cast.terms,
         ...locations.map((l) => l.name),
         ...stats.map((s) => s.name),
         ...traits.map((t) => t.name),
@@ -1107,7 +1110,7 @@ const GameViewer = ({
   const clusterExclusions = useMemo(
     () => ({
       ...characterExclusions,
-      characters: [...entities.map((e) => e.name), ...playerNames].map((n) => (n ?? '').trim()).filter(Boolean),
+      characters: [...entityExclusions(entities).characters, ...playerNames.map((n) => (n ?? '').trim()).filter(Boolean)],
     }),
     [characterExclusions, entities, playerNames],
   );

@@ -15,6 +15,7 @@
 import { SELF_INTRO_BEFORE, isEverydayName, sameCharacterName, sameNameSpelling, stripQuotedSpeech } from './entityMatch';
 import { quoteSpeakingClusters } from './coref/mentionReading';
 import type { CorefCluster } from './coref/corefHost';
+import type { Entity } from '@/types';
 
 /** Mid-sentence uses (accumulated across turns) before an untitled name counts as a character.
  *  Sentence-initial uses are ignored because every sentence opener is capitalized: measured over
@@ -112,6 +113,18 @@ export interface CandidateExclusions {
   terms?: string[];
   /** Names the player deleted. Treated like characters, so a deletion also covers fuller forms. */
   suppressed?: string[];
+}
+
+/** What `entities` add to the exclusions: names and aliases as people; Stranger Names as terms, since their
+ *  last word is a role ("Keeper"), not a surname. */
+export function entityExclusions(
+  entities: readonly Pick<Entity, 'name' | 'aliases' | 'strangerName'>[],
+): Required<Pick<CandidateExclusions, 'characters' | 'terms'>> {
+  const clean = (xs: readonly (string | undefined)[]) => xs.map((n) => (n ?? '').trim()).filter(Boolean);
+  return {
+    characters: clean(entities.flatMap((e) => [e.name, ...(e.aliases ?? [])])),
+    terms: clean(entities.map((e) => e.strangerName)),
+  };
 }
 
 /** One name's evidence within the scanned text. */

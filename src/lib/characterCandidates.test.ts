@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { escapeRegExp } from '@/lib/utils';
 import {
   extractCharacterCandidates,
+  entityExclusions,
   clusterCandidates,
   collectCandidateEvidence,
   mergeCandidateEvidence,
@@ -413,5 +414,23 @@ describe('clusterCandidates (Q73)', () => {
   it('counts uses in prose only, as the name rule does', () => {
     const text = `"You saw the Zorvak," you say. You watched as the Zorvak paused.${SPEAKS}`;
     expect(clusterNames(text, clustersOf(text, [['the Zorvak', 'the Zorvak', 'she']]), {})).toEqual([]);
+  });
+});
+
+describe('entityExclusions', () => {
+  const ALIAS = "You step back as the Ursaring's eyes narrow.";
+  const STRANGER = "You step back as the Mill Keeper's eyes narrow.";
+  const OTHER_KEEPER = "You step back as the Gate Keeper's eyes narrow.";
+  const wren = { name: 'Wren', aliases: ['Ursaring'], strangerName: 'The Mill Keeper' };
+
+  it('blocks a name that is an entity alias', () => {
+    expect(extractCharacterCandidates(ALIAS, {})).toEqual(['Ursaring']);
+    expect(extractCharacterCandidates(ALIAS, entityExclusions([wren]))).toEqual([]);
+  });
+
+  it('blocks a Stranger Name without blocking other names that end in its last word', () => {
+    expect(extractCharacterCandidates(STRANGER, {})).toEqual(['Mill Keeper']);
+    expect(extractCharacterCandidates(STRANGER, entityExclusions([wren]))).toEqual([]);
+    expect(extractCharacterCandidates(OTHER_KEEPER, entityExclusions([wren]))).toEqual(['Gate Keeper']);
   });
 });
