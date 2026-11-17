@@ -73,6 +73,9 @@ Settled with the user on 2026-11-16, in grill order.
 | Q42 | Ticket 05: the cover takes the single-field link. Fallback subjects are the item name, the body name, `Map` and `Cover`, numbered per Q25. Published world JSON keeps the list form; the listing thumbnail, the library world card and the server preview resolve the cover to bytes. The last unlink of a map or backdrop image removes the field as today. Worlds without a list stay embedded (Q26) |
 | Q43 | Ticket 06: the entity editor gains an Advanced-only Sound field, and the Media tab's sound panels use the same slot. A sound's stored file name drops only a recognized media extension, so a carried name survives. World music's fallback subject is `Music`. A sound URL takes any http(s) link, with the broken state as its only check. Cards carry no sound |
 | Q44 | Ticket 10: the server's Supporter check reads every Media List entry with an http(s) URL, used or not, sounds included: Supporter-only media is never at a public URL, and Q17 made sounds linkable. Gallery `{ mediaId }` values are skipped, since the entry covers them |
+| Q45 | The Media tab's image and sound panels keep only the slot's controls; their own Replace and Remove go (user, 2026-11-16) |
+| Q46 | The unlink control is labeled **Remove From Slot**, since "Unlink" already names a library entity's linked copy (user, 2026-11-16) |
+| Q47 | A linked sound's badge says **Linked**, matching linked images (user, 2026-11-16) |
 
 ## Prototype
 
