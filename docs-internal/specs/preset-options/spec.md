@@ -23,7 +23,7 @@ A Preset Option stores nothing. No gate, pin or script can read it, so it can ne
 - **Q4, Q11 Selected value.** A value's radio is selected while the current setup matches that value's settled result. For a snapshot, the whole result must match. For an overlay, only its listed values must hold. Two Preset Options can each show a selected value at once. This state is derived, never stored.
 - **Q5 Owned traits.** Rows can pick entity-owned traits as well as root traits.
 - **Q6 Other sections.** Rows can also set the Starting Location and the Persona. Library Additions stay out.
-- **Q7 Conflicts.** The Preset builds the full target draft and settles it once. Its values count as the latest picks, so it wins every conflict. Unlisted picks that fail go to the cascade-off list.
+- **Q7 Conflicts.** The Preset builds the full target draft and settles it once. It wins every conflict (Q26). Unlisted picks that fail go to the cascade-off list.
 - **Q8 Bad Preset.** If a Preset's own value fails in its own target state, setup skips that value and names it in the notice. The editor flags that Preset value.
 - **Q9 Snapshot reach.** A snapshot resets Options and traits only. Persona and Starting Location stay as they are unless a row names them.
 - **Q10 Persona.** A row can name only a persona that the world authors.
@@ -40,6 +40,12 @@ A Preset Option stores nothing. No gate, pin or script can read it, so it can ne
 - **Q23 Option description.** A Preset Option keeps `playerDescription`, shown under its name on the setup screen, the same as for other types.
 - **Q24 Stale rows at apply.** Apply skips a row whose target was deleted, is now hidden, is itself a Preset, or no longer accepts the value. The skipped row is listed in the notice result.
 - **Q25 Row shape.** The row union is `option` (optionId, value), `trait` (traitId, optional ownerId, on), `location` (locationId) and `persona` (entityId). An absent ownerId means a root trait. Otherwise ownerId is the authored entity id. There is no "you" owner.
+- **Q26 How the Preset wins.** Preset picks go first in settle's proposal order, which wins mutual Not ties. A Preset on-row that still fails because an unlisted pick blocks it turns that pick off into cascade-off, and the settle runs again.
+- **Q27 Full group.** If a Preset on-row lands in a group that unlisted picks already fill, the Preset wins. Unlisted picks in that group turn off, latest first, as plain off (like a max-1 swap), not cascade-off. If the Preset's own rows overfill a group, the later rows are skipped.
+- **Q28 Absent owner.** An owned-trait row whose owner is not in the cast is skipped and named in the notice.
+- **Q29 Editor trait targets.** The row editor offers only traits the player can toggle (Optional mode). Ticket 04's check flags a row whose trait changes mode later.
+- **Q30 Notice.** After a Preset click that changed a trait or skipped a row, one notice shows, on the World Options page too. It reads "Applied **Hardcore**. Turned on … Turned off … Couldn't apply …". Turned on and off cover every trait whose pick changed between the draft before and after the click. That includes rows, swaps, the snapshot reset, cascade and short-group fill. Owned traits are named "Owner: Trait", and a skipped Option row reads "Couldn't set **Option**". A click that changed no trait and skipped nothing shows no notice. Each sentence lists at most 6 names, then "and N more". A skipped row uses its authored name, even when its owner is out of the cast. The notice leaves out a row whose target no longer exists, and ticket 04's check flags that row in the editor.
+- **Q31 Snapshot cascade-off.** A snapshot clears the draft's cascade-off list before it settles, so old picks never return after a reset. An overlay keeps the list.
 
 ## User Stories
 
@@ -86,7 +92,7 @@ A Preset Option stores nothing. No gate, pin or script can read it, so it can ne
 - **Apply.** A new pure function in the entry draft module takes the draft, the world, a Preset Option and a value id. It returns the new draft and a notice.
   - Build the target. For a snapshot, start from the defaults for Options and traits, and keep the current persona and location. For an overlay, start from the current draft.
   - Overlay the rows. Rows on a max-1 group swap the pick as a click does.
-  - Settle once through the existing fixpoint, with the Preset's trait picks ordered as the latest picks. This makes them win Not conflicts. Then run the existing short-group fill.
+  - Settle through the existing fixpoint, with the Preset's trait picks first in proposal order so they win mutual Not ties. If a Preset on-row still fails because an unlisted pick blocks it, turn that pick off into cascade-off and settle again (Q26). Then run the existing short-group fill.
   - Read back each row. A row that did not hold is a skipped value for the notice.
 - **Match.** A new pure function returns the value id that a draft matches, or null. Each value's result is computed by applying it to the current draft. For a snapshot, the comparison covers Options and traits, plus persona and location when rows name them. For an overlay, it covers the listed values only. If more than one value matches, the first in authored order is selected.
 - **Exclusion from references.** Preset Options are left out of every reader in the World Options module and its callers:
