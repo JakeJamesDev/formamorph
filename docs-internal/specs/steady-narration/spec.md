@@ -1,6 +1,7 @@
 # Spec: Steady Narration
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-16. Tickets 01–07 (06 wontfix), last landing f5e13b2703. Review: 2 gaps closed by tickets 06–07, spec text corrected. Gates on 2026-11-16 before 07: test green (37,082 pass); lint red only in gitignored worlds-wip/.
 Spec session: steady-narration — spec
 
 ## Problem Statement
