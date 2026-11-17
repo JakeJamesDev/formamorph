@@ -15,6 +15,8 @@ import { saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import { buildInitialSelection } from '@/lib/dictionarySelection';
 import type { Dictionary, GameLocation, PersonaRef, WorldOption, WorldOverview } from '@/types';
 import { oneRoutine } from '@/test/routines';
+import { phValues } from '@/test/placeholderValues';
+import { encodePlaceholderToken } from '@/lib/placeholders';
 
 vi.mock('react-toastify', () => ({
   toast: { error: vi.fn(), success: vi.fn(), info: vi.fn(), warn: vi.fn() },
@@ -1016,6 +1018,56 @@ describe('a Preset with trait rows at world entry', () => {
     expect(screen.getByRole('radio', { name: 'Orc' })).toBeChecked();
     fireEvent.click(nav().getByRole('button', { name: /^Other traits/ }));
     expect(screen.getByRole('checkbox', { name: 'Evil' })).toBeChecked();
+  });
+});
+
+describe('a Preset over placeholder names and a linked Blueprint trait at world entry', () => {
+  // One value each, so every roll reads the same.
+  const kin = { id: 'ph-kin', name: 'Kin', values: phValues(['Fox']) };
+  const place = { id: 'ph-place', name: 'Place', values: phValues(['Den']) };
+  const tokenOf = (id: string) => encodePlaceholderToken({ id, mode: 'world', placementId: `pl-${id}` });
+  beforeEach(async () => {
+    const record = world();
+    const options: WorldOption[] = [{
+      id: 'start', name: 'Start', type: 'preset', mode: 'overlay', values: [
+        { id: 'hunt', name: 'Hunt', description: '', rows: [
+          { kind: 'trait', traitId: 'smite', ownerId: 'hound', on: true },
+          { kind: 'trait', traitId: 'howl', ownerId: 'hound', on: true },
+        ] },
+        { id: 'stalk', name: 'Stalk', description: '', rows: [
+          { kind: 'persona', entityId: 'stalker' }, { kind: 'location', locationId: 'den' },
+        ] },
+      ],
+    }];
+    const person = { playerDescription: '', aiDescription: '', aiSummary: '' };
+    // The hound owns Howl and links Smite from Blueprints; the stalker is a world persona.
+    const hound = {
+      id: 'hound', name: tokenOf('ph-kin'), ...person,
+      traits: [{ id: 'howl', name: `${tokenOf('ph-kin')} Howl`, statChanges: [] }],
+      traitLinks: [{ id: 'l-smite', originalId: 'smite', kind: 'trait' as const, originalName: 'Smite', groupId: null }],
+    };
+    const stalker = { id: 'stalker', name: `${tokenOf('ph-kin')} Stalker`, ...person, persona: true };
+    Object.assign(record.data, { options, entities: [hound, stalker], placeholders: [kin, place] });
+    record.data.traitGroups = [...(record.data.traitGroups ?? []), { id: 'bp', name: 'Blueprints', system: 'blueprints' }];
+    record.data.traits = [...record.data.traits, { id: 'smite', name: 'Smite', groupId: 'bp', statChanges: [] }];
+    record.data.locations = [...record.data.locations, { id: 'den', name: tokenOf('ph-place'), isStarting: true }];
+    await WorldStorageService.storeWorld(record);
+  });
+
+  const pick = async (value: string) => {
+    renderEnterWorld({ onStartGame: vi.fn() });
+    await enter();
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'World setup categories' })).getByRole('button', { name: /^World Options/ }));
+    fireEvent.click(screen.getByRole('radio', { name: value }));
+    return screen.getByRole('status');
+  };
+
+  it('turns on the linked trait and names owner and traits resolved (Q42)', async () => {
+    expect(await pick('Hunt')).toHaveTextContent(/^Applied Hunt\. Turned on Fox: Smite and Fox: Fox Howl\.Dismiss$/);
+  });
+
+  it('names the persona and Starting Location resolved (Q42)', async () => {
+    expect(await pick('Stalk')).toHaveTextContent(/^Applied Stalk\. Persona set to Fox Stalker\. Starting Location set to Den\.Dismiss$/);
   });
 });
 

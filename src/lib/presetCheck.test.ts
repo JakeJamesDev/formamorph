@@ -86,6 +86,15 @@ describe('checkPreset', () => {
     expect(issuesOf(rows)).toEqual(rows.map((row) => ({ row, deleted: true })));
   });
 
+  it('reads setup’s trees: a linked Blueprint trait is its owner’s, never the root’s (Q42)', () => {
+    const blueprints: TraitGroup = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' };
+    const smite: Trait = { id: 'smite', name: 'Smite', statChanges: [], groupId: 'bp' };
+    const linker = { ...knight, traitLinks: [{ id: 'l-smite', originalId: 'smite', kind: 'trait' as const, originalName: 'Smite', groupId: null }] };
+    const world = { ...worldOf(), entities: [linker, rogue, npc], traits: [...traits, smite], traitGroups: [...traitGroups, blueprints] };
+    const rows = [on('smite', 'knight'), on('smite'), on('smite', 'npc')];
+    expect(checkPreset(presetOf(rows), world).get('v0')).toEqual([{ row: rows[1], deleted: true }, { row: rows[2], deleted: true }]);
+  });
+
   it('checks each value from the preselected persona at its start place', () => {
     // The keep is offered only while the knight plays, and the knight is the Starting Persona.
     expect(issuesOf([at('keep')])).toEqual([{ row: at('keep'), deleted: false }]);

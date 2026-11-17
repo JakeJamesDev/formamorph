@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
-import type { World, WorldOption } from '@/types';
+import { phValues } from '@/test/placeholderValues';
+import { encodePlaceholderToken } from '@/lib/placeholders';
+import type { Placeholder, World, WorldOption } from '@/types';
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -151,6 +153,50 @@ describe('a Preset Option on the Options tab', () => {
     expect(screen.getAllByText(/^Can't apply/).map((s) => s.textContent)).toEqual([
       "Can't apply: Blessed, Secret: On, 2 deleted traits, a deleted location",
     ]);
+  });
+
+  it('lists traits from setup’s trees and draws placeholder names as chips (Q42)', () => {
+    const kin: Placeholder = { id: 'ph-kin', name: 'Kin', values: phValues(['Fox']) };
+    const token = encodePlaceholderToken({ id: 'ph-kin', mode: 'world', placementId: 'pl-kin' });
+    // The hound links Smite from Blueprints; it, Smite, an Option, a choice value and a location are named by Kin.
+    const hound = {
+      id: 'hound', name: token,
+      traitLinks: [{ id: 'l-smite', originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null }],
+    };
+    const preset: WorldOption = {
+      id: 'start', name: 'Start', type: 'preset', mode: 'overlay', values: [{ id: 'v', name: 'V', description: '', rows: [
+        { kind: 'trait', traitId: 'smite', ownerId: 'hound', on: true },
+        { kind: 'persona', entityId: 'hound' },
+        { kind: 'option', optionId: 'size', value: 'big' },
+        { kind: 'location', locationId: 'den' },
+      ] }],
+    };
+    const sized: WorldOption = {
+      id: 'size', name: `${token} Size`, type: 'choice', shownToPlayer: true, midGame: false, default: 'small',
+      values: [{ id: 'small', name: 'Small' }, { id: 'big', name: `${token} Big` }],
+    };
+    const world = benchEditorWorld({
+      options: [sized, preset], placeholders: [kin], entities: [hound],
+      traits: [...traits, { id: 'smite', name: `${token} Smite`, statChanges: [], groupId: 'bp' }],
+      traitGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+      locations: [{ id: 'den', name: token, description: '', isStarting: true }],
+    } as Partial<World>);
+    renderWorldEditorBench(world, 'advanced');
+    openEditorTab(/Options/);
+    fireEvent.click(screen.getByRole('button', { name: 'Select Start' }));
+
+    const box = (name: string) => screen.getByRole('combobox', { name }).textContent;
+    expect([box('V Row 1 Target'), box('V Row 3 Target'), box('V Row 3 Value'), box('V Row 4 Value')])
+      .toEqual(['Kin: Kin Smite', 'Kin Size', 'Kin Big', 'Kin']);
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'V Row 1 Target' }), { key: 'Enter' });
+    const list = screen.getByRole('listbox');
+    expect(within(list).getAllByRole('option').map((o) => o.textContent)).toEqual(['Kin Size', 'Starting Location', 'Brave', 'Kin: Kin Smite']);
+    expect(within(list).getAllByRole('group').map((g) => g.firstElementChild?.textContent)).toEqual(['Options', 'Start', 'World Traits', 'Kin']);
+    fireEvent.keyDown(list, { key: 'Escape' });
+
+    // The Kin hound is no persona.
+    expect(screen.getByText(/^Can't apply/).textContent).toBe("Can't apply: Persona: Kin");
+    expect(document.body.textContent).not.toContain('{{ph:');
   });
 
   it('names a persona or location row by its value', () => {

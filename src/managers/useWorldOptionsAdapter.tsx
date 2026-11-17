@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import { Plus, Trash2, TriangleAlert, X } from 'lucide-react';
 import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
+import PlaceholderText, { PlaceholderVocabularyProvider } from '@/components/prompt/PlaceholderText';
 import { OptionSwitcher } from '@/components/SettingsRows';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -17,13 +18,16 @@ import { useRenameField } from '@/lib/useCodeRename';
 import { isAlwaysOn } from '@/lib/traitEffects';
 import { startPlacesOf } from '@/lib/entityPlaces';
 import { presetPersonaTargets } from '@/lib/entryDraft';
-import { checkPreset, type PresetCheckWorld, type PresetRowIssue } from '@/lib/presetCheck';
+import {
+  checkPreset, presetRowTrait, presetTraitTrees, type PresetCheckWorld, type PresetRowIssue, type PresetTraitTrees,
+} from '@/lib/presetCheck';
+import type { Owner } from '@/lib/owners';
 import { randomUUID } from '@/lib/uuid';
 import {
   BOOLEAN_OFF, BOOLEAN_ON, blankOption, choiceDefault, optionDefault, optionRange, reorderOptions, shownValuedOptions, snapNumber, withOptionType,
 } from '@/lib/worldOptions';
 import type {
-  Entity, GameLocation, PlaceholderPin, PresetRow, PresetValue, PresetWorldOption, Trait, ValuedWorldOption, WorldOption, WorldOptionType, WorldOptionValueOf,
+  Entity, GameLocation, Placeholder, PlaceholderPin, PresetRow, PresetValue, PresetWorldOption, Trait, ValuedWorldOption, WorldOption, WorldOptionType, WorldOptionValueOf,
 } from '@/types';
 
 const TYPE_LABELS: Record<WorldOptionType, string> = { choice: 'Choice', boolean: 'On or Off', number: 'Number', preset: 'Preset' };
@@ -65,6 +69,11 @@ function PinsField({ label, pins, onChange, source, world }: {
 
 type OptionRow = Extract<PresetRow, { kind: 'option' }>;
 
+const PresetPlaceholders = createContext<readonly Placeholder[]>([]);
+
+/** An authored name in the Preset editor, its placeholders drawn as chips. */
+const ChipName = ({ text }: { text: string }) => <PlaceholderText text={text} placeholders={useContext(PresetPlaceholders)} />;
+
 /** The value box for an Option row: the target Option's own control. */
 function OptionRowValue({ option, value, label, onChange }: {
   option: ValuedWorldOption;
@@ -83,7 +92,7 @@ function OptionRowValue({ option, value, label, onChange }: {
     <Select value={current} onValueChange={(v) => onChange(option.type === 'boolean' ? v === BOOLEAN_ON : v)}>
       <SelectTrigger aria-label={`${label} Value`} className="w-40"><SelectValue /></SelectTrigger>
       <SelectContent>
-        {items.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+        {items.map((item) => <SelectItem key={item.id} value={item.id}><ChipName text={item.name} /></SelectItem>)}
       </SelectContent>
     </Select>
   );
@@ -100,15 +109,16 @@ interface TraitTarget {
  *  world's personas and its Starting Locations. */
 interface RowTargets {
   options: readonly ValuedWorldOption[];
-  traits: readonly { owner: string; traits: readonly TraitTarget[] }[];
+  traits: readonly { key: string; owner: string; traits: readonly TraitTarget[] }[];
   personas: readonly Pick<Entity, 'id' | 'name'>[];
   locations: readonly Pick<GameLocation, 'id' | 'name'>[];
 }
 
-/** The world's row targets. A trait whose mode stops the player toggling it is left out (Q29). Personas are the
- *  marked entities and the Custom Persona (Q36); locations are the starting ones and every persona's start places (Q35). */
-function rowTargets(world: Pick<ReturnType<typeof useGameData>, 'options' | 'traits' | 'entities' | 'locations'>): RowTargets {
-  const toggled = (traits: readonly Trait[] | undefined, owner?: Entity) => (traits ?? []).filter((t) => !isAlwaysOn(t))
+/** The world's row targets. Traits come from the trees setup offers (Q42); one whose mode stops the player toggling
+ *  it is left out (Q29). Personas are the marked entities and the Custom Persona (Q36); locations are the starting
+ *  ones and every persona's start places (Q35). */
+function rowTargets(world: Pick<PresetCheckWorld, 'options' | 'entities' | 'locations'>, trees: PresetTraitTrees): RowTargets {
+  const toggled = (traits: readonly Trait[], owner?: Owner) => traits.filter((t) => !isAlwaysOn(t))
     .map((t): TraitTarget => ({ traitId: t.id, name: owner ? `${owner.name}: ${t.name}` : t.name, ...(owner ? { ownerId: owner.id } : {}) }));
   const { world: marked, custom } = presetPersonaTargets(world.entities);
   const personas = custom ? [...marked, custom] : marked;
@@ -116,8 +126,8 @@ function rowTargets(world: Pick<ReturnType<typeof useGameData>, 'options' | 'tra
   return {
     options: shownValuedOptions(world.options),
     traits: [
-      { owner: 'World Traits', traits: toggled(world.traits) },
-      ...world.entities.map((e) => ({ owner: e.name, traits: toggled(e.traits, e) })),
+      { key: 'world', owner: 'World Traits', traits: toggled(trees.global) },
+      ...trees.owners.map((o) => ({ key: o.id, owner: o.name, traits: toggled(o.traits, o) })),
     ].filter((g) => g.traits.length),
     personas,
     locations: world.locations.filter((l) => l.isStarting || starts.has(l.id)),
@@ -143,7 +153,7 @@ function TargetRowValue({ items, value, label, onChange }: {
     <Select value={items.some((i) => i.id === value) ? value : ''} onValueChange={onChange}>
       <SelectTrigger aria-label={label} className="w-48 min-w-0"><SelectValue /></SelectTrigger>
       <SelectContent>
-        {items.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+        {items.map((item) => <SelectItem key={item.id} value={item.id}><ChipName text={item.name} /></SelectItem>)}
       </SelectContent>
     </Select>
   );
@@ -185,7 +195,7 @@ function PresetRowsField({ rows, targets, label, onChange }: {
                 {targets.options.length > 0 && (
                   <SelectGroup>
                     <SelectLabel>Options</SelectLabel>
-                    {targets.options.map((o) => <SelectItem key={o.id} value={optionKey(o.id)}>{o.name}</SelectItem>)}
+                    {targets.options.map((o) => <SelectItem key={o.id} value={optionKey(o.id)}><ChipName text={o.name} /></SelectItem>)}
                   </SelectGroup>
                 )}
                 {(targets.personas.length > 0 || targets.locations.length > 0) && (
@@ -196,10 +206,10 @@ function PresetRowsField({ rows, targets, label, onChange }: {
                   </SelectGroup>
                 )}
                 {targets.traits.map((g) => (
-                  <SelectGroup key={g.owner}>
-                    <SelectLabel>{g.owner}</SelectLabel>
+                  <SelectGroup key={g.key}>
+                    <SelectLabel><ChipName text={g.owner} /></SelectLabel>
                     {g.traits.map((t) => (
-                      <SelectItem key={`${t.ownerId ?? ''}-${t.traitId}`} value={traitKey(t.traitId, t.ownerId)}>{t.name}</SelectItem>
+                      <SelectItem key={`${t.ownerId ?? ''}-${t.traitId}`} value={traitKey(t.traitId, t.ownerId)}><ChipName text={t.name} /></SelectItem>
                     ))}
                   </SelectGroup>
                 ))}
@@ -247,7 +257,7 @@ const DELETED_NOUN: Record<PresetRow['kind'], [one: string, many: string]> = {
 };
 
 /** A row as its controls read: "Elf", "Wolf: Feral" (Q32), "Size: Big", "Persona: Mira", "Starting Location: Ashgate". */
-function rowName(row: PresetRow, world: PresetCheckWorld): string {
+function rowName(row: PresetRow, world: PresetCheckWorld, trees: PresetTraitTrees): string {
   if (row.kind === 'persona') return `Persona: ${world.entities.find((e) => e.id === row.entityId)?.name ?? ''}`;
   if (row.kind === 'location') return `Starting Location: ${world.locations.find((l) => l.id === row.locationId)?.name ?? ''}`;
   if (row.kind === 'option') {
@@ -256,34 +266,40 @@ function rowName(row: PresetRow, world: PresetCheckWorld): string {
       : option?.type === 'choice' ? option.values.find((v) => v.id === row.value)?.name : String(row.value);
     return value ? `${option?.name}: ${value}` : option?.name ?? '';
   }
-  const owner = row.ownerId === undefined ? undefined : world.entities.find((e) => e.id === row.ownerId);
-  const name = (owner ? owner.traits : world.traits)?.find((t) => t.id === row.traitId)?.name ?? '';
-  return owner ? `${owner.name}: ${name}` : name;
+  const found = presetRowTrait(row, trees);
+  const name = found?.trait.name ?? '';
+  return found?.owner ? `${found.owner.name}: ${name}` : name;
 }
 
 /** The warning on a Preset value naming each row that can't apply, then a count of deleted rows by kind (Q40). */
-function PresetValueWarning({ issues, world }: { issues: readonly PresetRowIssue[]; world: PresetCheckWorld }) {
+function PresetValueWarning({ issues, world, trees }: {
+  issues: readonly PresetRowIssue[];
+  world: PresetCheckWorld;
+  trees: PresetTraitTrees;
+}) {
   const deleted = (Object.keys(DELETED_NOUN) as PresetRow['kind'][]).flatMap((kind) => {
     const n = issues.filter((i) => i.deleted && i.row.kind === kind).length;
     return n === 0 ? [] : [n === 1 ? `a deleted ${DELETED_NOUN[kind][0]}` : `${n} deleted ${DELETED_NOUN[kind][1]}`];
   });
-  const named = [...issues.filter((i) => !i.deleted).map((i) => rowName(i.row, world)), ...deleted];
+  const named = [...issues.filter((i) => !i.deleted).map((i) => rowName(i.row, world, trees)), ...deleted];
   return (
     <p role="status" className="flex items-start gap-1 text-helper text-warning">
       <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-      Can&apos;t apply: {named.join(', ')}
+      <span>Can&apos;t apply: {named.map((name, i) => <span key={i}>{i > 0 && ', '}<ChipName text={name} /></span>)}</span>
     </p>
   );
 }
 
 /** A Preset's fields: what a pick does to the other choices, and its values. */
-function PresetFields({ option, targets, world, onChange }: {
+function PresetFields({ option, world, placeholders, onChange }: {
   option: PresetWorldOption;
-  targets: RowTargets;
   world: PresetCheckWorld;
+  placeholders: readonly Placeholder[];
   onChange: (next: WorldOption) => void;
 }) {
   const { worldOverview, entities, locations, traits, traitGroups, stats, statGroups, items, placements, slots, bodies, options } = world;
+  const trees = useMemo(() => presetTraitTrees({ traits, traitGroups, entities }), [traits, traitGroups, entities]);
+  const targets = useMemo(() => rowTargets({ options, entities, locations }, trees), [options, entities, locations, trees]);
   // Keyed on the slices the check reads, so an edit elsewhere in the world does not rerun it.
   const issues = useMemo(() => checkPreset(option, {
     worldOverview, entities, locations, traits, traitGroups, stats, statGroups, items, placements, slots, bodies, options,
@@ -291,52 +307,54 @@ function PresetFields({ option, targets, world, onChange }: {
   const setValues = (values: PresetValue[]) => onChange({ ...option, values });
   const setValue = (id: string, patch: Partial<PresetValue>) => setValues(option.values.map((v) => (v.id === id ? { ...v, ...patch } : v)));
   return (
-    <>
-      <div className="space-y-2" {...fieldFrame('mode')}>
-        <Label>Other Choices</Label>
-        <OptionSwitcher ariaLabel="Other Choices" value={option.mode} options={MODES} onChange={(mode) => onChange({ ...option, mode })} />
-        <Hint>
-          {option.mode === 'snapshot'
-            ? 'Resets every Option and trait this value doesn\u2019t set to its default'
-            : 'Changes only what this value sets'}
-        </Hint>
-      </div>
-      <div className="space-y-3">
-        <Label>Values</Label>
-        {option.values.map((value, index) => {
-          const label = value.name || `Value ${index + 1}`;
-          const valueIssues = issues.get(value.id);
-          return (
-            <div key={value.id} className="space-y-3 rounded-lg border p-3" {...fieldFrame('values', value.id)}>
-              <div className="flex items-center gap-2">
-                <Input
-                  aria-label={`Value ${index + 1} Name`} value={value.name} className="min-w-0 flex-1"
-                  onChange={(e) => setValue(value.id, { name: e.target.value })}
-                />
-                <Button
-                  variant="ghost" size="icon" aria-label={`Delete ${label}`} disabled={option.values.length <= 1}
-                  onClick={() => setValues(option.values.filter((v) => v.id !== value.id))}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-              <Textarea
-                aria-label={`${label} Description`} placeholder="Description" value={value.description}
-                onChange={(e) => setValue(value.id, { description: e.target.value })}
-              />
-              <PresetRowsField rows={value.rows} targets={targets} label={label} onChange={(rows) => setValue(value.id, { rows })} />
-              {valueIssues && <PresetValueWarning issues={valueIssues} world={world} />}
-            </div>
-          );
-        })}
-        <Button
-          variant="outline" size="sm"
-          onClick={() => setValues([...option.values, { id: randomUUID(), name: `Value ${option.values.length + 1}`, description: '', rows: [] }])}
-        >
-          <Plus className="mr-1 h-4 w-4" />Add Value
-        </Button>
-      </div>
-    </>
+    <PresetPlaceholders.Provider value={placeholders}>
+      <PlaceholderVocabularyProvider placeholders={placeholders}>
+          <div className="space-y-2" {...fieldFrame('mode')}>
+            <Label>Other Choices</Label>
+            <OptionSwitcher ariaLabel="Other Choices" value={option.mode} options={MODES} onChange={(mode) => onChange({ ...option, mode })} />
+            <Hint>
+              {option.mode === 'snapshot'
+                ? 'Resets every Option and trait this value doesn\u2019t set to its default'
+                : 'Changes only what this value sets'}
+            </Hint>
+          </div>
+          <div className="space-y-3">
+            <Label>Values</Label>
+            {option.values.map((value, index) => {
+              const label = value.name || `Value ${index + 1}`;
+              const valueIssues = issues.get(value.id);
+              return (
+                <div key={value.id} className="space-y-3 rounded-lg border p-3" {...fieldFrame('values', value.id)}>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      aria-label={`Value ${index + 1} Name`} value={value.name} className="min-w-0 flex-1"
+                      onChange={(e) => setValue(value.id, { name: e.target.value })}
+                    />
+                    <Button
+                      variant="ghost" size="icon" aria-label={`Delete ${label}`} disabled={option.values.length <= 1}
+                      onClick={() => setValues(option.values.filter((v) => v.id !== value.id))}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Textarea
+                    aria-label={`${label} Description`} placeholder="Description" value={value.description}
+                    onChange={(e) => setValue(value.id, { description: e.target.value })}
+                  />
+                  <PresetRowsField rows={value.rows} targets={targets} label={label} onChange={(rows) => setValue(value.id, { rows })} />
+                  {valueIssues && <PresetValueWarning issues={valueIssues} world={world} trees={trees} />}
+                </div>
+              );
+            })}
+            <Button
+              variant="outline" size="sm"
+              onClick={() => setValues([...option.values, { id: randomUUID(), name: `Value ${option.values.length + 1}`, description: '', rows: [] }])}
+            >
+              <Plus className="mr-1 h-4 w-4" />Add Value
+            </Button>
+          </div>
+      </PlaceholderVocabularyProvider>
+    </PresetPlaceholders.Provider>
   );
 }
 
@@ -348,7 +366,7 @@ function OptionDetail({ option, onChange }: { option: WorldOption; onChange: (ne
   const withPins = (pins: PlaceholderPin[]) => (pins.length ? pins : undefined);
 
   const typeFields = () => {
-    if (option.type === 'preset') return <PresetFields option={option} targets={rowTargets(world)} world={world} onChange={onChange} />;
+    if (option.type === 'preset') return <PresetFields option={option} world={world} placeholders={world.placeholders} onChange={onChange} />;
     if (option.type === 'number') {
       const { lo, hi } = optionRange(option);
       return (

@@ -30,6 +30,7 @@ import {
   applyPreset, castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, entryTrees, libraryCastIds, matchPreset, presetRowRef, rekeyOwnedPicks,
   withLibraryDefaults, withLocationPick, withPersonaPick, withSettledEntry, type EntryDraft, type EntryTraitWorld, type PresetPlaces,
 } from '@/lib/entryDraft';
+import { presetRowTrait, presetTraitTrees } from '@/lib/presetCheck';
 import { isPreset, optionPinLists, shownOptions } from '@/lib/worldOptions';
 import { bindLibraryEntity, blueprintBindWorld } from '@/lib/blueprintTravel';
 import { playLibraryStats } from '@/lib/portableStats';
@@ -312,13 +313,15 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     if (!applied) return;
     reviseDraft(() => applied.draft);
     const { notice } = applied;
-    // Authored names, owned ones as "Owner: Trait" (Q30); a target that no longer exists, or a Hidden trait, goes unnamed.
-    const owners = [...entryWorld.entities, ...entryWorld.library];
+    // Resolved names from setup's trees, owned ones as "Owner: Trait" (Q30, Q42).
+    const trees = presetTraitTrees(entryWorld, entryWorld.library);
     const presetTraitName = ({ ownerId, traitId }: GateTraitRef): string[] => {
-      const owner = ownerId === null ? undefined : owners.find((e) => e.id === ownerId);
-      const trait = (ownerId === null ? entryWorld.traits : owner?.traits ?? []).find((t) => t.id === traitId);
-      if (!trait || isHidden(trait)) return [];
-      return [owner && ownerId !== playedEntityId(applied.draft.persona) ? `${owner.name}: ${trait.name}` : trait.name];
+      const found = presetRowTrait({ traitId, ...(ownerId === null ? {} : { ownerId }) }, trees);
+      if (!found || isHidden(found.trait)) return [];
+      const { trait, owner } = found;
+      if (!owner) return [trait.name];
+      const name = resolveTraitText(trait, trait.name, owner.entity);
+      return [ownerId !== playedEntityId(applied.draft.persona) ? `${owner.name}: ${name}` : name];
     };
     const traitsNotApplied = notice.skipped.flatMap((row) => (row.kind === 'trait' ? presetTraitName(presetRowRef(row)) : []));
     const notSet = notice.skipped.flatMap((row) => {

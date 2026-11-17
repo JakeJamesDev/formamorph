@@ -50,7 +50,7 @@ A Preset sets several Options, traits, the persona and the Starting Location in 
 3. For each value, write a name and a description. The player reads both.
 4. Select **Add Row**, then pick a target and its value:
    - An **Option** shown to the player, and the value to set it to.
-   - A world trait or an entity's trait, turned **On** or **Off**. Traits the player can't toggle, such as **Always On** ones, aren't listed.
+   - A world trait or an entity's trait, turned **On** or **Off**. An entity's list includes the Blueprint traits it links. Traits the player can't toggle, such as **Always On** ones, aren't listed.
    - **Persona**, and one of the world's personas. The player's own personas aren't listed.
    - **Starting Location**, and a starting location or a place where one of the world's personas starts.
 

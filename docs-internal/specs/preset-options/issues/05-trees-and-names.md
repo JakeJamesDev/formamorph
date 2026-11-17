@@ -1,6 +1,6 @@
 # 05: Row Targets Follow Setup's Trees, and Names Resolve
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -15,9 +15,17 @@ The user found two gaps at close. The spec covers both in Q42.
 
 ## Acceptance criteria
 
-- [ ] The root group lists no Blueprint trait.
-- [ ] An entity's group lists the Blueprint traits it links, and a row for one applies at setup and passes the Preset check.
-- [ ] An entity, trait, Option or location whose name is a placeholder shows its resolved name in the target list, in the Can't-apply warning and in the setup notice.
-- [ ] Each new test fails when its fix is removed.
+- [x] The root group lists no Blueprint trait. `WorldEditor.presetOption.test.tsx` "lists traits from setup's trees…" and `presetCheck.test.ts` "reads setup's trees…".
+- [x] An entity's group lists the Blueprint traits it links, and a row for one applies at setup and passes the Preset check. Same editor test; `entryDraft.preset.test.ts` "applies an owned row for a Blueprint trait the entity links"; `presetCheck.test.ts` "reads setup's trees…"; `EnterWorldFlow.test.tsx` "turns on the linked trait…".
+- [x] An entity, trait, Option or location whose name is a placeholder shows its resolved name in the target list, in the Can't-apply warning and in the setup notice. The editor draws chips (Q42): target, value boxes and warning in the editor test; the notice in both new `EnterWorldFlow.test.tsx` cases.
+- [x] Each new test fails when its fix is removed. Mutations run: root tree from raw traits (check and editor tests red), owner lookup on the entity's own traits (notice test red), owned trait name unresolved (notice test red), raw text in place of chips (editor test red). Two tests guard behavior that already held: the apply test (the ticket asked to confirm it) and the notice's persona and location case.
 
-For you: Open the Options tab on a world with a placeholder-named entity and a Blueprint. Check the row editor's target list.
+## Landed
+
+**Not verified**
+
+- None.
+
+**For you**
+
+- Open the Options tab on a world with a placeholder-named entity and a Blueprint. Check the row editor's target list.

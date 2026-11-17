@@ -206,6 +206,19 @@ describe('applyPreset trait rows', () => {
     expect(notice.skipped).toEqual([ghost]);
   });
 
+  it('applies an owned row for a Blueprint trait the entity links (Q42)', () => {
+    const smite = t('smite', { groupId: 'bp' });
+    const hound: Entity = { id: 'hound', name: 'Hound', traitLinks: [{ id: 'l', originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null }] };
+    const start = preset('overlay', [value('v', [on('smite', 'hound')])]);
+    const world: EntryTraitWorld = {
+      traits: [...rootTraits, smite], traitGroups: [...groups, group('bp', { system: 'blueprints' })], entities: [hound], library: [], options: [start],
+    };
+    const { draft, notice } = applied(startDraft(world), world, start, 'v');
+    expect(draft.ownedTraitIds.hound).toEqual(['smite']);
+    expect(draft.traitIds).not.toContain('smite');
+    expect(notice.skipped).toEqual([]);
+  });
+
   it('skips a row that fails after the settle, an Always On row and a deleted trait, and applies the rest', () => {
     const failing = [on('mage'), off('blessed'), on('gone')];
     const { draft, notice } = run('overlay', [on('orc'), ...failing]);
