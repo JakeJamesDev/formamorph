@@ -162,8 +162,8 @@ describe('heavy text in the sandbox', () => {
     it('only to load entries for a run that reads no heavy field', async () => {
       await read(`return [entities.Mira.name, locations.Dock.id, location.starting, memories[0].turn, dictionaries.Lore.id,
         Object.keys(entities), Object.keys(dictionaries)];`);
-      // Mira's entry loads on its first read, and the listing loads the rest of `entities` in one call.
-      expect(hostCalls).toHaveLength(2);
+      // Mira's, Dock's and Lore's entries load on their first reads; each listing loads the rest of its map in one call.
+      expect(hostCalls).toHaveLength(5);
     });
 
     it('once for a field read twice', async () => {
@@ -174,12 +174,14 @@ describe('heavy text in the sandbox', () => {
 
     it('once for one text two paths read', async () => {
       await read('return [location.description, locations.Dock.description];');
-      expect(hostCalls).toHaveLength(1);
+      // One call loads Dock's entry; the text is one more.
+      expect(hostCalls).toHaveLength(2);
     });
 
     it('once for a book’s entries and once per value read', async () => {
       await read('const e = dictionaries.Lore.entries; return [e.Tides.value, e.Tides.value, Object.keys(dictionaries.Lore.entries)];');
-      expect(hostCalls).toHaveLength(2);
+      // One call loads Lore's entry; its entries and the value are one more each.
+      expect(hostCalls).toHaveLength(3);
     });
   });
 });

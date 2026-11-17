@@ -2508,6 +2508,193 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
   });
 
   describe('special runs', () => {
+    it('loads entries the same after a Script replaces built-ins (Q19)', async () => {
+      // Each replaced built-in throws; the Script puts them back before it returns, so only its reads meet them.
+      const result = await run(`
+        const poisoned = [[Object, 'defineProperty'], [Object, 'freeze'], [Object, 'create'], [Object, 'keys'], [JSON, 'parse'],
+          [JSON, 'stringify'], [Array.prototype, 'map'], [Array.prototype, 'push'], [Array.prototype, Symbol.iterator], [globalThis, 'Proxy']];
+        const saved = poisoned.map(([holder, key]) => holder[key]);
+        for (let i = 0; i < poisoned.length; i += 1) {
+          const holder = poisoned[i][0], key = poisoned[i][1];
+          holder[key] = () => { throw new Error(String(key) + ' was called'); };
+        }
+        let read;
+        try {
+          const rook = entities.Rook, lamp = items['Brass Lamp'], mill = locations['Old Mill'];
+          read = {
+            rook: [rook.type, rook.description, rook.traits.Grim.enabled, rook.stats.Rage.value, rook.items.length, rook.placeholders.Scar.value],
+            eye: persona.placeholders['Eye Color'].value, hair: placeholders.Hair.Shade.value,
+            lamp: [lamp.id, lamp.instances.length, lamp.instances[1].quantity, lamp.placeholders.Glow.value],
+            mill: [mill.name, mill.description, mill.present.length, mill.present[0] === entities['Old Tom']],
+            coin: currencies.Coin.kind,
+            names: [Reflect.ownKeys(entities), Reflect.ownKeys(items), Reflect.ownKeys(locations), Reflect.ownKeys(dictionaries), Reflect.ownKeys(currencies)],
+            lore: dictionaries.Lore.enabled, wand: entities.Rook.items[0] === items.Wand.instances[0],
+          };
+        } catch (error) {
+          read = { error: error.message };
+        }
+        for (let i = 0; i < poisoned.length; i += 1) poisoned[i][0][poisoned[i][1]] = saved[i];
+        return read;`);
+      expect({ ...result, reply: replyOf(result) }).toMatchInlineSnapshot(`
+        {
+          "error": null,
+          "reply": {
+            "coin": "name",
+            "eye": "green",
+            "hair": "ash",
+            "lamp": [
+              "lamp",
+              2,
+              2,
+              "dim",
+            ],
+            "lore": true,
+            "mill": [
+              "Old Mill",
+              "A wheel.",
+              1,
+              true,
+            ],
+            "names": [
+              [
+                "Mira",
+                "Rook",
+                "Old Tom",
+              ],
+              [
+                "Brass Lamp",
+                "Wand",
+              ],
+              [
+                "Dock",
+                "Old Mill",
+              ],
+              [
+                "Lore",
+                "Bestiary",
+              ],
+              [
+                "Coin",
+                "Credits",
+              ],
+            ],
+            "rook": [
+              "Dwarf",
+              "A smith.",
+              false,
+              10,
+              1,
+              "jaw",
+            ],
+            "wand": true,
+          },
+          "value": null,
+        }
+      `);
+    });
+
+    it('answers a look at each map itself as a built map does', async () => {
+      const result = await run(`
+        const look = (map, name) => {
+          const extensible = Object.isExtensible(map), frozen = Object.isFrozen(map);
+          const found = Object.getOwnPropertyDescriptor(map, name);
+          const set = Reflect.set(map, name, 1), added = Reflect.set(map, 'Brand New', 1);
+          return [frozen, extensible, Object.getPrototypeOf(map) === null, found.value === map[name],
+            found.writable, found.enumerable, found.configurable, set, added, Reflect.deleteProperty(map, name),
+            Reflect.defineProperty(map, 'Other', { value: 1 }), Reflect.setPrototypeOf(map, {}), 'Brand New' in map, map[name].name];
+        };
+        return { entities: look(entities, 'Rook'), items: look(items, 'Wand'), locations: look(locations, 'Dock'),
+          dictionaries: look(dictionaries, 'Lore'), currencies: look(currencies, 'Coin') };`);
+      expect({ ...result, reply: replyOf(result) }).toMatchInlineSnapshot(`
+        {
+          "error": null,
+          "reply": {
+            "currencies": [
+              true,
+              false,
+              true,
+              true,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              "Coin",
+            ],
+            "dictionaries": [
+              true,
+              false,
+              true,
+              true,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              "Lore",
+            ],
+            "entities": [
+              true,
+              false,
+              true,
+              true,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              "Rook",
+            ],
+            "items": [
+              true,
+              false,
+              true,
+              true,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              "Wand",
+            ],
+            "locations": [
+              true,
+              false,
+              true,
+              true,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              "Dock",
+            ],
+          },
+          "value": null,
+        }
+      `);
+    });
+
     it('runs an item event over self, instance and args', async () => {
       const result = pinned(await executeStatCode(`return {
         self: self.name, instance: instance.id, owner: instance.owner, args, wandBy: items.Wand.instances.length, rookItems: owner.items.length,

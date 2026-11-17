@@ -78,8 +78,8 @@ describe('a user Tool script reads heavy text from its Tool Snapshot', () => {
   it('asks the host once per text it reads, and for no text it does not', async () => {
     const snapshot = sampleToolSnapshot();
     await read('return [Object.keys(entities), Object.keys(locations), memories.length, Object.keys(dictionaries)];', snapshot);
-    // Listing `entities` loads its entries in one call; no text is read.
-    expect(hostCalls).toHaveLength(1);
+    // Listing `entities`, `locations` and `dictionaries` loads each map's entries in one call; no text is read.
+    expect(hostCalls).toHaveLength(3);
     hostCalls.length = 0;
     await read('return [memories[0].text, memories[0].text];', snapshot);
     expect(hostCalls).toHaveLength(1);

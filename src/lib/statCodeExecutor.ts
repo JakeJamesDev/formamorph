@@ -611,6 +611,35 @@ function lazyEntrySlots<T>(reads: HostReads, entries: readonly T[], build: (entr
   };
 }
 
+// The built-ins a lazy fill calls, taken before user code can replace any (Q19, Q20). User code's parameters shadow it.
+const BUILT_INS = '__formamorphBuiltIns';
+const B = BUILT_INS;
+
+/** The prelude that binds `BUILT_INS`. Its list helpers use index loops: no Array.prototype method, no iterator. */
+const BUILT_INS_PRELUDE = `const ${BUILT_INS} = ((O, R, J, isArray, P) => {
+  const each = (list, fn) => { for (let i = 0; i < list.length; i += 1) fn(list[i], i); };
+  const map = (list, fn) => { const out = []; for (let i = 0; i < list.length; i += 1) out[i] = fn(list[i], i); return out; };
+  const filter = (list, fn) => { const out = []; for (let i = 0; i < list.length; i += 1) if (fn(list[i], i)) out[out.length] = list[i]; return out; };
+  const some = (list, fn) => { for (let i = 0; i < list.length; i += 1) if (fn(list[i], i)) return true; return false; };
+  const includes = (list, value) => some(list, (item) => item === value);
+  const push = (list, value) => { list[list.length] = value; return value; };
+  return O.freeze({
+    define: O.defineProperty, freeze: O.freeze, keys: O.keys, create: O.create, descriptor: O.getOwnPropertyDescriptor,
+    ownKeys: R.ownKeys, apply: R.apply, parse: J.parse,
+    reflect: O.freeze({
+      getOwnPropertyDescriptor: R.getOwnPropertyDescriptor, defineProperty: R.defineProperty, deleteProperty: R.deleteProperty, set: R.set,
+      preventExtensions: R.preventExtensions, isExtensible: R.isExtensible, setPrototypeOf: R.setPrototypeOf,
+    }), stringify: J.stringify, isArray, Proxy: P, each, map, filter, some, includes, push,
+  });
+})(Object, Reflect, JSON, Array.isArray, Proxy);`;
+
+/** JS source of `(target, fields) => setters`: a setter per field that assigns through `target`'s own accessor. */
+const FORWARD_SETTERS = `(target, fields) => {
+  const out = ${B}.create(null);
+  ${B}.each(fields, (field) => { out[field] = (next) => { target[field] = next; }; });
+  return out;
+}`;
+
 /** The prelude that binds `HOST_READ`: a slot's value from the host on first read, from its cache after. */
 const HOST_READ_PRELUDE = [
   `const ${HOST_READ} = ((hook, parse) => {`,
@@ -623,10 +652,10 @@ const HOST_READ_PRELUDE = [
 /** JS source of `(target, fields, prefix, note) => target`: each field, holding a slot, becomes a getter of the slot's
  *  text whose setter calls `note(prefix + field)`, as `LOCK_FIELDS` does for a held value. */
 const LAZY_TEXT = `(target, fields, prefix, note) => {
-  for (const field of fields) {
+  ${B}.each(fields, (field) => {
     const at = target[field];
-    Object.defineProperty(target, field, { enumerable: true, get: () => ${HOST_READ}(at), set: () => note(prefix + field) });
-  }
+    ${B}.define(target, field, { enumerable: true, get: () => ${HOST_READ}(at), set: () => note(prefix + field) });
+  });
   return target;
 }`;
 
@@ -688,11 +717,12 @@ type TrackedMapSpec = TrackedMapKind & {
  *  reads as a tracked blank entry. `rows()` lists what the run did. */
 const trackedMapFactory = (kind: TrackedMapKind): string => [
   `((data) => {`,
-  `  const map = Object.assign(Object.create(null), data);`,
-  `  const own = Object.create(null);`,
-  `  const track = (name, entry) => { const state = own[name] = { entry }; (${kind.track})(name, entry, state); return entry; };`,
-  `  for (const name of keys(map)) track(name, map[name]);`,
-  `  const proxy = new Proxy(map, {`,
+  `  const map = ${B}.create(null);`,
+  `  ${B}.each(${B}.keys(data), (name) => { map[name] = data[name]; });`,
+  `  const own = ${B}.create(null);`,
+  `  const track = (name, entry) => { const state = own[name] = ${B}.create(null); state.entry = entry; (${kind.track})(name, entry, state); return entry; };`,
+  `  ${B}.each(${B}.keys(map), (name) => track(name, map[name]));`,
+  `  const proxy = new ${B}.Proxy(map, {`,
   `    get: (target, key) => typeof key !== 'string' || key in target ? target[key]`,
   `      : own[key] ? own[key].entry : track(key, ${kind.blank}),`,
   `  });`,
@@ -731,33 +761,33 @@ const ADD_ONCE = `(list, path) => { if (!list.includes(path)) list.push(path); }
 /** JS source of `(target, fields, prefix, note) => target`: each field becomes a getter of its value whose
  *  setter calls `note(prefix + field)`. */
 const LOCK_FIELDS = `(target, fields, prefix, note) => {
-  for (const field of fields) {
+  ${B}.each(fields, (field) => {
     const held = target[field];
-    Object.defineProperty(target, field, { enumerable: true, get: () => held, set: () => note(prefix + field) });
-  }
+    ${B}.define(target, field, { enumerable: true, get: () => held, set: () => note(prefix + field) });
+  });
   return target;
 }`;
 
 /** JS source of `(target, text, prefix, note) => target`: the `text` fields lazy, every other field locked. */
 const LOCK_ENTRY = `(target, text, prefix, note) => (${LAZY_TEXT})(
-  (${LOCK_FIELDS})(target, Object.keys(target).filter((field) => !text.includes(field)), prefix, note), text, prefix, note)`;
+  (${LOCK_FIELDS})(target, ${B}.filter(${B}.keys(target), (field) => !${B}.includes(text, field)), prefix, note), text, prefix, note)`;
 
 /** JS source of `(entry, assigned, note) => void`: locks every field of a stat entry, at every depth. With an
  *  `assigned` list, the writable fields stay open and each assignment to one is listed there, changed or not. */
 const LOCK_STAT = `(entry, assigned, note) => {
   const lock = ${LOCK_FIELDS};
-  const deep = (target, prefix) => Object.freeze(lock(target, Object.keys(target), prefix, note));
-  for (const source of Object.keys(entry.delta)) deep(entry.delta[source], 'delta.' + source + '.');
+  const deep = (target, prefix) => ${B}.freeze(lock(target, ${B}.keys(target), prefix, note));
+  ${B}.each(${B}.keys(entry.delta), (source) => deep(entry.delta[source], 'delta.' + source + '.'));
   deep(entry.delta, 'delta.');
   deep(entry.previous, 'previous.');
   const writable = assigned ? ${JSON.stringify(SELF_WRITABLE_FIELDS)} : [];
-  for (const field of writable) {
+  ${B}.each(writable, (field) => {
     let held = entry[field];
-    Object.defineProperty(entry, field, {
+    ${B}.define(entry, field, {
       enumerable: true, get: () => held, set: (next) => { held = next; (${ADD_ONCE})(assigned, field); },
     });
-  }
-  lock(entry, Object.keys(entry).filter((field) => !writable.includes(field)), '', note);
+  });
+  lock(entry, ${B}.filter(${B}.keys(entry), (field) => !${B}.includes(writable, field)), '', note);
 }`;
 
 /** A stat map's kind. Rows are `[name, readOnlyPaths, [[field, number], ...]]` with each writable field
@@ -891,9 +921,9 @@ const placeholdersPrelude = ({ top, nodes, indexOf, roots }: FlatPlaceholderMap,
     `    define(target, 'text', { enumerable: true, get: () => state.text });`,
     `    target.pin = set;`,
     `    target.unpin = () => { state.unpinned = true; };`,
-    `    for (const [field, held] of [['id', id], ['name', name]]) {`,
-    `      define(target, field, { enumerable: true, get: () => held, set: () => (${ADD_ONCE})(state.readOnly, field) });`,
-    `    }`,
+    `    ${B}.each([['id', id], ['name', name]], (pair) => {`,
+    `      define(target, pair[0], { enumerable: true, get: () => pair[1], set: () => (${ADD_ONCE})(state.readOnly, pair[0]) });`,
+    `    });`,
     `  };`,
     `  const strayAt = (path, key, absent) => {`,
     `    const at = stringify([...path, key]);`,
@@ -905,15 +935,15 @@ const placeholdersPrelude = ({ top, nodes, indexOf, roots }: FlatPlaceholderMap,
     `    strays[at] = { entry, state };`,
     `    return entry;`,
     `  };`,
-    `  const view = (target, path, absent = false) => new Proxy(target, {`,
+    `  const view = (target, path, absent = false) => new ${B}.Proxy(target, {`,
     `    get: (t, key) => (typeof key !== 'string' || key in t ? t[key] : strayAt(path, key, absent)),`,
     `  });`,
     // Every key each object is meant to carry. A run can also write a key no node answers, which lands on
     // the object itself rather than on a blank entry, so the reader diffs against these to find it.
     `  const expected = (pairs, entry) => {`,
-    `    const set = Object.create(null);`,
-    `    for (const pair of pairs) set[pair[0]] = 1;`,
-    `    if (entry) for (const member of ${JSON.stringify(PLACEHOLDER_ENTRY_MEMBERS)}) set[member] = 1;`,
+    `    const set = ${B}.create(null);`,
+    `    ${B}.each(pairs, (pair) => { set[pair[0]] = 1; });`,
+    `    if (entry) ${B}.each(${JSON.stringify(PLACEHOLDER_ENTRY_MEMBERS)}, (member) => { set[member] = 1; });`,
     `    return set;`,
     `  };`,
     `  const targets = [];`,
@@ -923,31 +953,38 @@ const placeholdersPrelude = ({ top, nodes, indexOf, roots }: FlatPlaceholderMap,
     // Every key an entry actually sits at, so a run that replaced one wholesale is read back as a write of
     // it. A child whose name lost to a member of its parent sits at no key, so it has no site here.
     `  const sites = [];`,
-    `  const targetOf = (i) => targets[i] || (targets[i] = Object.create(null));`,
+    `  const targetOf = (i) => targets[i] || (targets[i] = ${B}.create(null));`,
     `  const viewOf = (i) => views[i] || (views[i] = built[i] ? view(targetOf(i), nodes[i].p) : lazyView(i));`,
     // One batch at a time: every node's members, then every entry's own, then the sites, as one build of the whole map does.
+    // A batch item is `[index, node]`; a member is `[key, index]`.
     `  const build = (batch) => {`,
     `    const fresh = [];`,
-    `    for (const [i, n] of batch) if (!built[i]) { nodes[i] = n; built[i] = true; fresh.push([i, n]); }`,
-    `    for (const [i, n] of fresh) for (const [key, at] of n.c || []) targetOf(i)[key] = viewOf(at);`,
-    `    for (const [i, n] of fresh) {`,
-    `      if (!n.e) continue;`,
+    `    ${B}.each(batch, (one) => { if (!built[one[0]]) { nodes[one[0]] = one[1]; built[one[0]] = true; ${B}.push(fresh, one); } });`,
+    `    ${B}.each(fresh, (one) => ${B}.each(one[1].c || [], (member) => { targetOf(one[0])[member[0]] = viewOf(member[1]); }));`,
+    `    ${B}.each(fresh, (one) => {`,
+    `      const i = one[0], n = one[1];`,
+    `      if (!n.e) return;`,
     `      states[i] = { value: n.e.value, text: n.e.text, assigned: false, unpinned: false, readOnly: [] };`,
     `      targetOf(i).values = n.e.values;`,
     `      targets[i].roll = () => roll(i);`,
     `      track(targets[i], states[i], n.e.id, n.e.name);`,
-    `    }`,
-    `    for (const [i, n] of fresh) {`,
+    `    });`,
+    `    ${B}.each(fresh, (one) => {`,
+    `      const i = one[0], n = one[1];`,
     `      scans[i] = { object: targetOf(i), built: expected(n.c || [], !!n.e), path: n.p };`,
-    `      for (const [key, at] of n.c || []) if (targets[i][key] === views[at] && nodes[at].e) sites.push({ parent: targets[i], key, at, rank: i });`,
-    `    }`,
+    `      ${B}.each(n.c || [], (member) => {`,
+    `        const key = member[0], at = member[1];`,
+    `        if (targets[i][key] === views[at] && nodes[at].e) ${B}.push(sites, { parent: targets[i], key, at, rank: i });`,
+    `      });`,
+    `    });`,
     `  };`,
     `  const load = (i) => { if (!built[i]) build(read(spec.roots[i])); };`,
     // A root's view before its subtree is in: any touch loads the subtree, then acts on the filled object.
     `  const lazyView = (i) => {`,
-    `    const handler = { get: (t, key) => { load(i); return typeof key !== 'string' || key in t ? t[key] : strayAt(nodes[i].p, key, false); } };`,
-    `    for (const trap of keys(reflect)) handler[trap] = (...args) => { load(i); return reflect[trap](...args); };`,
-    `    return new Proxy(targetOf(i), handler);`,
+    `    const handler = ${B}.create(null);`,
+    `    handler.get = (t, key) => { load(i); return typeof key !== 'string' || key in t ? t[key] : strayAt(nodes[i].p, key, false); };`,
+    `    ${B}.each(keys(reflect), (trap) => { handler[trap] = (...args) => { load(i); return ${B}.apply(reflect[trap], undefined, args); }; });`,
+    `    return new ${B}.Proxy(targetOf(i), handler);`,
     `  };`,
     `  const root = Object.create(null);`,
     `  for (const [key, at] of spec.top) root[key] = viewOf(at);`,
@@ -955,13 +992,18 @@ const placeholdersPrelude = ({ top, nodes, indexOf, roots }: FlatPlaceholderMap,
     `  const rootView = new Proxy(root, {`,
     `    get: (t, key) => (typeof key !== 'string' || key in t ? t[key] : strayAt([''], key, false)),`,
     `    ownKeys: (t) => {`,
-    `      if (spec.top.some(([, at]) => !built[at])) build(read(spec.all));`,
+    `      if (${B}.some(spec.top, (top) => !built[top[1]])) build(read(spec.all));`,
     `      return reflect.ownKeys(t);`,
     `    },`,
     `  });`,
     // Empty owners, in the order a build of every entry at once makes them; a lazy entry reserves its place.
     `  const owned = [];`,
-    `  const reserve = () => { const rec = { object: null }; owned.push(rec); return rec; };`,
+    // `count` places in a row, each made when its entry is: `(i) => rec`.
+    `  const reserve = (count) => {`,
+    `    const base = owned.length;`,
+    `    owned.length = base + count;`,
+    `    return (i) => owned[base + i] || (owned[base + i] = ${B}.create(null));`,
+    `  };`,
     `  const readWrites = () => {`,
     `    const replaced = Object.create(null);`,
     // Root first, then by parent index, as one build of the whole map walks them, so the same replacement wins.
@@ -983,7 +1025,7 @@ const placeholdersPrelude = ({ top, nodes, indexOf, roots }: FlatPlaceholderMap,
     `    const miss = (path, absent) => { const at = stringify(path); if (!seen[at]) { seen[at] = 1; (absent ? missedOwners : missed).push(path); } };`,
     `    const scanned = [{ object: root, built: expected(spec.top, false), path: [''] }];`,
     `    for (let i = 0; i < spec.count; i += 1) if (scans[i]) scanned.push(scans[i]);`,
-    `    for (const rec of owned) if (rec.object) scanned.push(rec);`,
+    `    for (const rec of owned) if (rec && rec.object) scanned.push(rec);`,
     `    for (const { object, built, path, absent } of scanned) {`,
     `      for (const key of keys(object)) if (!(key in built)) miss([...path, key], absent);`,
     `    }`,
@@ -1001,9 +1043,9 @@ const placeholdersPrelude = ({ top, nodes, indexOf, roots }: FlatPlaceholderMap,
     // name or the empty persona.
     `  const ownerView = (at, path, absent, rec) => {`,
     `    if (at >= 0) return viewOf(at);`,
-    `    const target = Object.create(null);`,
-    `    const scan = rec || reserve();`,
-    `    scan.object = target; scan.built = Object.create(null); scan.path = path; scan.absent = absent;`,
+    `    const target = ${B}.create(null);`,
+    `    const scan = rec || reserve(1)(0);`,
+    `    scan.object = target; scan.built = ${B}.create(null); scan.path = path; scan.absent = absent;`,
     `    return view(target, path, absent);`,
     `  };`,
     `  return [rootView, readWrites, ownerView, reserve];`,
@@ -1022,12 +1064,12 @@ const TRAIT_MAP: TrackedMapKind = {
   track: `(name, entry, state) => {
     state.enabled = entry.enabled; state.acquired = entry.acquired; state.assigned = false; state.acquiredWritten = false;
     state.readOnly = [];
-    Object.defineProperty(entry, ${JSON.stringify(TRAIT_WRITABLE_FIELD)}, { enumerable: true, get: () => state.enabled, set: (v) => { state.enabled = v; state.assigned = true; } });
-    Object.defineProperty(entry, 'acquired', { enumerable: true, get: () => state.acquired, set: () => { state.acquiredWritten = true; } });
-    for (const field of ${JSON.stringify(TRAIT_READ_ONLY_FIELDS)}) {
+    ${B}.define(entry, ${JSON.stringify(TRAIT_WRITABLE_FIELD)}, { enumerable: true, get: () => state.enabled, set: (v) => { state.enabled = v; state.assigned = true; } });
+    ${B}.define(entry, 'acquired', { enumerable: true, get: () => state.acquired, set: () => { state.acquiredWritten = true; } });
+    ${B}.each(${JSON.stringify(TRAIT_READ_ONLY_FIELDS)}, (field) => {
       const value = entry[field];
-      Object.defineProperty(entry, field, { enumerable: true, get: () => value, set: () => (${ADD_ONCE})(state.readOnly, field) });
-    }
+      ${B}.define(entry, field, { enumerable: true, get: () => value, set: () => (${ADD_ONCE})(state.readOnly, field) });
+    });
   }`,
   blank: `{ enabled: false, acquired: false, id: '', name: '', mode: '', available: false, group: '', playerToggle: false }`,
   row: `(name, state) => state.assigned || state.acquiredWritten || state.readOnly.length ? [name, state.enabled, state.assigned, state.acquiredWritten, state.readOnly] : null`,
@@ -1081,22 +1123,40 @@ const holdsForPlayer = (entity: SandboxEntity, persona: SandboxEntity): boolean 
  *  its value there without a fill. */
 const LAZY_ENTRY = `(fields, hidden, fixed, fill, note) => {
   const out = {};
-  for (const field of fields) {
+  ${B}.each(fields, (field) => {
     const get = fixed && field in fixed ? () => fixed[field] : () => fill().values[field];
-    const set = (next) => { const { setters } = fill(); return setters[field] ? setters[field](next) : note(field); };
-    define(out, field, { enumerable: !hidden.includes(field), get, set });
-  }
+    const set = (next) => { const setters = fill().setters; return setters[field] ? setters[field](next) : note(field); };
+    define(out, field, { enumerable: !${B}.includes(hidden, field), get, set });
+  });
   return freeze(out);
 }`;
 
-/** JS source of `(map, stray, fillAll) => proxy`: `map` frozen, an unknown name read as `stray(name)` once per name,
- *  and a listing calling `fillAll()` before it lists (Q6). */
-const LAZY_MAP = `(map, stray, fillAll) => {
-  const strays = Object.create(null);
-  return new Proxy(freeze(map), {
-    get: (target, key) => typeof key !== 'string' || key in target ? target[key] : strays[key] || (strays[key] = stray(key)),
-    ownKeys: (target) => { fillAll(); return ownKeys(target); },
+/** JS source of `(names, make, stray, fillAll) => proxy`: a frozen map of `names`, each entry made by `make(at)` on its
+ *  first read by name, an unknown name read as `stray(name)` once per name, and a listing calling `fillAll()` before
+ *  it lists (Q6). Any other look at the map itself makes every entry and freezes it first, so it reads as one built
+ *  whole. */
+const LAZY_MAP = `(names, make, stray, fillAll) => {
+  const index = ${B}.create(null);
+  ${B}.each(names, (name, at) => { index[name] = at; });
+  const shells = [];
+  const shellAt = (at) => shells[at] || (shells[at] = make(at));
+  const strays = ${B}.create(null);
+  const target = ${B}.create(null);
+  let whole = false;
+  const materialize = () => {
+    if (whole) return;
+    whole = true;
+    ${B}.each(names, (name, at) => { target[name] = shellAt(at); });
+    freeze(target);
+  };
+  const handler = ${B}.create(null);
+  handler.get = (t, key) => (typeof key !== 'string' ? t[key] : key in index ? shellAt(index[key]) : strays[key] || (strays[key] = stray(key)));
+  handler.has = (t, key) => typeof key === 'string' && key in index;
+  handler.ownKeys = () => { materialize(); fillAll(); return ownKeys(target); };
+  ${B}.each(['getOwnPropertyDescriptor', 'defineProperty', 'deleteProperty', 'set', 'preventExtensions', 'isExtensible', 'setPrototypeOf'], (trap) => {
+    handler[trap] = (...args) => { materialize(); return ${B}.apply(${B}.reflect[trap], undefined, args); };
   });
+  return new ${B}.Proxy(target, handler);
 }`;
 
 /** JS source of `(fields, entries, blank, build, lazy?) => [map, readWrites, entry, readRows]`: frozen entries with
@@ -1104,40 +1164,47 @@ const LAZY_MAP = `(map, stray, fillAll) => {
  *  `hidden` fields are left out of the entry's keys and a field in `setters` takes its write there; an unknown name
  *  builds from `blank`. An entry's data is an object, or a host slot whose data loads on the first field read, with
  *  its `hidden` fields given beside it. `lazy.all` is the slot of every entry's data in `entries` order, which a
- *  listing loads in one call; `lazy.reserve(key, unknown)` runs as each entry is made, before its data, and its
- *  result reaches `build`. `entry(key, data, unknown, tag, hidden, fixed)` makes one more, whose reader row carries
- *  `tag`. Rows keep the order the entries were made in, loaded or not. */
+ *  listing loads in one call; `lazy.reserve(key, unknown, at)` runs as each entry is made, before its data, with the
+ *  entry's index in `entries` or -1, and its result reaches `build`. `entry(key, data, unknown, tag, hidden, fixed)`
+ *  makes one more, whose reader row carries `tag`. Rows keep `entries` order, then the order the others were made in,
+ *  loaded or not. */
 const READ_ONLY_ENTRY_MAP = `(fields, entries, blank, build, lazy = {}) => {
   const readers = [];
+  readers.length = entries.length;
   const reserve = lazy.reserve || (() => null);
   let made = null;
-  const entry = (key, data, unknown, tag = null, hidden = [], fixed = null) => {
-    const reserved = reserve(key, unknown);
+  const entry = (key, data, unknown, tag = null, hidden = [], fixed = null, at = -1) => {
+    const reserved = reserve(key, unknown, at);
     const written = [];
     let built = null;
     const fill = (given) => {
       if (built) return built;
-      const [values, rows, hiddenFields = [], setters = {}] = build(key, given === undefined ? ${HOST_READ}(data) : given, unknown, reserved);
-      return (built = { values, rows, hiddenFields, setters });
+      const out = build(key, given === undefined ? ${HOST_READ}(data) : given, unknown, reserved);
+      return (built = { values: out[0], rows: out[1], hiddenFields: out[2] || [], setters: out[3] || ${B}.create(null) });
     };
-    readers.push([key, unknown, () => (built ? built.rows() : []), written, tag]);
+    const reader = [key, unknown, () => (built ? built.rows() : []), written, tag];
+    if (at >= 0) readers[at] = reader;
+    else ${B}.push(readers, reader);
     const eager = typeof data !== 'number';
     if (eager) fill(data);
     made = { fill, loaded: () => !!built };
     return (${LAZY_ENTRY})(fields, eager ? built.hiddenFields : hidden, fixed, fill, (field) => (${ADD_ONCE})(written, field));
   };
-  const map = Object.create(null);
+  // Each named entry's fill by index, once its shell is made.
   const filled = [];
-  for (const [name, data, hidden, fixed] of entries) {
-    map[name] = entry(name, data, false, null, hidden, fixed);
-    filled.push(made);
-  }
-  const fillAll = () => {
-    if (!filled.some((one) => !one.loaded())) return;
-    const all = ${HOST_READ}(lazy.all);
-    filled.forEach((one, at) => { if (all[at] !== null) one.fill(all[at]); });
+  const make = (at) => {
+    const one = entries[at];
+    const shell = entry(one[0], one[1], false, null, one[2], one[3], at);
+    filled[at] = made;
+    return shell;
   };
-  const proxy = (${LAZY_MAP})(map, (key) => entry(key, blank, true), fillAll);
+  // Every shell is made before this runs.
+  const fillAll = () => {
+    if (!${B}.some(filled, (one) => !one.loaded())) return;
+    const all = ${HOST_READ}(lazy.all);
+    ${B}.each(filled, (one, at) => { if (all[at] !== null) one.fill(all[at]); });
+  };
+  const proxy = (${LAZY_MAP})(${B}.map(entries, (one) => one[0]), make, (key) => entry(key, blank, true), fillAll);
   const readRows = () => readers
     .map(([key, unknown, rows, written, tag]) => [key, unknown, rows(), written, tag])
     .filter((row) => row[2].length || row[3].length);
@@ -1183,12 +1250,13 @@ const OWN_OWNER_TAG = 'owner';
 const entitiesPrelude = (
   { byName, persona }: KeyedEntities, { indexOf }: FlatPlaceholderMap, blankStat: unknown, place: OwnerPlace,
   statEntriesOf: (entity: SandboxEntity) => StatEntry[], standing: Standing, reads: HostReads, bodies: readonly SandboxBodyDef[],
-  generics: Readonly<Record<string, [string, string][]>>,
+  generics: Readonly<Record<string, [string, string][]>>, heldBy: ItemHolders,
 ): string => {
   const data = (entity: SandboxEntity, owner: boolean) => {
     const { id = '', type = '', pronouns = '', inScene = false, met = false, description, summary, aliases = [], traits, placeholders } = entity;
     const played = isPlayed(entity, persona);
     return {
+      holding: heldBy(played ? 'you' : `entity:${id}`),
       id, type, pronouns, inScene, met: played || met, location: standing.nameOf(entity, played), following: !played && !!entity.following,
       waiting: !played && !!entity.waiting,
       kind: played ? '' : entity.kind ?? '', action: played ? '' : entity.action ?? '', held: !played && !!entity.held,
@@ -1225,30 +1293,37 @@ const entitiesPrelude = (
     // `owner.stats` is eager, so reading it loads no entry (Q16).
     `const ownerFixed = Object.assign(Object.create(null), { stats: ${OWNER_STATS} });`,
     // Each entry's reader places, taken as the entry is made, so the rows keep that order whenever its data loads.
-    `const reserve = (key, unknown) => {`,
-    `  const stats = { key, unknown, rows: null };`,
-    `  statReaders.push(stats);`,
-    `  return { stats, scan: ${OWNER_RESERVE}() };`,
+    // A named entry's places sit at its index; any other's follow, in the order they are made.
+    `statReaders.length = spec.entities.length;`,
+    `const scanAt = ${OWNER_RESERVE}(spec.entities.length);`,
+    `const reserve = (key, unknown, at) => {`,
+    `  const stats = ${B}.create(null);`,
+    `  stats.key = key; stats.unknown = unknown; stats.rows = null;`,
+    `  if (at >= 0) statReaders[at] = stats;`,
+    `  else ${B}.push(statReaders, stats);`,
+    `  return { stats, scan: at >= 0 ? scanAt(at) : ${OWNER_RESERVE}(1)(0) };`,
     `};`,
     `const entries = spec.entities.map(([name, slot, played]) => [name, slot, hiddenOf(played), name === spec.ownerName ? ownerFixed : null]);`,
     `const [entities, readWrites, entry] = entryMap(${JSON.stringify(ENTITY_READ_ONLY_FIELDS)}, entries, {}, (key, data, unknown, reserved) => {`,
-    `  const [traits, rows] = traitMap(data.traits || {});`,
+    `  const traitPair = traitMap(data.traits || {});`,
+    `  const traits = traitPair[0], rows = traitPair[1];`,
     `  const placeholders = data.own ? ${OWNER_VIEW}(data.ph ?? -1, ['owner', 'owner'], !!data.absent, reserved.scan)`,
     `    : ${OWNER_VIEW}(data.ph ?? -1, key ? ['entity', key] : ['persona', 'persona'], unknown || !key, reserved.scan);`,
     `  let stats = ${OWNER_STATS};`,
-    `  if (!data.owner) [stats, reserved.stats.rows] = statMapOf(data.stats || {});`,
+    `  if (!data.owner) { const statPair = statMapOf(data.stats || {}); stats = statPair[0]; reserved.stats.rows = statPair[1]; }`,
     `  const who = { id: data.id || '', name: data.own ? data.name || '' : key, played: !!data.played, unknown: unknown || !!data.absent };`,
     `  const write = (kind) => (target) => { ${ENTITY_WRITE}(who, kind, target); if (kind === 'meet') meets.add(who.id || who.name); };`,
-    `  const moves = {};`,
-    `  for (const verb of ${JSON.stringify(ENTITY_VERBS)}) moves[verb] = write(verb);`,
+    `  const moves = ${B}.create(null);`,
+    `  ${B}.each(${JSON.stringify(ENTITY_VERBS)}, (verb) => { moves[verb] = write(verb); });`,
     `  const blank = { id: '', type: '', pronouns: '', inScene: false, met: false, location: '', following: false, waiting: false, kind: '', action: '', held: false, knownIn: '', knownInPlaces: [], description: -1, summary: -1 };`,
-    `  const aliases = Object.freeze([...(data.aliases || [])]);`,
-    `  const knownInPlaces = Object.freeze([...(data.knownInPlaces || [])]);`,
+    `  const aliases = freeze(${B}.map(data.aliases || [], (alias) => alias));`,
+    `  const knownInPlaces = freeze(${B}.map(data.knownInPlaces || [], (name) => name));`,
+    `  const itemsKey = data.played ? 'you' : 'entity:' + who.id;`,
     `  const values = { ...blank, ...data, name: data.own ? data.name || '' : unknown ? '' : key, aliases, knownInPlaces, traits, placeholders, stats, ...moves };`,
     // A meet in this run shows on a later read of `met`; the commit lands it.
     `  define(values, 'met', { enumerable: true, get: () => !!data.met || (!who.unknown && !who.played && meets.has(who.id || who.name)) });`,
     // The items prelude runs later; the getter reads it once code runs.
-    `  define(values, 'items', { enumerable: true, get: () => (who.unknown ? Object.freeze([]) : data.played ? ${ITEMS_AT}('you') : ${ITEMS_AT}('entity', who.id)) });`,
+    `  define(values, 'items', { enumerable: true, get: () => (who.unknown ? Object.freeze([]) : ${ITEMS_AT}(itemsKey, data.holding)) });`,
     // `body` reads the Body in force, or the one this run assigned unless a trait forces its own (Q14).
     `  const held = data.body || { id: null, locked: false };`,
     `  let assigned;`,
@@ -1259,38 +1334,40 @@ const entitiesPrelude = (
     `    const def = id === null ? undefined : spec.bodies.find((body) => body.id === id);`,
     `    if (!def) return null;`,
     `    const slots = def.slots.map((slot) => Object.freeze({`,
-    `      name: slot.name, capacity: slot.capacity, items: data.played ? ${ITEMS_AT}('you', undefined, slot.name) : ${ITEMS_AT}('entity', who.id, slot.name),`,
+    `      name: slot.name, capacity: slot.capacity, items: ${ITEMS_AT}(itemsKey, data.holding, slot.name),`,
     `    }));`,
     `    shown = { id, view: Object.freeze({ name: def.name, slots: Object.freeze(slots) }) };`,
     `    return shown.view;`,
     `  } });`,
-    `  const setters = { body: (next) => { assigned = ${ENTITY_WRITE}(who, 'body', next); } };`,
+    `  const setters = ${B}.create(null);`,
+    `  setters.body = (next) => { assigned = ${ENTITY_WRITE}(who, 'body', next); };`,
     // The played persona's media key is empty, as its Body's is, so it follows whoever the player plays.
     `  const mediaKey = 'e:' + (who.played ? '' : who.id);`,
     `  const mediaOwner = { kind: 'entity', id: who.played ? '' : who.id };`,
     `  const absent = () => who.unknown || (!who.played && !who.id);`,
-    `  for (const field of ${JSON.stringify(MEDIA_NAME_MEMBERS.entity)}) {`,
+    `  ${B}.each(${JSON.stringify(MEDIA_NAME_MEMBERS.entity)}, (field) => {`,
     `    define(values, field, { enumerable: true, get: () => (absent() ? null : ${MEDIA}.get([mediaKey], field)) });`,
     `    setters[field] = (next) => {`,
     `      if (absent()) ${MEDIA}.fail('The game has no entity named "' + who.name + '"');`,
     `      ${MEDIA}.set(mediaKey, mediaOwner, field, next);`,
     `    };`,
-    `  }`,
+    `  });`,
     // One entry per Generic Entity Instance, whose override beats the entity's (Q50).
     `  let generic = null;`,
-    `  const instanceEntry = ([startId, place], at) => {`,
+    `  const instanceEntry = (row, at) => {`,
+    `    const startId = row[0], place = row[1];`,
     `    const path = 'entities.' + who.name + '.instances[' + at + '].';`,
     `    const key = 'i:' + who.id + ':' + startId;`,
     `    const owner = { kind: 'instance', entityId: who.id, startId };`,
     `    const out = {};`,
     `    define(out, 'id', { enumerable: true, get: () => startId, set: () => ${LOOSE_NOTE}(path + 'id') });`,
     `    define(out, 'location', { enumerable: true, get: () => place, set: () => ${LOOSE_NOTE}(path + 'location') });`,
-    `    for (const field of ${JSON.stringify(MEDIA_NAME_MEMBERS.entity)}) {`,
+    `    ${B}.each(${JSON.stringify(MEDIA_NAME_MEMBERS.entity)}, (field) => {`,
     `      define(out, field, { enumerable: true, get: () => ${MEDIA}.get([key, mediaKey], field), set: (next) => ${MEDIA}.set(key, owner, field, next) });`,
-    `    }`,
+    `    });`,
     `    return freeze(out);`,
     `  };`,
-    `  define(values, 'instances', { enumerable: true, get: () => generic || (generic = freeze((data.generic || []).map(instanceEntry))) });`,
+    `  define(values, 'instances', { enumerable: true, get: () => generic || (generic = freeze(${B}.map(data.generic || [], instanceEntry))) });`,
     `  return [lazy(values, ['description', 'summary'], '', ${NO_NOTE}), rows, hiddenOf(who.played), setters];`,
     `}, { reserve, all: spec.all });`,
     `const persona = spec.persona === null ? entities[${JSON.stringify(persona.name)}]`,
@@ -1332,29 +1409,35 @@ const dictionariesPrelude = (
 ): string => {
   const entriesOf = (book: SandboxDictionary) => [...namedEntries(book.entries ?? [])]
     .map(([name, { id, keys, value, enabled, constant }]) => [name, { id, keys, value: reads.text(value, resolve), enabled, constant }]);
-  const spec = [...namedBooks(dictionaries)].map(([name, book]) =>
-    [name, { id: book.id ?? '', on: book.enabled !== false, ph: ownerIndex(indexOf, book.placeholders), entries: reads.deferred(() => entriesOf(book)) }]);
+  const named = [...namedBooks(dictionaries)];
+  // Each book's data loads on its first read (Q1); its `entries` map loads on its own read after that.
+  const slots = lazyEntrySlots(reads, named, ([, book]) =>
+    ({ id: book.id ?? '', on: book.enabled !== false, ph: ownerIndex(indexOf, book.placeholders), entries: reads.deferred(() => entriesOf(book)) }));
+  const spec = { books: named.map(([name], at) => [name, slots.slots[at], [], null]), all: slots.all };
   return readOnlyEntryMapPrelude(`dictionaries, ${DICTIONARY_WRITES}`, spec, [
     `const lazy = ${LAZY_TEXT};`,
     `const blankEntry = { id: '', keys: [], value: -1, enabled: false, constant: false };`,
-    `const [dictionaries, readWrites] = entryMap(${JSON.stringify(DICTIONARY_KEYS)}, spec, { id: '', on: false, ph: -1, entries: -1 }, (key, data, unknown) => {`,
+    // Each book keeps its place among the owners' empty placeholder maps, loaded or not.
+    `const scanAt = ${OWNER_RESERVE}(spec.books.length);`,
+    `const reserve = (key, unknown, at) => ({ scan: at >= 0 ? scanAt(at) : ${OWNER_RESERVE}(1)(0) });`,
+    `const [dictionaries, readWrites] = entryMap(${JSON.stringify(DICTIONARY_KEYS)}, spec.books, { id: '', on: false, ph: -1, entries: -1 }, (key, data, unknown, reserved) => {`,
     `  let built = null;`,
     `  const entries = () => built || (built = entryMap(${JSON.stringify(DICTIONARY_ENTRY_KEYS)},`,
     `    data.entries < 0 ? [] : ${HOST_READ}(data.entries), blankEntry, (name, entry, stray) => {`,
-    `      const values = lazy({ id: entry.id, name: stray ? '' : name, keys: freeze([...entry.keys]), value: entry.value,`,
+    `      const values = lazy({ id: entry.id, name: stray ? '' : name, keys: freeze(${B}.map(entry.keys, (k) => k)), value: entry.value,`,
     `        enabled: entry.enabled, constant: entry.constant }, ['value'], '', ${NO_NOTE});`,
     `      const assigned = [];`,
     `      const setters = {};`,
-    `      for (const field of ${JSON.stringify(DICTIONARY_ENTRY_WRITABLE_FIELDS)}) setters[field] = (next) => { values[field] = next; assigned.push([field, next]); };`,
+    `      ${B}.each(${JSON.stringify(DICTIONARY_ENTRY_WRITABLE_FIELDS)}, (field) => { setters[field] = (next) => { values[field] = next; assigned.push([field, next]); }; });`,
     `      return [values, () => assigned, [], setters];`,
     `    }));`,
-    `  const values = { id: data.id, name: unknown ? '' : key, enabled: data.on, placeholders: ${OWNER_VIEW}(data.ph, ['dictionary', key], unknown) };`,
+    `  const values = { id: data.id, name: unknown ? '' : key, enabled: data.on, placeholders: ${OWNER_VIEW}(data.ph, ['dictionary', key], unknown, reserved.scan) };`,
     `  define(values, 'entries', { get: () => entries()[0] });`,
     `  const assigned = [];`,
     `  const setters = { ${DICTIONARY_WRITABLE_FIELD}: (next) => { values.${DICTIONARY_WRITABLE_FIELD} = next; assigned.push(next); } };`,
     `  const rows = () => { const entryRows = built ? built[3]() : []; return entryRows.length || assigned.length ? [entryRows, assigned] : []; };`,
     `  return [values, rows, [], setters];`,
-    `});`,
+    `}, { reserve, all: spec.all });`,
     `return [dictionaries, readWrites];`,
   ]);
 };
@@ -1412,13 +1495,65 @@ const ITEMS_AT = '__formamorphItemsAt';
 // The entry of an event's Item Instance that is gone, which `instance` reads.
 const GONE_INSTANCE = '__formamorphGoneInstance';
 
-/** The `items` prelude, after the entity, location and dictionary preludes. Each Item Instance has one entry, which
- *  `items[x].instances`, an entity's `items` and a location's `items` share. A verb lists an inventory write; a
- *  target names an entity, the persona or a location by entry or by name. An unknown target is listed and thrown,
- *  as `location.move` does. With `event`, `self` takes the event's item entry, and `instance` and `args` exist. */
+/** The fields of an `items` entry, in the order its keys list them; `give` is left out of the keys. */
+const ITEM_FIELDS = ['id', 'name', 'unidentifiedName', 'unidentifiedDescription', 'placeholders', 'instances', 'give'] as const;
+const ITEM_VERBS = ['give'] as const;
+
+/** An item under the code name `items` reads it by. */
+type NamedItem = [string, SandboxItem];
+
+/** Each item under its code name, the later of two sharing one winning, in the order `items` lists them. */
+const namedItems = (items: readonly SandboxItem[]): NamedItem[] => [...new Map(items.map((item) => [item.name, item]))];
+
+/** Each location under its code name, the later of two sharing one winning, as `locations` keys them. */
+const namedLocations = (locations: readonly SandboxLocation[]): [string, SandboxLocation][] =>
+  [...new Map(locations.filter((place) => hasEntityKey(place.name)).map((place) => [place.name, place]))];
+
+/** The key an Item Instance's holder lists it under: `you`, `entity:<id>` or `location:<id>`. */
+const whereKey = (where: ItemInstanceWhere): string => (where.kind === 'you' ? 'you' : `${where.kind}:${where.id}`);
+
+/** The indexes, among the named items, of the items with an Item Instance at a holder key, ascending. */
+type ItemHolders = (at: string) => number[];
+
+/** The run's `ItemHolders`, its index built on the first call. */
+function itemHolders(named: readonly NamedItem[]): ItemHolders {
+  let byKey: Map<string, number[]> | undefined;
+  return (at) => {
+    if (!byKey) {
+      byKey = new Map();
+      for (const [index, [, item]] of named.entries()) {
+        for (const { where } of item.instances) {
+          const list = byKey.get(whereKey(where)) ?? [];
+          if (list[list.length - 1] !== index) list.push(index);
+          byKey.set(whereKey(where), list);
+        }
+      }
+    }
+    return byKey.get(at) ?? [];
+  };
+}
+
+/** `names` in the order an object lists them as keys: array indexes ascending, then the rest as given. */
+const keyOrder = (names: readonly string[]): string[] => {
+  const isIndex = (name: string) => /^(0|[1-9]\d*)$/.test(name) && Number(name) < 2 ** 32 - 1;
+  return [...names.filter(isIndex).sort((a, b) => Number(a) - Number(b)), ...names.filter((name) => !isIndex(name))];
+};
+
+/** How an item event's `args` reads `target`, `from` and `to`: the entry each names, found on the host (Q17). */
+type ItemArgHit = ['persona'] | ['items', string, number] | ['entities' | 'locations', string];
+
+/**
+ * The `items` prelude, after the entity, location and dictionary preludes. Each Item Instance has one entry, which
+ * `items[x].instances`, an entity's `items` and a location's `items` share. A verb lists an inventory write; a
+ * target names an entity, the persona or a location by entry or by name. An unknown target is listed and thrown,
+ * as `location.move` does. With `event`, `self` takes the event's item entry, and `instance` and `args` exist.
+ *
+ * Each item loads on its first read (Q1); the event's own item is eager, as `self` and `instance` read it. A holder's
+ * `items` loads only the items its holder holds, and the target tables load on the first verb that names one (Q21).
+ */
 const itemsPrelude = (
-  items: readonly SandboxItem[], { byName, persona }: KeyedEntities, { locations }: SandboxPlaces, { indexOf }: FlatPlaceholderMap,
-  event: SandboxItemEvent | undefined,
+  items: readonly SandboxItem[], named: readonly NamedItem[], { byName, persona }: KeyedEntities, { locations }: SandboxPlaces,
+  { indexOf }: FlatPlaceholderMap, event: SandboxItemEvent | undefined, reads: HostReads,
 ): string => {
   const you: ItemInstanceWhere = { kind: 'you' };
   const whereOf = (entity: SandboxEntity): ItemInstanceWhere | null =>
@@ -1428,44 +1563,71 @@ const itemsPrelude = (
   const placeName = new Map(locations.map((place) => [place.id, place.name]));
   const ownerName = (where: ItemInstanceWhere) =>
     (where.kind === 'you' ? personaName : where.kind === 'entity' ? nameById.get(where.id) ?? '' : '');
-  const named = [...new Map(items.map((item) => [item.name, item]))];
   const instanceData = (item: SandboxItem, instance: SandboxItemInstance) => ({
     id: instance.id, item: item.name, owner: ownerName(instance.where), location: instance.where.kind === 'location' ? placeName.get(instance.where.id) ?? '' : '',
     quantity: instance.quantity, equipped: instance.equipped, slot: instance.slot, occupies: instance.occupies, allowed: instance.allowed, hidden: instance.hidden, unidentified: instance.unidentified === true, uses: instance.uses ?? null, state: instance.state ?? null,
-    at: instance.where.kind === 'you' ? 'you' : `${instance.where.kind}:${instance.where.id}`,
+    at: whereKey(instance.where),
   });
-  const targets: [string, ItemInstanceWhere][] = [
-    ...[...byName].flatMap(([name, entity]) => { const where = whereOf(entity); return where ? [[name, where] as [string, ItemInstanceWhere]] : []; }),
-    ...locations.map((place): [string, ItemInstanceWhere] => [place.name, { kind: 'location', id: place.id }]),
-  ];
-  const spec = {
-    items: named.map(([name, item]) => [name, {
-      id: item.id, ph: ownerIndex(indexOf, item.placeholders), instances: item.instances.map((instance) => instanceData(item, instance)),
-      unidentifiedName: item.unidentifiedName, unidentifiedDescription: item.unidentifiedDescription,
-    }]),
-    // By id first: an entry names its target by id. By name for a target written as text.
+  const itemData = ([name, item]: NamedItem) => ({
+    id: item.id, path: `${memberPath('items', name)}.`, ph: ownerIndex(indexOf, item.placeholders),
+    instances: item.instances.map((instance) => instanceData(item, instance)),
+    unidentifiedName: item.unidentifiedName, unidentifiedDescription: item.unidentifiedDescription,
+  });
+  // By id first: an entry names its target by id. By name for a target written as text.
+  const targets = () => ({
     ids: Object.fromEntries([
       ...(persona.id ? [[persona.id, you]] : []),
       ...[...byName.values()].flatMap((entity) => { const where = whereOf(entity); return where && entity.id ? [[entity.id, where]] : []; }),
       ...locations.map((place) => [place.id, { kind: 'location', id: place.id }]),
     ]),
-    names: Object.fromEntries(targets),
-    event: event ? {
-      ...event, name: named.find(([, item]) => item.id === event.itemId)?.[0] ?? null,
-      was: event.was && instanceData(items.find((item) => item.id === event.itemId) ?? { id: '', name: '', instances: [] }, event.was),
-      args: itemArgsAt(event.timing, event.args),
-    } : null,
+    names: Object.fromEntries([
+      ...[...byName].flatMap(([name, entity]) => { const where = whereOf(entity); return where ? [[name, where]] : []; }),
+      ...locations.map((place) => [place.name, { kind: 'location', id: place.id }]),
+    ]),
+  });
+  // Each arg a side or a target names, found here as a listing of the map would find it, so no listing runs.
+  const hitOf = (key: string, value: unknown): ItemArgHit | null => {
+    if (!value) return null;
+    if (key === 'target') {
+      const byItemName = new Map(named);
+      for (const name of keyOrder([...byItemName.keys()])) {
+        const at = byItemName.get(name)!.instances.findIndex((instance) => instance.id === value);
+        if (at >= 0) return ['items', name, at];
+      }
+      return null;
+    }
+    if (key !== 'from' && key !== 'to') return null;
+    const side = value as { kind?: unknown; id?: unknown };
+    if (side.kind === 'you') return ['persona'];
+    if (side.kind === 'entity') {
+      const name = keyOrder([...byName.keys()]).find((entity) => (byName.get(entity)!.id ?? '') === side.id);
+      return name === undefined ? null : ['entities', name];
+    }
+    const places = new Map(namedLocations(locations));
+    const name = keyOrder([...places.keys()]).find((place) => places.get(place)!.id === side.id);
+    return name === undefined ? null : ['locations', name];
+  };
+  const eventAt = event ? named.findIndex(([, item]) => item.id === event.itemId) : -1;
+  const slots = lazyEntrySlots(reads, named, itemData);
+  const args = event && itemArgsAt(event.timing, event.args);
+  const spec = {
+    items: named.map((pair, at) => [pair[0], at === eventAt ? itemData(pair) : slots.slots[at], ITEM_VERBS, null]),
+    all: slots.all,
+    targets: reads.deferred(targets),
+    was: event?.was ? instanceData(items.find((item) => item.id === event.itemId) ?? { id: '', name: '', instances: [] }, event.was) : null,
   };
   return [
-    `const [items, ${ITEMS_AT}, ${GONE_INSTANCE}] = ((spec, lock, note, writes, view) => {`,
+    `const [items, ${ITEMS_AT}, ${GONE_INSTANCE}] = ((spec, lock, note, writes, view, read, entryMap) => {`,
     `  const fail = (message) => {`,
     `    writes.unknown.push(message);`,
     `    throw new Error(message);`,
     `  };`,
-    `  const verb = (target, path, name, call) => Object.defineProperty(target, name, { get: () => call, set: () => note(path + name) });`,
+    `  const verb = (target, path, name, call) => ${B}.define(target, name, { get: () => call, set: () => note(path + name) });`,
+    `  let tables = null;`,
+    `  const lookup = () => tables || (tables = read(spec.targets));`,
     `  const whereOf = (to, call) => {`,
     `    const id = to && typeof to === 'object' && typeof to.id === 'string' ? to.id : '';`,
-    `    const hit = id ? spec.ids[id] : typeof to === 'string' ? spec.names[to] : undefined;`,
+    `    const hit = id ? lookup().ids[id] : typeof to === 'string' ? lookup().names[to] : undefined;`,
     `    return hit || fail(call + ' needs an entity, the persona or a location the game has, not ' + (typeof to === 'string' ? '"' + to + '"' : String(to && to.name !== undefined ? '"' + to.name + '"' : to)));`,
     `  };`,
     `  const count = (value, call) => {`,
@@ -1473,12 +1635,9 @@ const itemsPrelude = (
     `    if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) throw new TypeError(call + ' needs a whole number above 0');`,
     `    return { quantity: value };`,
     `  };`,
-    `  const byPlace = Object.create(null);`,
-    `  const occupying = new Map();`,
-    `  const instanceEntry = (data, path, listed = true) => {`,
+    `  const instanceEntry = (data, path) => {`,
     `    const out = lock({ ${ITEM_INSTANCE_KEYS.map((field) => `${field}: data.${field}`).join(', ')} }, ${JSON.stringify(ITEM_INSTANCE_KEYS)}, path, note);`,
     `    const instanceId = data.id;`,
-    `    occupying.set(out, data.occupies);`,
     `    const op = (kind, extra = {}) => { writes.inventory.push({ kind, instanceId, ...extra }); };`,
     `    verb(out, path, 'lose', (quantity) => op('lose', count(quantity, path + 'lose')));`,
     `    verb(out, path, 'moveTo', (to, quantity) => op('transfer', { to: whereOf(to, path + 'moveTo'), ...count(quantity, path + 'moveTo') }));`,
@@ -1502,58 +1661,67 @@ const itemsPrelude = (
     `    });`,
     // The instance's own override, which beats its item's rules (Q49).
     `    const mediaKey = 't:' + instanceId;`,
-    `    Object.defineProperty(out, 'image', {`,
+    `    ${B}.define(out, 'image', {`,
     `      enumerable: true, get: () => ${MEDIA}.get([mediaKey], 'image'),`,
     `      set: (next) => ${MEDIA}.set(mediaKey, { kind: 'item', id: instanceId }, 'image', next),`,
     `    });`,
-    `    Object.freeze(out);`,
-    `    if (listed) (byPlace[data.at] || (byPlace[data.at] = [])).push(out);`,
-    `    return out;`,
+    `    return ${B}.freeze(out);`,
     `  };`,
-    `  const map = Object.create(null);`,
+    `  const fields = ${JSON.stringify(ITEM_FIELDS)};`,
+    `  const index = ${B}.create(null);`,
+    `  ${B}.each(spec.items, (item, at) => { index[item[0]] = at; });`,
+    // Each loaded item's instances by index, as `[entry, data]`, which a holder's `items` lists from.
+    `  const loaded = [];`,
+    `  const noRows = () => [];`,
+    `  const build = (key, data, unknown, reserved) => {`,
+    `    const path = unknown ? (/^[A-Za-z_$][\\w$]*$/.test(key) ? 'items.' + key : 'items[' + JSON.stringify(key) + ']') + '.' : data.path;`,
+    `    const rows = ${B}.map(data.instances, (instance, at) => [instanceEntry(instance, path + 'instances[' + at + '].'), instance]);`,
+    `    if (!unknown) loaded[index[key]] = rows;`,
+    `    const out = lock({ id: data.id, name: unknown ? '' : key, unidentifiedName: data.unidentifiedName || '', unidentifiedDescription: data.unidentifiedDescription || '', placeholders: view(data.ph, ['item', key], unknown, reserved.scan), instances: ${B}.freeze(${B}.map(rows, (row) => row[0])) }, ${JSON.stringify(ITEM_FIELDS.filter((field) => !(ITEM_VERBS as readonly string[]).includes(field)))}, path, note);`,
     // An unknown name reads as a blank entry, whose give stops the script.
-    `  const entry = (key, data, unknown) => {`,
-    `    const path = (/^[A-Za-z_$][\\w$]*$/.test(key) ? 'items.' + key : 'items[' + JSON.stringify(key) + ']') + '.';`,
-    `    const instances = Object.freeze(data.instances.map((instance, at) => instanceEntry(instance, path + 'instances[' + at + '].')));`,
-    `    const out = lock({ id: data.id, name: unknown ? '' : key, unidentifiedName: data.unidentifiedName || '', unidentifiedDescription: data.unidentifiedDescription || '', placeholders: view(data.ph, ['item', key], unknown), instances }, ['id', 'name', 'unidentifiedName', 'unidentifiedDescription', 'placeholders', 'instances'], path, note);`,
     `    verb(out, path, 'give', (to, quantity) => {`,
     `      if (unknown) fail('The world has no item named "' + key + '"');`,
     `      writes.inventory.push({ kind: 'gain', itemId: data.id, to: whereOf(to, path + 'give'), quantity: count(quantity, path + 'give').quantity || 1 });`,
     `    });`,
-    `    return Object.freeze(out);`,
+    `    return [${B}.freeze(out), noRows, ${JSON.stringify(ITEM_VERBS)}, (${FORWARD_SETTERS})(out, fields)];`,
     `  };`,
-    `  for (const [key, data] of spec.items) map[key] = entry(key, data, false);`,
-    `  for (const list of Object.values(byPlace)) Object.freeze(list);`,
-    `  const strays = Object.create(null);`,
-    `  const items = new Proxy(Object.freeze(map), {`,
-    `    get: (target, key) => typeof key !== 'string' || key in target ? target[key]`,
-    `      : strays[key] || (strays[key] = entry(key, { id: '', ph: -1, instances: [], unidentifiedName: '', unidentifiedDescription: '' }, true)),`,
-    `  });`,
-    `  const none = Object.freeze([]);`,
-    // With a slot name, only the equipped instances that occupy it.
-    `  const at = (kind, id, slot) => {`,
-    `    const list = byPlace[kind === 'you' ? 'you' : kind + ':' + id] || none;`,
-    `    return slot === undefined ? list : Object.freeze(list.filter((entry) => entry.equipped && (occupying.get(entry) || []).includes(slot)));`,
+    // Each item keeps its place among the owners' empty placeholder maps, loaded or not.
+    `  const scanAt = ${OWNER_RESERVE}(spec.items.length);`,
+    `  const reserve = (key, unknown, at) => ({ scan: at >= 0 ? scanAt(at) : ${OWNER_RESERVE}(1)(0) });`,
+    `  const blank = { id: '', path: '', ph: -1, instances: [], unidentifiedName: '', unidentifiedDescription: '' };`,
+    `  const items = entryMap(fields, spec.items, blank, build, { reserve, all: spec.all })[0];`,
+    `  const none = ${B}.freeze([]);`,
+    `  const lists = ${B}.create(null);`,
+    // The Item Instances at one holder, in item order then instance order; with a slot name, only the equipped ones that occupy it.
+    // \`holding\` is the list itself or, for the current place, the host slot that holds it.
+    `  const at = (key, holding, slot) => {`,
+    `    const rows = [];`,
+    `    ${B}.each((typeof holding === 'number' ? read(holding) : holding) || [], (i) => {`,
+    `      if (!loaded[i]) void items[spec.items[i][0]].instances;`,
+    `      ${B}.each(loaded[i], (row) => { if (row[1].at === key) ${B}.push(rows, row); });`,
+    `    });`,
+    `    if (slot === undefined) return lists[key] || (lists[key] = rows.length ? ${B}.freeze(${B}.map(rows, (row) => row[0])) : none);`,
+    `    return ${B}.freeze(${B}.map(${B}.filter(rows, (row) => row[1].equipped && ${B}.includes(row[1].occupies || [], slot)), (row) => row[0]));`,
     `  };`,
-    `  const gone = spec.event && spec.event.was ? instanceEntry(spec.event.was, 'instance.', false) : null;`,
+    `  const gone = spec.was ? instanceEntry(spec.was, 'instance.') : null;`,
     `  return [items, at, gone];`,
-    `})(JSON.parse(${JSON.stringify(JSON.stringify(spec))}), ${LOCK_FIELDS}, ${LOOSE_NOTE}, ${WORLD_WRITES}, ${OWNER_VIEW});`,
-    ...(spec.event ? [
+    `})(JSON.parse(${JSON.stringify(JSON.stringify(spec))}), ${LOCK_FIELDS}, ${LOOSE_NOTE}, ${WORLD_WRITES}, ${OWNER_VIEW}, ${HOST_READ}, ${ENTRY_MAP});`,
+    ...(event && args ? [
       // `self` is declared before the entries exist, so it takes the item entry's fields here.
       `const [instance, args] = ((self, entry, event, define, gone) => {`,
       `  if (entry) for (const key of Reflect.ownKeys(entry)) define(self, key, Object.getOwnPropertyDescriptor(entry, key));`,
       `  Object.freeze(self);`,
+      // A target that is gone reads as null; a side reads the persona, or the entity or location entry with its id.
+      `  const pick = (hit) => (hit[0] === 'persona' ? persona : hit[0] === 'items' ? items[hit[1]].instances[hit[2]] : (hit[0] === 'entities' ? entities : locations)[hit[1]]);`,
       `  const out = {};`,
       `  for (const [key, value] of Object.entries(event.args)) {`,
-      // A target that is gone reads as null.
-      `    out[key] = key === 'target' ? (value && Object.values(items).flatMap((e) => e.instances).find((e) => e.id === value)) || null`,
-      // A side reads the persona, or the entity or location entry with its id.
-      `      : key === 'from' || key === 'to' ? (value && (value.kind === 'you' ? persona`,
-      `        : Object.values(value.kind === 'entity' ? entities : locations).find((e) => e.id === value.id))) || null`,
+      `    out[key] = key === 'target' || key === 'from' || key === 'to' ? (event.hits[key] ? pick(event.hits[key]) : null)`,
       `      : value && typeof value === 'object' ? Object.freeze(value) : value;`,
       `  }`,
       `  return [(entry && entry.instances.find((e) => e.id === event.instanceId)) || gone, Object.freeze(out)];`,
-      `})(self, items[${JSON.stringify(spec.event.name ?? '')}], ${JSON.stringify({ instanceId: spec.event.instanceId, args: spec.event.args })}, Object.defineProperty, ${GONE_INSTANCE});`,
+      `})(self, items[${JSON.stringify(eventAt < 0 ? '' : named[eventAt][0])}], ${JSON.stringify({
+        instanceId: event.instanceId, args, hits: Object.fromEntries(Object.entries(args).map(([key, value]) => [key, hitOf(key, value)])),
+      })}, Object.defineProperty, ${GONE_INSTANCE});`,
     ] : []),
   ].join('\n');
 };
@@ -1596,39 +1764,55 @@ export interface SandboxMoney {
 // The host hook `balance` and `pay` call. The prelude takes it and deletes the global before user code runs.
 const MONEY_HOOK = '__formamorphMoney';
 
+/** The fields of a `currencies` entry, then its verbs, which its keys leave out. */
+const CURRENCY_FIELDS = ['id', 'name', 'kind'] as const;
+const CURRENCY_VERBS = ['balance', 'pay'] as const;
+
 /** The `currencies` prelude: `balance` and a run's `pay` ask the host, and a read-only run's `pay` stops it. An unknown name is a blank entry that stops the script. */
-const currenciesPrelude = (currencies: readonly SandboxCurrency[], { byName, persona }: KeyedEntities, readOnly: boolean, ownWrites: string): string => {
+const currenciesPrelude = (
+  currencies: readonly SandboxCurrency[], { byName, persona }: KeyedEntities, readOnly: boolean, ownWrites: string, reads: HostReads,
+): string => {
   const you: SlotOwner = { kind: 'you' };
   const partyOf = (entity: SandboxEntity): SlotOwner | null => (holdsForPlayer(entity, persona) ? you : entity.id ? { kind: 'entity', id: entity.id } : null);
+  const named = [...new Map(currencies.map((currency) => [currency.name, currency]))];
+  // Each Currency loads on its first read (Q1); the party tables on the first call that names a party (Q21).
+  const slots = lazyEntrySlots(reads, named, ([name, { id, kind }]) => ({ id, kind, path: `${memberPath('currencies', name)}.` }));
   const spec = {
-    currencies: [...new Map(currencies.map((currency) => [currency.name, currency]))],
-    ids: Object.fromEntries([
-      ...(persona.id ? [[persona.id, you]] : []),
-      ...[...byName.values()].flatMap((entity) => { const party = partyOf(entity); return party && entity.id ? [[entity.id, party]] : []; }),
-    ]),
-    names: Object.fromEntries([...byName].flatMap(([name, entity]) => { const party = partyOf(entity); return party ? [[name, party]] : []; })),
+    currencies: named.map(([name], at) => [name, slots.slots[at], CURRENCY_VERBS, null]),
+    all: slots.all,
+    parties: reads.deferred(() => ({
+      ids: Object.fromEntries([
+        ...(persona.id ? [[persona.id, you]] : []),
+        ...[...byName.values()].flatMap((entity) => { const party = partyOf(entity); return party && entity.id ? [[entity.id, party]] : []; }),
+      ]),
+      names: Object.fromEntries([...byName].flatMap(([name, entity]) => { const party = partyOf(entity); return party ? [[name, party]] : []; })),
+    })),
   };
   return [
-    `const currencies = ((spec, lock, note, writes, hook) => {`,
+    `const currencies = ((spec, lock, note, writes, hook, read, entryMap) => {`,
     `  const fail = (message) => {`,
     `    writes.unknown.push(message);`,
     `    throw new Error(message);`,
     `  };`,
     `  const own = (target, key) => Object.prototype.hasOwnProperty.call(target, key);`,
-    `  const verb = (target, path, name, call) => Object.defineProperty(target, name, { get: () => call, set: () => note(path + name) });`,
+    `  const verb = (target, path, name, call) => ${B}.define(target, name, { get: () => call, set: () => note(path + name) });`,
+    `  let parties = null;`,
+    `  const lookup = () => parties || (parties = read(spec.parties));`,
     // With no persona played, a blank `persona` or `owner` is the player, who has no money.
     `  const isBlankParty = (value) => !!value && !value.id && (value === persona || value === owner${readOnly ? ` || value === ${READ_ONLY_VIEW_OF}(persona, 'persona')` : ''});`,
     `  const partyOf = (value, call, none) => {`,
     `    if (none && (value === null || value === undefined)) return null;`,
     `    if (isBlankParty(value)) return { kind: 'you' };`,
     `    const id = value && typeof value === 'object' && typeof value.id === 'string' ? value.id : '';`,
-    `    const hit = id ? (own(spec.ids, id) ? spec.ids[id] : undefined) : typeof value === 'string' ? (own(spec.names, value) ? spec.names[value] : undefined) : undefined;`,
+    `    const hit = id ? (own(lookup().ids, id) ? lookup().ids[id] : undefined) : typeof value === 'string' ? (own(lookup().names, value) ? lookup().names[value] : undefined) : undefined;`,
     `    return hit || fail(call + ' needs an entity or the persona the game has, not ' + (typeof value === 'string' ? '"' + value + '"' : String(value && value.name !== undefined ? '"' + value.name + '"' : value)));`,
     `  };`,
     `  const ask = (...args) => JSON.parse(hook(JSON.stringify({ own: [${ownWrites}, writes.inventory], args })));`,
-    `  const entry = (key, data, unknown) => {`,
-    `    const path = (/^[A-Za-z_$][\\w$]*$/.test(key) ? 'currencies.' + key : 'currencies[' + JSON.stringify(key) + ']') + '.';`,
-    `    const out = lock({ id: data.id, name: unknown ? '' : key, kind: data.kind }, ['id', 'name', 'kind'], path, note);`,
+    `  const fields = ${JSON.stringify([...CURRENCY_FIELDS, ...CURRENCY_VERBS])};`,
+    `  const noRows = () => [];`,
+    `  const build = (key, data, unknown) => {`,
+    `    const path = unknown ? (/^[A-Za-z_$][\\w$]*$/.test(key) ? 'currencies.' + key : 'currencies[' + JSON.stringify(key) + ']') + '.' : data.path;`,
+    `    const out = lock({ id: data.id, name: unknown ? '' : key, kind: data.kind }, ${JSON.stringify(CURRENCY_FIELDS)}, path, note);`,
     `    verb(out, path, 'balance', (owner) => {`,
     `      if (unknown) fail('The world has no Currency named "' + key + '"');`,
     `      return ask('balance', data.id, partyOf(owner, path + 'balance', false));`,
@@ -1643,16 +1827,10 @@ const currenciesPrelude = (currencies: readonly SandboxCurrency[], { byName, per
       `      return Object.freeze({ paid: result.paid, reason: result.reason });`,
       `    });`,
     ]),
-    `    return Object.freeze(out);`,
+    `    return [${B}.freeze(out), noRows, ${JSON.stringify(CURRENCY_VERBS)}, (${FORWARD_SETTERS})(out, fields)];`,
     `  };`,
-    `  const map = Object.create(null);`,
-    `  for (const [key, data] of spec.currencies) map[key] = entry(key, data, false);`,
-    `  const strays = Object.create(null);`,
-    `  return new Proxy(Object.freeze(map), {`,
-    `    get: (target, key) => typeof key !== 'string' || key in target ? target[key]`,
-    `      : strays[key] || (strays[key] = entry(key, { id: '', kind: 'name' }, true)),`,
-    `  });`,
-    `})(JSON.parse(${JSON.stringify(JSON.stringify(spec))}), ${LOCK_FIELDS}, ${LOOSE_NOTE}, ${WORLD_WRITES}, globalThis.${MONEY_HOOK});`,
+    `  return entryMap(fields, spec.currencies, { id: '', kind: 'name' }, build, { all: spec.all })[0];`,
+    `})(JSON.parse(${JSON.stringify(JSON.stringify(spec))}), ${LOCK_FIELDS}, ${LOOSE_NOTE}, ${WORLD_WRITES}, globalThis.${MONEY_HOOK}, ${HOST_READ}, ${ENTRY_MAP});`,
     `delete globalThis.${MONEY_HOOK};`,
   ].join('\n');
 };
@@ -2437,9 +2615,13 @@ const LINK_FIELDS = ['parent', 'children', 'exits'] as const satisfies readonly 
 
 const NO_LINKS: SandboxLocationLinks = { parent: '', children: [], exits: [] };
 
+/** The fields of a `locations` entry, in the order its keys list them. */
+const LOCATION_FIELDS = ['id', 'name', 'description', 'summary', 'starting', 'present', ...LINK_FIELDS, 'items', ...MEDIA_NAME_MEMBERS.location] as const;
+
 /** The `locations` and `location` prelude, after the entities prelude: `present` holds its entries. The later of
- *  two locations sharing a name wins the key. */
-const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing: Standing, reads: HostReads): string => {
+ *  two locations sharing a name wins the key. Each `locations` entry loads on its first read (Q1); `location` is
+ *  eager (Q21). */
+const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing: Standing, reads: HostReads, heldBy: ItemHolders): string => {
   // One build per location, shared by its entry and `location`, on the first read of any link field.
   const linkSlots = new Map<SandboxLocation, number[]>();
   const slotsOf = (place: SandboxLocation): number[] => {
@@ -2451,20 +2633,26 @@ const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing
     }
     return slots;
   };
-  const data = (place: SandboxLocation, prefix: string) => ({
-    id: place.id, name: place.name, description: reads.text(place.description), summary: reads.text(place.summary), starting: !!place.starting,
-    ...standing.presentAt(place.id), links: slotsOf(place), prefix,
-  });
+  // `holding` is a slot for the eager current place, so its run builds no holder index unless code reads its items (Q3).
+  const data = (place: SandboxLocation, prefix: string, eager = false) => {
+    const holding = () => (place.id ? heldBy(`location:${place.id}`) : []);
+    return {
+      id: place.id, name: place.name, description: reads.text(place.description), summary: reads.text(place.summary), starting: !!place.starting,
+      ...standing.presentAt(place.id), links: slotsOf(place), prefix, holding: eager ? reads.deferred(holding) : holding(),
+    };
+  };
   const current = here ? locations.find((place) => place.id === here.id) ?? here : null;
   const blank = { ...data({ id: '', name: '' }, ''), persona: false, keys: [] };
+  const named = namedLocations(locations);
+  const slots = lazyEntrySlots(reads, named, ([name, place]) => data(place, `${memberPath('locations', name)}.`));
   const spec = {
-    locations: [...new Map(locations.filter((place) => hasEntityKey(place.name)).map((place) => [place.name, place]))]
-      .map(([name, place]) => [name, data(place, `${memberPath('locations', name)}.`)]),
-    here: current ? data(current, 'location.') : { ...blank, prefix: 'location.' },
+    locations: named.map(([name], at) => [name, slots.slots[at], [], null]),
+    all: slots.all,
+    here: current ? data(current, 'location.', true) : { ...blank, prefix: 'location.' },
     blank,
   };
   return [
-    `const [locations, location] = ((spec, move, lockEntry, note, entities, persona) => {`,
+    `const [locations, location] = ((spec, move, lockEntry, note, entities, persona, entryMap) => {`,
     `  const freeze = (value) => {`,
     `    if (value && typeof value === 'object' && !Object.isFrozen(value)) for (const item of Object.values(Object.freeze(value))) freeze(item);`,
     `    return value;`,
@@ -2480,44 +2668,48 @@ const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing
     `  const linkValue = (field, value, prefix) => (field === 'exits'`,
     `    ? Object.freeze(value.map((exit, at) => reported(exit, prefix + 'exits[' + at + '].'))) : freeze(value));`,
     `  const linked = (target, slots, prefix) => {`,
-    `    ${JSON.stringify(LINK_FIELDS)}.forEach((field, at) => {`,
+    `    ${B}.each(${JSON.stringify(LINK_FIELDS)}, (field, at) => {`,
     // Built once, so `exits[0]` reads the same entry each time.
     `      let cached;`,
-    `      Object.defineProperty(target, field, {`,
+    `      ${B}.define(target, field, {`,
     `        enumerable: true, get: () => (cached ??= linkValue(field, ${HOST_READ}(slots[at]), prefix)), set: () => note(prefix + field),`,
     `      });`,
     `    });`,
     `    return target;`,
     `  };`,
     `  const entry = (data, extra) => {`,
-    `    const present = Object.freeze([...(data.persona ? [persona] : []), ...data.keys.map((key) => entities[key])]);`,
-    `    const out = { id: data.id, name: data.name, description: data.description, summary: data.summary, starting: data.starting, present };`,
+    `    const present = [];`,
+    `    if (data.persona) ${B}.push(present, persona);`,
+    `    ${B}.each(data.keys, (key) => { ${B}.push(present, entities[key]); });`,
+    `    const out = { id: data.id, name: data.name, description: data.description, summary: data.summary, starting: data.starting, present: ${B}.freeze(present) };`,
     `    const read = linked(lockEntry(out, ['description', 'summary'], data.prefix, note), data.links, data.prefix);`,
-    `    Object.defineProperty(read, 'items', { enumerable: true, get: () => ${ITEMS_AT}('location', data.id), set: () => note(data.prefix + 'items') });`,
+    `    ${B}.define(read, 'items', { enumerable: true, get: () => ${ITEMS_AT}('location:' + data.id, data.holding), set: () => note(data.prefix + 'items') });`,
     `    const mediaKey = 'l:' + data.id;`,
-    `    for (const field of ${JSON.stringify(MEDIA_NAME_MEMBERS.location)}) {`,
-    `      Object.defineProperty(read, field, {`,
+    `    ${B}.each(${JSON.stringify(MEDIA_NAME_MEMBERS.location)}, (field) => {`,
+    `      ${B}.define(read, field, {`,
     `        enumerable: true, get: () => (data.id ? ${MEDIA}.get([mediaKey], field) : null),`,
     `        set: (next) => {`,
     `          if (!data.id) ${MEDIA}.fail('The world has no location named "' + (data.key || data.name) + '"');`,
     `          ${MEDIA}.set(mediaKey, { kind: 'location', id: data.id }, field, next);`,
     `        },`,
     `      });`,
-    `    }`,
-    `    for (const [field, held] of Object.entries(extra)) {`,
-    `      Object.defineProperty(read, field, { enumerable: true, get: () => held, set: () => note(data.prefix + field) });`,
-    `    }`,
-    `    return Object.freeze(read);`,
+    `    });`,
+    `    ${B}.each(${B}.keys(extra), (field) => {`,
+    `      const held = extra[field];`,
+    `      ${B}.define(read, field, { enumerable: true, get: () => held, set: () => note(data.prefix + field) });`,
+    `    });`,
+    `    return ${B}.freeze(read);`,
     `  };`,
-    `  const map = Object.create(null);`,
-    `  for (const [key, data] of spec.locations) map[key] = entry(data, {});`,
-    `  const strays = Object.create(null);`,
-    `  const stray = (key) => entry({ ...spec.blank, key, prefix: (/^[A-Za-z_$][\\w$]*$/.test(key) ? 'locations.' + key : 'locations[' + JSON.stringify(key) + ']') + '.' }, {});`,
-    `  const locations = new Proxy(Object.freeze(map), {`,
-    `    get: (target, key) => typeof key !== 'string' || key in target ? target[key] : strays[key] || (strays[key] = stray(key)),`,
-    `  });`,
+    // A lazy entry's every write goes through the built entry, whose setters report or apply it.
+    `  const fields = ${JSON.stringify(LOCATION_FIELDS)};`,
+    `  const noRows = () => [];`,
+    `  const build = (key, data, unknown) => {`,
+    `    const read = entry(unknown ? { ...data, key, prefix: (/^[A-Za-z_$][\\w$]*$/.test(key) ? 'locations.' + key : 'locations[' + JSON.stringify(key) + ']') + '.' } : data, {});`,
+    `    return [read, noRows, [], (${FORWARD_SETTERS})(read, fields)];`,
+    `  };`,
+    `  const locations = entryMap(fields, spec.locations, spec.blank, build, { all: spec.all })[0];`,
     `  return [locations, entry(spec.here, { move })];`,
-    `})(JSON.parse(${JSON.stringify(JSON.stringify(spec))}), ${MOVE_TURN}, ${LOCK_ENTRY}, ${LOOSE_NOTE}, entities, persona);`,
+    `})(JSON.parse(${JSON.stringify(JSON.stringify(spec))}), ${MOVE_TURN}, ${LOCK_ENTRY}, ${LOOSE_NOTE}, entities, persona, ${ENTRY_MAP});`,
   ].join('\n');
 };
 
@@ -2635,6 +2827,8 @@ export const executeStatCode = async (
       ...dictionaries.map((book) => book.placeholders), ...items.map((item) => item.placeholders),
     ]);
     const keyed = keyedEntities(entities, persona);
+    const named = namedItems(items);
+    const heldBy = itemHolders(named);
     const place = ownerPlace(keyed, owner);
     const standing = standingOf(places, keyed);
     const statsData = marshalStats({ stats, readings, enabled });
@@ -2719,6 +2913,7 @@ export const executeStatCode = async (
     const program = [
       reseedRandom(randomSeed ?? [...crypto.getRandomValues(new Uint32Array(4))]),
       `const ${STRINGIFY} = JSON.stringify;`,
+      BUILT_INS_PRELUDE,
       HOST_READ_PRELUDE,
       ENTRY_MAP_PRELUDE,
       `const ${SELF_ASSIGNED} = [];`,
@@ -2770,18 +2965,19 @@ export const executeStatCode = async (
       ...(itemEvent ? [] : [`const args = Object.freeze(JSON.parse(${JSON.stringify(JSON.stringify(args ?? {}))}));`]),
       placeholdersPrelude(placeholderMap, reads),
       trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
-      entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf, standing, reads, bodies, instanceRowsOf(media, places)),
-      locationsPrelude(places, standing, reads),
+      entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf, standing, reads, bodies, instanceRowsOf(media, places), heldBy),
+      locationsPrelude(places, standing, reads, heldBy),
       dictionariesPrelude(dictionaries, placeholderMap, reads, resolveEntryValue),
-      itemsPrelude(items, keyed, places, placeholderMap, itemEvent),
+      itemsPrelude(items, named, keyed, places, placeholderMap, itemEvent, reads),
       currenciesPrelude(
         currencies, keyed, readOnly,
         `${STAT_WRITES}(), ${OWNER_STAT_WRITES}(), ${ENTITY_STAT_WRITES}(), ${currentStat ? `${SELF_ASSIGNED}.includes('value') ? self.value : null` : 'null'}`,
+        reads,
       ),
       // An accessor, so `notes = x` drops and lists the write as a locked field does.
       `Object.defineProperty(globalThis, 'notes', { enumerable: true, get: () => ${JSON.stringify(notes)}, set: () => ${LOOSE_NOTE}('notes') });`,
       ...(readOnly ? [`const ${READ_ONLY_VIEW_OF} = (${READ_ONLY_VIEW})(${LOOSE_NOTE});`] : []),
-      `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}, ${OWNER_STATS}, ${OWNER_STAT_WRITES}, ${ENTITY_STAT_WRITES}, ${HOST_READ}, ${OWNER_RESERVE}, ${ENTRY_MAP}) {`,
+      `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}, ${OWNER_STATS}, ${OWNER_STAT_WRITES}, ${ENTITY_STAT_WRITES}, ${HOST_READ}, ${OWNER_RESERVE}, ${ENTRY_MAP}, ${BUILT_INS}) {`,
       readOnly ? readOnlyCode(code) : code,
       `})(), ${selfRead('value')}, ${CODE_BOUND_FIELDS.map(selfRead).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
       `  ${STAT_WRITES}(), ${DICTIONARY_WRITES}(), ${STRINGIFY}(${SELF_ASSIGNED}), ${OWNER_STAT_WRITES}(), ${STRINGIFY}(${LOOSE_WRITES}),`,
