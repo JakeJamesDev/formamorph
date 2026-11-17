@@ -13,6 +13,7 @@ The Media tab manages the Media List.
 - **Group by Type** stays a toggle (Q15). Off, the default, keeps one row per use, grouped by what holds it. On lists each entry once, sectioned by kind, with a Used by list from ticket 01's usage index.
 - Entries nothing links are marked Unused and stay in the world (Q7). The filter menu gains an Unused filter.
 - Deleting from the tab uses ticket 04's usage confirm.
+- From ticket 05's landing: item pictures have no card in the Media tab's per-parent view, so Group by Type is where they show; their Used by names the item. Also fold in two small fixes: the Authoring Tour's cover example still writes embedded data (route it through import), and an unnamed Body's entry is named `Body 1` by migration but `Unnamed Body 1` by a slot write (use `Body`, matching migration).
 - From ticket 03's landing: Optimize Images re-encodes only linked entries, so an Unused entry keeps its full bytes. Decide with the spec session whether Optimize should include Unused entries.
 - The Media tab's glossary entry changes to say it shows a store, the Media List.
 - Labels are working names: run the copy sweep on the new copy.
