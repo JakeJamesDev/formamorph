@@ -220,12 +220,12 @@ describe('EnterWorldWorkspace', () => {
     render(<Harness />);
 
     const navigation = screen.getByRole('navigation', { name: 'World setup categories' });
-    const current = within(navigation).getByRole('button', { name: /Culture/ });
+    const current = within(navigation).getByRole('button', { name: /^Culture/ });
     expect(current).toHaveClass('bg-primary', 'text-primary-foreground', 'font-medium');
     expect(current).not.toHaveClass('bg-muted', 'font-semibold', 'hover:bg-accent');
     // The pick count sits on the fill, so it takes the fill's text color.
     expect(within(current).getByLabelText('1 of 3 selected')).toHaveClass('text-primary-foreground');
-    const other = within(navigation).getByRole('button', { name: /Practice/ });
+    const other = within(navigation).getByRole('button', { name: /^Practice/ });
     expect(other).toHaveClass('hover:bg-accent', 'hover:text-foreground', 'text-muted-foreground');
     expect(other).not.toHaveClass('bg-primary');
   });
@@ -234,13 +234,13 @@ describe('EnterWorldWorkspace', () => {
     render(<Harness />);
 
     const navigation = screen.getByRole('navigation', { name: 'World setup categories' });
-    expect(within(navigation).getByRole('button', { name: /Origin/ })).toBeInTheDocument();
-    const culture = within(navigation).getByRole('button', { name: /Culture/ });
+    expect(within(navigation).getByRole('button', { name: /^Origin/ })).toBeInTheDocument();
+    const culture = within(navigation).getByRole('button', { name: /^Culture/ });
     expect(culture).toHaveAttribute('aria-current', 'page');
     expect(within(culture).getByLabelText('1 of 3 selected')).toHaveTextContent('1/3');
-    expect(within(navigation).getByRole('button', { name: /Calling/ })).toBeInTheDocument();
-    expect(within(navigation).getByRole('button', { name: /Discipline/ })).toBeInTheDocument();
-    expect(within(navigation).getByRole('button', { name: /Practice/ })).toBeInTheDocument();
+    expect(within(navigation).getByRole('button', { name: /^Calling/ })).toBeInTheDocument();
+    expect(within(navigation).getByRole('button', { name: /^Discipline/ })).toBeInTheDocument();
+    expect(within(navigation).getByRole('button', { name: /^Practice/ })).toBeInTheDocument();
     expect(within(navigation).queryByText('Empty branch')).not.toBeInTheDocument();
     expect(within(navigation).queryByText('General')).not.toBeInTheDocument();
     expect(within(navigation).queryByText(/Selected|Folder/)).not.toBeInTheDocument();
@@ -255,7 +255,7 @@ describe('EnterWorldWorkspace', () => {
     expect(shaped.closest('main')).not.toBeNull();
     expect(within(screen.getByRole('main')).queryByText(/\*\*shaped\*\*/)).not.toBeInTheDocument();
 
-    fireEvent.click(within(navigation).getByRole('button', { name: /Practice/ }));
+    fireEvent.click(within(navigation).getByRole('button', { name: /^Practice/ }));
     expect(screen.getByRole('heading', { name: 'Practice' })).toBeInTheDocument();
     expect(screen.getByText('Artisan')).toBeInTheDocument();
   });
@@ -700,6 +700,170 @@ describe('subtree pages', () => {
     render(<Harness traitCascade={{ off: ['Outsider'], because: 'Local' }} onDismissTraitCascade={vi.fn()} />);
     fireEvent.click(within(nav()).getByRole('button', { name: /^Origin/ }));
     expect(within(main()).getAllByText(/Turned off/)).toHaveLength(1);
+  });
+});
+
+describe('collapsible nav', () => {
+  const nav = () => screen.getByRole('navigation', { name: 'World setup categories' });
+  const main = () => screen.getByRole('main');
+  const rowNames = () => within(nav()).getAllByRole('button')
+    .filter((button) => !/^(Collapse|Expand) /.test(button.getAttribute('aria-label') ?? ''))
+    .map((button) => button.textContent!.replace(/\d+\/\d+$/, ''));
+  const row = (name: string) => within(nav()).getByRole('button', { name: new RegExp(`^${name}`) });
+  const chevron = (name: RegExp) => within(nav()).getByRole('button', { name });
+
+  it('gives parent rows a chevron and leaf rows an empty slot of the same width', () => {
+    render(<Harness />);
+    expect(chevron(/^Collapse Origin$/)).toHaveAttribute('aria-expanded', 'true');
+    expect(within(nav()).queryByRole('button', { name: /Practice$/, expanded: true })).not.toBeInTheDocument();
+    const leadOf = (name: string) => row(name).previousElementSibling!;
+    expect(leadOf('Origin')).toHaveClass('w-6');
+    expect(leadOf('Practice')).toHaveClass('w-6');
+    expect(leadOf('Practice').tagName).toBe('SPAN');
+  });
+
+  it('folds and unfolds a row from its chevron without opening its page', () => {
+    render(<Harness />);
+    fireEvent.click(chevron(/^Collapse Calling$/));
+    expect(rowNames()).toEqual(['Origin', 'Culture', 'Calling', 'Library Additions']);
+    expect(chevron(/^Expand Calling$/)).toHaveAttribute('aria-expanded', 'false');
+    expect(row('Culture')).toHaveAttribute('aria-current', 'page');
+    expect(within(main()).getByRole('heading', { level: 2, name: 'Culture' })).toBeInTheDocument();
+    fireEvent.click(chevron(/^Expand Calling$/));
+    expect(rowNames()).toContain('Practice');
+  });
+
+  it('opens a folded row on its whole page and leaves it folded', () => {
+    render(<Harness />);
+    fireEvent.click(chevron(/^Collapse Calling$/));
+    fireEvent.click(row('Calling'));
+    expect(row('Calling')).toHaveAttribute('aria-current', 'page');
+    expect(within(main()).getByRole('heading', { level: 2, name: 'Calling' })).toBeInTheDocument();
+    expect(within(main()).getByText('Artisan')).toBeInTheDocument();
+    expect(chevron(/^Expand Calling$/)).toBeInTheDocument();
+    expect(rowNames()).not.toContain('Practice');
+  });
+
+  it('folds to the top-level rows with Collapse All, highlights the folded row that holds the page, and opens every level with Expand All', () => {
+    render(<Harness />);
+    fireEvent.click(within(nav()).getByRole('button', { name: 'Collapse All' }));
+    expect(rowNames()).toEqual(['Origin', 'Library Additions']);
+    // The page stays Culture, so its folded ancestor carries the highlight without claiming to be the page.
+    expect(row('Origin')).toHaveClass('bg-primary');
+    expect(row('Origin')).not.toHaveAttribute('aria-current');
+    expect(within(main()).getByRole('heading', { level: 2, name: 'Culture' })).toBeInTheDocument();
+    fireEvent.click(within(nav()).getByRole('button', { name: 'Expand All' }));
+    expect(rowNames()).toEqual(['Origin', 'Culture', 'Calling', 'Discipline', 'Practice', 'Library Additions']);
+    expect(within(nav()).getByRole('button', { name: 'Collapse All' })).toBeInTheDocument();
+  });
+
+  it('keeps the folds while the player switches pages', () => {
+    render(<Harness />);
+    fireEvent.click(chevron(/^Collapse Calling$/));
+    fireEvent.click(row('Origin'));
+    fireEvent.click(row('Culture'));
+    expect(rowNames()).toEqual(['Origin', 'Culture', 'Calling', 'Library Additions']);
+  });
+
+  it('starts fully open in a fresh setup', () => {
+    const { unmount } = render(<Harness />);
+    fireEvent.click(within(nav()).getByRole('button', { name: 'Collapse All' }));
+    unmount();
+    render(<Harness />);
+    expect(rowNames()).toEqual(['Origin', 'Culture', 'Calling', 'Discipline', 'Practice', 'Library Additions']);
+  });
+
+  it('offers no Collapse All when no row has children', () => {
+    render(<Harness traitGroups={[{ id: 'culture', name: 'Culture', parentId: null, order: 0 }]} />);
+    expect(within(nav()).queryByRole('button', { name: /^(Collapse|Expand) All$/ })).not.toBeInTheDocument();
+  });
+
+  describe('fitted to the sidebar', () => {
+    // Every nav line is 40 px tall; the sidebar's height is `available`.
+    const ROW = 40;
+    let available = 1000;
+    const mockNavLayout = () => {
+      vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function height(this: HTMLElement) {
+        if (this.tagName === 'NAV') return ROW * this.children.length;
+        return this.parentElement?.tagName === 'NAV' ? ROW : 0;
+      });
+      vi.spyOn(Element.prototype, 'clientHeight', 'get').mockImplementation(function height(this: Element) {
+        const navigation = document.querySelector('nav');
+        return navigation && this !== navigation && this.contains(navigation) ? available : 0;
+      });
+    };
+    const resize = (height: number) => {
+      available = height;
+      act(() => { window.dispatchEvent(new Event('resize')); });
+    };
+
+    // Expanded: 3 fixed lines + 5 rows = 320. Folding Calling's level leaves 240; Culture's leaves 200.
+    it('folds the deepest levels until the nav fits, and refits on every resize before any toggle', () => {
+      available = 250;
+      mockNavLayout();
+      render(<Harness />);
+      expect(rowNames()).toEqual(['Origin', 'Culture', 'Calling', 'Library Additions']);
+      resize(1000);
+      expect(rowNames()).toEqual(['Origin', 'Culture', 'Calling', 'Discipline', 'Practice', 'Library Additions']);
+      resize(250);
+      expect(rowNames()).toEqual(['Origin', 'Culture', 'Calling', 'Library Additions']);
+    });
+
+    it("never folds the current page's ancestors, even when the nav still scrolls", () => {
+      available = 120;
+      mockNavLayout();
+      render(<Harness />);
+      expect(chevron(/^Collapse Origin$/)).toBeInTheDocument();
+      expect(chevron(/^Expand Culture$/)).toBeInTheDocument();
+      expect(row('Culture')).toHaveAttribute('aria-current', 'page');
+    });
+
+    it('leaves the nav alone on a resize once the player has toggled a chevron', () => {
+      available = 250;
+      mockNavLayout();
+      render(<Harness />);
+      fireEvent.click(chevron(/^Expand Calling$/));
+      // The fitted folds carry over, so Discipline, folded with Calling's level, stays folded.
+      expect(rowNames()).toEqual(['Origin', 'Culture', 'Calling', 'Discipline', 'Library Additions']);
+      resize(1000);
+      expect(rowNames()).toEqual(['Origin', 'Culture', 'Calling', 'Discipline', 'Library Additions']);
+      resize(100);
+      expect(rowNames()).toEqual(['Origin', 'Culture', 'Calling', 'Discipline', 'Library Additions']);
+    });
+
+    it('fits the closed phone drawer to its capped height, so it opens already fitted', () => {
+      // The sidebar's height would fit everything, so only the drawer's own cap can fold rows.
+      available = 1000;
+      mockPhoneViewport();
+      mockNavLayout();
+      // The drawer's 45% cap is its max-height; its 1 px top border takes from the room.
+      const real = window.getComputedStyle;
+      vi.spyOn(window, 'getComputedStyle').mockImplementation((element, pseudo) => {
+        const style = real(element, pseudo);
+        if (!(element as Element).contains(document.querySelector('nav')) || element === document.querySelector('nav')) return style;
+        // 240 px would just fit Calling's level folded; the border leaves 239, so Culture's level folds too.
+        const drawer: Record<string, string> = { maxHeight: '240px', borderTopWidth: '1px', borderBottomWidth: '0px' };
+        return new Proxy(style, {
+          get: (target, key) => (typeof key === 'string' && key in drawer
+            ? drawer[key]
+            : Reflect.get(target, key, target) as unknown),
+        });
+      });
+      render(<Harness />);
+      fireEvent.click(screen.getByRole('button', { name: /Categories/ }));
+      expect(rowNames()).toEqual(['Origin', 'Culture', 'Library Additions']);
+    });
+
+    it('opens what a page set from outside needs, and folds nothing back when the page moves on', () => {
+      available = 250;
+      mockNavLayout();
+      const { rerender } = render(<Harness categoryIndex={0} />);
+      expect(rowNames()).not.toContain('Practice');
+      rerender(<Harness categoryIndex={1} />);
+      expect(row('Practice')).toHaveAttribute('aria-current', 'page');
+      rerender(<Harness categoryIndex={0} />);
+      expect(rowNames()).toEqual(['Origin', 'Culture', 'Calling', 'Discipline', 'Practice', 'Library Additions']);
+    });
   });
 });
 
@@ -1241,8 +1405,9 @@ describe('EnterWorldWorkspace cast pages', () => {
     expect(text.indexOf('Practice')).toBeLessThan(text.indexOf('Ash'));
     expect(text.indexOf('Ash')).toBeLessThan(text.indexOf('Bob'));
     const ashRow = within(nav()).getByRole('button', { name: /^Ash/ });
-    expect(ashRow).toHaveStyle({ paddingLeft: '20px' });
-    expect(within(nav()).getByRole('button', { name: /^Bob/ })).toHaveStyle({ paddingLeft: '8px' });
+    // The row and its leading slot indent together, 12 px per depth level.
+    expect(ashRow.parentElement).toHaveStyle({ paddingLeft: '12px' });
+    expect(within(nav()).getByRole('button', { name: /^Bob/ }).parentElement).toHaveStyle({ paddingLeft: '0px' });
     expect(ashRow.querySelector('svg.lucide-user')).not.toBeNull();
   });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTraitWorkspace, subtreeRollup } from './setupTraitWorkspace';
+import { buildTraitWorkspace, fitCutDepth, subtreeRollup, type FitRow } from './setupTraitWorkspace';
 import { ownerTraitTree, ownerGroupId } from './ownedTraitsInPlay';
 import { isShown } from './traitEffects';
 import type { Entity, Trait } from '@/types';
@@ -193,5 +193,55 @@ describe('subtreeRollup', () => {
     const wolfNode = built.navigationNodes.find((n) => n.group.name === 'Wolf')!;
     const picks = (entityId: string | undefined) => (entityId === 'wolf' ? ['calm'] : []);
     expect(subtreeRollup(built.categories, wolfNode.subtree, picks)).toEqual({ shown: 1, selected: 1, short: false });
+  });
+});
+
+describe('fitCutDepth', () => {
+  // Two characters, each with a group that holds one more level: depths 0, 1, 2.
+  const tree = (height = 10): FitRow[] => [
+    { id: 'a', depth: 0, hasChildren: true, ancestorIds: [], height },
+    { id: 'a-look', depth: 1, hasChildren: true, ancestorIds: ['a'], height },
+    { id: 'a-hair', depth: 2, hasChildren: false, ancestorIds: ['a', 'a-look'], height },
+    { id: 'a-eyes', depth: 2, hasChildren: false, ancestorIds: ['a', 'a-look'], height },
+    { id: 'b', depth: 0, hasChildren: true, ancestorIds: [], height },
+    { id: 'b-look', depth: 1, hasChildren: true, ancestorIds: ['b'], height },
+    { id: 'b-hair', depth: 2, hasChildren: false, ancestorIds: ['b', 'b-look'], height },
+  ];
+  const none = new Set<string>();
+
+  it('folds nothing when the expanded nav fits', () => {
+    expect(fitCutDepth(tree(), 30, 100, none)).toBe(Infinity);
+  });
+
+  it('folds only the deepest parent level when that is enough', () => {
+    // Folding depth 1 hides the three depth-2 rows: 30 + 40 = 70.
+    expect(fitCutDepth(tree(), 30, 70, none)).toBe(1);
+  });
+
+  it('climbs to the top level and stops there even when the nav still overflows', () => {
+    // Folding depth 0 leaves the two top rows: 30 + 20 = 50.
+    expect(fitCutDepth(tree(), 30, 55, none)).toBe(0);
+    expect(fitCutDepth(tree(), 30, 10, none)).toBe(0);
+  });
+
+  it('keeps held ancestors open, so it climbs further to make room', () => {
+    const held = new Set(['a', 'a-look']);
+    // A cut at 1 folds only b-look: 30 + 60 = 90.
+    expect(fitCutDepth(tree(), 30, 90, held)).toBe(1);
+    // A cut at 0 also folds b: 30 + 50 = 80.
+    expect(fitCutDepth(tree(), 30, 85, held)).toBe(0);
+  });
+
+  it('sums each row at its own measured height, so wrapped rows count in full', () => {
+    const rows = tree();
+    // a-hair wraps to three lines. Expanded: 30 + 90 = 120. Depth 1 folded: 30 + 40 = 70.
+    rows[2] = { ...rows[2], height: 30 };
+    expect(fitCutDepth(rows, 30, 119, none)).toBe(1);
+    expect(fitCutDepth(rows, 30, 120, none)).toBe(Infinity);
+  });
+
+  it('folds nothing in a nav with no parents, whatever the height', () => {
+    const flat: FitRow[] = [{ id: 'x', depth: 0, hasChildren: false, ancestorIds: [], height: 500 }];
+    expect(fitCutDepth(flat, 0, 10, none)).toBe(Infinity);
   });
 });

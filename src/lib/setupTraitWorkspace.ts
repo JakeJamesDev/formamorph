@@ -60,6 +60,38 @@ export const subtreeRollup = (
   return rollup;
 };
 
+/** A nav row as the fit sees it: its place in the tree and its height with the nav fully expanded. */
+export interface FitRow {
+  id: string;
+  depth: number;
+  hasChildren: boolean;
+  ancestorIds: readonly string[];
+  height: number;
+}
+
+/** Whether a parent row is folded under `cut`: at or below the cut depth, and not held open. */
+export const collapsedAtCut = (row: Pick<FitRow, 'id' | 'depth' | 'hasChildren'>, cut: number, held: ReadonlySet<string>) =>
+  row.hasChildren && row.depth >= cut && !held.has(row.id);
+
+/** The shallowest-needed cut depth: folds the deepest parent level first, one level at a time, until the
+ *  visible rows plus `fixedHeight` fit in `available`. Stops at the top level even when it still overflows.
+ *  Infinity means nothing folds. */
+export const fitCutDepth = (
+  rows: readonly FitRow[], fixedHeight: number, available: number, held: ReadonlySet<string>,
+): number => {
+  const fits = (cut: number) => {
+    const folded = new Set(rows.filter((row) => collapsedAtCut(row, cut, held)).map((row) => row.id));
+    const visible = rows.filter((row) => !row.ancestorIds.some((id) => folded.has(id)));
+    return fixedHeight + visible.reduce((sum, row) => sum + row.height, 0) <= available;
+  };
+  if (fits(Infinity)) return Infinity;
+  const parentDepths = [...new Set(rows.filter((row) => row.hasChildren).map((row) => row.depth))].sort((a, b) => b - a);
+  for (const depth of parentDepths) {
+    if (fits(depth)) return depth;
+  }
+  return parentDepths.at(-1) ?? Infinity;
+};
+
 const authoredOrder = <T extends { order?: number }>(items: T[]): T[] =>
   [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 

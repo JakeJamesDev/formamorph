@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Check } from 'lucide-react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Check, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import { DictionaryIcon, EntityIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
 import { NavDisclosure } from '@/components/NavDisclosure';
@@ -27,7 +27,10 @@ import { navItemStates } from '@/lib/navSelection';
 import { useElementSize } from '@/lib/useElementSize';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { buildTraitWorkspace, subtreeRollup, type SubtreeRollup, type TraitCategory, type TraitNavNode } from '@/lib/setupTraitWorkspace';
+import {
+  buildTraitWorkspace, collapsedAtCut, fitCutDepth, subtreeRollup,
+  type SubtreeRollup, type TraitCategory, type TraitNavNode,
+} from '@/lib/setupTraitWorkspace';
 import { isShown } from '@/lib/traitEffects';
 import { YouMark } from '@/components/game/YouMark';
 import { Hint, Meta } from '@/components/ui/typography';
@@ -96,6 +99,13 @@ export interface EnterWorldWorkspaceProps {
 }
 
 const REMEMBERED_MS = 3000;
+
+/** Auto folds by a fitted cut depth until the player's first toggle; manual keeps the player's set. */
+type NavFold =
+  | { mode: 'auto'; cut: number; held: ReadonlySet<string> }
+  | { mode: 'manual'; folded: ReadonlySet<string> };
+
+const navIconButton = 'flex shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring';
 
 export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const viewportMobile = useIsMobile();
@@ -187,6 +197,67 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     : navNodes.find((node) => node.categoryIndex === traitIndex);
   const rollupOf = (subtree: readonly number[]) => subtreeRollup(traitWorkspace.categories, subtree, picksOf);
 
+  // Fold state lasts for this setup only: the host unmounts the workspace once it closes (Q6).
+  const [fold, setFold] = useState<NavFold>({ mode: 'auto', cut: Infinity, held: new Set() });
+  // While true, the nav renders fully expanded so the layout effect can measure every row once.
+  const [measuring, setMeasuring] = useState(true);
+  // State, not a ref: the dialog mounts the nav after this component's first commit, and the fit waits for it.
+  const [navElement, setNavElement] = useState<HTMLElement | null>(null);
+  const navRootRef = useRef<HTMLDivElement>(null);
+  const rowRefs = useRef(new Map<string, HTMLElement>());
+  const isFolded = (node: TraitNavNode) => node.hasChildren && !measuring && (fold.mode === 'manual'
+    ? fold.folded.has(node.group.id)
+    : collapsedAtCut({ id: node.group.id, depth: node.depth, hasChildren: true }, fold.cut, fold.held));
+  const foldedIds = new Set(navNodes.filter(isFolded).map((node) => node.group.id));
+  const isHidden = (node: TraitNavNode) => node.ancestorIds.some((id) => foldedIds.has(id));
+  // A page under a folded row lends its highlight to the outermost folded ancestor (Q15).
+  const foldedAncestorId = page?.ancestorIds.find((id) => foldedIds.has(id));
+  const highlighted = foldedAncestorId ? nodeById.get(foldedAncestorId) : page;
+  const manual = fold.mode === 'manual';
+  // Until the first toggle, a window resize or a switch between sidebar and drawer fits again (Q4).
+  useEffect(() => {
+    if (manual) return;
+    const refit = () => setMeasuring(true);
+    window.addEventListener('resize', refit);
+    return () => window.removeEventListener('resize', refit);
+  }, [manual]);
+  useLayoutEffect(() => {
+    if (!manual) setMeasuring(true);
+  }, [manual, categoriesCollapsed]);
+  useLayoutEffect(() => {
+    if (!measuring || !navElement) return;
+    const rows = navNodes.map((node) => {
+      const element = rowRefs.current.get(node.group.id);
+      const height = element ? element.offsetHeight + (parseFloat(getComputedStyle(element).marginTop) || 0) : 0;
+      return { id: node.group.id, depth: node.depth, hasChildren: node.hasChildren, ancestorIds: node.ancestorIds, height };
+    });
+    const fixedHeight = navElement.offsetHeight - rows.reduce((sum, row) => sum + row.height, 0);
+    // The drawer's cap is its own max-height (45% of the window); the sidebar's is its height.
+    const root = navRootRef.current;
+    const drawer = root && categoriesCollapsed ? getComputedStyle(root) : null;
+    const available = !root ? 0
+      : drawer ? (parseFloat(drawer.maxHeight) || 0) - (parseFloat(drawer.borderTopWidth) || 0) - (parseFloat(drawer.borderBottomWidth) || 0)
+      : root.clientHeight;
+    // The current page's ancestors are held open as of this fit (Q5, Q24).
+    const held = new Set(page?.ancestorIds ?? []);
+    setFold((prev) => (prev.mode === 'manual' ? prev : { mode: 'auto', cut: fitCutDepth(rows, fixedHeight, available, held), held }));
+    setMeasuring(false);
+  }, [measuring, navElement]); // eslint-disable-line react-hooks/exhaustive-deps -- measures once per request, against that render
+  // A later page change opens what the new page needs and never folds a row back (Q24).
+  useLayoutEffect(() => {
+    if (fold.mode !== 'auto' || !page) return;
+    const missing = page.ancestorIds.filter((id) => !fold.held.has(id));
+    if (missing.length > 0) setFold({ ...fold, held: new Set([...fold.held, ...missing]) });
+  }, [page, fold]);
+  const toggleFold = (node: TraitNavNode) => {
+    const folded = new Set(foldedIds);
+    if (!folded.delete(node.group.id)) folded.add(node.group.id);
+    setFold({ mode: 'manual', folded });
+  };
+  const parents = navNodes.filter((node) => node.hasChildren);
+  const anyExpanded = parents.some((node) => !foldedIds.has(node.group.id));
+  const toggleAll = () => setFold({ mode: 'manual', folded: new Set(anyExpanded ? parents.map((node) => node.group.id) : []) });
+
   const closeNavigation = () => {
     if (!categoriesCollapsed) return;
     setCategoryNavigationOpen(false);
@@ -229,34 +300,59 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
       </button>
     );
   };
+  // Every row in the Starting Traits block keeps the chevron's width, so names align (Q17, Q25).
+  const emptySlot = <span aria-hidden className="w-6 shrink-0" />;
+  const chevron = (node: TraitNavNode) => {
+    const folded = foldedIds.has(node.group.id);
+    return (
+      <button
+        type="button"
+        aria-expanded={!folded}
+        aria-label={`${folded ? 'Expand' : 'Collapse'} ${node.group.name}`}
+        className={cn(navIconButton, 'w-6 self-stretch')}
+        onClick={() => toggleFold(node)}
+      >
+        {folded ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      </button>
+    );
+  };
   const navRow = (node: TraitNavNode) => {
-    const isCurrent = page === node;
+    const isCurrent = highlighted === node;
     const own = node.categoryIndex >= 0 ? traitWorkspace.categories[node.categoryIndex] : undefined;
     // A label-only group has no traits list of its own, so its row carries its description for screen readers.
     const description = own ? undefined : node.group.playerDescription?.trim();
     const descriptionId = `setup-group-${node.group.id}-description`;
     return (
-      <div key={node.group.id}>
-        <button
-          type="button"
-          aria-current={isCurrent ? 'page' : undefined}
-          aria-describedby={description ? descriptionId : undefined}
-          className={rowClass(isCurrent)}
-          style={{ paddingLeft: 8 + Math.min(node.depth, 5) * 12 }}
-          onClick={() => {
-            setClickedPageId(node.group.id);
-            if (node.subtree.length > 0) props.onCategoryChange(node.subtree[0] + traitOffset);
-            closeNavigation();
-          }}
-        >
-          {own?.entityNode && <EntityIcon aria-hidden className="h-4 w-4 shrink-0" />}
-          <span className="min-w-0 flex-1 break-words">
-            {node.group.name}
-            {/* On the selected row the pill inverts, or it would vanish into the primary fill. */}
-            {own?.entityNode && !!own.entityId && playerIds.includes(own.entityId) && <YouMark onFill={isCurrent} />}
-          </span>
-          {rowCount(rollupOf(node.subtree), isCurrent)}
-        </button>
+      <div
+        key={node.group.id}
+        ref={(element) => {
+          if (element) rowRefs.current.set(node.group.id, element);
+          else rowRefs.current.delete(node.group.id);
+        }}
+      >
+        <div className="flex" style={{ paddingLeft: Math.min(node.depth, 5) * 12 }}>
+          {node.hasChildren ? chevron(node) : emptySlot}
+          <button
+            type="button"
+            // A folded ancestor carries the highlight for the page inside it, but only the page itself is current.
+            aria-current={page === node ? 'page' : undefined}
+            aria-describedby={description ? descriptionId : undefined}
+            className={rowClass(isCurrent)}
+            onClick={() => {
+              setClickedPageId(node.group.id);
+              if (node.subtree.length > 0) props.onCategoryChange(node.subtree[0] + traitOffset);
+              closeNavigation();
+            }}
+          >
+            {own?.entityNode && <EntityIcon aria-hidden className="h-4 w-4 shrink-0" />}
+            <span className="min-w-0 flex-1 break-words">
+              {node.group.name}
+              {/* On the selected row the pill inverts, or it would vanish into the primary fill. */}
+              {own?.entityNode && !!own.entityId && playerIds.includes(own.entityId) && <YouMark onFill={isCurrent} />}
+            </span>
+            {rowCount(rollupOf(node.subtree), isCurrent)}
+          </button>
+        </div>
         {description && <span id={descriptionId} className="sr-only">{stripMarkdown(props.resolveText(description))}</span>}
       </div>
     );
@@ -382,22 +478,30 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const libraryIndex = categories.findIndex((category) => category.kind === 'library');
   const navigation = (
     <ScrollArea
+      ref={navRootRef}
       className={cn(
         categoriesCollapsed
           ? 'max-h-[45dvh] border-t border-border/60 [&>[data-radix-scroll-area-viewport]]:overscroll-contain'
           : 'h-full min-h-0',
       )}
     >
-    <nav aria-label="World setup categories" className="space-y-1 p-3">
+    <nav ref={setNavElement} aria-label="World setup categories" className="space-y-1 p-3">
       {optionsIndex >= 0 && categoryButton(categories[optionsIndex], optionsIndex)}
       {personaIndex >= 0 && categoryButton(categories[personaIndex], personaIndex)}
       {traitTree.traits.length > 0 && (
-        <Meta as="p" className="my-3 flex items-center gap-3 px-2 font-medium uppercase">
+        <Meta as="div" className="my-3 flex items-center gap-3 px-2 font-medium uppercase">
           <span>Starting Traits</span><span className="h-px flex-1 bg-border" />
+          {parents.length > 0 && (
+            <Tip tip={anyExpanded ? 'Collapse All' : 'Expand All'}>
+              <button type="button" className={cn(navIconButton, 'h-6 w-6')} onClick={toggleAll}>
+                {anyExpanded ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
+              </button>
+            </Tip>
+          )}
         </Meta>
       )}
-      {generalIndex >= 0 && categoryButton(categories[generalIndex], generalIndex)}
-      {navNodes.map(navRow)}
+      {generalIndex >= 0 && <div className="flex">{emptySlot}{categoryButton(categories[generalIndex], generalIndex)}</div>}
+      {navNodes.filter((node) => !isHidden(node)).map(navRow)}
       {locationIndex >= 0 && (
         <>
           <Meta as="p" className="my-3 flex items-center gap-3 px-2 font-medium uppercase">
