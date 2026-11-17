@@ -15,6 +15,8 @@ The remaining world maps load per entry with 02's primitive: `items` (with insta
 - [ ] With `countingSandbox`, a self-only Script makes no host-read call for items, locations, books or currencies; one read per entry, one per listing.
 - [ ] An entity's `items` read loads only the items that entity holds (host-read count).
 - [ ] An item event run reads `self` and `instance` as before (parity case) and loads no other item it does not read.
+- [ ] An item event with an entity `from` or `to` arg loads only that entity, through a host-side id lookup instead of listing `entities` (Q17; host-read count).
+- [ ] Every lazy fill (ticket 02's entities and placeholders, and this ticket's maps) uses only built-ins captured before user code runs (Q19). A parity case where a Script replaces `Object.defineProperty`, `JSON.parse`, `Object.freeze` and an `Array.prototype` method before its first entry read is pinned on the eager code at a377e4f9a (or e6dbe16c6) and passes here.
 - [ ] The prelude-cost test's new case passes at 2× and fails with eager loading reinstated; record the check.
 - [ ] Bench in the Landed section: owner-scoped within 25% of no-world; full-world within 10% of 01's "before".
 - [ ] The changelog fragment from 02 covers items, places, books and currencies too.
