@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  pacedStagger, flooredTiming, TARGET_BUFFER_WORDS, DRAIN_TARGET_WORDS, DRAIN_CORRECTION_MIN, STAGGER_MIN, STAGGER_MAX, FADE_SPREAD,
+  pacedStagger, flooredTiming, revealVars, TARGET_BUFFER_WORDS, DRAIN_TARGET_WORDS, DRAIN_CORRECTION_MIN, STAGGER_MIN, STAGGER_MAX, FADE_SPREAD,
+  type RevealSpec,
 } from './narrationRevealConfig';
 
 const BASE = 40; // measured ms/word
@@ -49,5 +50,21 @@ describe('flooredTiming', () => {
   it('respects a duration floor above the derived spread', () => {
     const t = flooredTiming({ stagger: 10, duration: 40 }, 0, 500);
     expect(t.duration).toBe(500);
+  });
+});
+
+describe('the reveal word box', () => {
+  const spec = (over: Partial<RevealSpec>): RevealSpec => ({
+    fade: false, move: false, moveDirection: 'bottom', moveDistance: 0.5, scale: false, scaleMode: 'uniform',
+    scaleDirection: 'bottom', scaleAmount: 0.4, blur: false, blurAmount: 4, ...over,
+  });
+
+  it('leaves words inline for Fade and Blur, so they wrap as the settled text does', () => {
+    expect(revealVars(spec({ fade: true, blur: true }))['--rl-display']).toBeUndefined();
+  });
+
+  it('gives words a box when Move or Scale needs a transform', () => {
+    expect(revealVars(spec({ move: true }))['--rl-display']).toBe('inline-block');
+    expect(revealVars(spec({ scale: true, scaleMode: 'axis' }))['--rl-display']).toBe('inline-block');
   });
 });

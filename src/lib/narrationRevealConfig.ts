@@ -115,6 +115,8 @@ export function revealVars(s: RevealSpec): Record<string, string> {
     }
   }
   if (s.blur) vars['--rl-blur'] = `${s.blurAmount}px`;
+  // Transforms need a box; inline words wrap exactly as the settled text does.
+  if (s.move || s.scale) vars['--rl-display'] = 'inline-block';
   return vars;
 }
 

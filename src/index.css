@@ -838,13 +838,12 @@ b {
   to   { opacity: 1; }
 }
 
-/* Streamdown animates each word in a bare inline <span>; transforms (move/scale) need a transformable
-   box, so promote the animated words to inline-block within narration. Axis-scale anchors its growth
-   to an edge via --rl-origin (set on the container); everything else uses center. */
+/* Streamdown animates each word in a bare inline <span>, with the spaces between words outside it.
+   Words stay inline so they wrap as the settled text does; Move and Scale set --rl-display to
+   inline-block, the box a transform needs. Axis-scale anchors its growth to an edge via --rl-origin
+   (set on the container); everything else uses center. */
 .narration-text [data-sd-animate] {
-  display: inline-block;
-  /* Each word's span carries its trailing space; inline-block would drop it. */
-  white-space: pre;
+  display: var(--rl-display, inline);
   transform-origin: var(--rl-origin, center);
 }
 
