@@ -69,7 +69,7 @@ Settled with the user on 2026-11-16, in grill order.
 ## Testing Decisions
 
 - A good test drives the game the way play does and checks what the player sees. It does not read memo internals.
-- **Game viewer seam (main).** Use the existing game viewer render harness with Character Mentions on and a turn with a colored quote. Stream choices and write to the history mid-turn. Assert the narration's root DOM node is the same node before and after. Then make a new speaker visible and assert the node is replaced once. Prove the test bites by reinstating the old dependency on the save-state getter: it must fail.
+- **Game viewer seam (main).** Use the existing game viewer render harness with Character Mentions on and a turn with a colored quote. Stream choices and write to the history mid-turn. Assert the narration's root DOM node is the same node before and after. Then make a new speaker visible and assert the node is replaced once. Prove the test bites by reinstating the old dependency on the save-state getter: it must fail. Ticket 02 reinstated the Player View reach and the test failed on a build count, not on the node; ticket 07 closes that gap.
 - **Player View seam.** In the existing Player View module tests, assert the entities-only builder returns the same rows as the full builder for the fixtures already there, including unidentified entities.
 - **Stable getter.** A test asserts the getter keeps its identity across state changes and returns the current state.
 - **Backstop helper.** Same content gives the previous map; an added, removed or changed entry gives a new one.
@@ -79,7 +79,7 @@ Settled with the user on 2026-11-16, in grill order.
 ## Out of Scope
 
 - Changing how quote colors are read or painted while streaming.
-- Changing the renderer's plugin keying.
+- Changing the renderer's plugin keying, except as ticket 06 decides for the reading's arrival (opened at the close against Q3).
 - The inventory settle memo's rebuild on history writes. It comes through the live scene feeding stat-code preparation and item events, not through the save-state getter, and does not reach the narration renderer (ticket 04; a follow-up).
 - Reworking the Player View reach or the help world sources beyond what Q1 needs.
 - Performance work on the full Player View builder.

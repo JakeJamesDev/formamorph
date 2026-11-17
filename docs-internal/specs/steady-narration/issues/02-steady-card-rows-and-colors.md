@@ -26,7 +26,7 @@ The fix the player sees (Q4, Q7). With Character Mentions on, the narration reve
 ## Landed
 
 **Not verified**
-- A new speaker's quote does not take its color after the remount. Streamdown caches its processor by `JSON.stringify` of plugin options, and the colors `Map` stringifies to `{}`. This predates the ticket and is under Out of Scope; it was sent to the spec session.
+- A new speaker's quote does not take its color after the remount. Fixed by ticket 05.
 - The build count in the test is global: a future eager `buildPlayerView` caller (ticket 04's area) also turns it red.
 - Chat layout has no harness case; only Pages is tested.
 - No changelog fragment: Character Mentions is unreleased, so the fix folds into it.

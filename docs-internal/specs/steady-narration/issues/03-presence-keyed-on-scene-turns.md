@@ -15,7 +15,7 @@ Presence recomputes only when the recent scene turns' content changes, not on ev
 ## Acceptance criteria
 
 - [x] A history change outside the recent scene turns keeps presence the same object. (`usePresence.sceneTurns.test.tsx`, user message and out-of-window edit)
-- [x] A change to a recent scene turn's text gives a new presence. (Test changes the turn's participants. The key is the derived scene turns, so a text edit that changes no participant keeps presence.)
+- [x] A change to a recent scene turn's participants gives a new presence. (Test changes the turn's participants. The key is the derived scene turns, so a text edit that changes no participant keeps presence.)
 - [x] Reverting to a plain history dependency makes the first test fail. (Mutation run: first test red, second green.)
 - [x] Existing presence tests pass unchanged. (`presence.test.ts`, 50 tests green, no edits.)
 
