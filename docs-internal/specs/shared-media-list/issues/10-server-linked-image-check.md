@@ -1,6 +1,7 @@
 # 10: Server Linked Image Check
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 23b7ecb
 Repo: FormamorphServer
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
@@ -16,6 +17,16 @@ The server's check for linked (http/https) images in a Supporter-only world read
 
 ## Acceptance criteria
 
-- [ ] A Supporter-only world whose linked image sits only in the Media List is caught.
-- [ ] A world with embedded galleries is caught as before.
-- [ ] A Media List holding only data URLs passes.
+- [x] A Supporter-only world whose linked image sits only in the Media List is caught. `supporterWorld.test.js` › refuses a linked image that sits only in the list.
+- [x] A world with embedded galleries is caught as before. Existing `supporterWorld.test.js` and `supporterEndDate.test.js` cases pass.
+- [x] A Media List holding only data URLs passes. `supporterWorld.test.js` › accepts a list that holds only data URLs.
+
+## Landed
+
+Per spec Q44, the check also flags linked sounds in the list (`Media List sound "<name>"`), used or not. The refusal copy says "images or sounds".
+
+**Not verified**
+- The gated Supporter route that processes embedded images was not checked for image data inside the Media List. It may need its own ticket.
+
+**For you**
+- Deploy this before the client release that holds ticket 03, then raise the client minimum (spec release steps).

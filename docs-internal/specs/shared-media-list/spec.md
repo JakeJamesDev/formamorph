@@ -70,6 +70,9 @@ Settled with the user on 2026-11-16, in grill order.
 | Q39 | Delete from World is one undo step and always asks, even when one slot is the only use (ticket 04) |
 | Q40 | Ticket 04 owns the picker, the Delete from World confirm, and the rename and remove actions; ticket 07 reuses the confirm, and ticket 09 hooks script rewriting into rename. Authoring Tour example pictures import as entries named by the subject fallback (ticket 04) |
 | Q41 | The library entity editor keeps the plain uploader with no Choose: library entities stay embedded (Q18), so there is no list to pick from (ticket 04) |
+| Q42 | Ticket 05: the cover takes the single-field link. Fallback subjects are the item name, the body name, `Map` and `Cover`, numbered per Q25. Published world JSON keeps the list form; the listing thumbnail, the library world card and the server preview resolve the cover to bytes. The last unlink of a map or backdrop image removes the field as today. Worlds without a list stay embedded (Q26) |
+| Q43 | Ticket 06: the entity editor gains an Advanced-only Sound field, and the Media tab's sound panels use the same slot. A sound's stored file name drops only a recognized media extension, so a carried name survives. World music's fallback subject is `Music`. A sound URL takes any http(s) link, with the broken state as its only check. Cards carry no sound |
+| Q44 | Ticket 10: the server's Supporter check reads every Media List entry with an http(s) URL, used or not, sounds included: Supporter-only media is never at a public URL, and Q17 made sounds linkable. Gallery `{ mediaId }` values are skipped, since the entry covers them |
 
 ## Prototype
 
