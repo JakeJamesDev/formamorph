@@ -46,7 +46,7 @@ import { Button } from "@/components/ui/button";
 import { Send, RefreshCw, Loader2, Headphones, Square, ChevronUp, X, MoreHorizontal, Check, SlidersHorizontal } from "lucide-react";
 import { WorldOptionsTab } from '@/components/game/WorldOptionsTab';
 import { midGameOptions } from '@/lib/worldOptions';
-import type { WorldOption, WorldOptionValueOf } from '@/types';
+import type { ValuedWorldOption, WorldOptionValueOf } from '@/types';
 import type { StoryWidth } from "@/lib/gamePanelPrefs";
 import { AvatarIcon, ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
 import { balanceRows } from '@/lib/currency';
@@ -1397,7 +1397,7 @@ export const RightPanel = ({
   /** Script runs of an earlier panel action still go, so a listed action waits. */
   actionsBusy?: boolean;
   /** Set a mid-game World Option; owned by GameViewer, which lists the change. */
-  onChangeWorldOption: (option: WorldOption, value: WorldOptionValueOf) => void;
+  onChangeWorldOption: (option: ValuedWorldOption, value: WorldOptionValueOf) => void;
   /** Settle the traits after the player picks another persona. `name` is that persona's; null for None. */
   onPersonaChange: (ref: PersonaRef, name: string | null) => void;
   /** What the player's last trait switch or persona change turned off. */

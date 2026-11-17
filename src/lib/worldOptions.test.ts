@@ -6,7 +6,7 @@ import {
 } from './placeholderPins';
 import { encodePlaceholderToken, resolvePlaceholders } from './placeholders';
 import {
-  BOOLEAN_OFF, BOOLEAN_ON, optionDefault, optionPinLists, optionValue, shownOptions, snapNumber, withOptionType,
+  BOOLEAN_OFF, BOOLEAN_ON, acceptsValue, midGameOptions, optionDefault, optionPinLists, optionValue, shownOptions, snapNumber, withOptionType,
 } from './worldOptions';
 
 const pin = (placeholderId: string, value: string): PlaceholderPin => ({ placeholderId, value });
@@ -123,5 +123,35 @@ describe('Option list helpers', () => {
     let n = 0;
     const next = withOptionType({ ...style, playerDescription: 'How it reads' }, 'number', () => `id-${n++}`);
     expect(next).toMatchObject({ id: 'o-style', name: 'Style', type: 'number', midGame: true, playerDescription: 'How it reads' });
+  });
+});
+
+describe('a Preset Option', () => {
+  const start: WorldOption = {
+    id: 'o-start', name: 'Start', type: 'preset', mode: 'overlay',
+    values: [{ id: 'p-lush', name: 'Lush', description: '', rows: [{ kind: 'option', optionId: 'o-style', value: 'v-lush' }] }],
+  };
+  const withStart = [...options, { ...style, id: 'o-mid', midGame: true }, start];
+
+  it('always shows at setup and never in the mid-game list', () => {
+    expect(shownOptions(withStart).map((o) => o.id)).toContain('o-start');
+    expect(midGameOptions(withStart).map((o) => o.id)).toEqual(['o-style', 'o-mid']);
+  });
+
+  it('accepts no value and lays no pins', () => {
+    expect([acceptsValue(start, 'p-lush'), acceptsValue(start, true), acceptsValue(start, 1)]).toEqual([false, false, false]);
+    expect(optionPinLists(withStart, { 'o-start': 'p-lush' }).map((l) => l.optionId)).toEqual(['o-style', 'o-brisk', 'o-mid']);
+  });
+
+  it('starts as a snapshot with two empty values, and switches to and from the other types', () => {
+    let n = 0;
+    const preset = withOptionType({ ...style, playerDescription: 'How it reads' }, 'preset', () => `id-${n++}`);
+    expect(preset).toEqual({
+      id: 'o-style', name: 'Style', type: 'preset', mode: 'snapshot', playerDescription: 'How it reads',
+      values: [{ id: 'id-0', name: 'Value 1', description: '', rows: [] }, { id: 'id-1', name: 'Value 2', description: '', rows: [] }],
+    });
+    expect(withOptionType(preset, 'boolean', () => 'x')).toEqual({
+      id: 'o-style', name: 'Style', type: 'boolean', default: false, shownToPlayer: true, midGame: false, playerDescription: 'How it reads',
+    });
   });
 });

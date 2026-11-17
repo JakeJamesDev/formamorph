@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Plus, Trash2, X } from 'lucide-react';
 import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
+import { OptionSwitcher } from '@/components/SettingsRows';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -15,11 +16,15 @@ import { fieldFrame } from '@/lib/historyField';
 import { useRenameField } from '@/lib/useCodeRename';
 import { randomUUID } from '@/lib/uuid';
 import {
-  BOOLEAN_OFF, BOOLEAN_ON, blankOption, choiceDefault, optionRange, reorderOptions, snapNumber, withOptionType,
+  BOOLEAN_OFF, BOOLEAN_ON, blankOption, choiceDefault, optionDefault, optionRange, reorderOptions, shownValuedOptions, snapNumber, withOptionType,
 } from '@/lib/worldOptions';
-import type { PlaceholderPin, WorldOption, WorldOptionType } from '@/types';
+import type {
+  PlaceholderPin, PresetRow, PresetValue, PresetWorldOption, ValuedWorldOption, WorldOption, WorldOptionType, WorldOptionValueOf,
+} from '@/types';
 
-const TYPE_LABELS: Record<WorldOptionType, string> = { choice: 'Choice', boolean: 'On or Off', number: 'Number' };
+const TYPE_LABELS: Record<WorldOptionType, string> = { choice: 'Choice', boolean: 'On or Off', number: 'Number', preset: 'Preset' };
+
+const MODES = [{ value: 'snapshot', label: 'Reset to Defaults' }, { value: 'overlay', label: 'Keep as Set' }] as const;
 
 /** A whole-number box that keeps what is typed until it reads as a number, then writes it. */
 function WholeNumberField({ id, value, onChange }: { id: string; value: number; onChange: (n: number) => void }) {
@@ -54,6 +59,132 @@ function PinsField({ label, pins, onChange, source, world }: {
   );
 }
 
+type OptionRow = Extract<PresetRow, { kind: 'option' }>;
+
+/** The value box for an Option row: the target Option's own control. */
+function OptionRowValue({ option, value, label, onChange }: {
+  option: ValuedWorldOption;
+  value: WorldOptionValueOf;
+  label: string;
+  onChange: (value: WorldOptionValueOf) => void;
+}) {
+  if (option.type === 'number') {
+    return <div className="w-28"><WholeNumberField id={`${label}-value`} value={Number(value)} onChange={(n) => onChange(snapNumber(option, n))} /></div>;
+  }
+  const items = option.type === 'boolean'
+    ? [{ id: BOOLEAN_ON, name: 'On' }, { id: BOOLEAN_OFF, name: 'Off' }]
+    : option.values;
+  const current = option.type === 'boolean' ? (value === true ? BOOLEAN_ON : BOOLEAN_OFF) : String(value);
+  return (
+    <Select value={current} onValueChange={(v) => onChange(option.type === 'boolean' ? v === BOOLEAN_ON : v)}>
+      <SelectTrigger aria-label={`${label} Value`} className="w-40"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        {items.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+}
+
+/** One Preset value's rows: each sets one shown Option to a value. */
+function PresetRowsField({ rows, targets, label, onChange }: {
+  rows: readonly PresetRow[];
+  /** The Options a row can set: the shown ones that hold a value. */
+  targets: readonly ValuedWorldOption[];
+  label: string;
+  onChange: (rows: PresetRow[]) => void;
+}) {
+  const rowFor = (option: ValuedWorldOption): OptionRow => ({ kind: 'option', optionId: option.id, value: optionDefault(option) });
+  const unused = targets.find((o) => !rows.some((r) => r.kind === 'option' && r.optionId === o.id));
+  const set = (index: number, row: PresetRow) => onChange(rows.map((r, i) => (i === index ? row : r)));
+  return (
+    <div className="space-y-2">
+      <Meta as="p" className="font-medium">Sets</Meta>
+      {rows.map((row, index) => {
+        if (row.kind !== 'option') return null;
+        const option = targets.find((o) => o.id === row.optionId);
+        const rowLabel = `${label} Row ${index + 1}`;
+        return (
+          <div key={`${index}-${row.optionId}`} className="flex flex-wrap items-center gap-2">
+            <Select
+              value={option ? option.id : ''}
+              onValueChange={(id) => { const next = targets.find((o) => o.id === id); if (next) set(index, rowFor(next)); }}
+            >
+              <SelectTrigger aria-label={`${rowLabel} Option`} className="w-48 min-w-0"><SelectValue placeholder="Pick an Option" /></SelectTrigger>
+              <SelectContent>
+                {targets.map((o) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {option && <OptionRowValue option={option} value={row.value} label={rowLabel} onChange={(value) => set(index, { ...row, value })} />}
+            <Button variant="ghost" size="icon" aria-label={`Delete ${rowLabel}`} onClick={() => onChange(rows.filter((_, i) => i !== index))}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      })}
+      {targets.length === 0 && <Hint>Add a shown Option to set it here</Hint>}
+      <Button variant="outline" size="sm" disabled={!unused} onClick={() => unused && onChange([...rows, rowFor(unused)])}>
+        <Plus className="mr-1 h-4 w-4" />Add Row
+      </Button>
+    </div>
+  );
+}
+
+/** A Preset's fields: what a pick does to the other choices, and its values. */
+function PresetFields({ option, targets, onChange }: {
+  option: PresetWorldOption;
+  targets: readonly ValuedWorldOption[];
+  onChange: (next: WorldOption) => void;
+}) {
+  const setValues = (values: PresetValue[]) => onChange({ ...option, values });
+  const setValue = (id: string, patch: Partial<PresetValue>) => setValues(option.values.map((v) => (v.id === id ? { ...v, ...patch } : v)));
+  return (
+    <>
+      <div className="space-y-2" {...fieldFrame('mode')}>
+        <Label>Other Choices</Label>
+        <OptionSwitcher ariaLabel="Other Choices" value={option.mode} options={MODES} onChange={(mode) => onChange({ ...option, mode })} />
+        <Hint>
+          {option.mode === 'snapshot'
+            ? 'Resets every Option this value doesn\u2019t set to its default'
+            : 'Changes only the Options this value sets'}
+        </Hint>
+      </div>
+      <div className="space-y-3">
+        <Label>Values</Label>
+        {option.values.map((value, index) => {
+          const label = value.name || `Value ${index + 1}`;
+          return (
+            <div key={value.id} className="space-y-3 rounded-lg border p-3" {...fieldFrame('values', value.id)}>
+              <div className="flex items-center gap-2">
+                <Input
+                  aria-label={`Value ${index + 1} Name`} value={value.name} className="min-w-0 flex-1"
+                  onChange={(e) => setValue(value.id, { name: e.target.value })}
+                />
+                <Button
+                  variant="ghost" size="icon" aria-label={`Delete ${label}`} disabled={option.values.length <= 1}
+                  onClick={() => setValues(option.values.filter((v) => v.id !== value.id))}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+              <Textarea
+                aria-label={`${label} Description`} placeholder="Description" value={value.description}
+                onChange={(e) => setValue(value.id, { description: e.target.value })}
+              />
+              <PresetRowsField rows={value.rows} targets={targets} label={label} onChange={(rows) => setValue(value.id, { rows })} />
+            </div>
+          );
+        })}
+        <Button
+          variant="outline" size="sm"
+          onClick={() => setValues([...option.values, { id: randomUUID(), name: `Value ${option.values.length + 1}`, description: '', rows: [] }])}
+        >
+          <Plus className="mr-1 h-4 w-4" />Add Value
+        </Button>
+      </div>
+    </>
+  );
+}
+
 /** The selected Option's fields. Every edit writes the world at once. */
 function OptionDetail({ option, onChange }: { option: WorldOption; onChange: (next: WorldOption) => void }) {
   const world = useGameData();
@@ -62,6 +193,7 @@ function OptionDetail({ option, onChange }: { option: WorldOption; onChange: (ne
   const withPins = (pins: PlaceholderPin[]) => (pins.length ? pins : undefined);
 
   const typeFields = () => {
+    if (option.type === 'preset') return <PresetFields option={option} targets={shownValuedOptions(world.options)} onChange={onChange} />;
     if (option.type === 'number') {
       const { lo, hi } = optionRange(option);
       return (
@@ -176,7 +308,7 @@ function OptionDetail({ option, onChange }: { option: WorldOption; onChange: (ne
         />
         <Hint>Shows to the player under the Option at new game</Hint>
       </div>
-      <div className="space-y-3">
+      {option.type !== 'preset' && <div className="space-y-3">
         <div className="flex items-start gap-2" {...fieldFrame('shownToPlayer')}>
           <Checkbox
             id={field('shown')} checked={option.shownToPlayer} className="mt-0.5"
@@ -197,7 +329,7 @@ function OptionDetail({ option, onChange }: { option: WorldOption; onChange: (ne
             <Hint>Lets the player change this Option after the game starts</Hint>
           </div>
         </div>
-      </div>
+      </div>}
       {typeFields()}
     </div>
   );

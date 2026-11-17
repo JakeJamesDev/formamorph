@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
-import type { Entity, GameLocation, PersonaRef, Stat, StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValueOf, WorldOptionValues } from '@/types';
+import type { Entity, GameLocation, PersonaRef, PresetWorldOption, Stat, StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValueOf, WorldOptionValues } from '@/types';
 import { SetupWorldOptions } from '@/components/game/SetupWorldOptions';
 import { shownOptions } from '@/lib/worldOptions';
 import { resolvedEntityStats } from '@/lib/statLinks';
@@ -48,6 +48,9 @@ export interface EnterWorldWorkspaceProps {
   options?: readonly WorldOption[];
   optionValues?: WorldOptionValues;
   onOptionChange?: (optionId: string, value: WorldOptionValueOf) => void;
+  /** The value of a Preset the setup matches, or null. */
+  presetMatch?: (preset: PresetWorldOption) => string | null;
+  onPreset?: (preset: PresetWorldOption, valueId: string) => void;
   traitGroups: TraitGroup[];
   /** The world's entities; each that has traits gets a page in the tree. */
   traitEntities?: readonly Entity[];
@@ -583,6 +586,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
             <SetupWorldOptions
               options={setupOptions} values={props.optionValues ?? {}}
               onChange={(id, value) => props.onOptionChange?.(id, value)} resolveText={props.resolveText}
+              presetMatch={(preset) => props.presetMatch?.(preset) ?? null} onPreset={(preset, valueId) => props.onPreset?.(preset, valueId)}
             />
           )}
           {current?.kind === 'persona' && props.persona && props.onPersonaChange && (

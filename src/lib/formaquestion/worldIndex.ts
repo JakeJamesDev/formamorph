@@ -141,8 +141,11 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
   // hidden Option stays in the editor's index, flagged.
   const optionPage = (option: WorldOption) => add('option', option.id, option.name, [], lines(
     `# ${option.name}`,
-    facts(`World Option (${option.type})`, !option.shownToPlayer && 'Hidden', option.midGame && 'Player can change it in play'),
+    option.type === 'preset'
+      ? facts('World Option (preset)', option.mode === 'snapshot' ? 'Resets unset Options to the defaults' : 'Keeps unset Options')
+      : facts(`World Option (${option.type})`, !option.shownToPlayer && 'Hidden', option.midGame && 'Player can change it in play'),
     field('Player Description', text(option.playerDescription)),
+    option.type === 'preset' && `**Values:**\n${option.values.map((value) => `- ${text(value.name)}${value.description.trim() ? `: ${text(value.description)}` : ''}`).join('\n')}`,
     option.type === 'choice' && `**Values:**\n${option.values.map((value) => `- ${text(value.name)}${value.id === option.default ? ' (default)' : ''}`).join('\n')}`,
     option.type === 'boolean' && `**Default:** ${option.default ? 'On' : 'Off'}`,
     option.type === 'number' && `**Range:** ${option.min} to ${option.max}, default ${option.default}`,

@@ -27,10 +27,10 @@ import { buildInitialSelection, finalizeSelection, shouldShowDictionaryChoices }
 import { libraryLines } from '@/lib/librarySources';
 import { followedLibraryId } from '@/lib/publishLinks';
 import {
-  castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, entryTrees, libraryCastIds, rekeyOwnedPicks,
+  applyPreset, castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, entryTrees, libraryCastIds, matchPreset, rekeyOwnedPicks,
   withLibraryDefaults, withLocationPick, withPersonaPick, withSettledEntry, type EntryDraft, type EntryTraitWorld,
 } from '@/lib/entryDraft';
-import { optionPinLists, shownOptions } from '@/lib/worldOptions';
+import { isPreset, optionPinLists, shownOptions } from '@/lib/worldOptions';
 import { bindLibraryEntity, blueprintBindWorld } from '@/lib/blueprintTravel';
 import { playLibraryStats } from '@/lib/portableStats';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
@@ -55,7 +55,7 @@ import {
   buildEnterFlow, entryAvatarInUse, entryVrmPick, navigableSteps, type EntryVrmInput, type EnterMode, type EnterStep, type NavigableStep,
 } from '@/lib/enterFlow';
 import type {
-  CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, OwnedTraitPicks, PersonaRef, VrmPick, WorldOptionValueOf, WorldOptionValues,
+  CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, OwnedTraitPicks, PersonaRef, PresetWorldOption, VrmPick, WorldOptionValueOf, WorldOptionValues,
 } from '@/types';
 
 export type StartGame = (
@@ -273,7 +273,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     ownedIds: entryDraft.ownedTraitIds,
     inOrder: (checked) => inAuthoredOrder(checked, traitOrderIndex(rawTraits, rawTraitGroups)),
   }), [castTrees, entryDraft.persona, entryDraft.traitIds, entryDraft.ownedTraitIds, resolvedWorldEntities, rawTraits, rawTraitGroups]);
-  const cascadeFrom = (result: SettleResult, because: string): TraitCascade | null => {
+  const cascadeFrom = (result: Pick<SettleResult, 'turnedOff'>, because: string): TraitCascade | null => {
     const names = shownRefs(castTrees, result.turnedOff).map((ref) => traitName(ref.ownerId, ref.traitId));
     return names.length ? { off: names, because } : null;
   };
@@ -304,6 +304,20 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     reviseDraft(() => withSettledEntry(next, result, entryWorld));
     setTraitCascade(cascadeFrom(result, worldOptions.find((o) => o.id === id)?.name ?? 'the World Option change'));
   };
+
+  // A Preset click settles the whole target at once, so click order never blocks it.
+  const handlePreset = (preset: PresetWorldOption, valueId: string) => {
+    const applied = applyPreset(entryDraft, entryWorld, preset, valueId);
+    if (!applied) return;
+    reviseDraft(() => applied.draft);
+    setTraitCascade(cascadeFrom(applied.notice, resolvePH(applied.notice.value.name)));
+  };
+  // Each Preset's match settles once per value, so it runs only when the draft or the world changes.
+  const presetMatches = useMemo(
+    () => new Map(setupOptions.flatMap((o) => (isPreset(o) ? [[o.id, matchPreset(entryDraft, entryWorld, o)] as const] : []))),
+    [setupOptions, entryDraft, entryWorld],
+  );
+  const presetMatch = (preset: PresetWorldOption) => presetMatches.get(preset.id) ?? null;
 
   /**
    * The library characters this world does not already hold a copy of, each with its author and source
@@ -632,6 +646,8 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
           options={worldOptions}
           optionValues={entryDraft.optionValues}
           onOptionChange={handleOptionChange}
+          presetMatch={presetMatch}
+          onPreset={handlePreset}
           traitEntities={entryTraitEntities}
           traitLibrary={entryWorld.library}
           resolveEntityText={resolveEntityText}

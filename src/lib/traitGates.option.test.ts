@@ -126,6 +126,16 @@ describe('a World Option Condition', () => {
     ]);
     expect(optionRequirement(LIT)).toEqual(offered[1]);
   });
+
+  it('never names a Preset: the picker leaves it out and a stored Condition on one never holds', () => {
+    const start: WorldOption = { id: 'start', name: 'Start', type: 'preset', mode: 'snapshot', values: [{ id: 'hard', name: 'Hard', description: '', rows: [] }] };
+    const withStart = [...OPTIONS, start];
+    const offered = requirementOptions(input([T('a')], undefined, withStart), 'a').worldOptions!.map((o) => o.requirement.id);
+    expect(offered).toEqual(['len', 'lit', 'heat', 'secret']);
+    const onPreset: OptionRequirement = { kind: 'option', id: 'start', valueId: 'hard' };
+    expect(gateFor(onPreset, { start: 'hard' }, withStart).unlocked).toBe(false);
+    expect(gateFor({ ...onPreset, not: true }, { start: 'hard' }, withStart).unlocked).toBe(false);
+  });
 });
 
 describe('the hidden-Option filter', () => {

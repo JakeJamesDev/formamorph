@@ -31,6 +31,22 @@ const options: WorldOption[] = [
     onPins: [{ placeholderId: 'pace', value: 'quick' }], offPins: [{ placeholderId: 'pace', value: 'slow' }],
   },
   { id: 'o-length', name: 'Length', type: 'number', shownToPlayer: true, midGame: false, min: 1, max: 9, step: 2, default: 5 },
+  {
+    id: 'o-start', name: 'Start', type: 'preset', mode: 'overlay', playerDescription: 'How the run begins',
+    values: [
+      {
+        id: 'p-hard', name: 'Hard', description: 'Long replies, a harsh start',
+        rows: [
+          { kind: 'option', optionId: 'o-length', value: 9 },
+          { kind: 'trait', traitId: 't-frail', on: true },
+          { kind: 'trait', traitId: 't-loyal', ownerId: 'e-dog', on: false },
+          { kind: 'location', locationId: 'l-wastes' },
+          { kind: 'persona', entityId: 'e-exile' },
+        ],
+      },
+      { id: 'p-easy', name: 'Easy', description: '', rows: [] },
+    ],
+  },
 ];
 
 describe('World Options in the world store', () => {
@@ -59,6 +75,6 @@ describe('World Options in the world store', () => {
     act(() => { result.current.loadWorldData(world('w', { options })); });
     act(() => { result.current.updateOption({ ...options[2], name: 'Reply Length' }); });
     expect(result.current.isWorldDirty).toBe(true);
-    expect(result.current.getWorldData().options?.map((o) => o.name)).toEqual(['Style', 'Brisk', 'Reply Length']);
+    expect(result.current.getWorldData().options?.map((o) => o.name)).toEqual(['Style', 'Brisk', 'Reply Length', 'Start']);
   });
 });

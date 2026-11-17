@@ -4,7 +4,7 @@
 
 import type {
   Daypart, ItemInstance, ItemRequirement, OptionRequirement, PersonaRef, RequirementOwner, StatComparison, StatRequirement, TimeRequirement, Trait, TraitGroup, TraitRequirement, TraitRequirementRow,
-  SlotRule, WorldOption, WorldOptionValues,
+  SlotRule, ValuedWorldOption, WorldOption, WorldOptionValues,
 } from '@/types';
 import { DAYPARTS, OPENING_DAYPART, daypartSet } from './gameClock';
 import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex } from './traitEffects';
@@ -12,7 +12,7 @@ import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex 
 import { buildTree, flattenTree } from './groupTree';
 import { blueprintsSubtreeIds } from './blueprintGroups';
 import { conditionsOf, rowsHold } from './requirementRows';
-import { optionDefault, optionValue } from './worldOptions';
+import { optionDefault, optionValue, valuedOptions } from './worldOptions';
 import { faceName, isUnidentified, itemHasUnidentifiedFace, stateKey, stateTextKey } from './items';
 import { partOf, playedEntityIds, scoped, scopedEntries, scopeKey, withPart, type OwnerId, type Scoped } from './scope';
 
@@ -326,7 +326,7 @@ function index(input: GateInput) {
     }
     return null;
   };
-  const options = new Map((input.worldOptions ?? []).map((option) => [option.id, option]));
+  const options = new Map(valuedOptions(input.worldOptions).map((option) => [option.id, option]));
   return {
     owners, traitNames, groupNames, hiddenTraits, statNames, entities, global, isGlobal, ownerSet, traitsBelow, statOf, itemNames, itemNameFor, itemHeld, persona: input.persona, personaName,
     daypart: input.daypart ?? OPENING_DAYPART, options, optionValues: input.optionValues,
@@ -408,7 +408,7 @@ function statHolds(req: StatRequirement, from: GateScopeTree, idx: Index): boole
 }
 
 /** The Option an Option Condition names, when its fields fit the Option's type and its value exists. */
-function fittedOption(req: OptionRequirement, idx: Index): WorldOption | null {
+function fittedOption(req: OptionRequirement, idx: Index): ValuedWorldOption | null {
   const option = idx.options.get(req.id);
   if (!option) return null;
   switch (option.type) {
@@ -1196,7 +1196,7 @@ export interface RequirementOptions {
 }
 
 /** A new Condition on `option`: a choice on its default value, a boolean on, a number at least its default. */
-export function optionRequirement(option: WorldOption): OptionRequirement {
+export function optionRequirement(option: ValuedWorldOption): OptionRequirement {
   const base = { kind: 'option' as const, id: option.id, name: option.name };
   switch (option.type) {
     case 'choice': {
@@ -1208,9 +1208,9 @@ export function optionRequirement(option: WorldOption): OptionRequirement {
   }
 }
 
-/** The picker's World Option rows, in Options-tab order. */
+/** The picker's World Option rows, in Options-tab order. A Preset holds nothing to gate on. */
 export const worldOptionRows = (options: readonly WorldOption[] | undefined): RequirementOption[] =>
-  (options ?? []).map((option) => ({ requirement: optionRequirement(option), label: option.name, breadcrumb: [], owners: [], worldOption: option }));
+  valuedOptions(options).map((option) => ({ requirement: optionRequirement(option), label: option.name, breadcrumb: [], owners: [], worldOption: option }));
 
 /** `requirement` scoped to `owner`; the same owner when `owner` is absent. */
 export const withRequirementOwner = (requirement: TraitRequirement, owner?: RequirementOwner): TraitRequirement =>

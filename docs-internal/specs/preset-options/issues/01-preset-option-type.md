@@ -1,6 +1,6 @@
 # 01: Preset Option Type
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -23,12 +23,26 @@ An author can add a Preset Option on the Options tab, and a player can click its
 
 ## Acceptance criteria
 
-- [ ] A world with a Preset Option round-trips through export and import, and loads unchanged.
-- [ ] A Preset Option does not appear in the condition picker, pin lists, the mid-game list or script reads, and a script write to its id is refused.
-- [ ] Apply sets the listed Options. A snapshot resets unlisted Options to their defaults. An overlay keeps them.
-- [ ] Match returns the value whose result equals the setup, returns null when none does, and returns the first in authored order when two match.
-- [ ] Setup render test: clicking a value selects its radio and sets the listed Options. Changing one of those Options clears the radio.
-- [ ] Editor: an author can create a Preset Option, set its mode, and add a value with a name, a description and an Option row. Hidden Options are not offered as targets.
-- [ ] Frames: `.scratch/frames/preset-setup-light.png` and `.scratch/frames/preset-editor-light.png` at desktop width, plus `.scratch/frames/preset-setup-dark.png`.
+- [x] A world with a Preset Option round-trips through export and import, and loads unchanged. (`GameDataContext.worldOptions.test.tsx`: the round-trip fixture holds a Preset with all four row kinds.)
+- [x] A Preset Option does not appear in the condition picker, pin lists, the mid-game list or script reads, and a script write to its id is refused. (`traitGates.option.test.ts` "never names a Preset", `worldOptions.test.ts` "a Preset Option", `statCodeExecutor.options.test.ts` "leaves a Preset out of the read".)
+- [x] Apply sets the listed Options. A snapshot resets unlisted Options to their defaults. An overlay keeps them. (`entryDraft.preset.test.ts` applyPreset cases.)
+- [x] Match returns the value whose result equals the setup, returns null when none does, and returns the first in authored order when two match. (`entryDraft.preset.test.ts` matchPreset cases.)
+- [x] Setup render test: clicking a value selects its radio and sets the listed Options. Changing one of those Options clears the radio. (`EnterWorldFlow.test.tsx` "a Preset Option at world entry".)
+- [x] Editor: an author can create a Preset Option, set its mode, and add a value with a name, a description and an Option row. Hidden Options are not offered as targets. (`WorldEditor.presetOption.test.tsx`.)
+- [x] Frames: `.scratch/frames/preset-setup-light.png` and `.scratch/frames/preset-editor-light.png` at desktop width, plus `.scratch/frames/preset-setup-dark.png`. (Taken at 1440×900 in the worktree preview.)
 
 For you: Look at the Preset radio group in the setup screen's World Options category and judge whether its descriptions read clearly.
+
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
+- For you: Look at the Preset radio group in the setup screen's World Options category and judge whether its descriptions read clearly. Frames: `.scratch/preset-options-01/frames/preset-setup-light.png`, `.scratch/preset-options-01/frames/preset-setup-dark.png`.
+- Read the editor's **Other Choices** labels (**Reset to Defaults** / **Keep as Set**) and their hint. Frame: `.scratch/preset-options-01/frames/preset-editor-light.png`.
+
+**Notes**
+- A value whose rows are all stale never matches, the same as a value with no rows (Q21 extension, sent to the spec session).
+- The setup cascade notice shows on the trait and persona pages, not on the World Options page; showing it there is ticket 02's notice work.
+- Found in passing: Enter World seeds default picks from a world view without `options`, so a default trait gated on a World Option starts off.

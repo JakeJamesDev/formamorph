@@ -1179,12 +1179,16 @@ export interface World {
   options?: WorldOption[];
 }
 
-/** What every World Option carries, whatever its type. */
-interface WorldOptionBase {
+/** What every World Option carries, Presets included. */
+interface WorldOptionCore {
   id: string;
   name: string;
   /** Shown under the control at new game. Never sent to the AI. */
   playerDescription?: string;
+}
+
+/** What every World Option that holds a value carries. */
+interface WorldOptionBase extends WorldOptionCore {
   /** False keeps the Option out of every player surface; it still pins and gates. */
   shownToPlayer: boolean;
   /** True lets the player change it during play. */
@@ -1223,8 +1227,34 @@ export interface NumberWorldOption extends WorldOptionBase {
   default: number;
 }
 
-/** A player-facing setup switch that acts only through placeholder pins and gates. */
-export type WorldOption = ChoiceWorldOption | BooleanWorldOption | NumberWorldOption;
+/** One setup value a Preset value sets. A trait row with no `ownerId` names a root trait. */
+export type PresetRow =
+  | { kind: 'option'; optionId: string; value: WorldOptionValueOf }
+  | { kind: 'trait'; traitId: string; ownerId?: string; on: boolean }
+  | { kind: 'location'; locationId: string }
+  | { kind: 'persona'; entityId: string };
+
+/** One value of a Preset Option: the rows one click applies. */
+export interface PresetValue {
+  id: string;
+  name: string;
+  description: string;
+  rows: PresetRow[];
+}
+
+/** A setup-only bundle of values. It stores no value, so no gate, pin or script reads it. A snapshot starts
+ *  from the defaults; an overlay starts from the player's picks. */
+export interface PresetWorldOption extends WorldOptionCore {
+  type: 'preset';
+  mode: 'snapshot' | 'overlay';
+  values: PresetValue[];
+}
+
+/** An Option that holds a value. */
+export type ValuedWorldOption = ChoiceWorldOption | BooleanWorldOption | NumberWorldOption;
+
+/** A player-facing setup switch that acts only through placeholder pins and gates, or a Preset. */
+export type WorldOption = ValuedWorldOption | PresetWorldOption;
 
 export type WorldOptionType = WorldOption['type'];
 

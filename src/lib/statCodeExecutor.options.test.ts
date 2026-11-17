@@ -52,6 +52,17 @@ describe('the options global', () => {
     expect(out.unknownOptions).toEqual(['options.Missing']);
   });
 
+  it('leaves a Preset out of the read and drops a write to its name as unknown', async () => {
+    const start: WorldOption = { id: 'start', name: 'Start', type: 'preset', mode: 'snapshot', values: [{ id: 'hard', name: 'Hard', description: '', rows: [] }] };
+    const options = [...worldOptions, start];
+    const read = await run('return Object.keys(options).join("|");', { worldOptions: options, args: {} });
+    expect(read.reply).toBe('Reply Length|Lit|Heat');
+    const out = await run('options.Start = "Hard";', { worldOptions: options });
+    expect(out.error).toBeNull();
+    expect(out.optionWrites).toBeUndefined();
+    expect(out.unknownOptions).toEqual(['options.Start']);
+  });
+
   it('takes no write in a read-only run and lists it as read-only', async () => {
     const out = await run('options.Lit = true;', { readOnly: true });
     expect(out.optionWrites).toBeUndefined();

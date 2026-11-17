@@ -570,8 +570,12 @@ A source holding a Placeholder at one fixed value while the source is active: a 
 _Avoid_: override, lock, fixed value
 
 **World Option**:
-A player-facing setup switch on the world, authored on the Options tab: a choice of named values, a boolean, or a whole number between a min and a max. The player sets the shown ones at new game; a hidden one serves as script and gate state. It acts only through Pins (a choice value's or a boolean state's) and gates, never through AI text. A playthrough keeps one value per Option; a missing or no-longer-valid value reads the Option's default.
+A player-facing setup switch on the world, authored on the Options tab: a choice of named values, a boolean, a whole number between a min and a max, or a Preset. The player sets the shown ones at new game; a hidden one serves as script and gate state. It acts only through Pins (a choice value's or a boolean state's) and gates, never through AI text. A playthrough keeps one value per Option; a missing or no-longer-valid value reads the Option's default.
 _Avoid_: setting (the app's own), preference, toggle trait
+
+**Preset**:
+A World Option type whose values each set a bundle of setup values in one click. A snapshot Preset first resets the unlisted values to the world's defaults; an overlay Preset keeps them. It shows at new game only and stores no value, so no gate, Pin or script reads it. Its selected value is the one the current setup matches.
+_Avoid_: macro, template, start profile
 
 **Enabled** (entity):
 An entity's gate: Requirement Rows that keep it in play while any row holds; with no rows it is always on. A Condition with no owner reads the entity itself. Off, the entity is hidden from the player and the AI and inert: its stats, regen, traits, scripts and routine pause and resume where they paused. Every gate is read in one pass against committed state, an off entity's own state frozen. The played persona is always on.

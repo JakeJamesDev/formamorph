@@ -56,7 +56,7 @@ export interface StatCodeNameWorld {
   locations?: readonly Pick<GameLocation, 'id' | 'name' | 'isStarting'>[];
   items?: readonly Pick<Item, 'id' | 'name'>[];
   currencies?: readonly Pick<Currency, 'id' | 'name'>[];
-  options?: readonly Pick<WorldOption, 'name'>[];
+  options?: readonly Pick<WorldOption, 'name' | 'type'>[];
 }
 
 /** `locations` under their code names, standing where a run with no playthrough stands: the starting one, else
@@ -85,7 +85,7 @@ export function statCodeWorldNames(world: StatCodeNameWorld): StatCodeNames {
     places: codeLocationsOf(world.locations ?? [], placeholders),
     items: (world.items ?? []).map(({ id, name }) => ({ id, name: statCodeName(name, placeholders) })),
     currencies: (world.currencies ?? []).map(({ id, name }) => ({ id, name: statCodeName(name, placeholders) })),
-    optionNames: (world.options ?? []).map((option) => option.name),
+    optionNames: (world.options ?? []).filter((option) => option.type !== 'preset').map((option) => option.name),
   };
 }
 

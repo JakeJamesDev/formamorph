@@ -24,6 +24,7 @@ A trait describes a character. An Option describes how the world is set up. Use 
    - **Choice**: the player picks one of named values.
    - **On or Off**: the player turns it on or off.
    - **Number**: the player picks a whole number with a slider.
+   - **Preset**: the player picks one value, and it sets other Options for them. See [How to Set Up a Preset](#how-to-set-up-a-preset).
 5. Optional: write a **Player-Facing Description**. The player reads it under the Option.
 
 Drag an Option in the list to change the order the player sees.
@@ -36,6 +37,22 @@ Drag an Option in the list to change the order the player sees.
 | **Choice** | One box per value. **Default** marks the value a new game starts on. **Add Value** adds one more. |
 | **On or Off** | **Default** is **On** or **Off**. |
 | **Number** | **Minimum**, **Maximum**, **Step** and **Default**. All are whole numbers. The slider moves by **Step**. |
+
+## How to Set Up a Preset
+<!-- keywords: preset, bundle, start, difficulty, hardcore, default start, one click, several options at once -->
+
+A Preset sets several Options in one click, such as a **Hardcore** start that turns every hard rule on.
+
+1. Set the Option's **Type** to **Preset**.
+2. Pick what happens to the **Other Choices**:
+   - **Reset to Defaults**: a value resets every Option it doesn't set to its **Default**.
+   - **Keep as Set**: a value changes only the Options it sets.
+3. For each value, write a name and a description. The player reads both.
+4. Select **Add Row**, then pick an Option and the value to set it to. Only Options shown to the player are listed.
+
+The player's radio stays on a value while the setup still matches it. If the player changes something the value set, the radio clears.
+
+> 💡 A Preset holds nothing of its own. Requirements, pins and scripts never see it, and it never shows during play.
 
 ## How to Make an Option Change Text
 <!-- keywords: change wording, switch text, prompt text, style, reply length -->
@@ -56,6 +73,8 @@ When a trait and an Option pin the same placeholder, the trait wins. An Option w
 |---|---|---|
 | **Shown to Player** | The player never sees the Option. It still pins placeholders and opens [requirements](World-Editor-Traits#world-option-conditions), and a [script](Scripts-Reference#world-options) can set it. | The Option shows on the **Enter World** dialog. |
 | **Changeable During Play** | The player sets it only when the game starts. | The player can change it during play too, on the **World Options** tab of the game's right panel. See [How to Change a World Option](How-to-Play#how-to-change-a-world-option). An Option that is not shown never has a tab entry. |
+
+A Preset has neither field. It always shows when a new game starts and never during play.
 
 ## What a Save Keeps
 <!-- keywords: old save, new option added later, default value, missing value -->

@@ -13,7 +13,7 @@ import { toastTexts } from '@/test/toastText';
 import { readWorldPersona, rememberWorldPersona, setDefaultPersona } from '@/lib/personaPick';
 import { saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import { buildInitialSelection } from '@/lib/dictionarySelection';
-import type { Dictionary, GameLocation, PersonaRef, WorldOverview } from '@/types';
+import type { Dictionary, GameLocation, PersonaRef, WorldOption, WorldOverview } from '@/types';
 import { oneRoutine } from '@/test/routines';
 
 vi.mock('react-toastify', () => ({
@@ -880,5 +880,62 @@ describe("an entity's owned traits at world entry", () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][7]).toEqual({ ash: ['guard'] });
+  });
+});
+
+describe('a Preset Option at world entry', () => {
+  beforeEach(async () => {
+    const record = world();
+    const options: WorldOption[] = [
+      { id: 'lit', name: 'Lanterns Lit', type: 'boolean', shownToPlayer: true, midGame: false, default: true },
+      { id: 'heat', name: 'Heat', type: 'number', shownToPlayer: true, midGame: false, min: 0, max: 10, default: 3 },
+      {
+        id: 'start', name: 'Start', type: 'preset', mode: 'overlay',
+        values: [
+          { id: 'dark', name: 'Dark Start', description: 'The lanterns are out and the air is hot', rows: [
+            { kind: 'option', optionId: 'lit', value: false }, { kind: 'option', optionId: 'heat', value: 9 },
+          ] },
+          { id: 'mild', name: 'Mild Start', description: 'Cool air', rows: [{ kind: 'option', optionId: 'heat', value: 1 }] },
+        ],
+      },
+    ];
+    Object.assign(record.data, { options });
+    // The torch needs the lanterns lit.
+    record.data.traits = [
+      ...record.data.traits,
+      { id: 'torch', name: 'Torch', statChanges: [], requires: [{ all: [{ kind: 'option', id: 'lit' }] }] },
+    ];
+    await WorldStorageService.storeWorld(record);
+  });
+
+  it('applies a value in one click, selects its radio, and clears it when a listed Option changes', async () => {
+    const onStartGame = vi.fn();
+    renderEnterWorld({ onStartGame });
+    await enter();
+    const nav = () => within(screen.getByRole('navigation', { name: 'World setup categories' }));
+    fireEvent.click(nav().getByRole('button', { name: /^General/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Torch' }));
+    expect(screen.getByRole('checkbox', { name: 'Torch' })).toBeChecked();
+
+    fireEvent.click(nav().getByRole('button', { name: /^World Options/ }));
+    const dark = screen.getByRole('radio', { name: 'Dark Start' });
+    expect(dark).not.toBeChecked();
+    expect(screen.getByText('The lanterns are out and the air is hot')).toBeInTheDocument();
+    fireEvent.click(dark);
+    expect(screen.getByRole('radio', { name: 'Dark Start' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Lanterns Lit' })).not.toBeChecked();
+    expect(screen.getByRole('slider', { name: 'Heat' })).toHaveAttribute('aria-valuenow', '9');
+    fireEvent.click(nav().getByRole('button', { name: /^General/ }));
+    expect(screen.getByRole('checkbox', { name: 'Torch' })).not.toBeChecked();
+    expect(screen.getByText(/Turned off/)).toHaveTextContent('Turned off Torch, because of Dark Start.');
+
+    fireEvent.click(nav().getByRole('button', { name: /^World Options/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Lanterns Lit' }));
+    expect(screen.getByRole('radio', { name: 'Dark Start' })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Mild Start' })).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][8]).toEqual({ lit: true, heat: 9 });
   });
 });

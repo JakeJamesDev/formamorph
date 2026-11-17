@@ -2,16 +2,16 @@ import { OptionControl } from '@/components/game/SetupWorldOptions';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Hint } from '@/components/ui/typography';
 import { optionValue } from '@/lib/worldOptions';
-import type { WorldOption, WorldOptionValueOf, WorldOptionValues } from '@/types';
+import type { ValuedWorldOption, WorldOptionValueOf, WorldOptionValues } from '@/types';
 
 /** The in-game World Options tab: the Options flagged for change during play, each on its current value. */
 export function WorldOptionsTab({ options, values, disabled, onChange, resolveText }: {
   /** Shown, mid-game Options in Options-tab order. */
-  options: readonly WorldOption[];
+  options: readonly ValuedWorldOption[];
   values: WorldOptionValues;
   /** Off while a turn runs, on a past page, or while a panel action still works. */
   disabled: boolean;
-  onChange: (option: WorldOption, value: WorldOptionValueOf) => void;
+  onChange: (option: ValuedWorldOption, value: WorldOptionValueOf) => void;
   resolveText: (text: string) => string;
 }) {
   return (

@@ -10,9 +10,10 @@ import { traitOrderIndex } from './traitEffects';
 import { cascadeOffInput, settledCascadeOff } from './traitRuntime';
 import { scoped } from './scope';
 import { startingInstances } from './inventory';
+import { acceptsValue, optionValue, valuedOptions } from './worldOptions';
 import type {
-  Body, CascadeOffTraitIds, Entity, GameLocation, Item, OwnedTraitPicks, PersonaRef, Placement, Slot, Stat, StatGroup, Trait,
-  TraitGroup, WorldOption, WorldOptionValues,
+  Body, CascadeOffTraitIds, Entity, GameLocation, Item, OwnedTraitPicks, PersonaRef, Placement, PresetRow, PresetValue,
+  PresetWorldOption, Slot, Stat, StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValues,
 } from '@/types';
 
 /** Choices retained for one visit to Enter World. */
@@ -187,4 +188,74 @@ export function castOwnedTraits(draft: Pick<EntryDraft, 'ownedTraitIds' | 'perso
     if (picks?.length) out[owner.id] = picks;
   }
   return out;
+}
+
+/** What one Preset click did: the value applied, the picks its settle turned off, and the rows it could not apply. */
+export interface PresetNotice {
+  value: PresetValue;
+  turnedOff: SettleResult['turnedOff'];
+  skipped: readonly PresetRow[];
+}
+
+/** The draft's Option values with one Option row laid on, or null when the row names no shown valued Option or a
+ *  value it does not accept. */
+function withOptionRow(values: WorldOptionValues, row: Extract<PresetRow, { kind: 'option' }>, world: EntryTraitWorld): WorldOptionValues | null {
+  const option = valuedOptions(world.options).find((o) => o.id === row.optionId);
+  if (!option?.shownToPlayer || !acceptsValue(option, row.value)) return null;
+  return { ...values, [option.id]: row.value };
+}
+
+/**
+ * The draft after a click on one Preset value, and its notice. The target is the defaults under a snapshot, or the
+ * draft under an overlay, with the rows laid on; the picks then settle once against it. Null when the Preset has no
+ * such value.
+ */
+export function applyPreset(
+  draft: EntryDraft, world: EntryTraitWorld, preset: PresetWorldOption, valueId: string,
+): { draft: EntryDraft; notice: PresetNotice } | null {
+  const value = preset.values.find((v) => v.id === valueId);
+  if (!value) return null;
+  let optionValues: WorldOptionValues = preset.mode === 'snapshot' ? {} : draft.optionValues;
+  const skipped: PresetRow[] = [];
+  for (const row of value.rows) {
+    const next = row.kind === 'option' ? withOptionRow(optionValues, row, world) : null;
+    if (next) optionValues = next;
+    else skipped.push(row);
+  }
+  const target = { ...draft, optionValues };
+  const result = settle(entryGateInput(world, target), cascadeOffInput(target.cascadeOffTraitIds));
+  return { draft: withSettledEntry(target, result, world), notice: { value, turnedOff: result.turnedOff, skipped } };
+}
+
+const samePicks = (a: readonly string[] | undefined, b: readonly string[] | undefined) => {
+  const left = new Set(a ?? []);
+  const right = new Set(b ?? []);
+  return left.size === right.size && [...left].every((id) => right.has(id));
+};
+
+/** Whether two drafts hold the same trait picks in every scope. */
+const sameTraits = (a: EntryDraft, b: EntryDraft) => samePicks(a.traitIds, b.traitIds)
+  && [...new Set([...Object.keys(a.ownedTraitIds), ...Object.keys(b.ownedTraitIds)])].every((id) => samePicks(a.ownedTraitIds[id], b.ownedTraitIds[id]));
+
+/**
+ * The Preset value the draft matches, or null. A value matches while the draft equals its result: under a snapshot,
+ * every Option and trait; under an overlay, the values its applied rows name. A value with no row that applies never
+ * matches. The first match in authored order wins.
+ */
+export function matchPreset(draft: EntryDraft, world: EntryTraitWorld, preset: PresetWorldOption): string | null {
+  const options = valuedOptions(world.options);
+  const sameOption = (a: EntryDraft, b: EntryDraft, id: string) => {
+    const option = options.find((o) => o.id === id);
+    return !option || optionValue(option, a.optionValues) === optionValue(option, b.optionValues);
+  };
+  for (const value of preset.values) {
+    const applied = applyPreset(draft, world, preset, value.id);
+    if (!applied || applied.notice.skipped.length === value.rows.length) continue;
+    const result = applied.draft;
+    const matches = preset.mode === 'snapshot'
+      ? options.every((o) => sameOption(result, draft, o.id)) && sameTraits(result, draft)
+      : value.rows.every((row) => row.kind !== 'option' || sameOption(result, draft, row.optionId));
+    if (matches) return value.id;
+  }
+  return null;
 }

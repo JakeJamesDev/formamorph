@@ -1,9 +1,9 @@
 import type {
-  BodyPick, CodeBounds, CurrencyBacking, EntityKind, ItemInstanceWhere, ItemScriptTiming, MediaEntry, MediaOverrides, ScheduleAction, Stat, WorldOption,
+  BodyPick, CodeBounds, CurrencyBacking, EntityKind, ItemInstanceWhere, ItemScriptTiming, MediaEntry, MediaOverrides, ScheduleAction, Stat, ValuedWorldOption, WorldOption,
   WorldOptionValueOf, WorldOptionValues,
 } from '@/types';
 import { MEDIA_MEMBER_KIND, MEDIA_NAME_MEMBERS, type MediaWrite } from './mediaOverrides';
-import { optionValue, snapNumber } from './worldOptions';
+import { optionValue, snapNumber, valuedOptions } from './worldOptions';
 import type { SlotOwner } from './bodies';
 import type { InventoryOp } from './inventory';
 import { itemArgsAt, type ItemEventArgs } from './triggerArgs';
@@ -1912,18 +1912,18 @@ export const memberPath = (root: string, name: string) =>
 export const OPTIONS_GLOBAL = 'options';
 
 /** An Option's value as code reads it: a choice's value name, a boolean, or a number. */
-export function optionCodeValue(option: WorldOption, values: WorldOptionValues | undefined): WorldOptionValueOf {
+export function optionCodeValue(option: ValuedWorldOption, values: WorldOptionValues | undefined): WorldOptionValueOf {
   const value = optionValue(option, values);
   return option.type === 'choice' ? option.values.find((v) => v.id === value)?.name ?? '' : value;
 }
 
-/** `options` as code reads it: each Option's value by its name, a later name winning. */
+/** `options` as code reads it: each valued Option's value by its name, a later name winning. */
 export const optionsCodeMap = (options: readonly WorldOption[], values: WorldOptionValues | undefined): Record<string, WorldOptionValueOf> =>
-  Object.fromEntries(options.map((option) => [option.name, optionCodeValue(option, values)]));
+  Object.fromEntries(valuedOptions(options).map((option) => [option.name, optionCodeValue(option, values)]));
 
 /** The value code left on one Option, as the Option holds it, or the error that fails the run. A number snaps
  *  onto the Option's step inside its bounds. */
-function optionWriteOf(option: WorldOption, written: unknown): { value: WorldOptionValueOf } | { error: string } {
+function optionWriteOf(option: ValuedWorldOption, written: unknown): { value: WorldOptionValueOf } | { error: string } {
   const path = memberPath(OPTIONS_GLOBAL, option.name);
   switch (option.type) {
     case 'choice': {
@@ -1944,7 +1944,7 @@ function readOptionWrites(
   const end: unknown = JSON.parse(dump);
   if (!end || typeof end !== 'object' || Array.isArray(end)) return { writes: [], unknown: [], readOnly: [] };
   const read = optionsCodeMap(options, values);
-  const byName = new Map(options.map((option) => [option.name, option]));
+  const byName = new Map(valuedOptions(options).map((option) => [option.name, option]));
   const writes: OptionWrite[] = [];
   const unknown: string[] = [];
   const readOnly: string[] = [];

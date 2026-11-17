@@ -8,6 +8,7 @@ import { HIDDEN_SETTING_DEFAULTS } from './settingsAdvancedData';
 import { testInput } from './turnPipeline/turnTestInputs';
 import type { TurnSettings } from './turnPipeline/turnPlan';
 import { buildEnterFlow } from './enterFlow';
+import { shownOptions } from './worldOptions';
 import { collectPins } from './placeholderPins';
 import { directChipTargets, parsePlaceholderText, readPlaceholders, resolvePlaceholders } from './placeholders';
 import { drawOpening, openingPool } from './openings';
@@ -60,7 +61,7 @@ describe('the Open Chat default world', () => {
   it('opens setup on the intro readme, before the Option and trait picks', () => {
     const steps = buildEnterFlow({
       introReadme: world.worldOverview.introReadme, traitCount: world.traits.length,
-      shownOptionCount: (world.options ?? []).filter((o) => o.shownToPlayer).length,
+      shownOptionCount: shownOptions(world.options).length,
       startingLocationCount: world.locations.length, hasLibraryAdditions: false, hasWorldPersonas: false, hasCustomPersona: false, showsAvatar: false,
     }, 'newGame');
     expect(steps).toEqual(['intro', 'workspace']);

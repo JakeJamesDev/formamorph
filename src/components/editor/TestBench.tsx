@@ -8,8 +8,8 @@
 import { CircleX, FlaskConical, PanelLeft, PanelRight, SlidersHorizontal, X, type LucideIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { OptionControl } from '@/components/game/SetupWorldOptions';
-import { optionValue } from '@/lib/worldOptions';
-import type { WorldOption, WorldOptionValueOf, WorldOptionValues } from '@/types';
+import { isPreset, optionValue, valuedOptions } from '@/lib/worldOptions';
+import type { ValuedWorldOption, WorldOptionValueOf, WorldOptionValues } from '@/types';
 import { LocationIcon, PersonaIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -153,7 +153,7 @@ const LensSelect = ({ icon: Icon, label, none, value, options, onChange }: {
 
 /** The lens's World Option values, every Option listed, hidden ones marked (Q25). */
 const LensWorldOptions = ({ options, values, onChange }: {
-  options: readonly WorldOption[];
+  options: readonly ValuedWorldOption[];
   values: WorldOptionValues | undefined;
   onChange: (optionId: string, value: WorldOptionValueOf) => void;
 }) => (
@@ -215,7 +215,7 @@ const LensBar = ({
           />
         </>
       )}
-      {worldOptions.length > 0 && <LensWorldOptions options={worldOptions} values={lens.state.optionValues} onChange={onOptionChange} />}
+      {worldOptions.some((o) => !isPreset(o)) && <LensWorldOptions options={valuedOptions(worldOptions)} values={lens.state.optionValues} onChange={onOptionChange} />}
     </div>
     {lens.brokenPins.map((pin) => (
       <p key={`${pin.placeholderId}:${pin.value}`} className="flex items-start gap-1 text-meta text-destructive">
