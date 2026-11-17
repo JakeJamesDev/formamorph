@@ -43,6 +43,9 @@ Settled in the grill and the prototype on 2026-11-17.
 | Q20 | The trait cascade notice stays at the end of the page, as today. (Ticket 01) |
 | Q21 | When the category index changes from outside (the host, the dev-router or the tour), the page becomes the nav node whose own category is that index. A page chosen by a click stays while the index is inside its subtree. (Ticket 01) |
 | Q23 | A later section also shows the descriptions of the label-only groups between the page and it (the groups its separator names), each one once, on the first section under it, before its own. Follows Q14: nothing is lost by not clicking in. (Ticket 01) |
+| Q24 | In auto, the protected set is fixed at each fit (open and resize). A later page change only opens ancestors the new page needs, and never re-collapses a row, so a row click never folds a row the player could see. (Ticket 02) |
+| Q25 | Every row in the Starting Traits block gets the leading slot, General included. World Options, Persona, Starting Location and Library Additions stay as today. (Ticket 02) |
+| Q26 | On mobile the fit runs on Enter World open and on resize, whether the drawer is open or closed, against 45% of the window height. The drawer opens already fitted. (Ticket 02) |
 | Q22 | Ticket 01 exports the nav nodes on the trait workspace (group, depth, category index, whether it has children, ancestor ids, subtree category indices) and a pure subtree rollup. Ticket 02 builds on these. |
 
 ## User Stories
