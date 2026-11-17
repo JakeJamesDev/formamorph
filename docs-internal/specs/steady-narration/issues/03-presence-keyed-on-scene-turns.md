@@ -1,6 +1,6 @@
 # 03: Presence Keyed on Scene Turns
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -14,7 +14,16 @@ Presence recomputes only when the recent scene turns' content changes, not on ev
 
 ## Acceptance criteria
 
-- [ ] A history change outside the recent scene turns keeps presence the same object.
-- [ ] A change to a recent scene turn's text gives a new presence.
-- [ ] Reverting to a plain history dependency makes the first test fail.
-- [ ] Existing presence tests pass unchanged.
+- [x] A history change outside the recent scene turns keeps presence the same object. (`usePresence.sceneTurns.test.tsx`, user message and out-of-window edit)
+- [x] A change to a recent scene turn's text gives a new presence. (Test changes the turn's participants. The key is the derived scene turns, so a text edit that changes no participant keeps presence.)
+- [x] Reverting to a plain history dependency makes the first test fail. (Mutation run: first test red, second green.)
+- [x] Existing presence tests pass unchanged. (`presence.test.ts`, 50 tests green, no edits.)
+
+## Landed
+
+**Not verified**
+- The `viewedPage` snapshot path (sliced history) has no test of its own.
+- No changelog fragment: the ticket alone changes nothing a player sees.
+
+**For you**
+- Nothing for a player to judge in this ticket.

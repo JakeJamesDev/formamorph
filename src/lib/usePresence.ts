@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import type { DiscoveredEntity, GenericStates } from '@/types';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -57,9 +57,19 @@ export function usePresence(viewedPage?: number): Presence {
     [characterMentions, correctedReadings, cast, runtime],
   );
 
+  // Presence reads only these turns, so a history write that leaves them equal must not rebuild it.
+  const sceneTurns = useContentKeyed(recentSceneTurns(history, IN_SCENE_TURNS, readingNames));
+
   return useMemo(() => computePresence({
     entities: cast, runtime, positions, generics, followers, locationId, locations, connections,
-    persona: personaEntity, met, strangerAliases: aliases,
-    turns: recentSceneTurns(history, IN_SCENE_TURNS, readingNames),
-  }), [cast, runtime, positions, generics, followers, locationId, locations, connections, personaEntity, met, aliases, history, readingNames]);
+    persona: personaEntity, met, strangerAliases: aliases, turns: sceneTurns,
+  }), [cast, runtime, positions, generics, followers, locationId, locations, connections, personaEntity, met, aliases, sceneTurns]);
+}
+
+/** The previous value while the new one serializes the same. */
+function useContentKeyed<T>(value: T): T {
+  const kept = useRef<{ key: string; value: T } | null>(null);
+  const key = JSON.stringify(value);
+  if (kept.current?.key !== key) kept.current = { key, value };
+  return kept.current.value;
 }
