@@ -1,6 +1,6 @@
 # 10: Server Linked Image Check
 
-Status: ready-for-human
+Status: done
 Base: 23b7ecb
 Repo: FormamorphServer
 Blocked by: 01

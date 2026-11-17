@@ -1,6 +1,6 @@
 # 06: Sounds on the List
 
-Status: ready-for-human
+Status: done
 Blocked by: 02, 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium

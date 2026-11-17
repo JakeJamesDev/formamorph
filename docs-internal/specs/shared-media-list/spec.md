@@ -1,6 +1,7 @@
 # Spec: Shared Media List
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-11-17. Tickets 01–10 landed; the last landing is 2c2f7b093. Review: spec text corrected, docs fixed in ac8ec87b3, and ticket 11 opened for a gap (Generic overrides on mention cards). Gates green on 2026-11-17; lint errors only in the untracked worlds-wip folder.
 Spec session: shared-media-list — spec
 
 ## Problem Statement
@@ -18,7 +19,7 @@ Each world holds one **Media List**: the named images and sounds the world uses.
 - A **Media Entry** has a name, defaulted to the imported file's name without its extension.
 - Several places can link one entry. The bytes are stored once.
 - An empty image slot offers **Import** (add a file to the list and link it here), **Choose** (a searchable thumbnail grid of the list) and a link box for an image URL. A sound slot offers the same.
-- A filled slot shows the entry's name, which the author can rename. It also offers **Unlink** (frees this slot, keeps the entry) and **Delete from World**.
+- A filled slot shows the entry's name, which the author can rename. It also offers **Remove From Slot** (frees this slot, keeps the entry) and **Delete From World**.
 - The Media tab gets **Import Media** for images, sounds and Avatars. Its **Group by Type** view lists each entry once with where it is used.
 - Scripts set what an entity, location, item or the world shows or plays by naming an entry, the way `persona.body = "Wolf"` sets a Body.
 - Library entities, character cards and published listings keep media embedded, as now. A world converts at the boundary, the way it already does for Avatars.
@@ -81,10 +82,10 @@ Settled with the user on 2026-11-16, in grill order.
 | Q50 | `entities.X.image` sets an entity-wide override; a new `entities.X.instances` list sets one Generic Entity Instance, which beats the entity-wide one. A panel shows the instance at the player's place, first by Start order (user, 2026-11-16) |
 | Q51 | While an image override is set, play shows it first, with the rule-visible images after it (user, 2026-11-16) |
 | Q52 | Reading `image` with no override gives the first rule-visible linked entry's name, or null; `sound`, `ambience` and `music` give the linked entry's name, or null. A read-only `world` global holds `music` (ticket 08) |
-| Q55 | World music's script member stays `world.music` (Q52), though `world` is a retired Tool-script global: a leftover `world.entities` still fails, with a less clear error, and the editor still marks it retired. Tools read `world.music` only (user, 2026-11-16) |
-| Q56 | Ticket 09: a media rename raises the stat rename's Update Code offer, naming the entry's kind. It rewrites string literals assigned to a media member or compared to a media read, in every home a stat rename covers. A static Test Bench warning flags literals that name no entry (ticket 09) |
 | Q53 | Override names match exactly. A name of the wrong kind throws as a missing name (ticket 08) |
 | Q54 | The Media tab's cover and Body backdrop panels hold their picker slot like the other list fields (Q45), and Import Media takes a `.glb` as an Avatar only when it carries VRM data; a plain 3D model is refused (fix after ticket 07) |
+| Q55 | World music's script member stays `world.music` (Q52), though `world` is a retired Tool-script global: a leftover `world.entities` still fails, with a less clear error, and the editor still marks it retired. Tools read `world.music` only (user, 2026-11-16) |
+| Q56 | Ticket 09: a media rename raises the stat rename's Update Code offer, naming the entry's kind. It rewrites string literals assigned to a media member or compared to a media read, in every home a stat rename covers. A static Test Bench warning flags literals that name no entry (ticket 09) |
 
 ## Prototype
 
@@ -104,7 +105,7 @@ Question: what an image slot looks like when images live in a shared, named list
 7. As a world author, I want a pasted image URL to join the list as a named linked entry, so that scripts can name it like any other.
 8. As a world author, I want a filled slot to show the entry's name, so that I know which entry this is.
 9. As a world author, I want to rename an entry from the slot, so that I don't have to leave the editor to fix a name.
-10. As a world author, I want Unlink to free a slot without deleting the entry, so that other places that use it keep it.
+10. As a world author, I want Remove From Slot to free a slot without deleting the entry, so that other places that use it keep it.
 11. As a world author, I want Delete from World to tell me every place that uses the entry before it goes, so that I don't break an entity I forgot about.
 12. As a world author, I want a name collision to get a numeric suffix, so that two files called `portrait.png` can coexist.
 13. As a world author, I want names without file extensions, so that scripts read cleanly.
@@ -160,14 +161,15 @@ Question: what an image slot looks like when images live in a shared, named list
 **Scripts**
 
 - The entity entry gains `image` and `sound`. Reading returns the shown entry's name, or `null`. Assigning a name sets the override; assigning `null` clears it. A missing name throws with that name.
-- Location entries gain `image` and `ambience`. Item entries gain `image`. The world gains `music`. They read and assign the same way.
-- Overrides live in the save envelope, keyed by owner (entity id, or Generic Entity Instance id; location id; item id; world). They rewind with their turn.
+- Location entries gain `image` and `ambience`. Item Instances gain `image` (Q49). The `world` global gains `music` (Q52, Q55). They read and assign the same way.
+- `entities.X.instances` sets one Generic Entity Instance, which beats the entity-wide override (Q50). An image override shows first, with the rule-visible images after it (Q51).
+- Overrides live in the save envelope, keyed by owner (entity id, Generic Entity Instance id, location id, Item Instance id, world). They rewind with their turn.
 - An override holds the entry id. A rename never breaks a save. A deleted entry's override reads as unset (Q19).
 - Entry renames rewrite script text with the existing rename machinery and its drift check.
 
 **Authoring UI**
 
-- The image slot follows prototype variant B. Empty: Import and Choose side by side, the URL box below. Choose is a popover grid with search over names, three columns, names wrapped to two lines, the subject's own entries dimmed. Filled: the existing frame plus a name field, Unlink and Delete from World.
+- The image slot follows prototype variant B. Empty: Import and Choose side by side, the URL box below. Choose is a popover grid with search over names, three columns, names wrapped to two lines, the subject's own entries dimmed. Filled: the existing frame plus a name field, Remove From Slot and Delete From World (Q46).
 - A sound slot uses the same frame pattern, with an audio row in place of the picture.
 - Generate with AI adds its picture to the list under the subject's fallback name and links it into the open slot, keeping today's "replace which image?" step.
 - The Media tab gains Import Media, which takes images, sounds and VRM files. VRMs go to the Avatar store. Group by Type lists each entry once with a "Used by" list. The default grouping keeps one row per use. Delete from the tab uses the same confirm as the slot. An Unused filter or marker shows unlinked entries.
@@ -198,7 +200,7 @@ Seams, confirmed with the user on 2026-11-16:
    - the source comparison (same file in both forms reads unchanged; a changed file reads changed)
    Prior art: the `migrateWorld` tests, the linked-content and component-update tests, and the Avatar pick matching tests.
 2. **Turn commit**, for script overrides: assignment, clearing, override over a Visibility rule, per-instance Generic overrides, rewind, a missing name, and a deleted entry falling back. Prior art: the stat-code turn tests for item and switch scripts, and the image visibility panel tests for what play shows.
-3. **Components**: the slot (Import adds and links, Choose links, Unlink keeps the entry, Delete lists uses), and the Media tab (Import Media, Group by Type once per entry, Unused). Prior art: the gallery and image-field tests and the world media editor tests.
+3. **Components**: the slot (Import adds and links, Choose links, Remove From Slot keeps the entry, Delete lists uses), and the Media tab (Import Media, Group by Type once per entry, Unused). Prior art: the gallery and image-field tests and the world media editor tests.
 
 Every guard gets a test that fails when its bug returns (`test-bar` skill). The library comparison test must fail if media is compared by bytes.
 
@@ -213,7 +215,7 @@ Every guard gets a test that fails when its bug returns (`test-bar` skill). The 
 
 ## Further Notes
 
-- **Open intent question for tickets:** does an item override apply per Item or per Item Instance? Q12 settled that scripts can switch item images, not where the override lives. Ask the spec session before building it.
+- **Known follow-ups:** a Generic Entity Instance's own override doesn't reach mention cards (ticket 11). Rename rewrites skip item scripts, as stat renames do; a separate fix covers both.
 - **Release steps for the release that holds ticket 03:** deploy ticket 10 first, then raise the server's client minimum to that release's version (Q32, Q33).
 - The Media List grows the published world's JSON by a name per entry and shrinks it by every merged duplicate.
 - Related: the Avatar store and its pick matching (the pattern this follows), Linked Images (URL values), Image Visibility Rules (rules on each link).
