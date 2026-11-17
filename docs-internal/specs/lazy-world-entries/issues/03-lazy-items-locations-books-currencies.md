@@ -1,6 +1,6 @@
 # 03: Lazy Items, Locations, Books And Currencies
 
-Status: ready-for-human
+Status: done
 Blocked by: 02
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -19,7 +19,7 @@ The remaining world maps load per entry with 02's primitive: `items` (with insta
 - [x] Every lazy fill (ticket 02's entities and placeholders, and this ticket's maps) uses only built-ins captured before user code runs (Q19). A parity case where a Script replaces `Object.defineProperty`, `JSON.parse`, `Object.freeze` and an `Array.prototype` method before its first entry read is pinned on the eager code at a377e4f9a (or e6dbe16c6) and passes here. Parity "loads entries the same after a Script replaces built-ins (Q19)", pinned on e6dbe16c6; it also replaces `Object.create`, `Object.keys`, `JSON.stringify`, `Array.prototype.push`, `Array.prototype[Symbol.iterator]` and `Proxy` (Q20).
 - [x] The prelude-cost test's new case passes at 2× and fails with eager loading reinstated; record the check. See Landed.
 - [x] Bench in the Landed section: owner-scoped within 25% of no-world; full-world within 10% of 01's "before". See Landed; the owner-scoped margin is thin.
-- [ ] The changelog fragment from 02 covers items, places, books and currencies too. Handed to the spec session.
+- [x] The changelog fragment from 02 covers items, places, books and currencies too. The spec session reworded 02's entry on main in b27867020.
 
 For you: optionally play a few turns of a large world (Sunmeadow) and check turns start without the earlier pause.
 
@@ -45,7 +45,6 @@ For you: optionally play a few turns of a large world (Sunmeadow) and check turn
 Measured 2026-11-17 on a machine other sessions loaded; compare within a pair (Q22). Window B is the final code (review fold-ins on top of window A's). Programs: after 62.3 KB no world, 68.6 KB self only, 70.9 KB owner-scoped; eager 259.1 KB. The no-world prelude grew 54.3 → 62.3 KB over 02.
 
 **Not verified:**
-- Changelog: handed to the spec session, which rewords 02's entry on main after this landing.
 - The owner-scoped bar holds by a thin margin: 1.21–1.23× in four rows, 1.255× in one loaded row. The cost over self-only is the owner entry's fill (its trait map, stat map and accessors), about 0.6 ms on a quiet machine.
 - An item event whose `target` is another item's instance loads that item before user code, as `args.target` is a plain field built before the run on eager code too.
 

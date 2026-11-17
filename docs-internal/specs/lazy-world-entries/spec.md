@@ -1,6 +1,7 @@
 # Spec: Lazy World Entries
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-17. Tickets 01–03, last landing 9838e767c. Review: spec text corrected (Q18 counts, binding shape, eager list, bench method) and 03's changelog box ticked; owner-scoped bar re-measured at close, 1.21–1.24× over three runs. Gates on 2026-11-17: test green (37,326 pass; one starved file green alone); lint red only in untracked worlds-wip files.
 Spec session: lazy-world-entries — spec
 
 Every Script run writes the whole Sandbox Snapshot into its own program text as JSON literals, and QuickJS parses all of it on every run, even when the Script reads only `self`. This spec makes each world entry load from the host on its first read, through the existing host-read hook (script-surface Q37, Q48), so a run pays only for what it reads.
@@ -46,7 +47,7 @@ Nothing a Script can observe changes: the same reads return the same values, the
 | Q15 | World-owned placeholder rows (top-level keys of `placeholders`) load per top-level key too, in ticket 02. Q1's intent is that cost never grows with entries a Script does not read, and world-owned rows grow with the world (ticket 02 ruling). |
 | Q16 | Reading `owner.stats` does not load the owner's entry, because `owner.stats` is eager. Every other `owner` field loads it (ticket 02 ruling). |
 | Q17 | An item event's entity `from`/`to` lookup must not list `entities`. Ticket 03 fixes it with a host-side id lookup, because it owns the items prelude. Until then the listing loads every entity, with the same result (ticket 02 ruling). |
-| Q18 | An existing test that counts host calls may change its expected count by exactly the entry loads this spec adds. Each such change gets a one-line comment, and the test keeps its own reads. Every other existing assertion stays unchanged (ticket 02 ruling, `heavyText` "asks the host" cases: 0→2 and 2→3). |
+| Q18 | An existing test that counts host calls may change its expected count by exactly the entry loads this spec adds. Each such change gets a one-line comment, and the test keeps its own reads. Every other existing assertion stays unchanged (ticket 02 ruling). Final counts after ticket 03: `heavyText` 0→5, 1→2 and 2→3; `toolSnapshot.heavyText` listing case 0→3. |
 | Q19 | A lazy fill runs during user code, so it uses only built-ins the prelude captured before user code runs. A Script that replaces a global (`Object.defineProperty`, `JSON.parse`, `Object.freeze`, `Array.prototype` methods) before its first entry read gets the same result as on eager code. Ticket 03 closes this for 02's maps and its own (02 landing finding). |
 | Q20 | Q19's line: fills call `Object`, `JSON`, `Reflect`, `Array.isArray`, `Proxy` and `Array.prototype` methods only through references captured before user code, and use index loops instead of array iteration or spread. Accessors a Script adds to `Object.prototype` or `Array.prototype` are out of scope. Fills prefer literals or null-prototype objects over assignment where that costs nothing. The Q19 parity case restores the originals before it returns, so the run-end readers stay outside it, and it is pinned against the eager executor at e6dbe16c6 (ticket 03 ruling). |
 | Q21 | World-sized lookup tables (the items prelude's entity and location target tables, the currencies prelude's party tables) each move into one deferred host slot, read on the first verb call that needs a target. `location` (the current place) stays eager like `self`; only `locations` entries are lazy (ticket 03 ruling). |
@@ -84,16 +85,16 @@ Nothing a Script can observe changes: the same reads return the same values, the
 ## Implementation Decisions
 
 - **Scope.** The program builder in the stat-code executor and the preludes it assembles: entities (with `persona` and `owner`), placeholders, items, locations, dictionaries and currencies. Read-only (Tool) runs and item-event runs use the same builder and are in scope. Script results, save shape and world shape do not change.
-- **Stays eager.** `stats`, `owner.stats`, `self`, world `traits`, `clock`, `turn`, options, `args`, `narration`, `trait` and the world prelude's verbs. They are small, and `self` lives in the stat maps. An item event's own item entry and its instance load eagerly, because `self` and `instance` need them.
+- **Stays eager.** `stats`, `owner.stats`, `self`, world `traits`, `clock`, `turn`, options, `args`, `narration`, `trait`, `location` (Q21) and the world prelude's verbs. They are small, and `self` lives in the stat maps. An item event's own item entry and its instance load eagerly, because `self` and `instance` need them.
 - **Names eager, data lazy.** Each lazy map ships its entry names (and the order they list in) in the program. An entry's data loads on its first read of any field. `in`, `typeof`, key listing order and the blank entry for an unknown name behave as today without a load.
-- **Same binding.** Each lazy map stays the same global binding, an object that fills on first read. Identity holds across reads (`entities.X === entities.X`, `owner === entities[owner.name]` where it holds today). A read-only view wraps the lazy map without forcing a load.
+- **Same binding.** Each lazy map stays the same global binding: a Proxy that makes an entry on its first read by name, and builds every entry when code looks at the map itself (keys, descriptors, `isFrozen`, writes). Identity holds across reads (`entities.X === entities.X`, `owner === entities[owner.name]` where it holds today). A read-only view wraps the lazy map without forcing a load.
 - **Host side.** The run's host reads (the existing slot table) gain one slot per lazy entry, built on first read. The host builds an entry's data inside that slot, not before the run (Q3). Text that is already lazy (descriptions, summaries, dictionary values, book entries) stays lazy inside a loaded entry.
 - **Listing.** A listing read of a map (key enumeration, `Object.values`, `Object.entries`, spread, `for…in`) loads every entry of that map not yet loaded, in one host call (Q6).
 - **Cross-map reads.** An entry that reads another map (an entity's `items` or `placeholders`, an item's owner, a location's cast, a currency's party) loads only the entries it reaches, never the whole map.
 - **Write tracking.** Each map's write reader reports rows only for loaded entries. An entry that never loaded has no writes. The run-end readback (`ENTITY_WRITES`, `TRAIT_WRITES`, `PLACEHOLDER_WRITES`, `DICTIONARY_WRITES`, `WORLD_WRITES`, the stat-write readers and the loose read-only notes) produces the same result as today for every run.
 - **Engines.** The host-read hook already runs from a getter on both the sync and the async (Asyncify) engine; lazy entries use the same hook. No engine change.
 - **Budget.** A lazy fetch pauses the time budget as every host call does (Q4, script-surface Q49).
-- **Bench.** A tracked script builds a synthetic world of about 200 KB of entry data (entities with placeholders, items, locations) and prints the median per-run cost for: no world, a self-only Script, an owner-scoped Script reading `owner.placeholders`, and a full-world Script listing every map. Run it before the change and after; both numbers go in the Landed section (Q7, Q8).
+- **Bench.** A tracked script builds a synthetic world of about 200 KB of entry data (entities with placeholders, items, locations) and prints the median per-run cost for: no world, a self-only Script, an owner-scoped Script reading `owner.placeholders`, and a full-world Script listing every map. Each landing runs it beside the eager executor (e6dbe16c6) in one window and records the ratio pairs (Q7, Q8, Q22).
 
 ## Testing Decisions
 
@@ -102,7 +103,7 @@ Nothing a Script can observe changes: the same reads return the same values, the
 - **Laziness tests.** With `countingSandbox` from `@/test/hostCalls`: a Script reading only `self` makes no host-read call; reading one entity makes one; reading it twice still makes one; a listing makes one per map. Prior art: `statCodeExecutor.heavyText.test.ts`.
 - **Cost test.** The prelude-cost test gains an owner-scoped case on a large world, bounded at 2× the empty world (Q10). Prior art: `statCodeExecutor.preludeCost.test.ts`.
 - **Guards bite.** Each new test fails when its behavior is reverted (an eager load, a missing row in a reader).
-- Existing `statCodeExecutor.*.test.ts`, `scriptSandbox.test.ts` and the sandbox snapshot tests stay green unchanged.
+- Existing `statCodeExecutor.*.test.ts`, `scriptSandbox.test.ts` and the sandbox snapshot tests stay green, unchanged except for the host-call counts Q18 allows.
 
 ## Out of Scope
 
