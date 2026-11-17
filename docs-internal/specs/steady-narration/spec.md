@@ -33,6 +33,7 @@ Settled with the user on 2026-11-16, in grill order.
 | Q5 | The save-state getter becomes a stable getter that reads the latest state from a ref. A comment and a test guard against a future eager memo on it. |
 | Q6 | Presence recomputes only when the recent scene turns' content changes, not on every history write. |
 | Q7 | The card rows and speaker colors keep their previous identity when a rebuild gives equal content. |
+| Q8 | New evidence from ticket 02: the markdown library caches its processor by plugin name plus the JSON of its options, and the colors Map serializes as `{}`, so a new speaker's quote stays uncolored after the remount. Ticket 05 fixes it in this effort: the speaker source serializes everything the quote plugin reads. The renderer's plugin keying stays out of scope. |
 | S1 | The two test seams are the game viewer render harness and the Player View module tests (confirmed with the user). |
 
 ## User Stories
@@ -58,11 +59,11 @@ Settled with the user on 2026-11-16, in grill order.
 
 - **Entities-only builder.** The Player View module exports a builder that returns only the entity rows, the same rows the full builder returns. The full builder calls it, so there is one code path. Its inputs are the entity-relevant state only: discovered entities, entity positions, generic and unique states, the current location, the met list, stranger aliases, the visible-entity records of each saved state in the chain, the world's entities, locations and connections, the persona, the text resolver, the entity-on check, and the gate (for images).
 - **The chain for the builder.** The number of saved states in the chain depends on the count of closed turns in the history. That count is memoized as a number, so history writes inside a turn do not change it. The builder reads the saved states' visible-entity records and the current visible-entity record, not the full saved state.
-- **Card rows and pick list.** Their memo depends on the builder's inputs, presence, the resolver and the met list. It no longer depends on the Player View reach or the save-state getter.
+- **Card rows and pick list.** Their memo depends on the builder's inputs, presence, the resolver and the met list. It no longer depends on the Player View reach or the save-state getter. Its world input is the in-play world built from the authored entities, locations and connections, memoized, so the deps are visible to the linter (ticket 02).
 - **Stable save-state getter.** The game state context keeps the latest state in a ref and exposes a getter with one identity. On-demand callers (the action snapshot, the deferred snapshot, the help world sources, handlers) still read the current state. Its comment states that no eager memo or effect may depend on it.
 - **Player View reach.** It stays as it is. After this change nothing eager depends on it.
-- **Presence.** It derives the recent scene turns and memoizes them by content. A history write that leaves those turns unchanged leaves presence unchanged.
-- **Backstop.** A small helper keeps a map's previous identity when the new map has the same keys and each value is equal. Speaker colors compare values directly. Card rows compare rows shallowly, with image data compared by reference. The speaker-color identity contract stays: a real color change still gives a new map, so a new cast member repaints.
+- **Presence.** It derives the recent scene turns and memoizes them by content. A history write that leaves those turns unchanged leaves presence unchanged. The key is the derived scene turns, so a text edit that changes no participant also keeps presence (ticket 03).
+- **Backstop.** A small helper keeps a map's previous identity when the new map has the same keys and each value is equal. Speaker colors compare values directly. Card rows compare rows shallowly, with image data compared by reference. Array fields on a row, such as seen aliases, compare element by element, one level deep, because the builder makes them fresh on every build (ticket 02). The speaker-color identity contract stays: a real color change still gives a new map, so a new cast member repaints.
 - **No export-shape change.** World and save files are unchanged.
 
 ## Testing Decisions
