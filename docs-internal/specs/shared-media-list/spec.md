@@ -63,6 +63,13 @@ Settled with the user on 2026-11-16, in grill order.
 | Q32 | The server's Supporter linked-image check learns the Media List in its own ticket (10, FormamorphServer). It deploys before a client release that holds ticket 03 (user, 2026-11-16) |
 | Q33 | Released clients can't read list-form worlds. On the release that holds ticket 03, the server's client minimum rises to that version, so old apps get Update Required instead of a world without pictures (user, 2026-11-16) |
 | Q34 | Migration takes a carried embedded `name` as the entry name (Q31); the subject fallback applies only when there is none. Every loaded world gets a Media List, even an empty one (ticket 03) |
+| Q35 | The picker slot covers every place entity and location galleries render, the Media tab's panels included. Items and the map get it in ticket 05 (ticket 04) |
+| Q36 | A pasted URL is named by its last path segment, extension dropped; no segment falls back to the subject name (ticket 04) |
+| Q37 | Choose dims entries the subject already links but keeps them clickable; a second link is allowed (ticket 04) |
+| Q38 | A rename commits on blur or Enter; a blank name reverts (ticket 04) |
+| Q39 | Delete from World is one undo step and always asks, even when one slot is the only use (ticket 04) |
+| Q40 | Ticket 04 owns the picker, the Delete from World confirm, and the rename and remove actions; ticket 07 reuses the confirm, and ticket 09 hooks script rewriting into rename. Authoring Tour example pictures import as entries named by the subject fallback (ticket 04) |
+| Q41 | The library entity editor keeps the plain uploader with no Choose: library entities stay embedded (Q18), so there is no list to pick from (ticket 04) |
 
 ## Prototype
 

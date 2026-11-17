@@ -28,7 +28,7 @@ The prototype is on branch `prototype/image-library`; rebuild it properly rather
 - [ ] Renaming to a taken name gives the suffixed name.
 - [ ] Unlink frees the slot and keeps the entry.
 - [ ] Delete from World lists each place using the entry, and after confirming no field links it.
-- [ ] Choose works inside the entity editor dialog (the popover is not clipped and takes clicks).
+- [ ] Choose is not clipped and takes clicks in the World Editor entity and location panels (inside their scroll areas) and in the Media tab's panels. The library entity editor keeps the plain uploader (Q41).
 - [ ] Frames of the empty slot, the open Choose grid and a filled slot, both themes, 1440 wide: `.scratch/frames/slot-empty-<theme>.png`, `.scratch/frames/slot-choose-<theme>.png`, `.scratch/frames/slot-filled-<theme>.png`.
 
 For you: try Choose with a world that has many images and judge whether the grid is quick enough to scan.
