@@ -38,6 +38,12 @@ Settled in the grill and the prototype on 2026-11-17.
 | Q15 | A manual collapse beats Q5. If the player collapses an ancestor of the current page, it stays collapsed, and the collapsed row shows the current-page highlight. |
 | Q16 | The loop stops at the top level. If the nav still scrolls with every parent collapsed, it scrolls. Top-level rows are never hidden. |
 | Q17 | Nav style is prototype Variant A: a leading chevron slot on every row (empty on leaves), indentation by depth, and the count at the right end. The user approved the chevron row and the separator button as new patterns by picking Variant A. |
+| Q18 | The short marker is the prototype's small dot on the `warning` theme token, labeled "Needs more picks" for screen readers, before the "N of M selected" count. (Ticket 01) |
+| Q19 | The first section of a page keeps today's path descriptions (ancestors plus itself), so a leaf page is unchanged. Every later section shows only its own group's description. (Ticket 01) |
+| Q20 | The trait cascade notice stays at the end of the page, as today. (Ticket 01) |
+| Q21 | When the category index changes from outside (the host, the dev-router or the tour), the page becomes the nav node whose own category is that index. A page chosen by a click stays while the index is inside its subtree. (Ticket 01) |
+| Q23 | A later section also shows the descriptions of the label-only groups between the page and it (the groups its separator names), each one once, on the first section under it, before its own. Follows Q14: nothing is lost by not clicking in. (Ticket 01) |
+| Q22 | Ticket 01 exports the nav nodes on the trait workspace (group, depth, category index, whether it has children, ancestor ids, subtree category indices) and a pure subtree rollup. Ticket 02 builds on these. |
 
 ## User Stories
 
