@@ -1,6 +1,7 @@
 # Spec: Setup Nav Fallthrough
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-17. Tickets 01–02, last landing 9cd0ef9eb. Review: three gaps fixed on main in 9c3fe47e1 (Q21 click hold, Q13 visible parents, folded-row rollup test); spec text corrected (changelog grouped). Gates on 2026-11-17: test green (37,365 pass); lint red only in untracked worlds-wip files.
 Spec session: setup-nav-fallthrough — spec
 
 The Enter World setup screen shows one trait group per page. A world with many characters, each with nested trait groups, makes the player click every group to see its traits. This spec makes a parent row in the setup nav open its whole subtree on one page, and makes the nav collapsible. The nav collapses itself, level by level, when it would otherwise scroll.
@@ -109,4 +110,4 @@ Settled in the grill and the prototype on 2026-11-17.
 
 - **Prototype:** branch `prototype/setup-nav-fallthrough`, commit `07da61d2e`, worktree `.claude/worktrees/prototype-setup-nav-fallthrough`. To launch it, use the `proto-setup-nav-fallthrough` preview (port 5330) with `?variant=A`. The fixture world comes from `node .scratch/make-proto-world.cjs` on that branch. Question: which nav style. Verdict: Variant A.
 - New user-facing strings (Collapse All, Expand All, the chevron labels) go through the Writing Guide and a copy sweep when built.
-- The changelog entry goes under 👤 Added, for the Enter World setup screen.
+- The changelog entries go under 👤 Added, grouped under **Enter World:**.

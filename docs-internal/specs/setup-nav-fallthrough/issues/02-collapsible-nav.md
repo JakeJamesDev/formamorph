@@ -1,6 +1,6 @@
 # 02: Collapsible Nav
 
-Status: ready-for-human
+Status: done
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -31,7 +31,7 @@ Prior art: prototype `prototype/setup-nav-fallthrough` (`07da61d2e`), Variant A.
 - [x] Component tests cover chevron toggling, row-versus-chevron clicks, Collapse All / Expand All, and state across page switches. Each guard is shown to bite. 13 guards reinstated one at a time; each failed the expected test.
 - [x] New strings (Collapse All, Expand All, the chevron labels) pass the Writing Guide's "Before you write" check. They name what the player clicks, in title case for labels.
 - [x] Frames at 1440×900 in dark and light: `.scratch/frames/nav-auto-collapsed-dark.png` and `.scratch/frames/nav-auto-collapsed-light.png` (a large cast collapsed to fit), plus `.scratch/frames/nav-mobile-drawer.png` at 390×844 with the drawer open. Taken with Playwright on the prototype's fixture world.
-- [ ] Changelog fragment folds into ticket 01's entry if 01 is unreleased; otherwise it adds its own line under 👤 Added.
+- [x] Changelog fragment folds into ticket 01's entry if 01 is unreleased; otherwise it adds its own line under 👤 Added. Landed as its own line; the spec session grouped both under **Enter World:** on main (613c93166).
 
 For you: resize the window on a large-cast world before and after touching a chevron, and judge whether the nav behaves as you expect.
 
