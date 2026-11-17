@@ -39,6 +39,10 @@ Nothing a Script can observe changes: the same reads return the same values, the
 | Q7 | A tracked bench script builds a synthetic world sized like Sunmeadow (about 200 KB of entry data) and prints the per-run cost of a self-only, an owner-scoped and a full-world Script. It is not in the gates. |
 | Q8 | Acceptance bar: on the bench world, a Script that reads only `self` or `owner` (with `owner.placeholders`) costs within 25% of the no-world run. |
 | Q9 | One test seam: `executeStatCode`. Tests read its results and the host-call counts of `@/test/hostCalls`. No new seam below it. |
+| Q11 | Parity pins are inline snapshots of the whole `executeStatCode` result, generated once on the eager code and read by hand. Later tickets never update them with `-u`; a changed pin is an intent question (ticket 01 ruling). |
+| Q12 | Ticket 01's worktree at the base commit, with no `src/` change but the new test file, meets Q5's "green at base"; no separate detached checkout is needed (ticket 01 ruling). |
+| Q13 | The bench gets an npm script. It times `executeStatCode` end to end, so host-side work (Q3) counts; program size is reported beside it, not used as the measure (ticket 01 ruling). |
+| Q14 | When main changes the eager builder before ticket 01 lands, ticket 01 re-pins on the rebased eager code. It may do so only when every changed pin is an addition from the landed change. The Landed section records the proof at both shas. Q11's no-`-u` rule binds the tickets that change the builder (ticket 01 ruling, after shared-media-list 08 added `image`, `sound` and `instances`). |
 | Q10 | The gated prelude-cost test bounds an owner-scoped Script on a large world at 2× the empty world's cost. The 25% bar is checked by the bench at landing and recorded in the ticket's Landed section. |
 
 ## User Stories
