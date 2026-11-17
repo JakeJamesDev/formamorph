@@ -177,7 +177,8 @@ import { snapshotToolExecutor, toolsOfferedTo } from "../lib/tools/toolOffer";
 import { openWorldToolTurn, replayedToolEffects, type WorldToolTurn } from "../lib/tools/worldToolTurn";
 import { onCallRunner } from "../lib/tools/onCallRunner";
 import { useHelpWorldSource } from "../lib/formaquestion/helpWorld";
-import { buildPlayerView } from "../lib/formaquestion/playerView";
+import { buildPlayerView, buildPlayerViewEntities } from "../lib/formaquestion/playerView";
+import { shallowEqualRow, useKeepEqualMap } from "@/lib/keepEqualMap";
 import type { GameWorldInput } from "../lib/formaquestion/gameWorld";
 import { storySoFar } from "../lib/formaquestion/storySoFar";
 import {
@@ -875,6 +876,7 @@ const GameViewer = ({
     viewBodies,
     viewLocationId,
     gameStates,
+    visibleEntities,
     setGameStates,
     setPlayerLookStats,
     setViewEntityStatEnabled,
@@ -6638,11 +6640,25 @@ const GameViewer = ({
   );
   const leftPanel = leftPanelAt('docked');
 
-  // The mention cards' rows (Q46, Q63) and the speaker colors they allow. Rebuilt on game-state changes, only while
-  // Character Mentions is on.
+  // The mention cards' rows (Q46, Q63) and the speaker colors they allow, from the entity state alone, only while
+  // Character Mentions is on. Equal content keeps the previous maps, so the narration renderer never remounts for it.
+  const closedTurnCount = useMemo(() => closedTurns(fullMessageHistory), [fullMessageHistory]);
+  const mentionWorld = useMemo(
+    () => inPlayWorldData({ entities: authoredEntities, locations: authoredLocations, connections: authoredConnections }, inPlay),
+    [authoredEntities, authoredLocations, authoredConnections, inPlay],
+  );
+  const savedVisible = useMemo(() => gameStates.slice(0, closedTurnCount).map((s) => s.visibleEntities), [gameStates, closedTurnCount]);
+  const currentLocationId = currentLocation?.id;
   const { cardRows, pickBase } = useMemo(() => {
     if (!settings.characterMentions) return { cardRows: NO_CARD_ROWS, pickBase: NO_PICK_IDS };
-    const { view } = playerViewReach(liveGate);
+    const view = {
+      entities: buildPlayerViewEntities({
+        world: mentionWorld,
+        current: { discoveredEntities, entityPositions, genericStates, uniqueStates, locationId: currentLocationId, metEntities: [...metEntities], strangerAliases },
+        savedVisible, currentVisible: visibleEntities, persona: persona?.entity ?? null, resolve: resolvePH, isEntityOn: inPlay.isEntityOn,
+        gate: liveGate, media: worldOverview.mediaList,
+      }),
+    };
     return {
       cardRows: mentionCardRows(view, presenceById, {
         imageOf: (entity) => visibleImages(entity, liveGate, worldOverview.mediaList)[0]?.data,
@@ -6650,8 +6666,10 @@ const GameViewer = ({
       }),
       pickBase: pickListBase(view, presenceById, metEntities),
     };
-  }, [settings.characterMentions, playerViewReach, liveGate, presenceById, resolveEntityText, metEntities, worldOverview.mediaList]);
-  const shownQuoteColors = useMemo(() => cardColors(quoteColors, cardRows), [quoteColors, cardRows]);
+  }, [settings.characterMentions, mentionWorld, discoveredEntities, entityPositions, genericStates, uniqueStates, currentLocationId, metEntities,
+    strangerAliases, savedVisible, visibleEntities, persona, resolvePH, inPlay, liveGate, worldOverview.mediaList, presenceById, resolveEntityText]);
+  const steadyCardRows = useKeepEqualMap(cardRows, shallowEqualRow);
+  const shownQuoteColors = useKeepEqualMap(useMemo(() => cardColors(quoteColors, steadyCardRows), [quoteColors, steadyCardRows]));
   const pickable = useCallback(
     (turnId: string) => turnPickList(pickBase, correctedReadings[turnId]?.reading),
     [pickBase, correctedReadings],
@@ -6694,7 +6712,7 @@ const GameViewer = ({
     : null;
 
   const middlePanel = (
-    <MentionCardsProvider colors={shownQuoteColors} rows={cardRows} onCorrect={correctMention} pickable={pickable} askContribute={asksContribute} onContributeAnswer={answerContribute}>
+    <MentionCardsProvider colors={shownQuoteColors} rows={steadyCardRows} onCorrect={correctMention} pickable={pickable} askContribute={asksContribute} onContributeAnswer={answerContribute}>
     <MiddlePanel
       parseAssistantMessage={parseAssistantMessage}
       narrationBadge={<DemoAIBadge onOpen={openDemoAIDialog} />}
