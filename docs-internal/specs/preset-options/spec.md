@@ -55,6 +55,7 @@ A Preset Option stores nothing. No gate, pin or script can read it, so it can ne
 - **Q39 Check baseline.** The Preset check applies each value to one default draft and reads apply's skip list. The draft uses the persona that setup would preselect with nothing remembered. Its location is that persona's start place, or Random if it has none. It holds no library entities. From defaults, snapshot and overlay reach the same target, so one path serves both.
 - **Q40 Check warning.** The warning is one block on the value card. It names each failing row the way its controls read, with no number and no per-row reason. For example: "Can't apply: Elf, Wolf: Feral, Persona: Mira, Starting Location: Ashgate, a deleted trait". Deleted rows of one kind are counted, as in "2 deleted traits". The Options tab shows no row numbers, so the first wording named rows the author could not see. Only a missing target id counts as deleted. An Option row whose choice value was removed counts as "can't apply".
 - **Q41 Empty value in the check.** A value with no rows gets no warning. A new Preset starts with two empty values (Q22), and a warning there would only be noise.
+- **Q42 Trees and names follow setup.** These read the same trait trees that setup offers: the row editor's targets, the Preset check's existence test and the row names. The root group holds only the global tree, never Blueprint traits. Each entity's group holds its own traits plus the Blueprint traits it links. Every name that may hold a placeholder shows resolved, never as a raw `{{ph:…}}` token. That covers entity, trait, Option, value, persona and location names, in the editor and in the setup notice. This came from the user's check at close.
 - **Q31 Snapshot cascade-off.** A snapshot clears the draft's cascade-off list before it settles, so old picks never return after a reset. An overlay keeps the list.
 
 ## User Stories
@@ -101,7 +102,7 @@ A Preset Option stores nothing. No gate, pin or script can read it, so it can ne
 - **Save shape.** No change. A Preset stores no value in `worldOptionValues`.
 - **Apply.** A new pure function in the entry draft module takes the draft, the world, a Preset Option and a value id. It returns the new draft and a notice.
   - Build the target. For a snapshot, start from the defaults for Options and traits, and keep the current persona and location. For an overlay, start from the current draft.
-  - Overlay the rows. Rows on a max-1 group swap the pick as a click does.
+  - Overlay the rows. Rows on a max-1 group swap the pick as a click does. A full group with a higher max drops unlisted picks, latest first, as plain off (Q27).
   - Settle through the existing fixpoint, with the Preset's trait picks first in proposal order so they win mutual Not ties. If a Preset on-row still fails because an unlisted pick blocks it, turn that pick off into cascade-off and settle again (Q26). Then run the existing short-group fill.
   - Read back each row. A row that did not hold is a skipped value for the notice.
 - **Match.** A new pure function returns the value id that a draft matches, or null. Each value's result is computed by applying it to the current draft. For a snapshot, the comparison covers Options and traits, plus persona and location when rows name them. For an overlay, it covers the listed values only. If more than one value matches, the first in authored order is selected.
@@ -111,9 +112,9 @@ A Preset Option stores nothing. No gate, pin or script can read it, so it can ne
   - script option reads and writes, where a write to a Preset id is refused like an unknown id
   - the mid-game Options list
   - value validation (`acceptsValue` rejects any value)
-- **Setup screen.** The World Options category renders a Preset Option as a radio group with each value's description. A click calls apply and puts the result through the same draft update as other changes. The selected radio comes from match. The notice extends the existing cascade notice with a "Set by <Preset value>" section and any skipped values.
+- **Setup screen.** The World Options category renders a Preset Option as a radio group with each value's description. A click calls apply and puts the result through the same draft update as other changes. The selected radio comes from match. The notice is a Preset form of the existing cascade notice, worded as Q30 and Q37 set out. Like the cascade notice, it never names a Hidden trait.
 - **Editor.** The Options tab type switch gains Preset. Its panel has a snapshot/overlay control and a value list. Each value has a name, a description and a row editor. The row editor offers shown Options, root and owned traits, locations and world personas as targets.
-- **Preset check.** A new pure check reports, for each Preset value, the rows that fail in that value's own target state. For the snapshot target it uses the defaults. For the overlay target it uses the defaults plus the rows. It also reports rows whose target no longer exists. The Options tab shows its results as a warning on the value.
+- **Preset check.** A new pure check reports, for each Preset value, the rows that fail in that value's own target state. It applies each value to one default draft and reads apply's skip list (Q39). It also reports rows whose target no longer exists. The Options tab shows its results as a warning on the value.
 - **Glossary.** Add **Preset** to CONTEXT.md as a World Option type. Note that it stores no value and that no gate, pin or script reads it.
 
 ## Testing Decisions

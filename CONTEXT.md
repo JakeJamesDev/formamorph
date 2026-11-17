@@ -570,7 +570,7 @@ A source holding a Placeholder at one fixed value while the source is active: a 
 _Avoid_: override, lock, fixed value
 
 **World Option**:
-A player-facing setup switch on the world, authored on the Options tab: a choice of named values, a boolean, a whole number between a min and a max, or a Preset. The player sets the shown ones at new game; a hidden one serves as script and gate state. It acts only through Pins (a choice value's or a boolean state's) and gates, never through AI text. A playthrough keeps one value per Option; a missing or no-longer-valid value reads the Option's default.
+A player-facing setup switch on the world, authored on the Options tab: a choice of named values, a boolean, a whole number between a min and a max, or a Preset. The player sets the shown ones at new game; a hidden one serves as script and gate state. It acts only through Pins (a choice value's or a boolean state's) and gates, never through AI text. A playthrough keeps one value per Option except a Preset, which keeps none; a missing or no-longer-valid value reads the Option's default.
 _Avoid_: setting (the app's own), preference, toggle trait
 
 **Preset**:
