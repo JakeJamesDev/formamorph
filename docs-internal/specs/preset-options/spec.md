@@ -1,6 +1,7 @@
 # Spec: Preset Options
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-17. Tickets 01–05, last landing b9ae4b5dd. Review: two notice gaps and stale wording fixed in 8327bb4be; ticket 05 fixed the user's tree and name gaps (Q42); spec text corrected. Gates on 2026-11-17: test green (37,433 pass); lint red only in gitignored worlds-wip files.
 Spec session: preset-options — spec
 
 ## Problem Statement
@@ -55,7 +56,7 @@ A Preset Option stores nothing. No gate, pin or script can read it, so it can ne
 - **Q39 Check baseline.** The Preset check applies each value to one default draft and reads apply's skip list. The draft uses the persona that setup would preselect with nothing remembered. Its location is that persona's start place, or Random if it has none. It holds no library entities. From defaults, snapshot and overlay reach the same target, so one path serves both.
 - **Q40 Check warning.** The warning is one block on the value card. It names each failing row the way its controls read, with no number and no per-row reason. For example: "Can't apply: Elf, Wolf: Feral, Persona: Mira, Starting Location: Ashgate, a deleted trait". Deleted rows of one kind are counted, as in "2 deleted traits". The Options tab shows no row numbers, so the first wording named rows the author could not see. Only a missing target id counts as deleted. An Option row whose choice value was removed counts as "can't apply".
 - **Q41 Empty value in the check.** A value with no rows gets no warning. A new Preset starts with two empty values (Q22), and a warning there would only be noise.
-- **Q42 Trees and names follow setup.** These read the same trait trees that setup offers: the row editor's targets, the Preset check's existence test and the row names. The root group holds only the global tree, never Blueprint traits. Each entity's group holds its own traits plus the Blueprint traits it links. Every name that may hold a placeholder shows resolved, never as a raw `{{ph:…}}` token. That covers entity, trait, Option, value, persona and location names, in the editor and in the setup notice. This came from the user's check at close.
+- **Q42 Trees and names follow setup.** These read the same trait trees that setup offers: the row editor's targets, the Preset check's existence test and the row names. The root group holds only the global tree, never Blueprint traits. Each entity's group holds its own traits plus the Blueprint traits it links. Every name that may hold a placeholder shows resolved, never as a raw `{{ph:…}}` token. That covers entity, trait, Option, value, persona and location names, in the editor and in the setup notice. The editor has no roll, so it draws these names as placeholder chips (PlaceholderText), like its other trees and lists. The setup notice resolves them to rolled text. This came from the user's check at close.
 - **Q31 Snapshot cascade-off.** A snapshot clears the draft's cascade-off list before it settles, so old picks never return after a reset. An overlay keeps the list.
 
 ## User Stories
