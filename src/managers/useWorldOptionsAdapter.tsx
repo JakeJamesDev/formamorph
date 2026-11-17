@@ -15,12 +15,14 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { fieldFrame } from '@/lib/historyField';
 import { useRenameField } from '@/lib/useCodeRename';
 import { isAlwaysOn } from '@/lib/traitEffects';
+import { startPlacesOf } from '@/lib/entityPlaces';
+import { presetPersonaTargets } from '@/lib/entryDraft';
 import { randomUUID } from '@/lib/uuid';
 import {
   BOOLEAN_OFF, BOOLEAN_ON, blankOption, choiceDefault, optionDefault, optionRange, reorderOptions, shownValuedOptions, snapNumber, withOptionType,
 } from '@/lib/worldOptions';
 import type {
-  Entity, PlaceholderPin, PresetRow, PresetValue, PresetWorldOption, Trait, ValuedWorldOption, WorldOption, WorldOptionType, WorldOptionValueOf,
+  Entity, GameLocation, PlaceholderPin, PresetRow, PresetValue, PresetWorldOption, Trait, ValuedWorldOption, WorldOption, WorldOptionType, WorldOptionValueOf,
 } from '@/types';
 
 const TYPE_LABELS: Record<WorldOptionType, string> = { choice: 'Choice', boolean: 'On or Off', number: 'Number', preset: 'Preset' };
@@ -93,30 +95,58 @@ interface TraitTarget {
   name: string;
 }
 
-/** What a Preset row can set: the shown Options that hold a value, and the traits the player can toggle, by owner. */
+/** What a Preset row can set: the shown Options that hold a value, the traits the player can toggle, by owner, the
+ *  world's personas and its Starting Locations. */
 interface RowTargets {
   options: readonly ValuedWorldOption[];
   traits: readonly { owner: string; traits: readonly TraitTarget[] }[];
+  personas: readonly Pick<Entity, 'id' | 'name'>[];
+  locations: readonly Pick<GameLocation, 'id' | 'name'>[];
 }
 
-/** The world's row targets. A trait whose mode stops the player toggling it is left out (Q29). */
-function rowTargets(world: Pick<ReturnType<typeof useGameData>, 'options' | 'traits' | 'entities'>): RowTargets {
+/** The world's row targets. A trait whose mode stops the player toggling it is left out (Q29). Personas are the
+ *  marked entities and the Custom Persona (Q36); locations are the starting ones and every persona's start places (Q35). */
+function rowTargets(world: Pick<ReturnType<typeof useGameData>, 'options' | 'traits' | 'entities' | 'locations'>): RowTargets {
   const toggled = (traits: readonly Trait[] | undefined, owner?: Entity) => (traits ?? []).filter((t) => !isAlwaysOn(t))
-    .map((t): TraitTarget => ({ traitId: t.id, name: owner ? `${owner.name}’s ${t.name}` : t.name, ...(owner ? { ownerId: owner.id } : {}) }));
+    .map((t): TraitTarget => ({ traitId: t.id, name: owner ? `${owner.name}: ${t.name}` : t.name, ...(owner ? { ownerId: owner.id } : {}) }));
+  const { world: marked, custom } = presetPersonaTargets(world.entities);
+  const personas = custom ? [...marked, custom] : marked;
+  const starts = new Set(personas.flatMap((e) => startPlacesOf(e, world)));
   return {
     options: shownValuedOptions(world.options),
     traits: [
       { owner: 'World Traits', traits: toggled(world.traits) },
       ...world.entities.map((e) => ({ owner: e.name, traits: toggled(e.traits, e) })),
     ].filter((g) => g.traits.length),
+    personas,
+    locations: world.locations.filter((l) => l.isStarting || starts.has(l.id)),
   };
 }
 
-/** One key per row target, so a row and the target it names compare by it. */
+/** One key per row target, so a row and the target it names compare by it. A persona or location row is one per value. */
 const optionKey = (optionId: string) => JSON.stringify(['option', optionId]);
 const traitKey = (traitId: string, ownerId?: string) => JSON.stringify(['trait', ownerId ?? '', traitId]);
+const PERSONA_KEY = JSON.stringify(['persona']);
+const LOCATION_KEY = JSON.stringify(['location']);
 const targetKey = (row: PresetRow): string => (row.kind === 'option' ? optionKey(row.optionId)
-  : row.kind === 'trait' ? traitKey(row.traitId, row.ownerId) : JSON.stringify([row.kind]));
+  : row.kind === 'trait' ? traitKey(row.traitId, row.ownerId) : row.kind === 'persona' ? PERSONA_KEY : LOCATION_KEY);
+
+/** The value box for a persona or location row: one of the world's targets of that kind. */
+function TargetRowValue({ items, value, label, onChange }: {
+  items: readonly { id: string; name: string }[];
+  value: string;
+  label: string;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <Select value={items.some((i) => i.id === value) ? value : ''} onValueChange={onChange}>
+      <SelectTrigger aria-label={label} className="w-48 min-w-0"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        {items.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+}
 
 const TRAIT_STATES = [{ id: 'on', name: 'On' }, { id: 'off', name: 'Off' }];
 
@@ -130,6 +160,8 @@ function PresetRowsField({ rows, targets, label, onChange }: {
   const choices: PresetRow[] = [
     ...targets.options.map((o): OptionRow => ({ kind: 'option', optionId: o.id, value: optionDefault(o) })),
     ...targets.traits.flatMap((g) => g.traits.map((t): PresetRow => ({ kind: 'trait', traitId: t.traitId, on: true, ...(t.ownerId ? { ownerId: t.ownerId } : {}) }))),
+    ...targets.personas.slice(0, 1).map((p): PresetRow => ({ kind: 'persona', entityId: p.id })),
+    ...targets.locations.slice(0, 1).map((l): PresetRow => ({ kind: 'location', locationId: l.id })),
   ];
   const unused = choices.find((c) => !rows.some((r) => targetKey(r) === targetKey(c)));
   const set = (index: number, row: PresetRow) => onChange(rows.map((r, i) => (i === index ? row : r)));
@@ -137,7 +169,6 @@ function PresetRowsField({ rows, targets, label, onChange }: {
     <div className="space-y-2">
       <Meta as="p" className="font-medium">Sets</Meta>
       {rows.map((row, index) => {
-        if (row.kind !== 'option' && row.kind !== 'trait') return null;
         const key = targetKey(row);
         const known = choices.some((c) => targetKey(c) === key);
         const option = row.kind === 'option' ? targets.options.find((o) => o.id === row.optionId) : undefined;
@@ -156,6 +187,13 @@ function PresetRowsField({ rows, targets, label, onChange }: {
                     {targets.options.map((o) => <SelectItem key={o.id} value={optionKey(o.id)}>{o.name}</SelectItem>)}
                   </SelectGroup>
                 )}
+                {(targets.personas.length > 0 || targets.locations.length > 0) && (
+                  <SelectGroup>
+                    <SelectLabel>Start</SelectLabel>
+                    {targets.personas.length > 0 && <SelectItem value={PERSONA_KEY}>Persona</SelectItem>}
+                    {targets.locations.length > 0 && <SelectItem value={LOCATION_KEY}>Starting Location</SelectItem>}
+                  </SelectGroup>
+                )}
                 {targets.traits.map((g) => (
                   <SelectGroup key={g.owner}>
                     <SelectLabel>{g.owner}</SelectLabel>
@@ -166,6 +204,18 @@ function PresetRowsField({ rows, targets, label, onChange }: {
                 ))}
               </SelectContent>
             </Select>
+            {row.kind === 'persona' && known && (
+              <TargetRowValue
+                items={targets.personas} value={row.entityId} label={`${rowLabel} Value`}
+                onChange={(entityId) => set(index, { kind: 'persona', entityId })}
+              />
+            )}
+            {row.kind === 'location' && known && (
+              <TargetRowValue
+                items={targets.locations} value={row.locationId} label={`${rowLabel} Value`}
+                onChange={(locationId) => set(index, { kind: 'location', locationId })}
+              />
+            )}
             {row.kind === 'option' && option && (
               <OptionRowValue option={option} value={row.value} label={rowLabel} onChange={(value) => set(index, { ...row, value })} />
             )}
@@ -183,7 +233,7 @@ function PresetRowsField({ rows, targets, label, onChange }: {
           </div>
         );
       })}
-      {choices.length === 0 && <Hint>Add a shown Option or a trait to set it here</Hint>}
+      {choices.length === 0 && <Hint>Add a shown Option, trait, persona or Starting Location first</Hint>}
       <Button variant="outline" size="sm" disabled={!unused} onClick={() => unused && onChange([...rows, unused])}>
         <Plus className="mr-1 h-4 w-4" />Add Row
       </Button>

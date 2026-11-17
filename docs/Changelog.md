@@ -27,6 +27,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Open Chat sets Reply Length, Style and Pacing as World Options.** They show at new game and change in the World Options tab. Old saves start on the defaults.
     - **Preset Options set several World Options in one click at new game.** Authors list the values each Preset value sets, and choose whether it resets the other Options or keeps them. The selected value shows while the setup still matches it.
     - **Preset Options can turn traits on or off at new game, including an entity's traits.** A value applies in one click even when your current picks would block it. A notice names what it turned on and off.
+    - **Preset Options can choose the persona and Starting Location at new game.** A value picks a world persona and a Starting Location, and the notice names both. Reset to Defaults keeps yours unless it sets them. An entity's trait now reads "Wolf: Feral" there.
   - **Entity Routines:**
     - **World files keep each entity's Starts and Can Also Go inside a Routine.** A world from 3.7.0 opens with one Routine per entity and plays as before.
     - **An entity's routine row can be Away, taking it off the map and out of every scene for those hours.** Its stats and scripts keep running, and the AI still knows of it where Known In says. Saves can now hold a Generic entity at no place.

@@ -41,7 +41,7 @@ Drag an Option in the list to change the order the player sees.
 ## How to Set Up a Preset
 <!-- keywords: preset, bundle, start, difficulty, hardcore, default start, one click, several options at once -->
 
-A Preset sets several Options and traits in one click, such as a **Hardcore** start that turns every hard rule on.
+A Preset sets several Options, traits, the persona and the Starting Location in one click, such as a **Hardcore** start that turns every hard rule on.
 
 1. Set the Option's **Type** to **Preset**.
 2. Pick what happens to the **Other Choices**:
@@ -51,6 +51,12 @@ A Preset sets several Options and traits in one click, such as a **Hardcore** st
 4. Select **Add Row**, then pick a target and its value:
    - An **Option** shown to the player, and the value to set it to.
    - A world trait or an entity's trait, turned **On** or **Off**. Traits the player can't toggle, such as **Always On** ones, aren't listed.
+   - **Persona**, and one of the world's personas. The player's own personas aren't listed.
+   - **Starting Location**, and a starting location or a place where one of the world's personas starts.
+
+**Reset to Defaults** never resets the persona or the Starting Location. They change only when a row sets them.
+
+A **Persona** row works like the player's own pick: the Starting Location moves to that persona's start, unless the player chose a location by hand. A **Starting Location** row is set last and wins over that move. If the location isn't offered for the persona and Options the value leaves, the row is skipped.
 
 A value wins against the player's other picks, whatever order they were made in:
 
@@ -58,7 +64,7 @@ A value wins against the player's other picks, whatever order they were made in:
 - 🚫 A pick that blocks a trait the value turns on is turned off. It comes back when nothing blocks it.
 - 📦 A full category drops the player's latest picks to make room.
 
-The player sees a notice of what the value turned on and off. If a row can't apply, such as a trait whose requirements still fail, the notice names it and the rest still apply.
+The player sees a notice of what the value turned on and off, and of a new persona or Starting Location. If a row can't apply, such as a trait whose requirements still fail, the notice names it and the rest still apply.
 
 The player's radio stays on a value while the setup still matches it. If the player changes something the value set, the radio clears.
 

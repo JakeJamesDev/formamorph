@@ -58,7 +58,7 @@ describe('a Preset Option on the Options tab', () => {
     const target = screen.getByRole('combobox', { name: 'Big Start Row 1 Target' });
     fireEvent.keyDown(target, { key: 'Enter' });
     const offered = within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent);
-    expect(offered).toEqual(['Size', 'Brave', 'Wolf’s Feral']);
+    expect(offered).toEqual(['Size', 'Starting Location', 'Brave', 'Wolf: Feral']);
     fireEvent.keyDown(screen.getByRole('option', { name: 'Size' }), { key: 'Enter' });
     pickOption(screen.getByRole('combobox', { name: 'Big Start Row 1 Value' }), 'Big');
 
@@ -83,11 +83,49 @@ describe('a Preset Option on the Options tab', () => {
     expect(rows()).toEqual([{ kind: 'trait', traitId: 'brave', on: true }]);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Add Row' })[0]);
-    pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 2 Target' }), 'Wolf’s Feral');
+    pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 2 Target' }), 'Wolf: Feral');
     pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 2 Value' }), 'Off');
     expect(rows()).toEqual([
       { kind: 'trait', traitId: 'brave', on: true },
       { kind: 'trait', traitId: 'feral', ownerId: 'wolf', on: false },
     ]);
+  });
+
+  it('sets a world persona and a Starting Location', () => {
+    const place = (id: string, isStarting = false) => ({ id, name: id, description: '', isStarting });
+    const world = benchEditorWorld({
+      options,
+      entities: [
+        { id: 'knight', name: 'Knight', persona: true, locations: ['keep'] },
+        { id: 'hermit', name: 'Hermit', customPersona: true },
+        wolf,
+      ],
+      locations: [place('town', true), place('keep'), place('cave')],
+    } as Partial<World>);
+    const bench = renderWorldEditorBench(world, 'advanced');
+    openEditorTab(/Options/);
+    fireEvent.click(screen.getByRole('button', { name: 'Select Start' }));
+    pickOption(screen.getByRole('combobox', { name: 'Type' }), 'Preset');
+    const rows = () => (bench.ctx().options.find((o) => o.id === 'start') as Extract<WorldOption, { type: 'preset' }>).values[0].rows;
+    const offered = (name: string) => {
+      fireEvent.keyDown(screen.getByRole('combobox', { name }), { key: 'Enter' });
+      const names = within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent);
+      fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' });
+      return names;
+    };
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add Row' })[0]);
+    pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 1 Target' }), 'Persona');
+    // Marked personas and the Custom Persona only: the Wolf is no persona, and library personas are the player's.
+    expect(offered('Value 1 Row 1 Value')).toEqual(['Knight', 'Hermit']);
+    pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 1 Value' }), 'Hermit');
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add Row' })[0]);
+    pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 2 Target' }), 'Starting Location');
+    // Starting locations and every persona's start places.
+    expect(offered('Value 1 Row 2 Value')).toEqual(['town', 'keep']);
+    pickOption(screen.getByRole('combobox', { name: 'Value 1 Row 2 Value' }), 'keep');
+
+    expect(rows()).toEqual([{ kind: 'persona', entityId: 'hermit' }, { kind: 'location', locationId: 'keep' }]);
   });
 });

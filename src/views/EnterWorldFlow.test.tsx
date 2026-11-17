@@ -1018,3 +1018,38 @@ describe('a Preset with trait rows at world entry', () => {
     expect(screen.getByRole('checkbox', { name: 'Evil' })).toBeChecked();
   });
 });
+
+describe('a Preset with persona and location rows at world entry', () => {
+  beforeEach(async () => {
+    const record = world();
+    const options: WorldOption[] = [{
+      id: 'start', name: 'Start', type: 'preset', mode: 'snapshot',
+      values: [{ id: 'watch', name: 'Night Watch', description: 'Keep the harbor', rows: [
+        { kind: 'persona', entityId: 'keeper' }, { kind: 'location', locationId: 'harbor' },
+      ] }],
+    }];
+    // The keeper starts on the hill, so the location row must win over the persona's own start.
+    const keeper = {
+      id: 'keeper', name: 'Harbor Keeper', playerDescription: '', aiDescription: '', aiSummary: '', persona: true, locations: ['hill'],
+    };
+    Object.assign(record.data, { options, entities: [keeper] });
+    await WorldStorageService.storeWorld(record);
+  });
+
+  it('picks the persona and Starting Location, names both, and starts the game with them', async () => {
+    const onStartGame = vi.fn();
+    renderEnterWorld({ onStartGame });
+    await enter();
+    const nav = within(screen.getByRole('navigation', { name: 'World setup categories' }));
+    fireEvent.click(nav.getByRole('button', { name: /^World Options/ }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Night Watch' }));
+    expect(screen.getByRole('radio', { name: 'Night Watch' })).toBeChecked();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /^Applied Night Watch\. Persona set to Harbor Keeper\. Starting Location set to Harbor\.Dismiss$/,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][3]).toBe('harbor');
+    expect(onStartGame.mock.calls[0][6]).toEqual({ ref: { source: 'world', entityId: 'keeper' } });
+  });
+});

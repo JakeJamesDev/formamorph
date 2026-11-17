@@ -21,7 +21,12 @@ import type { Stat, StatChange, Trait, TraitGroup } from '@/types';
  *  the value applied, the traits it turned on and off, and the rows it could not apply or set. */
 export type TraitCascade =
   | { kind?: 'cascade'; off: string[]; because: string }
-  | { kind: 'preset'; value: string; on: string[]; off: string[]; traitsNotApplied: string[]; optionsNotSet: string[] };
+  | {
+    kind: 'preset'; value: string; on: string[]; off: string[];
+    /** The persona and Starting Location the click changed to; absent when unchanged. */
+    persona?: string; location?: string;
+    traitsNotApplied: string[]; notSet: string[];
+  };
 
 const LIST = new Intl.ListFormat('en', { type: 'conjunction' });
 const LISTED_NAMES = 6;
@@ -36,7 +41,9 @@ function PresetLines({ cascade }: { cascade: Extract<TraitCascade, { kind: 'pres
   return (
     <>
       Applied <strong>{cascade.value}</strong>.{line('Turned on', cascade.on)}{line('Turned off', cascade.off)}
-      {line('Couldn’t apply', cascade.traitsNotApplied)}{line('Couldn’t set', cascade.optionsNotSet)}
+      {cascade.persona && <> Persona set to <strong>{cascade.persona}</strong>.</>}
+      {cascade.location && <> Starting Location set to <strong>{cascade.location}</strong>.</>}
+      {line('Couldn’t apply', cascade.traitsNotApplied)}{line('Couldn’t set', cascade.notSet)}
     </>
   );
 }

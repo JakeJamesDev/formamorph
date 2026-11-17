@@ -28,7 +28,7 @@ import { libraryLines } from '@/lib/librarySources';
 import { followedLibraryId } from '@/lib/publishLinks';
 import {
   applyPreset, castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, entryTrees, libraryCastIds, matchPreset, presetRowRef, rekeyOwnedPicks,
-  withLibraryDefaults, withLocationPick, withPersonaPick, withSettledEntry, type EntryDraft, type EntryTraitWorld,
+  withLibraryDefaults, withLocationPick, withPersonaPick, withSettledEntry, type EntryDraft, type EntryTraitWorld, type PresetPlaces,
 } from '@/lib/entryDraft';
 import { isPreset, optionPinLists, shownOptions } from '@/lib/worldOptions';
 import { bindLibraryEntity, blueprintBindWorld } from '@/lib/blueprintTravel';
@@ -259,7 +259,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const traitName = (ownerId: OwnerId, traitId: string) => {
     const owner = gateTreeOf(castTrees, ownerId);
     const name = owner?.traits.find((t) => t.id === traitId)?.name ?? traitId;
-    return owner && ownerId !== null && ownerId !== playedEntityId(entryDraft.persona) ? `${owner.name}'s ${name}` : name;
+    return owner && ownerId !== null && ownerId !== playedEntityId(entryDraft.persona) ? `${owner.name}: ${name}` : name;
   };
   // Every scope's picks: the global picks, and each entity's by its id.
   const entrySelectedTraits = useMemo(
@@ -308,7 +308,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
 
   // A Preset click settles the whole target at once, so click order never blocks it.
   const handlePreset = (preset: PresetWorldOption, valueId: string) => {
-    const applied = applyPreset(entryDraft, entryWorld, preset, valueId);
+    const applied = applyPreset(entryDraft, entryWorld, preset, valueId, presetPlaces);
     if (!applied) return;
     reviseDraft(() => applied.draft);
     const { notice } = applied;
@@ -321,21 +321,23 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
       return [owner && ownerId !== playedEntityId(entryDraft.persona) ? `${owner.name}: ${trait.name}` : trait.name];
     };
     const traitsNotApplied = notice.skipped.flatMap((row) => (row.kind === 'trait' ? presetTraitName(presetRowRef(row)) : []));
-    const optionsNotSet = notice.skipped.flatMap((row) => {
+    const notSet = notice.skipped.flatMap((row) => {
+      if (row.kind === 'persona') return ['Persona'];
+      if (row.kind === 'location') return ['Starting Location'];
       const option = row.kind === 'option' ? worldOptions.find((o) => o.id === row.optionId) : undefined;
       return option ? [resolvePH(option.name)] : [];
     });
     const on = notice.on.flatMap(presetTraitName);
     const off = notice.off.flatMap(presetTraitName);
-    setTraitCascade(on.length || off.length || traitsNotApplied.length || optionsNotSet.length
-      ? { kind: 'preset', value: resolvePH(notice.value.name), on, off, traitsNotApplied, optionsNotSet } : null);
+    const picked = notice.persona;
+    // A persona row picks a world persona or the Custom Persona (Q36).
+    const persona = picked && (picked.source === 'none' ? personaOffer.custom?.name ?? 'None'
+      : worldPersonaOptions.find((p) => p.id === picked.entityId)?.name);
+    const location = notice.locationId === undefined ? undefined
+      : notice.locationId === null ? 'Random' : locations.find((l) => l.id === notice.locationId)?.name;
+    setTraitCascade(on.length || off.length || traitsNotApplied.length || notSet.length || persona || location
+      ? { kind: 'preset', value: resolvePH(notice.value.name), on, off, persona, location, traitsNotApplied, notSet } : null);
   };
-  // Each Preset's match settles once per value, so it runs only when the draft or the world changes.
-  const presetMatches = useMemo(
-    () => new Map(setupOptions.flatMap((o) => (isPreset(o) ? [[o.id, matchPreset(entryDraft, entryWorld, o)] as const] : []))),
-    [setupOptions, entryDraft, entryWorld],
-  );
-  const presetMatch = (preset: PresetWorldOption) => presetMatches.get(preset.id) ?? null;
 
   /**
    * The library characters this world does not already hold a copy of, each with its author and source
@@ -393,20 +395,32 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     [personaRules.allowed, worldPersonaOptions, personaOptions, customPersonaOption],
   );
   // The locations the gates leave on and unlocked at the start under the picked persona and Options (Q12, Q43).
-  const startLocations = useMemo(() => {
-    const world = {
+  const openStartIds = useCallback((draft: EntryDraft) => startLocationIdsOpen(
+    {
       entities: worldEntities, locations: rawLocations, traits: rawTraits, traitGroups: rawTraitGroups,
       stats: rawStats, statGroups: rawStatGroups, options: worldOptions,
-    };
-    const open = startLocationIdsOpen(
-      world, playedEntityIdOf(entryDraft.persona, worldEntities), entryDraft.optionValues, scoped(entryDraft.traitIds, entryDraft.ownedTraitIds),
-    );
+    },
+    playedEntityIdOf(draft.persona, worldEntities), draft.optionValues, scoped(draft.traitIds, draft.ownedTraitIds),
+  ), [worldEntities, rawLocations, rawTraits, rawTraitGroups, rawStats, rawStatGroups, worldOptions]);
+  const startLocations = useMemo(() => {
+    const open = openStartIds(entryDraft);
     return open.size === locations.length ? locations : locations.filter((l) => open.has(l.id));
-  }, [worldEntities, rawLocations, rawTraits, rawTraitGroups, rawStats, rawStatGroups, worldOptions, entryDraft.persona, entryDraft.optionValues, entryDraft.traitIds, entryDraft.ownedTraitIds, locations]);
+  }, [openStartIds, entryDraft, locations]);
   const personaPickContext: PersonaPickContext = {
     worldEntities: resolvedWorldEntities,
     locations: startLocations,
   };
+  // What a Preset's persona and location rows read (Q35, Q36).
+  const presetPlaces = useMemo<PresetPlaces>(
+    () => ({ allowed: personaRules.allowed, worldEntities: resolvedWorldEntities, locations, openLocationIds: openStartIds }),
+    [personaRules.allowed, resolvedWorldEntities, locations, openStartIds],
+  );
+  // Each Preset's match settles once per value, so it runs only when the draft or the world changes.
+  const presetMatches = useMemo(
+    () => new Map(setupOptions.flatMap((o) => (isPreset(o) ? [[o.id, matchPreset(entryDraft, entryWorld, o, presetPlaces)] as const] : []))),
+    [setupOptions, entryDraft, entryWorld, presetPlaces],
+  );
+  const presetMatch = (preset: PresetWorldOption) => presetMatches.get(preset.id) ?? null;
   // Enter World and Quick Start start on the same persona, and at the same location for it.
   const personaPreselect = (worldId: string) => preselectPersona({
     rules: personaRules,

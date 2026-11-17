@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { applyPreset, emptyEntryDraft, entryDefaults, matchPreset, type EntryDraft, type EntryTraitWorld } from './entryDraft';
-import type { Entity, PresetRow, PresetValue, PresetWorldOption, Trait, TraitGroup, TraitRequirementRow, WorldOption } from '@/types';
+import { applyPreset, emptyEntryDraft, entryDefaults, matchPreset, type EntryDraft, type EntryTraitWorld, type PresetPlaces } from './entryDraft';
+import type { Entity, GameLocation, PresetRow, PresetValue, PresetWorldOption, Trait, TraitGroup, TraitRequirementRow, WorldOption } from '@/types';
 
 const SIZE: WorldOption = {
   id: 'size', name: 'Size', type: 'choice', shownToPlayer: true, midGame: false,
@@ -249,5 +249,104 @@ describe('matchPreset trait rows', () => {
     const snapshot = setUp('snapshot');
     expect(matchPreset(snapshot.draft, snapshot.world, snapshot.start)).toBe('dark');
     expect(matchPreset({ ...snapshot.draft, traitIds: [...snapshot.draft.traitIds, 'pet'] }, snapshot.world, snapshot.start)).toBeNull();
+  });
+});
+
+describe('applyPreset persona and location rows', () => {
+  const playingAs = (id: string): TraitRequirementRow => ({ all: [{ kind: 'playingAs', id }] });
+  const person = (id: string, extra: Partial<Entity> = {}): Entity =>
+    ({ id, name: id, playerDescription: '', aiDescription: '', aiSummary: '', ...extra });
+  // The knight starts at the keep, and only the knight can take the squire trait or swear its oath.
+  const knight = person('knight', {
+    persona: true, locations: ['keep'], traits: [{ id: 'oath', name: 'Oath', statChanges: [], requires: [playingAs('knight')] }],
+  });
+  const rogue = person('rogue', { persona: true, locations: ['den'] });
+  const hermit = person('hermit', { customPersona: true });
+  const npc = person('npc', { locations: ['cave'] });
+  const place = (id: string, isStarting = false): GameLocation => ({ id, name: id, description: '', isStarting });
+  const locations = [place('town', true), place('keep'), place('den'), place('cave'), place('walls', true)];
+  const rootTraits: Trait[] = [
+    { id: 'squire', name: 'Squire', statChanges: [], requires: [playingAs('knight')] },
+    { id: 'pet', name: 'Pet', statChanges: [] },
+    { id: 'armor', name: 'Armor', statChanges: [], isDefault: true, requires: [playingAs('knight')] },
+  ];
+  // The walls are open only while the lanterns are lit.
+  const places: PresetPlaces = {
+    allowed: 'any', worldEntities: [knight, rogue, hermit, npc], locations,
+    openLocationIds: (draft) => new Set(locations.filter((l) => l.id !== 'walls' || draft.optionValues.lit !== false).map((l) => l.id)),
+  };
+  const persona = (entityId: string): PresetRow => ({ kind: 'persona', entityId });
+  const at = (locationId: string): PresetRow => ({ kind: 'location', locationId });
+  const on = (traitId: string, ownerId?: string): PresetRow => ({ kind: 'trait', traitId, on: true, ...(ownerId ? { ownerId } : {}) });
+  const setUp = (mode: PresetWorldOption['mode'], rows: PresetRow[], picks: Partial<EntryDraft> = {}) => {
+    const start = preset(mode, [value('v', rows)]);
+    const world: EntryTraitWorld = { traits: rootTraits, traitGroups: [], entities: [knight, rogue, hermit, npc], library: [], options: [LIT, start] };
+    const before: EntryDraft = { ...startDraft(world), ...picks };
+    return { start, world, before, ...applyPreset(before, world, start, 'v', places)! };
+  };
+
+  it('sets the Starting Location as a click does, so a later persona change keeps it (Q34)', () => {
+    const { draft, notice } = setUp('overlay', [at('walls')]);
+    expect(draft).toMatchObject({ locationId: 'walls', locationChosen: true });
+    expect(notice).toMatchObject({ locationId: 'walls', skipped: [] });
+    expect(notice.persona).toBeUndefined();
+  });
+
+  it('picks a world persona as a click does, and the location follows to its start (Q33)', () => {
+    const { draft, notice } = setUp('overlay', [persona('knight')], { locationId: 'town' });
+    expect(draft).toMatchObject({ persona: { source: 'world', entityId: 'knight' }, locationId: 'keep', locationChosen: false });
+    expect(notice).toMatchObject({ persona: { source: 'world', entityId: 'knight' }, locationId: 'keep' });
+  });
+
+  it('under a snapshot with no persona or location row, keeps both (Q9)', () => {
+    const picks = { persona: { source: 'world', entityId: 'rogue' } as const, locationId: 'den', locationChosen: true, traitIds: ['pet'] };
+    const { draft, notice } = setUp('snapshot', [opt('lit', false)], picks);
+    expect(draft).toMatchObject({ persona: picks.persona, locationId: 'den', locationChosen: true, traitIds: [] });
+    expect(notice.persona).toBeUndefined();
+    expect(notice.locationId).toBeUndefined();
+  });
+
+  it('applies a persona row and the rows that need that persona in one click, on its defaults (Q38)', () => {
+    const { draft, notice } = setUp('snapshot', [on('squire'), on('oath', 'knight'), persona('knight')]);
+    expect(draft.persona).toEqual({ source: 'world', entityId: 'knight' });
+    expect([...draft.traitIds].sort()).toEqual(['armor', 'squire']);
+    expect(draft.ownedTraitIds.knight).toEqual(['oath']);
+    expect(notice.skipped).toEqual([]);
+  });
+
+  it('checks a location row against the persona and Options the click leaves', () => {
+    // The rogue's den is offered only once the rogue is picked; the walls close with the lanterns.
+    expect(setUp('overlay', [at('den'), persona('rogue')]).draft.locationId).toBe('den');
+    const closed = [opt('lit', false), at('walls')];
+    expect(setUp('overlay', closed)).toMatchObject({ draft: { locationId: null }, notice: { skipped: [closed[1]] } });
+  });
+
+  it('skips a persona or location row it cannot pick, and applies the rest (Q35, Q36)', () => {
+    const stale = [persona('npc'), persona('gone'), at('cave'), at('nowhere')];
+    const { draft, notice } = setUp('overlay', [...stale, on('pet')]);
+    expect(notice.skipped).toEqual(stale);
+    expect(draft).toMatchObject({ persona: { source: 'none' }, locationId: null, traitIds: ['pet'] });
+  });
+
+  it('skips persona and location rows without the world places to read', () => {
+    const start = preset('overlay', [value('v', [persona('knight'), at('town')])]);
+    const world: EntryTraitWorld = { traits: rootTraits, traitGroups: [], entities: [knight], library: [], options: [start] };
+    expect(applyPreset(startDraft(world), world, start, 'v')!.notice.skipped).toHaveLength(2);
+  });
+
+  it('picks the Custom Persona as None, keeping the name the player entered', () => {
+    const named = { source: 'none', name: 'Ash' } as const;
+    expect(setUp('overlay', [persona('hermit')], { persona: named }).draft.persona).toEqual(named);
+    expect(setUp('overlay', [persona('hermit')], { persona: { source: 'world', entityId: 'rogue' } }).draft.persona).toEqual({ source: 'none' });
+  });
+
+  it('matches a persona and location only when a row names them', () => {
+    const named = setUp('overlay', [persona('rogue'), at('town')]);
+    expect(matchPreset(named.draft, named.world, named.start, places)).toBe('v');
+    expect(matchPreset({ ...named.draft, locationId: 'den' }, named.world, named.start, places)).toBeNull();
+    expect(matchPreset({ ...named.draft, persona: { source: 'world', entityId: 'knight' } }, named.world, named.start, places)).toBeNull();
+    const unnamed = setUp('snapshot', [opt('lit', false)]);
+    const moved = { ...unnamed.draft, persona: { source: 'world', entityId: 'rogue' } as const, locationId: 'den' };
+    expect(matchPreset(moved, unnamed.world, unnamed.start, places)).toBe('v');
   });
 });

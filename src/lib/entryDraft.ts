@@ -1,5 +1,8 @@
 import type { DictionarySelectionItem } from './dictionarySelection';
-import { locationForPersonaPick, withoutPersona, type PersonaPickContext } from './personaPick';
+import {
+  locationForPersonaPick, offeredPersonas, offeredStartLocations, samePersonaRef, withoutPersona, type PersonaPickContext,
+} from './personaPick';
+import { customPersonaEntity } from './blueprints';
 import { resolveOwners } from './owners';
 import { startingGateStats } from './gateStats';
 import {
@@ -12,7 +15,7 @@ import { scoped, type OwnerId } from './scope';
 import { startingInstances } from './inventory';
 import { acceptsValue, optionValue, valuedOptions } from './worldOptions';
 import type {
-  Body, CascadeOffTraitIds, Entity, GameLocation, Item, OwnedTraitPicks, PersonaRef, Placement, PresetRow, PresetValue,
+  AllowedPersonas, Body, CascadeOffTraitIds, Entity, GameLocation, Item, OwnedTraitPicks, PersonaRef, Placement, PresetRow, PresetValue,
   PresetWorldOption, Slot, Stat, StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValues,
 } from '@/types';
 
@@ -193,13 +196,51 @@ export function castOwnedTraits(draft: Pick<EntryDraft, 'ownedTraitIds' | 'perso
   return out;
 }
 
-/** What one Preset click did: the value applied, the picks it turned on and off, and the rows it could not apply. */
+/** What one Preset click did: the value applied, the picks it turned on and off, the persona and Starting Location
+ *  it changed to, and the rows it could not apply. */
 export interface PresetNotice {
   value: PresetValue;
   on: GateTraitRef[];
   off: GateTraitRef[];
+  /** Absent when the persona did not change. */
+  persona?: PersonaRef;
+  /** Absent when the Starting Location did not change; null is Random. */
+  locationId?: string | null;
   skipped: readonly PresetRow[];
 }
+
+/** What persona and location rows read. Without it, apply skips those rows. */
+export interface PresetPlaces {
+  allowed: AllowedPersonas;
+  /** The world's entities as authored: persona marks and start places. */
+  worldEntities: readonly Entity[];
+  locations: readonly GameLocation[];
+  /** The ids of the locations the gates leave on and unlocked at the start under `draft`. */
+  openLocationIds: (draft: EntryDraft) => ReadonlySet<string>;
+}
+
+type PersonaRow = Extract<PresetRow, { kind: 'persona' }>;
+
+/** The entities a persona row can name: the marked personas, then the Custom Persona (Q36). */
+export function presetPersonaTargets<E extends Entity>(entities: readonly E[]): { world: E[]; custom?: E } {
+  const custom = customPersonaEntity(entities) as E | undefined;
+  return { world: entities.filter((e) => e.persona === true && e !== custom), ...(custom ? { custom } : {}) };
+}
+
+/** The pick a persona row makes, or null when its entity is gone, unmarked, or not offered (Q36). The Custom
+ *  Persona is picked as None, keeping a name the player entered. */
+function personaRowRef(row: PersonaRow, places: PresetPlaces, current: PersonaRef): PersonaRef | null {
+  const targets = presetPersonaTargets(places.worldEntities);
+  const offer = offeredPersonas(places.allowed, { world: targets.world.map((e) => e.id), library: [], custom: targets.custom?.id });
+  if (row.entityId === targets.custom?.id) return offer.none && offer.custom ? (current.source === 'none' ? current : { source: 'none' }) : null;
+  return offer.world.includes(row.entityId) ? { source: 'world', entityId: row.entityId } : null;
+}
+
+/** What a persona pick reads under `draft`: the authored entities and the locations open at its start. */
+const pickContext = (draft: EntryDraft, places: PresetPlaces): PersonaPickContext => {
+  const open = places.openLocationIds(draft);
+  return { worldEntities: places.worldEntities, locations: places.locations.filter((l) => open.has(l.id)) };
+};
 
 type TraitRow = Extract<PresetRow, { kind: 'trait' }>;
 type Picks = Pick<EntryDraft, 'traitIds' | 'ownedTraitIds'>;
@@ -311,10 +352,12 @@ function withOptionRow(values: WorldOptionValues, row: Extract<PresetRow, { kind
  * The draft after a click on one Preset value, and its notice. The target is the defaults under a snapshot, or the
  * draft under an overlay, with the rows laid on. The picks then settle once with the Preset's first; an unlisted
  * pick that still blocks an on-row goes to cascade-off and the settle runs again (Q26). A row that does not hold
- * afterward is skipped. Null when the Preset has no such value.
+ * afterward is skipped. A persona row is picked first, as a click, so the trees and the snapshot's defaults read the
+ * new persona; a location row is picked last, among the locations the step offers then (Q33–Q38). Null when the
+ * Preset has no such value.
  */
 export function applyPreset(
-  draft: EntryDraft, world: EntryTraitWorld, preset: PresetWorldOption, valueId: string,
+  draft: EntryDraft, world: EntryTraitWorld, preset: PresetWorldOption, valueId: string, places?: PresetPlaces,
 ): { draft: EntryDraft; notice: PresetNotice } | null {
   const value = preset.values.find((v) => v.id === valueId);
   if (!value) return null;
@@ -327,17 +370,23 @@ export function applyPreset(
     else skipped.add(row);
   }
 
-  const trees = entryTrees(world, draft.persona);
   let target: EntryDraft = { ...draft, optionValues };
+  for (const row of value.rows) {
+    if (row.kind !== 'persona') continue;
+    const ref = places && personaRowRef(row, places, target.persona);
+    if (ref && places) target = withPersonaPick(target, ref, pickContext(target, places));
+    else skipped.add(row);
+  }
+  const trees = entryTrees(world, target.persona);
   if (preset.mode === 'snapshot') {
-    const { global, owners } = settleDefaults({ ...entryGateBase(world, draft.persona), optionValues }).active;
-    target = { ...target, traitIds: global, ownedTraitIds: { ...draft.ownedTraitIds, ...owners }, cascadeOffTraitIds: { global: [], owners: {} } };
+    const { global, owners } = settleDefaults({ ...entryGateBase(world, target.persona), optionValues }).active;
+    target = { ...target, traitIds: global, ownedTraitIds: { ...target.ownedTraitIds, ...owners }, cascadeOffTraitIds: { global: [], owners: {} } };
   }
   const listed = new Set<string>();
   const laid: TraitRow[] = [];
   const removed: GateTraitRef[] = [];
   for (const row of value.rows) {
-    if (row.kind !== 'trait') { if (row.kind !== 'option') skipped.add(row); continue; }
+    if (row.kind !== 'trait') continue;
     const next = withTraitRow(target, row, trees, listed);
     if (!next) { skipped.add(row); continue; }
     target = next.target;
@@ -357,14 +406,22 @@ export function applyPreset(
   }
 
   const keptOff = laid.filter((row) => !row.on).map(presetRowRef);
-  const settled = withShortGroupsFilled(withSettledTraits(target, result), world, [...result.turnedOff, ...removed, ...blockers], keptOff);
+  let settled = withShortGroupsFilled(withSettledTraits(target, result), world, [...result.turnedOff, ...removed, ...blockers], keptOff);
   for (const row of laid) if (picksIn(settled, presetRowRef(row).ownerId).includes(row.traitId) !== row.on) skipped.add(row);
+  for (const row of value.rows) {
+    if (row.kind !== 'location') continue;
+    const offered = places ? offeredStartLocations(settled.persona, pickContext(settled, places)) : [];
+    if (offered.some((l) => l.id === row.locationId)) settled = withLocationPick(settled, row.locationId);
+    else skipped.add(row);
+  }
   return {
     draft: settled,
     notice: {
       value,
       on: picksAdded(draft, settled, trees),
       off: picksAdded(settled, draft, trees),
+      ...(samePersonaRef(draft.persona, settled.persona) ? {} : { persona: settled.persona }),
+      ...(draft.locationId === settled.locationId ? {} : { locationId: settled.locationId }),
       skipped: value.rows.filter((row) => skipped.has(row)),
     },
   };
@@ -386,23 +443,26 @@ const sameTraits = (a: EntryDraft, b: EntryDraft) => samePicks(a.traitIds, b.tra
 
 /**
  * The Preset value the draft matches, or null. A value matches while the draft equals its result: under a snapshot,
- * every Option and trait; under an overlay, the values its applied rows name. A value with no row that applies never
- * matches. The first match in authored order wins.
+ * every Option and trait; under an overlay, the values its applied rows name. Either way the persona and Starting
+ * Location count only when a row names them. A value with no row that applies never matches. The first match in
+ * authored order wins.
  */
-export function matchPreset(draft: EntryDraft, world: EntryTraitWorld, preset: PresetWorldOption): string | null {
+export function matchPreset(draft: EntryDraft, world: EntryTraitWorld, preset: PresetWorldOption, places?: PresetPlaces): string | null {
   const options = valuedOptions(world.options);
   const sameOption = (a: EntryDraft, b: EntryDraft, id: string) => {
     const option = options.find((o) => o.id === id);
     return !option || optionValue(option, a.optionValues) === optionValue(option, b.optionValues);
   };
   for (const value of preset.values) {
-    const applied = applyPreset(draft, world, preset, value.id);
+    const applied = applyPreset(draft, world, preset, value.id, places);
     if (!applied || applied.notice.skipped.length === value.rows.length) continue;
     const result = applied.draft;
-    const matches = preset.mode === 'snapshot'
+    const samePlace = (row: PresetRow) => (row.kind === 'persona' ? samePersonaRef(result.persona, draft.persona)
+      : row.kind !== 'location' || result.locationId === draft.locationId);
+    const matches = value.rows.every(samePlace) && (preset.mode === 'snapshot'
       ? options.every((o) => sameOption(result, draft, o.id)) && sameTraits(result, draft)
       : value.rows.every((row) => (row.kind === 'option' ? sameOption(result, draft, row.optionId)
-        : row.kind !== 'trait' || sameTrait(result, draft, row)));
+        : row.kind !== 'trait' || sameTrait(result, draft, row))));
     if (matches) return value.id;
   }
   return null;
