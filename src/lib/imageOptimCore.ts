@@ -4,11 +4,12 @@
  */
 import type { Entity, GalleryImage, World } from '@/types';
 import { dataUrlRealMime, isConvertibleImage, isLosslessImage, isRemoteImage, reencodeKeepsAnimation } from './imageBytes';
-import { entityImages } from './entityImages';
-import { locationImages } from './locationImages';
+import { entityImages, galleryLinks } from './entityImages';
+import { locationLinks, rewriteMediaImages } from './mediaGallery';
 import { IMAGE_CAPS, type ImageCap } from './imageSlots';
-import { worldImageItems } from './mediaIndex';
+import { worldOptimizeTargets } from './mediaIndex';
 import { writeMediaSlot, type MediaEditor } from './mediaParents';
+import { labelPlaceholders } from './placementLetters';
 
 /** Encodes and measures image data-URLs. `encode` never throws; it returns the source on failure. */
 export interface ImageCodec {
@@ -113,8 +114,8 @@ export async function downscaleWorldImages(
     ...out,
     worldOverview: { ...out.worldOverview, thumbnail: out.worldOverview?.thumbnail ?? null },
     // Galleries come out in their stored shape, a legacy single image folded in.
-    entities: (out.entities ?? []).map((e) => ({ ...e, images: entityImages(e) })),
-    locations: (out.locations ?? []).map((l) => ({ ...l, images: locationImages(l) })),
+    entities: (out.entities ?? []).map((e) => ({ ...e, images: galleryLinks(e) })),
+    locations: (out.locations ?? []).map((l) => ({ ...l, images: locationLinks(l) })),
   };
 }
 
@@ -128,20 +129,32 @@ export async function reencodeWorldSlots(
   onProgress?: (done: number, total: number) => void,
   signal?: AbortSignal,
 ): Promise<World> {
-  const items = worldImageItems(world);
-  const total = items.length;
+  const { slots, entries } = worldOptimizeTargets(world);
+  const total = slots.length + entries.length;
   let done = 0;
   onProgress?.(0, total);
+  const encode = async (data: string, budget: ImageCap) => {
+    if (signal?.aborted) throw new DOMException('Optimize canceled', 'AbortError');
+    const result = (await deps.shouldEncode(data, budget)) ? await deps.optimize(data, budget) : data;
+    onProgress?.(++done, total);
+    return result;
+  };
 
   // Each result is written back by its item's slot, through the parent table the editor writes with.
   let out = world;
   const editor = worldEditor(() => out, (next) => { out = next; });
-  for (const item of items) {
-    if (signal?.aborted) throw new DOMException('Optimize canceled', 'AbortError');
-    const result = (await deps.shouldEncode(item.value, item.budget)) ? await deps.optimize(item.value, item.budget) : item.value;
+  for (const item of slots) {
+    const result = await encode(item.value, item.budget);
     if (result !== item.value) writeMediaSlot(editor, item, { data: result });
-    onProgress?.(++done, total);
   }
+  // A shared entry is re-encoded once, for every place that links it.
+  const budgets = new Map(entries.map((entry) => [entry.id, entry.budget]));
+  const list = out.worldOverview?.mediaList;
+  const nextList = await rewriteMediaImages(list, (data, entry) => {
+    const budget = budgets.get(entry.id);
+    return budget ? encode(data, budget) : Promise.resolve(data);
+  });
+  if (nextList !== list) out = { ...out, worldOverview: { ...out.worldOverview, mediaList: nextList } };
   return out;
 }
 
@@ -156,6 +169,13 @@ function worldEditor(get: () => World, set: (next: World) => void): MediaEditor 
     dictionary: (id, edit) => set({ ...get(), dictionaries: swap(get().dictionaries, id, edit) }),
     body: (id, edit) => set({ ...get(), bodies: swap(get().bodies, id, edit) }),
     item: (id, edit) => set({ ...get(), items: swap(get().items, id, edit) }),
+    read: {
+      entity: (id) => get().entities?.find((e) => e.id === id),
+      location: (id) => get().locations?.find((l) => l.id === id),
+      mediaList: () => get().worldOverview?.mediaList,
+      subject: (name) => labelPlaceholders(name, get().placeholders ?? []),
+    },
+    addMedia: (entries) => set({ ...get(), worldOverview: { ...get().worldOverview, mediaList: { ...get().worldOverview?.mediaList, ...entries } } }),
   };
 }
 

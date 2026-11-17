@@ -25,6 +25,7 @@ import type { PlayerStat, Trait } from '@/types';
 import { useTourRecord } from '@/lib/authoringTour/progress';
 import type { TourStep } from '@/lib/authoringTour/steps';
 import { sampleMissLine, sampleTestLine, type TestLineScan } from '@/lib/authoringTour/testLine';
+import { useMediaList } from '@/lib/useMediaList';
 
 const STARTS_LINES: Record<StartsAt, string> = {
   here: 'A new game starts here',
@@ -127,6 +128,7 @@ const SetupTraitSurface = ({ category }: { category: SetupTraitCategory }) => (
 );
 
 function Surface({ surface }: { surface: Exclude<PlayerSurface, { kind: 'none' }> }) {
+  const media = useMediaList();
   switch (surface.kind) {
     case 'libraryCard':
       return <div className="w-56 max-w-full"><WorldCardFace world={surface.world} layout="grid" /></div>;
@@ -135,7 +137,7 @@ function Surface({ surface }: { surface: Exclude<PlayerSurface, { kind: 'none' }
         <div className="space-y-2">
           {/* The location's image is the tab's backdrop, with the same fade as in the story. */}
           <div className="relative isolate overflow-hidden rounded-md border">
-            <LocationBackdrop image={locationImages(surface.location)[0]?.data} overlay={0.7} overlayHidden={false} />
+            <LocationBackdrop image={locationImages(surface.location, media)[0]?.data} overlay={0.7} overlayHidden={false} />
             <LocationTabBody location={surface.location} locations={surface.locations} connections={surface.connections} />
           </div>
           {surface.startsAt && <p className="text-label">{STARTS_LINES[surface.startsAt]}</p>}

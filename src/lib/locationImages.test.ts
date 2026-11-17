@@ -57,7 +57,7 @@ describe('migrateWorld on location backgrounds', () => {
 
   it('loads an old background into slot 0, and a second load changes nothing', () => {
     const once = migrateWorld(oldWorld());
-    expect(once.locations[0]).toMatchObject({ id: 'harbor', images: [{ data: 'data:image/webp;base64,H' }] });
+    expect(locationImages(once.locations[0], once.worldOverview.mediaList).map((img) => img.data)).toEqual(['data:image/webp;base64,H']);
     expect('backgroundImage' in once.locations[0]).toBe(false);
     expect(once.locations[1].images).toBeUndefined();
     const twice = migrateWorld(structuredClone(once));
@@ -68,12 +68,14 @@ describe('migrateWorld on location backgrounds', () => {
     const images: GalleryImage[] = [{ data: 'data:image/webp;base64,A', requires: HURT }, { data: 'data:image/webp;base64,B' }];
     const world = migrateWorld({ ...oldWorld(), locations: [{ id: 'harbor', name: 'Harbor', images }] });
     const imported = migrateWorld(JSON.parse(JSON.stringify(world)));
-    expect(imported.locations[0].images).toEqual(images);
+    expect(locationImages(imported.locations[0], imported.worldOverview.mediaList).map(({ data, requires }) => ({ data, ...(requires ? { requires } : {}) })))
+      .toEqual(images);
   });
 
   it('migrates a world already stamped with the current version', () => {
     const current = migrateWorld(oldWorld());
     const stray = { ...current, locations: [{ id: 'harbor', name: 'Harbor', backgroundImage: 'X' }] };
-    expect(migrateWorld(stray).locations[0].images).toEqual([{ data: 'X' }]);
+    const out = migrateWorld(stray);
+    expect(locationImages(out.locations[0], out.worldOverview.mediaList).map((img) => img.data)).toEqual(['X']);
   });
 });

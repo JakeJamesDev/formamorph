@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { migrateWorld } from './version';
+import { migrateGalleriesToMediaList } from './mediaGallery';
 import { runRules } from './testBench/rules';
 import { entityImages } from './entityImages';
 import { locationImages } from './locationImages';
@@ -91,8 +92,8 @@ const requirementRows = (world: World): TraitRequirementRow[] => [
   ...ownersOf(world).flatMap((o) => o.traits.flatMap((t) => t.requires ?? [])),
   ...(world.entities ?? []).flatMap((e) => e.enabledWhen ?? []),
   ...[
-    ...(world.locations ?? []).flatMap((l) => locationImages(l)),
-    ...(world.entities ?? []).flatMap((e) => entityImages(e)),
+    ...(world.locations ?? []).flatMap((l) => locationImages(l, world.worldOverview.mediaList)),
+    ...(world.entities ?? []).flatMap((e) => entityImages(e, world.worldOverview.mediaList)),
     ...(world.worldOverview.mapBackground?.images ?? []),
   ].flatMap((image) => image.requires ?? []),
 ];
@@ -116,7 +117,8 @@ const DETECT: Record<Feature, (world: World) => boolean> = {
   timeGates: (w) => requirementRows(w).some((row) => row.all.some((c) => c.kind === 'time')),
   scriptLore: (w) => scriptCode(w).some((code) => ENTRY_ENABLED_WRITE.test(code)),
   scriptExits: (w) => scriptCode(w).some((code) => /\blocation\.exits\b/.test(code)),
-  visibilityRules: (w) => (w.locations ?? []).some((l) => hasVisibilityRule(locationImages(l))) && (w.entities ?? []).some((e) => hasVisibilityRule(entityImages(e))),
+  visibilityRules: (w) => (w.locations ?? []).some((l) => hasVisibilityRule(locationImages(l, w.worldOverview.mediaList)))
+    && (w.entities ?? []).some((e) => hasVisibilityRule(entityImages(e, w.worldOverview.mediaList))),
   mapBackground: (w) => (w.worldOverview.mapBackground?.images ?? []).length > 0,
   newFieldChips: (w) => [
     ...(w.entities ?? []).flatMap((e) => [e.pronouns ?? '', ...(e.relationships ?? []).map((r) => r.label)]),
@@ -132,9 +134,12 @@ describe.each(worlds)('the %s world', (id, raw) => {
   const world = migrateWorld(structuredClone(file));
 
   it('is stored in the current shape', () => {
-    // Every load stamps the running version, so only the stamp may differ.
+    // Every load stamps the running version and moves galleries into the Media List; the file is shipped, so it
+    // keeps its embedded pictures (constraint: shipped files are never migrated on disk). Nothing else may differ.
     const { version: _loaded, ...loaded } = stored(world) as Record<string, unknown>;
-    const { version: _stored, ...onDisk } = file;
+    const moved = structuredClone(file);
+    migrateGalleriesToMediaList(moved);
+    const { version: _stored, ...onDisk } = moved;
     expect(loaded).toEqual(onDisk);
   });
 

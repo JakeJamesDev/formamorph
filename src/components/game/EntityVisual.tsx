@@ -8,6 +8,7 @@ import { GalleryControls, type GalleryControlsProps } from '@/components/Gallery
 import { resolveModelType } from '@/lib/UtilityComponents';
 import { entityImageData } from '@/lib/entityImages';
 import type { EntityVisualSource } from '@/lib/entityVisual';
+import { useMediaList } from '@/lib/useMediaList';
 import { AvatarIcon } from '@/lib/elementIcons';
 import ModelViewer from '@/views/ModelViewer';
 import { SwipeImage } from './SwipeImage';
@@ -70,7 +71,8 @@ export const EntityVisual = ({ entity, className, images: inPlay, avatar, prefer
   // A 3D view loads only once its panel has been on screen.
   const everShown = usePanelEverShown();
 
-  const images = inPlay ?? entityImageData(entity);
+  const media = useMediaList();
+  const images = inPlay ?? entityImageData(entity, media);
   // A held index outlives the gallery it was taken from (an edited world, a reused panel), so clamp it here
   // rather than trusting it to still point at a picture.
   const index = images.length ? Math.min(imageIndex, images.length - 1) : 0;

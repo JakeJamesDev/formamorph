@@ -10,13 +10,19 @@ const entity = (extra: Partial<Entity>): Entity =>
 
 describe('hasEntityVisual', () => {
   it('accepts an image or a model and rejects an entity with neither', () => {
-    expect(hasEntityVisual(entity({ images: [{ data: IMAGE }] }))).toBe(true);
-    expect(hasEntityVisual(entity({ model: MODEL }))).toBe(true);
-    expect(hasEntityVisual(entity({}))).toBe(false);
-    expect(hasEntityVisual(undefined)).toBe(false);
+    expect(hasEntityVisual(entity({ images: [{ data: IMAGE }] }), undefined)).toBe(true);
+    expect(hasEntityVisual(entity({ model: MODEL }), undefined)).toBe(true);
+    expect(hasEntityVisual(entity({}), undefined)).toBe(false);
+    expect(hasEntityVisual(undefined, undefined)).toBe(false);
+  });
+
+  it('reads a linked image through the Media List, and a link the list lacks as no image', () => {
+    const media = { m: { id: 'm', name: 'Sedge 1', kind: 'image' as const, data: IMAGE } };
+    expect(hasEntityVisual(entity({ images: [{ mediaId: 'm' }] }), media)).toBe(true);
+    expect(hasEntityVisual(entity({ images: [{ mediaId: 'gone' }] }), media)).toBe(false);
   });
 
   it('rejects a model asset carrying no data, which nothing could load', () => {
-    expect(hasEntityVisual(entity({ model: { name: 'statue.glb' } as Entity['model'] }))).toBe(false);
+    expect(hasEntityVisual(entity({ model: { name: 'statue.glb' } as Entity['model'] }), undefined)).toBe(false);
   });
 });

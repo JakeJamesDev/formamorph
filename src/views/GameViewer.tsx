@@ -2953,10 +2953,10 @@ const GameViewer = ({
     const chain = [...gameStates.slice(0, closedTurns(fullMessageHistory)), current];
     const view = buildPlayerView({
       world: getInPlayWorldData(), chain, history: fullMessageHistory, persona: persona?.entity ?? null, resolve: resolvePH, isEntityOn: inPlay.isEntityOn,
-      ...(gate && { gate }),
+      ...(gate && { gate }), media: worldOverview.mediaList,
     });
     return { view, current };
-  }, [saveCurrentGameState, gameStates, fullMessageHistory, getInPlayWorldData, persona, resolvePH, inPlay]);
+  }, [saveCurrentGameState, gameStates, fullMessageHistory, getInPlayWorldData, persona, resolvePH, inPlay, worldOverview.mediaList]);
   // A Formaquestion Tool and the code test read the Player View while the game shows (Q20).
   const helpToolWorld = useCallback((fired?: readonly DictionaryEntry[]) => {
     const reach = playerViewReach();
@@ -6645,12 +6645,12 @@ const GameViewer = ({
     const { view } = playerViewReach(liveGate);
     return {
       cardRows: mentionCardRows(view, presenceById, {
-        imageOf: (entity) => visibleImages(entity, liveGate)[0]?.data,
+        imageOf: (entity) => visibleImages(entity, liveGate, worldOverview.mediaList)[0]?.data,
         describe: (entity) => (entity.strangerDescription ? resolveEntityText(entity, entity.strangerDescription) : ''),
       }),
       pickBase: pickListBase(view, presenceById, metEntities),
     };
-  }, [settings.characterMentions, playerViewReach, liveGate, presenceById, resolveEntityText, metEntities]);
+  }, [settings.characterMentions, playerViewReach, liveGate, presenceById, resolveEntityText, metEntities, worldOverview.mediaList]);
   const shownQuoteColors = useMemo(() => cardColors(quoteColors, cardRows), [quoteColors, cardRows]);
   const pickable = useCallback(
     (turnId: string) => turnPickList(pickBase, correctedReadings[turnId]?.reading),

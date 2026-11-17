@@ -105,6 +105,7 @@ export function MediaImagePanel({ parent, images, framed, onFrame, avatar, place
           placeholders={placeholders}
           ownerId={entity.id}
           imageId={`media-entity-image-${entity.id}`}
+          linked
           frame={{ framed, onFramedChange: onFrame, ruleCog: false }}
         >
           <ImageGallery tagsSlot={<ImageTags />} />

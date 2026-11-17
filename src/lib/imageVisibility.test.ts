@@ -19,7 +19,7 @@ const input = (hp: number, active: string[] = []): GateInput => ({
 });
 
 const ash = (images: GalleryImage[]) => ({ id: 'ash', images });
-const shown = (images: GalleryImage[], i: GateInput) => visibleImages(ash(images), i).map((v) => v.data);
+const shown = (images: GalleryImage[], i: GateInput) => visibleImages(ash(images), i, undefined).map((v) => v.data);
 
 describe('visibleImages', () => {
   it('shows an image with no rule whatever the state', () => {
@@ -34,7 +34,7 @@ describe('visibleImages', () => {
 
   it('reports each visible image with its author-order slot', () => {
     const gallery = [{ data: 'wounded', requires: when(hurt) }, { data: 'calm' }];
-    expect(visibleImages(ash(gallery), input(90))).toEqual([{ slot: 1, data: 'calm' }]);
+    expect(visibleImages(ash(gallery), input(90), undefined)).toEqual([{ slot: 1, data: 'calm' }]);
   });
 
   it('reads the image’s own entity for a rule with no owner', () => {
@@ -55,7 +55,7 @@ describe('visibleImages', () => {
 
   it('yields nothing when every image hides', () => {
     const gallery = [{ data: 'a', requires: when(hurt) }, { data: 'b', requires: when(hurt) }];
-    expect(visibleImages(ash(gallery), input(90))).toEqual([]);
+    expect(visibleImages(ash(gallery), input(90), undefined)).toEqual([]);
   });
 
   it('hides an image whose rule names a missing trait, even under Not', () => {
@@ -74,7 +74,7 @@ describe('visibleImages', () => {
   });
 
   it('is empty for an entity with no images', () => {
-    expect(visibleImages({ id: 'ash' }, input(50))).toEqual([]);
+    expect(visibleImages({ id: 'ash' }, input(50), undefined)).toEqual([]);
   });
 });
 
@@ -88,7 +88,7 @@ describe('visibleLocationImages', () => {
     entities: [{ id: 'wren', name: 'Wren', persona: true }, { id: 'ash', name: 'Ash' }],
     persona: { source: 'world', entityId: 'wren' },
   });
-  const backdrops = (images: GalleryImage[], i: GateInput) => visibleLocationImages({ images }, i).map((v) => v.data);
+  const backdrops = (images: GalleryImage[], i: GateInput) => visibleLocationImages({ images }, i, undefined).map((v) => v.data);
 
   it('reads the played persona for a Condition with no owner', () => {
     const gallery = [{ data: 'wounded', requires: when(hurt) }, { data: 'healthy' }];
@@ -127,6 +127,6 @@ describe('visibleLocationImages', () => {
   });
 
   it('reads a location written before the gallery', () => {
-    expect(visibleLocationImages({ backgroundImage: 'old' }, played(50))).toEqual([{ slot: 0, data: 'old' }]);
+    expect(visibleLocationImages({ backgroundImage: 'old' }, played(50), undefined)).toEqual([{ slot: 0, data: 'old' }]);
   });
 });

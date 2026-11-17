@@ -1,6 +1,6 @@
 // Visibility rules in play: which of an entity's, a location's or the Map Background's gallery images the story shows right now.
 
-import type { Base64Data, Entity, GalleryImage, Item, ItemInstance, RequirementOwner, TraitRequirement, TraitRequirementRow, WorldOverview } from '@/types';
+import type { Base64Data, Entity, GalleryImage, Item, ItemInstance, MediaList, RequirementOwner, TraitRequirement, TraitRequirementRow, WorldOverview } from '@/types';
 import { entityImages } from './entityImages';
 import { locationImages, type LocationImageBearing } from './locationImages';
 import { mapImages } from './mapBackground';
@@ -22,8 +22,8 @@ const visibleBy = (images: readonly GalleryImage[], statesOf: (rows: TraitRequir
  * The entity's images visible in play, in author order, so the first is the primary. An image with no rule is
  * visible; one with a rule is visible while any row holds, and an unresolved Condition never holds (Q12).
  */
-export const visibleImages = (entity: Pick<Entity, 'id' | 'images'>, input: GateInput): VisibleImage[] =>
-  visibleBy(entityImages(entity), (rows) => ruleStates(input, entity.id, rows));
+export const visibleImages = (entity: Pick<Entity, 'id' | 'images'>, input: GateInput, media: MediaList | undefined): VisibleImage[] =>
+  visibleBy(entityImages(entity, media), (rows) => ruleStates(input, entity.id, rows));
 
 /**
  * A location rule's rows as the gate module reads them: a Condition with no owner names the played persona
@@ -70,8 +70,8 @@ export const visibleItemImage = (item: Pick<Item, 'images'>, instance: Pick<Item
   visibleBy(entityImages(item), (rows) => itemRuleStates(input, instance, rows))[0]?.data;
 
 /** The location's images visible in play, in author order. An unresolved Condition never holds. */
-export const visibleLocationImages = (location: LocationImageBearing, input: GateInput): VisibleImage[] =>
-  visibleBy(locationImages(location), (rows) => locationRuleStates(input, rows));
+export const visibleLocationImages = (location: LocationImageBearing, input: GateInput, media: MediaList | undefined): VisibleImage[] =>
+  visibleBy(locationImages(location, media), (rows) => locationRuleStates(input, rows));
 
 /** The Map Background's images visible in play, in author order. Its rows read as a location's do (Q74). */
 export const visibleMapImages = (overview: Pick<WorldOverview, 'mapBackground'>, input: GateInput): VisibleImage[] =>

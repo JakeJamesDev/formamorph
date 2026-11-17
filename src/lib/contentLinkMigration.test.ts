@@ -106,7 +106,8 @@ describe('migrateWorld and content links', () => {
   it('leaves every other authored section of a linked world alone', () => {
     const raw = worldWith([linkedEntity], [linkedBook]) as Record<string, unknown>;
     const out = migrateWorld(raw) as unknown as Record<string, unknown>;
-    expect(out.worldOverview).toEqual(raw.worldOverview);
+    // Every loaded world gains a Media List (Q26).
+    expect(out.worldOverview).toEqual({ ...(raw.worldOverview as object), mediaList: {} });
     expect(out.stats).toEqual(raw.stats);
     expect(out.traits).toEqual(raw.traits);
   });

@@ -4,6 +4,7 @@ import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
 import { namedBySlot, type MediaItem } from '@/lib/mediaIndex';
 import { mediaParentSpec, writeMediaSlot, type MediaEditor, type MediaWrite } from '@/lib/mediaParents';
 import { withImageRule } from '@/lib/entityImages';
+import { labelPlaceholders } from '@/lib/placementLetters';
 import { withBackdropImage } from '@/lib/bodyLayout';
 import { readImageAspect } from '@/lib/imageAspect';
 import { useMountedRef } from '@/lib/useMountedRef';
@@ -36,7 +37,7 @@ export function useMediaStep() {
  * cleared the way that panel clears it, as one History Step that keeps the Media tab as its Origin.
  */
 export function useMediaItemActions() {
-  const { editEntity, locations, updateLocation, dictionaries, updateDictionary, items, updateItem, worldOverview, updateWorldOverview, bodies, setBodies } = useGameData();
+  const { editEntity, locations, updateLocation, dictionaries, updateDictionary, items, updateItem, worldOverview, updateWorldOverview, addMedia, bodies, setBodies, entities, placeholders } = useGameData();
 
   const editor = useMemo<MediaEditor>(() => ({
     overview: (patch) => updateWorldOverview(patch(worldOverview)),
@@ -54,7 +55,9 @@ export function useMediaItemActions() {
       const item = items.find((i) => i.id === id);
       if (item) updateItem(edit(item));
     },
-  }), [editEntity, locations, updateLocation, dictionaries, updateDictionary, items, updateItem, worldOverview, updateWorldOverview, bodies, setBodies]);
+    read: { entity: (id) => entities.find((e) => e.id === id), location: (id) => locations.find((l) => l.id === id), mediaList: () => worldOverview.mediaList, subject: (name) => labelPlaceholders(name, placeholders) },
+    addMedia,
+  }), [editEntity, locations, updateLocation, dictionaries, updateDictionary, items, updateItem, worldOverview, updateWorldOverview, bodies, setBodies, entities, addMedia, placeholders]);
 
   const step = useMediaStep();
   const mounted = useMountedRef();

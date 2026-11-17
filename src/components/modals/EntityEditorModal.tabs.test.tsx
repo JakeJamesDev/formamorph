@@ -35,6 +35,8 @@ const world = {
   placements: [],
   setPlacements: vi.fn(),
   updateEntity: vi.fn(),
+  worldOverview: { mediaList: {} },
+  addMedia: vi.fn(),
 };
 vi.mock('@/contexts/GameDataContext', () => ({
   useGameData: () => world,

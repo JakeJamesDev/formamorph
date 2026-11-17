@@ -6,9 +6,10 @@
  * It re-derives what to convert from the world it is handed, so a run started before an edit converts what
  * that world held, and the caller decides whether that result is still current.
  */
-import { entityImages } from '@/lib/entityImages';
-import { locationImages } from '@/lib/locationImages';
-import type { GalleryImage, GalleryLink } from '@/types';
+import { galleryLinks } from '@/lib/entityImages';
+import { locationLinks, rewriteMediaImages } from '@/lib/mediaGallery';
+import { isMediaRef } from '@/lib/mediaList';
+import type { GalleryLink } from '@/types';
 import { dataUrlMime, isConvertibleImage, reencodeKeepsAnimation, relabelDataUrl } from '@/lib/imageBytes';
 import { describeKeptImages, reencodeImageDataUrl } from '@/lib/imageOptim';
 import type { RuleWorld } from './rules';
@@ -65,13 +66,15 @@ export async function convertWorldImagesToWebp(world: RuleWorld): Promise<WebpFi
   // Each slice keeps its identity unless this run actually rebuilt it, so the write-back touches only what
   // changed — and an entity whose pictures were all left alone never has its legacy `image` field normalized
   // into `images` as a side effect of fixing a different one.
-  const convertGalleries = async <T extends { images?: GalleryLink[] }>(list: T[], imagesOf: (record: T) => GalleryImage[]) => {
+  // A linked picture is converted once, through its Media List entry below.
+  const convertGalleries = async <T extends { images?: GalleryLink[] }>(list: T[], imagesOf: (record: T) => GalleryLink[]) => {
     let changed = false;
     const records: T[] = [];
     for (const record of list) {
-      const images: GalleryImage[] = [];
+      const images: GalleryLink[] = [];
       let touched = false;
       for (const img of imagesOf(record)) {
+        if (isMediaRef(img)) { images.push(img); continue; }
         const next = await convert(img.data);
         if (next !== img.data) touched = true;
         images.push({ ...img, data: next });
@@ -81,21 +84,26 @@ export async function convertWorldImagesToWebp(world: RuleWorld): Promise<WebpFi
     }
     return { records, changed };
   };
-  const { records: entities, changed: entitiesChanged } = await convertGalleries(world.entities ?? [], entityImages);
-  const { records: locations, changed: locationsChanged } = await convertGalleries(world.locations ?? [], locationImages);
-  const { records: items, changed: itemsChanged } = await convertGalleries(world.items ?? [], entityImages);
+  const { records: entities, changed: entitiesChanged } = await convertGalleries(world.entities ?? [], galleryLinks);
+  const { records: locations, changed: locationsChanged } = await convertGalleries(world.locations ?? [], locationLinks);
+  const { records: items, changed: itemsChanged } = await convertGalleries(world.items ?? [], galleryLinks);
+  const mediaList = world.worldOverview?.mediaList;
+  const nextMediaList = await rewriteMediaImages(mediaList, convert);
 
   const thumbnailChanged = nextThumbnail !== thumbnail;
+  const mediaChanged = nextMediaList !== mediaList;
   // Nothing converted means nothing to write back: handing the same world reference back is what lets the
   // caller skip the write entirely, so a run that changed nothing never marks the world dirty.
-  if (!thumbnailChanged && !entitiesChanged && !locationsChanged && !itemsChanged) {
+  if (!thumbnailChanged && !mediaChanged && !entitiesChanged && !locationsChanged && !itemsChanged) {
     return { world, converted, kept, skippedAnimated, relabeled };
   }
 
   return {
     world: {
       ...world,
-      ...(thumbnailChanged ? { worldOverview: { ...world.worldOverview, thumbnail: nextThumbnail ?? null } } : {}),
+      ...(thumbnailChanged || mediaChanged ? {
+        worldOverview: { ...world.worldOverview, thumbnail: nextThumbnail ?? null, ...(mediaChanged ? { mediaList: nextMediaList } : {}) },
+      } : {}),
       ...(entitiesChanged ? { entities } : {}),
       ...(locationsChanged ? { locations } : {}),
       ...(itemsChanged ? { items } : {}),

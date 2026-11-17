@@ -1,7 +1,7 @@
 import { primaryImage } from './entityImages';
 import { inCast } from './owners';
 import { customPersonaEntity } from './blueprints';
-import type { Entity, PersonaRef } from '@/types';
+import type { Entity, MediaList, PersonaRef } from '@/types';
 import type { ResolveEntityText } from './resolveWorldNames';
 
 /** The entity the player plays, and where it was read from. `custom` is the Custom Persona entity in
@@ -96,11 +96,11 @@ export interface PersonaPick {
 
 /** A world entity as a persona picker option, its player description resolved through `resolve` with the
  *  entity as its owner. */
-export const personaOption = (resolve: ResolveEntityText) =>
+export const personaOption = (resolve: ResolveEntityText, media: MediaList | undefined) =>
   (entity: Entity): { id: string; name: string; image?: string; description?: string } => {
     const description = entity.playerDescription?.trim();
     return {
-      id: entity.id, name: entity.name, image: primaryImage(entity),
+      id: entity.id, name: entity.name, image: primaryImage(entity, media),
       description: description ? resolve(entity, description) : undefined,
     };
   };

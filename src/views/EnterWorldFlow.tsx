@@ -335,8 +335,8 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   /** A persona card with the name of the location it starts at. */
   const startingOption = useCallback((entity: Entity): PersonaOption => {
     const start = personaStartLocation(entity, locations);
-    return { ...personaOption(resolveEntityText)(entity), startsAt: locations.find((l) => l.id === start)?.name };
-  }, [resolveEntityText, locations]);
+    return { ...personaOption(resolveEntityText, worldOverview.mediaList)(entity), startsAt: locations.find((l) => l.id === start)?.name };
+  }, [resolveEntityText, locations, worldOverview.mediaList]);
   const worldPersonaOptions = useMemo<PersonaOption[]>(
     () => resolvedWorldEntities.filter((entity) => entity.persona === true).map(startingOption),
     [resolvedWorldEntities, startingOption],

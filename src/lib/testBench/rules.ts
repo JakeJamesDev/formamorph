@@ -42,8 +42,8 @@ import {
 } from '@/lib/statCodeTargets';
 import { rowKeyOf, runRowPlace, scriptEntryKey, worldScriptList, type ListedScript, type ScriptTreeWorld } from '@/lib/worldScripts';
 import { estimateTokens } from '@/lib/memoryUtils';
-import { entityImages } from '@/lib/entityImages';
-import { locationImages } from '@/lib/locationImages';
+import { entityImages, galleryLinks } from '@/lib/entityImages';
+import { locationLinks, mapEmbeddedGallery, mapMediaImages } from '@/lib/mediaGallery';
 import {
   dataUrlBytes, dataUrlMime, dataUrlRealMime, imageFormatLabel, isConvertibleImage,
   relabelDataUrl, sniffDataUrlMime,
@@ -2753,7 +2753,7 @@ const imageReportsByWorld = new WeakMap<RuleWorld, ImageRuleReport>();
 const imageReportOf = (world: RuleWorld): ImageRuleReport => {
   let report = imageReportsByWorld.get(world);
   if (report) return report;
-  const ruled = (world.entities ?? []).map((entity) => ({ entity, images: entityImages(entity) }))
+  const ruled = (world.entities ?? []).map((entity) => ({ entity, images: entityImages(entity, world.worldOverview?.mediaList) }))
     .filter(({ images }) => images.some((img) => img.requires?.length));
   const stats = startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities ?? [] });
   const imageId = (entity: Entity, i: number) => `image\u0000${entity.id}\u0000${i}`;
@@ -3825,20 +3825,20 @@ const imageMislabeled: Rule = {
   fix: (world) => {
     const thumb = world.worldOverview?.thumbnail;
     const nextThumb = thumb ? relabelDataUrl(thumb) : thumb;
-    let out = nextThumb === thumb ? world
-      : { ...world, worldOverview: { ...world.worldOverview, thumbnail: nextThumb } };
-    const relabelGalleries = <T extends { images?: GalleryLink[] }>(list: T[], imagesOf: (record: T) => GalleryImage[]): T[] =>
+    const media = world.worldOverview?.mediaList;
+    const nextMedia = mapMediaImages(media, relabelDataUrl);
+    let out = nextThumb === thumb && nextMedia === media ? world
+      : { ...world, worldOverview: { ...world.worldOverview, thumbnail: nextThumb, ...(nextMedia ? { mediaList: nextMedia } : {}) } };
+    // A linked picture is relabeled once, through its Media List entry above.
+    const relabelGalleries = <T extends { images?: GalleryLink[] }>(list: T[], imagesOf: (record: T) => GalleryLink[]): T[] =>
       mapChanged(list, (record) => {
         const images = imagesOf(record);
-        const next = mapChanged(images, (img) => {
-          const data = relabelDataUrl(img.data);
-          return data === img.data ? img : { ...img, data };
-        });
+        const next = mapEmbeddedGallery(images, relabelDataUrl);
         return next === images ? record : { ...record, images: next };
       });
-    out = withSlice(out, 'entities', relabelGalleries(world.entities ?? [], entityImages));
-    out = withSlice(out, 'locations', relabelGalleries(world.locations ?? [], locationImages));
-    out = withSlice(out, 'items', relabelGalleries(world.items ?? [], entityImages));
+    out = withSlice(out, 'entities', relabelGalleries(world.entities ?? [], galleryLinks));
+    out = withSlice(out, 'locations', relabelGalleries(world.locations ?? [], locationLinks));
+    out = withSlice(out, 'items', relabelGalleries(world.items ?? [], galleryLinks));
     return out;
   },
 };

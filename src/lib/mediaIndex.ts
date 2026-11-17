@@ -2,9 +2,10 @@
  * Every media item a world holds, with its stored size, and the sections the Media tab lays them out in.
  * DOM-free: sizes come from string lengths, so nothing decodes to list.
  */
-import type { Body, Entity, GalleryImage, GameLocation, TraitRequirementRow, World } from '@/types';
+import type { Body, Entity, GalleryImage, GalleryLink, GameLocation, MediaList, TraitRequirementRow, World } from '@/types';
 import { bodyLabel } from './bodies';
-import { entityImages } from './entityImages';
+import { entityImages, galleryLinks } from './entityImages';
+import { galleryView, locationLinks } from './mediaGallery';
 import { locationImages } from './locationImages';
 import { mapImages } from './mapBackground';
 import { buildEntityTree, type EntityTreeNode } from './entityGroupTree';
@@ -13,7 +14,7 @@ import type { ImageCap } from './imageSlots';
 import type { ThumbAspect } from './thumbAspect';
 import { mediaParentSpec } from './mediaParents';
 import { dataUrlBytes, isRemoteImage } from './imageBytes';
-import { galleryLinkData } from './mediaList';
+import { galleryLinkData, isMediaRef } from './mediaList';
 
 export type MediaKind = 'image' | 'sound' | 'model' | 'avatar';
 export type MediaParentKind = 'world' | 'map' | 'entity' | 'location' | 'dictionary' | 'body' | 'item';
@@ -52,6 +53,8 @@ export interface MediaItem {
   users?: MediaParent[];
   /** The uploaded file's name, on a field that keeps one. */
   fileName?: string;
+  /** The Media List entry a gallery picture links. */
+  mediaId?: string;
   /** An empty image slot, reported only by `blankSections`. It holds no bytes and the id the filled slot will have. */
   blank?: true;
 }
@@ -103,25 +106,34 @@ const capOf = (parent: MediaParent): ImageCap => mediaParentSpec(parent.kind).ca
 const entityParent = (e: Entity): MediaParent => ({ kind: 'entity', id: e.id, name: e.name });
 const locationParent = (l: GameLocation): MediaParent => ({ kind: 'location', id: l.id, name: l.name });
 
-/** One gallery's images, each with its position and rule. */
-const galleryMedia = (parent: MediaParent, images: readonly GalleryImage[]): MediaItem[] =>
-  images.map((img, i) => image(parent, `image:${i}`, `Image ${i + 1}`, img.data, capOf(parent), {
-    galleryIndex: i, ...(img.requires?.length ? { rules: img.requires } : {}),
-  }));
+/** One gallery's images, each with its position, rule and the entry it links. */
+const galleryMedia = (parent: MediaParent, images: readonly GalleryImage[], links?: readonly GalleryLink[]): MediaItem[] =>
+  images.map((img, i) => {
+    const link = links?.[i];
+    return image(parent, `image:${i}`, `Image ${i + 1}`, img.data, capOf(parent), {
+      galleryIndex: i, ...(img.requires?.length ? { rules: img.requires } : {}), ...(link && isMediaRef(link) ? { mediaId: link.mediaId } : {}),
+    });
+  });
+
+/** A stored gallery's items, links resolved through `media`. */
+const linkedGalleryMedia = (parent: MediaParent, links: GalleryLink[], media: MediaList | undefined): MediaItem[] => {
+  const view = galleryView(links, media);
+  return galleryMedia(parent, view.images, view.links);
+};
 
 /** One entity's media: its gallery, then its sound, then its 3D Model. */
-function entityMedia(e: Entity): MediaItem[] {
+function entityMedia(e: Entity, media: MediaList | undefined): MediaItem[] {
   const parent = entityParent(e);
-  const items = galleryMedia(parent, entityImages(e));
+  const items = linkedGalleryMedia(parent, galleryLinks(e), media);
   if (e.sound?.data) items.push(file(parent, 'sound', 'sound', 'Sound', e.sound.data, e.sound.name));
   if (e.model?.data) items.push(file(parent, 'model', 'model', '3D Model', e.model.data, e.model.name));
   return items;
 }
 
 /** One location's media: its gallery, then its ambient sound. */
-function locationMedia(l: GameLocation): MediaItem[] {
+function locationMedia(l: GameLocation, media: MediaList | undefined): MediaItem[] {
   const parent = locationParent(l);
-  const items = galleryMedia(parent, locationImages(l));
+  const items = linkedGalleryMedia(parent, locationLinks(l), media);
   if (l.ambientSound?.data) items.push(file(parent, 'sound', 'ambientSound', 'Ambient Sound', l.ambientSound.data, l.ambientSound.name));
   return items;
 }
@@ -135,8 +147,8 @@ interface MediaSource {
   world: (w: MediaWorld) => MediaItem[];
   avatars: (w: MediaWorld) => MediaItem[];
   map: (w: MediaWorld) => MediaItem[];
-  entity: (e: Entity) => MediaItem[];
-  location: (l: GameLocation) => MediaItem[];
+  entity: (e: Entity, media: MediaList | undefined) => MediaItem[];
+  location: (l: GameLocation, media: MediaList | undefined) => MediaItem[];
   dictionaries: (w: MediaWorld) => MediaItem[];
   bodies: (w: MediaWorld) => MediaItem[];
 }
@@ -145,8 +157,8 @@ const BLANK_SOURCE: MediaSource = {
   world: (w) => (w.worldOverview.thumbnail ? [] : [blankImage(WORLD_PARENT, 'thumbnail', 'Thumbnail')]),
   avatars: () => [],
   map: (w) => (mapImages(w.worldOverview).length ? [] : [blankImage(MAP_PARENT, 'image:0', 'Image 1')]),
-  entity: (e) => (entityImages(e).length ? [] : [blankImage(entityParent(e), 'image:0', 'Image 1')]),
-  location: (l) => (locationImages(l).length ? [] : [blankImage(locationParent(l), 'image:0', 'Image 1')]),
+  entity: (e, media) => (entityImages(e, media).length ? [] : [blankImage(entityParent(e), 'image:0', 'Image 1')]),
+  location: (l, media) => (locationImages(l, media).length ? [] : [blankImage(locationParent(l), 'image:0', 'Image 1')]),
   // A dictionary's Cover Image is optional, so an empty one is not a gap.
   dictionaries: () => [],
   // A Body's Custom Image is optional too.
@@ -214,22 +226,23 @@ export const blankSections = (w: MediaWorld): MediaSection[] => sectionsFrom(w, 
 
 function sectionsFrom(w: MediaWorld, source: MediaSource): MediaSection[] {
   const { sections, add } = sectionBuilder();
+  const media = w.worldOverview.mediaList;
   add('world', ['World'], source.world(w));
   add('avatars', ['World', 'Avatars'], source.avatars(w));
   add('mapBackground', ['World', 'Map Background'], source.map(w));
 
   const entityFolder = (id: string, path: string[], nodes: EntityTreeNode[]) => {
     const leaves = nodes.flatMap((n) => (n.kind === 'leaf' ? [n.leaf] : []));
-    add(id, path, leaves.flatMap(source.entity));
+    add(id, path, leaves.flatMap((e) => source.entity(e, media)));
     for (const n of nodes) if (n.kind === 'group') entityFolder(`group:${n.id}`, [...path, n.group.name], n.children);
   };
   entityFolder('entities', ['Entities'], buildEntityTree(w.entityGroups ?? [], w.entities));
 
   // A location with children is a folder of its own, holding its own media and its leaf children's.
   const locationFolder = (id: string, path: string[], own: MediaItem[], nodes: LocationTreeNode[]) => {
-    add(id, path, [...own, ...nodes.filter((n) => !n.children.length).flatMap((n) => source.location(n.location))]);
+    add(id, path, [...own, ...nodes.filter((n) => !n.children.length).flatMap((n) => source.location(n.location, media))]);
     for (const n of nodes) {
-      if (n.children.length) locationFolder(`location:${n.id}`, [...path, n.location.name], source.location(n.location), n.children);
+      if (n.children.length) locationFolder(`location:${n.id}`, [...path, n.location.name], source.location(n.location, media), n.children);
     }
   };
   locationFolder('locations', ['Locations'], [], buildLocationTree(w.locations));
@@ -279,8 +292,27 @@ export function worldImageItems(w: Partial<MediaWorld>): (MediaItem & { budget: 
 export const worldImageSlots = (w: Partial<MediaWorld>): ImageSlot[] =>
   worldImageItems(w).map((i) => ({ url: i.value, cap: i.budget, path: i.id }));
 
+/** What Optimize Images walks: every embedded image slot, and each linked entry once at its largest use's budget. */
+export function worldOptimizeTargets(w: Partial<MediaWorld>): { slots: (MediaItem & { budget: ImageCap })[]; entries: { id: string; data: string; budget: ImageCap }[] } {
+  const items = worldImageItems(w);
+  const budgets = new Map<string, ImageCap>();
+  for (const item of items) {
+    if (!item.mediaId) continue;
+    const held = budgets.get(item.mediaId);
+    if (!held || item.budget.maxDim > held.maxDim) budgets.set(item.mediaId, item.budget);
+  }
+  const list = w.worldOverview?.mediaList ?? {};
+  return {
+    slots: items.filter((item) => !item.mediaId),
+    entries: [...budgets].flatMap(([id, budget]) => (list[id] ? [{ id, data: list[id].data, budget }] : [])),
+  };
+}
+
 /** How many image-bearing slots a world has — the `total` of an optimize run's progress. */
-export const countWorldImages = (w: Partial<MediaWorld>): number => worldImageSlots(w).length;
+export const countWorldImages = (w: Partial<MediaWorld>): number => {
+  const { slots, entries } = worldOptimizeTargets(w);
+  return slots.length + entries.length;
+};
 
 /** The section ids that hold Avatars: by parent, and by type. */
 const AVATAR_SECTION_IDS: readonly string[] = ['avatars', 'type:avatar'];

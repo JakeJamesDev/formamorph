@@ -33,6 +33,8 @@ const world = () => ({
   placeholders: [hair],
   placeholderOwners: new Map([['h1', molly(store.entity.name)]]),
   placementLetters: new Map(),
+  worldOverview: { mediaList: {} },
+  addMedia: () => {},
   updateEntity: (next: Entity) => {
     store.entity = next;
     store.rerender();

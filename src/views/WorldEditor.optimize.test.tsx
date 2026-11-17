@@ -158,8 +158,8 @@ describe('Optimize Images', () => {
     await act(async () => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
     expect(ctx().worldOverview.thumbnail).toBe(PNG);
     expect(ctx().worldOverview.mapBackground?.images).toEqual([{ data: PNG }]);
-    expect(ctx().entities[0].images).toEqual([{ data: PNG }]);
-    expect(entityImages(ctx().locations[0])[0]?.data).toBe(PNG);
+    expect(entityImages(ctx().entities[0], ctx().worldOverview.mediaList)).toEqual([{ data: PNG, name: 'Odd Wick 1' }]);
+    expect(entityImages(ctx().locations[0], ctx().worldOverview.mediaList)[0]?.data).toBe(PNG);
     expect(ctx().dictionaries[0].thumbnail).toBe(PNG);
     expect(ctx().items[0].images).toEqual([{ data: PNG }]);
 

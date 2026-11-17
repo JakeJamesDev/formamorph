@@ -62,6 +62,8 @@ const framed = () => panel()?.querySelector<HTMLElement>('[data-media-framed]') 
 const inPanel = () => within(panel()!);
 const tile = (name: string | RegExp) => inPanel().getByRole('button', { name });
 const wick = (bench: ReturnType<typeof open>): Entity => bench.ctx().entities.find((e) => e.id === 'wick')!;
+/** Odd Wick's pictures as play reads them, through the world's Media List. */
+const pictures = (bench: ReturnType<typeof open>) => entityImages(wick(bench), bench.ctx().worldOverview.mediaList);
 const lastLabel = (bench: ReturnType<typeof open>) => {
   const { steps, cursor } = bench.historyState();
   return steps[cursor - 1]?.label;
@@ -112,14 +114,19 @@ describe('Media tab image panel actions', () => {
   it('replaces the framed image in place, keeps its rule, and undoes in one step', async () => {
     const bench = open();
     const was = wick(bench).images![1];
+    const wasData = pictures(bench)[1].data;
+    const entries = Object.keys(bench.ctx().worldOverview.mediaList ?? {}).length;
     fireEvent.click(card('Entities', 'stack'));
     fireEvent.click(tile(/^Image 2/));
     const steps = bench.historyState().cursor;
 
     await replaceWith(webp());
 
-    await waitFor(() => expect(entityImages(wick(bench))[1]?.data).toMatch(/^data:image\/webp;base64,/));
-    expect(entityImages(wick(bench))[1]?.data).not.toBe(was);
+    await waitFor(() => expect(pictures(bench)[1]?.data).toMatch(/^data:image\/webp;base64,/));
+    expect(pictures(bench)[1]?.data).not.toBe(wasData);
+    // The new picture joins the list under its file's name; the replaced entry stays.
+    expect(pictures(bench)[1]?.name).toBe('new');
+    expect(Object.keys(bench.ctx().worldOverview.mediaList ?? {})).toHaveLength(entries + 1);
     expect(wick(bench).images![1].requires).toEqual(was.requires);
     expect(wick(bench).images).toHaveLength(4);
     expect(lastLabel(bench)).toBe('Replace Image 2: Odd Wick');
@@ -131,21 +138,21 @@ describe('Media tab image panel actions', () => {
 
   it('removes the framed image with its rule, keeps the frame on its position, and undoes in one step', async () => {
     const bench = open();
-    const before = entityImages(wick(bench));
+    const before = pictures(bench);
     fireEvent.click(card('Entities', 'stack'));
     fireEvent.click(tile(/^Image 2/));
     const steps = bench.historyState().cursor;
 
     await step(() => fireEvent.click(within(framed()!).getByRole('button', { name: 'Remove' })));
 
-    expect(entityImages(wick(bench)).map((i) => i.data)).toEqual([before[0], before[2], before[3]].map((i) => i.data));
+    expect(pictures(bench).map((i) => i.data)).toEqual([before[0], before[2], before[3]].map((i) => i.data));
     expect(wick(bench).images!.some((i) => i.requires)).toBe(false);
     expect(lastLabel(bench)).toBe('Remove Image 2: Odd Wick');
     expect(panel()).toHaveAttribute('data-media-panel', 'entity:wick:image:1');
 
     await undo();
     expect(bench.historyState().cursor).toBe(steps);
-    expect(wick(bench).images).toEqual(before);
+    expect(pictures(bench)).toEqual(before);
   });
 
   it('moves the frame back onto the new last image when the last one is removed', async () => {
@@ -168,7 +175,7 @@ describe('Media tab image panel actions', () => {
     }));
     const user = userEvent.setup();
     const bench = open();
-    const before = entityImages(wick(bench));
+    const before = pictures(bench);
     fireEvent.click(card('Entities', 'stack'));
     fireEvent.click(tile('Image 3'));
     const steps = bench.historyState().cursor;
@@ -180,13 +187,13 @@ describe('Media tab image panel actions', () => {
     await user.keyboard('[ArrowLeft]');
     await user.keyboard('[Space]');
 
-    await waitFor(() => expect(wick(bench).images![0]).toEqual(before[2]));
-    expect(wick(bench).images).toEqual([before[2], before[0], before[1], before[3]]);
+    await waitFor(() => expect(pictures(bench)[0]).toEqual(before[2]));
+    expect(pictures(bench)).toEqual([before[2], before[0], before[1], before[3]]);
     expect(bench.historyState().cursor).toBe(steps + 1);
     expect(panel()).toHaveAttribute('data-media-panel', 'entity:wick:image:0');
 
     await undo();
-    expect(wick(bench).images).toEqual(before);
+    expect(pictures(bench)).toEqual(before);
   });
 });
 
@@ -311,6 +318,9 @@ describe('Media tab No Images filter', () => {
     await act(async () => { fireEvent.change(input, { target: { files: [webp()] } }); });
 
     await waitFor(() => expect(bench.ctx().entities.find((e) => e.id === 'empty')!.images).toHaveLength(1));
+    // The upload joins the Media List as a named entry, and the slot links it.
+    const [link] = bench.ctx().entities.find((e) => e.id === 'empty')!.images!;
+    expect(bench.ctx().worldOverview.mediaList?.[(link as { mediaId: string }).mediaId]?.name).toBe('new');
     expect(blankCards()).toEqual(['Thumbnail', 'Map Background', 'Bare Flat']);
     expect(panel()).toHaveAttribute('data-media-image-panel', 'entity:empty');
     expect(panel()).toHaveAttribute('data-media-panel', 'entity:empty:image:0');

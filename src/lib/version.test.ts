@@ -11,6 +11,7 @@ import { PLAYER_START } from '@/types';
 import { LEGACY_VRM_ID } from './legacyVrm';
 import { codeAt } from '@/test/scriptFixtures';
 import { startsOf, applyingRoutine } from '@/lib/entityKind';
+import { entityImages } from './entityImages';
 
 // Loose view of a migrated world for assertions (avoids `any`).
 type DescItem = {
@@ -38,9 +39,11 @@ describe('APP_VERSION', () => {
 });
 
 describe('migrateWorld — entity galleries', () => {
+  // The first entity's pictures as play reads them, through the world's Media List.
+  const pictures = (world: World) => entityImages(world.entities[0], world.worldOverview.mediaList);
   it('folds a pre-gallery portrait into the gallery', () => {
     const out = migrateWorld({ worldOverview: {}, entities: [{ id: 'e', name: 'Wren', image: 'a' }] });
-    expect(out.entities[0].images).toEqual([{ data: 'a' }]);
+    expect(pictures(out)).toEqual([{ data: 'a', name: 'Wren 1' }]);
     expect('image' in out.entities[0]).toBe(false);
   });
 
@@ -50,19 +53,19 @@ describe('migrateWorld — entity galleries', () => {
       worldOverview: {},
       entities: [{ id: 'e', name: 'Wren', image: 'a' }],
     });
-    expect(out.entities[0].images).toEqual([{ data: 'a' }]);
+    expect(pictures(out)).toEqual([{ data: 'a', name: 'Wren 1' }]);
   });
 
   it('wraps each image of a string gallery once, and a second pass changes no byte', () => {
     const once = migrateWorld({ version: APP_VERSION, worldOverview: {}, entities: [{ id: 'e', name: 'Wren', images: ['a', 'b'] }] });
-    expect(once.entities[0].images).toEqual([{ data: 'a' }, { data: 'b' }]);
+    expect(pictures(once).map((img) => img.data)).toEqual(['a', 'b']);
     expect(JSON.stringify(migrateWorld(JSON.parse(JSON.stringify(once))))).toBe(JSON.stringify(once));
   });
 
   it('leaves an authored gallery alone, rules and all', () => {
     const images = [{ data: 'a', requires: [{ all: [{ kind: 'trait', id: 'knight' }] }] }, { data: 'b' }];
     const out = migrateWorld({ worldOverview: {}, entities: [{ id: 'e', name: 'Wren', images }] });
-    expect(out.entities[0].images).toEqual(images);
+    expect(pictures(out).map(({ data, requires }) => ({ data, ...(requires ? { requires } : {}) }))).toEqual(images);
   });
 });
 
@@ -616,7 +619,7 @@ describe('migrateWorld', () => {
   it('passes through a world already at the current version (books preserved)', () => {
     const current = {
       version: APP_VERSION,
-      worldOverview: { name: 'W', vrmStore: { a: { name: 'Wren', file: { data: vrmUrl, type: 'model/vrm' } } } },
+      worldOverview: { name: 'W', vrmStore: { a: { name: 'Wren', file: { data: vrmUrl, type: 'model/vrm' } } }, mediaList: {} },
       dictionaries: [{ id: 'b1', name: 'Default', enabled: true, entries: [] }],
     };
     expect(migrateWorld(current)).toEqual(current);

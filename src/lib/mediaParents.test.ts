@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Body, Dictionary, Entity, GameLocation, WorldOverview } from '@/types';
+import type { Body, Dictionary, Entity, GameLocation, MediaList, WorldOverview } from '@/types';
 import { buildMediaIndex, type MediaWorld } from './mediaIndex';
 import { mapGalleryStepLabel, mapImages } from './mapBackground';
 import { mediaParentSpec, writeMediaSlot, type MediaEditor } from './mediaParents';
@@ -22,7 +22,7 @@ const world: MediaWorld = { worldOverview: overview, entities: [entity], locatio
 
 /** An editor over the fixture records that returns what each edit produced. */
 function recorder() {
-  const out: { overview?: Partial<WorldOverview>; entity?: Entity; location?: GameLocation; dictionary?: Dictionary; body?: Body } = {};
+  const out: { overview?: Partial<WorldOverview>; entity?: Entity; location?: GameLocation; dictionary?: Dictionary; body?: Body; added?: MediaList } = {};
   const editor: MediaEditor = {
     overview: (patch) => { out.overview = patch(overview); },
     entity: (_id, edit) => { out.entity = edit(entity); },
@@ -30,6 +30,8 @@ function recorder() {
     dictionary: (_id, edit) => { out.dictionary = edit(book); },
     body: (_id, edit) => { out.body = edit(body); },
     item: () => {},
+    read: { entity: () => entity, location: () => location, mediaList: () => overview.mediaList, subject: (name) => name },
+    addMedia: (entries) => { out.added = { ...out.added, ...entries }; },
   };
   return { out, editor };
 }

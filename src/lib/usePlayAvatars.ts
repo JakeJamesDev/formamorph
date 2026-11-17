@@ -27,7 +27,7 @@ export function usePlayAvatars() {
       sourceOf,
       inUse,
       /** Whether the entity view has anything to show for `entity`: an Avatar, a 3D model or an image. */
-      shows: (entity: Entity) => hasEntityVisual(entity) || inUse(entity),
+      shows: (entity: Entity) => hasEntityVisual(entity, worldOverview.mediaList) || inUse(entity),
       /** The played side's Avatar, which the You row shows when no entity is played. */
       played: resolvePlayedVrm(ctx),
       playedId: playedEntityId(ctx),

@@ -180,13 +180,13 @@ describe('the drone\'s Visibility rules', () => {
   });
 
   it('swaps the drone to its powered-up image once Overdrive is ready', () => {
-    const slots = (charge: number) => visibleImages(drone, chargeAt(charge)).map((image) => image.slot);
+    const slots = (charge: number) => visibleImages(drone, chargeAt(charge), world.worldOverview.mediaList).map((image) => image.slot);
     expect(slots(99)).toEqual([0]);
     expect(slots(100)).toEqual([1]);
   });
 
   it('swaps Mossback Hill to the awake Sentinel once the played persona\'s Overdrive is ready', () => {
-    const slots = (charge: number) => visibleLocationImages(hill, chargeAt(charge)).map((image) => image.slot);
+    const slots = (charge: number) => visibleLocationImages(hill, chargeAt(charge), world.worldOverview.mediaList).map((image) => image.slot);
     expect(slots(99)).toEqual([0]);
     expect(slots(100)).toEqual([1]);
   });

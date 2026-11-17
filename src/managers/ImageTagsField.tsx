@@ -20,6 +20,7 @@ import { ImageUpload } from '../lib/UtilityComponents';
 import { fileToDataUrl } from '@/lib/imageDrop';
 import { followReorder } from '@/lib/imageGalleryOrder';
 import { withImageRule } from '@/lib/entityImages';
+import { mediaNameFromFile } from '@/lib/mediaList';
 import { useStableIds } from '@/lib/useStableIds';
 import { useImageDropTarget } from '@/lib/useImageDropTarget';
 import { RemoteImg } from '@/lib/useRemoteImage';
@@ -205,9 +206,12 @@ const AddTile = ({ htmlFor, selected, onSelect, onUrl, onFiles }: {
 };
 
 /** `list` with slot `index` showing `data` under the slot's own rule; an empty `data` drops the slot and its rule. */
-function withSlotData(list: readonly GalleryImage[], index: number, data: string): GalleryImage[] {
+function withSlotData(list: readonly GalleryImage[], index: number, data: string, fileName?: string): GalleryImage[] {
   const next: (GalleryImage | undefined)[] = [...list];
-  next[index] = data ? { ...list[index], data } : undefined;
+  // A new picture keeps the slot's rule; the old picture's name leaves with it.
+  const rules = list[index]?.requires ? { requires: list[index].requires } : {};
+  const name = mediaNameFromFile(fileName);
+  next[index] = data ? { data, ...(name ? { name } : {}), ...rules } : undefined;
   return next.filter((img): img is GalleryImage => !!img);
 }
 
@@ -273,7 +277,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   const openSlot = rows.findIndex((url) => !url);
 
   /** Write one slot; an emptied slot drops out rather than leaving a hole for the next one to fall into. */
-  const setSlot = (index: number, value: string) => onImagesChange(withSlotData(shownImages, index, value));
+  const setSlot = (index: number, value: string, fileName?: string) => onImagesChange(withSlotData(shownImages, index, value, fileName));
 
   /** Write one slot's Visibility rule; an emptied rule drops the field. */
   const setRule = (index: number, requires: TraitRequirementRow[]) => onImagesChange(withImageRule(shownImages, index, requires));
@@ -336,7 +340,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
         thumbs.forEach(URL.revokeObjectURL);
       }
     }
-    onImagesChange(stored.reduce((next, url, k) => withSlotData(next, index + k, url), shownImages));
+    onImagesChange(stored.reduce((next, url, k) => withSlotData(next, index + k, url, accepted[k].name), shownImages));
   };
 
   // The pane behind the framed picture. A framed picture refuses drops itself, so without this a drag over
@@ -388,7 +392,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
       {rows.map((url, i) => (
         <div key={url ? tileIds[i] : 'empty-slot'} className={cn('space-y-1', gallery && i !== showing && 'hidden')}>
           <ImageUpload
-            onChange={(value) => setSlot(i, value)}
+            onChange={(value, fileName) => setSlot(i, value, fileName)}
             id={slotId(i)}
             value={url}
             cap={cap}

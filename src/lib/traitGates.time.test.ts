@@ -117,7 +117,7 @@ describe('the per-turn settle with a time gate', () => {
 
 describe('an entity image ruled on night', () => {
   const ash = { id: 'ash', images: [{ data: 'night', requires: [{ all: [time('night')] }] }, { data: 'day' }] as GalleryImage[] };
-  const shown = (at: Daypart) => visibleImages(ash, { ...input([], at), entities: [{ id: 'ash', name: 'Ash' }], stats: scoped({}) }).map((v) => v.data);
+  const shown = (at: Daypart) => visibleImages(ash, { ...input([], at), entities: [{ id: 'ash', name: 'Ash' }], stats: scoped({}) }, undefined).map((v) => v.data);
 
   it('shows at night and not at midday', () => {
     expect(shown('night')).toEqual(['night', 'day']);

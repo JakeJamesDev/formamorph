@@ -61,6 +61,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **With Fade-in Narration on, each quote now shows in its speaker's color as it first appears.** The reveal slows a little ahead of a quote whose color isn't ready. If your device can't keep up, the reveal keeps its usual pace and colors fade in when ready.
     - **A new character who speaks now shows in the Entities tab sooner when the story calls them "she" or "he".** Character Mentions counts those pronouns toward the name. A misspelled name counts as the same character.
     - **"Wrong character?" on a name now offers Not a Character.** The pick removes the link and the card from that word. Your save keeps it, and it counts as a fix when you contribute corrections.
+  - **Worlds that reuse a picture are smaller: each entity and location picture is stored once.** Several entities or locations showing the same picture now share one copy in the world file.
 - **🛠️ Developer tooling**
   - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { visibleLocationImages, visibleMapImages } from './imageVisibility';
 import { useViewedGateInput } from './useViewedGateInput';
+import { useMediaList } from './useMediaList';
 import type { Base64Data, GameLocation, MapFrame, WorldOverview } from '@/types';
 
 /** The picture play paints when there is no current location. */
@@ -12,7 +13,8 @@ export const DEFAULT_BACKGROUND = './default-background.jpg';
  */
 export function useLocationBackdrop(location: Pick<GameLocation, 'images'> | null | undefined): Base64Data | undefined {
   const input = useViewedGateInput();
-  return useMemo(() => (location ? visibleLocationImages(location, input)[0]?.data : DEFAULT_BACKGROUND), [location, input]);
+  const media = useMediaList();
+  return useMemo(() => (location ? visibleLocationImages(location, input, media)[0]?.data : DEFAULT_BACKGROUND), [location, input, media]);
 }
 
 /** What the player's Map draws behind its boxes: the first visible image, in the shared frame (Q74, Q75). */

@@ -64,8 +64,8 @@ export function PersonaRow({ onChange, disabled = false }: {
   const showPicker = (next: boolean) => { setDraft(null); setOpen(next); };
 
   const offer = offeredPersonas(worldAllowedPersonas(worldOverview), {
-    world: worldPersonas.map(personaOption(resolveEntityText)), library: options,
-    custom: customPersona ? personaOption(resolveEntityText)(customPersona) : undefined,
+    world: worldPersonas.map(personaOption(resolveEntityText, worldOverview.mediaList)), library: options,
+    custom: customPersona ? personaOption(resolveEntityText, worldOverview.mediaList)(customPersona) : undefined,
   });
 
   const apply = () => {

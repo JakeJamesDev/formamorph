@@ -179,7 +179,7 @@ describe('the Visibility rules', () => {
       active: settleDefaults(gate).active,
       stats: scoped<GateStatSet>({ pursuit: { name: 'Pursuit', value, min: 0, max: 100 } }),
     });
-    const slots = (value: number) => visibleLocationImages(place('Second-Floor Hallway'), pursuitAt(value)).map((image) => image.slot);
+    const slots = (value: number) => visibleLocationImages(place('Second-Floor Hallway'), pursuitAt(value), world.worldOverview.mediaList).map((image) => image.slot);
     expect(slots(59)).toEqual([0]);
     expect(slots(60)).toEqual([1]);
   });
@@ -197,7 +197,7 @@ describe('the Visibility rules', () => {
       active: state.active,
       stats: scoped<GateStatSet>({}, { [student.id]: { stomach: { name: 'Sugar', value, min: 0, max } } }),
     });
-    const slots = (value: number) => visibleImages(student, sugarAt(value)).map((image) => image.slot);
+    const slots = (value: number) => visibleImages(student, sugarAt(value), world.worldOverview.mediaList).map((image) => image.slot);
     expect(slots(below)).toEqual([0]);
     expect(slots(at)).toEqual([1]);
   });

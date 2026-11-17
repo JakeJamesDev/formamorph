@@ -122,7 +122,8 @@ const Dropzone = ({ htmlFor, frameClassName, dragOver, overlay, children }: {
 };
 
 export const ImageUpload = ({ onChange, id, value, cap, previewClassName, objectFit = 'contain', onPromptExtracted, onFiles, onFile }: {
-  onChange: (value: string) => void;
+  /** A picked file's name rides along, for a slot that names its picture. */
+  onChange: (value: string, fileName?: string) => void;
   // Several pictures arriving at once (a multi-file drop). A caller holding more than one slot takes them
   // all; without this the first file is used and the rest are ignored, which is right for a single slot.
   onFiles?: (files: File[]) => void;
@@ -175,14 +176,14 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
     // Parse the raw file for an embedded SD prompt before the FileReader/optimize path re-encodes it.
     if (onPromptExtracted) void readSdPromptFromFile(file).then((p) => { if (p) onPromptExtracted(p); });
     const dataUrl = await fileToDataUrl(file);
-    if (!cap) { onChange(dataUrl); return; }
+    if (!cap) { onChange(dataUrl, file.name); return; }
     // The overlay shows the file itself, not the data URL about to be encoded — an <img> given a
     // multi-megabyte base64 string blocks the main thread long enough to swallow the overlay whole.
     const thumb = URL.createObjectURL(file);
     try {
       // Offer to downscale before storing when the image exceeds its budget. The overlay is raised from
       // inside the prompt, once a choice is made — not here, or it would sit behind the consent dialog.
-      onChange(await promptImage(dataUrl, cap, () => setEncoding(thumb)));
+      onChange(await promptImage(dataUrl, cap, () => setEncoding(thumb)), file.name);
     } finally {
       setEncoding(null);
       URL.revokeObjectURL(thumb);

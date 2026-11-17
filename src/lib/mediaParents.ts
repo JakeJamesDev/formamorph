@@ -2,10 +2,11 @@
  * One entry per media parent kind: its image cap, how its slots are written, which rule host its rows use, where
  * Go to lands and how a step is labeled. DOM-free, so the editor and the Optimize walk read the same table.
  */
-import type { Body, Dictionary, Entity, GalleryImage, GameLocation, Item, MediaAsset, WorldOverview } from '@/types';
+import type { Body, Dictionary, Entity, GalleryImage, GalleryLink, GameLocation, Item, MediaAsset, MediaList, WorldOverview } from '@/types';
 import { withBackdropImage, withOutline } from './bodyLayout';
-import { entityImages } from './entityImages';
-import { locationImages } from './locationImages';
+import { entityImages, galleryLinks } from './entityImages';
+import { editGallery, galleryView, locationLinks } from './mediaGallery';
+import { mediaNameFromFile } from './mediaList';
 import { mapGalleryStepLabel, mapImages, withMapImages } from './mapBackground';
 import { IMAGE_CAPS, type ImageCap } from './imageSlots';
 import type { MediaItem, MediaParent, MediaParentKind } from './mediaIndex';
@@ -21,6 +22,16 @@ export interface MediaEditor {
   dictionary: (id: string, edit: (d: Dictionary) => Dictionary) => void;
   body: (id: string, edit: (b: Body) => Body) => void;
   item: (id: string, edit: (i: Item) => Item) => void;
+  /** The records and Media List as the next write sees them. */
+  read: {
+    entity: (id: string) => Entity | undefined;
+    location: (id: string) => GameLocation | undefined;
+    mediaList: () => MediaList | undefined;
+    /** A record's name as a new entry's subject, placeholders labeled. */
+    subject: (name: string) => string;
+  };
+  /** Adds entries to the world's Media List. */
+  addMedia: (entries: MediaList) => void;
 }
 
 /** Where Go to lands: a tab, the Locations canvas, Equipment Settings, or a parent's own item on its bench tab. */
@@ -50,9 +61,17 @@ export interface MediaParentSpec {
   stepLabel?: (item: MediaItem, overview: WorldOverview, next: MediaWrite) => string;
 }
 
-/** A replaced gallery image keeps its place and its rule; a removed one leaves with its rule. */
+/**
+ * A replaced gallery image keeps its place and its rule, and takes a new file's name; a removed one leaves with
+ * its rule. A write with no file name (Optimize) keeps the picture's name.
+ */
 export const writeGalleryImage = (images: readonly GalleryImage[], at: number, next: MediaWrite): GalleryImage[] =>
-  images.flatMap((img, i) => (i !== at ? [img] : next ? [{ ...img, data: next.data }] : []));
+  images.flatMap((img, i) => {
+    if (i !== at) return [img];
+    if (!next) return [];
+    const name = mediaNameFromFile(next.name);
+    return [{ ...img, data: next.data, ...(name ? { name } : {}) }];
+  });
 
 type GalleryWriter = NonNullable<MediaParentSpec['gallery']>;
 
@@ -65,11 +84,27 @@ const writeGallerySlot = (gallery: GalleryWriter, editor: MediaEditor, item: Pic
 const MAP_GALLERY: GalleryWriter = {
   write: (editor, _parent, edit) => editor.overview((o) => ({ mapBackground: withMapImages(o.mapBackground, edit(mapImages(o))) })),
 };
+/** A gallery's pictures edited and relinked: the record's write first, so the History Step is the record's. */
+function editLinked(
+  editor: MediaEditor, links: GalleryLink[], name: string, edit: (images: GalleryImage[]) => GalleryImage[], write: (links: GalleryLink[]) => void,
+): void {
+  const list = editor.read.mediaList();
+  const next = editGallery(links, list, edit(galleryView(links, list).images), editor.read.subject(name));
+  write(next.links);
+  if (Object.keys(next.added).length) editor.addMedia(next.added);
+}
+
 const ENTITY_GALLERY: GalleryWriter = {
-  write: (editor, parent, edit) => editor.entity(parent.id, (e) => ({ ...e, images: edit(entityImages(e)) })),
+  write: (editor, parent, edit) => {
+    const entity = editor.read.entity(parent.id);
+    if (entity) editLinked(editor, galleryLinks(entity), entity.name, edit, (images) => editor.entity(parent.id, (e) => ({ ...e, images })));
+  },
 };
 const LOCATION_GALLERY: GalleryWriter = {
-  write: (editor, parent, edit) => editor.location(parent.id, (l) => ({ ...l, images: edit(locationImages(l)) })),
+  write: (editor, parent, edit) => {
+    const location = editor.read.location(parent.id);
+    if (location) editLinked(editor, locationLinks(location), location.name, edit, (images) => editor.location(parent.id, (l) => ({ ...l, images })));
+  },
 };
 const ITEM_GALLERY: GalleryWriter = {
   write: (editor, parent, edit) => editor.item(parent.id, (i) => ({ ...i, images: edit(entityImages(i)) })),

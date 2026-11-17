@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useEntityRuleHost, type RuleHost } from '@/components/editor/ImageRuleCog';
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -11,7 +11,8 @@ import AiGenerateButton from "@/components/AiGenerateButton";
 import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { ModelUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
-import { entityImages } from '../lib/entityImages';
+import { entityImages, galleryLinks } from '../lib/entityImages';
+import { useLinkedGallery } from '@/lib/useLinkedGallery';
 import { ImageGallery, ImageTags, ImageWidget, type GalleryFrameProps } from './ImageTagsField';
 import { useEditorMode } from '@/lib/editorMode';
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -19,7 +20,7 @@ import { randomUUID } from '@/lib/uuid';
 import { customPersonaCounts, personaRole, personaRolePatch, unmarkLine, withPersonaRole, type PersonaRole } from '@/lib/customPersona';
 import type { RenameFieldHandlers } from '@/lib/useCodeRename';
 import type { ReactNode } from 'react';
-import type { Entity, ModelMetadata, Placeholder, VrmPick } from '@/types';
+import type { Entity, GalleryImage, GalleryLink, ModelMetadata, Placeholder, VrmPick } from '@/types';
 import { useLibraryAddBlock } from '@/lib/useSupporterCopyBlock';
 import { vrmPickFromValue, vrmPickValue } from '@/lib/worldVrmStore';
 import { pickLabel } from '@/lib/vrmPickMatch';
@@ -353,9 +354,7 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
  * The entity's picture widget with neither piece placed: a host draws `ImageGallery` and `ImageTags` where
  * its own layout wants them and both still write this entity. `EntityGalleryField` is the one-box version.
  */
-export const EntityImageWidget = ({
-  value, onChange, placeholders = [], ownerId, children, frame, imageId = `entity-image-${value.id}`, ruleHost,
-}: DescribedFieldGroupProps & {
+type EntityImageWidgetProps = DescribedFieldGroupProps & {
   children: ReactNode;
   /** A host that shows the framed image's details controls the frame. */
   frame?: GalleryFrameProps;
@@ -363,14 +362,32 @@ export const EntityImageWidget = ({
   imageId?: string;
   /** Absent = the record is an entity, and its rules read it. */
   ruleHost?: RuleHost;
-}) => {
+  /** The record is a world entity, whose gallery links the world's Media List. */
+  linked?: boolean;
+};
+
+export const EntityImageWidget = ({ linked, ...props }: EntityImageWidgetProps) =>
+  (linked ? <LinkedEntityImageWidget {...props} /> : (
+    <EntityImageBody {...props} images={entityImages(props.value)} onImagesChange={(list) => props.onChange('images', list)} />
+  ));
+
+const LinkedEntityImageWidget = (props: Omit<EntityImageWidgetProps, 'linked'>) => {
+  const { value, onChange, placeholders = [] } = props;
+  const write = useCallback((links: GalleryLink[]) => onChange('images', links), [onChange]);
+  const gallery = useLinkedGallery(galleryLinks(value), write, labelPlaceholders(value.name, placeholders));
+  return <EntityImageBody {...props} {...gallery} />;
+};
+
+const EntityImageBody = ({
+  value, onChange, placeholders = [], ownerId, children, frame, imageId = `entity-image-${value.id}`, ruleHost, images, onImagesChange,
+}: Omit<EntityImageWidgetProps, 'linked'> & { images: GalleryImage[]; onImagesChange: (next: GalleryImage[]) => void }) => {
   const entityHost = useEntityRuleHost(value.id);
   return (
     <ImageWidget
       label="Image"
       tourAnchor={ruleHost ? undefined : 'entity-image'}
-      images={entityImages(value)}
-      onImagesChange={(list) => onChange('images', list)}
+      images={images}
+      onImagesChange={onImagesChange}
       slots={Infinity}
       imageId={imageId}
       cap={IMAGE_CAPS.entity}
@@ -495,7 +512,7 @@ export const EntityProfileFields = ({ columnsClassName, nameHandlers, locations,
   customPersonaEntityName?: string;
 }) => (
   <>
-    <EntityImageWidget {...props}>
+    <EntityImageWidget {...props} linked={home === 'world'}>
       <div className={`grid gap-4 ${columnsClassName}`}>
         <ImageGallery />
         <div className="space-y-4">

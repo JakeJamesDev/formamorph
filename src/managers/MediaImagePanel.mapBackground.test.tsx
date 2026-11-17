@@ -160,7 +160,8 @@ describe('Media tab Map Background under No Images', () => {
 
     await waitFor(() => expect(map(bench)).toBeDefined());
     expect(map(bench)).toEqual({
-      images: [{ data: expect.stringMatching(/^data:image\//) }],
+      // The picture keeps its file's name (Q23).
+      images: [{ data: expect.stringMatching(/^data:image\//), name: 'map' }],
       frame: firstMapFrame(world.locations, 2),
       opacity: 1,
     });

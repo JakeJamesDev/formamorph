@@ -14,6 +14,7 @@ import {
 import type { Entity, TraitRequirementRow, World } from '@/types';
 import { applyEntityImagesOptimize, type ImageCodec } from './imageOptimCore';
 import { worldImageItems } from './mediaIndex';
+import { migrateWorld } from './version';
 
 const WOUNDED: TraitRequirementRow[] = [{ all: [{ kind: 'stat', id: 'hp', operator: '<', value: 20, unit: 'percent' }] }];
 
@@ -234,6 +235,26 @@ describe('downscaleWorldImages', () => {
       withBodies.bodies?.[1],
     ]);
     expect(caps).toEqual([IMAGE_CAPS.entity]);
+  });
+
+  it('re-encodes a shared Media List entry once, at its largest use, and keeps every link', async () => {
+    const shared = migrateWorld({
+      worldOverview: { name: 'W' },
+      entities: [{ id: 'e1', name: 'Ent1', images: [{ data: 'data:image/png;base64,QklH' }] }, { id: 'e2', name: 'Ent2', images: [{ data: 'data:image/png;base64,QklH', requires: WOUNDED }] }],
+      locations: [{ id: 'l1', name: 'Loc1', images: [{ data: 'data:image/png;base64,QklH' }] }],
+    });
+    const seen: ImageCap[] = [];
+    const totals: number[] = [];
+    const out = await downscaleWorldImages(shared, {
+      shouldEncode: (url, cap) => { if (url.includes('QklH')) seen.push(cap); return Promise.resolve(url.includes('QklH')); },
+      optimize: () => Promise.resolve('data:image/webp;base64,U01BTEw='),
+    }, (_done, total) => totals.push(total));
+    expect(seen).toEqual([IMAGE_CAPS.background]);
+    expect(totals[0]).toBe(1);
+    const [entry] = Object.values(out.worldOverview.mediaList ?? {});
+    expect(entry).toMatchObject({ data: 'data:image/webp;base64,U01BTEw=', type: 'image/webp' });
+    expect(out.entities.map((e) => e.images)).toEqual(shared.entities.map((e) => e.images));
+    expect(out.locations[0].images).toEqual(shared.locations[0].images);
   });
 
   it('reports a zero total when the world has no images', async () => {

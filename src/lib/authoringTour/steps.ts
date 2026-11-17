@@ -431,7 +431,7 @@ const LOCATION_STEPS: readonly TourStep[] = [
     panelTab: 'media',
     title: 'Background Image',
     body: 'Add an image of the place. Players see it behind the story while they’re here, and the AI never reads it.',
-    isComplete: (world, items) => locationImages(tourLocation(world, items, 'location')).length > 0,
+    isComplete: (world, items) => locationImages(tourLocation(world, items, 'location'), world.worldOverview.mediaList).length > 0,
     useExample: async (api, world, items) => patchLocation(api, world, items, 'location', {
       images: [{ data: await loadTourImage('tidewell') }],
     }),
@@ -592,7 +592,7 @@ const ENTITY_STEPS: readonly TourStep[] = [
     panelTab: 'profile',
     title: 'Image',
     body: 'Add an image of the entity. Players see it on the entity’s card, and the AI never reads it.',
-    isComplete: (world, items) => entityImages(tourEntity(world, items)).length > 0,
+    isComplete: (world, items) => entityImages(tourEntity(world, items), world.worldOverview.mediaList).length > 0,
     useExample: async (api, world, items) => patchEntity(api, world, items, { images: [{ data: await loadTourImage('maren') }] }),
     inPlay: { sees: 'entityCard', scene: 'entity', readers: [{ prompt: 'Narration Prompt', reads: 'entities' }] },
   },

@@ -54,6 +54,7 @@ import type { SliceName, WorldSlices } from '@/lib/editorHistory';
 import type {
   WorldMetadata,
   WorldOverview,
+  MediaList,
   Stat,
   StatGroup,
   GameLocation,
@@ -278,12 +279,14 @@ function useProvideGameData() {
       updateWorldOption: keyedTo('options', replaceIn(setWorldOptions)),
       updateWorldOverview: keyedTo('worldOverview', (updates: Partial<WorldOverview>) =>
         setWorldOverview((prev) => ({ ...prev, ...updates }))),
+      addMedia: keyedTo('worldOverview', (entries: MediaList) =>
+        setWorldOverview((prev) => ({ ...prev, mediaList: { ...prev.mediaList, ...entries } }))),
     };
   }, [keyNext, updateBookUnkeyed, updateEntryUnkeyed, dropBackings]);
   const {
     keyedTo, updateDictionary, updateDictionaryEntry, updateStat, updateStatGroup, updateLocation, updateConnection, updateEntity, editEntity,
     updateEntityGroup, updateTrait, updateTraitGroup, updatePlaceholderGroup, updateWorldOverview, updateWorldScript, updateItem, updateSlot, updateCurrency, updateWorldOption,
-    updateWorldTool,
+    updateWorldTool, addMedia,
   } = keyed;
   const dictStore = useMemo(() => ({
     dictionaries, setDictionaries, addDictionary, updateDictionary, removeDictionary,
@@ -495,6 +498,7 @@ function useProvideGameData() {
       ...(overview.openingWeights ? { openingWeights: overview.openingWeights } : {}),
       ...(overview.vrmStore ? { vrmStore: overview.vrmStore } : {}),
       ...(overview.legacyVrmFallback ? { legacyVrmFallback: overview.legacyVrmFallback } : {}),
+      mediaList: overview.mediaList ?? {},
       ...(mapImages(overview).length && overview.mapBackground ? { mapBackground: overview.mapBackground } : {}),
       // Any and the player's default are the absent values.
       ...(allowedPersonas !== 'any' ? { allowedPersonas } : {}),
@@ -836,7 +840,7 @@ function useProvideGameData() {
 
   // One identity for the provider's life, so a component that only writes never re-renders on an edit.
   const actions = useMemo(() => ({
-    updateWorldOverview, loadWorldMetadata,
+    updateWorldOverview, addMedia, loadWorldMetadata,
     addStat, updateStat, removeStat,
     addStatGroup, updateStatGroup, removeStatGroup,
     addLocation, updateLocation, removeLocation,
@@ -855,7 +859,7 @@ function useProvideGameData() {
     setWorldOptions, updateOption: updateWorldOption,
     loadWorldData, setWorldId, saveWorld, discardChanges, setOwnedLibraryIds, reloadWorld, keepWorldCopy,
   }), [
-    updateWorldOverview, loadWorldMetadata,
+    updateWorldOverview, addMedia, loadWorldMetadata,
     addStat, updateStat, removeStat,
     addStatGroup, updateStatGroup, removeStatGroup,
     addLocation, updateLocation, removeLocation,

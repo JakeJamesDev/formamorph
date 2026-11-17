@@ -216,7 +216,7 @@ describe('ImageUpload drag and drop', () => {
     await waitFor(() => expect(promptImage).toHaveBeenCalled());
     expect(screen.queryByRole('status')).toBeNull();
     release('kept');
-    await waitFor(() => expect(onChange).toHaveBeenCalledWith('kept'));
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('kept', 'a.png'));
   });
 
   it('does not mark the frame for a drag it could not take', () => {

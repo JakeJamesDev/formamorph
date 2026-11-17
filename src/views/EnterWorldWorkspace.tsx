@@ -32,6 +32,7 @@ import { isShown } from '@/lib/traitEffects';
 import { YouMark } from '@/components/game/YouMark';
 import { Hint, Meta } from '@/components/ui/typography';
 import EnterWorldLibrary, { type EntityAddition } from './EnterWorldLibrary';
+import { useMediaList } from '@/lib/useMediaList';
 
 export interface EnterWorldWorkspaceProps {
   /** False plays the exit animation; the host keeps the workspace mounted until it finishes. */
@@ -98,6 +99,7 @@ const REMEMBERED_MS = 3000;
 
 export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const viewportMobile = useIsMobile();
+  const media = useMediaList();
   const [containerRef, containerSize] = useElementSize();
   const categoriesCollapsed = containerSize.width > 0 ? containerSize.width < 72 * 16 : viewportMobile;
   const [categoryNavigationOpen, setCategoryNavigationOpen] = useState(false);
@@ -222,7 +224,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     const description = entity.playerDescription?.trim();
     return (
       <div className="mb-3 flex items-start gap-4">
-        <PersonaPortrait image={primaryImage(entity)} />
+        <PersonaPortrait image={primaryImage(entity, media)} />
         <div className="min-w-0">
           <Meta as="p" className="mb-1 font-medium tracking-wide">Starting Traits</Meta>
           <h2 className="break-words text-heading font-semibold">

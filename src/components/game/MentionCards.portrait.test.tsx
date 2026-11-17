@@ -54,7 +54,7 @@ const presence = computePresence({
 }).byId;
 
 const rows = (night: boolean) => mentionCardRows(
-  buildPlayerView(input({ gate: gate(night) })), presence, { imageOf: (e) => visibleImages(e, gate(night))[0]?.data },
+  buildPlayerView(input({ gate: gate(night) })), presence, { imageOf: (e) => visibleImages(e, gate(night), undefined)[0]?.data },
 );
 
 /** The portrait the card for `id` shows, or null when it shows the initial. */

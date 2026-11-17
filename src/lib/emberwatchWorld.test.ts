@@ -311,7 +311,7 @@ describe('the Emberwatch Visibility rules', () => {
   const faith = { id: 'faith', name: 'Faith' };
   const chapel = world.locations.find((l) => l.name === 'Chapel of the Ember')!;
   const chapelSlots = (persona: PersonaRef, ownerId: string, value: number, max?: number) =>
-    visibleLocationImages(chapel, statAt(persona, ownerId, faith, value, max)).map((image) => image.slot);
+    visibleLocationImages(chapel, statAt(persona, ownerId, faith, value, max), world.worldOverview.mediaList).map((image) => image.slot);
 
   it("lights the Chapel's brazier once the played persona's Faith reaches 70 percent", () => {
     const wanderer = customPersonaId(world);
@@ -328,7 +328,7 @@ describe('the Emberwatch Visibility rules', () => {
   it('shows Mother Hesk wounded once her own Health falls below 40 percent', () => {
     const hesk = entityNamed(world, 'Mother Hesk');
     const slots = (health: number) =>
-      visibleImages(hesk, statAt(NONE, hesk.id, { id: 'health', name: 'Health' }, health)).map((image) => image.slot);
+      visibleImages(hesk, statAt(NONE, hesk.id, { id: 'health', name: 'Health' }, health), world.worldOverview.mediaList).map((image) => image.slot);
     expect(slots(40)).toEqual([0]);
     expect(slots(39)).toEqual([1]);
   });

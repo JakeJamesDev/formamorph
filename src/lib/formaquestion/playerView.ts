@@ -3,7 +3,7 @@
  * Formaquestion reads (ADR-0014). No row type has an AI field; AI text written in play counts as player text.
  */
 import type {
-  Base64Data, ChatMessage, Currency, DiscoveredEntity, Entity, GameState, Item, ItemInstance, PlayerStat, RuntimeItem, Trait, World,
+  Base64Data, ChatMessage, Currency, DiscoveredEntity, Entity, GameState, Item, ItemInstance, MediaList, PlayerStat, RuntimeItem, Trait, World,
 } from '@/types';
 import { activeDescriptor } from '@/lib/statContext';
 import { visibleImages } from '@/lib/imageVisibility';
@@ -98,6 +98,8 @@ export interface PlayerViewInput {
   isEntityOn?: (entity: Entity) => boolean;
   /** Reads each entity's image Visibility rules. Without it, no row carries an image. */
   gate?: GateInput;
+  /** The world's Media List, which gallery links resolve through. */
+  media?: MediaList;
 }
 
 /** Player text with chips resolved; empty when there is none. */
@@ -191,7 +193,7 @@ function viewEntities(input: PlayerViewInput, current: GameState): PlayerViewEnt
 
   const { gate } = input;
   const withImage = (row: PlayerViewEntity, entity: Entity): PlayerViewEntity => {
-    const image = gate && visibleImages(entity, gate)[0]?.data;
+    const image = gate && visibleImages(entity, gate, input.media)[0]?.data;
     return image ? { ...row, image } : row;
   };
 

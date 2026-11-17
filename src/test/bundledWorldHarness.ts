@@ -120,9 +120,9 @@ export function bundledWorldHarness(raw: string) {
   }
 
   /** The image slots play shows for an entity. */
-  const entitySlots = (entity: Entity, input: GateInput) => visibleImages(entity, input).map((image) => image.slot);
+  const entitySlots = (entity: Entity, input: GateInput) => visibleImages(entity, input, world.worldOverview.mediaList).map((image) => image.slot);
   /** The image slots play shows for a location. */
-  const locationSlots = (location: GameLocation, input: GateInput) => visibleLocationImages(location, input).map((image) => image.slot);
+  const locationSlots = (location: GameLocation, input: GateInput) => visibleLocationImages(location, input, world.worldOverview.mediaList).map((image) => image.slot);
 
   return {
     world, persona, gate, ownerWorld, none, traitNamed, idOf, activeIds, activeTraits, activeNames,

@@ -213,7 +213,13 @@ describe('the roster without the played entity', () => {
 describe('personaOption', () => {
   it('resolves the player description with the entity as its owner', () => {
     const wren: Entity = { id: 'wren', name: 'Wren', persona: true, playerDescription: ' {{char}} rows the ferry. ' };
-    const option = personaOption((entity, text) => text.replaceAll('{{char}}', entity.name))(wren);
+    const option = personaOption((entity, text) => text.replaceAll('{{char}}', entity.name), undefined)(wren);
     expect(option.description).toBe('Wren rows the ferry.');
+  });
+
+  it('shows a linked portrait through the Media List', () => {
+    const wren: Entity = { id: 'wren', name: 'Wren', images: [{ mediaId: 'm' }] };
+    const media = { m: { id: 'm', name: 'Wren 1', kind: 'image' as const, data: 'data:image/png;base64,QUJD' } };
+    expect(personaOption((_e, text) => text, media)(wren).image).toBe('data:image/png;base64,QUJD');
   });
 });
