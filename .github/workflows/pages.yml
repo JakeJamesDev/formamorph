@@ -18,6 +18,10 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+# onnxruntime-node fetches CUDA binaries on Linux x64; CI never uses them.
+env:
+  ONNXRUNTIME_NODE_INSTALL_CUDA: skip
+
 jobs:
   build:
     runs-on: ubuntu-latest

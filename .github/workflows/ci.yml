@@ -7,6 +7,10 @@ on:
   pull_request:
   workflow_call:
 
+# onnxruntime-node fetches CUDA binaries on Linux x64; CI never uses them.
+env:
+  ONNXRUNTIME_NODE_INSTALL_CUDA: skip
+
 jobs:
   check:
     runs-on: ubuntu-latest

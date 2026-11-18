@@ -37,6 +37,10 @@ on:
         type: boolean
         default: false
 
+# onnxruntime-node fetches CUDA binaries on Linux x64; CI never uses them.
+env:
+  ONNXRUNTIME_NODE_INSTALL_CUDA: skip
+
 jobs:
   # A site redeploy ships no app code, and a device-test APK is never published.
   check:
