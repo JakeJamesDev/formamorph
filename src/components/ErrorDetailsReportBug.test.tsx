@@ -15,13 +15,14 @@ vi.mock('@/components/prompt/PromptField', () => ({
 import { ThemedToastContainer } from './ThemedToastContainer';
 import { FeedbackDialog } from './menu/FeedbackDialog';
 import AuthService from '@/services/AuthService';
-import { closeErrorDetails, DetailedError } from '@/lib/errorDetails';
+import { closeErrorDetails, DetailedError, type ToastText } from '@/lib/errorDetails';
 import { closeFeedback } from '@/lib/feedbackOpener';
 import { saveFeedbackDraft } from '@/lib/feedbackDraft';
 import { toastError } from '@/lib/linkToast';
 import { toastFeedbackNotify } from '@/lib/feedbackToast';
 
-const FENCED = '```\nNode #4: missing\n```';
+const OPERATION = 'Image generation failed.';
+const FENCED = '```\nImage generation failed.\n\nNode #4: missing\n```';
 const titleValue = () => (document.getElementById('feedbackTitle') as HTMLInputElement).value;
 const bodyValue = () => (document.getElementById('feedbackBody') as HTMLTextAreaElement).value;
 
@@ -42,9 +43,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function openDetails(error: unknown = new DetailedError('ComfyUI rejected the workflow', 'Node #4: missing')) {
+async function openDetails(
+  error: unknown = new DetailedError('ComfyUI rejected the workflow', 'Node #4: missing'),
+  text: ToastText = OPERATION,
+) {
   render(<ThemedToastContainer />);
-  act(() => toastError(error, 'fallback'));
+  act(() => toastError(error, text));
   fireEvent.click(await screen.findByRole('button', { name: 'View Details →' }));
   return screen.findByRole('dialog', { name: 'Error Details' });
 }
@@ -106,7 +110,7 @@ describe('Report Bug in Error Details', () => {
     const body = bodyValue();
     expect(body.length).toBeLessThanOrEqual(4000);
     expect(body.length).toBeGreaterThan(3900);
-    expect(body.startsWith('```\nxxxx')).toBe(true);
+    expect(body.startsWith('```\nImage generation failed.\n\nxxxx')).toBe(true);
     expect(body).toMatch(/x\n```\n\n\[The details are cut[^\]]*“Copy” in “Error Details” has the full text\.\]$/);
   });
 
@@ -115,7 +119,23 @@ describe('Report Bug in Error Details', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Report Bug' }));
     await screen.findByRole('dialog', { name: 'Send Feedback' });
 
-    expect(bodyValue()).toBe('````\nResponse:\n# not a heading\n```js\nx\n```\n````');
+    expect(bodyValue()).toBe('````\nImage generation failed.\n\nResponse:\n# not a heading\n```js\nx\n```\n````');
+  });
+
+  it('titles a headline report with what failed, and names it only there', async () => {
+    await openDetails(new DetailedError('ComfyUI rejected the workflow', 'Node #4: missing'), { headline: OPERATION });
+    fireEvent.click(screen.getByRole('button', { name: 'Report Bug' }));
+    await screen.findByRole('dialog', { name: 'Send Feedback' });
+    expect(titleValue()).toBe(OPERATION);
+    expect(bodyValue()).toBe('```\nComfyUI rejected the workflow\n\nNode #4: missing\n```');
+  });
+
+  it('names what failed only in the title when the error has no message of its own', async () => {
+    await openDetails(new Error(''));
+    fireEvent.click(screen.getByRole('button', { name: 'Report Bug' }));
+    await screen.findByRole('dialog', { name: 'Send Feedback' });
+    expect(titleValue()).toBe(OPERATION);
+    expect(bodyValue()).not.toContain(OPERATION);
   });
 
   it('cuts a title past the title limit', async () => {

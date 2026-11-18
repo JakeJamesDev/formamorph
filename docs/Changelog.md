@@ -98,6 +98,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **In Enter World, a click anywhere in a trait, option or location box now selects it.** Before, the box's edges and corners lit up on hover but ignored the click.
   - **The Test Bench no longer calls a placeholder unused when its only chip is in a stranger field.** That covers Stranger Name and Stranger Description, which play already fills in.
   - **After an update from 3.2.0 or older, one damaged world no longer stops your world library from opening.** Before, every world failed to save with an AbortError. Now the damaged world shows in the repair notice.
+  - **A bug report from Error Details now names what failed, such as a save or an import.** Before, some reports showed only the browser's error.
 
 ---
 

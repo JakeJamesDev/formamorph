@@ -20,6 +20,10 @@ export function linkToast(
 
 /** Toasts a caught error with a View Details link to its full text; `note` adds a toast-only line under the message. */
 export function toastError(error: unknown, toastText: ToastText, note?: string): void {
-  const entry = describeError(error, toastText);
+  const described = describeError(error, toastText);
+  // Fallback text the error's own message displaced still names what failed, so the details open with it.
+  const entry = typeof toastText === 'string' && toastText && described.message !== toastText
+    ? { ...described, details: `${toastText}\n\n${described.details}` }
+    : described;
   linkToast(note ? [entry.message, note] : entry.message, 'View Details →', () => showErrorDetails(entry));
 }

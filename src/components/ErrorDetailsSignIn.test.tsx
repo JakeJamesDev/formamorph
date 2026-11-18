@@ -75,7 +75,7 @@ async function openDetails() {
       </AccountDeletionProvider>
     </AgeGateProvider>,
   );
-  act(() => toastError(new DetailedError('ComfyUI rejected the workflow', 'Node #4: missing'), 'fallback'));
+  act(() => toastError(new DetailedError('ComfyUI rejected the workflow', 'Node #4: missing'), 'Image generation failed.'));
   fireEvent.click(await screen.findByRole('button', { name: 'View Details →' }));
   return screen.findByRole('dialog', { name: 'Error Details' });
 }
@@ -114,7 +114,7 @@ describe('Report Bug for a signed-out player', () => {
     await screen.findByRole('dialog', { name: 'Send Feedback' });
     expect(AuthService.isAuthenticated()).toBe(true);
     expect(titleValue()).toBe('ComfyUI rejected the workflow');
-    expect(bodyValue()).toBe('```\nNode #4: missing\n```');
+    expect(bodyValue()).toBe('```\nImage generation failed.\n\nNode #4: missing\n```');
     expect(screen.queryByRole('dialog', { name: 'Error Details' })).toBeNull();
     // The answer made on the way in is recorded against the account that just signed in.
     await waitFor(() => expect(requested.some((url) => url.endsWith('/policies/age-gate/accept'))).toBe(true));

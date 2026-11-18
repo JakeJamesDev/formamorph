@@ -167,12 +167,12 @@ describe('toastError', () => {
 
   it('copies the message, the details and the diagnostics block together', async () => {
     render(<ThemedToastContainer />);
-    act(() => toastError(new DetailedError('ComfyUI rejected the workflow: Bad graph', 'Node #4: missing'), 'fallback'));
+    act(() => toastError(new DetailedError('ComfyUI rejected the workflow: Bad graph', 'Node #4: missing'), 'Image generation failed.'));
     await openDetails();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Copy' }));
     const copied = writeText.mock.calls[0][0];
-    expect(copied).toMatch(/^ComfyUI rejected the workflow: Bad graph\n\nNode #4: missing\n\nVersion: /);
+    expect(copied).toMatch(/^ComfyUI rejected the workflow: Bad graph\n\nImage generation failed\.\n\nNode #4: missing\n\nVersion: /);
     expect(copied).toContain('Platform: Browser');
     await screen.findByText('Copied');
   });
