@@ -1,10 +1,17 @@
 // Vitest reporter that warns about slow tests and separates load from real slowness. The main process times a
 // fixed CPU loop through the run; a test's duration divided by the load at its time is its idle cost, which is
-// compared with that test's own recent runs. History lives in node_modules/.cache, outside git.
+// compared with that test's own recent runs. History lives in node_modules/.cache, outside git. A test new since
+// the merge base with main that runs past its level's budget gets a warning; nothing here fails a run.
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
+import { levelOf } from './testLedgerRecords.mjs';
+import { ALWAYS_RUN } from './testSelection.mjs';
 import { testKey } from './testRetry.mjs';
+
+/** Idle ms a new test may take, per level: each level's p99 in the 2026-11-04 Test Ledger. Close-spec recomputes them. */
+export const BUDGET_MS = { unit: 250, script: 2000, scan: 2000, component: 1200, view: 5000 };
 
 const SAMPLE_EVERY_MS = 250;
 const HISTORY_RUNS = 5;
@@ -64,6 +71,68 @@ export function recordRun(history, tests, samples, reference) {
   return next;
 }
 
+/** Each test past its level's budget at idle, with its level, idle cost and budget. */
+export function overBudget(tests, samples, reference, alwaysRun = ALWAYS_RUN) {
+  return tests.flatMap((t) => {
+    const level = levelOf(t.file, alwaysRun);
+    const idle = t.duration / loadFactor(samples, t.startTime, t.startTime + t.duration, reference);
+    return idle >= BUDGET_MS[level] ? [{ ...t, level, idle, budget: BUDGET_MS[level] }] : [];
+  });
+}
+
+/**
+ * The tests that are new against the base: `baseText` maps each test file changed since the base to its text there,
+ * or null when the file is new. A file missing from the map is unchanged. A title absent from the base text is new.
+ */
+export function newTests(tests, baseText) {
+  return tests.filter((t) => {
+    if (!(t.file in baseText)) return false;
+    const text = baseText[t.file];
+    return text === null || !text.replace(/\\(.)/g, '$1').includes(t.title);
+  });
+}
+
+/** Each changed path mapped to its path at the base, from `git diff --name-status -z`: a rename's old path, null when added. */
+export function basePaths(nameStatus) {
+  const tokens = nameStatus.split('\0').filter(Boolean);
+  const paths = {};
+  for (let i = 0; i < tokens.length; i++) {
+    const status = tokens[i];
+    if (/^[RC]/.test(status)) {
+      paths[tokens[i + 2]] = tokens[i + 1];
+      i += 2;
+    } else {
+      paths[tokens[++i]] = status === 'A' ? null : tokens[i];
+    }
+  }
+  return paths;
+}
+
+const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+
+/** Changed test files mapped to their text at the merge base with main, null for added ones; null outside a repo or a main. */
+export function readBaseText(files, cwd = process.cwd()) {
+  try {
+    const base = git(cwd, 'merge-base', 'HEAD', 'main').trim();
+    const root = git(cwd, 'rev-parse', '--show-toplevel').trim();
+    const basePath = basePaths(git(root, 'diff', '--name-status', '-M', '-z', base));
+    for (const file of git(root, 'ls-files', '--others', '--exclude-standard', '-z').split('\0')) if (file) basePath[file] = null;
+    const baseText = {};
+    for (const file of new Set(files)) {
+      const repoPath = path.relative(root, path.resolve(cwd, file)).replace(/\\/g, '/');
+      if (!(repoPath in basePath)) continue;
+      try {
+        baseText[file] = basePath[repoPath] === null ? null : git(root, 'show', `${base}:${basePath[repoPath]}`);
+      } catch {
+        baseText[file] = null;
+      }
+    }
+    return baseText;
+  } catch {
+    return null;
+  }
+}
+
 function readCache() {
   try {
     const cache = JSON.parse(readFileSync(CACHE_FILE, 'utf8'));
@@ -101,7 +170,18 @@ export default class SlowTestReporter {
     const { duration, startTime } = testCase.diagnostic() ?? {};
     if (typeof duration !== 'number' || testCase.result().state !== 'passed') return;
     const file = path.relative(process.cwd(), testCase.module.moduleId).replace(/\\/g, '/');
-    this.tests.push({ key: testKey(file, testCase.fullName), duration, startTime });
+    this.tests.push({ key: testKey(file, testCase.fullName), file, title: testCase.name, duration, startTime });
+  }
+
+  /** Warns about each new test past its level's budget; reads git only when some test is past one. */
+  reportNewOverBudget(reference) {
+    const over = overBudget(this.tests, this.samples, reference);
+    if (!over.length) return;
+    const baseText = readBaseText(over.map((t) => t.file));
+    const named = baseText ? newTests(over, baseText) : [];
+    if (!named.length) return;
+    console.log(`\n⚠ New tests over budget: ${named.length}`);
+    for (const t of named) console.log(`  ⚠ ${seconds(t.idle)} idle, ${t.level} budget ${seconds(t.budget)}  ${t.key}`);
   }
 
   onTestRunEnd() {
@@ -111,6 +191,7 @@ export default class SlowTestReporter {
     const reference = cache.calibrationMs === undefined ? fastest : Math.min(cache.calibrationMs, fastest);
     const { regressed, loaded, heavy } = classify(this.tests, this.samples, reference, this.threshold, cache.tests);
     writeCache({ calibrationMs: reference, tests: recordRun(cache.tests, this.tests, this.samples, reference) });
+    this.reportNewOverBudget(reference);
 
     const total = regressed.length + loaded.length + heavy;
     if (!total) return;

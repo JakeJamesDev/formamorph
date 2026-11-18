@@ -81,6 +81,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **🛠️ Developer tooling**
   - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.
+  - **`npm test` now warns when a new test runs past its level's time budget.** A test is new when it is missing from the merge base with main. Budgets are each level's slowest 1% today. The warning never fails a run.
 
 #### 🔧 Fixed
 
