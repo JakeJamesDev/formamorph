@@ -69,8 +69,11 @@ describe('the schedule dialog', () => {
   });
 
   it('says a blank tier opens with the public date, and never opens without one', () => {
-    const legacy = { _id: 'w2', supporter_only: true, supporter_until: iso(15) } as unknown as WorldRecord;
-    render(<SupporterScheduleDialog world={legacy} busy={false} onClose={() => {}} onSave={async () => null} />);
+    const withPublic = {
+      _id: 'w2', supporter_only: true, supporter_until: iso(15),
+      supporterSchedule: [{ tier: 'supporter_plus', opensAt: null }, { tier: 'supporter', opensAt: null }],
+    } as unknown as WorldRecord;
+    render(<SupporterScheduleDialog world={withPublic} busy={false} onClose={() => {}} onSave={async () => null} />);
 
     expect(screen.getAllByText('Opens with the public date').length).toBe(2);
     fireEvent.change(input('Everyone Opens'), { target: { value: '' } });

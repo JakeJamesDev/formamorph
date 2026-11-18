@@ -81,13 +81,16 @@ describe('the edit form', () => {
     });
   });
 
-  it('names every lower tier for a listing with no stages', () => {
+  it('keeps every tier of a listing with no stages open when it is saved unchanged', () => {
     const legacy = { supporter_only: true, supporter_until: iso(15) };
+    const sent = datesFromForm(formFromListing(legacy, NOW), legacy);
 
-    expect(datesFromForm(formFromListing(legacy), legacy)).toEqual({
-      opensAt: { supporter_plus: null, supporter: null },
-      publicAt: iso(15),
-    });
+    expect(sent?.publicAt).toBe(iso(15));
+    for (const tier of ['supporter_plus', 'supporter'] as const) {
+      const opens = sent?.opensAt[tier];
+      expect(opens).toEqual(expect.any(String));
+      expect(new Date(opens as string).getTime()).toBeLessThanOrEqual(NOW);
+    }
   });
 
   it('refuses a value that is not a date', () => {

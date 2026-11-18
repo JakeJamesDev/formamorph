@@ -99,12 +99,13 @@ export interface ScheduleForm {
   publicAt: string;
 }
 
-/** The values a stored listing prefills the edit dialog with. */
-export function formFromListing(listing: ScheduledListing): ScheduleForm {
+/** The values a stored listing prefills the edit dialog with. A listing with no stages has every tier open already, so its tiers prefill as now. */
+export function formFromListing(listing: ScheduledListing, now = Date.now()): ScheduleForm {
   const entries = parseSupporterSchedule(listing.supporterSchedule);
+  const openNow = entries.length === 0 ? new Date(now).toISOString() : null;
   const opensAt: ScheduleForm['opensAt'] = {};
   for (const tier of SCHEDULE_ROW_TIERS) {
-    const stored = entries.find((entry) => entry.tier === tier)?.opensAt;
+    const stored = openNow ?? entries.find((entry) => entry.tier === tier)?.opensAt;
     opensAt[tier] = toInputValue(stored);
   }
 
