@@ -7,15 +7,16 @@ import { inCast, playsAs, resolveOwners, type Owner } from '../owners';
 import { characterAsPlayer } from '../builtinPlaceholders';
 import { resolvePersona } from '../persona';
 import { copyLookup, readerFor, type CopyLookup, type CopyReader } from '../blueprints';
-import { borneByPlayer, withOwnerTrees } from '../ownedTraitsInPlay';
+import { borneByPlayer, inPlayOwners, withOwnerTrees } from '../ownedTraitsInPlay';
 import { resolveOwnerText, resolveEntityText, resolvePlaceholders } from '../placeholders';
 import { bindBlueprintPins, traitScopedPins } from '../placeholderPins';
-import { defaultPicks } from '../traitEffects';
+import { activeStatEnabled, defaultPicks, enabledStats, inAuthoredOrder, traitOrderIndex } from '../traitEffects';
 import {
   resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText, type ResolveOwnedTraitText,
 } from '../resolveWorldNames';
 import { resolveStartingLocation } from '../startingLocation';
-import { seedNewGameStats, treeStatTraits } from '../traitRuntime';
+import { seedNewGameStats, startingTraitState, statTraitsInForce, treeStatTraits, type TraitWorld } from '../traitRuntime';
+import { optionStatTraits } from '../worldOptions';
 import { enabledOwnerStats, withTraitToggles } from '../statOwners';
 import { playStatWorld } from '../statLinks';
 import { startingInstances } from '../inventory';
@@ -23,7 +24,7 @@ import { openingPlayedEntity, type OpeningPersona } from '../openingState';
 import { startsMet, strangersInPlay } from '../presence';
 import type {
   Body, Connection, Currency, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, Placement, PlayerStat, Slot, Stat,
-  StatGroup, Trait, TraitGroup, WorldOverview,
+  StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValues, WorldOverview,
 } from '@/types';
 import type { ChipScene } from './chipScene';
 
@@ -45,6 +46,7 @@ export interface AuthoredWorld {
   currencies?: Currency[];
   slots?: Slot[];
   bodies?: Body[];
+  options?: WorldOption[];
 }
 
 /** Overrides for a scene scoped tighter than "the world's own opening" — the Test Bench's Opening
@@ -54,6 +56,8 @@ export interface AuthoredSceneOptions {
   activeTraitIds?: string[];
   /** The stats the Stats chips render, in place of the authored list at its starting values. */
   stats?: PlayerStat[];
+  /** The Option values in force. Absent = each Option's default. */
+  optionValues?: WorldOptionValues;
   /** The location the scene opens at, in place of a fresh starting-location roll. `null` is a real
    *  choice (nowhere), so only an absent field falls back. */
   location?: GameLocation | null;
@@ -130,10 +134,23 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     : resolveOwnerText(null, text, { placeholders, rolls: {}, pins: ownPins(trait, globalReader), copies: globalCopies }));
 
   const played = entities.filter((entity) => playsAs(entity, personaRef));
-  // Each entity's default traits switch its stats on and off.
-  const ownedStats = enabledOwnerStats(withTraitToggles(
+  // Every stat starts as a new game's does: Option starts, then the default picks, global and owned.
+  const optionWorld = { options: world.options, optionValues: options.optionValues };
+  const ownedPicks = Object.fromEntries(trees.map((b) => [b.id, defaultsOf(b)]));
+  const traitWorld: TraitWorld = {
+    traits, groups: traitGroups, entities, persona: personaRef, ...optionWorld, ...inPlayOwners({ traits, traitGroups, entities }, personaRef),
+  };
+  const start = startingTraitState(
+    stats,
+    inAuthoredOrder(global.traits.filter((t) => activeIds.has(t.id)), traitOrderIndex(traits, traitGroups)),
+    traitWorld,
+    ownedPicks,
     Object.fromEntries(entities.filter((e) => e.stats?.length).map((e) => [e.id, seedNewGameStats(e.stats ?? [])])),
-    treeStatTraits(trees, Object.fromEntries(trees.map((b) => [b.id, defaultsOf(b)]))),
+  ).state;
+  // Each entity's Option rows, then its default traits, switch its stats on and off.
+  const ownTraits = treeStatTraits(trees, ownedPicks);
+  const ownedStats = enabledOwnerStats(withTraitToggles(
+    start.entityStats ?? {}, (id) => [...optionStatTraits(optionWorld, id), ...ownTraits(id)],
   ));
   let instanceCount = 0;
   const openingPlayed = openingPlayedEntity(entities, options.persona);
@@ -141,7 +158,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
   return {
     overview: worldOverview?.systemPrompt || '',
     // Stats open as a playthrough's do.
-    stats: options.stats ?? seedNewGameStats(stats),
+    stats: options.stats ?? enabledStats(start.stats, activeStatEnabled(start.stats, statTraitsInForce(start, traitWorld))),
     statPlacement: statPlacementOf(world),
     // The played entity's stats are the player's, as its traits are.
     playedStats: ownerStatParts(played, ownedStats),

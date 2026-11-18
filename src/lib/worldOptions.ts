@@ -2,7 +2,7 @@
 
 import type { ActionRef } from './actionList';
 import type {
-  BooleanWorldOption, OptionStatRows, PlaceholderPin, PresetWorldOption, ValuedWorldOption, WorldOption, WorldOptionType, WorldOptionValueOf, WorldOptionValues,
+  BooleanWorldOption, OptionStatRows, PlaceholderPin, PresetWorldOption, Trait, ValuedWorldOption, WorldOption, WorldOptionType, WorldOptionValueOf, WorldOptionValues,
 } from '@/types';
 
 /** The value ids a boolean Option's pin lists sit under. */
@@ -123,6 +123,30 @@ export function optionStatRowLists(options: readonly WorldOption[] | undefined, 
     if (statChanges.length || statToggles.length) out.push({ optionId: option.id, valueId, statChanges, statToggles });
   }
   return out;
+}
+
+/** A world's Options and the values in force. Absent values = each Option's default. */
+export interface OptionStatWorld {
+  options?: readonly WorldOption[];
+  optionValues?: WorldOptionValues;
+}
+
+/** The id prefix of an Option value's stat source, which no authored trait carries. */
+const OPTION_SOURCE = 'option:';
+
+/** An Option's rows that move `ownerId`'s stats (undefined = the global stats), with the owner field dropped. */
+const ownerOptionRows = <R extends { ownerId?: string }>(rows: readonly R[], ownerId: string | undefined): Omit<R, 'ownerId'>[] =>
+  rows.filter((row) => row.ownerId === ownerId).map(({ ownerId: _owner, ...row }) => row);
+
+/** Each current Option value's stat rows on one scope as one stat source, in Options-tab order: the global stats,
+ *  or with `ownerId` that entity's own stats. Only the stat sets read it, never a trait list. */
+export function optionStatTraits(world: OptionStatWorld, ownerId?: string): Trait[] {
+  return optionStatRowLists(world.options, world.optionValues).flatMap(({ optionId, valueId, statChanges, statToggles }) => {
+    const changes = ownerOptionRows(statChanges, ownerId);
+    const toggles = ownerOptionRows(statToggles, ownerId);
+    if (!changes.length && !toggles.length) return [];
+    return [{ id: `${OPTION_SOURCE}${optionId}:${valueId}`, name: '', statChanges: changes, ...(toggles.length ? { statToggles: toggles } : {}) }];
+  });
 }
 
 /** The entity ids any value's stat row names, current or not: the entities an Option change can move. */

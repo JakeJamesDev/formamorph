@@ -7,7 +7,7 @@ import { encodePlaceholderToken } from '@/lib/placeholders';
 import { toldActions } from '@/lib/actionList';
 import { phValues } from '@/test/placeholderValues';
 import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
-import type { World, WorldOption } from '@/types';
+import type { PlayerStat, World, WorldOption } from '@/types';
 
 /** The in-game World Options tab: a change applies at once, lists hidden, and undo restores it (ticket 05). */
 
@@ -29,7 +29,8 @@ const style: WorldOption = {
 const setupOnly: WorldOption = { id: 'o-setup', name: 'Starting Season', type: 'boolean', shownToPlayer: true, midGame: false, default: false };
 const secret: WorldOption = { id: 'o-secret', name: 'Secret Flag', type: 'boolean', shownToPlayer: false, midGame: true, default: false };
 
-const worldWith = (options: WorldOption[]): World => ({ ...harborWorld(), placeholders: [tone], options }) as unknown as World;
+const worldWith = (options: WorldOption[], stats: PlayerStat[] = []): World =>
+  ({ ...harborWorld({ stats }), placeholders: [tone], options }) as unknown as World;
 
 const TOKEN = `Write ${encodePlaceholderToken({ id: 'tone', mode: 'world', placementId: 'p1' })} prose.`;
 let live: ReturnType<typeof useGameplay> | null = null;
@@ -45,8 +46,8 @@ const gameplay = () => {
 };
 const tray = () => screen.queryByRole('region', { name: 'Since Last Turn' });
 
-async function start(options: WorldOption[]) {
-  renderGameViewer(worldWith(options), { inGameplay: <Probe /> });
+async function start(options: WorldOption[], stats: PlayerStat[] = []) {
+  renderGameViewer(worldWith(options, stats), { inGameplay: <Probe /> });
   await screen.findByPlaceholderText(/Type your action/);
 }
 
@@ -56,6 +57,26 @@ beforeEach(async () => {
   localStorage.clear();
 });
 afterEach(() => { vi.unstubAllGlobals(); });
+
+describe('an in-play Option toggle on a banded stat (Q28)', () => {
+  // Heat's band pins Tone over Style's pin until Calm switches Heat off.
+  const heat: PlayerStat = {
+    id: 'heat', name: 'Heat', type: 'number', description: '', min: 0, max: 100, value: 80, regen: 0,
+    descriptors: [{ id: 'hot', threshold: 100, description: 'Hot', placeholderPins: [{ placeholderId: 'tone', value: 'lush' }] }],
+  };
+  const calm: WorldOption = {
+    id: 'o-calm', name: 'Calm', type: 'boolean', shownToPlayer: true, midGame: true, default: false,
+    onStatToggles: [{ statId: 'heat', enabled: false }],
+  };
+
+  it("stops the stat's band pinning once the tab switches the Option on", async () => {
+    await start([style, calm], [heat]);
+    expect(resolved).toBe('Write lush prose.');
+    gameplay().setActiveTab('options');
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Calm' }));
+    await waitFor(() => expect(resolved).toBe('Write plain prose.'));
+  });
+});
 
 describe('the in-game World Options tab', () => {
   it('has no tab when no Option is shown and flagged for change during play', async () => {

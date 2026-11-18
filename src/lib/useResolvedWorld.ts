@@ -13,7 +13,6 @@ import type { InPlayGateView, InPlayWorld } from '@/lib/inPlayWorld';
 import { useInPlayWorld } from '@/lib/useInPlayWorld';
 import { libraryPlaceholderSet, type LibraryCarrier } from '@/lib/libraryPlaceholders';
 import { inAuthoredOrder, refreshChosenTraits, traitOrderIndex } from '@/lib/traitEffects';
-import { optionPinLists } from '@/lib/worldOptions';
 import {
   resolveConnectionHints, resolveEntityNames, resolveLocationNames, resolveOwnedTraitNames, resolveStatNames, resolveCastNames, resolveTraitNames, resolveTraitGroupNames,
   resolveDictionaryEntryNames, type ResolveEntityText,
@@ -280,7 +279,6 @@ export function useResolvedWorld(): ResolvedWorld {
   );
 
   const traitOrder = useMemo(() => traitOrderIndex(rawTraits, rawTraitGroups), [rawTraits, rawTraitGroups]);
-  const optionPins = useMemo(() => optionPinLists(worldOptions, worldOptionValues), [worldOptions, worldOptionValues]);
   // The location by id and the stats by number: both are state, so a move or a stat crossing a band
   // re-collects here and every name below follows.
   const storedLocationId = storedLocation?.id;
@@ -302,8 +300,8 @@ export function useResolvedWorld(): ResolvedWorld {
     sharedPlaceholders: worldPlaceholders,
     entityStats: over.entityStats ?? entityStats,
     blueprints: pinBlueprints,
+    optionStats: { options: worldOptions, optionValues: worldOptionValues },
   }, {
-    options: optionPins,
     location: rawLocations.find((l) => l.id === storedLocationId),
     stats: over.stats ?? rawGlobalStats,
     placeholders,
@@ -311,7 +309,8 @@ export function useResolvedWorld(): ResolvedWorld {
     codePins: withCodePins,
   }), [
     globalTraits, disabledTraitIds, ownedTraits, rawTraits, rawTraitGroups, inPlay, worldPlaceholders, libraryOn,
-    personaRef, traitOrder, rawLocations, storedLocationId, rawGlobalStats, placeholders, rolls, entityStats, pinBlueprints, optionPins,
+    personaRef, traitOrder, rawLocations, storedLocationId, rawGlobalStats, placeholders, rolls, entityStats, pinBlueprints,
+    worldOptions, worldOptionValues,
   ]);
   const pinSet = useMemo(() => pinsFor(codePins), [pinsFor, codePins]);
   const pins = pinSet.world;

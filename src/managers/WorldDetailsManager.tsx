@@ -61,7 +61,7 @@ const CustomPromptsSection = ({ kind, onKindChange }: {
 }) => {
   const {
     worldOverview, updateWorldOverview, stats, statGroups, locations, connections, entities, traits, traitGroups, dictionaries,
-    placeholders, items, placements, slots, bodies, currencies,
+    placeholders, items, placements, slots, bodies, currencies, options: worldOptions,
   } = useGameData();
   const {
     paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit,
@@ -76,7 +76,7 @@ const CustomPromptsSection = ({ kind, onKindChange }: {
     () => {
       const authored = omitValues(chipValues(authoredChipScene({
         worldOverview, stats, statGroups, locations, connections, entities, traits, traitGroups, dictionaries, placeholders,
-        items, placements, slots, bodies, currencies,
+        items, placements, slots, bodies, currencies, options: worldOptions,
       })), (key) => SAMPLE_ONLY_CHIPS.has(variableForToken(key)?.token ?? ''));
       return composePreviewValues(
         {
@@ -90,7 +90,7 @@ const CustomPromptsSection = ({ kind, onKindChange }: {
       paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit,
       language,
       worldOverview, stats, statGroups, locations, connections, entities, traits, traitGroups, dictionaries, placeholders,
-      items, placements, slots, bodies, currencies,
+      items, placements, slots, bodies, currencies, worldOptions,
     ],
   );
   const [resetKind, setResetKind] = useState<WorldPromptKind | null>(null);

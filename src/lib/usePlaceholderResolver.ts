@@ -6,7 +6,6 @@ import { resolveEntityText, resolvePlaceholders, type ResolveOptions } from '@/l
 import { activeOwnedTraitIds, addedCharacters, ownerPins, inPlayLibrary, pinBlueprintsOf, type PinSet } from '@/lib/ownedTraitsInPlay';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { usePersonaName } from '@/lib/useResolvedWorld';
-import { optionPinLists } from '@/lib/worldOptions';
 import { useInPlayWorld } from '@/lib/useInPlayWorld';
 import type { ResolveEntityText } from '@/lib/resolveWorldNames';
 
@@ -58,8 +57,8 @@ function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
     sharedPlaceholders: worldPlaceholders,
     entityStats: viewEntityStats,
     blueprints,
+    optionStats: { options, optionValues: viewWorldOptionValues },
   }, {
-    options: optionPinLists(options, viewWorldOptionValues),
     location: locations.find((l) => l.id === viewLocationId),
     stats: viewStats,
     placeholders,

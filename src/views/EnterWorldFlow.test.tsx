@@ -1071,6 +1071,54 @@ describe('a Preset over placeholder names and a linked Blueprint trait at world 
   });
 });
 
+describe("Option stat rows on an entity's stat at world entry (Q15, Q27, Q28)", () => {
+  const fury = { id: 'ph-fury', name: 'Fury', values: phValues(['Wary']) };
+  const furyToken = encodePlaceholderToken({ id: 'ph-fury', mode: 'world', placementId: 'pl-fury' });
+  beforeEach(async () => {
+    const record = world();
+    // Easy raises the Dragon's Health into its high band; Hard raises it too but switches the stat off.
+    const raise = { statId: 'health', ownerId: 'dragon', type: 'starting' as const, value: 20 };
+    const options: WorldOption[] = [{
+      id: 'diff', name: 'Difficulty', type: 'choice', shownToPlayer: true, midGame: false, default: 'normal', values: [
+        { id: 'normal', name: 'Normal' },
+        { id: 'easy', name: 'Easy', statChanges: [raise] },
+        { id: 'hard', name: 'Hard', statChanges: [raise], statToggles: [{ statId: 'health', ownerId: 'dragon', enabled: false }] },
+      ],
+    }];
+    const health = {
+      id: 'health', name: 'Health', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0,
+      descriptors: [
+        { id: 'low', threshold: 60, description: 'Low' },
+        { id: 'high', threshold: 100, description: 'High', placeholderPins: [{ placeholderId: 'ph-fury', value: 'Fierce' }] },
+      ],
+    };
+    const dragon = { id: 'dragon', name: 'Dragon', playerDescription: '', aiDescription: '', aiSummary: '', stats: [health] };
+    Object.assign(record.data, { options, entities: [dragon], placeholders: [fury] });
+    record.data.locations = [{ id: 'harbor', name: `${furyToken} Harbor`, isStarting: true }, { id: 'hill', name: 'Hill', isStarting: true }];
+    await WorldStorageService.storeWorld(record);
+  });
+
+  const harborAfter = async (value: string) => {
+    renderEnterWorld({ onStartGame: vi.fn() });
+    await enter();
+    const nav = within(screen.getByRole('navigation', { name: 'World setup categories' }));
+    fireEvent.click(nav.getByRole('button', { name: /^World Options/ }));
+    fireEvent.click(screen.getByRole('radio', { name: value }));
+    fireEvent.click(nav.getByRole('button', { name: 'Starting Location' }));
+    return screen.getByRole('radio', { name: /Harbor$/ });
+  };
+
+  it("reads the Dragon's band from Health as the picked value's starting row leaves it", async () => {
+    expect(await harborAfter('Easy')).toHaveAccessibleName('Fierce Harbor');
+  });
+
+  it('leaves the band unpinned below it, and when the Option switches the stat off', async () => {
+    expect(await harborAfter('Normal')).toHaveAccessibleName('Wary Harbor');
+    cleanup();
+    expect(await harborAfter('Hard')).toHaveAccessibleName('Wary Harbor');
+  });
+});
+
 describe('a Preset with persona and location rows at world entry', () => {
   beforeEach(async () => {
     const record = world();

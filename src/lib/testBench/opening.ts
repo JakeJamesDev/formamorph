@@ -53,7 +53,6 @@ import { startTravelGate } from '@/lib/inPlayWorld';
 import { lensActiveTraits, lensPersonaPicks, lensPersonaRef, lensPinBlueprints, lensStartingStats, resolveLensText, type BenchLens } from './lens';
 import { ownerWorldOf, chipBearingTexts, type RuleWorld } from './rules';
 import { scannedEntries } from './triggers';
-import { optionPinLists } from '@/lib/worldOptions';
 
 /** The instrument reads the whole authored world — the first prompt pulls from every slice. */
 export type OpeningWorld = RuleWorld;
@@ -269,8 +268,8 @@ const openingPins = (world: OpeningWorld, start: OpeningStart, rolls: Placeholde
     sharedPlaceholders: world.placeholders ?? [],
     entityStats: Object.fromEntries((start.state.owners ?? []).map((owner) => [owner.id, owner.stats])),
     blueprints: lensPinBlueprints(world),
+    optionStats: { options: world.options, optionValues: start.optionValues },
   }, {
-    options: optionPinLists(world.options, start.optionValues),
     location: start.location, stats: globalStatsOf(start.settled, world.statGroups ?? []), placeholders: allPlaceholders(world), rolls,
   }).world;
 };
@@ -486,6 +485,7 @@ export function buildOpening(
       location,
       activeTraitIds: active.map((t) => t.id),
       stats: liveStats,
+      ...(lens.state.optionValues && { optionValues: lens.state.optionValues }),
       resolve,
       resolveEntity,
       persona: openingPersonaOf(personaRef),

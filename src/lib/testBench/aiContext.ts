@@ -208,6 +208,7 @@ function lensScene(world: AiContextWorld, lens: BenchLens) {
     location: lens.location,
     activeTraitIds: activeTraitIds(world, lens),
     stats: lensStats(world, lens),
+    ...(lens.state.optionValues && { optionValues: lens.state.optionValues }),
     persona: lens.persona ? openingPersonaOf(lensPersonaRef(lens.persona.id)) : undefined,
     resolve: (text: string, copies?: CopyLookup) => resolveLensText(text, placeholders, lens.pins, copies),
     // Each entity's text reads its own scope, and its trait's text that trait's pins over it, as play reads them.

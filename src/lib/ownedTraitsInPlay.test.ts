@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Entity, PersonaRef, Placeholder, PlaceholderPin, Trait, TraitLink } from '@/types';
+import type { Entity, PersonaRef, Placeholder, PlaceholderPin, Trait, TraitLink, WorldOption } from '@/types';
 import { phValueId, phValues } from '@/test/placeholderValues';
 import { allPinTexts, type PinnableStat } from './placeholderPins';
 import {
@@ -559,5 +559,38 @@ describe('blueprint chips per owner — copies and priming', () => {
   it("primes a root trait's text once per way the player can be played", () => {
     // None, Albus as a world persona, and Wren as the library persona.
     expect(readsOf(`Cloaked in ${chipOf('garb')}.`)).toEqual(new Set(['garb', 'albus-garb', 'lib-garb']));
+  });
+});
+
+describe('an Option toggle on a banded stat (Q28)', () => {
+  const dragon: Entity = { id: 'dragon', name: 'Dragon' };
+  const fury: Placeholder = { id: 'fury', name: 'Fury', values: phValues(['Calm', 'Fierce']) };
+  const town: Placeholder = { id: 'town', name: 'Town', values: phValues(['Sedge', 'Fen']) };
+  const banded = (id: string, placeholderId: string, text: string): PinnableStat => ({
+    id, value: 80, min: 0, max: 100, enabled: true,
+    descriptors: [{ id: `${id}-high`, threshold: 100, description: 'High', placeholderPins: [pin(placeholderId, text)] }],
+  });
+  // Hardcore On switches the Dragon's Health and the global Luck off.
+  const hardcore: WorldOption = {
+    id: 'hardcore', name: 'Hardcore', type: 'boolean', shownToPlayer: true, midGame: false, default: false,
+    onStatToggles: [{ statId: 'health', ownerId: 'dragon', enabled: false }, { statId: 'luck', enabled: false }],
+  };
+  const run = (on: boolean) => ownerPins(
+    {
+      world: { traits: [], traitGroups: [], entities: [dragon] }, persona: NONE, globalTraits: [], owned: {}, sharedPlaceholders: [fury, town],
+      entityStats: { dragon: [banded('health', 'fury', 'Fierce')] },
+      optionStats: { options: [hardcore], optionValues: { hardcore: on } },
+    },
+    { placeholders: [fury, town], stats: [banded('luck', 'town', 'Fen')] },
+  ).world;
+
+  it('lets both bands pin while the Option leaves the stats on', () => {
+    expect(run(false)).toMatchObject({ fury: 'Fierce', town: 'Fen' });
+  });
+
+  it('stops an entity band and a global band pinning once the Option switches their stats off', () => {
+    const pins = run(true);
+    expect(pins.fury).toBeUndefined();
+    expect(pins.town).toBeUndefined();
   });
 });

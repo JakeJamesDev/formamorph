@@ -18,6 +18,7 @@ import type { GateInput, GateOwner } from './traitGates';
 import type { OwnerId } from './scope';
 import { nodePlacement, placeableGroupIds } from './ownerTree';
 import { mapPreservingIdentity } from './utils';
+import { optionPinLists, optionStatTraits, type OptionStatWorld } from './worldOptions';
 
 /** The entity whose owned traits are the player's own: the played persona's, or null. */
 export const playedEntityId = (ref: PersonaRef | undefined): string | null =>
@@ -198,6 +199,8 @@ export interface OwnerPinState {
   library?: readonly Entity[];
   /** The chosen global traits as the save holds them: the root's originals. */
   globalTraits: readonly Trait[];
+  /** The world's Options and the values in force: their pins, and their stat toggles ahead of the traits'. Absent = none. */
+  optionStats?: OptionStatWorld;
   /** The global traits switched off. */
   disabledTraitIds?: readonly string[];
   /** Entity id → its active trait ids: owned ones, and originals it links. */
@@ -233,7 +236,7 @@ export interface PinSet {
 }
 
 /** Owner pin state and the world-level sources, as one collection reads them. */
-type OwnerPinSources = Omit<PinSources, 'traits' | 'disabledTraitIds' | 'statTraits' | 'entityBands'>;
+type OwnerPinSources = Omit<PinSources, 'traits' | 'disabledTraitIds' | 'statTraits' | 'entityBands' | 'options'>;
 
 /** {@link ownerPins} with its sources shown: what the one collection lays, for a reader that wants the layers. */
 export interface OwnerPinPlan {
@@ -254,7 +257,7 @@ export function ownerPins(state: OwnerPinState, sources: OwnerPinSources): PinSe
 
 /** The one collection {@link ownerPins} runs, before it runs. */
 export function ownerPinPlan(state: OwnerPinState, sources: OwnerPinSources): OwnerPinPlan {
-  const { world, persona, library = [], owned, sharedPlaceholders, entityStats = {}, blueprints: pinBlueprints } = state;
+  const { world, persona, library = [], owned, sharedPlaceholders, entityStats = {}, blueprints: pinBlueprints, optionStats = {} } = state;
   const { global, owners } = resolveOwners(world, persona, library);
   const played = playedEntityId(persona);
   const playedOwners = owners.filter((b) => b.isPlayer);
@@ -304,7 +307,8 @@ export function ownerPinPlan(state: OwnerPinState, sources: OwnerPinSources): Ow
     if (!held?.length) return [];
     const reader = readerOf(entity.id);
     const stats = held.map((s) => bindStatPins(s, blueprints, reader, !!pinBlueprints?.stats.has(s.id), isBlueprint));
-    return [{ ownerId: entity.id, stats, statTraits: activeIn(owners.find((b) => b.id === entity.id)) }];
+    const statTraits = [...optionStatTraits(optionStats, entity.id), ...activeIn(owners.find((b) => b.id === entity.id))];
+    return [{ ownerId: entity.id, stats, statTraits }];
   };
   const present = allEntities.filter(presentHere);
   const entityBands = [
@@ -312,9 +316,10 @@ export function ownerPinPlan(state: OwnerPinState, sources: OwnerPinSources): Ow
     ...present.filter(playsHere).flatMap(bandsOf),
   ];
 
-  const statTraits = [...globalOn, ...playedOn];
+  const statTraits = [...optionStatTraits(optionStats), ...globalOn, ...playedOn];
   const traits = [...castLaid, ...[...playedOn, ...globalOn].map((t) => bind(t, null))];
-  return { sources: { ...sources, traits, statTraits, entityBands }, bind, copies };
+  const options = optionPinLists(optionStats.options, optionStats.optionValues);
+  return { sources: { ...sources, traits, statTraits, entityBands, options }, bind, copies };
 }
 
 /** What an editor preview of one owner's trait text reads: its copies and the pins in force on it. */

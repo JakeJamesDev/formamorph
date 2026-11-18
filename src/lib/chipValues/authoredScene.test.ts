@@ -4,7 +4,7 @@ import { authoredChipScene, type AuthoredWorld } from './authoredScene';
 import { chipValues } from './chipValues';
 import { labelsInPlay } from '../presence';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
-import type { Entity, GameLocation, Stat, Trait, TraitGroup, TraitLink, WorldOverview } from '@/types';
+import type { Entity, GameLocation, Stat, Trait, TraitGroup, TraitLink, WorldOption, WorldOverview } from '@/types';
 import { phValueId, phValues } from '@/test/placeholderValues';
 
 const jetty: GameLocation = { id: 'jetty', name: 'The Jetty', isStarting: true, aiDescription: 'Wet planks over black water.' };
@@ -116,6 +116,31 @@ describe('authoredChipScene and entity stats', () => {
     const grim: Trait = { id: 'grim', name: 'Grim', isDefault: true, statChanges: [], statToggles: [{ statId: 'trust', enabled: false }, { statId: 'dread', enabled: true }] };
     const scene = authoredChipScene(world({ entities: [{ ...wren, stats: [trust, dread], traits: [grim] }, harrow] }));
     expect(scene.ownedStats?.wren.map((s) => s.name)).toEqual(['Dread']);
+  });
+
+  describe('under World Options (Q29)', () => {
+    const steady: Trait = { id: 'steady', name: 'Steady', isDefault: true, statChanges: [{ statId: 'trust', type: 'starting', value: 5 }] };
+    const mood: WorldOption = {
+      id: 'mood', name: 'Mood', type: 'choice', shownToPlayer: true, midGame: false, default: 'kind', values: [
+        { id: 'kind', name: 'Kind', statChanges: [
+          { statId: 'trust', ownerId: 'wren', type: 'starting', value: 20 }, { statId: 'warmth', type: 'starting', value: 10 },
+        ] },
+        { id: 'cold', name: 'Cold', statToggles: [{ statId: 'trust', ownerId: 'wren', enabled: false }, { statId: 'nerve', enabled: false }] },
+      ],
+    };
+    const optioned = world({ options: [mood], entities: [{ ...wren, stats: [trust, stock], traits: [steady] }, harrow] });
+
+    it("starts each stat with the default value's starting rows, then the entity's default traits", () => {
+      const scene = authoredChipScene(optioned);
+      expect(scene.ownedStats?.wren.map((s) => [s.name, s.value])).toEqual([['Trust', 55], ['Stock', 5]]);
+      expect(scene.stats.map((s) => [s.name, s.value])).toEqual([['Warmth', 50], ['Nerve', 10]]);
+    });
+
+    it("reads a caller's pick over the default, its toggles switching an entity's stat and a global stat off", () => {
+      const scene = authoredChipScene(optioned, { optionValues: { mood: 'cold' } });
+      expect(scene.ownedStats?.wren.map((s) => [s.name, s.value])).toEqual([['Stock', 5]]);
+      expect(scene.stats.map((s) => [s.name, s.value])).toEqual([['Warmth', 40]]);
+    });
   });
 
   it('holds none when no entity owns a stat', () => {

@@ -25,7 +25,6 @@ import type {
   Entity, EntityStatValues, GameLocation, OwnedTraitPicks, PersonaRef, Placeholder, PlayerStat, Stat, Trait, WorldOptionValues,
 } from '@/types';
 import { ownerWorldOf, type RuleWorld } from './rules';
-import { optionPinLists } from '@/lib/worldOptions';
 
 /** The slices of the authored world the lens reads. The rest of the document is optional and read only to
  *  letter the pickers' chips the way the editor letters them — entities come first in that walk. */
@@ -359,9 +358,9 @@ export function lensPinPlan(
     sharedPlaceholders: world.placeholders ?? [],
     entityStats: lensEntityStats(world),
     blueprints: lensPinBlueprints(world),
-  }, {
     // An Option reads the author's pick, else its default (Q25).
-    options: optionPinLists(world.options, optionValues),
+    optionStats: { options: world.options, optionValues },
+  }, {
     location,
     stats: globalStatsOf(lensStartingStats(world, world.stats ?? [], active, personaId, optionValues), world.statGroups ?? []),
     placeholders: allPlaceholders(world),

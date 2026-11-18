@@ -10,7 +10,7 @@ import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
 import { inAuthoredOrder, isHidden, traitOrderIndex } from '@/lib/traitEffects';
 import { ownerPins, inPlayOwners, pinBlueprintsOf, playedEntityId } from '@/lib/ownedTraitsInPlay';
 import { playedEntityIdOf, startLocationIdsOpen } from '@/lib/inPlayWorld';
-import { cascadeOffInput, startingStatsWith } from '@/lib/traitRuntime';
+import { cascadeOffInput, startingTraitState } from '@/lib/traitRuntime';
 import { seedWorldEntityStats } from '@/lib/entityStats';
 import { toastError } from '@/lib/linkToast';
 import CharacterCustomization from './CharacterCustomization';
@@ -31,7 +31,7 @@ import {
   withLibraryDefaults, withLocationPick, withPersonaPick, withSettledEntry, type EntryDraft, type EntryTraitWorld, type PresetPlaces,
 } from '@/lib/entryDraft';
 import { presetRowTrait, presetTraitTrees } from '@/lib/presetCheck';
-import { isPreset, optionPinLists, shownOptions } from '@/lib/worldOptions';
+import { isPreset, shownOptions } from '@/lib/worldOptions';
 import { bindLibraryEntity, blueprintBindWorld } from '@/lib/blueprintTravel';
 import { playLibraryStats } from '@/lib/portableStats';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
@@ -206,12 +206,12 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     );
     const world = { traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities };
     // The persona's linked stat traits apply after the world picks, as the game's seed does.
-    const entityStats = seedWorldEntityStats({ stats: rawStats, statGroups: rawStatGroups, entities: [...worldEntities, ...libraryCast] });
-    const starting = startingStatsWith(rawStats, chosen, {
+    const seeded = seedWorldEntityStats({ stats: rawStats, statGroups: rawStatGroups, entities: [...worldEntities, ...libraryCast] });
+    const starting = startingTraitState(rawStats, chosen, {
       traits: rawTraits, groups: rawTraitGroups, entities: worldEntities, persona: draftPersona,
       options: worldOptions, ...(entryDraft.optionValues && { optionValues: entryDraft.optionValues }),
       ...inPlayOwners(world, draftPersona, libraryCast),
-    }, ownedTraitPicks, entityStats);
+    }, ownedTraitPicks, seeded).state;
     return ownerPins({
       world,
       persona: draftPersona,
@@ -219,12 +219,12 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
       globalTraits: chosen,
       owned: ownedTraitPicks,
       sharedPlaceholders: worldPlaceholders,
-      entityStats,
+      entityStats: starting.entityStats,
       blueprints: pinBlueprintsOf({ stats: rawStats, statGroups: rawStatGroups, placeholders: worldPlaceholders, placeholderGroups }),
+      optionStats: { options: worldOptions, optionValues: entryDraft.optionValues },
     }, {
-      options: optionPinLists(worldOptions, entryDraft.optionValues),
       location: rawLocations.find((l) => l.id === selectedLocationId),
-      stats: starting,
+      stats: starting.stats,
       placeholders,
       rolls,
     });

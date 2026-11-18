@@ -11,7 +11,8 @@ import { entityNamed, scenePresentHere, type OwnedTraitsInForce, type StrangerLa
 import type { GateTree } from '../traitGates';
 import { activeOwnedTraitIds, borneByPlayer, inOwnerPlaces, withOwnerTrees, type OwnerTree } from '../ownedTraitsInPlay';
 import type { ResolvedPersona } from '../persona';
-import { optionStatTraits, treeStatTraits } from '../traitRuntime';
+import { treeStatTraits } from '../traitRuntime';
+import { optionStatTraits } from '../worldOptions';
 import { enabledOwnerStats, withTraitToggles, type OwnerStats } from '../statOwners';
 import { resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText } from '../resolveWorldNames';
 import { ownerStatParts, type StatPlacement } from '../statContext';

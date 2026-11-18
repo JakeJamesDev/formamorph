@@ -293,7 +293,7 @@ import {
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
   activeTraits as traitsInForce, causedSwitches, entityStatTraitsInForce, heldGlobalTraits, globalRowTraits, startingTraitLog,
-  gateStatsOf, optionStatTraits, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitForceScope, traitGateInput, traitNameIn, traitSwitchEvents,
+  gateStatsOf, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitForceScope, traitGateInput, traitNameIn, traitSwitchEvents,
   type CausedSwitch, type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
 import { mediaOverrideReader, personaEntityId, soundWithOverride, withMediaWrites } from "../lib/mediaOverrides";
@@ -305,7 +305,7 @@ import { useTurnSettle } from "../lib/useTurnSettle";
 import type { TraitCascade } from "../components/game/SetupTraitList";
 import { savedTraits } from "../lib/statCodeTraits";
 import { liveSnapshotOf, type LiveSnapshot } from "../lib/globalSaveFields";
-import { NO_WORLD_OPTION_VALUES, optionPinLists, optionValue, optionValueRef, withOptionWrites } from "../lib/worldOptions";
+import { NO_WORLD_OPTION_VALUES, optionStatTraits, optionValue, optionValueRef, withOptionWrites } from "../lib/worldOptions";
 import { parseKeywords, locateMatches, type EntryActivation, type MatchHit, type MatchRule } from "../lib/dictionaryUtils";
 import { highlightSegments, HIGHLIGHT_PALETTE, type HighlightRule, type HighlightSegment } from "../lib/highlightUtils";
 import { useIsMobile } from "../lib/useIsMobile";
@@ -6291,8 +6291,8 @@ const GameViewer = ({
         sharedPlaceholders: worldPlaceholders,
         entityStats: opening.entityStats,
         blueprints: pinBlueprints,
+        optionStats: { options: worldOptions, optionValues: initialOptionValues },
       }, {
-        options: optionPinLists(worldOptions, initialOptionValues),
         location: authoredLocation, stats: opening.traitState.stats, placeholders, rolls: sessionRolls,
       }).world;
       if (location && authoredLocation) {

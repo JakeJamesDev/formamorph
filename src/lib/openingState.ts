@@ -4,7 +4,6 @@
  */
 import { entityStatOwners, seedEntityStats, statOwnerEntities } from './entityStats';
 import { inPlayLibrary, inPlayOwners } from './ownedTraitsInPlay';
-import { ownedTraitStatesFrom } from './ownedTraitState';
 import { allPlaceholders, placeholderOwners } from './placeholderHomes';
 import { startsMet } from './presence';
 import { positionedCast } from './entityPresence';
@@ -17,8 +16,8 @@ import type { UnitHome } from './sandboxSnapshot';
 import { atStartValues, statStartValue } from './statDescriptorGeometry';
 import { activeStatEnabled, inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import {
-  acquireTrait, applyGlobalRowTraits, applyOptionEntityStarts, applyOptionStarts, applyOwnedStatTraits, entityStatTraitsInForce, gateStatsOf, heldGlobalTraits,
-  seedNewGameStats, statTraitsInForce, traitGateInput, type TraitRuntimeState, type TraitWorld,
+  entityStatTraitsInForce, gateStatsOf, heldGlobalTraits, startingTraitState, statTraitsInForce, traitGateInput,
+  type TraitRuntimeState, type TraitWorld,
 } from './traitRuntime';
 import type { GateInput } from './traitGates';
 import { daypartAt } from './gameClock';
@@ -117,16 +116,9 @@ export function openingFold(
   const held = inAuthoredOrder(
     heldGlobalTraits(traits.filter((t) => chosen.has(t.id)), traitWorld), traitOrderIndex(traits, traitGroups),
   );
-  // The Option values' starting rows land once, after the authored starts and before the picks (Q5).
-  const optionWorld = { traits, groups: traitGroups, options: traitWorld.options, optionValues: traitWorld.optionValues };
-  let traitState = applyOptionStarts({ stats: seedNewGameStats(authored), traits: [], disabledTraitIds: [], appliedValues: {} }, optionWorld);
-  for (const trait of held) traitState = acquireTrait(traitState, trait, optionWorld).state;
-  // Every entity's global rows apply after the world picks; then each entity's own traits apply to its stats.
   const statEntities = statOwnerEntities({ world: entities, library });
-  const rows = applyGlobalRowTraits({
-    ...traitState, ownedTraits: ownedTraitStatesFrom(picks.owned), entityStats: seedEntityStats(statEntities),
-  }, traitWorld);
-  traitState = applyOwnedStatTraits(applyOptionEntityStarts(rows.state, traitWorld), traitWorld);
+  const opening = startingTraitState(authored, held, traitWorld, picks.owned, seedEntityStats(statEntities));
+  let traitState = opening.state;
   // A starting equip that fails its requirement stays carried; none logs, and no script fires (Q37, Q50).
   const settleWorld = { items: world.items ?? [], traits: traitWorld, persona: ref, entities, quietUnequips: true };
   const itemInstances = startingInstances(startWorld, ref, newId, equipRequirement({ traits: traitState, ledger: undefined }, settleWorld));
@@ -170,7 +162,7 @@ export function openingFold(
       itemInstances: playWorld.itemInstances ?? [], music: world.worldOverview?.bgm, gate: () => gate,
     }),
   };
-  const startingTraits = [...held.map((trait) => ({ trait, ownerId: null })), ...rows.appliedRows];
+  const startingTraits = [...held.map((trait) => ({ trait, ownerId: null })), ...opening.appliedRows];
   const gate = traitGateInput(traitState, { ...playWorld, daypart: daypartAt(0) });
   return { state, entityStats, startingTraits, traitState, itemEffects: { ledger: items.ledger, log: items.log }, bodies: items.bodies, gate };
 }

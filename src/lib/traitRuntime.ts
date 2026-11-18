@@ -27,7 +27,7 @@ import {
   type GateStates, type GateStats, type GateTraitRef, type GateTree,
 } from './traitGates';
 import { mapScoped, partOf, playedEntityIds, scoped, scopedEntries, type OwnerId, type Scoped } from './scope';
-import { optionRowOwnerIds, optionStatRowLists, valuedOptions } from './worldOptions';
+import { optionRowOwnerIds, optionStatTraits, valuedOptions } from './worldOptions';
 
 /** What a trait's last switch actually moved: record key → stat id → value delta, keyed as `recordKey` and
  *  `ownStatsRecordKey` (lib/ownedTraitState) spell it. */
@@ -155,24 +155,6 @@ function globalRowTraitsByOwner(state: Pick<TraitForceState, 'ownedTraits' | 'en
  *  played or not. Empty under a world with no owners. */
 export const globalRowTraits = (state: Pick<TraitForceState, 'ownedTraits' | 'entityStats'>, world: TraitWorld): Trait[] =>
   globalRowTraitsByOwner(state, world).map(([, t]) => t);
-
-/** The id prefix of an Option value's stat source, which no authored trait carries. */
-const OPTION_SOURCE = 'option:';
-
-/** An Option's rows that move `ownerId`'s stats (undefined = the global stats), with the owner field dropped. */
-const ownerOptionRows = <R extends { ownerId?: string }>(rows: readonly R[], ownerId: string | undefined): Omit<R, 'ownerId'>[] =>
-  rows.filter((row) => row.ownerId === ownerId).map(({ ownerId: _owner, ...row }) => row);
-
-/** Each current Option value's stat rows on one scope as one stat source, in Options-tab order: the global stats,
- *  or with `ownerId` that entity's own stats. Only the stat sets read it, never a trait list. */
-export function optionStatTraits(world: Pick<TraitWorld, 'options' | 'optionValues'>, ownerId?: string): Trait[] {
-  return optionStatRowLists(world.options, world.optionValues).flatMap(({ optionId, valueId, statChanges, statToggles }) => {
-    const changes = ownerOptionRows(statChanges, ownerId);
-    const toggles = ownerOptionRows(statToggles, ownerId);
-    if (!changes.length && !toggles.length) return [];
-    return [{ id: `${OPTION_SOURCE}${optionId}:${valueId}`, name: '', statChanges: changes, ...(toggles.length ? { statToggles: toggles } : {}) }];
-  });
-}
 
 /** Every source whose stat effects are in force on global stats: the Option values' rows, the held global traits,
  *  then every entity's active traits cut to their global rows. Bounds derive from this set, and so do stat toggles,
@@ -336,18 +318,25 @@ export function seedNewGameStats(authored: readonly Stat[]): PlayerStat[] {
   }));
 }
 
-/** The stats a fresh playthrough holds once the Option values' starting rows, the held picks among `chosenInOrder`, then the
- *  entities' global rows among `owned` have applied — the fold Enter World runs, for a picker that needs the numbers
- *  before the game exists. `entityStats` holds each entity's seeded own stats, so a row whose id an entity
- *  owns stays off the global stat (Q30). */
-export function startingStatsWith(
+/** A new game's stats before its items: the Option values' starting rows, the held picks among `chosenInOrder`, every
+ *  entity's global rows among `owned`, then each entity's Option starting rows and own traits. `entityStats` holds
+ *  each entity's seeded own stats, so a row whose id an entity owns stays off the global stat (Q30). `appliedRows` is
+ *  {@link applyGlobalRowTraits}'s. */
+export function startingTraitState(
   authored: readonly Stat[], chosenInOrder: readonly Trait[], world: TraitWorld, owned: OwnedTraitPicks = {},
   entityStats: EntityStatValues = {},
-): PlayerStat[] {
+): { state: TraitRuntimeState; appliedRows: { trait: Trait; ownerId: string }[] } {
   let state = applyOptionStarts({ stats: seedNewGameStats(authored), traits: [], disabledTraitIds: [], appliedValues: {} }, world);
   for (const trait of heldGlobalTraits(chosenInOrder, world)) state = acquireTrait(state, trait, world).state;
-  return applyGlobalRowTraits({ ...state, ownedTraits: ownedTraitStatesFrom(owned), entityStats }, world).state.stats;
+  const rows = applyGlobalRowTraits({ ...state, ownedTraits: ownedTraitStatesFrom(owned), entityStats }, world);
+  return { state: applyOwnedStatTraits(applyOptionEntityStarts(rows.state, world), world), appliedRows: rows.appliedRows };
 }
+
+/** The global stats of {@link startingTraitState}, for a picker that needs the numbers before the game exists. */
+export const startingStatsWith = (
+  authored: readonly Stat[], chosenInOrder: readonly Trait[], world: TraitWorld, owned: OwnedTraitPicks = {},
+  entityStats: EntityStatValues = {},
+): PlayerStat[] => startingTraitState(authored, chosenInOrder, world, owned, entityStats).state.stats;
 
 /** Seed a fresh playthrough's bases from the authored bounds. */
 export function seedStatBases(stats: PlayerStat[]): PlayerStat[] {
