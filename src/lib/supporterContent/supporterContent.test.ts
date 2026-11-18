@@ -5,6 +5,8 @@ import {
   type SupporterItemRef, type SupporterSession,
 } from './supporterContent';
 import { createSupporterCache } from './cache';
+import { formatSupporterDate } from '@/lib/supporterEndDate';
+import { seedSampleTierNames } from '@/test/tierNames';
 
 const API = 'https://api.test/api';
 const DAY = 24 * 60 * 60 * 1000;
@@ -21,6 +23,10 @@ class FakeServer {
   offline = false;
   entitlementStatus = 200;
   gatedStatus = 200;
+  /** The tier the entitlement reply names; omitted when null, as an older server does. */
+  tier: string | null = null;
+  /** A gated-route refusal body for a tier that isn't open yet. */
+  tierRefusal: { requiredTier: string; opensAt: string | null } | null = null;
   revisions = new Map<string, number>();
   /** The kind the gated route serves per id; `mascot` when unset. */
   kinds = new Map<string, string>();
@@ -37,7 +43,7 @@ class FakeServer {
     if (this.offline) throw new TypeError('Failed to fetch');
     if (url === `${API}/supporter-content/entitlement`) {
       return Response.json(
-        { success: true, data: { qualifies: this.qualifies, items: this.qualifies ? this.listed : [], expired: this.expired } },
+        { success: true, data: { qualifies: this.qualifies, ...(this.tier ? { tier: this.tier } : {}), items: this.qualifies ? this.listed : [], expired: this.expired } },
         { status: this.entitlementStatus },
       );
     }
@@ -45,6 +51,9 @@ class FakeServer {
     if (gated) {
       const id = decodeURIComponent(gated[1]);
       const revision = this.revisions.get(id) ?? 1;
+      if (this.tierRefusal) {
+        return Response.json({ success: false, error: 'open to supporter_top now', ...this.tierRefusal }, { status: 403 });
+      }
       if (this.gatedStatus !== 200) return Response.json({ success: false }, { status: this.gatedStatus });
       return Response.json({ success: true, data: { id, kind: this.kinds.get(id) ?? 'mascot', revision, contentData: contentFor(id, revision) } });
     }
@@ -229,6 +238,52 @@ describe('fetching a world', () => {
     server.gatedStatus = 500;
 
     await expect(app.fetchWorld('sw')).rejects.toThrow('status 500');
+  });
+
+  it('reports a tier that is not open yet by display name and date, never the route\'s raw error', async () => {
+    seedSampleTierNames();
+    server.list(['sw', 1]);
+    const app = await startAndCheck();
+    server.tierRefusal = { requiredTier: 'supporter_top', opensAt: '2026-11-20T12:00:00.000Z' };
+
+    const failure = await app.fetchWorld('sw').catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(SupporterContentError);
+    expect(failure).toMatchObject({ reason: 'tier-not-open' });
+    const message = (failure as Error).message;
+    expect(message).toContain('Supporter++');
+    expect(message).toContain(formatSupporterDate(new Date('2026-11-20T12:00:00.000Z')));
+    expect(message).not.toContain('supporter_top');
+  });
+
+  it('says the tier is not scheduled when the account\'s own tier never opens', async () => {
+    seedSampleTierNames();
+    server.list(['sw', 1]);
+    const app = await startAndCheck();
+    server.tierRefusal = { requiredTier: 'supporter_plus', opensAt: null };
+
+    await expect(app.fetchWorld('sw')).rejects.toThrow(/^This listing is open to the Supporter\+ tier now\. Your tier isn't scheduled yet\.$/);
+  });
+});
+
+describe('the account tier', () => {
+  it('comes from the entitlement reply and stays null when the reply names none or a tier this build does not know', async () => {
+    server.list(['sw', 1]);
+    server.tier = 'supporter_plus';
+    expect((await startAndCheck()).getSnapshot().tier).toBe('supporter_plus');
+
+    server.tier = 'supporter_mega';
+    expect((await startAndCheck()).getSnapshot().tier).toBeNull();
+
+    server.tier = null;
+    expect((await startAndCheck()).getSnapshot().tier).toBeNull();
+  });
+
+  it('is null for an account that does not qualify', async () => {
+    server.qualifies = false;
+    server.tier = 'supporter';
+
+    expect((await startAndCheck()).getSnapshot().tier).toBeNull();
   });
 });
 

@@ -2,6 +2,7 @@
  * The IndexedDB records behind the Supporter content module. Content stays scrambled as the gated route
  * sent it; nothing here ever holds an unscrambled layer.
  */
+import type { SupporterTier } from '@/types';
 import { cachedConnection, promisifyRequest, transactionDone, writeAfterRead } from '@/lib/idb';
 
 /** A listing the account may install, as the entitlement route lists it. */
@@ -17,6 +18,8 @@ export interface CheckRecord {
   /** Epoch milliseconds. */
   checkedAt: number;
   qualifies: boolean;
+  /** The account's tier key, or null when the server did not name one. */
+  tier?: SupporterTier | null;
   entitled: SupporterItemRef[];
   /** Formerly Supporter-only listings; a copy of one stays while the account qualifies. */
   expired: SupporterItemRef[];

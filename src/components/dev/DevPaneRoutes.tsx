@@ -26,7 +26,8 @@ import { RootCrashScreen } from '@/components/RootCrashScreen';
 import { RevealAnimationDialog } from '@/components/RevealAnimationDemo';
 import { devContestSamples } from '@/lib/devEventSample';
 import { DEV_LIVE_THUMBNAIL, devApprovedChangelog, devPendingUpdate } from '@/lib/dev/devReviewStub';
-import { devChangelogDraft, devFeedbackThread, devListingSample, devPickerRows, devPresetShareJson } from '@/lib/devPaneSamples';
+import { RemoteWorldCard } from '@/components/community/RemoteWorldCard';
+import { devChangelogDraft, devFeedbackThread, devListingSample, devPickerRows, devSupporterSchedule, devPresetShareJson } from '@/lib/devPaneSamples';
 import { useDevRoute } from '@/lib/devRouter';
 import { IMAGE_CAPS } from '@/lib/imageSlots';
 import { APP_VERSION } from '@/lib/version';
@@ -108,6 +109,35 @@ export default function DevPaneRoutes() {
     case 'supporterEnd': {
       const until = route.tab === 'none' ? undefined : new Date(Date.now() + 30 * 86_400_000).toISOString();
       return <SupporterEndDateDialog world={{ ...devListingSample().world, supporter_only: true, supporter_until: until } as WorldRecord} busy={false} onClose={() => clearRouteOnClose(false)} onSave={ignore} />;
+    }
+    // A three-stage schedule, signed in as a plain Supporter. `tab=details` opens the details window; any other shows the card.
+    case 'supporterSchedule': {
+      const { world, currentUser } = devListingSample();
+      const scheduled = { ...world, supporter_only: true, ...devSupporterSchedule() } as WorldRecord;
+      if (route.tab !== 'details') {
+        return (
+          <div className="fixed inset-0 z-50 flex items-start justify-center bg-background p-8">
+            <div className="w-72">
+              <RemoteWorldCard world={scheduled} downloadState="none" downloadProgress={undefined} isAuthenticated currentUser={currentUser} onView={ignore} onContextualDownload={ignore} />
+            </div>
+          </div>
+        );
+      }
+      return (
+        <RemoteWorldDetailsModal
+          open
+          onOpenChange={clearRouteOnClose}
+          world={scheduled}
+          collapsed={false}
+          onToggleCollapsed={ignore}
+          isAuthenticated
+          openImageViewer={ignore}
+          downloadStateForWorld={() => 'none'}
+          downloadProgress={{}}
+          onContextualDownload={ignore}
+          currentUser={currentUser}
+        />
+      );
     }
     case 'changelogEntry': return <ChangelogEntryDialog open onOpenChange={clearRouteOnClose} entry={devChangelogDraft()} onSubmit={ignore} />;
     case 'bodyLayout': return (

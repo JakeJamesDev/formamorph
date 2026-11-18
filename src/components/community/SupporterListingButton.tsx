@@ -37,6 +37,7 @@ const LABELS: Record<SupporterListingAction, string> = {
   redownload: 'Re-download',
   unsupported: 'Not Supported Yet',
   patreon: 'Patreon',
+  upgrade: 'Upgrade',
 };
 
 const TIPS: Record<SupporterListingAction, string> = {
@@ -49,9 +50,10 @@ const TIPS: Record<SupporterListingAction, string> = {
   redownload: 'Re-download this world',
   unsupported: "You can't install this kind of listing yet",
   patreon: 'Become a Supporter on Patreon to install this',
+  upgrade: "Your tier can't get this yet. Upgrade on Patreon to get it now",
 };
 
-const ICONS = { 'sign-in': LogIn, checking: Loader2, install: Download, installed: Check, download: Download, update: Download, redownload: RefreshCw, unsupported: Download, patreon: PatreonIcon } as const;
+const ICONS = { 'sign-in': LogIn, checking: Loader2, install: Download, installed: Check, download: Download, update: Download, redownload: RefreshCw, unsupported: Download, patreon: PatreonIcon, upgrade: PatreonIcon } as const;
 
 const subscribe = supporterContent.subscribe;
 const getSnapshot = supporterContent.getSnapshot;
@@ -62,7 +64,8 @@ export function SupporterListingButton({ world, kind, signedIn, onSignIn, varian
   const [installing, setInstalling] = useState(false);
   const mounted = useMountedRef();
   const id = String(world._id || world.id);
-  const action = supporterListingAction({ signedIn, kind, id, snapshot, downloadState });
+  const action = supporterListingAction({ signedIn, kind, id, snapshot, downloadState, listing: world });
+  const opensPatreon = action === 'patreon' || action === 'upgrade';
   const worldAction = action === 'download' || action === 'update' || action === 'redownload';
   const inert = action === 'checking' || action === 'installed' || action === 'unsupported' || installing
     || (worldAction && !onDownload)
@@ -72,7 +75,7 @@ export function SupporterListingButton({ world, kind, signedIn, onSignIn, varian
 
   const press = async () => {
     if (action === 'sign-in') onSignIn?.(world);
-    else if (action === 'patreon') {
+    else if (opensPatreon) {
       window.open(PATREON_PAGE_URL, '_blank', 'noopener');
       // A stale check may hide a pledge already made; this one lands by the time the player is back.
       void supporterContent.refresh();
@@ -114,7 +117,7 @@ export function SupporterListingButton({ world, kind, signedIn, onSignIn, varian
   }
 
   return (
-    <WorldActionButton tone={action === 'patreon' ? PATREON_TONE : 'sky'} disabled={inert} onClick={() => void press()}>
+    <WorldActionButton tone={opensPatreon ? PATREON_TONE : 'sky'} disabled={inert} onClick={() => void press()}>
       <Icon className={installing || action === 'checking' ? 'mr-2 h-4 w-4 animate-spin' : 'mr-2 h-4 w-4'} /> {label}
     </WorldActionButton>
   );

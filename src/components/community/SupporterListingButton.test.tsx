@@ -3,7 +3,7 @@ import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { toast } from 'react-toastify';
 
 const store = vi.hoisted(() => {
-  type Snap = { status: string; qualifies: boolean; entitled: { id: string; kind: string; revision: number }[]; installed: { id: string; kind: string; revision: number }[] };
+  type Snap = { status: string; qualifies: boolean; tier?: string | null; entitled: { id: string; kind: string; revision: number }[]; installed: { id: string; kind: string; revision: number }[] };
   const listeners = new Set<() => void>();
   const state: { snap: Snap; install: (id: string) => Promise<void> } = {
     snap: { status: 'ready', qualifies: false, entitled: [], installed: [] },
@@ -145,6 +145,33 @@ describe('the Supporter-only button', () => {
     button({ kind: 'world', signedIn: false, onSignIn: vi.fn(), onDownload: vi.fn() });
 
     expect(screen.getByRole('button', { name: 'Sign In' })).toBeTruthy();
+  });
+
+  it('reads Upgrade below the open tier and opens the Patreon page; the same account sees Download once its tier opens', () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const soon = new Date(Date.now() + 5 * 86_400_000).toISOString();
+    const later = new Date(Date.now() + 10 * 86_400_000).toISOString();
+    store.set({ status: 'ready', qualifies: true, tier: 'supporter', entitled: [{ ...ITEM, kind: 'world' }], installed: [] });
+    const scheduled = render(
+      <SupporterListingButton
+        world={world({ supporter_until: later, supporterSchedule: [{ tier: 'supporter', opensAt: later }] })}
+        kind="world" signedIn variant="details" onDownload={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Upgrade' }));
+
+    expect(open).toHaveBeenCalledWith(expect.stringContaining('patreon.com'), '_blank', 'noopener');
+    expect(screen.queryByRole('button', { name: 'Download' })).toBeNull();
+    scheduled.unmount();
+
+    const opened = new Date(Date.now() - 1000).toISOString();
+    render(
+      <SupporterListingButton
+        world={world({ supporter_until: soon, supporterSchedule: [{ tier: 'supporter', opensAt: opened }] })}
+        kind="world" signedIn variant="details" onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Download' })).toBeTruthy();
   });
 
   it('follows the store when the account stops qualifying', () => {

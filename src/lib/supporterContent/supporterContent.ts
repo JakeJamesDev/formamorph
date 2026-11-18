@@ -6,6 +6,8 @@
  * checks and signed-out starts keep the cache usable until 7 days after the last good check, then remove it.
  * Items installed for one account are never handed out while another account is signed in.
  */
+import { isSupporterTier, tierNotOpenMessage } from '@/lib/supporterSchedule';
+import type { SupporterTier } from '@/types';
 import { createSupporterCache, itemKey, type CheckRecord, type ItemRecord, type SupporterCache, type SupporterItemRef } from './cache';
 
 export type { SupporterItemRef } from './cache';
@@ -39,6 +41,8 @@ export interface SupporterContentSnapshot {
   /** `idle` until the first check finishes. */
   status: 'idle' | 'checking' | 'ready';
   qualifies: boolean;
+  /** The account's tier as the last good check named it; null while unknown or for an account that does not qualify. */
+  tier?: SupporterTier | null;
   /** What the account may install, as the last good check listed it. */
   entitled: SupporterItemRef[];
   installed: SupporterItemRef[];
@@ -53,7 +57,7 @@ export interface SupporterContentSnapshot {
  */
 export type SupporterCopyRule = { removeAll: true } | { accountId: string; keep: string[] };
 
-export type SupporterContentRefusal = 'signed-out' | 'not-entitled';
+export type SupporterContentRefusal = 'signed-out' | 'not-entitled' | 'tier-not-open';
 
 export class SupporterContentError extends Error {
   constructor(readonly reason: SupporterContentRefusal, message: string) {
@@ -72,6 +76,7 @@ export interface SupporterWorldDownload {
 
 interface Entitlement {
   qualifies: boolean;
+  tier: SupporterTier | null;
   items: SupporterItemRef[];
   expired: SupporterItemRef[];
 }
@@ -94,7 +99,7 @@ export function createSupporterContent(deps: SupporterContentDeps) {
   let items: ItemRecord[] = [];
   let loaded: Promise<void> | null = null;
   let status: SupporterContentSnapshot['status'] = 'idle';
-  let snapshot: SupporterContentSnapshot = { status, qualifies: false, entitled: [], installed: [], copyRule: null };
+  let snapshot: SupporterContentSnapshot = { status, qualifies: false, tier: null, entitled: [], installed: [], copyRule: null };
   /** Whether the stored check was read; a failed read must never look like "no check". */
   let stored = false;
   let queue: Promise<unknown> = Promise.resolve();
@@ -130,6 +135,7 @@ export function createSupporterContent(deps: SupporterContentDeps) {
     snapshot = {
       status,
       qualifies: !!usable?.qualifies,
+      tier: usable?.qualifies ? usable.tier ?? null : null,
       entitled: usable ? usable.entitled.map(refOf) : [],
       installed: usableItems().map(refOf),
       copyRule: copyRule(),
@@ -177,7 +183,9 @@ export function createSupporterContent(deps: SupporterContentDeps) {
             headers: { Authorization: `Bearer ${session.token}` },
             signal: controller.signal,
           });
-          return { status: response.status, ok: response.ok, body: response.ok ? await response.json() : null };
+          // A refusal's body names the tier and date, so it is read too; an unreadable one is null.
+          const body: unknown = await response.json().catch(() => null);
+          return { status: response.status, ok: response.ok, body };
         })(),
         expired,
       ]);
@@ -198,6 +206,7 @@ export function createSupporterContent(deps: SupporterContentDeps) {
       if (listed.some((item) => !item) || formerly.some((item) => !item)) return null;
       return {
         qualifies: data.qualifies,
+        tier: data.qualifies && isSupporterTier(data.tier) ? data.tier : null,
         items: data.qualifies ? listed as SupporterItemRef[] : [],
         expired: data.qualifies ? formerly as SupporterItemRef[] : [],
       };
@@ -206,10 +215,20 @@ export function createSupporterContent(deps: SupporterContentDeps) {
     }
   };
 
+  /** Throw the refusal for a download the account's tier may not make yet, or a plain error for any other failure. */
+  const failDownload = (response: { status: number; body: unknown }): never => {
+    const body = asObject(response.body);
+    if (response.status === 403 && isSupporterTier(body?.requiredTier)) {
+      const opensAt = typeof body.opensAt === 'string' ? body.opensAt : null;
+      throw new SupporterContentError('tier-not-open', tierNotOpenMessage(body.requiredTier, opensAt));
+    }
+    throw new Error(`The Supporter content download failed with status ${response.status}`);
+  };
+
   /** Fetch one listing from the gated route and store it in place of any other revision. */
   const fetchAndStore = async (session: SupporterSession, id: string): Promise<void> => {
     const response = await getJson(session, `/worlds/${encodeURIComponent(id)}/supporter-content`, timeouts.install);
-    if (!response.ok) throw new Error(`The Supporter content download failed with status ${response.status}`);
+    if (!response.ok) return failDownload(response);
     const data = asObject(asObject(response.body)?.data);
     const ref = asItemRef({ id, kind: data?.kind, revision: data?.revision });
     if (!data || !ref || data.contentData === undefined) throw new Error('The Supporter content download returned no content');
@@ -242,7 +261,7 @@ export function createSupporterContent(deps: SupporterContentDeps) {
     const drop = items.filter((item) => item.accountId !== session.accountId || !stays(item));
     await cache.deleteItems(drop.map((item) => item.key));
     items = items.filter((item) => !drop.includes(item));
-    const good: CheckRecord = { accountId: session.accountId, checkedAt: deps.now(), qualifies: entitlement.qualifies, entitled: entitlement.items, expired: entitlement.expired };
+    const good: CheckRecord = { accountId: session.accountId, checkedAt: deps.now(), qualifies: entitlement.qualifies, tier: entitlement.tier, entitled: entitlement.items, expired: entitlement.expired };
     await cache.writeCheck(good);
     check = good;
     publish();
@@ -328,7 +347,7 @@ export function createSupporterContent(deps: SupporterContentDeps) {
     fetchWorld: (id: string): Promise<SupporterWorldDownload> => serial(async () => {
       const session = await entitledSession(id);
       const response = await getJson(session, `/worlds/${encodeURIComponent(id)}/supporter-content`, timeouts.install);
-      if (!response.ok) throw new Error(`The Supporter content download failed with status ${response.status}`);
+      if (!response.ok) return failDownload(response);
       const data = asObject(asObject(response.body)?.data);
       if (!data || data.contentData === undefined || !Number.isInteger(data.revision)) {
         throw new Error('The Supporter content download returned no content');

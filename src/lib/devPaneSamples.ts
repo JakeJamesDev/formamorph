@@ -100,6 +100,16 @@ export function devGalleryEntity(id: string): Entity {
   };
 }
 
+/** A listing's schedule fields: Flame in 5 days, Spark in 10, everyone in 15. */
+export const devSupporterSchedule = () => {
+  const at = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString();
+
+  return {
+    supporter_until: at(15),
+    supporterSchedule: [{ tier: 'supporter_plus', opensAt: at(5) }, { tier: 'supporter', opensAt: at(10) }],
+  };
+};
+
 /** A listing to comment on, and a signed-in reader for the box. */
 export const devListingSample = () => ({
   world: {

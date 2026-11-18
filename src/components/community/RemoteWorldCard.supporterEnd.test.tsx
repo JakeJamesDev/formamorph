@@ -2,6 +2,8 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { RemoteWorldCard } from './RemoteWorldCard';
 import { type WorldRecord } from '@/components/WorldDetails';
+import { formatSupporterDate } from '@/lib/supporterEndDate';
+import { seedTierNamesForTest } from '@/lib/tierNames';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 vi.mock('@/lib/useCachedThumbnail', () => ({ CachedThumbnail: () => <div data-testid="thumb" /> }));
@@ -38,6 +40,22 @@ describe('the Supporter-only end date on a card', () => {
     show(world({ supporter_only: true, supporter_until: future }), null);
 
     expect(screen.getByText(/^Supporter-only until/)).toBeTruthy();
+  });
+
+  it('shows each tier\'s opening date and the public date for a scheduled listing', () => {
+    seedTierNamesForTest({ supporter: 'Spark', supporter_plus: 'Flame', supporter_top: 'Beacon' });
+    const day = (days: number) => formatSupporterDate(new Date(Date.now() + days * 86_400_000));
+    const at = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString();
+    show(world({
+      supporter_only: true, supporter_until: at(15),
+      supporterSchedule: [{ tier: 'supporter_plus', opensAt: at(5) }, { tier: 'supporter', opensAt: at(10) }],
+    }), null);
+
+    expect(screen.getByText('Beacon: Open now')).toBeTruthy();
+    expect(screen.getByText(`Flame: ${day(5)}`)).toBeTruthy();
+    expect(screen.getByText(`Spark: ${day(10)}`)).toBeTruthy();
+    expect(screen.getByText(`Everyone: ${day(15)}`)).toBeTruthy();
+    expect(screen.queryByText(/Supporter-only until/)).toBeNull();
   });
 
   it.each([

@@ -15,6 +15,7 @@ const item = (id: string) => ({ id, kind: 'world', revision: 1 });
 /** The entitlement route as the client sees it, with a switch to take it offline. */
 class FakeServer {
   qualifies = true;
+  tier = 'supporter_top';
   current: string[] = [];
   expired: string[] = [];
   offline = false;
@@ -26,7 +27,7 @@ class FakeServer {
     const listed = this.qualifies || this.listWhenNotQualifying;
     return Response.json({
       success: true,
-      data: { qualifies: this.qualifies, items: listed ? this.current.map(item) : [], expired: listed ? this.expired.map(item) : [] },
+      data: { qualifies: this.qualifies, tier: this.tier, items: listed ? this.current.map(item) : [], expired: listed ? this.expired.map(item) : [] },
     });
   });
 }
@@ -80,6 +81,20 @@ describe('Supporter Copy sync', () => {
 
     expect(worlds.ids()).toEqual(['plain']);
     expect(library.ids()).toEqual([]);
+  });
+
+  it('keeps a copy when the account downgrades to a lower tier, and removes it on a full lapse', async () => {
+    server.current = ['w1'];
+    const worlds = makeHolder({ copyA: { listingId: 'w1', accountId: 'acct-a' } });
+    await checkAndSync([worlds]);
+
+    server.tier = 'supporter';
+    await checkAndSync([worlds]);
+    expect(worlds.ids()).toEqual(['copyA']);
+
+    server.qualifies = false;
+    await checkAndSync([worlds]);
+    expect(worlds.ids()).toEqual([]);
   });
 
   it('removes every copy when the route lists items for an account it says does not qualify', async () => {
