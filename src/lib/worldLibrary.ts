@@ -81,7 +81,7 @@ function describeBlurb(record: StoredWorldShape): string {
     const data = { ...content, placeholders: migrateCarriedPlaceholders(content.placeholders) };
     return describePlaceholders(text, allPlaceholders(data));
   } catch {
-    // A malformed def must not abort the upgrade transaction it runs in.
+    // A malformed def must not abort the transaction it runs in.
     return text;
   }
 }
@@ -127,22 +127,10 @@ export function listFieldsOf(meta: WorldMetaRecord): WorldMetadata {
   return fields;
 }
 
-/** Fill the metadata store from the world store, one record at a time, inside the upgrade transaction. */
-function fillMetadata(transaction: IDBTransaction): void {
-  const meta = transaction.objectStore(WORLD_META_STORE);
-  const cursor = transaction.objectStore(WORLD_STORE).openCursor();
-  cursor.onsuccess = () => {
-    const at = cursor.result;
-    if (!at) return;
-    // A value the browser can't read back comes out null; listing it would abort the upgrade.
-    if (at.value && typeof at.value === 'object') meta.put(worldMetaOf(at.value as StoredWorldShape));
-    at.continue();
-  };
-}
-
 /**
  * Open the library at the current version, creating or upgrading its stores.
  *
+ * The upgrade reads no worlds: a refused read aborts it, so a new metadata store is filled after the open.
  * The connection closes itself when another connection asks for a newer version, so this tab never
  * blocks that upgrade.
  *
@@ -151,19 +139,23 @@ function fillMetadata(transaction: IDBTransaction): void {
 export function openWorldLibrary(onBlocked?: () => void): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(WORLD_LIBRARY_DB, WORLD_LIBRARY_VERSION);
+    let metaCreated = false;
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(WORLD_STORE)) db.createObjectStore(WORLD_STORE, { keyPath: 'id' });
       if (!db.objectStoreNames.contains(WORLD_META_STORE)) {
         db.createObjectStore(WORLD_META_STORE, { keyPath: 'id' });
-        fillMetadata(request.transaction!);
+        metaCreated = true;
       }
     };
     request.onblocked = () => onBlocked?.();
     request.onsuccess = () => {
       const db = request.result;
       db.addEventListener('versionchange', () => db.close());
-      resolve(db);
+      // Saves read sticky fields from metadata, so it is filled before anyone gets the connection.
+      // A failed fill leaves the gaps to the list read, which rebuilds them.
+      if (!metaCreated) resolve(db);
+      else readAllWorldMeta(db).catch(() => {}).then(() => resolve(db));
     };
     request.onerror = () => reject(request.error);
   });

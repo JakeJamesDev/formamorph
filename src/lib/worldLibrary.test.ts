@@ -140,6 +140,38 @@ describe('the version 2 upgrade', () => {
     expect(meta.map((m) => m.id)).toEqual(['y']);
   });
 
+  it('opens past a world the browser refuses to read, and reports that world as unreadable', async () => {
+    const v1 = await openVersion1();
+    const tx = v1.transaction([WORLD_STORE], 'readwrite');
+    tx.objectStore(WORLD_STORE).put(world('lost'));
+    tx.objectStore(WORLD_STORE).put(world('y'));
+    await new Promise((resolve) => { tx.oncomplete = resolve; });
+    v1.close();
+    const restore = refuseReads({ [WORLD_STORE]: ['lost'] });
+
+    try {
+      const meta = await WorldStorageService.getWorldMetadata();
+
+      expect(meta.map((m) => m.id)).toEqual(['y']);
+      expect(getUnreadableWorlds().map((w) => w.id)).toEqual(['lost']);
+    } finally {
+      restore();
+    }
+  });
+
+  it('fills metadata before the first save, so a save keeps the sticky fields', async () => {
+    const v1 = await openVersion1();
+    const tx = v1.transaction([WORLD_STORE], 'readwrite');
+    tx.objectStore(WORLD_STORE).put({ ...world('b', { sourceId: 'srv-b' }), createdAt: '2026-01-01T00:00:00.000Z' });
+    await new Promise((resolve) => { tx.oncomplete = resolve; });
+    v1.close();
+
+    await WorldStorageService.storeWorld(world('b'));
+
+    const [meta] = await readStore<WorldMetaRecord>(WORLD_META_STORE);
+    expect(meta).toMatchObject({ sourceId: 'srv-b', createdAt: '2026-01-01T00:00:00.000Z' });
+  });
+
   it('shows a message while a version 1 tab blocks it, and finishes once that tab closes', async () => {
     const v1 = await openVersion1();
     const reading = WorldStorageService.getWorldMetadata();
