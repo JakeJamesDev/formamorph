@@ -16,7 +16,7 @@ An author can give each choice value and each boolean state stat rows that move 
   - Option toggles apply before trait toggles, so a trait wins on the same stat.
 - **Mid-game.** Every path that changes Option values in play re-derives stats: the in-play Options tab, stat code and script writes to `options`, and the gate settle after a change. A change never moves a value, except where a new bound clamps it. A stat at its cap does not follow a raised cap.
 - **Editor.** The Options panel shows the trait stat-row editor under each choice value and each boolean state. The stat picker offers global stats.
-- **Deleted targets.** A row whose stat no longer exists is dropped on load and ignored at runtime, as trait rows are.
+- **Deleted targets.** A row whose stat no longer exists stays in the file and is ignored at runtime, as trait rows are. Nothing prunes it (spec Q18).
 - **Docs.** Update [World-Editor-Options.md](docs/World-Editor-Options.md) for stat rows. Write a changelog fragment.
 
 ## Acceptance criteria

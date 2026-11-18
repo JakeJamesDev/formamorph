@@ -11,7 +11,7 @@ The player sees what each Option value does to stats before picking it. The spec
 
 - **Setup.** At Enter World, each choice value and boolean state lists its stat rows under it, in the trait-list form ("Gold: +100"). Reuse the trait list's row text.
 - **In play.** The in-play Options tab lists the same rows but leaves out starting rows, since a mid-game switch never applies them.
-- **Hidden.** Rows on hidden stats are left out. A hidden Option shows nothing, since the Option itself is not shown.
+- **Hidden.** Rows on hidden stats are left out, and so are rows whose stat or owner no longer exists (spec Q18). A hidden Option shows nothing, since the Option itself is not shown.
 - **Owner form.** A row with an owner reads "Wolf: Health". Ticket 01 defines the owner field, so this works before ticket 02 lands.
 - **Docs.** Update [World-Editor-Options.md](docs/World-Editor-Options.md) to say what the player sees. Fold into ticket 01's changelog entry if it has not been released.
 

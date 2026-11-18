@@ -29,6 +29,13 @@ The rows act on stats like a trait's rows do, and they stack with traits. They n
 - **Q9 Picker.** The stat picker drills World first, then one page per entity. An entity's page holds its own stats and the stats its Blueprints give it, named "Wolf: Health".
 - **Q10 Per entity.** A row moves one entity's stat. There are no Blueprint-wide rows.
 - **Q11 In play.** The in-play Options tab leaves starting rows out of each value's list, so it shows only what a switch changes now.
+- **Q12 Shape names.** A choice value has `statChanges` and `statToggles`. A boolean has `onStatChanges`, `onStatToggles`, `offStatChanges` and `offStatToggles`. The owner field is `ownerId`. (Ticket 01.)
+- **Q13 Editor.** One stat-row editor serves traits and Options. Toggles show in Advanced mode only, as on traits. There is no interval control; interval stays a shape field. (Ticket 01.)
+- **Q14 Owner rows before 02.** Ticket 01's picker offers global stats only. A row with an `ownerId` is ignored at runtime until ticket 02. (Ticket 01.)
+- **Q15 Enter World preview.** The stat numbers shown before the game starts include the picked values' starting rows. (Ticket 01.)
+- **Q16 Save load.** Loading a save re-derives bounds and toggles under the world's current rows and Option values, and clamps a value above a new max. Starting rows never apply on load. (Ticket 01.)
+- **Q17 One source for every reader.** Option rows feed the same in-force source that bounds, toggles, gate stat reads and stat code use, ahead of traits. Option rows never appear as traits: not in the prompt, the Traits tab, a trait gate, or a trait count. (Ticket 01.)
+- **Q18 Deleted targets.** A row whose stat or entity was deleted stays in the file and does nothing, exactly as a trait row does. Nothing prunes it on load or on delete. Player lists leave it out. (Ticket 01.)
 
 ## User Stories
 
@@ -48,7 +55,7 @@ The rows act on stats like a trait's rows do, and they stack with traits. They n
 14. As an author, I want entity stats named "Wolf: Health", so that the owner form matches the rest of the editor.
 15. As an author, I want Option rows to stack with trait rows, so that "Easy +100 Gold" and a "Rich" trait's "+50 Gold" give +150.
 16. As an author, I want a hidden Option's rows to still apply, so that a script-only mode switch can change stats.
-17. As an author, I want a row whose stat or entity was deleted to drop out, as a trait row does, so that the world stays valid.
+17. As an author, I want a row whose stat or entity was deleted to do nothing, as a trait row does, so that deleting a stat never breaks a game.
 18. As a player, I want to see each value's stat rows under it in setup, so that I know what a mode does before I pick it.
 19. As a player, I want the rows in the same "Gold: +100" form as the trait lists, so that I read them the same way.
 20. As a player, I want rows on hidden stats left out of the list, so that hidden stats stay hidden.
@@ -76,7 +83,7 @@ The rows act on stats like a trait's rows do, and they stack with traits. They n
 - **Not in the prompt.** Option rows add nothing to any prompt. Only their effect on stat values, bounds and enabled state reaches the AI, the same way any stat already does.
 - **Editor.** The Options panel shows a stat-row editor under each choice value and under each boolean state. It reuses the trait stat-row editor. The stat picker is a Breadcrumb Picker with a World page and one page per entity, the same tree and "Wolf: Health" owner form the Preset rows use. Number and Preset Options show no stat rows.
 - **Player lists.** The setup Option control and the in-play Options tab list each value's rows in the trait-list form. Rows on hidden stats are left out. The in-play tab also leaves starting rows out.
-- **Deleted targets.** A row whose stat or entity no longer exists is dropped on load and ignored at runtime, as trait stat rows are.
+- **Deleted targets.** A row whose stat or entity no longer exists stays in the file and is ignored at runtime, as trait stat rows are. Nothing prunes it on load or on delete (Q18).
 
 ## Testing Decisions
 
