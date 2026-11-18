@@ -3,6 +3,8 @@
 **Status:** Accepted · **Date:** 2026-08-13
 
 > The Request Transport fills the request adapter, with one sink per call: see [ADR-0012](0012-request-transport-has-one-sink-per-call.md).
+>
+> The view's apply step is the Turn Landing, a module of its own: see [ADR-0019](0019-turn-landing-is-one-module-with-an-effects-port.md).
 
 ## Context
 

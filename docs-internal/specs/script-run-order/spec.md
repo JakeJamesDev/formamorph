@@ -141,7 +141,7 @@ Settled with the user on 2026-11-02. A ruling reopens on new evidence, never on 
 
 **Writes land per script.** Trait switches, bounds, values and placeholder pins apply after each script, in the existing order. Penalties stay in the gate view (Q29). Inventory writes need the apply and settle step at each script, so the turn entry point takes the step that `runItemScripts` already takes.
 
-**During AI Output and stat re-rolls read a chain they don't land.** Later scripts read earlier writes, but what lands stays as it is today. For During AI Output, that is with After the AI. A stat re-roll keeps the turn's location, time, scene entities, memories and diary lines, so its chain can read a location write that the re-roll then discards. The stat re-roll part is derived from Q4, Q14 and the existing keep rule, and the Implement session may raise it with the spec session.
+**During AI Output and stat re-rolls read a chain they don't land.** Later scripts read earlier writes, but what lands stays as it is today. For During AI Output, that is with After the AI. A stat re-roll keeps the turn's location, time, scene entities, memories and diary lines, so its chain can read a location write that the re-roll then discards. The stat re-roll part is derived from Q4, Q14 and the existing keep rule, and the Implement session may raise it with the spec session. The Turn Landing spec (its Q14 and Q18) replaces the keep rule for memories and diary lines: a stat re-roll re-makes what scripts wrote to them.
 
 **Money.** A script's money state builds over the chained state, so `pay` plans over earlier scripts' payments, direct writes and `give` calls. The run's own direct writes count too (Q15).
 

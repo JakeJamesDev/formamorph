@@ -519,6 +519,10 @@ _Avoid_: turn config
 The computed state delta a finished turn applies — history, clock, stats, discoveries.
 _Avoid_: turn state, commit object
 
+**Turn Landing**:
+The ordered application of a Turn Commit to the game: output-script writes, the Inventory pass, stat changes and stat code, time, follower placement, the stored turn, script memory, settle, item events, the snapshot. One module with two modes, the live turn and the stat re-roll.
+_Avoid_: apply step, turn apply, commit handler
+
 **Stat Request**:
 The stat pass's request, which asks the AI how a turn moved each owner's stats. It has three owner kinds, each with its own reply key: the played entities (`Player Character`), the Global Stats no one owns (`Global Stats`), and each present entity that owns stats (its name). A persona with no stats has no block and no key. Owner keys stay unique across all three kinds. The stat pass renames each owned stat to its request key before any chip renders; narration keeps raw names.
 _Avoid_: stat update (the prompt's name), player stats (for global stats), other stats
