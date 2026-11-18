@@ -36,6 +36,11 @@ The rows act on stats like a trait's rows do, and they stack with traits. They n
 - **Q16 Save load.** Loading a save re-derives bounds and toggles under the world's current rows and Option values, and clamps a value above a new max. Starting rows never apply on load. (Ticket 01.)
 - **Q17 One source for every reader.** Option rows feed the same in-force source that bounds, toggles, gate stat reads and stat code use, ahead of traits. Option rows never appear as traits: not in the prompt, the Traits tab, a trait gate, or a trait count. (Ticket 01.)
 - **Q18 Deleted targets.** A row whose stat or entity was deleted stays in the file and does nothing, exactly as a trait row does. Nothing prunes it on load or on delete. Player lists leave it out. (Ticket 01.)
+- **Q19 Entity reach.** An entity row moves the entity's stat whenever that entity holds stat values in the playthrough, in play as an owner or not. (Ticket 02.)
+- **Q20 No fallback.** An entity row whose entity lacks the stat is ignored. It never falls back to the global stat with that id, unlike a trait row. (Ticket 02.)
+- **Q21 Picker pages.** World holds the global stats. Each world entity that holds stats (own or from a Blueprint) gets a page; entities with none are left out. Library entities get no page. (Ticket 02.)
+- **Q22 Picker scope.** Only Option rows get the Breadcrumb Picker. The trait stat-row editor keeps its Select. (Ticket 02.)
+- **Q23 Changelog.** Tickets 02 and 03 write no fragment. The spec session folds a clause into ticket 01's entry on main after each landing. (Tickets 02, 03.)
 
 ## User Stories
 
