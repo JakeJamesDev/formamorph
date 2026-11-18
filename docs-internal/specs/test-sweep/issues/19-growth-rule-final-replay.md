@@ -79,8 +79,17 @@ Measured 2026-11-18 from 11:05 to 18:31 UTC, in the owner's AFK window, on this 
 
 - All three runs exited 0 with 0 unhandled errors.
 - The suite grew 19%: 2,082 files and 37,510 tests, from 1,745 and 31,851.
-- Worker time fell 14%, from 6,248 s to 5,383 s, or from 196 ms to 144 ms per test. Import fell 18% (2,049 → 1,685 s), setup 59% (512 → 211 s) and environment 27% (773 → 567 s). Test bodies stayed at 2,912 s against 2,901 s.
-- **Open finding:** wall time rose while worker time fell. Effective parallelism (worker s / wall s) fell from 18.9 to 14.6. `maxWorkers` is unchanged at 50%. The cause is not found, and this ticket does not investigate it.
+- Worker time: 5,383 s, or 144 ms per test. **No clean reference figure exists.** The Reference Run's 6,248 s comes from its run 2 (439.6 s, under peer load), so the 14% fall and the phase falls (import 2,049 → 1,685 s, setup 512 → 211 s, environment 773 → 567 s) compare a loaded run with clean runs. Treat them as upper bounds.
+- **Parallelism did not fall (corrected).** The 18.9 divided run 2's worker time by run 3's 330 s wall. Same-run ratios are flat:
+
+  | Run | Files | Wall s | Worker s | Ratio |
+  |---|---:|---:|---:|---:|
+  | Reference run 2 (11-02, loaded) | 1,745 | 439.6 | 6,248 | 14.2 |
+  | Ledger, 11-05, 3 runs | 1,802 | 398–621 | 5,911–9,052 | 14.4–14.8 |
+  | Final, 3 runs | 2,082 | 368–375 | 5,358–5,446 | 14.5–14.6 |
+
+- The comparison that holds is clean wall to clean wall: 330 s to 369 s (+12%), from suite growth (+19% files, +18% tests). Wall time per file fell 6%, from 189 to 177 ms.
+- **Scheduling ceiling: about 33 s.** Clean runs keep 91% of the 16 workers busy. Perfect packing gives 5,377 / 16 = 336 s, so no scheduling fix reaches 240 s. The idle share is a steady ~257 ms per file. A timed full run in an AFK window will split it between per-file worker cost and the tail.
 
 ### Gate
 
@@ -108,6 +117,7 @@ The misses:
 
 - **3 are a flake:** the emberwatch case in `GameViewer.bundledSaves.test.tsx` ("made at the pre-expansion revision … plays a turn"), red under unrelated changes in `devStorageSample.ts`, `useAvatarDetailsOpen.ts` and `src/notes/WorldManagementPlan.md`. On the clean tree it failed alone 2 times in 14 ("Unable to find … Regenerate Narration" after 12 s). The drone case in the same describe failed 7 times in 13. These leave the adjusted count.
 - **1 stays a miss:** `elementIcons.test.ts` on landing `01db1ef0f` (2026-10-11). That test was a source scan then, and ticket 14 moved the scan to `eslint.element-icon-import.js`. Today's ESLint config, run on that landing's files, flags nothing, so the current gate wouldn't catch it either.
+  - **Now caught (Q73):** the replay restores test files only. The ledger moved out of the test file into the rule, so the landing's own ledger rows stayed in. Against the parent's ledger, today's rule flags both new `BookOpen` imports.
 
 The budgets in `BUDGET_MS` ([slowTestReporter.mjs](../../../../scripts/slowTestReporter.mjs)) are each level's p99 in the 2026-11-04 ledger. Close-spec recomputes them from the final Reference Run.
 
@@ -124,6 +134,6 @@ The budgets in `BUDGET_MS` ([slowTestReporter.mjs](../../../../scripts/slowTestR
 - For you: Approve the `test-bar` text; judge the final numbers against your targets. Neither time target is met: full suite 369 s against 240 s, and gate 246 s against 200 s.
 - Judge the adjusted replay count: 1 miss in 36 (bound 12.5%). The raw count is 4 in 39 (22.0%).
 - Open findings for close-spec:
-  - Parallelism fell from 18.9 to 14.6 workers, and the cause is unknown.
+  - Parallelism held at 14.5 (the 18.9 mixed two runs). Open: the split of the ~33 s scheduling ceiling, which waits for a timed AFK run.
   - `GameViewer.bundledSaves` flakes when run alone (emberwatch 2 in 14, drone 7 in 13). It needs its own ticket (Q14).
   - Today's gate has no equivalent for the `elementIcons` call-site guard on landing `01db1ef0f`.
