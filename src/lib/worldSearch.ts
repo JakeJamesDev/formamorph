@@ -17,7 +17,7 @@ import { homeKey, worldScriptEntries, type ScriptEdit } from '@/lib/worldScripts
 import { draftProblems } from '@/lib/tools/toolDraft';
 import { toolNameProblemText } from '@/lib/tools/toolValidation';
 import type {
-  Connection, Dictionary, Entity, EntityGroup, GameLocation, Item, Opening, Placeholder, PlaceholderGroup, Script, Stat, StatGroup, Tool, Trait,
+  Connection, Dictionary, Entity, EntityGroup, GameLocation, Item, ItemGroup, Opening, Placeholder, PlaceholderGroup, Script, Stat, StatGroup, Tool, Trait,
   TraitGroup, WorldOverview,
 } from '@/types';
 
@@ -130,6 +130,8 @@ export interface SearchSources {
   /** The Items tab, when the host edits it. */
   items?: Item[];
   updateItem?: (item: Item) => void;
+  itemGroups?: ItemGroup[];
+  updateItemGroup?: (group: ItemGroup) => void;
   /** False in Simple mode, where the item panel hides its Scripts tab and item script hits drop. */
   advanced?: boolean;
   /** The world's own scripts; the Scripts tab also lists every stat's and trait's. */
@@ -336,6 +338,14 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
         (r, v) => ({ ...r, unidentifiedDescription: v }));
       // The item's own scripts, which the Scripts tab doesn't list; they open on the item panel's Scripts tab.
       if (src.advanced !== false) (item.scripts ?? []).forEach((script, i) => addScript(add, plain, script, { key: `scripts[${i}].`, caption: 'Script ' }));
+    });
+  }
+  const updateItemGroup = src.updateItemGroup;
+  if (updateItemGroup) {
+    (src.itemGroups ?? []).forEach((group) => {
+      const where = { tab: 'items', itemId: group.id, itemLabel: labeled(group.name, 'Group') };
+      const { add } = bind(`itemGroup:${group.id}`, group, updateItemGroup);
+      add({ ...where, chipCapable: false }, 'name', 'Group Name', group.name, (r, v) => ({ ...r, name: v }));
     });
   }
 

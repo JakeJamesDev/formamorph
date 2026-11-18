@@ -5,6 +5,7 @@ import { act, render, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
 import { GameDataProvider, useGameData, useGameDataActions, type GameDataActions } from './GameDataContext';
 import WorldStorageService from '@/services/WorldStorageService';
+import { blankItem } from '@/lib/items';
 import type { Entity, World } from '@/types';
 
 /** Components that only write keep still while the world changes, and their actions still act on the world as it stands. */
@@ -89,6 +90,18 @@ describe('the data context actions', () => {
     act(() => actions.removeEntityGroup('g'));
     const inOrder = [...ctx().entities].sort((p, q) => (p.order ?? 0) - (q.order ?? 0)).map((e) => [e.id, e.groupId, e.order]);
     expect(inOrder).toEqual([['a', null, 0], ['x', null, 1], ['y', null, 2], ['b', null, 3]]);
+  });
+
+  it('delete an item group into its own slot, so the siblings keep their order', async () => {
+    const { ctx, renders } = await open();
+    const actions = renders[0];
+    const item = (id: string, groupId: string | null, order: number) => ({ ...blankItem(id, id.toUpperCase()), groupId, order });
+    act(() => actions.setItemGroups([{ id: 'g', name: 'Tools', parentId: null, order: 1 }]));
+    act(() => actions.setItems([item('a', null, 0), item('x', 'g', 0), item('y', 'g', 1), item('b', null, 2)]));
+    act(() => actions.removeItemGroup('g'));
+    const inOrder = [...ctx().items].sort((p, q) => (p.order ?? 0) - (q.order ?? 0)).map((i) => [i.id, i.groupId, i.order]);
+    expect(inOrder).toEqual([['a', null, 0], ['x', null, 1], ['y', null, 2], ['b', null, 3]]);
+    expect(ctx().itemGroups).toEqual([]);
   });
 
   it('delete a trait group into its own slot, so the siblings keep their order', async () => {

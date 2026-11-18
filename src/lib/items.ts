@@ -220,19 +220,17 @@ export function duplicateItem(items: readonly Item[], id: string): { items: Item
   const index = items.findIndex((i) => i.id === id);
   if (index < 0) return { items: [...items], newId: id };
   const copy = remintPlaceholdersDeep(structuredClone(items[index]));
-  const fresh = <T extends { id: string }>(rows: T[]) => rows.map((row) => ({ ...row, id: randomUUID() }));
-  let next: Item = {
-    ...copy,
-    id: randomUUID(),
-    name: `${copy.name} (Copy)`,
-    statEffects: fresh(copy.statEffects),
-    traitEffects: fresh(copy.traitEffects),
-  };
-  if (next.placeholders?.length) {
-    const { placeholders, idMap } = remintScopedPlaceholders(next.placeholders);
-    next = mapItemChips({ ...next, placeholders }, (text) => remapPlaceholderIds(text, idMap));
-  }
+  const next = remintItemCopy({ ...copy, id: randomUUID(), name: `${copy.name} (Copy)` });
   return { items: [...items.slice(0, index + 1), next, ...items.slice(index + 1)], newId: next.id };
+}
+
+/** Fresh ids for what a copied item owns: its effect rows and its own placeholders, its chips re-aimed at them. */
+export function remintItemCopy(copy: Item): Item {
+  const fresh = <T extends { id: string }>(rows: T[]) => rows.map((row) => ({ ...row, id: randomUUID() }));
+  const next: Item = { ...copy, statEffects: fresh(copy.statEffects), traitEffects: fresh(copy.traitEffects) };
+  if (!next.placeholders?.length) return next;
+  const { placeholders, idMap } = remintScopedPlaceholders(next.placeholders);
+  return mapItemChips({ ...next, placeholders }, (text) => remapPlaceholderIds(text, idMap));
 }
 
 /** How many items equip into the slot. */

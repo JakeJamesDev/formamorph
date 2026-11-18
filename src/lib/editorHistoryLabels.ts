@@ -20,6 +20,7 @@ export const SLICE_TYPE_NAMES: Record<SliceName, [string, string]> = {
   scripts: ["Script", "Scripts"],
   tools: ["Tool", "Tools"],
   items: ["Item", "Items"],
+  itemGroups: ["Item Group", "Item Groups"],
   slots: ["Slot", "Slots"],
   bodies: ["Body", "Bodies"],
   placements: ["Placement", "Placements"],

@@ -185,7 +185,7 @@ describe('deleting a Currency Item', () => {
     openEditorTab(/Items/);
     return bench;
   };
-  const deleteItem = (name: string) => fireEvent.click(within(screen.getByRole('button', { name: `Select ${name}` }).parentElement!).getByRole('button', { name: 'Delete' }));
+  const deleteItem = remove;
 
   it('removes its row and names the Currency, and the Currency stays Items-backed', () => {
     const { ctx } = open(crowns([{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }]));

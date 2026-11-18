@@ -783,6 +783,21 @@ export interface Item {
   equipRequires: TraitRequirementRow[];
   /** Runs on its Item Instances' events, only at the item timings. */
   scripts?: Script[];
+  /** The Items tab folder it sits in; null or absent = top level. */
+  groupId?: string | null;
+  /** Sibling order among the items and groups sharing the same parent. */
+  order?: number;
+}
+
+/** An editor-only folder for organizing items, nestable via `parentId`. Never sent to the AI or shown to the
+ *  player. Mirrors `EntityGroup`. */
+export interface ItemGroup {
+  id: string;
+  name: string;
+  /** null = top-level; otherwise the parent group's id. */
+  parentId: string | null;
+  /** Sibling order among the items and groups sharing the same parent. */
+  order?: number;
 }
 
 /** Which slots an item equips into. `either` takes one of them, in this order; `all` takes one unit in each. Never empty. */
@@ -1165,8 +1180,10 @@ export interface World {
   scripts?: Script[];
   /** World Tools, in Tools-tab order: offered in every playthrough of this world. Absent = none. */
   tools?: Tool[];
-  /** Authored items, in Items-tab order. Absent = none. */
+  /** Authored items. The Items tab orders them by `groupId` and `order`. Absent = none. */
   items?: Item[];
+  /** Editor-only folders organizing items. Absent = none. */
+  itemGroups?: ItemGroup[];
   /** The world's money, in order. The first is the Default. Absent = none. */
   currencies?: Currency[];
   /** Equipment slots. Absent = none. */

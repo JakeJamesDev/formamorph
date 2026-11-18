@@ -56,14 +56,23 @@ const WORLD: World = panelWorld({
 const search = (term: string) =>
   fireEvent.change(screen.getByPlaceholderText('Filter Items'), { target: { value: term } });
 
-const row = (name: string) => screen.getByRole('button', { name: `Select ${name}` }).parentElement as HTMLElement;
+// A tree row, found by its grip; while a search is typed, the flat row's select button names it.
+const treeRow = (name: string) => screen.queryAllByLabelText('Drag to reorder or nest')
+  .map((grip) => grip.parentElement as HTMLElement).find((r) => within(r).queryByText(name, { exact: true }));
+const row = (name: string) => treeRow(name) ?? screen.getByRole('button', { name: `Select ${name}` }).parentElement as HTMLElement;
 
 const itemFieldsTab = (name: string) =>
   fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Item Fields' })).getByRole('tab', { name }));
 
+// Advanced's + opens a menu of Add Group and Add Item.
+const addItem = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Add to Items' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Add Item' }));
+};
+
 const openCurrencies = () => fireEvent.click(screen.getByRole('button', { name: 'Select Currencies' }));
 
-const openItem = (name: string) => fireEvent.click(screen.getByRole('button', { name: `Select ${name}` }));
+const openItem = (name: string) => fireEvent.click(within(row(name)).getByText(name, { exact: true }));
 
 beforeEach(() => { localStorage.clear(); });
 
@@ -113,6 +122,46 @@ describe('the Items list', () => {
     fireEvent.click(within(row('Lamp')).getByRole('button', { name: 'Delete' }));
     expect(ctx().items.map((i) => i.id)).toEqual(['sword']);
     expect(ctx().placements.map((p) => p.id)).toEqual(['p-sword']);
+  });
+});
+
+describe('item groups', () => {
+  const GROUPED: World = panelWorld({
+    items: [{ ...blankItem('lamp', 'Lamp'), groupId: 'tools', order: 0 }, { ...blankItem('coin', 'Coin'), order: 1 }],
+    itemGroups: [{ id: 'tools', name: 'Tools', parentId: null, order: 0 }],
+  } as Partial<World>);
+
+  it('adds a group from the + menu in Advanced and opens its panel', () => {
+    const { ctx } = renderItemsTab(panelWorld({}), 'advanced');
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Items' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add Group' }));
+    expect(ctx().itemGroups.map((g) => g.name)).toEqual(['New Group']);
+    expect(screen.getByText('Group Name')).toBeInTheDocument();
+    expect(ctx().getWorldData().itemGroups).toEqual(ctx().itemGroups);
+  });
+
+  it('offers no groups in Simple: the + adds an item directly', () => {
+    const { ctx } = renderItemsTab(panelWorld({}), 'simple');
+    fireEvent.click(screen.getByRole('button', { name: 'Add Item' }));
+    expect(screen.queryByRole('button', { name: 'Add Group' })).not.toBeInTheDocument();
+    expect(ctx().items.map((i) => i.name)).toEqual(['New Item']);
+  });
+
+  it('collapses every group from the toolbar, hiding the items inside', () => {
+    renderItemsTab(GROUPED, 'advanced');
+    expect(treeRow('Lamp')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse all items' }));
+    expect(treeRow('Lamp')).toBeUndefined();
+    expect(treeRow('Coin')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Expand all items' }));
+    expect(treeRow('Lamp')).toBeDefined();
+  });
+
+  it('keep their items when deleted, which move up into the group\'s place', () => {
+    const { ctx } = renderItemsTab(GROUPED, 'advanced');
+    fireEvent.click(within(row('Tools')).getByRole('button', { name: 'Delete' }));
+    expect(ctx().itemGroups).toEqual([]);
+    expect(ctx().items.map((i) => [i.id, i.groupId ?? null])).toEqual([['lamp', null], ['coin', null]]);
   });
 });
 
@@ -326,7 +375,7 @@ describe('the Currencies entry', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete Credits' }));
     expect(ctx().currencies.map((c) => c.id)).toEqual(['goats']);
     search('Rope');
-    fireEvent.click(screen.getByRole('button', { name: 'Add Item' }));
+    addItem();
     expect(ctx().items.find((i) => i.name === 'Rope')?.currencyId).toBe('goats');
   });
 
@@ -338,14 +387,14 @@ describe('the Currencies entry', () => {
   it('leaves a new item priceless in a world with no Currency', () => {
     const { ctx } = renderItemsTab(WORLD, 'advanced');
     search('Rope');
-    fireEvent.click(screen.getByRole('button', { name: 'Add Item' }));
+    addItem();
     expect(ctx().items.every((i) => i.currencyId === undefined)).toBe(true);
   });
 
   it('gives a new item the first Currency', () => {
     const { ctx } = renderItemsTab({ ...WORLD, currencies: CURRENCIES }, 'advanced');
     search('Rope');
-    fireEvent.click(screen.getByRole('button', { name: 'Add Item' }));
+    addItem();
     expect(ctx().items.find((i) => i.name === 'Rope')?.currencyId).toBe('credits');
     expect(ctx().items.find((i) => i.id === 'lamp')?.currencyId).toBeUndefined();
   });

@@ -56,14 +56,15 @@ describe('the Items list', () => {
     const tabs = within(screen.getByRole('tablist', { name: 'Editor Sections' })).getAllByRole('tab').map((t) => t.textContent);
     expect(tabs.indexOf('Items')).toBe(tabs.indexOf('Locations') + 1);
     openEditorTab(/Items/);
-    expect(screen.getByRole('button', { name: 'Select Lamp' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Select Greatsword' })).toBeTruthy();
+    const rows = screen.queryAllByLabelText('Drag to reorder or nest').map((grip) => grip.parentElement?.textContent);
+    expect(rows).toEqual([expect.stringContaining('Lamp'), expect.stringContaining('Greatsword')]);
   });
 
   it('adds an item named by the search text and opens it', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Items/);
     search('Rope');
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Items' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add Item' }));
     const added = ctx().items.find((i) => i.name === 'Rope');
     expect(added).toMatchObject({ statEffects: [], traitEffects: [], equipRequires: [] });

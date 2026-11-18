@@ -207,7 +207,7 @@ const WorldEditorInner = ({
     updateWorldOverview, addMedia, worldId, worldOverview,
     loadWorldData, getWorldData,
     stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, dictionaries, placeholders, placementLetters,
-    worldPlaceholders, placeholderOwners, placeholderGroups, worldTools, worldScripts, items, setItems, setBodies, updateItem, updateWorldTool,
+    worldPlaceholders, placeholderOwners, placeholderGroups, worldTools, worldScripts, items, itemGroups, setItems, setBodies, updateItem, updateItemGroup, updateWorldTool,
     addStat, addLocation, addEntity, addTrait, addDictionary,
     addPlaceholder,
     updateStat, updateStatGroup, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
@@ -542,14 +542,14 @@ const WorldEditorInner = ({
     const reachable = new Set<string>(visibleTabs.map((t) => t.value));
     return collectSearchTargets({
       worldOverview, stats, statGroups, entities, entityGroups, locations, connections, traits, traitGroups, dictionaries, placeholders,
-      placeholderGroups, items, scripts: worldScripts, tools: worldTools, updateWorldOverview, updateStat, updateStatGroup, updateEntity,
+      placeholderGroups, items, itemGroups, scripts: worldScripts, tools: worldTools, updateWorldOverview, updateStat, updateStatGroup, updateEntity,
       updateEntityGroup, updateLocation, updateConnection, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry,
-      updatePlaceholder, updatePlaceholderGroup, updateItem, advanced, writeScripts, updateTool: updateWorldTool,
+      updatePlaceholder, updatePlaceholderGroup, updateItem, updateItemGroup, advanced, writeScripts, updateTool: updateWorldTool,
     }).filter((t) => reachable.has(t.tab));
   }, [searching, visibleTabs, advanced, worldOverview, stats, statGroups, updateStatGroup, entities, entityGroups, locations, connections, traits,
-      traitGroups, dictionaries, placeholders, placeholderGroups, items, worldScripts, worldTools, updateWorldOverview, updateStat,
+      traitGroups, dictionaries, placeholders, placeholderGroups, items, itemGroups, worldScripts, worldTools, updateWorldOverview, updateStat,
       updateEntity, updateEntityGroup, updateLocation, updateConnection, updateTrait, updateTraitGroup, updateDictionary,
-      updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup, updateItem, writeScripts, updateWorldTool]);
+      updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup, updateItem, updateItemGroup, writeScripts, updateWorldTool]);
   // A fresh object per navigation, not the bare key: a panel with its own tabs has to re-open the right one
   // even when two consecutive hits sit in the same field and the author flipped tabs between them.
   // `itemId` says which item the hit belongs to — null for Overview's own fields, which sit in no item.
@@ -1073,6 +1073,7 @@ const WorldEditorInner = ({
   const { adapter: itemsAdapter, dialog: removeItemDialog } = useWorldItemsAdapter({
     selectedId: selections.items ?? null,
     onSelect: selectItem,
+    collapse: treeCollapse.stateFor('items'),
     tab: shownItemTab,
     onTabChange: setItemTab,
     placeholderId: itemPlaceholderId,

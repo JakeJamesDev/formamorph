@@ -180,6 +180,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Collapse All:**
     - **The World Editor's Locations list can close every group of sub-locations at once.** Select **Collapse all locations**, right of the filter box, and again to open them all. Groups stay closed when you switch tabs, until you close the World Editor.
     - **The Entities, Stats, Traits, Placeholders, Dictionary and Scripts lists can close every group at once.** Select **Collapse all**, right of the filter box, and again to open them all. Each list keeps its groups closed until you close the World Editor.
+    - **The World Editor's Items list can hold items in groups, and close every group at once.** In Advanced mode, choose **Add Group** from the + menu and drag items into it. Groups only organize the editor; the AI and the player never see them. **Collapse all items** closes them all.
     - **The character and dictionary editors in your library can close every group at once.** Select **Collapse all**, right of the filter box, and again to open them all. Groups stay closed until you close the editor.
   - **Avatar Pick Rules:**
     - **You can delete your last Avatar, and the bundled Avatar is your starting Default.** A new install marks it as your Default Avatar. An update marks it once, when you had none.

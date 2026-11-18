@@ -35,7 +35,7 @@ const WORLD: World = benchEditorWorld({ items: [VIAL] } as Partial<World>);
 
 const openVial = () => {
   openEditorTab(/Items/);
-  fireEvent.click(screen.getByRole('button', { name: 'Select Sunfire Elixir' }));
+  fireEvent.click(screen.getByText('Sunfire Elixir', { exact: true }));
 };
 const openTab = (name: string) => fireEvent.mouseDown(screen.getByRole('tab', { name }), { button: 0 });
 const labelOf = (text: string) => screen.getByText(text, { selector: 'label' });
