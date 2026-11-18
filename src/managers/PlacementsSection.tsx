@@ -12,6 +12,7 @@ import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
 import { bodyInForce, startingEquipGap, type StartingEquipGap } from '@/lib/bodies';
 import { placementsAt, wholeCount } from '@/lib/items';
+import { itemsInTabOrder } from '@/lib/itemGroupTree';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { randomUUID } from '@/lib/uuid';
 import type { Item, Placement, PlacementWhere } from '@/types';
@@ -48,7 +49,8 @@ const withFlag = (p: Placement, flag: 'hidden' | 'equipped', on: boolean): Place
 
 /** The starting Item Instances placed at one place: item, quantity, Hidden and, on an owner, Equipped per row. */
 const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
-  const { items, placements, setPlacements, placeholders, slots, bodies, entities } = useGameData();
+  const { items: worldItems, itemGroups, placements, setPlacements, placeholders, slots, bodies, entities } = useGameData();
+  const items = itemsInTabOrder(itemGroups, worldItems);
   const labelId = useId();
   const rows = placementsAt(placements, where);
   const itemOf = (itemId: string) => items.find((i) => i.id === itemId);

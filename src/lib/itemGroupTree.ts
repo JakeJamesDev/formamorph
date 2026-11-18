@@ -14,6 +14,10 @@ export type FlatItemNode = FlatTreeNode<ItemGroup, Item>;
 export const flattenItemTree = (groups: readonly ItemGroup[], items: readonly Item[]): FlatItemNode[] =>
   flattenTree(buildTree(groups, items));
 
+/** Items in the order the Items tab shows them, for pickers elsewhere. */
+export const itemsInTabOrder = (groups: readonly ItemGroup[], items: readonly Item[]): Item[] =>
+  flattenItemTree(groups, items).flatMap((n) => (n.leaf ? [n.leaf] : []));
+
 /** The tab's rows with every row below a collapsed group left out. */
 export const visibleItemRows = (groups: readonly ItemGroup[], items: readonly Item[], collapsed: Iterable<string>): FlatItemNode[] =>
   removeChildrenOf(flattenItemTree(groups, items), collapsed);

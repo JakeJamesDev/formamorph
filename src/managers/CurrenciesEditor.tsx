@@ -3,6 +3,7 @@ import { type DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Plus, X } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
+import { itemsInTabOrder } from '@/lib/itemGroupTree';
 import { Button } from '@/components/ui/button';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
@@ -28,7 +29,8 @@ const KIND_LABEL: Record<CurrencyBacking['kind'], string> = { stat: 'Stat', item
 
 /** The Items tab's Currencies entry: the world's money, in order. The first is the one a new item takes. */
 const CurrenciesEditor = () => {
-  const { currencies, setCurrencies, updateCurrency, removeCurrency, stats, statGroups, entities, placeholders, items } = useGameData();
+  const { currencies, setCurrencies, updateCurrency, removeCurrency, stats, statGroups, entities, placeholders, items, itemGroups } = useGameData();
+  const tabOrder = useMemo(() => itemsInTabOrder(itemGroups, items), [itemGroups, items]);
   const groups = useMemo(() => currencyStatGroups({ stats, statGroups, entities }), [stats, statGroups, entities]);
   const collapse = useCardCollapse(currencies.map((c) => c.id));
   const [pending, setPending] = useState<{ currency: Currency; text: string } | null>(null);
@@ -63,7 +65,7 @@ const CurrenciesEditor = () => {
                     expanded={collapse.isOpen(currency.id)}
                     onToggle={() => collapse.toggle(currency.id)}
                     currencies={currencies}
-                    items={items}
+                    items={tabOrder}
                     groups={groups}
                     label={(name) => labelPlaceholders(name, placeholders)}
                     onChange={updateCurrency}

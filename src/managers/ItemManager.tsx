@@ -24,6 +24,7 @@ import { fieldFrame } from '@/lib/historyField';
 import { WHEN_EMPTY_LABEL, itemStackable, whenEmptyOf, wholeCount } from '@/lib/items';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { itemFields, currencyOf } from '@/lib/currency';
+import { itemsInTabOrder } from '@/lib/itemGroupTree';
 import ItemValueFields from './ItemValueFields';
 import { itemPanelTabsFor, itemTabForField, type ItemPanelTab } from '@/views/itemPanelTabs';
 import type { FocusFieldHint, Item, ItemWhenEmpty } from '@/types';
@@ -54,11 +55,11 @@ const CheckRow = ({ id, field, label, hint, checked, disabled, onChange }: {
 
 /** The item fields beyond its descriptions: value, stacking, uses, the lock, and equipping. */
 const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Partial<Item>) => void }) => {
-  const { currencies, placeholders, items } = useGameData();
+  const { currencies, placeholders, items, itemGroups } = useGameData();
   const label = (name: string) => labelPlaceholders(name, placeholders);
   const multiUse = (item.uses ?? 1) > 1;
   const empty = item.uses === undefined ? undefined : whenEmptyOf(item);
-  const others = items.filter((i) => i.id !== item.id);
+  const others = itemsInTabOrder(itemGroups, items).filter((i) => i.id !== item.id);
   const pickEmpty = (kind: ItemWhenEmpty['kind']) => apply({
     whenEmpty: kind === 'becomes' ? { kind, itemId: empty?.kind === 'becomes' ? empty.itemId : others[0]?.id ?? '' }
       : kind === 'changesState' ? { kind, state: empty?.kind === 'changesState' ? empty.state : '' }

@@ -157,6 +157,23 @@ describe('item groups', () => {
     expect(treeRow('Lamp')).toBeDefined();
   });
 
+  it('set the order item pickers list in, not the world\'s list', () => {
+    // The world's list holds Coin first; the tab shows Tools (Lamp, Rope) first.
+    const world = panelWorld({
+      items: [
+        { ...blankItem('coin', 'Coin'), order: 1 },
+        { ...blankItem('rope', 'Rope'), groupId: 'tools', order: 1 },
+        { ...blankItem('lamp', 'Lamp'), groupId: 'tools', order: 0, uses: 2, whenEmpty: { kind: 'becomes', itemId: 'coin' } },
+      ],
+      itemGroups: [{ id: 'tools', name: 'Tools', parentId: null, order: 0 }],
+    } as Partial<World>);
+    renderItemsTab(world, 'advanced');
+    openItem('Lamp');
+    itemFieldsTab('Properties');
+    openSelect('Becomes Item');
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Rope', 'Coin']);
+  });
+
   it('keep their items when deleted, which move up into the group\'s place', () => {
     const { ctx } = renderItemsTab(GROUPED, 'advanced');
     fireEvent.click(within(row('Tools')).getByRole('button', { name: 'Delete' }));
