@@ -79,7 +79,7 @@ Settled in the grill on 2026-11-17. A ruling reopens on new evidence, never on a
 
 - **Listing action rule.** The pure rule that picks the Supporter listing button gains an upgrade state: the account qualifies, but its tier ranks below the tier open now. The entitlement reply carries only `qualifies` today, so the server adds the account's tier key beside it.
 - **Upgrade prompt.** The upgrade state opens the same Patreon page as today's Patreon state (Q7). Copy follows the Writing Guide.
-- **Schedule display.** The Supporter end-date mark becomes a schedule mark. It shows each tier's opening date and the public date, using the tier display names, on the card and in the details window (Q2). A listing with no tier rows still reads as today.
+- **Schedule display.** The Supporter end-date mark becomes a schedule mark. It shows each tier's opening date and the public date, using the tier display names, on the card and in the details window (Q2). A listing with no tier rows still reads as today. A scheduled listing's mark leads with the top tier as open now; the client derives it, since the server sends no top-tier entry (ticket 02 intent answer).
 - **Publish dialog.** The admin Supporter-only controls for a new Mascot or World listing show one days field per tier, highest first, and a switch to go public after the last stage. The resulting dates show under the fields. The edit control on the card and in the details window edits the same schedule.
 - **Sync.** No behavior change is needed, given the entitlement decision above. The sync test proves that a downgraded account keeps its copy.
 
