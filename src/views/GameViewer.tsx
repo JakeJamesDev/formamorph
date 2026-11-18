@@ -2685,10 +2685,11 @@ const GameViewer = ({
   useEffect(() => { setViewEntityLookTraits(viewLookTraits.owners); }, [viewLookTraits, setViewEntityLookTraits]);
 
   useEffect(() => {
-    const inForce = entityInForceUnder(viewOwnedTraits);
+    // The viewed turn's Option values switch its stats, as they do for the global stats above.
+    const inForce = entityInForceUnder(viewOwnedTraits, { ...gatedWorld(), optionValues: viewWorldOptionValues });
     setViewEntityStatEnabled(Object.fromEntries(Object.entries(viewEntityStats)
       .map(([id, held]) => [id, activeStatEnabled(held, inForce(id))])));
-  }, [viewEntityStats, viewOwnedTraits, entityInForceUnder, setViewEntityStatEnabled]);
+  }, [viewEntityStats, viewOwnedTraits, viewWorldOptionValues, gatedWorld, entityInForceUnder, setViewEntityStatEnabled]);
 
   // Ambient audio follows the viewed location (the paged turn's when browsing history, the live one
   // otherwise). Centralizing it here also fixes the load/rollback gap where `loadGameState` set the
