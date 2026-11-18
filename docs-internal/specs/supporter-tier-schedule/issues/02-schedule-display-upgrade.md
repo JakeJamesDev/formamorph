@@ -19,6 +19,8 @@ Everyone sees a listing's full schedule on the card and in the details window: e
 
 - [ ] The listing-action rule returns the upgrade state for a qualifying account below the open tier, the Patreon state for a non-qualifying account, and the download state once the tier opens.
 - [ ] The button's upgrade state opens the Patreon page.
+- [ ] A server refusal for a tier that isn't open yet shows the tier display name and date from `requiredTier` and `opensAt`, never the server's raw `error` text, which names tier keys.
+- [ ] A schedule entry with a null `opensAt` and no public date reads as "not scheduled". With a public date, it reads as that date.
 - [ ] The schedule mark shows each tier's date and the public date. A listing with only a public date reads as today's mark.
 - [ ] The sync test: an account that downgrades below the open tier keeps its Supporter Copy, and a full lapse removes it.
 - [ ] Copy passes the Writing Guide (`copy-sweep` skill).
