@@ -2848,6 +2848,8 @@ const GameViewer = ({
     global: sceneTrees.global,
     owners: sceneTrees.owners,
     entityStats,
+    options: worldOptions,
+    optionValues: worldOptionValues,
     playedEntities,
     resolve: resolvePH,
     resolveTrait: resolveTraitText,

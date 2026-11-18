@@ -7,7 +7,7 @@ import { openingStateOf } from './openingState';
 import { buildLens } from './testBench/lens';
 import { settledOpeningStats } from './testBench/opening';
 import { newBlankWorld } from './blankWorld';
-import type { BooleanWorldOption, ChoiceWorldOption, PlayerStat, Stat, Trait, World, WorldOptionValues } from '@/types';
+import type { BooleanWorldOption, ChoiceWorldOption, Entity, PlayerStat, Stat, Trait, World, WorldOptionValues } from '@/types';
 
 /** Option stat rows: starting rows at game start, live bounds, regen and toggles after (Q1–Q5, Q7). */
 
@@ -52,6 +52,14 @@ describe('Option starting rows at game start', () => {
     const rich: Trait = { id: 'rich', name: 'Rich', statChanges: [{ statId: 'gold', type: 'starting', value: 120 }] };
     const world = { stats: [gold], traits: [rich], options: [difficulty()] } satisfies Partial<World>;
     expect(goldOf(openingStateOf(world, { traits: ['rich'], owned: {}, options: { diff: 'easy' } }).stats).value).toBe(180);
+  });
+
+  it('keeps the Option’s raised max while an entity’s global row applies, so the start is not clamped', () => {
+    const boast: Trait = { id: 'boast', name: 'Boast', statChanges: [{ statId: 'gold', type: 'starting', value: 1 }], playerToggle: true };
+    const bram = { id: 'bram', name: 'Bram', description: '', locations: [], stats: [{ ...hunger, id: 'vigor', name: 'Vigor' }], traits: [boast] } as Entity;
+    const rich = difficulty({ values: [{ id: 'easy', name: 'Easy', statChanges: [{ statId: 'gold', type: 'max', value: 100 }, { statId: 'gold', type: 'starting', value: 80 }] }] });
+    const world = { stats: [{ ...gold, value: 50 }], entities: [bram], options: [rich] } satisfies Partial<World>;
+    expect(goldOf(openingStateOf(world, { traits: [], owned: { bram: ['boast'] }, options: { diff: 'easy' } }).stats)).toMatchObject({ value: 131, max: 200 });
   });
 
   it('feeds the Enter World preview the same numbers', () => {

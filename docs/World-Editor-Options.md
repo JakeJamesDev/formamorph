@@ -97,7 +97,7 @@ When a trait and an Option pin the same placeholder, the trait wins. An Option w
 An Option can change stats the way a trait does, such as an **Easy** value that starts the player with more Gold.
 
 1. On the Option, under a choice value, or under **Stat Changes When On** or **When Off**, select **Add Stat Change**.
-2. Pick a stat, an amount and what it changes: **Starting Value**, **Min**, **Max** or **Regen**.
+2. Pick a stat, an amount and what it changes: **Starting Value**, **Min**, **Max** or **Regen**. The stat list opens on **World** for the world's stats, then one page per entity.
 3. Optional, in Advanced mode: under **Stat Availability**, select **Add Stat Availability** to turn a stat on or off while the value is picked.
 
 | Change | When it applies |
@@ -109,6 +109,12 @@ An Option can change stats the way a trait does, such as an **Easy** value that 
 When the Option changes during play, the stats' range, regen and availability change at once. A stat's value never moves, except to fit a new range. Switching from **Easy** to **Hard** keeps the Gold that **Easy** gave.
 
 The changes still apply when the Option isn't shown to the player. A Number Option and a Preset have no stat changes.
+
+### Entity Stats
+
+An entity's page lists its own stats and the stats its [Blueprints](World-Editor-Blueprints) give it. A change there reads like "Dragon: Health" and changes that one entity's stat. On a Blueprint stat, it changes only that entity's copy. Other entities with the Blueprint keep theirs.
+
+A change whose entity or stat you later delete stays on the Option and does nothing.
 
 ## Shown to Player and Changeable During Play
 <!-- keywords: hidden option, internal flag, secret, mid game, change later, during play -->

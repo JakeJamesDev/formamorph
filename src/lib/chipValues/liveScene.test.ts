@@ -10,7 +10,7 @@ import { buildCharacterUserMessage, buildDiaryUserMessage } from '../stagedPlann
 import { buildToolSnapshot } from '../tools/toolSnapshot';
 import { renderPromptTemplate } from '../promptTemplate';
 import { layerValues } from '../promptValues';
-import type { Currency, Entity, GameLocation, Item, PersonaRef, Placeholder, Placement, PlayerStat, StatGroup, Trait, TraitGroup, TraitLink } from '@/types';
+import type { Currency, Entity, GameLocation, Item, PersonaRef, Placeholder, Placement, PlayerStat, StatGroup, Trait, TraitGroup, TraitLink, WorldOption } from '@/types';
 
 // The harbor: the Quay contains the Warehouse.
 const quay: GameLocation = { id: 'quay', name: 'Quay', aiDescription: 'Wet stone and rope.' };
@@ -260,6 +260,21 @@ describe('the live adapter', () => {
       }));
       expect(holding([]).ownedStats?.harbormaster.map((s) => s.name)).toEqual(['Dread']);
       expect(holding(['grim']).ownedStats?.harbormaster.map((s) => s.name)).toEqual(['Trust']);
+    });
+
+    it('switches an entity’s stat with an Option row on it, and its own trait toggle wins', () => {
+      const night: WorldOption = {
+        id: 'night', name: 'Night', type: 'boolean', shownToPlayer: true, midGame: true, default: false,
+        onStatToggles: [{ statId: 'dread', enabled: true, ownerId: 'harbormaster' }],
+      };
+      const calm: Trait = { id: 'calm', name: 'Calm', statChanges: [], statToggles: [{ statId: 'dread', enabled: false }] };
+      const shown = (on: boolean, traits: string[] = []) => liveChipScene(sources({
+        entityStats: { harbormaster: [trust, off] }, options: [night], optionValues: { night: on },
+        owners: [{ id: 'harbormaster', traits: [calm], groups: [] }], ownedTraits: { harbormaster: { chosen: traits } },
+      })).ownedStats?.harbormaster.map((s) => s.name);
+      expect(shown(false)).toEqual(['Trust']);
+      expect(shown(true)).toEqual(['Trust', 'Dread']);
+      expect(shown(true, ['calm'])).toEqual(['Trust']);
     });
 
     it('reads the stats a before box wrote, in place of the committed ones', () => {

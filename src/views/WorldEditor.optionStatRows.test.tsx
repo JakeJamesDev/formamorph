@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent } from '@testing-library/react';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
-import type { Stat, World, WorldOption } from '@/types';
+import type { Entity, Stat, StatGroup, World, WorldOption } from '@/types';
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -37,6 +37,13 @@ const pickOption = (trigger: HTMLElement, name: string) => {
   fireEvent.keyDown(screen.getByRole('option', { name }), { key: 'Enter' });
 };
 const combo = (name: string) => screen.getByRole('combobox', { name });
+/** A picker row's name, the breadcrumb left out; a page row reads its aria label. */
+const rowName = (o: HTMLElement) => o.getAttribute('aria-label') ?? o.querySelector(':scope > span.min-w-0')?.textContent ?? o.textContent;
+/** Pick a row's stat in its drill-down picker. */
+const pickStat = (name: string, target: string) => {
+  fireEvent.click(combo(name));
+  fireEvent.click(screen.getAllByRole('option').find((o) => rowName(o) === target)!);
+};
 
 beforeEach(() => { localStorage.clear(); });
 
@@ -46,11 +53,11 @@ describe('stat rows on the Options tab', () => {
     openEditorTab(/Options/);
     fireEvent.click(screen.getByRole('button', { name: 'Select Difficulty' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Add Stat Change' })[1]);
-    pickOption(combo('Hard Stat Change 1 Stat'), 'Gold');
+    pickStat('Hard Stat Change 1 Stat', 'Gold');
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Hard Stat Change 1 Amount' }), { target: { value: '-50' } });
     pickOption(combo('Hard Stat Change 1 Facet'), 'Regen');
     fireEvent.click(screen.getAllByRole('button', { name: 'Add Stat Availability' })[1]);
-    pickOption(combo('Hard Stat Availability 1 Stat'), 'Hunger');
+    pickStat('Hard Stat Availability 1 Stat', 'Hunger');
 
     const hard = () => {
       const option = bench.ctx().options.find((o) => o.id === 'diff');
@@ -70,7 +77,7 @@ describe('stat rows on the Options tab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Select Hardcore' }));
     expect(screen.getByText('Stat Changes When On')).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('button', { name: 'Add Stat Change' })[1]);
-    pickOption(combo('Off Stat Change 1 Stat'), 'Gold');
+    pickStat('Off Stat Change 1 Stat', 'Gold');
     pickOption(combo('Off Stat Change 1 Facet'), 'Starting Value');
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Off Stat Change 1 Amount' }), { target: { value: '100' } });
 
@@ -88,5 +95,29 @@ describe('stat rows on the Options tab', () => {
     expect(screen.queryByRole('button', { name: 'Add Stat Availability' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Select Size' }));
     expect(screen.queryByRole('button', { name: 'Add Stat Change' })).toBeNull();
+  });
+
+  it('drills to an entity page and picks a Blueprint stat, in the owner form', () => {
+    const blueprints: StatGroup = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' };
+    const many: Stat[] = Array.from({ length: 16 }, (_, i) => ({ ...stats[0], id: `s${i}`, name: `Stat ${i}` }));
+    const howl: Stat = { ...stats[0], id: 'howl', name: 'Howl', groupId: 'bp' };
+    const wolf = { id: 'wolf', name: 'Wolf', stats: [{ ...stats[0], id: 'health', name: 'Health' }], statLinks: [
+      { id: 'w-howl', originalId: 'howl', kind: 'stat', originalName: 'Howl', groupId: null },
+    ] } as Entity;
+    const bench = renderWorldEditorBench(benchEditorWorld({ options, stats: [...many, howl], statGroups: [blueprints], entities: [wolf] } as Partial<World>), 'simple');
+    openEditorTab(/Options/);
+    fireEvent.click(screen.getByRole('button', { name: 'Select Difficulty' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add Stat Change' })[1]);
+
+    fireEvent.click(combo('Hard Stat Change 1 Stat'));
+    expect(screen.getAllByRole('option').map(rowName)).toEqual(['World, 16 available, opens a page', 'Wolf, 2 available, opens a page']);
+    fireEvent.click(screen.getByRole('option', { name: /^Wolf,/ }));
+    expect(screen.getAllByRole('option').map(rowName)).toEqual(['Wolf: Health', 'Wolf: Howl']);
+    fireEvent.click(screen.getAllByRole('option').find((o) => rowName(o) === 'Wolf: Howl')!);
+
+    const option = bench.ctx().options.find((o) => o.id === 'diff');
+    const hard = option?.type === 'choice' ? option.values.find((v) => v.id === 'hard') : undefined;
+    expect(hard?.statChanges).toEqual([{ statId: 'howl', ownerId: 'wolf', value: 0, type: 'min' }]);
+    expect(combo('Hard Stat Change 1 Stat').textContent).toBe('Wolf: Howl');
   });
 });

@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import type {
   Connection, Currency, Entity, EntityPositions, GameLocation, GenericStates, InventoryOwner, UniqueStates, Item, ItemInstance, Placement, RuntimeItem, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
+  WorldOption, WorldOptionValues,
 } from '@/types';
 import { movementStates } from '../movementTag';
 import type { Course } from '../positionEngine';
@@ -10,7 +11,7 @@ import { entityNamed, scenePresentHere, type OwnedTraitsInForce, type StrangerLa
 import type { GateTree } from '../traitGates';
 import { activeOwnedTraitIds, borneByPlayer, inOwnerPlaces, withOwnerTrees, type OwnerTree } from '../ownedTraitsInPlay';
 import type { ResolvedPersona } from '../persona';
-import { treeStatTraits } from '../traitRuntime';
+import { optionStatTraits, treeStatTraits } from '../traitRuntime';
 import { enabledOwnerStats, withTraitToggles, type OwnerStats } from '../statOwners';
 import { resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText } from '../resolveWorldNames';
 import { ownerStatParts, type StatPlacement } from '../statContext';
@@ -39,6 +40,10 @@ export interface LiveSceneSources {
   owners?: readonly OwnerTree[];
   /** Each entity's stat values. None when absent. */
   entityStats?: OwnerStats;
+  /** The world's Options, whose current values' rows switch entity stats too. None when absent. */
+  options?: readonly WorldOption[];
+  /** The playthrough's Option values. Absent ⇒ each Option's default. */
+  optionValues?: WorldOptionValues;
   /** The entities the player plays as, whose stats are the player's. None when absent. */
   playedEntities?: readonly Entity[];
   resolve: (text: string) => string;
@@ -156,8 +161,12 @@ export function liveChipScene(
   );
 
   const ownedInForce = inForceByOwner(box?.ownedTraits ?? sources.ownedTraits);
-  // An entity's traits in force switch its stats on and off.
-  const ownedStats = enabledOwnerStats(withTraitToggles(box?.entityStats ?? sources.entityStats ?? {}, treeStatTraits(sources.owners ?? [], ownedInForce)));
+  // An entity's Option rows, then its traits in force, switch its stats on and off.
+  const ownTraits = treeStatTraits(sources.owners ?? [], ownedInForce);
+  const optionWorld = { options: sources.options, optionValues: sources.optionValues };
+  const ownedStats = enabledOwnerStats(withTraitToggles(
+    box?.entityStats ?? sources.entityStats ?? {}, (id) => [...optionStatTraits(optionWorld, id), ...ownTraits(id)],
+  ));
   return {
     overview: sources.overview,
     stats: box?.activeStats ?? sources.stats,
@@ -223,16 +232,16 @@ const inForceByOwner = (states: OwnedTraitStates | undefined): OwnedTraitsInForc
 /** The live adapter: one memoized builder over the playthrough's contexts. */
 export function useLiveChipScene(sources: LiveSceneSources): (location?: GameLocation | null, box?: SceneWrites | null) => ChipScene {
   const {
-    overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
+    overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, options, optionValues, playedEntities, resolve, resolveTrait, resolveEntity, persona,
     location, locations, connections, canEnter, entities, allEntities, standings, participants, notes, time, placeholders, items, itemInstances, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
   } = sources;
   return useCallback(
     (at?: GameLocation | null, box?: SceneWrites | null) => liveChipScene({
-      overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
+      overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, options, optionValues, playedEntities, resolve, resolveTrait, resolveEntity, persona,
       location, locations, connections, canEnter, entities, allEntities, standings, participants, notes, time, placeholders, items, itemInstances, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
     }, at, box),
     [
-      overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
+      overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, options, optionValues, playedEntities, resolve, resolveTrait, resolveEntity, persona,
       location, locations, connections, canEnter, entities, allEntities, standings, participants, notes, time, placeholders, items, itemInstances, runtimeItems, currencies, placements, strangerLabels, equipment, movement,
     ],
   );

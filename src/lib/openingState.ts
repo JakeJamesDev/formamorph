@@ -17,7 +17,7 @@ import type { UnitHome } from './sandboxSnapshot';
 import { atStartValues, statStartValue } from './statDescriptorGeometry';
 import { activeStatEnabled, inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import {
-  acquireTrait, applyGlobalRowTraits, applyOptionStarts, applyOwnedStatTraits, entityStatTraitsInForce, gateStatsOf, heldGlobalTraits,
+  acquireTrait, applyGlobalRowTraits, applyOptionEntityStarts, applyOptionStarts, applyOwnedStatTraits, entityStatTraitsInForce, gateStatsOf, heldGlobalTraits,
   seedNewGameStats, statTraitsInForce, traitGateInput, type TraitRuntimeState, type TraitWorld,
 } from './traitRuntime';
 import type { GateInput } from './traitGates';
@@ -126,7 +126,7 @@ export function openingFold(
   const rows = applyGlobalRowTraits({
     ...traitState, ownedTraits: ownedTraitStatesFrom(picks.owned), entityStats: seedEntityStats(statEntities),
   }, traitWorld);
-  traitState = applyOwnedStatTraits(rows.state, traitWorld);
+  traitState = applyOwnedStatTraits(applyOptionEntityStarts(rows.state, traitWorld), traitWorld);
   // A starting equip that fails its requirement stays carried; none logs, and no script fires (Q37, Q50).
   const settleWorld = { items: world.items ?? [], traits: traitWorld, persona: ref, entities, quietUnequips: true };
   const itemInstances = startingInstances(startWorld, ref, newId, equipRequirement({ traits: traitState, ledger: undefined }, settleWorld));

@@ -49,10 +49,25 @@ function StatOptions({ choices, label }: { choices: readonly StatChoices[]; labe
   );
 }
 
+/** The stat a row names, with the entity that owns it when it is not a global stat. */
+export interface StatRowTarget {
+  statId: string;
+  ownerId?: string;
+}
+
+/** A stat picker in place of the Select: `row`'s current target, and `onPick` to point it elsewhere. */
+export type StatRowPicker = (row: StatRowTarget, onPick: (target: StatRowTarget) => void, ariaLabel?: string) => ReactNode;
+
+/** `row` pointed at `target`, its owner field replaced. */
+function targetedRow<R extends StatRow>(row: R, target: StatRowTarget): R {
+  const { ownerId: _owner, ...rest } = row as R & { ownerId?: string };
+  return { ...rest, ...target } as R;
+}
+
 /** The stat changes and stat toggles a trait or an Option value carries, edited in place. */
 export function StatRowsEditor<C extends StatChange, T extends TraitStatToggle>({
   statChanges, onStatChanges, statToggles, onStatToggles, choices, label, sideOf = () => null, showToggles, togglesReadOnly = false,
-  changesLabel, togglesLabel, toggleNote, framePrefix = [], ariaPrefix, changesAnchor,
+  changesLabel, togglesLabel, toggleNote, framePrefix = [], ariaPrefix, changesAnchor, statPicker,
 }: {
   statChanges: readonly C[];
   onStatChanges: (next: C[]) => void;
@@ -74,9 +89,28 @@ export function StatRowsEditor<C extends StatChange, T extends TraitStatToggle>(
   /** Names each control after its row ("Easy Stat Change 1 Stat"). Absent = unnamed. */
   ariaPrefix?: string;
   changesAnchor?: string;
+  /** Replaces each row's stat Select; `choices` then go unread. */
+  statPicker?: StatRowPicker;
 }) {
   const frame = (...parts: string[]) => fieldFrame(...framePrefix, ...parts);
   const aria = (kind: string, index: number, part: string) => (ariaPrefix ? { 'aria-label': `${ariaPrefix} ${kind} ${index + 1} ${part}` } : {});
+  /** A row's stat control: the caller's picker, else a Select over `choices`. */
+  const statControl = <R extends C | T>(row: R, kind: string, index: number, list: string, set: (next: R) => void, disabled = false) => {
+    const ariaLabel = aria(kind, index, 'Stat')['aria-label'];
+    if (statPicker) {
+      return <div className="min-w-0" {...frame(list, String(index), 'statId')}>{statPicker(row, (target) => set(targetedRow(row, target)), ariaLabel)}</div>;
+    }
+    return (
+      <Select value={pickerValue(row, sideOf(row))} onValueChange={(value) => set(pickedRow(row, value))} disabled={disabled}>
+        <SelectTrigger {...frame(list, String(index), 'statId')} {...aria(kind, index, 'Stat')}>
+          <SelectValue placeholder="Select stat" />
+        </SelectTrigger>
+        <SelectContent>
+          <StatOptions choices={choices} label={label} />
+        </SelectContent>
+      </Select>
+    );
+  };
   const setChange = (index: number, next: C) => onStatChanges(statChanges.map((row, i) => (i === index ? next : row)));
   const setToggle = (index: number, next: T) => onStatToggles(statToggles.map((row, i) => (i === index ? next : row)));
 
@@ -86,14 +120,7 @@ export function StatRowsEditor<C extends StatChange, T extends TraitStatToggle>(
         {changesLabel}
         {statChanges.map((statChange, index) => (
           <div key={index} className="flex space-x-2">
-            <Select value={pickerValue(statChange, sideOf(statChange))} onValueChange={(value) => setChange(index, pickedRow(statChange, value))}>
-              <SelectTrigger {...frame('statChanges', String(index), 'statId')} {...aria('Stat Change', index, 'Stat')}>
-                <SelectValue placeholder="Select stat" />
-              </SelectTrigger>
-              <SelectContent>
-                <StatOptions choices={choices} label={label} />
-              </SelectContent>
-            </Select>
+            {statControl(statChange, 'Stat Change', index, 'statChanges', (next) => setChange(index, next))}
             {/* A stat change has no id, and two can name one stat, so its place in the list names it. */}
             <div className="w-full" {...frame('statChanges', String(index), 'value')}>
               <WorldInput
@@ -131,18 +158,7 @@ export function StatRowsEditor<C extends StatChange, T extends TraitStatToggle>(
           {statToggles.map((toggle, index) => (
             <div key={index} className="space-y-1">
               <div className="flex space-x-2">
-                <Select
-                  value={pickerValue(toggle, sideOf(toggle))}
-                  onValueChange={(v) => setToggle(index, pickedRow(toggle, v))}
-                  disabled={togglesReadOnly}
-                >
-                  <SelectTrigger {...frame('statToggles', String(index), 'statId')} {...aria('Stat Availability', index, 'Stat')}>
-                    <SelectValue placeholder="Select stat" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <StatOptions choices={choices} label={label} />
-                  </SelectContent>
-                </Select>
+                {statControl(toggle, 'Stat Availability', index, 'statToggles', (next) => setToggle(index, next), togglesReadOnly)}
                 <Select
                   value={toggle.enabled ? 'on' : 'off'}
                   onValueChange={(v) => setToggle(index, { ...toggle, enabled: v === 'on' })}

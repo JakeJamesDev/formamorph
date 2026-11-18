@@ -125,6 +125,19 @@ export function optionStatRowLists(options: readonly WorldOption[] | undefined, 
   return out;
 }
 
+/** The entity ids any value's stat row names, current or not: the entities an Option change can move. */
+export function optionRowOwnerIds(options: readonly WorldOption[] | undefined): Set<string> {
+  const out = new Set<string>();
+  for (const option of valuedOptions(options)) {
+    const lists: OptionStatRows[] = option.type === 'choice' ? option.values
+      : option.type === 'boolean' ? [booleanRows(option, true), booleanRows(option, false)] : [];
+    for (const rows of lists) {
+      for (const row of [...(rows.statChanges ?? []), ...(rows.statToggles ?? [])]) if (row.ownerId !== undefined) out.add(row.ownerId);
+    }
+  }
+  return out;
+}
+
 /** A boolean Option's rows for one state, as the Options panel edits them. */
 export const booleanRows = (option: BooleanWorldOption, on: boolean): OptionStatRows => (on
   ? { statChanges: option.onStatChanges, statToggles: option.onStatToggles }
