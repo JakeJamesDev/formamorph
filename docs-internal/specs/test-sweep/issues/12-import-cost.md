@@ -1,6 +1,6 @@
 # 12: Import Cost
 
-Status: ready-for-human
+Status: done
 Blocked by: 08, 09, 10, 11
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

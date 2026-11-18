@@ -1,6 +1,6 @@
 # 18: Sweep Managers, Contexts, Services And Site
 
-Status: ready-for-human
+Status: done
 Blocked by: 13, 14, 15
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

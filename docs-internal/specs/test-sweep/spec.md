@@ -1,6 +1,7 @@
 # Test Sweep
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-18, tickets 01–19, last landing f21e6423d. Review: spec text corrected. Gates green on 2026-11-18: test 37,497 pass in 516 s; lint's 28 errors are all in gitignored `worlds-wip/`.
 Spec session: test-sweep — spec
 
 ## Problem Statement
