@@ -42,6 +42,8 @@ All five runs exited 0 with 0 unhandled errors in the ledger's runs. No test nee
 
 Worker seconds from the median run, summed across workers:
 
+> Note: these come from run 2 (439.6 s, under peer load), not from run 3, which gives the 330 s figure.
+
 | Part | Seconds | Share |
 |---|---:|---:|
 | Test bodies | 2,901 | 46% |
