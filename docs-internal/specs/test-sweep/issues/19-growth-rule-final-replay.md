@@ -20,14 +20,14 @@ Rulings: Q3, Q6, Q12, Q16.
 ## Acceptance criteria
 
 - [x] A slow new test produces a warning naming it, and the gate still passes; a test proves it. `the new-test budget warning` in `slowTestReporter.test.mjs`: a real vitest run in a temp repo exits 0 and names the added, untracked and retitled tests, not the old or moved one; 5 mutations each turned it red.
-- [x] The proposed `test-bar` text is in the ticket. Approved and applied to the global skill (Q69).
+- [x] The proposed `test-bar` text is in the ticket. Approved and applied to the global skill (Q70).
 - [x] A final summary compares full-suite time, gate time, misses and precision with the Reference Run and the Q3 targets. See "Final Summary" below.
 
 For you: Approve the `test-bar` text; judge the final numbers against your targets.
 
 ## Proposed `test-bar` text
 
-A new section after "Testing the real thing", and one checklist line. The owner approved it with budgets kept out of the global skill (Q69).
+A new section after "Testing the real thing", and one checklist line. The owner approved it with budgets kept out of the global skill (Q70).
 
 > ## Pick the level, then the depth
 >
@@ -72,7 +72,7 @@ Measured 2026-11-18 from 11:05 to 18:31 UTC, in the owner's AFK window, on this 
 | Full suite, wall | 330 s | 240 s | 369 s (median of 375, 369, 368) | ❌ |
 | Affected gate, warm | 279 s on 610 files | 200 s | 246 s on 681 files (similar sample) | ❌ |
 | Replay misses, raw | – | 0 | 4 in 39 bugs, bound 22.0% | ❌ |
-| Replay misses, adjusted | – | 0 | 1 in 36 bugs, bound 12.5% | ❌ |
+| Replay misses, adjusted | – | 0 | 0 in 36 bugs, bound 8.3% (Q73) | ✅ |
 | Precision | 1.7% (ticket 13, seed 2) | – | 1.3% | – |
 
 ### Full suite
@@ -116,7 +116,7 @@ Seed 3, a fresh sample: 12 landings, 40 code mutants and 20 data mutants since 2
 The misses:
 
 - **3 are a flake:** the emberwatch case in `GameViewer.bundledSaves.test.tsx` ("made at the pre-expansion revision … plays a turn"), red under unrelated changes in `devStorageSample.ts`, `useAvatarDetailsOpen.ts` and `src/notes/WorldManagementPlan.md`. On the clean tree it failed alone 2 times in 14 ("Unable to find … Regenerate Narration" after 12 s). The drone case in the same describe failed 7 times in 13. These leave the adjusted count.
-- **1 stays a miss:** `elementIcons.test.ts` on landing `01db1ef0f` (2026-10-11). That test was a source scan then, and ticket 14 moved the scan to `eslint.element-icon-import.js`. Today's ESLint config, run on that landing's files, flags nothing, so the current gate wouldn't catch it either.
+- **1 caught by lint (Q73):** `elementIcons.test.ts` on landing `01db1ef0f` (2026-10-11). That test was a source scan then, and ticket 14 moved the scan to `eslint.element-icon-import.js`. Today's config, with today's ledger, flags nothing on that landing's files.
   - **Now caught (Q73):** the replay restores test files only. The ledger moved out of the test file into the rule, so the landing's own ledger rows stayed in. Against the parent's ledger, today's rule flags both new `BookOpen` imports.
 
 The budgets in `BUDGET_MS` ([slowTestReporter.mjs](../../../../scripts/slowTestReporter.mjs)) are each level's p99 in the 2026-11-04 ledger. Close-spec recomputes them from the final Reference Run.
@@ -132,8 +132,7 @@ The budgets in `BUDGET_MS` ([slowTestReporter.mjs](../../../../scripts/slowTestR
 **For you**
 
 - For you: Approve the `test-bar` text; judge the final numbers against your targets. Neither time target is met: full suite 369 s against 240 s, and gate 246 s against 200 s.
-- Judge the adjusted replay count: 1 miss in 36 (bound 12.5%). The raw count is 4 in 39 (22.0%).
+- Judge the adjusted replay count: 0 misses in 36 (bound 8.3%, Q73). The raw count is 4 in 39 (22.0%).
 - Open findings for close-spec:
-  - Parallelism held at 14.5 (the 18.9 mixed two runs). Open: the split of the ~33 s scheduling ceiling, which waits for a timed AFK run.
-  - `GameViewer.bundledSaves` flakes when run alone (emberwatch 2 in 14, drone 7 in 13). It needs its own ticket (Q14).
-  - Today's gate has no equivalent for the `elementIcons` call-site guard on landing `01db1ef0f`.
+  - Parallelism held at 14.5 (the 18.9 mixed two runs). The idle time is per-file fork overhead that isolation needs, and the best pool change saves about 5–6 s, which the owner skipped (Q72, Q74).
+  - `GameViewer.bundledSaves` flakes when run alone (emberwatch 2 in 14, drone 7 in 13). Fixed in `b5221ffdb`: an autosave race in `GameplayContext`, not the test.
