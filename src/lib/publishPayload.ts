@@ -1,6 +1,7 @@
 import type { World, Entity, Dictionary, VrmLicense } from '@/types';
 import type { CatalogKind } from '@/lib/catalogKinds';
 import type { ListingVisibility } from '@/lib/publishLinks';
+import type { SupporterDaysSchedule } from '@/lib/supporterScheduleEdit';
 import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { entityPlacementLetters, labelPlaceholders } from '@/lib/placementLetters';
@@ -41,8 +42,8 @@ export interface PublishPayload {
   models?: string[];
   /** Create the listing Supporter-only and pinned. New listings only; the server takes it from an admin alone. */
   supporterOnly?: boolean;
-  /** Days until a new Supporter-only Mascot or World listing opens to everyone. Omitted means no end date. */
-  supporterDays?: number;
+  /** The stages of a new Supporter-only Mascot or World listing. Omitted means Supporter-only with no end date. */
+  supporterSchedule?: SupporterDaysSchedule;
 }
 
 /**

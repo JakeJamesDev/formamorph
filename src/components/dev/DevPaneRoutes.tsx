@@ -2,7 +2,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { ChangelogEntryDialog } from '@/components/community/ChangelogEntryDialog';
 import { RemoteWorldDetailsModal } from '@/components/community/RemoteWorldDetailsModal';
-import { SupporterEndDateDialog } from '@/components/community/SupporterEndDateDialog';
+import { SupporterScheduleDialog } from '@/components/community/SupporterScheduleDialog';
 import type { WorldRecord } from '@/components/WorldDetails';
 import { BodyLayoutReference } from '@/components/design-system/BodyLayoutReference';
 import { PendingUpdateSection } from '@/components/community/PendingUpdateSection';
@@ -107,8 +107,8 @@ export default function DevPaneRoutes() {
       );
     }
     case 'supporterEnd': {
-      const until = route.tab === 'none' ? undefined : new Date(Date.now() + 30 * 86_400_000).toISOString();
-      return <SupporterEndDateDialog world={{ ...devListingSample().world, supporter_only: true, supporter_until: until } as WorldRecord} busy={false} onClose={() => clearRouteOnClose(false)} onSave={ignore} />;
+      const scheduled = route.tab === 'none' ? {} : devSupporterSchedule();
+      return <SupporterScheduleDialog world={{ ...devListingSample().world, supporter_only: true, ...scheduled } as WorldRecord} busy={false} onClose={() => clearRouteOnClose(false)} onSave={async () => null} />;
     }
     // A three-stage schedule, signed in as a plain Supporter. `tab=details` opens the details window; any other shows the card.
     case 'supporterSchedule': {

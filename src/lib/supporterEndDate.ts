@@ -1,8 +1,6 @@
 /** The longest duration the server accepts, in days. */
 export const MAX_SUPPORTER_DAYS = 3650;
 
-const DAY_MS = 86_400_000;
-
 /** The end date of a timed Supporter-only listing, or null when it has none or has passed. */
 export function supporterUntilOf(
   listing: { supporter_only?: unknown; supporter_until?: unknown },
@@ -34,9 +32,6 @@ export function parseSupporterDays(text: string): number | null {
 
   return days >= 1 && days <= MAX_SUPPORTER_DAYS ? days : null;
 }
-
-/** The date a listing opens when it is published or edited `days` from now. */
-export const endDateAfterDays = (days: number, now = Date.now()): Date => new Date(now + days * DAY_MS);
 
 /** Whether a listing kind can carry an end date. */
 export const canHaveEndDate = (kind: string): boolean => kind === 'mascot' || kind === 'world';

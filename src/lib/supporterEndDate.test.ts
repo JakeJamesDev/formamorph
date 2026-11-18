@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { endDateAfterDays, parseSupporterDays, supporterEndLabel, supporterUntilOf } from './supporterEndDate';
+import { parseSupporterDays, supporterEndLabel, supporterUntilOf } from './supporterEndDate';
 
 const NOW = Date.parse('2026-11-14T12:00:00.000Z');
 const FUTURE = '2026-12-01T00:00:00.000Z';
@@ -33,11 +33,5 @@ describe('parseSupporterDays', () => {
 
   it.each(['', '0', '-3', '1.5', '3651', 'abc'])('refuses "%s"', (text) => {
     expect(parseSupporterDays(text)).toBeNull();
-  });
-});
-
-describe('endDateAfterDays', () => {
-  it('counts whole days from now', () => {
-    expect(endDateAfterDays(2, NOW).toISOString()).toBe('2026-11-16T12:00:00.000Z');
   });
 });

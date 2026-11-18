@@ -2,18 +2,23 @@ import { Heart } from 'lucide-react';
 import { Hint } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 import { PublishOptionSwitch } from '@/components/menu/PublishOptionSwitch';
-import { SupporterEndFields } from '@/components/community/SupporterEndFields';
+import { SupporterScheduleFields } from '@/components/menu/SupporterScheduleFields';
+import type { DaysText, PlannedSchedule } from '@/lib/supporterScheduleEdit';
+import type { SupporterTier } from '@/types';
 
 interface SupporterOnlyCardProps {
   checked: boolean;
   onCheckedChange: (next: boolean) => void;
-  /** The days field's text. */
-  days: string;
-  onDaysChange: (next: string) => void;
+  /** The days fields' text, by tier. */
+  days: DaysText;
+  onDaysChange: (tier: SupporterTier, next: string) => void;
+  goPublic: boolean;
+  onGoPublicChange: (next: boolean) => void;
+  plan: PlannedSchedule;
 }
 
 /** An admin's opt-in that publishes a new listing Supporter-only and pinned, for a set time or without end. */
-export function SupporterOnlyCard({ checked, onCheckedChange, days, onDaysChange }: SupporterOnlyCardProps) {
+export function SupporterOnlyCard({ checked, onCheckedChange, days, onDaysChange, goPublic, onGoPublicChange, plan }: SupporterOnlyCardProps) {
   return (
     <div
       className={cn(
@@ -36,7 +41,7 @@ export function SupporterOnlyCard({ checked, onCheckedChange, days, onDaysChange
       </div>
       {checked && (
         <div className="mt-3 pl-8">
-          <SupporterEndFields id="publish-supporter-days" value={days} onChange={onDaysChange} blankHint="No end date" />
+          <SupporterScheduleFields text={days} onTextChange={onDaysChange} goPublic={goPublic} onGoPublicChange={onGoPublicChange} plan={plan} />
         </div>
       )}
     </div>

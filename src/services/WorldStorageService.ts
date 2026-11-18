@@ -15,6 +15,8 @@ import {
 import { clearUnreadableWorld, reportUnreadableWorld, syncUnreadableWorlds } from '@/lib/unreadableWorlds';
 import { contentHash } from '@/lib/contentHash';
 import { isHiddenCopy } from '@/lib/supporterCopyVisibility';
+import { parseSupporterSchedule, type SupporterScheduleEntry } from '@/lib/supporterSchedule';
+import type { SupporterDatesSchedule } from '@/lib/supporterScheduleEdit';
 import { announceWorldDeleted, announceWorldSaved } from '@/lib/worldChangeSignal';
 import {
   forgetDeletedDefaultWorld, readDeletedDefaultWorlds, seedWorldData, tombstoneDefaultWorld, type BundledWorlds, type DefaultWorldSeed,
@@ -984,24 +986,30 @@ class WorldStorageService {
   }
 
   /**
-   * Change or clear the end date of a Supporter-only listing. Staff only.
+   * Replace the tier schedule of a Supporter-only listing. Staff only.
    *
    * @param worldId - The listing's server id
-   * @param days - Days from now until it opens to everyone, or null for no end date
-   * @returns The end date the server now holds, or null when there is none
+   * @param schedule - Each lower tier's opening date and the public date; null clears them
+   * @returns The public date and the stages the server now holds
    */
-  async setRemoteWorldSupporterEnd(worldId: string, days: number | null): Promise<string | null> {
+  async setRemoteWorldSupporterSchedule(
+    worldId: string,
+    schedule: SupporterDatesSchedule,
+  ): Promise<{ until: string | null; schedule: SupporterScheduleEntry[] }> {
     const response = await fetch(`${this.API_URL}/worlds/${worldId}/supporter-only`, {
       method: 'PUT',
       headers: authHeaders(true),
-      body: JSON.stringify({ supporterOnly: true, supporterDays: days }),
+      body: JSON.stringify({ supporterOnly: true, supporterSchedule: schedule }),
     });
 
-    if (!response.ok) throw await responseError(response, 'Failed to change the end date');
+    if (!response.ok) throw await responseError(response, 'Failed to change the schedule');
     const body = await response.json().catch(() => ({}));
-    const held = (body.data ?? body)?.supporterUntil;
+    const held = body.data ?? body;
 
-    return typeof held === 'string' ? held : null;
+    return {
+      until: typeof held?.supporterUntil === 'string' ? held.supporterUntil : null,
+      schedule: parseSupporterSchedule(held?.supporterSchedule),
+    };
   }
 
   /** Fetch a page of comments for a published world; auth is optional. Never throws — errors resolve to

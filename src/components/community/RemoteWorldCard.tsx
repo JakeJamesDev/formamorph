@@ -366,11 +366,11 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
             </Tip>
           )}
           {canMarkSupporterOnly && supporterOnly && onEditSupporterEnd && canHaveEndDate(kindOf(world)) && (
-            <Tip tip="Change when it opens to everyone">
+            <Tip tip="Change when each tier gets it">
               <button
                 className="p-1 text-muted-foreground hover:text-foreground"
                 onClick={(e) => { e.stopPropagation(); onEditSupporterEnd(world); }}
-                aria-label={`Change the end date of ${world.name || noun}`}
+                aria-label={`Change the schedule of ${world.name || noun}`}
               >
                 <CalendarClock className="h-5 w-5" />
               </button>

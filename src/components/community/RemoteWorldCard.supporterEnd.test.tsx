@@ -69,18 +69,18 @@ describe('the Supporter-only end date on a card', () => {
 
   it('gives an admin a control that opens the editor', () => {
     const onEdit = show(world({ supporter_only: true, supporter_until: future }), admin);
-    fireEvent.click(screen.getByRole('button', { name: 'Change the end date of Sedge Landing' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change the schedule of Sedge Landing' }));
 
     expect(onEdit).toHaveBeenCalledTimes(1);
   });
 
   it('gives a moderator and a signed-out reader no control', () => {
     show(world({ supporter_only: true, supporter_until: future }), moderator);
-    expect(screen.queryByRole('button', { name: /Change the end date/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Change the schedule/ })).toBeNull();
     cleanup();
 
     show(world({ supporter_only: true, supporter_until: future }), null);
-    expect(screen.queryByRole('button', { name: /Change the end date/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Change the schedule/ })).toBeNull();
   });
 
   it('shows the normal Download when the payload has no Supporter-only flag', () => {

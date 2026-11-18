@@ -2,9 +2,12 @@ import React, { useState, useCallback, useDeferredValue, useEffect, useMemo, use
 import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
+import { describeError } from '@/lib/errorDetails';
+import { useMountedRef } from '@/lib/useMountedRef';
 import { isSupporterOnly } from '@/lib/supporterListingAction';
 import { formatSupporterDate } from '@/lib/supporterEndDate';
-import { SupporterEndDateDialog } from '@/components/community/SupporterEndDateDialog';
+import { SupporterScheduleDialog } from '@/components/community/SupporterScheduleDialog';
+import type { SupporterDatesSchedule } from '@/lib/supporterScheduleEdit';
 import { responseError } from '@/services/responseError';
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -857,27 +860,32 @@ const CommunityCreationsBrowser = ({
     }
   };
 
+  const mounted = useMountedRef();
   const markingSupporterOnly = useRef(new Set<string>());
   // Opening a listing to all makes its clean files public, and a copy taken then can't be taken back.
   const [openingToAll, setOpeningToAll] = useState<WorldRecord | null>(null);
   // The listing whose end date an admin is editing, and whether the change is on its way.
   const [editingEnd, setEditingEnd] = useState<WorldRecord | null>(null);
   const [savingEnd, setSavingEnd] = useState(false);
-  const saveSupporterEnd = async (world: WorldRecord, days: number | null) => {
+  // Resolves to the server's refusal, which the dialog shows, or null once the schedule is saved.
+  const saveSupporterSchedule = async (world: WorldRecord, schedule: SupporterDatesSchedule): Promise<string | null> => {
     const worldId = String(world._id || world.id);
     const noun = KIND_LABELS[kindOf(world)].one;
     setSavingEnd(true);
     try {
-      const until = await WorldStorageService.setRemoteWorldSupporterEnd(worldId, days);
-      const patch = (w: WorldRecord) => ({ ...w, supporter_until: until ?? undefined });
+      const held = await WorldStorageService.setRemoteWorldSupporterSchedule(worldId, schedule);
+      if (!mounted.current) return null;
+      const patch = (w: WorldRecord) => ({ ...w, supporter_until: held.until ?? undefined, supporterSchedule: held.schedule });
       setRemoteWorlds((prev) => prev.map((w) => ((w._id || w.id) === worldId ? patch(w) : w)));
       setSelectedRemoteWorld((prev) => (prev && (prev._id || prev.id) === worldId ? patch(prev) : prev));
       setEditingEnd(null);
-      toast.success(until ? `${noun} opens on ${formatSupporterDate(new Date(until))}` : `${noun} has no end date`);
+      toast.success(held.until ? `${noun} opens to everyone on ${formatSupporterDate(new Date(held.until))}` : `${noun} has no end date`);
+
+      return null;
     } catch (error) {
-      toastError(error, `Failed to change the end date of the ${noun.toLowerCase()}`);
+      return describeError(error, `Failed to change the schedule of the ${noun.toLowerCase()}`).message;
     } finally {
-      setSavingEnd(false);
+      if (mounted.current) setSavingEnd(false);
     }
   };
   const handleToggleSupporterOnly = (world: WorldRecord) => {
@@ -1401,7 +1409,7 @@ const CommunityCreationsBrowser = ({
         onConfirm={mascotDownload.confirmDirtyDownload}
       />
 
-      <SupporterEndDateDialog world={editingEnd} busy={savingEnd} onClose={() => setEditingEnd(null)} onSave={(w, d) => void saveSupporterEnd(w, d)} />
+      <SupporterScheduleDialog world={editingEnd} busy={savingEnd} onClose={() => setEditingEnd(null)} onSave={saveSupporterSchedule} />
 
       <ConfirmDialog
         open={!!openingToAll}

@@ -84,17 +84,17 @@ describe('the details window of a Supporter-only listing', () => {
     expect(screen.queryByText(/Supporter-only until/)).toBeNull();
   });
 
-  it('gives an admin an End Date control, and a moderator none', async () => {
+  it('gives an admin a Schedule control, and a moderator none', async () => {
     const capabilities = { localLibrary: true, deviceDownloads: false, likes: true, comments: true, moderation: true, reports: true };
     const onEdit = vi.fn();
     const { unmount } = show(staff, { onEditSupporterEnd: onEdit, capabilities });
-    (await screen.findByRole('button', { name: /Change when it opens to everyone/ })).click();
+    (await screen.findByRole('button', { name: /Change when each tier gets it/ })).click();
     expect(onEdit).toHaveBeenCalledTimes(1);
     unmount();
 
     const mod = { id: 'm1', username: 'a-mod', accountType: 'mod' } as unknown as WorldRecord;
     show(mod, { onEditSupporterEnd: onEdit, capabilities });
     await screen.findByRole('button', { name: 'Patreon' });
-    expect(screen.queryByRole('button', { name: /Change when it opens to everyone/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Change when each tier gets it/ })).toBeNull();
   });
 });

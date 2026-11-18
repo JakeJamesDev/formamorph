@@ -655,10 +655,10 @@ export function RemoteWorldDetailsModal({
               </Tip>
             )}
             {world && onEditSupporterEnd && isSupporterOnly(world) && canHaveEndDate(kindOf(world)) && capabilities.moderation && isAdmin(currentUser) && (
-              <Tip tip="Change when it opens to everyone">
+              <Tip tip="Change when each tier gets it">
                 <Button variant="ghost" size="sm" className="shrink-0" onClick={() => onEditSupporterEnd(world)}>
                   <CalendarClock className="h-4 w-4" />
-                  End Date
+                  Schedule
                 </Button>
               </Tip>
             )}

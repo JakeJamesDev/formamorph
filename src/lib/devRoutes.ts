@@ -25,7 +25,7 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  on a sample Body; the real rows are at `modal=worldEditor&tab=items&subtab=equipment&fixture=items`.
  *  `road` shows the full-screen scene on the level `tab=` names (`supporter`, `supporter_plus`, `supporter_top`). `tab=checklist` opens the support checklist, and `subtab=` picks a canned state
  *  (`start`, `signedIn`, `visited`, `noPledge`, `linked`, `finished`).
- *  `supporterEnd` opens the Supporter-only end-date dialog on a listing ending in 30 days; `tab=none` opens it on one with no end date.
+ *  `supporterEnd` opens the Supporter-only schedule dialog on a three-stage listing; `tab=none` opens it on one with no schedule.
  *  `supporterSchedule` shows a Supporter-only card with a three-stage tier schedule; `tab=details` opens its details window.
  *  `mailHistory` takes `tab=marked|unmarked|empty|failed` for canned history (`devMailHistorySample.ts`).
  *  Players never navigate to these. */
