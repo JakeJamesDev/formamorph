@@ -34,4 +34,4 @@ When an admin publishes a new Supporter-only Mascot or World listing, the Publis
 **For you**
 - The Publish dialog's schedule fields on a new Mascot or World as an admin: the labels ("Beacon Days"), the hints ("Skipped. Opens …") and the "Go Public After" switch.
 - The Supporter-Only Schedule dialog from the card and the details window: the "Schedule" button, the "Opens with the public date" and "Never opens" hints.
-- Saving an unchanged legacy listing (no stages) makes its lower tiers open at the public date, not at publish.
+- Saving an unchanged legacy listing (no stages) keeps its lower tiers open (fixed in 8151a169e), but writes stage rows, so its mark switches to the full schedule.

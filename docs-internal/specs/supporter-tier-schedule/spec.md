@@ -32,6 +32,7 @@ Settled in the grill on 2026-11-17. A ruling reopens on new evidence, never on a
 | Q7 | A Supporter below the current stage sees an upgrade prompt that links to the Patreon page. A non-Supporter sees today's Patreon state. |
 | Q8 | An admin can edit any stage until the listing goes public, including moving a passed stage back into the future. Copies already downloaded stay, per Q1. |
 | Q9 | Only Mascot and World listings get a schedule, the same kinds as R16. |
+| Q6a | The released app never reads a 403 body, so older clients show a generic download error, not the server's tier and date. Accepted at close, 2026-11-18. |
 | Q10 | No notice goes out when a stage opens. Players see the change only on the listing. |
 
 ## User Stories
