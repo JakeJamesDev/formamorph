@@ -140,6 +140,11 @@ describe('a mid-game Option change', () => {
     expect(goldOf(settled.state.stats)).toMatchObject({ value: 100, max: 100, regen: 1 });
   });
 
+  it('gives a save made on Easy the base max once the author deletes the Option (Q30)', () => {
+    const settled = settleTraits(stateOf([easyGold(150)]), worldOf([], { diff: 'easy' }));
+    expect(goldOf(settled.state.stats)).toMatchObject({ value: 100, max: 100, regen: 1 });
+  });
+
   it('never applies a starting row again', () => {
     const settled = settleTraits(stateOf([playerStat(gold, { value: 10, max: 50, regen: 0 })]), worldOf([difficulty()], { diff: 'easy' }));
     expect(goldOf(settled.state.stats).value).toBe(10);

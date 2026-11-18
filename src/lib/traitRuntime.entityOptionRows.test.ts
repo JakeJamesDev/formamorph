@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { entityStatTraitsInForce, settleTraits, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
 import { activeStatEnabled } from './traitEffects';
 import { openingFold, type OpeningFoldWorld } from './openingState';
+import { backfillEntityStats } from './entityStats';
 import type { ChoiceWorldOption, Entity, OptionStatChange, OptionStatToggle, PlayerStat, Stat, StatChange, StatGroup, StatLink, Trait } from '@/types';
 
 /** Option rows with an owner move that one entity's own stats (Q6, Q10, Q19–Q20). */
@@ -100,6 +101,31 @@ describe('a mid-game Option change on entity stats', () => {
   it('stacks with the entity’s own trait rows on the same stat', () => {
     const settled = settleTraits(playState(), hardWorld(hardRows, 'hard')).state;
     expect(valueOf(settled.entityStats?.wolf, 'health')).toMatchObject({ value: 50, max: 110, regen: 1 + 4 - 2 });
+  });
+
+  it('gives an entity its base bounds once the world drops the last row naming it (Q30)', () => {
+    const start = playState({ entityStats: { ...playState().entityStats, dragon: [playerStat(health, { value: 150, max: 200, regen: 3 })] } });
+    const wolfOnly = difficulty([], [{ statId: 'health', type: 'regen', value: -2, ownerId: 'wolf' }]);
+    const settled = settleTraits(start, hardWorld(wolfOnly, 'easy')).state;
+    expect(valueOf(settled.entityStats?.dragon, 'health')).toMatchObject({ value: 100, max: 100, regen: 1 });
+  });
+
+  it('holds an entity stat backfilled after the save at one trait raise across settles (Q30)', () => {
+    // The author added the Wolf after the save; its Health is backfilled from the world, then settles every turn.
+    const start = playState({ entityStats: backfillEntityStats({}, [wolf]) });
+    const once = settleTraits(start, owners).state;
+    const twice = settleTraits(once, owners).state;
+    expect(valueOf(twice.entityStats?.wolf, 'health')).toMatchObject({ max: 110, regen: 4 });
+    expect(twice).toBe(once);
+  });
+
+  it('holds a saved entity stat with no bases at its saved bounds across settles (Q30)', () => {
+    // A save holds the Wolf's Health without bases, at the bounds Thick gave it.
+    const { baseMin: _min, baseMax: _max, baseRegen: _regen, ...bare } = playerStat(health, { max: 110, regen: 5 });
+    const once = settleTraits(playState({ entityStats: { wolf: [bare as PlayerStat] } }), owners).state;
+    const twice = settleTraits(once, owners).state;
+    expect(valueOf(twice.entityStats?.wolf, 'health')).toMatchObject({ max: 110, regen: 5 });
+    expect(twice).toBe(once);
   });
 
   it('does not throw for a row naming a deleted entity', () => {

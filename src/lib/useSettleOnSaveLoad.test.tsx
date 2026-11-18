@@ -82,6 +82,21 @@ describe('settling traits on save load', () => {
     expect(loadInto(state, { traits: [ring, ward], groups: [] })).not.toHaveBeenCalled();
   });
 
+  it('derives the max from the traits in force, frozen copies included, and clamps the value under it (Q30)', () => {
+    // The save holds Frail at -30 max; the author has since softened it to -10. The save's copy is what holds.
+    const frail = (value: number): Trait => ({ id: 'frail', name: 'Frail', playerToggle: true, statChanges: [{ statId: 'h', value, type: 'max' }] });
+    const state = saved({ traits: [frail(-30)], stats: [{ ...stat, value: 90 }], appliedValues: { frail: {} } });
+    const commit = loadInto(state, { traits: [frail(-10)], groups: [] });
+    expect(commit).toHaveBeenCalledTimes(1);
+    expect(commit.mock.calls[0][0].state.stats[0]).toMatchObject({ max: 70, value: 70 });
+  });
+
+  it('keeps the AI, item and code deltas when it re-derives (Q30)', () => {
+    const held: PlayerStat = { ...stat, max: 100, value: 100, aiMaxDelta: 5, itemDelta: { max: 7 }, codeDelta: { max: -2 } };
+    const commit = loadInto(saved({ stats: [held] }), { traits: [], groups: [] });
+    expect(commit.mock.calls[0][0].state.stats[0]).toMatchObject({ max: 110, value: 100 });
+  });
+
   it('waits for a pending persona, then settles against the world it brings', () => {
     const commit = vi.fn<(result: GatedTraitResult) => void>();
     // Until the library persona lands, its world is missing the Always On trait it carries.
@@ -107,6 +122,8 @@ describe('settling traits on save load', () => {
       global: { traits: [], groups: [] }, owners: [{ id: 'albus', name: 'Albus', traits: [paladin], groups: [] }],
     };
     const ownedTraits = { albus: { chosen: ['paladin'] } };
+    /** Health as a save under Paladin stores it. */
+    const paladinHealth: PlayerStat = { ...stat, max: 110 };
     /** Health as the save stored it: the code held the max at 60 over base 100 and Paladin's 10. */
     const legacy = (): LegacyCodeBoundsStat => ({ ...stat, max: 60, codeBounds: { max: 60 } });
     const snapshot = (globalStats: PlayerStat[]): GameState => ({
@@ -141,7 +158,7 @@ describe('settling traits on save load', () => {
     });
 
     it('become code deltas in every history snapshot too', () => {
-      const state = saved({ ownedTraits, appliedValues: { 'albus/paladin': {} } });
+      const state = saved({ stats: [paladinHealth], ownedTraits, appliedValues: { 'albus/paladin': {} } });
       const plain = snapshot([stat]);
       const { commit, commitHistory } = load(state, [snapshot([legacy()]), plain]);
       expect(commit).not.toHaveBeenCalled();
@@ -159,8 +176,8 @@ describe('settling traits on save load', () => {
     });
 
     it('leave a save without them uncommitted', () => {
-      const state = saved({ ownedTraits, appliedValues: { 'albus/paladin': {} } });
-      const { commit, commitHistory } = load(state, [snapshot([stat])]);
+      const state = saved({ stats: [paladinHealth], ownedTraits, appliedValues: { 'albus/paladin': {} } });
+      const { commit, commitHistory } = load(state, [snapshot([paladinHealth])]);
       expect(commit).not.toHaveBeenCalled();
       expect(commitHistory).not.toHaveBeenCalled();
     });

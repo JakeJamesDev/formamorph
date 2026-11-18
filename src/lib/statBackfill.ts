@@ -18,7 +18,10 @@ export function backfillPlayerStats(stats: PlayerStat[], worldStats: Stat[]): Pl
   const have = new Set(stats.map((s) => s.id));
   const missing = worldStats.filter((s) => s && s.id != null && !have.has(s.id));
   if (missing.length === 0) return stats;
-  const seeded = missing.map((s) => ({ ...s, value: statStartValue(s) })) as PlayerStat[];
+  // The authored bounds are the bases, so the settle adds the traits in force once.
+  const seeded = missing.map((s): PlayerStat => ({
+    ...s, value: statStartValue(s), baseMin: s.min, baseMax: s.max, baseRegen: s.regen ?? 0, aiMaxDelta: 0,
+  }));
   return [...stats, ...seeded];
 }
 

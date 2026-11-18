@@ -82,6 +82,10 @@ const commit = (g: Gameplay, next: TraitRuntimeState) => {
 };
 
 const valueOf = (stats: PlayerStat[]) => stats.find((s) => s.id === 'vigor')!.value;
+/** A stat the load backfills: its start value, with its authored bounds as its bases. */
+const backfilled = (stat: Stat): PlayerStat => ({
+  ...stat, value: stat.value ?? 0, baseMin: stat.min, baseMax: stat.max, baseRegen: stat.regen ?? 0, aiMaxDelta: 0,
+});
 
 describe('trait movement records across a save/load round trip', () => {
   it('gives back only what the trait actually moved, on a trait acquired before the save', async () => {
@@ -326,7 +330,7 @@ describe('owned trait state across a save/load round trip', () => {
     await act(async () => {
       await live().loadGame('save-entity-stats', [], [authored], [{ id: 'ash', stats: [trust, stock] }, { id: 'bob' }]);
     });
-    expect(live().entityStats).toEqual({ ash: [{ ...trust, value: 33 }, { ...stock, value: 6 }] });
+    expect(live().entityStats).toEqual({ ash: [{ ...trust, value: 33 }, backfilled(stock)] });
   });
 
   it('drops the stored code bounds key from each entity stat, live and in every snapshot, with no migration', async () => {
@@ -377,7 +381,7 @@ describe('owned trait state across a save/load round trip', () => {
     await act(async () => { await EntityStorageService.storeEntity({ id: lib.id, name: lib.name, data: { ...lib, stats: [trust, stock] } }); });
     await act(async () => { live().setEntityStats({}); });
     await act(async () => { await live().loadGame('save-q74', [], [authored], []); });
-    await waitFor(() => expect(live().entityStats[lib.id]).toEqual([{ ...trust, value: 33 }, { ...stock, value: 6 }]));
+    await waitFor(() => expect(live().entityStats[lib.id]).toEqual([{ ...trust, value: 33 }, backfilled(stock)]));
   });
 
   it("keeps a library persona's state, which the world never holds", async () => {

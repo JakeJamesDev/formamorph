@@ -27,7 +27,7 @@ import {
   type GateStates, type GateStats, type GateTraitRef, type GateTree,
 } from './traitGates';
 import { mapScoped, partOf, playedEntityIds, scoped, scopedEntries, type OwnerId, type Scoped } from './scope';
-import { optionRowOwnerIds, optionStatTraits, valuedOptions } from './worldOptions';
+import { optionStatTraits } from './worldOptions';
 
 /** What a trait's last switch actually moved: record key → stat id → value delta, keyed as `recordKey` and
  *  `ownStatsRecordKey` (lib/ownedTraitState) spell it. */
@@ -446,19 +446,18 @@ export function applyOptionEntityStarts(state: TraitRuntimeState, world: TraitWo
 
 /** Stats re-derived under `active`, a value moving only where a new bound clamps it; the same array when none moves. */
 function rebounded(stats: PlayerStat[], active: readonly Trait[]): PlayerStat[] {
-  const next = settleValues(stats, deriveEffectiveStats(stats, active), new Map(), false);
+  // A stat saved without bases gets them first, or each settle would add the traits again.
+  const based = stats.some((stat) => stat.baseMax === undefined) ? recoverStatBases(stats, active) : stats;
+  const next = settleValues(stats, deriveEffectiveStats(based, active), new Map(), false);
   return next.every((stat, i) => stat === stats[i]) ? stats : next;
 }
 
-/** `state`'s global stats, and each entity's an Option row names, re-derived under the current Option values. A stat
- *  on its cap stays put under a raised one. The same state in a world with no valued Option. */
-export function withOptionBounds(state: TraitRuntimeState, world: TraitWorld): TraitRuntimeState {
-  if (!valuedOptions(world.options).length) return state;
+/** `state`'s global stats and every held entity's stats re-derived under the Option rows and traits in force (Q30).
+ *  A stat on its cap stays put under a raised one. */
+export function withDerivedBounds(state: TraitRuntimeState, world: TraitWorld): TraitRuntimeState {
   const stats = rebounded(state.stats, statTraitsInForce(state, world));
   let entityStats = state.entityStats;
-  for (const ownerId of optionRowOwnerIds(world.options)) {
-    const held = state.entityStats?.[ownerId];
-    if (!held) continue;
+  for (const [ownerId, held] of Object.entries(state.entityStats ?? {})) {
     const next = rebounded(held, entityStatTraitsInForce(state.ownedTraits, world, ownerId));
     if (next !== held) entityStats = { ...entityStats, [ownerId]: next };
   }
@@ -1053,7 +1052,7 @@ export type TraitSettle = (state: TraitRuntimeState, world: TraitWorld, nameOf: 
  * Settle every owner's traits against every gate: traits whose gate stopped holding switch off, dependents
  * first, each world trait reversed through its record; traits a cascade turned off switch back on once
  * their gate holds again. An Always On world trait the player lacks is acquired as it turns on. The same
- * state comes back when nothing moves. The Option values' bounds re-derive first, so an Option change settles here.
+ * state comes back when nothing moves. Every bound re-derives first, so an Option change settles here.
  */
 export function settleTraits(
   unbounded: TraitRuntimeState,
@@ -1061,7 +1060,7 @@ export function settleTraits(
   nameOf: (trait: Trait) => string = (trait) => trait.name,
   by?: string,
 ): GatedTraitResult {
-  const state = withOptionBounds(unbounded, world);
+  const state = withDerivedBounds(unbounded, world);
   const result = settle(traitGateInput(state, world), cascadeOffInput(state.cascadeOffTraitIds));
   const held = (refs: GateTraitRef[]) => refs.flatMap(({ ownerId, traitId }) => {
     const trait = ownerId === null
