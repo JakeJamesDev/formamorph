@@ -41,6 +41,8 @@ The rows act on stats like a trait's rows do, and they stack with traits. They n
 - **Q21 Picker pages.** World holds the global stats. Each world entity that holds stats (own or from a Blueprint) gets a page; entities with none are left out. Library entities get no page. (Ticket 02.)
 - **Q22 Picker scope.** Only Option rows get the Breadcrumb Picker. The trait stat-row editor keeps its Select. (Ticket 02.)
 - **Q23 Changelog.** Tickets 02 and 03 write no fragment. The spec session folds a clause into ticket 01's entry on main after each landing. (Tickets 02, 03.)
+- **Q24 Close review gaps.** The close review found three gaps, now tickets 04–06: the Enter World preview's entity starts, stale bounds on load, and the paged-back AI scene.
+- **Q25 Toggles not listed.** Player lists show stat changes only, never toggle rows, matching the trait lists.
 
 ## User Stories
 
