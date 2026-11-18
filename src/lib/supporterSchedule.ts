@@ -20,7 +20,7 @@ export interface SupporterScheduleStage {
 }
 
 /** The listing fields the schedule reads. */
-export type ScheduledListing ={ supporter_only?: unknown; supporter_until?: unknown; supporterSchedule?: unknown };
+export type ScheduledListing = { supporter_only?: unknown; supporter_until?: unknown; supporterSchedule?: unknown };
 
 /** Whether `value` is a tier key this build knows. */
 export const isSupporterTier = (value: unknown): value is SupporterTier =>
@@ -78,7 +78,7 @@ export const belowOpenTier = (tier: SupporterTier | null, listing: ScheduledList
 
 /**
  * The lines of the schedule mark: each tier row, then the public date. Empty for a listing with no tier
- * rows, which keeps today's end-date mark.
+ * rows, which shows the single end-date mark.
  */
 export function scheduleStages(listing: ScheduledListing): SupporterScheduleStage[] {
   if (listing.supporter_only !== true) return [];

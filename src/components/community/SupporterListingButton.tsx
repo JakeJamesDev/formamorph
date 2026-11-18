@@ -50,7 +50,7 @@ const TIPS: Record<SupporterListingAction, string> = {
   redownload: 'Re-download this world',
   unsupported: "You can't install this kind of listing yet",
   patreon: 'Become a Supporter on Patreon to install this',
-  upgrade: "Your tier can't get this yet. Upgrade on Patreon to get it now",
+  upgrade: "Your tier can't get this yet. Upgrade on Patreon to get it now.",
 };
 
 const ICONS = { 'sign-in': LogIn, checking: Loader2, install: Download, installed: Check, download: Download, update: Download, redownload: RefreshCw, unsupported: Download, patreon: PatreonIcon, upgrade: PatreonIcon } as const;

@@ -52,7 +52,7 @@ export function SupporterScheduleFields({ text, onTextChange, goPublic, onGoPubl
             <Hint as="div" role={invalid ? 'alert' : undefined}>
               {invalid
                 ? SCHEDULE_DAYS_RANGE
-                : anyDays && !blank ? `Opens ${dateOf(tier)}` : anyDays ? `Skipped. Opens ${dateOf(tier)}` : 'Opens at publish'}
+                : anyDays && !blank ? `Opens ${dateOf(tier)}` : anyDays ? `Skipped. Opens ${dateOf(tier)}.` : 'Opens at publish'}
             </Hint>
           </div>
         );
@@ -62,7 +62,7 @@ export function SupporterScheduleFields({ text, onTextChange, goPublic, onGoPubl
           <div className="text-label font-semibold">Go Public After</div>
           <Hint as="div">
             {!anyDays
-              ? 'Enter days to schedule it. With none, the listing stays Supporter-only with no end date'
+              ? 'Enter days to schedule it. With none, the listing stays Supporter-only with no end date.'
               : goPublic && plan.publicAt ? `Opens to everyone on ${formatSupporterDate(plan.publicAt)}` : 'Stays Supporter-only with no end date'}
           </Hint>
         </div>

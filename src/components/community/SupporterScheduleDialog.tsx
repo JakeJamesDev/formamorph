@@ -52,47 +52,47 @@ function ScheduleBody({ world, busy, onClose, onSave }: ScheduleBodyProps) {
   return (
     <>
       <DialogHeader>
-          <DialogTitle>Supporter-Only Schedule</DialogTitle>
-          <DialogDescription>
-            The top tier has the listing from the start. Set when each lower tier gets it, then when everyone does.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          {SCHEDULE_ROW_TIERS.map((tier) => {
-            const id = `edit-supporter-opens-${tier}`;
+        <DialogTitle>Supporter-Only Schedule</DialogTitle>
+        <DialogDescription>
+          The top tier has the listing from the start. Set when each lower tier gets it, then when everyone does.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-3">
+        {SCHEDULE_ROW_TIERS.map((tier) => {
+          const id = `edit-supporter-opens-${tier}`;
 
-            return (
-              <div key={tier} className="space-y-1.5">
-                <Label htmlFor={id}>{`${nameOf(tier)} Opens`}</Label>
-                <Input
-                  id={id}
-                  type="datetime-local"
-                  value={form.opensAt[tier] ?? ''}
-                  onChange={(e) => edit({ opensAt: { ...form.opensAt, [tier]: e.target.value } })}
-                  className="max-w-60"
-                />
-                <Hint as="div">{form.opensAt[tier] ? 'Opens at this time' : form.publicAt ? 'Opens with the public date' : 'Never opens'}</Hint>
-              </div>
-            );
-          })}
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-supporter-public">Everyone Opens</Label>
-            <Input
-              id="edit-supporter-public"
-              type="datetime-local"
-              value={form.publicAt}
-              onChange={(e) => edit({ publicAt: e.target.value })}
-              className="max-w-60"
-            />
-            <Hint as="div">{form.publicAt ? 'Opens to everyone at this time' : 'No end date'}</Hint>
-          </div>
-          {dates === null && <Hint as="div" role="alert">Enter a valid date and time, or clear the field</Hint>}
-          {refusal && <Hint as="div" role="alert" className="text-destructive">{refusal}</Hint>}
+          return (
+            <div key={tier} className="space-y-1.5">
+              <Label htmlFor={id}>{`${nameOf(tier)} Opens`}</Label>
+              <Input
+                id={id}
+                type="datetime-local"
+                value={form.opensAt[tier] ?? ''}
+                onChange={(e) => edit({ opensAt: { ...form.opensAt, [tier]: e.target.value } })}
+                className="max-w-60"
+              />
+              <Hint as="div">{form.opensAt[tier] ? 'Opens at this time' : form.publicAt ? 'Opens with the public date' : 'Never opens'}</Hint>
+            </div>
+          );
+        })}
+        <div className="space-y-1.5">
+          <Label htmlFor="edit-supporter-public">Everyone Opens</Label>
+          <Input
+            id="edit-supporter-public"
+            type="datetime-local"
+            value={form.publicAt}
+            onChange={(e) => edit({ publicAt: e.target.value })}
+            className="max-w-60"
+          />
+          <Hint as="div">{form.publicAt ? 'Opens to everyone at this time' : 'No end date'}</Hint>
         </div>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" disabled={busy} onClick={onClose}>Cancel</Button>
-          <Button disabled={busy || dates === null} onClick={() => void save()}>Save</Button>
-        </DialogFooter>
+        {dates === null && <Hint as="div" role="alert">Enter a valid date and time, or clear the field</Hint>}
+        {refusal && <Hint as="div" role="alert" className="text-destructive">{refusal}</Hint>}
+      </div>
+      <DialogFooter className="gap-2">
+        <Button variant="outline" disabled={busy} onClick={onClose}>Cancel</Button>
+        <Button disabled={busy || dates === null} onClick={() => void save()}>Save</Button>
+      </DialogFooter>
     </>
   );
 }
