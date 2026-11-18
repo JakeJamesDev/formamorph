@@ -34,6 +34,15 @@ describe('setRemoteWorldSupporterSchedule', () => {
     expect(saved).toEqual({ until: dates.publicAt, schedule: held });
   });
 
+  it('PUTs the older supporterUntil form for a public date alone, with no schedule key', async () => {
+    const fetchMock = stubFetch({ ok: true, body: { data: { id: 'w1', supporterOnly: true, supporterUntil: dates.publicAt } } });
+
+    const saved = await WorldStorageService.setRemoteWorldSupporterSchedule('w1', { publicAt: dates.publicAt });
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ supporterOnly: true, supporterUntil: dates.publicAt });
+    expect(saved).toEqual({ until: dates.publicAt, schedule: [] });
+  });
+
   it('reads an answer with no public date and no stages as none', async () => {
     stubFetch({ ok: true, body: { data: { id: 'w1', supporterOnly: true } } });
 

@@ -138,3 +138,23 @@ export function datesFromForm(form: ScheduleForm, listing: ScheduledListing): Su
 
   return { opensAt, publicAt };
 }
+
+/** The save of a legacy listing whose lower tiers the admin left alone: only the public date goes to the server. */
+export interface SupporterPublicDateSave {
+  publicAt: string | null;
+}
+
+export type SupporterScheduleSave = SupporterDatesSchedule | SupporterPublicDateSave;
+
+/**
+ * What the edit dialog saves, or null when a field holds something that is not a date. A listing with no
+ * stages whose lower tiers still match their prefill stays a stageless listing: only the public date is sent.
+ */
+export function saveFromForm(form: ScheduleForm, initial: ScheduleForm, listing: ScheduledListing): SupporterScheduleSave | null {
+  const legacy = parseSupporterSchedule(listing.supporterSchedule).length === 0;
+  const untouched = SCHEDULE_ROW_TIERS.every((tier) => (form.opensAt[tier] ?? '') === (initial.opensAt[tier] ?? ''));
+  if (!legacy || !untouched) return datesFromForm(form, listing);
+  const publicAt = isoOf(form.publicAt, typeof listing.supporter_until === 'string' ? listing.supporter_until : null);
+
+  return publicAt === undefined ? null : { publicAt };
+}

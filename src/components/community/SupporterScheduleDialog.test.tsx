@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import userEvent from '@testing-library/user-event';
 import { SupporterScheduleDialog } from './SupporterScheduleDialog';
 import { resetTierNamesForTest, seedTierNamesForTest } from '@/lib/tierNames';
-import { toInputValue, type SupporterDatesSchedule } from '@/lib/supporterScheduleEdit';
+import { toInputValue, type SupporterDatesSchedule, type SupporterScheduleSave } from '@/lib/supporterScheduleEdit';
 import type { WorldRecord } from '@/components/WorldDetails';
 
 const DAY = 86_400_000;
@@ -15,7 +15,7 @@ const staged = {
   supporterSchedule: [{ tier: 'supporter_plus', opensAt: iso(5) }, { tier: 'supporter', opensAt: iso(10) }],
 } as unknown as WorldRecord;
 
-type Save = (world: WorldRecord, schedule: SupporterDatesSchedule) => Promise<string | null>;
+type Save = (world: WorldRecord, schedule: SupporterScheduleSave) => Promise<string | null>;
 const input = (name: string) => screen.getByLabelText(name) as HTMLInputElement;
 
 beforeEach(() => { seedTierNamesForTest({ supporter_top: 'Beacon', supporter_plus: 'Flame', supporter: 'Spark' }); });
@@ -53,7 +53,7 @@ describe('the schedule dialog', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    expect(onSave.mock.calls[0][1].opensAt.supporter_plus).toBe(new Date('2026-12-25T10:00').toISOString());
+    expect((onSave.mock.calls[0][1] as SupporterDatesSchedule).opensAt.supporter_plus).toBe(new Date('2026-12-25T10:00').toISOString());
   });
 
   it('clears the public date and a tier by emptying the field', async () => {
@@ -66,6 +66,44 @@ describe('the schedule dialog', () => {
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave).toHaveBeenCalledWith(staged, { opensAt: { supporter_plus: iso(5), supporter: null }, publicAt: null });
+  });
+
+  describe('a legacy listing with no stages', () => {
+    const legacy = { _id: 'w3', supporter_only: true, supporter_until: iso(15) } as unknown as WorldRecord;
+
+    it('saves only the public date when no lower tier was touched', async () => {
+      const onSave = vi.fn<Save>(async () => null);
+      render(<SupporterScheduleDialog world={legacy} busy={false} onClose={() => {}} onSave={onSave} />);
+
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+      await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+      expect(onSave).toHaveBeenCalledWith(legacy, { publicAt: iso(15) });
+    });
+
+    it('changes only the public date when only that field moved', async () => {
+      const onSave = vi.fn<Save>(async () => null);
+      render(<SupporterScheduleDialog world={legacy} busy={false} onClose={() => {}} onSave={onSave} />);
+
+      fireEvent.change(input('Everyone Opens'), { target: { value: '2027-01-02T08:15' } });
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+      await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+      expect(onSave).toHaveBeenCalledWith(legacy, { publicAt: new Date('2027-01-02T08:15').toISOString() });
+    });
+
+    it('writes the full schedule once a lower tier changes', async () => {
+      const onSave = vi.fn<Save>(async () => null);
+      render(<SupporterScheduleDialog world={legacy} busy={false} onClose={() => {}} onSave={onSave} />);
+
+      fireEvent.change(input('Spark Opens'), { target: { value: '2026-12-25T10:00' } });
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+      await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+      const sent = onSave.mock.calls[0][1] as SupporterDatesSchedule;
+      expect(sent.opensAt.supporter).toBe(new Date('2026-12-25T10:00').toISOString());
+      expect(sent.publicAt).toBe(iso(15));
+    });
   });
 
   it('says a blank tier opens with the public date, and never opens without one', () => {

@@ -1,6 +1,6 @@
 # 04: Client: An unchanged legacy save stays a legacy listing
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -17,7 +17,15 @@ A legacy timed listing has no stage rows, and every tier has been open since pub
 
 ## Acceptance criteria
 
-- [ ] Saving a legacy listing with its lower tiers untouched leaves it with no stage rows. Its mark reads as before.
-- [ ] Changing the public date of a legacy listing with its tiers untouched changes only the public date.
-- [ ] Changing any lower tier of a legacy listing writes the full schedule, as today.
-- [ ] Each guard fails with the bug put back.
+- [x] Saving a legacy listing with its lower tiers untouched leaves it with no stage rows. Its mark reads as before. (Dialog test "saves only the public date when no lower tier was touched"; service test shows the body is `supporterUntil` with no schedule key. The server writes no rows for that form, read in `worldController.js`, not run live.)
+- [x] Changing the public date of a legacy listing with its tiers untouched changes only the public date. (Dialog test "changes only the public date when only that field moved".)
+- [x] Changing any lower tier of a legacy listing writes the full schedule, as today. (Dialog test "writes the full schedule once a lower tier changes".)
+- [x] Each guard fails with the bug put back. (Forcing the full-schedule path failed the two untouched tests in each file; dropping the untouched check failed the lower-tier tests.)
+
+## Landed
+
+**Not verified**
+- A live save against the server: the no-rows result rests on reading `worldController.js` and `readEndDate`, not on a request.
+
+**For you**
+- Open a legacy timed listing in the schedule dialog as admin, save without changes, and check the card mark still shows the single public date.

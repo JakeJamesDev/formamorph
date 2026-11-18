@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { datesFromForm, formFromListing, planSchedule, toInputValue } from '@/lib/supporterScheduleEdit';
+import { datesFromForm, formFromListing, planSchedule, saveFromForm, toInputValue } from '@/lib/supporterScheduleEdit';
 
 const NOW = Date.UTC(2026, 10, 18, 12, 30, 15, 250);
 const DAY = 86_400_000;
@@ -91,6 +91,44 @@ describe('the edit form', () => {
       expect(opens).toEqual(expect.any(String));
       expect(new Date(opens as string).getTime()).toBeLessThanOrEqual(NOW);
     }
+  });
+
+  describe('saveFromForm', () => {
+    const legacy = { supporter_only: true, supporter_until: iso(15) };
+
+    it('sends the public date alone for a stageless listing with its tiers untouched', () => {
+      const initial = formFromListing(legacy, NOW);
+
+      expect(saveFromForm({ ...initial }, initial, legacy)).toEqual({ publicAt: iso(15) });
+    });
+
+    it('sends a changed public date alone while the tiers stay untouched', () => {
+      const initial = formFromListing(legacy, NOW);
+
+      expect(saveFromForm({ ...initial, publicAt: '' }, initial, legacy)).toEqual({ publicAt: null });
+    });
+
+    it('sends the full schedule once a lower tier changes', () => {
+      const initial = formFromListing(legacy, NOW);
+      const form = { ...initial, opensAt: { ...initial.opensAt, supporter: '2026-12-01T09:00' } };
+
+      expect(saveFromForm(form, initial, legacy)).toMatchObject({ opensAt: { supporter: new Date('2026-12-01T09:00').toISOString() } });
+    });
+
+    it('sends the full schedule for a listing that has stages, tiers untouched', () => {
+      const initial = formFromListing(listing);
+
+      expect(saveFromForm({ ...initial }, initial, listing)).toEqual({
+        opensAt: { supporter_plus: iso(5), supporter: null },
+        publicAt: iso(15),
+      });
+    });
+
+    it('refuses a public date that is not a date', () => {
+      const initial = formFromListing(legacy, NOW);
+
+      expect(saveFromForm({ ...initial, publicAt: 'soon' }, initial, legacy)).toBeNull();
+    });
   });
 
   it('refuses a value that is not a date', () => {

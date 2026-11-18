@@ -7,7 +7,7 @@ import { useMountedRef } from '@/lib/useMountedRef';
 import { isSupporterOnly } from '@/lib/supporterListingAction';
 import { formatSupporterDate } from '@/lib/supporterEndDate';
 import { SupporterScheduleDialog } from '@/components/community/SupporterScheduleDialog';
-import type { SupporterDatesSchedule } from '@/lib/supporterScheduleEdit';
+import type { SupporterScheduleSave } from '@/lib/supporterScheduleEdit';
 import { responseError } from '@/services/responseError';
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -868,7 +868,7 @@ const CommunityCreationsBrowser = ({
   const [editingEnd, setEditingEnd] = useState<WorldRecord | null>(null);
   const [savingEnd, setSavingEnd] = useState(false);
   // Resolves to the server's refusal, which the dialog shows, or null once the schedule is saved.
-  const saveSupporterSchedule = async (world: WorldRecord, schedule: SupporterDatesSchedule): Promise<string | null> => {
+  const saveSupporterSchedule = async (world: WorldRecord, schedule: SupporterScheduleSave): Promise<string | null> => {
     const worldId = String(world._id || world.id);
     const noun = KIND_LABELS[kindOf(world)].one;
     setSavingEnd(true);

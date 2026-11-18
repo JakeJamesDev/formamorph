@@ -16,7 +16,7 @@ import { clearUnreadableWorld, reportUnreadableWorld, syncUnreadableWorlds } fro
 import { contentHash } from '@/lib/contentHash';
 import { isHiddenCopy } from '@/lib/supporterCopyVisibility';
 import { parseSupporterSchedule, type SupporterScheduleEntry } from '@/lib/supporterSchedule';
-import type { SupporterDatesSchedule } from '@/lib/supporterScheduleEdit';
+import type { SupporterScheduleSave } from '@/lib/supporterScheduleEdit';
 import { announceWorldDeleted, announceWorldSaved } from '@/lib/worldChangeSignal';
 import {
   forgetDeletedDefaultWorld, readDeletedDefaultWorlds, seedWorldData, tombstoneDefaultWorld, type BundledWorlds, type DefaultWorldSeed,
@@ -989,17 +989,21 @@ class WorldStorageService {
    * Replace the tier schedule of a Supporter-only listing. Staff only.
    *
    * @param worldId - The listing's server id
-   * @param schedule - Each lower tier's opening date and the public date; null clears them
+   * @param schedule - Each lower tier's opening date and the public date, or the public date alone for a listing without stages
    * @returns The public date and the stages the server now holds
    */
   async setRemoteWorldSupporterSchedule(
     worldId: string,
-    schedule: SupporterDatesSchedule,
+    schedule: SupporterScheduleSave,
   ): Promise<{ until: string | null; schedule: SupporterScheduleEntry[] }> {
     const response = await fetch(`${this.API_URL}/worlds/${worldId}/supporter-only`, {
       method: 'PUT',
       headers: authHeaders(true),
-      body: JSON.stringify({ supporterOnly: true, supporterSchedule: schedule }),
+      body: JSON.stringify(
+        'opensAt' in schedule
+          ? { supporterOnly: true, supporterSchedule: schedule }
+          : { supporterOnly: true, supporterUntil: schedule.publicAt },
+      ),
     });
 
     if (!response.ok) throw await responseError(response, 'Failed to change the schedule');

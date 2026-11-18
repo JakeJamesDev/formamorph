@@ -9,10 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   SCHEDULE_ROW_TIERS,
-  datesFromForm,
   formFromListing,
+  saveFromForm,
   type ScheduleForm,
-  type SupporterDatesSchedule,
+  type SupporterScheduleSave,
 } from '@/lib/supporterScheduleEdit';
 import { useTierName } from '@/lib/tierNames';
 import type { WorldRecord } from '@/components/WorldDetails';
@@ -23,7 +23,7 @@ interface SupporterScheduleDialogProps {
   busy: boolean;
   onClose: () => void;
   /** Saves the schedule. Resolves to the server's refusal, or null once it is saved. */
-  onSave: (world: WorldRecord, schedule: SupporterDatesSchedule) => Promise<string | null>;
+  onSave: (world: WorldRecord, schedule: SupporterScheduleSave) => Promise<string | null>;
 }
 
 interface ScheduleBodyProps {
@@ -37,10 +37,11 @@ interface ScheduleBodyProps {
 function ScheduleBody({ world, busy, onClose, onSave }: ScheduleBodyProps) {
   const nameOf = useTierName();
   const mounted = useMountedRef();
-  const [form, setForm] = useState<ScheduleForm>(() => formFromListing(world));
+  const [initial] = useState<ScheduleForm>(() => formFromListing(world));
+  const [form, setForm] = useState<ScheduleForm>(initial);
   const [refusal, setRefusal] = useState<string | null>(null);
 
-  const dates = datesFromForm(form, world);
+  const dates = saveFromForm(form, initial, world);
   const edit = (change: Partial<ScheduleForm>) => { setForm((prev) => ({ ...prev, ...change })); setRefusal(null); };
   const save = async () => {
     if (!dates) return;
