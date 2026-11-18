@@ -77,8 +77,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Enter World:**
     - **Clicking an entity or a group opens one page with every trait inside it.** Each group within it sits under a labeled divider with its own rules. A row's count covers everything inside it, and a dot marks a group that needs more picks.
     - **The category list folds an entity or group with its arrow, and folds itself to fit your screen.** Clicking a folded row still opens its page. Collapse All and Expand All sit on the Starting Traits line. Once you fold a row yourself, the list keeps your choice.
-  - **Supporter Tier Schedule:**
-    - **Supporter-only listings show when each tier can get them.** Cards and details windows list each tier's date and the public date. A Supporter whose tier isn't open yet sees an Upgrade button that opens Patreon.
+  - **Supporter-only listings show when each tier can get them.** Cards and details windows list each tier's date and the public date. A Supporter whose tier isn't open yet sees an Upgrade button that opens Patreon.
 - **🛠️ Developer tooling**
   - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.

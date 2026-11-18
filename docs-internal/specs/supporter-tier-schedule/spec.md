@@ -1,6 +1,7 @@
 # Spec: Supporter Tier Schedule
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-18. Tickets 01–04 done; last landing 3043d0e7e. Review: spec text corrected; gap Q6a accepted, legacy-save gap fixed in ticket 04. Closed red: lint fails only in worlds-wip/, another effort; tests green (37482).
 Spec session: supporter-tier-schedule — spec
 
 Let staff release a Supporter-only Mascot or world to the Supporter tiers one at a time: Beacon first, then Flame, then Spark, then everyone. Each stage has its own length, and any stage can be skipped. Builds on Timed Supporter Content and Supporter Worlds (`docs-internal/specs/supporter-worlds/spec.md`, rulings R1–R36) and Supporter Content (`docs-internal/specs/supporter-content/spec.md`, Q1–Q47). Spans both repos: the Formamorph client and FormamorphServer.

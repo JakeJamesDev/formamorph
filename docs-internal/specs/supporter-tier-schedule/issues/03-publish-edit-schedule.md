@@ -1,6 +1,6 @@
 # 03: Client: Set and edit a tier schedule
 
-Status: ready-for-human
+Status: done
 Blocked by: 01, 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

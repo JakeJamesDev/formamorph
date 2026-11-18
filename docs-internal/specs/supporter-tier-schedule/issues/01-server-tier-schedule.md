@@ -1,6 +1,6 @@
 # 01: Server: Tier schedule for Supporter-only listings
 
-Status: ready-for-human
+Status: done
 Base: 3ae1dab
 Repo: FormamorphServer
 Blocked by: None (can start immediately)
