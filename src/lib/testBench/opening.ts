@@ -351,7 +351,9 @@ function collisionChance(chances: number[], draws: number): number {
 
 /** Every stat a fresh game as the lens PC starts with, settled, including any the PC switches off. */
 export function settledOpeningStats(world: OpeningWorld, lens: BenchLens): PlayerStat[] {
-  return lensStartingStats(world, globalStatsOf(world.stats ?? [], world.statGroups ?? []), lensActiveTraits(world, lens), lens.persona?.id ?? null);
+  return lensStartingStats(
+    world, globalStatsOf(world.stats ?? [], world.statGroups ?? []), lensActiveTraits(world, lens), lens.persona?.id ?? null, lens.state.optionValues,
+  );
 }
 
 /** What the author picked to look at: a start from the start pool and a row from its opening pool. */

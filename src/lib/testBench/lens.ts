@@ -90,17 +90,29 @@ const personaPicks = (player: LensPlayer, active: readonly Trait[]): OwnedTraitP
 const lensEntityStats = (world: LensWorld): EntityStatValues =>
   seedWorldEntityStats({ stats: [...(world.stats ?? [])], statGroups: world.statGroups ?? [], entities: [...(world.entities ?? [])] });
 
-/** The traits that apply on the global stats: the global picks, and the global rows of the persona's picks (Q30). */
-export function lensStatTraits(world: LensWorld, active: readonly Trait[], personaId: string | null = null): Trait[] {
+/** The player's trait world with the world's Options at the lens's values. */
+const lensTraitWorld = (world: LensWorld, player: LensPlayer, optionValues?: WorldOptionValues): TraitWorld =>
+  ({ ...player.traitWorld, options: world.options ?? [], ...(optionValues && { optionValues }) });
+
+/** The sources that apply on the global stats: the Option values' rows, the global picks, and the global rows of the
+ *  persona's picks (Q30). */
+export function lensStatTraits(
+  world: LensWorld, active: readonly Trait[], personaId: string | null = null, optionValues?: WorldOptionValues,
+): Trait[] {
   const player = lensPlayer(world, personaId);
   const ownedTraits = ownedTraitStatesFrom(personaPicks(player, active));
-  return statTraitsInForce({ traits: active, disabledTraitIds: [], ownedTraits, entityStats: lensEntityStats(world) }, player.traitWorld);
+  return statTraitsInForce(
+    { traits: active, disabledTraitIds: [], ownedTraits, entityStats: lensEntityStats(world) }, lensTraitWorld(world, player, optionValues),
+  );
 }
 
-/** The global stats a fresh game under the lens starts with: the global picks, then the persona's global rows (Q33). */
-export function lensStartingStats(world: LensWorld, authored: readonly Stat[], active: readonly Trait[], personaId: string | null = null): PlayerStat[] {
+/** The global stats a fresh game under the lens starts with: the Option values' starting rows, the global picks, then
+ *  the persona's global rows (Q33). */
+export function lensStartingStats(
+  world: LensWorld, authored: readonly Stat[], active: readonly Trait[], personaId: string | null = null, optionValues?: WorldOptionValues,
+): PlayerStat[] {
   const player = lensPlayer(world, personaId);
-  return startingStatsWith(authored, active, player.traitWorld, personaPicks(player, active), lensEntityStats(world));
+  return startingStatsWith(authored, active, lensTraitWorld(world, player, optionValues), personaPicks(player, active), lensEntityStats(world));
 }
 
 /** The played entity and the ids of its picks among `active`; null with no such entity. */
@@ -311,7 +323,7 @@ export function buildLens(world: LensWorld, state: LensState): BenchLens {
     pins,
     pinLayers,
     brokenPins: brokenPinsOf(pinLayers, placeholders),
-    statEnabled: activeStatEnabled(world.stats ?? [], lensStatTraits(world, active, personaId)),
+    statEnabled: activeStatEnabled(world.stats ?? [], lensStatTraits(world, active, personaId, state.optionValues)),
     copies: copyLookup(lensBlueprints(world), lensReader(world, personaId)),
   };
 }
@@ -351,7 +363,7 @@ export function lensPinPlan(
     // An Option reads the author's pick, else its default (Q25).
     options: optionPinLists(world.options, optionValues),
     location,
-    stats: globalStatsOf(lensStartingStats(world, world.stats ?? [], active, personaId), world.statGroups ?? []),
+    stats: globalStatsOf(lensStartingStats(world, world.stats ?? [], active, personaId, optionValues), world.statGroups ?? []),
     placeholders: allPlaceholders(world),
   });
 }

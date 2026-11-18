@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { EntityIcon } from '@/lib/elementIcons';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PanelTabContent, PanelTabs } from "@/components/ui/panel-tabs";
 import { globalStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import type { SurfaceLedgerName } from "@/components/ui/surface";
@@ -20,7 +20,7 @@ import { statCodeName } from '@/lib/statCodeNames';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { colorPinOverlaps, morphPinOverlaps, traitConflicts, type TraitConflict, type TraitName } from '@/lib/traitEffects';
 import { updateOwnedTrait } from '@/lib/ownedTraits';
-import { statRowSide, type StatRow, type StatRowSide } from '@/lib/traitTree';
+import { statRowSide, type StatRow } from '@/lib/traitTree';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
 import { Hint, Meta } from '@/components/ui/typography';
@@ -30,9 +30,9 @@ import { TraitScripts } from './TraitScripts';
 import { offWorldOf, traitPanelHome } from '@/lib/scriptBoxHome';
 import { useCodeUseReveal } from '@/lib/codeUseReveal';
 import type {
-  BodyPick, ColorPin, Entity, FocusFieldHint, MorphPin, Placeholder, PlaceholderPin, Stat, StatGroup, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
+  BodyPick, ColorPin, Entity, FocusFieldHint, MorphPin, Placeholder, PlaceholderPin, Stat, StatGroup, Trait, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
-import { WorldInput } from '@/components/editor/WorldField';
+import { StatRowsEditor, type StatChoices } from '@/components/editor/StatRowsEditor';
 import { SliderNumberRow } from '@/components/editor/SliderNumberRow';
 import { ColorRowsField } from '@/components/editor/ColorRowsField';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -115,48 +115,6 @@ const ownerRowSide = (world: { stats: Stat[]; statGroups: StatGroup[] }, owner: 
 /** The Body row's None item, kept apart from every Body id. */
 const NONE_BODY = 'none:';
 
-/** The picker value of a global stat on an owner's trait, kept apart from an own stat with the same id. */
-const GLOBAL_ITEM = 'global:';
-
-/** A stat row's picker value: its Global item when it moves a global stat on an owner. */
-const pickerValue = (row: StatRow, side: StatRowSide) => (side === 'global' ? GLOBAL_ITEM + row.statId : row.statId);
-
-/** `row` pointed at the stat a picker value names; a Global item takes the global target. */
-function pickedRow<R extends StatRow>(row: R, value: string): R {
-  const rest = { ...row };
-  delete rest.target;
-  return value.startsWith(GLOBAL_ITEM)
-    ? { ...rest, statId: value.slice(GLOBAL_ITEM.length), target: 'global' }
-    : { ...rest, statId: value };
-}
-
-/** One labeled list of stats a trait's stat rows can name. */
-interface StatChoices {
-  label?: string;
-  stats: readonly Stat[];
-  /** The global stats on an owner's trait, whose items take the global target. */
-  global?: boolean;
-}
-
-/** The stat options of a trait's stat row, under a heading per list when there is more than one. */
-function StatOptions({ choices, label }: { choices: readonly StatChoices[]; label: (name: string) => string }) {
-  const items = (choice: StatChoices) => choice.stats.map((stat) => {
-    const value = choice.global ? GLOBAL_ITEM + stat.id : stat.id;
-    return <SelectItem key={value} value={value}>{label(stat.name)}</SelectItem>;
-  });
-  if (choices.length === 1) return <>{items(choices[0])}</>;
-  return (
-    <>
-      {choices.map((choice) => (
-        <SelectGroup key={choice.label}>
-          <SelectLabel>{choice.label}</SelectLabel>
-          {items(choice)}
-        </SelectGroup>
-      ))}
-    </>
-  );
-}
-
 /**
  * Right-panel editor for one trait, split across Details, Availability, Stats, Appearance, Pins and Scripts.
  *
@@ -237,27 +195,8 @@ const TraitManager = ({
     traitId: trait.id,
   });
 
-  const handleStatChangeAdd = () => {
-    apply({ statChanges: [...editingTrait.statChanges, { statId: '', value: 0, type: 'min' } as StatChange] });
-  };
-
-  const handleStatChangeUpdate = (index: number, field: string, value: string | number) => {
-    const updatedStatChanges = [...editingTrait.statChanges];
-    const row = updatedStatChanges[index];
-    updatedStatChanges[index] = field === 'statId' ? pickedRow(row, String(value)) : { ...row, [field]: value } as StatChange;
-    apply({ statChanges: updatedStatChanges });
-  };
-
-  const handleStatChangeRemove = (index: number) => {
-    const updatedStatChanges = [...editingTrait.statChanges];
-    updatedStatChanges.splice(index, 1);
-    apply({ statChanges: updatedStatChanges });
-  };
-
   const statToggles = editingTrait.statToggles ?? [];
   const setStatToggles = (next: TraitStatToggle[]) => apply({ statToggles: next.length ? next : undefined });
-  const updateStatToggle = (index: number, patch: Partial<TraitStatToggle>) =>
-    setStatToggles(statToggles.map((t, i) => (i === index ? { ...t, ...patch } : t)));
 
   // An owner's rows route to its own stats or the player's; world traits rival only the ones on the player's.
   const statWorld = { stats, statGroups: statGroups ?? [] };
@@ -424,113 +363,33 @@ const TraitManager = ({
   );
 
   const statsPanel = (
-    <>
-      <div data-tour-anchor="trait-stat-changes" className="space-y-2">
+    <StatRowsEditor
+      statChanges={editingTrait.statChanges}
+      onStatChanges={(next) => apply({ statChanges: next })}
+      statToggles={statToggles}
+      onStatToggles={setStatToggles}
+      choices={statChoices}
+      label={statLabel}
+      sideOf={rowSide}
+      showToggles={advanced}
+      togglesReadOnly={readOnly}
+      changesAnchor="trait-stat-changes"
+      changesLabel={(
         <LabelRow reset={resetControl('statChanges', 'Stat Changes')}>
           <Label>Stat Changes</Label>
           <HelpButton topicId="worldEditor.statChanges" className="h-6 w-6" />
         </LabelRow>
-        {editingTrait.statChanges.map((statChange, index) => (
-          <div key={index} className="flex space-x-2">
-            <Select
-              value={pickerValue(statChange, rowSide(statChange))}
-              onValueChange={(value) => handleStatChangeUpdate(index, 'statId', value)}
-            >
-              <SelectTrigger {...fieldFrame('statChanges', String(index), 'statId')}>
-                <SelectValue placeholder="Select stat" />
-              </SelectTrigger>
-              <SelectContent>
-                <StatOptions choices={statChoices} label={statLabel} />
-              </SelectContent>
-            </Select>
-            {/* A stat change has no id, and two can name one stat, so its place in the list names it. */}
-            <div className="w-full" {...fieldFrame('statChanges', String(index), 'value')}>
-              <WorldInput
-                type="number"
-                value={statChange.value}
-                onChange={(e) => handleStatChangeUpdate(index, 'value', Number(e.target.value))}
-              />
-            </div>
-            <Select
-              value={statChange.type}
-              onValueChange={(value) => handleStatChangeUpdate(index, 'type', value)}
-            >
-              <SelectTrigger {...fieldFrame('statChanges', String(index), 'type')}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="min">Min</SelectItem>
-                <SelectItem value="max">Max</SelectItem>
-                <SelectItem value="starting">Starting Value</SelectItem>
-                <SelectItem value="regen">Regen</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleStatChangeRemove(index)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ))}
-        <Button size="sm" onClick={handleStatChangeAdd}>Add Stat Change</Button>
-      </div>
-
-      {advanced && (
-      <div className="space-y-2">
+      )}
+      togglesLabel={(
         <div className="flex items-center gap-2">
           <Label>Stat Availability</Label>
           <HelpButton topicId="worldEditor.statAvailability" className="h-6 w-6" />
         </div>
-        {statToggles.map((toggle, index) => (
-          <div key={index} className="space-y-1">
-          <div className="flex space-x-2">
-            <Select
-              value={pickerValue(toggle, rowSide(toggle))}
-              onValueChange={(v) => setStatToggles(statToggles.map((t, i) => (i === index ? pickedRow(t, v) : t)))}
-              disabled={readOnly}
-            >
-              <SelectTrigger {...fieldFrame('statToggles', String(index), 'statId')}>
-                <SelectValue placeholder="Select stat" />
-              </SelectTrigger>
-              <SelectContent>
-                <StatOptions choices={statChoices} label={statLabel} />
-              </SelectContent>
-            </Select>
-            <Select
-              value={toggle.enabled ? 'on' : 'off'}
-              onValueChange={(v) => updateStatToggle(index, { enabled: v === 'on' })}
-              disabled={readOnly}
-            >
-              <SelectTrigger className="w-32" {...fieldFrame('statToggles', String(index), 'enabled')}><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="on">Enable</SelectItem>
-                <SelectItem value="off">Disable</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={readOnly}
-              onClick={() => setStatToggles(statToggles.filter((_, i) => i !== index))}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-          {globalToggles.includes(toggle) && (
-            <ConflictNote conflict={conflicts.stats[toggle.statId]} placeholders={placeholders} onOpen={onOpenTrait} />
-          )}
-          </div>
-        ))}
-        {!readOnly && (
-          <Button size="sm" onClick={() => setStatToggles([...statToggles, { statId: '', enabled: true }])}>
-            Add Stat Availability
-          </Button>
-        )}
-      </div>
       )}
-    </>
+      toggleNote={(toggle) => globalToggles.includes(toggle) && (
+        <ConflictNote conflict={conflicts.stats[toggle.statId]} placeholders={placeholders} onOpen={onOpenTrait} />
+      )}
+    />
   );
 
   const appearancePanel = (

@@ -1,8 +1,8 @@
-// World Options: setup switches that act through placeholder pins and never add text to the AI.
+// World Options: setup switches that act through placeholder pins and stat rows, and never add text to the AI.
 
 import type { ActionRef } from './actionList';
 import type {
-  PlaceholderPin, PresetWorldOption, ValuedWorldOption, WorldOption, WorldOptionType, WorldOptionValueOf, WorldOptionValues,
+  BooleanWorldOption, OptionStatRows, PlaceholderPin, PresetWorldOption, ValuedWorldOption, WorldOption, WorldOptionType, WorldOptionValueOf, WorldOptionValues,
 } from '@/types';
 
 /** The value ids a boolean Option's pin lists sit under. */
@@ -98,6 +98,42 @@ export function optionPinLists(options: readonly WorldOption[] | undefined, valu
   }
   return out;
 }
+
+/** The stat rows one Option value lays: under `valueId`, as {@link OptionPins}. */
+export interface OptionRows extends Required<OptionStatRows> {
+  optionId: string;
+  valueId: string;
+}
+
+/** The stat rows the Options' current values lay, in Options-tab order, hidden Options included. A number Option
+ *  lays none, and a value with no rows is left out. */
+export function optionStatRowLists(options: readonly WorldOption[] | undefined, values?: WorldOptionValues): OptionRows[] {
+  const out: OptionRows[] = [];
+  for (const option of valuedOptions(options)) {
+    const value = optionValue(option, values);
+    let rows: OptionStatRows | undefined;
+    let valueId = String(value);
+    if (option.type === 'choice') rows = option.values.find((v) => v.id === value);
+    else if (option.type === 'boolean') {
+      rows = booleanRows(option, value === true);
+      valueId = value ? BOOLEAN_ON : BOOLEAN_OFF;
+    }
+    const statChanges = rows?.statChanges ?? [];
+    const statToggles = rows?.statToggles ?? [];
+    if (statChanges.length || statToggles.length) out.push({ optionId: option.id, valueId, statChanges, statToggles });
+  }
+  return out;
+}
+
+/** A boolean Option's rows for one state, as the Options panel edits them. */
+export const booleanRows = (option: BooleanWorldOption, on: boolean): OptionStatRows => (on
+  ? { statChanges: option.onStatChanges, statToggles: option.onStatToggles }
+  : { statChanges: option.offStatChanges, statToggles: option.offStatToggles });
+
+/** `option` with one state's rows replaced. */
+export const withBooleanRows = (option: BooleanWorldOption, on: boolean, rows: OptionStatRows): BooleanWorldOption => (on
+  ? { ...option, onStatChanges: rows.statChanges, onStatToggles: rows.statToggles }
+  : { ...option, offStatChanges: rows.statChanges, offStatToggles: rows.statToggles });
 
 /** The Options the player sees at new game. A Preset always shows there. */
 export const shownOptions = (options: readonly WorldOption[] | undefined): WorldOption[] =>

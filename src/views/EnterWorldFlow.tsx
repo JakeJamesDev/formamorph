@@ -209,6 +209,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     const entityStats = seedWorldEntityStats({ stats: rawStats, statGroups: rawStatGroups, entities: [...worldEntities, ...libraryCast] });
     const starting = startingStatsWith(rawStats, chosen, {
       traits: rawTraits, groups: rawTraitGroups, entities: worldEntities, persona: draftPersona,
+      options: worldOptions, ...(entryDraft.optionValues && { optionValues: entryDraft.optionValues }),
       ...inPlayOwners(world, draftPersona, libraryCast),
     }, ownedTraitPicks, entityStats);
     return ownerPins({

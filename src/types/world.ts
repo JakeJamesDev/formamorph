@@ -1195,8 +1195,20 @@ interface WorldOptionBase extends WorldOptionCore {
   midGame: boolean;
 }
 
+/** An Option value's stat change. No `ownerId` = the global stat; else that entity's own stat. */
+export type OptionStatChange = StatChange & { ownerId?: string };
+
+/** An Option value's stat toggle, owned as {@link OptionStatChange}. */
+export type OptionStatToggle = TraitStatToggle & { ownerId?: string };
+
+/** The stat rows one Option value carries. They act on stats like a trait's and never reach the prompt. */
+export interface OptionStatRows {
+  statChanges?: OptionStatChange[];
+  statToggles?: OptionStatToggle[];
+}
+
 /** One named value of a choice Option. */
-export interface WorldOptionValue {
+export interface WorldOptionValue extends OptionStatRows {
   id: string;
   name: string;
   placeholderPins?: PlaceholderPin[];
@@ -1209,12 +1221,16 @@ export interface ChoiceWorldOption extends WorldOptionBase {
   default: string;
 }
 
-/** On or off, each state with its own pins. */
+/** On or off, each state with its own pins and stat rows. */
 export interface BooleanWorldOption extends WorldOptionBase {
   type: 'boolean';
   default: boolean;
   onPins?: PlaceholderPin[];
   offPins?: PlaceholderPin[];
+  onStatChanges?: OptionStatChange[];
+  onStatToggles?: OptionStatToggle[];
+  offStatChanges?: OptionStatChange[];
+  offStatToggles?: OptionStatToggle[];
 }
 
 /** A whole number in `min`–`max`, moved by `step`. Pins nothing. */
@@ -1253,7 +1269,7 @@ export interface PresetWorldOption extends WorldOptionCore {
 /** An Option that holds a value. */
 export type ValuedWorldOption = ChoiceWorldOption | BooleanWorldOption | NumberWorldOption;
 
-/** A player-facing setup switch that acts only through placeholder pins and gates, or a Preset. */
+/** A player-facing setup switch that acts through placeholder pins, gates and stat rows, or a Preset. */
 export type WorldOption = ValuedWorldOption | PresetWorldOption;
 
 export type WorldOptionType = WorldOption['type'];

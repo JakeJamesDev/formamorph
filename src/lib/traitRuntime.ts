@@ -27,6 +27,7 @@ import {
   type GateStates, type GateStats, type GateTraitRef, type GateTree,
 } from './traitGates';
 import { mapScoped, partOf, playedEntityIds, scoped, scopedEntries, type OwnerId, type Scoped } from './scope';
+import { optionStatRowLists, valuedOptions } from './worldOptions';
 
 /** What a trait's last switch actually moved: record key → stat id → value delta, keyed as `recordKey` and
  *  `ownStatsRecordKey` (lib/ownedTraitState) spell it. */
@@ -155,10 +156,31 @@ function globalRowTraitsByOwner(state: Pick<TraitForceState, 'ownedTraits' | 'en
 export const globalRowTraits = (state: Pick<TraitForceState, 'ownedTraits' | 'entityStats'>, world: TraitWorld): Trait[] =>
   globalRowTraitsByOwner(state, world).map(([, t]) => t);
 
-/** Every trait whose stat effects are in force on global stats: the held global traits, then every entity's
- *  active traits cut to their global rows. Bounds derive from this set, and so do stat toggles. */
+/** The id prefix of an Option value's stat source, which no authored trait carries. */
+const OPTION_SOURCE = 'option:';
+
+/** An Option's rows that move global stats, with the owner field dropped. */
+const globalOptionRows = <R extends { ownerId?: string }>(rows: readonly R[]): Omit<R, 'ownerId'>[] =>
+  rows.filter((row) => row.ownerId === undefined).map(({ ownerId: _none, ...row }) => row);
+
+/** Each current Option value's global stat rows as one stat source, in Options-tab order. Only the stat sets read
+ *  it, never a trait list. An owned row waits for its owner. */
+export function optionStatTraits(world: Pick<TraitWorld, 'options' | 'optionValues'>): Trait[] {
+  return optionStatRowLists(world.options, world.optionValues).flatMap(({ optionId, valueId, statChanges, statToggles }) => {
+    const changes = globalOptionRows(statChanges);
+    const toggles = globalOptionRows(statToggles);
+    if (!changes.length && !toggles.length) return [];
+    return [{ id: `${OPTION_SOURCE}${optionId}:${valueId}`, name: '', statChanges: changes, ...(toggles.length ? { statToggles: toggles } : {}) }];
+  });
+}
+
+/** Every source whose stat effects are in force on global stats: the Option values' rows, the held global traits,
+ *  then every entity's active traits cut to their global rows. Bounds derive from this set, and so do stat toggles,
+ *  a trait's toggle winning over an Option's. */
 export function statTraitsInForce(state: TraitForceState, world: TraitWorld): Trait[] {
-  return [...heldGlobalTraits(activeTraits(state.traits, state.disabledTraitIds), world), ...globalRowTraits(state, world)];
+  return [
+    ...optionStatTraits(world), ...heldGlobalTraits(activeTraits(state.traits, state.disabledTraitIds), world), ...globalRowTraits(state, world),
+  ];
 }
 
 /** Each owner's traits among its `active` ids that change its own stats, in its tree order; none for an owner
@@ -309,15 +331,15 @@ export function seedNewGameStats(authored: readonly Stat[]): PlayerStat[] {
   }));
 }
 
-/** The stats a fresh playthrough holds once the held picks among `chosenInOrder` have applied, then the
- *  entities' global rows among `owned` — the fold Enter World runs, for a picker that needs the numbers
+/** The stats a fresh playthrough holds once the Option values' starting rows, the held picks among `chosenInOrder`, then the
+ *  entities' global rows among `owned` have applied — the fold Enter World runs, for a picker that needs the numbers
  *  before the game exists. `entityStats` holds each entity's seeded own stats, so a row whose id an entity
  *  owns stays off the global stat (Q30). */
 export function startingStatsWith(
   authored: readonly Stat[], chosenInOrder: readonly Trait[], world: TraitWorld, owned: OwnedTraitPicks = {},
   entityStats: EntityStatValues = {},
 ): PlayerStat[] {
-  let state: TraitRuntimeState = { stats: seedNewGameStats(authored), traits: [], disabledTraitIds: [], appliedValues: {} };
+  let state = applyOptionStarts({ stats: seedNewGameStats(authored), traits: [], disabledTraitIds: [], appliedValues: {} }, world);
   for (const trait of heldGlobalTraits(chosenInOrder, world)) state = acquireTrait(state, trait, world).state;
   return applyGlobalRowTraits({ ...state, ownedTraits: ownedTraitStatesFrom(owned), entityStats }, world).state.stats;
 }
@@ -403,6 +425,23 @@ export function settleValues(
     if (value === prev.value && stat === before[i]) return stat;
     return { ...stat, value };
   });
+}
+
+/** `state` with the Option values' starting rows applied, once, at a game's start: bounds derive under the Option
+ *  rows, then the starting deltas land as a trait's do. No record is kept, since nothing ever reverses them. */
+export function applyOptionStarts(state: TraitRuntimeState, world: TraitWorld): TraitRuntimeState {
+  const sources = optionStatTraits(world);
+  if (!sources.length) return state;
+  const derived = deriveEffectiveStats(state.stats, statTraitsInForce(state, world));
+  return { ...state, stats: settleValues(state.stats, derived, valueDeltas(sources.flatMap((s) => s.statChanges)), true) };
+}
+
+/** `state`'s global stats re-derived under the Option values in `world`. A value moves only where a new bound
+ *  clamps it, so a stat on its cap stays put under a raised one. The same state in a world with no valued Option. */
+export function withOptionBounds(state: TraitRuntimeState, world: TraitWorld): TraitRuntimeState {
+  if (!valuedOptions(world.options).length) return state;
+  const stats = settleValues(state.stats, deriveEffectiveStats(state.stats, statTraitsInForce(state, world)), new Map(), false);
+  return stats.every((stat, i) => stat === state.stats[i]) ? state : { ...state, stats };
 }
 
 /** The negation of a set of movements, as the delta map `settleValues` takes. */
@@ -989,14 +1028,15 @@ export type TraitSettle = (state: TraitRuntimeState, world: TraitWorld, nameOf: 
  * Settle every owner's traits against every gate: traits whose gate stopped holding switch off, dependents
  * first, each world trait reversed through its record; traits a cascade turned off switch back on once
  * their gate holds again. An Always On world trait the player lacks is acquired as it turns on. The same
- * state comes back when nothing moves.
+ * state comes back when nothing moves. The Option values' bounds re-derive first, so an Option change settles here.
  */
 export function settleTraits(
-  state: TraitRuntimeState,
+  unbounded: TraitRuntimeState,
   world: TraitWorld,
   nameOf: (trait: Trait) => string = (trait) => trait.name,
   by?: string,
 ): GatedTraitResult {
+  const state = withOptionBounds(unbounded, world);
   const result = settle(traitGateInput(state, world), cascadeOffInput(state.cascadeOffTraitIds));
   const held = (refs: GateTraitRef[]) => refs.flatMap(({ ownerId, traitId }) => {
     const trait = ownerId === null

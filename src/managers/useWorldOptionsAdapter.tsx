@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, useState } from 'react';
 import { Plus, Trash2, TriangleAlert, X } from 'lucide-react';
 import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
+import { OptionStatRowsField } from '@/components/editor/OptionStatRowsField';
 import PlaceholderText, { PlaceholderVocabularyProvider } from '@/components/prompt/PlaceholderText';
 import { OptionSwitcher } from '@/components/SettingsRows';
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,7 @@ import {
 import type { Owner } from '@/lib/owners';
 import { randomUUID } from '@/lib/uuid';
 import {
-  BOOLEAN_OFF, BOOLEAN_ON, blankOption, choiceDefault, optionDefault, optionRange, reorderOptions, shownValuedOptions, snapNumber, withOptionType,
+  BOOLEAN_OFF, BOOLEAN_ON, blankOption, booleanRows, withBooleanRows, choiceDefault, optionDefault, optionRange, reorderOptions, shownValuedOptions, snapNumber, withOptionType,
 } from '@/lib/worldOptions';
 import type {
   Entity, GameLocation, Placeholder, PlaceholderPin, PresetRow, PresetValue, PresetWorldOption, Trait, ValuedWorldOption, WorldOption, WorldOptionType, WorldOptionValueOf,
@@ -418,6 +419,15 @@ function OptionDetail({ option, onChange }: { option: WorldOption; onChange: (ne
             source={{ kind: 'option', optionId: option.id, valueId: BOOLEAN_OFF }}
             onChange={(pins) => onChange({ ...option, offPins: withPins(pins) })}
           />
+          {(['On', 'Off'] as const).map((state) => {
+            const on = state === 'On';
+            return (
+              <OptionStatRowsField
+                key={state} when={`When ${state}`} name={state} rows={booleanRows(option, on)} world={world}
+                valueId={on ? BOOLEAN_ON : BOOLEAN_OFF} onChange={(rows) => onChange(withBooleanRows(option, on, rows))}
+              />
+            );
+          })}
         </>
       );
     }
@@ -450,6 +460,10 @@ function OptionDetail({ option, onChange }: { option: WorldOption; onChange: (ne
                 label="Placeholder Pins" pins={value.placeholderPins} world={world}
                 source={{ kind: 'option', optionId: option.id, valueId: value.id }}
                 onChange={(pins) => setValues(option.values.map((v) => (v.id === value.id ? { ...v, placeholderPins: withPins(pins) } : v)))}
+              />
+              <OptionStatRowsField
+                name={value.name || `Value ${index + 1}`} rows={value} world={world} valueId={value.id}
+                onChange={(rows) => setValues(option.values.map((v) => (v.id === value.id ? { ...v, ...rows } : v)))}
               />
             </div>
           ))}

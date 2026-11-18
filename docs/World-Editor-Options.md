@@ -11,7 +11,7 @@ World Options are choices the player makes about the world itself when a new gam
 
 A trait describes a character. An Option describes how the world is set up. Use an Option when the choice isn't about who the player is, like a reply length or a story style.
 
-> 💡 **An Option never sends text to the AI.** It changes the world only through its [placeholder pins](World-Editor-Placeholders). Every text that uses a pinned placeholder then reads the pinned value.
+> 💡 **An Option never sends text to the AI.** It changes the world only through its [placeholder pins](World-Editor-Placeholders) and its [stat changes](#how-to-make-an-option-change-stats). Every text that uses a pinned placeholder then reads the pinned value.
 
 ## How to Add an Option
 <!-- keywords: create, new, make, add setting, add switch -->
@@ -91,6 +91,25 @@ A Number Option has no pins.
 
 When a trait and an Option pin the same placeholder, the trait wins. An Option wins over a placeholder value's own pins. The placeholder's **Pins** tab lists every Option pin aimed at it.
 
+## How to Make an Option Change Stats
+<!-- keywords: difficulty, easy, hard, starting gold, regen, max, stat changes, stat availability, hardcore -->
+
+An Option can change stats the way a trait does, such as an **Easy** value that starts the player with more Gold.
+
+1. On the Option, under a choice value, or under **Stat Changes When On** or **When Off**, select **Add Stat Change**.
+2. Pick a stat, an amount and what it changes: **Starting Value**, **Min**, **Max** or **Regen**.
+3. Optional, in Advanced mode: under **Stat Availability**, select **Add Stat Availability** to turn a stat on or off while the value is picked.
+
+| Change | When it applies |
+|---|---|
+| **Starting Value** | Once, when a new game starts, for the value picked then. |
+| **Min**, **Max**, **Regen** | While the value is picked. They add to the traits' changes on the same stat. |
+| **Stat Availability** | While the value is picked. A trait that turns the same stat on or off wins. |
+
+When the Option changes during play, the stats' range, regen and availability change at once. A stat's value never moves, except to fit a new range. Switching from **Easy** to **Hard** keeps the Gold that **Easy** gave.
+
+The changes still apply when the Option isn't shown to the player. A Number Option and a Preset have no stat changes.
+
 ## Shown to Player and Changeable During Play
 <!-- keywords: hidden option, internal flag, secret, mid game, change later, during play -->
 
@@ -104,4 +123,4 @@ A Preset has neither field. It always shows when a new game starts and never dur
 ## What a Save Keeps
 <!-- keywords: old save, new option added later, default value, missing value -->
 
-A save keeps the value of each Option. A save made before you added an Option starts that Option on its **Default**. So does a save whose value the Option no longer has, such as a deleted choice value.
+A save keeps the value of each Option. A save made before you added an Option starts that Option on its **Default**. So does a save whose value the Option no longer has, such as a deleted choice value. The stat changes come from the world as it is now, so an edit to them reaches old saves when they load.

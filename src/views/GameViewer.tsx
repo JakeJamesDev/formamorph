@@ -293,7 +293,7 @@ import {
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
   activeTraits as traitsInForce, causedSwitches, entityStatTraitsInForce, heldGlobalTraits, globalRowTraits, startingTraitLog,
-  gateStatsOf, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitForceScope, traitGateInput, traitNameIn, traitSwitchEvents,
+  gateStatsOf, optionStatTraits, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitForceScope, traitGateInput, traitNameIn, traitSwitchEvents,
   type CausedSwitch, type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
 import { mediaOverrideReader, personaEntityId, soundWithOverride, withMediaWrites } from "../lib/mediaOverrides";
@@ -527,9 +527,11 @@ const activeUnderTraits = (
   traitOrder: Parameters<typeof inAuthoredOrder>[1],
   /** The entities' global-row traits in force on that slice, which switch stats with the rest. */
   globalRows: readonly Trait[] = [],
+  /** The Option values' stat sources, whose toggles the traits' override. */
+  optionRows: readonly Trait[] = [],
 ): Required<Pick<SceneWrites, 'activeStats' | 'activeTraits'>> => {
   const inForce = inAuthoredOrder(traitsInForce(acquired, disabledTraitIds), traitOrder);
-  return { activeTraits: inForce, activeStats: enabledStats(stats, activeStatEnabled(stats, [...inForce, ...globalRows])) };
+  return { activeTraits: inForce, activeStats: enabledStats(stats, activeStatEnabled(stats, [...optionRows, ...inForce, ...globalRows])) };
 };
 
 // The lore chip, whose blocks play fills per turn instead of from the scene.
@@ -879,6 +881,7 @@ const GameViewer = ({
     viewDisabledTraitIds,
     viewOwnedTraits,
     viewEntityStats,
+    viewWorldOptionValues,
     viewBodies,
     viewLocationId,
     gameStates,
@@ -2658,8 +2661,9 @@ const GameViewer = ({
     () => activeUnderTraits(
       viewStats, viewChosenTraits, viewDisabledTraitIds, traitOrder,
       globalRowTraits({ ownedTraits: viewOwnedTraits, entityStats: viewEntityStats }, gatedWorld()),
+      optionStatTraits({ options: worldOptions, optionValues: viewWorldOptionValues }),
     ).activeStats,
-    [viewStats, viewChosenTraits, viewDisabledTraitIds, viewOwnedTraits, viewEntityStats, traitOrder, gatedWorld],
+    [viewStats, viewChosenTraits, viewDisabledTraitIds, viewOwnedTraits, viewEntityStats, traitOrder, gatedWorld, worldOptions, viewWorldOptionValues],
   );
   // Each Avatar's active traits on the turn on screen, in the switch-on order that turn kept.
   const viewLookTraits = useMemo(() => {
@@ -2768,7 +2772,7 @@ const GameViewer = ({
     return {
       ...activeUnderTraits(
         resolveStatNames(over.globalStats, resolve), held.acquired, held.disabledTraitIds, traitOrder,
-        globalRowTraits({ ...held, entityStats: over.entityStats }, gatedWorld()),
+        globalRowTraits({ ...held, entityStats: over.entityStats }, gatedWorld()), optionStatTraits(gatedWorld()),
       ),
       ownedTraits: over.ownedTraits ?? {},
       entityStats: over.entityStats,

@@ -17,7 +17,7 @@ import type { UnitHome } from './sandboxSnapshot';
 import { atStartValues, statStartValue } from './statDescriptorGeometry';
 import { activeStatEnabled, inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import {
-  acquireTrait, applyGlobalRowTraits, applyOwnedStatTraits, entityStatTraitsInForce, gateStatsOf, heldGlobalTraits,
+  acquireTrait, applyGlobalRowTraits, applyOptionStarts, applyOwnedStatTraits, entityStatTraitsInForce, gateStatsOf, heldGlobalTraits,
   seedNewGameStats, statTraitsInForce, traitGateInput, type TraitRuntimeState, type TraitWorld,
 } from './traitRuntime';
 import type { GateInput } from './traitGates';
@@ -117,8 +117,10 @@ export function openingFold(
   const held = inAuthoredOrder(
     heldGlobalTraits(traits.filter((t) => chosen.has(t.id)), traitWorld), traitOrderIndex(traits, traitGroups),
   );
-  let traitState: TraitRuntimeState = { stats: seedNewGameStats(authored), traits: [], disabledTraitIds: [], appliedValues: {} };
-  for (const trait of held) traitState = acquireTrait(traitState, trait, { traits, groups: traitGroups }).state;
+  // The Option values' starting rows land once, after the authored starts and before the picks (Q5).
+  const optionWorld = { traits, groups: traitGroups, options: traitWorld.options, optionValues: traitWorld.optionValues };
+  let traitState = applyOptionStarts({ stats: seedNewGameStats(authored), traits: [], disabledTraitIds: [], appliedValues: {} }, optionWorld);
+  for (const trait of held) traitState = acquireTrait(traitState, trait, optionWorld).state;
   // Every entity's global rows apply after the world picks; then each entity's own traits apply to its stats.
   const statEntities = statOwnerEntities({ world: entities, library });
   const rows = applyGlobalRowTraits({
