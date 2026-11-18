@@ -607,23 +607,26 @@ function useProvideGameplay() {
   // Counts successful save loads, so the view settles traits against its world once per load.
   const [saveLoads, setSaveLoads] = useState(0);
 
-  const writeSave = useCallback(async (saveName: string, worldName: string, worldId?: string, saveId?: string, opts?: { isAutosave?: boolean; includeSceneImages?: boolean }): Promise<SaveWriteResult> => {
+  /** Captures the save record now and returns its write, so a later write still holds this moment's state. */
+  const prepareSave = useCallback((saveName: string, worldName: string, worldId?: string, saveId?: string, opts?: { isAutosave?: boolean; includeSceneImages?: boolean }): () => Promise<SaveWriteResult> => {
     const isAutosave = opts?.isAutosave ?? false;
     // Scene images ride along only when the player asked for them on this save (autosave never carries
     // them): each is around a megabyte of base64, so a long illustrated session would otherwise write a
     // save an order of magnitude larger than the story in it.
     const keepSceneImages = !isAutosave && (opts?.includeSceneImages ?? false);
+    const failed = (error: unknown): SaveWriteResult => {
+      console.error('Error saving game:', error);
+      if (!isAutosave) {
+        toastError(error, { headline: 'Failed to save game' });
+        addSystemLogEntry('Failed to save game');
+      }
+      return { ok: false, error };
+    };
+    let draft: SaveRecord;
     try {
       const gameState = saveCurrentGameState();
       gameState.worldName = worldName;
-      // A save holds its world's books, so a save of a Supporter Copy keeps the marker after the world is gone.
-      // The open world's answer stands only once read and only for that world; otherwise ask the store.
-      const known = worldId === openWorldId && worldSupporterCopy !== undefined;
-      const supporterCopy = carriedSupporterCopy.current ?? (known || !worldId
-        ? worldSupporterCopy ?? null
-        : await Promise.resolve().then(() => WorldStorageService.getSupporterCopy(worldId)).catch(() => null));
-
-      const record: SaveRecord = {
+      draft = {
         id: saveId ?? randomUUID(),
         name: saveName,
         worldId,
@@ -650,46 +653,60 @@ function useProvideGameplay() {
         ...(actionList.length ? { actionList: mapLiveSnapshots(actionList, historyFree) } : {}),
         ...(openingAction !== null ? { openingAction } : {}),
         ...(isAutosave ? { isAutosave: true } : {}),
-        ...(supporterCopy ? { supporterCopy } : {}),
       };
-
-      await putSaveRecord(record);
-      // Autosave is silent and doesn't become the "current slot": no prefill name, no log line, no toast.
-      if (!isAutosave) {
-        setLastSaveName(saveName);
-        addSystemLogEntry(`Game saved as "${saveName}"`);
-      }
-      return { ok: true };
     } catch (error) {
-      console.error('Error saving game:', error);
-      if (!isAutosave) {
-        toastError(error, { headline: 'Failed to save game' });
-        addSystemLogEntry('Failed to save game');
-      }
-      return { ok: false, error };
+      return () => Promise.resolve(failed(error));
     }
+    const record = draft;
+    // A save holds its world's books, so a save of a Supporter Copy keeps the marker after the world is gone.
+    // The open world's answer stands only once read and only for that world; otherwise ask the store.
+    const carried = carriedSupporterCopy.current;
+    const known = worldId === openWorldId && worldSupporterCopy !== undefined;
+    return async () => {
+      try {
+        const supporterCopy = carried ?? (known || !worldId
+          ? worldSupporterCopy ?? null
+          : await Promise.resolve().then(() => WorldStorageService.getSupporterCopy(worldId)).catch(() => null));
+        await putSaveRecord(supporterCopy ? { ...record, supporterCopy } : record);
+        // Autosave is silent and doesn't become the "current slot": no prefill name, no log line, no toast.
+        if (!isAutosave) {
+          setLastSaveName(saveName);
+          addSystemLogEntry(`Game saved as "${saveName}"`);
+        }
+        return { ok: true };
+      } catch (error) {
+        return failed(error);
+      }
+    };
   }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, scriptTells, mentionReadings, mentionCorrections, sentActions, actionList, openingAction, addSystemLogEntry, worldSupporterCopy, openWorldId]);
 
-  const saveGame = useCallback(async (...args: Parameters<typeof writeSave>) => (await writeSave(...args)).ok, [writeSave]);
+  const saveGame = useCallback(async (...args: Parameters<typeof prepareSave>) => (await prepareSave(...args)()).ok, [prepareSave]);
 
   // Autosave has failed at least once this session — used to toast only once, re-armed on a later success.
   const autosaveFailedRef = useRef(false);
+  /** The autosave in flight, so each one trims against the store its predecessor left. */
+  const autosaveQueue = useRef<Promise<unknown>>(Promise.resolve());
 
   /** Write this turn as a new autosave, then delete the world's oldest past `slots`, so the last `slots` turns
    *  can always be gone back to. `turn` names the save, and a regenerate replaces its turn's autosave. Silent
    *  on success; toasts once per session on failure and keeps trying on later turns. */
-  const autosaveGame = useCallback(async (worldName: string, worldId?: string, turn?: number, slots?: number) => {
-    const trim = autosavesToTrim(await getAllSaveRecords(), worldName, worldId, slots, turn);
-    const result = await writeSave(autosaveName(turn), worldName, worldId, undefined, { isAutosave: true });
-    if (result.ok) {
-      for (const id of trim) await deleteSaveRecord(id);
-      autosaveFailedRef.current = false;
-    } else if (!autosaveFailedRef.current) {
-      autosaveFailedRef.current = true;
-      toastAutosaveFailure(result.error);
-    }
-    return result.ok;
-  }, [writeSave]);
+  const autosaveGame = useCallback((worldName: string, worldId?: string, turn?: number, slots?: number) => {
+    const write = prepareSave(autosaveName(turn), worldName, worldId, undefined, { isAutosave: true });
+    const run = autosaveQueue.current.then(async () => {
+      const trim = autosavesToTrim(await getAllSaveRecords(), worldName, worldId, slots, turn);
+      const result = await write();
+      if (result.ok) {
+        for (const id of trim) await deleteSaveRecord(id);
+        autosaveFailedRef.current = false;
+      } else if (!autosaveFailedRef.current) {
+        autosaveFailedRef.current = true;
+        toastAutosaveFailure(result.error);
+      }
+      return result.ok;
+    });
+    autosaveQueue.current = run.catch(() => undefined);
+    return run;
+  }, [prepareSave]);
 
   /** Load a save by its record `id` from IndexedDB and restore it. A flat envelope (`isSaveEnvelope`, current or
    *  legacy numeric version) loads directly; an older nested shape is flattened off-thread via the
