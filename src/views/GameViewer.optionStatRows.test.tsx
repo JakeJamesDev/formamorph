@@ -83,6 +83,14 @@ describe('Option stat rows in play', () => {
     await waitFor(() => expect(goldNow()).toMatchObject({ value: 50, max: 200, regen: 3 }));
   });
 
+  it('lists a value’s rows on the in-play tab without its starting rows', async () => {
+    await start(worldWith([easy, hard]));
+    gameplay().setActiveTab('options');
+    const tab = await screen.findByTestId('world-options-tab');
+    const lines = Array.from(tab.querySelectorAll('li')).map((li) => li.textContent);
+    expect(lines).toEqual(['Gold: +100 (max)', 'Gold: +2 (regen)', 'Gold: -50 (max)']);
+  });
+
   it('adds nothing to the AI request but what the stat values carry', async () => {
     // Regen and a toggle on a stat that stays on reach no prompt, so the two requests must match.
     const quiet: WorldOptionValue = { id: 'easy', name: 'Easy', statChanges: [{ statId: 'gold', type: 'regen', value: 2 }], statToggles: [{ statId: 'gold', enabled: true }] };

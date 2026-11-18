@@ -1583,6 +1583,26 @@ describe('EnterWorldWorkspace World Options', () => {
     expect(screen.getByRole('slider', { name: 'Heat' })).toHaveAttribute('aria-valuenow', '3');
   });
 
+  it('lists each value’s stat rows under it in the trait-list form and leaves out hidden stats', () => {
+    const stat = (id: string, name: string, hidden = false) => ({ id, name, type: 'number', min: 0, max: 100, value: 0, hidden } as unknown as Stat);
+    const rowed: WorldOption[] = [{
+      id: 'o-diff', name: 'Difficulty', type: 'choice', shownToPlayer: true, midGame: false, default: 'v-easy',
+      values: [
+        { id: 'v-easy', name: 'Easy', statChanges: [{ statId: 'gold', type: 'starting', value: 100 }, { statId: 'luck', type: 'starting', value: 5 }] },
+        { id: 'v-hard', name: 'Hard', statChanges: [{ statId: 'gold', type: 'regen', value: -1 }, { statId: 'gone', type: 'max', value: 1 }] },
+      ],
+    }, {
+      id: 'o-mode', name: 'Hardcore', type: 'boolean', shownToPlayer: true, midGame: false, default: false,
+      onStatChanges: [{ statId: 'hp', type: 'regen', value: -2, ownerId: 'wolf' }, { statId: 'hp', type: 'max', value: 9, ownerId: 'ghost' }],
+    }];
+    const wolf = { id: 'wolf', name: 'Wolf', stats: [stat('hp', 'Health')] } as unknown as Entity;
+    render(<Harness options={rowed} stats={[stat('gold', 'Gold'), stat('luck', 'Luck', true)]} traitEntities={[wolf]} onOptionChange={vi.fn()} />);
+    const lines = (name: string) => Array.from(screen.getByRole('radio', { name }).closest('label')!.querySelectorAll('li')).map((li) => li.textContent);
+    expect(lines('Easy')).toEqual(['Gold: +100']);
+    expect(lines('Hard')).toEqual(['Gold: -1 (regen)']);
+    expect(screen.getByRole('checkbox', { name: /Hardcore/ }).closest('label')!.textContent).toMatch(/Wolf: Health: -2 \(regen\)$/);
+  });
+
   it('never shows an Option that is not Shown to Player', () => {
     render(<Harness options={options} onOptionChange={vi.fn()} />);
     expect(screen.queryByText('Secret Flag')).toBeNull();

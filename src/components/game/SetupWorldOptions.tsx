@@ -4,6 +4,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Slider } from '@/components/ui/slider';
 import { Hint, Meta } from '@/components/ui/typography';
 import { choiceRowClass } from '@/components/game/setupChoiceRow';
+import { OptionStatRowList, type OptionRowsView } from '@/components/game/OptionStatRowList';
 import { optionRange, optionStep, optionValue, snapNumber } from '@/lib/worldOptions';
 import type { PresetWorldOption, ValuedWorldOption, WorldOption, WorldOptionValueOf, WorldOptionValues } from '@/types';
 
@@ -16,17 +17,21 @@ interface SetupWorldOptionsProps {
   presetMatch: (preset: PresetWorldOption) => string | null;
   onPreset: (preset: PresetWorldOption, valueId: string) => void;
   resolveText: (text: string) => string;
+  /** The world the value rows read their stats from; absent lists none. */
+  rows?: OptionRowsView;
 }
 
 /** One Option's control: radio rows for a choice, a check row for a boolean, a slider for a number.
  *  With `commitOnRelease`, a slider reports once when the player lets go, not on every step. */
-export function OptionControl({ option, value, onChange, resolveText, disabled, commitOnRelease }: {
+export function OptionControl({ option, value, onChange, resolveText, disabled, commitOnRelease, rows }: {
   option: ValuedWorldOption;
   value: WorldOptionValueOf;
   onChange: (value: WorldOptionValueOf) => void;
   resolveText: (text: string) => string;
   disabled?: boolean;
   commitOnRelease?: boolean;
+  /** Lists each choice value's and boolean state's stat rows under it; absent lists none. */
+  rows?: OptionRowsView;
 }) {
   const [drag, setDrag] = useState<number | null>(null);
   useEffect(() => setDrag(null), [value]);
@@ -45,6 +50,8 @@ export function OptionControl({ option, value, onChange, resolveText, disabled, 
         <span className="block min-w-0 flex-1">
           <strong className="block break-words text-label font-semibold">{name}</strong>
           {description && <Hint as="span" id={descriptionId} className="mt-1 block">{description}</Hint>}
+          <OptionStatRowList rows={option.onStatChanges} view={rows} resolveText={resolveText} lead="When On" />
+          <OptionStatRowList rows={option.offStatChanges} view={rows} resolveText={resolveText} lead="When Off" />
         </span>
       </label>
     );
@@ -89,8 +96,9 @@ export function OptionControl({ option, value, onChange, resolveText, disabled, 
           return (
             <label key={v.id} htmlFor={id} className={choiceRowClass(value === v.id)}>
               <RadioGroupItem id={id} value={v.id} aria-label={resolveText(v.name)} className="mt-0.5 shrink-0" />
-              <span className="block min-w-0 flex-1 break-words text-label font-semibold">
-                {resolveText(v.name)}
+              <span className="block min-w-0 flex-1">
+                <strong className="block break-words text-label font-semibold">{resolveText(v.name)}</strong>
+                <OptionStatRowList rows={v.statChanges} view={rows} resolveText={resolveText} />
               </span>
             </label>
           );
@@ -139,7 +147,7 @@ export function PresetControl({ preset, selected, onPick, resolveText }: {
 }
 
 /** The World Options page of the setup screen: every shown Option, each on its current value. */
-export function SetupWorldOptions({ options, values, onChange, presetMatch, onPreset, resolveText }: SetupWorldOptionsProps) {
+export function SetupWorldOptions({ options, values, onChange, presetMatch, onPreset, resolveText, rows }: SetupWorldOptionsProps) {
   return (
     <>
       <Meta as="p" className="mb-1 font-medium tracking-wide">World Setup</Meta>
@@ -154,7 +162,7 @@ export function SetupWorldOptions({ options, values, onChange, presetMatch, onPr
         ) : (
           <OptionControl
             key={option.id} option={option} value={optionValue(option, values)}
-            onChange={(next) => onChange(option.id, next)} resolveText={resolveText}
+            onChange={(next) => onChange(option.id, next)} resolveText={resolveText} rows={rows}
           />
         )))}
       </div>

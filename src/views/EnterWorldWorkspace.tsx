@@ -163,6 +163,10 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   );
   const setupOptions = useMemo(() => shownOptions(props.options), [props.options]);
   const hasOptions = setupOptions.length > 0;
+  const optionRows = useMemo(
+    () => ({ world: { stats: props.stats, statGroups: props.statGroups ?? [], entities: props.traitEntities ?? [] } }),
+    [props.stats, props.statGroups, props.traitEntities],
+  );
   const hasPersonas = hasPersonaChoice({
     world: props.worldPersonas ?? [], library: props.personas ?? [], none: props.personaNone !== false, custom: props.personaCustom,
   });
@@ -587,6 +591,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               options={setupOptions} values={props.optionValues ?? {}}
               onChange={(id, value) => props.onOptionChange?.(id, value)} resolveText={props.resolveText}
               presetMatch={(preset) => props.presetMatch?.(preset) ?? null} onPreset={(preset, valueId) => props.onPreset?.(preset, valueId)}
+              rows={optionRows}
             />
           )}
           {current?.kind === 'options' && props.traitCascade && props.onDismissTraitCascade && (

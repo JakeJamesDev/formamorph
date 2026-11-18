@@ -108,7 +108,9 @@ An Option can change stats the way a trait does, such as an **Easy** value that 
 
 When the Option changes during play, the stats' range, regen and availability change at once. A stat's value never moves, except to fit a new range. Switching from **Easy** to **Hard** keeps the Gold that **Easy** gave.
 
-The changes still apply when the Option isn't shown to the player. A Number Option and a Preset have no stat changes.
+The player sees each value's stat changes listed under it, such as **Gold: +100**, on the **Enter World** dialog and on the **World Options** tab. The tab leaves out **Starting Value** changes, since a switch during play never applies them. Changes to a hidden stat are not listed, and neither are changes whose stat or entity you deleted. A change to an entity's stat reads **Wolf: Health: -2 (regen)**.
+
+The changes still apply when the Option isn't shown to the player, but they are not listed, because the Option itself is not shown. A Number Option and a Preset have no stat changes.
 
 ### Entity Stats
 

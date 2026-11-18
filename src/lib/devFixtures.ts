@@ -41,6 +41,14 @@ const DEV_OPTIONS: WorldOption[] = [
     playerDescription: 'How much the narrator writes each turn',
     values: [{ id: 'dev-len-short', name: 'Short' }, { id: 'dev-len-medium', name: 'Medium' }, { id: 'dev-len-long', name: 'Long' }],
   },
+  {
+    id: 'dev-opt-difficulty', name: 'Difficulty', type: 'choice', shownToPlayer: true, midGame: true, default: 'dev-diff-easy',
+    playerDescription: 'How hard the room is on you',
+    values: [
+      { id: 'dev-diff-easy', name: 'Easy', statChanges: [{ statId: 'stat-coin', type: 'starting', value: 50 }, { statId: 'stat-warmth', type: 'regen', value: 2 }] },
+      { id: 'dev-diff-hard', name: 'Hard', statChanges: [{ statId: 'stat-warmth', type: 'regen', value: -1 }, { statId: 'stat-coin', type: 'max', value: -20 }] },
+    ],
+  },
   { id: 'dev-opt-gore', name: 'Graphic Violence', type: 'boolean', shownToPlayer: true, midGame: true, default: false },
   { id: 'dev-opt-pace', name: 'Pacing', type: 'number', shownToPlayer: true, midGame: true, min: 1, max: 5, default: 3 },
   { id: 'dev-opt-setup', name: 'Starting Season', type: 'boolean', shownToPlayer: true, midGame: false, default: true },

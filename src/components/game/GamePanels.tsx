@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
@@ -1604,6 +1604,10 @@ export const RightPanel = ({
   // A world with no Option flagged for change during play gets no Options tab.
   const playOptions = midGameOptions(gameData?.options);
   const hasOptions = playOptions.length > 0;
+  const optionRows = useMemo(
+    () => ({ world: { stats: gameData?.stats ?? NO_AUTHORED_STATS, statGroups: gameData?.statGroups ?? NO_STAT_GROUPS, entities: cast } }),
+    [gameData?.stats, gameData?.statGroups, cast],
+  );
   const shownTab = (!hasShownStats && activeTab === 'stats') || (!hasInventory && activeTab === 'inventory') || (!hasOptions && activeTab === 'options')
     ? 'traits' : activeTab;
   // The rail lists the same tabs as the panel.
@@ -1856,6 +1860,7 @@ export const RightPanel = ({
               disabled={actionsBlocked || isViewingPast}
               onChange={onChangeWorldOption}
               resolveText={resolvePH}
+              rows={optionRows}
             />
           </TabsContent>
         )}
