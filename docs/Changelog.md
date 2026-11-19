@@ -98,6 +98,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Scripts now run faster on large worlds.** Each script pays only for the entities, placeholders, items, locations, dictionaries and currencies it reads, so a large world no longer slows every turn.
     - **Each autosave now holds the turn it is named for.** Before, when the next turn finished before an autosave was written, that autosave held the newer turn. With Autosaves Kept above 1, you then had one fewer turn to go back to.
     - **Loading a save now sets each stat's limits from the world as it is now.** A stat's Max, Min and Regen follow the traits and World Options in force, and a value above the new max drops to it.
+  - **Test Bench:**
+    - **The Test Bench's stat-band pins now start from the same stats a new game opens with.** Before, they ignored the Option values you picked, entity starting traits and cast default global rows.
   - **At new game, a trait group fills again when another pick locks its trait.** It takes the group's default, or else the first trait you can pick. Before, the group stayed empty and Begin stayed off.
   - **At new game, a default trait gated on a World Option now starts on when the Option's default allows it.** Before, the trait started off until you changed the Option.
   - **In Enter World, a click anywhere in a trait, option or location box now selects it.** Before, the box's edges and corners lit up on hover but ignored the click.

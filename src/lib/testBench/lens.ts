@@ -17,7 +17,7 @@ import { ownerPinPlan, pinBlueprintsOf, type OwnerPinPlan, type PinBlueprints } 
 import { globalStatsOf } from '@/lib/statLinks';
 import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
 import { activeStatEnabled, defaultPicks, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
-import { startingStatsWith, statTraitsInForce, type TraitWorld } from '@/lib/traitRuntime';
+import { startingTraitState, statTraitsInForce, type TraitWorld } from '@/lib/traitRuntime';
 import { seedWorldEntityStats } from '@/lib/entityStats';
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
 import { resolveOwners, type Owner } from '@/lib/owners';
@@ -110,8 +110,20 @@ export function lensStatTraits(
 export function lensStartingStats(
   world: LensWorld, authored: readonly Stat[], active: readonly Trait[], personaId: string | null = null, optionValues?: WorldOptionValues,
 ): PlayerStat[] {
+  return lensStart(world, authored, active, personaId, optionValues).state.stats;
+}
+
+/** A fresh game's opening trait state under the lens: Option starts, the global picks, and every present owner's
+ *  default picks, through the opening's own steps (Q27, Q29). */
+function lensStart(
+  world: LensWorld, authored: readonly Stat[], active: readonly Trait[], personaId: string | null, optionValues?: WorldOptionValues,
+) {
   const player = lensPlayer(world, personaId);
-  return startingStatsWith(authored, active, lensTraitWorld(world, player, optionValues), personaPicks(player, active), lensEntityStats(world));
+  const castDefaults = Object.fromEntries(resolveOwners(ownerWorldOf(world), lensPersonaRef(personaId)).owners
+    .filter((b) => b.present && !b.isPlayer)
+    .map((b) => [b.id, defaultPicks(b.traits, b.groups)]));
+  const owned = { ...castDefaults, ...personaPicks(player, active) };
+  return { owned, ...startingTraitState(authored, active, lensTraitWorld(world, player, optionValues), owned, lensEntityStats(world)) };
 }
 
 /** The played entity and the ids of its picks among `active`; null with no such entity. */
@@ -346,23 +358,20 @@ export function lensPinPlan(
 ): OwnerPinPlan {
   const ownerWorld = ownerWorldOf(world);
   const persona = lensPersonaRef(personaId);
-  const player = lensPlayer(world, personaId);
-  const castDefaults = Object.fromEntries(resolveOwners(ownerWorld, persona).owners
-    .filter((b) => b.present && !b.isPlayer)
-    .map((b) => [b.id, defaultPicks(b.traits, b.groups)]));
+  const start = lensStart(world, world.stats ?? [], active, personaId, optionValues);
   return ownerPinPlan({
     world: ownerWorld,
     persona,
     globalTraits: active,
-    owned: { ...castDefaults, ...personaPicks(player, active) },
+    owned: start.owned,
     sharedPlaceholders: world.placeholders ?? [],
-    entityStats: lensEntityStats(world),
+    entityStats: start.state.entityStats ?? {},
     blueprints: lensPinBlueprints(world),
     // An Option reads the author's pick, else its default (Q25).
     optionStats: { options: world.options, optionValues },
   }, {
     location,
-    stats: globalStatsOf(lensStartingStats(world, world.stats ?? [], active, personaId, optionValues), world.statGroups ?? []),
+    stats: globalStatsOf(start.state.stats, world.statGroups ?? []),
     placeholders: allPlaceholders(world),
   });
 }
