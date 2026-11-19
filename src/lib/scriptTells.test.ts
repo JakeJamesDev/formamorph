@@ -16,14 +16,15 @@ describe('script tells', () => {
     expect(turnTells(map, undefined)).toEqual([]);
   });
 
-  it('drops only the re-rolled timings, keeping a switch tell in place', () => {
+  it('drops only the re-rolled timings, keeping an On Call tell in place (Q33, Q36)', () => {
     const map = {
       t1: [
-        { text: 'Start.', timing: 'start' as const }, { text: 'Switched.', timing: 'switch' as const },
+        { text: 'Start.', timing: 'start' as const }, { text: 'Called.', timing: 'call' as const },
+        { text: 'Switched.', timing: 'switch' as const }, { text: 'Gained.', timing: 'gained' as const },
         { text: 'Before.', timing: 'before' as const }, { text: 'After.', timing: 'after' as const },
       ],
     };
-    expect(withoutTimings(map, 't1', REROLLED_TIMINGS)).toEqual({ t1: [{ text: 'Switched.', timing: 'switch' }] });
+    expect(withoutTimings(map, 't1', REROLLED_TIMINGS)).toEqual({ t1: [{ text: 'Called.', timing: 'call' }] });
     expect(withoutTimings({ t1: [{ text: 'Before.', timing: 'before' }] }, 't1', REROLLED_TIMINGS)).toEqual({});
   });
 
@@ -103,6 +104,15 @@ describe('script tells', () => {
     const restored = restoreTells({ t1: saved });
     expect(restored).toEqual({ t1: saved });
     expect(placeTells(restored.t1)).toEqual({ above: [], inline: [], below: saved });
+  });
+
+  it('keeps On Call tells through a save and a re-roll, and places their images above (Q33)', () => {
+    const image = { image: 'm-bell', size: 'medium', wrap: 'block', timing: 'call' } as const;
+    const text = { text: 'The bell answers.', timing: 'call' } as const;
+    const restored = restoreTells({ t1: [image, text] });
+    expect(restored).toEqual({ t1: [image, text] });
+    expect(placeTells(restored.t1)).toEqual({ above: [image], inline: [], below: [text] });
+    expect(withoutTimings(restored, 't1', REROLLED_TIMINGS)).toEqual({ t1: [image, text] });
   });
 
   it('reads back only well-formed tells from a save', () => {

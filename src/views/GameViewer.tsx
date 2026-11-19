@@ -591,6 +591,8 @@ interface TurnScript {
 const SCRIPTED_PASSES = new Set(['narration', 'choices']);
 
 const isQuestionOpen = () => scriptPrompts.pending().some(({ request }) => !isNotice(request));
+// A replayed On Call run's host: asks go to the line; tells, shows and toasts stay as the turn recorded them (Q33).
+const replayedCallPrompts = tellHost(scriptPrompts, 'call', () => {}, () => {});
 
 /** Calls `render` only while mounted, so a closed dialog's body costs the parent's render nothing. */
 function RenderMounted({ render }: { render: () => React.ReactNode }) {
@@ -1379,7 +1381,7 @@ const GameViewer = ({
     box: { text: string; images: ImageAttachment[] } | null;
   } | null>(null);
   // The prompt host of one run: its tells keep the run's timing (Q54), a toast shows at once, asks go to the line.
-  const playPrompts = useCallback((timing: RunTiming): ScriptPromptHost => tellHost(scriptPrompts, timing, (tell) => {
+  const playPrompts = useCallback((timing: RunTiming | 'call'): ScriptPromptHost => tellHost(scriptPrompts, timing, (tell) => {
     const turnId = tellTurnRef.current ?? latestTurnId(fullMessageHistoryRef.current);
     if (turnId) setScriptTells((prev) => addTell(prev, turnId, tell));
   }, (text) => { toast.info(text); }), [setScriptTells]);
@@ -2198,7 +2200,7 @@ const GameViewer = ({
       const replay = { replayed: onCallWrites, triggersOnly: true };
       const onCalled = prepareTurnStartCode(written ?? preTurn, 'before', items);
       if (landing === "land") {
-        if (onCalled) written = onCalled.finish(await runStatCodeTurn({ ...onCalled.turn, ...replay })).written ?? written;
+        if (onCalled) written = onCalled.finish(await runStatCodeTurn({ ...onCalled.turn, prompts: replayedCallPrompts, ...replay })).written ?? written;
       } else {
         written = await quietly(onCalled, written ?? preTurn, replay) ?? written;
       }
@@ -3842,7 +3844,8 @@ const GameViewer = ({
         const prepared = prepareTurnStartCode(onCallStateRef.current ?? turnBeforeBoxRef.current);
         if (!prepared) throw new Error("The Tool's script could not start");
         return {
-          turn: prepared.turn,
+          // Its tells keep the On Call timing, so a re-roll, which lays its writes on with no run, keeps them (Q33).
+          turn: { ...prepared.turn, prompts: playPrompts('call') },
           land: (result) => {
             const { written, world } = prepared.finish(result);
             outputRunRef.current?.run.onCallLanded(result);

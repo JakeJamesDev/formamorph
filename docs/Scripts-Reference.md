@@ -1031,7 +1031,8 @@ A message or an image belongs to the turn that runs when the script makes it:
 
 - A message from At Game Start goes with the opening turn.
 - A message from a trait switch goes with the latest turn on screen.
-- A re-roll of a turn's stats replaces the messages and images from the timings it runs again. It keeps the During AI Output ones.
+- A re-roll of a turn's stats replaces the messages and images from the timings it runs again. Item scripts and trait switches count too. The re-roll puts the items and traits back as they were before the turn, then makes the turn's changes again. It keeps the During AI Output ones.
+- A re-roll keeps the messages and images that a World Tool's On Call script made, with those of the scripts its writes set off. The re-roll applies that script's saved writes again without running it, and the scripts they set off show nothing new.
 
 **Test Code** and the **Test Bench** show the real question, one after another, as in a game. An edit to the code, or a close of the editor, closes an open prompt. `tell`, `toast` and `show` show as lines in the report. A `show` line names the image, its size and its wrap.
 

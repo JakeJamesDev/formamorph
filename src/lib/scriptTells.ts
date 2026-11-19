@@ -6,10 +6,13 @@ import { noticeHost, SHOW_SIZES, SHOW_WRAPS, type ScriptPromptHost, type ShowSiz
 import { ITEM_SCRIPT_TIMINGS } from './scripts';
 import { parseTurnContent, pruneTurnMap } from './turnDigest';
 
+/** When a tell's run happened: a script timing, or `call` for a world Tool's On Call run and the item scripts it fires (Q33). */
+export type TellTiming = ScriptTiming | 'call';
+
 /** One tell, with the timing of the script that made it, so a replay replaces only its own (Q54). */
 export interface ScriptTextTell {
   text: string;
-  timing: ScriptTiming;
+  timing: TellTiming;
 }
 
 /** One shown image by Media List id. `sentence` anchors a During AI Output image to its sentence (Q6). */
@@ -18,7 +21,7 @@ export interface ScriptImageTell {
   size: ShowSize;
   wrap: ShowWrap;
   sentence?: number;
-  timing: ScriptTiming;
+  timing: TellTiming;
 }
 
 /** A turn's tell list holds text and images in one call order (Q6). */
@@ -29,13 +32,13 @@ export const isImageTell = (tell: ScriptTell): tell is ScriptImageTell => 'image
 /** A turn's tells by turn id, in call order. */
 export type TellMap = Record<string, ScriptTell[]>;
 
-/** The timings a stats re-roll runs again. During AI Output never tells (Q45). */
-export const REROLLED_TIMINGS: readonly ScriptTiming[] = ['start', 'before', 'after'];
+/** The timings a stats re-roll runs again, its settle's switch and item scripts included (Q34, Q36); never `call` (Q33). */
+export const REROLLED_TIMINGS: readonly TellTiming[] = ['start', 'before', 'after', 'switch', ...ITEM_SCRIPT_TIMINGS];
 
-const TIMINGS: readonly ScriptTiming[] = ['before', 'after', 'output', 'start', 'switch', ...ITEM_SCRIPT_TIMINGS];
+const TIMINGS: readonly TellTiming[] = ['before', 'after', 'output', 'start', 'switch', 'call', ...ITEM_SCRIPT_TIMINGS];
 
-/** The timings whose images show above the narration (Q11). */
-const ABOVE_TIMINGS: readonly ScriptTiming[] = ['start', 'before'];
+/** The timings whose images show above the narration (Q11, Q30). */
+const ABOVE_TIMINGS: readonly TellTiming[] = ['start', 'before', 'call'];
 
 const NO_TELLS: readonly ScriptTell[] = [];
 
@@ -75,7 +78,7 @@ export function placeTells(tells: readonly ScriptTell[]): TellPlacement {
 
 /** A play run's host: tells and shows recorded with the run's timing, always as blocks (Q20). */
 export const tellHost = (
-  asks: ScriptPromptHost, timing: ScriptTiming, record: (tell: ScriptTell) => void, onToast: (text: string) => void,
+  asks: ScriptPromptHost, timing: TellTiming, record: (tell: ScriptTell) => void, onToast: (text: string) => void,
 ): ScriptPromptHost => noticeHost(asks, {
   onTell: (text) => { record({ text, timing }); },
   onToast,
@@ -95,7 +98,7 @@ export function setTurnTells(map: TellMap, turnId: string, tells: readonly Scrip
 }
 
 /** The map without a turn's tells from `timings`, which a replay is about to make again. */
-export const withoutTimings = (map: TellMap, turnId: string, timings: readonly ScriptTiming[]): TellMap =>
+export const withoutTimings = (map: TellMap, turnId: string, timings: readonly TellTiming[]): TellMap =>
   setTurnTells(map, turnId, turnTells(map, turnId).filter((tell) => !timings.includes(tell.timing)));
 
 /** The id of the newest turn in the history. Undefined before the first narration. */
@@ -111,7 +114,7 @@ export const pruneTells = (map: TellMap, history: ChatMessage[]): TellMap => pru
 function restoredTell(value: unknown): ScriptTell | undefined {
   if (!value || typeof value !== 'object') return undefined;
   const tell = value as Record<string, unknown>;
-  const timing = tell.timing as ScriptTiming;
+  const timing = tell.timing as TellTiming;
   if (!TIMINGS.includes(timing)) return undefined;
   if (typeof tell.text === 'string') return { text: tell.text, timing };
   const { image, size, wrap, sentence } = tell;
