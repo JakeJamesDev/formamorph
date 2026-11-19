@@ -13,7 +13,7 @@ At setup, gates read stats the way the game will start them, so picking Bodybuil
 - **Own rows.** A trait's own gate never reads that trait's own rows.
 - **No loops.** The settle grows from the Options and authored starts: a pick enters only when its gate holds without any pick that depends on it. A pair that only props itself up never locks in. Keep the existing tie and group rules.
 - **Cascade.** Removing a pick that a gate leaned on turns the failing picks off through the existing cascade, and the cascade notice names them.
-- **Readers.** Trait gates, Starting Location gates, Preset apply and check, and the Test Bench opening all read the same setup gate stats.
+- **Readers.** Trait gates, Starting Location gates, Preset apply and check, and the Test Bench opening all read the same setup gate stats. Ticket 07 found that the Test Bench lens toggles (`lensStatTraits`) read only the persona's picks, so a cast entity's default toggle rows may miss `statEnabled`; fix that here.
 - **Docs.** Update the trait gate docs in `docs/` to say setup gates count picks' stat effects. Write a changelog fragment: this changes how released worlds' gates behave at setup, so it is its own entry.
 
 ## Acceptance criteria
