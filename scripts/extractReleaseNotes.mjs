@@ -1,10 +1,9 @@
-// Derive terse, user-facing release notes from docs/Changelog.md, for the GitHub release body (and the
-// in-app update popouts, which show that body). Takes the bold lead sentence of each 👤 User-facing entry,
+// Derive terse, user-facing release notes from docs/Changelog.md. Takes the bold lead sentence of each 👤 User-facing entry,
 // grouped by change type (Added / Removed / Fixed); drops 🛠️/⚙️ dev entries. The verbose changelog stays the
 // single source of truth — this is a generated view, never hand-maintained.
 //
 // Usage:
-//   node scripts/extractReleaseNotes.mjs                 → the "🚧 In Progress" section (the release workflow)
+//   node scripts/extractReleaseNotes.mjs                 → the "🚧 In Progress" section
 //   node scripts/extractReleaseNotes.mjs --release 3.0.0 → a specific released version's collapsed section
 //     (an older major lives in its archive: add --file docs/Changelog-v2.md)
 //   node scripts/extractReleaseNotes.mjs --file path.md  → read a different changelog file

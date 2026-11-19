@@ -1,6 +1,6 @@
 # 01: Release Summary Parser And Release Validation
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -17,10 +17,21 @@ Each release gets one Release Summary file, and the release workflow refuses to 
 
 ## Acceptance criteria
 
-- [ ] The parser returns the full 3.7.0 shape from the seed file: two Major items with icons, one pair (Daily routines with Map strangers), two New items, and the Fixes text.
-- [ ] Fixture tests cover: missing `## New` and `## Fixes`, a Major item without a pair, an unmapped emoji, an unknown heading, a missing title, a trailing Full changelog link that is ignored, and a hand-edited body with extra content.
-- [ ] The validator script exits 0 on the seed file and non-zero on an invalid fixture, and prints each problem.
-- [ ] The release workflow runs the validator before publishing and builds the release body as the summary plus a Full changelog link.
-- [ ] A changelog fragment in `docs-internal/changelog.d/` has a ⚙️ entry for the release workflow change.
+- [x] The parser returns the full 3.7.0 shape from the seed file: two Major items with icons, one pair (Daily routines with Map strangers), two New items, and the Fixes text. (`releaseSummary.test.ts`, "parses to the full 3.7.0 shape with no problems")
+- [x] Fixture tests cover: missing `## New` and `## Fixes`, a Major item without a pair, an unmapped emoji, an unknown heading, a missing title, a trailing Full changelog link that is ignored, and a hand-edited body with extra content. (`releaseSummary.test.ts`, one case each; guards re-broken once each and seen red)
+- [x] The validator script exits 0 on the seed file and non-zero on an invalid fixture, and prints each problem. (`validateReleaseSummary.test.mjs`, exit codes and stderr lines)
+- [x] The release workflow runs the validator before publishing and builds the release body as the summary plus a Full changelog link. (`validateReleaseSummary.test.mjs` reads `release.yml`: validation precedes `npm ci` in the build job, publish uses `--body > notes.md`)
+- [x] A changelog fragment in `docs-internal/changelog.d/` has a ⚙️ entry for the release workflow change. (`whats-new-01.md`)
 
 For you: read `docs/whats-new/3.7.0.md` rendered on GitHub and confirm it reads cleanly as plain markdown.
+
+## Landed
+
+**Not verified**
+
+- The workflow has not run on a real tag. The validator step and the `--body` publish step are checked only by reading `release.yml` in a test.
+
+**For you**
+
+- Read `docs/whats-new/3.7.0.md` rendered on GitHub and confirm it reads cleanly as plain markdown.
+- The next release needs `docs/whats-new/<version>.md` before tagging, or the build job fails. The release skill does not draft it yet; the spec session updates the skill.

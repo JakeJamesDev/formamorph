@@ -88,6 +88,11 @@ jobs:
             echo "::error::Tag '$GITHUB_REF_NAME' must equal 'v<package.json version>' ('$PKG'). Bump package.json, commit, then tag."
             exit 1
           fi
+      # Runs before the Linux leg's electron-builder publishes its draft, so no release starts without a summary.
+      - name: Release Summary must be valid
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: node scripts/validateReleaseSummary.mjs "docs/whats-new/${GITHUB_REF_NAME#v}.md"
       - run: npm ci
       # Releases ship the alternate avatar and Praline. The tracked default stays on the Pages dev build and local dev.
       - name: Swap in the release avatars
@@ -296,16 +301,16 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
+      # The validator loads the app's TypeScript parser, which needs the pinned Node's type stripping.
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
       - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
-      # Generate the release body from the changelog's collapsed section for THIS tag's version (user-facing
-      # one-liners), so the release publishes WITH its notes — no manual editing, and no window where an update
-      # is live but blank. Keyed to the tagged version (`v2.2.0` → `--release 2.2.0`), so finalizing the
-      # changelog into its "✅ Released" block is the correct last step *before* tagging — order-independent,
-      # unlike the old "In Progress" read which broke if the section was collapsed first.
-      - run: node scripts/extractReleaseNotes.mjs --release "${GITHUB_REF_NAME#v}" > notes.md
+      # The release body is the tag's Release Summary plus a Full changelog link, so the release publishes with its notes.
+      - run: node scripts/validateReleaseSummary.mjs "docs/whats-new/${GITHUB_REF_NAME#v}.md" --body > notes.md
       # The Linux build already published the AppImage + latest-linux.yml to this tag's release as a draft
       # (electron-builder targets `v<package.json version>`, which the guard forces to equal the tag). This
       # step attaches the Windows/mac/web artifacts to that SAME release, sets the notes, and publishes it.
