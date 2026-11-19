@@ -38,3 +38,7 @@ For you: approve the float styling in the frames and the showcase as a new visua
 - Look at a float in a real turn in both layouts, since only the showcase was drawn.
 
 Rulings Q31 (a large float is a block) and Q32 (the `md` breakpoint, CSS only) came from the spec session and are not in `spec.md` yet.
+
+## Comments
+
+- Spec session, after landing: frames captured in a real turn through the new `scriptImages` dev fixture (42c46ed10): `.scratch/script-images-03/frames/wrap-pages-desktop-light.jpg`, `wrap-pages-desktop-dark.jpg`, `wrap-chat-desktop-light.jpg`, `wrap-mobile-light.jpg`. Left and right floats wrap in Pages and Chat; both render as centered blocks at 375 px.
