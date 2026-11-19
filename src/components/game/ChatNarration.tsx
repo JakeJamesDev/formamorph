@@ -6,14 +6,14 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { useGameplayText } from '@/lib/gameplayTextStore';
 import type { SpeakerColors } from '@/lib/quoteSegments';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
-import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
+import { revealActive, revealVars } from '@/lib/narrationRevealConfig';
 import { parseTurnContent } from '@/lib/turnDigest';
 import { parseSavedReasoning, type SavedReasoning } from '@/lib/savedReasoning';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { NARRATION_END_SPACE, NARRATION_FADE, NARRATION_FADE_UNDER_STRIP, useEdgeFades } from './narrationFade';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { MentionTurn, turnCardTriggers } from './MentionCards';
+import { turnCardTriggers } from './MentionCards';
 import type { LiveQuotes } from '@/lib/coref/streamingQuotes';
 import { useChatPin } from './useChatPin';
 import { useReadingLine } from './useReadingLine';
@@ -26,8 +26,7 @@ import { ScenePlate } from './ScenePlate';
 import { AttachmentThumbs } from './AttachmentThumbs';
 import { turnAttachments } from '@/lib/actionAttachments';
 import { liveTurnTells, NO_SHOWS, placeTells, type ScriptImageTell } from '@/lib/scriptTells';
-import { shownSentences } from '@/lib/inlineImages';
-import { InlineNarration } from './InlineNarration';
+import { TurnNarration } from './InlineNarration';
 import { ScriptImagesAbove, ScriptTellLines } from './ScriptPromptLine';
 import type { BubbleAction } from '@/lib/bubbleActions';
 import type { ChatMessage } from '@/types';
@@ -107,11 +106,10 @@ export function ChatNarration({ parseAssistantMessage, liveTurnId, liveShows = N
   fadeUnderStrip?: boolean;
 }) {
   const { fullMessageHistory, isRevealingNarration, narrationSettled, isWaitingForAI, sceneImages, actionAttachments, scriptTells, correctedReadings, currentPage, totalPages, setUserPage } = useGameplay();
-  const { revealSpec, revealEasing, showReasoning, characterMentions } = useSettings();
+  const { revealSpec, showReasoning, characterMentions } = useSettings();
   const gameplayText = useGameplayText();
   const liveReasoning = useLiveReasoning();
   const revealOn = revealActive(revealSpec);
-  const revealAnim = revealAnimName(revealSpec);
   const revealStyle = revealVars(revealSpec) as React.CSSProperties;
 
   const turns = useMemo(() => chatTurns(fullMessageHistory), [fullMessageHistory]);
@@ -249,28 +247,14 @@ export function ChatNarration({ parseAssistantMessage, liveTurnId, liveShows = N
                     )}
                     {turn.narration && (
                       <div data-testid="narration">
-                        {/* Streamdown memoizes on source position, not text, so committed text keys by its content. */}
-                        <MentionTurn turnId={turnId}>
-                          <InlineNarration
-                            text={narrationText}
-                            images={tells.inline}
-                            shown={shownSentences(narrationText, liveReveal, revealOn)}
-                            renderText={(text, index) => (
-                              <MarkdownRenderer
-                                key={liveReveal ? 'live' : `committed:${narrationText}`}
-                                text={text}
-                                animate={liveReveal && revealOn}
-                                // A run cut from the live text has shown its words already.
-                                resume={index > 0}
-                                fitShown
-                                animation={revealAnim}
-                                easing={revealEasing}
-                                dialogue
-                                {...triggers}
-                              />
-                            )}
-                          />
-                        </MentionTurn>
+                        <TurnNarration
+                          turnId={turnId}
+                          text={narrationText}
+                          images={tells.inline}
+                          live={liveReveal}
+                          revealOn={revealOn}
+                          triggers={triggers}
+                        />
                       </div>
                     )}
                     {turnId && (

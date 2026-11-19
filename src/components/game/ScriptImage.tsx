@@ -1,10 +1,9 @@
-import { useState } from 'react';
-import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import { RemoteImg } from '@/lib/useRemoteImage';
 import type { ShowSize, ShowWrap } from '@/lib/scriptPrompts';
 import { isImageTell, type ScriptImageTell, type ScriptTell } from '@/lib/scriptTells';
 import { cn } from '@/lib/utils';
 import type { MediaEntry, MediaList } from '@/types';
+import { ZoomImageButton } from './ZoomImageButton';
 
 /** Each size's share of the column it sits in (Q21). */
 const SIZE_WIDTH: Record<ShowSize, string> = { small: 'w-1/3', medium: 'w-3/5', large: 'w-full' };
@@ -34,7 +33,6 @@ const effectiveWrap = (wrap: ShowWrap, size: ShowSize): ShowWrap => (size === 'l
 
 /** One image a script showed at its size's width: a centered block, or a float the text wraps (Q3). A click opens it full size (Q10). */
 export function ScriptImage({ entry, size, wrap = 'block', className }: { entry: MediaEntry; size: ShowSize; wrap?: ShowWrap; className?: string }) {
-  const [zoom, setZoom] = useState(false);
   const shownWrap = effectiveWrap(wrap, size);
   return (
     <figure
@@ -43,15 +41,9 @@ export function ScriptImage({ entry, size, wrap = 'block', className }: { entry:
       data-wrap={shownWrap}
       className={cn(shownWrap === 'block' ? 'mx-auto flow-root' : FLOAT[shownWrap], SIZE_WIDTH[size], className)}
     >
-      <button
-        type="button"
-        aria-label="Zoom image"
-        className="block w-full cursor-zoom-in rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-        onClick={() => setZoom(true)}
-      >
+      <ZoomImageButton src={entry.data} alt={entry.name} className="w-full">
         <RemoteImg src={entry.data} alt={entry.name} className="max-h-[70vh] w-full rounded-md object-contain" />
-      </button>
-      <ImageZoomViewer src={entry.data} alt={entry.name} open={zoom} onOpenChange={setZoom} />
+      </ZoomImageButton>
     </figure>
   );
 }

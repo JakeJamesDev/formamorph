@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
-import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import { Tip } from '@/components/ui/tooltip';
 import { dataUrlImageSize } from '@/lib/imageBytes';
 import { cn } from '@/lib/utils';
+import { ZoomImageButton } from './ZoomImageButton';
 
 // The plate shows at most this tall.
 const IMAGE_MAX_REM = 18;
@@ -24,7 +24,6 @@ export function ScenePlate({ turnId, images, onDelete, className }: {
 }) {
   const newest = Math.max(0, images.length - 1);
   const [view, setView] = useState({ turnId, count: images.length, index: newest });
-  const [zoom, setZoom] = useState(false);
   // Another turn or a changed image count opens on the newest image.
   if (view.turnId !== turnId || view.count !== images.length) {
     setView({ turnId, count: images.length, index: newest });
@@ -39,16 +38,14 @@ export function ScenePlate({ turnId, images, onDelete, className }: {
 
   return (
     <figure className={cn('group relative mx-auto w-fit max-w-full', className)}>
-      <button
-        type="button"
-        aria-label="Zoom image"
-        className="block max-w-full cursor-zoom-in overflow-hidden rounded-md border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      <ZoomImageButton
+        src={src}
+        alt="Scene illustration"
+        className="max-w-full overflow-hidden border bg-muted"
         style={{ aspectRatio: size ? `${size.width} / ${size.height}` : '1 / 1', width: `min(100%, ${IMAGE_MAX_REM * ratio}rem)` }}
-        onClick={() => setZoom(true)}
       >
         <img src={src} alt="Scene illustration" className="h-full w-full object-contain" />
-      </button>
-      <ImageZoomViewer src={src} alt="Scene illustration" open={zoom} onOpenChange={setZoom} />
+      </ZoomImageButton>
       <div className="absolute bottom-2 right-2 flex items-center gap-0.5 rounded-md bg-black/70 px-1 text-meta text-white opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none">
         {images.length > 1 && (
           <>

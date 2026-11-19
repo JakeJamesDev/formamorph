@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
-import { MentionTurn, turnCardTriggers } from './MentionCards';
+import { turnCardTriggers } from './MentionCards';
 import type { LiveQuotes } from '@/lib/coref/streamingQuotes';
 import type { SpeakerColors } from '@/lib/quoteSegments';
 import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
@@ -121,8 +121,7 @@ import { useStatPanelEntity, type StatPanelOwner } from './useStatPanelEntity';
 import { parseSavedReasoning } from '@/lib/savedReasoning';
 import { scriptPrompts } from '@/lib/scriptPrompts';
 import { liveTurnTells, NO_SHOWS, placeTells, type ScriptImageTell } from '@/lib/scriptTells';
-import { shownSentences } from '@/lib/inlineImages';
-import { InlineNarration } from './InlineNarration';
+import { TurnNarration } from './InlineNarration';
 import { ScriptImagesAbove, ScriptPromptLine, ScriptTellLines } from './ScriptPromptLine';
 import { shownTells } from './ScriptImage';
 import { useMediaList } from '@/lib/useMediaList';
@@ -1130,28 +1129,15 @@ export const MiddlePanel = ({
                 <ScriptImagesAbove images={pageTells.above} className="mb-3" />
                 {currentAssistantMessage && pageNarration && (
                   <div ref={narrationRef} data-testid="narration">
-                    {/* Streamdown memoizes on source position, not text, so committed text keys by its content. */}
-                    <MentionTurn turnId={sceneTurnId}>
-                      <InlineNarration
-                        text={pageNarration}
-                        images={pageTells.inline}
-                        shown={shownSentences(pageNarration, pageLive, revealOn)}
-                        renderText={(text, index) => (
-                          <MarkdownRenderer
-                            key={pageLive ? 'live' : `committed:${pageNarration}`}
-                            text={text}
-                            animate={pageLive && revealOn}
-                            // A run cut from the live text has shown its words already.
-                            resume={index > 0 || pagedAway}
-                            fitShown
-                            animation={revealAnim}
-                            easing={revealEasing}
-                            dialogue
-                            {...pageTriggers}
-                          />
-                        )}
-                      />
-                    </MentionTurn>
+                    <TurnNarration
+                      turnId={sceneTurnId}
+                      text={pageNarration}
+                      images={pageTells.inline}
+                      live={pageLive}
+                      revealOn={revealOn}
+                      resumed={pagedAway}
+                      triggers={pageTriggers}
+                    />
                   </div>
                 )}
               </TurnCard>
