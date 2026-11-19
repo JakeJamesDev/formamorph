@@ -118,6 +118,22 @@ An entity's page lists its own stats and the stats its [Blueprints](World-Editor
 
 A change whose entity or stat you later delete stays on the Option and does nothing.
 
+## How to Make an Option Give Items
+<!-- keywords: starting items, give items, quantity, starting gear, kit, inventory -->
+
+An Option can give items when a new game starts, such as a **Supplies** value that starts the player with 3 potions.
+
+1. On the Option, under a choice value, or under **Starting Items When On** or **When Off**, select **Add Item**.
+2. Pick the item, who gets it, and how many. **You** is the player; an entity or a location gets it the same way as its own **Starting Items**.
+3. Optional: tick **Hidden**, or **Equipped** on an item that fits a slot.
+
+| ✅ Does | ❌ Doesn't |
+|---|---|
+| Gives the items once, for the value picked at new game. | Give items when the Option changes during play. |
+| Adds to the items the world already starts with. | Take items back when the value changes. |
+
+Deleting an item, entity or location removes the rows that use it.
+
 ## Shown to Player and Changeable During Play
 <!-- keywords: hidden option, internal flag, secret, mid game, change later, during play -->
 

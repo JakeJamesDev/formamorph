@@ -1229,6 +1229,8 @@ export interface WorldOptionValue extends OptionStatRows {
   id: string;
   name: string;
   placeholderPins?: PlaceholderPin[];
+  /** Starting Item Instances this value adds at new game. */
+  placements?: Placement[];
 }
 
 /** Pick one of named values. `default` is a value id. */
@@ -1248,6 +1250,9 @@ export interface BooleanWorldOption extends WorldOptionBase {
   onStatToggles?: OptionStatToggle[];
   offStatChanges?: OptionStatChange[];
   offStatToggles?: OptionStatToggle[];
+  /** Starting Item Instances each state adds at new game. */
+  onPlacements?: Placement[];
+  offPlacements?: Placement[];
 }
 
 /** A whole number in `min`–`max`, moved by `step`. Pins nothing. */

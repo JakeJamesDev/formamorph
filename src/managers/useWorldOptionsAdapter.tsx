@@ -3,6 +3,7 @@ import { Plus, Trash2, TriangleAlert, X } from 'lucide-react';
 import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
 import { OptionStatRowsField } from '@/components/editor/OptionStatRowsField';
+import { OptionItemsField } from '@/managers/OptionItemsField';
 import PlaceholderText, { PlaceholderVocabularyProvider } from '@/components/prompt/PlaceholderText';
 import { OptionSwitcher } from '@/components/SettingsRows';
 import { Button } from '@/components/ui/button';
@@ -428,6 +429,16 @@ function OptionDetail({ option, onChange }: { option: WorldOption; onChange: (ne
               />
             );
           })}
+          {(['On', 'Off'] as const).map((state) => {
+            const on = state === 'On';
+            return (
+              <OptionItemsField
+                key={state} when={`When ${state}`} name={state} valueId={on ? BOOLEAN_ON : BOOLEAN_OFF}
+                placements={on ? option.onPlacements : option.offPlacements}
+                onChange={(placements) => onChange(on ? { ...option, onPlacements: placements } : { ...option, offPlacements: placements })}
+              />
+            );
+          })}
         </>
       );
     }
@@ -464,6 +475,10 @@ function OptionDetail({ option, onChange }: { option: WorldOption; onChange: (ne
               <OptionStatRowsField
                 name={value.name || `Value ${index + 1}`} rows={value} world={world} valueId={value.id}
                 onChange={(rows) => setValues(option.values.map((v) => (v.id === value.id ? { ...v, ...rows } : v)))}
+              />
+              <OptionItemsField
+                name={value.name || `Value ${index + 1}`} valueId={value.id} placements={value.placements}
+                onChange={(placements) => setValues(option.values.map((v) => (v.id === value.id ? { ...v, placements } : v)))}
               />
             </div>
           ))}

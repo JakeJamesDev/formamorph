@@ -50,7 +50,7 @@ import { parseCurrencies } from '@/lib/currency/parse';
 import {
   bodyWithoutMedia, entityWithoutMedia, itemWithoutMedia, locationWithoutMedia, overviewWithoutMedia, renameMediaEntry,
 } from '@/lib/mediaUnlink';
-import { parseWorldOptions } from '@/lib/worldOptions';
+import { parseWorldOptions, withOptionPlacements } from '@/lib/worldOptions';
 import { lostStatIds, withoutBackingStats, withoutCurrencyItem, withoutCurrencyRefs } from '@/lib/currencyDeletes';
 import { useWorldRecorder, WorldHistoryContext } from '@/contexts/worldRecorder';
 import { GestureGroupContext, type GestureGroups } from '@/components/ui/gesture-group';
@@ -364,6 +364,7 @@ function useProvideGameData() {
     // since neither the list nor the canvas has an end to select it by.
     setConnections(prevConnections => dropLocationFromConnections(locationId, prevConnections));
     setPlacements(prev => withoutPlacementsAt(prev, { kind: 'location', id: locationId }));
+    setWorldOptions(prev => withOptionPlacements(prev, (list) => withoutPlacementsAt(list, { kind: 'location', id: locationId })));
   }, []);
 
   const addConnection = useCallback((newConnection: Connection) => {
@@ -386,6 +387,7 @@ function useProvideGameData() {
     dropBackings(held, heldEntities.filter(entity => entity.id !== entityId));
     setEntities(prevEntities => dropRelationshipsTo(entityId, prevEntities.filter(entity => entity.id !== entityId)));
     setPlacements(prev => withoutPlacementsAt(prev, { kind: 'entity', id: entityId }));
+    setWorldOptions(prev => withOptionPlacements(prev, (list) => withoutPlacementsAt(list, { kind: 'entity', id: entityId })));
   }, [dropBackings]);
 
   const addEntityGroup = useCallback((newGroup: EntityGroup) => {
@@ -435,6 +437,7 @@ function useProvideGameData() {
   const removeItem = useCallback((itemId: string) => {
     setItems(prev => prev.filter(item => item.id !== itemId));
     setPlacements(prev => withoutItemPlacements(prev, itemId));
+    setWorldOptions(prev => withOptionPlacements(prev, (list) => withoutItemPlacements(list, itemId)));
     setCurrencies(prev => withoutCurrencyItem(prev, itemId));
   }, []);
 

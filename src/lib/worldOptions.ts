@@ -2,7 +2,7 @@
 
 import type { ActionRef } from './actionList';
 import type {
-  BooleanWorldOption, OptionStatRows, PlaceholderPin, PresetWorldOption, Trait, ValuedWorldOption, WorldOption, WorldOptionType, WorldOptionValueOf, WorldOptionValues,
+  BooleanWorldOption, OptionStatRows, Placement, PlaceholderPin, PresetWorldOption, Trait, ValuedWorldOption, WorldOption, WorldOptionType, WorldOptionValueOf, WorldOptionValues,
 } from '@/types';
 
 /** The value ids a boolean Option's pin lists sit under. */
@@ -97,6 +97,35 @@ export function optionPinLists(options: readonly WorldOption[] | undefined, valu
     }
   }
   return out;
+}
+
+/** The Starting Item Instances the Options' current values add, in Options-tab order. */
+export function optionPlacements(options: readonly WorldOption[] | undefined, values?: WorldOptionValues): Placement[] {
+  return valuedOptions(options).flatMap((option) => {
+    const value = optionValue(option, values);
+    if (option.type === 'choice') return option.values.find((v) => v.id === value)?.placements ?? [];
+    if (option.type === 'boolean') return (value ? option.onPlacements : option.offPlacements) ?? [];
+    return [];
+  });
+}
+
+/** `options` with every value's placement list passed through `edit`; an Option it leaves alone stays the same object. */
+export function withOptionPlacements(options: WorldOption[], edit: (placements: Placement[]) => Placement[]): WorldOption[] {
+  const fix = (list: Placement[] | undefined) => {
+    if (!list) return list;
+    const next = edit(list);
+    return next.length === list.length && next.every((p, i) => p === list[i]) ? list : next.length ? next : undefined;
+  };
+  return options.map((option) => {
+    if (option.type === 'choice') {
+      const values = option.values.map((v) => { const placements = fix(v.placements); return placements === v.placements ? v : { ...v, placements }; });
+      return values.every((v, i) => v === option.values[i]) ? option : { ...option, values };
+    }
+    if (option.type !== 'boolean') return option;
+    const onPlacements = fix(option.onPlacements);
+    const offPlacements = fix(option.offPlacements);
+    return onPlacements === option.onPlacements && offPlacements === option.offPlacements ? option : { ...option, onPlacements, offPlacements };
+  });
 }
 
 /** The stat rows one Option value lays: under `valueId`, as {@link OptionPins}. */

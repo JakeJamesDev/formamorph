@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { bodyFixture } from '@/test/bodyFixture';
 import { openingFold, openingStateOf, type OpeningFoldWorld } from './openingState';
-import type { Body, Entity, GameLocation, Item, Placement, Stat, StatChange, Trait } from '@/types';
+import type { Body, Entity, GameLocation, Item, Placement, Stat, StatChange, Trait, WorldOption } from '@/types';
 
 const stat = (id: string, value: number, over: Partial<Stat> = {}): Stat => ({
   id, name: id, type: 'number', description: '', min: 0, max: 100, value, regen: 0, descriptors: [], ...over,
@@ -248,5 +248,31 @@ describe('openingFold — Equipped placements', () => {
     expect(instancesOf(fold({ ref: { source: 'world', entityId: 'albus' } }), 'sword')).toEqual([['you', 'hand', 1]]);
     expect(instancesOf(fold(), 'sword')).toEqual([['you', null, 1]]);
     expect(instancesOf(fold({ ref: { source: 'library', entityId: 'lib' } }), 'sword')).toEqual([['you', null, 1]]);
+  });
+});
+
+describe('openingFold — Option Starting Items', () => {
+  const potion: Item = { id: 'potion', name: 'Potion', statEffects: [], traitEffects: [], equipRequires: [] };
+  const give = (id: string, quantity: number, where: Placement['where'] = { kind: 'you' }): Placement =>
+    ({ id, where, quantity, source: { kind: 'item', itemId: 'potion' } });
+  const supplies: WorldOption = {
+    id: 'supplies', name: 'Supplies', type: 'choice', shownToPlayer: true, midGame: false, default: 'some',
+    values: [{ id: 'none', name: 'None' }, { id: 'some', name: 'Some', placements: [give('o1', 3)] }],
+  };
+  const kit: WorldOption = {
+    id: 'kit', name: 'Kit', type: 'boolean', shownToPlayer: true, midGame: true, default: false,
+    onPlacements: [give('o2', 2, { kind: 'entity', id: 'bram' })], offPlacements: [give('o3', 1)],
+  };
+  const optionWorld: OpeningFoldWorld = { ...world, items: [potion], placements: [give('p1', 1)], options: [supplies, kit] };
+  const potions = (fold: ReturnType<typeof openingFold>) => (fold.state.itemInstances ?? []).map((c) => [c.where.kind, c.quantity]);
+
+  it("adds the defaults' items to the world's placements when nothing is picked", () => {
+    // Placement 1 + Some 3 + Kit off 1 stack on You.
+    expect(potions(openingFold(optionWorld))).toEqual([['you', 5]]);
+  });
+
+  it("adds the picked values' items, with their quantity and recipient", () => {
+    const fold = openingFold(optionWorld, { traits: [], owned: {}, options: { supplies: 'none', kit: true } });
+    expect(potions(fold)).toEqual([['you', 1], ['entity', 2]]);
   });
 });

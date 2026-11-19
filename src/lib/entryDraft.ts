@@ -76,10 +76,10 @@ export interface EntryTraitWorld {
   options?: readonly WorldOption[];
 }
 
-/** The Item Instances a new game would hold under `persona`, so an item Condition reads the start. The ids only tell instances apart. */
-function seededInstances(world: EntryTraitWorld, persona: PersonaRef) {
+/** The Item Instances a new game would hold under `persona` and `optionValues`, so an item Condition reads the start. The ids only tell instances apart. */
+function seededInstances(world: EntryTraitWorld, persona: PersonaRef, optionValues?: WorldOptionValues) {
   let n = 0;
-  return startingInstances({ ...world, entities: [...world.entities, ...world.library] }, persona, () => `seed-${n++}`);
+  return startingInstances({ ...world, entities: [...world.entities, ...world.library], optionValues }, persona, () => `seed-${n++}`);
 }
 
 const setupStats = new WeakMap<EntryTraitWorld, Map<string, SetupStatsOf>>();
@@ -114,7 +114,7 @@ const entryGateBase = (
     statsOf,
     stats: statsOf(NO_ACTIVE),
     reader: 'player',
-    ...(world.items ? { worldItems: world.items, itemInstances: seededInstances(world, persona) } : {}),
+    ...(world.items ? { worldItems: world.items, itemInstances: seededInstances(world, persona, optionValues) } : {}),
   };
 };
 

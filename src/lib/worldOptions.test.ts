@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import type { PlaceholderPin, Trait, WorldOption } from '@/types';
+import type { Placement, PlaceholderPin, Trait, WorldOption } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 import {
   addPinAt, collectPinLayers, collectPins, commitPinSource, pinsTargeting, removePinAt,
 } from './placeholderPins';
 import { encodePlaceholderToken, resolvePlaceholders } from './placeholders';
 import {
-  BOOLEAN_OFF, BOOLEAN_ON, acceptsValue, midGameOptions, optionDefault, optionPinLists, optionValue, shownOptions, snapNumber, withOptionType,
+  BOOLEAN_OFF, BOOLEAN_ON, acceptsValue, midGameOptions, optionDefault, optionPinLists, optionPlacements, optionValue, shownOptions, snapNumber, withOptionPlacements, withOptionType,
 } from './worldOptions';
 
 const pin = (placeholderId: string, value: string): PlaceholderPin => ({ placeholderId, value });
@@ -153,5 +153,29 @@ describe('a Preset Option', () => {
     expect(withOptionType(preset, 'boolean', () => 'x')).toEqual({
       id: 'o-style', name: 'Style', type: 'boolean', default: false, shownToPlayer: true, midGame: false, playerDescription: 'How it reads',
     });
+  });
+});
+
+describe('Option Starting Items', () => {
+  const give = (id: string, itemId: string): Placement => ({ id, where: { kind: 'you' }, quantity: 1, source: { kind: 'item', itemId } });
+  const supplies: WorldOption = {
+    id: 'supplies', name: 'Supplies', type: 'choice', shownToPlayer: true, midGame: false, default: 'a',
+    values: [{ id: 'a', name: 'A', placements: [give('a1', 'rope'), give('a2', 'torch')] }, { id: 'b', name: 'B', placements: [give('b1', 'rope')] }],
+  };
+  const kit: WorldOption = {
+    id: 'kit', name: 'Kit', type: 'boolean', shownToPlayer: true, midGame: false, default: true, onPlacements: [give('k1', 'torch')],
+  };
+
+  it('lists the current values’ placements in Options-tab order', () => {
+    expect(optionPlacements([supplies, kit]).map((p) => p.id)).toEqual(['a1', 'a2', 'k1']);
+    expect(optionPlacements([supplies, kit], { supplies: 'b', kit: false }).map((p) => p.id)).toEqual(['b1']);
+  });
+
+  it('edits every value’s list, drops an emptied one, and keeps an untouched Option the same object', () => {
+    const untouched: WorldOption = { ...kit, id: 'other', onPlacements: [give('x1', 'rope')] };
+    const [s, k, o] = withOptionPlacements([supplies, kit, untouched], (list) => list.filter((p) => p.source.itemId !== 'torch'));
+    expect(s.type === 'choice' && s.values.map((v) => v.placements?.map((p) => p.id))).toEqual([['a1'], ['b1']]);
+    expect(k.type === 'boolean' && k.onPlacements).toBeUndefined();
+    expect(o).toBe(untouched);
   });
 });

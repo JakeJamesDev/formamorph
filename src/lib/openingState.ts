@@ -104,7 +104,7 @@ export function openingFold(
   const { stats: authored, entities } = playStatWorld({ stats: world.stats ?? [], statGroups: world.statGroups ?? [], entities: world.entities ?? [] });
   const ownerWorld = { traits, traitGroups, entities };
   const library = inPlayLibrary(ownerWorld, persona?.libraryEntity, persona?.characters ?? []);
-  const startWorld = { ...world, entities };
+  const startWorld = { ...world, entities, ...(picks.options ? { optionValues: picks.options } : {}) };
   // The trait picks read the start as Enter World showed it: equipped, before any requirement check (Q51).
   const traitWorld: TraitWorld = {
     traits, groups: traitGroups, entities, persona: ref, items: world.items ?? [], itemInstances: startingInstances(startWorld, ref, newId),

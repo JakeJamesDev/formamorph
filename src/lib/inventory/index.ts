@@ -7,9 +7,10 @@ import {
 } from '@/lib/items';
 import { slotsInForce, type BodyWorld } from '@/lib/bodies';
 import { inCast, playsAs } from '@/lib/owners';
+import { optionPlacements } from '@/lib/worldOptions';
 import type {
   Entity, GameLocation, Item, ItemInstance, ItemInstanceState, ItemInstanceVisibility, ItemInstanceWhere, ItemEffectLedger, ItemRef, ItemScriptTiming, PersonaRef, Placement,
-  InventoryUseAfter, RuntimeItem, Slot,
+  InventoryUseAfter, RuntimeItem, Slot, WorldOption, WorldOptionValues,
 } from '@/types';
 import type { ItemEventArgs, TriggerCause, TriggerPurchase } from '@/lib/triggerArgs';
 import { timedTraitRow, type ItemUse } from './effects';
@@ -35,6 +36,9 @@ export interface SeedWorld {
   placements?: readonly Placement[];
   entities?: readonly Entity[];
   locations?: readonly Pick<GameLocation, 'id'>[];
+  /** The Options whose picked values add placements. Absent values = each Option's default. */
+  options?: readonly WorldOption[];
+  optionValues?: WorldOptionValues;
 }
 
 /** The Item Instances at `where`: one owner's, or the ones lying at one location. */
@@ -109,7 +113,7 @@ function seedPlacements(world: SeedWorld, persona: PersonaRef | undefined, newId
     const slotId = unit === 0 && placement.slotId && item.slotRule?.slotIds.includes(placement.slotId) ? placement.slotId : undefined;
     equips.push({ kind: 'equip', instanceId, ...(slotId && { slotId }) });
   };
-  for (const placement of world.placements ?? []) {
+  for (const placement of [...world.placements ?? [], ...optionPlacements(world.options, world.optionValues)]) {
     const item = items.get(placement.source.itemId);
     const where = seedWhere(placement, world, persona);
     const quantity = Math.floor(placement.quantity);

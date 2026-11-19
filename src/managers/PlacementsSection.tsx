@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 import { Plus, TriangleAlert, X } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Button } from '@/components/ui/button';
@@ -47,38 +47,44 @@ const withFlag = (p: Placement, flag: 'hidden' | 'equipped', on: boolean): Place
   return flag === 'equipped' ? withSlot(rest, undefined) : rest;
 };
 
-/** The starting Item Instances placed at one place: item, quantity, Hidden and, on an owner, Equipped per row. */
-const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
-  const { items: worldItems, itemGroups, placements, setPlacements, placeholders, slots, bodies, entities } = useGameData();
+/** Starting placement rows: item, quantity, Hidden and, on an owner, Equipped per row. `recipient` adds a control
+ *  that moves a row to another place; absent, every row stays at `where`. */
+export function PlacementRows({ rows, onRowsChange, where, recipient, ariaPrefix = '', labelledBy }: {
+  rows: readonly Placement[];
+  onRowsChange: (next: Placement[]) => void;
+  /** Where a new row goes. */
+  where: PlacementWhere;
+  recipient?: (p: Placement, onWhere: (where: PlacementWhere) => void) => ReactNode;
+  /** Names each control after its list ("On Sword Quantity"), with its trailing space. */
+  ariaPrefix?: string;
+  labelledBy?: string;
+}) {
+  const { items: worldItems, itemGroups, placeholders, slots, bodies, entities } = useGameData();
   const items = itemsInTabOrder(itemGroups, worldItems);
-  const labelId = useId();
-  const rows = placementsAt(placements, where);
   const itemOf = (itemId: string) => items.find((i) => i.id === itemId);
   const name = (itemId: string) => labelPlaceholders(itemOf(itemId)?.name ?? '', placeholders) || 'Unnamed Item';
+  const aria = (p: Placement, part: string) => `${ariaPrefix}${name(p.source.itemId)} ${part}`;
   /** The rule a row can equip under: its item's, never at a location. */
-  const ruleOf = (item: Item | undefined) => (where.kind !== 'location' ? item?.slotRule : undefined);
+  const ruleOf = (at: PlacementWhere, item: Item | undefined) => (at.kind !== 'location' ? item?.slotRule : undefined);
   const slotName = (slotId: string) => slots.find((slot) => slot.id === slotId)?.name ?? '';
-  /** The slots the owner's Body holds. */
-  const owner = where.kind === 'location' ? undefined : where;
-  const held = new Set(owner && bodyInForce({ bodies, entities }, owner, undefined)?.entries.map((e) => e.slotId));
 
-  const update = (next: Placement) => setPlacements(placements.map((p) => (p.id === next.id ? next : p)));
-  const remove = (id: string) => setPlacements(placements.filter((p) => p.id !== id));
+  const update = (next: Placement) => onRowsChange(rows.map((p) => (p.id === next.id ? next : p)));
+  const remove = (id: string) => onRowsChange(rows.filter((p) => p.id !== id));
   const add = () => {
     if (!items[0]) return;
-    setPlacements([...placements, { id: randomUUID(), where, quantity: 1, source: { kind: 'item', itemId: items[0].id } }]);
+    onRowsChange([...rows, { id: randomUUID(), where, quantity: 1, source: { kind: 'item', itemId: items[0].id } }]);
   };
 
   return (
-    <div className="space-y-2" {...fieldFrame('placements')}>
-      <Label id={labelId}>{label}</Label>
-      <Hint>{items.length ? hint : 'Add items on the Items tab first'}</Hint>
+    <>
       {rows.length > 0 && (
-        <ul aria-labelledby={labelId} className="space-y-2">
+        <ul aria-labelledby={labelledBy} className="space-y-2">
           {rows.map((p) => {
             const item = itemOf(p.source.itemId);
-            const rule = ruleOf(item);
-            const gap = p.equipped && rule && where.kind !== 'location' ? startingEquipGap({ bodies, entities }, where, rule, p.slotId) : null;
+            const rule = ruleOf(p.where, item);
+            const owner = p.where.kind === 'location' ? undefined : p.where;
+            const held = new Set(owner && bodyInForce({ bodies, entities }, owner, undefined)?.entries.map((e) => e.slotId));
+            const gap = p.equipped && rule && owner ? startingEquipGap({ bodies, entities }, owner, rule, p.slotId) : null;
             const warn = gap && gapText(gap, name(p.source.itemId), slotName);
             return (
               <li key={p.id} className="space-y-1">
@@ -86,18 +92,19 @@ const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
                   <Select
                     value={p.source.itemId}
                     onValueChange={(itemId) => update({
-                      ...withFlag(p, 'equipped', !!p.equipped && !!ruleOf(itemOf(itemId))), source: { kind: 'item', itemId },
+                      ...withFlag(p, 'equipped', !!p.equipped && !!ruleOf(p.where, itemOf(itemId))), source: { kind: 'item', itemId },
                     })}
                   >
-                    <SelectTrigger className="min-w-0 flex-1" aria-label="Item">
+                    <SelectTrigger className="min-w-0 flex-1" aria-label={`${ariaPrefix}Item`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {items.map((i) => <SelectItem key={i.id} value={i.id}>{name(i.id)}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  {recipient?.(p, (next) => update({ ...withFlag(p, 'equipped', !!p.equipped && !!ruleOf(next, item)), where: next }))}
                   <WorldInput
-                    aria-label={`${name(p.source.itemId)} Quantity`}
+                    aria-label={aria(p, 'Quantity')}
                     type="number"
                     min={1}
                     className="w-20"
@@ -109,7 +116,7 @@ const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
                   />
                   <Label className="flex items-center gap-1.5 font-normal">
                     <Checkbox
-                      aria-label={`${name(p.source.itemId)} Hidden`}
+                      aria-label={aria(p, 'Hidden')}
                       checked={!!p.hidden}
                       onCheckedChange={(checked) => update(withFlag(p, 'hidden', checked === true))}
                     />
@@ -118,7 +125,7 @@ const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
                   {rule && (
                     <Label className="flex items-center gap-1.5 font-normal">
                       <Checkbox
-                        aria-label={`${name(p.source.itemId)} Equipped`}
+                        aria-label={aria(p, 'Equipped')}
                         checked={!!p.equipped}
                         onCheckedChange={(checked) => update(withFlag(p, 'equipped', checked === true))}
                       />
@@ -127,7 +134,7 @@ const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
                   )}
                   {p.equipped && rule?.mode === 'either' && rule.slotIds.length >= 2 && (
                     <Select value={p.slotId && rule.slotIds.includes(p.slotId) ? p.slotId : FIRST_FREE} onValueChange={(slotId) => update(withSlot(p, slotId === FIRST_FREE ? undefined : slotId))}>
-                      <SelectTrigger className="w-40" aria-label={`${name(p.source.itemId)} Slot`}>
+                      <SelectTrigger className="w-40" aria-label={aria(p, 'Slot')}>
                         {/* A named slot the Body lacks has no item, so the trigger names it and the warning explains. */}
                         <SelectValue>{p.slotId && rule.slotIds.includes(p.slotId) ? slotName(p.slotId) || 'Unnamed Slot' : 'First Free Slot'}</SelectValue>
                       </SelectTrigger>
@@ -138,7 +145,7 @@ const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
                     </Select>
                   )}
                   <Tip tip="Delete">
-                    <Button variant="ghost" size="icon" className={DESTRUCTIVE_ROW_ACTION_HOVER} aria-label={`Delete ${name(p.source.itemId)}`} onClick={() => remove(p.id)}>
+                    <Button variant="ghost" size="icon" className={DESTRUCTIVE_ROW_ACTION_HOVER} aria-label={`Delete ${ariaPrefix}${name(p.source.itemId)}`} onClick={() => remove(p.id)}>
                       <X className="h-4 w-4" />
                     </Button>
                   </Tip>
@@ -157,6 +164,30 @@ const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
       <Button variant="outline" size="sm" onClick={add} disabled={!items.length}>
         <Plus className="mr-1 h-4 w-4" aria-hidden />Add Item
       </Button>
+    </>
+  );
+}
+
+/** The starting Item Instances placed at one place. */
+const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
+  const { items, placements, setPlacements } = useGameData();
+  const labelId = useId();
+  const rows = placementsAt(placements, where);
+  // Edited rows keep their place in the world's list; a new row goes on the end.
+  const onRowsChange = (next: Placement[]) => {
+    const before = new Set(rows.map((p) => p.id));
+    const byId = new Map(next.map((p) => [p.id, p]));
+    setPlacements([
+      ...placements.flatMap((p) => (!before.has(p.id) ? [p] : byId.has(p.id) ? [byId.get(p.id) as Placement] : [])),
+      ...next.filter((p) => !before.has(p.id)),
+    ]);
+  };
+
+  return (
+    <div className="space-y-2" {...fieldFrame('placements')}>
+      <Label id={labelId}>{label}</Label>
+      <Hint>{items.length ? hint : 'Add items on the Items tab first'}</Hint>
+      <PlacementRows rows={rows} onRowsChange={onRowsChange} where={where} labelledBy={labelId} />
     </div>
   );
 };
