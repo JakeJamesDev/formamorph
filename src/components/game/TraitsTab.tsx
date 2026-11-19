@@ -21,6 +21,7 @@ import { Tip } from '@/components/ui/tooltip';
 import { textVariants } from '@/components/ui/typography';
 import { gateLineParts } from '@/lib/traitGateLine';
 import { GateLineText } from '@/components/game/GateLineText';
+import { StatChangeItem } from '@/components/game/StatChangeItem';
 import { isAlwaysOn, isHidden } from '@/lib/traitEffects';
 import { statRowSide } from '@/lib/traitTree';
 import { traitAvatarChanges } from '@/lib/avatarChanges';
@@ -249,13 +250,7 @@ export const TraitsTab = ({
           {isExpanded && changes.length > 0 && (
             <ul className="mt-1 list-inside list-disc text-helper text-muted-foreground">
               {changes.map(({ change, stat }, i) => (
-                <li key={i}>
-                  {resolveTraitText(trait, stat.name, ownerId)}:{' '}
-                  <span className={change.value > 0 ? 'text-success' : 'text-destructive'}>
-                    {change.value > 0 ? '+' : ''}{change.value}
-                  </span>
-                  {change.type && change.type !== 'starting' ? ` (${change.type})` : ''}
-                </li>
+                <StatChangeItem key={i} label={resolveTraitText(trait, stat.name, ownerId)} value={change.value} type={change.type} />
               ))}
             </ul>
           )}

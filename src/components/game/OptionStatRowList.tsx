@@ -1,5 +1,6 @@
 import { optionRowLines, type OptionRowLinesWorld } from '@/lib/optionStatRowLines';
 import { cn } from '@/lib/utils';
+import { StatChangeItem } from './StatChangeItem';
 import type { OptionStatChange } from '@/types';
 
 /** The Option context a list needs: the world's stats and entities, and whether this is the in-play tab. */
@@ -25,15 +26,7 @@ export function OptionStatRowList({ rows, view, resolveText, lead, className }: 
     <>
       {lead && <span className="mt-2 block text-meta text-muted-foreground">{lead}</span>}
       <ul className={cn('mt-1 list-inside list-disc text-helper text-muted-foreground', className)} data-testid="option-stat-rows">
-        {lines.map((line, index) => (
-          <li key={index}>
-            {line.label}:{' '}
-            <span className={line.value > 0 ? 'text-success' : 'text-destructive'}>
-              {line.value > 0 ? '+' : ''}{line.value}
-            </span>
-            {line.type ? ` (${line.type})` : ''}
-          </li>
-        ))}
+        {lines.map((line, index) => <StatChangeItem key={index} label={line.label} value={line.value} type={line.type} />)}
       </ul>
     </>
   );

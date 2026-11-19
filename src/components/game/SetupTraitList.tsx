@@ -15,6 +15,7 @@ import { isAlwaysOn, isDormant, isShown } from '@/lib/traitEffects';
 import { statRowSide } from '@/lib/traitTree';
 import { traitAvatarChanges } from '@/lib/avatarChanges';
 import { AvatarChangeIcon } from './AvatarChangeIcon';
+import { StatChangeItem } from './StatChangeItem';
 import type { Stat, StatChange, Trait, TraitGroup } from '@/types';
 
 /** What the last selection change turned off, by name, and the pick that caused it; or, after a Preset click,
@@ -179,13 +180,7 @@ export function SetupTraitList({
           {changes.length > 0 && (
             <ul className="mt-2 list-inside list-disc text-helper text-muted-foreground">
               {changes.map(({ change, stat }, index) => (
-                <li key={index}>
-                  {resolveTraitText(trait, stat.name)}:{' '}
-                  <span className={change.value > 0 ? 'text-success' : 'text-destructive'}>
-                    {change.value > 0 ? '+' : ''}{change.value}
-                  </span>
-                  {change.type && change.type !== 'starting' ? ` (${change.type})` : ''}
-                </li>
+                <StatChangeItem key={index} label={resolveTraitText(trait, stat.name)} value={change.value} type={change.type} />
               ))}
             </ul>
           )}

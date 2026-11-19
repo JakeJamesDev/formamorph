@@ -95,7 +95,8 @@ function entryStatsOf(world: EntryTraitWorld, persona: PersonaRef, optionValues?
   const hit = kept.get(key);
   if (hit) return hit;
   const statsOf = setupStatsOf(world, persona, world.library, optionValues);
-  if (kept.size >= KEPT_SETUPS) kept.delete(kept.keys().next().value!);
+  const oldest = kept.size >= KEPT_SETUPS ? kept.keys().next().value : undefined;
+  if (oldest !== undefined) kept.delete(oldest);
   kept.set(key, statsOf);
   return statsOf;
 }
