@@ -235,8 +235,8 @@ export function quoteSpans(text: string): { start: number; end: number; paragrap
 }
 
 /**
- * The speaker of each quote: the mention at a speech verb attached to the quote, else the nearest preceding
- * subject mention in the paragraph (unless `verbOnly`), else none.
+ * The speaker of each quote: the mention at a speech verb attached to the quote, else (unless `verbOnly`) the
+ * mention opening an action beat after it, else the nearest preceding subject mention in the paragraph.
  */
 function quoteSpeakers(
   text: string, mentions: MentionLink[], player: Set<string>, playerId: string | null, verbOnly = false,
@@ -299,11 +299,22 @@ function quoteSpeakers(
           if (speaker === undefined) speaker = speakerOf(candidates.sort((a, b) => b.end - a.end)[0]);
         }
       }
+      if (speaker === undefined && !verbOnly) speaker = beatSpeaker(run.end, after);
       if (speaker === undefined && !verbOnly) speaker = nearestSubject(para, run.start, runs);
       quotes.push({ start: run.start, end: run.end, speaker: speaker ?? null });
     });
   }
   return quotes;
+
+  // An action beat: the text right after the quote opens on its speaker (`"…" Mira grins.`).
+  function beatSpeaker(quoteEnd: number, after: string): string | null | undefined {
+    const lead = /^\s*[,.!?;—–-]?\s*/.exec(after)![0].length;
+    const word = /^[^\s.,!?"“”]+/.exec(after.slice(lead));
+    if (!word) return undefined;
+    if (playerSubject(word[0])) return playerId;
+    const opening = mentions.filter((m) => m.start === quoteEnd + lead && m.end > m.start);
+    return speakerOf(opening.sort((a, b) => (b.entityId ? 1 : 0) - (a.entityId ? 1 : 0) || b.end - a.end)[0]);
+  }
 
   // The last mention before the quote, in the paragraph's prose, that opens a clause.
   function nearestSubject(within: Paragraph, before: number, quoteRuns: Paragraph[]): string | null | undefined {

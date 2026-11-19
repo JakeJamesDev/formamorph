@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity } from '@/types';
 import type { CharSpan, CorefCluster } from './corefHost';
-import { entitiesInProse, mentionEntityAt, readMentions, readPassageMentions } from './mentionReading';
+import { entitiesInProse, mentionEntityAt, quoteSpeakingClusters, readMentions, readPassageMentions } from './mentionReading';
+import { holdPoint } from './streamingQuotes';
 
 // Synthetic passages written for these guards.
 const cast = (...members: Partial<Entity>[]): Entity[] =>
@@ -187,6 +188,44 @@ describe('readMentions quote speakers', () => {
     const text = 'Odile sets down her pliers. "Green glass, then."\n\n"Ask someone else."';
     const reading = readMentions(text, [], two);
     expect(reading.quotes.map((q) => q.speaker)).toEqual(['odile', null]);
+  });
+
+  it('takes the mention opening an action beat after the quote over an earlier subject', () => {
+    const speakers = (text: string) => readMentions(text, [], two).quotes.map((q) => q.speaker);
+    expect(speakers('Brannock turns away. "Wait." Odile grabs his sleeve.')).toEqual(['odile']);
+    expect(speakers('Brannock turns away. "Wait," Odile grins.')).toEqual(['odile']);
+    expect(speakers('Brannock turns away.\n\n"Wait. Please." Odile reaches out.')).toEqual(['odile']);
+    expect(speakers('Brannock turns away. "Wait" — Odile catches his arm.')).toEqual(['odile']);
+    // A beat that does not open on a mention leaves the earlier subject.
+    expect(speakers('Odile calls it "the Pit," and Brannock stares.')).toEqual(['odile']);
+  });
+
+  it('keeps a speech-verb lead-in over the beat after the quote', () => {
+    const text = 'Odile whispers, "Run." Brannock nods.';
+    expect(readMentions(text, [], two).quotes.map((q) => q.speaker)).toEqual(['odile']);
+  });
+
+  it('resolves a beat pronoun through its cluster, and a player beat to the persona', () => {
+    // An unnamed beat subject is someone, just not the earlier subject.
+    const text = 'Brannock turns away. "Wait," she grins.';
+    expect(readMentions(text, [[at(text, 'she')]], two).quotes.map((q) => q.speaker)).toEqual([null]);
+    const odile = 'Odile looks up. Brannock turns away. "Wait," she grins.';
+    expect(readMentions(odile, [[at(odile, 'Odile'), at(odile, 'she')]], two).quotes.map((q) => q.speaker)).toEqual(['odile']);
+    const mine = 'Odile turns away. "Stop." You catch her wrist.';
+    expect(readMentions(mine, [], two, { player: { id: 'ash', names: ['Ash'] } }).quotes.map((q) => q.speaker)).toEqual(['ash']);
+  });
+
+  it('reads the beat speaker on the passage cut at the streaming hold point', () => {
+    const text = 'Brannock turns away. "Wait." Odile grabs his sleeve. Brannock stops.';
+    const end = text.indexOf(' Odile');
+    const cut = holdPoint(text, end, false)!;
+    expect(text.slice(0, cut)).toBe('Brannock turns away. "Wait." Odile grabs his sleeve.');
+    expect(readMentions(text.slice(0, cut), [], two).quotes.map((q) => q.speaker)).toEqual(['odile']);
+  });
+
+  it('leaves beats out of the speech-verb clusters', () => {
+    const text = 'Brannock turns away. "Wait." Odile grabs his sleeve.';
+    expect(quoteSpeakingClusters(text, [[at(text, 'Odile')]])).toEqual(new Set());
   });
 
   it('resolves a pronoun speaker through its cluster', () => {
