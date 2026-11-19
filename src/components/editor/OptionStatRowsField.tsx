@@ -62,7 +62,7 @@ export function OptionStatRowsField({ when, name, rows, onChange, valueId, world
         plainText={(text) => labelPlaceholders(text, placeholders)}
         placeholder="Select stat"
         ariaLabel={ariaLabel}
-        className="w-56 min-w-0"
+        className="w-full min-w-0"
       />
     );
   };

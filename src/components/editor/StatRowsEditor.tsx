@@ -98,7 +98,7 @@ export function StatRowsEditor<C extends StatChange, T extends TraitStatToggle>(
   const statControl = <R extends C | T>(row: R, kind: string, index: number, list: string, set: (next: R) => void, disabled = false) => {
     const ariaLabel = aria(kind, index, 'Stat')['aria-label'];
     if (statPicker) {
-      return <div className="min-w-0" {...frame(list, String(index), 'statId')}>{statPicker(row, (target) => set(targetedRow(row, target)), ariaLabel)}</div>;
+      return <div className="w-56 max-w-[40%] shrink-0" {...frame(list, String(index), 'statId')}>{statPicker(row, (target) => set(targetedRow(row, target)), ariaLabel)}</div>;
     }
     return (
       <Select value={pickerValue(row, sideOf(row))} onValueChange={(value) => set(pickedRow(row, value))} disabled={disabled}>
