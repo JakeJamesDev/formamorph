@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, ChevronUp, CircleCheck, Lock, LockOpen, Pencil, Send, Trash2, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronUp, CircleCheck, Copy, Lock, LockOpen, Pencil, Send, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,6 +15,8 @@ import { UserName } from "@/components/UserName";
 import { FeedbackEditDialog } from "@/components/menu/FeedbackEditDialog";
 import { mayEditProse, mayRefile } from "@/lib/feedbackEditing";
 import { badgeRole, isStaff } from "@/lib/roles";
+import { copyWithToast } from "@/lib/clipboard";
+import { feedbackThreadText } from "@/lib/feedbackThreadText";
 import {
   FEEDBACK_CATEGORY_LABELS, SET_STATUS_OPTIONS, STATUS_OPTIONS, formatFeedbackDate, statusStyle,
 } from "@/lib/feedbackPresentation";
@@ -430,6 +432,18 @@ function ThreadPane({
             </span>
             {/* Only when there is something this reader may change: an inert control reads as a
                 permission they have lost rather than as one they never had. */}
+            {isStaff(viewer) && (
+              <Tip tip="Copy this thread">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => copyWithToast(feedbackThreadText(detail))}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </Tip>
+            )}
             {(canEditProse || canRefile) && (
               <Tip tip="Edit this thread">
                 <Button

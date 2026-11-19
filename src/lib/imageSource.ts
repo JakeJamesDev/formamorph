@@ -8,6 +8,7 @@
  */
 import { optimizeImageDataUrl, type ImageCap } from './imageOptim';
 import { imageHost } from './imageBytes';
+import { atCaller } from './callerStack';
 
 // Re-exported so callers have one import for "anything about where an image comes from"; the predicates
 // themselves live in the DOM-free leaf so the optimize pipeline can use them too.
@@ -41,10 +42,11 @@ export async function fetchAsDataUrl(url: string, cap: ImageCap): Promise<string
 
 /** Blob → data URL. FileReader rather than a manual base64 pass so the mime comes along for free. */
 export function blobToDataUrl(blob: Blob): Promise<string> {
+  const origin = new Error();
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error ?? new Error('Could not read the downloaded image.'));
+    reader.onerror = () => reject(atCaller(origin, reader.error, 'Could not read the downloaded image.'));
     reader.readAsDataURL(blob);
   });
 }

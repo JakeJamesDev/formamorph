@@ -5,7 +5,7 @@
  * (~600 records × ~700 B) and the server returns all of it in one `?limit=1000` request, so we
  * refresh by replacing the whole set (which also reconciles new/updated/removed worlds + counts).
  */
-import { cachedConnection, clearStore, promisifyRequest } from './idb';
+import { cachedConnection, clearStore, promisifyRequest, transactionDone } from './idb';
 
 const DB_NAME = 'FORMAMORPH_CATALOG_DB';
 const STORE_NAME = 'worlds';
@@ -89,20 +89,18 @@ export const replaceCatalog = async (
   anonymousLikes?: boolean,
 ): Promise<void> => {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction([STORE_NAME, META_STORE], 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    store.clear();
-    worlds.forEach((w) => { if (w && w.id) store.put(w); });
-    const meta = tx.objectStore(META_STORE);
-    if (tag) meta.put({ key: TAG_KEY, tag: tag.tag, reader: tag.reader } satisfies TagRecord);
-    else meta.delete(TAG_KEY);
-    if (anonymousLikes !== undefined) {
-      meta.put({ key: ANONYMOUS_LIKES_KEY, value: anonymousLikes } satisfies FlagRecord);
-    }
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+  const tx = db.transaction([STORE_NAME, META_STORE], 'readwrite');
+  const done = transactionDone(tx);
+  const store = tx.objectStore(STORE_NAME);
+  store.clear();
+  worlds.forEach((w) => { if (w && w.id) store.put(w); });
+  const meta = tx.objectStore(META_STORE);
+  if (tag) meta.put({ key: TAG_KEY, tag: tag.tag, reader: tag.reader } satisfies TagRecord);
+  else meta.delete(TAG_KEY);
+  if (anonymousLikes !== undefined) {
+    meta.put({ key: ANONYMOUS_LIKES_KEY, value: anonymousLikes } satisfies FlagRecord);
+  }
+  return done;
 };
 
 /** Empty the cached catalog and forget its tag. */

@@ -870,6 +870,35 @@ describe('the lock control', () => {
   });
 });
 
+describe('copying a thread', () => {
+  it('copies the report, its diagnostics and every reply for staff', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'm1', username: 'a-mod', accountType: 'mod' });
+    stubThread({ comments: [comment({ body: 'Which version?' }), comment({ id: 'c2', body: 'The latest.', author: { id: 'u1', username: 'finder', role: null } })] });
+
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
+    fireEvent.click(await screen.findByLabelText('Copy this thread'));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    const text = writeText.mock.calls[0][0] as string;
+    expect(text).toMatch(/^#1 Save button does nothing\n.*finder/);
+    expect(text).toContain('Pressing save just spins.\n\nVersion: 2.8.0\nPlatform: Browser\nSystem: Windows · Chrome');
+    expect(text).toMatch(/--- root-admin · .*\nWhich version\?\n\n--- finder · .*\nThe latest\.$/);
+    vi.unstubAllGlobals();
+  });
+
+  it('offers nothing to a player', async () => {
+    vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'u1', username: 'finder', accountType: 'normal' });
+    stubThread();
+
+    render(<FeedbackThreadView notify={toastFeedbackNotify} threadId="b1" onBack={() => {}} />);
+    await screen.findByText('Save button does nothing');
+
+    expect(screen.queryByLabelText('Copy this thread')).toBeNull();
+  });
+});
+
 describe('editing the report itself', () => {
   it('offers the reporter an edit control on their own', async () => {
     const AuthService = (await import('@/services/AuthService')).default;

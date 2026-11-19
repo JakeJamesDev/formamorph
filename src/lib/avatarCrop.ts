@@ -175,6 +175,7 @@ export function renderCrop(
  * @returns The decoded image, whose object URL the caller must revoke
  */
 export function loadImageFile(file: File): Promise<{ image: HTMLImageElement; objectUrl: string }> {
+  const origin = new Error('That file could not be read as an image');
   return new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
     const image = new Image();
@@ -182,7 +183,7 @@ export function loadImageFile(file: File): Promise<{ image: HTMLImageElement; ob
     image.onload = () => resolve({ image, objectUrl });
     image.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      reject(new Error('That file could not be read as an image'));
+      reject(origin);
     };
     image.src = objectUrl;
   });

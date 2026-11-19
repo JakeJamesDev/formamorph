@@ -101,6 +101,20 @@ jobs:
           FORMAMORPH_AVATARS: nsfw
           # Only the Linux --publish step consumes this; the Windows/mac --publish never scripts ignore it.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The build's source maps, for reading crash stacks with scripts/mapStack.mjs. Each build hashes its own chunks.
+      - name: Zip source maps
+        shell: bash
+        run: |
+          set -euo pipefail
+          VER=$(node -p "require('./package.json').version")
+          ZIP="sourcemaps-developer-only-${VER}-$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]').zip"
+          cd sourcemaps
+          if command -v zip >/dev/null; then zip -qr "../$ZIP" .; else 7z a -tzip "../$ZIP" . >/dev/null; fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sourcemaps-${{ matrix.os }}
+          path: sourcemaps-developer-only-*.zip
+          if-no-files-found: error
       # Windows: build the Go launcher, then assemble the distributable — launcher at the clean root + the
       # electron `dir` payload under app/. Produces the full-root zip (first-time download) plus the app
       # payload zip + its sha512 (the update unit the running app downloads and the launcher swaps in).
@@ -171,6 +185,15 @@ jobs:
           name: web
           path: formamorph-web-*.zip
           if-no-files-found: error
+      - name: Zip source maps
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          cd sourcemaps && zip -qr "../sourcemaps-developer-only-${VER}-web.zip" .
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sourcemaps-web
+          path: sourcemaps-developer-only-*.zip
+          if-no-files-found: error
 
   # The Android APK: the same web build with the `android` build class, wrapped by Capacitor and signed
   # from the four ANDROID_* secrets that scripts/android-signing-wizard.sh sets. The asset name carries
@@ -216,6 +239,15 @@ jobs:
         run: node scripts/buildAndroid.mjs
         env:
           FORMAMORPH_AVATARS: nsfw
+      - name: Zip source maps
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          cd sourcemaps && zip -qr "../sourcemaps-developer-only-${VER}-android.zip" .
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sourcemaps-android
+          path: sourcemaps-developer-only-*.zip
+          if-no-files-found: error
       - run: npx cap sync android
       # The keystore never touches the checkout: it is decoded into the runner's temp dir and the Gradle
       # signing config reads it from ANDROID_KEYSTORE_PATH. An empty secret fails here, not on a phone.
@@ -290,6 +322,7 @@ jobs:
             artifacts/formamorph-web-*.zip
             artifacts/Formamorph-android.apk
             artifacts/Formamorph-android.apk.sha512
+            artifacts/sourcemaps-developer-only-*.zip
 
   # itch.io deployment via butler. Butler updates by CHANNEL, not filename: every push to a visible
   # channel replaces the live build immediately. Full-release tags (no suffix) deploy automatically;

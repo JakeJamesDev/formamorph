@@ -10,6 +10,7 @@ import { coverData } from './mediaImages';
 import { describePlaceholders } from './placeholders';
 import { allPlaceholders, type PlaceholderHomesWorld } from './placeholderHomes';
 import { migrateCarriedPlaceholders } from './version';
+import { atCaller } from './callerStack';
 import { getAllReadable, isReadable, promisifyRequest, readOrNull, transactionDone } from './idb';
 import { announceWorldSaved } from './worldChangeSignal';
 
@@ -137,6 +138,7 @@ export function listFieldsOf(meta: WorldMetaRecord): WorldMetadata {
  * @param onBlocked - Called when an open connection at an older version holds the upgrade back
  */
 export function openWorldLibrary(onBlocked?: () => void): Promise<IDBDatabase> {
+  const origin = new Error();
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(WORLD_LIBRARY_DB, WORLD_LIBRARY_VERSION);
     let metaCreated = false;
@@ -157,7 +159,7 @@ export function openWorldLibrary(onBlocked?: () => void): Promise<IDBDatabase> {
       if (!metaCreated) resolve(db);
       else readAllWorldMeta(db).catch(() => {}).then(() => resolve(db));
     };
-    request.onerror = () => reject(request.error);
+    request.onerror = () => reject(atCaller(origin, request.error, 'Could not open the world library'));
   });
 }
 

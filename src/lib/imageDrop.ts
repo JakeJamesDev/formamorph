@@ -1,3 +1,4 @@
+import { atCaller } from './callerStack';
 import { isRemoteImage } from './imageBytes';
 
 /**
@@ -46,10 +47,12 @@ export const canDropImage = (dt: DataTransfer | null): boolean =>
   !!dt && dt.types.some((t) => t === 'Files' || t === 'text/uri-list' || t === 'text/plain');
 
 /** A dropped file as a data URL, the same form the file picker's FileReader produces. */
-export const fileToDataUrl = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
+export const fileToDataUrl = (file: File): Promise<string> => {
+  const origin = new Error();
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(reader.error ?? new Error('Could not read the file.'));
+    reader.onerror = () => reject(atCaller(origin, reader.error, 'Could not read the file.'));
     reader.onloadend = () => resolve(reader.result as string);
     reader.readAsDataURL(file);
   });
+};

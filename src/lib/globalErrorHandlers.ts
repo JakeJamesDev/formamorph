@@ -1,5 +1,5 @@
 import { describeError } from './errorDetails';
-import { toastError } from './linkToast';
+import { toastErrorDetails } from './linkToast';
 
 const REPEAT_WINDOW_MS = 10_000;
 const SESSION_TOAST_CAP = 5;
@@ -30,20 +30,22 @@ export function installGlobalErrorHandlers(): () => void {
   let toasted = 0;
 
   const handle = (label: string, error: unknown, filename = '') => {
-    const { message } = describeError(error, FALLBACK_MESSAGE);
+    const described = describeError(error, FALLBACK_MESSAGE);
+    const { message } = described;
     if (isIgnored(error, message, filename)) return;
-    console.error(label, error);
+    console.error(`${label}:`, error);
     if (toasted >= SESSION_TOAST_CAP) return;
     const now = Date.now();
     const last = lastToastAt.get(message);
     if (last !== undefined && now - last < REPEAT_WINDOW_MS) return;
     lastToastAt.set(message, now);
     toasted += 1;
-    toastError(error, FALLBACK_MESSAGE);
+    // The label marks an error no code caught, which is a bug by itself.
+    toastErrorDetails({ ...described, details: `${label}\n\n${described.details}` });
   };
 
-  const onRejection = (event: PromiseRejectionEvent) => handle('Unhandled rejection:', event.reason);
-  const onError = (event: ErrorEvent) => handle('Unhandled error:', event.error ?? event.message, event.filename);
+  const onRejection = (event: PromiseRejectionEvent) => handle('Unhandled rejection', event.reason);
+  const onError = (event: ErrorEvent) => handle('Unhandled error', event.error ?? event.message, event.filename);
 
   window.addEventListener('unhandledrejection', onRejection);
   window.addEventListener('error', onError);

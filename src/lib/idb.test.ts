@@ -75,6 +75,39 @@ describe('transactionDone', () => {
     tx.abort();
     await expect(done).rejects.toThrow('The write to rows was aborted');
   });
+
+  it('keeps the stack of the code that started the write', async () => {
+    const db = await cachedConnection('abort-db', 1, STORES)();
+    function startWrite() {
+      const tx = db.transaction(['rows'], 'readwrite');
+      const done = transactionDone(tx);
+      tx.abort();
+      return done;
+    }
+    const error: unknown = await startWrite().catch((e: unknown) => e);
+    expect((error as Error).stack).toContain('startWrite');
+  });
+});
+
+describe('promisifyRequest', () => {
+  beforeEach(() => {
+    vi.stubGlobal('indexedDB', new IDBFactory());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('rejects with the browser error’s name and the caller’s stack', async () => {
+    const db = await cachedConnection('request-db', 1, STORES)();
+    function addTwice() {
+      const store = db.transaction(['rows'], 'readwrite').objectStore('rows');
+      store.add({ id: 'a' });
+      return promisifyRequest(store.add({ id: 'a' }));
+    }
+    const error: unknown = await addTwice().catch((e: unknown) => e);
+    expect(error).toMatchObject({ name: 'ConstraintError' });
+    expect((error as Error).stack).toContain('addTwice');
+  });
 });
 
 describe('pruneLeastRecent', () => {

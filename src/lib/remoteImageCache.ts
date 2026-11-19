@@ -10,6 +10,7 @@
  * author-sized pictures rather than uniform 192px thumbnails and one world could otherwise fill the origin's
  * quota — taking saves and worlds with it when the browser evicts under pressure.
  */
+import { atCaller } from './callerStack';
 import { cachedConnection, promisifyRequest } from './idb';
 
 const DB_NAME = 'FORMAMORPH_REMOTE_IMAGES_DB';
@@ -95,6 +96,7 @@ export async function warmCachedImages(
 /** Drop least-recently-cached entries until the store fits the byte cap. */
 export const pruneCachedImages = async (maxBytes = MAX_BYTES): Promise<void> => {
   const db = await openDB();
+  const origin = new Error();
   return new Promise((resolve, reject) => {
     const store = db.transaction([STORE_NAME], 'readwrite').objectStore(STORE_NAME);
     const getAll = store.getAll();
@@ -107,6 +109,6 @@ export const pruneCachedImages = async (maxBytes = MAX_BYTES): Promise<void> => 
       }
       resolve();
     };
-    getAll.onerror = () => reject(getAll.error);
+    getAll.onerror = () => reject(atCaller(origin, getAll.error, 'The cached images could not be read'));
   });
 };

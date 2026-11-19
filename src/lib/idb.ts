@@ -2,6 +2,7 @@
  * Tiny shared helpers over the callback-based IndexedDB API: open a database (creating any missing
  * object stores), cache a connection, prune by recency, and settle requests and transactions as promises.
  */
+import { atCaller } from './callerStack';
 
 export interface StoreSpec {
   name: string;
@@ -17,6 +18,7 @@ export function openDatabase(
   version: number | undefined,
   stores: StoreSpec[],
 ): Promise<IDBDatabase> {
+  const origin = new Error();
   return new Promise((resolve, reject) => {
     const request = version === undefined ? indexedDB.open(name) : indexedDB.open(name, version);
     request.onupgradeneeded = () => {
@@ -28,7 +30,7 @@ export function openDatabase(
       }
     };
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onerror = () => reject(atCaller(origin, request.error, `Could not open ${name}`));
   });
 }
 
@@ -81,9 +83,10 @@ export function pruneLeastRecent<R>(
 
 /** Resolve with a request's `result` on success; reject with its `error` on failure. */
 export function promisifyRequest<T>(request: IDBRequest<T>): Promise<T> {
+  const origin = new Error();
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onerror = () => reject(atCaller(origin, request.error, 'The request failed'));
   });
 }
 
@@ -126,13 +129,15 @@ export async function getAllReadable<T extends object>(db: IDBDatabase, storeNam
  * A write is done only at commit: a full disk aborts the transaction after every request in it succeeded.
  */
 export function transactionDone(transaction: IDBTransaction): Promise<void> {
+  const origin = new Error();
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
     // A failed request's error reaches the transaction before the abort sets `transaction.error`.
-    const fail = (event: Event) => reject(
-      (event.target as IDBRequest | IDBTransaction | null)?.error ?? transaction.error
-        ?? new Error(`The write to ${Array.from(transaction.objectStoreNames).join(', ')} was aborted`),
-    );
+    const fail = (event: Event) => reject(atCaller(
+      origin,
+      (event.target as IDBRequest | IDBTransaction | null)?.error ?? transaction.error,
+      `The write to ${Array.from(transaction.objectStoreNames).join(', ')} was aborted`,
+    ));
     transaction.onerror = fail;
     transaction.onabort = fail;
   });

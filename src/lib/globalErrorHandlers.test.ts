@@ -35,7 +35,7 @@ describe('global error handlers', () => {
     reject(new Error('Disk is full'));
 
     expect(toastTexts(bridge.toast)).toEqual(['Disk is full' + 'View Details →']);
-    expect(openLatestDetails(bridge.toast)?.details).toContain('Disk is full');
+    expect(openLatestDetails(bridge.toast)?.details).toMatch(/^Unhandled rejection\n\n.*Disk is full/s);
     expect(log).toHaveBeenCalledOnce();
   });
 
@@ -43,6 +43,7 @@ describe('global error handlers', () => {
     windowError({ message: 'x is not a function', error: new TypeError('x is not a function') });
 
     expect(toastTexts(bridge.toast)).toEqual(['x is not a function' + 'View Details →']);
+    expect(openLatestDetails(bridge.toast)?.details).toMatch(/^Unhandled error\n\n/);
   });
 
   it('shows one toast for the same message ten times within 10 s', () => {

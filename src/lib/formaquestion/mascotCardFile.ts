@@ -55,9 +55,10 @@ async function readRigImage(ref: MascotImageRef): Promise<Blob> {
 function decodeImage(blob: Blob): Promise<HTMLImageElement> {
   const url = URL.createObjectURL(blob);
   const image = new Image();
+  const origin = new Error(UNREADABLE_IMAGE);
   return new Promise<HTMLImageElement>((resolve, reject) => {
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error(UNREADABLE_IMAGE));
+    image.onerror = () => reject(origin);
     image.src = url;
   }).finally(() => URL.revokeObjectURL(url));
 }

@@ -303,7 +303,8 @@ describe('the site entry stays out of the game bundle', () => {
     // wheel hook, the caret anchor).
     // 102: `tierNames`, read by the Supporter badge on the profile cards.
     // 103: `FeedbackPreview`, the comment boxes' Preview.
-    expect(reachableFrom([FEEDBACK_PAGE]).size).toBeLessThanOrEqual(103);
+    // 105: the staff Copy button's thread text and the clipboard helper.
+    expect(reachableFrom([FEEDBACK_PAGE]).size).toBeLessThanOrEqual(105);
   });
 
   it('scans every shared component the lazy feedback route reaches', () => {

@@ -1,5 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Directory, Filesystem } from '@capacitor/filesystem';
+import { atCaller } from '@/lib/callerStack';
 import { toastError } from '@/lib/linkToast';
 import { randomUUID } from '@/lib/uuid';
 
@@ -24,10 +25,11 @@ function downloadUrl(href: string, filename: string): void {
 
 /** Base64 payload of `blob`, with the `data:` prefix cut. The native Filesystem plugin takes base64. */
 async function toBase64(blob: Blob): Promise<string> {
+  const origin = new Error();
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error ?? new Error('Could not read the export'));
+    reader.onerror = () => reject(atCaller(origin, reader.error, 'Could not read the export'));
     reader.readAsDataURL(blob);
   });
   return dataUrl.slice(dataUrl.indexOf(',') + 1);

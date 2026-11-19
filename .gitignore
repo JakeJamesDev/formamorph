@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+# Source maps each build moves out of dist/ (scripts/stashSourceMaps.mjs).
+sourcemaps
 # The Cloudflare Pages upload root the deploy assembles locally.
 out
 # The site entry's build. The deploy lays it over the tracked hosting dir; nothing here is committed.
