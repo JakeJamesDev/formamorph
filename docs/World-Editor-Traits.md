@@ -357,6 +357,18 @@ A **stat condition** compares an owner's stat to a number. *Berserk* requires *R
 - A stat with the same min and max reads 0%, so a **%** condition on it is always 0%. Use **Raw** or widen the range.
 - A stat that's switched off, or gone, never holds. The chip reads red under its saved name.
 
+#### On the Enter World dialog
+
+Before the game starts, a stat condition reads the stat as the game will start it. The player's trait picks and World Option values count.
+
+- *Bodybuilder* gives **Starting Value** +3 Strength. With Strength at 4, picking *Bodybuilder* opens *Carry Capacity*, which requires *Strength >= 7*.
+- A trait's own stat changes never count toward its own condition. *Berserker* requires *Strength >= 7* and gives -2 Strength, so the player can pick it at 7.
+- Two traits can't open each other. If each needs the other's +3, neither opens from 4.
+- Taking away a pick turns off the traits it opened, and the dialog names them.
+- Starting items don't count.
+
+This applies to Starting Location conditions and Presets too.
+
 #### When the game checks
 
 The game reads the stats once per turn, after the turn's stat changes have landed. A trait that requires a stat then follows it:

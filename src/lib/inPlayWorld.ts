@@ -2,7 +2,7 @@ import { ancestors, parentLookup } from '@/lib/ancestors';
 import { customPersonaEntity } from '@/lib/blueprints';
 import { ungatedPick, type RoutinePick } from '@/lib/entityKind';
 import { evaluateGates, gatePick, hasRoutineGate, worldHasGates, type GateVerdicts, type InPlaySource, type InPlayState } from '@/lib/inPlayGates';
-import { startingGateStats } from '@/lib/gateStats';
+import { setupStatsOf } from '@/lib/setupGateStats';
 import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
 import { gateLineParts, plainLine, type GateLinePart } from '@/lib/traitGateLine';
 import { settleDefaults, worldGateInput, type GateActive, type GateInput } from '@/lib/traitGates';
@@ -74,11 +74,11 @@ export const startTravelGate = (world: StartWorld, playedEntityId: string | null
   startInPlay(world, playedEntityId, optionValues, picks).canEnter;
 
 /** The ids of the locations a new game may open in under `playedEntityId`, the picked `optionValues` and the start
- *  `picks`: on and unlocked (Q12, Q43, Q55). */
+ *  `picks`: on and unlocked (Q12, Q43, Q55). `library` holds the library persona and added characters. */
 export function startLocationIdsOpen(
-  world: StartWorld, playedEntityId: string | null, optionValues?: WorldOptionValues, picks?: GateActive,
+  world: StartWorld, playedEntityId: string | null, optionValues?: WorldOptionValues, picks?: GateActive, library: readonly Entity[] = [],
 ): Set<string> {
-  const inPlay = startInPlay(world, playedEntityId, optionValues, picks);
+  const inPlay = startInPlay(world, playedEntityId, optionValues, picks, library);
   return new Set(inPlay.locations.filter((l) => inPlay.canEnter(null, l.id)).map((l) => l.id));
 }
 
@@ -107,22 +107,26 @@ type StartWorld = {
   traits?: Trait[]; traitGroups?: TraitGroup[]; stats?: Stat[]; statGroups?: StatGroup[]; options?: WorldOption[];
 };
 
-/** The gate input of a world at its start under `playedEntityId`: authored stats, `optionValues` over each Option's
- *  default (Q25), and the traits the new game starts with. Absent `picks`, every scope holds its default picks. */
+/** The gate input of a world at its start under `playedEntityId`: the stats the picks start with (Q26),
+ *  `optionValues` over each Option's default (Q25), and the traits the new game starts with. Absent `picks`, every
+ *  scope holds its default picks. `library` holds the library cast; a played id among it is a library persona. */
 export function startGateInput(
-  world: StartWorld, playedEntityId: string | null, optionValues?: WorldOptionValues, picks?: GateActive,
+  world: StartWorld, playedEntityId: string | null, optionValues?: WorldOptionValues, picks?: GateActive, library: readonly Entity[] = [],
 ): GateInput {
-  const persona: PersonaRef = playedEntityId ? { source: 'world', entityId: playedEntityId } : { source: 'none' };
+  const source = library.some((e) => e.id === playedEntityId) ? 'library' : 'world';
+  const persona: PersonaRef = playedEntityId ? { source, entityId: playedEntityId } : { source: 'none' };
   const traits = world.traits ?? [];
   const traitGroups = world.traitGroups ?? [];
+  const statsOf = setupStatsOf(world, persona, library, optionValues);
   const base = {
-    ...worldGateInput({ traits, groups: traitGroups, entities: world.entities }, persona),
-    ...inPlayOwners({ traits, traitGroups, entities: world.entities }, persona),
-    stats: startingGateStats(world),
+    ...worldGateInput({ traits, groups: traitGroups, entities: [...world.entities, ...library] }, persona),
+    ...inPlayOwners({ traits, traitGroups, entities: world.entities }, persona, library),
+    statsOf,
     ...(world.options ? { worldOptions: world.options } : {}),
     ...(optionValues ? { optionValues } : {}),
   };
-  return { ...base, active: picks ?? settleDefaults(base).active };
+  const active = picks ?? settleDefaults(base).active;
+  return { ...base, active, stats: statsOf(active) };
 }
 
 /** The Routine pick at a world's start under `playedEntityId`, the picked `optionValues` and the start `picks`:
@@ -141,9 +145,11 @@ export function inPlayWorldOf<W extends StartWorld>(
 }
 
 /** The In-Play World at a world's start, for a reader with no playthrough. */
-function startInPlay(world: StartWorld, playedEntityId: string | null, optionValues?: WorldOptionValues, picks?: GateActive): InPlayWorld {
+function startInPlay(
+  world: StartWorld, playedEntityId: string | null, optionValues?: WorldOptionValues, picks?: GateActive, library: readonly Entity[] = [],
+): InPlayWorld {
   const source = { entities: world.entities, locations: world.locations, connections: world.connections ?? [] };
-  const gate = worldHasGates(world.entities, world.locations) ? startGateInput(world, playedEntityId, optionValues, picks) : undefined;
+  const gate = worldHasGates(world.entities, world.locations) ? startGateInput(world, playedEntityId, optionValues, picks, library) : undefined;
   return resolveInPlayWorld(source, { playedEntityId, gate });
 }
 

@@ -93,13 +93,21 @@ const lensEntityStats = (world: LensWorld): EntityStatValues =>
 const lensTraitWorld = (world: LensWorld, player: LensPlayer, optionValues?: WorldOptionValues): TraitWorld =>
   ({ ...player.traitWorld, options: world.options ?? [], ...(optionValues && { optionValues }) });
 
-/** The sources that apply on the global stats: the Option values' rows, the global picks, and the global rows of the
- *  persona's picks (Q30). */
+/** Every present owner's picks under the lens: each cast entity's defaults, then the persona's picks among `active`. */
+function lensOwned(world: LensWorld, player: LensPlayer, active: readonly Trait[], personaId: string | null): OwnedTraitPicks {
+  const castDefaults = Object.fromEntries(resolveOwners(ownerWorldOf(world), lensPersonaRef(personaId)).owners
+    .filter((b) => b.present && !b.isPlayer)
+    .map((b) => [b.id, defaultPicks(b.traits, b.groups)]));
+  return { ...castDefaults, ...personaPicks(player, active) };
+}
+
+/** The sources that apply on the global stats: the Option values' rows, the global picks, and the global rows of
+ *  every present owner's picks, the cast's defaults included (Q30). */
 export function lensStatTraits(
   world: LensWorld, active: readonly Trait[], personaId: string | null = null, optionValues?: WorldOptionValues,
 ): Trait[] {
   const player = lensPlayer(world, personaId);
-  const ownedTraits = ownedTraitStatesFrom(personaPicks(player, active));
+  const ownedTraits = ownedTraitStatesFrom(lensOwned(world, player, active, personaId));
   return statTraitsInForce(
     { traits: active, disabledTraitIds: [], ownedTraits, entityStats: lensEntityStats(world) }, lensTraitWorld(world, player, optionValues),
   );
@@ -119,10 +127,7 @@ function lensStart(
   world: LensWorld, authored: readonly Stat[], active: readonly Trait[], personaId: string | null, optionValues?: WorldOptionValues,
 ) {
   const player = lensPlayer(world, personaId);
-  const castDefaults = Object.fromEntries(resolveOwners(ownerWorldOf(world), lensPersonaRef(personaId)).owners
-    .filter((b) => b.present && !b.isPlayer)
-    .map((b) => [b.id, defaultPicks(b.traits, b.groups)]));
-  const owned = { ...castDefaults, ...personaPicks(player, active) };
+  const owned = lensOwned(world, player, active, personaId);
   return { owned, ...startingTraitState(authored, active, lensTraitWorld(world, player, optionValues), owned, lensEntityStats(world)) };
 }
 

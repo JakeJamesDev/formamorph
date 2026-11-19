@@ -2336,7 +2336,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     (gate?.rows ?? []).map((row) => row.conditions.map((c) => labelOf(c.text, world)));
   const quotedRules = (rows: string[][]) => ruleText(rows.map((row) => row.map(quote)));
 
-  // Stat Conditions read each stat's authored start, as Enter World does (Q23).
+  // Stat Conditions read each stat's authored start, as the editor's authoring readers do (Q31).
   const stats = startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities ?? [] });
   const readOwners = (gate: HeldGate, req: StatRequirement): OwnerId[] => statReadOwners(world, stats, gate.owner.id, req);
   const statsRead = (gate: HeldGate, req: StatRequirement): GateStat[] => statsReadBy(world, stats, gate.owner.id, req);

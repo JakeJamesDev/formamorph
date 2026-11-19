@@ -18,7 +18,7 @@ import { defaultNarrationUserPrompt, defaultSystemPrompt } from '@/components/ga
 import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
 import { ownerPins, ownerPriming } from '@/lib/ownedTraitsInPlay';
 import { resolveOwners } from '@/lib/owners';
-import { startingGateStats } from '@/lib/gateStats';
+import { setupStatsOf } from '@/lib/setupGateStats';
 import { seedEntityStats } from '@/lib/entityStats';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { playStatWorld, globalStatsOf } from '@/lib/statLinks';
@@ -235,10 +235,9 @@ export function lensStartPicks(world: PicksWorld, lens: BenchLens): GateActive {
  *  lens's World Option values. The played entity holds its own picks among them (Q33). */
 function openingPicks(world: PicksWorld, active: readonly Trait[], persona: PersonaRef, optionValues?: WorldOptionValues): OpeningPicks {
   const { gate: ownerGate } = resolveOwners(ownerWorldOf(world), persona);
-  // Stat Conditions read the authored start, as Enter World's do (Q23); Option Conditions the lens's picks (Q25).
-  const gate = {
-    ...ownerGate, stats: startingGateStats({ ...world, entities: world.entities ?? [] }), ...(optionValues && { optionValues }),
-  };
+  // Stat Conditions read the stats the picks start with, as Enter World's do (Q26); Option Conditions the lens's picks (Q25).
+  const statsOf = setupStatsOf({ ...world, entities: world.entities ?? [] }, persona, [], optionValues);
+  const gate = { ...ownerGate, statsOf, ...(optionValues && { optionValues }) };
   const custom = lensPersonaPicks(world, active, persona.source === 'world' ? persona.entityId : null);
   const defaults = settleDefaults(gate).active;
   const owned = settle({

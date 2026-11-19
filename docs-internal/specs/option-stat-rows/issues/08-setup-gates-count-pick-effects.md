@@ -1,6 +1,6 @@
 # 08: Setup Gates Count Pick Effects
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 07
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -18,14 +18,21 @@ At setup, gates read stats the way the game will start them, so picking Bodybuil
 
 ## Acceptance criteria
 
-- [ ] Bodybuilder (+3 Strength, base 4) unlocks a trait gated on Strength 7 at Enter World.
-- [ ] An Option value's starting row unlocks a gated trait the same way.
-- [ ] Berserker (needs Strength 7, gives −2) can be picked at Strength 7 and stays on.
-- [ ] Two traits that each need the other's +3 never lock in together from base 4, through clicks or a Preset.
-- [ ] A starting row above the max a pick sets is read clamped.
-- [ ] Removing Bodybuilder turns the gated trait off, and the cascade notice names it.
-- [ ] An entity trait gated on the entity's own stat counts that entity's picks.
-- [ ] A Starting Location gated on a stat counts the picks' effects.
-- [ ] Each guard goes red with its bug reinstated.
+- [x] Bodybuilder (+3 Strength, base 4) unlocks a trait gated on Strength 7 at Enter World. `entryDraft.statGates.test.ts` "count a pick".
+- [x] An Option value's starting row unlocks a gated trait the same way. "count an Option value's starting row".
+- [x] Berserker (needs Strength 7, gives −2) can be picked at Strength 7 and stays on. "leave a trait's own rows out of its own gate".
+- [x] Two traits that each need the other's +3 never lock in together from base 4, through clicks or a Preset. The two "never lock in" tests.
+- [x] A starting row above the max a pick sets is read clamped. "read a starting row clamped by the max a pick sets".
+- [x] Removing Bodybuilder turns the gated trait off, and the cascade notice names it. "turn off a pick whose support is removed" + `EnterWorldFlow.test.tsx` "names a pick whose stat gate a removed pick held up".
+- [x] An entity trait gated on the entity's own stat counts that entity's picks. "count an entity's picks on its own stat".
+- [x] A Starting Location gated on a stat counts the picks' effects. "Starting Location gates at setup", a library persona's picks included.
+- [x] Each guard goes red with its bug reinstated. Six mutations, one per guard: own-row exclusion, growth from kept picks, Enter World stats, location stats, library cast, lens cast defaults.
 
-For you: Build a small chain (Bodybuilder → Carry Capacity → a second gated trait) and judge whether the cascade notice reads clearly when you remove Bodybuilder.
+## Landed
+
+**Not verified**
+- None. Known gap by ruling Q31-B: starting items' stat effects don't count at setup.
+
+**For you**
+- For you: Build a small chain (Bodybuilder → Carry Capacity → a second gated trait) and judge whether the cascade notice reads clearly when you remove Bodybuilder.
+- Changelog bucket: filed as Minor / Added under World Options. Say if you want it under Fixed instead.

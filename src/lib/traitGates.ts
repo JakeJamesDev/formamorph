@@ -104,6 +104,9 @@ export interface GateInput {
   active: GateActive;
   /** Absent, every stat Condition is unresolved. */
   stats?: GateStats;
+  /** Setup only: the stats a game starts with under a set of picks (Q26). Present, a trait's gate reads the
+   *  stats of the picks around it, its own left out, and the settle grows them from the ground up. */
+  statsOf?: (active: GateActive) => GateStats;
   /** The story clock's daypart, which a time Condition reads. Absent, the opening hour's: what authoring
    *  lenses read. */
   daypart?: Daypart;
@@ -268,7 +271,8 @@ function index(input: GateInput) {
   const personaName = input.reader === 'player' && played.length > 0
     ? owners.get(played[0])?.owner.name || entities.get(played[0])?.name || null
     : null;
-  const stats = input.stats;
+  // Picks move values, never which stats exist, so any set names them.
+  const stats = input.stats ?? input.statsOf?.(NO_ACTIVE);
   const global = globalItems(input);
   const holds = (ownerId: OwnerId, req: Targeted): boolean => (req.kind === 'item' ? false
     : req.kind === 'stat' ? !!statsIn(stats, ownerId)?.[req.id]
@@ -317,11 +321,11 @@ function index(input: GateInput) {
   for (const [, set] of stats ? scopedEntries(stats) : []) {
     for (const [id, stat] of Object.entries(set)) if (!statNames.has(id)) statNames.set(id, stat.name);
   }
-  /** The stat a stat Condition on `from` reads: the first scope of the id in its owner set. Null when no
-   *  scope in the set has it. */
-  const statOf = (req: StatRequirement, from: GateScopeTree): GateStat | null => {
+  /** The stat a stat Condition on `from` reads in `read`: the first scope of the id in its owner set. Null when
+   *  no scope in the set has it. */
+  const statOf = (req: StatRequirement, from: GateScopeTree, read: GateStats | undefined = stats): GateStat | null => {
     for (const ownerId of ownerSet(req, from)) {
-      const stat = statsIn(stats, ownerId)?.[req.id];
+      const stat = statsIn(read, ownerId)?.[req.id];
       if (stat) return stat;
     }
     return null;
@@ -401,8 +405,8 @@ function compares(reading: number, operator: StatRequirement['operator'], value:
 
 /** Whether a stat Condition on `from` holds: its stat resolves and is not inert, and it compares, or fails to
  *  under Not. */
-function statHolds(req: StatRequirement, from: GateScopeTree, idx: Index): boolean {
-  const stat = idx.statOf(req, from);
+function statHolds(req: StatRequirement, from: GateScopeTree, idx: Index, read?: GateStats): boolean {
+  const stat = idx.statOf(req, from, read);
   if (!stat || stat.inert) return false;
   return compares(statReading(stat, req.unit), req.operator, req.value) !== !!req.not;
 }
@@ -436,9 +440,10 @@ function optionHolds(req: OptionRequirement, idx: Index): boolean {
   return (option.type === 'choice' ? value === req.valueId : value === true) !== !!req.not;
 }
 
-/** Whether one Condition holds for `trait` against `activeIn`: its target is on, or off under Not. */
-function requirementHolds(req: TraitRequirement, trait: Located<{ id: string }>, activeIn: ActiveIn, idx: Index): boolean {
-  if (req.kind === 'stat') return statHolds(req, trait.owner, idx);
+/** Whether one Condition holds for `trait` against `activeIn`, a stat one in `read`: its target is on, or off
+ *  under Not. */
+function requirementHolds(req: TraitRequirement, trait: Located<{ id: string }>, activeIn: ActiveIn, idx: Index, read?: GateStats): boolean {
+  if (req.kind === 'stat') return statHolds(req, trait.owner, idx, read);
   if (req.kind === 'option') return optionHolds(req, idx);
   if (req.kind === 'time') return req.dayparts.includes(idx.daypart);
   // Like a stat, an item that is gone or an owner that is gone never holds, Not included.
@@ -452,8 +457,8 @@ function requirementHolds(req: TraitRequirement, trait: Located<{ id: string }>,
 /** The Condition test for positive growth: every Not Condition on a target that exists holds, so growth stays
  *  monotone and a Condition whose target is gone never holds (Q27). A stat Condition reads no active set, so
  *  it evaluates directly. */
-const growthHolds = (trait: Located<Trait>, activeIn: ActiveIn, idx: Index) => (req: TraitRequirement): boolean =>
-  (req.not && !readsNoSet(req) ? resolves(req as Switched, idx) : requirementHolds(req, trait, activeIn, idx));
+const growthHolds = (trait: Located<Trait>, activeIn: ActiveIn, idx: Index, read?: () => GateStats | undefined) => (req: TraitRequirement): boolean =>
+  (req.not && !readsNoSet(req) ? resolves(req as Switched, idx) : requirementHolds(req, trait, activeIn, idx, req.kind === 'stat' ? read?.() : undefined));
 
 /** The owner's name as the reader's text reads it, or null when the named entity is gone. The persona owner
  *  reads "Persona" to the author and the played persona's name to the player, which `persona` marks. */
@@ -581,10 +586,13 @@ export const complementary = (a: TraitRequirement, b: TraitRequirement): boolean
 export function gateStates(input: GateInput): GateStates {
   const idx = index(input);
   const activeIn = activeSets(input);
+  const reader = setupReader(input, idx);
+  const active = new Set(locate(idx, input.active).filter((t) => activeIn(t.owner.id, t.item.id)).map(keyOf));
   return perScopeOf([...idx.owners.values()].map((o) => o.owner), (owner) => {
     const states = new Map<string, GateState>();
     for (const trait of idx.owners.get(owner.id)!.traits.values()) {
-      const rows = rowStatesOf(trait.item.requires ?? [], trait, activeIn, idx);
+      const read = reader && conditionsOf(trait.item.requires).some((req) => req.kind === 'stat') ? reader(active, trait) : undefined;
+      const rows = rowStatesOf(trait.item.requires ?? [], trait, activeIn, idx, read);
       states.set(trait.item.id, { unlocked: rows.length === 0 || rows.some((r) => r.holds), rows });
     }
     return states;
@@ -593,18 +601,20 @@ export function gateStates(input: GateInput): GateStates {
 
 /** Each row's state for `rows` read from `host`: a stat resolves against the owner set of `host`, which the
  *  text alone does not read. */
-function rowStatesOf(rows: readonly TraitRequirementRow[], host: Located<{ id: string }>, activeIn: ActiveIn, idx: Index): RowState[] {
+function rowStatesOf(
+  rows: readonly TraitRequirementRow[], host: Located<{ id: string }>, activeIn: ActiveIn, idx: Index, read?: GateStats,
+): RowState[] {
   return rows.map((row): RowState => {
     const conditions = row.all.map((req): ConditionState => {
       const named = requirementText(req, idx, host.owner);
-      const stat = req.kind === 'stat' ? idx.statOf(req, host.owner) : null;
+      const stat = req.kind === 'stat' ? idx.statOf(req, host.owner, read) : null;
       const unresolved = named.unresolved || (req.kind === 'stat' && (!stat || !!stat.inert));
       // An item held only as a hidden Item Instance stays out of the player's line (Q63, Q115).
       const hidden = req.kind === 'trait' ? idx.hiddenTraits.has(req.id)
         : req.kind === 'item' ? !req.not && idx.itemHeld(req, host.owner) && !idx.itemHeld(req, host.owner, true)
           : req.kind === 'option' ? idx.options.get(req.id)?.shownToPlayer === false
             : !!stat && (!!stat.hidden || !!stat.inert);
-      return { text: named.text, persona: named.persona, unresolved, hidden, holds: !unresolved && requirementHolds(req, host, activeIn, idx) };
+      return { text: named.text, persona: named.persona, unresolved, hidden, holds: !unresolved && requirementHolds(req, host, activeIn, idx, read) };
     });
     return { holds: conditions.every((c) => c.holds), conditions };
   });
@@ -690,6 +700,26 @@ function locate(idx: Index, lists: GateActive): Located<Trait>[] {
   return out;
 }
 
+/** A setup input's stats for a set of trait keys, the checked trait's own rows left out (Q26b); null outside
+ *  setup. Only the traits with stat rows key the cache, since only they move a stat. */
+function setupReader(input: GateInput, idx: Index): ((on: ReadonlySet<string>, without: Located<Trait>) => GateStats) | null {
+  const statsOf = input.statsOf;
+  if (!statsOf) return null;
+  const moving = [...idx.owners.values()].flatMap((o) => [...o.traits.values()])
+    .filter((t) => t.item.statChanges.length > 0 || (t.item.statToggles?.length ?? 0) > 0);
+  const cache = new Map<string, GateStats>();
+  return (on, without) => {
+    const picks = moving.filter((t) => t !== without && on.has(keyOf(t)));
+    const sig = picks.map(keyOf).join('\u0001');
+    const hit = cache.get(sig);
+    if (hit) return hit;
+    const scopes = [...idx.owners.values()].map((o) => o.owner);
+    const stats = statsOf(perScopeOf(scopes, (owner) => picks.filter((t) => t.owner === owner).map((t) => t.item.id), []));
+    cache.set(sig, stats);
+    return stats;
+  };
+}
+
 /**
  * Settle the proposed active sets against every gate. The settled set grows from the ground up: a proposed
  * trait joins once its gate holds against what has joined so far, until nothing joins. Traits that only
@@ -727,8 +757,12 @@ export function settle(input: GateInput, cascadeOff: GateActive = NO_ACTIVE): Se
   let kept = new Set<string>();
   let returned: Located<Trait>[] = [];
   const activeIn: ActiveIn = (ownerId, id) => kept.has(key(ownerId, id));
-  const grows = (t: Located<Trait>) => rowsHold(t.item.requires, growthHolds(t, activeIn, idx));
-  const opens = (t: Located<Trait>) => rowsHold(t.item.requires, (req) => requirementHolds(req, t, activeIn, idx));
+  // At setup a stat reads what has joined so far, so a pick never props up the gate it needs (Q26c).
+  const reader = setupReader(input, idx);
+  const read = (t: Located<Trait>) => (reader ? () => reader(kept, t) : undefined);
+  const grows = (t: Located<Trait>) => rowsHold(t.item.requires, growthHolds(t, activeIn, idx, read(t)));
+  const opens = (t: Located<Trait>) => rowsHold(t.item.requires, (req) =>
+    requirementHolds(req, t, activeIn, idx, req.kind === 'stat' ? read(t)?.() : undefined));
   const grow = () => {
     kept = new Set();
     returned = [];

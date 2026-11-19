@@ -854,6 +854,25 @@ describe("an entity's owned traits at world entry", () => {
     expect(onStartGame.mock.calls[0][7]).toEqual({ wolf: ['tamed'] });
   });
 
+  it('names a pick whose stat gate a removed pick held up (Q26e)', async () => {
+    const record = world();
+    record.data.stats = [{ id: 'str', name: 'Strength', type: 'number', description: '', min: 0, max: 20, value: 4, regen: 0, descriptors: [] }];
+    record.data.traits = [
+      { id: 'bodybuilder', name: 'Bodybuilder', groupId: 'group', statChanges: [{ statId: 'str', type: 'starting', value: 3 }] },
+      { id: 'carry', name: 'Carry Capacity', groupId: 'group', statChanges: [], requires: [{ all: [{ kind: 'stat', id: 'str', operator: '>=', value: 7, unit: 'raw' }] }] },
+    ];
+    await WorldStorageService.storeWorld(record);
+    renderEnterWorld({ onStartGame: vi.fn() });
+    await enter();
+    fireEvent.click(screen.getByRole('button', { name: /Other traits/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Bodybuilder' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Carry Capacity' }));
+    expect(screen.getByRole('checkbox', { name: 'Carry Capacity' })).toBeChecked();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Bodybuilder' }));
+    expect(screen.getByRole('checkbox', { name: 'Carry Capacity' })).not.toBeChecked();
+    expect(within(screen.getByRole('main')).getByText(/^Turned off/)).toHaveTextContent('Turned off Carry Capacity, because of Bodybuilder.');
+  });
+
   it('brings back a "playing as" pick when the player switches persona away and back', async () => {
     const record = world();
     record.data.entities = [

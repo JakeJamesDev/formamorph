@@ -60,4 +60,12 @@ describe('the lens opening starts', () => {
     expect(lensStartingStats(w([boast]), [gold], []).find((s) => s.id === 'gold')?.value).toBe(17);
     expect(lensStartingStats(w([{ ...boast, isDefault: false }]), [gold], []).find((s) => s.id === 'gold')?.value).toBe(10);
   });
+
+  it('switches a global stat with a cast entity’s default toggle row', () => {
+    const hunger: Stat = { ...gold, id: 'hunger', name: 'Hunger', enabled: false };
+    const famine: Trait = { id: 't-famine', name: 'Famine', isDefault: true, statChanges: [], statToggles: [{ statId: 'hunger', enabled: true }] };
+    const w = (traits: Trait[]) => worldOf({ stats: [gold, hunger], entities: [dragon({ stats: [], traits })] });
+    expect(lensOf(w([famine])).statEnabled.hunger).toBe(true);
+    expect(lensOf(w([{ ...famine, isDefault: false }])).statEnabled.hunger).toBe(false);
+  });
 });

@@ -6275,6 +6275,7 @@ const GameViewer = ({
       // The player's chosen start, else a random one, skipping locations the gates turn off or lock at the start (Q12).
       const startOpen = startLocationIdsOpen(
         getWorldData(), playedEntityIdOf(initialPersona?.ref, authoredEntities), initialOptionValues, scoped(initialTraits, initialOwnedTraits),
+        seedLibrary,
       );
       const startId = startingLocationIn(authoredLocations, (id) => startOpen.has(id), initialLocationId)?.id;
       const startRaw = authoredLocations.find((l) => l.id === startId);

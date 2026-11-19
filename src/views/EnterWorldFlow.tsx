@@ -404,8 +404,8 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
       entities: worldEntities, locations: rawLocations, traits: rawTraits, traitGroups: rawTraitGroups,
       stats: rawStats, statGroups: rawStatGroups, options: worldOptions,
     },
-    playedEntityIdOf(draft.persona, worldEntities), draft.optionValues, scoped(draft.traitIds, draft.ownedTraitIds),
-  ), [worldEntities, rawLocations, rawTraits, rawTraitGroups, rawStats, rawStatGroups, worldOptions]);
+    playedEntityIdOf(draft.persona, worldEntities), draft.optionValues, scoped(draft.traitIds, draft.ownedTraitIds), libraryCast,
+  ), [worldEntities, rawLocations, rawTraits, rawTraitGroups, rawStats, rawStatGroups, worldOptions, libraryCast]);
   const startLocations = useMemo(() => {
     const open = openStartIds(entryDraft);
     return open.size === locations.length ? locations : locations.filter((l) => open.has(l.id));

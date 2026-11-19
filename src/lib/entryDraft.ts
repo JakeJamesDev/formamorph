@@ -4,9 +4,9 @@ import {
 } from './personaPick';
 import { customPersonaEntity } from './blueprints';
 import { resolveOwners } from './owners';
-import { startingGateStats } from './gateStats';
+import { setupStatsOf, type SetupStatsOf } from './setupGateStats';
 import {
-  activeOf, gateTreeOf, gateTrees, groupPickState, settle, settleDefaults, switchTrait,
+  NO_ACTIVE, activeOf, gateTreeOf, gateTrees, groupPickState, settle, settleDefaults, switchTrait,
   type GateInput, type GateScopeTree, type GateTraitRef, type SettleResult,
 } from './traitGates';
 import { isAlwaysOn, traitOrderIndex } from './traitEffects';
@@ -82,14 +82,40 @@ function seededInstances(world: EntryTraitWorld, persona: PersonaRef) {
   return startingInstances({ ...world, entities: [...world.entities, ...world.library] }, persona, () => `seed-${n++}`);
 }
 
-/** The gate input over every present owner under `persona`, without the active sets. */
-const entryGateBase = (world: EntryTraitWorld, persona: PersonaRef): Omit<GateInput, 'active'> => ({
-  ...resolveOwners(world, persona, world.library).gate,
-  ...(world.options ? { worldOptions: world.options } : {}),
-  stats: startingGateStats(world, world.library),
-  reader: 'player',
-  ...(world.items ? { worldItems: world.items, itemInstances: seededInstances(world, persona) } : {}),
-});
+const setupStats = new WeakMap<EntryTraitWorld, Map<string, SetupStatsOf>>();
+
+/** Persona and Option value pairs a world keeps setup stats for; an older pair rebuilds when asked again. */
+const KEPT_SETUPS = 8;
+
+/** The stats a new game under `persona` and `optionValues` starts with per set of picks, kept per world. */
+function entryStatsOf(world: EntryTraitWorld, persona: PersonaRef, optionValues?: WorldOptionValues): SetupStatsOf {
+  const kept = setupStats.get(world) ?? new Map<string, SetupStatsOf>();
+  setupStats.set(world, kept);
+  const key = JSON.stringify([persona, optionValues ?? {}]);
+  const hit = kept.get(key);
+  if (hit) return hit;
+  const statsOf = setupStatsOf(world, persona, world.library, optionValues);
+  if (kept.size >= KEPT_SETUPS) kept.delete(kept.keys().next().value!);
+  kept.set(key, statsOf);
+  return statsOf;
+}
+
+/** The gate input over every present owner under `persona` and `optionValues`, without the active sets. Stat
+ *  Conditions read the stats the picks start the game with (Q26). */
+const entryGateBase = (
+  world: EntryTraitWorld, persona: PersonaRef, optionValues?: WorldOptionValues,
+): Omit<GateInput, 'active'> & { statsOf: SetupStatsOf } => {
+  const statsOf = entryStatsOf(world, persona, optionValues);
+  return {
+    ...resolveOwners(world, persona, world.library).gate,
+    ...(world.options ? { worldOptions: world.options } : {}),
+    ...(optionValues ? { optionValues } : {}),
+    statsOf,
+    stats: statsOf(NO_ACTIVE),
+    reader: 'player',
+    ...(world.items ? { worldItems: world.items, itemInstances: seededInstances(world, persona) } : {}),
+  };
+};
 
 /** Global scope's tree and every present entity owner under `persona`: the world's entities, then the library
  *  entities. */
@@ -101,11 +127,11 @@ export const entryTrees = (world: EntryTraitWorld, persona: PersonaRef): Pick<Ga
 /** The gates of the draft's picks: every present owner, under the draft's persona and Option values. */
 export const entryGateInput = (
   world: EntryTraitWorld, draft: Pick<EntryDraft, 'traitIds' | 'ownedTraitIds' | 'persona'> & Partial<Pick<EntryDraft, 'optionValues'>>,
-): GateInput => ({
-  ...entryGateBase(world, draft.persona),
-  ...(draft.optionValues ? { optionValues: draft.optionValues } : {}),
-  active: scoped(draft.traitIds, draft.ownedTraitIds),
-});
+): GateInput => {
+  const base = entryGateBase(world, draft.persona, draft.optionValues);
+  const active = scoped(draft.traitIds, draft.ownedTraitIds);
+  return { ...base, active, stats: base.statsOf(active) };
+};
 
 /** The draft with settled picks and cascade-off lists. An owner the settle did not cover keeps both. */
 export function withSettledTraits(draft: EntryDraft, result: Pick<SettleResult, 'active' | 'cascadeOff'>): EntryDraft {
@@ -379,7 +405,7 @@ export function applyPreset(
   }
   const trees = entryTrees(world, target.persona);
   if (preset.mode === 'snapshot') {
-    const { global, owners } = settleDefaults({ ...entryGateBase(world, target.persona), optionValues }).active;
+    const { global, owners } = settleDefaults(entryGateBase(world, target.persona, optionValues)).active;
     target = { ...target, traitIds: global, ownedTraitIds: { ...target.ownedTraitIds, ...owners }, cascadeOffTraitIds: { global: [], owners: {} } };
   }
   const listed = new Set<string>();
