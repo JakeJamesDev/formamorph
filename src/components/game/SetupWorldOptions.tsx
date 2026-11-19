@@ -30,7 +30,7 @@ export function OptionControl({ option, value, onChange, resolveText, disabled, 
   resolveText: (text: string) => string;
   disabled?: boolean;
   commitOnRelease?: boolean;
-  /** Lists each choice value's and boolean state's stat rows under it; absent lists none. */
+  /** Lists each choice value's and boolean state's stat rows and Starting Items under it; absent lists none. */
   rows?: OptionRowsView;
 }) {
   const [drag, setDrag] = useState<number | null>(null);
@@ -50,8 +50,8 @@ export function OptionControl({ option, value, onChange, resolveText, disabled, 
         <span className="block min-w-0 flex-1">
           <strong className="block break-words text-label font-semibold">{name}</strong>
           {description && <Hint as="span" id={descriptionId} className="mt-1 block">{description}</Hint>}
-          <OptionStatRowList rows={option.onStatChanges} view={rows} resolveText={resolveText} lead="When On" />
-          <OptionStatRowList rows={option.offStatChanges} view={rows} resolveText={resolveText} lead="When Off" />
+          <OptionStatRowList rows={option.onStatChanges} items={option.onPlacements} view={rows} resolveText={resolveText} lead="When On" />
+          <OptionStatRowList rows={option.offStatChanges} items={option.offPlacements} view={rows} resolveText={resolveText} lead="When Off" />
         </span>
       </label>
     );
@@ -98,7 +98,7 @@ export function OptionControl({ option, value, onChange, resolveText, disabled, 
               <RadioGroupItem id={id} value={v.id} aria-label={resolveText(v.name)} className="mt-0.5 shrink-0" />
               <span className="block min-w-0 flex-1">
                 <strong className="block break-words text-label font-semibold">{resolveText(v.name)}</strong>
-                <OptionStatRowList rows={v.statChanges} view={rows} resolveText={resolveText} />
+                <OptionStatRowList rows={v.statChanges} items={v.placements} view={rows} resolveText={resolveText} />
               </span>
             </label>
           );

@@ -132,6 +132,8 @@ An Option can give items when a new game starts, such as a **Supplies** value th
 | Gives the items once, for the value picked at new game. | Give items when the Option changes during play. |
 | Adds to the items the world already starts with. | Take items back when the value changes. |
 
+The player sees each value's items listed under it on the **Enter World** dialog, after its stat changes, such as **Potion ×3** or **Wolf: Rope**. Hidden items are not listed. An item with an unidentified name shows that name. The list follows the persona the player picks: items for the entity they play as are listed as theirs, and items for an entity that isn't in the game are not listed. The **World Options** tab in play lists no items, since a switch during play gives none.
+
 Deleting an item, entity or location removes the rows that use it.
 
 ## Shown to Player and Changeable During Play

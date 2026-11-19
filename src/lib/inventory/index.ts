@@ -63,7 +63,7 @@ export function statEffectItems(
 }
 
 /** Where a placement's Item Instances go under `persona`, or null when its owner is not in play (Q54, Q82). */
-function seedWhere(placement: Placement, world: SeedWorld, persona: PersonaRef | undefined): ItemInstanceWhere | null {
+export function placementRecipient(placement: Placement, world: Pick<SeedWorld, 'entities' | 'locations'>, persona: PersonaRef | undefined): ItemInstanceWhere | null {
   const { where } = placement;
   switch (where.kind) {
     case 'you': return where;
@@ -115,7 +115,7 @@ function seedPlacements(world: SeedWorld, persona: PersonaRef | undefined, newId
   };
   for (const placement of [...world.placements ?? [], ...optionPlacements(world.options, world.optionValues)]) {
     const item = items.get(placement.source.itemId);
-    const where = seedWhere(placement, world, persona);
+    const where = placementRecipient(placement, world, persona);
     const quantity = Math.floor(placement.quantity);
     if (!item || !where || !(quantity > 0)) continue;
     const visibility = placement.hidden ? 'hidden' : 'visible';

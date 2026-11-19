@@ -13,7 +13,7 @@ import { scoped } from '@/lib/scope';
 import { cascadeOffInput } from '@/lib/traitRuntime';
 import type { TraitCascade } from '@/components/game/SetupTraitList';
 import { offeredStartLocations, personaStartLocation, withoutPersona } from '@/lib/personaPick';
-import type { Entity, EntityMetadata, GameLocation, PersonaRef, Stat, Trait, WorldOption } from '@/types';
+import type { Entity, EntityMetadata, GameLocation, Item, PersonaRef, Placement, Stat, Trait, WorldOption } from '@/types';
 
 const identity = (text: string) => text;
 const traitIdentity = (_trait: Trait, text: string) => text;
@@ -1601,6 +1601,51 @@ describe('EnterWorldWorkspace World Options', () => {
     expect(lines('Easy')).toEqual(['Gold: +100']);
     expect(lines('Hard')).toEqual(['Gold: -1 (regen)']);
     expect(screen.getByRole('checkbox', { name: /Hardcore/ }).closest('label')!.textContent).toMatch(/Wolf: Health: -2 \(regen\)$/);
+  });
+
+  it("lists each value's Starting Items after its stat rows, by recipient, and leaves out hidden and broken rows", () => {
+    const give = (itemId: string, quantity: number, where: Placement['where'] = { kind: 'you' }, hidden?: boolean): Placement =>
+      ({ id: `${itemId}-${quantity}`, where, quantity, source: { kind: 'item', itemId }, ...(hidden && { hidden }) });
+    const items = [
+      { id: 'potion', name: 'Potion' }, { id: 'rope', name: 'Rope' }, { id: 'orb', name: 'Orb', unidentifiedName: 'Strange Sphere' },
+    ] as Item[];
+    const kit: WorldOption[] = [{
+      id: 'o-kit', name: 'Kit', type: 'choice', shownToPlayer: true, midGame: false, default: 'v-full',
+      values: [{
+        id: 'v-full', name: 'Full', statChanges: [{ statId: 'gold', type: 'starting', value: 5 }],
+        placements: [
+          give('potion', 3), give('rope', 1, { kind: 'entity', id: 'wolf' }), give('rope', 2, { kind: 'location', id: 'den' }),
+          give('orb', 1), give('potion', 9, { kind: 'you' }, true), give('gone', 1), give('rope', 1, { kind: 'entity', id: 'ghost' }),
+        ],
+      }],
+    }];
+    const gold = { id: 'gold', name: 'Gold', type: 'number', min: 0, max: 100, value: 0 } as unknown as Stat;
+    const wolf = { id: 'wolf', name: 'Wolf' } as Entity;
+    render(
+      <Harness
+        options={kit} stats={[gold]} traitEntities={[wolf]} items={items}
+        allLocations={[{ id: 'den', name: 'Den' } as GameLocation]} onOptionChange={vi.fn()}
+      />,
+    );
+    const lines = Array.from(screen.getByRole('radio', { name: 'Full' }).closest('label')!.querySelectorAll('li')).map((li) => li.textContent);
+    expect(lines).toEqual(['Gold: +5', 'Potion ×3', 'Wolf: Rope', 'Den: Rope ×2', 'Strange Sphere']);
+  });
+
+  it("lists a Starting Item where the new game puts it under the picked persona, and drops one an out-of-play entity would get", () => {
+    const rope = { id: 'rope', name: 'Rope' } as Item;
+    const toWolf: Placement = { id: 'w', where: { kind: 'entity', id: 'wolf' }, quantity: 1, source: { kind: 'item', itemId: 'rope' } };
+    const toShade: Placement = { ...toWolf, id: 's', where: { kind: 'entity', id: 'shade' } };
+    const kit: WorldOption[] = [{
+      id: 'o-kit', name: 'Kit', type: 'choice', shownToPlayer: true, midGame: false, default: 'v-full',
+      values: [{ id: 'v-full', name: 'Full', placements: [toWolf, toShade] }],
+    }];
+    const wolf = { id: 'wolf', name: 'Wolf', persona: true } as Entity;
+    const shade = { id: 'shade', name: 'Shade', persona: true, personaOnly: true } as Entity;
+    const lines = () => Array.from(screen.getByRole('radio', { name: 'Full' }).closest('label')!.querySelectorAll('li')).map((li) => li.textContent);
+    const { rerender } = render(<Harness options={kit} traitEntities={[wolf, shade]} items={[rope]} onOptionChange={vi.fn()} />);
+    expect(lines()).toEqual(['Wolf: Rope']);
+    rerender(<Harness options={kit} traitEntities={[wolf, shade]} items={[rope]} persona={{ source: 'world', entityId: 'wolf' }} onOptionChange={vi.fn()} />);
+    expect(lines()).toEqual(['Rope']);
   });
 
   it('never shows an Option that is not Shown to Player', () => {

@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
-import type { Entity, GameLocation, PersonaRef, PresetWorldOption, Stat, StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValueOf, WorldOptionValues } from '@/types';
+import type { Entity, GameLocation, Item, PersonaRef, PresetWorldOption, Stat, StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValueOf, WorldOptionValues } from '@/types';
 import { SetupWorldOptions } from '@/components/game/SetupWorldOptions';
 import { shownOptions } from '@/lib/worldOptions';
 import { resolvedEntityStats } from '@/lib/statLinks';
@@ -61,6 +61,9 @@ export interface EnterWorldWorkspaceProps {
   /** The world's stat groups, which hold the blueprints entity stats link to. */
   statGroups?: StatGroup[];
   locations: GameLocation[];
+  /** The world's items and every location, which name an Option value's Starting Items. */
+  items?: readonly Item[];
+  allLocations?: readonly GameLocation[];
   resolveText: (text: string) => string;
   /** A trait's own text, bound for its owner, which is the Entity Name in it. */
   resolveTraitText: (trait: Trait, text: string, owner?: Entity | null) => string;
@@ -164,8 +167,10 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const setupOptions = useMemo(() => shownOptions(props.options), [props.options]);
   const hasOptions = setupOptions.length > 0;
   const optionRows = useMemo(
-    () => ({ world: { stats: props.stats, statGroups: props.statGroups ?? [], entities: props.traitEntities ?? [] } }),
-    [props.stats, props.statGroups, props.traitEntities],
+    () => ({ world: {
+      stats: props.stats, statGroups: props.statGroups ?? [], entities: props.traitEntities ?? [], items: props.items, locations: props.allLocations,
+    }, persona: props.persona }),
+    [props.stats, props.statGroups, props.traitEntities, props.items, props.allLocations, props.persona],
   );
   const hasPersonas = hasPersonaChoice({
     world: props.worldPersonas ?? [], library: props.personas ?? [], none: props.personaNone !== false, custom: props.personaCustom,

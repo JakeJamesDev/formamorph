@@ -1,7 +1,9 @@
 // The stat rows of one Option value as the player reads them, in the trait-list form ("Gold: +100").
 
+import { placementRecipient } from './inventory';
+import { faceName, itemHasUnidentifiedFace } from './items';
 import { resolvedEntityStatTree, type StatLinkWorld } from './statLinks';
-import type { Entity, OptionStatChange, Stat } from '@/types';
+import type { Entity, GameLocation, Item, OptionStatChange, PersonaRef, Placement, Stat } from '@/types';
 
 /** One listed row: the stat's name (with the owner, "Wolf: Health"), the change and the facet. */
 export interface OptionRowLine {
@@ -13,6 +15,9 @@ export interface OptionRowLine {
 
 export interface OptionRowLinesWorld extends StatLinkWorld {
   entities: readonly Entity[];
+  /** The items and places an Option's Starting Items name. Absent lists none. */
+  items?: readonly Item[];
+  locations?: readonly Pick<GameLocation, 'id' | 'name'>[];
 }
 
 /** The rows a player may read, in row order. A row on a hidden stat, or whose stat or entity is gone, is left out
@@ -49,6 +54,27 @@ export function optionRowLines(
     }
     if (!stat || stat.hidden === true) continue;
     out.push({ label, value: row.value, ...(row.type === 'min' || row.type === 'max' || row.type === 'regen' ? { type: row.type } : {}) });
+  }
+  return out;
+}
+
+/** An Option value's Starting Items as the player reads them: "Potion ×3", or "Bram: Rope" for another recipient.
+ *  Each goes where a new game under `persona` puts it, so the played entity's read as the player's. A hidden row, or
+ *  one whose item is gone or whose recipient is out of play, is left out. An item with an unidentified face shows it. */
+export function optionItemLines(
+  placements: readonly Placement[] | undefined, world: OptionRowLinesWorld, persona?: PersonaRef,
+  resolveText: (text: string) => string = (text) => text,
+): string[] {
+  const out: string[] = [];
+  for (const p of placements ?? []) {
+    const item = world.items?.find((i) => i.id === p.source.itemId);
+    const where = placementRecipient(p, world, persona);
+    const owner = !where || where.kind === 'you' ? ''
+      : (where.kind === 'entity' ? world.entities : world.locations ?? []).find((o) => o.id === where.id)?.name ?? '';
+    const quantity = Math.floor(p.quantity);
+    if (p.hidden || !item || !where || !(quantity > 0)) continue;
+    const name = resolveText(faceName(item, itemHasUnidentifiedFace(item)));
+    out.push(`${owner ? `${resolveText(owner)}: ` : ''}${name}${quantity > 1 ? ` ×${quantity}` : ''}`);
   }
   return out;
 }

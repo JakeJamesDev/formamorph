@@ -30,7 +30,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Preset Options can choose the persona and Starting Location at new game.** A value picks a world persona and a Starting Location, and the notice names both. Reset to Defaults keeps yours unless it sets them. An entity's trait now reads "Wolf: Feral" there.
     - **The Options tab warns on a Preset value with rows that can't apply at new game.** It names each row, such as an Always On trait, a full category or a deleted trait.
     - **World Options can change stats, like a trait, without sending text to the AI.** A value can change a stat's starting value, range, regen and availability on a world or entity stat, and players see it before picking. A change during play moves the range at once, never the value.
-    - **A World Option value can give items at new game, each with a quantity and who gets it.** Add them under Starting Items on a choice value, or When On or When Off on a switch. Changing the Option during play gives nothing.
+    - **A World Option value can give items at new game, each with a quantity and who gets it.** Add them under Starting Items on a choice value, or When On or When Off on a switch. Players see them before picking. Changing the Option during play gives nothing.
   - **Entity Routines:**
     - **World files keep each entity's Starts and Can Also Go inside a Routine.** A world from 3.7.0 opens with one Routine per entity and plays as before.
     - **An entity's routine row can be Away, taking it off the map and out of every scene for those hours.** Its stats and scripts keep running, and the AI still knows of it where Known In says. Saves can now hold a Generic entity at no place.
