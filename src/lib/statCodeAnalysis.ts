@@ -924,9 +924,14 @@ function checkTraitWrite(
   return suggested({ from: field.from, to: field.to, severity: 'error', message }, suggestion);
 }
 
+/** Whether `fields` lists `name` as a member that takes a write. */
+const isWritableField = (fields: readonly SurfaceEntry[], name: string): boolean =>
+  fields.some((field) => field.name === name && field.access === 'writable');
+
 /** What is wrong with a write into `persona`: to one of its own members, or into its traits as `traits`. */
 function checkPersonaWrite(target: SyntaxNode, code: string, assignment: boolean): CodeDiagnostic | null {
   const own = entryRef(target, code, 'persona');
+  if (own && isWritableField(PERSONA_FIELDS, own.name)) return null;
   if (own) {
     const message = `persona.${own.name} is read-only.`;
     return { from: own.from, to: own.to, severity: 'error', message };
@@ -938,6 +943,7 @@ function checkPersonaWrite(target: SyntaxNode, code: string, assignment: boolean
  *  to a stat below `owner.stats` is a stat write, which `checkWrite` reads. */
 function checkOwnerWrite(target: SyntaxNode, code: string, assignment: boolean): CodeDiagnostic | null {
   const own = entryRef(target, code, 'owner');
+  if (own && isWritableField(ENTITY_FIELDS, own.name)) return null;
   if (own) return { from: own.from, to: own.to, severity: 'error', message: `owner.${own.name} is read-only.` };
   return checkTraitWrite(target, code, assignment, ownerTraitRef);
 }
@@ -993,6 +999,7 @@ function checkEntityWrite(target: SyntaxNode, code: string, assignment: boolean)
   const entry = entryRef(target, code, 'entities');
   if (entry) return readOnly(entry.from, entry.to);
   const own = target.firstChild && entryRef(target.firstChild, code, 'entities') ? memberKey(target, code) : null;
+  if (own && isWritableField(ENTITY_FIELDS, own.name)) return null;
   if (own) return readOnly(own.from, own.to);
   return checkTraitWrite(target, code, assignment, entityTraitRef);
 }

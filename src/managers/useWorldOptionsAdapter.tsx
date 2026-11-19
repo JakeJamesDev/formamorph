@@ -566,8 +566,8 @@ export function useWorldOptionsAdapter({ selectedId, onSelect }: {
         <div className="space-y-2">
           <span className="font-medium">Options</span>
           <Hint>
-            Lists the choices the player makes when a new game starts, in the order they show. A Choice or an On or
-            Off Option changes text through its placeholder pins. Drag an Option to change its order.
+            Lists the Options the player sets when a new game starts, in the order the player sees them. Drag an
+            Option to move it.
           </Hint>
         </div>
       );

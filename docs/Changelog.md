@@ -113,6 +113,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **After an update from 3.2.0 or older, one damaged world no longer stops your world library from opening.** Before, every world failed to save with an AbortError. Now the damaged world shows in the repair notice.
   - **A bug report from Error Details now names what failed, such as a save or an import.** Before, some reports showed only the browser's error.
   - **Regenerate Stats keeps the messages and images from a World Tool's On Call script.** Item and trait switch scripts replace their messages and images, so each shows once.
+  - **The World Editor's Starts On list shows a persona's placeholder name as a chip.** Before, a persona named with a placeholder showed its raw code.
 
 ---
 

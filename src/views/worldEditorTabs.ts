@@ -32,11 +32,11 @@ export const WORLD_EDITOR_TABS = [
   { value: 'items', label: 'Items', group: 'content', icon: ELEMENT_ICONS.item },
   { value: 'traits', label: 'Traits', group: 'content', icon: ELEMENT_ICONS.trait },
   { value: 'stats', label: 'Stats', group: 'content', icon: ELEMENT_ICONS.stat },
-  { value: 'options', label: 'Options', group: 'content', icon: SlidersHorizontal },
   { value: 'dictionary', label: 'Dictionary', group: 'vocabulary', icon: ELEMENT_ICONS.dictionary },
   { value: 'placeholders', label: 'Placeholders', group: 'vocabulary', icon: ELEMENT_ICONS.placeholder, advancedOnly: true },
   { value: 'scripts', label: 'Scripts', group: 'logic', icon: Code, advancedOnly: true },
   { value: 'tools', label: 'Tools', group: 'logic', icon: Wrench, advancedOnly: true },
+  { value: 'options', label: 'Options', group: 'logic', icon: SlidersHorizontal },
 ] as const satisfies readonly WorldEditorTab[];
 
 /** The tabs one editor mode shows. Simple drops the `advancedOnly` ones. */

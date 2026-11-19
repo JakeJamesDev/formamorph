@@ -70,6 +70,16 @@ describe('entities in stat code', () => {
   it('flags writes to the map, an entry, an entry’s members and a trait’s read-only field', () => {
     expect(messages('entities.Mira = null;', { entities })).toEqual(['entities.Mira is read-only.']);
     expect(messages('entities.Mira.traits = {};', { entities })).toEqual(['entities.Mira.traits is read-only.']);
+    expect(messages('entities.Mira.name = "x";', { entities })).toEqual(['entities.Mira.name is read-only.']);
+  });
+
+  it('passes writes to the members the surface lists as writable, on an entity, the persona and owner', () => {
+    for (const field of ['body', 'image', 'sound']) {
+      expect(messages(`entities.Mira.${field} = null;`, { entities }), field).toEqual([]);
+      expect(messages(`entities.Mira["${field}"] = null;`, { entities }), field).toEqual([]);
+      expect(messages(`persona.${field} = null;`), field).toEqual([]);
+      expect(messages(`owner.${field} = null;\nreturn 1;`, { owner: 'entity' }), field).toEqual([]);
+    }
     expect(messages('entities.Mira.traits.Scarred.acquired = true;', { entities }))
       .toEqual(['entities.Mira.traits.Scarred.acquired can’t be written. Only entities.Mira.traits.Scarred.enabled can.']);
     expect(messages('entities.Mira.traits.Scarred = false;', { entities }))

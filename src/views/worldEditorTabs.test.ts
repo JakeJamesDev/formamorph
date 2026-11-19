@@ -6,25 +6,26 @@ const shape = (advanced: boolean) =>
   editorTabGroupsFor(advanced).map((group) => [group.label ?? null, group.tabs.map((tab) => tab.label)]);
 
 describe('editorTabGroupsFor', () => {
-  it('puts Overview and Media ahead of the groups, with Dictionary alone in Vocabulary in Simple mode', () => {
+  it('puts Overview and Media ahead of the groups, with Dictionary alone in Vocabulary and Options alone in Logic in Simple mode', () => {
     expect(shape(false)).toEqual([
       [null, ['Overview', 'Media']],
-      ['Content', ['Entities', 'Locations', 'Items', 'Traits', 'Stats', 'Options']],
+      ['Content', ['Entities', 'Locations', 'Items', 'Traits', 'Stats']],
       ['Vocabulary', ['Dictionary']],
+      ['Logic', ['Options']],
     ]);
   });
 
-  it('adds Openings after Overview, Placeholders to Vocabulary, and Scripts and Tools under Logic, in Advanced mode', () => {
+  it('adds Openings after Overview, Placeholders to Vocabulary, and Scripts and Tools above Options in Logic, in Advanced mode', () => {
     expect(shape(true)).toEqual([
       [null, ['Overview', 'Openings', 'Media']],
-      ['Content', ['Entities', 'Locations', 'Items', 'Traits', 'Stats', 'Options']],
+      ['Content', ['Entities', 'Locations', 'Items', 'Traits', 'Stats']],
       ['Vocabulary', ['Dictionary', 'Placeholders']],
-      ['Logic', ['Scripts', 'Tools']],
+      ['Logic', ['Scripts', 'Tools', 'Options']],
     ]);
   });
 
-  it('leaves Logic out in Simple mode, where Scripts and Tools are hidden', () => {
-    expect(editorTabGroupsFor(false).some((group) => group.id === 'logic')).toBe(false);
+  it('hides Scripts and Tools from Logic in Simple mode', () => {
+    expect(editorTabGroupsFor(false).find((group) => group.id === 'logic')?.tabs.map((tab) => tab.value)).toEqual(['options']);
   });
 
   it('holds Overview, Openings and Media in the landing slot, under no group name', () => {

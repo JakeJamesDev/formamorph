@@ -4,6 +4,8 @@ import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import type { World } from '@/types';
 import { renderOverviewTab } from '@/test/overviewBench';
 import { panelWorld } from '@/test/panelBench';
+import { encodePlaceholderToken } from '@/lib/placeholders';
+import { phValues } from '@/test/placeholderValues';
 
 /** The Overview tab's left column: the thumbnail's Generate button, the persona rules and the background music. */
 
@@ -131,6 +133,23 @@ describe('the Overview persona rules', () => {
     await screen.findByLabelText('World Name');
     await openStartsOn(user);
     expect(await screen.findByRole('option', { name: 'Wanderer' })).toBeInTheDocument();
+  });
+
+  it('shows a persona named by a placeholder as its chip, never as the token behind it', async () => {
+    const user = userEvent.setup();
+    const token = encodePlaceholderToken({ id: 'p-hero', mode: 'world', placementId: 'v-hero' });
+    renderOverviewTab(panelWorld({
+      ...withPersonas({ allowedPersonas: 'world' }, [
+        { id: 'e3', name: token, playerDescription: '', aiDescription: '', persona: true },
+      ]),
+      placeholders: [{ id: 'p-hero', name: 'Hero Name', values: phValues(['Ash']) }],
+    } as unknown as Partial<World>), 'advanced');
+    await screen.findByLabelText('World Name');
+    await openStartsOn(user);
+    const option = await screen.findByRole('option', { name: /Hero Name/ });
+    await user.click(option);
+    expect(startsOn()).toHaveTextContent('Hero Name');
+    expect(startsOn().textContent).not.toContain('{{ph:');
   });
 
   it('reads a pick of an entity that is no longer a persona as the default', async () => {

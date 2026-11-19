@@ -15,8 +15,8 @@ import { useEditorMode } from '@/lib/editorMode';
 import { ALLOWED_PERSONAS, limitsToWorld, worldPersonaRules } from '@/lib/personaPick';
 import { customPersonaEntity } from '@/lib/blueprints';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SelectOptions } from "@/components/SelectOptions";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import PlaceholderText from '@/components/prompt/PlaceholderText';
 import type { AllowedPersonas } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
@@ -38,7 +38,7 @@ const NONE = 'none';
 /** Which personas the player can pick, and which one a new player starts on. Advanced only; Any and the
  *  player's default write no field. */
 const PersonaRulesFields = () => {
-  const { worldOverview, updateWorldOverview, entities } = useGameData();
+  const { worldOverview, updateWorldOverview, entities, placeholders } = useGameData();
   const { allowed, start } = worldPersonaRules(worldOverview);
   const personas = useMemo(() => entities.filter((entity) => entity.persona === true), [entities]);
   const custom = useMemo(() => customPersonaEntity(entities), [entities]);
@@ -86,7 +86,9 @@ const PersonaRulesFields = () => {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectOptions options={options} />
+            {options.map((o) => (
+              <SelectItem key={o.value} value={o.value}><PlaceholderText text={o.label} placeholders={placeholders} /></SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
