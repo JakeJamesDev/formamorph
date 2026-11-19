@@ -43,6 +43,11 @@ Settled in the grill on 2026-11-19. The prototype is on branch `prototype/whats-
 - **Q14 Discord**: the release skill writes the summary once. The Discord post is that summary plus the usual footer links.
 - **Q15 GitHub body**: the summary plus a Full changelog link, and nothing else.
 - **Q16 Pre-releases**: same rule as stable releases. Each pre-release needs a summary and opens What's New once.
+- **Q18 End of summary** (ticket 01): the summary ends at the first thematic break (`---`) or at the end of the file. `## Fixes` holds every paragraph up to that point. The workflow appends `---` and then a Full changelog link to the wiki changelog, the same URL the app uses.
+- **Q19 Required parts** (ticket 01): no section is required on its own. A summary with no Major items, no New items and no Fixes text is an error. Missing intro paragraphs are a warning.
+- **Q20 Title** (ticket 01): the title must be `# Formamorph v<version>`, pre-release suffix included. The validator errors when that version differs from the file name or the tag.
+- **Q21 Lenient parsing** (ticket 01): stray content inside a section is dropped with a warning. That covers an extra paragraph, a nested bullet under a New item, or a second nested bullet. These are errors: unknown heading, missing or mismatched title, a Major item without an emoji, an unmapped emoji, an empty summary, and a Major or New item not in `**Title** — body` form. The length warning fires about 10% past the 3.7.0 seed's visible text.
+- **Q22 Emoji set** (ticket 01): the map is about 30 common release themes and ignores U+FE0F when matching. Adding an emoji later is a one-line change.
 - **Q17 Source order**: the app reads the summary from the GitHub release for the installed version first. The bundled copy is the fallback when the fetch fails, times out, or does not parse.
 
 ## User Stories
