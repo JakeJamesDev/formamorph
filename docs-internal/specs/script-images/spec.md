@@ -48,6 +48,9 @@ Options set the size, and in During AI Output the wrap. The image is saved with 
 - **Q27 Index drift.** On reload, the saved narration is split again with the stream's splitter. A rewrite that changes the sentence count can shift later anchors. That is accepted. An anchor past the last sentence renders after the last sentence. (Ticket 02.)
 - **Q28 Crawl reveal.** With Fade-in Narration off, an inline image appears when the crawl starts the next sentence. On the last sentence, it appears when the reveal ends. (Ticket 02.)
 - **Q29 Editor in During AI Output.** `player` is a known global there with `show` as its only member. `player.` completes to `show` only, the other calls are flagged, and the player card says that only `show` runs in this timing. (Ticket 02.)
+- **Q30 No between-turns Tool path.** No gameplay path runs a Tool between turns. Try It and Formaquestion help Tools use silent prompts and record nothing. Q8's between-turns case is documented, with no code. The tool loop drops text a Tool round streamed, so an On Call run always precedes the reply text and its image goes above. An item script that a Tool call fires during the turn goes above too. (Ticket 04.)
+- **Q31 Large never floats.** A `large` image with `left` or `right` renders as a block, because 100% width leaves no room for text. Small and medium floats keep 33% and 60% widths, with a gap on the text side. (Ticket 03.)
+- **Q32 Mobile breakpoint.** Floats become blocks below the app's existing mobile breakpoint, through CSS only. (Ticket 03.)
 
 ## User Stories
 
