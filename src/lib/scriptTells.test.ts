@@ -93,6 +93,18 @@ describe('script tells', () => {
     })).toEqual({ t1: [{ text: 'Hi.', timing: 'after' }, good, anchored, good] });
   });
 
+  it('keeps item-timed text and image tells through a save, and places the images below', () => {
+    const saved = [
+      { text: 'You pick up the amulet.', timing: 'gained' },
+      { image: 'm-amulet', size: 'small', wrap: 'block', timing: 'gained' },
+      { image: 'm-ring', size: 'medium', wrap: 'block', timing: 'equipped' },
+      { text: 'Used.', timing: 'used' },
+    ];
+    const restored = restoreTells({ t1: saved });
+    expect(restored).toEqual({ t1: saved });
+    expect(placeTells(restored.t1)).toEqual({ above: [], inline: [], below: saved });
+  });
+
   it('reads back only well-formed tells from a save', () => {
     expect(restoreTells({
       t1: [{ text: 'Hi.', timing: 'after' }, { text: 'No timing.' }, { text: 'Bad.', timing: 'later' }, 'bare', null],

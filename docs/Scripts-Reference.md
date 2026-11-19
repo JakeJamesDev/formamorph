@@ -1004,6 +1004,8 @@ placeholders.Route.pin(path);
 - **At Game Start and Before the AI** show it above the turn's narration, while the reply loads.
 - **During AI Output** shows it right after the sentence that just completed. It appears when the reveal reaches that sentence. A sentence inside a quote holds the image until the quote ends.
 - **Every other timing** shows it below the narration, in call order with the messages.
+- **An item script** shows it below the narration when the item changes at the end of the reply, or between turns. An item change that a Tool call makes during the turn runs before the narration, so it shows above.
+- **A World Tool's On Call script** follows when it runs. Called during the turn, before the narration starts, it shows above. A Tool set to run After the AI shows below.
 - **Several images on one sentence** stack in call order.
 - **A stopped reply** keeps none of its During AI Output images. **Regenerate** shows the new reply's images in their place.
 - **`size`** is `'small'`, `'medium'` or `'large'`. The default is `'medium'`.

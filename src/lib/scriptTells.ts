@@ -3,6 +3,7 @@
 
 import type { ChatMessage, ScriptTiming } from '@/types';
 import { noticeHost, SHOW_SIZES, SHOW_WRAPS, type ScriptPromptHost, type ShowSize, type ShowWrap } from './scriptPrompts';
+import { ITEM_SCRIPT_TIMINGS } from './scripts';
 import { parseTurnContent, pruneTurnMap } from './turnDigest';
 
 /** One tell, with the timing of the script that made it, so a replay replaces only its own (Q54). */
@@ -31,7 +32,7 @@ export type TellMap = Record<string, ScriptTell[]>;
 /** The timings a stats re-roll runs again. During AI Output never tells (Q45). */
 export const REROLLED_TIMINGS: readonly ScriptTiming[] = ['start', 'before', 'after'];
 
-const TIMINGS: readonly ScriptTiming[] = ['before', 'after', 'output', 'start', 'switch'];
+const TIMINGS: readonly ScriptTiming[] = ['before', 'after', 'output', 'start', 'switch', ...ITEM_SCRIPT_TIMINGS];
 
 /** The timings whose images show above the narration (Q11). */
 const ABOVE_TIMINGS: readonly ScriptTiming[] = ['start', 'before'];
@@ -58,7 +59,7 @@ export interface TellPlacement {
   below: readonly ScriptTell[];
 }
 
-/** A turn's tells split by where they render (Q17). Text tells always go below. */
+/** A turn's tells split by where they render (Q17). Text tells and item-timed images go below (Q8). */
 export function placeTells(tells: readonly ScriptTell[]): TellPlacement {
   const above: ScriptImageTell[] = [];
   const inline: ScriptImageTell[] = [];
