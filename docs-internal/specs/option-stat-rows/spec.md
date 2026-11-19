@@ -43,7 +43,15 @@ The rows act on stats like a trait's rows do, and they stack with traits. They n
 - **Q23 Changelog.** Tickets 02 and 03 write no fragment. The spec session folds a clause into ticket 01's entry on main after each landing. (Tickets 02, 03.)
 - **Q24 Close review gaps.** The close review found three gaps, now tickets 04–06: the Enter World preview's entity starts, stale bounds on load, and the paged-back AI scene.
 - **Q25 Toggles not listed.** Player lists show stat changes only, never toggle rows, matching the trait lists.
-- **Q26 Setup gates and pick effects.** Open. Under discussion with the user; it changes how traits work and may get its own spec.
+- **Q26 Setup gates count pick effects.** At setup, gates read stats the way play will start them. (Ticket 08.)
+  - **a.** Gates read stats with every picked trait's rows and every Option value's rows applied.
+  - **b.** A trait's own gate ignores its own rows.
+  - **c.** No self-propping loops: the settle grows from the Options and authored starts, and a pick enters only when its gate already holds without the picks that need it.
+  - **d.** The gate reads the starting value clamped by the max the same picks set.
+  - **e.** A pick whose support is removed turns off through the existing cascade, named in the cascade notice.
+  - **f.** Entity-owned trait gates follow the same rules on the entity's stats.
+  - **g.** Every setup reader uses these stats: trait gates, Starting Location gates, Preset apply and check, and the Test Bench opening.
+  - **i.** A stat a pick or Option turns off reads as inert, as in play.
 - **Q27 One opening path.** The Enter World preview seeds global and entity starts through the same steps as the game opening, so entity trait starts apply there too. (Ticket 04.)
 - **Q28 Pins read Option toggles.** Stat-band Pins read Option toggles ahead of traits for every caller: play, the opening, Test Bench and the preview. A stat an Option turns off never pins. (Ticket 04, from Q17.)
 - **Q29 Editor scene.** The editor's authored scene reads each Option at its default. A caller with picks, such as Test Bench, passes its values. It seeds stats through the Q27 steps. (Ticket 04.)
