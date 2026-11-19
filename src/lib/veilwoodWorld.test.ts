@@ -11,7 +11,7 @@ import {
   applyGlobalRowTraits, applyOwnedStatTraits, seedNewGameStats, settleTraits, switchPlayerTrait, type TraitRuntimeState, type TraitWorld,
 } from './traitRuntime';
 import { ownedTraitStatesFrom } from './ownedTraitState';
-import { seedEntityStats } from './entityStats';
+import { seedEntityStats } from './entityStatSeed';
 import { DAYPARTS } from './gameClock';
 import { primeRolls, resolvePlaceholders, type PlaceholderPick } from './placeholders';
 import { canvasRects } from './locationCanvas';

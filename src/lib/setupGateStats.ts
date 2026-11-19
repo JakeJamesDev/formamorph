@@ -1,7 +1,7 @@
 // The stats setup gates read: the game's opening stats under a set of picks (Q26).
 
 import type { Entity, PersonaRef, Stat, StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValues } from '@/types';
-import { seedEntityStats } from './entityStats';
+import { seedEntityStats } from './entityStatSeed';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { playStatWorld } from './statLinks';
 import { inAuthoredOrder, traitOrderIndex } from './traitEffects';

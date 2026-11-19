@@ -4,7 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, PlayerStat, Stat, StatGroup } from '@/types';
 import { bindLibraryEntity } from './blueprintTravel';
-import { entityStatOwners, seedEntityStats, statOwnerEntities, statRequestOwners } from './entityStats';
+import { entityStatOwners, statOwnerEntities, statRequestOwners } from './entityStats';
+import { seedEntityStats } from './entityStatSeed';
 import { buildEntityCardData, parseEntityCardData } from './entityFile';
 
 const stat = (id: string, over: Partial<Stat> = {}): Stat => ({

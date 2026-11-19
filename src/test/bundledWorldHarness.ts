@@ -6,7 +6,7 @@ import { scoped } from '@/lib/scope';
 import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
 import { applyOwnedStatTraits, seedNewGameStats, type TraitRuntimeState, type TraitWorld } from '@/lib/traitRuntime';
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
-import { seedEntityStats } from '@/lib/entityStats';
+import { seedEntityStats } from '@/lib/entityStatSeed';
 import { stateInventory, type SandboxState, type StatCodeTurn, type StatCodeTurnResult } from '@/lib/statCodeTurn';
 import type { Daypart, Entity, GameLocation, PersonaRef, PlayerStat, Trait, World } from '@/types';
 

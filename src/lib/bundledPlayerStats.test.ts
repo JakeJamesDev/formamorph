@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { migrateWorld } from './version';
 import { resolveOwners, type OwnerWorld } from './owners';
 import { globalStatsOf, resolvedEntityStats, statBlueprintIds } from './statLinks';
-import { seedEntityStats } from './entityStats';
+import { seedEntityStats } from './entityStatSeed';
 import { seedNewGameStats } from './traitRuntime';
 import type { OwnerId } from './scope';
 import { executeStatCode, type SandboxEntity } from './statCodeExecutor';

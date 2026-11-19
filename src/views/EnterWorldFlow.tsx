@@ -11,7 +11,7 @@ import { inAuthoredOrder, isHidden, traitOrderIndex } from '@/lib/traitEffects';
 import { ownerPins, inPlayOwners, pinBlueprintsOf, playedEntityId } from '@/lib/ownedTraitsInPlay';
 import { playedEntityIdOf, startLocationIdsOpen } from '@/lib/inPlayWorld';
 import { cascadeOffInput, startingTraitState } from '@/lib/traitRuntime';
-import { seedWorldEntityStats } from '@/lib/entityStats';
+import { seedWorldEntityStats } from '@/lib/entityStatSeed';
 import { toastError } from '@/lib/linkToast';
 import CharacterCustomization from './CharacterCustomization';
 import { seededCharacterData } from '@/lib/legacyVrm';

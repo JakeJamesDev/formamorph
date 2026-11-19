@@ -14,7 +14,7 @@ import { buildPlaceholderPreview, resolvePlaceholders } from './placeholders';
 import { ownerPreview, inPlayOwners } from './ownedTraitsInPlay';
 import { applyOwnedStatTraits, seedNewGameStats, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
 import { ownedTraitStatesFrom } from './ownedTraitState';
-import { seedEntityStats } from './entityStats';
+import { seedEntityStats } from './entityStatSeed';
 import { openingPool } from './openings';
 import { personaStartLocation } from './personaPick';
 import { visibleImages, visibleLocationImages } from './imageVisibility';

@@ -18,7 +18,7 @@ import { globalStatsOf } from '@/lib/statLinks';
 import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
 import { activeStatEnabled, defaultPicks, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { startingTraitState, statTraitsInForce, type TraitWorld } from '@/lib/traitRuntime';
-import { seedWorldEntityStats } from '@/lib/entityStats';
+import { seedWorldEntityStats } from '@/lib/entityStatSeed';
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
 import { resolveOwners, type Owner } from '@/lib/owners';
 import type {

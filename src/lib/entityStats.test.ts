@@ -6,8 +6,9 @@ import { describe, expect, it } from 'vitest';
 import { runStatCodeTurn } from './statCodeTurn';
 import type { Entity, PlayerStat, Stat } from '@/types';
 import {
-  backfillEntityStats, entityCodeTurns, entityStatOwners, seedEntityStats, withEntityRegen, withOwnerCodeResults,
+  backfillEntityStats, entityCodeTurns, entityStatOwners, withEntityRegen, withOwnerCodeResults,
 } from './entityStats';
+import { seedEntityStats } from './entityStatSeed';
 import { boxScripts } from '@/test/scriptFixtures';
 import { statCodeTurnOf } from '@/test/statCodeTurnFixture';
 

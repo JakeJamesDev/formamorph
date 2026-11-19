@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { GameDataProvider, useGameData } from './GameDataContext';
-import { seedEntityStats } from '@/lib/entityStats';
+import { seedEntityStats } from '@/lib/entityStatSeed';
 import { entityCodeStats } from '@/lib/statCodeTraits';
 import { statCodeNames } from '@/lib/statCodeTestRun';
 import type { Stat, StatLink, World } from '@/types';

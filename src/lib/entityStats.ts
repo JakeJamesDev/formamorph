@@ -1,12 +1,10 @@
-// Entity stats in play: each authored entity's stat values, seeded at a new game and backfilled on load, and
-// the owners whose regen and code run each turn.
+// Entity stats in play: each authored entity's stat values, backfilled on load, and the owners whose regen and
+// code run each turn. New-game seeds live in entityStatSeed.
 
-import type { Entity, EntityStatChanges, EntityStatValues, LegacyCodeBoundsStat, PersonaRef, PlayerStat, Stat, StatGroup } from '@/types';
-import { playStatWorld, type StatLinkWorld } from './statLinks';
+import type { Entity, EntityStatChanges, EntityStatValues, LegacyCodeBoundsStat, PersonaRef, PlayerStat, StatGroup } from '@/types';
 import { inCast, playsAs } from './owners';
 import { backfillPlayerStats } from './statBackfill';
 import { activeStatEnabled, enabledStats } from './traitEffects';
-import { seedNewGameStats } from './traitRuntime';
 import { regenOwners, statsOf, type OwnerStats, type OwnerStatTraits, type StatOwner } from './statOwners';
 import { statPlacementOf } from './statContext';
 import { applyStatResponse, type StatRequestOwner, type StatResponse, type StatUpdateDiagnostic } from './statRequest';
@@ -14,18 +12,10 @@ import { changedAnyStat, overlayStatCodeResult, type OwnerCodeResult, type Owner
 
 type StatEntity = Pick<Entity, 'id' | 'stats'>;
 
-/** Each entity's own stats as a new game seeds them, its links resolved against the world's stats. */
-export const seedWorldEntityStats = (world: StatLinkWorld & { stats: Stat[]; entities: Entity[] }): EntityStatValues =>
-  seedEntityStats(playStatWorld(world).entities);
-
 /** Every entity that can own stats in a playthrough: the world's, then the library's, which are the library
  *  persona and the characters added at Enter World. */
 export const statOwnerEntities = (entities: { world: readonly Entity[]; library: readonly Entity[] }): Entity[] =>
   [...entities.world, ...entities.library];
-
-/** Each authored entity that owns stats, every stat seeded as a new game seeds the player's. */
-export const seedEntityStats = (entities: readonly StatEntity[]): EntityStatValues =>
-  Object.fromEntries(entities.filter((e) => e.stats?.length).map((e) => [e.id, seedNewGameStats(e.stats ?? [])]));
 
 /** `saved` with each authored stat it lacks added at its start value, owner by owner, as the player's stats
  *  are backfilled. A stat the world removed stays. The same map when nothing is missing. */

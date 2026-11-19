@@ -19,7 +19,7 @@ import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
 import { ownerPins, ownerPriming } from '@/lib/ownedTraitsInPlay';
 import { resolveOwners } from '@/lib/owners';
 import { setupStatsOf } from '@/lib/setupGateStats';
-import { seedEntityStats } from '@/lib/entityStats';
+import { seedEntityStats } from '@/lib/entityStatSeed';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { playStatWorld, globalStatsOf } from '@/lib/statLinks';
 import { settle, settleDefaults, type GateActive } from '@/lib/traitGates';

@@ -2,7 +2,8 @@
  * The opening fold: the state a new game opens with, built from the authored world, the entry step's picks
  * and the persona. Enter World, the Test Bench's opening instrument and the editors' Script runs all read it.
  */
-import { entityStatOwners, seedEntityStats, statOwnerEntities } from './entityStats';
+import { entityStatOwners, statOwnerEntities } from './entityStats';
+import { seedEntityStats } from './entityStatSeed';
 import { inPlayLibrary, inPlayOwners } from './ownedTraitsInPlay';
 import { allPlaceholders, placeholderOwners } from './placeholderHomes';
 import { startsMet } from './presence';

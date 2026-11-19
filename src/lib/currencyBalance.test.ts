@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SlotOwner } from '@/lib/bodies';
-import { seedWorldEntityStats } from '@/lib/entityStats';
+import { seedWorldEntityStats } from '@/lib/entityStatSeed';
 import { blankItem } from '@/lib/items';
 import type { Currency, Entity, EntityStatValues, ItemInstance, Placement, PlayerStat, Stat, StatGroup, StatLink } from '@/types';
 import { balanceOf, balanceRows, balanceText, type BalanceState } from './currency';
