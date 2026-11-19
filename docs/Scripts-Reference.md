@@ -981,9 +981,9 @@ narration.sentence = narration.sentence.replace('door', '[door](https://example.
 
 | Call | Returns | Shows |
 | --- | --- | --- |
-| `player.tell(text)` | Nothing | A message line under the turn's narration. The save keeps it with the turn. The AI never gets it |
+| `player.tell(text)` | Nothing | A message line under the turn's narration. It persists with the turn. The AI never gets it |
 | `player.toast(text)` | Nothing | A toast. It is not saved |
-| `player.show(name, { size, wrap })` | Nothing | The Media List image named `name`, in the story. Selecting it opens it full size. The save keeps it with the turn. The AI never gets it |
+| `player.show(name, { size, wrap })` | Nothing | The Media List image named `name`, in the story. Selecting it opens it full size. It persists with the turn. The AI never gets it |
 | `player.confirm(question)` | `true` or `false` | The question with two buttons |
 | `player.ask(question, options, { multiple })` | The picked value. With `multiple`, a list | Up to four options as buttons, five or more as a dropdown. With `multiple`, toggle buttons and **OK** |
 | `player.input(question, placeholder)` | The typed text | The question with a text field and **OK** |
