@@ -1,6 +1,7 @@
 # Spec: Script Images
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-19 with tickets 01–05; last landing 2b38e78a3. Review: two trivial gaps fixed (e94ff8ca8, 1e48591a1); the re-roll gap became ticket 05. Closed red: lint fails in `worlds-wip/` only (28 errors from another effort); tests green on 2026-11-19.
 Spec session: script-images — spec
 
 ## Problem Statement
@@ -50,6 +51,10 @@ Options set the size, and in During AI Output the wrap. The image is saved with 
 - **Q29 Editor in During AI Output.** `player` is a known global there with `show` as its only member. `player.` completes to `show` only, the other calls are flagged, and the player card says that only `show` runs in this timing. (Ticket 02.)
 - **Q30 No between-turns Tool path.** No gameplay path runs a Tool between turns. Try It and Formaquestion help Tools use silent prompts and record nothing. Q8's between-turns case is documented, with no code. The tool loop drops text a Tool round streamed, so an On Call run always precedes the reply text and its image goes above. An item script that a Tool call fires during the turn goes above too. (Ticket 04.)
 - **Q31 Large never floats.** A `large` image with `left` or `right` renders as a block, because 100% width leaves no room for text. Small and medium floats keep 33% and 60% widths, with a gap on the text side. (Ticket 03.)
+- **Q33 On Call entries.** Every entry an On Call run records, including item scripts that run fires, stores the timing `call`. `call` images render above. Re-roll Stats keeps `call` entries, because the replay never reruns On Call scripts. This is an additive export-shape change to `scriptTells`. Older saves keep their On Call entries tagged `before`, with no rescue: nothing tells them apart. (Ticket 05.)
+- **Q34 Re-roll duplicates.** Re-roll Stats reruns the Inventory pass item scripts, so their old entries must give way to the new ones, not stack. Ticket 05 reproduces this first, then fixes it. (Ticket 05, user ruling.)
+- **Q35 Item entries follow the rollback.** Re-roll Stats drops every item-timed entry on the latest turn, including the ones a between-turns panel action or trait settle made. The re-roll resets items, Bodies and traits to the pre-turn state, so the entries match the state. There is no second stored timing. (Ticket 05.)
+- **Q36 Switch duplicates.** Q34's rule covers switch entries too. If the re-roll's settle reruns switch scripts and their entries stack, ticket 05 reproduces it with a failing test and makes the rerun entries replace the old ones. This narrows Q23 to entries the re-roll does not make again. (Ticket 05.)
 - **Q32 Mobile breakpoint.** Floats become blocks below the app's existing mobile breakpoint, through CSS only. (Ticket 03.)
 
 ## User Stories
