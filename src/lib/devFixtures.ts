@@ -4,7 +4,7 @@
  * or replaying turns. Loaded via dynamic `import()` so each fixture is a separate chunk fetched only when
  * `loadDevFixture` runs (DEV-gated), never in the production bundle. See `devRouter.ts` / [[formamorph-dev-router]].
  */
-import type { Body, Currency, WorldOption, Entity, EntityStatValues, GameLocation, Item, Placement, ScheduleRow, Slot, Traversable, Trait, World, SaveObject } from '@/types';
+import type { Body, Currency, WorldOption, Entity, EntityStatValues, GameLocation, Item, Placement, ScheduleRow, Slot, Traversable, Trait, World, SaveObject, MediaEntry } from '@/types';
 import { withMembership } from './entityPlaces';
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 import { DEFAULT_WORLDS, seedWorldData, type DefaultWorldSeed } from './defaultWorlds';
@@ -18,7 +18,7 @@ const BUNDLED_PREFIX = 'bundled-';
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
 export const DEV_FIXTURES = [
   'whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'avatarIcon',
-  'entityPresence', 'entityFollowers', 'mapStrangers', 'mapBackground', 'items', 'options', 'lockedPlaces', 'speakerQuotes',
+  'entityPresence', 'entityFollowers', 'mapStrangers', 'mapBackground', 'items', 'options', 'lockedPlaces', 'speakerQuotes', 'scriptImages',
   ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
 ];
 
@@ -279,6 +279,13 @@ const SPEAKER_QUOTE_MENTIONS = spokenQuotes(SPEAKER_QUOTES_TEXT, [
   ['Mira', 'dev-mira'], ['Kessa', 'dev-kessa'], ['Mira', 'dev-mira'], ['the courier', 'dev-courier'],
   ['The courier', 'dev-courier'], ['Kessa', 'dev-kessa'], ['him', 'dev-courier'], ['You', 'dev-ash'], ['you', 'dev-ash'],
 ]).map(({ start, end, speaker }) => ({ start, end, entityId: speaker }));
+const SCRIPT_IMAGES_TEXT = [
+  'A lamp flickers on the shelf beside the door. Its light is thin and yellow, and it shakes each time the hum rises.',
+  'You cross the room and lift it from its hook. Under the base, pressed into the dust, is the outline of something small and square.',
+  'You set the lamp down and run a finger along the outline. The dust gives way to cold metal, and a key slides free into your palm.',
+  'It is heavier than it looks. The teeth are worn smooth, and a thin chain hangs from the bow, broken at one link.',
+  'Behind you the door clicks. When you turn, it stands an inch open, and the hum has gone quiet.',
+].join('\n\n');
 /** A flat portrait for the fixture's cast, so the cards and pick list show images. */
 const fixturePortrait = (hue: number): NonNullable<Entity['images']> => [{
   data: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="120"><rect width="80" height="120" fill="hsl(${hue} 45% 55%)"/><circle cx="40" cy="34" r="18" fill="hsl(${hue} 35% 85%)"/><rect x="14" y="60" width="52" height="60" rx="20" fill="hsl(${hue} 40% 35%)"/></svg>`)}`,
@@ -339,6 +346,45 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
           },
         },
         saveName: 'DEV: Speaker Quotes',
+      };
+    }
+    case 'scriptImages': {
+      // The white room whose last turn shows every `player.show` placement: above, inline left and right, below.
+      const [world, save] = await Promise.all([
+        import('./devFixtures/whiteRoomWorld.json'),
+        import('./devFixtures/whiteRoomSave.json'),
+      ]);
+      const saved = save.default as unknown as SaveObject;
+      const history = saved.currentState.fullMessageHistory ?? [];
+      const last = history.length - 1;
+      const turn = JSON.parse(history[last].content) as { turnId: string };
+      const base = world.default as unknown as World;
+      const media = (id: string, hue: number): MediaEntry => ({
+        id, name: id, kind: 'image', type: 'image/svg+xml',
+        data: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240"><rect width="320" height="240" fill="hsl(${hue} 45% 55%)"/><circle cx="160" cy="120" r="60" fill="hsl(${hue} 35% 85%)"/></svg>`)}`,
+      });
+      const mediaList = { ...base.worldOverview.mediaList, 'dev-img-door': media('dev-img-door', 30), 'dev-img-lamp': media('dev-img-lamp', 200), 'dev-img-key': media('dev-img-key', 280) };
+      return {
+        world: { ...base, worldOverview: { ...base.worldOverview, mediaList } },
+        save: {
+          ...saved,
+          currentState: {
+            ...saved.currentState,
+            fullMessageHistory: history.map((message, index) => (
+              index === last ? { ...message, content: JSON.stringify({ ...turn, narration: SCRIPT_IMAGES_TEXT }) } : message
+            )),
+          },
+          scriptTells: {
+            [turn.turnId]: [
+              { image: 'dev-img-door', size: 'medium', wrap: 'block', timing: 'before' },
+              { image: 'dev-img-lamp', size: 'small', wrap: 'left', sentence: 0, timing: 'output' },
+              { image: 'dev-img-key', size: 'medium', wrap: 'right', sentence: 3, timing: 'output' },
+              { text: 'The key is yours.', timing: 'after' },
+              { image: 'dev-img-key', size: 'small', wrap: 'block', timing: 'after' },
+            ],
+          },
+        },
+        saveName: 'DEV: Script Images',
       };
     }
     case 'thousandTurns': {
