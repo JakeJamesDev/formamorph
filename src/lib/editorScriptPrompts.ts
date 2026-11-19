@@ -1,6 +1,6 @@
 /**
  * The prompt host of one editor run, Test Code's or the Test Bench's (Q24). A confirm, an ask or an input waits
- * in the run's own store for the inline prompt line (Q49, Q53); a tell or a toast lands in the run's notes (Q54).
+ * in the run's own store for the inline prompt line (Q49, Q53); a tell, a toast or a show lands in the run's notes (Q54).
  */
 
 import {
@@ -12,7 +12,7 @@ export interface EditorPromptRun {
   host: ScriptPromptHost;
   /** The prompts waiting for an answer on the line. */
   store: ScriptPromptStore;
-  /** Each tell and toast, in call order, as one line each. */
+  /** Each tell, toast and show, in call order, as one line each. */
   notes: string[];
   /** Cancel every open prompt and every later one. */
   close(): void;
@@ -30,6 +30,7 @@ export function editorPromptRun(): EditorPromptRun {
   const host = noticeHost(asks, {
     onTell: (text) => { notes.push(`Tell: ${text}`); },
     onToast: (text) => { notes.push(`Toast: ${text}`); },
+    onShow: ({ name, size, wrap }) => { notes.push(`Show: ${name} (${size}, ${wrap})`); },
   });
   return {
     host, store, notes,

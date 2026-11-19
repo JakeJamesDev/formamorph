@@ -152,6 +152,17 @@ The menu lists these groups, in order:
 
 [Player](Scripts-Reference#player) lists every call and what closing a prompt does.
 
+## How to Show an Image in the Story
+<!-- keywords: show an image, picture in the story, image in the narration, illustration, scene picture, media list image, player.show -->
+<!-- route: worldEditorStat.code -->
+
+1. Add the image to the **Media List**, and note its name.
+2. Open a **Scripts** tab and select **Add Script**. Pick **Before the AI** to show it above the narration, or **After the AI** to show it below.
+3. Call `player.show("Harbor at Dusk")`. Add `{ size: "small" }` or `{ size: "large" }` to change its width.
+4. Select **Test Code**. The run lists the call with the image's name, size and wrap.
+
+[Player](Scripts-Reference#player) lists the options and where each timing puts the image.
+
 ## How to Let the AI Run a Script
 <!-- keywords: world tool, tool script, ai decides, ai calls my code, trigger, arm a script, on demand, filter on request, narration filter tool, reply, stack calls, timing, function calling script -->
 <!-- route: worldEditor.tools -->
@@ -285,7 +296,7 @@ A script runs in a sandbox at its own point in the turn (see [The Five Timings](
 - **Read the player's notes** (see [Notes](Scripts-Reference#notes))
 - **Add a line to an entity's diary** (see [Diary](Scripts-Reference#diary))
 - **Rewrite a narration sentence** when it completes (see [Narration](Scripts-Reference#narration))
-- **Tell or ask the player** (see [Player](Scripts-Reference#player))
+- **Tell or ask the player**, or show an image in the story (see [Player](Scripts-Reference#player))
 - **React when a trait switches** (see [Trait](Scripts-Reference#trait))
 - **Run when the AI decides**, from a World Tool (see [World Tools](#world-tools))
 

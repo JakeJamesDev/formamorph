@@ -60,13 +60,13 @@ describe.each(HOMES)('narration in a %s script', (home) => {
 });
 
 describe.each(HOMES)('player in a %s script', (home) => {
-  it.each(NOT_OUTPUT)('completes in %s as a global, with its five calls after the dot', (timing) => {
+  it.each(NOT_OUTPUT)('completes in %s as a global, with its six calls after the dot', (timing) => {
     expect(labelsAt('play|', box(home, timing))).toContain('player');
-    expect(labelsAt('player.|', box(home, timing))).toEqual(['tell', 'toast', 'confirm', 'ask', 'input']);
+    expect(labelsAt('player.|', box(home, timing))).toEqual(['tell', 'toast', 'show', 'confirm', 'ask', 'input']);
   });
 
   it.each(NOT_OUTPUT)('reads clean in %s', (timing) => {
-    expect(errors('player.tell("Hi"); const ok = player.confirm("Sure?");', box(home, timing))).toEqual([]);
+    expect(errors('player.tell("Hi"); player.show("Harbor", { size: "small" }); const ok = player.confirm("Sure?");', box(home, timing))).toEqual([]);
   });
 
   it('is unknown in During AI Output: not offered, flagged and with no card', () => {

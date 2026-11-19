@@ -59,6 +59,24 @@ describe('script tells across a save/load round trip', () => {
     expect(live().scriptTells).toEqual(map);
   });
 
+  it('loads image entries back in place beside the tells, and drops a malformed one', async () => {
+    const live = mount();
+    const harbor = { image: 'm-harbor', size: 'large' as const, wrap: 'block' as const, timing: 'before' as const };
+    const gull = { image: 'm-gull', size: 'small' as const, wrap: 'block' as const, timing: 'after' as const };
+    const map = { 'turn-1': [harbor, { text: 'A gull.', timing: 'after' as const }, gull] };
+    await act(async () => { live().setScriptTells(map); });
+    await act(async () => { await live().saveGame('slot', 'World', 'w1', 'images-roundtrip'); });
+    await act(async () => { live().setScriptTells({}); });
+    await act(async () => { await live().loadGame('images-roundtrip', []); });
+    expect(live().scriptTells).toEqual(map);
+
+    // A player-edited save with a broken image entry keeps the rest.
+    const record = await getSaveRecord('images-roundtrip') as SaveRecord;
+    await putSaveRecord({ ...record, id: 'images-edited', scriptTells: { 'turn-1': [harbor, { ...gull, size: 'huge' }] } } as unknown as SaveRecord);
+    await act(async () => { await live().loadGame('images-edited', []); });
+    expect(live().scriptTells).toEqual({ 'turn-1': [harbor] });
+  });
+
   it('writes no field when there are none, and loads that save with none', async () => {
     const live = mount();
     await act(async () => { await live().saveGame('slot', 'World', 'w1', 'tells-absent'); });

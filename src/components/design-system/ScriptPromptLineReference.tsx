@@ -8,6 +8,7 @@ import { ScriptPromptLine, ScriptTellLines, type PromptLineLayout } from '@/comp
 import { TurnCard } from '@/components/game/TurnCard';
 import { SCRIPT_PROMPT_SAMPLES, type ScriptPromptSampleKey } from '@/lib/devScriptPromptSamples';
 import { cancelOpenPrompts, createScriptPromptStore, noticeHost } from '@/lib/scriptPrompts';
+import type { ScriptTextTell } from '@/lib/scriptTells';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { useScriptPromptListener } from '@/lib/useScriptPromptListener';
 
@@ -29,7 +30,7 @@ export function ScriptPromptLineReference() {
   // A store of the reference's own: nothing here reaches play.
   const store = useMemo(() => createScriptPromptStore(), []);
   const [layout, setLayout] = useState<PromptLineLayout>('pages');
-  const [tells, setTells] = useState<{ text: string }[]>([]);
+  const [tells, setTells] = useState<ScriptTextTell[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const mounted = useMountedRef();
   useScriptPromptListener(store);
@@ -38,7 +39,7 @@ export function ScriptPromptLineReference() {
     cancelOpenPrompts(store);
     setStatus(null);
     // The reference keeps a tell beside its turn, as play does.
-    const host = noticeHost(store, { onTell: (text) => setTells((now) => [...now, { text }]), onToast: () => {} });
+    const host = noticeHost(store, { onTell: (text) => setTells((now) => [...now, { text, timing: 'switch' }]), onToast: () => {}, onShow: () => {} });
     host.prompt(SCRIPT_PROMPT_SAMPLES[key]).then(
       (answer) => { if (mounted.current) setStatus(`The script read ${readBack(answer)}`); },
       () => { if (mounted.current) setStatus('The script stopped as canceled'); },

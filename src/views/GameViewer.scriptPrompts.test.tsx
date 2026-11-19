@@ -160,3 +160,64 @@ describe('script prompts in play', () => {
     expect(scriptPrompts.pending()).toEqual([]);
   });
 });
+
+describe('script images in play', () => {
+  const harbor = { image: 'm-harbor', size: 'medium', wrap: 'block', timing: 'before' };
+  const gull = { image: 'm-gull', size: 'small', wrap: 'block', timing: 'after' };
+  const caption = { text: 'The gull leaves.', timing: 'after' };
+  const opening: Script = { id: 'open', timing: 'before', code: 'player.show("Harbor"); if (player.confirm("Ring it?")) stats.Health.value += 1;' };
+  const closing: Script = { id: 'close', timing: 'after', code: 'player.show("Gull", { size: "small" }); player.tell("The gull leaves.");' };
+  const imageWorld = (): World => {
+    const base = world();
+    return {
+      ...base, scripts: [opening, closing],
+      worldOverview: {
+        ...base.worldOverview,
+        mediaList: {
+          'm-harbor': { id: 'm-harbor', name: 'Harbor', kind: 'image', data: 'data:image/png;base64,AAAA' },
+          'm-gull': { id: 'm-gull', name: 'Gull', kind: 'image', data: 'data:image/png;base64,BBBB' },
+        },
+      },
+    };
+  };
+  // The latest page's images, narration and tells, in document order.
+  const order = () => [...document.querySelectorAll('[data-testid="narration"], [data-testid="script-tell"], [data-testid="script-image"] img')]
+    .map((node) => (node instanceof HTMLImageElement ? `image ${node.alt}` : node.textContent ?? ''));
+
+  it('shows the Before image while the turn waits, then above the narration, and the After image below it', async () => {
+    renderGameViewer(imageWorld(), { inGameplay: <Probe /> });
+    stubEndpoint();
+
+    await send('I wait.');
+    await screen.findByRole('group', { name: 'Ring it?' });
+    expect(order()).toEqual(['image Harbor']);
+    fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
+    await settled();
+    expect(order()).toEqual(['image Harbor', 'The harbor is quiet.', 'image Gull', 'The gull leaves.']);
+    expect(Object.values(live().scriptTells)).toEqual([[harbor, gull, caption]]);
+  });
+
+  it('replays the images on Regenerate Stats, and puts them back when the re-roll is stopped', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    renderGameViewer(imageWorld(), { inGameplay: <Probe /> });
+    stubEndpoint();
+
+    await send('I wait.');
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes' }));
+    await settled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'No' }));
+    await settled();
+    await waitFor(() => expect(Object.values(live().scriptTells)).toEqual([[harbor, gull, caption]]));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
+    await screen.findByRole('group', { name: 'Ring it?' });
+    // The replay dropped the old images and showed its own Before image again.
+    expect(Object.values(live().scriptTells)).toEqual([[harbor]]);
+    fireEvent.click(screen.getByRole('button', { name: /Stop/ }));
+    await waitFor(() => expect(live().isWaitingForAI).toBe(false));
+    await waitFor(() => expect(Object.values(live().scriptTells)).toEqual([[harbor, gull, caption]]));
+    expect(order()).toEqual(['image Harbor', 'The harbor is quiet.', 'image Gull', 'The gull leaves.']);
+  });
+});

@@ -1,8 +1,9 @@
 import type { MentionReadingMap } from '@/lib/coref/mentionReadings';
 import type { MentionCorrectionMap } from '@/lib/coref/mentionCorrections';
-import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming, PlacementWhere, BodyPick, WorldOptionValueOf, SupporterCopyMarker, LibrarySupporterCopyMarker } from './world';
+import type { Stat, Trait, Entity, Dictionary, CommunityLink, PlacementWhere, BodyPick, WorldOptionValueOf, SupporterCopyMarker, LibrarySupporterCopyMarker } from './world';
 import type { ChatMessage } from './ai';
 import type { ActionSnapshot, ListedAction, SentActionList } from '@/lib/actionList';
+import type { ScriptTell } from '@/lib/scriptTells';
 
 /** A director-invented character promoted to a persisted, per-playthrough entity (runtime characters,
  *  Slice 2). Save-only: it rolls back with the turn and is never written to the world export. */
@@ -611,9 +612,9 @@ export interface SaveObject {
   /** The images the player attached to actions, by turn id. Always written when there are any, so a save
    *  is self-contained. Absent ⇒ none. Out of the messages for the same reason as `sceneImages`. */
   actionAttachments?: Record<string, ImageAttachment[]>;
-  /** What scripts told the player with `player.tell`, by turn id, in call order, each with its script's
-   *  timing. Never sent in a request. Absent ⇒ none. */
-  scriptTells?: Record<string, { text: string; timing: ScriptTiming }[]>;
+  /** What scripts told and showed the player with `player.tell` and `player.show`, by turn id, in call order,
+   *  each with its script's timing. Never sent in a request. Absent ⇒ none. */
+  scriptTells?: Record<string, ScriptTell[]>;
   /** Each turn's Mention Reading by turn id, with the model that made it and a hash of the narration it read.
    *  Never sent in a request. Absent ⇒ none. */
   mentionReadings?: MentionReadingMap;

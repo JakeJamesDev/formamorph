@@ -560,6 +560,10 @@ export const NARRATION_GLOBAL: SurfaceEntry = {
 export const PLAYER_CALL_ENTRIES: readonly SurfaceEntry[] = [
   { name: 'tell', detail: '(text) => void', info: 'Shows the player a message under the narration. It persists with the turn, and the AI never gets it.' },
   { name: 'toast', detail: '(text) => void', info: 'Shows the player a toast. It isn’t saved.' },
+  {
+    name: 'show', detail: "(name, { size, wrap }?) => void",
+    info: 'Shows a Media List image in the story. Before the AI and At Game Start put it above the narration, and After the AI below it. Size is small, medium or large. It persists with the turn, and the AI never gets it.',
+  },
   { name: 'confirm', detail: '(question) => boolean', info: 'Asks a yes or no question and waits for the answer' },
   { name: 'ask', detail: '(question, options, { multiple }?) => any', info: 'Asks the player to pick from text or { label, value } options, and waits. The result is the value picked, or a list with multiple.' },
   { name: 'input', detail: '(question, placeholder?) => string', info: 'Asks the player for typed text and waits for the answer' },

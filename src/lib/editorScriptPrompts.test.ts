@@ -34,6 +34,13 @@ describe('editorPromptRun', () => {
     expect(run.store.pending()).toEqual([]);
   });
 
+  it('notes a show with its name and options, and resolves it', async () => {
+    const run = editorPromptRun();
+    await expect(run.host.prompt({ kind: 'show', name: 'Harbor', mediaId: 'm-harbor', size: 'large', wrap: 'left' })).resolves.toBeUndefined();
+    expect(run.notes).toEqual(['Show: Harbor (large, left)']);
+    expect(run.store.pending()).toEqual([]);
+  });
+
   it('cancels every open prompt on close, and every later one at once', async () => {
     const run = editorPromptRun();
     const open = run.host.prompt({ kind: 'confirm', question: 'Sure?' });

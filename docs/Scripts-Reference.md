@@ -36,7 +36,7 @@ A timing adds names to those objects. A script reads only the names its own timi
 | Name | Timing | Members | Read | Write |
 | --- | --- | --- | --- | --- |
 | **`narration`** | During AI Output only | `sentence`, `sent`, `buffered`, `full`, `index` | `narration.sentence` | `narration.sentence = <text>` |
-| **`player`** | Every timing but During AI Output | `tell()`, `toast()`, `confirm()`, `ask()`, `input()` | `player.confirm(<text>)` | Calls, not writes |
+| **`player`** | Every timing but During AI Output | `tell()`, `toast()`, `show()`, `confirm()`, `ask()`, `input()` | `player.confirm(<text>)` | Calls, not writes |
 | **`trait`** | When a Trait Switches only | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle`, `owner` | `trait.enabled` | Read-only |
 | **`instance`** | The five item timings only | `id`, `item`, `owner`, `location`, `quantity`, `equipped`, `slot`, `hidden`, `unidentified`, `uses`, `state`, `image`, `lose()`, `moveTo()`, `equip()`, `unequip()`, `use()`, `reveal()`, `setUses()`, `setState()` | `instance.quantity` | Verbs, and an image name |
 
@@ -973,15 +973,16 @@ narration.sentence = narration.sentence.replace('door', '[door](https://example.
 **Test Code** reads a sample. The **Sample Sentence** field gives `sentence`. `sent` and `buffered` are empty, and `index` is `0`.
 
 ### Player
-<!-- keywords: ask the player, tell the player, toast, confirm, ask, input, prompt, dialog, choice, pick one, pick several, multiple, text field, question, answer, wait for the player, await, canceled prompt, player is not defined, message that stays in history -->
+<!-- keywords: ask the player, tell the player, toast, show an image, picture in the story, image in the narration, confirm, ask, input, prompt, dialog, choice, pick one, pick several, multiple, text field, question, answer, wait for the player, await, canceled prompt, player is not defined, message that stays in history -->
 <!-- route: worldEditorStat.code -->
 
-`player` is the human who plays, not the entity they play. `persona` is that entity. `player` has five calls. It exists in every timing except **During AI Output**, where a call fails the script.
+`player` is the human who plays, not the entity they play. `persona` is that entity. `player` has six calls. It exists in every timing except **During AI Output**, where a call fails the script.
 
 | Call | Returns | Shows |
 | --- | --- | --- |
 | `player.tell(text)` | Nothing | A message line under the turn's narration. The save keeps it with the turn. The AI never gets it |
 | `player.toast(text)` | Nothing | A toast. It is not saved |
+| `player.show(name, { size, wrap })` | Nothing | The Media List image named `name`, in the story. Selecting it opens it full size. The save keeps it with the turn. The AI never gets it |
 | `player.confirm(question)` | `true` or `false` | The question with two buttons |
 | `player.ask(question, options, { multiple })` | The picked value. With `multiple`, a list | Up to four options as buttons, five or more as a dropdown. With `multiple`, toggle buttons and **OK** |
 | `player.input(question, placeholder)` | The typed text | The question with a text field and **OK** |
@@ -997,21 +998,35 @@ const path = player.ask('Which road do you take?', [
 placeholders.Route.pin(path);
 ```
 
+`player.show` places the image by its timing:
+
+- **At Game Start and Before the AI** show it above the turn's narration, while the reply loads.
+- **Every other timing** shows it below the narration, in call order with the messages.
+- **`size`** is `'small'`, `'medium'` or `'large'`. The default is `'medium'`.
+- **`wrap`** is `'block'`, `'left'` or `'right'`. Above and below the narration, the image is always on its own line.
+- **A name with no image fails the script.** So does a sound's name, or a `size` or `wrap` outside its list. A `try` does not stop the failure.
+- **An image removed from the Media List** no longer shows in the turns that showed it.
+
+```javascript
+// Open the scene on its picture.
+player.show('Harbor at Dusk', { size: 'large' });
+```
+
 - **Closing a prompt fails the script.** Cancel, or Escape inside the prompt, fails it as canceled. Its writes are discarded, as on any error. The turn goes on, and the other scripts in the timing still apply.
-- **A prompt needs a screen.** With no game screen to answer, `ask`, `confirm` and `input` fail as canceled at once. `tell` and `toast` do nothing.
+- **A prompt needs a screen.** With no game screen to answer, `ask`, `confirm` and `input` fail as canceled at once. `tell`, `toast` and `show` do nothing.
 - **A bad call throws a TypeError in the script.** A bad call is a message, question or placeholder that is not text, an `ask` with no options, or an option that is neither text nor `{ label, value }`.
 - **A multiple pick with nothing chosen** returns an empty list. A single `ask` always returns one value.
 - **Prompts show one at a time.** An open prompt holds every later script in its timing until you answer it, including a script that never names `player`.
 - **The timeout pauses** while a prompt is open. The one-second limit counts the script's own work.
 - **Write `player.` by name.** A script that reads `player` another way, such as `const p = player;`, fails with "player is not defined".
 
-A message belongs to the turn that runs when the script makes it:
+A message or an image belongs to the turn that runs when the script makes it:
 
 - A message from At Game Start goes with the opening turn.
 - A message from a trait switch goes with the latest turn on screen.
-- A re-roll of a turn's stats replaces the messages from the timings it runs again. It keeps the During AI Output messages.
+- A re-roll of a turn's stats replaces the messages and images from the timings it runs again. It keeps the During AI Output ones.
 
-**Test Code** and the **Test Bench** show the real question, one after another, as in a game. An edit to the code, or a close of the editor, closes an open prompt. `tell` and `toast` show as lines in the report.
+**Test Code** and the **Test Bench** show the real question, one after another, as in a game. An edit to the code, or a close of the editor, closes an open prompt. `tell`, `toast` and `show` show as lines in the report. A `show` line names the image, its size and its wrap.
 
 ### Trait
 <!-- keywords: trait that switched, switch script, trait switched on, trait switched off, trait enabled, which trait changed, when a trait switches, trait is not defined, trait read-only, error underline on trait, who switched the trait, player toggle or script, args.by switch cause -->
@@ -1213,7 +1228,7 @@ An After the AI script can change the choices the player sees. Edit `turn.choice
 - **A stats re-roll starts again.** It runs the scripts on the AI's own choices. Edits never add up. The save keeps both lists.
 - **Regenerate Choices runs the scripts again.** They read the new list and the AI's stat changes for the turn. Only their choice edits apply. The new list shows once they finish.
 - **Regenerate Choices reads items as the turn did.** The scripts read the items from Before the AI, On Call Tools and the story's item changes. They don't read an item that a During AI Output script wrote.
-- **A `player` call shows nothing on that run.** `tell` and `toast` show nothing, `confirm` answers `false`, `ask` answers `null` (`[]` with `multiple`), and `input` answers `""`. The script runs on.
+- **A `player` call shows nothing on that run.** `tell`, `toast` and `show` show nothing, `confirm` answers `false`, `ask` answers `null` (`[]` with `multiple`), and `input` answers `""`. The script runs on.
 
 ```js
 // Once the bridge is down, no choice crosses it.

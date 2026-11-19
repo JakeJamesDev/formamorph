@@ -10,7 +10,7 @@ import { itemArgsAt, type ItemEventArgs } from './triggerArgs';
 import { clamp } from './utils';
 import { activeDescriptor } from './statContext';
 import { runInSandbox, type SandboxEngine, type SandboxHostFunction } from './scriptSandbox';
-import { isPromptCanceled, namesPlayer, scriptPrompts, type ScriptPromptHost, type ScriptPromptRequest } from './scriptPrompts';
+import { isPromptCanceled, namesPlayer, scriptPrompts, SHOW_SIZES, SHOW_WRAPS, type ScriptPromptHost, type ScriptPromptRequest } from './scriptPrompts';
 import { sameChoices } from './scriptedChoices';
 import { VALUE_JOIN } from './placeholders';
 import { hasEntityKey, statsByCodeName } from './statCodeNames';
@@ -2305,7 +2305,7 @@ const MEDIA = '__formamorphMedia';
 
 /** The media prelude, after the world prelude, and `world`. `get(keys, field)` reads the first override in force
  *  along `keys`, else what the last key shows with none; `set` checks the name and lists the write, which reads
- *  back in the run. A name of the wrong kind is a missing name (Q53). */
+ *  back in the run; `image(name)` is the id `set` would write. A name of the wrong kind is a missing name (Q53). */
 const mediaPrelude = (media: SandboxMedia | undefined, reads: HostReads): string => {
   const entries = media?.entries ?? [];
   const byName: Record<MediaEntry['kind'], Record<string, string>> = { image: {}, sound: {} };
@@ -2345,7 +2345,8 @@ const mediaPrelude = (media: SandboxMedia | undefined, reads: HostReads): string
     `    else row[field] = id;`,
     `    writes.media.push({ owner, field, mediaId: id });`,
     `  };`,
-    `  return { get, set, fail };`,
+    `  const image = (name) => (own(spec.byName.image, name) ? spec.byName.image[name] : fail('The world has no image named "' + name + '"'));`,
+    `  return { get, set, fail, image };`,
     `})(JSON.parse(${JSON.stringify(JSON.stringify(spec))}), ${WORLD_WRITES}, ${HOST_READ});`,
     `const world = Object.freeze(Object.defineProperty({}, 'music', {`,
     `  enumerable: true, get: () => ${MEDIA}.get(['w'], 'music'), set: (next) => ${MEDIA}.set('w', { kind: 'world' }, 'music', next),`,
@@ -2745,7 +2746,7 @@ function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: str
 }
 
 /** The `player` object of a During AI Output run: every call throws, since a sentence cannot wait on a dialog. */
-const PLAYER_CALLS = ['tell', 'toast', 'confirm', 'ask', 'input'] as const;
+const PLAYER_CALLS = ['tell', 'toast', 'show', 'confirm', 'ask', 'input'] as const;
 const OUTPUT_PLAYER = [
   `const player = Object.freeze(Object.fromEntries(${JSON.stringify(PLAYER_CALLS)}.map((call) => [call, () => {`,
   `  throw new Error('player.' + call + " can't run in ${SCRIPT_TIMING_LABEL.output}");`,
@@ -2756,12 +2757,17 @@ const OUTPUT_PLAYER = [
 // The prelude takes it and deletes the global before user code runs.
 const PROMPT_HOOK = '__formamorphPrompt';
 
-/** The `player` prelude of a run on the async engine. Each call checks its arguments in the VM, so a bad one
- *  throws a TypeError there, and sends the host labels only: `ask` answers with option indexes, which map
- *  back to the values the code passed, so a value never leaves the VM. */
+/** The `player` prelude of a run on the async engine, after the media prelude. Each call checks its arguments in
+ *  the VM, so a bad one throws a TypeError there, and sends the host labels only: `ask` answers with option
+ *  indexes, which map back to the values the code passed, so a value never leaves the VM. A bad `show` fails the run (Q19). */
 const PLAYER_PRELUDE = [
-  `const player = ((prompt, stringify, parse, isArray) => {`,
+  `const player = ((prompt, stringify, parse, isArray, media) => {`,
   `  const call = (request) => parse(prompt(stringify(request)));`,
+  `  const choice = (opts, key, allowed, fallback) => {`,
+  `    const value = opts[key] === undefined ? fallback : opts[key];`,
+  `    if (!allowed.includes(value)) media.fail('player.show ' + key + ' must be ' + allowed.map((one) => '"' + one + '"').join(', ') + ', not ' + stringify(value));`,
+  `    return value;`,
+  `  };`,
   `  const text = (name, what, value) => {`,
   `    if (typeof value !== 'string') throw new TypeError('player.' + name + ' needs ' + what + ' as text');`,
   `    return value;`,
@@ -2774,6 +2780,14 @@ const PLAYER_PRELUDE = [
   `  return Object.freeze({`,
   `    tell: (message) => { call({ kind: 'tell', text: text('tell', 'a message', message) }); },`,
   `    toast: (message) => { call({ kind: 'toast', text: text('toast', 'a message', message) }); },`,
+  `    show: (name, opts) => {`,
+  `      const shown = text('show', 'an image name', name);`,
+  `      if (opts !== undefined && (opts === null || typeof opts !== 'object' || isArray(opts))) throw new TypeError('player.show options must be an object');`,
+  `      const set = opts || {};`,
+  `      const mediaId = media.image(shown);`,
+  `      const size = choice(set, 'size', ${JSON.stringify(SHOW_SIZES)}, 'medium');`,
+  `      call({ kind: 'show', name: shown, mediaId, size, wrap: choice(set, 'wrap', ${JSON.stringify(SHOW_WRAPS)}, 'block') });`,
+  `    },`,
   `    confirm: (question) => call({ kind: 'confirm', question: text('confirm', 'a question', question) }),`,
   `    ask: (question, options, settings) => {`,
   `      const list = isArray(options) ? options.map(option) : [];`,
@@ -2787,7 +2801,7 @@ const PLAYER_PRELUDE = [
   `      ...(placeholder === undefined ? {} : { placeholder: text('input', 'a placeholder', placeholder) }),`,
   `    }),`,
   `  });`,
-  `})(globalThis.${PROMPT_HOOK}, JSON.stringify, JSON.parse, Array.isArray);`,
+  `})(globalThis.${PROMPT_HOOK}, JSON.stringify, JSON.parse, Array.isArray, ${MEDIA});`,
   `delete globalThis.${PROMPT_HOOK};`,
 ].join('\n');
 

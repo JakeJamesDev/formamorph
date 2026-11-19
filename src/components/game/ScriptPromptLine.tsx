@@ -5,8 +5,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Meta } from '@/components/ui/typography';
 import { revealDelta } from '@/lib/scrollEdgeFade';
 import { cn } from '@/lib/utils';
-import { isNotice, type ScriptPromptAnswer, type ScriptPromptRequest, type ScriptPromptStore } from '@/lib/scriptPrompts';
+import { isNotice, type ScriptNotice, type ScriptPromptAnswer, type ScriptPromptRequest, type ScriptPromptStore } from '@/lib/scriptPrompts';
+import { isImageTell, type ScriptImageTell, type ScriptTell } from '@/lib/scriptTells';
+import { useMediaList } from '@/lib/useMediaList';
 import { NARRATION_END_SPACE_REM } from './narrationFade';
+import { ScriptImage, shownTells } from './ScriptImage';
 
 /** The most options a single `ask` shows as pills; past that it is a dropdown (Q17). */
 const PILL_LIMIT = 4;
@@ -27,18 +30,34 @@ const LINE_TEXT = 'whitespace-pre-wrap text-label italic text-foreground';
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring';
 const LINK = cn('rounded-sm text-label underline-offset-4 hover:underline disabled:pointer-events-none disabled:opacity-50', FOCUS_RING);
 
-type Asked = Exclude<ScriptPromptRequest, { kind: 'tell' | 'toast' }>;
+type Asked = Exclude<ScriptPromptRequest, ScriptNotice>;
 type Ask = Extract<ScriptPromptRequest, { kind: 'ask' }>;
 type Answer = (value: ScriptPromptAnswer) => void;
 
-/** Each tell of one turn, in call order: the prompt line with its text alone (Q16). Nothing when there are none. */
-export function ScriptTellLines({ tells, layout = 'pages', className }: { tells: readonly { text: string }[]; layout?: PromptLineLayout; className?: string }) {
-  if (!tells.length) return null;
+/**
+ * Each tell of one turn, in call order: a text tell as the prompt line with its text alone (Q16), an image at its
+ * size. An image no longer on the Media List renders nothing. Nothing when none render.
+ */
+export function ScriptTellLines({ tells, layout = 'pages', className }: { tells: readonly ScriptTell[]; layout?: PromptLineLayout; className?: string }) {
+  const list = useMediaList();
+  const shown = shownTells(tells, list);
+  if (!shown.length) return null;
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
-      {tells.map(({ text }, index) => (
-        <p key={index} data-testid="script-tell" className={cn(RULE, LINE_TEXT, LAYOUT[layout])}>{text}</p>
-      ))}
+    <div data-testid="script-tells" className={cn('flex flex-col gap-2', className)}>
+      {shown.map(({ tell, entry }, index) => (isImageTell(tell) && entry
+        ? <div key={index} className={LAYOUT[layout]}><ScriptImage entry={entry} size={tell.size} /></div>
+        : !isImageTell(tell) && <p key={index} data-testid="script-tell" className={cn(RULE, LINE_TEXT, LAYOUT[layout])}>{tell.text}</p>))}
+    </div>
+  );
+}
+
+/** A turn's images that show above its narration, in call order (Q18). Nothing when none render. */
+export function ScriptImagesAbove({ images, layout = 'pages', className }: { images: readonly ScriptImageTell[]; layout?: PromptLineLayout; className?: string }) {
+  const shown = shownTells(images, useMediaList());
+  if (!shown.length) return null;
+  return (
+    <div data-testid="script-images-above" className={cn('flex flex-col gap-2', LAYOUT[layout], className)}>
+      {shown.map(({ tell, entry }, index) => entry && <ScriptImage key={index} entry={entry} size={tell.size} />)}
     </div>
   );
 }

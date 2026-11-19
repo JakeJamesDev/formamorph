@@ -25,8 +25,8 @@ import { TurnCard } from './TurnCard';
 import { ScenePlate } from './ScenePlate';
 import { AttachmentThumbs } from './AttachmentThumbs';
 import { turnAttachments } from '@/lib/actionAttachments';
-import { turnTells } from '@/lib/scriptTells';
-import { ScriptTellLines } from './ScriptPromptLine';
+import { placeTells, turnTells } from '@/lib/scriptTells';
+import { ScriptImagesAbove, ScriptTellLines } from './ScriptPromptLine';
 import type { BubbleAction } from '@/lib/bubbleActions';
 import type { ChatMessage } from '@/types';
 
@@ -84,8 +84,10 @@ export const PLAYER_ACTION_BUBBLE = 'ml-auto w-fit max-w-[85%] rounded-2xl round
  * right and the narration as a full-width block. Opens at the latest turn. `latestFooter` renders under the
  * latest turn's narration.
  */
-export function ChatNarration({ parseAssistantMessage, speakerColors, liveQuotes = null, latestFooter, actionsFor, playerActionsFor, onDeleteSceneImage, fadeUnderStrip = false }: {
+export function ChatNarration({ parseAssistantMessage, liveTurnId, speakerColors, liveQuotes = null, latestFooter, actionsFor, playerActionsFor, onDeleteSceneImage, fadeUnderStrip = false }: {
   parseAssistantMessage: (content: string) => string;
+  /** The sent turn's id while it runs, before its narration is in the history. */
+  liveTurnId?: string;
   /** Each cast entity's quote color, by id. */
   speakerColors: SpeakerColors;
   /** The live turn's quotes read while it streams (Q72). */
@@ -198,6 +200,7 @@ export function ChatNarration({ parseAssistantMessage, speakerColors, liveQuotes
             const reasoning = reasoningLive ? liveReasoning : turn.reasoning;
             const narrationText = liveReveal ? gameplayText : turn.narration ? parseAssistantMessage(turn.narration.content) : '';
             const { turnId } = turn;
+            const tells = placeTells(turnTells(scriptTells, turnId ?? (isLatest ? liveTurnId : undefined)));
             const images = (!liveReveal && turnId && sceneImages[turnId]) || [];
             // The card holds its actions while live, so its row can open in place once the narration settles.
             const narrationActions = (turn.narration && actionsFor?.({
@@ -233,6 +236,7 @@ export function ChatNarration({ parseAssistantMessage, speakerColors, liveQuotes
                 {turn.action !== null && (
                   <AttachmentThumbs attachments={turnAttachments(actionAttachments, turnId)} className="mb-3 justify-end" />
                 )}
+                <ScriptImagesAbove images={tells.above} layout="chat" className="mb-3" />
                 {(turn.narration || (showReasoning && reasoning?.text)) && (
                   <TurnCard actions={narrationActions} turnNumber={item.index + 1} live={chromeHeld} style={revealStyle}>
                     {showReasoning && reasoning?.text && (
@@ -265,7 +269,7 @@ export function ChatNarration({ parseAssistantMessage, speakerColors, liveQuotes
                     )}
                   </TurnCard>
                 )}
-                <ScriptTellLines tells={turnTells(scriptTells, turnId)} layout="chat" className="mt-3" />
+                <ScriptTellLines tells={tells.below} layout="chat" className="mt-3" />
                 {isLatest && latestFooter}
                 {isLatest && <div aria-hidden className={NARRATION_END_SPACE} />}
                 <div data-content-end />

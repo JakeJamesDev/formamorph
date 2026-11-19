@@ -77,9 +77,9 @@ import { Tip } from "@/components/ui/tooltip";
 import { Meta } from "@/components/ui/typography";
 import { toast } from "react-toastify";
 import { toastError } from "@/lib/linkToast";
-import { cancelOpenPrompts, isNotice, noticeHost, scriptPrompts, silentPrompts, type ScriptPromptHost } from "@/lib/scriptPrompts";
+import { cancelOpenPrompts, isNotice, scriptPrompts, silentPrompts, type ScriptPromptHost } from "@/lib/scriptPrompts";
 import { isScriptPromptSample, SCRIPT_PROMPT_SAMPLES } from "@/lib/devScriptPromptSamples";
-import { addTell, latestTurnId, pruneTells, REROLLED_TIMINGS, setTurnTells, turnTells, withoutTimings } from "@/lib/scriptTells";
+import { addTell, latestTurnId, pruneTells, REROLLED_TIMINGS, setTurnTells, tellHost, turnTells, withoutTimings } from "@/lib/scriptTells";
 import { newestTurnNarration, pruneByNarration, turnMentionReading, turnNarration } from "@/lib/coref/mentionReadings";
 import { applyCardCorrection } from "@/lib/coref/mentionCorrections";
 import { contributeTurn, contributionNames } from "@/lib/coref/correctionContribution";
@@ -1369,19 +1369,18 @@ const GameViewer = ({
   const currentTurnIdRef = useRef(""); // stable id for the in-progress turn, stamped into its assistant JSON
   // The turn a `player.tell` belongs to while a sent turn runs; between turns a tell joins the latest one (Q53).
   const tellTurnRef = useRef<string | null>(null);
+  // The sent turn's id while it runs, so its Before images show before its narration lands (Q11).
+  const [liveTurnId, setLiveTurnId] = useState<string | undefined>(undefined);
   // The sent turn's live list, sent lists and box contents from before its send, which come back if the turn never lands.
   const unlandedListRef = useRef<{
     turnId: string; list: ListedAction<ActionSnapshot>[]; sent: SentActionMap<ActionSnapshot>;
     box: { text: string; images: ImageAttachment[] } | null;
   } | null>(null);
   // The prompt host of one run: its tells keep the run's timing (Q54), a toast shows at once, asks go to the line.
-  const playPrompts = useCallback((timing: RunTiming): ScriptPromptHost => noticeHost(scriptPrompts, {
-    onTell: (text) => {
-      const turnId = tellTurnRef.current ?? latestTurnId(fullMessageHistoryRef.current);
-      if (turnId) setScriptTells((prev) => addTell(prev, turnId, { text, timing }));
-    },
-    onToast: (text) => { toast.info(text); },
-  }), [setScriptTells]);
+  const playPrompts = useCallback((timing: RunTiming): ScriptPromptHost => tellHost(scriptPrompts, timing, (tell) => {
+    const turnId = tellTurnRef.current ?? latestTurnId(fullMessageHistoryRef.current);
+    if (turnId) setScriptTells((prev) => addTell(prev, turnId, tell));
+  }, (text) => { toast.info(text); }), [setScriptTells]);
   // This turn's dictionary activation, computed at narration-assembly time and consumed by the narration
   // request's AI-context capture (reset per turn so a turn without one never reuses a stale report).
   const pendingDictionaryDebugRef = useRef<DictionaryDebug | null>(null);
@@ -3573,6 +3572,7 @@ const GameViewer = ({
       // A regenerate keeps its turn's attachments and leaves the box alone.
       const turnId = currentTurnIdRef.current;
       tellTurnRef.current = turnId;
+      setLiveTurnId(turnId);
       const carried = resentAttachments ?? plan.attachments;
       setActionAttachments((prev) => setTurnAttachments(prev, turnId, carried));
       if (!resentAttachments) setPendingAttachments([]);
@@ -4158,6 +4158,7 @@ const GameViewer = ({
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
         tellTurnRef.current = null;
+        setLiveTurnId(undefined);
       }
     }
   };
@@ -4757,6 +4758,7 @@ const GameViewer = ({
     // A script waiting on the player fails as canceled, so the stopped turn's run ends.
     cancelOpenPrompts(scriptPrompts);
     tellTurnRef.current = null;
+    setLiveTurnId(undefined);
     abortControllerRef.current = null;
     // A scene-image click queued behind this turn dies with it — Stop means stop, not "draw later".
     pendingSceneImageRef.current = null;
@@ -6783,6 +6785,7 @@ const GameViewer = ({
       sceneImages={(viewedTurn?.turnId && sceneImages[viewedTurn.turnId]) || EMPTY_IMAGES}
       sceneTags={viewedTurn?.sceneTags ?? ""}
       sceneTurnId={viewedTurn?.turnId}
+      liveTurnId={liveTurnId}
       speakerColors={shownQuoteColors}
       liveQuotes={liveQuotes}
       sceneImageJob={sceneImageJob}

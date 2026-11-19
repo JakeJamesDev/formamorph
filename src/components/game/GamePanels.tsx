@@ -120,8 +120,10 @@ import { useStatPanelEntity, type StatPanelOwner } from './useStatPanelEntity';
 
 import { parseSavedReasoning } from '@/lib/savedReasoning';
 import { scriptPrompts } from '@/lib/scriptPrompts';
-import { turnTells } from '@/lib/scriptTells';
-import { ScriptPromptLine, ScriptTellLines } from './ScriptPromptLine';
+import { placeTells, turnTells } from '@/lib/scriptTells';
+import { ScriptImagesAbove, ScriptPromptLine, ScriptTellLines } from './ScriptPromptLine';
+import { shownTells } from './ScriptImage';
+import { useMediaList } from '@/lib/useMediaList';
 
 /** The Entity View slide, on the nav rail's curve. */
 const ENTITY_VIEW_SLIDE_MS = 200;
@@ -578,6 +580,7 @@ export const MiddlePanel = ({
   sceneImages,
   sceneTags,
   sceneTurnId,
+  liveTurnId,
   speakerColors,
   liveQuotes = null,
   sceneImageJob,
@@ -639,6 +642,8 @@ export const MiddlePanel = ({
   /** The viewed page's committed turn id (undefined while none) — there is something to draw or tag,
    *  and the scene panel is remounted per turn so its tag draft can't leak across page navigation. */
   sceneTurnId?: string;
+  /** The sent turn's id while it runs, before its narration is in the history. */
+  liveTurnId?: string;
   /** Each cast entity's quote color, by id. */
   speakerColors: SpeakerColors;
   /** The live turn's quotes read while it streams (Q72); null with none. */
@@ -869,6 +874,9 @@ export const MiddlePanel = ({
     index: currentPage - 1, isLatest: !isViewingPast, live: false, hasImage: sceneImages.length > 0, text: pageNarration,
   }) : [];
   const pageChromeHeld = pageLive && !narrationSettled;
+  // The latest page's sent turn has no id in the history until its narration lands.
+  const mediaList = useMediaList();
+  const pageTells = placeTells(turnTells(scriptTells, sceneTurnId ?? (isViewingPast ? undefined : liveTurnId)));
   // The turn is live from submit, before its narration exists, until the reveal ends.
   const actionLineActions = actionLine === undefined ? [] : playerActionsFor({
     index: currentPage - 1, live: !isViewingPast && (pageLive || (isWaitingForAI && !currentAssistantMessage)), text: actionLine,
@@ -1055,6 +1063,7 @@ export const MiddlePanel = ({
               ) : (
               <ChatNarration
                 parseAssistantMessage={parseAssistantMessage}
+                liveTurnId={liveTurnId}
                 speakerColors={speakerColors}
                 liveQuotes={liveQuotes}
                 actionsFor={actionsFor}
@@ -1094,7 +1103,7 @@ export const MiddlePanel = ({
                 {commandPreviewChoices}
               </>
             )}
-            {!commandPreview && (actionLine !== undefined || currentAssistantMessage || (showReasoning && pageReasoning?.text)) && (
+            {!commandPreview && (actionLine !== undefined || currentAssistantMessage || (showReasoning && pageReasoning?.text) || shownTells(pageTells.above, mediaList).length > 0) && (
               <TurnCard actions={pageActions} turnNumber={currentPage} live={pageChromeHeld} style={revealStyle}>
                 {sceneTurnId && (
                   <ScenePlate
@@ -1112,6 +1121,7 @@ export const MiddlePanel = ({
                 {showReasoning && pageReasoning?.text && (
                   <ReasoningBlock text={pageReasoning.text} ms={pageReasoning.ms} active={pageReasoningLive && liveReasoning.active} />
                 )}
+                <ScriptImagesAbove images={pageTells.above} className="mb-3" />
                 {currentAssistantMessage && pageNarration && (
                   <div ref={narrationRef} data-testid="narration">
                     {/* Streamdown memoizes on source position, not text, so committed text keys by its content. */}
@@ -1132,7 +1142,7 @@ export const MiddlePanel = ({
                 )}
               </TurnCard>
             )}
-            {!commandPreview && <ScriptTellLines tells={turnTells(scriptTells, sceneTurnId)} className="mt-3" />}
+            {!commandPreview && <ScriptTellLines tells={pageTells.below} className="mt-3" />}
             {!commandPreview && sceneImagesAvailable && (
               <SceneImagePanel
                 // Keyed by turn: paging to another turn remounts the panel, so the tag draft and open

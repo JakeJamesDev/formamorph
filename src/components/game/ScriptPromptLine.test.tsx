@@ -1,7 +1,16 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createScriptPromptStore, PromptCanceled, type ScriptPromptRequest } from '@/lib/scriptPrompts';
-import { ScriptPromptLine, ScriptTellLines } from './ScriptPromptLine';
+import type { MediaList } from '@/types';
+import { ScriptImagesAbove, ScriptPromptLine, ScriptTellLines } from './ScriptPromptLine';
+
+// The game reads the Media List from the open world; these tests hand one in.
+const MEDIA: MediaList = {
+  'm-harbor': { id: 'm-harbor', name: 'Harbor', kind: 'image', data: 'data:image/png;base64,AAAA' },
+  'm-gull': { id: 'm-gull', name: 'Gull', kind: 'image', data: 'data:image/png;base64,BBBB' },
+  'm-bell': { id: 'm-bell', name: 'Bell', kind: 'sound', data: 'data:audio/mpeg;base64,CCCC' },
+};
+vi.mock('@/lib/useMediaList', () => ({ useMediaList: () => MEDIA }));
 
 /** A store with one open prompt on the line, and the script's side of it. */
 function open(request: ScriptPromptRequest) {
@@ -183,7 +192,38 @@ describe('ScriptTellLines', () => {
   it('shows each tell in order, and nothing for none', () => {
     const { rerender, container } = render(<ScriptTellLines tells={[]} />);
     expect(container).toBeEmptyDOMElement();
-    rerender(<ScriptTellLines tells={[{ text: 'First.' }, { text: 'Second.' }]} />);
+    rerender(<ScriptTellLines tells={[{ text: 'First.', timing: 'after' }, { text: 'Second.', timing: 'after' }]} />);
     expect(screen.getAllByTestId('script-tell').map((line) => line.textContent)).toEqual(['First.', 'Second.']);
+  });
+});
+
+describe('script images', () => {
+  const image = (id: string, size: 'small' | 'medium' | 'large' = 'medium') => ({ image: id, size, wrap: 'block' as const, timing: 'after' as const });
+  // Each rendered tell in order: its text, or its image's name and size.
+  const shown = () => [...screen.getByTestId('script-tells').children].map((child) => {
+    const img = child.querySelector('img');
+    return img ? `${img.alt} (${child.querySelector('[data-size]')?.getAttribute('data-size')})` : child.textContent;
+  });
+
+  it('renders images interleaved with tells in call order, each at its size', () => {
+    render(<ScriptTellLines tells={[image('m-gull', 'small'), { text: 'A gull.', timing: 'after' }, image('m-harbor', 'large')]} />);
+    expect(shown()).toEqual(['Gull (small)', 'A gull.', 'Harbor (large)']);
+  });
+
+  it('renders nothing for an id no longer on the Media List or naming a sound, and does not throw', () => {
+    const { container, rerender } = render(<ScriptTellLines tells={[image('m-gone'), image('m-bell')]} />);
+    expect(container).toBeEmptyDOMElement();
+    rerender(<ScriptTellLines tells={[image('m-gone'), { text: 'Still here.', timing: 'after' }]} />);
+    expect(shown()).toEqual(['Still here.']);
+    rerender(<ScriptImagesAbove images={[image('m-gone')]} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('opens a shown image full size on click', async () => {
+    render(<ScriptImagesAbove images={[image('m-harbor')]} />);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom image' }));
+    const viewer = await screen.findByRole('dialog', { name: 'Harbor' });
+    expect(viewer.querySelector('img')?.getAttribute('src')).toBe(MEDIA['m-harbor'].data);
   });
 });

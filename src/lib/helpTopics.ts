@@ -84,7 +84,7 @@ An item's scripts use five timings of their own: **When Gained**, **When Lost**,
 
 - \`narration\` in **During AI Output**. Assign \`narration.sentence\`, or return a string, to rewrite the sentence.
 - \`trait\` in **When a Trait Switches**. It's the trait that switched, and \`trait.enabled\` is its new state.
-- \`player\` in **Before the AI**, **After the AI**, **At Game Start** and **When a Trait Switches**. \`player.tell\`, \`player.toast\`, \`player.confirm\`, \`player.ask\` and \`player.input\` show the player a message or a question. The script waits for the answer, with no \`await\`, and closing a question fails the script.
+- \`player\` in **Before the AI**, **After the AI**, **At Game Start** and **When a Trait Switches**. \`player.tell\`, \`player.toast\`, \`player.confirm\`, \`player.ask\` and \`player.input\` show the player a message or a question. The script waits for the answer, with no \`await\`, and closing a question fails the script. \`player.show\` puts a Media List image in the story.
 
 \`\`\`js
 const health = stats.Health.value;

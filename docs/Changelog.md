@@ -79,6 +79,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Clicking an entity or a group opens one page with every trait inside it.** Each group within it sits under a labeled divider with its own rules. A row's count covers everything inside it, and a dot marks a group that needs more picks.
     - **The category list folds an entity or group with its arrow, and folds itself to fit your screen.** Clicking a folded row still opens its page. Collapse All and Expand All sit on the Starting Traits line. Once you fold a row yourself, the list keeps your choice.
     - **On the Enter World dialog, a trait's stat condition counts the stat changes of your other picks.** Picking Bodybuilder (+3 Strength) opens a trait that needs Strength 7, and a trait's own changes never count toward its own condition, in play too. Option values count, and Starting Locations, Routines, Presets and library characters follow the same numbers.
+  - **Script Images:**
+    - **Scripts can show Media List images in the story with `player.show`.** At Game Start and Before the AI put the image above the narration, and After the AI below it. Pick small, medium or large. The save keeps it, and selecting it opens it full size.
   - **Supporter-only listings show when each tier can get them.** Cards and details windows list each tier's date and the public date. A Supporter whose tier isn't open yet sees an Upgrade button that opens Patreon.
 - **🛠️ Developer tooling**
   - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.

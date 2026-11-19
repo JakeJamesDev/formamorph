@@ -6,28 +6,38 @@
 
 import { randomUUID } from './uuid';
 
+/** How wide a shown image is (Q21). */
+export const SHOW_SIZES = ['small', 'medium', 'large'] as const;
+export type ShowSize = (typeof SHOW_SIZES)[number];
+
+/** How a shown image sits in the text: its own line, or floated to a side (Q3). */
+export const SHOW_WRAPS = ['block', 'left', 'right'] as const;
+export type ShowWrap = (typeof SHOW_WRAPS)[number];
+
 /** What one `player.*` call asks the host for. `ask` carries labels only; the picked values stay in the VM.
  *  `asker` is the asking script's display name, set by a host that runs many scripts (the Test Bench). */
 export type ScriptPromptRequest =
   | { kind: 'tell'; text: string }
   | { kind: 'toast'; text: string }
+  | { kind: 'show'; name: string; mediaId: string; size: ShowSize; wrap: ShowWrap }
   | { kind: 'confirm'; question: string; asker?: string }
   | { kind: 'ask'; question: string; options: readonly string[]; multiple: boolean; asker?: string }
   | { kind: 'input'; question: string; placeholder?: string; asker?: string };
 
 export type ScriptPromptKind = ScriptPromptRequest['kind'];
 
-/** A request that takes no answer from the player: a tell or a toast. */
-export type ScriptNotice = Extract<ScriptPromptRequest, { kind: 'tell' | 'toast' }>;
+/** A request that takes no answer from the player: a tell, a toast or a show. */
+export type ScriptNotice = Extract<ScriptPromptRequest, { kind: 'tell' | 'toast' | 'show' }>;
 
 export const isNotice = (request: ScriptPromptRequest): request is ScriptNotice =>
-  request.kind === 'tell' || request.kind === 'toast';
+  request.kind === 'tell' || request.kind === 'toast' || request.kind === 'show';
 
 /** What each kind's answer holds: `ask` answers with option indexes, one or a list with `multiple`, and a
  *  single `ask` with nothing picked answers `null`. */
 export interface ScriptPromptAnswers {
   tell: undefined;
   toast: undefined;
+  show: undefined;
   confirm: boolean;
   ask: number | number[] | null;
   input: string;
@@ -80,6 +90,7 @@ function fits(request: ScriptPromptRequest, value: unknown): boolean {
   switch (request.kind) {
     case 'tell':
     case 'toast':
+    case 'show':
       return value === undefined;
     case 'confirm':
       return typeof value === 'boolean';
@@ -92,7 +103,7 @@ function fits(request: ScriptPromptRequest, value: unknown): boolean {
 
 /**
  * A store of its own. With no listener, nothing can answer, so an ask, confirm or input cancels at once and a
- * tell or toast resolves with nothing shown (Q45).
+ * notice resolves with nothing shown (Q45).
  */
 export function createScriptPromptStore(mintId: () => string = randomUUID): ScriptPromptStore {
   const listeners = new Set<() => void>();
@@ -150,9 +161,10 @@ export const cancelOpenPrompts = (store: ScriptPromptStore): void =>
 export interface ScriptNoticeHandlers {
   onTell(text: string): void;
   onToast(text: string): void;
+  onShow(show: Extract<ScriptPromptRequest, { kind: 'show' }>): void;
 }
 
-/** A host that hands each tell and toast to `handlers` at once, and every ask to `asks`. */
+/** A host that hands each notice to `handlers` at once, and every ask to `asks`. */
 export function noticeHost(asks: ScriptPromptHost, handlers: ScriptNoticeHandlers): ScriptPromptHost {
   return {
     prompt(request) {
@@ -160,7 +172,8 @@ export function noticeHost(asks: ScriptPromptHost, handlers: ScriptNoticeHandler
       const asked: ScriptPromptRequest = request;
       if (!isNotice(asked)) return asks.prompt(request);
       if (asked.kind === 'tell') handlers.onTell(asked.text);
-      else handlers.onToast(asked.text);
+      else if (asked.kind === 'toast') handlers.onToast(asked.text);
+      else handlers.onShow(asked);
       return Promise.resolve(answerAs<typeof request.kind>(undefined));
     },
   };
@@ -177,7 +190,7 @@ export const silentPrompts: ScriptPromptHost = {
   },
 };
 
-/** `host` with every ask, confirm and input stamped with `asker`; a tell or toast passes unchanged. */
+/** `host` with every ask, confirm and input stamped with `asker`; a notice passes unchanged. */
 export function askedBy(host: ScriptPromptHost, asker: string): ScriptPromptHost {
   return {
     prompt(request) {
