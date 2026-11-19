@@ -42,6 +42,12 @@ Options set the size, and in During AI Output the wrap. The image is saved with 
 - **Q21 Size proposal.** Widths are centered percentages of the narration column: small 33%, medium 60%, large 100%. Height is capped at 70vh. This is the proposal for the frames, and it needs the user's approval. (Ticket 01.)
 - **Q22 Test Bench line.** `Show: Name (medium, block)`, with the wrap the call gave, since the bench has no placement. (Ticket 01.)
 - **Q23 Switch timing.** A When a Trait Switches show goes in the below group and is not re-rolled, like switch tells. (Ticket 01.)
+- **Q24 Retract.** When the reply retracts mid-stream, the images recorded before the retract drop, like the run's writes. (Ticket 02.)
+- **Q25 Script error.** A During AI Output script that calls `player.show` and then throws keeps its image, as a show or tell does in other timings. Its writes still drop. (Ticket 02.)
+- **Q26 Open quote.** An anchor sentence that ends inside an open quote holds its image until the quote ends, so dialogue never splits. (Ticket 02, user ruling.)
+- **Q27 Index drift.** On reload, the saved narration is split again with the stream's splitter. A rewrite that changes the sentence count can shift later anchors. That is accepted. An anchor past the last sentence renders after the last sentence. (Ticket 02.)
+- **Q28 Crawl reveal.** With Fade-in Narration off, an inline image appears when the crawl starts the next sentence. On the last sentence, it appears when the reveal ends. (Ticket 02.)
+- **Q29 Editor in During AI Output.** `player` is a known global there with `show` as its only member. `player.` completes to `show` only, the other calls are flagged, and the player card says that only `show` runs in this timing. (Ticket 02.)
 
 ## User Stories
 
