@@ -56,6 +56,7 @@ The rows act on stats like a trait's rows do, and they stack with traits. They n
 - **Q28 Pins read Option toggles.** Stat-band Pins read Option toggles ahead of traits for every caller: play, the opening, Test Bench and the preview. A stat an Option turns off never pins. (Ticket 04, from Q17.)
 - **Q29 Editor scene.** The editor's authored scene reads each Option at its default. A caller with picks, such as Test Bench, passes its values. It seeds stats through the Q27 steps. (Ticket 04.)
 - **Q30 Unconditional re-derive.** Every settle, save load included, re-derives every global stat and every held entity's stats under the Options and traits in force. A save whose stored bounds disagree with what is in force is corrected on load, by clamp only. (Ticket 05, from Q16.)
+- **Q31 Setup gate scope.** Authoring readers (the editor's Requires text, code hover cards, the library entity gate input) keep authored starts. Setup gate stats leave out starting item effects, per Q26a. A pick that lowers a stat turns off the kept picks whose gates now fail, through the cascade, whatever the click order. (Ticket 08.)
 
 ## User Stories
 
