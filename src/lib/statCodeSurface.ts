@@ -559,7 +559,7 @@ export const NARRATION_GLOBAL: SurfaceEntry = {
 /** `player.show`, the one call a During AI Output script can make. */
 const SHOW_CALL_ENTRY: SurfaceEntry = {
   name: 'show', detail: "(name, { size, wrap }?) => void",
-  info: 'Shows a Media List image in the story. Before the AI and At Game Start put it above the narration. After the AI puts it below, and During AI Output after the sentence. Size is small, medium or large. It persists with the turn, and the AI never gets it.',
+  info: 'Shows a Media List image in the story. Before the AI and At Game Start put it above the narration. After the AI puts it below, and During AI Output after the sentence. Size is small, medium or large. In During AI Output, wrap is block, left or right. It persists with the turn, and the AI never gets it.',
 };
 
 /** The calls on `player`, in the order the guide lists them. */
