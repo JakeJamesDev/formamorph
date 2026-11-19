@@ -1,6 +1,7 @@
 # Spec: Option Stat Rows
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-18. Tickets 01–11, last landing bfa1e1444. Review: three close reviews; gaps became tickets 04–11, spec text corrected (Q24, Q30); one edge left by choice (Q33). Gates on 2026-11-18: test green (37,592 pass); lint red only in gitignored worlds-wip files.
 Spec session: option-stat-rows — spec
 
 ## Problem Statement

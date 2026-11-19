@@ -30,7 +30,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Preset Options can choose the persona and Starting Location at new game.** A value picks a world persona and a Starting Location, and the notice names both. Reset to Defaults keeps yours unless it sets them. An entity's trait now reads "Wolf: Feral" there.
     - **The Options tab warns on a Preset value with rows that can't apply at new game.** It names each row, such as an Always On trait, a full category or a deleted trait.
     - **World Options can change stats, like a trait, without sending text to the AI.** A value can change a stat's starting value, range, regen and availability on a world or entity stat, and players see it before picking. A change during play moves the range at once, never the value.
-    - **On the Enter World dialog, a trait's stat condition counts the stat changes of your other picks.** Picking Bodybuilder (+3 Strength) opens a trait that needs Strength 7, and a trait's own changes never count toward its own condition, in play too. Option values count, and Starting Locations, Routines, Presets and library characters follow the same numbers.
   - **Entity Routines:**
     - **World files keep each entity's Starts and Can Also Go inside a Routine.** A world from 3.7.0 opens with one Routine per entity and plays as before.
     - **An entity's routine row can be Away, taking it off the map and out of every scene for those hours.** Its stats and scripts keep running, and the AI still knows of it where Known In says. Saves can now hold a Generic entity at no place.
@@ -79,6 +78,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Enter World:**
     - **Clicking an entity or a group opens one page with every trait inside it.** Each group within it sits under a labeled divider with its own rules. A row's count covers everything inside it, and a dot marks a group that needs more picks.
     - **The category list folds an entity or group with its arrow, and folds itself to fit your screen.** Clicking a folded row still opens its page. Collapse All and Expand All sit on the Starting Traits line. Once you fold a row yourself, the list keeps your choice.
+    - **On the Enter World dialog, a trait's stat condition counts the stat changes of your other picks.** Picking Bodybuilder (+3 Strength) opens a trait that needs Strength 7, and a trait's own changes never count toward its own condition, in play too. Option values count, and Starting Locations, Routines, Presets and library characters follow the same numbers.
   - **Supporter-only listings show when each tier can get them.** Cards and details windows list each tier's date and the public date. A Supporter whose tier isn't open yet sees an Upgrade button that opens Patreon.
 - **🛠️ Developer tooling**
   - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.
