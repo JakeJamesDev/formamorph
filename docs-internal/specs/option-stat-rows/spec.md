@@ -59,6 +59,7 @@ The rows act on stats like a trait's rows do, and they stack with traits. They n
 - **Q31 Setup gate scope.** Authoring readers (the editor's Requires text, code hover cards, the library entity gate input) keep authored starts. Setup gate stats leave out starting item effects, per Q26a. A pick that lowers a stat turns off the kept picks whose gates now fail, through the cascade, whatever the click order. (Ticket 08.)
 - **Q32 Play gates ignore own rows.** In play too, a trait's gate never reads that trait's own stat rows, so Berserker picked at 7 stays on. (Ticket 09.)
 - **Q33 Second close review.** Tickets 10 and 11 fix the library cast at setup and the Test Bench defaults report. A save stored without stat bases keeps an old raised max after its Option row is deleted; this edge stays unfixed by choice.
+- **Q34 Play own-rows details.** The Test Bench warning narrows to a trait's own regen row on its gated stat, the one own row that can still drift the gate; the docs follow. An entity owner's trait takes out its own records for that owner only. An off trait has nothing taken out. Two traits that each need the other stay on once both are on in play; Q26c only stops them starting at setup. Stat code's `available` snapshot follows the same rule. No changelog fragment; the spec session folds a clause into ticket 08's entry. (Ticket 09.)
 
 ## User Stories
 
