@@ -53,6 +53,7 @@ Settled in the grill on 2026-11-19. The prototype is on branch `prototype/whats-
 - **Q25 Fetch wait** (ticket 02): when the summary is not ready on open, the tab shows a short loading state for up to 4 seconds and then shows whichever source won. It never swaps the text while the player reads. Web keeps its lazy fetch on open. Ticket 04's auto-open does its own fetch on load.
 - **Q26 No summary** (ticket 02): when no source yields a summary, the dialog opens on Recent Changes and the What's New tab shows one muted line.
 - **Q27 Host seam** (ticket 02): one What's New host in the main menu owns the open state. It exposes an open action, used by the footer, the overflow menu and the dev route, and its open state. Ticket 04 builds the open-once record and the holds for the event poster and menu tutorial on that state. Ticket 05 adds its preview link inside the banner.
+- **Q28 Unmapped emoji in the app** (ticket 02): the app tolerates one error kind, the unmapped emoji, and renders it with the default icon. Every other error falls through to the next source (Q24). The release validator still fails on it. Parser problems carry a `code` so the two can be told apart. This matters most for ticket 05: a newer release's body may use emoji that the installed build's map lacks.
 - **Q17 Source order**: the app reads the summary from the GitHub release for the installed version first. The bundled copy is the fallback when the fetch fails, times out, or does not parse.
 
 ## User Stories
