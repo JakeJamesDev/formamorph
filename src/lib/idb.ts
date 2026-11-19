@@ -130,7 +130,8 @@ export function transactionDone(transaction: IDBTransaction): Promise<void> {
     transaction.oncomplete = () => resolve();
     // A failed request's error reaches the transaction before the abort sets `transaction.error`.
     const fail = (event: Event) => reject(
-      (event.target as IDBRequest | IDBTransaction | null)?.error ?? transaction.error ?? new Error('The write was aborted'),
+      (event.target as IDBRequest | IDBTransaction | null)?.error ?? transaction.error
+        ?? new Error(`The write to ${Array.from(transaction.objectStoreNames).join(', ')} was aborted`),
     );
     transaction.onerror = fail;
     transaction.onabort = fail;

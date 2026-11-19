@@ -60,6 +60,23 @@ describe('cachedConnection', () => {
   });
 });
 
+describe('transactionDone', () => {
+  beforeEach(() => {
+    vi.stubGlobal('indexedDB', new IDBFactory());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('names the store when an abort carries no error', async () => {
+    const db = await cachedConnection('abort-db', 1, STORES)();
+    const tx = db.transaction(['rows'], 'readwrite');
+    const done = transactionDone(tx);
+    tx.abort();
+    await expect(done).rejects.toThrow('The write to rows was aborted');
+  });
+});
+
 describe('pruneLeastRecent', () => {
   interface Row { id: string; usedAt: number }
 
