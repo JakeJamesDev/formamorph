@@ -1,6 +1,6 @@
 # 11: Test Bench Defaults Report
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -11,6 +11,14 @@ The Test Bench rule report predicts which default traits start off. It still set
 
 ## Acceptance criteria
 
-- [ ] A default trait opened by another default's stat row is not reported as starting off.
-- [ ] A default whose gate fails even with every pick's rows is still reported.
-- [ ] The guard goes red with its bug reinstated.
+- [x] A default trait opened by another default's stat row is not reported as starting off. (rules.test.ts "passes a default that another default’s stat row opens")
+- [x] A default whose gate fails even with every pick's rows is still reported. (rules.test.ts "still flags a default whose gate fails with every pick’s rows")
+- [x] The guard goes red with its bug reinstated. (setupGate returning the gate unchanged failed the first test)
+
+## Landed
+
+Option values: the report reads each Option at its default, with no change to the Rule signature (spec Q36). The stuck and loop checks stay on authored stats, since stat Conditions already count as holding in `neverUnlockable`. `ownRowsReader` in `traitGates.ts` now tolerates a trait with no `statChanges`, so the report still diagnoses a malformed world.
+
+**Not verified**: none.
+
+**For you**: none.

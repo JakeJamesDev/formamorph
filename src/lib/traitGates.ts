@@ -709,7 +709,7 @@ function ownRowsReader(input: GateInput, idx: Index): ((on: ReadonlySet<string>,
   const { statsOf, statsWithout } = input;
   if (!statsOf) return statsWithout ? (_on, without) => statsWithout(without.owner.id, without.item.id) : null;
   const moving = [...idx.owners.values()].flatMap((o) => [...o.traits.values()])
-    .filter((t) => t.item.statChanges.length > 0 || (t.item.statToggles?.length ?? 0) > 0);
+    .filter((t) => (t.item.statChanges?.length ?? 0) > 0 || (t.item.statToggles?.length ?? 0) > 0);
   const cache = new Map<string, GateStats>();
   return (on, without) => {
     const picks = moving.filter((t) => t !== without && on.has(keyOf(t)));

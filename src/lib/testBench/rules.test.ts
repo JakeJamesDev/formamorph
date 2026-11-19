@@ -3386,6 +3386,23 @@ describe('trait gate rules', () => {
       expect(only(w, rule)).toEqual([]);
     });
 
+    describe('stat Conditions read the stats a new game starts with (Q26, Q36)', () => {
+      const luck = stat({ id: 'luck', name: 'Luck', min: 0, max: 10, starting: 0 });
+      const needsLuck = (value: number): TraitRequirement =>
+        ({ kind: 'stat', id: 'luck', operator: '>=', value, unit: 'raw' });
+      const blessed = trait({ id: 'blessed', name: 'Blessed', ...def, statChanges: [{ statId: 'luck', type: 'starting', value: 3 }] });
+
+      it('passes a default that another default’s stat row opens', () => {
+        const w = gates([blessed, gated('lucky', [needsLuck(3)], def)], { stats: [luck] });
+        expect(only(w, rule)).toEqual([]);
+      });
+
+      it('still flags a default whose gate fails with every pick’s rows', () => {
+        const w = gates([blessed, gated('lucky', [needsLuck(4)], def)], { stats: [luck] });
+        expect(ids(only(w, rule))).toEqual([['lucky']]);
+      });
+    });
+
     describe('per owner', () => {
       // Blueprints: Races (Human, Elf) and one default-on ability per race, gated on it.
       const blueprinted = [

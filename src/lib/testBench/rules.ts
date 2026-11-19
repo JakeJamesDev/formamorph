@@ -67,6 +67,7 @@ import {
   unstableCycles, type GateScopeTree, type GateInput, type GateOwner, type GateState, type GateStat, type GateStatSet, type GateStates, type GateStats, type GateTraitRef,
 } from '@/lib/traitGates';
 import { startingGateStats } from '@/lib/gateStats';
+import { setupStatsOf } from '@/lib/setupGateStats';
 import { ruleText, rowText } from '@/lib/traitGateLine';
 import { conditionsOf } from '@/lib/requirementRows';
 import { isAlwaysOn } from '@/lib/traitEffects';
@@ -2443,7 +2444,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
         requirements: quotedRules(rowsOf(gateOf(states, r.ownerId, r.traitId))),
       };
     };
-    return { owners: byId, gate, named };
+    return { owners: byId, gate, named, persona };
   };
 
   const openable = ownerWorldOf(world, { traits: openTraits, links: openLinks });
@@ -2489,6 +2490,11 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   const everOff = new Set<string>();
   const everOn = new Set<string>();
   const overridden = new Map<string, GateTraitRef>();
+  // Defaults settle on the stats a new game starts with: the picks' rows count, each Option at its default.
+  const setupGate = (gate: Omit<GateInput, 'active'>, persona: PersonaRef): Omit<GateInput, 'active'> => {
+    const statsOf = setupStatsOf({ ...world, entities: world.entities ?? [] }, persona);
+    return { ...gate, statsOf, stats: statsOf(NO_ACTIVE) };
+  };
   const settleInto = (gate: Omit<GateInput, 'active'>, linkOf: (ownerId: OwnerId, traitId: string) => TraitLink | undefined) => {
     const settled = settleDefaults(gate);
     const keyOf = (ownerId: OwnerId, traitId: string) => {
@@ -2503,9 +2509,9 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     }
     return settled;
   };
-  const settledByPass = passes.map((pass) => settleInto(pass.gate, (ownerId, traitId) =>
+  const settledByPass = passes.map((pass) => settleInto(setupGate(pass.gate, pass.persona), (ownerId, traitId) =>
     (ownerId === null ? undefined : pass.owners.get(ownerId)?.linkOf.get(traitId))).active);
-  for (const persona of personaChoices(world)) settleInto({ ...input, persona }, (ownerId, traitId) => linksOf.get(ownerId)?.get(traitId));
+  for (const persona of personaChoices(world)) settleInto(setupGate({ ...input, persona }, persona), (ownerId, traitId) => linksOf.get(ownerId)?.get(traitId));
   const isOff = (key: string) => !stuckIds.has(key) && everOff.has(key) && !everOn.has(key);
   const offDefaults: OffDefault[] = [
     ...traits.filter((t) => isOff(t.id)).map((t) => ({ traitId: t.id, requirements: requirementTexts.get(t.id) ?? '' })),
