@@ -41,7 +41,7 @@ The rows act on stats like a trait's rows do, and they stack with traits. They n
 - **Q21 Picker pages.** World holds the global stats. Each world entity that holds stats (own or from a Blueprint) gets a page; entities with none are left out. Library entities get no page. (Ticket 02.)
 - **Q22 Picker scope.** Only Option rows get the Breadcrumb Picker. The trait stat-row editor keeps its Select. (Ticket 02.)
 - **Q23 Changelog.** Tickets 02 and 03 write no fragment. The spec session folds a clause into ticket 01's entry on main after each landing. (Tickets 02, 03.)
-- **Q24 Close review gaps.** The close review found three gaps, now tickets 04–06: the Enter World preview's entity starts, stale bounds on load, and the paged-back AI scene.
+- **Q24 Close review gaps.** The close review found three gaps, now tickets 04–06: the Enter World preview's entity starts, stale bounds on load, and paged-back entity toggles. The live AI scene reads current Option values, which is correct; the paged-back reader that was wrong is the entity stat-enabled view behind the avatar morphs. Ticket 07 (the Test Bench lens) came from ticket 04's landing.
 - **Q25 Toggles not listed.** Player lists show stat changes only, never toggle rows, matching the trait lists.
 - **Q26 Setup gates count pick effects.** At setup, gates read stats the way play will start them. (Ticket 08.)
   - **a.** Gates read stats with every picked trait's rows and every Option value's rows applied.
@@ -55,8 +55,10 @@ The rows act on stats like a trait's rows do, and they stack with traits. They n
 - **Q27 One opening path.** The Enter World preview seeds global and entity starts through the same steps as the game opening, so entity trait starts apply there too. (Ticket 04.)
 - **Q28 Pins read Option toggles.** Stat-band Pins read Option toggles ahead of traits for every caller: play, the opening, Test Bench and the preview. A stat an Option turns off never pins. (Ticket 04, from Q17.)
 - **Q29 Editor scene.** The editor's authored scene reads each Option at its default. A caller with picks, such as Test Bench, passes its values. It seeds stats through the Q27 steps. (Ticket 04.)
-- **Q30 Unconditional re-derive.** Every settle, save load included, re-derives every global stat and every held entity's stats under the Options and traits in force. A save whose stored bounds disagree with what is in force is corrected on load, by clamp only. (Ticket 05, from Q16.)
+- **Q30 Unconditional re-derive.** Every settle, save load included, re-derives every global stat and every held entity's stats under the Options and traits in force. A save whose stored bounds disagree with what is in force is corrected on load, by clamp only. Global traits re-derive from the save's frozen copies; entity traits are saved as ids, so they read the world's current rows. (Ticket 05, from Q16.)
 - **Q31 Setup gate scope.** Authoring readers (the editor's Requires text, code hover cards, the library entity gate input) keep authored starts. Setup gate stats leave out starting item effects, per Q26a. A pick that lowers a stat turns off the kept picks whose gates now fail, through the cascade, whatever the click order. (Ticket 08.)
+- **Q32 Play gates ignore own rows.** In play too, a trait's gate never reads that trait's own stat rows, so Berserker picked at 7 stays on. (Ticket 09.)
+- **Q33 Second close review.** Tickets 10 and 11 fix the library cast at setup and the Test Bench defaults report. A save stored without stat bases keeps an old raised max after its Option row is deleted; this edge stays unfixed by choice.
 
 ## User Stories
 
