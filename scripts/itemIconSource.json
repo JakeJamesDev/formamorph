@@ -65,5 +65,8 @@
   {"id":"bone","group":"Oddments","gameIcon":"crossed-bones","author":"Lorc","words":["bone","bones"]},
   {"id":"skull","group":"Oddments","gameIcon":"death-skull","author":"Sbed","words":["skull"]},
   {"id":"instrument","group":"Oddments","gameIcon":"lyre","author":"Lorc","words":["lute","lyre","flute","harp"]},
+  {"id":"egg","group":"Oddments","gameIcon":"big-egg","author":"Sbed","words":["egg","eggs"]},
+  {"id":"towel","group":"Oddments","gameIcon":"towel","author":"Delapouite","words":["towel","towels"]},
+  {"id":"flower","group":"Oddments","gameIcon":"rose","author":"Lorc","words":["flower","flowers","rose","roses","posy","bouquet","blossom","sunflower","tulip","lily","daisy"]},
   {"id":"generic","group":"Fallback","gameIcon":"swap-bag","author":"Lorc","words":["bag","sack","pouch"]}
 ]
