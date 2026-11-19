@@ -35,6 +35,13 @@ Options set the size, and in During AI Output the wrap. The image is saved with 
 - **Q14 Test Bench.** The Test Bench lists each `player.show` call as a log line with the name and options. It does not draw the image.
 - **Q15 No cap.** There is no limit on images per turn.
 - **Q16 Item-timed tells on load.** Restore drops tells from item scripts today. Ticket 04 fixes that with its item-script images, since both need item-timed entries restored. (Ticket 04.)
+- **Q17 Text tells stay below.** Only images split by placement group. Before and Start text tells keep rendering below the narration. (Ticket 01.)
+- **Q18 Where "above" sits.** In Pages, it sits inside the turn card, after the action line and reasoning, above the narration text. In Chat, it sits between the player's action bubble and the narration bubble, at the tell column width. After images sit where tells sit. (Ticket 01.)
+- **Q19 One validation rule.** A bad `wrap` value fails the script in every timing, like a bad `size`, even where `wrap` is ignored. A non-object `opts` or a non-string name throws a TypeError that names `player.show`. Unknown `opts` keys are ignored. (Ticket 01.)
+- **Q20 Stored wrap.** Before and After entries always store `wrap: "block"`. (Ticket 01.)
+- **Q21 Size proposal.** Widths are centered percentages of the narration column: small 33%, medium 60%, large 100%. Height is capped at 70vh. This is the proposal for the frames, and it needs the user's approval. (Ticket 01.)
+- **Q22 Test Bench line.** `Show: Name (medium, block)`, with the wrap the call gave, since the bench has no placement. (Ticket 01.)
+- **Q23 Switch timing.** A When a Trait Switches show goes in the below group and is not re-rolled, like switch tells. (Ticket 01.)
 
 ## User Stories
 
