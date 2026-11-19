@@ -1,6 +1,6 @@
 # 05: Keep On Call Shows Through Re-roll Stats
 
-Status: needs-triage
+Status: ready-for-agent
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
