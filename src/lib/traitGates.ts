@@ -107,6 +107,8 @@ export interface GateInput {
   /** Setup only: the stats a game starts with under a set of picks (Q26). Present, a trait's gate reads the
    *  stats of the picks around it, its own left out, and the settle grows them from the ground up. */
   statsOf?: (active: GateActive) => GateStats;
+  /** Play only: `stats` with one held trait's own contribution taken out, which that trait's gate reads (Q32). */
+  statsWithout?: (ownerId: OwnerId, traitId: string) => GateStats;
   /** The story clock's daypart, which a time Condition reads. Absent, the opening hour's: what authoring
    *  lenses read. */
   daypart?: Daypart;
@@ -586,7 +588,7 @@ export const complementary = (a: TraitRequirement, b: TraitRequirement): boolean
 export function gateStates(input: GateInput): GateStates {
   const idx = index(input);
   const activeIn = activeSets(input);
-  const reader = setupReader(input, idx);
+  const reader = ownRowsReader(input, idx);
   const active = new Set(locate(idx, input.active).filter((t) => activeIn(t.owner.id, t.item.id)).map(keyOf));
   return perScopeOf([...idx.owners.values()].map((o) => o.owner), (owner) => {
     const states = new Map<string, GateState>();
@@ -700,11 +702,12 @@ function locate(idx: Index, lists: GateActive): Located<Trait>[] {
   return out;
 }
 
-/** A setup input's stats for a set of trait keys, the checked trait's own rows left out (Q26b); null outside
- *  setup. Only the traits with stat rows key the cache, since only they move a stat. */
-function setupReader(input: GateInput, idx: Index): ((on: ReadonlySet<string>, without: Located<Trait>) => GateStats) | null {
-  const statsOf = input.statsOf;
-  if (!statsOf) return null;
+/** The stats a trait's gate reads, its own rows left out: at setup, the stats of the other picks among `on`
+ *  (Q26b); in play, the live stats (Q32). Null when the input carries neither. Only the traits with stat rows
+ *  key the setup cache, since only they move a stat. */
+function ownRowsReader(input: GateInput, idx: Index): ((on: ReadonlySet<string>, without: Located<Trait>) => GateStats) | null {
+  const { statsOf, statsWithout } = input;
+  if (!statsOf) return statsWithout ? (_on, without) => statsWithout(without.owner.id, without.item.id) : null;
   const moving = [...idx.owners.values()].flatMap((o) => [...o.traits.values()])
     .filter((t) => t.item.statChanges.length > 0 || (t.item.statToggles?.length ?? 0) > 0);
   const cache = new Map<string, GateStats>();
@@ -757,8 +760,9 @@ export function settle(input: GateInput, cascadeOff: GateActive = NO_ACTIVE): Se
   let kept = new Set<string>();
   let returned: Located<Trait>[] = [];
   const activeIn: ActiveIn = (ownerId, id) => kept.has(key(ownerId, id));
-  // At setup a stat reads what has joined so far, so a pick never props up the gate it needs (Q26c).
-  const reader = setupReader(input, idx);
+  // At setup a stat reads what has joined so far, so a pick never props up the gate it needs (Q26c). In play it
+  // reads the live stats less the trait's own rows (Q32).
+  const reader = ownRowsReader(input, idx);
   const read = (t: Located<Trait>) => (reader ? () => reader(kept, t) : undefined);
   const grows = (t: Located<Trait>) => rowsHold(t.item.requires, growthHolds(t, activeIn, idx, read(t)));
   const opens = (t: Located<Trait>) => rowsHold(t.item.requires, (req) =>

@@ -983,6 +983,9 @@ function useProvideGameplay() {
   // on a past page, since the live branch returns the state values themselves.
   const viewDisabledTraitIds = viewedSnapshot ? (viewedSnapshot.disabledTraitIds ?? EMPTY_IDS) : disabledTraitIds;
   const viewOwnedTraits = viewedSnapshot ? (viewedSnapshot.ownedTraits ?? EMPTY_OWNED) : ownedTraits;
+  const viewedApplied = viewedSnapshot?.appliedTraitValues;
+  const pastApplied = useMemo(() => liveAppliedValues(viewedApplied), [viewedApplied]);
+  const viewAppliedTraitValues = viewedSnapshot ? pastApplied : appliedTraitValues;
   const viewEntityStats = viewedSnapshot ? (viewedSnapshot.entityStats ?? EMPTY_ENTITY_STATS) : entityStats;
   const viewBodies = viewedSnapshot ? (viewedSnapshot.bodies ?? NO_BODIES) : bodies;
   // What the shown turn moved each entity stat: live, this turn's; on a past page, that turn's record.
@@ -1263,6 +1266,7 @@ function useProvideGameplay() {
     viewTraits,
     viewDisabledTraitIds,
     viewOwnedTraits,
+    viewAppliedTraitValues,
     viewEntityStats,
     viewBodies,
     viewEntityStatChanges,

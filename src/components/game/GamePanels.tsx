@@ -1429,6 +1429,7 @@ export const RightPanel = ({
     viewTraits: savedTraits,
     viewDisabledTraitIds,
     viewOwnedTraits,
+    viewAppliedTraitValues,
     viewEntityStatChanges,
     viewEntityStats,
     viewStatChanges,
@@ -1519,8 +1520,8 @@ export const RightPanel = ({
     ...inPlayOwners(ownerWorld, personaRef, traitLibrary),
   }), [traits, traitGroups, cast, persona, personaRef, daypart, worldItems, itemInstances, worldOptions, viewWorldOptionValues, ownerWorld, traitLibrary]);
   const viewTraitState = React.useMemo(
-    () => ({ traits: globalTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits }),
-    [globalTraits, viewDisabledTraitIds, viewOwnedTraits],
+    () => ({ traits: globalTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits, appliedValues: viewAppliedTraitValues }),
+    [globalTraits, viewDisabledTraitIds, viewOwnedTraits, viewAppliedTraitValues],
   );
   // The stats a trait switched off stay off under the global traits and every entity's global rows.
   const statEnabled = React.useMemo(

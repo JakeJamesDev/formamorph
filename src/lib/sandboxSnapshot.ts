@@ -23,7 +23,7 @@ import { sampleNarration, sampleSwitchedTrait } from './scriptTestSamples';
 import { randomUUID } from './uuid';
 import { scriptMoney } from './scriptMoney';
 import { withLoreToggles } from './loreToggles';
-import { gateStatsOf, type TraitRuntimeState, type TraitSwitchEvent, type TraitWorld } from './traitRuntime';
+import { gateSnapshot, gateStatsOf, type TraitRuntimeState, type TraitSwitchEvent, type TraitWorld } from './traitRuntime';
 import { activeStatEnabled } from './traitEffects';
 import type { GateStats } from './traitGates';
 import type { RunTiming } from './statCodeTiming';
@@ -314,7 +314,7 @@ function boardOf(state: SandboxState, { readings, pendingPersona, assumedStats =
   const { world } = state.ownerTraits;
   const before = runtimeStateOf(state);
   const live = gateStatsOf(before, world);
-  const gateStats = withStateGateStats(state, live);
+  const gateStats = gateSnapshot(withStateGateStats(state, live), before, world);
   // Resolved once, so every Script reads the same placeholders and the same traits.
   const readOwnerTraits = { ...state.ownerTraits, world: { ...world, gateStats } };
   const traits = sandboxTraits(readOwnerTraits, placeholderDefs);

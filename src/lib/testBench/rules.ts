@@ -2262,7 +2262,7 @@ interface DeadCondition {
   stat: boolean;
 }
 
-/** A trait whose gate reads a stat the trait changes. */
+/** A trait whose gate reads a stat whose regen the trait changes. */
 interface OwnStatRead {
   gate: HeldGate;
   /** The stat's name, unquoted. */
@@ -2300,7 +2300,7 @@ interface GateReport {
   offDefaults: OffDefault[];
   /** Groups whose minimum an owner can't meet, under every persona choice that holds the owner. */
   picks: PickShortfall[];
-  /** One per trait and stat: the gate reads a stat the trait's own effects change. */
+  /** One per trait and stat: the gate reads a stat whose regen the trait changes. */
   ownStatReads: OwnStatRead[];
   /** Percent Conditions on a stat whose minimum equals its maximum. */
   zeroSpans: ZeroSpanCondition[];
@@ -2391,7 +2391,8 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   const zeroSpans: ZeroSpanCondition[] = [];
   for (const gate of held) {
     const overridden = !!gate.link?.overrides?.[gate.trait.id]?.requires;
-    const effects = [...(gate.trait.statChanges ?? []), ...(gate.trait.statToggles ?? [])];
+    // A gate leaves its trait's own rows out (Q32), but regen keeps moving the value turn by turn (Q34).
+    const effects = (gate.trait.statChanges ?? []).filter((row) => row.type === 'regen');
     const reported = new Set<string>();
     (gate.trait.requires ?? []).forEach((row, i) => row.all.forEach((req, j) => {
       if (req.kind !== 'stat' || (gate.link && (!overridden || inOriginal(gate, req)))) return;
@@ -2680,14 +2681,13 @@ const traitGateReadsOwnStat: Rule = {
   id: 'trait-gate-reads-own-stat',
   severity: 'warning',
   section: 'traits',
-  summary: (count) => `${count} traits require a stat that they change themselves`,
-  // Any stat effect counts: a value, a min or max (percent reads the effective max), or a stat toggle.
+  summary: (count) => `${count} traits require a stat whose regen they change`,
   check: (world) => gateReportOf(world).ownStatReads.map(({ gate, stat }) => {
     const item = heldItem(gate, world);
     const subject = subjectOf(gate, item, world);
     return finding(
       traitGateReadsOwnStat,
-      `${subject} requires ${quote(stat)} and changes ${quote(stat)}, so its own effect can turn the requirement off. Base the requirement on another stat.`,
+      `${subject} requires ${quote(stat)} and changes the Regen of ${quote(stat)}. Its own Regen can switch it off. Base the requirement on another stat.`,
       [item],
     );
   }),

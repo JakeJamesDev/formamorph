@@ -14,7 +14,7 @@ import type { Trait, WorldOptionValues } from '@/types';
 type TurnGateState = Omit<GateStatState, 'stats' | 'traits'> & { traits: Trait[]; stats: 'viewStats' | 'globalStats'; gameTime: number; optionValues: WorldOptionValues };
 
 /** Every owner's traits, stats and clock in one turn, as the gate module reads them. */
-function useGateInput({ traits: chosen, disabledTraitIds, ownedTraits, stats: statsKey, entityStats, gameTime, optionValues }: TurnGateState): GateInput {
+function useGateInput({ traits: chosen, disabledTraitIds, ownedTraits, appliedValues, stats: statsKey, entityStats, gameTime, optionValues }: TurnGateState): GateInput {
   const { personaRef, calendar, itemInstances } = useGameplay();
   const gameData = useGameDataOptional();
   const worldItems = gameData?.items;
@@ -25,20 +25,20 @@ function useGateInput({ traits: chosen, disabledTraitIds, ownedTraits, stats: st
   const stats = resolved[statsKey];
   return useMemo(() => traitGateInput(
     // The save froze each chosen trait as the world stood on turn 1; its gate is read from the world.
-    { traits: refreshChosenTraits(chosen, traits), disabledTraitIds, ownedTraits, stats, entityStats },
+    { traits: refreshChosenTraits(chosen, traits), disabledTraitIds, ownedTraits, appliedValues, stats, entityStats },
     {
       traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' }, daypart,
       ...(worldItems ? { items: worldItems } : {}), itemInstances, options: worldOptions, optionValues,
       ...inPlayOwners({ traits, traitGroups, entities: traitEntities }, personaRef, traitLibrary),
     },
-  ), [chosen, disabledTraitIds, ownedTraits, stats, entityStats, traits, traitGroups, cast, persona, personaRef, daypart, worldItems, itemInstances, worldOptions, optionValues, traitEntities, traitLibrary]);
+  ), [chosen, disabledTraitIds, ownedTraits, appliedValues, stats, entityStats, traits, traitGroups, cast, persona, personaRef, daypart, worldItems, itemInstances, worldOptions, optionValues, traitEntities, traitLibrary]);
 }
 
 /** The gate input of the turn on screen, live or paged back (Q34). */
 export function useViewedGateInput(): GateInput {
   const play = useGameplay();
   return useGateInput({
-    traits: play.viewTraits, disabledTraitIds: play.viewDisabledTraitIds, ownedTraits: play.viewOwnedTraits,
+    traits: play.viewTraits, disabledTraitIds: play.viewDisabledTraitIds, ownedTraits: play.viewOwnedTraits, appliedValues: play.viewAppliedTraitValues,
     stats: 'viewStats', entityStats: play.viewEntityStats, gameTime: play.viewGameTime, optionValues: play.viewWorldOptionValues,
   });
 }
@@ -47,7 +47,7 @@ export function useViewedGateInput(): GateInput {
 export function useLiveGateInput(): GateInput {
   const play = useGameplay();
   return useGateInput({
-    traits: play.globalTraits, disabledTraitIds: play.disabledTraitIds, ownedTraits: play.ownedTraits,
+    traits: play.globalTraits, disabledTraitIds: play.disabledTraitIds, ownedTraits: play.ownedTraits, appliedValues: play.appliedTraitValues,
     stats: 'globalStats', entityStats: play.entityStats, gameTime: play.gameTime, optionValues: play.worldOptionValues,
   });
 }

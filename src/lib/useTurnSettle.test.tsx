@@ -99,8 +99,8 @@ describe('the per-turn settle', () => {
     expect(commit).toHaveBeenCalledTimes(1);
     expect(on(s)).toEqual(['berserk']);
     expect(valueOf(s, 'rage')).toBe(55);
-    // Guard: a second settle in the same commit, reading the live 55, would flip it straight back off.
-    expect(on(settleTraits(s, w, nameOf).state)).toEqual([]);
+    // A second settle reading the live 55 leaves Berserk's own -30 out (Q32), so it stays on.
+    expect(on(settleTraits(s, w, nameOf).state)).toEqual(['berserk']);
   });
 
   it('reads the snapshot it is handed, not the stats as they landed', async () => {

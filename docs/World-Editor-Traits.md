@@ -362,7 +362,7 @@ A **stat condition** compares an owner's stat to a number. *Berserk* requires *R
 Before the game starts, a stat condition reads the stat as the game will start it. The player's trait picks and World Option values count.
 
 - *Bodybuilder* gives **Starting Value** +3 Strength. With Strength at 4, picking *Bodybuilder* opens *Carry Capacity*, which requires *Strength >= 7*.
-- A trait's own stat changes never count toward its own condition. *Berserker* requires *Strength >= 7* and gives -2 Strength, so the player can pick it at 7.
+- A trait's own stat changes never count toward its own condition. *Berserker* requires *Strength >= 7* and gives -2 Strength, so the player can pick it at 7. It stays on once the game starts.
 - Two traits can't open each other. If each needs the other's +3, neither opens from 4.
 - Taking away a pick turns off the traits it opened, and the dialog names them.
 - Starting items don't count.
@@ -378,9 +378,13 @@ The game reads the stats once per turn, after the turn's stat changes have lande
 - A trait the player switched off by hand stays off, even when its condition holds.
 - One turn settles once. A stat that moves up and down during the turn never flickers the trait.
 
-A trait's own stat changes don't make the game check again in the same turn. A trait that raises the stat its own condition reads can flip its own gate on the next turn. The [Test Bench](#test-bench-checks) warns about this.
+A trait's own stat changes never count toward its own condition, during the game too. The game reads the stat as if the trait were off: its starting value change, min, max and on/off rows are taken out. Every other trait, Option value and change still counts.
 
-> 💡 **Gate on a different stat than the trait changes.** *Berserk* requires *Rage >= 80* and adds Strength. It's safe. If it also lowered Rage, it could turn itself off.
+- *Berserker* requires *Strength >= 7* and gives -2 Strength. At Strength 5 it stays on, since without it Strength would be 7.
+- If another change drops Strength to 4, *Berserker* reads 6 and turns off.
+- *Giant* requires *Strength >= 70%* and gives **Max** +10. It reads its % against the max without that +10.
+
+> ⚠️ **Regen still counts.** A trait's **Regen** row moves the stat every turn, so it can turn the trait off over time. *Berserk* requires *Rage >= 80* and gives Rage -5 regen: Rage drains, and *Berserk* turns itself off. The [Test Bench](#test-bench-checks) warns about this.
 
 ### Item conditions
 <!-- keywords: item condition, needs an item, owns an item, wearing an item, equipped item, cursed ring, trait needs item, set bonus, item owner -->
@@ -568,7 +572,7 @@ It shows a warning when:
 - A group marks more traits as default than its maximum allows. Some defaults won't apply.
 - A row can never hold, such as *Paladin and not Paladin*. Remove the row or change a condition.
 - A global trait requires an entity's trait, group or stat from the same owner. Only entities have the target, so the row never holds. Pick **Persona** or the entity.
-- A trait requires a stat that the trait changes itself, including the stat's min, max or on/off state. Its own effect can flip the requirement.
+- A trait requires a stat whose **Regen** the trait changes. Its own regen can turn the requirement off over time.
 - A **%** condition, in a trait's rule or an image's Visibility rule, reads a stat whose min and max are equal. It always reads 0%.
 - Every image of an entity has a Visibility rule, and the rules don't cover every case. The entity can end up with no image. Two images with opposite conditions cover every case. So do images that name every pick of required groups, where each group has a minimum and a maximum of one pick.
 - A trait has **Starts** set to **On**, but no starting choice meets its requirements, so it starts unselected. Two defaults that exclude each other count: the later one starts unselected.

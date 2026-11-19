@@ -2867,29 +2867,36 @@ describe('trait gate rules', () => {
       const rule = 'trait-gate-reads-own-stat';
       const gate = atLeast('rage', 80);
 
+      const regen = { statChanges: [{ statId: 'rage', value: -5, type: 'regen' as const }] };
+
+      it('fires for a regen change', () => {
+        const found = only(gates([berserk(gate, regen)], { stats: [rage] }), rule);
+        expect(ids(found)).toEqual([['berserk']]);
+        expect(found[0].message).toBe('“BERSERK” requires “Rage” and changes the Regen of “Rage”. Its own Regen can switch it off. Base the requirement on another stat.');
+      });
+
+      // The gate leaves the trait's own rows out (Q32), so only regen can still move the value it reads.
       it.each([
         ['a value change', { statChanges: [{ statId: 'rage', value: 5 }] }],
         ['a max change', { statChanges: [{ statId: 'rage', value: 20, type: 'max' as const }] }],
         ['a stat toggle', { statToggles: [{ statId: 'rage', enabled: true }] }],
-      ])('fires for %s', (_, effect) => {
-        const found = only(gates([berserk(gate, effect)], { stats: [rage] }), rule);
-        expect(ids(found)).toEqual([['berserk']]);
-        expect(found[0].message).toBe('“BERSERK” requires “Rage” and changes “Rage”, so its own effect can turn the requirement off. Base the requirement on another stat.');
+      ])('stays silent for %s', (_, effect) => {
+        expect(only(gates([berserk(gate, effect)], { stats: [rage] }), rule)).toEqual([]);
       });
 
       it('stays silent when the trait changes another stat, or no gate reads the stat', () => {
         const calm = stat({ id: 'calm', name: 'Calm' });
-        expect(only(gates([berserk(gate, { statChanges: [{ statId: 'calm', value: 5 }] })], { stats: [rage, calm] }), rule)).toEqual([]);
-        expect(only(gates([trait({ id: 'plain', name: 'Plain', statChanges: [{ statId: 'rage', value: 5 }] })], { stats: [rage] }), rule)).toEqual([]);
+        expect(only(gates([berserk(gate, { statChanges: [{ statId: 'calm', value: -5, type: 'regen' }] })], { stats: [rage, calm] }), rule)).toEqual([]);
+        expect(only(gates([trait({ id: 'plain', name: 'Plain', ...regen })], { stats: [rage] }), rule)).toEqual([]);
       });
 
       it('reports one stat once however many Conditions read it', () => {
-        const twice = rowed('berserk', [{ all: [gate] }, { all: [atLeast('rage', 60)] }], { statChanges: [{ statId: 'rage', value: 5 }] });
+        const twice = rowed('berserk', [{ all: [gate] }, { all: [atLeast('rage', 60)] }], regen);
         expect(only(gates([twice], { stats: [rage] }), rule)).toHaveLength(1);
       });
 
       it('reads a trait an entity owns', () => {
-        const owner: Entity = { ...resident, id: 'ash', name: 'Ash', stats: [rage], traits: [berserk(gate, { statChanges: [{ statId: 'rage', value: 5 }] })] };
+        const owner: Entity = { ...resident, id: 'ash', name: 'Ash', stats: [rage], traits: [berserk(gate, regen)] };
         expect(ids(only(gates([], { entities: [resident, owner] }), rule))).toEqual([['berserk']]);
       });
     });
@@ -2935,7 +2942,7 @@ describe('trait gate rules', () => {
       const onBree = { kind: 'entity' as const, id: 'bree' };
 
       it('reads the stat of the owner the Condition names, not another owner’s with the same id', () => {
-        const effect = { statChanges: [{ statId: 'rage', value: 5 }] };
+        const effect = { statChanges: [{ statId: 'rage', value: -5, type: 'regen' as const }] };
         const ash = (req: StatRequirement): Entity => ({ ...resident, id: 'ash', name: 'Ash', stats: [rage], traits: [berserk(req, effect)] });
         const rule = 'trait-gate-reads-own-stat';
         // Ash's trait changes Ash's Rage; the Condition reads Bree's.
@@ -2961,7 +2968,7 @@ describe('trait gate rules', () => {
 
       it('reports a link only for a Condition its own override adds', () => {
         const rule = 'trait-gate-reads-own-stat';
-        const smite = trait({ id: 'smite', name: 'Smite', groupId: 'blueprints', statChanges: [{ statId: 'rage', value: 5 }] });
+        const smite = trait({ id: 'smite', name: 'Smite', groupId: 'blueprints', statChanges: [{ statId: 'rage', value: -5, type: 'regen' }] });
         const link = (overrides?: TraitLink['overrides']): TraitLink =>
           ({ id: 'l-smite', originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null, ...(overrides ? { overrides } : {}) });
         const w = (traitLink: TraitLink) => gates([smite], {
@@ -2971,7 +2978,7 @@ describe('trait gate rules', () => {
         const gate = { smite: { requires: { value: [{ all: [atLeast('rage', 80)] }], blueprint: [] } } };
         const found = only(w(link(gate)), rule);
         expect(found.map((f) => f.message)).toEqual([
-          '“Smite” on “Bree” requires “Rage” and changes “Rage”, so its own effect can turn the requirement off. Base the requirement on another stat.',
+          '“Smite” on “Bree” requires “Rage” and changes the Regen of “Rage”. Its own Regen can switch it off. Base the requirement on another stat.',
         ]);
         expect(ids(found)).toEqual([['l-smite']]);
         expect(only(w(link()), rule)).toEqual([]);

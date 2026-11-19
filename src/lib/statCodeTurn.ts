@@ -19,7 +19,7 @@ import type { StatCodePlaceholderSet } from './statCodePlaceholders';
 import { recordKey } from './ownedTraitState';
 import type { StatCodeOwners } from './statCodeTraits';
 import {
-  applyCodeTraitSwitches, causedSwitches, codeDeltaFor, gateStatsOf, ownerStatTraitsInForce, sameCodeDelta, sameHidden, settleTraits, traitForceScope, traitSwitchEvents, withCodeDelta,
+  applyCodeTraitSwitches, causedSwitches, codeDeltaFor, gateSnapshot, gateStatsOf, ownerStatTraitsInForce, sameCodeDelta, sameHidden, settleTraits, traitForceScope, traitSwitchEvents, withCodeDelta,
   type AppliedTraitValues, type CodeTraitSwitch, type GatedTraitResult, type TraitForceState, type TraitSwitchEvent, type TraitWorld,
 } from './traitRuntime';
 import { withOptionWrites } from './worldOptions';
@@ -1319,7 +1319,8 @@ function settledStep(
   const landedOwners: EntityStatValues = Object.fromEntries(owned.map((owner) => [owner.id, settleWrites(
     owner.stats, owner.stats, ownerWrites.get(owner.id) ?? new Map(), ownerStatTraitsInForce(before, world, owner.id),
   ).stats]));
-  const gateStats = withStateGateStats(state, gateStatsOf({ ...before, stats: landedMain, entityStats: landedOwners }, world));
+  const landed = { ...before, stats: landedMain, entityStats: landedOwners };
+  const gateStats = gateSnapshot(withStateGateStats(state, gateStatsOf(landed, world)), landed, world);
 
   // Trait switches first, so bounds re-derive under them; the code's own bounds and values then go on top.
   const switchedOnly = applyCodeTraitSwitches(before, switches, { ...world, gateStats }, turn.traitNameOf);

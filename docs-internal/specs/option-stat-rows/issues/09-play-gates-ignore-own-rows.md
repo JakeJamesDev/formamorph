@@ -1,6 +1,6 @@
 # 09: Play Gates Ignore Own Rows
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -15,7 +15,16 @@ Spec Q32: in play, a trait's gate never reads that trait's own stat rows, the sa
 
 ## Acceptance criteria
 
-- [ ] Berserker picked at Strength 7 stays on through the first turns of play.
-- [ ] A trait whose gate fails for a reason other than its own rows still turns off in play.
-- [ ] A trait with a max row is judged against the max without that row.
-- [ ] The guard goes red with its bug reinstated.
+- [x] Berserker picked at Strength 7 stays on through the first turns of play. `traitRuntime.ownRows.test.ts` "keeps Berserker … on through the first turns of play", plus the Traits tab gate read and stat code's `available`.
+- [x] A trait whose gate fails for a reason other than its own rows still turns off in play. "turns Berserker off when Strength drops below 7 for another reason".
+- [x] A trait with a max row is judged against the max without that row. "judges Giant against the max without its own max row".
+- [x] The guard goes red with its bug reinstated. Three mutations: play reader off (all play tests red), commit-snapshot exclusion ignored (code switch + stat code tests red), the old Test Bench filter (three "stays silent" tests red).
+
+## Landed
+
+**Not verified**
+- None. Q34 cases also covered: an off trait, owner-only exclusion, mutual propping in play, a code switch mid-commit, and the narrowed Test Bench rule (fires on regen, quiet on value, max and toggle).
+
+**For you**
+- Play a world with a Berserker-style trait (needs a stat it lowers) and confirm it stays on, and still drops when something else lowers the stat. Look at the Traits tab's requirement chip too.
+- Read the rewritten "When the game checks" section of `docs/World-Editor-Traits.md` and the new Test Bench regen warning text.
