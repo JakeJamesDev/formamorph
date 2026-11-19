@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyPreset, emptyEntryDraft, entryGateInput, withSettledTraits, type EntryDraft, type EntryTraitWorld } from './entryDraft';
+import { applyPreset, emptyEntryDraft, entryGateInput, withLibraryDefaults, withSettledTraits, type EntryDraft, type EntryTraitWorld } from './entryDraft';
 import { startLocationIdsOpen } from './inPlayWorld';
 import { gateOf, gateStates, settle, switchTrait } from './traitGates';
 import { scoped, type OwnerId } from './scope';
@@ -129,6 +129,23 @@ describe('trait gates at setup', () => {
     const world = worldOf([tired, gated('carry', 1)]);
     expect(unlocked(world, draftOf([]), 'carry')).toBe(true);
     expect(unlocked(world, draftOf(['tired']), 'carry')).toBe(false);
+  });
+});
+
+describe('library entity defaults at setup', () => {
+  it("settle under the picked Option value's rows (Q35)", () => {
+    const might: ChoiceWorldOption = {
+      id: 'might', name: 'Might', type: 'choice', shownToPlayer: true, midGame: false, default: 'weak',
+      values: [{ id: 'weak', name: 'Weak' }, { id: 'strong', name: 'Strong', statChanges: [gives(3)] }],
+    };
+    const lib: Entity = {
+      id: 'lib', name: 'Lib',
+      traits: [gated('hauler', 7, { isDefault: true, groupId: 'role' })], traitGroups: [{ id: 'role', name: 'Role', parentId: null }],
+    };
+    const world = worldOf([], { options: [might], library: [lib] });
+    const joined = (optionValues: WorldOptionValues) => withLibraryDefaults(draftOf([], { optionValues }), world).ownedTraitIds.lib;
+    expect(joined({ might: 'weak' })).toEqual([]);
+    expect(joined({ might: 'strong' })).toEqual(['hauler']);
   });
 });
 

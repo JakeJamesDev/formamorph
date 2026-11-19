@@ -183,9 +183,11 @@ export function withShortGroupsFilled(
 export const withSettledEntry = (draft: EntryDraft, result: Pick<SettleResult, 'active' | 'cascadeOff' | 'turnedOff'>, world: EntryTraitWorld): EntryDraft =>
   withShortGroupsFilled(withSettledTraits(draft, result), world, result.turnedOff);
 
-/** Every scope's default picks under `persona`. */
-export function entryDefaults(world: EntryTraitWorld, persona: PersonaRef): Pick<EntryDraft, 'traitIds' | 'ownedTraitIds'> {
-  const { global, owners } = settleDefaults(entryGateBase(world, persona)).active;
+/** Every scope's default picks under `persona` and the picked `optionValues`. */
+export function entryDefaults(
+  world: EntryTraitWorld, persona: PersonaRef, optionValues?: WorldOptionValues,
+): Pick<EntryDraft, 'traitIds' | 'ownedTraitIds'> {
+  const { global, owners } = settleDefaults(entryGateBase(world, persona, optionValues)).active;
   return { traitIds: global, ownedTraitIds: { ...owners } };
 }
 
@@ -200,7 +202,7 @@ export function libraryCastIds(draft: Pick<EntryDraft, 'persona' | 'entityIds'>)
 export function withLibraryDefaults(draft: EntryDraft, world: EntryTraitWorld): EntryDraft {
   const joined = world.library.filter((e) => !(e.id in draft.ownedTraitIds));
   if (!joined.length) return draft;
-  const defaults = entryDefaults(world, draft.persona).ownedTraitIds;
+  const defaults = entryDefaults(world, draft.persona, draft.optionValues).ownedTraitIds;
   const next = {
     ...draft,
     ownedTraitIds: { ...draft.ownedTraitIds, ...Object.fromEntries(joined.map((e) => [e.id, defaults[e.id] ?? []])) },

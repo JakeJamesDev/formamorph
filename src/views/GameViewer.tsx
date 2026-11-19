@@ -1930,8 +1930,9 @@ const GameViewer = ({
       startingLocationId,
       placesOf: openingPlacesOf(openingPlacement, entities, { locations, connections }, startingLocationId, startRoutinePick(
         { entities: authoredEntities, locations: authoredLocations, connections: authoredConnections, traits: authoredTraits, traitGroups: worldTraitGroups, stats: worldStats, statGroups: authoredStatGroups, options: worldOptions },
-        personaRef?.source === "world" ? personaRef.entityId : null, worldOptionValues,
+        personaRef?.source === "world" || personaRef?.source === "library" ? personaRef.entityId : null, worldOptionValues,
         scoped(activeTraits.map((t) => t.id), activeOwnedTraitIds(ownedTraits)),
+        codeEntities.library,
       )),
       picked: pickedAtStart(discoveredInPlay),
       persona,

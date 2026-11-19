@@ -130,11 +130,12 @@ export function startGateInput(
 }
 
 /** The Routine pick at a world's start under `playedEntityId`, the picked `optionValues` and the start `picks`:
- *  Sample Placement's (Q18). */
+ *  Sample Placement's (Q18). `library` holds the library cast, whose picks the gates read (Q35). */
 export const startRoutinePick = (
   world: StartWorld, playedEntityId: string | null = null, optionValues?: WorldOptionValues, picks?: GateActive,
+  library: readonly Entity[] = [],
 ): RoutinePick =>
-  (world.entities.some(hasRoutineGate) ? gatePick(startGateInput(world, playedEntityId, optionValues, picks)) : ungatedPick);
+  (world.entities.some(hasRoutineGate) ? gatePick(startGateInput(world, playedEntityId, optionValues, picks, library)) : ungatedPick);
 
 /** An authored world slice as play sees it at its start with `playedEntityId` as the player, for a reader with no
  *  playthrough. `optionValues` and `picks` are the Test Bench's. */

@@ -31,6 +31,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Options tab warns on a Preset value with rows that can't apply at new game.** It names each row, such as an Always On trait, a full category or a deleted trait.
     - **World Options can change stats, like a trait, without sending text to the AI.** A value can change a stat's starting value, range, regen and availability on a world or entity stat, and players see it before picking. A change during play moves the range at once, never the value.
     - **On the Enter World dialog, a trait's stat condition counts the stat changes of your other picks.** Picking Bodybuilder (+3 Strength) now opens a trait that needs Strength 7, and a trait's own changes never count toward its own condition, in play too. World Option values count, and Starting Locations and Presets follow the same numbers.
+    - **A library character's starting traits and the opening Routine now count your World Option values and picks.** A trait that needs a stat your Option raises starts on, and a library persona's picks open Routines.
   - **Entity Routines:**
     - **World files keep each entity's Starts and Can Also Go inside a Routine.** A world from 3.7.0 opens with one Routine per entity and plays as before.
     - **An entity's routine row can be Away, taking it off the map and out of every scene for those hours.** Its stats and scripts keep running, and the AI still knows of it where Known In says. Saves can now hold a Generic entity at no place.
