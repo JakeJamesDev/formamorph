@@ -61,6 +61,7 @@ The rows act on stats like a trait's rows do, and they stack with traits. They n
 - **Q33 Second close review.** Tickets 10 and 11 fix the library cast at setup and the Test Bench defaults report. A save stored without stat bases keeps an old raised max after its Option row is deleted; this edge stays unfixed by choice.
 - **Q34 Play own-rows details.** The Test Bench warning narrows to a trait's own regen row on its gated stat, the one own row that can still drift the gate; the docs follow. An entity owner's trait takes out its own records for that owner only. An off trait has nothing taken out. Two traits that each need the other stay on once both are on in play; Q26c only stops them starting at setup. Stat code's `available` snapshot follows the same rule. No changelog fragment; the spec session folds a clause into ticket 08's entry. (Ticket 09.)
 - **Q35 Library cast details.** Library defaults are chosen under the picked Option values. The opening Routine pick reads the library cast and a library persona's id. A Routine on a library entity itself, and the Test Bench and code-lookup callers with world-only personas, stay as they are. (Ticket 10.)
+- **Q36 Test Bench report Options.** The rule report settles defaults under each Option's default value, as the editor scene does (Q29); the lens's picks do not reach it. The stuck and never-unlockable checks keep their own stat reading. (Ticket 11.)
 
 ## User Stories
 
