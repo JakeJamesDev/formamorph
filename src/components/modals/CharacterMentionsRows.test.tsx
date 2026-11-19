@@ -94,9 +94,9 @@ describe('the Character Mentions settings rows', () => {
 
 const ACCOUNT_A: Contributor = { access: 'ready', accountId: 'acct-a' };
 
-describe('the Contribute Corrections row', () => {
-  const contribute = () => screen.queryByRole('checkbox', { name: /Contribute Corrections/ });
-  const click = () => fireEvent.click(screen.getByRole('checkbox', { name: /Contribute Corrections/ }));
+describe('the Share Corrections row', () => {
+  const contribute = () => screen.queryByRole('checkbox', { name: /Share Corrections/ });
+  const click = () => fireEvent.click(screen.getByRole('checkbox', { name: /Share Corrections/ }));
 
   it('shows only while Character Mentions is on', () => {
     viewer.contributor = ACCOUNT_A;
@@ -131,7 +131,7 @@ describe('the Contribute Corrections row', () => {
   it('says the passage is shared and that accepted ones are kept', () => {
     viewer.contributor = ACCOUNT_A;
     mount({ characterMentions: true });
-    expect(screen.getByText('Shares corrected passages to improve mentions for everyone. Accepted ones are kept.')).toBeTruthy();
+    expect(screen.getByText('Shares corrected passages; accepted ones are kept')).toBeTruthy();
   });
 
   it('is hidden for a signed-out player, even when the setting was on (Q64)', () => {
@@ -142,7 +142,7 @@ describe('the Contribute Corrections row', () => {
   it('sits under the toggle and the model choice, in that order (Q64)', () => {
     viewer.contributor = ACCOUNT_A;
     mount({ characterMentions: true });
-    const order = ['Character Mentions', 'Mentions Model', 'Contribute Corrections']
+    const order = ['Character Mentions', 'Mentions Model', 'Share Corrections']
       .map((label) => screen.getAllByText(label)[0]);
     order.slice(1).forEach((el, i) => {
       expect(order[i].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

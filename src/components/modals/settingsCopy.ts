@@ -114,8 +114,8 @@ Pick a suggestion or type your own. A **style** works too, like *formal English*
     description: 'Chooses the model that reads the narration',
   },
   contributeCorrections: {
-    label: 'Contribute Corrections',
-    description: 'Shares corrected passages to improve mentions for everyone. Accepted ones are kept.',
+    label: 'Share Corrections',
+    description: 'Shares corrected passages; accepted ones are kept',
     info: `Your corrections help the model link names and quotes to the right speaker for everyone.
 
 - Each time you make a pick in **Wrong character?**, sends the **whole passage** and your corrections for it
