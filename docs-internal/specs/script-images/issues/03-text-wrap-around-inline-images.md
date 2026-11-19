@@ -1,6 +1,6 @@
 # 03: Text Wrap Around Inline Images
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -16,11 +16,25 @@ A During AI Output image with `wrap: 'left'` or `wrap: 'right'` floats in the na
 
 ## Acceptance criteria
 
-- [ ] A `left` image renders floated left in Pages and Chat layouts, and the next sentence's text sits beside it.
-- [ ] A `right` image renders floated right.
-- [ ] At mobile width, `left` and `right` images render as blocks.
-- [ ] A float on the last sentence does not overlap the turn below it.
-- [ ] The Design System showcase lists the inline image variants.
+- [x] A `left` image renders floated left in Pages and Chat layouts, and the next sentence's text sits beside it. Tests "floats a left image and a right image" and "floats an image inside the turn’s bubble"; showcase DOM read: `float: left`, and the frame shows text beside it.
+- [x] A `right` image renders floated right. Same tests; showcase DOM read: `float: right`.
+- [x] At mobile width, `left` and `right` images render as blocks. Showcase DOM read at 375 px: `float: none` on every variant.
+- [x] A float on the last sentence does not overlap the turn below it. Test "holds a float on the last sentence inside the narration" (`flow-root` parent); layout itself not rendered in a game turn.
+- [x] The Design System showcase lists the inline image variants. Test `InlineScriptImageReference`; nine variants.
 - [ ] Frames of left and right floats at desktop width in light and dark, and of the same turn at mobile width: `.scratch/frames/wrap-left-desktop-light.png`, `.scratch/frames/wrap-right-desktop-dark.png`, `.scratch/frames/wrap-chat-desktop-light.png`, `.scratch/frames/wrap-mobile-light.png`.
 
 For you: approve the float styling in the frames and the showcase as a new visual pattern.
+
+## Landed
+
+**Not verified**
+
+- The four named frames. One frame exists: `.scratch/frames/wrap-left-desktop-dark.jpg`, the showcase in the dark theme. The right, Chat and mobile frames and the light variants were not captured.
+- A float inside a real game turn in Pages or Chat: jsdom has no layout, so the tests check classes and DOM order, and the layout reads come from the showcase only.
+
+**For you**
+
+- Approve the float styling (small 33%, medium 60%, gap 1rem on the text side) in the Design System showcase, under Inline Script Image.
+- Look at a float in a real turn in both layouts, since only the showcase was drawn.
+
+Rulings Q31 (a large float is a block) and Q32 (the `md` breakpoint, CSS only) came from the spec session and are not in `spec.md` yet.

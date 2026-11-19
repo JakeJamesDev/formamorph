@@ -1006,10 +1006,11 @@ placeholders.Route.pin(path);
 - **Every other timing** shows it below the narration, in call order with the messages.
 - **An item script** shows it below the narration when the item changes at the end of the reply, or between turns. An item change that a Tool call makes during the turn runs before the narration, so it shows above.
 - **A World Tool's On Call script** follows when it runs. Called during the turn, before the narration starts, it shows above. A Tool set to run After the AI shows below.
-- **Several images on one sentence** stack in call order.
+- **Several images on one sentence** show in call order. Blocks stack. Two floats on one side sit side by side, and a block after a float sits beside it.
 - **A stopped reply** keeps none of its During AI Output images. **Regenerate** shows the new reply's images in their place.
 - **`size`** is `'small'`, `'medium'` or `'large'`. The default is `'medium'`.
-- **`wrap`** is `'block'`, `'left'` or `'right'`. Above and below the narration, the image is always on its own line.
+- **`wrap`** is `'block'`, `'left'` or `'right'`. `'block'` stands on its own line and breaks the text. `'left'` and `'right'` float the image to that side, and the text after it wraps around it. Above and below the narration, the image is always on its own line.
+- **A `'large'` image is always a block,** since it fills the column. On a narrow screen, every float is a block.
 - **A name with no image fails the script.** So does a sound's name, or a `size` or `wrap` outside its list. A `try` does not stop the failure.
 - **An image removed from the Media List** no longer shows in the turns that showed it.
 

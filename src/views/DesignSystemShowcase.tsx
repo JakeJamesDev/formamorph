@@ -58,6 +58,7 @@ import { FooterActionOrderReference } from '@/components/design-system/FooterAct
 import { NarrationTurnReference } from '@/components/design-system/NarrationTurnReference';
 import { SpeakerQuotesReference } from '@/components/design-system/SpeakerQuotesReference';
 import { MentionCardsReference } from '@/components/design-system/MentionCardsReference';
+import { InlineScriptImageReference } from '@/components/design-system/InlineScriptImageReference';
 import { ScriptPromptLineReference } from '@/components/design-system/ScriptPromptLineReference';
 import { RequestStatusStripReference } from '@/components/design-system/RequestStatusStripReference';
 import { PanelTabStripReference } from '@/components/design-system/PanelTabStripReference';
@@ -460,6 +461,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Inline Prompt Line',
     description: 'A script’s question or message in the turn column',
     Component: ScriptPromptLineReference,
+  },
+  {
+    id: 'inline-script-image',
+    label: 'Inline Script Image',
+    description: 'A shown image in the narration: block, left and right, in three sizes',
+    Component: InlineScriptImageReference,
   },
   {
     id: 'status-strip',

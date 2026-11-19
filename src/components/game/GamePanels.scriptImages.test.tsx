@@ -130,6 +130,61 @@ describe('Script images: During AI Output, Pages', () => {
   });
 });
 
+const floated = (image: string, sentence: number, wrap: 'left' | 'right', size: 'small' | 'medium' | 'large' = 'medium'): ScriptImageTell =>
+  ({ image, size, wrap, sentence, timing: 'output' });
+
+describe('Script images: floats', () => {
+  it('floats a left image and a right image, with the text after each as a sibling run', async () => {
+    renderMiddlePanel({}, { turns: NARRATED, world, seed: (play) => play.setScriptTells({ t2: [floated('m-harbor', 0, 'left'), floated('m-gull', 1, 'right', 'small')] }) });
+    const harbor = (await screen.findByRole('img', { name: 'Harbor' })).closest('figure');
+    const gull = screen.getByRole('img', { name: 'Gull' }).closest('figure');
+    expect(harbor).toHaveAttribute('data-wrap', 'left');
+    expect(harbor).toHaveClass('float-left');
+    expect(gull).toHaveAttribute('data-wrap', 'right');
+    expect(gull).toHaveClass('float-right');
+    expect(inlineOrder(document.body)).toEqual(['Boards creak.', 'image Harbor', 'A gull cries.', 'image Gull', 'Rain starts.']);
+  });
+
+  it('turns a float into a block below the mobile breakpoint', async () => {
+    renderMiddlePanel({}, { turns: NARRATED, world, seed: (play) => play.setScriptTells({ t2: [floated('m-harbor', 0, 'left')] }) });
+    const figure = (await screen.findByRole('img', { name: 'Harbor' })).closest('figure');
+    expect(figure).toHaveClass('max-md:float-none', 'max-md:mx-auto');
+  });
+
+  it('keeps a large image a block even when it asks to float', async () => {
+    renderMiddlePanel({}, { turns: NARRATED, world, seed: (play) => play.setScriptTells({ t2: [floated('m-harbor', 0, 'right', 'large')] }) });
+    const figure = (await screen.findByRole('img', { name: 'Harbor' })).closest('figure');
+    expect(figure).toHaveAttribute('data-wrap', 'block');
+    expect(figure).not.toHaveClass('float-right');
+    // A block makes its own formatting context, so it sits beside an earlier float and never under it.
+    expect(figure).toHaveClass('flow-root');
+  });
+
+  it('holds a float on the last sentence inside the narration, so it never reaches the turn below', async () => {
+    renderMiddlePanel({}, { turns: NARRATED, world, seed: (play) => play.setScriptTells({ t2: [floated('m-harbor', 2, 'left')] }) });
+    const figure = (await screen.findByRole('img', { name: 'Harbor' })).closest('figure');
+    expect(figure?.parentElement).toHaveClass('flow-root');
+    expect(screen.getByTestId('narration').contains(figure)).toBe(true);
+  });
+});
+
+describe('Script images: floats, Chat', () => {
+  let restore: () => void;
+  beforeAll(() => { restore = stubChatLayout(); });
+  afterAll(() => restore());
+
+  it('floats an image inside the turn’s bubble', async () => {
+    renderMiddlePanel({}, {
+      turns: NARRATED, world, settings: (settings) => settings.setNarrationLayout('chat'),
+      seed: (play) => play.setScriptTells({ t2: [floated('m-harbor', 0, 'right')] }),
+    });
+    const turns = await screen.findAllByRole('article');
+    const figure = within(turns[1]).getByRole('img', { name: 'Harbor' }).closest('figure');
+    expect(figure).toHaveClass('float-right');
+    expect(figure?.parentElement).toHaveClass('flow-root');
+  });
+});
+
 describe('Script images: During AI Output, Chat', () => {
   let restore: () => void;
   beforeAll(() => { restore = stubChatLayout(); });

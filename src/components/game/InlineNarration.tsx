@@ -24,7 +24,8 @@ export function InlineNarration({ text, images, shown, renderText }: {
   const entries = new Map(drawn.map(({ image, entry }) => [image, entry]));
   let runs = 0;
   return (
-    <>
+    // flow-root holds a float inside the narration, so the last sentence's image never reaches the turn below.
+    <div className="flow-root">
       {narrationParts(text, drawn.map(({ image }) => image), shown).map((part) => {
         if (part.kind === 'text') {
           const index = runs++;
@@ -32,8 +33,9 @@ export function InlineNarration({ text, images, shown, renderText }: {
         }
         const entry = entries.get(part.image);
         // Keyed by call order, so an image that arrives later never remounts one already shown.
-        return entry && <ScriptImage key={`image:${images.indexOf(part.image)}`} entry={entry} size={part.image.size} className="my-3" />;
+        if (!entry) return null;
+        return <ScriptImage key={`image:${images.indexOf(part.image)}`} entry={entry} size={part.image.size} wrap={part.image.wrap} className="my-3" />;
       })}
-    </>
+    </div>
   );
 }

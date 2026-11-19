@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import { RemoteImg } from '@/lib/useRemoteImage';
-import type { ShowSize } from '@/lib/scriptPrompts';
+import type { ShowSize, ShowWrap } from '@/lib/scriptPrompts';
 import { isImageTell, type ScriptImageTell, type ScriptTell } from '@/lib/scriptTells';
 import { cn } from '@/lib/utils';
 import type { MediaEntry, MediaList } from '@/types';
@@ -23,11 +23,26 @@ export const shownTells = <T extends ScriptTell>(tells: readonly T[], list: Medi
     return entry ? [{ tell, entry }] : [];
   });
 
-/** One image a script showed, centered at its size's width. A click opens it full size (Q10). */
-export function ScriptImage({ entry, size, className }: { entry: MediaEntry; size: ShowSize; className?: string }) {
+/** A float sits on one side with a gap on the text side. Below the mobile breakpoint it is a centered block. */
+const FLOAT: Record<Exclude<ShowWrap, 'block'>, string> = {
+  left: 'float-left mr-4 max-md:float-none max-md:mx-auto',
+  right: 'float-right ml-4 max-md:float-none max-md:mx-auto',
+};
+
+/** The wrap an image renders with: a large image fills the column, so it is a block (Q31). */
+const effectiveWrap = (wrap: ShowWrap, size: ShowSize): ShowWrap => (size === 'large' ? 'block' : wrap);
+
+/** One image a script showed at its size's width: a centered block, or a float the text wraps (Q3). A click opens it full size (Q10). */
+export function ScriptImage({ entry, size, wrap = 'block', className }: { entry: MediaEntry; size: ShowSize; wrap?: ShowWrap; className?: string }) {
   const [zoom, setZoom] = useState(false);
+  const shownWrap = effectiveWrap(wrap, size);
   return (
-    <figure data-testid="script-image" data-size={size} className={cn('mx-auto', SIZE_WIDTH[size], className)}>
+    <figure
+      data-testid="script-image"
+      data-size={size}
+      data-wrap={shownWrap}
+      className={cn(shownWrap === 'block' ? 'mx-auto flow-root' : FLOAT[shownWrap], SIZE_WIDTH[size], className)}
+    >
       <button
         type="button"
         aria-label="Zoom image"
