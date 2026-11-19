@@ -120,7 +120,9 @@ import { useStatPanelEntity, type StatPanelOwner } from './useStatPanelEntity';
 
 import { parseSavedReasoning } from '@/lib/savedReasoning';
 import { scriptPrompts } from '@/lib/scriptPrompts';
-import { placeTells, turnTells } from '@/lib/scriptTells';
+import { liveTurnTells, NO_SHOWS, placeTells, type ScriptImageTell } from '@/lib/scriptTells';
+import { shownSentences } from '@/lib/inlineImages';
+import { InlineNarration } from './InlineNarration';
 import { ScriptImagesAbove, ScriptPromptLine, ScriptTellLines } from './ScriptPromptLine';
 import { shownTells } from './ScriptImage';
 import { useMediaList } from '@/lib/useMediaList';
@@ -581,6 +583,7 @@ export const MiddlePanel = ({
   sceneTags,
   sceneTurnId,
   liveTurnId,
+  liveShows = NO_SHOWS,
   speakerColors,
   liveQuotes = null,
   sceneImageJob,
@@ -644,6 +647,8 @@ export const MiddlePanel = ({
   sceneTurnId?: string;
   /** The sent turn's id while it runs, before its narration is in the history. */
   liveTurnId?: string;
+  /** The running reply's During AI Output images, until the reply lands. */
+  liveShows?: readonly ScriptImageTell[];
   /** Each cast entity's quote color, by id. */
   speakerColors: SpeakerColors;
   /** The live turn's quotes read while it streams (Q72); null with none. */
@@ -876,7 +881,7 @@ export const MiddlePanel = ({
   const pageChromeHeld = pageLive && !narrationSettled;
   // The latest page's sent turn has no id in the history until its narration lands.
   const mediaList = useMediaList();
-  const pageTells = placeTells(turnTells(scriptTells, sceneTurnId ?? (isViewingPast ? undefined : liveTurnId)));
+  const pageTells = placeTells(liveTurnTells(scriptTells, sceneTurnId ?? (isViewingPast ? undefined : liveTurnId), liveTurnId, liveShows));
   // The turn is live from submit, before its narration exists, until the reveal ends.
   const actionLineActions = actionLine === undefined ? [] : playerActionsFor({
     index: currentPage - 1, live: !isViewingPast && (pageLive || (isWaitingForAI && !currentAssistantMessage)), text: actionLine,
@@ -1064,6 +1069,7 @@ export const MiddlePanel = ({
               <ChatNarration
                 parseAssistantMessage={parseAssistantMessage}
                 liveTurnId={liveTurnId}
+                liveShows={liveShows}
                 speakerColors={speakerColors}
                 liveQuotes={liveQuotes}
                 actionsFor={actionsFor}
@@ -1126,16 +1132,24 @@ export const MiddlePanel = ({
                   <div ref={narrationRef} data-testid="narration">
                     {/* Streamdown memoizes on source position, not text, so committed text keys by its content. */}
                     <MentionTurn turnId={sceneTurnId}>
-                      <MarkdownRenderer
-                        key={pageLive ? 'live' : `committed:${pageNarration}`}
+                      <InlineNarration
                         text={pageNarration}
-                        animate={pageLive && revealOn}
-                        resume={pagedAway}
-                        fitShown
-                        animation={revealAnim}
-                        easing={revealEasing}
-                        dialogue
-                        {...pageTriggers}
+                        images={pageTells.inline}
+                        shown={shownSentences(pageNarration, pageLive, revealOn)}
+                        renderText={(text, index) => (
+                          <MarkdownRenderer
+                            key={pageLive ? 'live' : `committed:${pageNarration}`}
+                            text={text}
+                            animate={pageLive && revealOn}
+                            // A run cut from the live text has shown its words already.
+                            resume={index > 0 || pagedAway}
+                            fitShown
+                            animation={revealAnim}
+                            easing={revealEasing}
+                            dialogue
+                            {...pageTriggers}
+                          />
+                        )}
                       />
                     </MentionTurn>
                   </div>

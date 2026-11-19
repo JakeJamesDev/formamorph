@@ -2745,12 +2745,40 @@ function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: str
   };
 }
 
-/** The `player` object of a During AI Output run: every call throws, since a sentence cannot wait on a dialog. */
-const PLAYER_CALLS = ['tell', 'toast', 'show', 'confirm', 'ask', 'input'] as const;
+/** `player.show` over `send`, which takes its checked request. A bad name or option fails the run (Q19). */
+const SHOW_CALL = [
+  `((send, stringify, isArray, media) => {`,
+  `  const choice = (opts, key, allowed, fallback) => {`,
+  `    const value = opts[key] === undefined ? fallback : opts[key];`,
+  `    if (!allowed.includes(value)) media.fail('player.show ' + key + ' must be ' + allowed.map((one) => '"' + one + '"').join(', ') + ', not ' + stringify(value));`,
+  `    return value;`,
+  `  };`,
+  `  return (name, opts) => {`,
+  `    if (typeof name !== 'string') throw new TypeError('player.show needs an image name as text');`,
+  `    if (opts !== undefined && (opts === null || typeof opts !== 'object' || isArray(opts))) throw new TypeError('player.show options must be an object');`,
+  `    const set = opts || {};`,
+  `    const mediaId = media.image(name);`,
+  `    const size = choice(set, 'size', ${JSON.stringify(SHOW_SIZES)}, 'medium');`,
+  `    send({ kind: 'show', name, mediaId, size, wrap: choice(set, 'wrap', ${JSON.stringify(SHOW_WRAPS)}, 'block') });`,
+  `  };`,
+  `})`,
+].join('\n');
+
+// The host function a During AI Output `player.show` reports to, with its request as JSON. It answers nothing.
+const SHOW_HOOK = '__formamorphShow';
+
+/** The `player` object of a During AI Output run: `show` reports at once, and every other call throws, since a
+ *  sentence cannot wait on a dialog (Q5). */
 const OUTPUT_PLAYER = [
-  `const player = Object.freeze(Object.fromEntries(${JSON.stringify(PLAYER_CALLS)}.map((call) => [call, () => {`,
-  `  throw new Error('player.' + call + " can't run in ${SCRIPT_TIMING_LABEL.output}");`,
-  `}])));`,
+  `const player = ((report, stringify, isArray, media) => {`,
+  `  const refuse = (call) => () => { throw new Error('player.' + call + " can't run in ${SCRIPT_TIMING_LABEL.output}"); };`,
+  `  return Object.freeze({`,
+  `    tell: refuse('tell'), toast: refuse('toast'),`,
+  `    show: ${SHOW_CALL}((request) => { report(stringify(request)); }, stringify, isArray, media),`,
+  `    confirm: refuse('confirm'), ask: refuse('ask'), input: refuse('input'),`,
+  `  });`,
+  `})(globalThis.${SHOW_HOOK}, JSON.stringify, Array.isArray, ${MEDIA});`,
+  `delete globalThis.${SHOW_HOOK};`,
 ].join('\n');
 
 // The host function `player.*` calls with a request as JSON; it answers with the answer as JSON, or throws.
@@ -2763,11 +2791,6 @@ const PROMPT_HOOK = '__formamorphPrompt';
 const PLAYER_PRELUDE = [
   `const player = ((prompt, stringify, parse, isArray, media) => {`,
   `  const call = (request) => parse(prompt(stringify(request)));`,
-  `  const choice = (opts, key, allowed, fallback) => {`,
-  `    const value = opts[key] === undefined ? fallback : opts[key];`,
-  `    if (!allowed.includes(value)) media.fail('player.show ' + key + ' must be ' + allowed.map((one) => '"' + one + '"').join(', ') + ', not ' + stringify(value));`,
-  `    return value;`,
-  `  };`,
   `  const text = (name, what, value) => {`,
   `    if (typeof value !== 'string') throw new TypeError('player.' + name + ' needs ' + what + ' as text');`,
   `    return value;`,
@@ -2780,14 +2803,7 @@ const PLAYER_PRELUDE = [
   `  return Object.freeze({`,
   `    tell: (message) => { call({ kind: 'tell', text: text('tell', 'a message', message) }); },`,
   `    toast: (message) => { call({ kind: 'toast', text: text('toast', 'a message', message) }); },`,
-  `    show: (name, opts) => {`,
-  `      const shown = text('show', 'an image name', name);`,
-  `      if (opts !== undefined && (opts === null || typeof opts !== 'object' || isArray(opts))) throw new TypeError('player.show options must be an object');`,
-  `      const set = opts || {};`,
-  `      const mediaId = media.image(shown);`,
-  `      const size = choice(set, 'size', ${JSON.stringify(SHOW_SIZES)}, 'medium');`,
-  `      call({ kind: 'show', name: shown, mediaId, size, wrap: choice(set, 'wrap', ${JSON.stringify(SHOW_WRAPS)}, 'block') });`,
-  `    },`,
+  `    show: ${SHOW_CALL}((request) => { call(request); }, stringify, isArray, media),`,
   `    confirm: (question) => call({ kind: 'confirm', question: text('confirm', 'a question', question) }),`,
   `    ask: (question, options, settings) => {`,
   `      const list = isArray(options) ? options.map(option) : [];`,
@@ -2904,6 +2920,13 @@ export const executeStatCode = async (
       [ROLL_HOOK]: (vm, indexHandle) => vm.newString(placeholderMap.nodes[vm.getNumber(indexHandle)]?.entry?.roll() ?? ''),
       [HOST_READ_HOOK]: (vm, slotHandle) => vm.newString(reads.answer(vm.getNumber(slotHandle))),
       [MONEY_HOOK]: (vm, callHandle) => vm.newString(answerMoney(money, vm.getString(callHandle), readOnly, ownWritesOf)),
+      // A During AI Output show waits on nothing, so the sync engine hands it to the host and runs on.
+      ...(narration ? {
+        [SHOW_HOOK]: (vm, requestHandle) => {
+          void prompts.prompt(JSON.parse(vm.getString(requestHandle)) as ScriptPromptRequest);
+          return undefined;
+        },
+      } : {}),
       ...(engine === 'sync' ? {} : {
         [PROMPT_HOOK]: async (vm, requestHandle) => {
           // The prelude built the request from checked arguments, so it is one of the kinds.

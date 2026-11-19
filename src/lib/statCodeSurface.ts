@@ -556,14 +556,17 @@ export const NARRATION_GLOBAL: SurfaceEntry = {
   info: 'The narration around the completed sentence this script runs on. Assign narration.sentence to overwrite the sentence.',
 };
 
+/** `player.show`, the one call a During AI Output script can make. */
+const SHOW_CALL_ENTRY: SurfaceEntry = {
+  name: 'show', detail: "(name, { size, wrap }?) => void",
+  info: 'Shows a Media List image in the story. Before the AI and At Game Start put it above the narration. After the AI puts it below, and During AI Output after the sentence. Size is small, medium or large. It persists with the turn, and the AI never gets it.',
+};
+
 /** The calls on `player`, in the order the guide lists them. */
 export const PLAYER_CALL_ENTRIES: readonly SurfaceEntry[] = [
   { name: 'tell', detail: '(text) => void', info: 'Shows the player a message under the narration. It persists with the turn, and the AI never gets it.' },
   { name: 'toast', detail: '(text) => void', info: 'Shows the player a toast. It isn’t saved.' },
-  {
-    name: 'show', detail: "(name, { size, wrap }?) => void",
-    info: 'Shows a Media List image in the story. Before the AI and At Game Start put it above the narration, and After the AI below it. Size is small, medium or large. It persists with the turn, and the AI never gets it.',
-  },
+  SHOW_CALL_ENTRY,
   { name: 'confirm', detail: '(question) => boolean', info: 'Asks a yes or no question and waits for the answer' },
   { name: 'ask', detail: '(question, options, { multiple }?) => any', info: 'Asks the player to pick from text or { label, value } options, and waits. The result is the value picked, or a list with multiple.' },
   { name: 'input', detail: '(question, placeholder?) => string', info: 'Asks the player for typed text and waits for the answer' },
@@ -573,6 +576,14 @@ export const PLAYER_CALL_ENTRIES: readonly SurfaceEntry[] = [
 export const PLAYER_GLOBAL: SurfaceEntry = {
   name: 'player', detail: shapeOf(PLAYER_CALL_ENTRIES),
   info: 'The human playing, not the entity they play. Tell or ask them through its calls. A call that asks waits for the answer, with no await.',
+};
+
+const OUTPUT_PLAYER_CALLS: readonly SurfaceEntry[] = [SHOW_CALL_ENTRY];
+
+/** `player` in a During AI Output script: a sentence can't wait on the player, so only `show` runs (Q5). */
+export const OUTPUT_PLAYER_GLOBAL: SurfaceEntry = {
+  name: 'player', detail: shapeOf(OUTPUT_PLAYER_CALLS),
+  info: 'The human playing. In During AI Output, only player.show runs: the other calls can’t run while the narration streams.',
 };
 
 /** The `args` fields an item event records, by name. The surface lists only the fields named here. */
@@ -621,16 +632,23 @@ export const INSTANCE_GLOBAL: SurfaceEntry = {
   info: 'The Item Instance the event happened to. Once it’s gone, it holds its fields from before the event.',
 };
 
-/** The object a timing hands its script, with its members: `narration` in During AI Output, `player` elsewhere. */
-const timingObject = (timing: ScriptTiming) => (timing === 'output'
-  ? { global: NARRATION_GLOBAL, members: NARRATION_FIELDS }
-  : { global: PLAYER_GLOBAL, members: PLAYER_CALL_ENTRIES });
+/** The calls of a surface's `player` when its timing holds only some of them; undefined for the full `player`. */
+export const partialPlayerCalls = (surface: CodeSurface): readonly SurfaceEntry[] | undefined => {
+  const calls = surface.members.get('player');
+  return calls && calls !== PLAYER_CALL_ENTRIES ? calls : undefined;
+};
 
-/** A script box's surface: its home's, with the names its timing adds. `narration` is During AI Output's, and
- *  `player` is every other timing's. `trait` is When a Trait Switches's. After the AI's `turn.choices` takes a write.
+/** The objects a timing hands its script, with their members: `narration` and a `player` with `show` alone in
+ *  During AI Output, the full `player` elsewhere. */
+const timingObjects = (timing: ScriptTiming): { global: SurfaceEntry; members: readonly SurfaceEntry[] }[] => (timing === 'output'
+  ? [{ global: NARRATION_GLOBAL, members: NARRATION_FIELDS }, { global: OUTPUT_PLAYER_GLOBAL, members: OUTPUT_PLAYER_CALLS }]
+  : [{ global: PLAYER_GLOBAL, members: PLAYER_CALL_ENTRIES }]);
+
+/** A script box's surface: its home's, with the names its timing adds. `narration` is During AI Output's, with a
+ *  `player` that holds `show` alone; every other timing gets the full `player`. `trait` is When a Trait Switches's. After the AI's `turn.choices` takes a write.
  *  `args` lists the timing's own fields, and an item timing adds `instance`. */
 export const scriptSurface = (surface: CodeSurface, timing: ScriptTiming): CodeSurface => {
-  const { global, members } = timingObject(timing);
+  const objects = timingObjects(timing);
   const item = isItemTiming(timing);
   const switched = timing === 'switch';
   const args = item ? itemArgsMembers(timing) : switched ? SWITCH_ARGS_MEMBERS : [];
@@ -638,12 +656,12 @@ export const scriptSurface = (surface: CodeSurface, timing: ScriptTiming): CodeS
   return {
     ...surface,
     globals: [
-      ...surface.globals, global, ...(switched ? [SWITCHED_TRAIT_GLOBAL] : []),
+      ...surface.globals, ...objects.map(({ global }) => global), ...(switched ? [SWITCHED_TRAIT_GLOBAL] : []),
       { ...argsGlobal, detail: args.length ? shapeOf(args) : '{}' },
       ...(item ? [INSTANCE_GLOBAL] : []),
     ],
     members: new Map([
-      ...surface.members, [global.name, members], ['args', args],
+      ...surface.members, ...objects.map(({ global, members }) => [global.name, members] as const), ['args', args],
       ...(item ? [['instance', ITEM_INSTANCE_FIELDS] as const] : []),
       ...(timing === 'after' ? [['turn', AFTER_TURN_MEMBERS] as const] : []),
     ]),

@@ -25,7 +25,9 @@ import { TurnCard } from './TurnCard';
 import { ScenePlate } from './ScenePlate';
 import { AttachmentThumbs } from './AttachmentThumbs';
 import { turnAttachments } from '@/lib/actionAttachments';
-import { placeTells, turnTells } from '@/lib/scriptTells';
+import { liveTurnTells, NO_SHOWS, placeTells, type ScriptImageTell } from '@/lib/scriptTells';
+import { shownSentences } from '@/lib/inlineImages';
+import { InlineNarration } from './InlineNarration';
 import { ScriptImagesAbove, ScriptTellLines } from './ScriptPromptLine';
 import type { BubbleAction } from '@/lib/bubbleActions';
 import type { ChatMessage } from '@/types';
@@ -84,10 +86,12 @@ export const PLAYER_ACTION_BUBBLE = 'ml-auto w-fit max-w-[85%] rounded-2xl round
  * right and the narration as a full-width block. Opens at the latest turn. `latestFooter` renders under the
  * latest turn's narration.
  */
-export function ChatNarration({ parseAssistantMessage, liveTurnId, speakerColors, liveQuotes = null, latestFooter, actionsFor, playerActionsFor, onDeleteSceneImage, fadeUnderStrip = false }: {
+export function ChatNarration({ parseAssistantMessage, liveTurnId, liveShows = NO_SHOWS, speakerColors, liveQuotes = null, latestFooter, actionsFor, playerActionsFor, onDeleteSceneImage, fadeUnderStrip = false }: {
   parseAssistantMessage: (content: string) => string;
   /** The sent turn's id while it runs, before its narration is in the history. */
   liveTurnId?: string;
+  /** The running reply's During AI Output images, until the reply lands. */
+  liveShows?: readonly ScriptImageTell[];
   /** Each cast entity's quote color, by id. */
   speakerColors: SpeakerColors;
   /** The live turn's quotes read while it streams (Q72). */
@@ -200,7 +204,8 @@ export function ChatNarration({ parseAssistantMessage, liveTurnId, speakerColors
             const reasoning = reasoningLive ? liveReasoning : turn.reasoning;
             const narrationText = liveReveal ? gameplayText : turn.narration ? parseAssistantMessage(turn.narration.content) : '';
             const { turnId } = turn;
-            const tells = placeTells(turnTells(scriptTells, turnId ?? (isLatest ? liveTurnId : undefined)));
+            const triggers = turnCardTriggers(liveReveal, characterMentions, correctedReadings, speakerColors, turnId, narrationText, isLatest ? liveQuotes : null);
+            const tells = placeTells(liveTurnTells(scriptTells, turnId ?? (isLatest ? liveTurnId : undefined), liveTurnId, liveShows));
             const images = (!liveReveal && turnId && sceneImages[turnId]) || [];
             // The card holds its actions while live, so its row can open in place once the narration settles.
             const narrationActions = (turn.narration && actionsFor?.({
@@ -246,15 +251,24 @@ export function ChatNarration({ parseAssistantMessage, liveTurnId, speakerColors
                       <div data-testid="narration">
                         {/* Streamdown memoizes on source position, not text, so committed text keys by its content. */}
                         <MentionTurn turnId={turnId}>
-                          <MarkdownRenderer
-                            key={liveReveal ? 'live' : `committed:${narrationText}`}
+                          <InlineNarration
                             text={narrationText}
-                            animate={liveReveal && revealOn}
-                            fitShown
-                            animation={revealAnim}
-                            easing={revealEasing}
-                            dialogue
-                            {...turnCardTriggers(liveReveal, characterMentions, correctedReadings, speakerColors, turnId, narrationText, isLatest ? liveQuotes : null)}
+                            images={tells.inline}
+                            shown={shownSentences(narrationText, liveReveal, revealOn)}
+                            renderText={(text, index) => (
+                              <MarkdownRenderer
+                                key={liveReveal ? 'live' : `committed:${narrationText}`}
+                                text={text}
+                                animate={liveReveal && revealOn}
+                                // A run cut from the live text has shown its words already.
+                                resume={index > 0}
+                                fitShown
+                                animation={revealAnim}
+                                easing={revealEasing}
+                                dialogue
+                                {...triggers}
+                              />
+                            )}
                           />
                         </MentionTurn>
                       </div>

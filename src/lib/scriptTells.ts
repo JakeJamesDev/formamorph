@@ -38,9 +38,18 @@ const ABOVE_TIMINGS: readonly ScriptTiming[] = ['start', 'before'];
 
 const NO_TELLS: readonly ScriptTell[] = [];
 
+/** No During AI Output images, as one shared value. */
+export const NO_SHOWS: readonly ScriptImageTell[] = [];
+
 /** A turn's tells, in call order. */
 export const turnTells = (map: TellMap, turnId: string | undefined): readonly ScriptTell[] =>
   (turnId && map[turnId]) || NO_TELLS;
+
+/** A turn's tells, with the running reply's During AI Output images after them while the turn is the live one.
+ *  Those images join the saved list only when the reply lands (Q4). */
+export const liveTurnTells = (
+  map: TellMap, turnId: string | undefined, liveTurnId: string | undefined, liveShows: readonly ScriptImageTell[],
+): readonly ScriptTell[] => (turnId && turnId === liveTurnId && liveShows.length ? [...turnTells(map, turnId), ...liveShows] : turnTells(map, turnId));
 
 /** Where a turn's tells render: images above the narration, images inside it, and the rest below in call order. */
 export interface TellPlacement {

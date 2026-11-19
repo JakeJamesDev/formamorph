@@ -36,7 +36,7 @@ A timing adds names to those objects. A script reads only the names its own timi
 | Name | Timing | Members | Read | Write |
 | --- | --- | --- | --- | --- |
 | **`narration`** | During AI Output only | `sentence`, `sent`, `buffered`, `full`, `index` | `narration.sentence` | `narration.sentence = <text>` |
-| **`player`** | Every timing but During AI Output | `tell()`, `toast()`, `show()`, `confirm()`, `ask()`, `input()` | `player.confirm(<text>)` | Calls, not writes |
+| **`player`** | Every timing. During AI Output has `show()` only | `tell()`, `toast()`, `show()`, `confirm()`, `ask()`, `input()` | `player.confirm(<text>)` | Calls, not writes |
 | **`trait`** | When a Trait Switches only | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle`, `owner` | `trait.enabled` | Read-only |
 | **`instance`** | The five item timings only | `id`, `item`, `owner`, `location`, `quantity`, `equipped`, `slot`, `hidden`, `unidentified`, `uses`, `state`, `image`, `lose()`, `moveTo()`, `equip()`, `unequip()`, `use()`, `reveal()`, `setUses()`, `setState()` | `instance.quantity` | Verbs, and an image name |
 
@@ -52,7 +52,8 @@ Follow these rules:
 - **Another entity's stats are under `entities.<Entity>.stats`.** The played persona's are under `persona.stats`.
 - **"After N days" is `clock.day > <n>`.** `clock.day` starts at 1. For timing in hours, use `clock.elapsedHours`. The time of day is `clock.daypart`.
 - **`self` and every `stats` entry take writes to `value`, `min`, `max`, `regen` and `hidden`.** So does every stat entry under `owner.stats`, `entities.<Entity>.stats` and `persona.stats`. Their other fields are read-only.
-- **A name that its timing does not add is unknown.** The editor underlines `narration` in a Before the AI script, and `player` in a During AI Output script, as errors. A `narration` read fails the run with "not defined". A `player` call in During AI Output throws "can't run in During AI Output".
+- **A name that its timing does not add is unknown.** The editor underlines `narration` in a Before the AI script as an error. A `narration` read fails the run with "not defined".
+- **During AI Output can only show an image.** The editor underlines `player.tell`, `toast`, `confirm`, `ask` and `input` there. Each one throws "can't run in During AI Output".
 
 ## Writing Scripts
 
@@ -976,7 +977,7 @@ narration.sentence = narration.sentence.replace('door', '[door](https://example.
 <!-- keywords: ask the player, tell the player, toast, show an image, picture in the story, image in the narration, confirm, ask, input, prompt, dialog, choice, pick one, pick several, multiple, text field, question, answer, wait for the player, await, canceled prompt, player is not defined, message that stays in history -->
 <!-- route: worldEditorStat.code -->
 
-`player` is the human who plays, not the entity they play. `persona` is that entity. `player` has six calls. It exists in every timing except **During AI Output**, where a call fails the script.
+`player` is the human who plays, not the entity they play. `persona` is that entity. `player` has six calls. In **During AI Output**, only `player.show` runs. Any other call fails the script, since a sentence can't wait for the player.
 
 | Call | Returns | Shows |
 | --- | --- | --- |
@@ -1001,7 +1002,10 @@ placeholders.Route.pin(path);
 `player.show` places the image by its timing:
 
 - **At Game Start and Before the AI** show it above the turn's narration, while the reply loads.
+- **During AI Output** shows it right after the sentence that just completed. It appears when the reveal reaches that sentence. A sentence inside a quote holds the image until the quote ends.
 - **Every other timing** shows it below the narration, in call order with the messages.
+- **Several images on one sentence** stack in call order.
+- **A stopped reply** keeps none of its During AI Output images. **Regenerate** shows the new reply's images in their place.
 - **`size`** is `'small'`, `'medium'` or `'large'`. The default is `'medium'`.
 - **`wrap`** is `'block'`, `'left'` or `'right'`. Above and below the narration, the image is always on its own line.
 - **A name with no image fails the script.** So does a sound's name, or a `size` or `wrap` outside its list. A `try` does not stop the failure.

@@ -2,6 +2,8 @@ import type { PlayerStat } from '@/types';
 import type { NarrationListener } from './aiRequest/narrationStream';
 import type { SentenceRewrite } from './aiRequest/narrationRewrite';
 import { filledScriptsAt } from './scripts';
+import { noticeHost, silentPrompts } from './scriptPrompts';
+import type { ScriptImageTell } from './scriptTells';
 import {
   afterRun, chainedResult, runStatCodeTurn, timingStartOf, withSwitchRuns, type ScriptTrigger, type StatCodeTurn, type StatCodeTurnResult,
 } from './statCodeTurn';
@@ -24,6 +26,8 @@ export interface OutputRun {
   landing: () => Promise<StatCodeTurnResult | null>;
   /** An On Call run landed during the reply: later sentences and the landing read what it left. */
   onCallLanded: (result: StatCodeTurnResult) => void;
+  /** The images the reply's sentences showed so far, in call order, each anchored to its sentence. */
+  shows: () => readonly ScriptImageTell[];
 }
 
 /** Whether any script of the timing has code to run: the world's, or an enabled stat's of any owner. */
@@ -40,11 +44,13 @@ export interface OutputRunOptions {
   released?: () => number;
   /** The turn's armed output triggers, read at each sentence. Present ⇒ the run opens with no output script. */
   triggers?: () => readonly ScriptTrigger[];
+  /** Hears the shown images whenever they change: a sentence showed one, or a retract dropped them (Q24). */
+  onShows?: (shows: readonly ScriptImageTell[]) => void;
 }
 
 /** The run of one reply's sentences over `turn`; null when the turn has no output script and no trigger source. */
 export function openOutputRun(
-  turn: StatCodeTurn, { released = () => Number.POSITIVE_INFINITY, triggers }: OutputRunOptions = {},
+  turn: StatCodeTurn, { released = () => Number.POSITIVE_INFINITY, triggers, onShows }: OutputRunOptions = {},
 ): OutputRun | null {
   if (!triggers && !hasOutputScripts(turn)) return null;
   let start = turn;
@@ -52,6 +58,7 @@ export function openOutputRun(
   // The timing begins at the reply's first sentence, so every sentence's `previous` reads it (Q27).
   const began = timingStartOf(turn.state);
   const steps: StatCodeTurnResult[] = [];
+  let shows: readonly ScriptImageTell[] = [];
   // Bumped on a retract, so a sentence run that was in progress then leaves no write.
   let round = 0;
 
@@ -60,14 +67,29 @@ export function openOutputRun(
     round += 1;
     now = start;
     steps.length = 0;
+    if (shows.length) {
+      shows = [];
+      onShows?.(shows);
+    }
   };
 
   const rewrite: SentenceRewrite = async (sentence, { index, full, earlier }) => {
     const mine = round;
     const shown = Math.min(released(), earlier.length);
     const narration = { sentence, full, index, sent: earlier.slice(0, shown), buffered: earlier.slice(shown) };
-    const step = await runStatCodeTurn({ ...now, timing: 'output', narration, triggers: triggers?.(), timingStart: began });
+    // A show keeps its image when its script later fails, as a tell does (Q25).
+    const showed: ScriptImageTell[] = [];
+    const prompts = noticeHost(silentPrompts, {
+      onTell: () => {},
+      onToast: () => {},
+      onShow: ({ mediaId, size, wrap }) => { showed.push({ image: mediaId, size, wrap, sentence: index, timing: 'output' }); },
+    });
+    const step = await runStatCodeTurn({ ...now, timing: 'output', narration, triggers: triggers?.(), timingStart: began, prompts });
     if (mine !== round) return sentence;
+    if (showed.length) {
+      shows = [...shows, ...showed];
+      onShows?.(shows);
+    }
     steps.push(step);
     now = afterRun(now, step);
     return step.sentence ?? sentence;
@@ -83,5 +105,5 @@ export function openOutputRun(
     now = afterRun(now, landed);
   };
 
-  return { rewrite, listener, result, landing, onCallLanded };
+  return { rewrite, listener, result, landing, onCallLanded, shows: () => shows };
 }

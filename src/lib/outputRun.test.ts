@@ -190,6 +190,51 @@ describe('openOutputRun', () => {
   });
 });
 
+describe('an output run’s shown images', () => {
+  beforeEach(() => { vi.spyOn(console, 'error').mockImplementation(() => {}); });
+  afterEach(() => vi.restoreAllMocks());
+
+  const health = stat({ id: 'h', name: 'Health', value: 10 });
+  const media = {
+    entries: [{ id: 'm-harbor', name: 'Harbor', kind: 'image' as const }, { id: 'm-gull', name: 'Gull', kind: 'image' as const }],
+    overrides: {}, defaults: () => ({}),
+  };
+  // Shows the harbor on the second sentence, and the gull after it, small.
+  const showing = 'if (narration.index === 1) { player.show("Harbor"); player.show("Gull", { size: "small" }); }';
+
+  it('anchors each image to its sentence, in call order, and tells the listener', async () => {
+    const heard: unknown[] = [];
+    const run = openOutputRun(turn({ stats: [health], worldScripts: [script(showing)], media }), { onShows: (shows) => heard.push(shows) })!;
+    await play(run, ['One.', 'Two.', 'Three.']);
+    const expected = [
+      { image: 'm-harbor', size: 'medium', wrap: 'block', sentence: 1, timing: 'output' },
+      { image: 'm-gull', size: 'small', wrap: 'block', sentence: 1, timing: 'output' },
+    ];
+    expect(run.shows()).toEqual(expected);
+    expect(heard).toEqual([expected]);
+  });
+
+  it('keeps the image when its script fails after the call, and drops the writes (Q25)', async () => {
+    const run = openOutputRun(turn({ stats: [health], worldScripts: [script('player.show("Harbor"); stats.Health.value += 1; throw new Error("no");')], media }))!;
+    await play(run, ['One.']);
+    expect(run.shows()).toEqual([{ image: 'm-harbor', size: 'medium', wrap: 'block', sentence: 0, timing: 'output' }]);
+    expect(valueOf(run.result()!.stats, 'h')).toBe(10);
+  });
+
+  it('drops the images on a retract, a run still in progress included (Q24)', async () => {
+    const heard: unknown[] = [];
+    const run = openOutputRun(turn({ stats: [health], worldScripts: [script('player.show("Harbor");')], media }), { onShows: (shows) => heard.push(shows) })!;
+    await play(run, ['One.']);
+    const late = run.rewrite('Two.', { index: 1, full: 'One. Two.', earlier: ['One.'] });
+    run.listener({ type: 'retract', hadPartial: true });
+    await late;
+    expect(run.shows()).toEqual([]);
+    expect(heard.at(-1)).toEqual([]);
+    await play(run, ['Again.']);
+    expect(run.shows()).toEqual([{ image: 'm-harbor', size: 'medium', wrap: 'block', sentence: 0, timing: 'output' }]);
+  });
+});
+
 describe('an output run through a narration round that ends in Tool calls', () => {
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {});

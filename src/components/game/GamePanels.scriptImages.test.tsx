@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
+import { setGameplayText } from '@/lib/gameplayTextStore';
 import { renderMiddlePanel, stubChatLayout, worldFixture, type Settings, type TurnFixture } from '@/test/gamePanels';
-import type { ScriptTell } from '@/lib/scriptTells';
+import type { ScriptImageTell, ScriptTell } from '@/lib/scriptTells';
 import type { MediaList } from '@/types';
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -80,5 +81,67 @@ describe('Script images: Chat', () => {
     });
     const turns = await screen.findAllByRole('article');
     expect(within(turns[1]).getByRole('img', { name: 'Harbor' })).toBeInTheDocument();
+  });
+});
+
+/** During AI Output images land inside the narration, after their anchor sentence. */
+
+const NARRATED: TurnFixture[] = [
+  { action: 'START GAME', narration: 'The ferry bumps the dock.', turnId: 't1' },
+  { action: 'I step onto the pier.', narration: 'Boards creak. A gull cries. Rain starts.', turnId: 't2' },
+];
+
+const inline = (image: string, sentence: number): ScriptImageTell => ({ image, size: 'medium', wrap: 'block', sentence, timing: 'output' });
+
+/** The narration's paragraphs and images, in document order. */
+function inlineOrder(scope: HTMLElement): string[] {
+  const narration = within(scope).getByTestId('narration');
+  return [...narration.querySelectorAll('p, img')].map((node) => (node instanceof HTMLImageElement ? `image ${node.alt}` : node.textContent ?? ''));
+}
+
+describe('Script images: During AI Output, Pages', () => {
+  it('puts an image after its sentence and before the next', async () => {
+    renderMiddlePanel({}, { turns: NARRATED, world, seed: (play) => play.setScriptTells({ t2: [inline('m-harbor', 1)] }) });
+    await screen.findByRole('img', { name: 'Harbor' });
+    expect(inlineOrder(document.body)).toEqual(['Boards creak. A gull cries.', 'image Harbor', 'Rain starts.']);
+  });
+
+  it('stacks two images on one sentence in call order', async () => {
+    renderMiddlePanel({}, { turns: NARRATED, world, seed: (play) => play.setScriptTells({ t2: [inline('m-gull', 0), inline('m-harbor', 0)] }) });
+    await screen.findByRole('img', { name: 'Harbor' });
+    expect(inlineOrder(document.body)).toEqual(['Boards creak.', 'image Gull', 'image Harbor', 'A gull cries. Rain starts.']);
+  });
+
+  it('cuts nothing for an image no longer on the Media List', async () => {
+    renderMiddlePanel({}, { turns: NARRATED, world, seed: (play) => play.setScriptTells({ t2: [inline('m-gone', 0)] }) });
+    await screen.findByText('Boards creak. A gull cries. Rain starts.');
+    expect(screen.queryByTestId('script-image')).toBeNull();
+  });
+
+  it('keeps a live image out of the DOM until the reveal releases its sentence', async () => {
+    renderMiddlePanel({ liveTurnId: 't2', liveShows: [inline('m-harbor', 1)] }, {
+      turns: NARRATED, world,
+      seed: (play) => { play.setIsRevealingNarration(true); setGameplayText('Boards creak.'); },
+    });
+    await waitFor(() => expect(screen.getByTestId('narration').textContent).toBe('Boards creak.'));
+    expect(screen.queryByRole('img', { name: 'Harbor' })).toBeNull();
+    act(() => setGameplayText('Boards creak. A gull cries. Rain'));
+    expect(await screen.findByRole('img', { name: 'Harbor' })).toBeInTheDocument();
+  });
+});
+
+describe('Script images: During AI Output, Chat', () => {
+  let restore: () => void;
+  beforeAll(() => { restore = stubChatLayout(); });
+  afterAll(() => restore());
+
+  it('puts an image after its sentence inside that turn’s bubble', async () => {
+    renderMiddlePanel({}, {
+      turns: NARRATED, world, settings: (settings) => settings.setNarrationLayout('chat'),
+      seed: (play) => play.setScriptTells({ t2: [inline('m-harbor', 1)] }),
+    });
+    const turns = await screen.findAllByRole('article');
+    expect(inlineOrder(turns[1])).toEqual(['Boards creak. A gull cries.', 'image Harbor', 'Rain starts.']);
+    expect(inlineOrder(turns[0])).toEqual(['The ferry bumps the dock.']);
   });
 });

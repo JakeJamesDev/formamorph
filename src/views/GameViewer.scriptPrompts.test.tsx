@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
-import { sseResponse, sseReply } from '@/test/aiTextFixtures';
+import { openSseReply, sseFrame, sseResponse, sseReply } from '@/test/aiTextFixtures';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { scriptPrompts } from '@/lib/scriptPrompts';
 import type { PlayerStat, Script, World } from '@/types';
@@ -195,6 +195,51 @@ describe('script images in play', () => {
     await settled();
     expect(order()).toEqual(['image Harbor', 'The harbor is quiet.', 'image Gull', 'The gull leaves.']);
     expect(Object.values(live().scriptTells)).toEqual([[harbor, gull, caption]]);
+  });
+
+  describe('in During AI Output', () => {
+    const anchored = { image: 'm-harbor', size: 'medium', wrap: 'block', sentence: 1, timing: 'output' };
+    const showing: Script = { id: 'show', timing: 'output', code: 'if (narration.sentence.includes("gull")) player.show("Harbor");' };
+    const outputWorld = (): World => ({ ...imageWorld(), scripts: [showing] });
+    /** The endpoint, with the narration answered by `narrate`. */
+    function stubNarration(narrate: () => Response) {
+      vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+        if (!init?.body) return new Response(JSON.stringify({ data: [{ id: 'm' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        const body = JSON.parse(init.body as string) as { messages: { role: string; content: string }[] };
+        const system = body.messages.find((m) => m.role === 'system')?.content ?? '';
+        if (system.includes('stat tracker')) return sseResponse(sseReply('No changes'));
+        if (system.includes('player choice writer')) return sseResponse(sseReply('1. Wait\n2. Go'));
+        return narrate();
+      }));
+    }
+    const inlineOrder = () => [...screen.getByTestId('narration').querySelectorAll('p, img')]
+      .map((node) => (node instanceof HTMLImageElement ? `image ${node.alt}` : node.textContent ?? ''));
+
+    it('saves the image with its sentence when the reply lands, and draws it after that sentence', async () => {
+      renderGameViewer(outputWorld(), { inGameplay: <Probe /> });
+      stubNarration(() => sseResponse(sseReply('The harbor is quiet. A gull lands. Rain starts.')));
+
+      await send('I wait.');
+      await settled();
+      expect(Object.values(live().scriptTells)).toEqual([[anchored]]);
+      expect(inlineOrder()).toEqual(['The harbor is quiet. A gull lands.', 'image Harbor', 'Rain starts.']);
+    });
+
+    it('keeps none of a stopped reply’s images (Q4)', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      renderGameViewer(outputWorld(), { inGameplay: <Probe /> });
+      const reply = openSseReply([sseFrame({ content: 'The harbor is quiet. A gull lands. Rain' })]);
+      stubNarration(reply.respond);
+
+      await send('I wait.');
+      expect(await screen.findByRole('img', { name: 'Harbor' })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /Stop/ }));
+      await waitFor(() => expect(live().isWaitingForAI).toBe(false));
+      await waitFor(() => expect(screen.queryByRole('img', { name: 'Harbor' })).toBeNull());
+      expect(live().scriptTells).toEqual({});
+      expect(screen.getByTestId('narration').textContent).toContain('A gull lands.');
+    });
+
   });
 
   it('replays the images on Regenerate Stats, and puts them back when the re-roll is stopped', async () => {

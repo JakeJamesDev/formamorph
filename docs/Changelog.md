@@ -81,6 +81,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **On the Enter World dialog, a trait's stat condition counts the stat changes of your other picks.** Picking Bodybuilder (+3 Strength) opens a trait that needs Strength 7, and a trait's own changes never count toward its own condition, in play too. Option values count, and Starting Locations, Routines, Presets and library characters follow the same numbers.
   - **Script Images:**
     - **Scripts can show Media List images in the story with `player.show`.** At Game Start and Before the AI put the image above the narration, and After the AI below it. Pick small, medium or large. The save keeps it, and selecting it opens it full size.
+    - **During AI Output scripts can now place an image right after the sentence they run on.** It appears as the narration reveals that sentence, in Pages and Chat. A stopped reply keeps none of its images.
   - **Supporter-only listings show when each tier can get them.** Cards and details windows list each tier's date and the public date. A Supporter whose tier isn't open yet sees an Upgrade button that opens Patreon.
 - **🛠️ Developer tooling**
   - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.

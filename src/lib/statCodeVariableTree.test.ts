@@ -754,6 +754,9 @@ describe('the names a script’s timing adds', () => {
     expect(levelAt(treeAt('output').built, 'Narration')).toEqual(NARRATION_FIELDS.map((field) => field.name));
     expect(inserts(treeAt('output').built, 'Narration', 'sentence')).toBe('narration.sentence');
     expect(levelAt(treeAt('after').built, 'Player')).toEqual(PLAYER_CALL_ENTRIES.map((call) => call.name));
+    // During AI Output's player holds show alone (Q29), and a group of one lists as its call.
+    expect(treeAt('output').built.find((node) => labelOf(node) === 'show')).toMatchObject({ kind: 'field', insert: 'player.show("")' });
+    expect(treeAt('output').built.map(labelOf)).not.toContain('Player');
     const confirm = leaf(treeAt('after').built, 'Player', 'confirm');
     expect(confirm.insert).toBe('player.confirm("")');
     expect(confirm.selection).toEqual({ from: 'player.confirm("'.length, to: 'player.confirm("'.length });

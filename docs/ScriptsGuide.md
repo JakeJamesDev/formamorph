@@ -157,7 +157,7 @@ The menu lists these groups, in order:
 <!-- route: worldEditorStat.code -->
 
 1. Add the image to the **Media List**, and note its name.
-2. Open a **Scripts** tab and select **Add Script**. Pick **Before the AI** to show it above the narration, or **After the AI** to show it below.
+2. Open a **Scripts** tab and select **Add Script**. Pick **Before the AI** to show it above the narration, **During AI Output** to show it after a sentence, or **After the AI** to show it below.
 3. Call `player.show("Harbor at Dusk")`. Add `{ size: "small" }` or `{ size: "large" }` to change its width.
 4. Select **Test Code**. The run lists the call with the image's name, size and wrap.
 
@@ -331,7 +331,7 @@ A turn runs scripts at five points:
 | --- | --- | --- | --- |
 | **Before the AI** | At the start of a turn, before the prompt is built | In that turn's prompt | `player` |
 | **After the AI** | After the AI's changes and Regen apply | When the turn ends | `player` |
-| **During AI Output** | Once for each narration sentence, when it completes | The sentence, then the stats with the After the AI scripts | `narration` |
+| **During AI Output** | Once for each narration sentence, when it completes | The sentence, then the stats with the After the AI scripts | `narration`, and `player` with `show` only |
 | **At Game Start** | Once, on the opening turn of a new game, before the Before the AI scripts | In the opening prompt | `player` |
 | **When a Trait Switches** | Each time a trait turns on or off during a game | At once | `player`, `trait` and `args.by` |
 

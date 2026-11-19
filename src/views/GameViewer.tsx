@@ -79,7 +79,7 @@ import { toast } from "react-toastify";
 import { toastError } from "@/lib/linkToast";
 import { cancelOpenPrompts, isNotice, scriptPrompts, silentPrompts, type ScriptPromptHost } from "@/lib/scriptPrompts";
 import { isScriptPromptSample, SCRIPT_PROMPT_SAMPLES } from "@/lib/devScriptPromptSamples";
-import { addTell, latestTurnId, pruneTells, REROLLED_TIMINGS, setTurnTells, tellHost, turnTells, withoutTimings } from "@/lib/scriptTells";
+import { addTell, latestTurnId, NO_SHOWS, pruneTells, REROLLED_TIMINGS, setTurnTells, tellHost, turnTells, withoutTimings, type ScriptImageTell } from "@/lib/scriptTells";
 import { newestTurnNarration, pruneByNarration, turnMentionReading, turnNarration } from "@/lib/coref/mentionReadings";
 import { applyCardCorrection } from "@/lib/coref/mentionCorrections";
 import { contributeTurn, contributionNames } from "@/lib/coref/correctionContribution";
@@ -1371,6 +1371,8 @@ const GameViewer = ({
   const tellTurnRef = useRef<string | null>(null);
   // The sent turn's id while it runs, so its Before images show before its narration lands (Q11).
   const [liveTurnId, setLiveTurnId] = useState<string | undefined>(undefined);
+  // The running reply's During AI Output images: on screen as it reveals, saved only when the reply lands (Q4).
+  const [liveShows, setLiveShows] = useState<readonly ScriptImageTell[]>(NO_SHOWS);
   // The sent turn's live list, sent lists and box contents from before its send, which come back if the turn never lands.
   const unlandedListRef = useRef<{
     turnId: string; list: ListedAction<ActionSnapshot>[]; sent: SentActionMap<ActionSnapshot>;
@@ -3572,7 +3574,9 @@ const GameViewer = ({
       // A regenerate keeps its turn's attachments and leaves the box alone.
       const turnId = currentTurnIdRef.current;
       tellTurnRef.current = turnId;
+      // In one render with the new id, so no earlier reply's images ever show on this turn.
       setLiveTurnId(turnId);
+      setLiveShows(NO_SHOWS);
       const carried = resentAttachments ?? plan.attachments;
       setActionAttachments((prev) => setTurnAttachments(prev, turnId, carried));
       if (!resentAttachments) setPendingAttachments([]);
@@ -4159,6 +4163,7 @@ const GameViewer = ({
         abortControllerRef.current = null;
         tellTurnRef.current = null;
         setLiveTurnId(undefined);
+        setLiveShows(NO_SHOWS);
       }
     }
   };
@@ -5022,7 +5027,10 @@ const GameViewer = ({
       ? toolsOfferedTo("narration", allTools, enabledTools, toolsEnabled, worldTools) : [];
     const triggers = worldToolTurnRef.current?.outputTriggers(offered);
     // The crawl shows each sentence as it passes, so only the fade reveal holds any back.
-    const run = prepared && openOutputRun(prepared.turn, { released: fadeRevealActive ? getRevealReleased : undefined, triggers });
+    const run = prepared && openOutputRun(prepared.turn, {
+      released: fadeRevealActive ? getRevealReleased : undefined, triggers,
+      onShows: (shows) => { if (mounted.current) setLiveShows(shows); },
+    });
     outputRunRef.current = prepared && run ? { run, prepared } : null;
     return run;
   };
@@ -5035,6 +5043,11 @@ const GameViewer = ({
   const landOutputRun = async (): Promise<{ written: TurnCodeState | null; world?: WorldWrites }> => {
     const held = outputRunRef.current;
     outputRunRef.current = null;
+    // The reply landed, so its images join the turn's saved list.
+    const shows = held?.run.shows() ?? [];
+    const turnId = currentTurnIdRef.current;
+    if (shows.length) setScriptTells((prev) => shows.reduce((map, show) => addTell(map, turnId, show), prev));
+    setLiveShows(NO_SHOWS);
     const result = await held?.run.landing();
     // The On Call runs landed after the run opened, so the run's writes go on over theirs.
     const onCalled = onCallStateRef.current;
@@ -6786,6 +6799,7 @@ const GameViewer = ({
       sceneTags={viewedTurn?.sceneTags ?? ""}
       sceneTurnId={viewedTurn?.turnId}
       liveTurnId={liveTurnId}
+      liveShows={liveShows}
       speakerColors={shownQuoteColors}
       liveQuotes={liveQuotes}
       sceneImageJob={sceneImageJob}

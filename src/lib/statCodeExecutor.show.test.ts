@@ -75,6 +75,34 @@ describe('player.show', () => {
     }
   });
 
+  describe('in During AI Output', () => {
+    const narration = { sentence: 'Two.', full: 'One. Two.', index: 1, sent: ['One.'], buffered: [] };
+    async function output(code: string) {
+      const requests: ScriptPromptRequest[] = [];
+      const prompts: ScriptPromptHost = { prompt: (request) => { requests.push(request); return Promise.resolve(undefined as never); } };
+      const result = await executeStatCode(code, [health], health, { media, prompts, narration });
+      return { result, requests };
+    }
+
+    it('sends the show and runs on', async () => {
+      const { result, requests } = await output('player.show("Harbor", { size: "small", wrap: "right" }); return 7;');
+      expect(result).toMatchObject({ value: 7, error: null });
+      expect(requests).toEqual([{ kind: 'show', name: 'Harbor', mediaId: 'm-harbor', size: 'small', wrap: 'right' }]);
+    });
+
+    it.each(['tell("Hi")', 'toast("Hi")', 'confirm("Sure?")', 'ask("Which?", ["a"])', 'input("Name?")'])('still throws on player.%s', async (call) => {
+      const { result, requests } = await output(`player.${call};`);
+      expect(result.error).toContain(`player.${call.slice(0, call.indexOf('('))} can't run in During AI Output`);
+      expect(requests).toEqual([]);
+    });
+
+    it('fails the script on an unknown name', async () => {
+      const { result, requests } = await output('player.show("Lighthouse");');
+      expect(result.error).toContain('The world has no image named "Lighthouse"');
+      expect(requests).toEqual([]);
+    });
+  });
+
   it.each([
     ['a name that is not text', 'player.show(3);', 'player.show needs an image name as text'],
     ['options that are not an object', 'player.show("Harbor", "large");', 'player.show options must be an object'],
