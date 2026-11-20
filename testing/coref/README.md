@@ -37,11 +37,15 @@ The Python tests need this venv, so the app's test run skips them. Run them with
 
 Run every command from the repo root with the venv's Python (`$PY` below).
 
-**1. Build the corpus.** LitBank splits 80/10/10 with a fixed seed. Add the seed set and accepted corrections:
+**1. Build the corpus.** LitBank splits 80/10/10 with a fixed seed. Add the seed set, accepted corrections and hand-fixed contributions:
+
+- `accepted.jsonl` is the server's export of accepted contributions. Refresh it before each retrain.
+- `hand-fixed.jsonl` holds queue passages we labeled by hand. Its lines start `"reviewed": false`, so review them in the seed editor first.
 
 ```bash
 $PY testing/coref/corpus.py --litbank .scratch/coref/litbank \
   --add train:../formamorph-training-data/coref/corpus/accepted.jsonl \
+  --add train:../formamorph-training-data/coref/corpus/hand-fixed.jsonl \
   --add narration-dev:../formamorph-training-data/coref/seed/dev.jsonl
 ```
 
