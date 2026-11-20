@@ -1,6 +1,7 @@
 # Spec: What's New
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-19 with tickets 01–05; last landing 6abdad1ee. Review: two gaps fixed before the close (Q31 muted line 3947a2c9e; Q30 engine race 8916e765b), one stale doc line (e0b10448e), spec text corrected. Gates: test green on 2026-11-19; lint red in `worlds-wip/` only (another effort).
 Spec session: whats-new — spec
 
 ## Problem Statement
@@ -14,7 +15,7 @@ Each release ships a short **Release Summary** in the Discord post's voice: a fe
 The dialog keeps today's update controls. The release channel sits in the header beside the close button. Two tabs split the content:
 
 - **What's New**: the intro, then the highlights as tiles. Major highlights are wide tiles with an accent edge and an icon. Each one sits beside a related New tile. Fixes fills the last row. The colors follow the app theme.
-- **Recent Changes**: the one-line-per-entry list for the installed version and the two before it, read from the changelog bundled with the app.
+- **Recent Changes**: the one-line-per-entry list for the three newest released versions at or below the installed one, read from the changelog bundled with the app.
 
 The Full changelog link stays bottom-left. When an update is available, the banner can preview the new version's summary before the player downloads it.
 
@@ -128,15 +129,15 @@ Settled in the grill on 2026-11-19. The prototype is on branch `prototype/whats-
   - `## Major`, `## New` and `## Fixes` are the only headings. `## New` and `## Fixes` are optional.
   - Each Major item starts with one emoji. A Major item may have one nested bullet, which is its paired New highlight. Each other item is `**Title** — body`.
   - `## Fixes` is prose, not a list.
-  - Any other content after the last section, such as the workflow's Full changelog link, is ignored.
+  - Content after the first thematic break (`---`) is ignored, and the workflow's Full changelog link sits after one (Q18).
 - **One parser, two users.** A single pure **Release Summary parser** module turns markdown into a typed summary: version, intro paragraphs, Major items with icon and optional pair, New items, and Fixes text. It also reports validation problems: unknown heading, missing title, Major item without an emoji, emoji outside the icon map, empty summary, and a length warning. The app imports it. The release workflow's validator loads the same module, so the app and the validator never disagree. It follows the precedent of the changelog slice that the Vite config loads: no imports, no DOM.
 - **Emoji icon map.** A fixed table maps emoji to Lucide icons. It lives beside the parser, so validation and rendering share it. An unmapped emoji fails validation (Q12) and falls back to a default icon in the app (Q13).
 - **Tile pairing rule.** The rule comes from the prototype. It uses a three-column grid. A Major takes two cells and its pair takes one. A Major with no nested pair takes the next unpaired New item. A Major with nothing left to pair spans the full row. The remaining New items fill rows of three. Fixes takes the last row's empty cells, or a full row when no cells are empty, and sizes to its text. On narrow widths the grid becomes one column.
-- **Summary source (Q17).** For the installed version, the app looks for the GitHub release whose tag matches it. It reuses the update service's release fetch and cache. If the fetch fails, times out within a few seconds, or the body does not parse, the app uses the bundled summary. The build bundles only the installed version's summary file.
+- **Summary source (Q17).** For the installed version, the app looks for the GitHub release whose tag matches it. It reuses the update service's release fetch and cache. If the fetch fails, times out within a few seconds, or the body does not parse, the app tries the cached body, then the bundled summary (Q24). The build bundles only the installed version's summary file.
 - **Update preview (Q7, Q10).** The newest available release's body is parsed with the same parser and rendered in the same layout. Only the newest version is previewed.
-- **Recent Changes (Q6).** The build bundles the bold leads for the installed version and the two before it, read from the changelog by the same rules as today's release-note extraction. These versions may cross a minor-series boundary. This is a separate bundled slice from the Formaquestion docs-index slice, which stays unchanged. Recent Changes no longer reads GitHub release bodies.
+- **Recent Changes (Q6).** The build bundles the bold leads for the three newest released versions at or below the installed one (Q31), read from the changelog by the same rules as today's release-note extraction. These versions may cross a minor-series boundary. This is a separate bundled slice from the Formaquestion docs-index slice, which stays unchanged. Recent Changes no longer reads GitHub release bodies.
 - **Open-once rule (Q2, Q3, Q8, Q11, Q16).** A per-device record keeps the last version for which What's New opened. Like the First-Time Flow records, it is never exported. What's New opens by itself when the record differs from the installed version, on every build target and channel. A fresh install records the version without opening. "Fresh" means the welcome intro has not been seen. A missing record alone does not mean fresh, because every existing player has no record when the first build with this feature ships.
-- **Startup ordering (Q4).** What's New waits for the welcome intro and the First-Time Flow step, as the event poster already does. While What's New is due or open, the event acknowledge poster and the main-menu tutorial stay held. They follow the existing pattern of gating on intro and first-run.
+- **Startup ordering (Q4).** What's New waits for the welcome intro, the First-Time Flow step, the AI setup gate (model load included) and the age gate (Q30). While What's New is due or open, the event acknowledge poster and the main-menu tutorial stay held. They follow the existing pattern of gating on intro and first-run.
 - **One dialog for every build.** The footer version text opens What's New on desktop, Android, web and mobile web. This replaces both the update popout and the web changelog popout. On builds with an update bridge, it keeps the update controls and the "Update Available" footer tag. On builds without one, it shows a Close button where the update action would be.
 - **Release workflow (Q12, Q15).** The release job validates `docs/whats-new/<tag version>.md` with the shared parser, before any artifact is published. It fails on errors and prints warnings. The release body becomes the summary file plus a Full changelog link. Today's bold-lead extraction stays, but only for the Recent Changes bundle.
 - **Release skill (Q14).** The skill drafts the summary from the In Progress changelog in the audience voice, writes it to `docs/whats-new/`, and commits it with the release. It derives the Discord post from the same file plus the usual footer links. The skill files live outside the repository, so this edit is an out-of-repo step.

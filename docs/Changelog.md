@@ -96,8 +96,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.
   - **`npm test` now warns when a new test runs past its level's time budget.** A test is new when it is missing from the merge base with main. Budgets are each level's slowest 1% today. The warning never fails a run.
 - **⚙️ Backend**
-  - **What's New:**
-    - **The release workflow publishes each version's Release Summary as its GitHub release notes, plus a Full changelog link.** It fails before anything publishes when `docs/whats-new/<version>.md` is missing or invalid, and prints its warnings.
+  - **The release workflow publishes each version's Release Summary as its GitHub release notes, plus a Full changelog link.** It fails before anything publishes when `docs/whats-new/<version>.md` is missing or invalid, and prints its warnings.
 
 #### 🔧 Fixed
 
