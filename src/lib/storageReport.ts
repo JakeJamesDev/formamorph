@@ -85,7 +85,7 @@ export function staleHours(iso: string, now: number): number | null {
 }
 
 /** Bucket hues by the report's order: files first, backups second. Names come from server config. */
-const BUCKET_HUES = ['hsl(var(--chart-2))', 'hsl(var(--chart-3))'];
+const BUCKET_HUES = ['hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
 
 export interface BucketRow {
   name: string;
