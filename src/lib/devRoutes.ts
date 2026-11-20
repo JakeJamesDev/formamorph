@@ -76,7 +76,8 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  without the sample the prompt would have nothing to render before the cutover.
  *  `auth` raises the login/register dialog, behind the age gate's check. `designSystem` opens the live reference
  *  showcase without mounting it in production. `enterWorld` starts normal entry for the stored world
- *  named by `tab` (or the first installed world).
+ *  named by `tab` (or the first installed world); with `fixture=…` it stores that fixture's world and enters it
+ *  (`fixture=enterOptions` is Emberwatch with World Options).
  *  `deleteAccount` opens the account-deletion flow at its first step, and `deletionCancelled` the notice
  *  a sign-in raises when it calls a pending deletion off. Neither is reachable by clicking without an
  *  account in the matching state — one needs a real password, the other a request already standing.

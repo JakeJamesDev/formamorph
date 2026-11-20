@@ -4,7 +4,7 @@
  * or replaying turns. Loaded via dynamic `import()` so each fixture is a separate chunk fetched only when
  * `loadDevFixture` runs (DEV-gated), never in the production bundle. See `devRouter.ts` / [[formamorph-dev-router]].
  */
-import type { Body, Currency, WorldOption, Entity, EntityStatValues, GameLocation, Item, Placement, ScheduleRow, Slot, Traversable, Trait, World, SaveObject, MediaEntry } from '@/types';
+import type { Body, Currency, WorldOption, Entity, EntityStatValues, GameLocation, Item, Placement, ScheduleRow, Slot, Traversable, Trait, World, SaveObject, MediaEntry, GalleryLink } from '@/types';
 import { withMembership } from './entityPlaces';
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 import { DEFAULT_WORLDS, seedWorldData, type DefaultWorldSeed } from './defaultWorlds';
@@ -19,7 +19,7 @@ const BUNDLED_PREFIX = 'bundled-';
 export const DEV_FIXTURES = [
   'whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'avatarIcon',
   'entityPresence', 'entityFollowers', 'mapStrangers', 'mapBackground', 'items', 'options', 'lockedPlaces', 'speakerQuotes', 'scriptImages',
-  ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
+  'enterOptions', ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
 ];
 
 // Real-sized images for the long save, fetched from the dev server.
@@ -53,6 +53,21 @@ const DEV_OPTIONS: WorldOption[] = [
   { id: 'dev-opt-pace', name: 'Pacing', type: 'number', shownToPlayer: true, midGame: true, min: 1, max: 5, default: 3 },
   { id: 'dev-opt-setup', name: 'Starting Season', type: 'boolean', shownToPlayer: true, midGame: false, default: true },
   { id: 'dev-opt-secret', name: 'Secret Flag', type: 'boolean', shownToPlayer: false, midGame: true, default: false },
+];
+
+/** The `enterOptions` fixture's Options: a choice with stat changes, a switch and a slider. */
+const EMBERWATCH_OPTIONS: WorldOption[] = [
+  {
+    id: 'dev-ember-difficulty', name: 'Difficulty', type: 'choice', shownToPlayer: true, midGame: true, default: 'dev-ember-steady',
+    playerDescription: 'How hard the frontier is on you',
+    values: [
+      { id: 'dev-ember-gentle', name: 'Gentle', statChanges: [{ statId: 'health', type: 'max', value: 20 }] },
+      { id: 'dev-ember-steady', name: 'Steady' },
+      { id: 'dev-ember-grim', name: 'Grim', statChanges: [{ statId: 'health', type: 'max', value: -20 }, { statId: 'renown', type: 'starting', value: -5 }] },
+    ],
+  },
+  { id: 'dev-ember-gore', name: 'Graphic Violence', type: 'boolean', shownToPlayer: true, midGame: true, default: false },
+  { id: 'dev-ember-undead', name: 'Undead Activity', type: 'number', shownToPlayer: true, midGame: true, min: 1, max: 5, default: 3 },
 ];
 
 const portrait = (fill: string) =>
@@ -349,21 +364,28 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       };
     }
     case 'scriptImages': {
-      // The white room whose last turn shows every `player.show` placement: above, inline left and right, below.
-      const [world, save] = await Promise.all([
+      // The white room whose last turn shows every `player.show` placement: above, inline left and right, below,
+      // in Emberwatch art.
+      const [world, save, ember] = await Promise.all([
         import('./devFixtures/whiteRoomWorld.json'),
         import('./devFixtures/whiteRoomSave.json'),
+        loadBundledFixture('emberwatch'),
       ]);
       const saved = save.default as unknown as SaveObject;
       const history = saved.currentState.fullMessageHistory ?? [];
       const last = history.length - 1;
       const turn = JSON.parse(history[last].content) as { turnId: string };
       const base = world.default as unknown as World;
-      const media = (id: string, hue: number): MediaEntry => ({
-        id, name: id, kind: 'image', type: 'image/svg+xml',
-        data: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240"><rect width="320" height="240" fill="hsl(${hue} 45% 55%)"/><circle cx="160" cy="120" r="60" fill="hsl(${hue} 35% 85%)"/></svg>`)}`,
-      });
-      const mediaList = { ...base.worldOverview.mediaList, 'dev-img-door': media('dev-img-door', 30), 'dev-img-lamp': media('dev-img-lamp', 200), 'dev-img-key': media('dev-img-key', 280) };
+      const art = ember?.world;
+      const media = (id: string, image?: GalleryLink): MediaEntry => ({ id, name: id, kind: 'image', type: 'image/webp', data: !image ? '' : 'data' in image ? image.data : art?.worldOverview.mediaList?.[image.mediaId]?.data ?? '' });
+      const place = (name: string) => art?.locations.find((l) => l.name === name)?.images?.[0];
+      const face = (name: string) => art?.entities.find((e) => e.name === name)?.images?.[0];
+      const mediaList = {
+        ...base.worldOverview.mediaList,
+        'dev-img-door': media('dev-img-door', place("The Sorcerer's Vault")),
+        'dev-img-lamp': media('dev-img-lamp', face('Sergeant Ilsa Marr')),
+        'dev-img-key': media('dev-img-key', place('The Barrow Beyond the Wall')),
+      };
       return {
         world: { ...base, worldOverview: { ...base.worldOverview, mediaList } },
         save: {
@@ -688,6 +710,13 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
           openings: [{ id: 'courier-opening', text: PICKED_OPENING_TEXT, kind: 'action' }],
         }],
       };
+    }
+    case 'enterOptions': {
+      // Emberwatch, with its traits, plus World Options, stored under its own id for Enter World.
+      const seed = DEFAULT_WORLDS.find((w) => w.id === 'emberwatch');
+      const raw = (await import('../defaultworlds/emberwatch.json')).default as unknown as Record<string, unknown>;
+      if (!seed) return null;
+      return { world: { ...seedWorldData(raw, seed), id: 'dev-enter-options', options: EMBERWATCH_OPTIONS } };
     }
     default:
       return name.startsWith(BUNDLED_PREFIX) ? loadBundledFixture(name.slice(BUNDLED_PREFIX.length)) : null;

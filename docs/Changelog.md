@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **3.0.0 – 3.7.0 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.7.0** — the latest released version.
+> ✅ **3.0.0 – 3.8.0 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.8.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more additions touch the same feature, they sit together under that feature's name. Fixes sit under the part of the app they touch, such as **In Game** or **World Editor**.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.7.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.8.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 3.8.0 — Released 2026-11-19</strong> — World Options set up a game — Character Mentions color each speaker — Supporter worlds — a shared Media List — scripts show images in the story — What's New after each update (click to expand)</summary>
 
 ### Minor Changes
 
@@ -21,53 +26,38 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Worlds can offer World Options at new game.** Authors add choices, switches and number sliders on the new Options tab; the player sets them above the traits, and choices and switches pin placeholder text.
     - **Players can change a World Option during play on a new World Options tab.** It lists the Options the author allows to change. A change applies at once and **Undo** reverses it.
     - **Authors can switch an entity on and off during a game with its new Enabled rows.** Set them on the entity's Presence tab. While off, it's hidden from the player and the AI, and its stats, scripts and routine pause until it returns. Rows read each entity's starting traits, in the Test Bench too.
-    - **Traits and images can require a World Option, and scripts can change one.** A Requires row checks a Choice value, On or Off, or a Number. Scripts read and write `options`, and the Test Bench lets you pick each value.
+    - **Traits and images can require a World Option, and scripts can change one.** A Requires row checks a Choice value, On or Off, or a Number. Scripts read and write `options`, and the Test Bench lets you pick each value. A default trait starts on when the Option's default meets its Requires.
     - **Authors can switch a location and the locations inside it on and off during a game with Enabled rows.** Set them on the location's Presence tab. While off, it's gone from the map, the list and the AI, and no new game starts there.
     - **Authors can lock a location with Unlocked rows, so the player can't travel in until a row holds.** Set them on the location's Presence tab. The map and the list show a lock and the reason. The AI never moves the player in; a script still can.
     - **Open Chat sets Reply Length, Style and Pacing as World Options.** They show at new game and change in the World Options tab. Old saves start on the defaults.
     - **Preset Options set several World Options in one click at new game.** Authors list the values each Preset value sets, and choose whether it resets the other Options or keeps them. The selected value shows while the setup still matches it.
-    - **Preset Options can turn traits on or off at new game, including an entity's traits.** A value applies in one click even when your current picks would block it. A notice names what it turned on and off.
-    - **Preset Options can choose the persona and Starting Location at new game.** A value picks a world persona and a Starting Location, and the notice names both. Reset to Defaults keeps yours unless it sets them. An entity's trait now reads "Wolf: Feral" there.
+    - **Preset Options can turn traits on or off and choose the persona and Starting Location at new game.** A value applies in one click even when your current picks would block it. A notice names what changed. Reset to Defaults keeps your persona and Starting Location unless it sets them.
     - **The Options tab warns on a Preset value with rows that can't apply at new game.** It names each row, such as an Always On trait, a full category or a deleted trait.
     - **World Options can change stats, like a trait, without sending text to the AI.** A value can change a stat's starting value, range, regen and availability on a world or entity stat, and players see it before picking. A change during play moves the range at once, never the value.
     - **A World Option value can give items at new game, each with a quantity and who gets it.** Add them under Starting Items on a choice value, or When On or When Off on a switch. Players see them before picking. Changing the Option during play gives nothing.
-  - **Entity Routines:**
-    - **World files keep each entity's Starts and Can Also Go inside a Routine.** A world from 3.7.0 opens with one Routine per entity and plays as before.
-    - **An entity's routine row can be Away, taking it off the map and out of every scene for those hours.** Its stats and scripts keep running, and the AI still knows of it where Known In says. Saves can now hold a Generic entity at no place.
-    - **An entity's Presence tab in the World Editor can hold several Routines, each with its own starts, schedule and Requires.** Add, rename, reorder and delete them in a list above the starts. Library updates list each Routine's changes.
-    - **An entity switches routine in play when the world changes.** The first routine whose Requires holds applies. Each routine keeps the start it picked at new game, and saves now keep every routine's start. A follower parts ways when the new routine can't reach the player.
+  - **Character Mentions:**
+    - **A new setting works out who each “she”, “he” or “the courier” in English narration means.** Turn on Character Mentions under Display › Accessibility. It downloads a model once and runs on your device. Turning it off deletes the download.
+    - **With Character Mentions on, each character's quotes show in their own color.** A character keeps one color in every turn. In “Wait.” Mira grins, the quote is Mira's. Quotes with no known speaker keep your Quote Color, and turning Quote Color off turns these off too.
+    - **Names and pronouns in narration open a card when you hover, tap or focus them.** The card shows the name, description and picture you know, and a hidden picture stays hidden. Clicking a colored quote opens its speaker's card.
+    - **With Fade-in Narration on, each quote shows in its speaker's color as it first appears.** The reveal slows a little ahead of a quote whose color isn't ready. If your device can't keep up, the reveal keeps its usual pace and colors fade in when ready.
+    - **Authors can pick an entity's quote color in the World Editor.** Quote Color offers 20 colors that read well in light and dark themes. Auto keeps the color Character Mentions gives it.
+    - **A character the story calls only “she” or “the courier” now counts as in the scene.** The stat picker, Traits tab and Give list them, and they get diary entries. Memory summaries name who acted.
+    - **A new character who speaks now shows in the Entities tab sooner when the story calls them "she" or "he".** Character Mentions counts those pronouns toward the name. A misspelled name counts as the same character.
+    - **"Wrong character?" on a card lets you pick who a name or quote really means, or choose Not Listed.** It lists everyone at that turn's location. The quote color, card and In Scene change at once, and your save keeps the fix. A quote with no speaker opens the list. Press Enter on a name to reach its card.
+    - **"Wrong character?" on a name offers Not a Character.** The pick removes the link and the card from that word. Your save keeps it, and it counts as a fix when you contribute corrections.
+    - **Your character's quotes and mentions in narration get a color and a card, like the rest of the cast.** On Auto, your quotes use your Quote Color. The "Wrong character?" list puts you first and shows each character's picture. A character you can't name yet gets no color or card.
+    - **Signed-in adults can send their "Wrong character?" fixes to help train the mentions model.** Turn on Share Corrections under Character Mentions. Each fix sends the whole passage, and accepted passages are kept for training. It's off until you turn it on.
+    - **A card in the story offers to turn on Character Mentions after your first few turns.** It shows once, when AI Language is English. Show Me opens a sample passage, and Turn On shows the download's progress in the card. Signed-in adults are asked once whether to contribute corrections.
   - **Supporter Worlds:**
     - **A Supporter world plays and edits like any world, but its export, Duplicate, Publish and media Download are disabled.** Point at a disabled button to see why. Backups leave Supporter worlds out. Their saves can't be exported, and AI Context export stays disabled for them in any world.
     - **A character, dictionary or Avatar saved from a Supporter world stays in that world.** Its Export, Publish and Duplicate are disabled, and it can only be added back to that world. AI Context export in Formaquestion is disabled while a Supporter world is open.
     - **Supporters can download a Supporter-only world from its listing.** It lands in your Worlds list as a Supporter world. A newer revision shows Update Available. A plain copy you already have stays as it is. Public sources download with it; Supporter-only ones are left out and named.
     - **Patreon items wear a heart where a lock used to show.** Supporter Mascots in the Mascot tab and Formamorph AI in every endpoint list now carry the Patreon heart.
     - **Supporter-only listings can show when they open to everyone.** Community Creations cards and details windows say "Supporter-only until" and the date. After it, the listing shows the normal Download.
+    - **Supporter-only listings show when each tier can get them.** Cards and details windows list each tier's date and the public date. A Supporter whose tier isn't open yet sees an Upgrade button that opens Patreon.
     - **Supporter worlds leave your Worlds list when your support ends.** Copies of listings that opened to everyone stay while you support. Your saves stay. Copies from another account are hidden, then removed.
-    - **An installed Supporter Mascot stays after its listing opens to everyone.** Support checks no longer remove it while you support.
+    - **An installed Supporter Mascot stays while you support, even after its listing opens to everyone.**
     - **Optimize Images is disabled in a Supporter world.** Point at the button to see why.
-  - **Scripts:**
-    - **Scripts now add a turn's memory line with `memories.append`, which replaces `memories.add`.** It works as `add` did, and worlds with `memories.add` are rewritten when they load.
-    - **Item scripts can tell who caused an item event, and where the item came from or went.** `args.by` reads story, player, script or rule. `args.from === persona` means the player gave it, so a gift script can skip shop buys and pickups.
-    - **When a Trait Switches scripts can tell what switched the trait.** `args.by` reads player for a Traits tab switch, script for a script's write, and rule for gates, group picks and persona or World Option changes.
-    - **Item scripts read `args.purchase` when an item is bought, with its price and Currency.** A gift script can skip shop buys and sales. Item boxes get a **Templates** menu, with a **Gift Raises a Stat** template.
-    - **Item scripts read their event's Item Instance as `instance`, and its quantity and use target from `args`.** Every script has `args`; it's empty where nothing passes one. Worlds that use `self.event` or `.copies` are rewritten when they load.
-  - **Named Memories:**
-    - **Scripts can keep one Custom memory up to date under a name.** `memories.pin("Nursery", text)` adds it or replaces its text, and `memories["Nursery"]` reads it. A rewind brings back the earlier text.
-    - **Your Memory Manager edits to a named memory stay when you rewind a turn.** The script's next update starts from your text. After you delete the memory, the script starts a new one.
-  - **Character Mentions:**
-    - **A new setting works out who each “she”, “he” or “the courier” in English narration means.** Turn on Character Mentions under Display › Accessibility. It downloads a model once and runs on your device. Turning it off deletes the download.
-    - **With Character Mentions on, each character's quotes show in their own color.** A character keeps one color in every turn. In “Wait.” Mira grins, the quote is Mira's. Quotes with no known speaker keep your Quote Color, and turning Quote Color off turns these off too.
-    - **Names and pronouns in narration open a card when you hover, tap or focus them.** The card shows the name, description and picture you know, and a hidden picture stays hidden. Clicking a colored quote opens its speaker's card.
-    - **A card in the story offers to turn on Character Mentions after your first few turns.** It shows once, when AI Language is English. Show Me opens a sample passage, and Turn On shows the download's progress in the card. Signed-in adults are asked once whether to contribute corrections.
-    - **A character the story calls only “she” or “the courier” now counts as in the scene.** The stat picker, Traits tab and Give list them, and they get diary entries. Memory summaries name who acted.
-    - **Authors can pick an entity's quote color in the World Editor.** Quote Color offers 20 colors that read well in light and dark themes. Auto keeps the color Character Mentions gives it.
-    - **"Wrong character?" on a card lets you pick who a name or quote really means, or choose Not Listed.** The quote color, card and In Scene change at once, and your save keeps the fix. A quote with no speaker opens the list straight away. Press Enter on a name to reach its card from the keyboard.
-    - **"Wrong character?" now lists everyone at that turn's location, even a character the story only describes.**
-    - **Signed-in adults can send their "Wrong character?" fixes to help train the mentions model.** Turn on Share Corrections under Character Mentions. Each fix sends the whole passage, and accepted passages are kept for training. It's off until you turn it on.
-    - **Your character's quotes and mentions in narration now get a color and a card, like the rest of the cast.** On Auto, your quotes use your Quote Color. The "Wrong character?" list puts you first and shows each character's picture. A character you can't name yet gets no color or card.
-    - **With Fade-in Narration on, each quote now shows in its speaker's color as it first appears.** The reveal slows a little ahead of a quote whose color isn't ready. If your device can't keep up, the reveal keeps its usual pace and colors fade in when ready.
-    - **A new character who speaks now shows in the Entities tab sooner when the story calls them "she" or "he".** Character Mentions counts those pronouns toward the name. A misspelled name counts as the same character.
-    - **"Wrong character?" on a name now offers Not a Character.** The pick removes the link and the card from that word. Your save keeps it, and it counts as a fix when you contribute corrections.
   - **Media List:**
     - **Worlds that reuse a picture are smaller: each entity and location picture is stored once.** Several entities or locations showing the same picture now share one copy in the world file.
     - **Entity and location image slots in the World Editor can reuse any image the world already has.** An empty slot offers Import, Choose and an image URL. A filled slot names its image, with Remove From Slot and Delete From World.
@@ -75,14 +65,21 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Entity sounds, ambient sounds and background music in the World Editor can reuse any sound the world already has.** Import a file, Choose one by name, or paste a sound URL. Two rooms can share one ambience, stored once. A link that can't load shows as broken.
     - **The World Editor's Media tab imports images, sounds and Avatars, and Group by Type shows each shared file once.** Each card lists the places that use it, with Delete From World. Files nothing uses show as Unused, and a filter finds them.
     - **Scripts can now switch an entity's, location's or item's picture, or any sound, by naming a Media List entry.** Set `image`, `sound`, `ambience` or `world.music`, and assign `null` to go back to the Visibility rules. The change saves with the game and rewinds with its turn.
-    - **Renaming a Media List entry now offers to update the scripts that name it.** Update Code rewrites `image`, `sound`, `ambience` and `world.music` assignments and comparisons. The Test Bench now flags scripts that name an entry the world lacks.
-  - **Enter World:**
-    - **Clicking an entity or a group opens one page with every trait inside it.** Each group within it sits under a labeled divider with its own rules. A row's count covers everything inside it, and a dot marks a group that needs more picks.
-    - **The category list folds an entity or group with its arrow, and folds itself to fit your screen.** Clicking a folded row still opens its page. Collapse All and Expand All sit on the Starting Traits line. Once you fold a row yourself, the list keeps your choice.
-    - **On the Enter World dialog, a trait's stat condition counts the stat changes of your other picks.** Picking Bodybuilder (+3 Strength) opens a trait that needs Strength 7, and a trait's own changes never count toward its own condition, in play too. Option values count, and Starting Locations, Routines, Presets and library characters follow the same numbers.
+    - **Renaming a Media List entry offers to update the scripts that name it.** Update Code rewrites `image`, `sound`, `ambience` and `world.music` assignments and comparisons. The Test Bench flags scripts that name an entry the world lacks.
+  - **Scripts:**
+    - **Scripts now add a turn's memory line with `memories.append`, which replaces `memories.add`.** It works as `add` did, and worlds with `memories.add` are rewritten when they load.
+    - **Item scripts can tell who caused an item event, and where the item came from or went.** `args.by` reads story, player, script or rule. `args.from === persona` means the player gave it, so a gift script can skip shop buys and pickups.
+    - **When a Trait Switches scripts can tell what switched the trait.** `args.by` reads player for a Traits tab switch, script for a script's write, and rule for gates, group picks and persona or World Option changes.
+    - **Item scripts read `args.purchase` when an item is bought, with its price and Currency.** A gift script can skip shop buys and sales. Item boxes get a **Templates** menu, with a **Gift Raises a Stat** template.
+    - **Item scripts read their event's Item Instance as `instance`, and its quantity and use target from `args`.** Every script has `args`; it's empty where nothing passes one. Worlds that use `self.event` or `.copies` are rewritten when they load.
+  - **Entity Routines:**
+    - **World files keep each entity's Starts and Can Also Go inside a Routine.** A world from 3.7.0 opens with one Routine per entity and plays as before.
+    - **An entity's routine row can be Away, taking it off the map and out of every scene for those hours.** Its stats and scripts keep running, and the AI still knows of it where Known In says. Saves can now hold a Generic entity at no place.
+    - **An entity's Presence tab in the World Editor can hold several Routines, each with its own starts, schedule and Requires.** Add, rename, reorder and delete them in a list above the starts. Library updates list each Routine's changes.
+    - **An entity switches routine in play when the world changes.** The first routine whose Requires holds applies. Each routine keeps the start it picked at new game, and saves keep every routine's start. A follower leaves when the new routine can't reach the player.
   - **Script Images:**
     - **Scripts can show Media List images in the story with `player.show`.** At Game Start and Before the AI put the image above the narration, and After the AI below it. Pick small, medium or large. The save keeps it, and selecting it opens it full size.
-    - **During AI Output scripts can now place an image right after the sentence they run on.** It appears as the narration reveals that sentence, in Pages and Chat. A stopped reply keeps none of its images.
+    - **During AI Output scripts can place an image right after the sentence they run on.** It appears as the narration reveals that sentence, in Pages and Chat. A stopped reply keeps none of its images.
     - **Item and Tool scripts can show images in the story.** Item images appear below the turn, Tool images show when the Tool runs, and a reload keeps item messages and images.
     - **A During AI Output image can float left or right with the text wrapping around it.** Set `wrap` to `'left'` or `'right'` in `player.show`. On a narrow screen it becomes a block.
   - **What's New:**
@@ -90,7 +87,13 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The update banner links to a preview of the new version's summary.** Select Preview to read the newest release in the same layout, and Back to return to your own version. The link shows only when the summary loads.
     - **What's New opens by itself once after each update.** It waits for the welcome intro and setup steps, and event posters and the main menu tutorial wait until you close it. A new install skips it.
     - **What's New's Recent Changes tab lists the last three versions' changes and works offline.** It shows each change's short title under Added, Removed and Fixed, for your version and the two before it.
-  - **Supporter-only listings show when each tier can get them.** Cards and details windows list each tier's date and the public date. A Supporter whose tier isn't open yet sees an Upgrade button that opens Patreon.
+  - **Enter World:**
+    - **Clicking an entity or a group opens one page with every trait inside it.** Each group within it sits under a labeled divider with its own rules. A row's count covers everything inside it, and a dot marks a group that needs more picks.
+    - **The category list folds an entity or group with its arrow, and folds itself to fit your screen.** Clicking a folded row still opens its page. Collapse All and Expand All sit on the Starting Traits line. Once you fold a row yourself, the list keeps your choice.
+    - **On the Enter World dialog, a trait's stat condition counts the stat changes of your other picks.** Picking Bodybuilder (+3 Strength) opens a trait that needs Strength 7, and a trait's own changes never count toward its own condition, in play too. Option values count, and Starting Locations, Routines, Presets and library characters follow the same numbers.
+  - **Named Memories:**
+    - **Scripts can keep one Custom memory up to date under a name.** `memories.pin("Nursery", text)` adds it or replaces its text, and `memories["Nursery"]` reads it. A rewind brings back the earlier text.
+    - **Your Memory Manager edits to a named memory stay when you rewind a turn.** The script's next update starts from your text. After you delete the memory, the script starts a new one.
 - **🛠️ Developer tooling**
   - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.
@@ -112,17 +115,19 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Scripts now run faster on large worlds.** Each script pays only for the entities, placeholders, items, locations, dictionaries and currencies it reads, so a large world no longer slows every turn.
     - **Each autosave now holds the turn it is named for.** Before, when the next turn finished before an autosave was written, that autosave held the newer turn. With Autosaves Kept above 1, you then had one fewer turn to go back to.
     - **Loading a save now sets each stat's limits from the world as it is now.** A stat's Max, Min and Regen follow the traits and World Options in force, and a value above the new max drops to it.
+    - **Regenerate Stats keeps the messages from a World Tool's On Call script.** Item and trait switch scripts replace their messages, so each shows once.
   - **Test Bench:**
-    - **In the Test Bench, stats now start where a new game starts them, so Placeholder text matches play.** Your picked World Option values and every character's starting traits now count.
-  - **At new game, a trait group fills again when another pick locks its trait.** It takes the group's default, or else the first trait you can pick. Before, the group stayed empty and Begin stayed off.
+    - **In the Test Bench, stats now start where a new game starts them, so Placeholder text matches play.** Every character's starting traits and your picked World Option values count.
+    - **The Test Bench no longer calls a placeholder unused when its only chip is in a stranger field.** That covers Stranger Name and Stranger Description, which play already fills in.
+  - **Enter World:**
+    - **At new game, a trait group fills again when another pick locks its trait.** It takes the group's default, or else the first trait you can pick. Before, the group stayed empty and Begin stayed off.
+    - **In Enter World, a click anywhere in a trait, option or location box now selects it.** Before, the box's edges and corners lit up on hover but ignored the click.
   - **On desktop, the main menu no longer shows "Your model didn't load" while the Built-In Engine is starting.** It waits until your model finishes loading, and shows the message only if the load fails.
-  - **At new game, a default trait gated on a World Option now starts on when the Option's default allows it.** Before, the trait started off until you changed the Option.
-  - **In Enter World, a click anywhere in a trait, option or location box now selects it.** Before, the box's edges and corners lit up on hover but ignored the click.
-  - **The Test Bench no longer calls a placeholder unused when its only chip is in a stranger field.** That covers Stranger Name and Stranger Description, which play already fills in.
   - **After an update from 3.2.0 or older, one damaged world no longer stops your world library from opening.** Before, every world failed to save with an AbortError. Now the damaged world shows in the repair notice.
   - **A bug report from Error Details now names what failed, such as a save, and where it failed.** Before, some reports showed only the browser's error.
-  - **Regenerate Stats keeps the messages and images from a World Tool's On Call script.** Item and trait switch scripts replace their messages and images, so each shows once.
   - **The World Editor's Starts On list shows a persona's placeholder name as a chip.** Before, a persona named with a placeholder showed its raw code.
+
+</details>
 
 ---
 

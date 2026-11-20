@@ -1486,12 +1486,29 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   useEffect(() => { devEntryActions.current = { select: handleWorldSelection, start: startEntry }; });
   const [devEntryPending, setDevEntryPending] = useState(false);
   const devEntryRoute = useRef<typeof devRoute>(null);
+  const [devEntryWorld, setDevEntryWorld] = useState<string | null>(null);
   useEffect(() => {
     if (!import.meta.env.DEV || devRoute?.modal !== 'enterWorld' || !worlds.length) return;
     if (devEntryRoute.current === devRoute) return;
     devEntryRoute.current = devRoute;
-    void devEntryActions.current.select(devRoute.tab ?? worlds[0].id).then(() => setDevEntryPending(true));
-  }, [devRoute, worlds]);
+    const fixture = devRoute.fixture;
+    if (!fixture) { setDevEntryWorld(devRoute.tab ?? worlds[0].id); return; }
+    // A fixture's world is stored first, so entry runs on a library world.
+    void (async () => {
+      const { loadDevFixture } = await import('@/lib/devFixtures');
+      const fx = await loadDevFixture(fixture);
+      if (!fx) return;
+      const { world } = fx;
+      await WorldStorageService.storeWorld({ id: world.id, name: world.worldOverview.name, description: world.worldOverview.description, thumbnail: coverData(world.worldOverview), data: world });
+      await refreshWorlds();
+      setDevEntryWorld(world.id);
+    })();
+  }, [devRoute, worlds, refreshWorlds]);
+  useEffect(() => {
+    if (!import.meta.env.DEV || !devEntryWorld || !worlds.some((w) => w.id === devEntryWorld)) return;
+    setDevEntryWorld(null);
+    void devEntryActions.current.select(devEntryWorld).then(() => setDevEntryPending(true));
+  }, [devEntryWorld, worlds]);
   useEffect(() => {
     if (!import.meta.env.DEV || !devEntryPending || !selectedWorld) return;
     setDevEntryPending(false);
