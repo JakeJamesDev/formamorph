@@ -14,6 +14,7 @@ import { shipNotices } from './scripts/shipNotices.mjs'
 import { bundledAvatarCheck } from './scripts/bundledAvatarCheck.mjs'
 import { espeakCheck } from './scripts/espeakCheck.mjs'
 import { corefDevManifest } from './scripts/corefDevManifest.mjs'
+import { remoteOrtRuntime } from './scripts/remoteOrtRuntime.mjs'
 import { stashSourceMaps } from './scripts/stashSourceMaps.mjs'
 
 const pkg = JSON.parse(readFileSync(path.resolve(import.meta.dirname, 'package.json'), 'utf-8'))
@@ -147,7 +148,7 @@ const shippedWorlds = shipBundledWorlds(import.meta.dirname)
 const notices = shipNotices(import.meta.dirname)
 
 export default defineConfig({
-  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, whatsNewSummary, whatsNewRecent, sharedCjs, shippedWorlds, stripSeededWorlds(), bundledWorldHashes(shippedWorlds.api.shippedText), notices, stashSourceMaps(), bundledAvatarCheck(), espeakCheck(), corefDevManifest(import.meta.dirname)],
+  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, whatsNewSummary, whatsNewRecent, sharedCjs, shippedWorlds, stripSeededWorlds(), bundledWorldHashes(shippedWorlds.api.shippedText), notices, stashSourceMaps(), bundledAvatarCheck(), espeakCheck(), corefDevManifest(import.meta.dirname), remoteOrtRuntime(ortDist, process.env.FORMAMORPH_BUILD === 'web')],
   cacheDir: process.env.E2E_SYNC_APP ? path.resolve(import.meta.dirname, 'node_modules/.vite-sync-app') : devCacheDir,
   base: './',
   // Maps for reading crash stacks; stashSourceMaps moves them out of the shipped output.
@@ -185,7 +186,7 @@ export default defineConfig({
     ],
   },
   worker: {
-    plugins: () => [notices.api.workerPlugin()],
+    plugins: () => [notices.api.workerPlugin(), remoteOrtRuntime(ortDist, process.env.FORMAMORPH_BUILD === 'web')],
     // The image-encode worker lazily `import()`s wasm-webp; under the default iife worker format that dynamic
     // import would force code-splitting (unsupported for iife). Inlining folds it into the single worker chunk.
     // No-op for the other workers (they have no dynamic imports).
@@ -236,6 +237,7 @@ export default defineConfig({
       'scripts/bundledAvatarCheck.mjs',
       'scripts/espeakCheck.mjs',
       'scripts/corefDevManifest.mjs',
+      'scripts/remoteOrtRuntime.mjs',
       'scripts/stashSourceMaps.mjs',
       'scripts/shipBundledWorlds.mjs',
       'scripts/stripSeededWorlds.mjs',

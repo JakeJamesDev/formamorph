@@ -112,6 +112,7 @@ export const GRAPH_COVERED = {
   'scripts/bundledAvatarCheck.mjs': 'checks only the output folder its build names; a change to it runs the full suite',
   'scripts/espeakCheck.mjs': 'checks only the output folder its build names; a change to it runs the full suite',
   'scripts/corefDevManifest.mjs': 'reads files only in the dev server, which no test runs; a change to it runs the full suite',
+  'scripts/remoteOrtRuntime.mjs': 'reads only the onnxruntime-web package.json; a change to it runs the full suite',
   'scripts/stashSourceMaps.mjs': 'moves only the maps under the folders its caller names; a change to it runs the full suite',
   'scripts/stashSourceMaps.test.mjs': 'reads only its own temp folder',
   'scripts/mapStack.mjs': 'reads only the maps folder and stack file its caller names',

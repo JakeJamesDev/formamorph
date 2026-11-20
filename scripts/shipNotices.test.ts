@@ -102,7 +102,7 @@ describe('shipNotices', () => {
     const source = readFileSync(config, 'utf8');
     expect(source).toContain('const notices = shipNotices(import.meta.dirname)');
     expect(source).toMatch(/plugins: \[[^\]]*\bnotices\b[^\]]*\]/);
-    expect(source).toContain('plugins: () => [notices.api.workerPlugin()]');
+    expect(source).toContain('plugins: () => [notices.api.workerPlugin()');
   });
 });
 
