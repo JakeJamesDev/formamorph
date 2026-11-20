@@ -33,7 +33,7 @@ export interface SupporterContentDeps {
   session: () => SupporterSession | null;
   apiBase: string;
   cache?: SupporterCache;
-  /** Time limits in milliseconds: the entitlement check, and each content download. */
+  /** Idle limits in milliseconds (no answer and no body bytes): the entitlement check, and each content download. */
   timeoutMs?: { check?: number; install?: number };
 }
 
@@ -166,16 +166,37 @@ export function createSupporterContent(deps: SupporterContentDeps) {
     install: deps.timeoutMs?.install ?? DEFAULT_TIMEOUT_MS.install,
   };
 
-  /** GET a gated route as JSON. Aborts the request and rejects when the answer takes longer than `ms`. */
+  /** A response body as text; `onProgress` runs on every chunk that arrives. */
+  const readText = async (response: Response, onProgress: () => void): Promise<string> => {
+    if (!response.body) return response.text();
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let text = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return text + decoder.decode();
+      onProgress();
+      text += decoder.decode(value, { stream: true });
+    }
+  };
+
+  /**
+   * GET a gated route as JSON. Aborts the request and rejects when `ms` pass with no answer and no body
+   * bytes, so a large download on a slow line finishes while a stalled one ends.
+   */
   const getJson = async (session: SupporterSession, path: string, ms: number): Promise<{ status: number; ok: boolean; body: unknown }> => {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const expired = new Promise<never>((_, reject) => {
+    let expire: (error: Error) => void = () => {};
+    const expired = new Promise<never>((_, reject) => { expire = reject; });
+    const arm = () => {
+      clearTimeout(timer);
       timer = setTimeout(() => {
         controller.abort();
-        reject(new Error('The Supporter content request timed out'));
+        expire(new Error('The Supporter content request timed out'));
       }, ms);
-    });
+    };
+    arm();
     try {
       return await Promise.race([
         (async () => {
@@ -183,8 +204,11 @@ export function createSupporterContent(deps: SupporterContentDeps) {
             headers: { Authorization: `Bearer ${session.token}` },
             signal: controller.signal,
           });
+          arm();
           // A refusal's body names the tier and date, so it is read too; an unreadable one is null.
-          const body: unknown = await response.json().catch(() => null);
+          const text = await readText(response, arm);
+          let body: unknown = null;
+          try { body = JSON.parse(text); } catch { /* unreadable body */ }
           return { status: response.status, ok: response.ok, body };
         })(),
         expired,

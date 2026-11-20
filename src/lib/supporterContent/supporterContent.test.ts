@@ -384,6 +384,63 @@ describe('request time limits', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it('finishes a slow download that keeps sending bytes past the time limit', async () => {
+    server.list(['big', 1]);
+    const payload = new TextEncoder().encode(JSON.stringify({
+      success: true, data: { id: 'big', kind: 'world', revision: 1, contentData: contentFor('big', 1) },
+    }));
+    const app = appWith(((input: RequestInfo | URL, init?: RequestInit) => {
+      if (!/\/worlds\/big\/supporter-content$/.test(String(input))) return server.fetch(input, init);
+      let sent = 0;
+      // One byte every 10 seconds: far past 60 seconds in total, never 60 seconds idle.
+      const body = new ReadableStream<Uint8Array>({
+        pull: (controller) => new Promise<void>((resolve) => setTimeout(() => {
+          if (sent < payload.length) controller.enqueue(payload.slice(sent, ++sent));
+          else controller.close();
+          resolve();
+        }, 10_000)),
+      });
+      return Promise.resolve(new Response(body, { status: 200 }));
+    }) as typeof fetch);
+    await app.check();
+
+    const installing = app.install('big');
+    await vi.advanceTimersByTimeAsync((payload.length + 1) * 10_000);
+    await installing;
+
+    expect(installedIds(app)).toEqual(['big@1']);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('ends a download whose body stops arriving partway', async () => {
+    server.list(['big', 1]);
+    let aborted = 0;
+    const app = appWith(((input: RequestInfo | URL, init?: RequestInit) => {
+      if (!/\/worlds\/big\/supporter-content$/.test(String(input))) return server.fetch(input, init);
+      const body = new ReadableStream<Uint8Array>({
+        start: (controller) => {
+          controller.enqueue(new TextEncoder().encode('{"success":'));
+          init?.signal?.addEventListener('abort', () => {
+            aborted += 1;
+            controller.error(new DOMException('Aborted', 'AbortError'));
+          });
+        },
+      });
+      return Promise.resolve(new Response(body, { status: 200 }));
+    }) as typeof fetch);
+    await app.check();
+
+    const rejected = expect(app.install('big')).rejects.toThrow('timed out');
+    await vi.advanceTimersByTimeAsync(59_999);
+    expect(aborted).toBe(0);
+    await vi.advanceTimersByTimeAsync(1);
+    await rejected;
+
+    expect(aborted).toBe(1);
+    expect(installedIds(app)).toEqual([]);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('ends a stalled update download and keeps the installed copy', async () => {
     server.list(['excl', 1]);
     await (await startAndCheck()).install('excl');
