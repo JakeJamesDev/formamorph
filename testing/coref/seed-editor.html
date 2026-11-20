@@ -68,6 +68,7 @@ const $ = (id) => document.getElementById(id);
 let passages = [];
 let current = 0;
 let handle = null;
+let remote = null; // the seed editor server's URL for the open file
 let fileName = '';
 let dirty = false;
 let selected = null; // {s, e, cluster} of a mention, or {s, e, cluster: null} for a new span
@@ -81,6 +82,7 @@ async function openFile() {
     try {
       [handle] = await window.showOpenFilePicker({ types: [{ description: 'Seed set', accept: { 'application/json': ['.jsonl', '.json'] } }] });
     } catch { return; }
+    remote = null;
     load(await (await handle.getFile()).text(), handle.name);
   } else $('picker').click();
 }
@@ -117,6 +119,14 @@ async function save() {
       const w = await handle.createWritable();
       await w.write(text);
       await w.close();
+    } catch (err) {
+      alert(`Not saved: ${err.message}`);
+      return;
+    }
+  } else if (remote) {
+    try {
+      const response = await fetch(remote, { method: 'PUT', body: text, headers: { 'Content-Type': 'application/json' } });
+      if (!response.ok) throw new Error(await response.text() || response.statusText);
     } catch (err) {
       alert(`Not saved: ${err.message}`);
       return;
@@ -346,7 +356,17 @@ $('picker').onchange = async () => {
   const f = $('picker').files[0];
   if (f) load(await f.text(), f.name);
   handle = null;
+  remote = null;
 };
+// Served by seed-editor-server.mjs: ?file=<path in the training-data repo> opens that file and saves back to it.
+const served = new URLSearchParams(location.search).get('file');
+if (served && location.protocol.startsWith('http')) {
+  fetch(`/data/${served}`).then(async (response) => {
+    if (!response.ok) throw new Error(`${served}: ${response.status} ${await response.text()}`);
+    remote = `/data/${served}`;
+    load(await response.text(), served.split('/').pop());
+  }).catch((err) => alert(`Not opened: ${err.message}`));
+}
 window.addEventListener('beforeunload', (ev) => { if (dirty) ev.preventDefault(); });
 </script>
 </body>

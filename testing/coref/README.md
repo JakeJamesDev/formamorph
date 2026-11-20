@@ -116,7 +116,15 @@ npx vite-node testing/coref/seed-play.cli.ts -- --worlds all
 .scratch/coref/env/Scripts/python testing/coref/seed_label.py --checkpoint <e120 checkpoint> --export .scratch/coref/exports/big-e120 ../formamorph-training-data/coref/seed/play/<batch>.jsonl
 ```
 
-**3. Correct.** Open [`seed-editor.html`](seed-editor.html) in Chrome, then open the seed file with **Open**. Chrome saves back to the same file.
+**3. Correct.** Start the editor's server, then open a file by its path in the data repo. **Save** writes back to that file.
+
+```powershell
+node testing/coref/seed-editor-server.mjs
+```
+
+- Open `http://localhost:5320/seed-editor.html?file=coref/corpus/hand-fixed.jsonl`, or `?file=coref/seed/dev.jsonl`.
+- `--port` changes the port. The server listens on localhost only and writes only existing `.jsonl`/`.json` files in the data repo.
+- Without the server, open [`seed-editor.html`](seed-editor.html) in Chrome and pick the file with **Open**. Chrome saves back to it.
 
 - Click a mention to select it; click again for the mention around it. Drag across words to add a mention.
 - `1`–`9` moves the selection to that cluster, `N` starts a new cluster, `Delete` removes it.
