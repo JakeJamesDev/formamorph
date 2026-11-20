@@ -651,6 +651,15 @@ export function PublishModal({
               />
             )}
 
+            {/* Inside the scroll: with its schedule open it is taller than a short window. */}
+            {showSupporterCard && (
+              <SupporterOnlyCard
+                // The server refuses a Supporter-only listing in a contest, so the two switches exclude each other.
+                checked={supporterOnly} onCheckedChange={(next) => { setSupporterOnly(next); if (next) setEnterContest(false); }}
+                days={supporterDaysText} onDaysChange={(tier, next) => setSupporterDaysText((prev) => ({ ...prev, [tier]: next }))}
+                goPublic={supporterGoPublic} onGoPublicChange={setSupporterGoPublic} plan={supporterPlan}
+              />
+            )}
           </div>
         </ScrollArea>
 
@@ -669,15 +678,6 @@ export function PublishModal({
               : undefined}
             withdrawing={withdrawal.busy}
             error={contestError || null}
-          />
-        )}
-
-        {showSupporterCard && (
-          <SupporterOnlyCard
-            // The server refuses a Supporter-only listing in a contest, so the two switches exclude each other.
-            checked={supporterOnly} onCheckedChange={(next) => { setSupporterOnly(next); if (next) setEnterContest(false); }}
-            days={supporterDaysText} onDaysChange={(tier, next) => setSupporterDaysText((prev) => ({ ...prev, [tier]: next }))}
-            goPublic={supporterGoPublic} onGoPublicChange={setSupporterGoPublic} plan={supporterPlan}
           />
         )}
 
