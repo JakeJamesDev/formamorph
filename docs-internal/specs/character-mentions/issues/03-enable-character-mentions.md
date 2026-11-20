@@ -49,7 +49,7 @@ For you: play a few turns with the feature on, and check that narration never st
 - **Which turns get read:** the newest settled turn, plus any turn that had a reading and whose narration changed (edit or regenerate). Older turns are never backfilled. One reading runs at a time.
 - **Cache parts:** Chromium refuses one CacheStorage entry near 370 MB (tested: 200 MB stores, 370 MB fails, streamed or not), so each file is cached as parts of at most 64 MB.
 - **Updates:** a failed update or no network keeps the cached model reading; the error row shows only when no model is usable.
-- **Dev manifest:** the dev server serves `.scratch/coref/publish` at `/coref-dev/` (`testing/coref/README.md`). The current dev manifest holds `small-litbank` and `big-e120` as version 1.
+- **Dev manifest:** the dev server serves `coref/work/publish` in the training-data repo at `/coref-dev/` (`testing/coref/README.md`). The current dev manifest holds `small-litbank` and `big-e120` as version 1.
 
 ## Landed
 

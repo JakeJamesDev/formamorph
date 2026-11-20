@@ -1,5 +1,5 @@
 // Dev server: serves a local Character Mentions manifest and weights at /coref-dev/, until the public bucket exists.
-// The folder is `COREF_DEV_DIR`, else the main checkout's .scratch/coref/publish (testing/coref/README.md).
+// The folder is `COREF_DEV_DIR`, else `publish` in the coref work folder (testing/coref/README.md).
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 
@@ -12,7 +12,8 @@ export function mainCheckoutRoot(root) {
 }
 
 export function corefDevManifest(root) {
-  const dir = process.env.COREF_DEV_DIR || path.join(mainCheckoutRoot(root), '.scratch', 'coref', 'publish')
+  const data = process.env.FORMAMORPH_TRAINING_DATA || path.join(mainCheckoutRoot(root), '..', 'formamorph-training-data')
+  const dir = process.env.COREF_DEV_DIR || path.join(process.env.COREF_WORK || path.join(data, 'coref', 'work'), 'publish')
   return {
     name: 'coref-dev-manifest',
     apply: 'serve',

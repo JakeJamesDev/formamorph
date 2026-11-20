@@ -9,7 +9,7 @@ import { chromium } from 'playwright';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const i = args.indexOf(`--${name}`); return i < 0 ? fallback : args.splice(i, 2)[1]; };
-const exportsDir = resolve(opt('exports', '.scratch/coref/exports'));
+const exportsDir = resolve(opt('exports', '../formamorph-training-data/coref/work/exports'));
 const ortDir = resolve(opt('ort', 'node_modules/onnxruntime-web'));
 const eps = opt('ep', 'webgpu,wasm').split(',');
 const names = args;

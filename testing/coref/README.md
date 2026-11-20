@@ -16,22 +16,22 @@ Character Mentions links names, pronouns and descriptors in narration to the cas
 | The kit | `testing/coref/` | ✅ |
 | LingMess training code (MIT) | [`vendor/lingmess_coref/`](vendor/lingmess_coref/) | ✅ |
 | Gold sets, seed set, accepted corrections | the private `formamorph-training-data` repo, under `coref/` | 🔒 private repo |
-| LitBank checkout, venv, corpus, runs, exports, scores | `.scratch/coref/` in the main checkout | ❌ |
+| LitBank checkout, venv, corpus, runs, exports, scores | `coref/work/` in the training-data repo, gitignored | ❌ |
 
 - The kit finds the data repo at `../formamorph-training-data`, next to the main checkout. Set `FORMAMORPH_TRAINING_DATA` to use another folder.
-- Set `COREF_WORK` to move the `.scratch/coref/` work folder.
+- Set `COREF_WORK` to move the `coref/work/` work folder.
 - CPU steps use a quarter of the cores. Set `COREF_THREADS` to change that.
 
 ## 🛠️ Setup
 
 ```bash
-python -m venv .scratch/coref/env
-.scratch/coref/env/Scripts/python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cu132
-.scratch/coref/env/Scripts/python -m pip install -r testing/coref/requirements.txt
-git clone https://github.com/dbamman/litbank .scratch/coref/litbank
+python -m venv ../formamorph-training-data/coref/work/env
+../formamorph-training-data/coref/work/env/Scripts/python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cu132
+../formamorph-training-data/coref/work/env/Scripts/python -m pip install -r testing/coref/requirements.txt
+git clone https://github.com/dbamman/litbank ../formamorph-training-data/coref/work/litbank
 ```
 
-The Python tests need this venv, so the app's test run skips them. Run them with `.scratch/coref/env/Scripts/python -m unittest testing/coref/test_corpus.py`. The manifest tests (`manifest.test.ts`) run with the app's tests.
+The Python tests need this venv, so the app's test run skips them. Run them with `../formamorph-training-data/coref/work/env/Scripts/python -m unittest testing/coref/test_corpus.py`. The manifest tests (`manifest.test.ts`) run with the app's tests.
 
 ## 🔁 A retrain, step by step
 
@@ -43,7 +43,7 @@ Run every command from the repo root with the venv's Python (`$PY` below).
 - `hand-fixed.jsonl` holds queue passages we labeled by hand. Its lines start `"reviewed": false`, so review them in the seed editor first.
 
 ```bash
-$PY testing/coref/corpus.py --litbank .scratch/coref/litbank \
+$PY testing/coref/corpus.py --litbank ../formamorph-training-data/coref/work/litbank \
   --add train:../formamorph-training-data/coref/corpus/accepted.jsonl \
   --add train:../formamorph-training-data/coref/corpus/hand-fixed.jsonl \
   --add narration-dev:../formamorph-training-data/coref/seed/dev.jsonl
@@ -57,7 +57,7 @@ $PY testing/coref/train.py --arch lingmess --run big-2026-11 --epochs 120
 ```
 
 - The GPU guard refuses to start when CUDA is missing or more than 3000 MiB of GPU memory is in use.
-- Stop with Ctrl+C, or create `.scratch/coref/runs/STOP`. The run saves and exits with code 3.
+- Stop with Ctrl+C, or create `../formamorph-training-data/coref/work/runs/STOP`. The run saves and exits with code 3.
 - Run the same command again to continue. It deletes the STOP file first. State also saves every 10 minutes (`SAVE_MINUTES`).
 - `GC=0` turns off gradient checkpointing for LingMess. `AMP=fp16` trains in fp16 instead of bf16.
 - The best checkpoint on LitBank dev lands in `runs/<run>/model`. `best_f1.json` marks a finished run.
@@ -66,7 +66,7 @@ $PY testing/coref/train.py --arch lingmess --run big-2026-11 --epochs 120
 **3. Export.**
 
 ```bash
-$PY testing/coref/export.py --checkpoint .scratch/coref/runs/small-2026-11/model --out .scratch/coref/exports/small-2026-11
+$PY testing/coref/export.py --checkpoint ../formamorph-training-data/coref/work/runs/small-2026-11/model --out ../formamorph-training-data/coref/work/exports/small-2026-11
 ```
 
 It fails when the fp32 graphs give different clusters than PyTorch on the parity passage. `--compare <older export>` runs another export of the same checkpoint on the same inputs, and fails when any output differs by more than 1e-4.
@@ -74,14 +74,14 @@ It fails when the fp32 graphs give different clusters than PyTorch on the parity
 **4. Score the export.** Scores always come from the shipped int8 graphs:
 
 ```bash
-$PY testing/coref/score.py --checkpoint .scratch/coref/runs/small-2026-11/model \
-  --export .scratch/coref/exports/small-2026-11 --out .scratch/coref/scores/small-2026-11.json
+$PY testing/coref/score.py --checkpoint ../formamorph-training-data/coref/work/runs/small-2026-11/model \
+  --export ../formamorph-training-data/coref/work/exports/small-2026-11 --out ../formamorph-training-data/coref/work/scores/small-2026-11.json
 ```
 
 **5. Check browser parity.** Needs installed Chrome and onnxruntime-web:
 
 ```bash
-node testing/coref/bench/run.mjs --exports .scratch/coref/exports --ort node_modules/onnxruntime-web small-2026-11
+node testing/coref/bench/run.mjs --exports ../formamorph-training-data/coref/work/exports --ort node_modules/onnxruntime-web small-2026-11
 ```
 
 `--ep wasm` runs one backend only. The bar: on WebGPU and on WASM, top-k mention overlap and antecedent argmax agreement are 1.0 against the same graphs on onnxruntime CPU. The line also shows both numbers against the fp32 graphs, for information.
@@ -89,10 +89,10 @@ node testing/coref/bench/run.mjs --exports .scratch/coref/exports --ort node_mod
 **6. Compare and publish.**
 
 ```bash
-node testing/coref/manifest.mjs report --model small --scores .scratch/coref/scores/small-2026-11.json --current https://<models host>/coref/manifest.json
-node testing/coref/manifest.mjs publish --model small --export .scratch/coref/exports/small-2026-11 \
-  --scores .scratch/coref/scores/small-2026-11.json --current https://<models host>/coref/manifest.json \
-  --base-url https://<models host>/coref --out .scratch/coref/publish
+node testing/coref/manifest.mjs report --model small --scores ../formamorph-training-data/coref/work/scores/small-2026-11.json --current https://<models host>/coref/manifest.json
+node testing/coref/manifest.mjs publish --model small --export ../formamorph-training-data/coref/work/exports/small-2026-11 \
+  --scores ../formamorph-training-data/coref/work/scores/small-2026-11.json --current https://<models host>/coref/manifest.json \
+  --base-url https://<models host>/coref --out ../formamorph-training-data/coref/work/publish
 ```
 
 Upload `publish/small/<version>/` first, then `publish/manifest.json`. When `--current` does not exist yet (HTTP 404, or no file), nothing is published, and the first publish passes.
@@ -113,7 +113,7 @@ npx vite-node testing/coref/seed-play.cli.ts -- --worlds all
 **2. Pre-label.** Labels the new passages with the current big model (LitBank e120) on the CPU and adds them to the seed file as `"reviewed": false`. Passages already in the file keep their labels:
 
 ```powershell
-.scratch/coref/env/Scripts/python testing/coref/seed_label.py --checkpoint <e120 checkpoint> --export .scratch/coref/exports/big-e120 ../formamorph-training-data/coref/seed/play/<batch>.jsonl
+../formamorph-training-data/coref/work/env/Scripts/python testing/coref/seed_label.py --checkpoint <e120 checkpoint> --export ../formamorph-training-data/coref/work/exports/big-e120 ../formamorph-training-data/coref/seed/play/<batch>.jsonl
 ```
 
 **3. Correct.** Start the editor's server, then open a file by its path in the data repo. **Save** writes back to that file.
@@ -134,10 +134,10 @@ node testing/coref/seed-editor-server.mjs
 
 ## 🧪 A local manifest for the dev server
 
-The dev server serves `.scratch/coref/publish` at `/coref-dev/`, and the app reads its manifest there until the public bucket exists. Publish each export there with `--base-url /coref-dev`:
+The dev server serves `../formamorph-training-data/coref/work/publish` at `/coref-dev/`, and the app reads its manifest there until the public bucket exists. Publish each export there with `--base-url /coref-dev`:
 
 ```powershell
-node testing/coref/manifest.mjs publish --model small --export .scratch/coref/exports/small-litbank --scores .scratch/coref/scores/small-litbank.json --current .scratch/coref/publish/manifest.json --base-url /coref-dev --out .scratch/coref/publish
+node testing/coref/manifest.mjs publish --model small --export ../formamorph-training-data/coref/work/exports/small-litbank --scores ../formamorph-training-data/coref/work/scores/small-litbank.json --current ../formamorph-training-data/coref/work/publish/manifest.json --base-url /coref-dev --out ../formamorph-training-data/coref/work/publish
 ```
 
 - Run it once per model. The second run keeps the first model's entry.

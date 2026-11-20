@@ -21,8 +21,8 @@ def _main_checkout():
 
 
 MAIN = _main_checkout()
-WORK = os.path.abspath(os.environ.get('COREF_WORK', os.path.join(MAIN, '.scratch', 'coref')))
 DATA = os.path.abspath(os.environ.get('FORMAMORPH_TRAINING_DATA', os.path.join(MAIN, '..', 'formamorph-training-data')))
+WORK = os.path.abspath(os.environ.get('COREF_WORK', os.path.join(DATA, 'coref', 'work')))
 CORPUS, RUNS, CACHE = (os.path.join(WORK, d) for d in ('corpus', 'runs', 'cache'))
 GOLD = os.path.join(DATA, 'coref', 'gold')
 VENDOR = os.path.join(KIT, 'vendor', 'lingmess_coref')
