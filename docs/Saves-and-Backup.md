@@ -271,8 +271,6 @@ The desktop and Android apps check for updates on start, then every few hours. I
 | **Check for Updates** | Checks again. Shows when no update is available or the last check failed. |
 | **Close** | Closes the dialog. Shows when an update is available, while it downloads, and after. |
 
-While the update downloads and after, **Recent Changes** keeps the new version marked.
-
 - After the download, **Update & Restart** shows under the version number on desktop.
 - On Windows, **Update & Restart** still shows after you close and reopen the app, with no second download.
 - The app checks the download against the release's checksum before it uses it. A download that fails the check is erased, and an error shows.
