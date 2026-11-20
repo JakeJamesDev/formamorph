@@ -100,6 +100,8 @@ module.exports = {
           DEFAULT: "hsl(var(--info))",
           foreground: "hsl(var(--info-foreground))",
         },
+        // The theme's dialogue hue, without the player's Quote Color override. See index.css.
+        dialogue: "hsl(var(--dialogue))",
         // The contest podium's three metals. One set across every theme — see index.css.
         gold: "hsl(var(--gold))",
         silver: "hsl(var(--silver))",

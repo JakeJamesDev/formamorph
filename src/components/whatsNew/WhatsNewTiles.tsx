@@ -24,9 +24,9 @@ function Tile({ cell }: { cell: TileCell }) {
     return (
       <div
         data-tile="major"
-        className={cn('flex gap-3 rounded-md border border-l-4 border-primary/30 border-l-[hsl(var(--dialogue))] bg-card p-3', SPAN[cell.span])}
+        className={cn('flex gap-3 rounded-md border border-l-4 border-primary/30 border-l-dialogue bg-card p-3', SPAN[cell.span])}
       >
-        <Icon data-icon={cell.item.icon ?? 'default'} aria-hidden className="mt-0.5 h-6 w-6 shrink-0 text-[hsl(var(--dialogue))]" />
+        <Icon data-icon={cell.item.icon ?? 'default'} aria-hidden className="mt-0.5 h-6 w-6 shrink-0 text-dialogue" />
         <div className="min-w-0">
           <h3 className="text-body font-semibold"><Inline text={cell.item.title} /></h3>
           <p className="mt-1 text-label text-muted-foreground"><Inline text={cell.item.body} /></p>
