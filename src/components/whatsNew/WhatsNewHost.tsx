@@ -7,6 +7,7 @@ import { updateBridge } from '@/lib/updates/updateBridge';
 import { isUpdatePending, type UpdateState } from '@/lib/updates/updateState';
 import { checkForUpdate, releaseBodies } from '@/services/UpdateService';
 import { pickSummary } from '@/lib/whatsNew/summarySource';
+import type { ReleaseSummary } from '@/lib/whatsNew/releaseSummary';
 import { useDevRoute } from '@/lib/devRouter';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { WHATS_NEW_DEV_STATES, type WhatsNewDevState as DevState } from './whatsNewDevStates';
@@ -69,6 +70,7 @@ function WebHost(props: HostProps) {
 
 interface DevOverride {
   summary: SummaryState;
+  preview: ReleaseSummary | null;
   recent: RecentChanges;
   update: WhatsNewUpdate | null;
 }
@@ -81,9 +83,28 @@ function HostCore({ open, onOpenChange, children, summaryTimeoutMs = SUMMARY_TIM
   const [summary, setSummary] = useState<SummaryState>({ status: 'loading' });
   const [tab, setTab] = useState<WhatsNewTab>('new');
   const [dev, setDev] = useState<DevOverride | null>(null);
+  const [fetchedPreview, setFetchedPreview] = useState<ReleaseSummary | null>(null);
+  const [previewing, setPreviewing] = useState(false);
   const resolving = useRef(false);
   const mounted = useMountedRef();
   const devRoute = useDevRoute();
+
+  // The newest available release is the one Download installs. Its body comes from the live list, then the
+  // cache, never the bundle, and the link shows only when it renders.
+  const available = update?.state.phase === 'available' ? update.state.latestVersion ?? null : null;
+  const previewVersion = open && !dev ? available : null;
+  useEffect(() => {
+    setFetchedPreview(null);
+    if (!previewVersion) return;
+    let stale = false;
+    void releaseBodies(previewVersion, summaryTimeoutMs).then(({ live, cached }) => {
+      if (stale || !mounted.current) return;
+      setFetchedPreview(pickSummary({ github: live, cache: cached, bundled: null }, previewVersion));
+    });
+    return () => { stale = true; };
+  }, [previewVersion, summaryTimeoutMs, mounted]);
+  const preview = dev ? dev.preview : fetchedPreview;
+  useEffect(() => { if (!preview) setPreviewing(false); }, [preview]);
 
   // The summary resolves once, on first open: GitHub, then the cached release, then the bundled file.
   useEffect(() => {
@@ -111,8 +132,11 @@ function HostCore({ open, onOpenChange, children, summaryTimeoutMs = SUMMARY_TIM
       ]).then(([seed, sample]) => {
         if (!mounted.current) return;
         const picked = pickSummary({ github: null, cache: null, bundled: seed.default }, '3.7.0');
+        // The canned update is v3.8.0; its preview reuses the seed under that title.
+        const next = pickSummary({ github: seed.default.replace('v3.7.0', 'v3.8.0'), cache: null, bundled: null }, '3.8.0');
         setDev({
           summary: picked ? { status: 'ready', summary: picked } : { status: 'none' },
+          preview: state === 'update' ? next : null,
           recent: { loading: false, text: sample.DEV_CHANGELOG_SAMPLE, updateVersion: state === 'update' ? '2.13.0' : undefined },
           update: state === 'web' ? null : devUpdate(state),
         });
@@ -137,6 +161,9 @@ function HostCore({ open, onOpenChange, children, summaryTimeoutMs = SUMMARY_TIM
         update={dev ? dev.update : update}
         tab={tab}
         onTabChange={setTab}
+        preview={preview}
+        previewing={previewing}
+        onPreviewingChange={setPreviewing}
       />
     </WhatsNewContext.Provider>
   );

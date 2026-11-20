@@ -22,9 +22,9 @@ import { WhatsNewVersionButton } from './WhatsNewVersionButton';
 const INSTALLED = `v${APP_VERSION}`;
 
 /** A Release Summary for the installed version whose lead names its source. */
-function summaryMd(lead: string, firstEmoji = '⏳') {
+function summaryMd(lead: string, firstEmoji = '⏳', title = INSTALLED) {
   return [
-    `# Formamorph ${INSTALLED}`, '', lead, '', 'Second paragraph.', '',
+    `# Formamorph ${title}`, '', lead, '', 'Second paragraph.', '',
     '## Major', '',
     `- ${firstEmoji} **Since Last Turn** — a tray lists what you did.`,
     '- 🗓️ **Daily routines** — entities keep a schedule.',
@@ -304,6 +304,78 @@ describe('What’s New with an update bridge', () => {
     expect(within(dialog).getByText(/v9\.9\.9 is downloaded\./)).toBeInTheDocument();
     expect(within(dialog).queryByRole('button', { name: 'Download' })).not.toBeInTheDocument();
     expect(within(dialog).getByText('Close', { selector: 'button' })).toBeInTheDocument();
+  });
+
+  describe('update preview', () => {
+    const NEWEST = release('v9.9.9', summaryMd('Newest lead.', '⏳', 'v9.9.9'));
+    const OLDER = release('v9.9.8', summaryMd('Older lead.', '⏳', 'v9.9.8'));
+    const OWN = release(INSTALLED, summaryMd('Installed lead.'));
+
+    async function openUpdateDialog() {
+      plantDesktop();
+      render(<Harness />);
+      fireEvent.click(versionButton());
+      return screen.findByRole('dialog');
+    }
+
+    it('previews the newest release when two newer ones are available, and returns to the installed one', async () => {
+      serveReleases([NEWEST, OLDER, OWN]);
+      const dialog = await openUpdateDialog();
+      expect(await within(dialog).findByText('Installed lead.')).toBeInTheDocument();
+      fireEvent.click(await within(dialog).findByRole('button', { name: 'Preview v9.9.9' }));
+      expect(within(dialog).getByText('Newest lead.')).toBeInTheDocument();
+      expect(within(dialog).getByText('Previewing v9.9.9')).toBeInTheDocument();
+      expect(within(dialog).queryByText('Older lead.')).not.toBeInTheDocument();
+      expect(within(dialog).queryByText('Installed lead.')).not.toBeInTheDocument();
+      fireEvent.click(within(dialog).getByRole('button', { name: `Back to ${INSTALLED}` }));
+      expect(await within(dialog).findByText('Installed lead.')).toBeInTheDocument();
+      expect(within(dialog).queryByText('Newest lead.')).not.toBeInTheDocument();
+    });
+
+    it('offers no preview link when the newest body does not parse, and the dialog still works', async () => {
+      serveReleases([release('v9.9.9', '### Added\n\n- New stuff'), OLDER, OWN]);
+      const dialog = await openUpdateDialog();
+      expect(await within(dialog).findByText('Installed lead.')).toBeInTheDocument();
+      expect(within(dialog).getByText('v9.9.9 is ready to download.')).toBeInTheDocument();
+      expect(within(dialog).queryByRole('button', { name: /^Preview/ })).not.toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: 'Download' })).toBeInTheDocument();
+    });
+
+    it('previews a body whose Major uses an emoji this build does not map', async () => {
+      serveReleases([release('v9.9.9', summaryMd('Newest lead.', '🦄', 'v9.9.9')), OWN]);
+      const dialog = await openUpdateDialog();
+      fireEvent.click(await within(dialog).findByRole('button', { name: 'Preview v9.9.9' }));
+      expect(within(dialog).getByText('Newest lead.')).toBeInTheDocument();
+    });
+
+    it('leaves the preview when the player opens Recent Changes', async () => {
+      serveReleases([NEWEST, OWN]);
+      const dialog = await openUpdateDialog();
+      fireEvent.click(await within(dialog).findByRole('button', { name: 'Preview v9.9.9' }));
+      fireEvent.mouseDown(within(dialog).getByRole('tab', { name: 'Recent Changes' }));
+      fireEvent.mouseDown(within(dialog).getByRole('tab', { name: 'What’s New' }));
+      expect(await within(dialog).findByText('Installed lead.')).toBeInTheDocument();
+      expect(within(dialog).queryByText('Newest lead.')).not.toBeInTheDocument();
+    });
+
+    it('reopens on the installed summary after the dialog closes mid-preview', async () => {
+      serveReleases([NEWEST, OWN]);
+      const dialog = await openUpdateDialog();
+      fireEvent.click(await within(dialog).findByRole('button', { name: 'Preview v9.9.9' }));
+      fireEvent.click(within(dialog).getByText('Close', { selector: 'button' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      fireEvent.click(versionButton());
+      const reopened = await screen.findByRole('dialog');
+      expect(await within(reopened).findByText('Installed lead.')).toBeInTheDocument();
+      expect(within(reopened).queryByText('Newest lead.')).not.toBeInTheDocument();
+    });
+
+    it('does not offer a preview on the web', async () => {
+      serveReleases([NEWEST, OWN]);
+      const dialog = await openWhatsNew();
+      expect(await within(dialog).findByText('Installed lead.')).toBeInTheDocument();
+      expect(within(dialog).queryByRole('button', { name: /^Preview/ })).not.toBeInTheDocument();
+    });
   });
 
   it('offers Install rather than a restart on Android', async () => {

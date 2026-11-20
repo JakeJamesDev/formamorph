@@ -36,7 +36,7 @@ export interface RecentChanges {
 
 const tag = (v?: string) => (v ? (v.startsWith('v') ? v : `v${v}`) : '');
 
-function UpdateBanner({ update, checkedHere }: { update: WhatsNewUpdate; checkedHere: boolean }) {
+function UpdateBanner({ update, checkedHere, onPreview }: { update: WhatsNewUpdate; checkedHere: boolean; onPreview: (() => void) | null }) {
   const { state } = update;
   const next = tag(state.latestVersion);
   if (state.phase === 'available') {
@@ -44,7 +44,10 @@ function UpdateBanner({ update, checkedHere }: { update: WhatsNewUpdate; checked
       <div className="space-y-2 rounded-md border border-success/40 bg-success/10 px-3 py-2">
         <div className="flex items-center justify-between gap-3">
           <span className="text-label">{next} is ready to download.</span>
-          <Button size="sm" onClick={update.onDownload}>Download</Button>
+          <div className="flex items-center gap-1">
+            {onPreview && <Button size="sm" variant="link" onClick={onPreview}>Preview {next}</Button>}
+            <Button size="sm" onClick={update.onDownload}>Download</Button>
+          </div>
         </div>
         {state.openedInBrowser && (
           <Hint>The download opened in your browser. Open the .dmg file and copy the new app over the old one.</Hint>
@@ -94,7 +97,7 @@ function PrimaryAction({ update, onClose, onCheck }: { update: WhatsNewUpdate | 
 }
 
 /** What's New: the installed version's summary, Recent Changes, and the update controls where a bridge exists. */
-export function WhatsNewDialog({ open, onOpenChange, version, summary, recent, update, tab, onTabChange }: {
+export function WhatsNewDialog({ open, onOpenChange, version, summary, recent, update, tab, onTabChange, preview, previewing, onPreviewingChange }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   version: string;
@@ -103,10 +106,19 @@ export function WhatsNewDialog({ open, onOpenChange, version, summary, recent, u
   update: WhatsNewUpdate | null;
   tab: WhatsNewTab;
   onTabChange: (tab: WhatsNewTab) => void;
+  /** The newest available release's summary, once it parses. Null hides the preview link. */
+  preview: ReleaseSummary | null;
+  previewing: boolean;
+  onPreviewingChange: (previewing: boolean) => void;
 }) {
   const [checkedHere, setCheckedHere] = useState(false);
   useEffect(() => { if (!open) setCheckedHere(false); }, [open]);
   const check = () => { setCheckedHere(true); update?.onCheck(); };
+  const showPreview = previewing && preview !== null;
+  const changeTab = (next: WhatsNewTab) => {
+    if (next === 'recent') onPreviewingChange(false);
+    onTabChange(next);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -117,15 +129,29 @@ export function WhatsNewDialog({ open, onOpenChange, version, summary, recent, u
             {update && <ChannelSelect update={update} />}
           </div>
         </DialogHeader>
-        {update && <UpdateBanner update={update} checkedHere={checkedHere} />}
-        <Tabs value={tab} onValueChange={(v) => onTabChange(v as WhatsNewTab)} className="min-w-0">
+        {update && (
+          <UpdateBanner
+            update={update}
+            checkedHere={checkedHere}
+            onPreview={preview && !showPreview ? () => { onTabChange('new'); onPreviewingChange(true); } : null}
+          />
+        )}
+        <Tabs value={tab} onValueChange={(v) => changeTab(v as WhatsNewTab)} className="min-w-0">
           <TabsList>
             <TabsTrigger value="new">What’s New</TabsTrigger>
             <TabsTrigger value="recent">Recent Changes</TabsTrigger>
           </TabsList>
           <TabsContent value="new" className="pt-2">
             <ScrollArea className="max-h-[60dvh]" focusable>
-              {summary.status === 'ready' ? (
+              {showPreview ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <Meta role="status">Previewing {tag(preview.version ?? undefined)}</Meta>
+                    <Button size="sm" variant="link" onClick={() => onPreviewingChange(false)}>Back to {tag(version)}</Button>
+                  </div>
+                  <WhatsNewSummary summary={preview} />
+                </div>
+              ) : summary.status === 'ready' ? (
                 <WhatsNewSummary summary={summary.summary} />
               ) : (
                 <Meta role="status">{summary.status === 'loading' ? 'Loading…' : 'This version has no summary.'}</Meta>

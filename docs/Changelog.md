@@ -87,6 +87,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A During AI Output image can float left or right with the text wrapping around it.** Set `wrap` to `'left'` or `'right'` in `player.show`. On a narrow screen it becomes a block.
   - **What's New:**
     - **The version number on the main menu opens What's New, a short summary of the installed release.** Big changes show as tiles with an icon, beside a related change. Recent Changes lists every change, and update controls stay in the same dialog.
+    - **The update banner links to a preview of the new version's summary.** Select Preview to read the newest release in the same layout, and Back to return to your own version. The link shows only when the summary loads.
   - **Supporter-only listings show when each tier can get them.** Cards and details windows list each tier's date and the public date. A Supporter whose tier isn't open yet sees an Upgrade button that opens Patreon.
 - **🛠️ Developer tooling**
   - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.
