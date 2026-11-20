@@ -9,6 +9,12 @@ declare const __BUILD_TARGET__: string;
 /** The build's `FORMAMORPH_AVATARS` value. */
 declare const __AVATAR_SET__: string;
 
+/** The installed version's Release Summary markdown, or null when `docs/whats-new/` has none (vite.config.js). */
+declare module 'virtual:whats-new-summary' {
+  const text: string | null;
+  export default text;
+}
+
 /**
  * The community server's address, in each build mode.
  *

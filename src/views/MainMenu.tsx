@@ -94,8 +94,8 @@ import type { World, Stat, Dictionary, DictionaryMetadata, Entity, EntityMetadat
 import { parseWorldFile } from '@/lib/jsonFileWorkerUtils';
 import { updateBridge } from '@/lib/updates/updateBridge';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { UpdateVersionControl } from '@/components/menu/UpdateVersionControl';
-import { WebVersionChangelog } from '@/components/menu/WebVersionChangelog';
+import { WhatsNewHost } from '@/components/whatsNew/WhatsNewHost';
+import { WhatsNewVersionButton } from '@/components/whatsNew/WhatsNewVersionButton';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
 import { readLibraryDetails } from '@/lib/contentAuthor';
 import { importCharacterFile } from '@/lib/entityFile';
@@ -458,6 +458,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // Whether this build can install an update. The Android app is always "mobile", so its version line has
   // to stay in the footer rather than collapsing into the ⋯ menu — an update offer nobody opens is no offer.
   const canUpdate = updateBridge() !== null;
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   // The age attestation every community surface waits on (see AgeGateContext).
   const { attested, gateOpen, requireAttestation } = useAgeGate();
 
@@ -2510,6 +2511,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           scrolling under floating buttons. Full-width (the root is no longer the max-width container — that
           moved to the grid scroll areas), so the profile/social sit at the viewport edges. Equal flex-1
           side cells keep the copyright truly centered. */}
+      <WhatsNewHost open={whatsNewOpen} onOpenChange={setWhatsNewOpen}>
       <footer className="shrink-0 flex items-center gap-2 py-3 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         {/* Left: user profile circle + app version (the version moves into the ⋯ menu on mobile). */}
         <div className="flex-1 flex items-center justify-start gap-2">
@@ -2610,7 +2612,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               </TooltipPortal>
             </Tooltip>
           )}
-          {canUpdate ? <UpdateVersionControl /> : !isMobile && <WebVersionChangelog />}
+          {(canUpdate || !isMobile) && <WhatsNewVersionButton />}
         </div>
 
         {/* Center: copyright + origin and the Credits line (original is MIT — see THIRD-PARTY-NOTICES / legal/). The
@@ -2656,7 +2658,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 </button>
               </PopoverTrigger>
               <PopoverContent align="end" side="top" className="w-56 flex flex-col gap-1">
-                {!canUpdate && <WebVersionChangelog />}
+                {!canUpdate && <WhatsNewVersionButton />}
                 <a
                   href="https://www.patreon.com/JakeJamesNSFW"
                   target="_blank"
@@ -2714,6 +2716,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           )}
         </div>
       </footer>
+      </WhatsNewHost>
 
       <Dialog open={showWorldModal} onOpenChange={setShowWorldModal}>
         <DialogContent aria-describedby={undefined} className={cn("h-[85dvh] flex flex-col overflow-x-hidden", worldModalCollapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>

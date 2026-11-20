@@ -109,6 +109,14 @@ describe('Major items', () => {
     const md = wrap('- 🦄 **Unicorn** — unmapped.');
     expect(errors(md)).toEqual(['The emoji 🦄 on "Unicorn" has no icon. Use one from the icon map.']);
     expect(parseReleaseSummary(md).summary.major[0]).toMatchObject({ title: 'Unicorn', emoji: '🦄', icon: null });
+    expect(parseReleaseSummary(md).problems.map((p) => p.code)).toEqual(['unmapped-emoji']);
+  });
+
+  it('marks the other Major errors with their own codes', () => {
+    const codes = (md: string) => parseReleaseSummary(md).problems.filter((p) => p.severity === 'error').map((p) => p.code);
+    expect(codes(wrap('- **Plain** — no emoji.'))).toEqual(['major-no-emoji']);
+    // The malformed item is dropped, which leaves the summary empty.
+    expect(codes(wrap('- ✨ Shiny: a thing.'))).toEqual(['major-item-shape', 'empty']);
   });
 
   it('refuses an item that is not "**Title** — body", and drops it', () => {
@@ -206,7 +214,7 @@ describe('a hand-edited body with extra content', () => {
     const md = '# Formamorph v3.8.0\n\nIntro.\n\n## New\n\n- **A** — a.\n\n## New\n\n- **B** — b.\n';
     const { summary, problems } = parseReleaseSummary(md);
     expect(summary.newItems.map((n) => n.title)).toEqual(['A', 'B']);
-    expect(problems).toEqual([{ severity: 'warning', line: 9, message: '"## New" appears twice; its items are merged.' }]);
+    expect(problems).toEqual([{ severity: 'warning', code: 'duplicate-section', line: 9, message: '"## New" appears twice; its items are merged.' }]);
   });
 });
 

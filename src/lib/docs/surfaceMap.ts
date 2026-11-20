@@ -38,7 +38,7 @@ export const SURFACE_EXCLUSIONS: Partial<Record<SurfaceId, SurfaceExclusionReaso
       ...tabsOf('adminPanelModeration')],
     'staff',
   ),
-  ...excludeAll(['designSystem', 'mentionReading', 'scriptPrompt', ...tabsOf('scriptPrompt'), ...tabsOf('gameViewerAttach'), ...tabsOf('gameViewerAllowance'), ...tabsOf('worldEditorHistory')], 'dev'),
+  ...excludeAll(['designSystem', 'mentionReading', 'scriptPrompt', ...tabsOf('scriptPrompt'), ...tabsOf('gameViewerAttach'), ...tabsOf('gameViewerAllowance'), ...tabsOf('worldEditorHistory'), ...tabsOf('whatsNew')], 'dev'),
   ...excludeAll(DEV_PANE_MODALS, 'dev'),
 };
 
@@ -119,7 +119,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'profileMerge.result': { page: 'Saves-and-Backup', anchor: 'the-merge-your-other-data-dialog' },
   unreadableWorlds: { page: 'Saves-and-Backup', anchor: 'when-a-world-cant-be-read' },
   updateRequired: { page: 'Saves-and-Backup', anchor: 'the-update-required-dialog' },
-  changelog: { page: 'Saves-and-Backup', anchor: 'whats-new' },
+  whatsNew: { page: 'Saves-and-Backup', anchor: 'whats-new' },
   mainMenu: { page: 'Library', anchor: '-library' },
   ...Object.fromEntries(tabsOf('mainMenu').map((id) => [id, THE_LIBRARY_TABS])),
   // The group picker ledger opens the library's production Groups dialogs.

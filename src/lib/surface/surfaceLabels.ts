@@ -79,7 +79,7 @@ const ENTRIES: [string, string][] = [
   ['backup', 'Backup & Restore'],
   ['unreadableWorlds', "Worlds That Can't Be Read"],
   ['updateRequired', 'Update Formamorph'],
-  ['changelog', "What's new"],
+  ['whatsNew', "What's New"],
   ['avatar', 'Avatar Customization'],
   ['modelDetails', 'Avatar'],
   ['community', 'Community Creations'],

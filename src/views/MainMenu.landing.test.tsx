@@ -123,8 +123,13 @@ describe('Take Me There landing on the main menu', () => {
 
   it('leaves the surface open with no error and no pulse when the row is not on the page', async () => {
     const errors = vi.spyOn(console, 'error');
+    // On a narrow browser screen the version number sits inside the closed More menu.
+    vi.stubGlobal('innerWidth', 375);
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: true, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
+    }));
     await renderMenu();
-    // The browser build has no update bridge, so the footer holds no app-version control.
     requester.send('mainMenu', 'app-version');
     await frames(32);
     expect(rowOf('mainMenu#app-version')).toBeNull();

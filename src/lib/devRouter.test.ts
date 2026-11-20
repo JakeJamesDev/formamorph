@@ -28,6 +28,7 @@ import { FORMAQUESTION_TABS } from '@/components/formaquestion/formaquestionTabs
 import { FORMAQUESTION_SETTINGS_TABS } from '@/components/formaquestion/formaquestionSettingsTabs';
 import { GAME_LEFT_PANEL_TABS, GAME_RIGHT_PANEL_TABS } from '@/components/game/panelTabs';
 import { NARRATION_LAYOUTS } from '@/contexts/settingsDefaults';
+import { WHATS_NEW_DEV_STATES } from '@/components/whatsNew/whatsNewDevStates';
 import { PROFILE_TABS } from '@/components/menu/profileTabs';
 import { ADMIN_PANEL_TABS } from '@/components/menu/adminPanelTabs';
 import { PROFILE_MERGE_STEPS } from '@/components/menu/profileMergeView';
@@ -278,6 +279,10 @@ describe('dev-router coverage guard', () => {
 
   it('ledger lists exactly the event acknowledge phases the poster renders', () => {
     expect([...DEV_MODAL_TABS.eventAck]).toEqual([...EVENT_ACK_PHASES]);
+  });
+
+  it("ledger lists exactly the What's New canned builds", () => {
+    expect([...DEV_MODAL_TABS.whatsNew]).toEqual([...WHATS_NEW_DEV_STATES]);
   });
 
   it('ledger lists exactly the script prompt samples', () => {

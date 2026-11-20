@@ -91,6 +91,24 @@ const docsIndexMarkdown = {
   },
 }
 
+// `virtual:whats-new-summary`: the installed version's Release Summary text, or null when the build has none.
+// Only that one file ships (src/components/whatsNew/WhatsNewHost.tsx).
+const WHATS_NEW_ID = 'virtual:whats-new-summary'
+const whatsNewSummary = {
+  name: 'whats-new-summary',
+  resolveId(id) {
+    return id === WHATS_NEW_ID ? `\0${WHATS_NEW_ID}` : null
+  },
+  load(id) {
+    if (id !== `\0${WHATS_NEW_ID}`) return null
+    const file = path.resolve(import.meta.dirname, 'docs/whats-new', `${pkg.version}.md`)
+    this.addWatchFile(file)
+    let text = null
+    try { text = readFileSync(file, 'utf-8') } catch { /* no summary for this version */ }
+    return `export default ${JSON.stringify(text)}`
+  },
+}
+
 // Pure CommonJS files that main and the renderer both load. Dev serves a .cjs raw, so wrap each as an ES
 // module with the names from its `module.exports = { ... }` statement.
 const SHARED_CJS = ['/electron/cacheTypes.cjs', '/electron/engineDevice.cjs']
@@ -112,7 +130,7 @@ const shippedWorlds = shipBundledWorlds(import.meta.dirname)
 const notices = shipNotices(import.meta.dirname)
 
 export default defineConfig({
-  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, sharedCjs, shippedWorlds, stripSeededWorlds(), bundledWorldHashes(shippedWorlds.api.shippedText), notices, stashSourceMaps(), bundledAvatarCheck(), espeakCheck(), corefDevManifest(import.meta.dirname)],
+  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, whatsNewSummary, sharedCjs, shippedWorlds, stripSeededWorlds(), bundledWorldHashes(shippedWorlds.api.shippedText), notices, stashSourceMaps(), bundledAvatarCheck(), espeakCheck(), corefDevManifest(import.meta.dirname)],
   cacheDir: process.env.E2E_SYNC_APP ? path.resolve(import.meta.dirname, 'node_modules/.vite-sync-app') : devCacheDir,
   base: './',
   // Maps for reading crash stacks; stashSourceMaps moves them out of the shipped output.

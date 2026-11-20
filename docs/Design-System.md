@@ -2839,6 +2839,48 @@ A record with both kinds follows the hard case. The confirm counts only the hard
 
 The line reads "This also deletes its link." for one reference and "This also deletes its 2 links and 1 pick." for several kinds. Zero uses has no line, and no dialog opens.
 
+## Pattern: Paired Tiles
+
+**Purpose:** Show a release's highlights so the biggest changes read at a glance, each beside a related one.
+
+**Density:** Comfortable. Tiles carry a title and one or two sentences.
+
+> ✅ Approved by the user through the What's New prototype (B4), 2026-11-19.
+
+### Composition
+
+- 🧭 **Three columns.** A Major tile spans two, and its paired New tile takes the third.
+- 🎯 **Major tiles** have a 4px left edge and a 24px icon in the dialogue color, on a plain `card` with a `primary/30` border.
+- 🧩 **New tiles** have the same card and border, with no edge and no icon.
+- 🔧 **Fixes** is one muted box with no border. It fills the last row's empty cells and sizes to its text.
+- 🎨 Every color is a theme token. Status colors (success, info) never tint a tile.
+
+### Pairing
+
+| Case | Layout |
+|---|---|
+| Major with a nested item | The nested item is its pair |
+| Major with none | The next unpaired New item is its pair |
+| Major with nothing left | It spans the full row |
+| Leftover New items | Rows of three |
+| Fixes | The last row's empty cells, or a full row |
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The grid and tiles | `WhatsNewTiles` in [`WhatsNewTiles.tsx`](../src/components/whatsNew/WhatsNewTiles.tsx) |
+| The pairing rule | `tileCells` in [`tileLayout.ts`](../src/lib/whatsNew/tileLayout.ts) |
+| Emoji to icon | `MAJOR_ICONS` in [`releaseSummary.ts`](../src/lib/whatsNew/releaseSummary.ts), components in [`majorIcons.ts`](../src/components/whatsNew/majorIcons.ts) |
+
+### Responsive behavior
+
+Below `sm` the grid is one column, in the same order: each Major, then its pair.
+
+### State reference
+
+Open `#dev?modal=designSystem&tab=paired-tiles` for the 3.7.0 summary in both modes, or `#dev?modal=whatsNew` for the dialog. An emoji outside the icon map shows the default icon.
+
 ## UI and prototype workflow
 
 The project `design-system` skill routes UI changes and prototypes here. Use the applicable named pattern and its production components, then inspect the result through the live reference. Agents verify established patterns themselves and report desktop/mobile states, theme/font inheritance, interaction results, and static evidence.

@@ -2,8 +2,7 @@ import { useEffect, useRef } from 'react';
 import { MarkdownPanel } from '@/components/MarkdownPanel';
 import { WIKI_CHANGELOG_URL } from '@/services/UpdateService';
 
-// Small pieces shared by the desktop update dialog (UpdateDialog) and the web changelog popout
-// (WebVersionChangelog), so the changelog box + "Full changelog" link stay identical in both.
+// The release-notes box and the "Full changelog" link that What's New shows.
 
 /** Normalize a version to the `v`-prefixed form the heading text uses (`2.2.2` and `v2.2.2` → `v2.2.2`). */
 const vtag = (v?: string): string | null => (v ? (v.startsWith('v') ? v : `v${v}`) : null);

@@ -54,9 +54,10 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  to have a world worth traveling in; `fixture=entityFollowers` puts met entities on its Map and a follower
  *  in the Entities tab. `editText` is in game (GameViewer) and
  *  opens the narration editor on the current page's text — empty before any turn, which is enough to reach
- *  its full-screen toggle, the one editor that grows in place instead of raising a window. `changelog` opens
- *  MainMenu's What's New popout on a canned sample (`devChangelogSample.ts`) rather than the live GitHub
- *  fetch, so its typography is checkable offline and always shows every shape the notes can take.
+ *  its full-screen toggle, the one editor that grows in place instead of raising a window. `whatsNew` opens
+ *  MainMenu's What's New dialog on the 3.7.0 seed summary and a canned Recent Changes sample
+ *  (`devChangelogSample.ts`) rather than the live GitHub fetch; `tab=…` picks the build: `web`, `upToDate`
+ *  (a desktop build with no update) or `update` (a desktop build with v3.8.0 available).
  *  `eventAck` opens the running-event acknowledge poster on a canned event (`devEventSample.ts`) instead of
  *  the events poll, so both it and the main menu's event banner are checkable without a live event; `tab=…`
  *  picks which phase, an opening or an ending. `publish` opens MainMenu's publish dialog on a canned world
@@ -129,7 +130,7 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  Chip Options over it, on a canned Entities chip. `scriptPrompt` is in game (GameViewer) and fires one
  *  canned `player.*` request through the live prompt store once the game has a turn; `tab=…` picks the shape
  *  (`devScriptPromptSamples.ts`). Pair it with `fixture=…`. `item` opens the first Item Instance's popup; pair it with `fixture=items&tab=inventory`. `road` opens the levels scene over any view, and `tab=<tier>` picks its level. `storyCard` is in game (GameViewer) and shows the Formamorph AI card whatever the turn count and seen record say; `tab=engine` shows the built-in engine card, `tab=mentions` the Character Mentions card, `tab=mentionsAsk` that card after Turn On with the Contribute Corrections question, `tab=mentionsPreview` that card with its larger preview open. `profileMerge` raises the AppData merge dialog on MainMenu at the step `tab=…` names, on canned rows (`devProfileMergeSample.ts`); its buttons close it and write nothing. `DEV_PANE_MODALS` follow. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'firstRun', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'mentionReading', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'usernameRename', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere', 'deleteWorldAvatar', 'deleteMediaEntry', 'appearancePreview', 'statAppearancePreview', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'imageSetup', 'formaquestion', 'formaquestionSettings', 'formaquestionCompare', 'formaquestionAiContext', 'formaquestionWikiConfirm', 'settingsCompare', 'chipOptions', 'scriptPrompt', 'stranger', 'item', 'credits', 'unreadableWorlds', 'tts', 'road', 'storyCard', 'profileMerge', ...DEV_PANE_MODALS] as const;
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'firstRun', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'whatsNew', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'mentionReading', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'usernameRename', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere', 'deleteWorldAvatar', 'deleteMediaEntry', 'appearancePreview', 'statAppearancePreview', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'imageSetup', 'formaquestion', 'formaquestionSettings', 'formaquestionCompare', 'formaquestionAiContext', 'formaquestionWikiConfirm', 'settingsCompare', 'chipOptions', 'scriptPrompt', 'stranger', 'item', 'credits', 'unreadableWorlds', 'tts', 'road', 'storyCard', 'profileMerge', ...DEV_PANE_MODALS] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** The `attach=…` value that stages sample attachments on the game view. */
@@ -273,6 +274,8 @@ export const DEV_MODAL_TABS = {
   adminPanelModeration: ['reports', 'review', 'auto', 'mentions'],
   // The acknowledge poster renders one of an event's two phases; `tab=…` picks which the canned event is at.
   eventAck: ['start', 'end'],
+  // What's New's canned builds (`whatsNewDevStates.ts`).
+  whatsNew: ['web', 'upToDate', 'update'],
   // `player.*` prompt shapes on the game view (`#dev?view=gameViewer&fixture=whiteRoom&modal=scriptPrompt&tab=askLong`).
   scriptPrompt: ['confirm', 'ask', 'askLong', 'askMulti', 'input', 'tell', 'toast'],
   // MainMenu's library card-type switcher. Not a modal: reached with `tab=…` and no `modal=…`, i.e.

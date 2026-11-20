@@ -42,7 +42,7 @@ export const ALWAYS_RUN = {
   'scripts/testSelection.test.mjs': 'scans every test and source file to keep these lists complete',
   'site/bundleBoundary.test.ts': 'scans the site and app sources for imports',
   'site/supporterTokens.test.ts': 'reads the app and site stylesheets',
-  'src/components/menu/WebVersionChangelog.test.tsx': 'reads src/index.css',
+  'src/components/ChangelogUi.test.tsx': 'reads src/index.css',
   'src/lib/aiRequest/localEngineImageDrop.test.ts': 'reads electron/llmEngine.cjs',
   'src/lib/bundledFingerprint.test.ts': 'scans src/defaultworlds and reads the shipped avatars',
   'src/lib/codeHighlight.test.ts': 'reads src/index.css',
@@ -175,7 +175,7 @@ export const PATH_TRIGGERS = {
   '.github/workflows/ci.yml': ['scripts/ciWorkflow.test.mjs'],
   '.github/workflows/release.yml': ['scripts/bundledAvatarCheck.test.mjs', 'scripts/validateReleaseSummary.test.mjs'],
   // The parser test reads the seed by path; the validator test runs the script as a child process.
-  'docs/whats-new/*.md': ['src/lib/whatsNew/releaseSummary.test.ts', 'scripts/validateReleaseSummary.test.mjs'],
+  'docs/whats-new/*.md': ['src/lib/whatsNew/releaseSummary.test.ts', 'scripts/validateReleaseSummary.test.mjs', 'src/components/whatsNew/WhatsNewHost.tsx', 'src/components/design-system/WhatsNewTilesReference.tsx'],
   'scripts/fixtures/release-summary/*.md': ['scripts/validateReleaseSummary.test.mjs'],
   '.github/workflows/pages.yml': ['scripts/bundledAvatarCheck.test.mjs'],
   'electron-builder.yml': ['electron/builderConfig.test.mjs', 'scripts/bundledAvatarCheck.test.mjs'],

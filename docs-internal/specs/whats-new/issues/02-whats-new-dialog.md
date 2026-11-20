@@ -1,6 +1,6 @@
 # 02: What's New Dialog
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -25,12 +25,22 @@ The footer version text opens What's New on every build: desktop, Android, web, 
 
 ## Acceptance criteria
 
-- [ ] Clicking the footer version text opens What's New on a build with an update bridge and on one without. On mobile web it opens from the overflow menu.
-- [ ] Host tests with a fake release fetch prove that the GitHub body wins when it parses, and that the bundled copy wins when offline, on timeout, and on a malformed body. Prove each guard bites by reinstating the bug once.
-- [ ] Host tests show the tile groups and pairs the parser describes, and a default icon for an unmapped emoji.
-- [ ] The update banner, Download, Check for updates and the release channel select work as before. Existing update dialog tests are ported to the new dialog.
-- [ ] The old update popout and web changelog popout are removed, with no remaining imports.
-- [ ] Frames `.scratch/frames/whats-new-dark.png`, `.scratch/frames/whats-new-light.png` and `.scratch/frames/whats-new-mobile.png`: the dialog at 1440×900 in both themes, and at 375 wide.
-- [ ] A changelog fragment has a 👤 entry for What's New.
+- [x] Clicking the footer version text opens What's New on a build with an update bridge and on one without. On mobile web it opens from the overflow menu. (Bridge: `WhatsNewHost.test.tsx` desktop and Android cases. Web: live preview DOM reads at 1024 wide (footer) and 375 wide (More menu), dialog titled v3.7.0 with 6 tiles.)
+- [x] Host tests with a fake release fetch prove that the GitHub body wins when it parses, and that the bundled copy wins when offline, on timeout, and on a malformed body. Prove each guard bites by reinstating the bug once. (`What's New source order` in `WhatsNewHost.test.tsx`, plus cache-before-bundled and wrong-version cases. Nine reinstated bugs each turned the right test red, then were restored.)
+- [x] Host tests show the tile groups and pairs the parser describes, and a default icon for an unmapped emoji. (`What's New tiles` in `WhatsNewHost.test.tsx`; edge cases in `tileLayout.test.ts`.)
+- [x] The update banner, Download, Check for Updates and the release channel select work as before. Existing update dialog tests are ported to the new dialog. (`What's New with an update bridge` in `WhatsNewHost.test.tsx`: every case from `UpdateVersionControl.test.tsx` and `UpdateDialog.test.tsx`.)
+- [x] The old update popout and web changelog popout are removed, with no remaining imports. (Files deleted; typecheck green; grep finds no source reference.)
+- [x] Frames `.scratch/frames/whats-new-dark.png`, `.scratch/frames/whats-new-light.png` and `.scratch/frames/whats-new-mobile.png`: the dialog at 1440×900 in both themes, and at 375 wide. (Playwright; at 1440×900 the What's New tab fits with no scroll.)
+- [x] A changelog fragment has a 👤 entry for What's New. (`docs-internal/changelog.d/whats-new-02.md`)
 
-For you: open What's New from the footer and judge whether the tiles read at a glance in your usual theme.
+## Landed
+
+**Not verified**
+
+- The footer on a real desktop or Android build. Host tests plant the bridge; no packaged build was run.
+
+**For you**
+
+- Open What's New from the footer and judge whether the tiles read at a glance in your usual theme. Frames: `.scratch/whats-new-02/frames/whats-new-dark.png`, `.scratch/whats-new-02/frames/whats-new-light.png`, `.scratch/whats-new-02/frames/whats-new-mobile.png`.
+- The Major tiles use `hsl(var(--dialogue))` as an arbitrary Tailwind value. A `dialogue` color token in `tailwind.config.js` would make it a named token; that is a design-system call.
+- New labels: the button now reads **Check for Updates** (Title Case per the Writing Guide), and the channel label reads **Release Channel**.

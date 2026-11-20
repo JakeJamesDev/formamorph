@@ -16,7 +16,7 @@ const CHECK_INTERVAL_MS = 3 * 60 * 60 * 1000; // ~3h
 
 export interface UpdateChecker {
   state: UpdateState;
-  /** Manually re-check now (the dialog's "Check for updates" button). */
+  /** Manually re-check now (the dialog's "Check for Updates" button). */
   check: () => void;
   /** Begin the platform download for the available update. */
   download: () => void;

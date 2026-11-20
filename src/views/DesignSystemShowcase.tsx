@@ -57,6 +57,7 @@ import { ContextMenuReferences } from '@/components/design-system/ContextMenuRef
 import { FooterActionOrderReference } from '@/components/design-system/FooterActionOrderReference';
 import { NarrationTurnReference } from '@/components/design-system/NarrationTurnReference';
 import { SpeakerQuotesReference } from '@/components/design-system/SpeakerQuotesReference';
+import { WhatsNewTilesReference } from '@/components/design-system/WhatsNewTilesReference';
 import { MentionCardsReference } from '@/components/design-system/MentionCardsReference';
 import { InlineScriptImageReference } from '@/components/design-system/InlineScriptImageReference';
 import { ScriptPromptLineReference } from '@/components/design-system/ScriptPromptLineReference';
@@ -599,6 +600,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Body Layout',
     description: 'A figure with movable, sizable boxes beside the rows they belong to',
     Component: BodyLayoutReference,
+  },
+  {
+    id: 'paired-tiles',
+    label: 'Paired Tiles',
+    description: 'What’s New highlights: big changes with an accent edge and icon, each beside a related change',
+    Component: WhatsNewTilesReference,
   },
 ];
 

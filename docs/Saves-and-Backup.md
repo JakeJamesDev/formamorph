@@ -76,11 +76,11 @@ Restore adds to what you have. It never erases an item that is not in the backup
 <!-- route: mainMenu#app-version -->
 
 1. On the main menu, look at the version number at the bottom left. It shows **Update Available** when a newer release is out.
-2. Select the version number. The update dialog opens.
-3. Select the **Download** button. A progress bar shows under the version number.
+2. Select the version number. **What's New** opens.
+3. Select **Download**. A progress bar shows under the version number.
 4. Select **Update & Restart**.
 
-On a Mac, **Download** opens the new `.dmg` file in your browser. Once the browser opens it, the progress bar goes away and the version number shows **Update Available** again. The update dialog says the download opened in your browser. Open the file and copy the new app over the old one. For Android, see [How to Update the App](Install-on-Android#how-to-update-the-app).
+On a Mac, **Download** opens the new `.dmg` file in your browser. Once the browser opens it, the progress bar goes away and the version number shows **Update Available** again. **What's New** says the download opened in your browser. Open the file and copy the new app over the old one. For Android, see [How to Update the App](Install-on-Android#how-to-update-the-app).
 
 ---
 
@@ -247,33 +247,31 @@ When the merge finishes, the dialog lists what it added, replaced and kept, and 
 ## App Updates
 <!-- keywords: release notes, whats new, changelog, stable or beta, check manually, forced to, rollback, failed to start, current version, web reload -->
 
-### The Update Dialog
+### What's New
 
-The desktop and Android apps check for updates on start, then every few hours. Select the version number at the bottom left of the main menu to open the dialog.
+Select the version number at the bottom left of the main menu to open **What's New**. On the web on a narrow screen, the version number is in the **More** menu at the bottom right.
+
+The title is the version you have. The dialog has two tabs:
+
+| Tab | What it shows |
+|---|---|
+| **What's New** | A short summary of your version. The biggest changes show as tiles with an icon, each beside a related change. A box lists the fixes. |
+| **Recent Changes** | Every change in the latest releases, one line each |
+
+**Full changelog →** at the bottom left opens the full changelog. On the web, **Close** closes the dialog.
+
+The desktop and Android apps check for updates on start, then every few hours. In those apps the dialog also has the update controls:
 
 | Part | What it does |
 |---|---|
-| Title | Says where the update stands. See the list below. |
-| **Release channel** | **Stable** gets finished releases. **Pre-release** also gets beta builds. |
+| **Release Channel** | **Stable** gets finished releases. **Pre-release** also gets beta builds. |
+| Update line | Shows under the title when an update is available, downloads, or a step fails. |
+| **Download** | Downloads the update. It is in the update line when an update is available. |
 | Browser note | On a Mac, says the download opened in your browser. Shows after you select **Download**. |
-| Release notes | What changed in the new version |
-| **Full changelog →** | Opens the full changelog |
-| **Download** | Downloads the update. Shows when an update is available. |
-| **Cancel** | Closes the dialog. Shows when an update is available. |
-| **Close** | Closes the dialog. Shows while the update downloads and after it downloads. |
-| **Check for updates** | Checks again. Shows when no update is available or the last check failed. |
+| **Check for Updates** | Checks again. Shows when no update is available or the last check failed. |
+| **Close** | Closes the dialog. Shows when an update is available, while it downloads, and after. |
 
-The title is one of these:
-
-- **App Updates** before the first check
-- **Checking for Updates** while a check runs
-- **You're Up to Date** when no update is available
-- **Couldn't Check for Updates** when the check fails
-- **Update Available:** and the version
-- **Downloading Update:** and the version
-- **Update Downloaded:** and the version
-
-While the update downloads and after, the release notes keep the new version marked.
+While the update downloads and after, **Recent Changes** keeps the new version marked.
 
 - After the download, **Update & Restart** shows under the version number on desktop.
 - On Windows, **Update & Restart** still shows after you close and reopen the app, with no second download.
@@ -293,10 +291,6 @@ Your saves, worlds and settings stay the same through an update.
 | **Not Now** | Closes the dialog. The feature stays off until you update. |
 
 After the download, select **Update & Restart** on desktop or **Install** on Android, under the version number on the main menu. See [How to Update the Desktop App](#how-to-update-the-desktop-app).
-
-### What's New
-
-On the web, the version number at the bottom left of the main menu opens **What's new**. On a narrow screen, it is in the **More** menu at the bottom right. The dialog shows the notes of the latest release and a **Full changelog →** link.
 
 ## Related
 

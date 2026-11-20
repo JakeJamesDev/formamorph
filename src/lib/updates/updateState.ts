@@ -46,6 +46,11 @@ export type UpdateAction =
   | { type: 'ERROR'; step: UpdateStep; error: string }
   | { type: 'SET_CHANNEL'; channel: UpdateChannel };
 
+/** A newer release is available, downloading, or downloaded. */
+export function isUpdatePending(phase: UpdatePhase): boolean {
+  return phase === 'available' || phase === 'downloading' || phase === 'downloaded';
+}
+
 export function initialUpdateState(currentVersion: string, channel: UpdateChannel): UpdateState {
   return { phase: 'idle', currentVersion, channel };
 }

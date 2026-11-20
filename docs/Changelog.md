@@ -85,6 +85,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **During AI Output scripts can now place an image right after the sentence they run on.** It appears as the narration reveals that sentence, in Pages and Chat. A stopped reply keeps none of its images.
     - **Item and Tool scripts can show images in the story.** Item images appear below the turn, Tool images show when the Tool runs, and a reload keeps item messages and images.
     - **A During AI Output image can float left or right with the text wrapping around it.** Set `wrap` to `'left'` or `'right'` in `player.show`. On a narrow screen it becomes a block.
+  - **What's New:**
+    - **The version number on the main menu opens What's New, a short summary of the installed release.** Big changes show as tiles with an icon, beside a related change. Recent Changes lists every change, and update controls stay in the same dialog.
   - **Supporter-only listings show when each tier can get them.** Cards and details windows list each tier's date and the public date. A Supporter whose tier isn't open yet sees an Upgrade button that opens Patreon.
 - **🛠️ Developer tooling**
   - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.

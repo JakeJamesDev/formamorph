@@ -23,7 +23,7 @@ The Android app is the full Formamorph on your device: play, the [World Editor](
 <!-- route: mainMenu#app-version -->
 
 1. On the main menu, look at the version number at the bottom. It reads **Update Available** when a newer release exists.
-2. Tap the version number. The update dialog opens.
+2. Tap the version number. **What's New** opens.
 3. Tap **Download**. Progress shows under the version line.
 4. When it finishes, tap **Install**.
 5. The first time, Android asks you to allow **Formamorph** to install apps. Turn it on.
@@ -36,7 +36,7 @@ The Android app is the full Formamorph on your device: play, the [World Editor](
 <!-- route: mainMenu#app-version -->
 
 1. Tap the version number on the main menu.
-2. Set **Release channel** to **Pre-release**.
+2. Set **Release Channel** to **Pre-release**.
 
 Set it back to **Stable** for finished releases only.
 
@@ -102,7 +102,7 @@ Updating on Android works like the desktop app, with one extra tap at the end fo
 | Step | What happens |
 |---|---|
 | Check | Formamorph checks on start, then every few hours. The version line then shows **Update Available** |
-| Dialog | Tap the version number to see what changed. With nothing new, the dialog offers **Check for updates** instead of **Download**. |
+| Dialog | Tap the version number to see what changed. With nothing new, the dialog offers **Check for Updates** instead of **Download**. |
 | Download | Nothing downloads until you tap **Download**, so a 90 MB file never starts on mobile data without you. |
 | Install | An **Install** button replaces the progress bar. Android shows its own install sheet. |
 
@@ -110,12 +110,12 @@ Updating on Android works like the desktop app, with one extra tap at the end fo
 
 - 🔐 The download is checked against the checksum published with the release. A file that does not match is erased and never reaches the installer.
 - 💾 A finished download survives closing the app. Reopen it and you get **Install**, not a second 90 MB download. If Android cleared the app's cache, you download it again.
-- 📴 An update check with no connection shows no error on the main menu. The update dialog reads **Couldn't Check for Updates**.
+- 📴 An update check with no connection shows no error on the main menu. **What's New** says it couldn't check for updates.
 - 🗂️ Your saves, worlds, and settings survive updates.
 
 ### Beta Builds
 
-The **Release channel** selector is in the update dialog. **Pre-release** gets beta APKs as they come out. See [How to Get Beta Builds](#how-to-get-beta-builds).
+The **Release Channel** selector is in **What's New**. **Pre-release** gets beta APKs as they come out. See [How to Get Beta Builds](#how-to-get-beta-builds).
 
 ## 📤 Save Exports to a Folder
 <!-- keywords: file picker, canceled export, nothing happened, documents directory, internal memory -->

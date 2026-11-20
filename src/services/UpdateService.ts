@@ -189,17 +189,61 @@ export function androidAssets(release?: GithubRelease): AndroidDownloadUrls | nu
   return { url: apk.browser_download_url, sha512Url: sidecar.browser_download_url };
 }
 
+let inFlight: Promise<GithubRelease[]> | null = null;
+/** The last list a live fetch returned this session. */
+let lastLive: GithubRelease[] | null = null;
+
+/** One live fetch of the release list, shared by every caller while it runs. Rejects on any failure. */
+function fetchReleases(): Promise<GithubRelease[]> {
+  inFlight ??= (async () => {
+    try {
+      const raw = await fetchRaw(RELEASES_URL);
+      if (!raw.ok) throw new Error(`GitHub responded ${raw.status}`);
+      const releases = JSON.parse(raw.body) as GithubRelease[];
+      if (!Array.isArray(releases)) throw new Error('Unexpected releases payload');
+      writeCache(releases);
+      lastLive = releases;
+      return releases;
+    } finally {
+      inFlight = null;
+    }
+  })();
+  return inFlight;
+}
+
+const sameVersion = (tag: string, version: string) => tag.replace(/^v/, '') === version.replace(/^v/, '');
+const bodyFor = (releases: GithubRelease[] | null, version: string) =>
+  releases?.find((r) => !r.draft && sameVersion(r.tag_name, version))?.body ?? null;
+
+/** The release body for `version` from a live fetch and from the offline cache. `live` is null when the fetch
+ *  fails or takes longer than `timeoutMs`; a list fetched earlier this session counts as live. Never rejects. */
+export async function releaseBodies(
+  version: string,
+  timeoutMs: number,
+): Promise<{ live: string | null; cached: string | null }> {
+  let releases = lastLive;
+  if (!releases) {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), timeoutMs); });
+    releases = await Promise.race([fetchReleases().catch(() => null), timeout]);
+    clearTimeout(timer);
+  }
+  return { live: bodyFor(releases, version), cached: bodyFor(readCache(), version) };
+}
+
+/** Forgets the session's live list and in-flight fetch. Tests only. */
+export function resetReleaseFetch(): void {
+  inFlight = null;
+  lastLive = null;
+}
+
 /** Check GitHub for an update on `channel`. Never rejects. */
 export async function checkForUpdate(
   channel: UpdateChannel,
   currentVersion: string = APP_VERSION,
 ): Promise<UpdateCheckResponse> {
   try {
-    const raw = await fetchRaw(RELEASES_URL);
-    if (!raw.ok) throw new Error(`GitHub responded ${raw.status}`);
-    const releases = JSON.parse(raw.body) as GithubRelease[];
-    if (!Array.isArray(releases)) throw new Error('Unexpected releases payload');
-    writeCache(releases);
+    const releases = await fetchReleases();
     return { success: true, result: parseReleases(releases, channel, currentVersion) };
   } catch (error) {
     const cached = readCache();

@@ -1,6 +1,6 @@
 /**
- * DEV-only stand-in for the release notes the changelog popouts fetch from GitHub. Dynamically imported by
- * `#dev?view=mainMenu&modal=changelog` so the surface can be checked without the network, and so it always
+ * DEV-only stand-in for the release notes What's New's Recent Changes fetches from GitHub. Dynamically imported by
+ * `#dev?view=mainMenu&modal=whatsNew` so the surface can be checked without the network, and so it always
  * shows every shape the notes can take — a minor group header, tinted current/newest version captions, a
  * category label, a feature group with nested entries, and a loose entry.
  */

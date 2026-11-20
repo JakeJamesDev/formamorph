@@ -21,8 +21,15 @@ export interface ReleaseSummary {
   fixes: string[];
 }
 
+/** What a problem is about. `unmapped-emoji` is the one error the app renders around, with a default icon. */
+export type SummaryProblemCode =
+  | 'new-emoji' | 'new-item-shape' | 'text-above-title' | 'title-shape' | 'title-version' | 'duplicate-section'
+  | 'unknown-heading' | 'stray-text' | 'fixes-list' | 'major-item-shape' | 'major-no-emoji' | 'unmapped-emoji'
+  | 'extra-pair' | 'new-item-pair' | 'no-title' | 'empty' | 'no-intro' | 'length';
+
 export interface SummaryProblem {
   severity: 'error' | 'warning';
+  code: SummaryProblemCode;
   /** The 1-based source line, when the problem sits on one. */
   line: number | null;
   message: string;
@@ -105,7 +112,7 @@ interface RawItem extends RawLine {
   children: RawLine[];
 }
 
-type Report = (line: number | null, message: string) => void;
+type Report = (line: number | null, code: SummaryProblemCode, message: string) => void;
 
 function isSection(text: string): text is SectionName {
   return (SECTIONS as readonly string[]).includes(text);
@@ -130,9 +137,9 @@ function parseItem(text: string): SummaryItem | null {
 /** A New item, alone or as a Major item's pair. */
 function newItem(raw: RawLine, error: Report, warn: Report): SummaryItem | null {
   const { emoji, rest } = splitEmoji(raw.text);
-  if (emoji) warn(raw.line, `New items show no icon; the emoji ${emoji} is dropped.`);
+  if (emoji) warn(raw.line, 'new-emoji', `New items show no icon; the emoji ${emoji} is dropped.`);
   const item = parseItem(rest);
-  if (!item) error(raw.line, `A New item must read "**Title** — body": "${raw.text}".`);
+  if (!item) error(raw.line, 'new-item-shape', `A New item must read "**Title** — body": "${raw.text}".`);
   return item;
 }
 
@@ -150,8 +157,8 @@ function visibleLength(text: string): number {
  */
 export function parseReleaseSummary(markdown: string, options: { version?: string } = {}): ParsedReleaseSummary {
   const problems: SummaryProblem[] = [];
-  const error: Report = (line, message) => problems.push({ severity: 'error', line, message });
-  const warn: Report = (line, message) => problems.push({ severity: 'warning', line, message });
+  const error: Report = (line, code, message) => problems.push({ severity: 'error', code, line, message });
+  const warn: Report = (line, code, message) => problems.push({ severity: 'warning', code, line, message });
 
   const summary: ReleaseSummary = { version: null, intro: [], major: [], newItems: [], fixes: [] };
   let titleSeen = false;
@@ -189,24 +196,24 @@ export function parseReleaseSummary(markdown: string, options: { version?: strin
       if (hashes.length === 1 && !titleSeen && section === 'intro') {
         titleSeen = true;
         if (summary.intro.length > 0) {
-          warn(lineNo, 'Text above the title is dropped.');
+          warn(lineNo, 'text-above-title', 'Text above the title is dropped.');
           summary.intro = [];
         }
         const title = TITLE.exec(text);
         if (!title) {
-          error(lineNo, `The title must read "# Formamorph v<version>", not "${line.trim()}".`);
+          error(lineNo, 'title-shape', `The title must read "# Formamorph v<version>", not "${line.trim()}".`);
         } else {
           summary.version = title[1];
           if (options.version !== undefined && title[1] !== options.version) {
-            error(lineNo, `The title names v${title[1]}, but this summary is for v${options.version}.`);
+            error(lineNo, 'title-version', `The title names v${title[1]}, but this summary is for v${options.version}.`);
           }
         }
       } else if (hashes.length === 2 && isSection(text)) {
-        if (seenSections.has(text)) warn(lineNo, `"## ${text}" appears twice; its items are merged.`);
+        if (seenSections.has(text)) warn(lineNo, 'duplicate-section', `"## ${text}" appears twice; its items are merged.`);
         seenSections.add(text);
         section = text;
       } else {
-        error(lineNo, `Unknown heading "${line.trim()}". Use only "## Major", "## New" and "## Fixes".`);
+        error(lineNo, 'unknown-heading', `Unknown heading "${line.trim()}". Use only "## Major", "## New" and "## Fixes".`);
         section = 'unknown';
       }
       continue;
@@ -229,12 +236,12 @@ export function parseReleaseSummary(markdown: string, options: { version?: strin
         const target = current.children.at(-1) ?? current;
         target.text = `${target.text} ${line.trim()}`;
       } else {
-        warn(lineNo, `Text outside a list item in "## ${section}" is dropped.`);
+        warn(lineNo, 'stray-text', `Text outside a list item in "## ${section}" is dropped.`);
       }
     } else if (section === 'Fixes') {
       if (BULLET.test(line) && !fixesListWarned) {
         fixesListWarned = true;
-        warn(lineNo, '"## Fixes" is prose; its list markers show as text.');
+        warn(lineNo, 'fixes-list', '"## Fixes" is prose; its list markers show as text.');
       }
       paragraph.push(line.trim());
     } else if (section === 'intro') {
@@ -248,29 +255,29 @@ export function parseReleaseSummary(markdown: string, options: { version?: strin
     const { emoji, rest } = splitEmoji(raw.text);
     const item = parseItem(rest);
     if (!item) {
-      error(raw.line, `A Major item must read "<emoji> **Title** — body": "${raw.text}".`);
+      error(raw.line, 'major-item-shape', `A Major item must read "<emoji> **Title** — body": "${raw.text}".`);
       continue;
     }
     const icon = emoji ? majorIcon(emoji) : null;
-    if (!emoji) error(raw.line, `The Major item "${item.title}" has no emoji.`);
-    else if (!icon) error(raw.line, `The emoji ${emoji} on "${item.title}" has no icon. Use one from the icon map.`);
+    if (!emoji) error(raw.line, 'major-no-emoji', `The Major item "${item.title}" has no emoji.`);
+    else if (!icon) error(raw.line, 'unmapped-emoji', `The emoji ${emoji} on "${item.title}" has no icon. Use one from the icon map.`);
     const [first, ...extra] = raw.children;
     const pair = first ? newItem(first, error, warn) : null;
-    for (const child of extra) warn(child.line, `"${item.title}" already has a paired item; this one is dropped.`);
+    for (const child of extra) warn(child.line, 'extra-pair', `"${item.title}" already has a paired item; this one is dropped.`);
     summary.major.push({ ...item, emoji: emoji ?? '', icon, pair });
   }
 
   for (const raw of items.New) {
     const parsed = newItem(raw, error, warn);
     if (parsed) summary.newItems.push(parsed);
-    for (const child of raw.children) warn(child.line, 'A New item has no paired items; this one is dropped.');
+    for (const child of raw.children) warn(child.line, 'new-item-pair', 'A New item has no paired items; this one is dropped.');
   }
 
-  if (!titleSeen) error(null, 'The summary has no "# Formamorph v<version>" title.');
+  if (!titleSeen) error(null, 'no-title', 'The summary has no "# Formamorph v<version>" title.');
   if (summary.major.length === 0 && summary.newItems.length === 0 && summary.fixes.length === 0) {
-    error(null, 'The summary has no Major, New or Fixes content.');
+    error(null, 'empty', 'The summary has no Major, New or Fixes content.');
   }
-  if (summary.intro.length === 0) warn(null, 'The summary has no intro paragraph.');
+  if (summary.intro.length === 0) warn(null, 'no-intro', 'The summary has no intro paragraph.');
 
   const length = [
     ...summary.intro,
@@ -279,7 +286,7 @@ export function parseReleaseSummary(markdown: string, options: { version?: strin
     ...summary.fixes,
   ].reduce((total, text) => total + visibleLength(text), 0);
   if (length > SUMMARY_LENGTH_WARNING) {
-    warn(null, `The summary has ${length} visible characters, past ${SUMMARY_LENGTH_WARNING}; What's New will scroll.`);
+    warn(null, 'length', `The summary has ${length} visible characters, past ${SUMMARY_LENGTH_WARNING}; What's New will scroll.`);
   }
 
   problems.sort((a, b) => (a.line ?? Infinity) - (b.line ?? Infinity));
