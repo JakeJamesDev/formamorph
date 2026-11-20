@@ -9,6 +9,7 @@ import { whatsNewDue } from '@/lib/firstTimeFlow';
 import { resetTutorials, TUTORIAL_APPEAR_DELAY_MS } from '@/lib/tutorials';
 import { APP_VERSION } from '@/lib/version';
 import type { LocalLlmState } from '@/lib/imageGen/desktop';
+import { markAutoLoadPending, markAutoLoadSettled } from '@/lib/engineAutoLoad';
 
 /** The installed version a launch sees; null keeps the build's own. */
 const installed = vi.hoisted(() => ({ version: null as string | null }));
@@ -53,6 +54,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   delete (window as { formamorphDesktop?: unknown }).formamorphDesktop;
+  markAutoLoadPending();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -225,7 +227,9 @@ describe('What\'s New behind the AI setup gate', () => {
   });
 
   it('waits while the AI setup gate is open, then opens after the player closes it', async () => {
+    // Auto-load has nothing coming, so the stopped engine stays stopped.
     stubDesktop('stopped');
+    markAutoLoadSettled();
     existingPlayer('0.0.1');
     renderMainMenu({ introSeenAtLaunch: true });
     const gate = await screen.findByRole('dialog', { name: /model didn.t load/ });

@@ -9,6 +9,7 @@ import {
   loadLocalModel,
   stopLocalLlm,
 } from '@/lib/imageGen/desktop';
+import { markAutoLoadPending, markAutoLoadSettled } from '@/lib/engineAutoLoad';
 
 /**
  * Drives the desktop local-LLM engine lifecycle. The engine runs whenever anything references it — it's the
@@ -36,8 +37,13 @@ export function LocalEngineManager({ bootHeld = false }: { bootHeld?: boolean })
   }, [localContextOverflow]);
 
   useEffect(() => {
-    if (!isDesktop() || !released) return;
+    if (!isDesktop()) return;
+    if (!engineWanted || !localAutoLoad) markAutoLoadSettled();
+    else markAutoLoadPending();
+    if (!released) return;
     let cancelled = false;
+    // A cancelled run leaves the flag to the run that replaced it.
+    const settle = () => { if (!cancelled) markAutoLoadSettled(); };
     (async () => {
       if (!engineWanted) {
         await stopLocalLlm().catch(() => { /* ignore */ });
@@ -47,12 +53,13 @@ export function LocalEngineManager({ bootHeld = false }: { bootHeld?: boolean })
       if (cancelled) return;
       if (!localAutoLoad) return;
       const st = await localLlmStatus().catch(() => null);
-      if (cancelled || !st || st.status !== 'stopped') return;
+      if (cancelled || !st || st.status !== 'stopped') return settle();
       const models = await listLocalInstalled().catch(() => []);
-      if (cancelled || !models.length) return;
+      if (cancelled || !models.length) return settle();
       // Prefer a model in our own folder — an external library is a bonus, not the auto-start default.
       const pick = models.find((m) => m.source === 'root') ?? models[0];
       await loadLocalModel(pick.id).catch(() => { /* ignore */ });
+      settle();
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setting changes apply via Save & Reload, not here

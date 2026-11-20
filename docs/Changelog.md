@@ -116,6 +116,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Test Bench:**
     - **In the Test Bench, stats now start where a new game starts them, so Placeholder text matches play.** Your picked World Option values and every character's starting traits now count.
   - **At new game, a trait group fills again when another pick locks its trait.** It takes the group's default, or else the first trait you can pick. Before, the group stayed empty and Begin stayed off.
+  - **On desktop, the main menu no longer shows "Your model didn't load" while the Built-In Engine is starting.** It waits until your model finishes loading, and shows the message only if the load fails.
   - **At new game, a default trait gated on a World Option now starts on when the Option's default allows it.** Before, the trait started off until you changed the Option.
   - **In Enter World, a click anywhere in a trait, option or location box now selects it.** Before, the box's edges and corners lit up on hover but ignored the click.
   - **The Test Bench no longer calls a placeholder unused when its only chip is in a stranger field.** That covers Stranger Name and Stranger Description, which play already fills in.

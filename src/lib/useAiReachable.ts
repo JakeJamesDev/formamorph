@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
 import type { AiEndpointTarget } from '@/lib/aiRequest/aiRequestSpec';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
+import { useAutoLoadPending } from '@/lib/engineAutoLoad';
 import { probeEndpoint, type EndpointProbe } from '@/lib/textEndpointProbe';
 import { isDesktop, listLocalModels, localLlmStatus } from '@/lib/imageGen/desktop';
 import { isHostedChatUrl } from '@/lib/hostedAi/hostedUrls';
@@ -47,6 +48,7 @@ export function useAiReachable({ enabled = true, target }: { enabled?: boolean; 
   const apiToken = target ? target.apiToken : settings.activeApiToken;
   const model = target ? target.model : settings.activeModelName;
   const engine = useLocalLlmStatus();
+  const autoLoadPending = useAutoLoadPending();
   const mode: AiMode = localEngine ? 'local' : 'custom';
   // Formamorph AI is never probed: the server answers every call and its state names any refusal.
   const hosted = mode === 'custom' && isHostedChatUrl(url);
@@ -103,7 +105,7 @@ export function useAiReachable({ enabled = true, target }: { enabled?: boolean; 
   }
 
   if (engine.status === 'ready') return { reachable: true, mode, blocker: null, recheck, revalidate };
-  // Mid-load, or we don't yet know what's on disk — undecided rather than blocked.
-  if (engine.status === 'loading' || hasModel === null) return { reachable: null, mode, blocker: null, recheck, revalidate };
+  // Mid-load, about to auto-load, or we don't yet know what's on disk: undecided rather than blocked.
+  if (engine.status === 'loading' || (engine.status === 'stopped' && autoLoadPending) || hasModel === null) return { reachable: null, mode, blocker: null, recheck, revalidate };
   return { reachable: false, mode, blocker: hasModel ? 'engineDown' : 'noModel', recheck, revalidate };
 }
