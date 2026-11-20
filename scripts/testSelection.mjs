@@ -77,6 +77,8 @@ export const GRAPH_COVERED = {
   'testing/baseline/harness/planning-parser-probe.test.ts': 'reads files only under PARSER_PROBE=1',
   'testing/coref/manifest.test.ts': 'reads only its own temp folder',
   'testing/coref/manifest.mjs': 'reads only the paths its caller passes',
+  'testing/coref/seedEditorServer.test.ts': 'reads only its own temp folder',
+  'testing/coref/seed-editor-server.mjs': 'reads its own page files and the data files under the root its caller passes',
   'src/test/bundledRevisions.ts': 'reads the worlds from fixed commits, which no change alters',
   'electron/modelDownload.cjs': 'reads only the paths its caller passes',
   'electron/modelMove.cjs': 'reads only the paths its caller passes',
@@ -158,6 +160,8 @@ export const PATH_TRIGGERS = {
   'testing/baseline/help-recall-blind-cases.json': ['testing/baseline/harness/help-recall-cases.ts'],
   'testing/baseline/help-intent-cases.json': ['testing/baseline/harness/help-intent-score.ts'],
   'src/lib/coref/__fixtures__/*': ['src/lib/coref/corefHost.test.ts', 'src/lib/coref/wordTokenizer.test.ts'],
+  // The seed editor server serves this page, and its test fetches it.
+  'testing/coref/seed-editor.html': ['testing/coref/seed-editor-server.mjs'],
   // The proxy forks the host as a child process instead of importing it.
   'electron/llmEngineHost.cjs': ['electron/llmEngineProxy.cjs'],
   // The fake llama-server replays the run recorded at the pinned tag; the stream parser test reads the same files.
