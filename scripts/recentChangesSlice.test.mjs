@@ -80,9 +80,9 @@ describe('recentChanges', () => {
     expect(text.match(/^### v.*$/gm)).toEqual(['### v3.7.1', '### v3.7.0', '### v3.6.2']);
   });
 
-  it('shows the maintenance line for a release with no user-facing entries', () => {
+  it('shows the maintenance line as an emphasis-only paragraph for a release with no user-facing entries', () => {
     const only = [CHANGELOG, release('3.5.0', dev('➕ Added', 'Dev only'))].join('\n');
-    expect(recentChanges(only, '3.5.0')).toBe('## v3.5\n\n### v3.5.0\n\n- Maintenance and internal improvements.');
+    expect(recentChanges(only, '3.5.0')).toBe('## v3.5\n\n### v3.5.0\n\n_Maintenance and internal improvements._');
   });
 
   it('keeps a feature group header bold with its entry nested under it', () => {

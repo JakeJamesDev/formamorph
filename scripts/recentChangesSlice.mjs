@@ -4,7 +4,8 @@
 import { collectLeads, LEAD_TYPES } from './changelogFormat.mjs';
 
 const RELEASED = /^<summary><strong>✅ (\d+)\.(\d+)\.(\d+) — Released\b/;
-const MAINTENANCE = '- Maintenance and internal improvements.';
+// An emphasis-only paragraph, which ChangelogBody renders as a muted line.
+const MAINTENANCE = '_Maintenance and internal improvements._';
 
 /** `3.8.0-beta.1` → `{ core: [3, 8, 0], pre: true }`, or null when the text is no version. */
 function parseVersion(text) {

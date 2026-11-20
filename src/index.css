@@ -1005,6 +1005,12 @@ b {
   letter-spacing: 0.01em;
   color: hsl(var(--muted-foreground));
 }
+/* A release with no player-facing changes: one muted line where its category labels would sit. */
+.changelog-body p:has(> em:only-child) {
+  @apply text-meta;
+  margin-left: 1rem;
+  color: hsl(var(--muted-foreground));
+}
 /* The patch version (`### <tag>`) is a flush-left caption styled like the category labels, not a big heading. */
 .changelog-body h3 {
   @apply text-meta;
