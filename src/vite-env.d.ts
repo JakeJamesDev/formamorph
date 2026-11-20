@@ -15,6 +15,12 @@ declare module 'virtual:whats-new-summary' {
   export default text;
 }
 
+/** The Recent Changes tab's markdown: bold leads for the installed version and the two releases before it. */
+declare module 'virtual:whats-new-recent' {
+  const text: string;
+  export default text;
+}
+
 /**
  * The community server's address, in each build mode.
  *

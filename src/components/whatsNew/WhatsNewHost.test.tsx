@@ -7,6 +7,7 @@ const bundled = vi.hoisted(() => ({ text: null as string | null }));
 const setUpdateChannel = vi.hoisted(() => vi.fn());
 
 vi.mock('virtual:whats-new-summary', () => ({ get default() { return bundled.text; } }));
+vi.mock('virtual:whats-new-recent', () => ({ default: '### v1.0.0\n\n**Added**\n\n- Bundled lead' }));
 vi.mock('@/contexts/SettingsContext', () => ({
   useSettings: () => ({ updateChannel: 'stable', setUpdateChannel }),
 }));
@@ -171,17 +172,26 @@ describe('What’s New tiles', () => {
 });
 
 describe('What’s New on the web', () => {
-  it('lists the fetched notes under Recent Changes, with Full changelog and Close', async () => {
+  it('lists the bundled notes under Recent Changes, with Full changelog and Close', async () => {
     serveReleases([release('v99.0.0', '### Added\n\n- Latest notes'), release(INSTALLED, summaryMd('From GitHub.'))]);
     const dialog = await openWhatsNew();
     fireEvent.mouseDown(within(dialog).getByRole('tab', { name: 'Recent Changes' }));
-    expect(await within(dialog).findByTestId('changelog')).toHaveTextContent('Latest notes');
+    expect(await within(dialog).findByTestId('changelog')).toHaveTextContent('Bundled lead');
+    expect(within(dialog).getByTestId('changelog')).not.toHaveTextContent('Latest notes');
     expect(within(dialog).getByRole('link', { name: /Full changelog/ }))
       .toHaveAttribute('href', 'https://github.com/JakeJamesDev/formamorph/wiki/Changelog');
     expect(within(dialog).getByText('Close', { selector: 'button' })).toBeInTheDocument();
     expect(within(dialog).queryByRole('combobox', { name: 'Release Channel' })).not.toBeInTheDocument();
-    // One fetch serves the summary and the notes.
+    // One fetch serves the summary; the notes never fetch.
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the bundled notes with the network unavailable', async () => {
+    bundled.text = null;
+    serveReleases('offline');
+    const dialog = await openWhatsNew();
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Recent Changes' })).toHaveAttribute('aria-selected', 'true'));
+    expect(await within(dialog).findByTestId('changelog')).toHaveTextContent('Bundled lead');
   });
 });
 
@@ -219,7 +229,8 @@ describe('What’s New with an update bridge', () => {
     expect(within(dialog).getByText('Close', { selector: 'button' })).toBeInTheDocument();
     expect(await within(dialog).findByText('From GitHub.')).toBeInTheDocument();
     fireEvent.mouseDown(within(dialog).getByRole('tab', { name: 'Recent Changes' }));
-    expect(await within(dialog).findByTestId('changelog')).toHaveTextContent('New stuff');
+    expect(await within(dialog).findByTestId('changelog')).toHaveTextContent('Bundled lead');
+    expect(within(dialog).getByTestId('changelog')).not.toHaveTextContent('New stuff');
   });
 
   it('marks the version button as the app-version target of the main menu', () => {

@@ -27,13 +27,6 @@ export interface WhatsNewUpdate {
   onChannelChange: (channel: UpdateChannel) => void;
 }
 
-/** Recent Changes: the fetched release notes. */
-export interface RecentChanges {
-  text?: string;
-  loading: boolean;
-  updateVersion?: string;
-}
-
 const tag = (v?: string) => (v ? (v.startsWith('v') ? v : `v${v}`) : '');
 
 function UpdateBanner({ update, checkedHere, onPreview }: { update: WhatsNewUpdate; checkedHere: boolean; onPreview: (() => void) | null }) {
@@ -102,7 +95,8 @@ export function WhatsNewDialog({ open, onOpenChange, version, summary, recent, u
   onOpenChange: (open: boolean) => void;
   version: string;
   summary: SummaryState;
-  recent: RecentChanges;
+  /** The Recent Changes markdown, bundled at build time. */
+  recent: string;
   update: WhatsNewUpdate | null;
   tab: WhatsNewTab;
   onTabChange: (tab: WhatsNewTab) => void;
@@ -159,12 +153,7 @@ export function WhatsNewDialog({ open, onOpenChange, version, summary, recent, u
             </ScrollArea>
           </TabsContent>
           <TabsContent value="recent" className="pt-2">
-            <ChangelogBody
-              text={recent.loading ? undefined : recent.text}
-              placeholder={recent.loading ? 'Loading release notes…' : 'There are no release notes.'}
-              currentVersion={version}
-              updateVersion={recent.updateVersion}
-            />
+            <ChangelogBody text={recent} placeholder="There are no release notes." currentVersion={version} />
           </TabsContent>
         </Tabs>
         <DialogFooter className="items-center">

@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import bundledSummary from 'virtual:whats-new-summary';
+import bundledRecent from 'virtual:whats-new-recent';
 import { APP_VERSION } from '@/lib/version';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useUpdateChecker, type UpdateChecker } from '@/hooks/useUpdateChecker';
 import { updateBridge } from '@/lib/updates/updateBridge';
-import { isUpdatePending, type UpdateState } from '@/lib/updates/updateState';
-import { checkForUpdate, releaseBodies } from '@/services/UpdateService';
+import type { UpdateState } from '@/lib/updates/updateState';
+import { releaseBodies } from '@/services/UpdateService';
 import { pickSummary } from '@/lib/whatsNew/summarySource';
 import type { ReleaseSummary } from '@/lib/whatsNew/releaseSummary';
 import { useDevRoute } from '@/lib/devRouter';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { WHATS_NEW_DEV_STATES, type WhatsNewDevState as DevState } from './whatsNewDevStates';
 import { WhatsNewContext, applyLabel } from './whatsNewContext';
-import { WhatsNewDialog, type RecentChanges, type SummaryState, type WhatsNewTab, type WhatsNewUpdate } from './WhatsNewDialog';
+import { WhatsNewDialog, type SummaryState, type WhatsNewTab, type WhatsNewUpdate } from './WhatsNewDialog';
 
 /** How long What's New waits for the GitHub release before it falls back. */
 const SUMMARY_TIMEOUT_MS = 4000;
@@ -43,42 +44,22 @@ function BridgeHost(props: HostProps) {
     onDownload: () => { download(); onOpenChange(false); },
     onChannelChange: setUpdateChannel,
   }), [state, check, download, onOpenChange, setUpdateChannel]);
-  const recent: RecentChanges = { text: state.changelog, loading: false, updateVersion: isUpdatePending(state.phase) ? state.latestVersion : undefined };
-  return <HostCore {...props} checker={checker} update={update} recent={recent} />;
+  return <HostCore {...props} checker={checker} update={update} />;
 }
 
 function WebHost(props: HostProps) {
-  const [recent, setRecent] = useState<RecentChanges>({ loading: false });
-  const started = useRef(false);
-  const mounted = useMountedRef();
-  // The web build fetches the notes on first open, never on load.
-  useEffect(() => {
-    if (!props.open || started.current) return;
-    started.current = true;
-    setRecent({ loading: true });
-    void checkForUpdate('stable').then((res) => {
-      if (!mounted.current) return;
-      setRecent({
-        loading: false,
-        text: res.success ? (res.result?.changelog ?? '') : '',
-        updateVersion: res.success && res.result?.available ? res.result.latestVersion : undefined,
-      });
-    });
-  }, [props.open, mounted]);
-  return <HostCore {...props} checker={null} update={null} recent={recent} />;
+  return <HostCore {...props} checker={null} update={null} />;
 }
 
 interface DevOverride {
   summary: SummaryState;
   preview: ReleaseSummary | null;
-  recent: RecentChanges;
   update: WhatsNewUpdate | null;
 }
 
-function HostCore({ open, onOpenChange, children, summaryTimeoutMs = SUMMARY_TIMEOUT_MS, checker, update, recent }: HostProps & {
+function HostCore({ open, onOpenChange, children, summaryTimeoutMs = SUMMARY_TIMEOUT_MS, checker, update }: HostProps & {
   checker: UpdateChecker | null;
   update: WhatsNewUpdate | null;
-  recent: RecentChanges;
 }) {
   const [summary, setSummary] = useState<SummaryState>({ status: 'loading' });
   const [tab, setTab] = useState<WhatsNewTab>('new');
@@ -126,10 +107,7 @@ function HostCore({ open, onOpenChange, children, summaryTimeoutMs = SUMMARY_TIM
   useEffect(() => {
     if (import.meta.env.DEV && devRoute?.modal === 'whatsNew') {
       const state = (WHATS_NEW_DEV_STATES as readonly string[]).includes(devRoute.tab ?? '') ? devRoute.tab as DevState : 'web';
-      Promise.all([
-        import('../../../docs/whats-new/3.7.0.md?raw'),
-        import('@/lib/devChangelogSample'),
-      ]).then(([seed, sample]) => {
+      import('../../../docs/whats-new/3.7.0.md?raw').then((seed) => {
         if (!mounted.current) return;
         const picked = pickSummary({ github: null, cache: null, bundled: seed.default }, '3.7.0');
         // The canned update is v3.8.0; its preview reuses the seed under that title.
@@ -137,7 +115,6 @@ function HostCore({ open, onOpenChange, children, summaryTimeoutMs = SUMMARY_TIM
         setDev({
           summary: picked ? { status: 'ready', summary: picked } : { status: 'none' },
           preview: state === 'update' ? next : null,
-          recent: { loading: false, text: sample.DEV_CHANGELOG_SAMPLE, updateVersion: state === 'update' ? '2.13.0' : undefined },
           update: state === 'web' ? null : devUpdate(state),
         });
         setTab('new');
@@ -157,7 +134,7 @@ function HostCore({ open, onOpenChange, children, summaryTimeoutMs = SUMMARY_TIM
         onOpenChange={onOpenChange}
         version={APP_VERSION}
         summary={dev?.summary ?? summary}
-        recent={dev?.recent ?? recent}
+        recent={bundledRecent}
         update={dev ? dev.update : update}
         tab={tab}
         onTabChange={setTab}

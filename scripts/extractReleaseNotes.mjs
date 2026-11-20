@@ -10,19 +10,13 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseEntry, inProgressBounds } from './changelogFormat.mjs';
+import { collectLeads, inProgressBounds, LEAD_TYPES } from './changelogFormat.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const argVal = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : null; };
 const file = argVal('--file') || path.join(ROOT, 'docs', 'Changelog.md');
 const release = argVal('--release');
-
-const TYPES = [
-  { key: 'Added', match: /Added/i },
-  { key: 'Removed', match: /Removed/i },
-  { key: 'Fixed', match: /Fixed/i },
-];
 
 const src = await readFile(file, 'utf8');
 const lines = src.split(/\r?\n/);
@@ -49,34 +43,11 @@ if (!bounds) {
 }
 const [start, end] = bounds;
 
-const buckets = { Added: [], Removed: [], Fixed: [] };
-let currentType = null;
-let audienceIsUser = false;
-
-for (let i = start + 1; i < end; i++) {
-  const line = lines[i];
-  if (/^####\s/.test(line)) {
-    const t = TYPES.find((t) => t.match.test(line));
-    currentType = t ? t.key : null;
-    continue;
-  }
-  // Top-level bullet = an audience group header (👤 User-facing / 🛠️ Developer tooling / ⚙️ Backend).
-  if (/^-\s+\*\*/.test(line)) {
-    audienceIsUser = /User-facing/i.test(line);
-    continue;
-  }
-  // Indented bullet under a 👤 group with a known change type = an entry; take its bold lead, dropping any
-  // trailing period so the one-line notes read uniformly (bullets aren't full sentences). A bold lead ending
-  // in a colon is a feature group header rather than a change — it emits bold, and the deeper-indented
-  // entries beneath it stay nested under it. One level only — deeper reads as noise in release notes.
-  if (audienceIsUser && currentType) {
-    const entry = parseEntry(line);
-    if (entry) buckets[currentType].push(entry);
-  }
-}
+// A feature group header emits bold, and the entries beneath it stay nested under it.
+const buckets = collectLeads(lines, start, end);
 
 const out = [];
-for (const { key } of TYPES) {
+for (const { key } of LEAD_TYPES) {
   if (buckets[key].length) {
     const rows = buckets[key].map((e) => `${'  '.repeat(e.depth)}- ${e.header ? `**${e.text}**` : e.text}`);
     out.push(`### ${key}`, '', ...rows, '');

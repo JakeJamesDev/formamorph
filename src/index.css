@@ -1023,24 +1023,16 @@ b {
 .changelog-body code {
   @apply text-label;
 }
-/* Tint the current (installed) and newest-uninstalled version captions toward info/success, keeping the
-   muted base so they stay captions — not full-saturation labels. Tagged by ChangelogBody. */
+/* Tint the current (installed) version caption toward info, keeping the muted base so it stays a
+   caption — not a full-saturation label. Tagged by ChangelogBody. */
 .changelog-body h3.cl-current,
 .changelog-body p.cl-current:has(> [data-streamdown="strong"]:only-child) > [data-streamdown="strong"] {
   color: color-mix(in srgb, hsl(var(--info)) 45%, hsl(var(--muted-foreground)));
-}
-.changelog-body h3.cl-update,
-.changelog-body p.cl-update:has(> [data-streamdown="strong"]:only-child) > [data-streamdown="strong"] {
-  color: color-mix(in srgb, hsl(var(--success)) 45%, hsl(var(--muted-foreground)));
 }
 /* Inline status tags on the tinted versions (pseudo-element so they stay out of the heading's text — the
    version-match tagging reads textContent). Lighter weight so they read as a secondary marker. */
 .changelog-body h3.cl-current::after {
   content: ' (Current)';
-  font-weight: 400;
-}
-.changelog-body h3.cl-update::after {
-  content: ' (New!)';
   font-weight: 400;
 }
 

@@ -55,8 +55,7 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  in the Entities tab. `editText` is in game (GameViewer) and
  *  opens the narration editor on the current page's text — empty before any turn, which is enough to reach
  *  its full-screen toggle, the one editor that grows in place instead of raising a window. `whatsNew` opens
- *  MainMenu's What's New dialog on the 3.7.0 seed summary and a canned Recent Changes sample
- *  (`devChangelogSample.ts`) rather than the live GitHub fetch; `tab=…` picks the build: `web`, `upToDate`
+ *  MainMenu's What's New dialog on the 3.7.0 seed summary rather than the live GitHub fetch; `tab=…` picks the build: `web`, `upToDate`
  *  (a desktop build with no update) or `update` (a desktop build with v3.8.0 available).
  *  `eventAck` opens the running-event acknowledge poster on a canned event (`devEventSample.ts`) instead of
  *  the events poll, so both it and the main menu's event banner are checkable without a live event; `tab=…`

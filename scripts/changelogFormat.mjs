@@ -19,6 +19,39 @@ export function parseEntry(line) {
   };
 }
 
+/** The change types a release note groups by, in reading order. */
+export const LEAD_TYPES = [
+  { key: 'Added', match: /Added/i },
+  { key: 'Removed', match: /Removed/i },
+  { key: 'Fixed', match: /Fixed/i },
+];
+
+/** The bold leads of the 👤 entries in lines [start, end) of a changelog, grouped by change type.
+ *  Dev (🛠️/⚙️) entries and deeper nesting are dropped. */
+export function collectLeads(lines, start, end) {
+  const buckets = { Added: [], Removed: [], Fixed: [] };
+  let currentType = null;
+  let audienceIsUser = false;
+  for (let i = start + 1; i < end; i++) {
+    const line = lines[i];
+    if (/^####\s/.test(line)) {
+      const t = LEAD_TYPES.find((t) => t.match.test(line));
+      currentType = t ? t.key : null;
+      continue;
+    }
+    // Top-level bullet = an audience group header (👤 User-facing / 🛠️ Developer tooling / ⚙️ Backend).
+    if (/^-\s+\*\*/.test(line)) {
+      audienceIsUser = /User-facing/i.test(line);
+      continue;
+    }
+    if (audienceIsUser && currentType) {
+      const entry = parseEntry(line);
+      if (entry) buckets[currentType].push(entry);
+    }
+  }
+  return buckets;
+}
+
 /** The most words an entry's bold lead and its body may hold. A feature that needs more is a group of entries. */
 export const LEAD_WORDS = 20;
 export const BODY_WORDS = 40;

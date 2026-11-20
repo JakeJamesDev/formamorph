@@ -89,6 +89,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The version number on the main menu opens What's New, a short summary of the installed release.** Big changes show as tiles with an icon, beside a related change. Recent Changes lists every change, and update controls stay in the same dialog.
     - **The update banner links to a preview of the new version's summary.** Select Preview to read the newest release in the same layout, and Back to return to your own version. The link shows only when the summary loads.
     - **What's New opens by itself once after each update.** It waits for the welcome intro and setup steps, and event posters and the main menu tutorial wait until you close it. A new install skips it.
+    - **What's New's Recent Changes tab lists the last three versions' changes and works offline.** It shows each change's short title under Added, Removed and Fixed, for your version and the two before it.
   - **Supporter-only listings show when each tier can get them.** Cards and details windows list each tier's date and the public date. A Supporter whose tier isn't open yet sees an Upgrade button that opens Patreon.
 - **🛠️ Developer tooling**
   - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.

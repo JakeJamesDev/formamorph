@@ -6,6 +6,7 @@ import path from 'path'
 import { readFileSync, realpathSync } from 'fs'
 import { createRequire } from 'module'
 import { releasedMinorChangelog } from './src/lib/docs/changelogSlice.ts'
+import { recentChanges } from './scripts/recentChangesSlice.mjs'
 import { shipBundledWorlds } from './scripts/shipBundledWorlds.mjs'
 import { stripSeededWorlds } from './scripts/stripSeededWorlds.mjs'
 import { bundledWorldHashes } from './scripts/bundledWorldHashes.mjs'
@@ -109,6 +110,22 @@ const whatsNewSummary = {
   },
 }
 
+// `virtual:whats-new-recent`: the Recent Changes tab's markdown, cut from the changelog for the installed
+// version and the two releases before it (scripts/recentChangesSlice.mjs).
+const RECENT_ID = 'virtual:whats-new-recent'
+const whatsNewRecent = {
+  name: 'whats-new-recent',
+  resolveId(id) {
+    return id === RECENT_ID ? `\0${RECENT_ID}` : null
+  },
+  load(id) {
+    if (id !== `\0${RECENT_ID}`) return null
+    const file = path.resolve(import.meta.dirname, 'docs/Changelog.md')
+    this.addWatchFile(file)
+    return `export default ${JSON.stringify(recentChanges(readFileSync(file, 'utf-8'), pkg.version))}`
+  },
+}
+
 // Pure CommonJS files that main and the renderer both load. Dev serves a .cjs raw, so wrap each as an ES
 // module with the names from its `module.exports = { ... }` statement.
 const SHARED_CJS = ['/electron/cacheTypes.cjs', '/electron/engineDevice.cjs']
@@ -130,7 +147,7 @@ const shippedWorlds = shipBundledWorlds(import.meta.dirname)
 const notices = shipNotices(import.meta.dirname)
 
 export default defineConfig({
-  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, whatsNewSummary, sharedCjs, shippedWorlds, stripSeededWorlds(), bundledWorldHashes(shippedWorlds.api.shippedText), notices, stashSourceMaps(), bundledAvatarCheck(), espeakCheck(), corefDevManifest(import.meta.dirname)],
+  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, whatsNewSummary, whatsNewRecent, sharedCjs, shippedWorlds, stripSeededWorlds(), bundledWorldHashes(shippedWorlds.api.shippedText), notices, stashSourceMaps(), bundledAvatarCheck(), espeakCheck(), corefDevManifest(import.meta.dirname)],
   cacheDir: process.env.E2E_SYNC_APP ? path.resolve(import.meta.dirname, 'node_modules/.vite-sync-app') : devCacheDir,
   base: './',
   // Maps for reading crash stacks; stashSourceMaps moves them out of the shipped output.
@@ -215,6 +232,7 @@ export default defineConfig({
       'package-lock.json',
       'vite.config.js',
       'src/lib/docs/changelogSlice.ts',
+      'scripts/recentChangesSlice.mjs',
       'scripts/bundledAvatarCheck.mjs',
       'scripts/espeakCheck.mjs',
       'scripts/corefDevManifest.mjs',
