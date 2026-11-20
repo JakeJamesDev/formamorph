@@ -2,8 +2,10 @@ import { randomUUID } from "@/lib/uuid";
 import { newBlankWorld } from "@/lib/blankWorld";
 import { filledScripts, SCRIPT_TIMING_LABEL, type ScriptHome } from "@/lib/scripts";
 import { DEFAULT_WORLDS, isDefaultWorldId, readDeletedDefaultWorlds, seedWorldData } from "@/lib/defaultWorlds";
-import { firstRunStepDue } from "@/lib/firstTimeFlow";
-import { isFirstRunStepSeen, markFirstRunStepSeen } from "@/lib/firstTimeFlowStore";
+import { firstRunStepDue, whatsNewDue } from "@/lib/firstTimeFlow";
+import { isFirstRunStepSeen, markFirstRunStepSeen, markWhatsNewSeen, whatsNewSeenVersion } from "@/lib/firstTimeFlowStore";
+import { APP_VERSION } from "@/lib/version";
+import { releaseBodies } from "@/services/UpdateService";
 import { FirstRunStep } from "@/components/FirstRunStep";
 import { bundledWorlds } from "@/lib/bundledWorldText";
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
@@ -231,6 +233,8 @@ const WORLD_NOT_FOUND = 'World not found';
 
 /** The bundled world the first-run step starts. */
 const FIRST_RUN_WORLD_ID = 'emberwatch';
+/** How long the What's New load-time fetch waits; the dialog still applies its own wait on open. */
+const WHATS_NEW_PREFETCH_MS = 4000;
 
 
 /** The library's card-type tabs, with their icon + label, so the top switcher and the mobile bottom bar
@@ -602,6 +606,32 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setDevFirstRun(false);
   };
 
+  // What's New opens once per version, after the startup steps; a fresh install records the version instead.
+  const [whatsNewSeen, setWhatsNewSeen] = useState(whatsNewSeenVersion);
+  useEffect(() => {
+    if (!introSeenAtLaunch) markWhatsNewSeen(APP_VERSION);
+  }, [introSeenAtLaunch]);
+  const whatsNewIsDue = whatsNewDue({
+    introSeenAtLaunch, seenVersion: whatsNewSeen, installedVersion: APP_VERSION, devBuild: import.meta.env.DEV,
+  });
+  // Starts the release fetch on load, so the summary is ready when the startup steps end.
+  useEffect(() => {
+    if (whatsNewIsDue) void releaseBodies(APP_VERSION, WHATS_NEW_PREFETCH_MS);
+  }, [whatsNewIsDue]);
+  const startupStepsWaiting = introActive || gate !== null || gateOpen || aiGatePending || firstRunDue;
+  const changeWhatsNewOpen = useCallback((open: boolean) => {
+    if (open) {
+      markWhatsNewSeen(APP_VERSION);
+      setWhatsNewSeen(APP_VERSION);
+    }
+    setWhatsNewOpen(open);
+  }, []);
+  useEffect(() => {
+    if (whatsNewIsDue && !startupStepsWaiting) changeWhatsNewOpen(true);
+  }, [whatsNewIsDue, startupStepsWaiting, changeWhatsNewOpen]);
+  // The event poster, the CUDA notice and the menu tutorial stay held while What's New is due or open.
+  const whatsNewHolds = whatsNewIsDue || whatsNewOpen;
+
   // Cold-load: fetch the save's world into GameData, then hand the save id to App to enter the game.
   // Orphaned saves are blocked inside the dialog, so `worldId` is always an installed world here.
   const handleColdLoad = async (saveId: string, worldId?: string) => {
@@ -665,7 +695,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     ...(!COMMUNITY_ENABLED || !isAuthenticated ? ['main-menu-feedback'] : []),
   ];
   const { active: menuTutorial, nav: menuTutorialNav, dismiss: dismissMenuTutorial } = useTutorial('mainMenu', {
-    active: !introActive && !firstRunDue,
+    active: !introActive && !firstRunDue && !whatsNewHolds,
     held: heldMenuTutorials,
   });
   // Opening the window, by the tab or by F1, reads the Help tab's note.
@@ -2511,7 +2541,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           scrolling under floating buttons. Full-width (the root is no longer the max-width container — that
           moved to the grid scroll areas), so the profile/social sit at the viewport edges. Equal flex-1
           side cells keep the copyright truly centered. */}
-      <WhatsNewHost open={whatsNewOpen} onOpenChange={setWhatsNewOpen}>
+      <WhatsNewHost open={whatsNewOpen} onOpenChange={changeWhatsNewOpen}>
       <footer className="shrink-0 flex items-center gap-2 py-3 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         {/* Left: user profile circle + app version (the version moves into the ⋯ menu on mobile). */}
         <div className="flex-1 flex items-center justify-start gap-2">
@@ -3244,17 +3274,17 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           />
 
           {/* One-time acknowledge poster for an event that has just started or just ended. It waits for
-              the welcome intro and the first-run step to finish, so a first-run player meets the menu
-              before the poster. */}
+              the welcome intro, the first-run step and What's New to finish, so a first-run player meets the
+              menu before the poster. */}
           <EventAckModal
             events={announceable}
             isAuthenticated={isAuthenticated}
             onOpenEvent={openEvent}
-            held={introActive || gateOpen || firstRunDue}
+            held={introActive || gateOpen || firstRunDue || whatsNewHolds}
           />
 
-          {/* One-time CUDA engine offer; waits for the intro, the AI setup gate, the first-run step and any open modal dialog. */}
-          <CudaNoticeHost held={introActive || gateOpen || gate !== null || aiGatePending || firstRunDue} />
+          {/* One-time CUDA engine offer; waits for the intro, the AI setup gate, the first-run step, What's New and any open modal dialog. */}
+          <CudaNoticeHost held={startupStepsWaiting || whatsNewHolds} />
 
           {/* Community Creations. The host reads its own libraries, account and events from the services,
               so all the menu hands it is where to open — see CommunityBrowserHost.tsx. */}

@@ -83,3 +83,13 @@ const CONTRIBUTE_ASKED_PREFIX = 'FORMAMORPH_contributeAsked_';
 /** This account answered the Contribute Corrections question on this device (Q64, Q69). */
 export const isContributeAsked = (accountId: string): boolean => isSet(CONTRIBUTE_ASKED_PREFIX + accountId);
 export const markContributeAsked = (accountId: string): void => mark(CONTRIBUTE_ASKED_PREFIX + accountId);
+
+const WHATS_NEW_SEEN_VERSION_KEY = 'FORMAMORPH_whatsNewSeenVersion';
+
+/** The last version for which What's New opened on this device; null with no record. */
+export function whatsNewSeenVersion(): string | null {
+  try { return localStorage.getItem(WHATS_NEW_SEEN_VERSION_KEY); } catch { return null; }
+}
+export function markWhatsNewSeen(version: string): void {
+  try { localStorage.setItem(WHATS_NEW_SEEN_VERSION_KEY, version); } catch { /* private mode: the record stays unset */ }
+}

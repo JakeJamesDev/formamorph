@@ -30,7 +30,7 @@ export function renderMainMenu(
   props: Partial<React.ComponentProps<typeof MainMenu>> = {},
   { registry = null, children }: { registry?: SurfaceReporter | null; children?: ReactNode } = {},
 ) {
-  return render(
+  const tree = (menuProps: typeof props) => (
     <ThemeProvider>
       <TooltipProvider>
         <SettingsProvider>
@@ -49,7 +49,7 @@ export function renderMainMenu(
                         onLoadSaveGame={() => {}}
                         onReplayIntro={() => {}}
                         introActive={false}
-                        {...props}
+                        {...menuProps}
                       />
                     </SurfaceLayer>
                   </SurfaceReporterContext.Provider>
@@ -61,6 +61,10 @@ export function renderMainMenu(
           </GameDataProvider>
         </SettingsProvider>
       </TooltipProvider>
-    </ThemeProvider>,
+    </ThemeProvider>
   );
+  const view = render(tree(props));
+  /** Re-render the same menu with new props, as App does when the intro ends. */
+  const rerenderMenu = (next: typeof props) => view.rerender(tree({ ...props, ...next }));
+  return { ...view, rerenderMenu };
 }

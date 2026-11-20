@@ -118,3 +118,17 @@ export interface AiSetupFacts {
 export function aiSetupLeadsWithHostedAi({ vramClass, hostedAvailable, pledged }: AiSetupFacts): boolean {
   return hostedAvailable && !pledged && vramClass === 'low';
 }
+
+export interface WhatsNewFacts {
+  introSeenAtLaunch: boolean;
+  /** The last version for which What's New opened; null with no record. */
+  seenVersion: string | null;
+  installedVersion: string;
+  /** Dev builds never open What's New by themselves. */
+  devBuild: boolean;
+}
+
+/** A fresh install never opens it; a missing record on an existing install does. */
+export function whatsNewDue({ introSeenAtLaunch, seenVersion, installedVersion, devBuild }: WhatsNewFacts): boolean {
+  return !devBuild && introSeenAtLaunch && seenVersion !== installedVersion;
+}
