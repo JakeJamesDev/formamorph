@@ -56,6 +56,9 @@ export function withWorldWrites(state: SandboxState, writes: WorldWrites | undef
     next = { ...next, clock: { ...clock, advancedHours: advanced, deltaHours: advanced, elapsedHours: (clock.elapsedHours ?? delta) - delta + advanced } };
   }
 
+  // A later script reads the weather an earlier one set.
+  if (writes.weather !== undefined && next.weather) next = { ...next, weather: { ...next.weather, current: writes.weather } };
+
   if (writes.memory?.length || writes.pins?.length || writes.namedWrites?.length || writes.memoryWrites?.length) {
     let rows = next.memories ?? [];
     const turnId = next.turn?.id ?? FALLBACK_TURN_ID;

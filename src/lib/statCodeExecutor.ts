@@ -1,6 +1,6 @@
 import type {
   BodyPick, CodeBounds, CurrencyBacking, EntityKind, ItemInstanceWhere, ItemScriptTiming, MediaEntry, MediaOverrides, ScheduleAction, Stat, ValuedWorldOption, WorldOption,
-  WorldOptionValueOf, WorldOptionValues,
+  WeatherKind, WorldOptionValueOf, WorldOptionValues,
 } from '@/types';
 import { MEDIA_MEMBER_KIND, MEDIA_NAME_MEMBERS, type MediaWrite } from './mediaOverrides';
 import { optionValue, snapNumber, valuedOptions } from './worldOptions';
@@ -193,6 +193,13 @@ export interface SandboxPlaces {
   location: SandboxPlace | null;
 }
 
+/** The World Weather a run reads and the kinds `world.weather` can be set to. A run without it has Weather off. */
+export interface SandboxWeather {
+  current: WeatherKind;
+  /** Clear first, then each kind the world allows. */
+  allowed: readonly WeatherKind[];
+}
+
 /** One entry of `memories`: a Memory panel row as a script reads it. */
 export interface SandboxMemory {
   id: string;
@@ -231,6 +238,8 @@ export interface WorldWrites {
   location?: string;
   /** Every `clock.advance` of the run, added up. */
   minutes?: number;
+  /** The last `world.weather` the run set. */
+  weather?: WeatherKind;
   /** Once per name, in first-call order; a call with a description fills in one without. */
   discover?: DiscoverWrite[];
   /** Every `memories.append` line, in call order. */
@@ -2280,6 +2289,8 @@ export interface StatCodeRunOptions {
   bodies?: readonly SandboxBodyDef[];
   /** What the media members read and name. Absent, they read null and no name is an entry. */
   media?: SandboxMedia;
+  /** What `world.weather` reads and can be set to. Absent, Weather is off: it reads null and a set fails. */
+  weather?: SandboxWeather;
 }
 
 /** What the media members read: each entry's name, the overrides in force, each owner's media with none, and each
@@ -2334,7 +2345,7 @@ const MEDIA = '__formamorphMedia';
 /** The media prelude, after the world prelude, and `world`. `get(keys, field)` reads the first override in force
  *  along `keys`, else what the last key shows with none; `set` checks the name and lists the write, which reads
  *  back in the run; `image(name)` is the id `set` would write. A name of the wrong kind is a missing name (Q53). */
-const mediaPrelude = (media: SandboxMedia | undefined, reads: HostReads): string => {
+const mediaPrelude = (media: SandboxMedia | undefined, reads: HostReads, weather: SandboxWeather | undefined): string => {
   const entries = media?.entries ?? [];
   const byName: Record<MediaEntry['kind'], Record<string, string>> = { image: {}, sound: {}, layered: {} };
   for (const { id, name, kind } of entries) byName[kind][name] ??= id;
@@ -2487,9 +2498,20 @@ const mediaPrelude = (media: SandboxMedia | undefined, reads: HostReads): string
     `  };`,
     `  return { get, set, fail, image, layers, parent };`,
     `})(JSON.parse(${JSON.stringify(JSON.stringify(spec))}), ${WORLD_WRITES}, ${HOST_READ});`,
-    `const world = Object.freeze(Object.defineProperty({}, 'music', {`,
+    // `weather` reads what the run set last, else the World Weather; null while Weather is off.
+    `const world = ((weather, writes) => ${B}.freeze(${B}.define(${B}.define({}, 'music', {`,
     `  enumerable: true, get: () => ${MEDIA}.get(['w'], 'music'), set: (next) => ${MEDIA}.set('w', { kind: 'world' }, 'music', next),`,
-    `}));`,
+    `}), 'weather', {`,
+    `  enumerable: true,`,
+    `  get: () => (weather ? (writes.weather === null ? weather.current : writes.weather) : null),`,
+    `  set: (next) => {`,
+    `    if (!weather) ${MEDIA}.fail('Weather is off in this world, so world.weather cannot be set');`,
+    `    if (typeof next !== 'string' || !${B}.includes(weather.allowed, next)) {`,
+    `      ${MEDIA}.fail('This world does not allow the weather ' + ${B}.stringify(next) + '. It allows ' + ${B}.map(weather.allowed, (kind) => '"' + kind + '"').join(', '));`,
+    `    }`,
+    `    writes.weather = next;`,
+    `  },`,
+    `})))(${JSON.stringify(weather ?? null)}, ${WORLD_WRITES});`,
   ].join('\n');
 };
 
@@ -2585,7 +2607,7 @@ const worldPrelude = (
   bodies: readonly SandboxBodyDef[],
 ): string => [
   `const [${MOVE_TURN}, discover, memories, ${ADVANCE_CLOCK}, ${ENTITY_WRITE}, ${WORLD_WRITES}] = ((places, cast, open, rows, lockEntry, note, bodies) => {`,
-  `  const writes = { location: null, minutes: 0, advanced: false, discover: [], memory: [], pins: [], namedWrites: [], diary: [], entities: [], memoryWrites: [], inventory: [], bodies: [], media: [], unknown: [], maybe: [], unknownMemories: [] };`,
+  `  const writes = { location: null, minutes: 0, advanced: false, weather: null, discover: [], memory: [], pins: [], namedWrites: [], diary: [], entities: [], memoryWrites: [], inventory: [], bodies: [], media: [], unknown: [], maybe: [], unknownMemories: [] };`,
   `  const fail = (message) => {`,
   `    writes.unknown.push(message);`,
   `    throw new Error(message);`,
@@ -2859,8 +2881,8 @@ const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing
 function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: string[]; unknownMemories?: string[]; media?: MediaWrite[] } | { error: string } {
   const parsed: unknown = JSON.parse(dump);
   if (!parsed || typeof parsed !== 'object') return {};
-  const { location, minutes, advanced, discover, memory, pins, namedWrites, diary, entities, memoryWrites, inventory, bodies, media, unknown, maybe, unknownMemories } = parsed as {
-    location: string | null; minutes: number; advanced: boolean; discover: DiscoverWrite[]; memory: string[]; pins: string[]; namedWrites: NamedWrite[];
+  const { location, minutes, advanced, weather, discover, memory, pins, namedWrites, diary, entities, memoryWrites, inventory, bodies, media, unknown, maybe, unknownMemories } = parsed as {
+    location: string | null; minutes: number; advanced: boolean; weather: WeatherKind | null; discover: DiscoverWrite[]; memory: string[]; pins: string[]; namedWrites: NamedWrite[];
     diary: DiaryWrite[]; entities: EntityCodeWrite[]; memoryWrites: MemoryWrite[]; inventory: InventoryOp[]; bodies: BodyWrite[]; media: MediaWrite[];
     unknown: string[]; maybe: string[]; unknownMemories: string[];
   };
@@ -2868,6 +2890,7 @@ function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: str
   const writes: WorldWrites = {
     ...(location === null ? {} : { location }),
     ...(advanced ? { minutes } : {}),
+    ...(weather === null ? {} : { weather }),
     ...(discover.length ? { discover } : {}),
     ...(memory.length ? { memory } : {}),
     ...(pins.length ? { pins } : {}),
@@ -2984,7 +3007,7 @@ export const executeStatCode = async (
     clock, readings, turn = NO_TURN, choicesWritable = false, worldOptions = [], optionValues, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner,
     dictionaries = [], resolveEntryValue, narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES, discovered = [], args,
     openCast = false, memories = [], notes = '', readOnly = false, items = [], itemEvent, bodies = [], randomSeed,
-    currencies = [], money, media,
+    currencies = [], money, media, weather,
   }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
@@ -3105,7 +3128,7 @@ export const executeStatCode = async (
       ...(selfMap || !currentStat ? [] : [`(${LOCK_STAT})(self, ${SELF_ASSIGNED}, (path) => ${LOOSE_NOTE}('self.' + path));`]),
       ...(!currentStat && selfTrait ? [`Object.freeze((${LOCK_FIELDS})(self, Object.keys(self), 'self.', ${LOOSE_NOTE}));`] : []),
       worldPrelude(places, diaryCast(entities, persona, discovered), openCast, memories, reads, bodies),
-      mediaPrelude(media, reads),
+      mediaPrelude(media, reads, weather),
       `const clock = ((lock, advance) => {`,
       `  const clock = ${JSON.stringify(clockObject(clock))};`,
       `  Object.freeze(lock(clock.previous, ['day', 'daypart', 'hour', 'minute'], 'clock.previous.', ${LOOSE_NOTE}));`,

@@ -8,7 +8,7 @@ import { withMediaWrites, type MediaWrite } from './mediaOverrides';
 import {
   CODE_BOUND_FIELDS, type EntityTraitWrites, type NarrationInput, type OptionWrite, type PlaceholderWrite, type StatClock, type StatCodeResult,
   type StatTurnInputs, type StatWrite, type SandboxTurn, type TraitWrite, type ValueAndMax, type SandboxMemory, type SandboxPlace, type WorldWrites,
-  type SandboxMedia,
+  type SandboxMedia, type SandboxWeather,
 } from './statCodeExecutor';
 import { mergeWorldWrites } from './worldWrites';
 import { withWorldWrites } from './chainedWorld';
@@ -109,6 +109,8 @@ export interface SandboxState {
   loreToggles?: LoreToggles;
   /** What the media members read and name, the overrides in force included. Absent ⇒ no entry. */
   media?: SandboxMedia;
+  /** The World Weather and the kinds a script can set it to. Absent ⇒ Weather is off. */
+  weather?: SandboxWeather;
   /** Every Item Instance in play. Absent ⇒ none. */
   itemInstances?: readonly ItemInstance[];
   /** The world's items, which `items` reads. Absent ⇒ none. */

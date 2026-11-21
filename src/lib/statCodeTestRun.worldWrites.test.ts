@@ -43,6 +43,17 @@ describe('runTestCode world writes', () => {
     expect(report.writes).toEqual(['location.move: North Gate', 'clock.advance: 30 minutes', 'discover: Tor', 'discover: Mira, described']);
   });
 
+  it('lists a weather set from the world’s Default Weather, and fails a kind the world does not allow', async () => {
+    const rainy = {
+      ...world, worldOverview: { weather: { on: true, allowed: ['rain', 'storm'], defaultWeather: 'rain' } } as WorldOverview,
+    };
+    const read = await run('if (world.weather !== "rain") throw new Error("read"); world.weather = "storm";', rainy);
+    expect(read.error).toBeNull();
+    expect(read.writes).toEqual(['world.weather: storm']);
+    expect((await run('world.weather = "snow";', rainy)).error).toMatch(/"snow"/);
+    expect((await run('world.weather = "rain";')).error).toMatch(/Weather is off/);
+  });
+
   it('lists each Layer write with its Layer, field and value', async () => {
     const mediaList: MediaList = {
       'm-cap': { id: 'm-cap', name: 'Cap', kind: 'image', data: 'cap' },

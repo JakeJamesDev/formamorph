@@ -202,6 +202,7 @@ const worldWriteLines = (
   return [
     ...(location === undefined ? [] : [`location.move: ${placeName(location)}`]),
     ...(minutes === undefined ? [] : [`clock.advance: ${minutes} minutes`]),
+    ...(writes.weather === undefined ? [] : [`world.weather: ${writes.weather}`]),
     ...discover.map(({ name, description }) => `discover: ${name}${description === undefined ? '' : ', described'}`),
     ...memory.map((line) => `memories.append: ${line}`),
     ...pins.map((line) => `memories.pin: ${line}`),

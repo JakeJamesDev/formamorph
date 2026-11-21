@@ -134,6 +134,52 @@ describe('the Weather Pass in a turn', () => {
   });
 });
 
+describe('a script weather set in the Turn Commit', () => {
+  it('replaces the pass answer and fires a Weather Change with foreground', async () => {
+    const { commit, context } = await turn({ weather: weatherAt('clear', MORNING), answer: 'rain' });
+    const set = withCodeWrites(commit, { weather: 'storm' }, context);
+    expect(set.weather).toBe('storm');
+    expect(changeOf('clear', set)).toEqual({ from: 'clear', to: 'storm', foreground: true });
+  });
+
+  it('fires nothing when the set matches what the player already has', async () => {
+    const { commit, context } = await turn({ weather: weatherAt('rain', MORNING) });
+    expect(changeOf('rain', withCodeWrites(commit, { weather: 'rain' }, context))).toBeNull();
+  });
+
+  it('keeps the set when a later write moves the clock inside the day', async () => {
+    const { commit, context } = await turn({ weather: weatherAt('clear', MORNING) });
+    const set = withCodeWrites(commit, { weather: 'snow' }, context);
+    expect(withCodeWrites(set, { minutes: 30 }, context).weather).toBe('snow');
+  });
+
+  it('turns a set of Bright Sun into Clear when the turn ends at night, with no foreground', async () => {
+    const { commit, context } = await turn({ weather: weatherAt('clear', NIGHT), gameTime: NIGHT });
+    const set = withCodeWrites(commit, { weather: 'brightSun' }, context);
+    expect(set.weather).toBe('clear');
+    expect(set.nightfall).toBe(true);
+    expect(changeOf('rain', set)).toEqual({ from: 'rain', to: 'clear', foreground: false });
+  });
+
+  it('keeps a set after the clock moves past dusk, with the nightfall rule applied to it', async () => {
+    const { commit, context } = await turn({ weather: weatherAt('clear', EVENING), gameTime: EVENING });
+    const set = withCodeWrites(commit, { weather: 'brightSun', minutes: 6 * 60 }, context);
+    expect(set.weather).toBe('clear');
+  });
+
+  it('carries no weather while the world has Weather off', async () => {
+    const { commit, context } = await turn({});
+    expect(withCodeWrites(commit, { weather: 'storm' }, context).weather).toBeNull();
+  });
+
+  it('applies the set on the opening turn without foreground', async () => {
+    const { commit, context } = await turn({ weather: weatherAt('clear', MORNING), isGameStarted: false });
+    const set = withCodeWrites(commit, { weather: 'storm' }, context);
+    expect(set.weather).toBe('storm');
+    expect(changeOf('clear', set)).toEqual({ from: 'clear', to: 'storm', foreground: false });
+  });
+});
+
 describe('Shelter in the landing', () => {
   it('fires nothing while Sheltered, whatever the World Weather does', async () => {
     const { commit } = await turn({ weather: weatherAt('clear', MORNING), answer: 'storm' });

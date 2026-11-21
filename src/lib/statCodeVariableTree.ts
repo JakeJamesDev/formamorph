@@ -502,8 +502,8 @@ export function buildVariableTree(
     { kind: 'group', label: 'Turn', info: globalInfo('turn'), children: fields(root('turn'), timing.turn ?? TURN_MEMBERS) },
     nameList('Locations', locationRows, 'No locations in this world', globalInfo('locations')),
     { kind: 'group', label: 'Location', info: globalInfo('location'), children: locationFields() },
-    // `world` holds one member, so the menu offers it as a field of its own.
-    { ...field(root('world'), WORLD_MEMBERS[0]), label: 'Music' },
+    // `world` holds two members, so the menu offers each as a field of its own.
+    ...WORLD_MEMBERS.map((member) => ({ ...field(root('world'), member), label: member.name === 'music' ? 'Music' : 'Weather' })),
     { kind: 'group', label: 'Discover', info: globalInfo('discover'), children: [topCallField('discover', '"Name"')] },
     { kind: 'group', label: 'Memories', info: globalInfo('memories'), children: memoryFields() },
     { kind: 'field', label: 'notes', detail: 'string', info: globalInfo('notes') ?? '', access: 'readOnly', insert: 'notes' },

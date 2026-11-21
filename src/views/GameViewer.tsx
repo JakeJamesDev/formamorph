@@ -323,7 +323,7 @@ import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import { LocationBackdrop } from "../components/game/LocationBackdrop";
 import { WeatherBackground } from "../components/game/WeatherBackground";
 import { weatherView } from "@/lib/weatherView";
-import { activeWeather, isDaylight, landedWeatherChange, offeredWeatherKinds, type WeatherChange } from "@/lib/weather";
+import { activeWeather, allowedWeatherKinds, isDaylight, landedWeatherChange, offeredWeatherKinds, type WeatherChange } from "@/lib/weather";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { MusicOffIcon } from "../components/game/MusicOffIcon";
 import { AiSetupGate } from "../components/AiSetupGate";
@@ -4446,6 +4446,8 @@ const GameViewer = ({
         const health = healthLoss === null ? undefined : stats.find((s) => s.name === "Health");
         const here = scriptLocationRef.current ?? currentLocation;
         const { owners, ownerTurns } = splitOwnerTurns(ownerRows);
+        const worldWeather = activeWeather(worldOverview);
+        const scriptWeather = worldWeather && { current: weatherRef.current, allowed: allowedWeatherKinds(worldWeather) };
         const state: SandboxState = {
           stats, enabled, clock,
           gateStats: gateStatsOf({
@@ -4486,6 +4488,7 @@ const GameViewer = ({
             ),
           }),
           itemInstances: itemsNow.instances, items: worldItems, slots: worldSlots,
+          ...(scriptWeather ? { weather: scriptWeather } : {}),
           ...(worldCurrencies.length ? { money: { currencies: worldCurrencies, placements: worldPlacements } } : {}),
           bodies: {
             world: {

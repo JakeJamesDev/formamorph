@@ -34,6 +34,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Worlds can turn on Weather and mark locations Sheltered.** Pick the allowed kinds and a Default Weather, and give an opening its own Weather. A save keeps the weather.
     - **The current weather now shows behind the game panels.** Rain, snow, storm and bright sun play over the location image, except in Sheltered locations. Turn it off with Weather Background in Display settings.
     - **The AI now changes a world's weather when the story does, and tells the narrator the weather every turn.** After each turn the AI picks the new weather from the world's allowed kinds. Bright Sun turns Clear at nightfall. With no Default Weather, the AI reads the start weather from page one.
+    - **Scripts can read and set the weather with `world.weather`.** A set takes effect when the turn ends and plays the weather effect. A kind the world doesn't allow stops the script with an error.
 
 #### 🔧 Fixed
 

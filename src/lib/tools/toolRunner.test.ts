@@ -397,9 +397,9 @@ describe('runToolCall: Script', () => {
     expect(errorOf(result.text)).toMatch(/not a function/);
   });
 
-  it('has no scene, self, owner, discover or player, and a world that holds only music (Q55)', async () => {
+  it('has no scene, self, owner, discover or player, and a world that holds only music and weather (Q55)', async () => {
     const code = 'return [typeof scene, typeof self, typeof owner, typeof discover, typeof player, Object.keys(world)].join(",");';
-    expect(await runToolCall(script(code, []), '{}', s)).toEqual({ text: 'undefined,undefined,undefined,undefined,undefined,music' });
+    expect(await runToolCall(script(code, []), '{}', s)).toEqual({ text: 'undefined,undefined,undefined,undefined,undefined,music,weather' });
   });
 
   it('lets the code declare a name the surface hides', async () => {

@@ -316,10 +316,12 @@ export function withCodeWrites(commit: TurnCommit, writes: WorldWrites | undefin
     turnHours = minutes / 60;
     turn = { ...turn, timeDelta: turnHours };
     clock = { ...clock, deltaHours: turnHours, elapsedHours: (clock.elapsedHours ?? 0) - (clock.deltaHours ?? 0) + turnHours };
-    // The turn now ends at another hour, so the nightfall rule reads it again.
-    ({ weather, nightfall } = withNightfall(commit.passWeather, clock));
   }
-  // The hook point for script weather sets: after the nightfall rule, so a set stands.
+  // A script's set replaces the pass's answer, and the nightfall rule reads the final weather at the turn's end,
+  // so a set of Bright Sun that ends at night is Clear. A world with Weather off keeps none.
+  if (commit.passWeather) {
+    ({ weather, nightfall } = withNightfall(codeWrites?.weather ?? commit.passWeather, clock));
+  }
 
   const newEntityId = context.newEntityId ?? randomUUID;
   const held = (name: string) => [...context.heldNames ?? [], ...context.knownDiscoveredNames].some((known) => sameCharacterName(known, name));

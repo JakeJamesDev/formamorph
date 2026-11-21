@@ -102,7 +102,8 @@ export const LOCATION_MEMBERS: readonly SurfaceEntry[] = withAccess([
 /** The members of `world`. */
 export const WORLD_MEMBERS: readonly SurfaceEntry[] = withAccess([
   { name: 'music', detail: 'string | null', info: 'Name of the sound playing as the world’s music, or null; assign a sound’s name to play it' },
-], ['music'], 'writable');
+  { name: 'weather', detail: 'string | null', info: 'The World Weather: "clear", "rain", "snow", "storm" or "brightSun". It is null while the world’s Weather is off. Assign an allowed kind to change it; the change applies when the turn ends.' },
+], ['music', 'weather'], 'writable');
 
 /** The verbs on `memories`: a line appended to this turn, and a pinned line, named or not. */
 export const MEMORY_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
@@ -162,7 +163,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
     name: 'options', detail: 'object',
     info: 'Every World Option by name, hidden ones included. A Choice reads its value’s name, an On or Off reads true or false, and a Number reads its number. Set one to change it. Use options["Two Words"] for a name with a space.',
   },
-  { name: 'world', detail: shapeOf(WORLD_MEMBERS), info: 'The world’s music. Assign world.music to change it.', access: 'readOnly' },
+  { name: 'world', detail: shapeOf(WORLD_MEMBERS), info: 'The world’s music and weather. Assign world.music or world.weather to change it.', access: 'readOnly' },
   { name: 'console', detail: 'object', info: 'Only console.log. Output shows in the browser console.' },
 ];
 

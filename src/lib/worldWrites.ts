@@ -7,7 +7,7 @@ export function advancedClock(turnStart: number, writes: WorldWrites | undefined
   return writes?.minutes === undefined ? undefined : turnStart + writes.minutes / 60;
 }
 
-/** `later` laid over `earlier`: the later move wins, advances add, discoveries join once per name, a
+/** `later` laid over `earlier`: the later move wins, the later weather wins, advances add, discoveries join once per name, a
  *  described one filling in a bare one, and memory lines, pins, named pins, diary lines, entity writes and memory entry writes
  *  join in order, as do inventory writes. */
 export function mergeWorldWrites(earlier: WorldWrites | undefined, later: WorldWrites | undefined): WorldWrites | undefined {
@@ -15,6 +15,7 @@ export function mergeWorldWrites(earlier: WorldWrites | undefined, later: WorldW
   const location = later.location ?? earlier.location;
   const minutes = earlier.minutes === undefined && later.minutes === undefined ? undefined
     : (earlier.minutes ?? 0) + (later.minutes ?? 0);
+  const weather = later.weather ?? earlier.weather;
   const byName = new Map<string, DiscoverWrite>();
   for (const entry of [...earlier.discover ?? [], ...later.discover ?? []]) {
     if (!byName.has(entry.name) || entry.description !== undefined) byName.set(entry.name, entry);
@@ -31,6 +32,7 @@ export function mergeWorldWrites(earlier: WorldWrites | undefined, later: WorldW
   return {
     ...(location === undefined ? {} : { location }),
     ...(minutes === undefined ? {} : { minutes }),
+    ...(weather === undefined ? {} : { weather }),
     ...(discover.length ? { discover } : {}),
     ...(memory.length ? { memory } : {}),
     ...(pins.length ? { pins } : {}),

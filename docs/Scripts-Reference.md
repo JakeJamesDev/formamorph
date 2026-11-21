@@ -28,7 +28,7 @@ A script can use only these objects. In the table, a word in angle brackets is a
 | `items` | `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, `placeholders`, `instances`, `give()` | `items.<Item>.instances.length` | `items.<Item>.give(persona)` |
 | `currencies` | `id`, `name`, `kind`, `balance()`, `pay()` | `currencies.<Currency>.balance(persona)` | `currencies.<Currency>.pay(persona, null, <n>)` |
 | `options` | — | `options.<Option>` | `options.<Option> = true` |
-| `world` | `music` | `world.music` | `world.music = "<Sound>"` |
+| `world` | `music`, `weather` | `world.music`, `world.weather` | `world.music = "<Sound>"`, `world.weather = "<Kind>"` |
 | `console` | `log()` | — | `console.log(<text>)` |
 
 A timing adds names to those objects. A script reads only the names its own timing adds:
@@ -948,6 +948,33 @@ world.music = "Storm Theme";
 const atGate = entities.Guard.instances.find((guard) => guard.location === "Gate");
 if (atGate) atGate.image = "Captain";
 ```
+
+### Weather
+<!-- keywords: weather, set weather, make it rain, storm, snow, bright sun, clear sky, read weather, world.weather, does not allow the weather, weather is off -->
+
+`world.weather` is the World Weather: one weather for the whole world, as the Weather Pass or the story sets it. Turn Weather on in the [World Editor](World-Editor-Overview) first.
+
+| Kind | Reads and takes |
+| --- | --- |
+| Clear | `"clear"` |
+| Rain | `"rain"` |
+| Snow | `"snow"` |
+| Storm | `"storm"` |
+| Bright Sun | `"brightSun"` |
+
+```javascript
+// The ritual calls a storm.
+if (traits.Ritual.enabled) world.weather = "storm";
+
+// The rain is over once the player reaches the cellar.
+if (location.name === "Cellar" && world.weather === "rain") world.weather = "clear";
+```
+
+- **Reading gives the kind, or `null`.** It reads `null` while the world's Weather is off. It reads the weather as the turn began, not the Weather Pass's new answer. A later script reads what an earlier script set.
+- **Clear is always allowed.** Any other kind must be one the world allows. A kind the world does not allow stops the script with an error that names it. So does a set while Weather is off.
+- **The change lands with the turn.** It replaces what the Weather Pass chose. The player sees it as a weather change, with the full-screen effect when the new weather is not Clear.
+- **Bright Sun still turns into Clear at nightfall.** A set to `"brightSun"` in a turn that ends at night becomes Clear, with no effect.
+- **A rewind past the turn undoes it.** The weather is saved with the turn.
 
 ### Layers
 <!-- keywords: layered image, layer, variant, change outfit layer, swap hat, hide a layer, fade a layer, layer opacity, tint a layer, dye hair, recolor layer, layers is not defined, no layer named -->

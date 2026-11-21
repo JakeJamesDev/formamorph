@@ -117,8 +117,8 @@ describe('executeStatCode media members', () => {
     ]);
   });
 
-  it('gives `world` its music alone, so a retired list read finds nothing', async () => {
-    const res = await run(`if (Object.keys(world).join() !== 'music' || world.entities !== undefined) throw new Error('keys');`);
+  it('gives `world` its music and weather alone, so a retired list read finds nothing', async () => {
+    const res = await run(`if (Object.keys(world).join() !== 'music,weather' || world.entities !== undefined) throw new Error('keys');`);
     expect(res.error).toBeNull();
   });
 
