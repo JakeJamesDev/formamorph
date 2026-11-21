@@ -119,7 +119,10 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 - New Game resolves the start time as: the drawn Opening's Time → the world's Default Time → the opening-time pass reading page one → the shipped default start hour.
 - When an Opening or the world sets a time, the opening-time pass is left out of the opening turn's plan (Q23), and the start hour is set before page one is written, so the narrator's clock line carries it.
 - The shipped default opening reads Default Time and Default Weather (Q21).
-- A page-one redraw resolves time and weather again from the newly drawn Opening.
+- A page-one redraw resolves time and weather again from the newly drawn Opening. With nothing authored on it, the redraw reruns the opening-time pass as a first draw would, even when the first draw had an authored time.
+- An authored time sets the start hour even with AI Clock off. Only the page-one pass fallback depends on AI Clock.
+- Default Time lives on the world overview, beside the Openings. The Weather block stays separate.
+- For an Opening Action, the start hour is set in the same New Game step that places the drawn Opening, so the first clock line carries it.
 
 **Start resolution (weather)**
 

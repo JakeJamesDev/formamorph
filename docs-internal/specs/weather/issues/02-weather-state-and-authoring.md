@@ -10,7 +10,7 @@ Reasoning effort: high
 A world can turn Weather on, and a game holds one World Weather from its start. The spec covers this in Q2, Q3, Q5, Q6, Q13, Q14, Q24 and Q25. Changes during play come in ticket 03.
 
 - **Shape.** The world gains a Weather block: on switch, allowed kinds (subset of Rain, Snow, Storm, Bright Sun) and optional Default Weather. An Opening gains an optional Weather. A location gains an optional Sheltered flag. The save gains the current World Weather; absent reads as Clear.
-- **Start resolution.** Opening Weather → Default Weather → Clear. It reuses ticket 01's start resolution path. The page-one read is ticket 03's. A redraw resolves again.
+- **Start resolution.** Opening Weather → Default Weather → Clear. It reuses ticket 01's start resolution path: the authored start-hour resolver in the Openings module and its New Game and redraw wiring in the game view. The page-one read is ticket 03's. A redraw resolves again. Ticket 01 left the view wiring untested because the view is too large to mount, so a redraw that resets the weather needs a seam a test can reach.
 - **Experienced weather.** One shared helper returns the weather the player experiences: the World Weather, or none in a Sheltered location. Tickets 03, 04 and 05 use it; this ticket owns it.
 - **Editor.** A Weather section in the World Editor (switch, allowed kinds, Default Weather). Sheltered in the location editor while Weather is on. A Weather picker per Opening row, listing only allowed kinds, hidden while Weather is off.
 - **Test Bench.** Findings for an Opening Weather or Default Weather outside the allowed list.
