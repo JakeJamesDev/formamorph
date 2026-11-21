@@ -28,8 +28,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Location and item image slots can choose a Layered Image, and every gallery shows it as a picture.** Choose lists Layered Images there. The strip and frame show each Layer's first image.
     - **The Test Bench flags Layered Images that break.** Four findings name the image and the Layer: a size mismatch, a bottom Layer that can show nothing, a rule naming a missing trait or stat, and no Layers.
     - **Renaming a Layer updates only the scripts that name its own Layered Image.** When another Layered Image has a Layer of that name too, **Update Code References** lists the references it can't tell apart, and you check the ones to change.
-  - **Opening Time:**
-    - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
   - **Weather:**
     - **Worlds can turn on Weather and mark locations Sheltered.** Pick the allowed kinds and a Default Weather, and give an opening its own Weather. A save keeps the weather.
     - **The current weather now shows behind the game panels.** Rain, snow, storm and bright sun play over the location image, except in Sheltered locations. Turn it off with Weather Background in Display settings.
@@ -37,6 +35,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Scripts can read and set the weather with `world.weather`.** A set takes effect when the turn ends and plays the weather effect. A kind the world doesn't allow stops the script with an error.
     - **Traits and image Visibility rules can now require the weather.** Pick Weather under Add Requirement, then turn on the kinds that count. It shows while the world's Weather is on.
     - **A short effect now plays over the game when the weather changes.** Raindrops hit the screen, snow settles, lightning flashes or sunlight sweeps across, then it stops. Turn it off with **Weather Foreground** in Display settings.
+  - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
 
 #### 🔧 Fixed
 

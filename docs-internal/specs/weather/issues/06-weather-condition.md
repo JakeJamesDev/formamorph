@@ -1,6 +1,6 @@
 # 06: Weather Condition
 
-Status: ready-for-human
+Status: done
 Blocked by: 03
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

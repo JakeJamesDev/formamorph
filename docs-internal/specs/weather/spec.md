@@ -111,7 +111,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 
 **Data model**
 
-- The world gains a Weather block: an on switch, the allowed kinds (a subset of Rain, Snow, Storm, Bright Sun), an optional Default Weather (any allowed kind or Clear) and an optional Default Time (a daypart). Absent block = Weather off, Default Time unset.
+- The world gains a Weather block: an on switch, the allowed kinds (a subset of Rain, Snow, Storm, Bright Sun), and an optional Default Weather (any allowed kind or Clear). Absent block = Weather off. The world overview gains an optional Default Time (a daypart) beside the block.
 - Default Time lives outside the Weather block's on switch. Time on Openings works in a world with Weather off (Q26).
 - A location gains an optional Sheltered flag. Absent = not Sheltered.
 - An Opening gains an optional Weather and an optional Time (a daypart). Absent = use the world default. Entity Openings, Self and Others, share the shape.
@@ -160,7 +160,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 
 **Turn Commit and Turn Landing**
 
-- The Turn Commit carries the turn's resulting World Weather. Order inside the commit: the Weather Pass answer, then the nightfall rule (Bright Sun → Clear when the turn's time ends at night), then script sets, then the Weather Condition reads.
+- The Turn Commit carries the turn's resulting World Weather. Order inside the commit: the Weather Pass answer, then script sets, then the nightfall rule (Bright Sun → Clear when the turn's time ends at night) on the final weather, then the Weather Condition reads.
 - The Turn Landing applies the weather through its effects port and reports a **Weather Change** when the weather the player experiences changes. The experienced weather is the World Weather, or none in a Sheltered location.
 - A Weather Change fires foreground when the new experienced weather is a non-Clear kind, the turn is not the opening turn, and the change is not the nightfall rule. Moving into Shelter, and Clear as the new weather, fire nothing.
 - The stat re-roll mode does not fire a Weather Change. It is a named skip in the landing, per ADR 0019.
@@ -189,7 +189,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 
 **Scripts**
 
-- The script surface gains a world-level weather member: read the World Weather; set it to Clear or an allowed kind.
+- The script surface gains a world-level weather member: read the World Weather; set it to Clear or an allowed kind. It reads `null` while Weather is off.
 - A set lands at commit through the existing write path, saves with the turn and undoes with it. A kind outside the allowed list, or Weather off, stops the script with an error that names it.
 - This widens the script sandbox's exposure on purpose (Q12).
 
