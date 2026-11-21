@@ -195,7 +195,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 
 **Rendering**
 
-- One pure **weather view** function decides what shows. Input: World Weather, the current location's Sheltered flag, daylight, both player switches, OS reduced motion, and the previous experienced weather. Output: the background kind and mode (full, calm or none), and an optional foreground effect.
+- One pure **weather view** function decides what shows. Input: World Weather, the current location's Sheltered flag, daylight, both player switches, OS reduced motion, and the landed Weather Change (none on load, New Game, a redraw and paging). Output: the background kind and mode (full, calm or none), and an optional foreground effect.
 - **Background** is one overlay element between the location backdrop and the panels, on its own compositor layer, ignoring pointer input. It draws with a 2D canvas, not three.js. It stops drawing when it shows nothing or the page is hidden.
 - **Foreground** is one full-screen layer above the game view, ignoring pointer input, never over open dialogs. Each kind has one effect that plays for a few seconds. A new one replaces a playing one (Q16).
 - Storm's flash holds under three flashes per second in every mode.
