@@ -54,6 +54,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 | Q28 | Each stored turn records its World Weather. A past page shows its own weather and its own location's Sheltered flag. |
 | Q29 | The Background Fade dims the weather along with the location art. |
 | Q30 | Script weather words are camelCase: `"clear"`, `"rain"`, `"snow"`, `"storm"`, `"brightSun"`. camelCase is the standard for every script-facing value. |
+| Q31 | A Condition checked at the start of a story reads the resolved start weather and time (Opening, then the world defaults). The library entity editor and Enter World read the world defaults, as the World Editor does. Ticket 08. |
 
 ## User Stories
 
