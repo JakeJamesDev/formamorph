@@ -111,6 +111,7 @@ const PartsLayout = ({ parts, dialog }: { parts: ListEditorParts; dialog?: React
               <div className="p-2">{parts.list}</div>
             </ScrollArea>
           )}
+          {parts.listActions && <div className="flex flex-wrap gap-2 border-t p-3" data-list-actions="">{parts.listActions}</div>}
         </div>
       }
       detail={parts.detail}

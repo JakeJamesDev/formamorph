@@ -1495,8 +1495,8 @@ const WorldEditorInner = ({
   const mobileListRow = !listEditorParts?.showDetail && addSearchBar;
   // The detail's frozen footer: the List Editor's on a tab that runs on it.
   const detailFooter = listEditorParts?.footer;
-  // The tab's own actions, on the two tabs that act on a selected item.
-  const tabActions = hasSelectedContent && (
+  // The tab's own actions: the List Editor's, or Save to Library on the two tabs that act on a selected item.
+  const tabActions = listEditorParts?.listActions ?? (hasSelectedContent && (
     // Export moves into this button's menu: what an author does with the selected entity or book is one
     // control, and saving it to the library is the everyday half of it.
     <SelectedContentActions
@@ -1505,7 +1505,7 @@ const WorldEditorInner = ({
         ? linking.controlFor(selectedLinkable, advanced)
         : { faceLabel: 'Save to Library', faceTip: 'Select an entity or a dictionary first', onFace: () => {}, menu: [] })}
     />
-  );
+  ));
   // Desktop's world actions live in the app bar, so its footer draws only on a tab with actions of its own.
   const desktopFooter = tabActions && <div className="p-3 border-t flex flex-wrap gap-2">{tabActions}</div>;
   // Mobile has no app bar, so its footer keeps the world actions within thumb reach. On a wrap they stay right.

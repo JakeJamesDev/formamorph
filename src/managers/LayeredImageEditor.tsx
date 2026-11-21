@@ -4,7 +4,7 @@
 import { useState, type ReactNode } from 'react';
 import { Layers, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle, dialogFullHeight, dialogHeaderBar, dialogHeaderBarTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, dialogCenteredAnimation, dialogFullHeight, dialogHeaderBar, dialogHeaderBarTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -56,7 +56,12 @@ export function LayeredImageEditor({ entryId, openOnMount = false }: { entryId: 
         <Layers className="mr-1 h-4 w-4" />Edit Layers
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent surface="layeredEditor" className={cn('flex max-w-none flex-col gap-0 p-0 sm:w-[96vw]', dialogFullHeight)}>
+        <DialogContent
+          surface="layeredEditor"
+          // Margin-centered, so the stock slide (a transform-centered offset) would fly it in from the top.
+          unanimated
+          className={cn('inset-x-0 mx-auto flex max-w-none translate-x-0 flex-col gap-0 p-0 sm:w-[96vw]', dialogCenteredAnimation, dialogFullHeight)}
+        >
           <DesktopRigEditor rig={rig} />
         </DialogContent>
       </Dialog>
@@ -118,12 +123,12 @@ function DesktopRigEditor({ rig }: { rig: Rig }) {
             </div>
           </ScrollArea>
           {layer && (
-            <div className="space-y-3 border-t p-3" data-layer-settings={layer.id}>
-              <LayerNameField key={layer.id} rig={rig} layer={layer} />
+            <div key={layer.id} className="space-y-3 border-t p-3" data-layer-settings={layer.id}>
+              <LayerNameField rig={rig} layer={layer} />
               <OpacityField rig={rig} layer={layer} />
               <BlendField rig={rig} layer={layer} />
               <TintField rig={rig} layer={layer} />
-              <TransitionField key={layer.id} rig={rig} layer={layer} />
+              <TransitionField rig={rig} layer={layer} />
               <DeleteLayerButton rig={rig} layer={layer} />
             </div>
           )}

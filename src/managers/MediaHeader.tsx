@@ -128,8 +128,8 @@ function OptimizeButton({ progress, onRun, blocked }: OptimizeControl) {
   );
 }
 
-/** The Media tab's header row: the Publish Size meter, then grouping, Largest First, the filter, Import Media, New Layered Image and Optimize Images. */
-export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestFirst, onLargestFirstChange, filter, onFilterChange, onImport, onNewLayered, optimize }: {
+/** The Media tab's header row: the Publish Size meter, then grouping, Largest First, the filter and Optimize Images. */
+export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestFirst, onLargestFirstChange, filter, onFilterChange, optimize }: {
   publishBytes: number | null;
   grouping: MediaGrouping;
   onGroupingChange: (grouping: MediaGrouping) => void;
@@ -137,9 +137,6 @@ export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestF
   onLargestFirstChange: (largestFirst: boolean) => void;
   filter: MediaFilter;
   onFilterChange: (filter: MediaFilter) => void;
-  /** Raises Import Media's file picker. */
-  onImport: () => void;
-  onNewLayered: () => void;
   optimize: OptimizeControl;
 }) {
   const byType = grouping === 'type';
@@ -157,17 +154,25 @@ export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestF
         <ArrowDownWideNarrow className="h-4 w-4" />
       </IconToggle>
       <FilterMenu filter={filter} onChange={onFilterChange} />
-      <Tip tip="Import Media">
-        <Button type="button" variant="ghost" size="icon" aria-label="Import Media" onClick={onImport} className="h-9 w-9 shrink-0">
-          <Upload className="h-4 w-4" />
-        </Button>
-      </Tip>
-      <Tip tip="New Layered Image">
-        <Button type="button" variant="ghost" size="icon" aria-label="New Layered Image" onClick={onNewLayered} className="h-9 w-9 shrink-0">
-          <SquareStack className="h-4 w-4" />
-        </Button>
-      </Tip>
       <OptimizeButton {...optimize} />
     </div>
+  );
+}
+
+/** The Media tab's footer actions: Import Media and New Layered Image. */
+export function MediaListActions({ onImport, onNewLayered }: {
+  /** Raises Import Media's file picker. */
+  onImport: () => void;
+  onNewLayered: () => void;
+}) {
+  return (
+    <>
+      <Button type="button" variant="outline" onClick={onImport}>
+        <Upload className="mr-1 h-4 w-4" />Import Media
+      </Button>
+      <Button type="button" variant="outline" onClick={onNewLayered}>
+        <SquareStack className="mr-1 h-4 w-4" />New Layered Image
+      </Button>
+    </>
   );
 }

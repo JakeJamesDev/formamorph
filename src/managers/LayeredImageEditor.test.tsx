@@ -97,6 +97,15 @@ describe('Layered Image editor', () => {
     expect(drawn()).toEqual(['big', 'body']);
   });
 
+  it('keeps one set of Layer settings however often the Layers are selected', () => {
+    renderMediaTab(world(RIG), 'simple');
+    selectCard('Scout Rig');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Layers' }));
+    for (const name of ['Face', 'Body', 'Face', 'Body']) fireEvent.click(within(dialog()).getByText(name));
+    expect(within(dialog()).getAllByRole('textbox', { name: 'Layer Name' })).toHaveLength(1);
+    expect(dialog().querySelectorAll('[data-layer-settings]')).toHaveLength(1);
+  });
+
   it('offers to rewrite the scripts that name a Layer when it is renamed', async () => {
     const script = 'entities.Ash.layers.Face.variant = "calm";';
     const bench = renderMediaTab({ ...world(RIG), scripts: [{ id: 'w', timing: 'after', code: script }] }, 'simple');

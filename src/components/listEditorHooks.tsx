@@ -69,6 +69,8 @@ export type ListEditorParts = {
   list: ReactNode;
   detail: ReactNode;
   footer: ReactNode;
+  /** The tab's own actions, in the list card's footer. */
+  listActions?: ReactNode;
   /** The held selection's detail fills the pane; the host gives it a flex column instead of a scroll. */
   fills: boolean;
   ownsSlot: boolean;

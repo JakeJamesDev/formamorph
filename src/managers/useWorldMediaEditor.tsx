@@ -15,7 +15,7 @@ import { useMediaViewPrefs } from '@/lib/useMediaViewPrefs';
 import { mediaEntryItems, mediaSearchText } from '@/lib/mediaEntries';
 import { AvatarStoreControls } from './AvatarStore';
 import { MediaGallery } from './MediaGallery';
-import { MediaHeader, type OptimizeControl } from './MediaHeader';
+import { MediaHeader, MediaListActions, type OptimizeControl } from './MediaHeader';
 import { MediaItemPanel, MediaSummaryPanel } from './MediaPanels';
 import { MediaImagePanel } from './MediaImagePanel';
 import { MediaEntryPanel } from './MediaEntryPanel';
@@ -195,8 +195,6 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
           onLargestFirstChange={setLargestFirst}
           filter={filter}
           onFilterChange={setFilter}
-          onImport={importMedia.open}
-          onNewLayered={newLayered}
           optimize={optimize}
         />
         <ListToolbar target={extras?.target}>
@@ -216,6 +214,7 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
     list,
     detail,
     footer: undefined,
+    listActions: <MediaListActions onImport={importMedia.open} onNewLayered={newLayered} />,
     fills: false,
     ownsSlot: false,
     showDetail: held,

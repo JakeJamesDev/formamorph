@@ -33,7 +33,7 @@ To find one file, type its entity, location or dictionary name, or its slot name
 <!-- keywords: publish size meter, group by type, largest first, filter, linked, embedded, visibility rules, over size budget, unused, sort, no images, missing image, empty gallery, blank card, import media -->
 <!-- route: worldEditor.media#list-toolbar -->
 
-The row above the search box holds the **Publish Size** meter and six buttons. The meter shows the same figure and color as the bar in the [Test Bench](Test-Bench).
+The row above the search box holds the **Publish Size** meter and four buttons. The meter shows the same figure and color as the bar in the [Test Bench](Test-Bench).
 
 - **Group by Type** sorts the cards into **Images**, **Sounds**, **3D Models** and **Avatars**. Each image and sound shows once, under its own name, however many places use it. See [Group by Type](#group-by-type).
 - **Largest First** puts the biggest cards first in each section. Turn it off to return to your order. A stack sorts by its total.
@@ -45,9 +45,12 @@ The row above the search box holds the **Publish Size** meter and six buttons. T
   - Blank cards show only their name, with no size. Dictionaries without a cover image have no blank card.
   - Select an entity or location card to open its image panel on the add tile.
   - Select the thumbnail card to upload a file. The card leaves the view after the upload, and one undo brings it back.
+- **Optimize Images** converts or shrinks the world's images. See [Optimize Images](#optimize-images).
+
+Two buttons sit at the bottom of the list:
+
 - **Import Media** adds images, sounds and Avatars. See [Import Media](#import-media).
 - **New Layered Image** adds an empty Layered Image and opens it. See [Layered Images](#layered-images).
-- **Optimize Images** converts or shrinks the world's images. See [Optimize Images](#optimize-images).
 
 The tab remembers **Group by Type** and **Largest First** on this device. The filter resets when you close the editor.
 
@@ -95,7 +98,7 @@ Visibility rules belong to each place, so you set them in the image panel with *
 <!-- keywords: import media, upload images, upload sounds, add files, bulk upload, add avatar, vrm -->
 <!-- route: worldEditor.media#list-toolbar -->
 
-**Import Media** in the header adds files before you decide where they go. Pick several at once.
+**Import Media** at the bottom of the list adds files before you decide where they go. Pick several at once.
 
 - 🖼️ Images and 🔊 sounds join the world under their file names, without the extension. They show as **Unused** until a slot uses them. Pick them with **Choose** in any slot.
 - 🧍 A `.vrm` file, or a `.glb` with VRM data, becomes an Avatar in **World › Avatars**. A `.glb` without VRM data isn't imported.
@@ -170,7 +173,7 @@ A **Layered Image** builds one picture from parts. Each **Layer** holds images c
 
 **To build one:**
 
-1. Select **New Layered Image** in the Media tab's header. It joins the Media List as "Layered Image". Rename it at the top of its panel.
+1. Select **New Layered Image** at the bottom of the Media tab's list. It joins the Media List as "Layered Image". Rename it at the top of its panel.
 2. Select **Edit Layers**. A full-screen editor opens around a large picture.
 3. Select **Add Layer** once for each part, such as Body, Face and Hat.
 4. Select a Layer, then **Choose** an image from the Media List or **Import** one. Each becomes a Variant of that Layer.

@@ -88,6 +88,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Supporter worlds leave your Worlds list when your support ends.** Copies of listings that opened to everyone stay while you support. Your saves stay. Copies from another account are hidden, then removed.
     - **An installed Supporter Mascot stays while you support, even after its listing opens to everyone.**
     - **Optimize Images is disabled in a Supporter world.** Point at the button to see why.
+    - **Import Media and New Layered Image are now labeled buttons at the bottom of the World Editor's Media list.**
   - **Media List:**
     - **Worlds that reuse a picture are smaller: each entity and location picture is stored once.** Several entities or locations showing the same picture now share one copy in the world file.
     - **Entity and location image slots in the World Editor can reuse any image the world already has.** An empty slot offers Import, Choose and an image URL. A filled slot names its image, with Remove From Slot and Delete From World.
