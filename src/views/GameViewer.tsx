@@ -324,7 +324,7 @@ import { LocationBackdrop } from "../components/game/LocationBackdrop";
 import { WeatherBackground } from "../components/game/WeatherBackground";
 import { WeatherForeground } from "../components/game/WeatherForeground";
 import { weatherView } from "@/lib/weatherView";
-import { activeWeather, allowedWeatherKinds, isDaylight, landedWeatherChange, offeredWeatherKinds, type WeatherChange } from "@/lib/weather";
+import { activeWeather, afterNightfall, allowedWeatherKinds, isDaylight, landedWeatherChange, offeredWeatherKinds, savedWeather, type WeatherChange } from "@/lib/weather";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { MusicOffIcon } from "../components/game/MusicOffIcon";
 import { AiSetupGate } from "../components/AiSetupGate";
@@ -963,6 +963,10 @@ const GameViewer = ({
   // Read by the location and landing sites between renders, so a move and a weather write in one batch agree.
   const weatherRef = useRef(weather);
   weatherRef.current = weather;
+  // The story clock a between-turn weather set reads for the nightfall rule.
+  const storyClockRef = useRef({ gameTime, calendar });
+  storyClockRef.current = { gameTime, calendar };
+  const weatherOn = !!activeWeather(worldOverview);
   // The drawn Opening or the world authored the start weather, so page one needs no Weather Pass. Not saved:
   // only the opening turn reads it.
   // The ref serves a turn sent in the same handler; the state renders the Weather chip.
@@ -4692,6 +4696,21 @@ const GameViewer = ({
     const history = fullMessageHistoryRef.current;
     const turnId = latestTurnId(history);
     if (!writes || !turnId) return;
+    if (writes.weather !== undefined && weatherOn) {
+      // The nightfall rule reads the clock where the set lands; the latest turn's snapshot keeps the result.
+      const { gameTime: now, calendar: clockCalendar } = storyClockRef.current;
+      const landedWeather = afterNightfall(writes.weather, isDaylight(now, clockCalendar));
+      reportWeather(landedWeatherChange({
+        before: weatherRef.current, after: landedWeather, from: currentLocationRef.current, to: currentLocationRef.current,
+        isOpeningTurn: false, nightfall: landedWeather !== writes.weather,
+      }));
+      weatherRef.current = landedWeather;
+      setWeather(landedWeather);
+      setGameStates((prev) => {
+        const at = prev.length - 1;
+        return at < 0 ? prev : placeSnapshot(prev, at, { ...prev[at], weather: savedWeather(landedWeather) });
+      });
+    }
     setFullMessageHistory((prev) => {
       const at = prev.findLastIndex((message) => message.role === "assistant");
       const turn = at < 0 ? null : parseTurnContent(prev[at].content);
@@ -4704,7 +4723,7 @@ const GameViewer = ({
     if (writes.pins?.length) setMemoryNotes((prev) => addScriptPins(prev, turnId, writes.pins ?? [], history.length));
     const namedWrites = writes.namedWrites;
     if (namedWrites?.length) setMemoryNotes((prev) => addNamedWrites(prev, memoryDeletedRef.current, turnId, namedWrites, history.length));
-  }, [setFullMessageHistory, setMemoryNotes, diaryNames, landMemoryWrites]);
+  }, [setFullMessageHistory, setMemoryNotes, setGameStates, setWeather, diaryNames, landMemoryWrites, weatherOn, reportWeather]);
   // The writes of runs that ended while a turn ran: the turn's stream and commit rewrite its message.
   const heldWritesRef = useRef<WorldWrites | undefined>(undefined);
   const landBetweenTurns = useCallback((writes: WorldWrites | undefined) => {

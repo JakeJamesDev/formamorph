@@ -1,6 +1,6 @@
 # 09: Between-Turn Weather Sets
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,9 +15,24 @@ A weather set from a script that runs between turns takes effect. The spec cover
 
 ## Acceptance criteria
 
-- [ ] An item script that sets Storm between turns changes the World Weather, and the latest turn's snapshot records Storm.
-- [ ] The set reports a Weather Change that may fire foreground.
-- [ ] A set held while a turn runs lands with that turn.
-- [ ] Bright Sun set at night ends as Clear.
-- [ ] Each guard bites when its bug returns.
-- [ ] Changelog: fold into the unreleased script weather entry if its text needs it.
+- [x] An item script that sets Storm between turns changes the World Weather, and the latest turn's snapshot records Storm. (`GameViewer.weatherBetweenTurns.test.tsx`, first test; driven by a switch script, which shares the landing path with item scripts)
+- [x] The set reports a Weather Change that may fire foreground. (same test: `__fmDev.weatherChange()` reads rain → storm, foreground true)
+- [x] A set held while a turn runs lands with that turn. (third test: Rain until the turn commits, then Storm, snapshot Storm)
+- [x] Bright Sun set at night ends as Clear. (second test: Clear, snapshot omits weather, no foreground)
+- [x] Each guard bites when its bug returns. (reinstated: no nightfall rule fails test 2; no snapshot patch fails all three; no hold fails test 3)
+- [ ] Changelog: fold into the unreleased script weather entry if its text needs it. (a fragment adds its own entry; line 35 of `docs/Changelog.md` still says a set takes effect when the turn ends)
+
+## Landed
+
+**Not verified**
+- Changelog fold-in: a ticket branch cannot edit `docs/Changelog.md`. Its line "A set takes effect when the turn ends" is now partly stale.
+- Item scripts: the tests use a switch script. Item scripts call the same `landBetweenTurns`, but no test drives one.
+- Weather off: the `weatherOn` guard has no test.
+- The report-call guard (`reportWeather`) was not reinstated as a bug; the first two tests read the report.
+
+**Gaps found by the review**
+- A set that ends before any turn exists is dropped (`landOnLatestTurn` returns first).
+- A held set lands after the turn's own landing, so one turn can report two Weather Changes.
+
+**For you**
+- Toggle a trait whose switch script sets Storm in a world with Weather on, between turns: the rain or storm effect should play at once.
