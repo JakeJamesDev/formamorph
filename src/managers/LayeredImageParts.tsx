@@ -1,4 +1,4 @@
-// The Layered Image editor's shared parts: the rig's state and writes, the composed preview, Preview As, the
+// The Layered Image editor's shared parts: the composed preview, Preview As, the
 // Layer rows, the Variant strip and the Layer's settings. The desktop editor and the mobile pane lay them out.
 
 import { useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';

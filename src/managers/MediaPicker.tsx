@@ -175,7 +175,7 @@ export function useMediaEntryActions() {
     // The name the list keeps, made unique, is the one scripts follow.
     const kept = renameMediaEntry(list, id, name)?.[id]?.name ?? name.trim();
     void step(`Rename ${MEDIA_KIND_WORDS[list[id].kind].one}: ${name.trim()}`, () => renameMedia({ mediaId: id, name }));
-    offerCodeRename({ root: 'media', oldName: list[id].name, newName: kept, otherNames: [], noun: list[id].kind });
+    offerCodeRename({ root: 'media', oldName: list[id].name, newName: kept, otherNames: [], noun: list[id].kind === 'layered' ? 'Layered Image' : list[id].kind });
   };
   const uses = deleting
     ? [

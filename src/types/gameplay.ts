@@ -439,11 +439,11 @@ export interface LocationMediaOverride {
 
 /** One Layer's script-set values. Absent fields read the rules or the authored value (Q10). */
 export interface LayerSetting {
-  /** The shown Variant's image entry id. One the Layer no longer holds reads as unset (Q33). */
+  /** The shown Variant's image entry id. One the Layer no longer holds reads as unset (Q32). */
   variant?: string;
   /** 0 to 1. */
   opacity?: number;
-  /** A `#rrggbb` or `#rgb` color. */
+  /** A lowercase `#rrggbb` color (Q34). */
   tint?: string;
 }
 

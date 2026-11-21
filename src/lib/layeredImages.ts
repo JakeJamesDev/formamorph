@@ -63,7 +63,7 @@ export const normalizeTint = (tint: string | undefined): string | undefined => {
   return hex && hex !== '#ffffff' ? hex : undefined;
 };
 
-/** The Variant that sizes `entry`: the first Variant of its lowest Layer that has one (Q23, Q27). */
+/** The Variant that sizes `entry`: the first Variant of its lowest Layer that has one (Q23, Q29). */
 export const canvasVariant = (entry: LayeredMediaEntry): LayerVariant | undefined =>
   entry.layers.find((layer) => layer.variants.length)?.variants[0];
 
@@ -86,7 +86,7 @@ export const shownVariant = (layer: MediaLayer, media: MediaList | undefined, re
 /** What outside play reads: every rule holds, so each Layer shows its first Variant (Q5). */
 export const OUTSIDE_PLAY: LayerReads = { statesOf: (rows) => rows.map(() => ({ holds: true, conditions: [] })) };
 
-/** The Variant `layer` shows for one subject: the one its setting names while the Layer still holds it (Q10, Q33),
+/** The Variant `layer` shows for one subject: the one its setting names while the Layer still holds it (Q10, Q32),
  *  else the one its rules show. */
 function subjectVariant(layer: MediaLayer, media: MediaList | undefined, reads: LayerReads, setting?: LayerSetting): LayerVariant | undefined {
   const set = setting?.variant === undefined ? undefined
@@ -124,7 +124,7 @@ export function outsidePlayLayered(entry: LayeredMediaEntry, media: MediaList | 
   return resolveLayered(entry, media, OUTSIDE_PLAY);
 }
 
-/** A Variant's pixel size, or undefined until it is known. */
+/** A Variant's pixel size. */
 export type ImageSize = { width: number; height: number };
 
 /** One Variant whose size differs from the canvas image's. */

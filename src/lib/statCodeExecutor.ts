@@ -2420,7 +2420,7 @@ const mediaPrelude = (media: SandboxMedia | undefined, reads: HostReads): string
     `      else row[field] = value;`,
     `      writes.media.push({ owner, entryId, layerId: layer.id, field, value });`,
     `    };`,
-    // A set Variant the Layer no longer holds reads as unset (Q33).
+    // A set Variant the Layer no longer holds reads as unset (Q32).
     `    const holds = (id) => ${B}.includes(layer.variants, id) && live(id, 'image');`,
     `    const out = {};`,
     `    ${B}.define(out, 'variant', {`,
