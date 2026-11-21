@@ -1,6 +1,6 @@
 # 02: Layered Image Editor
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -22,12 +22,24 @@ Authors build Layered Images in the Media tab and link them from slots. The spec
 
 ## Acceptance criteria
 
-- [ ] An author can create a rig, add Layers and Variants with rules, and link it into an entity gallery without the fixture world.
-- [ ] Layer reorder changes draw order in the preview and in play.
-- [ ] Preview As shows a picked entity's Variants.
-- [ ] A mismatched Variant shows the size warning.
-- [ ] Deleting an image used as a Variant lists that use in the confirm.
-- [ ] Frames `.scratch/frames/layered-editor-light.png` and `.scratch/frames/layered-editor-dark.png` of the full-screen editor at a desktop width, and `.scratch/frames/layered-editor-mobile.png` of the master–detail pane at mobile width.
-- [ ] Changelog fragment written.
+- [x] An author can create a rig, add Layers and Variants with rules, and link it into an entity gallery without the fixture world. (`LayeredImageEditor.test.tsx` "creates a rig…" on a blank world; Choose lists and hands back the rig, "Choose with Layered Images"; `mediaGallery.test.ts` "links a Layered Image picked into a new slot by its tile")
+- [x] Layer reorder changes draw order in the preview and in play. (Playwright keyboard drag on the dev route: Hood below Face, preview drew Body, Hood, Face; `layeredEdit.test.ts` "moves a Layer, which changes the order the stack draws in", through the same resolver play uses)
+- [x] Preview As shows a picked entity's Variants. (`LayeredImageEditor.test.tsx` "previews as a picked entity…"; DOM read on the dev route: Corin calm, no hood)
+- [x] A mismatched Variant shows the size warning. (`LayeredImageEditor.test.tsx` "warns on a Variant whose size differs…"; `imageVisibility.layered.test.ts` `layeredSizeMismatches`)
+- [x] Deleting an image used as a Variant lists that use in the confirm. (`LayeredImageEditor.test.tsx` "lists a Variant use in Used By and in the delete confirm…")
+- [x] Frames `.scratch/frames/layered-editor-light.png` and `.scratch/frames/layered-editor-dark.png` of the full-screen editor at a desktop width, and `.scratch/frames/layered-editor-mobile.png` of the master–detail pane at mobile width. (Playwright, 1440×900 and 390×844)
+- [x] Changelog fragment written. (`docs-internal/changelog.d/layered-images-02.md`)
 
-For you: build a three-Layer character in the editor and judge whether the flow reads clearly (Media tab).
+## Landed
+
+Dev route: `#dev?view=mainMenu&modal=layeredEditor&tab=media`. Frames: `.scratch/layered-images-02/frames/layered-editor-light.png`, `.scratch/layered-images-02/frames/layered-editor-dark.png`, `.scratch/layered-images-02/frames/layered-editor-mobile.png`.
+
+**Not verified**
+- Layer drag reorder has no committed test: jsdom gives dnd-kit no layout. The Playwright run above checked it once.
+
+**For you**
+- For you: build a three-Layer character in the editor and judge whether the flow reads clearly (Media tab).
+- Judge the new Media tab pieces nobody asked for by name: a Layered Image's card shows its composed picture (not Q24's generic icon), and images only Layers use sit in a new **Layered Image Variants** section of the default grouping (without it they showed nowhere).
+- A gallery slot that links a Layered Image still shows ticket 01's gray Layers tile in the strip and frame, not the composed picture. Say whether that needs its own ticket.
+- The size warning names "the picture's" size, since the canvas can come from a Layer above an emptied bottom one (Q27).
+- Layer renames offer no script rewrite yet; whichever of 02 and 06 lands second wires it (Q33).

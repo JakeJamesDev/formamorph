@@ -374,10 +374,13 @@ export const EntityImageWidget = ({ linked, ...props }: EntityImageWidgetProps) 
     <EntityImageBody {...props} images={entityImages(props.value)} onImagesChange={(list) => props.onChange('images', list)} />
   ));
 
+/** Entity galleries take Layered Images. */
+const LAYERED_SLOTS = { layered: true };
+
 const LinkedEntityImageWidget = (props: Omit<EntityImageWidgetProps, 'linked'>) => {
   const { value, onChange, placeholders = [] } = props;
   const write = useCallback((links: GalleryLink[]) => onChange('images', links), [onChange]);
-  const gallery = useLinkedGallery(galleryLinks(value), write, labelPlaceholders(value.name, placeholders));
+  const gallery = useLinkedGallery(galleryLinks(value), write, labelPlaceholders(value.name, placeholders), LAYERED_SLOTS);
   return <EntityImageBody {...props} {...gallery} />;
 };
 

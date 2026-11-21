@@ -8,7 +8,7 @@ import type { ListSearch } from '@/components/listToolbarHooks';
 import { matchesListSearch } from '@/lib/listSearch';
 import { cn } from '@/lib/utils';
 import {
-  blankSections, canStack, galleryParentKeyOf, filterSections, groupSections, isAvatarSection, mediaParentKey, mediaSections, sectionSelection, sectionTitle, sortSectionsLargestFirst, withAvatarsSection,
+  blankSections, canStack, ENTRY_ITEM_PREFIX, galleryParentKeyOf, filterSections, groupSections, isAvatarSection, mediaParentKey, mediaSections, sectionSelection, sectionTitle, sortSectionsLargestFirst, withAvatarsSection,
   type MediaFilter, type MediaParent,
 } from '@/lib/mediaIndex';
 import { useMediaViewPrefs } from '@/lib/useMediaViewPrefs';
@@ -20,6 +20,9 @@ import { MediaItemPanel, MediaSummaryPanel } from './MediaPanels';
 import { MediaImagePanel } from './MediaImagePanel';
 import { MediaEntryPanel } from './MediaEntryPanel';
 import { useImportMedia } from './useImportMedia';
+import { useMediaStep } from './useMediaItemActions';
+import { newLayeredEntry } from '@/lib/layeredEdit';
+import { useDevRoute } from '@/lib/devRouter';
 
 /**
  * The Media tab's List Editor parts: a gallery of every media item in the world, and the panel for the
@@ -37,7 +40,18 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
   /** The Optimize Images run: its progress, and the click that starts it. */
   optimize: OptimizeControl;
 }): ListEditorParts {
-  const { worldOverview, entities, entityGroups, locations, dictionaries, bodies, items: worldItems, placeholders } = useGameData();
+  const { worldOverview, entities, entityGroups, locations, dictionaries, bodies, items: worldItems, placeholders, addMedia } = useGameData();
+  const step = useMediaStep();
+  const newLayered = () => {
+    const entry = newLayeredEntry(worldOverview.mediaList);
+    void step(`New Layered Image: ${entry.name}`, () => addMedia({ [entry.id]: entry }));
+    onSelect(`${ENTRY_ITEM_PREFIX}${entry.id}`);
+  };
+  // DEV: the `layeredEditor` route opens the world's first Layered Image in its full-screen editor.
+  const devRoute = useDevRoute();
+  const devLayered = devRoute?.modal === 'layeredEditor'
+    ? Object.values(worldOverview.mediaList ?? {}).find((e) => e.kind === 'layered')?.id : undefined;
+  useEffect(() => { if (devLayered) onSelect(`${ENTRY_ITEM_PREFIX}${devLayered}`); }, [devLayered, onSelect]);
   const allSections = useMemo(
     () => mediaSections({ worldOverview, entities, entityGroups, locations, dictionaries, bodies }),
     [worldOverview, entities, entityGroups, locations, dictionaries, bodies],
@@ -128,7 +142,7 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
       />
     )
     : item?.uses
-    ? <MediaEntryPanel key={item.id} item={item} placeholders={placeholders} onGoTo={onGoTo} />
+    ? <MediaEntryPanel key={item.id} item={item} placeholders={placeholders} onGoTo={onGoTo} onSelect={onSelect} openEditor={!!devLayered && item.mediaId === devLayered} />
     : item
     ? <MediaItemPanel item={item} placeholders={placeholders} onGoTo={onGoTo} />
     : section && blankOnly
@@ -182,6 +196,7 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
           filter={filter}
           onFilterChange={setFilter}
           onImport={importMedia.open}
+          onNewLayered={newLayered}
           optimize={optimize}
         />
         <ListToolbar target={extras?.target}>

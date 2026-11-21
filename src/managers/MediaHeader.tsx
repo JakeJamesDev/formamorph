@@ -1,5 +1,5 @@
 import { useId, useState, type ReactNode } from 'react';
-import { ArrowDownWideNarrow, Check, ImageDown, Layers, ListFilter, Loader2, Upload } from 'lucide-react';
+import { ArrowDownWideNarrow, Check, ImageDown, Layers, ListFilter, Loader2, SquareStack, Upload } from 'lucide-react';
 import { OPTIMIZE_IMAGES_TIP } from '@/components/editor/appBarCopy';
 import { HintInfo } from '@/components/SettingsRows';
 import { BAND_FILL, PUBLISH_SIZE_INFO } from '@/components/editor/IssuesInstrument';
@@ -128,8 +128,8 @@ function OptimizeButton({ progress, onRun, blocked }: OptimizeControl) {
   );
 }
 
-/** The Media tab's header row: the Publish Size meter, then grouping, Largest First, the filter, Import Media and Optimize Images. */
-export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestFirst, onLargestFirstChange, filter, onFilterChange, onImport, optimize }: {
+/** The Media tab's header row: the Publish Size meter, then grouping, Largest First, the filter, Import Media, New Layered Image and Optimize Images. */
+export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestFirst, onLargestFirstChange, filter, onFilterChange, onImport, onNewLayered, optimize }: {
   publishBytes: number | null;
   grouping: MediaGrouping;
   onGroupingChange: (grouping: MediaGrouping) => void;
@@ -139,6 +139,7 @@ export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestF
   onFilterChange: (filter: MediaFilter) => void;
   /** Raises Import Media's file picker. */
   onImport: () => void;
+  onNewLayered: () => void;
   optimize: OptimizeControl;
 }) {
   const byType = grouping === 'type';
@@ -159,6 +160,11 @@ export function MediaHeader({ publishBytes, grouping, onGroupingChange, largestF
       <Tip tip="Import Media">
         <Button type="button" variant="ghost" size="icon" aria-label="Import Media" onClick={onImport} className="h-9 w-9 shrink-0">
           <Upload className="h-4 w-4" />
+        </Button>
+      </Tip>
+      <Tip tip="New Layered Image">
+        <Button type="button" variant="ghost" size="icon" aria-label="New Layered Image" onClick={onNewLayered} className="h-9 w-9 shrink-0">
+          <SquareStack className="h-4 w-4" />
         </Button>
       </Tip>
       <OptimizeButton {...optimize} />

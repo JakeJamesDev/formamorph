@@ -33,7 +33,7 @@ To find one file, type its entity, location or dictionary name, or its slot name
 <!-- keywords: publish size meter, group by type, largest first, filter, linked, embedded, visibility rules, over size budget, unused, sort, no images, missing image, empty gallery, blank card, import media -->
 <!-- route: worldEditor.media#list-toolbar -->
 
-The row above the search box holds the **Publish Size** meter and five buttons. The meter shows the same figure and color as the bar in the [Test Bench](Test-Bench).
+The row above the search box holds the **Publish Size** meter and six buttons. The meter shows the same figure and color as the bar in the [Test Bench](Test-Bench).
 
 - **Group by Type** sorts the cards into **Images**, **Sounds**, **3D Models** and **Avatars**. Each image and sound shows once, under its own name, however many places use it. See [Group by Type](#group-by-type).
 - **Largest First** puts the biggest cards first in each section. Turn it off to return to your order. A stack sorts by its total.
@@ -46,6 +46,7 @@ The row above the search box holds the **Publish Size** meter and five buttons. 
   - Select an entity or location card to open its image panel on the add tile.
   - Select the thumbnail card to upload a file. The card leaves the view after the upload, and one undo brings it back.
 - **Import Media** adds images, sounds and Avatars. See [Import Media](#import-media).
+- **New Layered Image** adds an empty Layered Image and opens it. See [Layered Images](#layered-images).
 - **Optimize Images** converts or shrinks the world's images. See [Optimize Images](#optimize-images).
 
 The tab remembers **Group by Type** and **Largest First** on this device. The filter resets when you close the editor.
@@ -84,7 +85,7 @@ With **Group by Type** on, each image and sound has one card, named as it is in 
 Select an image or sound card to open its panel:
 
 - ✏️ **Name.** Edit the name at the top. Every slot that uses it shows the new name.
-- 📎 **Used By** lists each place that uses it, such as "Wren, Image 2". Select one to go there. An unused file says so.
+- 📎 **Used By** lists each place that uses it, such as "Wren, Image 2". An image a Layer uses shows the Layered Image and the Layer, such as "Scout Rig · Face". Select one to go there. An unused file says so.
 - 🗑️ **Delete From World** lists every place that uses the file first, then takes it out of each of them. Undo brings it all back.
 - ⬇️ **Download** saves the file, or **Open Link** opens a linked one.
 
@@ -160,6 +161,34 @@ An entity's or location's images open in one panel. A stack opens on its primary
 - 🎚️ **Visibility rule.** The framed image shows its rule editor here, so the strip has no cog. A rule you set here shows on the entity's **Profile** tab or the location's **Media** tab, and a rule set there shows here. On a location, a condition with no owner reads the persona.
 
 Each change is one undo step.
+
+## Layered Images
+<!-- keywords: layered image, layers, variants, paper doll, outfit, expression, stacked picture, character parts, preview as, edit layers, size warning -->
+<!-- route: layeredEditor -->
+
+A **Layered Image** builds one picture from parts. Each **Layer** holds images called **Variants** and shows one at a time: the first Variant whose Visibility rule holds. A Layer with no Variant showing shows nothing. The list's top Layer draws on top.
+
+**To build one:**
+
+1. Select **New Layered Image** in the Media tab's header. It joins the Media List as "Layered Image". Rename it at the top of its panel.
+2. Select **Edit Layers**. A full-screen editor opens around a large picture.
+3. Select **Add Layer** once for each part, such as Body, Face and Hat.
+4. Select a Layer, then **Choose** an image from the Media List or **Import** one. Each becomes a Variant of that Layer.
+5. Select a Variant's cog to give it a Visibility rule, as on a gallery image. A Variant with no rule always shows.
+
+**In the editor:**
+
+- 🧩 **Layers.** Drag a Layer by its handle to change what draws over what. The eye hides a Layer in the editor only. Each row shows what the Layer shows now.
+- 🖼️ **Variants.** The strip under the picture holds the selected Layer's Variants. Drag one to reorder: the first whose rule holds wins. The line under the strip says when the selected Variant shows.
+- 🎚️ **Layer settings.** Rename the Layer, set its **Opacity**, or **Delete Layer**.
+- 👁️ **Preview As** shows the picture as one of the world's entities at the start of a game. **Default Look** shows each Layer's first Variant, as the library and other places outside a game do.
+- ⚠️ **Size warning.** Every Variant stretches to the picture's size: the size of the first Variant in the lowest Layer that has one, usually the bottom Layer. A Variant of another size shows a warning, with both sizes.
+
+On mobile, the panel shows the picture beside the Layer list, and the selected Layer below it, with **Variants** and **Look** tabs.
+
+**To use one,** select **Choose** in an entity's gallery. Layered Images show beside the images. The gallery's order and Visibility rules work as they do for any image.
+
+Deleting an image that a Layer uses removes it from that Layer, and the confirm names each Layer first. Images that only Layers use sit in the **Layered Image Variants** section. Each change is one undo step.
 
 ## Map Background
 <!-- keywords: map background, world map, map image, map visibility rule, ruined map, map changes in game, go to locations -->

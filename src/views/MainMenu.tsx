@@ -565,6 +565,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (devRoute?.modal === 'worldEditor' && devRoute.tour) loadWorldData(newBlankWorld(), true);
   }, [devRoute?.modal, devRoute?.tour, loadWorldData]);
 
+  // DEV: the Layered Image editor opens on a new world that holds a rig.
+  useEffect(() => {
+    if (devRoute?.modal !== 'layeredEditor') return;
+    setShowWorldEditor(true);
+    void import('@/lib/devFixtures').then(({ devLayeredWorld }) => loadWorldData(devLayeredWorld(newBlankWorld()), true));
+  }, [devRoute?.modal, loadWorldData]);
+
   // DEV: open the World Editor on a *stored* world. The `worldEditor` modal route opens a blank draft, so
   // authoring an existing world otherwise means clicking through the library grid.
   useEffect(() => registerDevHook('editWorld', async (id: string) => {

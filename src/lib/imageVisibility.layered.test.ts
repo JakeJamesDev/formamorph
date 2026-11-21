@@ -3,7 +3,7 @@ import { visibleImages } from './imageVisibility';
 import type { GateInput, GateStat, GateStatSet } from './traitGates';
 import { scoped } from './scope';
 import type { GalleryLink, LayeredMediaEntry, MediaLayer, MediaList, StatRequirement, TraitRequirementRow } from '@/types';
-import type { LayeredPicture } from './layeredImages';
+import { layeredSizeMismatches, outsidePlayLayered, type LayeredPicture } from './layeredImages';
 
 const health = (value: number): GateStat => ({ name: 'Health', value, min: 0, max: 100 });
 const below = (value: number): TraitRequirementRow[] =>
@@ -90,5 +90,41 @@ describe('visibleImages with a Layered Image', () => {
 
   it('keeps a script override first, ahead of the rig', () => {
     expect(visibleImages(entity('ash', [{ mediaId: 'rig' }]), input(50), media(), 'plain').map((v) => v.slot)).toEqual([-1, 0]);
+  });
+});
+
+describe('a Layered Image whose bottom Layer is empty', () => {
+  it('takes its canvas from the lowest Layer that has a Variant (Q27)', () => {
+    const emptied: LayeredMediaEntry = { ...RIG, layers: [layer('body', []), ...RIG.layers.slice(1)] };
+    const picture = pictureOf('ash', input(80), media(emptied));
+    expect(picture?.canvas).toBe('data:hurt');
+    expect(shows(picture)).toEqual({ body: null, face: 'data:calm', bandage: null });
+  });
+});
+
+describe('outsidePlayLayered', () => {
+  it('shows each Layer’s first Variant with its rule ignored (Q5)', () => {
+    expect(shows(outsidePlayLayered(RIG, media()))).toEqual({ body: 'data:body', face: 'data:hurt', bandage: 'data:bandage' });
+  });
+
+  it('keeps the authored opacity', () => {
+    expect(outsidePlayLayered(RIG, media())?.layers[2].opacity).toBe(0.5);
+  });
+});
+
+describe('layeredSizeMismatches', () => {
+  const sizes: Record<string, { width: number; height: number }> = {
+    body: { width: 240, height: 288 }, hurt: { width: 240, height: 288 }, calm: { width: 480, height: 576 }, bandage: { width: 300, height: 288 },
+  };
+  const sizeOf = (id: string) => sizes[id];
+
+  it('flags each Variant whose size differs from the canvas, same aspect included', () => {
+    expect(layeredSizeMismatches(RIG, media(), sizeOf).map((m) => [m.layerId, m.mediaId])).toEqual([['face', 'calm'], ['bandage', 'bandage']]);
+    expect(layeredSizeMismatches(RIG, media(), sizeOf)[0]).toMatchObject({ size: { width: 480, height: 576 }, canvas: { width: 240, height: 288 } });
+  });
+
+  it('flags nothing while the canvas size is unknown, and passes over a Variant whose size is unknown', () => {
+    expect(layeredSizeMismatches(RIG, media(), (id) => (id === 'body' ? undefined : sizes[id]))).toEqual([]);
+    expect(layeredSizeMismatches(RIG, media(), (id) => (id === 'calm' ? undefined : sizes[id])).map((m) => m.mediaId)).toEqual(['bandage']);
   });
 });

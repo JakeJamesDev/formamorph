@@ -51,6 +51,7 @@ const ENTRIES: [string, string][] = [
   ['replaceAll', 'Replace All'],
   ['deleteWorldAvatar', 'Delete Avatar'],
   ['deleteMediaEntry', 'Delete From World'],
+  ['layeredEditor', 'Edit Layers'],
   ['appearancePreview', 'Preview'],
   ['statAppearancePreview', 'Preview'],
   ['savedElsewhere', 'World Saved in Another Tab'],

@@ -4,7 +4,7 @@
  * every use.
  */
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
-import { Images, Music, Trash2, X } from 'lucide-react';
+import { Images, Layers, Music, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SearchField } from '@/components/ui/search-field';
@@ -21,10 +21,12 @@ import { renameMediaEntry } from '@/lib/mediaUnlink';
 import { useCodeRenameOffer } from '@/lib/useCodeRename';
 import { isRemoteImage } from '@/lib/imageBytes';
 import { ImageUpload } from '@/lib/UtilityComponents';
-import { mediaUsage, mediaUseLabel } from '@/lib/mediaUsage';
+import { mediaUsage, mediaUseLabel, variantUsage, variantUseLabel } from '@/lib/mediaUsage';
 import { RemoteImg } from '@/lib/useRemoteImage';
 import { cn } from '@/lib/utils';
-import type { GalleryLink, MediaEntry, MediaFileEntry, MediaList, MediaRef } from '@/types';
+import type { GalleryLink, LayeredMediaEntry, MediaEntry, MediaFileEntry, MediaList, MediaRef } from '@/types';
+import { PictureImg } from '@/components/PictureImg';
+import { layeredCanvas, outsidePlayLayered } from '@/lib/layeredImages';
 import { fileEntries, type MediaEntryKind, type MediaFileKind } from '@/lib/mediaList';
 import { useMediaStep } from './useMediaItemActions';
 
@@ -34,18 +36,42 @@ const entriesOf = (list: MediaList | undefined, kind: MediaFileKind): MediaFileE
   fileEntries(list).filter((entry) => entry.kind === kind && entry.data)
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }));
 
+/** The entries Choose lists: those of `kind`, plus the drawable Layered Images when `layered`, sorted by name. */
+const choosable = (list: MediaList | undefined, kind: MediaFileKind, layered: boolean): (MediaFileEntry | LayeredMediaEntry)[] => {
+  const files: (MediaFileEntry | LayeredMediaEntry)[] = entriesOf(list, kind);
+  if (!layered) return files;
+  const rigs = Object.values(list ?? {}).filter((entry): entry is LayeredMediaEntry => entry.kind === 'layered' && !!layeredCanvas(entry, list));
+  return [...files, ...rigs].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }));
+};
+
+/** A Layered Image's Choose tile: its outside-play picture, marked with the Layers icon. */
+function LayeredChoice({ entry, list }: { entry: LayeredMediaEntry; list: MediaList | undefined }) {
+  const picture = outsidePlayLayered(entry, list);
+  return (
+    <span className="relative block">
+      {picture
+        ? <PictureImg src={picture} crop alt="" className="block aspect-[3/4] w-full rounded bg-muted" />
+        : <span className="block aspect-[3/4] w-full rounded bg-muted" />}
+      <span className="absolute left-1 top-1 rounded bg-background/80 p-0.5" aria-hidden><Layers className="h-3 w-3" /></span>
+    </span>
+  );
+}
+
 /** Choose: a popover of the list's entries of `kind`, a thumbnail grid for images and a name list for sounds.
  *  Entries in `linkedIds` are dimmed, and still pickable. */
-export function MediaChooseButton({ list, linkedIds, onPick, kind = 'image' }: {
+export function MediaChooseButton({ list, linkedIds, onPick, onPickLayered, kind = 'image' }: {
   list: MediaList | undefined;
   linkedIds: ReadonlySet<string>;
   onPick: (entry: MediaFileEntry) => void;
+  /** Set, the images' grid also lists the Layered Images that can draw, each as its composed picture. */
+  onPickLayered?: (entry: LayeredMediaEntry) => void;
   kind?: MediaFileKind;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   useEffect(() => { if (!open) setQuery(''); }, [open]);
-  const entries = useMemo(() => entriesOf(list, kind), [list, kind]);
+  const withLayered = kind === 'image' && !!onPickLayered;
+  const entries = useMemo(() => choosable(list, kind, withLayered), [list, kind, withLayered]);
   const words = MEDIA_KIND_WORDS[kind];
   const key = mediaNameKey(query);
   const shown = key ? entries.filter((entry) => mediaNameKey(entry.name).includes(key)) : entries;
@@ -73,7 +99,10 @@ export function MediaChooseButton({ list, linkedIds, onPick, kind = 'image' }: {
                 <button
                   key={entry.id}
                   type="button"
-                  onClick={() => { onPick(entry); setOpen(false); }}
+                  onClick={() => {
+                    if (entry.kind === 'layered') { if (onPickLayered) onPickLayered(entry); } else onPick(entry);
+                    setOpen(false);
+                  }}
                   aria-label={here ? `${entry.name}, already used here` : entry.name}
                   data-media-entry={entry.id}
                   className={cn(
@@ -82,7 +111,9 @@ export function MediaChooseButton({ list, linkedIds, onPick, kind = 'image' }: {
                     here && 'opacity-50',
                   )}
                 >
-                  {kind === 'image'
+                  {entry.kind === 'layered'
+                    ? <LayeredChoice entry={entry} list={list} />
+                    : kind === 'image'
                     ? <RemoteImg src={entry.data} alt="" loading="lazy" className="aspect-[3/4] w-full rounded bg-muted object-cover" />
                     : <Music className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />}
                   <span className="line-clamp-2 break-words text-meta">{entry.name}</span>
@@ -147,8 +178,11 @@ export function useMediaEntryActions() {
     offerCodeRename({ root: 'media', oldName: list[id].name, newName: kept, otherNames: [], noun: list[id].kind });
   };
   const uses = deleting
-    ? (mediaUsage({ worldOverview, entities, locations, items, bodies, dictionaries }).get(deleting) ?? [])
-      .map((use) => mediaUseLabel(use, (name) => labelPlaceholders(name, placeholders)))
+    ? [
+      ...(mediaUsage({ worldOverview, entities, locations, items, bodies, dictionaries }).get(deleting) ?? [])
+        .map((use) => mediaUseLabel(use, (name) => labelPlaceholders(name, placeholders))),
+      ...(variantUsage(list).get(deleting) ?? []).map(variantUseLabel),
+    ]
     : [];
   const confirm = (
     <DeleteMediaConfirm

@@ -3,6 +3,10 @@ import { Badge } from '@/components/ui/badge';
 import { Meta } from '@/components/ui/typography';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { RemoteImg } from '@/lib/useRemoteImage';
+import { PictureImg } from '@/components/PictureImg';
+import { useGameDataOptional } from '@/contexts/GameDataContext';
+import { outsidePlayLayered } from '@/lib/layeredImages';
+import { layeredEntry } from '@/lib/mediaList';
 import { formatMediaBytes, mediaAspect, namedBySlot, sectionCards, sectionSelection, sectionTitle, totalBytes, type MediaItem, type MediaKind, type MediaSection } from '@/lib/mediaIndex';
 import { THUMB_FRAME, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
@@ -10,13 +14,27 @@ import type { Placeholder } from '@/types';
 
 const KIND_ICON: Record<MediaKind, typeof ImageIcon> = { image: ImageIcon, sound: FileAudio, model: Box, avatar: UserSquare, layered: Layers };
 
-/** An image's own pixels, loaded lazily; every other kind shows its icon. */
+/** A Layered Image's outside-play picture, covering the box; its icon while it can draw nothing. */
+function LayeredThumb({ mediaId, className }: { mediaId: string | undefined; className?: string }) {
+  const list = useGameDataOptional()?.worldOverview.mediaList;
+  const entry = mediaId ? layeredEntry(list, mediaId) : undefined;
+  const picture = entry && outsidePlayLayered(entry, list);
+  if (!picture) return <KindIcon kind="layered" className={className} />;
+  return <PictureImg src={picture} crop loading="lazy" decoding="async" alt="" className={cn('bg-muted', className)} />;
+}
+
+const KindIcon = ({ kind, className }: { kind: MediaKind; className?: string }) => {
+  const Icon = KIND_ICON[kind];
+  return <span className={cn('flex items-center justify-center bg-muted text-muted-foreground', className)}><Icon className="h-1/3 w-1/3" /></span>;
+};
+
+/** An image's own pixels, loaded lazily, or a Layered Image's picture; every other kind shows its icon. */
 export function MediaThumb({ item, className }: { item: MediaItem; className?: string }) {
   if (item.kind === 'image' && !item.blank) {
     return <RemoteImg src={item.value} loading="lazy" decoding="async" alt="" className={cn('bg-muted object-cover', className)} />;
   }
-  const Icon = KIND_ICON[item.kind];
-  return <span className={cn('flex items-center justify-center bg-muted text-muted-foreground', className)}><Icon className="h-1/3 w-1/3" /></span>;
+  if (item.kind === 'layered') return <LayeredThumb mediaId={item.mediaId} className={className} />;
+  return <KindIcon kind={item.kind} className={className} />;
 }
 
 /** The stored size, in the warning color over budget, or the Linked badge for a linked image. */

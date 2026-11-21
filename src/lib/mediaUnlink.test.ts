@@ -58,6 +58,18 @@ describe('Delete from World, record by record', () => {
     expect('mapBackground' in next).toBe(false);
   });
 
+  it('drops the entry from every Layer that holds it as a Variant, keeping the emptied Layer (Q28)', () => {
+    const rig: MediaList[string] = {
+      id: 'rig', name: 'Rig', kind: 'layered', layers: [
+        { id: 'a', name: 'A', variants: [{ mediaId: 'gone' }] },
+        { id: 'b', name: 'B', variants: [{ mediaId: 'kept' }, { mediaId: 'gone' }] },
+      ],
+    };
+    const next = overviewWithoutMedia(overview({ mediaList: { ...LIST, rig } }), 'gone');
+    expect(next.mediaList?.rig).toEqual({ ...rig, layers: [{ id: 'a', name: 'A', variants: [] }, { id: 'b', name: 'B', variants: [{ mediaId: 'kept' }] }] });
+    expect(next.mediaList?.gone).toBeUndefined();
+  });
+
   it('keeps the map field while it still holds another image', () => {
     const next = overviewWithoutMedia(overview({
       mapBackground: { images: [{ mediaId: 'gone' }, { mediaId: 'kept' }], frame: { x: 0, y: 0, width: 1, height: 1 }, opacity: 1 },

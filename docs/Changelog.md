@@ -20,6 +20,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Layered Images:**
     - **A character's gallery can show a Layered Image, a picture stacked from parts that change with the story.** Each part shows its first version whose rule holds. The character panel, mention cards and full-size viewer draw the stack.
     - **A location or item image slot can show a Layered Image.** The location background draws the stack. The Inventory, the equipped lists, the Inventory figure and the item popup draw an item's stack.
+    - **Build a Layered Image in the World Editor's Media tab and pick it in a character's gallery.** Add Layers, give each Layer images with Visibility rules, and preview the picture as any character. A warning marks an image whose size differs from the bottom Layer.
 
 #### 🔧 Fixed
 

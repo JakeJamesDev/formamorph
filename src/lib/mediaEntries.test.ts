@@ -55,6 +55,20 @@ describe('mediaEntryItems', () => {
     expect(bram[0].budget).toBeUndefined();
   });
 
+  it('counts a Variant use, so an image only a Layer holds is not Unused and takes the rig’s slot budget', () => {
+    const w = listWorld();
+    w.worldOverview.mediaList = {
+      ...w.worldOverview.mediaList,
+      rig: { id: 'rig', name: 'Scout Rig', kind: 'layered', layers: [{ id: 'hat', name: 'Hat', variants: [{ mediaId: 'sketch' }] }] },
+    };
+    w.locations.find((l) => l.id === 'marsh')!.images = [{ mediaId: 'rig' }];
+    const sketch = mediaEntryItems(w).find((i) => i.mediaId === 'sketch')!;
+    expect(sketch.unused).toBeUndefined();
+    expect(sketch.variantUses).toEqual([{ entryId: 'rig', entryName: 'Scout Rig', layerId: 'hat', layerName: 'Hat' }]);
+    expect(sketch.budget).toEqual(IMAGE_CAPS.background);
+    expect(mediaSearchText(sketch)).toContain('Scout Rig · Hat');
+  });
+
   it('searches an entry by its name and the places that use it', () => {
     const w = listWorld();
     const shared = mediaEntryItems(w).find((i) => i.mediaId === sharedId(w))!;
@@ -81,6 +95,17 @@ describe('groupSections with the Media List', () => {
     const sections = groupSections(mediaSections(w), 'parent', mediaEntryItems(w));
     expect(sections.slice(0, -1)).toEqual(mediaSections(w));
     expect(sections.at(-1)).toMatchObject({ id: 'unused', path: ['Unused'], items: [expect.objectContaining({ mediaId: 'sketch' })] });
+  });
+
+  it('by parent, lists the images only Layers use in their own section, ahead of Unused', () => {
+    const w = listWorld();
+    w.worldOverview.mediaList = {
+      ...w.worldOverview.mediaList,
+      rig: { id: 'rig', name: 'Scout Rig', kind: 'layered', layers: [{ id: 'hat', name: 'Hat', variants: [{ mediaId: 'sketch' }] }] },
+    };
+    const sections = groupSections(mediaSections(w), 'parent', mediaEntryItems(w));
+    expect(sections.at(-2)).toMatchObject({ id: 'layerVariants', path: ['Layered Image Variants'], items: [expect.objectContaining({ mediaId: 'sketch' })] });
+    expect(sections.at(-1)).toMatchObject({ id: 'unused', items: [expect.objectContaining({ mediaId: 'rig' })] });
   });
 
   it('adds no Unused section when every entry is used', () => {

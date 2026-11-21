@@ -5,6 +5,7 @@
 import type { Body, Entity, GameLocation, Item, MediaList, WorldOverview } from '@/types';
 import { withOutline } from './bodyLayout';
 import { galleryLink } from './entityImages';
+import { listWithoutVariant } from './layeredEdit';
 import { isMediaRef, uniqueMediaName } from './mediaList';
 
 const linksTo = (value: unknown, id: string): boolean => isMediaRef(value) && value.mediaId === id;
@@ -40,7 +41,7 @@ export const itemWithoutMedia = (item: Item, id: string): Item => withoutGallery
 export const bodyWithoutMedia = (body: Body, id: string): Body =>
   body.backdrop.kind === 'image' && linksTo(body.backdrop.image, id) ? withOutline(body, 'humanoid') : body;
 
-/** The overview without `id`: its entry, the cover and music links, and the Map Background's links to it. */
+/** The overview without `id`: its entry, the cover and music links, the Map Background's links and the Variants that link it. */
 export function overviewWithoutMedia(overview: WorldOverview, id: string): WorldOverview {
   let next = overview;
   if (linksTo(next.thumbnail, id)) next = { ...next, thumbnail: null };
@@ -52,6 +53,8 @@ export function overviewWithoutMedia(overview: WorldOverview, id: string): World
     const { mapBackground: _gone, ...rest } = next;
     next = mapImages?.length ? { ...next, mapBackground: { ...map, images: mapImages } } : rest;
   }
+  const mediaList = listWithoutVariant(next.mediaList, id);
+  if (mediaList !== next.mediaList) next = { ...next, mediaList };
   if (next.mediaList?.[id]) {
     const { [id]: _gone, ...rest } = next.mediaList;
     next = { ...next, mediaList: rest };

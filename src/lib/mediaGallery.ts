@@ -90,6 +90,8 @@ export function migrateGalleriesToMediaList(world: Fields): void {
 export interface GalleryMedia {
   list: MediaList;
   links: GalleryLink[];
+  /** The slots also take Layered Images (Q6). */
+  layered?: true;
 }
 
 /** The tile a gallery widget shows for a Layered Image link. Its data names the entry, so relinking keeps each link. */
@@ -134,6 +136,9 @@ export function relinkGallery(
       const link = links[at];
       return isMediaRef(link) ? { mediaId: link.mediaId, ...rules } : { ...link, requires: image.requires };
     }
+    // A picked Layered Image arrives as its tile.
+    const layered = Object.values(list).find((entry) => entry.kind === 'layered' && layeredTile(entry.id) === image.data);
+    if (layered) return { mediaId: layered.id, ...rules };
     const placed = placeGalleryFile(nextList, { data: image.data, name: image.name }, 'image', subject);
     nextList = placed.list;
     return { mediaId: placed.id, ...rules };

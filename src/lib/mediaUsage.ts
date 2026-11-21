@@ -1,4 +1,4 @@
-import type { TraitRequirementRow } from '@/types';
+import type { MediaList, TraitRequirementRow } from '@/types';
 import { bodyLabel } from './bodies';
 import { galleryLink } from './entityImages';
 import { isMediaRef } from './mediaList';
@@ -58,6 +58,31 @@ export function mediaUsage(w: MediaWorld): Map<string, MediaUse[]> {
   for (const item of w.items ?? []) gallery({ kind: 'item', id: item.id, name: item.name }, item.images);
   for (const b of w.bodies ?? []) {
     if (b.backdrop.kind === 'image') single({ kind: 'body', id: b.id, name: bodyLabel(b) }, 'backdrop', b.backdrop.image);
+  }
+  return usage;
+}
+
+/** One Layer that holds an image as a Variant. */
+export interface VariantUse {
+  entryId: string;
+  entryName: string;
+  layerId: string;
+  layerName: string;
+}
+
+/** A Variant use as copy names it: "Scout Rig · Face". */
+export const variantUseLabel = (use: VariantUse): string => `${use.entryName || 'Unnamed'} · ${use.layerName || 'Unnamed'}`;
+
+/** Each image entry id with every Layer that holds it as a Variant, in list and Layer order. */
+export function variantUsage(list: MediaList | undefined): Map<string, VariantUse[]> {
+  const usage = new Map<string, VariantUse[]>();
+  for (const entry of Object.values(list ?? {})) {
+    if (entry.kind !== 'layered') continue;
+    for (const layer of entry.layers) {
+      for (const mediaId of new Set(layer.variants.map((v) => v.mediaId))) {
+        usage.set(mediaId, [...(usage.get(mediaId) ?? []), { entryId: entry.id, entryName: entry.name, layerId: layer.id, layerName: layer.name }]);
+      }
+    }
   }
   return usage;
 }

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { GalleryLink, LayeredMediaEntry, MediaFileEntry, TraitRequirementRow, World } from '@/types';
 import { fileEntries } from './mediaList';
 import { migrateWorld } from './version';
-import { relinkGallery, galleryView } from './mediaGallery';
+import { relinkGallery, galleryView, layeredTile } from './mediaGallery';
 import { entityImages } from './entityImages';
 import { locationImages } from './locationImages';
 
@@ -153,6 +153,15 @@ describe('relinkGallery', () => {
       const next = relinkGallery(links, list, [{ ...images[3], requires: undefined }, images[1], images[2], { ...images[0], requires: WOUNDED }], 'Wren');
       expect(next.list).toBe(list);
       expect(next.links).toEqual([{ mediaId: 'rig-b' }, links[1], links[2], { mediaId: 'rig-a', requires: WOUNDED }]);
+    });
+
+    it('links a Layered Image picked into a new slot by its tile, adding no image entry', () => {
+      const { links, list } = start();
+      const withRig = { ...list, 'rig-a': rig('rig-a') };
+      const { images } = galleryView(links, withRig);
+      const next = relinkGallery(links, withRig, [...images, { data: layeredTile('rig-a') }], 'Wren');
+      expect(next.list).toBe(withRig);
+      expect(next.links).toEqual([...links, { mediaId: 'rig-a' }]);
     });
   });
 });

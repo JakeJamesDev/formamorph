@@ -169,7 +169,7 @@ describe('Media tab header', () => {
   it('holds the meter and the icon controls in one row above the search', () => {
     openMedia('advanced');
 
-    expect(within(header()).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['More info', 'Group by Type', 'Largest First', 'Filter', 'Import Media', 'Optimize Images']);
+    expect(within(header()).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['More info', 'Group by Type', 'Largest First', 'Filter', 'Import Media', 'New Layered Image', 'Optimize Images']);
     expect(header().compareDocumentPosition(screen.getByPlaceholderText('Search media')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 

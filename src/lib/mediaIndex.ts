@@ -17,7 +17,7 @@ import { mediaParentSpec } from './mediaParents';
 import { dataUrlBytes, isRemoteImage } from './imageBytes';
 import { galleryLinkData, isFileEntry, isMediaRef } from './mediaList';
 import { resolveSound, type SoundValue } from './mediaSounds';
-import type { MediaUse } from './mediaUsage';
+import type { MediaUse, VariantUse } from './mediaUsage';
 import { IMAGE_CAPS } from './imageSlots';
 
 export type MediaKind = 'image' | 'sound' | 'model' | 'avatar' | 'layered';
@@ -63,6 +63,8 @@ export interface MediaItem {
   blank?: true;
   /** A Media List entry's card (`mediaEntryItems`): every place that links it, in world order. */
   uses?: MediaUse[];
+  /** An image entry's card: every Layer that holds it as a Variant. */
+  variantUses?: VariantUse[];
   /** An entry nothing links (Q7). */
   unused?: true;
 }
@@ -379,6 +381,7 @@ export function withAvatarsSection(sections: readonly MediaSection[], grouping: 
 export function mediaHolds(w: MediaWorld, id: string): boolean {
   return AVATAR_SECTION_IDS.some((s) => sectionSelection(s) === id)
     || sectionSelection(UNUSED_SECTION_ID) === id
+    || sectionSelection(VARIANTS_SECTION_ID) === id
     || (id.startsWith(ENTRY_ITEM_PREFIX) && !!w.worldOverview.mediaList?.[id.slice(ENTRY_ITEM_PREFIX.length)])
     || mediaSections(w).some((s) => sectionSelection(s.id) === id || s.items.some((i) => i.id === id));
 }
@@ -447,6 +450,8 @@ export function typeSections(sections: readonly MediaSection[]): MediaSection[] 
 export const ENTRY_ITEM_PREFIX = 'entry:';
 /** The default view's last section: the entries nothing links. */
 export const UNUSED_SECTION_ID = 'unused';
+/** The default view's section of images that only Layers use. */
+export const VARIANTS_SECTION_ID = 'layerVariants';
 
 /** Each use of a Media List entry folded into the entry's one card, at its first use; entries with no card in the sections follow. */
 function entriesOnce(sections: readonly MediaSection[], entries: readonly MediaItem[]): MediaItem[] {
@@ -469,12 +474,18 @@ function entriesOnce(sections: readonly MediaSection[], entries: readonly MediaI
 
 /**
  * By type (Q15), each Media List entry shows once in its kind's section, and media off the list keeps one card per use.
- * By parent, the sections stay as they are, with the Unused entries in a last section.
+ * By parent, the sections stay as they are, then the images only Layers use, then the Unused entries.
  */
 export function groupSections(sections: MediaSection[], grouping: MediaGrouping, entries: readonly MediaItem[] = []): MediaSection[] {
   if (grouping === 'type') return typeSections([{ id: 'all', path: [], items: entriesOnce(sections, entries) }]);
+  const variantsOnly = entries.filter((e) => !e.uses?.length && e.variantUses?.length);
   const unused = entries.filter((e) => e.unused);
-  return unused.length ? [...sections, { id: UNUSED_SECTION_ID, path: ['Unused'], items: unused }] : sections;
+  if (!variantsOnly.length && !unused.length) return sections;
+  return [
+    ...sections,
+    ...(variantsOnly.length ? [{ id: VARIANTS_SECTION_ID, path: ['Layered Image Variants'], items: variantsOnly }] : []),
+    ...(unused.length ? [{ id: UNUSED_SECTION_ID, path: ['Unused'], items: unused }] : []),
+  ];
 }
 
 export type MediaFilter = 'all' | 'linked' | 'embedded' | 'rules' | 'overBudget' | 'unused' | 'noImages';

@@ -346,6 +346,16 @@ const RIG_CAST = [
   { id: 'dev-corin', name: 'Corin', stats: [devStat('Health', 90), devStat('Warmth', 80)], images: [{ mediaId: RIG_ID }] },
   { id: 'dev-wren', name: 'Wren', persona: true, stats: [devStat('Health', 30), devStat('Warmth', 20)], images: [{ mediaId: RIG_ID }] },
 ] as unknown as Entity[];
+/** The rig's art as Media List image entries. */
+const rigArtEntries = (): Record<string, MediaEntry> =>
+  Object.fromEntries(Object.entries(RIG_ART).map(([id, data]): [string, MediaEntry] => [id, { id, name: id, kind: 'image', type: 'image/svg+xml', data }]));
+
+/** The `layeredEditor` route's world: `base` with the two scouts and the rig they share. */
+export const devLayeredWorld = (base: World): World => ({
+  ...base,
+  worldOverview: { ...base.worldOverview, mediaList: { ...base.worldOverview.mediaList, ...rigArtEntries(), [RIG_ID]: RIG } },
+  entities: [...RIG_CAST, ...base.entities],
+});
 
 /** A flat portrait for the fixture's cast, so the cards and pick list show images. */
 const fixturePortrait = (hue: number): NonNullable<Entity['images']> => [{

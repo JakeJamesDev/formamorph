@@ -33,7 +33,7 @@ import type { ImageCap } from '../lib/imageOptim';
 import type { ImageSubjectKind } from '@/lib/imagePrompt';
 import { useEditorMode } from '@/lib/editorMode';
 import type { GalleryImage, Placeholder, TraitRequirementRow } from '@/types';
-import type { GalleryMedia } from '@/lib/mediaGallery';
+import { layeredTile, type GalleryMedia } from '@/lib/mediaGallery';
 import { MediaChooseButton, MediaEntryBar } from './MediaPicker';
 import { Tip } from '@/components/ui/tooltip';
 import { fieldFrame } from '@/lib/historyField';
@@ -420,7 +420,12 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
             // A picked entry relinks by its content, so the slot links that entry rather than a copy. A filled
             // slot with no entry behind it keeps its plain remove button.
             choose={media && (!url || entry) && (
-              <MediaChooseButton list={media.list} linkedIds={linkedIds} onPick={(entry) => { setSlot(i, entry.data); setShowing(i); }} />
+              <MediaChooseButton
+                list={media.list}
+                linkedIds={linkedIds}
+                onPick={(entry) => { setSlot(i, entry.data); setShowing(i); }}
+                onPickLayered={media.layered ? (entry) => { setSlot(i, layeredTile(entry.id)); setShowing(i); } : undefined}
+              />
             )}
           />
           {entry && <MediaEntryBar entry={entry} onUnlink={() => setSlot(i, '')} />}
