@@ -1,6 +1,7 @@
 # Spec: Weather
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-21. Tickets 01–10, last landing fc421e2fb. Review: spec text corrected, two gaps fixed in tickets 09–10. Gates on 2026-11-21 before 09–10: tests green, lint red only in worlds-wip scripts.
 Spec session: weather — spec
 
 ## Problem Statement
@@ -156,6 +157,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 - Output: structured, like the clock reading: either "no change" or one kind from the offered set. A text fallback parses the same answer. An answer outside the offered set reads as no change.
 - It pins its own temperature and penalties in the per-prompt samplers and sends Native Reasoning per its prompt setting.
 - The prompt follows the prompt-writing guide: a positive contract, no example values. It names the traps: metaphor, past or reported weather, and weather a character only talks about.
+- A rewrite of the pass prompt ships when no arm scores worse than the current prompt in one interleaved cloud batch. One miss more on one case is treated as cloud drift: rerun that case at 24 runs per arm, and ship if the rewrite misses at most one more than the control (Ticket 10).
 - Prompt changes ship with probe numbers (Q10 and this pass).
 
 **Turn Commit and Turn Landing**
