@@ -89,7 +89,7 @@ describe('visibleImages with a Layered Image', () => {
   });
 
   it('keeps a script override first, ahead of the rig', () => {
-    expect(visibleImages(entity('ash', [{ mediaId: 'rig' }]), input(50), media(), 'plain').map((v) => v.slot)).toEqual([-1, 0]);
+    expect(visibleImages(entity('ash', [{ mediaId: 'rig' }]), input(50), media(), { id: 'plain' }).map((v) => v.slot)).toEqual([-1, 0]);
   });
 });
 

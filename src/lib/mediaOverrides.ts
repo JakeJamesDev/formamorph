@@ -1,6 +1,8 @@
 // The Media Entries scripts set in play (Q2, Q49–Q53): their writes, how they lay over the save, and how play reads them.
 
-import type { Base64Data, EntityMediaOverride, GenericStates, MediaEntry, MediaList, MediaOverrides, MediaRef, PersonaRef } from '@/types';
+import type {
+  EntityMediaOverride, GenericStates, LayerSetting, LayerSettings, MediaEntry, MediaLayerSettings, MediaList, MediaOverrides, MediaRef, PersonaRef,
+} from '@/types';
 
 /** The script members that take a Media Entry's name, by the entry they sit on. */
 export const MEDIA_NAME_MEMBERS = {
@@ -27,12 +29,32 @@ export type MediaOwner =
   | { kind: 'item'; id: string }
   | { kind: 'world' };
 
-/** One script assignment: an entry id, or null to clear. */
-export interface MediaWrite {
+/** One script assignment to a media member: an entry id, or null to clear. */
+export interface MediaEntryWrite {
   owner: MediaOwner;
   field: MediaField;
   mediaId: string | null;
 }
+
+/** A Layer member a script sets (Q10). */
+export type LayerField = keyof LayerSetting;
+
+/** Who a Layer write is for: any media owner but `world`. */
+export type LayerOwner = Exclude<MediaOwner, { kind: 'world' }>;
+
+/** One script assignment to a Layer of a Layered Image: the value, or null to clear. */
+export interface LayerWrite {
+  owner: LayerOwner;
+  entryId: string;
+  layerId: string;
+  field: LayerField;
+  value: string | number | null;
+}
+
+/** One script assignment the media write path carries. */
+export type MediaWrite = MediaEntryWrite | LayerWrite;
+
+export const isLayerWrite = (write: MediaWrite): write is LayerWrite => 'layerId' in write;
 
 type Row = Record<string, string>;
 
@@ -50,8 +72,46 @@ function keyedWith<T>(map: Record<string, T> | undefined, key: string, value: T 
   return Object.keys(next).length ? next : undefined;
 }
 
+/** `settings` with `write`'s field set or cleared; undefined when nothing is left. */
+function settingsWith(settings: LayerSettings | undefined, { entryId, layerId, field, value }: LayerWrite): LayerSettings | undefined {
+  const byLayer = settings?.[entryId];
+  const { [field]: _gone, ...rest } = byLayer?.[layerId] ?? {};
+  const next: LayerSetting = value === null ? rest : { ...rest, [field]: value };
+  return keyedWith(settings, entryId, keyedWith(byLayer, layerId, Object.keys(next).length ? next : undefined));
+}
+
+/** `layers` with `write` laid on; undefined when no setting is left. */
+function withLayerWrite(layers: MediaLayerSettings | undefined, write: LayerWrite): MediaLayerSettings | undefined {
+  const { owner } = write;
+  const next: MediaLayerSettings = { ...layers };
+  switch (owner.kind) {
+    case 'entity':
+      next.entities = keyedWith(layers?.entities, owner.id, settingsWith(layers?.entities?.[owner.id], write));
+      break;
+    case 'instance': {
+      const byStart = layers?.instances?.[owner.entityId];
+      next.instances = keyedWith(layers?.instances, owner.entityId, keyedWith(byStart, owner.startId, settingsWith(byStart?.[owner.startId], write)));
+      break;
+    }
+    case 'location':
+      next.locations = keyedWith(layers?.locations, owner.id, settingsWith(layers?.locations?.[owner.id], write));
+      break;
+    case 'item':
+      next.items = keyedWith(layers?.items, owner.id, settingsWith(layers?.items?.[owner.id], write));
+      break;
+  }
+  const kept = Object.fromEntries(Object.entries(next).filter(([, value]) => value !== undefined));
+  return Object.keys(kept).length ? kept : undefined;
+}
+
 /** `overrides` with `write` laid on. */
-function withMediaWrite(overrides: MediaOverrides, { owner, field, mediaId }: MediaWrite): MediaOverrides {
+function withMediaWrite(overrides: MediaOverrides, write: MediaWrite): MediaOverrides {
+  if (isLayerWrite(write)) {
+    const { layers, ...others } = overrides;
+    const next = withLayerWrite(layers, write);
+    return next ? { ...others, layers: next } : others;
+  }
+  const { owner, field, mediaId } = write;
   const { entities, instances, locations, items, music, ...rest } = overrides;
   const next: MediaOverrides = { ...rest };
   let nextEntities = entities;
@@ -91,9 +151,13 @@ export function withMediaWrites(overrides: MediaOverrides, writes: readonly Medi
   return writes?.length ? writes.reduce(withMediaWrite, overrides) : overrides;
 }
 
-/** `id` when the list holds an entry of `kind` under it; an override naming a deleted entry reads as unset (Q19). */
+/** Whether an entry of `kind` fits a member taking `wanted`: an image member also takes a Layered Image (Q24). */
+export const kindFits = (kind: MediaEntry['kind'] | undefined, wanted: MediaEntry['kind']): boolean =>
+  kind === wanted || (wanted === 'image' && kind === 'layered');
+
+/** `id` when the list holds an entry fitting `kind` under it; an override naming a deleted entry reads as unset (Q19). */
 export const liveMediaId = (list: MediaList | undefined, id: string | undefined, kind: MediaEntry['kind']): string | undefined =>
-  (id && list?.[id]?.kind === kind ? id : undefined);
+  (id && kindFits(list?.[id]?.kind, kind) ? id : undefined);
 
 /** Which entity an override applies to: its id (`''` for the played persona) and, for a Generic entity, the Start
  *  of the Generic Entity Instance shown. */
@@ -127,23 +191,56 @@ export interface MediaOverrideScene {
   personaId?: string;
 }
 
+/** `top` laid over `base` field by field, per Layered Image and Layer. */
+function settingsOver(base: LayerSettings | undefined, top: LayerSettings | undefined): LayerSettings | undefined {
+  if (!base || !top) return top ?? base;
+  const out: LayerSettings = { ...base };
+  for (const [entryId, byLayer] of Object.entries(top)) {
+    const merged = { ...base[entryId] };
+    for (const [layerId, setting] of Object.entries(byLayer)) merged[layerId] = { ...merged[layerId], ...setting };
+    out[entryId] = merged;
+  }
+  return out;
+}
+
+/** The entity's Layer settings: its Generic Entity Instance's over the entity-wide ones, field by field (Q31). */
+export const entityLayerSettings = (overrides: MediaOverrides | undefined, { key, entityId, startId }: EntityMediaKey): LayerSettings | undefined =>
+  settingsOver(overrides?.layers?.entities?.[key], entityId && startId ? overrides?.layers?.instances?.[entityId]?.[startId] : undefined);
+
+/** What a script set on a picture slot: the shown entry's id (an image or a Layered Image) and the Layer settings. */
+export interface PictureOverride {
+  id?: string;
+  layers?: LayerSettings;
+}
+
 /** The entry ids play shows in place of the authored media, or undefined where no live override stands. */
 export interface MediaOverrideReader {
   entity(entityId: string, field: keyof EntityMediaOverride): string | undefined;
   location(locationId: string, field: 'image' | 'ambience'): string | undefined;
   item(instanceId: string): string | undefined;
   music(): string | undefined;
+  entityPicture(entityId: string): PictureOverride;
+  locationPicture(locationId: string): PictureOverride;
+  itemPicture(instanceId: string): PictureOverride;
 }
+
+const pictureOverride = (id: string | undefined, layers: LayerSettings | undefined): PictureOverride => ({ ...(id && { id }), ...(layers && { layers }) });
 
 /** A reader of `overrides` against `list`, for play standing at `scene`. */
 export function mediaOverrideReader(overrides: MediaOverrides | undefined, list: MediaList | undefined, scene: MediaOverrideScene): MediaOverrideReader {
+  const keyOf = (entityId: string): EntityMediaKey => ({
+    key: entityId && entityId === scene.personaId ? '' : entityId, entityId, startId: instanceAt(scene.genericStates, entityId, scene.locationId),
+  });
+  const location = (locationId: string, field: 'image' | 'ambience') => liveMediaId(list, overrides?.locations?.[locationId]?.[field], MEDIA_MEMBER_KIND[field]);
+  const item = (instanceId: string) => liveMediaId(list, overrides?.items?.[instanceId], 'image');
   return {
-    entity: (entityId, field) => entityOverrideId(overrides, list, {
-      key: entityId && entityId === scene.personaId ? '' : entityId, entityId, startId: instanceAt(scene.genericStates, entityId, scene.locationId),
-    }, field),
-    location: (locationId, field) => liveMediaId(list, overrides?.locations?.[locationId]?.[field], MEDIA_MEMBER_KIND[field]),
-    item: (instanceId) => liveMediaId(list, overrides?.items?.[instanceId], 'image'),
+    entity: (entityId, field) => entityOverrideId(overrides, list, keyOf(entityId), field),
+    location,
+    item,
     music: () => liveMediaId(list, overrides?.music, 'sound'),
+    entityPicture: (entityId) => pictureOverride(entityOverrideId(overrides, list, keyOf(entityId), 'image'), entityLayerSettings(overrides, keyOf(entityId))),
+    locationPicture: (locationId) => pictureOverride(location(locationId, 'image'), overrides?.layers?.locations?.[locationId]),
+    itemPicture: (instanceId) => pictureOverride(item(instanceId), overrides?.layers?.items?.[instanceId]),
   };
 }
 
@@ -155,18 +252,3 @@ export const soundWithOverride = <T>(authored: T, overrideId: string | undefined
 export const personaEntityId = (ref: PersonaRef | undefined): string | undefined =>
   (ref && ref.source !== 'none' ? ref.entityId : undefined);
 
-/** One picture shown in play, with its author slot; an override's picture has slot -1. */
-export interface ShownImage {
-  slot: number;
-  data: Base64Data;
-}
-
-/** The slot an override's picture takes among the shown ones. */
-export const OVERRIDE_SLOT = -1;
-
-/** `visible` with the override's picture first and any rule-visible copy of it dropped (Q51). */
-export function withImageOverride<T extends { slot: number; data: unknown }>(visible: T[], list: MediaList | undefined, id: string | undefined): (T | ShownImage)[] {
-  const entry = id ? list?.[id] : undefined;
-  if (!entry || entry.kind !== 'image') return visible;
-  return [{ slot: OVERRIDE_SLOT, data: entry.data }, ...visible.filter((img) => img.data !== entry.data)];
-}

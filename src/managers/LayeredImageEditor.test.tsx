@@ -97,6 +97,20 @@ describe('Layered Image editor', () => {
     expect(drawn()).toEqual(['big', 'body']);
   });
 
+  it('offers to rewrite the scripts that name a Layer when it is renamed', async () => {
+    const script = 'entities.Ash.layers.Face.variant = "calm";';
+    const bench = renderMediaTab({ ...world(RIG), scripts: [{ id: 'w', timing: 'after', code: script }] }, 'simple');
+    selectCard('Scout Rig');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Layers' }));
+    fireEvent.click(within(dialog()).getByText('Face'));
+    const field = within(dialog()).getByRole('textbox', { name: 'Layer Name' });
+    fireEvent.change(field, { target: { value: 'Mood' } });
+    fireEvent.blur(field);
+    expect(rigOf(bench).layers.map((l) => l.name)).toEqual(['Body', 'Mood']);
+    fireEvent.click(await screen.findByRole('button', { name: 'Update Code' }));
+    expect(bench.ctx().worldScripts?.[0].code).toBe('entities.Ash.layers.Mood.variant = "calm";');
+  });
+
   it('previews as a picked entity, reading its rules at the starting state', async () => {
     renderMediaTab(world(RIG), 'simple');
     selectCard('Scout Rig');

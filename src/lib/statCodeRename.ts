@@ -15,7 +15,7 @@
 
 import type { Entity, Placeholder, Script, Stat, StatGroup, Tool, TraitGroup } from '@/types';
 import { canBePlayer } from './owners';
-import { codeRenameChains, locationMoveKeys, mediaNameKeys, type ChainRoot, type CodeRenameKey } from './codeRenameChains';
+import { codeRenameChains, layerNameKeys, locationMoveKeys, mediaNameKeys, type ChainRoot, type CodeRenameKey } from './codeRenameChains';
 import type { PlaceholderOwnerRef, PlaceholderOwners } from './placeholderHomes';
 import {
   placeholderPathMap, walkPlaceholderPath,
@@ -31,10 +31,11 @@ import {
 } from './statCodeTargets';
 
 /** The name-keyed maps a rename can reach. */
-export type RenameRoot = 'stats' | 'placeholders' | 'traits' | 'locations' | 'options' | 'media';
+export type RenameRoot = 'stats' | 'placeholders' | 'traits' | 'locations' | 'options' | 'media' | 'layers';
 
-/** The roots that are maps code looks a name up in; a location and a Media Entry are named by a literal instead. */
-type MapRoot = Exclude<RenameRoot, 'locations' | 'media'>;
+/** The roots that are maps code looks a name up in; a location and a Media Entry are named by a literal instead,
+ *  and a Layer by a key under any media owner's `layers`. */
+type MapRoot = Exclude<RenameRoot, 'locations' | 'media' | 'layers'>;
 
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 
@@ -482,6 +483,17 @@ function mediaRenameEdits(input: CodeRenameInput, from: string, to: string): { e
     .map((key) => rewrittenKey(key, to)));
 }
 
+/** Every key naming Layer `from` under a media owner's `layers`, in every box, rewritten to `to` (Q14). A script
+ *  cannot say which Layered Image it reaches, so a key of that name under any owner moves. */
+function layerRenameEdits(input: CodeRenameInput, from: string, to: string): { edits: CodeRenameEdit[]; references: number } {
+  const owners = statCodeOwners({
+    stats: input.stats, statGroups: input.statGroups, entities: input.entities ?? [], placeholders: input.placeholders?.list ?? [],
+  });
+  return boxEdits(renameBoxes(input, owners), (box) => layerNameKeys(box.code)
+    .filter((key) => key.name === from)
+    .map((key) => rewrittenKey(key, to)));
+}
+
 /**
  * The rewrite a committed rename should offer, or null where there is nothing to offer: an unchanged or
  * blank name, a name another entry of the same kind already carries, or a name no stat's code references.
@@ -506,6 +518,10 @@ export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
   if (root === 'media') {
     const found = mediaRenameEdits(input, from, to);
     return found.references ? { root, oldName: from, newName: to, noun: input.noun, ...found } : null;
+  }
+  if (root === 'layers') {
+    const found = layerRenameEdits(input, from, to);
+    return found.references ? { root, oldName: from, newName: to, ...found } : null;
   }
   // A rename that names its node follows the tree. Without one — a caller that knows only the name — the
   // bare-name form is all that can be proven, which is what every root but `placeholders` has anyway.

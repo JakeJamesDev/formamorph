@@ -17,7 +17,7 @@ export function useEntityGallery(entity?: Pick<Entity, 'id' | 'images'> | null) 
   const media = useMediaList();
   const overrides = useViewedMediaOverrides();
   const visible = useMemo(
-    () => (entity ? visibleImages(entity, input, media, overrides.entity(entity.id, 'image')) : []), [entity, input, media, overrides],
+    () => (entity ? visibleImages(entity, input, media, overrides.entityPicture(entity.id)) : []), [entity, input, media, overrides],
   );
   const images = useMemo(() => visible.map((img) => img.data), [visible]);
   const id = entity?.id;

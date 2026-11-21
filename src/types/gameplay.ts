@@ -437,8 +437,34 @@ export interface LocationMediaOverride {
   ambience?: string;
 }
 
+/** One Layer's script-set values. Absent fields read the rules or the authored value (Q10). */
+export interface LayerSetting {
+  /** The shown Variant's image entry id. One the Layer no longer holds reads as unset (Q33). */
+  variant?: string;
+  /** 0 to 1. */
+  opacity?: number;
+  /** A `#rrggbb` or `#rgb` color. */
+  tint?: string;
+}
+
+/** One subject's Layer settings: Layered Image entry id → Layer id → its setting. */
+export type LayerSettings = Record<string, Record<string, LayerSetting>>;
+
+/** The Layer settings scripts set, by subject, keyed as the media overrides are. */
+export interface MediaLayerSettings {
+  /** Entity id → its settings; the empty key is the played persona. */
+  entities?: Record<string, LayerSettings>;
+  /** Generic entity id → Start id → that Generic Entity Instance's settings, which beat the entity's field by field. */
+  instances?: Record<string, Record<string, LayerSettings>>;
+  locations?: Record<string, LayerSettings>;
+  /** Item Instance id → its settings. */
+  items?: Record<string, LayerSettings>;
+}
+
 /** The Media Entries scripts set, by owner. An id the Media List lacks reads as unset (Q19). */
 export interface MediaOverrides {
+  /** The Layer settings scripts set. Absent ⇒ none. */
+  layers?: MediaLayerSettings;
   /** Entity id → its override; the empty key is the played persona. */
   entities?: Record<string, EntityMediaOverride>;
   /** Generic entity id → Start id → that Generic Entity Instance's override, which beats the entity's (Q50). */

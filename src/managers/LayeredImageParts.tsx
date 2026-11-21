@@ -31,6 +31,7 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { trackWork } from '@/lib/pendingWork';
 import { readMediaFile } from '@/lib/UtilityComponents';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
+import { useCodeRenameOffer } from '@/lib/useCodeRename';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { RemoteImg } from '@/lib/useRemoteImage';
 import { cn } from '@/lib/utils';
@@ -405,9 +406,16 @@ export function VariantSummary({ rig, layer, index }: { rig: Rig; layer: MediaLa
 export function LayerNameField({ rig, layer, className }: { rig: Rig; layer: MediaLayer; className?: string }) {
   const [draft, setDraft] = useState(layer.name);
   const [seen, setSeen] = useState(layer.name);
+  const offerCodeRename = useCodeRenameOffer();
   if (seen !== layer.name) { setSeen(layer.name); setDraft(layer.name); }
   const commit = () => {
-    if (draft.trim() && draft.trim() !== layer.name) rig.write(`Rename Layer: ${draft.trim()}`, renameLayer(rig.entry, layer.id, draft));
+    if (draft.trim() && draft.trim() !== layer.name) {
+      const next = renameLayer(rig.entry, layer.id, draft);
+      rig.write(`Rename Layer: ${draft.trim()}`, next);
+      // The suffixed name the rig keeps is the one scripts follow (Q14).
+      const kept = next.layers.find((l) => l.id === layer.id)?.name ?? draft.trim();
+      offerCodeRename({ root: 'layers', oldName: layer.name, newName: kept, otherNames: [] });
+    }
     setDraft(layer.name);
   };
   return (

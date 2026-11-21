@@ -38,9 +38,20 @@ const scripted = withMediaWrites({}, [
   { owner: { kind: 'entity', id: 'e-mira' }, field: 'image', mediaId: 'm-hurt' },
   { owner: { kind: 'instance', entityId: 'e-guard', startId: 's-north' }, field: 'image', mediaId: 'm-captain' },
   { owner: { kind: 'world' }, field: 'music', mediaId: 'm-theme' },
+  { owner: { kind: 'entity', id: 'e-mira' }, entryId: 'm-rig', layerId: 'l-hat', field: 'variant', value: 'm-cap' },
+  { owner: { kind: 'instance', entityId: 'e-guard', startId: 's-north' }, entryId: 'm-rig', layerId: 'l-hat', field: 'opacity', value: 0.5 },
+  { owner: { kind: 'item', id: 'c-1' }, entryId: 'm-rig', layerId: 'l-hat', field: 'tint', value: '#ff8800' },
 ]);
 
 describe('script media overrides in the save', () => {
+  it('hold the Layer settings beside the entry overrides', () => {
+    expect(scripted.layers).toEqual({
+      entities: { 'e-mira': { 'm-rig': { 'l-hat': { variant: 'm-cap' } } } },
+      instances: { 'e-guard': { 's-north': { 'm-rig': { 'l-hat': { opacity: 0.5 } } } } },
+      items: { 'c-1': { 'm-rig': { 'l-hat': { tint: '#ff8800' } } } },
+    });
+  });
+
   it('survive a save and load, and a rewind to the turn before them undoes them', async () => {
     const live = mount();
     const before = live().saveCurrentGameState();

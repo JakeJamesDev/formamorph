@@ -33,7 +33,7 @@ export function EntityEquipped({ entity }: { entity: Entity }) {
   const nameOf = (instance: ItemInstance) => instanceName(instance, data?.items ?? [], [], resolveText);
   const imageOf = (instance: ItemInstance) => {
     const item = itemOf(instance);
-    return item && visibleItemImage(item, instance, gateInput, data?.worldOverview.mediaList, overrides.item(instance.id));
+    return item && visibleItemImage(item, instance, gateInput, data?.worldOverview.mediaList, overrides.itemPicture(instance.id));
   };
   const shownIconOf = (instance: ItemInstance) =>
     instanceItemIcon(instance, itemOf(instance), { name: nameOf(instance), slots: data?.slots ?? [], readText: resolveText, image: imageOf(instance) });

@@ -106,19 +106,49 @@ const MEDIA_ROOTS: ReadonlySet<string> = new Set(['entities', 'persona', 'owner'
 /** Entry members whose own entries are no media owner, so a `sound` or `image` key under one is no media member. */
 const NOT_MEDIA_PATHS: ReadonlySet<string> = new Set(['stats', 'traits', 'placeholders', 'memories', 'dictionaries']);
 
-/** The global a media member's chain starts at, or null where `node` is no media member of one. */
-function mediaMemberRoot(node: SyntaxNode | null, code: string): string | null {
-  if (node?.name !== 'MemberExpression') return null;
-  const object = node.firstChild;
-  const key = object && memberRenameKey(node, object, code);
-  if (!key || !Object.hasOwn(MEDIA_MEMBER_KIND, key.name)) return null;
-  let at: SyntaxNode | null = object;
+/** The global the chain ending at `node` starts at, or null where a step leaves the media owners. */
+function mediaChainRoot(node: SyntaxNode | null, code: string): string | null {
+  let at = node;
   while (at?.name === 'MemberExpression') {
     const step = at.firstChild && memberRenameKey(at, at.firstChild, code);
     if (step && NOT_MEDIA_PATHS.has(step.name)) return null;
     at = at.firstChild;
   }
   return at?.name === 'VariableName' ? code.slice(at.from, at.to) : null;
+}
+
+/** Whether `node` is a step under a `layers` member: `<owner>.layers.<Layer>`. */
+const isLayerStep = (node: SyntaxNode | null, code: string): node is SyntaxNode => {
+  const object = node?.name === 'MemberExpression' ? node.firstChild : null;
+  return object?.name === 'MemberExpression' && !!object.firstChild && memberRenameKey(object, object.firstChild, code)?.name === 'layers';
+};
+
+/** The global a media member's chain starts at, or null where `node` is no media member of one. A Layer's
+ *  `variant` takes an image's name too. */
+function mediaMemberRoot(node: SyntaxNode | null, code: string): string | null {
+  if (node?.name !== 'MemberExpression') return null;
+  const object = node.firstChild;
+  const key = object && memberRenameKey(node, object, code);
+  if (!key || !(Object.hasOwn(MEDIA_MEMBER_KIND, key.name) || (key.name === 'variant' && isLayerStep(object, code)))) return null;
+  return mediaChainRoot(object, code);
+}
+
+/** Every Layer name a script spells as a key under a media owner's `layers`: `entities.X.layers.Hat` or
+ *  `layers["Hair (Back)"]`. A computed key and a local variable's `layers` are no key. */
+export function layerNameKeys(code: string): CodeRenameKey[] {
+  if (!code) return [];
+  const found: { root: string; key: CodeRenameKey }[] = [];
+  const shadowed = new Set<string>();
+  const cursor = javascriptLanguage.parser.parse(code).cursor();
+  do {
+    if (cursor.type.name === 'VariableDefinition') shadowed.add(code.slice(cursor.from, cursor.to));
+    if (cursor.type.name !== 'MemberExpression' || !isLayerStep(cursor.node, code)) continue;
+    const layers = cursor.node.firstChild;
+    const key = layers && memberRenameKey(cursor.node, layers, code);
+    const root = layers && mediaChainRoot(layers.firstChild, code);
+    if (key && root) found.push({ root, key });
+  } while (cursor.next());
+  return found.filter(({ root }) => MEDIA_ROOTS.has(root) && !shadowed.has(root)).map(({ key }) => key);
 }
 
 /** The media member a plain string literal is assigned to or compared with, as the root it hangs off. */

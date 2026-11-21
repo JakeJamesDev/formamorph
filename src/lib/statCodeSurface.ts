@@ -53,6 +53,7 @@ export const TURN_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
 export const AFTER_TURN_MEMBERS: readonly SurfaceEntry[] = withAccess(TURN_MEMBERS, ['choices'], 'writable');
 
 const LOCATION_IMAGE_INFO = 'Name of the image the location shows first, or null; assign an image’s name to show it';
+const LAYERS_INFO = 'The Layers of the Layered Image it shows, by name; each has a variant, opacity and tint';
 const LOCATION_AMBIENCE_INFO = 'Name of the sound the location plays as ambience, or null; assign a sound’s name to play it';
 
 /** The members of one entry in `locations`. Only `image` and `ambience` take a write. */
@@ -69,6 +70,7 @@ export const LOCATION_ENTRY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'items', detail: 'array', info: 'The Item Instances lying at the location, each with the fields of an Item Instance entry' },
   { name: 'image', detail: 'string | null', info: LOCATION_IMAGE_INFO },
   { name: 'ambience', detail: 'string | null', info: LOCATION_AMBIENCE_INFO },
+  { name: 'layers', detail: 'object', info: LAYERS_INFO },
 ], ['image', 'ambience'], 'writable');
 
 /** The members of one entry in a location's `exits`. */
@@ -93,6 +95,7 @@ export const LOCATION_MEMBERS: readonly SurfaceEntry[] = withAccess([
   { name: 'items', detail: 'array', info: 'The Item Instances lying at the turn’s location, each with the fields of an Item Instance entry' },
   { name: 'image', detail: 'string | null', info: LOCATION_IMAGE_INFO },
   { name: 'ambience', detail: 'string | null', info: LOCATION_AMBIENCE_INFO },
+  { name: 'layers', detail: 'object', info: LAYERS_INFO },
   { name: 'move', detail: '(nameOrId) => void', info: 'Moves the turn to a location of the world, in place of the AI’s move. A name the world has no location for stops the script with an error.' },
 ], ['image', 'ambience'], 'writable');
 
@@ -258,7 +261,7 @@ const OWNER_MAPS = ['traits', 'placeholders', 'stats'];
 const BODY_INFO = 'The Body in force, slots and equipped Item Instances included, or null; assign a Body name to set it';
 const ENTITY_IMAGE_INFO = 'Name of the image the entity shows first, or null; assign an image’s name to show it';
 const ENTITY_SOUND_INFO = 'Name of the sound the entity plays, or null; assign a sound’s name to play it';
-const INSTANCES_INFO = 'A Generic entity’s copies, one per Start in order, each with its own image and sound';
+const INSTANCES_INFO = 'A Generic entity’s copies, one per Start in order, each with its own image, sound and layers';
 
 /** The members of one entry in an entity's `instances`. Only `image` and `sound` take a write. */
 export const GENERIC_INSTANCE_FIELDS: readonly SurfaceEntry[] = withAccess([
@@ -266,6 +269,7 @@ export const GENERIC_INSTANCE_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'location', detail: 'string', info: 'Code name of the location it stands at, or empty when it stands nowhere' },
   { name: 'image', detail: 'string | null', info: 'Name of the image this instance shows first, or null; an assigned name beats the entity’s own' },
   { name: 'sound', detail: 'string | null', info: 'Name of the sound this instance plays, or null; an assigned name beats the entity’s own' },
+  { name: 'layers', detail: 'object', info: 'The Layers of the Layered Image this instance shows, by name; a value set here beats the entity’s own' },
 ], ['image', 'sound'], 'writable');
 
 /** The members of `persona`. The members are read-only except `body`; a trait switches through its own `enabled`, and a
@@ -295,6 +299,7 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'body', detail: 'object | null', info: BODY_INFO },
   { name: 'image', detail: 'string | null', info: ENTITY_IMAGE_INFO },
   { name: 'sound', detail: 'string | null', info: ENTITY_SOUND_INFO },
+  { name: 'layers', detail: 'object', info: LAYERS_INFO },
   { name: 'instances', detail: 'array', info: INSTANCES_INFO },
 ], ['body', 'image', 'sound'], 'writable', OWNER_MAPS);
 
@@ -326,6 +331,7 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'body', detail: 'object | null', info: BODY_INFO },
   { name: 'image', detail: 'string | null', info: ENTITY_IMAGE_INFO },
   { name: 'sound', detail: 'string | null', info: ENTITY_SOUND_INFO },
+  { name: 'layers', detail: 'object', info: LAYERS_INFO },
   { name: 'instances', detail: 'array', info: INSTANCES_INFO },
   { name: 'move', detail: '(nameOrId) => void', info: 'Moves a Unique entity to a location when the turn ends and ends a follow, for a while. A Generic entity ignores it, and a name the world has no location for stops the script with an error.' },
   { name: 'follow', detail: '() => void', info: 'Makes a Unique entity follow the player when the turn ends, past a locked row and Can Also Go. A Generic entity ignores it.' },
@@ -349,6 +355,7 @@ export const ITEM_INSTANCE_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'uses', detail: 'number', info: 'Uses left, or null when its item has no Uses' },
   { name: 'state', detail: 'string', info: 'Its State word, or null when it has none' },
   { name: 'image', detail: 'string | null', info: 'Name of the image it shows, or null; assign an image’s name to show it' },
+  { name: 'layers', detail: 'object', info: LAYERS_INFO },
   { name: 'lose', detail: '(quantity?) => void', info: 'Removes it, or the quantity you pass. Bound doesn’t stop a script.' },
   { name: 'moveTo', detail: '(to, quantity?) => void', info: 'Moves it, or the quantity you pass, to an entity, the persona or a location, by entry or by name' },
   { name: 'equip', detail: '(slot?) => void', info: 'Equips it in the slot you name, by name, or in the first free slot its item lists. Unequips the one equipped longest when the slot is full.' },

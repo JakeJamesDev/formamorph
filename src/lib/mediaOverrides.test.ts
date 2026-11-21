@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, GameLocation, GenericStates, Item, MediaList, StatRequirement } from '@/types';
 import type { GateInput } from './traitGates';
-import { mediaOverrideReader, soundWithOverride, withMediaWrites, type MediaWrite } from './mediaOverrides';
+import { mediaOverrideReader, soundWithOverride, withMediaWrites, type MediaEntryWrite, type MediaWrite } from './mediaOverrides';
 import { visibleImages, visibleItemImage, visibleLocationImages } from './imageVisibility';
 import { resolveSound } from './mediaSounds';
 
@@ -22,7 +22,7 @@ const input = (health: number): GateInput => ({
 const low: StatRequirement = { kind: 'stat', id: 'health', operator: '<', value: 20, unit: 'raw' };
 const mira: Pick<Entity, 'id' | 'images'> = { id: 'e-mira', images: [{ mediaId: 'm-hurt', requires: [{ all: [low] }] }, { mediaId: 'm-calm' }] };
 
-const write = (owner: MediaWrite['owner'], field: MediaWrite['field'], mediaId: string | null): MediaWrite => ({ owner, field, mediaId });
+const write = (owner: MediaEntryWrite['owner'], field: MediaEntryWrite['field'], mediaId: string | null): MediaWrite => ({ owner, field, mediaId });
 
 describe('withMediaWrites', () => {
   it('lays writes on in order, the later winning, and null clears with no empty record left', () => {
@@ -49,7 +49,7 @@ describe('withMediaWrites', () => {
 describe('an override in play', () => {
   it('shows first over the Visibility rule, the rule-picked pictures after it, and null returns to the rules', () => {
     const set = withMediaWrites({}, [write({ kind: 'entity', id: 'e-mira' }, 'image', 'm-captain')]);
-    const shown = (overrides: typeof set) => visibleImages(mira, input(10), list, mediaOverrideReader(overrides, list, {}).entity('e-mira', 'image')).map((img) => img.data);
+    const shown = (overrides: typeof set) => visibleImages(mira, input(10), list, mediaOverrideReader(overrides, list, {}).entityPicture('e-mira')).map((img) => img.data);
     expect(shown({})).toEqual(['hurt', 'calm']);
     expect(shown(set)).toEqual(['captain', 'hurt', 'calm']);
     expect(shown(withMediaWrites(set, [write({ kind: 'entity', id: 'e-mira' }, 'image', null)]))).toEqual(['hurt', 'calm']);
@@ -57,7 +57,7 @@ describe('an override in play', () => {
 
   it('drops the rule-picked copy of the overriding picture', () => {
     const set = withMediaWrites({}, [write({ kind: 'entity', id: 'e-mira' }, 'image', 'm-calm')]);
-    const shown = visibleImages(mira, input(10), list, mediaOverrideReader(set, list, {}).entity('e-mira', 'image'));
+    const shown = visibleImages(mira, input(10), list, mediaOverrideReader(set, list, {}).entityPicture('e-mira'));
     expect(shown.map((img) => img.data)).toEqual(['calm', 'hurt']);
   });
 
@@ -66,7 +66,7 @@ describe('an override in play', () => {
     const { 'm-captain': _deleted, ...afterDelete } = list;
     const reader = mediaOverrideReader(set, afterDelete, {});
     expect(reader.entity('e-mira', 'image')).toBeUndefined();
-    expect(visibleImages(mira, input(10), afterDelete, reader.entity('e-mira', 'image')).map((img) => img.data)).toEqual(['hurt', 'calm']);
+    expect(visibleImages(mira, input(10), afterDelete, reader.entityPicture('e-mira')).map((img) => img.data)).toEqual(['hurt', 'calm']);
   });
 
   it('keeps the played persona’s override under the empty key, whoever the player plays', () => {
@@ -96,11 +96,11 @@ describe('an override in play', () => {
     ]);
     const reader = mediaOverrideReader(set, list, {});
     const gate: Pick<GameLocation, 'images'> = { images: [{ mediaId: 'm-calm' }] };
-    expect(visibleLocationImages(gate, input(50), list, reader.location('l-gate', 'image'))[0]?.data).toBe('hurt');
+    expect(visibleLocationImages(gate, input(50), list, reader.locationPicture('l-gate'))[0]?.data).toBe('hurt');
     expect(resolveSound(soundWithOverride(undefined, reader.location('l-gate', 'ambience')), list)?.data).toBe('rain');
     const lamp: Pick<Item, 'images'> = { images: [{ mediaId: 'm-calm' }] };
-    expect(visibleItemImage(lamp, { where: { kind: 'you' } }, input(50), list, reader.item('c-2'))).toBe('captain');
-    expect(visibleItemImage(lamp, { where: { kind: 'you' } }, input(50), list, reader.item('c-1'))).toBe('calm');
+    expect(visibleItemImage(lamp, { where: { kind: 'you' } }, input(50), list, reader.itemPicture('c-2'))).toBe('captain');
+    expect(visibleItemImage(lamp, { where: { kind: 'you' } }, input(50), list, reader.itemPicture('c-1'))).toBe('calm');
     expect(resolveSound(soundWithOverride({ mediaId: 'm-rain' }, reader.entity('e-mira', 'sound')), list)?.data).toBe('theme');
     expect(resolveSound(soundWithOverride({ mediaId: 'm-theme' }, reader.music()), list)?.data).toBe('rain');
   });

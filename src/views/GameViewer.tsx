@@ -6713,7 +6713,7 @@ const GameViewer = ({
     };
     return {
       cardRows: mentionCardRows(view, presenceById, {
-        imageOf: (entity) => visibleImages(entity, liveGate, worldOverview.mediaList, mentionMediaOverrides.entity(entity.id, 'image'))[0]?.data,
+        imageOf: (entity) => visibleImages(entity, liveGate, worldOverview.mediaList, mentionMediaOverrides.entityPicture(entity.id))[0]?.data,
         describe: (entity) => (entity.strangerDescription ? resolveEntityText(entity, entity.strangerDescription) : ''),
       }),
       pickBase: pickListBase(view, presenceById, metEntities),

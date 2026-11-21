@@ -4,7 +4,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runTestCode, type StatCodeWorld } from './statCodeTestRun';
-import type { Stat } from '@/types';
+import type { MediaList, Stat, WorldOverview } from '@/types';
 
 const world: StatCodeWorld = {
   stats: [], statGroups: [], traits: [], traitGroups: [], entities: [], entityGroups: [], placeholders: [], placeholderGroups: [],
@@ -41,6 +41,22 @@ describe('runTestCode world writes', () => {
     const report = await run('location.move("North Gate"); clock.advance(20); clock.advance(10); discover("Tor"); discover("Mira", "The innkeeper.");');
     expect(report.error).toBeNull();
     expect(report.writes).toEqual(['location.move: North Gate', 'clock.advance: 30 minutes', 'discover: Tor', 'discover: Mira, described']);
+  });
+
+  it('lists each Layer write with its Layer, field and value', async () => {
+    const mediaList: MediaList = {
+      'm-cap': { id: 'm-cap', name: 'Cap', kind: 'image', data: 'cap' },
+      rig: { id: 'rig', name: 'Wren Rig', kind: 'layered', layers: [{ id: 'l-hat', name: 'Hat', variants: [{ mediaId: 'm-cap' }] }] },
+    };
+    const rigged: Parameters<typeof runTestCode>[3] = {
+      ...world, entities: [{ id: 'e-wren', name: 'Wren', images: [{ mediaId: 'rig' }] }], worldOverview: { name: 'Test', description: '', systemPrompt: '', mediaList } as WorldOverview,
+    };
+    const report = await runTestCode('const hat = entities.Wren.layers.Hat; hat.variant = "Cap"; hat.opacity = 0.5; hat.tint = "#ff8800"; hat.tint = null;', 'after', { kind: 'world' }, rigged);
+    expect(report.error).toBeNull();
+    expect(report.writes).toEqual([
+      'entities.Wren.layers["Hat"].variant = "Cap"', 'entities.Wren.layers["Hat"].opacity = 0.5',
+      'entities.Wren.layers["Hat"].tint = "#ff8800"', 'entities.Wren.layers["Hat"].tint = null',
+    ]);
   });
 
   it('lists each memory line, pin and diary line', async () => {

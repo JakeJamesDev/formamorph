@@ -1,6 +1,6 @@
 // Layered Images resolved for one subject: what each Layer shows right now, and the picture type play draws.
 
-import type { Base64Data, GalleryLink, LayerBlend, LayeredMediaEntry, LayerVariant, MediaLayer, MediaList, TraitRequirementRow } from '@/types';
+import type { Base64Data, GalleryLink, LayerBlend, LayeredMediaEntry, LayerSetting, LayerVariant, MediaLayer, MediaList, TraitRequirementRow } from '@/types';
 import { parseHex6 } from './hslColor';
 import { layeredEntry, mediaEntry } from './mediaList';
 import type { RowState } from './traitGates';
@@ -44,7 +44,8 @@ const variantData = (variant: LayerVariant, media: MediaList | undefined): Base6
 const holds = (variant: LayerVariant, reads: LayerReads): boolean =>
   !variant.requires?.length || reads.statesOf(variant.requires).some((row) => row.holds);
 
-const clampOpacity = (opacity: number | undefined): number =>
+/** An opacity as play draws it: 0 to 1, and 1 when absent or not a number. */
+export const clampOpacity = (opacity: number | undefined): number =>
   (typeof opacity === 'number' && Number.isFinite(opacity) ? Math.min(1, Math.max(0, opacity)) : 1);
 
 /** A stored tint as `#rrggbb`, or undefined for none: white tints nothing, and a malformed value is ignored. */
@@ -76,18 +77,31 @@ export const shownVariant = (layer: MediaLayer, media: MediaList | undefined, re
 /** What outside play reads: every rule holds, so each Layer shows its first Variant (Q5). */
 export const OUTSIDE_PLAY: LayerReads = { statesOf: (rows) => rows.map(() => ({ holds: true, conditions: [] })) };
 
+/** The Variant `layer` shows for one subject: the one its setting names while the Layer still holds it (Q10, Q33),
+ *  else the one its rules show. */
+function subjectVariant(layer: MediaLayer, media: MediaList | undefined, reads: LayerReads, setting?: LayerSetting): LayerVariant | undefined {
+  const set = setting?.variant === undefined ? undefined
+    : layer.variants.find((variant) => variant.mediaId === setting.variant && variantData(variant, media));
+  return set ?? layer.variants[shownVariant(layer, media, reads)];
+}
+
 /**
- * The stack `entry` shows for one subject: per Layer, the first Variant whose rule is empty or holds, else
- * nothing. A Variant naming no image entry is passed over. Undefined when nothing sets the canvas.
+ * The stack `entry` shows for one subject, given its settings by Layer id: per Layer, its shown Variant or
+ * nothing, and the set opacity and tint over the authored ones. Undefined when nothing sets the canvas.
  */
-export function resolveLayered(entry: LayeredMediaEntry, media: MediaList | undefined, reads: LayerReads): LayeredPicture | undefined {
+export function resolveLayered(
+  entry: LayeredMediaEntry, media: MediaList | undefined, reads: LayerReads, settings?: Readonly<Record<string, LayerSetting>>,
+): LayeredPicture | undefined {
   const canvas = layeredCanvas(entry, media);
   if (!canvas) return undefined;
   const layers = entry.layers.map((layer): ResolvedLayer => {
-    const shown = layer.variants[shownVariant(layer, media, reads)];
+    const setting = settings?.[layer.id];
+    const shown = subjectVariant(layer, media, reads, setting);
     const data = shown && variantData(shown, media);
-    const tint = normalizeTint(layer.tint);
-    return { id: layer.id, opacity: clampOpacity(layer.opacity), blend: layer.blend ?? 'normal', ...(tint ? { tint } : {}), ...(data ? { data } : {}) };
+    const tint = normalizeTint(setting?.tint ?? layer.tint);
+    return {
+      id: layer.id, opacity: clampOpacity(setting?.opacity ?? layer.opacity), blend: layer.blend ?? 'normal', ...(tint ? { tint } : {}), ...(data ? { data } : {}),
+    };
   });
   return { kind: 'layered', entryId: entry.id, canvas, layers };
 }

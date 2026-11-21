@@ -52,21 +52,22 @@ describe('visibleLocationImages with a Layered Image', () => {
   });
 });
 
-describe('script readers with a Layered Image (Q24)', () => {
-  it('skip a layered link to the next plain image', () => {
+describe('script readers with a Layered Image', () => {
+  it('read a shown layered link as its own entry, ahead of a later plain image', () => {
     const links = [{ mediaId: 'rig' }, { mediaId: 'base' }];
-    expect(locationRuleImageId({ images: links }, input(10), media)).toBe('base');
-    expect(itemRuleImageId({ images: links }, { where: { kind: 'you' } }, input(10), media)).toBe('base');
+    expect(locationRuleImageId({ images: links }, input(10), media)).toBe('rig');
+    expect(itemRuleImageId({ images: links }, { where: { kind: 'you' } }, input(10), media)).toBe('rig');
   });
 
-  it('read nothing when only a layered link remains', () => {
-    const links = [{ mediaId: 'rig' }];
-    expect(locationRuleImageId({ images: links }, input(10), media)).toBeUndefined();
-    expect(itemRuleImageId({ images: links }, { where: { kind: 'you' } }, input(10), media)).toBeUndefined();
+  it('pass over a Layered Image with nothing to draw, to the next plain image', () => {
+    const withEmpty: MediaList = { ...media, empty: { id: 'empty', name: 'Empty', kind: 'layered', layers: [] } };
+    const links = [{ mediaId: 'empty' }, { mediaId: 'base' }];
+    expect(locationRuleImageId({ images: links }, input(10), withEmpty)).toBe('base');
+    expect(itemRuleImageId({ images: links }, { where: { kind: 'you' } }, input(10), withEmpty)).toBe('base');
   });
 
   it('lets an image override show ahead of a layered link', () => {
-    const shown = visibleLocationImages({ images: [{ mediaId: 'rig' }] }, input(90), media, 'wear');
+    const shown = visibleLocationImages({ images: [{ mediaId: 'rig' }] }, input(90), media, { id: 'wear' });
     expect(shown.map((v) => v.slot)).toEqual([-1, 0]);
     expect(shown[1].data).toMatchObject({ kind: 'layered' });
   });

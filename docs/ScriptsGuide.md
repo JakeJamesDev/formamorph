@@ -163,6 +163,18 @@ The menu lists these groups, in order:
 
 [Player](Scripts-Reference#player) lists the options and where each timing puts the image.
 
+## How to Change a Layer from a Script
+<!-- keywords: layered image, change a layer, swap outfit, hat on and off, fade a layer, tint a layer, dye hair, layers -->
+<!-- route: worldEditorStat.code -->
+
+1. Note the Layer's name in the Layered Image, and the name of the image it should show.
+2. Open a **Scripts** tab and select **Add Script**.
+3. Assign the image to the Layer's `variant`, for example `entities.Wren.layers.Hat.variant = "Cap"`. Set `opacity` to fade it, or `tint` to color it.
+4. Select **Test Code**. The run lists each change with the Layer, the member and the value.
+5. Assign `null` when the Layer should follow its Visibility rules again.
+
+[Layers](Scripts-Reference#layers) lists the members and what each one takes.
+
 ## How to Let the AI Run a Script
 <!-- keywords: world tool, tool script, ai decides, ai calls my code, trigger, arm a script, on demand, filter on request, narration filter tool, reply, stack calls, timing, function calling script -->
 <!-- route: worldEditor.tools -->

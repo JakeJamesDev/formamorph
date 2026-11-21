@@ -1086,7 +1086,7 @@ const ENTITY_VERBS = ['move', 'follow', 'unfollow', 'meet', 'diary'] as const;
 /** The fields on an entity entry that a write never reaches. */
 const ENTITY_READ_ONLY_FIELDS = [
   'id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'kind', 'action', 'held', 'knownIn', 'knownInPlaces', 'description', 'summary', 'aliases', 'traits', 'placeholders',
-  'stats', 'items', 'body', ...MEDIA_NAME_MEMBERS.entity, 'instances', 'move', 'follow', 'unfollow', 'meet', 'diary',
+  'stats', 'items', 'body', ...MEDIA_NAME_MEMBERS.entity, 'layers', 'instances', 'move', 'follow', 'unfollow', 'meet', 'diary',
 ] as const;
 
 /** Each Generic entity's Generic Entity Instances as its `instances` reads them: `[Start id, location code name]`. */
@@ -1352,6 +1352,9 @@ const entitiesPrelude = (
     `      ${MEDIA}.set(mediaKey, mediaOwner, field, next);`,
     `    };`,
     `  });`,
+    `  const entityPath = who.played ? 'persona' : 'entities.' + who.name;`,
+    `  let layerMap = null;`,
+    `  define(values, 'layers', { enumerable: true, get: () => layerMap || (layerMap = ${MEDIA}.layers([mediaKey], mediaOwner, entityPath)) });`,
     // One entry per Generic Entity Instance, whose override beats the entity's (Q50).
     `  let generic = null;`,
     `  const instanceEntry = (row, at) => {`,
@@ -1365,6 +1368,7 @@ const entitiesPrelude = (
     `    ${B}.each(${JSON.stringify(MEDIA_NAME_MEMBERS.entity)}, (field) => {`,
     `      define(out, field, { enumerable: true, get: () => ${MEDIA}.get([key, mediaKey], field), set: (next) => ${MEDIA}.set(key, owner, field, next) });`,
     `    });`,
+    `    define(out, 'layers', { enumerable: true, value: ${MEDIA}.layers([key, mediaKey], owner, ${MEDIA}.parent(path)) });`,
     `    return freeze(out);`,
     `  };`,
     `  define(values, 'instances', { enumerable: true, get: () => generic || (generic = freeze(${B}.map(data.generic || [], instanceEntry))) });`,
@@ -1665,6 +1669,7 @@ const itemsPrelude = (
     `      enumerable: true, get: () => ${MEDIA}.get([mediaKey], 'image'),`,
     `      set: (next) => ${MEDIA}.set(mediaKey, { kind: 'item', id: instanceId }, 'image', next),`,
     `    });`,
+    `    ${B}.define(out, 'layers', { enumerable: true, value: ${MEDIA}.layers([mediaKey], { kind: 'item', id: instanceId }, ${MEDIA}.parent(path)) });`,
     `    return ${B}.freeze(out);`,
     `  };`,
     `  const fields = ${JSON.stringify(ITEM_FIELDS)};`,
@@ -2286,16 +2291,39 @@ export interface SandboxMedia {
   defaults: () => Omit<MediaOverrides, 'instances'>;
   /** Generic entity id → its Generic Entity Instances in Start order. Absent ⇒ none. */
   instances?: Readonly<Record<string, readonly { id: string; locationId?: string }[]>>;
+  /** The drawable Layered Images' Layers, which `layers` names. Absent ⇒ none. */
+  layered?: readonly SandboxLayeredImage[];
+  /** Per subject, keyed as overrides are (`e:`, `l:`, `t:`): Layered Image id → Layer id → the image entry id its
+   *  rules show, or null. Built on the subject's first `layers` read. */
+  layerRules?: Readonly<Record<string, () => Record<string, Record<string, string | null>>>>;
+}
+
+/** One Layered Image as `layers` reads it. */
+export interface SandboxLayeredImage {
+  id: string;
+  layers: readonly { id: string; name: string; opacity: number; tint?: string; variants: readonly string[] }[];
+}
+
+type FlatMap<T> = Record<string, T>;
+
+/** Keys `entities`, `instances`, `locations` and `items` maps as the media prelude reads them. */
+function flatKeys(
+  { entities, instances, locations, items }: { entities?: FlatMap<unknown>; instances?: FlatMap<FlatMap<unknown>>; locations?: FlatMap<unknown>; items?: FlatMap<unknown> },
+  copy: (value: unknown) => unknown,
+): Record<string, unknown> {
+  return {
+    ...Object.fromEntries(Object.entries(entities ?? {}).map(([id, row]) => [`e:${id}`, copy(row)])),
+    ...Object.fromEntries(Object.entries(instances ?? {}).flatMap(([id, starts]) =>
+      Object.entries(starts).map(([startId, row]) => [`i:${id}:${startId}`, copy(row)]))),
+    ...Object.fromEntries(Object.entries(locations ?? {}).map(([id, row]) => [`l:${id}`, copy(row)])),
+    ...Object.fromEntries(Object.entries(items ?? {}).map(([id, row]) => [`t:${id}`, copy(row)])),
+  };
 }
 
 /** Overrides keyed as the media prelude reads them: `e:<entity>`, `i:<entity>:<start>`, `l:<location>`, `t:<instance>`, `w`. */
-function flatMedia({ entities, instances, locations, items, music }: MediaOverrides): Record<string, Record<string, string>> {
+function flatMedia({ entities, instances, locations, items, music }: Omit<MediaOverrides, 'layers'>): Record<string, unknown> {
   return {
-    ...Object.fromEntries(Object.entries(entities ?? {}).map(([id, row]) => [`e:${id}`, { ...row }])),
-    ...Object.fromEntries(Object.entries(instances ?? {}).flatMap(([id, starts]) =>
-      Object.entries(starts).map(([startId, row]) => [`i:${id}:${startId}`, { ...row }]))),
-    ...Object.fromEntries(Object.entries(locations ?? {}).map(([id, row]) => [`l:${id}`, { ...row }])),
-    ...Object.fromEntries(Object.entries(items ?? {}).map(([id, image]) => [`t:${id}`, { image }])),
+    ...flatKeys({ entities, instances, locations, items }, (row) => (typeof row === 'string' ? { image: row } : { ...(row as object) })),
     ...(music ? { w: { music } } : {}),
   };
 }
@@ -2313,6 +2341,9 @@ const mediaPrelude = (media: SandboxMedia | undefined, reads: HostReads): string
   const spec = {
     entries: Object.fromEntries(entries.map(({ id, name, kind }) => [id, { name, kind }])), byName, kinds: MEDIA_MEMBER_KIND,
     overrides: flatMedia(media?.overrides ?? {}), defaults: media ? reads.deferred(() => flatMedia(media.defaults())) : -1,
+    layered: Object.fromEntries((media?.layered ?? []).map((entry) => [entry.id, entry.layers])),
+    layerHeld: flatKeys(media?.overrides.layers ?? {}, (settings) => settings),
+    layerRules: Object.fromEntries(Object.entries(media?.layerRules ?? {}).map(([key, build]) => [key, reads.deferred(build)])),
   };
   return [
     `const ${MEDIA} = ((spec, writes, read) => {`,
@@ -2327,18 +2358,25 @@ const mediaPrelude = (media: SandboxMedia | undefined, reads: HostReads): string
     `    if (!shown) shown = spec.defaults < 0 ? {} : read(spec.defaults);`,
     `    return own(shown, key) ? shown[key][field] : undefined;`,
     `  };`,
-    `  const nameOf = (id, kind) => (typeof id === 'string' && own(spec.entries, id) && spec.entries[id].kind === kind ? spec.entries[id].name : null);`,
-    `  const get = (keys, field) => {`,
+    // An image member also takes a Layered Image (Q24).
+    `  const fits = (kind, wanted) => kind === wanted || (wanted === 'image' && kind === 'layered');`,
+    `  const live = (id, kind) => typeof id === 'string' && own(spec.entries, id) && fits(spec.entries[id].kind, kind);`,
+    `  const nameOf = (id, kind) => (live(id, kind) ? spec.entries[id].name : null);`,
+    `  const idOf = (keys, field) => {`,
     `    const kind = spec.kinds[field];`,
     `    for (const key of keys) {`,
-    `      const name = own(held, key) ? nameOf(held[key][field], kind) : null;`,
-    `      if (name !== null) return name;`,
+    `      const id = own(held, key) ? held[key][field] : undefined;`,
+    `      if (live(id, kind)) return id;`,
     `    }`,
-    `    return nameOf(fallback(keys[keys.length - 1], field), kind);`,
+    `    const id = fallback(keys[keys.length - 1], field);`,
+    `    return live(id, kind) ? id : null;`,
     `  };`,
+    `  const get = (keys, field) => nameOf(idOf(keys, field), spec.kinds[field]);`,
+    `  const named = (kind, name) => (typeof name !== 'string' ? undefined : own(spec.byName[kind], name) ? spec.byName[kind][name]`,
+    `    : kind === 'image' && own(spec.byName.layered, name) ? spec.byName.layered[name] : undefined);`,
     `  const set = (key, owner, field, target) => {`,
     `    const kind = spec.kinds[field];`,
-    `    const id = target === null ? null : typeof target === 'string' && own(spec.byName[kind], target) ? spec.byName[kind][target] : undefined;`,
+    `    const id = target === null ? null : named(kind, target);`,
     `    if (id === undefined) fail('The world has no ' + kind + ' named "' + String(target) + '"');`,
     `    const row = own(held, key) ? held[key] : (held[key] = {});`,
     `    if (id === null) delete row[field];`,
@@ -2346,7 +2384,108 @@ const mediaPrelude = (media: SandboxMedia | undefined, reads: HostReads): string
     `    writes.media.push({ owner, field, mediaId: id });`,
     `  };`,
     `  const image = (name) => (own(spec.byName.image, name) ? spec.byName.image[name] : fail('The world has no image named "' + name + '"'));`,
-    `  return { get, set, fail, image };`,
+    // Layer settings by subject key, Layered Image id and Layer id; `keys` run from the subject's own to the
+    // entity-wide, and the last key reads the rules (Q31).
+    `  const layerHeld = spec.layerHeld;`,
+    `  const rules = {};`,
+    `  const rulePick = (key, entryId, layerId) => {`,
+    `    if (!own(spec.layerRules, key)) return null;`,
+    `    if (!own(rules, key)) rules[key] = read(spec.layerRules[key]) || {};`,
+    `    const byLayer = own(rules[key], entryId) ? rules[key][entryId] : null;`,
+    `    return byLayer && own(byLayer, layerId) ? byLayer[layerId] : null;`,
+    `  };`,
+    `  const settingOf = (key, entryId, layerId) => (own(layerHeld, key) && own(layerHeld[key], entryId) && own(layerHeld[key][entryId], layerId)`,
+    `    ? layerHeld[key][entryId][layerId] : null);`,
+    `  const setting = (keys, entryId, layerId, field, valid) => {`,
+    `    let out;`,
+    `    ${B}.each(keys, (key) => {`,
+    `      const held = out === undefined ? settingOf(key, entryId, layerId) : null;`,
+    `      if (held && own(held, field) && valid(held[field])) out = held[field];`,
+    `    });`,
+    `    return out;`,
+    `  };`,
+      // Captured before the script runs, which can replace String and RegExp methods.
+  `  const TINT = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;`,
+  `  const { test } = RegExp.prototype;`,
+  `  const { slice, toLowerCase } = String.prototype;`,
+  `  const isTint = (text) => ${B}.apply(test, TINT, [text]);`,
+  `  const parent = (path) => ${B}.apply(slice, path, [0, -1]);`,
+    `  const layerView = (keys, owner, entryId, layer, path) => {`,
+    `    const write = (field, value) => {`,
+    `      const key = keys[0];`,
+    `      const byEntry = own(layerHeld, key) ? layerHeld[key] : (layerHeld[key] = {});`,
+    `      const byLayer = own(byEntry, entryId) ? byEntry[entryId] : (byEntry[entryId] = {});`,
+    `      const row = own(byLayer, layer.id) ? byLayer[layer.id] : (byLayer[layer.id] = {});`,
+    `      if (value === null) delete row[field];`,
+    `      else row[field] = value;`,
+    `      writes.media.push({ owner, entryId, layerId: layer.id, field, value });`,
+    `    };`,
+    // A set Variant the Layer no longer holds reads as unset (Q33).
+    `    const holds = (id) => ${B}.includes(layer.variants, id) && live(id, 'image');`,
+    `    const out = {};`,
+    `    ${B}.define(out, 'variant', {`,
+    `      enumerable: true,`,
+    `      get: () => nameOf(setting(keys, entryId, layer.id, 'variant', holds) ?? rulePick(keys[keys.length - 1], entryId, layer.id), 'image'),`,
+    `      set: (next) => {`,
+    `        if (next === null) return write('variant', null);`,
+    `        let id;`,
+    `        ${B}.each(layer.variants, (one) => { if (id === undefined && nameOf(one, 'image') === next) id = one; });`,
+    `        if (id === undefined) fail('The Layer "' + layer.name + '" has no image named "' + String(next) + '"');`,
+    `        write('variant', id);`,
+    `      },`,
+    `    });`,
+    `    ${B}.define(out, 'opacity', {`,
+    `      enumerable: true,`,
+    `      get: () => setting(keys, entryId, layer.id, 'opacity', (v) => typeof v === 'number') ?? layer.opacity,`,
+    `      set: (next) => {`,
+    `        if (next !== null && (typeof next !== 'number' || !(next >= 0 && next <= 1))) throw new TypeError(path + '.opacity must be a number from 0 to 1, not ' + ${B}.stringify(next));`,
+    `        write('opacity', next);`,
+    `      },`,
+    `    });`,
+    `    ${B}.define(out, 'tint', {`,
+    `      enumerable: true,`,
+    `      get: () => setting(keys, entryId, layer.id, 'tint', (v) => typeof v === 'string') ?? layer.tint ?? null,`,
+    `      set: (next) => {`,
+    `        if (next !== null && (typeof next !== 'string' || !isTint(next))) throw new TypeError(path + '.tint must be a color like "#ff8800", not ' + ${B}.stringify(next));`,
+    // Stored as lowercase `#rrggbb`, the form the Layer's own tint takes (Q34).
+    `        const hex = next === null ? null : next.length === 4 ? '#' + next[1] + next[1] + next[2] + next[2] + next[3] + next[3] : next;`,
+    `        write('tint', hex === null ? null : ${B}.apply(toLowerCase, hex, []));`,
+    `      },`,
+    `    });`,
+    `    return ${B}.freeze(out);`,
+    `  };`,
+    // `layers` names the Layers of the Layered Image the subject shows now, a same-run `image` write included (Q31).
+    `  const layers = (keys, owner, path) => {`,
+  `    const layerPath = (name) => path + '.layers[' + ${B}.stringify(name) + ']';`,
+    `    const shownEntry = () => {`,
+    `      const id = idOf(keys, 'image');`,
+    `      return id !== null && own(spec.layered, id) ? id : null;`,
+    `    };`,
+    `    const layerOf = (entryId, name) => {`,
+    `      let found = null;`,
+    `      ${B}.each(spec.layered[entryId], (layer) => { if (found === null && layer.name === name) found = layer; });`,
+    `      return found;`,
+    `    };`,
+    `    return new ${B}.Proxy(${B}.create(null), {`,
+    `      get: (_, name) => {`,
+    `        if (typeof name !== 'string' || name === 'toJSON') return undefined;`,
+    `        const entryId = shownEntry();`,
+    `        if (entryId === null) fail(path + ' shows no Layered Image, so it has no Layer "' + name + '"');`,
+    `        const layer = layerOf(entryId, name);`,
+    `        if (!layer) fail('The Layered Image "' + spec.entries[entryId].name + '" has no Layer "' + name + '"');`,
+    `        return layerView(keys, owner, entryId, layer, layerPath(name));`,
+    `      },`,
+    `      set: (_, name) => { throw new TypeError(path + '.layers[' + ${B}.stringify(String(name)) + '] cannot be assigned'); },`,
+    `      has: (_, name) => { const entryId = shownEntry(); return typeof name === 'string' && entryId !== null && !!layerOf(entryId, name); },`,
+    `      ownKeys: () => { const entryId = shownEntry(); const names = []; if (entryId !== null) ${B}.each(spec.layered[entryId], (layer) => { ${B}.push(names, layer.name); }); return names; },`,
+    `      getOwnPropertyDescriptor: (_, name) => {`,
+    `        const entryId = shownEntry();`,
+    `        const layer = typeof name === 'string' && entryId !== null ? layerOf(entryId, name) : null;`,
+    `        return layer ? { enumerable: true, configurable: true, value: layerView(keys, owner, entryId, layer, layerPath(name)) } : undefined;`,
+    `      },`,
+    `    });`,
+    `  };`,
+    `  return { get, set, fail, image, layers, parent };`,
     `})(JSON.parse(${JSON.stringify(JSON.stringify(spec))}), ${WORLD_WRITES}, ${HOST_READ});`,
     `const world = Object.freeze(Object.defineProperty({}, 'music', {`,
     `  enumerable: true, get: () => ${MEDIA}.get(['w'], 'music'), set: (next) => ${MEDIA}.set('w', { kind: 'world' }, 'music', next),`,
@@ -2617,7 +2756,7 @@ const LINK_FIELDS = ['parent', 'children', 'exits'] as const satisfies readonly 
 const NO_LINKS: SandboxLocationLinks = { parent: '', children: [], exits: [] };
 
 /** The fields of a `locations` entry, in the order its keys list them. */
-const LOCATION_FIELDS = ['id', 'name', 'description', 'summary', 'starting', 'present', ...LINK_FIELDS, 'items', ...MEDIA_NAME_MEMBERS.location] as const;
+const LOCATION_FIELDS = ['id', 'name', 'description', 'summary', 'starting', 'present', ...LINK_FIELDS, 'items', ...MEDIA_NAME_MEMBERS.location, 'layers'] as const;
 
 /** The `locations` and `location` prelude, after the entities prelude: `present` holds its entries. The later of
  *  two locations sharing a name wins the key. Each `locations` entry loads on its first read (Q1); `location` is
@@ -2695,6 +2834,8 @@ const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing
     `        },`,
     `      });`,
     `    });`,
+    `    let layerMap = null;`,
+    `    ${B}.define(read, 'layers', { enumerable: true, get: () => layerMap || (layerMap = ${MEDIA}.layers([mediaKey], { kind: 'location', id: data.id }, ${MEDIA}.parent(data.prefix))) });`,
     `    ${B}.each(${B}.keys(extra), (field) => {`,
     `      const held = extra[field];`,
     `      ${B}.define(read, field, { enumerable: true, get: () => held, set: () => note(data.prefix + field) });`,

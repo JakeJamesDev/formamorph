@@ -18,7 +18,7 @@ export function useLocationBackdrop(location: Pick<GameLocation, 'id' | 'images'
   const media = useMediaList();
   const overrides = useViewedMediaOverrides();
   return useMemo(
-    () => (location ? visibleLocationImages(location, input, media, overrides.location(location.id, 'image'))[0]?.data : DEFAULT_BACKGROUND),
+    () => (location ? visibleLocationImages(location, input, media, overrides.locationPicture(location.id))[0]?.data : DEFAULT_BACKGROUND),
     [location, input, media, overrides],
   );
 }

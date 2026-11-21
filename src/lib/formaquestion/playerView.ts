@@ -217,7 +217,7 @@ export function buildPlayerViewEntities(input: PlayerViewEntitiesInput): PlayerV
 
   const { gate } = input;
   const withImage = (row: PlayerViewEntity, entity: Entity): PlayerViewEntity => {
-    const image = gate && visibleImages(entity, gate, input.media, input.mediaOverrides?.entity(entity.id, 'image'))[0]?.data;
+    const image = gate && visibleImages(entity, gate, input.media, input.mediaOverrides?.entityPicture(entity.id))[0]?.data;
     return image ? { ...row, image } : row;
   };
 

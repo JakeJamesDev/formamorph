@@ -28,7 +28,7 @@ import {
   ownerOfHome, PENDING_PERSONA_ID, snapshotOf, type SandboxSnapshot, type ScriptRunUnit, type SnapshotOptions, type UnitHome,
 } from '@/lib/sandboxSnapshot';
 import type { MediaList, ScriptTiming, Stat, Trait, World } from '@/types';
-import type { MediaWrite } from '@/lib/mediaOverrides';
+import { isLayerWrite, type MediaWrite } from '@/lib/mediaOverrides';
 
 /** Test Code names each bound a run wrote with its Details field label. */
 const BOUND_LABELS: Record<CodeBoundField, string> = { min: 'Min', max: 'Max', regen: 'Regen' };
@@ -211,16 +211,22 @@ const worldWriteLines = (
   ];
 };
 
-/** One line per media assignment, as code would write it. */
+/** One line per media assignment, as code would write it: a Layer write names its Layer, field and value. */
 const mediaWriteLines = (
   writes: readonly MediaWrite[], list: MediaList | undefined, locations: readonly SandboxPlace[], entityNames: ReadonlyMap<string, string>,
-): string[] => writes.map(({ owner, field, mediaId }) => {
+): string[] => writes.map((write) => {
+  const { owner } = write;
   const entity = (id: string) => (id ? memberPath('entities', entityNames.get(id) ?? id) : 'persona');
   const at = owner.kind === 'entity' ? entity(owner.id)
     : owner.kind === 'instance' ? `${entity(owner.entityId)}.instances`
       : owner.kind === 'location' ? memberPath('locations', locations.find((place) => place.id === owner.id)?.name ?? owner.id)
         : owner.kind === 'item' ? 'instance' : 'world';
-  return `${at}.${field} = ${mediaId === null ? 'null' : JSON.stringify(list?.[mediaId]?.name ?? mediaId)}`;
+  const named = (id: string) => JSON.stringify(list?.[id]?.name ?? id);
+  if (!isLayerWrite(write)) return `${at}.${write.field} = ${write.mediaId === null ? 'null' : named(write.mediaId)}`;
+  const rig = list?.[write.entryId];
+  const layer = rig?.kind === 'layered' ? rig.layers.find((one) => one.id === write.layerId)?.name ?? write.layerId : write.layerId;
+  const value = write.value === null ? 'null' : write.field === 'variant' ? named(String(write.value)) : JSON.stringify(write.value);
+  return `${at}.layers[${JSON.stringify(layer)}].${write.field} = ${value}`;
 });
 
 /** One line per `pay` call as code names its Currency: the amount and parties, and why a refused one failed. */

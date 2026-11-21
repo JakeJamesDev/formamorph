@@ -23,6 +23,7 @@ vi.mock('./useViewedGateInput', () => ({
 vi.mock('./useMediaOverrides', () => ({
   useViewedMediaOverrides: () => ({
     entity: () => undefined, location: (id: string) => (id === 'square' ? state.override : undefined), item: () => undefined, music: () => undefined,
+    entityPicture: () => ({}), locationPicture: (id: string) => (id === 'square' && state.override ? { id: state.override } : {}), itemPicture: () => ({}),
   }),
 }));
 vi.mock('./useMediaList', () => ({ useMediaList: () => ({ 'm-storm': { id: 'm-storm', name: 'Storm', kind: 'image', data: 'storm' } }) }));
