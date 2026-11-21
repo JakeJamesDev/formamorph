@@ -14,9 +14,10 @@ import { cascadeOffInput, settledCascadeOff } from './traitRuntime';
 import { scoped, type OwnerId } from './scope';
 import { startingInstances } from './inventory';
 import { acceptsValue, optionValue, valuedOptions } from './worldOptions';
+import { startRead } from './openings';
 import type {
   AllowedPersonas, Body, CascadeOffTraitIds, Entity, GameLocation, Item, OwnedTraitPicks, PersonaRef, Placement, PresetRow, PresetValue,
-  PresetWorldOption, Slot, Stat, StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValues,
+  PresetWorldOption, Slot, Stat, StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValues, WorldOverview,
 } from '@/types';
 
 /** Choices retained for one visit to Enter World. */
@@ -74,6 +75,8 @@ export interface EntryTraitWorld {
   locations?: readonly Pick<GameLocation, 'id'>[];
   /** The world's Options, which Option Conditions read at the draft's picks (Q43). */
   options?: readonly WorldOption[];
+  /** The world's overview, whose Default Weather and Default Time a Condition reads at the start (Q31). */
+  overview?: WorldOverview | null;
 }
 
 /** The Item Instances a new game would hold under `persona` and `optionValues`, so an item Condition reads the start. The ids only tell instances apart. */
@@ -109,6 +112,7 @@ const entryGateBase = (
   const statsOf = entryStatsOf(world, persona, optionValues);
   return {
     ...resolveOwners(world, persona, world.library).gate,
+    ...startRead(null, world.overview),
     ...(world.options ? { worldOptions: world.options } : {}),
     ...(optionValues ? { optionValues } : {}),
     statsOf,

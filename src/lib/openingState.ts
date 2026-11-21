@@ -21,17 +21,17 @@ import {
   type TraitRuntimeState, type TraitWorld,
 } from './traitRuntime';
 import type { GateInput } from './traitGates';
-import { daypartAt } from './gameClock';
 import { gatePick } from './inPlayGates';
 import type { PersonaPick } from './persona';
 import { equipRequirement, settleInventory, startingInstances, type NewId } from './inventory';
 import { randomUUID } from './uuid';
 import { genericInstancesOf, sandboxMediaOf } from './sandboxMedia';
 import type { OwnerId } from './scope';
-import { activeWeather, allowedWeatherKinds, authoredStartWeather } from './weather';
+import { activeWeather, allowedWeatherKinds } from './weather';
+import { startRead } from './openings';
 import { resolveEntityText, type PlaceholderMode } from './placeholders';
 import type {
-  BodyRuntime, Entity, EntityStatValues, PersonaRef, ItemEffectLedger, OwnedTraitPicks, Placeholder, Trait, World, WorldOptionValues,
+  BodyRuntime, Entity, EntityStatValues, PersonaRef, ItemEffectLedger, Opening, OwnedTraitPicks, Placeholder, Trait, World, WorldOptionValues,
 } from '@/types';
 
 /** The authored slice the fold reads. An absent slice reads as empty, as an editor's half-built world can be. */
@@ -94,12 +94,24 @@ function turnOneText(placeholders: Placeholder[]): ResolveText {
   return (text, owner) => resolveEntityText(owner, text, { placeholders, rolls, setRoll });
 }
 
+/** An id source that remembers what it minted, so a second fold of the same start mints the same ids: the
+ *  second settle re-reads the Conditions and draws nothing again. */
+export function idLog(mint: NewId = randomUUID): { newId: NewId; replay: () => NewId } {
+  const minted: string[] = [];
+  return {
+    newId: () => { const id = mint(); minted.push(id); return id; },
+    replay: () => { let n = 0; return () => minted[n++] ?? mint(); },
+  };
+}
+
 /** The state a new game opens with. Pure: the same inputs give the same state, its unrolled chips and its
- *  Item Instance ids aside. */
+ *  Item Instance ids aside. `drawn` is the Opening page one drew; absent, the world's defaults are the start. */
 export function openingFold(
   world: OpeningFoldWorld, picks: OpeningPicks = NO_OPENING_PICKS, persona?: OpeningPersona, newId: NewId = randomUUID,
+  drawn?: Opening | null,
 ): OpeningFold {
   const ref = persona?.ref ?? { source: 'none' as const };
+  const { daypart, weather } = startRead(drawn, world.worldOverview);
   const traits = world.traits ?? [];
   const traitGroups = world.traitGroups ?? [];
   const { stats: authored, entities } = playStatWorld({ stats: world.stats ?? [], statGroups: world.statGroups ?? [], entities: world.entities ?? [] });
@@ -110,6 +122,7 @@ export function openingFold(
   const traitWorld: TraitWorld = {
     traits, groups: traitGroups, entities, persona: ref, items: world.items ?? [], itemInstances: startingInstances(startWorld, ref, newId),
     options: world.options ?? [], ...(picks.options ? { optionValues: picks.options } : {}),
+    daypart, weather,
     ...inPlayOwners(ownerWorld, ref, library),
   };
 
@@ -156,7 +169,7 @@ export function openingFold(
     resolveText: turnOneText(allPlaceholders(world)),
     clock: { deltaHours: 0, elapsedHours: 0 },
     ...(activeWeather(world.worldOverview) ? { weather: {
-      current: authoredStartWeather(null, world.worldOverview) ?? 'clear', allowed: allowedWeatherKinds(activeWeather(world.worldOverview)),
+      current: weather, allowed: allowedWeatherKinds(activeWeather(world.worldOverview)),
     } } : {}),
     itemInstances: playWorld.itemInstances,
     items: world.items ?? [],
@@ -168,7 +181,7 @@ export function openingFold(
     }),
   };
   const startingTraits = [...held.map((trait) => ({ trait, ownerId: null })), ...opening.appliedRows];
-  const gate = traitGateInput(traitState, { ...playWorld, daypart: daypartAt(0) });
+  const gate = traitGateInput(traitState, playWorld);
   return { state, entityStats, startingTraits, traitState, itemEffects: { ledger: items.ledger, log: items.log }, bodies: items.bodies, gate };
 }
 

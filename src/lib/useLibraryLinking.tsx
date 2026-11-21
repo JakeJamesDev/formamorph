@@ -44,8 +44,8 @@ import { libraryPickIds, placeLibraryPicks, type LibraryVrm } from '@/lib/vrmPic
 import { loadMediaHashes, loadMediaLookup, placeEntityMedia } from '@/lib/libraryMedia';
 import type { MediaHashes } from '@/lib/mediaList';
 import type {
-  Dictionary, Entity, GameLocation, MediaList, Placeholder, PlaceholderGroup, Stat, StatGroup, SupporterCopyMarker, Trait, TraitGroup,
-  WorldVrmStore,
+  Daypart, Dictionary, Entity, GameLocation, MediaList, Placeholder, PlaceholderGroup, Stat, StatGroup, SupporterCopyMarker, Trait, TraitGroup,
+  WorldVrmStore, WorldWeather,
 } from '@/types';
 
 const NO_VRMS: ReadonlyMap<string, LibraryVrm> = new Map();
@@ -89,6 +89,9 @@ interface LibraryLinkingOptions {
   /** The world's stats and stat groups, which an entity's stat Links name or bind to. */
   stats: Stat[];
   statGroups: StatGroup[];
+  /** The world's Weather block and Default Time, which a library entity's weather and time Conditions read. */
+  weather?: WorldWeather;
+  defaultTime?: Daypart;
   updateEntity: (entity: Entity) => void;
   updateDictionary: (book: Dictionary) => void;
   setEntities: (entities: Entity[]) => void;
@@ -153,10 +156,10 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
   // The list state and its setters are read through the ref below, so the synchronization pass can run
   // from an effect without re-running on every edit.
   const { placeholders, locations, updateEntity, updateDictionary, exportEntity, exportDictionary, exportBlocks } = options;
-  const { traits, traitGroups, entities, stats, statGroups, worldPlaceholders } = options;
+  const { traits, traitGroups, entities, stats, statGroups, worldPlaceholders, weather, defaultTime } = options;
   const traitWorld = useMemo(
-    () => ({ traits, traitGroups, entities, stats, statGroups, placeholders: worldPlaceholders }),
-    [traits, traitGroups, entities, stats, statGroups, worldPlaceholders],
+    () => ({ traits, traitGroups, entities, stats, statGroups, placeholders: worldPlaceholders, weather, defaultTime }),
+    [traits, traitGroups, entities, stats, statGroups, worldPlaceholders, weather, defaultTime],
   );
 
   const [pendingIds, setPendingIds] = useState<string[]>([]);

@@ -1,6 +1,7 @@
 // The stats setup gates read: the game's opening stats under a set of picks (Q26).
 
-import type { Entity, PersonaRef, Stat, StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValues } from '@/types';
+import type { Entity, PersonaRef, Stat, StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValues, WorldOverview } from '@/types';
+import { startRead } from './openings';
 import { seedEntityStats } from './entityStatSeed';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { playStatWorld } from './statLinks';
@@ -16,6 +17,8 @@ export interface SetupStatWorld {
   traitGroups?: readonly TraitGroup[];
   entities: readonly Entity[];
   options?: readonly WorldOption[];
+  /** Whose Default Weather and Default Time the start settle reads (Q31). */
+  overview?: WorldOverview | null;
 }
 
 /** What a setup gate input reads a set of picks' stats through. */
@@ -41,6 +44,7 @@ export function setupStatsOf(
   const cast = resolved.entities.slice(world.entities.length);
   const traitWorld: TraitWorld = {
     traits, groups: traitGroups, entities, persona, options: [...(world.options ?? [])], ...(optionValues && { optionValues }),
+    ...startRead(null, world.overview),
     ...inPlayOwners({ traits, traitGroups, entities }, persona, cast),
   };
   const entityStats = seedEntityStats(resolved.entities);

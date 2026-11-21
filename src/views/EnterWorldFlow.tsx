@@ -11,6 +11,7 @@ import { inAuthoredOrder, isHidden, traitOrderIndex } from '@/lib/traitEffects';
 import { ownerPins, inPlayOwners, pinBlueprintsOf, playedEntityId } from '@/lib/ownedTraitsInPlay';
 import { playedEntityIdOf, startLocationIdsOpen } from '@/lib/inPlayWorld';
 import { cascadeOffInput, startingTraitState } from '@/lib/traitRuntime';
+import { startRead } from '@/lib/openings';
 import { seedWorldEntityStats } from '@/lib/entityStatSeed';
 import { toastError } from '@/lib/linkToast';
 import CharacterCustomization from './CharacterCustomization';
@@ -210,6 +211,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     const starting = startingTraitState(rawStats, chosen, {
       traits: rawTraits, groups: rawTraitGroups, entities: worldEntities, persona: draftPersona,
       options: worldOptions, ...(entryDraft.optionValues && { optionValues: entryDraft.optionValues }),
+      ...startRead(null, worldOverview),
       ...inPlayOwners(world, draftPersona, libraryCast),
     }, ownedTraitPicks, seeded).state;
     return ownerPins({
@@ -231,7 +233,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   }, [
     selectedTraits, ownedTraitPicks, draftPersona, selectedLocationId, rawTraits, rawTraitGroups, worldEntities,
     worldPlaceholders, rawStats, rawStatGroups, rawLocations, placeholders, rolls, libraryCast, placeholderGroups, worldOptions,
-    entryDraft.optionValues,
+    entryDraft.optionValues, worldOverview,
   ]);
   const {
     traits, traitGroups, locations, entities: resolvedWorldEntities, resolvePH, resolveTraitText, resolveEntityText,
@@ -244,12 +246,13 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     () => ({
       traits, traitGroups, entities: resolvedWorldEntities, library: libraryCast, stats: rawStats, statGroups: rawStatGroups,
       items: worldItems, placements: worldPlacements, slots: worldSlots, bodies: worldBodies, locations: rawLocations, options: worldOptions,
+      overview: worldOverview,
     }),
-    [traits, traitGroups, resolvedWorldEntities, libraryCast, rawStats, rawStatGroups, worldItems, worldPlacements, worldSlots, worldBodies, rawLocations, worldOptions],
+    [traits, traitGroups, resolvedWorldEntities, libraryCast, rawStats, rawStatGroups, worldItems, worldPlacements, worldSlots, worldBodies, rawLocations, worldOptions, worldOverview],
   );
   const rawEntryWorld: EntryTraitWorld = {
     traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, library: libraryCast, stats: rawStats, statGroups: rawStatGroups,
-    options: worldOptions,
+    options: worldOptions, overview: worldOverview,
   };
   // A library entity that joins the cast starts on its own defaults.
   useEffect(() => {

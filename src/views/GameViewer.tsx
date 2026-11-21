@@ -1,6 +1,6 @@
 import { resolveSound, type SoundValue } from '@/lib/mediaSounds';
 import { randomUUID } from "@/lib/uuid";
-import { openingFold, openingPersonaOf, standaloneStateOf } from '@/lib/openingState';
+import { idLog, openingFold, openingPersonaOf, standaloneStateOf } from '@/lib/openingState';
 import {
   applyInventoryOps, applyInventoryPass, passOwners, equipRequirement, settleInventory, settleTraitsWithItems, statEffectItems, traitPicksInPlay, timedEffectViews, type ItemUse, type InventoryOp, type ItemScriptEvent,
 } from '@/lib/inventory';
@@ -131,7 +131,7 @@ import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import WorldEditor, { type EditorExit } from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemInstance, ItemEffectLedger, RuntimeItem, BodyRuntime, BodyPick, ValuedWorldOption, WorldOptionValueOf, WorldOptionValues, WeatherKind } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemInstance, ItemEffectLedger, Opening, RuntimeItem, BodyRuntime, BodyPick, ValuedWorldOption, WorldOptionValueOf, WorldOptionValues, WeatherKind } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { narrationOf, storyText, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -1973,6 +1973,8 @@ const GameViewer = ({
   const openingActionRef = useRef<string>("");
   // A new game draws at seed; a loaded save draws on first need.
   const openingSessionRef = useRef<OpeningSession>(newOpeningSession());
+  /** The ids this new game's first fold minted, which the second settle replays. Null on a loaded save. */
+  const openingIdsRef = useRef<ReturnType<typeof idLog> | null>(null);
   // The Custom Persona entity carrying the player's entry, so a Self row it owns names the player.
   const customPersona = customPersonaEntity(traitEntities);
   /** The rows this playthrough draws from. The picked entities come off the initial-turn seed, so a loaded
@@ -2098,6 +2100,23 @@ const GameViewer = ({
     setDebugTurns((prev) => markRegeneratedTurn(prev));
   };
 
+  /** Settles the starting traits again under `opening`'s Weather and Time, once the draw is known. It mints the
+   *  same ids as the first fold and draws nothing else, so only a weather or time Condition changes the result.
+   *  A loaded save has no new-game log and keeps its own traits. */
+  const settleStartUnder = (opening: Opening) => {
+    const ids = openingIdsRef.current;
+    if (!ids) return;
+    const { traitState, itemEffects, bodies: openedBodies, entityStats: openedStats, state } = openingFold(
+      getWorldData(), { traits: initialTraits, owned: initialOwnedTraits, options: initialOptionValues },
+      { ...(initialPersona ?? { ref: { source: 'none' } }), characters: initialCharacters ?? [] }, ids.replay(), opening,
+    );
+    commitTraitState(traitState);
+    setItemInstances(state.itemInstances ?? []);
+    setItemEffects(itemEffects.ledger);
+    setBodies(openedBodies);
+    resetEntityStats(openedStats);
+  };
+
   /** Regenerate the turn on `page`, which Chat passes as the latest page. */
   const handleRegenerate = (page = currentPage) => {
     if (!canRegenerate(page, totalPages)) return;
@@ -2140,6 +2159,7 @@ const GameViewer = ({
       // The new row's time and weather, or none: the restore above may hold what the pass read for the old page one.
       applyResolvedStart(redraw.opening, worldOverview, { setStartHour, setWeather, setStartWeatherSet });
       clearWeatherChange();
+      settleStartUnder(redraw.opening);
       if (redraw.opening.kind === "narration") {
         pendingTurnRef.current = { action: OPENING_STAND_IN, writtenNarration: redrawText };
         setPendingTurnNonce((n) => n + 1);
@@ -6373,9 +6393,11 @@ const GameViewer = ({
       rebaseRightDots();
 
       // New game, once: a loaded save returned above. The fold reads the authored world, chips and all.
+      const ids = idLog();
+      openingIdsRef.current = ids;
       const opening = openingFold(getWorldData(), { traits: initialTraits, owned: initialOwnedTraits, options: initialOptionValues }, {
         ...(initialPersona ?? { ref: { source: 'none' } }), characters: initialCharacters ?? [],
-      });
+      }, ids.newId);
       const acquired = opening.state.ownerTraits.acquired;
       const seedLibrary = opening.state.ownerTraits.library ?? [];
       newPlaythroughRef.current = true;
@@ -6495,6 +6517,8 @@ const GameViewer = ({
       // Set before page one is written, so its clock line carries the authored hour.
       applyResolvedStart(drawn.opening, worldOverview, { setStartHour, setWeather, setStartWeatherSet });
       clearWeatherChange();
+      // Placement picked this Opening under the world defaults; the traits settle again under its own start.
+      settleStartUnder(drawn.opening);
       const openingText = resolveOpening(drawn.opening.text, {
         extraPins: openingPins, persona: drawnPersona, rolls: openingRolls, libraryAdditions: [...picked, ...libraryBooks], owner: drawnOwner,
       });
@@ -7063,6 +7087,8 @@ const GameViewer = ({
     unlandedListRef.current = null;
     // The loaded save draws its own opening on first need, with nothing shown yet.
     openingSessionRef.current = newOpeningSession();
+    // The loaded save keeps its own traits, so no new-game settle applies to it.
+    openingIdsRef.current = null;
     // A save from another (installed) world: swap GameData to that world first, then restore the save against
     // its locations — otherwise the save would run inside the current world's shell.
     if (targetWorldId && targetWorldId !== (worldId ? String(worldId) : undefined)) {

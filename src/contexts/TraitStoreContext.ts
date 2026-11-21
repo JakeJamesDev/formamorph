@@ -80,12 +80,13 @@ export function useOptionalTraitStore(): TraitStore | null {
   const items = world?.items;
   const options = world?.options;
   const weather = world?.worldOverview?.weather;
+  const defaultTime = world?.worldOverview?.defaultTime;
   const gateInput = useMemo(
     () => editorGateInput(
-      { traits: traits ?? [], traitGroups: traitGroups ?? [], entities: entities ?? [], items, options, weather },
+      { traits: traits ?? [], traitGroups: traitGroups ?? [], entities: entities ?? [], items, options, weather, defaultTime },
       startingGateStats({ stats, statGroups, entities: entities ?? [] }),
     ),
-    [traits, traitGroups, entities, items, options, weather, stats, statGroups],
+    [traits, traitGroups, entities, items, options, weather, defaultTime, stats, statGroups],
   );
   if (provided) return provided;
   if (!world) return null;

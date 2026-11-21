@@ -1,5 +1,5 @@
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
-import { daypartStartHour } from '@/lib/gameClock';
+import { daypartAt, daypartStartHour } from '@/lib/gameClock';
 import { authoredStartWeather, type ResolvedStart } from '@/lib/weather';
 import { idsAt, idsAtAny, startPlacesOf, type PlacesOf } from '@/lib/entityPlaces';
 import { playsOnlyWhenPicked } from '@/lib/entityRelationships';
@@ -29,6 +29,13 @@ export function authoredStartHour(opening: Opening | null | undefined, overview:
  *  hour and weather. Each is null when nothing is authored. One function, so both callers resolve alike. */
 export function resolveStart(opening: Opening | null | undefined, overview: Overview): ResolvedStart {
   return { startHour: authoredStartHour(opening, overview), weather: authoredStartWeather(opening, overview) };
+}
+
+/** The daypart and weather a Condition reads at the start of a story: the drawn Opening's, else the world's
+ *  defaults, else the shipped start hour and Clear (Q31). */
+export function startRead(opening: Opening | null | undefined, overview: Overview): { daypart: Daypart; weather: WeatherKind } {
+  const { startHour, weather } = resolveStart(opening, overview);
+  return { daypart: daypartAt(0, startHour === null ? undefined : { startHour }), weather: weather ?? 'clear' };
 }
 
 /** Resolves the start and writes it into the game: the hour as authored (or null), the weather as authored (or

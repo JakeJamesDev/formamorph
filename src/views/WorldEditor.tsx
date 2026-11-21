@@ -748,7 +748,7 @@ const WorldEditorInner = ({
     entities, dictionaries, placeholders, worldPlaceholders, placeholderGroups, locations, traits, traitGroups, stats, statGroups,
     updateEntity, updateDictionary, setEntities, setDictionaries,
     addEntityToWorld, addBookToWorld, addPlaceholder, addLocation, setOwnedLibraryIds,
-    vrmStore: worldOverview?.vrmStore,
+    vrmStore: worldOverview?.vrmStore, weather: worldOverview?.weather, defaultTime: worldOverview?.defaultTime,
     setVrmStore: (vrmStore) => updateWorldOverview({ vrmStore }),
     mediaList: worldOverview?.mediaList,
     setMediaList: (mediaList) => updateWorldOverview({ mediaList }),
