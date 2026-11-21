@@ -28,7 +28,7 @@ describe('the prompt type list', () => {
     expect(new Set<string>(ALL_REQUEST_KINDS)).toEqual(new Set([
       'thinking', 'director', 'character', 'storyboard', 'narration', 'choices', 'statUpdates', 'locationChange',
       'narratedMove', 'entityLocation', 'summary', 'milestoneSelect', 'diary', 'discoverEntity', 'timePassed', 'openingTime',
-      'sceneTags', 'inventory', 'descriptionSummary', 'descriptionBridge', 'imageTags', 'help',
+      'weather', 'sceneTags', 'inventory', 'descriptionSummary', 'descriptionBridge', 'imageTags', 'help',
     ]));
   });
 });

@@ -215,6 +215,7 @@ function previewInput(prompts: AnatomyPreviewPrompts, settings: AnatomyPreviewSe
     destinationCount: FIXTURE_DESTINATIONS.length,
     locationCount: 3,
     hasCurrentLocation: true,
+    weather: { current: 'rain', offered: ['clear', 'rain', 'snow', 'storm', 'brightSun'], startWeatherSet: false },
     prompts: prompts.turn,
     settings: {
       thinkingMode: settings.thinkingMode,
@@ -222,7 +223,7 @@ function previewInput(prompts: AnatomyPreviewPrompts, settings: AnatomyPreviewSe
       choicesEnabled: true, statUpdatesEnabled: true, statCount: 3,
       locationChangeEnabled: true, locationAutoApply: settings.locationAutoApply, entityMovement: true,
       aiClock: true, memoryDigests: recap, characterDiaries: true, describeCharacters: true,
-      inventoryDue: true, inventoryTextPass: false, entityLocationTextPass: false, clockTextPass: false,
+      inventoryDue: true, inventoryTextPass: false, entityLocationTextPass: false, clockTextPass: false, weatherTextPass: false,
       imageAttachments: false, promptAttachments: {}, language: settings.language,
       stripLinksAndImages: false,
     },
@@ -290,6 +291,7 @@ const HUB_PASS: Record<string, TurnPassId> = {
   summary: 'summary',
   timepassed: 'timePassed',
   timeopening: 'openingTime',
+  weather: 'weather',
   diary: 'diary',
 };
 

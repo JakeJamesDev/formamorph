@@ -15,7 +15,7 @@ export interface PromptGroup {
 
 export const PROMPT_GROUPS: PromptGroup[] = [
   { label: 'Story', tabs: ['narration', 'thinking', 'director', 'character', 'discover', 'storyboard', 'choices'] },
-  { label: 'Trackers', tabs: ['statupdates', 'inventory', 'location', 'narratedmove', 'entitylocation', 'timepassed', 'timeopening'] },
+  { label: 'Trackers', tabs: ['statupdates', 'inventory', 'location', 'narratedmove', 'entitylocation', 'timepassed', 'timeopening', 'weather'] },
   { label: 'Memory', tabs: ['summary', 'milestone', 'diary'] },
   { label: 'Images', tabs: ['scenetags'] },
 ];
@@ -24,7 +24,7 @@ export const PROMPT_GROUPS: PromptGroup[] = [
  *  a map keyed by it is total and a lookup needs no fallback. */
 export type PromptTab =
   | 'narration' | 'thinking' | 'director' | 'character' | 'discover' | 'storyboard' | 'choices'
-  | 'statupdates' | 'inventory' | 'location' | 'narratedmove' | 'entitylocation' | 'timepassed' | 'timeopening'
+  | 'statupdates' | 'inventory' | 'location' | 'narratedmove' | 'entitylocation' | 'timepassed' | 'timeopening' | 'weather'
   | 'summary' | 'milestone' | 'diary'
   | 'scenetags';
 
@@ -44,6 +44,7 @@ export const PROMPT_TAB_REQUESTS: Record<PromptTab, AIRequestType> = {
   entitylocation: 'entityLocation',
   timepassed: 'timePassed',
   timeopening: 'openingTime',
+  weather: 'weather',
   summary: 'summary',
   milestone: 'milestoneSelect',
   diary: 'diary',
@@ -69,6 +70,7 @@ export const PROMPT_LABELS: Record<PromptTab, string> = {
   milestone: 'Milestone Select',
   timepassed: 'Clock',
   timeopening: 'Opening',
+  weather: 'Weather',
   scenetags: 'Scene Tags',
   diary: 'Diary',
   director: 'Director',
@@ -104,6 +106,7 @@ export const PROMPT_DESCRIPTIONS: Record<string, string> = {
   diary: "Records each present character's private, first-person note on the turn",
   timepassed: 'Measures how much in-world time a turn took',
   timeopening: 'Reads the opening scene once to decide what time of day the story starts',
+  weather: 'Reads what happened and records whether the weather changed',
   scenetags: "Tags only the action in a scene image. The entities' looks and the location come from their own tags.",
   director: "Describes the scene for the turn: who's here, and what each of them is doing",
   character: 'States what one character wants this turn, in the first person',

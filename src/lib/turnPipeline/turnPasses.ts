@@ -35,6 +35,9 @@ import { statRequestSchema, textPassTargets, type StatRequestSnapshot } from '@/
 import {
   CLOCK_SCHEMA_FORMAT, CLOCK_TEXT_FORMAT, clockReadingSchema, parseClockReply, parseOpeningDaypart, type ClockReading,
 } from '@/lib/gameClock';
+import { parseWeatherReply, weatherPassSchema, weatherSchemaFormat, weatherTextFormat, type WeatherPassOffer } from '@/lib/weatherPass';
+import type { WeatherKind } from '@/types';
+import { ALL_WEATHER_KINDS } from '@/lib/weather';
 import { cleanDiscoveredDescription, DISCOVER_LATER_LABEL, DISCOVER_PASSAGE_LABEL } from '@/lib/runtimeCharacters';
 import {
   milestoneMomentValues, milestoneReplyFormat, parseIncrementalMilestoneReply, type IncrementalVerdict,
@@ -69,6 +72,10 @@ export const TURN_PASS_CAPS = {
   timePassedSchema: 60,
   /** One daypart word. */
   openingTime: 8,
+  /** A yes or no, a dash, and one weather word or "no change". */
+  weather: 12,
+  /** The Weather Pass's two-field JSON reply, with room for spacing. */
+  weatherSchema: 40,
   /** A diary entry is one or two first-person sentences. */
   diary: 80,
   /** ~2 short paragraphs, trimmed to the last full sentence — headroom against a mid-word cut. */
@@ -859,6 +866,48 @@ const openingTimePass: TurnPassRecord<number | null> = {
   parseResponse: (raw) => parseOpeningDaypart(raw),
 };
 
+const weatherOf = (input: TurnPlanInput) => {
+  if (!input.weather) throw new Error('the Weather Pass needs the world weather');
+  return input.weather;
+};
+
+/** What the pass is offered: on the page-one read there is no weather before the passage. */
+const weatherOffer = (input: TurnPlanInput): WeatherPassOffer => {
+  const weather = weatherOf(input);
+  return { current: isOpening(input) ? null : weather.current, offered: weather.offered };
+};
+
+/**
+ * Whether the narration changed the World Weather, limited to the offered kinds. Every turn while the world's
+ * Weather is on (Q11); on the opening turn only when no start weather was authored (Q24).
+ */
+export const weatherPass: TurnPassRecord<WeatherKind | null> = {
+  id: 'weather',
+  type: 'weather',
+  stage: 'postNarration',
+  fanOut: false,
+  isDue: (input) => !!input.weather && (!isOpening(input) || !input.weather.startWeatherSet),
+  // An endpoint that refused the schema before gets the text request alone.
+  buildRequest: (input, material) => {
+    const offer = weatherOffer(input);
+    const system = systemTiled(input.prompts.weather, material.ctx);
+    const user = userTiled(input.prompts.weatherUser, {
+      '<PLAYER ACTION>': stripOocDirectives(material.effectiveAction),
+      '<NARRATION>': material.narration,
+    });
+    const shared = { type: 'weather' as const, ...silentOn(material) };
+    const textRequest = labeledRequest({ ...shared, maxTokens: TURN_PASS_CAPS.weather }, system, withReplyFormat(user, weatherTextFormat(offer)));
+    if (input.settings.weatherTextPass) return textRequest;
+    return withTextFallback(
+      textRequest,
+      labeledRequest({ ...shared, maxTokens: TURN_PASS_CAPS.weatherSchema }, system, withReplyFormat(user, weatherSchemaFormat(offer))),
+      weatherPassSchema(offer.offered),
+    );
+  },
+  // Any kind reads here; the Turn Commit drops one outside the plan's offer.
+  parseResponse: (raw) => parseWeatherReply(raw, ALL_WEATHER_KINDS),
+};
+
 /**
  * One participant's private record of the turn. Diaries are read only by the staged character pass, so
  * they are only written in that mode; like the digest, they are the queue's job outside the batch.
@@ -1004,6 +1053,7 @@ export const TURN_PASSES: TurnPassRecord[] = [
   summaryPass,
   timePassedPass,
   openingTimePass,
+  weatherPass,
   diaryPass,
   discoverEntityPass,
 ];

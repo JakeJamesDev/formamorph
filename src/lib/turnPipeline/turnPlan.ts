@@ -1,4 +1,4 @@
-import type { AIRequestType, ChatMessage, Entity, GameLocation, ImageAttachment, RequestMessage } from '@/types';
+import type { AIRequestType, ChatMessage, Entity, GameLocation, ImageAttachment, RequestMessage, WeatherKind } from '@/types';
 import type { AnatomyRun, RequestAnatomy } from '@/lib/requestAnatomy';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
 import type { StatRequestSnapshot } from '@/lib/statRequest';
@@ -35,6 +35,7 @@ export type TurnPassId =
   | 'summary'
   | 'timePassed'
   | 'openingTime'
+  | 'weather'
   | 'diary'
   | 'discoverEntity'
   | 'sceneTags'
@@ -74,6 +75,8 @@ export interface TurnSettings {
   entityLocationTextPass: boolean;
   /** The clock endpoint refused a response schema before, so the clock pass sends its text request alone. */
   clockTextPass: boolean;
+  /** The weather endpoint refused a response schema before, so the Weather Pass sends its text request alone. */
+  weatherTextPass: boolean;
   /** The Image Attachments setting. Off, no pass includes the action's images. */
   imageAttachments: boolean;
   /** The active preset's Include Attachments flags. An absent prompt takes its default. */
@@ -119,6 +122,8 @@ export interface TurnPrompts {
   timePassedUser: string;
   openingTime: string;
   openingTimeUser: string;
+  weather: string;
+  weatherUser: string;
   diary: string;
   discoverEntity: string;
   discoverEntityUser: string;
@@ -142,6 +147,8 @@ export interface TurnPlanInput {
   /** The story's start hour is already set, by the drawn Opening or the world's Default Time. The opening
    *  turn then leaves out the opening-time pass. */
   startHourSet?: boolean;
+  /** The world's weather while its Weather is on; absent while it is off, which leaves the Weather Pass out. */
+  weather?: TurnWeatherInput;
   /** An Opening Narration's resolved text: page one as authored. The turn sends nothing before its
    *  post-narration stage. Blank counts as absent. */
   writtenNarration?: string;
@@ -151,6 +158,17 @@ export interface TurnPlanInput {
   toldActions?: ToldAction[];
   settings: TurnSettings;
   prompts: TurnPrompts;
+}
+
+/** What the Weather Pass reads beside the narration. */
+export interface TurnWeatherInput {
+  /** The World Weather at the turn's start. */
+  current: WeatherKind;
+  /** The kinds the pass may answer with: the allowed kinds, without Bright Sun outside daylight. */
+  offered: WeatherKind[];
+  /** The drawn Opening or the world's Default Weather set the start weather, so the opening turn leaves the
+   *  pass out. */
+  startWeatherSet: boolean;
 }
 
 /** One being a fan-out pass is about: a cast member, a diarist, or a newly narrated name. */

@@ -14,7 +14,7 @@ import type { TurnMaterial, TurnPassId, TurnPassRecord, TurnPassRequest, TurnPas
 import type { SectionStyle } from '@/lib/promptPresets';
 import { runsTile } from '@/lib/requestAnatomy';
 import { CLOCK_SCHEMA_FORMAT, CLOCK_TEXT_FORMAT, clockReadingSchema } from '@/lib/gameClock';
-import { TEST_PROMPTS, testInput } from './turnTestInputs';
+import { RAIN_WEATHER, TEST_PROMPTS, testInput } from './turnTestInputs';
 import { builtinStatTextPrompts, statTextFor } from '@/lib/statTextPrompts';
 import { createStatRequest, statRequestSchema } from '@/lib/statRequest';
 import { oneRoutine } from '@/test/routines';
@@ -432,7 +432,7 @@ describe('turn pass requests', () => {
         for (const record of TURN_PASSES) {
           if (record.id === 'narration') continue;
           const subjects = { entityLocationAuto: [subject], entityLocationSuggest: [subject] };
-          const request = record.buildRequest(input({ toldActions: told }, { thinkingMode: 'off' }), material({ subject, subjects }));
+          const request = record.buildRequest(input({ toldActions: told, weather: RAIN_WEATHER }, { thinkingMode: 'off' }), material({ subject, subjects }));
           const text = [request.systemPrompt, ...request.messages.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)))].join('\n');
           expect([record.id, text.includes('ACTION LIST'), text.includes('Healing Potion')]).toEqual([record.id, false, false]);
         }

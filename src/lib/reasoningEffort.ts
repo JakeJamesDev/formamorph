@@ -318,7 +318,7 @@ export function nativeReasoningSuppressed(mode: ThinkingMode, kind: AIRequestTyp
 export const PROMPT_REQUEST_KINDS = [
   'thinking', 'director', 'character', 'storyboard', 'narration', 'choices', 'statUpdates', 'locationChange',
   'narratedMove', 'entityLocation', 'summary', 'milestoneSelect', 'diary', 'discoverEntity', 'timePassed', 'openingTime', 'sceneTags',
-  'inventory',
+  'inventory', 'weather',
 ] as const satisfies readonly AIRequestType[];
 
 export const EDITOR_REQUEST_KINDS = ['descriptionSummary', 'descriptionBridge', 'imageTags', 'help'] as const satisfies readonly EditorRequestType[];

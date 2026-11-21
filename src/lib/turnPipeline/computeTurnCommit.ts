@@ -1,4 +1,5 @@
-import type { AITurnResult, Entity, InventoryPassOp, TurnToolCall } from '@/types';
+import type { AITurnResult, Entity, InventoryPassOp, TurnToolCall, WeatherKind } from '@/types';
+import { afterNightfall, isDaylight } from '@/lib/weather';
 import type { StatClock, WorldWrites } from '@/lib/statCodeExecutor';
 import { mergeWorldWrites } from '@/lib/worldWrites';
 import type { ClockReading, WorldCalendar } from '@/lib/gameClock';
@@ -103,7 +104,21 @@ export interface TurnCommit {
   entityMoves: EntityMoveIntents;
   /** What the Inventory pass returned, which lands before the stat deltas (Q53). Empty when it changed nothing. */
   inventoryOps: InventoryPassOp[];
+  /** The World Weather this turn leaves, after the pass and the nightfall rule. Null while the
+   *  world's Weather is off. */
+  weather: WeatherKind | null;
+  /** The World Weather after the pass alone, which the nightfall rule reads again when code moves the clock. */
+  passWeather: WeatherKind | null;
+  /** The nightfall rule turned Bright Sun into Clear, so the change plays no foreground. */
+  nightfall: boolean;
 }
+
+/** The weather after the nightfall rule, read at the turn's end. */
+const withNightfall = (passWeather: WeatherKind | null, clock: StatClock): Pick<TurnCommit, 'weather' | 'nightfall'> => {
+  if (!passWeather) return { weather: null, nightfall: false };
+  const weather = afterNightfall(passWeather, isDaylight(clock.elapsedHours ?? 0, clock.calendar));
+  return { weather, nightfall: weather !== passWeather };
+};
 
 /** Every outcome one pass produced, in dispatch order. A failed request is left out — it answered nothing. */
 const answers = (passes: readonly TurnPassOutcome[], id: TurnPassId): TurnPassOutcome[] =>
@@ -185,6 +200,13 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
 
   const inventoryOps = answerOf<InventoryPassOp[]>(passes, 'inventory') ?? [];
 
+  // The pass's answer, when it is one of the offered kinds; anything else, or no answer, keeps the weather.
+  const weatherInput = plan.input.weather;
+  const weatherAnswer = weatherInput ? answerOf<WeatherKind | null>(passes, 'weather') : null;
+  const passWeather = weatherInput
+    ? (weatherAnswer && weatherInput.offered.includes(weatherAnswer) ? weatherAnswer : weatherInput.current)
+    : null;
+
   const turn: AITurnResult = {
     narration,
     choices,
@@ -204,6 +226,15 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
     ...(inventoryOps.length ? { inventoryOps } : {}),
   };
 
+  const clock: StatClock = {
+    deltaHours: turnHours,
+    // The END of the turn, so a long sleep that began in daylight reports the night the player just read.
+    elapsedHours: context.gameTime + turnHours,
+    // The opening turn's own frame, built from the hour just measured: without it the opening turn's stat
+    // code reads the default start hour and an accumulating stat banks that wrong value for good.
+    calendar: startCalendar,
+  };
+
   return withCodeWrites({
     turn,
     statResponse,
@@ -211,14 +242,7 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
     statMaxChanges,
     suggestedLocation: suggested === context.currentLocationName ? null : suggested,
     turnHours,
-    clock: {
-      deltaHours: turnHours,
-      // The END of the turn, so a long sleep that began in daylight reports the night the player just read.
-      elapsedHours: context.gameTime + turnHours,
-      // The opening turn's own frame, built from the hour just measured: without it the opening turn's stat
-      // code reads the default start hour and an accumulating stat banks that wrong value for good.
-      calendar: startCalendar,
-    },
+    clock,
     isOpeningTurn: plan.isOpeningTurn,
     openingHour,
     discoveries,
@@ -226,6 +250,8 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
     codeWrites: null,
     entityMoves,
     inventoryOps,
+    passWeather,
+    ...withNightfall(passWeather, clock),
   }, context.codeWrites, context);
 }
 
@@ -277,7 +303,7 @@ export function commitEntityMoves(
 export function withCodeWrites(commit: TurnCommit, writes: WorldWrites | undefined, context: TurnCommitContext): TurnCommit {
   if (!writes) return commit;
   const codeWrites = mergeWorldWrites(commit.codeWrites ?? undefined, writes) ?? null;
-  let { turn, discoveries, suggestedLocation, codeMove, turnHours, clock } = commit;
+  let { turn, discoveries, suggestedLocation, codeMove, turnHours, clock, weather, nightfall } = commit;
 
   if (writes.location !== undefined) {
     codeMove = writes.location;
@@ -290,7 +316,10 @@ export function withCodeWrites(commit: TurnCommit, writes: WorldWrites | undefin
     turnHours = minutes / 60;
     turn = { ...turn, timeDelta: turnHours };
     clock = { ...clock, deltaHours: turnHours, elapsedHours: (clock.elapsedHours ?? 0) - (clock.deltaHours ?? 0) + turnHours };
+    // The turn now ends at another hour, so the nightfall rule reads it again.
+    ({ weather, nightfall } = withNightfall(commit.passWeather, clock));
   }
+  // The hook point for script weather sets: after the nightfall rule, so a set stands.
 
   const newEntityId = context.newEntityId ?? randomUUID;
   const held = (name: string) => [...context.heldNames ?? [], ...context.knownDiscoveredNames].some((known) => sameCharacterName(known, name));
@@ -307,7 +336,7 @@ export function withCodeWrites(commit: TurnCommit, writes: WorldWrites | undefin
   if (entities !== turn.entities) turn = { ...turn, entities };
 
   turn = withCodeLines(turn, writes, context.diaryNames);
-  return { ...commit, turn, discoveries, suggestedLocation, codeMove, turnHours, clock, codeWrites };
+  return { ...commit, turn, discoveries, suggestedLocation, codeMove, turnHours, clock, codeWrites, weather, nightfall };
 }
 
 /**

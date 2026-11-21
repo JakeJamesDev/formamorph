@@ -41,6 +41,7 @@ export const REQUEST_STATUS: Record<AIRequestType, RequestStatus> = {
   discoverEntity: { name: REQUEST_LABELS.discoverEntity, glyph: 'masks' },
   timePassed: { name: REQUEST_LABELS.timePassed, glyph: 'hourglass' },
   openingTime: { name: REQUEST_LABELS.openingTime, glyph: 'hourglass' },
+  weather: { name: REQUEST_LABELS.weather, glyph: 'sparkles' },
   sceneTags: { name: REQUEST_LABELS.sceneTags, glyph: 'sparkles' },
   inventory: { name: REQUEST_LABELS.inventory, glyph: 'sparkles' },
   descriptionSummary: { name: 'Response', glyph: 'sparkles' },

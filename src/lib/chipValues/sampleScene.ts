@@ -207,5 +207,6 @@ export function sampleChipScene(): ChipScene {
     notes: 'Traveler is looking for the person who sold them a false map.',
     // Day 3, evening on the default calendar.
     time: { elapsed: 58 },
+    weather: 'rain',
   };
 }

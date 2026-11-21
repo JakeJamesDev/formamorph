@@ -53,5 +53,6 @@
  "<TIME>": "Day 3, evening",
  "<TRAITS DESCRIPTION>": "Salvager's Eye: Spots the worth in a heap of junk, and rarely says so out loud.\nHabits:\n  Ways the traveler cannot help.\n  Light Sleeper: Wakes at the smallest sound, and is never quite rested.",
  "<TRAITS DESCRIPTION|markdown>": "- **Salvager's Eye:** Spots the worth in a heap of junk, and rarely says so out loud.\n- **Habits:** Ways the traveler cannot help.\n  - **Light Sleeper:** Wakes at the smallest sound, and is never quite rested.",
+ "<WEATHER>": "It is raining.",
  "<WORLD DESCRIPTION>": "A quiet stretch of coast where the tide leaves more behind than it takes. People here trade in salvage and rumor, and nobody asks where either came from."
 }

@@ -109,7 +109,8 @@ The game picks the start weather in this order. The first one that is set wins:
 
 1. The Weather of the opening that was drawn.
 2. The world's **Default Weather**.
-3. Clear.
+3. The weather the AI reads from page one.
+4. Clear.
 
 **Regenerate Narration** on page one picks the weather again from the new opening. If you take a kind off the world's allowed list, the [Test Bench](Test-Bench) flags an opening or Default Weather that still names it.
 

@@ -123,7 +123,7 @@ import { FeedbackDialog } from "@/components/menu/FeedbackDialog";
 import { toastFeedbackNotify } from "@/lib/feedbackToast";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import AuthService from "@/services/AuthService";
-import { useDevRoute } from "../lib/devRouter";
+import { registerDevHook, useDevRoute } from "../lib/devRouter";
 import { DEV_ATTACH_SAMPLE } from "../lib/devRoutes";
 import { loadDevFixture, speakerQuotesPassage } from "../lib/devFixtures";
 import { putSaveRecord } from "../components/modals/dbUtils";
@@ -236,7 +236,7 @@ import {
 } from "../lib/entityFollowing";
 import { positionsIn } from "../lib/entityPlaces";
 import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
-import { emptyTurnMaterial, type TurnMaterial, type TurnPassSubject, type TurnPlan, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
+import { emptyTurnMaterial, type TurnMaterial, type TurnPassSubject, type TurnPlan, type TurnPlanInput, type TurnPrompts, type TurnSettings, type TurnWeatherInput } from "../lib/turnPipeline/turnPlan";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { anatomyRegions, toAnatomyBlocks, type AnatomyRun } from "../lib/requestAnatomy";
 import type { PromptJumpTarget } from "../lib/promptJump";
@@ -323,7 +323,7 @@ import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import { LocationBackdrop } from "../components/game/LocationBackdrop";
 import { WeatherBackground } from "../components/game/WeatherBackground";
 import { weatherView } from "@/lib/weatherView";
-import { activeWeather, isDaylight } from "@/lib/weather";
+import { activeWeather, isDaylight, landedWeatherChange, offeredWeatherKinds, type WeatherChange } from "@/lib/weather";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { MusicOffIcon } from "../components/game/MusicOffIcon";
 import { AiSetupGate } from "../components/AiSetupGate";
@@ -733,6 +733,8 @@ const GameViewer = ({
     timePassedPrompt,
     openingTimePrompt,
     openingTimeUserPrompt,
+    weatherPrompt,
+    weatherUserPrompt,
     timePassedUserPrompt,
     concurrentTurnRequests,
     toolsEnabled,
@@ -860,6 +862,7 @@ const GameViewer = ({
     setGameTime,
     startHour,
     setStartHour,
+    weather,
     setWeather,
     playerStartLocationId,
     setPlayerStartLocationId,
@@ -955,6 +958,32 @@ const GameViewer = ({
     viewWeather,
     viewGameTime,
   } = useGameplay();
+  // Read by the location and landing sites between renders, so a move and a weather write in one batch agree.
+  const weatherRef = useRef(weather);
+  weatherRef.current = weather;
+  // The drawn Opening or the world authored the start weather, so page one needs no Weather Pass. Not saved:
+  // only the opening turn reads it.
+  // The ref serves a turn sent in the same handler; the state renders the Weather chip.
+  const startWeatherSetRef = useRef(false);
+  const [startWeatherSet, setStartWeatherSetState] = useState(false);
+  const setStartWeatherSet = useCallback((authored: boolean) => {
+    startWeatherSetRef.current = authored;
+    setStartWeatherSetState(authored);
+  }, []);
+  // The latest Weather Change, numbered so the same change twice still reads as new.
+  const [weatherChange, setWeatherChange] = useState<{ change: WeatherChange; seq: number } | null>(null);
+  /** Reports a Weather Change when what the player experiences differs, while the world's Weather is on. */
+  const reportWeather = useCallback((change: WeatherChange | null) => {
+    if (!change || !activeWeather(worldOverview)) return;
+    setWeatherChange((prev) => ({ change, seq: (prev?.seq ?? 0) + 1 }));
+  }, [worldOverview]);
+  // DEV: `__fmDev.weatherChange()` reads the latest Weather Change.
+  const weatherChangeRef = useRef(weatherChange);
+  weatherChangeRef.current = weatherChange;
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    return registerDevHook('weatherChange', () => weatherChangeRef.current);
+  }, []);
   const {
     show: showStatDeltas, add: addStatDeltas, hold: holdStatDeltas, settle: settleStatDeltas,
     drain: drainStatDeltas, drop: dropStatDeltas,
@@ -2094,7 +2123,7 @@ const GameViewer = ({
       };
       setIsGameStarted(false);
       // The new row's time and weather, or none: the restore above may hold what the pass read for the old page one.
-      applyResolvedStart(redraw.opening, worldOverview, { setStartHour, setWeather });
+      applyResolvedStart(redraw.opening, worldOverview, { setStartHour, setWeather, setStartWeatherSet });
       if (redraw.opening.kind === "narration") {
         pendingTurnRef.current = { action: OPENING_STAND_IN, writtenNarration: redrawText };
         setPendingTurnNonce((n) => n + 1);
@@ -2311,6 +2340,7 @@ const GameViewer = ({
 
   // Re-roll only the stat changes for the latest turn. Deltas are applied onto the pre-turn baseline
   // (not the current, already-changed stats), so repeated re-rolls don't stack.
+  // Named Turn Landing skip: a stat re-roll leaves the World Weather and reports no Weather Change.
   const handleRegenerateStats = (page = currentPage) => {
     const target = partialRegenTarget(page);
     if (!target || !statUpdatesEnabled || requestStatCount === 0) return;
@@ -2824,6 +2854,9 @@ const GameViewer = ({
     () => (timeContext && !openingHourPending ? { elapsed: gameTime, calendar } : null),
     [timeContext, openingHourPending, gameTime, calendar],
   );
+  // The World Weather as the Weather chip reads it: none while Weather is off, and none on page one while the
+  // Weather Pass is about to read it, so its answer is no restatement.
+  const chipWeather = activeWeather(worldOverview) && (isGameStarted || startWeatherSet) ? weather : null;
   // Kept while the names hold, so a streamed sentence leaves the live scene and its readers alone.
   const participants = useKeepEqualList(useMemo(
     () => recentParticipants(fullMessageHistory, IN_SCENE_TURNS),
@@ -2881,6 +2914,7 @@ const GameViewer = ({
     participants,
     notes: playerNotes,
     time: chipTime,
+    weather: chipWeather,
     placeholders: sharedPlaceholders,
     items: worldItems,
     itemInstances,
@@ -3034,6 +3068,8 @@ const GameViewer = ({
     timePassedUser: timePassedUserPrompt,
     openingTime: openingTimePrompt,
     openingTimeUser: openingTimeUserPrompt,
+    weather: weatherPrompt,
+    weatherUser: weatherUserPrompt,
     diary: diaryPrompt,
     discoverEntity: discoverEntityPrompt,
     discoverEntityUser: discoverEntityUserPrompt,
@@ -3113,6 +3149,16 @@ const GameViewer = ({
   const buildDiaryRequestRef = useRef(buildDiaryRequest);
   buildDiaryRequestRef.current = buildDiaryRequest;
 
+  /** What the Weather Pass reads this turn, or nothing while the world's Weather is off. Daylight is read at
+   *  the turn's start; on page one with the hour still unread, Bright Sun stays offered and the nightfall rule
+   *  corrects it. */
+  const turnWeather = (): TurnWeatherInput | undefined => {
+    const worldWeather = activeWeather(worldOverview);
+    if (!worldWeather) return undefined;
+    const daylight = openingHourPending || isDaylight(gameTime, calendar);
+    return { current: weather, offered: offeredWeatherKinds(worldWeather, daylight), startWeatherSet: startWeatherSetRef.current };
+  };
+
   /** The settings-derived booleans this turn's shape depends on. */
   const turnSettings = (): TurnSettings => ({
     thinkingMode,
@@ -3131,6 +3177,7 @@ const GameViewer = ({
     inventoryTextPass: !schemaAccepted(resolveEndpointForKind("inventory").reasoning),
     entityLocationTextPass: !schemaAccepted(resolveEndpointForKind("entityLocation").reasoning),
     clockTextPass: !schemaAccepted(resolveEndpointForKind("timePassed").reasoning),
+    weatherTextPass: !schemaAccepted(resolveEndpointForKind("weather").reasoning),
     imageAttachments,
     promptAttachments,
     language,
@@ -3339,13 +3386,24 @@ const GameViewer = ({
     else if (extraHours < 0) setGameTime((prev) => prev + extraHours);
     const codeTarget = final.codeMove && final.codeMove !== turn.location?.id ? locations.find((loc) => loc.id === final.codeMove) : undefined;
     if (codeTarget) {
-      changeLocation(codeTarget);
+      // The landing reports this move's Weather Change with the turn's weather below.
+      changeLocation(codeTarget, { reportWeather: false });
       addLogEntry(`Moved to location: ${codeTarget.name}`);
     }
     // A Go taken before this point is the turn's move, so "come along" joins it below.
     const earlyGo = earlyGoRef.current.to;
     earlyGoRef.current = { pending: false };
     const location = codeTarget ?? earlyGo ?? turn.location;
+    // The World Weather the turn leaves, after the pass and the nightfall rule. The move up to
+    // here already reported its own change, so this one compares from where the code move started.
+    if (final.weather !== null) {
+      reportWeather(landedWeatherChange({
+        before: weatherRef.current, after: final.weather, from: earlyGo ?? turn.location, to: location,
+        isOpeningTurn: commit.isOpeningTurn, nightfall: final.nightfall,
+      }));
+      weatherRef.current = final.weather;
+      setWeather(final.weather);
+    }
     const meets = final.codeWrites?.entities?.flatMap((write) => (write.kind === 'meet' ? [write.entity] : []));
     if (meets?.length) setMetEntities((met) => withMet(met, meets));
     // Every Unique entity is placed for the turn's end, after the replies and the code moved who they name.
@@ -3488,6 +3546,7 @@ const GameViewer = ({
       locationCount: locations.length,
       hasCurrentLocation: !!currentLocation,
       startHourSet: startHour !== null,
+      weather: turnWeather(),
       writtenNarration,
       attachments: resentAttachments ?? attachments,
       toldActions: told,
@@ -6234,7 +6293,14 @@ const GameViewer = ({
   }, [waitingPersona, personaPending, personaRef, settlePersonaTraits]);
 
   const changeLocation = useCallback(
-    (newLocation: GameLocation) => {
+    (newLocation: GameLocation, options: { reportWeather?: boolean } = {}) => {
+      if (options.reportWeather !== false) {
+        reportWeather(landedWeatherChange({
+          before: weatherRef.current, after: weatherRef.current, from: currentLocationRef.current, to: newLocation,
+          isOpeningTurn: !isGameStarted, nightfall: false,
+        }));
+      }
+      currentLocationRef.current = newLocation;
       setCurrentLocation(newLocation);
       placeCast(positionWorldAt(storyNow, newLocation.id));
       // Read in the updater, so followers a move offer adds after this call keep their rows.
@@ -6246,7 +6312,7 @@ const GameViewer = ({
         setAmbientSound(null);
       }
     },
-    [setCurrentLocation, placeCast, positionWorldAt, storyNow, setVisibleEntities, currentFollowers, allEntities],
+    [setCurrentLocation, placeCast, positionWorldAt, storyNow, setVisibleEntities, currentFollowers, allEntities, reportWeather, isGameStarted],
   );
   /** The travel gate from where the player stands (Q3). */
   const canEnterFromHere = useCallback((id: string) => inPlay.canEnter(currentLocation?.id, id), [inPlay, currentLocation]);
@@ -6337,7 +6403,8 @@ const GameViewer = ({
         location: authoredLocation, stats: opening.traitState.stats, placeholders, rolls: sessionRolls,
       }).world;
       if (location && authoredLocation) {
-        changeLocation(location);
+        // A start fires no Weather Change.
+        changeLocation(location, { reportWeather: false });
         // A log line is frozen the moment it is written.
         addLogEntry(`Starting in location: ${resolveWith(openingPins, authoredLocation.name)}`);
       }
@@ -6407,7 +6474,7 @@ const GameViewer = ({
         startLocationId: location?.id ?? null,
       };
       // Set before page one is written, so its clock line carries the authored hour.
-      applyResolvedStart(drawn.opening, worldOverview, { setStartHour, setWeather });
+      applyResolvedStart(drawn.opening, worldOverview, { setStartHour, setWeather, setStartWeatherSet });
       const openingText = resolveOpening(drawn.opening.text, {
         extraPins: openingPins, persona: drawnPersona, rolls: openingRolls, libraryAdditions: [...picked, ...libraryBooks], owner: drawnOwner,
       });

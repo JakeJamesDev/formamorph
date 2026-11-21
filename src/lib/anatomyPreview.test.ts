@@ -396,7 +396,7 @@ const SYSTEM_TEMPLATE: Record<string, string> = {
   narration: 'system', thinking: 'thinking', director: 'director', character: 'character',
   storyboard: 'storyboard', choices: 'choices', statupdates: 'statUpdates',
   location: 'locationChange', narratedmove: 'narratedMove', entitylocation: 'entityLocation', summary: 'summary', diary: 'diary',
-  timepassed: 'timePassed', timeopening: 'openingTime', scenetags: 'sceneTags',
+  timepassed: 'timePassed', timeopening: 'openingTime', weather: 'weather', scenetags: 'sceneTags',
   discover: 'discoverEntity', milestone: 'milestoneSelect', inventory: 'inventory',
 };
 

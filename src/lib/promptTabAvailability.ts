@@ -40,6 +40,8 @@ export function computePromptTabAvailability(flags: PromptTabFlags): Record<stri
     storyboard: thinkingMode === 'staged',
     timepassed: aiClock,
     timeopening: aiClock,
+    // The world's Weather switch governs the pass, so no setting hides it.
+    weather: true,
     scenetags: sceneImages,
     // Due in any world with items, so no setting hides it.
     inventory: true,

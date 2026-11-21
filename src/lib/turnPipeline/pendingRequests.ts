@@ -3,7 +3,7 @@ import type { AIRequestType } from '@/types';
 /** Which in-flight request the status label names first: what the player waits on before background work. */
 const LABEL_ORDER: readonly AIRequestType[] = [
   'narration', 'thinking', 'director', 'character', 'storyboard', 'locationChange', 'narratedMove', 'entityLocation',
-  'choices', 'statUpdates', 'inventory', 'discoverEntity', 'timePassed', 'openingTime',
+  'choices', 'statUpdates', 'inventory', 'discoverEntity', 'timePassed', 'openingTime', 'weather',
   'summary', 'milestoneSelect', 'diary', 'sceneTags',
 ];
 

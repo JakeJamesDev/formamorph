@@ -46,6 +46,7 @@ describe('default prompts carry the expected variable chips', () => {
       '<PERSONA|norange.nodescription.markdown>',
       '<NOTES>',
       '<LOCATION|markdown>',
+      '<WEATHER>',
       '<LOCATION|sublocations.summary.markdown>',
       '<LOCATION|reachable.summary.markdown>',
       '<ENTITIES|norange.nodescription.markdown>',

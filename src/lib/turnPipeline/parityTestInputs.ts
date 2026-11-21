@@ -17,7 +17,7 @@ import {
   defaultStatUpdatesPrompt, defaultStatUpdatesUserPrompt, textStatUpdatesPrompt, textStatUpdatesUserPrompt,
   defaultSummaryPrompt, defaultSummaryUserPrompt,
   defaultMilestoneSelectPrompt, defaultMilestoneSelectUserPrompt,
-  defaultThinkingPrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt,
+  defaultThinkingPrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultWeatherPrompt, defaultWeatherUserPrompt,
 } from '@/components/game/GamePrompts';
 
 /**
@@ -51,7 +51,7 @@ export const PARITY_SETTINGS: TurnSettings = {
   describeCharacters: false,
   // The recorded world had no items, so no inventory request was dispatched.
   inventoryDue: false,
-  inventoryTextPass: false, entityLocationTextPass: false, clockTextPass: false,
+  inventoryTextPass: false, entityLocationTextPass: false, clockTextPass: false, weatherTextPass: false,
   imageAttachments: false,
   promptAttachments: {},
   language: 'English',
@@ -88,6 +88,8 @@ export const PARITY_PROMPTS: TurnPrompts = {
   timePassedUser: defaultTimePassedUserPrompt,
   openingTime: defaultOpeningTimePrompt,
   openingTimeUser: defaultOpeningTimeUserPrompt,
+  weather: defaultWeatherPrompt,
+  weatherUser: defaultWeatherUserPrompt,
   diary: defaultDiaryPrompt,
   discoverEntity: defaultDiscoverEntityPrompt,
   discoverEntityUser: defaultDiscoverEntityUserPrompt,

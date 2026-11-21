@@ -22,6 +22,7 @@ import { stripMarkdown } from '../stripMarkdown';
 import { buildTraitContext } from '../traitTree';
 import type { Entity, PersonaRef, PlayerStat } from '@/types';
 import type { ChipScene } from './chipScene';
+import { weatherLine } from '../weather';
 
 const WORLD = variableForToken('<WORLD DESCRIPTION>')!;
 const STATS = variableForToken('<STATS DESCRIPTION>')!;
@@ -30,6 +31,7 @@ const PERSONA = variableForToken('<PERSONA>')!;
 const LOCATION = variableForToken('<LOCATION>')!;
 const NOTES = variableForToken('<NOTES>')!;
 const TIME = variableForToken('<TIME>')!;
+const WEATHER = variableForToken('<WEATHER>')!;
 const DICTIONARY = variableForToken('<DICTIONARY>')!;
 const ENTITIES = variableForToken('<ENTITIES>')!;
 const INVENTORY = variableForToken('<INVENTORY>')!;
@@ -120,6 +122,7 @@ export function chipValues(scene: ChipScene): ValueLookup {
     [TIME, chipFamilyValues(TIME.token, (sel) => (scene.time
       ? formatStoryTime(scene.time.elapsed, scene.time.calendar, TIME_CLOCK_STYLES[sel.clock ?? ''] ?? 'daypart', sel.day !== 'noday')
       : NONE_PLACEHOLDER))],
+    [WEATHER, chipFamilyValues(WEATHER.token, () => (scene.weather ? weatherLine(scene.weather, !!location?.sheltered) : NONE_PLACEHOLDER))],
     [LOCATION, scopedChipValues(LOCATION.token, {
       '': (opts) => buildLocationContext(location, opts),
       sublocations: (opts) => buildSublocationsContext(location, locations, opts),

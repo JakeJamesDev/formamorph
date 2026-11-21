@@ -32,14 +32,16 @@ export function resolveStart(opening: Opening | null | undefined, overview: Over
 }
 
 /** Resolves the start and writes it into the game: the hour as authored (or null), the weather as authored (or
- *  Clear until the page-one read can decide). New Game and a redraw both go through this one call. */
+ *  Clear until the page-one read decides), and whether a weather was authored, which the page-one read plans
+ *  from. New Game and a redraw both go through this one call. */
 export function applyResolvedStart(
   opening: Opening | null | undefined, overview: Overview,
-  set: { setStartHour: (hour: number | null) => void; setWeather: (weather: WeatherKind) => void },
+  set: { setStartHour: (hour: number | null) => void; setWeather: (weather: WeatherKind) => void; setStartWeatherSet: (set: boolean) => void },
 ): ResolvedStart {
   const start = resolveStart(opening, overview);
   set.setStartHour(start.startHour);
   set.setWeather(start.weather ?? 'clear');
+  set.setStartWeatherSet(start.weather !== null);
   return start;
 }
 

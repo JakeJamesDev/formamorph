@@ -18,6 +18,9 @@ export const isWeatherKind = (value: unknown): value is WeatherKind =>
 export const activeWeather = (overview: Pick<WorldOverview, 'weather'> | null | undefined): WorldWeather | null =>
   overview?.weather?.on ? overview.weather : null;
 
+/** Every kind, Clear first. */
+export const ALL_WEATHER_KINDS: readonly WeatherKind[] = ['clear', ...ALLOWED_KINDS];
+
 /** The kinds the world allows, Clear first: Clear is always allowed. */
 export const allowedWeatherKinds = (weather: WorldWeather | null | undefined): WeatherKind[] =>
   ['clear', ...ALLOWED_KINDS.filter((kind) => weather?.allowed?.includes(kind))];
@@ -33,6 +36,58 @@ export const experiencedWeather = (
   worldWeather: WeatherKind | undefined,
   location: Pick<GameLocation, 'sheltered'> | null | undefined,
 ): WeatherKind | null => (location?.sheltered ? null : worldWeather ?? 'clear');
+
+const WEATHER_SENTENCES: Record<WeatherKind, string> = {
+  clear: 'The sky is clear.',
+  rain: 'It is raining.',
+  snow: 'It is snowing.',
+  storm: 'A storm is raging.',
+  brightSun: 'The sun is bright overhead.',
+};
+
+/** The narrator's weather line: the World Weather, and a Sheltered note while there is weather to shelter from. */
+export const weatherLine = (weather: WeatherKind, sheltered: boolean): string =>
+  (sheltered && weather !== 'clear' ? `${WEATHER_SENTENCES[weather]} You are under shelter from it.` : WEATHER_SENTENCES[weather]);
+
+/** The kinds the Weather Pass may answer with: the allowed kinds, without Bright Sun outside daylight. */
+export const offeredWeatherKinds = (weather: WorldWeather | null | undefined, daylight: boolean): WeatherKind[] =>
+  allowedWeatherKinds(weather).filter((kind) => daylight || kind !== 'brightSun');
+
+/** The nightfall rule: Bright Sun turns into Clear when the turn ends outside daylight. */
+export const afterNightfall = (weather: WeatherKind, endsInDaylight: boolean): WeatherKind =>
+  (weather === 'brightSun' && !endsInDaylight ? 'clear' : weather);
+
+/** A change in what the player experiences. `foreground` says whether it may play the full-screen effect. */
+export interface WeatherChange {
+  from: WeatherKind | null;
+  to: WeatherKind | null;
+  foreground: boolean;
+}
+
+/** The Weather Change between two experienced weathers, or null when nothing changed. A change into Clear or
+ *  Shelter, on the opening turn, or by the nightfall rule never fires foreground. */
+export function weatherChangeOf({ before, after, isOpeningTurn, nightfall = false }: {
+  before: WeatherKind | null;
+  after: WeatherKind | null;
+  isOpeningTurn: boolean;
+  nightfall?: boolean;
+}): WeatherChange | null {
+  if (before === after) return null;
+  return { from: before, to: after, foreground: after !== null && after !== 'clear' && !isOpeningTurn && !nightfall };
+}
+
+/** The Weather Change a landed turn reports: from what the player felt where the turn's last reported move left
+ *  them, to the turn's World Weather where it ends. */
+export function landedWeatherChange({ before, after, from, to, isOpeningTurn, nightfall }: {
+  before: WeatherKind;
+  after: WeatherKind;
+  from: Pick<GameLocation, 'sheltered'> | null | undefined;
+  to: Pick<GameLocation, 'sheltered'> | null | undefined;
+  isOpeningTurn: boolean;
+  nightfall: boolean;
+}): WeatherChange | null {
+  return weatherChangeOf({ before: experiencedWeather(before, from), after: experiencedWeather(after, to), isOpeningTurn, nightfall });
+}
 
 /** What a New Game or a redraw starts with, resolved from the drawn Opening and the world. `weather` is null when
  *  nothing is authored, so the page-one read can decide; it is also null while Weather is off. */

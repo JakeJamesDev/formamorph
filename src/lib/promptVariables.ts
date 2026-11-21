@@ -68,7 +68,7 @@ export interface PromptVariable {
 }
 
 /** Every prompt editor maps to one of these kinds (mirrors the Settings → Output → Turn Extras toggles). */
-export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'narratedmove' | 'entitylocation' | 'summary' | 'milestone' | 'diary' | 'director' | 'character' | 'storyboard' | 'timepassed' | 'timeopening' | 'scenetags' | 'discover' | 'inventory';
+export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'narratedmove' | 'entitylocation' | 'summary' | 'milestone' | 'diary' | 'director' | 'character' | 'storyboard' | 'timepassed' | 'timeopening' | 'weather' | 'scenetags' | 'discover' | 'inventory';
 
 const SUMMARY_VARIANT: PromptVariant = {
   id: 'summary',
@@ -295,6 +295,10 @@ const TIME: PromptVariable = {
   token: '<TIME>', label: 'Time', color: HIGHLIGHT_PALETTE[10], affixable: true, axes: [TIME_CLOCK_AXIS, TIME_DAY_AXIS],
 };
 
+// The World Weather as one line, with a Sheltered note. Renders the uniform placeholder while the world's
+// Weather is off, so its placement disappears.
+const WEATHER: PromptVariable = { token: '<WEATHER>', label: 'Weather', color: HIGHLIGHT_PALETTE[16], affixable: true };
+
 // Scene-image tag pass only: the characters the composer has put in frame, so the action tags describe
 // those people and no others. A value token like <NARRATION> — never a context block.
 const IN_FRAME: PromptVariable = { token: '<IN FRAME>', label: 'In Frame', color: HIGHLIGHT_PALETTE[8] };
@@ -326,11 +330,11 @@ export const NOW_LINE_VARIABLES: PromptVariable[] = [LOCATION, ENTITIES, TIME, N
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
   WORLD, STATS, TRAITS, PERSONA, LOCATION, ENTITIES, INVENTORY, NOTES, DICTIONARY, LENGTH, MARKDOWN, ACTIVE_CHARACTER, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
-  TIME, IN_FRAME, LANGUAGE, FIRST_PASSAGE, LATER_MATERIAL, REMEMBERED_MOMENTS, NEW_MOMENTS, MOVE_OPTIONS, MOVE_STATE,
+  TIME, WEATHER, IN_FRAME, LANGUAGE, FIRST_PASSAGE, LATER_MATERIAL, REMEMBERED_MOMENTS, NEW_MOMENTS, MOVE_OPTIONS, MOVE_STATE,
 ];
 
 /** The context chips every system prompt can reference; GameViewer substitutes them uniformly. */
-const CONTEXT_VARS: PromptVariable[] = [WORLD, STATS, TRAITS, PERSONA, LOCATION, ENTITIES, INVENTORY, NOTES, TIME];
+const CONTEXT_VARS: PromptVariable[] = [WORLD, STATS, TRAITS, PERSONA, LOCATION, ENTITIES, INVENTORY, NOTES, TIME, WEATHER];
 
 /** Which variables each prompt's toolbar offers. Every kind gets the shared context chips (even when its
  *  default text doesn't use them); some add their own extras (narration's length/markdown, character's name). */
@@ -351,6 +355,7 @@ export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
   storyboard: [...CONTEXT_VARS],
   timepassed: [...CONTEXT_VARS],
   timeopening: [...CONTEXT_VARS],
+  weather: [...CONTEXT_VARS],
   scenetags: [...CONTEXT_VARS],
   discover: [...CONTEXT_VARS],
   inventory: [...CONTEXT_VARS],
@@ -373,6 +378,7 @@ export const PROMPT_KIND_USER_VARIABLES: Partial<Record<PromptKind, PromptVariab
   // The opening pass runs on turn one, where the player's action is "start the game" — only the narration
   // carries any time signal, so the action chip is deliberately not offered.
   timeopening: [NARRATION],
+  weather: [PLAYER_ACTION, NARRATION],
   // The tag pass reads the prose of this turn and who the composer put in frame. The player's action is
   // deliberately absent: what was attempted is not what the picture shows.
   scenetags: [NARRATION, IN_FRAME],

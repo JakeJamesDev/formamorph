@@ -50,6 +50,8 @@ export const PROMPT_TEXT_KEYS = [
   'timePassedUserPrompt',
   'openingTimePrompt',
   'openingTimeUserPrompt',
+  'weatherPrompt',
+  'weatherUserPrompt',
   'sceneTagsPrompt',
   'sceneTagsUserPrompt',
   'discoverEntityPrompt',

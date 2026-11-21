@@ -958,7 +958,7 @@ function useProvideSettings() {
     systemPrompt, narrationUserPrompt, recapUserPrompt, rehydrateUserPrompt, oocDirectivePrompt, actionListPrompt, choicesPrompt, statUpdatesPrompt, locationChangePromptText, thinkingPrompt, summaryPrompt,
     diaryPrompt, directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt,
     choicesUserPrompt, statUpdatesUserPrompt, locationChangeUserPrompt, narratedMovePrompt, narratedMoveUserPrompt, entityLocationPrompt, entityLocationUserPrompt, summaryUserPrompt, nowLinePrompt, timePassedPrompt, timePassedUserPrompt,
-    openingTimePrompt, openingTimeUserPrompt, sceneTagsPrompt, sceneTagsUserPrompt, discoverEntityPrompt, discoverEntityUserPrompt,
+    openingTimePrompt, openingTimeUserPrompt, weatherPrompt, weatherUserPrompt, sceneTagsPrompt, sceneTagsUserPrompt, discoverEntityPrompt, discoverEntityUserPrompt,
     milestoneSelectPrompt, milestoneSelectUserPrompt, inventoryPrompt, inventoryUserPrompt,
   } = promptValues;
   const setSystemPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'systemPrompt', v));
@@ -992,6 +992,8 @@ function useProvideSettings() {
   const setTimePassedUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'timePassedUserPrompt', v));
   const setOpeningTimePrompt = (v: string) => editPresetStore((s) => updateValue(s, 'openingTimePrompt', v));
   const setOpeningTimeUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'openingTimeUserPrompt', v));
+  const setWeatherPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'weatherPrompt', v));
+  const setWeatherUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'weatherUserPrompt', v));
   const setSceneTagsPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'sceneTagsPrompt', v));
   const setSceneTagsUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'sceneTagsUserPrompt', v));
   const setDiscoverEntityPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'discoverEntityPrompt', v));
@@ -2088,6 +2090,10 @@ function useProvideSettings() {
     setOpeningTimePrompt,
     openingTimeUserPrompt,
     setOpeningTimeUserPrompt,
+    weatherPrompt,
+    setWeatherPrompt,
+    weatherUserPrompt,
+    setWeatherUserPrompt,
     sceneTagsPrompt,
     setSceneTagsPrompt,
     sceneTagsUserPrompt,

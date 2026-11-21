@@ -1,5 +1,5 @@
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
-import type { TurnPlanInput, TurnPrompts, TurnSettings } from './turnPlan';
+import type { TurnPlanInput, TurnPrompts, TurnSettings, TurnWeatherInput } from './turnPlan';
 
 /**
  * Shared inputs for the Turn Pipeline's tests. The prompt templates carry recognizable literal text around
@@ -36,6 +36,8 @@ export const TEST_PROMPTS: TurnPrompts = {
   timePassedUser: 'Time: <PLAYER ACTION> | <NARRATION>',
   openingTime: 'OPENING <WORLD DESCRIPTION>',
   openingTimeUser: 'Opening: <NARRATION>',
+  weather: 'WEATHER <WORLD DESCRIPTION>',
+  weatherUser: 'Weather: <PLAYER ACTION> | <NARRATION>',
   diary: 'DIARY <WORLD DESCRIPTION>',
   discoverEntity: 'DISCOVER <WORLD DESCRIPTION>',
   discoverEntityUser: 'Note: <CHARACTER NAME>\n\n<FIRST PASSAGE>\n\n<LATER MATERIAL>',
@@ -61,12 +63,15 @@ export const TEST_SETTINGS: TurnSettings = {
   describeCharacters: true,
   // The parity capture's world had no items.
   inventoryDue: false,
-  inventoryTextPass: false, entityLocationTextPass: false, clockTextPass: false,
+  inventoryTextPass: false, entityLocationTextPass: false, clockTextPass: false, weatherTextPass: false,
   imageAttachments: false,
   promptAttachments: {},
   language: 'English',
   stripLinksAndImages: false,
 };
+
+/** A world with Weather on, raining, allowing Rain and Storm; the start weather was not authored. */
+export const RAIN_WEATHER: TurnWeatherInput = { current: 'rain', offered: ['clear', 'rain', 'storm'], startWeatherSet: false };
 
 /** A mid-story turn with somewhere to go, overridable field by field. */
 export const testInput = (

@@ -32,10 +32,12 @@ Each location's background is on its **Media** tab. See [World Editor: Locations
 
 A world can have weather. It is off until you turn it on. A world with weather has one weather at a time: **Clear**, **Rain**, **Snow**, **Storm** or **Bright Sun**. A save keeps the current weather.
 
+The story changes the weather. After each turn, the AI reads what happened and picks the new weather from the kinds you allow. A storm in a figure of speech or a memory changes nothing. Bright Sun turns Clear when night falls. The AI narrator is told the current weather every turn.
+
 1. Open the **Overview** tab.
 2. Check **Weather**.
 3. Under **Allowed Weather**, check the kinds the world can have. Clear is always allowed.
-4. To start games in one weather, pick it under **Default Weather**. Not set, a game starts Clear.
+4. To start games in one weather, pick it under **Default Weather**. Leave it blank to let the AI read the weather from page one.
 5. Select **Save**.
 
 To mark a place indoors, check **Sheltered** on the location's **Details** tab. It shows while Weather is on. A child location is not Sheltered unless you check it too.

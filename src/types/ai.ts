@@ -91,6 +91,7 @@ export type AIRequestType =
   | 'discoverEntity'
   | 'timePassed'
   | 'openingTime'
+  | 'weather'
   | 'sceneTags'
   | 'inventory'
   | EditorRequestType;

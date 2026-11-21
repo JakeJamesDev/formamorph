@@ -20,6 +20,7 @@ const SPEC: Record<AIRequestType, [label: string, glyph: string]> = {
   entityLocation: ['Generating Entity Location…', 'mapPin'],
   timePassed: ['Generating Clock…', 'hourglass'],
   openingTime: ['Generating Opening…', 'hourglass'],
+  weather: ['Generating Weather…', 'sparkles'],
   sceneTags: ['Generating Scene Tags…', 'sparkles'],
   inventory: ['Generating Inventory…', 'sparkles'],
   descriptionSummary: ['Generating Response…', 'sparkles'],

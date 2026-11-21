@@ -63,7 +63,7 @@ export const WorldWeatherFields = () => {
                 ariaLabel="Default Weather"
               />
             </div>
-            <Hint>Sets the start weather for openings with no Weather</Hint>
+            <Hint>Openings with no Weather use it. Leave it blank to let the AI pick.</Hint>
           </div>
         </>
       )}

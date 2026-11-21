@@ -21,6 +21,7 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 <PERSONA|norange.nodescription.markdown|header="Player Character">\
 <NOTES|format=markdown|header="Important Player Notes">\
 <LOCATION|markdown|header="Current Location">\
+<WEATHER|format=markdown|header="Weather">\
 <LOCATION|sublocations.summary.markdown|header="Sublocations">\
 <LOCATION|reachable.summary.markdown|header="Reachable Locations">\
 <ENTITIES|norange.nodescription.markdown|pre="An entity is a character, creature, or object. These entries describe entities that may appear in the current location.\n\n"|header="Entities in the Current Location">\
@@ -470,6 +471,24 @@ export const defaultTimePassedUserPrompt = `<PLAYER ACTION|format=markdown|heade
 <NARRATION|format=markdown|header="What happened">
 How much in-world time passed?`;
 
+// The Weather Pass (requestType 'weather'): after the narration while Weather is on, and on page one when no
+// weather was authored. The reply format (lib/weatherPass) carries the offered kinds and a yes/no `shown` gate:
+// without the gate, metaphor and reported weather changed the sky 0/12; with it, 12/12 hold (cloud, schema).
+// The figure-of-speech line holds reported weather on the text request (12/12 vs 0/12 ablated).
+// Probe: testing/baseline/harness/weather-pass-probe.cli.ts.
+export const defaultWeatherPrompt = `You track the weather in a story. You are given what the character did and what happened next.
+
+Decide what the weather is at the end of the passage.
+
+- Name a weather when the passage shows it in the scene, here and now: rain falling, snow coming down, a storm breaking, the sky clearing, the sun blazing.
+- Weather in a figure of speech, a memory, a dream, a story someone tells, a forecast or a remark about another place is not the scene's weather.
+- When the passage leaves the sky as it was, the answer is no change.`;
+
+// The Weather Pass's user message, with the same tokens as the other post-narration extractors.
+export const defaultWeatherUserPrompt = `<PLAYER ACTION|format=markdown|header="What the character did">\
+<NARRATION|format=markdown|header="What happened">
+What is the weather at the end of this passage?`;
+
 // Appended to the game-text prompt for inline thinking (thinkingMode === 'inline'). The <think>
 // block is stripped from the narration before the player sees it.
 export const INLINE_THINKING_DIRECTIVE = `
@@ -653,6 +672,8 @@ export const PROMPT_TEXT_DEFAULTS: PromptValues = {
   timePassedUserPrompt: defaultTimePassedUserPrompt,
   openingTimePrompt: defaultOpeningTimePrompt,
   openingTimeUserPrompt: defaultOpeningTimeUserPrompt,
+  weatherPrompt: defaultWeatherPrompt,
+  weatherUserPrompt: defaultWeatherUserPrompt,
   sceneTagsPrompt: defaultSceneTagsPrompt,
   sceneTagsUserPrompt: defaultSceneTagsUserPrompt,
   discoverEntityPrompt: defaultDiscoverEntityPrompt,

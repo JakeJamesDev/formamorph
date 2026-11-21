@@ -1,5 +1,6 @@
 import type {
   Connection, Currency, DictionaryEntry, Entity, GameLocation, Item, ItemInstance, PersonaRef, Placement, RuntimeItem, Placeholder, PlayerStat, Trait, TraitGroup,
+  WeatherKind,
 } from '@/types';
 import type { slotsInForce } from '../bodies';
 import type { OwnedStatsInForce, OwnedTraitsInForce, StrangerLabels } from '../locationContext';
@@ -84,6 +85,8 @@ export interface ChipScene {
   notes: string;
   /** The story clock, or none while the clock is off or its opening hour is unknown. */
   time: ChipSceneTime | null;
+  /** The World Weather, or none while the world's Weather is off or page one is about to read it. */
+  weather?: WeatherKind | null;
   /** Placeholder resolution, applied to every value before it reaches a prompt. */
   resolve: (text: string) => string;
   /** An entity's own text with that entity as the Entity Name; `resolve` reads it when absent. */

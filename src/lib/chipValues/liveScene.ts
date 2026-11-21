@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import type {
   Connection, Currency, Entity, EntityPositions, GameLocation, GenericStates, InventoryOwner, UniqueStates, Item, ItemInstance, Placement, RuntimeItem, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
-  WorldOption, WorldOptionValues,
+  WeatherKind, WorldOption, WorldOptionValues,
 } from '@/types';
 import { movementStates } from '../movementTag';
 import type { Course } from '../positionEngine';
@@ -68,6 +68,8 @@ export interface LiveSceneSources {
   participants: string[];
   notes: string;
   time: ChipSceneTime | null;
+  /** The World Weather, or none while the world's Weather is off or page one is about to read it. */
+  weather?: WeatherKind | null;
   /** The world's shared placeholders. */
   placeholders: readonly Placeholder[];
   /** The world's authored items. None when absent. */
@@ -191,6 +193,7 @@ export function liveChipScene(
     lore: [],
     notes: sources.notes,
     time: sources.time && box?.elapsed !== undefined ? { ...sources.time, elapsed: box.elapsed } : sources.time,
+    weather: sources.weather ?? null,
     resolve: box?.resolve ?? sources.resolve,
     resolveEntity,
     placeholders: sources.placeholders,

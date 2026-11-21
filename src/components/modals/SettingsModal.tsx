@@ -480,6 +480,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     setOpeningTimePrompt,
     openingTimeUserPrompt,
     setOpeningTimeUserPrompt,
+    weatherPrompt,
+    setWeatherPrompt,
+    weatherUserPrompt,
+    setWeatherUserPrompt,
     sceneTagsPrompt,
     setSceneTagsPrompt,
     sceneTagsUserPrompt,
@@ -781,6 +785,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     milestone: { label: PROMPT_LABELS.milestone, value: milestoneSelectPrompt, def: styledDefaults.milestoneSelectPrompt, set: setMilestoneSelectPrompt, variables: PROMPT_KIND_VARIABLES.milestone },
     timepassed: { label: PROMPT_LABELS.timepassed, value: timePassedPrompt, def: styledDefaults.timePassedPrompt, set: setTimePassedPrompt, variables: PROMPT_KIND_VARIABLES.timepassed },
     timeopening: { label: PROMPT_LABELS.timeopening, value: openingTimePrompt, def: styledDefaults.openingTimePrompt, set: setOpeningTimePrompt, variables: PROMPT_KIND_VARIABLES.timeopening },
+    weather: { label: PROMPT_LABELS.weather, value: weatherPrompt, def: styledDefaults.weatherPrompt, set: setWeatherPrompt, variables: PROMPT_KIND_VARIABLES.weather },
     scenetags: { label: PROMPT_LABELS.scenetags, value: sceneTagsPrompt, def: styledDefaults.sceneTagsPrompt, set: setSceneTagsPrompt, variables: PROMPT_KIND_VARIABLES.scenetags },
     diary: { label: PROMPT_LABELS.diary, value: diaryPrompt, def: styledDefaults.diaryPrompt, set: setDiaryPrompt, variables: PROMPT_KIND_VARIABLES.diary },
     director: { label: PROMPT_LABELS.director, value: directorPrompt, def: styledDefaults.directorPrompt, set: setDirectorPrompt, variables: PROMPT_KIND_VARIABLES.director },
@@ -874,6 +879,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     milestone: { value: milestoneSelectUserPrompt, set: setMilestoneSelectUserPrompt, def: styledDefaults.milestoneSelectUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.milestone ?? NO_VARIABLES },
     timepassed: { value: timePassedUserPrompt, set: setTimePassedUserPrompt, def: styledDefaults.timePassedUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.timepassed ?? NO_VARIABLES },
     timeopening: { value: openingTimeUserPrompt, set: setOpeningTimeUserPrompt, def: styledDefaults.openingTimeUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.timeopening ?? NO_VARIABLES },
+    weather: { value: weatherUserPrompt, set: setWeatherUserPrompt, def: styledDefaults.weatherUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.weather ?? NO_VARIABLES },
     director: { value: directorUserPrompt, set: setDirectorUserPrompt, def: styledDefaults.directorUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.director ?? NO_VARIABLES },
     scenetags: { value: sceneTagsUserPrompt, set: setSceneTagsUserPrompt, def: styledDefaults.sceneTagsUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.scenetags ?? NO_VARIABLES },
     discover: { value: discoverEntityUserPrompt, set: setDiscoverEntityUserPrompt, def: styledDefaults.discoverEntityUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.discover ?? NO_VARIABLES },
@@ -980,6 +986,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
       timePassedUser: timePassedUserPrompt,
       openingTime: openingTimePrompt,
       openingTimeUser: openingTimeUserPrompt,
+      weather: weatherPrompt,
+      weatherUser: weatherUserPrompt,
       diary: diaryPrompt,
       sceneTags: sceneTagsPrompt,
       sceneTagsUser: sceneTagsUserPrompt,
@@ -992,7 +1000,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     characterPrompt, storyboardPrompt, narrationUserPrompt, oocDirectivePrompt, actionListPrompt,
     choicesPrompt, choicesUserPrompt, statUpdatesPrompt, statUpdatesUserPrompt, statTextPrompts,
     summaryPrompt, summaryUserPrompt, timePassedPrompt, timePassedUserPrompt,
-    openingTimePrompt, openingTimeUserPrompt, diaryPrompt, sceneTagsPrompt, sceneTagsUserPrompt,
+    openingTimePrompt, openingTimeUserPrompt, weatherPrompt, weatherUserPrompt, diaryPrompt, sceneTagsPrompt, sceneTagsUserPrompt,
     discoverEntityPrompt, discoverEntityUserPrompt, milestoneSelectPrompt, milestoneSelectUserPrompt, inventoryPrompt, inventoryUserPrompt,
   ]);
 
@@ -1946,6 +1954,21 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                   />
                 </TabsContent>
               )}
+
+              <TabsContent value="weather" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
+                <PromptField
+                  value={showingUser ? weatherUserPrompt : weatherPrompt}
+                  onChange={showingUser ? setWeatherUserPrompt : setWeatherPrompt}
+                  variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.weather ?? []) : PROMPT_KIND_VARIABLES.weather}
+                  previewValues={effectivePreviewValues}
+                  sampleData={usingSampleValues}
+                  readOnlyReason={readOnlyReason}
+                  onRequestEdit={duplicatePreset}
+                  fullscreen={promptsFullscreen}
+                  onRequestFullscreen={promptsMorph.toggle}
+                  readOnly={activePresetIsBuiltIn}
+                />
+              </TabsContent>
 
               {!imageGenDisabled && (
                 <TabsContent value="scenetags" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">

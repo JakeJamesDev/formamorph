@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import type { Opening, WorldOverview, WorldWeather } from '@/types';
-import { activeWeather, allowedWeatherKinds, authoredStartWeather, experiencedWeather, savedWeather } from './weather';
+import {
+  activeWeather, allowedWeatherKinds, authoredStartWeather, experiencedWeather, offeredWeatherKinds, savedWeather, weatherChangeOf, weatherLine,
+} from './weather';
 
 const overview = (weather?: WorldWeather): WorldOverview => ({ name: 'Fen', ...(weather ? { weather } : {}) } as WorldOverview);
 const opening = (weather?: Opening['weather']): Opening => ({ id: 'o', text: 'Start.', kind: 'action', ...(weather ? { weather } : {}) });
@@ -72,5 +74,39 @@ describe('the saved weather', () => {
     expect(savedWeather('clear')).toBeUndefined();
     expect(savedWeather(null)).toBeUndefined();
     expect(savedWeather('storm')).toBe('storm');
+  });
+});
+
+describe('the narrator weather line', () => {
+  it('names the World Weather, and adds the Sheltered note only while there is weather to shelter from', () => {
+    expect(weatherLine('rain', false)).toBe('It is raining.');
+    expect(weatherLine('storm', true)).toBe('A storm is raging. You are under shelter from it.');
+    expect(weatherLine('clear', true)).toBe('The sky is clear.');
+  });
+});
+
+describe('the Weather Change', () => {
+  it('is null when the experienced weather holds', () => {
+    expect(weatherChangeOf({ before: 'rain', after: 'rain', isOpeningTurn: false })).toBeNull();
+    expect(weatherChangeOf({ before: null, after: null, isOpeningTurn: false })).toBeNull();
+  });
+
+  it('fires foreground into a kind, but not on the opening turn or by the nightfall rule', () => {
+    expect(weatherChangeOf({ before: 'clear', after: 'snow', isOpeningTurn: false })?.foreground).toBe(true);
+    expect(weatherChangeOf({ before: 'clear', after: 'snow', isOpeningTurn: true })?.foreground).toBe(false);
+    expect(weatherChangeOf({ before: null, after: 'rain', isOpeningTurn: false, nightfall: true })?.foreground).toBe(false);
+  });
+
+  it('never fires foreground into Clear or Shelter', () => {
+    expect(weatherChangeOf({ before: 'rain', after: 'clear', isOpeningTurn: false })?.foreground).toBe(false);
+    expect(weatherChangeOf({ before: 'rain', after: null, isOpeningTurn: false })?.foreground).toBe(false);
+  });
+});
+
+describe('the offered kinds', () => {
+  it('drop Bright Sun outside daylight', () => {
+    const weather: WorldWeather = { on: true, allowed: ['rain', 'brightSun'] };
+    expect(offeredWeatherKinds(weather, true)).toEqual(['clear', 'rain', 'brightSun']);
+    expect(offeredWeatherKinds(weather, false)).toEqual(['clear', 'rain']);
   });
 });

@@ -42,10 +42,10 @@ describe('the start hour an author sets', () => {
       overview({ weather: { on: true, allowed: ['rain', 'storm'] }, ...extra });
     /** The game's setters, recording what a start wrote. */
     const game = (hour: number | null = null, weather: WeatherKind = 'clear') => {
-      const state = { hour, weather };
+      const state: { hour: number | null; weather: WeatherKind; weatherSet?: boolean } = { hour, weather };
       return {
         state,
-        set: { setStartHour: (h: number | null) => { state.hour = h; }, setWeather: (w: WeatherKind) => { state.weather = w; } },
+        set: { setStartHour: (h: number | null) => { state.hour = h; }, setWeather: (w: WeatherKind) => { state.weather = w; }, setStartWeatherSet: (s: boolean) => { state.weatherSet = s; } },
       };
     };
 
@@ -73,9 +73,9 @@ describe('the start hour an author sets', () => {
       const ov = world({ defaultTime: undefined });
       const g = game();
       applyResolvedStart({ ...action('first'), weather: 'storm', time: 'night' }, ov, g.set);
-      expect(g.state).toEqual({ hour: 20, weather: 'storm' });
+      expect(g.state).toEqual({ hour: 20, weather: 'storm', weatherSet: true });
       applyResolvedStart(action('second'), ov, g.set);
-      expect(g.state).toEqual({ hour: null, weather: 'clear' });
+      expect(g.state).toEqual({ hour: null, weather: 'clear', weatherSet: false });
     });
 
     it('writes Clear while Weather is off, whatever an Opening still holds', () => {
