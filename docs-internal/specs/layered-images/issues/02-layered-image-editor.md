@@ -1,0 +1,31 @@
+# 02: Layered Image Editor
+
+Status: ready-for-agent
+Blocked by: 01
+Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
+Reasoning effort: high
+
+## What to build
+
+Authors build Layered Images in the Media tab and link them from slots. The spec covers this in Q3, Q13, Q21 and its Editor section.
+
+- **Create.** A New Layered Image action in the Media tab. Names follow Media List rules (unique, auto-suffix).
+- **Layer list.** Bottom to top, drag to reorder, add, rename (unique within the rig), delete. Per-Layer opacity slider.
+- **Variants.** Pick or import Media List images per Layer, reorder, remove. Each Variant takes the gallery cog rule popover, badge and summary sentence.
+- **Preview.** A live composed preview, and a Preview As entity picker that evaluates rules through ticket 01's resolver at the world's starting state.
+- **Size check.** One shared check owned here: a Variant whose size or aspect differs from the bottom Layer. The editor warns; ticket 08 reuses the check.
+- **Slots.** The Choose popover lists layered entries next to images, with a composed thumbnail. Used By counts Variant uses; delete confirms list them.
+- **Copy and UI.** Writing Guide facts list first; Design System patterns; a dev-route entry for the editor. A new visual pattern needs the user's approval.
+- **Docs.** The World Editor Media page explains building and linking a Layered Image.
+
+## Acceptance criteria
+
+- [ ] An author can create a rig, add Layers and Variants with rules, and link it into an entity gallery without the fixture world.
+- [ ] Layer reorder changes draw order in the preview and in play.
+- [ ] Preview As shows a picked entity's Variants.
+- [ ] A mismatched Variant shows the size warning.
+- [ ] Deleting an image used as a Variant lists that use in the confirm.
+- [ ] Frames `.scratch/frames/layered-editor-light.png` and `.scratch/frames/layered-editor-dark.png` at a desktop width, and `.scratch/frames/layered-editor-mobile.png` at mobile width.
+- [ ] Changelog fragment written.
+
+For you: build a three-Layer character in the editor and judge whether the flow reads clearly (Media tab).
