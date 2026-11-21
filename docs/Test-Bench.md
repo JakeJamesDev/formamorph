@@ -86,6 +86,11 @@ Your pick stays when you switch tabs. A broken pin on an active trait, the **at*
 The **Issues** tab is the World Doctor. It checks your world's structure: broken links, unused placeholders, stats that start out of range and more. It never judges your writing.
 
 - **Publish Size** shows how much of the publish limit the world uses. Images, sounds and 3D models count toward it. A world over the limit adds a warning that opens the **Media** tab, where you can find the heavy files.
+- Four findings check Layered Images. Each names the Layered Image and the Layer, and opens its card in the **Media** tab:
+  - A Variant whose size differs from the canvas, the first image of the bottom Layer.
+  - A bottom Layer that can show nothing: it has no Variant, or every Variant has a Visibility Rule that can fail.
+  - A Variant rule that names a trait or stat the world doesn't have.
+  - A Layered Image with no Layers.
 - Each finding is one row with the items it names. A **New** tag marks a row you haven't seen.
 - **Fix** repairs a row when the fix is safe. **Fix All** repairs every item in the row.
 - **Dismiss** hides a row. It is an eye icon button on the row, and its tooltip reads "Dismiss". A row about a missing source can't be dismissed.

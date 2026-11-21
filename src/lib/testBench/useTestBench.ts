@@ -38,6 +38,8 @@ import { hasSeenDownloadNote, markDownloadNoteSeen } from './downloadNote';
 import { useBenchPass } from './useBenchPass';
 import { useLatestRun } from './useLatestRun';
 import { checkWorldSize } from './worldTooLarge';
+import { checkLayeredSizes, layeredVariantSources } from './layeredSizes';
+import { useImageFacts } from '@/lib/imageFacts';
 import { useSourceChecks } from './useSourceChecks';
 import { applyRepair, type MissingSource, type RepairAction, type ReplacementPick } from '@/lib/sourceChecks';
 import { loadMediaHashes } from '@/lib/libraryMedia';
@@ -177,6 +179,11 @@ export function useTestBench({
   // Out of the rule catalog, since its input is the measured byte count rather than the world.
   // Kept while it says the same thing: a keystroke in an over-limit world must not re-mark every finding.
   const sizeFindings = useSameFindings(useMemo(() => checkWorldSize(benchWorld, publishBytes), [benchWorld, publishBytes]));
+  // Out of band too: pixel sizes come from decoding each Variant's image. Nothing is raised until they load.
+  const variantFacts = useImageFacts(useMemo(() => layeredVariantSources(benchWorld.worldOverview?.mediaList), [benchWorld]));
+  const layeredSizeFindings = useSameFindings(useMemo(
+    () => checkLayeredSizes(benchWorld, (data) => variantFacts.get(data)?.size), [benchWorld, variantFacts],
+  ));
   const benchWorldMeta = worldMetadata.find((m) => m.id === worldId);
   // Out of band for a third reason: the answers come from the server, and only when the author asks. The
   // record outlives the session, so these rows come back with the world rather than with the request.
@@ -185,10 +192,10 @@ export function useTestBench({
   const findings = useMemo(() => {
     const staticFindings = pass.findings;
     if (staticFindings === null) return NO_FINDINGS;
-    return codeFindings.length === 0 && sizeFindings.length === 0 && sourceFindings.length === 0
+    return codeFindings.length === 0 && sizeFindings.length === 0 && sourceFindings.length === 0 && layeredSizeFindings.length === 0
       ? staticFindings
-      : [...staticFindings, ...codeFindings, ...sizeFindings, ...sourceFindings];
-  }, [pass.findings, codeFindings, sizeFindings, sourceFindings]);
+      : [...staticFindings, ...codeFindings, ...sizeFindings, ...layeredSizeFindings, ...sourceFindings];
+  }, [pass.findings, codeFindings, sizeFindings, layeredSizeFindings, sourceFindings]);
   // Semantic scoring is opt-in per session and never remembered: a toggle that came back on by itself would
   // let an author read a semantic firing as proof their keywords work.
   const [semanticOn, setSemanticOn] = useState(false);

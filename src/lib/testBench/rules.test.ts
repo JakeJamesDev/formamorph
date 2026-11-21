@@ -5532,6 +5532,10 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'entity-row-unreachable': 'simple',
   'image-mislabeled': 'simple',
   'image-not-webp': 'simple',
+  // A Layered Image is built in the Media tab, in both modes.
+  'layered-bottom-empty': 'simple',
+  'layered-no-layers': 'simple',
+  'layered-rule-missing-target': 'simple',
   // Its field is invisible in both modes, and the repair is the row's own one-click fix.
   'legacy-start-location': 'simple',
   // Save Connections sits in the selected copy's menu, which Simple mode shows.

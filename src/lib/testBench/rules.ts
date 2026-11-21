@@ -64,9 +64,11 @@ import {
 import { partOf, scopedEntries, scopeKey, type OwnerId } from '@/lib/scope';
 import {
   NO_ACTIVE, activeOf, alwaysOnOverMax, gateTrees, gateTreeOf, complementary, deadRows, gateOf, gateStates, globalItems, groupPickState, neverUnlockable, sameRequirement, settleDefaults,
-  unstableCycles, type GateScopeTree, type GateInput, type GateOwner, type GateState, type GateStat, type GateStatSet, type GateStates, type GateStats, type GateTraitRef,
+  unstableCycles, ruleStates, type RowState, type GateScopeTree, type GateInput, type GateOwner, type GateState, type GateStat, type GateStatSet, type GateStates, type GateStats, type GateTraitRef,
 } from '@/lib/traitGates';
 import { startingGateStats } from '@/lib/gateStats';
+import { locationRuleStates } from '@/lib/imageVisibility';
+import { mediaEntry } from '@/lib/mediaList';
 import { activeWeather, allowedWeatherKinds, WEATHER_LABELS } from '@/lib/weather';
 import { setupStatsOf } from '@/lib/setupGateStats';
 import { ruleText, rowText } from '@/lib/traitGateLine';
@@ -77,6 +79,7 @@ import { globalStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import type {
   DictionaryEntry, Entity, GalleryImage, GalleryLink, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Script, Stat, StatDescriptor,
   StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement, TraitRequirementRow, World, Opening, WeatherKind,
+  LayeredMediaEntry, LayerVariant, MediaLayer,
 } from '@/types';
 
 /**
@@ -2772,6 +2775,37 @@ interface ImageRuleReport {
 /** The most pick combinations the all-hideable check walks before it gives up and reports. */
 const MAX_PICK_COMBINATIONS = 4096;
 
+/** Whether every way to fill the required groups the rows name leaves a row holding. A row counts when each
+ *  Condition is a plain same-owner trait placed directly in a group with a minimum and maximum of one. */
+export const picksCoveredBy = (
+  input: GateInput, owners: readonly GateOwner[], ownerId: OwnerId, images: readonly { requires?: TraitRequirementRow[] }[],
+): boolean => {
+  const globals = globalItems(input).traits;
+  const own = owners.find((o) => o.id === ownerId);
+  const picks = new Map<string, string[]>();
+  const rows: string[][] = [];
+  for (const row of images.flatMap((img) => img.requires ?? [])) {
+    const found = row.all.map((req) => {
+      if (req.kind !== 'trait' || req.not || req.owner) return null;
+      // Same Owner reads the entity's own trait, else a global one (Q10).
+      const tree = own?.traits.some((t) => t.id === req.id) ? own : globals.has(req.id) ? gateTreeOf(input, null) : undefined;
+      const groupId = tree?.traits.find((t) => t.id === req.id)?.groupId;
+      const group = tree?.groups.find((g) => g.id === groupId);
+      return tree && group?.minPicks === 1 && group.maxPicks === 1 ? { tree, group, id: req.id } : null;
+    });
+    // Any other row only adds showings, so the cover must come without it.
+    if (found.some((f) => !f)) continue;
+    for (const f of found) picks.set(`${scopeKey(f!.tree.id)} ${f!.group.id}`, f!.tree.traits.filter((t) => t.groupId === f!.group.id).map((t) => t.id));
+    rows.push(found.map((f) => f!.id));
+  }
+  const groups = [...picks.values()];
+  if (!rows.length || groups.reduce((n, g) => n * g.length, 1) > MAX_PICK_COMBINATIONS) return false;
+  const holds = (chosen: string[], rest: string[][]): boolean => (rest.length === 0
+    ? rows.some((ids) => ids.every((id) => chosen.includes(id)))
+    : rest[0].every((pick) => holds([...chosen, pick], rest.slice(1))));
+  return holds([], groups);
+};
+
 const imageReportsByWorld = new WeakMap<RuleWorld, ImageRuleReport>();
 const imageReportOf = (world: RuleWorld): ImageRuleReport => {
   let report = imageReportsByWorld.get(world);
@@ -2792,34 +2826,7 @@ const imageReportOf = (world: RuleWorld): ImageRuleReport => {
   const owners = [...input.owners.map((o) => swapped.get(o.id) ?? o), ...[...swapped.values()].filter((o) => !input.owners.some((x) => x.id === o.id))];
   const states = gateStates({ ...input, owners, stats });
   const readFrom = (entity: Entity, req: StatRequirement): OwnerId[] => statReadOwners(world, stats, entity.id, req);
-  const globals = globalItems(input).traits;
-  /** Whether every way to fill the required groups the rows name leaves a row holding. A row counts when each
-   *  Condition is a plain same-owner trait placed directly in a group with a minimum and maximum of one. */
-  const picksCovered = (ownerId: string, images: readonly GalleryImage[]): boolean => {
-    const own = owners.find((o) => o.id === ownerId);
-    const picks = new Map<string, string[]>();
-    const rows: string[][] = [];
-    for (const row of images.flatMap((img) => img.requires ?? [])) {
-      const found = row.all.map((req) => {
-        if (req.kind !== 'trait' || req.not || req.owner) return null;
-        // Same Owner reads the entity's own trait, else a global one (Q10).
-        const tree = own?.traits.some((t) => t.id === req.id) ? own : globals.has(req.id) ? gateTreeOf(input, null) : undefined;
-        const groupId = tree?.traits.find((t) => t.id === req.id)?.groupId;
-        const group = tree?.groups.find((g) => g.id === groupId);
-        return tree && group?.minPicks === 1 && group.maxPicks === 1 ? { tree, group, id: req.id } : null;
-      });
-      // Any other row only adds showings, so the cover must come without it.
-      if (found.some((f) => !f)) continue;
-      for (const f of found) picks.set(`${scopeKey(f!.tree.id)} ${f!.group.id}`, f!.tree.traits.filter((t) => t.groupId === f!.group.id).map((t) => t.id));
-      rows.push(found.map((f) => f!.id));
-    }
-    const groups = [...picks.values()];
-    if (!rows.length || groups.reduce((n, g) => n * g.length, 1) > MAX_PICK_COMBINATIONS) return false;
-    const holds = (chosen: string[], rest: string[][]): boolean => (rest.length === 0
-      ? rows.some((ids) => ids.every((id) => chosen.includes(id)))
-      : rest[0].every((pick) => holds([...chosen, pick], rest.slice(1))));
-    return holds([], groups);
-  };
+  const picksCovered = (ownerId: string, images: readonly GalleryImage[]): boolean => picksCoveredBy(input, owners, ownerId, images);
 
   const missing: DeadImageCondition[] = [];
   const hideable: Entity[] = [];
@@ -2902,6 +2909,153 @@ const imageRulePercentZeroSpan: Rule = {
       [item],
     );
   }),
+};
+
+// ── Layered Image rules ───────────────────────────────────────────────────────────────────────────────────
+
+/** What a rig's Variant rules read: an entity, a location (the persona), or any subject (an item, or a rig no slot links). */
+interface RigSubject { owner: OwnerId; kind: 'entity' | 'location' | 'anywhere'; name?: string }
+
+/** `whose` is who lacks the target: an entity's name, else the world. */
+interface RigMissing { rig: LayeredMediaEntry; layer: MediaLayer; variant: LayerVariant; condition: string; row: string | null; whose: string; stat: boolean }
+interface RigReport {
+  missing: RigMissing[];
+  /** Rigs whose bottom Layer can resolve empty, with the reason after "the bottom Layer". */
+  emptyBottom: Array<{ rig: LayeredMediaEntry; layer: MediaLayer; why: string }>;
+  noLayers: LayeredMediaEntry[];
+}
+
+const rigReportsByWorld = new WeakMap<RuleWorld, RigReport>();
+const rigReportOf = (world: RuleWorld): RigReport => {
+  let report = rigReportsByWorld.get(world);
+  if (report) return report;
+  report = { missing: [], emptyBottom: [], noLayers: [] };
+  const media = world.worldOverview?.mediaList;
+  const rigs = Object.values(media ?? {}).filter((e): e is LayeredMediaEntry => e.kind === 'layered');
+  if (rigs.length === 0) { rigReportsByWorld.set(world, report); return report; }
+  const stats = startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities ?? [] });
+  const input = editorGateInput(ownerWorldOf(world), stats);
+  const entityIds = (world.entities ?? []).map((e) => e.id);
+  const subjectsOf = (rig: LayeredMediaEntry): RigSubject[] => {
+    const links = (list: GalleryLink[]) => list.some((l) => 'mediaId' in l && l.mediaId === rig.id);
+    const found: RigSubject[] = [
+      ...(world.entities ?? []).filter((e) => links(galleryLinks(e))).map((e): RigSubject => ({ owner: e.id, kind: 'entity', name: e.name })),
+      ...((world.locations ?? []).some((l) => links(locationLinks(l))) ? [{ owner: null, kind: 'location' } as RigSubject] : []),
+      ...((world.items ?? []).some((i) => links(galleryLinks(i))) ? [{ owner: null, kind: 'anywhere' } as RigSubject] : []),
+    ];
+    return found.length ? found : [{ owner: null, kind: 'anywhere' }];
+  };
+  /** Each Condition's state for the subject. A subject with no one owner holds a Condition unresolved only when no owner resolves it. */
+  const statesFor = (subject: RigSubject, rows: TraitRequirementRow[]): RowState[] => {
+    if (subject.kind === 'entity') return ruleStates(input, subject.owner, rows);
+    if (subject.kind === 'location') return locationRuleStates(input, rows);
+    const tries = [null, ...entityIds].map((id) => ruleStates(input, id, rows));
+    return tries[0].map((row, r) => ({
+      ...row, conditions: row.conditions.map((c, k) => ({ ...c, unresolved: tries.every((t) => t[r].conditions[k].unresolved) })),
+    }));
+  };
+  const inertFor = (subject: RigSubject, req: StatRequirement): boolean =>
+    (subject.kind === 'entity' ? statReadOwners(world, stats, subject.owner, req) : [null, ...entityIds])
+      .some((id) => statSetOf(stats, id)?.[req.id]?.inert);
+
+  for (const rig of rigs) {
+    const subjects = subjectsOf(rig);
+    if (rig.layers.length === 0) { report.noLayers.push(rig); continue; }
+    const seen = new Set<string>();
+    rig.layers.forEach((layer) => layer.variants.forEach((variant, v) => {
+      // A Variant whose image is gone shows nothing; deleting an image removes it from every Layer (Q28).
+      if (!mediaEntry(media, variant.mediaId, 'image') || !variant.requires?.length) return;
+      for (const subject of subjects) {
+        const states = statesFor(subject, variant.requires!);
+        variant.requires!.forEach((row, r) => row.all.forEach((req, c) => {
+          const state = states[r]?.conditions[c];
+          const key = `${layer.id}\n${v}\n${r}\n${c}\n${subject.kind === 'entity' ? subject.owner : ''}`;
+          if (!state?.unresolved || seen.has(key)) return;
+          if (req.kind === 'stat' && inertFor(subject, req)) return;
+          seen.add(key);
+          const texts = states[r].conditions.map((cond) => labelOf(cond.text, world));
+          report!.missing.push({
+            rig, layer, variant, condition: quote(texts[c]), row: row.all.length > 1 ? quote(rowText(texts)) : null,
+            whose: subject.name ? quote(subject.name) : 'this world', stat: req.kind === 'stat',
+          });
+        }));
+      }
+    }));
+    const bottom = rig.layers[0];
+    const shows = bottom.variants.filter((variant) => mediaEntry(media, variant.mediaId, 'image'));
+    if (shows.length === 0) {
+      report.emptyBottom.push({ rig, layer: bottom, why: 'has no Variant with an image, so it shows nothing' });
+      continue;
+    }
+    // An empty rule or an empty row always holds, so that Variant never hides.
+    if (!shows.every((variant) => variant.requires?.length && variant.requires.every((row) => row.all.length))) continue;
+    const uncovered = subjects.some((subject) => {
+      const single = shows.flatMap((variant) => {
+        const req = variant.requires!.length === 1 && variant.requires![0].all.length === 1 ? variant.requires![0].all[0] : null;
+        return req && !statesFor(subject, variant.requires!)[0]?.conditions[0]?.unresolved ? [req] : [];
+      });
+      return !(single.some((a, i) => single.some((b, j) => j > i && complementary(a, b)))
+        || picksCoveredBy(input, input.owners, subject.owner, shows));
+    });
+    if (uncovered) {
+      report.emptyBottom.push({
+        rig, layer: bottom,
+        why: 'can show nothing. Every Variant has a Visibility Rule, and the rules cover neither a Condition and its opposite nor every pick of a required one-pick group',
+      });
+    }
+  }
+  rigReportsByWorld.set(world, report);
+  return report;
+};
+
+/** A Layered Image's Media card as a finding opens it. */
+export const rigItem = (rig: Pick<LayeredMediaEntry, 'id' | 'name'>): FindingItem => ({ id: rig.id, name: rig.name, section: 'media' });
+
+/** "“Rig · Layer”", the way a finding names one Layer of a rig. */
+export const layerRef = (rig: Pick<LayeredMediaEntry, 'name'>, layer: Pick<MediaLayer, 'name'>): string => quote(`${rig.name} · ${layer.name}`);
+
+const layeredRuleMissingTarget: Rule = {
+  id: 'layered-rule-missing-target',
+  severity: 'error',
+  section: 'media',
+  summary: (count) => `${count} Layered Image rules name something their subject doesn’t have`,
+  check: (world) => rigReportOf(world).missing.map(({ rig, layer, variant, condition, row, whose, stat }) => finding(
+    layeredRuleMissingTarget,
+    `${layerRef(rig, layer)}, ${quote(world.worldOverview?.mediaList?.[variant.mediaId]?.name || 'Unnamed')} requires ${condition}, `
+    + `${stat ? 'a stat' : 'something'} that ${whose} doesn’t have${row ? `, so ${row} never holds` : ''}`,
+    [rigItem(rig)],
+  )),
+};
+
+const layeredBottomEmpty: Rule = {
+  id: 'layered-bottom-empty',
+  severity: 'warning',
+  section: 'media',
+  summary: (count) => `${count} Layered Images can lose the bottom Layer`,
+  check: (world) => rigReportOf(world).emptyBottom.map(({ rig, layer, why }) => finding(
+    layeredBottomEmpty, `${layerRef(rig, layer)} is the bottom Layer and ${why}`, [rigItem(rig)],
+  )),
+};
+
+const layeredNoLayers: Rule = {
+  id: 'layered-no-layers',
+  severity: 'warning',
+  section: 'media',
+  summary: (count) => `${count} Layered Images have no Layers`,
+  check: (world) => rigReportOf(world).noLayers.map((rig) => finding(
+    layeredNoLayers, `${quote(rig.name)} has no Layers, so it draws nothing`, [rigItem(rig)],
+  )),
+};
+
+/**
+ * The size-mismatch row. A head without a `check` because pixel sizes come from decoding the images, which
+ * the synchronous pass can't do; `lib/testBench/layeredSizes` raises its findings from the decoded sizes.
+ */
+export const LAYERED_SIZE_MISMATCH: RuleHead = {
+  id: 'layered-size-mismatch',
+  severity: 'warning',
+  section: 'media',
+  summary: (count) => `${count} Layered Image Variants differ in size from their canvas`,
 };
 
 // ── Trait links ───────────────────────────────────────────────────────────────────────────────────────────
@@ -3923,6 +4077,7 @@ export const RULES: readonly Rule[] = [
   placeholderSharedWeightUnknownValue, placeholderOwnerOrphan, placeholderOwnerDropped,
   dictionaryKeywordSubstring, dictionaryDisabled,
   worldEmptySystemPrompt, worldNoReadme, weatherNotAllowed, worldOversizedImages, imageNotWebp, imageMislabeled,
+  layeredNoLayers, layeredBottomEmpty, layeredRuleMissingTarget,
 ];
 
 /**
@@ -3990,7 +4145,7 @@ export const SOURCE_UNAVAILABLE: RuleHead = {
 /** Everything that can put a row in the Issues list — the live rules plus the on-demand checks. */
 const RULE_HEADS: readonly RuleHead[] = [
   ...RULES, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME, WORLD_TOO_LARGE,
-  SOURCE_NOT_FOUND, SOURCE_UNAVAILABLE,
+  SOURCE_NOT_FOUND, SOURCE_UNAVAILABLE, LAYERED_SIZE_MISMATCH,
 ];
 
 /** The one lookup from a finding's rule id back to what raised it. */
