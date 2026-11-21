@@ -13,7 +13,7 @@ A Variant change animates with the Layer's transition, reusing the Mascot's. The
 - **Diff.** A pure function of two resolved stacks: which Layers changed, which fade, and which Jelly tuning squashes (the topmost changed Jelly Layer). Tested on its own.
 - **Render.** Dissolve fades only that Layer from the old Variant to the new one. Jelly squashes the whole picture once per change, while Dissolve Layers fade during it. Timing reuses the Mascot's pure timing function and ranges.
 - **Reduced motion.** Jelly plays as Dissolve.
-- **Editor.** The Mascot's mode switcher and tuning sliders per Layer, with a Play button in the preview.
+- **Editor.** The Mascot's mode switcher and tuning sliders per Layer, with a labeled Play button beside the mode switcher (Q35).
 - Plain image swaps stay as they are (Q18).
 - **Docs.** The World Editor Media page describes transitions.
 
