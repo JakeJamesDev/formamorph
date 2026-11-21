@@ -177,6 +177,27 @@ describe('a move of more than one step in Suggest mode', () => {
     await waitFor(() => expect(play.currentLocation?.id).toBe('store'));
     expect(play.entityPositions.bram).toBe('store');
   });
+
+  it('brings the character who agreed to come along when Go is clicked before the turn finishes', async () => {
+    localStorage.setItem('FORMAMORPH_locationAutoApply', 'false');
+    await openInBarn();
+    stubEndpoint('You walk down the lane into town and step into the store, Maela at your side.', {
+      narrated: 'Store', entities: { Maela: 'Come along' },
+    });
+
+    const turns = play.fullMessageHistory.length;
+    fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: 'Maela, come with me to the store.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await screen.findByText(/Move to/);
+    expect(screen.getByRole('button', { name: 'Stop generating' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Go' }));
+    await waitFor(() => expect(play.fullMessageHistory.length).toBe(turns + 2));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Stop generating' })).toBeNull());
+
+    expect(play.currentLocation?.id).toBe('store');
+    expect(play.entityPositions.maela).toBe('store');
+    expect(play.entityFollowers).toEqual(['maela']);
+  });
 });
 
 describe('a Far link', () => {

@@ -1633,6 +1633,8 @@ const GameViewer = ({
   const [suggestedLocation, setSuggestedLocation] = useState<GameLocation | null>(null);
   // The entities whose "come along" waits on the offered move: Go brings them, Dismiss drops them.
   const entityOfferRef = useRef<EntityMoveOffer>(NO_ENTITY_OFFER);
+  // Go taken while the offering turn still commits: `pending` from the offer until the commit, `to` once Go lands.
+  const earlyGoRef = useRef<{ pending: boolean; to?: GameLocation }>({ pending: false });
   /** Where tracked entities and runtime characters stand, and their engine state. */
   const liveFollowerState = (): FollowerState => currentBook();
   // The story minute the clock reads now.
@@ -3214,7 +3216,10 @@ const GameViewer = ({
     const outputMoved = outputRunRef.current?.run.result()?.worldWrites?.location !== undefined;
     if (commit.suggestedLocation && !outputMoved) {
       const target = turn.destinations.find((loc) => loc.name === commit.suggestedLocation);
-      if (target) setSuggestedLocation(target);
+      if (target) {
+        earlyGoRef.current = { pending: true };
+        setSuggestedLocation(target);
+      }
     }
 
     // The turn's results wait for its end to land: the narration settled and its action row open, so the
@@ -3327,7 +3332,10 @@ const GameViewer = ({
       changeLocation(codeTarget);
       addLogEntry(`Moved to location: ${codeTarget.name}`);
     }
-    const location = codeTarget ?? turn.location;
+    // A Go taken before this point is the turn's move, so "come along" joins it below.
+    const earlyGo = earlyGoRef.current.to;
+    earlyGoRef.current = { pending: false };
+    const location = codeTarget ?? earlyGo ?? turn.location;
     const meets = final.codeWrites?.entities?.flatMap((write) => (write.kind === 'meet' ? [write.entity] : []));
     if (meets?.length) setMetEntities((met) => withMet(met, meets));
     // Every Unique entity is placed for the turn's end, after the replies and the code moved who they name.
@@ -3570,6 +3578,7 @@ const GameViewer = ({
       setChoicesReady(false);
       setSuggestedLocation(null);
       entityOfferRef.current = NO_ENTITY_OFFER;
+      earlyGoRef.current = { pending: false };
       // Stamp a stable id for this turn, written into its assistant JSON (powers the digest apply-guard).
       currentTurnIdRef.current = randomUUID();
       // The attachments leave the action box with the text, and the turn keeps the ones it may carry.
@@ -6627,6 +6636,12 @@ const GameViewer = ({
           }
           changeLocation(suggestedLocation);
           addLogEntry(`Moved to location: ${suggestedLocation.name}`);
+          if (earlyGoRef.current.pending) {
+            // The turn still commits; it joins its replies to this move.
+            earlyGoRef.current = { pending: true, to: suggestedLocation };
+            setSuggestedLocation(null);
+            return;
+          }
           const offer = entityOfferRef.current;
           entityOfferRef.current = NO_ENTITY_OFFER;
           if (hasEntityOffer(offer)) {
