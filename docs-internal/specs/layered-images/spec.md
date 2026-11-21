@@ -1,6 +1,7 @@
 # Spec: Layered Images
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-11-21. Tickets 01–13 landed; the last landing is ac2d4a7c0. Review: spec text corrected (Q43, ticket 05) and gaps fixed in tickets 12–13. Gates green on 2026-11-21: tests pass, and lint errors are only in the gitignored worlds-wip folder.
 Spec session: layered-images — spec
 
 ## Problem Statement
