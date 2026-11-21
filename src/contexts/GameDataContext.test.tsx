@@ -664,6 +664,14 @@ describe('loadWorldData', () => {
     expect('openingsEnabled' in result.current.worldOverview).toBe(false);
   });
 
+  it("carries the world's Weather block and Default Time through an export and load", () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    const weather = { on: true, allowed: ['rain', 'storm'], defaultWeather: 'storm' } as const;
+    act(() => { result.current.loadWorldData(JSON.parse(JSON.stringify(world('a', { weather, defaultTime: 'night' })))); });
+    expect(result.current.worldOverview.weather).toEqual(weather);
+    expect(result.current.worldOverview.defaultTime).toBe('night');
+  });
+
   it("carries the Map Background's images, rules, frame and opacity through an export and load", () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     const mapBackground = {

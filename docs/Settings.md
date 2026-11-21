@@ -112,6 +112,12 @@ What you see and hear.
 | **Background Fade** | Fades the location image toward the background color, so the text is easier to read. Shows when **Location Background** is on. |
 | **Scene Images** | Makes an image of each turn. See [Scene Images](Image-Generation#scene-images). Your next action waits for the image, so each turn takes as long as your image server needs. Shows when **Enable Image Generation** is on. |
 
+### Weather
+
+| Setting | What it does |
+|---|---|
+| **Weather Background** | On by default. Shows rain, snow, a storm or bright sun behind the game, in worlds that have weather. Nothing shows in a sheltered location, such as indoors. It still shows with **Location Background** off. If your device is set to reduce motion, the weather moves slowly and a storm shows no lightning. |
+
 ### Narration
 
 | Setting | What it does |

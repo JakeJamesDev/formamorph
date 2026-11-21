@@ -31,6 +31,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
   - **Weather:**
     - **Worlds can turn on Weather and mark locations Sheltered.** Pick the allowed kinds and a Default Weather, and give an opening its own Weather. A save keeps the weather.
+    - **The current weather now shows behind the game panels.** Rain, snow, storm and bright sun play over the location image, except in Sheltered locations. Turn it off with Weather Background in Display settings.
 
 #### 🔧 Fixed
 

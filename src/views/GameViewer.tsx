@@ -321,6 +321,9 @@ import { GAME_LEFT_PANEL_TABS, GAME_RIGHT_PANEL_TABS, LEFT_PANEL_TABS } from "@/
 import { useGameLeftCollapsed, useGameRightCollapsed, useGameStoryWidth } from "@/lib/gamePanelPrefs";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import { LocationBackdrop } from "../components/game/LocationBackdrop";
+import { WeatherBackground } from "../components/game/WeatherBackground";
+import { weatherView } from "@/lib/weatherView";
+import { activeWeather, isDaylight } from "@/lib/weather";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { MusicOffIcon } from "../components/game/MusicOffIcon";
 import { AiSetupGate } from "../components/AiSetupGate";
@@ -780,6 +783,7 @@ const GameViewer = ({
     activeSectionStyle,
     statTextPrompts,
     locationBackground,
+    weatherBackground,
     backgroundOverlay,
     allTools,
     enabledTools,
@@ -948,6 +952,8 @@ const GameViewer = ({
     itemInstances: heldItemInstances,
     setActiveTab: setRightTab,
     carriedSupporterCopy,
+    viewWeather,
+    viewGameTime,
   } = useGameplay();
   const {
     show: showStatDeltas, add: addStatDeltas, hold: holdStatDeltas, settle: settleStatDeltas,
@@ -6925,6 +6931,16 @@ const GameViewer = ({
     : currentLocation;
   const backdrop = useLocationBackdrop(viewLocation);
   const mapBackdrop = useMapBackdrop(worldOverview);
+  const weatherBg = weatherView({
+    weatherOn: !!activeWeather(worldOverview),
+    worldWeather: viewWeather,
+    sheltered: !!viewLocation?.sheltered,
+    daylight: isDaylight(viewGameTime, calendar),
+    background: weatherBackground,
+    foreground: false,
+    reducedMotion,
+    previous: undefined,
+  }).background;
 
   // Menu save/load handlers, extracted so the desktop (header) and mobile (tab-row) MenuModal instances share them.
   const handleMenuSave = (name: string, opts?: { overwriteId?: string; includeSceneImages?: boolean }) =>
@@ -6994,6 +7010,7 @@ const GameViewer = ({
           overlayHidden={uiHidden}
         />
       )}
+      <WeatherBackground kind={weatherBg.kind} mode={weatherBg.mode} plain={!locationBackground || !backdrop} />
       {/* Above the location art, behind the panels and buttons. Windows desktop only. */}
       <div aria-hidden data-window-corner-gradient="" className="window-corner-gradient -z-[5] hidden [[data-window-overlay]_&]:block" />
       <ThemedToastContainer />

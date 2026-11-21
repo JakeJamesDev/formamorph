@@ -55,7 +55,7 @@ describe('settings design reference', () => {
 
     const headings = (name: string) => within(screen.getByRole('region', { name }))
       .getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent).filter((text) => text !== name);
-    expect(headings('Display Reference')).toEqual(['Appearance', 'Scene', 'Narration', 'Accessibility', 'Inspection']);
+    expect(headings('Display Reference')).toEqual(['Appearance', 'Scene', 'Weather', 'Narration', 'Accessibility', 'Inspection']);
     expect(headings('Output Reference')).toEqual(
       ['Turn Extras', 'Reasoning', 'Tools', 'Memory', 'Time', 'Lore', 'Characters', 'Choices', 'Attachments', 'Performance'],
     );

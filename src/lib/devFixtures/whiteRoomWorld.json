@@ -7,7 +7,8 @@
     "bgm": null,
     "systemPrompt": "This is an empty white room for the user to test LLM prompts",
     "use3DModel": false,
-    "tags": []
+    "tags": [],
+    "weather": { "on": true, "allowed": ["rain", "snow", "storm", "brightSun"] }
   },
   "stats": [
     {
@@ -132,6 +133,7 @@
       "name": "Observation Alcove",
       "inGameDescription": "",
       "detailedDescription": "",
+      "sheltered": true,
       "backgroundImage": null,
       "ambientSound": null,
       "parentId": "1783535114538",

@@ -6,7 +6,7 @@ import { GameplayProvider, useGameplay } from './GameplayContext';
 import { GameDataProvider } from './GameDataContext';
 import { PlaceholderSessionProvider } from './PlaceholderSessionContext';
 import { getSaveRecord } from '@/components/modals/dbUtils';
-import type { SaveRecord } from '@/types';
+import type { GameState, SaveRecord } from '@/types';
 
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
 
@@ -49,5 +49,31 @@ describe('the World Weather across a save/load round trip', () => {
     await act(async () => { live().setWeather('storm'); });
     await act(async () => { await live().loadGame('weather-clear', []); });
     expect(live().weather).toBe('clear');
+  });
+});
+
+const snapshot = (weather?: GameState['weather']): GameState => ({
+  globalStats: [], globalTraits: [], visibleEntities: [], logEntries: [], gameplayText: '', gameTime: 0, characterData: null,
+  choices: [], isGameStarted: true, timestamp: new Date().toISOString(), worldName: null, playerNotes: '', previousStateIndex: null,
+  stateVersion: 2, ...(weather ? { weather } : {}),
+});
+
+describe('the World Weather on a history page', () => {
+  it('reads the paged turn’s weather, Clear when it recorded none, and the live weather on the latest page', async () => {
+    const live = mount();
+    const turn = (n: number) => [
+      { role: 'user' as const, content: `act ${n}` }, { role: 'assistant' as const, content: `told ${n}` },
+    ];
+    await act(async () => {
+      live().setFullMessageHistory([...turn(1), ...turn(2), ...turn(3)]);
+      live().setGameStates([snapshot('snow'), snapshot(), snapshot('storm')]);
+      live().setWeather('storm');
+    });
+    await act(async () => { live().setUserPage(1); });
+    expect(live().viewWeather).toBe('snow');
+    await act(async () => { live().setUserPage(2); });
+    expect(live().viewWeather).toBe('clear');
+    await act(async () => { live().setUserPage(null); });
+    expect(live().viewWeather).toBe('storm');
   });
 });

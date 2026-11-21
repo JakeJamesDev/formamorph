@@ -51,8 +51,10 @@ describe('LocationBackdrop', () => {
     for (const layer of [imageLayer(), overlayLayer()!]) {
       expect(layer.className).toContain('absolute');
       expect(layer.className).toContain('inset-0');
-      expect(layer.className).toContain('-z-10');
     }
+    expect(imageLayer().className).toContain('-z-10');
+    // The Weather Background draws at -z-[9], between the art and the fade, so the fade dims it too.
+    expect(overlayLayer()!.className).toContain('-z-[8]');
     expect(imageLayer().className).toContain('bg-cover');
     expect(imageLayer().className).toContain('bg-center');
   });

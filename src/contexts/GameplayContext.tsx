@@ -1019,6 +1019,8 @@ function useProvideGameplay() {
     [viewedSnapshot, visibleEntities],
   );
   const viewGameTime = viewedSnapshot?.gameTime ?? gameTime;
+  // A past page shows the World Weather its turn recorded; a snapshot omits Clear.
+  const viewWeather: WeatherKind = viewedSnapshot ? (viewedSnapshot.weather ?? 'clear') : weather;
   const viewLocationId = viewedSnapshot?.locationId ?? currentLocation?.id;
   // Parse the paged turn's assistant message once — choices and notes both live on it.
   const viewedTurn = useMemo(
@@ -1295,6 +1297,7 @@ function useProvideGameplay() {
     viewCharacterData,
     viewVisibleEntities,
     viewGameTime,
+    viewWeather,
     viewLocationId,
     viewChoices,
     viewSelectedChoice,

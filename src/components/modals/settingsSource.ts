@@ -12,6 +12,7 @@ type ThemeValue = ReturnType<typeof useTheme>;
 export type DisplaySettingsSource = Pick<SettingsValue,
   | 'themeColor' | 'setThemeColor' | 'fontFamily' | 'setFontFamily'
   | 'bgmEnabled' | 'setBgmEnabled' | 'locationBackground' | 'setLocationBackground'
+  | 'weatherBackground' | 'setWeatherBackground'
   | 'backgroundOverlay' | 'setBackgroundOverlay' | 'imageGenDisabled' | 'sceneImageAuto' | 'setSceneImageAuto'
   | 'narrationLayout' | 'setNarrationLayout' | 'language' | 'setLanguage'
   | 'paragraphLimit' | 'setParagraphLimit' | 'markdownOutput' | 'setMarkdownOutput'

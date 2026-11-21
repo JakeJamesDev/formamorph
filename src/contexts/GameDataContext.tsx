@@ -537,6 +537,8 @@ function useProvideGameData() {
       // Same allowlist rule.
       ...(Array.isArray(overview.openings) ? { openings: overview.openings } : {}),
       ...(overview.openingWeights ? { openingWeights: overview.openingWeights } : {}),
+      ...(overview.defaultTime ? { defaultTime: overview.defaultTime } : {}),
+      ...(overview.weather ? { weather: overview.weather } : {}),
       ...(overview.vrmStore ? { vrmStore: overview.vrmStore } : {}),
       ...(overview.legacyVrmFallback ? { legacyVrmFallback: overview.legacyVrmFallback } : {}),
       mediaList: overview.mediaList ?? {},

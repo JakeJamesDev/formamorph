@@ -1,4 +1,8 @@
 import type { AllowedWeatherKind, GameLocation, Opening, WeatherKind, WorldOverview, WorldWeather } from '@/types';
+import { daypartAt, type WorldCalendar } from '@/lib/gameClock';
+
+/** True after `elapsed` story hours in any daypart but night: when Bright Sun can show. */
+export const isDaylight = (elapsed: number, calendar?: WorldCalendar): boolean => daypartAt(elapsed, calendar) !== 'night';
 
 /** Every kind a world can allow besides Clear, in the order the editor lists them. */
 export const ALLOWED_KINDS = ['rain', 'snow', 'storm', 'brightSun'] as const satisfies readonly AllowedWeatherKind[];

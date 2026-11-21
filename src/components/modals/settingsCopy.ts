@@ -79,6 +79,13 @@ export const SETTINGS_COPY = {
     description: 'Fades the location image toward the background for readability',
   },
 
+  // ── Display · Weather ───────────────────────────────────────────────────────
+  weatherBackground: {
+    label: 'Weather Background',
+    description: 'Shows the weather behind the game, in worlds that have weather',
+    info: 'If your device is set to reduce motion, the weather moves slowly and a storm shows no lightning.',
+  },
+
   // ── Display · Narration ─────────────────────────────────────────────────────
   narrationLayout: {
     label: 'Narration Layout',

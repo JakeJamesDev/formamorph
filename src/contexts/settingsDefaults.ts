@@ -116,6 +116,8 @@ export const DEFAULT_IMAGE_CLEAN_TAGS = true;
 // Draw a scene image automatically at the end of every turn. Off because the render blocks the next
 // action (one GPU). No VITE_DEFAULT_* override — a per-player toggle, not a deployment knob.
 export const DEFAULT_SCENE_IMAGE_AUTO = false;
+// Draw the current weather behind the panels. A per-player toggle, so no VITE_DEFAULT_* override.
+export const DEFAULT_WEATHER_BACKGROUND = true;
 
 // Offer the hard-coded "[Continue the Story]" pseudo-choice beneath the generated ones. 'always' keeps it
 // even with the choices request switched off, where it's the only button the panel has left. On because

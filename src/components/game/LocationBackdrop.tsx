@@ -43,7 +43,7 @@ export const LocationBackdrop = ({ image, overlay, overlayHidden }: {
         <div
           data-testid="location-backdrop-overlay"
           aria-hidden="true"
-          className="absolute inset-0 -z-10"
+          className="absolute inset-0 -z-[8]"
           style={{ backgroundColor: `hsl(var(--background) / ${overlay})` }}
         />
       )}
