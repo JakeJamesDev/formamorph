@@ -9,7 +9,7 @@ Reasoning effort: high
 
 Add the spec's four fallbacks, so more quotes get their speaker's color.
 
-Each fallback runs only when the speech-verb, beat and nearest-subject rules leave a quote with no speaker. Each records its own rule name on the quote.
+Each fallback runs only when the speech-verb, beat and nearest-subject rules leave a quote with no speaker. Each records its own rule name on the quote, in list order: `own-first-person`, `earlier-quote`, `pronoun-subject`, `named-subject` (the spec's wire shape).
 
 - **Own first-person mentions:** when the quote's own first-person mentions sit in a named cluster, the speaker is that entity.
 - **Earlier quote:** when an earlier quote in the same paragraph has a speaker, the speaker is that speaker.

@@ -77,6 +77,15 @@ Players who contribute corrections mostly fix quote speakers. In the two review 
 - `quotes`: one record per quote the reading attributed: span, shown speaker (id or null), the rule that fired (`after-subject-verb`, `after-verb-subject`, `before-verb`, `beat`, `nearest-subject`, one of the fallbacks, or `none`), the span of the mention the rule used, and the spans of the quote's own first-person mentions. A quote with no correction counts as confirmed.
 - `clientVersion` and `readingVersion`. `readingVersion` is a constant in the reading module, raised when the speaker or naming rules change.
 - The server stores each field in a new nullable column. A row without them reads as absent, and the export treats it as today's row.
+- **Wire shape** (ticket 04 ruling):
+  - `cast`: `[{ id, name, aliases: string[], strangerName: string | null, kind: 'unique' | 'generic' | null }]`. The kind is the world's entity kind; the persona sends null.
+  - `quotes`: `[{ start, end, speakerId: string | null, rule: string, mention: { start, end } | null, firstPerson: { start, end }[] }]`. `mention` is null when no rule found a mention.
+  - `rule` is a bounded lowercase-kebab string (`^[a-z-]{1,40}$`), not a closed list, so a client with newer rules never has its send refused. Known names: `after-subject-verb`, `after-verb-subject`, `before-verb`, `beat`, `nearest-subject`, `none`, and ticket 02's fallbacks `own-first-person`, `earlier-quote`, `pronoun-subject`, `named-subject`.
+  - `clientVersion` is a string of at most 64 characters. `readingVersion` is a positive integer.
+  - Bounds: at most 200 cast records, 20 aliases per record, 500 quotes and 50 first-person spans per quote. Names and aliases use the 200-character name bound.
+  - The server checks span validity only. It does not require a speaker or id to appear in `cast`, and it does not refuse overlapping quote spans.
+  - A resend that replaces a pending row replaces it whole (Q35), so fields it omits become absent.
+- **Known gap:** kind tells a Generic entity from a Unique one, but not a Unique entity that the author wrote as a group ("the Gatekeepers"). The export's group exclusion covers Generic entities only; a Unique group stays a known source of wrong derived labels.
 
 **Export (server).**
 - A **derived label** is a mention label the export makes from a quote correction. It needs the row's `quotes` and `cast`. For a quote correction naming an entity whose kind is an individual character:
