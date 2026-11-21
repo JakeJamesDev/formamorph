@@ -61,7 +61,7 @@ import {
   broughtIds, canBePlayer, editorGateInput, linksInTreeOrder, originalOf, resolveOwners, type GlobalTree, type Owner,
   type OwnerWorld,
 } from '@/lib/owners';
-import { partOf, scopedEntries, scopeKey, type OwnerId } from '@/lib/scope';
+import { partOf, playedEntityIds, scopedEntries, scopeKey, type OwnerId } from '@/lib/scope';
 import {
   NO_ACTIVE, activeOf, alwaysOnOverMax, gateTrees, gateTreeOf, complementary, deadRows, gateOf, gateStates, globalItems, groupPickState, neverUnlockable, sameRequirement, settleDefaults,
   unstableCycles, ruleStates, type RowState, type GateScopeTree, type GateInput, type GateOwner, type GateState, type GateStat, type GateStatSet, type GateStates, type GateStats, type GateTraitRef,
@@ -2948,12 +2948,19 @@ const rigReportOf = (world: RuleWorld): RigReport => {
   /** Each Condition's state for the subject. A subject with no one owner holds a Condition unresolved only when no owner resolves it. */
   const statesFor = (subject: RigSubject, rows: TraitRequirementRow[]): RowState[] => {
     if (subject.kind === 'entity') return ruleStates(input, subject.owner, rows);
-    if (subject.kind === 'location') return locationRuleStates(input, rows);
-    const tries = [null, ...entityIds].map((id) => ruleStates(input, id, rows));
+    // A location reads the persona, and any persona the world can play may read it (Q7). An item reads its
+    // instance's owner, so any owner may; a rig no slot links reads any subject.
+    const tries = subject.kind === 'location'
+      ? personaChoices(world).map((persona) => locationRuleStates({ ...input, persona }, rows))
+      : [null, ...entityIds].map((id) => ruleStates(input, id, rows));
     return tries[0].map((row, r) => ({
       ...row, conditions: row.conditions.map((c, k) => ({ ...c, unresolved: tries.every((t) => t[r].conditions[k].unresolved) })),
     }));
   };
+  /** The owners whose tree a Condition with no owner reads: the played entity for each persona of a location, else the subject. */
+  const readers = (subject: RigSubject): OwnerId[] => (subject.kind === 'location'
+    ? personaChoices(world).map((persona) => playedEntityIds(persona, world.entities)[0] ?? null)
+    : [subject.owner]);
   const inertFor = (subject: RigSubject, req: StatRequirement): boolean =>
     (subject.kind === 'entity' ? statReadOwners(world, stats, subject.owner, req) : [null, ...entityIds])
       .some((id) => statSetOf(stats, id)?.[req.id]?.inert);
@@ -2995,7 +3002,7 @@ const rigReportOf = (world: RuleWorld): RigReport => {
         return req && !statesFor(subject, variant.requires!)[0]?.conditions[0]?.unresolved ? [req] : [];
       });
       return !(single.some((a, i) => single.some((b, j) => j > i && complementary(a, b)))
-        || picksCoveredBy(input, input.owners, subject.owner, shows));
+        || readers(subject).some((owner) => picksCoveredBy(input, input.owners, owner, shows)));
     });
     if (uncovered) {
       report.emptyBottom.push({

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Entity, LayeredMediaEntry, MediaLayer, MediaList, Stat, TraitRequirementRow, WorldOverview } from '@/types';
+import type { Entity, LayeredMediaEntry, MediaLayer, MediaList, Stat, Trait, TraitRequirementRow, WorldOverview } from '@/types';
 import { blankItem } from '@/lib/items';
 import { checkLayeredSizes } from './layeredSizes';
 import { runRules, type RuleWorld } from './rules';
@@ -117,6 +117,44 @@ describe('Layered Image Test Bench rules', () => {
     it('ignores a Variant whose image is gone', () => {
       const rig = rigOf([layer('body', [{ mediaId: 'body' }]), layer('face', [{ mediaId: 'lost', requires: traitRow('ghost') }])]);
       expect(flags(world(rig), 'layered-rule-missing-target')).toEqual([]);
+    });
+  });
+
+  describe('Conditions with no owner read the showing subject (Q7)', () => {
+    const brave: Trait = { id: 'brave', name: 'Brave', statChanges: [] };
+    const luck: Stat = { ...health, id: 'luck', name: 'Luck' };
+    const owned = (extra: Partial<Entity>): Entity => ({ ...resident(false), id: 'hero', name: 'Hero', traits: [brave], stats: [luck], ...extra });
+    const slot = [{ mediaId: 'rig' }];
+    const luckRig = rigOf([layer('body', [{ mediaId: 'body' }]), layer('face', [{ mediaId: 'hurt', requires: statRow('luck', '<', 5) }])]);
+    const onLocation = (rig: LayeredMediaEntry, hero: Entity): RuleWorld => ({
+      ...world(rig, false), entities: [hero],
+      locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, images: slot }],
+    });
+    const onItem = (rig: LayeredMediaEntry, hero: Entity): RuleWorld => ({
+      ...world(rig, false), entities: [hero], items: [{ ...blankItem('lantern', 'Tin Lantern'), images: slot }],
+    });
+
+    it('lets a location rig name a stat only a persona owns', () => {
+      expect(flags(onLocation(luckRig, owned({ persona: true })), 'layered-rule-missing-target')).toEqual([]);
+    });
+
+    it('lets an item rig name a stat only an entity owns, since the owner of an instance can be any entity', () => {
+      expect(flags(onItem(luckRig, owned({})), 'layered-rule-missing-target')).toEqual([]);
+    });
+
+    describe('a bottom Layer covered by a one-pick group', () => {
+      const traits: Trait[] = ['reptile', 'insect'].map((id) => ({ id, name: id, statChanges: [], groupId: 'type' }));
+      const groups = [{ id: 'type', name: 'Type', parentId: null, minPicks: 1, maxPicks: 1 }];
+      const kinds = (ids: string[]) => rigOf([layer('body', ids.map((id) => ({ mediaId: 'hurt', requires: traitRow(id) })))]);
+      const hero = owned({ persona: true, traits, traitGroups: groups });
+
+      it('counts a persona-owned group as covering a location rig', () => {
+        expect(flags(onLocation(kinds(['reptile', 'insect']), hero), 'layered-bottom-empty')).toEqual([]);
+      });
+
+      it('still flags a location rig that leaves a pick uncovered', () => {
+        expect(flags(onLocation(kinds(['reptile']), hero), 'layered-bottom-empty')).toHaveLength(1);
+      });
     });
   });
 
