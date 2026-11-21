@@ -53,6 +53,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 | Q27 | A Weather Condition ships in this spec, beside the Time Condition. |
 | Q28 | Each stored turn records its World Weather. A past page shows its own weather and its own location's Sheltered flag. |
 | Q29 | The Background Fade dims the weather along with the location art. |
+| Q30 | Script weather words are camelCase: `"clear"`, `"rain"`, `"snow"`, `"storm"`, `"brightSun"`. camelCase is the standard for every script-facing value. |
 
 ## User Stories
 
