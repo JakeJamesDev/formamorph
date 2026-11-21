@@ -8,6 +8,14 @@ The **Media** tab shows every image, sound, 3D Model and Avatar in your world, w
 
 The world keeps one copy of each image and sound. Entities, locations, items, the Map Background, Bodies and the Overview show that copy. An image two entities share is stored once. 3D Models and dictionary cover images stay on what holds them.
 
+A **Layered Image** is a picture stacked from parts. Each part shows one image at a time, picked by its Visibility rule. These image slots can link a Layered Image:
+
+- 🧍 An entity's gallery.
+- 🏞️ A location's images. The game view draws it as the location background. A condition with no owner reads the persona.
+- 🎒 An item's images. The item popup, the Inventory and the equipped lists draw it. A condition with no owner reads whoever holds the item, and never holds while the item lies at a location.
+
+The Map Background, the world thumbnail and dictionary cover images take plain images only.
+
 With no card selected, the panel shows **World Media**. It holds the world's counts and sizes by kind, and its five largest items.
 
 ## How to Find the Heaviest Files

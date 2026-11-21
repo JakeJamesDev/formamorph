@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { visibleLocationImages, visibleMapImages } from './imageVisibility';
+import type { Picture } from './layeredImages';
 import { useViewedGateInput } from './useViewedGateInput';
 import { useMediaList } from './useMediaList';
 import { useViewedMediaOverrides } from './useMediaOverrides';
@@ -9,10 +10,10 @@ import type { Base64Data, GameLocation, MapFrame, WorldOverview } from '@/types'
 export const DEFAULT_BACKGROUND = './default-background.jpg';
 
 /**
- * The backdrop for the turn on screen: the location's first visible image in author order, nothing when none
+ * The backdrop for the turn on screen: the location's first visible picture in author order, nothing when none
  * passes its rule (Q65), or the default background when there is no location.
  */
-export function useLocationBackdrop(location: Pick<GameLocation, 'id' | 'images'> | null | undefined): Base64Data | undefined {
+export function useLocationBackdrop(location: Pick<GameLocation, 'id' | 'images'> | null | undefined): Picture | undefined {
   const input = useViewedGateInput();
   const media = useMediaList();
   const overrides = useViewedMediaOverrides();

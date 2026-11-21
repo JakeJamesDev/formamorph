@@ -19,6 +19,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Layered Images:**
     - **A character's gallery can show a Layered Image, a picture stacked from parts that change with the story.** Each part shows its first version whose rule holds. The character panel, mention cards and full-size viewer draw the stack.
+    - **A location or item image slot can show a Layered Image.** The location background draws the stack. The Inventory, the equipped lists, the Inventory figure and the item popup draw an item's stack.
 
 #### 🔧 Fixed
 

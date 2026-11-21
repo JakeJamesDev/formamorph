@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { LocationBackdrop } from './LocationBackdrop';
+import type { LayeredPicture } from '@/lib/layeredImages';
 
 const imageLayer = () => screen.getByTestId('location-backdrop-image');
 const overlayLayer = () => screen.queryByTestId('location-backdrop-overlay');
@@ -54,6 +55,16 @@ describe('LocationBackdrop', () => {
     }
     expect(imageLayer().className).toContain('bg-cover');
     expect(imageLayer().className).toContain('bg-center');
+  });
+
+  it('draws a Layered Image’s stack inside the same compositor layer, with the fade beside it', () => {
+    const stack: LayeredPicture = { kind: 'layered', entryId: 'rig', canvas: 'room.png', layers: [{ id: 'room', opacity: 1, data: 'room.png' }, { id: 'rain', opacity: 0.5, data: 'rain.png' }] };
+    render(<LocationBackdrop image={stack} overlay={0.4} overlayHidden={false} />);
+    expect(imageLayer().style.transform).toBe('translateZ(0)');
+    expect(imageLayer().style.backgroundImage).toBe('');
+    expect([...imageLayer().querySelectorAll('[data-layer]')].map((l) => l.getAttribute('data-layer'))).toEqual(['room', 'rain']);
+    expect(overlayLayer()).not.toBe(null);
+    expect(imageLayer().contains(overlayLayer())).toBe(false);
   });
 
   it('hides both layers from assistive tech', () => {

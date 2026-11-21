@@ -1,5 +1,6 @@
 import catalog from '@/data/itemIcons.json';
 import { isUnidentified } from '@/lib/items';
+import type { Picture } from '@/lib/layeredImages';
 import type { Item, ItemInstance, Slot } from '@/types';
 
 /** One icon of the catalog. `id` is ours, never the art's name. `body` is the SVG inside a 512 viewBox. */
@@ -89,7 +90,7 @@ export function searchItemIcons(search: string): readonly ItemIconEntry[] {
 }
 
 /** What an Item Instance shows on the doll and in rows. */
-export type ShownItemIcon = { kind: 'icon'; id: string } | { kind: 'image'; src: string } | { kind: 'nothing' };
+export type ShownItemIcon = { kind: 'icon'; id: string } | { kind: 'image'; src: Picture } | { kind: 'nothing' };
 
 export interface ItemIconInput {
   /** `Item.icon`. Absent, or an id the catalog lacks, reads as Auto. */
@@ -99,8 +100,8 @@ export interface ItemIconInput {
   /** The names of the item's slots, in its rule's order. */
   slotNames: readonly string[];
   unidentified?: boolean;
-  /** The Item image this instance would show. */
-  image?: string;
+  /** The Item image this instance would show, a Layered Image's stack included. */
+  image?: Picture;
 }
 
 /** Unidentified derives only. Otherwise a specific icon, then None's image or nothing, then Auto's derivation. */
@@ -114,7 +115,7 @@ export function resolveItemIcon({ icon, name, slotNames, unidentified, image }: 
 export const instanceItemIcon = (
   instance: Pick<ItemInstance, 'state'>,
   item: Pick<Item, 'icon' | 'slotRule'> | undefined,
-  { name, slots, readText, image }: { name: string; slots: readonly Slot[]; readText: (text: string) => string; image?: string },
+  { name, slots, readText, image }: { name: string; slots: readonly Slot[]; readText: (text: string) => string; image?: Picture },
 ): ShownItemIcon => resolveItemIcon({
   icon: item?.icon,
   name,

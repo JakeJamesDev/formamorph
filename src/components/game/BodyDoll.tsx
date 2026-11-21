@@ -1,6 +1,8 @@
 import { forwardRef, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { BodyBackdropArt } from '@/components/BodyBackdropArt';
 import { ItemIconArt } from '@/components/ItemIconArt';
+import { PictureImg } from '@/components/PictureImg';
+import { pictureKey } from '@/lib/layeredImages';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { FlashTip, Tip } from '@/components/ui/tooltip';
 import { DOLL_MAX_HEIGHT, boxKey, boxLabel, boxStyle, frameInBox, stackOrder } from '@/lib/bodyLayout';
@@ -39,7 +41,7 @@ function FilledBox({ fill, label, box, aspect }: { fill: DollFill; label: string
           style={{ width: `${frame.w * 100}%`, height: `${frame.h * 100}%` }}
         >
           {image && (
-            <img
+            <PictureImg
               src={image} alt="" className="h-full w-full object-contain"
               onLoad={(e) => setImageAspect(e.currentTarget.naturalWidth / e.currentTarget.naturalHeight || null)}
               onError={() => setFailed(true)}
@@ -97,7 +99,7 @@ export function BodyDoll({ body, slotName, fills }: {
           <div key={key} data-doll-box={label} className="pointer-events-none absolute flex items-center justify-center" style={boxStyle(box, order.get(key))}>
             {fill
               // A new copy or image starts closed and measures again, so a reflow never leaves the last copy's popover open.
-              ? <FilledBox key={`${fill.id}|${fill.icon.kind === 'image' ? fill.icon.src : ''}`} fill={fill} label={label} box={box} aspect={body.aspect} />
+              ? <FilledBox key={`${fill.id}|${fill.icon.kind === 'image' ? pictureKey(fill.icon.src) : ''}`} fill={fill} label={label} box={box} aspect={body.aspect} />
               : <EmptyBox slotName={name} label={label} />}
           </div>
         );

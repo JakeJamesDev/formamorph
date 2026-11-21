@@ -13,6 +13,7 @@ import type { BodySlot } from '@/lib/bodies';
 import { fillBoxes } from '@/lib/bodyLayout';
 import { instanceWorthFacts, type BalanceRow } from '@/lib/currency';
 import { instanceItemIcon } from '@/lib/itemIcons';
+import type { Picture } from '@/lib/layeredImages';
 import { byEquipOrder, instanceFace, instanceName, instanceFacts, instanceState, itemUsable, occupiedSlots, ruleGaps, usesLeft, usesLine, wholeCount } from '@/lib/items';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
 import type { Body, Currency, Item, ItemInstance, ItemInstanceWhere, RuntimeItem, Slot } from '@/types';
@@ -50,7 +51,7 @@ export interface InventoryTabProps {
   disabled: boolean;
   resolveText: (text: string) => string;
   /** The image an Item Instance shows now, through its item's rules (Q113). Absent = no thumbnails. */
-  imageOf?: (instance: ItemInstance) => string | undefined;
+  imageOf?: (instance: ItemInstance) => Picture | undefined;
   /** The After Use effects running on the played Persona (Q40). */
   timed?: readonly TimedEffectView[];
   onOps: (ops: InventoryOp[]) => void;

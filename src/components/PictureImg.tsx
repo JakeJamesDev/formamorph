@@ -5,19 +5,19 @@ import { cn } from '@/lib/utils';
 
 type ImgProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'>;
 
-/** The canvas box that covers its container top-anchored, at `ratio` (width over height). */
-const coverBox = (ratio: number): CSSProperties => ({
-  left: '50%', top: 0, transform: 'translateX(-50%)',
+/** The canvas box that covers its container at `ratio` (width over height), top-anchored or centered. */
+const coverBox = (ratio: number, center?: boolean): CSSProperties => ({
+  left: '50%', top: center ? '50%' : 0, transform: center ? 'translate(-50%, -50%)' : 'translateX(-50%)',
   width: `max(100cqw, calc(100cqh * ${ratio}))`, height: `max(100cqh, calc(100cqw / ${ratio}))`,
 });
 
 /**
  * A resolved stack, each non-empty Layer stretched to the canvas (Q3) at its opacity. Unbounded, the unseen
  * canvas image sizes the box as a plain image would. Cropped, the caller's class sizes the box and the canvas
- * covers it, top-anchored.
+ * covers it, top-anchored or centered. `onLoad` and `onError` report the canvas image.
  */
-const LayeredImg = forwardRef<HTMLElement, ImgProps & { picture: LayeredPicture; crop?: boolean }>((
-  { picture, crop, className, alt, loading, decoding, draggable, width: _width, height: _height, ...rest }, ref,
+const LayeredImg = forwardRef<HTMLElement, ImgProps & { picture: LayeredPicture; crop?: boolean; center?: boolean }>((
+  { picture, crop, center, className, alt, loading, decoding, draggable, width: _width, height: _height, onLoad, onError, ...rest }, ref,
 ) => {
   const [ratio, setRatio] = useState<number>();
   const img = { loading, decoding, draggable, alt: '', 'aria-hidden': true } as const;
@@ -36,13 +36,16 @@ const LayeredImg = forwardRef<HTMLElement, ImgProps & { picture: LayeredPicture;
       {crop
         ? (
           <>
-            <RemoteImg {...img} src={picture.canvas} className="hidden" onLoad={(e) => setRatio(e.currentTarget.naturalWidth / (e.currentTarget.naturalHeight || 1))} />
-            <span className={cn('absolute', !ratio && 'inset-0')} style={ratio ? coverBox(ratio) : undefined}>{layers}</span>
+            <RemoteImg
+              {...img} src={picture.canvas} className="hidden" onError={onError}
+              onLoad={(e) => { setRatio(e.currentTarget.naturalWidth / (e.currentTarget.naturalHeight || 1)); onLoad?.(e); }}
+            />
+            <span className={cn('absolute', !ratio && 'inset-0')} style={ratio ? coverBox(ratio, center) : undefined}>{layers}</span>
           </>
         )
         : (
           <>
-            <RemoteImg {...img} src={picture.canvas} className={cn(className, 'invisible')} />
+            <RemoteImg {...img} src={picture.canvas} className={cn(className, 'invisible')} onLoad={onLoad} onError={onError} />
             <span className="absolute inset-0">{layers}</span>
           </>
         )}
@@ -59,7 +62,9 @@ export const PictureImg = forwardRef<HTMLElement, ImgProps & {
   src: Picture;
   /** The caller's class fixes the box, as a top-anchored portrait thumbnail. */
   crop?: boolean;
-}>(({ src, crop, ...props }, ref) => (isLayeredPicture(src)
-  ? <LayeredImg ref={ref} picture={src} crop={crop} {...props} />
+  /** With `crop`, center the canvas in the box rather than anchoring its top. */
+  center?: boolean;
+}>(({ src, crop, center, ...props }, ref) => (isLayeredPicture(src)
+  ? <LayeredImg ref={ref} picture={src} crop={crop} center={center} {...props} />
   : <RemoteImg ref={ref as Ref<HTMLImageElement>} src={src} {...props} />));
 PictureImg.displayName = 'PictureImg';

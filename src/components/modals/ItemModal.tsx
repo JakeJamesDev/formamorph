@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogTitleControl } 
 import { ItemRowArt } from '@/components/ItemIconArt';
 import { Meta } from '@/components/ui/typography';
 import type { ShownItemIcon } from '@/lib/itemIcons';
+import { isLayeredPicture, type Picture } from '@/lib/layeredImages';
 import { EntityCardBody, EntityDescription } from '../game/EntityCard';
 
 /** An Item Instance's popup: its image beside its description. `name`, `icon`, `image`, `description` and `facts` are what
@@ -11,7 +12,7 @@ export function ItemModal({ id, name, icon, image, description, facts, isOpen, o
   name: string;
   /** The header draws only a catalog icon, since the body already draws the image. */
   icon: ShownItemIcon;
-  image?: string;
+  image?: Picture;
   description: string;
   /** Short text beside the name: State, count, uses left. */
   facts: readonly string[];
@@ -33,7 +34,8 @@ export function ItemModal({ id, name, icon, image, description, facts, isOpen, o
             {facts.map((fact) => <Meta key={fact}>{fact}</Meta>)}
           </div>
         </DialogHeader>
-        <EntityCardBody entity={{ id, name, images: image ? [{ data: image }] : undefined }} sideBySide>
+        {/* The entity's own gallery only tells the card a picture exists; `images` is what draws. */}
+        <EntityCardBody entity={{ id, name, images: image ? [{ data: isLayeredPicture(image) ? image.canvas : image }] : undefined }} images={image ? [image] : undefined} sideBySide>
           <EntityDescription text={description} />
         </EntityCardBody>
       </DialogContent>

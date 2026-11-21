@@ -320,6 +320,26 @@ const RIG: MediaEntry = {
     { id: 'dev-layer-hood', name: 'Hood', opacity: 0.85, variants: [{ mediaId: 'dev-rig-hood', requires: below('dev-warmth', 50) }] },
   ],
 };
+/** A wide scene for the White Room's backdrop rig. */
+const sceneArt = (body: string) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700">${body}</svg>`)}`;
+const SCENE_ART: Record<string, string> = {
+  'dev-scene-room': sceneArt('<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d2b44"/><stop offset="1" stop-color="#4b5d73"/></linearGradient></defs><rect width="1200" height="700" fill="url(#g)"/><rect x="0" y="520" width="1200" height="180" fill="#2a2f38"/><rect x="480" y="200" width="240" height="320" rx="14" fill="#10151f"/>'),
+  'dev-scene-rain': sceneArt(`<g stroke="#9fc3ea" stroke-width="3" stroke-linecap="round" opacity=".8">${Array.from({ length: 70 }, (_, i) => `<path d="M${(i * 83) % 1200} ${(i * 131) % 640} l-16 44"/>`).join('')}</g>`),
+};
+/** The White Room's backdrop rig: a room, and rain that falls while the persona's Warmth is below 50. */
+const SCENE_RIG: MediaEntry = {
+  id: 'dev-scene-rig', name: 'Room Scene', kind: 'layered', layers: [
+    { id: 'dev-scene-layer-room', name: 'Room', variants: [{ mediaId: 'dev-scene-room' }] },
+    { id: 'dev-scene-layer-rain', name: 'Rain', opacity: 0.9, variants: [{ mediaId: 'dev-scene-rain', requires: below('dev-warmth', 50) }] },
+  ],
+};
+/** A carried item whose image is a rig: the hood shows while its holder's Warmth is below 50. */
+const ITEM_RIG: MediaEntry = {
+  id: 'dev-item-rig', name: 'Cloak Rig', kind: 'layered', layers: [
+    { id: 'dev-item-layer-body', name: 'Cloak', variants: [{ mediaId: 'dev-rig-body' }] },
+    { id: 'dev-item-layer-hood', name: 'Hood', variants: [{ mediaId: 'dev-rig-hood', requires: below('dev-warmth', 50) }] },
+  ],
+};
 /** Two scouts sharing the rig, each in its own state: Wren hurt and cold, Corin well and warm. */
 // Lists only the fields the fixture reads, hence the cast.
 const RIG_CAST = [
@@ -443,13 +463,19 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       ]);
       const base = world.default as unknown as World;
       const saved = save.default as unknown as SaveObject;
-      const art = Object.fromEntries(Object.entries(RIG_ART).map(([id, data]): [string, MediaEntry] => [id, { id, name: id, kind: 'image', type: 'image/svg+xml', data }]));
+      const art = Object.fromEntries(Object.entries({ ...RIG_ART, ...SCENE_ART }).map(([id, data]): [string, MediaEntry] => [id, { id, name: id, kind: 'image', type: 'image/svg+xml', data }]));
       const history = saved.currentState.fullMessageHistory ?? [];
       const last = history.length - 1;
+      const cloak = devItem('dev-item-cloak', 'Rig Cloak', 'dev-slot-chest', { icon: 'none', images: [{ mediaId: ITEM_RIG.id }] });
       return {
         world: {
           ...base,
-          worldOverview: { ...base.worldOverview, mediaList: { ...base.worldOverview.mediaList, ...art, [RIG_ID]: RIG } },
+          worldOverview: { ...base.worldOverview, mediaList: { ...base.worldOverview.mediaList, ...art, [RIG_ID]: RIG, [SCENE_RIG.id]: SCENE_RIG, [ITEM_RIG.id]: ITEM_RIG } },
+          // The White Room's backdrop is the scene rig, ruled on the persona's Warmth.
+          locations: base.locations.map((l) => (l.id === WHITE_ROOM_ID ? { ...l, images: [{ mediaId: SCENE_RIG.id }] } : l)),
+          slots: DEV_SLOTS,
+          bodies: devBodies(),
+          items: [...(base.items ?? []), cloak],
           entities: [...RIG_CAST.map((e) => withMembership(e, [WHITE_ROOM_ID])), ...base.entities],
         },
         save: {
@@ -459,6 +485,8 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
             ...saved.currentState,
             locationId: WHITE_ROOM_ID,
             metEntities: ['dev-corin'],
+            // Wren wears the cloak, so its hood follows her Warmth.
+            itemInstances: [{ id: 'dev-instance-cloak', item: { kind: 'item', itemId: cloak.id }, where: { kind: 'you' }, quantity: 1, visibility: 'visible', equipped: { slotId: 'dev-slot-chest', order: 0 } }],
             fullMessageHistory: history.map((message, index) => (
               index === last ? { ...message, content: JSON.stringify({ ...JSON.parse(message.content), entities: ['Corin'] }) } : message
             )),

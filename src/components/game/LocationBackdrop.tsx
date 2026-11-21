@@ -1,3 +1,6 @@
+import { PictureImg } from '@/components/PictureImg';
+import { isLayeredPicture, type Picture } from '@/lib/layeredImages';
+
 /**
  * The location image behind the game view.
  *
@@ -9,28 +12,33 @@
  *
  * Keeping the fade on its own layer matters for the same reason: folded into the image's background
  * shorthand, moving the overlay slider or toggling Hide UI would invalidate the image raster.
+ *
+ * A Layered Image draws its stack inside that same layer, covering the view and centered like the plain image.
  */
 export const LocationBackdrop = ({ image, overlay, overlayHidden }: {
-  /** Background image URL; absent paints nothing. */
-  image: string | null | undefined;
+  /** Background image URL, or a Layered Image's stack; absent paints nothing. */
+  image: Picture | null | undefined;
   /** Alpha of the theme-colored fade over the image; 0 leaves the image untouched. */
   overlay: number;
   /** Drop the fade to reveal the raw image (the Hide UI toggle). */
   overlayHidden: boolean;
 }) => {
   if (!image) return null;
+  const stack = isLayeredPicture(image) ? image : undefined;
   return (
     <>
       <div
         data-testid="location-backdrop-image"
         aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-cover bg-center"
+        className={stack ? 'absolute inset-0 -z-10 overflow-hidden' : 'absolute inset-0 -z-10 bg-cover bg-center'}
         style={{
-          backgroundImage: `url(${image})`,
+          ...(typeof image === 'string' ? { backgroundImage: `url(${image})` } : {}),
           transform: 'translateZ(0)',
           willChange: 'transform',
         }}
-      />
+      >
+        {stack && <PictureImg src={stack} alt="" crop center className="h-full w-full" />}
+      </div>
       {!overlayHidden && overlay > 0 && (
         <div
           data-testid="location-backdrop-overlay"
