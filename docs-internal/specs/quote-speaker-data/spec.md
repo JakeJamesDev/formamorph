@@ -1,7 +1,7 @@
 # Spec: Quote Speaker Data
 
 Status: ready-for-agent
-Spec session: quote-speaker data — spec (run from the FormamorphServer checkout)
+Spec session: quote-speaker-data — spec
 
 Fix the most common wrong quote speakers in Character Mentions, and make player contributions carry enough data to train and measure on. Spans both repos: the Formamorph client and FormamorphServer. Builds on the closed Character Mentions spec (`docs-internal/specs/character-mentions/`) and amends its Q36.
 
