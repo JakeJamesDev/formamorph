@@ -28,6 +28,8 @@ import type { WeatherKind, Daypart, Entity, GameLocation, Opening, OpeningKind, 
 import { DaypartSelect } from '@/components/editor/DaypartSelect';
 import { DAYPART_ICON } from '@/components/editor/daypartIcons';
 import { DAYPART_LABELS } from '@/lib/routineTime';
+import { WEATHER_ICON } from '@/components/editor/weatherIcons';
+import { WEATHER_LABELS } from '@/lib/weather';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame, fieldPath } from '@/lib/historyField';
 
@@ -330,6 +332,7 @@ const OpeningCard = ({
   // A chip reads as its name, and a paragraph as its first line plus an ellipsis.
   const firstLine = placeholderChipLine(opening.text, vocab.label);
   const { time } = opening;
+  const weather = weatherKinds ? opening.weather : undefined;
   return (
     <div
       ref={setNodeRef}
@@ -366,6 +369,13 @@ const OpeningCard = ({
           <Tip tip={`Starts at ${DAYPART_LABELS[time]}`} labelsChild={false}>
             <span role="img" aria-label={`Time, ${DAYPART_LABELS[time]}`} className="inline-flex text-muted-foreground">
               {createElement(DAYPART_ICON[time], { className: 'h-3.5 w-3.5', 'aria-hidden': true })}
+            </span>
+          </Tip>
+        )}
+        {!open && weather && (
+          <Tip tip={`Starts with ${WEATHER_LABELS[weather]}`} labelsChild={false}>
+            <span role="img" aria-label={`Weather, ${WEATHER_LABELS[weather]}`} className="inline-flex text-muted-foreground">
+              {createElement(WEATHER_ICON[weather], { className: 'h-3.5 w-3.5', 'aria-hidden': true })}
             </span>
           </Tip>
         )}

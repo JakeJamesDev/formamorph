@@ -25,6 +25,24 @@ describe("an Opening's Weather picker", () => {
     expect(options).toEqual(['World Default', 'Clear', 'Rain', 'Storm']);
   });
 
+  const collapsedWith = async (weatherKinds?: ReturnType<typeof allowedWeatherKinds>) => {
+    const stormy = { openings: [{ id: 'a', text: 'Start.', kind: 'action', weather: 'storm' } as Opening] };
+    render(<OpeningsList owner={stormy} rows={ownerOpeningRows(stormy)} onChange={() => {}} placeholders={[]} empty={null} weatherKinds={weatherKinds} />);
+    const collapse = screen.queryByRole('button', { name: 'Collapse Opening 1' });
+    if (collapse) await userEvent.setup().click(collapse);
+    expect(screen.getByRole('button', { name: 'Expand Opening 1' })).toBeTruthy();
+  };
+
+  it('marks a collapsed card with its Weather icon', async () => {
+    await collapsedWith(allowedWeatherKinds({ on: true, allowed: ['storm'] }));
+    expect(screen.getByRole('img', { name: 'Weather, Storm' })).toBeTruthy();
+  });
+
+  it('shows no Weather mark while Weather is off', async () => {
+    await collapsedWith(undefined);
+    expect(screen.queryByRole('img', { name: /^Weather/ })).toBeNull();
+  });
+
   it('is hidden while Weather is off', () => {
     mount(undefined);
     expect(screen.queryByRole('combobox', { name: /^Weather/ })).toBeNull();
