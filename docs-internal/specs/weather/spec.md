@@ -162,6 +162,16 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 - The Turn Landing applies the weather through its effects port and reports a **Weather Change** when the weather the player experiences changes. The experienced weather is the World Weather, or none in a Sheltered location.
 - A Weather Change fires foreground when the new experienced weather is a non-Clear kind, the turn is not the opening turn, and the change is not the nightfall rule. Moving into Shelter, and Clear as the new weather, fire nothing.
 - The stat re-roll mode does not fire a Weather Change. It is a named skip in the landing, per ADR 0019.
+- The Turn Landing module does not exist yet. One pure Weather Change helper (before, after, opening turn, nightfall → change or none) serves the view's inline landing today and moves into the landing's port when that module lands.
+- Q4 covers every location change, not only one inside a turn landing. A Go after the landing and Map travel also call the Weather Change helper.
+- The Weather Pass knows only the turn's start time, so it reads daylight at the turn's start. On the opening turn with the hour unread, Bright Sun is offered, and the nightfall rule corrects it at the turn's end.
+- The nightfall rule applies whenever the final weather is Bright Sun and the turn ends outside daylight, whatever made it Bright Sun.
+- Whether the opening turn runs the Weather Pass comes from a flag set by the start resolver. It is not saved.
+
+**Prompt surface**
+
+- The Weather Pass is a full preset prompt like the clock pass: system and user prompts in the preset, a Weather entry in the Prompts settings, its own request type, per-prompt Native Reasoning and pinned samplers.
+- The narrator line is a weather chip in the default narration system prompt, right after the Current Location block. The Now line rides only the recap reply while a digest band exists, so it cannot carry the weather every turn. The chip is empty while Weather is off, and empty on an opening turn whose weather is unset. A player's own edited system prompt does not gain it.
 
 **Narrator context**
 
