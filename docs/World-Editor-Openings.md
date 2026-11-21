@@ -82,6 +82,24 @@ See [Self Openings](#self-openings) for when a Self opening draws.
 
 Drag a row by its handle to change its place in the list. Order doesn't change the chances.
 
+## Start time
+<!-- keywords: time of day, start at night, daypart, midnight opening, default time, what time does the story start, clock at start -->
+
+An opening can set the time of day the story starts at. The **Time** picker sits on each opening's card. It offers **World Default**, then **Night**, **Dawn**, **Morning**, **Midday**, **Afternoon** and **Evening**.
+
+**Default Time** sits at the top of the **This World** pane. It sets the start time for every opening with no Time of its own, and for the default opening. It also works when the clock is off.
+
+The game picks the start time in this order. The first one that is set wins:
+
+1. The Time of the opening that was drawn.
+2. The world's **Default Time**.
+3. The AI reads the time from page one. This step needs the AI Clock setting on.
+4. 8 in the morning.
+
+When a time is set, the AI doesn't read it from page one. Page one is written at that time of day. **Regenerate Narration** on page one picks the time again from the new opening.
+
+Each daypart starts at a fixed hour, and the story starts at that hour. Night starts at 8 in the evening.
+
 ## Collapse the Cards
 <!-- keywords: fold, minimize, shrink rows, hide long text, expand all, too much scrolling, compact list -->
 

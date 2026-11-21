@@ -97,6 +97,13 @@ describe('planTurn', () => {
       expect(ids({ isGameStarted: false }, { aiClock: false })).not.toContain('openingTime');
     });
 
+    it('leaves the opening-time pass out when an authored hour is already set', () => {
+      expect(ids({ isGameStarted: false, startHourSet: true })).not.toContain('openingTime');
+      // The clock-measured turns are untouched by it.
+      expect(ids({ isGameStarted: false, startHourSet: true })).toContain('timePassed');
+      expect(ids({ isGameStarted: false, startHourSet: false })).toContain('openingTime');
+    });
+
     it('routes no action before the narration, and follows the opening narration in Auto mode only', () => {
       const opening = ids({ isGameStarted: false });
       expect(opening).not.toContain('locationAuto');

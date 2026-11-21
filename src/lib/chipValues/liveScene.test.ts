@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { liveChipScene, type LiveSceneSources } from './liveScene';
+import { authoredStartHour } from '../openings';
 import { chipValues, entityStatsField } from './chipValues';
 import { resolveOwners, type OwnerWorld } from '../owners';
 import { encodePlaceholderToken, resolveOwnerText, resolveEntityText, resolvePlaceholders } from '../placeholders';
@@ -509,6 +510,14 @@ describe('the live adapter', () => {
     it('keeps the live names with no cast in the box', () => {
       const roster = chipValues(liveChipScene(live, null, { resolveEntity: resolveEntityUnder(boxPins) }))('<ENTITIES|summary.markdown>');
       expect(roster).toContain('- **Vix**\n  - **stranger name:** The Fox of the Woods\n');
+    });
+  });
+
+  describe('a story opened at an authored time', () => {
+    it('reads the Opening Time on the first Time chip', () => {
+      const startHour = authoredStartHour({ id: 'o', text: 'Go.', kind: 'action', time: 'night' }, undefined);
+      const values = chipValues(liveChipScene(sources({ time: { elapsed: 0, calendar: { startHour: startHour ?? undefined } } })));
+      expect(values('<TIME>')).toBe('Day 1, night');
     });
   });
 

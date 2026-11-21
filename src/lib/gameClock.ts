@@ -251,6 +251,9 @@ export const DAYPART_START_MINUTE = Object.fromEntries(
   DAYPART_STARTS.map(([f, d]) => [d, Math.round(f * MINUTES_PER_DAY)]),
 ) as Record<Daypart, number>;
 
+/** The hour a daypart begins at on a 24-hour day: what an authored start time stores. */
+export const daypartStartHour = (part: Daypart): number => DAYPART_START_MINUTE[part] / 60;
+
 /** The first daypart edge after story minute `minute`. */
 export function nextDaypartEdge(minute: number): number {
   const day = Math.floor(minute / MINUTES_PER_DAY) * MINUTES_PER_DAY;

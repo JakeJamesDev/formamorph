@@ -18,12 +18,13 @@ import { ListSearchToolbar } from '@/components/ListToolbar';
 import { useListSearch } from '@/components/listToolbarHooks';
 import {
   addOpening, DEFAULT_OPENING, moveOpening, ownerOpeningRows, removeOpening,
-  setOpeningKind, setOpeningSelf, setOpeningText, setOpeningWeight, canOwnSelfOpenings, othersNeverDraw, type EditorOpeningRow, type OpeningOwner,
+  setOpeningKind, setOpeningSelf, setOpeningText, setOpeningTime, setOpeningWeight, canOwnSelfOpenings, othersNeverDraw, type EditorOpeningRow, type OpeningOwner,
   type OpeningsEditorView,
 } from '@/lib/openings';
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
 import { cn } from '@/lib/utils';
-import type { Entity, GameLocation, Opening, OpeningKind, Placeholder } from '@/types';
+import type { Daypart, Entity, GameLocation, Opening, OpeningKind, Placeholder } from '@/types';
+import { DaypartSelect } from '@/components/editor/DaypartSelect';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame, fieldPath } from '@/lib/historyField';
 
@@ -52,6 +53,24 @@ export function DefaultOpeningNote({ view, label }: { view: OpeningsEditorView; 
       >
         {DEFAULT_OPENING.text}
       </div>
+    </div>
+  );
+}
+
+/** The time of day a game starts at when its opening sets none. */
+export function DefaultTimeField({ value, onChange }: { value: Daypart | undefined; onChange: (time: Daypart | undefined) => void }) {
+  return (
+    <div className="space-y-1" {...fieldFrame('worldOverview', 'defaultTime')}>
+      <div className="flex items-center gap-2">
+        <span className="text-label font-medium">Default Time</span>
+        <DaypartSelect
+          value={value}
+          onChange={(time) => onChange(time ?? undefined)}
+          unsetLabel="Not Set"
+          ariaLabel="Default Time"
+        />
+      </div>
+      <Hint>Openings with no Time start at this time of day. Not set, the AI reads the time from page one.</Hint>
     </div>
   );
 }
@@ -239,6 +258,7 @@ export function OpeningsList({
                   ownerName={ownerName}
                   onKind={(kind) => onChange(setOpeningKind(owner, opening.id, kind))}
                   onSelf={selfSwitch ? (self) => onChange(setOpeningSelf(owner, opening.id, self)) : undefined}
+                  onTime={(time) => onChange(setOpeningTime(owner, opening.id, time))}
                   selfBadge={selfBadge && !!opening.self}
                   onText={(text) => onChange(setOpeningText(owner, opening.id, text))}
                   onWeight={(w) => onChange(setOpeningWeight(owner, opening.id, w))}
@@ -265,7 +285,7 @@ export function OpeningsList({
 }
 
 const OpeningCard = ({
-  opening, label, a11yLabel, open, onToggle, weight, chance, neverDrawsOn, placeholders, ownerId, ownerName, onKind, onSelf, selfBadge,
+  opening, label, a11yLabel, open, onToggle, weight, chance, neverDrawsOn, placeholders, ownerId, ownerName, onKind, onSelf, onTime, selfBadge,
   onText, onWeight, onRemove,
 }: {
   opening: Opening;
@@ -285,6 +305,7 @@ const OpeningCard = ({
   onKind: (kind: OpeningKind) => void;
   /** Sets Others or Self. Absent, the card has no switch. */
   onSelf?: (self: boolean) => void;
+  onTime: (time: Daypart | null) => void;
   selfBadge: boolean;
   onText: (text: string) => void;
   onWeight: (weight: number) => void;
@@ -356,6 +377,14 @@ const OpeningCard = ({
             <ToggleGroupItem value="self" className="px-2 py-0 text-helper">Self</ToggleGroupItem>
           </ToggleGroup>
         )}
+        <span className="inline-flex" {...fieldFrame('openings', opening.id, 'time')}>
+          <DaypartSelect
+            value={opening.time}
+            onChange={onTime}
+            unsetLabel="World Default"
+            ariaLabel={`Time, ${a11yLabel}`}
+          />
+        </span>
         <div className="ml-auto flex items-center gap-2">
           <span className="inline-flex" {...fieldFrame('openings', opening.id, 'weight')}>
             <WorldInput

@@ -1,11 +1,12 @@
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
+import { daypartStartHour } from '@/lib/gameClock';
 import { idsAt, idsAtAny, startPlacesOf, type PlacesOf } from '@/lib/entityPlaces';
 import { playsOnlyWhenPicked } from '@/lib/entityRelationships';
 import { locationRows } from '@/lib/locationTree';
 import { startCandidates } from '@/lib/startingLocation';
 import { randomUUID } from '@/lib/uuid';
 import type { ResolvedPersona } from '@/lib/persona';
-import type { Entity, GameLocation, Opening, OpeningKind, WorldOverview } from '@/types';
+import type { Daypart, Entity, GameLocation, Opening, OpeningKind, WorldOverview } from '@/types';
 
 /**
  * Openings: the weighted list a playthrough starts from. Every rule lives here — which rows can be drawn,
@@ -15,6 +16,13 @@ import type { Entity, GameLocation, Opening, OpeningKind, WorldOverview } from '
 
 /** What a world with nothing to draw opens on. */
 export const DEFAULT_OPENING: Opening = { id: 'default', text: OPENING_SCENE_CUE, kind: 'action' };
+
+/** The hour a story drawn from `opening` starts at when the author set one: the row's Time, else the world's
+ *  Default Time, stored as that daypart's start hour. Null leaves the opening-time pass to read page one. */
+export function authoredStartHour(opening: Opening | null | undefined, overview: Overview): number | null {
+  const part = opening?.time ?? overview?.defaultTime;
+  return part ? daypartStartHour(part) : null;
+}
 
 /** Anything that carries openings: the world overview or an entity. An opening id is unique within its
  *  owner only, since a library entity added twice keeps its ids. */
@@ -425,6 +433,17 @@ export function setOpeningText(owner: OpeningOwner, id: string, text: string): O
 /** Sets whether one row opens as a Player Action or as Narration. */
 export function setOpeningKind(owner: OpeningOwner, id: string, kind: OpeningKind): OpeningOwner {
   return { openings: (owner.openings ?? []).map((o) => (o.id === id ? { ...o, kind } : o)) };
+}
+
+/** Sets one row's Time; absent is stored as absent, which reads the world's Default Time. */
+export function setOpeningTime(owner: OpeningOwner, id: string, time: Daypart | null): OpeningOwner {
+  return {
+    openings: (owner.openings ?? []).map((o) => {
+      if (o.id !== id) return o;
+      const { time: _drop, ...rest } = o;
+      return time ? { ...rest, time } : rest;
+    }),
+  };
 }
 
 /** Marks one row Self or Others; Others is stored as absent. */

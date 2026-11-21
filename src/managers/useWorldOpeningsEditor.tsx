@@ -23,7 +23,7 @@ import {
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { cn } from '@/lib/utils';
 import {
-  DefaultOpeningNote, EntityOpeningsHint, LocationOpeningsHint, OpeningsList, WorldOpeningsHint,
+  DefaultOpeningNote, DefaultTimeField, EntityOpeningsHint, LocationOpeningsHint, OpeningsList, WorldOpeningsHint,
 } from './OpeningsPanel';
 import { OpeningsAddMenu } from './OpeningsAddMenu';
 
@@ -230,6 +230,9 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, collapse,
       onAdd={() => patchOwner(held, addOpening(ownerOf(held)))}
       noStart={held.group.atNoStart && held.kind !== 'world' ? NO_START_TIP[held.kind] : null}
     >
+      {held.kind === 'world' && (
+        <DefaultTimeField value={worldOverview.defaultTime} onChange={(defaultTime) => updateWorldOverview({ defaultTime })} />
+      )}
       {held.kind === 'world' && view.defaultOpening && !typed && <DefaultOpeningNote view={view} label={label} />}
       <OpeningsList
         owner={ownerOf(held)}

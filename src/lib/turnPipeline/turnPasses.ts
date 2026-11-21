@@ -850,7 +850,7 @@ const openingTimePass: TurnPassRecord<number | null> = {
   type: 'openingTime',
   stage: 'postNarration',
   fanOut: false,
-  isDue: (input) => input.settings.aiClock && isOpening(input),
+  isDue: (input) => input.settings.aiClock && isOpening(input) && !input.startHourSet,
   buildRequest: (input, material) => labeledRequest(
     { type: 'openingTime', maxTokens: TURN_PASS_CAPS.openingTime, ...silentOn(material) },
     systemTiled(input.prompts.openingTime, material.ctx),

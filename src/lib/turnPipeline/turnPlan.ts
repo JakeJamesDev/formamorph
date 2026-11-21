@@ -139,6 +139,9 @@ export interface TurnPlanInput {
   /** Locations in the world; one place means there is nowhere to suggest moving to. */
   locationCount: number;
   hasCurrentLocation: boolean;
+  /** The story's start hour is already set, by the drawn Opening or the world's Default Time. The opening
+   *  turn then leaves out the opening-time pass. */
+  startHourSet?: boolean;
   /** An Opening Narration's resolved text: page one as authored. The turn sends nothing before its
    *  post-narration stage. Blank counts as absent. */
   writtenNarration?: string;

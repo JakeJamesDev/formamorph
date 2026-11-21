@@ -103,7 +103,7 @@ import type { TTSModalHandle, TTSProgress } from "../components/game/TTSModal";
 const TTSModal = lazy(() => import("../components/game/TTSModal"));
 import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
-import { drawPoolEntry, drawUnseenOpening, openingOwner, openingPool, type DrawnOpening } from "@/lib/openings";
+import { authoredStartHour, drawPoolEntry, drawUnseenOpening, openingOwner, openingPool, type DrawnOpening } from "@/lib/openings";
 import { drawNewGameOpening } from "@/lib/newGameOpening";
 import { customPersonaEntity } from "@/lib/blueprints";
 import { bodyPickEntities } from "@/lib/bodies";
@@ -2086,6 +2086,8 @@ const GameViewer = ({
         ...session, drawn: { opening: redraw.opening, ownerId: redraw.ownerId }, shown: redraw.shown,
       };
       setIsGameStarted(false);
+      // The new row's time, or none: the restore above may hold the hour the pass read for the old page one.
+      setStartHour(authoredStartHour(redraw.opening, worldOverview));
       if (redraw.opening.kind === "narration") {
         pendingTurnRef.current = { action: OPENING_STAND_IN, writtenNarration: redrawText };
         setPendingTurnNonce((n) => n + 1);
@@ -3237,7 +3239,8 @@ const GameViewer = ({
 
     // Seed the story's opening hour. Only ever written on the opening turn; null reads downstream as the
     // shipped DEFAULT_START_HOUR, so an unreadable answer plays exactly as before this pass existed.
-    if (commit.isOpeningTurn) setStartHour(commit.openingHour);
+    // An authored hour was set when the opening was drawn, and the pass that would answer it did not run.
+    if (commit.isOpeningTurn && commit.openingHour !== null) setStartHour(commit.openingHour);
 
     // What the narration's During AI Output scripts wrote lands now, so the After batch starts from it. Its
     // bar share joins the before box's.
@@ -3477,6 +3480,7 @@ const GameViewer = ({
       destinationCount: destinations.length,
       locationCount: locations.length,
       hasCurrentLocation: !!currentLocation,
+      startHourSet: startHour !== null,
       writtenNarration,
       attachments: resentAttachments ?? attachments,
       toldActions: told,
@@ -6395,6 +6399,8 @@ const GameViewer = ({
         ...newOpeningSession(), drawn: { opening: drawn.opening, ownerId: drawn.ownerId }, shown: drawn.shown,
         startLocationId: location?.id ?? null,
       };
+      // Set before page one is written, so its clock line carries the authored hour.
+      setStartHour(authoredStartHour(drawn.opening, worldOverview));
       const openingText = resolveOpening(drawn.opening.text, {
         extraPins: openingPins, persona: drawnPersona, rolls: openingRolls, libraryAdditions: [...picked, ...libraryBooks], owner: drawnOwner,
       });

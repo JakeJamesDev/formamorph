@@ -494,6 +494,15 @@ describe('computeTurnCommit — the clock', () => {
     expect(commit?.clock.calendar).toEqual({ startHour: 8 });
   });
 
+  it('keeps an authored start hour when the opening-time pass was left out of the plan', () => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }], {}, {}, { isGameStarted: false, startHourSet: true });
+    expect(plan.passes.some((p) => p.id === 'openingTime')).toBe(false);
+    const commit = computeTurnCommit({ result, plan, context: context({ gameTime: 0, calendar: { startHour: 20 } }) });
+    expect(commit?.isOpeningTurn).toBe(true);
+    expect(commit?.openingHour).toBeNull();
+    expect(commit?.clock.calendar).toEqual({ startHour: 20 });
+  });
+
   it('never reads an opening hour on a turn that is not the opening one', () => {
     const { plan, result } = runOf([
       { id: 'narration', raw: NARRATION },

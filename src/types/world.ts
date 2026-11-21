@@ -1133,6 +1133,9 @@ export interface WorldOverview {
   openings?: Opening[];
   /** Relative draw weight per opening id; an opening absent from the map weighs 1, and 0 benches it. */
   openingWeights?: Record<string, number>;
+  /** The time of day a story starts at when the drawn opening sets none. Absent = the opening-time pass reads
+   *  page one. */
+  defaultTime?: Daypart;
   /** Which personas the player can pick. Absent = any. */
   allowedPersonas?: AllowedPersonas;
   /** The persona a new player starts on. Absent = the player's default persona. */
@@ -1180,6 +1183,8 @@ export interface Opening {
   /** A Self opening: a start written for playing as its owner, drawn only while the player plays it. Absent =
    *  Others, the owner greeting the player. Read only on an owner with the Persona mark. */
   self?: true;
+  /** The time of day a story drawn from this row starts at. Absent = the world's Default Time. */
+  time?: Daypart;
 }
 
 /** A complete authored world: overview plus all stats, locations, entities, traits, and updates. */

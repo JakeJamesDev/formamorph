@@ -4,7 +4,7 @@ import { PLAYER_START, type Entity, type GameLocation, type Opening, type WorldO
 import {
   addOpening, DEFAULT_OPENING, drawOpening, drawPoolEntry, openingOwner, isOpeningFieldKey, moveOpening, openingChances, openingFieldKey, openingsEditorView,
   drawUnseenOpening, hasAuthoredOpenings, openingPool, poolKey, remintOpenings, openingTexts, removeOpening, resolveOpening, setOpeningKind,
-  othersNeverDraw, ownerOpeningRows, setOpeningText, setOpeningWeight,
+  othersNeverDraw, ownerOpeningRows, setOpeningText, setOpeningWeight, authoredStartHour, setOpeningTime,
 } from './openings';
 import { AS_LISTED } from '@/test/asListed';
 import { oneRoutine } from '@/test/routines';
@@ -18,6 +18,32 @@ const seeded = (seed: number) => () => {
 };
 
 const action = (id: string, text = `Opening ${id}.`): Opening => ({ id, text, kind: 'action' });
+
+describe('the start hour an author sets', () => {
+  const timed: Opening = { ...action('t'), time: 'night' };
+
+  it('takes the drawn opening first, stored as the daypart start hour', () => {
+    expect(authoredStartHour(timed, overview({ defaultTime: 'morning' }))).toBe(20);
+  });
+
+  it('falls back to the world Default Time when the opening sets none', () => {
+    expect(authoredStartHour(action('a'), overview({ defaultTime: 'morning' }))).toBe(8);
+    expect(authoredStartHour(DEFAULT_OPENING, overview({ defaultTime: 'dawn' }))).toBe(6);
+  });
+
+  it('is null with neither, leaving the opening-time pass to read page one', () => {
+    expect(authoredStartHour(action('a'), overview())).toBeNull();
+    expect(authoredStartHour(null, undefined)).toBeNull();
+  });
+
+  it('sets and clears one row time, leaving the other rows alone', () => {
+    const owner = { openings: [action('a'), action('b')] };
+    const set = setOpeningTime(owner, 'a', 'evening').openings ?? [];
+    expect(set.map((o) => o.time)).toEqual(['evening', undefined]);
+    const cleared = setOpeningTime({ openings: set }, 'a', null).openings ?? [];
+    expect('time' in cleared[0]).toBe(false);
+  });
+});
 
 const overview = (over: Partial<WorldOverview> = {}): WorldOverview => ({
   name: 'W', description: '', author: '', thumbnail: null, bgm: null,

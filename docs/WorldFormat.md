@@ -166,6 +166,7 @@ Write new files in the current shape. A file with `scripts` loads in an older ve
 | `promptOverrides` | | Object | The world's **Custom Prompts**. See below. Absent = the player's prompts |
 | `openings` | | [Opening](#openings)[] | The world's own openings, in order |
 | `openingWeights` | | Object | Draw weight per opening `id`. A missing entry weighs 1. `0` keeps an opening and never draws it |
+| `defaultTime` | | `"night"` \| `"dawn"` \| `"morning"` \| `"midday"` \| `"afternoon"` \| `"evening"` | The time of day a game starts at when the drawn opening has no `time`. Absent = the AI reads it from page one |
 | `allowedPersonas` | | `"any"` \| `"world"` | Which personas the player can pick. `"world"` allows only this world's personas and its Custom Persona. Absent = `"any"` |
 | `startPersona` | | Object | The persona a new player starts on: `{ "source": "none" }`, or `{ "source": "world", "entityId": "<entity id>" }`. Absent = the player's default persona |
 | `mapBackground` | | Object | The picture behind the Locations canvas and the in-game Map. See below. Absent = none |
@@ -586,6 +587,7 @@ An opening is one way a game can start. The world, each location and each entity
 | `text` | ✓ | String | The text. It can hold [chips](#chips-in-text) |
 | `kind` | ✓ | `"action"` \| `"narration"` | `"action"` fills the player's input box. `"narration"` is page one, as written |
 | `self` | | `true` | A Self opening. It draws only while the player plays its owner. Only an entity with the Persona or Custom Persona mark can own one. Absent = an Others opening |
+| `time` | | `"night"` \| `"dawn"` \| `"morning"` \| `"midday"` \| `"afternoon"` \| `"evening"` | The time of day a game from this opening starts at. Absent = the world's `defaultTime` |
 
 See [World Editor: Openings](World-Editor-Openings) for which openings draw.
 
