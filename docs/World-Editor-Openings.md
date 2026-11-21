@@ -85,7 +85,7 @@ Drag a row by its handle to change its place in the list. Order doesn't change t
 ## Start time
 <!-- keywords: time of day, start at night, daypart, midnight opening, default time, what time does the story start, clock at start -->
 
-An opening can set the time of day the story starts at. The **Time** picker sits on each opening's card. It offers **World Default**, then **Night**, **Dawn**, **Morning**, **Midday**, **Afternoon** and **Evening**.
+An opening can set the time of day the story starts at. The **Time** picker sits on its own line above the text of an expanded card. A collapsed card shows the time as an icon instead, and shows nothing when the opening uses the world default. The picker offers **World Default**, then **Night**, **Dawn**, **Morning**, **Midday**, **Afternoon** and **Evening**.
 
 **Default Time** sits at the top of the **This World** pane. It sets the start time for every opening with no Time of its own, and for the default opening. It also works when the clock is off.
 
@@ -105,7 +105,7 @@ Each daypart starts at a fixed hour, and the story starts at that hour. Night st
 
 Each opening is a card. A collapsed card is one line. It holds the handle, "Opening N", the first line of the text, the switches, the weight, the chance and **Remove opening**.
 
-Every control works while the card is collapsed. You can drag cards and tune weights without scrolling past the text.
+Every control in the header works while the card is collapsed. You can drag cards and tune weights without scrolling past the text.
 
 | Rule | Effect |
 |---|---|

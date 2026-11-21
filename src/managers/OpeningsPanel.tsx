@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { createElement, type ReactNode } from 'react';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -25,6 +25,8 @@ import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
 import { cn } from '@/lib/utils';
 import type { Daypart, Entity, GameLocation, Opening, OpeningKind, Placeholder } from '@/types';
 import { DaypartSelect } from '@/components/editor/DaypartSelect';
+import { DAYPART_ICON } from '@/components/editor/daypartIcons';
+import { DAYPART_LABELS } from '@/lib/routineTime';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame, fieldPath } from '@/lib/historyField';
 
@@ -315,6 +317,7 @@ const OpeningCard = ({
   const vocab = usePlaceholderChipVocabulary(placeholders, ownerId);
   // A chip reads as its name, and a paragraph as its first line plus an ellipsis.
   const firstLine = placeholderChipLine(opening.text, vocab.label);
+  const { time } = opening;
   return (
     <div
       ref={setNodeRef}
@@ -347,6 +350,13 @@ const OpeningCard = ({
             <span className="min-w-0 truncate text-helper text-muted-foreground/70">{firstLine || 'Empty opening'}</span>
           )}
         </button>
+        {!open && time && (
+          <Tip tip={`Starts at ${DAYPART_LABELS[time]}`} labelsChild={false}>
+            <span role="img" aria-label={`Time, ${DAYPART_LABELS[time]}`} className="inline-flex text-muted-foreground">
+              {createElement(DAYPART_ICON[time], { className: 'h-3.5 w-3.5', 'aria-hidden': true })}
+            </span>
+          </Tip>
+        )}
         {selfBadge && <Badge variant="outline">Self</Badge>}
         {neverDrawsOn && (
           <TipBadge tip={`Never draws on ${neverDrawsOn}. Select "Self" to draw this opening.`}>
@@ -377,14 +387,6 @@ const OpeningCard = ({
             <ToggleGroupItem value="self" className="px-2 py-0 text-helper">Self</ToggleGroupItem>
           </ToggleGroup>
         )}
-        <span className="inline-flex" {...fieldFrame('openings', opening.id, 'time')}>
-          <DaypartSelect
-            value={opening.time}
-            onChange={onTime}
-            unsetLabel="World Default"
-            ariaLabel={`Time, ${a11yLabel}`}
-          />
-        </span>
         <div className="ml-auto flex items-center gap-2">
           <span className="inline-flex" {...fieldFrame('openings', opening.id, 'weight')}>
             <WorldInput
@@ -418,6 +420,17 @@ const OpeningCard = ({
       {open && (
         <div className="p-2">
           <PlaceholderField
+            leading={(
+              <span className="inline-flex items-center gap-2" {...fieldFrame('openings', opening.id, 'time')}>
+                <span className="text-helper font-medium text-muted-foreground">Time</span>
+                <DaypartSelect
+                  value={time}
+                  onChange={onTime}
+                  unsetLabel="World Default"
+                  ariaLabel={`Time, ${a11yLabel}`}
+                />
+              </span>
+            )}
             historyField={fieldPath('openings', opening.id, 'text')}
             value={opening.text}
             onChange={onText}

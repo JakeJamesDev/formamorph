@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react';
-import { CloudSun, Lock, Moon, Sun, SunDim, Sunrise, Sunset, type LucideIcon } from 'lucide-react';
+import { Lock } from 'lucide-react';
+import { DAYPART_ICON } from '@/components/editor/daypartIcons';
 import { Tip } from '@/components/ui/tooltip';
 import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
 import { MINUTES_PER_DAY } from '@/lib/gameClock';
@@ -8,12 +9,8 @@ import {
   timedCover, timePositions, toStrip, type FreeRange, type RangeEdge,
 } from '@/lib/routineTime';
 import { cn } from '@/lib/utils';
-import type { Daypart, ScheduleRange, ScheduleRow } from '@/types';
+import type { ScheduleRange, ScheduleRow } from '@/types';
 import { ACTION_TONE, ACTIONS } from './routineActions';
-
-const DAYPART_ICON: Record<Daypart, LucideIcon> = {
-  night: Moon, dawn: Sunrise, morning: SunDim, midday: Sun, afternoon: CloudSun, evening: Sunset,
-};
 
 /** Marks the strip's bands, handles and gaps, which keep the row selection when pressed. */
 export const STRIP_PART = 'data-routine-strip';

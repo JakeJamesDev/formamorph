@@ -441,7 +441,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, renderer: Renderer, 
  * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
  * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, chipReads, openValues, onReroll, insertOwnerId, markdown = false, markdownPreview, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, info, labelAside, hint, tourAnchor, historyField, children }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, chipReads, openValues, onReroll, insertOwnerId, markdown = false, markdownPreview, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, info, labelAside, leading, hint, tourAnchor, historyField, children }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -468,6 +468,8 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   info?: ReactNode;
   /** Rendered at the end of the caption's row (an AI generate/undo toolbar, say). Needs `label`. */
   labelAside?: ReactNode;
+  /** Controls at the start of the toolbar row, left of the chips. */
+  leading?: ReactNode;
   /** One line under the caption saying what the field does. Above the editor, so the reader meets it before
    *  the control, per the Design System's field help order. */
   hint?: ReactNode;
@@ -786,6 +788,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     // intrinsic width shoves the buttons off the side of a mobile screen instead of wrapping.
     <div className={cn('flex items-center gap-1 flex-shrink-0', chromeOnTop && cornerClear)}>
       <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+        {leading}
         {label && !markdown && caption}
         {/* Markdown actions address the field's flat text, which a caret inside an open value is not in. */}
         {markdown && <MarkdownToolbar parse={vocab.parse} disabled={editingDisabled || valuesOpen} />}

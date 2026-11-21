@@ -38,7 +38,7 @@ const stepIndex = (index: number, direction: StepDirection, count: number): numb
  * text is tinted the chip's own color, like the prompt previews. A Values tab opens each chip in place on
  * the value its Preview drew.
  */
-const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, ownerPreview, trait, promptChips, markdown = false, resizable = false, placeholder, className, readOnly = false, label, info, labelAside, hint, ariaLabel, tourAnchor, historyField }: {
+const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, ownerPreview, trait, promptChips, markdown = false, resizable = false, placeholder, className, readOnly = false, label, info, labelAside, leading, hint, ariaLabel, tourAnchor, historyField }: {
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
@@ -62,6 +62,8 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, o
   info?: ReactNode;
   /** Rendered at the end of the caption's row. Needs `label`. */
   labelAside?: ReactNode;
+  /** Controls at the start of the toolbar row (see `PromptField`). */
+  leading?: ReactNode;
   /** One line under the caption, above the editor (see `PromptField`). */
   hint?: ReactNode;
   /** Prose field: adds a markdown toolbar and renders the Preview as markdown (see `PromptField`). */
@@ -210,6 +212,7 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, o
       label={label}
       info={info}
       labelAside={labelAside}
+      leading={leading}
       hint={hint}
       markdown={markdown}
       resizable={resizable}
