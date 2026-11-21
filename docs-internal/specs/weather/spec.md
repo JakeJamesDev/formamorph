@@ -190,6 +190,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 **Scripts**
 
 - The script surface gains a world-level weather member: read the World Weather; set it to Clear or an allowed kind. It reads `null` while Weather is off.
+- A set from an item or switch script between turns lands on the latest turn at once. A set before any turn exists is dropped, as every between-turn world write is. A set held while a turn runs lands after that turn, so one turn can report two Weather Changes; the newer effect replaces the older (Q16). (Ticket 09)
 - A set lands at commit through the existing write path, saves with the turn and undoes with it. A kind outside the allowed list, or Weather off, stops the script with an error that names it.
 - This widens the script sandbox's exposure on purpose (Q12).
 

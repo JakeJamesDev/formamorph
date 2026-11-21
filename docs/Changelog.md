@@ -32,10 +32,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Worlds can turn on Weather and mark locations Sheltered.** Pick the allowed kinds and a Default Weather, and give an opening its own Weather. A save keeps the weather.
     - **The current weather now shows behind the game panels.** Rain, snow, storm and bright sun play over the location image, except in Sheltered locations. Turn it off with Weather Background in Display settings.
     - **The AI now changes a world's weather when the story does, and tells the narrator the weather every turn.** After each turn the AI picks the new weather from the world's allowed kinds. Bright Sun turns Clear at nightfall. With no Default Weather, the AI reads the start weather from page one.
-    - **Scripts can read and set the weather with `world.weather`.** A set takes effect when the turn ends and plays the weather effect. A kind the world doesn't allow stops the script with an error.
+    - **Scripts can read and set the weather with `world.weather`.** A set from an item or switch script between turns changes the weather at once; a set during a turn lands when the turn ends. A kind the world doesn't allow stops the script with an error.
     - **Traits and image Visibility rules can now require the weather.** Pick Weather under Add Requirement, then turn on the kinds that count. It shows while the world's Weather is on.
     - **A short effect now plays over the game when the weather changes.** Raindrops hit the screen, snow settles, lightning flashes or sunlight sweeps across, then it stops. Turn it off with **Weather Foreground** in Display settings.
-    - **Item scripts and trait switch scripts can now set `world.weather` between turns.** The weather changes at once and the effect plays. A set made while a turn runs lands when that turn ends. Bright Sun at night becomes Clear.
   - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
 
 #### 🔧 Fixed
