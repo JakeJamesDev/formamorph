@@ -4,7 +4,7 @@ import { SETTINGS_OPTIONS } from '@/components/modals/settingsCopy';
 import {
   DEFAULT_CONTINUE_CHOICE, DEFAULT_IMAGE_ATTACHMENTS, DEFAULT_FONT, DEFAULT_FONT_TUNINGS, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_LAYOUT,
   DEFAULT_NARRATION_LINE_HEIGHT, DEFAULT_NARRATION_SCALE, DEFAULT_QUOTE_COLOR, DEFAULT_QUOTE_COLOR_DARK,
-  DEFAULT_QUOTE_COLOR_LIGHT, DEFAULT_QUOTE_ITALIC, DEFAULT_CHARACTER_MENTIONS, DEFAULT_CHARACTER_MENTIONS_MODEL, DEFAULT_CONTRIBUTE_CORRECTIONS, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_WEATHER_BACKGROUND, DEFAULT_THEME_COLOR,
+  DEFAULT_QUOTE_COLOR_LIGHT, DEFAULT_QUOTE_ITALIC, DEFAULT_CHARACTER_MENTIONS, DEFAULT_CHARACTER_MENTIONS_MODEL, DEFAULT_CONTRIBUTE_CORRECTIONS, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_WEATHER_BACKGROUND, DEFAULT_WEATHER_FOREGROUND, DEFAULT_THEME_COLOR,
 } from '@/contexts/settingsDefaults';
 import { HIDDEN_SETTING_DEFAULTS } from '@/lib/settingsAdvancedData';
 import { FLAT_HOURS_PER_TURN } from '@/lib/gameClock';
@@ -21,7 +21,7 @@ import {
 /** The stored values behind the local source: everything a section reads that is not derived. */
 type LocalSettingsValues = Pick<SettingsSource,
   | 'theme' | 'themeColor' | 'fontFamily' | 'fontTunings'
-  | 'bgmEnabled' | 'locationBackground' | 'weatherBackground' | 'backgroundOverlay' | 'sceneImageAuto'
+  | 'bgmEnabled' | 'locationBackground' | 'weatherBackground' | 'weatherForeground' | 'backgroundOverlay' | 'sceneImageAuto'
   | 'narrationLayout' | 'language' | 'paragraphLimit' | 'markdownOutput' | 'stripLinksAndImages'
   | 'narrationFont' | 'narrationScale' | 'narrationLineHeight' | 'quoteColor' | 'quoteItalic'
   | 'characterMentions' | 'characterMentionsModel' | 'contributeCorrections'
@@ -45,6 +45,7 @@ export const LOCAL_SETTINGS_DEFAULTS: LocalSettingsValues = {
   bgmEnabled: true,
   locationBackground: true,
   weatherBackground: DEFAULT_WEATHER_BACKGROUND,
+  weatherForeground: DEFAULT_WEATHER_FOREGROUND,
   backgroundOverlay: 0,
   sceneImageAuto: DEFAULT_SCENE_IMAGE_AUTO,
   narrationLayout: DEFAULT_NARRATION_LAYOUT,
@@ -134,6 +135,7 @@ export function useLocalSettingsSource(report: (status: string) => void): Settin
       setBgmEnabled: set('bgmEnabled'),
       setLocationBackground: set('locationBackground'),
       setWeatherBackground: set('weatherBackground'),
+      setWeatherForeground: set('weatherForeground'),
       setBackgroundOverlay: set('backgroundOverlay'),
       setSceneImageAuto: set('sceneImageAuto'),
       setNarrationLayout: set('narrationLayout'),

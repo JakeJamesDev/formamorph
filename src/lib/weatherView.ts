@@ -1,4 +1,5 @@
 import type { AllowedWeatherKind, WeatherKind } from '@/types';
+import type { WeatherChange } from '@/lib/weather';
 
 /** How the background draws: the full effect, the slow reduced-motion one, or nothing. */
 export type WeatherBackgroundMode = 'full' | 'calm' | 'none';
@@ -17,8 +18,8 @@ export interface WeatherViewInput {
   foreground: boolean;
   /** The OS reduced-motion setting. */
   reducedMotion: boolean;
-  /** The experienced weather before this change, or undefined on load. */
-  previous: WeatherKind | null | undefined;
+  /** The Weather Change to play, or null on load, New Game, a redraw and paging. */
+  change: Pick<WeatherChange, 'to' | 'foreground'> | null;
 }
 
 export interface WeatherView {
@@ -41,5 +42,7 @@ function shownKind({ weatherOn, worldWeather, sheltered, daylight }: WeatherView
 export function weatherView(input: WeatherViewInput): WeatherView {
   const kind = shownKind(input);
   const background = kind && input.background ? { kind, mode: input.reducedMotion ? 'calm' as const : 'full' as const } : NONE;
-  return { background, foreground: null };
+  const { change } = input;
+  const foreground = kind && change?.foreground && change.to === kind && input.foreground && !input.reducedMotion ? kind : null;
+  return { background, foreground };
 }

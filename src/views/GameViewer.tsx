@@ -131,7 +131,7 @@ import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import WorldEditor, { type EditorExit } from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemInstance, ItemEffectLedger, RuntimeItem, BodyRuntime, BodyPick, ValuedWorldOption, WorldOptionValueOf, WorldOptionValues } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemInstance, ItemEffectLedger, RuntimeItem, BodyRuntime, BodyPick, ValuedWorldOption, WorldOptionValueOf, WorldOptionValues, WeatherKind } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { narrationOf, storyText, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -322,6 +322,7 @@ import { useGameLeftCollapsed, useGameRightCollapsed, useGameStoryWidth } from "
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import { LocationBackdrop } from "../components/game/LocationBackdrop";
 import { WeatherBackground } from "../components/game/WeatherBackground";
+import { WeatherForeground } from "../components/game/WeatherForeground";
 import { weatherView } from "@/lib/weatherView";
 import { activeWeather, allowedWeatherKinds, isDaylight, landedWeatherChange, offeredWeatherKinds, type WeatherChange } from "@/lib/weather";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -786,6 +787,7 @@ const GameViewer = ({
     statTextPrompts,
     locationBackground,
     weatherBackground,
+    weatherForeground,
     backgroundOverlay,
     allTools,
     enabledTools,
@@ -970,19 +972,32 @@ const GameViewer = ({
     startWeatherSetRef.current = authored;
     setStartWeatherSetState(authored);
   }, []);
-  // The latest Weather Change, numbered so the same change twice still reads as new.
-  const [weatherChange, setWeatherChange] = useState<{ change: WeatherChange; seq: number } | null>(null);
+  // The latest Weather Change, numbered so the same change twice still reads as new. A null change is a
+  // load, New Game or redraw: it stops a playing foreground effect and starts none.
+  const [weatherChange, setWeatherChange] = useState<{ change: WeatherChange | null; seq: number } | null>(null);
+  const weatherSeqRef = useRef(0);
   /** Reports a Weather Change when what the player experiences differs, while the world's Weather is on. */
   const reportWeather = useCallback((change: WeatherChange | null) => {
     if (!change || !activeWeather(worldOverview)) return;
-    setWeatherChange((prev) => ({ change, seq: (prev?.seq ?? 0) + 1 }));
+    weatherSeqRef.current += 1;
+    setWeatherChange({ change, seq: weatherSeqRef.current });
   }, [worldOverview]);
+  const clearWeatherChange = useCallback(() => {
+    weatherSeqRef.current += 1;
+    setWeatherChange({ change: null, seq: weatherSeqRef.current });
+  }, []);
   // DEV: `__fmDev.weatherChange()` reads the latest Weather Change.
   const weatherChangeRef = useRef(weatherChange);
   weatherChangeRef.current = weatherChange;
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     return registerDevHook('weatherChange', () => weatherChangeRef.current);
+  }, []);
+  // DEV: `__fmDev.fireWeather('storm')` sets the World Weather as a script set would, firing its foreground.
+  const fireWeatherRef = useRef<(kind: WeatherKind) => void>(() => {});
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    return registerDevHook('fireWeather', (kind: WeatherKind) => fireWeatherRef.current(kind));
   }, []);
   const {
     show: showStatDeltas, add: addStatDeltas, hold: holdStatDeltas, settle: settleStatDeltas,
@@ -2124,6 +2139,7 @@ const GameViewer = ({
       setIsGameStarted(false);
       // The new row's time and weather, or none: the restore above may hold what the pass read for the old page one.
       applyResolvedStart(redraw.opening, worldOverview, { setStartHour, setWeather, setStartWeatherSet });
+      clearWeatherChange();
       if (redraw.opening.kind === "narration") {
         pendingTurnRef.current = { action: OPENING_STAND_IN, writtenNarration: redrawText };
         setPendingTurnNonce((n) => n + 1);
@@ -6478,6 +6494,7 @@ const GameViewer = ({
       };
       // Set before page one is written, so its clock line carries the authored hour.
       applyResolvedStart(drawn.opening, worldOverview, { setStartHour, setWeather, setStartWeatherSet });
+      clearWeatherChange();
       const openingText = resolveOpening(drawn.opening.text, {
         extraPins: openingPins, persona: drawnPersona, rolls: openingRolls, libraryAdditions: [...picked, ...libraryBooks], owner: drawnOwner,
       });
@@ -7009,8 +7026,27 @@ const GameViewer = ({
     background: weatherBackground,
     foreground: false,
     reducedMotion,
-    previous: undefined,
+    change: null,
   }).background;
+  // The foreground follows the live game, not the paged turn.
+  const weatherFg = weatherView({
+    weatherOn: !!activeWeather(worldOverview),
+    worldWeather: weather,
+    sheltered: !!currentLocation?.sheltered,
+    daylight: isDaylight(gameTime, calendar),
+    background: false,
+    foreground: weatherForeground,
+    reducedMotion,
+    change: weatherChange?.change ?? null,
+  }).foreground;
+  if (import.meta.env.DEV) fireWeatherRef.current = (kind) => {
+    reportWeather(landedWeatherChange({
+      before: weatherRef.current, after: kind, from: currentLocationRef.current, to: currentLocationRef.current,
+      isOpeningTurn: false, nightfall: false,
+    }));
+    weatherRef.current = kind;
+    setWeather(kind);
+  };
 
   // Menu save/load handlers, extracted so the desktop (header) and mobile (tab-row) MenuModal instances share them.
   const handleMenuSave = (name: string, opts?: { overwriteId?: string; includeSceneImages?: boolean }) =>
@@ -7018,6 +7054,7 @@ const GameViewer = ({
       includeSceneImages: opts?.includeSceneImages,
     });
   const handleMenuLoad = async (id: string, targetWorldId?: string) => {
+    clearWeatherChange();
     // A render or a background pass from the outgoing session must not finish into the loaded one.
     cancelSceneImage();
     passSessionRef.current += 1;
@@ -7081,6 +7118,7 @@ const GameViewer = ({
         />
       )}
       <WeatherBackground kind={weatherBg.kind} mode={weatherBg.mode} plain={!locationBackground || !backdrop} />
+      <WeatherForeground kind={weatherFg} play={weatherChange?.seq ?? 0} />
       {/* Above the location art, behind the panels and buttons. Windows desktop only. */}
       <div aria-hidden data-window-corner-gradient="" className="window-corner-gradient -z-[5] hidden [[data-window-overlay]_&]:block" />
       <ThemedToastContainer />

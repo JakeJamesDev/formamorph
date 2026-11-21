@@ -85,6 +85,11 @@ export const SETTINGS_COPY = {
     description: 'Shows the weather behind the game, in worlds that have weather',
     info: 'If your device is set to reduce motion, the weather moves slowly and a storm shows no lightning.',
   },
+  weatherForeground: {
+    label: 'Weather Foreground',
+    description: 'Plays a short effect over the game when the weather changes',
+    info: 'Nothing plays when you load a save or start a new game, or when your device is set to reduce motion.',
+  },
 
   // ── Display · Narration ─────────────────────────────────────────────────────
   narrationLayout: {

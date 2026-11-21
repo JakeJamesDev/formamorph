@@ -5,7 +5,7 @@ import { isDaylight } from './weather';
 
 const input = (extra: Partial<WeatherViewInput> = {}): WeatherViewInput => ({
   weatherOn: true, worldWeather: 'rain', sheltered: false, daylight: true,
-  background: true, foreground: true, reducedMotion: false, previous: undefined, ...extra,
+  background: true, foreground: true, reducedMotion: false, change: null, ...extra,
 });
 const bg = (extra: Partial<WeatherViewInput> = {}) => weatherView(input(extra)).background;
 
@@ -45,6 +45,61 @@ describe('the weather view background', () => {
 
   it('ignores the Weather Foreground switch', () => {
     expect(bg({ worldWeather: 'snow', foreground: false })).toEqual({ kind: 'snow', mode: 'full' });
+  });
+});
+
+describe('the weather view foreground', () => {
+  const fg = (extra: Partial<WeatherViewInput> = {}) => weatherView(input(extra)).foreground;
+  const into = (to: WeatherKind | null, foreground = true) => ({ change: { to, foreground } });
+
+  it.each(['rain', 'snow', 'storm', 'brightSun'] as const)('plays %s on a change into it', (kind) => {
+    expect(fg({ worldWeather: kind, ...into(kind) })).toBe(kind);
+  });
+
+  it('plays nothing on load, New Game, a redraw or paging', () => {
+    expect(fg({ worldWeather: 'storm', change: null })).toBeNull();
+  });
+
+  it('plays nothing on a change the landing marks as no foreground', () => {
+    // The opening turn and the nightfall rule report a change without foreground.
+    expect(fg({ worldWeather: 'rain', ...into('rain', false) })).toBeNull();
+  });
+
+  it('plays nothing on a change into Clear', () => {
+    expect(fg({ worldWeather: 'clear', ...into('clear') })).toBeNull();
+  });
+
+  it('plays nothing in a Sheltered location', () => {
+    expect(fg({ worldWeather: 'storm', sheltered: true, ...into('storm') })).toBeNull();
+    expect(fg({ worldWeather: 'storm', sheltered: true, ...into(null) })).toBeNull();
+  });
+
+  it('plays stepping out of Shelter into the weather', () => {
+    expect(fg({ worldWeather: 'rain', sheltered: false, ...into('rain') })).toBe('rain');
+  });
+
+  it('plays nothing with the Weather Foreground switch off', () => {
+    expect(fg({ worldWeather: 'snow', foreground: false, ...into('snow') })).toBeNull();
+  });
+
+  it('plays with the Weather Background switch off', () => {
+    expect(fg({ worldWeather: 'snow', background: false, ...into('snow') })).toBe('snow');
+  });
+
+  it('plays nothing under OS reduced motion', () => {
+    expect(fg({ worldWeather: 'storm', reducedMotion: true, ...into('storm') })).toBeNull();
+  });
+
+  it('plays nothing while the world has Weather off', () => {
+    expect(fg({ worldWeather: 'rain', weatherOn: false, ...into('rain') })).toBeNull();
+  });
+
+  it('plays nothing for Bright Sun outside daylight', () => {
+    expect(fg({ worldWeather: 'brightSun', daylight: false, ...into('brightSun') })).toBeNull();
+  });
+
+  it('plays nothing when the weather moved on from the change', () => {
+    expect(fg({ worldWeather: 'snow', ...into('rain') })).toBeNull();
   });
 });
 

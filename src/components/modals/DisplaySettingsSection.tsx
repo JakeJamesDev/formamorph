@@ -58,6 +58,7 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
     bgmEnabled, setBgmEnabled,
     locationBackground, setLocationBackground,
     weatherBackground, setWeatherBackground,
+    weatherForeground, setWeatherForeground,
     backgroundOverlay, setBackgroundOverlay,
     imageGenDisabled,
     sceneImageAuto, setSceneImageAuto,
@@ -190,6 +191,12 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
         checked={weatherBackground}
         onChange={setWeatherBackground}
         {...rowCopy('weatherBackground')}
+      />
+      <CheckRow
+        htmlFor="weatherForeground"
+        checked={weatherForeground}
+        onChange={setWeatherForeground}
+        {...rowCopy('weatherForeground')}
       />
       </Section>
 

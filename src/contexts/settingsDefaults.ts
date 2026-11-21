@@ -118,6 +118,8 @@ export const DEFAULT_IMAGE_CLEAN_TAGS = true;
 export const DEFAULT_SCENE_IMAGE_AUTO = false;
 // Draw the current weather behind the panels. A per-player toggle, so no VITE_DEFAULT_* override.
 export const DEFAULT_WEATHER_BACKGROUND = true;
+// Play a short full-screen effect when the weather changes. A per-player toggle, so no VITE_DEFAULT_* override.
+export const DEFAULT_WEATHER_FOREGROUND = true;
 
 // Offer the hard-coded "[Continue the Story]" pseudo-choice beneath the generated ones. 'always' keeps it
 // even with the choices request switched off, where it's the only button the panel has left. On because
