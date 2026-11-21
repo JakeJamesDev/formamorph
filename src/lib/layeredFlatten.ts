@@ -80,8 +80,8 @@ export interface RasterIO {
   size: (data: Base64Data) => Promise<{ width: number; height: number }>;
   /** An image's pixels stretched to `width` × `height`. */
   read: (data: Base64Data, width: number, height: number) => Promise<Raster>;
-  /** Pixels as a data URL. */
-  write: (raster: Raster) => Promise<Base64Data>;
+  /** Pixels as a data URL at a WebP quality; 1 is lossless. */
+  write: (raster: Raster, quality: number) => Promise<Base64Data>;
 }
 
 // A linked image is downloaded first, so its pixels can be read.
@@ -104,8 +104,10 @@ const context = (width: number, height: number): { canvas: HTMLCanvasElement; ct
   return { canvas, ctx };
 };
 
-/** The WebP quality a flattened picture is written at. */
-const FLAT_QUALITY = 0.92;
+/** Lossy WebP quality for a flattened picture shown as a thumbnail. */
+export const FLAT_LOSSY = 0.92;
+/** WebP quality 1 is lossless in Chromium's canvas encoder, for a flatten that must stay exact. */
+export const FLAT_LOSSLESS = 1;
 
 /** The browser's canvas as a raster reader and writer. */
 export const CANVAS_IO: RasterIO = {
@@ -120,24 +122,24 @@ export const CANVAS_IO: RasterIO = {
     const { data: pixels } = ctx.getImageData(0, 0, width, height);
     return { width, height, data: pixels };
   },
-  write: async ({ width, height, data }) => {
+  write: async ({ width, height, data }, quality) => {
     const { canvas, ctx } = context(width, height);
     ctx.putImageData(new ImageData(new Uint8ClampedArray(data), width, height), 0, 0);
-    return canvas.toDataURL('image/webp', FLAT_QUALITY);
+    return canvas.toDataURL('image/webp', quality);
   },
 };
 
 /** The stack drawn to one image at its canvas image's size, each non-empty Layer stretched to it (Q3). */
-export async function flattenLayered(picture: LayeredPicture, io: RasterIO = CANVAS_IO): Promise<Base64Data> {
+export async function flattenLayered(picture: LayeredPicture, io: RasterIO = CANVAS_IO, quality = FLAT_LOSSY): Promise<Base64Data> {
   const { width, height } = await io.size(picture.canvas);
   const layers: RasterLayer[] = [];
   for (const layer of picture.layers) {
     if (!layer.data) continue;
     layers.push({ pixels: await io.read(layer.data, width, height), opacity: layer.opacity, blend: layer.blend, ...(layer.tint ? { tint: layer.tint } : {}) });
   }
-  return io.write(composeLayers(width, height, layers));
+  return io.write(composeLayers(width, height, layers), quality);
 }
 
 /** A picture as one file: an image's own data, or a stack flattened. */
-export const pictureFile = (picture: Picture, io?: RasterIO): Promise<Base64Data> =>
-  (isLayeredPicture(picture) ? flattenLayered(picture, io) : Promise.resolve(picture));
+export const pictureFile = (picture: Picture, io?: RasterIO, quality?: number): Promise<Base64Data> =>
+  (isLayeredPicture(picture) ? flattenLayered(picture, io, quality) : Promise.resolve(picture));

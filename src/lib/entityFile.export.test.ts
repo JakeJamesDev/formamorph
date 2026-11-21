@@ -23,21 +23,27 @@ vi.mock('./morphArtCanvas', () => ({ morphCardImage: (...a: unknown[]) => morphC
 
 // The browser's canvas is absent here: flattening reads 1×1 pixels named by each data URL's payload.
 const PIXELS: Record<string, number[]> = { BODY: [200, 100, 50, 255], FACE: [255, 255, 255, 255] };
+const writeQualities: number[] = [];
 const rasterIO = {
   size: async () => ({ width: 1, height: 1 }),
   read: async (data: string) => ({ width: 1, height: 1, data: new Uint8ClampedArray(PIXELS[data.slice(data.indexOf(',') + 1)]) }),
-  write: async (raster: { data: Uint8ClampedArray }) => `data:image/png;base64,${btoa(Array.from(raster.data).join('.'))}`,
+  write: async (raster: { data: Uint8ClampedArray }, quality: number) => {
+    writeQualities.push(quality);
+    return `data:image/png;base64,${btoa(Array.from(raster.data).join('.'))}`;
+  },
 };
 vi.mock('./layeredFlatten', async (importOriginal) => {
   const real = await importOriginal<typeof import('./layeredFlatten')>();
-  return { ...real, pictureFile: (picture: Parameters<typeof real.pictureFile>[0]) => real.pictureFile(picture, rasterIO) };
+  return { ...real, pictureFile: (picture: Parameters<typeof real.pictureFile>[0], _io?: unknown, quality?: number) => real.pictureFile(picture, rasterIO, quality) };
 });
 
 const { exportEntityCard } = await import('./entityFile');
+const { FLAT_LOSSLESS, FLAT_LOSSY } = await import('./layeredFlatten');
 
 const entity = (images: string[]): Entity => ({ id: 'e1', name: 'Mara', images: images.map((data) => ({ data })) });
 
 beforeEach(() => {
+  writeQualities.length = 0;
   fetchAsDataUrl.mockReset();
   morphCardImage.mockClear();
   // exportEntityCard reads the final data URL's bytes back through fetch().
@@ -123,5 +129,23 @@ describe('exportEntityCard with a Layered Image first', () => {
     await exportEntityCard({ id: 'e1', name: 'Mara', images: [{ mediaId: 'empty' }, { mediaId: 'body' }] }, [], {}, undefined, undefined, undefined, withEmpty);
     expect(fetch).toHaveBeenCalledWith('data:image/webp;base64,BODY');
     expect(morphCardImage).not.toHaveBeenCalled();
+  });
+});
+
+describe('exportEntityCard with a Layered Image', () => {
+  const media: MediaList = {
+    body: { id: 'body', name: 'Body', kind: 'image', data: 'data:image/webp;base64,BODY' },
+    face: { id: 'face', name: 'Face', kind: 'image', data: 'data:image/webp;base64,FACE' },
+    rig: { id: 'rig', name: 'Rig', kind: 'layered', layers: [
+      { id: 'l1', name: 'Body', variants: [{ mediaId: 'body' }] },
+      { id: 'l2', name: 'Face', variants: [{ mediaId: 'face' }] },
+    ] },
+  };
+
+  it('flattens the card picture lossless, not at the lossy thumbnail quality', async () => {
+    await exportEntityCard({ id: 'e1', name: 'Mara', images: [{ mediaId: 'rig' }] }, undefined, {}, undefined, undefined, undefined, media);
+
+    expect(writeQualities).toEqual([FLAT_LOSSLESS]);
+    expect(FLAT_LOSSLESS).not.toBe(FLAT_LOSSY);
   });
 });

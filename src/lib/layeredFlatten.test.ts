@@ -57,7 +57,7 @@ describe('flattenLayered', () => {
       reads.push([data, width, height]);
       return { width, height, data: new Uint8ClampedArray(Array.from({ length: width * height }, () => Array.from(pixels[data].data)).flat()) };
     },
-    write: async (raster) => `${raster.width}x${raster.height}:${Array.from(raster.data.slice(0, 4)).join(',')}`,
+    write: async (raster, quality) => `${raster.width}x${raster.height}:${Array.from(raster.data.slice(0, 4)).join(',')}@${quality}`,
   };
   const picture: LayeredPicture = {
     kind: 'layered', entryId: 'rig', canvas: 'base', layers: [
@@ -69,7 +69,7 @@ describe('flattenLayered', () => {
 
   it('draws each non-empty Layer stretched to the canvas image\'s size', async () => {
     reads.length = 0;
-    expect(await flattenLayered(picture, io)).toBe('3x2:128,0,128,255');
+    expect(await flattenLayered(picture, io)).toBe('3x2:128,0,128,255@0.92');
     expect(reads).toEqual([['base', 3, 2], ['top', 3, 2]]);
   });
 });

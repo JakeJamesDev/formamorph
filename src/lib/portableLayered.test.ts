@@ -177,6 +177,7 @@ describe('a Layered Image through publish', () => {
     const picture = primaryPicture(item);
     expect(isLayeredPicture(picture)).toBe(true);
     expect(payload.thumbnail).toBe(await flattenLayered(picture as never, io));
+    expect(payload.thumbnail).toMatch(/;q=0\.92$/);
   });
 });
 
@@ -233,6 +234,6 @@ function fakeIO(): RasterIO {
   return {
     size: async () => ({ width: 1, height: 1 }),
     read: async (data, width, height): Promise<Raster> => ({ width, height, data: new Uint8ClampedArray(pixel(data)) }),
-    write: async (raster) => `data:image/png;raster,${Array.from(raster.data).join('.')}`,
+    write: async (raster, quality) => `data:image/png;raster,${Array.from(raster.data).join('.')};q=${quality}`,
   };
 }
