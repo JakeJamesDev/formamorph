@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addLayer, addVariants, listWithoutVariant, moveLayer, moveVariant, newLayeredEntry, removeLayer, removeVariant, renameLayer,
-  setLayerOpacity, setVariantRule,
+  setLayerBlend, setLayerOpacity, setLayerTint, setVariantRule,
 } from './layeredEdit';
 import { OUTSIDE_PLAY, resolveLayered } from './layeredImages';
 import type { LayeredMediaEntry, MediaList, TraitRequirementRow } from '@/types';
@@ -48,6 +48,29 @@ describe('Layer edits', () => {
     expect(names(moved)).toEqual(['Hat', 'Body', 'Face']);
     expect(resolveLayered(moved, list(moved), OUTSIDE_PLAY)?.layers.map((l) => l.data)).toEqual(['data:hat', 'data:body', 'data:hurt']);
     expect(names(moveLayer(rig(), 0, 9))).toEqual(['Body', 'Face', 'Hat']);
+  });
+
+  it('stores a tint as lowercase #rrggbb, and clears it for white, null or junk', () => {
+    const tinted = setLayerTint(rig(), 'hat', '#FF8800');
+    expect(tinted.layers[2].tint).toBe('#ff8800');
+    for (const clear of ['#ffffff', null, 'red']) expect('tint' in setLayerTint(tinted, 'hat', clear).layers[2]).toBe(false);
+  });
+
+  it('stores a blend mode, and Normal as absent', () => {
+    const screened = setLayerBlend(rig(), 'hat', 'screen');
+    expect(screened.layers[2].blend).toBe('screen');
+    expect('blend' in setLayerBlend(screened, 'hat', 'normal').layers[2]).toBe(false);
+  });
+
+  it('carries tint and blend mode into the resolved stack, and leaves white as no tint', () => {
+    const styled = setLayerBlend(setLayerTint(rig(), 'hat', '#336699'), 'hat', 'add');
+    const hat = resolveLayered(styled, list(styled), OUTSIDE_PLAY)?.layers[2];
+    expect(hat).toMatchObject({ tint: '#336699', blend: 'add' });
+    const plain = resolveLayered(rig(), list(), OUTSIDE_PLAY)?.layers[2];
+    expect(plain?.blend).toBe('normal');
+    expect('tint' in plain!).toBe(false);
+    const white = { ...rig(), layers: rig().layers.map((l) => ({ ...l, tint: '#FFFFFF' })) };
+    expect('tint' in resolveLayered(white, list(white), OUTSIDE_PLAY)!.layers[2]).toBe(false);
   });
 
   it('removes a Layer', () => {

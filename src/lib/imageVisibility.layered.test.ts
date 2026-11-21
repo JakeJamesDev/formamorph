@@ -49,8 +49,8 @@ describe('visibleImages with a Layered Image', () => {
   });
 
   it('leaves a Layer empty when none of its Variants holds, and fills it when one does', () => {
-    expect(pictureOf('ash', input(80))?.layers[2]).toEqual({ id: 'bandage', opacity: 0.5 });
-    expect(pictureOf('ash', input(10))?.layers[2]).toEqual({ id: 'bandage', opacity: 0.5, data: 'data:bandage' });
+    expect(pictureOf('ash', input(80))?.layers[2]).toEqual({ id: 'bandage', opacity: 0.5, blend: 'normal' });
+    expect(pictureOf('ash', input(10))?.layers[2]).toEqual({ id: 'bandage', opacity: 0.5, blend: 'normal', data: 'data:bandage' });
   });
 
   it('reads the showing entity for a Variant rule with no owner, so two entities sharing a rig differ', () => {
@@ -64,7 +64,7 @@ describe('visibleImages with a Layered Image', () => {
       ...RIG, layers: [layer('body', [{ mediaId: 'body', requires: below(0) }]), layer('face', [{ mediaId: 'hurt', requires: below(0) }])],
     };
     const picture = pictureOf('ash', input(50), media(hidden));
-    expect(picture).toEqual({ kind: 'layered', entryId: 'rig', canvas: 'data:body', layers: [{ id: 'body', opacity: 1 }, { id: 'face', opacity: 1 }] });
+    expect(picture).toEqual({ kind: 'layered', entryId: 'rig', canvas: 'data:body', layers: [{ id: 'body', opacity: 1, blend: 'normal' }, { id: 'face', opacity: 1, blend: 'normal' }] });
   });
 
   it('lets the gallery link’s own rule decide whether the rig shows at all', () => {

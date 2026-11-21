@@ -10,6 +10,7 @@ import { EditorDndContext, StableSortableContext } from '@/components/dnd/Editor
 import { ImageRuleCog, ImageRuleSummary } from '@/components/editor/ImageRuleCog';
 import { PictureImg } from '@/components/PictureImg';
 import { Button } from '@/components/ui/button';
+import { ColorPicker } from '@/components/ui/color-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,9 +21,9 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { applyImageOptimize, IMAGE_CAPS } from '@/lib/imageOptim';
 import { unionBox, type DrawnBox, type ImageFacts } from '@/lib/imageFacts';
 import {
-  addLayer, addVariants, moveLayer, moveVariant, removeLayer, removeVariant, renameLayer, setLayerOpacity, setVariantRule,
+  addLayer, addVariants, moveLayer, moveVariant, removeLayer, removeVariant, renameLayer, setLayerBlend, setLayerOpacity, setLayerTint, setVariantRule,
 } from '@/lib/layeredEdit';
-import { canvasVariant, shownVariant } from '@/lib/layeredImages';
+import { canvasVariant, normalizeTint, shownVariant } from '@/lib/layeredImages';
 import { toastError } from '@/lib/linkToast';
 import { addedEntries, placeGalleryFile } from '@/lib/mediaGallery';
 import { mediaNameFromFile } from '@/lib/mediaList';
@@ -33,7 +34,7 @@ import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { RemoteImg } from '@/lib/useRemoteImage';
 import { cn } from '@/lib/utils';
-import type { MediaLayer, MediaList } from '@/types';
+import type { LayerBlend, MediaLayer, MediaList } from '@/types';
 import { DEFAULT_LOOK, draftOpacity, entryName, rigPicture, type Rig } from './layeredRig';
 import { MediaChooseButton } from './MediaPicker';
 
@@ -447,6 +448,46 @@ export function OpacityField({ rig, layer }: { rig: Rig; layer: MediaLayer }) {
           if (v / 100 !== stored) rig.write(`Set Opacity: ${layer.name}`, setLayerOpacity(rig.entry, layer.id, v / 100));
         }}
       />
+    </div>
+  );
+}
+
+/** The Layer's tint. It multiplies the Layer's pixels and keeps their alpha; Clear Tint removes it. */
+export function TintField({ rig, layer }: { rig: Rig; layer: MediaLayer }) {
+  const tint = normalizeTint(layer.tint);
+  return (
+    <div className="space-y-1.5">
+      <Label>Tint</Label>
+      <div className="flex items-center gap-2">
+        <ColorPicker
+          value={tint ?? '#ffffff'}
+          aria-label="Tint"
+          onChange={(hex) => { if (hex !== (tint ?? '#ffffff')) rig.write(`Set Tint: ${layer.name}`, setLayerTint(rig.entry, layer.id, hex)); }}
+        />
+        {tint && (
+          <Button type="button" variant="outline" size="sm" onClick={() => rig.write(`Clear Tint: ${layer.name}`, setLayerTint(rig.entry, layer.id, null))}>
+            Clear Tint
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const BLEND_LABELS: Record<LayerBlend, string> = { normal: 'Normal', multiply: 'Multiply', screen: 'Screen', add: 'Add' };
+
+/** The Layer's blend mode over the Layers below it. */
+export function BlendField({ rig, layer }: { rig: Rig; layer: MediaLayer }) {
+  const value = layer.blend ?? 'normal';
+  return (
+    <div className="space-y-1.5">
+      <Label>Blend Mode</Label>
+      <Select value={value} onValueChange={(next) => rig.write(`Set Blend Mode: ${layer.name}`, setLayerBlend(rig.entry, layer.id, next as LayerBlend))}>
+        <SelectTrigger className="h-8" aria-label="Blend Mode"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {(Object.keys(BLEND_LABELS) as LayerBlend[]).map((mode) => <SelectItem key={mode} value={mode}>{BLEND_LABELS[mode]}</SelectItem>)}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

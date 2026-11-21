@@ -180,11 +180,13 @@ A **Layered Image** builds one picture from parts. Each **Layer** holds images c
 
 - 🧩 **Layers.** Drag a Layer by its handle to change what draws over what. The eye hides a Layer in the editor only. Each row shows what the Layer shows now.
 - 🖼️ **Variants.** The strip under the picture holds the selected Layer's Variants. Drag one to reorder: the first whose rule holds wins. The line under the strip says when the selected Variant shows.
-- 🎚️ **Layer settings.** Rename the Layer, set its **Opacity**, or **Delete Layer**.
+- 🎚️ **Layer settings.** Rename the Layer, set its **Opacity**, **Blend Mode** and **Tint**, or **Delete Layer**.
+- 🎨 **Tint.** Pick a color, and the Layer's pixels multiply by it. Transparent pixels stay transparent, and white means no tint. **Clear Tint** removes it. One gray drawing then serves any color, such as one hair drawing for every hair color.
+- 🔀 **Blend Mode.** **Normal** draws the Layer over the Layers below it. **Multiply** darkens them, **Screen** lightens them, and **Add** brightens them most, for glows and light. A mode acts on the Layers below it inside this picture only, never on the page behind it. The picture in the panel and in a game shows both settings. The small Layer and Variant thumbnails show the plain art.
 - 👁️ **Preview As** shows the picture as one of the world's entities at the start of a game. **Default Look** shows each Layer's first Variant, as the library and other places outside a game do.
 - ⚠️ **Size warning.** Every Variant stretches to the picture's size: the size of the first Variant in the lowest Layer that has one, usually the bottom Layer. A Variant of another size shows a warning, with both sizes.
 
-On mobile, the panel shows the picture beside the Layer list, and the selected Layer below it, with **Variants** and **Look** tabs.
+On mobile, the panel shows the picture beside the Layer list, and the selected Layer below it, with **Variants** and **Look** tabs. **Look** holds Opacity, Blend Mode and Tint.
 
 **To use one,** select **Choose** in an entity's gallery. Layered Images show beside the images. The gallery's order and Visibility rules work as they do for any image.
 

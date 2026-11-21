@@ -1,6 +1,7 @@
 // Layered Images resolved for one subject: what each Layer shows right now, and the picture type play draws.
 
-import type { Base64Data, GalleryLink, LayeredMediaEntry, LayerVariant, MediaLayer, MediaList, TraitRequirementRow } from '@/types';
+import type { Base64Data, GalleryLink, LayerBlend, LayeredMediaEntry, LayerVariant, MediaLayer, MediaList, TraitRequirementRow } from '@/types';
+import { parseHex6 } from './hslColor';
 import { layeredEntry, mediaEntry } from './mediaList';
 import type { RowState } from './traitGates';
 
@@ -10,6 +11,9 @@ export interface ResolvedLayer {
   data?: Base64Data;
   /** 0 to 1. */
   opacity: number;
+  /** `#rrggbb`; absent = no tint. */
+  tint?: string;
+  blend: LayerBlend;
 }
 
 /** A Layered Image resolved for one subject, bottom Layer first. */
@@ -42,6 +46,12 @@ const holds = (variant: LayerVariant, reads: LayerReads): boolean =>
 
 const clampOpacity = (opacity: number | undefined): number =>
   (typeof opacity === 'number' && Number.isFinite(opacity) ? Math.min(1, Math.max(0, opacity)) : 1);
+
+/** A stored tint as `#rrggbb`, or undefined for none: white tints nothing, and a malformed value is ignored. */
+export const normalizeTint = (tint: string | undefined): string | undefined => {
+  const hex = parseHex6(tint ?? '');
+  return hex && hex !== '#ffffff' ? hex : undefined;
+};
 
 /** The Variant that sizes `entry`: the first Variant of its lowest Layer that has one (Q23, Q27). */
 export const canvasVariant = (entry: LayeredMediaEntry): LayerVariant | undefined =>
@@ -76,7 +86,8 @@ export function resolveLayered(entry: LayeredMediaEntry, media: MediaList | unde
   const layers = entry.layers.map((layer): ResolvedLayer => {
     const shown = layer.variants[shownVariant(layer, media, reads)];
     const data = shown && variantData(shown, media);
-    return { id: layer.id, opacity: clampOpacity(layer.opacity), ...(data ? { data } : {}) };
+    const tint = normalizeTint(layer.tint);
+    return { id: layer.id, opacity: clampOpacity(layer.opacity), blend: layer.blend ?? 'normal', ...(tint ? { tint } : {}), ...(data ? { data } : {}) };
   });
   return { kind: 'layered', entryId: entry.id, canvas, layers };
 }

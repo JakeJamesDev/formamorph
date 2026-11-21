@@ -1,6 +1,7 @@
 // Authoring a Layered Image: pure edits on one entry, each returning a new entry. Layers are bottom first.
 
-import type { LayeredMediaEntry, LayerVariant, MediaLayer, MediaList, TraitRequirementRow } from '@/types';
+import type { LayerBlend, LayeredMediaEntry, LayerVariant, MediaLayer, MediaList, TraitRequirementRow } from '@/types';
+import { normalizeTint } from './layeredImages';
 import { mediaNameKey, uniqueMediaName } from './mediaList';
 import { randomUUID } from './uuid';
 
@@ -54,6 +55,17 @@ export const setLayerOpacity = (entry: LayeredMediaEntry, layerId: string, opaci
     const value = Math.min(1, Math.max(0, opacity));
     return value >= 1 ? rest : { ...rest, opacity: value };
   });
+
+/** The entry with the Layer's tint set. White, or a value that is not `#rrggbb`, clears it. */
+export const setLayerTint = (entry: LayeredMediaEntry, layerId: string, tint: string | null): LayeredMediaEntry =>
+  mapLayer(entry, layerId, ({ tint: _old, ...rest }) => {
+    const value = normalizeTint(tint ?? undefined);
+    return value ? { ...rest, tint: value } : rest;
+  });
+
+/** The entry with the Layer's blend mode set. Normal is stored as absent. */
+export const setLayerBlend = (entry: LayeredMediaEntry, layerId: string, blend: LayerBlend): LayeredMediaEntry =>
+  mapLayer(entry, layerId, ({ blend: _old, ...rest }) => (blend === 'normal' ? rest : { ...rest, blend }));
 
 /** The entry with `mediaIds` added as the Layer's last Variants. An image the Layer already holds is not added twice. */
 export const addVariants = (entry: LayeredMediaEntry, layerId: string, mediaIds: readonly string[]): LayeredMediaEntry =>

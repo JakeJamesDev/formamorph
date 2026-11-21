@@ -14,7 +14,7 @@ import { shownVariant } from '@/lib/layeredImages';
 import { cn } from '@/lib/utils';
 import type { MediaLayer } from '@/types';
 import {
-  AddLayerButton, DeleteLayerButton, EyeToggle, LayerList, LayerNameField, LayerThumb, OpacityField, PreviewAs, RigPreview,
+  AddLayerButton, BlendField, DeleteLayerButton, EyeToggle, LayerList, LayerNameField, LayerThumb, OpacityField, PreviewAs, RigPreview, TintField,
   VariantStrip, VariantSummary,
 } from './LayeredImageParts';
 import { draftOpacity, layerMismatched, layerNames, shownName, useRig, type Rig } from './layeredRig';
@@ -121,6 +121,8 @@ function DesktopRigEditor({ rig }: { rig: Rig }) {
             <div className="space-y-3 border-t p-3" data-layer-settings={layer.id}>
               <LayerNameField key={layer.id} rig={rig} layer={layer} />
               <OpacityField rig={rig} layer={layer} />
+              <BlendField rig={rig} layer={layer} />
+              <TintField rig={rig} layer={layer} />
               <DeleteLayerButton rig={rig} layer={layer} />
             </div>
           )}
@@ -199,6 +201,8 @@ function MobileRigEditor({ rig }: { rig: Rig }) {
             </TabsContent>
             <TabsContent value="look" className="space-y-3">
               <OpacityField rig={rig} layer={layer} />
+              <BlendField rig={rig} layer={layer} />
+              <TintField rig={rig} layer={layer} />
             </TabsContent>
           </Tabs>
           <DeleteLayerButton rig={rig} layer={layer} />

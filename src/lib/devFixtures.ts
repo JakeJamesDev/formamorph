@@ -350,10 +350,34 @@ const RIG_CAST = [
 const rigArtEntries = (): Record<string, MediaEntry> =>
   Object.fromEntries(Object.entries(RIG_ART).map(([id, data]): [string, MediaEntry] => [id, { id, name: id, kind: 'image', type: 'image/svg+xml', data }]));
 
+/** A swatch Layer: one disc at `cx` on the 240×288 canvas, in `fill`. */
+const disc = (cx: number, fill: string) => rigArt(`<circle cx="${cx}" cy="120" r="46" fill="${fill}"/>`);
+const BLEND_ART: Record<string, string> = {
+  'dev-blend-base': rigArt('<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2a4d8f"/><stop offset="1" stop-color="#e0a040"/></linearGradient></defs><rect width="240" height="288" fill="url(#g)"/>'),
+  'dev-blend-normal': disc(40, '#33aa55'),
+  'dev-blend-multiply': disc(90, '#f0d030'),
+  'dev-blend-screen': disc(140, '#30c0c0'),
+  'dev-blend-add': disc(190, '#c03030'),
+  'dev-blend-gray': rigArt('<rect x="40" y="190" width="160" height="70" rx="30" fill="#bbbbbb"/>'),
+};
+/** The `layeredEditor` route's second rig: a gradient under one disc per blend mode, and a gray bar tinted rose. */
+const BLEND_RIG: MediaEntry = {
+  id: 'dev-blend-rig', name: 'Blend Rig', kind: 'layered', layers: [
+    { id: 'dev-blend-layer-base', name: 'Base', variants: [{ mediaId: 'dev-blend-base' }] },
+    { id: 'dev-blend-layer-normal', name: 'Normal', variants: [{ mediaId: 'dev-blend-normal' }] },
+    { id: 'dev-blend-layer-multiply', name: 'Multiply', blend: 'multiply', variants: [{ mediaId: 'dev-blend-multiply' }] },
+    { id: 'dev-blend-layer-screen', name: 'Screen', blend: 'screen', variants: [{ mediaId: 'dev-blend-screen' }] },
+    { id: 'dev-blend-layer-add', name: 'Add', blend: 'add', variants: [{ mediaId: 'dev-blend-add' }] },
+    { id: 'dev-blend-layer-tint', name: 'Tint', tint: '#cc3366', variants: [{ mediaId: 'dev-blend-gray' }] },
+  ],
+};
+const blendArtEntries = (): Record<string, MediaEntry> =>
+  Object.fromEntries(Object.entries(BLEND_ART).map(([id, data]): [string, MediaEntry] => [id, { id, name: id, kind: 'image', type: 'image/svg+xml', data }]));
+
 /** The `layeredEditor` route's world: `base` with the two scouts and the rig they share. */
 export const devLayeredWorld = (base: World): World => ({
   ...base,
-  worldOverview: { ...base.worldOverview, mediaList: { ...base.worldOverview.mediaList, ...rigArtEntries(), [RIG_ID]: RIG } },
+  worldOverview: { ...base.worldOverview, mediaList: { ...base.worldOverview.mediaList, ...rigArtEntries(), ...blendArtEntries(), [RIG_ID]: RIG, [BLEND_RIG.id]: BLEND_RIG } },
   entities: [...RIG_CAST, ...base.entities],
 });
 

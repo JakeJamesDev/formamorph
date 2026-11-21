@@ -470,6 +470,9 @@ export interface LayerVariant {
   requires?: TraitRequirementRow[];
 }
 
+/** How a Layer draws over the Layers below it. Add is `plus-lighter`. */
+export type LayerBlend = 'normal' | 'multiply' | 'screen' | 'add';
+
 /** One slot in a Layered Image's stack. It shows its first visible Variant, or nothing. */
 export interface MediaLayer {
   id: string;
@@ -477,6 +480,10 @@ export interface MediaLayer {
   name: string;
   /** 0 to 1. Absent = 1. */
   opacity?: number;
+  /** `#rrggbb`. The Layer's pixels multiply by it and keep their alpha. Absent = no tint. */
+  tint?: string;
+  /** Absent = Normal. */
+  blend?: LayerBlend;
   variants: LayerVariant[];
 }
 

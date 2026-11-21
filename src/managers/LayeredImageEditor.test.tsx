@@ -59,8 +59,8 @@ const rigOf = (bench: Bench, id = 'rig') => bench.ctx().worldOverview.mediaList?
 const dialog = () => screen.getByRole('dialog');
 const selectCard = (name: string) => fireEvent.click(screen.getAllByText(name).find((el) => el.closest('[data-media-card]'))!);
 /** The preview's Layers, bottom first, as the image id each draws. */
-const drawn = () => Array.from(dialog().querySelectorAll<HTMLImageElement>('[data-layered-preview] [data-layer]'))
-  .map((img) => /base64,(\w+)/.exec(img.getAttribute('src') ?? '')?.[1]);
+const drawn = () => Array.from(dialog().querySelectorAll<HTMLElement>('[data-layered-preview] [data-layer]'))
+  .map((box) => /base64,(\w+)/.exec(box.querySelector('img')?.getAttribute('src') ?? '')?.[1]);
 
 async function pickPreviewAs(name: string) {
   fireEvent.click(within(dialog()).getByRole('combobox', { name: 'Preview As' }));
@@ -136,6 +136,20 @@ describe('Layered Image editor', () => {
     act(() => { slider.focus(); });
     fireEvent.keyDown(slider, { key: 'ArrowLeft' });
     expect(rigOf(bench).layers[1].opacity).toBe(0.99);
+  });
+
+  it('sets the selected Layer’s blend mode and clears its tint, each in one write', async () => {
+    const tinted: LayeredMediaEntry = { ...RIG, layers: RIG.layers.map((l) => (l.id === 'face' ? { ...l, tint: '#336699' } : l)) };
+    const bench = renderMediaTab(world(tinted), 'simple');
+    selectCard('Scout Rig');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Layers' }));
+    fireEvent.click(within(dialog()).getByRole('combobox', { name: 'Blend Mode' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Multiply' }));
+    expect(rigOf(bench).layers[1]).toMatchObject({ blend: 'multiply', tint: '#336699' });
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Clear Tint' }));
+    expect('tint' in rigOf(bench).layers[1]).toBe(false);
+    expect(rigOf(bench).layers[1].blend).toBe('multiply');
+    expect(within(dialog()).queryByRole('button', { name: 'Clear Tint' })).toBeNull();
   });
 
   it('lists a Variant use in Used By and in the delete confirm, and deleting the image empties that Variant', async () => {

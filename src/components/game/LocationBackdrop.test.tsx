@@ -58,7 +58,7 @@ describe('LocationBackdrop', () => {
   });
 
   it('draws a Layered Image’s stack inside the same compositor layer, with the fade beside it', () => {
-    const stack: LayeredPicture = { kind: 'layered', entryId: 'rig', canvas: 'room.png', layers: [{ id: 'room', opacity: 1, data: 'room.png' }, { id: 'rain', opacity: 0.5, data: 'rain.png' }] };
+    const stack: LayeredPicture = { kind: 'layered', entryId: 'rig', canvas: 'room.png', layers: [{ id: 'room', opacity: 1, blend: 'normal', data: 'room.png' }, { id: 'rain', opacity: 0.5, blend: 'normal', data: 'rain.png' }] };
     render(<LocationBackdrop image={stack} overlay={0.4} overlayHidden={false} />);
     expect(imageLayer().style.transform).toBe('translateZ(0)');
     expect(imageLayer().style.backgroundImage).toBe('');

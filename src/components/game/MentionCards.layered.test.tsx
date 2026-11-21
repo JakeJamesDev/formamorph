@@ -45,7 +45,7 @@ const presence = computePresence({
 const rows = (night: boolean) => mentionCardRows(buildPlayerView(input({ gate: gate(night) })), presence);
 
 /** Each drawn Layer's image and opacity. */
-const layersIn = (root: Element) => [...root.querySelectorAll('img[data-layer]')].map((img) => [img.getAttribute('src'), (img as HTMLElement).style.opacity]);
+const layersIn = (root: Element) => [...root.querySelectorAll('[data-layer]')].map((box) => [box.querySelector('img')?.getAttribute('src'), (box as HTMLElement).style.opacity]);
 
 afterEach(cleanup);
 

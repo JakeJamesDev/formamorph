@@ -78,7 +78,8 @@ export function rigPicture(rig: Rig, hidden?: ReadonlySet<string>): LayeredPictu
     ...picture,
     layers: picture.layers.map((l) => {
       const opacity = draftOpacity(rig, l.id) ?? l.opacity;
-      return hidden?.has(l.id) ? { id: l.id, opacity } : { ...l, opacity };
+      const { data: _shown, ...rest } = l;
+      return { ...(hidden?.has(l.id) ? rest : l), opacity };
     }),
   };
 }

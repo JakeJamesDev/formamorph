@@ -203,9 +203,9 @@ describe('EntityVisual — gallery', () => {
 
   describe('with a Layered Image in play', () => {
     const STACK: LayeredPicture = {
-      kind: 'layered', entryId: 'rig', canvas: IMAGE, layers: [{ id: 'base', opacity: 1, data: IMAGE }, { id: 'empty', opacity: 1 }, { id: 'top', opacity: 0.4, data: IMAGE_B }],
+      kind: 'layered', entryId: 'rig', canvas: IMAGE, layers: [{ id: 'base', opacity: 1, blend: 'normal', data: IMAGE }, { id: 'empty', opacity: 1, blend: 'normal' }, { id: 'top', opacity: 0.4, blend: 'normal', data: IMAGE_B }],
     };
-    const layers = (root: ParentNode) => [...root.querySelectorAll('img[data-layer]')].map((img) => [img.getAttribute('data-layer'), (img as HTMLElement).style.opacity]);
+    const layers = (root: ParentNode) => [...root.querySelectorAll('[data-layer]')].map((img) => [img.getAttribute('data-layer'), (img as HTMLElement).style.opacity]);
 
     it('draws the stack in the panel and in the zoom viewer, skipping the empty Layer', async () => {
       render(<EntityVisual entity={entity({ images: [{ mediaId: 'rig' }] })} images={[STACK]} />);
