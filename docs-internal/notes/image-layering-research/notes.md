@@ -1,6 +1,6 @@
 # Image Layering: Research
 
-Status: needs-triage
+Status: ready-for-human
 
 Research for layered images: several images drawn as one picture, each part driven by game state. It is the input for a grill, not a spec.
 
@@ -59,13 +59,35 @@ Research for layered images: several images drawn as one picture, each part driv
 
 **Performance:** 5–8 full-size layers per entity should be fine on desktop. Mobile is unmeasured. Flattening the active stack to one bitmap, cached by the stack's state, is the fallback.
 
-## ❓ Open questions for the grill
+## ✅ Grill rulings (2026-11-20)
 
-- Is a layered image one gallery entry beside plain images, or does it replace the gallery?
-- Which subjects get layers first: entities only, or locations too (weather, time of day)?
-- What shows outside play (library, cards, listings): each layer's first variant?
-- Does an image sent to the AI go flattened?
-- Does a layered image live on the Media List as a reusable entry, so two entities can share one rig?
+| Q | Ruling |
+|---|---|
+| Q1 | A **Layered Image** is a Media List entry. Any image slot links it like a plain image, so gallery order, Visibility rules and sharing still work. |
+| Q2 | A layer with no visible Variant shows nothing. |
+| Q3 | The bottom layer sets the canvas. Every Variant draws stretched to it. The editor warns on a size or aspect mismatch. |
+| Q4 | First version ships per-layer **opacity**, **tint** and **blend mode**. PSD import is out. |
+| Q5 | Outside play, each layer shows its first Variant, rules ignored. Flattened to one PNG where a file is needed. |
+| Q6 | Slots: entity galleries, location images, item images. Not `player.show` or the Map Background. |
+| Q7 | A Variant Condition with no owner reads the showing subject: the entity, the persona for a location, the instance owner for an item. |
+| Q8 | Tint is one color per layer. Scripts can set it per subject. |
+| Q9 | Blend modes: Normal, Multiply, Screen, Add. |
+| Q10 | Scripts set a layer's Variant, opacity and tint per subject (per Generic instance, per Item Instance). A set value beats rules until cleared. |
+| Q11 | Flat only, no nesting. Expressions work across poses only while every pose keeps the head at the same pixels. |
+| Q12 | The full rig travels everywhere: library, publish and character cards. |
+| Q13 | Built in the Media tab: layers bottom to top, the gallery cog rule popover per Variant, a live preview with a Preview As entity picker. |
+| Q14 | Scripts name a layer by its name (unique in the rig) and a Variant by its Media List image name. Renames rewrite scripts. |
+| Q15 | Test Bench flags a Variant size or aspect mismatch, a bottom layer that can be empty, and a rule naming a missing trait or stat. |
+| Q16 | Variant changes reuse Morphie's transition (`src/lib/formaquestion/mascotTransition.ts`): None, Dissolve, Jelly, same tuning sliders. Default Dissolve. |
+| Q17 | The transition is set per layer. Dissolve fades that layer. Jelly squashes the whole picture. |
+| Q18 | Plain image swaps keep their current behavior. |
+| Q19 | With reduced motion on, Jelly plays as Dissolve. |
+| Q20 | Several layers change in one turn: one squash, with the topmost changed Jelly layer's tuning. Dissolve layers fade during it. |
+| Q21 | Words: Layered Image, Layer, Variant. |
+
+**Export shape:** world (new Media List kind), save (per-subject layer overrides), library entity and character card (embedded rig) all change.
+
+**To measure in the spec:** mobile cost of stacked full-size layers, and whether to flatten to a cached bitmap.
 
 ## 🔗 Sources
 
