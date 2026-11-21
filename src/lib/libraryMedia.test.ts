@@ -59,11 +59,11 @@ describe('resolution out of a world (Save to Library, publish)', () => {
     expect(item.images).toEqual([{ data: ABC_PNG, name: 'Portrait', requires: KNIGHT }]);
     expect(JSON.stringify(item)).not.toContain('mediaId');
     // Publishing reads the library item, so the listing carries the file.
-    expect(JSON.stringify(entityPublishPayload(item).contentData)).not.toContain('mediaId');
-    expect(entityPublishPayload(item).thumbnail).toBe(ABC_PNG);
+    expect(JSON.stringify((await entityPublishPayload(item)).contentData)).not.toContain('mediaId');
+    expect((await entityPublishPayload(item)).thumbnail).toBe(ABC_PNG);
   });
 
-  it('leaves an embedded world copy as it was', () => {
+  it('leaves an embedded world copy as it was', async () => {
     const copy = wren({ images: [{ data: ABC_PNG }] });
     expect(withEmbeddedMedia(copy, undefined)).toBe(copy);
     expect(toLibraryItem(copy, [], []).images).toEqual([{ data: ABC_PNG }]);
@@ -188,7 +188,7 @@ describe('entity sounds across the boundary', () => {
     expect(placed.list![soundId(placed.entity)!].name).toBe('hiss');
   });
 
-  it('drops a sound whose entry is gone on the way out', () => {
+  it('drops a sound whose entry is gone on the way out', async () => {
     const resolved = withEmbeddedMedia(wren({ sound: { mediaId: 'gone' } }), {});
     expect(resolved.sound).toBeUndefined();
   });

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Entity } from '@/types';
+import type { Entity, MediaList } from '@/types';
 
 // A card export normally runs a canvas encode and a WebP container write; stub both so these tests cover
 // only what a linked portrait changes.
@@ -20,6 +20,18 @@ vi.mock('./entityCard', async (importOriginal) => ({
 
 const morphCardImage = vi.fn(async () => 'data:image/webp;base64,ART');
 vi.mock('./morphArtCanvas', () => ({ morphCardImage: (...a: unknown[]) => morphCardImage(...(a as [])) }));
+
+// The browser's canvas is absent here: flattening reads 1×1 pixels named by each data URL's payload.
+const PIXELS: Record<string, number[]> = { BODY: [200, 100, 50, 255], FACE: [255, 255, 255, 255] };
+const rasterIO = {
+  size: async () => ({ width: 1, height: 1 }),
+  read: async (data: string) => ({ width: 1, height: 1, data: new Uint8ClampedArray(PIXELS[data.slice(data.indexOf(',') + 1)]) }),
+  write: async (raster: { data: Uint8ClampedArray }) => `data:image/png;base64,${btoa(Array.from(raster.data).join('.'))}`,
+};
+vi.mock('./layeredFlatten', async (importOriginal) => {
+  const real = await importOriginal<typeof import('./layeredFlatten')>();
+  return { ...real, pictureFile: (picture: Parameters<typeof real.pictureFile>[0]) => real.pictureFile(picture, rasterIO) };
+});
 
 const { exportEntityCard } = await import('./entityFile');
 
@@ -85,6 +97,31 @@ describe('exportEntityCard with no portrait', () => {
 
   it('never draws art for an entity that has a portrait', async () => {
     await exportEntityCard(entity(['data:image/webp;base64,ALREADY']));
+    expect(morphCardImage).not.toHaveBeenCalled();
+  });
+});
+
+describe('exportEntityCard with a Layered Image first', () => {
+  const media: MediaList = {
+    body: { id: 'body', name: 'Body', kind: 'image', data: 'data:image/png;base64,BODY' },
+    face: { id: 'face', name: 'Face', kind: 'image', data: 'data:image/png;base64,FACE' },
+    rig: { id: 'rig', name: 'Rig', kind: 'layered', layers: [
+      { id: 'b', name: 'Body', variants: [{ mediaId: 'body' }] },
+      // Rules never hold outside play, so the first Variant shows (Q5).
+      { id: 'f', name: 'Face', tint: '#00ff00', blend: 'multiply', opacity: 0.5, variants: [{ mediaId: 'face', requires: [{ all: [{ kind: 'trait', id: 'gone' }] }] }] },
+    ] },
+  };
+
+  it('draws the card from the flattened outside-play picture, tint and blend included', async () => {
+    await exportEntityCard({ id: 'e1', name: 'Mara', images: [{ mediaId: 'rig' }, { mediaId: 'body' }] }, [], {}, undefined, undefined, undefined, media);
+    // White tinted green multiplies Body to (0, 100, 0); at half opacity over Body: (100, 100, 25).
+    expect(fetch).toHaveBeenCalledWith(`data:image/webp;base64,${btoa('100.100.25.255')}`);
+  });
+
+  it('draws the card from the first slot that draws, as the tile does', async () => {
+    const withEmpty: MediaList = { ...media, empty: { id: 'empty', name: 'Empty', kind: 'layered', layers: [{ id: 'l', name: 'Layer', variants: [] }] } };
+    await exportEntityCard({ id: 'e1', name: 'Mara', images: [{ mediaId: 'empty' }, { mediaId: 'body' }] }, [], {}, undefined, undefined, undefined, withEmpty);
+    expect(fetch).toHaveBeenCalledWith('data:image/webp;base64,BODY');
     expect(morphCardImage).not.toHaveBeenCalled();
   });
 });

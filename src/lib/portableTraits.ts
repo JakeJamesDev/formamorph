@@ -1,7 +1,7 @@
 // An entity's owned traits and links off-world: named on the way out, bound to a receiving world on the way in.
 
 import type {
-  Entity, GalleryImage, GalleryLink, MediaList, OptionRequirement, Placeholder, PlaceholderGroup, RequirementOwner, Stat, StatGroup, StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement,
+  EmbeddedLayeredImage, Entity, GalleryImage, GalleryLink, MediaList, OptionRequirement, Placeholder, PlaceholderGroup, RequirementOwner, Stat, StatGroup, StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement,
   TraitRequirementRow, WorldOption,
 } from '@/types';
 import { canBePlayer, linksInTreeOrder, originalOf } from './owners';
@@ -15,8 +15,8 @@ import { blueprintItemIds, groupsBelow } from './traitTree';
 import { mapConditions, notFlag } from './requirementRows';
 import { daypartSet } from './gameClock';
 import { stateTextKey } from './items';
-import { hasImageRules, mapImageRules } from './entityImages';
-import { embedGallery } from './mediaList';
+import { galleryLinks, hasImageRules, mapImageRules } from './entityImages';
+import { portableGallery } from './portableLayered';
 import { hasEntityRules, withEntityRules } from './entityRules';
 import { withoutGlobalOwner } from './version';
 
@@ -159,10 +159,10 @@ function portableRequirement(entity: Entity, world?: TraitWorld): (req: TraitReq
   };
 }
 
-/** The entity's gallery as it travels: embedded, links resolved through `media`, and each Visibility rule's
- *  Conditions named as an owned trait's are. */
-export const portableImages = (entity: Entity, world?: TraitWorld, media?: MediaList): GalleryImage[] =>
-  embedGallery(mapImageRules(entity, portableRequirement(entity, world)), media);
+/** The entity's gallery as it travels: embedded through `media`, every rule's Conditions named as an owned trait's are. */
+export const portableImages = (entity: Entity, world?: TraitWorld, media?: MediaList): (GalleryImage | EmbeddedLayeredImage)[] =>
+  mapImageRules({ images: portableGallery(galleryLinks(entity), media) }, portableRequirement(entity, world))
+    .filter((link): link is GalleryImage | EmbeddedLayeredImage => !('mediaId' in link));
 
 /** The entity's Enabled gate as it travels, named as its image rules are. Absent when it has none. */
 export const portableEnabledGate = (entity: Entity, world?: TraitWorld): TraitRequirementRow[] | undefined =>

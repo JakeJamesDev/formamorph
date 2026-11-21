@@ -57,6 +57,10 @@ If you import one file that names worlds, a review opens. See [Importing an Enti
 
 An entity exports as a `.webp` card: its portrait with the entity's data inside. An entity with no portrait gets a generated image. A dictionary exports as a `.json` file.
 
+A Layered Image travels whole. Saving an entity to the library, publishing it and exporting its card keep every Layer, image and rule. When you add the entity to a world, images the world already has are reused.
+
+When an entity's first gallery image is a Layered Image, its tile, its listing and its card show the default look: each Layer's first image.
+
 To import or export an avatar, see [How to Import an Avatar](Avatars#how-to-import-an-avatar) and [How to Export an Avatar](Avatars#how-to-export-an-avatar).
 
 ## How to Make a Group

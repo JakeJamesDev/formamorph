@@ -111,3 +111,19 @@ describe('WorldCardFace mid-run', () => {
     expect(opened).toEqual(['world-1']);
   });
 });
+
+describe('WorldCardFace with a Layered Image thumbnail', () => {
+  it('draws the stack in both layouts', () => {
+    const thumbnail = {
+      kind: 'layered', entryId: 'rig', canvas: 'data:image/png;base64,QkFTRQ==',
+      layers: [{ id: 'b', data: 'data:image/png;base64,QkFTRQ==', opacity: 1, blend: 'normal' }, { id: 'f', data: 'data:image/png;base64,RkFDRQ==', opacity: 1, blend: 'normal' }],
+    };
+    for (const layout of ['grid', 'detailed'] as const) {
+      const { container } = render(<WorldCardFace world={{ ...world, thumbnail }} layout={layout} aspect="portrait" />);
+      expect(screen.getByRole('img', { name: 'Saltmarsh' })).toHaveAttribute('data-layered-picture', 'rig');
+      expect([...container.querySelectorAll('[data-layer] img')].map((img) => img.getAttribute('src')))
+        .toEqual(['data:image/png;base64,QkFTRQ==', 'data:image/png;base64,RkFDRQ==']);
+      cleanup();
+    }
+  });
+});

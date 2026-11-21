@@ -1,10 +1,9 @@
 import { randomUUID } from '@/lib/uuid';
 import { EntityIcon } from '@/lib/elementIcons';
 import { linkToSource, unlink, type LibrarySource } from '@/lib/linkedContent';
-import { thumbFit } from '@/lib/thumbAspect';
-import { cn } from '@/lib/utils';
 import type { Entity } from '@/types';
 import AddFromLibraryModal from './AddFromLibraryModal';
+import { ThumbPicture } from '@/components/PictureImg';
 
 /**
  * Pick one or more entities from the local library and add a copy of each to the world being edited.
@@ -31,7 +30,7 @@ const AddEntityModal = ({ open, resume, onOpenChange, onAdd }: {
     renderRow={(item) => (
       <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-muted flex items-center justify-center">
         {item.image ? (
-          <img src={item.image} alt={item.name} className={cn('h-full w-full', thumbFit('portrait'))} />
+          <ThumbPicture src={item.image} aspect="portrait" alt={item.name} className="h-full w-full" />
         ) : (
           <EntityIcon className="h-4 w-4 text-muted-foreground" />
         )}

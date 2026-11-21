@@ -42,7 +42,9 @@ import {
   type TilePlacement,
 } from '@/lib/libraryOrganization';
 import type { LibraryTiles } from '@/lib/useLibraryTiles';
-import { THUMB_RATIO, thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
+import { THUMB_RATIO, type ThumbAspect } from '@/lib/thumbAspect';
+import { ThumbPicture } from '@/components/PictureImg';
+import type { Picture } from '@/lib/layeredImages';
 import { LibraryGroupTile } from '@/components/library/LibraryGroupTile';
 import { FolderFace } from '@/components/library/FolderFace';
 import { folderRegion, type FolderRegion } from '@/lib/folderRegion';
@@ -297,7 +299,7 @@ export function LibraryTileGrid<T>({
   /** The narrowest a medium tile may render, in px; the grid fits as many columns as that allows. */
   minMediumWidth: number;
   detailedColumnsClass: string;
-  thumbnailOf: (item: T) => string | undefined;
+  thumbnailOf: (item: T) => Picture | undefined;
   placeholderOf?: (item: T) => React.ReactNode;
   renderCard: (item: T, options: {
     layout: 'grid' | 'detailed';
@@ -503,7 +505,7 @@ export function LibraryTileGrid<T>({
       rowHeight={rowHeight}
       gap={GAP}
       tileWidth={face.tileWidth}
-      fit={thumbFit(aspect)}
+      aspect={aspect}
     />
   );
 
@@ -983,12 +985,12 @@ export function LibraryTileGrid<T>({
               const member = byId.get(group.members[i] ?? '');
               const memberThumb = member ? thumbnailOf(member) : undefined;
               return memberThumb
-                ? <img key={i} src={memberThumb} alt="" className={cn('h-full w-full', thumbFit(aspect))} />
+                ? <ThumbPicture key={i} src={memberThumb} aspect={aspect} alt="" className="h-full w-full" />
                 : <div key={i} className="h-full w-full bg-muted">{member && placeholderOf?.(member)}</div>;
             })}
           </div>
         ) : thumb
-          ? <img src={thumb} alt="" className={cn('h-full w-full', thumbFit(aspect))} />
+          ? <ThumbPicture src={thumb} aspect={aspect} alt="" className="h-full w-full" />
           : <div className="h-full w-full bg-muted">{item && placeholderOf?.(item)}</div>}
       </div>
     );

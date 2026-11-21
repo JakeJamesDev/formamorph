@@ -1,6 +1,6 @@
 # 07: Outside Play and Portability
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -17,9 +17,21 @@ A Layered Image looks right outside play and travels whole. The spec covers this
 
 ## Acceptance criteria
 
-- [ ] Round-trip tests (library, publish, card) keep every Layer, Variant name and rule, and merge duplicate images.
-- [ ] A card's pixels equal the flattened outside-play picture, including tint and blend.
-- [ ] The library grid shows the first-Variant picture.
-- [ ] Changelog fragment written.
+- [x] Round-trip tests (library, publish, card) keep every Layer, Variant name and rule, and merge duplicate images. `portableLayered.test.ts` (18 tests): library save and re-add, rig reuse (the world's name wins, Q37), migration, card `primaryLayered` and `extraImages`, publish, Variant rule naming and binding; 22 mutants, all killed.
+- [x] A card's pixels equal the flattened outside-play picture, including tint and blend. `entityFile.export.test.ts` "draws the card from the flattened outside-play picture, tint and blend included" (expected pixel worked by hand); compositing math in `layeredFlatten.test.ts`.
+- [x] The library grid shows the first-Variant picture. `EntityStorageService.test.ts` (metadata picture) and `WorldCardFace.test.tsx` (the tile draws the stack in both layouts).
+- [x] Changelog fragment written. `docs-internal/changelog.d/layered-images-07.md`.
 
 ⚠️ Export shape: library entities, publish payloads and character cards embed the rig.
+
+## Landed
+
+**Not verified**
+- Flatten against the browser's own drawing. The math follows `PictureImg`'s CSS (tint matrix, opacity, `mix-blend-mode`, `plus-lighter`) and is tested over plain RGBA. The canvas reader and the WebP writer (`CANVAS_IO`) never ran in a test, since jsdom has no canvas.
+- No card was exported, published or imported in a running app.
+- AI images (Q37 item 6): today only player-attached files become image parts, so nothing changed.
+
+**For you**
+- Export the card of a character whose first image is a Layered Image with a tint and a Multiply Layer. Compare the card's picture with the Media tab preview at Default Look (Library → entity → Export).
+- Import that card into another world that already holds one of its images. The Media tab should show one copy of that image and the full rig.
+- Look at the Entities tab tile and the persona picker for that character: each shows the default look.

@@ -7,14 +7,16 @@ import { cn } from '@/lib/utils';
 import { Tip } from '@/components/ui/tooltip';
 import { OverlayTitle, TITLE_SCRIM, WorldCardShell } from '@/components/WorldCardShell';
 import type { LibraryGroup } from '@/lib/libraryOrganization';
-import { cardLayoutFor, thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
+import { cardLayoutFor, type ThumbAspect } from '@/lib/thumbAspect';
+import { ThumbPicture } from '@/components/PictureImg';
+import type { Picture } from '@/lib/layeredImages';
 
 /** How many member thumbnails the detailed layout's folder card shows. */
 const MOSAIC_CELLS = 4;
 
 /** The 2x2 mini-mosaic that makes a folder card recognizable at a glance. */
 function GroupMosaic({ thumbnails, placeholders, aspect, className }: {
-  thumbnails: (string | undefined)[];
+  thumbnails: (Picture | undefined)[];
   placeholders?: ReactNode[];
   aspect: ThumbAspect;
   className?: string;
@@ -26,11 +28,7 @@ function GroupMosaic({ thumbnails, placeholders, aspect, className }: {
       {cells.map((thumbnail, index) => (
         <div key={index} className="relative overflow-hidden bg-muted">
           {thumbnail ? (
-            <img
-              src={thumbnail}
-              alt=""
-              className={cn('h-full w-full select-none pointer-events-none', thumbFit(aspect))}
-            />
+            <ThumbPicture src={thumbnail} aspect={aspect} alt="" className="h-full w-full select-none pointer-events-none" />
           ) : placeholders?.[index]}
         </div>
       ))}
@@ -53,7 +51,7 @@ export function LibraryGroupTile({
   group, thumbnails, placeholders, face, aspect, layout, fill, compact, presetName, onOpen,
 }: {
   group: LibraryGroup;
-  thumbnails: (string | undefined)[];
+  thumbnails: (Picture | undefined)[];
   placeholders?: ReactNode[];
   face?: ReactNode;
   /** The shape of the member art, which is what the mosaic's crops anchor by. */

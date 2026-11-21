@@ -5,7 +5,9 @@
  */
 import type { GalleryLink, MediaAsset, MediaList, MediaRef, TraitRequirementRow } from '@/types';
 import { galleryLinks, type ImageBearing } from '@/lib/entityImages';
-import { embedGallery, fileEntries, isMediaRef, mediaHashes, mediaNameFromAsset, mediaToken, placeMedia, unhashedData, type MediaHashes } from '@/lib/mediaList';
+import { fileEntries, isMediaRef, layeredEntry, mediaHashes, mediaNameFromAsset, mediaToken, placeMedia, unhashedData, type MediaHashes } from '@/lib/mediaList';
+import { embedLayered, isEmbeddedLayered, placeLayered, portableGallery, sorted } from '@/lib/portableLayered';
+import { randomUUID } from '@/lib/uuid';
 import { resolveSound } from '@/lib/mediaSounds';
 
 /** A record whose gallery and sound cross the boundary: a library or world entity. */
@@ -55,7 +57,9 @@ export function placeEntityMedia<T extends MediaBearing>(
   if (links.some((link) => !isMediaRef(link))) {
     const images = links.map((link): GalleryLink => {
       if (isMediaRef(link)) return link;
-      const placed = placeMedia(next, { data: link.data, entryName: link.name }, { kind: 'image', subject: entity.name, hashes });
+      const placed = isEmbeddedLayered(link)
+        ? placeLayered(next, link.layered, (into, variant) => placeMedia(into, { data: variant.data, entryName: variant.name }, { kind: 'image', subject: entity.name, hashes }), () => randomUUID())
+        : placeMedia(next, { data: link.data, entryName: link.name }, { kind: 'image', subject: entity.name, hashes });
       next = placed.list;
       return { mediaId: placed.id, ...(link.requires?.length ? { requires: link.requires } : {}) };
     });
@@ -71,11 +75,10 @@ export function placeEntityMedia<T extends MediaBearing>(
   return { entity: out, list: next };
 }
 
-/** The entity with every gallery and sound link turned back into an embedded file carrying its entry's name. An
- *  entity holding no link comes back as it is. A link the list lacks drops. */
+/** The entity with every gallery, rig and sound link embedded under its entry's name; one holding no link comes back as it is. */
 export function withEmbeddedMedia<T extends MediaBearing>(entity: T, list: MediaList | undefined): T {
   let out = entity;
-  if (galleryLinks(entity).some(isMediaRef)) out = withoutLegacyImage({ ...out, images: embedGallery(galleryLinks(entity), list) });
+  if (galleryLinks(entity).some(isMediaRef)) out = withoutLegacyImage({ ...out, images: portableGallery(galleryLinks(entity), list) });
   if (isMediaRef(entity.sound)) {
     const sound = resolveSound(entity.sound, list);
     if (sound) out = { ...out, sound };
@@ -91,12 +94,23 @@ export function withEmbeddedMedia<T extends MediaBearing>(entity: T, list: Media
 export const comparableSound = (sound: MediaAsset | MediaRef | undefined, media: MediaLookup): string | undefined =>
   (sound ? mediaToken(sound, media.list, media.hashes) : undefined);
 
+/** A Layered Image as two copies compare it: its Layers, each Variant by hash token and rule, names aside (Q30). */
+function layeredToken(image: GalleryLink, media: MediaLookup): string | undefined {
+  const entry = 'mediaId' in image ? layeredEntry(media.list, image.mediaId) : undefined;
+  const rig = isEmbeddedLayered(image) ? image.layered : entry && embedLayered(entry, media.list);
+  if (!rig) return undefined;
+  return `layered:${JSON.stringify(sorted(rig.layers.map(({ variants, ...layer }) => ({
+    ...layer,
+    variants: variants.map((v) => ({ media: mediaToken(v.data, undefined, media.hashes), ...(v.requires?.length ? { requires: v.requires } : {}) })),
+  }))))}`;
+}
+
 /** A gallery as two copies compare it: each picture's hash token and Visibility rule, in order. Names never
  *  compare (Q30). */
 export const comparableGallery = (
   images: readonly GalleryLink[], media: MediaLookup,
 ): { media: string | undefined; requires?: TraitRequirementRow[] }[] =>
   images.map((image) => ({
-    media: mediaToken(image, media.list, media.hashes),
+    media: layeredToken(image, media) ?? mediaToken(image, media.list, media.hashes),
     ...(image.requires?.length ? { requires: image.requires } : {}),
   }));

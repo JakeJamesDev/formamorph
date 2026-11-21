@@ -18,6 +18,9 @@ export const isFileEntry = (entry: MediaEntry): entry is MediaFileEntry => entry
 /** The list's entries that hold a file, for readers of bytes. */
 export const fileEntries = (list: MediaList | undefined): MediaFileEntry[] => Object.values(list ?? {}).filter(isFileEntry);
 
+/** Whether a gallery slot embeds one image's data, not a link or an embedded Layered Image. */
+export const isEmbeddedImage = (link: GalleryLink): link is GalleryImage => 'data' in link;
+
 /** Whether a stored value links a Media Entry. */
 export const isMediaRef = (value: unknown): value is MediaRef =>
   !!value && typeof value === 'object' && typeof (value as Partial<MediaRef>).mediaId === 'string';
@@ -130,9 +133,11 @@ export function resolveMedia(value: MediaValue, list: MediaList | undefined, kin
   return value.data ? value : undefined;
 }
 
-/** A gallery link as an embedded picture, its rule kept; an entry's name rides along. Missing id = null. */
+/** A gallery link as an embedded picture, its rule kept; an entry's name rides along. Missing id, or a Layered
+ *  Image in either form, = null. */
 export function resolveGalleryImage(link: GalleryLink, list: MediaList | undefined): GalleryImage | null {
   const rules = link.requires?.length ? { requires: link.requires } : {};
+  if ('layered' in link) return null;
   if (!('mediaId' in link)) return link.data ? { data: link.data, ...(link.name ? { name: link.name } : {}), ...rules } : null;
   const entry = mediaEntry(list, link.mediaId, 'image');
   return entry ? { data: entry.data, name: entry.name, ...rules } : null;
@@ -200,7 +205,7 @@ export function mediaToken(value: MediaValue | GalleryLink, list: MediaList | un
     const entry = mediaEntry(list, value.mediaId);
     data = entry?.data;
     hash = entry?.hash;
-  } else data = value?.data;
+  } else if (value && 'data' in value) data = value.data;
   if (!data) return undefined;
   if (isRemoteImage(data)) return `url:${data}`;
   hash ??= hashes.get(data);
@@ -212,7 +217,8 @@ export function unhashedData(values: Iterable<MediaValue | GalleryLink>, list: M
   const out: string[] = [];
   for (const value of values) {
     if (typeof value === 'string') out.push(value);
-    else if (value && !('mediaId' in value) && value.data) out.push(value.data);
+    else if (value && 'layered' in value) out.push(...value.layered.layers.flatMap((layer) => layer.variants.map((v) => v.data)));
+    else if (value && 'data' in value && value.data) out.push(value.data);
   }
   for (const entry of fileEntries(list)) if (!entry.hash) out.push(entry.data);
   return out;

@@ -1,4 +1,5 @@
 import type { MascotTransition } from '@/lib/formaquestion/mascotTransition';
+import type { Picture } from '@/lib/layeredImages';
 import type { ChatMessage, Tool } from './ai';
 
 /** A base64 data-URL string, e.g. "data:image/png;base64,...". */
@@ -443,8 +444,33 @@ export interface LinkedGalleryImage extends MediaRef {
   requires?: TraitRequirementRow[];
 }
 
-/** One stored gallery picture: embedded, or a link to a Media Entry. Read it through `lib/entityImages`. */
-export type GalleryLink = GalleryImage | LinkedGalleryImage;
+/** One Variant as it travels outside a world: its image embedded and named as its entry. */
+export interface PortableLayerVariant {
+  data: Base64Data;
+  name?: string;
+  requires?: TraitRequirementRow[];
+}
+
+/** One Layer as it travels outside a world: every Layer field, its Variants embedded. */
+export interface PortableLayer extends Omit<MediaLayer, 'variants'> {
+  variants: PortableLayerVariant[];
+}
+
+/** A Layered Image as it travels outside a world (library, card, publish). */
+export interface PortableLayered {
+  name: string;
+  layers: PortableLayer[];
+}
+
+/** One gallery slot holding an embedded Layered Image, the portable form of a link to one. */
+export interface EmbeddedLayeredImage {
+  layered: PortableLayered;
+  /** The Visibility rule, as on an embedded picture. */
+  requires?: TraitRequirementRow[];
+}
+
+/** One stored gallery picture: embedded, a link to a Media Entry, or an embedded Layered Image. Read it through `lib/entityImages`. */
+export type GalleryLink = GalleryImage | LinkedGalleryImage | EmbeddedLayeredImage;
 
 /** A single media field's link to a Media Entry. */
 export interface MediaRef {
@@ -1553,7 +1579,8 @@ export interface EntityMetadata extends CommunityLink {
   author?: string;
   /** The player-facing blurb, shown on the detailed library card — the same one a listing publishes. */
   description?: string;
-  image?: Base64Data;
+  /** The outside-play picture: an image's data, or a Layered Image's first-Variant stack (Q5). */
+  image?: Picture;
   createdAt?: string;
   lastAccessed?: string;
   /** Listing tags, shown on the library card the way a world's are. */

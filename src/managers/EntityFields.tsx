@@ -13,10 +13,10 @@ import { ModelUpload, SoundUpload } from '../lib/UtilityComponents';
 import { isMediaRef } from '@/lib/mediaList';
 import { MediaSoundSlot } from './MediaSoundSlot';
 import { IMAGE_CAPS } from '../lib/imageOptim';
-import { entityImages, galleryLinks } from '../lib/entityImages';
+import { galleryLinks } from '../lib/entityImages';
 import { useLinkedGallery } from '@/lib/useLinkedGallery';
 import { ImageGallery, ImageTags, ImageWidget, type GalleryFrameProps } from './ImageTagsField';
-import type { GalleryMedia } from '@/lib/mediaGallery';
+import { embeddedGalleryView, relinkEmbeddedGallery, type GalleryMedia } from '@/lib/mediaGallery';
 import { useEditorMode } from '@/lib/editorMode';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { randomUUID } from '@/lib/uuid';
@@ -371,7 +371,11 @@ type EntityImageWidgetProps = DescribedFieldGroupProps & {
 
 export const EntityImageWidget = ({ linked, ...props }: EntityImageWidgetProps) =>
   (linked ? <LinkedEntityImageWidget {...props} /> : (
-    <EntityImageBody {...props} images={entityImages(props.value)} onImagesChange={(list) => props.onChange('images', list)} />
+    <EntityImageBody
+      {...props}
+      images={embeddedGalleryView(galleryLinks(props.value))}
+      onImagesChange={(list) => props.onChange('images', relinkEmbeddedGallery(galleryLinks(props.value), list))}
+    />
   ));
 
 /** Entity galleries take Layered Images. */

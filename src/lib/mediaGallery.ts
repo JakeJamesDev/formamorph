@@ -3,13 +3,14 @@
  * the editor's two-way bridge between a stored gallery of links and the pictures its widget edits. Synchronous:
  * files match by their encoded content, so nothing here hashes.
  */
-import type { GalleryImage, GalleryLink, MediaFileEntry, MediaList, Placeholder } from '@/types';
+import type { GalleryImage, GalleryLink, MediaFileEntry, MediaList, Placeholder, PortableLayered } from '@/types';
 import { contentHash } from './contentHash';
 import { galleryLinks, type ImageBearing } from './entityImages';
 import type { LocationImageBearing } from './locationImages';
 import { isRemoteImage, dataUrlMime } from './imageBytes';
-import { fallbackMediaName, fileEntries, isMediaRef, layeredEntry, resolveGalleryImage, uniqueMediaName, type MediaFileKind } from './mediaList';
+import { fallbackMediaName, fileEntries, isEmbeddedImage, isMediaRef, layeredEntry, resolveGalleryImage, uniqueMediaName, type MediaFileKind } from './mediaList';
 import { labelPlaceholders } from './placementLetters';
+import { isEmbeddedLayered, placeLayered } from './portableLayered';
 
 /** What makes two stored values one file: a link's URL, or embedded data's base64 payload (its MIME string aside). */
 export function mediaContentKey(data: string): string {
@@ -48,12 +49,16 @@ export function placeGalleryFile(list: MediaList, file: GalleryFile, kind: Media
   return { list: { ...list, [id]: entry }, id };
 }
 
-/** `links` with every embedded picture placed into `list` and linked by id, rules kept. */
+/** The list with an embedded rig placed in it, Variants as gallery pictures, and the id that holds it. */
+export const placeGalleryLayered = (list: MediaList, layered: PortableLayered): { list: MediaList; id: string } =>
+  placeLayered(list, layered, (into, variant, layerName) => placeGalleryFile(into, variant, 'image', layerName), (into, key) => contentId(`layered:${key}`, into));
+
+/** `links` with every embedded picture and Layered Image placed into `list` and linked by id, rules kept. */
 function linkGallery(links: readonly GalleryLink[], list: MediaList, subject: string | undefined): { links: GalleryLink[]; list: MediaList } {
   let next = list;
   const out = links.map((link): GalleryLink => {
     if (isMediaRef(link)) return link;
-    const placed = placeGalleryFile(next, link, 'image', subject);
+    const placed = isEmbeddedLayered(link) ? placeGalleryLayered(next, link.layered) : placeGalleryFile(next, link, 'image', subject);
     next = placed.list;
     return { mediaId: placed.id, ...(link.requires?.length ? { requires: link.requires } : {}) };
   });
@@ -146,6 +151,25 @@ export function relinkGallery(
   return { links: out.map(withoutEmptyRule), list: nextList };
 }
 
+/** The tile key of the embedded Layered Image in slot `slot`. */
+const embeddedTile = (slot: number): string => layeredTile(`embedded-${slot}`);
+
+/** An embedded gallery's pictures for the widget, outside a world: an embedded Layered Image shows as its tile. */
+export const embeddedGalleryView = (links: readonly GalleryLink[]): GalleryImage[] =>
+  links.flatMap((link, slot): GalleryImage[] => {
+    if (isEmbeddedLayered(link)) return [{ data: embeddedTile(slot), name: link.layered.name, ...(link.requires?.length ? { requires: link.requires } : {}) }];
+    return isEmbeddedImage(link) ? [link] : [];
+  });
+
+/** The embedded gallery after the widget wrote `next`: a Layered Image's tile keeps that rig, with its new rule. */
+export function relinkEmbeddedGallery(current: readonly GalleryLink[], next: readonly GalleryImage[]): GalleryLink[] {
+  const rigs = new Map(current.flatMap((link, slot) => (isEmbeddedLayered(link) ? [[embeddedTile(slot), link.layered] as const] : [])));
+  return next.map((image) => {
+    const rig = rigs.get(image.data);
+    return withoutEmptyRule(rig ? { layered: rig, requires: image.requires } : image);
+  });
+}
+
 /** A gallery write against the world's list: the links to store and the entries to add. No list keeps them embedded (Q26). */
 export function editGallery(
   current: readonly GalleryLink[], list: MediaList | undefined, next: GalleryImage[], subject: string | undefined,
@@ -202,7 +226,7 @@ export function mapMediaImages(list: MediaList | undefined, rewrite: (data: stri
 export function mapEmbeddedGallery(links: GalleryLink[], rewrite: (data: string) => string): GalleryLink[] {
   let changed = false;
   const out = links.map((link) => {
-    if (isMediaRef(link)) return link;
+    if (!isEmbeddedImage(link)) return link;
     const data = rewrite(link.data);
     if (data === link.data) return link;
     changed = true;

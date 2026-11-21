@@ -4,7 +4,7 @@ import {
   embedGallery, fallbackMediaName, mediaEntry, mediaHashes, mediaNameFromFile, mediaToken, newMediaName, placeMedia,
   resolveMedia, uniqueMediaName, unhashedData,
 } from './mediaList';
-import { entityImages, migrateEntityImages, primaryImage, withImageRules } from './entityImages';
+import { entityImages, migrateEntityImages, primaryPicture, withImageRules } from './entityImages';
 import { locationImages } from './locationImages';
 import { mapImages } from './mapBackground';
 
@@ -73,7 +73,7 @@ describe('gallery helpers through the resolver', () => {
 
   it('resolve links, keep rules, and drop a missing id like a blank', () => {
     expect(entityImages(wren, list)).toEqual([{ data: ABC_PNG, name: 'Wren', requires: KNIGHT }, { data: XYZ_PNG }]);
-    expect(primaryImage(wren, list)).toBe(ABC_PNG);
+    expect(primaryPicture(wren, list)).toBe(ABC_PNG);
     expect(locationImages(wren, list).map((img) => img.data)).toEqual([ABC_PNG, XYZ_PNG]);
   });
 

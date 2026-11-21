@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
-import { cn } from '@/lib/utils';
 import type { PlacementMap } from '@/lib/libraryOrganization';
+import { ThumbPicture } from '@/components/PictureImg';
+import type { Picture } from '@/lib/layeredImages';
+import type { ThumbAspect } from '@/lib/thumbAspect';
 
 /** The folder tile's border, which the face draws under so it aligns to the tile's border box. */
 const TILE_BORDER = 2;
@@ -21,13 +23,13 @@ const TILE_BORDER = 2;
  */
 export function FolderFace({
   members, places, hidden, spanOf, thumbnailOf, placeholderOf, columns, boardWidth, regionWidth, rowHeight, gap,
-  tileWidth, fit,
+  tileWidth, aspect,
 }: {
   members: string[];
   places: PlacementMap;
   hidden: string[];
   spanOf: (id: string) => number;
-  thumbnailOf: (id: string) => string | undefined;
+  thumbnailOf: (id: string) => Picture | undefined;
   /** The art for a member with no thumbnail. */
   placeholderOf?: (id: string) => ReactNode;
   columns: number;
@@ -36,8 +38,8 @@ export function FolderFace({
   rowHeight: number;
   gap: number;
   tileWidth: number;
-  /** The `object-*` classes the member art takes on the full board. */
-  fit: string;
+  /** The frame the member art covers on the full board. */
+  aspect: ThumbAspect;
 }) {
   if (boardWidth <= 0 || tileWidth <= 0 || regionWidth <= 0) return <div className="h-full w-full bg-muted" />;
   const scale = tileWidth / regionWidth;
@@ -79,7 +81,7 @@ export function FolderFace({
                 gridRow: `${places[id].row + 1} / span ${spanOf(id)}`,
               }}
             >
-              {thumbnail ? <img src={thumbnail} alt="" className={cn('h-full w-full select-none', fit)} /> : placeholderOf?.(id)}
+              {thumbnail ? <ThumbPicture src={thumbnail} aspect={aspect} alt="" className="h-full w-full select-none" /> : placeholderOf?.(id)}
             </div>
           );
         })}

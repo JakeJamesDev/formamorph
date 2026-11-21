@@ -256,7 +256,7 @@ describe('publish size', () => {
     const big = new File([new Uint8Array(20 * 1024 * 1024)], 'Big.vrm', { type: 'model/vrm' });
     const record = await addModel(vrmFile('Big'));
     added.set(record.id, big);
-    const payload = entityPublishPayload(await withCarriedVrm({ id: 'e1', name: 'Wren', vrmPick: { kind: 'library', id: record.id } }));
+    const payload = (await entityPublishPayload(await withCarriedVrm({ id: 'e1', name: 'Wren', vrmPick: { kind: 'library', id: record.id } })));
     sendNothing();
 
     await expect(WorldStorageService.publishItem(payload)).rejects.toThrow(/^Entity is 26\.7 MB, over the 25 MB publish limit\.$/);

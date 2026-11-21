@@ -6,16 +6,18 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { BlockedActionTip } from '@/components/BlockedActionTip';
 import { Hint } from '@/components/ui/typography';
-import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
+import { THUMB_FRAME, THUMB_INTRINSIC } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { NoneRef } from '@/lib/persona';
 import type { PersonaRef } from '@/types';
+import { ThumbPicture } from '@/components/PictureImg';
+import type { Picture } from '@/lib/layeredImages';
 
 /** One persona the picker offers. */
 export interface PersonaOption {
   id: string;
   name: string;
-  image?: string;
+  image?: Picture;
   /** The player-facing description, placeholders resolved. */
   description?: string;
   /** The name of the location a world persona names as its start. */
@@ -49,14 +51,14 @@ const rowClass = (selected: boolean) => cn(
 );
 
 /** An entity's picture in the 2:3 portrait frame, or a user glyph when it has none. */
-export function PersonaPortrait({ image }: { image?: string }) {
+export function PersonaPortrait({ image }: { image?: Picture }) {
   return (
     <span
       data-testid="persona-portrait"
       className={cn('flex w-16 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted', THUMB_FRAME.portrait)}
     >
       {image
-        ? <img src={image} alt="" {...THUMB_INTRINSIC.portrait} className={cn('h-full w-full', thumbFit('portrait'))} />
+        ? <ThumbPicture src={image} aspect="portrait" alt="" {...THUMB_INTRINSIC.portrait} className="h-full w-full" />
         : <PersonaIcon aria-hidden className="h-6 w-6 text-muted-foreground" />}
     </span>
   );

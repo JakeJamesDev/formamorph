@@ -4,7 +4,8 @@ import { adoptOwnedTraits, bindOwnedRules, comparableOwnedTraits, traitWorldOf, 
 import { bindCarriedBlueprints } from '@/lib/blueprintTravel';
 import { followedLibraryId } from '@/lib/publishLinks';
 import { entityTexts } from '@/lib/entityTexts';
-import { entityImages, galleryLinks } from '@/lib/entityImages';
+import { galleryLinks } from '@/lib/entityImages';
+import { isMediaRef } from '@/lib/mediaList';
 import { comparableGallery, comparableSound, type MediaLookup } from '@/lib/libraryMedia';
 import { randomUUID } from '@/lib/uuid';
 import { carriedMembership, carriedRoutine, returnedPlaces, withCarriedRoutine, type RoutineFields } from '@/lib/entityPresence';
@@ -175,7 +176,7 @@ function authoredContent(raw: LinkableContent, world?: TraitWorld, vrm?: VrmLook
   // With no kind the references name a membership, and the copy's membership is the world's (Q2).
   if (!('entries' in item) && !item.kind) delete shed.locationRefs;
   // A world file read before migration still holds data strings; the library copy holds images.
-  if (!('entries' in item) && item.images) shed.images = media ? galleryLinks(item) : entityImages(item);
+  if (!('entries' in item) && item.images) shed.images = media ? galleryLinks(item) : galleryLinks(item).filter((link) => !isMediaRef(link));
   if (!('entries' in item) && (item.traits || item.traitLinks || item.images || item.enabledWhen)) Object.assign(shed, comparableOwnedTraits(item));
   if (!('entries' in item) && item.statLinks) Object.assign(shed, comparableOwnedStats(item));
   // A world copy picks a store id and its library item a library id; the two match when they show the same file.

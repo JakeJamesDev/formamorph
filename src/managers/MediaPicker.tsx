@@ -281,7 +281,8 @@ export function LinkedImageUpload({ value, onChange, subject, ...upload }: {
   const { worldOverview } = useGameData();
   const list = worldOverview.mediaList;
   const place = useSinglePlacement(subject);
-  const data = resolveMedia(value && typeof value === 'object' && 'data' in value ? value.data : value, list, 'image')?.data ?? '';
+  const stored = value && typeof value === 'object' ? ('data' in value ? value.data : 'mediaId' in value ? value : undefined) : value;
+  const data = resolveMedia(stored, list, 'image')?.data ?? '';
   const entry = isMediaRef(value) ? mediaEntry(list, value.mediaId, 'image') : undefined;
   const linkedIds = new Set(entry ? [entry.id] : []);
   return (

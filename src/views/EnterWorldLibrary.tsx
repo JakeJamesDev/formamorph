@@ -18,11 +18,13 @@ import { CONTENT_LINK_LABELS } from '@/lib/contentLink';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
 import type { LibraryLines } from '@/lib/librarySources';
 import { useElementSize } from '@/lib/useElementSize';
-import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
+import { THUMB_FRAME, THUMB_INTRINSIC, type ThumbAspect } from '@/lib/thumbAspect';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import type { EntityMetadata } from '@/types';
 import { cn } from '@/lib/utils';
+import { ThumbPicture } from '@/components/PictureImg';
+import type { Picture } from '@/lib/layeredImages';
 
 /** One library character row: the metadata the card draws, plus the lines that tell same-named items apart. */
 export type EntityAddition = EntityMetadata & Partial<LibraryLines>;
@@ -71,7 +73,7 @@ const dictionaryProvenance = (item: DictionarySelectionItem, worldAuthor?: strin
 const ARTWORK_ASPECT: Record<'portrait' | 'cover', ThumbAspect> = { portrait: 'portrait', cover: 'landscape' };
 
 function Artwork({ src, name, fallback, large = false }: {
-  src?: string;
+  src?: Picture;
   name: string;
   fallback: 'portrait' | 'cover';
   large?: boolean;
@@ -83,11 +85,12 @@ function Artwork({ src, name, fallback, large = false }: {
       large ? cn('w-full self-start', THUMB_FRAME[aspect], aspect === 'portrait' ? 'max-w-40' : 'max-w-64') : 'h-10 w-10',
     )}>
       {src ? (
-        <img
+        <ThumbPicture
           src={src}
+          aspect={aspect}
           alt={`${name} ${fallback}`}
           {...(large ? THUMB_INTRINSIC[aspect] : {})}
-          className={cn('h-full w-full', thumbFit(aspect))}
+          className="h-full w-full"
         />
       ) : (
         <span role="img" aria-label={`${name} has no ${fallback}`}>

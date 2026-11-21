@@ -2,6 +2,7 @@ import { forwardRef, useId, useState, type CSSProperties, type HTMLAttributes, t
 import { RemoteImg } from '@/lib/useRemoteImage';
 import { isLayeredPicture, type LayeredPicture, type Picture, type ResolvedLayer } from '@/lib/layeredImages';
 import { cn } from '@/lib/utils';
+import { thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
 import { useLayeredMotion, type LayerLook } from './useLayeredMotion';
 
 type ImgProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'>;
@@ -129,3 +130,9 @@ export const PictureImg = forwardRef<HTMLElement, ImgProps & {
   ? <LayeredImg ref={ref} picture={src} crop={crop} center={center} {...props} />
   : <RemoteImg ref={ref as Ref<HTMLImageElement>} src={src} {...props} />));
 PictureImg.displayName = 'PictureImg';
+
+/** A card or tile thumbnail: the picture covering its box, a portrait top-anchored as `thumbFit` sets it. */
+export const ThumbPicture = forwardRef<HTMLElement, ImgProps & { src: Picture; aspect: ThumbAspect }>(({ src, aspect, className, ...props }, ref) => (
+  <PictureImg ref={ref} src={src} crop center={aspect !== 'portrait'} className={cn(className, thumbFit(aspect))} {...props} />
+));
+ThumbPicture.displayName = 'ThumbPicture';

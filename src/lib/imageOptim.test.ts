@@ -329,6 +329,15 @@ describe('applyEntityImagesOptimize', () => {
     ]);
   });
 
+  it('keeps an embedded Layered Image, downscaling its Variant images', async () => {
+    const rig = { layered: { name: 'Rig', layers: [{ id: 'l', name: 'Face', tint: '#ff0000', variants: [{ data: big, name: 'Big', requires: WOUNDED }, { data: small }] }] }, requires: WOUNDED };
+    const out = await applyEntityImagesOptimize(codec, { id: 'e1', name: 'Ada', images: [rig, { data: small }] }, 'downscale');
+    expect(out.images).toEqual([
+      { ...rig, layered: { ...rig.layered, layers: [{ ...rig.layered.layers[0], variants: [{ data: `data:image/webp;base64,ENC(${big.length})`, name: 'Big', requires: WOUNDED }, { data: small }] }] } },
+      { data: small },
+    ]);
+  });
+
   it('wraps a gallery stored as data strings', async () => {
     const legacy = { id: 'e1', name: 'Ada', images: [small] } as unknown as Entity;
     expect((await applyEntityImagesOptimize(codec, legacy, 'downscale')).images).toEqual([{ data: small }]);

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { TraitRequirementRow } from '@/types';
-import { entityImageData, entityImages, primaryImage, migrateEntityImages } from './entityImages';
+import { entityImageData, entityImages, primaryPicture, migrateEntityImages } from './entityImages';
 
 const KNIGHT: TraitRequirementRow[] = [{ all: [{ kind: 'trait', id: 'knight' }] }];
 
@@ -40,19 +40,19 @@ describe('entityImageData', () => {
   });
 });
 
-describe('primaryImage', () => {
+describe('primaryPicture', () => {
   it('is the first slot, so reordering the gallery changes it', () => {
-    expect(primaryImage({ images: [{ data: 'a' }, { data: 'b' }] })).toBe('a');
-    expect(primaryImage({ images: [{ data: 'b' }, { data: 'a' }] })).toBe('b');
+    expect(primaryPicture({ images: [{ data: 'a' }, { data: 'b' }] })).toBe('a');
+    expect(primaryPicture({ images: [{ data: 'b' }, { data: 'a' }] })).toBe('b');
   });
 
   it('is slot 0 even when slot 0 carries a rule', () => {
-    expect(primaryImage({ images: [{ data: 'a', requires: KNIGHT }, { data: 'b' }] })).toBe('a');
+    expect(primaryPicture({ images: [{ data: 'a', requires: KNIGHT }, { data: 'b' }] })).toBe('a');
   });
 
   it('is undefined for an entity with no pictures', () => {
-    expect(primaryImage({ images: [] })).toBeUndefined();
-    expect(primaryImage(undefined)).toBeUndefined();
+    expect(primaryPicture({ images: [] })).toBeUndefined();
+    expect(primaryPicture(undefined)).toBeUndefined();
   });
 });
 

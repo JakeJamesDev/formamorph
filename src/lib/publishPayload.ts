@@ -5,7 +5,8 @@ import type { SupporterDaysSchedule } from '@/lib/supporterScheduleEdit';
 import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { entityPlacementLetters, labelPlaceholders } from '@/lib/placementLetters';
-import { primaryImage } from '@/lib/entityImages';
+import { primaryPicture } from '@/lib/entityImages';
+import { pictureFile, type RasterIO } from '@/lib/layeredFlatten';
 import type { PresetOverview } from '@/lib/promptPresets';
 import type { SharedPreset } from '@/lib/promptPresetShare';
 import { coverData } from '@/lib/mediaImages';
@@ -76,12 +77,14 @@ export function worldPublishPayload(world: Omit<World, 'id'>): PublishPayload {
  * The blurb goes through {@link describePlaceholders} against the character's carried defs — a listing stores
  * only this string, so a chip left raw here would show as its id forever.
  */
-export function entityPublishPayload(entity: Entity, libraryDetails?: { author?: string }): PublishPayload {
+export async function entityPublishPayload(entity: Entity, libraryDetails?: { author?: string }, io?: RasterIO): Promise<PublishPayload> {
+  // A Layered Image's listing art is its outside-play picture, flattened (Q5).
+  const primary = primaryPicture(entity);
   return {
     kind: 'entity',
     name: labelPlaceholders(entity.name, entity.placeholders, { letters: entityPlacementLetters(entity) }) || 'Unnamed Character',
     description: describePlaceholders(entity.playerDescription || entity.aiSummary || '', entity.placeholders),
-    thumbnail: primaryImage(entity), // optional; the server supplies stand-in art
+    thumbnail: primary && await pictureFile(primary, io), // optional; the server supplies stand-in art
     contentData: libraryDetails?.author ? { ...entity, author: libraryDetails.author } : entity,
     tags: entity.tags ?? [],
   };

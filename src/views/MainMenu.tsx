@@ -106,7 +106,7 @@ import { importedDefaultPersona, isJsonFile, isStPersonaBackupFile, readStPerson
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { useWorldExport } from '@/lib/useWorldExport';
 import { IMAGE_CAPS, applyWorldOptimize, applyEntityImagesOptimize, countWorldImages } from '@/lib/imageOptim';
-import { entityImageData, entityImages, primaryImage } from '@/lib/entityImages';
+import { embeddedImageFiles, primaryPicture } from '@/lib/entityImages';
 import { withOptimizeProgress } from '@/lib/optimizeProgress';
 import { remoteWorldImages } from '@/lib/embedRemoteImages';
 import { warmCachedImages } from '@/lib/remoteImageCache';
@@ -738,7 +738,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const publishEntity = async (entity: Entity, libraryDetails?: { author?: string }) => {
     if (supporterCopyBlock(entities.find((record) => record.id === entity.id), 'publish')) return;
     openPublish(
-      entityPublishPayload(await withCarriedVrm(await promptEntity(entity)), libraryDetails),
+      await entityPublishPayload(await withCarriedVrm(await promptEntity(entity)), libraryDetails),
       entity.id,
       entities.find((record) => record.id === entity.id)?.sourceId,
     );
@@ -1335,17 +1335,17 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     // A lone card that carries relationships is reviewed. Its portrait still goes through the downscale
     // offer first, so the review stores the same picture an ordinary import would.
     if (parsed.length === 1 && !skipped.length && hasComponentLinks(parsed[0].links)) {
-      const mode = await promptImagesBatch(entityImageData(parsed[0].entity), IMAGE_CAPS.entity);
+      const mode = await promptImagesBatch(embeddedImageFiles(parsed[0].entity), IMAGE_CAPS.entity);
       const record = await applyEntityImagesOptimize(parsed[0].entity, mode, () => {});
       await reviewComponentFile('entity', record, parsed[0].links, parsed[0].libraryDetails);
       return;
     }
 
     if (parsed.length) {
-      const mode = await promptImagesBatch(parsed.flatMap((p) => entityImageData(p.entity)), IMAGE_CAPS.entity);
+      const mode = await promptImagesBatch(parsed.flatMap((p) => embeddedImageFiles(p.entity)), IMAGE_CAPS.entity);
       const now = new Date().toISOString();
       let stored = 0;
-      const total = mode === 'off' ? 0 : parsed.reduce((n, p) => n + entityImages(p.entity).length, 0);
+      const total = mode === 'off' ? 0 : parsed.reduce((n, p) => n + embeddedImageFiles(p.entity).length, 0);
       const storeAll = async (tick: (done: number) => void) => {
         let done = 0;
         for (const { entity, book, links, libraryDetails, fileName } of parsed) {
@@ -1359,7 +1359,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               await refreshEntities();
             } else {
               await EntityStorageService.storeEntity({ id: record.id, name: record.name, createdAt: now, lastAccessed: now, data: record, libraryDetails });
-              setEntities(prev => [...prev, { id: record.id, name: record.name, image: primaryImage(record), createdAt: now, lastAccessed: now, tags: libraryDetails?.tags ?? record.tags, author: libraryDetails?.author, libraryDetails }]);
+              setEntities(prev => [...prev, { id: record.id, name: record.name, image: primaryPicture(record), createdAt: now, lastAccessed: now, tags: libraryDetails?.tags ?? record.tags, author: libraryDetails?.author, libraryDetails }]);
             }
             stored++;
           } catch (error) {
@@ -1394,7 +1394,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       toastError(err, 'Could not read that persona backup.');
       return;
     }
-    const mode = await promptImagesBatch(backup.personas.flatMap((p) => entityImageData(p.entity)), IMAGE_CAPS.entity);
+    const mode = await promptImagesBatch(backup.personas.flatMap((p) => embeddedImageFiles(p.entity)), IMAGE_CAPS.entity);
     const now = new Date().toISOString();
     const failed = new Set<string>();
     const total = mode === 'off' ? 0 : backup.personas.filter((p) => p.entity.images?.length).length;

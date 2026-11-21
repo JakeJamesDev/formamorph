@@ -3,7 +3,7 @@
 import type { GalleryImage, GalleryLink, GameLocation, MapBackground, MapFrame, WorldOverview } from '@/types';
 import { canvasRects } from './locationCanvas';
 import { entityImages, galleryLinks } from './entityImages';
-import { isMediaRef } from './mediaList';
+import { isEmbeddedImage } from './mediaList';
 
 /** The width of a first frame with nothing to cover (Q78). */
 export const EMPTY_MAP_WIDTH = 1280;
@@ -20,7 +20,7 @@ export const mapImages = (overview?: Pick<WorldOverview, 'mapBackground'> & Part
  * image takes `frame` at full opacity (Q81).
  */
 export function withMapImages(current: MapBackground | undefined, images: GalleryLink[], frame?: MapFrame): MapBackground | undefined {
-  const kept = images.filter((img) => isMediaRef(img) || !!img.data);
+  const kept = images.filter((img) => !isEmbeddedImage(img) || !!img.data);
   if (!kept.length) return undefined;
   if (current) return { ...current, images: kept };
   return frame ? { images: kept, frame, opacity: 1 } : undefined;
@@ -38,7 +38,7 @@ export async function rewriteMapImages(
   if (!background) return {};
   // A link stays a link: its entry is rewritten once, through the Media List.
   const images: GalleryLink[] = [];
-  for (const link of galleryLinks({ images: background.images })) images.push(isMediaRef(link) ? link : { ...link, data: await rewrite(link.data) });
+  for (const link of galleryLinks({ images: background.images })) images.push(!isEmbeddedImage(link) ? link : { ...link, data: await rewrite(link.data) });
   return { mapBackground: withMapImages(background, images) };
 }
 

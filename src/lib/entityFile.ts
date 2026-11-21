@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
-  Base64Data, BlueprintOverride, VrmPick, WorldVrmStore, Entity, GalleryImage, Opening, Placeholder, PlaceholderPin, LibraryDetails, RequirementOwner, Stat, StatChange, StatComparison, StatGroup,
+  Base64Data, BlueprintOverride, VrmPick, WorldVrmStore, EmbeddedLayeredImage, Entity, GalleryImage, Opening, PortableLayered, Placeholder, PlaceholderPin, LibraryDetails, RequirementOwner, Stat, StatChange, StatComparison, StatGroup,
   StatLink, Trait, TraitGroup,
   TraitLink, TraitLinkOverrides, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
@@ -20,7 +20,9 @@ import { storedOnMap } from './onMap';
 import { embedEntityCard, readEntityCard } from './entityCard';
 import { readTavernCard, readTavernJson } from './tavernCard';
 import { IMAGE_CAPS, bytesToDataUrl, dataUrlMime, measureDataUrl, optimizeImageDataUrl, optimizeToWebpDataUrl } from './imageOptim';
-import { primaryImage } from './entityImages';
+import { primaryPicture } from './entityImages';
+import { pictureFile } from './layeredFlatten';
+import { isEmbeddedLayered, mapVariants, readPortableLayered } from './portableLayered';
 import { fetchAsDataUrl, isRemoteImage } from './imageSource';
 import { morphCardImage } from './morphArtCanvas';
 import { portableOwnedStats, type OwnedStatFields } from './portableStats';
@@ -59,11 +61,13 @@ export interface EntityCardData {
   /** Gallery slots past the first. The primary is the card's own pixels, so only these need carrying in the
    *  text — which is also why a multi-picture card is a much bigger file. A card written before Visibility
    *  rules holds data-URL strings here. */
-  extraImages?: GalleryImage[];
+  extraImages?: (GalleryImage | EmbeddedLayeredImage)[];
   /** The primary's Visibility rule, which has no other home since the primary travels as the card's pixels. */
   primaryImageRequires?: TraitRequirementRow[];
   /** The primary's Media Entry name, for the same reason. */
   primaryImageName?: string;
+  /** The primary's rig when it is a Layered Image. The card's pixels then show only its default look (Q12). */
+  primaryLayered?: PortableLayered;
   /** The entity's Enabled gate. */
   enabledWhen?: TraitRequirementRow[];
   /** The entity's own placeholders, as they are (see lib/placeholders). A card with no
@@ -138,7 +142,7 @@ export function buildEntityCardData(
     ...(entity.imageTags ? { imageTags: entity.imageTags } : {}),
     ...(extras.length ? { extraImages: extras } : {}),
     ...(primary?.requires?.length ? { primaryImageRequires: primary.requires } : {}),
-    ...(primary?.name ? { primaryImageName: primary.name } : {}),
+    ...(primary && isEmbeddedLayered(primary) ? { primaryLayered: primary.layered } : primary?.name ? { primaryImageName: primary.name } : {}),
     ...(enabledWhen ? { enabledWhen } : {}),
     ...(owned.length ? { placeholders: owned } : {}),
     ...(shared.length ? { sharedPlaceholders: shared } : {}),
@@ -192,7 +196,12 @@ export function parseEntityCardData(raw: unknown, pixels?: Base64Data): Entity {
   const extras = Array.isArray(obj.extraImages) ? (obj.extraImages as unknown[]).flatMap(cardImage) : [];
   const primaryRows = Array.isArray(obj.primaryImageRequires) ? cardRows(obj.primaryImageRequires) : [];
   const primaryName = typeof obj.primaryImageName === 'string' && obj.primaryImageName.trim() ? { name: obj.primaryImageName } : {};
-  const images = pixels ? [{ data: pixels, ...primaryName, ...(primaryRows.length ? { requires: primaryRows } : {}) }, ...extras] : extras;
+  const primaryRule = primaryRows.length ? { requires: primaryRows } : {};
+  // A layered primary rebuilds from its rig; the pixels are only its default look (Q12).
+  const rig = cardLayered(obj.primaryLayered);
+  const primary: (GalleryImage | EmbeddedLayeredImage)[] = rig ? [{ layered: rig, ...primaryRule }]
+    : pixels ? [{ data: pixels, ...primaryName, ...primaryRule }] : [];
+  const images = [...primary, ...extras];
   const enabledWhen = Array.isArray(obj.enabledWhen) ? cardRows(obj.enabledWhen) : [];
   const openings = Array.isArray(obj.openings) ? (obj.openings as unknown[]).flatMap(cardOpening) : [];
   const weights = obj.openingWeights && typeof obj.openingWeights === 'object' && !Array.isArray(obj.openingWeights)
@@ -280,11 +289,23 @@ function cardRequirement(condition: unknown): TraitRequirement[] {
   return [{ kind: raw.kind, id: raw.id, ...nameOf(raw), ...cardOwner(raw.owner), ...not }];
 }
 
-/** One carried gallery slot: a data-URL string, or an image whose rule reads as the card's rows do. */
-function cardImage(raw: unknown): GalleryImage[] {
+/** A carried rig with each Variant rule read as card rows; null when it is no rig. */
+function cardLayered(raw: unknown): PortableLayered | null {
+  const rig = raw === undefined ? null : readPortableLayered(raw);
+  return rig && mapVariants(rig, ({ requires, ...variant }) => {
+    const rows = requires ? cardRows(requires) : [];
+    return rows.length ? { ...variant, requires: rows } : variant;
+  });
+}
+
+/** One carried gallery slot: a data-URL string, a rig, or an image whose rule reads as the card's rows do. */
+function cardImage(raw: unknown): (GalleryImage | EmbeddedLayeredImage)[] {
   if (typeof raw === 'string') return raw ? [{ data: raw }] : [];
-  if (!isRecord(raw) || typeof raw.data !== 'string' || !raw.data) return [];
+  if (!isRecord(raw)) return [];
   const requires = Array.isArray(raw.requires) ? cardRows(raw.requires) : [];
+  const rig = cardLayered(raw.layered);
+  if (rig) return [{ layered: rig, ...(requires.length ? { requires } : {}) }];
+  if (typeof raw.data !== 'string' || !raw.data) return [];
   const name = typeof raw.name === 'string' && raw.name.trim() ? { name: raw.name } : {};
   return [{ data: raw.data, ...name, ...(requires.length ? { requires } : {}) }];
 }
@@ -452,7 +473,8 @@ export async function exportEntityCard(
   vrmStore?: WorldVrmStore, media?: MediaList,
 ): Promise<Blob> {
   // The art follows the listing, else the library item, so a card matches the tile it came from.
-  let imageUrl = primaryImage(entity, media) || await morphCardImage(
+  const primary = primaryPicture(entity, media);
+  let imageUrl = (primary && await pictureFile(primary)) || await morphCardImage(
     links.source?.sourceId || links.source?.libraryId || entity.id,
     entity.name,
     available ?? carriedPlaceholders(entity),

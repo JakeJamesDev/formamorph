@@ -19,6 +19,7 @@ import type {
   LibrarySupporterCopyMarker, MediaList, Placeholder, WorldVrmStore,
 } from '@/types';
 import { withEmbeddedMedia } from '@/lib/libraryMedia';
+import type { Picture } from '@/lib/layeredImages';
 
 /** What the link choice means for the content picked, by who owns it. */
 export const LINK_EXPLANATIONS = {
@@ -43,7 +44,7 @@ export interface LibraryItemSummary extends LibrarySource {
   /** Set when the item was saved from a Supporter Copy; the pickers read it to disable the row elsewhere. */
   supporterCopy?: LibrarySupporterCopyMarker;
   /** The character portrait, for the character picker's row. */
-  image?: string;
+  image?: Picture;
   /** How many entries the book holds, for the dictionary picker's row. */
   entryCount?: number;
 }

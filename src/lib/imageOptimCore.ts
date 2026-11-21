@@ -2,10 +2,12 @@
  * The optimize rules and field walks, over an injected codec. DOM-free, so a worker runs them with an encoder
  * of its own; `imageOptim` binds them to the encode worker for the main thread.
  */
-import type { Entity, GalleryImage, World } from '@/types';
+import type { Entity, GalleryLink, World } from '@/types';
 import { dataUrlRealMime, isConvertibleImage, isLosslessImage, isRemoteImage, reencodeKeepsAnimation } from './imageBytes';
-import { entityImages, galleryLinks } from './entityImages';
+import { galleryLinks } from './entityImages';
 import { locationLinks, rewriteMediaImages } from './mediaGallery';
+import { isEmbeddedImage } from './mediaList';
+import { isEmbeddedLayered } from './portableLayered';
 import { IMAGE_CAPS, type ImageCap } from './imageSlots';
 import { worldOptimizeTargets } from './mediaIndex';
 import { writeMediaSlot, type MediaEditor } from './mediaParents';
@@ -221,9 +223,24 @@ export async function applyEntityImagesOptimize(
   onImage?: () => void,
 ): Promise<Entity> {
   if (mode === 'off') return entity;
-  const images: GalleryImage[] = [];
-  for (const img of entityImages(entity)) {
-    images.push({ ...img, data: (await applyImageOptimize(codec, img.data, mode, IMAGE_CAPS.entity)) ?? img.data });
+  const optimize = async (data: string) => (await applyImageOptimize(codec, data, mode, IMAGE_CAPS.entity)) ?? data;
+  const images: GalleryLink[] = [];
+  for (const img of galleryLinks(entity)) {
+    if (isEmbeddedLayered(img)) {
+      const layers = [];
+      for (const layer of img.layered.layers) {
+        const variants = [];
+        for (const variant of layer.variants) {
+          variants.push({ ...variant, data: await optimize(variant.data) });
+          onImage?.();
+        }
+        layers.push({ ...layer, variants });
+      }
+      images.push({ ...img, layered: { ...img.layered, layers } });
+      continue;
+    }
+    if (!isEmbeddedImage(img)) { images.push(img); continue; }
+    images.push({ ...img, data: await optimize(img.data) });
     onImage?.();
   }
   return images.length ? { ...entity, images } : entity;

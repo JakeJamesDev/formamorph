@@ -5,7 +5,8 @@ import { OverlayTitle, TITLE_SCRIM, WorldCardShell } from "@/components/WorldCar
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tip } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
-import { THUMB_FRAME, cardLayoutFor, thumbFit, type ThumbAspect } from "@/lib/thumbAspect";
+import { THUMB_FRAME, cardLayoutFor, type ThumbAspect } from "@/lib/thumbAspect";
+import { ThumbPicture } from "@/components/PictureImg";
 
 export interface WorldCardFaceOwnProps {
   world: WorldRecord;
@@ -78,10 +79,11 @@ export const WorldCardFace = forwardRef<HTMLDivElement, WorldCardFaceProps>(func
         thumbnailOverlay={progressOverlay || undefined}
         thumbnail={world.thumbnail
           ? (
-            <img
+            <ThumbPicture
               src={world.thumbnail}
+              aspect={aspect}
               alt={world.name}
-              className={cn('w-full h-full select-none pointer-events-none', thumbFit(aspect))}
+              className="w-full h-full select-none pointer-events-none"
             />
           )
           : placeholder}
@@ -123,10 +125,11 @@ export const WorldCardFace = forwardRef<HTMLDivElement, WorldCardFaceProps>(func
       {loading ? (
         <Skeleton className={cn(mediaSize, 'rounded-none')} />
       ) : world.thumbnail ? (
-        <img
+        <ThumbPicture
           src={world.thumbnail}
+          aspect={aspect}
           alt={world.name}
-          className={cn('select-none pointer-events-none', mediaSize, thumbFit(aspect))}
+          className={cn('select-none pointer-events-none', mediaSize)}
         />
       ) : (
         <div className={cn(mediaSize, 'bg-muted')}>{placeholder}</div>

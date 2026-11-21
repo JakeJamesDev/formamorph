@@ -5,7 +5,7 @@
 import type { GalleryLink, MediaList, Placeholder, WorldOverview } from '@/types';
 import { galleryLinks, type ImageBearing } from './entityImages';
 import { addedEntries, placeGalleryFile } from './mediaGallery';
-import { isMediaRef, resolveMedia } from './mediaList';
+import { isEmbeddedImage, isMediaRef, resolveMedia } from './mediaList';
 import { labelPlaceholders } from './placementLetters';
 
 type Fields = Record<string, unknown>;
@@ -26,7 +26,7 @@ export const coverData = (overview: Pick<WorldOverview, 'thumbnail' | 'mediaList
 
 /** A placed link as the world cover stores it: `{ mediaId }`, embedded data, or '' once freed. */
 export const storedCover = (link: GalleryLink | null): WorldOverview['thumbnail'] =>
-  (!link ? '' : isMediaRef(link) ? { mediaId: link.mediaId } : link.data);
+  (!link ? '' : isEmbeddedImage(link) ? link.data : 'mediaId' in link ? { mediaId: link.mediaId } : '');
 
 /**
  * A single picture placed for a single field (cover, backdrop): a link to its entry, plus the entries to add.
@@ -49,7 +49,7 @@ export function migrateOtherImagesToMediaList(world: Fields): void {
   const subjectOf = (record: Fields) => (typeof record.name === 'string' ? labelPlaceholders(record.name, placeholders) : undefined);
 
   const linkAll = (links: readonly GalleryLink[], subject: string | undefined): GalleryLink[] => links.map((link) => {
-    if (isMediaRef(link)) return link;
+    if (!isEmbeddedImage(link)) return link;
     const placed = placeGalleryFile(list, link, 'image', subject);
     list = placed.list;
     return { mediaId: placed.id, ...(link.requires?.length ? { requires: link.requires } : {}) };

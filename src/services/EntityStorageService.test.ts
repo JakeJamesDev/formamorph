@@ -271,4 +271,15 @@ describe('EntityStorageService', () => {
       EntityStorageService.storeEntity({ id: 'e1' } as unknown as StoredEntityRecord),
     ).rejects.toThrow(/missing required/);
   });
+
+  it('gives the library grid a Layered Image\'s first-Variant picture, rules ignored (Q5)', async () => {
+    const rule = [{ all: [{ kind: 'trait' as const, id: 'knight' }] }];
+    const data: Entity = { id: 'e1', name: 'Mara', images: [{ layered: { name: 'Rig', layers: [
+      { id: 'b', name: 'Body', variants: [{ data: 'data:image/png;base64,Qk9EWQ==' }] },
+      { id: 'f', name: 'Face', variants: [{ data: 'data:image/png;base64,U01JTEU=', requires: rule }, { data: 'data:image/png;base64,RlJPV04=' }] },
+    ] } }, { data: 'data:image/png;base64,UExBSU4=' }] };
+    await EntityStorageService.storeEntity({ id: 'e1', name: 'Mara', data });
+    const meta = (await EntityStorageService.getEntityMetadata()).find((m) => m.id === 'e1');
+    expect(meta?.image).toMatchObject({ kind: 'layered', layers: [{ data: 'data:image/png;base64,Qk9EWQ==' }, { data: 'data:image/png;base64,U01JTEU=' }] });
+  });
 });

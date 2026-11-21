@@ -24,6 +24,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A Layer in a Layered Image has a Tint and a Blend Mode.** Tint a gray drawing any color. Blend with Normal, Multiply, Screen or Add. The Media tab editor and the game picture show both.
     - **Scripts can set which image each Layer of a Layered Image shows, and its opacity and tint.** Each copy of a character and each item keeps its own settings. Setting `null` hands the Layer back to its rules.
     - **A Layer in a Layered Image can fade or bounce when it shows another image.** Pick None, Dissolve or Jelly, with the Mascot's sliders, and press Play in the editor. Jelly fades instead under reduced motion.
+    - **A character keeps its Layered Images in the library, in published listings and in exported cards.** Its tile, listing and card show each Layer's first image.
   - **Opening Time:**
     - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
   - **Weather:**

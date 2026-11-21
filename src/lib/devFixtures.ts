@@ -457,7 +457,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       const turn = JSON.parse(history[last].content) as { turnId: string };
       const base = world.default as unknown as World;
       const art = ember?.world;
-      const media = (id: string, image?: GalleryLink): MediaEntry => ({ id, name: id, kind: 'image', type: 'image/webp', data: !image ? '' : 'data' in image ? image.data : (art && mediaEntry(art.worldOverview.mediaList, image.mediaId)?.data) ?? '' });
+      const media = (id: string, image?: GalleryLink): MediaEntry => ({ id, name: id, kind: 'image', type: 'image/webp', data: !image ? '' : 'data' in image ? image.data : ('mediaId' in image && art && mediaEntry(art.worldOverview.mediaList, image.mediaId)?.data) || '' });
       const place = (name: string) => art?.locations.find((l) => l.name === name)?.images?.[0];
       const face = (name: string) => art?.entities.find((e) => e.name === name)?.images?.[0];
       const mediaList = {

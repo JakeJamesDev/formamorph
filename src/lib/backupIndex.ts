@@ -5,7 +5,7 @@
 import type { Entity, World } from '@/types';
 import { BackupShapeError, BackupSyntaxError, scanBackupSpans, type Span } from './backupScan';
 import { countWorldImages } from './mediaIndex';
-import { entityImages } from './entityImages';
+import { embeddedImageFiles } from './entityImages';
 import { coverData } from './mediaImages';
 import { applyEntityImagesOptimize, applyWorldOptimize, type ImageCodec, type OptimizeMode } from './imageOptimCore';
 
@@ -77,7 +77,7 @@ export const RECORD_IMAGES: Partial<Record<BackupCategory, RecordImages>> = {
     },
   },
   entities: {
-    count: (data) => entityImages(data as Entity).length,
+    count: (data) => embeddedImageFiles(data as Entity).length,
     optimize: async (codec, record, mode, onImage) => {
       let done = 0;
       return { ...record, data: await applyEntityImagesOptimize(codec, record.data as Entity, mode, () => onImage(++done)) };

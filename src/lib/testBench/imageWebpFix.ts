@@ -8,7 +8,7 @@
  */
 import { galleryLinks } from '@/lib/entityImages';
 import { locationLinks, rewriteMediaImages } from '@/lib/mediaGallery';
-import { isMediaRef } from '@/lib/mediaList';
+import { isEmbeddedImage } from '@/lib/mediaList';
 import type { GalleryLink } from '@/types';
 import { dataUrlMime, isConvertibleImage, reencodeKeepsAnimation, relabelDataUrl } from '@/lib/imageBytes';
 import { describeKeptImages, reencodeImageDataUrl } from '@/lib/imageOptim';
@@ -74,7 +74,7 @@ export async function convertWorldImagesToWebp(world: RuleWorld): Promise<WebpFi
       const images: GalleryLink[] = [];
       let touched = false;
       for (const img of imagesOf(record)) {
-        if (isMediaRef(img)) { images.push(img); continue; }
+        if (!isEmbeddedImage(img)) { images.push(img); continue; }
         const next = await convert(img.data);
         if (next !== img.data) touched = true;
         images.push({ ...img, data: next });
