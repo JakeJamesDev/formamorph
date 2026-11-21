@@ -20,7 +20,7 @@ const BUNDLED_PREFIX = 'bundled-';
 export const DEV_FIXTURES = [
   'whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'avatarIcon',
   'entityPresence', 'entityFollowers', 'mapStrangers', 'mapBackground', 'items', 'options', 'lockedPlaces', 'speakerQuotes', 'scriptImages',
-  'enterOptions', 'layeredImages', ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
+  'enterOptions', 'layeredImages', 'layeredPerf', ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
 ];
 
 // Real-sized images for the long save, fetched from the dev server.
@@ -528,6 +528,33 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
           },
         },
         saveName: 'DEV: Layered Images',
+      };
+    }
+    case 'layeredPerf': {
+      // The white room with an eight-Layer full-size rig on its backdrop and on the visible scout, for the mobile probe.
+      const [world, save, { devLayeredPerfWorld }] = await Promise.all([
+        import('./devFixtures/whiteRoomWorld.json'),
+        import('./devFixtures/whiteRoomSave.json'),
+        import('./devLayeredPerf'),
+      ]);
+      const saved = save.default as unknown as SaveObject;
+      const history = saved.currentState.fullMessageHistory ?? [];
+      const last = history.length - 1;
+      return {
+        world: devLayeredPerfWorld(world.default as unknown as World, WHITE_ROOM_ID),
+        save: {
+          ...saved,
+          currentState: {
+            ...saved.currentState,
+            locationId: WHITE_ROOM_ID,
+            metEntities: ['dev-perf-scout'],
+            fullMessageHistory: history.map((message, index) => (
+              index === last ? { ...message, content: JSON.stringify({ ...JSON.parse(message.content), entities: ['Perf Scout'] }) } : message
+            )),
+            visibleEntities: [{ name: 'Perf Scout', revealed: true }],
+          },
+        },
+        saveName: 'DEV: Layered Perf',
       };
     }
     case 'thousandTurns': {

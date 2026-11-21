@@ -65,6 +65,18 @@ is stripped from production builds, which is why these tests need `npm run dev` 
 > **Editable preset:** the shipped prompt presets are read-only, and a read-only editor takes no
 > caret. `openPromptEditor` creates a user preset first, through the real UI.
 
+## Performance probes
+
+`e2e/perf/` holds measurements, not checks: they print frame-time tables and assert nothing, and skip unless `E2E_PERF` is set.
+`layered-perf.spec.ts` sets a phone profile (390 × 844, 3× scale, touch, 4× CPU throttle) and compares an
+eight-Layer 1024 × 1536 rig (`fixture=layeredPerf`, drawn in code) against a plain-image control.
+
+```powershell
+$env:E2E_PERF = '1'; npx playwright test e2e/perf --project=desktop
+```
+
+Headless software compositing is a proxy, not a phone GPU. `E2E_PERF_THROTTLE` and `E2E_PERF_RUNS` change the throttle and the run count.
+
 ## Coverage today
 
 [prompt-editor.spec.ts](e2e/prompt-editor.spec.ts) — the prompt editor's layout, chrome gating, caret,

@@ -109,7 +109,8 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  writes nothing; add `tab=media` to show the Media tab's Avatars section under it. `deleteMediaEntry` opens the
  *  World Editor and raises Delete From World for an image on canned uses, which writes nothing. `layeredEditor` opens the
  *  World Editor on a new world holding a three-Layer rig and two entities, with the rig's full-screen editor open
- *  (on mobile, its pane). Edits write that unsaved world only. `appearancePreview` opens the
+ *  (on mobile, its pane). Edits write that unsaved world only. Add `fixture=layeredPerf` for an eight-Layer 1024 × 1536 rig
+ *  that `e2e/perf` measures; `view=gameViewer&fixture=layeredPerf` puts it on a scout and the White Room backdrop. `appearancePreview` opens the
  *  World Editor and a trait's Preview on canned rows and the library's first Avatar, or the bundled one. `statAppearancePreview` opens a stat's Preview the same way. Save closes it and writes nothing. `demoAI` is in game (GameViewer) and opens the Demo AI dialog whatever the
   narration endpoint and the seen-key say, so it is reachable on a build that overrides the default endpoint.
  *  `persona` is in game (GameViewer) and opens the right panel's Change Persona picker. On mobile that panel
