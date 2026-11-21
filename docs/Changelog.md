@@ -17,7 +17,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
-  - **Large Supporter worlds now download from Community Creations on slow connections.** A download now stops only after a minute with no data arriving.
+  - **Large Supporter-only worlds, such as Sunmeadow Town, now download from Community Creations.** The download no longer times out, and the installed world stays close to the author's size.
 
 ---
 
