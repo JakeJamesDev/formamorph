@@ -1,6 +1,7 @@
 // Layered Images resolved for one subject: what each Layer shows right now, and the picture type play draws.
 
 import type { Base64Data, GalleryLink, LayerBlend, LayeredMediaEntry, LayerSetting, LayerVariant, MediaLayer, MediaList, TraitRequirementRow } from '@/types';
+import { DEFAULT_MASCOT_TRANSITION, parseMascotTransition, type MascotTransition } from './formaquestion/mascotTransition';
 import { parseHex6 } from './hslColor';
 import { layeredEntry, mediaEntry } from './mediaList';
 import type { RowState } from './traitGates';
@@ -14,7 +15,15 @@ export interface ResolvedLayer {
   /** `#rrggbb`; absent = no tint. */
   tint?: string;
   blend: LayerBlend;
+  transition: MascotTransition;
 }
+
+/** A Layer's transition when it stores none: Dissolve at the Mascot's default tuning (Q16). */
+export const DEFAULT_LAYER_TRANSITION: MascotTransition = { ...DEFAULT_MASCOT_TRANSITION, mode: 'dissolve' };
+
+/** A Layer's transition as play runs it: the stored one held to the Mascot's ranges, or the default. */
+export const layerTransition = (layer: MediaLayer): MascotTransition =>
+  (layer.transition === undefined ? DEFAULT_LAYER_TRANSITION : parseMascotTransition(layer.transition, DEFAULT_LAYER_TRANSITION));
 
 /** A Layered Image resolved for one subject, bottom Layer first. */
 export interface LayeredPicture {
@@ -100,7 +109,11 @@ export function resolveLayered(
     const data = shown && variantData(shown, media);
     const tint = normalizeTint(setting?.tint ?? layer.tint);
     return {
-      id: layer.id, opacity: clampOpacity(setting?.opacity ?? layer.opacity), blend: layer.blend ?? 'normal', ...(tint ? { tint } : {}), ...(data ? { data } : {}),
+      id: layer.id,
+      opacity: clampOpacity(setting?.opacity ?? layer.opacity),
+      blend: layer.blend ?? 'normal',
+      transition: layerTransition(layer),
+      ...(tint ? { tint } : {}), ...(data ? { data } : {}),
     };
   });
   return { kind: 'layered', entryId: entry.id, canvas, layers };

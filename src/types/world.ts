@@ -1,3 +1,4 @@
+import type { MascotTransition } from '@/lib/formaquestion/mascotTransition';
 import type { ChatMessage, Tool } from './ai';
 
 /** A base64 data-URL string, e.g. "data:image/png;base64,...". */
@@ -484,6 +485,8 @@ export interface MediaLayer {
   tint?: string;
   /** Absent = Normal. */
   blend?: LayerBlend;
+  /** How a change of the shown Variant plays, in the Mascot's shape. Absent = Dissolve at the Mascot's default tuning. */
+  transition?: MascotTransition;
   variants: LayerVariant[];
 }
 

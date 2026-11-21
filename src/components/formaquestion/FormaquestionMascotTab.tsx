@@ -4,7 +4,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { PatreonMark } from '@/components/PatreonMark';
-import { Info, Move, Play, Plus, Redo2, Undo2, X } from 'lucide-react';
+import { Info, Move, Plus, Redo2, Undo2, X } from 'lucide-react';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { PresetNameDialog } from '@/components/modals/PresetNameDialog';
@@ -12,7 +12,7 @@ import { PanelShell } from '@/components/PanelShell';
 import { FULLSCREEN_CORNER_CLEAR } from '@/components/FullscreenShell';
 import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
-import { OptionSwitcher, Row, Section, ValueSlider } from '@/components/SettingsRows';
+import { OptionSwitcher, Row, Section } from '@/components/SettingsRows';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,10 +40,6 @@ import {
   type MascotLayerKind, type MascotMask, type MascotPickName, type MascotPickWarning, type MascotRig,
 } from '@/lib/formaquestion/mascot';
 import {
-  DISSOLVE_RANGES, JELLY_RANGES, MASCOT_TRANSITION_MODES, type JellyTuning, type MascotTransition, type MascotTransitionMode, type TuningRange,
-} from '@/lib/formaquestion/mascotTransition';
-import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
-import {
   MASK_GRIPS, cropFrame, fitMask, gripKeyDelta, headSizeWithin, isMaskGrip, maskFromDrag, moveMaskGrip, sizeWithin,
   type MascotPoint, type MascotSize, type MaskGrip,
 } from '@/lib/formaquestion/mascotMask';
@@ -63,7 +59,8 @@ import {
   type MascotSelection,
 } from '@/lib/formaquestion/mascotSelection';
 import { MascotPiece } from './MascotPiece';
-import { WidgetLabel, WidgetRow } from './WidgetRow';
+import { TransitionControls } from '@/components/TransitionControls';
+import { WidgetLabel } from './WidgetRow';
 import { usePointerDrag } from './usePointerDrag';
 import type { MascotReplay } from './useMascotMotion';
 import { MascotImage } from './MascotImage';
@@ -414,99 +411,6 @@ function PickWarnings({ rig, warnings }: { rig: MascotRig; warnings: readonly Ma
   );
 }
 
-const MODE_OPTIONS: readonly { value: MascotTransitionMode; label: string }[] =
-  MASCOT_TRANSITION_MODES.map((mode) => ({ value: mode, label: MASCOT_COPY.transition.modes[mode] }));
-
-const ms = (value: number) => `${value} ms`;
-const percent = (value: number) => `${Math.round(value * 100)}%`;
-
-const JELLY_FORMATS: { readonly [K in keyof JellyTuning]: (value: number) => string } = {
-  durationMs: ms,
-  squash: percent,
-  overshoot: percent,
-  settle: String,
-};
-
-/** One tuning slider, held to its range, on one line of the preview widget. */
-function TuningRow({ id, copy, range, value, format, disabled, onChange }: {
-  id: string;
-  disabled: boolean;
-  copy: { label: string; hint: string };
-  range: TuningRange;
-  value: number;
-  format: (value: number) => string;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <WidgetRow id={id} copy={copy}>
-      <ValueSlider
-        id={id}
-        ariaLabel={copy.label}
-        value={value}
-        min={range.min}
-        max={range.max}
-        step={range.step}
-        format={format}
-        disabled={disabled}
-        onChange={onChange}
-        valueClassName="w-14 shrink-0 whitespace-nowrap"
-      />
-    </WidgetRow>
-  );
-}
-
-/** The transition's mode with Play, and the chosen mode's tuning. */
-function TransitionControls({ transition, readOnly, onTransition, onPlay }: {
-  transition: MascotTransition;
-  readOnly: boolean;
-  /** `group` joins a slider drag's edits into one undo step. */
-  onTransition: (next: MascotTransition, group?: string) => void;
-  onPlay: () => void;
-}) {
-  const reduced = usePrefersReducedMotion();
-  const copy = MASCOT_COPY.transition;
-  const setJelly = (key: keyof JellyTuning) => (value: number) => onTransition({ ...transition, jelly: { ...transition.jelly, [key]: value } }, `jelly-${key}`);
-  return (
-    <div className="grid gap-2">
-      <WidgetLabel copy={copy.mode} />
-      <div className="flex items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <OptionSwitcher ariaLabel={copy.mode.label} value={transition.mode} options={MODE_OPTIONS} onChange={(mode) => onTransition({ ...transition, mode })} disabled={readOnly} />
-        </div>
-        <Tip tip={copy.play.hint} labelsChild={false}>
-          <Button variant="outline" size="sm" onClick={onPlay}>
-            <Play className="mr-1 h-4 w-4" />{copy.play.label}
-          </Button>
-        </Tip>
-      </div>
-      {reduced && <Hint>{copy.reducedMotion}</Hint>}
-      {transition.mode === 'jelly' && (Object.keys(JELLY_RANGES) as (keyof JellyTuning)[]).map((key) => (
-        <TuningRow
-          key={key}
-          id={`fq-mascot-jelly-${key}`}
-          copy={copy.jelly[key]}
-          range={JELLY_RANGES[key]}
-          value={transition.jelly[key]}
-          format={JELLY_FORMATS[key]}
-          disabled={readOnly}
-          onChange={setJelly(key)}
-        />
-      ))}
-      {transition.mode === 'dissolve' && (
-        <TuningRow
-          id="fq-mascot-dissolve-duration"
-          copy={copy.dissolveDuration}
-          range={DISSOLVE_RANGES.durationMs}
-          value={transition.dissolve.durationMs}
-          format={ms}
-          disabled={readOnly}
-          onChange={(durationMs) => onTransition({ ...transition, dissolve: { durationMs } }, 'dissolve-duration')}
-        />
-      )}
-    </div>
-  );
-}
-
 /** One icon-only action of the footer. */
 function RowAction({ copy, onClick, disabled, children }: {
   copy: { label: string; tip: string };
@@ -788,6 +692,8 @@ export function MascotTab({ settings, control, onOpenGeneral, onOpenListing }: {
       <Hint>{MASCOT_COPY.preview.hint}</Hint>
       <TransitionControls
         transition={rig.transition}
+        copy={MASCOT_COPY.transition}
+        idPrefix="fq-mascot"
         readOnly={readOnly}
         onTransition={(transition, group) => edit((current) => ({ ...current, transition }), group)}
         onPlay={playNext}

@@ -2,6 +2,7 @@ import { forwardRef, useId, useState, type CSSProperties, type HTMLAttributes, t
 import { RemoteImg } from '@/lib/useRemoteImage';
 import { isLayeredPicture, type LayeredPicture, type Picture, type ResolvedLayer } from '@/lib/layeredImages';
 import { cn } from '@/lib/utils';
+import { useLayeredMotion, type LayerLook } from './useLayeredMotion';
 
 type ImgProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'>;
 
@@ -30,21 +31,45 @@ function TintFilter({ id, tint }: { id: string; tint: string }) {
 }
 
 /** One Layer: its image stretched to the canvas, tinted, then drawn at its opacity and blend mode over the Layers below. */
-function LayerImg({ shown, img }: { shown: ResolvedLayer; img: ImgProps }) {
+function LayerImg({ shown, looks, lookRef, img }: {
+  shown: ResolvedLayer;
+  looks: readonly LayerLook[];
+  lookRef: (key: number) => (element: HTMLElement | null) => void;
+  img: ImgProps;
+}) {
   const filterId = useId();
+  const fading = looks.length > 1;
   return (
     <span
       data-layer={shown.id}
       data-blend={shown.blend}
       data-tint={shown.tint}
-      className="absolute inset-0"
+      // While Variants cross-fade they add up to one whole, kept apart from the Layers below. A resting Layer paints plain.
+      className={cn('absolute inset-0', fading && 'isolate')}
       style={{ opacity: shown.opacity, mixBlendMode: BLEND_CSS[shown.blend] }}
     >
       {shown.tint && <TintFilter id={filterId} tint={shown.tint} />}
-      <RemoteImg
-        {...img} src={shown.data} className="absolute inset-0 h-full w-full object-fill"
-        style={shown.tint ? { filter: `url(#${filterId})` } : undefined}
-      />
+      {looks.map((look) => (
+        <span key={look.key} ref={lookRef(look.key)} data-layer-look="" className={cn('absolute inset-0', fading && 'mix-blend-plus-lighter')}>
+          <RemoteImg
+            {...img} src={look.data} className="absolute inset-0 h-full w-full object-fill"
+            style={shown.tint ? { filter: `url(#${filterId})` } : undefined}
+          />
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** The stack's Layers in the box a Jelly change squashes, from its bottom edge. */
+function LayerStack({ picture, img }: { picture: LayeredPicture; img: ImgProps }) {
+  const { looksOf, boxRef, lookRef } = useLayeredMotion(picture);
+  return (
+    <span ref={boxRef} data-layer-stack="" className="absolute inset-0 origin-bottom">
+      {picture.layers.map((shown) => {
+        const looks = looksOf(shown.id);
+        return looks.length ? <LayerImg key={shown.id} shown={shown} looks={looks} lookRef={lookRef} img={img} /> : null;
+      })}
     </span>
   );
 }
@@ -59,7 +84,7 @@ const LayeredImg = forwardRef<HTMLElement, ImgProps & { picture: LayeredPicture;
 ) => {
   const [ratio, setRatio] = useState<number>();
   const img = { loading, decoding, draggable, alt: '', 'aria-hidden': true } as const;
-  const layers = picture.layers.map((shown) => shown.data && <LayerImg key={shown.id} shown={shown} img={img} />);
+  const layers = <LayerStack picture={picture} img={img} />;
   return (
     <span
       {...(rest as HTMLAttributes<HTMLSpanElement>)}
@@ -82,7 +107,7 @@ const LayeredImg = forwardRef<HTMLElement, ImgProps & { picture: LayeredPicture;
         : (
           <>
             <RemoteImg {...img} src={picture.canvas} className={cn(className, 'invisible')} onLoad={onLoad} onError={onError} />
-            <span className="absolute inset-0">{layers}</span>
+            {layers}
           </>
         )}
     </span>

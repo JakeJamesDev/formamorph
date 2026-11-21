@@ -1,7 +1,8 @@
 // Authoring a Layered Image: pure edits on one entry, each returning a new entry. Layers are bottom first.
 
 import type { LayerBlend, LayeredMediaEntry, LayerVariant, MediaLayer, MediaList, TraitRequirementRow } from '@/types';
-import { normalizeTint } from './layeredImages';
+import { parseMascotTransition, sameTransition, type MascotTransition } from './formaquestion/mascotTransition';
+import { DEFAULT_LAYER_TRANSITION, normalizeTint } from './layeredImages';
 import { mediaNameKey, uniqueMediaName } from './mediaList';
 import { randomUUID } from './uuid';
 
@@ -66,6 +67,13 @@ export const setLayerTint = (entry: LayeredMediaEntry, layerId: string, tint: st
 /** The entry with the Layer's blend mode set. Normal is stored as absent. */
 export const setLayerBlend = (entry: LayeredMediaEntry, layerId: string, blend: LayerBlend): LayeredMediaEntry =>
   mapLayer(entry, layerId, ({ blend: _old, ...rest }) => (blend === 'normal' ? rest : { ...rest, blend }));
+
+/** The entry with the Layer's transition set. The default is stored as absent. */
+export const setLayerTransition = (entry: LayeredMediaEntry, layerId: string, transition: MascotTransition): LayeredMediaEntry =>
+  mapLayer(entry, layerId, ({ transition: _old, ...rest }) => {
+    const value = parseMascotTransition(transition, DEFAULT_LAYER_TRANSITION);
+    return sameTransition(value, DEFAULT_LAYER_TRANSITION) ? rest : { ...rest, transition: value };
+  });
 
 /** The entry with `mediaIds` added as the Layer's last Variants. An image the Layer already holds is not added twice. */
 export const addVariants = (entry: LayeredMediaEntry, layerId: string, mediaIds: readonly string[]): LayeredMediaEntry =>

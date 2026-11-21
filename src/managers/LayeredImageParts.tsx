@@ -9,6 +9,7 @@ import { Eye, EyeOff, GripVertical, Plus, Trash2, TriangleAlert, Upload, X } fro
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { ImageRuleCog, ImageRuleSummary } from '@/components/editor/ImageRuleCog';
 import { PictureImg } from '@/components/PictureImg';
+import { TransitionControls, type TransitionCopy } from '@/components/TransitionControls';
 import { Button } from '@/components/ui/button';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { Input } from '@/components/ui/input';
@@ -21,9 +22,11 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { applyImageOptimize, IMAGE_CAPS } from '@/lib/imageOptim';
 import { unionBox, type DrawnBox, type ImageFacts } from '@/lib/imageFacts';
 import {
-  addLayer, addVariants, moveLayer, moveVariant, removeLayer, removeVariant, renameLayer, setLayerBlend, setLayerOpacity, setLayerTint, setVariantRule,
+  addLayer, addVariants, moveLayer, moveVariant, removeLayer, removeVariant, renameLayer, setLayerBlend, setLayerOpacity, setLayerTint, setLayerTransition,
+  setVariantRule,
 } from '@/lib/layeredEdit';
-import { canvasVariant, normalizeTint, shownVariant } from '@/lib/layeredImages';
+import { sameTransition, type MascotTransition } from '@/lib/formaquestion/mascotTransition';
+import { canvasVariant, layerTransition, normalizeTint, shownVariant } from '@/lib/layeredImages';
 import { toastError } from '@/lib/linkToast';
 import { addedEntries, placeGalleryFile } from '@/lib/mediaGallery';
 import { mediaNameFromFile } from '@/lib/mediaList';
@@ -506,5 +509,43 @@ export function DeleteLayerButton({ rig, layer }: { rig: Rig; layer: MediaLayer 
     <Button type="button" variant="outline" size="sm" onClick={() => rig.write(`Delete Layer: ${layer.name}`, removeLayer(rig.entry, layer.id))}>
       <Trash2 className="mr-1 h-4 w-4" />Delete Layer
     </Button>
+  );
+}
+
+const LAYER_TRANSITION_COPY = {
+  mode: { label: 'Transition', hint: 'Sets how this Layer changes when it shows another Variant' },
+  modes: { none: 'None', dissolve: 'Dissolve', jelly: 'Jelly' },
+  reducedMotion: "Jelly plays as Dissolve while your system's reduced-motion setting is on",
+  jelly: {
+    durationMs: { label: 'Duration', hint: 'Sets how long the bounce takes' },
+    squash: { label: 'Squash', hint: 'Sets how far the picture squashes before the new Variant shows' },
+    overshoot: { label: 'Overshoot', hint: 'Sets how far the picture stretches past full height' },
+    settle: { label: 'Settle Count', hint: 'Sets how many times the picture bounces before it rests' },
+  },
+  dissolveDuration: { label: 'Duration', hint: 'Sets how long the new Variant takes to fade in' },
+  play: { label: 'Play', hint: "Show this Layer's next Variant in the preview, with its transition" },
+} as const satisfies TransitionCopy;
+
+/** The Layer's transition: the Mascot's modes and tuning, and Play. A slider writes when its drag ends. */
+export function TransitionField({ rig, layer }: { rig: Rig; layer: MediaLayer }) {
+  const stored = layerTransition(layer);
+  const [draft, setDraft] = useState<MascotTransition | null>(null);
+  const write = (next: MascotTransition) => {
+    setDraft(null);
+    if (!sameTransition(next, stored)) rig.write(`Set Transition: ${layer.name}`, setLayerTransition(rig.entry, layer.id, next));
+  };
+  return (
+    <div data-layer-transition={layer.id}>
+      <TransitionControls
+        transition={draft ?? stored}
+        copy={LAYER_TRANSITION_COPY}
+        idPrefix={`layer-${layer.id}`}
+        readOnly={false}
+        onTransition={(next, group) => (group ? setDraft(next) : write(next))}
+        onCommit={write}
+        onPlay={rig.playNext ?? (() => {})}
+        playDisabled={!rig.playNext}
+      />
+    </div>
   );
 }

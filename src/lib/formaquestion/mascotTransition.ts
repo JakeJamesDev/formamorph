@@ -123,6 +123,11 @@ export function mascotTransitionAt(elapsedMs: number, transition: MascotTransiti
   };
 }
 
+/** Whether two transitions hold the same mode and tuning. */
+export const sameTransition = (a: MascotTransition, b: MascotTransition): boolean =>
+  a.mode === b.mode && a.dissolve.durationMs === b.dissolve.durationMs
+  && (Object.keys(a.jelly) as (keyof JellyTuning)[]).every((key) => a.jelly[key] === b.jelly[key]);
+
 const isMode = (value: unknown): value is MascotTransitionMode => (MASCOT_TRANSITION_MODES as readonly unknown[]).includes(value);
 
 /** A stored number held within its range and on its step; the fallback when it is not a number. */
@@ -137,13 +142,12 @@ function parseTuning(stored: unknown, range: TuningRange, fallback: number): num
 
 const asRecord = (stored: unknown): Record<string, unknown> => (isRecord(stored) ? stored : {});
 
-/** A stored transition, read field by field; a missing or bad field takes the default's. One with no tuning at all reads as the default. */
-export function parseMascotTransition(stored: unknown): MascotTransition {
+/** A stored transition, read field by field; a missing or bad field takes `fallback`'s. One with no tuning at all reads as `fallback`. */
+export function parseMascotTransition(stored: unknown, fallback: MascotTransition = DEFAULT_MASCOT_TRANSITION): MascotTransition {
   const record = asRecord(stored);
-  if (!isRecord(record.jelly) && !isRecord(record.dissolve)) return DEFAULT_MASCOT_TRANSITION;
+  if (!isRecord(record.jelly) && !isRecord(record.dissolve)) return fallback;
   const jelly = asRecord(record.jelly);
   const dissolve = asRecord(record.dissolve);
-  const fallback = DEFAULT_MASCOT_TRANSITION;
   return {
     mode: isMode(record.mode) ? record.mode : fallback.mode,
     jelly: {

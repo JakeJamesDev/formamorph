@@ -38,6 +38,10 @@ export interface Rig {
   /** An opacity being dragged, shown before it is written. */
   draft: { layerId: string; opacity: number } | null;
   setDraft: (draft: { layerId: string; opacity: number } | null) => void;
+  /** The Variant Play shows on one Layer in the preview only. Any write or Preview As change clears it. */
+  pick: { layerId: string; mediaId: string } | null;
+  /** Steps the selected Layer to its next Variant in the preview, wrapping. Undefined under two Variants. */
+  playNext: (() => void) | undefined;
 }
 
 /** The rig named `entryId`, or undefined once it is gone. */
@@ -50,6 +54,7 @@ export function useRig(entryId: string): Rig | undefined {
   const [as, setAs] = useState(DEFAULT_LOOK);
   const [selectedId, select] = useState<string>();
   const [draft, setDraft] = useState<Rig['draft']>(null);
+  const [pick, setPick] = useState<Rig['pick']>(null);
   const gateInput = source?.gateInput;
   const reads = useMemo<LayerReads>(
     () => (as !== DEFAULT_LOOK && gateInput ? { statesOf: (rows: TraitRequirementRow[]) => ruleStates(gateInput, as, rows) } : OUTSIDE_PLAY),
@@ -60,19 +65,31 @@ export function useRig(entryId: string): Rig | undefined {
   const srcs = entry ? entry.layers.flatMap((l) => l.variants.flatMap((v) => dataOf(v.mediaId) ?? [])) : [];
   const facts = useImageFacts(srcs);
   if (!entry) return undefined;
-  const write = (label: string, next: LayeredMediaEntry, added: MediaList = {}) =>
+  const write = (label: string, next: LayeredMediaEntry, added: MediaList = {}) => {
+    setPick(null);
     void step(label, () => addMedia({ ...added, [next.id]: next }));
+  };
+  const previewAs = (id: string) => {
+    setPick(null);
+    setAs(id);
+  };
   const layer = entry.layers.find((l) => l.id === selectedId) ?? entry.layers.at(-1);
+  const playable = layer ? layer.variants.flatMap((v) => (dataOf(v.mediaId) ? [v.mediaId] : [])) : [];
+  const playNext = layer && playable.length > 1 ? () => {
+    const showing = pick?.layerId === layer.id ? pick.mediaId : layer.variants[shownVariant(layer, list, reads)]?.mediaId;
+    const at = showing === undefined ? -1 : playable.indexOf(showing);
+    setPick({ layerId: layer.id, mediaId: playable[(at + 1) % playable.length] });
+  } : undefined;
   const mismatches = layeredSizeMismatches(entry, list, (id) => {
     const data = dataOf(id);
     return data ? facts.get(data)?.size : undefined;
   });
-  return { entry, list, write, as, setAs, reads, host, selectedId, select, layer, facts, mismatches, dataOf, draft, setDraft };
+  return { entry, list, write, as, setAs: previewAs, reads, host, selectedId, select, layer, facts, mismatches, dataOf, draft, setDraft, pick, playNext };
 }
 
-/** The rig's picture under Preview As, without the Layers in `hidden`, at any dragged opacity. */
+/** The rig's picture under Preview As and Play's pick, without the Layers in `hidden`, at any dragged opacity. */
 export function rigPicture(rig: Rig, hidden?: ReadonlySet<string>): LayeredPicture | undefined {
-  const picture = resolveLayered(rig.entry, rig.list, rig.reads);
+  const picture = resolveLayered(rig.entry, rig.list, rig.reads, rig.pick ? { [rig.pick.layerId]: { variant: rig.pick.mediaId } } : undefined);
   if (!picture || (!hidden?.size && !rig.draft)) return picture;
   return {
     ...picture,

@@ -58,9 +58,9 @@ type Bench = ReturnType<typeof renderMediaTab>;
 const rigOf = (bench: Bench, id = 'rig') => bench.ctx().worldOverview.mediaList?.[id] as LayeredMediaEntry;
 const dialog = () => screen.getByRole('dialog');
 const selectCard = (name: string) => fireEvent.click(screen.getAllByText(name).find((el) => el.closest('[data-media-card]'))!);
-/** The preview's Layers, bottom first, as the image id each draws. */
+/** The preview's Layers, bottom first, as the image id each draws. A Layer mid-fade draws its newest look on top. */
 const drawn = () => Array.from(dialog().querySelectorAll<HTMLElement>('[data-layered-preview] [data-layer]'))
-  .map((box) => /base64,(\w+)/.exec(box.querySelector('img')?.getAttribute('src') ?? '')?.[1]);
+  .map((box) => /base64,(\w+)/.exec(Array.from(box.querySelectorAll('img')).at(-1)?.getAttribute('src') ?? '')?.[1]);
 
 async function pickPreviewAs(name: string) {
   fireEvent.click(within(dialog()).getByRole('combobox', { name: 'Preview As' }));
@@ -122,12 +122,13 @@ describe('Layered Image editor', () => {
     expect(drawn()).toEqual(['body', 'big']);
   });
 
-  it('hides a Layer in the editor only with its eye', () => {
+  it('hides a Layer in the editor only with its eye', async () => {
     const bench = renderMediaTab(world(RIG), 'simple');
     selectCard('Scout Rig');
     fireEvent.click(screen.getByRole('button', { name: 'Edit Layers' }));
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Hide Face in Editor' }));
-    expect(drawn()).toEqual(['body']);
+    // The Layer's Dissolve fades it out first.
+    await waitFor(() => expect(drawn()).toEqual(['body']));
     expect(rigOf(bench)).toEqual(RIG);
   });
 
@@ -166,6 +167,38 @@ describe('Layered Image editor', () => {
     expect(within(dialog()).queryByRole('button', { name: 'Clear Tint' })).toBeNull();
   });
 
+  it('sets the selected Layer’s transition, storing the default Dissolve as absent and a slider once on release', async () => {
+    const bench = renderMediaTab(world(RIG), 'simple');
+    selectCard('Scout Rig');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Layers' }));
+    const settings = dialog().querySelector<HTMLElement>('[data-layer-transition="face"]')!;
+    expect(within(settings).getByRole('slider', { name: 'Duration' }).getAttribute('aria-valuenow')).toBe('250');
+    fireEvent.click(within(settings).getByRole('radio', { name: 'Jelly' }));
+    expect(rigOf(bench).layers[1].transition?.mode).toBe('jelly');
+    const squash = within(settings).getByRole('slider', { name: 'Squash' });
+    act(() => { squash.focus(); });
+    fireEvent.keyDown(squash, { key: 'ArrowRight' });
+    expect(rigOf(bench).layers[1].transition?.jelly.squash).toBe(0.19);
+    fireEvent.click(within(settings).getByRole('radio', { name: 'Dissolve' }));
+    fireEvent.click(within(settings).getByRole('radio', { name: 'Jelly' }));
+    expect(rigOf(bench).layers[1].transition?.jelly.squash).toBe(0.19);
+  });
+
+  it('steps the selected Layer through its Variants with Play in the preview only', async () => {
+    const bench = renderMediaTab(world(RIG), 'simple');
+    selectCard('Scout Rig');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Layers' }));
+    const play = within(dialog()).getByRole('button', { name: 'Play' });
+    expect(drawn()).toEqual(['body', 'big']);
+    fireEvent.click(play);
+    expect(drawn()).toEqual(['body', 'calm']);
+    fireEvent.click(play);
+    expect(drawn()).toEqual(['body', 'big']);
+    expect(rigOf(bench)).toEqual(RIG);
+    fireEvent.click(within(dialog()).getByRole('button', { name: /^Body/ }));
+    expect(within(dialog()).getByRole('button', { name: 'Play' })).toHaveProperty('disabled', true);
+  });
+
   it('lists a Variant use in Used By and in the delete confirm, and deleting the image empties that Variant', async () => {
     const bench = renderMediaTab(world(RIG), 'simple');
     selectCard('body');
@@ -178,7 +211,7 @@ describe('Layered Image editor', () => {
     expect(rigOf(bench).layers.map((l) => l.name)).toEqual(['Body', 'Face']);
   });
 
-  it('lays out master–detail in the pane on mobile, with Variants and Look tabs', () => {
+  it('lays out master–detail in the pane on mobile, with Variants, Look and Motion tabs', () => {
     const undo = asMobile();
     try {
       renderMediaTab(world(RIG), 'simple');
@@ -186,7 +219,7 @@ describe('Layered Image editor', () => {
       const pane = document.querySelector<HTMLElement>('[data-layered-mobile]')!;
       expect(screen.queryByRole('button', { name: 'Edit Layers' })).toBeNull();
       expect(Array.from(pane.querySelectorAll('[data-layer-row]')).map((r) => r.textContent)).toEqual(['Facebig', 'Bodybody']);
-      expect(within(pane).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Variants', 'Look']);
+      expect(within(pane).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Variants', 'Look', 'Motion']);
     } finally {
       undo();
     }

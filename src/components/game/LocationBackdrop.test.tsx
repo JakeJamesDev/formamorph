@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { LocationBackdrop } from './LocationBackdrop';
-import type { LayeredPicture } from '@/lib/layeredImages';
+import { DEFAULT_LAYER_TRANSITION, type LayeredPicture } from '@/lib/layeredImages';
 
 const imageLayer = () => screen.getByTestId('location-backdrop-image');
 const overlayLayer = () => screen.queryByTestId('location-backdrop-overlay');
@@ -58,7 +58,7 @@ describe('LocationBackdrop', () => {
   });
 
   it('draws a Layered Image’s stack inside the same compositor layer, with the fade beside it', () => {
-    const stack: LayeredPicture = { kind: 'layered', entryId: 'rig', canvas: 'room.png', layers: [{ id: 'room', opacity: 1, blend: 'normal', data: 'room.png' }, { id: 'rain', opacity: 0.5, blend: 'normal', data: 'rain.png' }] };
+    const stack: LayeredPicture = { kind: 'layered', entryId: 'rig', canvas: 'room.png', layers: [{ id: 'room', opacity: 1, blend: 'normal', transition: DEFAULT_LAYER_TRANSITION, data: 'room.png' }, { id: 'rain', opacity: 0.5, blend: 'normal', transition: DEFAULT_LAYER_TRANSITION, data: 'rain.png' }] };
     render(<LocationBackdrop image={stack} overlay={0.4} overlayHidden={false} />);
     expect(imageLayer().style.transform).toBe('translateZ(0)');
     expect(imageLayer().style.backgroundImage).toBe('');

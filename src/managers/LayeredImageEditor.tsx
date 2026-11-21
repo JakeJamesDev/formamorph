@@ -14,7 +14,7 @@ import { shownVariant } from '@/lib/layeredImages';
 import { cn } from '@/lib/utils';
 import type { MediaLayer } from '@/types';
 import {
-  AddLayerButton, BlendField, DeleteLayerButton, EyeToggle, LayerList, LayerNameField, LayerThumb, OpacityField, PreviewAs, RigPreview, TintField,
+  AddLayerButton, BlendField, DeleteLayerButton, EyeToggle, LayerList, LayerNameField, LayerThumb, OpacityField, PreviewAs, RigPreview, TintField, TransitionField,
   VariantStrip, VariantSummary,
 } from './LayeredImageParts';
 import { draftOpacity, layerMismatched, layerNames, shownName, useRig, type Rig } from './layeredRig';
@@ -123,6 +123,7 @@ function DesktopRigEditor({ rig }: { rig: Rig }) {
               <OpacityField rig={rig} layer={layer} />
               <BlendField rig={rig} layer={layer} />
               <TintField rig={rig} layer={layer} />
+              <TransitionField key={layer.id} rig={rig} layer={layer} />
               <DeleteLayerButton rig={rig} layer={layer} />
             </div>
           )}
@@ -161,7 +162,7 @@ function LayerRow({ rig, layer, selected, handle, children, detail }: {
   );
 }
 
-/** Mobile: the preview beside a compact Layer list, and the selected Layer below with Variants and Look tabs. */
+/** Mobile: the preview beside a compact Layer list, and the selected Layer below with Variants, Look and Motion tabs. */
 function MobileRigEditor({ rig }: { rig: Rig }) {
   const { layer } = rig;
   const variant = useVariantPick(rig, layer);
@@ -194,6 +195,7 @@ function MobileRigEditor({ rig }: { rig: Rig }) {
             <TabsList>
               <TabsTrigger value="variants">Variants</TabsTrigger>
               <TabsTrigger value="look">Look</TabsTrigger>
+              <TabsTrigger value="motion">Motion</TabsTrigger>
             </TabsList>
             <TabsContent value="variants" className="space-y-2">
               <VariantStrip rig={rig} layer={layer} selected={variant.index} onSelect={variant.set} />
@@ -203,6 +205,9 @@ function MobileRigEditor({ rig }: { rig: Rig }) {
               <OpacityField rig={rig} layer={layer} />
               <BlendField rig={rig} layer={layer} />
               <TintField rig={rig} layer={layer} />
+            </TabsContent>
+            <TabsContent value="motion">
+              <TransitionField key={layer.id} rig={rig} layer={layer} />
             </TabsContent>
           </Tabs>
           <DeleteLayerButton rig={rig} layer={layer} />

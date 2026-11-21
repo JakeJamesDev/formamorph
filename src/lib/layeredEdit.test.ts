@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   addLayer, addVariants, listWithoutVariant, moveLayer, moveVariant, newLayeredEntry, removeLayer, removeVariant, renameLayer,
-  setLayerBlend, setLayerOpacity, setLayerTint, setVariantRule,
+  setLayerBlend, setLayerOpacity, setLayerTint, setLayerTransition, setVariantRule,
 } from './layeredEdit';
-import { OUTSIDE_PLAY, resolveLayered } from './layeredImages';
+import { DEFAULT_MASCOT_TRANSITION } from './formaquestion/mascotTransition';
+import { DEFAULT_LAYER_TRANSITION, OUTSIDE_PLAY, resolveLayered } from './layeredImages';
 import type { LayeredMediaEntry, MediaList, TraitRequirementRow } from '@/types';
 
 const image = (id: string) => ({ id, name: id, kind: 'image' as const, data: `data:${id}` });
@@ -60,6 +61,18 @@ describe('Layer edits', () => {
     const screened = setLayerBlend(rig(), 'hat', 'screen');
     expect(screened.layers[2].blend).toBe('screen');
     expect('blend' in setLayerBlend(screened, 'hat', 'normal').layers[2]).toBe(false);
+  });
+
+  it('stores a transition, the default as absent, and resolves a missing one as Dissolve at the Mascot tuning', () => {
+    expect(resolveLayered(rig(), list(), OUTSIDE_PLAY)?.layers[2].transition).toEqual({ ...DEFAULT_MASCOT_TRANSITION, mode: 'dissolve' });
+    const jelly = { ...DEFAULT_LAYER_TRANSITION, mode: 'jelly' as const, jelly: { ...DEFAULT_LAYER_TRANSITION.jelly, squash: 0.3 } };
+    const bouncy = setLayerTransition(rig(), 'hat', jelly);
+    expect(bouncy.layers[2].transition).toEqual(jelly);
+    expect(resolveLayered(bouncy, list(bouncy), OUTSIDE_PLAY)?.layers[2].transition).toEqual(jelly);
+    expect('transition' in setLayerTransition(bouncy, 'hat', DEFAULT_LAYER_TRANSITION).layers[2]).toBe(false);
+    // A stored value past its range resolves held to the Mascot's.
+    const wild = { ...rig(), layers: rig().layers.map((l) => ({ ...l, transition: { ...jelly, jelly: { ...jelly.jelly, squash: 9 } } })) };
+    expect(resolveLayered(wild, list(wild), OUTSIDE_PLAY)?.layers[2].transition.jelly.squash).toBe(0.5);
   });
 
   it('carries tint and blend mode into the resolved stack, and leaves white as no tint', () => {

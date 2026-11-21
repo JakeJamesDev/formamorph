@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { EntityVisual } from './EntityVisual';
 import { PanelShownProvider } from '@/lib/panelShown';
 import type { Entity } from '@/types';
-import type { LayeredPicture } from '@/lib/layeredImages';
+import { DEFAULT_LAYER_TRANSITION, type LayeredPicture } from '@/lib/layeredImages';
 
 // The real viewer needs a WebGL context jsdom has none of; what matters here is which visual gets mounted.
 vi.mock('@/views/ModelViewer', () => ({
@@ -203,7 +203,7 @@ describe('EntityVisual — gallery', () => {
 
   describe('with a Layered Image in play', () => {
     const STACK: LayeredPicture = {
-      kind: 'layered', entryId: 'rig', canvas: IMAGE, layers: [{ id: 'base', opacity: 1, blend: 'normal', data: IMAGE }, { id: 'empty', opacity: 1, blend: 'normal' }, { id: 'top', opacity: 0.4, blend: 'normal', data: IMAGE_B }],
+      kind: 'layered', entryId: 'rig', canvas: IMAGE, layers: [{ id: 'base', opacity: 1, blend: 'normal', transition: DEFAULT_LAYER_TRANSITION, data: IMAGE }, { id: 'empty', opacity: 1, blend: 'normal', transition: DEFAULT_LAYER_TRANSITION }, { id: 'top', opacity: 0.4, blend: 'normal', transition: DEFAULT_LAYER_TRANSITION, data: IMAGE_B }],
     };
     const layers = (root: ParentNode) => [...root.querySelectorAll('[data-layer]')].map((img) => [img.getAttribute('data-layer'), (img as HTMLElement).style.opacity]);
 

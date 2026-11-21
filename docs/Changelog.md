@@ -23,6 +23,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Build a Layered Image in the World Editor's Media tab and pick it in a character's gallery.** Add Layers, give each Layer images with Visibility rules, and preview the picture as any character. A warning marks an image whose size differs from the bottom Layer.
     - **A Layer in a Layered Image has a Tint and a Blend Mode.** Tint a gray drawing any color. Blend with Normal, Multiply, Screen or Add. The Media tab editor and the game picture show both.
     - **Scripts can set which image each Layer of a Layered Image shows, and its opacity and tint.** Each copy of a character and each item keeps its own settings. Setting `null` hands the Layer back to its rules.
+    - **A Layer in a Layered Image can fade or bounce when it shows another image.** Pick None, Dissolve or Jelly, with the Mascot's sliders, and press Play in the editor. Jelly fades instead under reduced motion.
   - **Opening Time:**
     - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
 
