@@ -44,6 +44,11 @@ Settled in the grill, 2026-11-20. Research: `docs-internal/notes/image-layering-
 | Q23 | The canvas is always the bottom Layer's first Variant's size, shown or not, so it never changes with state. (Ticket 01) |
 | Q24 | Until ticket 07, outside-play readers skip a layered link to the next plain image, and an AI request sends no image for one. Until ticket 06, script `image` reads skip layered links. A gallery write keeps layered links, and the Media tab lists a layered entry by name with a generic icon. (Ticket 01) |
 | Q25 | Editor layout (prototype verdict): canvas-first on desktop, master–detail on mobile. Both list the top Layer first. See Prototype. |
+| Q26 | The Body Doll draws a layered item image, fitted to the canvas aspect, under the same icon rules. (Ticket 03) |
+| Q27 | Preview As lists Default Look (the outside-play picture) first, then every world entity by name, with rules read at the world's starting state. No locations or items. (Ticket 02) |
+| Q28 | Deleting an image used as a Variant removes that Variant from every Layer that holds it. An emptied Layer stays. A new Layered Image starts with no Layers, named "Layered Image"; a new Layer is "Layer", opacity 1; both auto-suffix. (Ticket 02) |
+| Q29 | Refines Q23: when the bottom Layer has no Variants, the canvas is the first Variant of the lowest Layer that has one. (Ticket 02) |
+| Q30 | An image's Used By lists each Variant use as "<Layered Image> · <Layer>", which selects the Layered Image's Media card. (Ticket 02) |
 
 ## Prototype
 
