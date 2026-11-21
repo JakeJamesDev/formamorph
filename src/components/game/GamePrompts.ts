@@ -480,7 +480,7 @@ export const defaultWeatherPrompt = `You track the weather in a story. You are g
 
 Decide what the weather is at the end of the passage.
 
-- Name a weather when the passage shows it in the scene, here and now: rain falling, snow coming down, a storm breaking, the sky clearing, the sun blazing.
+- Name a weather when the passage shows it happening in the scene, here and now, around the character.
 - Weather in a figure of speech, a memory, a dream, a story someone tells, a forecast or a remark about another place is not the scene's weather.
 - When the passage leaves the sky as it was, the answer is no change.`;
 

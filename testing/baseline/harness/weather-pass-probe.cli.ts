@@ -11,6 +11,7 @@
 //   text     — the text request, what an endpoint that refuses the schema gets
 //   noTraps  — the text request with the trap line ablated: the in-batch control that weighs that line
 //   alt      — the schema request with the system prompt read from --alt <file>, for iterating a candidate
+//   altText  — the text request with the --alt prompt
 //
 // Cases: `change` cases have a right new kind; `hold` cases (traps and quiet scenes) want the weather unchanged.
 // The `open-` cases are the page-one read: no weather before the passage, and Clear when the scene shows none.
@@ -45,10 +46,12 @@ const only = argVal('--only', '');
 const SEED = 424242;
 const TRAP_LINE = /^- Weather in a figure of speech.*\n/m;
 
-type Arm = 'schema' | 'text' | 'noTraps' | 'alt';
+type Arm = 'schema' | 'text' | 'noTraps' | 'alt' | 'altText';
 const ALT = argVal('--alt', '');
 const ALT_PROMPT = ALT ? readFileSync(ALT, 'utf8').trimEnd() : '';
-const ARMS: Arm[] = argVal('--arms', '') ? (argVal('--arms', '').split(',') as Arm[]) : ['schema', 'text', 'noTraps', ...(ALT ? ['alt' as const] : [])];
+const ARMS: Arm[] = argVal('--arms', '') ? (argVal('--arms', '').split(',') as Arm[]) : ['schema', 'text', 'noTraps', ...(ALT ? ['alt' as const, 'altText' as const] : [])];
+const isTextArm = (arm: Arm) => arm === 'text' || arm === 'noTraps' || arm === 'altText';
+const isAltArm = (arm: Arm) => arm === 'alt' || arm === 'altText';
 
 type Case = { id: string; kind: 'change' | 'hold'; current: WeatherKind | null; offered: WeatherKind[]; action: string; narration: string; expect: WeatherKind };
 const ALL: WeatherKind[] = ['clear', 'rain', 'snow', 'storm', 'brightSun'];
@@ -90,12 +93,12 @@ const CASES: Case[] = [
 
 const prompts = (arm: Arm) => ({
   ...TEST_PROMPTS,
-  weather: arm === 'alt' ? ALT_PROMPT : arm === 'noTraps' ? defaultWeatherPrompt.replace(TRAP_LINE, '') : defaultWeatherPrompt,
+  weather: isAltArm(arm) ? ALT_PROMPT : arm === 'noTraps' ? defaultWeatherPrompt.replace(TRAP_LINE, '') : defaultWeatherPrompt,
   weatherUser: defaultWeatherUserPrompt,
 });
 
 function request(arm: Arm, c: Case) {
-  const input = testInput({ prompts: prompts(arm), isGameStarted: c.current !== null, weather: { current: c.current ?? 'clear', offered: c.offered, startWeatherSet: false } }, { weatherTextPass: arm === 'text' || arm === 'noTraps' });
+  const input = testInput({ prompts: prompts(arm), isGameStarted: c.current !== null, weather: { current: c.current ?? 'clear', offered: c.offered, startWeatherSet: false } }, { weatherTextPass: isTextArm(arm) });
   const material = { ...emptyTurnMaterial({ action: c.action, effectiveAction: c.action, turnId: c.id, baseCtx: {}, destinations: [] }), narration: c.narration };
   const built = weatherPass.buildRequest(input, material);
   const messages = [{ role: 'system', content: built.systemPrompt }, ...built.messages] as ChatMessage[];
