@@ -3,6 +3,7 @@
 import type {
   EntityMediaOverride, GenericStates, LayerSetting, LayerSettings, MediaEntry, MediaLayerSettings, MediaList, MediaOverrides, MediaRef, PersonaRef,
 } from '@/types';
+import { heldVariant, layeredEntry } from './mediaList';
 
 /** The script members that take a Media Entry's name, by the entry they sit on. */
 export const MEDIA_NAME_MEMBERS = {
@@ -191,6 +192,20 @@ export interface MediaOverrideScene {
   personaId?: string;
 }
 
+/** `settings` without any `variant` its Layer no longer holds, so a stale one reads as unset before a merge (Q32). */
+function withoutStaleVariants(settings: LayerSettings | undefined, list: MediaList | undefined): LayerSettings | undefined {
+  if (!settings) return settings;
+  return Object.fromEntries(Object.entries(settings).map(([entryId, byLayer]) => {
+    const layers = layeredEntry(list, entryId)?.layers;
+    return [entryId, Object.fromEntries(Object.entries(byLayer).map(([layerId, setting]) => {
+      const layer = layers?.find((one) => one.id === layerId);
+      if (setting.variant === undefined || (layer && heldVariant(layer, list, setting.variant))) return [layerId, setting];
+      const { variant: _stale, ...rest } = setting;
+      return [layerId, rest];
+    }))];
+  }));
+}
+
 /** `top` laid over `base` field by field, per Layered Image and Layer. */
 function settingsOver(base: LayerSettings | undefined, top: LayerSettings | undefined): LayerSettings | undefined {
   if (!base || !top) return top ?? base;
@@ -204,8 +219,13 @@ function settingsOver(base: LayerSettings | undefined, top: LayerSettings | unde
 }
 
 /** The entity's Layer settings: its Generic Entity Instance's over the entity-wide ones, field by field (Q31). */
-export const entityLayerSettings = (overrides: MediaOverrides | undefined, { key, entityId, startId }: EntityMediaKey): LayerSettings | undefined =>
-  settingsOver(overrides?.layers?.entities?.[key], entityId && startId ? overrides?.layers?.instances?.[entityId]?.[startId] : undefined);
+export const entityLayerSettings = (
+  overrides: MediaOverrides | undefined, list: MediaList | undefined, { key, entityId, startId }: EntityMediaKey,
+): LayerSettings | undefined =>
+  settingsOver(
+    withoutStaleVariants(overrides?.layers?.entities?.[key], list),
+    withoutStaleVariants(entityId && startId ? overrides?.layers?.instances?.[entityId]?.[startId] : undefined, list),
+  );
 
 /** What a script set on a picture slot: the shown entry's id (an image or a Layered Image) and the Layer settings. */
 export interface PictureOverride {
@@ -238,7 +258,7 @@ export function mediaOverrideReader(overrides: MediaOverrides | undefined, list:
     location,
     item,
     music: () => liveMediaId(list, overrides?.music, 'sound'),
-    entityPicture: (entityId) => pictureOverride(entityOverrideId(overrides, list, keyOf(entityId), 'image'), entityLayerSettings(overrides, keyOf(entityId))),
+    entityPicture: (entityId) => pictureOverride(entityOverrideId(overrides, list, keyOf(entityId), 'image'), entityLayerSettings(overrides, list, keyOf(entityId))),
     locationPicture: (locationId) => pictureOverride(location(locationId, 'image'), overrides?.layers?.locations?.[locationId]),
     itemPicture: (instanceId) => pictureOverride(item(instanceId), overrides?.layers?.items?.[instanceId]),
   };

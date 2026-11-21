@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Entity, GameLocation, GenericStates, Item, MediaList, StatRequirement } from '@/types';
+import type { Entity, GameLocation, GenericStates, Item, LayeredMediaEntry, MediaList, StatRequirement } from '@/types';
+import { resolveLayered } from './layeredImages';
 import type { GateInput } from './traitGates';
 import { mediaOverrideReader, soundWithOverride, withMediaWrites, type MediaEntryWrite, type MediaWrite } from './mediaOverrides';
 import { visibleImages, visibleItemImage, visibleLocationImages } from './imageVisibility';
@@ -43,6 +44,32 @@ describe('withMediaWrites', () => {
     const overrides = { music: 'm-theme' };
     expect(withMediaWrites(overrides, [])).toBe(overrides);
     expect(withMediaWrites(overrides, undefined)).toBe(overrides);
+  });
+});
+
+describe('a stale instance Variant in play (Q32)', () => {
+  const layered: MediaList = {
+    ...list,
+    rig: {
+      id: 'rig', name: 'Rig', kind: 'layered', layers: [
+        { id: 'l-hat', name: 'Hat', variants: [{ mediaId: 'm-hurt', requires: [{ all: [low] }] }, { mediaId: 'm-calm' }] },
+      ],
+    },
+  };
+  const everyRuleHolds = { statesOf: (rows: unknown[]) => rows.map(() => ({ holds: true, conditions: [] })) };
+  const scene = { genericStates: { 'e-guard': { 's-north': { position: 'l-gate', lastRun: 0 } } } as GenericStates, locationId: 'l-gate' };
+  const overrides = {
+    layers: {
+      entities: { 'e-guard': { rig: { 'l-hat': { variant: 'm-calm' } } } },
+      instances: { 'e-guard': { 's-north': { rig: { 'l-hat': { variant: 'm-gone' } } } } },
+    },
+  };
+
+  it('draws the entity-wide Variant, not the Layer’s rules', () => {
+    const { layers } = mediaOverrideReader(overrides, layered, scene).entityPicture('e-guard');
+    const entry = layered.rig as LayeredMediaEntry;
+    const picture = resolveLayered(entry, layered, everyRuleHolds, layers?.rig);
+    expect(picture?.layers.map((layer) => layer.data)).toEqual(['calm']);
   });
 });
 

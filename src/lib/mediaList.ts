@@ -2,7 +2,7 @@
  * The world's Media List: named images and sounds that media fields link by id. Pure helpers for naming,
  * resolving, placing and comparing; the one async step is `mediaHash`.
  */
-import type { GalleryImage, GalleryLink, LayeredMediaEntry, MediaAsset, MediaEntry, MediaFileEntry, MediaList, MediaRef } from '@/types';
+import type { GalleryImage, GalleryLink, LayeredMediaEntry, LayerVariant, MediaAsset, MediaLayer, MediaEntry, MediaFileEntry, MediaList, MediaRef } from '@/types';
 import { randomUUID } from '@/lib/uuid';
 import { blobHash } from '@/lib/blobHash';
 import { dataUrlMime, dataUrlToBuffer, isRemoteImage } from '@/lib/imageBytes';
@@ -115,6 +115,10 @@ export function layeredEntry(list: MediaList | undefined, id: string): LayeredMe
   const entry = list?.[id];
   return entry?.kind === 'layered' ? entry : undefined;
 }
+
+/** The Variant of `layer` that `mediaId` names while the Layer still holds it and it names an image (Q32). */
+export const heldVariant = (layer: MediaLayer, list: MediaList | undefined, mediaId: string): LayerVariant | undefined =>
+  layer.variants.find((variant) => variant.mediaId === mediaId && mediaEntry(list, variant.mediaId, 'image'));
 
 /** A single media field's value: a link, an embedded file, or embedded data. */
 export type MediaValue = MediaRef | MediaAsset | string | null | undefined;

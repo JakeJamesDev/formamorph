@@ -3,7 +3,7 @@
 import type { Base64Data, GalleryLink, LayerBlend, LayeredMediaEntry, LayerSetting, LayerVariant, MediaLayer, MediaList, TraitRequirementRow } from '@/types';
 import { DEFAULT_MASCOT_TRANSITION, parseMascotTransition, type MascotTransition } from './formaquestion/mascotTransition';
 import { parseHex6 } from './hslColor';
-import { layeredEntry, mediaEntry } from './mediaList';
+import { heldVariant, layeredEntry, mediaEntry } from './mediaList';
 import type { RowState } from './traitGates';
 
 /** One Layer as play draws it. No `data` = the Layer shows nothing (Q2). */
@@ -89,8 +89,7 @@ export const OUTSIDE_PLAY: LayerReads = { statesOf: (rows) => rows.map(() => ({ 
 /** The Variant `layer` shows for one subject: the one its setting names while the Layer still holds it (Q10, Q32),
  *  else the one its rules show. */
 function subjectVariant(layer: MediaLayer, media: MediaList | undefined, reads: LayerReads, setting?: LayerSetting): LayerVariant | undefined {
-  const set = setting?.variant === undefined ? undefined
-    : layer.variants.find((variant) => variant.mediaId === setting.variant && variantData(variant, media));
+  const set = setting?.variant === undefined ? undefined : heldVariant(layer, media, setting.variant);
   return set ?? layer.variants[shownVariant(layer, media, reads)];
 }
 

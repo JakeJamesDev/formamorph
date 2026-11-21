@@ -1,6 +1,6 @@
 # 12: A Stale Instance Variant Falls Back to the Entity-Wide One
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: none
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -16,7 +16,17 @@ Play and scripts disagree on a stale instance Variant. The spec covers this in Q
 
 ## Acceptance criteria
 
-- [ ] An instance `variant` that names an image the Layer no longer holds, over a valid entity-wide `variant`: play draws the entity-wide Variant. Covered by a test.
-- [ ] A script read of that Layer's `variant` returns the same image play draws. Covered by a test.
-- [ ] Each test goes red with the old merge order reinstated.
-- [ ] Changelog: none if Layered Images is still unreleased (fold into the existing entry only if its wording changes).
+- [x] An instance `variant` that names an image the Layer no longer holds, over a valid entity-wide `variant`: play draws the entity-wide Variant. Covered by a test. (`mediaOverrides.test.ts` "draws the entity-wide Variant, not the Layer’s rules")
+- [x] A script read of that Layer's `variant` returns the same image play draws. Covered by a test. (`statCodeExecutor.layers.test.ts` "reads the entity-wide Variant under an instance Variant the Layer no longer holds")
+- [x] Each test goes red with the old merge order reinstated. (Play test red with the pruning off. The sandbox never had the old order, so its test went red with `holds` forced true.)
+- [x] Changelog: none; Layered Images is still In Progress in `docs/Changelog.md`, and no wording changes.
+
+## Landed
+
+**Not verified**
+
+- None.
+
+**For you**
+
+- None. Play and scripts now share one rule for a stale Variant, but only in meaning: play uses `heldVariant` (`src/lib/mediaList.ts`), and the script sandbox keeps its own copy of the check inside its JS source.

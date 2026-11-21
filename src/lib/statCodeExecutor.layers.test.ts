@@ -185,6 +185,19 @@ describe('executeStatCode Layer members', () => {
     ]);
   });
 
+  it('reads the entity-wide Variant under an instance Variant the Layer no longer holds (Q32)', async () => {
+    const res = await run(`
+      const [north] = entities.Guard.instances;
+      if (north.layers.Hat.variant !== 'Hood') throw new Error('north ' + north.layers.Hat.variant);
+    `, {
+      layers: {
+        entities: { 'e-guard': { rig: { 'l-hat': { variant: 'm-hood' } } } },
+        instances: { 'e-guard': { 's-north': { rig: { 'l-hat': { variant: 'm-gone' } } } } },
+      },
+    });
+    expect(res.error).toBeNull();
+  });
+
   it('keeps each Item Instance apart, each reading its own owner’s rules', async () => {
     const res = await run(`
       const [worn, spare] = items.Cloak.instances;
