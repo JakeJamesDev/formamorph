@@ -14,6 +14,7 @@ import { worldBlueprints } from './placeholderBlueprints';
 import { blueprintItemIds, groupsBelow } from './traitTree';
 import { mapConditions, notFlag } from './requirementRows';
 import { daypartSet } from './gameClock';
+import { weatherKindSet } from './weather';
 import { stateTextKey } from './items';
 import { galleryLinks, hasImageRules, mapImageRules } from './entityImages';
 import { portableGallery } from './portableLayered';
@@ -59,7 +60,7 @@ const ownIds = (entity: Entity): Set<string> =>
 
 /** Whether a requirement points inside the entity: at one of its own traits, groups or stats. */
 const pointsInside = (r: TraitRequirement, entity: Entity, inside: ReadonlySet<string>): boolean =>
-  (r.kind === 'stat' ? !!entity.stats?.some((s) => s.id === r.id) : r.kind !== 'playingAs' && r.kind !== 'time' && inside.has(r.id));
+  (r.kind === 'stat' ? !!entity.stats?.some((s) => s.id === r.id) : r.kind !== 'playingAs' && r.kind !== 'time' && r.kind !== 'weather' && inside.has(r.id));
 
 /** Every trait, group and stat of the world and of its entities other than `except`. */
 function targets(world: TraitWorld, except?: string) {
@@ -72,12 +73,13 @@ function targets(world: TraitWorld, except?: string) {
     stat: [...world.stats ?? [], ...others.flatMap((e) => e.stats ?? [])],
     item: world.items ?? [],
     time: [],
+    weather: [],
     option: world.options ?? [],
   };
   return lists;
 }
 
-const NO_TARGETS: ReturnType<typeof targets> = { trait: [], group: [], playingAs: [], stat: [], item: [], time: [], option: [] };
+const NO_TARGETS: ReturnType<typeof targets> = { trait: [], group: [], playingAs: [], stat: [], item: [], time: [], weather: [], option: [] };
 
 /** A choice Option Condition's value as `options` names it: by id, else by the stored value name. */
 function optionValueBound(r: OptionRequirement, options: readonly WorldOption[]): OptionRequirement {
@@ -94,7 +96,7 @@ const isSelfOwner = (b: EntityOwner, entityId: string) => b.id === SELF_ENTITY |
 
 /** The requirement with its named owner rewritten; the same requirement when it names none. */
 const withOwner = (r: TraitRequirement, map: (b: EntityOwner) => RequirementOwner): TraitRequirement =>
-  (r.kind !== 'playingAs' && r.kind !== 'time' && r.kind !== 'option' && r.owner?.kind === 'entity' ? { ...r, owner: map(r.owner) } : r);
+  (r.kind !== 'playingAs' && r.kind !== 'time' && r.kind !== 'weather' && r.kind !== 'option' && r.owner?.kind === 'entity' ? { ...r, owner: map(r.owner) } : r);
 
 const withRequires = (entity: Entity, map: (r: TraitRequirement) => TraitRequirement): Trait[] | undefined =>
   entity.traits?.map((t) => (t.requires ? { ...t, requires: mapConditions(t.requires, map) } : t));
@@ -152,7 +154,7 @@ function portableRequirement(entity: Entity, world?: TraitWorld): (req: TraitReq
   return (req) => {
     if (isSelf(req, entity.id)) return { ...req, id: SELF_ENTITY, name: entity.name };
     const r = withOwner(req, owner);
-    if (r.kind === 'time' || pointsInside(r, entity, inside)) return r;
+    if (r.kind === 'time' || r.kind === 'weather' || pointsInside(r, entity, inside)) return r;
     const name = pool[r.kind].find((item) => item.id === r.id)?.name ?? r.name;
     const named = name ? { ...r, name } : r;
     return named.kind === 'option' ? optionValueBound(named, world?.options ?? []) : named;
@@ -208,7 +210,7 @@ function ruleBinder(entity: Entity, world: TraitWorld): (req: TraitRequirement) 
     if (isSelf(req, entity.id)) return { ...req, id: entity.id };
     const r = withOwner(req, owner);
     // A world record that carries no stats has none to bind a stat Condition to.
-    if (r.kind === 'time' || pointsInside(r, entity, inside) || (r.kind === 'stat' && !statWorld)) return r;
+    if (r.kind === 'time' || r.kind === 'weather' || pointsInside(r, entity, inside) || (r.kind === 'stat' && !statWorld)) return r;
     const list = r.kind === 'stat' ? statsOf(r, statWorld!) : pool[r.kind];
     const bound = list.some((item) => item.id === r.id) ? r : { ...r, id: uniqueNamed(list, r.name)?.id ?? '' };
     return bound.kind === 'option' ? optionValueBound(bound, world.options ?? []) : bound;
@@ -268,6 +270,7 @@ export const comparableOwnedTraits = (entity: Entity): {
   const inside = ownIds(entity);
   const comparable = (req: TraitRequirement): TraitRequirement => {
     if (req.kind === 'time') return { kind: 'time', dayparts: daypartSet(req.dayparts) };
+    if (req.kind === 'weather') return { kind: 'weather', kinds: weatherKindSet(req.kinds) };
     // A World Option is the world's own, so two copies compare it by its stored names.
     if (req.kind === 'option') {
       return {

@@ -7,6 +7,7 @@
  */
 
 import type { ContentLinkState } from '@/lib/contentLink';
+import { weatherText } from '@/lib/weather';
 import {
   offeredRoutine, routinePlacesOf, sameStarts, withoutWorldFields, type LinkableContent,
 } from '@/lib/linkedContent';
@@ -254,6 +255,7 @@ const capitalized = (word: string) => word.charAt(0).toUpperCase() + word.slice(
 /** One Condition as text, by the name it stores. */
 function conditionText(req: TraitRequirement): string {
   if (req.kind === 'time') return req.dayparts.map(capitalized).join(' or ');
+  if (req.kind === 'weather') return weatherText(req);
   const named = req.name || capitalized(req.kind);
   const target = req.kind === 'stat' ? `${named} ${req.operator} ${req.value}`
     : req.kind === 'option' && req.valueName ? `${named} is ${req.valueName}` : named;

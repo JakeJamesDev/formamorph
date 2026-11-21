@@ -78,7 +78,7 @@ import { blueprintItemIds, offeredWorldTraits, statRows, statRowSide, type StatR
 import { globalStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import type {
   DictionaryEntry, Entity, GalleryImage, GalleryLink, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Script, Stat, StatDescriptor,
-  StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement, TraitRequirementRow, World, Opening, WeatherKind,
+  StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement, TraitRequirementRow, World, Opening, WeatherKind, WeatherRequirement,
   LayeredMediaEntry, LayerVariant, MediaLayer,
 } from '@/types';
 
@@ -2172,7 +2172,7 @@ const traitGroupTooSmall: Rule = {
 // ── Trait gates ───────────────────────────────────────────────────────────────────────────────────────────
 
 /** The slices the owner resolver reads. */
-export type OwnerSource = Partial<Pick<RuleWorld, 'traits' | 'traitGroups' | 'entities' | 'items' | 'options'>>;
+export type OwnerSource = Partial<Pick<RuleWorld, 'traits' | 'traitGroups' | 'entities' | 'items' | 'options' | 'worldOverview'>>;
 
 const pairKey = (a: OwnerId, b: string) => `${scopeKey(a)}\u0000${b}`;
 
@@ -2198,6 +2198,7 @@ export function ownerWorldOf(world: OwnerSource, open: OpenGates = NONE_OPEN): O
     traitGroups: world.traitGroups ?? [],
     ...(world.items ? { items: world.items } : {}),
     ...(world.options ? { options: world.options } : {}),
+    ...(world.worldOverview?.weather ? { weather: world.worldOverview.weather } : {}),
     entities: (world.entities ?? []).map((e) => ({
       ...e, name: e.name ?? '',
       ...(e.traits ? { traits: e.traits.map(opened) } : {}),
@@ -2564,7 +2565,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     : req.kind !== 'playingAs' && req.kind !== 'item' && editor.owners.some((o) => (req.kind === 'trait' ? o.traits : o.groups).some((x) => x.id === req.id)));
   const crossings = held.filter((gate) => gate.owner.id === null && global.traits.some((t) => t.id === gate.trait.id))
     .flatMap((gate) => (gate.trait.requires ?? []).flatMap((row, i) => row.all.flatMap((req, j) => {
-      if (req.kind === 'playingAs' || req.kind === 'time' || req.kind === 'item' || req.kind === 'option' || req.owner) return [];
+      if (req.kind === 'playingAs' || req.kind === 'time' || req.kind === 'weather' || req.kind === 'item' || req.kind === 'option' || req.owner) return [];
       const isGlobal = req.kind === 'stat' ? !!stats.global[req.id] : globalIds.has(req.id);
       return !isGlobal && entityHolds(req) ? [{ gate, condition: quote(gate.rows[i][j]) }] : [];
     })));
@@ -3964,6 +3965,46 @@ const weatherNotAllowed: Rule = {
   },
 };
 
+/** Every weather Condition under `node`, wherever a rule sits in it: a trait's gate, a link's override, an image's rule. */
+const weatherConditionsIn = (node: unknown, out: WeatherRequirement[] = []): WeatherRequirement[] => {
+  if (Array.isArray(node)) node.forEach((child) => weatherConditionsIn(child, out));
+  else if (node && typeof node === 'object') {
+    const record = node as Record<string, unknown>;
+    // The shape is checked above; no typed walk reaches every host's rules (traits, links, images).
+    if (record.kind === 'weather' && Array.isArray(record.kinds)) out.push(record as unknown as WeatherRequirement);
+    else Object.values(record).forEach((child) => weatherConditionsIn(child, out));
+  }
+  return out;
+};
+
+const weatherConditionNotAllowed: Rule = {
+  id: 'weather-condition-not-allowed',
+  severity: 'warning',
+  section: 'overview',
+  summary: (count) => `${count} weather Conditions name a weather the world does not allow`,
+  // A kind taken off the allowed list leaves its Condition holding for no weather; the other kinds in it still work.
+  check: (world) => {
+    const weather = activeWeather(world.worldOverview);
+    if (!weather) return [];
+    const allowed = allowedWeatherKinds(weather);
+    const hosts: Array<{ item: FindingItem; node: unknown }> = [
+      { item: worldItem(world), node: world.worldOverview },
+      ...(world.traits ?? []).map((t) => ({ item: traitItem(t.id, world), node: t })),
+      ...(world.entities ?? []).map((e) => ({ item: asItem(e, world), node: e })),
+      ...(world.locations ?? []).map((l) => ({ item: namedItem(l.id, l.name, world, 'locations' as const), node: l })),
+      ...(world.items ?? []).map((i) => ({ item: namedItem(i.id, i.name, world, 'items' as const), node: i })),
+    ];
+    return hosts.flatMap(({ item, node }) => weatherConditionsIn(node).flatMap((req) => {
+      const outside = req.kinds.filter((kind) => !allowed.includes(kind));
+      return outside.length ? [finding(
+        weatherConditionNotAllowed,
+        `A weather Condition of ${quote(item.name)} names ${outside.map((kind) => WEATHER_LABELS[kind]).join(' and ')}, which the world does not allow, so it never holds for ${outside.length > 1 ? 'them' : 'it'}`,
+        [item],
+      )] : [];
+    }));
+  },
+};
+
 /** Every image with its display budget and the Media tab's Over Budget flag — the same slots the Optimize
  *  Images action walks. Only the byte budget is checked: measuring pixels needs a decode the live pass can't
  *  afford, so anything this flags, that action also flags — never the reverse. */
@@ -4083,7 +4124,7 @@ export const RULES: readonly Rule[] = [
   placeholderDuplicateSlot,
   placeholderSharedWeightUnknownValue, placeholderOwnerOrphan, placeholderOwnerDropped,
   dictionaryKeywordSubstring, dictionaryDisabled,
-  worldEmptySystemPrompt, worldNoReadme, weatherNotAllowed, worldOversizedImages, imageNotWebp, imageMislabeled,
+  worldEmptySystemPrompt, worldNoReadme, weatherNotAllowed, weatherConditionNotAllowed, worldOversizedImages, imageNotWebp, imageMislabeled,
   layeredNoLayers, layeredBottomEmpty, layeredRuleMissingTarget,
 ];
 

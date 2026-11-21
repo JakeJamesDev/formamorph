@@ -1,0 +1,39 @@
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { WEATHER_LABELS, isWeatherKind, weatherKindSet } from '@/lib/weather';
+import type { WeatherKind, WeatherRequirement } from '@/types';
+
+/**
+ * The kind multi-select a weather Condition chip carries, over the kinds the world allows. The last kind on stays
+ * on, so the Condition never empties. `accepts` says whether a replacement would repeat another Condition in the row.
+ */
+export function WeatherConditionControls({ requirement, kinds, accepts, onChange }: {
+  requirement: WeatherRequirement;
+  kinds: readonly WeatherKind[];
+  accepts: (next: WeatherRequirement) => boolean;
+  onChange: (next: WeatherRequirement) => void;
+}) {
+  const on = weatherKindSet(requirement.kinds);
+  const toggled = (kind: WeatherKind): WeatherRequirement =>
+    ({ kind: 'weather', kinds: weatherKindSet(on.includes(kind) ? on.filter((k) => k !== kind) : [...on, kind]) });
+  return (
+    <ToggleGroup
+      type="multiple"
+      aria-label="Weather"
+      value={on}
+      onValueChange={(v) => {
+        const next = weatherKindSet(v.filter(isWeatherKind));
+        if (next.length) onChange({ kind: 'weather', kinds: next });
+      }}
+      className="h-auto min-w-0 flex-wrap gap-y-0.5"
+    >
+      {kinds.map((kind) => {
+        const next = toggled(kind);
+        return (
+          <ToggleGroupItem key={kind} value={kind} disabled={!next.kinds.length || !accepts(next)} className="h-6 px-2 text-helper">
+            {WEATHER_LABELS[kind]}
+          </ToggleGroupItem>
+        );
+      })}
+    </ToggleGroup>
+  );
+}

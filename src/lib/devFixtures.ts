@@ -20,7 +20,7 @@ const BUNDLED_PREFIX = 'bundled-';
 export const DEV_FIXTURES = [
   'whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'avatarIcon',
   'entityPresence', 'entityFollowers', 'mapStrangers', 'mapBackground', 'items', 'options', 'lockedPlaces', 'speakerQuotes', 'scriptImages',
-  'enterOptions', 'layeredImages', 'layeredPerf', ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
+  'enterOptions', 'layeredImages', 'layeredPerf', 'weatherCondition', ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
 ];
 
 // Real-sized images for the long save, fetched from the dev server.
@@ -528,6 +528,34 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
           },
         },
         saveName: 'DEV: Layered Images',
+      };
+    }
+    case 'weatherCondition': {
+      // The white room with Weather on and a backdrop that shows its rain art only while the World Weather is Rain.
+      const [world, save] = await Promise.all([
+        import('./devFixtures/whiteRoomWorld.json'),
+        import('./devFixtures/whiteRoomSave.json'),
+      ]);
+      const base = world.default as unknown as World;
+      // Plain backdrops, so no `url()` sits inside the data URL: an unquoted CSS url with parentheses is dropped.
+      const room = '<rect width="1200" height="700" fill="#4b5d73"/><rect x="480" y="200" width="240" height="320" rx="14" fill="#10151f"/>';
+      const drops = Array.from({ length: 70 }, (_, i) => `<path d="M${(i * 83) % 1200} ${(i * 131) % 640} l-16 44"/>`).join('');
+      const backdrops = { 'dev-weather-dry': sceneArt(room), 'dev-weather-rain': sceneArt(`${room}<g stroke="#9fc3ea" stroke-width="3" stroke-linecap="round">${drops}</g>`) };
+      const art = Object.fromEntries(Object.entries(backdrops).map(([id, data]): [string, MediaEntry] => [id, { id, name: id, kind: 'image', type: 'image/svg+xml', data }]));
+      return {
+        world: {
+          ...base,
+          worldOverview: {
+            ...base.worldOverview,
+            weather: { on: true, allowed: ['rain', 'snow', 'storm'] },
+            mediaList: { ...base.worldOverview.mediaList, ...art },
+          },
+          locations: base.locations.map((l) => (l.id === WHITE_ROOM_ID
+            ? { ...l, images: [{ mediaId: 'dev-weather-rain', requires: [{ all: [{ kind: 'weather', kinds: ['rain'] }] }] }, { mediaId: 'dev-weather-dry' }] }
+            : l)),
+        },
+        save: save.default as unknown as SaveObject,
+        saveName: 'DEV: Weather Condition',
       };
     }
     case 'layeredPerf': {

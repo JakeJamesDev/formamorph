@@ -1,0 +1,182 @@
+import { describe, it, expect } from 'vitest';
+import type { Entity, GalleryImage, ItemInstance, Trait, WeatherKind, WeatherRequirement, WorldWeather } from '@/types';
+import {
+  NO_ACTIVE, complementary, deadRows, flipped, gateStates, gateOf, neverUnlockable, requirementOptions, ruleStates, sameRequirement, type GateInput,
+} from './traitGates';
+import { shownWhileLine } from './traitGateLine';
+import { settleTraits, activeTraits, traitGateInput, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
+import { editorGateInput } from './owners';
+import { visibleImages, visibleItemImage, visibleLocationImages } from './imageVisibility';
+import { buildEntityCardData, parseEntityCardData } from './entityFile';
+import { experiencedWeather, ALL_WEATHER_KINDS, weatherGate } from './weather';
+import { conditionsOf } from './requirementRows';
+import { scoped } from './scope';
+
+const weather = (...kinds: WeatherKind[]): WeatherRequirement => ({ kind: 'weather', kinds });
+const T = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
+
+const input = (traits: Trait[], at?: WeatherKind): GateInput => ({
+  global: { traits, groups: [] },
+  owners: [],
+  active: NO_ACTIVE,
+  entities: [],
+  persona: { source: 'none' },
+  ...(at ? { weather: at } : {}),
+});
+const unlocked = (req: WeatherRequirement, at?: WeatherKind) =>
+  gateOf(gateStates(input([T('a', { requires: [{ all: [req] }] })], at)), null, 'a')!.unlocked;
+
+describe('a weather Condition', () => {
+  it.each(ALL_WEATHER_KINDS)('holds while the World Weather is %s, and for no other kind', (kind) => {
+    for (const at of ALL_WEATHER_KINDS) expect(unlocked(weather(kind), at)).toBe(at === kind);
+  });
+
+  it('holds on any kind of its set, Clear included', () => {
+    expect(unlocked(weather('clear', 'rain'), 'clear')).toBe(true);
+    expect(unlocked(weather('clear', 'rain'), 'rain')).toBe(true);
+    expect(unlocked(weather('clear', 'rain'), 'storm')).toBe(false);
+  });
+
+  it('reads Clear when the input carries no weather', () => {
+    expect(unlocked(weather('clear'))).toBe(true);
+    expect(unlocked(weather('rain'))).toBe(false);
+  });
+
+  it('reads the World Weather, so a Sheltered player still holds it', () => {
+    // The player feels no weather in a Sheltered place; the Condition reads the World Weather.
+    expect(experiencedWeather('rain', { sheltered: true })).toBeNull();
+    expect(unlocked(weather('rain'), 'rain')).toBe(true);
+  });
+
+  it('never holds with no kind, and reads as unresolved', () => {
+    const states = ruleStates(input([], 'rain'), null, [{ all: [weather()] }]);
+    expect(states[0].holds).toBe(false);
+    expect(states[0].conditions[0]).toMatchObject({ unresolved: true });
+  });
+
+  it('reads its kinds in words, in list order', () => {
+    const line = (...kinds: WeatherKind[]) => shownWhileLine(ruleStates(input([]), null, [{ all: [weather(...kinds)] }]));
+    expect(line('storm', 'rain')).toBe('Shown while Rain or Storm');
+    expect(line('brightSun')).toBe('Shown while Bright Sun');
+  });
+
+  it('compares by its set, whatever the stored order', () => {
+    expect(sameRequirement(weather('storm', 'rain'), weather('rain', 'storm'))).toBe(true);
+    expect(sameRequirement(weather('rain'), weather('rain', 'snow'))).toBe(false);
+    expect(sameRequirement(weather('rain'), { kind: 'time', dayparts: ['night'] })).toBe(false);
+    expect(complementary(weather('clear', 'rain'), weather('snow', 'storm', 'brightSun'))).toBe(true);
+    expect(flipped(weather('rain'))).toEqual(weather('clear', 'snow', 'storm', 'brightSun'));
+  });
+
+  it('kills a row whose two weather Conditions share no kind', () => {
+    const traits = [T('a', { requires: [{ all: [weather('rain'), weather('snow')] }] }), T('b', { requires: [{ all: [weather('rain'), weather('rain', 'snow')] }] })];
+    expect(deadRows(input(traits))).toEqual([{ ownerId: null, traitId: 'a', row: 0 }]);
+  });
+
+  it('counts as reachable for the never-unlockable check, since a script or the pass can set any kind', () => {
+    expect(neverUnlockable(input([T('a', { requires: [{ all: [weather('storm')] }] })]))).toEqual([]);
+  });
+});
+
+describe('a weather Condition outside play', () => {
+  const on = (over: Partial<WorldWeather> = {}): WorldWeather => ({ on: true, allowed: ['rain', 'snow'], ...over });
+  const editor = (w?: WorldWeather) => editorGateInput({ traits: [T('a', { requires: [{ all: [weather('snow')] }] })], traitGroups: [], entities: [], weather: w });
+  const holds = (w?: WorldWeather) => gateOf(gateStates(editor(w)), null, 'a')!.unlocked;
+
+  it('reads the Default Weather', () => {
+    expect(holds(on({ defaultWeather: 'snow' }))).toBe(true);
+    expect(holds(on({ defaultWeather: 'rain' }))).toBe(false);
+  });
+
+  it('reads Clear when the Default Weather is unset, or Weather is off', () => {
+    expect(holds(on())).toBe(false);
+    expect(weatherGate(undefined)).toEqual({});
+    expect(weatherGate({ on: false, allowed: ['rain'], defaultWeather: 'rain' })).toEqual({});
+    expect(gateOf(gateStates(editorGateInput({ traits: [T('a', { requires: [{ all: [weather('clear')] }] })], traitGroups: [], entities: [] })), null, 'a')!.unlocked).toBe(true);
+  });
+
+  it('is offered, with the allowed kinds, only while Weather is on', () => {
+    const offered = requirementOptions(editor(on()), 'a');
+    expect(offered.weatherKinds).toEqual(['clear', 'rain', 'snow']);
+    expect(offered.weather?.[0].requirement).toEqual(weather('rain'));
+    expect(requirementOptions(editor(), 'a').weather).toBeUndefined();
+    expect(requirementOptions(editor({ on: false, allowed: ['rain'] }), 'a').weather).toBeUndefined();
+  });
+});
+
+describe('the per-turn settle with a weather gate', () => {
+  const awning = T('awning', { playerToggle: true, requires: [{ all: [weather('rain', 'storm')] }] });
+  const world = (at: WeatherKind): TraitWorld => ({ traits: [awning], groups: [], weather: at });
+  const chosen: TraitRuntimeState = { stats: [], traits: [awning], disabledTraitIds: [], appliedValues: {} };
+  const on = (s: TraitRuntimeState) => activeTraits(s.traits, s.disabledTraitIds).map((t) => t.id);
+
+  it('turns the trait off in the clear and back on at the commit that reads rain', () => {
+    const clear = settleTraits(chosen, world('clear')).state;
+    expect(on(clear)).toEqual([]);
+    const rain = settleTraits(clear, world('rain'));
+    expect(on(rain.state)).toEqual(['awning']);
+    expect(rain.log).toEqual(['Trait switched on: awning']);
+  });
+
+  it('reads Clear when the world carries no weather', () => {
+    expect(gateOf(gateStates(traitGateInput(chosen, { traits: [awning], groups: [] })), null, 'awning')!.unlocked).toBe(false);
+    expect(gateOf(gateStates(traitGateInput(chosen, world('storm'))), null, 'awning')!.unlocked).toBe(true);
+  });
+});
+
+describe('an image ruled on Rain', () => {
+  const rule = [{ all: [weather('rain')] }];
+  const ash = { id: 'ash', images: [{ data: 'rain', requires: rule }, { data: 'dry' }] as GalleryImage[] };
+  const hill = { id: 'hill', images: [{ data: 'rain', requires: rule }, { data: 'dry' }] as GalleryImage[] };
+  const gate = (at?: WeatherKind): GateInput => ({ ...input([], at), entities: [{ id: 'ash', name: 'Ash' }], stats: scoped({}) });
+
+  it('shows on a location only while it rains', () => {
+    const slots = (at?: WeatherKind) => visibleLocationImages(hill, gate(at), undefined).map((v) => v.data);
+    expect(slots('rain')).toEqual(['rain', 'dry']);
+    expect(slots('clear')).toEqual(['dry']);
+    expect(slots('snow')).toEqual(['dry']);
+    expect(slots()).toEqual(['dry']);
+  });
+
+  it('shows on an entity only while it rains', () => {
+    const slots = (at: WeatherKind) => visibleImages(ash, gate(at), undefined).map((v) => v.data);
+    expect(slots('rain')).toEqual(['rain', 'dry']);
+    expect(slots('storm')).toEqual(['dry']);
+  });
+});
+
+describe('an item image ruled on Rain', () => {
+  const lantern = { images: [{ data: 'rain', requires: [{ all: [weather('rain')] }] }, { data: 'dry' }] as GalleryImage[] };
+  const shown = (where: ItemInstance['where'], at: WeatherKind) => visibleItemImage(lantern, { where }, input([], at), undefined);
+
+  it('reads the World Weather for a held item and for one lying at a location', () => {
+    // An owner-less Condition never holds for an item at a location; a weather Condition names no owner.
+    expect(shown({ kind: 'you' }, 'rain')).toBe('rain');
+    expect(shown({ kind: 'location', id: 'hill' } as ItemInstance['where'], 'rain')).toBe('rain');
+    expect(shown({ kind: 'location', id: 'hill' } as ItemInstance['where'], 'clear')).toBe('dry');
+  });
+});
+
+describe('a weather Condition on a character card', () => {
+  const PIXELS = 'data:image/webp;base64,AAAA';
+  const wren = (requires = [{ all: [weather('storm', 'rain')] }]): Entity => ({
+    id: 'wren', name: 'Wren',
+    traits: [T('t-sleepy', { name: 'Sleepy', requires })],
+    images: [{ data: PIXELS, requires }],
+  });
+  const throughCard = (entity: Entity): Entity =>
+    parseEntityCardData(JSON.parse(JSON.stringify(buildEntityCardData(entity, [], {}, undefined, { traits: [], traitGroups: [], entities: [] }))), PIXELS);
+
+  it('round-trips on a trait gate and an image rule, in list order', () => {
+    const back = throughCard(wren());
+    expect(conditionsOf(back.traits?.[0].requires)).toEqual([weather('rain', 'storm')]);
+    expect(conditionsOf(back.images?.[0].requires)).toEqual([weather('rain', 'storm')]);
+  });
+
+  it('keeps known kinds and drops a Condition left with none', () => {
+    const odd = { kind: 'weather', kinds: ['snow', 'hail', 'snow'] } as unknown as WeatherRequirement;
+    expect(conditionsOf(throughCard(wren([{ all: [odd] }])).traits?.[0].requires)).toEqual([weather('snow')]);
+    const none = { kind: 'weather', kinds: ['hail'] } as unknown as WeatherRequirement;
+    expect(throughCard(wren([{ all: [none] }])).traits?.[0].requires).toBeUndefined();
+  });
+});

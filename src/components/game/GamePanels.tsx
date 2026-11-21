@@ -1423,6 +1423,7 @@ export const RightPanel = ({
     // turn's stats/traits/time/deltas read-only. `commitManualStatEdit` writes live and rebaselines the
     // snapshot — the edit control is disabled while viewing the past, so it only runs on the latest page.
     viewGameTime: gameTime,
+    viewWeather: weather,
     calendar,
     viewLocationId,
     isViewingPast,
@@ -1525,10 +1526,10 @@ export const RightPanel = ({
   // the viewed turn's clock.
   const daypart = daypartAt(gameTime, calendar);
   const gateWorld = React.useMemo<TraitWorld>(() => ({
-    traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' }, daypart,
+    traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' }, daypart, weather,
     ...(worldItems ? { items: worldItems } : {}), itemInstances, options: worldOptions, optionValues: viewWorldOptionValues,
     ...inPlayOwners(ownerWorld, personaRef, traitLibrary),
-  }), [traits, traitGroups, cast, persona, personaRef, daypart, worldItems, itemInstances, worldOptions, viewWorldOptionValues, ownerWorld, traitLibrary]);
+  }), [traits, traitGroups, cast, persona, personaRef, daypart, weather, worldItems, itemInstances, worldOptions, viewWorldOptionValues, ownerWorld, traitLibrary]);
   const viewTraitState = React.useMemo(
     () => ({ traits: globalTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits, appliedValues: viewAppliedTraitValues }),
     [globalTraits, viewDisabledTraitIds, viewOwnedTraits, viewAppliedTraitValues],

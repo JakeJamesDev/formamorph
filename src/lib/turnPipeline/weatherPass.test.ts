@@ -5,7 +5,9 @@ import { runTurn, type TurnRequestAdapter } from './turnRunner';
 import { RAIN_WEATHER, testInput } from './turnTestInputs';
 import { emptyTurnMaterial, type TurnPassRequest, type TurnPlanInput } from './turnPlan';
 import { isDaylight, landedWeatherChange, offeredWeatherKinds } from '@/lib/weather';
-import type { GameLocation, WeatherKind, WorldWeather } from '@/types';
+import { gateOf, gateStates } from '@/lib/traitGates';
+import { traitGateInput, type TraitRuntimeState } from '@/lib/traitRuntime';
+import type { GameLocation, Trait, WeatherKind, WorldWeather } from '@/types';
 
 /**
  * The Weather Pass through the Turn Pipeline's seam: a fake request adapter answers as the model, the real
@@ -217,5 +219,29 @@ describe('the opening turn', () => {
   it('sends the weather before the passage on a later turn', async () => {
     const { weatherRequest } = await turn({ weather: RAIN_WEATHER });
     expect(lastMessage(weatherRequest)).toContain('The weather before this passage: rain.');
+  });
+});
+
+describe('a Weather Condition after the turn commit', () => {
+  const stormy: Trait = { id: 'stormy', name: 'Stormy', statChanges: [], requires: [{ all: [{ kind: 'weather', kinds: ['storm'] }] }] };
+  const rainy: Trait = { id: 'rainy', name: 'Rainy', statChanges: [], requires: [{ all: [{ kind: 'weather', kinds: ['rain'] }] }] };
+  const state: TraitRuntimeState = { stats: [], traits: [stormy, rainy], disabledTraitIds: [], appliedValues: {} };
+  /** Whether each trait's gate holds when the view reads the commit's weather, as the gated world does. */
+  const holds = (commit: TurnCommit) => {
+    const states = gateStates(traitGateInput(state, { traits: [stormy, rainy], groups: [], ...(commit.weather ? { weather: commit.weather } : {}) }));
+    return { stormy: gateOf(states, null, 'stormy')!.unlocked, rainy: gateOf(states, null, 'rainy')!.unlocked };
+  };
+
+  it('reads the kind a script set, not the one the pass answered', async () => {
+    const { commit, context } = await turn({ weather: weatherAt('clear', MORNING), answer: 'rain' });
+    expect(holds(commit)).toEqual({ stormy: false, rainy: true });
+    expect(holds(withCodeWrites(commit, { weather: 'storm' }, context))).toEqual({ stormy: true, rainy: false });
+  });
+
+  it('reads the nightfall rule applied to a set', async () => {
+    const { commit, context } = await turn({ weather: weatherAt('clear', NIGHT), gameTime: NIGHT });
+    const set = withCodeWrites(commit, { weather: 'brightSun' }, context);
+    expect(set.weather).toBe('clear');
+    expect(holds(set)).toEqual({ stormy: false, rainy: false });
   });
 });

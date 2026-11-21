@@ -3,10 +3,11 @@
 // for a global target (Q10, Q29).
 
 import type {
-  Daypart, ItemInstance, ItemRequirement, OptionRequirement, PersonaRef, RequirementOwner, StatComparison, StatRequirement, TimeRequirement, Trait, TraitGroup, TraitRequirement, TraitRequirementRow,
+  Daypart, ItemInstance, ItemRequirement, OptionRequirement, PersonaRef, RequirementOwner, StatComparison, StatRequirement, TimeRequirement, Trait, TraitGroup, TraitRequirement, TraitRequirementRow, WeatherKind, WeatherRequirement,
   SlotRule, ValuedWorldOption, WorldOption, WorldOptionValues,
 } from '@/types';
 import { DAYPARTS, OPENING_DAYPART, daypartSet } from './gameClock';
+import { ALL_WEATHER_KINDS, weatherKindSet, weatherText } from './weather';
 import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex } from './traitEffects';
 // The generic tree, not traitTree: that module reads the owner resolver, which reads this one.
 import { buildTree, flattenTree } from './groupTree';
@@ -112,6 +113,10 @@ export interface GateInput {
   /** The story clock's daypart, which a time Condition reads. Absent, the opening hour's: what authoring
    *  lenses read. */
   daypart?: Daypart;
+  /** The World Weather, which a weather Condition reads. Absent, Clear: authoring reads the Default Weather it is given. */
+  weather?: WeatherKind;
+  /** The kinds a weather Condition can pick, Clear first. Present only while the world's Weather is on: absent, the editor offers none. */
+  weatherKinds?: readonly WeatherKind[];
   entities: readonly GateEntity[];
   persona: PersonaRef;
   /** Every world trait and group a requirement can name, whether or not a present owner holds it. Absent,
@@ -200,6 +205,8 @@ export const requirementOwnerKey = (owner?: RequirementOwner): string =>
 /** The State word an item Condition requires as stacking compares it: trimmed and lower case, empty for none (Q31). */
 const itemStateKey = (req: ItemRequirement): string => stateTextKey(req.state);
 
+const sameKinds = (a: WeatherRequirement, b: WeatherRequirement): boolean => weatherKindSet(a.kinds).join() === weatherKindSet(b.kinds).join();
+
 const sameDayparts = (a: TimeRequirement, b: TimeRequirement): boolean => daypartSet(a.dayparts).join() === daypartSet(b.dayparts).join();
 
 /** Whether two requirements add the same gate: the same target under the same owner, both plain or both Not,
@@ -209,6 +216,7 @@ export const sameRequirement = (a: TraitRequirement, b: TraitRequirement): boole
   && (a.kind !== 'stat' || (b.kind === 'stat' && a.operator === b.operator && a.value === b.value && a.unit === b.unit))
   && (a.kind !== 'item' || (b.kind === 'item' && a.status === b.status && itemStateKey(a) === itemStateKey(b) && a.identity === b.identity))
   && (a.kind !== 'time' || (b.kind === 'time' && sameDayparts(a, b)))
+  && (a.kind !== 'weather' || (b.kind === 'weather' && sameKinds(a, b)))
   && (a.kind !== 'option' || (b.kind === 'option' && a.valueId === b.valueId && a.operator === b.operator && a.value === b.value));
 
 interface Located<T> { owner: GateScopeTree; item: T }
@@ -335,15 +343,15 @@ function index(input: GateInput) {
   const options = new Map(valuedOptions(input.worldOptions).map((option) => [option.id, option]));
   return {
     owners, traitNames, groupNames, hiddenTraits, statNames, entities, global, isGlobal, ownerSet, traitsBelow, statOf, itemNames, itemNameFor, itemHeld, persona: input.persona, personaName,
-    daypart: input.daypart ?? OPENING_DAYPART, options, optionValues: input.optionValues,
+    daypart: input.daypart ?? OPENING_DAYPART, weather: input.weather ?? 'clear', options, optionValues: input.optionValues,
   };
 }
 
 /** A Condition that names a trait, a group or a stat. */
-type Targeted = Exclude<TraitRequirement, { kind: 'playingAs' } | TimeRequirement | OptionRequirement>;
+type Targeted = Exclude<TraitRequirement, { kind: 'playingAs' } | TimeRequirement | WeatherRequirement | OptionRequirement>;
 
 /** A Condition whose target is a trait, a group or a persona: one an active set or the persona decides. */
-type Switched = Exclude<TraitRequirement, StatRequirement | TimeRequirement | ItemRequirement | OptionRequirement>;
+type Switched = Exclude<TraitRequirement, StatRequirement | TimeRequirement | WeatherRequirement | ItemRequirement | OptionRequirement>;
 
 /** A Condition that reads no active set and can move either way in play. */
 const readsNoSet = (req: TraitRequirement): boolean => req.kind === 'stat' || req.kind === 'item' || req.kind === 'option';
@@ -448,6 +456,7 @@ function requirementHolds(req: TraitRequirement, trait: Located<{ id: string }>,
   if (req.kind === 'stat') return statHolds(req, trait.owner, idx, read);
   if (req.kind === 'option') return optionHolds(req, idx);
   if (req.kind === 'time') return req.dayparts.includes(idx.daypart);
+  if (req.kind === 'weather') return req.kinds.includes(idx.weather);
   // Like a stat, an item that is gone or an owner that is gone never holds, Not included.
   if (req.kind === 'item') {
     return idx.itemNames.has(req.id) && (!req.owner || ownerName(req.owner, idx) !== null)
@@ -517,6 +526,7 @@ function optionText(req: OptionRequirement, idx: Index): { text: string; unresol
  *  with, for the player's line to mark. */
 function requirementText(req: TraitRequirement, idx: Index, from?: GateScopeTree): { text: string; unresolved: boolean; persona?: string } {
   if (req.kind === 'time') return { text: timeText(req), unresolved: !req.dayparts.length };
+  if (req.kind === 'weather') return { text: weatherText(req), unresolved: !req.kinds.length };
   if (req.kind === 'option') return optionText(req, idx);
   const not = req.not ? 'not ' : '';
   if (req.kind === 'playingAs') {
@@ -562,6 +572,8 @@ export function conditionTexts(input: Omit<GateInput, 'active' | 'persona'>): (r
 export const flipped = (req: TraitRequirement): TraitRequirement => {
   // A time Condition has no Not: its complement is the other dayparts.
   if (req.kind === 'time') return { kind: 'time', dayparts: DAYPARTS.filter((d) => !req.dayparts.includes(d)) };
+  // A weather Condition has no Not either: its complement is the other kinds.
+  if (req.kind === 'weather') return { kind: 'weather', kinds: ALL_WEATHER_KINDS.filter((k) => !req.kinds.includes(k)) };
   // A number Option Condition has no Not: its complement is the opposite comparison.
   if (req.kind === 'option' && req.operator !== undefined) return { ...req, operator: COMPLEMENT[req.operator] };
   const { not, ...plain } = req;
@@ -662,7 +674,7 @@ const byRank = <T extends Located<Trait>>(items: readonly T[], rank: ReadonlyMap
 
 /** The traits a Condition on `from` names, in the owners it reads, either polarity. */
 function targetsOf(req: TraitRequirement, from: GateScopeTree, idx: Index): Located<Trait>[] {
-  if (req.kind === 'playingAs' || req.kind === 'stat' || req.kind === 'time' || req.kind === 'item' || req.kind === 'option') return [];
+  if (req.kind === 'playingAs' || req.kind === 'stat' || req.kind === 'time' || req.kind === 'weather' || req.kind === 'item' || req.kind === 'option') return [];
   const set = idx.ownerSet(req, from);
   const ids = req.kind === 'trait' ? [req.id] : [...new Set(idx.traitsBelow(set, req.id))];
   return [...set].flatMap((ownerId) => ids.flatMap((id) => idx.owners.get(ownerId)?.traits.get(id) ?? []));
@@ -972,6 +984,7 @@ export function neverUnlockable(input: Omit<GateInput, 'active'>): GateTraitRef[
   // a script can write any Option (Q17).
   const canHold = (trait: Located<Trait>) => (req: TraitRequirement) => (readsNoSet(req) ? true
     : req.kind === 'time' ? req.dayparts.length > 0
+    : req.kind === 'weather' ? req.kinds.length > 0
     : req.kind === 'playingAs' && !req.not ? personas.has(req.id)
       : growthHolds(trait, activeIn, idx)(req));
   const all = [...idx.owners.values()].flatMap((o) => [...o.traits.values()]);
@@ -1091,8 +1104,9 @@ export function deadRows(input: Omit<GateInput, 'active'>): RowRef[] {
   // when they share no daypart; two Option Conditions when no value of the Option meets both.
   const clash = (owner: GateScopeTree) => (plain: TraitRequirement, not: TraitRequirement): boolean => {
     if (plain.kind === 'time' && not.kind === 'time') return !plain.dayparts.some((d) => not.dayparts.includes(d));
+    if (plain.kind === 'weather' && not.kind === 'weather') return !plain.kinds.some((k) => not.kinds.includes(k));
     if (plain.kind === 'option' || not.kind === 'option') return plain.kind === 'option' && not.kind === 'option' && optionsClash(plain, not);
-    if (plain.not || !not.not || plain.kind === 'stat' || not.kind === 'stat' || plain.kind === 'time') return false;
+    if (plain.not || !not.not || plain.kind === 'stat' || not.kind === 'stat' || plain.kind === 'time' || plain.kind === 'weather') return false;
     if (plain.kind === 'playingAs' || not.kind === 'playingAs') return plain.kind === not.kind && plain.id === not.id;
     const set = idx.ownerSet(plain, owner);
     if (!sameOwners(set, idx.ownerSet(not, owner))) return false;
@@ -1189,7 +1203,7 @@ function opensTogether(targets: Located<Trait>[], idx: Index, stuck: ReadonlySet
     };
     // Each Condition of a row opens in turn before the next; the trait itself joins after the last. A Not
     // Condition, a stat Condition and a time Condition count as met, as in `neverUnlockable`.
-    const meet = (req: TraitRequirement, then: () => boolean) => (req.not || req.kind === 'stat' || req.kind === 'time' || req.kind === 'option' ? then() : req.kind === 'playingAs'
+    const meet = (req: TraitRequirement, then: () => boolean) => (req.not || req.kind === 'stat' || req.kind === 'time' || req.kind === 'weather' || req.kind === 'option' ? then() : req.kind === 'playingAs'
       ? idx.persona.source === 'world' && idx.persona.entityId === req.id && then()
       : satisfiers(req, t).some((s) => open(s, then)));
     const rows = t.item.requires ?? [];
@@ -1231,6 +1245,10 @@ export interface RequirementOptions {
   items?: RequirementOption[];
   /** Each World Option once, starting on its default value. */
   worldOptions?: RequirementOption[];
+  /** The one Weather row, while the world's Weather is on. */
+  weather?: RequirementOption[];
+  /** The kinds the Weather row's chip offers, Clear first. */
+  weatherKinds?: readonly WeatherKind[];
 }
 
 /** A new Condition on `option`: a choice on its default value, a boolean on, a number at least its default. */
@@ -1252,7 +1270,7 @@ export const worldOptionRows = (options: readonly WorldOption[] | undefined): Re
 
 /** `requirement` scoped to `owner`; the same owner when `owner` is absent. */
 export const withRequirementOwner = (requirement: TraitRequirement, owner?: RequirementOwner): TraitRequirement =>
-  (requirement.kind === 'playingAs' || requirement.kind === 'time' || requirement.kind === 'option' || !owner ? requirement : { ...requirement, owner });
+  (requirement.kind === 'playingAs' || requirement.kind === 'time' || requirement.kind === 'weather' || requirement.kind === 'option' || !owner ? requirement : { ...requirement, owner });
 
 /**
  * Every requirement an author can give `traitId`, each target once, in tree order per owner. The trait
@@ -1315,7 +1333,11 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
     option({ kind: 'item', id: item.id, status: 'owned' }, [], itemOwners),
     ...(item.slotRule ? [option({ kind: 'item', id: item.id, status: 'equipped' }, [], itemOwners)] : []),
   ].map((o) => ({ ...o, label: item.name })));
-  return { traits, groups, personas, items, worldOptions: worldOptionRows(input.worldOptions) };
+  const weatherKinds = input.weatherKinds;
+  // A new weather Condition starts on the first kind after Clear, or on Clear when the world allows no other.
+  const weather = weatherKinds?.length
+    ? [{ ...option({ kind: 'weather', kinds: [weatherKinds.find((kind) => kind !== 'clear') ?? 'clear'] }, [], []), label: 'Weather' }] : undefined;
+  return { traits, groups, personas, items, worldOptions: worldOptionRows(input.worldOptions), ...(weather && { weather, weatherKinds }) };
 }
 
 /** The gate input for a world with only its own traits. */

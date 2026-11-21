@@ -297,7 +297,7 @@ During the game:
 
 A **row** is one way to open the trait. It holds when every condition in it holds, so a row means **and**. The trait opens when any one row holds, so rows mean **or**.
 
-- **Add Requirement** adds the first condition. It opens a search with these lists: **Traits**, **Any Trait in a Group**, **Stats** with a page for each owner, **Items**, **Time of Day**, **World Options** and **Playing As**. In a large world, the search opens on those lists with a count beside each. Select a list, then an owner, to see its targets. Type in the search to find a target in every list.
+- **Add Requirement** adds the first condition. It opens a search with these lists: **Traits**, **Any Trait in a Group**, **Stats** with a page for each owner, **Items**, **Time of Day**, **Weather** (while Weather is on), **World Options** and **Playing As**. In a large world, the search opens on those lists with a count beside each. Select a list, then an owner, to see its targets. Type in the search to find a target in every list.
 - **And** (in a row) adds another condition to that row.
 - **Or Another Way** (below the rows) adds a new row.
 - The **X** at the end of a row removes the whole row. Remove the last condition in a row, and the row goes too.
@@ -438,6 +438,23 @@ A **time condition** checks the story's time of day. *Night Hunter* requires *ev
 - A row holds one time condition. It never checks the day number or an hour.
 - The game checks once per turn, after the turn's time passes, like a [stat condition](#when-the-game-checks). With the AI clock off, each turn is one hour.
 - Outside play, the [Test Bench](#test-bench-checks) reads the time the story opens at, which is morning.
+
+### Weather conditions
+<!-- keywords: weather, rain, snow, storm, bright sun, clear, only when it rains, weather condition, rain art, window image -->
+<!-- route: worldEditorTrait.availability -->
+
+A **weather condition** checks the world's current weather. *Awning Up* requires *rain or storm*, so it opens while it rains or storms. It shows only while the world's **Weather** is on.
+
+1. Open the trait's **Availability** tab.
+2. Under **Requires**, select **Add Requirement**, then pick **Weather**.
+3. Turn on each kind that counts. The chip lists **Clear** and the kinds the world allows.
+
+- At least one kind stays on. To exclude one, turn on the others. A weather condition has no **Not**.
+- A row holds one weather condition.
+- It checks the world's weather, not what the player feels. A player in a Sheltered location still holds it.
+- The game checks once per turn, after the turn's weather is set.
+- Outside play, the [Test Bench](#test-bench-checks) reads the world's Default Weather, or Clear when none is set.
+- The same condition works on image visibility rules, so a location image can show only while it rains.
 
 ### World Option conditions
 <!-- keywords: world option, option, setting, setup choice, on or off, flag, switch, unlock with a script, player setup, difficulty -->

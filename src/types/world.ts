@@ -253,6 +253,7 @@ export type TraitRequirement =
   | StatRequirement
   | ItemRequirement
   | TimeRequirement
+  | WeatherRequirement
   | OptionRequirement;
 
 /** A World Option Condition. It names no owner. A choice Option holds `valueId`; a boolean holds on; Not flips
@@ -293,6 +294,18 @@ export type Daypart = 'night' | 'dawn' | 'morning' | 'midday' | 'afternoon' | 'e
 export interface TimeRequirement {
   kind: 'time';
   dayparts: Daypart[];
+  // Absent, so code that reads any Condition's target finds none here.
+  id?: undefined;
+  name?: undefined;
+  owner?: undefined;
+  not?: undefined;
+}
+
+/** A weather Condition: it holds while the World Weather is one of `kinds`, Clear included. It names no target and
+ *  no owner, and reads the World Weather, not what a Sheltered player feels. */
+export interface WeatherRequirement {
+  kind: 'weather';
+  kinds: WeatherKind[];
   // Absent, so code that reads any Condition's target finds none here.
   id?: undefined;
   name?: undefined;

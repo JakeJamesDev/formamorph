@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Entity, Opening, WorldOverview, WorldWeather } from '@/types';
+import type { Entity, Opening, WeatherKind, WorldOverview, WorldWeather } from '@/types';
 import { runRules, type RuleWorld } from './rules';
 
 const RULE = 'weather-not-allowed';
@@ -39,5 +39,36 @@ describe('the Weather Test Bench rule', () => {
 
   it('is quiet while Weather is off, however stale the values', () => {
     expect(flags(world({ on: false, allowed: [], defaultWeather: 'storm' }, {}, { openings: [action('a', 'storm')] }))).toEqual([]);
+  });
+});
+
+describe('the weather Condition Test Bench rule', () => {
+  const COND = 'weather-condition-not-allowed';
+  const flagged = (w: RuleWorld) => runRules(w).filter((f) => f.ruleId === COND);
+  const rule = (...kinds: WeatherKind[]) => [{ all: [{ kind: 'weather' as const, kinds }] }];
+  const withTrait = (requires: ReturnType<typeof rule>, weather: WorldWeather = { on: true, allowed: ['rain'] }) =>
+    world(weather, { traits: [{ id: 'awning', name: 'Awning', statChanges: [], requires }] });
+
+  it('is quiet while every kind is Clear or allowed', () => {
+    expect(flagged(withTrait(rule('clear', 'rain')))).toEqual([]);
+  });
+
+  it('flags a trait gate that names a kind outside the list, naming the kind and the trait', () => {
+    const found = flagged(withTrait(rule('rain', 'storm')));
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain('Awning');
+    expect(found[0].message).toContain('Storm');
+    expect(found[0].message).not.toContain('Rain');
+  });
+
+  it('flags a location image rule, wherever the rule sits', () => {
+    const w = world({ on: true, allowed: ['rain'] }, {
+      locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, images: [{ data: 'x', requires: rule('snow') }] }],
+    });
+    expect(flagged(w).flatMap((f) => f.items.map((i) => i.name))).toEqual(['Harbor Steps']);
+  });
+
+  it('is quiet while Weather is off', () => {
+    expect(flagged(withTrait(rule('storm'), { on: false, allowed: [] }))).toEqual([]);
   });
 });

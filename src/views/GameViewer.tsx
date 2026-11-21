@@ -1039,13 +1039,13 @@ const GameViewer = ({
    *  present owner's tree under that persona, and the story clock's daypart. */
   const gatedWorld = useCallback(
     (ref: PersonaRef | undefined = personaRef): TraitWorld => ({
-      traits: authoredTraits, groups: traitGroups, persona: ref ?? { source: 'none' }, daypart,
+      traits: authoredTraits, groups: traitGroups, persona: ref ?? { source: 'none' }, daypart, weather,
       items: worldItems, itemInstances: heldItemInstances, options: worldOptions, optionValues: worldOptionValues,
       // A persona change reads this before its render, so its entities and library are the ones under `ref`.
       entities: ref === personaRef ? worldEntitiesOf(entities, persona) : presentEntitiesUnder(ref),
       ...inPlayOwners(ownerWorld, ref, libraryUnder(traitLibrary, personaRef, ref)),
     }),
-    [authoredTraits, traitGroups, daypart, worldItems, heldItemInstances, worldOptions, worldOptionValues, entities, persona, personaRef, ownerWorld, traitLibrary, presentEntitiesUnder],
+    [authoredTraits, traitGroups, daypart, weather, worldItems, heldItemInstances, worldOptions, worldOptionValues, entities, persona, personaRef, ownerWorld, traitLibrary, presentEntitiesUnder],
   );
   /** The gameplay slice the trait runtime reads and rewrites. */
   const traitState = useMemo<TraitRuntimeState>(

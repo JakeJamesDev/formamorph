@@ -5570,6 +5570,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'world-empty-system-prompt': 'simple',
   'world-no-readme': 'simple',
   'weather-not-allowed': 'simple',
+  'weather-condition-not-allowed': 'simple',
   'world-oversized-images': 'simple',
 };
 

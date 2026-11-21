@@ -30,6 +30,7 @@ import { portableEnabledGate, portableImages, portableOwnedTraits, type TraitWor
 import { carriedBlueprints } from './blueprintTravel';
 import { notFlag } from './requirementRows';
 import { daypartSet, isDaypart } from './gameClock';
+import { isWeatherKind, weatherKindSet } from './weather';
 import { isQuoteSwatch } from './coref/speakerPalette';
 import { itemIdentity } from './items';
 import { adoptCarriedVrm, withCarriedVrm, type CarriedVrm, type PortableEntity } from './entityVrmCarry';
@@ -258,6 +259,10 @@ function cardRequirement(condition: unknown): TraitRequirement[] {
   if (isRecord(raw) && raw.kind === 'time') {
     const dayparts = Array.isArray(raw.dayparts) ? daypartSet(raw.dayparts.filter(isDaypart)) : [];
     return dayparts.length ? [{ kind: 'time', dayparts }] : [];
+  }
+  if (isRecord(raw) && raw.kind === 'weather') {
+    const kinds = Array.isArray(raw.kinds) ? weatherKindSet(raw.kinds.filter(isWeatherKind)) : [];
+    return kinds.length ? [{ kind: 'weather', kinds }] : [];
   }
   if (!isRecord(raw) || typeof raw.id !== 'string') return [];
   const not = notFlag(raw.not);

@@ -1,4 +1,4 @@
-import type { AllowedWeatherKind, GameLocation, Opening, WeatherKind, WorldOverview, WorldWeather } from '@/types';
+import type { AllowedWeatherKind, GameLocation, Opening, WeatherKind, WeatherRequirement, WorldOverview, WorldWeather } from '@/types';
 import { daypartAt, type WorldCalendar } from '@/lib/gameClock';
 
 /** True after `elapsed` story hours in any daypart but night: when Bright Sun can show. */
@@ -21,9 +21,23 @@ export const activeWeather = (overview: Pick<WorldOverview, 'weather'> | null | 
 /** Every kind, Clear first. */
 export const ALL_WEATHER_KINDS: readonly WeatherKind[] = ['clear', ...ALLOWED_KINDS];
 
+/** `kinds` once each, in list order. */
+export const weatherKindSet = (kinds: readonly WeatherKind[]): WeatherKind[] => ALL_WEATHER_KINDS.filter((kind) => kinds.includes(kind));
+
+const KINDS_OR = new Intl.ListFormat('en', { type: 'disjunction' });
+
+/** A weather Condition's kinds in words: "Rain or Storm". */
+export const weatherText = (req: WeatherRequirement): string =>
+  (req.kinds.length ? KINDS_OR.format(weatherKindSet(req.kinds).map((kind) => WEATHER_LABELS[kind])) : 'no weather');
+
 /** The kinds the world allows, Clear first: Clear is always allowed. */
 export const allowedWeatherKinds = (weather: WorldWeather | null | undefined): WeatherKind[] =>
   ['clear', ...ALLOWED_KINDS.filter((kind) => weather?.allowed?.includes(kind))];
+
+/** What a gate input outside play reads of the world's Weather: the Default Weather a weather Condition holds on, and the kinds
+ *  the editor offers. Nothing while Weather is off. */
+export const weatherGate = (weather: WorldWeather | null | undefined): { weather?: WeatherKind; weatherKinds?: WeatherKind[] } =>
+  (weather?.on ? { ...(weather.defaultWeather && { weather: weather.defaultWeather }), weatherKinds: allowedWeatherKinds(weather) } : {});
 
 /** The kinds an Opening's Weather can pick, or undefined while the world's Weather is off (the picker hides). */
 export const weatherKindsOf = (overview: Pick<WorldOverview, 'weather'> | null | undefined): WeatherKind[] | undefined => {

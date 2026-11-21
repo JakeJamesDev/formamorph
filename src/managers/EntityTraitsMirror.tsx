@@ -16,9 +16,10 @@ import EntityTraitsEditor, { type EntityTraitStore } from './EntityTraitsEditor'
 function useWorldEntityTraitStore(entity: Entity): EntityTraitStore {
   const world = useGameData();
   const { traits, traitGroups, entities, items, options: worldOptions, placeholders, stats, statGroups, placementLetters, placeholderOwners, editEntity } = world;
+  const weather = world.worldOverview?.weather;
   const gateInput = useMemo(
-    () => editorGateInput({ traits, traitGroups, entities, items, options: worldOptions }, startingGateStats({ stats, statGroups, entities })),
-    [traits, traitGroups, entities, items, worldOptions, stats, statGroups],
+    () => editorGateInput({ traits, traitGroups, entities, items, options: worldOptions, weather }, startingGateStats({ stats, statGroups, entities })),
+    [traits, traitGroups, entities, items, worldOptions, weather, stats, statGroups],
   );
   return useMemo(() => {
     const edit = (change: (e: Entity) => Entity) => editEntity(entity.id, change);

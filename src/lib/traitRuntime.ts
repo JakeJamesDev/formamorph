@@ -14,7 +14,7 @@ import type { ItemScriptEvent } from './inventory';
 import type { SwitchCause } from './triggerArgs';
 import type {
   BodyRuntime, CascadeOffTraitIds, CodeBoundDeltas, CodeBounds, Daypart, EntityStatValues, ItemInstance, ItemEffectLedger, LegacyCodeBoundsStat, OwnedTraitPicks, OwnedTraitStates, PersonaRef,
-  PlayerStat, Stat, StatChange, Trait, TraitGroup,
+  PlayerStat, Stat, StatChange, Trait, TraitGroup, WeatherKind,
 } from '@/types';
 import { clamp } from './utils';
 import { statStartValue } from './statDescriptorGeometry';
@@ -59,6 +59,8 @@ export type TraitWorld = {
   gateStats?: GateStats;
   /** The story clock's daypart, which every time Condition reads. Absent ⇒ the opening hour's. */
   daypart?: Daypart;
+  /** The World Weather, which every weather Condition reads. Absent ⇒ Clear. */
+  weather?: WeatherKind;
   /** The authored items an item Condition names. Absent ⇒ every item Condition is unresolved. */
   items?: GateInput['worldItems'];
   /** Every Item Instance in play, hidden ones included. Absent ⇒ no one owns anything. */
@@ -889,6 +891,7 @@ export const traitGateInput = (state: GateStatState, world: TraitWorld): GateInp
   ),
   ...gateReads(state, world),
   ...(world.daypart ? { daypart: world.daypart } : {}),
+  ...(world.weather ? { weather: world.weather } : {}),
   ...(world.items ? { worldItems: world.items } : {}),
   ...(world.itemInstances ? { itemInstances: world.itemInstances } : {}),
   ...(world.options ? { worldOptions: world.options } : {}),

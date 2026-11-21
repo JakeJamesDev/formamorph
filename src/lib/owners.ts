@@ -1,7 +1,8 @@
 // Owners: who has which traits. Global scope holds the root traits no one owns; an owner is an entity whose
 // tree holds a trait, directly or through a link. This module is the one place that expands a link to its original's live subtree.
 
-import type { Entity, PersonaRef, Trait, TraitGroup, TraitLink, TreePlacement, TraitRequirement } from '@/types';
+import type { Entity, PersonaRef, Trait, TraitGroup, TraitLink, TreePlacement, TraitRequirement, WorldWeather } from '@/types';
+import { weatherGate } from './weather';
 import { NO_ACTIVE, type GateInput, type GateOwner, type GateTree } from './traitGates';
 import { groupsBelow, offeredWorldTraits, ownsTraits } from './traitTree';
 import { nodePlacement, ownerLinksInTreeOrder, placeableGroupIds } from './ownerTree';
@@ -19,6 +20,8 @@ export interface OwnerWorld {
   options?: GateInput['worldOptions'];
   /** The Option values gates read. Absent, each Option's default (Q25). */
   optionValues?: GateInput['optionValues'];
+  /** The world's Weather block. While it is on, a weather Condition reads its Default Weather outside play and the editor offers the allowed kinds. */
+  weather?: WorldWeather;
 }
 
 /** One owner's effective tree: its own items plus each link's original and live subtree, in the places the
@@ -229,6 +232,7 @@ export function resolveOwners(
       ...(world.items ? { worldItems: world.items } : {}),
       ...(world.options ? { worldOptions: world.options } : {}),
       ...(world.optionValues ? { optionValues: world.optionValues } : {}),
+      ...weatherGate(world.weather),
     },
   };
 }

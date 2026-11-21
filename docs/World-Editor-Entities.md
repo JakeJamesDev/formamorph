@@ -511,7 +511,7 @@ The rule uses the same [requirement rows](World-Editor-Traits#requirements) as a
 
 1. Select the entity, then open its **Profile** tab.
 2. Hover over the image's thumbnail, then select the cog on its corner. Its tooltip reads **Visibility Rule**. On a touch screen, the cog always shows.
-3. Select **Add Requirement**, then pick a trait, a stat, **Time of Day**, or a persona under **Playing As**.
+3. Select **Add Requirement**, then pick a trait, a stat, **Time of Day**, **Weather** (while Weather is on), or a persona under **Playing As**.
 4. Select **And** to add a condition to the same row. Select **Or Another Way** to add a row.
 
 An image shows while **any one row** holds. A row holds when **all** its conditions hold.

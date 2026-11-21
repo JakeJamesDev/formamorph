@@ -107,7 +107,7 @@ const instanceOwner = (where: ItemInstance['where']): RequirementOwner | null =>
  */
 export function itemRuleStates(input: GateInput, instance: Pick<ItemInstance, 'where'>, rows: readonly TraitRequirementRow[]): RowState[] {
   const owner = instanceOwner(instance.where);
-  const ownerless = (req: TraitRequirement) => req.kind !== 'playingAs' && req.kind !== 'time' && req.owner === undefined;
+  const ownerless = (req: TraitRequirement) => req.kind !== 'playingAs' && req.kind !== 'time' && req.kind !== 'weather' && req.owner === undefined;
   const states = ruleStates(input, null, mapConditions(rows, (req): TraitRequirement =>
     (owner && ownerless(req) ? { ...req, owner } as TraitRequirement : req)));
   if (owner) return states;
