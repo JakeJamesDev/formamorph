@@ -63,6 +63,10 @@ export const normalizeTint = (tint: string | undefined): string | undefined => {
   return hex && hex !== '#ffffff' ? hex : undefined;
 };
 
+/** A `#rrggbb` tint as 0 to 1 channels; no tint is white. */
+export const tintChannels = (tint: string | undefined): [number, number, number] =>
+  (tint ? [1, 3, 5].map((i) => parseInt(tint.slice(i, i + 2), 16) / 255) as [number, number, number] : [1, 1, 1]);
+
 /** The Variant that sizes `entry`: the first Variant of its lowest Layer that has one (Q23, Q29). */
 export const canvasVariant = (entry: LayeredMediaEntry): LayerVariant | undefined =>
   entry.layers.find((layer) => layer.variants.length)?.variants[0];

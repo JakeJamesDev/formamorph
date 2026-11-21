@@ -2,7 +2,7 @@
 // that needs one file. Compositing runs over plain RGBA so it matches play's CSS and tests can read it.
 
 import type { Base64Data, LayerBlend } from '@/types';
-import { isLayeredPicture, type LayeredPicture, type Picture } from './layeredImages';
+import { isLayeredPicture, tintChannels, type LayeredPicture, type Picture } from './layeredImages';
 import { fetchAsDataUrl, isRemoteImage } from './imageSource';
 import { IMAGE_CAPS } from './imageSlots';
 
@@ -22,10 +22,6 @@ export interface RasterLayer {
   tint?: string;
   blend: LayerBlend;
 }
-
-/** A `#rrggbb` tint as 0 to 1 channels. */
-const tintChannels = (tint: string | undefined): [number, number, number] =>
-  (tint ? [1, 3, 5].map((i) => parseInt(tint.slice(i, i + 2), 16) / 255) as [number, number, number] : [1, 1, 1]);
 
 /** The W3C separable blend of a source channel over a backdrop channel. */
 const BLEND: Record<Exclude<LayerBlend, 'add'>, (cb: number, cs: number) => number> = {

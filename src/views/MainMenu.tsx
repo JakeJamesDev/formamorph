@@ -569,12 +569,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   useEffect(() => {
     if (devRoute?.modal !== 'layeredEditor') return;
     setShowWorldEditor(true);
+    let live = true;
     // `fixture=layeredPerf` opens the eight-Layer full-size rig the mobile probe measures.
-    if (devRoute.fixture === 'layeredPerf') {
-      void import('@/lib/devLayeredPerf').then(({ devLayeredPerfWorld }) => loadWorldData(devLayeredPerfWorld(newBlankWorld()), true));
-      return;
-    }
-    void import('@/lib/devFixtures').then(({ devLayeredWorld }) => loadWorldData(devLayeredWorld(newBlankWorld()), true));
+    const world = devRoute.fixture === 'layeredPerf'
+      ? import('@/lib/devLayeredPerf').then(({ devLayeredPerfWorld }) => devLayeredPerfWorld(newBlankWorld()))
+      : import('@/lib/devFixtures').then(({ devLayeredWorld }) => devLayeredWorld(newBlankWorld()));
+    void world.then((w) => { if (live) loadWorldData(w, true); });
+    return () => { live = false; };
   }, [devRoute?.modal, devRoute?.fixture, loadWorldData]);
 
   // DEV: open the World Editor on a *stored* world. The `worldEditor` modal route opens a blank draft, so

@@ -1,6 +1,6 @@
 import { forwardRef, useId, useState, type CSSProperties, type HTMLAttributes, type ImgHTMLAttributes, type Ref } from 'react';
 import { RemoteImg } from '@/lib/useRemoteImage';
-import { isLayeredPicture, type LayeredPicture, type Picture, type ResolvedLayer } from '@/lib/layeredImages';
+import { isLayeredPicture, tintChannels, type LayeredPicture, type Picture, type ResolvedLayer } from '@/lib/layeredImages';
 import { cn } from '@/lib/utils';
 import { thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
 import { useLayeredMotion, type LayerLook } from './useLayeredMotion';
@@ -15,13 +15,9 @@ const coverBox = (ratio: number, center?: boolean): CSSProperties => ({
 
 const BLEND_CSS = { normal: undefined, multiply: 'multiply', screen: 'screen', add: 'plus-lighter' } as const;
 
-/** A `#rrggbb` tint as 0 to 1 channels. */
-const channels = (tint: string): [number, number, number] =>
-  [1, 3, 5].map((i) => parseInt(tint.slice(i, i + 2), 16) / 255) as [number, number, number];
-
 /** A filter that multiplies an image's color by `tint` in sRGB and leaves its alpha as it is. */
 function TintFilter({ id, tint }: { id: string; tint: string }) {
-  const [r, g, b] = channels(tint);
+  const [r, g, b] = tintChannels(tint);
   return (
     <svg aria-hidden width="0" height="0" className="absolute">
       <filter id={id} colorInterpolationFilters="sRGB">
