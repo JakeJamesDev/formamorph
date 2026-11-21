@@ -5,7 +5,7 @@
  */
 import type { GalleryLink, MediaAsset, MediaList, MediaRef, TraitRequirementRow } from '@/types';
 import { galleryLinks, type ImageBearing } from '@/lib/entityImages';
-import { embedGallery, isMediaRef, mediaHashes, mediaNameFromAsset, mediaToken, placeMedia, unhashedData, type MediaHashes } from '@/lib/mediaList';
+import { embedGallery, fileEntries, isMediaRef, mediaHashes, mediaNameFromAsset, mediaToken, placeMedia, unhashedData, type MediaHashes } from '@/lib/mediaList';
 import { resolveSound } from '@/lib/mediaSounds';
 
 /** A record whose gallery and sound cross the boundary: a library or world entity. */
@@ -26,7 +26,7 @@ export const galleryData = (items: readonly (MediaBearing | null | undefined)[],
 /** Hashes for placing or comparing the galleries of `items` against `list`, entries' stored hashes included. */
 export async function loadMediaHashes(items: readonly (MediaBearing | null | undefined)[], list: MediaList | undefined): Promise<MediaHashes> {
   const hashes = await mediaHashes(galleryData(items, list));
-  for (const entry of Object.values(list ?? {})) if (entry.hash) hashes.set(entry.data, entry.hash);
+  for (const entry of fileEntries(list)) if (entry.hash) hashes.set(entry.data, entry.hash);
   return hashes;
 }
 

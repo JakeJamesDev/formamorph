@@ -3,10 +3,11 @@
  * Formaquestion reads (ADR-0014). No row type has an AI field; AI text written in play counts as player text.
  */
 import type {
-  Base64Data, ChatMessage, Currency, DiscoveredEntity, Entity, GameState, Item, ItemInstance, MediaList, PlayerStat, RuntimeItem, SceneEntity, Trait, World,
+  ChatMessage, Currency, DiscoveredEntity, Entity, GameState, Item, ItemInstance, MediaList, PlayerStat, RuntimeItem, SceneEntity, Trait, World,
 } from '@/types';
 import { activeDescriptor } from '@/lib/statContext';
 import { visibleImages } from '@/lib/imageVisibility';
+import type { Picture } from '@/lib/layeredImages';
 import type { GateInput } from '@/lib/traitGates';
 import { instanceWorthText } from '@/lib/currency';
 import { instanceFace, instanceState, isUnidentified, stateKey } from '@/lib/items';
@@ -32,7 +33,7 @@ export interface PlayerViewEntity {
   /** The other scene aliases the player saw it under, first seen first. */
   seenAliases?: string[];
   /** The first image whose Visibility rule passes. Present only when the input carries a `gate`. */
-  image?: Base64Data;
+  image?: Picture;
 }
 
 export interface PlayerViewLocation {

@@ -451,7 +451,7 @@ export interface MediaRef {
 }
 
 /** One named image or sound in a world's Media List. */
-export interface MediaEntry {
+export interface MediaFileEntry {
   id: string;
   name: string;
   kind: 'image' | 'sound';
@@ -462,6 +462,34 @@ export interface MediaEntry {
   /** The embedded bytes' content hash (`lib/mediaList`). Absent on a linked entry. */
   hash?: string;
 }
+
+/** One choice on a Layer: a link to an image entry and the rule that shows it. */
+export interface LayerVariant {
+  mediaId: string;
+  /** The Visibility rule, as on a gallery picture. Absent or empty = always visible. */
+  requires?: TraitRequirementRow[];
+}
+
+/** One slot in a Layered Image's stack. It shows its first visible Variant, or nothing. */
+export interface MediaLayer {
+  id: string;
+  /** Unique within its Layered Image. */
+  name: string;
+  /** 0 to 1. Absent = 1. */
+  opacity?: number;
+  variants: LayerVariant[];
+}
+
+/** A Media List picture built from Layers, bottom first. */
+export interface LayeredMediaEntry {
+  id: string;
+  name: string;
+  kind: 'layered';
+  layers: MediaLayer[];
+}
+
+/** One named entry in a world's Media List. */
+export type MediaEntry = MediaFileEntry | LayeredMediaEntry;
 
 /** A world's Media List, keyed by entry id. */
 export type MediaList = Record<string, MediaEntry>;

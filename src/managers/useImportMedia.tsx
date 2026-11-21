@@ -5,7 +5,7 @@ import { applyImageOptimize } from '@/lib/imageOptim';
 import { toastError } from '@/lib/linkToast';
 import { addedEntries, mediaContentKey, placeGalleryFile } from '@/lib/mediaGallery';
 import { ENTRY_ITEM_PREFIX, UNUSED_IMAGE_CAP, avatarItemId } from '@/lib/mediaIndex';
-import { mediaNameFromFile } from '@/lib/mediaList';
+import { fileEntries, mediaNameFromFile } from '@/lib/mediaList';
 import { placeSound } from '@/lib/mediaSounds';
 import { trackWork } from '@/lib/pendingWork';
 import { readMediaFile } from '@/lib/UtilityComponents';
@@ -45,7 +45,7 @@ export function useImportMedia(onSelect: (id: string) => void) {
     const media = files.filter((f) => !isAvatarFile(f) && /^(image|audio)\//.test(f.type));
     const read = await Promise.all(media.map(readMediaFile));
     // An image the list already holds is reused as is, so only new ones meet the downscale prompt.
-    const held = new Set(Object.values(listRef.current ?? {}).filter((e) => e.kind === 'image').map((e) => mediaContentKey(e.data)));
+    const held = new Set(fileEntries(listRef.current).filter((e) => e.kind === 'image').map((e) => mediaContentKey(e.data)));
     const fresh = (f: { type: string; data: string }) => f.type.startsWith('image/') && !held.has(mediaContentKey(f.data));
     const imageUrls = read.filter(fresh).map((f) => f.data);
     const mode = imageUrls.length ? await promptImagesBatch(imageUrls, UNUSED_IMAGE_CAP) : 'off';

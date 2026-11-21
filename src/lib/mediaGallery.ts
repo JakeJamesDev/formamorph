@@ -3,12 +3,12 @@
  * the editor's two-way bridge between a stored gallery of links and the pictures its widget edits. Synchronous:
  * files match by their encoded content, so nothing here hashes.
  */
-import type { GalleryImage, GalleryLink, MediaEntry, MediaList, Placeholder } from '@/types';
+import type { GalleryImage, GalleryLink, MediaFileEntry, MediaList, Placeholder } from '@/types';
 import { contentHash } from './contentHash';
 import { galleryLinks, type ImageBearing } from './entityImages';
 import type { LocationImageBearing } from './locationImages';
 import { isRemoteImage, dataUrlMime } from './imageBytes';
-import { fallbackMediaName, isMediaRef, resolveGalleryImage, uniqueMediaName, type MediaEntryKind } from './mediaList';
+import { fallbackMediaName, fileEntries, isMediaRef, layeredEntry, resolveGalleryImage, uniqueMediaName, type MediaFileKind } from './mediaList';
 import { labelPlaceholders } from './placementLetters';
 
 /** What makes two stored values one file: a link's URL, or embedded data's base64 payload (its MIME string aside). */
@@ -37,14 +37,14 @@ export interface GalleryFile {
  * The list with `file` in it and the id that holds it. An entry of `kind` with the same content is reused (Q14);
  * otherwise a new one joins under the carried name, else the subject fallback (Q10).
  */
-export function placeGalleryFile(list: MediaList, file: GalleryFile, kind: MediaEntryKind, subject: string | undefined): { list: MediaList; id: string } {
+export function placeGalleryFile(list: MediaList, file: GalleryFile, kind: MediaFileKind, subject: string | undefined): { list: MediaList; id: string } {
   const key = mediaContentKey(file.data);
-  const held = Object.values(list).find((entry) => entry.kind === kind && mediaContentKey(entry.data) === key);
+  const held = fileEntries(list).find((entry) => entry.kind === kind && mediaContentKey(entry.data) === key);
   if (held) return { list, id: held.id };
   const id = contentId(key, list);
   const name = file.name?.trim() ? uniqueMediaName(file.name, list) : fallbackMediaName(subject, kind, list);
   const type = isRemoteImage(file.data) ? undefined : dataUrlMime(file.data);
-  const entry: MediaEntry = { id, name, kind, data: file.data, ...(type ? { type } : {}) };
+  const entry: MediaFileEntry = { id, name, kind, data: file.data, ...(type ? { type } : {}) };
   return { list: { ...list, [id]: entry }, id };
 }
 
@@ -92,12 +92,23 @@ export interface GalleryMedia {
   links: GalleryLink[];
 }
 
+/** The tile a gallery widget shows for a Layered Image link. Its data names the entry, so relinking keeps each link. */
+export const layeredTile = (entryId: string): string =>
+  `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="288" viewBox="0 0 24 28" data-layered="${entryId.replace(/[^\w-]/g, '')}"><rect width="24" height="28" fill="#8884"/><g transform="translate(6 8) scale(.5)" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></g></svg>`)}`;
+
+/** A gallery link's picture for the widget: an image's own, or a Layered Image's tile, with the link's rule. */
+function widgetImage(link: GalleryLink, list: MediaList | undefined): GalleryImage | null {
+  const layered = 'mediaId' in link ? layeredEntry(list, link.mediaId) : undefined;
+  if (!layered) return resolveGalleryImage(link, list);
+  return { data: layeredTile(layered.id), name: layered.name, ...(link.requires?.length ? { requires: link.requires } : {}) };
+}
+
 /** A stored gallery's pictures for the widget, with the link each came from. A link the list lacks drops. */
 export function galleryView(links: readonly GalleryLink[], list: MediaList | undefined): { images: GalleryImage[]; links: GalleryLink[] } {
   const images: GalleryImage[] = [];
   const kept: GalleryLink[] = [];
   for (const link of links) {
-    const image = resolveGalleryImage(link, list);
+    const image = widgetImage(link, list);
     if (!image) continue;
     images.push(image);
     kept.push(link);
@@ -152,14 +163,14 @@ export const addedEntries = (before: MediaList, next: MediaList): MediaList =>
 // ── Byte rewrites (Optimize, WebP fix, relabel) ──────────────────────────────
 
 /** `entry` holding `data`, its type read from the new bytes and its stale hash dropped. */
-const withEntryData = (entry: MediaEntry, data: string): MediaEntry => {
+const withEntryData = (entry: MediaFileEntry, data: string): MediaFileEntry => {
   const { hash: _stale, ...rest } = entry;
   const type = dataUrlMime(data);
   return { ...rest, data, ...(type ? { type } : {}) };
 };
 
 /** The list with `rewrite` run once on each image entry's data, in order. The same list when nothing changed. */
-export async function rewriteMediaImages(list: MediaList | undefined, rewrite: (data: string, entry: MediaEntry) => Promise<string>): Promise<MediaList | undefined> {
+export async function rewriteMediaImages(list: MediaList | undefined, rewrite: (data: string, entry: MediaFileEntry) => Promise<string>): Promise<MediaList | undefined> {
   if (!list) return list;
   let out = list;
   for (const entry of Object.values(list)) {

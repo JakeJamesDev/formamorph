@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import type { MediaEntry, MediaList, TraitRequirementRow } from '@/types';
+import type { MediaFileEntry, MediaList, TraitRequirementRow } from '@/types';
 import {
-  embedGallery, fallbackMediaName, mediaHashes, mediaNameFromFile, mediaToken, newMediaName, placeMedia,
+  embedGallery, fallbackMediaName, mediaEntry, mediaHashes, mediaNameFromFile, mediaToken, newMediaName, placeMedia,
   resolveMedia, uniqueMediaName, unhashedData,
 } from './mediaList';
 import { entityImages, migrateEntityImages, primaryImage, withImageRules } from './entityImages';
@@ -16,9 +16,9 @@ const XYZ_PNG = 'data:image/png;base64,WFla';
 const OGG = 'data:audio/ogg;base64,T2dnUw==';
 const URL = 'https://host/wren.png';
 
-const entry = (id: string, name: string, data: string, extra: Partial<MediaEntry> = {}): MediaEntry =>
+const entry = (id: string, name: string, data: string, extra: Partial<MediaFileEntry> = {}): MediaFileEntry =>
   ({ id, name, kind: 'image', data, ...extra });
-const listOf = (...entries: MediaEntry[]): MediaList => Object.fromEntries(entries.map((e) => [e.id, e]));
+const listOf = (...entries: MediaFileEntry[]): MediaList => Object.fromEntries(entries.map((e) => [e.id, e]));
 
 describe('names', () => {
   it('drops the extension (Q9)', () => {
@@ -126,7 +126,7 @@ describe('placeMedia', () => {
   it('reuses a link by its exact URL and stores no hash for it', () => {
     const first = placeMedia(undefined, { data: URL }, { kind: 'image', subject: 'Wren', hashes: new Map() });
     expect(placeMedia(first.list, { data: URL }, { kind: 'image', hashes: new Map() }).id).toBe(first.id);
-    expect(first.list[first.id].hash).toBeUndefined();
+    expect(mediaEntry(first.list, first.id)?.hash).toBeUndefined();
   });
 
   it('refuses embedded data it has no hash for, rather than add a duplicate', () => {

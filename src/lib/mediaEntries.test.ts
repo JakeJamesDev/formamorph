@@ -45,6 +45,16 @@ describe('mediaEntryItems', () => {
     expect(mediaEntryItems(w).find((i) => i.mediaId === sharedId(w))!.budget).toEqual(IMAGE_CAPS.background);
   });
 
+  it('lists a Layered Image as a file-less card with its uses, and its gallery link as a layered item', () => {
+    const w = listWorld();
+    w.worldOverview.mediaList = { ...w.worldOverview.mediaList, rig: { id: 'rig', name: 'Scout Rig', kind: 'layered', layers: [] } };
+    w.entities.find((e) => e.id === 'bram')!.images = [{ mediaId: 'rig' }];
+    expect(mediaEntryItems(w).find((i) => i.mediaId === 'rig')).toMatchObject({ kind: 'layered', slot: 'Scout Rig', value: '', bytes: 0, uses: [{ owner: { name: 'Bram' } }] });
+    const bram = mediaSections(w).flatMap((s) => s.items).filter((i) => i.parent.id === 'bram' && i.galleryIndex !== undefined);
+    expect(bram).toEqual([expect.objectContaining({ kind: 'layered', mediaId: 'rig', value: '', bytes: 0 })]);
+    expect(bram[0].budget).toBeUndefined();
+  });
+
   it('searches an entry by its name and the places that use it', () => {
     const w = listWorld();
     const shared = mediaEntryItems(w).find((i) => i.mediaId === sharedId(w))!;

@@ -15,12 +15,12 @@ import type { ImageCap } from './imageSlots';
 import type { ThumbAspect } from './thumbAspect';
 import { mediaParentSpec } from './mediaParents';
 import { dataUrlBytes, isRemoteImage } from './imageBytes';
-import { galleryLinkData, isMediaRef } from './mediaList';
+import { galleryLinkData, isFileEntry, isMediaRef } from './mediaList';
 import { resolveSound, type SoundValue } from './mediaSounds';
 import type { MediaUse } from './mediaUsage';
 import { IMAGE_CAPS } from './imageSlots';
 
-export type MediaKind = 'image' | 'sound' | 'model' | 'avatar';
+export type MediaKind = 'image' | 'sound' | 'model' | 'avatar' | 'layered';
 export type MediaParentKind = 'world' | 'map' | 'entity' | 'location' | 'dictionary' | 'body' | 'item';
 
 /** What holds a media item. Its name is what copy calls it; world media has the world as its parent. */
@@ -140,10 +140,14 @@ const galleryMedia = (parent: MediaParent, images: readonly GalleryImage[], link
     });
   });
 
-/** A stored gallery's items, links resolved through `media`. */
+/** A stored gallery's items, links resolved through `media`. A Layered Image link is a file-less `layered` item. */
 const linkedGalleryMedia = (parent: MediaParent, links: GalleryLink[], media: MediaList | undefined): MediaItem[] => {
   const view = galleryView(links, media);
-  return galleryMedia(parent, view.images, view.links);
+  return galleryMedia(parent, view.images, view.links).map((item) => {
+    if (!item.mediaId || media?.[item.mediaId]?.kind !== 'layered') return item;
+    const { budget: _none, ...rest } = item;
+    return { ...rest, kind: 'layered', value: '', bytes: 0, overBudget: false };
+  });
 };
 
 /** One entity's media: its gallery, then its sound, then its 3D Model. */
@@ -341,7 +345,10 @@ export function worldOptimizeTargets(w: Partial<MediaWorld>): { slots: (MediaIte
   for (const entry of Object.values(list)) if (entry.kind === 'image' && !budgets.has(entry.id)) budgets.set(entry.id, UNUSED_IMAGE_CAP);
   return {
     slots: items.filter((item) => !item.mediaId),
-    entries: [...budgets].flatMap(([id, budget]) => (list[id] ? [{ id, data: list[id].data, budget }] : [])),
+    entries: [...budgets].flatMap(([id, budget]) => {
+      const entry = list[id];
+      return entry && isFileEntry(entry) ? [{ id, data: entry.data, budget }] : [];
+    }),
   };
 }
 
@@ -378,13 +385,14 @@ export function mediaHolds(w: MediaWorld, id: string): boolean {
 
 export const totalBytes = (items: readonly MediaItem[]): number => items.reduce((n, i) => n + i.bytes, 0);
 
-const MEDIA_KINDS: readonly MediaKind[] = ['image', 'sound', 'model', 'avatar'];
+const MEDIA_KINDS: readonly MediaKind[] = ['image', 'layered', 'sound', 'model', 'avatar'];
 
 export const MEDIA_KIND_LABELS: Record<MediaKind, { one: string; many: string }> = {
   image: { one: 'Image', many: 'Images' },
   sound: { one: 'Sound', many: 'Sounds' },
   model: { one: '3D Model', many: '3D Models' },
   avatar: { one: 'Avatar', many: 'Avatars' },
+  layered: { one: 'Layered Image', many: 'Layered Images' },
 };
 
 /** Count and bytes per kind, in kind order, kinds with no items left out. */

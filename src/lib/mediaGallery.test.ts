@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { GalleryLink, MediaList, TraitRequirementRow, World } from '@/types';
+import type { GalleryLink, LayeredMediaEntry, MediaFileEntry, TraitRequirementRow, World } from '@/types';
+import { fileEntries } from './mediaList';
 import { migrateWorld } from './version';
 import { relinkGallery, galleryView } from './mediaGallery';
 import { entityImages } from './entityImages';
@@ -21,7 +22,7 @@ const world = (): World => migrateWorld({
   locations: [{ id: 'yard', name: 'Yard', backgroundImage: XYZ_PNG }],
 });
 
-const listOf = (w: World): MediaList => w.worldOverview.mediaList ?? {};
+const listOf = (w: World): Record<string, MediaFileEntry> => Object.fromEntries(fileEntries(w.worldOverview.mediaList).map((e) => [e.id, e]));
 const names = (w: World) => Object.values(listOf(w)).map((e) => e.name).sort();
 
 describe('migrateGalleriesToMediaList', () => {
@@ -128,5 +129,30 @@ describe('relinkGallery', () => {
     const next = relinkGallery(links, list, galleryView(links, list).images.slice(1), 'Wren');
     expect(next.links).toHaveLength(1);
     expect(next.list).toBe(list);
+  });
+
+  describe('with Layered Image links', () => {
+    const rig = (id: string): LayeredMediaEntry => ({ id, name: id, kind: 'layered', layers: [] });
+    const layered = () => {
+      const { links, list } = start();
+      return { links: [{ mediaId: 'rig-a' }, ...links, { mediaId: 'rig-b', requires: WOUNDED }], list: { ...list, 'rig-a': rig('rig-a'), 'rig-b': rig('rig-b') } };
+    };
+
+    it('shows each as its own tile, named and with its rule', () => {
+      const { links, list } = layered();
+      const { images } = galleryView(links, list);
+      expect(images).toHaveLength(4);
+      expect(images[0]).toMatchObject({ name: 'rig-a' });
+      expect(images[3]).toMatchObject({ name: 'rig-b', requires: WOUNDED });
+      expect(images[0].data).not.toBe(images[3].data);
+    });
+
+    it('keeps each through a write, a rule change and a swap', () => {
+      const { links, list } = layered();
+      const { images } = galleryView(links, list);
+      const next = relinkGallery(links, list, [{ ...images[3], requires: undefined }, images[1], images[2], { ...images[0], requires: WOUNDED }], 'Wren');
+      expect(next.list).toBe(list);
+      expect(next.links).toEqual([{ mediaId: 'rig-b' }, links[1], links[2], { mediaId: 'rig-a', requires: WOUNDED }]);
+    });
   });
 });

@@ -25,6 +25,7 @@ const COMMUNITY_FILES = [
   'src/views/CommunityBrowserHost.tsx',
   'src/views/CommunityCreationsBrowser.tsx',
   'src/components/ImageZoomViewer.tsx',
+  'src/components/PictureImg.tsx',
   'src/components/WorldDetails.tsx',
   'src/components/ConfirmDialog.tsx',
   'src/components/TokenAutocomplete.tsx',

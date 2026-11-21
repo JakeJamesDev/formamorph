@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
-import { RemoteImg } from '@/lib/useRemoteImage';
+import { PictureImg } from '@/components/PictureImg';
+import { pictureKey, type Picture } from '@/lib/layeredImages';
 import {
   TransformWrapper,
   TransformComponent,
@@ -83,7 +84,7 @@ function ZoomControls() {
  * it shows a picture that has nothing to decide about it.
  */
 export function ImageZoomViewer({ src, alt, open, onOpenChange, footer, gallery }: {
-  src: string;
+  src: Picture;
   alt: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -98,7 +99,7 @@ export function ImageZoomViewer({ src, alt, open, onOpenChange, footer, gallery 
         <DialogTitle className="sr-only">{alt || "Image viewer"}</DialogTitle>
         {src && (
           <TransformWrapper
-            key={src}
+            key={pictureKey(src)}
             minScale={MIN_SCALE}
             maxScale={MAX_SCALE}
             centerOnInit
@@ -117,7 +118,7 @@ export function ImageZoomViewer({ src, alt, open, onOpenChange, footer, gallery 
                 wrapperClass="!w-full !h-full"
                 contentClass="!w-full !h-full flex items-center justify-center"
               >
-                <RemoteImg src={src} alt={alt} className="max-w-full max-h-full object-contain select-none" />
+                <PictureImg src={src} alt={alt} className="max-w-full max-h-full object-contain select-none" />
               </TransformComponent>
             </>
           </TransformWrapper>

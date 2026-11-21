@@ -165,7 +165,7 @@ export interface ShownImage {
 export const OVERRIDE_SLOT = -1;
 
 /** `visible` with the override's picture first and any rule-visible copy of it dropped (Q51). */
-export function withImageOverride<T extends ShownImage>(visible: T[], list: MediaList | undefined, id: string | undefined): (T | ShownImage)[] {
+export function withImageOverride<T extends { slot: number; data: unknown }>(visible: T[], list: MediaList | undefined, id: string | undefined): (T | ShownImage)[] {
   const entry = id ? list?.[id] : undefined;
   if (!entry || entry.kind !== 'image') return visible;
   return [{ slot: OVERRIDE_SLOT, data: entry.data }, ...visible.filter((img) => img.data !== entry.data)];

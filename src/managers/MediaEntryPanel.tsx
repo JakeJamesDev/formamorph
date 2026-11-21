@@ -2,7 +2,7 @@ import { Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Hint } from '@/components/ui/typography';
+import { Hint, Meta } from '@/components/ui/typography';
 import { useGameData } from '@/contexts/GameDataContext';
 import { MEDIA_KIND_LABELS, type MediaItem, type MediaParent } from '@/lib/mediaIndex';
 import { mediaUseLabel } from '@/lib/mediaUsage';
@@ -27,20 +27,27 @@ export function MediaEntryPanel({ item, placeholders, onGoTo }: {
   if (!entry) return null;
   const uses = item.uses ?? [];
   const label = (name: string) => labelPlaceholders(name, placeholders);
+  // A Layered Image holds no file of its own, so it has no size and nothing to download.
+  const file = item.kind !== 'layered';
+  const unused = item.unused && <Badge variant="outline" className="px-1.5 py-0 text-meta font-normal">Unused</Badge>;
   return (
     <div className="space-y-4" data-media-panel={item.id}>
       {confirm}
       <div>
         <MediaNameField entry={entry} rename={rename} className="text-title font-semibold" />
-        <MediaFacts item={item} className="mt-1">
-          <span>{MEDIA_KIND_LABELS[item.kind].one}</span>
-          <span aria-hidden>·</span>
-          {item.unused && <Badge variant="outline" className="px-1.5 py-0 text-meta font-normal">Unused</Badge>}
-        </MediaFacts>
+        {file
+          ? (
+            <MediaFacts item={item} className="mt-1">
+              <span>{MEDIA_KIND_LABELS[item.kind].one}</span>
+              <span aria-hidden>·</span>
+              {unused}
+            </MediaFacts>
+          )
+          : <Meta className="mt-1 flex items-center gap-2">{MEDIA_KIND_LABELS[item.kind].one}{unused}</Meta>}
       </div>
       <div className="flex justify-center rounded-md bg-muted/40 p-2"><Preview item={item} /></div>
       <div className="flex flex-wrap gap-2">
-        <MediaActionRow className="contents" item={item} placeholders={placeholders} />
+        {file && <MediaActionRow className="contents" item={item} placeholders={placeholders} />}
         <Button variant="outline" size="sm" onClick={() => askDelete(entry.id)}>
           <Trash2 className="mr-1 h-4 w-4" />Delete From World
         </Button>

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { RemoteImg } from '@/lib/useRemoteImage';
 import { Box, Check, Image as ImageIcon, type LucideIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -12,7 +11,9 @@ import { useMediaList } from '@/lib/useMediaList';
 import { AvatarIcon } from '@/lib/elementIcons';
 import ModelViewer from '@/views/ModelViewer';
 import { SwipeImage } from './SwipeImage';
-import type { Base64Data, EntityVisualKind } from '@/types';
+import type { EntityVisualKind } from '@/types';
+import type { Picture } from '@/lib/layeredImages';
+import { PictureImg } from '@/components/PictureImg';
 import { Tip } from '@/components/ui/tooltip';
 import { usePanelEverShown } from '@/lib/panelShown';
 
@@ -54,7 +55,7 @@ const VIEW: Record<EntityVisualKind, { label: string; icon: LucideIcon }> = {
 export const EntityVisual = ({ entity, className, images: inPlay, avatar, preference, onPreferenceChange, imageIndex = 0, onImageStep, morphValues, onMorphNames }: {
   entity: EntityVisualSource;
   /** The images visible in play, in author order. Absent, the authored gallery, rules ignored. */
-  images?: readonly Base64Data[];
+  images?: readonly Picture[];
   /** The entity's Avatar viewer, when it has one in play. */
   avatar?: React.ReactNode;
   className?: string;
@@ -99,7 +100,7 @@ export const EntityVisual = ({ entity, className, images: inPlay, avatar, prefer
     <Slot className={className} fill={showing !== 'image'}>
       {showing === 'avatar' ? everShown && avatar
         : showing === 'model' ? everShown && modelViewer()
-        : <Picture images={images} index={index} gallery={gallery} name={entity.name} onZoom={() => setOpen('image')} />}
+        : <GalleryPicture images={images} index={index} gallery={gallery} name={entity.name} onZoom={() => setOpen('image')} />}
       {others.length > 0 && (
         <div className="absolute top-1 right-1 flex flex-col gap-1">
           {others.map((kind) => {
@@ -179,8 +180,8 @@ const Slot = ({ className, fill, children }: {
 );
 
 /** The showing picture plus, when there is a pageable gallery behind it, the controls to move through it. */
-const Picture = ({ images, index, gallery, name, onZoom }: {
-  images: readonly string[];
+const GalleryPicture = ({ images, index, gallery, name, onZoom }: {
+  images: readonly Picture[];
   index: number;
   gallery?: GalleryControlsProps;
   name: string;
@@ -190,7 +191,7 @@ const Picture = ({ images, index, gallery, name, onZoom }: {
     return (
       // The alt already names the picture; the tip only says it opens.
       <Tip tip="Click to enlarge" labelsChild={false}>
-        <RemoteImg
+        <PictureImg
           src={images[index]}
           alt={name}
           className="max-w-full max-h-full object-contain cursor-zoom-in"

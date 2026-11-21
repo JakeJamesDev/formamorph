@@ -18,6 +18,7 @@ const ACCEPT: Record<MediaKind, string> = {
   image: 'image/*',
   sound: 'audio/*',
   model: '.glb,.gltf,.fbx,.obj',
+  layered: '',
   avatar: '.vrm,.glb',
 };
 

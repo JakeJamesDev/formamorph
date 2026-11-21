@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { EntityVisual } from './EntityVisual';
 import { PanelShownProvider } from '@/lib/panelShown';
 import type { Entity } from '@/types';
+import type { LayeredPicture } from '@/lib/layeredImages';
 
 // The real viewer needs a WebGL context jsdom has none of; what matters here is which visual gets mounted.
 vi.mock('@/views/ModelViewer', () => ({
@@ -198,5 +199,27 @@ describe('EntityVisual — gallery', () => {
     render(<EntityVisual entity={two()} />);
     expect(screen.queryByLabelText('Next image')).toBeNull();
     expect(screen.queryByText('1/2')).toBeNull();
+  });
+
+  describe('with a Layered Image in play', () => {
+    const STACK: LayeredPicture = {
+      kind: 'layered', entryId: 'rig', canvas: IMAGE, layers: [{ id: 'base', opacity: 1, data: IMAGE }, { id: 'empty', opacity: 1 }, { id: 'top', opacity: 0.4, data: IMAGE_B }],
+    };
+    const layers = (root: ParentNode) => [...root.querySelectorAll('img[data-layer]')].map((img) => [img.getAttribute('data-layer'), (img as HTMLElement).style.opacity]);
+
+    it('draws the stack in the panel and in the zoom viewer, skipping the empty Layer', async () => {
+      render(<EntityVisual entity={entity({ images: [{ mediaId: 'rig' }] })} images={[STACK]} />);
+      const panel = screen.getByRole('img', { name: 'Sedge' });
+      expect(layers(panel)).toEqual([['base', '1'], ['top', '0.4']]);
+      await userEvent.click(panel);
+      const viewer = await screen.findByRole('dialog');
+      expect(layers(viewer)).toEqual([['base', '1'], ['top', '0.4']]);
+    });
+
+    it('pages between a stack and a plain image', () => {
+      const { container } = render(<EntityVisual entity={entity({})} images={[STACK, IMAGE_B]} imageIndex={1} onImageStep={() => {}} />);
+      expect(screen.getByText('2/2')).toBeTruthy();
+      expect(container.querySelector('img:not([aria-hidden])')?.getAttribute('src')).toBe(IMAGE_B);
+    });
   });
 });

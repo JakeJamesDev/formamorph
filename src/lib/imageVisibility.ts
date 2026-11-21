@@ -1,7 +1,9 @@
 // Visibility rules in play: which of an entity's, a location's or the Map Background's gallery images the story shows right now.
 
-import type { Base64Data, Entity, GalleryImage, GalleryLink, Item, ItemInstance, MediaList, RequirementOwner, TraitRequirement, TraitRequirementRow, WorldOverview } from '@/types';
+import type { Base64Data, Entity, GalleryImage, GalleryLink, Item, ItemInstance, LayeredMediaEntry, MediaList, RequirementOwner, TraitRequirement, TraitRequirementRow, WorldOverview } from '@/types';
 import { entityImages, galleryLinks } from './entityImages';
+import { drawableLayered, resolveLayered, type Picture } from './layeredImages';
+import { resolveGalleryImage } from './mediaList';
 import { locationImages, type LocationImageBearing } from './locationImages';
 import { mapImages } from './mapBackground';
 import { mapConditions } from './requirementRows';
@@ -19,13 +21,39 @@ const visibleBy = (images: readonly GalleryImage[], statesOf: (rows: TraitRequir
   images.flatMap((img, slot) =>
     (!img.requires?.length || statesOf(img.requires).some((row) => row.holds) ? [{ slot, data: img.data }] : []));
 
+/** One picture visible in play, with its slot in the authored gallery. */
+export interface VisiblePicture {
+  slot: number;
+  data: Picture;
+}
+
+/** A gallery slot that can show: an image's data or a Layered Image, with the link's rule. */
+type GallerySlot = { requires?: TraitRequirementRow[] } & ({ data: Base64Data } | { layered: LayeredMediaEntry });
+
+/** The gallery's slots that can show, in author order. A link naming no image or drawable Layered Image drops. */
+const gallerySlots = (links: readonly GalleryLink[], media: MediaList | undefined): GallerySlot[] =>
+  links.flatMap((link): GallerySlot[] => {
+    const layered = drawableLayered(link, media);
+    if (layered) return [{ layered, ...(link.requires?.length ? { requires: link.requires } : {}) }];
+    const image = resolveGalleryImage(link, media);
+    return image ? [image] : [];
+  });
+
 /**
- * The entity's images visible in play, in author order, so the first is the primary. An image with no rule is
- * visible; one with a rule is visible while any row holds, and an unresolved Condition never holds (Q12). A script's
- * override, by entry id, shows first (Q51).
+ * The entity's pictures visible in play, in author order, so the first is the primary. A slot with no rule is
+ * visible; one with a rule is visible while any row holds, and an unresolved Condition never holds (Q12). A
+ * Layered Image resolves for the entity, so its ownerless Conditions read it (Q7). A script's override, by entry
+ * id, shows first (Q51).
  */
-export const visibleImages = (entity: Pick<Entity, 'id' | 'images'>, input: GateInput, media: MediaList | undefined, overrideId?: string): VisibleImage[] =>
-  withImageOverride(visibleBy(entityImages(entity, media), (rows) => ruleStates(input, entity.id, rows)), media, overrideId);
+export function visibleImages(entity: Pick<Entity, 'id' | 'images'>, input: GateInput, media: MediaList | undefined, overrideId?: string): VisiblePicture[] {
+  const statesOf = (rows: TraitRequirementRow[]) => ruleStates(input, entity.id, rows);
+  const visible = gallerySlots(galleryLinks(entity), media).flatMap((slot, i): VisiblePicture[] => {
+    if (slot.requires?.length && !statesOf(slot.requires).some((row) => row.holds)) return [];
+    const data = 'layered' in slot ? resolveLayered(slot.layered, media, { statesOf }) : slot.data;
+    return data ? [{ slot: i, data }] : [];
+  });
+  return withImageOverride(visible, media, overrideId);
+}
 
 /**
  * A location rule's rows as the gate module reads them: a Condition with no owner names the played persona

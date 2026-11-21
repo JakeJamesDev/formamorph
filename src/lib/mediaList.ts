@@ -2,12 +2,21 @@
  * The world's Media List: named images and sounds that media fields link by id. Pure helpers for naming,
  * resolving, placing and comparing; the one async step is `mediaHash`.
  */
-import type { GalleryImage, GalleryLink, MediaAsset, MediaEntry, MediaList, MediaRef } from '@/types';
+import type { GalleryImage, GalleryLink, LayeredMediaEntry, MediaAsset, MediaEntry, MediaFileEntry, MediaList, MediaRef } from '@/types';
 import { randomUUID } from '@/lib/uuid';
 import { blobHash } from '@/lib/blobHash';
 import { dataUrlMime, dataUrlToBuffer, isRemoteImage } from '@/lib/imageBytes';
 
 export type MediaEntryKind = MediaEntry['kind'];
+
+/** The kinds that hold one file of their own. */
+export type MediaFileKind = MediaFileEntry['kind'];
+
+/** Whether an entry holds one file of its own, so it has data. */
+export const isFileEntry = (entry: MediaEntry): entry is MediaFileEntry => entry.kind !== 'layered';
+
+/** The list's entries that hold a file, for readers of bytes. */
+export const fileEntries = (list: MediaList | undefined): MediaFileEntry[] => Object.values(list ?? {}).filter(isFileEntry);
 
 /** Whether a stored value links a Media Entry. */
 export const isMediaRef = (value: unknown): value is MediaRef =>
@@ -56,6 +65,7 @@ export function uniqueMediaName(name: string, list: MediaList | undefined, excep
 export const MEDIA_KIND_WORDS: Record<MediaEntryKind, { one: string; many: string }> = {
   image: { one: 'Image', many: 'Images' },
   sound: { one: 'Sound', many: 'Sounds' },
+  layered: { one: 'Layered Image', many: 'Layered Images' },
 };
 
 /** The subject's name plus the next free number, starting at 1 (Q10). A blank subject reads as the kind. */
@@ -92,9 +102,15 @@ export async function mediaHashes(values: Iterable<string>): Promise<Map<string,
 // ── Resolver ─────────────────────────────────────────────────────────────────
 
 /** The entry `id` names, when it is of `kind` (any kind when unset). */
-export function mediaEntry(list: MediaList | undefined, id: string, kind?: MediaEntryKind): MediaEntry | undefined {
+export function mediaEntry(list: MediaList | undefined, id: string, kind?: MediaFileKind): MediaFileEntry | undefined {
   const entry = list?.[id];
-  return entry && entry.data && (!kind || entry.kind === kind) ? entry : undefined;
+  return entry && isFileEntry(entry) && entry.data && (!kind || entry.kind === kind) ? entry : undefined;
+}
+
+/** The Layered Image `id` names, or undefined. */
+export function layeredEntry(list: MediaList | undefined, id: string): LayeredMediaEntry | undefined {
+  const entry = list?.[id];
+  return entry?.kind === 'layered' ? entry : undefined;
 }
 
 /** A single media field's value: a link, an embedded file, or embedded data. */
@@ -104,7 +120,7 @@ export type MediaValue = MediaRef | MediaAsset | string | null | undefined;
  * The one resolver: a link or an embedded value in, the displayable file out. An id with no entry, or an
  * entry of another kind, resolves to nothing.
  */
-export function resolveMedia(value: MediaValue, list: MediaList | undefined, kind?: MediaEntryKind): MediaAsset | undefined {
+export function resolveMedia(value: MediaValue, list: MediaList | undefined, kind?: MediaFileKind): MediaAsset | undefined {
   if (!value) return undefined;
   if (typeof value === 'string') return { data: value, type: dataUrlMime(value) };
   if (isMediaRef(value)) {
@@ -135,7 +151,7 @@ export type PlacedFile = Pick<MediaAsset, 'data'> & Partial<Pick<MediaAsset, 'ty
 };
 
 export interface PlaceOptions {
-  kind: MediaEntryKind;
+  kind: MediaFileKind;
   /** Whose media this is, for the Q10 name when the file has none. */
   subject?: string;
   /** Hashes of embedded data, from `mediaHashes`. */
@@ -151,11 +167,11 @@ export function placeMedia(list: MediaList | undefined, file: PlacedFile, { kind
   const linked = isRemoteImage(file.data);
   const hash = linked ? undefined : hashes.get(file.data);
   if (!linked && !hash) throw new Error('placeMedia: embedded data has no hash in `hashes`');
-  const held = Object.values(list ?? {}).find((entry) => entry.kind === kind
+  const held = fileEntries(list).find((entry) => entry.kind === kind
     && (linked ? entry.data === file.data : !!hash && (entry.hash ?? hashes.get(entry.data)) === hash));
   if (held) return { list: list ?? {}, id: held.id };
   const id = randomUUID();
-  const entry: MediaEntry = {
+  const entry: MediaFileEntry = {
     id, name: file.entryName?.trim() ? uniqueMediaName(file.entryName, list) : newMediaName(file.name, subject, kind, list), kind, data: file.data,
     ...(file.type ? { type: file.type } : {}),
     ...(hash ? { hash } : {}),
@@ -198,6 +214,6 @@ export function unhashedData(values: Iterable<MediaValue | GalleryLink>, list: M
     if (typeof value === 'string') out.push(value);
     else if (value && !('mediaId' in value) && value.data) out.push(value.data);
   }
-  for (const entry of Object.values(list ?? {})) if (!entry.hash) out.push(entry.data);
+  for (const entry of fileEntries(list)) if (!entry.hash) out.push(entry.data);
   return out;
 }

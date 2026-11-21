@@ -14,6 +14,12 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Layered Images:**
+    - **A character's gallery can show a Layered Image, a picture stacked from parts that change with the story.** Each part shows its first version whose rule holds. The character panel, mention cards and full-size viewer draw the stack.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**

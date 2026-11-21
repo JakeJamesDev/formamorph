@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useEntityGallery } from './useEntityGallery';
 import type { GateInput } from './traitGates';
+import type { Picture } from './layeredImages';
 import type { GalleryImage, GenericStates, MediaOverrides, StatRequirement } from '@/types';
 
 type IndexMap = Record<string, number>;
@@ -49,7 +50,7 @@ const whenHurt = (data: string): GalleryImage => ({ data, requires: [{ all: [hur
 /** The middle image shows only while Sedge is hurt. */
 const gated = { id: 'sedge', images: [{ data: 'a' }, whenHurt('wounded'), { data: 'c' }] };
 
-const shownOf = (current: { images: readonly string[]; imageIndex: number }) => current.images[current.imageIndex];
+const shownOf = (current: { images: readonly Picture[]; imageIndex: number }) => current.images[current.imageIndex];
 
 describe('useEntityGallery', () => {
   it('starts on the primary and steps forward', () => {

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { Body, Item, MediaList, TraitRequirementRow, World, WorldOverview } from '@/types';
+import type { Body, Item, MediaFileEntry, TraitRequirementRow, World, WorldOverview } from '@/types';
+import { fileEntries } from './mediaList';
 import { migrateWorld } from './version';
 import { coverData } from './mediaImages';
 import { galleryLinks } from './entityImages';
@@ -32,7 +33,7 @@ const rawWorld = () => ({
 });
 
 const world = (): World => migrateWorld(rawWorld() as unknown as World);
-const listOf = (w: World): MediaList => w.worldOverview.mediaList ?? {};
+const listOf = (w: World): Record<string, MediaFileEntry> => Object.fromEntries(fileEntries(w.worldOverview.mediaList).map((e) => [e.id, e]));
 const names = (w: World) => Object.values(listOf(w)).map((e) => e.name).sort();
 const idOf = (link: unknown) => (link as { mediaId: string }).mediaId;
 

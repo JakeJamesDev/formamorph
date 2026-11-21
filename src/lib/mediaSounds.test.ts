@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { MediaList, MediaRef, World } from '@/types';
+import type { MediaFileEntry, MediaList, MediaRef, World } from '@/types';
+import { fileEntries } from './mediaList';
 import { migrateWorld } from './version';
 import { migrateSoundsToMediaList, resolveSound } from './mediaSounds';
 import { mediaNameFromAsset } from './mediaList';
@@ -26,7 +27,7 @@ const raw = () => ({
 });
 
 const load = (): World => migrateWorld(raw());
-const listOf = (w: World): MediaList => w.worldOverview.mediaList ?? {};
+const listOf = (w: World): Record<string, MediaFileEntry> => Object.fromEntries(fileEntries(w.worldOverview.mediaList).map((e) => [e.id, e]));
 const idOf = (value: unknown) => (value as MediaRef).mediaId;
 const entity = (w: World, id: string) => w.entities.find((e) => e.id === id)!;
 const location = (w: World, id: string) => w.locations.find((l) => l.id === id)!;

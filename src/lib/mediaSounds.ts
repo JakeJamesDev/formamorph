@@ -4,7 +4,7 @@
  */
 import type { MediaAsset, MediaList, MediaRef, Placeholder } from '@/types';
 import { placeGalleryFile } from './mediaGallery';
-import { isMediaRef, mediaNameFromAsset, resolveMedia, type MediaValue } from './mediaList';
+import { isFileEntry, isMediaRef, mediaNameFromAsset, resolveMedia, type MediaValue } from './mediaList';
 import { labelPlaceholders } from './placementLetters';
 
 /** World music's subject for the Q10 fallback name (Q43): `Music 1`. */
@@ -25,7 +25,7 @@ export const resolveSound = (value: SoundValue, list: MediaList | undefined): Me
 export function placeSound(list: MediaList, file: Pick<MediaAsset, 'data'> & Partial<MediaAsset>, subject: string | undefined): { list: MediaList; link: MediaRef } {
   const placed = placeGalleryFile(list, { data: file.data, name: mediaNameFromAsset(file.name) }, 'sound', subject);
   const entry = placed.list[placed.id];
-  const added = placed.list !== list && file.type && entry.type !== file.type
+  const added = placed.list !== list && file.type && isFileEntry(entry) && entry.type !== file.type
     ? { ...placed.list, [placed.id]: { ...entry, type: file.type } }
     : placed.list;
   return { list: added, link: { mediaId: placed.id } };

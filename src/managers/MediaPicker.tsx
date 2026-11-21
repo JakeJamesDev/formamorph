@@ -24,14 +24,14 @@ import { ImageUpload } from '@/lib/UtilityComponents';
 import { mediaUsage, mediaUseLabel } from '@/lib/mediaUsage';
 import { RemoteImg } from '@/lib/useRemoteImage';
 import { cn } from '@/lib/utils';
-import type { GalleryLink, MediaEntry, MediaList, MediaRef } from '@/types';
-import type { MediaEntryKind } from '@/lib/mediaList';
+import type { GalleryLink, MediaEntry, MediaFileEntry, MediaList, MediaRef } from '@/types';
+import { fileEntries, type MediaEntryKind, type MediaFileKind } from '@/lib/mediaList';
 import { useMediaStep } from './useMediaItemActions';
 
 
 /** The list's entries of `kind`, sorted by name. */
-const entriesOf = (list: MediaList | undefined, kind: MediaEntryKind): MediaEntry[] =>
-  Object.values(list ?? {}).filter((entry) => entry.kind === kind && entry.data)
+const entriesOf = (list: MediaList | undefined, kind: MediaFileKind): MediaFileEntry[] =>
+  fileEntries(list).filter((entry) => entry.kind === kind && entry.data)
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }));
 
 /** Choose: a popover of the list's entries of `kind`, a thumbnail grid for images and a name list for sounds.
@@ -39,8 +39,8 @@ const entriesOf = (list: MediaList | undefined, kind: MediaEntryKind): MediaEntr
 export function MediaChooseButton({ list, linkedIds, onPick, kind = 'image' }: {
   list: MediaList | undefined;
   linkedIds: ReadonlySet<string>;
-  onPick: (entry: MediaEntry) => void;
-  kind?: MediaEntryKind;
+  onPick: (entry: MediaFileEntry) => void;
+  kind?: MediaFileKind;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');

@@ -1,11 +1,11 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createScriptPromptStore, PromptCanceled, type ScriptPromptRequest } from '@/lib/scriptPrompts';
-import type { MediaList } from '@/types';
+import type { MediaFileEntry } from '@/types';
 import { ScriptImagesAbove, ScriptPromptLine, ScriptTellLines } from './ScriptPromptLine';
 
 // The game reads the Media List from the open world; these tests hand one in.
-const MEDIA: MediaList = {
+const MEDIA: Record<string, MediaFileEntry> = {
   'm-harbor': { id: 'm-harbor', name: 'Harbor', kind: 'image', data: 'data:image/png;base64,AAAA' },
   'm-gull': { id: 'm-gull', name: 'Gull', kind: 'image', data: 'data:image/png;base64,BBBB' },
   'm-bell': { id: 'm-bell', name: 'Bell', kind: 'sound', data: 'data:audio/mpeg;base64,CCCC' },

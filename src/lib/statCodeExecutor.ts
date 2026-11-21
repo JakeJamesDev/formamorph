@@ -2308,7 +2308,7 @@ const MEDIA = '__formamorphMedia';
  *  back in the run; `image(name)` is the id `set` would write. A name of the wrong kind is a missing name (Q53). */
 const mediaPrelude = (media: SandboxMedia | undefined, reads: HostReads): string => {
   const entries = media?.entries ?? [];
-  const byName: Record<MediaEntry['kind'], Record<string, string>> = { image: {}, sound: {} };
+  const byName: Record<MediaEntry['kind'], Record<string, string>> = { image: {}, sound: {}, layered: {} };
   for (const { id, name, kind } of entries) byName[kind][name] ??= id;
   const spec = {
     entries: Object.fromEntries(entries.map(({ id, name, kind }) => [id, { name, kind }])), byName, kinds: MEDIA_MEMBER_KIND,

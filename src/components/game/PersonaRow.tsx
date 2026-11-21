@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PersonaIcon } from '@/lib/elementIcons';
+import { PictureImg } from '@/components/PictureImg';
 import { supporterCopyBlock } from '@/lib/supporterCopy';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -82,7 +83,7 @@ export function PersonaRow({ onChange, disabled = false }: {
     <div className="flex items-center gap-2 pl-2" data-testid="persona-row">
       <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
         {image
-          ? <img src={image} alt="" className={cn('h-full w-full', thumbFit('portrait'))} />
+          ? <PictureImg crop src={image} alt="" className={cn('h-full w-full', thumbFit('portrait'))} />
           : <PersonaIcon aria-hidden className="h-4 w-4 text-muted-foreground" />}
       </span>
       <span className="flex min-w-0 flex-1 items-center text-label">

@@ -3,9 +3,9 @@ import { Hint, Meta } from '@/components/ui/typography';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { ScriptImage } from '@/components/game/ScriptImage';
 import { SHOW_SIZES, SHOW_WRAPS, type ShowSize, type ShowWrap } from '@/lib/scriptPrompts';
-import type { MediaEntry } from '@/types';
+import type { MediaFileEntry } from '@/types';
 
-const ART: MediaEntry = {
+const ART: MediaFileEntry = {
   id: 'reference-lamp',
   name: 'Lamp on the sill',
   kind: 'image',

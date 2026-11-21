@@ -2,6 +2,7 @@
 import type { ImageCap } from './imageSlots';
 import { dataUrlBytes, isRemoteImage } from './imageBytes';
 import { ENTRY_ITEM_PREFIX, largerCap, storedBytes, UNUSED_IMAGE_CAP, type MediaItem, type MediaParent, type MediaWorld } from './mediaIndex';
+import { isFileEntry } from './mediaList';
 import { mediaParentSpec } from './mediaParents';
 import { mediaUsage, mediaUseLabel, type MediaUse } from './mediaUsage';
 
@@ -18,12 +19,18 @@ export function mediaEntryItems(w: MediaWorld): MediaItem[] {
   const list = w.worldOverview.mediaList;
   if (!list) return [];
   const usage = mediaUsage(w);
-  return Object.values(list).filter((entry) => entry.data).map((entry) => {
+  return Object.values(list).flatMap((entry): MediaItem[] => {
     const uses = usage.get(entry.id) ?? [];
+    const used = uses.length ? {} : { unused: true as const };
+    if (!isFileEntry(entry)) {
+      const key = `${ENTRY_ITEM_PREFIX}${entry.id}` as const;
+      return [{ id: key, key, kind: 'layered', parent: MEDIA_LIST_PARENT, slot: entry.name, value: '', bytes: 0, linked: false, overBudget: false, mediaId: entry.id, uses, ...used }];
+    }
+    if (!entry.data) return [];
     const linked = isRemoteImage(entry.data);
     const budget = entry.kind === 'image' ? entryBudget(uses) : undefined;
     const rules = uses.flatMap((use) => use.requires ?? []);
-    return {
+    return [{
       id: `${ENTRY_ITEM_PREFIX}${entry.id}`,
       key: `${ENTRY_ITEM_PREFIX}${entry.id}`,
       kind: entry.kind,
@@ -37,8 +44,8 @@ export function mediaEntryItems(w: MediaWorld): MediaItem[] {
       uses,
       ...(budget ? { budget } : {}),
       ...(rules.length ? { rules } : {}),
-      ...(uses.length ? {} : { unused: true as const }),
-    };
+      ...used,
+    }];
   });
 }
 

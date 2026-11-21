@@ -11,6 +11,7 @@ import { DEFAULT_WORLDS, seedWorldData, type DefaultWorldSeed } from './defaultW
 import { firstRoutine } from '@/lib/entityKind';
 import { narrationHash } from '@/lib/coref/mentionReadings';
 import { spokenQuotes } from '@/lib/quoteSegments';
+import { mediaEntry } from '@/lib/mediaList';
 
 /** `bundled-<world id>` boots a new game in that bundled world. */
 const BUNDLED_PREFIX = 'bundled-';
@@ -19,7 +20,7 @@ const BUNDLED_PREFIX = 'bundled-';
 export const DEV_FIXTURES = [
   'whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'avatarIcon',
   'entityPresence', 'entityFollowers', 'mapStrangers', 'mapBackground', 'items', 'options', 'lockedPlaces', 'speakerQuotes', 'scriptImages',
-  'enterOptions', ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
+  'enterOptions', 'layeredImages', ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
 ];
 
 // Real-sized images for the long save, fetched from the dev server.
@@ -301,6 +302,31 @@ const SCRIPT_IMAGES_TEXT = [
   'It is heavier than it looks. The teeth are worn smooth, and a thin chain hangs from the bow, broken at one link.',
   'Behind you the door clicks. When you turn, it stands an inch open, and the hum has gone quiet.',
 ].join('\n\n');
+/** One Layer's art for the `layeredImages` rig, all on one 240×288 canvas. */
+const rigArt = (body: string) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="288">${body}</svg>`)}`;
+const RIG_ART: Record<string, string> = {
+  'dev-rig-body': rigArt('<rect width="240" height="288" fill="#d9e4ec"/><rect x="50" y="170" width="140" height="118" rx="50" fill="#4f6d7a"/><circle cx="120" cy="110" r="58" fill="#f1c9a5"/>'),
+  'dev-rig-calm': rigArt('<circle cx="100" cy="104" r="7" fill="#2b2b2b"/><circle cx="140" cy="104" r="7" fill="#2b2b2b"/><path d="M98 134 Q120 150 142 134" stroke="#2b2b2b" stroke-width="5" fill="none" stroke-linecap="round"/>'),
+  'dev-rig-hurt': rigArt('<path d="M92 98 l14 12 M106 98 l-14 12 M134 98 l14 12 M148 98 l-14 12" stroke="#2b2b2b" stroke-width="5" stroke-linecap="round"/><path d="M100 144 Q120 130 140 144" stroke="#2b2b2b" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="62" y="72" width="116" height="16" rx="6" fill="#c0392b" transform="rotate(-12 120 80)"/>'),
+  'dev-rig-hood': rigArt('<path d="M52 130 Q52 36 120 36 Q188 36 188 130 L170 130 Q166 66 120 66 Q74 66 70 130 Z" fill="#2e4a3a"/>'),
+};
+const RIG_ID = 'dev-rig';
+const below = (statId: string, value: number) => [{ all: [{ kind: 'stat' as const, id: statId, operator: '<' as const, value, unit: 'raw' as const }] }];
+/** The `layeredImages` rig: a body, a face that shows hurt below 50 Health, and a hood that shows below 50 Warmth. */
+const RIG: MediaEntry = {
+  id: RIG_ID, name: 'Scout Rig', kind: 'layered', layers: [
+    { id: 'dev-layer-body', name: 'Body', variants: [{ mediaId: 'dev-rig-body' }] },
+    { id: 'dev-layer-face', name: 'Face', variants: [{ mediaId: 'dev-rig-hurt', requires: below('dev-health', 50) }, { mediaId: 'dev-rig-calm' }] },
+    { id: 'dev-layer-hood', name: 'Hood', opacity: 0.85, variants: [{ mediaId: 'dev-rig-hood', requires: below('dev-warmth', 50) }] },
+  ],
+};
+/** Two scouts sharing the rig, each in its own state: Wren hurt and cold, Corin well and warm. */
+// Lists only the fields the fixture reads, hence the cast.
+const RIG_CAST = [
+  { id: 'dev-corin', name: 'Corin', stats: [devStat('Health', 90), devStat('Warmth', 80)], images: [{ mediaId: RIG_ID }] },
+  { id: 'dev-wren', name: 'Wren', persona: true, stats: [devStat('Health', 30), devStat('Warmth', 20)], images: [{ mediaId: RIG_ID }] },
+] as unknown as Entity[];
+
 /** A flat portrait for the fixture's cast, so the cards and pick list show images. */
 const fixturePortrait = (hue: number): NonNullable<Entity['images']> => [{
   data: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="120"><rect width="80" height="120" fill="hsl(${hue} 45% 55%)"/><circle cx="40" cy="34" r="18" fill="hsl(${hue} 35% 85%)"/><rect x="14" y="60" width="52" height="60" rx="20" fill="hsl(${hue} 40% 35%)"/></svg>`)}`,
@@ -377,7 +403,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       const turn = JSON.parse(history[last].content) as { turnId: string };
       const base = world.default as unknown as World;
       const art = ember?.world;
-      const media = (id: string, image?: GalleryLink): MediaEntry => ({ id, name: id, kind: 'image', type: 'image/webp', data: !image ? '' : 'data' in image ? image.data : art?.worldOverview.mediaList?.[image.mediaId]?.data ?? '' });
+      const media = (id: string, image?: GalleryLink): MediaEntry => ({ id, name: id, kind: 'image', type: 'image/webp', data: !image ? '' : 'data' in image ? image.data : (art && mediaEntry(art.worldOverview.mediaList, image.mediaId)?.data) ?? '' });
       const place = (name: string) => art?.locations.find((l) => l.name === name)?.images?.[0];
       const face = (name: string) => art?.entities.find((e) => e.name === name)?.images?.[0];
       const mediaList = {
@@ -407,6 +433,39 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
           },
         },
         saveName: 'DEV: Script Images',
+      };
+    }
+    case 'layeredImages': {
+      // The white room with two scouts who link one Layered Image. Wren is played; Corin stands here, met.
+      const [world, save] = await Promise.all([
+        import('./devFixtures/whiteRoomWorld.json'),
+        import('./devFixtures/whiteRoomSave.json'),
+      ]);
+      const base = world.default as unknown as World;
+      const saved = save.default as unknown as SaveObject;
+      const art = Object.fromEntries(Object.entries(RIG_ART).map(([id, data]): [string, MediaEntry] => [id, { id, name: id, kind: 'image', type: 'image/svg+xml', data }]));
+      const history = saved.currentState.fullMessageHistory ?? [];
+      const last = history.length - 1;
+      return {
+        world: {
+          ...base,
+          worldOverview: { ...base.worldOverview, mediaList: { ...base.worldOverview.mediaList, ...art, [RIG_ID]: RIG } },
+          entities: [...RIG_CAST.map((e) => withMembership(e, [WHITE_ROOM_ID])), ...base.entities],
+        },
+        save: {
+          ...saved,
+          persona: { source: 'world', entityId: 'dev-wren' },
+          currentState: {
+            ...saved.currentState,
+            locationId: WHITE_ROOM_ID,
+            metEntities: ['dev-corin'],
+            fullMessageHistory: history.map((message, index) => (
+              index === last ? { ...message, content: JSON.stringify({ ...JSON.parse(message.content), entities: ['Corin'] }) } : message
+            )),
+            visibleEntities: [{ name: 'Corin', revealed: true }],
+          },
+        },
+        saveName: 'DEV: Layered Images',
       };
     }
     case 'thousandTurns': {

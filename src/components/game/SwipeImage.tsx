@@ -1,5 +1,6 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { RemoteImg } from '@/lib/useRemoteImage';
+import { PictureImg } from '@/components/PictureImg';
+import type { Picture } from '@/lib/layeredImages';
 import { Tip } from '@/components/ui/tooltip';
 
 /** Past this fraction of the picture's width, letting go commits the swipe instead of springing back. */
@@ -21,7 +22,7 @@ const prefersReducedMotion = () =>
  * far more likely to be a selection or a drag-out than a swipe.
  */
 export function SwipeImage({ images, index, onStep, alt, onZoom, className }: {
-  images: readonly string[];
+  images: readonly Picture[];
   index: number;
   onStep: (by: number) => void;
   alt: string;
@@ -93,7 +94,7 @@ export function SwipeImage({ images, index, onStep, alt, onZoom, className }: {
         onTransitionEnd={onSettled}
       >
         <Tip tip="Click to enlarge" labelsChild={false}>
-          <RemoteImg
+          <PictureImg
             src={at(0)}
             alt={alt}
             className="max-w-full max-h-full object-contain cursor-zoom-in select-none"
@@ -102,7 +103,7 @@ export function SwipeImage({ images, index, onStep, alt, onZoom, className }: {
           />
         </Tip>
         {incoming !== null && (
-          <RemoteImg
+          <PictureImg
             src={at(incoming)}
             alt=""
             aria-hidden

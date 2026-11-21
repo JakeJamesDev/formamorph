@@ -17,7 +17,7 @@ export const mediaStepLabel = (verb: string, item: MediaItem): string =>
   namedBySlot(item) ? `${verb} ${item.slot}` : `${verb} ${item.slot}: ${item.parent.name}`;
 
 /** Whether a panel offers Replace and Remove. Avatars act from their own panel. */
-export const actsInItemPanel = (item: MediaItem): boolean => item.kind !== 'avatar';
+export const actsInItemPanel = (item: MediaItem): boolean => item.kind !== 'avatar' && item.kind !== 'layered';
 
 /** Runs a write as one labeled History Step that keeps the Media tab as its Origin. */
 export function useMediaStep() {

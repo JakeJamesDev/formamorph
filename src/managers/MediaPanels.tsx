@@ -78,6 +78,8 @@ export function Preview({ item }: { item: MediaItem }) {
     }
     case 'avatar':
       return <div className="flex h-72 w-full"><AvatarPreview value={item.value} /></div>;
+    case 'layered':
+      return <MediaThumb item={item} className="h-32 w-32 rounded" />;
   }
 }
 
@@ -169,7 +171,7 @@ export function MediaItemPanel({ item, placeholders, onGoTo }: {
         </h2>
         {item.blank
           ? <Hint className="mt-1">No image yet</Hint>
-          : (
+          : item.kind === 'layered' ? <Meta className="mt-1 flex items-center gap-2">{MEDIA_KIND_LABELS[item.kind].one}</Meta> : (
             <MediaFacts item={item} className="mt-1">
               <span>{MEDIA_KIND_LABELS[item.kind].one}</span>
               <span aria-hidden>·</span>
@@ -178,12 +180,14 @@ export function MediaItemPanel({ item, placeholders, onGoTo }: {
       </div>
       {soundSlot || imageSlot || (!item.blank && <div className="flex justify-center rounded-md bg-muted/40 p-2"><Preview item={item} /></div>)}
       <div className="flex flex-wrap gap-2">
-        <MediaActionRow
-          className="contents"
-          item={item}
-          placeholders={placeholders}
-          {...(actsInItemPanel(item) && !soundSlot && !imageSlot ? { onReplace: (media: MediaAsset) => void replace(item, media), ...(item.blank ? {} : { onRemove: () => void remove(item) }) } : {})}
-        />
+        {item.kind !== 'layered' && (
+          <MediaActionRow
+            className="contents"
+            item={item}
+            placeholders={placeholders}
+            {...(actsInItemPanel(item) && !soundSlot && !imageSlot ? { onReplace: (media: MediaAsset) => void replace(item, media), ...(item.blank ? {} : { onRemove: () => void remove(item) }) } : {})}
+          />
+        )}
         <GoToButton parent={item.parent} placeholders={placeholders} onGoTo={onGoTo} />
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { Box, FileAudio, Image as ImageIcon, Link2, UserSquare } from 'lucide-react';
+import { Box, FileAudio, Image as ImageIcon, Layers, Link2, UserSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Meta } from '@/components/ui/typography';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
@@ -8,7 +8,7 @@ import { THUMB_FRAME, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
 
-const KIND_ICON: Record<MediaKind, typeof ImageIcon> = { image: ImageIcon, sound: FileAudio, model: Box, avatar: UserSquare };
+const KIND_ICON: Record<MediaKind, typeof ImageIcon> = { image: ImageIcon, sound: FileAudio, model: Box, avatar: UserSquare, layered: Layers };
 
 /** An image's own pixels, loaded lazily; every other kind shows its icon. */
 export function MediaThumb({ item, className }: { item: MediaItem; className?: string }) {
@@ -21,6 +21,7 @@ export function MediaThumb({ item, className }: { item: MediaItem; className?: s
 
 /** The stored size, in the warning color over budget, or the Linked badge for a linked image. */
 export function MediaSize({ item }: { item: MediaItem }) {
+  if (item.kind === 'layered') return null;
   if (item.linked) {
     return <Badge variant="outline" className="gap-1 px-1.5 py-0 text-meta font-normal"><Link2 className="h-3 w-3" />Linked</Badge>;
   }

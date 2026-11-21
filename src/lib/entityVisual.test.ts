@@ -22,6 +22,13 @@ describe('hasEntityVisual', () => {
     expect(hasEntityVisual(entity({ images: [{ mediaId: 'gone' }] }), media)).toBe(false);
   });
 
+  it('accepts a Layered Image link only while its bottom Layer has an image to size it', () => {
+    const rig = (mediaId: string) => ({ id: 'rig', name: 'Rig', kind: 'layered' as const, layers: [{ id: 'l', name: 'Base', variants: [{ mediaId }] }] });
+    const image = { id: 'm', name: 'Sedge 1', kind: 'image' as const, data: IMAGE };
+    expect(hasEntityVisual(entity({ images: [{ mediaId: 'rig' }] }), { m: image, rig: rig('m') })).toBe(true);
+    expect(hasEntityVisual(entity({ images: [{ mediaId: 'rig' }] }), { m: image, rig: rig('gone') })).toBe(false);
+  });
+
   it('rejects a model asset carrying no data, which nothing could load', () => {
     expect(hasEntityVisual(entity({ model: { name: 'statue.glb' } as Entity['model'] }), undefined)).toBe(false);
   });

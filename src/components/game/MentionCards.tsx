@@ -7,7 +7,9 @@ import { Check, ChevronLeft } from 'lucide-react';
 import { defaultComponents, type ExtraProps } from 'streamdown';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
-import type { Base64Data, Entity } from '@/types';
+import type { Entity } from '@/types';
+import type { Picture } from '@/lib/layeredImages';
+import { PictureImg } from '@/components/PictureImg';
 import type { PlayerView, PlayerViewEntity } from '@/lib/formaquestion/playerView';
 import { hasStrangerFace, type EntityPresence } from '@/lib/presence';
 import { parseSpanKey, spanKey, type QuoteSpeakerSource, type SpeakerColors, type TextSpan } from '@/lib/quoteSegments';
@@ -51,7 +53,7 @@ function Initial({ name, color, className }: { name: string | null; color?: stri
 /** The card's picture: the Player View image as a top-anchored portrait crop, else the colored initial. */
 function MentionBadge({ row, color }: { row: PlayerViewEntity; color?: string }) {
   if (row.image) {
-    return <img src={row.image} alt="" data-testid="mention-card-portrait" className={cn('h-14 w-12 shrink-0 rounded-md', thumbFit('portrait'))} />;
+    return <PictureImg crop src={row.image} alt="" data-testid="mention-card-portrait" className={cn('h-14 w-12 shrink-0 rounded-md', thumbFit('portrait'))} />;
   }
   return <Initial name={row.name} color={color} className="h-8 w-8 text-label" />;
 }
@@ -112,7 +114,7 @@ export function MentionPickList({ role, rows, colors, current, focusFirst = fals
       {[...rows.values()].map((row, i) => (
         <button key={row.id} type="button" autoFocus={focusFirst && i === 0} onClick={() => onPick(row.id)} className={MENU_ROW}>
           {row.image
-            ? <img src={row.image} alt="" className={cn('h-6 w-6 shrink-0 rounded-md', thumbFit('portrait'))} />
+            ? <PictureImg crop src={row.image} alt="" className={cn('h-6 w-6 shrink-0 rounded-md', thumbFit('portrait'))} />
             : <Initial name={row.name} color={colors.get(row.id)} className="h-6 w-6 text-meta" />}
           <span className="flex-1">{row.name}</span>
           {row.id === current && <Check aria-label="Current" className="h-4 w-4 text-muted-foreground" />}
@@ -137,7 +139,7 @@ export type CardPresence = ReadonlyMap<string, Pick<EntityPresence, 'entity' | '
 
 /** What a stranger's card row reads beyond its label: its visible image and its resolved Stranger Description. */
 export interface StrangerReads {
-  imageOf?: (entity: Entity) => Base64Data | undefined;
+  imageOf?: (entity: Entity) => Picture | undefined;
   describe?: (entity: Entity) => string;
 }
 

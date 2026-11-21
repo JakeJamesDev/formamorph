@@ -22,6 +22,7 @@ export const REF_SAFE_COMPOSED_CHILDREN = [
   'TabsTrigger', // src/components/ui/tabs.tsx
   'Checkbox', // src/components/ui/checkbox.tsx
   'RemoteImg', // src/lib/useRemoteImage.tsx
+  'PictureImg', // src/components/PictureImg.tsx
   'EdgeTabButton', // src/components/formaquestion/EdgeTab.tsx
   'InsertMenuButton', // src/components/prompt/InsertMenuButton.tsx
   'ItemRowButton', // src/components/game/InventoryTab.tsx
