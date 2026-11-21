@@ -34,7 +34,7 @@ The actions:
 
   A Start with an empty schedule stays at its place. Duplicate Starts at the same place with different schedules are fine. A Start's place can be **Player's Starting Location**, and such a Start of an Individual can begin Following (Q147, Q148).
 
-An Individual has a **Traversable** list: the places it may go beyond its schedule, or Anywhere. Pulls and follows reach only the places the current schedule row uses plus the Traversable places. A row can be **Strict**: during it the character can't be called over and won't start following.
+An Individual has a **Traversable** list: the places it may go beyond its schedule, or Anywhere. Pulls and follows reach only the places its schedule uses, in any row, plus the Traversable places (Q236). A row can be **Strict**: during it the character can't be called over and won't start following.
 
 The player can take a character along. A follower can be told to **wait** somewhere for a while, or to **part ways**. A follower who can't enter the player's next place stays behind and waits. When a wait runs out, or the player parts ways, the character goes back to their schedule.
 
@@ -71,7 +71,7 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q23** A migrated one-place character that was Free loses today's sibling pull. Traversable is the rule; the author adds places to allow it.
 - **Q24** *Superseded by Q46.* Group pulls.
 - **Q25** *Superseded by Q58.* Moves Between migration.
-- **Q26** *Amended by Q51 and Q59.* A pull brings a character only into a place their current row uses or their Traversable list allows. A Waiting or Following character is never pulled.
+- **Q26** *Amended by Q51, Q59 and Q236.* A pull brings a character only into an allowed place: one their schedule uses or their Traversable list allows. A Waiting or Following character is never pulled.
 - **Q27** The location request keeps today's gate: it runs only while location routing is on.
 - **Q28** *Amended by Q64.* Scripts: `.follow()` works on any Individual and is ignored on a Group. `.unfollow()` is Part ways. The entity entry exposes a read-only waiting state.
 - **Q29** *Superseded by Q46.* Group followers.
@@ -300,6 +300,7 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q233** The close review of 2026-11-11 found three gaps and four thin tests in tickets 26 to 34. The user chose one ticket, 35, before the close. Two small gaps were fixed at once: the "location has no entities" rule uses the engine's starting-location rule (Q191), and two stale test strings.
 - **Q234** Correction to Q226 and Q231, on a mounted-game probe by ticket 35. The Inventory pass's placement is the end-of-turn placement in every turn where the player has a location, moved or not, not only in the two cases Q226 named. So an After the AI script reads every entity placed for the end of the turn, with the pulls and with the entity writes of Before the AI scripts and Tool calls applied (Q218, Q232 stand). `action` and `held` already read that same minute. The one split is a turn with no current location: the placement is then the turn-start one, and `action` and `held` read the turn-start minute there. An After script's own entity writes, and a `clock.advance` it calls, apply when the turn ends; a re-roll reads that. The Scripts Reference drops the two-case exception and states this.
 - **Q235** The sample world (the cast a Tool is tried against with no world open) gets a kind and Starts, authored in place, each entity at the place it has today. It was the one production world still in the pre-effort shape, so the sample Tool snapshot of Q210 placed nobody. (Ticket 35.)
+- **Q236** *Amends Q26, Q42 and the Allowed definition.* An Individual's allowed places are every place its Start's schedule uses, in any row, plus the Start's place and its Traversable places (all places for Anywhere). During an Away row the places connected to the Start's place are allowed too, as before. Strict still blocks pulls and new follows. The current-row rule left a character on a Stay row with nowhere to go: Bridget answered Come along to her own bedroom at 08:18 and was left Waiting (Q42). Post-close ruling of 2026-11-21, from a Sunmeadow playtest.
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
@@ -445,7 +446,7 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 
 - **Connected** (pickers, Q43): a place is connected to a Start when travel can get from the Start's place to it through any path of effective links, Far included. Pickers list only connected places (Q44). Stored places that stop being connected are flagged in the editor and skipped in play (Q54).
 - **Nearby** (pulls and context, Q61): a place one link from the player's place, implicit or Connection, in either direction, whose distance is Nearby.
-- **Allowed** for an Individual right now: the places its current row uses, plus its Traversable places (all places for Anywhere). Pulls and follows reach only allowed places.
+- **Allowed** for an Individual: every place its Start's schedule uses, in any row, and the Start's place, plus its Traversable places (all places for Anywhere). An Away row in force adds the places connected to the Start (Q236). Pulls and follows reach only allowed places.
 
 ### Migration
 

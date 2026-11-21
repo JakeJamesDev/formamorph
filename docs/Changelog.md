@@ -28,6 +28,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Large Supporter-only worlds, such as Sunmeadow Town, now download from Community Creations.** The download no longer times out, and the installed world stays close to the author's size.
+  - **A character who agrees to come along now follows you to any location in their routine, at any hour.** They no longer stay behind just because their routine has them elsewhere at that time. The story can also call them over to those locations. Can Also Go adds more, and a lock still keeps them in place.
 
 ---
 

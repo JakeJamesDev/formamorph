@@ -338,6 +338,19 @@ describe('following and waiting', () => {
     expect(game.advance(at(1, 11), 'gate').pos).toBe('smithy');
   });
 
+  it('leads a follower into a place another row of its schedule uses, outside that row\'s hours', () => {
+    // A keeper who works the market by day and sleeps at the inn follows the player home at 09:00.
+    const keeper = routine([timed('work', 6, 17, stay('market')), timed('sleep', 20, 6, stay('inn'))], 'market', []);
+    const game = play(keeper, at(1, 9), 'market').apply(follow(keeper, at(1, 9), 'market'));
+    expect(game.advance(at(1, 9, 5), 'inn').pos).toBe('inn');
+    expect(game.state.follow).toEqual({ mode: 'following' });
+  });
+
+  it('pulls a character into a place another row of its schedule uses', () => {
+    const keeper = routine([timed('work', 6, 17, stay('market')), timed('sleep', 20, 6, stay('inn'))], 'market', []);
+    expect(pullUnique(play(keeper, at(1, 9)).book, keeper, 'inn', scene(at(1, 9), 'inn')).positions.mara).toBe('inn');
+  });
+
   it('never leaves a script follower behind', () => {
     const bound = routine([allDay('work', stay('smithy'))], 'smithy', []);
     const game = play(bound, at(1, 9), 'smithy').apply(follow(bound, at(1, 9), 'smithy', { script: true }));
@@ -394,15 +407,21 @@ describe('reach', () => {
     expect(play(routine([allDay('round', patrol([['island', 30], ['gate', 30]]))], 'inn'), at(1, 8)).pos).toBe('gate');
   });
 
-  it('allows every place for Anywhere and only the row places for an empty list', () => {
+  it('allows every place for Anywhere and every schedule place, at any hour, for an empty list', () => {
     const anywhere = routine([allDay('rest', stay('inn'))], 'inn', 'anywhere');
-    const listed = routine([timed('work', 8, 17, wander(['market', 'square'], 60))], 'inn', []);
+    const listed = routine([timed('work', 8, 17, wander(['market', 'square'], 60)), timed('sleep', 20, 6, stay('wall'))], 'inn', []);
     const extra = routine([allDay('rest', stay('inn'))], 'inn', ['gate']);
     const now = at(1, 9);
+    const schedule = new Set(['inn', 'market', 'square', 'wall']);
     expect(allowedPlaces(anywhere, play(anywhere, now).state, scene(now))).toEqual(new Set(locations.map((l) => l.id)));
-    expect(allowedPlaces(listed, play(listed, now).state, scene(now))).toEqual(new Set(['market', 'square']));
-    expect(allowedPlaces(listed, play(listed, at(1, 20)).state, scene(at(1, 20)))).toEqual(new Set(['inn']));
+    expect(allowedPlaces(listed, play(listed, now).state, scene(now))).toEqual(schedule);
+    expect(allowedPlaces(listed, play(listed, at(1, 18)).state, scene(at(1, 18)))).toEqual(schedule);
     expect(allowedPlaces(extra, play(extra, now).state, scene(now))).toEqual(new Set(['inn', 'gate']));
+  });
+
+  it('drops a row place no path reaches from the allowed places', () => {
+    const r = routine([timed('trip', 8, 17, stay('island')), timed('sleep', 20, 6, stay('wall'))], 'inn', []);
+    expect(allowedPlaces(r, play(r, at(1, 18)).state, scene(at(1, 18)))).toEqual(new Set(['inn', 'wall']));
   });
 });
 

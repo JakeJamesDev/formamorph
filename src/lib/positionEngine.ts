@@ -266,10 +266,13 @@ function rollStart(starts: readonly EntityStart[], random: () => number): Entity
 
 /** The places `routine` may be pulled or led into on `start` at `now`: its row's places plus Traversable. An Away
  *  row leads a follower anywhere its Start connects to (Q29). */
+/** Every place the Start's rows use at any hour, the Start's place, and Traversable; an Away row in force adds the
+ *  connected places (Q236). */
 function allowedOn(routine: PlayedRoutine, start: EntityStart, now: number, graph: PlaceGraph, connected: ReadonlySet<string>): Set<string> {
   if (routine.traversable === "anywhere") return new Set(graph.locations.map((l) => l.id));
-  const { action } = liveRow(start, rowAt(start, now), connected);
-  return new Set([...(action.kind === "away" ? connected : placesOf(action)), ...routine.traversable]);
+  const rowPlaces = start.schedule.flatMap((row) => placesOf(liveRow(start, row, connected).action));
+  const away = liveRow(start, rowAt(start, now), connected).action.kind === "away" ? connected : [];
+  return new Set([start.place, ...rowPlaces, ...away, ...routine.traversable]);
 }
 
 /** Per-call cache of each Start place's connected set. */
@@ -492,8 +495,8 @@ function startOf(course: Course, st: UniqueState | undefined, scene: PositionSce
   return start && { leg: saved.leg, start };
 }
 
-/** The places `course` may be pulled or led into right now: its current row's places (the Start's place in free
- *  time) plus its Traversable places. Every place for Anywhere. */
+/** The places `course` may be pulled or led into right now: every place its Start's schedule uses, the Start's
+ *  place, and its Traversable places. Every place for Anywhere. */
 export function allowedPlaces(course: Course, st: UniqueState | undefined, scene: PositionScene): Set<string> {
   const saved = startOf(course, st, scene);
   if (!saved) return new Set();

@@ -187,7 +187,7 @@ A Schedule row flag: during the row the character can't be called over by narrat
 _Avoid_: locked, busy
 
 **Traversable**:
-The places a Unique entity may go beyond its Schedule, or Anywhere, set per Routine. Pulls and follows reach only its current row's places plus the applying Routine's list. An empty list means Schedule places only.
+The places a Unique entity may go beyond its Schedule, or Anywhere, set per Routine. Pulls and follows reach only the places its Start's Schedule uses, in any row, plus the applying Routine's list. An empty list means Schedule places only.
 _Avoid_: range, Can Follow
 
 **Look Around**:
