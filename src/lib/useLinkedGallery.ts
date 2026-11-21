@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
-import { editGallery, galleryView, type GalleryMedia } from './mediaGallery';
+import { composedPictures, editGallery, galleryView, type GalleryMedia } from './mediaGallery';
 import type { GalleryImage, GalleryLink } from '@/types';
 
 /**
@@ -20,5 +20,5 @@ export function useLinkedGallery(links: GalleryLink[], write: (links: GalleryLin
     write(edited.links);
     if (Object.keys(edited.added).length) addMedia(edited.added);
   }, [links, list, subject, write, addMedia]);
-  return { images, onImagesChange, media };
+  return { images, onImagesChange, media, pictures: composedPictures(view.links, list) };
 }

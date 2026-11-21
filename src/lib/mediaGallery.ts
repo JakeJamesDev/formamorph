@@ -10,7 +10,8 @@ import type { LocationImageBearing } from './locationImages';
 import { isRemoteImage, dataUrlMime } from './imageBytes';
 import { fallbackMediaName, fileEntries, isEmbeddedImage, isMediaRef, layeredEntry, resolveGalleryImage, uniqueMediaName, type MediaFileKind } from './mediaList';
 import { labelPlaceholders } from './placementLetters';
-import { isEmbeddedLayered, placeLayered } from './portableLayered';
+import { isEmbeddedLayered, placeLayered, portableOutsidePlay } from './portableLayered';
+import { outsidePlayLayered, type LayeredPicture } from './layeredImages';
 
 /** What makes two stored values one file: a link's URL, or embedded data's base64 payload (its MIME string aside). */
 export function mediaContentKey(data: string): string {
@@ -153,6 +154,22 @@ export function relinkGallery(
 
 /** The tile key of the embedded Layered Image in slot `slot`. */
 const embeddedTile = (slot: number): string => layeredTile(`embedded-${slot}`);
+
+/** The composed outside-play picture behind each Layered Image tile of `links`, keyed by the tile's data. A link that draws nothing has none. */
+export function composedPictures(links: readonly GalleryLink[], list: MediaList | undefined): ReadonlyMap<string, LayeredPicture> {
+  const out = new Map<string, LayeredPicture>();
+  links.forEach((link, slot) => {
+    if (isEmbeddedLayered(link)) {
+      const picture = portableOutsidePlay(link.layered);
+      if (picture) out.set(embeddedTile(slot), picture);
+      return;
+    }
+    const entry = 'mediaId' in link ? layeredEntry(list, link.mediaId) : undefined;
+    const picture = entry && outsidePlayLayered(entry, list);
+    if (entry && picture) out.set(layeredTile(entry.id), picture);
+  });
+  return out;
+}
 
 /** An embedded gallery's pictures for the widget, outside a world: an embedded Layered Image shows as its tile. */
 export const embeddedGalleryView = (links: readonly GalleryLink[]): GalleryImage[] =>

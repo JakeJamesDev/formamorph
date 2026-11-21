@@ -24,6 +24,8 @@ import { mediaNameFromFile } from '@/lib/mediaList';
 import { useStableIds } from '@/lib/useStableIds';
 import { useImageDropTarget } from '@/lib/useImageDropTarget';
 import { RemoteImg } from '@/lib/useRemoteImage';
+import { PictureImg } from '@/components/PictureImg';
+import type { LayeredPicture } from '@/lib/layeredImages';
 import { ImageConvertOverlay } from '@/components/ImageConvertOverlay';
 import { cn } from '@/lib/utils';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
@@ -75,6 +77,8 @@ interface ImageWidgetProps {
   ruleCog?: boolean;
   /** A gallery on the world's Media List: its slots offer Choose, and a filled one names its entry. */
   media?: GalleryMedia;
+  /** The composed picture behind each Layered Image tile, by the tile's data; the frame and strip draw it in the tile's place. */
+  pictures?: ReadonlyMap<string, LayeredPicture>;
 }
 
 /** The inputs a host passes to control the gallery's frame and cog. */
@@ -118,9 +122,11 @@ interface TileRule {
  *  single picture is shown, so dragging to the front is the whole promote gesture. A cog on hover sets the
  *  picture's Visibility rule, and a badge marks one that has a rule. The cog sits beside the tile's button,
  *  not inside it, and the button alone drags. */
-const ImageTile = ({ id, url, index, framed, onSelect, ruled, rule }: {
+const ImageTile = ({ id, url, picture, index, framed, onSelect, ruled, rule }: {
   id: string;
   url: string;
+  /** A Layered Image's composed picture, drawn in place of its tile. */
+  picture?: LayeredPicture;
   index: number;
   framed: boolean;
   onSelect: () => void;
@@ -158,7 +164,9 @@ const ImageTile = ({ id, url, index, framed, onSelect, ruled, rule }: {
             framed ? 'border-primary' : 'border-border hover:border-muted-foreground',
           )}
         >
-          <RemoteImg src={url} alt="" className="h-full w-full object-cover" />
+          {picture
+            ? <PictureImg src={picture} crop center alt="" className="h-full w-full" />
+            : <RemoteImg src={url} alt="" className="h-full w-full object-cover" />}
           {primary && (
             <span className="absolute bottom-0 right-0 rounded-tl bg-overlay/70 p-0.5 text-white">
               <Star className="h-2.5 w-2.5 fill-current" />
@@ -239,7 +247,7 @@ function withSlotData(list: readonly GalleryImage[], index: number, data: string
 export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   const {
     label, images, onImagesChange, slots = 1, imageId, cap, description, kind, fileSubject, tags, onTagsChange, tourAnchor, ruleHost,
-    framed, onFramedChange, ruleCog = true, media,
+    framed, onFramedChange, ruleCog = true, media, pictures,
   } = useImageWidget();
   const ruleSourced = useHasRuleSource();
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
@@ -409,6 +417,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
             onChange={(value, fileName) => setSlot(i, value, fileName)}
             id={slotId(i)}
             value={url}
+            picture={url ? pictures?.get(url) : undefined}
             cap={cap}
             // The gallery gives the picture a frame worth looking at; a single slot keeps its compact box.
             previewClassName={gallery ? FRAME_CLASS[shape] : undefined}
@@ -450,6 +459,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
                   key={tileIds[i]}
                   id={tileIds[i]}
                   url={url}
+                  picture={pictures?.get(url)}
                   index={i}
                   framed={i === showing}
                   onSelect={() => setShowing(i)}

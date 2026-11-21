@@ -7,6 +7,9 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import type { GalleryLink, GameLocation, Placeholder } from '@/types';
 import ImageTagsField, { type GalleryFrameProps } from './ImageTagsField';
 
+/** Location galleries take Layered Images. */
+const LAYERED_SLOTS = { layered: true };
+
 /** A location's gallery with its tags and generate controls, as the location panel and the Media tab show it. */
 export function LocationImageField({ location, onChange, placeholders, imageId = `location-image-${location.id}`, tourAnchor, frame }: {
   location: GameLocation;
@@ -20,7 +23,7 @@ export function LocationImageField({ location, onChange, placeholders, imageId =
 }) {
   const subject = labelPlaceholders(location.name, placeholders);
   const write = useCallback((links: GalleryLink[]) => onChange('images', links), [onChange]);
-  const gallery = useLinkedGallery(locationLinks(location), write, subject);
+  const gallery = useLinkedGallery(locationLinks(location), write, subject, LAYERED_SLOTS);
   return (
     <ImageTagsField
       label="Background Image"
@@ -28,6 +31,7 @@ export function LocationImageField({ location, onChange, placeholders, imageId =
       images={gallery.images}
       onImagesChange={gallery.onImagesChange}
       media={gallery.media}
+      pictures={gallery.pictures}
       slots={Infinity}
       imageId={imageId}
       cap={IMAGE_CAPS.background}

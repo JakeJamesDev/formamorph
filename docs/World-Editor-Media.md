@@ -198,7 +198,7 @@ A **Layered Image** builds one picture from parts. Each **Layer** holds images c
 
 On mobile, the panel shows the picture beside the Layer list. The selected Layer sits below, with **Variants**, **Look** and **Motion** tabs. **Look** holds Opacity, Blend Mode and Tint. **Motion** holds the Transition.
 
-**To use one,** select **Choose** in an entity's gallery. Layered Images show beside the images. The gallery's order and Visibility rules work as they do for any image.
+**To use one,** select **Choose** in an entity's, a location's or an item's image slot. Layered Images show beside the images. The gallery strip and frame show the picture the Layered Image draws with each Layer's first Variant. The gallery's order and Visibility rules work as they do for any image.
 
 Deleting an image that a Layer uses removes it from that Layer, and the confirm names each Layer first. Images that only Layers use sit in the **Layered Image Variants** section. Each change is one undo step.
 

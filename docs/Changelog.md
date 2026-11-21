@@ -25,6 +25,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Scripts can set which image each Layer of a Layered Image shows, and its opacity and tint.** Each copy of a character and each item keeps its own settings. Setting `null` hands the Layer back to its rules.
     - **A Layer in a Layered Image can fade or bounce when it shows another image.** Pick None, Dissolve or Jelly, with the Mascot's sliders, and press Play in the editor. Jelly fades instead under reduced motion.
     - **A character keeps its Layered Images in the library, in published listings and in exported cards.** Its tile, listing and card show each Layer's first image.
+    - **Location and item image slots can choose a Layered Image, and every gallery shows it as a picture.** Choose lists Layered Images there. The strip and frame show each Layer's first image.
   - **Opening Time:**
     - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
   - **Weather:**

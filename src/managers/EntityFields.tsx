@@ -16,7 +16,8 @@ import { IMAGE_CAPS } from '../lib/imageOptim';
 import { galleryLinks } from '../lib/entityImages';
 import { useLinkedGallery } from '@/lib/useLinkedGallery';
 import { ImageGallery, ImageTags, ImageWidget, type GalleryFrameProps } from './ImageTagsField';
-import { embeddedGalleryView, relinkEmbeddedGallery, type GalleryMedia } from '@/lib/mediaGallery';
+import { composedPictures, embeddedGalleryView, relinkEmbeddedGallery, type GalleryMedia } from '@/lib/mediaGallery';
+import type { LayeredPicture } from '@/lib/layeredImages';
 import { useEditorMode } from '@/lib/editorMode';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { randomUUID } from '@/lib/uuid';
@@ -374,6 +375,7 @@ export const EntityImageWidget = ({ linked, ...props }: EntityImageWidgetProps) 
     <EntityImageBody
       {...props}
       images={embeddedGalleryView(galleryLinks(props.value))}
+      pictures={composedPictures(galleryLinks(props.value), undefined)}
       onImagesChange={(list) => props.onChange('images', relinkEmbeddedGallery(galleryLinks(props.value), list))}
     />
   ));
@@ -389,8 +391,10 @@ const LinkedEntityImageWidget = (props: Omit<EntityImageWidgetProps, 'linked'>) 
 };
 
 const EntityImageBody = ({
-  value, onChange, placeholders = [], ownerId, children, frame, imageId = `entity-image-${value.id}`, ruleHost, images, onImagesChange, media,
-}: Omit<EntityImageWidgetProps, 'linked'> & { images: GalleryImage[]; onImagesChange: (next: GalleryImage[]) => void; media?: GalleryMedia }) => {
+  value, onChange, placeholders = [], ownerId, children, frame, imageId = `entity-image-${value.id}`, ruleHost, images, onImagesChange, media, pictures,
+}: Omit<EntityImageWidgetProps, 'linked'> & {
+  images: GalleryImage[]; onImagesChange: (next: GalleryImage[]) => void; media?: GalleryMedia; pictures?: ReadonlyMap<string, LayeredPicture>;
+}) => {
   const entityHost = useEntityRuleHost(value.id);
   return (
     <ImageWidget
@@ -399,6 +403,7 @@ const EntityImageBody = ({
       images={images}
       onImagesChange={onImagesChange}
       media={media}
+      pictures={pictures}
       slots={Infinity}
       imageId={imageId}
       cap={IMAGE_CAPS.entity}

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { GalleryLink, LayeredMediaEntry, MediaFileEntry, TraitRequirementRow, World } from '@/types';
 import { fileEntries } from './mediaList';
 import { migrateWorld } from './version';
-import { relinkGallery, galleryView, layeredTile } from './mediaGallery';
+import { relinkGallery, galleryView, layeredTile, composedPictures, embeddedGalleryView } from './mediaGallery';
 import { entityImages } from './entityImages';
 import { locationImages } from './locationImages';
 
@@ -153,6 +153,22 @@ describe('relinkGallery', () => {
       const next = relinkGallery(links, list, [{ ...images[3], requires: undefined }, images[1], images[2], { ...images[0], requires: WOUNDED }], 'Wren');
       expect(next.list).toBe(list);
       expect(next.links).toEqual([{ mediaId: 'rig-b' }, links[1], links[2], { mediaId: 'rig-a', requires: WOUNDED }]);
+    });
+
+    it('composes the outside-play picture behind each drawable tile, and none for a rig that draws nothing', () => {
+      const base: MediaFileEntry = { id: 'img', name: 'img', kind: 'image', data: 'data:image/webp;base64,QQ==' };
+      const drawable: LayeredMediaEntry = { id: 'rig-a', name: 'rig-a', kind: 'layered', layers: [{ id: 'l', name: 'L', variants: [{ mediaId: 'img' }] }] };
+      const list = { img: base, 'rig-a': drawable, 'rig-b': rig('rig-b') };
+      const tiles = composedPictures([{ mediaId: 'rig-a' }, { mediaId: 'rig-b' }, { mediaId: 'img' }], list);
+      expect([...tiles.keys()]).toEqual([layeredTile('rig-a')]);
+      expect(tiles.get(layeredTile('rig-a'))).toMatchObject({ kind: 'layered', entryId: 'rig-a', canvas: base.data });
+    });
+
+    it('composes an embedded rig from its own variant images, keyed by its slot tile', () => {
+      const embedded: GalleryLink = { layered: { name: 'Wren', layers: [{ id: 'l', name: 'L', variants: [{ data: 'data:image/webp;base64,QQ==', name: 'v' }] }] } };
+      const tiles = composedPictures([{ data: 'data:image/webp;base64,Qg==' }, embedded], undefined);
+      expect(tiles.size).toBe(1);
+      expect(tiles.get(embeddedGalleryView([{ data: 'data:image/webp;base64,Qg==' }, embedded])[1].data)).toMatchObject({ kind: 'layered', canvas: 'data:image/webp;base64,QQ==' });
     });
 
     it('links a Layered Image picked into a new slot by its tile, adding no image entry', () => {

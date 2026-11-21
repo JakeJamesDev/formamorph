@@ -21,6 +21,8 @@ import { fileToDataUrl } from './imageDrop';
 import { useImageDropTarget } from './useImageDropTarget';
 import { urlFileName } from './mediaList';
 import type { MediaAsset } from '@/types';
+import { PictureImg } from '../components/PictureImg';
+import type { LayeredPicture } from './layeredImages';
 
 /** An uploaded media file, base64-encoded as a data URL. */
 interface UploadedMedia {
@@ -186,7 +188,7 @@ export const UrlCommitField = ({ noun, value, onChange, onCommit, error }: {
   );
 };
 
-export const ImageUpload = ({ onChange, id, value, cap, previewClassName, objectFit = 'contain', onPromptExtracted, onFiles, onFile, choose }: {
+export const ImageUpload = ({ onChange, id, value, picture, cap, previewClassName, objectFit = 'contain', onPromptExtracted, onFiles, onFile, choose }: {
   /** A picked file's name rides along, for a slot that names its picture. */
   onChange: (value: string, fileName?: string) => void;
   // Several pictures arriving at once (a multi-file drop). A caller holding more than one slot takes them
@@ -194,6 +196,8 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   onFiles?: (files: File[]) => void;
   id: string | number;
   value?: string | null;
+  /** A Layered Image's composed picture, drawn and zoomed in place of `value`'s tile. */
+  picture?: LayeredPicture;
   cap?: ImageCap;
   // Optional fixed-size preview box (e.g. the 4:3 thumbnail crop). When set, replaces the default dashed box.
   previewClassName?: string;
@@ -378,7 +382,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   return (
     <div className="space-y-1">
       {dialog}
-      {value && <ImageZoomViewer src={displaySrc} alt="" open={zoomOpen} onOpenChange={setZoomOpen} />}
+      {value && <ImageZoomViewer src={picture ?? displaySrc} alt="" open={zoomOpen} onOpenChange={setZoomOpen} />}
       <Input
         type="file"
         accept="image/*"
@@ -401,7 +405,9 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
           value ? (
             <>
               {/* displaySrc lags value by a render; an <img src=""> fires error and would latch the broken frame. */}
-              {loadFailed ? brokenFrame : displaySrc ? (
+              {picture ? (
+                <PictureImg src={picture} crop center alt="Uploaded" onClick={openZoom} className="absolute inset-0 h-full w-full rounded-md" />
+              ) : loadFailed ? brokenFrame : displaySrc ? (
                 <img
                   src={displaySrc}
                   alt="Uploaded"
@@ -431,7 +437,9 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
         ) : (
           value ? (
             <div className="relative">
-              {loadFailed ? (
+              {picture ? (
+                <PictureImg src={picture} alt="Uploaded" onClick={openZoom} className="max-w-full max-h-32 object-contain" />
+              ) : loadFailed ? (
                 <div className="flex h-32 w-48 items-center justify-center">{brokenFrame}</div>
               ) : displaySrc ? (
                 <img
