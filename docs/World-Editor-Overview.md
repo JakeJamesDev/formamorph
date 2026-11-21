@@ -26,6 +26,22 @@ Each location's background is on its **Media** tab. See [World Editor: Locations
 2. Under **Background Music**, select **Import** and pick an audio file. **Choose** picks a sound the world already has, and **Or paste a sound URL** links one.
 3. Select **Save**.
 
+## Weather
+<!-- keywords: rain, snow, storm, sun, bright sun, clear, sheltered, indoors, default weather, allowed weather, weather on, start weather -->
+<!-- route: worldEditor.overview#weather -->
+
+A world can have weather. It is off until you turn it on. A world with weather has one weather at a time: **Clear**, **Rain**, **Snow**, **Storm** or **Bright Sun**. A save keeps the current weather.
+
+1. Open the **Overview** tab.
+2. Check **Weather**.
+3. Under **Allowed Weather**, check the kinds the world can have. Clear is always allowed.
+4. To start games in one weather, pick it under **Default Weather**. Not set, a game starts Clear.
+5. Select **Save**.
+
+To mark a place indoors, check **Sheltered** on the location's **Details** tab. It shows while Weather is on. A child location is not Sheltered unless you check it too.
+
+An [opening](World-Editor-Openings#start-weather) can set its own weather.
+
 ## The left column: how your world is listed
 <!-- keywords: rename my world, title, creator credit, byline, genre labels, categories, restrict who player is, default hero -->
 

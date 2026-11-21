@@ -100,6 +100,19 @@ When a time is set, the AI doesn't read it from page one. Page one is written at
 
 Each daypart starts at a fixed hour, and the story starts at that hour. Night starts at 8 in the evening.
 
+## Start weather
+<!-- keywords: starting weather, storm opening, rain at start, default weather, opening weather -->
+
+While the world's [Weather](World-Editor-Overview#weather) is on, an expanded card shows a **Weather** picker beside **Time**. It offers **World Default**, **Clear** and the kinds the world allows.
+
+The game picks the start weather in this order. The first one that is set wins:
+
+1. The Weather of the opening that was drawn.
+2. The world's **Default Weather**.
+3. Clear.
+
+**Regenerate Narration** on page one picks the weather again from the new opening. If you take a kind off the world's allowed list, the [Test Bench](Test-Bench) flags an opening or Default Weather that still names it.
+
 ## Collapse the Cards
 <!-- keywords: fold, minimize, shrink rows, hide long text, expand all, too much scrolling, compact list -->
 

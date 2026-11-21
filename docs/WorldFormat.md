@@ -167,6 +167,7 @@ Write new files in the current shape. A file with `scripts` loads in an older ve
 | `openings` | | [Opening](#openings)[] | The world's own openings, in order |
 | `openingWeights` | | Object | Draw weight per opening `id`. A missing entry weighs 1. `0` keeps an opening and never draws it |
 | `defaultTime` | | `"night"` \| `"dawn"` \| `"morning"` \| `"midday"` \| `"afternoon"` \| `"evening"` | The time of day a game starts at when the drawn opening has no `time`. Absent = the AI reads it from page one |
+| `weather` | | Object | The world's Weather: `{ "on": Boolean, "allowed": String[], "defaultWeather": String }`. `allowed` lists `"rain"`, `"snow"`, `"storm"` and `"brightSun"`; Clear is always allowed. `defaultWeather` is `"clear"` or an allowed kind, and is optional. Absent = Weather is off |
 | `allowedPersonas` | | `"any"` \| `"world"` | Which personas the player can pick. `"world"` allows only this world's personas and its Custom Persona. Absent = `"any"` |
 | `startPersona` | | Object | The persona a new player starts on: `{ "source": "none" }`, or `{ "source": "world", "entityId": "<entity id>" }`. Absent = the player's default persona |
 | `mapBackground` | | Object | The picture behind the Locations canvas and the in-game Map. See below. Absent = none |
@@ -392,6 +393,7 @@ The world group with `system: "blueprints"`, and every group below it, holds Blu
 | `images` | | [Gallery image](#media-fields)[] | The gallery, in author order. During the game, the backdrop shows the first visible image |
 | `imageTags` | | String | Comma-separated tags for image generation |
 | `ambientSound` | | [Sound link](#media-fields) | Looping sound |
+| `sheltered` | | `true` | The player feels no weather here. Child locations don't inherit it. Read only while the world's Weather is on. Absent = open to the weather |
 | `isStarting` | | Boolean | A new game can start here. One marked = every game starts there. Several = the player picks. None = any location. A played entity's Start places join the choices |
 | `parentId` | | String \| `null` | The parent location's `id`. Absent or `null` = the top level. List order is the order among siblings |
 | `enabledWhen` | | [Requirement Row](#trait-requirements)[] | The **Enabled** rows: the location and the locations inside it are in the game while any row holds. A condition with no `owner` reads the played persona. Absent or empty = always on |
@@ -588,6 +590,7 @@ An opening is one way a game can start. The world, each location and each entity
 | `kind` | ✓ | `"action"` \| `"narration"` | `"action"` fills the player's input box. `"narration"` is page one, as written |
 | `self` | | `true` | A Self opening. It draws only while the player plays its owner. Only an entity with the Persona or Custom Persona mark can own one. Absent = an Others opening |
 | `time` | | `"night"` \| `"dawn"` \| `"morning"` \| `"midday"` \| `"afternoon"` \| `"evening"` | The time of day a game from this opening starts at. Absent = the world's `defaultTime` |
+| `weather` | | `"clear"` \| `"rain"` \| `"snow"` \| `"storm"` \| `"brightSun"` | The weather a game from this opening starts in. Absent = the world's `weather.defaultWeather`. Read only while the world's Weather is on |
 
 See [World Editor: Openings](World-Editor-Openings) for which openings draw.
 

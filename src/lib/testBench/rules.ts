@@ -67,6 +67,7 @@ import {
   unstableCycles, type GateScopeTree, type GateInput, type GateOwner, type GateState, type GateStat, type GateStatSet, type GateStates, type GateStats, type GateTraitRef,
 } from '@/lib/traitGates';
 import { startingGateStats } from '@/lib/gateStats';
+import { activeWeather, allowedWeatherKinds, WEATHER_LABELS } from '@/lib/weather';
 import { setupStatsOf } from '@/lib/setupGateStats';
 import { ruleText, rowText } from '@/lib/traitGateLine';
 import { conditionsOf } from '@/lib/requirementRows';
@@ -75,7 +76,7 @@ import { blueprintItemIds, offeredWorldTraits, statRows, statRowSide, type StatR
 import { globalStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import type {
   DictionaryEntry, Entity, GalleryImage, GalleryLink, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Script, Stat, StatDescriptor,
-  StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement, TraitRequirementRow, World,
+  StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement, TraitRequirementRow, World, Opening, WeatherKind,
 } from '@/types';
 
 /**
@@ -3772,6 +3773,36 @@ const worldNoReadme: Rule = {
   )],
 };
 
+const weatherNotAllowed: Rule = {
+  id: 'weather-not-allowed',
+  severity: 'warning',
+  section: 'overview',
+  summary: (count) => `${count} starting weathers are not on the allowed list`,
+  // A kind taken off the allowed list after a pick is skipped at start; the game reads the next level instead.
+  check: (world) => {
+    const weather = activeWeather(world.worldOverview);
+    if (!weather) return [];
+    const allowed = allowedWeatherKinds(weather);
+    const outside = (kind: WeatherKind | undefined): kind is WeatherKind => !!kind && !allowed.includes(kind);
+    const out: Finding[] = [];
+    const flag = (kind: WeatherKind, whose: string, item: FindingItem) => out.push(finding(
+      weatherNotAllowed,
+      `${whose} is ${WEATHER_LABELS[kind]}, which the world does not allow, so a game ignores it`,
+      [item],
+    ));
+    if (outside(weather.defaultWeather)) flag(weather.defaultWeather, 'Default Weather', worldItem(world));
+    const owners: Array<{ item: FindingItem; openings: Opening[] | undefined }> = [
+      { item: worldItem(world), openings: world.worldOverview?.openings },
+      ...(world.locations ?? []).map((l) => ({ item: namedItem(l.id, l.name, world, 'locations' as const), openings: l.openings })),
+      ...(world.entities ?? []).map((e) => ({ item: asItem(e, world), openings: e.openings })),
+    ];
+    owners.forEach(({ item, openings }) => (openings ?? []).forEach((opening, i) => {
+      if (outside(opening.weather)) flag(opening.weather, `Opening ${i + 1} of ${quote(item.name)}`, item);
+    }));
+    return out;
+  },
+};
+
 /** Every image with its display budget and the Media tab's Over Budget flag — the same slots the Optimize
  *  Images action walks. Only the byte budget is checked: measuring pixels needs a decode the live pass can't
  *  afford, so anything this flags, that action also flags — never the reverse. */
@@ -3891,7 +3922,7 @@ export const RULES: readonly Rule[] = [
   placeholderDuplicateSlot,
   placeholderSharedWeightUnknownValue, placeholderOwnerOrphan, placeholderOwnerDropped,
   dictionaryKeywordSubstring, dictionaryDisabled,
-  worldEmptySystemPrompt, worldNoReadme, worldOversizedImages, imageNotWebp, imageMislabeled,
+  worldEmptySystemPrompt, worldNoReadme, weatherNotAllowed, worldOversizedImages, imageNotWebp, imageMislabeled,
 ];
 
 /**

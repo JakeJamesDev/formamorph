@@ -20,6 +20,7 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
 import type { AllowedPersonas } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
+import { WorldWeatherFields } from './WorldWeatherFields';
 
 const ALLOWED_PERSONAS_LABELS: Record<AllowedPersonas, string> = { any: 'Any', world: 'World Only' };
 
@@ -156,6 +157,7 @@ const WorldOverviewManager = () => {
         </div>
       </div>
       {advanced && <PersonaRulesFields />}
+      <WorldWeatherFields />
       <div className="space-y-2" {...targetAttribute('worldEditor.overview', 'background-music')}>
         <Label htmlFor="sound-import-world-bgm">Background Music</Label>
         <MediaSoundSlot

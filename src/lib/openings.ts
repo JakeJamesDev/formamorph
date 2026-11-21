@@ -1,12 +1,13 @@
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import { daypartStartHour } from '@/lib/gameClock';
+import { authoredStartWeather, type ResolvedStart } from '@/lib/weather';
 import { idsAt, idsAtAny, startPlacesOf, type PlacesOf } from '@/lib/entityPlaces';
 import { playsOnlyWhenPicked } from '@/lib/entityRelationships';
 import { locationRows } from '@/lib/locationTree';
 import { startCandidates } from '@/lib/startingLocation';
 import { randomUUID } from '@/lib/uuid';
 import type { ResolvedPersona } from '@/lib/persona';
-import type { Daypart, Entity, GameLocation, Opening, OpeningKind, WorldOverview } from '@/types';
+import type { Daypart, WeatherKind, Entity, GameLocation, Opening, OpeningKind, WorldOverview } from '@/types';
 
 /**
  * Openings: the weighted list a playthrough starts from. Every rule lives here — which rows can be drawn,
@@ -22,6 +23,24 @@ export const DEFAULT_OPENING: Opening = { id: 'default', text: OPENING_SCENE_CUE
 export function authoredStartHour(opening: Opening | null | undefined, overview: Overview): number | null {
   const part = opening?.time ?? overview?.defaultTime;
   return part ? daypartStartHour(part) : null;
+}
+
+/** Everything a New Game or a page-one redraw takes from the drawn Opening and the world: the authored start
+ *  hour and weather. Each is null when nothing is authored. One function, so both callers resolve alike. */
+export function resolveStart(opening: Opening | null | undefined, overview: Overview): ResolvedStart {
+  return { startHour: authoredStartHour(opening, overview), weather: authoredStartWeather(opening, overview) };
+}
+
+/** Resolves the start and writes it into the game: the hour as authored (or null), the weather as authored (or
+ *  Clear until the page-one read can decide). New Game and a redraw both go through this one call. */
+export function applyResolvedStart(
+  opening: Opening | null | undefined, overview: Overview,
+  set: { setStartHour: (hour: number | null) => void; setWeather: (weather: WeatherKind) => void },
+): ResolvedStart {
+  const start = resolveStart(opening, overview);
+  set.setStartHour(start.startHour);
+  set.setWeather(start.weather ?? 'clear');
+  return start;
 }
 
 /** Anything that carries openings: the world overview or an entity. An opening id is unique within its
@@ -442,6 +461,17 @@ export function setOpeningTime(owner: OpeningOwner, id: string, time: Daypart | 
       if (o.id !== id) return o;
       const { time: _drop, ...rest } = o;
       return time ? { ...rest, time } : rest;
+    }),
+  };
+}
+
+/** Sets one row's Weather; absent is stored as absent, which reads the world's Default Weather. */
+export function setOpeningWeather(owner: OpeningOwner, id: string, weather: WeatherKind | null): OpeningOwner {
+  return {
+    openings: (owner.openings ?? []).map((o) => {
+      if (o.id !== id) return o;
+      const { weather: _drop, ...rest } = o;
+      return weather ? { ...rest, weather } : rest;
     }),
   };
 }

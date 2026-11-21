@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
-import { PLAYER_START, type Entity, type GameLocation, type Opening, type WorldOverview } from '@/types';
+import { PLAYER_START, type Entity, type GameLocation, type Opening, type WeatherKind, type WorldOverview } from '@/types';
 import {
   addOpening, DEFAULT_OPENING, drawOpening, drawPoolEntry, openingOwner, isOpeningFieldKey, moveOpening, openingChances, openingFieldKey, openingsEditorView,
   drawUnseenOpening, hasAuthoredOpenings, openingPool, poolKey, remintOpenings, openingTexts, removeOpening, resolveOpening, setOpeningKind,
   othersNeverDraw, ownerOpeningRows, setOpeningText, setOpeningWeight, authoredStartHour, setOpeningTime,
+  applyResolvedStart, resolveStart, setOpeningWeather,
 } from './openings';
 import { AS_LISTED } from '@/test/asListed';
 import { oneRoutine } from '@/test/routines';
@@ -34,6 +35,62 @@ describe('the start hour an author sets', () => {
   it('is null with neither, leaving the opening-time pass to read page one', () => {
     expect(authoredStartHour(action('a'), overview())).toBeNull();
     expect(authoredStartHour(null, undefined)).toBeNull();
+  });
+
+  describe('the start New Game and a redraw both resolve', () => {
+    const world = (extra: Partial<WorldOverview> = {}) =>
+      overview({ weather: { on: true, allowed: ['rain', 'storm'] }, ...extra });
+    /** The game's setters, recording what a start wrote. */
+    const game = (hour: number | null = null, weather: WeatherKind = 'clear') => {
+      const state = { hour, weather };
+      return {
+        state,
+        set: { setStartHour: (h: number | null) => { state.hour = h; }, setWeather: (w: WeatherKind) => { state.weather = w; } },
+      };
+    };
+
+    it('saves the Opening Weather, then Default Weather, then Clear', () => {
+      const storm: Opening = { ...action('s'), weather: 'storm' };
+      const ov = world({ weather: { on: true, allowed: ['rain', 'storm'], defaultWeather: 'rain' } });
+      const a = game();
+      applyResolvedStart(storm, ov, a.set);
+      expect(a.state.weather).toBe('storm');
+      const b = game();
+      applyResolvedStart(action('plain'), ov, b.set);
+      expect(b.state.weather).toBe('rain');
+      const c = game();
+      applyResolvedStart(action('plain'), world(), c.set);
+      expect(c.state.weather).toBe('clear');
+    });
+
+    it('returns an unset weather as null, so the page-one read can plan from it', () => {
+      expect(resolveStart(action('plain'), world())).toEqual({ startHour: null, weather: null });
+      expect(resolveStart({ ...action('t'), time: 'night', weather: 'rain' }, world()))
+        .toEqual({ startHour: 20, weather: 'rain' });
+    });
+
+    it('resolves a redraw again, so the old page one weather and hour never carry over', () => {
+      const ov = world({ defaultTime: undefined });
+      const g = game();
+      applyResolvedStart({ ...action('first'), weather: 'storm', time: 'night' }, ov, g.set);
+      expect(g.state).toEqual({ hour: 20, weather: 'storm' });
+      applyResolvedStart(action('second'), ov, g.set);
+      expect(g.state).toEqual({ hour: null, weather: 'clear' });
+    });
+
+    it('writes Clear while Weather is off, whatever an Opening still holds', () => {
+      const g = game(null, 'rain');
+      applyResolvedStart({ ...action('s'), weather: 'storm' }, overview(), g.set);
+      expect(g.state.weather).toBe('clear');
+    });
+  });
+
+  it('sets and clears one row weather, leaving the other rows alone', () => {
+    const owner = { openings: [action('a'), action('b')] };
+    const set = setOpeningWeather(owner, 'a', 'snow').openings ?? [];
+    expect(set.map((o) => o.weather)).toEqual(['snow', undefined]);
+    const cleared = setOpeningWeather({ openings: set }, 'a', null).openings ?? [];
+    expect('weather' in cleared[0]).toBe(false);
   });
 
   it('sets and clears one row time, leaving the other rows alone', () => {

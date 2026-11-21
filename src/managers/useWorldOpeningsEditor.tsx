@@ -13,6 +13,7 @@ import { Hint } from '@/components/ui/typography';
 import { useGameData } from '@/contexts/GameDataContext';
 import { EntityIcon, GroupIcon, LocationIcon, WorldIcon } from '@/lib/elementIcons';
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
+import { weatherKindsOf } from '@/lib/weather';
 import {
   addOpening, hasAuthoredOpenings, openingsEditorView, type EditorOpeningRow, type OpeningOwner,
 } from '@/lib/openings';
@@ -76,6 +77,7 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, collapse,
   // Folded groups live in the World Editor's per-tab store, so they outlast a tab switch.
   const [searchFolds, setSearchFolds] = useState<{ query: string; collapsed: ReadonlySet<string> }>({ query: '', collapsed: NONE_COLLAPSED });
   const view = openingsEditorView({ overview: worldOverview, entities, locations });
+  const weatherKinds = weatherKindsOf(worldOverview);
   const names: ListSearchNames = { placeholders, letters: placementLetters, owners: placeholderOwners };
   const label = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
   const typed = search.typed;
@@ -245,6 +247,7 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, collapse,
         names={names}
         addButton={false}
         selfSwitch={held.group.showSelf}
+        weatherKinds={weatherKinds}
         empty={held.kind === 'world' && view.defaultOpening ? null : <Hint>No openings yet</Hint>}
       />
       {held.kind === 'world'

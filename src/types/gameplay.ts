@@ -1,6 +1,6 @@
 import type { MentionReadingMap } from '@/lib/coref/mentionReadings';
 import type { MentionCorrectionMap } from '@/lib/coref/mentionCorrections';
-import type { Stat, Trait, Entity, Dictionary, CommunityLink, PlacementWhere, BodyPick, WorldOptionValueOf, SupporterCopyMarker, LibrarySupporterCopyMarker } from './world';
+import type { Stat, Trait, Entity, Dictionary, CommunityLink, PlacementWhere, BodyPick, AllowedWeatherKind, WorldOptionValueOf, SupporterCopyMarker, LibrarySupporterCopyMarker } from './world';
 import type { ChatMessage } from './ai';
 import type { ActionSnapshot, ListedAction, SentActionList } from '@/lib/actionList';
 import type { ScriptTell } from '@/lib/scriptTells';
@@ -542,6 +542,8 @@ export interface GameState {
    *  `DEFAULT_START_HOUR`, which is exactly how the game behaved before. Never re-asked for an existing
    *  save: a retroactive answer would shift every memory stamp already written. */
   startHour?: number;
+  /** The World Weather. Absent reads as Clear. */
+  weather?: AllowedWeatherKind;
   /** Where the player began, resolved once at New Game: the place of every Start at `PLAYER_START`. */
   playerStartLocationId?: string;
   /** Where the cast stood when the game opened, which a redraw of page one reads. Absent, the redraw reads the

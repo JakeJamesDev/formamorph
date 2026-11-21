@@ -18,12 +18,13 @@ import { ListSearchToolbar } from '@/components/ListToolbar';
 import { useListSearch } from '@/components/listToolbarHooks';
 import {
   addOpening, DEFAULT_OPENING, moveOpening, ownerOpeningRows, removeOpening,
-  setOpeningKind, setOpeningSelf, setOpeningText, setOpeningTime, setOpeningWeight, canOwnSelfOpenings, othersNeverDraw, type EditorOpeningRow, type OpeningOwner,
+  setOpeningKind, setOpeningSelf, setOpeningText, setOpeningTime, setOpeningWeather, setOpeningWeight, canOwnSelfOpenings, othersNeverDraw, type EditorOpeningRow, type OpeningOwner,
   type OpeningsEditorView,
 } from '@/lib/openings';
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
 import { cn } from '@/lib/utils';
-import type { Daypart, Entity, GameLocation, Opening, OpeningKind, Placeholder } from '@/types';
+import { WeatherSelect } from '@/components/editor/WeatherSelect';
+import type { WeatherKind, Daypart, Entity, GameLocation, Opening, OpeningKind, Placeholder } from '@/types';
 import { DaypartSelect } from '@/components/editor/DaypartSelect';
 import { DAYPART_ICON } from '@/components/editor/daypartIcons';
 import { DAYPART_LABELS } from '@/lib/routineTime';
@@ -112,7 +113,9 @@ export function LocationOpeningsHint() {
 }
 
 /** One entity's openings, for both entity editors. */
-export function EntityOpenings({ entity, library = false, onChange, placeholders, names = { placeholders } }: {
+export function EntityOpenings({ entity, library = false, onChange, placeholders, names = { placeholders }, weatherKinds }: {
+  /** The kinds a row can pick while the world's Weather is on. Absent hides the picker. */
+  weatherKinds?: WeatherKind[];
   entity: Entity;
   /** A library entity, whose Self rows show only with the Persona mark: no player picks a library Custom Persona. */
   library?: boolean;
@@ -143,6 +146,7 @@ export function EntityOpenings({ entity, library = false, onChange, placeholders
         names={names}
         addButton={false}
         selfSwitch={showSelf}
+        weatherKinds={weatherKinds}
         empty={<Hint>No openings yet</Hint>}
       />
       <EntityOpeningsHint worldOwner={worldOwner} showSelf={showSelf} />
@@ -151,7 +155,8 @@ export function EntityOpenings({ entity, library = false, onChange, placeholders
 }
 
 /** One location's openings, for the location editor. A location has no Self rows. */
-export function LocationOpenings({ location, onChange, placeholders, names = { placeholders } }: {
+export function LocationOpenings({ location, onChange, placeholders, names = { placeholders }, weatherKinds }: {
+  weatherKinds?: WeatherKind[];
   location: GameLocation;
   onChange: (patch: OpeningOwner) => void;
   placeholders: Placeholder[];
@@ -168,6 +173,7 @@ export function LocationOpenings({ location, onChange, placeholders, names = { p
       />
       <OpeningsList
         owner={location}
+        weatherKinds={weatherKinds}
         rows={ownerOpeningRows(location, false)}
         onChange={onChange}
         placeholders={placeholders}
@@ -197,8 +203,10 @@ function NoMatch({ typed }: { typed: string }) {
  */
 export function OpeningsList({
   owner, rows, onChange, placeholders, ownerId, empty, ownerLabel, ownerName, search = '', names, addButton = true,
-  selfSwitch = false, selfBadge = false,
+  selfSwitch = false, selfBadge = false, weatherKinds,
 }: {
+  /** The kinds a row's Weather can pick while the world's Weather is on. Absent hides the picker. */
+  weatherKinds?: WeatherKind[];
   owner: OpeningOwner;
   rows: EditorOpeningRow[];
   onChange: (patch: OpeningOwner) => void;
@@ -261,6 +269,8 @@ export function OpeningsList({
                   onKind={(kind) => onChange(setOpeningKind(owner, opening.id, kind))}
                   onSelf={selfSwitch ? (self) => onChange(setOpeningSelf(owner, opening.id, self)) : undefined}
                   onTime={(time) => onChange(setOpeningTime(owner, opening.id, time))}
+                  weatherKinds={weatherKinds}
+                  onWeather={(weather) => onChange(setOpeningWeather(owner, opening.id, weather))}
                   selfBadge={selfBadge && !!opening.self}
                   onText={(text) => onChange(setOpeningText(owner, opening.id, text))}
                   onWeight={(w) => onChange(setOpeningWeight(owner, opening.id, w))}
@@ -287,9 +297,11 @@ export function OpeningsList({
 }
 
 const OpeningCard = ({
-  opening, label, a11yLabel, open, onToggle, weight, chance, neverDrawsOn, placeholders, ownerId, ownerName, onKind, onSelf, onTime, selfBadge,
+  opening, label, a11yLabel, open, onToggle, weight, chance, neverDrawsOn, placeholders, ownerId, ownerName, onKind, onSelf, onTime, weatherKinds, onWeather, selfBadge,
   onText, onWeight, onRemove,
 }: {
+  weatherKinds?: WeatherKind[];
+  onWeather: (weather: WeatherKind | null) => void;
   opening: Opening;
   label: string;
   /** The row's accessible name, owner included where several share the screen. */
@@ -421,15 +433,29 @@ const OpeningCard = ({
         <div className="p-2">
           <PlaceholderField
             leading={(
-              <span className="inline-flex items-center gap-2" {...fieldFrame('openings', opening.id, 'time')}>
-                <span className="text-helper font-medium text-muted-foreground">Time</span>
-                <DaypartSelect
-                  value={time}
-                  onChange={onTime}
-                  unsetLabel="World Default"
-                  ariaLabel={`Time, ${a11yLabel}`}
-                />
-              </span>
+              <>
+                <span className="inline-flex items-center gap-2" {...fieldFrame('openings', opening.id, 'time')}>
+                  <span className="text-helper font-medium text-muted-foreground">Time</span>
+                  <DaypartSelect
+                    value={time}
+                    onChange={onTime}
+                    unsetLabel="World Default"
+                    ariaLabel={`Time, ${a11yLabel}`}
+                  />
+                </span>
+                {weatherKinds && (
+                  <span className="inline-flex items-center gap-2" {...fieldFrame('openings', opening.id, 'weather')}>
+                    <span className="text-helper font-medium text-muted-foreground">Weather</span>
+                    <WeatherSelect
+                      value={opening.weather}
+                      kinds={weatherKinds}
+                      onChange={onWeather}
+                      unsetLabel="World Default"
+                      ariaLabel={`Weather, ${a11yLabel}`}
+                    />
+                  </span>
+                )}
+              </>
             )}
             historyField={fieldPath('openings', opening.id, 'text')}
             value={opening.text}

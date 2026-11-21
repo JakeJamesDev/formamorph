@@ -26,6 +26,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A Layer in a Layered Image can fade or bounce when it shows another image.** Pick None, Dissolve or Jelly, with the Mascot's sliders, and press Play in the editor. Jelly fades instead under reduced motion.
   - **Opening Time:**
     - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
+  - **Weather:**
+    - **Worlds can turn on Weather and mark locations Sheltered.** Pick the allowed kinds and a Default Weather, and give an opening its own Weather. A save keeps the weather.
 
 #### 🔧 Fixed
 

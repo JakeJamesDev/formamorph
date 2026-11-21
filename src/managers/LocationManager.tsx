@@ -27,6 +27,7 @@ import { locationPanelTabsFor, locationTabForField, type LocationPanelTab } from
 import type { Entity, FocusFieldHint, GameLocation, PlaceholderPin } from '@/types';
 import { fieldFrame } from '@/lib/historyField';
 import { AI_SUMMARY_HINT } from './EntityFields';
+import { weatherKindsOf } from '@/lib/weather';
 
 /**
  * Right-panel editor for one location: its fields split across Details, Presence, Media, Pins and Openings.
@@ -46,6 +47,8 @@ export const STARTING_INFO = `**Starting Location** marks where a new game can b
 - With several, the player picks one, or the game picks at random
 - With none, any location can be the start`;
 
+export const SHELTERED_INFO = 'Hides the weather from the player while they are here. The weather keeps running outside. Child locations are not Sheltered unless you mark them.';
+
 const LocationManager = ({ location, tab, onTabChange, focusField, connectionOpen, onConnectionOpened, onOpenEntityRoutine, entityPick }: {
   location: GameLocation;
   tab: LocationPanelTab;
@@ -63,6 +66,8 @@ const LocationManager = ({ location, tab, onTabChange, focusField, connectionOpe
   const { updateLocation, entities, updateEntity, entityGroups, placeholders, placementLetters, placeholderOwners } = world;
   const { draft: editingLocation, setField: handleChange, apply } = useEditingDraft(location, updateLocation);
   const { advanced } = useEditorMode();
+  const weatherKinds = weatherKindsOf(world.worldOverview);
+  const weatherOn = !!weatherKinds;
   // `location.move` names a place by its code name, so the rename offer compares the names the way code reads them.
   const rename = useRenameField({
     root: 'locations',
@@ -121,6 +126,17 @@ const LocationManager = ({ location, tab, onTabChange, focusField, connectionOpe
             <Label htmlFor={`location-starting-${editingLocation.id}`}>Starting Location</Label>
             <HintInfo>{STARTING_INFO}</HintInfo>
           </div>
+          {weatherOn && (
+            <div className="flex min-h-10 shrink-0 items-center gap-2" {...fieldFrame('sheltered')}>
+              <Checkbox
+                id={`location-sheltered-${editingLocation.id}`}
+                checked={!!editingLocation.sheltered}
+                onCheckedChange={(checked) => handleChange('sheltered', checked ? true : undefined)}
+              />
+              <Label htmlFor={`location-sheltered-${editingLocation.id}`}>Sheltered</Label>
+              <HintInfo>{SHELTERED_INFO}</HintInfo>
+            </div>
+          )}
         </div>
         <PlaceholderField
           label="Player-Facing Description"
@@ -269,6 +285,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField, connectionOpe
             location={editingLocation}
             placeholders={placeholders}
             names={{ placeholders, letters: placementLetters, owners: placeholderOwners }}
+            weatherKinds={weatherKinds}
             onChange={apply}
           />
         </PanelTabContent>

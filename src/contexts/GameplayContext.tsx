@@ -34,6 +34,7 @@ import { settleItemEffects, withoutOrphanInstances, withoutOrphanTimedTraits, ty
 import { heldEntityIds, withHeldOwners } from '../lib/ownedTraitState';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats, refreshGameStateBindings } from '../lib/statBackfill';
+import { isWeatherKind, savedWeather } from '@/lib/weather';
 import { liveAppliedValues, migrateGlobalFields, savedAppliedValues, savedCascadeOff } from '../lib/globalSaveFields';
 import { backfillEntityStats, backfillGameStateEntityStats, entityStatDeltas, withEntityStatValue, withoutEntityCodeBounds } from '../lib/entityStats';
 import { positionedCast } from '../lib/entityPresence';
@@ -83,6 +84,7 @@ import type {
   Trait,
   ChatMessage,
   GameState,
+  WeatherKind,
   SaveObject,
   SaveRecord,
   Choice,
@@ -140,6 +142,8 @@ function useProvideGameplay() {
   // Hour of day the story opened at (see GameState.startHour). Null until the opening-time pass answers,
   // and null forever for a game that started without it — both read as DEFAULT_START_HOUR downstream.
   const [startHour, setStartHour] = useState<number | null>(null);
+  // The World Weather (see GameState.weather). Clear until a start or a later turn sets it.
+  const [weather, setWeather] = useState<WeatherKind>('clear');
   // Where the player began (see GameState.playerStartLocationId). Set once at New Game.
   const [playerStartLocationId, setPlayerStartLocationId] = useState<string | undefined>(undefined);
   // Where the cast stood when the game opened (see GameState.openingPlacement). Set once at New Game.
@@ -325,6 +329,16 @@ function useProvideGameplay() {
     if (!import.meta.env.DEV) return;
     return registerDevHook('setPersona', (ref: PersonaRef | undefined) => setPersonaRef(ref));
   }, []);
+  // DEV: `__fmDev.weather()` reads the World Weather; `__fmDev.weather('storm')` sets it.
+  const weatherRef = useRef(weather);
+  weatherRef.current = weather;
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    return registerDevHook('weather', (next?: WeatherKind) => {
+      if (next !== undefined && isWeatherKind(next)) setWeather(next);
+      return next ?? weatherRef.current;
+    });
+  }, []);
   // The accumulated milestone verdicts (T4: incremental, sticky): which candidate turn ids the
   // selector has judged and which it kept (`selected` null = a legacy malformed full-vote → keep
   // everything). Persisted in the save envelope so verdicts survive load.
@@ -473,6 +487,7 @@ function useProvideGameplay() {
       locationId: currentLocation?.id,
       gameTime,
       ...(startHour !== null ? { startHour } : {}),
+      ...(savedWeather(weather) ? { weather: savedWeather(weather) } : {}),
       ...(playerStartLocationId !== undefined ? { playerStartLocationId } : {}),
       ...(openingPlacement !== undefined ? { openingPlacement } : {}),
       fullMessageHistory,
@@ -488,7 +503,7 @@ function useProvideGameplay() {
       stateVersion: 2
     };
   }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, uniqueStates, genericStates, metEntities, strangerAliases, entityStatChanges, codePins, loreToggles, mediaOverrides, worldOptionValues, itemInstances, runtimeItems, itemEffects, bodies, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
-      currentLocation, gameTime, startHour, playerStartLocationId, openingPlacement, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
+      currentLocation, gameTime, startHour, weather, playerStartLocationId, openingPlacement, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
   /** Snapshot the live gameplay state into a single `GameState` (stamped `stateVersion: 2`), deliberately
    *  omitting the `gameStates` history array and instead recording `previousStateIndex`; `worldName` is left
    *  null for the caller (GameViewer) to fill at save time.
@@ -548,6 +563,7 @@ function useProvideGameplay() {
       setGameplayText(gameState.gameplayText);
       setGameTime(gameState.gameTime);
       setStartHour(gameState.startHour ?? null);
+      setWeather(isWeatherKind(gameState.weather) ? gameState.weather : 'clear');
       setPlayerStartLocationId(gameState.playerStartLocationId);
       setOpeningPlacement(gameState.openingPlacement);
       // Rollback / regenerate keep the live narration + notes (they carry the player's post-turn edits) and
@@ -1124,6 +1140,8 @@ function useProvideGameplay() {
     setGameTime,
     startHour,
     setStartHour,
+    weather,
+    setWeather,
     playerStartLocationId,
     setPlayerStartLocationId,
     openingPlacement,

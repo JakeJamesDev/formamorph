@@ -166,7 +166,7 @@ Select a location in the list to open its panel. The tab you pick stays open whe
 
 | Tab | Holds | Mode |
 |---|---|---|
-| **Details** | **Name**, **Starting Location** and the descriptions | Simple and Advanced |
+| **Details** | **Name**, **Starting Location**, **Sheltered** (while [Weather](World-Editor-Overview#weather) is on) and the descriptions | Simple and Advanced |
 | **Presence** | When the location is on ([Enabled](#enabled)), when the player may enter it ([Unlocked](#unlocked)), **Entities Here**, **Add an entity here** and **Known Here** | Simple and Advanced |
 | **Connections** | The location's [Connections](#connections), one row each | Simple and Advanced |
 | **Items** | The location's [Starting Items](World-Editor-Items#starting-items) | Simple and Advanced |

@@ -930,6 +930,9 @@ export interface GameLocation {
   /** Parent location id for sub-location nesting; null/absent = top-level. Editor-only for now — not
    *  sent to the AI (excluded in buildLocationContext). Sibling order is the `locations` array order. */
   parentId?: string | null;
+  /** Indoors: the player feels no weather here. Read only while the world's Weather is on, and inherited by no
+   *  child location. Absent = open to the weather. */
+  sheltered?: true;
   /** The Enabled gate: on while any row holds; absent or empty = always on. A Condition with no owner reads the
    *  played persona. Off in play, the location and its subtree are absent. */
   enabledWhen?: TraitRequirementRow[];
@@ -1107,6 +1110,21 @@ export type WorldVrmStore = Record<string, WorldVrm>;
  *  Avatar library (library entities). Absent = none. */
 export type VrmPick = { kind: 'default' } | { kind: 'world'; id: string } | { kind: 'library'; id: string };
 
+/** A kind of weather. Clear is always allowed; the rest are the author's pick. */
+export type WeatherKind = 'clear' | 'rain' | 'snow' | 'storm' | 'brightSun';
+
+/** A kind a world can allow: every kind but Clear. */
+export type AllowedWeatherKind = Exclude<WeatherKind, 'clear'>;
+
+/** The world's opt-in Weather: which kinds it allows and the weather a story starts in when its opening sets none. */
+export interface WorldWeather {
+  on: boolean;
+  /** The allowed kinds other than Clear. */
+  allowed: AllowedWeatherKind[];
+  /** Absent = the page-one read decides the start weather. */
+  defaultWeather?: WeatherKind;
+}
+
 /** World-level metadata and global settings (system prompt, media, Avatars) shared across all saves. */
 export interface WorldOverview {
   name: string;
@@ -1139,6 +1157,8 @@ export interface WorldOverview {
   /** The time of day a story starts at when the drawn opening sets none. Absent = the opening-time pass reads
    *  page one. */
   defaultTime?: Daypart;
+  /** Absent = Weather off. */
+  weather?: WorldWeather;
   /** Which personas the player can pick. Absent = any. */
   allowedPersonas?: AllowedPersonas;
   /** The persona a new player starts on. Absent = the player's default persona. */
@@ -1188,6 +1208,8 @@ export interface Opening {
   self?: true;
   /** The time of day a story drawn from this row starts at. Absent = the world's Default Time. */
   time?: Daypart;
+  /** The weather a story drawn from this row starts in. Absent = the world's Default Weather. */
+  weather?: WeatherKind;
 }
 
 /** A complete authored world: overview plus all stats, locations, entities, traits, and updates. */

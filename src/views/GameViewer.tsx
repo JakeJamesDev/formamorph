@@ -103,7 +103,7 @@ import type { TTSModalHandle, TTSProgress } from "../components/game/TTSModal";
 const TTSModal = lazy(() => import("../components/game/TTSModal"));
 import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
-import { authoredStartHour, drawPoolEntry, drawUnseenOpening, openingOwner, openingPool, type DrawnOpening } from "@/lib/openings";
+import { applyResolvedStart, drawPoolEntry, drawUnseenOpening, openingOwner, openingPool, type DrawnOpening } from "@/lib/openings";
 import { drawNewGameOpening } from "@/lib/newGameOpening";
 import { customPersonaEntity } from "@/lib/blueprints";
 import { bodyPickEntities } from "@/lib/bodies";
@@ -856,6 +856,7 @@ const GameViewer = ({
     setGameTime,
     startHour,
     setStartHour,
+    setWeather,
     playerStartLocationId,
     setPlayerStartLocationId,
     openingPlacement,
@@ -2086,8 +2087,8 @@ const GameViewer = ({
         ...session, drawn: { opening: redraw.opening, ownerId: redraw.ownerId }, shown: redraw.shown,
       };
       setIsGameStarted(false);
-      // The new row's time, or none: the restore above may hold the hour the pass read for the old page one.
-      setStartHour(authoredStartHour(redraw.opening, worldOverview));
+      // The new row's time and weather, or none: the restore above may hold what the pass read for the old page one.
+      applyResolvedStart(redraw.opening, worldOverview, { setStartHour, setWeather });
       if (redraw.opening.kind === "narration") {
         pendingTurnRef.current = { action: OPENING_STAND_IN, writtenNarration: redrawText };
         setPendingTurnNonce((n) => n + 1);
@@ -6400,7 +6401,7 @@ const GameViewer = ({
         startLocationId: location?.id ?? null,
       };
       // Set before page one is written, so its clock line carries the authored hour.
-      setStartHour(authoredStartHour(drawn.opening, worldOverview));
+      applyResolvedStart(drawn.opening, worldOverview, { setStartHour, setWeather });
       const openingText = resolveOpening(drawn.opening.text, {
         extraPins: openingPins, persona: drawnPersona, rolls: openingRolls, libraryAdditions: [...picked, ...libraryBooks], owner: drawnOwner,
       });

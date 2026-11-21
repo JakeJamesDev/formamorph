@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
+import { weatherKindsOf } from '@/lib/weather';
 import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
 import { EntityDescriptionFields, EntityProfileFields, EntityStrangerDescriptionField } from './EntityFields';
 import { RoutineTab } from './routine/RoutineTab';
@@ -52,7 +53,8 @@ const EntityManager = ({
   onOpenWorldPlaceholder: (id: string) => void;
   focusField?: FocusFieldHint | null;
 }) => {
-  const { updateEntity, entities, entityGroups, placeholders, placementLetters, placeholderOwners } = useGameData();
+  const { updateEntity, entities, entityGroups, placeholders, placementLetters, placeholderOwners, worldOverview } = useGameData();
+  const weatherKinds = weatherKindsOf(worldOverview);
   const { draft: editingEntity, setDraft, setField: handleChange } = useEditingDraft<Entity>(entity, updateEntity);
   const { advanced } = useEditorMode();
   // An entity that owns placeholders is a node of the `placeholders` map, so renaming it moves the owner
@@ -147,6 +149,7 @@ const EntityManager = ({
               entity={editingEntity}
               placeholders={placeholders}
               names={{ placeholders, letters: placementLetters, owners: placeholderOwners }}
+              weatherKinds={weatherKinds}
               onChange={(patch) => writeWhole({ ...editingEntity, ...patch })}
             />
           </PanelTabContent>
