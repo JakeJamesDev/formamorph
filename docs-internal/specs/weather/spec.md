@@ -129,6 +129,14 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 - The same order: Opening Weather → Default Weather → the Weather Pass reading page one → Clear (Q24, Q25).
 - An authored weather skips the page-one Weather Pass. An unset one runs it on the opening turn.
 - Nothing at the start fires a foreground effect: New Game, the page-one read and a redraw (Q4).
+- One pure start resolver serves New Game and the redraw and returns the start hour and the start weather. An unset weather comes back as unset, not Clear, so the Weather Pass can plan the page-one read. Until that read exists, unset saves as Clear.
+- With the Weather block off, the start weather is Clear, whatever an Opening or Default Weather still stores.
+
+**Placement and the helper**
+
+- The Weather block lives on the world overview, beside Default Time.
+- Sheltered does not inherit down the location tree. Each location carries its own flag.
+- One experienced-weather helper takes the World Weather and the current location and returns a kind, or none in a Sheltered location. The save stores Clear as an absent field.
 
 **Weather Pass**
 
