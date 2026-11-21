@@ -111,6 +111,31 @@ describe('Layered Image editor', () => {
     expect(bench.ctx().worldScripts?.[0].code).toBe('entities.Ash.layers.Mood.variant = "calm";');
   });
 
+  it('lists a reference another Layered Image may own apart, unpicked, and rewrites it once picked', async () => {
+    // Ash shows the rig through the script's own `image` write.
+    const script = 'entities.Ash.image = "Scout Rig";\nentities.Ash.layers.Face.variant = "calm";\nself.layers.Face.opacity = 1;';
+    const base = world(RIG);
+    const other: LayeredMediaEntry = { id: 'other', name: 'Other Rig', kind: 'layered', layers: [{ id: 'f2', name: 'Face', variants: [] }] };
+    const bench = renderMediaTab({
+      ...base,
+      worldOverview: { ...base.worldOverview, mediaList: { ...base.worldOverview.mediaList, other } },
+      scripts: [{ id: 'w', timing: 'after', code: script }],
+    }, 'simple');
+    selectCard('Scout Rig');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Layers' }));
+    fireEvent.click(within(dialog()).getByText('Face'));
+    const field = within(dialog()).getByRole('textbox', { name: 'Layer Name' });
+    fireEvent.change(field, { target: { value: 'Mood' } });
+    fireEvent.blur(field);
+    const question = await screen.findByRole('alertdialog');
+    const pick = within(question).getByRole('checkbox', { name: /self\.layers\.Face/ });
+    expect(pick).not.toBeChecked();
+    expect(within(question).getByText('World script, line 3')).toBeTruthy();
+    fireEvent.click(pick);
+    fireEvent.click(within(question).getByRole('button', { name: 'Update Code' }));
+    expect(bench.ctx().worldScripts?.[0].code).toBe(script.replaceAll('Face', 'Mood'));
+  });
+
   it('previews as a picked entity, reading its rules at the starting state', async () => {
     renderMediaTab(world(RIG), 'simple');
     selectCard('Scout Rig');

@@ -27,6 +27,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A character keeps its Layered Images in the library, in published listings and in exported cards.** Its tile, listing and card show each Layer's first image.
     - **Location and item image slots can choose a Layered Image, and every gallery shows it as a picture.** Choose lists Layered Images there. The strip and frame show each Layer's first image.
     - **The Test Bench flags Layered Images that break.** Four findings name the image and the Layer: a size mismatch, a bottom Layer that can show nothing, a rule naming a missing trait or stat, and no Layers.
+    - **Renaming a Layer updates only the scripts that name its own Layered Image.** When another Layered Image has a Layer of that name too, **Update Code References** lists the references it can't tell apart, and you check the ones to change.
   - **Opening Time:**
     - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
   - **Weather:**

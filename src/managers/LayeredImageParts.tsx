@@ -417,7 +417,7 @@ export function LayerNameField({ rig, layer, className }: { rig: Rig; layer: Med
       rig.write(`Rename Layer: ${draft.trim()}`, next);
       // The suffixed name the rig keeps is the one scripts follow (Q14).
       const kept = next.layers.find((l) => l.id === layer.id)?.name ?? draft.trim();
-      offerCodeRename({ root: 'layers', oldName: layer.name, newName: kept, otherNames: [] });
+      offerCodeRename({ root: 'layers', oldName: layer.name, newName: kept, otherNames: [], mediaId: rig.entry.id });
     }
     setDraft(layer.name);
   };

@@ -13,9 +13,12 @@
  * alone, because rewriting them would need judgment the Test Bench is the net for.
  */
 
-import type { Entity, Placeholder, Script, Stat, StatGroup, Tool, TraitGroup } from '@/types';
+import type { Entity, GalleryLink, MediaList, Placeholder, Script, Stat, StatGroup, Tool, TraitGroup } from '@/types';
 import { canBePlayer } from './owners';
-import { codeRenameChains, layerNameKeys, locationMoveKeys, mediaNameKeys, type ChainRoot, type CodeRenameKey } from './codeRenameChains';
+import {
+  codeRenameChains, layerNameReferences, locationMoveKeys, mediaNameKeys, namedImageWrites,
+  type ChainRoot, type CodeRenameKey, type MediaSubject,
+} from './codeRenameChains';
 import type { PlaceholderOwnerRef, PlaceholderOwners } from './placeholderHomes';
 import {
   placeholderPathMap, walkPlaceholderPath,
@@ -260,6 +263,8 @@ export interface CodeRenamePlan {
   edits: CodeRenameEdit[];
   /** How many keys the rewrite covers. */
   references: number;
+  /** A Layer rename's scripts, where `edits` is only its sure keys and the author can pick more. */
+  layerBoxes?: LayerRenameBox[];
 }
 
 /** Which node of the placeholder tree a rename moved: an entry, or the entity or book that owns entries. */
@@ -310,6 +315,19 @@ export interface CodeRenameInput {
   stat?: RenamedStat;
   /** The noun the offer says for a renamed Media Entry: `image` or `sound`. */
   noun?: string;
+  /** The Layered Image whose Layer was renamed. Absent, every key of the old name moves. */
+  mediaId?: string;
+  /** The world's Media List, for the Layered Images that share a Layer name. */
+  mediaList?: MediaList;
+  /** Every location and item, for the images their slots link. */
+  locations?: readonly ImageSlotOwner[];
+  items?: readonly ImageSlotOwner[];
+}
+
+/** A named owner of image slots, as a Layer rename reads it. */
+export interface ImageSlotOwner {
+  name: string;
+  images?: GalleryLink[];
 }
 
 /** `owners` with every reference to one owner renamed. */
@@ -449,15 +467,21 @@ function renameBoxes(input: CodeRenameInput, owners: CodeOwners) {
 function boxEdits(
   boxes: ReturnType<typeof renameBoxes>, splicesOf: (box: ReturnType<typeof renameBoxes>[number]['box']) => CodeSplice[],
 ): { edits: CodeRenameEdit[]; references: number } {
+  return scriptEdits(boxes.map(({ box, name }) => ({ home: box.home, name, id: box.id, code: box.code, splices: splicesOf(box) })));
+}
+
+/** One script's splices folded into the edit of the place it is authored, and how many keys they cover. */
+function scriptEdits(
+  scripts: readonly { home: CodeRenameEdit['home']; name: string; id: string; code: string; splices: readonly CodeSplice[] }[],
+): { edits: CodeRenameEdit[]; references: number } {
   const edits = new Map<string, CodeRenameEdit>();
   let references = 0;
-  for (const { box, name } of boxes) {
-    const splices = splicesOf(box);
+  for (const { home, name, id, code, splices } of scripts) {
     if (!splices.length) continue;
     references += splices.length;
-    const at = JSON.stringify(box.home);
-    const edit = edits.get(at) ?? { home: box.home, name, scripts: {} };
-    edit.scripts[box.id] = spliced(box.code, splices);
+    const at = JSON.stringify(home);
+    const edit = edits.get(at) ?? { home, name, scripts: {} };
+    edit.scripts[id] = spliced(code, splices);
     edits.set(at, edit);
   }
   return { edits: [...edits.values()], references };
@@ -483,16 +507,113 @@ function mediaRenameEdits(input: CodeRenameInput, from: string, to: string): { e
     .map((key) => rewrittenKey(key, to)));
 }
 
-/** Every key naming Layer `from` under a media owner's `layers`, in every box, rewritten to `to` (Q14). A script
- *  cannot say which Layered Image it reaches, so a key of that name under any owner moves. */
-function layerRenameEdits(input: CodeRenameInput, from: string, to: string): { edits: CodeRenameEdit[]; references: number } {
+/** The image ids a named owner's slots link: its gallery, or a location's images. */
+const linkedIds = (images: readonly GalleryLink[] | undefined): string[] =>
+  (images ?? []).flatMap((link) => ('mediaId' in link ? [link.mediaId] : []));
+
+/**
+ * What a Layer rename does with one reference, by the Layered Images its owner can show (Q36, Q41).
+ *
+ * Only Layered Images holding a Layer of the old name count: any other stops the script on that name. An owner
+ * that can show the renamed one and no other of them is sure; one that can show several, one only a run names,
+ * or one the world doesn't hold is the author's pick; one that can show only others is left alone.
+ */
+function layerVerdicts(input: CodeRenameInput, boxes: ReturnType<typeof renameBoxes>, holding: ReadonlySet<string>) {
+  const idOfName = new Map(Object.values(input.mediaList ?? {}).map((entry) => [entry.name, entry.id]));
+  const placeholders = input.placeholders?.list ?? [];
+  const shows = new Map<string, Set<string>>();
+  const add = (kind: string, name: string, ids: readonly (string | undefined)[]) => {
+    const key = `${kind}:${statCodeName(name, placeholders)}`;
+    const held = shows.get(key) ?? new Set<string>();
+    for (const id of ids) if (id && holding.has(id)) held.add(id);
+    shows.set(key, held);
+  };
+  for (const entity of input.entities ?? []) add('entity', entity.name, linkedIds(entity.images));
+  for (const place of input.locations ?? []) add('location', place.name, linkedIds(place.images));
+  for (const item of input.items ?? []) add('item', item.name, linkedIds(item.images));
+  for (const { box } of boxes) {
+    for (const { subject, name } of namedImageWrites(box.code)) add(subject.kind, subject.name, [idOfName.get(name)]);
+  }
+  return (subject: MediaSubject): 'sure' | 'unsure' | 'skip' => {
+    const held = subject && shows.get(`${subject.kind}:${subject.name}`);
+    // An owner the world doesn't hold, such as one made in play, has slots no edit can read.
+    if (!held) return 'unsure';
+    if (!held.has(input.mediaId ?? '')) return 'skip';
+    return held.size === 1 ? 'sure' : 'unsure';
+  };
+}
+
+/**
+ * Every key naming Layer `from` under some `layers`, in every box, as the rewrites a Layer rename offers.
+ *
+ * Where no other Layered Image holds a Layer of that name, any key that runs resolves to the renamed one, so
+ * every key is sure. Otherwise each key goes by its owner (`layerVerdicts`).
+ */
+function layerRenameBoxes(input: CodeRenameInput, from: string, to: string): LayerRenameBox[] {
   const owners = statCodeOwners({
     stats: input.stats, statGroups: input.statGroups, entities: input.entities ?? [], placeholders: input.placeholders?.list ?? [],
   });
-  return boxEdits(renameBoxes(input, owners), (box) => layerNameKeys(box.code)
-    .filter((key) => key.name === from)
-    .map((key) => rewrittenKey(key, to)));
+  const boxes = renameBoxes(input, owners);
+  // The renamed one counts under its old name, which the Media List no longer holds.
+  const holding = new Set(Object.values(input.mediaList ?? {}).flatMap((entry) =>
+    (entry.kind === 'layered' && (entry.id === input.mediaId || entry.layers.some((layer) => layer.name === from)) ? [entry.id] : [])));
+  const shared = input.mediaId !== undefined && [...holding].some((id) => id !== input.mediaId);
+  const verdictOf = shared ? layerVerdicts(input, boxes, holding) : () => 'sure' as const;
+  const entityNames = new Map((input.entities ?? []).map((entity) => [entity.id, entity.name]));
+  const worldIds = (input.worldScripts ?? []).map((script) => script.id);
+  let unsure = 0;
+  return boxes.flatMap(({ box, name }) => {
+    const { home } = box;
+    const entity = 'entityId' in home ? entityNames.get(home.entityId) : undefined;
+    const scriptNumber = home.kind === 'world' && worldIds.length > 1 ? worldIds.indexOf(box.id) + 1 : undefined;
+    const found: LayerRenameBox = {
+      home, name, id: box.id, code: box.code, sure: [], unsure: [],
+      ...(entity !== undefined && { entity }), ...(scriptNumber && { scriptNumber }),
+    };
+    for (const reference of layerNameReferences(box.code)) {
+      if (reference.key.name !== from) continue;
+      const verdict = verdictOf(reference.subject);
+      if (verdict === 'skip') continue;
+      const splice = rewrittenKey(reference.key, to);
+      if (verdict === 'sure') { found.sure.push(splice); continue; }
+      unsure += 1;
+      const line = box.code.slice(0, reference.key.keyFrom).split('\n').length;
+      found.unsure.push({ id: String(unsure), text: reference.text, line, splice });
+    }
+    return found.sure.length || found.unsure.length ? [found] : [];
+  });
 }
+
+/** A Layer reference the author picks or leaves, by an id unique within its plan. */
+export interface LayerPick {
+  id: string;
+  /** The reference as written, and its line in the script. */
+  text: string;
+  line: number;
+  splice: CodeSplice;
+}
+
+/** One script a Layer rename reads: the keys it rewrites outright, and those the author picks. */
+export interface LayerRenameBox {
+  home: CodeRenameEdit['home'];
+  /** Whose code it is, as the offer names it. */
+  name: string;
+  /** The entity whose own or linked stat or trait holds the code. */
+  entity?: string;
+  /** The script's place among the world's scripts, where the world has several. */
+  scriptNumber?: number;
+  /** The script's id. */
+  id: string;
+  code: string;
+  sure: CodeSplice[];
+  unsure: LayerPick[];
+}
+
+/** The edits a Layer rename makes: every sure key, plus the picked ones. */
+export const pickedEdits = (boxes: readonly LayerRenameBox[], picked: ReadonlySet<string>): { edits: CodeRenameEdit[]; references: number } =>
+  scriptEdits(boxes.map((box) => ({
+    ...box, splices: [...box.sure, ...box.unsure.filter(({ id }) => picked.has(id)).map(({ splice }) => splice)],
+  })));
 
 /**
  * The rewrite a committed rename should offer, or null where there is nothing to offer: an unchanged or
@@ -520,8 +641,8 @@ export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
     return found.references ? { root, oldName: from, newName: to, noun: input.noun, ...found } : null;
   }
   if (root === 'layers') {
-    const found = layerRenameEdits(input, from, to);
-    return found.references ? { root, oldName: from, newName: to, ...found } : null;
+    const layerBoxes = layerRenameBoxes(input, from, to);
+    return layerBoxes.length ? { root, oldName: from, newName: to, ...pickedEdits(layerBoxes, new Set()), layerBoxes } : null;
   }
   // A rename that names its node follows the tree. Without one — a caller that knows only the name — the
   // bare-name form is all that can be proven, which is what every root but `placeholders` has anyway.

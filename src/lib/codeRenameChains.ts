@@ -133,11 +133,47 @@ function mediaMemberRoot(node: SyntaxNode | null, code: string): string | null {
   return mediaChainRoot(object, code);
 }
 
-/** Every Layer name a script spells as a key under a media owner's `layers`: `entities.X.layers.Hat` or
- *  `layers["Hair (Back)"]`. A computed key and a local variable's `layers` are no key. */
-export function layerNameKeys(code: string): CodeRenameKey[] {
-  if (!code) return [];
-  const found: { root: string; key: CodeRenameKey }[] = [];
+/** The media owner code names outright: an entity (a Generic copy included), a location, or an item's instance,
+ *  by code name. Null where only a run could say whose it is. */
+export type MediaSubject = { kind: 'entity' | 'location' | 'item'; name: string } | null;
+
+/** The chain ending at `node`: its first name and each key after, null for a key only a run names. Null where a
+ *  step leaves the media owners, such as `stats`. */
+function subjectChain(node: SyntaxNode | null, code: string): { root: string | null; steps: (string | null)[] } | null {
+  const steps: (string | null)[] = [];
+  let at = node;
+  while (at?.name === 'MemberExpression') {
+    const step = at.firstChild && memberRenameKey(at, at.firstChild, code);
+    if (step && NOT_MEDIA_PATHS.has(step.name)) return null;
+    steps.unshift(step?.name ?? null);
+    at = at.firstChild;
+  }
+  return { root: at?.name === 'VariableName' ? code.slice(at.from, at.to) : null, steps };
+}
+
+/** The owner a chain off a sandbox global resolves to: `entities.<E>`, `entities.<E>.instances[i]`, `locations.<L>`
+ *  or `items.<I>.instances[i]`. */
+function subjectOf(root: string, [name, ...rest]: readonly (string | null)[]): MediaSubject {
+  if (!name) return null;
+  const copy = rest.length === 2 && rest[0] === 'instances';
+  if (root === 'entities' && (!rest.length || copy)) return { kind: 'entity', name };
+  if (root === 'locations' && !rest.length) return { kind: 'location', name };
+  return root === 'items' && copy ? { kind: 'item', name } : null;
+}
+
+/** One Layer key a script spells under some `layers`, and whose it is where the code says. */
+export interface LayerNameReference {
+  key: CodeRenameKey;
+  subject: MediaSubject;
+  /** The reference as written, from its first name through the Layer key. */
+  text: string;
+}
+
+/** Every Layer name a script spells as a key under a `layers` member: `entities.X.layers.Hat`,
+ *  `layers["Hair (Back)"]`, or a local's `guard.layers.Helmet`. A computed Layer key is no key. */
+export function layerNameReferences(code: string): LayerNameReference[] {
+  if (!code || !code.includes('layers')) return [];
+  const found: { key: CodeRenameKey; chain: NonNullable<ReturnType<typeof subjectChain>>; text: string }[] = [];
   const shadowed = new Set<string>();
   const cursor = javascriptLanguage.parser.parse(code).cursor();
   do {
@@ -145,10 +181,38 @@ export function layerNameKeys(code: string): CodeRenameKey[] {
     if (cursor.type.name !== 'MemberExpression' || !isLayerStep(cursor.node, code)) continue;
     const layers = cursor.node.firstChild;
     const key = layers && memberRenameKey(cursor.node, layers, code);
-    const root = layers && mediaChainRoot(layers.firstChild, code);
-    if (key && root) found.push({ root, key });
+    const chain = layers && subjectChain(layers.firstChild, code);
+    if (key && chain) found.push({ key, chain, text: code.slice(cursor.from, cursor.to) });
   } while (cursor.next());
-  return found.filter(({ root }) => MEDIA_ROOTS.has(root) && !shadowed.has(root)).map(({ key }) => key);
+  return found.map(({ key, chain, text }) => ({ key, text, subject: resolvedSubject(chain, shadowed) }));
+}
+
+/** The owner a chain names, once the whole script shows which globals it declares over. */
+const resolvedSubject = ({ root, steps }: { root: string | null; steps: (string | null)[] }, shadowed: ReadonlySet<string>): MediaSubject =>
+  (root && MEDIA_ROOTS.has(root) && !shadowed.has(root) ? subjectOf(root, steps) : null);
+
+/** Every image name a script assigns to a named owner's `image`, such as `entities.Wren.image = "Rig B"`. */
+export function namedImageWrites(code: string): { subject: NonNullable<MediaSubject>; name: string }[] {
+  if (!code || !code.includes('image')) return [];
+  const found: { chain: NonNullable<ReturnType<typeof subjectChain>>; name: string }[] = [];
+  const shadowed = new Set<string>();
+  const cursor = javascriptLanguage.parser.parse(code).cursor();
+  do {
+    if (cursor.type.name === 'VariableDefinition') shadowed.add(code.slice(cursor.from, cursor.to));
+    if (cursor.type.name !== 'String') continue;
+    const parent = cursor.node.parent;
+    const op = cursor.node.prevSibling;
+    const target = parent?.name === 'AssignmentExpression' ? parent.firstChild : null;
+    if (!op || !['=', '??='].includes(code.slice(op.from, op.to)) || target?.name !== 'MemberExpression') continue;
+    const member = target.firstChild && memberRenameKey(target, target.firstChild, code);
+    const chain = member?.name === 'image' ? subjectChain(target.firstChild, code) : null;
+    const text = chain && stringText(cursor.node, code);
+    if (chain && text) found.push({ chain, name: text.name });
+  } while (cursor.next());
+  return found.flatMap(({ chain, name }) => {
+    const subject = resolvedSubject(chain, shadowed);
+    return subject ? [{ subject, name }] : [];
+  });
 }
 
 /** The media member a plain string literal is assigned to or compared with, as the root it hangs off. */

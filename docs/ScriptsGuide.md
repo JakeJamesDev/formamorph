@@ -175,6 +175,12 @@ The menu lists these groups, in order:
 
 [Layers](Scripts-Reference#layers) lists the members and what each one takes.
 
+**Renaming a Layer.** The **Edit Layers** dialog offers to update the scripts that name it.
+
+- When no other Layered Image has a Layer of the old name, every reference to it is updated.
+- When another one does, a reference is updated only when it names an entity, location or item that shows this Layered Image and not the other. It shows it when an image slot holds it, or when a script assigns it to `image`.
+- A reference whose owner resolves only at run time, such as `persona.layers.Hat` or a copy picked in a loop, is listed apart. Check the ones to update. The rest stay as they are.
+
 ## How to Let the AI Run a Script
 <!-- keywords: world tool, tool script, ai decides, ai calls my code, trigger, arm a script, on demand, filter on request, narration filter tool, reply, stack calls, timing, function calling script -->
 <!-- route: worldEditor.tools -->

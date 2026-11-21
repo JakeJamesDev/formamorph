@@ -31,6 +31,28 @@ const PLAN: CodeRenamePlan = {
   references: 3,
 };
 
+// A Layer rename where another Layered Image shares the name: two sure references and three to pick.
+const SPLICE = { from: 0, to: 0, insert: '' };
+const LAYER_PLAN: CodeRenamePlan = {
+  root: 'layers',
+  oldName: 'Hat',
+  newName: 'Helmet',
+  edits: [
+    { home: { kind: 'stat', statId: 'dev-stamina' }, name: 'Stamina', scripts: {} },
+    { home: { kind: 'world' }, name: 'World', scripts: { b: '' } },
+  ],
+  references: 2,
+  layerBoxes: [
+    { home: { kind: 'entityTrait', entityId: 'dev-wren', traitId: 'dev-rain' }, name: 'Caught in Rain', entity: 'Wren', id: 'a', code: '', sure: [], unsure: [
+      { id: '1', text: 'persona.layers.Hat', line: 4, splice: SPLICE },
+    ] },
+    { home: { kind: 'world' }, name: 'World', scriptNumber: 2, id: 'b', code: '', sure: [], unsure: [
+      { id: '2', text: 'guard.layers.Hat', line: 12, splice: SPLICE },
+      { id: '3', text: 'entities.Marsh.layers.Hat', line: 15, splice: SPLICE },
+    ] },
+  ],
+};
+
 // An Elf-style trait: pointed ears where the Avatar has them, and silver hair.
 const PREVIEW_ROWS: TraitLookRows = { morphPins: [{ name: 'Ear Shape', value: 1 }], colorPins: [{ channel: 'hair', color: '#c8ccd8' }] };
 
@@ -63,8 +85,9 @@ function DevAppearancePreview({ onClose, stat }: { onClose: () => void; stat: bo
     : <AppearancePreviewDialog name="Elf" avatars={avatars} rows={PREVIEW_ROWS} onSave={() => {}} onClose={onClose} />;
 }
 
-/** DEV: the questions an edit asks partway through, raised on canned text. Every answer closes it and writes nothing. */
-export function DevEditorPrompts({ modal }: { modal: string | undefined }) {
+/** DEV: the questions an edit asks partway through, raised on canned text. Every answer closes it and writes nothing.
+ *  `codeRename` with `fixture=layers` shows a Layer rename with references to pick. */
+export function DevEditorPrompts({ modal, fixture }: { modal: string | undefined; fixture?: string }) {
   const [done, setDone] = useState(false);
   const [slot, setSlot] = useState(0);
   const close = () => setDone(true);
@@ -73,7 +96,7 @@ export function DevEditorPrompts({ modal }: { modal: string | undefined }) {
     return <ReplaceImageDialog open images={IMAGES} slot={slot} onSlotChange={setSlot} idPrefix="dev-image" onClose={close} />;
   }
   if (modal === 'appearancePreview' || modal === 'statAppearancePreview') return <DevAppearancePreview onClose={close} stat={modal === 'statAppearancePreview'} />;
-  if (modal === 'codeRename') return <CodeRenameDialog open plan={PLAN} onApply={close} onSettle={close} />;
+  if (modal === 'codeRename') return <CodeRenameDialog open plan={fixture === 'layers' ? LAYER_PLAN : PLAN} onApply={close} onSettle={close} />;
   if (modal === 'savedElsewhere' || modal === 'deletedElsewhere') {
     return <ChangedElsewhereDialog change={modal === 'savedElsewhere' ? 'saved' : 'deleted'} onLeave={close} onKeepMine={close} />;
   }

@@ -7,7 +7,10 @@ import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { updateOwnedStat } from '@/lib/ownedStats';
 import { updateOwnedTrait } from '@/lib/ownedTraits';
 import { setTraitLinkScripts } from '@/lib/blueprints';
-import { planCodeRename, type CodeRenamePlan, type RenameRoot } from '@/lib/statCodeRename';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Hint } from '@/components/ui/typography';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { pickedEdits, planCodeRename, type CodeRenamePlan, type LayerRenameBox, type RenameRoot } from '@/lib/statCodeRename';
 import { setStatLinkScripts, withStatLinks } from '@/lib/statLinks';
 import { traitOwnerMaps } from '@/lib/statCodeTraits';
 import { scriptsOf, withScriptCode } from '@/lib/scripts';
@@ -60,6 +63,25 @@ const renameQuestion = (plan: CodeRenamePlan) =>
   + `${renamedNoun(plan)} “${plan.oldName}” ${plan.references} ${plural(plan.references, 'time', 'times')}. `
   + `Update ${plural(plan.references, 'it', 'them')} to “${plan.newName}”?`;
 
+/** The Layer references the author picks, in script order. */
+const unsureOf = (plan: CodeRenamePlan | null) =>
+  (plan?.layerBoxes ?? []).flatMap((box) => box.unsure.map((reference) => ({ ...reference, box })));
+
+/** Where a picked reference sits, as the editor names that code. */
+function whereText({ home, name, entity, scriptNumber }: LayerRenameBox, line: number): string {
+  const kind = isTraitHome(home) ? 'trait' : 'stat';
+  const owner = home.kind === 'world' ? `World script${scriptNumber ? ` ${scriptNumber}` : ''}`
+    : home.kind === 'tool' ? `Tool “${name}”`
+      : entity !== undefined ? `${entity}’s ${kind} “${name}”` : `${kind === 'trait' ? 'Trait' : 'Stat'} “${name}”`;
+  return `${owner}, line ${line}`;
+}
+
+/** What the dialog says above the picks: after a sure count, or alone. */
+const unsureLead = (plan: CodeRenamePlan, count: number) =>
+  (plan.references
+    ? `Another Layered Image also has a Layer named “${plan.oldName}”. ${plural(count, 'This reference', 'These references')} may name it instead. ${plural(count, 'Check it to update it too.', 'Check the ones to update too.')}`
+    : `Another Layered Image also has a Layer named “${plan.oldName}”, so ${plural(count, 'this reference', 'these references')} may name either one. ${plural(count, 'Check it', 'Check the ones')} to update to “${plan.newName}”.`);
+
 /** Mount the offer and its dialog. Everything under it can ask through `useCodeRenameOffer`. */
 export function CodeRenameProvider({ children }: { children: ReactNode }) {
   const world = useGameDataOptional();
@@ -76,6 +98,11 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
   );
   const worldScripts = useMemo(() => world?.worldScripts ?? [], [world?.worldScripts]);
   const worldTools = useMemo(() => world?.worldTools ?? [], [world?.worldTools]);
+  // What a Layer rename reads to tell which Layered Image a script resolves to.
+  const layered = useMemo(
+    () => ({ mediaList: world?.worldOverview?.mediaList, locations: world?.locations, items: world?.items }),
+    [world?.worldOverview?.mediaList, world?.locations, world?.items],
+  );
   const updateStat = world?.updateStat;
   const updateTrait = world?.updateTrait;
   const editEntity = world?.editEntity;
@@ -93,11 +120,12 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
         : traitOwnerMaps({ traits, traitGroups, entities }, placeholders.list, traitId);
       const plan = planCodeRename({
         ...request, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, worldScripts, worldTools, traitOwnerMaps: maps,
+        ...(request.root === 'layers' ? layered : {}),
       });
       if (plan) return { plan, through: i };
     }
     return null;
-  }, [queue, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, worldScripts, worldTools]);
+  }, [queue, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, worldScripts, worldTools, layered]);
   const plan: CodeRenamePlan | null = pending?.plan ?? null;
   // What the dialog reads, kept past the answer: the plan goes as soon as the question is settled, and the
   // body would otherwise empty while the dialog is still animating out.
@@ -133,8 +161,9 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const apply = () => {
+  const apply = (picked: ReadonlySet<string>) => {
     if (!plan) return;
+    const edits = plan.layerBoxes ? pickedEdits(plan.layerBoxes, picked).edits : plan.edits;
     const {
       stats: worldStats, traits: worldTraits, worldScripts: ownScripts, worldTools: ownTools, updateStat: write, updateTrait: writeTrait,
       editEntity: edit, setWorldScripts: writeWorldScripts, setWorldTools: writeWorldTools,
@@ -142,11 +171,11 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
     const byId = new Map(worldStats.map((stat) => [stat.id, stat]));
     const traitById = new Map(worldTraits.map((trait) => [trait.id, trait]));
     // The Blueprint scripts this rename rewrites, so a link's snapshot of them moves with them.
-    const blueprintAfter = new Map(plan.edits.flatMap(({ home, scripts }) => (home.kind === 'stat' ? [[home.statId, scripts]] : [])));
-    const traitAfter = new Map(plan.edits.flatMap(({ home, scripts }) => (home.kind === 'trait' ? [[home.traitId, scripts]] : [])));
+    const blueprintAfter = new Map(edits.flatMap(({ home, scripts }) => (home.kind === 'stat' ? [[home.statId, scripts]] : [])));
+    const traitAfter = new Map(edits.flatMap(({ home, scripts }) => (home.kind === 'trait' ? [[home.traitId, scripts]] : [])));
     // Only the scripts the plan rewrote, so a script the rename never read keeps whatever it holds.
     const rewritten = <T extends Stat | Trait>(item: T, scripts: Record<string, string>): T => ({ ...item, scripts: withScriptCode(scriptsOf(item), scripts) });
-    for (const { home, scripts } of plan.edits) {
+    for (const { home, scripts } of edits) {
       if (home.kind === 'world') {
         writeWorldScripts?.(withScriptCode(ownScripts, scripts));
       } else if (home.kind === 'tool') {
@@ -207,21 +236,51 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
 export function CodeRenameDialog({ plan, open, onApply, onSettle }: {
   plan: CodeRenamePlan | null;
   open: boolean;
-  onApply: () => void;
+  /** Takes the ids of the picked Layer references. */
+  onApply: (picked: ReadonlySet<string>) => void;
   onSettle: () => void;
 }) {
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  const [seen, setSeen] = useState(plan);
+  if (seen !== plan) { setSeen(plan); setPicked(new Set()); }
+  const unsure = unsureOf(plan);
+  const pick = (id: string, on: boolean) => setPicked((was) => {
+    const next = new Set(was);
+    if (on) next.add(id); else next.delete(id);
+    return next;
+  });
   return (
     <AlertDialog open={open} onOpenChange={(next) => { if (!next) onSettle(); }}>
       <AlertDialogContent surface="codeRename">
         <AlertDialogHeader>
           <AlertDialogTitle>Update Code References</AlertDialogTitle>
           <AlertDialogDescription>
-            {plan && renameQuestion(plan)}
+            {plan && (plan.references > 0 || !unsure.length) && renameQuestion(plan)}
+            {plan && unsure.length > 0 && <>{plan.references > 0 && ' '}{unsureLead(plan, unsure.length)}</>}
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {unsure.length > 0 && (
+          <ScrollArea className="max-h-64">
+            <ul className="flex flex-col gap-2" aria-label="References to Pick">
+              {unsure.map((reference) => (
+                <li key={reference.id}>
+                  <label className="flex items-start gap-2 text-label">
+                    <span className="flex h-[1lh] shrink-0 items-center">
+                      <Checkbox checked={picked.has(reference.id)} onCheckedChange={(checked) => pick(reference.id, checked === true)} />
+                    </span>
+                    <span className="min-w-0">
+                      <code className="block truncate font-mono">{reference.text}</code>
+                      <Hint as="span">{whereText(reference.box, reference.line)}</Hint>
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </ScrollArea>
+        )}
         <AlertDialogFooter>
           <AlertDialogCancel>Leave Code</AlertDialogCancel>
-          <AlertDialogAction onClick={onApply}>Update Code</AlertDialogAction>
+          <AlertDialogAction onClick={() => onApply(picked)}>Update Code</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

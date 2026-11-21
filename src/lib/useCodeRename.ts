@@ -26,6 +26,8 @@ export interface CodeRenameRequest {
   stat?: RenamedStat;
   /** What the offer calls the renamed thing, where the root alone does not say: a Media Entry's kind. */
   noun?: string;
+  /** The Layered Image a renamed Layer belongs to. */
+  mediaId?: string;
 }
 
 export type OfferCodeRename = (request: CodeRenameRequest) => void;
