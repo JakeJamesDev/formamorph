@@ -49,7 +49,9 @@ Settled in the grill, 2026-11-20. Research: `docs-internal/notes/image-layering-
 | Q28 | Deleting an image used as a Variant removes that Variant from every Layer that holds it. An emptied Layer stays. A new Layered Image starts with no Layers, named "Layered Image"; a new Layer is "Layer", opacity 1; both auto-suffix. (Ticket 02) |
 | Q29 | Refines Q23: when the bottom Layer has no Variants, the canvas is the first Variant of the lowest Layer that has one. (Ticket 02) |
 | Q30 | An image's Used By lists each Variant use as "<Layered Image> · <Layer>", which selects the Layered Image's Media card. (Ticket 02) |
-
+| Q31 | Script `layers` follows the subject's first shown picture, including an `image` write earlier in the same run. A plain image or nothing shown stops the script on any Layer name. An entity-wide setting applies to every Generic instance, and an instance setting beats it field by field. (Ticket 06) |
+| Q32 | Script opacity is a number from 0 to 1, and tint is `#rrggbb` or `#rgb`. Any other value stops the script, never clamps. `null` clears a field. Reads return the effective value, and an empty Layer reads `variant` as null. A setting that names an image no longer in that Layer counts as unset. (Ticket 06) |
+| Q33 | Ticket 06 builds the Layer-rename script rewrite. Whichever of tickets 02 and 06 lands second wires it into the Layer name field. (Tickets 02, 06) |
 ## Prototype
 
 Question: what should the Layered Image editor look like? Branch `prototype/layered-images`, commit `4d689ce92`, worktree `.claude/worktrees/prototype-layered-images`. Launch: `npx vite --port 5352 --strictPort --force` in that worktree, then `/?variant=A|B|C#dev?view=mainMenu&modal=worldEditor&tab=media`. The fixture is a 6-Layer rig on the Mascot's art.
