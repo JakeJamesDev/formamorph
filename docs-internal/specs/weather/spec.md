@@ -51,6 +51,8 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 | Q25 | Default Weather and Default Time are both optional. Unset means "read page one", falling back to Clear and the shipped default start hour. |
 | Q26 | One spec. Time on Openings is the first ticket and ships without any weather code. |
 | Q27 | A Weather Condition ships in this spec, beside the Time Condition. |
+| Q28 | Each stored turn records its World Weather. A past page shows its own weather and its own location's Sheltered flag. |
+| Q29 | The Background Fade dims the weather along with the location art. |
 
 ## User Stories
 
@@ -136,6 +138,13 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 
 - The Weather block lives on the world overview, beside Default Time.
 - Sheltered does not inherit down the location tree. Each location carries its own flag.
+- The background reads the shown page: its turn's weather, its location's Sheltered flag and its game time for daylight (Q28). Each turn's history snapshot is a full game state that already carries the World Weather (absent = Clear), so no new field or save shape is needed. Paging never fires foreground.
+- The weather canvas sits under the Background Fade (Q29).
+- Daylight is every daypart except night. One `isDaylight` helper, built by ticket 04, answers it for the weather view and the Weather Pass.
+- The weather view draws nothing for Bright Sun outside daylight, whatever the World Weather holds.
+- Calm mode draws fewer, slower particles. Storm in calm mode drops the flashes and shows calm rain only.
+- The player switches sit in a Weather group in the Display settings section, beside Location Background.
+- Background colors follow the theme: light streaks over location art, the theme foreground color over a plain background.
 - One experienced-weather helper takes the World Weather and the current location and returns a kind, or none in a Sheltered location. The save stores Clear as an absent field.
 
 **Weather Pass**
@@ -216,7 +225,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 
 ## Further Notes
 
-- ⚠️ **Export shape:** the world file (Weather block, Default Time, Sheltered on locations, Weather and Time on Openings), library entities and character cards that carry Openings, and the save file (current World Weather) all change.
+- ⚠️ **Export shape:** the world file (Weather block, Default Time, Sheltered on locations, Weather and Time on Openings), library entities and character cards that carry Openings, and the save file (current World Weather, which each turn's history snapshot carries too) all change.
 - Ticket 1 is Time on Openings with Default Time. It needs no weather code (Q26).
 - Glossary candidates for `CONTEXT.md`: World Weather, Weather Kind, Sheltered, Weather Pass, Weather Change, Weather Background, Weather Foreground, Weather Condition, Default Weather, Default Time.
 - Spec-session calls, not grill rulings, each reopened by the user's word: the Weather Condition copies the Time Condition's no-owner, no-Not shape and reads the World Weather, not the experienced weather; Clear has no foreground effect; the stat re-roll fires no Weather Change; Sheltered shows only while Weather is on.

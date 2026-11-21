@@ -1,7 +1,7 @@
 # 03: Weather Pass
 
 Status: ready-for-agent
-Blocked by: 02
+Blocked by: 02, 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
 
@@ -9,10 +9,10 @@ Reasoning effort: high
 
 The narration changes the weather, and the narrator stays consistent with it. The spec covers this in Q1, Q4, Q7, Q10, Q11, Q15, Q24 and the Weather Pass, Turn Commit and narrator sections.
 
-- **Pass.** A new turn pass beside the clock pass, run every turn while Weather is on. Input: narration, current World Weather, allowed kinds, daylight. Bright Sun is not offered at night. Output: "no change" or one offered kind, structured like the clock reading, with a text fallback. An answer outside the offered set reads as no change. Samplers pinned in the per-prompt samplers.
+- **Pass.** A new turn pass beside the clock pass, run every turn while Weather is on. Input: narration, current World Weather, allowed kinds, daylight. Bright Sun is not offered at night. Daylight comes from ticket 04's `isDaylight` helper; this ticket never builds its own. Output: "no change" or one offered kind, structured like the clock reading, with a text fallback. An answer outside the offered set reads as no change. Samplers pinned in the per-prompt samplers.
 - **Page one.** On the opening turn the pass reads page one only when no weather was authored: ticket 02's `resolveStart` returns the weather as unset (null), which callers save as Clear today. The World Editor's Default Weather hint then gains the unset case (page one sets it), per the Writing Guide.
 - **Turn Commit.** The commit carries the resulting World Weather in this order: pass answer, nightfall rule (Bright Sun → Clear when the turn ends at night), a hook point for script sets (ticket 07), final weather. This ticket owns that order.
-- **Turn Landing.** Applies the weather through the effects port and reports a Weather Change when the experienced weather changes, with whether it may fire foreground: not on the opening turn, not from the nightfall rule, not into Clear or Shelter. The stat re-roll mode is a named skip.
+- **Turn Landing.** Applies the weather through the effects port and reports a Weather Change when the experienced weather changes, with whether it may fire foreground: not on the opening turn, not from the nightfall rule, not into Clear or Shelter. The stat re-roll mode is a named skip. Each turn's history snapshot already records the World Weather (Q28), so the landing needs nothing extra for paging.
 - **Narrator.** The scene context gets one weather line while Weather is on, and page one gets the resolved weather.
 - **Probes.** The pass prompt and the narrator line ship with probe numbers on the cloud default, with in-batch controls, including metaphor, past-tense and reported-weather traps.
 - **Docs.** The world settings wiki page says the narration drives weather within the allowed kinds.
