@@ -41,6 +41,19 @@ Settled in the grill, 2026-11-20. Research: `docs-internal/notes/image-layering-
 | Q20 | Several Layers change in one commit: one squash, with the topmost changed Jelly Layer's tuning. Dissolve Layers fade during it. |
 | Q21 | Words: Layered Image, Layer, Variant. |
 | Q22 | The Mascot keeps its own "layer" (one named look). The glossary scopes the two meanings by context. No Mascot copy changes. |
+| Q23 | The canvas is always the bottom Layer's first Variant's size, shown or not, so it never changes with state. (Ticket 01) |
+| Q24 | Until ticket 07, outside-play readers skip a layered link to the next plain image, and an AI request sends no image for one. Until ticket 06, script `image` reads skip layered links. A gallery write keeps layered links, and the Media tab lists a layered entry by name with a generic icon. (Ticket 01) |
+| Q25 | Editor layout (prototype verdict): canvas-first on desktop, master–detail on mobile. Both list the top Layer first. See Prototype. |
+
+## Prototype
+
+Question: what should the Layered Image editor look like? Branch `prototype/layered-images`, commit `4d689ce92`, worktree `.claude/worktrees/prototype-layered-images`. Launch: `npx vite --port 5352 --strictPort --force` in that worktree, then `/?variant=A|B|C#dev?view=mainMenu&modal=worldEditor&tab=media`. The fixture is a 6-Layer rig on the Mascot's art.
+
+**Verdict (user, 2026-11-21): C on desktop, B on mobile.**
+
+- **Desktop (C, canvas-first).** The Media tab pane shows the composed picture, the Layer names and an Edit Layers button. Edit Layers opens a full-screen editor: a large canvas, a Layer panel (top Layer first, an eye toggle per Layer that hides it in the editor only, drag handle, current-Variant thumbnail, opacity), the selected Layer's settings under the panel, and a filmstrip of its Variants under the canvas. Preview As sits in the header.
+- **Mobile (B, master–detail).** In the pane: the preview beside a compact Layer list (top first, each row shows its current Variant), and below it the selected Layer with Variants, Look and Motion tabs.
+- **Thumbnails zoom.** A Variant tile zooms to the union of its Layer's drawn area, over the bottom Layer at 25% opacity. A full-canvas part is unreadable otherwise. Layer row thumbnails zoom the same way, without the body.
 
 ## User Stories
 

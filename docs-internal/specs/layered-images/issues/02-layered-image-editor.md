@@ -7,10 +7,12 @@ Reasoning effort: high
 
 ## What to build
 
-Authors build Layered Images in the Media tab and link them from slots. The spec covers this in Q3, Q13, Q21 and its Editor section.
+Authors build Layered Images in the Media tab and link them from slots. The spec covers this in Q3, Q13, Q21, Q25, its Prototype section (the layout verdict) and its Editor section.
 
+- **Layout.** Desktop: the pane summary plus the full-screen canvas-first editor (prototype variant C). Mobile: the in-pane master–detail (variant B). The prototype branch is the visual reference; rewrite it properly, never copy it.
 - **Create.** A New Layered Image action in the Media tab. Names follow Media List rules (unique, auto-suffix).
-- **Layer list.** Bottom to top, drag to reorder, add, rename (unique within the rig), delete. Per-Layer opacity slider.
+- **Layer list.** Top Layer first, drag to reorder, add, rename (unique within the rig), delete. Per-Layer opacity slider. On desktop, an eye toggle hides a Layer in the editor only.
+- **Zoomed thumbnails.** Variant tiles and Layer row thumbnails zoom to the Layer's drawn area (spec Prototype section).
 - **Variants.** Pick or import Media List images per Layer, reorder, remove. Each Variant takes the gallery cog rule popover, badge and summary sentence.
 - **Preview.** A live composed preview, and a Preview As entity picker that evaluates rules through ticket 01's resolver at the world's starting state.
 - **Size check.** One shared check owned here: a Variant whose size or aspect differs from the bottom Layer. The editor warns; ticket 08 reuses the check.
@@ -25,7 +27,7 @@ Authors build Layered Images in the Media tab and link them from slots. The spec
 - [ ] Preview As shows a picked entity's Variants.
 - [ ] A mismatched Variant shows the size warning.
 - [ ] Deleting an image used as a Variant lists that use in the confirm.
-- [ ] Frames `.scratch/frames/layered-editor-light.png` and `.scratch/frames/layered-editor-dark.png` at a desktop width, and `.scratch/frames/layered-editor-mobile.png` at mobile width.
+- [ ] Frames `.scratch/frames/layered-editor-light.png` and `.scratch/frames/layered-editor-dark.png` of the full-screen editor at a desktop width, and `.scratch/frames/layered-editor-mobile.png` of the master–detail pane at mobile width.
 - [ ] Changelog fragment written.
 
 For you: build a three-Layer character in the editor and judge whether the flow reads clearly (Media tab).
