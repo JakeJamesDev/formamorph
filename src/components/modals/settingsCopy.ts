@@ -635,7 +635,7 @@ The model never sees part of a message.`,
   },
   localAutoLoad: {
     label: 'Auto-Load',
-    description: 'Loads the first downloaded model when the engine is in use',
+    description: 'Loads the top Installed model when the engine is in use',
     info: 'Each download also loads when it finishes.\n\nWithout it, no model loads until you press **Load**, and the engine uses no VRAM until then.',
   },
   localTemperature: {

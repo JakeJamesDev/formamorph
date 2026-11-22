@@ -10,6 +10,7 @@ import {
   stopLocalLlm,
 } from '@/lib/imageGen/desktop';
 import { markAutoLoadPending, markAutoLoadSettled } from '@/lib/engineAutoLoad';
+import { applyInstalledOrder } from '@/lib/installedModelOrder';
 
 /**
  * Drives the desktop local-LLM engine lifecycle. The engine runs whenever anything references it — it's the
@@ -54,11 +55,9 @@ export function LocalEngineManager({ bootHeld = false }: { bootHeld?: boolean })
       if (!localAutoLoad) return;
       const st = await localLlmStatus().catch(() => null);
       if (cancelled || !st || st.status !== 'stopped') return settle();
-      const models = await listLocalInstalled().catch(() => []);
+      const models = applyInstalledOrder(await listLocalInstalled().catch(() => []));
       if (cancelled || !models.length) return settle();
-      // Prefer a model in our own folder — an external library is a bonus, not the auto-start default.
-      const pick = models.find((m) => m.source === 'root') ?? models[0];
-      await loadLocalModel(pick.id).catch(() => { /* ignore */ });
+      await loadLocalModel(models[0].id).catch(() => { /* ignore */ });
       settle();
     })();
     return () => { cancelled = true; };

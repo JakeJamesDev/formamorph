@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render } from '@testing-library/react';
 import { useAiReachable, type AiReachable } from '@/lib/useAiReachable';
 import { markAutoLoadPending } from '@/lib/engineAutoLoad';
+import { saveInstalledOrder } from '@/lib/installedModelOrder';
+import type { LocalInstalledModel } from '@/lib/imageGen/desktop';
 import { LocalEngineManager } from './LocalEngineManager';
 
 const settings = { localModelActive: true, engineWanted: true, localAutoLoad: true, activeEndpointUrl: '', activeApiToken: '', activeModelName: '' };
@@ -10,8 +12,10 @@ vi.mock('@/contexts/SettingsContext', () => ({ useSettings: () => settings }));
 type Status = 'stopped' | 'loading' | 'ready' | 'error';
 
 /** The desktop bridge as main answers it: the engine starts stopped and reaches `loading` only after `load` does its own work. */
-function stubEngine({ loadOutcome = 'ready' as Status | 'throw', models = ['m.gguf'] } = {}) {
+function stubEngine({ loadOutcome = 'ready' as Status | 'throw', models = ['m.gguf'] as string[], installed = undefined as { id: string; source: string }[] | undefined } = {}) {
+  const listed = installed ?? models.map((id) => ({ id, source: 'root' }));
   let state = { status: 'stopped' as Status };
+  const loaded: string[] = [];
   const listeners = new Set<(s: { status: Status }) => void>();
   const push = (status: Status) => { state = { status }; listeners.forEach((cb) => cb(state)); };
   let finishLoad: () => void = () => {};
@@ -20,12 +24,13 @@ function stubEngine({ loadOutcome = 'ready' as Status | 'throw', models = ['m.gg
       status: async () => state,
       onStatus: (cb: (s: { status: Status }) => void) => { listeners.add(cb); return () => { listeners.delete(cb); }; },
       listModels: async () => models,
-      listInstalled: async () => models.map((id) => ({ id, source: 'root' })),
+      listInstalled: async () => listed,
       setOptions: async () => state,
       setContextOverflow: async () => 'truncate',
       stop: async () => state,
       // 'throw' is main refusing the start, such as a model that left its folder: the engine never leaves `stopped`.
-      load: () => new Promise((resolve, reject) => {
+      load: (id: string) => new Promise((resolve, reject) => {
+        loaded.push(id);
         finishLoad = () => {
           if (loadOutcome === 'throw') { reject(new Error('That model is no longer in a searched folder.')); return; }
           push('loading'); push(loadOutcome); resolve(state);
@@ -33,7 +38,7 @@ function stubEngine({ loadOutcome = 'ready' as Status | 'throw', models = ['m.gg
       }),
     },
   } as unknown as Window['formamorphDesktop'];
-  return { finishLoad: () => act(() => finishLoad()) };
+  return { loaded, finishLoad: () => act(() => finishLoad()) };
 }
 
 /** Every value the hook rendered, in order. */
@@ -51,6 +56,28 @@ afterEach(() => {
   delete (window as { formamorphDesktop?: unknown }).formamorphDesktop;
   Object.assign(settings, { engineWanted: true, localAutoLoad: true });
   markAutoLoadPending();
+  localStorage.clear();
+});
+
+describe('which model auto-load picks', () => {
+  const model = (id: string, source: LocalInstalledModel['source']): LocalInstalledModel =>
+    ({ id, fileName: id, subpath: '', size: 1, path: `/models/${id}`, source, projector: null });
+  const installed = [model('own-a.gguf', 'root'), model('own-b.gguf', 'root'), model('ext:lmstudio/c.gguf', 'external')];
+
+  it('loads the top of the Installed order, even a model from a search folder', async () => {
+    saveInstalledOrder([installed[2], installed[1], installed[0]]);
+    const engine = stubEngine({ installed });
+    mount();
+    await flush();
+    expect(engine.loaded).toEqual(['ext:lmstudio/c.gguf']);
+  });
+
+  it('loads the first listed model when no order is saved', async () => {
+    const engine = stubEngine({ installed });
+    mount();
+    await flush();
+    expect(engine.loaded).toEqual(['own-a.gguf']);
+  });
 });
 
 describe('AI reachability while the engine auto-loads', () => {

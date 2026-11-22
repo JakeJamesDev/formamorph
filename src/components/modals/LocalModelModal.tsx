@@ -19,6 +19,7 @@ import { LOCAL_MODELS, VRAM_TIERS, downloadBytes, projectorFileName, formatModel
 import { useCatalogDownloads } from '@/lib/useCatalogDownloads';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
 import { useSettings } from '@/contexts/SettingsContext';
+import { applyInstalledOrder, saveInstalledOrder } from '@/lib/installedModelOrder';
 import { useVramStats, resolveOwnVram } from '@/lib/useVramStats';
 import type { LocalLlmState } from '@/lib/imageGen/desktop';
 import { EngineStatusLine, GpuMemoryBox } from '@/components/LocalModelStatus';
@@ -53,21 +54,11 @@ import { FieldError, Hint, Meta } from '@/components/ui/typography';
 /** Catalog display name keyed by GGUF filename, for labeling installed files we recognize. */
 const CATALOG_BY_FILE = new Map(LOCAL_MODELS.map((m) => [m.fileName, m.name]));
 
-/** localStorage key for the user's manual ordering of the Installed list (model refs, in order). */
-const INSTALLED_ORDER_KEY = 'formamorph:installedModelOrder';
 const COPIED_LABEL_MS = 2000;
 
 /** A small capability tag on a model row (Reasoning, Vision). */
 function InfoTag({ className, children }: { className?: string; children: ReactNode }) {
   return <span className={cn('rounded bg-info/15 px-1.5 py-0.5 align-middle text-[10px] font-medium text-info', className)}>{children}</span>;
-}
-
-/** Sort installed models by the saved manual order; unranked (new) files keep their input order at the end. */
-function applyInstalledOrder(list: LocalInstalledModel[]): LocalInstalledModel[] {
-  let order: string[] = [];
-  try { order = JSON.parse(localStorage.getItem(INSTALLED_ORDER_KEY) || '[]'); } catch { /* ignore */ }
-  const rank = (id: string) => { const i = order.indexOf(id); return i === -1 ? Number.MAX_SAFE_INTEGER : i; };
-  return [...list].sort((a, b) => rank(a.id) - rank(b.id));
 }
 
 /** A reorderable Installed-list row: grip handle · name · size · load/unload · delete. Models found in the
@@ -507,7 +498,7 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
       const newI = prev.findIndex((i) => i.id === over.id);
       if (oldI === -1 || newI === -1) return prev;
       const next = arrayMove(prev, oldI, newI);
-      localStorage.setItem(INSTALLED_ORDER_KEY, JSON.stringify(next.map((i) => i.id)));
+      saveInstalledOrder(next);
       return next;
     });
   };
