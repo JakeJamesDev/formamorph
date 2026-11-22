@@ -49,6 +49,8 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 | Q21 | The Condition's picker lists every Opening in the world, grouped by owner: World, each entity, each location. |
 | Q22 | The shared Opening pick and the Test Bench Opening instrument's own pool pick stay separate values. The instrument previews page one, and the shared pick drives only `opening` and the Opening Condition. |
 | Q23 | Player lines leave the Opening Condition out, as they do Hidden targets. A row with nothing else left reads "Locked". |
+| Q24 | N in a derived label counts every row in the owner's list, hidden Self rows included. The Openings tab and every picker show the same label. |
+| Q25 | The Opening card's top row holds the editable name field. No separate name row and no read-only copy in the header. The muted first-line summary goes. |
 
 ## User Stories
 
@@ -141,6 +143,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 - The editor offers it wherever it offers the Weather and Time Conditions. The picker lists every Opening in the world, grouped by owner. A listed key with no Opening shows the row as unresolved. The dead key drops the next time the author edits that Condition's list. No sweep runs when the world saves.
 - Its line text reads the picked names or derived labels.
 - Ticket 06 rulings: the editor offers it only while the world has at least one Opening, at most one per row. On an entity card, keys on the card entity's own Openings travel as the self-entity token and are rebound on import. Other keys are dropped. A Condition left with no keys imports with zero keys, so it stays unresolved and never holds. An import never widens a gate. In play it reads the resolved key, so a drawn Opening that no longer resolves counts as none. The Condition stores keys only, so linked-content update lines read "Opening", "Not Opening" or "Opening (2)".
+- Picker review rulings (user, 2026-11-22): Select All toggles off, and the author can uncheck the last option. A new Opening, Time or Weather Condition starts empty. It stays unresolved and never holds until the author picks something.
 
 **Not on Time and Weather**
 

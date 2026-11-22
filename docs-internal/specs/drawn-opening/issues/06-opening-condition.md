@@ -12,7 +12,7 @@ A new Opening Condition holds while the drawn Opening is any of a picked list, w
 - **Picker.** Lists every Opening in the world grouped by owner: World first, then each entity, then each location (Q21). Rows show by name or derived label (ticket 01).
 - **In play.** The opening fold passes the drawn key, so the first settle of starting traits sees it, and a redraw re-settles. Every later turn commit reads it from the record, so it holds for the whole game (Q11). With no drawn Opening it does not hold, and with Not it holds.
 - **Outside play.** It reads the Test Bench pick from ticket 04, else no Opening.
-- **Missing Openings.** A listed key with no Opening shows the row as unresolved, and saving drops the dead key (Q19).
+- **Missing Openings.** A listed key with no Opening shows the row as unresolved, and the next edit of that list drops the dead key (Q19).
 - **Lines.** Gate and "Shown while" lines read the picked names or labels.
 
 Ships its own docs: the **Opening Condition** glossary entry, the authoring wiki's Conditions section, and a changelog fragment.
