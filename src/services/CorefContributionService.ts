@@ -45,9 +45,20 @@ export interface CorefContributionBody {
   readingVersion?: number;
 }
 
+/** A label the export derives from a quote correction. `wholeCluster` is true when it named its whole unnamed cluster. */
+export interface DerivedLabel {
+  start: number;
+  end: number;
+  entityId: string;
+  wholeCluster: boolean;
+}
+
 /** A contribution in the staff queue. */
 export interface CorefContribution extends CorefContributionBody {
   id: string;
+  /** Whether the export would change a label. Absent from a server that predates the field. */
+  changesLabels?: boolean;
+  derivedLabels?: DerivedLabel[];
   contributorUsername: string | null;
   state: 'pending' | 'accepted' | 'rejected';
   createdAt: string;
@@ -76,13 +87,25 @@ class CorefContributionService {
 
   /** How many contributions wait for review; 0 when the count cannot be read. */
   async fetchCount(): Promise<number> {
+    return (await this.fetchCounts()).pending;
+  }
+
+  /** Pending and no-change counts; zeros when they cannot be read. */
+  async fetchCounts(): Promise<{ pending: number; noChange: number }> {
     try {
       const response = await fetch(`${this.url}/count`, { headers: authHeaders() });
-      if (!response.ok) return 0;
-      return ((await response.json()) as { pending?: number }).pending ?? 0;
+      if (!response.ok) return { pending: 0, noChange: 0 };
+      const body = (await response.json()) as { pending?: number; noChange?: number };
+      return { pending: body.pending ?? 0, noChange: body.noChange ?? 0 };
     } catch {
-      return 0;
+      return { pending: 0, noChange: 0 };
     }
+  }
+
+  /** Rejects every pending contribution that changes no label; resolves to how many it rejected. */
+  async rejectNoChange(): Promise<number> {
+    const response = await fetch(`${this.url}/reject-no-change`, { method: 'POST', headers: authHeaders() });
+    return (await unwrap<{ rejected: number }>(response, 'Could not reject the contributions')).rejected;
   }
 
   async accept(id: string): Promise<void> {

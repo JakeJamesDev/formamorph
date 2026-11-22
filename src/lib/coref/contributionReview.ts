@@ -35,6 +35,44 @@ export function reviewedCorrections(c: Pick<CorefContribution, 'passage' | 'clus
     .sort((a, b) => a.start - b.start || a.end - b.end);
 }
 
+const RULE_LABELS: Readonly<Record<string, string>> = {
+  'after-subject-verb': 'Speech tag, name then verb',
+  'after-verb-subject': 'Speech tag, verb then name',
+  'before-verb': 'Speech tag before the quote',
+  beat: 'Action beat',
+  'nearest-subject': 'Nearest subject',
+  'own-first-person': 'Quote’s own “I”',
+  'earlier-quote': 'Earlier quote',
+  'pronoun-subject': 'Pronoun subject',
+  'named-subject': 'Named subject',
+  none: 'No rule',
+};
+
+/** Staff wording for a rule slug; a slug from a newer client shows as sent. */
+export const ruleLabel = (rule: string): string => (Object.hasOwn(RULE_LABELS, rule) ? RULE_LABELS[rule] : rule);
+
+/** What the player saw for a quote: the record at that exact span, or null for an older row or no match. */
+export function shownQuote(c: Pick<CorefContribution, 'quotes'>, start: number, end: number): { speakerId: string | null; rule: string } | null {
+  const record = c.quotes?.find((q) => q.start === start && q.end === end);
+  return record ? { speakerId: record.speakerId, rule: record.rule } : null;
+}
+
+/** One label the export derives from a quote fix, with its passage text. */
+export interface DerivedLabelRow {
+  start: number;
+  end: number;
+  text: string;
+  entityId: string;
+  wholeCluster: boolean;
+}
+
+/** The derived labels of one contribution, in passage order; empty for a row without them. */
+export function derivedLabelRows(c: Pick<CorefContribution, 'passage' | 'derivedLabels'>): DerivedLabelRow[] {
+  return [...(c.derivedLabels ?? [])]
+    .sort((a, b) => a.start - b.start || a.end - b.end)
+    .map((d) => ({ ...d, text: c.passage.slice(d.start, d.end) }));
+}
+
 /** The passage split at each corrected span, so the corrected text can be marked. */
 export function passageRuns(passage: string, corrections: readonly { start: number; end: number }[]): PassageRun[] {
   const spans = [...corrections].sort((a, b) => a.start - b.start);
