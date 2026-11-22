@@ -35,6 +35,8 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 | Q11 | Parity is per host. In the entity editor a flat slot shows only its name bar, so a layered slot shows the name bar plus an outline **Edit Layers** button on its own line under it, with no size line, Download or Rule editor. In the Media tab, Edit Layers sits beside Download. (Ticket 01) |
 | Q12 | A layered gallery slot stacks with its entity's other slots in Group by Entity, and counts in the stack's count and total. (Ticket 01) |
 | Q13 | On mobile, Edit Layers opens the Layer panel in a full-height dialog titled with the Layered Image's name. A layered slot's size line has no budget text or Over Budget badge. Download saves the flattened outside-play picture losslessly, named from the Layered Image. (Ticket 01) |
+| Q14 | A search hit on a part shows its holder as that grouping shows it: the holder's slot cards in Group by Entity, its one entry card in Group by Type. Filters apply before search, so a hit never shows against the active filter. (Ticket 03) |
+| Q15 | The delete confirm adds a second list under the use list, "It also deletes these images, which only it uses:", naming each part. A part used by two Layers of this same Layered Image counts as unshared and goes. The undo label stays "Delete Layered Image: <name>". (Ticket 04) |
 
 ## User Stories
 
