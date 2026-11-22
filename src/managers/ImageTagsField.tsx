@@ -12,7 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { Eye, Plus, Star, TriangleAlert } from "lucide-react";
-import { ImageRuleCog, ImageRuleSummary, useHasRuleSource, type RuleHost } from '@/components/editor/ImageRuleCog';
+import { ImageRuleButton, useHasRuleSource, type RuleHost } from '@/components/editor/ImageRuleCog';
 import AiGenerateButton from "@/components/AiGenerateButton";
 import TagField from "@/components/prompt/TagField";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -114,18 +114,20 @@ const FRAME_CLASS = {
  *  picture rather than the whole column. */
 const FRAME_WIDTH = { portrait: 'mx-auto max-w-[300px]', landscape: 'mx-auto max-w-[400px]' };
 
-/** One image's Visibility rule as a tile edits it. */
-interface TileRule {
+/** An icon button drawn over the framed picture. */
+const FRAME_BUTTON = 'bg-background/80 backdrop-blur';
+
+/** One image's Visibility rule as the frame edits it. */
+interface SlotRule {
   host: RuleHost;
   rows: TraitRequirementRow[];
   onChange: (rows: TraitRequirementRow[]) => void;
 }
 
 /** One picture in the strip. Click frames it; drag reorders it — position 0 is what stands in wherever a
- *  single picture is shown, so dragging to the front is the whole promote gesture. A cog on hover sets the
- *  picture's Visibility rule, and a badge marks one that has a rule. The cog sits beside the tile's button,
- *  not inside it, and the button alone drags. */
-const ImageTile = ({ id, url, picture, index, framed, onSelect, ruled, rule }: {
+ *  single picture is shown, so dragging to the front is the whole promote gesture. A badge marks a picture
+ *  that has a Visibility rule; the frame edits it. */
+const ImageTile = ({ id, url, picture, index, framed, onSelect, ruled }: {
   id: string;
   url: string;
   /** A Layered Image's composed picture, drawn in place of its tile. */
@@ -133,9 +135,8 @@ const ImageTile = ({ id, url, picture, index, framed, onSelect, ruled, rule }: {
   index: number;
   framed: boolean;
   onSelect: () => void;
-  /** Whether the image has a rule, badged even where the cog is hidden. */
+  /** Whether the image has a rule, badged even where the frame's rule button is hidden. */
   ruled: boolean;
-  rule?: TileRule;
 }) => {
   const { setNodeRef, setActivatorNodeRef, transform, transition, isDragging, attributes, listeners } = useSortable({ id });
   const primary = index === 0;
@@ -182,7 +183,6 @@ const ImageTile = ({ id, url, picture, index, framed, onSelect, ruled, rule }: {
           )}
         </button>
       </Tip>
-      {rule && <ImageRuleCog {...rule} className="absolute right-0.5 top-0.5" />}
     </div>
   );
 };
@@ -298,10 +298,10 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   /** Write one slot's Visibility rule; an emptied rule drops the field. */
   const setRule = (index: number, requires: TraitRequirementRow[]) => onImagesChange(withImageRule(shownImages, index, requires));
   const rulable = gallery && !!ruleHost;
-  const tileRule = (i: number): TileRule | undefined => (rulable && ruleSourced && ruleCog
+  /** A filled slot's rule as the frame edits it; none for the open slot. */
+  const slotRule = (i: number): SlotRule | undefined => (rulable && ruleSourced && ruleCog && shownImages[i]
     ? { host: ruleHost, rows: shownImages[i].requires ?? [], onChange: (rows) => setRule(i, rows) }
     : undefined);
-  const framedRule = rulable && ruleSourced && ruleCog ? shownImages[showing]?.requires : undefined;
   const tileRuled = (i: number) => rulable && ruleSourced && !!shownImages[i].requires?.length;
   // Only an entity's primary stands in outside play, where no rule reads.
   const coverRuled = rulable && ruleHost.kind === 'entity' && !!shownImages[0]?.requires?.length;
@@ -416,6 +416,8 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
         const entry = url ? entryAt(i) : undefined;
         return (
         <div key={url ? tileIds[i] : 'empty-slot'} className={cn('space-y-1', gallery && i !== showing && 'hidden')}>
+          {/* The framed picture's own actions sit over the frame, so stepping between slots never moves the strip. */}
+          <div className="relative" data-slot-frame="">
           <ImageUpload
             onChange={(value, fileName) => setSlot(i, value, fileName)}
             id={slotId(i)}
@@ -440,8 +442,17 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
               />
             )}
           />
-          {entry && <MediaEntryBar entry={entry} onUnlink={() => setSlot(i, '')} />}
-          {entry?.kind === 'layered' && editLayers && <EditLayersButton entryId={entry.id} size="sm" />}
+          {gallery && entry?.kind === 'layered' && editLayers && (
+            <EditLayersButton entryId={entry.id} iconOnly className={cn('absolute left-2 top-2', FRAME_BUTTON)} />
+          )}
+          {gallery && (() => {
+            const rule = slotRule(i);
+            return rule && <ImageRuleButton {...rule} className="absolute right-2 top-2" />;
+          })()}
+          </div>
+          {/* A gallery keeps the name row on every slot, disabled on the open one, so it never comes and goes. */}
+          {(entry || (gallery && media)) && <MediaEntryBar entry={entry} onUnlink={() => setSlot(i, '')} />}
+          {!gallery && entry?.kind === 'layered' && editLayers && <EditLayersButton entryId={entry.id} size="sm" />}
         </div>
         );
       })}
@@ -468,7 +479,6 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
                   framed={i === showing}
                   onSelect={() => setShowing(i)}
                   ruled={tileRuled(i)}
-                  rule={tileRule(i)}
                 />
               ))}
             </StableSortableContext>
@@ -485,7 +495,6 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
           )}
         </div>
       )}
-      {ruleHost && framedRule?.length ? <ImageRuleSummary host={ruleHost} rows={framedRule} /> : null}
       {coverRuled && (
         <p data-image-rule-cover-warning="" className="flex items-start gap-1 text-helper text-warning">
           <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />

@@ -211,7 +211,7 @@ Simple mode also hides **AI-Facing Summary**.
 ### Background Visibility rules
 <!-- keywords: change background in game, wounded backdrop, night backdrop, conditional background, background per state, backdrop follows story -->
 
-Each background image can carry a [Visibility rule](World-Editor-Entities#visibility-rules), the same as an entity image. Select the cog on a thumbnail to set one.
+Each background image can carry a [Visibility rule](World-Editor-Entities#visibility-rules), the same as an entity image. Select a thumbnail, then the eye button on the large image, to set one.
 
 - 🖼️ During a game, the backdrop shows the **first visible image**, counting from the left.
 - 🧍 A condition with no owner reads the **persona** the player plays. A location has no traits or stats of its own. Pick an entity to read that entity instead. A global trait or stat needs no owner.

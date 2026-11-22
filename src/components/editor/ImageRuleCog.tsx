@@ -1,5 +1,6 @@
 import { useContext, useMemo, type ReactNode } from 'react';
-import { Settings } from 'lucide-react';
+import { Eye, Settings } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { RequirementRowsField } from '@/components/editor/RequirementRowsField';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -134,6 +135,41 @@ export function ImageRuleSummary({ host, rows }: { host: RuleHost; rows: TraitRe
   );
   if (!source || !line) return null;
   return <Hint data-image-rule-summary="">{labelPlaceholders(line, source.placeholders)}</Hint>;
+}
+
+/**
+ * The framed picture's Visibility Rule, as an icon button over the frame's corner. Its tooltip and name carry the
+ * rule's text, and its outline turns primary while a rule is set.
+ */
+export function ImageRuleButton({ host, rows, onChange, className }: {
+  host: RuleHost;
+  rows: TraitRequirementRow[];
+  onChange: (rows: TraitRequirementRow[]) => void;
+  className?: string;
+}) {
+  const text = useHostRuleText(host, rows);
+  return (
+    <Popover modal>
+      <Tip tip={`Visibility Rule: ${text ? `Shown while ${text}` : 'Always shows'}`}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            data-image-rule-button=""
+            className={cn('bg-background/80 backdrop-blur', text && 'border-primary text-primary', className)}
+          >
+            <Eye className="h-4 w-4" aria-hidden />
+          </Button>
+        </PopoverTrigger>
+      </Tip>
+      <PopoverContent align="end" className="w-[28rem] max-w-[calc(100vw-2rem)] space-y-2">
+        <ScrollArea className="max-h-[min(24rem,60dvh)]">
+          <ImageRuleEditor host={host} rows={rows} onChange={onChange} />
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 /**

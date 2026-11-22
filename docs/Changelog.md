@@ -63,6 +63,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Renaming a stat, trait, placeholder or location in the World Editor now updates the item scripts that name it.** When another character that can hold the item has a stat of that name, you check which `owner` references to change.
   - **Auto-Load in the desktop app now loads the top model in the Installed list.** An Auto-Load tag marks it. Drag a model to the top to choose it, including a model from an Additional Search Folder.
   - **Large Supporter-only worlds, such as Sunmeadow Town, now download from Community Creations.** The download no longer times out, and the installed world stays close to the author's size.
+  - **The tile strip in a World Editor image gallery now stays still as you select tiles.** The name row stays on every slot. Edit Layers and the Visibility rule are now buttons on the large image's corners, and the eye button's tooltip reads the rule.
 
 ---
 

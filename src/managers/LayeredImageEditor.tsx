@@ -6,6 +6,7 @@ import { Layers, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, dialogCenteredAnimation, dialogFullHeight, dialogHeaderBar, dialogHeaderBarTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tip } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Hint, Meta } from '@/components/ui/typography';
@@ -62,11 +63,14 @@ export function LayeredImageEditor({ entryId, openOnMount = false }: { entryId: 
  * Edit Layers for one Layered Image: the full-screen editor on desktop, the Layer panel in a full-height
  * dialog on mobile.
  */
-export function EditLayersButton({ entryId, variant = 'outline', size = 'default', openOnMount = false }: {
+export function EditLayersButton({ entryId, variant = 'outline', size = 'default', openOnMount = false, iconOnly = false, className }: {
   entryId: string;
   variant?: 'default' | 'outline';
   size?: 'default' | 'sm';
   openOnMount?: boolean;
+  /** The icon alone, named by its tooltip, for a frame overlay. */
+  iconOnly?: boolean;
+  className?: string;
 }) {
   const entry = layeredEntry(useGameDataOptional()?.worldOverview.mediaList, entryId);
   const mobile = useIsMobile();
@@ -74,9 +78,19 @@ export function EditLayersButton({ entryId, variant = 'outline', size = 'default
   if (!entry) return null;
   return (
     <>
-      <Button type="button" variant={variant} size={size} onClick={() => setOpen(true)} data-edit-layers={entry.id}>
-        <Layers className="mr-1 h-4 w-4" />Edit Layers
-      </Button>
+      {iconOnly
+        ? (
+          <Tip tip="Edit Layers">
+            <Button type="button" variant={variant} size="icon" className={className} onClick={() => setOpen(true)} data-edit-layers={entry.id}>
+              <Layers className="h-4 w-4" aria-hidden />
+            </Button>
+          </Tip>
+        )
+        : (
+          <Button type="button" variant={variant} size={size} className={className} onClick={() => setOpen(true)} data-edit-layers={entry.id}>
+            <Layers className="mr-1 h-4 w-4" />Edit Layers
+          </Button>
+        )}
       <Dialog open={open} onOpenChange={setOpen}>
         {mobile
           ? (

@@ -507,16 +507,16 @@ A **Visibility rule** makes an image show only in the right state. Give the woun
 The rule uses the same [requirement rows](World-Editor-Traits#requirements) as a trait's **Requires** field, including [stat conditions](World-Editor-Traits#stat-conditions) and [time conditions](World-Editor-Traits#time-conditions). Give a night portrait the rule *night*, and it shows only at night.
 
 ### How to add a rule
-<!-- keywords: cog on thumbnail, add visibility rule, edit rule, shown while, badge on image, eye badge -->
+<!-- keywords: eye button on image, add visibility rule, edit rule, shown while, badge on image, eye badge -->
 
 1. Select the entity, then open its **Profile** tab.
-2. Hover over the image's thumbnail, then select the cog on its corner. Its tooltip reads **Visibility Rule**. On a touch screen, the cog always shows.
+2. Select the image's thumbnail, then select the eye button on the top-right corner of the large image.
 3. Select **Add Requirement**, then pick a trait, a stat, **Time of Day**, **Weather** (while Weather is on), or a persona under **Playing As**.
 4. Select **And** to add a condition to the same row. Select **Or Another Way** to add a row.
 
 An image shows while **any one row** holds. A row holds when **all** its conditions hold.
 
-A thumbnail with a rule carries an eye badge. The line under the selected thumbnail reads the rule: *Shown while Health < 20% and not Healed*.
+A thumbnail with a rule carries an eye badge, and its eye button is highlighted. The eye button's tooltip reads the rule: *Shown while Health < 20% and not Healed*.
 
 A condition checks the entity that owns the image, unless you pick another owner. To read the traits or stats of the entity the player plays, pick **Persona**. A global trait or stat needs no owner. *Shown while Persona: Night Vision* shows the true form to a player who has Night Vision.
 

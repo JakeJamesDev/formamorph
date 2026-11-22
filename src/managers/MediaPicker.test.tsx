@@ -57,9 +57,11 @@ const grid = () => document.querySelector<HTMLElement>('[data-media-choose]')!;
 const gridNames = () => [...grid().querySelectorAll('[data-media-entry]')].map((b) => b.textContent);
 
 describe('Media List image slot', () => {
-  it('names the entry behind each filled slot', () => {
+  it('names the entry behind each filled slot, and keeps a disabled name on the open one', () => {
     openWick();
-    expect(nameFields().map((input) => input.value)).toEqual(['Odd Wick 1', 'Odd Wick 2', 'Odd Wick 3']);
+    expect(nameFields().map((input) => [input.value, input.disabled])).toEqual([
+      ['Odd Wick 1', false], ['Odd Wick 2', false], ['Odd Wick 3', false], ['', true],
+    ]);
   });
 
   it('offers Import, Choose and an image URL in the open slot, and the + tile frames it without opening a file picker', () => {

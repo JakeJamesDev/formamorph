@@ -71,14 +71,20 @@ function Harness({ initial, inDialog = false, ruleCog, host = WREN_HOST }: {
 
 const stored = (): GalleryImage[] => JSON.parse(screen.getByTestId('images').textContent!);
 const tile = (name: string | RegExp) => screen.getByRole('button', { name });
-/** The tile's wrapper, which holds its cog beside the button. */
+/** The tile's wrapper, which holds its badge. */
 const tileBox = (name: string | RegExp) => tile(name).parentElement!;
-const cogOf = (name: string | RegExp) => within(tileBox(name)).getByRole('button', { name: 'Visibility Rule' });
+/** The framed slot's box: the gallery renders every slot and hides all but the framed one. */
+const framedSlot = () => [...document.querySelectorAll<HTMLElement>('[data-slot-frame]')]
+  .find((frame) => !frame.parentElement!.classList.contains('hidden'))!;
+/** The framed slot's rule button; its name carries the rule. */
+const frameRule = () => within(framedSlot()).getByRole('button', { name: /^Visibility Rule/ });
+/** Frames the tile, then returns the rule button over the frame. */
+const ruleOf = (name: string | RegExp) => { fireEvent.click(tile(name)); return frameRule(); };
 
 describe('Gallery Visibility rules on a location', () => {
   it('names the persona as the owner of a Condition with no owner, once', async () => {
     render(<Harness initial={[{ data: A }, { data: B }]} host={LOCATION_RULE_HOST} />);
-    fireEvent.click(cogOf('Image 2'));
+    fireEvent.click(ruleOf('Image 2'));
     fireEvent.click(await screen.findByRole('button', { name: 'Add Requirement' }));
     fireEvent.click(await screen.findByRole('option', { name: /^Healed/ }));
 
@@ -87,9 +93,9 @@ describe('Gallery Visibility rules on a location', () => {
     expect(stored()[1].requires).toEqual([{ all: [{ kind: 'trait', id: 'healed' }] }]);
   });
 
-  it("reads a Condition with no owner as the persona's in the summary, and gives no cover warning", () => {
+  it("reads a Condition with no owner as the persona's on the rule button, and gives no cover warning", () => {
     render(<Harness initial={[{ data: A, requires: lowHealth }, { data: B }]} host={LOCATION_RULE_HOST} />);
-    expect(document.querySelector('[data-image-rule-summary]')).toHaveTextContent('Shown while Persona: Health < 20%');
+    expect(frameRule()).toHaveAccessibleName('Visibility Rule: Shown while Persona: Health < 20%');
     expect(document.querySelector('[data-image-rule-cover-warning]')).toBeNull();
   });
 });
@@ -99,7 +105,7 @@ describe('Gallery Visibility rules on an item', () => {
 
   it('names the Item Owner as the owner of a Condition with no owner, and offers Persona and each entity by name', async () => {
     render(<Harness initial={[{ data: A }, { data: B }]} host={LAMP_HOST} />);
-    fireEvent.click(cogOf('Image 2'));
+    fireEvent.click(ruleOf('Image 2'));
     fireEvent.click(await screen.findByRole('button', { name: 'Add Requirement' }));
     fireEvent.click(await screen.findByRole('option', { name: /^Healed/ }));
 
@@ -108,17 +114,17 @@ describe('Gallery Visibility rules on an item', () => {
     expect(stored()[1].requires).toEqual([{ all: [{ kind: 'trait', id: 'healed' }] }]);
   });
 
-  it('reads the rule under the framed thumbnail', () => {
+  it('names the framed image’s rule on its rule button', () => {
     render(<Harness initial={[{ data: A }, { data: B, requires: notHealed }]} host={LAMP_HOST} />);
     fireEvent.click(tile(/^Image 2/));
-    expect(document.querySelector('[data-image-rule-summary]')).toHaveTextContent('Shown while not Healed');
+    expect(frameRule()).toHaveAccessibleName('Visibility Rule: Shown while not Healed');
   });
 });
 
 describe('Gallery Visibility rules', () => {
-  it('opens the rows editor from a tile’s cog and stores the rule on that image only', async () => {
+  it('opens the rows editor from the frame’s rule button and stores the rule on that image only', async () => {
     render(<Harness initial={[{ data: A }, { data: B }, { data: C }]} />);
-    fireEvent.click(cogOf('Image 2'));
+    fireEvent.click(ruleOf('Image 2'));
     fireEvent.click(await screen.findByRole('button', { name: 'Add Requirement' }));
     fireEvent.click(await screen.findByRole('option', { name: /^Health/ }));
 
@@ -131,7 +137,7 @@ describe('Gallery Visibility rules', () => {
 
   it('drops the field when the last row is removed', async () => {
     render(<Harness initial={[{ data: A }, { data: B, requires: lowHealth }]} />);
-    fireEvent.click(cogOf(/^Image 2/));
+    fireEvent.click(ruleOf(/^Image 2/));
     fireEvent.click(await screen.findByRole('button', { name: /^Remove row/ }));
 
     expect(stored()).toEqual([{ data: A }, { data: B }]);
@@ -145,19 +151,25 @@ describe('Gallery Visibility rules', () => {
     expect(tile('Image 2, has a Visibility rule')).toBeInTheDocument();
   });
 
-  it('reads a stat Condition under the framed thumbnail', () => {
+  it('names a stat Condition on the framed image’s rule button', () => {
     render(<Harness initial={[{ data: A }, { data: B, requires: lowHealth }]} />);
-    expect(document.querySelector('[data-image-rule-summary]')).toBeNull();
+    expect(frameRule()).toHaveAccessibleName('Visibility Rule: Always shows');
     fireEvent.click(tile(/^Image 2/));
-    expect(document.querySelector('[data-image-rule-summary]')).toHaveTextContent('Shown while Health < 20%');
+    expect(frameRule()).toHaveAccessibleName('Visibility Rule: Shown while Health < 20%');
   });
 
-  it('hides the cog and the framed summary when the host edits the rule, and keeps the badge and the cover warning', () => {
+  it('draws no rule button over the open slot, and none on the strip’s tiles', () => {
+    render(<Harness initial={[{ data: A }, { data: B, requires: lowHealth }]} />);
+    fireEvent.click(screen.getByLabelText('Add an Image'));
+    expect(within(framedSlot()).queryByRole('button', { name: /^Visibility Rule/ })).toBeNull();
+    expect(within(tileBox(/^Image 2/)).queryByRole('button', { name: /^Visibility Rule/ })).toBeNull();
+  });
+
+  it('hides the frame’s rule button when the host edits the rule, and keeps the badge and the cover warning', () => {
     render(<Harness initial={[{ data: A, requires: lowHealth }, { data: B, requires: lowHealth }]} ruleCog={false} />);
     fireEvent.click(tile(/^Image 2/));
 
-    expect(screen.queryByRole('button', { name: 'Visibility Rule' })).toBeNull();
-    expect(document.querySelector('[data-image-rule-summary]')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Visibility Rule/ })).toBeNull();
     expect(tileBox(/^Image 2/).querySelector('[data-image-rule-badge]')).not.toBeNull();
     expect(document.querySelector('[data-image-rule-cover-warning]')).not.toBeNull();
   });
@@ -165,7 +177,7 @@ describe('Gallery Visibility rules', () => {
   it('reads a trait Condition, and Not', () => {
     render(<Harness initial={[{ data: A }, { data: B, requires: notHealed }]} />);
     fireEvent.click(tile(/^Image 2/));
-    expect(document.querySelector('[data-image-rule-summary]')).toHaveTextContent('Shown while not Healed');
+    expect(frameRule()).toHaveAccessibleName('Visibility Rule: Shown while not Healed');
   });
 
   it('warns only while the primary image carries a rule', () => {
@@ -179,7 +191,7 @@ describe('Gallery Visibility rules', () => {
 
   it('keeps the entity editor dialog open while the popover is used', async () => {
     render(<Harness initial={[{ data: A }, { data: B }]} inDialog />);
-    fireEvent.click(cogOf('Image 2'));
+    fireEvent.click(ruleOf('Image 2'));
     fireEvent.click(await screen.findByRole('button', { name: 'Add Requirement' }));
     fireEvent.click(await screen.findByRole('option', { name: /^Health/ }));
 
@@ -187,23 +199,23 @@ describe('Gallery Visibility rules', () => {
     expect(stored()[1].requires).toHaveLength(1);
   });
 
-  it('draws no cog for a location, which has no rule', () => {
+  it('draws no rule button for a gallery with no rule host', () => {
     render(
       <TooltipProvider>
         <ImageTagsField label="Background Image" images={[{ data: A }, { data: B }]} onImagesChange={vi.fn()} slots={4}
           imageId="y" cap={IMAGE_CAPS.entity} kind="location" onTagsChange={vi.fn()} />
       </TooltipProvider>,
     );
-    expect(screen.queryByRole('button', { name: 'Visibility Rule' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Visibility Rule/ })).toBeNull();
   });
 
-  it('draws no cog where nothing can supply a rule’s targets', () => {
+  it('draws no rule button where nothing can supply a rule’s targets', () => {
     render(
       <TooltipProvider>
         <ImageTagsField label="Image" images={[{ data: A }, { data: B }]} onImagesChange={vi.fn()} slots={4}
           imageId="z" cap={IMAGE_CAPS.entity} kind="character" onTagsChange={vi.fn()} ruleHost={WREN_HOST} />
       </TooltipProvider>,
     );
-    expect(screen.queryByRole('button', { name: 'Visibility Rule' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Visibility Rule/ })).toBeNull();
   });
 });

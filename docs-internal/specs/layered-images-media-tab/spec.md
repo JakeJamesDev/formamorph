@@ -38,6 +38,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 | Q13 | On mobile, Edit Layers opens the Layer panel in a full-height dialog titled with the Layered Image's name. A layered slot's size line has no budget text or Over Budget badge. Download saves the flattened outside-play picture losslessly, named from the Layered Image. (Ticket 01) |
 | Q14 | A search hit on a part shows its holder as that grouping shows it: the holder's slot cards in Group by Entity, its one entry card in Group by Type. Filters apply before search, so a hit never shows against the active filter. (Ticket 03) |
 | Q15 | The delete confirm adds a second list under the use list, "It also deletes these images, which only it uses:", naming each part. A part used by two Layers of this same Layered Image counts as unshared and goes. The undo label stays "Delete Layered Image: <name>". (Ticket 04) |
+| Q16 | New evidence on Q11 (2026-11-22, after the close): **Edit Layers** on its own line came and went as the author stepped through the strip, and moved the tiles. In the shared gallery field it is now an icon button on the frame's top-left corner, and the Visibility Rule is an icon button on the top-right (the tile cog and the summary line are gone). Neither shows on the empty slot. The name row shows on every slot, disabled on the empty one. Settled in a prototype on `prototype/portrait-gallery` (variant D). |
 
 ## User Stories
 

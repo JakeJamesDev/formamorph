@@ -246,20 +246,25 @@ export function MediaNameField({ entry, rename, className }: {
   );
 }
 
-/** Under a filled slot: the entry's name, then Remove (an unlink) and Delete From World. */
-export function MediaEntryBar({ entry, onUnlink }: { entry: MediaEntry; onUnlink: () => void }) {
+/**
+ * Under a slot: the entry's name, then Remove (an unlink) and Delete From World. With no entry, the same controls
+ * show disabled, so a gallery's row keeps its place as the author steps between filled and empty slots.
+ */
+export function MediaEntryBar({ entry, onUnlink }: { entry?: MediaEntry; onUnlink: () => void }) {
   const { rename, askDelete, confirm } = useMediaEntryActions();
   return (
-    <div className="flex items-center gap-1" data-media-entry-bar={entry.id}>
+    <div className="flex items-center gap-1" data-media-entry-bar={entry?.id ?? ''}>
       {confirm}
-      <MediaNameField entry={entry} rename={rename} className="h-8 flex-1" />
-      <Tip tip={`Removes the ${MEDIA_KIND_WORDS[entry.kind].one.toLowerCase()} here and keeps it in the world`}>
-        <Button type="button" variant="ghost" size="icon" aria-label="Remove From Slot" onClick={onUnlink}>
+      {entry
+        ? <MediaNameField entry={entry} rename={rename} className="h-8 flex-1" />
+        : <Input disabled placeholder="Empty Slot" aria-label="Image Name" className="h-8 flex-1" />}
+      <Tip tip={entry ? `Removes the ${MEDIA_KIND_WORDS[entry.kind].one.toLowerCase()} here and keeps it in the world` : 'Remove From Slot'}>
+        <Button type="button" variant="ghost" size="icon" aria-label="Remove From Slot" disabled={!entry} onClick={onUnlink}>
           <X className="h-4 w-4" />
         </Button>
       </Tip>
       <Tip tip="Delete From World">
-        <Button type="button" variant="ghost" size="icon" aria-label="Delete From World" onClick={() => askDelete(entry.id)}>
+        <Button type="button" variant="ghost" size="icon" aria-label="Delete From World" disabled={!entry} onClick={() => entry && askDelete(entry.id)}>
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
       </Tip>

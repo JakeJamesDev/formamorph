@@ -63,7 +63,9 @@ describe('an item image field', () => {
     expect(slotBox(BASE.id).querySelector('[data-edit-layers]')).toBeNull();
     expect(within(slotBox(RIG.id)).getByDisplayValue('Lamp Rig')).toBeInTheDocument();
     const edit = slotBox(RIG.id).querySelector<HTMLElement>(`[data-edit-layers="${RIG.id}"]`)!;
-    expect(edit.previousElementSibling).toHaveAttribute('data-media-entry-bar', RIG.id);
+    expect(edit.closest('[data-slot-frame]')).not.toBeNull();
+    expect(edit).toHaveAccessibleName('Edit Layers');
+    expect(edit).toHaveTextContent(/^$/);
     fireEvent.click(edit);
     expect(screen.getByRole('dialog')).toHaveTextContent('Lamp Rig');
   });
@@ -77,7 +79,9 @@ describe('a location image field', () => {
     expect(slotBox(BASE.id).querySelector('[data-edit-layers]')).toBeNull();
     expect(within(slotBox(RIG.id)).getByDisplayValue('Lamp Rig')).toBeInTheDocument();
     const edit = slotBox(RIG.id).querySelector<HTMLElement>(`[data-edit-layers="${RIG.id}"]`)!;
-    expect(edit.previousElementSibling).toHaveAttribute('data-media-entry-bar', RIG.id);
+    expect(edit.closest('[data-slot-frame]')).not.toBeNull();
+    expect(edit).toHaveAccessibleName('Edit Layers');
+    expect(edit).toHaveTextContent(/^$/);
     fireEvent.click(edit);
     expect(screen.getByRole('dialog')).toHaveTextContent('Lamp Rig');
   });
@@ -87,7 +91,7 @@ describe('an entity editor gallery slot', () => {
   const keeper = { id: 'keeper', name: 'Keeper', images: [{ mediaId: BASE.id }, { mediaId: RIG.id }] } as unknown as Entity;
   const slotOf = slotBox;
 
-  it('offers Edit Layers under the name bar of a Layered Image slot only, and it opens that rig', () => {
+  it('offers Edit Layers as an icon on the frame of a Layered Image slot only, and it opens that rig', () => {
     render(
       <EntityImageWidget value={keeper} onChange={vi.fn()} imageId="entity-image-keeper" linked>
         <ImageGallery />
@@ -95,9 +99,32 @@ describe('an entity editor gallery slot', () => {
     );
     expect(slotOf(BASE.id).querySelector('[data-edit-layers]')).toBeNull();
     const edit = slotOf(RIG.id).querySelector<HTMLElement>(`[data-edit-layers="${RIG.id}"]`)!;
-    expect(edit.previousElementSibling).toHaveAttribute('data-media-entry-bar', RIG.id);
+    expect(edit.closest('[data-slot-frame]')).not.toBeNull();
+    expect(edit).toHaveAccessibleName('Edit Layers');
+    expect(edit).toHaveTextContent(/^$/);
 
     fireEvent.click(edit);
     expect(screen.getByRole('dialog')).toHaveTextContent('Lamp Rig');
+  });
+});
+
+describe('a gallery’s name row', () => {
+  const keeper = { id: 'keeper', name: 'Keeper', images: [{ mediaId: BASE.id }, { mediaId: RIG.id }] } as unknown as Entity;
+
+  it('stays on every slot, disabled on the open one, so stepping between slots keeps the row', () => {
+    render(
+      <EntityImageWidget value={keeper} onChange={vi.fn()} imageId="entity-image-keeper" linked>
+        <ImageGallery />
+      </EntityImageWidget>,
+    );
+    // Two filled slots and the open one, each with its row.
+    expect(document.querySelectorAll('[data-media-entry-bar]')).toHaveLength(3);
+
+    fireEvent.click(screen.getByLabelText('Add an Image'));
+    const open = document.querySelector<HTMLElement>('[data-media-entry-bar=""]')!;
+    expect(within(open).getByPlaceholderText('Empty Slot')).toBeDisabled();
+    expect(within(open).getByRole('button', { name: 'Remove From Slot' })).toBeDisabled();
+    expect(within(open).getByRole('button', { name: 'Delete From World' })).toBeDisabled();
+    expect(open.parentElement!.querySelector('[data-edit-layers]')).toBeNull();
   });
 });

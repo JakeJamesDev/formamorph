@@ -68,7 +68,7 @@ const setup = (images: (string | GalleryImage)[], slots = 4) => {
 
 /** The wrapper the gallery hides when a slot is not the one being framed. */
 const slotWrapper = (value: string) =>
-  screen.getAllByTestId('slot').find((n) => n.getAttribute('data-value') === value)!.parentElement!;
+  screen.getAllByTestId('slot').find((n) => n.getAttribute('data-value') === value)!.parentElement!.parentElement!;
 
 const tile = (name: string) => screen.getByRole('button', { name });
 
@@ -155,7 +155,7 @@ describe('ImageTagsField gallery', () => {
     );
 
     // Slot 1 is now the empty add slot; the frame lands on it rather than past the end showing nothing.
-    const visible = screen.getAllByTestId('slot').filter((n) => !n.parentElement!.className.includes('hidden'));
+    const visible = screen.getAllByTestId('slot').filter((n) => !n.parentElement!.parentElement!.className.includes('hidden'));
     expect(visible).toHaveLength(1);
     expect(visible[0].getAttribute('data-value')).toBe('');
   });
@@ -190,7 +190,7 @@ describe('ImageTagsField gallery', () => {
 
     // The empty slot is framed, so the drop's destination is what's on screen rather than a picture it was
     // never going to replace.
-    const visible = screen.getAllByTestId('slot').filter((n) => !n.parentElement!.className.includes('hidden'));
+    const visible = screen.getAllByTestId('slot').filter((n) => !n.parentElement!.parentElement!.className.includes('hidden'));
     expect(visible.map((n) => n.getAttribute('data-value'))).toEqual(['']);
     // Marked on this first event, which is the one that swaps: the slot it swapped to won't hear about the
     // drag until the next one, and an unmarked frame in between reads as nothing having happened.
@@ -239,7 +239,7 @@ describe('ImageTagsField gallery', () => {
     await screen.findByRole('status', { name: 'Converting image' });
     // The empty slot is framed, so the bar covers the picture actually being worked on.
     expect(slotWrapper(A).className).toMatch(/hidden/);
-    const visible = screen.getAllByTestId('slot').filter((n) => !n.parentElement!.className.includes('hidden'));
+    const visible = screen.getAllByTestId('slot').filter((n) => !n.parentElement!.parentElement!.className.includes('hidden'));
     expect(visible.map((n) => n.getAttribute('data-value'))).toEqual(['']);
 
     release[0]();

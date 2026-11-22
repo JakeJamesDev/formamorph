@@ -161,6 +161,9 @@ describe('the Media tab image panel and the editor', () => {
   const inPanel = () => within(panel()!);
   const tile = (name: string | RegExp) => inPanel().getByRole('button', { name });
   const wick = (bench: ReturnType<typeof open>): Entity => bench.ctx().entities.find((e) => e.id === 'wick')!;
+  /** The Profile gallery's rule button over its framed picture; the gallery hides every other slot. */
+  const frameRule = () => within([...document.querySelectorAll<HTMLElement>('[data-slot-frame]')]
+    .find((frame) => !frame.parentElement!.classList.contains('hidden'))!).getByRole('button', { name: /^Visibility Rule/ });
 
   const step = (action: () => void) => act(async () => { action(); });
   const undo = () => step(() => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
@@ -208,9 +211,8 @@ describe('the Media tab image panel and the editor', () => {
       const bench = open();
       fireEvent.click(card('Entities', 'stack'));
       fireEvent.click(inPanel().getByRole('button', { name: 'Go to Odd Wick' }));
-      const cog = within(screen.getByRole('button', { name: 'Image 2, has a Visibility rule' }).parentElement!)
-        .getByRole('button', { name: 'Visibility Rule' });
-      fireEvent.click(cog);
+      fireEvent.click(screen.getByRole('button', { name: 'Image 2, has a Visibility rule' }));
+      fireEvent.click(frameRule());
       fireEvent.click(await screen.findByRole('button', { name: /^Remove row/ }));
       expect(wick(bench).images![1].requires).toBeUndefined();
       fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
@@ -223,19 +225,17 @@ describe('the Media tab image panel and the editor', () => {
       expect(within(framed()!).getByRole('button', { name: 'Add Requirement' })).toBeInTheDocument();
     });
 
-    it('hides the strip cog and the framed summary in the panel, and keeps both on the Profile tab', () => {
+    it("hides the frame's rule button in the panel, which edits the rule itself, and keeps it on the Profile tab", () => {
       open();
       fireEvent.click(card('Entities', 'stack'));
       fireEvent.click(tile(/^Image 2/));
-      expect(panel()!.querySelector('[data-image-rule-cog]')).toBeNull();
-      expect(panel()!.querySelector('[data-image-rule-summary]')).toBeNull();
+      expect(panel()!.querySelector('[data-image-rule-button]')).toBeNull();
       expect(within(framed()!).getByRole('button', { name: /^Remove row/ })).toBeInTheDocument();
 
       fireEvent.click(inPanel().getByRole('button', { name: 'Go to Odd Wick' }));
       fireEvent.click(screen.getByRole('button', { name: 'Image 2, has a Visibility rule' }));
 
-      expect(document.querySelectorAll('[data-image-rule-cog]')).toHaveLength(4);
-      expect(document.querySelector('[data-image-rule-summary]')).toHaveTextContent('Shown while');
+      expect(frameRule()).toHaveAccessibleName(/^Visibility Rule: Shown while/);
     });
   });
 
@@ -248,7 +248,7 @@ describe('the Media tab image panel and the editor', () => {
       marsh.images = [...(marsh.images ?? []), { data: SECOND }];
     });
 
-    it("shows the location panel's gallery with a rule cog on each image", () => {
+    it("shows the location panel's gallery with a rule button over each image's frame", () => {
       open('simple', locationWorld());
       fireEvent.click(card('Locations', 'stack'));
       fireEvent.click(inPanel().getByRole('button', { name: 'Go to Marsh' }));
@@ -257,7 +257,7 @@ describe('the Media tab image panel and the editor', () => {
 
       expect(screen.getByRole('button', { name: 'Primary image' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Image 2' })).toBeInTheDocument();
-      expect(document.querySelectorAll('[data-image-rule-cog]')).toHaveLength(2);
+      expect(document.querySelectorAll('[data-image-rule-button]')).toHaveLength(2);
     });
   });
 });

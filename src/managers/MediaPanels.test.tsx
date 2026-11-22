@@ -46,7 +46,8 @@ const cardsOf = (name: string, kind: string) =>
   Array.from(section(name)?.querySelectorAll<HTMLElement>(`[data-media-card="${kind}"]`) ?? []);
 const card = (name: string, kind: string, index = 0) => cardsOf(name, kind)[index];
 const panel = () => document.querySelector<HTMLElement>('[data-media-panel]');
-const panelButton = (name: string) => within(panel()!).queryByRole('button', { name });
+/** The panel's enabled control by name: a gallery's open slot shows the same row disabled. */
+const panelButton = (name: string) => within(panel()!).queryAllByRole('button', { name }).find((b) => !(b as HTMLButtonElement).disabled) ?? null;
 
 const step = (action: () => void) => act(async () => { action(); });
 const undo = undoMediaEdit;

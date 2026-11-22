@@ -162,7 +162,7 @@ An entity's or location's images open in one panel. A stack opens on its primary
 - ➕ **Add tile.** It frames the empty slot. **Import** or **Choose** there, and the frame moves to the new image. See [Image slots](World-Editor-Entities#image-slots).
 - 📋 **Framed image.** Under the gallery: its slot name, size and budget, and **Download**. The slot above it holds the image's name, **Remove From Slot** and **Delete From World**.
 - 🧩 **Framed Layered Image.** It shows the Layered Image's name. The line under it gives its Layer count and the size of its images, with an image two Layers share counted once. **Edit Layers** is beside **Download**. **Download** saves the image as it shows outside a game.
-- 🎚️ **Visibility rule.** The framed image shows its rule editor here, so the strip has no cog. A rule you set here shows on the entity's **Profile** tab or the location's **Media** tab, and a rule set there shows here. On a location, a condition with no owner reads the persona.
+- 🎚️ **Visibility rule.** The framed image shows its rule editor here, so the large image has no eye button. A rule you set here shows on the entity's **Profile** tab or the location's **Media** tab, and a rule set there shows here. On a location, a condition with no owner reads the persona.
 
 Each change is one undo step.
 
@@ -178,9 +178,9 @@ A **Layered Image** builds one picture from parts. Each **Layer** holds images c
 2. Select **Edit Layers**. A full-screen editor opens around a large picture.
 3. Select **Add Layer** once for each part, such as Body, Face and Hat.
 4. Select a Layer, then **Choose** an image from the Media List or **Import** one. Each becomes a Variant of that Layer.
-5. Select a Variant's cog to give it a Visibility rule, as on a gallery image. A Variant with no rule always shows.
+5. Select a Variant's cog to give it a Visibility rule. A Variant with no rule always shows.
 
-**To edit one from a gallery:** select **Edit Layers** on the slot that shows it. In the Media tab it is beside **Download**. On an entity's **Profile** tab, and in a location's or an item's image field, it is under the slot's name. On mobile, **Edit Layers** opens the Layer panel.
+**To edit one from a gallery:** select **Edit Layers** on the slot that shows it. In the Media tab it is beside **Download**. On an entity's **Profile** tab, and in a location's or an item's image field, it is the layers button on the top-left corner of the large image. On mobile, **Edit Layers** opens the Layer panel.
 
 **In the editor:**
 
