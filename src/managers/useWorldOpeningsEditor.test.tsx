@@ -190,11 +190,13 @@ describe("This World's openings", () => {
       expect(textBoxes()).toHaveLength(2);
     });
 
-    it('opens a list of three rows collapsed, each on its first line with an ellipsis', () => {
+    it('opens a list of three rows collapsed, each on its name field with no text summary', () => {
       world.overview = { ...world.overview, openings: rows(3) };
       open();
       expect(textBoxes()).toHaveLength(0);
-      expect(screen.getByRole('button', { name: 'Expand Opening 2' })).toHaveTextContent('Opening 2Line 2 …');
+      expect(screen.getByRole('button', { name: 'Expand Opening 2' })).toHaveTextContent('');
+      expect(screen.getByRole('textbox', { name: 'Name, Opening 2' })).toHaveAttribute('placeholder', 'World · Opening 2');
+      expect(screen.queryByText(/Line 2/)).not.toBeInTheDocument();
     });
 
     it('opens a row added to a collapsed list expanded', async () => {

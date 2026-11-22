@@ -45,7 +45,7 @@ const WORLD: World = panelWorld({
 const search = (placeholder: string, term: string) =>
   fireEvent.change(screen.getByPlaceholderText(placeholder), { target: { value: term } });
 
-const cards = () => screen.queryAllByTestId('opening-row').map((row) => within(row).getAllByText(/^Odd Wick · Opening \d+$/)[0].textContent);
+const cards = () => screen.queryAllByTestId('opening-row').map((row) => within(row).getByRole('textbox', { name: /^Name, / }).getAttribute('placeholder'));
 
 const openEntityOpenings = () => {
   fireEvent.click(screen.getByText('Odd Wick'));

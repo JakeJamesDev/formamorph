@@ -338,7 +338,7 @@ describe('the library Openings tab toolbar', () => {
     ],
   } as unknown as Entity;
   const cards = () => within(panelOf('Openings')).queryAllByTestId('opening-row')
-    .map((row) => within(row).getAllByText(/^Wren · Opening \d+$/)[0].textContent);
+    .map((row) => within(row).getByRole('textbox', { name: /^Name, / }).getAttribute('placeholder'));
   const box = () => within(panelOf('Openings')).getByPlaceholderText('Search openings');
 
   it('filters the cards by text and shows a no-match line', async () => {

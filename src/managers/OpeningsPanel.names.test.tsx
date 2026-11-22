@@ -48,12 +48,22 @@ function Applying({ onPatch }: { onPatch?: (patch: Partial<Entity>) => void }) {
 }
 
 describe('opening names in the panel', () => {
-  it('heads each card with its name, or "Owner · Opening N" while blank, following the row order', () => {
+  it('heads each card with its name field, blank ones showing "Owner · Opening N", following the row order', () => {
     const { rerender } = render(tree(aki, () => {}));
-    expect(screen.getByRole('button', { name: 'Collapse Opening 1' })).toHaveTextContent('ambush');
-    expect(screen.getByRole('button', { name: 'Collapse Opening 2' })).toHaveTextContent('Aki · Opening 2');
+    expect(nameBox(1)).toHaveValue('ambush');
+    expect(nameBox(2)).toHaveValue('');
+    expect(nameBox(2)).toHaveAttribute('placeholder', 'Aki · Opening 2');
     rerender(tree({ ...aki, openings: [rows[1], rows[0]] }, () => {}));
-    expect(screen.getByRole('button', { name: 'Collapse Opening 1' })).toHaveTextContent('Aki · Opening 1');
+    expect(nameBox(1)).toHaveAttribute('placeholder', 'Aki · Opening 1');
+    expect(nameBox(2)).toHaveValue('ambush');
+  });
+
+  it('has one name field per card, in the header row, with no read-only copy of the name', () => {
+    render(tree(aki, () => {}));
+    const card = screen.getAllByTestId('opening-row')[0];
+    expect(screen.getAllByRole('textbox', { name: /^Name, / })).toHaveLength(2);
+    expect(card.querySelector('.border-b')).toContainElement(nameBox(1));
+    expect(screen.getByRole('button', { name: 'Collapse Opening 1' })).toHaveTextContent('');
   });
 
   it('writes a free name, with the derived label as the blank field’s placeholder', async () => {

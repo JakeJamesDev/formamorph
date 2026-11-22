@@ -5,8 +5,6 @@ import { CSS } from '@dnd-kit/utilities';
 import { Ban, ChevronDown, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { CollapseAllButton } from '@/components/CollapseAllButton';
 import { useCardCollapse } from '@/lib/cardCollapse';
-import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
-import { placeholderChipLine } from '@/lib/placeholders';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import PlaceholderField from '@/components/prompt/PlaceholderField';
 import { Badge, badgeVariants } from '@/components/ui/badge';
@@ -375,7 +373,7 @@ const OpeningCard = ({
   label: string;
   /** The row's accessible name, owner included where several share the screen. */
   a11yLabel: string;
-  /** Collapsed, the card shows its header and the first line of its text. */
+  /** Collapsed, the card shows its header alone. */
   open: boolean;
   onToggle: () => void;
   weight: number;
@@ -395,9 +393,6 @@ const OpeningCard = ({
   onRemove: () => void;
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: opening.id });
-  const vocab = usePlaceholderChipVocabulary(placeholders, ownerId);
-  // A chip reads as its name, and a paragraph as its first line plus an ellipsis.
-  const firstLine = placeholderChipLine(opening.text, vocab.label);
   const { time } = opening;
   const weather = weatherKinds ? opening.weather : undefined;
   return (
@@ -421,17 +416,24 @@ const OpeningCard = ({
         </button>
         <button
           type="button"
-          className="flex min-w-[4.5rem] flex-1 items-center gap-1.5 text-left"
+          className="text-muted-foreground"
           aria-expanded={open}
           aria-label={`${open ? 'Collapse' : 'Expand'} ${a11yLabel}`}
           onClick={onToggle}
         >
-          <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform', !open && '-rotate-90')} />
-          <span className="shrink-0 text-helper font-medium text-muted-foreground">{label}</span>
-          {!open && (
-            <span className="min-w-0 truncate text-helper text-muted-foreground/70">{firstLine || 'Empty opening'}</span>
-          )}
+          <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 transition-transform', !open && '-rotate-90')} />
         </button>
+        <div className="min-w-[8rem] flex-1">
+          <OpeningNameField
+            opening={opening}
+            siblings={siblings}
+            renameOwner={renameOwner}
+            placeholder={label}
+            a11yLabel={a11yLabel}
+            taken={nameTaken}
+            onName={onName}
+          />
+        </div>
         {!open && time && (
           <Tip tip={`Starts at ${DAYPART_LABELS[time]}`} labelsChild={false}>
             <span role="img" aria-label={`Time, ${DAYPART_LABELS[time]}`} className="inline-flex text-muted-foreground">
@@ -508,15 +510,6 @@ const OpeningCard = ({
       </div>
       {open && (
         <div className="space-y-2 p-2">
-          <OpeningNameField
-            opening={opening}
-            siblings={siblings}
-            renameOwner={renameOwner}
-            placeholder={label}
-            a11yLabel={a11yLabel}
-            taken={nameTaken}
-            onName={onName}
-          />
           <PlaceholderField
             leading={(
               <>

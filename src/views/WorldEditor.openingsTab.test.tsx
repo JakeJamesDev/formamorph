@@ -182,7 +182,7 @@ describe('the World Editor Openings tab', () => {
     // Matched by an opening's text; This World always stays.
     expect(listRows()).toEqual(['This World 1', 'Harbor Steps 2']);
     expect(paneCards()).toHaveLength(1);
-    expect(paneCards()[0]).toHaveTextContent('Opening 2');
+    expect(within(paneCards()[0]).getByRole('textbox', { name: /^Name, / }).getAttribute('placeholder')).toMatch(/Opening 2$/);
 
     fireEvent.change(tabSearch(), { target: { value: 'ferryman' } });
     // Matched by name, under its folder.
