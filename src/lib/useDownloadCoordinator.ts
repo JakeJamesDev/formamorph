@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, type Dispatch, type SetStateAction } from "react";
 import { toast } from "react-toastify";
 import { toastError } from "@/lib/linkToast";
+import { toastDownloadFailure } from "@/lib/saveFailureToast";
 import { withImportedWorldTools } from "@/lib/tools/worldTools";
 import WorldStorageService from "@/services/WorldStorageService";
 import { migrateWorld } from "@/lib/version";
@@ -481,7 +482,7 @@ export function useDownloadCoordinator(
       }
     } catch (error) {
       console.error('Error downloading world:', error);
-      toastError(error, 'Failed to download world');
+      await toastDownloadFailure(error);
     } finally {
       // Clear the in-flight bar whether it succeeded or failed.
       setDownloadProgress((p) => { const next = { ...p }; delete next[worldId]; return next; });

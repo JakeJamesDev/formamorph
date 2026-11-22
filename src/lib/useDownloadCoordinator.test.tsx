@@ -205,6 +205,19 @@ describe('useDownloadCoordinator', () => {
     });
   });
 
+  it('says the storage is full when the world write runs out of space', async () => {
+    storeWorld.mockRejectedValueOnce(new DOMException('', 'QuotaExceededError'));
+    const { result } = renderHook(() => useHarness([]));
+
+    await act(async () => { await result.current.coord.handleDownloadWorld(remote); });
+
+    await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalled());
+    const [text] = toastTexts(vi.mocked(toast.error));
+    expect(text).toContain('Formamorph cannot download the world. The storage is full.');
+    expect(text).toContain('Delete worlds or saves you no longer need to free space.');
+    expect(result.current.worlds).toHaveLength(0);
+  });
+
   it('overwriteWorld replaces the existing copy in place (same id, no duplicate)', async () => {
     const existing: WorldRecord = { id: 'local-1', name: 'Old', sourceId: 'remote-1', isLoading: false };
     const { result } = renderHook(() => useHarness([existing]));

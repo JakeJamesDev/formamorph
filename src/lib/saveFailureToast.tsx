@@ -29,6 +29,25 @@ async function spaceLine(): Promise<string | null> {
   }
 }
 
+export const DOWNLOAD_FAILED = 'Failed to download world';
+export const DOWNLOAD_STORAGE_FULL = 'Formamorph cannot download the world. The storage is full.';
+export const FREE_SPACE = 'Delete worlds or saves you no longer need to free space.';
+
+/**
+ * Tell the player a world download failed. Full storage names the space used and available and the fix; any
+ * other failure shows the general message with View Details.
+ *
+ * @param error - What the download rejected with
+ */
+export async function toastDownloadFailure(error: unknown): Promise<void> {
+  if (!isQuotaError(error)) {
+    toastError(error, DOWNLOAD_FAILED);
+    return;
+  }
+  const space = await spaceLine();
+  toast.error([DOWNLOAD_STORAGE_FULL, ...(space ? [space] : []), FREE_SPACE].join(' '), { autoClose: false });
+}
+
 /** Download `world` as a world file, with no prompts: the save failed and this is the copy that remains. */
 async function exportUnsaved(world: World): Promise<void> {
   try {
