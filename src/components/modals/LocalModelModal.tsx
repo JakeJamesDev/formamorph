@@ -63,8 +63,10 @@ function InfoTag({ className, children }: { className?: string; children: ReactN
 
 /** A reorderable Installed-list row: grip handle · name · size · load/unload · delete. Models found in the
  *  user's external folder show where they came from and can't be deleted from here — they're another app's. */
-function InstalledRow({ item, engine, busyFile, onLoad, onUnload, onDelete }: {
+function InstalledRow({ item, autoLoads, engine, busyFile, onLoad, onUnload, onDelete }: {
   item: LocalInstalledModel;
+  /** This row is the one Auto-Load picks. */
+  autoLoads: boolean;
   engine: LocalLlmState;
   busyFile: string | null;
   onLoad: (id: string) => void;
@@ -94,6 +96,11 @@ function InstalledRow({ item, engine, busyFile, onLoad, onUnload, onDelete }: {
           {name}
           {isLoaded && <span className="rounded bg-success px-1.5 py-0.5 text-meta text-success-foreground">Loaded</span>}
           {item.projector && <InfoTag>Vision</InfoTag>}
+          {autoLoads && (
+            <Tip tip="Loads on its own when the engine starts. Drag another model to the top to change it." labelsChild={false}>
+              <span><InfoTag>Auto-Load</InfoTag></span>
+            </Tip>
+          )}
         </div>
         {known && <div className="truncate text-meta text-muted-foreground">{item.fileName}</div>}
         {external && (
@@ -667,10 +674,11 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                 onDragEnd={handleDragEnd}
               >
                 <StableSortableContext items={installed} strategy={verticalListSortingStrategy}>
-                  {installed.map((item) => (
+                  {installed.map((item, i) => (
                     <InstalledRow
                       key={item.id}
                       item={item}
+                      autoLoads={localAutoLoad && i === 0}
                       engine={engine}
                       busyFile={busyFile}
                       onLoad={load}

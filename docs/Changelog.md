@@ -51,7 +51,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Clicking Go on a suggested move before the story finishes now brings the characters who agreed to come along.**
     - **With Character Mentions on, more quotes in the story now show in their speaker's color.** A quote with no "she says" takes the color of the quote before it in the same paragraph, or of the last character the paragraph names.
   - **Renaming a stat, trait, placeholder or location in the World Editor now updates the item scripts that name it.** When another character that can hold the item has a stat of that name, you check which `owner` references to change.
-  - **Auto-Load in the desktop app now loads the top model in the Installed list.** Drag a model to the top to choose it, including a model from an Additional Search Folder.
+  - **Auto-Load in the desktop app now loads the top model in the Installed list.** An Auto-Load tag marks it. Drag a model to the top to choose it, including a model from an Additional Search Folder.
   - **Large Supporter-only worlds, such as Sunmeadow Town, now download from Community Creations.** The download no longer times out, and the installed world stays close to the author's size.
 
 ---
