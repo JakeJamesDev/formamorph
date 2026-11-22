@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { openingPickGroups, pickedOption } from './openingPick';
+import { openingLabel, ownerOpeningRows } from '@/lib/openings';
 import type { LensWorld } from './lens';
 import type { Entity, GameLocation, WorldOverview } from '@/types';
 
@@ -35,6 +36,14 @@ describe('openingPickGroups', () => {
       { ownerId: null, openingId: 'o1', locationId: 'harbor' },
     ]);
     expect(new Set(groups.flatMap((g) => g.options.map((o) => o.id))).size).toBe(4);
+  });
+
+  it('numbers an unnamed row as the Openings tab does, a hidden Self row ahead of it counted', () => {
+    const ahead = { id: 'bram', name: 'Bram', traits: [], openings: [{ id: 's', text: 'Hush.', kind: 'action', self: true }, { id: 'u', text: 'Hi.', kind: 'action' }] } as unknown as Entity;
+    const label = openingPickGroups({ ...world, entities: [ahead] }).find((g) => g.label === 'Bram')?.options[1].label;
+    const tabRow = ownerOpeningRows(ahead, false)[0];
+    expect(label).toBe('Bram · Opening 2');
+    expect(openingLabel(tabRow.opening, 'Bram', tabRow.index)).toBe(label);
   });
 
   it('finds a pick, and none for None or a deleted Opening', () => {

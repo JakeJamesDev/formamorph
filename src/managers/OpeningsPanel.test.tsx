@@ -205,7 +205,8 @@ describe('the Others | Self switch on an entity’s Openings tab', () => {
     });
     const user = userEvent.setup();
     mount(<EntityOpenings entity={former} onChange={onChange} placeholders={[]} />);
-    screen.getByRole('button', { name: 'Reorder Opening 2' }).focus();
+    // Row b is third in the full list, the hidden Self row counted.
+    screen.getByRole('button', { name: 'Reorder Opening 3' }).focus();
     await user.keyboard('[Space]');
     await user.keyboard('[ArrowUp]');
     await user.keyboard('[Space]');

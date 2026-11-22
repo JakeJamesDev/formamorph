@@ -1,6 +1,6 @@
 # 10: One Derived Label Count
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -13,5 +13,13 @@ Found by the close review.
 
 ## Acceptance criteria
 
-- [ ] With a hidden Self row ahead of it, an unnamed Opening shows the same label in the Openings tab, the Condition picker and the Bench picker.
-- [ ] The label stays the same when the shown set changes.
+- [x] With a hidden Self row ahead of it, an unnamed Opening shows the same label in the Openings tab, the Condition picker and the Bench picker. Test: `openingPick.test.ts` "numbers an unnamed row as the Openings tab does". The Condition and Bench pickers share `openingPickGroups`.
+- [x] The label stays the same when the shown set changes. Test: `openings.test.ts` "the number in an unnamed row's label".
+
+## Landed
+
+**Not verified**
+- The Openings tab was not viewed in a browser. The tab's label reads the row index the tests check.
+
+**For you**
+- None.

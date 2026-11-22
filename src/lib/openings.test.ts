@@ -578,6 +578,15 @@ describe('the editor view', () => {
     });
   });
 
+  describe('the number in an unnamed row’s label', () => {
+    const owner = (): Entity => ent('g', ['dock'], [selfRow('s1'), action('a1'), action('a2')]);
+
+    it('counts the hidden Self row ahead, and keeps the number when the shown set changes', () => {
+      expect(ownerOpeningRows(owner(), false).map((r) => [r.opening.id, r.index])).toEqual([['a1', 1], ['a2', 2]]);
+      expect(ownerOpeningRows(owner(), true).map((r) => [r.opening.id, r.index])).toEqual([['s1', 0], ['a1', 1], ['a2', 2]]);
+    });
+  });
+
   describe('with a Persona-Only entity', () => {
     const only = (locations: string[] | undefined = ['dock']) =>
       ent('o', locations, [action('o1'), selfRow('os1'), selfRow('os2')], { persona: true, personaOnly: true, openingWeights: { os2: 3 } });

@@ -313,23 +313,20 @@ export interface OpeningsEditorSources {
   locations: readonly GameLocation[];
 }
 
-/** The rows an editor lists: Self rows only with `showSelf`. */
-const shownOpenings = (owner: OpeningOwner, showSelf: boolean): Opening[] =>
-  (owner.openings ?? []).filter((o) => showSelf || !o.self);
-
-/** The owner's shown rows, each numbered by its place among them. */
+/** The owner's shown rows (Self rows only with `showSelf`), each numbered by its place among every row. */
 const editorRows = (
   owner: OpeningOwner, chanceOf: (opening: Opening) => number | null, showSelf = false,
 ): EditorOpeningRow[] =>
-  shownOpenings(owner, showSelf).map((opening, index) => {
+  (owner.openings ?? []).flatMap((opening, index) => {
+    if (opening.self && !showSelf) return [];
     const neverDraws = othersNeverDraw(owner) && !opening.self;
-    return {
+    return [{
       opening,
       index,
       weight: openingWeight(owner.openingWeights, opening.id),
       chance: neverDraws ? null : chanceOf(opening),
       neverDraws,
-    };
+    }];
   });
 
 /** One owner's rows with chances within its own list, for an entity's Openings tab. Self rows show only
