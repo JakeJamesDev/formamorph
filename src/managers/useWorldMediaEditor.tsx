@@ -12,7 +12,7 @@ import {
   type MediaFilter, type MediaParent,
 } from '@/lib/mediaIndex';
 import { useMediaViewPrefs } from '@/lib/useMediaViewPrefs';
-import { mediaEntryItems, mediaSearchText } from '@/lib/mediaEntries';
+import { mediaEntryItems, searchSections } from '@/lib/mediaEntries';
 import { AvatarStoreControls } from './AvatarStore';
 import { MediaGallery } from './MediaGallery';
 import { MediaHeader, MediaListActions, type OptimizeControl } from './MediaHeader';
@@ -82,10 +82,8 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
   const sections = useMemo(() => {
     if (!term) return shownSections;
     const names = { placeholders };
-    return shownSections
-      .map((s) => ({ ...s, items: s.items.filter((i) => matchesListSearch(mediaSearchText(i), term, names)) }))
-      .filter((s) => s.items.length);
-  }, [shownSections, term, placeholders]);
+    return searchSections(shownSections, entryItems, (text) => matchesListSearch(text, term, names));
+  }, [shownSections, entryItems, term, placeholders]);
 
   const allItems = useMemo(() => allSections.flatMap((s) => s.items), [allSections]);
   const selectable = useMemo(() => [...allItems, ...entryItems], [allItems, entryItems]);

@@ -1,7 +1,7 @@
 /** The Media List as Media tab cards: one per entry, with every place that links it. */
 import type { ImageCap } from './imageSlots';
 import { dataUrlBytes, isRemoteImage } from './imageBytes';
-import { ENTRY_ITEM_PREFIX, largerCap, storedBytes, UNUSED_IMAGE_CAP, type MediaItem, type MediaParent, type MediaWorld } from './mediaIndex';
+import { ENTRY_ITEM_PREFIX, isPartOnly, largerCap, storedBytes, UNUSED_IMAGE_CAP, type MediaItem, type MediaParent, type MediaSection, type MediaWorld } from './mediaIndex';
 import { isFileEntry } from './mediaList';
 import { mediaParentSpec } from './mediaParents';
 import { mediaUsage, mediaUseLabel, variantUsage, variantUseLabel, type MediaUse } from './mediaUsage';
@@ -52,6 +52,16 @@ export function mediaEntryItems(w: MediaWorld): MediaItem[] {
       ...used,
     }];
   });
+}
+
+/**
+ * The sections' items that match a search. A hit on a part-only image keeps each Layered Image that holds it,
+ * as its slot cards or its entry card, never the part's own card.
+ */
+export function searchSections(sections: MediaSection[], entries: readonly MediaItem[], matches: (text: string) => boolean): MediaSection[] {
+  const holders = new Set(entries.filter((e) => isPartOnly(e) && matches(e.slot)).flatMap((e) => e.variantUses!.map((u) => u.entryId)));
+  const keep = (i: MediaItem) => matches(mediaSearchText(i)) || (i.kind === 'layered' && !!i.mediaId && holders.has(i.mediaId));
+  return sections.map((s) => ({ ...s, items: s.items.filter(keep) })).filter((s) => s.items.length);
 }
 
 /** What a search matches on a card: an entry's name and its uses, or a use's holder and slot. */

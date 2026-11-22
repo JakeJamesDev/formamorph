@@ -234,7 +234,10 @@ describe('Layered Image editor', () => {
   });
 
   it('lists a Variant use in Used By and in the delete confirm, and deleting the image empties that Variant', async () => {
-    const bench = renderMediaTab(world(RIG), 'simple');
+    // A Layer-only image has no card, so a gallery links the body too.
+    const linked = world(RIG);
+    const bench = renderMediaTab({ ...linked, entities: linked.entities.map((e) => ({ ...e, images: e.id === 'bram' ? [{ mediaId: 'body' }] : [] })) as World['entities'] }, 'simple');
+    fireEvent.click(screen.getByRole('button', { name: 'Group by Type' }));
     selectCard('body');
     const usedBy = document.querySelector('[data-media-used-by]')!;
     expect(within(usedBy as HTMLElement).getByRole('button', { name: 'Scout Rig · Body' })).toBeTruthy();

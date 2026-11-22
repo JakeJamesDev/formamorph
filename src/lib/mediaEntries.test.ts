@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { World } from '@/types';
-import { mediaEntryItems, mediaSearchText } from './mediaEntries';
+import { mediaEntryItems, mediaSearchText, searchSections } from './mediaEntries';
 import { filterSections, groupSections, mediaHolds, mediaSections, worldOptimizeTargets } from './mediaIndex';
 import { IMAGE_CAPS } from './imageSlots';
 import { migrateWorld } from './version';
@@ -19,6 +19,16 @@ function listWorld(): World {
   const world = migrateWorld(raw);
   world.worldOverview.mediaList = { ...world.worldOverview.mediaList, sketch: { id: 'sketch', name: 'Lantern Sketch', kind: 'image', data: SKETCH } };
   return world;
+}
+
+/** `listWorld` plus a Layered Image holding the Unused Lantern Sketch in a Layer. */
+function rigWorld(): World {
+  const w = listWorld();
+  w.worldOverview.mediaList = {
+    ...w.worldOverview.mediaList,
+    rig: { id: 'rig', name: 'Scout Rig', kind: 'layered', layers: [{ id: 'hat', name: 'Hat', variants: [{ mediaId: 'sketch' }] }] },
+  };
+  return w;
 }
 
 const sharedId = (w: World) => (w.entities.find((e) => e.id === 'wick')!.images![0] as { mediaId: string }).mediaId;
@@ -97,15 +107,24 @@ describe('groupSections with the Media List', () => {
     expect(sections.at(-1)).toMatchObject({ id: 'unused', path: ['Unused'], items: [expect.objectContaining({ mediaId: 'sketch' })] });
   });
 
-  it('by parent, lists the images only Layers use in their own section, ahead of Unused', () => {
-    const w = listWorld();
-    w.worldOverview.mediaList = {
-      ...w.worldOverview.mediaList,
-      rig: { id: 'rig', name: 'Scout Rig', kind: 'layered', layers: [{ id: 'hat', name: 'Hat', variants: [{ mediaId: 'sketch' }] }] },
-    };
-    const sections = groupSections(mediaSections(w), 'parent', mediaEntryItems(w));
-    expect(sections.at(-2)).toMatchObject({ id: 'layerVariants', path: ['Layered Image Variants'], items: [expect.objectContaining({ mediaId: 'sketch' })] });
-    expect(sections.at(-1)).toMatchObject({ id: 'unused', items: [expect.objectContaining({ mediaId: 'rig' })] });
+  it('leaves an image only Layers use out of both groupings, and keeps the rig Unused', () => {
+    const w = rigWorld();
+    const parent = groupSections(mediaSections(w), 'parent', mediaEntryItems(w));
+    expect(parent.map((s) => s.id)).not.toContain('layerVariants');
+    expect(parent.flatMap((s) => s.items).map((i) => i.mediaId)).not.toContain('sketch');
+    expect(parent.at(-1)).toMatchObject({ id: 'unused', items: [expect.objectContaining({ mediaId: 'rig' })] });
+    const images = groupSections(mediaSections(w), 'type', mediaEntryItems(w)).find((s) => s.id === 'type:image')!.items;
+    expect(images.map((i) => i.mediaId)).not.toContain('sketch');
+  });
+
+  it('shows a Layer image again once a field links it directly', () => {
+    const w = rigWorld();
+    w.locations.find((l) => l.id === 'marsh')!.images = [{ mediaId: 'sketch' }];
+    const parent = groupSections(mediaSections(w), 'parent', mediaEntryItems(w)).flatMap((s) => s.items);
+    expect(parent.some((i) => i.mediaId === 'sketch')).toBe(true);
+    // By type the part's own entry card (the one that carries its uses) lists it.
+    const images = groupSections(mediaSections(w), 'type', mediaEntryItems(w)).find((s) => s.id === 'type:image')!.items;
+    expect(images.some((i) => i.mediaId === 'sketch' && i.uses?.length)).toBe(true);
   });
 
   it('adds no Unused section when every entry is used', () => {
@@ -119,6 +138,51 @@ describe('groupSections with the Media List', () => {
       const shown = filterSections(groupSections(mediaSections(w), grouping, mediaEntryItems(w)), 'unused').flatMap((s) => s.items);
       expect(shown.map((i) => i.mediaId)).toEqual(['sketch']);
     }
+  });
+});
+
+describe('searchSections', () => {
+  const has = (term: string) => (text: string) => text.toLowerCase().includes(term);
+
+  it('shows every Layered Image that holds a part the term matches, never the part', () => {
+    const w = rigWorld();
+    w.worldOverview.mediaList = {
+      ...w.worldOverview.mediaList,
+      rig2: { id: 'rig2', name: 'Pack Rig', kind: 'layered', layers: [{ id: 'bag', name: 'Bag', variants: [{ mediaId: 'sketch' }] }] },
+    };
+    w.entities.find((e) => e.id === 'bram')!.images = [{ mediaId: 'rig' }];
+    const entries = mediaEntryItems(w);
+    for (const grouping of ['parent', 'type'] as const) {
+      const shown = searchSections(groupSections(mediaSections(w), grouping, entries), entries, has('lantern sketch')).flatMap((s) => s.items);
+      expect(shown.map((i) => i.mediaId).sort()).toEqual(['rig', 'rig2']);
+      // Bram's slot card by parent, the one entry card by type; Pack Rig is Unused.
+      expect(shown.filter((i) => i.mediaId === 'rig')).toHaveLength(1);
+    }
+  });
+
+  it('matches a part by its own name, so one holder\'s name does not pull in another holder', () => {
+    const w = rigWorld();
+    w.worldOverview.mediaList = {
+      ...w.worldOverview.mediaList,
+      rig2: { id: 'rig2', name: 'Pack Rig', kind: 'layered', layers: [{ id: 'bag', name: 'Bag', variants: [{ mediaId: 'sketch' }] }] },
+    };
+    const entries = mediaEntryItems(w);
+    const shown = searchSections(groupSections(mediaSections(w), 'parent', entries), entries, has('scout')).flatMap((s) => s.items);
+    expect(shown.map((i) => i.mediaId)).toEqual(['rig']);
+  });
+
+  it('keeps a hit out of the results when the filter already removed its Layered Image', () => {
+    const w = rigWorld();
+    w.entities.find((e) => e.id === 'bram')!.images = [{ mediaId: 'rig' }];
+    const entries = mediaEntryItems(w);
+    const unusedOnly = filterSections(groupSections(mediaSections(w), 'parent', entries), 'unused');
+    expect(searchSections(unusedOnly, entries, has('lantern sketch'))).toEqual([]);
+  });
+
+  it('lists nothing for a term no part or Layered Image matches', () => {
+    const w = rigWorld();
+    const entries = mediaEntryItems(w);
+    expect(searchSections(groupSections(mediaSections(w), 'parent', entries), entries, has('zzz'))).toEqual([]);
   });
 });
 

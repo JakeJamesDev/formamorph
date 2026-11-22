@@ -206,7 +206,7 @@ On mobile, the panel shows the picture beside the Layer list. The selected Layer
 
 **To use one,** select **Choose** in an entity's, a location's or an item's image slot. Layered Images show beside the images. The gallery strip and frame show the picture the Layered Image draws with each Layer's first Variant. The gallery's order and Visibility rules work as they do for any image.
 
-Deleting an image that a Layer uses removes it from that Layer, and the confirm names each Layer first. Images that only Layers use sit in the **Layered Image Variants** section. Each change is one undo step.
+Deleting an image that a Layer uses removes it from that Layer, and the confirm names each Layer first. Images that only Layers use are not listed in the Media tab. They show inside their Layered Image's editor, and a search for their name lists the Layered Image that holds them. An image that a field also links stays listed. Each change is one undo step.
 
 Deleting a Layered Image also deletes the images only it uses, and the confirm names them. An image stays when another Layered Image uses it or any slot or gallery links it.
 
