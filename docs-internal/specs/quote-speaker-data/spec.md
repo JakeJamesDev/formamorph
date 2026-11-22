@@ -70,6 +70,13 @@ Players who contribute corrections mostly fix quote speakers. In the two review 
 - The tag, beat or subject mention is an unnamed he, she or her: the last named, non-player clause subject before the quote in the paragraph.
 - Nearest subject skips unnamed pronouns to the last named subject.
 - The ticket fixes the order of the four by measuring them against the fixture set.
+- Ticket 02 rulings:
+  - A fallback fires when the speaker is null after the five rules, including a rule that found an unnamed mention.
+  - When a rule found a mention, the quote keeps that `rule` and `mention`, and records the fallback in a client field `fallback`. This keeps the speech-tag evidence that tickets 03 and 06 read. When no rule found a mention, `rule` is the fallback's name and `mention` its mention. The server ignores `fallback` today; staff see the rule that found the mention.
+  - `own-first-person` fires only when the quote's first-person mentions name one entity; two entities, no fire. The player counts.
+  - `earlier-quote` takes the nearest earlier quote in the paragraph with a final speaker, a fallback's included; its `mention` is null.
+  - `pronoun-subject` fires on a tagged or beat quote whose mention is an unnamed he, she or her. `named-subject` fires on an untagged quote: nearest subject skips every unnamed mention and the player, and takes the last named subject.
+  - Order is measured on the replay of the real corrections, for measurement only: never fixtures, never copied text. The private gold quotes test's zero-wrong floor is not lowered; a fallback that breaks it is reported to the spec session.
 
 **Contribution body (client) and submission (server).** New optional fields, all bounded and validated like today's:
 - `playerId`: the persona's entity id, or null.
