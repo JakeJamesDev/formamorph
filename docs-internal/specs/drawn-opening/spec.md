@@ -99,7 +99,9 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 **Opening names**
 
 - `Opening` gains an optional `name`. Blank or absent means no name. The editor label falls back to "Owner · Opening N", N being the row's position in its owner's list. Code never sees the fallback.
-- Names follow the existing code-name rules and validation used for script names, scoped to one owner's Openings.
+- Names use the script-name field, which has no charset rule: trimmed plain text, no chips, case-sensitive. A name is unique across the owner's full list, Self rows included even when hidden (ticket 01 ruling).
+- A duplicate shows an inline error and is not written; the previous name stays.
+- The card header shows the name when there is one, else the derived label, "World · Opening N" for the world's own rows. It replaces today's "Opening N". Accessible labels and text search keep working.
 - The rename path that already rewrites code names in scripts learns Opening names. It rewrites string comparisons against `opening.name`, scoped by owner where the code also tests the owner.
 - Code analysis knows the set of Opening names and flags an unknown one, as it does for other code names.
 
