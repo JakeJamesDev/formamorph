@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity } from '@/types';
 import type { CharSpan, CorefCluster } from './corefHost';
-import { entitiesInProse, mentionEntityAt, quoteSpeakingClusters, readMentions, readPassageMentions } from './mentionReading';
+import { entitiesInProse, mentionEntityAt, quoteSpeakingClusters, readingVersion, readMentions, readPassageMentions } from './mentionReading';
 import { holdPoint } from './streamingQuotes';
 
 // Synthetic passages written for these guards.
@@ -241,6 +241,62 @@ describe('readMentions quote speakers', () => {
     const persona = { player: { id: 'ash', names: ['Ash'] } };
     expect(readMentions(text, clusters, two, persona).quotes.map((q) => q.speaker)).toEqual(['ash', 'ash', 'ash']);
     expect(readMentions(text, clusters, two).quotes.map((q) => q.speaker)).toEqual([null, null, null]);
+  });
+});
+
+describe('readMentions quote records', () => {
+  const two = cast({ id: 'odile', name: 'Odile' }, { id: 'brannock', name: 'Brannock' });
+  const only = (text: string, clusters: CorefCluster[] = [], scene = {}) => readMentions(text, clusters, two, scene).quotes[0];
+  const span = (text: string, piece: string, nth = 1) => { const [start, end] = at(text, piece, nth); return { start, end }; };
+
+  it('records the rule and its mention for each speech-verb order', () => {
+    const a = '"You\'re late," Odile says.';
+    expect(only(a)).toMatchObject({ speaker: 'odile', rule: 'after-subject-verb', mention: span(a, 'Odile') });
+    const b = '"The tide waits," says Brannock.';
+    expect(only(b)).toMatchObject({ speaker: 'brannock', rule: 'after-verb-subject', mention: span(b, 'Brannock') });
+    const c = 'Odile nods while Brannock whispers, "Not here."';
+    expect(only(c)).toMatchObject({ speaker: 'brannock', rule: 'before-verb', mention: span(c, 'Brannock') });
+  });
+
+  it('records the beat opener and the nearest subject', () => {
+    const beat = 'Brannock turns away. "Wait." Odile grabs his sleeve.';
+    expect(only(beat)).toMatchObject({ speaker: 'odile', rule: 'beat', mention: span(beat, 'Odile') });
+    const near = 'Odile sets down her pliers. "Green glass, then."';
+    expect(only(near)).toMatchObject({ speaker: 'odile', rule: 'nearest-subject', mention: span(near, 'Odile') });
+  });
+
+  it('records none and no mention for a quote nothing speaks for', () => {
+    const text = 'Odile sets down her pliers.\n\n"Ask someone else."';
+    const quote = readMentions(text, [], two).quotes[0];
+    expect(quote).toMatchObject({ speaker: null, rule: 'none', mention: null, firstPerson: [] });
+  });
+
+  it('records a rule that found a mention with no entity, and a player word with or without a mention', () => {
+    const she = 'Brannock turns away. "Wait," she grins.';
+    expect(only(she, [[at(she, 'she')]])).toMatchObject({ speaker: null, rule: 'beat', mention: span(she, 'she') });
+    const ask = '"Who sent you?" you ask.';
+    const persona = { player: { id: 'ash', names: ['Ash'] } };
+    expect(only(ask, [], persona)).toMatchObject({ speaker: 'ash', rule: 'after-subject-verb', mention: null });
+    expect(only(ask, [[at(ask, 'you', 2)]], persona)).toMatchObject({ speaker: 'ash', mention: span(ask, 'you', 2) });
+    const lead = 'Odile nods while you whisper, "Not here."';
+    expect(only(lead, [[at(lead, 'you')]], persona)).toMatchObject({ speaker: 'ash', rule: 'before-verb', mention: span(lead, 'you') });
+    expect(only(lead, [], persona)).toMatchObject({ speaker: 'ash', rule: 'before-verb', mention: null });
+  });
+
+  it("lists the quote's own first-person words, clustered or not, and no word that only contains one", () => {
+    const text = 'Mimi hums. "I know my way, and Mimi is mine," Odile says. "Mighty fine."';
+    const [first, second] = readMentions(text, [], two).quotes;
+    const word = (piece: string, from: number) => ({ start: from, end: from + piece.length });
+    expect(first.firstPerson).toEqual([
+      word('I', text.indexOf('I know')), word('my', text.indexOf('my way')), word('mine', text.indexOf('mine')),
+    ]);
+    expect(second.firstPerson).toEqual([]);
+    const contraction = '"I\'m late," Odile says.';
+    expect(only(contraction).firstPerson).toEqual([{ start: 1, end: 2 }]);
+  });
+
+  it('exports readingVersion as the positive integer the wire shape needs', () => {
+    expect(Number.isInteger(readingVersion) && readingVersion > 0).toBe(true);
   });
 });
 

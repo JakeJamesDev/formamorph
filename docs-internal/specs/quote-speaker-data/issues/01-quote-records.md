@@ -1,6 +1,6 @@
 # 01: Quote Records Carry Their Rule and Mentions
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -19,7 +19,15 @@ No speaker changes in this ticket. Quote colors look exactly as before.
 
 ## Acceptance criteria
 
-- [ ] Each quote from the reading carries its rule, its rule's mention span (or none) and its first-person mention spans.
-- [ ] Tests at the reading seam cover each rule, a quote with no speaker, and a quote with first-person mentions.
-- [ ] Every existing reading test passes unchanged, so the speakers are the same as before.
-- [ ] The reading exports a `readingVersion` constant.
+- [x] Each quote from the reading carries its rule, its rule's mention span (or none) and its first-person mention spans. Verified by `readMentions quote records` tests.
+- [x] Tests at the reading seam cover each rule, a quote with no speaker, and a quote with first-person mentions. Two mutations (no word boundary, dropped beat mention) turned the right tests red.
+- [x] Every existing reading test passes unchanged, so the speakers are the same as before. `src/lib/coref`, `src/contexts` and `MentionCards` tests: 93 files green.
+- [x] The reading exports a `readingVersion` constant. Test `exports a readingVersion`.
+
+## Landed
+
+**Not verified**
+- The record fields are not kept in a save: `restoreMentionReadings` still rebuilds quotes as `start`, `end`, `speaker`, and `correctReading` makes corrected quotes without them. Tickets that send the records must read them from a fresh reading, or widen the restore (a save-shape change).
+
+**For you**
+- Nothing for a player to judge: quote colors are unchanged.

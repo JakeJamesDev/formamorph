@@ -14,11 +14,30 @@ export interface MentionLink {
   entityId: string | null;
 }
 
-/** One quoted run of speech and who said it; `speaker` is null when no cast entity is the speaker. */
+/** Raised whenever the speaker or naming rules change; a contribution carries it so replays know which rules ran. */
+export const readingVersion = 1;
+
+/** The rule that named a quote's speaker; `none` when no rule did. */
+export type QuoteRule = 'after-subject-verb' | 'after-verb-subject' | 'before-verb' | 'beat' | 'nearest-subject' | 'none';
+
+/** A span in the passage's text. */
+export interface ReadingSpan {
+  start: number;
+  end: number;
+}
+
+/** One quoted run of speech and who said it; `speaker` is null when no cast entity is the speaker. The record
+ *  fields come from a fresh reading; a corrected or restored quote has none. */
 export interface QuoteSpeaker {
   start: number;
   end: number;
   speaker: string | null;
+  /** The rule that picked `speaker`. */
+  rule?: QuoteRule;
+  /** The mention the rule used; null when none sat at its subject span. */
+  mention?: ReadingSpan | null;
+  /** The quote's own I, me, my, mine and myself, whether or not a cluster holds them. */
+  firstPerson?: ReadingSpan[];
 }
 
 export interface MentionReading {
@@ -199,6 +218,7 @@ const BEFORE_VERB = new RegExp(String.raw`${VERB}(?:\s+\w+ly)?(?:\s+(?:to|at)\s+
 
 const SECOND_PERSON = /^(?:you|your|yours|yourself|yourselves)$/;
 const FIRST_PERSON = /^(?:i|me|my|mine|myself)$/;
+const FIRST_PERSON_WORD = /\b(?:i|me|my|mine|myself)\b/gi;
 
 /** The persona's name, its words minus any word a cast member's name also holds, and its aliases, lowercased. */
 const playerWords = (scene: MentionSceneContext, cast: CastEntity[]): Set<string> => {
@@ -210,6 +230,12 @@ const playerWords = (scene: MentionSceneContext, cast: CastEntity[]): Set<string
 
 /** A mention's text as the player test reads it: lowercased, past a possessive and a leading article. */
 const playerForm = (text: string) => text.replace(POSSESSIVE_RE, '').toLowerCase().replace(LEADING_ARTICLE_RE, '');
+
+/** What a fallback rule found: undefined `speaker` means the rule did not fire. */
+interface RuleResult {
+  speaker: string | null | undefined;
+  mention?: MentionLink;
+}
 
 interface Paragraph {
   start: number;
@@ -270,17 +296,25 @@ function quoteSpeakers(
       const nextStart = runs[r + 1]?.start ?? para.end;
       const after = text.slice(run.end, nextStart);
       let speaker: string | null | undefined;
+      let rule: QuoteRule = 'none';
+      let used: MentionLink | undefined;
       const sv = AFTER_SUBJECT_VERB.exec(after);
       if (sv) {
         const subjStart = run.end + sv.index + sv[0].indexOf(sv[1]);
-        speaker = playerSubject(sv[1]) ? playerId : speakerOf(mentionAt(subjStart, subjStart + sv[1].length));
+        used = mentionAt(subjStart, subjStart + sv[1].length);
+        speaker = playerSubject(sv[1]) ? playerId : speakerOf(used);
+        if (speaker !== undefined) rule = 'after-subject-verb';
       }
       if (speaker === undefined) {
         const vs = AFTER_VERB_SUBJECT.exec(after);
         if (vs) {
           const subjStart = run.end + vs[0].length;
           const word = /^[^\s.,!?"“”]+(?:\s+[^\s.,!?"“”]+){0,3}/.exec(after.slice(vs[0].length));
-          if (word) speaker = speakerOf(mentionAt(subjStart, subjStart + word[0].length));
+          if (word) {
+            used = mentionAt(subjStart, subjStart + word[0].length);
+            speaker = speakerOf(used);
+            if (speaker !== undefined) rule = 'after-verb-subject';
+          }
         }
       }
       if (speaker === undefined) {
@@ -296,33 +330,54 @@ function quoteSpeakers(
           if (wordBeforeVerb && playerSubject(wordBeforeVerb[1])) speaker = playerId;
           const candidates = mentions.filter((m) => m.end <= verbAt && m.start >= sentenceStart
             && /^\s*(?:\w+ly\s+)?$/.test(text.slice(m.end, verbAt)));
-          if (speaker === undefined) speaker = speakerOf(candidates.sort((a, b) => b.end - a.end)[0]);
+          used = candidates.sort((a, b) => b.end - a.end)[0];
+          if (speaker === undefined) speaker = speakerOf(used);
+          if (speaker !== undefined) rule = 'before-verb';
         }
       }
-      if (speaker === undefined && !verbOnly) speaker = beatSpeaker(run.end, after);
-      if (speaker === undefined && !verbOnly) speaker = nearestSubject(para, run.start, runs);
-      quotes.push({ start: run.start, end: run.end, speaker: speaker ?? null });
+      if (speaker === undefined && !verbOnly) {
+        const beat = beatSpeaker(run.end, after);
+        speaker = beat.speaker;
+        if (speaker !== undefined) { rule = 'beat'; used = beat.mention; }
+      }
+      if (speaker === undefined && !verbOnly) {
+        const subject = nearestSubject(para, run.start, runs);
+        speaker = subject.speaker;
+        if (speaker !== undefined) { rule = 'nearest-subject'; used = subject.mention; }
+      }
+      quotes.push({
+        start: run.start, end: run.end, speaker: speaker ?? null,
+        rule, mention: rule === 'none' || !used ? null : { start: used.start, end: used.end },
+        firstPerson: firstPersonSpans(run),
+      });
     });
   }
   return quotes;
 
+  // The quote's own I, me, my, mine and myself, from its text.
+  function firstPersonSpans(run: ReadingSpan): ReadingSpan[] {
+    return [...text.slice(run.start, run.end).matchAll(FIRST_PERSON_WORD)]
+      .map((m) => ({ start: run.start + m.index, end: run.start + m.index + m[0].length }));
+  }
+
   // An action beat: the text right after the quote opens on its speaker (`"…" Mira grins.`).
-  function beatSpeaker(quoteEnd: number, after: string): string | null | undefined {
+  function beatSpeaker(quoteEnd: number, after: string): RuleResult {
     const lead = /^\s*[,.!?;—–-]?\s*/.exec(after)![0].length;
     const word = /^[^\s.,!?"“”]+/.exec(after.slice(lead));
-    if (!word) return undefined;
-    if (playerSubject(word[0])) return playerId;
-    const opening = mentions.filter((m) => m.start === quoteEnd + lead && m.end > m.start);
-    return speakerOf(opening.sort((a, b) => (b.entityId ? 1 : 0) - (a.entityId ? 1 : 0) || b.end - a.end)[0]);
+    if (!word) return { speaker: undefined };
+    const opening = mentions.filter((m) => m.start === quoteEnd + lead && m.end > m.start)
+      .sort((a, b) => (b.entityId ? 1 : 0) - (a.entityId ? 1 : 0) || b.end - a.end)[0];
+    if (playerSubject(word[0])) return { speaker: playerId, mention: opening };
+    return { speaker: speakerOf(opening), mention: opening };
   }
 
   // The last mention before the quote, in the paragraph's prose, that opens a clause.
-  function nearestSubject(within: Paragraph, before: number, quoteRuns: Paragraph[]): string | null | undefined {
+  function nearestSubject(within: Paragraph, before: number, quoteRuns: Paragraph[]): RuleResult {
     const inQuote = (m: MentionLink) => quoteRuns.some((q) => m.start >= q.start && m.end <= q.end);
     const subjects = mentions.filter((m) => m.start >= within.start && m.end <= before && !inQuote(m)
       && /(?:^|[.!?;]["”]?\s+|["”]\s*|,\s+(?:and|but|then)\s+|\n)\s*$/.test(text.slice(within.start, m.start)));
     const last = subjects.sort((a, b) => b.start - a.start || (b.entityId ? 1 : 0) - (a.entityId ? 1 : 0))[0];
-    return speakerOf(last);
+    return { speaker: speakerOf(last), mention: last };
   }
 }
 

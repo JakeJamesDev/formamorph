@@ -36,6 +36,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Traits and image Visibility rules can now require the weather.** Pick Weather under Add Requirement, then turn on the kinds that count. It shows while the world's Weather is on.
     - **A short effect now plays over the game when the weather changes.** Raindrops run down the screen, snow piles up, lightning flashes or the sun breaks through, then it stops. Turn it off with **Weather Foreground** in Display settings.
   - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
+- **⚙️ Backend**
+  - **Character Mentions:**
+    - **The Mention Reading now records how each quote speaker was found.** Each quote keeps its rule, rule mention and first-person spans, with a reading version.
 
 #### 🔧 Fixed
 
