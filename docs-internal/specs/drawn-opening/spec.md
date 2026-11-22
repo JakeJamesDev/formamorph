@@ -48,6 +48,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 | Q20 | Opening names use the script-name field and code-name rules. No new visual pattern. |
 | Q21 | The Condition's picker lists every Opening in the world, grouped by owner: World, each entity, each location. |
 | Q22 | The shared Opening pick and the Test Bench Opening instrument's own pool pick stay separate values. The instrument previews page one, and the shared pick drives only `opening` and the Opening Condition. |
+| Q23 | Player lines leave the Opening Condition out, as they do Hidden targets. A row with nothing else left reads "Locked". |
 
 ## User Stories
 
@@ -105,6 +106,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 - The card header shows the name when there is one, else the derived label, "World · Opening N" for the world's own rows. It replaces today's "Opening N". Accessible labels and text search keep working.
 - The rename path that already rewrites code names in scripts learns Opening names. It rewrites string comparisons against `opening.name`, scoped by owner where the code also tests the owner.
 - Code analysis knows the set of Opening names and flags an unknown one, as it does for other code names.
+- Ticket 07 rulings: the rename rewrites `opening.name` compared with a string literal by `===`, `!==`, `==` or `!=` in either order, and `switch` cases. Other forms stay as written. A guard is an `opening.owner.name` literal test, or a null-owner test, in the comparison's own `&&` chain or in its enclosing condition. A guard naming the renamed Opening's owner is rewritten, and a guard naming another owner is left alone. A guard that can't be proven goes to the existing pick box. An unguarded comparison is rewritten outright only when no other owner still has the old name; otherwise it goes to the pick box. The offer fires only from the Opening name field, and there is no find-and-replace target. Analysis warns on a literal that matches no Opening name in the world, Self rows included. It stays silent where the host passes no Opening names.
 
 **The opening record in the save**
 
@@ -138,6 +140,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 - Outside play (editor, Enter World, library), it reads the Test Bench pick where there is one, else no Opening.
 - The editor offers it wherever it offers the Weather and Time Conditions. The picker lists every Opening in the world, grouped by owner. A listed key with no Opening shows the row as unresolved, and saving drops the dead key.
 - Its line text reads the picked names or derived labels.
+- Ticket 06 rulings: the editor offers it only while the world has at least one Opening, at most one per row. On an entity card, keys on the card entity's own Openings travel as the self-entity token and are rebound on import. Other keys are dropped, and a Condition left with no keys is dropped. In play it reads the resolved key, so a drawn Opening that no longer resolves counts as none. The Condition stores keys only, so linked-content update lines read "Opening", "Not Opening" or "Opening (2)".
 
 **Not on Time and Weather**
 
