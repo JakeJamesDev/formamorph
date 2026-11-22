@@ -110,6 +110,10 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 - The save gains an opening record: owner id, Opening id, and a location id when a location owns the row. This mirrors the key the opening pool already uses, since Opening ids repeat across owners.
 - The draw at New Game writes the record. A page-one re-roll that draws another row rewrites it. The shipped default opening writes none.
 - Load resolves the record against the current world. A missing owner or Opening resolves to null. A save with no record resolves to null.
+- Ticket 03 rulings: the record is a top-level save field, `drawnOpening?: { ownerId: string | null; openingId: string; locationId?: string }`. It sits beside the Opening Action, outside the per-turn snapshots, so undo never rewinds it. A location row has a null owner id plus the location id. The type is exported as `OpeningKey`.
+- The gameplay context holds and exposes the raw record only. Readers call one pure resolver with live data. It returns null or the key, the Opening and the owner, tagged by category (entity or location), or null for a world row.
+- "Current world" means the cast in play: world entities, picked library entities, the persona and the Custom Persona.
+- A record that no longer resolves stays unchanged in state and in later saves. It only reads null.
 
 **The `opening` global**
 
@@ -122,6 +126,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 - A read-only string on every script-facing entry: entity (persona included), location, item, itemInstance, stat, trait, currency, dictionary, dictionaryEntry, memory, opening. Exact casing follows the script-value casing convention (camelCase).
 - It is constant per entry shape, so it costs nothing at runtime beyond the field itself.
 - Previous-turn snapshots of an entry carry it as well.
+- Ticket 02 rulings: a blank entry still reads its shape's category. A stats entry for an unknown name reads "stat", and an unknown entity or an empty persona reads "entity". Nested stats and traits under the persona or an entity read "stat" and "trait". Trait and item `self` read "trait" and "item". Placeholders, exits, generic instances and the clock, turn and world objects carry no category.
 
 **The Opening Condition**
 
@@ -136,6 +141,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 
 - The Time and Weather Conditions take the existing Not flag. Not inverts the set test. Their editor rows show the Not control, and their line text reads the negated form.
 - Code that treats Time and Weather as never negated (row simplification, contradiction checks, the player line) learns the flag.
+- Ticket 05 rulings: an empty set stays unresolved and never holds, Not or not. The Opening Condition follows the same rule. Line text prefixes "not ", as in "not night" or "not Rain or Storm". Not is the plain `not` flag, and the editor's flip control toggles it. Hold, clash and equality checks normalize a negated set to its complement. For Weather, the complement covers every kind, Clear included, never only the allowed list.
 
 **Test Code and Test Bench**
 
