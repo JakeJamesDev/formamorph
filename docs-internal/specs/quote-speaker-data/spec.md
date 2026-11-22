@@ -93,8 +93,11 @@ Players who contribute corrections mostly fix quote speakers. In the two review 
   - each of the quote's own first-person mentions becomes a label for that entity.
   - Beat openers and fallback mentions make no label. Player words make a label only when the entity is the player.
 - A quote correction naming a group or generic entity, or null, makes no derived label.
-- Derived labels apply like mention corrections (Q35). A player's mention or non-mention correction on the same span wins.
-- A row is **exportable** when it holds at least one mention correction, non-mention correction or derived label. The export skips any other row, even when accepted.
+- Derived labels apply like mention corrections (Q35), before the player's own corrections. A player's mention or non-mention correction on an overlapping span wins (Q38).
+- **One exception to Q35, for derived labels only** (ticket 06 ruling): when the derived span's cluster is unnamed (`clusterEntities` null), the whole cluster joins the entity's clusters instead of the span moving out alone. Moving only the span would pull "she" out of the right cluster ("the Alpha", "her", "she") and strand it as a singleton. A cluster that holds player words and other mentions (Q67's mixed cluster) is the exception to the exception: only the span moves.
+- **Matching** (ticket 06 ruling): a quote correction joins its `quotes` record by exact span; no match gives no label; for several corrections on one span, the last counts. "Individual character" means an entity in `cast` with kind `unique`, or `playerId`. Server-side player words follow the client's `playerForm` test; the quote's own first-person spans are the speaker's words and skip that test.
+- A row is **exportable** when its final clusters differ from the model's clusters (ticket 06 ruling). A derived label that changes nothing does not make a row exportable, so raw model output never exports. The export skips any other row, even when accepted.
+- **Queue and routes** (ticket 06 ruling): each queue row carries `changesLabels` and `derivedLabels: [{ start, end, entityId }]`, listing only labels the export applies. The count route adds `noChange` beside `pending`. A staff `POST` route rejects every pending no-change row and returns the count it rejected.
 - Q36 is amended: quote corrections now feed the coref export through derived labels. They also stay stored for a later quote-speaker set.
 
 **Staff review (client admin, server queue).**
