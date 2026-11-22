@@ -406,7 +406,7 @@ export const ImageUpload = ({ onChange, id, value, picture, cap, previewClassNam
             <>
               {/* displaySrc lags value by a render; an <img src=""> fires error and would latch the broken frame. */}
               {picture ? (
-                <PictureImg src={picture} crop center alt="Uploaded" onClick={openZoom} className="absolute inset-0 h-full w-full rounded-md" />
+                <PictureImg src={picture} crop center contain={objectFit !== 'cover'} alt="Uploaded" onClick={openZoom} className="absolute inset-0 h-full w-full rounded-md" />
               ) : loadFailed ? brokenFrame : displaySrc ? (
                 <img
                   src={displaySrc}

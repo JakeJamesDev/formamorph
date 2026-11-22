@@ -19,7 +19,10 @@ const containBox = (ratio: number): CSSProperties => ({
   width: `min(100cqw, calc(100cqh * ${ratio}))`, height: `min(100cqh, calc(100cqw / ${ratio}))`,
 });
 
-const BLEND_CSS = { normal: undefined, multiply: 'multiply', screen: 'screen', add: 'plus-lighter' } as const;
+/** Each canvas's width over height once loaded, so a remounted picture places its stack on the first paint. */
+const CANVAS_RATIOS = new Map<string, number>();
+
+const BLEND_CSS ={ normal: undefined, multiply: 'multiply', screen: 'screen', add: 'plus-lighter' } as const;
 
 /** A filter that multiplies an image's color by `tint` in sRGB and leaves its alpha as it is. */
 function TintFilter({ id, tint }: { id: string; tint: string }) {
@@ -80,19 +83,25 @@ function LayerStack({ picture, img }: { picture: LayeredPicture; img: ImgProps }
 /**
  * A resolved stack, each non-empty Layer stretched to the canvas (Q3) at its opacity. Unbounded, the unseen
  * canvas image sizes the box as a plain image would, and the canvas fits inside it as `object-contain` would.
- * Cropped, the caller's class sizes the box and the canvas covers it, top-anchored or centered. `onLoad` and
- * `onError` report the canvas image.
+ * Cropped, the caller's class sizes the box and the canvas covers it, top-anchored or centered, or fits inside
+ * it with `contain`. The stack stays hidden until the canvas aspect is known. `onLoad` and `onError` report the
+ * canvas image.
  */
-const LayeredImg = forwardRef<HTMLElement, ImgProps & { picture: LayeredPicture; crop?: boolean; center?: boolean }>((
-  { picture, crop, center, className, alt, loading, decoding, draggable, width: _width, height: _height, onLoad, onError, ...rest }, ref,
+const LayeredImg = forwardRef<HTMLElement, ImgProps & { picture: LayeredPicture; crop?: boolean; center?: boolean; contain?: boolean }>((
+  { picture, crop, center, contain, className, alt, loading, decoding, draggable, width: _width, height: _height, onLoad, onError, ...rest }, ref,
 ) => {
-  const [ratio, setRatio] = useState<number>();
+  const [measured, setMeasured] = useState<number>();
+  const ratio = measured ?? CANVAS_RATIOS.get(picture.canvas);
   const img = { loading, decoding, draggable, alt: '', 'aria-hidden': true } as const;
   const layers = <LayerStack picture={picture} img={img} />;
   const measure = (e: SyntheticEvent<HTMLImageElement>) => {
-    setRatio(e.currentTarget.naturalWidth / (e.currentTarget.naturalHeight || 1));
+    const next = e.currentTarget.naturalWidth / (e.currentTarget.naturalHeight || 1);
+    CANVAS_RATIOS.set(picture.canvas, next);
+    setMeasured(next);
     onLoad?.(e);
   };
+  const box = ratio && (crop && !contain ? coverBox(ratio, center) : containBox(ratio));
+  const fitted = <span className={cn('absolute', !box && 'invisible inset-0')} style={box || undefined}>{layers}</span>;
   return (
     <span
       {...(rest as HTMLAttributes<HTMLSpanElement>)}
@@ -106,16 +115,14 @@ const LayeredImg = forwardRef<HTMLElement, ImgProps & { picture: LayeredPicture;
         ? (
           <>
             <RemoteImg {...img} src={picture.canvas} className="hidden" onError={onError} onLoad={measure} />
-            <span className={cn('absolute', !ratio && 'inset-0')} style={ratio ? coverBox(ratio, center) : undefined}>{layers}</span>
+            {fitted}
           </>
         )
         : (
           <>
             {/* A caller's percentage caps can stretch this box off the canvas aspect; the stack fits inside it. */}
             <RemoteImg {...img} src={picture.canvas} className={cn(className, 'invisible')} onLoad={measure} onError={onError} />
-            <span className="absolute inset-0 [container-type:size]">
-              <span className={cn('absolute', !ratio && 'inset-0')} style={ratio ? containBox(ratio) : undefined}>{layers}</span>
-            </span>
+            <span className="absolute inset-0 [container-type:size]">{fitted}</span>
           </>
         )}
     </span>
@@ -133,8 +140,10 @@ export const PictureImg = forwardRef<HTMLElement, ImgProps & {
   crop?: boolean;
   /** With `crop`, center the canvas in the box rather than anchoring its top. */
   center?: boolean;
-}>(({ src, crop, center, ...props }, ref) => (isLayeredPicture(src)
-  ? <LayeredImg ref={ref} picture={src} crop={crop} center={center} {...props} />
+  /** With `crop`, fit the whole canvas inside the box, centered, rather than cover it. */
+  contain?: boolean;
+}>(({ src, crop, center, contain, ...props }, ref) => (isLayeredPicture(src)
+  ? <LayeredImg ref={ref} picture={src} crop={crop} center={center} contain={contain} {...props} />
   : <RemoteImg ref={ref as Ref<HTMLImageElement>} src={src} {...props} />));
 PictureImg.displayName = 'PictureImg';
 
