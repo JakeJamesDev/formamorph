@@ -47,6 +47,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 | Q19 | A Condition that lists a deleted Opening shows as unresolved and drops the missing id, as a Weather row with no kinds does. |
 | Q20 | Opening names use the script-name field and code-name rules. No new visual pattern. |
 | Q21 | The Condition's picker lists every Opening in the world, grouped by owner: World, each entity, each location. |
+| Q22 | The shared Opening pick and the Test Bench Opening instrument's own pool pick stay separate values. The instrument previews page one, and the shared pick drives only `opening` and the Opening Condition. |
 
 ## User Stories
 
@@ -120,6 +121,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 - A read-only global, built once per turn from the resolved record, present in every Timing.
 - Fields: `category`, `id`, `name`, `owner`, `kind`, `self`, `time`, `weather`, `text`. `owner` is the same entry shape scripts already get from `entities` or `locations`, or null for a world row. `text` is the Opening text with placeholders filled in from the opening pins.
 - The code surface, completions and quick reference list it, as they list `turn` and `world`.
+- Ticket 04 rulings: `text` is resolved again on each run through the draw's resolution, with the same opening pins, session rolls and owner. A player's edit to an Opening Action shows only in turn 1's `turn.action`. `time` and `weather` are the Opening's own authored fields, null when it leaves them to the world default. `owner` is the same object as `entities[name]`, `persona` or `locations[name]`. `opening` also exists in Tool, World Tool and item event runs, as `turn` does.
 
 **`category`**
 
@@ -146,6 +148,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 **Test Code and Test Bench**
 
 - One opening picker, default None, shared by Test Code and the Test Bench. Its pick feeds both the `opening` global and the Opening Condition.
+- Ticket 04 rulings: the pick is one `OpeningKey | null` per world. It is kept in its own session record, so Test Code reads it even when the Test Bench has never opened. The Test Bench lens bar shows it, and every Test Code box shows the same picker reading the same value. This is a deliberate exception to Test Code's no-picks rule. Surfaces with no Test Bench (the library entity editor, the help window, World Tool Try) show no picker and read None. The rows are None first, then every Opening grouped by owner, Self rows included. Ticket 06 reuses the list.
 
 **Export shape**
 
