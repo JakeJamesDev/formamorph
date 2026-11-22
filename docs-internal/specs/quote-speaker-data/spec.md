@@ -74,7 +74,8 @@ Players who contribute corrections mostly fix quote speakers. In the two review 
   - A fallback fires when the speaker is null after the five rules, including a rule that found an unnamed mention.
   - When a rule found a mention, the quote keeps that `rule` and `mention`, and records the fallback in a client field `fallback`. This keeps the speech-tag evidence that tickets 03 and 06 read. When no rule found a mention, `rule` is the fallback's name and `mention` its mention. The server ignores `fallback` today; staff see the rule that found the mention.
   - `own-first-person` fires only when the quote's first-person mentions name one entity; two entities, no fire. The player counts.
-  - `earlier-quote` takes the nearest earlier quote in the paragraph with a final speaker, a fallback's included; its `mention` is null.
+  - `earlier-quote` takes the nearest earlier quote in the paragraph with a final speaker, a fallback's included; its `mention` is null. It fires only when no rule found a mention: a tag on someone unnamed ("the guard says") is evidence against the earlier speaker, and ticket 03 can learn that title from a fix.
+  - `own-first-person` may fire on a tagged quote, since the quote's own "I" names its speaker directly. First-person words in a cluster that holds player words but that the vote did not name the player (Q67's mixed cluster) are no evidence; a player-named cluster still counts.
   - `pronoun-subject` fires on a tagged or beat quote whose mention is an unnamed he, she or her. `named-subject` fires on an untagged quote: nearest subject skips every unnamed mention and the player, and takes the last named subject.
   - Order is measured on the replay of the real corrections, for measurement only: never fixtures, never copied text. The private gold quotes test's zero-wrong floor is not lowered; a fallback that breaks it is reported to the spec session.
 
