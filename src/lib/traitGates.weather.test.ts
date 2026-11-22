@@ -3,7 +3,7 @@ import type { Entity, GalleryImage, ItemInstance, Trait, WeatherKind, WeatherReq
 import {
   NO_ACTIVE, complementary, deadRows, flipped, gateStates, gateOf, neverUnlockable, requirementOptions, ruleStates, sameRequirement, type GateInput,
 } from './traitGates';
-import { shownWhileLine } from './traitGateLine';
+import { shownWhileLine, gateLine } from './traitGateLine';
 import { settleTraits, activeTraits, traitGateInput, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
 import { editorGateInput } from './owners';
 import { visibleImages, visibleItemImage, visibleLocationImages } from './imageVisibility';
@@ -65,7 +65,8 @@ describe('a weather Condition', () => {
     expect(sameRequirement(weather('rain'), weather('rain', 'snow'))).toBe(false);
     expect(sameRequirement(weather('rain'), { kind: 'time', dayparts: ['night'] })).toBe(false);
     expect(complementary(weather('clear', 'rain'), weather('snow', 'storm', 'brightSun'))).toBe(true);
-    expect(flipped(weather('rain'))).toEqual(weather('clear', 'snow', 'storm', 'brightSun'));
+    expect(flipped(weather('rain'))).toEqual({ ...weather('rain'), not: true });
+    expect(flipped(flipped(weather('rain')))).toEqual(weather('rain'));
   });
 
   it('kills a row whose two weather Conditions share no kind', () => {
@@ -75,6 +76,76 @@ describe('a weather Condition', () => {
 
   it('counts as reachable for the never-unlockable check, since a script or the pass can set any kind', () => {
     expect(neverUnlockable(input([T('a', { requires: [{ all: [weather('storm')] }] })]))).toEqual([]);
+  });
+});
+
+describe('a negated weather Condition', () => {
+  const not = (...kinds: WeatherKind[]): WeatherRequirement => ({ ...weather(...kinds), not: true });
+
+  it('holds under every kind outside its set, Clear included', () => {
+    for (const at of ALL_WEATHER_KINDS) expect(unlocked(not('rain'), at)).toBe(at !== 'rain');
+    expect(unlocked(not('rain', 'storm'), 'snow')).toBe(true);
+    expect(unlocked(not('rain', 'storm'), 'storm')).toBe(false);
+  });
+
+  it('never holds with no kind, Not or not, and reads as unresolved', () => {
+    const states = ruleStates(input([], 'rain'), null, [{ all: [not()] }]);
+    expect(states[0].holds).toBe(false);
+    expect(states[0].conditions[0]).toMatchObject({ unresolved: true });
+  });
+
+  it('reads the negated form in the Shown while and gate lines', () => {
+    const line = (...kinds: WeatherKind[]) => shownWhileLine(ruleStates(input([]), null, [{ all: [not(...kinds)] }]));
+    expect(line('rain', 'storm')).toBe('Shown while not Rain or Storm');
+    const gate = gateStates(input([T('a', { requires: [{ all: [not('rain')] }] })], 'rain'));
+    expect(gateLine(gateOf(gate, null, 'a'))).toBe('Requires not Rain');
+  });
+
+  it('equals the other kinds listed plainly, and complements its plain form over every kind', () => {
+    expect(sameRequirement(not('rain'), weather('clear', 'snow', 'storm', 'brightSun'))).toBe(true);
+    expect(sameRequirement(not('rain'), weather('rain'))).toBe(false);
+    expect(complementary(weather('rain'), not('rain'))).toBe(true);
+    expect(complementary(weather('clear', 'rain'), weather('snow', 'storm', 'brightSun'))).toBe(true);
+    expect(complementary(weather('rain'), weather('snow'))).toBe(false);
+  });
+
+  it('kills a row holding Rain and not Rain, and one holding not every kind', () => {
+    const traits = [
+      T('a', { requires: [{ all: [weather('rain'), not('rain')] }] }),
+      T('b', { requires: [{ all: [weather('rain'), not('snow')] }] }),
+      T('c', { requires: [{ all: [not(...ALL_WEATHER_KINDS)] }] }),
+    ];
+    expect(deadRows(input(traits))).toEqual([{ ownerId: null, traitId: 'a', row: 0 }, { ownerId: null, traitId: 'c', row: 0 }]);
+  });
+
+  it('is never unlockable only when it leaves no kind', () => {
+    expect(neverUnlockable(input([T('a', { requires: [{ all: [not('rain')] }] })]))).toEqual([]);
+    expect(neverUnlockable(input([T('a', { requires: [{ all: [not(...ALL_WEATHER_KINDS)] }] })]))).toHaveLength(1);
+  });
+
+  it('settles a gated trait off in the rain and back on in the clear', () => {
+    const awning = T('awning', { playerToggle: true, requires: [{ all: [not('rain')] }] });
+    const chosen: TraitRuntimeState = { stats: [], traits: [awning], disabledTraitIds: [], appliedValues: {} };
+    const on = (s: TraitRuntimeState) => activeTraits(s.traits, s.disabledTraitIds).map((t) => t.id);
+    const rain = settleTraits(chosen, { traits: [awning], groups: [], weather: 'rain' }).state;
+    expect(on(rain)).toEqual([]);
+    expect(on(settleTraits(rain, { traits: [awning], groups: [], weather: 'clear' }).state)).toEqual(['awning']);
+  });
+
+  it('shows a Not-ruled image while it is not raining', () => {
+    const hill = { id: 'hill', images: [{ data: 'dry', requires: [{ all: [not('rain')] }] }, { data: 'wet' }] as GalleryImage[] };
+    const slots = (at: WeatherKind) => visibleLocationImages(hill, { ...input([], at), stats: scoped({}) }, undefined).map((v) => v.data);
+    expect(slots('clear')).toEqual(['dry', 'wet']);
+    expect(slots('rain')).toEqual(['wet']);
+  });
+
+  it('round-trips its Not flag on a character card', () => {
+    const PIXELS = 'data:image/webp;base64,AAAA';
+    const requires = [{ all: [not('rain')] }];
+    const wren: Entity = { id: 'wren', name: 'Wren', traits: [T('t', { name: 'T', requires })], images: [{ data: PIXELS, requires }] };
+    const back = parseEntityCardData(JSON.parse(JSON.stringify(buildEntityCardData(wren, [], {}, undefined, { traits: [], traitGroups: [], entities: [] }))), PIXELS);
+    expect(conditionsOf(back.traits?.[0].requires)).toEqual([not('rain')]);
+    expect(conditionsOf(back.images?.[0].requires)).toEqual([not('rain')]);
   });
 });
 

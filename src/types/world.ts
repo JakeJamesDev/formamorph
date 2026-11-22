@@ -289,8 +289,8 @@ export interface ItemRequirement {
 /** A coarse time of day, as the story clock splits its day by fractions. */
 export type Daypart = 'night' | 'dawn' | 'morning' | 'midday' | 'afternoon' | 'evening';
 
-/** A time Condition: it holds while the story clock's daypart is one of `dayparts`. It names no target and
- *  no owner. */
+/** A time Condition: it holds while the story clock's daypart is one of `dayparts`, or is none of them under
+ *  Not. An empty list never holds, Not or not. It names no target and no owner. */
 export interface TimeRequirement {
   kind: 'time';
   dayparts: Daypart[];
@@ -298,11 +298,12 @@ export interface TimeRequirement {
   id?: undefined;
   name?: undefined;
   owner?: undefined;
-  not?: undefined;
+  not?: true;
 }
 
-/** A weather Condition: it holds while the World Weather is one of `kinds`, Clear included. It names no target and
- *  no owner, and reads the World Weather, not what a Sheltered player feels. */
+/** A weather Condition: it holds while the World Weather is one of `kinds`, Clear included, or is none of them
+ *  under Not. Not complements over every kind, never just the world's allowed ones. An empty list never holds,
+ *  Not or not. It names no target and no owner, and reads the World Weather, not what a Sheltered player feels. */
 export interface WeatherRequirement {
   kind: 'weather';
   kinds: WeatherKind[];
@@ -310,7 +311,7 @@ export interface WeatherRequirement {
   id?: undefined;
   name?: undefined;
   owner?: undefined;
-  not?: undefined;
+  not?: true;
 }
 
 /** A stat Condition: see {@link TraitRequirement}. */

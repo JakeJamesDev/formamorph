@@ -58,9 +58,19 @@ describe('a weather Condition in the rows editor', () => {
     expect(kind('Clear')).toBeDisabled();
   });
 
-  it('has no Not flip, and a row takes one weather Condition', async () => {
+  it('flips to Not and back, keeping its kinds, and edits them while negated', () => {
     render(<Harness kinds={ALLOWED} initial={[{ all: [{ kind: 'weather', kinds: ['rain'] }] }]} />);
-    expect(screen.queryByRole('button', { name: /to be off$/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /to be off$/ }));
+    expect(rows()).toEqual([{ all: [{ kind: 'weather', kinds: ['rain'], not: true }] }]);
+    expect(screen.getByText('NOT')).toBeInTheDocument();
+    fireEvent.click(kind('Storm'));
+    expect(rows()).toEqual([{ all: [{ kind: 'weather', kinds: ['rain', 'storm'], not: true }] }]);
+    fireEvent.click(screen.getByRole('button', { name: /instead$/ }));
+    expect(rows()[0].all[0]).not.toHaveProperty('not');
+  });
+
+  it('a row takes one weather Condition', async () => {
+    render(<Harness kinds={ALLOWED} initial={[{ all: [{ kind: 'weather', kinds: ['rain'] }] }]} />);
     fireEvent.click(screen.getByRole('button', { name: 'And' }));
     expect(await screen.findByRole('option', { name: /^Weather/ })).toHaveAttribute('aria-disabled', 'true');
   });

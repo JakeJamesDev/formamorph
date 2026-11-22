@@ -70,6 +70,61 @@ describe('a time Condition', () => {
   });
 });
 
+describe('a negated time Condition', () => {
+  const not = (...dayparts: Daypart[]): TimeRequirement => ({ ...time(...dayparts), not: true });
+
+  it('holds at every daypart outside its set', () => {
+    for (const at of DAYPARTS) expect(unlocked(not('night'), at)).toBe(at !== 'night');
+    expect(unlocked(not('night'), 'morning')).toBe(true);
+    expect(unlocked(not('night'), 'night')).toBe(false);
+  });
+
+  it('never holds with no daypart, Not or not, and reads as unresolved', () => {
+    const states = ruleStates(input([], 'night'), null, [{ all: [not()] }]);
+    expect(states[0].holds).toBe(false);
+    expect(states[0].conditions[0]).toMatchObject({ unresolved: true });
+  });
+
+  it('reads the negated form in the Shown while and gate lines', () => {
+    expect(shownWhileLine(ruleStates(input([]), null, [{ all: [not('evening', 'night')] }]))).toBe('Shown while not evening or night');
+    const gate = gateStates(input([T('a', { requires: [{ all: [not('night')] }] })], 'night'));
+    expect(gateLine(gateOf(gate, null, 'a'))).toBe('Requires not night');
+  });
+
+  it('equals the other dayparts listed plainly, and complements its plain form', () => {
+    expect(sameRequirement(not('night'), time('dawn', 'morning', 'midday', 'afternoon', 'evening'))).toBe(true);
+    expect(sameRequirement(not('night'), time('night'))).toBe(false);
+    expect(complementary(time('night'), not('night'))).toBe(true);
+    expect(complementary(time('night'), not('dawn'))).toBe(false);
+  });
+
+  it('kills a row holding night and not night, and one holding not every daypart', () => {
+    const traits = [
+      T('a', { requires: [{ all: [time('night'), not('night')] }] }),
+      T('b', { requires: [{ all: [time('night'), not('dawn')] }] }),
+      T('c', { requires: [{ all: [not(...DAYPARTS)] }] }),
+    ];
+    expect(deadRows(input(traits))).toEqual([{ ownerId: null, traitId: 'a', row: 0 }, { ownerId: null, traitId: 'c', row: 0 }]);
+  });
+
+  it('is never unlockable only when it leaves no daypart', () => {
+    expect(neverUnlockable(input([T('a', { requires: [{ all: [not('night')] }] })]))).toEqual([]);
+    expect(neverUnlockable(input([T('a', { requires: [{ all: [not(...DAYPARTS)] }] })]))).toHaveLength(1);
+  });
+
+  it('shows a Not-ruled image while it is not night, and round-trips on a card', () => {
+    const ash = { id: 'ash', images: [{ data: 'day', requires: [{ all: [not('night')] }] }, { data: 'any' }] as GalleryImage[] };
+    const shown = (at: Daypart) => visibleImages(ash, { ...input([], at), entities: [{ id: 'ash', name: 'Ash' }], stats: scoped({}) }, undefined).map((v) => v.data);
+    expect(shown('morning')).toEqual(['day', 'any']);
+    expect(shown('night')).toEqual(['any']);
+    const PIXELS = 'data:image/webp;base64,AAAA';
+    const requires = [{ all: [not('night')] }];
+    const wren: Entity = { id: 'wren', name: 'Wren', traits: [T('t', { name: 'T', requires })], images: [{ data: PIXELS, requires }] };
+    const back = parseEntityCardData(JSON.parse(JSON.stringify(buildEntityCardData(wren, [], {}, undefined, { traits: [], traitGroups: [], entities: [] }))), PIXELS);
+    expect(conditionsOf(back.traits?.[0].requires)).toEqual([not('night')]);
+  });
+});
+
 describe('dayparts on a non-24-hour day', () => {
   // A 30-hour day: the split is by fraction, so the hours shift but the narration and the gate agree.
   const calendar: WorldCalendar = { hoursPerDay: 30, startHour: 0 };

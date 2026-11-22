@@ -254,8 +254,8 @@ const capitalized = (word: string) => word.charAt(0).toUpperCase() + word.slice(
 
 /** One Condition as text, by the name it stores. */
 function conditionText(req: TraitRequirement): string {
-  if (req.kind === 'time') return req.dayparts.map(capitalized).join(' or ');
-  if (req.kind === 'weather') return weatherText(req);
+  if (req.kind === 'time') return `${req.not ? 'Not ' : ''}${req.dayparts.map(capitalized).join(' or ')}`;
+  if (req.kind === 'weather') return `${req.not ? 'Not ' : ''}${weatherText({ ...req, not: undefined })}`;
   const named = req.name || capitalized(req.kind);
   const target = req.kind === 'stat' ? `${named} ${req.operator} ${req.value}`
     : req.kind === 'option' && req.valueName ? `${named} is ${req.valueName}` : named;

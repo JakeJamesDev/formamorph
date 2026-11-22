@@ -1,6 +1,7 @@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { DAYPARTS, daypartSet, isDaypart } from '@/lib/gameClock';
 import { DAYPART_LABELS as LABELS } from '@/lib/routineTime';
+import { notFlag } from '@/lib/requirementRows';
 import type { Daypart, TimeRequirement } from '@/types';
 
 /**
@@ -14,7 +15,7 @@ export function TimeConditionControls({ requirement, accepts, onChange }: {
 }) {
   const on = daypartSet(requirement.dayparts);
   const toggled = (part: Daypart): TimeRequirement =>
-    ({ kind: 'time', dayparts: daypartSet(on.includes(part) ? on.filter((d) => d !== part) : [...on, part]) });
+    ({ kind: 'time', dayparts: daypartSet(on.includes(part) ? on.filter((d) => d !== part) : [...on, part]), ...notFlag(requirement.not) });
   return (
     <ToggleGroup
       type="multiple"
@@ -22,7 +23,7 @@ export function TimeConditionControls({ requirement, accepts, onChange }: {
       value={on}
       onValueChange={(v) => {
         const dayparts = daypartSet(v.filter(isDaypart));
-        if (dayparts.length) onChange({ kind: 'time', dayparts });
+        if (dayparts.length) onChange({ kind: 'time', dayparts, ...notFlag(requirement.not) });
       }}
       className="h-auto min-w-0 flex-wrap gap-y-0.5"
     >

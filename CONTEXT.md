@@ -702,7 +702,7 @@ One alternative in a Requirement. A row holds when every Condition in it holds (
 _Avoid_: clause, branch, group (a group is a trait group)
 
 **Condition**:
-One check in a Requirement Row: a trait, any trait in a group, a persona the player plays as, a stat, or an item, with an optional owner, or the time of day, or the weather, or a World Option. A Condition can carry the Not flag, and then it holds while its target is off. Not is a flag on a Condition, not a separate item. A Time Condition and a Weather Condition have no Not.
+One check in a Requirement Row: a trait, any trait in a group, a persona the player plays as, a stat, or an item, with an optional owner, or the time of day, or the weather, or a World Option. A Condition can carry the Not flag, and then it holds while its target is off. Not is a flag on a Condition, not a separate item. On a Time, Weather or Opening Condition it inverts the set test.
 _Avoid_: exclusion, negation, rule, requirement (a Requirement is the whole gate)
 
 **Stat Condition**:
@@ -714,11 +714,11 @@ A Condition that holds while an owner has an Item Instance of an item, owned (ca
 _Avoid_: item gate, inventory check
 
 **Time Condition**:
-A Condition that holds while the story clock's daypart is one of a set: night, dawn, morning, midday, afternoon, evening. Dayparts split the day by fraction, as the narration's do. It has no owner and no Not, and it never tests the day number or an hour. The game reads it once per turn commit, after the turn's time passes. Outside play it reads the opening hour, which is morning. Traits and image Visibility rules share it.
+A Condition that holds while the story clock's daypart is one of a set: night, dawn, morning, midday, afternoon, evening. Dayparts split the day by fraction, as the narration's do. With Not it holds in every other daypart. An empty set never holds, Not or not. It has no owner, and it never tests the day number or an hour. The game reads it once per turn commit, after the turn's time passes. Outside play it reads the opening hour, which is morning. Traits and image Visibility rules share it.
 _Avoid_: time gate, schedule, hour condition
 
 **Weather Condition**:
-A Condition that holds while the World Weather is one of a set of kinds, Clear included. It has no owner and no Not. It reads the World Weather, not the experienced weather, so a Sheltered player still holds it. The game reads it once per turn commit, after the Weather Pass, the nightfall rule and script sets. Outside play it reads Default Weather, or Clear when that is unset. The editor offers it only while Weather is on. Traits and image Visibility rules share it.
+A Condition that holds while the World Weather is one of a set of kinds, Clear included. With Not it holds under every other kind, over all kinds and not just the allowed ones. An empty set never holds, Not or not. It has no owner. It reads the World Weather, not the experienced weather, so a Sheltered player still holds it. The game reads it once per turn commit, after the Weather Pass, the nightfall rule and script sets. Outside play it reads Default Weather, or Clear when that is unset. The editor offers it only while Weather is on. Traits and image Visibility rules share it.
 _Avoid_: weather gate, climate condition
 
 **World Option Condition**:

@@ -434,7 +434,7 @@ A **time condition** checks the story's time of day. *Night Hunter* requires *ev
 | 🌆 Evening | 17:00 to 20:00 |
 
 - The narration's time of day uses the same split, so the condition matches what the story says.
-- At least one time of day stays on. To exclude one, turn on the others. A time condition has no **Not**.
+- At least one time of day stays on. Select **Require it to be off** to make it **Not**. *Not night* holds in every other time of day.
 - A row holds one time condition. It never checks the day number or an hour.
 - The game checks once per turn, after the turn's time passes, like a [stat condition](#when-the-game-checks). With the AI clock off, each turn is one hour.
 - Outside play, the [Test Bench](#test-bench-checks) reads the time the story opens at, which is morning.
@@ -449,7 +449,7 @@ A **weather condition** checks the world's current weather. *Awning Up* requires
 2. Under **Requires**, select **Add Requirement**, then pick **Weather**.
 3. Turn on each kind that counts. The chip lists **Clear** and the kinds the world allows.
 
-- At least one kind stays on. To exclude one, turn on the others. A weather condition has no **Not**.
+- At least one kind stays on. Select **Require it to be off** to make it **Not**. *Not Rain or Storm* holds in every other weather, **Clear** included.
 - A row holds one weather condition.
 - It checks the world's weather, not what the player feels. A player in a Sheltered location still holds it.
 - The game checks once per turn, after the turn's weather is set.

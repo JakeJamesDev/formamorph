@@ -1,5 +1,6 @@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { WEATHER_LABELS, isWeatherKind, weatherKindSet } from '@/lib/weather';
+import { notFlag } from '@/lib/requirementRows';
 import type { WeatherKind, WeatherRequirement } from '@/types';
 
 /**
@@ -14,7 +15,7 @@ export function WeatherConditionControls({ requirement, kinds, accepts, onChange
 }) {
   const on = weatherKindSet(requirement.kinds);
   const toggled = (kind: WeatherKind): WeatherRequirement =>
-    ({ kind: 'weather', kinds: weatherKindSet(on.includes(kind) ? on.filter((k) => k !== kind) : [...on, kind]) });
+    ({ kind: 'weather', kinds: weatherKindSet(on.includes(kind) ? on.filter((k) => k !== kind) : [...on, kind]), ...notFlag(requirement.not) });
   return (
     <ToggleGroup
       type="multiple"
@@ -22,7 +23,7 @@ export function WeatherConditionControls({ requirement, kinds, accepts, onChange
       value={on}
       onValueChange={(v) => {
         const next = weatherKindSet(v.filter(isWeatherKind));
-        if (next.length) onChange({ kind: 'weather', kinds: next });
+        if (next.length) onChange({ kind: 'weather', kinds: next, ...notFlag(requirement.not) });
       }}
       className="h-auto min-w-0 flex-wrap gap-y-0.5"
     >

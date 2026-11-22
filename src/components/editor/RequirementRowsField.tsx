@@ -44,9 +44,9 @@ type AddTarget = number | 'new';
  * would repeat another Condition in the row is held back. The same stat can sit in a row twice, once as a
  * floor and once as a ceiling.
  *
- * A time Condition's chip is a toggle per daypart, at least one on, with no Not. A row holds one at most.
+ * A time Condition's chip is a toggle per daypart, at least one on, and it takes Not. A row holds one at most.
  *
- * A weather Condition's chip is a toggle per kind the world allows, at least one on, with no Not. It is offered
+ * A weather Condition's chip is a toggle per kind the world allows, at least one on, and it takes Not. It is offered
  * while the world's Weather is on, and a row holds one at most.
  *
  * A World Option Condition's chip edits a choice's value or a number's comparison in place; a number has no
@@ -225,17 +225,17 @@ export function RequirementRowsField({
     const item = requirement.kind === 'item' && !unresolved ? requirement : null;
     const itemTail = item ? itemChecks(item) : '';
     const itemName = itemTail && targetText.endsWith(itemTail) ? targetText.slice(0, targetText.length - itemTail.length) : targetText;
-    // A time chip is its daypart toggles; the complement is the other dayparts, so it has no Not.
+    // A time chip is its daypart toggles behind the NOT mark.
     const time = requirement.kind === 'time' ? requirement : null;
     // A World Option chip edits a choice's value or a number's comparison in place; a boolean's text says on or off.
-    // A weather chip is its kind toggles; the complement is the other kinds, so it has no Not.
+    // A weather chip is its kind toggles behind the NOT mark.
     const weatherReq = requirement.kind === 'weather' && options.weatherKinds ? requirement : null;
     const optionReq = requirement.kind === 'option' ? requirement : null;
     const optionDef = optionReq && !unresolved ? worldOptions.find((o) => o.requirement.id === optionReq.id)?.worldOption : undefined;
     const optionEdits = optionReq && optionDef && optionDef.type !== 'boolean' ? { req: optionReq, def: optionDef } : null;
     const grouped = stat || time || weatherReq || item || optionEdits;
     // A number Option Condition flips by its operator, so it has no Not toggle.
-    const flips = !time && requirement.kind !== 'weather' && optionReq?.operator === undefined;
+    const flips = optionReq?.operator === undefined;
     return (
       <span
         role={grouped ? 'group' : undefined}
@@ -251,9 +251,9 @@ export function RequirementRowsField({
         )}
       >
         {time ? (
-          <TimeConditionControls requirement={time} accepts={edit.accepts} onChange={edit.replace} />
+          <>{mark}<TimeConditionControls requirement={time} accepts={edit.accepts} onChange={edit.replace} /></>
         ) : weatherReq ? (
-          <WeatherConditionControls requirement={weatherReq} kinds={options.weatherKinds ?? []} accepts={edit.accepts} onChange={edit.replace} />
+          <>{mark}<WeatherConditionControls requirement={weatherReq} kinds={options.weatherKinds ?? []} accepts={edit.accepts} onChange={edit.replace} /></>
         ) : optionEdits ? (
           <>
             <span className="min-w-0 truncate">

@@ -258,11 +258,11 @@ function cardRequirement(condition: unknown): TraitRequirement[] {
   const raw = conditionWithOwnerKey(condition);
   if (isRecord(raw) && raw.kind === 'time') {
     const dayparts = Array.isArray(raw.dayparts) ? daypartSet(raw.dayparts.filter(isDaypart)) : [];
-    return dayparts.length ? [{ kind: 'time', dayparts }] : [];
+    return dayparts.length ? [{ kind: 'time', dayparts, ...notFlag(raw.not) }] : [];
   }
   if (isRecord(raw) && raw.kind === 'weather') {
     const kinds = Array.isArray(raw.kinds) ? weatherKindSet(raw.kinds.filter(isWeatherKind)) : [];
-    return kinds.length ? [{ kind: 'weather', kinds }] : [];
+    return kinds.length ? [{ kind: 'weather', kinds, ...notFlag(raw.not) }] : [];
   }
   if (!isRecord(raw) || typeof raw.id !== 'string') return [];
   const not = notFlag(raw.not);

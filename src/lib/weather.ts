@@ -26,9 +26,12 @@ export const weatherKindSet = (kinds: readonly WeatherKind[]): WeatherKind[] => 
 
 const KINDS_OR = new Intl.ListFormat('en', { type: 'disjunction' });
 
-/** A weather Condition's kinds in words: "Rain or Storm". */
-export const weatherText = (req: WeatherRequirement): string =>
-  (req.kinds.length ? KINDS_OR.format(weatherKindSet(req.kinds).map((kind) => WEATHER_LABELS[kind])) : 'no weather');
+/** A weather Condition's kinds in words: "Rain or Storm", "not Rain or Storm" under Not. */
+export const weatherText = (req: WeatherRequirement): string => {
+  if (!req.kinds.length) return 'no weather';
+  const text = KINDS_OR.format(weatherKindSet(req.kinds).map((kind) => WEATHER_LABELS[kind]));
+  return req.not ? `not ${text}` : text;
+};
 
 /** The kinds the world allows, Clear first: Clear is always allowed. */
 export const allowedWeatherKinds = (weather: WorldWeather | null | undefined): WeatherKind[] =>

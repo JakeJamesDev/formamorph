@@ -269,8 +269,8 @@ export const comparableOwnedTraits = (entity: Entity): {
 } => {
   const inside = ownIds(entity);
   const comparable = (req: TraitRequirement): TraitRequirement => {
-    if (req.kind === 'time') return { kind: 'time', dayparts: daypartSet(req.dayparts) };
-    if (req.kind === 'weather') return { kind: 'weather', kinds: weatherKindSet(req.kinds) };
+    if (req.kind === 'time') return { kind: 'time', dayparts: daypartSet(req.dayparts), ...notFlag(req.not) };
+    if (req.kind === 'weather') return { kind: 'weather', kinds: weatherKindSet(req.kinds), ...notFlag(req.not) };
     // A World Option is the world's own, so two copies compare it by its stored names.
     if (req.kind === 'option') {
       return {
