@@ -38,14 +38,13 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Traits and image Visibility rules can now require the weather.** Pick Weather under Add Requirement, then turn on the kinds that count. It shows while the world's Weather is on.
     - **A short effect now plays over the game when the weather changes.** Raindrops run down the screen, snow piles up, lightning flashes or the sun breaks through, then it stops. Turn it off with **Weather Foreground** in Display settings.
   - **Drawn Opening:**
-    - **Openings can have names.** Type a name in the new box on an opening's card. A blank name shows the owner and place, such as "Aki · Opening 2".
+    - **Openings can have names.** Type a name at the top of an opening's card. A blank name shows the owner and place, such as "Aki · Opening 2".
     - **A saved game now remembers which opening started it.** Re-rolling page one onto another opening updates it. If the author later deletes that opening, the save reads it as none.
     - **Time and Weather conditions can now be Not.** Select Require it to be off on a time or weather chip. "Not night" holds at every other time of day.
-    - **Scripts can read which opening started the game with `opening`.** It holds the opening's name, owner, kind, time, weather and text on every turn. Pick the opening to test with beside Test Code or in the Test Bench.
+    - **Scripts can read which opening started the game with `opening`.** It holds the opening's name, owner, kind, time, weather and text on every turn. Pick the opening to test with beside Test Code or in the Test Bench, on every tab but Opening.
     - **Renaming an Opening updates the scripts that compare `opening.name` with its old name.** When another owner has an Opening of that name, **Update Code References** lists the comparisons it can't tell apart. The code editor marks a name no Opening has.
     - **Traits and image Visibility rules can now require the opening a game started from.** Pick Opening under Add Requirement, then check the openings that count. It holds all game, and players don't see it in requirement lines.
-  - **Scripts:**
-    - **Script entries now tell you what they are.** Every entity, location, item, stat, trait and other entry in a script reads a read-only `category`, such as "entity" or "itemInstance".
+  - **Script entries now tell you what they are.** Every entity, location, item, stat, trait and other entry in a script reads a read-only `category`, such as "entity" or "itemInstance".
   - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
 - **⚙️ Backend**
   - **Character Mentions:**
@@ -62,8 +61,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The arrows on a character's picture now stay in place as you page through pictures of different shapes.**
     - **The Previous and Next buttons on a turn's scene images now stay in place as you page through them.** An image narrower than the turn's widest shows with bars at its sides.
     - **With Character Mentions on, a quote speaker you fix now carries over to later turns.** When the story calls that character by the same title, like "the Alpha", their quotes take their color. A title you gave to two characters is not used. Undoing the turn takes it back.
-  - **Test Bench:**
-    - **Triggers and AI Context in the Test Bench now show the Opening picker.** A trait that requires an Opening changes with the pick you can see. The Opening tab keeps its own pick.
   - **Renaming a stat, trait, placeholder or location in the World Editor now updates the item scripts that name it.** When another character that can hold the item has a stat of that name, you check which `owner` references to change.
   - **Auto-Load in the desktop app now loads the top model in the Installed list.** An Auto-Load tag marks it. Drag a model to the top to choose it, including a model from an Additional Search Folder.
   - **Large Supporter-only worlds, such as Sunmeadow Town, now download from Community Creations.** The download no longer times out, and the installed world stays close to the author's size.

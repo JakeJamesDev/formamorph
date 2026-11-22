@@ -1,6 +1,7 @@
 # Spec: Drawn Opening
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-22. Tickets 01–11 done, last landing 0b201438e. Review: 3 gaps became tickets 08–10, now landed. Closed red: lint fails on 31 errors in worlds-wip/ only; tests green.
 Spec session: drawn-opening — spec
 
 ## Problem Statement
