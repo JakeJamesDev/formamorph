@@ -1,0 +1,31 @@
+# 01: Layered Slot Panel
+
+Status: ready-for-agent
+Blocked by: None (can start immediately)
+Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
+Reasoning effort: high
+
+## What to build
+
+A gallery slot that links a Layered Image behaves like a flat image's slot wherever the shared image gallery field shows it: the Media tab in Group by Entity, and the entity editor's gallery. The spec covers this in Q1, Q2, Q4, Q6 and Q7.
+
+- **Panel parity.** The slot shows the flat-slot panel: name field (renames the Layered Image), title, size line, action row and Visibility Rule.
+- **Title.** The card and panel take the Layered Image's name ("Roxanne › Roxanne Bare"), not the slot's ("Image 2").
+- **Size line.** "Layered Image · N Layers · total size", with each part image counted once.
+- **Actions.** **Download** saves the flattened outside-play picture. **Replace** opens the picker with images and Layered Images. **Remove** unlinks this slot only and leaves the Layered Image in the Media List.
+- **Edit Layers.** A button beside **Download** opens the existing editor: the full-screen editor on desktop and the Layer panel on mobile. This ticket owns that action-row button; ticket 02 reuses it.
+- **Docs.** The World Editor Media page says where Edit Layers sits on a gallery slot.
+
+## Acceptance criteria
+
+- [ ] In Group by Entity, selecting a layered slot shows the name field, size line, Download, Replace, Remove, Edit Layers and Visibility Rule.
+- [ ] The entity editor's gallery shows the same panel for a layered slot.
+- [ ] The slot's card and panel title is the Layered Image's name.
+- [ ] The size line gives the Layer count and a total that counts a part shared by two Layers once.
+- [ ] Edit Layers opens the full-screen editor on desktop and the Layer panel on mobile, on that Layered Image.
+- [ ] Replace offers Layered Images; Remove unlinks only this slot and the Layered Image stays in the Media List.
+- [ ] Download saves the flattened outside-play picture.
+- [ ] Each new guard fails with its bug put back.
+- [ ] Frames: `.scratch/frames/layered-slot-panel-desktop.png` (1440 wide) and `.scratch/frames/layered-slot-panel-mobile.png` (390 wide), dark theme, Roxanne-like rig selected in Group by Entity.
+
+For you: open Sunmeadow's Roxanne in Group by Entity and check that editing her Layered Image from her gallery feels as direct as editing a flat image.
