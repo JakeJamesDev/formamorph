@@ -103,14 +103,10 @@ export function SwipeImage({ images, index, onStep, alt, onZoom, className }: {
           />
         </Tip>
         {incoming !== null && (
-          <PictureImg
-            src={at(incoming)}
-            alt=""
-            aria-hidden
-            draggable={false}
-            className="absolute inset-0 h-full w-full object-contain select-none"
-            style={{ transform: `translateX(${incoming * 100}%)` }}
-          />
+          // The box holds the position: on a Layered Image, a picture class lands on its hidden canvas.
+          <div className="absolute inset-0 flex items-center justify-center" style={{ transform: `translateX(${incoming * 100}%)` }}>
+            <PictureImg src={at(incoming)} alt="" aria-hidden draggable={false} className="h-full w-full object-contain select-none" />
+          </div>
         )}
       </div>
     </div>

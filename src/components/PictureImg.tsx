@@ -1,4 +1,4 @@
-import { forwardRef, useId, useState, type CSSProperties, type HTMLAttributes, type ImgHTMLAttributes, type Ref } from 'react';
+import { forwardRef, useId, useState, type CSSProperties, type HTMLAttributes, type ImgHTMLAttributes, type Ref, type SyntheticEvent } from 'react';
 import { RemoteImg } from '@/lib/useRemoteImage';
 import { isLayeredPicture, tintChannels, type LayeredPicture, type Picture, type ResolvedLayer } from '@/lib/layeredImages';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,12 @@ type ImgProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'>;
 const coverBox = (ratio: number, center?: boolean): CSSProperties => ({
   left: '50%', top: center ? '50%' : 0, transform: center ? 'translate(-50%, -50%)' : 'translateX(-50%)',
   width: `max(100cqw, calc(100cqh * ${ratio}))`, height: `max(100cqh, calc(100cqw / ${ratio}))`,
+});
+
+/** The canvas box that fits inside its container at `ratio`, centered, as `object-contain` fits an image. */
+const containBox = (ratio: number): CSSProperties => ({
+  left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
+  width: `min(100cqw, calc(100cqh * ${ratio}))`, height: `min(100cqh, calc(100cqw / ${ratio}))`,
 });
 
 const BLEND_CSS = { normal: undefined, multiply: 'multiply', screen: 'screen', add: 'plus-lighter' } as const;
@@ -73,8 +79,9 @@ function LayerStack({ picture, img }: { picture: LayeredPicture; img: ImgProps }
 
 /**
  * A resolved stack, each non-empty Layer stretched to the canvas (Q3) at its opacity. Unbounded, the unseen
- * canvas image sizes the box as a plain image would. Cropped, the caller's class sizes the box and the canvas
- * covers it, top-anchored or centered. `onLoad` and `onError` report the canvas image.
+ * canvas image sizes the box as a plain image would, and the canvas fits inside it as `object-contain` would.
+ * Cropped, the caller's class sizes the box and the canvas covers it, top-anchored or centered. `onLoad` and
+ * `onError` report the canvas image.
  */
 const LayeredImg = forwardRef<HTMLElement, ImgProps & { picture: LayeredPicture; crop?: boolean; center?: boolean }>((
   { picture, crop, center, className, alt, loading, decoding, draggable, width: _width, height: _height, onLoad, onError, ...rest }, ref,
@@ -82,6 +89,10 @@ const LayeredImg = forwardRef<HTMLElement, ImgProps & { picture: LayeredPicture;
   const [ratio, setRatio] = useState<number>();
   const img = { loading, decoding, draggable, alt: '', 'aria-hidden': true } as const;
   const layers = <LayerStack picture={picture} img={img} />;
+  const measure = (e: SyntheticEvent<HTMLImageElement>) => {
+    setRatio(e.currentTarget.naturalWidth / (e.currentTarget.naturalHeight || 1));
+    onLoad?.(e);
+  };
   return (
     <span
       {...(rest as HTMLAttributes<HTMLSpanElement>)}
@@ -94,17 +105,17 @@ const LayeredImg = forwardRef<HTMLElement, ImgProps & { picture: LayeredPicture;
       {crop
         ? (
           <>
-            <RemoteImg
-              {...img} src={picture.canvas} className="hidden" onError={onError}
-              onLoad={(e) => { setRatio(e.currentTarget.naturalWidth / (e.currentTarget.naturalHeight || 1)); onLoad?.(e); }}
-            />
+            <RemoteImg {...img} src={picture.canvas} className="hidden" onError={onError} onLoad={measure} />
             <span className={cn('absolute', !ratio && 'inset-0')} style={ratio ? coverBox(ratio, center) : undefined}>{layers}</span>
           </>
         )
         : (
           <>
-            <RemoteImg {...img} src={picture.canvas} className={cn(className, 'invisible')} onLoad={onLoad} onError={onError} />
-            {layers}
+            {/* A caller's percentage caps can stretch this box off the canvas aspect; the stack fits inside it. */}
+            <RemoteImg {...img} src={picture.canvas} className={cn(className, 'invisible')} onLoad={measure} onError={onError} />
+            <span className="absolute inset-0 [container-type:size]">
+              <span className={cn('absolute', !ratio && 'inset-0')} style={ratio ? containBox(ratio) : undefined}>{layers}</span>
+            </span>
           </>
         )}
     </span>
