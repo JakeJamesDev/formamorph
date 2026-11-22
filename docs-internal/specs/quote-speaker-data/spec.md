@@ -69,6 +69,7 @@ Players who contribute corrections mostly fix quote speakers. In the two review 
   - Pronouns (personal, possessive, reflexive, plus this, that, who, someone, one) and the reading's player words never teach. A correction to "Not listed" teaches nothing and is no claim.
   - A correction that names the player teaches: a persona epithet ("the stranger") is a real title.
   - An unnamed cluster holding head words learned for two different entities gets no name.
+  - A learned name sets the mentions' entity only. The saved `clusterEntities` keeps the cast vote's result (null), so a later disagreeing fix still counts as a claim and can drop the head word, and the export still treats the cluster as unnamed. Staff read the learned speaker from the quote record's `speakerId`.
   - A reading uses the names learned from the other turns' corrections still in the history. The streaming early read uses the same names, so colors do not change when the full reading lands.
 
 **Fallbacks (client, quote speakers).** Each runs only when the speech-verb, beat and nearest-subject rules leave a quote with no speaker. None runs in the speech-verb-only mode that the discovery gate uses (Q73).
