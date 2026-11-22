@@ -46,7 +46,7 @@ export const needsMentionReading = (map: MentionReadingMap, turnId: string, narr
   turnMentionReading(map, turnId, narration) === null;
 
 /** Each assistant turn's id and narration, newest last. */
-function turnNarrations(history: readonly ChatMessage[]): Map<string, string> {
+export function turnNarrations(history: readonly ChatMessage[]): Map<string, string> {
   const turns = new Map<string, string>();
   for (const message of history) {
     if (message.role !== 'assistant') continue;

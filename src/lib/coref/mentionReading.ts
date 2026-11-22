@@ -15,7 +15,7 @@ export interface MentionLink {
 }
 
 /** Raised whenever the speaker or naming rules change; a contribution carries it so replays know which rules ran. */
-export const readingVersion = 2;
+export const readingVersion = 3;
 
 /** A fallback that names a speaker the five rules left none for, from the quote itself or its paragraph. */
 export type QuoteFallback = 'own-first-person' | 'earlier-quote' | 'pronoun-subject' | 'named-subject';
@@ -54,7 +54,11 @@ export interface MentionReading {
 export interface MentionSceneContext {
   /** The played persona: its names, "you" and the narrator's "I" resolve to it (Q61). */
   player?: MentionPlayer;
+  learnedNames?: LearnedNames;
 }
+
+/** Head words the playthrough learned from speaker fixes, each to its entity id. */
+export type LearnedNames = ReadonlyMap<string, string>;
 
 /** The played persona as the reading sees it. */
 export interface MentionPlayer {
@@ -235,6 +239,34 @@ const playerWords = (scene: MentionSceneContext, cast: CastEntity[]): Set<string
 
 /** A mention's text as the player test reads it: lowercased, past a possessive and a leading article. */
 const playerForm = (text: string) => text.replace(POSSESSIVE_RE, '').toLowerCase().replace(LEADING_ARTICLE_RE, '');
+
+// --- Learned speaker names --------------------------------------------------------------------------------
+
+const PRONOUN = /^(?:he|him|his|himself|she|her|hers|herself|they|them|their|theirs|themselves|it|its|itself|this|that|who|someone|one)$/;
+const DETERMINER = /^(?:a|an|the|this|that|these|those|his|her|their|its|my|your|our)$/i;
+
+/** Whether a mention's text is a player word: a you- or I-form, or one of the persona's words. */
+const isPlayerText = (text: string, player: ReadonlySet<string>) => {
+  const t = playerForm(text);
+  return SECOND_PERSON.test(t) || FIRST_PERSON.test(t) || player.has(t);
+};
+
+/** The head word a speaker mention teaches: a capitalized name whole, else its last word, lowercased; null for a
+ *  pronoun or a player word. */
+export function speakerHeadWord(mention: string, cast: MentionCast, scene: MentionSceneContext = {}): string | null {
+  const text = mention.trim().replace(POSSESSIVE_RE, '');
+  const words = text.split(/\s+/).filter(Boolean);
+  if (!words.length || isPlayerText(text, playerWords(scene, cast))) return null;
+  const name = !DETERMINER.test(words[0]) && words.every((w) => isUpper(w[0]));
+  const head = (name ? words.join(' ') : words[words.length - 1]).toLowerCase();
+  return PRONOUN.test(head) ? null : head;
+}
+
+/** Whether a mention's text, past a possessive and a leading article, is or ends with `head`. */
+const holdsHead = (mention: string, head: string) => {
+  const t = playerForm(mention.trim());
+  return t === head || t.endsWith(` ${head}`) || t.endsWith(`-${head}`);
+};
 
 /** What a fallback rule found: undefined `speaker` means the rule did not fire. */
 interface RuleResult {
@@ -466,6 +498,23 @@ export function quoteSpeakingClusters(text: string, clusters: readonly CorefClus
   return new Set(quoteSpeakers(text, mentions, new Set(), null, { verbOnly: true }).flatMap((q) => (q.speaker === null ? [] : [Number(q.speaker)])));
 }
 
+/** Each span of a cluster the vote left unnamed that holds exactly one learned entity's head word, to that entity. */
+function learnedSpans(
+  text: string, clusters: CorefCluster[], named: (string | null)[], names: LearnedNames | undefined,
+): Map<string, string> {
+  const spans = new Map<string, string>();
+  if (!names?.size) return spans;
+  clusters.forEach((cluster, i) => {
+    if (named[i] !== null) return;
+    const ids = new Set<string>();
+    for (const [head, id] of names) if (cluster.some(([s, f]) => holdsHead(text.slice(s, f), head))) ids.add(id);
+    if (ids.size !== 1) return;
+    const [id] = ids;
+    for (const [s, f] of cluster) if (!spans.has(`${s}:${f}`)) spans.set(`${s}:${f}`, id);
+  });
+  return spans;
+}
+
 /** The Mention Reading of one finished passage. */
 export function readMentions(
   text: string, clusters: CorefCluster[], cast: CastEntity[], scene: MentionSceneContext = {},
@@ -490,6 +539,11 @@ export function readPassageMentions(
     const narratorI = FIRST_PERSON.test(word) && prose.slice(start, end) === text.slice(start, end);
     return SECOND_PERSON.test(word) || player.has(word) || narratorI;
   };
+  // A cluster no cast member won, made only of player words, is the player's (Q67); a mixed one stays unnamed.
+  const named = playerId
+    ? clusterEntities.map((id, i) => id ?? (clusters[i].every(([start, end]) => isPlayerWord({ start, end })) ? playerId : null))
+    : clusterEntities;
+  const learned = learnedSpans(text, clusters, named, scene.learnedNames);
   // Deduped by span; the first assertion of a span wins, as the evaluation's scorer reads them.
   const seen = new Set<string>();
   const mentions = links.filter((m) => {
@@ -497,11 +551,8 @@ export function readPassageMentions(
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).map((m) => (isPlayerWord(m) ? { ...m, entityId: playerId } : m));
-  // A cluster no cast member won, made only of player words, is the player's (Q67); a mixed one stays unnamed.
-  const named = playerId
-    ? clusterEntities.map((id, i) => id ?? (clusters[i].every(([start, end]) => isPlayerWord({ start, end })) ? playerId : null))
-    : clusterEntities;
+  }).map((m) => (isPlayerWord(m) ? { ...m, entityId: playerId }
+    : { ...m, entityId: learned.get(`${m.start}:${m.end}`) ?? m.entityId }));
   // Player words merged into a cluster someone else won (Q67); the player's own cluster is not mixed.
   const mixed = new Set(clusters.filter((c, i) => named[i] !== playerId && c.some(([start, end]) => isPlayerWord({ start, end })))
     .flatMap((c) => c.map(([start, end]) => `${start}:${end}`)));

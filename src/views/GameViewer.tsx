@@ -82,6 +82,7 @@ import { isScriptPromptSample, SCRIPT_PROMPT_SAMPLES } from "@/lib/devScriptProm
 import { addTell, latestTurnId, NO_SHOWS, pruneTells, REROLLED_TIMINGS, setTurnTells, tellHost, turnTells, withoutTimings, type ScriptImageTell } from "@/lib/scriptTells";
 import { newestTurnNarration, pruneByNarration, turnMentionReading, turnNarration } from "@/lib/coref/mentionReadings";
 import { applyCardCorrection } from "@/lib/coref/mentionCorrections";
+import { learnSpeakerNames } from "@/lib/coref/learnedSpeakerNames";
 import { contributeTurn } from "@/lib/coref/correctionContribution";
 import { useCorrectionContribution } from "@/lib/coref/useContributeAsk";
 import { useContributeAccess } from "@/lib/coref/useContributeAccess";
@@ -1654,8 +1655,12 @@ const GameViewer = ({
   const characterMentionsState = useCharacterMentionsState();
   const personaId = persona?.entity.id;
   const mentionPlayer = useMemo(() => (personaId ? { id: personaId, names: playerNames } : undefined), [personaId, playerNames]);
+  const learnedNames = useMemo(
+    () => learnSpeakerNames(fullMessageHistory, mentionReadings, mentionCorrections, allEntities, mentionPlayer ? { player: mentionPlayer } : {}),
+    [fullMessageHistory, mentionReadings, mentionCorrections, allEntities, mentionPlayer],
+  );
   quoteReadRef.current = fadeRevealActive && settings.characterMentions && characterMentionsState.status === 'ready'
-    ? (passage) => characterMentions().readPassage(passage, allEntities, mentionPlayer ? { player: mentionPlayer } : {})
+    ? (passage) => characterMentions().readPassage(passage, allEntities, { ...(mentionPlayer && { player: mentionPlayer }), learnedNames })
       .then((result) => result?.reading.quotes ?? null)
     : null;
   // The early quotes go once the newest turn's full-turn reading has shown and any recolor fade has played.
@@ -1675,6 +1680,7 @@ const GameViewer = ({
     setReadings: setMentionReadings,
     cast: allEntities,
     player: mentionPlayer,
+    learnedNames,
   });
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
