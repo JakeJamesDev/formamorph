@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Hint, Meta } from '@/components/ui/typography';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { useGameDataOptional } from '@/contexts/GameDataContext';
+import { layeredEntry } from '@/lib/mediaList';
 import { shownVariant } from '@/lib/layeredImages';
 import { cn } from '@/lib/utils';
 import type { MediaLayer } from '@/types';
@@ -45,28 +47,67 @@ function NoLayers({ rig }: { rig: Rig }) {
 export function LayeredImageEditor({ entryId, openOnMount = false }: { entryId: string; openOnMount?: boolean }) {
   const rig = useRig(entryId);
   const mobile = useIsMobile();
-  const [open, setOpen] = useState(openOnMount);
   if (!rig) return null;
   if (mobile) return <MobileRigEditor rig={rig} />;
   return (
     <div className="space-y-3" data-layered-summary={rig.entry.id}>
       <RigPreview rig={rig} className="h-64 p-2" />
       {rig.entry.layers.length ? <Hint>{layerNames(rig.entry)}</Hint> : <Hint>No Layers yet</Hint>}
-      <Button type="button" onClick={() => setOpen(true)}>
+      <EditLayersButton entryId={entryId} variant="default" openOnMount={openOnMount} />
+    </div>
+  );
+}
+
+/**
+ * Edit Layers for one Layered Image: the full-screen editor on desktop, the Layer panel in a full-height
+ * dialog on mobile.
+ */
+export function EditLayersButton({ entryId, variant = 'outline', size = 'default', openOnMount = false }: {
+  entryId: string;
+  variant?: 'default' | 'outline';
+  size?: 'default' | 'sm';
+  openOnMount?: boolean;
+}) {
+  const entry = layeredEntry(useGameDataOptional()?.worldOverview.mediaList, entryId);
+  const mobile = useIsMobile();
+  const [open, setOpen] = useState(openOnMount);
+  if (!entry) return null;
+  return (
+    <>
+      <Button type="button" variant={variant} size={size} onClick={() => setOpen(true)} data-edit-layers={entry.id}>
         <Layers className="mr-1 h-4 w-4" />Edit Layers
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent
-          surface="layeredEditor"
-          // Margin-centered, so the stock slide (a transform-centered offset) would fly it in from the top.
-          unanimated
-          className={cn('inset-x-0 mx-auto flex max-w-none translate-x-0 flex-col gap-0 p-0 sm:w-[96vw]', dialogCenteredAnimation, dialogFullHeight)}
-        >
-          <DesktopRigEditor rig={rig} />
-        </DialogContent>
+        {mobile
+          ? (
+            <DialogContent surface="layeredEditor" className={cn('flex flex-col gap-0 p-0', dialogFullHeight)}>
+              <div className={dialogHeaderBar}>
+                <DialogTitle className={cn(dialogHeaderBarTitle, 'truncate pr-10')}>{entry.name}</DialogTitle>
+              </div>
+              <ScrollArea className="min-h-0 flex-1">
+                <div className="p-3"><OpenRig entryId={entryId} editor={MobileRigEditor} /></div>
+              </ScrollArea>
+            </DialogContent>
+          )
+          : (
+            <DialogContent
+              surface="layeredEditor"
+              // Margin-centered, so the stock slide (a transform-centered offset) would fly it in from the top.
+              unanimated
+              className={cn('inset-x-0 mx-auto flex max-w-none translate-x-0 flex-col gap-0 p-0 sm:w-[96vw]', dialogCenteredAnimation, dialogFullHeight)}
+            >
+              <OpenRig entryId={entryId} editor={DesktopRigEditor} />
+            </DialogContent>
+          )}
       </Dialog>
-    </div>
+    </>
   );
+}
+
+/** An open dialog's editor. It reads the rig only while the dialog is open. */
+function OpenRig({ entryId, editor: Editor }: { entryId: string; editor: (props: { rig: Rig }) => ReactNode }) {
+  const rig = useRig(entryId);
+  return rig ? <Editor rig={rig} /> : null;
 }
 
 /** The full-screen editor: a large canvas, the selected Layer's Variants under it, and the Layer panel beside it. */

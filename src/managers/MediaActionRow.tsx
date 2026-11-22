@@ -11,7 +11,12 @@ import { useMountedRef } from '@/lib/useMountedRef';
 import { useSupporterCopyBlock } from '@/lib/useSupporterCopyBlock';
 import { Tip } from '@/components/ui/tooltip';
 import { mediaFileName, type MediaItem, type MediaKind } from '@/lib/mediaIndex';
-import type { MediaAsset, Placeholder } from '@/types';
+import { layeredEntry } from '@/lib/mediaList';
+import { outsidePlayLayered } from '@/lib/layeredImages';
+import { FLAT_LOSSLESS, pictureFile } from '@/lib/layeredFlatten';
+import { useGameDataOptional } from '@/contexts/GameDataContext';
+import type { MediaAsset, MediaList, Placeholder } from '@/types';
+import { EditLayersButton } from './LayeredImageEditor';
 
 /** The files Replace offers for each kind. */
 const ACCEPT: Record<MediaKind, string> = {
@@ -22,11 +27,20 @@ const ACCEPT: Record<MediaKind, string> = {
   avatar: '.vrm,.glb',
 };
 
+/** A Layered Image slot's outside-play picture, flattened lossless. */
+async function layeredFile(item: MediaItem, list: MediaList | undefined): Promise<string> {
+  const entry = item.mediaId ? layeredEntry(list, item.mediaId) : undefined;
+  const picture = entry && outsidePlayLayered(entry, list);
+  if (!picture) throw new Error('This Layered Image has no images to show');
+  return pictureFile(picture, undefined, FLAT_LOSSLESS);
+}
+
 /** Download: embedded bytes under a name from the parent and slot, or the link itself for a linked image. */
 function DownloadButton({ item, placeholders }: { item: MediaItem; placeholders: readonly Placeholder[] }) {
   const mounted = useMountedRef();
   const [busy, setBusy] = useState(false);
   const blocked = useSupporterCopyBlock('downloadMedia');
+  const list = useGameDataOptional()?.worldOverview.mediaList;
   if (item.linked) {
     return (
       <Button variant="outline" size="sm" asChild>
@@ -46,8 +60,9 @@ function DownloadButton({ item, placeholders }: { item: MediaItem; placeholders:
   const save = async () => {
     setBusy(true);
     try {
-      const blob = await (await fetch(item.value)).blob();
-      downloadBlob(blob, mediaFileName(item, labelPlaceholders(item.parent.name, placeholders)));
+      const data = item.kind === 'layered' ? await layeredFile(item, list) : item.value;
+      const blob = await (await fetch(data)).blob();
+      downloadBlob(blob, mediaFileName({ ...item, value: data }, labelPlaceholders(item.parent.name, placeholders)));
     } catch (e: unknown) {
       toastError(e, { headline: "Couldn't save the file" });
     } finally {
@@ -109,6 +124,7 @@ export function MediaActionRow({ item, placeholders, onReplace, onRemove, remove
         </>
       )}
       {!item.blank && <DownloadButton item={item} placeholders={placeholders} />}
+      {item.kind === 'layered' && item.mediaId && <EditLayersButton entryId={item.mediaId} size="sm" />}
       {onRemove && (
         <Button variant="outline" size="sm" onClick={onRemove}>
           <Trash2 className="mr-1 h-4 w-4" />{removeLabel}

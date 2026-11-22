@@ -540,3 +540,33 @@ describe('the slot budgets', () => {
     expect(bench.flatMap((f) => f.items.map((i) => i.name)).sort()).toEqual(['Bram', 'Harbor Steps', 'Map Background', 'Sedge Landing', 'Tide Book']);
   });
 });
+
+describe('a Layered Image gallery slot', () => {
+  const HEAD = { id: 'head', name: 'Head', kind: 'image' as const, data: fakeDataUrl('image/webp', 3_000, 'h') };
+  const BODY = { id: 'body', name: 'Body', kind: 'image' as const, data: fakeDataUrl('image/webp', 5_000, 'b') };
+  /** Odd Wick's gallery with a rig whose two Layers share the Head part. */
+  const rigWorld = (): World => {
+    const world = mediaFixtureWorld();
+    world.worldOverview.mediaList = {
+      [HEAD.id]: HEAD, [BODY.id]: BODY,
+      rig: { id: 'rig', name: 'Wick Bare', kind: 'layered', layers: [
+        { id: 'l1', name: 'Base', variants: [{ mediaId: HEAD.id }, { mediaId: BODY.id }] },
+        { id: 'l2', name: 'Face', variants: [{ mediaId: HEAD.id }] },
+      ] },
+    };
+    world.entities.find((e) => e.id === 'wick')!.images!.push({ mediaId: 'rig' });
+    return world;
+  };
+  const rigItem = () => buildMediaIndex(rigWorld()).find((i) => i.mediaId === 'rig')!;
+
+  it("takes the rig's name, its Layer count and its parts' size with a shared part counted once", () => {
+    expect(rigItem()).toMatchObject({ kind: 'layered', slot: 'Wick Bare', layerCount: 2, bytes: storedBytes(HEAD.data) + storedBytes(BODY.data) });
+  });
+
+  it("stacks with its entity's images, counted in the stack", () => {
+    const entities = mediaSections(rigWorld()).find((s) => s.id === 'entities')!;
+    const stack = sectionCards(entities.items).find((c) => c.item.parent.name === 'Odd Wick' && c.images)!;
+
+    expect(stack.images!.map((i) => i.slot)).toEqual(['Image 1', 'Image 2', 'Image 3', 'Wick Bare']);
+  });
+});

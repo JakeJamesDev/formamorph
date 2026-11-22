@@ -2,7 +2,7 @@
  * Every media item a world holds, with its stored size, and the sections the Media tab lays them out in.
  * DOM-free: sizes come from string lengths, so nothing decodes to list.
  */
-import type { Body, Entity, GalleryImage, GalleryLink, GameLocation, MediaList, TraitRequirementRow, World } from '@/types';
+import type { Body, Entity, GalleryImage, GalleryLink, GameLocation, LayeredMediaEntry, MediaList, TraitRequirementRow, World } from '@/types';
 import { bodyLabel } from './bodies';
 import { entityImages, galleryLinks } from './entityImages';
 import { galleryView, locationLinks } from './mediaGallery';
@@ -15,7 +15,7 @@ import type { ImageCap } from './imageSlots';
 import type { ThumbAspect } from './thumbAspect';
 import { mediaParentSpec } from './mediaParents';
 import { dataUrlBytes, isRemoteImage } from './imageBytes';
-import { galleryLinkData, isFileEntry, isMediaRef } from './mediaList';
+import { galleryLinkData, isFileEntry, isMediaRef, layeredEntry } from './mediaList';
 import { resolveSound, type SoundValue } from './mediaSounds';
 import type { MediaUse, VariantUse } from './mediaUsage';
 import { IMAGE_CAPS } from './imageSlots';
@@ -67,6 +67,8 @@ export interface MediaItem {
   variantUses?: VariantUse[];
   /** An entry nothing links (Q7). */
   unused?: true;
+  /** A gallery slot's Layered Image: how many Layers it has. */
+  layerCount?: number;
 }
 
 export type MediaWorld = Pick<World, 'worldOverview' | 'entities' | 'locations' | 'dictionaries'> & Pick<Partial<World>, 'entityGroups' | 'bodies' | 'items'>;
@@ -142,13 +144,25 @@ const galleryMedia = (parent: MediaParent, images: readonly GalleryImage[], link
     });
   });
 
-/** A stored gallery's items, links resolved through `media`. A Layered Image link is a file-less `layered` item. */
+/** The stored bytes of a Layered Image's part images, each part counted once however many Layers hold it. */
+export function layeredBytes(entry: LayeredMediaEntry, media: MediaList | undefined): number {
+  const parts = new Set(entry.layers.flatMap((layer) => layer.variants.map((v) => v.mediaId)));
+  let bytes = 0;
+  for (const id of parts) {
+    const part = media?.[id];
+    if (part && isFileEntry(part)) bytes += storedBytes(part.data);
+  }
+  return bytes;
+}
+
+/** A stored gallery's items, links resolved through `media`. A Layered Image link is a file-less `layered` item named and sized by its rig. */
 const linkedGalleryMedia = (parent: MediaParent, links: GalleryLink[], media: MediaList | undefined): MediaItem[] => {
   const view = galleryView(links, media);
   return galleryMedia(parent, view.images, view.links).map((item) => {
-    if (!item.mediaId || media?.[item.mediaId]?.kind !== 'layered') return item;
+    const rig = item.mediaId ? layeredEntry(media, item.mediaId) : undefined;
+    if (!rig) return item;
     const { budget: _none, ...rest } = item;
-    return { ...rest, kind: 'layered', value: '', bytes: 0, overBudget: false };
+    return { ...rest, kind: 'layered', slot: rig.name, value: '', bytes: layeredBytes(rig, media), layerCount: rig.layers.length, overBudget: false };
   });
 };
 
@@ -411,7 +425,7 @@ export const largestItems = (items: readonly MediaItem[], count: number): MediaI
   [...items].sort((a, b) => b.bytes - a.bytes).slice(0, count);
 
 /** Only a gallery's images stack (an entity's, a location's, the Map Background's); every other item is its own card. */
-export const canStack = (item: MediaItem): boolean => item.kind === 'image' && mediaParentSpec(item.parent.kind).stacks;
+export const canStack = (item: MediaItem): boolean => (item.kind === 'image' || item.kind === 'layered') && mediaParentSpec(item.parent.kind).stacks;
 
 /** A section's cards: one parent's images stack when there are two or more, and every other item is its own card. */
 export interface MediaCardGroup {
@@ -554,10 +568,10 @@ const EXTENSIONS: Record<string, string> = {
 
 /**
  * The name Download saves an embedded item under: the parent's name and the slot ("Bram Image 2.webp"), or an
- * Avatar's own name.
+ * Avatar's or a Layered Image's own name.
  */
 export function mediaFileName(item: MediaItem, parentName: string): string {
-  const base = namedBySlot(item) ? item.slot : `${parentName} ${item.slot}`;
+  const base = namedBySlot(item) || item.kind === 'layered' ? item.slot : `${parentName} ${item.slot}`;
   const fromName = item.fileName && /\.([a-z0-9]{1,5})$/i.exec(item.fileName)?.[1];
   const mime = /^data:([^;,]+)/.exec(item.value)?.[1]?.toLowerCase() ?? '';
   // The data's type wins, since a downscale changes it; an Avatar's .vrm and .glb share one type, so its name wins.

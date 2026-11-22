@@ -39,7 +39,8 @@ export function MediaThumb({ item, className }: { item: MediaItem; className?: s
 
 /** The stored size, in the warning color over budget, or the Linked badge for a linked image. */
 export function MediaSize({ item }: { item: MediaItem }) {
-  if (item.kind === 'layered') return null;
+  // A Media List entry's Layered Image has no size; a gallery slot's counts its parts.
+  if (item.kind === 'layered' && item.layerCount === undefined) return null;
   if (item.linked) {
     return <Badge variant="outline" className="gap-1 px-1.5 py-0 text-meta font-normal"><Link2 className="h-3 w-3" />Linked</Badge>;
   }

@@ -100,7 +100,7 @@ export function MediaImagePanel({ parent, images, framed, onFrame, avatar, place
           ownerId={entity.id}
           imageId={`media-entity-image-${entity.id}`}
           linked
-          frame={{ framed, onFramedChange: onFrame, ruleCog: false }}
+          frame={{ framed, onFramedChange: onFrame, ruleCog: false, editLayers: false }}
         >
           <ImageGallery tagsSlot={<ImageTags />} />
         </EntityImageWidget>
@@ -111,7 +111,7 @@ export function MediaImagePanel({ parent, images, framed, onFrame, avatar, place
           onChange={(field, value) => updateLocation({ ...location, [field]: value })}
           placeholders={placeholders}
           imageId={`media-location-image-${location.id}`}
-          frame={{ framed, onFramedChange: onFrame, ruleCog: false }}
+          frame={{ framed, onFramedChange: onFrame, ruleCog: false, editLayers: false }}
         />
       )}
 
@@ -120,7 +120,7 @@ export function MediaImagePanel({ parent, images, framed, onFrame, avatar, place
           overview={worldOverview}
           onImagesChange={(list) => void map.setImages(list)}
           placeholders={placeholders}
-          frame={{ framed, onFramedChange: onFrame, ruleCog: false }}
+          frame={{ framed, onFramedChange: onFrame, ruleCog: false, editLayers: false }}
         />
       )}
 

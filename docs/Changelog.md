@@ -28,6 +28,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Location and item image slots can choose a Layered Image, and every gallery shows it as a picture.** Choose lists Layered Images there. The strip and frame show each Layer's first image.
     - **The Test Bench flags Layered Images that break.** Four findings name the image and the Layer: a size mismatch, a bottom Layer that can show nothing, a rule naming a missing trait or stat, and no Layers.
     - **Renaming a Layer updates only the scripts that name its own Layered Image.** When another Layered Image has a Layer of that name too, **Update Code References** lists the references it can't tell apart, and you check the ones to change.
+    - **Edit Layers opens a Layered Image from an entity's gallery, in the Media tab and the entity editor.** In the Media tab its slot shows its name, Layer count, size and Download, like an image.
   - **Weather:**
     - **Worlds can turn on Weather and mark locations Sheltered.** Pick the allowed kinds and a Default Weather, and give an opening its own Weather. A save keeps the weather.
     - **The current weather now shows behind the game panels.** Rain, snow, storm and bright sun play over the location image, except in Sheltered locations. Turn it off with Weather Background in Display settings.

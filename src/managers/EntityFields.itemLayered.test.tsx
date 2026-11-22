@@ -13,7 +13,7 @@ const LIST: MediaList = { [BASE.id]: BASE, [RIG.id]: RIG };
 
 vi.mock('@/contexts/GameDataContext', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/contexts/GameDataContext')>()),
-  useGameData: () => ({ worldOverview: { mediaList: LIST }, addMedia: vi.fn() }),
+  useGameData: () => ({ worldOverview: { mediaList: LIST }, addMedia: vi.fn(), entities: [], placeholders: [] }),
   useGameDataOptional: () => ({ worldOverview: { mediaList: LIST } }),
 }));
 vi.mock('@/lib/useDownscalePrompt', () => ({
@@ -44,5 +44,25 @@ describe('an item image slot', () => {
 
     fireEvent.click(entries.find((b) => b.textContent === 'Lamp Rig')!);
     expect(onChange).toHaveBeenCalledWith('images', [{ mediaId: BASE.id }, { mediaId: 'rig' }]);
+  });
+});
+
+describe('an entity editor gallery slot', () => {
+  const keeper = { id: 'keeper', name: 'Keeper', images: [{ mediaId: BASE.id }, { mediaId: RIG.id }] } as unknown as Entity;
+  /** Each slot's box: the gallery renders every slot and hides all but the framed one. */
+  const slotOf = (id: string) => document.querySelector<HTMLElement>(`[data-media-entry-bar="${id}"]`)!.parentElement!;
+
+  it('offers Edit Layers under the name bar of a Layered Image slot only, and it opens that rig', () => {
+    render(
+      <EntityImageWidget value={keeper} onChange={vi.fn()} imageId="entity-image-keeper" linked>
+        <ImageGallery />
+      </EntityImageWidget>,
+    );
+    expect(slotOf(BASE.id).querySelector('[data-edit-layers]')).toBeNull();
+    const edit = slotOf(RIG.id).querySelector<HTMLElement>(`[data-edit-layers="${RIG.id}"]`)!;
+    expect(edit.previousElementSibling).toHaveAttribute('data-media-entry-bar', RIG.id);
+
+    fireEvent.click(edit);
+    expect(screen.getByRole('dialog')).toHaveTextContent('Lamp Rig');
   });
 });

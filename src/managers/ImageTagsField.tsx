@@ -37,6 +37,7 @@ import { useEditorMode } from '@/lib/editorMode';
 import type { GalleryImage, Placeholder, TraitRequirementRow } from '@/types';
 import { layeredTile, type GalleryMedia } from '@/lib/mediaGallery';
 import { MediaChooseButton, MediaEntryBar } from './MediaPicker';
+import { EditLayersButton } from './LayeredImageEditor';
 import { Tip } from '@/components/ui/tooltip';
 import { fieldFrame } from '@/lib/historyField';
 
@@ -75,6 +76,8 @@ interface ImageWidgetProps {
   onFramedChange?: (index: number) => void;
   /** False hides the strip's rule cog and the framed rule's summary, for a host that edits the rule itself. */
   ruleCog?: boolean;
+  /** False leaves a Layered Image slot's Edit Layers to a host that draws the framed slot's actions. */
+  editLayers?: boolean;
   /** A gallery on the world's Media List: its slots offer Choose, and a filled one names its entry. */
   media?: GalleryMedia;
   /** The composed picture behind each Layered Image tile, by the tile's data; the frame and strip draw it in the tile's place. */
@@ -82,7 +85,7 @@ interface ImageWidgetProps {
 }
 
 /** The inputs a host passes to control the gallery's frame and cog. */
-export type GalleryFrameProps = Pick<ImageWidgetProps, 'framed' | 'onFramedChange' | 'ruleCog'>;
+export type GalleryFrameProps = Pick<ImageWidgetProps, 'framed' | 'onFramedChange' | 'ruleCog' | 'editLayers'>;
 
 const WidgetContext = createContext<ImageWidgetProps | null>(null);
 
@@ -247,7 +250,7 @@ function withSlotData(list: readonly GalleryImage[], index: number, data: string
 export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   const {
     label, images, onImagesChange, slots = 1, imageId, cap, description, kind, fileSubject, tags, onTagsChange, tourAnchor, ruleHost,
-    framed, onFramedChange, ruleCog = true, media, pictures,
+    framed, onFramedChange, ruleCog = true, editLayers = true, media, pictures,
   } = useImageWidget();
   const ruleSourced = useHasRuleSource();
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
@@ -438,6 +441,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
             )}
           />
           {entry && <MediaEntryBar entry={entry} onUnlink={() => setSlot(i, '')} />}
+          {entry?.kind === 'layered' && editLayers && <EditLayersButton entryId={entry.id} size="sm" />}
         </div>
         );
       })}

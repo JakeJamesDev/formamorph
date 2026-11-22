@@ -1,6 +1,6 @@
 # 01: Layered Slot Panel
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -18,14 +18,24 @@ A gallery slot that links a Layered Image behaves like a flat image's slot where
 
 ## Acceptance criteria
 
-- [ ] In Group by Entity, selecting a layered slot shows the name field, size line, Download, Replace, Remove, Edit Layers and Visibility Rule.
-- [ ] The entity editor's gallery shows the same panel for a layered slot.
-- [ ] The slot's card and panel title is the Layered Image's name.
-- [ ] The size line gives the Layer count and a total that counts a part shared by two Layers once.
-- [ ] Edit Layers opens the full-screen editor on desktop and the Layer panel on mobile, on that Layered Image.
-- [ ] Replace offers Layered Images; Remove unlinks only this slot and the Layered Image stays in the Media List.
-- [ ] Download saves the flattened outside-play picture.
-- [ ] Each new guard fails with its bug put back.
-- [ ] Frames: `.scratch/frames/layered-slot-panel-desktop.png` (1440 wide) and `.scratch/frames/layered-slot-panel-mobile.png` (390 wide), dark theme, Roxanne-like rig selected in Group by Entity.
+- [x] In Group by Entity, selecting a layered slot shows the name field, size line, Download, Replace, Remove, Edit Layers and Visibility Rule. Replace per Q10: no Replace on any slot. Test: "shows the flat-slot panel titled by the rig…".
+- [x] The entity editor's gallery shows the same panel for a layered slot. Per Q11: name bar plus Edit Layers under it. Test: "offers Edit Layers under the name bar…".
+- [x] The slot's card and panel title is the Layered Image's name. Unit test "takes the rig's name…" and the panel test.
+- [x] The size line gives the Layer count and a total that counts a part shared by two Layers once. Unit and panel tests, shared part in both.
+- [x] Edit Layers opens the full-screen editor on desktop and the Layer panel on mobile, on that Layered Image. Tests "opens the full-screen editor on desktop…" and "opens the Layer panel in a dialog on mobile".
+- [x] Replace offers Layered Images; Remove unlinks only this slot and the Layered Image stays in the Media List. Remove: test "removes the rig from this slot only…". Choose after Remove lists Layered Images: the existing "lists the Layered Image in Choose…" test.
+- [x] Download saves the flattened outside-play picture. Test "downloads the flattened outside-play picture, lossless…" (flatten mocked: jsdom has no canvas).
+- [x] Each new guard fails with its bug put back. 9 mutations (dedupe, rig name, stacking, row button, host gate, gallery button, lossless, file name, mobile), each turned its test red.
+- [x] Frames: `.scratch/frames/layered-slot-panel-desktop.png` (1440 wide) and `.scratch/frames/layered-slot-panel-mobile.png` (390 wide), dark theme, Roxanne-like rig selected in Group by Entity. Sunmeadow's Roxanne Bare, Simple mode, via Playwright.
 
 For you: open Sunmeadow's Roxanne in Group by Entity and check that editing her Layered Image from her gallery feels as direct as editing a flat image.
+
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
+- For you: open Sunmeadow's Roxanne in Group by Entity and check that editing her Layered Image from her gallery feels as direct as editing a flat image.
+- Look at the Edit Layers dialog on a real phone: the mobile dialog is new (`.scratch/layered-images-media-tab-01/frames/layered-slot-panel-mobile.png` shows the slot panel only).
+- Location and item image fields now show Edit Layers too (same component); ticket 02 adds their guards and docs.
