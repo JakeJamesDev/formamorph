@@ -323,7 +323,7 @@ import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import { LocationBackdrop } from "../components/game/LocationBackdrop";
 import { WeatherBackground } from "../components/game/WeatherBackground";
 import { WeatherForeground } from "../components/game/WeatherForeground";
-import { DevWeatherBar } from "../components/dev/DevWeatherBar";
+import { DevWeatherBar, loadDevBackdrops } from "../components/dev/DevWeatherBar";
 import { weatherView } from "@/lib/weatherView";
 import { activeWeather, afterNightfall, allowedWeatherKinds, isDaylight, landedWeatherChange, offeredWeatherKinds, savedWeather, type WeatherChange } from "@/lib/weather";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -1597,6 +1597,17 @@ const GameViewer = ({
   }, [devRoute?.fixture, authoredLocations, stats, authoredEntities, loadGame, worldOverview.vrmStore, worldItems, authoredConnections, inPlay]);
   const imageAttachments = useImageAttachments();
   const mounted = useMountedRef();
+  // DEV: the weather bar's backdrop art, cycled past the location's own; null shows the location's.
+  const [devBackdrop, setDevBackdrop] = useState<{ name: string; data: string } | null>(null);
+  const nextDevBackdrop = useCallback(() => {
+    void loadDevBackdrops().then((all) => {
+      if (!mounted.current) return;
+      setDevBackdrop((cur) => {
+        const at = cur ? all.findIndex((b) => b.name === cur.name) : -1;
+        return at + 1 < all.length ? all[at + 1] : null;
+      });
+    });
+  }, [mounted]);
   // DEV dev-router: `attach=sample` stages attached images once the game has a committed turn, through the
   // real attach path. Tree-shaken in prod.
   const devAttachLoadedRef = useRef(false);
@@ -7156,22 +7167,24 @@ const GameViewer = ({
       data-game-raised-panels={!isMobile && !uiHidden ? "" : undefined}
       {...GAME_VIEW_PROPS}
     >
-      {locationBackground && (
+      {(locationBackground || devBackdrop) && (
         <LocationBackdrop
-          image={backdrop}
+          image={devBackdrop?.data ?? backdrop}
           overlay={backgroundOverlay}
           overlayHidden={uiHidden}
         />
       )}
-      <WeatherBackground kind={weatherBg.kind} mode={weatherBg.mode} plain={!locationBackground || !backdrop} />
+      <WeatherBackground kind={weatherBg.kind} mode={weatherBg.mode} plain={!devBackdrop && (!locationBackground || !backdrop)} />
       <WeatherForeground kind={weatherFg} play={weatherChange?.seq ?? 0} />
-      {/* DEV: `#dev?…&weatherBar` shows a bar that steps through every weather and flips day and night. */}
+      {/* DEV: `#dev?…&weatherBar` shows a bar that steps through every weather, flips day and night and swaps backdrop art. */}
       {import.meta.env.DEV && activeWeather(worldOverview) && window.location.hash.includes('weatherBar') && (
         <DevWeatherBar
           kind={weather}
           onKind={(kind) => fireWeatherRef.current(kind)}
           day={isDaylight(gameTime, calendar)}
           onToggleDay={() => setGameTime((t) => t + (calendar?.hoursPerDay ?? 24) / 2)}
+          backdrop={devBackdrop?.name ?? null}
+          onNextBackdrop={nextDevBackdrop}
         />
       )}
       {/* Above the location art, behind the panels and buttons. Windows desktop only. */}

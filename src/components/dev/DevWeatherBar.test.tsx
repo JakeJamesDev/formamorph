@@ -4,7 +4,7 @@ import { DevWeatherBar } from './DevWeatherBar';
 
 const mount = (kind: Parameters<typeof DevWeatherBar>[0]['kind']) => {
   const onKind = vi.fn();
-  render(<DevWeatherBar kind={kind} onKind={onKind} day onToggleDay={() => {}} />);
+  render(<DevWeatherBar kind={kind} onKind={onKind} day onToggleDay={() => {}} backdrop={null} onNextBackdrop={() => {}} />);
   return onKind;
 };
 

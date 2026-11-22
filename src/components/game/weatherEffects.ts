@@ -1,5 +1,6 @@
 import type { AllowedWeatherKind } from '@/types';
 import type { WeatherBackgroundMode } from '@/lib/weatherView';
+import { drawGlow, drawWedge, glowSprite, wedgeSprite } from './weatherSprites';
 
 /** The background modes that draw. */
 export type DrawMode = Exclude<WeatherBackgroundMode, 'none'>;
@@ -115,35 +116,69 @@ function flashEffect(w: number, h: number, rand: Rand, onFlash?: () => void): We
 }
 
 interface Shaft { angle: number; width: number; phase: number; period: number }
+/** The strength a shaft sprite is painted at; each frame scales it by the shaft's light. */
+const SHAFT_STRENGTH = 0.2;
+interface Mote { x: number; y: number; r: number; vx: number; vy: number; phase: number }
 
-/** Warm light shafts from above the top-left corner, each slowly brightening and fading. */
+/** Warm light shafts from above the top-left corner that sway and breathe, with dust glinting where a shaft lights it. */
 function sunEffect(calm: boolean, w: number, h: number, rand: Rand): WeatherEffect {
-  const shafts: Shaft[] = Array.from({ length: 5 }, (_, i) => ({
-    angle: 0.35 + i * 0.16 + rand() * 0.06, width: 0.05 + rand() * 0.05, phase: rand() * Math.PI * 2, period: (9 + rand() * 6) * (calm ? 3 : 1),
+  const pace = calm ? 0.35 : 1;
+  const shafts: Shaft[] = Array.from({ length: 6 }, (_, i) => ({
+    angle: 0.3 + i * 0.15 + rand() * 0.06, width: 0.04 + rand() * 0.07, phase: rand() * Math.PI * 2, period: 5 + rand() * 4,
+  }));
+  const motes: Mote[] = Array.from({ length: Math.round(Math.min(160, Math.max(40, (w * h) / 8000)) * (calm ? 0.4 : 1)) }, () => ({
+    x: rand() * w, y: rand() * h, r: 0.7 + rand() * 1.6, vx: 4 + rand() * 10, vy: -4 + rand() * 10, phase: rand() * Math.PI * 2,
   }));
   let time = 0;
   const reach = Math.hypot(w, h) * 1.2;
   const ox = -w * 0.08;
   const oy = -h * 0.12;
+  const live = shafts.map(() => ({ angle: 0, half: 0, light: 0 }));
+  const sunSprite = glowSprite('255, 215, 140');
+  // Three nested wedges, widest faintest, so a shaft has a soft edge instead of a hard stripe.
+  const shaftSprite = wedgeSprite('255, 220, 140', [[2.6, 0.3 * SHAFT_STRENGTH], [1.6, 0.45 * SHAFT_STRENGTH], [0.8, 0.6 * SHAFT_STRENGTH]], [[0, 1], [0.6, 0.4], [1, 0]]);
   return {
     frame(ctx, dt) {
-      time += dt;
-      for (const s of shafts) {
-        const pulse = 0.5 + 0.5 * Math.sin((time / s.period) * Math.PI * 2 + s.phase);
-        const sway = Math.sin(time / (s.period * 1.7) + s.phase) * 0.015;
-        const a0 = s.angle + sway - s.width / 2;
-        const a1 = s.angle + sway + s.width / 2;
-        const glow = ctx.createLinearGradient(ox, oy, ox + Math.cos(s.angle) * reach, oy + Math.sin(s.angle) * reach);
-        glow.addColorStop(0, `rgba(255, 214, 120, ${0.08 + 0.14 * pulse})`);
-        glow.addColorStop(1, 'rgba(255, 214, 120, 0)');
-        ctx.fillStyle = glow;
+      time += dt * pace;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const glow = 0.22 + 0.06 * Math.sin(time * 0.9);
+      if (sunSprite) drawGlow(ctx, sunSprite, ox, oy, Math.min(w, h) * 0.9, glow);
+      shafts.forEach((s, i) => {
+        const light = 0.5 + 0.5 * Math.sin((time / s.period) * Math.PI * 2 + s.phase);
+        const angle = s.angle + Math.sin(time / (s.period * 1.3) + s.phase) * 0.05;
+        const half = (s.width / 2) * (0.8 + 0.4 * light);
+        live[i] = { angle, half, light };
+        const strength = (0.04 + 0.16 * light) / SHAFT_STRENGTH;
+        if (shaftSprite) drawWedge(ctx, shaftSprite, ox, oy, angle, reach, half, strength);
+        else {
+          ctx.fillStyle = `rgba(255, 220, 140, ${0.1 * strength})`;
+          ctx.beginPath();
+          ctx.moveTo(ox, oy);
+          ctx.lineTo(ox + Math.cos(angle - half) * reach, oy + Math.sin(angle - half) * reach);
+          ctx.lineTo(ox + Math.cos(angle + half) * reach, oy + Math.sin(angle + half) * reach);
+          ctx.closePath();
+          ctx.fill();
+        }
+      });
+      for (const m of motes) {
+        m.x += m.vx * dt * pace;
+        m.y += (m.vy + Math.sin(time * 1.5 + m.phase) * 6) * dt * pace;
+        if (m.x > w + 4) m.x = -4;
+        if (m.y > h + 4) m.y = -4;
+        if (m.y < -4) m.y = h + 4;
+        // A mote shows only inside a shaft, brightest at its middle, and twinkles as it turns.
+        const at = Math.atan2(m.y - oy, m.x - ox);
+        let lit = 0;
+        for (const s of live) lit = Math.max(lit, (1 - Math.abs(at - s.angle) / Math.max(s.half * 1.6, 1e-3)) * (0.4 + 0.6 * s.light));
+        if (lit <= 0) continue;
+        const a = lit * (0.5 + 0.5 * Math.sin(time * 4 + m.phase * 3));
+        ctx.fillStyle = `rgba(255, 245, 215, ${0.85 * a})`;
         ctx.beginPath();
-        ctx.moveTo(ox, oy);
-        ctx.lineTo(ox + Math.cos(a0) * reach, oy + Math.sin(a0) * reach);
-        ctx.lineTo(ox + Math.cos(a1) * reach, oy + Math.sin(a1) * reach);
-        ctx.closePath();
+        ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.restore();
     },
   };
 }

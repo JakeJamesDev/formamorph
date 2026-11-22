@@ -2,6 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { ALLOWED_KINDS } from '@/lib/weather';
 import { createForegroundEffect, FOREGROUND_DURATION, stormFlash } from './weatherForegroundEffects';
 
+/** A repeatable stand-in for `Math.random`. */
+function seeded(seed: number) {
+  let s = seed;
+  return () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
+}
+
 /** A context that counts draws and ignores the rest. */
 function fakeContext() {
   let draws = 0;
@@ -26,6 +32,27 @@ describe('foreground effects', () => {
     const { ctx, draws } = fakeContext();
     for (let t = 0; t < effect.duration; t += 0.1) effect.frame(ctx, t);
     expect(draws()).toBeGreaterThan(0);
+  });
+
+  it('piles Snow into a drift that deepens as flakes land, then sinks as it melts', () => {
+    // The highest point any path reaches, as a `y` from the top: lower numbers mean a deeper drift.
+    const crest = (t: number) => {
+      let top = Infinity;
+      const ctx = new Proxy({}, {
+        get: (_t, name) => {
+          if (name === 'createLinearGradient' || name === 'createRadialGradient') return () => ({ addColorStop: () => {} });
+          if (name === 'lineTo') return (_x: number, y: number) => { top = Math.min(top, y); };
+          return () => {};
+        },
+        set: () => true,
+      }) as unknown as CanvasRenderingContext2D;
+      createForegroundEffect('snow', 1280, 800, seeded(7)).frame(ctx, t);
+      return 800 - top;
+    };
+    expect(crest(0.5)).toBe(-Infinity);
+    expect(crest(2)).toBeGreaterThan(10);
+    expect(crest(2.7)).toBeGreaterThan(crest(2));
+    expect(crest(3.8)).toBeLessThan(crest(2.7));
   });
 
   it('builds the Storm bolt on a canvas with no height', () => {
