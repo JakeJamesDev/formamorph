@@ -160,6 +160,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                   "capacity": 2,
                   "items": [
                     {
+                      "category": "itemInstance",
                       "equipped": true,
                       "hidden": false,
                       "id": "c-wand",
@@ -179,6 +180,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                 },
               ],
             },
+            "category": "entity",
             "description": "A smith.",
             "following": false,
             "held": false,
@@ -188,6 +190,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
             "instances": [],
             "items": [
               {
+                "category": "itemInstance",
                 "equipped": true,
                 "hidden": false,
                 "id": "c-wand",
@@ -236,6 +239,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
             "sound": null,
             "stats": {
               "Rage": {
+                "category": "stat",
                 "delta": {
                   "actual": {
                     "max": 0,
@@ -271,6 +275,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                 "min": 0,
                 "name": "Rage",
                 "previous": {
+                  "category": "stat",
                   "description": "Rage text",
                   "descriptor": "",
                   "hidden": false,
@@ -287,6 +292,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                 "value": 10,
               },
               "Stock": {
+                "category": "stat",
                 "delta": {
                   "actual": {
                     "max": 0,
@@ -322,6 +328,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                 "min": 0,
                 "name": "Stock",
                 "previous": {
+                  "category": "stat",
                   "description": "Stock text",
                   "descriptor": "",
                   "hidden": false,
@@ -343,6 +350,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
               "Grim": {
                 "acquired": false,
                 "available": true,
+                "category": "trait",
                 "enabled": false,
                 "group": "Mood",
                 "id": "t-grim",
@@ -353,6 +361,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
               "Loyal": {
                 "acquired": true,
                 "available": true,
+                "category": "trait",
                 "enabled": true,
                 "group": "",
                 "id": "t-loyal",
@@ -387,6 +396,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                     "capacity": 2,
                     "items": [
                       {
+                        "category": "itemInstance",
                         "equipped": true,
                         "hidden": false,
                         "id": "c-wand",
@@ -406,6 +416,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                   },
                 ],
               },
+              "category": "entity",
               "description": "A smith.",
               "following": false,
               "held": false,
@@ -415,6 +426,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
               "instances": [],
               "items": [
                 {
+                  "category": "itemInstance",
                   "equipped": true,
                   "hidden": false,
                   "id": "c-wand",
@@ -463,6 +475,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
               "sound": null,
               "stats": {
                 "Rage": {
+                  "category": "stat",
                   "delta": {
                     "actual": {
                       "max": 0,
@@ -498,6 +511,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                   "min": 0,
                   "name": "Rage",
                   "previous": {
+                    "category": "stat",
                     "description": "Rage text",
                     "descriptor": "",
                     "hidden": false,
@@ -514,6 +528,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                   "value": 10,
                 },
                 "Stock": {
+                  "category": "stat",
                   "delta": {
                     "actual": {
                       "max": 0,
@@ -549,6 +564,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                   "min": 0,
                   "name": "Stock",
                   "previous": {
+                    "category": "stat",
                     "description": "Stock text",
                     "descriptor": "",
                     "hidden": false,
@@ -570,6 +586,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                 "Grim": {
                   "acquired": false,
                   "available": true,
+                  "category": "trait",
                   "enabled": false,
                   "group": "Mood",
                   "id": "t-grim",
@@ -580,6 +597,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                 "Loyal": {
                   "acquired": true,
                   "available": true,
+                  "category": "trait",
                   "enabled": true,
                   "group": "",
                   "id": "t-loyal",
@@ -597,6 +615,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                 "M",
               ],
               "body": null,
+              "category": "entity",
               "description": "A sailor.",
               "following": false,
               "held": false,
@@ -606,6 +625,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
               "instances": [],
               "items": [
                 {
+                  "category": "itemInstance",
                   "equipped": false,
                   "hidden": false,
                   "id": "c-lamp-you",
@@ -647,6 +667,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                 "Keen": {
                   "acquired": true,
                   "available": true,
+                  "category": "trait",
                   "enabled": true,
                   "group": "",
                   "id": "t-keen",
@@ -657,6 +678,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                 "Scarred": {
                   "acquired": false,
                   "available": true,
+                  "category": "trait",
                   "enabled": false,
                   "group": "",
                   "id": "t-scar",
@@ -765,9 +787,11 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
           "error": null,
           "reply": {
             "lamp": {
+              "category": "item",
               "id": "lamp",
               "instances": [
                 {
+                  "category": "itemInstance",
                   "equipped": false,
                   "hidden": false,
                   "id": "c-lamp-you",
@@ -783,6 +807,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                   "uses": null,
                 },
                 {
+                  "category": "itemInstance",
                   "equipped": false,
                   "hidden": true,
                   "id": "c-lamp-dock",
@@ -814,9 +839,11 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
               "unidentifiedName": "",
             },
             "wand": {
+              "category": "item",
               "id": "wand",
               "instances": [
                 {
+                  "category": "itemInstance",
                   "equipped": true,
                   "hidden": false,
                   "id": "c-wand",
@@ -854,6 +881,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
           "reply": {
             "dock": {
               "ambience": null,
+              "category": "location",
               "children": [
                 "Old Mill",
               ],
@@ -870,6 +898,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
               "image": null,
               "items": [
                 {
+                  "category": "itemInstance",
                   "equipped": false,
                   "hidden": true,
                   "id": "c-lamp-dock",
@@ -895,6 +924,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                     "M",
                   ],
                   "body": null,
+                  "category": "entity",
                   "description": "A sailor.",
                   "following": false,
                   "held": false,
@@ -904,6 +934,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                   "instances": [],
                   "items": [
                     {
+                      "category": "itemInstance",
                       "equipped": false,
                       "hidden": false,
                       "id": "c-lamp-you",
@@ -945,6 +976,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                     "Keen": {
                       "acquired": true,
                       "available": true,
+                      "category": "trait",
                       "enabled": true,
                       "group": "",
                       "id": "t-keen",
@@ -955,6 +987,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                     "Scarred": {
                       "acquired": false,
                       "available": true,
+                      "category": "trait",
                       "enabled": false,
                       "group": "",
                       "id": "t-scar",
@@ -978,6 +1011,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                         "capacity": 2,
                         "items": [
                           {
+                            "category": "itemInstance",
                             "equipped": true,
                             "hidden": false,
                             "id": "c-wand",
@@ -997,6 +1031,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                       },
                     ],
                   },
+                  "category": "entity",
                   "description": "A smith.",
                   "following": false,
                   "held": false,
@@ -1006,6 +1041,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                   "instances": [],
                   "items": [
                     {
+                      "category": "itemInstance",
                       "equipped": true,
                       "hidden": false,
                       "id": "c-wand",
@@ -1054,6 +1090,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                   "sound": null,
                   "stats": {
                     "Rage": {
+                      "category": "stat",
                       "delta": {
                         "actual": {
                           "max": 0,
@@ -1089,6 +1126,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                       "min": 0,
                       "name": "Rage",
                       "previous": {
+                        "category": "stat",
                         "description": "Rage text",
                         "descriptor": "",
                         "hidden": false,
@@ -1105,6 +1143,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                       "value": 10,
                     },
                     "Stock": {
+                      "category": "stat",
                       "delta": {
                         "actual": {
                           "max": 0,
@@ -1140,6 +1179,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                       "min": 0,
                       "name": "Stock",
                       "previous": {
+                        "category": "stat",
                         "description": "Stock text",
                         "descriptor": "",
                         "hidden": false,
@@ -1161,6 +1201,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                     "Grim": {
                       "acquired": false,
                       "available": true,
+                      "category": "trait",
                       "enabled": false,
                       "group": "Mood",
                       "id": "t-grim",
@@ -1171,6 +1212,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                     "Loyal": {
                       "acquired": true,
                       "available": true,
+                      "category": "trait",
                       "enabled": true,
                       "group": "",
                       "id": "t-loyal",
@@ -1191,6 +1233,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
             ],
             "here": {
               "ambience": null,
+              "category": "location",
               "children": [
                 "Old Mill",
               ],
@@ -1207,6 +1250,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
               "image": null,
               "items": [
                 {
+                  "category": "itemInstance",
                   "equipped": false,
                   "hidden": true,
                   "id": "c-lamp-dock",
@@ -1232,6 +1276,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                     "M",
                   ],
                   "body": null,
+                  "category": "entity",
                   "description": "A sailor.",
                   "following": false,
                   "held": false,
@@ -1241,6 +1286,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                   "instances": [],
                   "items": [
                     {
+                      "category": "itemInstance",
                       "equipped": false,
                       "hidden": false,
                       "id": "c-lamp-you",
@@ -1282,6 +1328,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                     "Keen": {
                       "acquired": true,
                       "available": true,
+                      "category": "trait",
                       "enabled": true,
                       "group": "",
                       "id": "t-keen",
@@ -1292,6 +1339,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                     "Scarred": {
                       "acquired": false,
                       "available": true,
+                      "category": "trait",
                       "enabled": false,
                       "group": "",
                       "id": "t-scar",
@@ -1315,6 +1363,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                         "capacity": 2,
                         "items": [
                           {
+                            "category": "itemInstance",
                             "equipped": true,
                             "hidden": false,
                             "id": "c-wand",
@@ -1334,6 +1383,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                       },
                     ],
                   },
+                  "category": "entity",
                   "description": "A smith.",
                   "following": false,
                   "held": false,
@@ -1343,6 +1393,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                   "instances": [],
                   "items": [
                     {
+                      "category": "itemInstance",
                       "equipped": true,
                       "hidden": false,
                       "id": "c-wand",
@@ -1391,6 +1442,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                   "sound": null,
                   "stats": {
                     "Rage": {
+                      "category": "stat",
                       "delta": {
                         "actual": {
                           "max": 0,
@@ -1426,6 +1478,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                       "min": 0,
                       "name": "Rage",
                       "previous": {
+                        "category": "stat",
                         "description": "Rage text",
                         "descriptor": "",
                         "hidden": false,
@@ -1442,6 +1495,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                       "value": 10,
                     },
                     "Stock": {
+                      "category": "stat",
                       "delta": {
                         "actual": {
                           "max": 0,
@@ -1477,6 +1531,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                       "min": 0,
                       "name": "Stock",
                       "previous": {
+                        "category": "stat",
                         "description": "Stock text",
                         "descriptor": "",
                         "hidden": false,
@@ -1498,6 +1553,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                     "Grim": {
                       "acquired": false,
                       "available": true,
+                      "category": "trait",
                       "enabled": false,
                       "group": "Mood",
                       "id": "t-grim",
@@ -1508,6 +1564,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                     "Loyal": {
                       "acquired": true,
                       "available": true,
+                      "category": "trait",
                       "enabled": true,
                       "group": "",
                       "id": "t-loyal",
@@ -1525,6 +1582,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
             },
             "mill": {
               "ambience": null,
+              "category": "location",
               "children": [],
               "description": "A wheel.",
               "exits": [],
@@ -1539,6 +1597,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                   "action": "",
                   "aliases": [],
                   "body": null,
+                  "category": "entity",
                   "description": "",
                   "following": false,
                   "held": false,
@@ -1581,9 +1640,11 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
           "error": null,
           "reply": {
             "beasts": {
+              "category": "dictionary",
               "enabled": false,
               "entries": {
                 "Wolf": {
+                  "category": "dictionaryEntry",
                   "constant": false,
                   "enabled": true,
                   "id": "wolf",
@@ -1600,9 +1661,11 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
             },
             "crown": "A crown of iron.",
             "lore": {
+              "category": "dictionary",
               "enabled": true,
               "entries": {
                 "Iron Crown": {
+                  "category": "dictionaryEntry",
                   "constant": false,
                   "enabled": true,
                   "id": "crown",
@@ -1614,6 +1677,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                   "value": "A crown of iron.",
                 },
                 "Sealed": {
+                  "category": "dictionaryEntry",
                   "constant": true,
                   "enabled": false,
                   "id": "sealed",
@@ -1654,11 +1718,13 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
           "error": null,
           "reply": {
             "coin": {
+              "category": "currency",
               "id": "coin",
               "kind": "name",
               "name": "Coin",
             },
             "credits": {
+              "category": "currency",
               "id": "credits",
               "kind": "stat",
               "name": "Credits",
@@ -1701,6 +1767,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
                   "capacity": 2,
                   "items": [
                     {
+                      "category": "itemInstance",
                       "equipped": true,
                       "hidden": false,
                       "id": "c-wand",
@@ -1730,6 +1797,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
             "loyal": {
               "acquired": true,
               "available": true,
+              "category": "trait",
               "enabled": true,
               "group": "",
               "id": "t-loyal",
@@ -1936,6 +2004,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
             "action": "",
             "aliases": [],
             "body": null,
+            "category": "entity",
             "description": "",
             "following": false,
             "held": false,
@@ -1972,6 +2041,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
           "error": null,
           "reply": {
             "book": {
+              "category": "dictionary",
               "enabled": false,
               "entries": {},
               "id": "",
@@ -1979,6 +2049,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
               "placeholders": {},
             },
             "entry": {
+              "category": "dictionaryEntry",
               "constant": false,
               "enabled": false,
               "id": "",
@@ -1987,6 +2058,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
               "value": "",
             },
             "item": {
+              "category": "item",
               "id": "",
               "instances": [],
               "name": "",
@@ -2003,6 +2075,7 @@ describe('Lazy World Entries parity (eager-code pins)', () => {
             },
             "place": {
               "ambience": null,
+              "category": "location",
               "children": [],
               "description": "",
               "exits": [],

@@ -33,6 +33,8 @@ const memory = (id: string, text: string): SandboxMemory => ({
   id, turn: 1, timestamp: 1, day: 1, daypart: 'morning', text, name: '', custom: false, kept: true, inContext: true, pinned: false, forgotten: false,
 });
 
+const omitId = ({ id: _id, ...rest }: SandboxMemory) => rest;
+
 const lore: SandboxDictionary = {
   name: 'Lore', id: 'lore', entries: [
     { id: 'tides', name: 'Tides', keys: ['tide'], value: TEXT.tides, enabled: true, constant: false },
@@ -93,16 +95,16 @@ describe('heavy text in the sandbox', () => {
         Object.keys(dictionaries.Lore), Object.keys(dictionaries.Lore.entries), Object.keys(dictionaries.Lore.entries.Tides),
         JSON.stringify(memories[1]), JSON.stringify(dictionaries.Lore.entries.Tides), Object.values(locations.Hill).slice(0, 5),
       ];`)).toEqual([
-        ['id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'kind', 'action', 'held', 'knownIn', 'knownInPlaces', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items', 'body', 'image', 'sound', 'layers', 'instances', 'move', 'follow', 'unfollow', 'meet', 'diary'],
-        ['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits', 'items', 'image', 'ambience', 'layers'],
-        ['id', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits', 'items', 'image', 'ambience', 'layers', 'move'],
-        ['id', 'turn', 'timestamp', 'day', 'daypart', 'text', 'name', 'custom', 'kept', 'inContext', 'pinned', 'forgotten'],
-        ['id', 'name', 'enabled', 'entries', 'placeholders'],
+        ['id', 'category', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'kind', 'action', 'held', 'knownIn', 'knownInPlaces', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items', 'body', 'image', 'sound', 'layers', 'instances', 'move', 'follow', 'unfollow', 'meet', 'diary'],
+        ['id', 'category', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits', 'items', 'image', 'ambience', 'layers'],
+        ['id', 'category', 'name', 'description', 'summary', 'starting', 'present', 'parent', 'children', 'exits', 'items', 'image', 'ambience', 'layers', 'move'],
+        ['id', 'category', 'turn', 'timestamp', 'day', 'daypart', 'text', 'name', 'custom', 'kept', 'inContext', 'pinned', 'forgotten'],
+        ['id', 'category', 'name', 'enabled', 'entries', 'placeholders'],
         ['Tides', 'The Wreck'],
-        ['id', 'name', 'keys', 'value', 'enabled', 'constant'],
-        JSON.stringify({ ...memory('m2', TEXT.second) }),
-        JSON.stringify({ id: 'tides', name: 'Tides', keys: ['tide'], value: TEXT.tides, enabled: true, constant: false }),
-        ['hill', 'Hill', TEXT.hill, '', false],
+        ['id', 'category', 'name', 'keys', 'value', 'enabled', 'constant'],
+        JSON.stringify({ id: 'm2', category: 'memory', ...omitId(memory('m2', TEXT.second)) }),
+        JSON.stringify({ id: 'tides', category: 'dictionaryEntry', name: 'Tides', keys: ['tide'], value: TEXT.tides, enabled: true, constant: false }),
+        ['hill', 'location', 'Hill', TEXT.hill, ''],
       ]);
     });
 

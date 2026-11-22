@@ -38,6 +38,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Drawn Opening:**
     - **Openings can have names.** Type a name in the new box on an opening's card. A blank name shows the owner and place, such as "Aki · Opening 2".
     - **A saved game now remembers which opening started it.** Re-rolling page one onto another opening updates it. If the author later deletes that opening, the save reads it as none.
+  - **Scripts:**
+    - **Script entries now tell you what they are.** Every entity, location, item, stat, trait and other entry in a script reads a read-only `category`, such as "entity" or "itemInstance".
   - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
 - **⚙️ Backend**
   - **Character Mentions:**

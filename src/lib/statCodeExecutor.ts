@@ -221,7 +221,7 @@ export interface SandboxMemory {
 
 /** `row` with only the fields an entry reads, so nothing else a caller holds crosses into the VM; its text as a host slot. */
 const memoryData = (row: SandboxMemory, reads: HostReads) => ({
-  id: row.id, turn: row.turn, timestamp: row.timestamp, day: row.day, daypart: row.daypart, text: reads.text(row.text),
+  id: row.id, category: 'memory', turn: row.turn, timestamp: row.timestamp, day: row.day, daypart: row.daypart, text: reads.text(row.text),
   name: row.name ?? '', custom: row.custom, kept: row.kept, inContext: row.inContext, pinned: row.pinned, forgotten: row.forgotten,
 });
 
@@ -448,6 +448,7 @@ export interface ValueAndMax {
  *  What `previous` marshals down to. */
 export interface StatSnapshot {
   id: string;
+  category: 'stat';
   name: string;
   type: string;
   description: string;
@@ -485,6 +486,7 @@ const fieldwise = (read: (field: keyof StatNumbers) => number): StatNumbers =>
 // Only whitelisted plain data crosses into the VM (never `code`/`descriptors`).
 const marshalSnapshot = (stat: Stat): StatSnapshot => ({
   id: String(stat.id),
+  category: 'stat',
   name: stat.name || '',
   type: stat.type || 'number',
   description: stat.description || '',
@@ -537,8 +539,11 @@ function keyedStatEntries(entries: readonly StatEntry[]): StatEntry[] {
   return entries.filter((entry) => owner.get(entry.name) === entry);
 }
 
-/** A `stats` entry for a name no stat has: every field blank, so off and shown. */
-const blankStatEntry = (template: StatEntry): unknown => blankOf(template);
+/** A `stats` entry for a name no stat has: every field blank, so off and shown. Its `category` still reads "stat". */
+const blankStatEntry = (template: StatEntry): unknown => {
+  const blank = blankOf(template) as StatEntry;
+  return { ...blank, category: 'stat', previous: { ...blank.previous, category: 'stat' } };
+};
 
 /** One entry of the sandbox's `placeholders` map. `roll` runs on the host; the rest rides in as data.
  *  A list `value` marks an Object, and is what `pin` takes on that entry. */
@@ -1065,7 +1070,7 @@ const placeholdersPrelude = ({ top, nodes, indexOf, roots }: FlatPlaceholderMap,
 };
 
 /** The fields on a trait entry that a write never reaches. A write to one is recorded and dropped. */
-const TRAIT_READ_ONLY_FIELDS = ['id', 'name', 'mode', 'available', 'group', 'playerToggle'] as const;
+const TRAIT_READ_ONLY_FIELDS = ['id', 'category', 'name', 'mode', 'available', 'group', 'playerToggle'] as const;
 
 /** A trait map, `traits` or an entity's; only `enabled` takes a write. Rows are
  *  `[name, enabled, assigned, acquiredWritten, readOnlyFields]`. */
@@ -1080,21 +1085,21 @@ const TRAIT_MAP: TrackedMapKind = {
       ${B}.define(entry, field, { enumerable: true, get: () => value, set: () => (${ADD_ONCE})(state.readOnly, field) });
     });
   }`,
-  blank: `{ enabled: false, acquired: false, id: '', name: '', mode: '', available: false, group: '', playerToggle: false }`,
+  blank: `{ enabled: false, acquired: false, id: '', category: 'trait', name: '', mode: '', available: false, group: '', playerToggle: false }`,
   row: `(name, state) => state.assigned || state.acquiredWritten || state.readOnly.length ? [name, state.enabled, state.assigned, state.acquiredWritten, state.readOnly] : null`,
   replaced: `(name, entry) => [name, typeof entry === 'object' && entry !== null ? entry.enabled : entry, true, false, []]`,
 };
 
 const traitData = (entries: readonly SandboxTrait[]) =>
   Object.fromEntries(entries.map(({ name, enabled, acquired, id = '', mode = 'optional', available = true, group = '', playerToggle = false }) =>
-    [name, { enabled, acquired, id, name, mode, available, group, playerToggle }]));
+    [name, { enabled, acquired, id, category: 'trait', name, mode, available, group, playerToggle }]));
 
 /** An entity entry's verbs, in the order its `moves` holds them. */
 const ENTITY_VERBS = ['move', 'follow', 'unfollow', 'meet', 'diary'] as const;
 
 /** The fields on an entity entry that a write never reaches. */
 const ENTITY_READ_ONLY_FIELDS = [
-  'id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'kind', 'action', 'held', 'knownIn', 'knownInPlaces', 'description', 'summary', 'aliases', 'traits', 'placeholders',
+  'id', 'category', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'kind', 'action', 'held', 'knownIn', 'knownInPlaces', 'description', 'summary', 'aliases', 'traits', 'placeholders',
   'stats', 'items', 'body', ...MEDIA_NAME_MEMBERS.entity, 'layers', 'instances', 'move', 'follow', 'unfollow', 'meet', 'diary',
 ] as const;
 
@@ -1324,7 +1329,7 @@ const entitiesPrelude = (
     `  const write = (kind) => (target) => { ${ENTITY_WRITE}(who, kind, target); if (kind === 'meet') meets.add(who.id || who.name); };`,
     `  const moves = ${B}.create(null);`,
     `  ${B}.each(${JSON.stringify(ENTITY_VERBS)}, (verb) => { moves[verb] = write(verb); });`,
-    `  const blank = { id: '', type: '', pronouns: '', inScene: false, met: false, location: '', following: false, waiting: false, kind: '', action: '', held: false, knownIn: '', knownInPlaces: [], description: -1, summary: -1 };`,
+    `  const blank = { id: '', category: 'entity', type: '', pronouns: '', inScene: false, met: false, location: '', following: false, waiting: false, kind: '', action: '', held: false, knownIn: '', knownInPlaces: [], description: -1, summary: -1 };`,
     `  const aliases = freeze(${B}.map(data.aliases || [], (alias) => alias));`,
     `  const knownInPlaces = freeze(${B}.map(data.knownInPlaces || [], (name) => name));`,
     `  const itemsKey = data.played ? 'you' : 'entity:' + who.id;`,
@@ -1399,13 +1404,13 @@ const ownerIndex = (indexOf: FlatPlaceholderMap['indexOf'], node: SandboxPlaceho
   (node ? indexOf.get(node) ?? -1 : -1);
 
 /** The fields on a dictionary entry. Only `DICTIONARY_WRITABLE_FIELD` takes a write. */
-const DICTIONARY_KEYS = ['id', 'name', 'enabled', 'entries', 'placeholders'] as const;
+const DICTIONARY_KEYS = ['id', 'category', 'name', 'enabled', 'entries', 'placeholders'] as const;
 
 /** The book field a write sets, through the lore overlay. */
 export const DICTIONARY_WRITABLE_FIELD = 'enabled' satisfies keyof SandboxDictionary;
 
 /** The fields on an entry of a book's `entries`. Only `DICTIONARY_ENTRY_WRITABLE_FIELDS` take a write. */
-const DICTIONARY_ENTRY_KEYS = ['id', 'name', 'keys', 'value', 'enabled', 'constant'] as const;
+const DICTIONARY_ENTRY_KEYS = ['id', 'category', 'name', 'keys', 'value', 'enabled', 'constant'] as const;
 
 /** The entry fields a write sets, through the lore overlay. */
 export const DICTIONARY_ENTRY_WRITABLE_FIELDS = ['enabled', 'constant'] as const satisfies readonly (keyof SandboxDictionaryEntry)[];
@@ -1437,14 +1442,14 @@ const dictionariesPrelude = (
     `  let built = null;`,
     `  const entries = () => built || (built = entryMap(${JSON.stringify(DICTIONARY_ENTRY_KEYS)},`,
     `    data.entries < 0 ? [] : ${HOST_READ}(data.entries), blankEntry, (name, entry, stray) => {`,
-    `      const values = lazy({ id: entry.id, name: stray ? '' : name, keys: freeze(${B}.map(entry.keys, (k) => k)), value: entry.value,`,
+    `      const values = lazy({ id: entry.id, category: 'dictionaryEntry', name: stray ? '' : name, keys: freeze(${B}.map(entry.keys, (k) => k)), value: entry.value,`,
     `        enabled: entry.enabled, constant: entry.constant }, ['value'], '', ${NO_NOTE});`,
     `      const assigned = [];`,
     `      const setters = {};`,
     `      ${B}.each(${JSON.stringify(DICTIONARY_ENTRY_WRITABLE_FIELDS)}, (field) => { setters[field] = (next) => { values[field] = next; assigned.push([field, next]); }; });`,
     `      return [values, () => assigned, [], setters];`,
     `    }));`,
-    `  const values = { id: data.id, name: unknown ? '' : key, enabled: data.on, placeholders: ${OWNER_VIEW}(data.ph, ['dictionary', key], unknown, reserved.scan) };`,
+    `  const values = { id: data.id, category: 'dictionary', name: unknown ? '' : key, enabled: data.on, placeholders: ${OWNER_VIEW}(data.ph, ['dictionary', key], unknown, reserved.scan) };`,
     `  define(values, 'entries', { get: () => entries()[0] });`,
     `  const assigned = [];`,
     `  const setters = { ${DICTIONARY_WRITABLE_FIELD}: (next) => { values.${DICTIONARY_WRITABLE_FIELD} = next; assigned.push(next); } };`,
@@ -1501,7 +1506,7 @@ export interface SandboxItemEvent {
 }
 
 /** The fields on an Item Instance entry; none takes a write. */
-const ITEM_INSTANCE_KEYS = ['id', 'item', 'owner', 'location', 'quantity', 'equipped', 'slot', 'hidden', 'unidentified', 'uses', 'state'] as const;
+const ITEM_INSTANCE_KEYS = ['id', 'category', 'item', 'owner', 'location', 'quantity', 'equipped', 'slot', 'hidden', 'unidentified', 'uses', 'state'] as const;
 
 // The prelude's reader of the Item Instances at one owner or location, which entity and location entries call.
 const ITEMS_AT = '__formamorphItemsAt';
@@ -1509,7 +1514,7 @@ const ITEMS_AT = '__formamorphItemsAt';
 const GONE_INSTANCE = '__formamorphGoneInstance';
 
 /** The fields of an `items` entry, in the order its keys list them; `give` is left out of the keys. */
-const ITEM_FIELDS = ['id', 'name', 'unidentifiedName', 'unidentifiedDescription', 'placeholders', 'instances', 'give'] as const;
+const ITEM_FIELDS = ['id', 'category', 'name', 'unidentifiedName', 'unidentifiedDescription', 'placeholders', 'instances', 'give'] as const;
 const ITEM_VERBS = ['give'] as const;
 
 /** An item under the code name `items` reads it by. */
@@ -1577,7 +1582,7 @@ const itemsPrelude = (
   const ownerName = (where: ItemInstanceWhere) =>
     (where.kind === 'you' ? personaName : where.kind === 'entity' ? nameById.get(where.id) ?? '' : '');
   const instanceData = (item: SandboxItem, instance: SandboxItemInstance) => ({
-    id: instance.id, item: item.name, owner: ownerName(instance.where), location: instance.where.kind === 'location' ? placeName.get(instance.where.id) ?? '' : '',
+    id: instance.id, category: 'itemInstance', item: item.name, owner: ownerName(instance.where), location: instance.where.kind === 'location' ? placeName.get(instance.where.id) ?? '' : '',
     quantity: instance.quantity, equipped: instance.equipped, slot: instance.slot, occupies: instance.occupies, allowed: instance.allowed, hidden: instance.hidden, unidentified: instance.unidentified === true, uses: instance.uses ?? null, state: instance.state ?? null,
     at: whereKey(instance.where),
   });
@@ -1691,7 +1696,7 @@ const itemsPrelude = (
     `    const path = unknown ? (/^[A-Za-z_$][\\w$]*$/.test(key) ? 'items.' + key : 'items[' + JSON.stringify(key) + ']') + '.' : data.path;`,
     `    const rows = ${B}.map(data.instances, (instance, at) => [instanceEntry(instance, path + 'instances[' + at + '].'), instance]);`,
     `    if (!unknown) loaded[index[key]] = rows;`,
-    `    const out = lock({ id: data.id, name: unknown ? '' : key, unidentifiedName: data.unidentifiedName || '', unidentifiedDescription: data.unidentifiedDescription || '', placeholders: view(data.ph, ['item', key], unknown, reserved.scan), instances: ${B}.freeze(${B}.map(rows, (row) => row[0])) }, ${JSON.stringify(ITEM_FIELDS.filter((field) => !(ITEM_VERBS as readonly string[]).includes(field)))}, path, note);`,
+    `    const out = lock({ id: data.id, category: 'item', name: unknown ? '' : key, unidentifiedName: data.unidentifiedName || '', unidentifiedDescription: data.unidentifiedDescription || '', placeholders: view(data.ph, ['item', key], unknown, reserved.scan), instances: ${B}.freeze(${B}.map(rows, (row) => row[0])) }, ${JSON.stringify(ITEM_FIELDS.filter((field) => !(ITEM_VERBS as readonly string[]).includes(field)))}, path, note);`,
     // An unknown name reads as a blank entry, whose give stops the script.
     `    verb(out, path, 'give', (to, quantity) => {`,
     `      if (unknown) fail('The world has no item named "' + key + '"');`,
@@ -1779,7 +1784,7 @@ export interface SandboxMoney {
 const MONEY_HOOK = '__formamorphMoney';
 
 /** The fields of a `currencies` entry, then its verbs, which its keys leave out. */
-const CURRENCY_FIELDS = ['id', 'name', 'kind'] as const;
+const CURRENCY_FIELDS = ['id', 'category', 'name', 'kind'] as const;
 const CURRENCY_VERBS = ['balance', 'pay'] as const;
 
 /** The `currencies` prelude: `balance` and a run's `pay` ask the host, and a read-only run's `pay` stops it. An unknown name is a blank entry that stops the script. */
@@ -1826,7 +1831,7 @@ const currenciesPrelude = (
     `  const noRows = () => [];`,
     `  const build = (key, data, unknown) => {`,
     `    const path = unknown ? (/^[A-Za-z_$][\\w$]*$/.test(key) ? 'currencies.' + key : 'currencies[' + JSON.stringify(key) + ']') + '.' : data.path;`,
-    `    const out = lock({ id: data.id, name: unknown ? '' : key, kind: data.kind }, ${JSON.stringify(CURRENCY_FIELDS)}, path, note);`,
+    `    const out = lock({ id: data.id, category: 'currency', name: unknown ? '' : key, kind: data.kind }, ${JSON.stringify(CURRENCY_FIELDS)}, path, note);`,
     `    verb(out, path, 'balance', (owner) => {`,
     `      if (unknown) fail('The world has no Currency named "' + key + '"');`,
     `      return ask('balance', data.id, partyOf(owner, path + 'balance', false));`,
@@ -2689,7 +2694,7 @@ const worldPrelude = (
   // An unknown name reads as a blank entry whose verbs are ignored and listed (Q12).
   `  const blank = (key) => {`,
   `    const path = 'memories[' + JSON.stringify(key) + '].';`,
-  `    const entry = lockEntry({ id: '', turn: 0, timestamp: 0, day: 0, daypart: '', text: '', name: '', custom: false, kept: false, inContext: false, pinned: false, forgotten: false }, [], path, note);`,
+  `    const entry = lockEntry({ id: '', category: 'memory', turn: 0, timestamp: 0, day: 0, daypart: '', text: '', name: '', custom: false, kept: false, inContext: false, pinned: false, forgotten: false }, [], path, note);`,
   `    const ignored = () => { if (!writes.unknownMemories.includes(key)) writes.unknownMemories.push(key); };`,
   `    for (const kind of ['pin', 'forget', 'edit', 'remove']) verb(entry, path, kind, ignored);`,
   `    return Object.freeze(entry);`,
@@ -2778,7 +2783,7 @@ const LINK_FIELDS = ['parent', 'children', 'exits'] as const satisfies readonly 
 const NO_LINKS: SandboxLocationLinks = { parent: '', children: [], exits: [] };
 
 /** The fields of a `locations` entry, in the order its keys list them. */
-const LOCATION_FIELDS = ['id', 'name', 'description', 'summary', 'starting', 'present', ...LINK_FIELDS, 'items', ...MEDIA_NAME_MEMBERS.location, 'layers'] as const;
+const LOCATION_FIELDS = ['id', 'category', 'name', 'description', 'summary', 'starting', 'present', ...LINK_FIELDS, 'items', ...MEDIA_NAME_MEMBERS.location, 'layers'] as const;
 
 /** The `locations` and `location` prelude, after the entities prelude: `present` holds its entries. The later of
  *  two locations sharing a name wins the key. Each `locations` entry loads on its first read (Q1); `location` is
@@ -2843,7 +2848,7 @@ const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing
     `    const present = [];`,
     `    if (data.persona) ${B}.push(present, persona);`,
     `    ${B}.each(data.keys, (key) => { ${B}.push(present, entities[key]); });`,
-    `    const out = { id: data.id, name: data.name, description: data.description, summary: data.summary, starting: data.starting, present: ${B}.freeze(present) };`,
+    `    const out = { id: data.id, category: 'location', name: data.name, description: data.description, summary: data.summary, starting: data.starting, present: ${B}.freeze(present) };`,
     `    const read = linked(lockEntry(out, ['description', 'summary'], data.prefix, note), data.links, data.prefix);`,
     `    ${B}.define(read, 'items', { enumerable: true, get: () => ${ITEMS_AT}('location:' + data.id, data.holding), set: () => note(data.prefix + 'items') });`,
     `    const mediaKey = 'l:' + data.id;`,

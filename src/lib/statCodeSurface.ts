@@ -59,6 +59,7 @@ const LOCATION_AMBIENCE_INFO = 'Name of the sound the location plays as ambience
 /** The members of one entry in `locations`. Only `image` and `ambience` take a write. */
 export const LOCATION_ENTRY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'Unique id of the location' },
+  { name: 'category', detail: 'string', info: 'Always "location", the kind of entry this is' },
   { name: 'name', detail: 'string', info: 'Code name of the location' },
   { name: 'description', detail: 'string', info: 'Full AI description of the location, its placeholders filled in' },
   { name: 'summary', detail: 'string', info: 'Short AI summary of the location, its placeholders filled in' },
@@ -84,6 +85,7 @@ export const LOCATION_EXIT_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
 /** The members of `location`: the fields of a `locations` entry for the turn's location, and the move. */
 export const LOCATION_MEMBERS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'Unique id of the location the turn is at, or empty in a world with no location' },
+  { name: 'category', detail: 'string', info: 'Always "location", the kind of entry this is' },
   { name: 'name', detail: 'string', info: 'Code name of the location the turn is at, or empty in a world with no location' },
   { name: 'description', detail: 'string', info: 'Full AI description of the location the turn is at, its placeholders filled in' },
   { name: 'summary', detail: 'string', info: 'Short AI summary of the location the turn is at, its placeholders filled in' },
@@ -114,6 +116,7 @@ export const MEMORY_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
 /** The members of one entry in `memories`: its read-only fields, then the Memory Manager's verbs. */
 export const MEMORY_ENTRY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'Unique id of the memory' },
+  { name: 'category', detail: 'string', info: 'Always "memory", the kind of entry this is' },
   { name: 'turn', detail: 'number', info: 'Turn number of the memory, from 1, or the turn before it was added for a Custom memory' },
   { name: 'timestamp', detail: 'number', info: 'Total story hours at the end of that turn, on the scale of clock.elapsedHours' },
   { name: 'day', detail: 'number', info: 'Day number at the end of that turn' },
@@ -191,6 +194,7 @@ export const DELTA_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
 /** The fields on a stat object inside `stats`, `self` included. Anything else is `undefined`. */
 export const STAT_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'Unique id of the stat' },
+  { name: 'category', detail: 'string', info: 'Always "stat", the kind of entry this is' },
   { name: 'name', detail: 'string', info: 'Code name: the authored name, with each placeholder chip replaced by that placeholder’s name' },
   { name: 'type', detail: 'string', info: 'number, percentage or another type the stat was given' },
   { name: 'description', detail: 'string', info: 'Description text of the stat' },
@@ -210,6 +214,7 @@ export { DICTIONARY_ENTRY_WRITABLE_FIELDS, DICTIONARY_WRITABLE_FIELD, PLACEHOLDE
 /** The fields on a stat's `previous`: the whole stat at the start of this turn. Read-only. */
 export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'Unique id at the start of this turn' },
+  { name: 'category', detail: 'string', info: 'Always "stat", the kind of entry this is' },
   { name: 'name', detail: 'string', info: 'Code name at the start of this turn' },
   { name: 'type', detail: 'string', info: 'number, percentage or another type the stat was given, at the start of this turn' },
   { name: 'description', detail: 'string', info: 'Description text at the start of this turn' },
@@ -249,6 +254,7 @@ export const TRAIT_ENTRY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'enabled', detail: 'boolean', info: 'True when the trait is held and on. Assign a boolean to switch the trait on or off.' },
   { name: 'acquired', detail: 'boolean', info: 'True when the trait is held, on or off' },
   { name: 'id', detail: 'string', info: 'Unique id of the trait' },
+  { name: 'category', detail: 'string', info: 'Always "trait", the kind of entry this is' },
   { name: 'name', detail: 'string', info: 'Code name of the trait' },
   { name: 'mode', detail: 'string', info: '"optional", "alwaysOn" or "hidden"' },
   { name: 'available', detail: 'boolean', info: 'True when the trait’s requirements hold for its owner now' },
@@ -277,6 +283,7 @@ export const GENERIC_INSTANCE_FIELDS: readonly SurfaceEntry[] = withAccess([
  *  stats entry takes writes to its value, min, max, regen and hidden while its identity fields stay read-only. */
 export const PERSONA_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'Unique id of the persona entity, or empty when the player plays no entity' },
+  { name: 'category', detail: 'string', info: 'Always "entity", the kind of entry this is' },
   { name: 'name', detail: 'string', info: 'Code name of the persona, or empty when the player plays no entity' },
   { name: 'type', detail: 'string', info: 'Type text of the persona, or empty when it has none' },
   { name: 'pronouns', detail: 'string', info: 'Pronouns text of the persona, or empty when it has none' },
@@ -309,6 +316,7 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = withAccess([
  *  stay read-only. */
 export const ENTITY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'Unique id of the entity' },
+  { name: 'category', detail: 'string', info: 'Always "entity", the kind of entry this is' },
   { name: 'name', detail: 'string', info: 'Code name of the entity' },
   { name: 'type', detail: 'string', info: 'Type text of the entity, or empty when it has none' },
   { name: 'pronouns', detail: 'string', info: 'Pronouns text of the entity, or empty when it has none' },
@@ -345,6 +353,7 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = withAccess([
  *  takes a write; a verb's change applies when the script ends. */
 export const ITEM_INSTANCE_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'Unique id of the Item Instance' },
+  { name: 'category', detail: 'string', info: 'Always "itemInstance", the kind of entry this is' },
   { name: 'item', detail: 'string', info: 'Code name of its item, a key of items' },
   { name: 'owner', detail: 'string', info: 'Code name of the entity that owns it, the persona included, or empty while it lies at a location' },
   { name: 'location', detail: 'string', info: 'Code name of the location it lies at, or empty while an entity owns it' },
@@ -370,17 +379,19 @@ export const ITEM_INSTANCE_FIELDS: readonly SurfaceEntry[] = withAccess([
 /** The members of one entry in `items`, and of an item script's `self`. */
 export const ITEM_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'Unique id of the item' },
+  { name: 'category', detail: 'string', info: 'Always "item", the kind of entry this is' },
   { name: 'name', detail: 'string', info: 'Code name of the item' },
   { name: 'unidentifiedName', detail: 'string', info: 'Name the player sees on an unidentified Item Instance, or empty when blank' },
   { name: 'unidentifiedDescription', detail: 'string', info: 'Description the player sees on an unidentified Item Instance, or empty when blank' },
   { name: 'placeholders', detail: 'object', info: 'The item’s own placeholders by name. Use items.Lamp.placeholders["Two Words"] for a name with a space.' },
-  { name: 'instances', detail: 'array', info: 'Every Item Instance of the item, each with id, item, owner, location, quantity, equipped, slot, hidden, unidentified, uses and state' },
+  { name: 'instances', detail: 'array', info: 'Every Item Instance of the item, each with the fields of an Item Instance entry' },
   { name: 'give', detail: '(to, quantity?) => void', info: 'Gives a new Item Instance to an entity, the persona or a location, by entry or by name' },
 ], ['placeholders']);
 
 /** The members of one entry in `currencies`. The fields are read-only; a settled payment lands when the script ends. */
 export const CURRENCY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'Unique id of the Currency' },
+  { name: 'category', detail: 'string', info: 'Always "currency", the kind of entry this is' },
   { name: 'name', detail: 'string', info: 'Code name of the Currency' },
   { name: 'kind', detail: 'string', info: '"stat", "items" or "name": what backs the Currency' },
   { name: 'balance', detail: '(owner) => number | null', info: 'What an entity or the persona has, by entry or by name, or null when it has no balance. Counts every write so far, this script’s own included.', keptOnReadOnly: true },
@@ -390,6 +401,7 @@ export const CURRENCY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
 /** The members of one entry in a dictionary's `entries`. Only `enabled` and `constant` take a write. */
 export const DICTIONARY_ENTRY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'Unique id of the entry' },
+  { name: 'category', detail: 'string', info: 'Always "dictionaryEntry", the kind of entry this is' },
   { name: 'name', detail: 'string', info: 'Code name of the entry' },
   { name: 'keys', detail: 'string[]', info: 'Trigger Keywords of the entry, where a match in a message activates it' },
   { name: 'value', detail: 'string', info: 'Value of the entry: the text the AI gets when the entry activates' },
@@ -400,9 +412,10 @@ export const DICTIONARY_ENTRY_FIELDS: readonly SurfaceEntry[] = withAccess([
 /** The members of one entry in `dictionaries`. Only `enabled` takes a write. */
 export const DICTIONARY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'Unique id of the dictionary' },
+  { name: 'category', detail: 'string', info: 'Always "dictionary", the kind of entry this is' },
   { name: 'name', detail: 'string', info: 'Code name of the dictionary' },
   { name: 'enabled', detail: 'boolean', info: 'True when the dictionary is on, so the AI can get its entries. A dictionary the player turned off is an unknown name.' },
-  { name: 'entries', detail: 'object', info: 'The dictionary’s entries by name, each with id, name, keys, value, enabled and constant. It lists disabled entries too. Use dictionaries.Lore.entries["Two Words"] for a name with a space.' },
+  { name: 'entries', detail: 'object', info: 'The dictionary’s entries by name, each with id, category, name, keys, value, enabled and constant. It lists disabled entries too. Use dictionaries.Lore.entries["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The dictionary’s own placeholders by name. Use dictionaries.Lore.placeholders["Two Words"] for a name with a space.' },
 ], [DICTIONARY_WRITABLE_FIELD], 'writable', [...OWNER_MAPS, 'entries']);
 

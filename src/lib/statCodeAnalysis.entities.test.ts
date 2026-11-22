@@ -71,6 +71,8 @@ describe('entities in stat code', () => {
     expect(messages('entities.Mira = null;', { entities })).toEqual(['entities.Mira is read-only.']);
     expect(messages('entities.Mira.traits = {};', { entities })).toEqual(['entities.Mira.traits is read-only.']);
     expect(messages('entities.Mira.name = "x";', { entities })).toEqual(['entities.Mira.name is read-only.']);
+    expect(messages('entities.Mira.category = "item";', { entities })).toEqual(['entities.Mira.category is read-only.']);
+    expect(messages('self.category = "item";', { entities })).toEqual(['self.category can’t be written. Only self.value, self.min, self.max, self.regen, self.hidden can.']);
   });
 
   it('passes writes to the members the surface lists as writable, on an entity, the persona and owner', () => {

@@ -256,9 +256,9 @@ describe('executeStatCode currencies', () => {
     expect(res.ownerStatWrites).toBeUndefined();
   });
 
-  it('exposes no more than id, name and kind as fields, and no host hook', async () => {
+  it('exposes no more than id, category, name and kind as fields, and no host hook', async () => {
     const res = await run(`
-      if (Object.keys(currencies.Coin).join() !== 'id,name,kind') throw new Error(Object.keys(currencies.Coin).join());
+      if (Object.keys(currencies.Coin).join() !== 'id,category,name,kind') throw new Error(Object.keys(currencies.Coin).join());
       if (typeof globalThis.__formamorphMoney !== 'undefined') throw new Error('hook left behind');
       currencies.Coin.id = 'x';
     `);

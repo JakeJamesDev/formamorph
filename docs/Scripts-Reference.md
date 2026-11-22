@@ -10,23 +10,23 @@ A script can use only these objects. In the table, a word in angle brackets is a
 
 | Object | Members | Read | Write |
 | --- | --- | --- | --- |
-| `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `self.value` | `self.value = <n>` |
-| `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
-| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `image`, `sound`, `layers`, `instances`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
+| `self` | `id`, `category`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `self.value` | `self.value = <n>` |
+| `stats` | `id`, `category`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
+| `owner` | `id`, `category`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `image`, `sound`, `layers`, `instances`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `hour`, `minute`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
 | `turn` | `action`, `number`, `narration`, `choices` | `turn.number` | `turn.choices = [<text>]`, After the AI only |
-| `locations` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items`, `image`, `ambience`, `layers` | `locations.<Location>.present` | `locations.<Location>.image = "<Image>"` |
-| `location` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items`, `image`, `ambience`, `layers`, `move()` | `location.name` | `location.move("<Location>")` |
+| `locations` | `id`, `category`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items`, `image`, `ambience`, `layers` | `locations.<Location>.present` | `locations.<Location>.image = "<Image>"` |
+| `location` | `id`, `category`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items`, `image`, `ambience`, `layers`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
-| `memories` | `id`, `turn`, `timestamp`, `day`, `daypart`, `text`, `name`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `append()`, `pin()`, `forget()`, `edit()`, `remove()` | `memories.length` | `memories.pin(<text>)` |
+| `memories` | `id`, `category`, `turn`, `timestamp`, `day`, `daypart`, `text`, `name`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `append()`, `pin()`, `forget()`, `edit()`, `remove()` | `memories.length` | `memories.pin(<text>)` |
 | `notes` | — | `notes` | Read-only |
-| `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
-| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `image`, `sound`, `layers`, `instances` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
-| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `image`, `sound`, `layers`, `instances`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
+| `traits` | `enabled`, `acquired`, `id`, `category`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
+| `persona` | `id`, `category`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `image`, `sound`, `layers`, `instances` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
+| `entities` | `id`, `category`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `image`, `sound`, `layers`, `instances`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
 | `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
-| `dictionaries` | `id`, `name`, `enabled`, `entries`, `placeholders` | `dictionaries.<Dictionary>.enabled` | `dictionaries.<Dictionary>.enabled = true` |
-| `items` | `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, `placeholders`, `instances`, `give()` | `items.<Item>.instances.length` | `items.<Item>.give(persona)` |
-| `currencies` | `id`, `name`, `kind`, `balance()`, `pay()` | `currencies.<Currency>.balance(persona)` | `currencies.<Currency>.pay(persona, null, <n>)` |
+| `dictionaries` | `id`, `category`, `name`, `enabled`, `entries`, `placeholders` | `dictionaries.<Dictionary>.enabled` | `dictionaries.<Dictionary>.enabled = true` |
+| `items` | `id`, `category`, `name`, `unidentifiedName`, `unidentifiedDescription`, `placeholders`, `instances`, `give()` | `items.<Item>.instances.length` | `items.<Item>.give(persona)` |
+| `currencies` | `id`, `category`, `name`, `kind`, `balance()`, `pay()` | `currencies.<Currency>.balance(persona)` | `currencies.<Currency>.pay(persona, null, <n>)` |
 | `options` | — | `options.<Option>` | `options.<Option> = true` |
 | `world` | `music`, `weather` | `world.music`, `world.weather` | `world.music = "<Sound>"`, `world.weather = "<Kind>"` |
 | `console` | `log()` | — | `console.log(<text>)` |
@@ -37,8 +37,8 @@ A timing adds names to those objects. A script reads only the names its own timi
 | --- | --- | --- | --- | --- |
 | **`narration`** | During AI Output only | `sentence`, `sent`, `buffered`, `full`, `index` | `narration.sentence` | `narration.sentence = <text>` |
 | **`player`** | Every timing. During AI Output has `show()` only | `tell()`, `toast()`, `show()`, `confirm()`, `ask()`, `input()` | `player.confirm(<text>)` | Calls, not writes |
-| **`trait`** | When a Trait Switches only | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle`, `owner` | `trait.enabled` | Read-only |
-| **`instance`** | The five item timings only | `id`, `item`, `owner`, `location`, `quantity`, `equipped`, `slot`, `hidden`, `unidentified`, `uses`, `state`, `image`, `layers`, `lose()`, `moveTo()`, `equip()`, `unequip()`, `use()`, `reveal()`, `setUses()`, `setState()` | `instance.quantity` | Verbs, and an image name |
+| **`trait`** | When a Trait Switches only | `enabled`, `acquired`, `id`, `category`, `name`, `mode`, `available`, `group`, `playerToggle`, `owner` | `trait.enabled` | Read-only |
+| **`instance`** | The five item timings only | `id`, `category`, `item`, `owner`, `location`, `quantity`, `equipped`, `slot`, `hidden`, `unidentified`, `uses`, `state`, `image`, `layers`, `lose()`, `moveTo()`, `equip()`, `unequip()`, `use()`, `reveal()`, `setUses()`, `setState()` | `instance.quantity` | Verbs, and an image name |
 
 `args` holds what started the run (see [Args](#args)). A [World Tool](ScriptsGuide#world-tools)'s script reads the values the AI sent, such as `args.<Parameter>`.
 
@@ -96,7 +96,7 @@ Each entry has the [same members as `self`](#stat-properties). Each entry takes 
 <!-- keywords: own stats, read the entity's other stats, script on a monster's stat, this entity, entity's own stat, self entity, creature code, npc code, blueprint owner, empty owner, owner is blank, owner stats, owner traits, owner placeholders -->
 <!-- route: worldEditorStat.code -->
 
-`owner` is the entity that owns the running stat. It has the same members as an [entity entry](#entities): `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `image`, `sound`, `layers`, `instances`, `move()`, `follow()`, `unfollow()`, `meet()` and `diary()`.
+`owner` is the entity that owns the running stat. It has the same members as an [entity entry](#entities): `id`, `category`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `image`, `sound`, `layers`, `instances`, `move()`, `follow()`, `unfollow()`, `meet()` and `diary()`.
 
 The entity's own stats are under `owner.stats`, its own traits under `owner.traits`, and its own placeholders under `owner.placeholders`.
 
@@ -160,6 +160,7 @@ Each stat in the `stats` map has these properties, `self` included. So does each
 | Property | What it is |
 | --- | --- |
 | `id` | Unique identifier |
+| `category` | Always `"stat"`, what kind of entry this is. |
 | `name` | Code name. The authored name with each chip replaced by its placeholder's name |
 | `type` | Type of stat (`'number'` or `'percentage'`) |
 | `description` | Text description |
@@ -170,7 +171,7 @@ Each stat in the `stats` map has these properties, `self` included. So does each
 | `regen` | Regen per story hour, with traits applied |
 | `hidden` | True when the stat is hidden from the player. The AI still reads it. See [Hiding and Showing a Stat](#hiding-and-showing-a-stat) |
 | `descriptor` | Text of the band the value falls in, with chips filled in, as the AI reads it. Empty when no band applies. Read-only |
-| `previous` | The full stat at the start of the turn: `id`, `name`, `type`, `description`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`. Read-only |
+| `previous` | The full stat at the start of the turn: `id`, `category`, `name`, `type`, `description`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`. Read-only |
 | `delta` | Every change this turn made, by source: `ai`, `regen`, `total`, `actual`. Read-only |
 
 A stat that a trait switched off still reads as a real entry. Its name, value and bounds read as usual, with `enabled` false. A write to it is ignored and reported.
@@ -275,7 +276,7 @@ Every stat entry on every path takes writes to the same five fields as `self`: `
 | Blueprint stats | A Blueprint stat's code runs once for each owner. In it, `owner` is the entity the run is for, and `owner.stats.Mana.value` sets that owner's own copy of Mana. A write through `stats` sets the global stat |
 | Unknown or switched-off stats | A write to an unknown name, or to a stat a trait switched off, is ignored and reported. The editor underlines an unknown name |
 | An entity not in the game | A write through `entities.<Entity>.stats` to an entity that is not in the game is ignored and reported |
-| Fields that stay read-only | `id`, `name`, `type`, `description`, `descriptor`, `previous` and `delta` are read-only on every path |
+| Fields that stay read-only | `id`, `category`, `name`, `type`, `description`, `descriptor`, `previous` and `delta` are read-only on every path |
 | A whole entry | `stats.Health = 5` is ignored. Write `stats.Health.value = 5` |
 
 A stat that a hub set shows the change on its bar, as with any code change. The turn log gets no new line. A failed or stopped turn rolls the write back with the rest of the turn.
@@ -465,6 +466,7 @@ A write to an unknown placeholder name is ignored. **Test Code** and the **Test 
 | `enabled` | True when the player has the trait and it is on. Write it to switch the trait |
 | `acquired` | True when the player has the trait, on or off. Read-only |
 | `id` | Unique identifier. Read-only |
+| `category` | Always `"trait"`, what kind of entry this is. Read-only |
 | `name` | Code name. Read-only |
 | `mode` | `'optional'`, `'alwaysOn'` or `'hidden'`. Read-only |
 | `available` | True when the trait's requirements hold for its owner now. Read-only |
@@ -544,6 +546,7 @@ When the player plays no entity, `persona` is an empty entry:
 | Member | What it is |
 | --- | --- |
 | `id` | Unique identifier. Read-only |
+| `category` | Always `"entity"`, what kind of entry this is. Read-only |
 | `name` | The entity's code name. Read-only |
 | `type` | The entity's type, or `''` when it has none. Read-only |
 | `pronouns` | The entity's pronouns, or `''` when it has none. Read-only |
@@ -701,6 +704,7 @@ Which scripts read an entity write before the turn ends:
 | Member | What it is |
 | --- | --- |
 | `id` | Unique identifier. Read-only |
+| `category` | Always `"dictionary"`, what kind of entry this is. Read-only |
 | `name` | The dictionary's code name. Read-only |
 | `enabled` | True when the dictionary is on, so the AI can get its entries. Write `true` or `false` to switch it |
 | `entries` | The dictionary's entries by name. See [Entries](#entries) |
@@ -733,6 +737,7 @@ if (stats.Gate.value === 0) dictionaries["Chapter Two"].enabled = true;
 | Field | What it is |
 | --- | --- |
 | `id` | Unique identifier |
+| `category` | Always `"dictionaryEntry"`, what kind of entry this is. |
 | `name` | The entry's name |
 | `keys` | The entry's Trigger Keywords, as a list |
 | `value` | The entry's Value, with each placeholder chip filled in |
@@ -752,7 +757,7 @@ if (traits["Vault Key"].enabled) dictionaries.Lore.entries["Sealed Vault"].enabl
 - **A disabled entry reads `enabled: false`.** A dictionary the player turned off lists none.
 - **An entry with no name is left out.** A name of only spaces counts as no name. Scripts can't read it or write to it. It still works in the story.
 - **Of two entries with one name, the name resolves to the enabled one.** Between two enabled or two disabled entries, it resolves to the later one. A write through the name sets that entry.
-- **A name with no entry in the dictionary reads as a blank entry.** Its `id`, `name` and `value` are `''`, `keys` is an empty list, and `enabled` and `constant` are false. A write through it is ignored and reported.
+- **A name with no entry in the dictionary reads as a blank entry.** Its `id`, `name` and `value` are `''`, its `category` is still `"dictionaryEntry"`, `keys` is an empty list, and `enabled` and `constant` are false. A write through it is ignored and reported.
 - **A write applies after the script.** A later write wins. Later in the same script, and in later scripts, the entry reads what you set. Its name still resolves to the entry it named at the start of the script.
 - **A Before the AI write shapes this turn.** The narration reads the entry this turn. An After the AI write shapes the next turn. A During AI Output write waits for the writes of the After the AI scripts.
 - **It persists for the playthrough.** The save keeps it. An undo or a re-roll reverts it with the turn. The dictionary itself never changes.
@@ -763,13 +768,14 @@ if (traits["Vault Key"].enabled) dictionaries.Lore.entries["Sealed Vault"].enabl
 ### Items
 <!-- keywords: items, item instances, inventory, give item, take item, who owns, has key, equip from code, recharge, set uses, set state, use from code, reveal item, identify item, unidentified, item script, when gained, when lost, when equipped, when unequipped, when consumed -->
 
-`items` holds every item of the world by code name. Each entry has `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, its own `placeholders`, and `instances`: its Item Instances in the game. An unidentified field is `''` when the item leaves it blank.
+`items` holds every item of the world by code name. Each entry has `id`, `category`, `name`, `unidentifiedName`, `unidentifiedDescription`, its own `placeholders`, and `instances`: its Item Instances in the game. An unidentified field is `''` when the item leaves it blank.
 
 Each Item Instance has these members. They are read-only, except `image`.
 
 | Member | What it is |
 | --- | --- |
 | `id` | Unique identifier |
+| `category` | Always `"itemInstance"`, what kind of entry this is. |
 | `item` | Code name of its item, a key of `items` |
 | `owner` | Code name of the entity that owns it, the persona included. It is `''` while the Item Instance lies at a location, or when the persona has no code name |
 | `location` | Code name of the location it lies at, or `''` while an entity owns it |
@@ -837,7 +843,7 @@ stats.Spent.value += instance.quantity;
 ### Currencies
 <!-- keywords: currencies, money, balance, pay, toll, gold, items, price, afford, fee, bribe, income, change, refuse -->
 
-`currencies` holds every Currency of the world by code name. Each entry has `id`, `name`, `kind` (`"stat"`, `"items"` or `"name"`) and two calls. The world's **Currencies** entry on the **Items** tab sets them up.
+`currencies` holds every Currency of the world by code name. Each entry has `id`, `category`, `name`, `kind` (`"stat"`, `"items"` or `"name"`) and two calls. The world's **Currencies** entry on the **Items** tab sets them up.
 
 | Call | What it does |
 | --- | --- |
@@ -1113,7 +1119,7 @@ A message or an image belongs to the turn that runs when the script makes it:
 | `enabled` | True when the switch turned the trait on. False when it turned the trait off |
 | `owner` | The code name of the entity that holds the trait, or `''` for a global trait |
 
-`trait` also has every other member of a [`traits` entry](#traits): `acquired`, `id`, `name`, `mode`, `available`, `group` and `playerToggle`.
+`trait` also has every other member of a [`traits` entry](#traits): `acquired`, `id`, `category`, `name`, `mode`, `available`, `group` and `playerToggle`.
 
 ```javascript
 // A stat or world script sees every switch. Wounded costs 5 Vigor.
@@ -1317,6 +1323,7 @@ if (stats.Bridge.value === 0) turn.choices = turn.choices.filter((choice) => !/b
 | Field | What it is |
 | --- | --- |
 | `id` | Unique identifier |
+| `category` | Always `"location"`, what kind of entry this is. |
 | `name` | The location's code name |
 | `description` | The full AI description, with each placeholder chip filled in |
 | `summary` | The short AI summary, with each placeholder chip filled in |
@@ -1402,7 +1409,7 @@ A name lets a script find the same Custom memory again on a later turn. Use it t
 
 - **`memories.pin(<name>, <text>)`** adds a memory under that name. When a memory with that name already exists, it overwrites its text instead.
 - **`memories["<Name>"]`** resolves to the memory with that name. Names match with outer spaces removed and in any case, so `memories["nursery "]` resolves to **Nursery**.
-- **An unknown name reads as a blank entry.** Its `id`, `name` and `text` are `""`, and every flag is false. Test with `memories["Nursery"].id` to see whether the memory exists.
+- **An unknown name reads as a blank entry.** Its `id`, `name` and `text` are `""`, its `category` is still `"memory"`, and every flag is false. Test with `memories["Nursery"].id` to see whether the memory exists.
 - **Calls on a blank entry are ignored.** **Test Code** and the **Test Bench** list the name, and so does the turn's warning in play.
 - **A named pin reads under its name in the scripts below it** in the same turn. A second named pin in the turn overwrites the first.
 - **A named write rewinds with its turn**, and so do `edit(text)` and `remove()` on the entry. A rewind restores the text from before that turn. Rewinding the turn that created the memory removes it.
@@ -1427,6 +1434,7 @@ Each memory in the list has these fields. All are read-only.
 | Field | What it is |
 | --- | --- |
 | `id` | Unique identifier |
+| `category` | Always `"memory"`, what kind of entry this is. |
 | `turn` | The turn number, from 1. A **Custom** memory has the number of the turn before it was added |
 | `timestamp` | Story hours at the end of that turn, on the scale of `clock.elapsedHours` |
 | `day` | Day number at that time |

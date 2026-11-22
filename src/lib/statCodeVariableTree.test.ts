@@ -303,9 +303,9 @@ describe('entities, the persona and dictionaries', () => {
     expect(inserts(tree, 'Dictionaries', 'Lore', 'Placeholders', 'Era', 'value')).toBe('dictionaries.Lore.placeholders.Era.value');
   });
 
-  it('lists a dictionary’s entries under it, a disabled one too, each with its six fields', () => {
+  it('lists a dictionary’s entries under it, a disabled one too, each with its seven fields', () => {
     expect(levelAt(tree, 'Dictionaries', 'Lore', 'Entries')).toEqual(['Iron Crown', 'Sealed']);
-    expect(levelAt(tree, 'Dictionaries', 'Lore', 'Entries', 'Iron Crown')).toEqual(['id', 'name', 'keys', 'value', 'enabled', 'constant']);
+    expect(levelAt(tree, 'Dictionaries', 'Lore', 'Entries', 'Iron Crown')).toEqual(['id', 'category', 'name', 'keys', 'value', 'enabled', 'constant']);
     expect(inserts(tree, 'Dictionaries', 'Lore', 'Entries', 'Iron Crown', 'keys')).toBe('dictionaries.Lore.entries["Iron Crown"].keys');
   });
 
@@ -377,12 +377,12 @@ describe('verbs last in a group (R7)', () => {
     expect(levelAt(tree, 'Entities', 'Mira').slice(-5)).toEqual(['move', 'follow', 'unfollow', 'meet', 'diary']);
   });
 
-  it('reads the memory entry’s twelve fields, then pin, forget, edit, remove', () => {
+  it('reads the memory entry’s thirteen fields, then pin, forget, edit, remove', () => {
     const level = levelAt(tree, 'Memories', 'memories[0]');
     const verbs = ['pin', 'forget', 'edit', 'remove'];
     const names = MEMORY_ENTRY_FIELDS.map((entry) => entry.name);
     expect(level).toEqual([...names.filter((name) => !verbs.includes(name)), ...verbs]);
-    expect(level.length - verbs.length).toBe(12);
+    expect(level.length - verbs.length).toBe(13);
   });
 
 });
@@ -498,7 +498,7 @@ describe('field info', () => {
 describe('array elements', () => {
   // The fields only: the persona has no verbs and stands first where the player is.
   const presentFields = [
-    'id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'kind', 'action', 'held', 'knownIn', 'knownInPlaces',
+    'id', 'category', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'kind', 'action', 'held', 'knownIn', 'knownInPlaces',
     'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items', 'body', 'image', 'sound', 'layers', 'instances',
   ];
 

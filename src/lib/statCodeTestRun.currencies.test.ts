@@ -162,7 +162,7 @@ describe('a user Tool reads a balance and can’t pay', () => {
 
   it('lists only the fields to a loop over an entry', async () => {
     const result = await runToolScript('return Object.keys(currencies.Coin);', {}, snapshot());
-    expect(result).toEqual({ text: '["id","name","kind"]' });
+    expect(result).toEqual({ text: '["id","category","name","kind"]' });
   });
 
   it('has the money host answer a balance and refuse a pay in a read-only run', () => {

@@ -22,9 +22,9 @@ describe('the memories cards', () => {
     for (const name of ['id', 'turn', 'day', 'daypart', 'text', 'Custom', 'pins']) expect(card?.description).toContain(name);
   });
 
-  it('lists the twelve entry fields a run reads, each read-only, then the four verbs', () => {
+  it('lists the thirteen entry fields a run reads, each read-only, then the four verbs', () => {
     expect(MEMORY_ENTRY_FIELDS.map((field) => [field.name, field.access])).toEqual([
-      ...['id', 'turn', 'timestamp', 'day', 'daypart', 'text', 'name', 'custom', 'kept', 'inContext', 'pinned', 'forgotten'].map((name) => [name, 'readOnly']),
+      ...['id', 'category', 'turn', 'timestamp', 'day', 'daypart', 'text', 'name', 'custom', 'kept', 'inContext', 'pinned', 'forgotten'].map((name) => [name, 'readOnly']),
       ...['pin', 'forget', 'edit', 'remove'].map((name) => [name, undefined]),
     ]);
   });

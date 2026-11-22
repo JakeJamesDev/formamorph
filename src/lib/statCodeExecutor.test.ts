@@ -117,8 +117,8 @@ describe('executeStatCode stats map', () => {
 
   it('reads an unknown name as a blank entry: the entry shape, names empty, every number zero', async () => {
     const code = `const blank = stats.Nope;
-      const zeroed = (o) => Object.values(o).every(v => typeof v === 'object' ? zeroed(v) : v === 0 || v === '' || v === false);
-      return Object.keys(blank).join() === Object.keys(stats.Health).join() && zeroed(blank)
+      const zeroed = (o) => Object.entries(o).every(([k, v]) => k === 'category' ? v === 'stat' : typeof v === 'object' ? zeroed(v) : v === 0 || v === '' || v === false);
+      return Object.keys(blank).join() === Object.keys(stats.Health).join() && zeroed(blank) && zeroed(blank.previous)
         && blank.max === 0 && !('Nope' in stats) && stats.toString.value === 0 ? 1 : 0;`;
     await expect(run(code)).resolves.toEqual({ value: 1, error: null });
   });
