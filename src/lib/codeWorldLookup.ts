@@ -26,6 +26,8 @@ import type { StatOwner, TraitOwner } from './statCodeResolver';
 import { blueprintTraitRunners, overridesScripts, statCodeOwners, type CodeOwner, type CodeOwners, type WorldScriptsSource, type WorldToolsSource } from './statCodeTargets';
 import { entityTraitNames, worldTraitPlaces } from './statCodeTraits';
 import { conditionTexts, gateTrees } from './traitGates';
+import { openingPickGroups } from './testBench/openingPick';
+import type { LensWorld } from './testBench/lens';
 
 /** Where an item no single entity owns lives: global scope, the world's placeholder tree, or under Blueprints. */
 export type CodeItemScope = 'global' | 'world' | 'blueprint';
@@ -168,6 +170,8 @@ export interface CodeCardWorld extends PinEditorWorld, WorldScriptsSource, World
   items?: OwnerWorld['items'];
   /** The World Options a Requires line can name. Absent ⇒ none. */
   options?: OwnerWorld['options'];
+  /** The world's own Openings, which an Opening Condition's line names. Absent ⇒ none. */
+  worldOverview?: LensWorld['worldOverview'];
 }
 
 /** Each box's lookup over `world`. The world's owners resolve once, on the first card any box opens. */
@@ -221,7 +225,13 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
     const placesOf = samplePlacement(cast, { locations, connections: world.connections ?? [] }, sampleStart(locations)?.id, pick);
     return (sample = { cast, placesOf });
   };
-  const gate = editorGateInput(ownerWorld, startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities }));
+  const openings = openingPickGroups({
+    traits: [...world.traits], traitGroups: [...world.traitGroups], entities: [...world.entities],
+    entityGroups: world.entityGroups && [...world.entityGroups], dictionaries: world.dictionaries && [...world.dictionaries],
+    locations: [...world.locations ?? []], placeholders: [...placeholders], stats: [...world.stats ?? []],
+    statGroups: world.statGroups && [...world.statGroups], options: world.options && [...world.options], worldOverview: world.worldOverview,
+  });
+  const gate = editorGateInput({ ...ownerWorld, openings }, startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities }));
   const textOf = conditionTexts(gate);
   // Later names win, as the sandbox's map keys them.
   const worldTraits = new Map(worldTraitPlaces(ownerWorld, placeholders).map((place) => [place.name, place.id]));

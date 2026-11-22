@@ -1,6 +1,6 @@
 # 09: Code Card Opening Names
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -13,6 +13,12 @@ Found by the close review.
 
 ## Acceptance criteria
 
-- [ ] A code card for a trait gated on a named Opening reads that name in its `requires` line.
-- [ ] An unnamed Opening reads its derived label (Q24).
-- [ ] A Not Condition reads the negated form.
+- [x] A code card for a trait gated on a named Opening reads that name in its `requires` line. (`codeCards.opening.test.ts`, "reads the picked Opening’s name")
+- [x] An unnamed Opening reads its derived label (Q24). (same file, "derived label")
+- [x] A Not Condition reads the negated form. (same file, "negated form")
+
+## Landed
+
+**Not verified**: none. The test fails without the change ("Opening" and "not Opening" received).
+
+**For you**: none.
