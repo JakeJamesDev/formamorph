@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { EntityImageWidget } from './EntityFields';
+import { LocationImageField } from './LocationImageField';
 import { ImageGallery } from './ImageTagsField';
 import { LOCATION_RULE_HOST } from '@/components/editor/ImageRuleCog';
-import type { Entity, LayeredMediaEntry, MediaFileEntry, MediaList } from '@/types';
+import type { Entity, GameLocation, LayeredMediaEntry, MediaFileEntry, MediaList } from '@/types';
 
 /** An item's image slot is the linked entity widget, the way ItemManager mounts it. */
 
@@ -47,10 +48,44 @@ describe('an item image slot', () => {
   });
 });
 
+/** Each slot's box: the gallery renders every slot and hides all but the framed one. */
+const slotBox = (id: string) => document.querySelector<HTMLElement>(`[data-media-entry-bar="${id}"]`)!.parentElement!;
+
+describe('an item image field', () => {
+  const lamp = { id: 'lamp', name: 'Lamp', images: [{ mediaId: BASE.id }, { mediaId: RIG.id }] } as unknown as Entity;
+
+  it('titles a Layered Image slot with its name and offers Edit Layers that opens that rig; a flat image gets none', () => {
+    render(
+      <EntityImageWidget value={lamp} onChange={vi.fn()} ruleHost={LOCATION_RULE_HOST} imageId="item-image-lamp" linked>
+        <ImageGallery />
+      </EntityImageWidget>,
+    );
+    expect(slotBox(BASE.id).querySelector('[data-edit-layers]')).toBeNull();
+    expect(within(slotBox(RIG.id)).getByDisplayValue('Lamp Rig')).toBeInTheDocument();
+    const edit = slotBox(RIG.id).querySelector<HTMLElement>(`[data-edit-layers="${RIG.id}"]`)!;
+    expect(edit.previousElementSibling).toHaveAttribute('data-media-entry-bar', RIG.id);
+    fireEvent.click(edit);
+    expect(screen.getByRole('dialog')).toHaveTextContent('Lamp Rig');
+  });
+});
+
+describe('a location image field', () => {
+  const room = { id: 'room', name: 'Room', images: [{ mediaId: BASE.id }, { mediaId: RIG.id }] } as unknown as GameLocation;
+
+  it('titles a Layered Image slot with its name and offers Edit Layers that opens that rig; a flat image gets none', () => {
+    render(<LocationImageField location={room} onChange={vi.fn()} placeholders={[]} />);
+    expect(slotBox(BASE.id).querySelector('[data-edit-layers]')).toBeNull();
+    expect(within(slotBox(RIG.id)).getByDisplayValue('Lamp Rig')).toBeInTheDocument();
+    const edit = slotBox(RIG.id).querySelector<HTMLElement>(`[data-edit-layers="${RIG.id}"]`)!;
+    expect(edit.previousElementSibling).toHaveAttribute('data-media-entry-bar', RIG.id);
+    fireEvent.click(edit);
+    expect(screen.getByRole('dialog')).toHaveTextContent('Lamp Rig');
+  });
+});
+
 describe('an entity editor gallery slot', () => {
   const keeper = { id: 'keeper', name: 'Keeper', images: [{ mediaId: BASE.id }, { mediaId: RIG.id }] } as unknown as Entity;
-  /** Each slot's box: the gallery renders every slot and hides all but the framed one. */
-  const slotOf = (id: string) => document.querySelector<HTMLElement>(`[data-media-entry-bar="${id}"]`)!.parentElement!;
+  const slotOf = slotBox;
 
   it('offers Edit Layers under the name bar of a Layered Image slot only, and it opens that rig', () => {
     render(

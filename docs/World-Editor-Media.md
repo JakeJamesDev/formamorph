@@ -180,7 +180,7 @@ A **Layered Image** builds one picture from parts. Each **Layer** holds images c
 4. Select a Layer, then **Choose** an image from the Media List or **Import** one. Each becomes a Variant of that Layer.
 5. Select a Variant's cog to give it a Visibility rule, as on a gallery image. A Variant with no rule always shows.
 
-**To edit one from a gallery:** select **Edit Layers** on the slot that shows it. In the Media tab it is beside **Download**. On an entity's **Profile** tab it is under the slot's name. On mobile, **Edit Layers** opens the Layer panel.
+**To edit one from a gallery:** select **Edit Layers** on the slot that shows it. In the Media tab it is beside **Download**. On an entity's **Profile** tab, and in a location's or an item's image field, it is under the slot's name. On mobile, **Edit Layers** opens the Layer panel.
 
 **In the editor:**
 
