@@ -29,6 +29,7 @@ import {
 } from '@/lib/sandboxSnapshot';
 import type { MediaList, ScriptTiming, Stat, Trait, World } from '@/types';
 import { isLayerWrite, type MediaWrite } from '@/lib/mediaOverrides';
+import { drawnOpeningSourcesOf, withDrawnOpening, type OpeningKey } from '@/lib/drawnOpening';
 
 /** Test Code names each bound a run wrote with its Details field label. */
 const BOUND_LABELS: Record<CodeBoundField, string> = { min: 'Min', max: 'Max', regen: 'Regen' };
@@ -137,6 +138,8 @@ export interface TestRunOptions {
   prompts?: ScriptPromptHost;
   /** A World Tool's call arguments. Given, `args` exists and the report carries the script's `reply`. */
   args?: ToolArgs;
+  /** The Opening picked beside Test Code, which `opening` reads. Absent, None. */
+  opening?: OpeningKey | null;
 }
 
 /** The keys of a missing name from its map's root, `persona` first under `persona`. */
@@ -245,11 +248,11 @@ const paymentLines = (
  *  rolls (Q3). The editor holds no discovered cast, so a `diary` name it lacks is a warning (Q46). */
 export const testCodeSnapshotOf = (
   world: OpeningFoldWorld & LivePlacesWorld, timing: ScriptTiming,
-  { persona, ...overlays }: Pick<SnapshotOptions, 'pendingPersona' | 'assumedStats'> & { persona?: OpeningPersona } = {},
-): SandboxSnapshot => snapshotOf({
+  { persona, opening, ...overlays }: Pick<SnapshotOptions, 'pendingPersona' | 'assumedStats'> & { persona?: OpeningPersona; opening?: OpeningKey | null } = {},
+): SandboxSnapshot => snapshotOf(withDrawnOpening({
   ...(world.livePlaces ? liveStateOf(world, persona, world.livePlaces) : authoringStateOf(world, undefined, persona)),
   clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing),
-}, { openCast: true, ...overlays });
+}, opening, drawnOpeningSourcesOf(world)), { openCast: true, ...overlays });
 
 /**
  * Runs `code` from the `timing` box of `home` on `world` at turn one. Applies nothing. With `pendingPersona`, a
@@ -257,7 +260,7 @@ export const testCodeSnapshotOf = (
  */
 export async function runTestCode(
   code: string, timing: ScriptTiming, home: UnitHome, world: OpeningFoldWorld & LivePlacesWorld,
-  { pendingPersona: pending = false, persona, missing, sentence, prompts, args }: TestRunOptions = {},
+  { pendingPersona: pending = false, persona, missing, sentence, prompts, args, opening }: TestRunOptions = {},
 ): Promise<TestCodeReport> {
   const seeded = openingHomeOf(home);
   const stat = 'stat' in seeded ? seeded.stat : null;
@@ -266,7 +269,7 @@ export async function runTestCode(
   const { locations } = codeLocationsOf(world.locations ?? [], list);
   const currencyName = (id: string) => statCodeName(world.currencies?.find((currency) => currency.id === id)?.name ?? id, list);
   const assumed = [...new Set((missing ?? []).filter(({ kind }) => kind === 'stat').map(({ segments }) => segments[0]))];
-  const snapshot = testCodeSnapshotOf(world, timing, { pendingPersona: pending, persona, ...(assumed.length && { assumedStats: assumed }) });
+  const snapshot = testCodeSnapshotOf(world, timing, { pendingPersona: pending, persona, opening, ...(assumed.length && { assumedStats: assumed }) });
   const unit: ScriptRunUnit = {
     home: seeded, timing, code,
     ...(timing === 'output' && { narration: sentence ?? '' }),

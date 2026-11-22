@@ -75,6 +75,7 @@ import { clearCodeUseReveal, requestCodeUseReveal } from '@/lib/codeUseReveal';
 import { scriptEntryKey } from '@/lib/worldScripts';
 import type { CodeCardItem } from '@/lib/codeCards';
 import { useTestBench } from '@/lib/testBench/useTestBench';
+import { OpeningPickProvider } from '@/contexts/OpeningPickContext';
 import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
 import {
   revealEditorMatch, revealEditorChip, clearEditorMatch, revealSelectedRow, cancelEditorReveals,
@@ -1522,6 +1523,7 @@ const WorldEditorInner = ({
     <SupporterCopyProvider value={supporterCopy}>
     <OpenWorldIdProvider value={worldId ?? undefined}>
     <CodeCardNavigationContext.Provider value={codeCardNavigation}>
+    <OpeningPickProvider value={bench.openingPick}>
     <div className={`${embedded ? "h-full" : "app-viewport pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"} flex flex-col overflow-hidden`}>
       {!embedded && (
         <ThemedToastContainer
@@ -1781,6 +1783,7 @@ const WorldEditorInner = ({
       )}
       <TourSaveNote tour={tour} />
     </div>
+    </OpeningPickProvider>
     </CodeCardNavigationContext.Provider>
     </OpenWorldIdProvider>
     </SupporterCopyProvider>

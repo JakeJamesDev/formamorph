@@ -15,6 +15,7 @@ A script can use only these objects. In the table, a word in angle brackets is a
 | `owner` | `id`, `category`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `kind`, `action`, `held`, `knownIn`, `knownInPlaces`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `image`, `sound`, `layers`, `instances`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `hour`, `minute`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
 | `turn` | `action`, `number`, `narration`, `choices` | `turn.number` | `turn.choices = [<text>]`, After the AI only |
+| `opening` | `category`, `id`, `name`, `owner`, `kind`, `self`, `time`, `weather`, `text` | `opening.name` | Read-only |
 | `locations` | `id`, `category`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items`, `image`, `ambience`, `layers` | `locations.<Location>.present` | `locations.<Location>.image = "<Image>"` |
 | `location` | `id`, `category`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items`, `image`, `ambience`, `layers`, `move()` | `location.name` | `location.move("<Location>")` |
 | `discover` | — | — | `discover(<text>)` |
@@ -1313,6 +1314,34 @@ An After the AI script can change the choices the player sees. Edit `turn.choice
 ```js
 // Once the bridge is down, no choice crosses it.
 if (stats.Bridge.value === 0) turn.choices = turn.choices.filter((choice) => !/bridge/i.test(choice));
+```
+
+### Opening
+<!-- keywords: drawn opening, which opening, how the story started, opening name, route, branch on the start, ambush start, opening owner, opening text -->
+
+`opening` is the opening this playthrough started from. Every script reads it, on every turn. It is `null` when the game started without one of your openings, so `if (opening)` tells you an opening was drawn. Its fields are read-only.
+
+| Field | What it is |
+| --- | --- |
+| `opening.category` | Always `"opening"` |
+| `opening.id` | The opening's id. Two owners can each have an opening with the same id. |
+| `opening.name` | The name you gave the opening, or `null` when it has none |
+| `opening.owner` | The `entities` or `locations` entry the opening belongs to, or `null` for the world's own. `opening.owner.category` says which. |
+| `opening.kind` | `"action"` for an Opening Action, `"narration"` for an Opening Narration |
+| `opening.self` | `true` for a Self Opening |
+| `opening.time` | The opening's Time, or `null` when it uses the world's Default Time |
+| `opening.weather` | The opening's Weather, or `null` when it uses the world's Default Weather |
+| `opening.text` | The opening's text, with its placeholders filled in as the player saw it |
+
+- **It persists for the whole game.** A script on turn 20 reads the same opening as an At Game Start script. A saved game keeps it.
+- **A page-one re-roll changes it.** When the re-roll draws another opening, the next script reads the new one.
+- **A deleted opening reads `null`.** A save whose opening you have since deleted reads no opening.
+- **The owner is the same entry.** `opening.owner === persona` holds for an opening of the played persona, and `opening.owner === entities.<Entity>` for another entity's.
+- **Test Code reads the picked opening.** **Test Code** and the **Test Bench** share one **Opening** picker, set to **None** at first. Pick an opening there to test each branch.
+
+```js
+// The ambush start leaves the player hurt.
+if (opening?.name === "ambush") stats.Health.value -= 20;
 ```
 
 ### Location

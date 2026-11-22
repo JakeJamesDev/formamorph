@@ -497,6 +497,7 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
       ...(read.bodyDefs.length && { bodies: read.bodyDefs }),
       ...(state.media && { media: state.media }),
       ...(state.weather && { weather: state.weather }),
+      ...(state.opening && { opening: state.opening }),
       ...(itemEvent && { itemEvent: itemEvent.event }),
     };
   };

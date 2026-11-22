@@ -30,6 +30,7 @@ import { useEditorPromptRun } from '@/lib/useEditorPromptRun';
 import { lensPersonaRef, lensStatOverrides } from './lens';
 import { useBenchFindings } from './useBenchFindings';
 import { useBenchLens } from './useBenchLens';
+import { useOpeningPick, type OpeningPickHandle } from './useOpeningPick';
 import { useBenchTab } from './useBenchTab';
 import { useDebouncedTriggerReport } from './useTriggerReport';
 import { useTriggerSemantics } from './useTriggerSemantics';
@@ -94,6 +95,8 @@ export interface TestBenchHandle {
   onReplacePicked: (pick: ReplacementPick) => void;
   popoverProps: BenchPopoverProps;
   panelProps: TestBenchProps;
+  /** The Opening pick Test Code shares with the Bench. */
+  openingPick: OpeningPickHandle;
 }
 
 const NO_FINDINGS: Finding[] = [];
@@ -133,6 +136,8 @@ export function useTestBench({
     open: panelShown,
     selectedLocationId,
   });
+  const openingPick = useOpeningPick(worldId, benchWorld);
+  const benchOpening = openingPick.pick;
   // Null until the first pass finishes: the list holds every row till then, so it never reads as clean.
   const pass = useBenchPass(benchWorld);
   const publishBytes = pass.bytes;
@@ -161,7 +166,7 @@ export function useTestBench({
       const world = getWorldData();
       // The lens persona, so `met` reads the start rule under it.
       const found = await checkScripts(world, {
-        prompts: prompts.host, persona: openingPersonaOf(lensPersona ? lensPersonaRef(lensPersona) : undefined),
+        prompts: prompts.host, persona: openingPersonaOf(lensPersona ? lensPersonaRef(lensPersona) : undefined), opening: benchOpening,
       });
       if (!stillCurrent()) return;
       setCodeFindings(found);
@@ -174,7 +179,7 @@ export function useTestBench({
     } finally {
       if (isCurrentCodeRun(prompts)) closeCodePrompts();
     }
-  }, [getWorldData, lensPersona, beginCodeRun, openCodePrompts, closeCodePrompts, isCurrentCodeRun]);
+  }, [getWorldData, lensPersona, benchOpening, beginCodeRun, openCodePrompts, closeCodePrompts, isCurrentCodeRun]);
   const scriptCount = useMemo(() => checkedScriptCount(benchWorld), [benchWorld]);
   // Out of the rule catalog, since its input is the measured byte count rather than the world.
   // Kept while it says the same thing: a keystroke in an over-limit world must not re-mark every finding.
@@ -459,6 +464,7 @@ export function useTestBench({
     count: bench.groups.length,
     newCount: bench.newCount,
     replaceSource,
+    openingPick,
     onReplaceCancel: () => setReplaceSource(null),
     onReplacePicked: replacePicked,
     popoverProps: {
@@ -486,6 +492,7 @@ export function useTestBench({
         onLocationChange: benchLens.setLocation,
         worldOptions: benchWorld.options ?? NO_OPTIONS,
         onOptionChange: benchLens.setOptionValue,
+        openingPick,
       },
       triggers: {
         text: triggerText,

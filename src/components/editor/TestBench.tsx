@@ -24,6 +24,7 @@ import type { LensBarProps, TestBenchProps } from '@/lib/testBench/benchProps';
 import { AiContextInstrument } from './AiContextInstrument';
 import { IssuesInstrument } from './IssuesInstrument';
 import { OpeningInstrument } from './OpeningInstrument';
+import { OpeningPickSelect } from './OpeningPickSelect';
 import { TriggersInstrument } from './TriggersInstrument';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
@@ -85,7 +86,7 @@ export function TestBench({
         />
         {/* Below the strip, and only on the instruments that read it — the selection itself is Bench-level
             state, so it survives visits to a tab that hides the bar. */}
-        {parts && (parts.persona || parts.location) && <LensBar {...lens} parts={parts} />}
+        {parts && (parts.persona || parts.location || parts.opening) && <LensBar {...lens} parts={parts} />}
         {/* One panel per trigger so every `aria-controls` resolves. */}
         {BENCH_TABS.map((t) => (
           <TabsContent key={t.value} value={t.value} className="mt-0 min-h-0 flex-grow">
@@ -182,10 +183,10 @@ const LensWorldOptions = ({ options, values, onChange }: {
 /** The Bench-level lens: who is being played, and at which location, as far as the open instrument reads. Its notes go
  *  under it because both follow from the picks directly above them. */
 const LensBar = ({
-  lens, personaOptions, noneLabel, locationOptions, statOverrides, onPersonaChange, onLocationChange, worldOptions, onOptionChange, parts,
+  lens, personaOptions, noneLabel, locationOptions, statOverrides, onPersonaChange, onLocationChange, worldOptions, onOptionChange, openingPick, parts,
 }: LensBarProps & {
   /** The lens parts the open instrument reads. */
-  parts: { persona: boolean; location: boolean };
+  parts: { persona: boolean; location: boolean; opening: boolean };
 }) => (
   <div className="flex flex-col gap-1">
     <div className="flex items-center gap-1.5">
@@ -213,6 +214,12 @@ const LensBar = ({
             options={locationOptions}
             onChange={onLocationChange}
           />
+        </>
+      )}
+      {parts.opening && (
+        <>
+          <Meta className="shrink-0">Opening</Meta>
+          <OpeningPickSelect {...openingPick} className="flex-grow" />
         </>
       )}
       {worldOptions.some((o) => !isPreset(o)) && <LensWorldOptions options={valuedOptions(worldOptions)} values={lens.state.optionValues} onChange={onOptionChange} />}

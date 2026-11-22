@@ -7,9 +7,12 @@
  */
 import { createKeyedRecordStore } from '@/lib/keyedStorage';
 import { EMPTY_LENS, type LensState } from './lens';
+import { readOpeningKey, type OpeningKey } from '@/lib/drawnOpening';
 import type { WorldOptionValues } from '@/types';
 
 const store = createKeyedRecordStore('session', 'FORMAMORPH_benchLens');
+// Its own record: Test Code reads it while the Bench, which owns the lens record, may never have opened.
+const openingStore = createKeyedRecordStore('session', 'FORMAMORPH_benchOpening');
 
 const asId = (value: unknown): string | null => (typeof value === 'string' && value ? value : null);
 
@@ -34,4 +37,11 @@ function asOptionValues(value: unknown): WorldOptionValues | null {
 
 export function writeLensState(worldId: string, state: LensState): void {
   store.write(worldId, state);
+}
+
+/** The Opening picked for Test Code and the Test Bench in one world, or null for None. */
+export const readOpeningPick = (worldId: string): OpeningKey | null => readOpeningKey(openingStore.read(worldId));
+
+export function writeOpeningPick(worldId: string, key: OpeningKey | null): void {
+  openingStore.write(worldId, key);
 }

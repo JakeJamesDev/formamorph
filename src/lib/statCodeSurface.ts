@@ -49,6 +49,19 @@ export const TURN_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'choices', detail: 'string[]', info: 'The choices the player sees this turn, in order. It’s empty until After the AI, and when choices are off. Between turns, the last turn’s choices.' },
 ]);
 
+/** The members of `opening`: the opening that started the playthrough. Read-only. */
+export const OPENING_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
+  { name: 'category', detail: 'string', info: 'Always "opening", the kind of entry this is' },
+  { name: 'id', detail: 'string', info: 'Unique id of the opening within its owner’s list' },
+  { name: 'name', detail: 'string | null', info: 'Name of the opening, or null when it has none' },
+  { name: 'owner', detail: 'object | null', info: 'The entities or locations entry the opening belongs to, or null for one of the world’s own. Its category tells which.' },
+  { name: 'kind', detail: 'string', info: '"action" for an Opening Action, "narration" for an Opening Narration' },
+  { name: 'self', detail: 'boolean', info: 'True for a Self Opening, written for playing as its owner' },
+  { name: 'time', detail: 'string | null', info: 'The opening’s Time, or null when it uses the world’s Default Time' },
+  { name: 'weather', detail: 'string | null', info: 'The opening’s Weather, or null when it uses the world’s Default Weather' },
+  { name: 'text', detail: 'string', info: 'Text of the opening, its placeholders filled in as the player saw it' },
+]);
+
 /** `turn`'s members in an After the AI script, where `choices` takes a write (Q21). */
 export const AFTER_TURN_MEMBERS: readonly SurfaceEntry[] = withAccess(TURN_MEMBERS, ['choices'], 'writable');
 
@@ -147,6 +160,10 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'stats', detail: 'object', info: 'The global stats by name, in every script. An entity’s own stats are on owner.stats. Use stats["Two Words"] for a name with a space.' },
   { name: 'clock', detail: shapeOf(CLOCK_MEMBERS), info: 'The story clock', access: 'readOnly' },
   { name: 'turn', detail: shapeOf(TURN_MEMBERS), info: 'The player’s action, the turn number, and the turn’s page and choices. Test Code and the Test Bench read a sample turn 2, with a page and choices in After the AI. An At Game Start script reads the opening at turn 1.', access: 'readOnly' },
+  {
+    name: 'opening', detail: `${shapeOf(OPENING_MEMBERS)} | null`, access: 'readOnly',
+    info: 'The opening that started this playthrough, on every turn. It’s null when the game started without one of your openings, or that opening was deleted. Test Code and the Test Bench read the opening picked beside them, None at first.',
+  },
   { name: 'locations', detail: 'object', info: 'Every location in the world by name, with the entities at each. Use locations["Two Words"] for a name with a space.' },
   { name: 'location', detail: shapeOf(LOCATION_MEMBERS), info: 'The location the turn is at, with the fields of a locations entry. Call location.move to move it.', access: 'readOnly' },
   { name: 'discover', detail: '(name, description?) => void', info: 'Adds a new entity to the turn, described by the AI unless you pass a description. A name an entity already has is ignored.' },
@@ -521,7 +538,7 @@ export const STAT_CODE_SURFACE: CodeSurface = {
   label: 'a stat script',
   globals: SANDBOX_GLOBALS,
   builtins: SANDBOX_BUILTINS,
-  members: new Map([...BUILTIN_MEMBERS, ['location', LOCATION_MEMBERS], ['memories', MEMORY_MEMBERS], ['turn', TURN_MEMBERS], ['world', WORLD_MEMBERS]]),
+  members: new Map([...BUILTIN_MEMBERS, ['location', LOCATION_MEMBERS], ['memories', MEMORY_MEMBERS], ['turn', TURN_MEMBERS], ['opening', OPENING_MEMBERS], ['world', WORLD_MEMBERS]]),
   languageNames: LANGUAGE_NAMES,
   // The Variable menu is the drill tree in `statCodeVariableTree`.
   missingReturn: 'This script never returns a number or sets self.value. The stat keeps its value.',

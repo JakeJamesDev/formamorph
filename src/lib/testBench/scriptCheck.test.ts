@@ -34,6 +34,17 @@ describe('the on-demand script check', () => {
     ]))).toEqual([]);
   });
 
+  it('reads None as the Opening until the Bench picks one', async () => {
+    const world: RuleWorld = {
+      ...base([]),
+      worldOverview: { ...base([]).worldOverview, openings: [{ id: 'o1', name: 'ambush', text: 'Arrows fly.', kind: 'action' }] },
+      scripts: [{ id: 'w', timing: 'start', code: 'if (opening?.name !== "ambush") throw new Error("no ambush");' }],
+    };
+    const [found] = await checkScripts(world);
+    expect(found?.ruleId).toBe(SCRIPT_EXECUTION.id);
+    expect(await checkScripts(world, { opening: { ownerId: null, openingId: 'o1' } })).toEqual([]);
+  });
+
   it('runs a move to a location of the world clean, and fails a move to one it lacks', async () => {
     const world = (code: string): RuleWorld => ({ ...base([]), scripts: [{ id: 'w', timing: 'after', code }] });
     expect(await checkScripts(world('if (location.name === "Harbor Steps") location.move("harbor"); clock.advance(5); discover("Tor");'))).toEqual([]);

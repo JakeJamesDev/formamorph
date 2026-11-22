@@ -12,6 +12,7 @@ import type { SurfaceEntry } from './codeSurface';
 import { runToolScript } from './tools/toolScript';
 import { toolScriptSurface } from './tools/toolScriptSurface';
 import { sampleToolSnapshot } from './tools/sampleToolSnapshot';
+import type { ToolSnapshot } from './tools/toolSnapshot';
 import { phNode } from '@/test/sandboxPlaceholders';
 import type { Stat } from '@/types';
 
@@ -83,12 +84,23 @@ describe('placeholder field access matches the sandbox', () => {
   });
 });
 
+/** `snapshot` with a world Opening drawn: the sample world has none, so its `opening` is null. */
+const withOpening = (snapshot: ToolSnapshot): ToolSnapshot => ({
+  ...snapshot,
+  script: {
+    ...snapshot.script,
+    state: snapshot.script.state && {
+      ...snapshot.script.state, opening: { id: 'o1', name: null, kind: 'action', self: false, time: null, weather: null, text: 'Rain.', owner: null },
+    },
+  },
+});
+
 describe('Tool script access matches the sandbox', () => {
   const surface = toolScriptSurface([{ name: 'size', type: 'number', description: '', required: true, options: [] }]);
   it.each(surface.globals.filter((entry) => entry.access).map((entry) => [entry.name, entry] as const))('%s', async (name, entry) => {
     // A frozen object drops the write; reading it back says whether it landed.
     const code = `${name}.probe = 1; return ${name}.probe === 1 ? "landed" : "dropped";`;
-    const out = await runToolScript(code, { size: 2 }, sampleToolSnapshot());
+    const out = await runToolScript(code, { size: 2 }, name === 'opening' ? withOpening(sampleToolSnapshot()) : sampleToolSnapshot());
     expect(out).toMatchObject({ text: entry.access === 'readOnly' ? 'dropped' : 'landed' });
   });
 

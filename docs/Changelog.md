@@ -39,6 +39,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Openings can have names.** Type a name in the new box on an opening's card. A blank name shows the owner and place, such as "Aki · Opening 2".
     - **A saved game now remembers which opening started it.** Re-rolling page one onto another opening updates it. If the author later deletes that opening, the save reads it as none.
     - **Time and Weather conditions can now be Not.** Select Require it to be off on a time or weather chip. "Not night" holds at every other time of day.
+    - **Scripts can read which opening started the game with `opening`.** It holds the opening's name, owner, kind, time, weather and text on every turn. Pick the opening to test with beside Test Code or in the Test Bench.
   - **Scripts:**
     - **Script entries now tell you what they are.** Every entity, location, item, stat, trait and other entry in a script reads a read-only `category`, such as "entity" or "itemInstance".
   - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.

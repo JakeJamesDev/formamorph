@@ -8,10 +8,11 @@ export const BENCH_TABS = [
   // lens: the parts of the Testing-as/at lens the instrument reads — the bar draws only those.
   // Issues runs the rule pass over the authored world as-is, so the lens has nothing to tell it.
   // Opening reads the persona and starts at its own Starting Location pick.
-  { value: 'issues', label: 'Issues', icon: Stethoscope, lens: { persona: false, location: false } },
-  { value: 'triggers', label: 'Triggers', icon: Zap, lens: { persona: true, location: true } },
-  { value: 'aiContext', label: 'AI Context', icon: BrainCircuit, lens: { persona: true, location: true } },
-  { value: 'opening', label: 'Opening', icon: OpeningIcon, lens: { persona: true, location: false } },
+  // Issues' script check runs every script, which reads the picked Opening.
+  { value: 'issues', label: 'Issues', icon: Stethoscope, lens: { persona: false, location: false, opening: true } },
+  { value: 'triggers', label: 'Triggers', icon: Zap, lens: { persona: true, location: true, opening: false } },
+  { value: 'aiContext', label: 'AI Context', icon: BrainCircuit, lens: { persona: true, location: true, opening: false } },
+  { value: 'opening', label: 'Opening', icon: OpeningIcon, lens: { persona: true, location: false, opening: false } },
 ] as const;
 
 export type BenchTab = (typeof BENCH_TABS)[number]['value'];

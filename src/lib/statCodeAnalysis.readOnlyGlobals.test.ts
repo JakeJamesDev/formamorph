@@ -106,3 +106,14 @@ describe('a write to clock, location or notes', () => {
     expect(messages('const c = clock; c.hour = 1;', at('before'))).toEqual([]);
   });
 });
+
+describe('a write to opening', () => {
+  it.each(TIMINGS)('underlines a write to a field and to the global at %s', (timing) => {
+    expect(messages('opening.name = "ambush";', at(timing))).toEqual(['opening.name is read-only.']);
+    expect(messages('opening = null;', at(timing))).toEqual(['opening is read-only.']);
+  });
+
+  it('leaves a write through opening.owner to the owner entry’s own checks', () => {
+    expect(messages('opening.owner.image = null;', at('after'))).toEqual([]);
+  });
+});

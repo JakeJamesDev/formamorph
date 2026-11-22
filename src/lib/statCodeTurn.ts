@@ -7,7 +7,7 @@ import { bareLoreWrite, withLoreWrites, type LoreWrite } from './loreToggles';
 import { withMediaWrites, type MediaWrite } from './mediaOverrides';
 import {
   CODE_BOUND_FIELDS, type EntityTraitWrites, type NarrationInput, type OptionWrite, type PlaceholderWrite, type StatClock, type StatCodeResult,
-  type StatTurnInputs, type StatWrite, type SandboxTurn, type TraitWrite, type ValueAndMax, type SandboxMemory, type SandboxPlace, type WorldWrites,
+  type StatTurnInputs, type StatWrite, type SandboxTurn, type SandboxOpening, type TraitWrite, type ValueAndMax, type SandboxMemory, type SandboxPlace, type WorldWrites,
   type SandboxMedia, type SandboxWeather,
 } from './statCodeExecutor';
 import { mergeWorldWrites } from './worldWrites';
@@ -105,6 +105,8 @@ export interface SandboxState {
   notes?: string;
   /** What `turn` reads. Absent, an empty action at turn 0. */
   turn?: SandboxTurn;
+  /** What `opening` reads. Absent, it reads null. */
+  opening?: SandboxOpening | null;
   /** What scripts switched on the books' entries in play. Absent ⇒ none. */
   loreToggles?: LoreToggles;
   /** What the media members read and name, the overrides in force included. Absent ⇒ no entry. */

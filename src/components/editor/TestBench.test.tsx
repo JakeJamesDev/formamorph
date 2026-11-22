@@ -88,6 +88,7 @@ const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProp
     onLocationChange: vi.fn(),
     worldOptions: [],
     onOptionChange: vi.fn(),
+    openingPick: { pick: null, groups: [], setPick: vi.fn() },
     ...over.lens,
   },
   triggers: {

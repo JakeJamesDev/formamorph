@@ -1,6 +1,6 @@
 import type {
-  BodyPick, CodeBounds, CurrencyBacking, EntityKind, ItemInstanceWhere, ItemScriptTiming, MediaEntry, MediaOverrides, ScheduleAction, Stat, ValuedWorldOption, WorldOption,
-  WeatherKind, WorldOptionValueOf, WorldOptionValues,
+  BodyPick, CodeBounds, CurrencyBacking, Daypart, EntityKind, ItemInstanceWhere, ItemScriptTiming, MediaEntry, MediaOverrides, OpeningKind, ScheduleAction, Stat,
+  ValuedWorldOption, WorldOption, WeatherKind, WorldOptionValueOf, WorldOptionValues,
 } from '@/types';
 import { MEDIA_MEMBER_KIND, MEDIA_NAME_MEMBERS, type MediaWrite } from './mediaOverrides';
 import { optionValue, snapNumber, valuedOptions } from './worldOptions';
@@ -198,6 +198,19 @@ export interface SandboxWeather {
   current: WeatherKind;
   /** Clear first, then each kind the world allows. */
   allowed: readonly WeatherKind[];
+}
+
+/** The Drawn Opening as `opening` reads it. `owner` names the entity or location whose entry `opening.owner` is. */
+export interface SandboxOpening {
+  id: string;
+  name: string | null;
+  kind: OpeningKind;
+  self: boolean;
+  time: Daypart | null;
+  weather: WeatherKind | null;
+  /** The text with its placeholders filled in. */
+  text: string;
+  owner: { category: 'entity' | 'location'; id: string } | null;
 }
 
 /** One entry of `memories`: a Memory panel row as a script reads it. */
@@ -2296,6 +2309,8 @@ export interface StatCodeRunOptions {
   media?: SandboxMedia;
   /** What `world.weather` reads and can be set to. Absent, Weather is off: it reads null and a set fails. */
   weather?: SandboxWeather;
+  /** What `opening` reads. Absent, it reads null. */
+  opening?: SandboxOpening | null;
 }
 
 /** What the media members read: each entry's name, the overrides in force, each owner's media with none, and each
@@ -2527,7 +2542,9 @@ const ADVANCE_CLOCK = '__formamorphAdvanceClock';
 const MOVE_TURN = '__formamorphMoveTurn';
 
 /** The globals a read-only run reads through its view, the surface of a user Tool (Q24). */
-const READ_ONLY_GLOBALS = ['entities', 'persona', 'locations', 'location', 'memories', 'clock', 'turn', 'stats', 'traits', 'placeholders', 'dictionaries', 'items', 'options', 'world'] as const;
+const READ_ONLY_GLOBALS = [
+  'entities', 'persona', 'locations', 'location', 'memories', 'clock', 'turn', 'opening', 'stats', 'traits', 'placeholders', 'dictionaries', 'items', 'options', 'world',
+] as const;
 
 const READ_ONLY_VIEW_OF = '__formamorphReadOnlyView';
 
@@ -2882,6 +2899,21 @@ const locationsPrelude = ({ locations, location: here }: SandboxPlaces, standing
   ].join('\n');
 };
 
+/** JS source of the `opening` global, after the entity and location preludes: frozen, every field read-only, its
+ *  `owner` the very entry `persona`, `entities` or `locations` holds. */
+const openingPrelude = (opening: SandboxOpening | null, keyed: KeyedEntities, { locations }: SandboxPlaces): string => {
+  if (!opening) return 'const opening = null;';
+  const { owner, ...fields } = opening;
+  const entityName = owner?.category === 'entity' && [...keyed.byName].find(([, entity]) => entity.id === owner.id)?.[0];
+  const locationName = owner?.category === 'location' && namedLocations(locations).find(([, place]) => place.id === owner.id)?.[0];
+  const ownerEntry = owner?.category === 'entity' && keyed.persona.id === owner.id ? 'persona'
+    : entityName ? `entities[${JSON.stringify(entityName)}]`
+      : locationName ? `locations[${JSON.stringify(locationName)}]` : 'null';
+  const entry = { category: 'opening', ...fields };
+  return `const opening = Object.freeze((${LOCK_FIELDS})(Object.assign(${JSON.stringify(entry)}, { owner: ${ownerEntry} }), `
+    + `${JSON.stringify([...Object.keys(entry), 'owner'])}, 'opening.', ${LOOSE_NOTE}));`;
+};
+
 /** The world writes a run's dump holds, or the error of the first unknown name it named. */
 function readWorldWrites(dump: string): { writes?: WorldWrites; maybeDiary?: string[]; unknownMemories?: string[]; media?: MediaWrite[] } | { error: string } {
   const parsed: unknown = JSON.parse(dump);
@@ -3012,7 +3044,7 @@ export const executeStatCode = async (
     clock, readings, turn = NO_TURN, choicesWritable = false, worldOptions = [], optionValues, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner,
     dictionaries = [], resolveEntryValue, narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES, discovered = [], args,
     openCast = false, memories = [], notes = '', readOnly = false, items = [], itemEvent, bodies = [], randomSeed,
-    currencies = [], money, media, weather,
+    currencies = [], money, media, weather, opening = null,
   }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
@@ -3173,6 +3205,7 @@ export const executeStatCode = async (
       trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
       entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf, standing, reads, bodies, instanceRowsOf(media, places), heldBy),
       locationsPrelude(places, standing, reads, heldBy),
+      openingPrelude(opening, keyed, places),
       dictionariesPrelude(dictionaries, placeholderMap, reads, resolveEntryValue),
       itemsPrelude(items, named, keyed, places, placeholderMap, itemEvent, reads),
       currenciesPrelude(

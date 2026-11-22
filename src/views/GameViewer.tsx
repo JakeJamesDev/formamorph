@@ -32,7 +32,7 @@ import { targetAttribute } from "@/lib/surface/surfaceTargets";
 import { EXIT_TO_MENU_PROMPT } from "@/lib/leavePrompts";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
-import { EMPTY_REPLY, type SandboxMemory, type SandboxTurn, type StatClock, type WorldWrites } from "@/lib/statCodeExecutor";
+import { EMPTY_REPLY, type SandboxMemory, type SandboxOpening, type SandboxTurn, type StatClock, type WorldWrites } from "@/lib/statCodeExecutor";
 import { advancedClock, baseWritesOf, mergeWorldWrites } from "@/lib/worldWrites";
 import { addScriptPins, pruneScriptPins, withScriptPins } from "@/lib/scriptPins";
 import { addNamedWrites, pruneNamedMemories, withNamedWrites } from "@/lib/namedMemories";
@@ -106,7 +106,7 @@ import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { applyResolvedStart, drawPoolEntry, drawUnseenOpening, openingOwner, openingPool, type DrawnOpening } from "@/lib/openings";
 import { drawNewGameOpening } from "@/lib/newGameOpening";
-import { drawnOpeningKey, sameOpeningKey } from "@/lib/drawnOpening";
+import { drawnOpeningKey, resolveDrawnOpening, sameOpeningKey, sandboxOpeningOf } from "@/lib/drawnOpening";
 import { customPersonaEntity } from "@/lib/blueprints";
 import { bodyPickEntities } from "@/lib/bodies";
 import { avatarLookTraits } from "@/lib/avatarLook";
@@ -957,6 +957,7 @@ const GameViewer = ({
     correctedReadings,
     openingAction: openingTurnAction,
     setOpeningAction: setOpeningTurnAction,
+    drawnOpening,
     setDrawnOpening,
     itemInstances: heldItemInstances,
     setActiveTab: setRightTab,
@@ -2032,6 +2033,15 @@ const GameViewer = ({
   const resolveDrawn = (drawn: DrawnOpening): string => resolveOpening(drawn.opening.text, {
     owner: openingOwner(drawn.ownerId, [...entities, ...pickedAtStart(discoveredInPlay)], persona, customPersona),
   });
+  // The Drawn Opening as scripts read it, built from the render that runs them: its text filled in as `resolveDrawn` fills it.
+  const scriptOpeningRef = useRef<() => SandboxOpening | null>(() => null);
+  scriptOpeningRef.current = () => sandboxOpeningOf(
+    resolveDrawnOpening(drawnOpening, {
+      overview: worldOverview, locations,
+      entities: [...entities, ...pickedAtStart(discoveredInPlay), ...(persona ? [persona.entity] : []), ...(customPersona ? [customPersona] : [])],
+    }),
+    (text, owner) => resolveOpening(text, { owner }),
+  );
   /** The `turn.action` a re-rolled turn reads: history's "START GAME" proxy stands for the opening cue. */
   const rerolledAction = (action: string): string => {
     if (action !== OPENING_STAND_IN) return action.trim();
@@ -4538,6 +4548,7 @@ const GameViewer = ({
           memories: turnMemoriesRef.current ?? scriptMemoriesRef.current,
           notes: liveScene().notes,
           turn: currentTurnRead(),
+          opening: scriptOpeningRef.current(),
           loreToggles: baseLore,
           media: sandboxMediaOf({
             list: worldOverview?.mediaList, overrides: baseMedia, entities: codeEntities.world,

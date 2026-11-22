@@ -2,6 +2,7 @@
  * The Test Bench panel's prop contract — one bundle per Instrument plus the bench chrome. Lives in the lib
  * layer so `useTestBench` can type the bundle it builds without the lib importing from components.
  */
+import type { OpeningPickHandle } from './useOpeningPick';
 import type { BenchLens, LensOption, StatOverride } from '@/lib/testBench/lens';
 import type { Finding, FindingGroup, FindingSection } from '@/lib/testBench/rules';
 import type { TriggerReport } from '@/lib/testBench/triggers';
@@ -83,6 +84,8 @@ export interface LensBarProps {
   /** Every World Option, hidden ones included. */
   worldOptions: readonly WorldOption[];
   onOptionChange: (optionId: string, value: WorldOptionValueOf) => void;
+  /** The Opening every Bench and Test Code run reads, None by default. */
+  openingPick: OpeningPickHandle;
 }
 
 /** The Activation Tester's bundle. Its text, history and semantic toggle live above the tab strip so

@@ -1,4 +1,6 @@
-import { DEFAULT_OPENING, type DrawnOpening } from './openings';
+import { DEFAULT_OPENING, openingName, type DrawnOpening } from './openings';
+import type { SandboxOpening } from './statCodeExecutor';
+import type { ResolveText, SandboxState } from './statCodeTurn';
 import type { Entity, GameLocation, Opening, WorldOverview } from '@/types';
 
 /** Which Opening a row is: its owner and its id, since ids repeat across owners. `ownerId` is the entity's
@@ -23,6 +25,10 @@ export interface DrawnOpeningSources {
   entities: readonly Entity[];
   locations: readonly GameLocation[];
 }
+
+/** A world's own sources: its overview, entities and locations, as the editor holds them. */
+export const drawnOpeningSourcesOf = (world: { worldOverview?: WorldOverview | null; entities?: readonly Entity[]; locations?: readonly GameLocation[] }): DrawnOpeningSources =>
+  ({ overview: world.worldOverview, entities: world.entities ?? [], locations: world.locations ?? [] });
 
 /** The key a draw records, or null for the shipped default opening. */
 export function drawnOpeningKey(draw: DrawnOpening): OpeningKey | null {
@@ -63,3 +69,23 @@ export function resolveDrawnOpening(key: OpeningKey | null | undefined, sources:
   const opening = find(sources.overview?.openings);
   return opening ? { key, opening, owner: null } : null;
 }
+
+/** `resolved` as the `opening` global reads it, its text filled in by `fill` against its entity owner, or null. */
+export function sandboxOpeningOf(
+  resolved: ResolvedOpening | null, fill: (text: string, owner: Entity | null) => string,
+): SandboxOpening | null {
+  if (!resolved) return null;
+  const { opening, owner } = resolved;
+  return {
+    id: opening.id, name: openingName(opening), kind: opening.kind, self: !!opening.self,
+    time: opening.time ?? null, weather: opening.weather ?? null,
+    text: fill(opening.text, owner?.category === 'entity' ? owner.entity : null),
+    owner: owner && { category: owner.category, id: owner.category === 'entity' ? owner.entity.id : owner.location.id },
+  };
+}
+
+/** `state` with `key` as its Drawn Opening, the text filled by the state's own resolver. */
+export const withDrawnOpening = (state: SandboxState, key: OpeningKey | null | undefined, sources: DrawnOpeningSources): SandboxState => {
+  const fill: ResolveText = state.resolveText ?? ((text) => text);
+  return { ...state, opening: sandboxOpeningOf(resolveDrawnOpening(key, sources), fill) };
+};

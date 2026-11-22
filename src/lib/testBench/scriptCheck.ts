@@ -17,6 +17,7 @@ import {
 import { boxHomeOf } from '@/lib/codeBoxOwner';
 import { authoringStateOf, openingHomeOf, type OpeningPersona } from '@/lib/openingState';
 import { snapshotOf, type SandboxSnapshot, type UnitHome } from '@/lib/sandboxSnapshot';
+import { drawnOpeningSourcesOf, withDrawnOpening, type OpeningKey } from '@/lib/drawnOpening';
 import { SCRIPT_TIMINGS } from '@/lib/scripts';
 import { turnOneClock, type RunTiming } from '@/lib/statCodeTiming';
 import { afterScript, chainSnapshotOf, playedScripts, stateInventory, type SandboxState, type StatCodeTurn } from '@/lib/statCodeTurn';
@@ -103,18 +104,23 @@ const scriptUnits = (world: RuleWorld): ScriptUnit[] => {
 /** How many scripts a check runs. */
 export const checkedScriptCount = (world: RuleWorld): number => scriptUnits(world).length;
 
+/** What a Bench run reads beyond the world: the lens persona and the picked Opening, None when absent. */
+export interface BenchRun {
+  persona?: OpeningPersona;
+  opening?: OpeningKey | null;
+}
+
 /** The Bench's state of `world` at turn one for a `timing` run: Test Code's clock and the authored enabled map. */
-const benchStateOf = (world: RuleWorld, timing: RunTiming, persona: OpeningPersona | undefined): SandboxState =>
-  ({
-    ...authoringStateOf(world, undefined, persona), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing),
-    items: world.items ?? [], slots: world.slots ?? [],
-    ...(world.currencies?.length ? { money: { currencies: world.currencies, placements: world.placements ?? [] } } : {}),
-  });
+const benchStateOf = (world: RuleWorld, timing: RunTiming, { persona, opening }: BenchRun): SandboxState => withDrawnOpening({
+  ...authoringStateOf(world, undefined, persona), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing),
+  items: world.items ?? [], slots: world.slots ?? [],
+  ...(world.currencies?.length ? { money: { currencies: world.currencies, placements: world.placements ?? [] } } : {}),
+}, opening, drawnOpeningSourcesOf(world));
 
 /** The Bench's snapshot of `world` at turn one for a `timing` run: its state and the open cast, with no editor
  *  overlays (Q2, Q6). */
-export const benchSnapshotOf = (world: RuleWorld, timing: RunTiming, { persona }: { persona?: OpeningPersona } = {}): SandboxSnapshot =>
-  snapshotOf(benchStateOf(world, timing, persona), { openCast: true });
+export const benchSnapshotOf = (world: RuleWorld, timing: RunTiming, run: BenchRun = {}): SandboxSnapshot =>
+  snapshotOf(benchStateOf(world, timing, run), { openCast: true });
 
 /** What a run of `unit` reports, or null when it ran clean and every write named something. */
 function findingOf(unit: ScriptUnit, result: StatCodeResult): Finding | null {
@@ -134,8 +140,8 @@ function findingOf(unit: ScriptUnit, result: StatCodeResult): Finding | null {
 }
 
 /** The turn a check walks one timing with, from the world at turn one. */
-const benchTurnOf = (world: RuleWorld, timing: ScriptTiming, persona: OpeningPersona | undefined): StatCodeTurn => {
-  const state = benchStateOf(world, timing, persona);
+const benchTurnOf = (world: RuleWorld, timing: ScriptTiming, run: BenchRun): StatCodeTurn => {
+  const state = benchStateOf(world, timing, run);
   return {
     state, timing, worldScripts: world.scripts, switchRowOrder: runRowKeys(scriptTreeWorldOf(world), 'switch'), inventory: stateInventory(state), previous: state.stats, asks: [], regenApplied: {},
     statNameOf: (stat) => stat.name, traitNameOf: (trait) => trait.name,
@@ -154,7 +160,7 @@ const isBlueprintHome = ({ kind }: UnitHome) => kind === 'blueprintStat' || kind
  * `player.*`.
  */
 export async function checkScripts(
-  world: RuleWorld, { prompts, persona }: { prompts?: ScriptPromptHost; persona?: OpeningPersona } = {},
+  world: RuleWorld, { prompts, ...run }: BenchRun & { prompts?: ScriptPromptHost } = {},
 ): Promise<Finding[]> {
   const units = scriptUnits(world);
   if (!units.length) return [];
@@ -164,7 +170,7 @@ export async function checkScripts(
     const placeOf = runRowPlace(treeWorld, timing);
     const rows = units.filter((unit) => unit.script.timing === timing).sort((a, b) => placeOf(a.key) - placeOf(b.key));
     if (!rows.length) continue;
-    let now = benchTurnOf(world, timing, persona);
+    let now = benchTurnOf(world, timing, run);
     let sentence = SAMPLE_SENTENCE;
     let choices: readonly string[] | undefined;
     for (const unit of rows) {

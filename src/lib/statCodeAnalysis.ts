@@ -949,7 +949,7 @@ function checkOwnerWrite(target: SyntaxNode, code: string, assignment: boolean):
 }
 
 /** The globals whose writes run time drops, unless the surface lists a member as writable (Q21, Q25). */
-const READ_ONLY_GLOBALS = ['turn', 'clock', 'location', 'notes'] as const;
+const READ_ONLY_GLOBALS = ['turn', 'opening', 'clock', 'location', 'notes'] as const;
 type ReadOnlyGlobal = typeof READ_ONLY_GLOBALS[number];
 
 /** The array methods that change their array in place. */
@@ -971,6 +971,8 @@ function checkReadOnlyGlobalWrite(
   let member: SyntaxNode = target;
   while (member.firstChild?.name === 'MemberExpression') member = member.firstChild;
   if (root === 'clock' && clockChecked && checkClockField(member, code)) return null;
+  // A write into `opening.owner` is a write to that entities or locations entry, which its own rules check.
+  if (root === 'opening' && member !== target && entryRef(member, code, root)?.name === 'owner') return null;
   return readOnlyMember(member, code, surface, root);
 }
 

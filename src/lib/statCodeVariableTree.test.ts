@@ -120,7 +120,7 @@ const asLevel = (entries: readonly { name: string }[]) => entries.map((entry) =>
 
 describe('the top level', () => {
   it('lists the sandbox’s globals in the order an author meets them, without console', () => {
-    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Items', 'Currencies', 'World Options', 'Clock', 'Turn', 'Locations', 'Location', 'Memories', 'Music', 'Weather', 'notes', 'discover']);
+    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Items', 'Currencies', 'World Options', 'Clock', 'Turn', 'Opening', 'Locations', 'Location', 'Memories', 'Music', 'Weather', 'notes', 'discover']);
   });
 
   it('keeps the in-group order of a stat’s fields', () => {
@@ -605,6 +605,8 @@ describe('every leaf against the sandbox', () => {
     places: { locations: [{ id: 'dock', name: 'Dock' }, { id: 'mill', name: 'Old Mill' }], location: { id: 'dock', name: 'Dock' } },
     items: [{ id: 'lamp', name: 'Brass Lamp', placeholders: placeholders.owners.get('lamp'), instances: [] }],
     currencies: [{ id: 'coin', name: 'Coin', kind: 'name' }],
+    // An Opening Mira owns, so `opening.owner` reaches her entry.
+    opening: { id: 'o1', name: 'ambush', kind: 'action', self: false, time: null, weather: null, text: 'Arrows fly.', owner: { category: 'entity', id: 'mira' } },
   });
 
   // `diary` writes for a real entity and never the persona, so it has its own cases below.

@@ -24,7 +24,7 @@ export function argEntry(param: ToolParam): SurfaceEntry {
 
 /** The script globals a user Tool reads, in the order an author meets them (spec: Surface). */
 const USER_TOOL_GLOBALS = [
-  'stats', 'clock', 'turn', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'items', 'currencies', 'options', 'world', 'console',
+  'stats', 'clock', 'turn', 'opening', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'items', 'currencies', 'options', 'world', 'console',
 ];
 
 const fieldsOnly = (entries: readonly SurfaceEntry[]) => entries.filter((entry) => !isMethodEntry(entry));

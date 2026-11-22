@@ -9,6 +9,8 @@ import { useMountedRef } from "@/lib/useMountedRef";
 import { SquareFunction } from "lucide-react";
 import { migrateStatCodeRoutes } from "@/lib/statCodeRoutes";
 import { runTestCode } from "@/lib/statCodeTestRun";
+import { useOpeningPickContext } from "@/contexts/OpeningPickContext";
+import { OpeningPickSelect } from "@/components/editor/OpeningPickSelect";
 import type { OpeningFoldWorld } from "@/lib/openingState";
 import type { UnitHome } from "@/lib/sandboxSnapshot";
 import { statBoxAnalysisOptions, type StatCodeNames } from "@/lib/statCodeBoxOptions";
@@ -99,6 +101,8 @@ export function ScriptBox({ script, label, onChange, context, reveal, autoFocus,
   /** The running test's prompts, which its choice rows answer. */
   const prompts = useEditorPromptRun();
   const { close: closePrompts } = prompts;
+  // The World Editor's Opening pick, which the Test Bench shares; elsewhere there is none to pick.
+  const openingPick = useOpeningPickContext();
   const mounted = useMountedRef();
 
   const { timing, code: value } = script;
@@ -170,7 +174,7 @@ export function ScriptBox({ script, label, onChange, context, reveal, autoFocus,
     try {
       // A switch is reported here and never applied.
       const report = await runTestCode(value, timing, home, withOwnerStats(world, owner, ownerStats), {
-        ...(isOutput && { sentence: sample }), prompts: run.host,
+        ...(isOutput && { sentence: sample }), prompts: run.host, opening: openingPick?.pick ?? null,
       });
       // An edit or an unmount mid-run closed this run, and its report is stale.
       if (!prompts.isCurrent(run)) return;
@@ -268,6 +272,9 @@ export function ScriptBox({ script, label, onChange, context, reveal, autoFocus,
           >
             {testing ? "Testing..." : "Test Code"}
           </Button>
+          {openingPick && openingPick.groups.length > 0 && (
+            <OpeningPickSelect {...openingPick} setPick={(key) => { clearReport(); openingPick.setPick(key); }} label={`Opening ${label}`} className="w-auto max-w-56" />
+          )}
           {hasTemplates && (
             <Button variant="outline" onClick={() => setTemplatesOpen(true)} aria-label={`Templates ${label}`}>
               <SquareFunction className="h-4 w-4 mr-1" />

@@ -11,7 +11,7 @@ import { codeDiagnostics, statCodeDiagnostics, type AnalysisOptions } from './st
 import { executeStatCode, type StatCodeResult, type StatCodeRunOptions } from './statCodeExecutor';
 import { scriptMoney } from './scriptMoney';
 import {
-  CLOCK_MEMBERS, CURRENCY_FIELDS, ITEM_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, SELF_WRITABLE_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, placeholderEntryFields, SANDBOX_GLOBALS, STAT_FIELDS, WORLD_MEMBERS,
+  CLOCK_MEMBERS, CURRENCY_FIELDS, ITEM_FIELDS, OPENING_MEMBERS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, SELF_WRITABLE_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, placeholderEntryFields, SANDBOX_GLOBALS, STAT_FIELDS, WORLD_MEMBERS,
   STAT_CODE_SURFACE, TRAIT_ENTRY_FIELDS, scriptSurface,
 } from './statCodeSurface';
 import type { SurfaceEntry } from './codeSurface';
@@ -92,6 +92,8 @@ const world = {
     entries: [{ id: 'image', name: 'Image', kind: 'image' as const }, { id: 'sound', name: 'Sound', kind: 'sound' as const }],
     overrides: {}, defaults: () => ({}),
   },
+  // An Opening the entity owns, so `opening.owner` reaches its entry.
+  opening: { id: 'opening', name: 'Opening', kind: 'action' as const, self: false, time: null, weather: null, text: 'An opening.', owner: { category: 'entity' as const, id: 'entity' } },
 };
 // One stat-backed Currency on the persona's own stat, so a pay in the guide's form lands as that stat's write.
 const currency = { id: 'currency', name: 'Currency', backing: { kind: 'stat' as const, statId: 'hero-stat' } };
@@ -154,6 +156,7 @@ const SURFACE_MEMBERS: Record<string, readonly SurfaceEntry[]> = {
   owner: ENTITY_FIELDS,
   clock: CLOCK_MEMBERS,
   turn: TURN_MEMBERS,
+  opening: OPENING_MEMBERS,
   locations: LOCATION_ENTRY_FIELDS,
   location: LOCATION_MEMBERS,
   discover: [],
