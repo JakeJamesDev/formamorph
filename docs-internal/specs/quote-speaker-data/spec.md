@@ -63,6 +63,13 @@ Players who contribute corrections mostly fix quote speakers. In the two review 
 - Learned names are derived from the save's corrections, turn by turn, not stored separately. An undo removes them with the turn.
 - Reading takes the learned names as an extra input. They name only a cluster the cast vote left unnamed and the player rule did not claim, and only when the cluster holds the head word. They never change a cluster the vote named.
 - The reading's mentions carry entity ids only, so the stranger display rules apply unchanged.
+- Ticket 03 rulings:
+  - A name is a speaker mention with no leading article or determiner whose every word is capitalized ("Captain Vale"). It is learned whole, lowercased. Any other mention learns its last word. A cluster holds a head word when one of its mentions, lowercased past a possessive and a leading article, equals it or ends with " head" or "-head".
+  - Only quote records whose rule is a speech-verb rule or `beat`, with a mention, teach. Nearest-subject and fallback rules teach nothing.
+  - Pronouns (personal, possessive, reflexive, plus this, that, who, someone, one) and the reading's player words never teach. A correction to "Not listed" teaches nothing and is no claim.
+  - A correction that names the player teaches: a persona epithet ("the stranger") is a real title.
+  - An unnamed cluster holding head words learned for two different entities gets no name.
+  - A reading uses the names learned from the other turns' corrections still in the history. The streaming early read uses the same names, so colors do not change when the full reading lands.
 
 **Fallbacks (client, quote speakers).** Each runs only when the speech-verb, beat and nearest-subject rules leave a quote with no speaker. None runs in the speech-verb-only mode that the discovery gate uses (Q73).
 - The quote's own first-person mentions sit in a named cluster: that entity.
