@@ -62,6 +62,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The arrows on a character's picture now stay in place as you page through pictures of different shapes.**
     - **The Previous and Next buttons on a turn's scene images now stay in place as you page through them.** An image narrower than the turn's widest shows with bars at its sides.
     - **With Character Mentions on, a quote speaker you fix now carries over to later turns.** When the story calls that character by the same title, like "the Alpha", their quotes take their color. A title you gave to two characters is not used. Undoing the turn takes it back.
+  - **Test Bench:**
+    - **Triggers and AI Context in the Test Bench now show the Opening picker.** A trait that requires an Opening changes with the pick you can see. The Opening tab keeps its own pick.
   - **Renaming a stat, trait, placeholder or location in the World Editor now updates the item scripts that name it.** When another character that can hold the item has a stat of that name, you check which `owner` references to change.
   - **Auto-Load in the desktop app now loads the top model in the Installed list.** An Auto-Load tag marks it. Drag a model to the top to choose it, including a model from an Additional Search Folder.
   - **Large Supporter-only worlds, such as Sunmeadow Town, now download from Community Creations.** The download no longer times out, and the installed world stays close to the author's size.

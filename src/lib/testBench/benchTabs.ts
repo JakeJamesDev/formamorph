@@ -10,8 +10,8 @@ export const BENCH_TABS = [
   // Opening reads the persona and starts at its own Starting Location pick.
   // Issues' script check runs every script, which reads the picked Opening.
   { value: 'issues', label: 'Issues', icon: Stethoscope, lens: { persona: false, location: false, opening: true } },
-  { value: 'triggers', label: 'Triggers', icon: Zap, lens: { persona: true, location: true, opening: false } },
-  { value: 'aiContext', label: 'AI Context', icon: BrainCircuit, lens: { persona: true, location: true, opening: false } },
+  { value: 'triggers', label: 'Triggers', icon: Zap, lens: { persona: true, location: true, opening: true } },
+  { value: 'aiContext', label: 'AI Context', icon: BrainCircuit, lens: { persona: true, location: true, opening: true } },
   { value: 'opening', label: 'Opening', icon: OpeningIcon, lens: { persona: true, location: false, opening: false } },
 ] as const;
 

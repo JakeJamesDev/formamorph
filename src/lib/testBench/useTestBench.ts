@@ -27,7 +27,7 @@ import { openingPersonaOf } from '@/lib/openingState';
 import { inPlayWorldOf } from '@/lib/inPlayWorld';
 import { checkedScriptCount, checkScripts } from './scriptCheck';
 import { useEditorPromptRun } from '@/lib/useEditorPromptRun';
-import { lensPersonaRef, lensStatOverrides } from './lens';
+import { buildLens, lensPersonaRef, lensStatOverrides } from './lens';
 import { useBenchFindings } from './useBenchFindings';
 import { useBenchLens } from './useBenchLens';
 import { useOpeningPick, type OpeningPickHandle } from './useOpeningPick';
@@ -236,13 +236,22 @@ export function useTestBench({
   // assembly itself — stat settling, the roll table, the whole first prompt — runs only while watched.
   const openingLive = panelShown && benchTab === 'opening';
   const openingRolls = useOpeningRolls(benchWorld, openingLive);
+  // The Opening instrument draws its own pool pick, so its lens and play read the world without the shared pick (Q22).
+  const openingLens = useMemo(
+    () => (openingLive ? buildLens(benchWorld, benchLens.lens.state) : benchLens.lens),
+    [openingLive, benchWorld, benchLens.lens],
+  );
+  const openingPlay = useMemo(
+    () => (openingLive ? inPlayWorldOf(benchWorld, lensPersonaId, lensOptionValues, lensStartPicks(benchWorld, openingLens)) : benchPlay),
+    [openingLive, benchWorld, lensPersonaId, lensOptionValues, openingLens, benchPlay],
+  );
   const opening = useMemo(
-    () => (openingLive ? buildOpening(benchPlay, benchLens.lens, openingRolls.rolls, openingChoice) : EMPTY_OPENING),
-    [openingLive, benchPlay, benchLens.lens, openingRolls.rolls, openingChoice],
+    () => (openingLive ? buildOpening(openingPlay, openingLens, openingRolls.rolls, openingChoice) : EMPTY_OPENING),
+    [openingLive, openingPlay, openingLens, openingRolls.rolls, openingChoice],
   );
   const rerollOpening = useCallback(
-    () => openingRolls.reroll(benchLens.lens, openingChoice.startLocationId),
-    [openingRolls, benchLens.lens, openingChoice.startLocationId],
+    () => openingRolls.reroll(openingLens, openingChoice.startLocationId),
+    [openingRolls, openingLens, openingChoice.startLocationId],
   );
   const chooseOpeningStart = useCallback(
     (startLocationId: string) => setOpeningChoice((prev) => ({ ...prev, startLocationId })),
