@@ -44,7 +44,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 | Q16 | `opening` holds `category` "opening", `id`, `name`, `owner`, `kind`, `self`, `time`, `weather`, and `text` with its placeholders filled in as the player saw it. |
 | Q17 | The save holds an opening record. On load it resolves against the current world; an Opening the author has since deleted reads null. |
 | Q18 | The Opening Condition has Not. The Time and Weather Conditions gain Not too. Reopened on new evidence: Weather never had Not, against the grill's premise. |
-| Q19 | A Condition that lists a deleted Opening shows as unresolved and drops the missing id, as a Weather row with no kinds does. |
+| Q19 | A Condition that lists a deleted Opening shows as unresolved, as a Weather row with no kinds does. The missing id drops on the next edit of that list. |
 | Q20 | Opening names use the script-name field and code-name rules. No new visual pattern. |
 | Q21 | The Condition's picker lists every Opening in the world, grouped by owner: World, each entity, each location. |
 | Q22 | The shared Opening pick and the Test Bench Opening instrument's own pool pick stay separate values. The instrument previews page one, and the shared pick drives only `opening` and the Opening Condition. |
@@ -138,9 +138,9 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 - It holds while the drawn Opening's key is in the list, inverted by Not. With no drawn Opening it does not hold; with Not it holds.
 - Gate input gains the drawn Opening key. The opening fold already re-settles starting traits under the drawn Opening for Weather and Time; it passes the key the same way, so the first settle sees it. Every later turn commit reads it from the save record.
 - Outside play (editor, Enter World, library), it reads the Test Bench pick where there is one, else no Opening.
-- The editor offers it wherever it offers the Weather and Time Conditions. The picker lists every Opening in the world, grouped by owner. A listed key with no Opening shows the row as unresolved, and saving drops the dead key.
+- The editor offers it wherever it offers the Weather and Time Conditions. The picker lists every Opening in the world, grouped by owner. A listed key with no Opening shows the row as unresolved. The dead key drops the next time the author edits that Condition's list. No sweep runs when the world saves.
 - Its line text reads the picked names or derived labels.
-- Ticket 06 rulings: the editor offers it only while the world has at least one Opening, at most one per row. On an entity card, keys on the card entity's own Openings travel as the self-entity token and are rebound on import. Other keys are dropped, and a Condition left with no keys is dropped. In play it reads the resolved key, so a drawn Opening that no longer resolves counts as none. The Condition stores keys only, so linked-content update lines read "Opening", "Not Opening" or "Opening (2)".
+- Ticket 06 rulings: the editor offers it only while the world has at least one Opening, at most one per row. On an entity card, keys on the card entity's own Openings travel as the self-entity token and are rebound on import. Other keys are dropped. A Condition left with no keys imports with zero keys, so it stays unresolved and never holds. An import never widens a gate. In play it reads the resolved key, so a drawn Opening that no longer resolves counts as none. The Condition stores keys only, so linked-content update lines read "Opening", "Not Opening" or "Opening (2)".
 
 **Not on Time and Weather**
 
