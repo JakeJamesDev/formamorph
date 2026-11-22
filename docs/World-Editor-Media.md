@@ -208,6 +208,8 @@ On mobile, the panel shows the picture beside the Layer list. The selected Layer
 
 Deleting an image that a Layer uses removes it from that Layer, and the confirm names each Layer first. Images that only Layers use sit in the **Layered Image Variants** section. Each change is one undo step.
 
+Deleting a Layered Image also deletes the images only it uses, and the confirm names them. An image stays when another Layered Image uses it or any slot or gallery links it.
+
 ## Map Background
 <!-- keywords: map background, world map, map image, map visibility rule, ruined map, map changes in game, go to locations -->
 

@@ -1,6 +1,6 @@
 # 04: Delete From World Takes Unshared Parts
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -16,8 +16,18 @@ Reasoning effort: high
 
 ## Acceptance criteria
 
-- [ ] Deleting a Layered Image removes its unshared parts from the Media List.
-- [ ] A part shared with another Layered Image, or linked by a field, stays.
-- [ ] The confirm lists every part it removes by name.
-- [ ] One Undo restores the Layered Image, its parts and every link to them.
-- [ ] Each new guard fails with its bug put back.
+- [x] Deleting a Layered Image removes its unshared parts from the Media List. (LayeredImageEditor.test: "deletes a rig with the images only it uses…")
+- [x] A part shared with another Layered Image, or linked by a field, stays. (mediaUsage.test `unsharedParts`: other rig, gallery, cover, map, Body backdrop; plus the component test)
+- [x] The confirm lists every part it removes by name. (component test reads `[data-media-parts] li`)
+- [x] One Undo restores the Layered Image, its parts and every link to them. (component test: one `undoMediaEdit` deep-equals the world before)
+- [x] Each new guard fails with its bug put back. (dropped the field check, the other-rig check, the part cascade, and split the undo group: each went red)
+
+## Landed
+
+**Not verified**
+
+- None.
+
+**For you**
+
+- Open Delete From World on a Layered Image in the Media tab and read the confirm: the second list "It also deletes these images, which only it uses:".

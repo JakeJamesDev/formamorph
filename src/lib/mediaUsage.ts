@@ -86,3 +86,16 @@ export function variantUsage(list: MediaList | undefined): Map<string, VariantUs
   }
   return usage;
 }
+
+/** The images Layered Image `id` holds as Variants that nothing else uses, in list order. */
+export function unsharedParts(w: MediaWorld, id: string): string[] {
+  const list = w.worldOverview.mediaList;
+  const entry = list?.[id];
+  if (entry?.kind !== 'layered') return [];
+  const fields = mediaUsage(w);
+  const variants = variantUsage(list);
+  const held = new Set(entry.layers.flatMap((l) => l.variants.map((v) => v.mediaId)));
+  return Object.keys(list ?? {}).filter((part) => held.has(part)
+    && !fields.has(part)
+    && (variants.get(part) ?? []).every((use) => use.entryId === id));
+}

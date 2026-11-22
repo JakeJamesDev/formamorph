@@ -21,7 +21,7 @@ import { renameMediaEntry } from '@/lib/mediaUnlink';
 import { useCodeRenameOffer } from '@/lib/useCodeRename';
 import { isRemoteImage } from '@/lib/imageBytes';
 import { ImageUpload } from '@/lib/UtilityComponents';
-import { mediaUsage, mediaUseLabel, variantUsage, variantUseLabel } from '@/lib/mediaUsage';
+import { mediaUsage, mediaUseLabel, unsharedParts, variantUsage, variantUseLabel } from '@/lib/mediaUsage';
 import { RemoteImg } from '@/lib/useRemoteImage';
 import { cn } from '@/lib/utils';
 import type { GalleryLink, LayeredMediaEntry, MediaEntry, MediaFileEntry, MediaList, MediaRef } from '@/types';
@@ -133,28 +133,39 @@ export function MediaChooseButton({ list, linkedIds, onPick, onPickLayered, kind
 }
 
 /** The confirm Delete From World raises, naming every place that loses the entry. */
-export function DeleteMediaConfirm({ open, name, kind = 'image', uses, onConfirm, onOpenChange }: {
+export function DeleteMediaConfirm({ open, name, kind = 'image', uses, parts = [], onConfirm, onOpenChange }: {
   open: boolean;
   name: string;
   kind?: MediaEntryKind;
   /** Each use as copy names it. */
   uses: string[];
+  /** The names of the images the delete takes with it. */
+  parts?: string[];
   onConfirm: () => void;
   onOpenChange: (open: boolean) => void;
 }) {
+  const usesBlock = uses.length ? (
+    <>
+      <span className="block">This takes it out of:</span>
+      <ul className="mt-1 list-disc pl-5" data-media-uses="">
+        {uses.map((use) => <li key={use}>{use}</li>)}
+      </ul>
+    </>
+  ) : <span className="block">Nothing uses this {MEDIA_KIND_WORDS[kind].one.toLowerCase()}.</span>;
   return (
     <ConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
       title={`Delete ${name || 'Unnamed'} From World?`}
-      description={uses.length ? (
+      description={parts.length ? (
         <>
-          <span className="block">This takes it out of:</span>
-          <ul className="mt-1 list-disc pl-5" data-media-uses="">
-            {uses.map((use) => <li key={use}>{use}</li>)}
+          {usesBlock}
+          <span className="mt-2 block">It also deletes these images, which only it uses:</span>
+          <ul className="mt-1 list-disc pl-5" data-media-parts="">
+            {parts.map((part, i) => <li key={`${i}-${part}`}>{part}</li>)}
           </ul>
         </>
-      ) : `Nothing uses this ${MEDIA_KIND_WORDS[kind].one.toLowerCase()}.`}
+      ) : usesBlock}
       confirmLabel="Delete"
       destructive
       surface="deleteMediaEntry"
@@ -177,23 +188,29 @@ export function useMediaEntryActions() {
     void step(`Rename ${MEDIA_KIND_WORDS[list[id].kind].one}: ${name.trim()}`, () => renameMedia({ mediaId: id, name }));
     offerCodeRename({ root: 'media', oldName: list[id].name, newName: kept, otherNames: [], noun: list[id].kind === 'layered' ? 'Layered Image' : list[id].kind });
   };
+  const world = { worldOverview, entities, locations, items, bodies, dictionaries };
   const uses = deleting
     ? [
-      ...(mediaUsage({ worldOverview, entities, locations, items, bodies, dictionaries }).get(deleting) ?? [])
+      ...(mediaUsage(world).get(deleting) ?? [])
         .map((use) => mediaUseLabel(use, (name) => labelPlaceholders(name, placeholders))),
       ...(variantUsage(list).get(deleting) ?? []).map(variantUseLabel),
     ]
     : [];
+  // A Layered Image takes the images only it uses with it (Q8).
+  const parts = deleting ? unsharedParts(world, deleting) : [];
   const confirm = (
     <DeleteMediaConfirm
       open={!!deleting}
       name={(deleting && list?.[deleting]?.name) || ''}
       kind={(deleting && list?.[deleting]?.kind) || 'image'}
       uses={uses}
+      parts={parts.map((part) => list?.[part]?.name || 'Unnamed')}
       onConfirm={() => {
         const id = deleting;
         setDeleting(null);
-        if (id) void step(`Delete ${MEDIA_KIND_WORDS[list?.[id]?.kind ?? 'image'].one}: ${list?.[id]?.name ?? ''}`, () => removeMedia(id));
+        if (id) void step(`Delete ${MEDIA_KIND_WORDS[list?.[id]?.kind ?? 'image'].one}: ${list?.[id]?.name ?? ''}`, () => {
+          for (const each of [id, ...parts]) removeMedia(each);
+        });
       }}
       onOpenChange={(open) => { if (!open) setDeleting(null); }}
     />

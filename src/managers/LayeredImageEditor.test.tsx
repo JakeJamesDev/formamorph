@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { MediaChooseButton } from './MediaPicker';
-import { renderMediaTab } from '@/test/mediaTabBench';
+import { renderMediaTab, undoMediaEdit } from '@/test/mediaTabBench';
 import { asMobile } from '@/test/panelBench';
 import { newBlankWorld } from '@/lib/blankWorld';
 import type { ImageFacts } from '@/lib/imageFacts';
@@ -243,6 +243,34 @@ describe('Layered Image editor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(rigOf(bench).layers[0].variants).toEqual([]));
     expect(rigOf(bench).layers.map((l) => l.name)).toEqual(['Body', 'Face']);
+  });
+
+  it('deletes a rig with the images only it uses, names them first, and one Undo brings it all back', async () => {
+    const other: LayeredMediaEntry = { id: 'other', name: 'Other Rig', kind: 'layered', layers: [{ id: 'o', name: 'Face', variants: [{ mediaId: 'calm' }] }] };
+    const base = world(RIG);
+    const shared: World = {
+      ...base,
+      worldOverview: { ...base.worldOverview, mediaList: { ...base.worldOverview.mediaList, other } },
+      // Ash's gallery shows the rig; Bram's links the body image directly.
+      entities: base.entities.map((e) => ({ ...e, images: e.id === 'ash' ? [{ mediaId: 'rig' }] : [{ mediaId: 'body' }] })) as World['entities'],
+    };
+    const bench = renderMediaTab(shared, 'simple');
+    const before = bench.ctx();
+    fireEvent.click(screen.getByRole('button', { name: 'Group by Type' }));
+    selectCard('Scout Rig');
+    fireEvent.click(screen.getByRole('button', { name: 'Delete From World' }));
+    const confirm = await screen.findByRole('alertdialog');
+    expect(Array.from(confirm.querySelectorAll('[data-media-uses] li')).map((li) => li.textContent)).toEqual(['Ash, Image 1']);
+    expect(Array.from(confirm.querySelectorAll('[data-media-parts] li')).map((li) => li.textContent)).toEqual(['big']);
+
+    await act(async () => { fireEvent.click(within(confirm).getByRole('button', { name: 'Delete' })); });
+    const list = bench.ctx().worldOverview.mediaList!;
+    expect(Object.keys(list).sort()).toEqual(['body', 'calm', 'other']);
+    expect(bench.ctx().entities.find((e) => e.id === 'ash')?.images).toEqual([]);
+
+    await undoMediaEdit();
+    expect(bench.ctx().worldOverview.mediaList).toEqual(before.worldOverview.mediaList);
+    expect(bench.ctx().entities).toEqual(before.entities);
   });
 
   it('lays out master–detail in the pane on mobile, with Variants, Look and Motion tabs', () => {
