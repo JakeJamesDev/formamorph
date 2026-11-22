@@ -1,7 +1,7 @@
 # 03: Learned Speaker Names
 
 Status: ready-for-agent
-Blocked by: 01
+Blocked by: 01, 05
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
 
@@ -12,7 +12,7 @@ When a player fixes a quote's speaker, the playthrough learns what that title me
 **Learning:**
 - The playthrough learns a head word for an entity when both of these hold:
   - a quote correction names that entity;
-  - the quote's speaker mention sits in a cluster the reading left unnamed. The speaker mention is the speech-tag subject or the beat opener, taken from 01's rule mention.
+  - the quote's speaker mention sits in a cluster the reading left unnamed. The speaker mention is the speech-tag subject or the beat opener, taken from 01's rule mention, which 05 keeps in saved turns.
 - The head word is the mention's last word, lowercased, past any possessive ("alpha" from "the massive black-furred Alpha").
 - A capitalized name outside the cast is learned whole, lowercased.
 - Pronouns and player words are never learned.
