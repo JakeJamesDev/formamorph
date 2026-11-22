@@ -80,6 +80,7 @@ Players who contribute corrections mostly fix quote speakers. In the two review 
 - **Wire shape** (ticket 04 ruling):
   - `cast`: `[{ id, name, aliases: string[], strangerName: string | null, kind: 'unique' | 'generic' | null }]`. The kind is the world's entity kind; the persona sends null.
   - `quotes`: `[{ start, end, speakerId: string | null, rule: string, mention: { start, end } | null, firstPerson: { start, end }[] }]`. `mention` is null when no rule found a mention.
+  - In the client's reading, a quote keeps `speaker` and gains `rule`, `mention` and `firstPerson` (ticket 01 ruling). `firstPerson` comes from scanning the quote's own text for word-bounded I, me, my, mine and myself, whether or not a cluster holds them. `mention` is the mention at the rule's subject span when one exists, even when the rule fired through a player word or the mention's entity is null; else null. `readingVersion` starts at 1.
   - `rule` is a bounded lowercase-kebab string (`^[a-z-]{1,40}$`), not a closed list, so a client with newer rules never has its send refused. Known names: `after-subject-verb`, `after-verb-subject`, `before-verb`, `beat`, `nearest-subject`, `none`, and ticket 02's fallbacks `own-first-person`, `earlier-quote`, `pronoun-subject`, `named-subject`.
   - `clientVersion` is a string of at most 64 characters. `readingVersion` is a positive integer.
   - Bounds: at most 200 cast records, 20 aliases per record, 500 quotes and 50 first-person spans per quote. Names and aliases use the 200-character name bound.
