@@ -1,6 +1,6 @@
 # 04: Server Accepts and Stores the Full Contribution
 
-Status: ready-for-human
+Status: done
 Base: 25a6b35
 Blocked by: None (can start immediately)
 Repo: FormamorphServer

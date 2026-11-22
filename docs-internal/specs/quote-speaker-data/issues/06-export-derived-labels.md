@@ -1,6 +1,6 @@
 # 06: Export Derives Labels and Skips No-Change Rows
 
-Status: ready-for-human
+Status: done
 Base: 2d56e60
 Blocked by: 04
 Repo: FormamorphServer
@@ -23,7 +23,7 @@ The export stops shipping raw model output, and quote fixes start to feed coref 
 - Derived labels apply the same way as mention corrections (Q35). A player's mention or non-mention correction on the same span wins.
 
 **Exportable rows:**
-- A row is exported only when it holds a mention correction, a non-mention correction or a derived label.
+- A row is exported only when its final clusters differ from the model's (the spec's ruling).
 - Any other row is skipped, even when accepted. It stays stored.
 
 **Queue API:**

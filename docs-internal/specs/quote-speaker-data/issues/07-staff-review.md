@@ -1,6 +1,6 @@
 # 07: Staff Review Shows Derived Labels and Bulk-Rejects
 
-Status: ready-for-human
+Status: done
 Blocked by: 05, 06
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
