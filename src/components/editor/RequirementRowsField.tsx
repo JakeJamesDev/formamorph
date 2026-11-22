@@ -25,8 +25,8 @@ import { cn } from '@/lib/utils';
 import type { Placeholder, TraitRequirement, TraitRequirementRow } from '@/types';
 import { Hint, Meta } from '@/components/ui/typography';
 
-/** The picker's one time row: a time Condition starts on night alone. */
-const TIME_OPTION: RequirementOption = { requirement: { kind: 'time', dayparts: ['night'] }, label: 'Time of Day', breadcrumb: [], owners: [] };
+/** The picker's one time row: a time Condition starts with no daypart, unresolved until one is on. */
+const TIME_OPTION: RequirementOption = { requirement: { kind: 'time', dayparts: [] }, label: 'Time of Day', breadcrumb: [], owners: [] };
 
 /** Where the open picker adds: a row's index for **And**, or `new` for a row of its own. */
 type AddTarget = number | 'new';
@@ -45,13 +45,14 @@ type AddTarget = number | 'new';
  * would repeat another Condition in the row is held back. The same stat can sit in a row twice, once as a
  * floor and once as a ceiling.
  *
- * A time Condition's chip is a toggle per daypart, at least one on, and it takes Not. A row holds one at most.
+ * A time Condition's chip is a toggle per daypart. It starts with none on and reads red until one is, and it takes Not. A row holds one at most.
  *
- * A weather Condition's chip is a toggle per kind the world allows, at least one on, and it takes Not. It is offered
+ * A weather Condition's chip is a toggle per kind the world allows. It starts with none on and reads red until one is, and it takes Not. It is offered
  * while the world's Weather is on, and a row holds one at most.
  *
- * An Opening Condition's chip picks Openings from a grouped list, at least one on, and it takes Not. It is offered
- * while the world has an Opening, and a row holds one at most. A key whose Opening is gone reads red.
+ * An Opening Condition's chip picks Openings from a grouped list, and it takes Not. It starts with none picked and
+ * reads red until one is, as a key whose Opening is gone does. It is offered while the world has an Opening, and a
+ * row holds one at most.
  *
  * A World Option Condition's chip edits a choice's value or a number's comparison in place; a number has no
  * Not. A boolean's chip reads "on" or "off" and flips between them.

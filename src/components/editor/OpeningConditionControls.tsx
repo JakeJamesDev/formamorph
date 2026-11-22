@@ -36,8 +36,8 @@ OpeningTrigger.displayName = 'OpeningTrigger';
 
 /**
  * The Opening pick-many an Opening Condition chip carries. A few Openings, or one owner's, list flat under owner
- * headings; more open on the owners, each a page of its Openings. Select All tops every list. The last Opening on
- * stays on, so the Condition never empties. A toggle keeps only listed keys, so a deleted Opening's key drops on
+ * headings; more open on the owners, each a page of its Openings. Select All tops every list and toggles what it
+ * covers. An emptied Condition stays, unresolved, until an Opening is checked again. A toggle keeps only listed keys, so a deleted Opening's key drops on
  * the next edit (Q19). `accepts` says whether a replacement would repeat another Condition in the row.
  */
 export function OpeningConditionControls({ requirement, groups, accepts, onChange }: {
@@ -70,8 +70,7 @@ export function OpeningConditionControls({ requirement, groups, accepts, onChang
     return (
       <CommandItem
         key={option.id} value={option.id} aria-checked={selected}
-        // The last Opening on stays on.
-        disabled={(selected && live.length === 1) || !accepts(next)}
+        disabled={!accepts(next)}
         onSelect={() => onChange(next)} className="cursor-pointer"
       >
         <Check selected={selected} />
@@ -79,13 +78,14 @@ export function OpeningConditionControls({ requirement, groups, accepts, onChang
       </CommandItem>
     );
   };
-  // Select All adds `options` to the pick; once they are all on there is nothing left to add.
+  // Select All adds `options` to the pick, and once they are all on it takes them off again.
   const selectAll = (options: readonly OpeningPickOption[]) => {
     const done = options.every((o) => on.has(o.id));
-    const next = withIds(new Set([...live, ...options].map((o) => o.id)));
+    const covered = new Set(options.map((o) => o.id));
+    const next = withIds(new Set(done ? live.filter((o) => !covered.has(o.id)).map((o) => o.id) : [...live, ...options].map((o) => o.id)));
     return (
       <CommandGroup>
-        <CommandItem value="select-all" aria-checked={done} disabled={done || !accepts(next)} onSelect={() => onChange(next)} className="cursor-pointer">
+        <CommandItem value="select-all" aria-checked={done} disabled={!accepts(next)} onSelect={() => onChange(next)} className="cursor-pointer">
           <Check selected={done} />
           Select All
         </CommandItem>

@@ -169,7 +169,7 @@ describe('a weather Condition outside play', () => {
   it('is offered, with the allowed kinds, only while Weather is on', () => {
     const offered = requirementOptions(editor(on()), 'a');
     expect(offered.weatherKinds).toEqual(['clear', 'rain', 'snow']);
-    expect(offered.weather?.[0].requirement).toEqual(weather('rain'));
+    expect(offered.weather?.[0].requirement).toEqual(weather());
     expect(requirementOptions(editor(), 'a').weather).toBeUndefined();
     expect(requirementOptions(editor({ on: false, allowed: ['rain'] }), 'a').weather).toBeUndefined();
   });

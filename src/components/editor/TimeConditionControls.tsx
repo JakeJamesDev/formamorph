@@ -5,8 +5,8 @@ import { notFlag } from '@/lib/requirementRows';
 import type { Daypart, TimeRequirement } from '@/types';
 
 /**
- * The daypart multi-select a time Condition chip carries, in clock order. The last daypart on stays on, so the
- * Condition never empties. `accepts` says whether a replacement would repeat another Condition in the row.
+ * The daypart multi-select a time Condition chip carries, in clock order. Every daypart can be off; an empty
+ * Condition reads as unresolved. `accepts` says whether a replacement would repeat another Condition in the row.
  */
 export function TimeConditionControls({ requirement, accepts, onChange }: {
   requirement: TimeRequirement;
@@ -22,8 +22,7 @@ export function TimeConditionControls({ requirement, accepts, onChange }: {
       aria-label="Time of day"
       value={on}
       onValueChange={(v) => {
-        const dayparts = daypartSet(v.filter(isDaypart));
-        if (dayparts.length) onChange({ kind: 'time', dayparts, ...notFlag(requirement.not) });
+        onChange({ kind: 'time', dayparts: daypartSet(v.filter(isDaypart)), ...notFlag(requirement.not) });
       }}
       className="h-auto min-w-0 flex-wrap gap-y-0.5"
     >
@@ -33,7 +32,7 @@ export function TimeConditionControls({ requirement, accepts, onChange }: {
           <ToggleGroupItem
             key={part}
             value={part}
-            disabled={!next.dayparts.length || !accepts(next)}
+            disabled={!accepts(next)}
             className="h-6 px-2 text-helper"
           >
             {LABELS[part]}

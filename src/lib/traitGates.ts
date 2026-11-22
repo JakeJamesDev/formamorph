@@ -1377,12 +1377,10 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
     ...(item.slotRule ? [option({ kind: 'item', id: item.id, status: 'equipped' }, [], itemOwners)] : []),
   ].map((o) => ({ ...o, label: item.name })));
   const weatherKinds = input.weatherKinds;
-  // A new weather Condition starts on the first kind after Clear, or on Clear when the world allows no other.
-  const weather = weatherKinds?.length
-    ? [{ ...option({ kind: 'weather', kinds: [weatherKinds.find((kind) => kind !== 'clear') ?? 'clear'] }, [], []), label: 'Weather' }] : undefined;
-  // A new Opening Condition starts on the world's first Opening.
-  const firstOpening = input.openings?.[0]?.options[0];
-  const opening = firstOpening ? [{ ...option({ kind: 'opening', openings: [firstOpening.key] }, [], []), label: 'Opening' }] : undefined;
+  // A new weather Condition starts with no kind, unresolved until the author turns one on.
+  const weather = weatherKinds?.length ? [{ ...option({ kind: 'weather', kinds: [] }, [], []), label: 'Weather' }] : undefined;
+  // A new Opening Condition starts with none picked, unresolved until the author checks one.
+  const opening = input.openings?.length ? [{ ...option({ kind: 'opening', openings: [] }, [], []), label: 'Opening' }] : undefined;
   return {
     traits, groups, personas, items, worldOptions: worldOptionRows(input.worldOptions), ...(weather && { weather, weatherKinds }),
     ...(opening && { opening, openings: input.openings }),

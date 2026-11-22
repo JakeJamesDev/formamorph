@@ -434,7 +434,7 @@ A **time condition** checks the story's time of day. *Night Hunter* requires *ev
 | 🌆 Evening | 17:00 to 20:00 |
 
 - The narration's time of day uses the same split, so the condition matches what the story says.
-- At least one time of day stays on. Select **Require it to be off** to make it **Not**. *Not night* holds in every other time of day.
+- The chip starts with no time of day on, in red, and never holds while it stays empty. Select **Require it to be off** to make it **Not**. *Not night* holds in every other time of day.
 - A row holds one time condition. It never checks the day number or an hour.
 - The game checks once per turn, after the turn's time passes, like a [stat condition](#when-the-game-checks). With the AI clock off, each turn is one hour.
 - Outside play, the [Test Bench](#test-bench-checks) reads the time the story opens at, which is morning.
@@ -449,7 +449,7 @@ A **weather condition** checks the world's current weather. *Awning Up* requires
 2. Under **Requires**, select **Add Requirement**, then pick **Weather**.
 3. Turn on each kind that counts. The chip lists **Clear** and the kinds the world allows.
 
-- At least one kind stays on. Select **Require it to be off** to make it **Not**. *Not Rain or Storm* holds in every other weather, **Clear** included.
+- The chip starts with no kind on, in red, and never holds while it stays empty. Select **Require it to be off** to make it **Not**. *Not Rain or Storm* holds in every other weather, **Clear** included.
 - A row holds one weather condition.
 - It checks the world's weather, not what the player feels. A player in a Sheltered location still holds it.
 - The game checks once per turn, after the turn's weather is set.
@@ -466,7 +466,7 @@ An **opening condition** checks which opening started the game. *Hunted* require
 2. Under **Requires**, select **Add Requirement**, then pick **Opening**.
 3. Open the chip's list and check each opening that counts, or select **Select All**. The list shows every opening in the world: the world's own first, then each entity's, then each location's. An opening with no name shows as *Aki · Opening 2*. In a world with more than 8 openings, the list opens on the owners: select one to see its openings.
 
-- At least one opening stays checked. Select **Require it to be off** to make it **Not**. *Not ambush* holds after every other start, and in a game that started with no opening.
+- **Select All** checks every opening, or clears them all when they're already checked. With none checked, the chip turns red and the condition never holds. Select **Require it to be off** to make it **Not**. *Not ambush* holds after every other start, and in a game that started with no opening.
 - A row holds one opening condition.
 - It holds for the whole game, not just page one. A page-one re-roll that draws another opening checks it again.
 - Players never see it in a trait's requirement line. A trait locked by it alone reads **Locked**.

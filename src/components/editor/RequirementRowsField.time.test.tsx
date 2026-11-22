@@ -33,25 +33,27 @@ const pickTime = async (button: string) => {
 const daypart = (name: string) => within(screen.getByRole('toolbar', { name: 'Time of day' })).getByRole('button', { name });
 
 describe('a time Condition in the rows editor', () => {
-  it('adds a chip on night alone, with no owner page, on and off world', async () => {
+  it('adds an empty, red chip with no owner page, on and off world', async () => {
     for (const offWorld of [false, true]) {
       const { unmount } = render(<Harness offWorld={offWorld} />);
       await pickTime('Add Requirement');
-      expect(rows()).toEqual([{ all: [{ kind: 'time', dayparts: ['night'] }] }]);
-      expect(daypart('Night')).toHaveAttribute('aria-pressed', 'true');
+      expect(rows()).toEqual([{ all: [{ kind: 'time', dayparts: [] }] }]);
+      expect(daypart('Night')).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.getByRole('toolbar', { name: 'Time of day' }).closest('[data-unresolved]')).not.toBeNull();
       unmount();
     }
   });
 
-  it('edits the dayparts in clock order and keeps the last one on', async () => {
+  it('edits the dayparts in clock order and lets the last one go off', async () => {
     render(<Harness initial={[{ all: [{ kind: 'time', dayparts: ['night'] }] }]} />);
-    expect(daypart('Night')).toBeDisabled();
+    expect(daypart('Night')).toBeEnabled();
     fireEvent.click(daypart('Evening'));
     expect(rows()).toEqual([{ all: [{ kind: 'time', dayparts: ['night', 'evening'] }] }]);
     expect(screen.getByRole('group', { name: 'evening or night' })).toBeInTheDocument();
     fireEvent.click(daypart('Night'));
     expect(rows()).toEqual([{ all: [{ kind: 'time', dayparts: ['evening'] }] }]);
-    expect(daypart('Evening')).toBeDisabled();
+    fireEvent.click(daypart('Evening'));
+    expect(rows()).toEqual([{ all: [{ kind: 'time', dayparts: [] }] }]);
   });
 
   it('flips to Not and back, keeping its dayparts, and edits them while negated', () => {

@@ -44,12 +44,12 @@ describe('an Opening Condition in the rows editor', () => {
     expect(await screen.findByRole('option', { name: /^Opening/ })).toBeInTheDocument();
   });
 
-  it('adds a chip on the first Opening with no owner page', async () => {
+  it('adds an empty, red chip with no owner page', async () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     fireEvent.click(await screen.findByRole('option', { name: /^Opening/ }));
-    expect(rows()).toEqual([{ all: [{ kind: 'opening', openings: [WORLD] }] }]);
-    expect(screen.getByRole('button', { name: 'Openings: ambush' })).toBeInTheDocument();
+    expect(rows()).toEqual([{ all: [{ kind: 'opening', openings: [] }] }]);
+    expect(screen.getByRole('group', { name: 'no Opening' })).toHaveAttribute('data-unresolved', 'true');
   });
 
   it('groups every Opening by owner, World first, with derived labels for unnamed rows', async () => {
@@ -61,10 +61,13 @@ describe('an Opening Condition in the rows editor', () => {
     expect(headings).toEqual(['World', 'Aki', 'Dock']);
   });
 
-  it('picks several Openings and keeps the last one on', async () => {
+  it('picks several Openings, and unchecking the last leaves the chip red until one is checked again', async () => {
     render(<Harness initial={[{ all: [{ kind: 'opening', openings: [WORLD] }] }]} />);
     openList();
-    expect(await screen.findByRole('option', { name: 'ambush' })).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(await screen.findByRole('option', { name: 'ambush' }));
+    expect(rows()).toEqual([{ all: [{ kind: 'opening', openings: [] }] }]);
+    expect(screen.getByRole('group', { name: 'no Opening', hidden: true })).toHaveAttribute('data-unresolved', 'true');
+    fireEvent.click(screen.getByRole('option', { name: 'ambush' }));
     fireEvent.click(screen.getByRole('option', { name: 'Dock · Opening 1' }));
     expect(rows()).toEqual([{ all: [{ kind: 'opening', openings: [WORLD, { ownerId: null, openingId: 'd1', locationId: 'dock' }] }] }]);
     // The modal list hides the rest of the page while it is open.
@@ -97,7 +100,8 @@ describe('an Opening Condition in the rows editor', () => {
     expect(options[0]).toBe('Select All');
     fireEvent.click(screen.getByRole('option', { name: 'Select All' }));
     expect(rows()[0].all[0]).toMatchObject({ openings: groups.flatMap((g) => g.options.map((o) => o.key)) });
-    expect(screen.getByRole('option', { name: 'Select All' })).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(screen.getByRole('option', { name: 'Select All' }));
+    expect(rows()[0].all[0]).toMatchObject({ openings: [] });
   });
 });
 
@@ -119,6 +123,9 @@ describe('an Opening Condition in a world with many Openings', () => {
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Select All', ...many.openings!.map((_, i) => `Mara · Opening ${i + 1}`)]);
     fireEvent.click(screen.getByRole('option', { name: 'Select All' }));
     expect(rows()[0].all[0]).toMatchObject({ openings: [WORLD, ...many.openings!.map((o) => ({ ownerId: 'many', openingId: o.id }))] });
+    fireEvent.click(screen.getByRole('option', { name: 'Select All' }));
+    expect(rows()[0].all[0]).toMatchObject({ openings: [WORLD] });
+    fireEvent.click(screen.getByRole('option', { name: 'Select All' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mara' }));
     expect(screen.getByRole('option', { name: /^Mara/ })).toHaveTextContent('Mara6 of 6');
   });

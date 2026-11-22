@@ -22,6 +22,15 @@ Use semantic values from the app. Do not sample colors from screenshots; HDR and
 
 Cards use `card` rather than inventing a second panel color. Destructive, success, warning, and information states keep their semantic colors across palettes.
 
+## Rule: Selections Never Move Their Choices
+
+A user who steps through choices clicks again where the last choice was. If a selection moves the next choice, that click lands on the wrong thing.
+
+- 🎯 **Applies to:** any row or column of choices (tiles, tabs, list rows, segmented options), and any control clicked several times in a row, such as **Next** and **Previous**.
+- 🚫 **Never:** a selection adds, removes, or resizes anything before, between, or around the choices, or changes the size of a choice itself.
+- ✅ **Instead:** give content that changes with the selection a fixed size. When it has nothing to show, keep its space: show the same controls disabled, or leave the space empty.
+- 🖼️ **Example:** the image gallery. The framed picture's actions sit over the frame, and its name row stays on every slot, disabled on the empty one. The tile strip under it never moves.
+
 ## Pattern: Aligned Settings Stack
 
 **Purpose:** Make a mixed settings form easy to scan while giving controls most of the horizontal space.
@@ -2611,7 +2620,7 @@ A segmented control whose options turn on and off one by one, for a short pick-m
 
 - 🧩 **Component.** `ToggleGroup` with `type="multiple"` in [`toggle-group.tsx`](../src/components/ui/toggle-group.tsx), at the chip's `h-6 px-2 text-helper` size. The production use is [`TimeConditionControls.tsx`](../src/components/editor/TimeConditionControls.tsx).
 - 🔢 **Order.** Options keep one fixed order, such as clock order, whatever was picked first.
-- 🔒 **Never empty.** When one option is left on, it is disabled, so the value can't empty.
+- 🔴 **Starts empty.** A new chip has no option on and reads as unresolved, in red, until one is. Every option, the last included, can be turned off.
 - 📱 **Width.** The group wraps inside its chip on a narrow screen, and the chip's remove button stays beside it. It does not switch to a select.
 - 🔊 **Name.** The group carries an `aria-label`; each option is a pressed or unpressed button.
 
@@ -2624,9 +2633,9 @@ Open `#dev?modal=designSystem&tab=segmented-multi-select` for the time chip's co
 A chip that names what it picked and opens a list of owners' items to check, for a pick-many set too long or too grouped for the [segmented multi-select](#pattern-segmented-multi-select).
 
 - 🏷️ **Trigger.** The chip reads its picks in words, such as *Opening ambush or chase*, with a small chevron. Selecting it opens the list in a popover.
-- ✅ **Select All first.** **Select All** tops every list and page. It adds every item it covers, and it shows checked and disabled once they are all on.
+- ✅ **Select All first.** **Select All** tops every list and page. It adds every item it covers, and once they are all on it shows checked and takes them off again.
 - 📂 **Flat, then drill-down.** With one owner, or with up to 8 items in all, the list is flat under owner headings. Past that it opens on the owners, each with its picked count (*2 of 6*). Selecting an owner opens its items, with a back row at the top.
-- 🔒 **Never empty.** The last checked item is disabled. The chip's ✕ removes the whole Condition, so the list has no Clear and no Close.
+- 🔴 **Starts empty.** A new chip has nothing checked. Any item, the last included, can be unchecked. An empty chip reads as unresolved, in red, until an item is checked again. The chip's ✕ removes the whole Condition, so the list has no Clear and no Close.
 - 🧩 **Component.** [`OpeningConditionControls.tsx`](../src/components/editor/OpeningConditionControls.tsx): `Popover` with `Command`, check rows in the `MultiSelect` style.
 
 Open `#dev?modal=worldEditor&tab=traits` on a world with Openings and add an **Opening** requirement.

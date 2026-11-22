@@ -38,24 +38,25 @@ describe('a weather Condition in the rows editor', () => {
     expect(await screen.findByRole('option', { name: /^Weather/ })).toBeInTheDocument();
   });
 
-  it('adds a chip on the first allowed kind with no owner page, listing only the allowed kinds', async () => {
+  it('adds an empty, red chip with no owner page, listing only the allowed kinds', async () => {
     render(<Harness kinds={ALLOWED} />);
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     fireEvent.click(await screen.findByRole('option', { name: /^Weather/ }));
-    expect(rows()).toEqual([{ all: [{ kind: 'weather', kinds: ['rain'] }] }]);
-    expect(kind('Rain')).toHaveAttribute('aria-pressed', 'true');
-    expect(kind('Clear')).toHaveAttribute('aria-pressed', 'false');
+    expect(rows()).toEqual([{ all: [{ kind: 'weather', kinds: [] }] }]);
+    expect(kind('Rain')).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('toolbar', { name: 'Weather' }).closest('[data-unresolved]')).not.toBeNull();
     expect(within(screen.getByRole('toolbar', { name: 'Weather' })).queryByRole('button', { name: 'Snow' })).toBeNull();
   });
 
-  it('edits the kinds in list order and keeps the last one on', () => {
+  it('edits the kinds in list order and lets the last one go off', () => {
     render(<Harness kinds={ALLOWED} initial={[{ all: [{ kind: 'weather', kinds: ['storm'] }] }]} />);
-    expect(kind('Storm')).toBeDisabled();
+    expect(kind('Storm')).toBeEnabled();
     fireEvent.click(kind('Clear'));
     expect(rows()).toEqual([{ all: [{ kind: 'weather', kinds: ['clear', 'storm'] }] }]);
     fireEvent.click(kind('Storm'));
     expect(rows()).toEqual([{ all: [{ kind: 'weather', kinds: ['clear'] }] }]);
-    expect(kind('Clear')).toBeDisabled();
+    fireEvent.click(kind('Clear'));
+    expect(rows()).toEqual([{ all: [{ kind: 'weather', kinds: [] }] }]);
   });
 
   it('flips to Not and back, keeping its kinds, and edits them while negated', () => {
