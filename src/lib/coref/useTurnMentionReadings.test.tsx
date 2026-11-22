@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import type { ChatMessage, Entity } from '@/types';
 import type { CharacterMentions, PassageReading } from './characterMentions';
+import { readingVersion } from './mentionReading';
 import { narrationHash, type MentionReadingMap } from './mentionReadings';
 import { useTurnMentionReadings } from './useTurnMentionReadings';
 
@@ -38,6 +39,13 @@ describe('reading finished passages on their turn', () => {
     expect(c.readPassage).toHaveBeenCalledWith('Mira left.', [MIRA], { player: ASH });
     await act(async () => c.pending[0].resolve(reading('Mira left.')));
     expect(hook.result.current.t1).toMatchObject({ model: 'small', textHash: narrationHash('Mira left.') });
+  });
+
+  it('keeps the reading version and the cast ids the reading voted with', async () => {
+    const c = controller();
+    const hook = mount(c.controller, { history: [turn('t1', 'Mira left.')], busy: false, ready: true });
+    await act(async () => c.pending[0].resolve(reading('Mira left.')));
+    expect(hook.result.current.t1).toMatchObject({ readingVersion, castIds: ['mira'] });
   });
 
   it('lets the next turn run while a reading is unanswered, then reads it and keeps both', async () => {

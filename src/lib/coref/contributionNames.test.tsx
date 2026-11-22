@@ -11,7 +11,7 @@ import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { worldFixture } from '@/test/gamePanels';
 import { phValues } from '@/test/placeholderValues';
 import type { Entity, Placeholder } from '@/types';
-import { contributionBody, contributionNames } from './correctionContribution';
+import { contributionBody } from './correctionContribution';
 import { narrationHash } from './mentionReadings';
 
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
@@ -68,7 +68,8 @@ describe('the names a contribution sends', () => {
         clusters: [[span('The keeper'), span('She')], [span('you')]], clusterEntities: ['keeper', 'wren'],
       },
       corrections: [{ kind: 'mention', start: span('She')[0], end: span('She')[1], entityId: 'keeper' }],
-      names: contributionNames(entities, persona?.entity),
+      entities,
+      persona: persona?.entity,
     });
     expect(body?.entityNames).toEqual({ keeper: 'Steward Mira', wren: 'Steward Wren' });
   });
@@ -79,7 +80,7 @@ describe('the game view names a contribution from the resolved world', () => {
   const viewer = readFileSync(join(process.cwd(), 'src/views/GameViewer.tsx'), 'utf8');
 
   it('passes the reading cast and the resolved persona', () => {
-    expect(viewer).toMatch(/names: contributionNames\(allEntities, personaEntity\)/);
+    expect(viewer).toMatch(/entities: allEntities,\s*persona: personaEntity,/);
     expect(viewer).toMatch(/const personaEntity = persona\?\.entity;/);
     expect(viewer).toMatch(/const allEntities = useMemo\(\s*\(\) => \[\.\.\.entities, /);
     expect(viewer).toMatch(/cast: allEntities,/);

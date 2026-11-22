@@ -31,7 +31,11 @@ export function correctReading(reading: MentionReading, corrections: readonly Me
   for (const { kind, start, end, entityId } of corrections) {
     if (kind === 'nonMention') mentions = mentions.filter((m) => !overlaps(m, { start, end }));
     else if (kind === 'mention') mentions = [...mentions.filter((m) => !overlaps(m, { start, end })), { start, end, entityId }].sort(byStart);
-    else quotes = [...quotes.filter((q) => !overlaps(q, { start, end })), { start, end, speaker: entityId }].sort(byStart);
+    else {
+      // The quote's record (rule, mention, first person) stays; only its speaker changes.
+      const same = quotes.find((q) => q.start === start && q.end === end);
+      quotes = [...quotes.filter((q) => !overlaps(q, { start, end })), { ...same, start, end, speaker: entityId }].sort(byStart);
+    }
   }
   return { mentions, quotes };
 }

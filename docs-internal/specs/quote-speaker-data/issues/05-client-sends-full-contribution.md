@@ -1,6 +1,6 @@
 # 05: Client Sends the Full Contribution
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01, 04
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -20,9 +20,20 @@ The client leaves out any value the server would refuse, so the send still goes 
 
 ## Acceptance criteria
 
-- [ ] The contribution body for a read turn holds `playerId`, `cast`, `quotes`, `clientVersion` and `readingVersion`.
-- [ ] Each quote record's speaker equals the speaker that the turn showed.
-- [ ] A name or alias over the server's bound is left out, and the send still goes through.
-- [ ] A turn without a persona sends `playerId` as null.
-- [ ] After a save and reload, and after a correction, each quote keeps its `rule`, `mention` and `firstPerson`.
-- [ ] A turn saved before this change restores and sends without those fields.
+- [x] The contribution body for a read turn holds `playerId`, `cast`, `quotes`, `clientVersion` and `readingVersion`. (`posts once with the full passage...`, `sends the reading version the turn was read at`)
+- [x] Each quote record's speaker equals the speaker that the turn showed. The record holds the reading's own speaker, ahead of any correction, as the spec session ruled. (`holds the speaker the reading showed...`)
+- [x] A name or alias over the server's bound is left out, and the send still goes through. (`leaves out an alias or stranger name over the bound...`, `leaves out a span the server would refuse...`)
+- [x] A turn without a persona sends `playerId` as null. (`sends playerId as null without a persona...`)
+- [x] After a save and reload, and after a correction, each quote keeps its `rule`, `mention` and `firstPerson`. (`restores each quote's rule...`, `keeps a corrected quote's rule...`; the correction mutation turned it red)
+- [x] A turn saved before this change restores and sends without those fields. (`restores a quote saved before the records came without them`, `sends a turn read before the records...`)
+
+## Landed
+
+**Not verified**
+- No send went to a running server. The body follows ticket 04's wire shape and its validators, read from `FormamorphServer/src/utils/corefCorpus.js`.
+- A cast entity whose resolved name is empty or over 200 characters is left out of `cast` whole, because the server requires a non-empty name per record. Aliases and the stranger name are left out singly.
+- Mutation checks ran on the record-keeping in `correctReading` and on the quote span guard only.
+
+**For you**
+- Save shape grew, additively: each saved turn reading may hold `readingVersion` and `castIds`, and each saved quote `rule`, `mention`, `firstPerson` and `fallback`. Older saves restore without them.
+- The send body for `Contribute Corrections` grew by `playerId`, `cast`, `quotes`, `clientVersion` and `readingVersion`. A send from a real turn against the staging server is the check only a player can make.

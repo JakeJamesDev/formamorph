@@ -82,7 +82,7 @@ import { isScriptPromptSample, SCRIPT_PROMPT_SAMPLES } from "@/lib/devScriptProm
 import { addTell, latestTurnId, NO_SHOWS, pruneTells, REROLLED_TIMINGS, setTurnTells, tellHost, turnTells, withoutTimings, type ScriptImageTell } from "@/lib/scriptTells";
 import { newestTurnNarration, pruneByNarration, turnMentionReading, turnNarration } from "@/lib/coref/mentionReadings";
 import { applyCardCorrection } from "@/lib/coref/mentionCorrections";
-import { contributeTurn, contributionNames } from "@/lib/coref/correctionContribution";
+import { contributeTurn } from "@/lib/coref/correctionContribution";
 import { useCorrectionContribution } from "@/lib/coref/useContributeAsk";
 import { useContributeAccess } from "@/lib/coref/useContributeAccess";
 import { knownNameFor, memoryNarrationFor, readingNamesFor } from "@/lib/coref/mentionMemory";
@@ -6919,7 +6919,8 @@ const GameViewer = ({
       passage,
       entry: mentionReadings[turnId],
       corrections: correctionsRef.current[turnId]?.corrections ?? [],
-      names: contributionNames(allEntities, personaEntity),
+      entities: allEntities,
+      persona: personaEntity,
     });
   }, [fullMessageHistory, contributeAccess, worldId, mentionReadings, allEntities, personaEntity]);
   const { corrected, asks: asksContribute, answerContribute } = useCorrectionContribution(

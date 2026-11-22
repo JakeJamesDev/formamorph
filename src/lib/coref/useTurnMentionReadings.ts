@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 
 import type { ChatMessage } from '@/types';
 import { useMountedRef } from '@/lib/useMountedRef';
 import type { CharacterMentions } from './characterMentions';
-import type { MentionCast, MentionPlayer } from './mentionReading';
+import { readingVersion, type MentionCast, type MentionPlayer } from './mentionReading';
 import { holdsTurn, narrationHash, turnsToRead, type MentionReadingMap } from './mentionReadings';
 
 interface Options {
@@ -45,7 +45,10 @@ export function useTurnMentionReadings({ controller, ready, history, busy, readi
         if (!result || !mounted.current) return;
         // A rewind or a regenerate may have dropped the turn while the reading ran.
         if (!holdsTurn(historyRef.current, next.turnId, next.narration)) return;
-        setReadings((prev) => ({ ...prev, [next.turnId]: { ...result, textHash: narrationHash(next.narration) } }));
+        setReadings((prev) => ({
+          ...prev,
+          [next.turnId]: { ...result, textHash: narrationHash(next.narration), readingVersion, castIds: entities.map(({ id }) => id) },
+        }));
       })
       .catch((error: unknown) => {
         failed.current.add(`${next.turnId}:${narrationHash(next.narration)}`);

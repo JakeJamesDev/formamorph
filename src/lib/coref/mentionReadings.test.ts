@@ -54,6 +54,27 @@ describe('turn mention readings', () => {
     expect(restored.badSpan).toEqual(entry('Mira left. She ran.'));
   });
 
+  it('restores each quote’s rule, mention, first person and fallback, and the reading version and cast ids', () => {
+    const quote = { start: 0, end: 9, speaker: 'mira', rule: 'beat', mention: { start: 0, end: 4 }, firstPerson: [{ start: 1, end: 2 }], fallback: 'earlier-quote' };
+    const saved = { ...entry('x'), reading: { mentions: [], quotes: [quote, { start: 10, end: 14, speaker: null, rule: 'none', mention: null, firstPerson: [] }] }, readingVersion: 2, castIds: ['mira'] };
+    const restored = restoreMentionReadings(JSON.parse(JSON.stringify({ t1: saved })));
+    expect(restored.t1).toEqual(saved);
+  });
+
+  it('restores a quote saved before the records came without them', () => {
+    const old = { ...entry('x'), reading: { mentions: [], quotes: [{ start: 0, end: 9, speaker: 'mira' }] } };
+    expect(restoreMentionReadings({ t1: old }).t1).toEqual(old);
+    expect(restoreMentionReadings({ t1: old }).t1).not.toHaveProperty('readingVersion');
+  });
+
+  it('drops only a malformed record field, never the quote', () => {
+    const bad = { start: 0, end: 9, speaker: 'mira', rule: 'Not A Rule', mention: { start: 4, end: 1 }, firstPerson: [{ start: 'a' }] };
+    const restored = restoreMentionReadings({ t1: { ...entry('x'), reading: { mentions: [], quotes: [bad] }, readingVersion: 0, castIds: [1] } });
+    expect(restored.t1.reading.quotes).toEqual([{ start: 0, end: 9, speaker: 'mira' }]);
+    expect(restored.t1).not.toHaveProperty('readingVersion');
+    expect(restored.t1).not.toHaveProperty('castIds');
+  });
+
   it('finds a turn’s narration in the history', () => {
     expect(turnNarration([turn('t1', 'A.'), turn('t2', 'B.')], 't1')).toBe('A.');
     expect(turnNarration([turn('t1', 'A.')], 't9')).toBeUndefined();

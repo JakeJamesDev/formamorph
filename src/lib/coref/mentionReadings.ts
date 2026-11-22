@@ -4,7 +4,7 @@
 import type { ChatMessage } from '@/types';
 import { parseTurnContent } from '@/lib/turnDigest';
 import type { CorefModelId } from './corefManifest';
-import type { MentionReading } from './mentionReading';
+import type { MentionReading, QuoteRule, QuoteSpeaker, ReadingSpan } from './mentionReading';
 import type { CorefCluster } from './corefHost';
 
 /** A turn's reading, with the model that made it and the narration it read. */
@@ -17,6 +17,10 @@ export interface TurnMentionReading {
   /** The host's clusters and each one's entity, which a contribution sends (Q35). A reading without them sends nothing (Q59). */
   clusters?: CorefCluster[];
   clusterEntities?: (string | null)[];
+  /** The `readingVersion` the rules ran at; absent on a reading made before it was kept. */
+  readingVersion?: number;
+  /** The ids of the cast the reading voted with, the persona apart; absent on a reading made before they were kept. */
+  castIds?: string[];
 }
 
 export type MentionReadingMap = Record<string, TurnMentionReading>;
@@ -103,6 +107,25 @@ const isClusterList = (clusters: unknown, entities: unknown): clusters is CorefC
   && clusters.every((cluster) => Array.isArray(cluster) && cluster.length > 0 && cluster.every((span) =>
     Array.isArray(span) && span.length === 2 && Number.isInteger(span[0]) && Number.isInteger(span[1]) && span[0] < span[1]));
 
+const isSpan = (value: unknown): value is ReadingSpan => {
+  const span = value as Record<string, unknown> | null;
+  return !!span && Number.isInteger(span.start) && Number.isInteger(span.end) && (span.start as number) < (span.end as number);
+};
+const isRule = (value: unknown): value is QuoteRule => typeof value === 'string' && /^[a-z-]{1,40}$/.test(value);
+
+/** A saved quote, read back: its span and speaker, and each record field that is well-formed. A quote saved before
+ *  the record fields came back without them. */
+export function restoreQuote(quote: QuoteSpeaker & { fallback?: unknown }): QuoteSpeaker & { fallback?: QuoteRule | null } {
+  const { start, end, speaker, rule, mention, firstPerson, fallback } = quote;
+  return {
+    start, end, speaker,
+    ...(isRule(rule) ? { rule } : {}),
+    ...(mention === null ? { mention: null } : isSpan(mention) ? { mention: { start: mention.start, end: mention.end } } : {}),
+    ...(Array.isArray(firstPerson) && firstPerson.every(isSpan) ? { firstPerson: firstPerson.map(({ start: s, end: e }) => ({ start: s, end: e })) } : {}),
+    ...(fallback === null || isRule(fallback) ? { fallback } : {}),
+  };
+}
+
 /** The map a save holds, read back. A save is a file the player can edit, so only well-formed readings stay. */
 export function restoreMentionReadings(raw: unknown): MentionReadingMap {
   const restored: MentionReadingMap = {};
@@ -112,13 +135,15 @@ export function restoreMentionReadings(raw: unknown): MentionReadingMap {
     if (!entry || (entry.model !== 'big' && entry.model !== 'small') || typeof entry.version !== 'number'
       || typeof entry.textHash !== 'string' || !entry.reading
       || !isSpanList(entry.reading.mentions, 'entityId') || !isSpanList(entry.reading.quotes, 'speaker')) continue;
-    const { model, version, textHash, reading, clusters, clusterEntities } = entry as TurnMentionReading;
+    const { model, version, textHash, reading, clusters, clusterEntities, readingVersion, castIds } = entry as TurnMentionReading;
     restored[turnId] = {
       model, version, textHash,
       reading: {
         mentions: reading.mentions.map(({ start, end, entityId }) => ({ start, end, entityId })),
-        quotes: reading.quotes.map(({ start, end, speaker }) => ({ start, end, speaker })),
+        quotes: reading.quotes.map(restoreQuote),
       },
+      ...(Number.isInteger(readingVersion) && (readingVersion as number) > 0 ? { readingVersion } : {}),
+      ...(Array.isArray(castIds) && castIds.every((id) => typeof id === 'string') ? { castIds: [...castIds] } : {}),
       ...(isClusterList(clusters, clusterEntities)
         ? { clusters: clusters.map((cluster) => cluster.map(([s, e]): [number, number] => [s, e])), clusterEntities: [...(clusterEntities ?? [])] }
         : {}),

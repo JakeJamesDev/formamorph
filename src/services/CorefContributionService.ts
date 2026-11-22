@@ -3,6 +3,27 @@ import { authHeaders, unwrap } from './authRequest';
 import type { CharSpan } from '@/lib/coref/corefHost';
 import type { MentionCorrection } from '@/lib/coref/mentionCorrections';
 
+/** One cast entity as the reading saw it, names resolved. `kind` is null for the persona. */
+export interface ContributionCastRecord {
+  id: string;
+  name: string;
+  aliases: string[];
+  strangerName: string | null;
+  kind: 'unique' | 'generic' | null;
+}
+
+/** One quote the reading attributed: the speaker it showed, the rule that picked it and the mentions behind it.
+ *  `fallback` is the rule that named the speaker when it came from a fallback; the server ignores it. */
+export interface ContributionQuoteRecord {
+  start: number;
+  end: number;
+  speakerId: string | null;
+  rule: string;
+  mention: { start: number; end: number } | null;
+  firstPerson: { start: number; end: number }[];
+  fallback?: string | null;
+}
+
 /** One passage's corrections as the server takes them (Character Mentions Q35). Spans are UTF-16 offsets. */
 export interface CorefContributionBody {
   worldId: string;
@@ -14,6 +35,14 @@ export interface CorefContributionBody {
   corrections: MentionCorrection[];
   /** The resolved name of each referenced entity, by id. An id without one has no name to show. */
   entityNames: Record<string, string>;
+  /** The persona's entity id; null without one. */
+  playerId?: string | null;
+  cast?: ContributionCastRecord[];
+  /** Absent for a turn read before the records were kept. */
+  quotes?: ContributionQuoteRecord[];
+  clientVersion?: string;
+  /** Absent for a turn read before the version was kept. */
+  readingVersion?: number;
 }
 
 /** A contribution in the staff queue. */

@@ -54,6 +54,14 @@ describe('correctReading', () => {
     expect(fixed.mentions).toBe(READING.mentions);
   });
 
+  it('keeps a corrected quote’s rule, mention and first person, and changes only its speaker', () => {
+    const record = { rule: 'beat' as const, mention: { start: 0, end: 4 }, firstPerson: [{ start: 1, end: 2 }] };
+    const reading = { ...READING, quotes: [{ ...at('"Go,"'), speaker: 'courier', ...record }] };
+    const fixed = correctReading(reading, [{ kind: 'quote', ...at('"Go,"'), entityId: 'mira' }]);
+    expect(fixed.quotes).toEqual([{ ...at('"Go,"'), speaker: 'mira', ...record }]);
+    expect(reading.quotes[0].speaker).toBe('courier');
+  });
+
   it('applies corrections in order, the later one winning', () => {
     const fixed = correctReading(READING, [
       { kind: 'mention', ...at('She'), entityId: 'kessa' }, { kind: 'mention', ...at('She'), entityId: 'courier' },

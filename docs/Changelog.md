@@ -41,6 +41,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **⚙️ Backend**
   - **Character Mentions:**
     - **The Mention Reading now records how each quote speaker was found.** Each quote keeps its rule, rule mention and first-person spans, with a reading version.
+    - **A sent correction now carries the player, the cast and every quote's speaker.** It adds each quote's rule and mentions, and the client and reading versions. A save keeps the quote records, the reading version and the cast ids.
 
 #### 🔧 Fixed
 
