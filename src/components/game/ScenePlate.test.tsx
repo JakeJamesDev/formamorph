@@ -57,11 +57,12 @@ describe('ScenePlate', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
-  it('sizes its box from the image header before the image loads', () => {
+  it('sizes its box from the widest image header before any loads, and keeps it while paging', () => {
     render(<ScenePlate turnId="t1" images={IMG} onDelete={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Zoom image' }).style.aspectRatio).toBe('1024 / 512');
+    const box = () => screen.getByRole('button', { name: 'Zoom image' }).style;
+    expect([box().aspectRatio, box().width]).toEqual(['1024 / 512', 'min(100%, 36rem)']);
     fireEvent.click(screen.getByRole('button', { name: 'Previous image' }));
-    expect(screen.getByRole('button', { name: 'Zoom image' }).style.aspectRatio).toBe('512 / 768');
+    expect([box().aspectRatio, box().width]).toEqual(['1024 / 512', 'min(100%, 36rem)']);
   });
 
   it('reaches every control by keyboard', () => {

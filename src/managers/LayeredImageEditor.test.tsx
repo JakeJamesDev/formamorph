@@ -177,6 +177,17 @@ describe('Layered Image editor', () => {
     expect(dialog().querySelector('[data-variant-size-line]')?.textContent).toContain('480 × 576, not the picture\'s 240 × 288');
   });
 
+  it('ends the bottom Variant panel with the strip, so a longer summary never moves the tiles', () => {
+    renderMediaTab(world(RIG), 'simple');
+    selectCard('Scout Rig');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Layers' }));
+    fireEvent.click(within(dialog()).getByRole('button', { name: /^Face/ }));
+    const panel = dialog().querySelector('[data-variant-panel]')!;
+    const strip = panel.querySelector('[data-variant-strip="face"]')!;
+    // The panel grows upward from the dialog's bottom edge: whatever comes after the strip would push it up.
+    expect(strip.parentElement!.lastElementChild).toBe(strip);
+  });
+
   it('writes a dragged opacity once, on release', () => {
     const bench = renderMediaTab(world(RIG), 'simple');
     selectCard('Scout Rig');

@@ -30,10 +30,15 @@ export function ScenePlate({ turnId, images, onDelete, className }: {
   }
   const at = Math.min(view.index, newest);
   const src = images[at] as string | undefined;
-  const size = useMemo(() => (src ? dataUrlImageSize(src) : null), [src]);
+  // One box for the whole turn, as wide as its widest image: paging never moves the controls, and a
+  // narrower image letterboxes inside it.
+  // A linked image has no header to read, so it counts as square.
+  const box = useMemo(() => images
+    .map((image) => dataUrlImageSize(image) ?? { width: 1, height: 1 })
+    .reduce((widest, size) => (size.width / size.height > widest.width / widest.height ? size : widest), { width: 1, height: 1 }), [images]);
+  const ratio = box.width / box.height;
 
   if (!src) return null;
-  const ratio = size ? size.width / size.height : 1;
   const go = (index: number) => setView((v) => ({ ...v, index }));
 
   return (
@@ -42,7 +47,7 @@ export function ScenePlate({ turnId, images, onDelete, className }: {
         src={src}
         alt="Scene illustration"
         className="max-w-full overflow-hidden border bg-muted"
-        style={{ aspectRatio: size ? `${size.width} / ${size.height}` : '1 / 1', width: `min(100%, ${IMAGE_MAX_REM * ratio}rem)` }}
+        style={{ aspectRatio: `${box.width} / ${box.height}`, width: `min(100%, ${IMAGE_MAX_REM * ratio}rem)` }}
       >
         <img src={src} alt="Scene illustration" className="h-full w-full object-contain" />
       </ZoomImageButton>
@@ -54,7 +59,8 @@ export function ScenePlate({ turnId, images, onDelete, className }: {
                 <ChevronLeft className="h-4 w-4" />
               </button>
             </Tip>
-            <span className="tabular-nums">{at + 1}/{images.length}</span>
+            {/* As wide as the widest count, so Previous keeps its place from 9/10 to 10/10. */}
+            <span className="text-center tabular-nums" style={{ minWidth: `${2 * String(images.length).length + 1}ch` }}>{at + 1}/{images.length}</span>
             <Tip tip="Next image">
               <button type="button" aria-label="Next image" className={CONTROL} disabled={at >= newest} onClick={() => go(at + 1)}>
                 <ChevronRight className="h-4 w-4" />

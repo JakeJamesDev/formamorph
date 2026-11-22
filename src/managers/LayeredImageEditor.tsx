@@ -146,10 +146,12 @@ function DesktopRigEditor({ rig }: { rig: Rig }) {
           <div className="border-t p-3" data-variant-panel="">
             {layer
               ? (
+                // The summary sits above the strip: the panel grows upward from the bottom edge, so a Variant
+                // with a longer summary never moves the strip being clicked through.
                 <div className="space-y-2">
                   <Meta>{layer.name} Variants</Meta>
-                  <VariantStrip rig={rig} layer={layer} selected={variant.index} onSelect={variant.set} />
                   <VariantSummary rig={rig} layer={layer} index={variant.index} />
+                  <VariantStrip rig={rig} layer={layer} selected={variant.index} onSelect={variant.set} />
                 </div>
               )
               : <Hint>Add a Layer to give it Variants</Hint>}

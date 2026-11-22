@@ -97,7 +97,7 @@ export const EntityVisual = ({ entity, className, images: inPlay, avatar, prefer
   );
 
   return (
-    <Slot className={className} fill={showing !== 'image'}>
+    <Slot className={className} fill={showing !== 'image' || !!gallery}>
       {showing === 'avatar' ? everShown && avatar
         : showing === 'model' ? everShown && modelViewer()
         : <GalleryPicture images={images} index={index} gallery={gallery} name={entity.name} onZoom={() => setOpen('image')} />}
@@ -163,9 +163,10 @@ const ViewerDialog = ({ title, description, open, onOpenChange, footer, children
 );
 
 /**
- * The visual's box. An image shrink-wraps, so a corner button rides the image's own edge: the slot is
- * usually wider than the image it holds, and a button in the slot's corner reads as unattached. A 3D viewer
- * has no intrinsic size and would collapse to nothing wrapped that way, so it fills the slot instead.
+ * The visual's box. A lone image shrink-wraps, so a corner button rides the image's own edge: the slot is
+ * usually wider than the image it holds, and a button in the slot's corner reads as unattached. A pageable
+ * gallery fills the slot, so its arrows stay put while pictures of other shapes page through. A 3D viewer
+ * has no intrinsic size and would collapse to nothing wrapped, so it fills the slot too.
  */
 const Slot = ({ className, fill, children }: {
   className?: string;
@@ -201,10 +202,9 @@ const GalleryPicture = ({ images, index, gallery, name, onZoom }: {
     );
   }
   return (
-    // `group` so the controls fade in from a hover over the picture rather than the whole slot.
-    // justify-center: this box's width comes from the picture's intrinsic width (clamped to the slot), but a
-    // height-constrained picture shrink-wraps narrower inside it and would otherwise sit flush left.
-    <div className="group relative inline-flex max-w-full max-h-full justify-center">
+    // The slot's whole box, not the picture's: the arrows and counter keep their place as pictures of other
+    // shapes page through, so a repeated Next lands on Next.
+    <div className="group relative flex h-full w-full items-center justify-center">
       <SwipeImage images={images} index={index} onStep={gallery.onStep} alt={name} onZoom={onZoom} />
       <GalleryControls {...gallery} />
     </div>

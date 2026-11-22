@@ -30,6 +30,7 @@ A user who steps through choices clicks again where the last choice was. If a se
 - 🚫 **Never:** a selection adds, removes, or resizes anything before, between, or around the choices, or changes the size of a choice itself.
 - ✅ **Instead:** give content that changes with the selection a fixed size. When it has nothing to show, keep its space: show the same controls disabled, or leave the space empty.
 - 🖼️ **Example:** the image gallery. The framed picture's actions sit over the frame, and its name row stays on every slot, disabled on the empty one. The tile strip under it never moves.
+- ⚖️ **Exception:** the [Collapsing Segmented Control](#pattern-collapsing-segmented-control)'s middle step, where only the selected segment keeps its label, stays as it is.
 
 ## Pattern: Aligned Settings Stack
 

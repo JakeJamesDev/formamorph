@@ -59,6 +59,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A character who agrees to come along now follows you to any location in their routine, at any hour.** They no longer stay behind just because their routine has them elsewhere at that time. The story can also call them over to those locations. Can Also Go adds more, and a lock still keeps them in place.
     - **Clicking Go on a suggested move before the story finishes now brings the characters who agreed to come along.**
     - **With Character Mentions on, more quotes in the story now show in their speaker's color.** A quote with no "she says" takes the color of the quote before it in the same paragraph, or of the last character the paragraph names.
+    - **The arrows on a character's picture now stay in place as you page through pictures of different shapes.**
+    - **The Previous and Next buttons on a turn's scene images now stay in place as you page through them.** An image narrower than the turn's widest shows with bars at its sides.
     - **With Character Mentions on, a quote speaker you fix now carries over to later turns.** When the story calls that character by the same title, like "the Alpha", their quotes take their color. A title you gave to two characters is not used. Undoing the turn takes it back.
   - **Renaming a stat, trait, placeholder or location in the World Editor now updates the item scripts that name it.** When another character that can hold the item has a stat of that name, you check which `owner` references to change.
   - **Auto-Load in the desktop app now loads the top model in the Installed list.** An Auto-Load tag marks it. Drag a model to the top to choose it, including a model from an Additional Search Folder.
