@@ -1,5 +1,6 @@
 import type { MascotTransition } from '@/lib/formaquestion/mascotTransition';
 import type { Picture } from '@/lib/layeredImages';
+import type { OpeningKey } from '@/lib/drawnOpening';
 import type { ChatMessage, Tool } from './ai';
 
 /** A base64 data-URL string, e.g. "data:image/png;base64,...". */
@@ -254,7 +255,20 @@ export type TraitRequirement =
   | ItemRequirement
   | TimeRequirement
   | WeatherRequirement
+  | OpeningRequirement
   | OptionRequirement;
+
+/** An Opening Condition: it holds while the Drawn Opening is one of `openings`, or is none of them under Not.
+ *  With no Drawn Opening it holds only under Not. An empty list never holds, Not or not. It names no owner. */
+export interface OpeningRequirement {
+  kind: 'opening';
+  openings: OpeningKey[];
+  // Absent, so code that reads any Condition's target finds none here.
+  id?: undefined;
+  name?: undefined;
+  owner?: undefined;
+  not?: true;
+}
 
 /** A World Option Condition. It names no owner. A choice Option holds `valueId`; a boolean holds on; Not flips
  *  either. A number compares by `operator` to `value` and takes no Not. Fields that do not fit the Option's

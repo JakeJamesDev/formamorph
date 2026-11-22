@@ -29,6 +29,7 @@ import { genericInstancesOf, sandboxMediaOf } from './sandboxMedia';
 import type { OwnerId } from './scope';
 import { activeWeather, allowedWeatherKinds } from './weather';
 import { startRead } from './openings';
+import type { OpeningKey } from './drawnOpening';
 import { resolveEntityText, type PlaceholderMode } from './placeholders';
 import type {
   BodyRuntime, Entity, EntityStatValues, PersonaRef, ItemEffectLedger, Opening, OwnedTraitPicks, Placeholder, Trait, World, WorldOptionValues,
@@ -105,10 +106,11 @@ export function idLog(mint: NewId = randomUUID): { newId: NewId; replay: () => N
 }
 
 /** The state a new game opens with. Pure: the same inputs give the same state, its unrolled chips and its
- *  Item Instance ids aside. `drawn` is the Opening page one drew; absent, the world's defaults are the start. */
+ *  Item Instance ids aside. `drawn` is the Opening page one drew; absent, the world's defaults are the start.
+ *  `drawnKey` is its key, which an Opening Condition reads; absent, no Opening was drawn. */
 export function openingFold(
   world: OpeningFoldWorld, picks: OpeningPicks = NO_OPENING_PICKS, persona?: OpeningPersona, newId: NewId = randomUUID,
-  drawn?: Opening | null,
+  drawn?: Opening | null, drawnKey?: OpeningKey | null,
 ): OpeningFold {
   const ref = persona?.ref ?? { source: 'none' as const };
   const { daypart, weather } = startRead(drawn, world.worldOverview);
@@ -122,7 +124,7 @@ export function openingFold(
   const traitWorld: TraitWorld = {
     traits, groups: traitGroups, entities, persona: ref, items: world.items ?? [], itemInstances: startingInstances(startWorld, ref, newId),
     options: world.options ?? [], ...(picks.options ? { optionValues: picks.options } : {}),
-    daypart, weather,
+    daypart, weather, ...(drawnKey && { opening: drawnKey }),
     ...inPlayOwners(ownerWorld, ref, library),
   };
 

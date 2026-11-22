@@ -132,12 +132,14 @@ export function useTestBench({
   const benchWorld = useMemo(getWorldData, [getWorldData]);
   // The lens every instrument reads. It seeds from whatever location the author has open in the editor, so
   // opening the Bench mid-edit opens on the place they were already looking at.
-  const benchLens = useBenchLens(worldId, benchWorld, {
+  const openingPick = useOpeningPick(worldId, benchWorld);
+  const benchOpening = openingPick.pick;
+  // The world the instruments read under the lens: the authored world with the shared Opening pick beside it.
+  const lensWorld = useMemo(() => (benchOpening ? { ...benchWorld, benchOpening } : benchWorld), [benchWorld, benchOpening]);
+  const benchLens = useBenchLens(worldId, lensWorld, {
     open: panelShown,
     selectedLocationId,
   });
-  const openingPick = useOpeningPick(worldId, benchWorld);
-  const benchOpening = openingPick.pick;
   // Null until the first pass finishes: the list holds every row till then, so it never reads as clean.
   const pass = useBenchPass(benchWorld);
   const publishBytes = pass.bytes;
@@ -212,8 +214,8 @@ export function useTestBench({
   const lensPersonaId = benchLens.lens.persona?.id ?? null;
   const lensOptionValues = benchLens.lens.state.optionValues;
   const benchPlay = useMemo(
-    () => inPlayWorldOf(benchWorld, lensPersonaId, lensOptionValues, lensStartPicks(benchWorld, benchLens.lens)),
-    [benchWorld, lensPersonaId, lensOptionValues, benchLens.lens],
+    () => inPlayWorldOf(lensWorld, lensPersonaId, lensOptionValues, lensStartPicks(lensWorld, benchLens.lens)),
+    [lensWorld, lensPersonaId, lensOptionValues, benchLens.lens],
   );
   const statOverrides = useMemo(
     () => lensStatOverrides(benchPlay, benchLens.lens),

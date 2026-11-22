@@ -417,14 +417,17 @@ export function openingTexts(owner: MaybeOwner): string[] {
 }
 
 /** The owner's rows under fresh ids, with the weights re-keyed to follow them. Empty for an owner with none. */
-export function remintOpenings(owner: OpeningOwner): OpeningOwner {
-  if (!owner.openings?.length) return {};
+export const remintOpenings = (owner: OpeningOwner): OpeningOwner => remintOpeningIds(owner).carried;
+
+/** {@link remintOpenings}, with each old Opening id's new one, so an Opening Condition on them can follow. */
+export function remintOpeningIds(owner: OpeningOwner): { carried: OpeningOwner; ids: ReadonlyMap<string, string> } {
+  if (!owner.openings?.length) return { carried: {}, ids: new Map() };
   const idMap = new Map(owner.openings.map((o) => [o.id, randomUUID()] as const));
   const weights = Object.fromEntries(Object.entries(owner.openingWeights ?? {})
     .flatMap(([id, w]) => (idMap.has(id) ? [[idMap.get(id) as string, w]] : [])));
   return {
-    openings: owner.openings.map((o) => ({ ...o, id: idMap.get(o.id) as string })),
-    openingWeights: weightsOrAbsent(weights),
+    carried: { openings: owner.openings.map((o) => ({ ...o, id: idMap.get(o.id) as string })), openingWeights: weightsOrAbsent(weights) },
+    ids: idMap,
   };
 }
 

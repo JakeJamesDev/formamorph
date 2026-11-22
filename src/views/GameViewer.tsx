@@ -107,6 +107,7 @@ import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { applyResolvedStart, drawPoolEntry, drawUnseenOpening, openingOwner, openingPool, type DrawnOpening } from "@/lib/openings";
 import { drawNewGameOpening } from "@/lib/newGameOpening";
 import { drawnOpeningKey, resolveDrawnOpening, sameOpeningKey, sandboxOpeningOf } from "@/lib/drawnOpening";
+import { usePlayOpening } from "@/lib/usePlayOpening";
 import { customPersonaEntity } from "@/lib/blueprints";
 import { bodyPickEntities } from "@/lib/bodies";
 import { avatarLookTraits } from "@/lib/avatarLook";
@@ -133,7 +134,7 @@ import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import WorldEditor, { type EditorExit } from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemInstance, ItemEffectLedger, Opening, RuntimeItem, BodyRuntime, BodyPick, ValuedWorldOption, WorldOptionValueOf, WorldOptionValues, WeatherKind } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemInstance, ItemEffectLedger, RuntimeItem, BodyRuntime, BodyPick, ValuedWorldOption, WorldOptionValueOf, WorldOptionValues, WeatherKind } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { narrationOf, storyText, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -1059,17 +1060,19 @@ const GameViewer = ({
   );
   // The per-turn settle reads this at the render that holds the turn's advanced clock.
   const daypart = daypartAt(gameTime, calendar);
+  // Every turn commit's gates read the Drawn Opening from the save record (Q11).
+  const playOpening = usePlayOpening();
   /** The authored world every owner's trait gates read: the traits, the groups, who the player is, each
    *  present owner's tree under that persona, and the story clock's daypart. */
   const gatedWorld = useCallback(
     (ref: PersonaRef | undefined = personaRef): TraitWorld => ({
-      traits: authoredTraits, groups: traitGroups, persona: ref ?? { source: 'none' }, daypart, weather,
+      traits: authoredTraits, groups: traitGroups, persona: ref ?? { source: 'none' }, daypart, weather, opening: playOpening,
       items: worldItems, itemInstances: heldItemInstances, options: worldOptions, optionValues: worldOptionValues,
       // A persona change reads this before its render, so its entities and library are the ones under `ref`.
       entities: ref === personaRef ? worldEntitiesOf(entities, persona) : presentEntitiesUnder(ref),
       ...inPlayOwners(ownerWorld, ref, libraryUnder(traitLibrary, personaRef, ref)),
     }),
-    [authoredTraits, traitGroups, daypart, weather, worldItems, heldItemInstances, worldOptions, worldOptionValues, entities, persona, personaRef, ownerWorld, traitLibrary, presentEntitiesUnder],
+    [authoredTraits, traitGroups, daypart, weather, playOpening, worldItems, heldItemInstances, worldOptions, worldOptionValues, entities, persona, personaRef, ownerWorld, traitLibrary, presentEntitiesUnder],
   );
   /** The gameplay slice the trait runtime reads and rewrites. */
   const traitState = useMemo<TraitRuntimeState>(
@@ -2134,15 +2137,15 @@ const GameViewer = ({
     setDebugTurns((prev) => markRegeneratedTurn(prev));
   };
 
-  /** Settles the starting traits again under `opening`'s Weather and Time, once the draw is known. It mints the
-   *  same ids as the first fold and draws nothing else, so only a weather or time Condition changes the result.
-   *  A loaded save has no new-game log and keeps its own traits. */
-  const settleStartUnder = (opening: Opening) => {
+  /** Settles the starting traits again under the drawn row's Weather, Time and key, once the draw is known. It mints
+   *  the same ids as the first fold and draws nothing else, so only a weather, time or Opening Condition changes the
+   *  result. A loaded save has no new-game log and keeps its own traits. */
+  const settleStartUnder = (drawn: DrawnOpening) => {
     const ids = openingIdsRef.current;
     if (!ids) return;
     const { traitState, itemEffects, bodies: openedBodies, entityStats: openedStats, state } = openingFold(
       getWorldData(), { traits: initialTraits, owned: initialOwnedTraits, options: initialOptionValues },
-      { ...(initialPersona ?? { ref: { source: 'none' } }), characters: initialCharacters ?? [] }, ids.replay(), opening,
+      { ...(initialPersona ?? { ref: { source: 'none' } }), characters: initialCharacters ?? [] }, ids.replay(), drawn.opening, drawnOpeningKey(drawn),
     );
     commitTraitState(traitState);
     setItemInstances(state.itemInstances ?? []);
@@ -2195,7 +2198,7 @@ const GameViewer = ({
       // The new row's time and weather, or none: the restore above may hold what the pass read for the old page one.
       applyResolvedStart(redraw.opening, worldOverview, { setStartHour, setWeather, setStartWeatherSet });
       clearWeatherChange();
-      settleStartUnder(redraw.opening);
+      settleStartUnder(redraw);
       if (redraw.opening.kind === "narration") {
         pendingTurnRef.current = { action: OPENING_STAND_IN, writtenNarration: redrawText };
         setPendingTurnNonce((n) => n + 1);
@@ -6571,7 +6574,7 @@ const GameViewer = ({
       applyResolvedStart(drawn.opening, worldOverview, { setStartHour, setWeather, setStartWeatherSet });
       clearWeatherChange();
       // Placement picked this Opening under the world defaults; the traits settle again under its own start.
-      settleStartUnder(drawn.opening);
+      settleStartUnder(drawn);
       const openingText = resolveOpening(drawn.opening.text, {
         extraPins: openingPins, persona: drawnPersona, rolls: openingRolls, libraryAdditions: [...picked, ...libraryBooks], owner: drawnOwner,
       });

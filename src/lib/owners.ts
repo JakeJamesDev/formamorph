@@ -24,6 +24,10 @@ export interface OwnerWorld {
   weather?: WorldWeather;
   /** The world's Default Time, the daypart a time Condition reads outside play. Absent ⇒ the shipped start hour's. */
   defaultTime?: Daypart;
+  /** The Opening an Opening Condition reads outside play: the shared Opening pick. Absent ⇒ none. */
+  opening?: GateInput['opening'];
+  /** Every Opening an Opening Condition can name, grouped by owner. Absent ⇒ the editor offers none. */
+  openings?: GateInput['openings'];
 }
 
 /** One owner's effective tree: its own items plus each link's original and live subtree, in the places the
@@ -236,6 +240,8 @@ export function resolveOwners(
       ...(world.optionValues ? { optionValues: world.optionValues } : {}),
       ...weatherGate(world.weather),
       ...(world.defaultTime && { daypart: world.defaultTime }),
+      ...(world.opening && { opening: world.opening }),
+      ...(world.openings?.length ? { openings: world.openings } : {}),
     },
   };
 }

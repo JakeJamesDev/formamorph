@@ -24,13 +24,14 @@ import { resolveOwners, type Owner } from '@/lib/owners';
 import type {
   Entity, EntityStatValues, GameLocation, OwnedTraitPicks, PersonaRef, Placeholder, PlayerStat, Stat, Trait, WorldOptionValues,
 } from '@/types';
-import { ownerWorldOf, type RuleWorld } from './rules';
+import { ownerWorldOf, type OwnerSource, type RuleWorld } from './rules';
 
 /** The slices of the authored world the lens reads. The rest of the document is optional and read only to
  *  letter the pickers' chips the way the editor letters them — entities come first in that walk. */
 export type LensWorld =
   Pick<RuleWorld, 'traits' | 'traitGroups' | 'locations' | 'placeholders' | 'stats'>
-  & Partial<Pick<RuleWorld, 'entities' | 'entityGroups' | 'dictionaries' | 'worldOverview' | 'statGroups' | 'placeholderGroups' | 'options'>>;
+  & Partial<Pick<RuleWorld, 'entities' | 'entityGroups' | 'dictionaries' | 'worldOverview' | 'statGroups' | 'placeholderGroups' | 'options'>>
+  & Pick<OwnerSource, 'benchOpening'>;
 
 /** The traits the lens player picks from, with the links that brought them. */
 type LensTree = Pick<Owner, 'traits' | 'groups' | 'linkOf'>;
@@ -73,7 +74,7 @@ function lensPlayer(world: LensWorld, personaId: string | null): LensPlayer {
       personaTraitIds: new Set((played?.traits ?? []).map((t) => t.id).filter((id) => !globalIds.has(id))),
       traitWorld: {
         traits: [...ownerWorld.traits], groups: [...ownerWorld.traitGroups], entities: gate.entities,
-        persona: gate.persona, global: gate.global, owners: gate.owners,
+        persona: gate.persona, global: gate.global, owners: gate.owners, ...(gate.opening && { opening: gate.opening }),
       },
     };
     players.set(personaId, player);

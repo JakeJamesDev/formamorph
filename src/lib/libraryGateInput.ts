@@ -2,6 +2,7 @@ import { editorGateInput } from '@/lib/owners';
 import { startingGateStats } from '@/lib/gateStats';
 import { bindOwnedTraits, type TraitWorld } from '@/lib/portableTraits';
 import type { GateInput } from '@/lib/traitGates';
+import { openingPickGroups } from '@/lib/testBench/openingPick';
 import type { Daypart, Entity, Placeholder, WorldWeather } from '@/types';
 
 const NO_WORLD: TraitWorld = { traits: [], traitGroups: [], entities: [] };
@@ -17,7 +18,7 @@ export type LibraryEditorWorld = TraitWorld & {
 /**
  * What a library entity's rules read: its own traits and stats beside the world it was opened from. Standalone,
  * "playing as" itself resolves and an outward requirement reads by its stored name. Only the entity's own stats
- * are offered, so the world's stats stay out.
+ * are offered, so the world's stats stay out. An Opening Condition offers the entity's own Openings and reads none drawn.
  */
 export function libraryGateInput(entity: Entity, world: LibraryEditorWorld | null): GateInput {
   return editorGateInput({
@@ -26,5 +27,6 @@ export function libraryGateInput(entity: Entity, world: LibraryEditorWorld | nul
     ...(world?.options ? { options: world.options } : {}),
     ...(world?.weather ? { weather: world.weather } : {}),
     ...(world?.defaultTime ? { defaultTime: world.defaultTime } : {}),
+    openings: openingPickGroups({ traits: [], traitGroups: [], locations: [], placeholders: world?.placeholders ? [...world.placeholders] : [], stats: [], entities: [entity] }),
   }, startingGateStats({ entities: [entity] }));
 }

@@ -9,7 +9,7 @@ import {
 } from './groupTree';
 import { duplicateEntityPlaceholders } from './placeholderHomes';
 import { remintOwnedTraits } from './ownedTraits';
-import { remintOpenings } from './openings';
+import { remintOpeningIds } from './openings';
 import type { Entity, EntityGroup } from '@/types';
 
 export type EntityTreeNode = GroupTreeNode<EntityGroup, Entity>;
@@ -54,7 +54,8 @@ export function duplicateEntityNode(
   const leaves = r.leaves.map((e) => {
     if (original.has(e.id)) return e;
     const { customPersona: _mark, ...copy } = e;
-    return duplicateEntityPlaceholders(remintOwnedTraits({ ...copy, ...remintOpenings(copy) }, r.idMap));
+    const openings = remintOpeningIds(copy);
+    return duplicateEntityPlaceholders(remintOwnedTraits({ ...copy, ...openings.carried }, r.idMap, openings.ids));
   });
   return { groups: r.groups, entities: leaves, newId: r.newId };
 }

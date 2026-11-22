@@ -70,6 +70,10 @@ export function resolveDrawnOpening(key: OpeningKey | null | undefined, sources:
   return opening ? { key, opening, owner: null } : null;
 }
 
+/** `key` while it still names an Opening, else null: what an Opening Condition reads in play. */
+export const liveOpeningKey = (key: OpeningKey | null | undefined, sources: DrawnOpeningSources): OpeningKey | null =>
+  resolveDrawnOpening(key, sources)?.key ?? null;
+
 /** `resolved` as the `opening` global reads it, its text filled in by `fill` against its entity owner, or null. */
 export function sandboxOpeningOf(
   resolved: ResolvedOpening | null, fill: (text: string, owner: Entity | null) => string,

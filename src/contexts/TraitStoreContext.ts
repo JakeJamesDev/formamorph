@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
+import { useOpeningPickContext } from '@/contexts/OpeningPickContext';
 import { editorGateInput } from '@/lib/owners';
 import { startingGateStats } from '@/lib/gateStats';
 import type { GateInput } from '@/lib/traitGates';
@@ -81,12 +82,16 @@ export function useOptionalTraitStore(): TraitStore | null {
   const options = world?.options;
   const weather = world?.worldOverview?.weather;
   const defaultTime = world?.worldOverview?.defaultTime;
+  // The World Editor's shared Opening pick: what an Opening Condition reads, and the Openings it offers.
+  const openingPick = useOpeningPickContext();
+  const opening = openingPick?.pick;
+  const openings = openingPick?.groups;
   const gateInput = useMemo(
     () => editorGateInput(
-      { traits: traits ?? [], traitGroups: traitGroups ?? [], entities: entities ?? [], items, options, weather, defaultTime },
+      { traits: traits ?? [], traitGroups: traitGroups ?? [], entities: entities ?? [], items, options, weather, defaultTime, opening, openings },
       startingGateStats({ stats, statGroups, entities: entities ?? [] }),
     ),
-    [traits, traitGroups, entities, items, options, weather, defaultTime, stats, statGroups],
+    [traits, traitGroups, entities, items, options, weather, defaultTime, opening, openings, stats, statGroups],
   );
   if (provided) return provided;
   if (!world) return null;

@@ -10,6 +10,7 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { StatConditionControls } from '@/components/editor/StatConditionControls';
 import { TimeConditionControls } from '@/components/editor/TimeConditionControls';
 import { WeatherConditionControls } from '@/components/editor/WeatherConditionControls';
+import { OpeningConditionControls } from '@/components/editor/OpeningConditionControls';
 import { ItemConditionControls } from '@/components/editor/ItemConditionControls';
 import { OptionConditionControls } from '@/components/editor/OptionConditionControls';
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -48,6 +49,9 @@ type AddTarget = number | 'new';
  *
  * A weather Condition's chip is a toggle per kind the world allows, at least one on, and it takes Not. It is offered
  * while the world's Weather is on, and a row holds one at most.
+ *
+ * An Opening Condition's chip picks Openings from a grouped list, at least one on, and it takes Not. It is offered
+ * while the world has an Opening, and a row holds one at most. A key whose Opening is gone reads red.
  *
  * A World Option Condition's chip edits a choice's value or a number's comparison in place; a number has no
  * Not. A boolean's chip reads "on" or "off" and flips between them.
@@ -111,7 +115,7 @@ export function RequirementRowsField({
   // A stat row names its owner in the section it sits in, so it needs no owner page. What a playing-as row,
   // an off-world row and a global target add at once; any other target asks which owner first.
   const atOnce = (option: RequirementOption) =>
-    (option.requirement.kind === 'playingAs' || option.requirement.kind === 'stat' || option.requirement.kind === 'time' || option.requirement.kind === 'weather' || option.requirement.kind === 'option' || offWorld
+    (option.requirement.kind === 'playingAs' || option.requirement.kind === 'stat' || option.requirement.kind === 'time' || option.requirement.kind === 'weather' || option.requirement.kind === 'opening' || option.requirement.kind === 'option' || offWorld
       ? option.requirement : soleOwnerRequirement(option));
   const pick = (option: RequirementOption) => {
     const requirement = atOnce(option);
@@ -123,6 +127,7 @@ export function RequirementRowsField({
     // One time Condition per row: its chip edits the dayparts.
     if (option.requirement.kind === 'time') return taken.some((r) => r.kind === 'time');
     if (option.requirement.kind === 'weather') return taken.some((r) => r.kind === 'weather');
+    if (option.requirement.kind === 'opening') return taken.some((r) => r.kind === 'opening');
     const requirement = atOnce(option);
     if (requirement) return [requirement, ...option.owners.map((o) => withRequirementOwner(requirement, o.owner))].some(listed);
     return listed(option.requirement) && option.owners.every((o) => listed(withRequirementOwner(option.requirement, o.owner)));
@@ -146,7 +151,7 @@ export function RequirementRowsField({
   const shownItems = offWorld ? [] : options.items ?? [];
   const worldOptions = options.worldOptions ?? [];
   const searchable = joinAnd([
-    'traits', 'groups', ...(shownStats.length ? ['stats'] : []), ...(shownItems.length ? ['items'] : []), 'time of day', ...(options.weather ? ['weather'] : []),
+    'traits', 'groups', ...(shownStats.length ? ['stats'] : []), ...(shownItems.length ? ['items'] : []), 'time of day', ...(options.weather ? ['weather'] : []), ...(options.opening ? ['openings'] : []),
     ...(worldOptions.length ? ['World Options'] : []), ...(offWorld ? [] : ['personas']),
   ]);
   // One owner page per home, the world first and then in tree order; pages key on the owner's id, not its name.
@@ -176,6 +181,7 @@ export function RequirementRowsField({
     })),
     ...category('time', 'Time of Day', [{ kind: 'section', ...targets('Time of Day', [TIME_OPTION]) }]),
     ...(options.weather ? category('weather', 'Weather', [{ kind: 'section', ...targets('Weather', options.weather) }]) : []),
+    ...(options.opening ? category('opening', 'Opening', [{ kind: 'section', ...targets('Opening', options.opening) }]) : []),
     ...(worldOptions.length ? category('worldOptions', 'World Options', [{ kind: 'section', ...targets('World Options', worldOptions) }]) : []),
     ...(offWorld ? [] : category('playingAs', 'Playing As', [{ kind: 'section', ...targets('Playing As', options.personas) }])),
   ];
@@ -230,10 +236,12 @@ export function RequirementRowsField({
     // A World Option chip edits a choice's value or a number's comparison in place; a boolean's text says on or off.
     // A weather chip is its kind toggles behind the NOT mark.
     const weatherReq = requirement.kind === 'weather' && options.weatherKinds ? requirement : null;
+    // An Opening chip is its grouped pick list behind the NOT mark.
+    const openingReq = requirement.kind === 'opening' && options.openings ? requirement : null;
     const optionReq = requirement.kind === 'option' ? requirement : null;
     const optionDef = optionReq && !unresolved ? worldOptions.find((o) => o.requirement.id === optionReq.id)?.worldOption : undefined;
     const optionEdits = optionReq && optionDef && optionDef.type !== 'boolean' ? { req: optionReq, def: optionDef } : null;
-    const grouped = stat || time || weatherReq || item || optionEdits;
+    const grouped = stat || time || weatherReq || openingReq || item || optionEdits;
     // A number Option Condition flips by its operator, so it has no Not toggle.
     const flips = optionReq?.operator === undefined;
     return (
@@ -254,6 +262,8 @@ export function RequirementRowsField({
           <>{mark}<TimeConditionControls requirement={time} accepts={edit.accepts} onChange={edit.replace} /></>
         ) : weatherReq ? (
           <>{mark}<WeatherConditionControls requirement={weatherReq} kinds={options.weatherKinds ?? []} accepts={edit.accepts} onChange={edit.replace} /></>
+        ) : openingReq ? (
+          <>{mark}<OpeningConditionControls requirement={openingReq} groups={options.openings ?? []} accepts={edit.accepts} onChange={edit.replace} /></>
         ) : optionEdits ? (
           <>
             <span className="min-w-0 truncate">
@@ -283,7 +293,7 @@ export function RequirementRowsField({
               <ItemConditionControls requirement={item} accepts={edit.accepts} onChange={edit.replace} />
             </span>
           </>
-        ) : unresolved || requirement.kind === 'item' || requirement.kind === 'weather' || !opens(requirement) ? (
+        ) : unresolved || requirement.kind === 'item' || requirement.kind === 'weather' || requirement.kind === 'opening' || !opens(requirement) ? (
           <span className="min-w-0 truncate">{mark}{targetLabel}</span>
         ) : (
           <button

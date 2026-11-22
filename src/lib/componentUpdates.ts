@@ -8,6 +8,7 @@
 
 import type { ContentLinkState } from '@/lib/contentLink';
 import { weatherText } from '@/lib/weather';
+import { openingCountText } from '@/lib/openingCondition';
 import {
   offeredRoutine, routinePlacesOf, sameStarts, withoutWorldFields, type LinkableContent,
 } from '@/lib/linkedContent';
@@ -256,6 +257,7 @@ const capitalized = (word: string) => word.charAt(0).toUpperCase() + word.slice(
 function conditionText(req: TraitRequirement): string {
   if (req.kind === 'time') return `${req.not ? 'Not ' : ''}${req.dayparts.map(capitalized).join(' or ')}`;
   if (req.kind === 'weather') return `${req.not ? 'Not ' : ''}${weatherText({ ...req, not: undefined })}`;
+  if (req.kind === 'opening') return `${req.not ? 'Not ' : ''}${openingCountText(req)}`;
   const named = req.name || capitalized(req.kind);
   const target = req.kind === 'stat' ? `${named} ${req.operator} ${req.value}`
     : req.kind === 'option' && req.valueName ? `${named} is ${req.valueName}` : named;

@@ -7,6 +7,7 @@ import { worldEntitiesOf } from './persona';
 import { refreshChosenTraits } from './traitEffects';
 import { traitGateInput, type GateStatState } from './traitRuntime';
 import { daypartAt } from './gameClock';
+import { usePlayOpening } from './usePlayOpening';
 import type { GateInput } from './traitGates';
 import type { Trait, WeatherKind, WorldOptionValues } from '@/types';
 
@@ -20,6 +21,7 @@ function useGateInput({ traits: chosen, disabledTraitIds, ownedTraits, appliedVa
   const worldItems = gameData?.items;
   const worldOptions = gameData?.options;
   const daypart = daypartAt(gameTime, calendar);
+  const opening = usePlayOpening();
   const resolved = useResolvedWorld();
   const { traits, traitGroups, entities: cast, persona, traitEntities, traitLibrary } = resolved;
   const stats = resolved[statsKey];
@@ -27,11 +29,11 @@ function useGateInput({ traits: chosen, disabledTraitIds, ownedTraits, appliedVa
     // The save froze each chosen trait as the world stood on turn 1; its gate is read from the world.
     { traits: refreshChosenTraits(chosen, traits), disabledTraitIds, ownedTraits, appliedValues, stats, entityStats },
     {
-      traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' }, daypart, weather,
+      traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' }, daypart, weather, opening,
       ...(worldItems ? { items: worldItems } : {}), itemInstances, options: worldOptions, optionValues,
       ...inPlayOwners({ traits, traitGroups, entities: traitEntities }, personaRef, traitLibrary),
     },
-  ), [chosen, disabledTraitIds, ownedTraits, appliedValues, stats, entityStats, traits, traitGroups, cast, persona, personaRef, daypart, weather, worldItems, itemInstances, worldOptions, optionValues, traitEntities, traitLibrary]);
+  ), [chosen, disabledTraitIds, ownedTraits, appliedValues, stats, entityStats, traits, traitGroups, cast, persona, personaRef, daypart, weather, opening, worldItems, itemInstances, worldOptions, optionValues, traitEntities, traitLibrary]);
 }
 
 /** The gate input of the turn on screen, live or paged back (Q34). */

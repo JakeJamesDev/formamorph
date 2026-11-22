@@ -1,4 +1,5 @@
 import { ancestors, parentLookup } from '@/lib/ancestors';
+import type { OpeningKey } from './drawnOpening';
 import { customPersonaEntity } from '@/lib/blueprints';
 import { ungatedPick, type RoutinePick } from '@/lib/entityKind';
 import { evaluateGates, gatePick, hasRoutineGate, worldHasGates, type GateVerdicts, type InPlaySource, type InPlayState } from '@/lib/inPlayGates';
@@ -105,6 +106,8 @@ export function inPlayWorldData<W extends { entities: Entity[]; locations: GameL
 type StartWorld = {
   entities: Entity[]; locations: GameLocation[]; connections?: Connection[];
   traits?: Trait[]; traitGroups?: TraitGroup[]; stats?: Stat[]; statGroups?: StatGroup[]; options?: WorldOption[];
+  /** The Test Bench's Opening pick, which an Opening Condition reads. Absent ⇒ none. */
+  benchOpening?: OpeningKey | null;
 };
 
 /** The gate input of a world at its start under `playedEntityId`: the stats the picks start with (Q26),
@@ -124,6 +127,7 @@ export function startGateInput(
     statsOf,
     ...(world.options ? { worldOptions: world.options } : {}),
     ...(optionValues ? { optionValues } : {}),
+    ...(world.benchOpening ? { opening: world.benchOpening } : {}),
   };
   const active = picks ?? settleDefaults(base).active;
   return { ...base, active, stats: statsOf(active) };

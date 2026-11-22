@@ -348,6 +348,7 @@ Each requirement has a `kind`:
 | `"item"` | `id`, `name`, `owner`, `status`, `state`, `identity` | The owner has an instance of the [item](#items) with this `id`: any instance under `status: "owned"`, or an equipped one under `"equipped"` |
 | `"time"` | `dayparts` | The story clock's time of day is one of `dayparts` |
 | `"weather"` | `kinds` | The world's weather is one of `kinds` |
+| `"opening"` | `openings` | The game started from one of `openings` |
 
 - `name` is optional. It holds the target's name, so a requirement still reads when the target is gone.
 - A `"stat"` requirement's `operator` is one of `">"`, `"<"`, `">="`, `"<="`, `"="` or `"≠"`. Its `unit` is `"raw"` for the stat's own units or `"percent"` for a share of the stat's min→max span. `{ "kind": "stat", "id": "health", "operator": "<", "value": 20, "unit": "percent" }` holds while Health is under 20% of its range.
@@ -355,6 +356,7 @@ Each requirement has a `kind`:
 - An `"item"` requirement's `state` and `identity` are optional. They narrow it to an instance with that State word (any case, ends trimmed) or that identity, `"identified"` or `"unidentified"`. On an item, a requirement with no `owner` reads the Item Instance's owner, and never holds while the instance lies at a location.
 - A `"time"` requirement's `dayparts` lists one or more of `"night"`, `"dawn"`, `"morning"`, `"midday"`, `"afternoon"` and `"evening"`. It has no `id`, `owner` or `not`. `{ "kind": "time", "dayparts": ["evening", "night"] }` holds from evening until dawn.
 - A `"weather"` requirement's `kinds` lists one or more of `"clear"`, `"rain"`, `"snow"`, `"storm"` and `"brightSun"`. It has no `id`, `owner` or `not`, and it checks the world's weather, not what a Sheltered player feels. `{ "kind": "weather", "kinds": ["rain", "storm"] }` holds while it rains or storms.
+- An `"opening"` requirement's `openings` lists one or more openings, each as `{ "ownerId": String | null, "openingId": String }`. `ownerId` is the owning entity's id, or `null` for the world's own openings. A location's opening is `{ "ownerId": null, "openingId": "…", "locationId": "<location id>" }`. It has no `id` or `owner`. With `not`, it also holds in a game that started with no opening. On a character file, `ownerId` is `"self"` for the character's own openings, and other openings are left out. A requirement left with no openings never holds.
 - `not` is optional. `true` flips the requirement: it holds while its target is off. `{ "kind": "trait", "id": "paladin", "not": true }` holds while the owner doesn't have Paladin.
 - A requirement whose target is gone never holds, with or without `not`.
 

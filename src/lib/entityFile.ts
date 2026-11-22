@@ -5,7 +5,8 @@ import type {
   TraitLink, TraitLinkOverrides, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
 import { readLibraryDetails } from './contentAuthor';
-import { remintOpenings } from './openings';
+import { remintOpeningIds } from './openings';
+import { readOpeningKey } from './drawnOpening';
 import { migrateEntityScriptText } from './scriptTextMigration';
 import { WrittenImportError } from './writtenImportError';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, conditionWithOwnerKey, globalRowTarget, migrateCarriedPlaceholders, migrateEntityMorphBindings, migrateEntityStatFields, migrateEntityStatScripts } from './version';
@@ -26,9 +27,10 @@ import { isEmbeddedLayered, mapVariants, readPortableLayered } from './portableL
 import { fetchAsDataUrl, isRemoteImage } from './imageSource';
 import { morphCardImage } from './morphArtCanvas';
 import { portableOwnedStats, type OwnedStatFields } from './portableStats';
-import { portableEnabledGate, portableImages, portableOwnedTraits, type TraitWorld } from './portableTraits';
+import { SELF_ENTITY, portableEnabledGate, portableImages, portableOwnedTraits, type TraitWorld } from './portableTraits';
 import { carriedBlueprints } from './blueprintTravel';
-import { notFlag } from './requirementRows';
+import { mapConditions, notFlag } from './requirementRows';
+import { withEntityRules } from './entityRules';
 import { daypartSet, isDaypart } from './gameClock';
 import { isWeatherKind, weatherKindSet } from './weather';
 import { isQuoteSwatch } from './coref/speakerPalette';
@@ -209,8 +211,8 @@ export function parseEntityCardData(raw: unknown, pixels?: Base64Data): Entity {
     ? Object.fromEntries(Object.entries(obj.openingWeights as Record<string, unknown>)
       .filter((e): e is [string, number] => typeof e[1] === 'number' && Number.isFinite(e[1])))
     : undefined;
-  const carried = remintOpenings({ openings, openingWeights: weights });
-  return {
+  const { carried, ids: openingIds } = remintOpeningIds({ openings, openingWeights: weights });
+  return withSelfOpeningIds({
     id: randomUUID(),
     name: typeof obj.name === 'string' && obj.name ? obj.name : 'Imported Character',
     ...(aliases.length ? { aliases } : {}),
@@ -235,7 +237,17 @@ export function parseEntityCardData(raw: unknown, pixels?: Base64Data): Entity {
     ...(carried.openingWeights ? { openingWeights: carried.openingWeights } : {}),
     ...cardOwnedTraits(obj),
     ...cardOwnedStats(obj),
-  };
+  }, openingIds);
+}
+
+/** The entity with each Opening Condition on its own Openings following their fresh ids. */
+function withSelfOpeningIds(entity: Entity, ids: ReadonlyMap<string, string>): Entity {
+  if (!ids.size) return entity;
+  const follow = (req: TraitRequirement): TraitRequirement => (req.kind === 'opening'
+    ? { ...req, openings: req.openings.map((k) => (k.ownerId === SELF_ENTITY ? { ...k, openingId: ids.get(k.openingId) ?? k.openingId } : k)) }
+    : req);
+  const traits = entity.traits?.map((t) => (t.requires ? { ...t, requires: mapConditions(t.requires, follow) } : t));
+  return withEntityRules(traits ? { ...entity, traits } : entity, follow);
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -263,6 +275,11 @@ function cardRequirement(condition: unknown): TraitRequirement[] {
   if (isRecord(raw) && raw.kind === 'weather') {
     const kinds = Array.isArray(raw.kinds) ? weatherKindSet(raw.kinds.filter(isWeatherKind)) : [];
     return kinds.length ? [{ kind: 'weather', kinds, ...notFlag(raw.not) }] : [];
+  }
+  // A card carries only keys on its own Openings. One left with none stays, unresolved, so an import never widens a gate.
+  if (isRecord(raw) && raw.kind === 'opening') {
+    const openings = Array.isArray(raw.openings) ? raw.openings.flatMap((k) => { const key = readOpeningKey(k); return key?.ownerId === SELF_ENTITY ? [{ ownerId: SELF_ENTITY, openingId: key.openingId }] : []; }) : [];
+    return [{ kind: 'opening', openings, ...notFlag(raw.not) }];
   }
   if (!isRecord(raw) || typeof raw.id !== 'string') return [];
   const not = notFlag(raw.not);

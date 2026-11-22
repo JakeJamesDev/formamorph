@@ -1,7 +1,7 @@
 // An entity's owned traits and links off-world: named on the way out, bound to a receiving world on the way in.
 
 import type {
-  EmbeddedLayeredImage, Entity, GalleryImage, GalleryLink, MediaList, OptionRequirement, Placeholder, PlaceholderGroup, RequirementOwner, Stat, StatGroup, StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement,
+  EmbeddedLayeredImage, Entity, GalleryImage, GalleryLink, MediaList, OpeningRequirement, OptionRequirement, Placeholder, PlaceholderGroup, RequirementOwner, Stat, StatGroup, StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement,
   TraitRequirementRow, WorldOption,
 } from '@/types';
 import { canBePlayer, linksInTreeOrder, originalOf } from './owners';
@@ -60,7 +60,7 @@ const ownIds = (entity: Entity): Set<string> =>
 
 /** Whether a requirement points inside the entity: at one of its own traits, groups or stats. */
 const pointsInside = (r: TraitRequirement, entity: Entity, inside: ReadonlySet<string>): boolean =>
-  (r.kind === 'stat' ? !!entity.stats?.some((s) => s.id === r.id) : r.kind !== 'playingAs' && r.kind !== 'time' && r.kind !== 'weather' && inside.has(r.id));
+  (r.kind === 'stat' ? !!entity.stats?.some((s) => s.id === r.id) : r.kind !== 'playingAs' && r.kind !== 'time' && r.kind !== 'weather' && r.kind !== 'opening' && inside.has(r.id));
 
 /** Every trait, group and stat of the world and of its entities other than `except`. */
 function targets(world: TraitWorld, except?: string) {
@@ -74,12 +74,13 @@ function targets(world: TraitWorld, except?: string) {
     item: world.items ?? [],
     time: [],
     weather: [],
+    opening: [],
     option: world.options ?? [],
   };
   return lists;
 }
 
-const NO_TARGETS: ReturnType<typeof targets> = { trait: [], group: [], playingAs: [], stat: [], item: [], time: [], weather: [], option: [] };
+const NO_TARGETS: ReturnType<typeof targets> = { trait: [], group: [], playingAs: [], stat: [], item: [], time: [], weather: [], opening: [], option: [] };
 
 /** A choice Option Condition's value as `options` names it: by id, else by the stored value name. */
 function optionValueBound(r: OptionRequirement, options: readonly WorldOption[]): OptionRequirement {
@@ -94,9 +95,20 @@ const isSelf = (r: TraitRequirement, entityId: string): r is Extract<TraitRequir
 
 const isSelfOwner = (b: EntityOwner, entityId: string) => b.id === SELF_ENTITY || b.id === entityId;
 
+/** An Opening Condition with only the entity's own Openings, owned by {@link SELF_ENTITY}: the keys a card carries. */
+const portableOpenings = (r: OpeningRequirement, entityId: string): OpeningRequirement => ({
+  ...r,
+  openings: r.openings.filter((k) => k.ownerId === entityId || k.ownerId === SELF_ENTITY).map((k) => ({ ownerId: SELF_ENTITY, openingId: k.openingId })),
+});
+
+/** An Opening Condition with {@link SELF_ENTITY} read as the entity itself. */
+const boundOpenings = (r: OpeningRequirement, entityId: string): OpeningRequirement => ({
+  ...r, openings: r.openings.map((k) => (k.ownerId === SELF_ENTITY ? { ...k, ownerId: entityId } : k)),
+});
+
 /** The requirement with its named owner rewritten; the same requirement when it names none. */
 const withOwner = (r: TraitRequirement, map: (b: EntityOwner) => RequirementOwner): TraitRequirement =>
-  (r.kind !== 'playingAs' && r.kind !== 'time' && r.kind !== 'weather' && r.kind !== 'option' && r.owner?.kind === 'entity' ? { ...r, owner: map(r.owner) } : r);
+  (r.kind !== 'playingAs' && r.kind !== 'time' && r.kind !== 'weather' && r.kind !== 'opening' && r.kind !== 'option' && r.owner?.kind === 'entity' ? { ...r, owner: map(r.owner) } : r);
 
 const withRequires = (entity: Entity, map: (r: TraitRequirement) => TraitRequirement): Trait[] | undefined =>
   entity.traits?.map((t) => (t.requires ? { ...t, requires: mapConditions(t.requires, map) } : t));
@@ -153,8 +165,9 @@ function portableRequirement(entity: Entity, world?: TraitWorld): (req: TraitReq
   };
   return (req) => {
     if (isSelf(req, entity.id)) return { ...req, id: SELF_ENTITY, name: entity.name };
+    if (req.kind === 'opening') return portableOpenings(req, entity.id);
     const r = withOwner(req, owner);
-    if (r.kind === 'time' || r.kind === 'weather' || pointsInside(r, entity, inside)) return r;
+    if (r.kind === 'time' || r.kind === 'weather' || r.kind === 'opening' || pointsInside(r, entity, inside)) return r;
     const name = pool[r.kind].find((item) => item.id === r.id)?.name ?? r.name;
     const named = name ? { ...r, name } : r;
     return named.kind === 'option' ? optionValueBound(named, world?.options ?? []) : named;
@@ -208,9 +221,10 @@ function ruleBinder(entity: Entity, world: TraitWorld): (req: TraitRequirement) 
   const withoutGlobalOwners = withoutGlobalOwner<TraitRequirement>({ ...world, entities: [...others, entity] });
   const bindId = (req: TraitRequirement): TraitRequirement => {
     if (isSelf(req, entity.id)) return { ...req, id: entity.id };
+    if (req.kind === 'opening') return boundOpenings(req, entity.id);
     const r = withOwner(req, owner);
     // A world record that carries no stats has none to bind a stat Condition to.
-    if (r.kind === 'time' || r.kind === 'weather' || pointsInside(r, entity, inside) || (r.kind === 'stat' && !statWorld)) return r;
+    if (r.kind === 'time' || r.kind === 'weather' || r.kind === 'opening' || pointsInside(r, entity, inside) || (r.kind === 'stat' && !statWorld)) return r;
     const list = r.kind === 'stat' ? statsOf(r, statWorld!) : pool[r.kind];
     const bound = list.some((item) => item.id === r.id) ? r : { ...r, id: uniqueNamed(list, r.name)?.id ?? '' };
     return bound.kind === 'option' ? optionValueBound(bound, world.options ?? []) : bound;
@@ -271,6 +285,10 @@ export const comparableOwnedTraits = (entity: Entity): {
   const comparable = (req: TraitRequirement): TraitRequirement => {
     if (req.kind === 'time') return { kind: 'time', dayparts: daypartSet(req.dayparts), ...notFlag(req.not) };
     if (req.kind === 'weather') return { kind: 'weather', kinds: weatherKindSet(req.kinds), ...notFlag(req.not) };
+    if (req.kind === 'opening') {
+      const { openings } = portableOpenings(req, entity.id);
+      return { kind: 'opening', openings: openings.sort((a, b) => a.openingId.localeCompare(b.openingId)), ...notFlag(req.not) };
+    }
     // A World Option is the world's own, so two copies compare it by its stored names.
     if (req.kind === 'option') {
       return {

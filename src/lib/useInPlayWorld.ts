@@ -7,6 +7,7 @@ import { addedCharacters, inPlayLibrary, inPlayOwners } from '@/lib/ownedTraitsI
 import { refreshChosenTraits } from '@/lib/traitEffects';
 import { traitGateInput } from '@/lib/traitRuntime';
 import { daypartAt } from '@/lib/gameClock';
+import { usePlayOpening } from '@/lib/usePlayOpening';
 import type { GateInput } from '@/lib/traitGates';
 
 /** The same verdicts object while the ids it switches off and locks stay the same. */
@@ -42,17 +43,18 @@ export function useInPlayWorld(): InPlayWorld {
     () => worldHasGates(playEntities, locations) || others.some(hasAnyGate), [playEntities, locations, others],
   );
   const daypart = daypartAt(gameTime, calendar);
+  const opening = usePlayOpening();
   // Every owner reads as committed, off ones frozen (Q47); built only when some entity or location has a gate.
   const gate = useMemo<GateInput | undefined>(() => (gated ? traitGateInput(
     { traits: refreshChosenTraits(globalTraits, traits), disabledTraitIds, ownedTraits, stats: globalStats, entityStats },
     {
-      traits, groups: traitGroups, entities: [...playEntities, ...others], persona: personaRef ?? { source: 'none' }, daypart, weather,
+      traits, groups: traitGroups, entities: [...playEntities, ...others], persona: personaRef ?? { source: 'none' }, daypart, weather, opening,
       ...(items.length ? { items } : {}), itemInstances, options, optionValues: worldOptionValues,
       ...inPlayOwners({ traits, traitGroups, entities: playEntities }, personaRef, library),
     },
   ) : undefined), [
     gated, globalTraits, traits, disabledTraitIds, ownedTraits, globalStats, entityStats, traitGroups, playEntities, others, library,
-    personaRef, daypart, weather, items, itemInstances, options, worldOptionValues,
+    personaRef, daypart, weather, opening, items, itemInstances, options, worldOptionValues,
   ]);
   const verdicts = useSameVerdicts(useMemo(() => evaluateGates(source, { playedEntityId, playerAt, gate }), [source, playedEntityId, playerAt, gate]));
   return useMemo(() => inPlayWorldFrom(source, verdicts, playedEntityId), [source, verdicts, playedEntityId]);

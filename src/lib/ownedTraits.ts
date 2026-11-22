@@ -5,6 +5,7 @@ import { randomUUID } from './uuid';
 import { removeGroupPromotingChildren } from './groupTree';
 import { newTrait } from './blankWorld';
 import type { GateInput, GateOwner } from './traitGates';
+import type { OpeningKey } from './drawnOpening';
 import { mapConditions } from './requirementRows';
 import { hasEntityRules, withEntityRules } from './entityRules';
 import { offeredWorldTraits, ownsTraits } from './traitTree';
@@ -86,13 +87,20 @@ export function findOwnedItem(
  *  source. Requirements that point inside the entity follow, its image rules and Enabled gate included; ones that
  *  point out of it keep their target.
  *  `entityIds` maps each copied entity to its copy, so "playing as" the source becomes "playing as" the copy. */
-export function remintOwnedTraits(entity: Entity, entityIds: ReadonlyMap<string, string> = new Map()): Entity {
+export function remintOwnedTraits(
+  entity: Entity, entityIds: ReadonlyMap<string, string> = new Map(), openingIds: ReadonlyMap<string, string> = new Map(),
+): Entity {
   const links = entity.traitLinks ?? [];
   if (!entity.traits?.length && !entity.traitGroups?.length && !links.length && !hasEntityRules(entity)) return entity;
   const ids = new Map([...traitsOf(entity), ...groupsOf(entity), ...links].map((item) => [item.id, randomUUID()] as const));
   const remap = (id: string | null | undefined) => (id ? ids.get(id) ?? id : id);
+  // An Opening Condition on the source's own Openings follows them to the copy's.
+  const remapOpening = (key: OpeningKey): OpeningKey => (key.ownerId !== null && entityIds.get(key.ownerId) === entity.id
+    ? { ownerId: entity.id, openingId: openingIds.get(key.openingId) ?? key.openingId } : key);
   const remapRequirement = (r: TraitRequirement): TraitRequirement =>
-    (r.kind === 'time' || r.kind === 'weather' ? r : { ...r, id: (r.kind === 'playingAs' ? entityIds.get(r.id) : ids.get(r.id)) ?? r.id });
+    (r.kind === 'time' || r.kind === 'weather' ? r
+      : r.kind === 'opening' ? { ...r, openings: r.openings.map(remapOpening) }
+        : { ...r, id: (r.kind === 'playingAs' ? entityIds.get(r.id) : ids.get(r.id)) ?? r.id });
   const reminted = withOwnedTraits(
     withEntityRules(entity, remapRequirement),
     traitsOf(entity).map((t) => ({

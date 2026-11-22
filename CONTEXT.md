@@ -721,6 +721,10 @@ _Avoid_: time gate, schedule, hour condition
 A Condition that holds while the World Weather is one of a set of kinds, Clear included. With Not it holds under every other kind, over all kinds and not just the allowed ones. An empty set never holds, Not or not. It has no owner. It reads the World Weather, not the experienced weather, so a Sheltered player still holds it. The game reads it once per turn commit, after the Weather Pass, the nightfall rule and script sets. Outside play it reads Default Weather, or Clear when that is unset. The editor offers it only while Weather is on. Traits and image Visibility rules share it.
 _Avoid_: weather gate, climate condition
 
+**Opening Condition**:
+A Condition that holds while the Drawn Opening is one of a picked list of Openings, stored by owner and id. With Not it holds for every other Opening and with no Drawn Opening. An empty list never holds, Not or not. It has no owner. It holds for the whole game; a page-one re-roll settles the starting traits again under the new draw. Outside play it reads the shared Opening pick, else no Opening. The editor offers it only while the world has an Opening. Player lines leave it out. A listed key whose Opening is gone reads unresolved and drops on the next edit. A character card keeps only keys on its own Openings; one left with none stays unresolved, so an import never widens a gate. Traits and image Visibility rules share it.
+_Avoid_: route condition, start gate
+
 **World Option Condition**:
 A Condition on a World Option. On a choice it holds while the Option holds one value; on an On or Off it holds while the Option is on; Not flips either. On a number it compares with the six stat operators and has no Not. It has no owner. In play it reads the playthrough's value; at Enter World, the player's pick; in Test Bench, the author's pick; elsewhere outside play, the default. Player lines leave out a Condition on a hidden World Option. Traits and image Visibility rules share it.
 _Avoid_: option gate, setting condition

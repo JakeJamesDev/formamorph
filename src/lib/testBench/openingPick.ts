@@ -6,6 +6,7 @@
  */
 import { sameOpeningKey, type OpeningKey } from '@/lib/drawnOpening';
 import { openingLabel } from '@/lib/openings';
+import { openingKeyId } from '@/lib/openingCondition';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
 import type { Opening } from '@/types';
@@ -25,9 +26,6 @@ export interface OpeningPickGroup {
   options: OpeningPickOption[];
 }
 
-const optionId = ({ ownerId, openingId, locationId }: OpeningKey): string =>
-  JSON.stringify(locationId === undefined ? [ownerId, openingId] : ['location', locationId, openingId]);
-
 /** Every Opening in `world`: the world's own first, then each entity's, then each location's, Self rows included. */
 export function openingPickGroups(world: LensWorld): OpeningPickGroup[] {
   const placeholders = allPlaceholders(world);
@@ -37,7 +35,7 @@ export function openingPickGroups(world: LensWorld): OpeningPickGroup[] {
     label,
     options: (openings ?? []).map((opening, index) => {
       const key = keyOf(opening);
-      return { id: optionId(key), key, label: openingLabel(opening, label, index) };
+      return { id: openingKeyId(key), key, label: openingLabel(opening, label, index) };
     }),
   });
   return [

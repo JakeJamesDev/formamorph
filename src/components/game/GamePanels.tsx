@@ -95,6 +95,7 @@ import { gateStates } from '@/lib/traitGates';
 import { worldEntitiesOf } from '@/lib/persona';
 import type { TraitCascade } from './SetupTraitList';
 import { daypartAt, formatAbsolute, formatClock } from '@/lib/gameClock';
+import { usePlayOpening } from '@/lib/usePlayOpening';
 import { logKind } from '@/lib/playLog';
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
@@ -1525,11 +1526,12 @@ export const RightPanel = ({
   // The played world entity is out of the cast, and a "playing as" gate has to find it. Time Conditions read
   // the viewed turn's clock.
   const daypart = daypartAt(gameTime, calendar);
+  const opening = usePlayOpening();
   const gateWorld = React.useMemo<TraitWorld>(() => ({
-    traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' }, daypart, weather,
+    traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' }, daypart, weather, opening,
     ...(worldItems ? { items: worldItems } : {}), itemInstances, options: worldOptions, optionValues: viewWorldOptionValues,
     ...inPlayOwners(ownerWorld, personaRef, traitLibrary),
-  }), [traits, traitGroups, cast, persona, personaRef, daypart, weather, worldItems, itemInstances, worldOptions, viewWorldOptionValues, ownerWorld, traitLibrary]);
+  }), [traits, traitGroups, cast, persona, personaRef, daypart, weather, opening, worldItems, itemInstances, worldOptions, viewWorldOptionValues, ownerWorld, traitLibrary]);
   const viewTraitState = React.useMemo(
     () => ({ traits: globalTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits, appliedValues: viewAppliedTraitValues }),
     [globalTraits, viewDisabledTraitIds, viewOwnedTraits, viewAppliedTraitValues],

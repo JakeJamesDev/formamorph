@@ -36,7 +36,7 @@ Cards use `card` rather than inventing a second panel color. Destructive, succes
 - Put a short description below its control or beside a checkbox. Keep necessary detail behind the information control.
 - Use several suitable widget types. Do not convert every setting into the same control for visual uniformity.
 - Use the responsive option switcher for mutually exclusive choices: segmented options at `sm` and wider, a select below `sm`.
-- Inside a dense control, a short pick-many set can use the [segmented multi-select](#pattern-segmented-multi-select).
+- Inside a dense control, a short pick-many set can use the [segmented multi-select](#pattern-segmented-multi-select). A long or grouped one uses the [grouped pick list](#pattern-grouped-pick-list-in-a-chip).
 - Keep long values inside the control column. Select triggers truncate instead of widening the row.
 
 ### Production mapping
@@ -2616,6 +2616,20 @@ A segmented control whose options turn on and off one by one, for a short pick-m
 - 🔊 **Name.** The group carries an `aria-label`; each option is a pressed or unpressed button.
 
 Open `#dev?modal=designSystem&tab=segmented-multi-select` for the time chip's controls with local state.
+
+## Pattern: Grouped pick list in a chip
+
+✅ Approved by the user on 2026-11-22 (drawn-opening ticket 06 prototype).
+
+A chip that names what it picked and opens a list of owners' items to check, for a pick-many set too long or too grouped for the [segmented multi-select](#pattern-segmented-multi-select).
+
+- 🏷️ **Trigger.** The chip reads its picks in words, such as *Opening ambush or chase*, with a small chevron. Selecting it opens the list in a popover.
+- ✅ **Select All first.** **Select All** tops every list and page. It adds every item it covers, and it shows checked and disabled once they are all on.
+- 📂 **Flat, then drill-down.** With one owner, or with up to 8 items in all, the list is flat under owner headings. Past that it opens on the owners, each with its picked count (*2 of 6*). Selecting an owner opens its items, with a back row at the top.
+- 🔒 **Never empty.** The last checked item is disabled. The chip's ✕ removes the whole Condition, so the list has no Clear and no Close.
+- 🧩 **Component.** [`OpeningConditionControls.tsx`](../src/components/editor/OpeningConditionControls.tsx): `Popover` with `Command`, check rows in the `MultiSelect` style.
+
+Open `#dev?modal=worldEditor&tab=traits` on a world with Openings and add an **Opening** requirement.
 
 ## Pattern: Collapsing Segmented Control
 

@@ -43,6 +43,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Time and Weather conditions can now be Not.** Select Require it to be off on a time or weather chip. "Not night" holds at every other time of day.
     - **Scripts can read which opening started the game with `opening`.** It holds the opening's name, owner, kind, time, weather and text on every turn. Pick the opening to test with beside Test Code or in the Test Bench.
     - **Renaming an Opening updates the scripts that compare `opening.name` with its old name.** When another owner has an Opening of that name, **Update Code References** lists the comparisons it can't tell apart. The code editor marks a name no Opening has.
+    - **Traits and image Visibility rules can now require the opening a game started from.** Pick Opening under Add Requirement, then check the openings that count. It holds all game, and players don't see it in requirement lines.
   - **Scripts:**
     - **Script entries now tell you what they are.** Every entity, location, item, stat, trait and other entry in a script reads a read-only `category`, such as "entity" or "itemInstance".
   - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.

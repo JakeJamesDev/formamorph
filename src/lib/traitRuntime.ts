@@ -12,6 +12,7 @@
 
 import type { ItemScriptEvent } from './inventory';
 import type { SwitchCause } from './triggerArgs';
+import type { OpeningKey } from './drawnOpening';
 import type {
   BodyRuntime, CascadeOffTraitIds, CodeBoundDeltas, CodeBounds, Daypart, EntityStatValues, ItemInstance, ItemEffectLedger, LegacyCodeBoundsStat, OwnedTraitPicks, OwnedTraitStates, PersonaRef,
   PlayerStat, Stat, StatChange, Trait, TraitGroup, WeatherKind,
@@ -61,6 +62,8 @@ export type TraitWorld = {
   daypart?: Daypart;
   /** The World Weather, which every weather Condition reads. Absent ⇒ Clear. */
   weather?: WeatherKind;
+  /** The Drawn Opening, resolved against the cast, which every Opening Condition reads. Absent ⇒ none. */
+  opening?: OpeningKey | null;
   /** The authored items an item Condition names. Absent ⇒ every item Condition is unresolved. */
   items?: GateInput['worldItems'];
   /** Every Item Instance in play, hidden ones included. Absent ⇒ no one owns anything. */
@@ -892,6 +895,7 @@ export const traitGateInput = (state: GateStatState, world: TraitWorld): GateInp
   ...gateReads(state, world),
   ...(world.daypart ? { daypart: world.daypart } : {}),
   ...(world.weather ? { weather: world.weather } : {}),
+  ...(world.opening ? { opening: world.opening } : {}),
   ...(world.items ? { worldItems: world.items } : {}),
   ...(world.itemInstances ? { itemInstances: world.itemInstances } : {}),
   ...(world.options ? { worldOptions: world.options } : {}),

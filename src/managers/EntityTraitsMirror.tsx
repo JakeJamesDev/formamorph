@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
+import { useOpeningPickContext } from '@/contexts/OpeningPickContext';
 import { Hint } from '@/components/ui/typography';
 import type { EntityRoot, TraitStore } from '@/contexts/TraitStoreContext';
 import { editorGateInput } from '@/lib/owners';
@@ -18,9 +19,14 @@ function useWorldEntityTraitStore(entity: Entity): EntityTraitStore {
   const { traits, traitGroups, entities, items, options: worldOptions, placeholders, stats, statGroups, placementLetters, placeholderOwners, editEntity } = world;
   const weather = world.worldOverview?.weather;
   const defaultTime = world.worldOverview?.defaultTime;
+  const openingPick = useOpeningPickContext();
+  const opening = openingPick?.pick;
+  const openings = openingPick?.groups;
   const gateInput = useMemo(
-    () => editorGateInput({ traits, traitGroups, entities, items, options: worldOptions, weather, defaultTime }, startingGateStats({ stats, statGroups, entities })),
-    [traits, traitGroups, entities, items, worldOptions, weather, defaultTime, stats, statGroups],
+    () => editorGateInput(
+      { traits, traitGroups, entities, items, options: worldOptions, weather, defaultTime, opening, openings }, startingGateStats({ stats, statGroups, entities }),
+    ),
+    [traits, traitGroups, entities, items, worldOptions, weather, defaultTime, opening, openings, stats, statGroups],
   );
   return useMemo(() => {
     const edit = (change: (e: Entity) => Entity) => editEntity(entity.id, change);

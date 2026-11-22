@@ -297,7 +297,7 @@ During the game:
 
 A **row** is one way to open the trait. It holds when every condition in it holds, so a row means **and**. The trait opens when any one row holds, so rows mean **or**.
 
-- **Add Requirement** adds the first condition. It opens a search with these lists: **Traits**, **Any Trait in a Group**, **Stats** with a page for each owner, **Items**, **Time of Day**, **Weather** (while Weather is on), **World Options** and **Playing As**. In a large world, the search opens on those lists with a count beside each. Select a list, then an owner, to see its targets. Type in the search to find a target in every list.
+- **Add Requirement** adds the first condition. It opens a search with these lists: **Traits**, **Any Trait in a Group**, **Stats** with a page for each owner, **Items**, **Time of Day**, **Weather** (while Weather is on), **Opening** (while the world has an opening), **World Options** and **Playing As**. In a large world, the search opens on those lists with a count beside each. Select a list, then an owner, to see its targets. Type in the search to find a target in every list.
 - **And** (in a row) adds another condition to that row.
 - **Or Another Way** (below the rows) adds a new row.
 - The **X** at the end of a row removes the whole row. Remove the last condition in a row, and the row goes too.
@@ -455,6 +455,24 @@ A **weather condition** checks the world's current weather. *Awning Up* requires
 - The game checks once per turn, after the turn's weather is set.
 - Outside play, the [Test Bench](#test-bench-checks) reads the world's Default Weather, or Clear when none is set.
 - The same condition works on image visibility rules, so a location image can show only while it rains.
+
+### Opening conditions
+<!-- keywords: opening, drawn opening, start, starting scene, route, ambush, which opening, opening condition, route trait, route art -->
+<!-- route: worldEditorTrait.availability -->
+
+An **opening condition** checks which opening started the game. *Hunted* requires the *ambush* opening, so a game that starts with the ambush has it from page one.
+
+1. Open the trait's **Availability** tab.
+2. Under **Requires**, select **Add Requirement**, then pick **Opening**.
+3. Open the chip's list and check each opening that counts, or select **Select All**. The list shows every opening in the world: the world's own first, then each entity's, then each location's. An opening with no name shows as *Aki · Opening 2*. In a world with more than 8 openings, the list opens on the owners: select one to see its openings.
+
+- At least one opening stays checked. Select **Require it to be off** to make it **Not**. *Not ambush* holds after every other start, and in a game that started with no opening.
+- A row holds one opening condition.
+- It holds for the whole game, not just page one. A page-one re-roll that draws another opening checks it again.
+- Players never see it in a trait's requirement line. A trait locked by it alone reads **Locked**.
+- If you delete an opening the condition lists, the chip turns red. The next change to its list removes the deleted opening.
+- Outside play, it reads the **Opening** picked in the [Test Bench](#test-bench-checks), or no opening.
+- The same condition works on image visibility rules, so a character's art can change with the route.
 
 ### World Option conditions
 <!-- keywords: world option, option, setting, setup choice, on or off, flag, switch, unlock with a script, player setup, difficulty -->

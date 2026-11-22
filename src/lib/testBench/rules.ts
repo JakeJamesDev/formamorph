@@ -6,6 +6,7 @@
  * Everything here is pure: no React, no storage, no world mutation. A rule diagnoses; where the repair is
  * unambiguous it also carries a `fix`, which returns a new world rather than editing the one it was given.
  */
+import type { OpeningKey } from '@/lib/drawnOpening';
 import {
   collectPlaceholderPlacements, decodePlaceholderToken, describePlaceholders, encodePlaceholderToken,
   hasPlaceholders, lonePlaceholderToken, parsePlaceholderText, placeholderChildren, placeholderIsChoice,
@@ -2172,7 +2173,10 @@ const traitGroupTooSmall: Rule = {
 // ── Trait gates ───────────────────────────────────────────────────────────────────────────────────────────
 
 /** The slices the owner resolver reads. */
-export type OwnerSource = Partial<Pick<RuleWorld, 'traits' | 'traitGroups' | 'entities' | 'items' | 'options' | 'worldOverview'>>;
+export type OwnerSource = Partial<Pick<RuleWorld, 'traits' | 'traitGroups' | 'entities' | 'items' | 'options' | 'worldOverview'>> & {
+  /** The Test Bench's Opening pick, which an Opening Condition reads. Absent ⇒ none. */
+  benchOpening?: OpeningKey | null;
+};
 
 const pairKey = (a: OwnerId, b: string) => `${scopeKey(a)}\u0000${b}`;
 
@@ -2199,6 +2203,7 @@ export function ownerWorldOf(world: OwnerSource, open: OpenGates = NONE_OPEN): O
     ...(world.items ? { items: world.items } : {}),
     ...(world.options ? { options: world.options } : {}),
     ...(world.worldOverview?.weather ? { weather: world.worldOverview.weather } : {}),
+    ...(world.benchOpening ? { opening: world.benchOpening } : {}),
     entities: (world.entities ?? []).map((e) => ({
       ...e, name: e.name ?? '',
       ...(e.traits ? { traits: e.traits.map(opened) } : {}),
@@ -2565,7 +2570,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     : req.kind !== 'playingAs' && req.kind !== 'item' && editor.owners.some((o) => (req.kind === 'trait' ? o.traits : o.groups).some((x) => x.id === req.id)));
   const crossings = held.filter((gate) => gate.owner.id === null && global.traits.some((t) => t.id === gate.trait.id))
     .flatMap((gate) => (gate.trait.requires ?? []).flatMap((row, i) => row.all.flatMap((req, j) => {
-      if (req.kind === 'playingAs' || req.kind === 'time' || req.kind === 'weather' || req.kind === 'item' || req.kind === 'option' || req.owner) return [];
+      if (req.kind === 'playingAs' || req.kind === 'time' || req.kind === 'weather' || req.kind === 'opening' || req.kind === 'item' || req.kind === 'option' || req.owner) return [];
       const isGlobal = req.kind === 'stat' ? !!stats.global[req.id] : globalIds.has(req.id);
       return !isGlobal && entityHolds(req) ? [{ gate, condition: quote(gate.rows[i][j]) }] : [];
     })));
