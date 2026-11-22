@@ -67,10 +67,39 @@ function rainEffect(count: number, calm: boolean, w: number, h: number, rand: Ra
   };
 }
 
+/** A falling six-armed snow crystal: `branch` places its side branches along each arm, `twig` sets their length. */
+interface Crystal extends Flake { spin: number; angle: number; branch: number; twig: number }
+
+/** Adds one crystal's arms and side branches to the current path. */
+function crystalPath(ctx: CanvasRenderingContext2D, x: number, y: number, c: Crystal) {
+  for (let arm = 0; arm < 6; arm++) {
+    const a = c.angle + (arm * Math.PI) / 3;
+    const ax = Math.cos(a);
+    const ay = Math.sin(a);
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + ax * c.r, y + ay * c.r);
+    for (const [at, len] of [[c.branch, c.twig], [c.branch + 0.28, c.twig * 0.6]] as const) {
+      const bx = x + ax * c.r * at;
+      const by = y + ay * c.r * at;
+      for (const side of [-1, 1]) {
+        const b = a + side * 0.9;
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx + Math.cos(b) * c.r * len, by + Math.sin(b) * c.r * len);
+      }
+    }
+  }
+}
+
 function snowEffect(count: number, calm: boolean, w: number, h: number, rand: Rand): WeatherEffect {
   const speedScale = calm ? 0.4 : 1;
   const spawn = (y: number): Flake => ({ x: rand() * w, y, r: 1 + rand() * 2.2, speed: (40 + rand() * 50) * speedScale, phase: rand() * Math.PI * 2 });
   const flakes = Array.from({ length: count }, () => spawn(rand() * h));
+  // Now and then a larger crystal drifts down among the flakes, slower and turning.
+  const spawnCrystal = (y: number): Crystal => ({
+    x: rand() * w, y, r: 4.5 + rand() * 3, speed: (25 + rand() * 20) * speedScale, phase: rand() * Math.PI * 2,
+    spin: (rand() - 0.5) * 0.8, angle: rand() * Math.PI, branch: 0.4 + rand() * 0.15, twig: 0.25 + rand() * 0.15,
+  });
+  const crystals = Array.from({ length: Math.max(2, Math.round(count * 0.03)) }, () => spawnCrystal(rand() * h));
   let time = 0;
   return {
     frame(ctx, dt, colors) {
@@ -85,6 +114,17 @@ function snowEffect(count: number, calm: boolean, w: number, h: number, rand: Ra
         ctx.arc(x, f.y, f.r, 0, Math.PI * 2);
       }
       ctx.fill();
+      ctx.strokeStyle = `rgba(${colors.snow}, 0.9)`;
+      ctx.lineWidth = 1;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (const c of crystals) {
+        c.y += c.speed * dt;
+        c.angle += c.spin * dt * speedScale;
+        if (c.y - c.r > h) Object.assign(c, spawnCrystal(-c.r));
+        crystalPath(ctx, c.x + Math.sin(time * speedScale * 0.6 + c.phase) * 22, c.y, c);
+      }
+      ctx.stroke();
     },
   };
 }

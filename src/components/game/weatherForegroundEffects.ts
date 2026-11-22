@@ -88,11 +88,11 @@ function rainOnGlass(w: number, h: number, rand: Rand): ForegroundEffect {
   const mist: Speck[] = Array.from({ length: Math.round(Math.min(1200, Math.max(300, area / 1200))) }, () => ({
     x: rand() * w, y: rand() * h, r: 0.6 + rand() * 1.4, born: rand() * 1.6,
   }));
-  const drops: Drop[] = Array.from({ length: Math.round(Math.min(280, Math.max(60, area / 4000))) }, () => ({
-    x: rand() * w, y: rand() * h, r: 2 + rand() ** 2.5 * 11, born: rand() * 1.4, stretch: 1 + rand() * 0.25,
+  const drops: Drop[] = Array.from({ length: Math.round(Math.min(110, Math.max(25, area / 10000))) }, () => ({
+    x: rand() * w, y: rand() * h, r: 1.2 + rand() ** 3 * 5, born: rand() * 1.4, stretch: 1 + rand() * 0.25,
   }));
-  const runners: Runner[] = Array.from({ length: Math.round(Math.min(14, Math.max(5, area / 80000))) }, () => {
-    const r = 7 + rand() * 6;
+  const runners: Runner[] = Array.from({ length: Math.round(Math.min(9, Math.max(3, area / 120000))) }, () => {
+    const r = 4.5 + rand() * 3.5;
     const beads: Runner['beads'] = [];
     // The beads a runner sheds, by distance down its path; the step has a floor, so the loop always ends.
     for (let at = 20 + rand() * 20; at < h; at += Math.max(12, 14 + rand() * 30)) beads.push({ at, r: r * (0.18 + rand() * 0.22) });
@@ -150,28 +150,35 @@ function rainOnGlass(w: number, h: number, rand: Rand): ForegroundEffect {
       for (const run of runners) {
         if (t < run.born) continue;
         const grow = clamp01((t - run.born) / 0.15);
-        const moving = Math.max(0, t - run.born - run.start);
         // Stick-slip: the drop surges and stalls as it gathers water.
-        const dist = run.speed * (moving + 0.12 * Math.sin(moving * 9 + run.phase)) * clamp01(moving * 4);
+        const distAt = (time: number) => {
+          const moving = Math.max(0, time - run.born - run.start);
+          return run.speed * (moving + 0.12 * Math.sin(moving * 9 + run.phase)) * clamp01(moving * 4);
+        };
+        const dist = distAt(t);
+        // The drop loses water to its track and beads, so it shrinks the farther it runs.
+        const sizeAt = (d: number) => run.r * (1 - 0.65 * clamp01(d / (h * 0.6)));
+        // It stretches into a teardrop while it surges and rounds out when it stalls.
+        const pace = clamp01((dist - distAt(t - 0.05)) / 0.05 / run.speed);
         const xAt = (d: number) => run.x + Math.sin(d / 45 + run.phase) * run.wobble;
         for (const b of run.beads) if (b.at < dist - run.r) drop(ctx, xAt(b.at), run.y + b.at, b.r, fade, 1.05);
         if (dist > 2) {
-          // The wet track: a tapering, wavering stroke, faint at the top and fuller near the drop.
+          // The wet track: a wavering stroke as wide as the drop was there, fading toward the top.
           const steps = Math.min(14, Math.ceil(dist / 6));
           ctx.lineCap = 'round';
           for (let i = 0; i < steps; i++) {
             const d0 = (i / steps) * dist;
             const d1 = ((i + 1) / steps) * dist;
             const k = (i + 1) / steps;
-            ctx.strokeStyle = `rgba(215, 228, 245, ${0.2 * k * fade})`;
-            ctx.lineWidth = run.r * (0.2 + 0.45 * k);
+            ctx.strokeStyle = `rgba(215, 228, 245, ${0.18 * k * fade})`;
+            ctx.lineWidth = sizeAt(d1) * (0.3 + 0.4 * k);
             ctx.beginPath();
             ctx.moveTo(xAt(d0), run.y + d0);
             ctx.lineTo(xAt(d1), run.y + d1);
             ctx.stroke();
           }
         }
-        drop(ctx, xAt(dist), run.y + dist, run.r * (0.5 + 0.5 * grow), fade * grow, 1.25);
+        drop(ctx, xAt(dist), run.y + dist, sizeAt(dist) * (0.5 + 0.5 * grow), fade * grow, 1.05 + 0.6 * pace);
       }
     },
   };
@@ -189,11 +196,15 @@ function settlingSnow(w: number, h: number, rand: Rand): ForegroundEffect {
   const cols = Math.max(2, Math.ceil(w / BANK_COL) + 1);
   // The drift's shape: a few long, gentle swells, never thinner than a third of its depth.
   const [p1, p2, p3] = [rand(), rand(), rand()].map((v) => v * Math.PI * 2);
+  // Snow banks into the bottom corners, as on a window's frame, and thins to a dusting across the middle.
   const profile = Float32Array.from({ length: cols }, (_, c) => {
-    const u = ((c * BANK_COL) / Math.max(1, w)) * Math.PI * 2;
-    return Math.max(0.35, 1 + 0.35 * Math.sin(u * 1.3 + p1) + 0.2 * Math.sin(u * 3.1 + p2) + 0.1 * Math.sin(u * 7 + p3));
+    const x = (c * BANK_COL) / Math.max(1, w);
+    const corner = Math.abs(2 * x - 1) ** 3;
+    const u = x * Math.PI * 2;
+    const swell = 1 + 0.25 * Math.sin(u * 3.1 + p1) + 0.15 * Math.sin(u * 7 + p2) + 0.08 * Math.sin(u * 13 + p3);
+    return (0.06 + corner) * swell;
   });
-  const depth = h * 0.11;
+  const depth = h * 0.07;
   const flakes = Array.from({ length: count }, () => ({
     x: rand() * w, r: 1.5 + rand() * 3, born: rand() * 1.8, fall: 1 + rand() * 0.9, phase: rand() * Math.PI * 2,
   })).sort((a, b) => a.born + a.fall - (b.born + b.fall));
@@ -236,10 +247,12 @@ function settlingSnow(w: number, h: number, rand: Rand): ForegroundEffect {
       ctx.lineTo(w, h);
       ctx.closePath();
       // Soft lumps along the crest, so the edge reads as packed flakes rather than a line.
-      const lumpScale = Math.min(1, fill / (depth * 0.5));
       for (const l of lumps) {
-        ctx.moveTo(l.x + l.r * lumpScale, top(l.x) + l.lift);
-        ctx.arc(l.x, top(l.x) + l.lift, l.r * lumpScale, 0, Math.PI * 2);
+        // A lump is only as big as the snow under it, so the dusting in the middle stays flat.
+        const r = Math.min(l.r, (h - top(l.x)) * 0.6);
+        if (r < 0.5) continue;
+        ctx.moveTo(l.x + r, top(l.x) + l.lift);
+        ctx.arc(l.x, top(l.x) + l.lift, r, 0, Math.PI * 2);
       }
       ctx.fill();
       // A cool shade along the crest's underside.
