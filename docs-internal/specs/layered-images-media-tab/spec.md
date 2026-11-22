@@ -1,6 +1,7 @@
 # Spec: Layered Images in the Media Tab
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-11-22. Tickets 01–04 landed; the last landing is 1daf8adb0. Review: spec text corrected. Gates on 2026-11-22: tests pass, and lint errors are only in the gitignored worlds-wip folder.
 Spec session: layered-images-media-tab — spec
 
 ## Problem Statement
@@ -46,7 +47,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 4. As a world author, I want **Edit Layers** in a location's and an item's image field, so that every slot that can hold a Layered Image can open it.
 5. As a world author on desktop, I want **Edit Layers** to open the full-screen Layered Image editor, so that I get the same editor the Media List card opens.
 6. As a world author on mobile, I want **Edit Layers** to open the Layer panel, so that the mobile form matches the rest of the Media tab.
-7. As a world author, I want to **Replace** a layered slot with another image or Layered Image, so that I can swap a picture the way I swap a flat one.
+7. As a world author, I want to swap a layered slot for another image or Layered Image the way I swap a flat one (Remove From Slot, then Choose), so that one picker serves both.
 8. As a world author, I want to **Remove** a Layered Image from one slot without deleting it, so that other slots that link it keep it.
 9. As a world author, I want a layered slot titled with its Layered Image's name, so that "Roxanne" and "Roxanne Bare" read apart at a glance.
 10. As a world author, I want a layered slot's size line to give its Layer count and total size, so that I can see what the picture costs against the publish budget.
@@ -65,21 +66,21 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 
 ## Implementation Decisions
 
-- **The image gallery field owns the layered slot panel.** The shared gallery field (used by the entity editor and by Group by Entity) renders a layered slot through the same slot panel as a flat image: name field (renames the Layered Image), title, size line, action row, and Visibility Rule. The action row gains **Edit Layers** beside **Download** when the slot links a Layered Image. Location and item image fields reuse the same action row.
-- **Edit Layers opens the existing editor.** It opens the same desktop full-screen editor and mobile Layer panel that the Layered Image's Media List card opens today. It does not build a second editor.
+- **A layered slot takes its host's flat-slot panel (Q11).** In the Media tab, a layered gallery slot stacks with its parent and opens the image panel: name field (renames the Layered Image), title, size line, action row and Visibility Rule, with **Edit Layers** beside **Download**. In the shared gallery field (entity editor, location and item image fields), it shows the name bar with **Edit Layers** on its own line under it.
+- **One Edit Layers button opens the existing editor.** Every host uses one shared button. On desktop it opens the full-screen editor the Media List card opens. On mobile it opens the same Layer panel, in a full-height dialog titled with the Layered Image's name (Q13). It does not build a second editor.
 - **Download on a layered slot** downloads the outside-play flattened picture, as the export path already produces it (lossless, per the landed card-flatten work).
 - **Title and size line come from the Media index.** A layered slot item carries the Layered Image's name as its title, and a size equal to the sum of its distinct part images' stored bytes, with its Layer count.
 - **Hiding parts is a Media index rule, not a view rule.** The index marks an entry "part only" when its only uses are Variant uses. Both groupings leave part-only entries out. The **Layered Image Variants** section and its id are removed. The Unused section keeps its own rule: an entry with no uses at all.
 - **Search reaches parts through their Layered Image.** A search term that matches a part-only entry's name adds the Layered Image (or each one) that holds it to the results, never the part's own card.
-- **Delete From World cascades in the planner.** Deleting a Layered Image plans the removal of each part whose only uses are this Layered Image's Variants. The confirm lists those parts by name. The whole plan applies as one undo step. A part used by another Layered Image or linked by any field is kept.
+- **Delete From World cascades through the usage index.** A usage helper finds each part whose only uses are this Layered Image's Variants. The delete action removes the Layered Image and those parts in one history step, so one undo restores everything. The confirm lists those parts by name. A part used by another Layered Image or linked by any field is kept.
 - **No export-shape change.** Worlds, saves, library entities and cards keep their current shape. Hiding, titles, sizes and the cascade are all editor behavior.
 
 ## Testing Decisions
 
 - Good tests drive the public seam and assert what the author sees or what the world holds afterwards: which cards a grouping lists, which entries a delete removes, which buttons a slot panel offers. They do not assert markup structure or call order.
 - **Media index (unit), existing seam.** Grouping by type and by parent leaves part-only entries out. An entry that is also linked by a field stays. Search on a part's name returns its Layered Image. A layered slot item carries the rig's name, Layer count, and de-duplicated total size. Prior art: the existing Media index tests.
-- **Image gallery field (component), existing seam.** A layered slot shows the flat-slot panel with **Edit Layers** beside **Download**, and **Edit Layers** opens the editor. **Replace** offers Layered Images, and **Remove** unlinks only this slot. Prior art: the existing gallery field and Media panel component tests.
-- **Delete From World planner (unit), existing seam.** It removes unshared parts, keeps shared ones, lists the removed parts for the confirm, and applies as one undo step that restores everything. Prior art: the existing delete-media tests.
+- **Image gallery field and Media panel (component), existing seams.** A layered slot shows its host's flat-slot panel with **Edit Layers**, and **Edit Layers** opens the editor. **Remove From Slot** unlinks only this slot, and **Choose** on the emptied slot offers Layered Images. Prior art: the existing gallery field and Media panel component tests.
+- **Delete From World (unit and component), existing seams.** The usage helper finds unshared parts and keeps shared ones (unit). The confirm lists the removed parts, and one undo restores everything (component). Prior art: the existing media usage and delete-media tests.
 - Each new guard is proven by reinstating its bug and watching its test fail (`test-bar`).
 - No new e2e. The layout fit of Layered Images is already guarded by the landed Playwright spec for picture fit.
 

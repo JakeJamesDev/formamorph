@@ -19,13 +19,12 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Layered Images:**
     - **A character's gallery can show a Layered Image, a picture stacked from parts that change with the story.** Each part shows its first version whose rule holds. The character panel, mention cards and full-size viewer draw the stack.
-    - **A location or item image slot can show a Layered Image.** The location background draws the stack. The Inventory, the equipped lists, the Inventory figure and the item popup draw an item's stack.
+    - **A location or item image slot can choose a Layered Image.** The location background, the Inventory, the equipped lists, the Inventory figure and the item popup draw the stack. Gallery strips and frames show each Layer's first image.
     - **Build a Layered Image in the World Editor's Media tab and pick it in a character's gallery.** Add Layers, give each Layer images with Visibility rules, and preview the picture as any character. A warning marks an image whose size differs from the bottom Layer.
     - **A Layer in a Layered Image has a Tint and a Blend Mode.** Tint a gray drawing any color. Blend with Normal, Multiply, Screen or Add. The Media tab editor and the game picture show both.
     - **Scripts can set which image each Layer of a Layered Image shows, and its opacity and tint.** Each copy of a character and each item keeps its own settings. Setting `null` hands the Layer back to its rules.
     - **A Layer in a Layered Image can fade or bounce when it shows another image.** Pick None, Dissolve or Jelly, with the Mascot's sliders, and press Play in the editor. Jelly fades instead under reduced motion.
     - **A character keeps its Layered Images in the library, in published listings and in exported cards.** Its tile, listing and card show each Layer's first image.
-    - **Location and item image slots can choose a Layered Image, and every gallery shows it as a picture.** Choose lists Layered Images there. The strip and frame show each Layer's first image.
     - **The Test Bench flags Layered Images that break.** Four findings name the image and the Layer: a size mismatch, a bottom Layer that can show nothing, a rule naming a missing trait or stat, and no Layers.
     - **Renaming a Layer updates only the scripts that name its own Layered Image.** When another Layered Image has a Layer of that name too, **Update Code References** lists the references it can't tell apart, and you check the ones to change.
     - **Edit Layers opens a Layered Image from an entity's gallery, in the Media tab and the entity editor.** In the Media tab its slot shows its name, Layer count, size and Download, like an image.

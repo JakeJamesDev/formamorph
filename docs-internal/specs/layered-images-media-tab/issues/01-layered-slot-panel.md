@@ -1,6 +1,6 @@
 # 01: Layered Slot Panel
 
-Status: ready-for-human
+Status: done
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -12,7 +12,7 @@ A gallery slot that links a Layered Image behaves like a flat image's slot where
 - **Panel parity.** The slot shows the flat-slot panel: name field (renames the Layered Image), title, size line, action row and Visibility Rule.
 - **Title.** The card and panel take the Layered Image's name ("Roxanne › Roxanne Bare"), not the slot's ("Image 2").
 - **Size line.** "Layered Image · N Layers · total size", with each part image counted once.
-- **Actions.** **Download** saves the flattened outside-play picture. **Replace** opens the picker with images and Layered Images. **Remove** unlinks this slot only and leaves the Layered Image in the Media List.
+- **Actions.** **Download** saves the flattened outside-play picture. **Remove From Slot** unlinks this slot only (no Replace, per spec Q10; **Choose** on the emptied slot lists Layered Images) and leaves the Layered Image in the Media List.
 - **Edit Layers.** A button beside **Download** opens the existing editor: the full-screen editor on desktop and the Layer panel on mobile. This ticket owns that action-row button; ticket 02 reuses it.
 - **Docs.** The World Editor Media page says where Edit Layers sits on a gallery slot.
 
