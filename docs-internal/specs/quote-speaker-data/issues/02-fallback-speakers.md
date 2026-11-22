@@ -1,6 +1,6 @@
 # 02: Fallback Speakers for Quotes With None
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -28,9 +28,21 @@ Changelog: add a fragment for the change players see, which is that more quotes 
 
 ## Acceptance criteria
 
-- [ ] For each fallback, a fixture passage gets the right speaker through the reading seam.
-- [ ] In every fixture, a quote that a rule already named keeps that speaker.
-- [ ] The speech-verb-only reading (the discovery gate) returns the same speaking clusters as before.
-- [ ] A quote whose only candidate is in an earlier paragraph stays without a speaker.
-- [ ] Breaking each fallback's guard (mutation check) makes a test fail.
-- [ ] Fixtures hold no contributed player text. They are written for the tests or taken from the user's own saves.
+- [x] For each fallback, a fixture passage gets the right speaker through the reading seam. `readMentions fallback speakers` in `mentionReading.test.ts`, one test per fallback, plus the player's own first person.
+- [x] In every fixture, a quote that a rule already named keeps that speaker. `keeps every speaker a rule named`; the private gold sets stay at their floors with 0 wrong quotes.
+- [x] The speech-verb-only reading (the discovery gate) returns the same speaking clusters as before. `runs no fallback in the speech-verb clusters (Q73)`; the old beat test stays green.
+- [x] A quote whose only candidate is in an earlier paragraph stays without a speaker. Covered for earlier-quote, pronoun-subject and named-subject; own-first-person reads only the quote's own words.
+- [x] Breaking each fallback's guard (mutation check) makes a test fail. 13 mutations, all red, restore verified.
+- [x] Fixtures hold no contributed player text. They are written for the tests or taken from the user's own saves. All passages are new; the replay data was used for counts only.
+
+## Landed
+
+- Order: every order of the four tied on the replay of 321 corrections (40 → 39 fixed after the earlier-quote ruling, 0 lost), so the spec's list order stands.
+- Rulings applied: a rule's mention stays as evidence with a `fallback` field; earlier-quote fires only on the untagged path; own-first-person skips Q67 mixed clusters (the gold set's one wrong quote).
+- Two older tests moved their unnamed "she" to a quote with nothing before it, since pronoun-subject now names the earlier subject there by design.
+
+**Not verified**
+- Nothing open.
+
+**For you**
+- Play a turn with Character Mentions on in a scene with untagged follow-up lines and a bare "she says": check that those quotes now take a speaker's color, and that a line tagged "the guard says" keeps the default color.

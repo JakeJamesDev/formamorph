@@ -168,7 +168,7 @@ describe('the quotes a contribution sends', () => {
   });
 
   it('sends a fallback rule with the quote', async () => {
-    const withFallback = [{ ...shown, fallback: 'earlier-quote' }];
+    const withFallback = [{ ...shown, fallback: 'earlier-quote' as const }];
     await contributeTurn('acct-a', A, turn({ passage: QUOTED, entry: quoted(withFallback), corrections: [quoteFix] }));
     expect(sent().quotes[0]).toMatchObject({ rule: 'after-subject-verb', fallback: 'earlier-quote' });
   });

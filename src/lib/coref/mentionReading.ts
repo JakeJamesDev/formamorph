@@ -15,10 +15,13 @@ export interface MentionLink {
 }
 
 /** Raised whenever the speaker or naming rules change; a contribution carries it so replays know which rules ran. */
-export const readingVersion = 1;
+export const readingVersion = 2;
+
+/** A fallback that names a speaker the five rules left none for, from the quote itself or its paragraph. */
+export type QuoteFallback = 'own-first-person' | 'earlier-quote' | 'pronoun-subject' | 'named-subject';
 
 /** The rule that named a quote's speaker; `none` when no rule did. */
-export type QuoteRule = 'after-subject-verb' | 'after-verb-subject' | 'before-verb' | 'beat' | 'nearest-subject' | 'none';
+export type QuoteRule = 'after-subject-verb' | 'after-verb-subject' | 'before-verb' | 'beat' | 'nearest-subject' | QuoteFallback | 'none';
 
 /** A span in the passage's text. */
 export interface ReadingSpan {
@@ -32,10 +35,12 @@ export interface QuoteSpeaker {
   start: number;
   end: number;
   speaker: string | null;
-  /** The rule that picked `speaker`. */
+  /** The rule that found `mention`, or the fallback that picked `speaker` when no rule found one. */
   rule?: QuoteRule;
   /** The mention the rule used; null when none sat at its subject span. */
   mention?: ReadingSpan | null;
+  /** The fallback that picked `speaker`; null when a rule did, or nothing did. */
+  fallback?: QuoteFallback | null;
   /** The quote's own I, me, my, mine and myself, whether or not a cluster holds them. */
   firstPerson?: ReadingSpan[];
 }
@@ -242,6 +247,23 @@ interface Paragraph {
   end: number;
 }
 
+/** What the fallbacks read about one quote the rules left without a speaker. */
+interface FallbackInput {
+  run: Paragraph;
+  para: Paragraph;
+  runs: Paragraph[];
+  rule: QuoteRule;
+  used: MentionLink | undefined;
+  firstPerson: ReadingSpan[];
+  /** The paragraph's quotes before this one, with their final speakers. */
+  earlier: QuoteSpeaker[];
+}
+
+const UNNAMED_PRONOUN = /^(?:he|she|her)$/i;
+
+/** The fallbacks in the order they are tried; the first that names a speaker wins. */
+const FALLBACK_ORDER: readonly QuoteFallback[] = ['own-first-person', 'earlier-quote', 'pronoun-subject', 'named-subject'];
+
 function paragraphs(text: string): Paragraph[] {
   const out: Paragraph[] = [];
   const re = /\n\s*\n/g;
@@ -262,10 +284,13 @@ export function quoteSpans(text: string): { start: number; end: number; paragrap
 
 /**
  * The speaker of each quote: the mention at a speech verb attached to the quote, else (unless `verbOnly`) the
- * mention opening an action beat after it, else the nearest preceding subject mention in the paragraph.
+ * mention opening an action beat after it, else the nearest preceding subject mention in the paragraph. Unless
+ * `verbOnly`, the fallbacks then name a speaker the rules left none for. `mixed` holds the spans, as `start:end`,
+ * of clusters that merge player words with someone else's (Q67).
  */
 function quoteSpeakers(
-  text: string, mentions: MentionLink[], player: Set<string>, playerId: string | null, verbOnly = false,
+  text: string, mentions: MentionLink[], player: Set<string>, playerId: string | null,
+  { verbOnly = false, mixed = new Set<string>() }: { verbOnly?: boolean; mixed?: ReadonlySet<string> } = {},
 ): QuoteSpeaker[] {
   const isPlayer = (m: MentionLink) => {
     const t = playerForm(text.slice(m.start, m.end));
@@ -345,14 +370,64 @@ function quoteSpeakers(
         speaker = subject.speaker;
         if (speaker !== undefined) { rule = 'nearest-subject'; used = subject.mention; }
       }
+      const firstPerson = firstPersonSpans(run);
+      let fallback: QuoteFallback | null = null;
+      if ((speaker ?? null) === null && !verbOnly) {
+        for (const name of FALLBACK_ORDER) {
+          const found = fallbackSpeaker(name, { run, para, runs, rule, used, firstPerson, earlier: quotes.filter((q) => q.start >= para.start) });
+          if (!found) continue;
+          [speaker, fallback] = [found.speaker, name];
+          // The rule's mention is the evidence; a fallback's stands in only where no rule found one.
+          if (rule === 'none' || !used) [rule, used] = [name, found.mention];
+          break;
+        }
+      }
       quotes.push({
         start: run.start, end: run.end, speaker: speaker ?? null,
         rule, mention: rule === 'none' || !used ? null : { start: used.start, end: used.end },
-        firstPerson: firstPersonSpans(run),
+        fallback, firstPerson,
       });
     });
   }
   return quotes;
+
+  // A fallback's speaker for a quote the rules left with none; undefined when it does not fire.
+  function fallbackSpeaker(name: QuoteFallback, q: FallbackInput): { speaker: string; mention?: MentionLink } | undefined {
+    switch (name) {
+      case 'own-first-person': {
+        const own = q.firstPerson.flatMap((s) => mentions.filter((m) => m.start === s.start && m.end === s.end && m.entityId
+          && !mixed.has(`${m.start}:${m.end}`)));
+        const ids = new Set(own.map((m) => m.entityId));
+        return ids.size === 1 ? { speaker: own[0].entityId!, mention: own[0] } : undefined;
+      }
+      case 'earlier-quote': {
+        // A tag or beat on someone unnamed is evidence against the earlier speaker.
+        if (q.used && q.rule !== 'nearest-subject') return undefined;
+        const speaker = q.earlier.findLast((e) => e.speaker)?.speaker;
+        return speaker ? { speaker } : undefined;
+      }
+      case 'pronoun-subject': {
+        const tagged = q.rule !== 'nearest-subject' && q.rule !== 'none' && q.used && !q.used.entityId;
+        return tagged && UNNAMED_PRONOUN.test(text.slice(q.used!.start, q.used!.end)) ? lastNamedSubject(q) : undefined;
+      }
+      case 'named-subject':
+        return q.rule === 'nearest-subject' ? lastNamedSubject(q) : undefined;
+    }
+  }
+
+  // The last clause subject before the quote in its paragraph that names someone other than the player.
+  function lastNamedSubject(q: FallbackInput): { speaker: string; mention: MentionLink } | undefined {
+    const last = clauseSubjects(q.para, q.run.start, q.runs).find((m) => m.entityId && m.entityId !== playerId);
+    return last ? { speaker: last.entityId!, mention: last } : undefined;
+  }
+
+  // The paragraph's prose mentions before `before` that open a clause, latest first, named before unnamed.
+  function clauseSubjects(within: Paragraph, before: number, quoteRuns: Paragraph[]): MentionLink[] {
+    const inQuote = (m: MentionLink) => quoteRuns.some((q) => m.start >= q.start && m.end <= q.end);
+    return mentions.filter((m) => m.start >= within.start && m.end <= before && !inQuote(m)
+      && /(?:^|[.!?;]["”]?\s+|["”]\s*|,\s+(?:and|but|then)\s+|\n)\s*$/.test(text.slice(within.start, m.start)))
+      .sort((a, b) => b.start - a.start || (b.entityId ? 1 : 0) - (a.entityId ? 1 : 0));
+  }
 
   // The quote's own I, me, my, mine and myself, from its text.
   function firstPersonSpans(run: ReadingSpan): ReadingSpan[] {
@@ -373,10 +448,7 @@ function quoteSpeakers(
 
   // The last mention before the quote, in the paragraph's prose, that opens a clause.
   function nearestSubject(within: Paragraph, before: number, quoteRuns: Paragraph[]): RuleResult {
-    const inQuote = (m: MentionLink) => quoteRuns.some((q) => m.start >= q.start && m.end <= q.end);
-    const subjects = mentions.filter((m) => m.start >= within.start && m.end <= before && !inQuote(m)
-      && /(?:^|[.!?;]["”]?\s+|["”]\s*|,\s+(?:and|but|then)\s+|\n)\s*$/.test(text.slice(within.start, m.start)));
-    const last = subjects.sort((a, b) => b.start - a.start || (b.entityId ? 1 : 0) - (a.entityId ? 1 : 0))[0];
+    const last = clauseSubjects(within, before, quoteRuns)[0];
     return { speaker: speakerOf(last), mention: last };
   }
 }
@@ -391,7 +463,7 @@ export function quoteSpeakingClusters(text: string, clusters: readonly CorefClus
     seen.add(key);
     return [{ start, end, entityId: String(i) }];
   }));
-  return new Set(quoteSpeakers(text, mentions, new Set(), null, true).flatMap((q) => (q.speaker === null ? [] : [Number(q.speaker)])));
+  return new Set(quoteSpeakers(text, mentions, new Set(), null, { verbOnly: true }).flatMap((q) => (q.speaker === null ? [] : [Number(q.speaker)])));
 }
 
 /** The Mention Reading of one finished passage. */
@@ -430,5 +502,8 @@ export function readPassageMentions(
   const named = playerId
     ? clusterEntities.map((id, i) => id ?? (clusters[i].every(([start, end]) => isPlayerWord({ start, end })) ? playerId : null))
     : clusterEntities;
-  return { reading: { mentions, quotes: quoteSpeakers(text, mentions, player, playerId) }, clusterEntities: named };
+  // Player words merged into a cluster someone else won (Q67); the player's own cluster is not mixed.
+  const mixed = new Set(clusters.filter((c, i) => named[i] !== playerId && c.some(([start, end]) => isPlayerWord({ start, end })))
+    .flatMap((c) => c.map(([start, end]) => `${start}:${end}`)));
+  return { reading: { mentions, quotes: quoteSpeakers(text, mentions, player, playerId, { mixed }) }, clusterEntities: named };
 }

@@ -206,8 +206,8 @@ describe('readMentions quote speakers', () => {
   });
 
   it('resolves a beat pronoun through its cluster, and a player beat to the persona', () => {
-    // An unnamed beat subject is someone, just not the earlier subject.
-    const text = 'Brannock turns away. "Wait," she grins.';
+    // An unnamed beat subject with no named subject before it is no one the cast holds.
+    const text = '"Wait," she grins.';
     expect(readMentions(text, [[at(text, 'she')]], two).quotes.map((q) => q.speaker)).toEqual([null]);
     const odile = 'Odile looks up. Brannock turns away. "Wait," she grins.';
     expect(readMentions(odile, [[at(odile, 'Odile'), at(odile, 'she')]], two).quotes.map((q) => q.speaker)).toEqual(['odile']);
@@ -272,8 +272,8 @@ describe('readMentions quote records', () => {
   });
 
   it('records a rule that found a mention with no entity, and a player word with or without a mention', () => {
-    const she = 'Brannock turns away. "Wait," she grins.';
-    expect(only(she, [[at(she, 'she')]])).toMatchObject({ speaker: null, rule: 'beat', mention: span(she, 'she') });
+    const she = '"Wait," she grins.';
+    expect(only(she, [[at(she, 'she')]])).toMatchObject({ speaker: null, rule: 'beat', mention: span(she, 'she'), fallback: null });
     const ask = '"Who sent you?" you ask.';
     const persona = { player: { id: 'ash', names: ['Ash'] } };
     expect(only(ask, [], persona)).toMatchObject({ speaker: 'ash', rule: 'after-subject-verb', mention: null });
@@ -297,6 +297,87 @@ describe('readMentions quote records', () => {
 
   it('exports readingVersion as the positive integer the wire shape needs', () => {
     expect(Number.isInteger(readingVersion) && readingVersion > 0).toBe(true);
+  });
+});
+
+describe('readMentions fallback speakers', () => {
+  const two = cast({ id: 'odile', name: 'Odile' }, { id: 'brannock', name: 'Brannock' });
+  const persona = { player: { id: 'ash', names: ['Ash'] } };
+  const quotes = (text: string, clusters: CorefCluster[] = [], scene = {}) => readMentions(text, clusters, two, scene).quotes;
+  const span = (text: string, piece: string, nth = 1) => { const [start, end] = at(text, piece, nth); return { start, end }; };
+
+  it("names the speaker from the quote's own first person in a named cluster", () => {
+    const text = 'The door creaks open. "I came back for my coat."\n\nOdile shrugs.';
+    const [quote] = quotes(text, [[at(text, 'I'), at(text, 'my'), at(text, 'Odile')]]);
+    expect(quote).toMatchObject({ speaker: 'odile', rule: 'own-first-person', fallback: 'own-first-person', mention: span(text, 'I') });
+  });
+
+  it('takes no first-person speaker when the words name two entities, or sit in a mixed player cluster', () => {
+    const split = 'The door creaks open. "I came back for my coat."\n\nOdile shrugs. Brannock waits.';
+    expect(quotes(split, [[at(split, 'I'), at(split, 'Odile')], [at(split, 'my'), at(split, 'Brannock')]])[0].speaker).toBeNull();
+    // Q67: the model merged the player's "you" into Odile's cluster, so its "I" is no evidence.
+    const mixed = 'The door creaks open. "I came back."\n\nYou turn to Odile.';
+    expect(quotes(mixed, [[at(mixed, 'I'), at(mixed, 'You'), at(mixed, 'Odile')]], persona)[0]).toMatchObject({ speaker: null, fallback: null });
+  });
+
+  it('gives an untagged quote the speaker of an earlier quote in its paragraph, never across paragraphs', () => {
+    const text = 'The rain falls. "Wait," says Odile. "Not yet."';
+    expect(quotes(text)[1]).toMatchObject({ speaker: 'odile', rule: 'earlier-quote', fallback: 'earlier-quote', mention: null });
+    const apart = 'The rain falls. "Wait," says Odile.\n\n"Not yet."';
+    expect(quotes(apart).map((q) => q.speaker)).toEqual(['odile', null]);
+    // A tag on someone unnamed is someone else.
+    const guard = 'The rain falls. "Wait," says Odile. "Hm," the guard says.';
+    expect(quotes(guard, [[at(guard, 'the guard')]])[1]).toMatchObject({ speaker: null, fallback: null });
+  });
+
+  it("names the player from the quote's own first person in the player's cluster", () => {
+    const text = 'The door creaks open. "I came back."\n\nAsh shrugs.';
+    expect(quotes(text, [[at(text, 'I'), at(text, 'Ash')]], persona)[0]).toMatchObject({ speaker: 'ash', fallback: 'own-first-person' });
+  });
+
+  it('gives a tag or beat on an unnamed he, she or her the last named non-player subject, keeping the rule', () => {
+    const text = 'Odile looks up. "Wait," she says.';
+    expect(quotes(text, [[at(text, 'she')]])[0]).toMatchObject({
+      speaker: 'odile', rule: 'after-subject-verb', mention: span(text, 'she'), fallback: 'pronoun-subject',
+    });
+    const beat = 'Brannock turns away. "Wait," she grins.';
+    expect(quotes(beat, [[at(beat, 'she')]])[0]).toMatchObject({ speaker: 'brannock', rule: 'beat', fallback: 'pronoun-subject' });
+    // The player is never that subject, and a descriptor tag is no pronoun.
+    const player = 'You look up. "Wait," she says.';
+    expect(quotes(player, [[at(player, 'You')], [at(player, 'she')]], persona)[0]).toMatchObject({ speaker: null, fallback: null });
+    const guard = 'Odile looks up. "Wait," the guard says.';
+    expect(quotes(guard, [[at(guard, 'the guard')]])[0]).toMatchObject({ speaker: null, fallback: null });
+    const apart = 'Odile looks up.\n\n"Wait," she says.';
+    expect(quotes(apart, [[at(apart, 'she')]])[0]).toMatchObject({ speaker: null, fallback: null });
+  });
+
+  it('lets an untagged quote skip unnamed subjects and the player to the last named subject', () => {
+    const text = 'Odile looks up. The guard shrugs. "Fine."';
+    expect(quotes(text, [[at(text, 'The guard')]])[0]).toMatchObject({
+      speaker: 'odile', rule: 'nearest-subject', mention: span(text, 'The guard'), fallback: 'named-subject',
+    });
+    const she = 'Odile looks up. She shrugs. "Fine."';
+    expect(quotes(she, [[at(she, 'She')]])[0]).toMatchObject({ speaker: 'odile', fallback: 'named-subject' });
+    const player = 'Odile nods.\n\nYou wave. She shrugs. "Fine."';
+    expect(quotes(player, [[at(player, 'You')], [at(player, 'She')]], persona)[0]).toMatchObject({ speaker: null, fallback: null });
+  });
+
+  it('keeps every speaker a rule named', () => {
+    // Each passage holds a fallback's evidence for someone else.
+    const voice = 'Odile looks up. "I said no," Brannock says.';
+    expect(quotes(voice, [[at(voice, 'Odile'), at(voice, 'I')]])[0]).toMatchObject({ speaker: 'brannock', fallback: null });
+    const runOn = 'The rain falls. "Wait," says Odile. "Not yet," says Brannock.';
+    expect(quotes(runOn).map((q) => [q.speaker, q.fallback])).toEqual([['odile', null], ['brannock', null]]);
+    const subject = 'Odile looks up. Brannock shrugs. "Fine."';
+    expect(quotes(subject)[0]).toMatchObject({ speaker: 'brannock', rule: 'nearest-subject', fallback: null });
+  });
+
+  it('runs no fallback in the speech-verb clusters (Q73)', () => {
+    // Every cluster is named there, so only a quote's own "I" could add one.
+    const own = 'The door creaks open. "I came back."';
+    expect(quoteSpeakingClusters(own, [[at(own, 'I')]])).toEqual(new Set());
+    const tagged = 'The door creaks open. "I came back," says Odile.';
+    expect(quoteSpeakingClusters(tagged, [[at(tagged, 'I')], [at(tagged, 'Odile')]])).toEqual(new Set([1]));
   });
 });
 

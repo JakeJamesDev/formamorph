@@ -4,7 +4,7 @@ import CorefContributionService, {
 } from '@/services/CorefContributionService';
 import type { Entity } from '@/types';
 import { APP_VERSION } from '@/lib/version';
-import type { QuoteSpeaker, ReadingSpan } from './mentionReading';
+import type { ReadingSpan } from './mentionReading';
 import type { MentionCorrection } from './mentionCorrections';
 import { narrationHash, type TurnMentionReading } from './mentionReadings';
 
@@ -128,7 +128,7 @@ function castRecords(
  *  is left out; a span the server would refuse is left out too. */
 function quoteRecords(passage: string, quotes: TurnMentionReading['reading']['quotes']): ContributionQuoteRecord[] {
   const records: ContributionQuoteRecord[] = [];
-  for (const quote of quotes as (QuoteSpeaker & { fallback?: string | null })[]) {
+  for (const quote of quotes) {
     if (!quote.rule || !validSpan(passage, quote)) continue;
     records.push({
       start: quote.start,
