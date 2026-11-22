@@ -7,7 +7,7 @@ Spec session: layered-images-media-tab — spec
 
 The first world to use Layered Images at scale (Sunmeadow Town, starting with Roxanne) showed that the Media tab treats a Layered Image as a second-class picture.
 
-- In Group by Entity, a gallery slot that links a Layered Image shows only its kind and **Go to <entity>**. A flat image in the same place gets its name field, size line, **Download**, **Replace**, **Remove** and Visibility Rule. An author cannot reach the Layered Image's editor from the entity's gallery at all. **Edit Layers** exists only on the Layered Image's own card under Group by Type.
+- In Group by Entity, a gallery slot that links a Layered Image shows only its kind and **Go to <entity>**. A flat image in the same place gets its name field, size line, **Download**, **Remove From Slot** and Visibility Rule. An author cannot reach the Layered Image's editor from the entity's gallery at all. **Edit Layers** exists only on the Layered Image's own card under Group by Type.
 - A layered slot is titled by its slot ("Roxanne › Image 2"), not by the picture it shows.
 - Every part image a Layer uses is listed as a full Media card: under its own **Layered Image Variants** section in Group by Entity, and inside the Images section in Group by Type. A part is not a whole picture and is pointless to view on its own. A large cast with 8 to 10 parts per character floods the tab.
 - Deleting a Layered Image leaves its parts behind. Once parts are hidden, nothing would show them.
@@ -23,7 +23,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 | Q | Ruling |
 |---|---|
 | Q1 | In Group by Entity, a gallery slot that links a Layered Image shows the same panel as a flat image's slot, with **Edit Layers** beside **Download**. |
-| Q2 | A layered slot has the same slot actions as a flat image: **Replace** (the picker offers images and Layered Images) and **Remove** from this slot. Remove leaves the Layered Image in the Media List. |
+| Q2 | A layered slot has the same slot actions as a flat image. Refined by Q10: a flat slot has no Replace, so a layered slot has none either. **Remove From Slot** unlinks it and leaves the Layered Image in the Media List; **Choose** on the emptied slot lists images and Layered Images. |
 | Q3 | The **Layered Image Variants** section is dropped. |
 | Q4 | A layered slot's card and panel are titled with the Layered Image's name ("Roxanne › Roxanne Bare"), not the slot's ("Image 2"). |
 | Q5 | An image that only Layers use is hidden in both groupings. It shows inside its Layered Image's editor. Once any field links it directly, it shows again. |
@@ -31,6 +31,10 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 | Q7 | A layered slot's size line reads "Layered Image · N Layers · total size", counting each part image once. |
 | Q8 | **Delete From World** on a Layered Image also removes each part image that nothing else uses. The confirm names those parts. The delete is one undo step. Parts used elsewhere stay. |
 | Q9 | Media search matches a hidden part image by name and shows the Layered Image that holds it. |
+| Q10 | New evidence on Q2 (ticket 01): a flat framed slot has no Replace button, and a test guards that. Parity wins: no Replace button on any slot. (Ticket 01) |
+| Q11 | Parity is per host. In the entity editor a flat slot shows only its name bar, so a layered slot shows the name bar plus an outline **Edit Layers** button on its own line under it, with no size line, Download or Rule editor. In the Media tab, Edit Layers sits beside Download. (Ticket 01) |
+| Q12 | A layered gallery slot stacks with its entity's other slots in Group by Entity, and counts in the stack's count and total. (Ticket 01) |
+| Q13 | On mobile, Edit Layers opens the Layer panel in a full-height dialog titled with the Layered Image's name. A layered slot's size line has no budget text or Over Budget badge. Download saves the flattened outside-play picture losslessly, named from the Layered Image. (Ticket 01) |
 
 ## User Stories
 

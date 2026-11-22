@@ -7,7 +7,7 @@ Reasoning effort: medium
 
 ## What to build
 
-A location's or an item's image field that holds a Layered Image offers the same **Edit Layers** button and Layered Image title that ticket 01 gives a gallery slot (spec Q4, Q6). It reuses ticket 01's action-row button rather than building another.
+A location's or an item's image field that holds a Layered Image offers the same **Edit Layers** button and Layered Image title that ticket 01 gives a gallery slot (spec Q4, Q6). The entity gallery and the location and item image fields share one gallery component, so ticket 01's change already shows Edit Layers in all three. This ticket guards the location and item fields with tests, checks the title there, and ships the docs line.
 
 - **Docs.** The World Editor Media page lists location and item fields among the places Edit Layers appears.
 
