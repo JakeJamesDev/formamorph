@@ -243,6 +243,9 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, collapse,
         placeholders={placeholders}
         ownerId={held.group.entity?.id}
         ownerName={held.group.entity?.name}
+        renameOwner={held.kind === 'world' ? { kind: 'world' }
+          : held.group.location ? { kind: 'location', id: held.group.location.id }
+            : held.group.entity ? { kind: 'entity', id: held.group.entity.id } : undefined}
         labelOwner={held.kind === 'world' ? 'World' : held.group.name}
         search={typed}
         names={names}

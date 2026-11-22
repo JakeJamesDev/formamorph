@@ -144,12 +144,20 @@ const alert = stats["Alert Level"].value;
 return owner.stats.Rage.value + alert / 2;
 ```
 
-You can rename a stat, a trait, a placeholder or a location that code names. The **Update Code References** dialog then asks whether to change the name in that code too:
+You can rename a stat, a trait, a placeholder, a location or an Opening that code names. The **Update Code References** dialog then asks whether to change the name in that code too:
 
 - **Update Code** changes the name in that code.
 - **Leave Code** keeps the code as it is.
 
 Item scripts are included. In an item script, `owner` is whoever holds the item. So when you rename a character's stat and another character also has a stat of that name, the dialog lists each `owner.stats` reference for you to check.
+
+Renaming an Opening changes the names that `opening.name` is compared with, such as `opening.name === "ambush"`. Two owners can each have an Opening of the same name, so the dialog reads the owner your code tests:
+
+- A comparison guarded by `opening.owner.name === "Aki"` changes only when Aki's Opening was renamed. A guard of `!opening.owner` stands for the world's own Openings.
+- A comparison with no owner guard changes at once when no other owner has an Opening of that name. Otherwise the dialog lists it for you to check.
+- A guard the editor can't read to one owner is listed for you to check too.
+
+Clearing an Opening's name changes no code. The code editor then marks each comparison with that name, because no Opening has it.
 
 > ℹ️ **In code, a placeholder chip in a stat name reads as the placeholder's own name.** A stat named `{{Beast}} Power` is `stats["Beast Power"]` in every playthrough, whatever the chip rolled. The player still sees the rolled name.
 

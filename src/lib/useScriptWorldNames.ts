@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
+import { openingNamesOf } from './openingNameCode';
 import type { OpeningFoldWorld } from './openingState';
 import type { CodeTraitPlace } from './statCodeAnalysis';
 import { statCodeWorldNames, type StatCodeNames } from './statCodeBoxOptions';
@@ -23,10 +24,17 @@ export function useScriptWorldNames(): ScriptWorldNames {
   const items = gameData?.items;
   const currencies = gameData?.currencies;
   const options = gameData?.options;
+  const worldEntities = gameData?.entities;
+  const worldOpenings = gameData?.worldOverview?.openings;
+  // Off world there are no Openings to check a name against.
+  const openingNames = useMemo(
+    () => (gameData ? openingNamesOf({ worldOpenings, entities: worldEntities ?? [], locations: locations ?? [] }) : undefined),
+    [gameData, worldOpenings, worldEntities, locations],
+  );
   // `stats` is the world's play stats in every box.
   const names = useMemo(() => statCodeWorldNames({
-    playStats: playStats ?? [], playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries, locations, items, currencies, options,
-  }), [playStats, playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries, locations, items, currencies, options]);
+    playStats: playStats ?? [], playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries, locations, items, currencies, options, openingNames,
+  }), [playStats, playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries, locations, items, currencies, options, openingNames]);
   const placeholderPlaces = useMemo(
     () => worldPlaceholderPlaces({ list: placeholders, owners: placeholderOwners, groups: placeholderGroups }),
     [placeholders, placeholderOwners, placeholderGroups],

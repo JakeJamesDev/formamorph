@@ -32,6 +32,8 @@ import { WEATHER_ICON } from '@/components/editor/weatherIcons';
 import { WEATHER_LABELS } from '@/lib/weather';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame, fieldPath } from '@/lib/historyField';
+import type { OpeningOwnerRef } from '@/lib/openingNameCode';
+import { useRenameField } from '@/lib/useCodeRename';
 
 const OR = new Intl.ListFormat('en', { type: 'disjunction' });
 
@@ -144,6 +146,7 @@ export function EntityOpenings({ entity, library = false, onChange, placeholders
         placeholders={placeholders}
         ownerId={entity.id}
         ownerName={entity.name}
+        renameOwner={library ? undefined : { kind: 'entity', id: entity.id }}
         search={search.typed}
         names={names}
         addButton={false}
@@ -176,6 +179,7 @@ export function LocationOpenings({ location, onChange, placeholders, names = { p
       <OpeningsList
         owner={location}
         labelOwner={location.name}
+        renameOwner={{ kind: 'location', id: location.id }}
         weatherKinds={weatherKinds}
         rows={ownerOpeningRows(location, false)}
         onChange={onChange}
@@ -206,8 +210,10 @@ function NoMatch({ typed }: { typed: string }) {
  */
 export function OpeningsList({
   owner, rows, onChange, placeholders, ownerId, empty, ownerLabel, ownerName, search = '', names, addButton = true,
-  selfSwitch = false, selfBadge = false, weatherKinds, labelOwner,
+  selfSwitch = false, selfBadge = false, weatherKinds, labelOwner, renameOwner,
 }: {
+  /** Whose openings these are, so a renamed Opening can offer to update code. Absent, no offer. */
+  renameOwner?: OpeningOwnerRef;
   /** Names the owner in a blank-named row's label. Absent: the entity's name, else "World". */
   labelOwner?: string;
   /** The kinds a row's Weather can pick while the world's Weather is on. Absent hides the picker. */
@@ -261,6 +267,8 @@ export function OpeningsList({
                 <OpeningCard
                   key={opening.id}
                   opening={opening}
+                  siblings={owner.openings ?? []}
+                  renameOwner={renameOwner}
                   label={openingLabel(opening, labelOwner ?? ownerName ?? 'World', i)}
                   nameTaken={(name) => openingNameTaken(owner, opening.id, name)}
                   onName={(name) => onChange(setOpeningName(owner, opening.id, name))}
@@ -307,8 +315,12 @@ export function OpeningsList({
  * The row's name. A name another row of the owner has shows an error and is not written; leaving the field
  * restores the saved name.
  */
-function OpeningNameField({ opening, placeholder, a11yLabel, taken, onName }: {
+function OpeningNameField({ opening, siblings, renameOwner, placeholder, a11yLabel, taken, onName }: {
   opening: Opening;
+  /** Every Opening of the owner, hidden Self rows included. */
+  siblings: readonly Opening[];
+  /** Whose Opening it is, so a rename can offer to update code. Absent, no offer. */
+  renameOwner?: OpeningOwnerRef;
   /** The derived label, shown while the name is blank. */
   placeholder: string;
   a11yLabel: string;
@@ -324,12 +336,21 @@ function OpeningNameField({ opening, placeholder, a11yLabel, taken, onName }: {
     setDraft(value);
     if (!taken(value)) onName(value);
   };
+  const rename = useRenameField({
+    root: 'openings',
+    value: shown,
+    siblings: siblings.map((row) => ({ id: row.id, name: row.name ?? '' })),
+    ownId: opening.id,
+    ...(renameOwner && { openingOwner: renameOwner }),
+  });
   return (
     <div className="space-y-1" {...fieldFrame('openings', opening.id, 'name')}>
       <WorldInput
         value={shown}
         onChange={(e) => change(e.target.value)}
-        onBlur={() => setDraft(null)}
+        onFocus={rename.onFocus}
+        onBlur={() => { rename.onBlur(); setDraft(null); }}
+        onKeyDown={(e) => { if (e.key === 'Enter') rename.onSubmit(); }}
         placeholder={placeholder}
         aria-label={`Name, ${a11yLabel}`}
         aria-invalid={clash}
@@ -341,9 +362,11 @@ function OpeningNameField({ opening, placeholder, a11yLabel, taken, onName }: {
 }
 
 const OpeningCard = ({
-  opening, label, nameTaken, onName, a11yLabel, open, onToggle, weight, chance, neverDrawsOn, placeholders, ownerId, ownerName, onKind, onSelf, onTime, weatherKinds, onWeather, selfBadge,
+  opening, siblings, renameOwner, label, nameTaken, onName, a11yLabel, open, onToggle, weight, chance, neverDrawsOn, placeholders, ownerId, ownerName, onKind, onSelf, onTime, weatherKinds, onWeather, selfBadge,
   onText, onWeight, onRemove,
 }: {
+  siblings: readonly Opening[];
+  renameOwner?: OpeningOwnerRef;
   nameTaken: (name: string) => boolean;
   onName: (name: string) => void;
   weatherKinds?: WeatherKind[];
@@ -487,6 +510,8 @@ const OpeningCard = ({
         <div className="space-y-2 p-2">
           <OpeningNameField
             opening={opening}
+            siblings={siblings}
+            renameOwner={renameOwner}
             placeholder={label}
             a11yLabel={a11yLabel}
             taken={nameTaken}

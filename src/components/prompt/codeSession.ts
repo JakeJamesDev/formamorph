@@ -276,6 +276,7 @@ export interface CodeSession {
   setLocations: (locations: readonly string[] | undefined) => void;
   /** The World Option names, checked after `options`. */
   setOptionNames: (names: readonly string[] | undefined) => void;
+  setOpeningNames: (names: readonly string[] | undefined) => void;
   /** Move the caret to the start of the code on `line` (from 1), center it, and focus the editor. */
   revealLine: (line: number) => void;
   focus: () => void;
@@ -308,6 +309,8 @@ export interface CodeSessionOptions {
   locations?: readonly string[];
   /** The World Option names. Absent, Option names are not checked. */
   optionNames?: readonly string[];
+  /** The names the world's Openings carry. Absent, `opening.name` comparisons are not checked. */
+  openingNames?: readonly string[];
   /** The box's world lookup, read when a card opens. Absent, cards show no World Details. */
   lookup?: () => CodeWorldLookup | undefined;
   /** Where a card's Open and Find All Uses go, read when a card opens. Absent, cards show neither. */
@@ -357,10 +360,11 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   let entities: readonly CodeEntityNames[] | undefined = options.entities;
   let locations: readonly string[] | undefined = options.locations;
   let optionNames: readonly string[] | undefined = options.optionNames;
+  let openingNames: readonly string[] | undefined = options.openingNames;
 
   /** What the analysis reads the code against, as it stands now. */
   const analysisOptions = (): SurfaceAnalysisOptions => ({
-    surface, slots: options.slots, statNames, owner, ownerStatNames, selfName, placeholders, traits, entities, locations, optionNames, lookup: options.lookup?.(),
+    surface, slots: options.slots, statNames, owner, ownerStatNames, selfName, placeholders, traits, entities, locations, optionNames, openingNames, lookup: options.lookup?.(),
   });
 
   /** The one completion source. Everything it offers comes from the analysis module; nothing here knows
@@ -582,6 +586,11 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     setOptionNames(next) {
       if (next === optionNames) return;
       optionNames = next;
+      relint();
+    },
+    setOpeningNames(next) {
+      if (sameNames(next, openingNames)) return;
+      openingNames = next;
       relint();
     },
     setSurface(next) {

@@ -24,6 +24,7 @@ import {
   placeholderPathMap, walkPlaceholderPath,
   type PlaceholderPathMap, type PlaceholderPathNode, type PlaceholderPathSource,
 } from './statCodePaths';
+import { openingNameReferences, type OwnerGuard } from './openingNameCode';
 import { statCodeName } from './statCodeNames';
 import type { TraitOwnerMaps } from './statCodeTraits';
 import { filledScripts } from './scripts';
@@ -34,11 +35,11 @@ import {
 } from './statCodeTargets';
 
 /** The name-keyed maps a rename can reach. */
-export type RenameRoot = 'stats' | 'placeholders' | 'traits' | 'locations' | 'options' | 'media' | 'layers';
+export type RenameRoot = 'stats' | 'placeholders' | 'traits' | 'locations' | 'options' | 'media' | 'layers' | 'openings';
 
-/** The roots that are maps code looks a name up in; a location and a Media Entry are named by a literal instead,
- *  and a Layer by a key under any media owner's `layers`. */
-type MapRoot = Exclude<RenameRoot, 'locations' | 'media' | 'layers'>;
+/** The roots that are maps code looks a name up in; a location, a Media Entry and an Opening are named by a literal
+ *  instead, and a Layer by a key under any media owner's `layers`. */
+type MapRoot = Exclude<RenameRoot, 'locations' | 'media' | 'layers' | 'openings'>;
 
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 
@@ -273,6 +274,14 @@ export interface CodeRenameSubject {
   id: string;
 }
 
+/** Whose Opening an Opening rename moved, as code can tell it apart from another owner's. */
+export interface OpeningRenameScope {
+  /** What `opening.owner.name` reads as for this owner: its name and its code name. Null for the world's own. */
+  ownerNames: readonly string[] | null;
+  /** Whether another owner still holds an Opening of the old name, so an unguarded comparison may mean theirs. */
+  shared: boolean;
+}
+
 /** The stat a stat rename moved: a world or Blueprint stat, or one of an entity's own. */
 export interface RenamedStat {
   id: string;
@@ -313,6 +322,8 @@ export interface CodeRenameInput {
   subject?: CodeRenameSubject;
   /** The renamed stat. With it, a stat rename follows every route to that stat, in every box. */
   stat?: RenamedStat;
+  /** The renamed Opening's owner. An Opening rename without it offers nothing. */
+  opening?: OpeningRenameScope;
   /** The noun the offer says for a renamed Media Entry: `image` or `sound`. */
   noun?: string;
   /** The Layered Image whose Layer was renamed. Absent, every key of the old name moves. */
@@ -616,6 +627,41 @@ function layerRenameBoxes(input: CodeRenameInput, from: string, to: string): Pic
   });
 }
 
+/** What an Opening rename does with one comparison, by the owner its code ties it to. */
+function openingVerdict(guard: OwnerGuard, scope: OpeningRenameScope): 'sure' | 'pick' | 'skip' {
+  switch (guard.kind) {
+    case 'none': return scope.shared ? 'pick' : 'sure';
+    case 'world': return scope.ownerNames === null ? 'sure' : 'skip';
+    case 'owner': return scope.ownerNames?.includes(guard.name) ? 'sure' : 'skip';
+    default: return 'pick';
+  }
+}
+
+/**
+ * Every `opening.name` comparison of `from`, in every box, as the rewrites an Opening rename offers.
+ *
+ * Names are unique only per owner, so the owner the code tests decides. A guard that names this owner is sure and
+ * one that names another is left alone. Where the code tests no owner, the comparison is sure only while no other
+ * owner holds the old name. A guard the editor cannot read to an owner is the author's pick.
+ */
+function openingRenameBoxes(input: CodeRenameInput, scope: OpeningRenameScope, from: string, to: string): PickBox[] {
+  const owners = statCodeOwners({
+    stats: input.stats, statGroups: input.statGroups, entities: input.entities ?? [], placeholders: input.placeholders?.list ?? [],
+  });
+  const picks = pickBoxes(input);
+  return renameBoxes(input, owners).flatMap(({ box, name }) => {
+    const found = picks.start(box, name);
+    for (const { key, guard } of openingNameReferences(box.code)) {
+      if (key.name !== from) continue;
+      const splice = rewrittenKey(key, to);
+      const verdict = openingVerdict(guard, scope);
+      if (verdict === 'sure') found.sure.push(splice);
+      else if (verdict === 'pick') picks.pick(found, splice);
+    }
+    return picks.kept(found);
+  });
+}
+
 /** A reference the author picks or leaves, by an id unique within its plan. */
 export interface RenamePick {
   id: string;
@@ -677,6 +723,9 @@ export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
   }
   if (root === 'layers') {
     return pickPlan(root, from, to, layerRenameBoxes(input, from, to));
+  }
+  if (root === 'openings') {
+    return input.opening ? pickPlan(root, from, to, openingRenameBoxes(input, input.opening, from, to)) : null;
   }
   // A rename that names its node follows the tree. Without one — a caller that knows only the name — the
   // bare-name form is all that can be proven, which is what every root but `placeholders` has anyway.

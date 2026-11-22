@@ -6,6 +6,7 @@ import { EntityOpenings } from './OpeningsPanel';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/PlaceholderStoreContext';
 import { placeholderOwners } from '@/lib/placeholderHomes';
+import { CodeRenameContext } from '@/lib/useCodeRename';
 import type { Entity, Opening } from '@/types';
 
 vi.mock('@/components/game/MarkdownRenderer', () => ({
@@ -71,6 +72,29 @@ describe('opening names in the panel', () => {
     // fireEvent leaves the box focused, as Ctrl+Z does; a user click would blur it first.
     fireEvent.click(screen.getByRole('button', { name: 'Revert name' }));
     expect(nameBox(2)).toHaveValue('older');
+  });
+
+  it('asks the code rename offer once, with the owner, when a committed name changes', async () => {
+    const offer = vi.fn();
+    const user = userEvent.setup();
+    render(<CodeRenameContext.Provider value={offer}><Applying /></CodeRenameContext.Provider>);
+    await user.clear(nameBox(1));
+    await user.type(nameBox(1), 'raid');
+    expect(offer).not.toHaveBeenCalled();
+    await user.tab();
+    expect(offer).toHaveBeenCalledTimes(1);
+    expect(offer).toHaveBeenCalledWith(expect.objectContaining({
+      root: 'openings', oldName: 'ambush', newName: 'raid', otherNames: [''], openingOwner: { kind: 'entity', id: 'e' },
+    }));
+  });
+
+  it('asks nothing when the name is left as it was', async () => {
+    const offer = vi.fn();
+    const user = userEvent.setup();
+    render(<CodeRenameContext.Provider value={offer}><Applying /></CodeRenameContext.Provider>);
+    await user.click(nameBox(1));
+    await user.tab();
+    expect(offer).not.toHaveBeenCalled();
   });
 
   it('shows an error and writes nothing for a name a sibling has, then restores the saved name on leaving', async () => {

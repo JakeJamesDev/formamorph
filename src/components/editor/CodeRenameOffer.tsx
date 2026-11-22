@@ -10,6 +10,7 @@ import { setTraitLinkScripts } from '@/lib/blueprints';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Hint } from '@/components/ui/typography';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { openingRenameScope } from '@/lib/openingNameCode';
 import { pickedEdits, planCodeRename, type CodeRenamePlan, type PickBox, type RenameRoot } from '@/lib/statCodeRename';
 import { setStatLinkScripts, withStatLinks } from '@/lib/statLinks';
 import { traitOwnerMaps } from '@/lib/statCodeTraits';
@@ -28,7 +29,7 @@ import { CodeRenameContext, type CodeRenameRequest, type OfferCodeRename } from 
  */
 
 /** The noun each map's entries go by, for the question the dialog asks. */
-const NOUNS: Record<RenameRoot, string> = { stats: 'stat', placeholders: 'placeholder', traits: 'trait', locations: 'location', options: 'World Option', media: 'media entry', layers: 'Layer' };
+const NOUNS: Record<RenameRoot, string> = { stats: 'stat', placeholders: 'placeholder', traits: 'trait', locations: 'location', options: 'World Option', media: 'media entry', layers: 'Layer', openings: 'Opening' };
 
 /** What the dialog calls the thing that was renamed. An owner of placeholders is reached through the
  *  `placeholders` map but is an entity or a dictionary. "Placeholder" would name the wrong row. */
@@ -82,7 +83,9 @@ function whereText({ home, name, entity, scriptNumber }: PickBox, line: number):
 /** Why a pick may name something else: another Layer of the name, or another holder's stat. */
 const sharedNameText = (plan: CodeRenamePlan) => (plan.root === 'layers'
   ? `Another Layered Image also has a Layer named “${plan.oldName}”`
-  : `Another entity that can hold the item also has a stat named “${plan.oldName}”`);
+  : plan.root === 'openings'
+    ? `Another owner may also have an Opening named “${plan.oldName}”`
+    : `Another entity that can hold the item also has a stat named “${plan.oldName}”`);
 
 /** What the dialog says above the picks: after a sure count, or alone. */
 const unsureLead = (plan: CodeRenamePlan, count: number) =>
@@ -112,6 +115,7 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
     [world?.worldOverview?.mediaList, world?.locations],
   );
   const items = useMemo(() => world?.items ?? [], [world?.items]);
+  const worldOpenings = world?.worldOverview?.openings;
   const updateStat = world?.updateStat;
   const updateTrait = world?.updateTrait;
   const editEntity = world?.editEntity;
@@ -125,17 +129,21 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
 
   const pending = useMemo(() => {
     for (let i = 0; i < queue.length; i += 1) {
-      const { traitId, ...request } = queue[i];
+      const { traitId, openingOwner, ...request } = queue[i];
       const maps = traitId === undefined ? undefined
         : traitOwnerMaps({ traits, traitGroups, entities }, placeholders.list, traitId);
+      const opening = request.root === 'openings' && openingOwner
+        ? openingRenameScope({ worldOpenings, entities, locations: layered.locations ?? [] }, openingOwner, request.oldName, placeholders.list)
+        : null;
       const plan = planCodeRename({
         ...request, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, worldScripts, worldTools, items, traitOwnerMaps: maps,
         ...(request.root === 'layers' ? layered : {}),
+        ...(opening && { opening }),
       });
       if (plan) return { plan, through: i };
     }
     return null;
-  }, [queue, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, worldScripts, worldTools, items, layered]);
+  }, [queue, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, worldScripts, worldTools, items, layered, worldOpenings]);
   const plan: CodeRenamePlan | null = pending?.plan ?? null;
   // What the dialog reads, kept past the answer: the plan goes as soon as the question is settled, and the
   // body would otherwise empty while the dialog is still animating out.

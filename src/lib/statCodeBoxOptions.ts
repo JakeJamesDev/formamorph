@@ -40,6 +40,8 @@ export interface StatCodeNames {
   currencies: { id: string; name: string }[];
   /** The World Option names `options` keys, in Options-tab order. */
   optionNames: string[];
+  /** The names the world's Openings carry, any owner. Absent ⇒ unchecked. */
+  openingNames?: string[];
 }
 
 /** The world as play reads it, with links read through their Blueprints. */
@@ -57,6 +59,7 @@ export interface StatCodeNameWorld {
   items?: readonly Pick<Item, 'id' | 'name'>[];
   currencies?: readonly Pick<Currency, 'id' | 'name'>[];
   options?: readonly Pick<WorldOption, 'name' | 'type'>[];
+  openingNames?: readonly string[];
 }
 
 /** `locations` under their code names, standing where a run with no playthrough stands: the starting one, else
@@ -86,6 +89,7 @@ export function statCodeWorldNames(world: StatCodeNameWorld): StatCodeNames {
     items: (world.items ?? []).map(({ id, name }) => ({ id, name: statCodeName(name, placeholders) })),
     currencies: (world.currencies ?? []).map(({ id, name }) => ({ id, name: statCodeName(name, placeholders) })),
     optionNames: (world.options ?? []).filter((option) => option.type !== 'preset').map((option) => option.name),
+    ...(world.openingNames && { openingNames: [...world.openingNames] }),
   };
 }
 
@@ -108,12 +112,12 @@ export interface StatBoxSpec {
 
 /** The reader's options for one stat code box under the world's `names`. */
 export const statBoxAnalysisOptions = (
-  { placeholders, traitNames, entities, statNames, places, optionNames }: Pick<StatCodeNames, 'placeholders' | 'traitNames' | 'entities' | 'statNames' | 'places'>
-    & Partial<Pick<StatCodeNames, 'optionNames'>>,
+  { placeholders, traitNames, entities, statNames, places, optionNames, openingNames }: Pick<StatCodeNames, 'placeholders' | 'traitNames' | 'entities' | 'statNames' | 'places'>
+    & Partial<Pick<StatCodeNames, 'optionNames' | 'openingNames'>>,
   { selfName, owner, lookup, surface = STAT_CODE_SURFACE }: StatBoxSpec = {},
 ): SurfaceAnalysisOptions => ({
   surface,
-  placeholders, traits: traitNames, entities, statNames, ...(optionNames && { optionNames }),
+  placeholders, traits: traitNames, entities, statNames, ...(optionNames && { optionNames }), ...(openingNames && { openingNames }),
   ...(places && { locations: places.locations.map((location) => location.name) }),
   // A global box's `owner.stats` is empty; an owner given no names leaves them unchecked.
   ...(!owner ? { ownerStatNames: [] } : owner.statNames ? { ownerStatNames: owner.statNames } : {}),

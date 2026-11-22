@@ -47,7 +47,7 @@ export function memberRenameKey(member: SyntaxNode, object: SyntaxNode, code: st
 
 /** A plain string literal's name and quote, or null for one an escape hides: only a run could evaluate that, so the
  *  step cannot be proven to be this one. */
-function stringText(literal: SyntaxNode, code: string): { name: string; quote: string } | null {
+export function stringText(literal: SyntaxNode, code: string): { name: string; quote: string } | null {
   if (literal.to - literal.from < 2) return null;
   const quote = code[literal.from];
   if (code[literal.to - 1] !== quote || (quote !== '"' && quote !== "'")) return null;

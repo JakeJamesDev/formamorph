@@ -89,6 +89,8 @@ interface CodeAreaProps {
   locations?: readonly string[];
   /** The World Option names, checked after `options`. */
   optionNames?: readonly string[];
+  /** The names the world's Openings carry, checked after `opening.name`. */
+  openingNames?: readonly string[];
   /** The world's items by code name, listed by the Variable menu. */
   items?: readonly { id: string; name: string }[];
   /** The world's Currencies by code name, listed by the Variable menu. */
@@ -347,6 +349,7 @@ export function CodeArea(props: CodeAreaProps) {
         entities: latest.current.entities,
         locations: latest.current.locations,
         optionNames: latest.current.optionNames,
+        openingNames: latest.current.openingNames,
         lookup: () => latest.current.lookup,
         navigation: () => {
           const navigation = latest.current.navigation;
@@ -395,6 +398,7 @@ export function CodeArea(props: CodeAreaProps) {
   useEffect(() => { session?.setEntities(props.entities); }, [session, props.entities]);
   useEffect(() => { session?.setLocations(props.locations); }, [session, props.locations]);
   useEffect(() => { session?.setOptionNames(props.optionNames); }, [session, props.optionNames]);
+  useEffect(() => { session?.setOpeningNames(props.openingNames); }, [session, props.openingNames]);
   const { revealLine, autoFocus } = props;
   useEffect(() => {
     if (session && autoFocus) session.focus();

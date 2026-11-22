@@ -13,6 +13,7 @@ import { placeholderKindNoun } from '@/lib/placeholders';
 import { SCRIPT_TIMING_LABEL } from '@/lib/scripts';
 import { hasEntityKey } from '@/lib/statCodeNames';
 import { memberRenameKey } from '@/lib/codeRenameChains';
+import { openingNameReferences } from '@/lib/openingNameCode';
 import { rewrittenKey } from '@/lib/statCodeRename';
 import { findSlotRanges, parseTemplateSlots } from '@/lib/statCodeTemplates';
 import type { Placeholder } from '@/types';
@@ -149,6 +150,8 @@ export interface AnalysisOptions {
   statNames?: readonly string[];
   /** The World Option names `options` keys, in Options-tab order. Absent, Option names are not checked. */
   optionNames?: readonly string[];
+  /** The names the world's Openings carry, any owner. Absent, `opening.name` comparisons are not checked. */
+  openingNames?: readonly string[];
   /** Whose code this is. Absent in a global stat's box. */
   owner?: CodeOwnerKind;
   /** The stat names `owner.stats` keys: the entity's own, or a Blueprint group's. None in a global stat's box,
@@ -1518,6 +1521,19 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
         : `“${name}” isn’t available in ${surface.label}.`,
     }, suggestion));
   } while (cursor.next());
+
+  if (options.openingNames && surfaceHasGlobal(surface, 'opening') && !declared.has('opening')) {
+    for (const { key } of openingNameReferences(code)) {
+      if (overlapsAny(key.keyFrom, key.keyTo, ranges) || options.openingNames.includes(key.name)) continue;
+      const suggestion = nearestName(key.name, [...new Set(options.openingNames)]);
+      const quote = key.quote ?? '"';
+      const safe = suggestion !== null && !suggestion.includes(quote) && !suggestion.includes('\\');
+      diagnostics.push(suggested({
+        from: key.keyFrom, to: key.keyTo, severity: 'warning',
+        message: suggestion ? `No Opening is named “${key.name}”. Did you mean “${suggestion}”?` : `No Opening is named “${key.name}”.`,
+      }, safe ? `${quote}${suggestion}${quote}` : null));
+    }
+  }
 
   // Code with no return can still set a stat through self or the map, pin a placeholder, or switch a trait.
   // Code that does none of these changes nothing. A missing return on code the parser couldn't finish reading
