@@ -176,13 +176,15 @@ export function poolChances(pool: readonly PoolEntry[]): number[] {
 }
 
 /** A drawn row, without the weight that drew it. */
-export type DrawnOpening = Pick<PoolEntry, 'ownerId' | 'opening'>;
+export type DrawnOpening = Pick<PoolEntry, 'ownerId' | 'opening' | 'locationId'>;
+
+const drawnRow = ({ ownerId, opening, locationId }: PoolEntry): DrawnOpening =>
+  ({ ownerId, opening, ...(locationId !== undefined && { locationId }) });
 
 /** One row by weight, or the default when the pool is empty. `random` returns a number in [0, 1). */
 export function drawPoolEntry(pool: readonly PoolEntry[], random: () => number): DrawnOpening {
   if (poolWeight(pool) <= 0) return { ownerId: null, opening: DEFAULT_OPENING };
-  const { ownerId, opening } = drawEntry(pool, random);
-  return { ownerId, opening };
+  return drawnRow(drawEntry(pool, random));
 }
 
 /** One opening by weight, or the default when the pool is empty. `random` returns a number in [0, 1). */
@@ -233,10 +235,10 @@ export function drawUnseenOpening(pool: readonly PoolEntry[], shown: readonly st
   if (unseen.length === 0) {
     seen = seen.slice(-1);
     unseen = pool.filter((e) => !seen.includes(poolKey(e)));
-    if (unseen.length === 0) return { ownerId: pool[0].ownerId, opening: pool[0].opening, shown: seen };
+    if (unseen.length === 0) return { ...drawnRow(pool[0]), shown: seen };
   }
   const entry = drawEntry(unseen, random);
-  return { ownerId: entry.ownerId, opening: entry.opening, shown: [...seen, poolKey(entry)] };
+  return { ...drawnRow(entry), shown: [...seen, poolKey(entry)] };
 }
 
 /** The world's own row an editor run opens on: its heaviest Opening Action, the first on a tie. Null when the

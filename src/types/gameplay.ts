@@ -4,6 +4,7 @@ import type { Stat, Trait, Entity, Dictionary, CommunityLink, PlacementWhere, Bo
 import type { ChatMessage } from './ai';
 import type { ActionSnapshot, ListedAction, SentActionList } from '@/lib/actionList';
 import type { ScriptTell } from '@/lib/scriptTells';
+import type { OpeningKey } from '@/lib/drawnOpening';
 
 /** A director-invented character promoted to a persisted, per-playthrough entity (runtime characters,
  *  Slice 2). Save-only: it rolls back with the turn and is never written to the world export. */
@@ -658,6 +659,9 @@ export interface SaveObject {
   /** The opening turn's `turn.action`: the Opening Action the player sent, or empty for an Opening Narration.
    *  History holds the "START GAME" stand-in instead. Absent ⇒ a page-one re-roll reads the drawn opening. */
   openingAction?: string;
+  /** The Drawn Opening's key, set at New Game and on a page-one re-roll that draws another row. Read live
+   *  against the cast in play, so a deleted Opening reads as none. Absent ⇒ none, as for the default opening. */
+  drawnOpening?: OpeningKey;
   /** v2.x memory editing: memories the player wrote by hand. `anchorTurn` is the message-history length
    *  at creation, which places the note chronologically among the digests. Never judged by the selector —
    *  a player-written memory rides until deleted. Absent (or empty) on older saves ⇒ none. A named memory adds

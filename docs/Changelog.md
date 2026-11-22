@@ -37,6 +37,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A short effect now plays over the game when the weather changes.** Raindrops run down the screen, snow piles up, lightning flashes or the sun breaks through, then it stops. Turn it off with **Weather Foreground** in Display settings.
   - **Drawn Opening:**
     - **Openings can have names.** Type a name in the new box on an opening's card. A blank name shows the owner and place, such as "Aki · Opening 2".
+    - **A saved game now remembers which opening started it.** Re-rolling page one onto another opening updates it. If the author later deletes that opening, the save reads it as none.
   - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
 - **⚙️ Backend**
   - **Character Mentions:**

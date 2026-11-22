@@ -289,6 +289,10 @@ _Avoid_: player character, user, the Mascot's Voice
 One authored way to start a playthrough, with a draw weight. A world holds an ordered list of them, and a new game draws one by weight. With nothing to draw, the shipped default opening applies. Each Opening is an Opening Action or an Opening Narration, and an Others Opening or a Self Opening. An Opening can carry an optional code name, unique within its owner. Unnamed, the editor shows the derived label "Owner · Opening N", and code sees no name.
 _Avoid_: cue, opening cue, greeting, first message (the SillyTavern term)
 
+**Drawn Opening**:
+The Opening a playthrough started from, recorded in the save by its owner and id. A page-one re-roll that draws another Opening replaces it. It reads against the current world, so a renamed Opening reads under its new name, and a deleted one, the shipped default opening, or a save without the record reads as none.
+_Avoid_: chosen opening, starting opening
+
 **Opening Action**:
 An Opening that fills the player's input box at Start Game. The player can edit it before they send it, and the AI writes page one from it.
 _Avoid_: player action (unqualified), prompt

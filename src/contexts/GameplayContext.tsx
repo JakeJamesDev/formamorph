@@ -100,6 +100,7 @@ import type {
   SupporterCopyMarker,
 } from '@/types';
 import { remapChosenVrm } from '../lib/legacyVrm';
+import { readOpeningKey, type OpeningKey } from '../lib/drawnOpening';
 import WorldStorageService from '../services/WorldStorageService';
 
 const historyFree = (snapshot: ActionSnapshot): ActionSnapshot => ({ ...snapshot, state: stripSnapshotHistory(snapshot.state) });
@@ -370,6 +371,8 @@ function useProvideGameplay() {
   const [sentActions, setSentActions] = useState<SentActionMap<ActionSnapshot>>({});
   // The opening turn's `turn.action`; null until a playthrough opens, and on a save that lacks it.
   const [openingAction, setOpeningAction] = useState<string | null>(null);
+  // The Drawn Opening's key; null for the default opening and on a save that lacks it.
+  const [drawnOpening, setDrawnOpening] = useState<OpeningKey | null>(null);
   // The books in play: the save's, plus the world's shipped-off books a script may switch on.
   const playthroughDictionaries = useMemo(() => playthroughBooks(runtimeDictionaries, worldBooks), [runtimeDictionaries, worldBooks]);
   // The enabled entries the injection pipeline reads, with the lore overlay applied.
@@ -668,6 +671,7 @@ function useProvideGameplay() {
         ...(Object.keys(sentActions).length ? { sentActions: mapSentSnapshots(sentActions, historyFree) } : {}),
         ...(actionList.length ? { actionList: mapLiveSnapshots(actionList, historyFree) } : {}),
         ...(openingAction !== null ? { openingAction } : {}),
+        ...(drawnOpening ? { drawnOpening } : {}),
         ...(isAutosave ? { isAutosave: true } : {}),
       };
     } catch (error) {
@@ -694,7 +698,7 @@ function useProvideGameplay() {
         return failed(error);
       }
     };
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, scriptTells, mentionReadings, mentionCorrections, sentActions, actionList, openingAction, addSystemLogEntry, worldSupporterCopy, openWorldId]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, scriptTells, mentionReadings, mentionCorrections, sentActions, actionList, openingAction, drawnOpening, addSystemLogEntry, worldSupporterCopy, openWorldId]);
 
   const saveGame = useCallback(async (...args: Parameters<typeof prepareSave>) => (await prepareSave(...args)()).ok, [prepareSave]);
 
@@ -878,6 +882,7 @@ function useProvideGameplay() {
           });
           setSentActions(mapSentSnapshots(restoreSent(migrated.sentActions, isActionSnapshot), loadedSnapshot));
           setOpeningAction(typeof migrated.openingAction === 'string' ? migrated.openingAction : null);
+          setDrawnOpening(readOpeningKey(migrated.drawnOpening));
           setPendingAttachments([]);
           setActionList(mapLiveSnapshots(restoreLive(migrated.actionList, isActionSnapshot), loadedSnapshot));
           addSystemLogEntry(`Game loaded from "${saveName}"`);
@@ -935,6 +940,7 @@ function useProvideGameplay() {
             setMentionCorrections({});
             setSentActions({});
             setOpeningAction(null);
+            setDrawnOpening(null);
             setPendingAttachments([]);
             setActionList([]);
             addSystemLogEntry(`Game loaded from "${saveName}"`);
@@ -1222,6 +1228,8 @@ function useProvideGameplay() {
     correctedReadings,
     openingAction,
     setOpeningAction,
+    drawnOpening,
+    setDrawnOpening,
     pendingAttachments,
     setPendingAttachments,
     actionList,

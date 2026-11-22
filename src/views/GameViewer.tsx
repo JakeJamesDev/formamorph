@@ -106,6 +106,7 @@ import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { applyResolvedStart, drawPoolEntry, drawUnseenOpening, openingOwner, openingPool, type DrawnOpening } from "@/lib/openings";
 import { drawNewGameOpening } from "@/lib/newGameOpening";
+import { drawnOpeningKey, sameOpeningKey } from "@/lib/drawnOpening";
 import { customPersonaEntity } from "@/lib/blueprints";
 import { bodyPickEntities } from "@/lib/bodies";
 import { avatarLookTraits } from "@/lib/avatarLook";
@@ -956,6 +957,7 @@ const GameViewer = ({
     correctedReadings,
     openingAction: openingTurnAction,
     setOpeningAction: setOpeningTurnAction,
+    setDrawnOpening,
     itemInstances: heldItemInstances,
     setActiveTab: setRightTab,
     carriedSupporterCopy,
@@ -2177,6 +2179,8 @@ const GameViewer = ({
       openingSessionRef.current = {
         ...session, drawn: { opening: redraw.opening, ownerId: redraw.ownerId }, shown: redraw.shown,
       };
+      const redrawnKey = drawnOpeningKey(redraw);
+      setDrawnOpening((prior) => (sameOpeningKey(prior, redrawnKey) ? prior : redrawnKey));
       setIsGameStarted(false);
       // The new row's time and weather, or none: the restore above may hold what the pass read for the old page one.
       applyResolvedStart(redraw.opening, worldOverview, { setStartHour, setWeather, setStartWeatherSet });
@@ -6551,6 +6555,7 @@ const GameViewer = ({
         ...newOpeningSession(), drawn: { opening: drawn.opening, ownerId: drawn.ownerId }, shown: drawn.shown,
         startLocationId: location?.id ?? null,
       };
+      setDrawnOpening(drawnOpeningKey(drawn));
       // Set before page one is written, so its clock line carries the authored hour.
       applyResolvedStart(drawn.opening, worldOverview, { setStartHour, setWeather, setStartWeatherSet });
       clearWeatherChange();
@@ -6610,6 +6615,7 @@ const GameViewer = ({
     setRuntimeDictionaries,
     setPersonaRef,
     setOpeningTurnAction,
+    setDrawnOpening,
     setSessionPersona,
     setSessionLibraryAdditions,
     setDiscoveredEntities,
