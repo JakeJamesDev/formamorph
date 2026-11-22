@@ -34,7 +34,7 @@ const mount = (children: ReactNode) => render(
 /** The `{` menu's rows, typed at the head of the opening. */
 async function menu(): Promise<string[]> {
   const user = userEvent.setup();
-  await user.click(screen.getByRole('textbox', { name: /Opening 1/ }));
+  await user.click(screen.getByRole('textbox', { name: /^Opening 1$/ }));
   await user.keyboard('{{');
   await screen.findByTestId('chip-typeahead');
   return screen.getAllByTestId('chip-typeahead-row').map((row) => row.textContent?.trim() ?? '');

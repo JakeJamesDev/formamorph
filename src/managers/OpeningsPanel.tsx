@@ -1,4 +1,4 @@
-import { createElement, type ReactNode } from 'react';
+import { createElement, useState, type ReactNode } from 'react';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -17,8 +17,8 @@ import { Hint, Meta } from '@/components/ui/typography';
 import { ListSearchToolbar } from '@/components/ListToolbar';
 import { useListSearch } from '@/components/listToolbarHooks';
 import {
-  addOpening, DEFAULT_OPENING, moveOpening, ownerOpeningRows, removeOpening,
-  setOpeningKind, setOpeningSelf, setOpeningText, setOpeningTime, setOpeningWeather, setOpeningWeight, canOwnSelfOpenings, othersNeverDraw, type EditorOpeningRow, type OpeningOwner,
+  addOpening, DEFAULT_OPENING, moveOpening, openingLabel, openingNameTaken, ownerOpeningRows, removeOpening,
+  setOpeningKind, setOpeningName, setOpeningSelf, setOpeningText, setOpeningTime, setOpeningWeather, setOpeningWeight, canOwnSelfOpenings, othersNeverDraw, type EditorOpeningRow, type OpeningOwner,
   type OpeningsEditorView,
 } from '@/lib/openings';
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
@@ -175,6 +175,7 @@ export function LocationOpenings({ location, onChange, placeholders, names = { p
       />
       <OpeningsList
         owner={location}
+        labelOwner={location.name}
         weatherKinds={weatherKinds}
         rows={ownerOpeningRows(location, false)}
         onChange={onChange}
@@ -205,8 +206,10 @@ function NoMatch({ typed }: { typed: string }) {
  */
 export function OpeningsList({
   owner, rows, onChange, placeholders, ownerId, empty, ownerLabel, ownerName, search = '', names, addButton = true,
-  selfSwitch = false, selfBadge = false, weatherKinds,
+  selfSwitch = false, selfBadge = false, weatherKinds, labelOwner,
 }: {
+  /** Names the owner in a blank-named row's label. Absent: the entity's name, else "World". */
+  labelOwner?: string;
   /** The kinds a row's Weather can pick while the world's Weather is on. Absent hides the picker. */
   weatherKinds?: WeatherKind[];
   owner: OpeningOwner;
@@ -258,7 +261,9 @@ export function OpeningsList({
                 <OpeningCard
                   key={opening.id}
                   opening={opening}
-                  label={`Opening ${i + 1}`}
+                  label={openingLabel(opening, labelOwner ?? ownerName ?? 'World', i)}
+                  nameTaken={(name) => openingNameTaken(owner, opening.id, name)}
+                  onName={(name) => onChange(setOpeningName(owner, opening.id, name))}
                   a11yLabel={ownerLabel ? `${ownerLabel} Opening ${i + 1}` : `Opening ${i + 1}`}
                   open={collapse.isOpen(opening.id)}
                   onToggle={() => collapse.toggle(opening.id)}
@@ -298,10 +303,49 @@ export function OpeningsList({
   );
 }
 
+/**
+ * The row's name. A name another row of the owner has shows an error and is not written; leaving the field
+ * restores the saved name.
+ */
+function OpeningNameField({ opening, placeholder, a11yLabel, taken, onName }: {
+  opening: Opening;
+  /** The derived label, shown while the name is blank. */
+  placeholder: string;
+  a11yLabel: string;
+  taken: (name: string) => boolean;
+  onName: (name: string) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const clash = draft !== null && taken(draft);
+  // A draft that is neither refused nor what the row holds is stale, such as after an undo.
+  const live = draft !== null && (clash || (opening.name ?? '') === draft.trim());
+  const shown = live ? draft : opening.name ?? '';
+  const change = (value: string) => {
+    setDraft(value);
+    if (!taken(value)) onName(value);
+  };
+  return (
+    <div className="space-y-1" {...fieldFrame('openings', opening.id, 'name')}>
+      <WorldInput
+        value={shown}
+        onChange={(e) => change(e.target.value)}
+        onBlur={() => setDraft(null)}
+        placeholder={placeholder}
+        aria-label={`Name, ${a11yLabel}`}
+        aria-invalid={clash}
+        className="h-7 text-helper"
+      />
+      {clash && <Hint role="alert">Another opening here has this name. Type a different one.</Hint>}
+    </div>
+  );
+}
+
 const OpeningCard = ({
-  opening, label, a11yLabel, open, onToggle, weight, chance, neverDrawsOn, placeholders, ownerId, ownerName, onKind, onSelf, onTime, weatherKinds, onWeather, selfBadge,
+  opening, label, nameTaken, onName, a11yLabel, open, onToggle, weight, chance, neverDrawsOn, placeholders, ownerId, ownerName, onKind, onSelf, onTime, weatherKinds, onWeather, selfBadge,
   onText, onWeight, onRemove,
 }: {
+  nameTaken: (name: string) => boolean;
+  onName: (name: string) => void;
   weatherKinds?: WeatherKind[];
   onWeather: (weather: WeatherKind | null) => void;
   opening: Opening;
@@ -440,7 +484,14 @@ const OpeningCard = ({
         </div>
       </div>
       {open && (
-        <div className="p-2">
+        <div className="space-y-2 p-2">
+          <OpeningNameField
+            opening={opening}
+            placeholder={label}
+            a11yLabel={a11yLabel}
+            taken={nameTaken}
+            onName={onName}
+          />
           <PlaceholderField
             leading={(
               <>

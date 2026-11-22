@@ -462,6 +462,7 @@ function cardOpening(raw: unknown): Opening[] {
   if (typeof row.text !== 'string') return [];
   return [{
     id: typeof row.id === 'string' && row.id ? row.id : randomUUID(),
+    ...(typeof row.name === 'string' && row.name.trim() ? { name: row.name.trim() } : {}),
     text: row.text,
     kind: row.kind === 'narration' ? 'narration' : 'action',
     ...(row.self === true ? { self: true } : {}),

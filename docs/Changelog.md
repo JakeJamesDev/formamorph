@@ -35,6 +35,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Scripts can read and set the weather with `world.weather`.** A set from an item or switch script between turns changes the weather at once; a set during a turn lands when the turn ends. A kind the world doesn't allow stops the script with an error.
     - **Traits and image Visibility rules can now require the weather.** Pick Weather under Add Requirement, then turn on the kinds that count. It shows while the world's Weather is on.
     - **A short effect now plays over the game when the weather changes.** Raindrops run down the screen, snow piles up, lightning flashes or the sun breaks through, then it stops. Turn it off with **Weather Foreground** in Display settings.
+  - **Drawn Opening:**
+    - **Openings can have names.** Type a name in the new box on an opening's card. A blank name shows the owner and place, such as "Aki · Opening 2".
   - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
 - **⚙️ Backend**
   - **Character Mentions:**

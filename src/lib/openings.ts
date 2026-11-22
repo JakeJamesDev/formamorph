@@ -453,6 +453,33 @@ export function removeOpening(owner: OpeningOwner, id: string): OpeningOwner {
   };
 }
 
+/** The name of a row, or null where it has none: absent and blank read alike. */
+export const openingName = (opening: Pick<Opening, 'name'>): string | null => opening.name?.trim() || null;
+
+/** A row's label in the editor: its name, else "Owner · Opening N", N being its place in the owner's list from 1.
+ *  `ownerName` is the entity's or location's name, "World" for the world's own. Code never sees the fallback. */
+export const openingLabel = (opening: Pick<Opening, 'name'>, ownerName: string, index: number): string =>
+  openingName(opening) ?? `${ownerName.trim() || 'Unnamed'} · Opening ${index + 1}`;
+
+/** Whether another row of this owner, Self rows included, already has `name`. Case-sensitive; blank never clashes. */
+export function openingNameTaken(owner: OpeningOwner, id: string, name: string): boolean {
+  const wanted = name.trim();
+  return wanted !== '' && (owner.openings ?? []).some((o) => o.id !== id && openingName(o) === wanted);
+}
+
+/** Sets one row's name, trimmed; blank is stored as absent. A name another row of the owner has changes nothing. */
+export function setOpeningName(owner: OpeningOwner, id: string, name: string): OpeningOwner {
+  const next = name.trim();
+  if (openingNameTaken(owner, id, next)) return { openings: owner.openings ?? [] };
+  return {
+    openings: (owner.openings ?? []).map((o) => {
+      if (o.id !== id) return o;
+      const { name: _drop, ...rest } = o;
+      return next ? { ...rest, name: next } : rest;
+    }),
+  };
+}
+
 /** Replaces one row's text. */
 export function setOpeningText(owner: OpeningOwner, id: string, text: string): OpeningOwner {
   return { openings: (owner.openings ?? []).map((o) => (o.id === id ? { ...o, text } : o)) };

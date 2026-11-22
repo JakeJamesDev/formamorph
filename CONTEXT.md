@@ -286,7 +286,7 @@ The entity that fills the player slot for a playthrough. It comes from the playe
 _Avoid_: player character, user, the Mascot's Voice
 
 **Opening**:
-One authored way to start a playthrough, with a draw weight. A world holds an ordered list of them, and a new game draws one by weight. With nothing to draw, the shipped default opening applies. Each Opening is an Opening Action or an Opening Narration, and an Others Opening or a Self Opening.
+One authored way to start a playthrough, with a draw weight. A world holds an ordered list of them, and a new game draws one by weight. With nothing to draw, the shipped default opening applies. Each Opening is an Opening Action or an Opening Narration, and an Others Opening or a Self Opening. An Opening can carry an optional code name, unique within its owner. Unnamed, the editor shows the derived label "Owner · Opening N", and code sees no name.
 _Avoid_: cue, opening cue, greeting, first message (the SillyTavern term)
 
 **Opening Action**:

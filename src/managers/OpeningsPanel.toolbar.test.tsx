@@ -45,7 +45,7 @@ const WORLD: World = panelWorld({
 const search = (placeholder: string, term: string) =>
   fireEvent.change(screen.getByPlaceholderText(placeholder), { target: { value: term } });
 
-const cards = () => screen.queryAllByTestId('opening-row').map((row) => within(row).getAllByText(/^Opening \d+$/)[0].textContent);
+const cards = () => screen.queryAllByTestId('opening-row').map((row) => within(row).getAllByText(/^Odd Wick · Opening \d+$/)[0].textContent);
 
 const openEntityOpenings = () => {
   fireEvent.click(screen.getByText('Odd Wick'));
@@ -58,10 +58,10 @@ describe('the entity Openings tab toolbar', () => {
   it('filters the entity’s cards and shows a no-match line', () => {
     renderEntitiesTab(WORLD, 'advanced');
     openEntityOpenings();
-    expect(cards()).toEqual(['Opening 1', 'Opening 2']);
+    expect(cards()).toEqual(['Odd Wick · Opening 1', 'Odd Wick · Opening 2']);
 
     search('Search openings', 'GULL');
-    expect(cards()).toEqual(['Opening 2']);
+    expect(cards()).toEqual(['Odd Wick · Opening 2']);
 
     search('Search openings', 'lantern');
     expect(cards()).toEqual([]);
@@ -76,6 +76,6 @@ describe('the entity Openings tab toolbar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add Opening' }));
     expect(ctx().entities[0].openings?.map((o) => o.id)).toEqual(['e1', 'e2', expect.any(String)]);
     expect(screen.getByPlaceholderText('Search openings')).toHaveValue('');
-    expect(cards()).toEqual(['Opening 1', 'Opening 2', 'Opening 3']);
+    expect(cards()).toEqual(['Odd Wick · Opening 1', 'Odd Wick · Opening 2', 'Odd Wick · Opening 3']);
   });
 });

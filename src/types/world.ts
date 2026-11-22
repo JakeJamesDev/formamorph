@@ -1240,6 +1240,8 @@ export type OpeningKind = 'action' | 'narration';
  *  the author rewriting the text. Placeholder chips in `text` resolve against the opening pins. */
 export interface Opening {
   id: string;
+  /** The code name scripts compare against. Unique within one owner's openings; absent or blank = no name. */
+  name?: string;
   text: string;
   kind: OpeningKind;
   /** A Self opening: a start written for playing as its owner, drawn only while the player plays it. Absent =

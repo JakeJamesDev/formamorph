@@ -338,7 +338,7 @@ describe('the library Openings tab toolbar', () => {
     ],
   } as unknown as Entity;
   const cards = () => within(panelOf('Openings')).queryAllByTestId('opening-row')
-    .map((row) => within(row).getAllByText(/^Opening \d+$/)[0].textContent);
+    .map((row) => within(row).getAllByText(/^Wren · Opening \d+$/)[0].textContent);
   const box = () => within(panelOf('Openings')).getByPlaceholderText('Search openings');
 
   it('filters the cards by text and shows a no-match line', async () => {
@@ -346,7 +346,7 @@ describe('the library Openings tab toolbar', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Openings' }));
 
     await userEvent.type(box(), 'gull');
-    expect(cards()).toEqual(['Opening 2']);
+    expect(cards()).toEqual(['Wren · Opening 2']);
 
     await userEvent.clear(box());
     await userEvent.type(box(), 'lantern');
@@ -361,6 +361,6 @@ describe('the library Openings tab toolbar', () => {
     await userEvent.type(box(), 'gull');
     await userEvent.click(within(panelOf('Openings')).getByRole('button', { name: 'Add Opening' }));
     expect(box()).toHaveValue('');
-    expect(cards()).toEqual(['Opening 1', 'Opening 2', 'Opening 3']);
+    expect(cards()).toEqual(['Wren · Opening 1', 'Wren · Opening 2', 'Wren · Opening 3']);
   });
 });

@@ -71,6 +71,17 @@ A Self opening starts the game for a player who plays as the entity.
 
 See [Self Openings](#self-openings) for when a Self opening draws.
 
+## Name an opening
+<!-- keywords: code name, opening name, label, unnamed opening, script name, duplicate name -->
+
+Each opening can have a name. Open the card and type in the **Name** box above the text.
+
+- The name is optional. Leave it blank and the card shows the owner and the opening's place, such as **Aki · Opening 2**. Openings on **This World** read **World · Opening 1**. The label follows the card when you drag it to a new place.
+- A name is plain text. Spaces at the start and end are removed, and capital letters count.
+- No two openings of the same entity, location or world can share a name, Self openings included. If you type a name another one has, the box shows an error and the name isn't saved. Click out of the box to go back to the saved name.
+- Different entities, locations and the world can use the same name. Each can have an opening named "ambush".
+- The name is for scripts and Conditions, and players never see it.
+
 ## Weights and chances
 <!-- keywords: odds, probability, frequency, rarity, randomize beginning, percentage, keep as draft, more often -->
 
