@@ -323,6 +323,7 @@ import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import { LocationBackdrop } from "../components/game/LocationBackdrop";
 import { WeatherBackground } from "../components/game/WeatherBackground";
 import { WeatherForeground } from "../components/game/WeatherForeground";
+import { DevWeatherBar } from "../components/dev/DevWeatherBar";
 import { weatherView } from "@/lib/weatherView";
 import { activeWeather, afterNightfall, allowedWeatherKinds, isDaylight, landedWeatherChange, offeredWeatherKinds, savedWeather, type WeatherChange } from "@/lib/weather";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -7164,6 +7165,15 @@ const GameViewer = ({
       )}
       <WeatherBackground kind={weatherBg.kind} mode={weatherBg.mode} plain={!locationBackground || !backdrop} />
       <WeatherForeground kind={weatherFg} play={weatherChange?.seq ?? 0} />
+      {/* DEV: `#dev?…&weatherBar` shows a bar that steps through every weather and flips day and night. */}
+      {import.meta.env.DEV && activeWeather(worldOverview) && window.location.hash.includes('weatherBar') && (
+        <DevWeatherBar
+          kind={weather}
+          onKind={(kind) => fireWeatherRef.current(kind)}
+          day={isDaylight(gameTime, calendar)}
+          onToggleDay={() => setGameTime((t) => t + (calendar?.hoursPerDay ?? 24) / 2)}
+        />
+      )}
       {/* Above the location art, behind the panels and buttons. Windows desktop only. */}
       <div aria-hidden data-window-corner-gradient="" className="window-corner-gradient -z-[5] hidden [[data-window-overlay]_&]:block" />
       <ThemedToastContainer />
