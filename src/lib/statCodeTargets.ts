@@ -205,6 +205,33 @@ export function worldScriptBoxes(world: WorldScriptsSource, pick: ScriptPick = f
   return pick({ scripts: world.worldScripts }).map((script) => ({ home: { kind: 'world' }, ...script, script, owner: null, runs: [] }));
 }
 
+/** Where an item script is authored: the item on the Items tab. */
+export type ItemScriptHome = { kind: 'item'; itemId: string };
+
+/** One item script that holds code. Its `owner` is whoever holds the Item Instance, which authoring can't know. */
+export interface ItemScriptBox extends Script {
+  home: ItemScriptHome;
+  script: Script;
+  item: { id: string; name: string };
+  owner: null;
+  runs: TraitRun[];
+}
+
+/** What a walk of item scripts reads from a world. */
+export interface ItemScriptsSource {
+  items?: readonly { id?: string; name: string; scripts?: Script[] }[];
+}
+
+/** Whether a box is an item script's. */
+export const isItemScriptBox = (box: { home: { kind: string } }): box is ItemScriptBox => box.home.kind === 'item';
+
+/** Each item's filled scripts, in Items-tab and stored order. */
+export function itemScriptBoxes(world: ItemScriptsSource): ItemScriptBox[] {
+  return (world.items ?? []).flatMap(({ id, name, scripts }) => (id === undefined ? [] : filledScripts({ scripts }).map(
+    (script): ItemScriptBox => ({ home: { kind: 'item', itemId: id }, ...script, script, item: { id, name }, owner: null, runs: [] }),
+  )));
+}
+
 /** Where a World Tool's script is authored: the Tool on the Tools tab. */
 export type WorldToolHome = { kind: 'tool'; toolId: string };
 

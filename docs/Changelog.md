@@ -43,6 +43,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **In Game:**
     - **A character who agrees to come along now follows you to any location in their routine, at any hour.** They no longer stay behind just because their routine has them elsewhere at that time. The story can also call them over to those locations. Can Also Go adds more, and a lock still keeps them in place.
     - **Clicking Go on a suggested move before the story finishes now brings the characters who agreed to come along.**
+  - **Renaming a stat, trait, placeholder or location in the World Editor now updates the item scripts that name it.** When another character that can hold the item has a stat of that name, you check which `owner` references to change.
   - **Large Supporter-only worlds, such as Sunmeadow Town, now download from Community Creations.** The download no longer times out, and the installed world stays close to the author's size.
 
 ---

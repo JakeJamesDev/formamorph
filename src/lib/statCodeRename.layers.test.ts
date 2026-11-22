@@ -99,7 +99,7 @@ describe('a Layer rename when two Layered Images share the Layer name', () => {
     for (const sure of [lines.wren, lines.guard, lines.dock, lines.pin]) expect(after).toContain(sure.replace('Hat', 'Helmet'));
     for (const kept of [lines.bob, lines.dee, lines.cloak, lines.cid, lines.self, lines.persona]) expect(after).toContain(kept);
     expect(plan.references).toBe(4);
-    expect(plan.layerBoxes?.flatMap((box) => box.unsure.map(({ text, line }) => ({ text, line })))).toEqual([
+    expect(plan.pickBoxes?.flatMap((box) => box.unsure.map(({ text, line }) => ({ text, line })))).toEqual([
       { text: 'entities.Cid.layers.Hat', line: 3 },
       { text: 'self.layers.Hat', line: 9 },
       { text: 'persona.layers.Hat', line: 10 },
@@ -108,8 +108,8 @@ describe('a Layer rename when two Layered Images share the Layer name', () => {
 
   it('rewrites a picked reference along with the sure ones, and only that one', () => {
     const plan = planOf(code)!;
-    const selfId = plan.layerBoxes![0].unsure.find(({ text }) => text.startsWith('self'))!.id;
-    const { edits, references } = pickedEdits(plan.layerBoxes!, new Set([selfId]));
+    const selfId = plan.pickBoxes![0].unsure.find(({ text }) => text.startsWith('self'))!.id;
+    const { edits, references } = pickedEdits(plan.pickBoxes!, new Set([selfId]));
     expect(references).toBe(5);
     expect(edits[0].scripts.w).toContain('self.layers.Helmet.opacity = 1;');
     expect(edits[0].scripts.w).toContain(lines.persona);
@@ -119,7 +119,7 @@ describe('a Layer rename when two Layered Images share the Layer name', () => {
   it('counts an image a script assigns as one the owner can show', () => {
     const plan = planOf(`${lines.wren}\nentities.Wren.image = "Rig B";`)!;
     expect(plan.references).toBe(0);
-    expect(plan.layerBoxes?.[0].unsure.map(({ text }) => text)).toEqual(['entities.Wren.layers.Hat']);
+    expect(plan.pickBoxes?.[0].unsure.map(({ text }) => text)).toEqual(['entities.Wren.layers.Hat']);
   });
 
   it('ignores an `image` write on a local that shadows `entities`', () => {
@@ -131,12 +131,12 @@ describe('a Layer rename when two Layered Images share the Layer name', () => {
   });
 
   it('lists a named owner the world doesn’t hold, whose slots no edit can read', () => {
-    expect(planOf('entities.Ghost.layers.Hat.opacity = 1;')?.layerBoxes?.[0].unsure.map(({ text }) => text)).toEqual(['entities.Ghost.layers.Hat']);
+    expect(planOf('entities.Ghost.layers.Hat.opacity = 1;')?.pickBoxes?.[0].unsure.map(({ text }) => text)).toEqual(['entities.Ghost.layers.Hat']);
   });
 
   it('numbers the world script that holds a pick, where the world has several', () => {
     const scripts: Script[] = [{ id: 'one', timing: 'after', code: 'clock.day;' }, { id: 'two', timing: 'after', code: lines.self }];
-    expect(planOf('', { worldScripts: scripts })?.layerBoxes?.map(({ id, scriptNumber }) => ({ id, scriptNumber }))).toEqual([{ id: 'two', scriptNumber: 2 }]);
+    expect(planOf('', { worldScripts: scripts })?.pickBoxes?.map(({ id, scriptNumber }) => ({ id, scriptNumber }))).toEqual([{ id: 'two', scriptNumber: 2 }]);
   });
 
   it('offers nothing when every reference belongs to the other Layered Image', () => {
@@ -149,6 +149,6 @@ describe('a Layer rename when no other Layered Image has the Layer name', () => 
     const code = 'entities.Bob.layers.Hat.opacity = 1;\nself.layers.Hat.opacity = 1;\nguard.layers.Hat.opacity = 1;';
     const plan = planOf(code, { mediaList: { A: rig('A', 'Helmet'), B: rig('B', 'Crown') } })!;
     expect(plan.edits[0].scripts.w).toBe(code.replaceAll('Hat', 'Helmet'));
-    expect(plan.layerBoxes?.flatMap((box) => box.unsure)).toEqual([]);
+    expect(plan.pickBoxes?.flatMap((box) => box.unsure)).toEqual([]);
   });
 });

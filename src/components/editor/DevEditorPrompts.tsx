@@ -42,7 +42,7 @@ const LAYER_PLAN: CodeRenamePlan = {
     { home: { kind: 'world' }, name: 'World', scripts: { b: '' } },
   ],
   references: 2,
-  layerBoxes: [
+  pickBoxes: [
     { home: { kind: 'entityTrait', entityId: 'dev-wren', traitId: 'dev-rain' }, name: 'Caught in Rain', entity: 'Wren', id: 'a', code: '', sure: [], unsure: [
       { id: '1', text: 'persona.layers.Hat', line: 4, splice: SPLICE },
     ] },

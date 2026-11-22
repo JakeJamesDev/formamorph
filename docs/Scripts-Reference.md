@@ -148,6 +148,8 @@ You can rename a stat, a trait, a placeholder or a location that code names. The
 - **Update Code** changes the name in that code.
 - **Leave Code** keeps the code as it is.
 
+Item scripts are included. In an item script, `owner` is whoever holds the item. So when you rename a character's stat and another character also has a stat of that name, the dialog lists each `owner.stats` reference for you to check.
+
 > ℹ️ **In code, a placeholder chip in a stat name reads as the placeholder's own name.** A stat named `{{Beast}} Power` is `stats["Beast Power"]` in every playthrough, whatever the chip rolled. The player still sees the rolled name.
 
 ### Stat Properties

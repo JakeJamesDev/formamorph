@@ -29,8 +29,8 @@ import type { TraitOwnerMaps } from './statCodeTraits';
 import { filledScripts } from './scripts';
 import { WORLD_SCRIPT_OWNER } from './codeUses';
 import {
-  boxReferences, nameHomeOf, statCodeBoxes, statCodeOwners, traitCodeBoxes, worldScriptBoxes, worldToolBoxes, type CodeHome, type CodeOwners, type StatNameHome,
-  type TraitCodeHome, type WorldScriptHome, type WorldToolHome,
+  boxReferences, isItemScriptBox, itemScriptBoxes, nameHomeOf, statCodeBoxes, statCodeOwners, traitCodeBoxes, worldScriptBoxes, worldToolBoxes,
+  type CodeHome, type CodeOwners, type ItemScriptHome, type StatNameHome, type TraitCodeHome, type WorldScriptHome, type WorldToolHome,
 } from './statCodeTargets';
 
 /** The name-keyed maps a rename can reach. */
@@ -243,7 +243,7 @@ export const codeNameReader = (
 /** One stat's or trait's code, rewritten. A script the rename does not touch is absent rather than rewritten to itself. */
 export interface CodeRenameEdit {
   /** Where the code is authored: the world's own scripts, a World Tool, a stat or a trait, an entity's own, or a link's override. */
-  home: WorldScriptHome | WorldToolHome | CodeHome | TraitCodeHome;
+  home: WorldScriptHome | WorldToolHome | ItemScriptHome | CodeHome | TraitCodeHome;
   /** The stat's or trait's own name, so the offer can say whose code it is about. */
   name: string;
   /** The new code of each script the rename moved something in, by script id. */
@@ -263,8 +263,8 @@ export interface CodeRenamePlan {
   edits: CodeRenameEdit[];
   /** How many keys the rewrite covers. */
   references: number;
-  /** A Layer rename's scripts, where `edits` is only its sure keys and the author can pick more. */
-  layerBoxes?: LayerRenameBox[];
+  /** A Layer or stat rename's scripts, where `edits` is only its sure keys and the author can pick more. */
+  pickBoxes?: PickBox[];
 }
 
 /** Which node of the placeholder tree a rename moved: an entry, or the entity or book that owns entries. */
@@ -319,9 +319,10 @@ export interface CodeRenameInput {
   mediaId?: string;
   /** The world's Media List, for the Layered Images that share a Layer name. */
   mediaList?: MediaList;
-  /** Every location and item, for the images their slots link. */
+  /** Every location, for the images its slots link. */
   locations?: readonly ImageSlotOwner[];
-  items?: readonly ImageSlotOwner[];
+  /** Every item, for the scripts it holds and the images its slots link. */
+  items?: readonly (ImageSlotOwner & { id?: string; scripts?: Script[] })[];
 }
 
 /** A named owner of image slots, as a Layer rename reads it. */
@@ -427,15 +428,14 @@ function treeRewrite(
 }
 
 /**
- * Every key that reaches the renamed stat and no other, rewritten, one edit per place the code is authored.
+ * Every key that reaches the renamed stat and no other, as the rewrites a stat rename offers.
  *
  * Routes resolve against the world as it read before the edit, with the renamed stat under its old name. A
  * key that also reaches another stat of that name, such as `persona.stats.X` where two entities that can be
- * played both hold an X, is left alone.
+ * played both hold an X, is left alone. An item script's `owner` is any entity that can hold the item: its key
+ * is sure where only the renamed stat answers, and the author's pick where another holder's stat does too.
  */
-function statRenameEdits(
-  input: CodeRenameInput, renamed: RenamedStat, from: string, to: string,
-): { edits: CodeRenameEdit[]; references: number } {
+function statRenameBoxes(input: CodeRenameInput, renamed: RenamedStat, from: string, to: string): PickBox[] {
   const named = (stat: Stat) => (stat.id === renamed.id ? { ...stat, name: from } : stat);
   const owners = statCodeOwners({
     stats: renamed.entityId === undefined ? input.stats.map(named) : input.stats,
@@ -446,9 +446,20 @@ function statRenameEdits(
   });
   const ownerId = renamed.entityId ?? null;
   const isRenamed = (home: StatNameHome) => home.statId === renamed.id && home.entityId === ownerId;
-  return boxEdits(renameBoxes(input, owners), (box) => boxReferences(owners, box)
-    .filter(({ targets }) => targets.every((target) => isRenamed(nameHomeOf(target))))
-    .map(({ key }) => rewrittenKey(key, to)));
+  const holders = owners.all.filter((owner) => owner.entity !== null).map((owner) => ({ owner }));
+  const picks = pickBoxes(input);
+  return renameBoxes(input, owners).flatMap(({ box, name }) => {
+    const found = picks.start(box, name);
+    const item = isItemScriptBox(box);
+    for (const reference of boxReferences(owners, item ? { ...box, runs: holders } : box)) {
+      const homes = reference.targets.map(nameHomeOf);
+      if (!homes.some(isRenamed)) continue;
+      const splice = rewrittenKey(reference.key, to);
+      if (homes.every(isRenamed)) found.sure.push(splice);
+      else if (item && reference.route === 'owner') picks.pick(found, splice);
+    }
+    return picks.kept(found);
+  });
 }
 
 /** Every box of code in the world once, each with the owner name the offer calls it by. */
@@ -458,9 +469,40 @@ function renameBoxes(input: CodeRenameInput, owners: CodeOwners) {
   return [
     ...worldScriptBoxes(input).map((box) => ({ box, name: WORLD_SCRIPT_OWNER })),
     ...worldToolBoxes(input).map((box) => ({ box, name: box.tool.name })),
+    ...itemScriptBoxes(input).map((box) => ({ box, name: box.item.name })),
     ...statCodeBoxes(owners).map((box) => ({ box, name: box.stat.name })),
     ...traitCodeBoxes(owners, { traits, traitGroups: input.traitGroups ?? [] }).map((box) => ({ box, name: box.trait.name })),
   ];
+}
+
+type RenameBox = ReturnType<typeof renameBoxes>[number]['box'];
+
+/** Builds the boxes an offer shows, numbering the picks across the whole plan. */
+function pickBoxes(input: CodeRenameInput) {
+  const entityNames = new Map((input.entities ?? []).map((entity) => [entity.id, entity.name]));
+  const scriptIds = (home: RenameBox['home']) => (home.kind === 'world' ? (input.worldScripts ?? []).map((script) => script.id)
+    : home.kind === 'item' ? (input.items?.find((item) => item.id === home.itemId)?.scripts ?? []).map((script) => script.id) : []);
+  let picked = 0;
+  return {
+    start: (box: RenameBox, name: string): PickBox => {
+      const { home } = box;
+      const entity = 'entityId' in home ? entityNames.get(home.entityId) : undefined;
+      const ids = scriptIds(home);
+      const scriptNumber = ids.length > 1 ? ids.indexOf(box.id) + 1 : undefined;
+      return {
+        home, name, id: box.id, code: box.code, sure: [], unsure: [],
+        ...(entity !== undefined && { entity }), ...(scriptNumber && { scriptNumber }),
+      };
+    },
+    /** `text` is the reference as written; absent, the line that holds it. */
+    pick: (found: PickBox, splice: CodeSplice, text?: string) => {
+      picked += 1;
+      const lines = found.code.slice(0, splice.from).split('\n');
+      const lineText = found.code.split('\n')[lines.length - 1].trim();
+      found.unsure.push({ id: String(picked), text: text ?? lineText, line: lines.length, splice });
+    },
+    kept: (found: PickBox): PickBox[] => (found.sure.length || found.unsure.length ? [found] : []),
+  };
 }
 
 /** The edits `splicesOf` asks of each box, one per place the code is authored, and how many keys they cover. */
@@ -549,7 +591,7 @@ function layerVerdicts(input: CodeRenameInput, boxes: ReturnType<typeof renameBo
  * Where no other Layered Image holds a Layer of that name, any key that runs resolves to the renamed one, so
  * every key is sure. Otherwise each key goes by its owner (`layerVerdicts`).
  */
-function layerRenameBoxes(input: CodeRenameInput, from: string, to: string): LayerRenameBox[] {
+function layerRenameBoxes(input: CodeRenameInput, from: string, to: string): PickBox[] {
   const owners = statCodeOwners({
     stats: input.stats, statGroups: input.statGroups, entities: input.entities ?? [], placeholders: input.placeholders?.list ?? [],
   });
@@ -559,33 +601,23 @@ function layerRenameBoxes(input: CodeRenameInput, from: string, to: string): Lay
     (entry.kind === 'layered' && (entry.id === input.mediaId || entry.layers.some((layer) => layer.name === from)) ? [entry.id] : [])));
   const shared = input.mediaId !== undefined && [...holding].some((id) => id !== input.mediaId);
   const verdictOf = shared ? layerVerdicts(input, boxes, holding) : () => 'sure' as const;
-  const entityNames = new Map((input.entities ?? []).map((entity) => [entity.id, entity.name]));
-  const worldIds = (input.worldScripts ?? []).map((script) => script.id);
-  let unsure = 0;
+  const picks = pickBoxes(input);
   return boxes.flatMap(({ box, name }) => {
-    const { home } = box;
-    const entity = 'entityId' in home ? entityNames.get(home.entityId) : undefined;
-    const scriptNumber = home.kind === 'world' && worldIds.length > 1 ? worldIds.indexOf(box.id) + 1 : undefined;
-    const found: LayerRenameBox = {
-      home, name, id: box.id, code: box.code, sure: [], unsure: [],
-      ...(entity !== undefined && { entity }), ...(scriptNumber && { scriptNumber }),
-    };
+    const found = picks.start(box, name);
     for (const reference of layerNameReferences(box.code)) {
       if (reference.key.name !== from) continue;
       const verdict = verdictOf(reference.subject);
       if (verdict === 'skip') continue;
       const splice = rewrittenKey(reference.key, to);
-      if (verdict === 'sure') { found.sure.push(splice); continue; }
-      unsure += 1;
-      const line = box.code.slice(0, reference.key.keyFrom).split('\n').length;
-      found.unsure.push({ id: String(unsure), text: reference.text, line, splice });
+      if (verdict === 'sure') found.sure.push(splice);
+      else picks.pick(found, splice, reference.text);
     }
-    return found.sure.length || found.unsure.length ? [found] : [];
+    return picks.kept(found);
   });
 }
 
-/** A Layer reference the author picks or leaves, by an id unique within its plan. */
-export interface LayerPick {
+/** A reference the author picks or leaves, by an id unique within its plan. */
+export interface RenamePick {
   id: string;
   /** The reference as written, and its line in the script. */
   text: string;
@@ -593,27 +625,31 @@ export interface LayerPick {
   splice: CodeSplice;
 }
 
-/** One script a Layer rename reads: the keys it rewrites outright, and those the author picks. */
-export interface LayerRenameBox {
+/** One script a Layer or stat rename reads: the keys it rewrites outright, and those the author picks. */
+export interface PickBox {
   home: CodeRenameEdit['home'];
   /** Whose code it is, as the offer names it. */
   name: string;
   /** The entity whose own or linked stat or trait holds the code. */
   entity?: string;
-  /** The script's place among the world's scripts, where the world has several. */
+  /** The script's place among the world's or the item's scripts, where it has several. */
   scriptNumber?: number;
   /** The script's id. */
   id: string;
   code: string;
   sure: CodeSplice[];
-  unsure: LayerPick[];
+  unsure: RenamePick[];
 }
 
-/** The edits a Layer rename makes: every sure key, plus the picked ones. */
-export const pickedEdits = (boxes: readonly LayerRenameBox[], picked: ReadonlySet<string>): { edits: CodeRenameEdit[]; references: number } =>
+/** The edits a pick rename makes: every sure key, plus the picked ones. */
+export const pickedEdits = (boxes: readonly PickBox[], picked: ReadonlySet<string>): { edits: CodeRenameEdit[]; references: number } =>
   scriptEdits(boxes.map((box) => ({
     ...box, splices: [...box.sure, ...box.unsure.filter(({ id }) => picked.has(id)).map(({ splice }) => splice)],
   })));
+
+/** A plan from pick boxes, with the sure keys as its edits. */
+const pickPlan = (root: RenameRoot, oldName: string, newName: string, boxes: PickBox[]): CodeRenamePlan | null =>
+  (boxes.length ? { root, oldName, newName, ...pickedEdits(boxes, new Set()), pickBoxes: boxes } : null);
 
 /**
  * The rewrite a committed rename should offer, or null where there is nothing to offer: an unchanged or
@@ -627,8 +663,7 @@ export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
   // differs from another only by its spaces is the duplicate the warning already covers.
   if (!from || !to || from === to || otherNames.some((name) => name.trim() === to)) return null;
   if (root === 'stats' && input.stat) {
-    const found = statRenameEdits(input, input.stat, from, to);
-    return found.references ? { root, oldName: from, newName: to, ...found } : null;
+    return pickPlan(root, from, to, statRenameBoxes(input, input.stat, from, to));
   }
   if (root === 'locations') {
     // A name two locations share reaches the first, so which calls the rename moved can't be told.
@@ -641,8 +676,7 @@ export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
     return found.references ? { root, oldName: from, newName: to, noun: input.noun, ...found } : null;
   }
   if (root === 'layers') {
-    const layerBoxes = layerRenameBoxes(input, from, to);
-    return layerBoxes.length ? { root, oldName: from, newName: to, ...pickedEdits(layerBoxes, new Set()), layerBoxes } : null;
+    return pickPlan(root, from, to, layerRenameBoxes(input, from, to));
   }
   // A rename that names its node follows the tree. Without one — a caller that knows only the name — the
   // bare-name form is all that can be proven, which is what every root but `placeholders` has anyway.
@@ -658,6 +692,8 @@ export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
   const homes: { home: CodeRenameEdit['home']; name: string; scripts: readonly Script[] }[] = [
     { home: { kind: 'world' }, name: WORLD_SCRIPT_OWNER, scripts: filledScripts({ scripts: input.worldScripts }) },
     ...worldToolBoxes(input).map(({ home, tool, id, timing, code }) => ({ home, name: tool.name, scripts: [{ id, timing, code }] })),
+    ...(input.items ?? []).flatMap(({ id, name, scripts }) => (id === undefined ? []
+      : [{ home: { kind: 'item' as const, itemId: id }, name, scripts: filledScripts({ scripts }) }])),
     ...stats.map((stat) => ({ home: { kind: 'stat' as const, statId: stat.id }, name: stat.name, scripts: filledScripts(stat) })),
     ...traits.flatMap((trait) => (trait.id === undefined ? []
       : [{ home: { kind: 'trait' as const, traitId: trait.id }, name: trait.name, scripts: filledScripts(trait) }])),

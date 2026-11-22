@@ -10,7 +10,7 @@ import { setTraitLinkScripts } from '@/lib/blueprints';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Hint } from '@/components/ui/typography';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { pickedEdits, planCodeRename, type CodeRenamePlan, type LayerRenameBox, type RenameRoot } from '@/lib/statCodeRename';
+import { pickedEdits, planCodeRename, type CodeRenamePlan, type PickBox, type RenameRoot } from '@/lib/statCodeRename';
 import { setStatLinkScripts, withStatLinks } from '@/lib/statLinks';
 import { traitOwnerMaps } from '@/lib/statCodeTraits';
 import { scriptsOf, withScriptCode } from '@/lib/scripts';
@@ -44,11 +44,13 @@ function codeOwnersText(plan: CodeRenamePlan): string {
   const world = plan.edits.find(({ home }) => home.kind === 'world');
   const scripts = world ? Object.keys(world.scripts).length : 0;
   const tools = plan.edits.filter(({ home }) => home.kind === 'tool').length;
+  const items = plan.edits.filter(({ home }) => home.kind === 'item').length;
   return [
     ...(stats ? [`${stats} ${plural(stats, 'stat', 'stats')}`] : []),
     ...(traits ? [`${traits} ${plural(traits, 'trait', 'traits')}`] : []),
     ...(scripts ? [`${scripts} world ${plural(scripts, 'script', 'scripts')}`] : []),
     ...(tools ? [`${tools} World ${plural(tools, 'Tool', 'Tools')}`] : []),
+    ...(items ? [`${items} ${plural(items, 'item', 'items')}`] : []),
   ].join(' and ');
 }
 
@@ -65,22 +67,28 @@ const renameQuestion = (plan: CodeRenamePlan) =>
 
 /** The Layer references the author picks, in script order. */
 const unsureOf = (plan: CodeRenamePlan | null) =>
-  (plan?.layerBoxes ?? []).flatMap((box) => box.unsure.map((reference) => ({ ...reference, box })));
+  (plan?.pickBoxes ?? []).flatMap((box) => box.unsure.map((reference) => ({ ...reference, box })));
 
 /** Where a picked reference sits, as the editor names that code. */
-function whereText({ home, name, entity, scriptNumber }: LayerRenameBox, line: number): string {
+function whereText({ home, name, entity, scriptNumber }: PickBox, line: number): string {
   const kind = isTraitHome(home) ? 'trait' : 'stat';
   const owner = home.kind === 'world' ? `World script${scriptNumber ? ` ${scriptNumber}` : ''}`
     : home.kind === 'tool' ? `Tool “${name}”`
+      : home.kind === 'item' ? `Item “${name}”${scriptNumber ? ` script ${scriptNumber}` : ''}`
       : entity !== undefined ? `${entity}’s ${kind} “${name}”` : `${kind === 'trait' ? 'Trait' : 'Stat'} “${name}”`;
   return `${owner}, line ${line}`;
 }
 
+/** Why a pick may name something else: another Layer of the name, or another holder's stat. */
+const sharedNameText = (plan: CodeRenamePlan) => (plan.root === 'layers'
+  ? `Another Layered Image also has a Layer named “${plan.oldName}”`
+  : `Another entity that can hold the item also has a stat named “${plan.oldName}”`);
+
 /** What the dialog says above the picks: after a sure count, or alone. */
 const unsureLead = (plan: CodeRenamePlan, count: number) =>
   (plan.references
-    ? `Another Layered Image also has a Layer named “${plan.oldName}”. ${plural(count, 'This reference', 'These references')} may name it instead. ${plural(count, 'Check it to update it too.', 'Check the ones to update too.')}`
-    : `Another Layered Image also has a Layer named “${plan.oldName}”, so ${plural(count, 'this reference', 'these references')} may name either one. ${plural(count, 'Check it', 'Check the ones')} to update to “${plan.newName}”.`);
+    ? `${sharedNameText(plan)}. ${plural(count, 'This reference', 'These references')} may name it instead. ${plural(count, 'Check it to update it too.', 'Check the ones to update too.')}`
+    : `${sharedNameText(plan)}, so ${plural(count, 'this reference', 'these references')} may name either one. ${plural(count, 'Check it', 'Check the ones')} to update to “${plan.newName}”.`);
 
 /** Mount the offer and its dialog. Everything under it can ask through `useCodeRenameOffer`. */
 export function CodeRenameProvider({ children }: { children: ReactNode }) {
@@ -100,14 +108,16 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
   const worldTools = useMemo(() => world?.worldTools ?? [], [world?.worldTools]);
   // What a Layer rename reads to tell which Layered Image a script resolves to.
   const layered = useMemo(
-    () => ({ mediaList: world?.worldOverview?.mediaList, locations: world?.locations, items: world?.items }),
-    [world?.worldOverview?.mediaList, world?.locations, world?.items],
+    () => ({ mediaList: world?.worldOverview?.mediaList, locations: world?.locations }),
+    [world?.worldOverview?.mediaList, world?.locations],
   );
+  const items = useMemo(() => world?.items ?? [], [world?.items]);
   const updateStat = world?.updateStat;
   const updateTrait = world?.updateTrait;
   const editEntity = world?.editEntity;
   const setWorldScripts = world?.setWorldScripts;
   const setWorldTools = world?.setWorldTools;
+  const updateItem = world?.updateItem;
   // A queue, because one Replace All can rename several things at once. Requests are held rather than
   // plans: each answer rewrites code the next request has to read, so a plan is built only once its
   // request reaches the front.
@@ -119,13 +129,13 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
       const maps = traitId === undefined ? undefined
         : traitOwnerMaps({ traits, traitGroups, entities }, placeholders.list, traitId);
       const plan = planCodeRename({
-        ...request, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, worldScripts, worldTools, traitOwnerMaps: maps,
+        ...request, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, worldScripts, worldTools, items, traitOwnerMaps: maps,
         ...(request.root === 'layers' ? layered : {}),
       });
       if (plan) return { plan, through: i };
     }
     return null;
-  }, [queue, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, worldScripts, worldTools, layered]);
+  }, [queue, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, worldScripts, worldTools, items, layered]);
   const plan: CodeRenamePlan | null = pending?.plan ?? null;
   // What the dialog reads, kept past the answer: the plan goes as soon as the question is settled, and the
   // body would otherwise empty while the dialog is still animating out.
@@ -138,8 +148,8 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
   }, [pending, queue.length]);
 
   // Held in a ref so the callback the name fields take never changes identity.
-  const latest = useRef({ stats, traits, worldScripts, worldTools, updateStat, updateTrait, editEntity, setWorldScripts, setWorldTools });
-  latest.current = { stats, traits, worldScripts, worldTools, updateStat, updateTrait, editEntity, setWorldScripts, setWorldTools };
+  const latest = useRef({ stats, traits, worldScripts, worldTools, items, updateStat, updateTrait, updateItem, editEntity, setWorldScripts, setWorldTools });
+  latest.current = { stats, traits, worldScripts, worldTools, items, updateStat, updateTrait, updateItem, editEntity, setWorldScripts, setWorldTools };
 
   const offer = useCallback<OfferCodeRename>((request) => {
     setQueue((waiting) => [...waiting, request]);
@@ -163,10 +173,10 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
 
   const apply = (picked: ReadonlySet<string>) => {
     if (!plan) return;
-    const edits = plan.layerBoxes ? pickedEdits(plan.layerBoxes, picked).edits : plan.edits;
+    const edits = plan.pickBoxes ? pickedEdits(plan.pickBoxes, picked).edits : plan.edits;
     const {
-      stats: worldStats, traits: worldTraits, worldScripts: ownScripts, worldTools: ownTools, updateStat: write, updateTrait: writeTrait,
-      editEntity: edit, setWorldScripts: writeWorldScripts, setWorldTools: writeWorldTools,
+      stats: worldStats, traits: worldTraits, worldScripts: ownScripts, worldTools: ownTools, items: worldItems, updateStat: write, updateTrait: writeTrait,
+      updateItem: writeItem, editEntity: edit, setWorldScripts: writeWorldScripts, setWorldTools: writeWorldTools,
     } = latest.current;
     const byId = new Map(worldStats.map((stat) => [stat.id, stat]));
     const traitById = new Map(worldTraits.map((trait) => [trait.id, trait]));
@@ -180,6 +190,9 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
         writeWorldScripts?.(withScriptCode(ownScripts, scripts));
       } else if (home.kind === 'tool') {
         writeWorldTools?.(withToolCode(ownTools, scripts));
+      } else if (home.kind === 'item') {
+        const item = worldItems.find((entry) => entry.id === home.itemId);
+        if (item && writeItem) writeItem({ ...item, scripts: withScriptCode(item.scripts ?? [], scripts) });
       } else if (home.kind === 'trait') {
         const trait = traitById.get(home.traitId);
         if (trait && writeTrait) writeTrait(rewritten(trait, scripts));

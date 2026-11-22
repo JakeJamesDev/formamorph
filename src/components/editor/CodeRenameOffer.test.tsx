@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Entity, Placeholder, Script, Stat, StatGroup, Tool, Trait, TraitGroup } from '@/types';
+import type { Entity, Item, Placeholder, Script, Stat, StatGroup, Tool, Trait, TraitGroup } from '@/types';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { statCodeName } from '@/lib/statCodeNames';
 import type { RenamedStat } from '@/lib/statCodeRename';
@@ -17,9 +17,9 @@ const stat = (id: string, name: string, code: string): Stat =>
 
 const store: {
   stats: Stat[]; statGroups: StatGroup[]; traits: Trait[]; traitGroups: TraitGroup[]; entities: Entity[]; placeholders: Placeholder[];
-  worldScripts: Script[]; worldTools: Tool[]; rerender: () => void;
+  worldScripts: Script[]; worldTools: Tool[]; items: Item[]; rerender: () => void;
 } = {
-  stats: [], statGroups: [], traits: [], traitGroups: [], entities: [], placeholders: [], worldScripts: [], worldTools: [], rerender: () => {},
+  stats: [], statGroups: [], traits: [], traitGroups: [], entities: [], placeholders: [], worldScripts: [], worldTools: [], items: [], rerender: () => {},
 };
 
 vi.mock('@/contexts/GameDataContext', () => ({
@@ -31,6 +31,11 @@ vi.mock('@/contexts/GameDataContext', () => ({
     entities: store.entities,
     worldScripts: store.worldScripts,
     worldTools: store.worldTools,
+    items: store.items,
+    updateItem: (next: Item) => {
+      store.items = store.items.map((entry) => (entry.id === next.id ? next : entry));
+      store.rerender();
+    },
     setWorldTools: (next: Tool[]) => {
       store.worldTools = next;
       store.rerender();
@@ -102,6 +107,8 @@ const Harness = (props: Parameters<typeof NameField>[0]) => {
   );
 };
 
+const item: Item = { id: 'torch', name: 'Torch', statEffects: [], traitEffects: [], equipRequires: [] };
+
 const codeOf = (id: string) => codeAt(store.stats.find((entry) => entry.id === id));
 const beforeCodeOf = (id: string) => codeAt(store.stats.find((entry) => entry.id === id), 'before');
 
@@ -125,6 +132,7 @@ beforeEach(() => {
   store.entities = [];
   store.worldScripts = [];
   store.worldTools = [];
+  store.items = [];
   store.stats = [
     stat('a', 'Health', 'return stats.Health.value * 2;'),
     stat('b', 'Stamina', `return stats['Health'].max - 1;`),
@@ -272,6 +280,35 @@ describe('the rename offer', () => {
     expect(screen.getByText(/The code of 2 world scripts names the trait “Brave” 2 times\./)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Update Code' }));
     expect(store.worldScripts.map((script) => script.code)).toEqual(['const b = traits.Bold;', 'traits.Bold.enabled = true;']);
+  });
+
+  it('carries a trait rename into an item script', async () => {
+    store.stats = [];
+    store.traits = [{ id: 'brave', name: 'Brave', statChanges: [] }];
+    store.items = [{ ...item, scripts: [{ id: 'u', timing: 'used', code: 'traits.Brave.enabled = true;' }] }];
+    render(<Harness root="traits" initial="Brave" otherNames={[]} />);
+    const user = await renameTo('Bold');
+
+    expect(screen.getByText(/The code of 1 item names the trait “Brave” 1 time\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+    expect(store.items[0].scripts).toEqual([{ id: 'u', timing: 'used', code: 'traits.Bold.enabled = true;' }]);
+  });
+
+  it('asks about an item script’s owner key when another holder has a stat of the old name', async () => {
+    store.stats = [];
+    store.entities = [
+      { id: 'ann', name: 'Ann', stats: [stat('g', 'Gale', '')] },
+      { id: 'bo', name: 'Bo', stats: [stat('h', 'Gale', '')] },
+    ];
+    store.items = [{ ...item, scripts: [{ id: 'u', timing: 'used', code: 'owner.stats.Gale.value += 1;' }] }];
+    render(<Harness root="stats" initial="Gale" otherNames={[]} renamed={{ id: 'g', entityId: 'ann' }} />);
+    const user = await renameTo('Gust');
+
+    expect(screen.getByText(/Another entity that can hold the item also has a stat named “Gale”/)).toBeInTheDocument();
+    expect(screen.getByText('Item “Torch”, line 1')).toBeInTheDocument();
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+    expect(store.items[0].scripts?.[0].code).toBe('owner.stats.Gust.value += 1;');
   });
 
   it('asks with the count, and rewrites every script on Yes', async () => {
