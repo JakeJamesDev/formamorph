@@ -40,7 +40,7 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
 | Q16 | The control is called Weather Mask; the Media List kind shows as Mask. |
 | Q17 | The work ships as five tickets: entries and control, play, brush editor, preview and Media tab editing, Test Bench warning. |
 | Q18 | The Weather Mask control shows in Advanced mode only. |
-| Q19 | Settled by prototype, 2026-11-23. The brush editor is "in the scene": the picture fills the window as in play, with the weather showing through the mask. Tools float over it and rest faded until hovered or focused. Touch has no hover: on mobile the controls stay solid and stack, Cancel and Save above the picture and every tool in one panel below. On every device the controls hide while a stroke is in progress. Prototype: branch `prototype/weather-mask-brush` (commit f9d6ec4e2, variant B), `#dev?modal=weatherMaskPrototype&proto=B`. |
+| Q19 | Settled by prototype, 2026-11-23. The brush editor is "in the scene": the whole picture sits large in the window on black, fit so every edge is paintable (the prototype's contain fit), with the weather showing through the mask. Tools float over it and rest faded until hovered or focused. Touch has no hover: on mobile the controls stay solid and stack, Cancel and Save above the picture and every tool in one panel below. On every device the controls hide while a stroke is in progress. Prototype: branch `prototype/weather-mask-brush` (commit f9d6ec4e2, variant B), `#dev?modal=weatherMaskPrototype&proto=B`. |
 
 ## User Stories
 
@@ -97,7 +97,8 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
 
 **Play**
 
-- The mask in force is the mask of the location image that shows now: the primary visible image under its Visibility rules, read the way the location art is read. A past page reads its own location and image.
+- The mask in force is the mask of the location image that shows now: the primary visible image under its Visibility rules, read the way the location art is read. A past page reads its own location and image. When a script overrides the location's picture with a Media entry, the mask is the first gallery slot's that links that same entry, else none. A dangling or non-Mask link reads as no mask.
+- Until the shown image has loaded and its size is known, masked weather draws nothing, so a Sheltered room never flashes full-screen rain. Unmasked weather is unchanged.
 - The weather view decision gains one input, the mask in force or none. The rules (Q3, Q4, Q11):
   - No mask: unchanged.
   - Mask and an open location: the background shows, limited to the mask.
@@ -120,14 +121,19 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
 
 **Brush editor**
 
-- A full-window editor in the scene (Q19): the picture fills the window as it does in play, the mask shows as a tint that can be hidden, and the weather preview draws through the mask. A floating toolbar holds the tools and the size and softness sliders; a corner card holds the preview kind, Show or Hide Mask, and the switch between pictures that share the mask; Save and Cancel sit top right. On desktop each control group rests faded and returns to full on hover or keyboard focus. On mobile, Cancel and Save sit above the picture and every other control in one solid panel below it. On both, every control hides while a stroke is in progress. Tools: brush and eraser with size, soft edge, invert, fill and clear, undo and redo (Q8). Save writes the mask; Cancel discards.
+- A full-window editor in the scene (Q19): the whole picture fits the window on black (contain, not play's cover crop), so the edges another screen shape shows stay paintable; the mask shows as a tint that can be hidden, and the weather preview draws through the mask. A floating toolbar holds the tools and the size and softness sliders; a corner card holds the preview kind, Show or Hide Mask, and the switch between pictures that share the mask; Save and Cancel sit top right. On desktop each control group rests faded and returns to full on hover or keyboard focus. On mobile, Cancel and Save sit above the picture and every other control in one solid panel below it. On both, every control hides while a stroke is in progress. Tools: brush and eraser with size, soft edge, invert, fill and clear, undo and redo (Q8). Save writes the mask; Cancel discards.
+- Ticket 03 opens over the slot's own picture; its corner card holds Show or Hide Mask and the shared-count note. Ticket 04 adds the preview kind and the picture switch.
+- Cancel and Escape discard at once when nothing was painted, and ask before discarding painted changes. Ctrl+Z undoes; Ctrl+Shift+Z and Ctrl+Y redo.
+- A mask of another shape stretches to the picture's box on open and saves at the picture's size, as play stretches it.
+- Save is one World Editor history step: painting a new mask links and adds it in one step, as Upload does; editing an existing mask is its own step. Strokes live only in the editor's undo.
+- The saved PNG is opaque grayscale, black where nothing is painted (Q6).
 - A live weather preview draws the Weather Background through the mask in progress, with a picker for the kind (Q8).
 - When the mask is shared, the editor names how many images use it, and Save changes it for all of them (Q12).
 - The editing state is a pure mask-document module: an ordered list of operations (stroke with size, softness and mode; fill; clear; invert) with undo and redo, which a canvas renderer replays. The module holds no canvas.
 
 **Test Bench**
 
-- A warning rule: a Mask whose aspect ratio differs from an image that links it, beyond a small tolerance. The finding names the location, the image slot and the mask (Q15).
+- A warning rule: a Mask whose aspect ratio differs from an image that links it, beyond a small tolerance. The finding names the location, the image slot and the mask (Q15). The tolerance is a 2% relative difference between the width/height ratios. A Layered slot compares against its rig's canvas size; an embedded or linked image against its decoded size. Sizes need decoding, so the rule runs out of band, like the Layered Image size finding.
 - A slot linking a Mask entry that no longer exists is read as no mask, and the existing missing-media finding covers it.
 
 **Docs, help and dev routes**
