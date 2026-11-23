@@ -150,7 +150,7 @@ describe('a negated weather Condition', () => {
 });
 
 describe('a weather Condition outside play', () => {
-  const on = (over: Partial<WorldWeather> = {}): WorldWeather => ({ on: true, allowed: ['rain', 'snow'], ...over });
+  const on = (over: Partial<WorldWeather> = {}): WorldWeather => ({ allowed: ['clear', 'rain', 'snow'], ...over });
   const editor = (w?: WorldWeather) => editorGateInput({ traits: [T('a', { requires: [{ all: [weather('snow')] }] })], traitGroups: [], entities: [], weather: w });
   const holds = (w?: WorldWeather) => gateOf(gateStates(editor(w)), null, 'a')!.unlocked;
 
@@ -159,19 +159,19 @@ describe('a weather Condition outside play', () => {
     expect(holds(on({ defaultWeather: 'rain' }))).toBe(false);
   });
 
-  it('reads Clear when the Default Weather is unset, or Weather is off', () => {
+  it('reads Clear when the Default Weather is unset, and a one-kind world reads its kind', () => {
     expect(holds(on())).toBe(false);
-    expect(weatherGate(undefined)).toEqual({});
-    expect(weatherGate({ on: false, allowed: ['rain'], defaultWeather: 'rain' })).toEqual({});
+    expect(weatherGate(undefined)).toEqual({ weather: 'clear' });
+    expect(weatherGate({ allowed: ['rain'], defaultWeather: 'snow' })).toEqual({ weather: 'rain' });
     expect(gateOf(gateStates(editorGateInput({ traits: [T('a', { requires: [{ all: [weather('clear')] }] })], traitGroups: [], entities: [] })), null, 'a')!.unlocked).toBe(true);
   });
 
-  it('is offered, with the allowed kinds, only while Weather is on', () => {
+  it('is offered, with the allowed kinds, only while the weather can change', () => {
     const offered = requirementOptions(editor(on()), 'a');
     expect(offered.weatherKinds).toEqual(['clear', 'rain', 'snow']);
     expect(offered.weather?.[0].requirement).toEqual(weather());
     expect(requirementOptions(editor(), 'a').weather).toBeUndefined();
-    expect(requirementOptions(editor({ on: false, allowed: ['rain'] }), 'a').weather).toBeUndefined();
+    expect(requirementOptions(editor({ allowed: ['rain'] }), 'a').weather).toBeUndefined();
   });
 });
 

@@ -70,7 +70,7 @@ import {
 import { startingGateStats } from '@/lib/gateStats';
 import { locationRuleStates } from '@/lib/imageVisibility';
 import { mediaEntry } from '@/lib/mediaList';
-import { activeWeather, allowedWeatherKinds, WEATHER_LABELS } from '@/lib/weather';
+import { allowedWeatherKinds, weatherChanges, WEATHER_LABELS } from '@/lib/weather';
 import { setupStatsOf } from '@/lib/setupGateStats';
 import { ruleText, rowText } from '@/lib/traitGateLine';
 import { conditionsOf } from '@/lib/requirementRows';
@@ -3947,8 +3947,9 @@ const weatherNotAllowed: Rule = {
   summary: (count) => `${count} starting weathers are not on the allowed list`,
   // A kind taken off the allowed list after a pick is skipped at start; the game reads the next level instead.
   check: (world) => {
-    const weather = activeWeather(world.worldOverview);
-    if (!weather) return [];
+    const weather = world.worldOverview?.weather;
+    // A world with one kind starts in it, whatever a row picks.
+    if (!weather || !weatherChanges(weather)) return [];
     const allowed = allowedWeatherKinds(weather);
     const outside = (kind: WeatherKind | undefined): kind is WeatherKind => !!kind && !allowed.includes(kind);
     const out: Finding[] = [];
@@ -3989,9 +3990,7 @@ const weatherConditionNotAllowed: Rule = {
   summary: (count) => `${count} weather Conditions name a weather the world does not allow`,
   // A kind taken off the allowed list leaves its Condition holding for no weather; the other kinds in it still work.
   check: (world) => {
-    const weather = activeWeather(world.worldOverview);
-    if (!weather) return [];
-    const allowed = allowedWeatherKinds(weather);
+    const allowed = allowedWeatherKinds(world.worldOverview?.weather);
     const hosts: Array<{ item: FindingItem; node: unknown }> = [
       { item: worldItem(world), node: world.worldOverview },
       ...(world.traits ?? []).map((t) => ({ item: traitItem(t.id, world), node: t })),

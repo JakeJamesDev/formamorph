@@ -278,6 +278,9 @@ interface MultiSelectProps
 	 */
 	resetOnDefaultValueChange?: boolean;
 
+	/** The footer action that deselects every option. */
+	clearLabel?: string;
+
 	/**
 	 * If true, automatically closes the popover after selecting an option.
 	 * Useful for single-selection-like behavior or mobile UX.
@@ -345,6 +348,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 			resetOnDefaultValueChange = true,
 			closeOnSelect = false,
 			onOpenChange,
+			clearLabel = "Clear",
 			...props
 		},
 		ref
@@ -1229,7 +1233,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 											forceMount
 											onSelect={handleClear}
 											className="flex-1 justify-center cursor-pointer">
-											Clear
+											{clearLabel}
 										</CommandItem>
 										<Separator
 											orientation="vertical"

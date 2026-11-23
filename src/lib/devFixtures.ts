@@ -531,7 +531,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       };
     }
     case 'weatherCondition': {
-      // The white room with Weather on and a backdrop that shows its rain art only while the World Weather is Rain.
+      // The white room with changing weather and a backdrop that shows its rain art only while the World Weather is Rain.
       const [world, save] = await Promise.all([
         import('./devFixtures/whiteRoomWorld.json'),
         import('./devFixtures/whiteRoomSave.json'),
@@ -547,7 +547,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
           ...base,
           worldOverview: {
             ...base.worldOverview,
-            weather: { on: true, allowed: ['rain', 'snow', 'storm'] },
+            weather: { allowed: ['clear', 'rain', 'snow', 'storm'] },
             mediaList: { ...base.worldOverview.mediaList, ...art },
           },
           locations: base.locations.map((l) => (l.id === WHITE_ROOM_ID

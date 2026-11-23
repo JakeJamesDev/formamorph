@@ -16,19 +16,19 @@ const flags = (w: RuleWorld) => runRules(w).filter((f) => f.ruleId === RULE);
 
 describe('the Weather Test Bench rule', () => {
   it('is quiet when every start weather is on the allowed list', () => {
-    const w = world({ on: true, allowed: ['rain'], defaultWeather: 'rain' }, {}, { openings: [action('a', 'rain'), action('b', 'clear'), action('c')] });
+    const w = world({ allowed: ['clear', 'rain'], defaultWeather: 'rain' }, {}, { openings: [action('a', 'rain'), action('b', 'clear'), action('c')] });
     expect(flags(w)).toEqual([]);
   });
 
   it('flags a Default Weather left behind after the allowed list changes', () => {
-    const found = flags(world({ on: true, allowed: ['rain'], defaultWeather: 'storm' }));
+    const found = flags(world({ allowed: ['clear', 'rain'], defaultWeather: 'storm' }));
     expect(found).toHaveLength(1);
     expect(found[0].message).toContain('Default Weather');
     expect(found[0].message).toContain('Storm');
   });
 
   it('flags an Opening Weather outside the list on the world, a location and an entity, naming each owner', () => {
-    const w = world({ on: true, allowed: ['rain'] }, {
+    const w = world({ allowed: ['clear', 'rain'] }, {
       locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, openings: [action('l', 'snow')] }],
       entities: [{ ...resident, openings: [action('e', 'storm')] }],
     }, { openings: [action('w', 'brightSun')] });
@@ -37,8 +37,9 @@ describe('the Weather Test Bench rule', () => {
     expect(found.flatMap((f) => f.items.map((i) => i.name)).sort()).toEqual(['Harbor Steps', 'Odd Wick', 'Sedge Landing']);
   });
 
-  it('is quiet while Weather is off, however stale the values', () => {
-    expect(flags(world({ on: false, allowed: [], defaultWeather: 'storm' }, {}, { openings: [action('a', 'storm')] }))).toEqual([]);
+  it('is quiet in a one-kind world, which starts in its kind whatever the rows pick', () => {
+    expect(flags(world({ allowed: [], defaultWeather: 'storm' }, {}, { openings: [action('a', 'storm')] }))).toEqual([]);
+    expect(flags(world({ allowed: ['rain'], defaultWeather: 'storm' }, {}, { openings: [action('a', 'snow')] }))).toEqual([]);
   });
 });
 
@@ -46,7 +47,7 @@ describe('the weather Condition Test Bench rule', () => {
   const COND = 'weather-condition-not-allowed';
   const flagged = (w: RuleWorld) => runRules(w).filter((f) => f.ruleId === COND);
   const rule = (...kinds: WeatherKind[]) => [{ all: [{ kind: 'weather' as const, kinds }] }];
-  const withTrait = (requires: ReturnType<typeof rule>, weather: WorldWeather = { on: true, allowed: ['rain'] }) =>
+  const withTrait = (requires: ReturnType<typeof rule>, weather: WorldWeather = { allowed: ['clear', 'rain'] }) =>
     world(weather, { traits: [{ id: 'awning', name: 'Awning', statChanges: [], requires }] });
 
   it('is quiet while every kind is Clear or allowed', () => {
@@ -62,13 +63,13 @@ describe('the weather Condition Test Bench rule', () => {
   });
 
   it('flags a location image rule, wherever the rule sits', () => {
-    const w = world({ on: true, allowed: ['rain'] }, {
+    const w = world({ allowed: ['clear', 'rain'] }, {
       locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, images: [{ data: 'x', requires: rule('snow') }] }],
     });
     expect(flagged(w).flatMap((f) => f.items.map((i) => i.name))).toEqual(['Harbor Steps']);
   });
 
-  it('is quiet while Weather is off', () => {
-    expect(flagged(withTrait(rule('storm'), { on: false, allowed: [] }))).toEqual([]);
+  it('flags a kind a Clear-only world does not allow', () => {
+    expect(flagged(withTrait(rule('storm'), { allowed: [] }))).toHaveLength(1);
   });
 });

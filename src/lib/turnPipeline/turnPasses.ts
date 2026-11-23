@@ -879,7 +879,7 @@ const weatherOffer = (input: TurnPlanInput): WeatherPassOffer => {
 
 /**
  * Whether the narration changed the World Weather, limited to the offered kinds. Every turn while the world's
- * Weather is on (Q11); on the opening turn only when no start weather was authored (Q24).
+ * weather can change (two or more kinds allowed); on the opening turn only when no start weather was authored (Q24).
  */
 export const weatherPass: TurnPassRecord<WeatherKind | null> = {
   id: 'weather',

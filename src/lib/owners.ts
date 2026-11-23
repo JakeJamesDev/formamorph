@@ -20,7 +20,7 @@ export interface OwnerWorld {
   options?: GateInput['worldOptions'];
   /** The Option values gates read. Absent, each Option's default (Q25). */
   optionValues?: GateInput['optionValues'];
-  /** The world's Weather block. While it is on, a weather Condition reads its Default Weather outside play and the editor offers the allowed kinds. */
+  /** The world's Weather block. A weather Condition reads its start weather outside play; the editor offers the allowed kinds while they can change. */
   weather?: WorldWeather;
   /** The world's Default Time, the daypart a time Condition reads outside play. Absent ⇒ the shipped start hour's. */
   defaultTime?: Daypart;

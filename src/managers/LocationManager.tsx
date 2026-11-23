@@ -27,7 +27,7 @@ import { locationPanelTabsFor, locationTabForField, type LocationPanelTab } from
 import type { Entity, FocusFieldHint, GameLocation, PlaceholderPin } from '@/types';
 import { fieldFrame } from '@/lib/historyField';
 import { AI_SUMMARY_HINT } from './EntityFields';
-import { weatherKindsOf } from '@/lib/weather';
+import { hasWeather, weatherKindsOf } from '@/lib/weather';
 
 /**
  * Right-panel editor for one location: its fields split across Details, Presence, Media, Pins and Openings.
@@ -67,7 +67,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField, connectionOpe
   const { draft: editingLocation, setField: handleChange, apply } = useEditingDraft(location, updateLocation);
   const { advanced } = useEditorMode();
   const weatherKinds = weatherKindsOf(world.worldOverview);
-  const weatherOn = !!weatherKinds;
+  const weatherOn = hasWeather(world.worldOverview?.weather);
   // `location.move` names a place by its code name, so the rename offer compares the names the way code reads them.
   const rename = useRenameField({
     root: 'locations',

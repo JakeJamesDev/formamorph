@@ -1,6 +1,6 @@
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import { daypartAt, daypartStartHour } from '@/lib/gameClock';
-import { authoredStartWeather, type ResolvedStart } from '@/lib/weather';
+import { authoredStartWeather, fallbackWeather, type ResolvedStart } from '@/lib/weather';
 import { idsAt, idsAtAny, startPlacesOf, type PlacesOf } from '@/lib/entityPlaces';
 import { playsOnlyWhenPicked } from '@/lib/entityRelationships';
 import { locationRows } from '@/lib/locationTree';
@@ -32,14 +32,14 @@ export function resolveStart(opening: Opening | null | undefined, overview: Over
 }
 
 /** The daypart and weather a Condition reads at the start of a story: the drawn Opening's, else the world's
- *  defaults, else the shipped start hour and Clear (Q31). */
+ *  defaults, else the shipped start hour and the world's fallback weather (Q31). */
 export function startRead(opening: Opening | null | undefined, overview: Overview): { daypart: Daypart; weather: WeatherKind } {
   const { startHour, weather } = resolveStart(opening, overview);
-  return { daypart: daypartAt(0, startHour === null ? undefined : { startHour }), weather: weather ?? 'clear' };
+  return { daypart: daypartAt(0, startHour === null ? undefined : { startHour }), weather: weather ?? fallbackWeather(overview?.weather) };
 }
 
 /** Resolves the start and writes it into the game: the hour as authored (or null), the weather as authored (or
- *  Clear until the page-one read decides), and whether a weather was authored, which the page-one read plans
+ *  the world's fallback until the page-one read decides), and whether a weather was authored, which the page-one read plans
  *  from. New Game and a redraw both go through this one call. */
 export function applyResolvedStart(
   opening: Opening | null | undefined, overview: Overview,
@@ -47,7 +47,7 @@ export function applyResolvedStart(
 ): ResolvedStart {
   const start = resolveStart(opening, overview);
   set.setStartHour(start.startHour);
-  set.setWeather(start.weather ?? 'clear');
+  set.setWeather(start.weather ?? fallbackWeather(overview?.weather));
   set.setStartWeatherSet(start.weather !== null);
   return start;
 }

@@ -45,13 +45,15 @@ describe('runTestCode world writes', () => {
 
   it('lists a weather set from the world’s Default Weather, and fails a kind the world does not allow', async () => {
     const rainy = {
-      ...world, worldOverview: { weather: { on: true, allowed: ['rain', 'storm'], defaultWeather: 'rain' } } as WorldOverview,
+      ...world, worldOverview: { weather: { allowed: ['clear', 'rain', 'storm'], defaultWeather: 'rain' } } as WorldOverview,
     };
     const read = await run('if (world.weather !== "rain") throw new Error("read"); world.weather = "storm";', rainy);
     expect(read.error).toBeNull();
     expect(read.writes).toEqual(['world.weather: storm']);
     expect((await run('world.weather = "snow";', rainy)).error).toMatch(/"snow"/);
-    expect((await run('world.weather = "rain";')).error).toMatch(/Weather is off/);
+    // A world with no weather block allows Clear alone.
+    expect((await run('world.weather = "rain";')).error).toMatch(/does not allow the weather "rain"\. It allows "clear"/);
+    expect((await run('world.weather = "clear";')).error).toBeNull();
   });
 
   it('lists each Layer write with its Layer, field and value', async () => {

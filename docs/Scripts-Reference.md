@@ -967,9 +967,9 @@ if (atGate) atGate.image = "Captain";
 ```
 
 ### Weather
-<!-- keywords: weather, set weather, make it rain, storm, snow, bright sun, clear sky, read weather, world.weather, does not allow the weather, weather is off -->
+<!-- keywords: weather, set weather, make it rain, storm, snow, bright sun, clear sky, read weather, world.weather, does not allow the weather -->
 
-`world.weather` is the World Weather: one weather for the whole world, as the Weather Pass or the story sets it. Turn Weather on in the [World Editor](World-Editor-Overview) first.
+`world.weather` is the World Weather: one weather for the whole world, as the Weather Pass or the story sets it. The world's kinds are set in the [World Editor](World-Editor-Overview).
 
 | Kind | Reads and takes |
 | --- | --- |
@@ -987,8 +987,8 @@ if (traits.Ritual.enabled) world.weather = "storm";
 if (location.name === "Cellar" && world.weather === "rain") world.weather = "clear";
 ```
 
-- **Reading gives the kind, or `null`.** It reads `null` while the world's Weather is off. It reads the weather as the turn began, not the Weather Pass's new answer. A later script reads what an earlier script set.
-- **Clear is always allowed.** Any other kind must be one the world allows. A kind the world does not allow stops the script with an error that names it. So does a set while Weather is off.
+- **Reading gives the kind.** It reads the weather as the turn began, not the Weather Pass's new answer. A later script reads what an earlier script set.
+- **The kind must be one the world allows.** A kind the world does not allow stops the script with an error that names it. A world with no kinds picked allows Clear.
 - **The change lands with the turn.** It replaces what the Weather Pass chose. The player sees it as a weather change, with the full-screen effect when the new weather is not Clear.
 - **Bright Sun still turns into Clear at nightfall.** A set to `"brightSun"` in a turn that ends at night becomes Clear, with no effect.
 - **A rewind past the turn undoes it.** The weather is saved with the turn.

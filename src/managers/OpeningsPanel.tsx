@@ -116,7 +116,7 @@ export function LocationOpeningsHint() {
 
 /** One entity's openings, for both entity editors. */
 export function EntityOpenings({ entity, library = false, onChange, placeholders, names = { placeholders }, weatherKinds }: {
-  /** The kinds a row can pick while the world's Weather is on. Absent hides the picker. */
+  /** The kinds a row can pick while the world's weather can change. Absent hides the picker. */
   weatherKinds?: WeatherKind[];
   entity: Entity;
   /** A library entity, whose Self rows show only with the Persona mark: no player picks a library Custom Persona. */
@@ -214,7 +214,7 @@ export function OpeningsList({
   renameOwner?: OpeningOwnerRef;
   /** Names the owner in a blank-named row's label. Absent: the entity's name, else "World". */
   labelOwner?: string;
-  /** The kinds a row's Weather can pick while the world's Weather is on. Absent hides the picker. */
+  /** The kinds a row's Weather can pick while the world's weather can change. Absent hides the picker. */
   weatherKinds?: WeatherKind[];
   owner: OpeningOwner;
   rows: EditorOpeningRow[];

@@ -31,7 +31,7 @@ export interface WeatherView {
 
 const NONE: WeatherView['background'] = { kind: null, mode: 'none' };
 
-/** The kind the player sees now: none while Weather is off, in Shelter, on Clear, or for Bright Sun after dark. */
+/** The kind the player sees now: none in a Clear-only world, in Shelter, on Clear, or for Bright Sun after dark. */
 function shownKind({ weatherOn, worldWeather, sheltered, daylight }: WeatherViewInput): AllowedWeatherKind | null {
   if (!weatherOn || sheltered || !worldWeather || worldWeather === 'clear') return null;
   if (worldWeather === 'brightSun' && !daylight) return null;

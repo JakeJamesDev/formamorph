@@ -117,7 +117,7 @@ export const LOCATION_MEMBERS: readonly SurfaceEntry[] = withAccess([
 /** The members of `world`. */
 export const WORLD_MEMBERS: readonly SurfaceEntry[] = withAccess([
   { name: 'music', detail: 'string | null', info: 'Name of the sound playing as the world’s music, or null; assign a sound’s name to play it' },
-  { name: 'weather', detail: 'string | null', info: 'The World Weather: "clear", "rain", "snow", "storm" or "brightSun". It is null while the world’s Weather is off. Assign an allowed kind to change it; the change applies when the turn ends.' },
+  { name: 'weather', detail: 'string', info: 'The World Weather: "clear", "rain", "snow", "storm" or "brightSun". Assign an allowed kind to change it; the change applies when the turn ends.' },
 ], ['music', 'weather'], 'writable');
 
 /** The verbs on `memories`: a line appended to this turn, and a pinned line, named or not. */

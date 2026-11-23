@@ -21,7 +21,7 @@ const MORNING = 0;
 const EVENING = 10;
 const NIGHT = 15;
 
-const WORLD: WorldWeather = { on: true, allowed: ['rain', 'snow', 'storm', 'brightSun'] };
+const WORLD: WorldWeather = { allowed: ['clear', 'rain', 'snow', 'storm', 'brightSun'] };
 
 /** The pass's input as the view builds it: offered kinds read at the turn's start. */
 const weatherAt = (current: WeatherKind, gameTime: number, startWeatherSet = false): NonNullable<TurnPlanInput['weather']> =>

@@ -85,7 +85,7 @@ export interface ChipScene {
   notes: string;
   /** The story clock, or none while the clock is off or its opening hour is unknown. */
   time: ChipSceneTime | null;
-  /** The World Weather, or none while the world's Weather is off or page one is about to read it. */
+  /** The World Weather, or none while the world allows Clear alone or page one is about to read it. */
   weather?: WeatherKind | null;
   /** Placeholder resolution, applied to every value before it reaches a prompt. */
   resolve: (text: string) => string;

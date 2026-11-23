@@ -118,7 +118,7 @@ export interface GateInput {
   daypart?: Daypart;
   /** The World Weather, which a weather Condition reads. Absent, Clear: authoring reads the Default Weather it is given. */
   weather?: WeatherKind;
-  /** The kinds a weather Condition can pick, Clear first. Present only while the world's Weather is on: absent, the editor offers none. */
+  /** The kinds a weather Condition can pick, Clear first. Present only while the world's weather can change: absent, the editor offers none. */
   weatherKinds?: readonly WeatherKind[];
   /** The Drawn Opening, resolved against the cast, which an Opening Condition reads. Absent or null, none. */
   opening?: OpeningKey | null;
@@ -1284,7 +1284,7 @@ export interface RequirementOptions {
   items?: RequirementOption[];
   /** Each World Option once, starting on its default value. */
   worldOptions?: RequirementOption[];
-  /** The one Weather row, while the world's Weather is on. */
+  /** The one Weather row, while the world's weather can change. */
   weather?: RequirementOption[];
   /** The kinds the Weather row's chip offers, Clear first. */
   weatherKinds?: readonly WeatherKind[];

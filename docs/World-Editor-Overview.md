@@ -27,20 +27,25 @@ Each location's background is on its **Media** tab. See [World Editor: Locations
 3. Select **Save**.
 
 ## Weather
-<!-- keywords: rain, snow, storm, sun, bright sun, clear, sheltered, indoors, default weather, allowed weather, weather on, start weather -->
+<!-- keywords: rain, snow, storm, sun, bright sun, clear, sheltered, indoors, default weather, allowed weather, permanent rain, start weather -->
 <!-- route: worldEditor.overview#weather -->
 
-A world can have weather. It is off until you turn it on. A world with weather has one weather at a time: **Clear**, **Rain**, **Snow**, **Storm** or **Bright Sun**. A save keeps the current weather.
+Every world has one weather at a time: **Clear**, **Rain**, **Snow**, **Storm** or **Bright Sun**. A new world allows Clear alone, so its sky stays clear. A save keeps the current weather.
 
-The story changes the weather. After each turn, the AI reads what happened and picks the new weather from the kinds you allow. A storm in a figure of speech or a memory changes nothing. Bright Sun turns Clear when night falls. The AI narrator is told the current weather every turn.
+| You pick | What happens |
+| --- | --- |
+| One kind | That is the weather all story long. Pick only Rain for a world where it always rains. |
+| Two or more | The story changes the weather. After each turn, the AI reads what happened and picks the new weather from your kinds. |
+| Nothing | The same as Clear alone. |
+
+A storm in a figure of speech or a memory changes nothing. Bright Sun turns Clear when night falls. The AI narrator is told the current weather every turn, unless the world allows Clear alone.
 
 1. Open the **Overview** tab.
-2. Check **Weather**.
-3. Under **Allowed Weather**, check the kinds the world can have. Clear is always allowed.
-4. To start games in one weather, pick it under **Default Weather**. Leave it blank to let the AI read the weather from page one.
-5. Select **Save**.
+2. Under **Weather**, pick the kinds the world can have.
+3. With two or more kinds, you can pick a **Default Weather** to start games in. Leave it blank to let the AI read the weather from page one.
+4. Select **Save**.
 
-To mark a place indoors, check **Sheltered** on the location's **Details** tab. It shows while Weather is on. A child location is not Sheltered unless you check it too.
+To mark a place indoors, check **Sheltered** on the location's **Details** tab. It shows once the world allows a kind other than Clear. A child location is not Sheltered unless you check it too.
 
 An [opening](World-Editor-Openings#start-weather) can set its own weather.
 

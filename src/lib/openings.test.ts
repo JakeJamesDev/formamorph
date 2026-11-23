@@ -39,7 +39,7 @@ describe('the start hour an author sets', () => {
 
   describe('the start New Game and a redraw both resolve', () => {
     const world = (extra: Partial<WorldOverview> = {}) =>
-      overview({ weather: { on: true, allowed: ['rain', 'storm'] }, ...extra });
+      overview({ weather: { allowed: ['clear', 'rain', 'storm'] }, ...extra });
     /** The game's setters, recording what a start wrote. */
     const game = (hour: number | null = null, weather: WeatherKind = 'clear') => {
       const state: { hour: number | null; weather: WeatherKind; weatherSet?: boolean } = { hour, weather };
@@ -51,7 +51,7 @@ describe('the start hour an author sets', () => {
 
     it('saves the Opening Weather, then Default Weather, then Clear', () => {
       const storm: Opening = { ...action('s'), weather: 'storm' };
-      const ov = world({ weather: { on: true, allowed: ['rain', 'storm'], defaultWeather: 'rain' } });
+      const ov = world({ weather: { allowed: ['clear', 'rain', 'storm'], defaultWeather: 'rain' } });
       const a = game();
       applyResolvedStart(storm, ov, a.set);
       expect(a.state.weather).toBe('storm');

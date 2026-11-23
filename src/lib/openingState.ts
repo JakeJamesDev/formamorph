@@ -27,7 +27,7 @@ import { equipRequirement, settleInventory, startingInstances, type NewId } from
 import { randomUUID } from './uuid';
 import { genericInstancesOf, sandboxMediaOf } from './sandboxMedia';
 import type { OwnerId } from './scope';
-import { activeWeather, allowedWeatherKinds } from './weather';
+import { allowedWeatherKinds } from './weather';
 import { startRead } from './openings';
 import type { OpeningKey } from './drawnOpening';
 import { resolveEntityText, type PlaceholderMode } from './placeholders';
@@ -170,9 +170,7 @@ export function openingFold(
     places: { locations, location: start && { id: start.id, name: start.name }, connections: world.connections ?? [] },
     resolveText: turnOneText(allPlaceholders(world)),
     clock: { deltaHours: 0, elapsedHours: 0 },
-    ...(activeWeather(world.worldOverview) ? { weather: {
-      current: weather, allowed: allowedWeatherKinds(activeWeather(world.worldOverview)),
-    } } : {}),
+    weather: { current: weather, allowed: allowedWeatherKinds(world.worldOverview?.weather) },
     itemInstances: playWorld.itemInstances,
     items: world.items ?? [],
     slots: world.slots ?? [],

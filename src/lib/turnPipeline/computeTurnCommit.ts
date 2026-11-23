@@ -105,7 +105,7 @@ export interface TurnCommit {
   /** What the Inventory pass returned, which lands before the stat deltas (Q53). Empty when it changed nothing. */
   inventoryOps: InventoryPassOp[];
   /** The World Weather this turn leaves, after the pass and the nightfall rule. Null while the
-   *  world's Weather is off. */
+   *  world's weather cannot change. */
   weather: WeatherKind | null;
   /** The World Weather after the pass alone, which the nightfall rule reads again when code moves the clock. */
   passWeather: WeatherKind | null;
@@ -318,7 +318,7 @@ export function withCodeWrites(commit: TurnCommit, writes: WorldWrites | undefin
     clock = { ...clock, deltaHours: turnHours, elapsedHours: (clock.elapsedHours ?? 0) - (clock.deltaHours ?? 0) + turnHours };
   }
   // A script's set replaces the pass's answer, and the nightfall rule reads the final weather at the turn's end,
-  // so a set of Bright Sun that ends at night is Clear. A world with Weather off keeps none.
+  // so a set of Bright Sun that ends at night is Clear. A world whose weather cannot change keeps none.
   if (commit.passWeather) {
     ({ weather, nightfall } = withNightfall(codeWrites?.weather ?? commit.passWeather, clock));
   }

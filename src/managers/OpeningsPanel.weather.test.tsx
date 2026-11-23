@@ -19,7 +19,7 @@ const mount = (weatherKinds?: ReturnType<typeof allowedWeatherKinds>) => render(
 
 describe("an Opening's Weather picker", () => {
   it('offers World Default, Clear and the allowed kinds, never a kind the world leaves out', async () => {
-    mount(allowedWeatherKinds({ on: true, allowed: ['rain', 'storm'] }));
+    mount(allowedWeatherKinds({ allowed: ['clear', 'rain', 'storm'] }));
     await userEvent.setup().click(screen.getByRole('combobox', { name: 'Weather, Opening 1' }));
     const options = within(await screen.findByRole('listbox')).getAllByRole('option').map((o) => o.textContent);
     expect(options).toEqual(['World Default', 'Clear', 'Rain', 'Storm']);
@@ -34,7 +34,7 @@ describe("an Opening's Weather picker", () => {
   };
 
   it('marks a collapsed card with its Weather icon', async () => {
-    await collapsedWith(allowedWeatherKinds({ on: true, allowed: ['storm'] }));
+    await collapsedWith(allowedWeatherKinds({ allowed: ['clear', 'storm'] }));
     expect(screen.getByRole('img', { name: 'Weather, Storm' })).toBeTruthy();
   });
 

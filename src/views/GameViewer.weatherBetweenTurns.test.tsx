@@ -28,7 +28,7 @@ const world = (kind: string, defaultTime?: 'night' | 'morning', spin = 0): World
   const base = harborWorld({ stats: [vigor] });
   return {
     ...base,
-    worldOverview: { ...base.worldOverview, weather: { on: true, allowed: ['rain', 'storm', 'brightSun'], defaultWeather: 'rain' }, ...(defaultTime && { defaultTime }) },
+    worldOverview: { ...base.worldOverview, weather: { allowed: ['clear', 'rain', 'storm', 'brightSun'], defaultWeather: 'rain' }, ...(defaultTime && { defaultTime }) },
     traits: [lever], scripts: [setting(kind, spin)],
   } as World;
 };
@@ -130,5 +130,37 @@ describe('a between-turn weather set', () => {
     await waitFor(() => expect(live().weather).toBe('storm'));
     expect(live().fullMessageHistory).toHaveLength(4);
     expect(latestSnapshot()?.weather).toBe('storm');
+  });
+});
+
+describe('the Weather Pass', () => {
+  const asked = () => (vi.mocked(fetch).mock.calls as [string, RequestInit?][])
+    .filter(([, init]) => (init?.body as string | undefined)?.includes('You track the weather')).length;
+  const withAllowed = (allowed: World['worldOverview']['weather']) => {
+    const base = harborWorld({ stats: [vigor] });
+    return { ...base, worldOverview: { ...base.worldOverview, weather: allowed } } as World;
+  };
+
+  it('never runs in a one-kind world, which plays in its kind', async () => {
+    renderGameViewer(withAllowed({ allowed: ['snow'] }), { inGameplay: <Probe /> });
+    await playTurn();
+    await playTurn();
+    expect(asked()).toBe(0);
+    expect(live().weather).toBe('snow');
+  });
+
+  it('never runs in a world with no weather block', async () => {
+    renderGameViewer(withAllowed(undefined), { inGameplay: <Probe /> });
+    await playTurn();
+    await playTurn();
+    expect(asked()).toBe(0);
+    expect(live().weather).toBe('clear');
+  });
+
+  it('runs once a world allows two kinds', async () => {
+    renderGameViewer(withAllowed({ allowed: ['clear', 'rain'] }), { inGameplay: <Probe /> });
+    await playTurn();
+    expect(asked()).toBeGreaterThan(0);
+    expect(live().weather).toBe('rain');
   });
 });

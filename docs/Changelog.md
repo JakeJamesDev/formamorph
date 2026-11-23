@@ -31,11 +31,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Deleting a Layered Image in the World Editor deletes the images only it uses.** The confirm names them first. An image stays when another Layered Image uses it or any slot or gallery links it. One undo brings it all back.
     - **The Media tab hides images that only a Layered Image uses.** They show inside the Layered Image's editor, and a search for their name lists the Layered Image.
   - **Weather:**
-    - **Worlds can turn on Weather and mark locations Sheltered.** Pick the allowed kinds and a Default Weather, and give an opening its own Weather. A save keeps the weather.
+    - **Every world now has weather, and locations can be Sheltered.** Pick one kind for weather that never changes, such as endless rain, or several to let the story change it. New worlds start Clear. Openings can set their own Weather.
     - **The current weather now shows behind the game panels.** Rain, snow, storm and bright sun play over the location image, except in Sheltered locations. Turn it off with Weather Background in Display settings.
-    - **The AI now changes a world's weather when the story does, and tells the narrator the weather every turn.** After each turn the AI picks the new weather from the world's allowed kinds. Bright Sun turns Clear at nightfall. With no Default Weather, the AI reads the start weather from page one.
+    - **The AI now changes a world's weather when the story does, and tells the narrator the weather every turn.** In a world with two or more kinds, the AI picks the new weather from them after each turn. Bright Sun turns Clear at nightfall. With no Default Weather, the AI reads the start weather from page one.
     - **Scripts can read and set the weather with `world.weather`.** A set from an item or switch script between turns changes the weather at once; a set during a turn lands when the turn ends. A kind the world doesn't allow stops the script with an error.
-    - **Traits and image Visibility rules can now require the weather.** Pick Weather under Add Requirement, then turn on the kinds that count. It shows while the world's Weather is on.
+    - **Traits and image Visibility rules can now require the weather.** Pick Weather under Add Requirement, then turn on the kinds that count. It shows while the world allows two or more kinds.
     - **A short effect now plays over the game when the weather changes.** Raindrops run down the screen, snow piles up, lightning flashes or the sun breaks through, then it stops. Turn it off with **Weather Foreground** in Display settings.
   - **Drawn Opening:**
     - **Openings can have names.** Type a name at the top of an opening's card. A blank name shows the owner and place, such as "Aki · Opening 2".

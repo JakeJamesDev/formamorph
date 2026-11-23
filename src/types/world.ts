@@ -984,7 +984,7 @@ export interface GameLocation {
   /** Parent location id for sub-location nesting; null/absent = top-level. Editor-only for now — not
    *  sent to the AI (excluded in buildLocationContext). Sibling order is the `locations` array order. */
   parentId?: string | null;
-  /** Indoors: the player feels no weather here. Read only while the world's Weather is on, and inherited by no
+  /** Indoors: the player feels no weather here. Read only while the world allows a kind besides Clear, and inherited by no
    *  child location. Absent = open to the weather. */
   sheltered?: true;
   /** The Enabled gate: on while any row holds; absent or empty = always on. A Condition with no owner reads the
@@ -1164,17 +1164,16 @@ export type WorldVrmStore = Record<string, WorldVrm>;
  *  Avatar library (library entities). Absent = none. */
 export type VrmPick = { kind: 'default' } | { kind: 'world'; id: string } | { kind: 'library'; id: string };
 
-/** A kind of weather. Clear is always allowed; the rest are the author's pick. */
+/** A kind of weather. */
 export type WeatherKind = 'clear' | 'rain' | 'snow' | 'storm' | 'brightSun';
 
-/** A kind a world can allow: every kind but Clear. */
+/** A kind with something to show: every kind but Clear. */
 export type AllowedWeatherKind = Exclude<WeatherKind, 'clear'>;
 
-/** The world's opt-in Weather: which kinds it allows and the weather a story starts in when its opening sets none. */
+/** The world's Weather: which kinds it allows and the weather a story starts in when its opening sets none. */
 export interface WorldWeather {
-  on: boolean;
-  /** The allowed kinds other than Clear. */
-  allowed: AllowedWeatherKind[];
+  /** Empty = Clear alone. One kind is the world's fixed weather; two or more let the story change it. */
+  allowed: WeatherKind[];
   /** Absent = the page-one read decides the start weather. */
   defaultWeather?: WeatherKind;
 }
@@ -1211,7 +1210,7 @@ export interface WorldOverview {
   /** The time of day a story starts at when the drawn opening sets none. Absent = the opening-time pass reads
    *  page one. */
   defaultTime?: Daypart;
-  /** Absent = Weather off. */
+  /** Absent = Clear alone. */
   weather?: WorldWeather;
   /** Which personas the player can pick. Absent = any. */
   allowedPersonas?: AllowedPersonas;

@@ -9,7 +9,7 @@ const rainOnly: Trait = { id: 'rainy', name: 'Rainy', statChanges: [], playerTog
 const nightOnly: Trait = { id: 'nocturnal', name: 'Nocturnal', statChanges: [], playerToggle: true, requires: [{ all: [{ kind: 'time', dayparts: ['night'] }] }] };
 
 const overview = (extra: Partial<WorldOverview> = {}): WorldOverview =>
-  ({ weather: { on: true, allowed: ['rain', 'snow'] }, ...extra }) as WorldOverview;
+  ({ weather: { allowed: ['clear', 'rain', 'snow'] }, ...extra }) as WorldOverview;
 const worldOf = (worldOverview: WorldOverview): OpeningFoldWorld => ({ traits: [rainOnly, nightOnly], worldOverview });
 const row = (extra: Partial<Opening> = {}): Opening => ({ id: 'o', text: 'x', kind: 'action', ...extra });
 const picks = { traits: ['rainy', 'nocturnal'], owned: {} };
@@ -25,7 +25,7 @@ describe('the first settle reads the start', () => {
   });
 
   it('reads Default Weather and Default Time when the Opening sets neither', () => {
-    const world = worldOf(overview({ weather: { on: true, allowed: ['rain'], defaultWeather: 'rain' }, defaultTime: 'night' }));
+    const world = worldOf(overview({ weather: { allowed: ['clear', 'rain'], defaultWeather: 'rain' }, defaultTime: 'night' }));
     expect(heldIds(openingFold(world, picks, undefined, undefined, row()))).toEqual(['rainy', 'nocturnal']);
     expect(heldIds(openingFold(world, picks))).toEqual(['rainy', 'nocturnal']);
   });
@@ -44,7 +44,7 @@ describe('the first settle reads the start', () => {
 });
 
 describe('Enter World and the library entity editor read the defaults', () => {
-  const defaults = overview({ weather: { on: true, allowed: ['rain'], defaultWeather: 'rain' }, defaultTime: 'night' });
+  const defaults = overview({ weather: { allowed: ['clear', 'rain'], defaultWeather: 'rain' }, defaultTime: 'night' });
   const entryWorld = { traits: [rainOnly, nightOnly], traitGroups: [], entities: [], library: [] };
   const unlockedIn = (world: typeof entryWorld & { overview?: WorldOverview }, id: string) =>
     gateOf(gateStates(entryGateInput(world, { traitIds: [], ownedTraitIds: {}, persona: { source: 'none' } })), null, id)!.unlocked;

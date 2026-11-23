@@ -295,8 +295,8 @@ const TIME: PromptVariable = {
   token: '<TIME>', label: 'Time', color: HIGHLIGHT_PALETTE[10], affixable: true, axes: [TIME_CLOCK_AXIS, TIME_DAY_AXIS],
 };
 
-// The World Weather as one line, with a Sheltered note. Renders the uniform placeholder while the world's
-// Weather is off, so its placement disappears.
+// The World Weather as one line, with a Sheltered note. Renders the uniform placeholder while the world
+// allows Clear alone, so its placement disappears.
 const WEATHER: PromptVariable = { token: '<WEATHER>', label: 'Weather', color: HIGHLIGHT_PALETTE[16], affixable: true };
 
 // Scene-image tag pass only: the characters the composer has put in frame, so the action tags describe

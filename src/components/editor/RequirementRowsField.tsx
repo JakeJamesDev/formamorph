@@ -48,7 +48,7 @@ type AddTarget = number | 'new';
  * A time Condition's chip is a toggle per daypart. It starts with none on and reads red until one is, and it takes Not. A row holds one at most.
  *
  * A weather Condition's chip is a toggle per kind the world allows. It starts with none on and reads red until one is, and it takes Not. It is offered
- * while the world's Weather is on, and a row holds one at most.
+ * while the world's weather can change, and a row holds one at most.
  *
  * An Opening Condition's chip picks Openings from a grouped list, and it takes Not. It starts with none picked and
  * reads red until one is, as a key whose Opening is gone does. It is offered while the world has an Opening, and a

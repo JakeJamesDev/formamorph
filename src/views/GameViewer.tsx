@@ -328,7 +328,7 @@ import { WeatherBackground } from "../components/game/WeatherBackground";
 import { WeatherForeground } from "../components/game/WeatherForeground";
 import { DevWeatherBar, loadDevBackdrops } from "../components/dev/DevWeatherBar";
 import { weatherView } from "@/lib/weatherView";
-import { activeWeather, afterNightfall, allowedWeatherKinds, isDaylight, landedWeatherChange, offeredWeatherKinds, savedWeather, type WeatherChange } from "@/lib/weather";
+import { afterNightfall, allowedWeatherKinds, hasWeather, isDaylight, landedWeatherChange, offeredWeatherKinds, savedWeather, weatherChanges, type WeatherChange } from "@/lib/weather";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { MusicOffIcon } from "../components/game/MusicOffIcon";
 import { AiSetupGate } from "../components/AiSetupGate";
@@ -972,7 +972,7 @@ const GameViewer = ({
   // The story clock a between-turn weather set reads for the nightfall rule.
   const storyClockRef = useRef({ gameTime, calendar });
   storyClockRef.current = { gameTime, calendar };
-  const weatherOn = !!activeWeather(worldOverview);
+  const weatherOn = hasWeather(worldOverview.weather);
   // The drawn Opening or the world authored the start weather, so page one needs no Weather Pass. Not saved:
   // only the opening turn reads it.
   // The ref serves a turn sent in the same handler; the state renders the Weather chip.
@@ -986,9 +986,9 @@ const GameViewer = ({
   // load, New Game or redraw: it stops a playing foreground effect and starts none.
   const [weatherChange, setWeatherChange] = useState<{ change: WeatherChange | null; seq: number } | null>(null);
   const weatherSeqRef = useRef(0);
-  /** Reports a Weather Change when what the player experiences differs, while the world's Weather is on. */
+  /** Reports a Weather Change when what the player experiences differs. */
   const reportWeather = useCallback((change: WeatherChange | null) => {
-    if (!change || !activeWeather(worldOverview)) return;
+    if (!change) return;
     weatherSeqRef.current += 1;
     setWeatherChange({ change, seq: weatherSeqRef.current });
   }, [worldOverview]);
@@ -2929,9 +2929,9 @@ const GameViewer = ({
     () => (timeContext && !openingHourPending ? { elapsed: gameTime, calendar } : null),
     [timeContext, openingHourPending, gameTime, calendar],
   );
-  // The World Weather as the Weather chip reads it: none while Weather is off, and none on page one while the
+  // The World Weather as the Weather chip reads it: none in a Clear-only world, and none on page one while the
   // Weather Pass is about to read it, so its answer is no restatement.
-  const chipWeather = activeWeather(worldOverview) && (isGameStarted || startWeatherSet) ? weather : null;
+  const chipWeather = weatherOn && (isGameStarted || startWeatherSet) ? weather : null;
   // Kept while the names hold, so a streamed sentence leaves the live scene and its readers alone.
   const participants = useKeepEqualList(useMemo(
     () => recentParticipants(fullMessageHistory, IN_SCENE_TURNS),
@@ -3224,12 +3224,12 @@ const GameViewer = ({
   const buildDiaryRequestRef = useRef(buildDiaryRequest);
   buildDiaryRequestRef.current = buildDiaryRequest;
 
-  /** What the Weather Pass reads this turn, or nothing while the world's Weather is off. Daylight is read at
+  /** What the Weather Pass reads this turn, or nothing while the world's weather cannot change. Daylight is read at
    *  the turn's start; on page one with the hour still unread, Bright Sun stays offered and the nightfall rule
    *  corrects it. */
   const turnWeather = (): TurnWeatherInput | undefined => {
-    const worldWeather = activeWeather(worldOverview);
-    if (!worldWeather) return undefined;
+    const worldWeather = worldOverview.weather;
+    if (!weatherChanges(worldWeather)) return undefined;
     const daylight = openingHourPending || isDaylight(gameTime, calendar);
     return { current: weather, offered: offeredWeatherKinds(worldWeather, daylight), startWeatherSet: startWeatherSetRef.current };
   };
@@ -4521,8 +4521,7 @@ const GameViewer = ({
         const health = healthLoss === null ? undefined : stats.find((s) => s.name === "Health");
         const here = scriptLocationRef.current ?? currentLocation;
         const { owners, ownerTurns } = splitOwnerTurns(ownerRows);
-        const worldWeather = activeWeather(worldOverview);
-        const scriptWeather = worldWeather && { current: weatherRef.current, allowed: allowedWeatherKinds(worldWeather) };
+        const scriptWeather = { current: weatherRef.current, allowed: allowedWeatherKinds(worldOverview.weather) };
         const state: SandboxState = {
           stats, enabled, clock,
           gateStats: gateStatsOf({
@@ -4564,7 +4563,7 @@ const GameViewer = ({
             ),
           }),
           itemInstances: itemsNow.instances, items: worldItems, slots: worldSlots,
-          ...(scriptWeather ? { weather: scriptWeather } : {}),
+          weather: scriptWeather,
           ...(worldCurrencies.length ? { money: { currencies: worldCurrencies, placements: worldPlacements } } : {}),
           bodies: {
             world: {
@@ -4732,7 +4731,7 @@ const GameViewer = ({
     const history = fullMessageHistoryRef.current;
     const turnId = latestTurnId(history);
     if (!writes || !turnId) return;
-    if (writes.weather !== undefined && weatherOn) {
+    if (writes.weather !== undefined) {
       // The nightfall rule reads the clock where the set lands; the latest turn's snapshot keeps the result.
       const { gameTime: now, calendar: clockCalendar } = storyClockRef.current;
       const landedWeather = afterNightfall(writes.weather, isDaylight(now, clockCalendar));
@@ -4759,7 +4758,7 @@ const GameViewer = ({
     if (writes.pins?.length) setMemoryNotes((prev) => addScriptPins(prev, turnId, writes.pins ?? [], history.length));
     const namedWrites = writes.namedWrites;
     if (namedWrites?.length) setMemoryNotes((prev) => addNamedWrites(prev, memoryDeletedRef.current, turnId, namedWrites, history.length));
-  }, [setFullMessageHistory, setMemoryNotes, setGameStates, setWeather, diaryNames, landMemoryWrites, weatherOn, reportWeather]);
+  }, [setFullMessageHistory, setMemoryNotes, setGameStates, setWeather, diaryNames, landMemoryWrites, reportWeather]);
   // The writes of runs that ended while a turn ran: the turn's stream and commit rewrite its message.
   const heldWritesRef = useRef<WorldWrites | undefined>(undefined);
   const landBetweenTurns = useCallback((writes: WorldWrites | undefined) => {
@@ -7101,7 +7100,7 @@ const GameViewer = ({
   const backdrop = useLocationBackdrop(viewLocation);
   const mapBackdrop = useMapBackdrop(worldOverview);
   const weatherBg = weatherView({
-    weatherOn: !!activeWeather(worldOverview),
+    weatherOn,
     worldWeather: viewWeather,
     sheltered: !!viewLocation?.sheltered,
     daylight: isDaylight(viewGameTime, calendar),
@@ -7112,7 +7111,7 @@ const GameViewer = ({
   }).background;
   // The foreground follows the live game, not the paged turn.
   const weatherFg = weatherView({
-    weatherOn: !!activeWeather(worldOverview),
+    weatherOn,
     worldWeather: weather,
     sheltered: !!currentLocation?.sheltered,
     daylight: isDaylight(gameTime, calendar),
@@ -7204,7 +7203,7 @@ const GameViewer = ({
       <WeatherBackground kind={weatherBg.kind} mode={weatherBg.mode} plain={!devBackdrop && (!locationBackground || !backdrop)} />
       <WeatherForeground kind={weatherFg} play={weatherChange?.seq ?? 0} />
       {/* DEV: `#dev?…&weatherBar` shows a bar that steps through every weather, flips day and night and swaps backdrop art. */}
-      {import.meta.env.DEV && activeWeather(worldOverview) && window.location.hash.includes('weatherBar') && (
+      {import.meta.env.DEV && window.location.hash.includes('weatherBar') && (
         <DevWeatherBar
           kind={weather}
           onKind={(kind) => fireWeatherRef.current(kind)}

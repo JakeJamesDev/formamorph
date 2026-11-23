@@ -68,7 +68,7 @@ export interface LiveSceneSources {
   participants: string[];
   notes: string;
   time: ChipSceneTime | null;
-  /** The World Weather, or none while the world's Weather is off or page one is about to read it. */
+  /** The World Weather, or none while the world allows Clear alone or page one is about to read it. */
   weather?: WeatherKind | null;
   /** The world's shared placeholders. */
   placeholders: readonly Placeholder[];

@@ -471,7 +471,7 @@ export const defaultTimePassedUserPrompt = `<PLAYER ACTION|format=markdown|heade
 <NARRATION|format=markdown|header="What happened">
 How much in-world time passed?`;
 
-// The Weather Pass (requestType 'weather'): after the narration while Weather is on, and on page one when no
+// The Weather Pass (requestType 'weather'): after the narration while the world allows two or more kinds, and on page one when no
 // weather was authored. The reply format (lib/weatherPass) carries the offered kinds and a yes/no `shown` gate:
 // without the gate, metaphor and reported weather changed the sky 0/12; with it, 12/12 hold (cloud, schema).
 // The figure-of-speech line holds reported weather on the text request (12/12 vs 0/12 ablated).

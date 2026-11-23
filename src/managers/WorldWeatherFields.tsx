@@ -1,71 +1,53 @@
+import { useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { Hint } from '@/components/ui/typography';
 import { WeatherSelect } from '@/components/editor/WeatherSelect';
 import { fieldFrame } from '@/lib/historyField';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
-import { activeWeather, allowedWeatherKinds, ALLOWED_KINDS, WEATHER_LABELS } from '@/lib/weather';
+import { ALL_WEATHER_KINDS, allowedWeatherKinds, isWeatherKind, weatherChanges, weatherKindSet, WEATHER_LABELS } from '@/lib/weather';
 import type { WorldWeather } from '@/types';
 
-const OFF: WorldWeather = { on: false, allowed: [] };
+const KIND_OPTIONS = ALL_WEATHER_KINDS.map((kind) => ({ value: kind, label: WEATHER_LABELS[kind] }));
+const CLEAR_ONLY: WorldWeather = { allowed: ['clear'] };
 
-/** The world's Weather: the on switch, the kinds it allows, and the weather a game starts in. */
+/** The world's Weather: the kinds it allows, and the weather a game starts in while it can change. */
 export const WorldWeatherFields = () => {
   const { worldOverview, updateWorldOverview } = useGameData();
-  const stored = worldOverview.weather ?? OFF;
-  const weather = activeWeather(worldOverview);
+  const stored = worldOverview.weather ?? CLEAR_ONLY;
   // A hand-edited world can lack the list.
-  const picked = weather?.allowed ?? [];
+  const picked = useMemo(() => weatherKindSet(stored.allowed ?? []), [stored.allowed]);
   const write = (patch: Partial<WorldWeather>) => updateWorldOverview({ weather: { ...stored, ...patch } });
 
   return (
     <div className="space-y-3" {...targetAttribute('worldEditor.overview', 'weather')}>
-      <div className="space-y-1" {...fieldFrame('worldOverview', 'weather')}>
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="world-weather-on"
-            checked={stored.on}
-            onCheckedChange={(checked) => write({ on: checked === true })}
-          />
-          <Label htmlFor="world-weather-on">Weather</Label>
-        </div>
-        <Hint>Lets the weather change as the story goes</Hint>
+      <div className="space-y-1" {...fieldFrame('worldOverview', 'weatherAllowed')}>
+        <Label id="world-weather-allowed-label">Weather</Label>
+        <MultiSelect
+          aria-labelledby="world-weather-allowed-label"
+          options={KIND_OPTIONS}
+          defaultValue={picked}
+          onValueChange={(kinds) => write({ allowed: weatherKindSet(kinds.filter(isWeatherKind)) })}
+          placeholder={WEATHER_LABELS.clear}
+          clearLabel="Deselect All"
+        />
+        <Hint>Pick more than one to let the weather change as the story goes</Hint>
       </div>
-      {weather && (
-        <>
-          <div className="space-y-2" {...fieldFrame('worldOverview', 'weatherAllowed')}>
-            <Label id="world-weather-allowed-label">Allowed Weather</Label>
-            <div className="flex flex-wrap gap-x-4 gap-y-2" role="group" aria-labelledby="world-weather-allowed-label">
-              {ALLOWED_KINDS.map((kind) => (
-                <div key={kind} className="flex items-center gap-2">
-                  <Checkbox
-                    id={`world-weather-${kind}`}
-                    checked={picked.includes(kind)}
-                    onCheckedChange={(checked) => write({
-                      allowed: ALLOWED_KINDS.filter((k) => (k === kind ? checked === true : picked.includes(k))),
-                    })}
-                  />
-                  <Label htmlFor={`world-weather-${kind}`}>{WEATHER_LABELS[kind]}</Label>
-                </div>
-              ))}
-            </div>
-            <Hint>Clear is always allowed</Hint>
+      {weatherChanges(stored) && (
+        <div className="space-y-1" {...fieldFrame('worldOverview', 'defaultWeather')}>
+          <div className="flex items-center gap-2">
+            <span className="text-label font-medium">Default Weather</span>
+            <WeatherSelect
+              value={stored.defaultWeather}
+              kinds={allowedWeatherKinds(stored)}
+              onChange={(defaultWeather) => write({ defaultWeather: defaultWeather ?? undefined })}
+              unsetLabel="Not Set"
+              ariaLabel="Default Weather"
+            />
           </div>
-          <div className="space-y-1" {...fieldFrame('worldOverview', 'defaultWeather')}>
-            <div className="flex items-center gap-2">
-              <span className="text-label font-medium">Default Weather</span>
-              <WeatherSelect
-                value={weather.defaultWeather}
-                kinds={allowedWeatherKinds(weather)}
-                onChange={(defaultWeather) => write({ defaultWeather: defaultWeather ?? undefined })}
-                unsetLabel="Not Set"
-                ariaLabel="Default Weather"
-              />
-            </div>
-            <Hint>Openings with no Weather use it. Leave it blank to let the AI pick.</Hint>
-          </div>
-        </>
+          <Hint>Openings with no Weather use it. Leave it blank to let the AI pick.</Hint>
+        </div>
       )}
     </div>
   );

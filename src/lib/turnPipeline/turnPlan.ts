@@ -147,7 +147,7 @@ export interface TurnPlanInput {
   /** The story's start hour is already set, by the drawn Opening or the world's Default Time. The opening
    *  turn then leaves out the opening-time pass. */
   startHourSet?: boolean;
-  /** The world's weather while its Weather is on; absent while it is off, which leaves the Weather Pass out. */
+  /** The world's weather while it can change; absent otherwise, which leaves the Weather Pass out. */
   weather?: TurnWeatherInput;
   /** An Opening Narration's resolved text: page one as authored. The turn sends nothing before its
    *  post-narration stage. Blank counts as absent. */
