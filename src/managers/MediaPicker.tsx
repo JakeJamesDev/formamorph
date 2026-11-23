@@ -3,12 +3,12 @@
  * sounds), the filled slot's name field with Remove and Delete From World, and the delete confirm that lists
  * every use.
  */
-import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react';
 import { Contrast, Images, Layers, Music, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SearchField } from '@/components/ui/search-field';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
@@ -62,7 +62,7 @@ const CHOOSE_ICON = { image: Images, sound: Music, mask: Contrast } as const;
 
 /** Choose: a popover of the list's entries of `kind`, a thumbnail grid for images and Masks and a name list for
  *  sounds. Entries in `linkedIds` are dimmed, and still pickable. */
-export function MediaChooseButton({ list, linkedIds, onPick, onPickLayered, kind = 'image', disabled }: {
+export function MediaChooseButton({ list, linkedIds, onPick, onPickLayered, kind = 'image', disabled, anchor, open: openProp, onOpenChange }: {
   list: MediaList | undefined;
   linkedIds: ReadonlySet<string>;
   onPick: (entry: MediaFileEntry) => void;
@@ -70,8 +70,15 @@ export function MediaChooseButton({ list, linkedIds, onPick, onPickLayered, kind
   onPickLayered?: (entry: LayeredMediaEntry) => void;
   kind?: MediaFileKind;
   disabled?: boolean;
+  /** Drawn in place of the Choose button, for a host that opens the grid itself through `open`. */
+  anchor?: ReactNode;
+  /** Set, the host owns whether the grid is open. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const open = openProp ?? ownOpen;
+  const setOpen = (next: boolean) => { setOwnOpen(next); onOpenChange?.(next); };
   const [query, setQuery] = useState('');
   useEffect(() => { if (!open) setQuery(''); }, [open]);
   const withLayered = kind === 'image' && !!onPickLayered;
@@ -83,11 +90,15 @@ export function MediaChooseButton({ list, linkedIds, onPick, onPickLayered, kind
   const shown = key ? entries.filter((entry) => mediaNameKey(entry.name).includes(key)) : entries;
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button type="button" variant="outline" disabled={disabled}>
-          <Icon className="mr-2 h-4 w-4" />Choose
-        </Button>
-      </PopoverTrigger>
+      {anchor
+        ? <PopoverAnchor asChild>{anchor}</PopoverAnchor>
+        : (
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" disabled={disabled}>
+              <Icon className="mr-2 h-4 w-4" />Choose
+            </Button>
+          </PopoverTrigger>
+        )}
       {/* Inline, not portaled: the slot sits in the entity editor's dialog, whose scroll lock eats a portal's wheel. */}
       <PopoverContent portal={false} className="w-[360px] space-y-2 p-3" data-media-choose="">
         <SearchField

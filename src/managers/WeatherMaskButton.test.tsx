@@ -17,6 +17,8 @@ vi.mock('@/lib/useDownscalePrompt', () => ({
 }));
 vi.mock('../components/GenerateImageButton', () => ({ GenerateImageButton: () => null }));
 vi.mock('@/components/AiGenerateButton', () => ({ default: () => null }));
+// jsdom loads no image: every picture reads 16:9.
+vi.mock('@/components/game/WeatherBackground', async (load) => ({ ...(await load<typeof import('@/components/game/WeatherBackground')>()), useNaturalRatio: (src: string | undefined) => (src ? 16 / 9 : undefined) }));
 vi.mock('@/lib/weatherMask', async (load) => ({ ...(await load<typeof import('@/lib/weatherMask')>()), encodeMaskPng: vi.fn(async () => UPLOADED) }));
 // jsdom has no canvas: the brush editor reads a stored mask as all black and saves a PNG named for its size.
 const canvasFake = vi.hoisted(() => ({ saved: [] as { width: number; height: number; raster: Uint8ClampedArray }[] }));
@@ -78,6 +80,20 @@ const control = () => {
   return shown[0];
 };
 const frameTile = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
+const maskButton = () => control().querySelector<HTMLButtonElement>('[data-weather-mask-button]')!;
+/** Opens the framed slot's mask menu and returns its rows, separators as `---`, in order. */
+const openMenu = async () => {
+  fireEvent.click(maskButton());
+  const menu = await screen.findByRole('menu');
+  return [...menu.querySelectorAll('[role="menuitem"], [role="separator"], [data-weather-mask-shared]')]
+    .map((n) => (n.getAttribute('role') === 'separator' ? '---' : n.textContent));
+};
+/** Runs `name` from the framed slot's mask menu; the action runs once the menu closes. */
+const pick = async (name: string) => {
+  await openMenu();
+  fireEvent.click(screen.getByRole('menuitem', { name }));
+  await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+};
 const upload = async () => {
   const input = control().querySelector<HTMLInputElement>('[data-weather-mask-file]')!;
   await act(async () => { fireEvent.change(input, { target: { files: [new File(['x'], 'Dock Rain.png', { type: 'image/png' })] } }); });
@@ -98,7 +114,7 @@ describe('Weather Mask control', () => {
     expect(masks).toHaveLength(2);
     const added = masks.find((m) => m.id === stored()[0].weatherMask)!;
     expect(added).toMatchObject({ name: 'Dock Rain', kind: 'mask', data: UPLOADED, type: 'image/png' });
-    expect(within(control()).getByText('Dock Rain')).toBeTruthy();
+    expect(maskButton().getAttribute('aria-label')).toBe('Weather Mask: Dock Rain');
   });
 
   it('uploads the same file twice as two entries, so two slots share nothing unasked', async () => {
@@ -113,8 +129,8 @@ describe('Weather Mask control', () => {
 
   it('lists only Masks under Choose and links the chosen one', async () => {
     const { stored } = await mount(world([{ mediaId: 'day' }]));
-    fireEvent.click(within(control()).getByRole('button', { name: 'Choose' }));
-    const grid = screen.getByRole('searchbox', { name: 'Search Masks' }).closest('[data-media-choose]') as HTMLElement;
+    await pick('Choose');
+    const grid = (await screen.findByRole('searchbox', { name: 'Search Masks' })).closest('[data-media-choose]') as HTMLElement;
     expect([...grid.querySelectorAll('[data-media-entry]')].map((b) => b.getAttribute('data-media-entry'))).toEqual(['win']);
     fireEvent.click(within(grid).getByRole('button', { name: 'Dock Window' }));
     expect(stored()[0]).toEqual({ mediaId: 'day', weatherMask: 'win' });
@@ -129,21 +145,43 @@ describe('Weather Mask control', () => {
     expect(ids).not.toContain('win');
   });
 
-  it('names the shared count when two images link one Mask, and not for one', async () => {
+  it('names the shared count and the Mask at the top of the menu when two images link it', async () => {
     await mount(world([{ mediaId: 'day', weatherMask: 'win' }, { mediaId: 'night', weatherMask: 'win' }]));
     expect(control().getAttribute('data-weather-mask')).toBe('win');
-    expect(within(control()).getByText('Shared by 2 images · Dock Window')).toBeTruthy();
+    expect(await openMenu()).toEqual(['Shared by 2 images · Dock Window', '---', 'Edit', 'Replace', 'Choose', 'Show Mask', '---', 'Remove']);
+  });
+
+  it('opens the file picker inside the Upload click, which a browser needs to show it', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    const file = control().querySelector<HTMLInputElement>('[data-weather-mask-file]')!;
+    const opened = vi.spyOn(file, 'click');
+    await openMenu();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Upload' }));
+    expect(opened).toHaveBeenCalledOnce();
+  });
+
+  it('offers Paint, Upload and Choose on a slot with no Mask', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    expect(await openMenu()).toEqual(['Paint', 'Upload', 'Choose']);
+  });
+
+  it('sits on the frame, bottom right', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    const corner = control().parentElement!;
+    expect(corner.className).toContain('absolute bottom-2 right-2');
+    expect(corner.parentElement!.hasAttribute('data-slot-frame')).toBe(true);
   });
 
   it('counts slots on other locations too', async () => {
     const shedLoc: GameLocation = { id: 'shedLoc', name: 'Shed', images: [{ mediaId: 'shed', weatherMask: 'win' }] };
     await mount(world([{ mediaId: 'day', weatherMask: 'win' }], [shedLoc]));
-    expect(within(control()).getByText('Shared by 2 images · Dock Window')).toBeTruthy();
+    expect((await openMenu())[0]).toBe('Shared by 2 images · Dock Window');
   });
 
-  it('shows only the name for a Mask one image links', async () => {
+  it('names no count for a Mask one image links, and names the Mask on the button', async () => {
     await mount(world([{ mediaId: 'day', weatherMask: 'win' }]));
-    expect(within(control()).getByText('Dock Window')).toBeTruthy();
+    expect(maskButton().getAttribute('aria-label')).toBe('Weather Mask: Dock Window');
+    expect(await openMenu()).toEqual(['Edit', 'Replace', 'Choose', 'Show Mask', '---', 'Remove']);
   });
 
   it('replaces the Mask picture for every slot that shares it', async () => {
@@ -155,8 +193,8 @@ describe('Weather Mask control', () => {
 
   it('removes the link from one slot and keeps the entry and the other link', async () => {
     const { ctx, stored } = await mount(world([{ mediaId: 'day', weatherMask: 'win' }, { mediaId: 'night', weatherMask: 'win' }]));
-    await act(async () => { fireEvent.click(within(control()).getByRole('button', { name: 'Remove Weather Mask' })); });
-    expect(stored()).toEqual([{ mediaId: 'day' }, { mediaId: 'night', weatherMask: 'win' }]);
+    await pick('Remove');
+    await waitFor(() => expect(stored()).toEqual([{ mediaId: 'day' }, { mediaId: 'night', weatherMask: 'win' }]));
     expect(ctx().worldOverview.mediaList!.win).toBeDefined();
   });
 
@@ -164,7 +202,7 @@ describe('Weather Mask control', () => {
     const { ctx, stored } = await mount(world([{ mediaId: 'day', weatherMask: 'win' }, { mediaId: 'night' }]));
     const location = () => ctx().locations.find((l) => l.id === 'dock')!;
     // The widget's own replace path: a new file into the framed slot.
-    const slot = control().parentElement!;
+    const slot = control().closest('[data-slot-frame]')!;
     const input = slot.querySelector<HTMLInputElement>('input[type="file"]:not([data-weather-mask-file])')!;
     await act(async () => { fireEvent.change(input, { target: { files: [new File(['y'], 'Dock Redraw.png', { type: 'image/png' })] } }); });
     const linked = () => { const first = stored()[0]; return 'mediaId' in first ? first.mediaId : undefined; };
@@ -177,11 +215,11 @@ describe('Weather Mask control', () => {
 
   it('undoes and redoes each link change', async () => {
     const { history, stored } = await mount(world([{ mediaId: 'day' }]));
-    fireEvent.click(within(control()).getByRole('button', { name: 'Choose' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Dock Window' }));
+    await pick('Choose');
+    fireEvent.click(await screen.findByRole('button', { name: 'Dock Window' }));
     await waitFor(() => expect(stored()[0].weatherMask).toBe('win'));
-    await act(async () => { fireEvent.click(within(control()).getByRole('button', { name: 'Remove Weather Mask' })); });
-    expect(stored()[0].weatherMask).toBeUndefined();
+    await pick('Remove');
+    await waitFor(() => expect(stored()[0].weatherMask).toBeUndefined());
     await act(async () => { history().undo(); });
     expect(stored()[0].weatherMask).toBe('win');
     await act(async () => { history().undo(); });
@@ -205,17 +243,48 @@ describe('Weather Mask control', () => {
     expect(document.querySelector('[data-weather-mask]')).toBeNull();
   });
 
-  it('draws disabled on the open slot, so the row keeps its place', async () => {
-    await mount(world([{ mediaId: 'day' }]));
+  it('draws on the frame of each filled slot and on no open slot', async () => {
+    await mount(world([{ mediaId: 'day', weatherMask: 'win' }]));
+    for (const el of document.querySelectorAll('[data-weather-mask]')) expect(el.closest('[data-slot-frame]')).not.toBeNull();
     fireEvent.click(screen.getByTitle('Add an Image'));
-    const open = control();
-    for (const button of within(open).getAllByRole('button')) expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect([...document.querySelectorAll('[data-weather-mask]')].filter((el) => !el.closest('.hidden'))).toHaveLength(0);
+  });
+
+  const tint = () => [...document.querySelectorAll<HTMLElement>('[data-weather-mask-tint]')].filter((el) => !el.closest('.hidden'));
+
+  it('Show Mask tints the framed picture through the Mask, and Hide Mask takes the tint away', async () => {
+    const { stored } = await mount(world([{ mediaId: 'day', weatherMask: 'win' }]));
+    expect(tint()).toHaveLength(0);
+    await pick('Show Mask');
+    const [shown] = tint();
+    expect(shown.getAttribute('data-weather-mask-tint')).toBe('win');
+    expect(shown.closest('[data-slot-frame]')).toBe(control().closest('[data-slot-frame]'));
+    const layer = shown.firstElementChild as HTMLElement;
+    expect(layer.style.backgroundColor).toBe('rgba(56, 189, 248, 0.45)');
+    expect(layer.style.maskImage).toBe(`url("${WINDOW}")`);
+    expect(await openMenu()).toContain('Hide Mask');
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Hide Mask' }));
+    await waitFor(() => expect(tint()).toHaveLength(0));
+    expect(stored()).toEqual([{ mediaId: 'day', weatherMask: 'win' }]);
+  });
+
+  it('keeps Show Mask on while stepping between slots, and tints only a slot with a Mask', async () => {
+    await mount(world([{ mediaId: 'day', weatherMask: 'win' }, { mediaId: 'night' }]));
+    await pick('Show Mask');
+    expect(tint()).toHaveLength(1);
+    frameTile('Image 2');
+    expect(tint()).toHaveLength(0);
+    expect(await openMenu()).not.toContain('Show Mask');
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+    frameTile('Primary image');
+    expect(tint()).toHaveLength(1);
   });
 });
 
 /** Opens the brush editor from the framed slot and loads its picture at `width` × `height`. */
 const openEditor = async (button: 'Paint' | 'Edit', width = 3840, height = 2160) => {
-  fireEvent.click(within(control()).getByRole('button', { name: button }));
+  await pick(button);
+  await waitFor(() => expect(document.querySelector('[data-mask-scene] img')).not.toBeNull());
   const picture = document.querySelector<HTMLImageElement>('[data-mask-scene] img')!;
   Object.defineProperty(picture, 'naturalWidth', { value: width });
   Object.defineProperty(picture, 'naturalHeight', { value: height });

@@ -54,14 +54,24 @@ export async function encodeMaskPng(file: Blob): Promise<string> {
   }
 }
 
-/** A luminance mask stretched over the box the art covers at `ratio`, centered, as `bg-cover bg-center` places it. */
-export const coverMaskStyle = (mask: string, ratio: number): CSSProperties => ({
-  maskImage: `url("${mask}")`,
-  maskMode: 'luminance',
-  maskRepeat: 'no-repeat',
-  maskPosition: 'center',
-  maskSize: `max(100cqw, calc(100cqh * ${ratio})) max(100cqh, calc(100cqw / ${ratio}))`,
-});
+/**
+ * A luminance mask stretched over the box the art takes at `ratio`, centered: `cover` as `bg-cover bg-center` places
+ * it, `contain` as `object-contain` does.
+ */
+export const fitMaskStyle = (mask: string, ratio: number, fit: 'cover' | 'contain'): CSSProperties => {
+  const pick = fit === 'cover' ? 'max' : 'min';
+  return {
+    maskImage: `url("${mask}")`,
+    maskMode: 'luminance',
+    maskRepeat: 'no-repeat',
+    maskPosition: 'center',
+    maskSize: `${pick}(100cqw, calc(100cqh * ${ratio})) ${pick}(100cqh, calc(100cqw / ${ratio}))`,
+  };
+};
+
+/** The tint the brush editor and Show Mask draw a mask in: white shows it at `MASK_TINT_ALPHA`. */
+export const MASK_TINT = [56, 189, 248] as const;
+export const MASK_TINT_ALPHA = 0.45;
 
 /** A luminance mask stretched over the whole box, for a preview that sits exactly over the picture. */
 export const boxMaskStyle = (mask: string): CSSProperties => ({

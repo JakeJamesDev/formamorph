@@ -236,15 +236,18 @@ In play:
 - ⚡ **Weather change effect.** The short full-screen effect ignores masks. A Sheltered location still skips it.
 - 🚫 **Location Background off.** Masks do nothing. The weather shows as it does with no mask.
 
-Each background image has a **Weather Mask** row under its name:
+Each background image has a ◐ **Weather Mask** button at its bottom right. Select it for the mask's menu:
 
 | With no mask | With a mask |
 | --- | --- |
 | **Paint** opens the image to [paint a new mask](#paint-a-weather-mask) | **Edit** opens the image to [paint over this mask](#paint-a-weather-mask) |
 | **Upload** stores a file as a new mask for this image | **Replace** uploads a new file into this mask |
-| **Choose** links a mask the world already has | **Remove** takes the mask off this image and keeps it in the world |
+| **Choose** links a mask the world already has | **Choose** links a different mask the world has |
+| | **Show Mask** tints the image blue where the weather shows, and **Hide Mask** takes the tint off |
+| | **Remove** takes the mask off this image and keeps it in the world |
 
-- 🔁 **Shared masks.** Images can share one mask, such as a place's day and night images. The row says how many images share it, and **Edit** and **Replace** change it for all of them.
+- 👁️ **Show Mask** stays on as you select other images, so you can check each one's mask. It changes nothing in the world.
+- 🔁 **Shared masks.** Images can share one mask, such as a place's day and night images. The menu says how many images share it, and **Edit** and **Replace** change it for all of them.
 - 📐 **Shape.** Make the mask the same shape as its image. Upload saves it as a PNG, scaled down to 1920 pixels on its long edge.
 - 📦 **Where masks live.** The [Media tab](World-Editor-Media#masks) lists every mask and the images that use it.
 

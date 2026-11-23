@@ -82,8 +82,10 @@ interface ImageWidgetProps {
   media?: GalleryMedia;
   /** The composed picture behind each Layered Image tile, by the tile's data; the frame and strip draw it in the tile's place. */
   pictures?: ReadonlyMap<string, LayeredPicture>;
-  /** Drawn under each slot, the open one included, below its name row. Keep its height the same for every slot. */
-  slotFooter?: (index: number) => ReactNode;
+  /** A filled gallery slot's own frame button, drawn at the frame's bottom right. */
+  slotButton?: (index: number) => ReactNode;
+  /** Drawn over a filled gallery slot's picture, in the picture's box. */
+  slotOverlay?: (index: number) => ReactNode;
 }
 
 /** The inputs a host passes to control the gallery's frame and cog. */
@@ -252,7 +254,7 @@ function withSlotData(list: readonly GalleryImage[], index: number, data: string
 export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   const {
     label, images, onImagesChange, slots = 1, imageId, cap, description, kind, fileSubject, tags, onTagsChange, tourAnchor, ruleHost,
-    framed, onFramedChange, ruleCog = true, editLayers = true, media, pictures, slotFooter,
+    framed, onFramedChange, ruleCog = true, editLayers = true, media, pictures, slotButton, slotOverlay,
   } = useImageWidget();
   const ruleSourced = useHasRuleSource();
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
@@ -428,6 +430,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
             cap={cap}
             // The gallery gives the picture a frame worth looking at; a single slot keeps its compact box.
             previewClassName={gallery ? FRAME_CLASS[shape] : undefined}
+            frameOverlay={gallery && url ? slotOverlay?.(i) : undefined}
             // Only the primary offers its embedded prompt as the tags: the tags describe the subject, and a
             // later slot overwriting them would undo the choice made for the picture that represents it.
             onPromptExtracted={i === 0 && advanced ? setPendingPrompt : undefined}
@@ -451,11 +454,11 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
             const rule = slotRule(i);
             return rule && <ImageRuleButton {...rule} className="absolute right-2 top-2" />;
           })()}
+          {gallery && url && slotButton && <div className="absolute bottom-2 right-2">{slotButton(i)}</div>}
           </div>
           {/* A gallery keeps the name row on every slot, disabled on the open one, so it never comes and goes. */}
           {(entry || (gallery && media)) && <MediaEntryBar entry={entry} onUnlink={() => setSlot(i, '')} />}
           {!gallery && entry?.kind === 'layered' && editLayers && <EditLayersButton entryId={entry.id} previewAs={ruleHost?.kind === 'entity' ? ruleHost.id : undefined} size="sm" />}
-          {slotFooter?.(i)}
         </div>
         );
       })}

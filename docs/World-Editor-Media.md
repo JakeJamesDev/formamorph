@@ -98,7 +98,7 @@ Visibility rules belong to each place, so you set them in the image panel with *
 ## Masks
 <!-- keywords: weather mask, masks, mask size, which images use this mask, delete mask -->
 
-A mask sets where the weather shows over a location's background image. You add one from the image's [Weather Mask](World-Editor-Locations#weather-mask) row, in Advanced mode. **Import Media** never makes a mask.
+A mask sets where the weather shows over a location's background image. You add one with the ◐ [Weather Mask](World-Editor-Locations#weather-mask) button on a location's background image, in Advanced mode. A location image's panel here has the same button, with the same menu. **Import Media** never makes a mask.
 
 Each mask has one card, in the **Masks** section, or under **Masks** with **Group by Type** on. A mask nothing uses shows in **Unused**. Select the card to open its panel:
 

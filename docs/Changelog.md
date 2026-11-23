@@ -20,6 +20,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Weather:**
     - **Paint a Weather Mask over a location's background image in the World Editor.** Paint opens the image full screen with a brush, eraser, soft edge, fill, clear and invert. Edit reopens a mask; a shared mask changes for every image that uses it.
     - **See live weather through a Weather Mask while you paint it, and open any mask from the Media tab.** Pick Rain, Snow, Storm or Bright Sun to check the mask. The Media tab's Edit button opens the brush editor over an image that uses the mask.
+    - **Each location image in the World Editor now has a Weather Mask button that holds every mask action.** Paint, upload, choose or remove a mask there. Show Mask tints the image blue where the weather shows.
 
 ### Minor Changes
 

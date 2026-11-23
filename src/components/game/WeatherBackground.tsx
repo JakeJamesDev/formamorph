@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { boxMaskStyle, coverMaskStyle } from '@/lib/weatherMask';
+import { boxMaskStyle, fitMaskStyle } from '@/lib/weatherMask';
 import type { AllowedWeatherKind } from '@/types';
 import { registerDevHook } from '@/lib/devRouter';
 import type { WeatherBackgroundMode } from '@/lib/weatherView';
@@ -132,7 +132,7 @@ export function WeatherBackground({ kind, mode, plain, mask, art }: {
   const ratio = useNaturalRatio(mask ? art : undefined);
   if (!kind || mode === 'none') return null;
   if (mask && !ratio) return null;
-  return <WeatherCanvas kind={kind} mode={mode} plain={plain} mask={mask} maskStyle={mask && ratio ? coverMaskStyle(mask, ratio) : undefined} />;
+  return <WeatherCanvas kind={kind} mode={mode} plain={plain} mask={mask} maskStyle={mask && ratio ? fitMaskStyle(mask, ratio, 'cover') : undefined} />;
 }
 
 /**

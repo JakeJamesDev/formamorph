@@ -1,5 +1,6 @@
 /** The brush editor's canvas side: reads a stored mask into a raster, draws a raster as a tint, and saves one as a PNG. */
 import { grayFromRgba, rgbaFromGray, type MaskRect } from '@/lib/maskDocument';
+import { MASK_TINT, MASK_TINT_ALPHA } from '@/lib/weatherMask';
 
 function context2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const context = canvas.getContext('2d', { willReadFrequently: true });
@@ -22,10 +23,6 @@ export async function readMaskRaster(data: string, width: number, height: number
   }
 }
 
-/** The tint's color: white in the mask shows it at `TINT_ALPHA`. */
-const TINT = [56, 189, 248] as const;
-const TINT_ALPHA = 0.45;
-
 /** Draws `raster`'s `rect` onto the tint canvas, which is the raster's size. */
 export function drawTint(canvas: HTMLCanvasElement, raster: Uint8ClampedArray, rect?: MaskRect | null): void {
   const { width } = canvas;
@@ -39,10 +36,10 @@ export function drawTint(canvas: HTMLCanvasElement, raster: Uint8ClampedArray, r
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const j = (y * w + x) * 4;
-      out[j] = TINT[0];
-      out[j + 1] = TINT[1];
-      out[j + 2] = TINT[2];
-      out[j + 3] = raster[(r.y0 + y) * width + r.x0 + x] * TINT_ALPHA;
+      out[j] = MASK_TINT[0];
+      out[j + 1] = MASK_TINT[1];
+      out[j + 2] = MASK_TINT[2];
+      out[j + 3] = raster[(r.y0 + y) * width + r.x0 + x] * MASK_TINT_ALPHA;
     }
   }
   context.putImageData(image, r.x0, r.y0);

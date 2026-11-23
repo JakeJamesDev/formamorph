@@ -188,7 +188,7 @@ export const UrlCommitField = ({ noun, value, onChange, onCommit, error }: {
   );
 };
 
-export const ImageUpload = ({ onChange, id, value, picture, cap, previewClassName, objectFit = 'contain', onPromptExtracted, onFiles, onFile, choose }: {
+export const ImageUpload = ({ onChange, id, value, picture, cap, previewClassName, objectFit = 'contain', onPromptExtracted, onFiles, onFile, choose, frameOverlay }: {
   /** A picked file's name rides along, for a slot that names its picture. */
   onChange: (value: string, fileName?: string) => void;
   // Several pictures arriving at once (a multi-file drop). A caller holding more than one slot takes them
@@ -211,6 +211,8 @@ export const ImageUpload = ({ onChange, id, value, picture, cap, previewClassNam
   // A Media List slot's Choose control. Set, the empty frame offers Import and Choose above the link field,
   // and a filled one drops its remove button for the host's Unlink.
   choose?: ReactNode;
+  /** Drawn over a filled preview box's picture, under its badges. */
+  frameOverlay?: ReactNode;
 }) => {
   const { promptImage, dialog } = useDownscalePrompt();
   const [zoomOpen, setZoomOpen] = useState(false);
@@ -416,6 +418,7 @@ export const ImageUpload = ({ onChange, id, value, picture, cap, previewClassNam
                   className={`absolute inset-0 w-full h-full rounded-md ${objectFit === 'cover' ? 'object-cover' : 'object-contain'}`}
                 />
               ) : null}
+              {frameOverlay}
               {remoteBadge}
               {removeButton}
             </>
