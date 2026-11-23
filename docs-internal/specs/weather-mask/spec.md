@@ -85,13 +85,14 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
 **Media List**
 
 - A new Media Entry kind, Mask: id, name, kind, and the image data. It lives in the world's Media List beside image, sound and layered entries, and travels wherever the Media List travels.
-- Stored as a PNG data URL. Painted masks save at the linked image's size, capped by the location image cap of the Downscale Presets. Uploaded masks are stored as uploaded, then capped the same way.
+- Stored as a PNG data URL. Painted masks save at the linked image's size, capped by the location image cap of the Downscale Presets. Uploads in any image format are re-encoded to PNG and capped the same way.
 - Every Media List consumer that switches on entry kind handles Mask: the Media tab, Delete From World, Remove From Slot, the "kept by" index, stored-size totals, world export, publish and the provenance of linked entries. Image pickers, gallery adds and script media reads never offer a Mask entry.
 
 **Location image slots**
 
 - A location gallery slot gains an optional link to a Mask entry by id. Embedded, linked and Layered slots all carry it. Only location galleries write or read it.
 - One link per slot. It covers the slot's whole composed picture, Layered Images included (Q7).
+- The link belongs to the slot (Q1): it follows its picture when slots reorder, stays when the slot's picture is replaced, and goes when the slot is removed. A replacement of a different shape gets the Q15 warning.
 - Shape change: world export gains the Mask entry kind and the slot field. Additive, with no migration: absent means no mask.
 
 **Play**
@@ -110,9 +111,9 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
 
 **World Editor**
 
-- Each location image slot shows a Weather Mask control in Advanced mode (Q13, Q16, Q18). With no mask: Paint, Upload, Pick a mask. With a mask: a thumbnail, Edit, Replace, Remove. Remove unlinks the slot only.
+- Each location image slot shows a Weather Mask control in Advanced mode (Q13, Q16, Q18). With no mask: Paint, Upload, Pick a mask. With a mask: a thumbnail, Edit, Replace, Remove. Remove unlinks the slot only. Replace overwrites the linked entry's picture, so every slot that shares it changes, as Q12 rules for edits. The control names the shared count only when two or more images link the mask.
 - Pick a mask opens a picker of Mask entries only (Q5).
-- Upload makes a new Mask entry from the chosen file and links it.
+- Upload always makes a new Mask entry from the chosen file and links it, even when the bytes match an existing mask: sharing happens only through Pick a mask. The Media tab's own import never makes a Mask; masks enter only through a slot.
 - Paint opens the brush editor over the slot's picture, on a new mask or the linked one.
 - The Media tab lists Mask entries with their size and the locations that keep them, and opens one in the brush editor over a picture that links it. With several, the editor can switch which picture shows under the mask. With none, it opens over a plain surface at the mask's size.
 - Every mask edit goes through the editor's history, so undo, redo and Reveal Origin cover linking, unlinking and painting.
