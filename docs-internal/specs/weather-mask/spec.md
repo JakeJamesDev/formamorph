@@ -44,6 +44,10 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
 | Q19 | Settled by prototype, 2026-11-23. The brush editor is "in the scene": the whole picture sits large in the window on black, fit so every edge is paintable (the prototype's contain fit), with the weather showing through the mask. Tools float over it and rest faded until hovered or focused. Touch has no hover: on mobile the controls stay solid and stack, Cancel and Save above the picture and every tool in one panel below. On every device the controls hide while a stroke is in progress. Prototype: branch `prototype/weather-mask-brush` (commit f9d6ec4e2, variant B), `#dev?modal=weatherMaskPrototype&proto=B`. |
 | Q20 | Amends Q13, 2026-11-23. The Weather Mask row under the location image goes, with its thumbnail, name and "None". One mask button sits on the location image frame, bottom right, and opens a menu: Paint or Edit, Upload or Replace, Choose, Show or Hide Mask, Remove. |
 | Q21 | Show Mask draws the mask over the location image on the frame with the brush editor's tint, so the slot shows the picture and its mask together. |
+| Q22 | Amends Q19, 2026-11-23. The brush editor's weather preview is one dropdown of Rain, Snow, Storm and Bright Sun, not a row of buttons. |
+| Q23 | Desktop shortcuts in the brush editor: B selects the brush, E the eraser, Ctrl + mouse wheel changes the brush size, the mouse wheel zooms toward the pointer, a middle-button drag pans, and 0 returns to the fit view. A Fit button shows the zoom percentage and returns to the fit view. Zoom runs from the fit view to 800%. Touch keeps one-finger painting only, with no zoom or pan. |
+| Q24 | The brush size is in image pixels, so the brush covers the same part of the picture at every zoom and its ring grows as the view zooms in. |
+| Q25 | Soft Edge starts at 25%. While a slider moves, by drag, keys or Ctrl + wheel, a tooltip shows its value: the size in image pixels, the soft edge in percent. |
 
 ## User Stories
 
