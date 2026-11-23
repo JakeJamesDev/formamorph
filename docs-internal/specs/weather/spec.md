@@ -10,7 +10,7 @@ A world's weather exists only in the narration. When the story says a storm roll
 
 ## Solution
 
-A world can turn on **Weather**. It then has one **World Weather** at a time: Clear, Rain, Snow, Storm or Bright Sun. The author picks which kinds the world allows. A new **Weather Pass** reads each turn's narration and changes the World Weather when the story does, limited to the allowed kinds. Scripts can read and set it, and a new **Weather Condition** lets traits and image Visibility rules react to it. The narrator is told the weather every turn.
+Every world has **Weather** (Q32). It has one **World Weather** at a time: Clear, Rain, Snow, Storm or Bright Sun. The author picks which kinds the world allows; a new world allows Clear alone. One kind is the world's fixed weather. With two or more, a new **Weather Pass** reads each turn's narration and changes the World Weather when the story does, limited to the allowed kinds. Scripts can read and set it, and a new **Weather Condition** lets traits and image Visibility rules react to it. The narrator is told the weather every turn.
 
 The player sees weather in two ways, each with its own switch:
 
@@ -26,7 +26,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 | Q | Ruling |
 |---|---|
 | Q1 | The narration drives weather changes, limited to the author's allowed kinds. |
-| Q2 | Weather is a world opt-in. Off for worlds that never turn it on. |
+| Q2 | (Amended by Q32.) Weather is a world opt-in. Off for worlds that never turn it on. |
 | Q3 | First version kinds: Rain, Snow, Storm, Bright Sun, plus Clear. |
 | Q4 | Foreground fires on any change the player experiences, moving into different weather included. It never fires on load. |
 | Q5 | One World Weather for the whole world. |
@@ -35,9 +35,9 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 | Q8 | Both switches default on. OS reduced motion turns foreground off and background into a slow, calm version. |
 | Q9 | Background is an engine overlay over the location art and under the panels, not a Layered Images layer. |
 | Q10 | The narrator gets the current weather in the scene context. |
-| Q11 | The Weather Pass runs whenever the world opts in, whatever the player's switches. |
+| Q11 | (Amended by Q32.) The Weather Pass runs whenever the world opts in, whatever the player's switches. |
 | Q12 | Scripts read and set the World Weather. A script set is a change and can fire foreground. |
-| Q13 | The allowed list is one world-level pick from the four kinds. Clear is always allowed. |
+| Q13 | (Amended by Q32.) The allowed list is one world-level pick from the four kinds. Clear is always allowed. |
 | Q14 | (Amended by Q25.) The author can pick the starting weather. |
 | Q15 | Bright Sun shows only in daylight. The pass never picks it at night, and it turns into Clear at nightfall with no foreground. |
 | Q16 | A new foreground effect replaces one that is still playing. |
@@ -56,6 +56,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 | Q29 | The Background Fade dims the weather along with the location art. |
 | Q30 | Script weather words are camelCase: `"clear"`, `"rain"`, `"snow"`, `"storm"`, `"brightSun"`. camelCase is the standard for every script-facing value. |
 | Q31 | A Condition checked at the start of a story reads the resolved start weather and time (Opening, then the world defaults). The library entity editor and Enter World read the world defaults, as the World Editor does. Ticket 08. The Opening draw needs placement, and placement needs the first settle, so the first settle reads the world defaults. When the drawn Opening's start differs, the traits settle again from it, and placement keeps the default-start result. |
+| Q32 | Settled 2026-11-23. Every world has weather; there is no on switch. The allowed list is one pick from all five kinds, Clear included and picked by default; an empty list reads as Clear. One kind is the world's fixed weather all story, with no Weather Pass. Two or more let the story change it, and only then do the pass, Default Weather, Opening weather and the Weather Condition apply. A Clear-only world sends no narrator weather line. |
 
 ## User Stories
 
@@ -179,7 +180,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 
 **Narrator context**
 
-- The scene context gets one weather line while Weather is on: the World Weather, and whether the player is Sheltered.
+- The scene context gets one weather line unless the world allows Clear alone: the World Weather, and whether the player is Sheltered.
 - Page one gets the resolved time and weather, so an Opening Action's page one matches them.
 
 **Weather Condition**
@@ -191,7 +192,7 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 
 **Scripts**
 
-- The script surface gains a world-level weather member: read the World Weather; set it to Clear or an allowed kind. It reads `null` while Weather is off.
+- The script surface gains a world-level weather member: read the World Weather; set it to an allowed kind. A world with no block allows Clear.
 - A set from an item or switch script between turns lands on the latest turn at once. A set before any turn exists is dropped, as every between-turn world write is. A set held while a turn runs lands after that turn, so one turn can report two Weather Changes; the newer effect replaces the older (Q16). (Ticket 09)
 - A set lands at commit through the existing write path, saves with the turn and undoes with it. A kind outside the allowed list, or Weather off, stops the script with an error that names it.
 - This widens the script sandbox's exposure on purpose (Q12).
@@ -211,9 +212,9 @@ Settled in the grill, 2026-11-21. A ruling reopens on new evidence, never on a n
 
 **Editor**
 
-- World Editor: a Weather section with the on switch, the allowed kinds, Default Weather and Default Time. Default Time stays available with Weather off.
-- Location editor: the Sheltered flag, shown while Weather is on.
-- Openings editor: optional Weather and Time per row. Weather lists only the allowed kinds and is hidden while Weather is off.
+- World Editor: a Weather section with the allowed kinds as one multi-select, Clear picked by default, and Default Weather while two or more kinds are picked. Default Time sits outside it.
+- Location editor: the Sheltered flag, shown while the world allows a kind other than Clear.
+- Openings editor: optional Weather and Time per row. Weather lists only the allowed kinds and is hidden while the world allows fewer than two.
 - Test Bench findings: an Opening Weather or Default Weather outside the allowed list; a Weather Condition naming a kind outside it.
 - Every new screen and modal gets a dev-route entry, and a dev hook can set the World Weather and fire a foreground effect.
 
