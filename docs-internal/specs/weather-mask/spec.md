@@ -1,7 +1,7 @@
 # Spec: Weather Mask
 
-Status: done
-Status note: 2026-11-23, tickets 01–05 done, last landing 27c4f3943. Review: spec text corrected. Gates green on 2026-11-23 for the repo; lint errors come only from the gitignored worlds-wip folder.
+Status: ready-for-agent
+Status note: Reopened 2026-11-23 for ticket 06 (Q20, Q21). Closed earlier that day: tickets 01–05 done, last landing 27c4f3943. Review: spec text corrected. Gates green on 2026-11-23 for the repo; lint errors come only from the gitignored worlds-wip folder.
 Spec session: weather-mask — spec
 
 ## Problem Statement
@@ -35,13 +35,15 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
 | Q10 | The narrator's weather line is unchanged by masks. |
 | Q11 | With Location Background off, masks are ignored and the weather behaves as today. |
 | Q12 | Editing a shared mask edits it for every slot that links it, and the editor says how many images use it. |
-| Q13 | Each location image slot gets a Weather Mask control: paint, upload, pick an existing mask, remove. A mask also opens in the brush editor from the Media tab, over an image that links it. |
+| Q13 | (Amended by Q20.) Each location image slot gets a Weather Mask control: paint, upload, pick an existing mask, remove. A mask also opens in the brush editor from the Media tab, over an image that links it. |
 | Q14 | Only location images offer a Weather Mask. |
 | Q15 | The Test Bench warns when a mask's aspect ratio differs from an image that links it. |
 | Q16 | The control is called Weather Mask; the Media List kind shows as Mask. |
 | Q17 | The work ships as five tickets: entries and control, play, brush editor, preview and Media tab editing, Test Bench warning. |
 | Q18 | The Weather Mask control shows in Advanced mode only. |
 | Q19 | Settled by prototype, 2026-11-23. The brush editor is "in the scene": the whole picture sits large in the window on black, fit so every edge is paintable (the prototype's contain fit), with the weather showing through the mask. Tools float over it and rest faded until hovered or focused. Touch has no hover: on mobile the controls stay solid and stack, Cancel and Save above the picture and every tool in one panel below. On every device the controls hide while a stroke is in progress. Prototype: branch `prototype/weather-mask-brush` (commit f9d6ec4e2, variant B), `#dev?modal=weatherMaskPrototype&proto=B`. |
+| Q20 | Amends Q13, 2026-11-23. The Weather Mask row under the location image goes, with its thumbnail, name and "None". One mask button sits on the location image frame, bottom right, and opens a menu: Paint or Edit, Upload or Replace, Choose, Show or Hide Mask, Remove. |
+| Q21 | Show Mask draws the mask over the location image on the frame with the brush editor's tint, so the slot shows the picture and its mask together. |
 
 ## User Stories
 
@@ -113,7 +115,7 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
 
 **World Editor**
 
-- Each location image slot shows a Weather Mask control in Advanced mode (Q13, Q16, Q18). With no mask: Paint, Upload, Choose. With a mask: a thumbnail, Edit, Replace, Remove. Remove unlinks the slot only. Replace overwrites the linked entry's picture, so every slot that shares it changes, as Q12 rules for edits. The control names the shared count only when two or more images link the mask.
+- Each location image slot shows a Weather Mask button on its frame in Advanced mode (Q16, Q18, Q20). Its menu, with no mask: Paint, Upload, Choose. With a mask: Edit, Replace, Choose, Show or Hide Mask, Remove. Show Mask tints the frame's picture as the editor does (Q21). Remove unlinks the slot only. Replace overwrites the linked entry's picture, so every slot that shares it changes, as Q12 rules for edits. The control names the shared count only when two or more images link the mask.
 - Choose opens a picker of Mask entries only (Q5).
 - Upload always makes a new Mask entry from the chosen file and links it, even when the bytes match an existing mask: sharing happens only through Choose. The Media tab's own import never makes a Mask; masks enter only through a slot.
 - Paint opens the brush editor over the slot's picture, on a new mask or the linked one.
