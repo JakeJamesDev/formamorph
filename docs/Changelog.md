@@ -12,14 +12,6 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.8.0** (just released below)._
 
-### Major Changes
-
-#### ➕ Added
-
-- **👤 User-facing**
-  - **Weather:**
-    - **The weather now shows through a window in a Sheltered location whose image has a Weather Mask.** In open locations, the weather stays off what the mask hides. The mask lines up with the background image on any screen.
-
 ### Minor Changes
 
 #### ➕ Added
@@ -46,6 +38,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Traits and image Visibility rules can now require the weather.** Pick Weather under Add Requirement, then turn on the kinds that count. It shows while the world allows two or more kinds.
     - **A short effect now plays over the game when the weather changes.** Raindrops run down the screen, snow piles up, lightning flashes or the sun breaks through, then it stops. Turn it off with **Weather Foreground** in Display settings.
     - **A location's background image can carry a Weather Mask that sets where the weather shows over it.** In Advanced mode, upload a grayscale image or choose one the world has. Day and night images can share one. The Media tab lists masks.
+    - **The weather now shows through a window in a Sheltered location whose image has a Weather Mask.** In open locations, the weather stays off what the mask hides. The mask lines up with the background image on any screen.
     - **The Test Bench warns when a Weather Mask has a different shape from its picture.** In Advanced mode, the Issues tab names the location, the image and the mask, because the mask would stretch.
   - **Drawn Opening:**
     - **Openings can have names.** Type a name at the top of an opening's card. A blank name shows the owner and place, such as "Aki · Opening 2".
