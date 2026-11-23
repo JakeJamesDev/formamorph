@@ -23,6 +23,8 @@ const canvasFake = vi.hoisted(() => ({ saved: [] as { width: number; height: num
 vi.mock('./weatherMaskEditor/maskCanvas', () => ({
   readMaskRaster: vi.fn(async (_data: string, width: number, height: number) => new Uint8ClampedArray(width * height)),
   drawTint: vi.fn(),
+  // Names the preview mask for its painted pixels, so a test reads whether it followed a stroke.
+  previewMaskPng: vi.fn((raster: Uint8ClampedArray) => `data:image/png;base64,lit${raster.reduce((n, v) => n + (v > 0 ? 1 : 0), 0)}`),
   encodeMaskRaster: vi.fn((raster: Uint8ClampedArray, width: number, height: number) => {
     canvasFake.saved.push({ width, height, raster: raster.slice() });
     return `data:image/png;base64,${width}x${height}`;
@@ -81,7 +83,11 @@ const upload = async () => {
   await act(async () => { fireEvent.change(input, { target: { files: [new File(['x'], 'Dock Rain.png', { type: 'image/png' })] } }); });
 };
 
-beforeEach(() => { localStorage.clear(); });
+// jsdom has no canvas: the weather layer mounts its element and draws nothing.
+beforeEach(() => {
+  localStorage.clear();
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+});
 
 describe('Weather Mask control', () => {
   it('uploads a file as one new Mask entry and links it to the slot', async () => {
@@ -403,6 +409,36 @@ describe('Weather Mask brush editor', () => {
     } finally {
       vi.restoreAllMocks();
     }
+  });
+});
+
+describe('Weather Mask brush editor preview', () => {
+  const weather = () => document.querySelector<HTMLCanvasElement>('[data-testid="weather-background"]')!;
+
+  it('draws rain through the mask at first and the chosen kind after a pick, on the same canvas', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    await openEditor('Paint');
+    const canvas = weather();
+    expect(canvas.dataset.weatherKind).toBe('rain');
+    await press('Snow');
+    expect(weather().dataset.weatherKind).toBe('snow');
+    expect(weather()).toBe(canvas);
+    await press('Bright Sun');
+    expect(weather().dataset.weatherKind).toBe('brightSun');
+    await press('Storm');
+    expect(weather().dataset.weatherKind).toBe('storm');
+  });
+
+  it('follows the mask as strokes land, without rebuilding the canvas', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    const paint = await openEditor('Paint', 1280, 720);
+    const canvas = weather();
+    expect(canvas.dataset.weatherMask).toBe('data:image/png;base64,lit0');
+    stroke(paint);
+    await waitFor(() => expect(weather().dataset.weatherMask).not.toBe('data:image/png;base64,lit0'));
+    expect(weather()).toBe(canvas);
+    await press('Invert');
+    expect(weather().dataset.weatherMask).toMatch(/lit\d{6,}/);
   });
 });
 

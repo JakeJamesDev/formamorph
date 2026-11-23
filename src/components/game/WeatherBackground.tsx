@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { coverMaskStyle } from '@/lib/weatherMask';
+import { boxMaskStyle, coverMaskStyle } from '@/lib/weatherMask';
 import type { AllowedWeatherKind } from '@/types';
 import { registerDevHook } from '@/lib/devRouter';
 import type { WeatherBackgroundMode } from '@/lib/weatherView';
@@ -26,7 +26,7 @@ const ART_RATIOS = new Map<string, number>();
 const MAX_ART_RATIOS = 32;
 
 /** The natural width over height of the image at `src`, or undefined until it loads. */
-function useNaturalRatio(src: string | undefined): number | undefined {
+export function useNaturalRatio(src: string | undefined): number | undefined {
   const [loaded, setLoaded] = useState<{ src: string; ratio: number }>();
   useEffect(() => {
     if (!src || ART_RATIOS.has(src)) return;
@@ -45,8 +45,10 @@ function useNaturalRatio(src: string | undefined): number | undefined {
   return ART_RATIOS.get(src) ?? (loaded?.src === src ? loaded.ratio : undefined);
 }
 
-function WeatherCanvas({ kind, mode, plain, maskStyle, mask }: {
+function WeatherCanvas({ kind, mode, plain, maskStyle, mask, layer = '-z-[9]' }: {
   kind: AllowedWeatherKind; mode: DrawMode; plain: boolean; maskStyle: CSSProperties | undefined; mask: string | undefined;
+  /** The layer's stacking class: under the panels in play, over the picture in the brush editor. */
+  layer?: string;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -98,7 +100,7 @@ function WeatherCanvas({ kind, mode, plain, maskStyle, mask }: {
   }, [kind, mode, plain]);
   // The size container lets the mask box read the layer's size in `cq` units.
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-[9] [container-type:size]">
+    <div aria-hidden="true" className={`pointer-events-none absolute inset-0 ${layer} [container-type:size]`}>
       <canvas
         ref={ref}
         data-testid="weather-background"
@@ -131,4 +133,12 @@ export function WeatherBackground({ kind, mode, plain, mask, art }: {
   if (!kind || mode === 'none') return null;
   if (mask && !ratio) return null;
   return <WeatherCanvas kind={kind} mode={mode} plain={plain} mask={mask} maskStyle={mask && ratio ? coverMaskStyle(mask, ratio) : undefined} />;
+}
+
+/**
+ * The brush editor's weather: the Weather Background drawn through the mask in progress over the picture's own box.
+ * The canvas outlives every mask change, so strokes only swap the mask image.
+ */
+export function WeatherPreview({ kind, mode, mask, plain }: { kind: AllowedWeatherKind; mode: DrawMode; mask: string; plain: boolean }) {
+  return <WeatherCanvas kind={kind} mode={mode} plain={plain} mask={mask} maskStyle={boxMaskStyle(mask)} layer="z-[1]" />;
 }

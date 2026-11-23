@@ -150,7 +150,7 @@ export function WeatherMaskControl({ images, index, onImagesChange, pictures, su
       {image && (
         <WeatherMaskEditor
           open={painting}
-          picture={pictures?.get(image.data) ?? image.data}
+          pictures={[{ key: 'slot', label: '', picture: pictures?.get(image.data) ?? image.data }]}
           mask={entry?.data}
           sharedCount={shared}
           onSave={painted}

@@ -111,7 +111,7 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  World Editor on a new world holding a three-Layer rig and two entities, with the rig's full-screen editor open
  *  (on mobile, its pane). Edits write that unsaved world only. Add `fixture=layeredPerf` for an eight-Layer 1024 × 1536 rig
  *  that `e2e/perf` measures; `view=gameViewer&fixture=layeredPerf` puts it on a scout and the White Room backdrop. `weatherMaskEditor` opens the
- *  World Editor and the Weather Mask brush editor over a canned picture; `tab=edit` opens it on a canned mask shared by three images. Save and Cancel close it and write nothing. `appearancePreview` opens the
+ *  World Editor and the Weather Mask brush editor over a canned picture; `tab=edit` opens it on a canned mask shared by three images that switch under it; `tab=plain` opens that mask over a plain surface. Save and Cancel close it and write nothing. `appearancePreview` opens the
  *  World Editor and a trait's Preview on canned rows and the library's first Avatar, or the bundled one. `statAppearancePreview` opens a stat's Preview the same way. Save closes it and writes nothing. `demoAI` is in game (GameViewer) and opens the Demo AI dialog whatever the
   narration endpoint and the seen-key say, so it is reachable on a build that overrides the default endpoint.
  *  `persona` is in game (GameViewer) and opens the right panel's Change Persona picker. On mobile that panel

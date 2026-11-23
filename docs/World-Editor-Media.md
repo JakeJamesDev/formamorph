@@ -104,6 +104,7 @@ Each mask has one card, in the **Masks** section, or under **Masks** with **Grou
 
 - 📏 **Size.** The panel shows the mask's stored size, which counts toward the world's size.
 - 📎 **Used By** lists each image that uses it, such as "Dock, Image 1 Weather Mask". Select one to go there.
+- 🖌️ **Edit** opens the [brush editor](World-Editor-Locations#paint-a-weather-mask) over an image that uses the mask. When several images use it, pick which one shows under the mask. A mask no image uses opens over a plain surface at the mask's size. **Save** changes the mask for every image that uses it, in one undo step.
 - 🗑️ **Delete From World** takes the mask off every image that uses it. The images stay. Undo brings it all back.
 
 Image slots never offer a mask under **Choose**, and scripts can't show one.

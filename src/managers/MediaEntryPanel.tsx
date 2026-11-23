@@ -8,6 +8,7 @@ import { ENTRY_ITEM_PREFIX, MEDIA_KIND_LABELS, type MediaItem, type MediaParent 
 import { mediaUseLabel, variantUseLabel } from '@/lib/mediaUsage';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import type { Placeholder } from '@/types';
+import { EditMaskButton } from './EditMaskButton';
 import { LayeredImageEditor } from './LayeredImageEditor';
 import { MediaActionRow } from './MediaActionRow';
 import { MediaFacts, Preview } from './MediaPanels';
@@ -55,6 +56,7 @@ export function MediaEntryPanel({ item, placeholders, onGoTo, onSelect, openEdit
         ? <div className="flex justify-center rounded-md bg-muted/40 p-2"><Preview item={item} /></div>
         : <LayeredImageEditor entryId={entry.id} openOnMount={openEditor} />}
       <div className="flex flex-wrap gap-2">
+        {entry.kind === 'mask' && <EditMaskButton entry={entry} uses={uses} placeholders={placeholders} />}
         {file && <MediaActionRow className="contents" item={item} placeholders={placeholders} />}
         <Button variant="outline" size="sm" onClick={() => askDelete(entry.id)}>
           <Trash2 className="mr-1 h-4 w-4" />Delete From World

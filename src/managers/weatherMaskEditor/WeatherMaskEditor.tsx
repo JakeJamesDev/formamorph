@@ -4,7 +4,11 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PictureImg } from '@/components/PictureImg';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, dialogFullHeight, dialogSafeArea } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
+import { WeatherPreview, useNaturalRatio } from '@/components/game/WeatherBackground';
+import { ALLOWED_KINDS, WEATHER_LABELS } from '@/lib/weather';
+import type { AllowedWeatherKind } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
 import { fitWithin } from '@/lib/imageBytes';
@@ -20,7 +24,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { cn } from '@/lib/utils';
 import { MASK_CAP } from '@/lib/weatherMask';
-import { drawTint, encodeMaskRaster, readMaskRaster } from './maskCanvas';
+import { drawTint, encodeMaskRaster, previewMaskPng, readMaskRaster } from './maskCanvas';
 
 /** Below this width the floating groups would overlap, so the controls stack as on touch. */
 const STACKED_BELOW = 1024;
@@ -36,13 +40,18 @@ const FADE = 'opacity-25 transition-opacity duration-200 hover:opacity-100 has-[
 const hiddenWhile = (painting: boolean): CSSProperties | undefined =>
   (painting ? { opacity: 0, visibility: 'hidden', pointerEvents: 'none' } : undefined);
 
+/** One picture the mask can show under: the label names it in the switch. */
+export interface PictureChoice { key: string; label: string; picture: Picture }
+
 /**
- * The full-window Weather Mask brush editor over one picture. `mask` is the stored mask it opens on, or none for
- * a new one. Save hands back the mask as a PNG at the picture's size, capped like uploads.
+ * The full-window Weather Mask brush editor. `pictures` are the images that link the mask: one shows under it, and
+ * with several the card switches between them. With none it opens over a plain surface at the mask's size, so
+ * `mask` is then required. `mask` is the stored mask it opens on, or none for a new one. Save hands back the mask as
+ * a PNG at the size it opened with, capped like uploads.
  */
-export function WeatherMaskEditor({ open, picture, mask, sharedCount, onSave, onClose }: {
+export function WeatherMaskEditor({ open, pictures, mask, sharedCount, onSave, onClose }: {
   open: boolean;
-  picture: Picture;
+  pictures: readonly PictureChoice[];
   mask?: string;
   /** How many images link the mask; two or more names the count. */
   sharedCount: number;
@@ -51,16 +60,20 @@ export function WeatherMaskEditor({ open, picture, mask, sharedCount, onSave, on
 }) {
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      {open && <EditorBody picture={picture} mask={mask} sharedCount={sharedCount} onSave={onSave} onClose={onClose} />}
+      {open && <EditorBody pictures={pictures} mask={mask} sharedCount={sharedCount} onSave={onSave} onClose={onClose} />}
     </Dialog>
   );
 }
 
 interface Loaded { width: number; height: number; base: Uint8ClampedArray }
 
-function EditorBody({ picture, mask, sharedCount, onSave, onClose }: {
-  picture: Picture; mask?: string; sharedCount: number; onSave: (data: string) => void; onClose: () => void;
+function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
+  pictures: readonly PictureChoice[]; mask?: string; sharedCount: number; onSave: (data: string) => void; onClose: () => void;
 }) {
+  const [chosen, setChosen] = useState(0);
+  const index = Math.min(chosen, pictures.length - 1);
+  const current: PictureChoice | undefined = pictures[index];
+  const picture = current?.picture;
   // Touch has no hover to bring faded controls back, so a touch screen stacks them at any width.
   const touch = useMediaQuery('(pointer: coarse)');
   const stacked = useIsMobile(STACKED_BELOW) || touch;
@@ -73,6 +86,9 @@ function EditorBody({ picture, mask, sharedCount, onSave, onClose }: {
   const [showMask, setShowMask] = useState(true);
   const [painting, setPainting] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [weather, setWeather] = useState<AllowedWeatherKind>('rain');
+  const [previewMask, setPreviewMask] = useState<string | undefined>();
+  const calm = useMediaQuery('(prefers-reduced-motion: reduce)');
   const raster = useRef<Uint8ClampedArray | null>(null);
   const tint = useRef<HTMLCanvasElement | null>(null);
   const ring = useRef<HTMLDivElement | null>(null);
@@ -90,6 +106,7 @@ function EditorBody({ picture, mask, sharedCount, onSave, onClose }: {
       const base = mask ? await readMaskRaster(mask, w, h) : new Uint8ClampedArray(w * h);
       if (!mounted.current) return;
       raster.current = base.slice();
+      setPreviewMask(previewMaskPng(base, w, h));
       setLoaded({ width: w, height: h, base });
       setDoc(newMaskDocument(w, h));
     } catch (e: unknown) {
@@ -104,8 +121,11 @@ function EditorBody({ picture, mask, sharedCount, onSave, onClose }: {
     if (canvas && raster.current) drawTint(canvas, raster.current);
   }, []);
 
+  /** Every redraw also hands the weather preview the mask as it stands. */
   const redraw = (rect?: MaskRect | null) => {
-    if (tint.current && raster.current) drawTint(tint.current, raster.current, rect);
+    if (!raster.current) return;
+    if (tint.current) drawTint(tint.current, raster.current, rect);
+    if (loaded) setPreviewMask(previewMaskPng(raster.current, loaded.width, loaded.height));
   };
 
   /** Moves the document to `next` and redraws the replay over the base. */
@@ -207,14 +227,6 @@ function EditorBody({ picture, mask, sharedCount, onSave, onClose }: {
       <LabeledSlider label="Soft Edge" value={Math.round(softness * 100)} min={0} max={100} step={1} onChange={(v) => setSoftness(v / 100)} stacked={stacked} />
     </div>
   );
-  const card = (
-    <div className="flex flex-col items-start gap-2">
-      <Button type="button" size="sm" variant="outline" onClick={() => setShowMask((s) => !s)} aria-pressed={!showMask}>
-        {showMask ? 'Hide Mask' : 'Show Mask'}
-      </Button>
-      {sharedCount >= 2 && <Meta data-mask-shared={sharedCount}>Shared by {sharedCount} images. Saving changes all of them.</Meta>}
-    </div>
-  );
   const actions = (
     <>
       <Button type="button" variant="outline" onClick={requestCancel}>Cancel</Button>
@@ -222,10 +234,46 @@ function EditorBody({ picture, mask, sharedCount, onSave, onClose }: {
     </>
   );
 
-  const canvasSrc = isLayeredPicture(picture) ? picture.canvas : picture;
+  // The picture sets the box's shape; with none, the mask is the shape. A switch to a picture of another shape
+  // reshapes the box and keeps the raster, which stretches over it as play stretches the mask.
+  const canvasSrc = picture ? (isLayeredPicture(picture) ? picture.canvas : picture) : mask;
+  const naturalRatio = useNaturalRatio(loaded && picture ? canvasSrc : undefined);
+  const boxRatio = naturalRatio ?? (loaded ? loaded.width / loaded.height : 1);
+  const weatherPicker = (
+    <div className="flex flex-wrap gap-1" role="group" aria-label="Weather Preview" data-mask-weather="">
+      {ALLOWED_KINDS.map((kind) => (
+        <Button
+          key={kind} type="button" size="sm" variant={weather === kind ? 'default' : 'outline'}
+          aria-pressed={weather === kind} onClick={() => setWeather(kind)}
+        >
+          {WEATHER_LABELS[kind]}
+        </Button>
+      ))}
+    </div>
+  );
+  const switcher = pictures.length >= 2 && (
+    <Select value={String(index)} onValueChange={(v) => setChosen(Number(v))}>
+      <SelectTrigger aria-label="Picture" className="h-8 w-full" data-mask-pictures="">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {pictures.map((p, i) => <SelectItem key={p.key} value={String(i)}>{p.label}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+  const card = (
+    <div className="flex w-full max-w-60 flex-col items-start gap-2">
+      <Button type="button" size="sm" variant="outline" onClick={() => setShowMask((s) => !s)} aria-pressed={!showMask}>
+        {showMask ? 'Hide Mask' : 'Show Mask'}
+      </Button>
+      {switcher}
+      {weatherPicker}
+      {sharedCount >= 2 && <Meta data-mask-shared={sharedCount}>Shared by {sharedCount} images. Saving changes all of them.</Meta>}
+    </div>
+  );
   const scene = (
     <div className="relative flex min-h-0 flex-1 items-center justify-center [container-type:size]" data-mask-scene="">
-      {!loaded && (
+      {!loaded && canvasSrc && (
         <RemoteImg
           src={canvasSrc} alt="" className="invisible absolute h-px w-px"
           onLoad={(e) => void measured(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
@@ -239,17 +287,20 @@ function EditorBody({ picture, mask, sharedCount, onSave, onClose }: {
       {loaded && (
         <div
           className="relative overflow-hidden"
-          style={{ aspectRatio: `${loaded.width} / ${loaded.height}`, width: `min(100cqw, 100cqh * ${loaded.width / loaded.height})` }}
+          style={{ aspectRatio: `${boxRatio}`, width: `min(100cqw, 100cqh * ${boxRatio})` }}
           data-mask-box=""
         >
-          <PictureImg src={picture} alt="" crop center contain className="absolute inset-0 h-full w-full select-none object-fill" draggable={false} />
+          {picture
+            ? <PictureImg src={picture} alt="" crop center contain className="absolute inset-0 h-full w-full select-none object-fill" draggable={false} />
+            : <div className="absolute inset-0 bg-muted" data-mask-plain="" />}
+          {previewMask && <WeatherPreview kind={weather} mode={calm ? 'calm' : 'full'} plain={!picture} mask={previewMask} />}
           <canvas
             ref={tintRef} width={loaded.width} height={loaded.height}
-            className={cn('pointer-events-none absolute inset-0 h-full w-full', !showMask && 'invisible')}
+            className={cn('pointer-events-none absolute inset-0 z-[2] h-full w-full', !showMask && 'invisible')}
             data-mask-tint=""
           />
           <div
-            className="absolute inset-0 cursor-none touch-none"
+            className="absolute inset-0 z-[3] cursor-none touch-none"
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={endStroke}

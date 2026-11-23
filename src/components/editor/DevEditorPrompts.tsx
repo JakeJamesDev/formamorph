@@ -115,7 +115,8 @@ export function DevEditorPrompts({ modal, fixture, tab }: { modal: string | unde
   }
   if (modal === 'weatherMaskEditor') {
     const edit = tab === 'edit';
-    return <WeatherMaskEditor open picture={MASK_ROOM} mask={edit ? windowMask() : undefined} sharedCount={edit ? 3 : 1} onSave={close} onClose={close} />;
+    const pictures = tab === 'plain' ? [] : [{ key: 'room', label: 'Room', picture: MASK_ROOM }, ...(tab === 'edit' ? [{ key: 'room2', label: 'Room at Night', picture: MASK_ROOM }] : [])];
+    return <WeatherMaskEditor open pictures={pictures} mask={edit || tab === 'plain' ? windowMask() : undefined} sharedCount={edit ? 3 : 1} onSave={close} onClose={close} />;
   }
   if (modal === 'appearancePreview' || modal === 'statAppearancePreview') return <DevAppearancePreview onClose={close} stat={modal === 'statAppearancePreview'} />;
   if (modal === 'codeRename') return <CodeRenameDialog open plan={fixture === 'layers' ? LAYER_PLAN : PLAN} onApply={close} onSettle={close} />;

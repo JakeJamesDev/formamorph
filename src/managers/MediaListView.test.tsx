@@ -221,8 +221,26 @@ describe('Media tab Import Media', () => {
   });
 });
 
+// jsdom has no canvas: the brush editor reads any mask as all black and saves a PNG named for its size.
+vi.mock('./weatherMaskEditor/maskCanvas', () => ({
+  readMaskRaster: vi.fn(async (_data: string, width: number, height: number) => new Uint8ClampedArray(width * height)),
+  drawTint: vi.fn(),
+  previewMaskPng: vi.fn(() => 'data:image/png;base64,cHJldmlldw=='),
+  encodeMaskRaster: vi.fn((_raster: Uint8ClampedArray, width: number, height: number) => `data:image/png;base64,${width}x${height}`),
+}));
+
 describe('Media tab Masks', () => {
   const WINDOW = fakeDataUrl('image/png', 300, 'w');
+
+  /** Loads the editor's measuring image at `width` × `height`, as the browser does once the picture decodes. */
+  const loadPicture = async (width: number, height: number) => {
+    const picture = document.querySelector<HTMLImageElement>('[data-mask-scene] img')!;
+    Object.defineProperty(picture, 'naturalWidth', { value: width });
+    Object.defineProperty(picture, 'naturalHeight', { value: height });
+    await act(async () => { fireEvent.load(picture); });
+    await waitFor(() => expect(document.querySelector('[data-mask-paint]')).not.toBeNull());
+  };
+  const editorDialog = () => screen.getByRole('dialog', { name: 'Weather Mask' });
   const maskWorld = (): World => {
     const world = listWorld();
     world.worldOverview.mediaList = {
@@ -250,6 +268,48 @@ describe('Media tab Masks', () => {
     groupByType();
     expect(cardNamed('Masks', 'Dock Window')).toHaveLength(1);
     expect(cardNamed('Images', 'Dock Window')).toHaveLength(0);
+  });
+
+  it('opens a Mask in the brush editor over a picture that links it, and lists every linking picture', async () => {
+    const bench = renderMediaTab(maskWorld(), 'advanced');
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+    fireEvent.click(cardNamed('Masks', 'Dock Window')[0]);
+    fireEvent.click(within(panel()!).getByRole('button', { name: 'Edit' }));
+    await loadPicture(1600, 900);
+
+    expect(within(editorDialog()).getByRole('combobox', { name: 'Picture' })).toHaveTextContent('Dock, Image 1');
+    expect(document.querySelector('[data-mask-plain]')).toBeNull();
+    expect(document.querySelector('[data-mask-shared]')).toHaveAttribute('data-mask-shared', '2');
+
+    // One stroke, then Save writes the entry alone: the slots keep their links.
+    const paint = document.querySelector<HTMLElement>('[data-mask-paint]')!;
+    paint.getBoundingClientRect = () => ({ left: 0, top: 0, width: 800, height: 450, right: 800, bottom: 450, x: 0, y: 0, toJSON: () => ({}) });
+    fireEvent.pointerDown(paint, { button: 0, pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(paint, { pointerId: 1, clientX: 100, clientY: 100 });
+    await act(async () => { fireEvent.click(within(editorDialog()).getByRole('button', { name: 'Save' })); });
+    const { worldOverview, locations } = bench.ctx();
+    expect(worldOverview.mediaList?.win).toMatchObject({ id: 'win', name: 'Dock Window', kind: 'mask', data: 'data:image/png;base64,1600x900' });
+    expect(locations.find((l) => l.id === 'pier')?.images).toEqual([{ mediaId: 'day', weatherMask: 'win' }]);
+  });
+
+  it('opens a Mask no slot links over a plain surface at the mask size and saves it', async () => {
+    const world = maskWorld();
+    world.locations = world.locations.map((l) => (l.images ? { ...l, images: l.images.map(({ weatherMask: _m, ...rest }) => rest) } : l));
+    const bench = renderMediaTab(world, 'advanced');
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+    fireEvent.click(cardNamed('Unused', 'Dock Window')[0]);
+    fireEvent.click(within(panel()!).getByRole('button', { name: 'Edit' }));
+    // The measured image is the mask itself.
+    await loadPicture(640, 360);
+
+    expect(document.querySelector('[data-mask-plain]')).not.toBeNull();
+    expect(within(editorDialog()).queryByRole('combobox', { name: 'Picture' })).toBeNull();
+    const paint = document.querySelector<HTMLElement>('[data-mask-paint]')!;
+    paint.getBoundingClientRect = () => ({ left: 0, top: 0, width: 640, height: 360, right: 640, bottom: 360, x: 0, y: 0, toJSON: () => ({}) });
+    fireEvent.pointerDown(paint, { button: 0, pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(paint, { pointerId: 1, clientX: 50, clientY: 50 });
+    await act(async () => { fireEvent.click(within(editorDialog()).getByRole('button', { name: 'Save' })); });
+    expect(bench.ctx().worldOverview.mediaList?.win).toMatchObject({ kind: 'mask', data: 'data:image/png;base64,640x360' });
   });
 
   it('unlinks every slot on Delete From World and keeps the images', async () => {

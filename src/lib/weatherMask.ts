@@ -62,3 +62,11 @@ export const coverMaskStyle = (mask: string, ratio: number): CSSProperties => ({
   maskPosition: 'center',
   maskSize: `max(100cqw, calc(100cqh * ${ratio})) max(100cqh, calc(100cqw / ${ratio}))`,
 });
+
+/** A luminance mask stretched over the whole box, for a preview that sits exactly over the picture. */
+export const boxMaskStyle = (mask: string): CSSProperties => ({
+  maskImage: `url("${mask}")`,
+  maskMode: 'luminance',
+  maskRepeat: 'no-repeat',
+  maskSize: '100% 100%',
+});
