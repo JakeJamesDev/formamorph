@@ -1,6 +1,7 @@
 # 02: Server Stores And Uses Picks
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 7c7e2b6
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
@@ -21,10 +22,20 @@ A world publish or update can carry `markPicks`: an ordered list of `{ entityId,
 
 ## Acceptance criteria
 
-- [ ] A publish with picks, then a Supporter download: the picked images carry the account's mark, read back with the watermark reader, in place of the approximation's.
-- [ ] An update without `markPicks` clears them, and the download falls back to the approximation.
-- [ ] A held update's picks apply only when the update is approved.
-- [ ] A pick naming an overlay Variant, another entity's image, a small image, an animated image, an SVG or a missing id falls back to the approximation for that entity.
-- [ ] Malformed `markPicks` (not an array, wrong fields) publishes normally with no picks stored.
-- [ ] No route response contains the picks: listing, download, gated, update and author routes checked.
-- [ ] Removing the pick check makes the bad-pick test fail.
+- [x] A publish with picks, then a Supporter download: the picked images carry the account's mark, read back with the watermark reader, in place of the approximation's. (tests/supporterMarkPicks.test.js, "marks a flat gallery image ahead of the approximated one")
+- [x] An update without `markPicks` clears them, and the download falls back to the approximation. (when it carries contentData, per the spec session; "clears the picks when content comes without markPicks")
+- [x] A held update's picks apply only when the update is approved. ("applies its picks only when the update is approved")
+- [x] A pick naming an overlay Variant, another entity's image, a small image, an animated image, an SVG or a missing id falls back to the approximation for that entity. (the `it.each` "a pick that fails the check")
+- [x] Malformed `markPicks` (not an array, wrong fields) publishes normally with no picks stored. (`it.each` "malformed picks"; a bad entry drops alone)
+- [x] No route response contains the picks: listing, download, gated, update and author routes checked. (key-name check on 7 responses)
+- [x] Removing the pick check makes the bad-pick test fail. (mutated: overlay and other-entity cases went red)
+
+## Landed
+
+**Not verified**
+- Review routes (`/api/reviews/:id/content`) are not in the privacy test; picks live in their own table, so no row read can carry them.
+- The cap and id-length bounds in `MarkPicks.parse` are covered by one unit test each, not through a route.
+- Erasing an account clears its held picks (`src/utils/eraseUser.js`); no test covers that line.
+
+**For you**
+- None. The server picks are not visible until the client (ticket 03) sends `markPicks`.
