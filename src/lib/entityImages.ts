@@ -17,8 +17,11 @@ export type ImageBearing = {
 export function galleryLink(raw: unknown): GalleryLink | null {
   if (typeof raw === 'string') return raw ? { data: raw } : null;
   if (!raw || typeof raw !== 'object') return null;
-  const { data, name, mediaId, requires, layered } = raw as Partial<GalleryImage & LinkedGalleryImage> & { layered?: unknown };
-  const rules = Array.isArray(requires) && requires.length ? { requires } : {};
+  const { data, name, mediaId, requires, layered, weatherMask } = raw as Partial<GalleryImage & LinkedGalleryImage> & { layered?: unknown };
+  const rules = {
+    ...(Array.isArray(requires) && requires.length ? { requires } : {}),
+    ...(typeof weatherMask === 'string' && weatherMask ? { weatherMask } : {}),
+  };
   if (typeof mediaId === 'string' && mediaId) return { mediaId, ...rules };
   const rig = layered === undefined ? null : readPortableLayered(layered);
   if (rig) return { layered: rig, ...rules };

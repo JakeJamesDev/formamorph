@@ -20,7 +20,7 @@ import { resolveSound, type SoundValue } from './mediaSounds';
 import type { MediaUse, VariantUse } from './mediaUsage';
 import { IMAGE_CAPS } from './imageSlots';
 
-export type MediaKind = 'image' | 'sound' | 'model' | 'avatar' | 'layered';
+export type MediaKind = 'image' | 'sound' | 'model' | 'avatar' | 'layered' | 'mask';
 export type MediaParentKind = 'world' | 'map' | 'entity' | 'location' | 'dictionary' | 'body' | 'item';
 
 /** What holds a media item. Its name is what copy calls it; world media has the world as its parent. */
@@ -395,13 +395,14 @@ export function withAvatarsSection(sections: readonly MediaSection[], grouping: 
 export function mediaHolds(w: MediaWorld, id: string): boolean {
   return AVATAR_SECTION_IDS.some((s) => sectionSelection(s) === id)
     || sectionSelection(UNUSED_SECTION_ID) === id
+    || sectionSelection(MASKS_SECTION_ID) === id
     || (id.startsWith(ENTRY_ITEM_PREFIX) && !!w.worldOverview.mediaList?.[id.slice(ENTRY_ITEM_PREFIX.length)])
     || mediaSections(w).some((s) => sectionSelection(s.id) === id || s.items.some((i) => i.id === id));
 }
 
 export const totalBytes = (items: readonly MediaItem[]): number => items.reduce((n, i) => n + i.bytes, 0);
 
-const MEDIA_KINDS: readonly MediaKind[] = ['image', 'layered', 'sound', 'model', 'avatar'];
+const MEDIA_KINDS: readonly MediaKind[] = ['image', 'layered', 'mask', 'sound', 'model', 'avatar'];
 
 export const MEDIA_KIND_LABELS: Record<MediaKind, { one: string; many: string }> = {
   image: { one: 'Image', many: 'Images' },
@@ -409,6 +410,7 @@ export const MEDIA_KIND_LABELS: Record<MediaKind, { one: string; many: string }>
   model: { one: '3D Model', many: '3D Models' },
   avatar: { one: 'Avatar', many: 'Avatars' },
   layered: { one: 'Layered Image', many: 'Layered Images' },
+  mask: { one: 'Mask', many: 'Masks' },
 };
 
 /** Count and bytes per kind, in kind order, kinds with no items left out. */
@@ -463,6 +465,8 @@ export function typeSections(sections: readonly MediaSection[]): MediaSection[] 
 export const ENTRY_ITEM_PREFIX = 'entry:';
 /** The default view's last section: the entries nothing links. */
 export const UNUSED_SECTION_ID = 'unused';
+/** The default view's section of the Masks a slot links; no record holds them as media of its own. */
+export const MASKS_SECTION_ID = 'masks';
 /** An image entry only Layers use: no field links it, so both groupings leave it out and its Layered Image shows it. */
 export const isPartOnly = (item: Pick<MediaItem, 'uses' | 'variantUses'>): boolean => !item.uses?.length && !!item.variantUses?.length;
 
@@ -487,13 +491,18 @@ function entriesOnce(sections: readonly MediaSection[], entries: readonly MediaI
 
 /**
  * By type (Q15), each Media List entry shows once in its kind's section, and media off the list keeps one card per use.
- * By parent, the sections stay as they are, then the Unused entries. Images only Layers use show in neither.
+ * By parent, the sections stay as they are, then the Masks in use, then the Unused entries. Images only Layers use show in neither.
  */
 export function groupSections(sections: MediaSection[], grouping: MediaGrouping, entries: readonly MediaItem[] = []): MediaSection[] {
   if (grouping === 'type') return typeSections([{ id: 'all', path: [], items: entriesOnce(sections, entries.filter((e) => !isPartOnly(e))) }]);
+  const masks = entries.filter((e) => e.kind === 'mask' && !e.unused);
   const unused = entries.filter((e) => e.unused);
-  if (!unused.length) return sections;
-  return [...sections, { id: UNUSED_SECTION_ID, path: ['Unused'], items: unused }];
+  if (!masks.length && !unused.length) return sections;
+  return [
+    ...sections,
+    ...(masks.length ? [{ id: MASKS_SECTION_ID, path: [MEDIA_KIND_LABELS.mask.many], items: masks }] : []),
+    ...(unused.length ? [{ id: UNUSED_SECTION_ID, path: ['Unused'], items: unused }] : []),
+  ];
 }
 
 export type MediaFilter = 'all' | 'linked' | 'embedded' | 'rules' | 'overBudget' | 'unused' | 'noImages';

@@ -10,12 +10,21 @@ import { isMediaRef, uniqueMediaName } from './mediaList';
 
 const linksTo = (value: unknown, id: string): boolean => isMediaRef(value) && value.mediaId === id;
 
-/** A stored gallery without its links to `id`; the same array when it had none. */
+/** A stored gallery without its links to `id`, as a picture or a Weather Mask; the same array when it had none. */
 function withoutGalleryLink<T>(images: T[] | undefined, id: string): T[] | undefined {
   if (!images) return images;
-  const kept = images.filter((raw) => !linksTo(galleryLink(raw), id));
-  return kept.length === images.length ? images : kept;
+  let changed = false;
+  const kept = images.flatMap((raw) => {
+    if (linksTo(galleryLink(raw), id)) { changed = true; return []; }
+    if (!isRecord(raw) || raw.weatherMask !== id) return [raw];
+    changed = true;
+    const { weatherMask: _gone, ...rest } = raw;
+    return [rest as T];
+  });
+  return changed ? kept : images;
 }
+
+const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object';
 
 /** `record` with an optional `field` dropped when it links `id`. The field reads as unknown: its declared type holds no link yet. */
 function withoutSingle<T extends object>(record: T, field: keyof T & string, id: string): T {

@@ -933,13 +933,13 @@ Each param has `name`, `type` (`"string"`, `"number"`, `"boolean"` or `"enum"`),
 - A base64 data URL, such as `data:image/png;base64,…`
 - Or an `http` or `https` URL. The app loads the image from that address
 
-**The Media List** (`worldOverview.mediaList`) holds the world's images and sounds once each, keyed by `id`. Fields link to an entry by its `id`. Each entry:
+**The Media List** (`worldOverview.mediaList`) holds the world's images, sounds and masks once each, keyed by `id`. Fields link to an entry by its `id`. Each entry:
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
 | `id` | ✓ | String | The key the entry sits under |
 | `name` | ✓ | String | Unique in the world. Scripts set media by this name |
-| `kind` | ✓ | `"image"` \| `"sound"` | What it holds |
+| `kind` | ✓ | `"image"` \| `"sound"` \| `"mask"` | What it holds. A `"mask"` is a grayscale PNG data URL that a location image's `weatherMask` links: white shows the weather, black and transparent hide it, gray shows it partly. Scripts and image slots never read a mask |
 | `data` | ✓ | String | A base64 data URL, or an `http` or `https` URL |
 | `type` | | String | The file's MIME type |
 | `hash` | | String | The file's content hash. Absent on a URL entry |
@@ -952,6 +952,7 @@ Each param has `name`, `type` (`"string"`, `"number"`, `"boolean"` or `"enum"`),
 | `data` | | Image | The picture itself, in a file written before the Media List or a library entity. Either `mediaId` or `data` is set |
 | `name` | | String | The picture's name, carried with `data` so a library or card round trip keeps it |
 | `requires` | | [Requirement rows](#trait-requirements) | The Visibility rule. Absent = always shown. On a location or the Map Background, a condition with no `owner` reads the played persona |
+| `weatherMask` | | String | Location images only: the `id` of a `"mask"` entry in `mediaList`, the image's [Weather Mask](World-Editor-Locations#weather-mask). It covers the whole picture, a Layered Image included. Absent, or an `id` the list lacks = no mask |
 
 **Image links** (`thumbnail`) are `{ "mediaId": "<id>" }`, or an [Image](#media-fields) string in a file written before the Media List. The app moves embedded pictures into the list on load.
 

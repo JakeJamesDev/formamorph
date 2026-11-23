@@ -1,4 +1,4 @@
-import { Box, FileAudio, Image as ImageIcon, Layers, Link2, UserSquare } from 'lucide-react';
+import { Box, Contrast, FileAudio, Image as ImageIcon, Layers, Link2, UserSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Meta } from '@/components/ui/typography';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
@@ -16,7 +16,7 @@ import type { Placeholder } from '@/types';
 /** The entity holding `item`, whose starting values its Layered Image reads. */
 export const entityParentId = (item: MediaItem): string | undefined => (item.parent.kind === 'entity' ? item.parent.id : undefined);
 
-const KIND_ICON: Record<MediaKind, typeof ImageIcon> = { image: ImageIcon, sound: FileAudio, model: Box, avatar: UserSquare, layered: Layers };
+const KIND_ICON: Record<MediaKind, typeof ImageIcon> = { image: ImageIcon, sound: FileAudio, model: Box, avatar: UserSquare, layered: Layers, mask: Contrast };
 
 /** A Layered Image's picture under its entity's starting values, covering the box; its icon while it can draw nothing. */
 function LayeredThumb({ item, className }: { item: MediaItem; className?: string }) {
@@ -33,9 +33,9 @@ const KindIcon = ({ kind, className }: { kind: MediaKind; className?: string }) 
   return <span className={cn('flex items-center justify-center bg-muted text-muted-foreground', className)}><Icon className="h-1/3 w-1/3" /></span>;
 };
 
-/** An image's own pixels, loaded lazily, or a Layered Image's picture; every other kind shows its icon. */
+/** An image's or a Mask's own pixels, loaded lazily, or a Layered Image's picture; every other kind shows its icon. */
 export function MediaThumb({ item, className }: { item: MediaItem; className?: string }) {
-  if (item.kind === 'image' && !item.blank) {
+  if ((item.kind === 'image' || item.kind === 'mask') && !item.blank) {
     return <RemoteImg src={item.value} loading="lazy" decoding="async" alt="" className={cn('bg-muted object-cover', className)} />;
   }
   if (item.kind === 'layered') return <LayeredThumb item={item} className={className} />;

@@ -4,7 +4,7 @@
  * every use.
  */
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
-import { Images, Layers, Music, Trash2, X } from 'lucide-react';
+import { Contrast, Images, Layers, Music, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SearchField } from '@/components/ui/search-field';
@@ -57,15 +57,19 @@ function LayeredChoice({ entry, list }: { entry: LayeredMediaEntry; list: MediaL
   );
 }
 
-/** Choose: a popover of the list's entries of `kind`, a thumbnail grid for images and a name list for sounds.
- *  Entries in `linkedIds` are dimmed, and still pickable. */
-export function MediaChooseButton({ list, linkedIds, onPick, onPickLayered, kind = 'image' }: {
+/** The icon each kind's Choose shows. */
+const CHOOSE_ICON = { image: Images, sound: Music, mask: Contrast } as const;
+
+/** Choose: a popover of the list's entries of `kind`, a thumbnail grid for images and Masks and a name list for
+ *  sounds. Entries in `linkedIds` are dimmed, and still pickable. */
+export function MediaChooseButton({ list, linkedIds, onPick, onPickLayered, kind = 'image', disabled }: {
   list: MediaList | undefined;
   linkedIds: ReadonlySet<string>;
   onPick: (entry: MediaFileEntry) => void;
   /** Set, the images' grid also lists the Layered Images that can draw, each as its composed picture. */
   onPickLayered?: (entry: LayeredMediaEntry) => void;
   kind?: MediaFileKind;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -73,13 +77,15 @@ export function MediaChooseButton({ list, linkedIds, onPick, onPickLayered, kind
   const withLayered = kind === 'image' && !!onPickLayered;
   const entries = useMemo(() => choosable(list, kind, withLayered), [list, kind, withLayered]);
   const words = MEDIA_KIND_WORDS[kind];
+  const Icon = CHOOSE_ICON[kind];
+  const pictures = kind !== 'sound';
   const key = mediaNameKey(query);
   const shown = key ? entries.filter((entry) => mediaNameKey(entry.name).includes(key)) : entries;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline">
-          {kind === 'image' ? <Images className="mr-2 h-4 w-4" /> : <Music className="mr-2 h-4 w-4" />}Choose
+        <Button type="button" variant="outline" disabled={disabled}>
+          <Icon className="mr-2 h-4 w-4" />Choose
         </Button>
       </PopoverTrigger>
       {/* Inline, not portaled: the slot sits in the entity editor's dialog, whose scroll lock eats a portal's wheel. */}
@@ -92,7 +98,7 @@ export function MediaChooseButton({ list, linkedIds, onPick, onPickLayered, kind
           autoFocus
         />
         <ScrollArea className="max-h-80">
-          <div className={cn('grid gap-2 pr-2', kind === 'image' ? 'grid-cols-3' : 'grid-cols-1')}>
+          <div className={cn('grid gap-2 pr-2', pictures ? 'grid-cols-3' : 'grid-cols-1')}>
             {shown.map((entry) => {
               const here = linkedIds.has(entry.id);
               return (
@@ -107,14 +113,14 @@ export function MediaChooseButton({ list, linkedIds, onPick, onPickLayered, kind
                   data-media-entry={entry.id}
                   className={cn(
                     'rounded-md p-1 text-left hover:bg-muted',
-                    kind === 'image' ? 'space-y-1' : 'flex items-center gap-2',
+                    pictures ? 'space-y-1' : 'flex items-center gap-2',
                     here && 'opacity-50',
                   )}
                 >
                   {entry.kind === 'layered'
                     ? <LayeredChoice entry={entry} list={list} />
-                    : kind === 'image'
-                    ? <RemoteImg src={entry.data} alt="" loading="lazy" className="aspect-[3/4] w-full rounded bg-muted object-cover" />
+                    : pictures
+                    ? <RemoteImg src={entry.data} alt="" loading="lazy" className={cn('w-full rounded bg-muted object-cover', kind === 'mask' ? 'aspect-video' : 'aspect-[3/4]')} />
                     : <Music className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />}
                   <span className="line-clamp-2 break-words text-meta">{entry.name}</span>
                 </button>
@@ -186,7 +192,8 @@ export function useMediaEntryActions() {
     // The name the list keeps, made unique, is the one scripts follow.
     const kept = renameMediaEntry(list, id, name)?.[id]?.name ?? name.trim();
     void step(`Rename ${MEDIA_KIND_WORDS[list[id].kind].one}: ${name.trim()}`, () => renameMedia({ mediaId: id, name }));
-    offerCodeRename({ root: 'media', oldName: list[id].name, newName: kept, otherNames: [], noun: list[id].kind === 'layered' ? 'Layered Image' : list[id].kind });
+    // No script reads a Mask by name.
+    if (list[id].kind !== 'mask') offerCodeRename({ root: 'media', oldName: list[id].name, newName: kept, otherNames: [], noun: list[id].kind === 'layered' ? 'Layered Image' : list[id].kind });
   };
   const world = { worldOverview, entities, locations, items, bodies, dictionaries };
   const uses = deleting

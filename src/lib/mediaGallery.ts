@@ -8,7 +8,7 @@ import { contentHash } from './contentHash';
 import { galleryLinks, type ImageBearing } from './entityImages';
 import type { LocationImageBearing } from './locationImages';
 import { isRemoteImage, dataUrlMime } from './imageBytes';
-import { fallbackMediaName, fileEntries, isEmbeddedImage, isMediaRef, layeredEntry, resolveGalleryImage, uniqueMediaName, type MediaFileKind } from './mediaList';
+import { fallbackMediaName, fileEntries, isEmbeddedImage, isMediaRef, layeredEntry, resolveGalleryImage, slotFields, uniqueMediaName, type MediaFileKind } from './mediaList';
 import { labelPlaceholders } from './placementLetters';
 import { isEmbeddedLayered, placeLayered, portableOutsidePlay } from './portableLayered';
 import { OUTSIDE_PLAY, resolveLayered, type LayeredPicture, type LayerReads } from './layeredImages';
@@ -61,7 +61,7 @@ function linkGallery(links: readonly GalleryLink[], list: MediaList, subject: st
     if (isMediaRef(link)) return link;
     const placed = isEmbeddedLayered(link) ? placeGalleryLayered(next, link.layered) : placeGalleryFile(next, link, 'image', subject);
     next = placed.list;
-    return { mediaId: placed.id, ...(link.requires?.length ? { requires: link.requires } : {}) };
+    return { mediaId: placed.id, ...slotFields(link) };
   });
   return { links: out, list: next };
 }
@@ -108,7 +108,7 @@ export const layeredTile = (entryId: string): string =>
 function widgetImage(link: GalleryLink, list: MediaList | undefined): GalleryImage | null {
   const layered = 'mediaId' in link ? layeredEntry(list, link.mediaId) : undefined;
   if (!layered) return resolveGalleryImage(link, list);
-  return { data: layeredTile(layered.id), name: layered.name, ...(link.requires?.length ? { requires: link.requires } : {}) };
+  return { data: layeredTile(layered.id), name: layered.name, ...slotFields(link) };
 }
 
 /** A stored gallery's pictures for the widget, with the link each came from. A link the list lacks drops. */
@@ -126,7 +126,8 @@ export function galleryView(links: readonly GalleryLink[], list: MediaList | und
 
 /**
  * The stored gallery after the widget wrote `next`. A picture whose data a current link shows keeps that link
- * with its new rule; a new picture is placed into the list (a picked file's name, else the subject fallback).
+ * with its new rule and Weather Mask; a new picture is placed into the list (a picked file's name, else the
+ * subject fallback).
  */
 export function relinkGallery(
   current: readonly GalleryLink[], list: MediaList, next: readonly GalleryImage[], subject: string | undefined,
@@ -135,19 +136,19 @@ export function relinkGallery(
   const used = new Set<number>();
   let nextList = list;
   const out = next.map((image): GalleryLink => {
-    const rules = image.requires?.length ? { requires: image.requires } : {};
+    const fields = slotFields(image);
     const at = images.findIndex((shown, i) => !used.has(i) && shown.data === image.data);
     if (at !== -1) {
       used.add(at);
       const link = links[at];
-      return isMediaRef(link) ? { mediaId: link.mediaId, ...rules } : { ...link, requires: image.requires };
+      return isMediaRef(link) ? { mediaId: link.mediaId, ...fields } : withSlotFields(link, image);
     }
     // A picked Layered Image arrives as its tile.
     const layered = Object.values(list).find((entry) => entry.kind === 'layered' && layeredTile(entry.id) === image.data);
-    if (layered) return { mediaId: layered.id, ...rules };
+    if (layered) return { mediaId: layered.id, ...fields };
     const placed = placeGalleryFile(nextList, { data: image.data, name: image.name }, 'image', subject);
     nextList = placed.list;
-    return { mediaId: placed.id, ...rules };
+    return { mediaId: placed.id, ...fields };
   });
   return { links: out.map(withoutEmptyRule), list: nextList };
 }
@@ -174,7 +175,7 @@ export function composedPictures(links: readonly GalleryLink[], list: MediaList 
 /** An embedded gallery's pictures for the widget, outside a world: an embedded Layered Image shows as its tile. */
 export const embeddedGalleryView = (links: readonly GalleryLink[]): GalleryImage[] =>
   links.flatMap((link, slot): GalleryImage[] => {
-    if (isEmbeddedLayered(link)) return [{ data: embeddedTile(slot), name: link.layered.name, ...(link.requires?.length ? { requires: link.requires } : {}) }];
+    if (isEmbeddedLayered(link)) return [{ data: embeddedTile(slot), name: link.layered.name, ...slotFields(link) }];
     return isEmbeddedImage(link) ? [link] : [];
   });
 
@@ -183,7 +184,7 @@ export function relinkEmbeddedGallery(current: readonly GalleryLink[], next: rea
   const rigs = new Map(current.flatMap((link, slot) => (isEmbeddedLayered(link) ? [[embeddedTile(slot), link.layered] as const] : [])));
   return next.map((image) => {
     const rig = rigs.get(image.data);
-    return withoutEmptyRule(rig ? { layered: rig, requires: image.requires } : image);
+    return withoutEmptyRule(rig ? { layered: rig, ...slotFields(image) } : image);
   });
 }
 
@@ -200,6 +201,12 @@ const withoutEmptyRule = (link: GalleryLink): GalleryLink => {
   if (link.requires?.length) return link;
   const { requires: _none, ...rest } = link;
   return rest as GalleryLink;
+};
+
+/** `link` taking `from`'s rule and Weather Mask, each dropped when `from` has none. */
+const withSlotFields = (link: GalleryLink, from: Pick<GalleryImage, 'requires' | 'weatherMask'>): GalleryLink => {
+  const { requires: _rule, weatherMask: _mask, ...rest } = link;
+  return { ...rest, ...slotFields(from) } as GalleryLink;
 };
 
 /** The entries `next` adds over `before`, for a write that merges into the latest list. */

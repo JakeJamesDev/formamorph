@@ -201,6 +201,7 @@ Simple mode also hides **AI-Facing Summary**.
 - 👤 **A condition with no owner** reads the **persona** the player plays.
 
 ### Media
+<!-- route: worldEditorLocation.media -->
 
 | Field | What it does |
 |---|---|
@@ -218,6 +219,25 @@ Each background image can carry a [Visibility rule](World-Editor-Entities#visibi
 - 🌫️ When no image is visible, the story shows no backdrop.
 
 Example: put a *wounded* backdrop first with the rule *Health < 20%*, and a calm one after it with no rule. The backdrop swaps while the persona is hurt.
+
+### Weather Mask
+<!-- keywords: weather mask, mask, rain through window, snow through window, weather indoors, overhang, covered porch, keep rain off -->
+
+**Advanced mode only.** Give a background image a **Weather Mask** to set where the [weather](World-Editor-Overview#weather) shows over it. The mask is a grayscale image. White shows the weather, black hides it, and gray shows it partly. Transparent pixels hide it too.
+
+- 🪟 **Sheltered location.** The weather shows only inside the mask, such as through a window. With no mask, a Sheltered location shows no weather.
+- ⛱️ **Open location.** The weather stays off what the mask hides, such as the ground under an overhang.
+
+Each background image has a **Weather Mask** row under its name:
+
+| With no mask | With a mask |
+| --- | --- |
+| **Upload** stores a file as a new mask for this image | **Replace** uploads a new file into this mask |
+| **Choose** links a mask the world already has | **Remove** takes the mask off this image and keeps it in the world |
+
+- 🔁 **Shared masks.** Images can share one mask, such as a place's day and night images. The row says how many images share it, and **Replace** changes it for all of them.
+- 📐 **Shape.** Make the mask the same shape as its image. Upload saves it as a PNG, scaled down to 1920 pixels on its long edge.
+- 📦 **Where masks live.** The [Media tab](World-Editor-Media#masks) lists every mask and the images that use it.
 
 ## What reaches the AI
 <!-- keywords: random events list, choices ignore rules, narrator vs other steps, hidden room details, short form used, ai misses details -->

@@ -220,3 +220,47 @@ describe('Media tab Import Media', () => {
     expect(Object.keys(bench.ctx().worldOverview.mediaList ?? {})).toHaveLength(entries);
   });
 });
+
+describe('Media tab Masks', () => {
+  const WINDOW = fakeDataUrl('image/png', 300, 'w');
+  const maskWorld = (): World => {
+    const world = listWorld();
+    world.worldOverview.mediaList = {
+      ...world.worldOverview.mediaList,
+      day: { id: 'day', name: 'Dock Day', kind: 'image', data: fakeDataUrl('image/png', 30, 'd') },
+      win: { id: 'win', name: 'Dock Window', kind: 'mask', data: WINDOW },
+    };
+    world.locations = [
+      ...world.locations,
+      { id: 'dock', name: 'Dock', images: [{ mediaId: 'day', weatherMask: 'win' }] },
+      { id: 'pier', name: 'Pier', images: [{ mediaId: 'day', weatherMask: 'win' }] },
+    ];
+    return world;
+  };
+
+  it('lists each Mask with its size and the locations that keep it, in both groupings', () => {
+    renderMediaTab(maskWorld(), 'advanced');
+    const [card] = cardNamed('Masks', 'Dock Window');
+    // The stored size, the measure the publish limit uses.
+    expect(card).toHaveTextContent(`${WINDOW.length} B`);
+    fireEvent.click(card);
+    const usedBy = panel()!.querySelector<HTMLElement>('[data-media-used-by]')!;
+    expect(within(usedBy).getAllByRole('button').map((b) => b.textContent)).toEqual(['Dock, Image 1 Weather Mask', 'Pier, Image 1 Weather Mask']);
+
+    groupByType();
+    expect(cardNamed('Masks', 'Dock Window')).toHaveLength(1);
+    expect(cardNamed('Images', 'Dock Window')).toHaveLength(0);
+  });
+
+  it('unlinks every slot on Delete From World and keeps the images', async () => {
+    const bench = renderMediaTab(maskWorld(), 'advanced');
+    fireEvent.click(cardNamed('Masks', 'Dock Window')[0]);
+    fireEvent.click(within(panel()!).getByRole('button', { name: 'Delete From World' }));
+    const dialog = await screen.findByRole('alertdialog');
+    await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' })); });
+
+    const { locations, worldOverview } = bench.ctx();
+    expect(worldOverview.mediaList?.win).toBeUndefined();
+    expect(locations.filter((l) => l.id === 'dock' || l.id === 'pier').map((l) => l.images)).toEqual([[{ mediaId: 'day' }], [{ mediaId: 'day' }]]);
+  });
+});

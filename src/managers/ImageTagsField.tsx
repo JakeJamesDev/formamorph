@@ -20,7 +20,7 @@ import { ImageUpload } from '../lib/UtilityComponents';
 import { fileToDataUrl } from '@/lib/imageDrop';
 import { followReorder } from '@/lib/imageGalleryOrder';
 import { withImageRule } from '@/lib/entityImages';
-import { mediaNameFromFile } from '@/lib/mediaList';
+import { mediaNameFromFile, slotFields } from '@/lib/mediaList';
 import { useStableIds } from '@/lib/useStableIds';
 import { useImageDropTarget } from '@/lib/useImageDropTarget';
 import { RemoteImg } from '@/lib/useRemoteImage';
@@ -82,6 +82,8 @@ interface ImageWidgetProps {
   media?: GalleryMedia;
   /** The composed picture behind each Layered Image tile, by the tile's data; the frame and strip draw it in the tile's place. */
   pictures?: ReadonlyMap<string, LayeredPicture>;
+  /** Drawn under each slot, the open one included, below its name row. Keep its height the same for every slot. */
+  slotFooter?: (index: number) => ReactNode;
 }
 
 /** The inputs a host passes to control the gallery's frame and cog. */
@@ -221,13 +223,13 @@ const AddTile = ({ htmlFor, selected, onSelect, onUrl, onFiles }: {
   );
 };
 
-/** `list` with slot `index` showing `data` under the slot's own rule; an empty `data` drops the slot and its rule. */
+/** `list` with slot `index` showing `data` under the slot's own rule and Weather Mask; an empty `data` drops the slot with both. */
 function withSlotData(list: readonly GalleryImage[], index: number, data: string, fileName?: string): GalleryImage[] {
   const next: (GalleryImage | undefined)[] = [...list];
-  // A new picture keeps the slot's rule; the old picture's name leaves with it.
-  const rules = list[index]?.requires ? { requires: list[index].requires } : {};
+  // A new picture keeps the slot's rule and Weather Mask; the old picture's name leaves with it.
+  const fields = list[index] ? slotFields(list[index]) : {};
   const name = mediaNameFromFile(fileName);
-  next[index] = data ? { data, ...(name ? { name } : {}), ...rules } : undefined;
+  next[index] = data ? { data, ...(name ? { name } : {}), ...fields } : undefined;
   return next.filter((img): img is GalleryImage => !!img);
 }
 
@@ -250,7 +252,7 @@ function withSlotData(list: readonly GalleryImage[], index: number, data: string
 export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   const {
     label, images, onImagesChange, slots = 1, imageId, cap, description, kind, fileSubject, tags, onTagsChange, tourAnchor, ruleHost,
-    framed, onFramedChange, ruleCog = true, editLayers = true, media, pictures,
+    framed, onFramedChange, ruleCog = true, editLayers = true, media, pictures, slotFooter,
   } = useImageWidget();
   const ruleSourced = useHasRuleSource();
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
@@ -453,6 +455,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
           {/* A gallery keeps the name row on every slot, disabled on the open one, so it never comes and goes. */}
           {(entry || (gallery && media)) && <MediaEntryBar entry={entry} onUnlink={() => setSlot(i, '')} />}
           {!gallery && entry?.kind === 'layered' && editLayers && <EditLayersButton entryId={entry.id} previewAs={ruleHost?.kind === 'entity' ? ruleHost.id : undefined} size="sm" />}
+          {slotFooter?.(i)}
         </div>
         );
       })}

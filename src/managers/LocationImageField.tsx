@@ -4,13 +4,16 @@ import { useCallback } from 'react';
 import { locationLinks } from '@/lib/mediaGallery';
 import { useLinkedGallery } from '@/lib/useLinkedGallery';
 import { labelPlaceholders } from '@/lib/placementLetters';
+import { useEditorMode } from '@/lib/editorMode';
 import type { GalleryLink, GameLocation, Placeholder } from '@/types';
 import ImageTagsField, { type GalleryFrameProps } from './ImageTagsField';
+import { WeatherMaskControl } from './WeatherMaskControl';
 
 /** Location galleries take Layered Images. */
 const LAYERED_SLOTS = { layered: true };
 
-/** A location's gallery with its tags and generate controls, as the location panel and the Media tab show it. */
+/** A location's gallery with its tags and generate controls, as the location panel and the Media tab show it. In
+ *  Advanced mode each slot carries its Weather Mask. */
 export function LocationImageField({ location, onChange, placeholders, imageId = `location-image-${location.id}`, tourAnchor, frame }: {
   location: GameLocation;
   onChange: <K extends 'images' | 'imageTags'>(field: K, value: NonNullable<GameLocation[K]>) => void;
@@ -24,6 +27,10 @@ export function LocationImageField({ location, onChange, placeholders, imageId =
   const subject = labelPlaceholders(location.name, placeholders);
   const write = useCallback((links: GalleryLink[]) => onChange('images', links), [onChange]);
   const gallery = useLinkedGallery(locationLinks(location), write, subject, LAYERED_SLOTS);
+  const { advanced } = useEditorMode();
+  const slotFooter = advanced
+    ? (i: number) => <WeatherMaskControl images={gallery.images} index={i} onImagesChange={gallery.onImagesChange} subject={subject} />
+    : undefined;
   return (
     <ImageTagsField
       label="Background Image"
@@ -42,6 +49,7 @@ export function LocationImageField({ location, onChange, placeholders, imageId =
       onTagsChange={(t) => onChange('imageTags', t)}
       placeholders={placeholders}
       ruleHost={LOCATION_RULE_HOST}
+      slotFooter={slotFooter}
       {...frame}
     />
   );

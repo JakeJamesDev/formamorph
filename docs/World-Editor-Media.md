@@ -40,7 +40,7 @@ The row above the search box holds the **Publish Size** meter and four buttons. 
 - **Filter** narrows the gallery to **Linked**, **Embedded**, **Has Visibility Rules**, **Over Size Budget**, **Unused** or **No Images** items. **All Media** turns the filter off. The button shows the filter's name while it's on.
   - **Linked** keeps images and sounds that play from an address. **Embedded** keeps every other file, 3D Models and Avatars included.
   - **Has Visibility Rules** and **Over Size Budget** look at images, so they hide sounds, 3D Models and Avatars.
-  - **Unused** keeps the images and sounds that nothing in the world shows or plays.
+  - **Unused** keeps the images, sounds and masks that nothing in the world uses.
 - The **No Images** filter shows one blank card for each entity or location with no image, an empty world thumbnail, and an empty **Map Background**.
   - Blank cards show only their name, with no size. Dictionaries without a cover image have no blank card.
   - Select an entity or location card to open its image panel on the add tile.
@@ -67,7 +67,8 @@ The cards are in sections that follow your editor:
 | **Entities**, and one per entity group | Each entity's images, **Sound** and **3D Model** |
 | **Locations**, and one per location with sub-locations | Each location's background images and **Ambient Sound** |
 | **Dictionaries** | Each dictionary's **Cover Image** |
-| **Unused** | Each image and sound nothing uses, by its name. The section shows only when there is one |
+| **Masks** | Each [Weather Mask](#masks) an image uses, once. The section shows only when there is one |
+| **Unused** | Each image, sound and mask nothing uses, by its name. The section shows only when there is one |
 
 Each card shows the image, or an icon for a sound, 3D Model or Avatar. Under it are the name of the entity, location or dictionary, and the file's size. A world card shows its slot: **Thumbnail** or **Background Music**. An Avatar card shows the Avatar's name. A map card reads **Map Background**.
 
@@ -93,6 +94,19 @@ Select an image or sound card to open its panel:
 - ⬇️ **Download** saves the file, or **Open Link** opens a linked one.
 
 Visibility rules belong to each place, so you set them in the image panel with **Group by Type** off.
+
+## Masks
+<!-- keywords: weather mask, masks, mask size, which images use this mask, delete mask -->
+
+A mask sets where the weather shows over a location's background image. You add one from the image's [Weather Mask](World-Editor-Locations#weather-mask) row, in Advanced mode. **Import Media** never makes a mask.
+
+Each mask has one card, in the **Masks** section, or under **Masks** with **Group by Type** on. A mask nothing uses shows in **Unused**. Select the card to open its panel:
+
+- 📏 **Size.** The panel shows the mask's stored size, which counts toward the world's size.
+- 📎 **Used By** lists each image that uses it, such as "Dock, Image 1 Weather Mask". Select one to go there.
+- 🗑️ **Delete From World** takes the mask off every image that uses it. The images stay. Undo brings it all back.
+
+Image slots never offer a mask under **Choose**, and scripts can't show one.
 
 ## Import Media
 <!-- keywords: import media, upload images, upload sounds, add files, bulk upload, add avatar, vrm -->

@@ -1,7 +1,7 @@
 // What a script's media members read (Q52): the Media List's names, the overrides in force, and what each owner shows with none.
 
 import type { Entity, GameLocation, GenericStates, Item, ItemInstance, LayeredMediaEntry, MediaList, MediaOverrides, TraitRequirementRow } from '@/types';
-import type { SandboxLayeredImage, SandboxMedia } from './statCodeExecutor';
+import type { SandboxLayeredImage, SandboxMedia, ScriptMediaEntry } from './statCodeExecutor';
 import { ruleStates, type GateInput, type RowState } from './traitGates';
 import { isMediaRef } from './mediaList';
 import { liveMediaId } from './mediaOverrides';
@@ -70,7 +70,7 @@ export function sandboxMediaOf({ list, overrides, entities, personaId, locations
   };
   return {
     ...(layered.length ? { layered: sandboxLayered(layered), layerRules } : {}),
-    entries: Object.values(list ?? {}).map(({ id, name, kind }) => ({ id, name, kind })),
+    entries: Object.values(list ?? {}).flatMap(({ id, name, kind }): ScriptMediaEntry[] => (kind === 'mask' ? [] : [{ id, name, kind }])),
     overrides: overrides ?? {},
     defaults: () => {
       const gates = input();

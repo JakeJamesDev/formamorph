@@ -27,6 +27,7 @@ const ACCEPT: Record<MediaKind, string> = {
   model: '.glb,.gltf,.fbx,.obj',
   layered: '',
   avatar: '.vrm,.glb',
+  mask: 'image/*',
 };
 
 /** A Layered Image slot's picture under `reads`, flattened lossless. */

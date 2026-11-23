@@ -5,7 +5,7 @@ import { isMediaRef } from './mediaList';
 import { MAP_PARENT, type MediaParent, type MediaWorld } from './mediaIndex';
 
 /** The field of its owner a link sits in. */
-export type MediaUseField = 'images' | 'sound' | 'ambientSound' | 'backdrop' | 'thumbnail' | 'bgm';
+export type MediaUseField = 'images' | 'weatherMask' | 'sound' | 'ambientSound' | 'backdrop' | 'thumbnail' | 'bgm';
 
 /** One place that links a Media Entry. `index` is the gallery position. */
 export interface MediaUse {
@@ -18,17 +18,19 @@ export interface MediaUse {
 
 const WORLD_OWNER: MediaParent = { kind: 'world', id: 'world', name: 'World' };
 
-const FIELD_LABELS: Record<Exclude<MediaUseField, 'images'>, string> = {
+const FIELD_LABELS: Record<Exclude<MediaUseField, 'images' | 'weatherMask'>, string> = {
   sound: 'Sound', ambientSound: 'Ambient Sound', backdrop: 'Backdrop', thumbnail: 'Cover', bgm: 'Music',
 };
 
-/** One use as copy names it: "Wren, Image 2", "World, Cover". `ownerName` labels the owner's placeholders. */
+/** One use as copy names it: "Wren, Image 2", "Dock, Image 1 Weather Mask", "World, Cover". `ownerName` labels the owner's placeholders. */
 export function mediaUseLabel(use: MediaUse, ownerName: (name: string) => string = (name) => name): string {
-  const slot = use.field === 'images' ? `Image ${(use.index ?? 0) + 1}` : FIELD_LABELS[use.field];
+  const image = `Image ${(use.index ?? 0) + 1}`;
+  const slot = use.field === 'images' ? image : use.field === 'weatherMask' ? `${image} Weather Mask` : FIELD_LABELS[use.field];
   return `${ownerName(use.owner.name) || 'Unnamed'}, ${slot}`;
 }
 
-/** Each Media Entry id with every entity, location, item, map, backdrop and world field that links it, in world order. */
+/** Each Media Entry id with every entity, location, item, map, backdrop and world field that links it, in world order. A
+ *  location image's Weather Mask is a use of its Mask. */
 export function mediaUsage(w: MediaWorld): Map<string, MediaUse[]> {
   const usage = new Map<string, MediaUse[]>();
   const add = (id: string, use: MediaUse) => usage.set(id, [...(usage.get(id) ?? []), use]);
@@ -53,6 +55,10 @@ export function mediaUsage(w: MediaWorld): Map<string, MediaUse[]> {
   for (const l of w.locations) {
     const owner: MediaParent = { kind: 'location', id: l.id, name: l.name };
     gallery(owner, l.images);
+    l.images?.forEach((raw, index) => {
+      const mask = galleryLink(raw)?.weatherMask;
+      if (mask) add(mask, { owner, field: 'weatherMask', index });
+    });
     single(owner, 'ambientSound', l.ambientSound);
   }
   for (const item of w.items ?? []) gallery({ kind: 'item', id: item.id, name: item.name }, item.images);

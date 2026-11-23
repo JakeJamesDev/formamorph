@@ -464,12 +464,16 @@ export interface GalleryImage {
   name?: string;
   /** The Visibility rule: in play any one row that holds shows the image. Absent or empty = always shown. */
   requires?: TraitRequirementRow[];
+  /** A location slot's Weather Mask: the id of a Mask entry. Only location galleries carry it. Absent = no mask. */
+  weatherMask?: string;
 }
 
 /** One gallery picture that links a Media Entry. */
 export interface LinkedGalleryImage extends MediaRef {
   /** The Visibility rule, as on an embedded picture. */
   requires?: TraitRequirementRow[];
+  /** As on an embedded picture. */
+  weatherMask?: string;
 }
 
 /** One Variant as it travels outside a world: its image embedded and named as its entry. */
@@ -495,6 +499,8 @@ export interface EmbeddedLayeredImage {
   layered: PortableLayered;
   /** The Visibility rule, as on an embedded picture. */
   requires?: TraitRequirementRow[];
+  /** As on an embedded picture. */
+  weatherMask?: string;
 }
 
 /** One stored gallery picture: embedded, a link to a Media Entry, or an embedded Layered Image. Read it through `lib/entityImages`. */
@@ -505,11 +511,11 @@ export interface MediaRef {
   mediaId: string;
 }
 
-/** One named image or sound in a world's Media List. */
+/** One named image, sound or Mask in a world's Media List. A Mask is a grayscale PNG: white shows weather, black hides it. */
 export interface MediaFileEntry {
   id: string;
   name: string;
-  kind: 'image' | 'sound';
+  kind: 'image' | 'sound' | 'mask';
   /** A data URL, or an http(s) URL for a linked entry. */
   data: string;
   /** The MIME type of the placed file. */

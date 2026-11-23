@@ -2313,10 +2313,14 @@ export interface StatCodeRunOptions {
   opening?: SandboxOpening | null;
 }
 
+/** A Media List entry as scripts see it. */
+export type ScriptMediaEntry = { id: string; name: string; kind: Exclude<MediaEntry['kind'], 'mask'> };
+
 /** What the media members read: each entry's name, the overrides in force, each owner's media with none, and each
  *  Generic entity's Generic Entity Instances. */
 export interface SandboxMedia {
-  entries: readonly Pick<MediaEntry, 'id' | 'name' | 'kind'>[];
+  /** Every entry but the Masks, which no script reads. */
+  entries: readonly ScriptMediaEntry[];
   overrides: MediaOverrides;
   /** The entries each owner shows with no override (Q52), keyed as overrides are. Built on the first read. */
   defaults: () => Omit<MediaOverrides, 'instances'>;
@@ -2367,7 +2371,7 @@ const MEDIA = '__formamorphMedia';
  *  back in the run; `image(name)` is the id `set` would write. A name of the wrong kind is a missing name (Q53). */
 const mediaPrelude = (media: SandboxMedia | undefined, reads: HostReads, weather: SandboxWeather | undefined): string => {
   const entries = media?.entries ?? [];
-  const byName: Record<MediaEntry['kind'], Record<string, string>> = { image: {}, sound: {}, layered: {} };
+  const byName: Record<ScriptMediaEntry['kind'], Record<string, string>> = { image: {}, sound: {}, layered: {} };
   for (const { id, name, kind } of entries) byName[kind][name] ??= id;
   const spec = {
     entries: Object.fromEntries(entries.map(({ id, name, kind }) => [id, { name, kind }])), byName, kinds: MEDIA_MEMBER_KIND,

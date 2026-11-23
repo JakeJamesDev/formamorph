@@ -77,6 +77,7 @@ function AvatarPreview({ value }: { value: string }) {
 export function Preview({ item }: { item: MediaItem }) {
   switch (item.kind) {
     case 'image':
+    case 'mask':
       return <RemoteImg src={item.value} alt="" className="mx-auto max-h-[50vh] max-w-full rounded object-contain" />;
     case 'sound':
       return <AudioPlayer src={item.value} className="w-full" />;

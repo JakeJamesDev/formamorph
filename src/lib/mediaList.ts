@@ -18,6 +18,12 @@ export const isFileEntry = (entry: MediaEntry): entry is MediaFileEntry => entry
 /** The list's entries that hold a file, for readers of bytes. */
 export const fileEntries = (list: MediaList | undefined): MediaFileEntry[] => Object.values(list ?? {}).filter(isFileEntry);
 
+/** A slot's own fields that travel with its picture: the Visibility rule and the Weather Mask. Empty ones drop. */
+export const slotFields = (link: Pick<GalleryImage, 'requires' | 'weatherMask'>): Pick<GalleryImage, 'requires' | 'weatherMask'> => ({
+  ...(link.requires?.length ? { requires: link.requires } : {}),
+  ...(link.weatherMask ? { weatherMask: link.weatherMask } : {}),
+});
+
 /** Whether a gallery slot embeds one image's data, not a link or an embedded Layered Image. */
 export const isEmbeddedImage = (link: GalleryLink): link is GalleryImage => 'data' in link;
 
@@ -69,6 +75,7 @@ export const MEDIA_KIND_WORDS: Record<MediaEntryKind, { one: string; many: strin
   image: { one: 'Image', many: 'Images' },
   sound: { one: 'Sound', many: 'Sounds' },
   layered: { one: 'Layered Image', many: 'Layered Images' },
+  mask: { one: 'Mask', many: 'Masks' },
 };
 
 /** The subject's name plus the next free number, starting at 1 (Q10). A blank subject reads as the kind. */
@@ -137,14 +144,14 @@ export function resolveMedia(value: MediaValue, list: MediaList | undefined, kin
   return value.data ? value : undefined;
 }
 
-/** A gallery link as an embedded picture, its rule kept; an entry's name rides along. Missing id, or a Layered
+/** A gallery link as an embedded picture, its rule and Weather Mask kept; an entry's name rides along. Missing id, or a Layered
  *  Image in either form, = null. */
 export function resolveGalleryImage(link: GalleryLink, list: MediaList | undefined): GalleryImage | null {
-  const rules = link.requires?.length ? { requires: link.requires } : {};
+  const fields = slotFields(link);
   if ('layered' in link) return null;
-  if (!('mediaId' in link)) return link.data ? { data: link.data, ...(link.name ? { name: link.name } : {}), ...rules } : null;
+  if (!('mediaId' in link)) return link.data ? { data: link.data, ...(link.name ? { name: link.name } : {}), ...fields } : null;
   const entry = mediaEntry(list, link.mediaId, 'image');
-  return entry ? { data: entry.data, name: entry.name, ...rules } : null;
+  return entry ? { data: entry.data, name: entry.name, ...fields } : null;
 }
 
 /** A gallery link's displayable data, or undefined for a missing id. */
