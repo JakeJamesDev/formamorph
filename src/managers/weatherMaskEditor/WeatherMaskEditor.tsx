@@ -286,7 +286,8 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
       )}
       {loaded && (
         <div
-          className="relative overflow-hidden"
+          // Isolated, so the paint layer's z-index stays under the floating controls.
+          className="relative isolate overflow-hidden"
           style={{ aspectRatio: `${boxRatio}`, width: `min(100cqw, 100cqh * ${boxRatio})` }}
           data-mask-box=""
         >
