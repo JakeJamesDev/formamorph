@@ -1,6 +1,6 @@
 # 03: Brush Editor
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -16,13 +16,26 @@ An author can paint a mask over a location image in the World Editor. The spec c
 
 ## Acceptance criteria
 
-- [ ] The mask document's tests cover each operation, soft edge, invert, fill and clear, and undo and redo across them.
-- [ ] Paint on a slot with no mask creates and links a new Mask on Save; Cancel creates nothing.
-- [ ] Edit on a shared mask names the shared count, and Save changes the mask on every slot that links it.
-- [ ] The saved mask has the image's aspect ratio.
-- [ ] On desktop, control groups read faded with the pointer away and full on hover and on keyboard focus (computed opacity).
-- [ ] Every control hides and takes no input while a stroke is in progress, on desktop and mobile.
-- [ ] A mobile frame at 375 wide shows the stacked layout: `.scratch/frames/brush-mobile-dark.png`.
-- [ ] Frames of the editor with a painted window, both themes: `.scratch/frames/brush-dark.png`, `.scratch/frames/brush-light.png`.
+- [x] The mask document's tests cover each operation, soft edge, invert, fill and clear, and undo and redo across them. `maskDocument.test.ts`, 19 cases; the max-coverage guard proved by mutation.
+- [x] Paint on a slot with no mask creates and links a new Mask on Save; Cancel creates nothing. `WeatherMaskControl.test.tsx`: "Paint on a slot with no mask…", "Cancel with nothing painted…", "Cancel after painting asks first…".
+- [x] Edit on a shared mask names the shared count, and Save changes the mask on every slot that links it. "Edit on a shared mask names the count…"; guard proved by mutation.
+- [x] The saved mask has the image's aspect ratio. "saves at the picture aspect ratio, capped like uploads" (3000 × 4000 saves 1440 × 1920).
+- [x] On desktop, control groups read faded with the pointer away and full on hover and on keyboard focus (computed opacity). DOM read at 1280: 0.25 at rest, 1 on hover, 1 on Tab focus, 0.25 after a mouse click.
+- [x] Every control hides and takes no input while a stroke is in progress, on desktop and mobile. "every control hides…" and "stacks the controls… hides them there too"; guard proved by mutation.
+- [x] A mobile frame at 375 wide shows the stacked layout: `.scratch/frames/brush-mobile-dark.png`.
+- [x] Frames of the editor with a painted window, both themes: `.scratch/frames/brush-dark.png`, `.scratch/frames/brush-light.png`.
 
 For you: paint a window by hand and judge how the brush and soft edge feel.
+
+## Landed
+
+**Not verified**
+
+- Paint and Edit from a real World Editor slot in the browser: the White Room fixture's slot is empty, so its control is disabled. The jsdom tests drive the real slot wiring.
+
+**For you**
+
+- For you: paint a window by hand and judge how the brush and soft edge feel. `#dev?modal=weatherMaskEditor` (add `&tab=edit` for a shared, pre-painted mask).
+- The Weather Mask row now has two lines, the buttons under the name: with Paint added, one line squeezed the "Weather Mask" label to 10 px in the location panel. Check it reads well in Locations → Media in Advanced mode.
+- The tool pill sits bottom center and the card top left, so neither covers Save and Cancel at any desktop width. Below 1024 px, or on any touch screen, the controls stack as on mobile.
+- Frames: `.scratch/weather-mask-03/frames/brush-dark.png`, `.scratch/weather-mask-03/frames/brush-light.png`, `.scratch/weather-mask-03/frames/brush-mobile-dark.png`.

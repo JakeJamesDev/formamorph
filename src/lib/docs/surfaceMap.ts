@@ -84,6 +84,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   deleteWorldAvatar: { page: 'World-Editor-Overview', anchor: '-world-editor-overview' },
   deleteMediaEntry: { page: 'World-Editor-Entities', anchor: 'image-slots' },
   layeredEditor: { page: 'World-Editor-Media', anchor: 'layered-images' },
+  weatherMaskEditor: { page: 'World-Editor-Locations', anchor: 'paint-a-weather-mask' },
   appearancePreview: { page: 'World-Editor-Traits', anchor: 'preview' },
   statAppearancePreview: { page: 'World-Editor-Stats', anchor: 'preview' },
   savedElsewhere: { page: 'WorldEditor', anchor: 'editing-in-two-tabs' },

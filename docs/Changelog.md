@@ -12,6 +12,14 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.8.0** (just released below)._
 
+### Major Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Weather:**
+    - **Paint a Weather Mask over a location's background image in the World Editor.** Paint opens the image full screen with a brush, eraser, soft edge, fill, clear and invert. Edit reopens a mask; a shared mask changes for every image that uses it.
+
 ### Minor Changes
 
 #### ➕ Added

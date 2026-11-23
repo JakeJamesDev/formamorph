@@ -240,12 +240,37 @@ Each background image has a **Weather Mask** row under its name:
 
 | With no mask | With a mask |
 | --- | --- |
+| **Paint** opens the image to [paint a new mask](#paint-a-weather-mask) | **Edit** opens the image to [paint over this mask](#paint-a-weather-mask) |
 | **Upload** stores a file as a new mask for this image | **Replace** uploads a new file into this mask |
 | **Choose** links a mask the world already has | **Remove** takes the mask off this image and keeps it in the world |
 
-- 🔁 **Shared masks.** Images can share one mask, such as a place's day and night images. The row says how many images share it, and **Replace** changes it for all of them.
+- 🔁 **Shared masks.** Images can share one mask, such as a place's day and night images. The row says how many images share it, and **Edit** and **Replace** change it for all of them.
 - 📐 **Shape.** Make the mask the same shape as its image. Upload saves it as a PNG, scaled down to 1920 pixels on its long edge.
 - 📦 **Where masks live.** The [Media tab](World-Editor-Media#masks) lists every mask and the images that use it.
+
+#### Paint a Weather Mask
+<!-- keywords: paint mask, brush, eraser, draw where rain shows, mask editor, soft edge, invert mask -->
+
+**Paint** or **Edit** opens the background image full screen. What you paint shows as a blue tint: blue is where the weather shows. **Hide Mask** hides the tint so you can see the image.
+
+| Tool | What it does |
+| --- | --- |
+| 🖌️ **Brush** | Paints where the weather shows |
+| 🧽 **Eraser** | Paints where the weather is hidden |
+| **Size** | Sets how wide the brush and eraser are |
+| **Soft Edge** | Fades the edge of each stroke, so the weather fades in instead of stopping at a line |
+| 🪣 **Fill** | Shows the weather over the whole image |
+| 🗑️ **Clear** | Hides the weather over the whole image |
+| ◐ **Invert** | Swaps where the weather shows and where it's hidden |
+| ↩️ **Undo** and **Redo** | Step back and forward through your strokes. Ctrl+Z, Ctrl+Shift+Z and Ctrl+Y work too |
+
+- 🪟 **A window.** Paint the glass with the Brush. A little Soft Edge keeps the rain from cutting off hard at the frame.
+- ⛱️ **An overhang.** Fill first, then paint the covered ground with the Eraser. Or paint the covered ground with the Brush and Invert.
+- 💾 **Save** stores the mask at the image's size. On a shared mask, the editor says how many images use it, and Save changes it for all of them.
+- ✖️ **Cancel** or Esc closes without saving. If you painted anything, it asks first.
+- 🖱️ **With a mouse**, the tools rest faded over the image. Point at them or Tab to them and they come back.
+- 📱 **On a touch screen or a narrow window**, the tools sit above and below the image.
+- 👁️ **While you paint**, every tool hides, so nothing covers the stroke.
 
 ## What reaches the AI
 <!-- keywords: random events list, choices ignore rules, narrator vs other steps, hidden room details, short form used, ai misses details -->

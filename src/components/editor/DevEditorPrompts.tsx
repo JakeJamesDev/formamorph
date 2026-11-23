@@ -6,6 +6,7 @@ import { ReplaceImageDialog } from '@/managers/ImageTagsField';
 import { DeleteVrmConfirm } from '@/managers/AvatarStore';
 import { DeleteMediaConfirm } from '@/managers/MediaPicker';
 import { AppearancePreviewDialog } from '@/components/editor/AppearancePreviewDialog';
+import { WeatherMaskEditor } from '@/managers/weatherMaskEditor/WeatherMaskEditor';
 import type { RowAvatar } from '@/lib/useSliderPicker';
 import ModelStorageService from '@/services/ModelStorageService';
 import { useMountedRef } from '@/lib/useMountedRef';
@@ -85,15 +86,36 @@ function DevAppearancePreview({ onClose, stat }: { onClose: () => void; stat: bo
     : <AppearancePreviewDialog name="Elf" avatars={avatars} rows={PREVIEW_ROWS} onSave={() => {}} onClose={onClose} />;
 }
 
+/** A room with a tall window, for the brush editor's route. */
+const MASK_ROOM = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="#6b5844"/><rect y="700" width="1600" height="200" fill="#4a3a2c"/><rect x="560" y="140" width="480" height="460" fill="#7d8fa3" stroke="#3b2f25" stroke-width="24"/><path d="M800 140v460M560 370h480" stroke="#3b2f25" stroke-width="14"/></svg>')}`;
+
+/** The window of `MASK_ROOM` as a white-on-black PNG, the mask `tab=edit` opens on. */
+function windowMask(): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = 800;
+  canvas.height = 450;
+  const context = canvas.getContext('2d');
+  if (!context) return '';
+  context.fillStyle = '#000';
+  context.fillRect(0, 0, 800, 450);
+  context.fillStyle = '#fff';
+  context.fillRect(286, 76, 228, 218);
+  return canvas.toDataURL('image/png');
+}
+
 /** DEV: the questions an edit asks partway through, raised on canned text. Every answer closes it and writes nothing.
  *  `codeRename` with `fixture=layers` shows a Layer rename with references to pick. */
-export function DevEditorPrompts({ modal, fixture }: { modal: string | undefined; fixture?: string }) {
+export function DevEditorPrompts({ modal, fixture, tab }: { modal: string | undefined; fixture?: string; tab?: string }) {
   const [done, setDone] = useState(false);
   const [slot, setSlot] = useState(0);
   const close = () => setDone(true);
   if (done) return null;
   if (modal === 'imageReplace') {
     return <ReplaceImageDialog open images={IMAGES} slot={slot} onSlotChange={setSlot} idPrefix="dev-image" onClose={close} />;
+  }
+  if (modal === 'weatherMaskEditor') {
+    const edit = tab === 'edit';
+    return <WeatherMaskEditor open picture={MASK_ROOM} mask={edit ? windowMask() : undefined} sharedCount={edit ? 3 : 1} onSave={close} onClose={close} />;
   }
   if (modal === 'appearancePreview' || modal === 'statAppearancePreview') return <DevAppearancePreview onClose={close} stat={modal === 'statAppearancePreview'} />;
   if (modal === 'codeRename') return <CodeRenameDialog open plan={fixture === 'layers' ? LAYER_PLAN : PLAN} onApply={close} onSettle={close} />;

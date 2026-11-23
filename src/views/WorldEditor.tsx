@@ -1768,7 +1768,7 @@ const WorldEditorInner = ({
           onReplace={() => setDevReplaceDone(true)}
         />
       )}
-      {import.meta.env.DEV && <DevEditorPrompts modal={devRoute?.modal} fixture={devRoute?.fixture} />}
+      {import.meta.env.DEV && <DevEditorPrompts modal={devRoute?.modal} fixture={devRoute?.fixture} tab={devRoute?.tab} />}
       {linking.dialogs}
       <TutorialPopover
         entry={tutorial?.id !== AUTHORING_TOUR_OFFER_ID ? null

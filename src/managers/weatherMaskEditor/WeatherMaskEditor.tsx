@@ -1,0 +1,373 @@
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
+import { Brush, Contrast, Eraser, PaintBucket, Redo2, Trash2, Undo2 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { PictureImg } from '@/components/PictureImg';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogTitle, dialogFullHeight, dialogSafeArea } from '@/components/ui/dialog';
+import { Slider } from '@/components/ui/slider';
+import { Tip } from '@/components/ui/tooltip';
+import { Meta } from '@/components/ui/typography';
+import { fitWithin } from '@/lib/imageBytes';
+import { isLayeredPicture, type Picture } from '@/lib/layeredImages';
+import { toastError } from '@/lib/linkToast';
+import {
+  MaskStrokePainter, applyMaskOp, canRedoMask, canUndoMask, newMaskDocument, redoMask, replayMask, undoMask, unionRect,
+  type MaskDocument, type MaskOp, type MaskRect, type MaskTool,
+} from '@/lib/maskDocument';
+import { RemoteImg } from '@/lib/useRemoteImage';
+import { useIsMobile } from '@/lib/useIsMobile';
+import { useMediaQuery } from '@/lib/useMediaQuery';
+import { useMountedRef } from '@/lib/useMountedRef';
+import { cn } from '@/lib/utils';
+import { MASK_CAP } from '@/lib/weatherMask';
+import { drawTint, encodeMaskRaster, readMaskRaster } from './maskCanvas';
+
+/** Below this width the floating groups would overlap, so the controls stack as on touch. */
+const STACKED_BELOW = 1024;
+const MIN_SIZE = 4;
+const MAX_SIZE = 240;
+
+// scroll-guard: allow horizontal: one row of tool buttons on the narrowest phones
+const TOOL_ROW_SCROLL = 'overflow-x-auto';
+
+/** Floating groups rest faded and come back on hover or keyboard focus. */
+const FADE = 'opacity-25 transition-opacity duration-200 hover:opacity-100 has-[:focus-visible]:opacity-100';
+/** Every control hides and takes no input while a stroke is in progress. */
+const hiddenWhile = (painting: boolean): CSSProperties | undefined =>
+  (painting ? { opacity: 0, visibility: 'hidden', pointerEvents: 'none' } : undefined);
+
+/**
+ * The full-window Weather Mask brush editor over one picture. `mask` is the stored mask it opens on, or none for
+ * a new one. Save hands back the mask as a PNG at the picture's size, capped like uploads.
+ */
+export function WeatherMaskEditor({ open, picture, mask, sharedCount, onSave, onClose }: {
+  open: boolean;
+  picture: Picture;
+  mask?: string;
+  /** How many images link the mask; two or more names the count. */
+  sharedCount: number;
+  onSave: (data: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      {open && <EditorBody picture={picture} mask={mask} sharedCount={sharedCount} onSave={onSave} onClose={onClose} />}
+    </Dialog>
+  );
+}
+
+interface Loaded { width: number; height: number; base: Uint8ClampedArray }
+
+function EditorBody({ picture, mask, sharedCount, onSave, onClose }: {
+  picture: Picture; mask?: string; sharedCount: number; onSave: (data: string) => void; onClose: () => void;
+}) {
+  // Touch has no hover to bring faded controls back, so a touch screen stacks them at any width.
+  const touch = useMediaQuery('(pointer: coarse)');
+  const stacked = useIsMobile(STACKED_BELOW) || touch;
+  const mounted = useMountedRef();
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [doc, setDoc] = useState<MaskDocument | null>(null);
+  const [tool, setTool] = useState<MaskTool>('brush');
+  const [size, setSize] = useState(80);
+  const [softness, setSoftness] = useState(0.5);
+  const [showMask, setShowMask] = useState(true);
+  const [painting, setPainting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const raster = useRef<Uint8ClampedArray | null>(null);
+  const tint = useRef<HTMLCanvasElement | null>(null);
+  const ring = useRef<HTMLDivElement | null>(null);
+  const painter = useRef<MaskStrokePainter | null>(null);
+  const dirty = useRef<MaskRect | null>(null);
+  const frame = useRef(0);
+
+  useEffect(() => () => cancelAnimationFrame(frame.current), []);
+
+  /** The picture's size is known: the mask's size follows, and a stored mask stretches to it. */
+  const measured = async (naturalWidth: number, naturalHeight: number) => {
+    if (loaded || !naturalWidth || !naturalHeight) return;
+    const { w, h } = fitWithin(naturalWidth, naturalHeight, MASK_CAP.maxDim);
+    try {
+      const base = mask ? await readMaskRaster(mask, w, h) : new Uint8ClampedArray(w * h);
+      if (!mounted.current) return;
+      raster.current = base.slice();
+      setLoaded({ width: w, height: h, base });
+      setDoc(newMaskDocument(w, h));
+    } catch (e: unknown) {
+      toastError(e, { headline: "Couldn't open the Weather Mask" });
+      if (mounted.current) onClose();
+    }
+  };
+
+  // The tint canvas mounts with the loaded size; draw the whole raster once it does.
+  const tintRef = useCallback((canvas: HTMLCanvasElement | null) => {
+    tint.current = canvas;
+    if (canvas && raster.current) drawTint(canvas, raster.current);
+  }, []);
+
+  const redraw = (rect?: MaskRect | null) => {
+    if (tint.current && raster.current) drawTint(tint.current, raster.current, rect);
+  };
+
+  /** Moves the document to `next` and redraws the replay over the base. */
+  const commit = (next: MaskDocument) => {
+    if (!loaded) return;
+    raster.current = replayMask(next, loaded.base);
+    setDoc(next);
+    redraw();
+  };
+  const apply = (op: MaskOp) => { if (doc) commit(applyMaskOp(doc, op)); };
+  const undo = () => { if (doc && canUndoMask(doc)) commit(undoMask(doc)); };
+  const redo = () => { if (doc && canRedoMask(doc)) commit(redoMask(doc)); };
+
+  const toMask = (e: PointerEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return { x: ((e.clientX - r.left) / r.width) * (loaded?.width ?? 0), y: ((e.clientY - r.top) / r.height) * (loaded?.height ?? 0) };
+  };
+  const moveRing = (e: PointerEvent<HTMLElement>) => {
+    const el = ring.current;
+    if (!el) return;
+    if (e.pointerType === 'touch') { el.style.display = 'none'; return; }
+    const r = e.currentTarget.getBoundingClientRect();
+    el.style.display = 'block';
+    el.style.transform = `translate(${e.clientX - r.left - size / 2}px, ${e.clientY - r.top - size / 2}px)`;
+  };
+  const paintFrame = () => {
+    frame.current = 0;
+    redraw(dirty.current);
+    dirty.current = null;
+  };
+  const paintTo = (rect: MaskRect | null) => {
+    if (!rect) return;
+    dirty.current = unionRect(dirty.current, rect);
+    if (!frame.current) frame.current = requestAnimationFrame(paintFrame);
+  };
+
+  // One stroke at a time: a second finger neither starts a stroke nor feeds the one in progress.
+  const strokePointer = useRef<number | null>(null);
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (!loaded || !raster.current || e.button !== 0 || painter.current) return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    strokePointer.current = e.pointerId;
+    const scale = loaded.width / e.currentTarget.getBoundingClientRect().width;
+    painter.current = new MaskStrokePainter(raster.current, loaded.width, loaded.height, tool, size * scale, softness);
+    setPainting(true);
+    paintTo(painter.current.extend(toMask(e)));
+  };
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    moveRing(e);
+    if (painter.current && e.pointerId === strokePointer.current) paintTo(painter.current.extend(toMask(e)));
+  };
+  const endStroke = (e: PointerEvent<HTMLDivElement>) => {
+    const stroke = painter.current;
+    if (!stroke || e.pointerId !== strokePointer.current) return;
+    painter.current = null;
+    strokePointer.current = null;
+    setPainting(false);
+    // The raster already holds the stroke; the document records it for undo.
+    setDoc((d) => (d ? applyMaskOp(d, stroke.op()) : d));
+  };
+
+  const edited = !!doc && canUndoMask(doc);
+  const requestCancel = () => { if (edited) setConfirming(true); else onClose(); };
+  const save = () => {
+    if (!loaded || !raster.current) return;
+    try {
+      onSave(encodeMaskRaster(raster.current, loaded.width, loaded.height));
+    } catch (e: unknown) {
+      toastError(e, { headline: "Couldn't save the Weather Mask" });
+    }
+  };
+
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (painting || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const key = e.key.toLowerCase();
+    if (key === 'z' && !e.shiftKey) undo();
+    else if ((key === 'z' && e.shiftKey) || key === 'y') redo();
+    else return;
+    e.preventDefault();
+  };
+
+  const ready = !!loaded;
+  const tools = (
+    <div className="flex w-max items-center gap-1" data-mask-tools="">
+      <ToolButton label="Brush" active={tool === 'brush'} disabled={!ready} onClick={() => setTool('brush')}><Brush /></ToolButton>
+      <ToolButton label="Eraser" active={tool === 'eraser'} disabled={!ready} onClick={() => setTool('eraser')}><Eraser /></ToolButton>
+      <div className="mx-1 h-6 w-px bg-border" />
+      <ToolButton label="Fill" tip="Shows the weather everywhere" disabled={!ready} onClick={() => apply({ kind: 'fill' })}><PaintBucket /></ToolButton>
+      <ToolButton label="Clear" tip="Hides the weather everywhere" disabled={!ready} onClick={() => apply({ kind: 'clear' })}><Trash2 /></ToolButton>
+      <ToolButton label="Invert" tip="Swaps where the weather shows and where it's hidden" disabled={!ready} onClick={() => apply({ kind: 'invert' })}><Contrast /></ToolButton>
+      <div className="mx-1 h-6 w-px bg-border" />
+      <ToolButton label="Undo" disabled={!doc || !canUndoMask(doc)} onClick={undo}><Undo2 /></ToolButton>
+      <ToolButton label="Redo" disabled={!doc || !canRedoMask(doc)} onClick={redo}><Redo2 /></ToolButton>
+    </div>
+  );
+  const sliders = (
+    <div className={cn('flex gap-4', stacked ? 'flex-col' : 'items-center')}>
+      <LabeledSlider label="Size" value={size} min={MIN_SIZE} max={MAX_SIZE} step={1} onChange={setSize} stacked={stacked} />
+      <LabeledSlider label="Soft Edge" value={Math.round(softness * 100)} min={0} max={100} step={1} onChange={(v) => setSoftness(v / 100)} stacked={stacked} />
+    </div>
+  );
+  const card = (
+    <div className="flex flex-col items-start gap-2">
+      <Button type="button" size="sm" variant="outline" onClick={() => setShowMask((s) => !s)} aria-pressed={!showMask}>
+        {showMask ? 'Hide Mask' : 'Show Mask'}
+      </Button>
+      {sharedCount >= 2 && <Meta data-mask-shared={sharedCount}>Shared by {sharedCount} images. Saving changes all of them.</Meta>}
+    </div>
+  );
+  const actions = (
+    <>
+      <Button type="button" variant="outline" onClick={requestCancel}>Cancel</Button>
+      <Button type="button" disabled={!edited} onClick={save}>Save</Button>
+    </>
+  );
+
+  const canvasSrc = isLayeredPicture(picture) ? picture.canvas : picture;
+  const scene = (
+    <div className="relative flex min-h-0 flex-1 items-center justify-center [container-type:size]" data-mask-scene="">
+      {!loaded && (
+        <RemoteImg
+          src={canvasSrc} alt="" className="invisible absolute h-px w-px"
+          onLoad={(e) => void measured(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
+          onError={() => {
+            if (!mounted.current) return;
+            toastError(new Error("The picture didn't load"), { headline: "Couldn't open the Weather Mask" });
+            onClose();
+          }}
+        />
+      )}
+      {loaded && (
+        <div
+          className="relative overflow-hidden"
+          style={{ aspectRatio: `${loaded.width} / ${loaded.height}`, width: `min(100cqw, 100cqh * ${loaded.width / loaded.height})` }}
+          data-mask-box=""
+        >
+          <PictureImg src={picture} alt="" crop center contain className="absolute inset-0 h-full w-full select-none object-fill" draggable={false} />
+          <canvas
+            ref={tintRef} width={loaded.width} height={loaded.height}
+            className={cn('pointer-events-none absolute inset-0 h-full w-full', !showMask && 'invisible')}
+            data-mask-tint=""
+          />
+          <div
+            className="absolute inset-0 cursor-none touch-none"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={endStroke}
+            onPointerCancel={endStroke}
+            onPointerLeave={() => { if (ring.current) ring.current.style.display = 'none'; }}
+            data-mask-paint=""
+          >
+            <div
+              ref={ring}
+              className="pointer-events-none absolute left-0 top-0 hidden rounded-full border border-white shadow-[0_0_0_1px_rgba(0,0,0,0.6)]"
+              style={{ width: size, height: size }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      <DialogContent
+        surface="weatherMaskEditor"
+        placement="own"
+        hideClose
+        unanimated
+        onEscapeKeyDown={(e) => { e.preventDefault(); if (!painting) requestCancel(); }}
+        onKeyDown={onKeyDown}
+        className={cn(
+          'inset-x-0 left-0 flex w-full max-w-none translate-x-0 flex-col gap-0 rounded-none border-0 bg-black p-0 shadow-none sm:rounded-none',
+          dialogFullHeight,
+          stacked && dialogSafeArea,
+        )}
+        data-mask-editor={stacked ? 'stacked' : 'floating'}
+      >
+        <DialogTitle className="sr-only">Weather Mask</DialogTitle>
+        <DialogDescription className="sr-only">Paint where the weather shows over this image.</DialogDescription>
+        {stacked
+          ? (
+            <>
+              <div className="flex justify-between gap-2 bg-card p-2" style={hiddenWhile(painting)} data-mask-group="actions">{actions}</div>
+              {scene}
+              <div className="space-y-3 border-t bg-card p-3" style={hiddenWhile(painting)} data-mask-group="panel">
+                <div className={TOOL_ROW_SCROLL}>{tools}</div>
+                {sliders}
+                {card}
+              </div>
+            </>
+          )
+          : (
+            <>
+              {scene}
+              {/* The tools sit apart from Save and Cancel, so neither covers the other at any desktop width. */}
+              <Group name="tools" painting={painting} className="bottom-4 left-1/2 -translate-x-1/2 gap-3 rounded-full px-3 py-1.5">
+                {tools}
+                <div className="h-6 w-px bg-border" />
+                {sliders}
+              </Group>
+              <Group name="card" painting={painting} className="left-4 top-4 rounded-lg p-2">{card}</Group>
+              <div
+                className={cn('absolute right-[calc(1rem+var(--window-buttons-width,0px))] top-4 flex gap-2', FADE)}
+                style={hiddenWhile(painting)}
+                data-mask-group="actions"
+              >
+                {actions}
+              </div>
+            </>
+          )}
+      </DialogContent>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="Discard Changes?"
+        description="You'll lose what you painted on this Weather Mask."
+        confirmLabel="Discard"
+        destructive
+        onConfirm={() => { setConfirming(false); onClose(); }}
+        onCancel={() => setConfirming(false)}
+      />
+    </>
+  );
+}
+
+/** A floating control group over the picture. */
+function Group({ name, painting, className, children }: { name: string; painting: boolean; className: string; children: ReactNode }) {
+  return (
+    <div
+      className={cn('absolute flex items-center border bg-card/90 shadow-lg backdrop-blur', FADE, className)}
+      style={hiddenWhile(painting)}
+      data-mask-group={name}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ToolButton({ label, tip, active, disabled, onClick, children }: {
+  label: string; tip?: string; active?: boolean; disabled?: boolean; onClick: () => void; children: ReactNode;
+}) {
+  return (
+    <Tip tip={tip ?? label}>
+      <Button
+        type="button" size="icon" variant={active ? 'default' : 'ghost'} aria-label={label}
+        aria-pressed={active === undefined ? undefined : active} disabled={disabled} onClick={onClick}
+        className="[&_svg]:h-4 [&_svg]:w-4"
+      >
+        {children}
+      </Button>
+    </Tip>
+  );
+}
+
+function LabeledSlider({ label, value, min, max, step, onChange, stacked }: {
+  label: string; value: number; min: number; max: number; step: number; onChange: (value: number) => void; stacked: boolean;
+}) {
+  return (
+    <div className={cn('flex items-center gap-2 text-label', stacked ? 'w-full' : 'w-40')}>
+      <span className={cn('shrink-0', stacked && 'w-20')}>{label}</span>
+      <Slider aria-label={label} min={min} max={max} step={step} value={[value]} onValueChange={([v]) => onChange(v)} />
+    </div>
+  );
+}

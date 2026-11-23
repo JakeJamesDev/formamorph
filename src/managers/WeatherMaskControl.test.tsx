@@ -18,6 +18,16 @@ vi.mock('@/lib/useDownscalePrompt', () => ({
 vi.mock('../components/GenerateImageButton', () => ({ GenerateImageButton: () => null }));
 vi.mock('@/components/AiGenerateButton', () => ({ default: () => null }));
 vi.mock('@/lib/weatherMask', async (load) => ({ ...(await load<typeof import('@/lib/weatherMask')>()), encodeMaskPng: vi.fn(async () => UPLOADED) }));
+// jsdom has no canvas: the brush editor reads a stored mask as all black and saves a PNG named for its size.
+const canvasFake = vi.hoisted(() => ({ saved: [] as { width: number; height: number; raster: Uint8ClampedArray }[] }));
+vi.mock('./weatherMaskEditor/maskCanvas', () => ({
+  readMaskRaster: vi.fn(async (_data: string, width: number, height: number) => new Uint8ClampedArray(width * height)),
+  drawTint: vi.fn(),
+  encodeMaskRaster: vi.fn((raster: Uint8ClampedArray, width: number, height: number) => {
+    canvasFake.saved.push({ width, height, raster: raster.slice() });
+    return `data:image/png;base64,${width}x${height}`;
+  }),
+}));
 
 const DAY = 'data:image/png;base64,REFZ';
 const NIGHT = 'data:image/png;base64,TklHSFQ=';
@@ -194,6 +204,205 @@ describe('Weather Mask control', () => {
     fireEvent.click(screen.getByTitle('Add an Image'));
     const open = control();
     for (const button of within(open).getAllByRole('button')) expect((button as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+/** Opens the brush editor from the framed slot and loads its picture at `width` × `height`. */
+const openEditor = async (button: 'Paint' | 'Edit', width = 3840, height = 2160) => {
+  fireEvent.click(within(control()).getByRole('button', { name: button }));
+  const picture = document.querySelector<HTMLImageElement>('[data-mask-scene] img')!;
+  Object.defineProperty(picture, 'naturalWidth', { value: width });
+  Object.defineProperty(picture, 'naturalHeight', { value: height });
+  await act(async () => { fireEvent.load(picture); });
+  await waitFor(() => expect(document.querySelector('[data-mask-paint]')).not.toBeNull());
+  const paint = document.querySelector<HTMLElement>('[data-mask-paint]')!;
+  paint.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1280, height: 720, right: 1280, bottom: 720, x: 0, y: 0, toJSON: () => ({}) });
+  return paint;
+};
+const editor = () => screen.getByRole('dialog', { name: 'Weather Mask' });
+const groups = () => [...document.querySelectorAll<HTMLElement>('[data-mask-group]')];
+const stroke = (paint: HTMLElement) => {
+  fireEvent.pointerDown(paint, { button: 0, pointerId: 1, clientX: 600, clientY: 300 });
+  fireEvent.pointerMove(paint, { pointerId: 1, clientX: 700, clientY: 320 });
+  fireEvent.pointerUp(paint, { pointerId: 1, clientX: 700, clientY: 320 });
+};
+const press = async (name: string) => { await act(async () => { fireEvent.click(within(editor()).getByRole('button', { name })); }); };
+const masks = (list: MediaList) => Object.values(list).filter((e) => e.kind === 'mask');
+
+describe('Weather Mask brush editor', () => {
+  beforeEach(() => { canvasFake.saved.length = 0; });
+
+  it('Paint on a slot with no mask creates and links a new Mask on Save', async () => {
+    const { ctx, stored } = await mount(world([{ mediaId: 'day' }]));
+    stroke(await openEditor('Paint'));
+    await press('Save');
+    await waitFor(() => expect(stored()[0].weatherMask).toBeDefined());
+    const added = ctx().worldOverview.mediaList![stored()[0].weatherMask!];
+    expect(added).toMatchObject({ kind: 'mask', name: 'Dock Mask 1', data: 'data:image/png;base64,1920x1080', type: 'image/png' });
+    expect(masks(ctx().worldOverview.mediaList!)).toHaveLength(2);
+    expect(screen.queryByRole('dialog', { name: 'Weather Mask' })).toBeNull();
+  });
+
+  it('saves the painted pixels, white where the stroke went', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    stroke(await openEditor('Paint', 1280, 720));
+    await press('Save');
+    const [saved] = canvasFake.saved;
+    expect(saved.raster[300 * 1280 + 600]).toBe(255);
+    expect(saved.raster[10 * 1280 + 10]).toBe(0);
+  });
+
+  it('saves at the picture aspect ratio, capped like uploads', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    stroke(await openEditor('Paint', 3000, 4000));
+    await press('Save');
+    expect(canvasFake.saved[0]).toMatchObject({ width: 1440, height: 1920 });
+  });
+
+  it('Cancel with nothing painted closes at once and creates nothing', async () => {
+    const { ctx, stored } = await mount(world([{ mediaId: 'day' }]));
+    await openEditor('Paint');
+    expect((within(editor()).getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true);
+    await press('Cancel');
+    expect(screen.queryByRole('dialog', { name: 'Weather Mask' })).toBeNull();
+    expect(stored()[0].weatherMask).toBeUndefined();
+    expect(masks(ctx().worldOverview.mediaList!)).toHaveLength(1);
+  });
+
+  it('Cancel after painting asks first, and Discard creates nothing', async () => {
+    const { ctx, stored } = await mount(world([{ mediaId: 'day' }]));
+    stroke(await openEditor('Paint'));
+    await press('Cancel');
+    const confirm = screen.getByRole('alertdialog', { name: 'Discard Changes?' });
+    await act(async () => { fireEvent.click(within(confirm).getByRole('button', { name: 'Discard' })); });
+    expect(screen.queryByRole('dialog', { name: 'Weather Mask' })).toBeNull();
+    expect(stored()[0].weatherMask).toBeUndefined();
+    expect(masks(ctx().worldOverview.mediaList!)).toHaveLength(1);
+    expect(canvasFake.saved).toHaveLength(0);
+  });
+
+  it('Escape acts as Cancel, with the same question after painting', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    stroke(await openEditor('Paint'));
+    fireEvent.keyDown(editor(), { key: 'Escape' });
+    expect(screen.getByRole('alertdialog', { name: 'Discard Changes?' })).toBeTruthy();
+  });
+
+  it('Edit on a shared mask names the count, and Save changes the mask on every slot that links it', async () => {
+    const { ctx, stored } = await mount(world([{ mediaId: 'day', weatherMask: 'win' }, { mediaId: 'night', weatherMask: 'win' }]));
+    stroke(await openEditor('Edit'));
+    expect(within(editor()).getByText('Shared by 2 images. Saving changes all of them.')).toBeTruthy();
+    await press('Save');
+    await waitFor(() => expect(ctx().worldOverview.mediaList!.win).toMatchObject({ name: 'Dock Window', kind: 'mask', data: 'data:image/png;base64,1920x1080' }));
+    expect(stored().map((s) => s.weatherMask)).toEqual(['win', 'win']);
+    expect(masks(ctx().worldOverview.mediaList!)).toHaveLength(1);
+  });
+
+  it('names no count for a mask one image links', async () => {
+    await mount(world([{ mediaId: 'day', weatherMask: 'win' }]));
+    await openEditor('Edit');
+    expect(document.querySelector('[data-mask-shared]')).toBeNull();
+  });
+
+  it('undoes a painted new mask in one step: the link and the entry go together', async () => {
+    const { ctx, history, stored } = await mount(world([{ mediaId: 'day' }]));
+    stroke(await openEditor('Paint'));
+    await press('Save');
+    await waitFor(() => expect(stored()[0].weatherMask).toBeDefined());
+    const id = stored()[0].weatherMask!;
+    await act(async () => { history().undo(); });
+    expect(stored()[0].weatherMask).toBeUndefined();
+    expect(ctx().worldOverview.mediaList![id]).toBeUndefined();
+  });
+
+  it('undoes an edit back to the old picture', async () => {
+    const { ctx, history } = await mount(world([{ mediaId: 'day', weatherMask: 'win' }]));
+    stroke(await openEditor('Edit'));
+    await press('Save');
+    await waitFor(() => expect(ctx().worldOverview.mediaList!.win).toMatchObject({ data: 'data:image/png;base64,1920x1080' }));
+    await act(async () => { history().undo(); });
+    expect(ctx().worldOverview.mediaList!.win).toEqual(LIST.win);
+  });
+
+  it('undo and redo inside the editor step through strokes and tools, by button and by key', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    const paint = await openEditor('Paint', 1280, 720);
+    stroke(paint);
+    await press('Invert');
+    const save = () => within(editor()).getByRole('button', { name: 'Save' }) as HTMLButtonElement;
+    await press('Undo');
+    fireEvent.keyDown(editor(), { key: 'z', ctrlKey: true });
+    expect(save().disabled).toBe(true);
+    fireEvent.keyDown(editor(), { key: 'y', ctrlKey: true });
+    await press('Redo');
+    fireEvent.keyDown(editor(), { key: 'z', ctrlKey: true, shiftKey: true });
+    await press('Save');
+    // Stroke then invert: black under the stroke, white elsewhere.
+    const [saved] = canvasFake.saved;
+    expect(saved.raster[300 * 1280 + 600]).toBe(0);
+    expect(saved.raster[10 * 1280 + 10]).toBe(255);
+  });
+
+  it('every control hides and takes no input while a stroke is in progress', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    const paint = await openEditor('Paint');
+    expect(groups().map((g) => g.dataset.maskGroup)).toEqual(['tools', 'card', 'actions']);
+    fireEvent.pointerDown(paint, { button: 0, pointerId: 1, clientX: 600, clientY: 300 });
+    for (const group of groups()) expect(group.style).toMatchObject({ opacity: '0', visibility: 'hidden', pointerEvents: 'none' });
+    fireEvent.pointerUp(paint, { pointerId: 1, clientX: 600, clientY: 300 });
+    for (const group of groups()) expect(group.style.visibility).toBe('');
+  });
+
+  it('a second finger neither starts a stroke nor draws into the first, and undo takes the stroke back whole', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    const paint = await openEditor('Paint', 1280, 720);
+    fireEvent.pointerDown(paint, { button: 0, pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerDown(paint, { button: 0, pointerId: 2, clientX: 1100, clientY: 600 });
+    fireEvent.pointerMove(paint, { pointerId: 2, clientX: 1150, clientY: 650 });
+    fireEvent.pointerUp(paint, { pointerId: 2, clientX: 1150, clientY: 650 });
+    fireEvent.pointerUp(paint, { pointerId: 1, clientX: 100, clientY: 100 });
+    await press('Invert');
+    await press('Undo');
+    await press('Undo');
+    expect((within(editor()).getByRole('button', { name: 'Undo' }) as HTMLButtonElement).disabled).toBe(true);
+    await press('Redo');
+    await press('Save');
+    const [saved] = canvasFake.saved;
+    expect(saved.raster[100 * 1280 + 100]).toBe(255);
+    expect(saved.raster[600 * 1280 + 1100]).toBe(0);
+    expect(saved.raster[650 * 1280 + 1150]).toBe(0);
+  });
+
+  /** Media queries answer from `matches`; the rest report no match. */
+  const stubMedia = (matches: (query: string) => boolean) => vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({
+    matches: matches(query), media: query, onchange: null,
+    addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+  }) as MediaQueryList);
+
+  it('stacks the controls, solid, on a narrow screen, and hides them there too while painting', async () => {
+    stubMedia((query) => query.includes('max-width: 1023px'));
+    try {
+      await mount(world([{ mediaId: 'day' }]));
+      const paint = await openEditor('Paint');
+      expect(editor().getAttribute('data-mask-editor')).toBe('stacked');
+      expect(groups().map((g) => g.dataset.maskGroup)).toEqual(['actions', 'panel']);
+      for (const group of groups()) expect(group.className).not.toContain('opacity-25');
+      fireEvent.pointerDown(paint, { button: 0, pointerId: 1, clientX: 600, clientY: 300 });
+      for (const group of groups()) expect(group.style.visibility).toBe('hidden');
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('stacks the controls on a wide touch screen, which has no hover to bring faded ones back', async () => {
+    stubMedia((query) => query.includes('pointer: coarse'));
+    try {
+      await mount(world([{ mediaId: 'day' }]));
+      await openEditor('Paint');
+      expect(editor().getAttribute('data-mask-editor')).toBe('stacked');
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 });
 

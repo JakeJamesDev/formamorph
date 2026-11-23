@@ -29,7 +29,7 @@ export function LocationImageField({ location, onChange, placeholders, imageId =
   const gallery = useLinkedGallery(locationLinks(location), write, subject, LAYERED_SLOTS);
   const { advanced } = useEditorMode();
   const slotFooter = advanced
-    ? (i: number) => <WeatherMaskControl images={gallery.images} index={i} onImagesChange={gallery.onImagesChange} subject={subject} />
+    ? (i: number) => <WeatherMaskControl images={gallery.images} index={i} onImagesChange={gallery.onImagesChange} pictures={gallery.pictures} subject={subject} />
     : undefined;
   return (
     <ImageTagsField
