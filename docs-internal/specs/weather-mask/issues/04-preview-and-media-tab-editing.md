@@ -9,7 +9,7 @@ Reasoning effort: medium
 
 While painting, the author sees live weather through the mask in progress, and can open any mask from the Media tab. The spec covers this in Q8 and Q13.
 
-- **Preview.** The brush editor draws the Weather Background through the mask in progress, reusing ticket 02's masked drawing, with a picker for Rain, Snow, Storm and Bright Sun. Reduced motion uses the calm mode.
+- **Preview.** The brush editor draws the Weather Background through the mask in progress, always on behind the tint, reusing ticket 02's masked drawing. The corner card of Q19 holds the picker for Rain, Snow, Storm and Bright Sun and rests faded like the other controls. Reduced motion uses the calm mode.
 - **Media tab.** A Mask row opens the brush editor over a picture that links it; with several, the editor switches which picture shows under the mask. With none, it opens over a plain surface at the mask's size.
 - **Docs.** The wiki Media tab page covers opening a mask.
 

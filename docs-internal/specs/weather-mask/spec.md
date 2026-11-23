@@ -40,6 +40,7 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
 | Q16 | The control is called Weather Mask; the Media List kind shows as Mask. |
 | Q17 | The work ships as five tickets: entries and control, play, brush editor, preview and Media tab editing, Test Bench warning. |
 | Q18 | The Weather Mask control shows in Advanced mode only. |
+| Q19 | Settled by prototype, 2026-11-23. The brush editor is "in the scene": the picture fills the window as in play, with the weather showing through the mask. Tools float over it and rest faded until hovered or focused. Touch has no hover: on mobile the controls stay solid and stack, Cancel and Save above the picture and every tool in one panel below. On every device the controls hide while a stroke is in progress. Prototype: branch `prototype/weather-mask-brush` (commit f9d6ec4e2, variant B), `#dev?modal=weatherMaskPrototype&proto=B`. |
 
 ## User Stories
 
@@ -118,7 +119,7 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
 
 **Brush editor**
 
-- A modal over the picture, with the mask shown as an overlay. Tools: brush and eraser with size, soft edge, invert, fill and clear, undo and redo (Q8). Save writes the mask; Cancel discards.
+- A full-window editor in the scene (Q19): the picture fills the window as it does in play, the mask shows as a tint that can be hidden, and the weather preview draws through the mask. A floating toolbar holds the tools and the size and softness sliders; a corner card holds the preview kind, Show or Hide Mask, and the switch between pictures that share the mask; Save and Cancel sit top right. On desktop each control group rests faded and returns to full on hover or keyboard focus. On mobile, Cancel and Save sit above the picture and every other control in one solid panel below it. On both, every control hides while a stroke is in progress. Tools: brush and eraser with size, soft edge, invert, fill and clear, undo and redo (Q8). Save writes the mask; Cancel discards.
 - A live weather preview draws the Weather Background through the mask in progress, with a picker for the kind (Q8).
 - When the mask is shared, the editor names how many images use it, and Save changes it for all of them (Q12).
 - The editing state is a pure mask-document module: an ordered list of operations (stroke with size, softness and mode; fill; clear; invert) with undo and redo, which a canvas renderer replays. The module holds no canvas.
