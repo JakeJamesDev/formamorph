@@ -1,6 +1,7 @@
 # Spec: Weather Mask
 
-Status: ready-for-agent
+Status: done
+Status note: 2026-11-23, tickets 01–05 done, last landing 27c4f3943. Review: spec text corrected. Gates green on 2026-11-23 for the repo; lint errors come only from the gitignored worlds-wip folder.
 Spec session: weather-mask — spec
 
 ## Problem Statement
@@ -86,7 +87,7 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
 
 - A new Media Entry kind, Mask: id, name, kind, and the image data. It lives in the world's Media List beside image, sound and layered entries, and travels wherever the Media List travels.
 - Stored as a PNG data URL. Painted masks save at the linked image's size, capped by the location image cap of the Downscale Presets. Uploads in any image format are re-encoded to PNG and capped the same way.
-- Every Media List consumer that switches on entry kind handles Mask: the Media tab, Delete From World, Remove From Slot, the "kept by" index, stored-size totals, world export, publish and the provenance of linked entries. Image pickers, gallery adds and script media reads never offer a Mask entry.
+- Every Media List consumer that switches on entry kind handles Mask: the Media tab, Delete From World, Remove From Slot, the "kept by" index (masks list in their own Masks section, not under each location), stored-size totals, world export, publish and the provenance of linked entries. Image pickers, gallery adds and script media reads never offer a Mask entry.
 
 **Location image slots**
 
@@ -106,15 +107,15 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
   - Location Background off, or no location image: the mask is ignored.
   - Clear, Bright Sun after dark, the player's Weather Background switch and reduced motion apply as before.
 - The background output carries the mask with its kind and mode. The Weather Foreground decision ignores the mask (Q9). The narrator line ignores it (Q10).
-- The Weather Background applies the mask as a luminance CSS mask on its layer, sized and placed to the location image's on-screen crop. The image fills the screen by cover, so the mask's box is computed from the image's natural size and the viewport, and the mask is stretched to that box. A mask of the wrong aspect stretches; the Test Bench flags it (Q15).
+- The Weather Background applies the mask as a luminance CSS mask on its layer, sized and placed to the location image's on-screen crop. The image fills the screen by cover, so the mask's box is computed from the image's natural size and the weather layer's own box, which fills the viewport in play, and the mask is stretched to that box. A mask of the wrong aspect stretches; the Test Bench flags it (Q15).
 - The Background Fade dims the masked weather with the location art, as Q29 of the Weather spec rules.
 - The dev weather bar's backdrop override draws with no mask.
 
 **World Editor**
 
-- Each location image slot shows a Weather Mask control in Advanced mode (Q13, Q16, Q18). With no mask: Paint, Upload, Pick a mask. With a mask: a thumbnail, Edit, Replace, Remove. Remove unlinks the slot only. Replace overwrites the linked entry's picture, so every slot that shares it changes, as Q12 rules for edits. The control names the shared count only when two or more images link the mask.
-- Pick a mask opens a picker of Mask entries only (Q5).
-- Upload always makes a new Mask entry from the chosen file and links it, even when the bytes match an existing mask: sharing happens only through Pick a mask. The Media tab's own import never makes a Mask; masks enter only through a slot.
+- Each location image slot shows a Weather Mask control in Advanced mode (Q13, Q16, Q18). With no mask: Paint, Upload, Choose. With a mask: a thumbnail, Edit, Replace, Remove. Remove unlinks the slot only. Replace overwrites the linked entry's picture, so every slot that shares it changes, as Q12 rules for edits. The control names the shared count only when two or more images link the mask.
+- Choose opens a picker of Mask entries only (Q5).
+- Upload always makes a new Mask entry from the chosen file and links it, even when the bytes match an existing mask: sharing happens only through Choose. The Media tab's own import never makes a Mask; masks enter only through a slot.
 - Paint opens the brush editor over the slot's picture, on a new mask or the linked one.
 - The Media tab lists Mask entries with their size and the locations that keep them, and opens one in the brush editor over a picture that links it. With several, the editor can switch which picture shows under the mask. With none, it opens over a plain surface at the mask's size.
 - Every mask edit goes through the editor's history, so undo, redo and Reveal Origin cover linking, unlinking and painting.
@@ -124,7 +125,7 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
 - A full-window editor in the scene (Q19): the whole picture fits the window on black (contain, not play's cover crop), so the edges another screen shape shows stay paintable; the mask shows as a tint that can be hidden, and the weather preview draws through the mask. A floating toolbar holds the tools and the size and softness sliders; a corner card holds the preview kind, Show or Hide Mask, and the switch between pictures that share the mask; Save and Cancel sit top right. On desktop each control group rests faded and returns to full on hover or keyboard focus. On mobile, Cancel and Save sit above the picture and every other control in one solid panel below it. On both, every control hides while a stroke is in progress. Tools: brush and eraser with size, soft edge, invert, fill and clear, undo and redo (Q8). Save writes the mask; Cancel discards.
 - Ticket 03 opens over the slot's own picture; its corner card holds Show or Hide Mask and the shared-count note. Ticket 04 adds the preview kind and the picture switch.
 - Cancel and Escape discard at once when nothing was painted, and ask before discarding painted changes. Ctrl+Z undoes; Ctrl+Shift+Z and Ctrl+Y redo.
-- A mask of another shape stretches to the picture's box on open and saves at the picture's size, as play stretches it.
+- A mask of another shape stretches to the picture's box on open and saves at the size of the picture the editor opened over, as play stretches it. Switching picture in the Media tab editor reshapes the box but keeps that size.
 - Save is one World Editor history step: painting a new mask links and adds it in one step, as Upload does; editing an existing mask is its own step. Strokes live only in the editor's undo.
 - The saved PNG is opaque grayscale, black where nothing is painted (Q6).
 - A live weather preview draws the Weather Background through the mask in progress, with a picker for the kind (Q8).
