@@ -311,6 +311,30 @@ describe('the prompt type table', () => {
   });
 });
 
+describe('the active installs by build table', () => {
+  it('opens newest version first, and sorts by the column the reader picks', async () => {
+    const user = userEvent.setup();
+    await mount(report({ activeUsers: { ...report().activeUsers, builds: [
+      { platform: 'windows', version: '3.9.0', today: 5, yesterday: 5, month: 30 },
+      { platform: 'web', version: '3.10.0', today: 1, yesterday: 1, month: 10 },
+      { platform: 'android', version: '3.9.1', today: 2, yesterday: 2, month: 20 },
+    ] } }));
+    await open(user, 'Clients And Offer');
+    const versions = () => rowsOf('Active Installs By Build').map((row) => row[0]);
+
+    expect(versions()).toEqual(['3.10.0', '3.9.1', '3.9.0']);
+
+    await user.click(screen.getByRole('button', { name: 'Sort by Version' }));
+    expect(versions()).toEqual(['3.9.0', '3.9.1', '3.10.0']);
+
+    await user.click(screen.getByRole('button', { name: 'Sort by This Month' }));
+    expect(versions()).toEqual(['3.9.0', '3.9.1', '3.10.0']);
+
+    await user.click(screen.getByRole('button', { name: 'Sort by Platform' }));
+    expect(rowHeaders('Active Installs By Build')).toEqual(['Android', 'Web', 'Windows']);
+  });
+});
+
 describe('the range', () => {
   it('reads 14 days first and reads again when the range changes', async () => {
     const user = userEvent.setup();

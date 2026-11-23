@@ -9,6 +9,7 @@ import { CollapsingToggleGroup } from "@/components/ui/collapsing-toggle-group";
 import { Tabs } from "@/components/ui/tabs";
 import { Hint, Meta } from "@/components/ui/typography";
 import { downloadBlob } from "@/lib/downloadBlob";
+import { compareSemver } from "@/lib/updates/semver";
 import { useDevRoute } from "@/lib/devRouter";
 import { useMountedRef } from "@/lib/useMountedRef";
 import { useTierName } from "@/lib/tierNames";
@@ -186,44 +187,40 @@ export function FiguresTable<Row>({ label, columns, rows, rowKey, minWidth, head
   );
 }
 
-const PROMPT_COLUMNS: readonly (Column<HostedPromptTypeUsage> & { sort: (row: HostedPromptTypeUsage) => number | string })[] = [
-  { label: 'Type', left: true, cell: (row) => promptTypeLabel(row.promptType), sort: (row) => promptTypeLabel(row.promptType) },
-  { label: 'Calls', cell: (row) => whole(row.calls), sort: (row) => row.calls },
-  { label: 'Cost', cell: (row) => money(row.costMicros), sort: (row) => row.costMicros },
-  { label: 'Avg Prompt', cell: (row) => whole(row.avgPromptTokens), sort: (row) => row.avgPromptTokens ?? -1 },
-  { label: 'Avg Output', cell: (row) => whole(row.avgOutputTokens), sort: (row) => row.avgOutputTokens ?? -1 },
-  { label: 'Cached', cell: (row) => percent(row.cachedShare), sort: (row) => row.cachedShare ?? -1 },
-  { label: 'First Token', cell: (row) => seconds(row.firstTokenP50Ms), sort: (row) => row.firstTokenP50Ms ?? -1 },
-  { label: 'Tokens/Sec', cell: (row) => whole(row.tokensPerSecondP50), sort: (row) => row.tokensPerSecondP50 ?? -1 },
-  { label: 'Longest Gap', cell: (row) => seconds(row.maxGapP90Ms), sort: (row) => row.maxGapP90Ms ?? -1 },
-  { label: 'Failed', cell: (row) => whole(row.failed), sort: (row) => row.failed },
-];
+interface SortableColumn<Row> extends Column<Row> {
+  /** Orders two rows smallest or earliest first. */
+  compare: (a: Row, b: Row) => number;
+  /** The first click sorts descending. Defaults to figures only, so words read A to Z first. */
+  descendingFirst?: boolean;
+}
 
-/** The prompt types, sorted by the column the reader picked. */
-function PromptTypesTable({ rows }: { rows: readonly HostedPromptTypeUsage[] }) {
-  const [sort, setSort] = useState({ column: 2, descending: true });
-  const key = PROMPT_COLUMNS[sort.column].sort;
-  const sorted = [...rows].sort((a, b) => {
-    const [first, second] = sort.descending ? [b, a] : [a, b];
-    const [left, right] = [key(first), key(second)];
-    return typeof left === 'string' ? left.localeCompare(String(right)) : left - Number(right);
-  });
+const byText = <Row,>(key: (row: Row) => string) => (a: Row, b: Row) => key(a).localeCompare(key(b));
+const byFigure = <Row,>(key: (row: Row) => number | null) => (a: Row, b: Row) => (key(a) ?? -1) - (key(b) ?? -1);
+
+/** A figures table the reader sorts by clicking a column header. */
+function SortableTable<Row>({ columns, initialSort, ...table }: Omit<Parameters<typeof FiguresTable<Row>>[0], 'columns' | 'header'> & {
+  columns: readonly SortableColumn<Row>[];
+  initialSort: { column: number; descending: boolean };
+}) {
+  const [sort, setSort] = useState(initialSort);
+  const { compare } = columns[sort.column];
+  const rows = [...table.rows].sort((a, b) => (sort.descending ? compare(b, a) : compare(a, b)));
 
   return (
     <FiguresTable
-      label="Prompt Types"
-      columns={PROMPT_COLUMNS}
-      rows={sorted}
-      rowKey={(row) => row.promptType ?? 'none'}
-      minWidth="52rem"
+      {...table}
+      columns={columns}
+      rows={rows}
       header={(column, index) => (
         <button
           type="button"
           className={`hover:text-foreground ${sort.column === index ? 'text-foreground' : ''}`}
           aria-label={`Sort by ${column.label}`}
           aria-pressed={sort.column === index}
-          // Words read A to Z first and figures largest first.
-          onClick={() => setSort({ column: index, descending: sort.column === index ? !sort.descending : !column.left })}
+          onClick={() => setSort({
+            column: index,
+            descending: sort.column === index ? !sort.descending : (columns[index].descendingFirst ?? !column.left),
+          })}
         >
           {column.label}{sort.column === index && <span aria-hidden="true">{sort.descending ? ' ↓' : ' ↑'}</span>}
         </button>
@@ -231,6 +228,27 @@ function PromptTypesTable({ rows }: { rows: readonly HostedPromptTypeUsage[] }) 
     />
   );
 }
+
+const PROMPT_COLUMNS: readonly SortableColumn<HostedPromptTypeUsage>[] = [
+  { label: 'Type', left: true, cell: (row) => promptTypeLabel(row.promptType), compare: byText((row) => promptTypeLabel(row.promptType)) },
+  { label: 'Calls', cell: (row) => whole(row.calls), compare: byFigure((row) => row.calls) },
+  { label: 'Cost', cell: (row) => money(row.costMicros), compare: byFigure((row) => row.costMicros) },
+  { label: 'Avg Prompt', cell: (row) => whole(row.avgPromptTokens), compare: byFigure((row) => row.avgPromptTokens) },
+  { label: 'Avg Output', cell: (row) => whole(row.avgOutputTokens), compare: byFigure((row) => row.avgOutputTokens) },
+  { label: 'Cached', cell: (row) => percent(row.cachedShare), compare: byFigure((row) => row.cachedShare) },
+  { label: 'First Token', cell: (row) => seconds(row.firstTokenP50Ms), compare: byFigure((row) => row.firstTokenP50Ms) },
+  { label: 'Tokens/Sec', cell: (row) => whole(row.tokensPerSecondP50), compare: byFigure((row) => row.tokensPerSecondP50) },
+  { label: 'Longest Gap', cell: (row) => seconds(row.maxGapP90Ms), compare: byFigure((row) => row.maxGapP90Ms) },
+  { label: 'Failed', cell: (row) => whole(row.failed), compare: byFigure((row) => row.failed) },
+];
+
+const BUILD_COLUMNS: readonly SortableColumn<HostedInstallBuild>[] = [
+  { label: 'Platform', left: true, cell: (row) => platformLabel(row.platform), compare: byText((row) => platformLabel(row.platform)) },
+  { label: 'Version', left: true, descendingFirst: true, cell: (row) => row.version, compare: (a, b) => compareSemver(a.version, b.version) },
+  { label: TODAY, cell: (row) => whole(row.today), compare: byFigure((row) => row.today) },
+  { label: 'Yesterday', cell: (row) => whole(row.yesterday), compare: byFigure((row) => row.yesterday) },
+  { label: 'This Month', cell: (row) => whole(row.month), compare: byFigure((row) => row.month) },
+];
 
 const exportCsv = (text: string, name: string) => downloadBlob(new Blob([text], { type: 'text/csv' }), name);
 
@@ -422,7 +440,7 @@ function PerformanceSection({ report, days }: { report: HostedUsageReport; days:
   return (
     <div className="grid gap-8">
       <UsageSection title="Prompt Types" action={<ExportButton label="Export Prompt Types As CSV" onClick={() => exportCsv(promptTypesCsv(report.promptTypes), `usage-prompt-types-${days}.csv`)} />}>
-        {report.promptTypes.length === 0 ? <Meta>No calls in this range</Meta> : <PromptTypesTable rows={report.promptTypes} />}
+        {report.promptTypes.length === 0 ? <Meta>No calls in this range</Meta> : <SortableTable label="Prompt Types" columns={PROMPT_COLUMNS} rows={report.promptTypes} rowKey={(row) => row.promptType ?? 'none'} minWidth="52rem" initialSort={{ column: 2, descending: true }} />}
       </UsageSection>
 
       <UsageSection title="Reservations">
@@ -504,18 +522,13 @@ function ClientsSection({ report }: { report: HostedUsageReport }) {
 
       {builds.length > 0 && (
         <UsageSection title="Active Installs By Build">
-          <FiguresTable
+          <SortableTable
             label="Active Installs By Build"
             minWidth="30rem"
             rows={builds}
             rowKey={(row) => `${row.platform} ${row.version}`}
-            columns={[
-              { label: 'Platform', left: true, cell: (row) => platformLabel(row.platform) },
-              { label: 'Version', left: true, cell: (row) => row.version },
-              { label: TODAY, cell: (row) => whole(row.today) },
-              { label: 'Yesterday', cell: (row) => whole(row.yesterday) },
-              { label: 'This Month', cell: (row) => whole(row.month) },
-            ]}
+            columns={BUILD_COLUMNS}
+            initialSort={{ column: 1, descending: true }}
           />
         </UsageSection>
       )}
