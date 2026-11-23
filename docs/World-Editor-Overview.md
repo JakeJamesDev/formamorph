@@ -47,6 +47,8 @@ A storm in a figure of speech or a memory changes nothing. Bright Sun turns Clea
 
 To mark a place indoors, check **Sheltered** on the location's **Details** tab. It shows once the world allows a kind other than Clear. A child location is not Sheltered unless you check it too.
 
+To show the weather through a window, or keep it off the ground under an overhang, give the background image a [Weather Mask](World-Editor-Locations#weather-mask).
+
 An [opening](World-Editor-Openings#start-weather) can set its own weather.
 
 ## The left column: how your world is listed

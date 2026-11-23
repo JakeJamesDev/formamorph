@@ -1,4 +1,5 @@
 /** Weather Masks on location image slots: the Mask entries a slot links, and what an upload stores. */
+import type { CSSProperties } from 'react';
 import type { GalleryImage, GameLocation, MediaFileEntry, MediaList } from '@/types';
 import { galleryLink } from './entityImages';
 import { fitWithin } from './imageBytes';
@@ -52,3 +53,12 @@ export async function encodeMaskPng(file: Blob): Promise<string> {
     bitmap.close();
   }
 }
+
+/** A luminance mask stretched over the box the art covers at `ratio`, centered, as `bg-cover bg-center` places it. */
+export const coverMaskStyle = (mask: string, ratio: number): CSSProperties => ({
+  maskImage: `url("${mask}")`,
+  maskMode: 'luminance',
+  maskRepeat: 'no-repeat',
+  maskPosition: 'center',
+  maskSize: `max(100cqw, calc(100cqh * ${ratio})) max(100cqh, calc(100cqw / ${ratio}))`,
+});

@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { coverMaskStyle } from '@/lib/weatherMask';
 import type { AllowedWeatherKind } from '@/types';
 import { registerDevHook } from '@/lib/devRouter';
 import type { WeatherBackgroundMode } from '@/lib/weatherView';
@@ -19,7 +20,34 @@ function readColors(canvas: HTMLCanvasElement, plain: boolean): WeatherColors {
   return { rain: rgb, snow: rgb };
 }
 
-function WeatherCanvas({ kind, mode, plain }: { kind: AllowedWeatherKind; mode: DrawMode; plain: boolean }) {
+/** Each art source's width over height once loaded, so a remount masks on its first paint. */
+const ART_RATIOS = new Map<string, number>();
+/** Data-URL keys are large, so the cache holds a world's worth of locations, not a session's. */
+const MAX_ART_RATIOS = 32;
+
+/** The natural width over height of the image at `src`, or undefined until it loads. */
+function useNaturalRatio(src: string | undefined): number | undefined {
+  const [loaded, setLoaded] = useState<{ src: string; ratio: number }>();
+  useEffect(() => {
+    if (!src || ART_RATIOS.has(src)) return;
+    let live = true;
+    const img = new Image();
+    img.onload = () => {
+      const ratio = img.naturalWidth / (img.naturalHeight || 1);
+      if (ART_RATIOS.size >= MAX_ART_RATIOS) ART_RATIOS.clear();
+      ART_RATIOS.set(src, ratio);
+      if (live) setLoaded({ src, ratio });
+    };
+    img.src = src;
+    return () => { live = false; img.onload = null; };
+  }, [src]);
+  if (!src) return undefined;
+  return ART_RATIOS.get(src) ?? (loaded?.src === src ? loaded.ratio : undefined);
+}
+
+function WeatherCanvas({ kind, mode, plain, maskStyle, mask }: {
+  kind: AllowedWeatherKind; mode: DrawMode; plain: boolean; maskStyle: CSSProperties | undefined; mask: string | undefined;
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current;
@@ -68,30 +96,39 @@ function WeatherCanvas({ kind, mode, plain }: { kind: AllowedWeatherKind; mode: 
       theme.disconnect();
     };
   }, [kind, mode, plain]);
+  // The size container lets the mask box read the layer's size in `cq` units.
   return (
-    <canvas
-      ref={ref}
-      data-testid="weather-background"
-      data-weather-kind={kind}
-      data-weather-mode={mode}
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 -z-[9] h-full w-full text-foreground"
-      style={{ transform: 'translateZ(0)', willChange: 'transform' }}
-    />
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-[9] [container-type:size]">
+      <canvas
+        ref={ref}
+        data-testid="weather-background"
+        data-weather-kind={kind}
+        data-weather-mode={mode}
+        data-weather-mask={mask}
+        className="absolute inset-0 h-full w-full text-foreground"
+        style={{ ...maskStyle, transform: 'translateZ(0)', willChange: 'transform' }}
+      />
+    </div>
   );
 }
 
 /**
  * The Weather Background: the current weather drawn over the location art and under the panels.
- * Mounts no canvas, and so draws nothing, while it shows no kind.
+ * Mounts no canvas, and so draws nothing, while it shows no kind, or while a mask waits on the art's size.
  */
-export function WeatherBackground({ kind, mode, plain }: {
+export function WeatherBackground({ kind, mode, plain, mask, art }: {
   kind: AllowedWeatherKind | null;
   mode: WeatherBackgroundMode;
   /** No location art behind it: draw in the theme's text color. */
   plain: boolean;
+  /** A Mask entry's data: the weather draws only where it is light. */
+  mask?: string;
+  /** The image whose cover crop the mask follows; a Layered Image's canvas. */
+  art?: string;
 }) {
   useEffect(() => registerDevHook('weatherStats', () => ({ ...stats })), []);
+  const ratio = useNaturalRatio(mask ? art : undefined);
   if (!kind || mode === 'none') return null;
-  return <WeatherCanvas kind={kind} mode={mode} plain={plain} />;
+  if (mask && !ratio) return null;
+  return <WeatherCanvas kind={kind} mode={mode} plain={plain} mask={mask} maskStyle={mask && ratio ? coverMaskStyle(mask, ratio) : undefined} />;
 }

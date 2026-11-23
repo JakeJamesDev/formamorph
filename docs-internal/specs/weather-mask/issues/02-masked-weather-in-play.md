@@ -1,6 +1,6 @@
 # 02: Masked Weather in Play
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -16,9 +16,19 @@ In play, the Weather Background shows only where the shown location image's mask
 
 ## Acceptance criteria
 
-- [ ] The weather view decision has one test per rule above, including Sheltered with and without a mask.
-- [ ] A GameViewer render test reads the weather layer's mask from the DOM for the shown image; a day/night pair sharing one mask shows it on both; a past page shows its own image's mask.
-- [ ] With Location Background off, the weather layer carries no mask.
-- [ ] Frames of a masked window in rain show the weather inside the window only: `.scratch/frames/mask-desktop-dark.png` and `.scratch/frames/mask-desktop-light.png` at 1280 wide, `.scratch/frames/mask-mobile-dark.png` at 390 wide.
+- [x] The weather view decision has one test per rule above, including Sheltered with and without a mask. `weatherView.test.ts` › "the weather view background under a Weather Mask".
+- [x] A GameViewer render test reads the weather layer's mask from the DOM for the shown image; a day/night pair sharing one mask shows it on both; a past page shows its own image's mask. `GameViewer.weatherMask.test.tsx`, via `data-weather-mask`.
+- [x] With Location Background off, the weather layer carries no mask. `GameViewer.weatherMask.test.tsx`, open and Sheltered cases.
+- [x] Frames of a masked window in rain show the weather inside the window only (Browser pane, scratch world, UI hidden; computed `mask-size` read 1422×800 at 1280×800 and 1500×844 at 390×844): `.scratch/frames/mask-desktop-dark.png` and `.scratch/frames/mask-desktop-light.png` at 1280 wide, `.scratch/frames/mask-mobile-dark.png` at 390 wide.
 
-For you: in play, check that rain lines up with the window and the edge looks right in a world of your own.
+## Landed
+
+**Not verified**
+
+- Older Android WebViews: the mask uses unprefixed `mask-image` and `mask-mode`, which Chromium supports from version 120. An older WebView would draw the weather unmasked. No `-webkit-` fallback was added, because WebKit's prefixed mask reads alpha, not luminance, and would show weather over the whole image.
+- The pane saves frames scaled down: the desktop frames are 800 wide from a 1280-wide viewport.
+
+**For you**
+
+- In play, check that rain lines up with the window and the edge looks right in a world of your own.
+- `.scratch/weather-mask-02/frames/mask-desktop-dark.png`, `.scratch/weather-mask-02/frames/mask-desktop-light.png` and `.scratch/weather-mask-02/frames/mask-mobile-dark.png`: rain shows inside the window only.

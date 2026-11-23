@@ -228,6 +228,14 @@ Example: put a *wounded* backdrop first with the rule *Health < 20%*, and a calm
 - 🪟 **Sheltered location.** The weather shows only inside the mask, such as through a window. With no mask, a Sheltered location shows no weather.
 - ⛱️ **Open location.** The weather stays off what the mask hides, such as the ground under an overhang.
 
+In play:
+
+- 📱 **Any screen.** The mask lines up with the image on any screen shape, desktop or mobile.
+- 🖼️ **Image on screen.** The weather follows the mask of the image that shows now. On a past page, it follows the mask of that page's image.
+- 🌫️ **Background Fade.** The fade dims the weather with the image.
+- ⚡ **Weather change effect.** The short full-screen effect ignores masks. A Sheltered location still skips it.
+- 🚫 **Location Background off.** Masks do nothing. The weather shows as it does with no mask.
+
 Each background image has a **Weather Mask** row under its name:
 
 | With no mask | With a mask |

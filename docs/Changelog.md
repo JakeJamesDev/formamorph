@@ -12,6 +12,14 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.8.0** (just released below)._
 
+### Major Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Weather:**
+    - **The weather now shows through a window in a Sheltered location whose image has a Weather Mask.** In open locations, the weather stays off what the mask hides. The mask lines up with the background image on any screen.
+
 ### Minor Changes
 
 #### ➕ Added

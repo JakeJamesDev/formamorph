@@ -71,3 +71,42 @@ describe('the Weather Background', () => {
     expect(frames.size).toBe(0);
   });
 });
+
+describe('the masked Weather Background', () => {
+  /** Images waiting to load; `load` reports each at 1600 by 900. */
+  let pending: { src: string; onload: (() => void) | null; naturalWidth: number; naturalHeight: number }[];
+  const load = () => act(() => { for (const img of pending.splice(0)) img.onload?.(); });
+  beforeEach(() => {
+    pending = [];
+    vi.stubGlobal('Image', class {
+      onload: (() => void) | null = null;
+      naturalWidth = 1600;
+      naturalHeight = 900;
+      src = '';
+      constructor() { pending.push(this); }
+    });
+  });
+
+  it('draws nothing until the art’s size is known, then draws through the mask', () => {
+    render(<WeatherBackground kind="rain" mode="full" plain={false} mask="m-one" art="art-unseen" />);
+    expect(screen.queryByTestId('weather-background')).toBeNull();
+    expect(frames.size).toBe(0);
+    load();
+    expect(screen.getByTestId('weather-background').dataset.weatherMask).toBe('m-one');
+  });
+
+  it('keeps one canvas while the mask changes', () => {
+    const { rerender } = render(<WeatherBackground kind="rain" mode="full" plain={false} mask="m-one" art="art-kept" />);
+    load();
+    const canvas = screen.getByTestId('weather-background');
+    rerender(<WeatherBackground kind="rain" mode="full" plain={false} mask="m-two" art="art-kept" />);
+    expect(screen.getByTestId('weather-background')).toBe(canvas);
+    expect(canvas.dataset.weatherMask).toBe('m-two');
+  });
+
+  it('draws unmasked weather at once, with no art to measure', () => {
+    render(<WeatherBackground kind="rain" mode="full" plain={false} art="art-ignored" />);
+    expect(screen.getByTestId('weather-background').dataset.weatherMask).toBeUndefined();
+    expect(pending).toHaveLength(0);
+  });
+});

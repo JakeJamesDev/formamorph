@@ -11,6 +11,10 @@ export interface WeatherViewInput {
   worldWeather: WeatherKind | undefined;
   /** The current location's Sheltered flag. */
   sheltered: boolean;
+  /** Location art shows behind the weather: Location Background on and an image on screen. */
+  locationArt: boolean;
+  /** The Weather Mask of the shown location image, a Mask entry's data. */
+  mask: string | undefined;
   daylight: boolean;
   /** The player's Weather Background switch. */
   background: boolean;
@@ -23,26 +27,31 @@ export interface WeatherViewInput {
 }
 
 export interface WeatherView {
-  /** `kind` is null exactly when `mode` is `none`. */
-  background: { kind: AllowedWeatherKind | null; mode: WeatherBackgroundMode };
+  /** `kind` is null exactly when `mode` is `none`; `mask` limits where it draws. */
+  background: { kind: AllowedWeatherKind | null; mode: WeatherBackgroundMode; mask?: string };
   /** The one-shot effect to play now, or null. */
   foreground: AllowedWeatherKind | null;
 }
 
 const NONE: WeatherView['background'] = { kind: null, mode: 'none' };
 
-/** The kind the player sees now: none in a Clear-only world, in Shelter, on Clear, or for Bright Sun after dark. */
-function shownKind({ weatherOn, worldWeather, sheltered, daylight }: WeatherViewInput): AllowedWeatherKind | null {
-  if (!weatherOn || sheltered || !worldWeather || worldWeather === 'clear') return null;
+/** The kind the player sees now: none in a Clear-only world, in unmasked Shelter, on Clear, or for Bright Sun after dark. */
+function shownKind({ weatherOn, worldWeather, sheltered, daylight }: WeatherViewInput, masked: boolean): AllowedWeatherKind | null {
+  if (!weatherOn || (sheltered && !masked) || !worldWeather || worldWeather === 'clear') return null;
   if (worldWeather === 'brightSun' && !daylight) return null;
   return worldWeather;
 }
 
 /** What the weather overlays show for the current state. */
 export function weatherView(input: WeatherViewInput): WeatherView {
-  const kind = shownKind(input);
-  const background = kind && input.background ? { kind, mode: input.reducedMotion ? 'calm' as const : 'full' as const } : NONE;
+  const mask = input.locationArt ? input.mask : undefined;
+  const kind = shownKind(input, !!mask);
+  const background = kind && input.background
+    ? { kind, mode: input.reducedMotion ? 'calm' as const : 'full' as const, ...(mask ? { mask } : {}) }
+    : NONE;
   const { change } = input;
-  const foreground = kind && change?.foreground && change.to === kind && input.foreground && !input.reducedMotion ? kind : null;
+  // The Weather Foreground ignores masks: Shelter still hides it.
+  const fgKind = shownKind(input, false);
+  const foreground = fgKind && change?.foreground && change.to === fgKind && input.foreground && !input.reducedMotion ? fgKind : null;
   return { background, foreground };
 }

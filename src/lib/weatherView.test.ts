@@ -4,7 +4,7 @@ import { weatherView, type WeatherViewInput } from './weatherView';
 import { isDaylight } from './weather';
 
 const input = (extra: Partial<WeatherViewInput> = {}): WeatherViewInput => ({
-  weatherOn: true, worldWeather: 'rain', sheltered: false, daylight: true,
+  weatherOn: true, worldWeather: 'rain', sheltered: false, locationArt: true, mask: undefined, daylight: true,
   background: true, foreground: true, reducedMotion: false, change: null, ...extra,
 });
 const bg = (extra: Partial<WeatherViewInput> = {}) => weatherView(input(extra)).background;
@@ -45,6 +45,45 @@ describe('the weather view background', () => {
 
   it('ignores the Weather Foreground switch', () => {
     expect(bg({ worldWeather: 'snow', foreground: false })).toEqual({ kind: 'snow', mode: 'full' });
+  });
+});
+
+describe('the weather view background under a Weather Mask', () => {
+  const MASK = 'data:image/png;base64,window';
+
+  it('draws an open location unmasked when its image has no mask', () => {
+    expect(bg({ mask: undefined })).toEqual({ kind: 'rain', mode: 'full' });
+  });
+
+  it('limits an open location to its mask', () => {
+    expect(bg({ mask: MASK })).toEqual({ kind: 'rain', mode: 'full', mask: MASK });
+  });
+
+  it('shows a Sheltered location through its mask, and hides it without one', () => {
+    expect(bg({ sheltered: true, mask: MASK })).toEqual({ kind: 'rain', mode: 'full', mask: MASK });
+    expect(bg({ sheltered: true, mask: undefined })).toEqual({ kind: null, mode: 'none' });
+  });
+
+  it('ignores the mask with no location art behind the weather', () => {
+    expect(bg({ locationArt: false, mask: MASK })).toEqual({ kind: 'rain', mode: 'full' });
+    expect(bg({ locationArt: false, sheltered: true, mask: MASK })).toEqual({ kind: null, mode: 'none' });
+  });
+
+  it('draws nothing on Clear, or for Bright Sun after dark, mask or not', () => {
+    expect(bg({ worldWeather: 'clear', sheltered: true, mask: MASK })).toEqual({ kind: null, mode: 'none' });
+    expect(bg({ worldWeather: 'brightSun', daylight: false, mask: MASK })).toEqual({ kind: null, mode: 'none' });
+  });
+
+  it('draws nothing with the Weather Background switch off, mask or not', () => {
+    expect(bg({ background: false, sheltered: true, mask: MASK })).toEqual({ kind: null, mode: 'none' });
+  });
+
+  it('draws the masked calm mode under OS reduced motion', () => {
+    expect(bg({ reducedMotion: true, sheltered: true, mask: MASK })).toEqual({ kind: 'rain', mode: 'calm', mask: MASK });
+  });
+
+  it('leaves the Weather Foreground hidden in a masked Sheltered location', () => {
+    expect(weatherView(input({ sheltered: true, mask: MASK, change: { to: 'rain', foreground: true } })).foreground).toBeNull();
   });
 });
 

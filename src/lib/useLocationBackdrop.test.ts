@@ -26,7 +26,12 @@ vi.mock('./useMediaOverrides', () => ({
     entityPicture: () => ({}), locationPicture: (id: string) => (id === 'square' && state.override ? { id: state.override } : {}), itemPicture: () => ({}),
   }),
 }));
-vi.mock('./useMediaList', () => ({ useMediaList: () => ({ 'm-storm': { id: 'm-storm', name: 'Storm', kind: 'image', data: 'storm' } }) }));
+vi.mock('./useMediaList', () => ({ useMediaList: () => ({
+  'm-storm': { id: 'm-storm', name: 'Storm', kind: 'image', data: 'storm' },
+  'm-day': { id: 'm-day', name: 'Day', kind: 'image', data: 'day' },
+  'k-window': { id: 'k-window', name: 'Window', kind: 'mask', data: 'window-mask' },
+  'k-porch': { id: 'k-porch', name: 'Porch', kind: 'mask', data: 'porch-mask' },
+}) }));
 
 beforeEach(() => { state.health = 50; state.override = undefined; });
 
@@ -37,10 +42,10 @@ describe('useLocationBackdrop', () => {
   it('swaps the backdrop as the persona’s Health crosses the line', () => {
     const square = { id: 'square', images: [when('wounded', hurt), { data: 'healthy' }] };
     const { result, rerender } = renderHook(() => useLocationBackdrop(square));
-    expect(result.current).toBe('healthy');
+    expect(result.current.picture).toBe('healthy');
     state.health = 10;
     rerender();
-    expect(result.current).toBe('wounded');
+    expect(result.current.picture).toBe('wounded');
   });
 
   it('paints a script’s override over the rules until it clears', () => {
@@ -48,23 +53,49 @@ describe('useLocationBackdrop', () => {
     state.health = 10;
     state.override = 'm-storm';
     const { result, rerender } = renderHook(() => useLocationBackdrop(square));
-    expect(result.current).toBe('storm');
+    expect(result.current.picture).toBe('storm');
     state.override = undefined;
     rerender();
-    expect(result.current).toBe('wounded');
+    expect(result.current.picture).toBe('wounded');
   });
 
   it('paints no backdrop when no image passes its rule', () => {
     const square = { id: 'square', images: [when('wounded', hurt)] };
-    expect(renderHook(() => useLocationBackdrop(square)).result.current).toBeUndefined();
+    expect(renderHook(() => useLocationBackdrop(square)).result.current.picture).toBeUndefined();
   });
 
   it('paints no backdrop for a location with no images', () => {
-    expect(renderHook(() => useLocationBackdrop({ id: 'empty' })).result.current).toBeUndefined();
+    expect(renderHook(() => useLocationBackdrop({ id: 'empty' })).result.current.picture).toBeUndefined();
   });
 
   it('shows the default background only when there is no location', () => {
-    expect(renderHook(() => useLocationBackdrop(null)).result.current).toBe(DEFAULT_BACKGROUND);
+    expect(renderHook(() => useLocationBackdrop(null)).result.current.picture).toBe(DEFAULT_BACKGROUND);
+  });
+
+  it('carries the shown slot’s mask, which follows the rule-visible picture', () => {
+    const square = { id: 'square', images: [{ ...when('wounded', hurt), weatherMask: 'k-porch' }, { data: 'healthy', weatherMask: 'k-window' }] };
+    const { result, rerender } = renderHook(() => useLocationBackdrop(square));
+    expect(result.current).toEqual({ picture: 'healthy', mask: 'window-mask' });
+    state.health = 10;
+    rerender();
+    expect(result.current).toEqual({ picture: 'wounded', mask: 'porch-mask' });
+  });
+
+  it('reads a missing or non-Mask entry as no mask', () => {
+    expect(renderHook(() => useLocationBackdrop({ id: 'a', images: [{ data: 'x', weatherMask: 'gone' }] })).result.current.mask).toBeUndefined();
+    expect(renderHook(() => useLocationBackdrop({ id: 'b', images: [{ data: 'x', weatherMask: 'm-storm' }] })).result.current.mask).toBeUndefined();
+  });
+
+  it('gives a script’s override the mask of the first slot linking its entry, else none', () => {
+    state.override = 'm-storm';
+    const linked = { id: 'square', images: [{ data: 'healthy', weatherMask: 'k-porch' }, { mediaId: 'm-storm', weatherMask: 'k-window' }] };
+    expect(renderHook(() => useLocationBackdrop(linked)).result.current).toEqual({ picture: 'storm', mask: 'window-mask' });
+    const unlinked = { id: 'square', images: [{ data: 'healthy', weatherMask: 'k-porch' }] };
+    expect(renderHook(() => useLocationBackdrop(unlinked)).result.current).toEqual({ picture: 'storm', mask: undefined });
+  });
+
+  it('carries no mask with no location', () => {
+    expect(renderHook(() => useLocationBackdrop(null)).result.current.mask).toBeUndefined();
   });
 });
 

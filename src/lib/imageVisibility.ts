@@ -3,7 +3,7 @@
 import type { Base64Data, Entity, GalleryImage, GalleryLink, Item, ItemInstance, LayeredMediaEntry, LayerSettings, MediaList, RequirementOwner, TraitRequirement, TraitRequirementRow, WorldOverview } from '@/types';
 import { galleryLinks } from './entityImages';
 import { drawableLayered, pictureKey, resolveLayered, type Picture } from './layeredImages';
-import { resolveGalleryImage } from './mediaList';
+import { resolveGalleryImage, slotFields } from './mediaList';
 import type { LocationImageBearing } from './locationImages';
 import { mapImages } from './mapBackground';
 import { mapConditions } from './requirementRows';
@@ -25,16 +25,18 @@ const visibleBy = (images: readonly GalleryImage[], statesOf: (rows: TraitRequir
 export interface VisiblePicture {
   slot: number;
   data: Picture;
+  /** The Mask entry id the picture's slot links, location galleries only. */
+  weatherMask?: string;
 }
 
-/** A gallery slot that can show: an image's data or a Layered Image, with the link's rule. */
-type GallerySlot = { requires?: TraitRequirementRow[] } & ({ data: Base64Data } | { layered: LayeredMediaEntry });
+/** A gallery slot that can show: an image's data or a Layered Image, with the link's rule and Weather Mask. */
+type GallerySlot = Pick<GalleryImage, 'requires' | 'weatherMask'> & ({ data: Base64Data } | { layered: LayeredMediaEntry });
 
 /** The gallery's slots that can show, in author order. A link naming no image or drawable Layered Image drops. */
 const gallerySlots = (links: readonly GalleryLink[], media: MediaList | undefined): GallerySlot[] =>
   links.flatMap((link): GallerySlot[] => {
     const layered = drawableLayered(link, media);
-    if (layered) return [{ layered, ...(link.requires?.length ? { requires: link.requires } : {}) }];
+    if (layered) return [{ layered, ...slotFields(link) }];
     const image = resolveGalleryImage(link, media);
     return image ? [image] : [];
   });
@@ -47,7 +49,7 @@ const visiblePictures = (
   gallerySlots(links, media).flatMap((slot, i): VisiblePicture[] => {
     if (slot.requires?.length && !statesOf(slot.requires).some((row) => row.holds)) return [];
     const data = 'layered' in slot ? resolveLayered(slot.layered, media, { statesOf }, layers?.[slot.layered.id]) : slot.data;
-    return data ? [{ slot: i, data }] : [];
+    return data ? [{ slot: i, data, ...(slot.weatherMask ? { weatherMask: slot.weatherMask } : {}) }] : [];
   });
 
 /** The slot an override's picture takes among the shown ones. */
@@ -64,7 +66,9 @@ function withPictureOverride(
     : entry?.kind === 'layered' ? resolveLayered(entry, media, { statesOf }, override?.layers?.[entry.id]) : undefined;
   if (!data) return visible;
   const key = pictureKey(data);
-  return [{ slot: OVERRIDE_SLOT, data }, ...visible.filter((shown) => pictureKey(shown.data) !== key)];
+  // The first slot linking the override's entry lends its Weather Mask; none otherwise.
+  const weatherMask = links.find((link) => 'mediaId' in link && link.mediaId === override?.id)?.weatherMask;
+  return [{ slot: OVERRIDE_SLOT, data, ...(weatherMask ? { weatherMask } : {}) }, ...visible.filter((shown) => pictureKey(shown.data) !== key)];
 }
 
 /**

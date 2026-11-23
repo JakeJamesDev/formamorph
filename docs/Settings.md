@@ -116,7 +116,7 @@ What you see and hear.
 
 | Setting | What it does |
 |---|---|
-| **Weather Background** | On by default. Shows rain, snow, a storm or bright sun behind the game, in worlds that have weather. Nothing shows in a sheltered location, such as indoors. It still shows with **Location Background** off. If your device is set to reduce motion, the weather moves slowly and a storm shows no lightning. |
+| **Weather Background** | On by default. Shows rain, snow, a storm or bright sun behind the game, in worlds that have weather. Nothing shows in a sheltered location, such as indoors, unless the world shows it through a window there. It still shows with **Location Background** off, over the whole screen. If your device is set to reduce motion, the weather moves slowly and a storm shows no lightning. |
 | **Weather Foreground** | On by default. Plays a short effect over the whole game when the weather changes: raindrops on the screen, settling snow, a flash of lightning or a sweep of sunlight. It stops after a few seconds, and you can keep clicking and typing while it plays. It also plays when you step out of a sheltered location into the weather. Nothing plays when you load a save or start a new game, or when your device is set to reduce motion. |
 
 ### Narration

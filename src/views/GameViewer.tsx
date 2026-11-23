@@ -328,6 +328,7 @@ import { WeatherBackground } from "../components/game/WeatherBackground";
 import { WeatherForeground } from "../components/game/WeatherForeground";
 import { DevWeatherBar, loadDevBackdrops } from "../components/dev/DevWeatherBar";
 import { weatherView } from "@/lib/weatherView";
+import { isLayeredPicture } from "@/lib/layeredImages";
 import { afterNightfall, allowedWeatherKinds, hasWeather, isDaylight, landedWeatherChange, offeredWeatherKinds, savedWeather, weatherChanges, type WeatherChange } from "@/lib/weather";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { MusicOffIcon } from "../components/game/MusicOffIcon";
@@ -7097,12 +7098,15 @@ const GameViewer = ({
   const viewLocation = isViewingPast
     ? (locations.find((l) => l.id === viewLocationId) ?? currentLocation)
     : currentLocation;
-  const backdrop = useLocationBackdrop(viewLocation);
+  const { picture: backdrop, mask: backdropMask } = useLocationBackdrop(viewLocation);
   const mapBackdrop = useMapBackdrop(worldOverview);
+  // The dev weather bar's backdrop override draws with no mask.
   const weatherBg = weatherView({
     weatherOn,
     worldWeather: viewWeather,
     sheltered: !!viewLocation?.sheltered,
+    locationArt: locationBackground && !!backdrop && !devBackdrop,
+    mask: backdropMask,
     daylight: isDaylight(viewGameTime, calendar),
     background: weatherBackground,
     foreground: false,
@@ -7114,6 +7118,8 @@ const GameViewer = ({
     weatherOn,
     worldWeather: weather,
     sheltered: !!currentLocation?.sheltered,
+    locationArt: false,
+    mask: undefined,
     daylight: isDaylight(gameTime, calendar),
     background: false,
     foreground: weatherForeground,
@@ -7200,7 +7206,13 @@ const GameViewer = ({
           overlayHidden={uiHidden}
         />
       )}
-      <WeatherBackground kind={weatherBg.kind} mode={weatherBg.mode} plain={!devBackdrop && (!locationBackground || !backdrop)} />
+      <WeatherBackground
+        kind={weatherBg.kind}
+        mode={weatherBg.mode}
+        plain={!devBackdrop && (!locationBackground || !backdrop)}
+        mask={weatherBg.mask}
+        art={backdrop && (isLayeredPicture(backdrop) ? backdrop.canvas : backdrop)}
+      />
       <WeatherForeground kind={weatherFg} play={weatherChange?.seq ?? 0} />
       {/* DEV: `#dev?…&weatherBar` shows a bar that steps through every weather, flips day and night and swaps backdrop art. */}
       {import.meta.env.DEV && window.location.hash.includes('weatherBar') && (
