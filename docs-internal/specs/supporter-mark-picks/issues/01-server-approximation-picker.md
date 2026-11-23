@@ -1,6 +1,7 @@
 # 01: Server Picker By Approximation
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 66dc591
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -22,12 +23,24 @@ A Supporter world download marks the cover and the characters before any backdro
 
 ## Acceptance criteria
 
-- [ ] A world fixture with a cover, 5 characters and larger backdrops: the cover and the first 4 characters read back the account's mark with the watermark reader; no backdrop is marked.
-- [ ] With no markable cover, 5 characters carry the mark.
-- [ ] With 2 usable characters, the 2 largest backdrops take the rest.
-- [ ] A character whose slot 0 has a rule is marked through its first slot without one.
-- [ ] A Layered Image character is marked on its base Layer's first ruleless Variant; an overlay Variant larger than it stays unmarked.
-- [ ] An image shared by two characters is marked once, and the next character takes the free mark.
-- [ ] Embedded images, embedded Layered Images and the legacy portrait field each resolve.
-- [ ] Mascot tests pass unchanged, and the processing version changes.
-- [ ] Each world assertion fails when the cover-plus-4-largest order is reinstated.
+- [x] A world fixture with a cover, 5 characters and larger backdrops: the cover and the first 4 characters read back the account's mark with the watermark reader; no backdrop is marked. *Test "marks the cover and the first 4 characters…" in `tests/supporterWorldImages.test.js`.*
+- [x] With no markable cover, 5 characters carry the mark. *"gives the free mark to a 5th character with %s": none, undecodable, missing `mediaId`, SVG, animated.*
+- [x] With 2 usable characters, the 2 largest backdrops take the rest. *"spends the marks no character can use…", with a too-small character, ties, animated and SVG backdrops.*
+- [x] A character whose slot 0 has a rule is marked through its first slot without one. *"marks a character through its first slot without a rule…".*
+- [x] A Layered Image character is marked on its base Layer's first ruleless Variant; an overlay Variant larger than it stays unmarked. *"marks a Layered Image character…" and "never spends a spare mark on an overlay Variant…".*
+- [x] An image shared by two characters is marked once, and the next character takes the free mark. *"marks an image two characters share once…".*
+- [x] Embedded images, embedded Layered Images and the legacy portrait field each resolve. *"resolves embedded images, an embedded Layered Image and the legacy portrait field".*
+- [x] Mascot tests pass unchanged, and the processing version changes. *`tests/supporterProcessing.test.js` untouched and green; "retires the cached copies…" checks the version against Base's `f5aaec31b413`.*
+- [x] Each world assertion fails when the cover-plus-4-largest order is reinstated. *Base's `supporterProcessing.js` swapped in: all 17 new world tests red. Per-guard mutations (Variant rule, overlay skip, overlay exception, missing-entry slot, tree order, embedded base Layer) each turned their own test red.*
+
+## Landed
+
+Spec-session rulings used (2026-11-23): World Editor tree order; the backdrop fill skips overlay-only Variants; a slot that resolves to nothing is not a slot; every entity counts.
+
+**Not verified**
+
+- None. Every box above is ticked from a running test. Not run against production data or Sunmeadow itself.
+
+**For you**
+
+- Nothing for a player to judge here. The server's choice shows only in the watermark read-back.
