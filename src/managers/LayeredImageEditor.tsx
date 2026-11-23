@@ -1,7 +1,7 @@
 // The Layered Image editor in the Media tab: on desktop a pane summary with a full-screen, canvas-first editor;
 // on mobile a master–detail pane (Q25).
 
-import { useState, type ReactNode } from 'react';
+import { useState, type MouseEvent, type ReactNode } from 'react';
 import { Layers, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, dialogCenteredAnimation, dialogFullHeight, dialogHeaderBar, dialogHeaderBarTitle } from '@/components/ui/dialog';
@@ -13,23 +13,24 @@ import { Hint, Meta } from '@/components/ui/typography';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { layeredEntry } from '@/lib/mediaList';
-import { shownVariant } from '@/lib/layeredImages';
 import { cn } from '@/lib/utils';
 import type { MediaLayer } from '@/types';
 import {
   AddLayerButton, BlendField, DeleteLayerButton, EyeToggle, LayerList, LayerNameField, LayerThumb, OpacityField, PreviewAs, RigPreview, TintField, TransitionField,
-  VariantStrip, VariantSummary,
+  pickedIndex, VariantStrip, VariantSummary,
 } from './LayeredImageParts';
 import { draftOpacity, layerMismatched, layerNames, shownName, useRig, type Rig } from './layeredRig';
 
-/** The selected Variant: the one picked in the strip, else the one the Layer shows now. */
-function useVariantPick(rig: Rig, layer: MediaLayer | undefined) {
-  const [pick, setPick] = useState<{ layerId: string; index: number } | null>(null);
-  const index = layer
-    ? (pick?.layerId === layer.id && pick.index < layer.variants.length ? pick.index : Math.max(0, shownVariant(layer, rig.list, rig.reads)))
-    : 0;
-  return { index, set: (i: number) => layer && setPick({ layerId: layer.id, index: i }) };
-}
+/**
+ * Clears the selected Variant on a click that lands on no control. Clicks from portaled content, such as a
+ * popover, bubble through the React tree but are not inside the element, so they keep it.
+ */
+const clearPickOnEmptyClick = (rig: Rig) => (e: MouseEvent<HTMLElement>) => {
+  const target = e.target as Element;
+  const control = target.closest('button, a, input, textarea, label, [role], [data-variant]');
+  if (!e.currentTarget.contains(target) || (control && e.currentTarget.contains(control))) return;
+  if (rig.layer) rig.pickVariant(rig.layer.id, null);
+};
 
 /** The Layers' empty state, with Add Layer. */
 function NoLayers({ rig }: { rig: Rig }) {
@@ -63,8 +64,10 @@ export function LayeredImageEditor({ entryId, openOnMount = false }: { entryId: 
  * Edit Layers for one Layered Image: the full-screen editor on desktop, the Layer panel in a full-height
  * dialog on mobile.
  */
-export function EditLayersButton({ entryId, variant = 'outline', size = 'default', openOnMount = false, iconOnly = false, className }: {
+export function EditLayersButton({ entryId, previewAs, variant = 'outline', size = 'default', openOnMount = false, iconOnly = false, className }: {
   entryId: string;
+  /** The entity whose slot opened the editor, which Preview As starts on. */
+  previewAs?: string;
   variant?: 'default' | 'outline';
   size?: 'default' | 'sm';
   openOnMount?: boolean;
@@ -99,7 +102,7 @@ export function EditLayersButton({ entryId, variant = 'outline', size = 'default
                 <DialogTitle className={cn(dialogHeaderBarTitle, 'truncate pr-10')}>{entry.name}</DialogTitle>
               </div>
               <ScrollArea className="min-h-0 flex-1">
-                <div className="p-3"><OpenRig entryId={entryId} editor={MobileRigEditor} /></div>
+                <div className="p-3"><OpenRig entryId={entryId} previewAs={previewAs} editor={MobileRigEditor} /></div>
               </ScrollArea>
             </DialogContent>
           )
@@ -110,7 +113,7 @@ export function EditLayersButton({ entryId, variant = 'outline', size = 'default
               unanimated
               className={cn('inset-x-0 mx-auto flex max-w-none translate-x-0 flex-col gap-0 p-0 sm:w-[96vw]', dialogCenteredAnimation, dialogFullHeight)}
             >
-              <OpenRig entryId={entryId} editor={DesktopRigEditor} />
+              <OpenRig entryId={entryId} previewAs={previewAs} editor={DesktopRigEditor} />
             </DialogContent>
           )}
       </Dialog>
@@ -119,8 +122,8 @@ export function EditLayersButton({ entryId, variant = 'outline', size = 'default
 }
 
 /** An open dialog's editor. It reads the rig only while the dialog is open. */
-function OpenRig({ entryId, editor: Editor }: { entryId: string; editor: (props: { rig: Rig }) => ReactNode }) {
-  const rig = useRig(entryId);
+function OpenRig({ entryId, previewAs, editor: Editor }: { entryId: string; previewAs?: string; editor: (props: { rig: Rig }) => ReactNode }) {
+  const rig = useRig(entryId, previewAs);
   return rig ? <Editor rig={rig} /> : null;
 }
 
@@ -128,7 +131,6 @@ function OpenRig({ entryId, editor: Editor }: { entryId: string; editor: (props:
 function DesktopRigEditor({ rig }: { rig: Rig }) {
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
   const { layer } = rig;
-  const variant = useVariantPick(rig, layer);
   const toggle = (id: string) => setHidden((h) => {
     const next = new Set(h);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -140,9 +142,9 @@ function DesktopRigEditor({ rig }: { rig: Rig }) {
         <DialogTitle className={cn(dialogHeaderBarTitle, 'min-w-0 flex-1 truncate')}>{rig.entry.name}</DialogTitle>
         <PreviewAs rig={rig} />
       </div>
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1" onClick={clearPickOnEmptyClick(rig)}>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <RigPreview rig={rig} hidden={hidden} className="min-h-0 flex-1 rounded-none p-4" />
+          <RigPreview rig={rig} hidden={hidden} zoomable className="min-h-0 flex-1 rounded-none p-4" />
           <div className="border-t p-3" data-variant-panel="">
             {layer
               ? (
@@ -150,8 +152,8 @@ function DesktopRigEditor({ rig }: { rig: Rig }) {
                 // with a longer summary never moves the strip being clicked through.
                 <div className="space-y-2">
                   <Meta>{layer.name} Variants</Meta>
-                  <VariantSummary rig={rig} layer={layer} index={variant.index} />
-                  <VariantStrip rig={rig} layer={layer} selected={variant.index} onSelect={variant.set} />
+                  <VariantSummary rig={rig} layer={layer} index={pickedIndex(rig, layer)} />
+                  <VariantStrip rig={rig} layer={layer} />
                 </div>
               )
               : <Hint>Add a Layer to give it Variants</Hint>}
@@ -227,9 +229,8 @@ function LayerRow({ rig, layer, selected, handle, children, detail }: {
 /** Mobile: the preview beside a compact Layer list, and the selected Layer below with Variants, Look and Motion tabs. */
 function MobileRigEditor({ rig }: { rig: Rig }) {
   const { layer } = rig;
-  const variant = useVariantPick(rig, layer);
   return (
-    <div className="space-y-3" data-layered-mobile={rig.entry.id}>
+    <div className="space-y-3" data-layered-mobile={rig.entry.id} onClick={clearPickOnEmptyClick(rig)}>
       <PreviewAs rig={rig} />
       <div className="flex gap-3">
         <RigPreview rig={rig} fit="width" className="w-32 shrink-0 self-start" />
@@ -260,8 +261,8 @@ function MobileRigEditor({ rig }: { rig: Rig }) {
               <TabsTrigger value="motion">Motion</TabsTrigger>
             </TabsList>
             <TabsContent value="variants" className="space-y-2">
-              <VariantStrip rig={rig} layer={layer} selected={variant.index} onSelect={variant.set} />
-              <VariantSummary rig={rig} layer={layer} index={variant.index} />
+              <VariantStrip rig={rig} layer={layer} />
+              <VariantSummary rig={rig} layer={layer} index={pickedIndex(rig, layer)} />
             </TabsContent>
             <TabsContent value="look" className="space-y-3">
               <OpacityField rig={rig} layer={layer} />

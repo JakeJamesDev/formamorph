@@ -38,21 +38,26 @@ export interface Rig {
   /** An opacity being dragged, shown before it is written. */
   draft: { layerId: string; opacity: number } | null;
   setDraft: (draft: { layerId: string; opacity: number } | null) => void;
-  /** The Variant Play shows on one Layer in the preview only. Any write or Preview As change clears it. */
+  /**
+   * The selected Variant, which the preview shows on its Layer in place of the rule's pick. Preview As, another
+   * Layer, or a write that removes it clears it.
+   */
   pick: { layerId: string; mediaId: string } | null;
+  /** Selects a Variant of Layer `layerId`, or clears the selection with null. */
+  pickVariant: (layerId: string, mediaId: string | null) => void;
   /** Steps the selected Layer to its next Variant in the preview, wrapping. Undefined under two Variants. */
   playNext: (() => void) | undefined;
 }
 
 /** The rig named `entryId`, or undefined once it is gone. */
-export function useRig(entryId: string): Rig | undefined {
-  const { worldOverview, addMedia } = useGameData();
+export function useRig(entryId: string, initialAs?: string): Rig | undefined {
+  const { worldOverview, addMedia, entities } = useGameData();
   const list = worldOverview.mediaList;
   const entry = layeredEntry(list, entryId);
   const step = useMediaStep();
   const source = useRuleSource();
-  const [as, setAs] = useState(DEFAULT_LOOK);
-  const [selectedId, select] = useState<string>();
+  const [as, setAs] = useState(() => (initialAs && entities.some((e) => e.id === initialAs) ? initialAs : DEFAULT_LOOK));
+  const [selectedId, setSelectedId] = useState<string>();
   const [draft, setDraft] = useState<Rig['draft']>(null);
   const [pick, setPick] = useState<Rig['pick']>(null);
   const gateInput = source?.gateInput;
@@ -66,13 +71,18 @@ export function useRig(entryId: string): Rig | undefined {
   const facts = useImageFacts(srcs);
   if (!entry) return undefined;
   const write = (label: string, next: LayeredMediaEntry, added: MediaList = {}) => {
-    setPick(null);
+    setPick((p) => (p && next.layers.some((l) => l.id === p.layerId && l.variants.some((v) => v.mediaId === p.mediaId)) ? p : null));
     void step(label, () => addMedia({ ...added, [next.id]: next }));
   };
   const previewAs = (id: string) => {
     setPick(null);
     setAs(id);
   };
+  const select = (layerId: string) => {
+    setSelectedId(layerId);
+    setPick((p) => (p?.layerId === layerId ? p : null));
+  };
+  const pickVariant = (layerId: string, mediaId: string | null) => setPick(mediaId ? { layerId, mediaId } : null);
   const layer = entry.layers.find((l) => l.id === selectedId) ?? entry.layers.at(-1);
   const playable = layer ? layer.variants.flatMap((v) => (dataOf(v.mediaId) ? [v.mediaId] : [])) : [];
   const playNext = layer && playable.length > 1 ? () => {
@@ -84,7 +94,7 @@ export function useRig(entryId: string): Rig | undefined {
     const data = dataOf(id);
     return data ? facts.get(data)?.size : undefined;
   });
-  return { entry, list, write, as, setAs: previewAs, reads, host, selectedId, select, layer, facts, mismatches, dataOf, draft, setDraft, pick, playNext };
+  return { entry, list, write, as, setAs: previewAs, reads, host, selectedId, select, layer, facts, mismatches, dataOf, draft, setDraft, pick, pickVariant, playNext };
 }
 
 /** The rig's picture under Preview As and Play's pick, without the Layers in `hidden`, at any dragged opacity. */

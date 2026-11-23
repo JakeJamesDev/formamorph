@@ -185,10 +185,11 @@ A **Layered Image** builds one picture from parts. Each **Layer** holds images c
 **In the editor:**
 
 - 🧩 **Layers.** Drag a Layer by its handle to change what draws over what. The eye hides a Layer in the editor only. Each row shows what the Layer shows now.
-- 🖼️ **Variants.** The strip under the picture holds the selected Layer's Variants. Drag one to reorder: the first whose rule holds wins. The line under the strip says when the selected Variant shows.
+- 🖼️ **Variants.** The strip under the picture holds the selected Layer's Variants. Drag one to reorder: the first whose rule holds wins. Select a Variant to show it in the picture, and the line above the strip says when it shows. Select an empty spot, or another Layer, to clear it, and the picture goes back to the Variants the rules pick.
+- 🔍 **Zoom.** Scroll over the picture to zoom toward the pointer, or use **Zoom In** and **Zoom Out** in its corner. Drag to move a zoomed picture. **Fit**, or a double-click, shows the whole picture again.
 - 🎚️ **Layer settings.** Rename the Layer, set its **Opacity**, **Blend Mode**, **Tint** and **Transition**, or **Delete Layer**.
 - 🎨 **Tint.** Pick a color, and the Layer's pixels multiply by it. Transparent pixels stay transparent, and white means no tint. **Clear Tint** removes it. One gray drawing then serves any color, such as one hair drawing for every hair color.
-- 🔀 **Blend Mode.** **Normal** draws the Layer over the Layers below it. **Multiply** darkens them, **Screen** lightens them, and **Add** brightens them most, for glows and light. A mode acts on the Layers below it inside this picture only, never on the page behind it. The picture in the panel and in a game shows both settings. The small Layer and Variant thumbnails show the plain art.
+- 🔀 **Blend Mode.** The ⓘ beside it explains each mode. **Normal** draws the Layer over the Layers below it. **Multiply** darkens them, **Screen** lightens them, and **Add** brightens them most, for glows and light. A mode acts on the Layers below it inside this picture only, never on the page behind it. The picture in the panel and in a game shows both settings. The small Layer and Variant thumbnails show the plain art.
 - 🎞️ **Transition.** Sets what a Layer does when it shows another Variant, in a game or in the editor.
 
   | Mode | What it does |
@@ -199,7 +200,7 @@ A **Layered Image** builds one picture from parts. Each **Layer** holds images c
 
   When several Layers change at once, the picture bounces once, tuned by the highest Jelly Layer. Dissolve Layers fade during the bounce. With your system's reduced-motion setting on, Jelly fades like Dissolve. A change to Opacity or Tint shows at once.
 - ▶️ **Play**, beside the Transition modes, shows the selected Layer's next Variant with its transition. Press it again to step on. It only changes the picture in the editor.
-- 👁️ **Preview As** shows the picture as one of the world's entities at the start of a game. **Default Look** shows each Layer's first Variant, as the library and other places outside a game do.
+- 👁️ **Preview As** shows the picture as one of the world's entities at the start of a game. **Default Look** shows each Layer's first Variant, as the library and other places outside a game do. **Edit Layers** on an entity's slot opens on that entity.
 - ⚠️ **Size warning.** Every Variant stretches to the picture's size: the size of the first Variant in the lowest Layer that has one, usually the bottom Layer. A Variant of another size shows a warning, with both sizes.
 
 On mobile, the panel shows the picture beside the Layer list. The selected Layer sits below, with **Variants**, **Look** and **Motion** tabs. **Look** holds Opacity, Blend Mode and Tint. **Motion** holds the Transition.

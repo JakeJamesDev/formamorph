@@ -174,7 +174,36 @@ describe('Layered Image editor', () => {
     const strip = dialog().querySelector('[data-variant-strip="face"]')!;
     expect(strip.querySelector('[data-variant="big"] [data-variant-size-warning]')).not.toBeNull();
     expect(strip.querySelector('[data-variant="calm"] [data-variant-size-warning]')).toBeNull();
-    expect(dialog().querySelector('[data-variant-size-line]')?.textContent).toContain('480 × 576, not the picture\'s 240 × 288');
+    // The summary describes the selected Variant.
+    fireEvent.click(strip.querySelector<HTMLElement>('[data-variant="big"] button[aria-pressed]')!);
+    expect(dialog().querySelector('[data-variant-size-line]')?.getAttribute('aria-label')).toContain('480 × 576, not the picture\'s 240 × 288');
+  });
+
+  it('keeps the summary at two one-line rows whatever is selected, so the picture above never resizes', () => {
+    renderMediaTab(world(RIG), 'simple');
+    selectCard('Scout Rig');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Layers' }));
+    const rows = () => Array.from(dialog().querySelector('[data-variant-summary]')!.children)
+      .map((row) => [row.className.includes('h-5'), (row.firstElementChild?.className ?? '').includes('truncate')]);
+    const tile = (id: string) => dialog().querySelector<HTMLElement>(`[data-variant="${id}"] button[aria-pressed]`)!;
+    const shapes = [rows()];
+    fireEvent.click(tile('big'));
+    shapes.push(rows());
+    fireEvent.click(tile('calm'));
+    shapes.push(rows());
+    for (const shape of shapes) expect(shape).toEqual([[true, true], [true, true]]);
+    expect(dialog().querySelector('[data-variant-summary]')!.textContent).toContain('Always shown');
+  });
+
+  it('pans rather than drags the picture out', () => {
+    renderMediaTab(world(RIG), 'simple');
+    selectCard('Scout Rig');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Layers' }));
+    const preview = dialog().querySelector<HTMLElement>('[data-layered-preview]')!;
+    const images = Array.from(preview.querySelectorAll('img'));
+    expect(images.length).toBeGreaterThan(0);
+    for (const img of images) expect(img.getAttribute('draggable')).toBe('false');
+    expect(fireEvent.dragStart(images[0])).toBe(false);
   });
 
   it('ends the bottom Variant panel with the strip, so a longer summary never moves the tiles', () => {
@@ -242,6 +271,76 @@ describe('Layered Image editor', () => {
     expect(rigOf(bench)).toEqual(RIG);
     fireEvent.click(within(dialog()).getByRole('button', { name: /^Body/ }));
     expect(within(dialog()).getByRole('button', { name: 'Play' })).toHaveProperty('disabled', true);
+  });
+
+  it('shows a selected Variant in the preview, and a click on empty space or another Layer clears it', () => {
+    const bench = renderMediaTab(world(RIG), 'simple');
+    selectCard('Scout Rig');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Layers' }));
+    const tile = (id: string) => dialog().querySelector<HTMLElement>(`[data-variant="${id}"] button[aria-pressed]`)!;
+    expect(drawn()).toEqual(['body', 'big']);
+    expect(tile('calm').getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(tile('calm'));
+    expect(drawn()).toEqual(['body', 'calm']);
+    expect(tile('calm').getAttribute('aria-pressed')).toBe('true');
+    expect(dialog().querySelector('[data-variant-summary="calm"]')).not.toBeNull();
+
+    // A click on the preview's empty space, not a control, clears the selection.
+    fireEvent.click(dialog().querySelector('[data-layered-preview]')!);
+    expect(drawn()).toEqual(['body', 'big']);
+    expect(tile('calm').getAttribute('aria-pressed')).toBe('false');
+    expect(within(dialog()).getByText('The first Variant whose rule holds shows')).toBeTruthy();
+
+    fireEvent.click(tile('calm'));
+    fireEvent.click(dialog().querySelector('[data-variant-panel]')!);
+    expect(drawn()).toEqual(['body', 'big']);
+
+    fireEvent.click(tile('calm'));
+    fireEvent.click(within(dialog()).getByRole('button', { name: /^Body/ }));
+    expect(drawn()).toEqual(['body', 'big']);
+    expect(rigOf(bench)).toEqual(RIG);
+  });
+
+  it('keeps the selected Variant through a write that keeps it', async () => {
+    const bench = renderMediaTab(world(RIG), 'simple');
+    selectCard('Scout Rig');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Layers' }));
+    fireEvent.click(dialog().querySelector<HTMLElement>('[data-variant="calm"] button[aria-pressed]')!);
+    fireEvent.click(within(dialog()).getByRole('combobox', { name: 'Blend Mode' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Screen' }));
+    expect(rigOf(bench).layers[1].blend).toBe('screen');
+    expect(drawn()).toEqual(['body', 'calm']);
+  });
+
+  it('zooms the preview with the wheel and the zoom buttons, and Fit restores it', () => {
+    renderMediaTab(world(RIG), 'simple');
+    selectCard('Scout Rig');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Layers' }));
+    const preview = dialog().querySelector<HTMLElement>('[data-layered-preview]')!;
+    const level = () => dialog().querySelector('[data-zoom-level]')!.textContent;
+    expect(level()).toBe('100%');
+    expect(within(dialog()).getByRole('button', { name: 'Zoom Out' })).toHaveProperty('disabled', true);
+
+    fireEvent.wheel(preview, { deltaY: -200 });
+    expect(level()).toBe('149%');
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Zoom In' }));
+    expect(level()).toBe('186%');
+    expect(preview.querySelector<HTMLElement>('[data-zoom]')!.style.transform).toContain('scale(1.86');
+
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Fit' }));
+    expect(level()).toBe('100%');
+    expect(within(dialog()).getByRole('button', { name: 'Fit' })).toHaveProperty('disabled', true);
+  });
+
+  it('explains each blend mode beside the field', async () => {
+    renderMediaTab(world(RIG), 'simple');
+    selectCard('Scout Rig');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Layers' }));
+    const label = within(dialog()).getByText('Blend Mode', { selector: 'label' });
+    fireEvent.click(within(label).getByRole('button', { name: 'More info' }));
+    const info = await screen.findByText(/darkens the Layers below it/);
+    for (const mode of ['Normal', 'Multiply', 'Screen', 'Add']) expect(within(info.closest('[data-radix-popper-content-wrapper]') as HTMLElement).getByText(mode)).toBeTruthy();
   });
 
   it('lists a Variant use in Used By and in the delete confirm, and deleting the image empties that Variant', async () => {

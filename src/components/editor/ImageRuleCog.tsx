@@ -127,14 +127,15 @@ export function ImageRuleEditor(props: {
 
 /** "Shown while …" under the framed thumbnail, read through the rule text helpers. It mounts only for an image
  *  that has a rule, so an entity with none never builds the gate input. */
-export function ImageRuleSummary({ host, rows }: { host: RuleHost; rows: TraitRequirementRow[] }) {
+export function ImageRuleSummary({ host, rows, className }: { host: RuleHost; rows: TraitRequirementRow[]; className?: string }) {
   const source = useRuleSource();
   const line = useMemo(
     () => source && shownWhileLine(hostRuleStates(source.gateInput, host, rows)),
     [source, host, rows],
   );
   if (!source || !line) return null;
-  return <Hint data-image-rule-summary="">{labelPlaceholders(line, source.placeholders)}</Hint>;
+  const text = labelPlaceholders(line, source.placeholders);
+  return <Hint data-image-rule-summary="" className={className} title={text}>{text}</Hint>;
 }
 
 /**

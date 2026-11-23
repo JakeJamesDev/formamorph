@@ -14,7 +14,7 @@ const LIST: MediaList = { [BASE.id]: BASE, [RIG.id]: RIG };
 
 vi.mock('@/contexts/GameDataContext', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/contexts/GameDataContext')>()),
-  useGameData: () => ({ worldOverview: { mediaList: LIST }, addMedia: vi.fn(), entities: [], placeholders: [] }),
+  useGameData: () => ({ worldOverview: { mediaList: LIST }, addMedia: vi.fn(), entities: [{ id: 'keeper', name: 'Keeper' }], placeholders: [] }),
   useGameDataOptional: () => ({ worldOverview: { mediaList: LIST } }),
 }));
 vi.mock('@/lib/useDownscalePrompt', () => ({
@@ -105,6 +105,8 @@ describe('an entity editor gallery slot', () => {
 
     fireEvent.click(edit);
     expect(screen.getByRole('dialog')).toHaveTextContent('Lamp Rig');
+    // The editor previews the picture as the entity whose slot opened it.
+    expect(within(screen.getByRole('dialog')).getByRole('combobox', { name: 'Preview As' })).toHaveTextContent('Keeper');
   });
 });
 

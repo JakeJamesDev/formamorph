@@ -1,14 +1,18 @@
 // The Layered Image editor's shared parts: the composed preview, Preview As, the
 // Layer rows, the Variant strip and the Layer's settings. The desktop editor and the mobile pane lay them out.
 
-import { useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
+import {
+  useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode,
+  type WheelEvent as ReactWheelEvent,
+} from 'react';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { horizontalListSortingStrategy, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Eye, EyeOff, GripVertical, Plus, Trash2, TriangleAlert, Upload, X } from 'lucide-react';
+import { Eye, EyeOff, GripVertical, Maximize, Plus, Trash2, TriangleAlert, Upload, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { ImageRuleCog, ImageRuleSummary } from '@/components/editor/ImageRuleCog';
 import { PictureImg } from '@/components/PictureImg';
+import { HintInfo } from '@/components/SettingsRows';
 import { TransitionControls, type TransitionCopy } from '@/components/TransitionControls';
 import { Button } from '@/components/ui/button';
 import { ColorPicker } from '@/components/ui/color-picker';
@@ -47,27 +51,122 @@ import { MediaChooseButton } from './MediaPicker';
  * The composed picture on a checkerboard, so transparent areas read as empty. It scales to fill the box:
  * by its height, or by its width with `fit="width"` for a box with no height of its own.
  */
-export function RigPreview({ rig, hidden, fit = 'height', className }: {
+export function RigPreview({ rig, hidden, fit = 'height', zoomable = false, className }: {
   rig: Rig;
   hidden?: ReadonlySet<string>;
   fit?: 'height' | 'width';
+  /** Wheel and the zoom buttons zoom; a drag pans the zoomed picture. */
+  zoomable?: boolean;
   className?: string;
 }) {
   const picture = rigPicture(rig, hidden);
   const size = canvasOf(rig)?.facts.size;
   const ratio = size ? size.width / size.height : 3 / 4;
+  const zoom = useCanvasZoom();
   return (
-    <div data-layered-preview={rig.entry.id} className={cn('flex min-h-0 items-center justify-center rounded-md bg-muted/30', className)}>
+    <div
+      ref={zoom.ref}
+      data-layered-preview={rig.entry.id}
+      className={cn('relative flex min-h-0 select-none items-center justify-center overflow-hidden rounded-md bg-muted/30', zoomable && zoom.view.scale > 1 && 'cursor-grab', className)}
+      // The browser's own image drag would take the pointer from the pan.
+      onDragStart={(e) => e.preventDefault()}
+      {...(zoomable && picture ? zoom.handlers : {})}
+    >
       {picture
         ? (
           <div
             className={cn(CHECKER, fit === 'height' ? 'h-full max-w-full' : 'w-full')}
-            style={{ aspectRatio: ratio }}
+            style={{ aspectRatio: ratio, ...(zoomable ? zoom.style : {}) }}
+            data-zoom={zoomable ? zoom.view.scale : undefined}
           >
-            <PictureImg src={picture} crop alt={rig.entry.name} className="block h-full w-full" />
+            <PictureImg src={picture} crop alt={rig.entry.name} draggable={false} className="block h-full w-full" />
           </div>
         )
         : <Hint className="p-4 text-center">Add a Variant to see the picture</Hint>}
+      {zoomable && picture && <ZoomBar zoom={zoom} />}
+    </div>
+  );
+}
+
+const MAX_ZOOM = 8;
+const ZOOM_STEP = 1.25;
+/** Pointer travel, in pixels, that turns a press into a pan rather than a click. */
+const DRAG_SLOP = 3;
+
+/** A canvas's zoom and pan: wheel zooms toward the pointer, a drag pans, a double-click fits. */
+function useCanvasZoom() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [view, setView] = useState({ scale: 1, x: 0, y: 0 });
+  const drag = useRef<{ id: number; x: number; y: number; from: { x: number; y: number }; moved: boolean } | null>(null);
+  // Keeps the zoomed picture over the box: it pans at most as far as its growth.
+  const clamp = (scale: number, x: number, y: number) => {
+    const s = Math.min(MAX_ZOOM, Math.max(1, scale));
+    const box = ref.current?.getBoundingClientRect();
+    const mx = ((s - 1) * (box?.width ?? 0)) / 2, my = ((s - 1) * (box?.height ?? 0)) / 2;
+    return { scale: s, x: Math.min(mx, Math.max(-mx, x)), y: Math.min(my, Math.max(-my, y)) };
+  };
+  /** Zooms by `factor` about the point (px, py) from the box's center, or fits with a factor of 0. */
+  const zoomBy = (factor: number, px = 0, py = 0) => setView((v) => {
+    const scale = Math.min(MAX_ZOOM, Math.max(1, v.scale * factor));
+    const k = scale / v.scale;
+    return clamp(scale, px - (px - v.x) * k, py - (py - v.y) * k);
+  });
+  const fromCenter = (e: { clientX: number; clientY: number }) => {
+    const box = ref.current!.getBoundingClientRect();
+    return [e.clientX - box.left - box.width / 2, e.clientY - box.top - box.height / 2] as const;
+  };
+  const handlers = {
+    onWheel: (e: ReactWheelEvent) => zoomBy(Math.exp(-e.deltaY * 0.002), ...fromCenter(e)),
+    onPointerDown: (e: ReactPointerEvent) => {
+      if (e.button !== 0 || (e.target as Element).closest('button')) return;
+      drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, from: { x: view.x, y: view.y }, moved: false };
+    },
+    onPointerMove: (e: ReactPointerEvent) => {
+      const d = drag.current;
+      if (!d || d.id !== e.pointerId) return;
+      const dx = e.clientX - d.x, dy = e.clientY - d.y;
+      if (!d.moved && Math.hypot(dx, dy) < DRAG_SLOP) return;
+      if (!d.moved) e.currentTarget.setPointerCapture?.(e.pointerId);
+      d.moved = true;
+      if (view.scale > 1) setView((v) => clamp(v.scale, d.from.x + dx, d.from.y + dy));
+    },
+    onPointerUp: (e: ReactPointerEvent) => {
+      if (drag.current?.id === e.pointerId && !drag.current.moved) drag.current = null;
+    },
+    // A pan ends in a click; it must not also clear the selected Variant.
+    onClickCapture: (e: ReactMouseEvent) => {
+      if (drag.current?.moved) e.stopPropagation();
+      drag.current = null;
+    },
+    onDoubleClick: (e: ReactMouseEvent) => { if (!(e.target as Element).closest('button')) setView({ scale: 1, x: 0, y: 0 }); },
+  };
+  return {
+    ref, view, handlers, zoomBy,
+    style: { transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})` } satisfies CSSProperties,
+  };
+}
+
+/** Zoom Out, the zoom level and Zoom In, then Fit, at the canvas's corner. */
+function ZoomBar({ zoom }: { zoom: ReturnType<typeof useCanvasZoom> }) {
+  const { scale } = zoom.view;
+  return (
+    <div className="absolute bottom-2 right-2 flex items-center gap-0.5 rounded-md border bg-background/90 p-0.5 backdrop-blur" data-zoom-bar="">
+      <Tip tip="Zoom Out">
+        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" disabled={scale <= 1} onClick={() => zoom.zoomBy(1 / ZOOM_STEP)}>
+          <ZoomOut className="h-4 w-4" />
+        </Button>
+      </Tip>
+      <Meta className="w-11 text-center tabular-nums" data-zoom-level="">{Math.round(scale * 100)}%</Meta>
+      <Tip tip="Zoom In">
+        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" disabled={scale >= MAX_ZOOM} onClick={() => zoom.zoomBy(ZOOM_STEP)}>
+          <ZoomIn className="h-4 w-4" />
+        </Button>
+      </Tip>
+      <Tip tip="Fit">
+        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" disabled={scale === 1} onClick={() => zoom.zoomBy(0)}>
+          <Maximize className="h-4 w-4" />
+        </Button>
+      </Tip>
     </div>
   );
 }
@@ -219,24 +318,24 @@ export function AddLayerButton({ rig, className }: { rig: Rig; className?: strin
 const mismatchOf = (rig: Rig, layer: MediaLayer, mediaId: string) =>
   rig.mismatches.find((m) => m.layerId === layer.id && m.mediaId === mediaId);
 
-/** The Layer's Variant tiles, draggable to reorder, then Choose and Import. */
-export function VariantStrip({ rig, layer, selected, onSelect, className }: {
-  rig: Rig;
-  layer: MediaLayer;
-  selected: number;
-  onSelect: (index: number) => void;
-  className?: string;
-}) {
+/** The selected Variant's index in `layer`, or -1 when none of its Variants is selected. */
+export const pickedIndex = (rig: Rig, layer: MediaLayer): number =>
+  (rig.pick?.layerId === layer.id ? layer.variants.findIndex((v) => v.mediaId === rig.pick?.mediaId) : -1);
+
+/** The Layer's Variant tiles, draggable to reorder, then Choose and Import. Selecting a tile shows it in the preview. */
+export function VariantStrip({ rig, layer, className }: { rig: Rig; layer: MediaLayer; className?: string }) {
   const ids = useMemo(() => layer.variants.map((v) => v.mediaId), [layer.variants]);
-  const showing = shownVariant(layer, rig.list, rig.reads);
+  const selected = pickedIndex(rig, layer);
+  const showing = selected !== -1 ? selected : shownVariant(layer, rig.list, rig.reads);
   const box = layerBox(rig, layer);
+  const onSelect = (mediaId: string) => rig.pickVariant(layer.id, mediaId);
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
     const from = ids.indexOf(String(active.id));
     const to = ids.indexOf(String(over.id));
     if (from === -1 || to === -1) return;
     rig.write(`Reorder Variants: ${layer.name}`, moveVariant(rig.entry, layer.id, from, to));
-    onSelect(to);
+    onSelect(String(active.id));
   };
   return (
     <div className={cn('flex flex-wrap items-start gap-2', className)} data-variant-strip={layer.id}>
@@ -251,7 +350,7 @@ export function VariantStrip({ rig, layer, selected, onSelect, className }: {
               box={box}
               showing={i === showing}
               selected={i === selected}
-              onSelect={() => onSelect(i)}
+              onSelect={() => onSelect(variant.mediaId)}
             />
           ))}
         </StableSortableContext>
@@ -327,13 +426,13 @@ function VariantTile({ rig, layer, index, box, showing, selected, onSelect }: {
           </span>
         </Tip>
       )}
-      <Meta className="mt-0.5 truncate">{name}</Meta>
+      <Meta className="mt-0.5 block truncate" title={name}>{name}</Meta>
     </div>
   );
 }
 
 /** Choose and Import, which add images as the Layer's last Variants. */
-function AddVariant({ rig, layer, onAdded }: { rig: Rig; layer: MediaLayer; onAdded: (index: number) => void }) {
+function AddVariant({ rig, layer, onAdded }: { rig: Rig; layer: MediaLayer; onAdded: (mediaId: string) => void }) {
   const input = useRef<HTMLInputElement>(null);
   const mounted = useMountedRef();
   const { promptImagesBatch, dialog } = useDownscalePrompt();
@@ -346,8 +445,7 @@ function AddVariant({ rig, layer, onAdded }: { rig: Rig; layer: MediaLayer; onAd
     const next = addVariants(now.entry, layer.id, ids);
     if (next === now.entry && !added) return;
     now.write(label, next, added);
-    const at = next.layers.find((l) => l.id === layer.id)?.variants.findIndex((v) => v.mediaId === ids[0]) ?? -1;
-    if (at !== -1) onAdded(at);
+    if (next.layers.find((l) => l.id === layer.id)?.variants.some((v) => v.mediaId === ids[0])) onAdded(ids[0]);
   };
   const take = async (files: File[]) => {
     const read = await Promise.all(files.filter((f) => f.type.startsWith('image/')).map(readMediaFile));
@@ -386,24 +484,35 @@ function AddVariant({ rig, layer, onAdded }: { rig: Rig; layer: MediaLayer; onAd
 /** The selected Variant's rule as a sentence, and its size warning. */
 export function VariantSummary({ rig, layer, index }: { rig: Rig; layer: MediaLayer; index: number }) {
   const variant = layer.variants[index];
-  if (!variant) {
-    return <Hint>{layer.variants.length ? 'The first Variant whose rule holds shows' : 'No Variants yet. Choose or import an image.'}</Hint>;
-  }
-  const name = entryName(rig, variant.mediaId);
-  const mismatch = mismatchOf(rig, layer, variant.mediaId);
+  const mismatch = variant && mismatchOf(rig, layer, variant.mediaId);
+  const sizeLine = mismatch
+    && `${mismatch.size.width} × ${mismatch.size.height}, not the picture's ${mismatch.canvas.width} × ${mismatch.canvas.height}. It draws stretched.`;
+  // Two rows of one line each, whatever is selected, so selecting a Variant never resizes the picture above.
   return (
-    <div className="space-y-0.5" data-variant-summary={variant.mediaId}>
-      <p className="text-meta font-medium">{name}</p>
-      {variant.requires?.length ? <ImageRuleSummary host={rig.host} rows={variant.requires} /> : <Hint>Always shown</Hint>}
-      {mismatch && (
-        <p className="flex items-start gap-1 text-helper text-warning" data-variant-size-line="">
-          <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-          {mismatch.size.width} × {mismatch.size.height}, not the picture&apos;s {mismatch.canvas.width} × {mismatch.canvas.height}. It draws stretched.
-        </p>
-      )}
+    <div className="space-y-0.5" data-variant-summary={variant?.mediaId ?? ''}>
+      <div className={SUMMARY_ROW}>
+        {variant
+          ? <p className="truncate text-meta font-medium">{entryName(rig, variant.mediaId)}</p>
+          : <Hint className="truncate">{layer.variants.length ? 'No Variant Selected' : 'No Variants Yet'}</Hint>}
+        {sizeLine && (
+          <Tip tip={sizeLine}>
+            <span data-variant-size-line="" aria-label={sizeLine} className="shrink-0">
+              <TriangleAlert className="h-3.5 w-3.5 text-warning" aria-hidden />
+            </span>
+          </Tip>
+        )}
+      </div>
+      <div className={SUMMARY_ROW}>
+        {!variant && <Hint className="truncate">{layer.variants.length ? 'The first Variant whose rule holds shows' : 'Choose or import an image'}</Hint>}
+        {variant && (variant.requires?.length
+          ? <ImageRuleSummary host={rig.host} rows={variant.requires} className="truncate" />
+          : <Hint className="truncate">Always shown</Hint>)}
+      </div>
     </div>
   );
 }
+
+const SUMMARY_ROW = 'flex h-5 min-w-0 items-center gap-1';
 
 /** The Layer's name, which renames it on blur or Enter. A taken name comes back suffixed. */
 export function LayerNameField({ rig, layer, className }: { rig: Rig; layer: MediaLayer; className?: string }) {
@@ -487,12 +596,19 @@ export function TintField({ rig, layer }: { rig: Rig; layer: MediaLayer }) {
 
 const BLEND_LABELS: Record<LayerBlend, string> = { normal: 'Normal', multiply: 'Multiply', screen: 'Screen', add: 'Add' };
 
+const BLEND_INFO = `- **Normal** draws the Layer over the Layers below it.
+- **Multiply** darkens the Layers below it. White leaves them as they are, and black makes them black. Use it for shadows and shading.
+- **Screen** lightens the Layers below it. Black leaves them as they are, and white makes them white. Use it for soft light and haze.
+- **Add** adds its colors to the Layers below it, so it brightens the most. Black leaves them as they are. Use it for glows, sparks and light.
+
+A mode acts on the Layers below it inside this picture only, never on the page behind it.`;
+
 /** The Layer's blend mode over the Layers below it. */
 export function BlendField({ rig, layer }: { rig: Rig; layer: MediaLayer }) {
   const value = layer.blend ?? 'normal';
   return (
     <div className="space-y-1.5">
-      <Label>Blend Mode</Label>
+      <Label className="flex items-center gap-1">Blend Mode <HintInfo>{BLEND_INFO}</HintInfo></Label>
       <Select value={value} onValueChange={(next) => rig.write(`Set Blend Mode: ${layer.name}`, setLayerBlend(rig.entry, layer.id, next as LayerBlend))}>
         <SelectTrigger className="h-8" aria-label="Blend Mode"><SelectValue /></SelectTrigger>
         <SelectContent>

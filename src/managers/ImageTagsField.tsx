@@ -443,7 +443,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
             )}
           />
           {gallery && entry?.kind === 'layered' && editLayers && (
-            <EditLayersButton entryId={entry.id} iconOnly className={cn('absolute left-2 top-2', FRAME_BUTTON)} />
+            <EditLayersButton entryId={entry.id} previewAs={ruleHost?.kind === 'entity' ? ruleHost.id : undefined} iconOnly className={cn('absolute left-2 top-2', FRAME_BUTTON)} />
           )}
           {gallery && (() => {
             const rule = slotRule(i);
@@ -452,7 +452,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
           </div>
           {/* A gallery keeps the name row on every slot, disabled on the open one, so it never comes and goes. */}
           {(entry || (gallery && media)) && <MediaEntryBar entry={entry} onUnlink={() => setSlot(i, '')} />}
-          {!gallery && entry?.kind === 'layered' && editLayers && <EditLayersButton entryId={entry.id} size="sm" />}
+          {!gallery && entry?.kind === 'layered' && editLayers && <EditLayersButton entryId={entry.id} previewAs={ruleHost?.kind === 'entity' ? ruleHost.id : undefined} size="sm" />}
         </div>
         );
       })}
