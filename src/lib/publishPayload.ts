@@ -10,6 +10,7 @@ import { pictureFile, type RasterIO } from '@/lib/layeredFlatten';
 import type { PresetOverview } from '@/lib/promptPresets';
 import type { SharedPreset } from '@/lib/promptPresetShare';
 import { coverData } from '@/lib/mediaImages';
+import { worldMarkPicks, type MarkPick } from '@/lib/markPicks';
 
 /**
  * What a publish request carries, whatever kind it is. The server takes the same body for all three; only
@@ -45,6 +46,8 @@ export interface PublishPayload {
   supporterOnly?: boolean;
   /** The stages of a new Supporter-only Mascot or World listing. Omitted means Supporter-only with no end date. */
   supporterSchedule?: SupporterDaysSchedule;
+  /** Each entity's start-picture image entry, for the server's Supporter marks. Worlds only; absent = the server approximates. */
+  markPicks?: MarkPick[];
 }
 
 /**
@@ -59,6 +62,7 @@ export interface PublishPayload {
  */
 export function worldPublishPayload(world: Omit<World, 'id'>): PublishPayload {
   const overview = world.worldOverview ?? {};
+  const markPicks = safeMarkPicks(world);
   return {
     kind: 'world',
     name: overview.name || 'Untitled World',
@@ -66,7 +70,18 @@ export function worldPublishPayload(world: Omit<World, 'id'>): PublishPayload {
     thumbnail: coverData(overview) || undefined,
     contentData: { ...world, worldOverview: { ...overview, tags: overview.tags ?? [] } },
     tags: overview.tags ?? [],
+    ...(markPicks ? { markPicks } : {}),
   };
+}
+
+/** The world's mark picks, or undefined when working them out throws. */
+function safeMarkPicks(world: Omit<World, 'id'>): MarkPick[] | undefined {
+  try {
+    return worldMarkPicks(world);
+  } catch (err: unknown) {
+    console.warn('Mark picks failed', err);
+    return undefined;
+  }
 }
 
 /**

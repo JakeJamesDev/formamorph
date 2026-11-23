@@ -202,6 +202,18 @@ describe('publishItem', () => {
     expect(second[0] as string).toContain('/worlds/w99');
   });
 
+  it('sends a world’s mark picks on both a new listing and an update', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ id: 'created' }));
+    const markPicks = [{ entityId: 'ash', mediaId: 'a' }];
+
+    await WorldStorageService.publishItem(payload({ markPicks }));
+    await WorldStorageService.publishItem(payload({ markPicks }), 'w99');
+
+    expect((await sentBody(0)).markPicks).toEqual(markPicks);
+    expect((await sentBody(1)).markPicks).toEqual(markPicks);
+  });
+
   it('sends the kind, so a character is not filed as a world', async () => {
     AuthService.token = 'tok';
     vi.mocked(fetch).mockResolvedValue(res({ id: 'created' }));

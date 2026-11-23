@@ -81,7 +81,7 @@ describe('publishBody', () => {
     expect(bytes).toBe(measurePublishBytes(payload.contentData));
     expect(await textOf(body)).toBe(JSON.stringify({
       name: payload.name, description: payload.description, thumbnail: payload.thumbnail, contentData: payload.contentData,
-      kind: 'world', tags: ['fen'], contestEventId: 'ev1',
+      kind: 'world', tags: ['fen'], contestEventId: 'ev1', markPicks: payload.markPicks,
     }));
   });
 

@@ -1,6 +1,6 @@
 # 03: Client Sends Picks
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -17,9 +17,17 @@ A world publish and a world update send `markPicks` (spec, "Picks payload"): for
 
 ## Acceptance criteria
 
-- [ ] An entity whose slot 0 rule fails at the start sends its first slot that holds.
-- [ ] A Layered Image sends its base Layer's start Variant, never an overlay's, and follows a rule on the base Layer's Variants.
-- [ ] Picks follow World Editor entity order; an entity that draws nothing sends none.
-- [ ] `contentData` is byte-equal with and without this change.
-- [ ] Both the publish and the update payloads carry the field.
-- [ ] Each assertion fails when its rule is undone (first slot ignoring rules, top Layer instead of base).
+- [x] An entity whose slot 0 rule fails at the start sends its first slot that holds. `publishPayload.markPicks.test.ts` "skips a slot whose rule fails".
+- [x] A Layered Image sends its base Layer's start Variant, never an overlay's, and follows a rule on the base Layer's Variants. Same file, "sends a Layered Image's base Layer start Variant" and "base Layer shows nothing".
+- [x] Picks follow World Editor entity order; an entity that draws nothing sends none. Same file, "follows World Editor order" (groups, a missing link, embedded image and embedded Layered Image).
+- [x] `contentData` is byte-equal with and without this change. Same file, "leaves the content byte-equal"; `jsonFileOps.test.ts` exact body.
+- [x] Both the publish and the update payloads carry the field. `WorldStorageService.test.ts` "sends a world's mark picks on both a new listing and an update" (POST and PUT bodies).
+- [x] Each assertion fails when its rule is undone (first slot ignoring rules, top Layer instead of base). Mutation run: slot rules ignored, top Layer, array order, embedded slot fall-through, embedded Layered Image fall-through; each turned its test red.
+
+## Landed
+
+**Not verified**
+- No live publish against a server; the request body is checked in unit tests only.
+
+**For you**
+- Nothing a player can see changes. Server tickets 01 and 02 decide whether the picks get used.

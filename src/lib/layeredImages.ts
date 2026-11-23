@@ -69,7 +69,11 @@ export const tintChannels = (tint: string | undefined): [number, number, number]
 
 /** The Variant that sizes `entry`: the first Variant of its lowest Layer that has one (Q23, Q29). */
 export const canvasVariant = (entry: LayeredMediaEntry): LayerVariant | undefined =>
-  entry.layers.find((layer) => layer.variants.length)?.variants[0];
+  baseLayer(entry)?.variants[0];
+
+/** The base Layer of `entry`: its lowest Layer that has a Variant. */
+export const baseLayer = (entry: LayeredMediaEntry): MediaLayer | undefined =>
+  entry.layers.find((layer) => layer.variants.length);
 
 /** The image that sizes `entry`, shown or not. Undefined = it can draw nothing. */
 export const layeredCanvas = (entry: LayeredMediaEntry, media: MediaList | undefined): Base64Data | undefined => {
