@@ -1,6 +1,7 @@
 # Supporter Mark Picks
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-11-23. Tickets 01–04 landed; the last landing is FormamorphServer 331b2e4 (client 6065c1ce1). Review: spec text corrected, and one gap fixed in ticket 04; the staff-preview gap is accepted. Gates on 2026-11-23: tests pass; lint errors are only in the gitignored worlds-wip folder.
 Spec session: supporter-mark-picks — spec
 
 Spans both repos: the Formamorph client works out the picks, and FormamorphServer stores them and marks by them. Replaces R2 of the server's `large-supporter-worlds` spec.

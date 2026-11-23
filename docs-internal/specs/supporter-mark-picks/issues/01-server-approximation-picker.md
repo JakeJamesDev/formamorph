@@ -1,6 +1,6 @@
 # 01: Server Picker By Approximation
 
-Status: ready-for-human
+Status: done
 Base: 66dc591
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

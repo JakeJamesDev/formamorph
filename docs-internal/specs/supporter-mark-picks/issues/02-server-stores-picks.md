@@ -1,6 +1,6 @@
 # 02: Server Stores And Uses Picks
 
-Status: ready-for-human
+Status: done
 Base: 7c7e2b6
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

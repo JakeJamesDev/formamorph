@@ -1,6 +1,7 @@
 # 04: Server Falls Back On An Undecodable Image
 
-Status: ready-for-agent
+Status: done
+Base: 7ef32a3
 Blocked by: 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -17,6 +18,14 @@ Close review gap. An image whose header looks valid but whose body fails to deco
 
 ## Acceptance criteria
 
-- [ ] A valid pick whose body does not decode: the entity is marked through the approximation, read back with the watermark reader.
-- [ ] An approximated image whose body does not decode: that character is skipped and the next character takes the mark.
-- [ ] Each test fails when the header-only check is reinstated.
+- [x] A valid pick whose body does not decode: the entity is marked through the approximation, read back with the watermark reader. (`falls back to the approximation when a valid pick will not decode`)
+- [x] An approximated image whose body does not decode: that character is skipped and the next character takes the mark. (`skips a character whose approximated image will not decode…`)
+- [ ] Each test fails when the header-only check is reinstated. (Only the first test does; see Not verified.)
+
+## Landed
+
+**Not verified**
+- Each test fails under the header-only check: the second test also passes then. The old loop never spent a slot on a failed image, so the next character took it already. The test pins that behavior and cannot go red for it.
+
+**For you**
+- None.
