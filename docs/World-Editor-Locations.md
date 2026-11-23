@@ -256,18 +256,32 @@ Each background image has a ◐ **Weather Mask** button at its bottom right. Sel
 
 **Paint** or **Edit** opens the background image full screen. What you paint shows as a blue tint: blue is where the weather shows. **Hide Mask** hides the tint so you can see the image.
 
-Weather plays over the image through the mask as you paint, so you can judge the result before you save. Pick **Rain**, **Snow**, **Storm** or **Bright Sun** in the top-left card to check each one against the same mask. With reduced motion on, the weather moves slowly.
+Weather plays over the image through the mask as you paint, so you can judge the result before you save. Pick **Rain**, **Snow**, **Storm** or **Bright Sun** from the **Weather Preview** list in the top-left card to check each one against the same mask. With reduced motion on, the weather moves slowly.
 
 | Tool | What it does |
 | --- | --- |
 | 🖌️ **Brush** | Paints where the weather shows |
 | 🧽 **Eraser** | Paints where the weather is hidden |
-| **Size** | Sets how wide the brush and eraser are |
-| **Soft Edge** | Fades the edge of each stroke, so the weather fades in instead of stopping at a line |
+| **Size** | Sets how wide the brush and eraser are, in image pixels. A stroke covers the same part of the image at any zoom |
+| **Soft Edge** | Fades the edge of each stroke, so the weather fades in instead of stopping at a line. It starts at 25% |
+| 🔍 **Fit** | Shows the zoom and goes back to the whole image. With a mouse only |
 | 🪣 **Fill** | Shows the weather over the whole image |
 | 🗑️ **Clear** | Hides the weather over the whole image |
 | ◐ **Invert** | Swaps where the weather shows and where it's hidden |
 | ↩️ **Undo** and **Redo** | Step back and forward through your strokes. Ctrl+Z, Ctrl+Shift+Z and Ctrl+Y work too |
+
+With a mouse and keyboard:
+
+| Shortcut | What it does |
+| --- | --- |
+| **B** | Brush |
+| **E** | Eraser |
+| **Ctrl+mouse wheel** | Makes the brush bigger or smaller |
+| Mouse wheel | Zooms in or out where you point, up to 800% |
+| Middle-button drag | Moves around the zoomed image |
+| **0** | Goes back to the whole image |
+
+While Size or Soft Edge changes, its value shows over the slider. On a touch screen, one finger paints; there's no zoom.
 
 - 🪟 **A window.** Paint the glass with the Brush. A little Soft Edge keeps the rain from cutting off hard at the frame.
 - ⛱️ **An overhang.** Fill first, then paint the covered ground with the Eraser. Or paint the covered ground with the Brush and Invert.

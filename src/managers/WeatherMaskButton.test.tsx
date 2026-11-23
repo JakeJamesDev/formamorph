@@ -302,6 +302,11 @@ const stroke = (paint: HTMLElement) => {
   fireEvent.pointerUp(paint, { pointerId: 1, clientX: 700, clientY: 320 });
 };
 const press = async (name: string) => { await act(async () => { fireEvent.click(within(editor()).getByRole('button', { name })); }); };
+/** Picks a kind from the weather select by keyboard: jsdom has no pointer capture for a click. */
+const pickWeather = async (name: string) => {
+  fireEvent.keyDown(within(editor()).getByRole('combobox', { name: 'Weather Preview' }), { key: 'Enter' });
+  await act(async () => { fireEvent.keyDown(screen.getByRole('option', { name }), { key: 'Enter' }); });
+};
 const masks = (list: MediaList) => Object.values(list).filter((e) => e.kind === 'mask');
 
 describe('Weather Mask brush editor', () => {
@@ -489,13 +494,15 @@ describe('Weather Mask brush editor preview', () => {
     await openEditor('Paint');
     const canvas = weather();
     expect(canvas.dataset.weatherKind).toBe('rain');
-    await press('Snow');
+    expect(within(editor()).getByRole('combobox', { name: 'Weather Preview' })).toHaveTextContent('Rain');
+    await pickWeather('Snow');
     expect(weather().dataset.weatherKind).toBe('snow');
     expect(weather()).toBe(canvas);
-    await press('Bright Sun');
+    await pickWeather('Bright Sun');
     expect(weather().dataset.weatherKind).toBe('brightSun');
-    await press('Storm');
+    await pickWeather('Storm');
     expect(weather().dataset.weatherKind).toBe('storm');
+    expect(weather()).toBe(canvas);
   });
 
   it('follows the mask as strokes land, without rebuilding the canvas', async () => {
@@ -508,6 +515,87 @@ describe('Weather Mask brush editor preview', () => {
     expect(weather()).toBe(canvas);
     await press('Invert');
     expect(weather().dataset.weatherMask).toMatch(/lit\d{6,}/);
+  });
+});
+
+describe('Weather Mask brush editor shortcuts and zoom', () => {
+  const pressed = (name: string) => within(editor()).getByRole('button', { name }).getAttribute('aria-pressed');
+  const slider = (name: string) => within(editor()).getByRole('slider', { name });
+  const view = () => document.querySelector<HTMLElement>('[data-mask-view]')!;
+  const fit = () => within(editor()).getByRole('button', { name: /^Fit, / });
+  const valueTip = () => document.querySelector('[data-flash-tip]')?.textContent ?? null;
+
+  it('B and E switch tools, also from the closed weather select, and neither fires in its open list', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    await openEditor('Paint');
+    fireEvent.keyDown(editor(), { key: 'e' });
+    expect(pressed('Eraser')).toBe('true');
+    fireEvent.keyDown(editor(), { key: 'B' });
+    expect(pressed('Brush')).toBe('true');
+    // After a pick, focus rests on the closed select: B switches the tool and never types ahead to Bright Sun.
+    await pickWeather('Snow');
+    const select = within(editor()).getByRole('combobox', { name: 'Weather Preview' });
+    fireEvent.keyDown(select, { key: 'e' });
+    expect(pressed('Eraser')).toBe('true');
+    fireEvent.keyDown(select, { key: 'b' });
+    expect(pressed('Brush')).toBe('true');
+    expect(document.querySelector<HTMLCanvasElement>('[data-testid="weather-background"]')!.dataset.weatherKind).toBe('snow');
+    fireEvent.keyDown(select, { key: 'Enter' });
+    fireEvent.keyDown(screen.getByRole('option', { name: 'Rain' }), { key: 'e' });
+    // The open list hides the dialog from role queries, so read the button directly.
+    expect(document.querySelector('button[aria-label="Brush"]')!.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('the wheel zooms the picture, 0 and Fit go back to the fit view', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    const paint = await openEditor('Paint');
+    expect(view().dataset.maskView).toBe('100');
+    fireEvent.wheel(paint, { deltaY: -500, clientX: 640, clientY: 360 });
+    const zoomed = Number(view().dataset.maskView);
+    expect(zoomed).toBeGreaterThan(100);
+    expect(fit()).toHaveTextContent(`${zoomed}%`);
+    fireEvent.keyDown(editor(), { key: '0' });
+    expect(view().dataset.maskView).toBe('100');
+    fireEvent.wheel(paint, { deltaY: -500, clientX: 640, clientY: 360 });
+    await press(fit().getAttribute('aria-label')!);
+    expect(view().dataset.maskView).toBe('100');
+  });
+
+  it('a stroke on the zoomed picture marks the picture point under the pointer', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    const paint = await openEditor('Paint', 1280, 720);
+    // 200% toward the center: box point (960, 540) shows picture point (800, 450).
+    fireEvent.wheel(paint, { deltaY: -Math.log(2) / 0.002, clientX: 640, clientY: 360 });
+    expect(view().dataset.maskView).toBe('200');
+    fireEvent.pointerDown(paint, { button: 0, pointerId: 1, clientX: 960, clientY: 540 });
+    fireEvent.pointerUp(paint, { pointerId: 1, clientX: 960, clientY: 540 });
+    await press('Save');
+    const [saved] = canvasFake.saved;
+    expect(saved.raster[450 * 1280 + 800]).toBe(255);
+    expect(saved.raster[540 * 1280 + 960]).toBe(0);
+  });
+
+  it('Ctrl + wheel changes the brush size and shows it, and never reaches the browser zoom', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    const paint = await openEditor('Paint');
+    const before = Number(slider('Size').getAttribute('aria-valuenow'));
+    const wheel = new WheelEvent('wheel', { deltaY: -100, ctrlKey: true, bubbles: true, cancelable: true });
+    await act(async () => { paint.dispatchEvent(wheel); });
+    expect(wheel.defaultPrevented).toBe(true);
+    const after = Number(slider('Size').getAttribute('aria-valuenow'));
+    expect(after).toBeGreaterThan(before);
+    expect(view().dataset.maskView).toBe('100');
+    await waitFor(() => expect(valueTip()).toBe(`${after} px`));
+  });
+
+  it('Soft Edge opens at 25% and shows its value while it changes by key', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    await openEditor('Paint');
+    expect(slider('Soft Edge').getAttribute('aria-valuenow')).toBe('25');
+    expect(valueTip()).toBeNull();
+    fireEvent.keyDown(slider('Soft Edge'), { key: 'ArrowRight' });
+    expect(slider('Soft Edge').getAttribute('aria-valuenow')).toBe('26');
+    await waitFor(() => expect(valueTip()).toBe('26%'));
   });
 });
 

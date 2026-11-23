@@ -9,7 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { WeatherPreview, useNaturalRatio } from '@/components/game/WeatherBackground';
 import { ALLOWED_KINDS, WEATHER_LABELS } from '@/lib/weather';
 import type { AllowedWeatherKind } from '@/types';
-import { Tip } from '@/components/ui/tooltip';
+import { FlashTip, Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
 import { fitWithin } from '@/lib/imageBytes';
 import { isLayeredPicture, type Picture } from '@/lib/layeredImages';
@@ -25,11 +25,14 @@ import { useMountedRef } from '@/lib/useMountedRef';
 import { cn } from '@/lib/utils';
 import { MASK_CAP } from '@/lib/weatherMask';
 import { drawTint, encodeMaskRaster, previewMaskPng, readMaskRaster } from './maskCanvas';
+import {
+  FIT_VIEW, MAX_SIZE, MIN_SIZE, boxToMask, panBy, screenSize, stepSize, viewTransform, wheelDelta, wheelZoom, zoomAt, type MaskView,
+} from './maskView';
 
 /** Below this width the floating groups would overlap, so the controls stack as on touch. */
 const STACKED_BELOW = 1024;
-const MIN_SIZE = 4;
-const MAX_SIZE = 240;
+/** How long a slider's value tip stays after its last change. */
+const VALUE_TIP_MS = 1000;
 
 // scroll-guard: allow horizontal: one row of tool buttons on the narrowest phones
 const TOOL_ROW_SCROLL = 'overflow-x-auto';
@@ -39,6 +42,12 @@ const FADE = 'opacity-25 transition-opacity duration-200 hover:opacity-100 has-[
 /** Every control hides and takes no input while a stroke is in progress. */
 const hiddenWhile = (painting: boolean): CSSProperties | undefined =>
   (painting ? { opacity: 0, visibility: 'hidden', pointerEvents: 'none' } : undefined);
+
+/** Whether a key at `target` belongs to a field: text entry, or an open select list. */
+const inField = (target: EventTarget | null) =>
+  target instanceof Element && !!target.closest('input, textarea, [contenteditable="true"], [role="listbox"]');
+
+type SliderName = 'size' | 'softness';
 
 /** One picture the mask can show under: the label names it in the switch. */
 export interface PictureChoice { key: string; label: string; picture: Picture }
@@ -81,8 +90,11 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [doc, setDoc] = useState<MaskDocument | null>(null);
   const [tool, setTool] = useState<MaskTool>('brush');
-  const [size, setSize] = useState(80);
-  const [softness, setSoftness] = useState(0.5);
+  const [size, setSize] = useState(100);
+  const [softness, setSoftness] = useState(0.25);
+  const [view, setView] = useState<MaskView>(FIT_VIEW);
+  const [valueTip, setValueTip] = useState<{ slider: SliderName; count: number } | null>(null);
+  const valueTipTimer = useRef(0);
   const [showMask, setShowMask] = useState(true);
   const [painting, setPainting] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -96,7 +108,30 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
   const dirty = useRef<MaskRect | null>(null);
   const frame = useRef(0);
 
-  useEffect(() => () => cancelAnimationFrame(frame.current), []);
+  const paintLayer = useRef<HTMLDivElement | null>(null);
+  const [boxWidth, setBoxWidth] = useState(0);
+
+  useEffect(() => () => { cancelAnimationFrame(frame.current); window.clearTimeout(valueTipTimer.current); }, []);
+
+  /** Shows `slider`'s value tip, and hides it once the value rests. */
+  const showValue = (slider: SliderName) => {
+    setValueTip((t) => ({ slider, count: (t?.count ?? 0) + 1 }));
+    window.clearTimeout(valueTipTimer.current);
+    valueTipTimer.current = window.setTimeout(() => { if (mounted.current) setValueTip(null); }, VALUE_TIP_MS);
+  };
+  const changeSize = (next: number) => { setSize(next); showValue('size'); };
+  const changeSoftness = (next: number) => { setSoftness(next / 100); showValue('softness'); };
+
+  // The paint layer is the fit box; its width sizes the ring.
+  useEffect(() => {
+    const el = paintLayer.current;
+    if (!el) return;
+    const measure = () => setBoxWidth(el.getBoundingClientRect().width);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loaded]);
 
   /** The picture's size is known: the mask's size follows, and a stored mask stretches to it. */
   const measured = async (naturalWidth: number, naturalHeight: number) => {
@@ -139,9 +174,15 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
   const undo = () => { if (doc && canUndoMask(doc)) commit(undoMask(doc)); };
   const redo = () => { if (doc && canRedoMask(doc)) commit(redoMask(doc)); };
 
+  /** The box point under a client point, in fractions of the box. */
+  const toBox = (clientX: number, clientY: number) => {
+    const r = paintLayer.current?.getBoundingClientRect();
+    if (!r?.width || !r.height) return null;
+    return { u: (clientX - r.left) / r.width, v: (clientY - r.top) / r.height };
+  };
   const toMask = (e: PointerEvent<HTMLElement>) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    return { x: ((e.clientX - r.left) / r.width) * (loaded?.width ?? 0), y: ((e.clientY - r.top) / r.height) * (loaded?.height ?? 0) };
+    const { u, v } = toBox(e.clientX, e.clientY) ?? { u: 0, v: 0 };
+    return boxToMask(view, u, v, loaded?.width ?? 0, loaded?.height ?? 0);
   };
   const moveRing = (e: PointerEvent<HTMLElement>) => {
     const el = ring.current;
@@ -149,8 +190,10 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
     if (e.pointerType === 'touch') { el.style.display = 'none'; return; }
     const r = e.currentTarget.getBoundingClientRect();
     el.style.display = 'block';
-    el.style.transform = `translate(${e.clientX - r.left - size / 2}px, ${e.clientY - r.top - size / 2}px)`;
+    el.style.left = `${e.clientX - r.left}px`;
+    el.style.top = `${e.clientY - r.top}px`;
   };
+  const ringSize = loaded ? screenSize(view, size, boxWidth, loaded.width) : 0;
   const paintFrame = () => {
     frame.current = 0;
     redraw(dirty.current);
@@ -164,20 +207,36 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
 
   // One stroke at a time: a second finger neither starts a stroke nor feeds the one in progress.
   const strokePointer = useRef<number | null>(null);
+  // A middle-button drag pans from the client point it last moved to.
+  const pan = useRef<{ pointer: number; x: number; y: number } | null>(null);
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
-    if (!loaded || !raster.current || e.button !== 0 || painter.current) return;
+    if (e.button === 1 && e.pointerType === 'mouse') {
+      e.preventDefault();
+      if (painter.current || pan.current) return;
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      pan.current = { pointer: e.pointerId, x: e.clientX, y: e.clientY };
+      return;
+    }
+    if (!loaded || !raster.current || e.button !== 0 || painter.current || pan.current) return;
     e.currentTarget.setPointerCapture?.(e.pointerId);
     strokePointer.current = e.pointerId;
-    const scale = loaded.width / e.currentTarget.getBoundingClientRect().width;
-    painter.current = new MaskStrokePainter(raster.current, loaded.width, loaded.height, tool, size * scale, softness);
+    painter.current = new MaskStrokePainter(raster.current, loaded.width, loaded.height, tool, size, softness);
     setPainting(true);
     paintTo(painter.current.extend(toMask(e)));
   };
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     moveRing(e);
+    const panning = pan.current;
+    if (panning && e.pointerId === panning.pointer) {
+      const r = e.currentTarget.getBoundingClientRect();
+      if (r.width && r.height) setView((v) => panBy(v, (e.clientX - panning.x) / r.width, (e.clientY - panning.y) / r.height));
+      pan.current = { ...panning, x: e.clientX, y: e.clientY };
+      return;
+    }
     if (painter.current && e.pointerId === strokePointer.current) paintTo(painter.current.extend(toMask(e)));
   };
   const endStroke = (e: PointerEvent<HTMLDivElement>) => {
+    if (pan.current?.pointer === e.pointerId) { pan.current = null; return; }
     const stroke = painter.current;
     if (!stroke || e.pointerId !== strokePointer.current) return;
     painter.current = null;
@@ -186,6 +245,30 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
     // The raster already holds the stroke; the document records it for undo.
     setDoc((d) => (d ? applyMaskOp(d, stroke.op()) : d));
   };
+
+  // Wheel: zoom toward the pointer over the picture; with Ctrl, the brush size anywhere, never the browser's zoom.
+  const onWheel = useRef<(e: WheelEvent) => void>(() => {});
+  useEffect(() => {
+    onWheel.current = (e: WheelEvent) => {
+      const delta = wheelDelta(e.deltaY, e.deltaMode);
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        if (painting || !loaded || !delta || inField(document.activeElement)) return;
+        changeSize(stepSize(size, delta));
+        return;
+      }
+      const at = toBox(e.clientX, e.clientY);
+      if (painting || !loaded || !at || !(e.target instanceof Node) || !paintLayer.current?.contains(e.target)) return;
+      e.preventDefault();
+      setView((v) => zoomAt(v, wheelZoom(v.zoom, delta), at.u, at.v));
+    };
+  });
+  // On the window, so Ctrl + wheel over a portaled select list still never zooms the page.
+  useEffect(() => {
+    const listen = (e: WheelEvent) => onWheel.current(e);
+    window.addEventListener('wheel', listen, { passive: false });
+    return () => window.removeEventListener('wheel', listen);
+  }, []);
 
   const edited = !!doc && canUndoMask(doc);
   const requestCancel = () => { if (edited) setConfirming(true); else onClose(); };
@@ -198,6 +281,17 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
     }
   };
 
+  // Capture, so B, E and 0 reach the tools before a focused, closed select types ahead with them.
+  const onKeyDownCapture = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (painting || !loaded || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || inField(e.target)) return;
+    const key = e.key.toLowerCase();
+    if (key === 'b') setTool('brush');
+    else if (key === 'e') setTool('eraser');
+    else if (key === '0') setView(FIT_VIEW);
+    else return;
+    e.preventDefault();
+    e.stopPropagation();
+  };
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (painting || !(e.ctrlKey || e.metaKey) || e.altKey) return;
     const key = e.key.toLowerCase();
@@ -208,10 +302,11 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
   };
 
   const ready = !!loaded;
+  const zoomPercent = Math.round(view.zoom * 100);
   const tools = (
     <div className="flex w-max items-center gap-1" data-mask-tools="">
-      <ToolButton label="Brush" active={tool === 'brush'} disabled={!ready} onClick={() => setTool('brush')}><Brush /></ToolButton>
-      <ToolButton label="Eraser" active={tool === 'eraser'} disabled={!ready} onClick={() => setTool('eraser')}><Eraser /></ToolButton>
+      <ToolButton label="Brush" tip="Brush (B)" active={tool === 'brush'} disabled={!ready} onClick={() => setTool('brush')}><Brush /></ToolButton>
+      <ToolButton label="Eraser" tip="Eraser (E)" active={tool === 'eraser'} disabled={!ready} onClick={() => setTool('eraser')}><Eraser /></ToolButton>
       <div className="mx-1 h-6 w-px bg-border" />
       <ToolButton label="Fill" tip="Shows the weather everywhere" disabled={!ready} onClick={() => apply({ kind: 'fill' })}><PaintBucket /></ToolButton>
       <ToolButton label="Clear" tip="Hides the weather everywhere" disabled={!ready} onClick={() => apply({ kind: 'clear' })}><Trash2 /></ToolButton>
@@ -219,12 +314,32 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
       <div className="mx-1 h-6 w-px bg-border" />
       <ToolButton label="Undo" disabled={!doc || !canUndoMask(doc)} onClick={undo}><Undo2 /></ToolButton>
       <ToolButton label="Redo" disabled={!doc || !canRedoMask(doc)} onClick={redo}><Redo2 /></ToolButton>
+      {!touch && (
+        <>
+          <div className="mx-1 h-6 w-px bg-border" />
+          <Tip tip="Fit (0)">
+            <Button
+              type="button" size="sm" variant="ghost" aria-label={`Fit, ${zoomPercent}%`} disabled={!ready}
+              onClick={() => setView(FIT_VIEW)} className="w-16 tabular-nums" data-mask-fit=""
+            >
+              {zoomPercent}%
+            </Button>
+          </Tip>
+        </>
+      )}
     </div>
   );
+  const softEdge = Math.round(softness * 100);
   const sliders = (
     <div className={cn('flex gap-4', stacked ? 'flex-col' : 'items-center')}>
-      <LabeledSlider label="Size" value={size} min={MIN_SIZE} max={MAX_SIZE} step={1} onChange={setSize} stacked={stacked} />
-      <LabeledSlider label="Soft Edge" value={Math.round(softness * 100)} min={0} max={100} step={1} onChange={(v) => setSoftness(v / 100)} stacked={stacked} />
+      <LabeledSlider
+        label="Size" value={size} min={MIN_SIZE} max={MAX_SIZE} step={1} onChange={changeSize} stacked={stacked}
+        valueTip={`${size} px`} tipCycle={valueTip?.slider === 'size' ? valueTip.count : 0}
+      />
+      <LabeledSlider
+        label="Soft Edge" value={softEdge} min={0} max={100} step={1} onChange={changeSoftness} stacked={stacked}
+        valueTip={`${softEdge}%`} tipCycle={valueTip?.slider === 'softness' ? valueTip.count : 0}
+      />
     </div>
   );
   const actions = (
@@ -240,16 +355,14 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
   const naturalRatio = useNaturalRatio(loaded && picture ? canvasSrc : undefined);
   const boxRatio = naturalRatio ?? (loaded ? loaded.width / loaded.height : 1);
   const weatherPicker = (
-    <div className="flex flex-wrap gap-1" role="group" aria-label="Weather Preview" data-mask-weather="">
-      {ALLOWED_KINDS.map((kind) => (
-        <Button
-          key={kind} type="button" size="sm" variant={weather === kind ? 'default' : 'outline'}
-          aria-pressed={weather === kind} onClick={() => setWeather(kind)}
-        >
-          {WEATHER_LABELS[kind]}
-        </Button>
-      ))}
-    </div>
+    <Select value={weather} onValueChange={(v) => setWeather(ALLOWED_KINDS.find((k) => k === v) ?? weather)}>
+      <SelectTrigger aria-label="Weather Preview" className="h-8 w-full" data-mask-weather="">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {ALLOWED_KINDS.map((kind) => <SelectItem key={kind} value={kind}>{WEATHER_LABELS[kind]}</SelectItem>)}
+      </SelectContent>
+    </Select>
   );
   const switcher = pictures.length >= 2 && (
     <Select value={String(index)} onValueChange={(v) => setChosen(Number(v))}>
@@ -291,28 +404,36 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
           style={{ aspectRatio: `${boxRatio}`, width: `min(100cqw, 100cqh * ${boxRatio})` }}
           data-mask-box=""
         >
-          {picture
-            ? <PictureImg src={picture} alt="" crop center contain className="absolute inset-0 h-full w-full select-none object-fill" draggable={false} />
-            : <div className="absolute inset-0 bg-muted" data-mask-plain="" />}
-          {previewMask && <WeatherPreview kind={weather} mode={calm ? 'calm' : 'full'} plain={!picture} mask={previewMask} />}
-          <canvas
-            ref={tintRef} width={loaded.width} height={loaded.height}
-            className={cn('pointer-events-none absolute inset-0 z-[2] h-full w-full', !showMask && 'invisible')}
-            data-mask-tint=""
-          />
+          {/* The picture, its weather and the tint zoom together; the paint layer above stays the fit box. */}
+          <div className="absolute inset-0 isolate origin-top-left" style={{ transform: viewTransform(view) }} data-mask-view={zoomPercent}>
+            {picture
+              ? <PictureImg src={picture} alt="" crop center contain className="absolute inset-0 h-full w-full select-none object-fill" draggable={false} />
+              : <div className="absolute inset-0 bg-muted" data-mask-plain="" />}
+            {previewMask && <WeatherPreview kind={weather} mode={calm ? 'calm' : 'full'} plain={!picture} mask={previewMask} />}
+            <canvas
+              ref={tintRef} width={loaded.width} height={loaded.height}
+              className={cn('pointer-events-none absolute inset-0 z-[2] h-full w-full', !showMask && 'invisible')}
+              data-mask-tint=""
+            />
+          </div>
           <div
+            ref={paintLayer}
             className="absolute inset-0 z-[3] cursor-none touch-none"
             onPointerDown={onPointerDown}
+            // The middle button pans here, never starts the browser's autoscroll.
+            onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
             onPointerMove={onPointerMove}
             onPointerUp={endStroke}
             onPointerCancel={endStroke}
+            onLostPointerCapture={endStroke}
             onPointerLeave={() => { if (ring.current) ring.current.style.display = 'none'; }}
             data-mask-paint=""
           >
             <div
               ref={ring}
-              className="pointer-events-none absolute left-0 top-0 hidden rounded-full border border-white shadow-[0_0_0_1px_rgba(0,0,0,0.6)]"
-              style={{ width: size, height: size }}
+              className="pointer-events-none absolute left-0 top-0 hidden -translate-x-1/2 -translate-y-1/2 rounded-full border border-white shadow-[0_0_0_1px_rgba(0,0,0,0.6)]"
+              style={{ width: ringSize, height: ringSize }}
+              data-mask-ring=""
             />
           </div>
         </div>
@@ -328,6 +449,7 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
         hideClose
         unanimated
         onEscapeKeyDown={(e) => { e.preventDefault(); if (!painting) requestCancel(); }}
+        onKeyDownCapture={onKeyDownCapture}
         onKeyDown={onKeyDown}
         className={cn(
           'inset-x-0 left-0 flex w-full max-w-none translate-x-0 flex-col gap-0 rounded-none border-0 bg-black p-0 shadow-none sm:rounded-none',
@@ -413,13 +535,22 @@ function ToolButton({ label, tip, active, disabled, onClick, children }: {
   );
 }
 
-function LabeledSlider({ label, value, min, max, step, onChange, stacked }: {
+/** A slider whose `valueTip` shows over its thumb while `tipCycle` counts changes, and hides at 0. */
+function LabeledSlider({ label, value, min, max, step, onChange, stacked, valueTip, tipCycle }: {
   label: string; value: number; min: number; max: number; step: number; onChange: (value: number) => void; stacked: boolean;
+  valueTip: string; tipCycle: number;
 }) {
+  const root = useRef<HTMLSpanElement | null>(null);
+  const thumb = useRef<Element | null>(null);
+  useEffect(() => { thumb.current = root.current?.querySelector('[role="slider"]') ?? null; }, []);
   return (
     <div className={cn('flex items-center gap-2 text-label', stacked ? 'w-full' : 'w-40')}>
       <span className={cn('shrink-0', stacked && 'w-20')}>{label}</span>
-      <Slider aria-label={label} min={min} max={max} step={step} value={[value]} onValueChange={([v]) => onChange(v)} />
+      <Slider
+        ref={root} aria-label={label} aria-valuetext={valueTip} min={min} max={max} step={step} value={[value]}
+        onValueChange={([v]) => onChange(v)} data-mask-slider={label}
+      />
+      <FlashTip anchor={thumb} tip={valueTip} open={tipCycle > 0} cycle={tipCycle} />
     </div>
   );
 }
