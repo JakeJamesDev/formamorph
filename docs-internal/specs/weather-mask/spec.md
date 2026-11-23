@@ -45,7 +45,7 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
 | Q20 | Amends Q13, 2026-11-23. The Weather Mask row under the location image goes, with its thumbnail, name and "None". One mask button sits on the location image frame, bottom right, and opens a menu: Paint or Edit, Upload or Replace, Choose, Show or Hide Mask, Remove. |
 | Q21 | Show Mask draws the mask over the location image on the frame with the brush editor's tint, so the slot shows the picture and its mask together. |
 | Q22 | Amends Q19, 2026-11-23. The brush editor's weather preview is one dropdown of Rain, Snow, Storm and Bright Sun, not a row of buttons. |
-| Q23 | Desktop shortcuts in the brush editor: B selects the brush, E the eraser, Ctrl + mouse wheel changes the brush size, the mouse wheel zooms toward the pointer, a middle-button drag pans, and 0 returns to the fit view. A Fit button shows the zoom percentage and returns to the fit view. Zoom runs from the fit view to 800%. Touch keeps one-finger painting only, with no zoom or pan. |
+| Q23 | Desktop shortcuts in the brush editor: B selects the brush, E the eraser, Ctrl + mouse wheel changes the brush size, the mouse wheel zooms toward the pointer, a middle-button drag pans, and 0 returns to the fit view. A Fit button shows the zoom percentage and returns to the fit view. Zoom runs from the fit view to 800%; the percentage counts from the fit view, which reads 100%. Touch keeps one-finger painting only, with no zoom or pan. |
 | Q24 | The brush size is in image pixels, so the brush covers the same part of the picture at every zoom and its ring grows as the view zooms in. |
 | Q25 | Soft Edge starts at 25%. While a slider moves, by drag, keys or Ctrl + wheel, a tooltip shows its value: the size in image pixels, the soft edge in percent. |
 
@@ -119,7 +119,7 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
 
 **World Editor**
 
-- Each location image slot shows a Weather Mask button on its frame in Advanced mode (Q16, Q18, Q20). Its menu, with no mask: Paint, Upload, Choose. With a mask: Edit, Replace, Choose, Show or Hide Mask, Remove. Show Mask tints the frame's picture as the editor does (Q21). Remove unlinks the slot only. Replace overwrites the linked entry's picture, so every slot that shares it changes, as Q12 rules for edits. The control names the shared count only when two or more images link the mask.
+- Each location image slot shows a Weather Mask button on its frame in Advanced mode (Q16, Q18, Q20). Its menu, with no mask: Paint, Upload, Choose. With a mask: Edit, Replace, Choose, Show or Hide Mask, Remove. Show Mask tints the frame's picture as the editor does (Q21). It is one switch per gallery, off by default and never stored: once on, it stays on as the author steps between slots, and each slot with a mask shows its tint. Remove unlinks the slot only. Replace overwrites the linked entry's picture, so every slot that shares it changes, as Q12 rules for edits. The control names the shared count only when two or more images link the mask.
 - Choose opens a picker of Mask entries only (Q5).
 - Upload always makes a new Mask entry from the chosen file and links it, even when the bytes match an existing mask: sharing happens only through Choose. The Media tab's own import never makes a Mask; masks enter only through a slot.
 - Paint opens the brush editor over the slot's picture, on a new mask or the linked one.
