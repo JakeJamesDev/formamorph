@@ -1,5 +1,7 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useOptionalTraitStore } from '@/contexts/TraitStoreContext';
+import { entityLookReads, lazyLookReads } from '@/lib/entityLook';
+import { OUTSIDE_PLAY, type LayerReads } from '@/lib/layeredImages';
 import type { GateInput } from '@/lib/traitGates';
 import type { Placeholder } from '@/types';
 
@@ -28,4 +30,16 @@ export function useRuleSource(): RuleSource | null {
     if (build) return build();
     return gateInput && placeholders ? { gateInput, placeholders, offWorld } : null;
   }, [build, gateInput, placeholders, offWorld]);
+}
+
+/** What entity `entityId`'s Layered Images read under the rule source in scope; the first Variants with none.
+ *  A host's builder runs at the first rule read, so a rig without rules builds nothing. */
+export function useEntityLookReads(entityId: string | undefined): LayerReads {
+  const build = useContext(RuleSourceContext);
+  const gateInput = useOptionalTraitStore()?.gateInput;
+  return useMemo(() => {
+    if (!entityId) return OUTSIDE_PLAY;
+    if (build) return lazyLookReads(() => build().gateInput, entityId);
+    return gateInput ? entityLookReads(gateInput, entityId) : OUTSIDE_PLAY;
+  }, [build, gateInput, entityId]);
 }

@@ -1,7 +1,7 @@
 import type { Base64Data, GalleryImage, GalleryLink, LinkedGalleryImage, MediaList, TraitRequirement, TraitRequirementRow } from '@/types';
 import { mapConditions } from './requirementRows';
 import { embedGallery, resolveGalleryImage } from './mediaList';
-import { drawableLayered, outsidePlayLayered, type Picture } from './layeredImages';
+import { drawableLayered, OUTSIDE_PLAY, resolveLayered, type LayerReads, type Picture } from './layeredImages';
 import { hasLayeredRules, isEmbeddedLayered, mapLayeredRules, portableOutsidePlay, readPortableLayered, variantImages } from './portableLayered';
 
 /** An entity's picture list in the shape the app stores it, or in any shape a record written before it holds. */
@@ -49,20 +49,20 @@ export const embeddedImageFiles = (entity?: ImageBearing | null): Base64Data[] =
 export const entityImageData = (entity?: ImageBearing | null, media?: MediaList): Base64Data[] =>
   entityImages(entity, media).map((img) => img.data);
 
-/** A gallery slot's outside-play picture: an image's data, or a rig's first-Variant stack (Q5); undefined when it draws nothing. */
-export function outsidePlayPicture(link: GalleryLink, media?: MediaList): Picture | undefined {
-  if (isEmbeddedLayered(link)) return portableOutsidePlay(link.layered);
+/** A gallery slot's outside-play picture: an image's data, or a rig's stack under `reads`; undefined when it draws nothing. */
+export function outsidePlayPicture(link: GalleryLink, media?: MediaList, reads: LayerReads = OUTSIDE_PLAY): Picture | undefined {
+  if (isEmbeddedLayered(link)) return portableOutsidePlay(link.layered, reads);
   const layered = drawableLayered(link, media);
-  return layered ? outsidePlayLayered(layered, media) : resolveGalleryImage(link, media)?.data;
+  return layered ? resolveLayered(layered, media, reads) : resolveGalleryImage(link, media)?.data;
 }
 
 /**
  * The picture that stands in for the entity wherever only one is wanted — library grids, listing art, the
  * character card's own pixels. The first slot that draws, so reordering the gallery is how an author changes it.
  */
-export const primaryPicture = (entity?: ImageBearing | null, media?: MediaList): Picture | undefined => {
+export const primaryPicture = (entity?: ImageBearing | null, media?: MediaList, reads: LayerReads = OUTSIDE_PLAY): Picture | undefined => {
   for (const link of galleryLinks(entity)) {
-    const picture = outsidePlayPicture(link, media);
+    const picture = outsidePlayPicture(link, media, reads);
     if (picture) return picture;
   }
   return undefined;

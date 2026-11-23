@@ -21,7 +21,7 @@ import { storedOnMap } from './onMap';
 import { embedEntityCard, readEntityCard } from './entityCard';
 import { readTavernCard, readTavernJson } from './tavernCard';
 import { IMAGE_CAPS, bytesToDataUrl, dataUrlMime, measureDataUrl, optimizeImageDataUrl, optimizeToWebpDataUrl } from './imageOptim';
-import { primaryPicture } from './entityImages';
+import { entityPicture } from './entityLook';
 import { FLAT_LOSSLESS, pictureFile } from './layeredFlatten';
 import { isEmbeddedLayered, mapVariants, readPortableLayered } from './portableLayered';
 import { fetchAsDataUrl, isRemoteImage } from './imageSource';
@@ -496,7 +496,7 @@ export async function exportEntityCard(
   vrmStore?: WorldVrmStore, media?: MediaList,
 ): Promise<Blob> {
   // The art follows the listing, else the library item, so a card matches the tile it came from.
-  const primary = primaryPicture(entity, media);
+  const primary = entityPicture(entity, media);
   let imageUrl = (primary && await pictureFile(primary, undefined, FLAT_LOSSLESS)) || await morphCardImage(
     links.source?.sourceId || links.source?.libraryId || entity.id,
     entity.name,

@@ -106,7 +106,8 @@ import { importedDefaultPersona, isJsonFile, isStPersonaBackupFile, readStPerson
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { useWorldExport } from '@/lib/useWorldExport';
 import { IMAGE_CAPS, applyWorldOptimize, applyEntityImagesOptimize, countWorldImages } from '@/lib/imageOptim';
-import { embeddedImageFiles, primaryPicture } from '@/lib/entityImages';
+import { embeddedImageFiles } from '@/lib/entityImages';
+import { entityPicture } from '@/lib/entityLook';
 import { withOptimizeProgress } from '@/lib/optimizeProgress';
 import { remoteWorldImages } from '@/lib/embedRemoteImages';
 import { warmCachedImages } from '@/lib/remoteImageCache';
@@ -1365,7 +1366,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               await refreshEntities();
             } else {
               await EntityStorageService.storeEntity({ id: record.id, name: record.name, createdAt: now, lastAccessed: now, data: record, libraryDetails });
-              setEntities(prev => [...prev, { id: record.id, name: record.name, image: primaryPicture(record), createdAt: now, lastAccessed: now, tags: libraryDetails?.tags ?? record.tags, author: libraryDetails?.author, libraryDetails }]);
+              setEntities(prev => [...prev, { id: record.id, name: record.name, image: entityPicture(record), createdAt: now, lastAccessed: now, tags: libraryDetails?.tags ?? record.tags, author: libraryDetails?.author, libraryDetails }]);
             }
             stored++;
           } catch (error) {

@@ -15,6 +15,7 @@ import { MediaSoundSlot } from './MediaSoundSlot';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { galleryLinks } from '../lib/entityImages';
 import { useLinkedGallery } from '@/lib/useLinkedGallery';
+import { useEntityLookReads } from '@/contexts/RuleSourceContext';
 import { ImageGallery, ImageTags, ImageWidget, type GalleryFrameProps } from './ImageTagsField';
 import { composedPictures, embeddedGalleryView, relinkEmbeddedGallery, type GalleryMedia } from '@/lib/mediaGallery';
 import type { LayeredPicture } from '@/lib/layeredImages';
@@ -371,22 +372,30 @@ type EntityImageWidgetProps = DescribedFieldGroupProps & {
 };
 
 export const EntityImageWidget = ({ linked, ...props }: EntityImageWidgetProps) =>
-  (linked ? <LinkedEntityImageWidget {...props} /> : (
+  (linked ? <LinkedEntityImageWidget {...props} /> : <EmbeddedEntityImageWidget {...props} />);
+
+/** The entity whose starting values the widget's Layered Images read: none for another host, such as an item. */
+const lookEntityId = ({ ruleHost, value }: Omit<EntityImageWidgetProps, 'linked'>): string | undefined =>
+  (ruleHost ? (ruleHost.kind === 'entity' ? ruleHost.id : undefined) : value.id);
+
+const EmbeddedEntityImageWidget = (props: Omit<EntityImageWidgetProps, 'linked'>) => {
+  const reads = useEntityLookReads(lookEntityId(props));
+  return (
     <EntityImageBody
       {...props}
       images={embeddedGalleryView(galleryLinks(props.value))}
-      pictures={composedPictures(galleryLinks(props.value), undefined)}
+      pictures={composedPictures(galleryLinks(props.value), undefined, reads)}
       onImagesChange={(list) => props.onChange('images', relinkEmbeddedGallery(galleryLinks(props.value), list))}
     />
-  ));
-
-/** Entity galleries take Layered Images. */
-const LAYERED_SLOTS = { layered: true };
+  );
+};
 
 const LinkedEntityImageWidget = (props: Omit<EntityImageWidgetProps, 'linked'>) => {
   const { value, onChange, placeholders = [] } = props;
   const write = useCallback((links: GalleryLink[]) => onChange('images', links), [onChange]);
-  const gallery = useLinkedGallery(galleryLinks(value), write, labelPlaceholders(value.name, placeholders), LAYERED_SLOTS);
+  const reads = useEntityLookReads(lookEntityId(props));
+  // Entity galleries take Layered Images.
+  const gallery = useLinkedGallery(galleryLinks(value), write, labelPlaceholders(value.name, placeholders), { layered: true, reads });
   return <EntityImageBody {...props} {...gallery} />;
 };
 

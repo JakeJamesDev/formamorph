@@ -5,7 +5,7 @@ import type { SupporterDaysSchedule } from '@/lib/supporterScheduleEdit';
 import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { entityPlacementLetters, labelPlaceholders } from '@/lib/placementLetters';
-import { primaryPicture } from '@/lib/entityImages';
+import { entityPicture } from '@/lib/entityLook';
 import { pictureFile, type RasterIO } from '@/lib/layeredFlatten';
 import type { PresetOverview } from '@/lib/promptPresets';
 import type { SharedPreset } from '@/lib/promptPresetShare';
@@ -78,8 +78,8 @@ export function worldPublishPayload(world: Omit<World, 'id'>): PublishPayload {
  * only this string, so a chip left raw here would show as its id forever.
  */
 export async function entityPublishPayload(entity: Entity, libraryDetails?: { author?: string }, io?: RasterIO): Promise<PublishPayload> {
-  // A Layered Image's listing art is its outside-play picture, flattened (Q5).
-  const primary = primaryPicture(entity);
+  // A Layered Image's listing art is its picture under the entity's starting values, flattened.
+  const primary = entityPicture(entity);
   return {
     kind: 'entity',
     name: labelPlaceholders(entity.name, entity.placeholders, { letters: entityPlacementLetters(entity) }) || 'Unnamed Character',

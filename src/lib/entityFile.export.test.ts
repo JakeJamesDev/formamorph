@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Entity, MediaList } from '@/types';
+import type { Entity, MediaList, Stat } from '@/types';
 
 // A card export normally runs a canvas encode and a WebP container write; stub both so these tests cover
 // only what a linked portrait changes.
@@ -113,15 +113,24 @@ describe('exportEntityCard with a Layered Image first', () => {
     face: { id: 'face', name: 'Face', kind: 'image', data: 'data:image/png;base64,FACE' },
     rig: { id: 'rig', name: 'Rig', kind: 'layered', layers: [
       { id: 'b', name: 'Body', variants: [{ mediaId: 'body' }] },
-      // Rules never hold outside play, so the first Variant shows (Q5).
-      { id: 'f', name: 'Face', tint: '#00ff00', blend: 'multiply', opacity: 0.5, variants: [{ mediaId: 'face', requires: [{ all: [{ kind: 'trait', id: 'gone' }] }] }] },
+      // Face shows while Mood is over 5, read at the entity's start.
+      { id: 'f', name: 'Face', tint: '#00ff00', blend: 'multiply', opacity: 0.5, variants: [{ mediaId: 'face', requires: [{ all: [{ kind: 'stat', id: 'mood', operator: '>', value: 5, unit: 'raw' }] }] }] },
     ] },
   };
 
-  it('draws the card from the flattened outside-play picture, tint and blend included', async () => {
-    await exportEntityCard({ id: 'e1', name: 'Mara', images: [{ mediaId: 'rig' }, { mediaId: 'body' }] }, [], {}, undefined, undefined, undefined, media);
+  const mara = (mood: number): Entity => ({
+    id: 'e1', name: 'Mara', stats: [{ id: 'mood', name: 'Mood', min: 0, max: 10, value: mood } as Stat], images: [{ mediaId: 'rig' }, { mediaId: 'body' }],
+  });
+
+  it("draws the card from the flattened picture under the entity's starting values, tint and blend included", async () => {
+    await exportEntityCard(mara(8), [], {}, undefined, undefined, undefined, media);
     // White tinted green multiplies Body to (0, 100, 0); at half opacity over Body: (100, 100, 25).
     expect(fetch).toHaveBeenCalledWith(`data:image/webp;base64,${btoa('100.100.25.255')}`);
+  });
+
+  it('leaves out a Variant whose rule fails at the start', async () => {
+    await exportEntityCard(mara(2), [], {}, undefined, undefined, undefined, media);
+    expect(fetch).not.toHaveBeenCalledWith(`data:image/webp;base64,${btoa('100.100.25.255')}`);
   });
 
   it('draws the card from the first slot that draws, as the tile does', async () => {

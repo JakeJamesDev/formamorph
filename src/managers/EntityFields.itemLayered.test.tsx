@@ -4,13 +4,29 @@ import { EntityImageWidget } from './EntityFields';
 import { LocationImageField } from './LocationImageField';
 import { ImageGallery } from './ImageTagsField';
 import { LOCATION_RULE_HOST } from '@/components/editor/ImageRuleCog';
-import type { Entity, GameLocation, LayeredMediaEntry, MediaFileEntry, MediaList } from '@/types';
+import { RuleSourceContext } from '@/contexts/RuleSourceContext';
+import { libraryGateInput } from '@/lib/libraryGateInput';
+import type { MediaItem } from '@/lib/mediaIndex';
+import { MediaActionRow } from './MediaActionRow';
+import { MediaThumb } from './MediaGallery';
+import type { Entity, GameLocation, LayeredMediaEntry, MediaFileEntry, MediaList, Stat } from '@/types';
 
 /** An item's image slot is the linked entity widget, the way ItemManager mounts it. */
 
 const BASE: MediaFileEntry = { id: 'base-img', name: 'Lamp Base', kind: 'image', data: 'data:image/webp;base64,QUFB' };
 const RIG: LayeredMediaEntry = { id: 'rig', name: 'Lamp Rig', kind: 'layered', layers: [{ id: 'l1', name: 'Base', variants: [{ mediaId: BASE.id }] }] };
-const LIST: MediaList = { [BASE.id]: BASE, [RIG.id]: RIG };
+const SMILE: MediaFileEntry = { id: 'smile-img', name: 'Smile', kind: 'image', data: 'data:image/webp;base64,U01J' };
+const FROWN: MediaFileEntry = { id: 'frown-img', name: 'Frown', kind: 'image', data: 'data:image/webp;base64,RlJP' };
+// Smile shows while Mood is over 5, else Frown.
+const FACE: LayeredMediaEntry = {
+  id: 'face', name: 'Face Rig', kind: 'layered', layers: [{
+    id: 'l-face', name: 'Face', variants: [
+      { mediaId: SMILE.id, requires: [{ all: [{ kind: 'stat', id: 'mood', operator: '>', value: 5, unit: 'raw' }] }] },
+      { mediaId: FROWN.id },
+    ],
+  }],
+};
+const LIST: MediaList = { [BASE.id]: BASE, [RIG.id]: RIG, [SMILE.id]: SMILE, [FROWN.id]: FROWN, [FACE.id]: FACE };
 
 vi.mock('@/contexts/GameDataContext', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/contexts/GameDataContext')>()),
@@ -128,5 +144,59 @@ describe('a gallery’s name row', () => {
     expect(within(open).getByRole('button', { name: 'Remove From Slot' })).toBeDisabled();
     expect(within(open).getByRole('button', { name: 'Delete From World' })).toBeDisabled();
     expect(open.parentElement!.querySelector('[data-edit-layers]')).toBeNull();
+  });
+});
+
+describe("an entity's Layered Image outside the editor", () => {
+  const glum = { id: 'keeper', name: 'Keeper', stats: [{ id: 'mood', name: 'Mood', min: 0, max: 10, value: 2 } as Stat], images: [{ mediaId: FACE.id }] } as Entity;
+  const source = () => ({ gateInput: libraryGateInput(glum, null), placeholders: [], offWorld: true });
+  const shown = (root: ParentNode) => [...root.querySelectorAll('[data-layer] img')].map((img) => img.getAttribute('src'));
+  const item = {
+    id: 'entity:keeper:image:0', key: 'image:0', kind: 'layered', parent: { kind: 'entity', id: 'keeper', name: 'Keeper' },
+    slot: 'Image 1', value: '', mediaId: FACE.id, bytes: 0, linked: false, overBudget: false,
+  } as unknown as MediaItem;
+
+  it("frames the picture under the entity's starting values", () => {
+    render(
+      <RuleSourceContext.Provider value={source}>
+        <EntityImageWidget value={glum} onChange={vi.fn()} imageId="entity-image-keeper" linked><ImageGallery /></EntityImageWidget>
+      </RuleSourceContext.Provider>,
+    );
+    const frame = slotBox(FACE.id).querySelector<HTMLElement>('[data-slot-frame]')!;
+    expect(shown(frame)).toContain(FROWN.data);
+    expect(shown(frame)).not.toContain(SMILE.data);
+  });
+
+  it("frames an embedded rig under the entity's starting values, as the library editor holds it", () => {
+    const layered = { name: FACE.name, layers: [{ id: 'l-face', name: 'Face', variants: [{ data: SMILE.data, requires: FACE.layers[0].variants[0].requires }, { data: FROWN.data }] }] };
+    const carried = { ...glum, images: [{ layered }] } as Entity;
+    const { container } = render(
+      <RuleSourceContext.Provider value={() => ({ gateInput: libraryGateInput(carried, null), placeholders: [], offWorld: true })}>
+        <EntityImageWidget value={carried} onChange={vi.fn()} imageId="entity-image-keeper"><ImageGallery /></EntityImageWidget>
+      </RuleSourceContext.Provider>,
+    );
+    const frame = container.querySelector<HTMLElement>('[data-slot-frame]')!;
+    expect(shown(frame)).toEqual([FROWN.data]);
+  });
+
+  it("keeps each Layer's first Variant in an item's slot", () => {
+    const lamp = { id: 'lamp', name: 'Lamp', images: [{ mediaId: FACE.id }] } as unknown as Entity;
+    render(
+      <RuleSourceContext.Provider value={source}>
+        <EntityImageWidget value={lamp} onChange={vi.fn()} ruleHost={{ kind: 'item', id: 'lamp' }} imageId="item-image-lamp" linked><ImageGallery /></EntityImageWidget>
+      </RuleSourceContext.Provider>,
+    );
+    expect(shown(slotBox(FACE.id).querySelector('[data-slot-frame]')!)).toEqual([SMILE.data]);
+  });
+
+  it("shows the Media tab's thumbnail under the entity's starting values", () => {
+    const { container } = render(<RuleSourceContext.Provider value={source}><MediaThumb item={item} /></RuleSourceContext.Provider>);
+    expect(shown(container)).toEqual([FROWN.data]);
+  });
+
+  it("opens Edit Layers from the Media tab previewing as the entity", () => {
+    render(<MediaActionRow item={item} placeholders={[]} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Layers' }));
+    expect(within(screen.getByRole('dialog')).getByRole('combobox', { name: 'Preview As' })).toHaveTextContent('Keeper');
   });
 });

@@ -1,13 +1,15 @@
 import { useCallback } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { composedPictures, editGallery, galleryView, type GalleryMedia } from './mediaGallery';
+import { OUTSIDE_PLAY, type LayerReads } from './layeredImages';
 import type { GalleryImage, GalleryLink } from '@/types';
 
 /**
  * A world gallery as the image widget edits it: its pictures resolved through the world's Media List, and a
  * write that relinks them, placing a new picture into the list in the same step. `write` stores the links.
+ * `reads` is what its Layered Images read.
  */
-export function useLinkedGallery(links: GalleryLink[], write: (links: GalleryLink[]) => void, subject: string | undefined, { layered = false } = {}) {
+export function useLinkedGallery(links: GalleryLink[], write: (links: GalleryLink[]) => void, subject: string | undefined, { layered = false, reads = OUTSIDE_PLAY }: { layered?: boolean; reads?: LayerReads } = {}) {
   const { worldOverview, addMedia } = useGameData();
   const list = worldOverview.mediaList;
   const view = galleryView(links, list);
@@ -20,5 +22,5 @@ export function useLinkedGallery(links: GalleryLink[], write: (links: GalleryLin
     write(edited.links);
     if (Object.keys(edited.added).length) addMedia(edited.added);
   }, [links, list, subject, write, addMedia]);
-  return { images, onImagesChange, media, pictures: composedPictures(view.links, list) };
+  return { images, onImagesChange, media, pictures: composedPictures(view.links, list, reads) };
 }

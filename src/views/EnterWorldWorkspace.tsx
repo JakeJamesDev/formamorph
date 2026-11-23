@@ -18,7 +18,7 @@ import { SetupWorldOptions } from '@/components/game/SetupWorldOptions';
 import { shownOptions } from '@/lib/worldOptions';
 import { resolvedEntityStats } from '@/lib/statLinks';
 import { PersonaPicker, PersonaPortrait, type PersonaOption } from '@/components/game/PersonaPicker';
-import { primaryPicture } from '@/lib/entityImages';
+import { entityPicture } from '@/lib/entityLook';
 import type { ResolveEntityText } from '@/lib/resolveWorldNames';
 import { ownerTraitTree, playerEntityIds } from '@/lib/ownedTraitsInPlay';
 import { hasPersonaChoice } from '@/lib/personaPick';
@@ -379,7 +379,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     const description = entity.playerDescription?.trim();
     return (
       <div className="mb-3 flex items-start gap-4">
-        <PersonaPortrait image={primaryPicture(entity, media)} />
+        <PersonaPortrait image={entityPicture(entity, media)} />
         <div className="min-w-0">
           <Meta as="p" className="mb-1 font-medium tracking-wide">Starting Traits</Meta>
           <h2 className="break-words text-heading font-semibold">

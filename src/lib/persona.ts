@@ -1,4 +1,4 @@
-import { primaryPicture } from './entityImages';
+import { entityPicture } from './entityLook';
 import { inCast } from './owners';
 import { customPersonaEntity } from './blueprints';
 import type { Entity, MediaList, PersonaRef } from '@/types';
@@ -101,7 +101,7 @@ export const personaOption = (resolve: ResolveEntityText, media: MediaList | und
   (entity: Entity): { id: string; name: string; image?: Picture; description?: string } => {
     const description = entity.playerDescription?.trim();
     return {
-      id: entity.id, name: entity.name, image: primaryPicture(entity, media),
+      id: entity.id, name: entity.name, image: entityPicture(entity, media),
       description: description ? resolve(entity, description) : undefined,
     };
   };

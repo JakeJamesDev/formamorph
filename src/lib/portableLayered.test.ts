@@ -7,6 +7,7 @@ import { entityPublishPayload } from './publishPayload';
 import { contentMatchesSource } from './linkedContent';
 import { migrateGalleriesToMediaList, embeddedGalleryView, relinkEmbeddedGallery } from './mediaGallery';
 import { embeddedImageFiles, primaryPicture } from './entityImages';
+import { entityPicture } from './entityLook';
 import { isLayeredPicture } from './layeredImages';
 import { bindOwnedTraits, traitWorldOf } from './portableTraits';
 import { flattenLayered, type Raster, type RasterIO } from './layeredFlatten';
@@ -169,13 +170,14 @@ describe('a Layered Image through the library', () => {
 });
 
 describe('a Layered Image through publish', () => {
-  it('publishes the embedded rig and its flattened first-Variant picture as the listing art', async () => {
+  it("publishes the embedded rig and its flattened picture under the entity's starting values as the listing art", async () => {
     const item = toLibraryItem(mira(), [], [], undefined, worldList());
     const io = fakeIO();
     const payload = await entityPublishPayload(item, undefined, io);
     expect(embeddedRig(payload.contentData as Entity).layered.layers).toHaveLength(2);
-    const picture = primaryPicture(item);
-    expect(isLayeredPicture(picture)).toBe(true);
+    // Mira holds no Knight, so her Face shows Frown.
+    const picture = entityPicture(item);
+    expect(isLayeredPicture(picture) && picture.layers.map((l) => l.data)).toEqual([BODY, FROWN]);
     expect(payload.thumbnail).toBe(await flattenLayered(picture as never, io));
     expect(payload.thumbnail).toMatch(/;q=0\.92$/);
   });

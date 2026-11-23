@@ -9,8 +9,8 @@ import {
   layeredSizeMismatches, OUTSIDE_PLAY, resolveLayered, shownVariant, type LayerReads, type LayeredPicture, type SizeMismatch,
 } from '@/lib/layeredImages';
 import { layeredEntry, mediaEntry } from '@/lib/mediaList';
-import { ruleStates } from '@/lib/traitGates';
-import type { LayeredMediaEntry, MediaLayer, MediaList, TraitRequirementRow } from '@/types';
+import { entityLookReads } from '@/lib/entityLook';
+import type { LayeredMediaEntry, MediaLayer, MediaList } from '@/types';
 import { useMediaStep } from './useMediaItemActions';
 
 /** Preview As's value for the picture outside play. */
@@ -62,7 +62,7 @@ export function useRig(entryId: string, initialAs?: string): Rig | undefined {
   const [pick, setPick] = useState<Rig['pick']>(null);
   const gateInput = source?.gateInput;
   const reads = useMemo<LayerReads>(
-    () => (as !== DEFAULT_LOOK && gateInput ? { statesOf: (rows: TraitRequirementRow[]) => ruleStates(gateInput, as, rows) } : OUTSIDE_PLAY),
+    () => (as !== DEFAULT_LOOK && gateInput ? entityLookReads(gateInput, as) : OUTSIDE_PLAY),
     [as, gateInput],
   );
   const host = useMemo<RuleHost>(() => ({ kind: 'entity', id: as === DEFAULT_LOOK ? '' : as }), [as]);

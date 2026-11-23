@@ -6,7 +6,7 @@ import type {
   PortableLayerVariant, TraitRequirement, TraitRequirementRow,
 } from '@/types';
 import { layeredEntry, mediaEntry, resolveGalleryImage, uniqueMediaName } from './mediaList';
-import { outsidePlayLayered, type LayeredPicture } from './layeredImages';
+import { OUTSIDE_PLAY, resolveLayered, type LayeredPicture, type LayerReads } from './layeredImages';
 import { mapConditions } from './requirementRows';
 import type { MascotTransition } from './formaquestion/mascotTransition';
 
@@ -117,10 +117,10 @@ export function portableAsEntry(layered: PortableLayered): { entry: LayeredMedia
   return { entry, list: { ...list, [PORTABLE_ID]: entry } };
 }
 
-/** A portable rig's outside-play picture: each Layer's first Variant (Q5). Undefined when nothing sets the canvas. */
-export function portableOutsidePlay(layered: PortableLayered): LayeredPicture | undefined {
+/** A portable rig's outside-play picture under `reads`, each Layer's first Variant by default (Q5). Undefined when nothing sets the canvas. */
+export function portableOutsidePlay(layered: PortableLayered, reads: LayerReads = OUTSIDE_PLAY): LayeredPicture | undefined {
   const { entry, list } = portableAsEntry(layered);
-  return outsidePlayLayered(entry, list);
+  return resolveLayered(entry, list, reads);
 }
 
 const stringField = (raw: Record<string, unknown>, key: string): Record<string, string> =>

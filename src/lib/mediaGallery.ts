@@ -11,7 +11,7 @@ import { isRemoteImage, dataUrlMime } from './imageBytes';
 import { fallbackMediaName, fileEntries, isEmbeddedImage, isMediaRef, layeredEntry, resolveGalleryImage, uniqueMediaName, type MediaFileKind } from './mediaList';
 import { labelPlaceholders } from './placementLetters';
 import { isEmbeddedLayered, placeLayered, portableOutsidePlay } from './portableLayered';
-import { outsidePlayLayered, type LayeredPicture } from './layeredImages';
+import { OUTSIDE_PLAY, resolveLayered, type LayeredPicture, type LayerReads } from './layeredImages';
 
 /** What makes two stored values one file: a link's URL, or embedded data's base64 payload (its MIME string aside). */
 export function mediaContentKey(data: string): string {
@@ -155,17 +155,17 @@ export function relinkGallery(
 /** The tile key of the embedded Layered Image in slot `slot`. */
 const embeddedTile = (slot: number): string => layeredTile(`embedded-${slot}`);
 
-/** The composed outside-play picture behind each Layered Image tile of `links`, keyed by the tile's data. A link that draws nothing has none. */
-export function composedPictures(links: readonly GalleryLink[], list: MediaList | undefined): ReadonlyMap<string, LayeredPicture> {
+/** The composed picture behind each Layered Image tile of `links` under `reads`, keyed by the tile's data. A link that draws nothing has none. */
+export function composedPictures(links: readonly GalleryLink[], list: MediaList | undefined, reads: LayerReads = OUTSIDE_PLAY): ReadonlyMap<string, LayeredPicture> {
   const out = new Map<string, LayeredPicture>();
   links.forEach((link, slot) => {
     if (isEmbeddedLayered(link)) {
-      const picture = portableOutsidePlay(link.layered);
+      const picture = portableOutsidePlay(link.layered, reads);
       if (picture) out.set(embeddedTile(slot), picture);
       return;
     }
     const entry = 'mediaId' in link ? layeredEntry(list, link.mediaId) : undefined;
-    const picture = entry && outsidePlayLayered(entry, list);
+    const picture = entry && resolveLayered(entry, list, reads);
     if (entry && picture) out.set(layeredTile(entry.id), picture);
   });
   return out;

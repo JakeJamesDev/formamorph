@@ -272,7 +272,7 @@ describe('EntityStorageService', () => {
     ).rejects.toThrow(/missing required/);
   });
 
-  it('gives the library grid a Layered Image\'s first-Variant picture, rules ignored (Q5)', async () => {
+  it("gives the library grid a Layered Image's picture under the entity's starting values", async () => {
     const rule = [{ all: [{ kind: 'trait' as const, id: 'knight' }] }];
     const data: Entity = { id: 'e1', name: 'Mara', images: [{ layered: { name: 'Rig', layers: [
       { id: 'b', name: 'Body', variants: [{ data: 'data:image/png;base64,Qk9EWQ==' }] },
@@ -280,6 +280,7 @@ describe('EntityStorageService', () => {
     ] } }, { data: 'data:image/png;base64,UExBSU4=' }] };
     await EntityStorageService.storeEntity({ id: 'e1', name: 'Mara', data });
     const meta = (await EntityStorageService.getEntityMetadata()).find((m) => m.id === 'e1');
-    expect(meta?.image).toMatchObject({ kind: 'layered', layers: [{ data: 'data:image/png;base64,Qk9EWQ==' }, { data: 'data:image/png;base64,U01JTEU=' }] });
+    // Mara holds no Knight, so her Face shows its second Variant.
+    expect(meta?.image).toMatchObject({ kind: 'layered', layers: [{ data: 'data:image/png;base64,Qk9EWQ==' }, { data: 'data:image/png;base64,RlJPV04=' }] });
   });
 });

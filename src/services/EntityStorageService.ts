@@ -1,5 +1,6 @@
 import { LibraryStore, type StoredRecord } from './LibraryStore';
-import { migrateEntityImages, primaryPicture } from '@/lib/entityImages';
+import { migrateEntityImages } from '@/lib/entityImages';
+import { entityPicture } from '@/lib/entityLook';
 import { describePlaceholders } from '@/lib/placeholders';
 import { EMPTY_LETTERS, entityPlacementLetters, labelPlaceholders } from '@/lib/placementLetters';
 import { migrateEntityScriptText } from '@/lib/scriptTextMigration';
@@ -32,7 +33,7 @@ class EntityStorageService {
         id: record.id,
         name: labelPlaceholders(record.name, placeholders, { letters: record.data ? entityPlacementLetters(record.data) : EMPTY_LETTERS }),
         description: describePlaceholders(record.data?.playerDescription ?? '', placeholders) || undefined,
-        image: primaryPicture(record.data),
+        image: entityPicture(record.data),
         tags: record.libraryDetails?.tags ?? record.data?.tags ?? [],
         author: record.libraryDetails?.author,
         libraryDetails: record.libraryDetails,

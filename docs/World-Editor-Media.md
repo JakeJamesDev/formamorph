@@ -200,12 +200,12 @@ A **Layered Image** builds one picture from parts. Each **Layer** holds images c
 
   When several Layers change at once, the picture bounces once, tuned by the highest Jelly Layer. Dissolve Layers fade during the bounce. With your system's reduced-motion setting on, Jelly fades like Dissolve. A change to Opacity or Tint shows at once.
 - ▶️ **Play**, beside the Transition modes, shows the selected Layer's next Variant with its transition. Press it again to step on. It only changes the picture in the editor.
-- 👁️ **Preview As** shows the picture as one of the world's entities at the start of a game. **Default Look** shows each Layer's first Variant, as the library and other places outside a game do. **Edit Layers** on an entity's slot opens on that entity.
+- 👁️ **Preview As** shows the picture as one of the world's entities at the start of a game. **Default Look** shows each Layer's first Variant. **Edit Layers** on an entity's slot, or on an entity's image in the Media tab, opens on that entity.
 - ⚠️ **Size warning.** Every Variant stretches to the picture's size: the size of the first Variant in the lowest Layer that has one, usually the bottom Layer. A Variant of another size shows a warning, with both sizes.
 
 On mobile, the panel shows the picture beside the Layer list. The selected Layer sits below, with **Variants**, **Look** and **Motion** tabs. **Look** holds Opacity, Blend Mode and Tint. **Motion** holds the Transition.
 
-**To use one,** select **Choose** in an entity's, a location's or an item's image slot. Layered Images show beside the images. The gallery strip and frame show the picture the Layered Image draws with each Layer's first Variant. The gallery's order and Visibility rules work as they do for any image.
+**To use one,** select **Choose** in an entity's, a location's or an item's image slot. Layered Images show beside the images. In an entity's slot, the picture shows the entity at the start of a game, as **Preview As** does. The library, the character card and a listing show that same picture. In a location's or an item's slot, the picture shows each Layer's first Variant. The gallery's order and Visibility rules work as they do for any image.
 
 Deleting an image that a Layer uses removes it from that Layer, and the confirm names each Layer first. Images that only Layers use are not listed in the Media tab. They show inside their Layered Image's editor, and a search for their name lists the Layered Image that holds them. An image that a field also links stays listed. Each change is one undo step.
 

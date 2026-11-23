@@ -5,20 +5,25 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { RemoteImg } from '@/lib/useRemoteImage';
 import { PictureImg } from '@/components/PictureImg';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
-import { outsidePlayLayered } from '@/lib/layeredImages';
+import { resolveLayered } from '@/lib/layeredImages';
+import { useEntityLookReads } from '@/contexts/RuleSourceContext';
 import { layeredEntry } from '@/lib/mediaList';
 import { formatMediaBytes, mediaAspect, namedBySlot, sectionCards, sectionSelection, sectionTitle, totalBytes, type MediaItem, type MediaKind, type MediaSection } from '@/lib/mediaIndex';
 import { THUMB_FRAME, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
 
+/** The entity holding `item`, whose starting values its Layered Image reads. */
+export const entityParentId = (item: MediaItem): string | undefined => (item.parent.kind === 'entity' ? item.parent.id : undefined);
+
 const KIND_ICON: Record<MediaKind, typeof ImageIcon> = { image: ImageIcon, sound: FileAudio, model: Box, avatar: UserSquare, layered: Layers };
 
-/** A Layered Image's outside-play picture, covering the box; its icon while it can draw nothing. */
-function LayeredThumb({ mediaId, className }: { mediaId: string | undefined; className?: string }) {
+/** A Layered Image's picture under its entity's starting values, covering the box; its icon while it can draw nothing. */
+function LayeredThumb({ item, className }: { item: MediaItem; className?: string }) {
   const list = useGameDataOptional()?.worldOverview.mediaList;
-  const entry = mediaId ? layeredEntry(list, mediaId) : undefined;
-  const picture = entry && outsidePlayLayered(entry, list);
+  const reads = useEntityLookReads(entityParentId(item));
+  const entry = item.mediaId ? layeredEntry(list, item.mediaId) : undefined;
+  const picture = entry && resolveLayered(entry, list, reads);
   if (!picture) return <KindIcon kind="layered" className={className} />;
   return <PictureImg src={picture} crop loading="lazy" decoding="async" alt="" className={cn('bg-muted', className)} />;
 }
@@ -33,7 +38,7 @@ export function MediaThumb({ item, className }: { item: MediaItem; className?: s
   if (item.kind === 'image' && !item.blank) {
     return <RemoteImg src={item.value} loading="lazy" decoding="async" alt="" className={cn('bg-muted object-cover', className)} />;
   }
-  if (item.kind === 'layered') return <LayeredThumb mediaId={item.mediaId} className={className} />;
+  if (item.kind === 'layered') return <LayeredThumb item={item} className={className} />;
   return <KindIcon kind={item.kind} className={className} />;
 }
 
