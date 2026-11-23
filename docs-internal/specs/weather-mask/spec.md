@@ -1,7 +1,7 @@
 # Spec: Weather Mask
 
-Status: ready-for-agent
-Status note: Reopened 2026-11-23 for ticket 06 (Q20, Q21). Closed earlier that day: tickets 01–05 done, last landing 27c4f3943. Review: spec text corrected. Gates green on 2026-11-23 for the repo; lint errors come only from the gitignored worlds-wip folder.
+Status: done
+Status note: 2026-11-23, tickets 01–07 done, last landing 6f2d599f3 (reopened the same day for 06 and 07, Q20–Q25). Review: spec text corrected. Gates green on 2026-11-23 for the repo; lint errors come only from the gitignored worlds-wip folder.
 Spec session: weather-mask — spec
 
 ## Problem Statement
@@ -39,7 +39,7 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
 | Q14 | Only location images offer a Weather Mask. |
 | Q15 | The Test Bench warns when a mask's aspect ratio differs from an image that links it. |
 | Q16 | The control is called Weather Mask; the Media List kind shows as Mask. |
-| Q17 | The work ships as five tickets: entries and control, play, brush editor, preview and Media tab editing, Test Bench warning. |
+| Q17 | (Tickets 06 and 07 followed for Q20–Q25.) The work ships as five tickets: entries and control, play, brush editor, preview and Media tab editing, Test Bench warning. |
 | Q18 | The Weather Mask control shows in Advanced mode only. |
 | Q19 | Settled by prototype, 2026-11-23. The brush editor is "in the scene": the whole picture sits large in the window on black, fit so every edge is paintable (the prototype's contain fit), with the weather showing through the mask. Tools float over it and rest faded until hovered or focused. Touch has no hover: on mobile the controls stay solid and stack, Cancel and Save above the picture and every tool in one panel below. On every device the controls hide while a stroke is in progress. Prototype: branch `prototype/weather-mask-brush` (commit f9d6ec4e2, variant B), `#dev?modal=weatherMaskPrototype&proto=B`. |
 | Q20 | Amends Q13, 2026-11-23. The Weather Mask row under the location image goes, with its thumbnail, name and "None". One mask button sits on the location image frame, bottom right, and opens a menu: Paint or Edit, Upload or Replace, Choose, Show or Hide Mask, Remove. |
@@ -128,7 +128,7 @@ Settled in the grill, 2026-11-23. A ruling reopens on new evidence, never on a n
 
 **Brush editor**
 
-- A full-window editor in the scene (Q19): the whole picture fits the window on black (contain, not play's cover crop), so the edges another screen shape shows stay paintable; the mask shows as a tint that can be hidden, and the weather preview draws through the mask. A floating toolbar holds the tools and the size and softness sliders; a corner card holds the preview kind, Show or Hide Mask, and the switch between pictures that share the mask; Save and Cancel sit top right. On desktop each control group rests faded and returns to full on hover or keyboard focus. On mobile, Cancel and Save sit above the picture and every other control in one solid panel below it. On both, every control hides while a stroke is in progress. Tools: brush and eraser with size, soft edge, invert, fill and clear, undo and redo (Q8). Save writes the mask; Cancel discards.
+- A full-window editor in the scene (Q19): the whole picture fits the window on black (contain, not play's cover crop), so the edges another screen shape shows stay paintable; the mask shows as a tint that can be hidden, and the weather preview draws through the mask. A floating toolbar holds the tools, the size and softness sliders, and on desktop the Fit button with the zoom percentage (zoom and pan per Q23); a corner card holds the preview kind, Show or Hide Mask, and the switch between pictures that share the mask; Save and Cancel sit top right. On desktop each control group rests faded and returns to full on hover or keyboard focus. On mobile, Cancel and Save sit above the picture and every other control in one solid panel below it. On both, every control hides while a stroke is in progress. Tools: brush and eraser with size, soft edge, invert, fill and clear, undo and redo (Q8). Save writes the mask; Cancel discards.
 - Ticket 03 opens over the slot's own picture; its corner card holds Show or Hide Mask and the shared-count note. Ticket 04 adds the preview kind and the picture switch.
 - Cancel and Escape discard at once when nothing was painted, and ask before discarding painted changes. Ctrl+Z undoes; Ctrl+Shift+Z and Ctrl+Y redo.
 - A mask of another shape stretches to the picture's box on open and saves at the size of the picture the editor opened over, as play stretches it. Switching picture in the Media tab editor reshapes the box but keeps that size.
