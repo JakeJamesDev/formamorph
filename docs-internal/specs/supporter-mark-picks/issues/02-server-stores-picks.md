@@ -5,7 +5,9 @@ Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
 
-Repo: FormamorphServer. Routes, storage and the pick check.
+Repo: FormamorphServer
+
+Routes, storage and the pick check.
 
 ## What to build
 

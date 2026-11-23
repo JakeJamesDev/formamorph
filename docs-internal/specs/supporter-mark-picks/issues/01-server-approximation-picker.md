@@ -5,7 +5,9 @@ Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
 
-Repo: FormamorphServer. The world path of supporter processing only; no route or client change.
+Repo: FormamorphServer
+
+The world path of supporter processing only; no route or client change.
 
 ## What to build
 
