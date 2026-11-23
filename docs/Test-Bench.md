@@ -91,6 +91,7 @@ The **Issues** tab is the World Doctor. It checks your world's structure: broken
   - A bottom Layer that can show nothing: it has no Variant, or every Variant has a Visibility Rule that can fail.
   - A Variant rule that names a trait or stat the world doesn't have.
   - A Layered Image with no Layers.
+- In **Advanced** mode, a Weather Mask whose shape differs from the picture that links it is a warning. It names the location, the image and the mask, and opens the location. The mask would stretch over the picture. A small difference is fine.
 - Each finding is one row with the items it names. A **New** tag marks a row you haven't seen.
 - **Fix** repairs a row when the fix is safe. **Fix All** repairs every item in the row.
 - **Dismiss** hides a row. It is an eye icon button on the row, and its tooltip reads "Dismiss". A row about a missing source can't be dismissed.

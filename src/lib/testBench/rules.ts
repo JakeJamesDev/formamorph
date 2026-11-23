@@ -3071,6 +3071,18 @@ export const LAYERED_SIZE_MISMATCH: RuleHead = {
   summary: (count) => `${count} Layered Image Variants differ in size from their canvas`,
 };
 
+/**
+ * The Weather Mask aspect row. A head without a `check` for the same reason as the size row; the findings come
+ * from `lib/testBench/maskAspects`.
+ */
+export const MASK_ASPECT_MISMATCH: RuleHead = {
+  id: 'mask-aspect-mismatch',
+  severity: 'warning',
+  section: 'locations',
+  advanced: true,
+  summary: (count) => `${count} Weather Masks differ in shape from their picture`,
+};
+
 // ── Trait links ───────────────────────────────────────────────────────────────────────────────────────────
 
 /** Why a link adds nothing to its owner's tree. */
@@ -4197,7 +4209,7 @@ export const SOURCE_UNAVAILABLE: RuleHead = {
 /** Everything that can put a row in the Issues list — the live rules plus the on-demand checks. */
 const RULE_HEADS: readonly RuleHead[] = [
   ...RULES, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME, WORLD_TOO_LARGE,
-  SOURCE_NOT_FOUND, SOURCE_UNAVAILABLE, LAYERED_SIZE_MISMATCH,
+  SOURCE_NOT_FOUND, SOURCE_UNAVAILABLE, LAYERED_SIZE_MISMATCH, MASK_ASPECT_MISMATCH,
 ];
 
 /** The one lookup from a finding's rule id back to what raised it. */

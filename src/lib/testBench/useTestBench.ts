@@ -40,6 +40,7 @@ import { useBenchPass } from './useBenchPass';
 import { useLatestRun } from './useLatestRun';
 import { checkWorldSize } from './worldTooLarge';
 import { checkLayeredSizes, layeredVariantSources } from './layeredSizes';
+import { checkMaskAspects, maskAspectSources } from './maskAspects';
 import { useImageFacts } from '@/lib/imageFacts';
 import { useSourceChecks } from './useSourceChecks';
 import { applyRepair, type MissingSource, type RepairAction, type ReplacementPick } from '@/lib/sourceChecks';
@@ -191,6 +192,10 @@ export function useTestBench({
   const layeredSizeFindings = useSameFindings(useMemo(
     () => checkLayeredSizes(benchWorld, (data) => variantFacts.get(data)?.size), [benchWorld, variantFacts],
   ));
+  const maskFacts = useImageFacts(useMemo(() => maskAspectSources(benchWorld), [benchWorld]));
+  const maskAspectFindings = useSameFindings(useMemo(
+    () => checkMaskAspects(benchWorld, (data) => maskFacts.get(data)?.size), [benchWorld, maskFacts],
+  ));
   const benchWorldMeta = worldMetadata.find((m) => m.id === worldId);
   // Out of band for a third reason: the answers come from the server, and only when the author asks. The
   // record outlives the session, so these rows come back with the world rather than with the request.
@@ -200,9 +205,10 @@ export function useTestBench({
     const staticFindings = pass.findings;
     if (staticFindings === null) return NO_FINDINGS;
     return codeFindings.length === 0 && sizeFindings.length === 0 && sourceFindings.length === 0 && layeredSizeFindings.length === 0
+      && maskAspectFindings.length === 0
       ? staticFindings
-      : [...staticFindings, ...codeFindings, ...sizeFindings, ...layeredSizeFindings, ...sourceFindings];
-  }, [pass.findings, codeFindings, sizeFindings, layeredSizeFindings, sourceFindings]);
+      : [...staticFindings, ...codeFindings, ...sizeFindings, ...layeredSizeFindings, ...maskAspectFindings, ...sourceFindings];
+  }, [pass.findings, codeFindings, sizeFindings, layeredSizeFindings, maskAspectFindings, sourceFindings]);
   // Semantic scoring is opt-in per session and never remembered: a toggle that came back on by itself would
   // let an author read a semantic firing as proof their keywords work.
   const [semanticOn, setSemanticOn] = useState(false);
