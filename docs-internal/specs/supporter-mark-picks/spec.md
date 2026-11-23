@@ -72,12 +72,12 @@ Q6 and Q8 were not used in the grill.
 - **Server storage.** The listing stores the picks per revision. A publish or update without the field clears them, so the listing falls back to the approximation (Q11). No route returns the field (Q14).
 - **Server picker.** The world path of supporter processing replaces "cover + 4 largest" with:
   1. The cover, when it is markable (not linked, animated, SVG or undecodable).
-  2. Characters in pick order: each pick, checked, until the character budget (4, or 5 with no markable cover) is spent. A check failure, or an entity with no pick, uses the approximation for that entity.
+  2. Characters in World Editor tree order: each entity's pick, checked, until the character budget (4, or 5 with no markable cover) is spent. A check failure, or an entity with no pick, uses the approximation for that entity.
   3. The largest remaining eligible images, by width × height, ties in first-appearance order, for any budget left.
   - An image is eligible as today: at least 310k pixels, not animated, not SVG, decodable. An image already chosen counts once; the next candidate takes the free mark.
 - **Approximation (Q11).** For an entity without a usable pick: its first gallery slot without a Visibility rule. When that slot is a Layered Image, the first Variant without a rule on its base Layer. It handles every gallery shape the server can meet: a `mediaId` link, an embedded image, an embedded Layered Image, and the legacy single-portrait field.
 - **Mark and encoding.** Unchanged: lossless WebP, no scramble for worlds, a marked Media Entry drops `hash` and takes `type: image/webp`.
-- **Cache.** The world processing version salt changes, so every cached world copy is retired.
+- **Cache.** World copies are never cached. The processing version salt changed anyway, which retired the cached Mascot copies once; Mascot output is unchanged.
 - **Old clients.** A 3.8.0 client sends no picks and gets the approximation. Nothing in the response shape changes.
 
 ## Testing Decisions
@@ -117,3 +117,4 @@ Good tests check what leaves the server and what the client sends, never the pic
 - Sunmeadow today: 340 images, all past the 310k floor; 114 backdrops at 2.1 MP tie for the 4 marks; character art is 832×1216.
 - Measured cost on the dev PC: a marked 832×1216 image is about 0.66 MB of lossless WebP, about 0.1 s to mark. The API server is slower and unmeasured. Q3 keeps the count at 5, and character art is smaller than backdrops, so a typical download gets smaller.
 - The server's `large-supporter-worlds` spec still reads "Not deployed" in its Status note; the deploy log shows it deployed on 2026-11-20.
+- Known gap, accepted at the close review (2026-11-23): a held update that carries no new content has empty held picks, so the staff review preview marks by the approximation even when live picks exist. Players are not affected.
