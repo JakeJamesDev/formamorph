@@ -11,7 +11,7 @@ Item, time, weather and Opening Conditions get their own tokens in the Requires 
 
 **Item:** `[Albus] [owns] [Lantern] ([lit, identified])`
 
-- Owner: a list token (Q7).
+- Owner: a list token (Q7). Ticket 02 kept the add picker's owner page for item picks only; remove it here, so a new item Condition starts with no owner.
 - Verb: a list token with four forms: owns, doesn't own, has equipped, doesn't have equipped (Q21). "Has equipped" is offered only for an item that fits a slot.
 - Target: a list token with items of the same status. Its popover also holds the State word and the identity choice (Q16).
 - The checks show in the sentence only when set, as a token that opens the same controls.

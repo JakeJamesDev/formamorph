@@ -55,10 +55,15 @@ Every place that reads a rule as text uses the same wording: the editor, the pla
 | Q22 | A row wraps at "and". A Condition that does not fit moves to the next line whole, and the "and" stays on the line above. |
 | Q23 | "or" sits on its own line, muted, at the row's text size. |
 | Q24 | A persona Condition reads "The player is Albus" / "is not". (Replaces "plays as", 2026-11-24.) |
-| Q25 | A Condition with no owner that reads the world's own traits or stats (global scope) has no subject in the editor: "Paladin is active", "A trait in Combat is active", "Gold is at least 5". An item Condition there reads the persona and keeps "The player owns Lantern". The player's lock line keeps Q18 for traits and groups ("you have Paladin"); a world stat has no subject in both views. |
+| Q25 | A Condition with no owner that reads the world's own traits or stats (global scope) has no subject in the editor: "Paladin is active", "A trait in Combat is active", "Gold is at least 5". An item Condition there reads the persona and keeps "The player owns Lantern". The player's lock line reads the same, with no subject: "Paladin is active", not "you have Paladin" (ruled 2026-11-24, after ticket 01). "You" stays for a Condition that reads the persona. |
 | Q26 | An empty set reads as a prompt in its broken token: "It is [pick a time]", "The weather is [pick the weather]", "The opening is [pick an opening]". |
 | Q27 | A stat's value is one token, "50%". Its popover holds the number and the Raw / % switch. |
 | Q28 | The builder always writes the full subject. No "its" or "their" for a repeated subject. |
+| Q29 | Every gate line that carries clauses takes a colon and a final period: "Requires: Knight is active and Paladin is not active, or Mercenary is active." "Unlocked by" lines follow the same rule. A bare "Locked" label is unchanged. |
+| Q30 | The You pill leaves every gate line. In the player's view, a Condition whose owner is the played persona reads "you" / "your", a named entity that is played included. |
+| Q31 | On a row with no subject (Q25), the target token's popover holds an Owner list above the swap list. A pick writes the owner, and the sentence gains its subject token. |
+| Q32 | On an item's image rule, a Condition with no owner reads "The item's owner". |
+| Q33 | Token popovers in the Requires field are modal in every host. |
 
 ### Grammar (Q20)
 
@@ -125,7 +130,7 @@ Brackets mark tokens.
 **Everywhere else**
 
 29. As an author, I want the same sentence editor in traits, image rules, entity and location gates and Routines, so that I learn it once.
-30. As a player, I want a lock line in full clauses, such as "Requires: you have Knight and you don't have Paladin, or you have Mercenary", so that I know what to do.
+30. As a player, I want a lock line in full clauses, such as "Requires: Knight is active and you own Lantern, or Mercenary is active.", so that I know what to do.
 31. As a player, I want the lock line to say "you" for my persona, so that I know which Conditions are about me.
 32. As an author, I want code cards and update notes to use the same words as the editor, so that one rule never has two wordings.
 33. As a keyboard user, I want every token, × and add control reachable by Tab with a spoken label, so that I can edit a rule without a mouse.
@@ -197,7 +202,7 @@ A good test here reads what the author or player reads and checks what an edit w
 
 **Open points from the prototype.** These are not ruled. The build should raise each one with the spec session.
 
-- **Density.** Almost every word is underlined. A row with three or more Conditions looks busy. A lighter underline, or underline on hover for some token types, are candidates.
+- **Density.** Almost every word is underlined. A row with three or more Conditions looks busy. The user wants to see a lighter underline before ruling: ticket 02 keeps today's look and stores two comparison frames.
 - **Popover in a popover.** The image rule editor already sits in a popover. Token popovers inside it need the modal popover setting, or wheel scroll stops.
 
 ## Prototype
