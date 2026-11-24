@@ -46,7 +46,8 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  does nothing on an empty library. `community` opens Community Creations from MainMenu,
  *  in the modal the app raises; `mode=page` swaps it for the full-page shell a site entry would use.
  *  `memoryManager` is
- *  in-game (GameViewer) and opens on an empty ledger before any turn has been summarized. `profile` opens
+ *  in-game (GameViewer) and opens on an empty ledger before any turn has been summarized; `diary=<name>` opens
+ *  that character's diary, and `fixture=diaries` seeds a save with diaries. `profile` opens
  *  the account dialog (Messages/Manage), `feedbackHub` the reader's side of bugs and suggestions, and
  *  `adminPanel` the admin tools (Users/Broadcasts). All three need a signed-in session, and `adminPanel`
  *  an admin one, so they open empty otherwise rather than failing. `location` is in game (GameViewer) and

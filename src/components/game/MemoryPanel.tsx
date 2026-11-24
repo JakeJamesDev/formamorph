@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useDevRoute } from '@/lib/devRouter';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { buildMemoryLedger, matchesMemoryFilter, MEMORY_FILTER_LABELS, MEMORY_FILTER_COUNT_LABELS, memorySentTip, CLEAR_PIN_LABEL, type MemoryFilter } from '@/lib/memoryView';
@@ -24,8 +23,17 @@ import { Hint, Meta } from '@/components/ui/typography';
 /** Ordered by how present a memory is. The Manager carries the rest. */
 const PANEL_FILTERS: MemoryFilter[] = ['all', 'verbatim', 'summary', 'held', 'custom'];
 
-export const MemoryPanel = ({ onRegenerateMemory }: {
+/** A request to open Memories, on a diary when `diary` names one. A new `key` asks again. */
+export interface MemoriesRequest {
+  key: string;
+  diary?: string;
+}
+
+export const MemoryPanel = ({ onRegenerateMemory, memoriesRequest, onMemoriesOpened }: {
   onRegenerateMemory?: (turnId: string, signal: AbortSignal) => Promise<string | null | undefined>;
+  memoriesRequest?: MemoriesRequest | null;
+  /** The request opened the manager; the host clears it, so a later visit to the tab doesn't open it again. */
+  onMemoriesOpened?: () => void;
 }) => {
   const {
     fullMessageHistory,
@@ -41,12 +49,21 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
   // Editing states (Let Go, Edited, Deleted) belong to the Manager, where you can act on them.
   const [filter, setFilter] = useState<MemoryFilter>('all');
 
-  // DEV-only: land straight on the manager (`#dev?view=gameViewer&modal=memoryManager`).
-  const devRoute = useDevRoute();
+  const [managerDiary, setManagerDiary] = useState<string | undefined>(undefined);
+  const openManager = (diary?: string) => {
+    setManagerDiary(diary);
+    setManagerOpen(true);
+  };
+
+  // A request from outside the tab opens the manager once, then is spent.
+  const requestKey = memoriesRequest?.key;
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    if (devRoute?.modal === 'memoryManager') setManagerOpen(true);
-  }, [devRoute?.modal]);
+    if (!memoriesRequest) return;
+    openManager(memoriesRequest.diary);
+    onMemoriesOpened?.();
+    // Keyed on the request alone; the callback changes identity each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestKey]);
 
   const ledger = useMemo(
     () => buildMemoryLedger({
@@ -72,12 +89,12 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
   };
 
   const manageButton = (
-    <Button variant="outline" size="sm" className="h-7 w-full text-meta" onClick={() => setManagerOpen(true)}>
+    <Button variant="outline" size="sm" className="h-7 w-full text-meta" onClick={() => openManager()}>
       <SlidersHorizontal className="mr-1 h-3.5 w-3.5" /> Manage Memories
     </Button>
   );
   const manager = (
-    <MemoryManagerModal isOpen={managerOpen} onOpenChange={setManagerOpen} onRegenerate={onRegenerateMemory} />
+    <MemoryManagerModal isOpen={managerOpen} onOpenChange={setManagerOpen} onRegenerate={onRegenerateMemory} initialDiary={managerDiary} />
   );
 
   const rows = ledger.rows.filter((r) => matchesMemoryFilter(r, filter));

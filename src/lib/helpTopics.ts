@@ -192,6 +192,17 @@ The story keeps your recent turns word for word and carries older turns as short
 
 **Reset All My Changes** puts every memory back the way the story had it. The memories you wrote stay. You can't undo a reset.
 
+**Character diaries**
+
+With **Character Diaries** on, each character keeps a first-person diary. The list beside your memories shows **Story** first, then one diary for each character, in the order they first wrote. On mobile, the list is under **Sections**.
+
+- A diary shows its entries oldest first. Each entry names its turn, with that turn's memory above it.
+- A **Script** badge marks a line the world's script wrote. You can't change it.
+- Entries that say *Nothing notable* are hidden. Turn on **Show Hidden Entries** to see them, faded.
+- Search looks only in the open diary.
+
+Turn **Character Diaries** off, and the diaries your save already has still show here, with a note. Characters write no new entries.
+
 Memories under the **Recent** line still go to the AI word for word. A pin on one of them matters only after it ages out.
 
 **Kept isn't the same as sent.** A kept memory is one the story judged worth carrying, or one you pinned. With **Semantic Memory** on, only the kept memories most relevant to your action go to the AI.

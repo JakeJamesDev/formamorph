@@ -60,6 +60,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Traits and image Visibility rules can now require the opening a game started from.** Pick Opening under Add Requirement, then check the openings that count. It holds all game, and players don't see it in requirement lines.
   - **Memories:**
     - **Regenerating a memory in Memories shows the new text first.** Keep stores it. Discard leaves the memory as it was.
+  - **Character Diaries:**
+    - **The Memories dialog shows each character's diary.** Pick a character beside **Story** to read their entries, oldest first, each under its turn's memory. Entries that say *Nothing notable* stay hidden until you turn on **Show Hidden Entries**.
   - **Script entries now tell you what they are.** Every entity, location, item, stat, trait and other entry in a script reads a read-only `category`, such as "entity" or "itemInstance".
   - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
   - **Edit your Avatar's look during play from the pencil on your Avatar.** Change sliders, colors and hair, or switch Avatars when the world allows it. The new look stays after a rollback or a regenerate.

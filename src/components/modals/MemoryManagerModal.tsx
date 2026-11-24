@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'react-toastify';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -19,6 +19,14 @@ import { cn } from '@/lib/utils';
 import { randomUUID } from '@/lib/uuid';
 import { playerEdit, restoreAll, restoreMemory } from '@/lib/namedMemories';
 import { deletedMemoryIds, hasMemoryChanges, withMemoryDeleted, withMemoryText, withoutMemoryChanges, withoutMemoryText } from '@/lib/turnTextEdits';
+import { buildDiaries, diaryCounts, diaryKey, visibleDiaryEntries } from '@/lib/diaryView';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { NavRail, type NavRailGroup } from '@/components/NavRail';
+import { EditorSectionsBar } from '@/components/editor/EditorSectionsBar';
+import { useIsMobile } from '@/lib/useIsMobile';
+import { NotebookPen, ScrollText } from 'lucide-react';
+import { MemoryDiaryView } from './MemoryDiaryView';
 
 /**
  * The Memory Manager: the full surface for the story's long-term memory. The side panel stays the
@@ -36,13 +44,21 @@ export const MEMORY_SOFT_LIMIT = 400;
 /** Ordered by how present a memory is, most first: whole text, sent as a summary, merely kept. */
 const FILTERS: MemoryFilter[] = ['all', 'verbatim', 'summary', 'held', 'letGo', 'edited', 'custom', 'deleted'];
 
+const STORY_VIEW = 'story';
+/** A diary's tab value. The prefix keeps a character named "story" apart. */
+const diaryTabValue = (name: string) => `diary:${diaryKey(name)}`;
+const RAIL_STORAGE_KEY = 'formamorph.memories.navRail';
+
 export const MemoryManagerModal = ({
   isOpen,
   onOpenChange,
   onRegenerate,
+  initialDiary,
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The diary to open on, by name; Story when absent or when the save has no such diary. */
+  initialDiary?: string;
   /** Re-run the digest prompt for a turn, waiting behind other AI work; `signal` cancels it. Resolves the new
    *  text, null when there's nothing to summarize or it failed, and undefined when it was canceled. */
   onRegenerate?: (turnId: string, signal: AbortSignal) => Promise<string | null | undefined>;
@@ -56,8 +72,12 @@ export const MemoryManagerModal = ({
     gameTime, calendar,
     contextMemoryIds, rehydratedMemoryIds,
   } = useGameplay();
-  const { memoryDigests, narrationVerbatimTurns, aiClock } = useSettings();
+  const { memoryDigests, narrationVerbatimTurns, aiClock, characterDiaries } = useSettings();
+  const isMobile = useIsMobile();
 
+  const [view, setView] = useState(STORY_VIEW);
+  const [sectionsOpen, setSectionsOpen] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<MemoryFilter>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -73,6 +93,13 @@ export const MemoryManagerModal = ({
     setRegenerating(null);
     setPreview(null);
   }, [isOpen]);
+  // Each opening starts on the asked-for diary, or on Story.
+  useEffect(() => {
+    if (!isOpen) return;
+    setView(initialDiary ? diaryTabValue(initialDiary) : STORY_VIEW);
+    setQuery('');
+    setShowHidden(false);
+  }, [isOpen, initialDiary]);
   const [confirmReset, setConfirmReset] = useState(false);
   // The oldest memory anchors the scene; deleting it is allowed but warned about once (see ledger docs).
   const [confirmOldest, setConfirmOldest] = useState<string | null>(null);
@@ -113,6 +140,39 @@ export const MemoryManagerModal = ({
       return true;
     });
   }, [ledger.rows, filter, query, preview?.id]);
+
+  const diaries = useMemo(() => buildDiaries(fullMessageHistory, turnTextEdits), [fullMessageHistory, turnTextEdits]);
+  // A diary the save doesn't have shows Story; each opening sets the view again.
+  const diary = view === STORY_VIEW ? undefined : diaries.find((d) => diaryTabValue(d.name) === view);
+  const shownView = diary ? view : STORY_VIEW;
+
+  const selectView = (next: string) => {
+    setView(next);
+    setQuery('');
+    setAdding(false);
+    setEditingId(null);
+  };
+
+  const memoryByTurn = useMemo(
+    () => new Map(ledger.rows.filter((r) => !r.isNote && !r.deleted && r.text).map((r) => [r.id, r.text])),
+    [ledger.rows],
+  );
+  const counts = diary ? diaryCounts(diary) : { read: 0, hidden: 0 };
+  const diaryEntries = useMemo(
+    () => (diary ? visibleDiaryEntries(diary, { query, showHidden }) : []),
+    [diary, query, showHidden],
+  );
+  let diaryEmptyText: ReactNode = 'No entries to show.';
+  if (query.trim()) diaryEmptyText = 'No entries match that.';
+  else if (!showHidden && counts.hidden > 0) {
+    diaryEmptyText = <>Every entry here is hidden. Turn on <strong>Show Hidden Entries</strong> to see them.</>;
+  }
+
+  const railGroups: NavRailGroup[] = [
+    { id: 'story', tabs: [{ value: STORY_VIEW, label: 'Story', icon: ScrollText }] },
+    { id: 'diaries', tabs: diaries.map((d) => ({ value: diaryTabValue(d.name), label: `${d.name}'s Diary`, icon: NotebookPen })) },
+  ];
+  const railed = diaries.length > 0;
 
   const setPin = (id: string, pin: 'keep' | 'drop' | null) => {
     setMemoryPins((prev) => {
@@ -217,251 +277,305 @@ export const MemoryManagerModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent surface="memoryManager" className="sm:max-w-[720px] h-[85dvh] max-h-[85dvh] flex flex-col gap-3">
+      <DialogContent surface="memoryManager" className={cn('sm:max-w-[720px] h-[85dvh] max-h-[85dvh] flex flex-col gap-3', railed && !isMobile && 'sm:max-w-[900px]')}>
         <DialogHeader className="space-y-1">
           <DialogTitle className="flex items-center gap-2">
             Memories
             <HelpButton topicId="game.memoryManager" className={dialogTitleControl} />
           </DialogTitle>
           <DialogDescription>
-            {filter === 'all'
-              ? `${ledger.totalCount} ${MEMORY_FILTER_COUNT_LABELS.all}`
-              : `${visible.length} of ${ledger.totalCount} ${MEMORY_FILTER_COUNT_LABELS[filter]}`}
-            {editedCount > 0 && ` · ${editedCount} edited`}
-            {mineCount > 0 && ` · ${mineCount} yours`}
+            {diary ? (
+              <>
+                {`${counts.read} ${counts.read === 1 ? 'entry' : 'entries'}`}
+                {counts.hidden > 0 && ` · ${counts.hidden} hidden`}
+              </>
+            ) : (
+              <>
+                {filter === 'all'
+                  ? `${ledger.totalCount} ${MEMORY_FILTER_COUNT_LABELS.all}`
+                  : `${visible.length} of ${ledger.totalCount} ${MEMORY_FILTER_COUNT_LABELS[filter]}`}
+                {editedCount > 0 && ` · ${editedCount} edited`}
+                {mineCount > 0 && ` · ${mineCount} yours`}
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
-        {!memoryDigests && (
-          <Meta as="p" className="rounded border border-border bg-muted/40 p-2">
-            <strong>Memory Summaries</strong> is off, so the story writes no memories of its own. Memories you add or edit
-            here still go to the AI.
-          </Meta>
-        )}
-
-        <div className="flex flex-wrap items-center gap-2">
-          <SearchField
-            value={query}
-            onChange={setQuery}
-            placeholder="Search memories"
-            size="sm"
-            className="flex-grow min-w-[140px]"
-          />
-          <Button size="sm" variant="outline" className="h-8" onClick={() => { setAdding(true); setEditingId(null); setDraft(''); }}>
-            <Plus className="mr-1 h-3.5 w-3.5" /> Add Memory
-          </Button>
-        </div>
-        <div className="flex flex-wrap gap-1">
-          {FILTERS.map((f) => (
-            <Button
-              key={f}
-              size="sm"
-              variant={filter === f ? 'default' : 'outline'}
-              className="h-6 px-2 text-[11px]"
-              onClick={() => setFilter(f)}
-            >
-              {MEMORY_FILTER_LABELS[f]}
-            </Button>
-          ))}
-        </div>
-
-        {adding && (
-          <div className="rounded border border-primary/50 p-2 space-y-2">
-            <Textarea
-              autoFocus
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Write something the story should remember"
-              className="min-h-[80px] text-meta"
+        <Tabs
+          value={shownView}
+          onValueChange={selectView}
+          orientation="vertical"
+          activationMode={isMobile ? 'manual' : 'automatic'}
+          className={cn('flex min-h-0 flex-1 gap-3', isMobile && 'flex-col')}
+        >
+          {railed && (isMobile ? (
+            <EditorSectionsBar
+              groups={railGroups}
+              label="Memory Sections"
+              bodyId="memory-sections"
+              value={shownView}
+              open={sectionsOpen}
+              onOpenChange={setSectionsOpen}
             />
-            <div className="flex items-center justify-between">
-              {counter}
-              <div className="flex gap-1">
-                <Button size="sm" variant="ghost" className="h-7" onClick={() => { setAdding(false); setDraft(''); }}>Cancel</Button>
-                <Button size="sm" className="h-7" onClick={addNote} disabled={!draft.trim()}>Add</Button>
-              </div>
-            </div>
-          </div>
-        )}
+          ) : (
+            <NavRail groups={railGroups} value={shownView} label="Memory Sections" storageKey={RAIL_STORAGE_KEY} className="-my-1" />
+          ))}
+          <TabsContent value={shownView} className="mt-0 flex min-h-0 min-w-0 flex-1 flex-col gap-3">
 
-        <ScrollArea className="flex-grow min-h-0 -mx-1 px-1">
-          <div className="space-y-1 pb-2">
-            {visible.length === 0 && (
-              <Meta as="p" className="p-2">
-                {ledger.totalCount === 0
-                  ? 'No memories yet. A memory appears when a turn is summarized.'
-                  : 'No memories match that.'}
+            {!diary && !memoryDigests && (
+              <Meta as="p" className="rounded border border-border bg-muted/40 p-2">
+                <strong>Memory Summaries</strong> is off, so the story writes no memories of its own. Memories you add or edit
+                here still go to the AI.
               </Meta>
             )}
-            {visible.map((row, i) => {
-              // The Recent divider only means anything against the full chronological list.
-              const showDivider = filter === 'all' && !query && i === ledger.recentFrom;
-              const isEditing = editingId === row.id;
-              return (
-                <div key={row.id}>
-                  {showDivider && (
-                    <div className="flex items-center gap-2 py-1" aria-label="Recent Memories">
-                      <div className="h-hairline flex-grow bg-border" />
-                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Recent</span>
-                      <div className="h-hairline flex-grow bg-border" />
-                    </div>
-                  )}
-                  {/* Accent marks what actually reached the model last turn — the minority state, and the
-                      one the panel can't otherwise tell you. See MemoryPanel for the reasoning. */}
-                  <div
-                    className={cn(
-                      'rounded border border-border p-2',
-                      !row.kept && !isEditing && 'opacity-60',
-                      row.inContext && !isEditing && 'border-l-2 border-l-primary',
-                    )}
-                  >
-                    {isEditing ? (
-                      <div className="space-y-2">
-                        <Textarea
-                          autoFocus
-                          value={draft}
-                          onChange={(e) => setDraft(e.target.value)}
-                          className="min-h-[80px] text-meta"
-                        />
-                        <div className="flex items-center justify-between">
-                          {counter}
-                          <div className="flex gap-1">
-                            <Button size="sm" variant="ghost" className="h-7" onClick={() => setEditingId(null)}>
-                              <X className="mr-1 h-3.5 w-3.5" /> Cancel
-                            </Button>
-                            <Button size="sm" className="h-7" onClick={() => saveEdit(row)} disabled={!draft.trim()}>
-                              <Check className="mr-1 h-3.5 w-3.5" /> Save
-                            </Button>
-                          </div>
+            {diary && !characterDiaries && (
+              <Meta as="p" className="rounded border border-border bg-muted/40 p-2">
+                <strong>Character Diaries</strong> is off, so characters write no new diary entries.
+              </Meta>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <SearchField
+                value={query}
+                onChange={setQuery}
+                placeholder={diary ? `Search ${diary.name}'s diary` : 'Search memories'}
+                size="sm"
+                className="flex-grow min-w-[140px]"
+              />
+              {!diary && (
+                <Button size="sm" variant="outline" className="h-8" onClick={() => { setAdding(true); setEditingId(null); setDraft(''); }}>
+                  <Plus className="mr-1 h-3.5 w-3.5" /> Add Memory
+                </Button>
+              )}
+            </div>
+            {diary ? (
+              <label className="flex h-6 cursor-pointer items-center gap-2 text-meta">
+                <Checkbox checked={showHidden} onCheckedChange={(v) => setShowHidden(v === true)} className="shrink-0" />
+                <span>Show Hidden Entries</span>
+              </label>
+            ) : (
+            <div className="flex flex-wrap gap-1">
+              {FILTERS.map((f) => (
+                <Button
+                  key={f}
+                  size="sm"
+                  variant={filter === f ? 'default' : 'outline'}
+                  className="h-6 px-2 text-[11px]"
+                  onClick={() => setFilter(f)}
+                >
+                  {MEMORY_FILTER_LABELS[f]}
+                </Button>
+              ))}
+            </div>
+            )}
+
+            {adding && (
+              <div className="rounded border border-primary/50 p-2 space-y-2">
+                <Textarea
+                  autoFocus
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder="Write something the story should remember"
+                  className="min-h-[80px] text-meta"
+                />
+                <div className="flex items-center justify-between">
+                  {counter}
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" className="h-7" onClick={() => { setAdding(false); setDraft(''); }}>Cancel</Button>
+                    <Button size="sm" className="h-7" onClick={addNote} disabled={!draft.trim()}>Add</Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <ScrollArea className="flex-grow min-h-0 -mx-1 px-1">
+              {diary ? (
+                <MemoryDiaryView
+                  entries={diaryEntries}
+                  memoryByTurn={memoryByTurn}
+                  emptyText={diaryEmptyText}
+                />
+              ) : (
+              <div className="space-y-1 pb-2">
+                {visible.length === 0 && (
+                  <Meta as="p" className="p-2">
+                    {ledger.totalCount === 0
+                      ? 'No memories yet. A memory appears when a turn is summarized.'
+                      : 'No memories match that.'}
+                  </Meta>
+                )}
+                {visible.map((row, i) => {
+                  // The Recent divider only means anything against the full chronological list.
+                  const showDivider = filter === 'all' && !query && i === ledger.recentFrom;
+                  const isEditing = editingId === row.id;
+                  return (
+                    <div key={row.id}>
+                      {showDivider && (
+                        <div className="flex items-center gap-2 py-1" aria-label="Recent Memories">
+                          <div className="h-hairline flex-grow bg-border" />
+                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Recent</span>
+                          <div className="h-hairline flex-grow bg-border" />
                         </div>
-                      </div>
-                    ) : preview?.id === row.id ? (
-                      <RegeneratePreview
-                        current={row.text}
-                        proposed={preview.text}
-                        onKeep={() => keepPreview(row, preview.text)}
-                        onDiscard={() => setPreview(null)}
-                      />
-                    ) : (
-                      <>
-                        <div className="flex items-start gap-2">
-                          {/* The tip is on the text, not the row: a row-wide trigger would also fire under
-                              the action buttons, which have tips of their own. It covers the same span as the
-                              accent it explains, which is hidden while editing. */}
-                          <Tip
-                            labelsChild={false}
-                            tip={memorySentTip(row)}
-                          >
-                            <p className={cn('flex-grow text-meta', !row.kept && 'line-through')}>{row.text}</p>
-                          </Tip>
-                          <div className="flex flex-shrink-0 items-center gap-0.5">
-                            {row.deleted ? (
-                              <Tip tip="Restore This Memory">
-                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => restore(row)}>
-                                  <Undo2 className="h-3.5 w-3.5" />
+                      )}
+                      {/* Accent marks what actually reached the model last turn — the minority state, and the
+                          one the panel can't otherwise tell you. See MemoryPanel for the reasoning. */}
+                      <div
+                        className={cn(
+                          'rounded border border-border p-2',
+                          !row.kept && !isEditing && 'opacity-60',
+                          row.inContext && !isEditing && 'border-l-2 border-l-primary',
+                        )}
+                      >
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            <Textarea
+                              autoFocus
+                              value={draft}
+                              onChange={(e) => setDraft(e.target.value)}
+                              className="min-h-[80px] text-meta"
+                            />
+                            <div className="flex items-center justify-between">
+                              {counter}
+                              <div className="flex gap-1">
+                                <Button size="sm" variant="ghost" className="h-7" onClick={() => setEditingId(null)}>
+                                  <X className="mr-1 h-3.5 w-3.5" /> Cancel
                                 </Button>
+                                <Button size="sm" className="h-7" onClick={() => saveEdit(row)} disabled={!draft.trim()}>
+                                  <Check className="mr-1 h-3.5 w-3.5" /> Save
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : preview?.id === row.id ? (
+                          <RegeneratePreview
+                            current={row.text}
+                            proposed={preview.text}
+                            onKeep={() => keepPreview(row, preview.text)}
+                            onDiscard={() => setPreview(null)}
+                          />
+                        ) : (
+                          <>
+                            <div className="flex items-start gap-2">
+                              {/* The tip is on the text, not the row: a row-wide trigger would also fire under
+                                  the action buttons, which have tips of their own. It covers the same span as the
+                                  accent it explains, which is hidden while editing. */}
+                              <Tip
+                                labelsChild={false}
+                                tip={memorySentTip(row)}
+                              >
+                                <p className={cn('flex-grow text-meta', !row.kept && 'line-through')}>{row.text}</p>
                               </Tip>
-                            ) : (
-                              <>
-                                {row.edited && (
-                                  <Tip tip="Revert to the Original">
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => revert(row)}>
+                              <div className="flex flex-shrink-0 items-center gap-0.5">
+                                {row.deleted ? (
+                                  <Tip tip="Restore This Memory">
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => restore(row)}>
                                       <Undo2 className="h-3.5 w-3.5" />
                                     </Button>
                                   </Tip>
+                                ) : (
+                                  <>
+                                    {row.edited && (
+                                      <Tip tip="Revert to the Original">
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => revert(row)}>
+                                          <Undo2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </Tip>
+                                    )}
+                                    <Tip tip="Edit This Memory">
+                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => startEdit(row)}>
+                                        <Pencil className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </Tip>
+                                    {!row.isNote && onRegenerate && regenerating === row.id && (
+                                      <Tip tip="Cancel Rewrite">
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={cancelRegenerate}>
+                                          <X className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </Tip>
+                                    )}
+                                    {!row.isNote && onRegenerate && (
+                                      // A regeneration is an AI request: it waits behind the turn and the
+                                      // background passes, with a spinner and a cancel, rather than contending.
+                                      <Tip tip="Have the Story Write This Memory Again">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6"
+                                          disabled={regenerating !== null || preview !== null}
+                                          onClick={() => regenerate(row)}
+                                        >
+                                          {regenerating === row.id
+                                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            : <RefreshCw className="h-3.5 w-3.5" />}
+                                        </Button>
+                                      </Tip>
+                                    )}
+                                    {!row.isNote && row.pin && (
+                                      <Tip tip={CLEAR_PIN_LABEL}>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPin(row.id, null)}>
+                                          <RotateCcw className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </Tip>
+                                    )}
+                                    {!row.isNote && (
+                                      <Tip tip={row.kept ? 'Forget This Memory' : 'Pin This Memory'}>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className={cn('h-6 w-6', row.pin && 'text-primary')}
+                                          onClick={() => setPin(row.id, row.kept ? 'drop' : 'keep')}
+                                        >
+                                          {row.kept ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                                        </Button>
+                                      </Tip>
+                                    )}
+                                    <Tip tip="Delete This Memory">
+                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => remove(row)}>
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </Tip>
+                                  </>
                                 )}
-                                <Tip tip="Edit This Memory">
-                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => startEdit(row)}>
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </Button>
-                                </Tip>
-                                {!row.isNote && onRegenerate && regenerating === row.id && (
-                                  <Tip tip="Cancel Rewrite">
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={cancelRegenerate}>
-                                      <X className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </Tip>
-                                )}
-                                {!row.isNote && onRegenerate && (
-                                  // A regeneration is an AI request: it waits behind the turn and the
-                                  // background passes, with a spinner and a cancel, rather than contending.
-                                  <Tip tip="Have the Story Write This Memory Again">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6"
-                                      disabled={regenerating !== null || preview !== null}
-                                      onClick={() => regenerate(row)}
-                                    >
-                                      {regenerating === row.id
-                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                        : <RefreshCw className="h-3.5 w-3.5" />}
-                                    </Button>
-                                  </Tip>
-                                )}
-                                {!row.isNote && row.pin && (
-                                  <Tip tip={CLEAR_PIN_LABEL}>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPin(row.id, null)}>
-                                      <RotateCcw className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </Tip>
-                                )}
-                                {!row.isNote && (
-                                  <Tip tip={row.kept ? 'Forget This Memory' : 'Pin This Memory'}>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className={cn('h-6 w-6', row.pin && 'text-primary')}
-                                      onClick={() => setPin(row.id, row.kept ? 'drop' : 'keep')}
-                                    >
-                                      {row.kept ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-                                    </Button>
-                                  </Tip>
-                                )}
-                                <Tip tip="Delete This Memory">
-                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => remove(row)}>
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </Tip>
-                              </>
+                              </div>
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-1">
+                              {row.isNote && <Badge variant="secondary" className="h-4 px-1 text-[9px]">Yours</Badge>}
+                              {row.name && <Badge variant="outline" className="h-4 px-1 text-[9px]">{row.name}</Badge>}
+                              {/* Rehydration replaces the digest with the turn's original prose, so this row
+                                  reached the model as a great deal more than the sentence shown here. */}
+                              {row.asScene && <Badge variant="outline" className="h-4 px-1 text-[9px]">Scene</Badge>}
+                              {/* A deleted row has no ordinal — the remaining memories renumbered without it. */}
+                              {!row.isNote && row.turnNumber > 0 && (
+                                <span className="text-[9px] text-muted-foreground">Memory {row.turnNumber}</span>
+                              )}
+                              {row.stamp && (
+                                <span className="text-[9px] text-muted-foreground">
+                                  {!row.isNote && row.turnNumber > 0 && '· '}{row.stamp}
+                                </span>
+                              )}
+                              {row.edited === 'player' && <Badge variant="outline" className="h-4 px-1 text-[9px]">Edited</Badge>}
+                              {row.edited === 'ai' && <Badge variant="outline" className="h-4 px-1 text-[9px]">Rewritten</Badge>}
+                              {row.deleted && <Badge variant="outline" className="h-4 px-1 text-[9px]">Deleted</Badge>}
+                            </div>
+                            {row.edited && row.original && (
+                              <p className="mt-1 border-l-2 border-border pl-2 text-[10px] text-muted-foreground">
+                                Originally: {row.original}
+                              </p>
                             )}
-                          </div>
-                        </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-1">
-                          {row.isNote && <Badge variant="secondary" className="h-4 px-1 text-[9px]">Yours</Badge>}
-                          {row.name && <Badge variant="outline" className="h-4 px-1 text-[9px]">{row.name}</Badge>}
-                          {/* Rehydration replaces the digest with the turn's original prose, so this row
-                              reached the model as a great deal more than the sentence shown here. */}
-                          {row.asScene && <Badge variant="outline" className="h-4 px-1 text-[9px]">Scene</Badge>}
-                          {/* A deleted row has no ordinal — the remaining memories renumbered without it. */}
-                          {!row.isNote && row.turnNumber > 0 && (
-                            <span className="text-[9px] text-muted-foreground">Memory {row.turnNumber}</span>
-                          )}
-                          {row.stamp && (
-                            <span className="text-[9px] text-muted-foreground">
-                              {!row.isNote && row.turnNumber > 0 && '· '}{row.stamp}
-                            </span>
-                          )}
-                          {row.edited === 'player' && <Badge variant="outline" className="h-4 px-1 text-[9px]">Edited</Badge>}
-                          {row.edited === 'ai' && <Badge variant="outline" className="h-4 px-1 text-[9px]">Rewritten</Badge>}
-                          {row.deleted && <Badge variant="outline" className="h-4 px-1 text-[9px]">Deleted</Badge>}
-                        </div>
-                        {row.edited && row.original && (
-                          <p className="mt-1 border-l-2 border-border pl-2 text-[10px] text-muted-foreground">
-                            Originally: {row.original}
-                          </p>
+                          </>
                         )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </ScrollArea>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              )}
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
 
         <div className="flex justify-end border-t border-border pt-2">
-          <Button size="sm" variant="ghost" className="h-7 text-meta text-muted-foreground" disabled={!hasChanges} onClick={() => setConfirmReset(true)}>
+          <Button size="sm" variant="ghost" className="h-7 text-meta text-muted-foreground" disabled={!!diary || !hasChanges} onClick={() => setConfirmReset(true)}>
             Reset All My Changes
           </Button>
         </div>

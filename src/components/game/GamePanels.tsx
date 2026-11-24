@@ -78,7 +78,7 @@ import { useEntityStatMorphs } from '@/lib/useEntityStatMorphs';
 import { useEntityVisualPreference } from '@/lib/useEntityVisualPreference';
 import { useEntityGallery } from '@/lib/useEntityGallery';
 import TtsPlaybackBar from './TtsPlaybackBar';
-import { MemoryPanel } from './MemoryPanel';
+import { MemoryPanel, type MemoriesRequest } from './MemoryPanel';
 import { SceneImagePanel } from './SceneImagePanel';
 import { ScenePlate } from './ScenePlate';
 import { GAME_LEFT_PANEL_TABS, GAME_RIGHT_PANEL_TABS, LEFT_PANEL_TABS } from './panelTabs';
@@ -145,7 +145,10 @@ type EntityViewSubject = { kind: 'entity'; entity: Entity } | { kind: 'played' }
 const PLAYED_SIDE: Pick<Entity, 'id' | 'name'> = { id: '__you', name: 'You' };
 
 
-export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrangerClick, onRegenerateMemory, narrationPrompt, requestedTab, requestKey, initialTab, onTabChange, placement = 'docked' }: {
+export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrangerClick, onRegenerateMemory, narrationPrompt, requestedTab, requestKey, initialTab, onTabChange, memoriesRequest, onMemoriesOpened, placement = 'docked' }: {
+  /** Opens the Memory tab, then Memories on it; see `MemoryPanel`. */
+  memoriesRequest?: MemoriesRequest | null;
+  onMemoriesOpened?: () => void;
   /** `drawer`: fills the side's drawer instead of a quarter of the row. */
   placement?: PanelPlacement;
   /** The tab a fresh mount opens on when no request names one. */
@@ -228,6 +231,8 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
   const [leftTab, setLeftTab] = React.useState(requestedTab ?? initialTab ?? (isMobile ? "model" : "notes"));
   const landingKey = useRequestKey(requestKey);
   React.useEffect(() => { if (requestedTab) setLeftTab(requestedTab); }, [requestedTab, landingKey]);
+  // Memories opens from inside the Memory tab, so the tab comes first; MemoryPanel then opens it.
+  React.useEffect(() => { if (memoriesRequest) setLeftTab('memory'); }, [memoriesRequest]);
   React.useEffect(() => { onTabChange?.(leftTab); }, [leftTab, onTabChange]);
 
   // The shared pick when it has something to show, else the played entity, else the first showable scene
@@ -291,12 +296,8 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
   const devRoute = useDevRoute();
   React.useEffect(() => {
     if (!import.meta.env.DEV) return;
-    // The Memory Manager opens from inside the Memory tab, so route to the tab first — MemoryPanel opens
-    // the modal itself once mounted.
-    if (devRoute?.modal === 'memoryManager') {
-      setLeftTab('memory');
-      return;
-    }
+    // GameViewer routes `memoryManager` through `memoriesRequest`.
+    if (devRoute?.modal === 'memoryManager') return;
     // The narration editor is otherwise only reachable mid-game, behind a played turn.
     if (devRoute?.modal === 'editText') {
       setIsEditMode(true);
@@ -459,7 +460,7 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
           </div>
         </TabsContent>
         <TabsContent value="memory" className="flex-grow overflow-hidden min-h-[100px]">
-          <MemoryPanel onRegenerateMemory={onRegenerateMemory} />
+          <MemoryPanel onRegenerateMemory={onRegenerateMemory} memoriesRequest={memoriesRequest} onMemoriesOpened={onMemoriesOpened} />
         </TabsContent>
         <TabsContent value="logs" className="flex-grow overflow-hidden min-h-[100px]">
           <ScrollArea className="h-[calc(100%-1rem)]">

@@ -319,6 +319,7 @@ import {
   RightPanel,
   type CommandChoices,
 } from "../components/game/GamePanels";
+import type { MemoriesRequest } from "../components/game/MemoryPanel";
 import { EdgeToggle, EdgeToggleSpacer, GAME_VIEW_CONTAINER, GAME_VIEW_PROPS, NarrationColumn, PanelDrawer, PanelRail, RailAction, SideColumn, useHeaderWidthVar, useSideMotion, type PanelPlacement, type PanelSide } from "@/components/game/PanelRail";
 import { statusSignatures, useChangeDots } from "@/components/game/changeDots";
 import { GAME_LEFT_PANEL_TABS, GAME_RIGHT_PANEL_TABS, LEFT_PANEL_TABS } from "@/components/game/panelTabs";
@@ -1829,6 +1830,22 @@ const GameViewer = ({
   }, [isDebugOpen, debugFindTerms, syncDebugTicks]);
   const isMobile = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("game");
+  // Memories, waiting for the Memory tab to open it.
+  const [memoriesRequest, setMemoriesRequest] = useState<MemoriesRequest | null>(null);
+  const clearMemoriesRequest = useCallback(() => setMemoriesRequest(null), []);
+  /** Opens Memories from anywhere in the game, on a character's diary when `diary` names one. */
+  const openMemories = useCallback((target: { diary?: string } = {}) => {
+    setMemoriesRequest({ key: randomUUID(), ...target });
+    if (isMobile) setMobilePanel('character');
+    else if (leftCollapsed) openDrawer('left', 'memory');
+  }, [isMobile, leftCollapsed, openDrawer]);
+  // DEV dev-router: `modal=memoryManager`, with `diary=<name>` for a diary. Tree-shaken in prod.
+  useEffect(() => {
+    if (!import.meta.env.DEV || devRoute?.modal !== 'memoryManager') return;
+    openMemories({ diary: devRoute.diary });
+    // The route asks once per hash, not on each layout change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [devRoute?.modal, devRoute?.diary]);
   // The mobile panel strip's place while it moves; the tab pill follows it.
   const [mobileSwipe] = useState(createSwipeProgress);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -6872,6 +6889,8 @@ const GameViewer = ({
         setSelectedStranger({ entityId, label });
       }}
       onRegenerateMemory={regenerateMemory}
+      memoriesRequest={memoriesRequest}
+      onMemoriesOpened={clearMemoriesRequest}
       narrationPrompt={systemPrompt}
       requestedTab={placement === 'drawer' ? leftTab : surfaceNav.tab('gameViewer')}
       requestKey={surfaceNav.key}

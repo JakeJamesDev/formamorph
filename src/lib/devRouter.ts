@@ -58,6 +58,8 @@ export interface DevRoute {
   vram?: string;
   /** Answer this VRAM class (`low`, `ok` or `unknown`) in place of the desktop shell. */
   vramClass?: string;
+  /** Open `memoryManager` on this character's diary, by name. */
+  diary?: string;
 }
 
 /** Parse the current hash into a DevRoute, or null when it isn't a `#dev` hash. */
@@ -86,6 +88,8 @@ function parseHash(hash: string): DevRoute | null {
   if (vram) route.vram = vram;
   const vramClass = params.get('vramClass');
   if (vramClass) route.vramClass = vramClass;
+  const diary = params.get('diary');
+  if (diary) route.diary = diary;
   if (avatars) route.avatars = avatars;
   if (allowance) route.allowance = allowance;
   if (pick) route.pick = pick;

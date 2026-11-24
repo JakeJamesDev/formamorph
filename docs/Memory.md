@@ -135,6 +135,22 @@ A world's script can keep a Custom memory up to date under a name, such as one m
 > [!TIP]
 > **Edits and deletions can be undone.** The story's own summary is always kept under whatever you write. **Reset All My Changes** puts every memory back the way the story had it. Your hand-written memories stay. A reset can't be undone.
 
+## Character Diaries in Memories
+<!-- keywords: diary, diaries, what a character remembers, character's view, journal, nothing notable, script badge, show hidden entries -->
+
+With **Character Diaries** on, each character keeps a first-person diary. The **Memories** dialog lists **Story** first, then one diary per character, such as **Bram's Diary**, in the order they first wrote. A new character's diary joins the end of the list. On mobile, the list is under **Sections**.
+
+| You See | Means |
+|---|---|
+| 📖 An entry | What the character wrote that turn, oldest first. |
+| ↳ A line above it | That turn's memory, so you know the moment. |
+| **Turn 5** | The turn the entry belongs to. |
+| **Script** badge | A line the world's script wrote. You can't change it. |
+
+- 🙈 **Entries that say *Nothing notable* are hidden.** Turn on **Show Hidden Entries** to see them, faded.
+- 🔍 **Search looks only in the open diary.**
+- 📴 **Character Diaries off:** the diaries your save already has still show, with a note. Characters write no new entries.
+
 ## Kept vs Sent
 <!-- keywords: accent bar, colored stripe, which ones were used, difference, relevance ranking, held meaning, verbatim meaning, scene badge, left out this turn -->
 

@@ -20,7 +20,7 @@ const BUNDLED_PREFIX = 'bundled-';
 export const DEV_FIXTURES = [
   'whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'avatarIcon',
   'entityPresence', 'entityFollowers', 'mapStrangers', 'mapBackground', 'items', 'options', 'lockedPlaces', 'speakerQuotes', 'scriptImages',
-  'enterOptions', 'layeredImages', 'layeredPerf', 'weatherCondition', ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
+  'enterOptions', 'diaries', 'layeredImages', 'layeredPerf', 'weatherCondition', ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
 ];
 
 // Real-sized images for the long save, fetched from the dev server.
@@ -656,6 +656,30 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
           )),
         },
         saveName: 'DEV: Entity Stats',
+      };
+    }
+    case 'diaries': {
+      // The entityStats cast over eight turns with memories, character diaries and a script diary line.
+      const [base, turns] = await Promise.all([loadDevFixture('entityStats'), import('./devFixtures/diaryTurns')]);
+      if (!base?.save) return null;
+      const history = turns.diaryHistory();
+      const described: Record<string, string> = {
+        'dev-bram': 'A broad, gray-bearded guard in a patched coat. He keeps one hand near the wand at his hip and watches the console as if it might wake up.',
+        'dev-wick': 'A thin runner with ink-stained fingers and a habit of standing near doors. He talks fast and looks over his shoulder more often than he means to.',
+      };
+      // Bram first, so `modal=entity` opens his popup.
+      const entities = [...base.world.entities]
+        .map((e) => (described[e.id] ? { ...e, playerDescription: described[e.id] } : e))
+        .sort((a, b) => Number(b.id === 'dev-bram') - Number(a.id === 'dev-bram'));
+      return {
+        ...base,
+        world: { ...base.world, entities },
+        save: {
+          ...base.save,
+          currentState: { ...base.save.currentState, fullMessageHistory: history, gameplayText: turns.DIARY_LAST_NARRATION },
+          messageHistory: history,
+        },
+        saveName: 'DEV: Diaries',
       };
     }
     case 'entityMorphs': {
