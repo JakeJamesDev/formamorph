@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { LeftPanel } from './GamePanels';
 import { EntityAvatar } from './EntityAvatar';
+import { EntityModal } from '@/components/modals/EntityModal';
 import { defaultSystemPrompt } from './GamePrompts';
 import { renderInGame, worldFixture, type Gameplay } from '@/test/gamePanels';
 import { resetVrmViewerStub, vrmViewerCaps, vrmViewerRenders } from '@/test/stubs/vrmViewer';
@@ -103,6 +104,14 @@ describe('the pencil on the played Avatar', () => {
   it('shows on the played Avatar in the entity view', async () => {
     show();
     expect(await screen.findByRole('button', { name: 'Edit Avatar' })).toBeInTheDocument();
+  });
+
+  it("shows in the played entity's Entity dialog", async () => {
+    renderInGame(<EntityModal entity={wren} isOpen onOpenChange={vi.fn()} />, {
+      world: oldWorld(false), seed: (g) => { g.setCharacterData(STORED); g.setPersonaRef({ source: 'world', entityId: 'wren' }); },
+    });
+    const dialog = await screen.findByRole('dialog', { name: 'Wren' });
+    expect(await within(dialog).findByRole('button', { name: 'Edit Avatar' })).toBeInTheDocument();
   });
 
   it("never shows on another entity's Avatar", async () => {

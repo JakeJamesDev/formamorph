@@ -135,7 +135,7 @@ export interface VrmCustomization {
   /** The rendered slider/picker controls, gated to the model's detected capabilities. */
   controls: ReactNode;
   /** The composed choices, for a caller that finalizes a character (CharacterCustomization). */
-  characterData: Omit<CharacterData, 'chosenVrm'>;
+  characterData: Look;
   /** Whether the look differs from the starting look. False with no starting look. */
   changed: boolean;
 }
@@ -145,6 +145,7 @@ const fitHair = (caps: VRMCapabilities, style: string, length: number) => (caps.
   ? { currentHairStyle: style, hairLength: length }
   : { currentHairStyle: caps.hairStyles[0] ?? '', hairLength: 0 });
 
+/** The customization a save stores, without the Avatar choice. */
 type Look = Omit<CharacterData, 'chosenVrm'>;
 const sameColor = (a: string | undefined, b: string | undefined) => a?.toLowerCase() === b?.toLowerCase();
 const sameLook = (a: Look, b: Look) =>
@@ -159,7 +160,7 @@ const sameLook = (a: Look, b: Look) =>
  * @param lock - the checked traits whose pins hold sliders and colors. Absent in the Model Library, which locks nothing.
  * @param initial - the look the controls start from. A color counts as changed exactly when it holds one.
  */
-export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLock, initial?: Omit<CharacterData, 'chosenVrm'>): VrmCustomization {
+export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLock, initial?: Look): VrmCustomization {
   const [caps, setCaps] = useState<VRMCapabilities | null>(null);
   const vrmViewerRef = useRef<VRMViewerHandle>(null);
 
@@ -282,7 +283,7 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
     animate: animate && !picking,
   };
 
-  const characterData: Omit<CharacterData, 'chosenVrm'> = {
+  const characterData: Look = {
     bodyMorphs,
     hairColor: colorTouched.hair ? hairColor : undefined,
     eyeColor: colorTouched.eye ? eyeColor : undefined,

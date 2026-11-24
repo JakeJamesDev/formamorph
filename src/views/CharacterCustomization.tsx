@@ -11,7 +11,7 @@ import { MobileControlsDrawer } from "@/components/MobileControlsDrawer"
 import { useIsMobile } from "@/lib/useIsMobile"
 import { cn } from "@/lib/utils"
 import VRMViewer from './VRMViewer';
-import type { CharacterData, ModelMetadata, VrmPick } from '@/types';
+import type { CharacterData, ChosenVrm, ModelMetadata, VrmPick } from '@/types';
 import ModelStorageService from '@/services/ModelStorageService';
 import { filesFrom } from '@/lib/importFiles';
 import { useVrmSourceUrl } from '@/lib/useVrmSourceUrl';
@@ -121,14 +121,15 @@ const CharacterCustomization = (props: {
   const showsAvatar = !noAvatars && !(locked && !listing && !lockedSource);
   const uploadRef = useRef<HTMLInputElement>(null);
 
+  const libraryChoice: ChosenVrm = { pick: { kind: 'library', id: selectedModelId } };
   const handleFinalize = () => {
-    entry?.onCharacterCustomized({ ...characterData, chosenVrm: locked || noAvatars ? null : { pick: { kind: 'library', id: selectedModelId } } });
+    entry?.onCharacterCustomized({ ...characterData, chosenVrm: locked || noAvatars ? null : libraryChoice });
   };
 
   const switched = !locked && !noAvatars && startModelId !== undefined && selectedModelId !== startModelId;
   const handleSave = () => edit?.onSave({
     ...characterData,
-    chosenVrm: switched ? { pick: { kind: 'library', id: selectedModelId } } : edit.look.chosenVrm,
+    chosenVrm: switched ? libraryChoice : edit.look.chosenVrm,
   });
   const changed = !!edit && (switched || lookChanged);
   const onChangedChange = edit?.onChangedChange;
