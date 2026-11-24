@@ -1716,8 +1716,9 @@ export const RightPanel = ({
         {/* `flex` is state-scoped for the same reason as on the Entities tab. */}
         <TabsContent value="stats" className="flex-grow overflow-hidden flex-col data-[state=active]:flex">
           {entitiesShowStats && entityPicker}
-          <ScrollArea className="min-h-0 flex-grow mb-4 relative">
-            <div className="space-y-2 pb-2">
+          <ScrollArea className="min-h-0 flex-grow relative">
+            {/* pb-12 lets the last row scroll clear of the corner buttons. */}
+            <div className="space-y-2 pb-12">
               {visibleStats.length > 0 && (
                 <PanelOwnerCard role="region" aria-label="Global stats" data-testid="global-stats" name="Global">
                   <StatGroupSections
