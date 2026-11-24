@@ -108,7 +108,7 @@ export function MemoryDiaryView({ name, entries, memoryByTurn, emptyText, showHi
 }
 
 /** An empty control slot, so the buttons beside it never move. */
-const Slot = () => <span className="h-6 w-6" aria-hidden />;
+export const Slot = () => <span className="h-6 w-6" aria-hidden />;
 
 /** The AI entry's controls, each in a fixed slot. Script lines have none. */
 function EntryControls({ name, entry, actions }: { name: string; entry: DiaryEntry; actions: DiaryEntryActions }) {

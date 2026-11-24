@@ -3,7 +3,7 @@ import type { AITurnResult, ChatMessage } from '@/types';
 import type { SceneTurn } from './presence';
 import type { ReadingNames } from './coref/mentionMemory';
 import { sameCharacterName } from './entityMatch';
-import type { TurnTextEdits } from './turnTextEdits';
+import { sameDiary, type TurnTextEdits } from './turnTextEdits';
 
 /**
  * Pure helpers for the per-turn memory digest (the "summary step").
@@ -231,7 +231,7 @@ export function turnDiaries(
   if (!codeDiaries) return diaries ?? {};
   const out: Record<string, string> = { ...diaries };
   for (const [name, lines] of Object.entries(codeDiaries)) {
-    const key = Object.keys(out).find((known) => known.trim().toLowerCase() === name.trim().toLowerCase()) ?? name;
+    const key = Object.keys(out).find((known) => sameDiary(known, name)) ?? name;
     const entry = out[key]?.trim();
     out[key] = [entry && diaryHoldsMemory(entry) ? entry : '', ...lines].filter(Boolean).join(' ');
   }
@@ -246,13 +246,12 @@ export function turnDiaries(
 export function collectCharacterDiary(
   history: ChatMessage[], name: string, max: number, layer: TurnTextEdits | undefined,
 ): string[] {
-  const key = name.trim().toLowerCase();
   const entries: string[] = [];
   for (const message of history) {
     if (message.role !== 'assistant') continue;
     const parsed = parseTurnContent(message.content);
     if (!parsed?.diaries && !parsed?.codeDiaries) continue;
-    const match = Object.entries(turnDiaries(parsed, layer)).find(([k]) => k.trim().toLowerCase() === key);
+    const match = Object.entries(turnDiaries(parsed, layer)).find(([k]) => sameDiary(k, name));
     const text = match?.[1]?.trim();
     if (text && diaryHoldsMemory(text)) entries.push(text);
   }

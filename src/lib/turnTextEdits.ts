@@ -104,8 +104,11 @@ export function withoutMemoryChanges(layer: TurnTextEdits): TurnTextEdits {
   return Object.keys(layer).reduce((at, id) => withMemory(at, id, undefined), layer);
 }
 
-/** Two spellings of one diary name match without case. */
-const sameDiary = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+/** The key two spellings of one diary name share: they match without case. */
+export const diaryKey = (name: string) => name.trim().toLowerCase();
+
+/** Whether two spellings name one diary. */
+export const sameDiary = (a: string, b: string) => diaryKey(a) === diaryKey(b);
 
 /** `layer` with `turnId`'s diary entry for `name` set to `edit`, pruning what is left empty. */
 function withDiary(layer: TurnTextEdits, turnId: string, name: string, edit: TextEdit | undefined): TurnTextEdits {

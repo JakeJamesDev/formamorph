@@ -4,7 +4,7 @@
  */
 import type { ChatMessage } from '@/types';
 import { diaryHoldsMemory, parseTurnContent } from '@/lib/turnDigest';
-import type { TextSource, TurnTextEdits } from '@/lib/turnTextEdits';
+import { diaryKey, sameDiary, type TextSource, type TurnTextEdits } from '@/lib/turnTextEdits';
 
 export interface DiaryEntry {
   /** Unique across every diary: the turn id and the name as stored on the turn. */
@@ -33,10 +33,6 @@ export interface Diary {
   name: string;
   entries: DiaryEntry[];
 }
-
-/** The key two spellings of one diary name share. */
-export const diaryKey = (name: string) => name.trim().toLowerCase();
-const fold = diaryKey;
 
 /** Whether the AI reads the entry: its script lines, or its own text when that is kept and beyond "nothing notable". */
 export const isReadEntry = (entry: DiaryEntry): boolean =>
@@ -89,7 +85,7 @@ export function buildDiaries(history: readonly ChatMessage[], layer: TurnTextEdi
       if (edits[name].deleted && !(name in written)) names.push(name);
     }
     for (const name of Object.keys(scripted)) {
-      if (!names.some((known) => fold(known) === fold(name))) names.push(name);
+      if (!names.some((known) => sameDiary(known, name))) names.push(name);
     }
     for (const name of names) {
       const ai = written[name]?.trim() ?? '';
@@ -97,7 +93,7 @@ export function buildDiaries(history: readonly ChatMessage[], layer: TurnTextEdi
       const rewrite = edit?.text === undefined ? undefined : { text: edit.text.trim(), source: edit.source };
       const text = rewrite?.text ?? ai;
       const scriptLines = Object.entries(scripted)
-        .filter(([key]) => fold(key) === fold(name))
+        .filter(([key]) => sameDiary(key, name))
         .flatMap(([, lines]) => lines);
       const entry: DiaryEntry = {
         key: `${turnId}|${name}`,
@@ -111,9 +107,9 @@ export function buildDiaries(history: readonly ChatMessage[], layer: TurnTextEdi
         quiet: !text || !diaryHoldsMemory(text),
         scriptLines,
       };
-      const diary = diaries.get(fold(name));
+      const diary = diaries.get(diaryKey(name));
       if (diary) diary.entries.push(entry);
-      else diaries.set(fold(name), { name: name.trim(), entries: [entry] });
+      else diaries.set(diaryKey(name), { name: name.trim(), entries: [entry] });
     }
   }
   return [...diaries.values()];

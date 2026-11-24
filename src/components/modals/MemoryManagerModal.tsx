@@ -19,17 +19,17 @@ import { cn } from '@/lib/utils';
 import { randomUUID } from '@/lib/uuid';
 import { playerEdit, restoreAll, restoreMemory } from '@/lib/namedMemories';
 import {
-  deletedMemoryIds, hasDiaryChanges, hasMemoryChanges, withDiaryDeleted, withDiaryText, withMemoryDeleted, withMemoryText,
+  deletedMemoryIds, diaryKey, hasDiaryChanges, hasMemoryChanges, withDiaryDeleted, withDiaryText, withMemoryDeleted, withMemoryText,
   withoutDiaryChanges, withoutDiaryText, withoutMemoryChanges, withoutMemoryText,
 } from '@/lib/turnTextEdits';
-import { buildDiaries, diaryCounts, diaryKey, visibleDiaryEntries, type DiaryEntry } from '@/lib/diaryView';
+import { buildDiaries, diaryCounts, visibleDiaryEntries, type DiaryEntry } from '@/lib/diaryView';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { NavRail, type NavRailGroup } from '@/components/NavRail';
 import { EditorSectionsBar } from '@/components/editor/EditorSectionsBar';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { NotebookPen, ScrollText } from 'lucide-react';
-import { MemoryDiaryView, type DiaryEntryActions } from './MemoryDiaryView';
+import { MemoryDiaryView, Slot, type DiaryEntryActions } from './MemoryDiaryView';
 
 /**
  * The Memory Manager: the full surface for the story's long-term memory. The side panel stays the
@@ -526,32 +526,38 @@ export const MemoryManagerModal = ({
                               </Tip>
                               <div className="flex flex-shrink-0 items-center gap-0.5">
                                 {row.deleted ? (
-                                  <Tip tip="Restore This Memory">
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => restore(row)}>
-                                      <Undo2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </Tip>
+                                  <>
+                                    {/* Restore sits where Delete was; the slots hold the row's other controls' places. */}
+                                    <Slot /><Slot />
+                                    {!row.isNote && onRegenerate && <><Slot /><Slot /></>}
+                                    {!row.isNote && <><Slot /><Slot /></>}
+                                    <Tip tip="Restore This Memory">
+                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => restore(row)}>
+                                        <Undo2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </Tip>
+                                  </>
                                 ) : (
                                   <>
-                                    {row.edited && (
+                                    {row.edited ? (
                                       <Tip tip="Revert to the Original">
                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => revert(row)}>
                                           <Undo2 className="h-3.5 w-3.5" />
                                         </Button>
                                       </Tip>
-                                    )}
+                                    ) : <Slot />}
                                     <Tip tip="Edit This Memory">
                                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => startEdit(row)}>
                                         <Pencil className="h-3.5 w-3.5" />
                                       </Button>
                                     </Tip>
-                                    {!row.isNote && onRegenerate && regenerating === row.id && (
+                                    {!row.isNote && onRegenerate && (regenerating === row.id ? (
                                       <Tip tip="Cancel Rewrite">
                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={cancelRegenerate}>
                                           <X className="h-3.5 w-3.5" />
                                         </Button>
                                       </Tip>
-                                    )}
+                                    ) : <Slot />)}
                                     {!row.isNote && onRegenerate && (
                                       // A regeneration is an AI request: it waits behind the turn and the
                                       // background passes, with a spinner and a cancel, rather than contending.
@@ -569,13 +575,13 @@ export const MemoryManagerModal = ({
                                         </Button>
                                       </Tip>
                                     )}
-                                    {!row.isNote && row.pin && (
+                                    {!row.isNote && (row.pin ? (
                                       <Tip tip={CLEAR_PIN_LABEL}>
                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPin(row.id, null)}>
                                           <RotateCcw className="h-3.5 w-3.5" />
                                         </Button>
                                       </Tip>
-                                    )}
+                                    ) : <Slot />)}
                                     {!row.isNote && (
                                       <Tip tip={row.kept ? 'Forget This Memory' : 'Pin This Memory'}>
                                         <Button
