@@ -1,6 +1,6 @@
 # 01: Shared Text Edit Layer
 
-Status: ready-for-human
+Status: done
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -22,7 +22,7 @@ Every player change to AI-written turn text moves into one layer on the save, `t
   The `diaries` part is declared here and stays unused until ticket 05.
 - **Migration.** `migrateSave` folds `memoryEdits` into `memory` and `memoryDeleted` into `memory.deleted`, idempotently, and drops the old fields. Saves write only the new field.
 - **Readers.** The memory recap, the Memory Manager ledger, the side panel and script memories read the layer. Pins and written memories stay where they are.
-- **Narration edit.** Editing a turn's narration drops that turn's whole record in the layer, where it dropped only the memory edit before.
+- **Narration edit.** Editing a turn's narration drops that turn's text changes in the layer and keeps its deletes (spec, Narration edit).
 - Don't call the layer an override in code or docs; that word is the glossary's Blueprints term.
 
 ## Acceptance criteria

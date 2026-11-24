@@ -1,13 +1,13 @@
 # 03: Memory Regenerate Preview
 
-Status: ready-for-human
+Status: done
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
 
 ## What to build
 
-Regenerate on a story memory shows the new text before it replaces anything, with **Keep** and **Discard** (spec Q21). Keep stores it as a kept rewrite (`source: 'ai'`) in the layer from ticket 01; Discard stores nothing. Cancel works while the request waits or runs. The button stays disabled while a turn is generating.
+Regenerate on a story memory shows the new text before it replaces anything, with **Keep** and **Discard** (spec Q21). Keep stores it as a kept rewrite (`source: 'ai'`) in the layer from ticket 01; Discard stores nothing. Cancel works while the request waits or runs. The button stays enabled during a turn and the request waits behind it (spec, Regenerate).
 
 - **Shape.** This ticket owns the preview row: the new text, the text it would replace, and Keep / Discard. Ticket 05 reuses it for diary entries, so build it to take any entry, not a memory row only.
 - The regenerate request resolves to the new text instead of writing it.

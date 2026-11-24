@@ -59,12 +59,10 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Renaming an Opening updates the scripts that compare `opening.name` with its old name.** When another owner has an Opening of that name, **Update Code References** lists the comparisons it can't tell apart. The code editor marks a name no Opening has.
     - **Traits and image Visibility rules can now require the opening a game started from.** Pick Opening under Add Requirement, then check the openings that count. It holds all game, and players don't see it in requirement lines.
   - **Memories:**
-    - **Regenerating a memory in Memories shows the new text first.** Keep stores it. Discard leaves the memory as it was.
-  - **Character Diaries:**
     - **The Memories dialog shows each character's diary.** Pick a character beside **Story** to read their entries, oldest first, each under its turn's memory. Entries that say *Nothing notable* stay hidden until you turn on **Show Hidden Entries**.
     - **You can edit, delete and regenerate a character's diary entries in Memories.** The character acts on your version from the next turn. Show Hidden Entries lists deleted entries, with Restore. Reset All My Changes resets only the open diary.
-  - **Diaries in Memories:**
     - **A character's popup links to their diary.** A line under the description, such as "Bram's diary · 5 entries", opens that diary in Memories. It shows only when the diary has entries the AI reads.
+    - **Regenerating a memory in Memories shows the new text first.** Keep stores it. Discard leaves the memory as it was.
   - **Script entries now tell you what they are.** Every entity, location, item, stat, trait and other entry in a script reads a read-only `category`, such as "entity" or "itemInstance".
   - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
   - **Edit your Avatar's look during play from the pencil on your Avatar.** Change sliders, colors and hair, or switch Avatars when the world allows it. The new look stays after a rollback or a regenerate.
