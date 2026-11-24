@@ -15,14 +15,18 @@ The played Avatar shows a pencil button in its bottom-right corner during play. 
 
 - **Q1 History view.** The pencil is hidden while the player views a past turn. A past turn shows the look its snapshot recorded.
 - **Q2 Preview.** The editor preview shows the base look, with no stats on top. Active stats apply again after Save, so the in-game Avatar can differ from the preview.
-- **Q3 Avatar switch.** When the world does not lock the played Avatar, the editor shows the Avatar picker and the player can switch. Switching resets the sliders for the new Avatar, as at entry.
-- **Q4 Placement.** The pencil shows wherever the played Avatar shows: the played entity's view, and the You row when no entity is played. It never shows on another entity's Avatar.
+- **Q3 Avatar switch.** When the world does not lock the played Avatar, the editor shows the Avatar picker and the player can switch. A switch behaves exactly as it does at entry. (Ticket 01 found that entry keeps the slider values across a switch. Only the hairstyle falls back, and the colors seed again from the new model. The in-game editor does the same thing and does not get its own reset rule.)
+- **Q4 Placement.** The pencil shows wherever the played Avatar shows: the played entity's view, the You row when no entity is played, and the entity modal for the played entity. It never shows on another entity's Avatar.
 - **Q5 Rewind.** The edit sticks. Rollback and regenerate keep the live look. Turn snapshots still record the look, for the history view only.
 - **Q6 Presentation.** A dialog on desktop. The full customization screen on mobile.
 - **Q7 Busy turn.** The pencil works while a turn runs. An edit during a turn only decides which look that turn's history page shows.
 - **Q8 AI.** The edit is visual only. The narrator is not told.
 - **Q9 Cancel.** With no changes, Cancel closes at once. With changes, a confirm asks to discard them.
 - **Q10 Nothing to edit.** The pencil is hidden when the editor would have nothing to change: no Avatar picker, no sliders and no colors.
+- **Q11 No chosen Avatar.** When the save has no chosen Avatar (`chosenVrm` is null, for example after Quick Start under User's Default), the picker starts by the picker's start rule. Save writes `chosenVrm` only when the player switched Avatars. A Save with no switch keeps the stored value, so User's Default keeps following the device default.
+- **Q12 Locked in play.** The world locks the played Avatar by the same rule as at entry: the played side's pick, with `chosenVrm` left out, is not User's Default. A legacy `chosenVrm` also counts as locked.
+- **Q13 Trait lock in play.** The lock comes from the live active global traits (checked minus disabled) and the played entity's owned traits. These are the traits play already applies to the played Avatar, in play's switch-on order, so the editor's held values match the in-game Avatar.
+- **Q14 Something to change.** The loaded model reports at least one of these: a body or head morph, hair length, more than one hairstyle, a hair, eye or skin color, or an extra material. Only colors the model reports count, not the fallback rows.
 
 ## User Stories
 
