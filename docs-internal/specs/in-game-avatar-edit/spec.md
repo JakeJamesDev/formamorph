@@ -1,6 +1,7 @@
 # Spec: In-Game Avatar Edit
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-11-24. Tickets 01–02 landed; the last landing is 5ac327f10. Review clean. Test gate green on 2026-11-24 (38,832 pass); lint red only in worlds-wip/, none in this effort.
 Spec session: in-game-avatar-edit — spec
 
 ## Problem Statement
