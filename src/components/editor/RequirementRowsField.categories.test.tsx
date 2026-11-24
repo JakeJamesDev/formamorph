@@ -37,7 +37,7 @@ function Harness({ choices = { traits, groups: [], personas }, host = 'ash', off
 }) {
   const [rows, setRows] = useState<TraitRequirementRow[]>([]);
   const states: RowState[] = rows.map((row) => ({
-    holds: false, conditions: row.all.map((r) => ({ text: textOf(r), holds: false, unresolved: false, hidden: false })),
+    holds: false, conditions: row.all.map((r) => ({ text: textOf(r), clause: textOf(r), holds: false, unresolved: false, hidden: false })),
   }));
   return (
     <TooltipProvider>

@@ -108,7 +108,7 @@ describe('a stat Condition at setup (Q23)', () => {
 
   it('reads the requirement line off the stat, and leaves out a hidden stat', () => {
     const line = (rage: Partial<Stat>) => gateLine(gateOf(gateStates(entryGateInput(world(rage), emptyEntryDraft())), null, 'Berserk'));
-    expect(line({ starting: 40 })).toBe('Requires Rage >= 80');
+    expect(line({ starting: 40 })).toBe('Requires: Rage is at least 80.');
     expect(line({ starting: 40, hidden: true })).toBe('Locked');
     expect(line({ starting: 40, enabled: false })).toBe('Locked');
   });

@@ -694,7 +694,7 @@ A trait Mode. The trait is active exactly when its gate holds, and no one can sw
 _Avoid_: Always On (the old name), forced, mandatory, locked (a Locked trait is one whose gate fails), permanent
 
 **Requirement**:
-The gate on a trait: a list of Requirement Rows. The trait is available when it has no rows, or when any one row holds. The editor field is **Requires**; the player reads the same rule as the lock line, such as "Requires Knight and not Paladin, or Mercenary".
+The gate on a trait: a list of Requirement Rows. The trait is available when it has no rows, or when any one row holds. The editor field is **Requires**; the player reads the same rule as the lock line, such as "Requires: you have Knight and you don't have Paladin, or you have Mercenary."
 _Avoid_: prerequisite, lock (a Locked trait is one whose gate fails), rule (a rule is Test Bench's word)
 
 **Requirement Row**:

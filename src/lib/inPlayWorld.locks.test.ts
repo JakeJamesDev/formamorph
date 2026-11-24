@@ -97,18 +97,18 @@ describe('the travel gate', () => {
 
 describe('the lock line', () => {
   it('names a shown Option the gate reads', () => {
-    expect(line(play(), 'oldTown')).toBe('Requires Gate Open is on');
+    expect(line(play(), 'oldTown')).toBe('Requires: Gate Open is on.');
   });
 
   it('never names a hidden Option, reading "Locked" when nothing else is left (Q11)', () => {
     const sealed = [L('oldTown', undefined, { unlockedWhen: rows([open('seal')]) }), docks];
     expect(line(play({ locations: sealed }), 'oldTown')).toBe('Locked');
     const either = [L('oldTown', undefined, { unlockedWhen: rows([open('seal')], [open('gate')]) }), docks];
-    expect(line(play({ locations: either }), 'oldTown')).toBe('Requires Gate Open is on');
+    expect(line(play({ locations: either }), 'oldTown')).toBe('Requires: Gate Open is on.');
   });
 
   it('gives a child the nearest lock\'s line, and the child\'s own Locked text over it (Q53)', () => {
-    expect(line(play(), 'well')).toBe('Requires Gate Open is on');
+    expect(line(play(), 'well')).toBe('Requires: Gate Open is on.');
     const told = [{ ...oldTown, lockedText: 'The gate is barred' }, square, { ...well, lockedText: 'The well is boarded up' }, docks];
     expect(line(play({ locations: told }), 'square')).toBe('[The gate is barred]');
     expect(line(play({ locations: told }), 'well')).toBe('[The well is boarded up]');

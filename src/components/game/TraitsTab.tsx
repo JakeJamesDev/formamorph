@@ -19,8 +19,7 @@ import { scopeKey, type OwnerId } from '@/lib/scope';
 import type { Entity, Stat, StatChange, Trait, TraitGroup, TraitsPanelView } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { textVariants } from '@/components/ui/typography';
-import { gateLineParts } from '@/lib/traitGateLine';
-import { GateLineText } from '@/components/game/GateLineText';
+import { gateLine } from '@/lib/traitGateLine';
 import { StatChangeItem } from '@/components/game/StatChangeItem';
 import { isAlwaysOn, isHidden } from '@/lib/traitEffects';
 import { statRowSide } from '@/lib/traitTree';
@@ -182,7 +181,7 @@ export const TraitsTab = ({
     const toggleLabel = `${off ? 'Switch on' : 'Switch off'} ${trait.name}`;
     const gate = gates && gateOf(gates, ownerId, trait.id);
     const locked = gate?.unlocked === false;
-    const line = gateLineParts(gate);
+    const line = gateLine(gate);
     // A switch-on needs an open gate and a group below its max, and a max-one group's active Automatic trait
     // can't be swapped out. A switch-off must not leave the group below its min.
     const fixedIn = fixedBlocks.has(`${scopeKey(ownerId)}/${block.key}`);
@@ -246,7 +245,7 @@ export const TraitsTab = ({
               {description && <p className="text-label text-muted-foreground">{description}</p>}
             </>
           )}
-          {line && <p className={cn('text-meta', locked ? 'text-foreground' : 'text-muted-foreground')}><GateLineText parts={line} /></p>}
+          {line && <p className={cn('text-meta', locked ? 'text-foreground' : 'text-muted-foreground')}>{line}</p>}
           {isExpanded && changes.length > 0 && (
             <ul className="mt-1 list-inside list-disc text-helper text-muted-foreground">
               {changes.map(({ change, stat }, i) => (

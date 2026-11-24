@@ -159,13 +159,22 @@ describe('the Condition clause, player view (Q18)', () => {
 
   it('keeps other owners in the third person', () => {
     expect(player({ kind: 'trait', id: 'Knight' })).toBe('Mira has Knight');
-    expect(player({ kind: 'stat', id: 'health', operator: '<', value: 2, unit: 'raw', owner: ALBUS })).toBe("Albus's Health is below 2");
+    const mira = { kind: 'entity', id: 'mira' } as const;
+    expect(player({ kind: 'stat', id: 'health', operator: '<', value: 2, unit: 'raw', owner: mira })).toBe("Mira's Health is below 2");
+    expect(player({ kind: 'stat', id: 'health', operator: '<', value: 2, unit: 'raw', owner: ALBUS }, undefined, { source: 'none' })).toBe("Albus's Health is below 2");
   });
 
-  it('reads a global trait or group as yours and a global stat with no subject', () => {
-    expect(player({ kind: 'trait', id: 'Paladin' }, { host: { kind: 'world' } })).toBe('you have Paladin');
-    expect(player({ kind: 'group', id: 'combat' }, { host: { kind: 'world' } })).toBe('you have a trait in Combat');
+  it('reads the played entity as you, whether named by owner or by host', () => {
+    expect(player({ kind: 'stat', id: 'health', operator: '<', value: 2, unit: 'raw', owner: ALBUS })).toBe('your Health is below 2');
+    expect(player({ kind: 'trait', id: 'Knight', owner: ALBUS, not: true })).toBe("you don't have Knight");
+    expect(player({ kind: 'stat', id: 'health', operator: '>', value: 1, unit: 'raw' }, { host: { kind: 'entity', id: 'albus', name: 'Albus' } })).toBe('your Health is above 1');
+  });
+
+  it('gives a no-owner world trait, group or stat no subject, as the editor does (Q25)', () => {
+    expect(player({ kind: 'trait', id: 'Paladin' }, { host: { kind: 'world' } })).toBe('Paladin is active');
+    expect(player({ kind: 'group', id: 'combat', not: true }, { host: { kind: 'world' } })).toBe('no trait in Combat is active');
     expect(player({ kind: 'stat', id: 'gold', operator: '>=', value: 5, unit: 'raw' }, { host: { kind: 'world' } })).toBe('Gold is at least 5');
+    expect(player({ kind: 'item', id: 'lantern', status: 'owned' }, { host: { kind: 'world' } })).toBe('you own Lantern');
   });
 });
 

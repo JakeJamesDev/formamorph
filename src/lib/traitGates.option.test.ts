@@ -144,8 +144,8 @@ describe('the hidden-Option filter', () => {
 
   it('leaves a hidden Option’s Condition out of the player’s line and keeps a shown one', () => {
     const gate = locked([[{ kind: 'option', id: 'secret' }, lit()]]);
-    expect(gateLine(gate)).toBe('Requires Lanterns Lit is on');
-    expect(gateLine(gate, { revealHidden: true })).toBe('Requires Secret Flag is on and Lanterns Lit is on');
+    expect(gateLine(gate)).toBe('Requires: Lanterns Lit is on.');
+    expect(gateLine(gate, { revealHidden: true })).toBe('Requires: Secret Flag is on and Lanterns Lit is on.');
   });
 
   it('reads "Locked" when only hidden Options remain', () => {

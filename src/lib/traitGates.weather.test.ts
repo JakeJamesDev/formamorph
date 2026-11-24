@@ -98,7 +98,7 @@ describe('a negated weather Condition', () => {
     const line = (...kinds: WeatherKind[]) => shownWhileLine(ruleStates(input([]), null, [{ all: [not(...kinds)] }]));
     expect(line('rain', 'storm')).toBe('Shown while not Rain or Storm');
     const gate = gateStates(input([T('a', { requires: [{ all: [not('rain')] }] })], 'rain'));
-    expect(gateLine(gateOf(gate, null, 'a'))).toBe('Requires not Rain');
+    expect(gateLine(gateOf(gate, null, 'a'))).toBe('Requires: the weather is not Rain.');
   });
 
   it('equals the other kinds listed plainly, and complements its plain form over every kind', () => {

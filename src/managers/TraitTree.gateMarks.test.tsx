@@ -55,7 +55,7 @@ describe('gate marks on the Traits tree', () => {
     expect(row.querySelector('.lucide-lock')).not.toBeNull();
     expect(treeRow('Lamp-Lit').querySelector('.lucide-lock')).toBeNull();
     act(() => { (within(row).getByText('1').closest('[tabindex]') as HTMLElement).focus(); });
-    expect(await screen.findByText('Requires Paladin')).toBeInTheDocument();
+    expect(await screen.findByText('Requires: Paladin is active.')).toBeInTheDocument();
   });
 
   it('tints a row red when a requirement points at nothing', () => {

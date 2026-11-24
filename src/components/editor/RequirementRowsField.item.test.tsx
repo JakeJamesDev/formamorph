@@ -19,7 +19,7 @@ const lit: TraitRequirementRow = { all: [{ kind: 'item', id: 'lamp', status: 'ow
 function Harness({ initial }: { initial: TraitRequirementRow[] }) {
   const [rows, setRows] = useState(initial);
   const states: RowState[] = rows.map((row) => ({
-    holds: false, conditions: row.all.map((r) => ({ text: textOf(r), holds: false, unresolved: false, hidden: false })),
+    holds: false, conditions: row.all.map((r) => ({ text: textOf(r), clause: textOf(r), holds: false, unresolved: false, hidden: false })),
   }));
   return (
     <TooltipProvider>

@@ -163,12 +163,12 @@ describe('the Map', () => {
     });
 
     it('marks a locked box with a lock and its line, and leaves the rest as they were (Q11)', async () => {
-      show({ current: 's7', lockLineOf: (id) => (id === 's40' ? { text: 'barred' } : id === 's41' ? { parts: ['Requires ', { persona: 'Ash' }, ' is on'] } : null) });
+      show({ current: 's7', lockLineOf: (id) => (id === 's40' ? { text: 'barred' } : id === 's41' ? { line: 'Requires: you have Ash.' } : null) });
       await drawnAt(2 * 149);
       const locked = screen.getByRole('button', { name: 'Locked Spoke 40' });
       expect(locked).toHaveAttribute('aria-disabled', 'true');
       expect(locked).toHaveAttribute('aria-description', 'BARRED');
-      expect(screen.getByRole('button', { name: 'Locked Spoke 41' })).toHaveAttribute('aria-description', 'Requires Ash is on');
+      expect(screen.getByRole('button', { name: 'Locked Spoke 41' })).toHaveAttribute('aria-description', 'Requires: you have Ash.');
       expect(box('Spoke 42')).not.toHaveAttribute('aria-disabled');
     });
 

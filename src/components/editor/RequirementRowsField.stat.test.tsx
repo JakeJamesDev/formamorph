@@ -29,7 +29,7 @@ function Harness({ initial = [], owner = null, offWorld = false, onOpen = () => 
   const [rows, setRows] = useState(initial);
   const states: RowState[] = rows.map((row) => ({
     holds: false,
-    conditions: row.all.map((r) => ({ text: textOf(r), holds: false, unresolved: false, hidden: false })),
+    conditions: row.all.map((r) => ({ text: textOf(r), clause: textOf(r), holds: false, unresolved: false, hidden: false })),
   }));
   return (
     <TooltipProvider>

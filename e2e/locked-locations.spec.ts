@@ -55,6 +55,14 @@ test.describe('a locked location', () => {
     expect(await standing(page)).toContain('The White Room');
   });
 
+  test('reads the lock line as a full sentence in the List and on the Map', async ({ page }) => {
+    const dialog = await openTravel(page, 'light');
+    await dialog.getByRole('tab', { name: 'List' }).click();
+    await expect(dialog.getByRole('button', { name: /^Observation Alcove/ })).toContainText('Requires: Alcove Open is on.');
+    await dialog.getByRole('tab', { name: 'Map' }).click();
+    await expect(dialog.locator('.react-flow__node[data-id="dev-alcove"] button')).toHaveAttribute('aria-description', 'Requires: Alcove Open is on.');
+  });
+
   for (const theme of ['light', 'dark'] as const) {
     test(`frames the List and the Map in ${theme}`, async ({ page }) => {
       mkdirSync(FRAMES, { recursive: true });

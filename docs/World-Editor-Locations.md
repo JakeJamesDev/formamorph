@@ -193,7 +193,7 @@ Simple mode also hides **AI-Facing Summary**.
 **Unlocked** decides when the player may enter the location. Add rows of conditions, the same kind a trait's **Requires** uses. The player may enter while any row holds. With no rows, it's never locked.
 
 - 🔒 **While it's locked,** the player still sees it on the list and the map, with a lock. Selecting it does nothing. The locations inside it are locked too.
-- 💬 **The line under it** is the **Locked Text** when you write one. Without it, the player reads what unlocks it, such as *Requires Alcove Open is on*. A hidden World Option never shows there; with nothing else to show, it reads *Locked*. A location inside shows its own **Locked Text**, or else the line of the lock around it.
+- 💬 **The line under it** is the **Locked Text** when you write one. Without it, the player reads what unlocks it, such as *Requires: Alcove Open is on.* A hidden World Option never shows there; with nothing else to show, it reads *Locked*. A location inside shows its own **Locked Text**, or else the line of the lock around it.
 - 🤖 **The AI never moves the player in,** and the *Move to …?* bar never offers it. The AI still reads the location and who is inside, so the story can describe the closed door.
 - 🧍 **A player already inside** moves freely within it and can leave.
 - 🗝️ **A script opens it** by setting the [World Option](World-Editor-Options) its rows read. A script's `location.move` moves the player in even while it's locked. See [Scripts](Scripts-Reference#location).

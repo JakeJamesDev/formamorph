@@ -141,16 +141,16 @@ export interface GateInput {
   worldOptions?: readonly WorldOption[];
   /** The playthrough's Option values. Absent, or missing an id, the Option's default (Q25). */
   optionValues?: WorldOptionValues;
-  /** Who reads the Condition text. The author reads the persona owner as "Persona"; the player reads the
-   *  played persona's name, which the line marks (Q7, Q11). Absent, the author. */
+  /** Who reads the Condition clauses. The player's say "you" for the played persona (Q18). Absent, the author. */
   reader?: 'author' | 'player';
 }
 
 /** One Condition's state against the active sets. */
 export interface ConditionState {
+  /** The chip text, for author tools. */
   text: string;
-  /** The played persona's name the text opens with, for the You pill on the player's line. */
-  persona?: string;
+  /** The Condition as a clause in the reader's view, which the gate line joins (Q18). */
+  clause: string;
   holds: boolean;
   unresolved: boolean;
   /** The target is a Hidden trait, a hidden or inert stat, or a hidden Option, so player-facing lines leave
@@ -303,10 +303,6 @@ function index(input: GateInput) {
   }
   const entities = new Map(input.entities.map((entity) => [entity.id, entity]));
   const played = playedEntityIds(input.persona, input.entities);
-  // The owner carries the name the player entered under None; the entity list has the authored one.
-  const personaName = input.reader === 'player' && played.length > 0
-    ? owners.get(played[0])?.owner.name || entities.get(played[0])?.name || null
-    : null;
   // Picks move values, never which stats exist, so any set names them.
   const stats = input.stats ?? input.statsOf?.(NO_ACTIVE);
   const global = globalItems(input);
@@ -368,7 +364,7 @@ function index(input: GateInput) {
   };
   const options = new Map(valuedOptions(input.worldOptions).map((option) => [option.id, option]));
   return {
-    owners, traitNames, groupNames, hiddenTraits, statNames, entities, global, isGlobal, ownerSet, traitsBelow, statOf, itemNames, itemNameFor, itemHeld, persona: input.persona, personaName,
+    owners, traitNames, groupNames, hiddenTraits, statNames, entities, global, isGlobal, ownerSet, traitsBelow, statOf, itemNames, itemNameFor, itemHeld, persona: input.persona, played, reader: input.reader, globalTree: globalScopeTree(input.global),
     daypart: input.daypart ?? OPENING_DAYPART, weather: input.weather ?? 'clear', options, optionValues: input.optionValues,
     opening: input.opening ?? null, openingLabels: input.openings && openingLabelMap(input.openings),
   };
@@ -500,10 +496,9 @@ function requirementHolds(req: TraitRequirement, trait: Located<{ id: string }>,
 const growthHolds = (trait: Located<Trait>, activeIn: ActiveIn, idx: Index, read?: () => GateStats | undefined) => (req: TraitRequirement): boolean =>
   (req.not && !readsNoSet(req) ? resolves(req as Switched, idx) : requirementHolds(req, trait, activeIn, idx, req.kind === 'stat' ? read?.() : undefined));
 
-/** The owner's name as the reader's text reads it, or null when the named entity is gone. The persona owner
- *  reads "Persona" to the author and the played persona's name to the player, which `persona` marks. */
-function ownerName(owner: RequirementOwner, idx: Index): { name: string; persona?: string } | null {
-  if (owner.kind === 'you') return idx.personaName ? { name: idx.personaName, persona: idx.personaName } : { name: 'Persona' };
+/** The owner's name as chip text reads it, or null when the named entity is gone. The persona owner reads "Persona". */
+function ownerName(owner: RequirementOwner, idx: Index): { name: string } | null {
+  if (owner.kind === 'you') return { name: 'Persona' };
   const name = idx.entities.get(owner.id)?.name ?? idx.owners.get(owner.id)?.owner.name;
   return name === undefined ? null : { name };
 }
@@ -560,9 +555,8 @@ function optionText(req: OptionRequirement, idx: Index): { text: string; unresol
   return { text: `${name} is ${req.not ? 'not ' : ''}${valueName}`, unresolved };
 }
 
-/** "Paladin", "not any Class", "Ash: not Tamed" (Q11). `persona` is the played persona's name the text opens
- *  with, for the player's line to mark. */
-function requirementText(req: TraitRequirement, idx: Index, from?: GateScopeTree): { text: string; unresolved: boolean; persona?: string } {
+/** "Paladin", "not any Class", "Ash: not Tamed" (Q11). */
+function requirementText(req: TraitRequirement, idx: Index, from?: GateScopeTree): { text: string; unresolved: boolean } {
   if (req.kind === 'time') return { text: timeText(req), unresolved: !req.dayparts.length };
   if (req.kind === 'weather') return { text: weatherText(req), unresolved: !req.kinds.length };
   if (req.kind === 'opening') return openingText(req, idx.openingLabels);
@@ -594,7 +588,7 @@ function requirementText(req: TraitRequirement, idx: Index, from?: GateScopeTree
   if (!req.owner) return target;
   const owner = ownerName(req.owner, idx);
   return owner
-    ? { text: `${owner.name}: ${target.text}`, unresolved: target.unresolved, persona: owner.persona }
+    ? { text: `${owner.name}: ${target.text}`, unresolved: target.unresolved }
     : {
       text: `${req.owner.kind === 'entity' && req.owner.name ? req.owner.name : 'a missing entity'}: ${target.text}`,
       unresolved: target.unresolved || !idx.isGlobal(req),
@@ -655,14 +649,33 @@ interface Built { parts: ClausePart[]; fixedStart: boolean }
  * A reader for any Condition's clause as ordered parts, in the input's reader's view (Q18, Q20). Joined by
  * {@link clauseText}, the parts are the plain clause.
  */
-export function conditionClauses(input: Omit<GateInput, 'active' | 'persona'> & { persona?: PersonaRef }): (req: TraitRequirement, view?: ClauseView) => ClausePart[] {
-  const idx = index({ ...input, active: NO_ACTIVE, persona: input.persona ?? { source: 'none' } });
-  const player = input.reader === 'player';
+export function conditionClauses(input: Omit<GateInput, 'active' | 'persona'> & { persona?: PersonaRef }): ClauseReader {
+  return clausesOf(index({ ...input, active: NO_ACTIVE, persona: input.persona ?? { source: 'none' } }));
+}
+
+type ClauseReader = (req: TraitRequirement, view?: ClauseView) => ClausePart[];
+
+const clauseReaders = new WeakMap<Index, ClauseReader>();
+
+/** The clause reader for an index, built once. */
+function clausesOf(idx: Index): ClauseReader {
+  let reader = clauseReaders.get(idx);
+  if (!reader) clauseReaders.set(idx, reader = buildClauseReader(idx));
+  return reader;
+}
+
+/** The host a Condition on `owner`'s scope sits on. */
+const hostOf = (owner: GateScopeTree): ClauseHost => (owner.id === null ? { kind: 'world' } : { kind: 'entity', id: owner.id, name: owner.name });
+
+function buildClauseReader(idx: Index): ClauseReader {
+  const player = idx.reader === 'player';
+  /** Whether the player's view reads `id` as "you". */
+  const isPlayed = (id: string): boolean => player && idx.played.includes(id);
   const verb = (forms: readonly (readonly [string, string])[], you: boolean, not?: true) => part('verb', forms[you && player ? 1 : 0][not ? 1 : 0]);
 
   /** The scope a Condition on `host` reads from; null for an entity with no id. */
   const fromOf = (host: ClauseHost): GateScopeTree | null => {
-    if (host.kind === 'world' || host.kind === 'persona') return globalScopeTree(input.global);
+    if (host.kind === 'world' || host.kind === 'persona') return idx.globalTree;
     if (host.id === undefined) return null;
     return idx.owners.get(host.id)?.owner ?? { id: host.id, name: host.name ?? '', traits: [], groups: [] };
   };
@@ -670,6 +683,8 @@ export function conditionClauses(input: Omit<GateInput, 'active' | 'persona'> & 
   const subjectOf = (req: Targeted, host: ClauseHost, from: GateScopeTree | null): ClauseSubject => {
     const owner = req.owner ?? (host.kind === 'persona' || (host.kind === 'world' && req.kind === 'item') ? { kind: 'you' as const } : undefined);
     if (owner?.kind === 'you') return player ? { kind: 'you' } : { kind: 'named', text: 'the player', fixed: true, broken: false };
+    // The player's view says "you" for any owner that is the played entity (Q18).
+    if (owner && isPlayed(owner.id)) return { kind: 'you' };
     if (owner) {
       const named = ownerName(owner, idx);
       return named
@@ -677,9 +692,10 @@ export function conditionClauses(input: Omit<GateInput, 'active' | 'persona'> & 
         : { kind: 'named', text: owner.name || 'a missing entity', fixed: false, broken: !idx.isGlobal(req) };
     }
     if (req.kind !== 'item' && from && idx.ownerSet(req, from).has(null)) {
-      // A global trait or group keeps "you" for the player (Q18); a global stat has no subject in either view (Q25).
-      return player && req.kind !== 'stat' ? { kind: 'you' } : { kind: 'none' };
+      // A Condition on a world trait, group or stat has no subject in either view (Q25).
+      return { kind: 'none' };
     }
+    if (host.kind === 'entity' && host.id !== undefined && isPlayed(host.id)) return { kind: 'you' };
     const name = host.kind === 'entity' ? host.name : undefined;
     return name ? { kind: 'named', text: name, fixed: false, broken: false } : { kind: 'named', text: 'this entity', fixed: true, broken: false };
   };
@@ -840,7 +856,8 @@ function rowStatesOf(
             // An Opening names a story route, so the player's line never shows it (Q23).
             : req.kind === 'opening' ? true
             : !!stat && (!!stat.hidden || !!stat.inert);
-      return { text: named.text, persona: named.persona, unresolved, hidden, holds: !unresolved && requirementHolds(req, host, activeIn, idx, read) };
+      const clause = clauseText(clausesOf(idx)(req, { host: hostOf(host.owner) }));
+      return { text: named.text, clause, unresolved, hidden, holds: !unresolved && requirementHolds(req, host, activeIn, idx, read) };
     });
     return { holds: conditions.every((c) => c.holds), conditions };
   });

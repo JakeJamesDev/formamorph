@@ -138,9 +138,9 @@ An entity whose traits you set gets a category with its portrait and name. Your 
 | A round button | Pick one. Select it again to clear it. When the group has an active **Automatic** trait, the other choices are off. |
 | A checkbox | Pick several. When the group is full, the rest turn off. |
 | A check mark with no control | **Automatic**. The trait is on and you can't change it. |
-| A lock and *Requires …* | The trait needs something first, such as *Requires Knight and not Paladin, or Mercenary*. Meet every part of one alternative and it unlocks. |
+| A lock and *Requires: …* | The trait needs something first, such as *Requires: you have Knight and you don't have Paladin, or you have Mercenary.* Meet every part of one alternative and it unlocks. |
 | A lock and *Locked* | The trait needs only traits you can't see |
-| *Unlocked by …* | The picks that opened it |
+| *Unlocked by: …* | The picks that opened it |
 | A stat line, such as *Strength: +2* | What the trait does to a stat |
 | An Avatar icon | The trait changes your Avatar's sliders or colors. Hover it to see which ones. It shows only when you will play with an Avatar. |
 

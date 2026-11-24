@@ -133,6 +133,6 @@ describe('the Opening Condition outside play', () => {
       traits, groups: [], entities: [], persona: { source: 'none' }, opening: QUIET,
     });
     expect(gateLine(gateOf(gateStates({ ...gate, reader: 'player' }), null, 'route'))).toBe('Locked');
-    expect(gateLine(gateOf(gateStates(gate), null, 'route'), { revealHidden: true })).toBe('Requires Opening');
+    expect(gateLine(gateOf(gateStates(gate), null, 'route'), { revealHidden: true })).toBe('Requires: the opening is an opening.');
   });
 });

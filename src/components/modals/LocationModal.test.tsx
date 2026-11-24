@@ -256,9 +256,9 @@ describe('a location the travel gate refuses (Q3, Q11)', () => {
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 
-  it('shows the lock line with the You pill when there is no Locked text', () => {
-    openDialog({ canEnter: gated.canEnter, lockLineOf: () => ({ parts: ['Requires ', { persona: 'Ash' }, ' to hold a lantern'] }) });
-    expect(screen.getByRole('button', { name: /^Moor/ })).toHaveTextContent(/Requires Ash.*to hold a lantern/);
+  it('shows the lock line when there is no Locked text', () => {
+    openDialog({ canEnter: gated.canEnter, lockLineOf: () => ({ line: 'Requires: you own Lantern.' }) });
+    expect(screen.getByRole('button', { name: /^Moor/ })).toHaveTextContent(/Requires: you own Lantern\.$/);
   });
 
   it('reads "Locked" when it has no line to give', () => {

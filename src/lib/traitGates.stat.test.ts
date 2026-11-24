@@ -121,14 +121,14 @@ describe('stat Conditions', () => {
   describe('the player’s line', () => {
     it('renders a stat Condition with % under percent', () => {
       const i = input([gated(stat('rage', '>=', 80), stat('rage', '<', 20, { unit: 'percent', not: true }))], rage(10));
-      expect(gateLine(gate(i))).toBe('Requires Rage >= 80 and not Rage < 20%');
+      expect(gateLine(gate(i))).toBe('Requires: Rage is at least 80 and Rage is not below 20%.');
     });
 
     it('leaves out a hidden or inert stat and drops a row left empty', () => {
       const traits = [T('Berserk', { requires: [{ all: [stat('rage', '>=', 80)] }, { all: [stat('calm', '<', 5), trait('Knight')] }] }), T('Knight')];
       const stats = scoped<GateStatSet>({ rage: S('Rage', 10, { hidden: true }), calm: S('Calm', 50, { inert: true }) });
-      expect(gateLine(gate(input(traits, stats)))).toBe('Requires Knight');
-      expect(gateLine(gate(input(traits, stats)), { revealHidden: true })).toBe('Requires Rage >= 80, or Calm < 5 and Knight');
+      expect(gateLine(gate(input(traits, stats)))).toBe('Requires: Knight is active.');
+      expect(gateLine(gate(input(traits, stats)), { revealHidden: true })).toBe('Requires: Rage is at least 80, or Calm is below 5 and Knight is active.');
     });
   });
 });

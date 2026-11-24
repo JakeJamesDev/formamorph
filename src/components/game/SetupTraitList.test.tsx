@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { SetupTraitList, TraitCascadeNotice } from './SetupTraitList';
 import { groupPickState, type ConditionState } from '@/lib/traitGates';
 import { scoped } from '@/lib/scope';
@@ -132,18 +132,18 @@ describe('SetupTraitList outside the setup dialog', () => {
 });
 
 describe('SetupTraitList gates', () => {
-  const req = (text: string, holds: boolean, hidden = false): ConditionState => ({ text, holds, unresolved: false, hidden });
+  const req = (clause: string, holds: boolean, hidden = false): ConditionState => ({ text: clause, clause, holds, unresolved: false, hidden });
   /** Each Condition as a row of its own. */
   const oneEach = (...conditions: ReturnType<typeof req>[]) => conditions.map((c) => ({ holds: c.holds, conditions: [c] }));
   const gates = scoped(new Map([
-    ['dockhand', { unlocked: false, rows: oneEach(req('Paladin', false), req('Knight', false)) }],
-    ['scholar', { unlocked: true, rows: oneEach(req('Mage', true), req('any Class', false)) }],
+    ['dockhand', { unlocked: false, rows: oneEach(req('you have Paladin', false), req('you have Knight', false)) }],
+    ['scholar', { unlocked: true, rows: oneEach(req('you have Mage', true), req('you have a trait in Class', false)) }],
   ]));
 
   it('keeps a locked trait in place, disabled, and says what it requires', () => {
     view({ gates, picks: null });
     expect(screen.getByRole('checkbox', { name: 'Dockhand' })).toBeDisabled();
-    expect(screen.getByText('Requires Paladin or Knight')).toBeInTheDocument();
+    expect(screen.getByText('Requires: you have Paladin or you have Knight.')).toBeInTheDocument();
   });
 
   it('disables a locked radio in a max-one group', () => {
@@ -155,17 +155,16 @@ describe('SetupTraitList gates', () => {
   it('names only the requirements that unlocked an open gated trait', () => {
     view({ gates, picks: null });
     expect(screen.getByRole('checkbox', { name: 'Scholar' })).toBeEnabled();
-    expect(screen.getByText('Unlocked by Mage')).toBeInTheDocument();
+    expect(screen.getByText('Unlocked by: you have Mage.')).toBeInTheDocument();
   });
 
-  it("marks the played persona's name in the line with the You pill (Q7)", () => {
+  it('reads the persona as "you" in the line, with no You pill (Q18)', () => {
     const onPersona = scoped(new Map([
-      ['dockhand', { unlocked: false, rows: oneEach({ ...req('Kate: Paladin', false), persona: 'Kate' }, req('Knight', false)) }],
+      ['dockhand', { unlocked: false, rows: oneEach(req('you are Kate', false), req('you have Knight', false)) }],
     ]));
     view({ gates: onPersona, picks: null });
-    const line = screen.getByText(/^Requires Kate/);
-    expect(line).toHaveTextContent(/^Requires KateYou: Paladin or Knight$/);
-    expect(within(line).getByText('You')).toBeInTheDocument();
+    expect(screen.getByText('Requires: you are Kate or you have Knight.')).toBeInTheDocument();
+    expect(screen.queryByText('You')).toBeNull();
   });
 
   it('shows a dismissible banner naming what a change turned off and why', () => {
@@ -220,12 +219,12 @@ describe('SetupTraitList gates', () => {
 
     it('leaves a Hidden requirement out of the gate line', () => {
       const hiddenGates = scoped(new Map([
-        ['dockhand', { unlocked: false, rows: oneEach(req('Secret Bond', false, true), req('Knight', false)) }],
-        ['scholar', { unlocked: true, rows: oneEach(req('Secret Bond', true, true), req('Mage', true)) }],
+        ['dockhand', { unlocked: false, rows: oneEach(req('Secret Bond', false, true), req('you have Knight', false)) }],
+        ['scholar', { unlocked: true, rows: oneEach(req('Secret Bond', true, true), req('you have Mage', true)) }],
       ]));
       view({ gates: hiddenGates, picks: null });
-      expect(screen.getByText('Requires Knight')).toBeInTheDocument();
-      expect(screen.getByText('Unlocked by Mage')).toBeInTheDocument();
+      expect(screen.getByText('Requires: you have Knight.')).toBeInTheDocument();
+      expect(screen.getByText('Unlocked by: you have Mage.')).toBeInTheDocument();
       expect(screen.queryByText(/Secret Bond/)).toBeNull();
     });
 

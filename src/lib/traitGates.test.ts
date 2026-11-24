@@ -262,34 +262,34 @@ describe('requirements per owner', () => {
     expect(reason(input(NO_ACTIVE), 'Squire', 'mira')).toEqual(['Persona: Paladin']);
   });
 
-  // Q7, Q11: the author reads the persona owner as Persona; the player reads the played persona's name.
+  // Q18: chip text reads the persona owner as Persona; the player's clause reads "you", whoever is played.
   describe('the persona owner by reader', () => {
     const state = (gate: GateInput) => gateOf(gateStates(gate), 'mira', 'Squire')!.rows[0].conditions[0];
     const player = (persona: PersonaRef, extra: Partial<GateInput> = {}): GateInput => ({ ...input(NO_ACTIVE, persona), reader: 'player', ...extra });
 
     it('reads Persona to the author, whoever is played', () => {
       expect(reason(input(NO_ACTIVE, { source: 'world', entityId: 'albus' }), 'Squire', 'mira')).toEqual(['Persona: Paladin']);
-      expect(state(input(NO_ACTIVE, { source: 'world', entityId: 'albus' })).persona).toBeUndefined();
+      expect(state(input(NO_ACTIVE, { source: 'world', entityId: 'albus' })).clause).toBe('the player has Paladin');
     });
 
-    it("reads the played world persona's name to the player, and names it for the mark", () => {
-      expect(state(player({ source: 'world', entityId: 'albus' }))).toEqual({ text: 'Albus: Paladin', persona: 'Albus', holds: false, unresolved: false, hidden: false });
+    it('reads "you" to the player when a world persona is played', () => {
+      expect(state(player({ source: 'world', entityId: 'albus' }))).toEqual({ text: 'Persona: Paladin', clause: 'you have Paladin', holds: false, unresolved: false, hidden: false });
     });
 
-    it('keeps Persona for a player with no played owner', () => {
-      expect(state(player({ source: 'none' }))).toEqual({ text: 'Persona: Paladin', holds: false, unresolved: false, hidden: false });
+    it('reads "you" to the player when no one is played', () => {
+      expect(state(player({ source: 'none' }))).toEqual({ text: 'Persona: Paladin', clause: 'you have Paladin', holds: false, unresolved: false, hidden: false });
     });
 
-    it("reads the Custom Persona entity under None by its owner's name, the one the player entered", () => {
+    it('reads "you" for the Custom Persona entity under None', () => {
       const custom: GateOwner = { id: 'cp', name: 'Ash Vale', groups: [], traits: [] };
       const gate = player({ source: 'none' }, { owners: [albus, mira, custom], entities: [...entities, { id: 'cp', name: 'Wanderer', customPersona: true }] });
-      expect(state(gate)).toMatchObject({ text: 'Ash Vale: Paladin', persona: 'Ash Vale' });
+      expect(state(gate)).toMatchObject({ text: 'Persona: Paladin', clause: 'you have Paladin' });
     });
 
-    it("reads a library persona's name, not the Custom Persona entity's, when both are played", () => {
+    it('reads "you" for a library persona when the Custom Persona entity is also played', () => {
       const lib: GateOwner = { id: 'lib', name: 'Kate', groups: [], traits: [] };
       const gate = player({ source: 'library', entityId: 'lib' }, { owners: [albus, mira, lib], entities: [...entities, { id: 'cp', name: 'Wanderer', customPersona: true }] });
-      expect(state(gate)).toMatchObject({ text: 'Kate: Paladin', persona: 'Kate' });
+      expect(state(gate)).toMatchObject({ text: 'Persona: Paladin', clause: 'you have Paladin' });
     });
   });
 
@@ -313,8 +313,8 @@ describe('requirements per owner', () => {
     const owners = [{ ...mira, traits: [squire] }];
     const state = gateOf(gateStates({ ...input(NO_ACTIVE), owners, originals: { traits: [T('Cleric')], groups: [] } }), 'mira', 'Squire')!;
     expect(state.rows).toEqual([
-      { holds: false, conditions: [{ text: 'Persona: Cleric', holds: false, unresolved: false, hidden: false }] },
-      { holds: false, conditions: [{ text: 'Old Albus: Paladin', holds: false, unresolved: true, hidden: false }] },
+      { holds: false, conditions: [{ text: 'Persona: Cleric', clause: 'the player has Cleric', holds: false, unresolved: false, hidden: false }] },
+      { holds: false, conditions: [{ text: 'Old Albus: Paladin', clause: 'Old Albus has Paladin', holds: false, unresolved: true, hidden: false }] },
     ]);
     expect(reason({ ...input(NO_ACTIVE), owners }, 'Squire', 'mira')?.[0]).toBe('Persona: a missing trait');
   });

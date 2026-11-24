@@ -1485,7 +1485,7 @@ describe('EnterWorldWorkspace cast pages', () => {
     await user.click(screen.getByRole('radio', { name: 'Bob' }));
     await user.click(within(nav()).getByRole('button', { name: /^Ash/ }));
     expect(screen.getByRole('checkbox', { name: 'Guard' })).toBeDisabled();
-    expect(screen.getByText('Requires playing as Ash')).toBeInTheDocument();
+    expect(screen.getByText('Requires: you are Ash.')).toBeInTheDocument();
     expect(within(screen.getByRole('main')).getByRole('status')).toHaveTextContent('Turned off Guard, because of bob.');
 
     await user.click(within(nav()).getByRole('button', { name: 'Persona' }));

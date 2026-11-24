@@ -5,21 +5,21 @@ import { ungatedPick, type RoutinePick } from '@/lib/entityKind';
 import { evaluateGates, gatePick, hasRoutineGate, worldHasGates, type GateVerdicts, type InPlaySource, type InPlayState } from '@/lib/inPlayGates';
 import { setupStatsOf } from '@/lib/setupGateStats';
 import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
-import { gateLineParts, plainLine, type GateLinePart } from '@/lib/traitGateLine';
+import { gateLine } from '@/lib/traitGateLine';
 import { settleDefaults, worldGateInput, type GateActive, type GateInput } from '@/lib/traitGates';
 import type {
   Connection, DiscoveredEntity, Entity, GameLocation, PersonaRef, Stat, StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValues,
 } from '@/types';
 
 /** What the player reads on a locked location: the author's Locked text, still to resolve, or the lock line. */
-export type LockLine = { text: string } | { parts: GateLinePart[] };
+export type LockLine = { text: string } | { line: string };
 
 /** The line of a lock with nothing left to show. */
-export const LOCKED_LINE: LockLine = { parts: ['Locked'] };
+export const LOCKED_LINE: LockLine = { line: 'Locked' };
 
 /** A lock line as plain text. */
 export const lockLinePlain = (line: LockLine, resolveText: (text: string) => string): string =>
-  ('text' in line ? resolveText(line.text) : plainLine(line.parts));
+  ('text' in line ? resolveText(line.text) : line.line);
 
 /**
  * The world as play sees it: the authored world with its gates applied. Every in-play reader of entities and
@@ -186,8 +186,8 @@ export function inPlayWorldFrom(source: InPlaySource, verdicts: GateVerdicts, pl
     const nearest = locksOver(id)[0];
     if (!nearest) return null;
     const text = lockedTextOf(locationById.get(id)) ?? lockedTextOf(locationById.get(nearest));
-    const parts = gateLineParts(lockRoots.get(nearest));
-    return text ? { text } : parts ? { parts } : LOCKED_LINE;
+    const line = gateLine(lockRoots.get(nearest));
+    return text ? { text } : line ? { line } : LOCKED_LINE;
   };
   return {
     entities: kept(runningEntities, isEntityOnstage),

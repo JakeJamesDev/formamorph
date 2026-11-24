@@ -127,13 +127,13 @@ describe('owned trait picks in the draft', () => {
   const toggle = (draft: EntryDraft, ownerId: string, traitId: string) =>
     withSettledTraits(draft, switchTrait(entryGateInput(castWorld(), draft), ownerId, traitId, cascadeOffInput(draft.cascadeOffTraitIds))!);
 
-  // Q7: the setup screen reads a Condition on the persona by the played persona's name, for the You pill.
-  it("reads a Condition on the persona by the played persona's name, or Persona with no one played", () => {
+  // Q18: the setup screen's clause reads a Condition on the persona as "you", whoever is played.
+  it('reads a Condition on the persona as "you" whether a world persona or no one is played', () => {
     const knight: Entity = { id: 'knight', name: 'Knight', traits: [trait('squire', { requires: [{ all: [{ kind: 'trait', id: 'tamed', owner: { kind: 'you' } }] }] })] };
     const condition = (persona: PersonaRef) =>
       gateOf(gateStates(entryGateInput(castWorld([knight]), { ...emptyEntryDraft(), persona })), 'knight', 'squire')!.rows[0].conditions[0];
-    expect(condition(world('ash'))).toMatchObject({ text: 'Ash: tamed', persona: 'Ash' });
-    expect(condition({ source: 'none' })).toMatchObject({ text: 'Persona: tamed', persona: undefined });
+    expect(condition(world('ash'))).toMatchObject({ text: 'Persona: tamed', clause: 'you have tamed' });
+    expect(condition({ source: 'none' })).toMatchObject({ text: 'Persona: tamed', clause: 'you have tamed' });
   });
 
   it("preselects every owner's defaults, the world's and each entity's, settled under the persona", () => {

@@ -50,7 +50,7 @@ describe('a time Condition', () => {
     expect(line('dawn', 'morning', 'midday')).toBe('Shown while dawn, morning, or midday');
     expect(line('evening', 'dawn')).toBe('Shown while dawn or evening');
     const gate = gateStates(input([T('a', { requires: [{ all: [time('midday')] }] })], 'night'));
-    expect(gateLine(gateOf(gate, null, 'a'))).toBe('Requires midday');
+    expect(gateLine(gateOf(gate, null, 'a'))).toBe('Requires: it is midday.');
   });
 
   it('compares by its set, whatever the stored order', () => {
@@ -88,7 +88,7 @@ describe('a negated time Condition', () => {
   it('reads the negated form in the Shown while and gate lines', () => {
     expect(shownWhileLine(ruleStates(input([]), null, [{ all: [not('evening', 'night')] }]))).toBe('Shown while not evening or night');
     const gate = gateStates(input([T('a', { requires: [{ all: [not('night')] }] })], 'night'));
-    expect(gateLine(gateOf(gate, null, 'a'))).toBe('Requires not night');
+    expect(gateLine(gateOf(gate, null, 'a'))).toBe('Requires: it is not night.');
   });
 
   it('equals the other dayparts listed plainly, and complements its plain form', () => {

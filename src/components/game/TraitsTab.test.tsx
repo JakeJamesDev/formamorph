@@ -330,7 +330,7 @@ describe('a gated trait in play', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Global,/ }));
     openDisabled('Global');
     expect(screen.getByRole('checkbox', { name: 'Switch on Plate Armor' })).toBeDisabled();
-    expect(screen.getByText('Requires Paladin')).toBeTruthy();
+    expect(screen.getByText('Requires: Paladin is active.')).toBeTruthy();
     expect(screen.getByRole('checkbox', { name: 'Switch on Paladin' })).toBeEnabled();
   });
 
@@ -338,7 +338,7 @@ describe('a gated trait in play', () => {
     renderTraits(TRAITS, [], ['t-paladin']);
     openDisabled('Global');
     expect(screen.getByRole('checkbox', { name: 'Switch on Plate Armor' })).toBeEnabled();
-    expect(screen.getByText('Unlocked by Paladin')).toBeTruthy();
+    expect(screen.getByText('Unlocked by: Paladin is active.')).toBeTruthy();
   });
 
   it('opens a playing-as trait while the player plays that world persona', () => {
@@ -349,10 +349,10 @@ describe('a gated trait in play', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Global,/ }));
     openDisabled('Global');
     expect(screen.getByRole('checkbox', { name: 'Switch on Royal Crown' })).toBeEnabled();
-    expect(screen.getByText('Unlocked by playing as Sir Aldric')).toBeTruthy();
+    expect(screen.getByText('Unlocked by: you are Sir Aldric.')).toBeTruthy();
   });
 
-  // Q7: a Condition on the persona reads the played persona's name with the You pill, or Persona with no one played.
+  // Q18: a Condition on the persona reads "you", with no pill, whether or not a world persona is played.
   describe("a Condition on the persona's traits", () => {
     // Sir Aldric's own Knighthood is the target: a global target offers no owner (Q10).
     const knight = { ...aldric, traits: [T('t-knighthood', 'Knighthood')] };
@@ -362,23 +362,21 @@ describe('a gated trait in play', () => {
       openDisabled('Global');
     };
 
-    it('names the played world persona with the pill', () => {
+    it('reads "you" for the played world persona, with no pill in the line', () => {
       renderTraits([...TRAITS, SQUIRE], [], [], {
         world: { entities: [knight] },
         seed: (gameplay) => gameplay.setPersonaRef({ source: 'world', entityId: 'e-aldric' }),
       });
       unfoldGlobal();
-      const line = screen.getByText(/^Requires Sir Aldric/);
-      expect(line).toHaveTextContent(/^Requires Sir AldricYou: Knighthood$/);
-      expect(within(line).getByText('You')).toBeTruthy();
+      const line = screen.getByText(/^Requires: you have Knighthood/);
+      expect(line).toHaveTextContent(/^Requires: you have Knighthood\.$/);
+      expect(within(line).queryByText('You')).toBeNull();
     });
 
-    it('reads Persona, with no pill, when no one is played', () => {
+    it('reads "you" the same when no one is played', () => {
       renderTraits([...TRAITS, SQUIRE], [], [], { world: { entities: [knight] } });
       unfoldGlobal();
-      const line = screen.getByText(/^Requires Persona/);
-      expect(line).toHaveTextContent(/^Requires Persona: Knighthood$/);
-      expect(within(line).queryByText('You')).toBeNull();
+      expect(screen.getByText('Requires: you have Knighthood.')).toBeTruthy();
     });
   });
 
@@ -433,7 +431,7 @@ describe('entity nodes in the traits tab', () => {
     withAsh();
     fireEvent.click(within(section('Ash')).getByRole('button', { name: /^Disabled/ }));
     expect(screen.getByRole('checkbox', { name: 'Switch on Loyal' })).toBeDisabled();
-    expect(screen.getByText('Requires Paladin')).toBeTruthy();
+    expect(screen.getByText('Requires: Paladin is active.')).toBeTruthy();
   });
 
   it('leaves out the node of an entity that is here but took no part lately', () => {
@@ -799,7 +797,7 @@ describe('a Hidden trait', () => {
     renderTraits(TRAITS, GROUPS, ['t-bond', 't-omen']);
     fireEvent.click(screen.getByRole('button', { name: 'Global, 0 enabled' }));
     openDisabled('Global');
-    expect(screen.getByText('Requires Paladin')).toBeInTheDocument();
+    expect(screen.getByText('Requires: Paladin is active.')).toBeInTheDocument();
     expect(screen.getByText('Locked')).toBeInTheDocument();
     expect(screen.queryByText(/Lost Name/)).toBeNull();
   });
@@ -808,7 +806,7 @@ describe('a Hidden trait', () => {
     renderTraits(TRAITS, GROUPS, ['t-paladin', 't-lost', 't-bond', 't-omen']);
     openDisabled('Global');
     expect(screen.getByRole('checkbox', { name: 'Switch on Veil' })).toBeEnabled();
-    expect(screen.getByText('Unlocked by Paladin')).toBeInTheDocument();
+    expect(screen.getByText('Unlocked by: Paladin is active.')).toBeInTheDocument();
     expect(screen.queryByText(/Lost Name/)).toBeNull();
   });
 });

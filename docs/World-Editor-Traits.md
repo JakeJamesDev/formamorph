@@ -499,11 +499,12 @@ A **World Option condition** checks an Option from the [Options tab](World-Edito
 
 ### What the player reads
 
-A locked trait shows its requirements as one line: *Requires Knight and not Paladin, or Mercenary*.
+A locked trait shows its requirements as one line: *Requires: you have Knight and you don't have Paladin, or you have Mercenary.*
 
-- Conditions join with **and**, and rows join with **or**.
-- Stat conditions read the same way: *Requires Rage >= 80*, with **%** after a percent.
-- A trait that opens shows the rows that opened it, after *Unlocked by*.
+- Conditions join with **and**, and rows join with **or**. Each condition reads as a full clause.
+- A condition about the persona the player plays says **you**. A condition about another entity names it.
+- A condition on a world trait or stat names no one: *Requires: Paladin is active and Rage is at least 80.* A percent keeps its **%**.
+- A trait that opens shows the rows that opened it, after *Unlocked by:*.
 - The line leaves out conditions on a [Hidden](#hidden-traits) trait, a hidden stat or a switched-off stat.
 - A row with nothing left to show is dropped. A trait with no row left to show reads **Locked**.
 

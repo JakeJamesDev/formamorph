@@ -100,8 +100,8 @@ describe('item Conditions', () => {
     const hiddenOnly = [instance('a', { kind: 'you' }, { visibility: 'hidden' })];
     expect(unlocked(ring(), hiddenOnly)).toBe(true);
     expect(line(hiddenOnly)).toBeNull();
-    expect(line([instance('a', { kind: 'you' })])).toBe('Unlocked by owning Cursed Ring');
-    expect(line([instance('a', { kind: 'you' }, { visibility: 'hidden' }), instance('b', { kind: 'you' })])).toBe('Unlocked by owning Cursed Ring');
+    expect(line([instance('a', { kind: 'you' })])).toBe('Unlocked by: the player owns Cursed Ring.');
+    expect(line([instance('a', { kind: 'you' }, { visibility: 'hidden' }), instance('b', { kind: 'you' })])).toBe('Unlocked by: the player owns Cursed Ring.');
   });
 
   it('offers each item as owned, and as equipped when it fits a slot', () => {

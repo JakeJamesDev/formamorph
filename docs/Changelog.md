@@ -63,6 +63,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **You can edit, delete and regenerate a character's diary entries in Memories.** The character acts on your version from the next turn. Show Hidden Entries lists deleted entries, with Restore. Reset All My Changes resets only the open diary.
     - **A character's popup links to their diary.** A line under the description, such as "Bram's diary · 5 entries", opens that diary in Memories. It shows only when the diary has entries the AI reads.
     - **Regenerating a memory in Memories shows the new text first.** Keep stores it. Discard leaves the memory as it was.
+  - **Requirement Sentences:**
+    - **A trait's or location's lock line now reads as full sentences.** It says "you have Knight and you don't have Paladin" where it said "Knight and not Paladin". Your persona reads as "you", and other entities keep their names.
   - **Script entries now tell you what they are.** Every entity, location, item, stat, trait and other entry in a script reads a read-only `category`, such as "entity" or "itemInstance".
   - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
   - **Edit your Avatar's look during play from the pencil on your Avatar.** Change sliders, colors and hair, or switch Avatars when the world allows it. The new look stays after a rollback or a regenerate.
