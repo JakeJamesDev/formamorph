@@ -1,6 +1,6 @@
 # 02: Keep the Live Look Through Rewind
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,9 +15,17 @@ Spec: Q5; stories 15, 16, 24.
 
 ## Acceptance criteria
 
-- [ ] A look changed after a turn survives rollback (gameplay state restore test).
-- [ ] A look changed after a turn survives regenerate (gameplay state restore test).
-- [ ] Both guards are proven to bite by reinstating the restore of the look.
-- [ ] Loading a save restores that save's look (gameplay state restore test).
-- [ ] A past page shows the look its snapshot recorded while the live look differs (gameplay state restore test).
-- [ ] A changelog fragment is not needed on its own: the behavior ships with ticket 01's entry. If 01 has landed first, fold a line into its entry.
+- [x] A look changed after a turn survives rollback (gameplay state restore test). `GameplayContext.rewindLook.test.tsx`: "survives rollback".
+- [x] A look changed after a turn survives regenerate (gameplay state restore test). Same file: "survives regenerate".
+- [x] Both guards are proven to bite by reinstating the restore of the look. With the restore reinstated, both tests failed; the save-load and past-page tests stayed green.
+- [x] Loading a save restores that save's look (gameplay state restore test). Same file: "is replaced by the saved look when a save loads".
+- [x] A past page shows the look its snapshot recorded while the live look differs (gameplay state restore test). Same file: "shows a past page its snapshot look…".
+- [x] A changelog fragment is not needed on its own: the behavior ships with ticket 01's entry. Ticket 01 has not landed, so no line was folded in.
+
+## Landed
+
+**Not verified**
+- Ticket 01 had not landed, so no line went into its changelog entry. Add one when it lands.
+
+**For you**
+- None. No player-visible surface changes until ticket 01 ships the editor.

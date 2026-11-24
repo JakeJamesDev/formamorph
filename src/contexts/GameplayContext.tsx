@@ -574,7 +574,10 @@ function useProvideGameplay() {
       if (!opts?.keepLiveHistory) {
         setFullMessageHistory(gameState.fullMessageHistory ?? []);
       }
-      setCharacterData(gameState.characterData);
+      // The look is a viewing preference: rollback / regenerate keep the live one, a loaded save restores its own.
+      if (!opts?.keepLiveHistory) {
+        setCharacterData(gameState.characterData);
+      }
       setChoices(gameState.choices);
       setIsGameStarted(gameState.isGameStarted);
 
