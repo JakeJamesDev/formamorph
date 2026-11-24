@@ -7,8 +7,8 @@ import type {
   SlotRule, ValuedWorldOption, WorldOption, WorldOptionValues,
 } from '@/types';
 import { DAYPARTS, OPENING_DAYPART } from './gameClock';
-import { ALL_WEATHER_KINDS, weatherText } from './weather';
-import { isDrawnOpening, openingKeyId, openingLabelMap, openingText } from './openingCondition';
+import { ALL_WEATHER_KINDS, weatherKindsText, weatherText } from './weather';
+import { isDrawnOpening, openingKeyId, openingLabelMap, openingNames, openingText } from './openingCondition';
 import type { OpeningKey } from './drawnOpening';
 import type { OpeningPickGroup } from './testBench/openingPick';
 import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex } from './traitEffects';
@@ -516,7 +516,10 @@ function resolves(req: Switched, idx: Index): boolean {
 }
 
 /** What follows the stat's name in a stat Condition's text: the operator, then the number, with `%` under percent. */
-export const statTail = (req: StatRequirement): string => `${req.operator} ${req.value}${req.unit === 'percent' ? '%' : ''}`;
+export const statTail = (req: StatRequirement): string => `${req.operator} ${statValue(req)}`;
+
+/** A stat Condition's number, with `%` under percent. */
+const statValue = (req: StatRequirement): string => `${req.value}${req.unit === 'percent' ? '%' : ''}`;
 
 const DAYPARTS_OR = new Intl.ListFormat('en', { type: 'disjunction' });
 
@@ -524,10 +527,15 @@ const DAYPARTS_OR = new Intl.ListFormat('en', { type: 'disjunction' });
  *  midnight reads in order: "evening or night", "not night" under Not. */
 export function timeText(req: TimeRequirement): string {
   if (!req.dayparts.length) return 'no time of day';
+  const text = daypartsInOrder(req);
+  return req.not ? `not ${text}` : text;
+}
+
+/** A time Condition's dayparts joined by "or", starting after a daypart it leaves out. */
+function daypartsInOrder(req: TimeRequirement): string {
   const on = (i: number) => req.dayparts.includes(DAYPARTS[(i + DAYPARTS.length) % DAYPARTS.length]);
   const start = Math.max(0, DAYPARTS.findIndex((_, i) => on(i) && !on(i - 1)));
-  const text = DAYPARTS_OR.format([...DAYPARTS.slice(start), ...DAYPARTS.slice(0, start)].filter((d) => req.dayparts.includes(d)));
-  return req.not ? `not ${text}` : text;
+  return DAYPARTS_OR.format([...DAYPARTS.slice(start), ...DAYPARTS.slice(0, start)].filter((d) => req.dayparts.includes(d)));
 }
 
 /** An item Condition's State and identity checks, in parentheses after the name: " (lit, unidentified)" (Q46). */
@@ -598,6 +606,173 @@ export function conditionTexts(input: Omit<GateInput, 'active' | 'persona'>): (r
   const idx = index({ ...input, active: NO_ACTIVE, persona: { source: 'none' } });
   return (req) => requirementText(req, idx).text;
 }
+
+/** What a clause part is. `subject` is an owner; `word` is fixed text, such as "It" or "is active". */
+export type ClauseRole = 'subject' | 'verb' | 'target' | 'comparison' | 'value' | 'checks' | 'set' | 'word';
+
+/** One part of a clause. `broken` marks what an unresolved Condition lacks; `attach` joins with no space ("'s"). */
+export interface ClausePart {
+  role: ClauseRole;
+  text: string;
+  broken?: true;
+  attach?: true;
+}
+
+/** The record a Condition with no owner sits on. An entity's id lets a Condition on global scope drop its subject (Q25). */
+export type ClauseHost = { kind: 'entity'; id?: string; name?: string } | { kind: 'world' } | { kind: 'persona' };
+
+export interface ClauseView {
+  /** Default: an entity with no name. */
+  host?: ClauseHost;
+  /** The clause opens a sentence: its first fixed word takes a capital, names keep their case. */
+  sentenceStart?: boolean;
+}
+
+const COMPARISON_WORDS: Record<StatComparison, string> = {
+  '>': 'above', '<': 'below', '>=': 'at least', '<=': 'at most', '=': 'exactly', '≠': 'different from',
+};
+
+/** Who a clause is about. `fixed` marks our own words ("the player"), which a sentence start capitalizes. */
+type ClauseSubject = { kind: 'you' } | { kind: 'named'; text: string; fixed: boolean; broken: boolean } | { kind: 'none' };
+
+/** Verbs by kind: the author's third person, then the player's second person for "you". */
+const VERBS = {
+  trait: [['has', "doesn't have"], ['have', "don't have"]],
+  group: [['has a trait in', 'has no trait in'], ['have a trait in', 'have no trait in']],
+  owned: [['owns', "doesn't own"], ['own', "don't own"]],
+  equipped: [['has equipped', "doesn't have equipped"], ['have equipped', "don't have equipped"]],
+  playingAs: [['is', 'is not'], ['are', 'are not']],
+} as const;
+
+const part = (role: ClauseRole, text: string, broken = false): ClausePart => (broken ? { role, text, broken: true } : { role, text });
+const word = (text: string): ClausePart => part('word', text);
+const isVerb = (not?: true): ClausePart => part('verb', not ? 'is not' : 'is');
+
+/** A clause's parts, and whether the first is fixed text a sentence start capitalizes. */
+interface Built { parts: ClausePart[]; fixedStart: boolean }
+
+/**
+ * A reader for any Condition's clause as ordered parts, in the input's reader's view (Q18, Q20). Joined by
+ * {@link clauseText}, the parts are the plain clause.
+ */
+export function conditionClauses(input: Omit<GateInput, 'active' | 'persona'> & { persona?: PersonaRef }): (req: TraitRequirement, view?: ClauseView) => ClausePart[] {
+  const idx = index({ ...input, active: NO_ACTIVE, persona: input.persona ?? { source: 'none' } });
+  const player = input.reader === 'player';
+  const verb = (forms: readonly (readonly [string, string])[], you: boolean, not?: true) => part('verb', forms[you && player ? 1 : 0][not ? 1 : 0]);
+
+  /** The scope a Condition on `host` reads from; null for an entity with no id. */
+  const fromOf = (host: ClauseHost): GateScopeTree | null => {
+    if (host.kind === 'world' || host.kind === 'persona') return globalScopeTree(input.global);
+    if (host.id === undefined) return null;
+    return idx.owners.get(host.id)?.owner ?? { id: host.id, name: host.name ?? '', traits: [], groups: [] };
+  };
+
+  const subjectOf = (req: Targeted, host: ClauseHost, from: GateScopeTree | null): ClauseSubject => {
+    const owner = req.owner ?? (host.kind === 'persona' || (host.kind === 'world' && req.kind === 'item') ? { kind: 'you' as const } : undefined);
+    if (owner?.kind === 'you') return player ? { kind: 'you' } : { kind: 'named', text: 'the player', fixed: true, broken: false };
+    if (owner) {
+      const named = ownerName(owner, idx);
+      return named
+        ? { kind: 'named', text: named.name, fixed: false, broken: false }
+        : { kind: 'named', text: owner.name || 'a missing entity', fixed: false, broken: !idx.isGlobal(req) };
+    }
+    if (req.kind !== 'item' && from && idx.ownerSet(req, from).has(null)) {
+      // A global trait or group keeps "you" for the player (Q18); a global stat has no subject in either view (Q25).
+      return player && req.kind !== 'stat' ? { kind: 'you' } : { kind: 'none' };
+    }
+    const name = host.kind === 'entity' ? host.name : undefined;
+    return name ? { kind: 'named', text: name, fixed: false, broken: false } : { kind: 'named', text: 'this entity', fixed: true, broken: false };
+  };
+
+  const subjectParts = (subject: ClauseSubject, possessive = false): ClausePart[] => {
+    if (subject.kind === 'none') return [];
+    if (subject.kind === 'you') return [part('subject', possessive ? 'your' : 'you')];
+    const owner = part('subject', subject.text, subject.broken);
+    return possessive ? [owner, { role: 'word', text: "'s", attach: true }] : [owner];
+  };
+
+  const build = (req: TraitRequirement, host: ClauseHost): Built => {
+    switch (req.kind) {
+      case 'time':
+        return { fixedStart: true, parts: [word('it'), isVerb(req.not), req.dayparts.length ? part('set', daypartsInOrder(req)) : part('set', 'pick a time', true)] };
+      case 'weather':
+        return { fixedStart: true, parts: [word('the weather'), isVerb(req.not), req.kinds.length ? part('set', weatherKindsText(req.kinds)) : part('set', 'pick the weather', true)] };
+      case 'opening': {
+        const labels = idx.openingLabels;
+        const set = !req.openings.length ? part('set', 'pick an opening', true)
+          : labels ? part('set', openingNames(req, labels), req.openings.some((key) => !labels.has(openingKeyId(key))))
+            : part('set', req.openings.length > 1 ? `one of ${req.openings.length} openings` : 'an opening');
+        return { fixedStart: true, parts: [word('the opening'), isVerb(req.not), set] };
+      }
+      case 'option': return { fixedStart: false, parts: optionClause(req) };
+      case 'playingAs': {
+        const entity = idx.entities.get(req.id);
+        return {
+          fixedStart: true,
+          parts: [word(player ? 'you' : 'the player'), verb(VERBS.playingAs, true, req.not), part('target', entity?.name ?? req.name ?? 'a missing persona', !entity)],
+        };
+      }
+      default: return ownedClause(req, host);
+    }
+  };
+
+  const ownedClause = (req: Targeted, host: ClauseHost): Built => {
+    const from = fromOf(host);
+    const subject = subjectOf(req, host, from);
+    const you = subject.kind === 'you';
+    const fixedStart = you || (subject.kind === 'named' && subject.fixed);
+    if (req.kind === 'stat') {
+      const name = part('target', idx.statNames.get(req.id) ?? req.name ?? 'a missing stat', !idx.statNames.has(req.id));
+      return {
+        fixedStart,
+        parts: [...subjectParts(subject, true), name, isVerb(req.not), part('comparison', COMPARISON_WORDS[req.operator]), part('value', statValue(req))],
+      };
+    }
+    if (req.kind === 'item') {
+      const known = idx.itemNames.has(req.id);
+      const checks = [req.state?.trim(), req.identity].filter(Boolean);
+      return {
+        fixedStart,
+        parts: [
+          ...subjectParts(subject), verb(req.status === 'owned' ? VERBS.owned : VERBS.equipped, you, req.not),
+          part('target', known ? idx.itemNameFor(req, from ?? undefined)! : req.name ?? 'a missing item', !known),
+          ...(checks.length ? [part('checks', `(${checks.join(', ')})`)] : []),
+        ],
+      };
+    }
+    const known = req.kind === 'trait' ? idx.traitNames.get(req.id) : idx.groupNames.get(req.id);
+    const name = part('target', known ?? req.name ?? (req.kind === 'trait' ? 'a missing trait' : 'a missing group'), known === undefined);
+    if (subject.kind === 'none') {
+      // A no-owner Condition on global scope names no one: "Paladin is active", "No trait in Combat is active" (Q25).
+      return req.kind === 'trait'
+        ? { fixedStart: false, parts: [name, isVerb(req.not), word('active')] }
+        : { fixedStart: true, parts: [part('verb', req.not ? 'no trait in' : 'a trait in'), name, word('is active')] };
+    }
+    return { fixedStart, parts: [...subjectParts(subject), verb(VERBS[req.kind], you, req.not), name] };
+  };
+
+  const optionClause = (req: OptionRequirement): ClausePart[] => {
+    const option = idx.options.get(req.id);
+    const name = part('target', option?.name ?? req.name ?? 'a missing World Option', !option);
+    const value = (text: string) => part('value', text, !!option && !fittedOption(req, idx));
+    const type = option?.type ?? (req.operator !== undefined ? 'number' : req.valueId !== undefined ? 'choice' : 'boolean');
+    if (type === 'number') return [name, word('is'), part('comparison', COMPARISON_WORDS[req.operator ?? '=']), value(`${req.value ?? 0}`)];
+    if (type === 'boolean') return [name, word('is'), value(req.not ? 'off' : 'on')];
+    const valueName = (option?.type === 'choice' ? option.values.find((v) => v.id === req.valueId)?.name : undefined) ?? req.valueName ?? 'a missing value';
+    return [name, isVerb(req.not), value(valueName)];
+  };
+
+  return (req, view = {}) => {
+    const { parts, fixedStart } = build(req, view.host ?? { kind: 'entity' });
+    if (!view.sentenceStart || !fixedStart) return parts;
+    const [first, ...rest] = parts;
+    return [{ ...first, text: first.text.charAt(0).toUpperCase() + first.text.slice(1) }, ...rest];
+  };
+}
+
+/** A clause's parts as plain text. */
+export const clauseText = (parts: readonly ClausePart[]): string =>
+  parts.map((part, i) => (i === 0 || part.attach ? part.text : ` ${part.text}`)).join('');
 
 /** `req` with its Not flag flipped. */
 export const flipped = (req: TraitRequirement): TraitRequirement => {

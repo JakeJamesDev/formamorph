@@ -1889,6 +1889,21 @@ The widget takes a Connection and hands back the rewritten record. Each surface 
 
 Open `#dev?modal=designSystem&tab=connection-widget` for both values of the mark, muted and in full color, and for the widget in local state.
 
+## Pattern: Sentence Token
+
+**Purpose:** Edit one part of a sentence in place, such as the time in a routine row.
+
+- 🔗 **Look.** A dotted-underline button in the sentence's own text, with an accent fill on hover and a focus ring.
+- 💬 **Editor.** A click opens a popover with that part's editor. It aligns to the token's start, standard or wide.
+- 🏷️ **Label.** The button's spoken label names the part and its value, such as *Time: Morning*.
+
+| Need | Component |
+| --- | --- |
+| Token with its popover | `SentenceToken` in [`sentence-token.tsx`](../src/components/ui/sentence-token.tsx) |
+| Token look on another button | `SENTENCE_TOKEN_CLASS` in [`sentence-token.tsx`](../src/components/ui/sentence-token.tsx) |
+
+Open `#dev?modal=designSystem&tab=routine-sentences` to see it in the routine sentences.
+
 ## Pattern: Routine Sentences
 
 **Purpose:** Edit an entity's daily routine as plain sentences, such as *Morning – Afternoon, stays at Smithy.*
@@ -1921,7 +1936,8 @@ A swap button leads the row: **Use Hours** or **Use Time of Day**. Time of day u
 | Need | Component |
 | --- | --- |
 | Sentence, time editor, action toggle | `RoutineRow`, `RowTimeEditor` in [`RoutineRow.tsx`](../src/managers/routine/RoutineRow.tsx) |
-| Tokens, location list, wait field | `Token`, `RoutinePlaceList`, `IdleField` in [`RoutineFields.tsx`](../src/managers/routine/RoutineFields.tsx) |
+| Tokens | `SentenceToken` in [`sentence-token.tsx`](../src/components/ui/sentence-token.tsx) |
+| Location list, wait field | `RoutinePlaceList`, `IdleField` in [`RoutineFields.tsx`](../src/managers/routine/RoutineFields.tsx) |
 | Day strip and handles | `DayStrip` in [`DayStrip.tsx`](../src/managers/routine/DayStrip.tsx) |
 | The tab | `RoutineTab` in [`RoutineTab.tsx`](../src/managers/routine/RoutineTab.tsx) |
 | Isolated reference | [`RoutineSentenceReference.tsx`](../src/components/design-system/RoutineSentenceReference.tsx) |

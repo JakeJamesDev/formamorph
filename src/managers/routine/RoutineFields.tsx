@@ -5,7 +5,6 @@ import { arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/so
 import { GripVertical, Plus, TriangleAlert, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BreadcrumbPicker, type BreadcrumbPickerRow } from '@/components/ui/breadcrumb-picker';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
@@ -24,29 +23,6 @@ export interface PlaceBook {
   rowsOf: (ids: readonly string[]) => BreadcrumbPickerRow<string>[];
   /** Every location id, in tree order. */
   all: readonly string[];
-}
-
-export const TOKEN_CLASS =
-  'rounded px-0.5 font-medium underline decoration-dotted underline-offset-4 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
-
-/** One part of a routine sentence: underlined text that opens its own editor. */
-export function Token({ children, editor, label, wide }: { children: ReactNode; editor: ReactNode; label: string; wide?: boolean }) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={label}
-          className={TOKEN_CLASS}
-        >
-          {children}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className={cn('space-y-2', wide ? 'w-[min(24rem,calc(100vw-2rem))]' : 'w-72')} align="start" collisionPadding={16}>
-        {editor}
-      </PopoverContent>
-    </Popover>
-  );
 }
 
 export const UNCONNECTED_TIP = 'Not connected to the start location, so the game skips it';

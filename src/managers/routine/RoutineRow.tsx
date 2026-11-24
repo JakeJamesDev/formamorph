@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
+import { SentenceToken } from '@/components/ui/sentence-token';
 import { HereMark } from '@/components/HereMark';
 import { cn } from '@/lib/utils';
 import { WorldInput } from '@/components/editor/WorldField';
@@ -18,7 +19,7 @@ import {
 import { placesOf } from '@/lib/positionEngine';
 import type { Daypart, ScheduleRange, ScheduleRow } from '@/types';
 import { ACTION_TONE, ACTIONS } from './routineActions';
-import { IdleField, LocationPicker, RoutinePlaceList, Token, UnconnectedFlag, type PlaceBook } from './RoutineFields';
+import { IdleField, LocationPicker, RoutinePlaceList, UnconnectedFlag, type PlaceBook } from './RoutineFields';
 
 const VERBS: Record<ActionKind, string> = { stay: 'stays at', wander: 'wanders', patrol: 'patrols', away: 'is away' };
 
@@ -228,19 +229,19 @@ export function RoutineRow({ row, others, startPlace, book, connected, lockable 
       )}
       <p className="min-w-0 flex-1">
         {here && <HereMark locationName={here} className="mr-1.5 align-middle" />}
-        <Token wide label={`Time: ${timeText}`} editor={(
+        <SentenceToken wide label={`Time: ${timeText}`} editor={(
           <RowTimeEditor time={row.time} asHours={asHours} onAsHours={onAsHours} others={others} onChange={(time) => onChange({ ...row, time })} />
-        )}>{timeText}</Token>
+        )}>{timeText}</SentenceToken>
         {', '}
-        <Token label={`Action: ${VERBS[row.action.kind]}`} editor={(
+        <SentenceToken label={`Action: ${VERBS[row.action.kind]}`} editor={(
           <ActionEditor value={row.action.kind} onChange={(kind) => onChange({ ...row, action: switchAction(row.action, kind, startPlace) })} />
-        )}>{VERBS[row.action.kind]}</Token>
+        )}>{VERBS[row.action.kind]}</SentenceToken>
         {row.action.kind !== 'away' && (
           <>
             {' '}
-            <Token wide label={`Locations: ${placeText}`} editor={<PlacesEditor row={row} book={book} connected={connected} onChange={onChange} field={field} />}>
+            <SentenceToken wide label={`Locations: ${placeText}`} editor={<PlacesEditor row={row} book={book} connected={connected} onChange={onChange} field={field} />}>
               {placeText}
-            </Token>
+            </SentenceToken>
           </>
         )}
         {unconnected && <span className="ml-1 inline-flex align-middle"><UnconnectedFlag /></span>}

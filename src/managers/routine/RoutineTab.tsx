@@ -8,6 +8,7 @@ import { MultiSelect } from '@/components/ui/multi-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint, Meta } from '@/components/ui/typography';
+import { SENTENCE_TOKEN_CLASS, SentenceToken } from '@/components/ui/sentence-token';
 import { HereMark } from '@/components/HereMark';
 import { WorldInput } from '@/components/editor/WorldField';
 import { HostGateField } from '@/components/editor/HostGateField';
@@ -45,7 +46,7 @@ import { OnMapField } from '@/managers/OnMapField';
 import { DayStrip, STRIP_PART } from './DayStrip';
 import { RoutineRow } from './RoutineRow';
 import { ACTIONS } from './routineActions';
-import { LocationPicker, PLAYER_START_NAME, Token, TOKEN_CLASS, type PlaceBook } from './RoutineFields';
+import { LocationPicker, PLAYER_START_NAME, type PlaceBook } from './RoutineFields';
 
 const KIND_OPTIONS = [
   { value: 'unique', label: 'Unique' },
@@ -428,7 +429,7 @@ function StartRoutine({ entity, kind, start, many, weights, book, connected, com
           book={book} places={book.all} value={start.place} playerStart
           onPick={(place) => commit('Change Start Location', withStart(entity, start.id, (s) => withStartPlace(s, place)))}
           trigger={(
-            <button type="button" aria-label={`Start location: ${startName}`} className={TOKEN_CLASS}>
+            <button type="button" aria-label={`Start location: ${startName}`} className={SENTENCE_TOKEN_CLASS}>
               {startName}
             </button>
           )}
@@ -436,7 +437,7 @@ function StartRoutine({ entity, kind, start, many, weights, book, connected, com
         {many && fields.chance && (
           <>
             {' in '}
-            <Token label={`Chance: ${percent}%`} editor={(
+            <SentenceToken label={`Chance: ${percent}%`} editor={(
               <div className="space-y-1.5" {...fieldFrame('starts', start.id, 'weight')}>
                 <Label htmlFor={`weight-${start.id}`}>Weight</Label>
                 <WorldInput
@@ -445,7 +446,7 @@ function StartRoutine({ entity, kind, start, many, weights, book, connected, com
                 />
                 <Meta as="p">Picked in {percent}% of new games</Meta>
               </div>
-            )}>{percent}%</Token>
+            )}>{percent}%</SentenceToken>
             {' of new games'}
           </>
         )}
