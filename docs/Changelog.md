@@ -167,6 +167,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **🛠️ Developer tooling**
   - **Saves rename their Item Copy keys to Item Instance keys on load.** `itemCopies`, `copyId` and `targetCopyId` become `itemInstances`, `instanceId` and `targetInstanceId`. An older save loads with every item where it was.
   - **A mention-tag probe measures whether the narrator can mark each name, pronoun, and description of a character inline.** It compares two tag shapes and a user-turn reminder against untagged narration, scoring coverage, wrong pronouns, and broken tags.
+  - **A Visual Novel format probe measures whether the narrator keeps every paragraph to narration or one `Name: "words"` speech line.** It plays a 16-turn session with history and compares prompt placements, scoring format compliance by session third, speaker labels, dialogue volume and stranger-name leaks.
   - **`npm test` now warns when a new test runs past its level's time budget.** A test is new when it is missing from the merge base with main. Budgets are each level's slowest 1% today. The warning never fails a run.
 - **⚙️ Backend**
   - **The release workflow publishes each version's Release Summary as its GitHub release notes, plus a Full changelog link.** It fails before anything publishes when `docs/whats-new/<version>.md` is missing or invalid, and prints its warnings.

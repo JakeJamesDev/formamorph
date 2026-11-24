@@ -1,0 +1,38 @@
+{
+  "aliases": {
+    "Bram": [
+      "ferryman",
+      "boatman",
+      "one-armed man",
+      "the man"
+    ],
+    "Odette": [
+      "woman",
+      "eel",
+      "smoker",
+      "the woman"
+    ]
+  },
+  "introducedAt": {
+    "Odette": 5,
+    "Bram": 9
+  },
+  "turns": [
+    "I walk down to the landing and look around.",
+    "I greet the ferryman and ask what a crossing costs.",
+    "I haggle with him over the price.",
+    "I wander over to the woman at the firepit and ask what she is cooking.",
+    "I offer to buy one of her eels.",
+    "I ask her name.",
+    "I sit by the fire and eat in silence, watching the river.",
+    "I ask her why she is waiting to cross.",
+    "I go back to the ferryman and ask about the pale, silent stretch of water.",
+    "I ask the ferryman for his real name, and I wait until he answers.",
+    "I tell them both I need to reach the far bank before dark.",
+    "I step onto the raft and take hold of the rope.",
+    "Halfway across, I hear the rope start to fray.",
+    "I shout for the ferryman to help me hold the rope.",
+    "I ask the woman whether she has made this crossing before.",
+    "I look back at the landing as we pull across."
+  ]
+}
