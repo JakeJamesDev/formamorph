@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { changes } from '@/test/memoryChanges';
 import {
   addNamedWrites, findNamed, playerEdit, pruneNamedMemories, restoreAll, restoreMemory, withNamedWrites, type NamedWrite,
 } from './namedMemories';
@@ -119,7 +120,7 @@ describe('named memories', () => {
 
   /** What scripts and the Memory Manager read of `notes`, against `history`. */
   const readBy = (notes: MemoryNote[], history: ChatMessage[], deleted: string[] = []) => {
-    const ledger = buildMemoryLedger({ history, overrides: { notes, deleted }, pins: {}, selection: null, verbatimFloor: 1 });
+    const ledger = buildMemoryLedger({ history, overrides: changes({ notes, deleted }), pins: {}, selection: null, verbatimFloor: 1 });
     return { scripts: scriptMemories(ledger, history), rows: ledger.rows.filter((row) => row.isNote) };
   };
   const write = (notes: MemoryNote[], turnId: string, writes: NamedWrite[], anchor: number, deleted: string[] = []) =>

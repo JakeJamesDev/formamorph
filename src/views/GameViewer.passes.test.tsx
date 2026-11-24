@@ -64,11 +64,11 @@ function stubEndpoint(held: ReadonlySet<Kind>) {
 
 /** Writes a stored turn into the live history, the way a played turn would leave it. */
 let seedHistory: (history: ChatMessage[]) => void;
-let memoryEditsNow: () => Record<string, unknown>;
+let textEditsNow: () => Record<string, unknown>;
 function Seed() {
-  const { setFullMessageHistory, memoryEdits } = useGameplay();
+  const { setFullMessageHistory, turnTextEdits } = useGameplay();
   seedHistory = setFullMessageHistory;
-  memoryEditsNow = () => memoryEdits;
+  textEditsNow = () => turnTextEdits;
   return null;
 }
 
@@ -154,6 +154,6 @@ describe('regenerating a memory', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(transports.length).toBeGreaterThan(0);
-    expect(memoryEditsNow()).toEqual({});
+    expect(textEditsNow()).toEqual({});
   });
 });

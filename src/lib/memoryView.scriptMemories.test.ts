@@ -3,6 +3,8 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, expect, it } from 'vitest';
+import { changes } from '@/test/memoryChanges';
+import type { TextRewrite } from './turnTextEdits';
 import type { AITurnResult, ChatMessage } from '@/types';
 import { buildMemoryLedger, scriptMemories } from './memoryView';
 import { formatStampPlain, type WorldCalendar } from './gameClock';
@@ -26,7 +28,7 @@ const history: ChatMessage[] = [
 ];
 const calendar: WorldCalendar = { hoursPerDay: 24, startHour: 8 };
 // A Custom line added after turn 3, when the history held six messages.
-const overrides: MemoryOverrides = { deleted: ['t4'], notes: [{ id: 'n1', text: 'The bridge is out.', anchorTurn: 6 }] };
+const overrides: MemoryOverrides = changes({ deleted: ['t4'], notes: [{ id: 'n1', text: 'The bridge is out.', anchorTurn: 6 }] });
 const ledgerOf = (clock?: { nowHours: number; calendar?: WorldCalendar }) => buildMemoryLedger({
   history, overrides, pins: { t2: 'keep', t3: 'drop' }, selection: null, verbatimFloor: 1, clock,
   context: { bandIds: ['t1'] },
@@ -74,13 +76,13 @@ describe('scriptMemories', () => {
 
   it('carries no original text, override history or relevance into a run, and stays small over 400 rows', () => {
     const long: ChatMessage[] = [];
-    const edits: NonNullable<MemoryOverrides['edits']> = {};
+    const edits: Record<string, TextRewrite> = {};
     for (let i = 1; i <= 400; i++) {
       long.push(...pair(`a${i}`, { turnId: `t${i}`, summary: `ORIGINAL-${i} ${'x'.repeat(200)}`, importance: 3, timeDelta: 1 }));
       edits[`t${i}`] = { text: `Edited memory ${i}.`, source: 'player' };
     }
     const ledger = buildMemoryLedger({
-      history: long, overrides: { edits }, pins: {}, selection: null, verbatimFloor: 1, context: { bandIds: ['t1'] },
+      history: long, overrides: changes({ edits }), pins: {}, selection: null, verbatimFloor: 1, context: { bandIds: ['t1'] },
     });
     const entries = scriptMemories(ledger, long);
     expect(entries).toHaveLength(400);

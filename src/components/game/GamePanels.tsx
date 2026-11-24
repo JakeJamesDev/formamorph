@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
+import { withoutTurnText } from '@/lib/turnTextEdits';
 import { turnCardTriggers } from './MentionCards';
 import type { LiveQuotes } from '@/lib/coref/streamingQuotes';
 import type { SpeakerColors } from '@/lib/quoteSegments';
@@ -705,7 +706,7 @@ export const MiddlePanel = ({
     setIsEditMode,
     ttsPlayback,
     setFullMessageHistory,
-    setMemoryEdits,
+    setTurnTextEdits,
     globalStats,
     isViewingPast,
     viewChoices: choices,
@@ -1238,16 +1239,10 @@ export const MiddlePanel = ({
                 }
                 // Editing the narration invalidates this turn's memory digest + character diaries (both
                 // derive from the old text); drop them so the drainers rebuild from the edit. The player's
-                // own rewrite of that memory goes too — it describes prose that no longer exists, and
-                // leaving it would mask the rebuilt digest forever.
+                // rewrites of that turn go too, since they describe prose that no longer exists; deletes stay.
                 if (editedTurnId) {
                   const cleared = editedTurnId;
-                  setMemoryEdits((edits) => {
-                    if (!edits[cleared]) return edits;
-                    const next = { ...edits };
-                    delete next[cleared];
-                    return next;
-                  });
+                  setTurnTextEdits((edits) => withoutTurnText(edits, cleared));
                   return clearTurnDerived(updatedHistory, cleared, { diaries: true }) ?? updatedHistory;
                 }
                 return updatedHistory;

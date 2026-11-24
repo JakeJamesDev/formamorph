@@ -1,6 +1,6 @@
 # 01: Shared Text Edit Layer
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -27,9 +27,21 @@ Every player change to AI-written turn text moves into one layer on the save, `t
 
 ## Acceptance criteria
 
-- [ ] A save holding `memoryEdits` and `memoryDeleted` loads with every edit, rewrite and deletion intact, and saves back with `turnTextEdits` only.
-- [ ] Migrating twice gives the same save; a save with neither old field is unchanged.
-- [ ] Edit, Revert, Delete, Restore and Reset All My Changes in Memories behave as before, on the new layer.
-- [ ] The memory recap the AI receives reads edits and skips deleted memories, as before.
-- [ ] Editing a turn's narration drops that turn's record in the layer.
-- [ ] The landing body records the export-shape change: saves gain `turnTextEdits` and lose `memoryEdits` and `memoryDeleted`.
+- [x] A save holding `memoryEdits` and `memoryDeleted` loads with every edit, rewrite and deletion intact, and saves back with `turnTextEdits` only. `GameplayContext.textEdits.test.tsx` (load, then save) and `LoadGameDialog.test.tsx` "stores a released save's memory changes…" (import).
+- [x] Migrating twice gives the same save; a save with neither old field is unchanged. `saveCompat.test.ts` "released memory changes fold into the text edit layer".
+- [x] Edit, Revert, Delete, Restore and Reset All My Changes in Memories behave as before, on the new layer. `MemoryManagerModal.edits.test.tsx`, `MemoryManagerModal.reset.test.tsx`, `MemoryManagerModal.names.test.tsx`.
+- [x] The memory recap the AI receives reads edits and skips deleted memories, as before. `memoryOverrides.test.ts` (band and selector cases), `toolRecall.test.ts`; mutation of the delete check turned 7 tests red.
+- [x] Editing a turn's narration drops that turn's record in the layer. Per the spec session's ruling, it drops the turn's rewrites and keeps its deletes. `GamePanels.test.tsx` "drops the player's own rewrite…" and "keeps the player's delete…"; `turnTextEdits.test.ts`.
+- [x] The landing body records the export-shape change: saves gain `turnTextEdits` and lose `memoryEdits` and `memoryDeleted`. Landing commit body.
+
+## Landed
+
+**Not verified**
+
+- No live check in the app: the ticket has no visible change, and the jsdom tests drive the Memory Manager and the save round trip.
+
+**For you**
+
+- Load a save from 3.7.0 that has memory edits and deletions, and check Memories shows them as before.
+- Naming follow-up: the layer rides inside `MemoryOverrides` / `applyMemoryOverrides` (lib/memoryOverrides), older names that still say "override". A rename (e.g. `MemoryChanges`) is out of this ticket's scope.
+- Pre-existing: loading a deep-nested legacy save in `GameplayContext` keeps the previous game's `turnTextEdits` (it kept `memoryEdits` before, too).

@@ -27,6 +27,7 @@ import { firstRoutine } from './entityKind';
 import { migrateGalleriesToMediaList } from './mediaGallery';
 import { migrateOtherImagesToMediaList } from './mediaImages';
 import { migrateSoundsToMediaList } from './mediaSounds';
+import { foldMemoryChanges, type TextRewrite } from './turnTextEdits';
 
 /** Current app version, derived from package.json (see vite.config.js `define`). User-managed. */
 export const APP_VERSION = __APP_VERSION__;
@@ -1096,7 +1097,23 @@ function migrateSnapshotMorphBindings(state: GameState): GameState {
   return { ...state, globalStats, ...(entityStats ? { entityStats } : {}) };
 }
 
-export function migrateSave(save: SaveObject): SaveObject {
+/** The memory-editing fields saves wrote before the shared text edit layer. */
+interface ReleasedMemoryFields {
+  memoryEdits?: Record<string, TextRewrite>;
+  memoryDeleted?: string[];
+}
+
+/** `save` with its released `memoryEdits` and `memoryDeleted` folded into `turnTextEdits` and dropped. */
+function migrateMemoryChanges(save: SaveObject): SaveObject {
+  const { memoryEdits, memoryDeleted, ...rest }: SaveObject & ReleasedMemoryFields = save;
+  if (memoryEdits === undefined && memoryDeleted === undefined) return save;
+  const turnTextEdits = foldMemoryChanges(rest.turnTextEdits, memoryEdits, memoryDeleted);
+  const { turnTextEdits: _was, ...others } = rest;
+  return Object.keys(turnTextEdits).length ? { ...others, turnTextEdits } : others;
+}
+
+export function migrateSave(input: SaveObject): SaveObject {
+  const save = migrateMemoryChanges(input);
   const isLegacy = typeof save.version === 'number';
   const migratedCurrent = isLegacy ? migrateLegacySaveState(save.currentState) : save.currentState;
   const migratedHistory = isLegacy ? save.stateHistory.map(migrateLegacySaveState) : save.stateHistory;

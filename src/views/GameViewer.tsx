@@ -36,7 +36,8 @@ import { EMPTY_REPLY, type SandboxMemory, type SandboxOpening, type SandboxTurn,
 import { advancedClock, baseWritesOf, mergeWorldWrites } from "@/lib/worldWrites";
 import { addScriptPins, pruneScriptPins, withScriptPins } from "@/lib/scriptPins";
 import { addNamedWrites, pruneNamedMemories, withNamedWrites } from "@/lib/namedMemories";
-import { deletedAfter, editsAfter, notesAfter, pinsAfter } from "@/lib/memoryWrites";
+import { notesAfter, pinsAfter, textEditsAfter } from "@/lib/memoryWrites";
+import { deletedMemoryIds, withMemoryText } from "@/lib/turnTextEdits";
 import {
   actionTotals, type ActionTotals, changedAnyStat, overlayStatCodeResult, playthroughPlaceholderSet, runItemScripts, runStatCodeTurn, runSwitchScripts, splitOwnerTurns, stateInventory, withoutInventory, withPinWrites, withoutBodies,
   type ChainedItems, type InventoryStep, type SandboxState, type ScriptTrigger, type StatCodeTurn, type StatCodeTurnResult,
@@ -931,10 +932,8 @@ const GameViewer = ({
     setPersonaRef,
     milestoneSelection,
     setMilestoneSelection,
-    memoryEdits,
-    setMemoryEdits,
-    memoryDeleted,
-    setMemoryDeleted,
+    turnTextEdits,
+    setTurnTextEdits,
     memoryNotes,
     setMemoryNotes,
     contextMemoryIds,
@@ -2549,18 +2548,19 @@ const GameViewer = ({
   // it actually saw; unseen turns always survive) with the player's pins applied on top. Recomputed
   // cheaply — the AI call itself lives in the Background Pass Queue below. Only AGED candidates filter
   // context; a fresh turn's verdict is display-only until it leaves the narration verbatim floor.
-  // The player's memory override layer, applied at the single point every memory consumer reads through:
-  // rewrites replace the digest text, tombstoned turns lose their summary (so they leave the band, the
+  // The player's memory changes, applied at the single point every memory consumer reads through:
+  // rewrites replace the digest text, deleted turns lose their summary (so they leave the band, the
   // selector's input and semantic retrieval while their narration still rides the floor), and hand-written
-  // notes ride the recap at their anchor. Nothing here mutates the stored history — clearing an override
+  // notes ride the recap at their anchor. Nothing here mutates the stored history — clearing a change
   // restores the AI's original.
   const memoryOverrides = useMemo(
-    () => ({ edits: memoryEdits, deleted: memoryDeleted, notes: memoryNotes }),
-    [memoryEdits, memoryDeleted, memoryNotes],
+    () => ({ textEdits: turnTextEdits, notes: memoryNotes }),
+    [turnTextEdits, memoryNotes],
   );
   const effectiveNotes = useMemo(() => activeNotes(memoryOverrides), [memoryOverrides]);
-  const memoryDeletedRef = useRef(memoryDeleted);
-  memoryDeletedRef.current = memoryDeleted;
+  const deletedIds = useMemo(() => deletedMemoryIds(turnTextEdits), [turnTextEdits]);
+  const deletedIdsRef = useRef(deletedIds);
+  deletedIdsRef.current = deletedIds;
   const parseEffectiveTurns = useCallback(
     (history: ChatMessage[]) => applyMemoryOverrides(parseTurns(history), memoryOverrides),
     [memoryOverrides],
@@ -3310,10 +3310,9 @@ const GameViewer = ({
     const verbs = writes?.memoryWrites;
     if (!verbs?.length) return;
     setMemoryPins((prev) => pinsAfter(prev, verbs));
-    setMemoryEdits((prev) => editsAfter(prev, verbs));
+    setTurnTextEdits((prev) => textEditsAfter(prev, verbs));
     setMemoryNotes((prev) => notesAfter(prev, verbs));
-    setMemoryDeleted((prev) => deletedAfter(prev, verbs));
-  }, [setMemoryPins, setMemoryEdits, setMemoryNotes, setMemoryDeleted]);
+  }, [setMemoryPins, setTurnTextEdits, setMemoryNotes]);
 
   /**
    * Apply one Turn Commit: thin setters, in the order the turn's presentation depends on. The turn's own
@@ -3517,7 +3516,7 @@ const GameViewer = ({
     const namedWrites = final.codeWrites?.namedWrites;
     if (committedTurnId && namedWrites?.length) {
       const anchor = fullMessageHistoryRef.current.length;
-      setMemoryNotes((prev) => withNamedWrites(prev, memoryDeletedRef.current, committedTurnId, namedWrites, anchor));
+      setMemoryNotes((prev) => withNamedWrites(prev, deletedIdsRef.current, committedTurnId, namedWrites, anchor));
     }
     landMemoryWrites(final.codeWrites);
 
@@ -4758,7 +4757,7 @@ const GameViewer = ({
     });
     if (writes.pins?.length) setMemoryNotes((prev) => addScriptPins(prev, turnId, writes.pins ?? [], history.length));
     const namedWrites = writes.namedWrites;
-    if (namedWrites?.length) setMemoryNotes((prev) => addNamedWrites(prev, memoryDeletedRef.current, turnId, namedWrites, history.length));
+    if (namedWrites?.length) setMemoryNotes((prev) => addNamedWrites(prev, deletedIdsRef.current, turnId, namedWrites, history.length));
   }, [setFullMessageHistory, setMemoryNotes, setGameStates, setWeather, diaryNames, landMemoryWrites, reportWeather]);
   // The writes of runs that ended while a turn ran: the turn's stream and commit rewrite its message.
   const heldWritesRef = useRef<WorldWrites | undefined>(undefined);
@@ -5735,7 +5734,7 @@ const GameViewer = ({
   }, [devRoute?.modal, devRoute?.tab, isWaitingForAI, fullMessageHistory, playPrompts]);
 
   // Regenerate one memory on demand (Memory Manager): re-run the digest prompt on that turn and land the
-  // result in the override layer as AI text — no pin and no importance bump, because the player authored
+  // result in the text edit layer as AI text — no pin and no importance bump, because the player authored
   // nothing here; the selector's verdict still governs it. Silent, like every other digest request.
   // It is a foreground queue job: it waits for running passes, holds the queue, and `signal` cancels it.
   // Returns false when the turn has nothing to summarize or the call fails, and undefined when canceled.
@@ -5752,14 +5751,14 @@ const GameViewer = ({
         // The fresh digest replaces the AI's text only; the turn's `memories.append` lines still follow it.
         const codeMemory = parsedTurnById(fullMessageHistoryRef.current, turnId)?.codeMemory;
         const text = turnMemory({ summary: trimmed, codeMemory }) ?? trimmed;
-        setMemoryEdits((prev) => ({ ...prev, [turnId]: { text, source: 'ai' } }));
+        setTurnTextEdits((prev) => withMemoryText(prev, turnId, text, 'ai'));
         return true;
       }, signal);
       return run ? run.value : undefined;
     } catch {
       return false;
     }
-  }, [passQueue, setMemoryEdits, mounted]);
+  }, [passQueue, setTurnTextEdits, mounted]);
 
   // Embedding drainer: keep a vector on hand for everything the semantic features score at turn time —
   // turn digests (semanticMemory) and dictionary entries (semanticLore) — so scoring is a sync lookup.
@@ -6525,8 +6524,7 @@ const GameViewer = ({
       setSessionPersona(personaPick.libraryEntity ?? null);
       setEntityImageIndex({});
       setMilestoneSelection(null);
-      setMemoryEdits({});
-      setMemoryDeleted([]);
+      setTurnTextEdits({});
       setMemoryNotes([]);
 
       // Seed the entry-step characters into the starting location as runtime-only entities (never written
@@ -6640,8 +6638,7 @@ const GameViewer = ({
     setEntityVisualPreference,
     setEntityImageIndex,
     setMilestoneSelection,
-    setMemoryEdits,
-    setMemoryDeleted,
+    setTurnTextEdits,
     setMemoryNotes,
     rebaseRightDots,
   ]);

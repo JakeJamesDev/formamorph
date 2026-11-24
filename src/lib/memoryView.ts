@@ -2,6 +2,7 @@ import type { ChatMessage } from '@/types';
 import { parseTurns } from './turnBanding';
 import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneKeep, type MemoryPinMap, type MilestoneSelection } from './milestoneMemory';
 import { applyMemoryOverrides, isRemoved, type MemoryOverrides } from './memoryOverrides';
+import { isMemoryDeleted, memoryRewrite } from './turnTextEdits';
 import { dayAndHour, daypart, formatStampPlain, hoursByPosition, type WorldCalendar } from './gameClock';
 import type { SandboxMemory } from './statCodeExecutor';
 
@@ -146,12 +147,12 @@ export function buildMemoryLedger(args: {
     : null;
   const keep = resolveMilestoneKeep(candidates, sel, pins);
   const originalById = new Map(rawTurns.flatMap((t) => (t.turnId && t.summary ? [[t.turnId, t.summary] as const] : [])));
-  const deletedSet = new Set(overrides.deleted ?? []);
+  const layer = overrides.textEdits;
 
   const rows: MemoryRow[] = [];
   candidates.forEach((t, i) => {
     if (!t.turnId) return;
-    const edit = overrides.edits?.[t.turnId];
+    const edit = memoryRewrite(layer, t.turnId);
     rows.push({
       id: t.turnId,
       text: t.summary ?? '',
@@ -172,8 +173,8 @@ export function buildMemoryLedger(args: {
   // Tombstoned turns lost their summary in applyMemoryOverrides, so they aren't candidates — rebuild them
   // from the raw parse to keep restore possible.
   for (const t of rawTurns) {
-    if (!t.turnId || !deletedSet.has(t.turnId) || !t.summary?.trim()) continue;
-    const edit = overrides.edits?.[t.turnId];
+    if (!t.turnId || !isMemoryDeleted(layer, t.turnId) || !t.summary?.trim()) continue;
+    const edit = memoryRewrite(layer, t.turnId);
     rows.push({
       id: t.turnId,
       text: edit?.text ?? t.summary,
@@ -191,7 +192,7 @@ export function buildMemoryLedger(args: {
     });
   }
   for (const n of overrides.notes ?? []) {
-    const gone = deletedSet.has(n.id) || isRemoved(n);
+    const gone = isMemoryDeleted(layer, n.id) || isRemoved(n);
     rows.push({
       id: n.id,
       text: n.text,

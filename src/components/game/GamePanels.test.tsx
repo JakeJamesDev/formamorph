@@ -11,6 +11,8 @@ import { resetTtsPlayback, setTtsPlayback } from '@/test/stubs/ttsPlayback';
 import { lastVrmViewerProps, resetVrmViewerStub } from '@/test/stubs/vrmViewer';
 
 import { phValues } from '@/test/placeholderValues';
+import { layerOf } from '@/test/memoryChanges';
+import { isMemoryDeleted, memoryRewrite } from '@/lib/turnTextEdits';
 import ModelStorageService from '@/services/ModelStorageService';
 // three.js needs a WebGL context and the TTS engine a Web Audio graph; jsdom has neither.
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -447,10 +449,13 @@ describe('MiddlePanel — editing a turn\'s narration', () => {
     page,
     world: WORLD as never,
     gameplayText: 'Marrow follows the path.',
-    seed: (gameplay) => gameplay.setMemoryEdits({
-      t1: { text: 'my own memory of turn one', source: 'player' },
-      t2: { text: 'my own memory of turn two', source: 'player' },
-    }),
+    seed: (gameplay) => gameplay.setTurnTextEdits(layerOf({
+      edits: {
+        t1: { text: 'my own memory of turn one', source: 'player' },
+        t2: { text: 'my own memory of turn two', source: 'player' },
+      },
+      deleted: ['t2'],
+    })),
   });
 
   /** Rewrite the viewed turn through its row's Edit and save. */
@@ -518,8 +523,17 @@ describe('MiddlePanel — editing a turn\'s narration', () => {
 
     // A player rewrite describes the old prose, and it outranks the rebuilt digest — left in place it
     // would mask the new one forever.
-    expect(view.gameplay().memoryEdits.t2).toBeUndefined();
-    expect(view.gameplay().memoryEdits.t1).toMatchObject({ text: 'my own memory of turn one' });
+    const layer = view.gameplay().turnTextEdits;
+    expect(memoryRewrite(layer, 't2')).toBeUndefined();
+    expect(memoryRewrite(layer, 't1')).toMatchObject({ text: 'my own memory of turn one' });
+  });
+
+  it("keeps the player's delete of that turn's memory", async () => {
+    const view = setup();
+    await rewriteAs('Marrow turns back before the bridge.');
+
+    // A delete is "forget this", not a comment on the old prose, so the rebuilt digest stays out of play.
+    expect(isMemoryDeleted(view.gameplay().turnTextEdits, 't2')).toBe(true);
   });
 
   it('edits the turn being viewed, not the newest one', async () => {

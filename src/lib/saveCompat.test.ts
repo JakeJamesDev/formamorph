@@ -364,3 +364,41 @@ describe('scene images ride the envelope, not the turns', () => {
     expect(migrateSave(withoutImages as SaveObject).sceneImages).toBeUndefined();
   });
 });
+
+describe('released memory changes fold into the text edit layer', () => {
+  const current: SaveObject = { ...(v12Save as unknown as SaveObject), version: APP_VERSION };
+  const released = {
+    ...current,
+    memoryEdits: { t1: { text: 'Rewritten.', source: 'player' }, t2: { text: 'Regenerated.', source: 'ai' } },
+    memoryDeleted: ['t2', 't3', 'note-1'],
+  } as SaveObject;
+
+  it('keeps every rewrite and deletion, and drops the old fields', () => {
+    const out = migrateSave(released) as SaveObject & Record<string, unknown>;
+    expect(out.turnTextEdits).toEqual({
+      t1: { memory: { text: 'Rewritten.', source: 'player' } },
+      // A rewrite under a delete survives it, so Restore brings back the player's text.
+      t2: { memory: { text: 'Regenerated.', source: 'ai', deleted: true } },
+      t3: { memory: { source: 'player', deleted: true } },
+      'note-1': { memory: { source: 'player', deleted: true } },
+    });
+    expect('memoryEdits' in out).toBe(false);
+    expect('memoryDeleted' in out).toBe(false);
+  });
+
+  it('gives the same save when run twice', () => {
+    const once = migrateSave(released);
+    expect(migrateSave(once)).toEqual(once);
+  });
+
+  it('leaves a save with neither old field without a layer, and keeps a layer it already has', () => {
+    expect('turnTextEdits' in migrateSave(current)).toBe(false);
+    const layer = { t9: { memory: { text: 'Mine.', source: 'player' as const } } };
+    expect(migrateSave({ ...current, turnTextEdits: layer }).turnTextEdits).toBe(layer);
+  });
+
+  it('writes no layer for empty old fields', () => {
+    const out = migrateSave({ ...current, memoryEdits: {}, memoryDeleted: [] } as SaveObject) as SaveObject & Record<string, unknown>;
+    expect(Object.keys(out).filter((key) => /^(turnTextEdits|memoryEdits|memoryDeleted)$/.test(key))).toEqual([]);
+  });
+});

@@ -5,7 +5,8 @@
  */
 import type { MemoryWrite } from './statCodeExecutor';
 import type { MemoryPinMap } from './milestoneMemory';
-import type { MemoryEditMap, MemoryNote } from './memoryOverrides';
+import type { MemoryNote } from './memoryOverrides';
+import { withMemoryDeleted, withMemoryText, type TurnTextEdits } from './turnTextEdits';
 
 /** `pins` after `writes`: `pin` keeps, `forget` drops, and an edit of a digest keeps, as the Memory Manager's Save does. */
 export function pinsAfter(pins: MemoryPinMap, writes: readonly MemoryWrite[]): MemoryPinMap {
@@ -24,11 +25,13 @@ function pinOf(write: MemoryWrite): 'keep' | 'drop' | null {
   return write.kind === 'edit' && !write.custom ? 'keep' : null;
 }
 
-/** `edits` after `writes`: an edit of a digest is a player rewrite, its original kept behind it. */
-export function editsAfter(edits: MemoryEditMap, writes: readonly MemoryWrite[]): MemoryEditMap {
-  let out = edits;
+/** `layer` after `writes`: an edit of a digest is a player rewrite, its original kept behind it, and `remove`
+ *  deletes the row, restorable from the Memory Manager. */
+export function textEditsAfter(layer: TurnTextEdits, writes: readonly MemoryWrite[]): TurnTextEdits {
+  let out = layer;
   for (const write of writes) {
-    if (write.kind === 'edit' && !write.custom) out = { ...out, [write.id]: { text: write.text, source: 'player' } };
+    if (write.kind === 'edit' && !write.custom) out = withMemoryText(out, write.id, write.text, 'player');
+    if (write.kind === 'remove') out = withMemoryDeleted(out, write.id, true);
   }
   return out;
 }
@@ -38,15 +41,6 @@ export function notesAfter(notes: MemoryNote[], writes: readonly MemoryWrite[]):
   let out = notes;
   for (const write of writes) {
     if (write.kind === 'edit' && write.custom) out = out.map((note) => (note.id === write.id ? { ...note, text: write.text } : note));
-  }
-  return out;
-}
-
-/** `deleted` after `writes`: `remove` tombstones the row, restorable from the Memory Manager. */
-export function deletedAfter(deleted: string[], writes: readonly MemoryWrite[]): string[] {
-  let out = deleted;
-  for (const write of writes) {
-    if (write.kind === 'remove' && !out.includes(write.id)) out = [...out, write.id];
   }
   return out;
 }

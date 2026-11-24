@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryManagerModal } from './MemoryManagerModal';
 import type { MemoryNote } from '@/lib/memoryOverrides';
+import type { TurnTextEdits } from '@/lib/turnTextEdits';
+import { layerOf } from '@/test/memoryChanges';
 import { pruneNamedMemories } from '@/lib/namedMemories';
 
 const nursery: MemoryNote = {
@@ -11,7 +13,7 @@ const nursery: MemoryNote = {
 const bridge: MemoryNote = { id: 'n1', text: 'The bridge is out.', anchorTurn: 0 };
 
 /** The save fields the modal reads, and what its setters last wrote. */
-const state = { notes: [] as MemoryNote[], deleted: [] as string[] };
+const state = { notes: [] as MemoryNote[], textEdits: {} as TurnTextEdits };
 const apply = <T,>(prev: T, next: T | ((at: T) => T)): T => (typeof next === 'function' ? (next as (at: T) => T)(prev) : next);
 
 vi.mock('@/contexts/GameplayContext', () => ({
@@ -19,8 +21,8 @@ vi.mock('@/contexts/GameplayContext', () => ({
     fullMessageHistory: [],
     memoryPins: {}, setMemoryPins: vi.fn(),
     milestoneSelection: undefined,
-    memoryEdits: {}, setMemoryEdits: vi.fn(),
-    memoryDeleted: state.deleted, setMemoryDeleted: (next: string[] | ((at: string[]) => string[])) => { state.deleted = apply(state.deleted, next); },
+    turnTextEdits: state.textEdits,
+    setTurnTextEdits: (next: TurnTextEdits | ((at: TurnTextEdits) => TurnTextEdits)) => { state.textEdits = apply(state.textEdits, next); },
     memoryNotes: state.notes, setMemoryNotes: (next: MemoryNote[] | ((at: MemoryNote[]) => MemoryNote[])) => { state.notes = apply(state.notes, next); },
     isWaitingForAI: false,
     gameTime: 0, calendar: undefined,
@@ -34,7 +36,7 @@ vi.mock('@/components/HelpButton', () => ({ HelpButton: () => null }));
 
 beforeEach(() => {
   state.notes = [nursery, bridge];
-  state.deleted = [];
+  state.textEdits = {};
 });
 afterEach(cleanup);
 
@@ -68,11 +70,11 @@ describe('the Memory Manager names', () => {
   it('restores a deleted named memory unnamed while another memory holds its name (Q7)', () => {
     const fresh: MemoryNote = { ...nursery, id: 'named:t2:nursery', text: 'Bree lives at the nursery.', revisions: [{ turnId: 't2', text: 'Bree lives at the nursery.', anchorTurn: 0 }] };
     state.notes = [nursery, fresh];
-    state.deleted = [nursery.id];
+    state.textEdits = layerOf({ deleted: [nursery.id] });
     render(<MemoryManagerModal isOpen onOpenChange={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: /^Deleted/ }));
     fireEvent.click(within(blockOf('Ash lives at the nursery.')).getByRole('button', { name: 'Restore This Memory' }));
-    expect(state.deleted).toEqual([]);
+    expect(state.textEdits).toEqual({});
     expect(state.notes[0]).toEqual({ id: nursery.id, text: 'Ash lives at the nursery.', anchorTurn: 0 });
     expect(state.notes[1]).toBe(fresh);
   });

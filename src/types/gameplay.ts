@@ -5,6 +5,7 @@ import type { ChatMessage } from './ai';
 import type { ActionSnapshot, ListedAction, SentActionList } from '@/lib/actionList';
 import type { ScriptTell } from '@/lib/scriptTells';
 import type { OpeningKey } from '@/lib/drawnOpening';
+import type { TurnTextEdits } from '@/lib/turnTextEdits';
 
 /** A director-invented character promoted to a persisted, per-playthrough entity (runtime characters,
  *  Slice 2). Save-only: it rolls back with the turn and is never written to the world export. */
@@ -625,15 +626,9 @@ export interface SaveObject {
    *  full-vote, treated as keep-everything-seen). Absent on older saves ⇒ the loaded history is
    *  judged fresh in one incremental batch. */
   milestoneSelection?: { seen: string[]; selected: string[] | null };
-  /** v2.x memory editing: the player's rewrites, keyed by turn id. `source` separates a hand-written
-   *  rewrite (intent — force-kept and top-ranked) from a regeneration (fresher AI text under the usual
-   *  verdict). The turn's own `summary` is never overwritten, so clearing an edit restores the original.
-   *  Absent (or empty) on older saves ⇒ no rewrites. */
-  memoryEdits?: Record<string, { text: string; source: 'player' | 'ai' }>;
-  /** v2.x memory editing: tombstoned memories — turn ids and manual-memory ids the player removed. A
-   *  tombstone hides the memory and keeps it out of context everywhere, but the underlying summary
-   *  survives, so it is restorable. Absent (or empty) on older saves ⇒ nothing deleted. */
-  memoryDeleted?: string[];
+  /** The player's changes to AI-written turn text (lib/turnTextEdits), keyed by turn id or written memory id.
+   *  The turn's own text is never overwritten, so clearing a change restores the original. Absent ⇒ none. */
+  turnTextEdits?: TurnTextEdits;
   /** Scene images by turn id (data URLs), written only when the player opts in on the Save dialog — one
    *  image is over a megabyte. Kept out of the messages on purpose: everything that walks the history
    *  parses those, and a megabyte in one made the narration reveal crawl (see lib/sceneImages). */

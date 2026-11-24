@@ -329,13 +329,13 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
           skipped.push({ fileName: file.name, cause: 'Formamorph cannot read this file.', error });
           continue;
         }
-        const save = JSON.parse(text) as SaveRecord & { version?: string | number };
-        if (isSaveEnvelope(save)) {
-          // migrateSave is idempotent and now also hoists the canonical history + strips snapshot copies for
-          // string-version saves, so run it for every envelope, not just numeric-legacy ones.
-          const migrated = migrateSave(save);
-          Object.assign(save, migrated, { version: APP_VERSION });
-        }
+        const parsed = JSON.parse(text) as SaveRecord & { version?: string | number };
+        // migrateSave is idempotent and now also hoists the canonical history + strips snapshot copies for
+        // string-version saves, so run it for every envelope, not just numeric-legacy ones. The record is built
+        // from its result, so the fields it drops stay dropped.
+        const save = isSaveEnvelope(parsed)
+          ? { ...migrateSave(parsed), name: parsed.name, version: APP_VERSION }
+          : parsed;
         const worldName = save.currentState?.worldName ?? null;
         const record: SaveRecord = {
           ...save,

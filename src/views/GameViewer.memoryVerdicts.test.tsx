@@ -9,7 +9,8 @@ import { useGameplay } from '@/contexts/GameplayContext';
 import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
 import { parseTurnContent } from '@/lib/turnDigest';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
-import type { MemoryEditMap, MemoryNote } from '@/lib/memoryOverrides';
+import type { MemoryNote } from '@/lib/memoryOverrides';
+import { deletedMemoryIds, memoryRewrite, type TextRewrite } from '@/lib/turnTextEdits';
 import type { ChatMessage, PlayerStat, Script, Tool, World } from '@/types';
 
 /** A script's verbs on `memories` entries land at commit on the Memory Manager's fields (Q3, Q9, Q18, Q23, Q40). */
@@ -37,15 +38,19 @@ const SEEDED = [user('a1'), assistant('t1', 's1'), user('a2'), assistant('t2', '
 
 let play: ReturnType<typeof useGameplay> | null = null;
 let pins: Record<string, 'keep' | 'drop'> = {};
-let edits: MemoryEditMap = {};
+let edits: Record<string, TextRewrite> = {};
 let deleted: string[] = [];
 let notes: MemoryNote[] = [];
 let history: ChatMessage[] = [];
 function Probe() {
   play = useGameplay();
   pins = play.memoryPins;
-  edits = play.memoryEdits;
-  deleted = play.memoryDeleted;
+  const layer = play.turnTextEdits;
+  edits = Object.fromEntries(Object.keys(layer).flatMap((id) => {
+    const rewrite = memoryRewrite(layer, id);
+    return rewrite ? [[id, rewrite]] : [];
+  }));
+  deleted = deletedMemoryIds(layer);
   notes = play.memoryNotes;
   history = play.fullMessageHistory;
   return null;
@@ -129,7 +134,7 @@ async function seedHistory() {
 }
 
 describe('memory verdicts in play', () => {
-  it('lands forget, pin, edit and remove on the pins, the overrides and the deleted set, and the Memory Manager shows them', async () => {
+  it('lands forget, pin, edit and remove on the pins and the text edit layer, and the Memory Manager shows them', async () => {
     renderGameViewer(world([after('memories[0].forget(); memories[1].pin(); memories[2].edit("The harbor burned."); memories[3].remove();')]), { inGameplay: <Probe /> });
     await seedHistory();
     stubEndpoint();

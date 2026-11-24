@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { changes } from '@/test/memoryChanges';
 import type { AITurnResult, ChatMessage } from '@/types';
 import { parseTurns, buildBandedHistory, buildVerbatimHistory, type BandTurn } from './turnBanding';
 import { applyMemoryOverrides, activeNotes, PLAYER_EDIT_IMPORTANCE, type MemoryOverrides } from './memoryOverrides';
@@ -41,80 +42,80 @@ describe('applyMemoryOverrides', () => {
     const turns = parseTurns(history());
     expect(applyMemoryOverrides(turns, null)).toBe(turns);
     expect(applyMemoryOverrides(turns, {})).toBe(turns);
-    expect(applyMemoryOverrides(turns, { edits: {}, deleted: [], notes: [] })).toBe(turns);
+    expect(applyMemoryOverrides(turns, changes({ edits: {}, deleted: [], notes: [] }))).toBe(turns);
   });
 
   it('replaces the summary with a player rewrite and ranks it top importance', () => {
-    const turns = applyMemoryOverrides(parseTurns(history()), {
+    const turns = applyMemoryOverrides(parseTurns(history()), changes({
       edits: { t2: { text: 'the player version', source: 'player' } },
-    });
+    }));
     expect(turns[1].summary).toBe('the player version');
     expect(turns[1].importance).toBe(PLAYER_EDIT_IMPORTANCE);
   });
 
   it('a regenerated summary replaces the text but does NOT claim top importance', () => {
-    const turns = applyMemoryOverrides(parseTurns(history()), {
+    const turns = applyMemoryOverrides(parseTurns(history()), changes({
       edits: { t2: { text: 'the AI second attempt', source: 'ai' } },
-    });
+    }));
     expect(turns[1].summary).toBe('the AI second attempt');
     expect(turns[1].importance).toBeUndefined();
   });
 
   it('never mutates the input turns — the AI original survives for revert', () => {
     const turns = parseTurns(history());
-    applyMemoryOverrides(turns, { edits: { t2: { text: 'x', source: 'player' } }, deleted: ['t3'] });
+    applyMemoryOverrides(turns, changes({ edits: { t2: { text: 'x', source: 'player' } }, deleted: ['t3'] }));
     expect(turns[1].summary).toBe('s2');
     expect(turns[2].summary).toBe('s3');
   });
 
   it('a tombstone strips the summary but keeps the turn (its narration still rides the floor)', () => {
-    const turns = applyMemoryOverrides(parseTurns(history()), { deleted: ['t2'] });
+    const turns = applyMemoryOverrides(parseTurns(history()), changes({ deleted: ['t2'] }));
     expect(turns).toHaveLength(4);
     expect(turns[1].summary).toBeUndefined();
     expect(turns[1].gameText).toBe('g2');
   });
 
   it('a tombstone wins over an edit on the same turn', () => {
-    const turns = applyMemoryOverrides(parseTurns(history()), {
+    const turns = applyMemoryOverrides(parseTurns(history()), changes({
       deleted: ['t2'],
       edits: { t2: { text: 'edited', source: 'player' } },
-    });
+    }));
     expect(turns[1].summary).toBeUndefined();
   });
 });
 
 describe('activeNotes', () => {
   it('returns notes chronologically and drops tombstoned ones', () => {
-    const notes = activeNotes({
+    const notes = activeNotes(changes({
       notes: [
         { id: 'n2', text: 'later', anchorTurn: 8 },
         { id: 'n1', text: 'earlier', anchorTurn: 2 },
         { id: 'n3', text: 'gone', anchorTurn: 4 },
       ],
       deleted: ['n3'],
-    });
+    }));
     expect(notes.map((n) => n.text)).toEqual(['earlier', 'later']);
   });
 });
 
 describe('overrides through the selector', () => {
   it('a deleted memory is not a selection candidate at all', () => {
-    const turns = applyMemoryOverrides(parseTurns(history()), { deleted: ['t2'] });
+    const turns = applyMemoryOverrides(parseTurns(history()), changes({ deleted: ['t2'] }));
     expect(milestoneCandidates(turns).map((t) => t.turnId)).toEqual(['t1', 't3', 't4']);
   });
 
   it('the selector judges the edited text, not the original', () => {
-    const turns = applyMemoryOverrides(parseTurns(history()), {
+    const turns = applyMemoryOverrides(parseTurns(history()), changes({
       edits: { t2: { text: 'what the player wrote', source: 'player' } },
-    });
+    }));
     expect(milestoneCandidates(turns).map((t) => t.summary)).toContain('what the player wrote');
     expect(milestoneCandidates(turns).map((t) => t.summary)).not.toContain('s2');
   });
 
   it('a keep pin holds an edited memory even when the selector dropped it', () => {
-    const turns = applyMemoryOverrides(parseTurns(history()), {
+    const turns = applyMemoryOverrides(parseTurns(history()), changes({
       edits: { t3: { text: 'mine', source: 'player' } },
-    });
+    }));
     const cands = milestoneCandidates(turns);
     const selection = { seen: new Set(['t2', 't3', 't4']), selected: new Set<string>() };
     // Without the auto-pin the selector's verdict would let it go...
@@ -128,12 +129,12 @@ describe('overrides through the selector', () => {
     const before = milestoneCandidates(applyMemoryOverrides(parseTurns(history()), {}));
     // The guard force-keeps the opening against a drop-everything verdict.
     expect([...resolveMilestoneKeep(before, selection, {})]).toEqual(['t1']);
-    const after = milestoneCandidates(applyMemoryOverrides(parseTurns(history()), { deleted: ['t1'] }));
+    const after = milestoneCandidates(applyMemoryOverrides(parseTurns(history()), changes({ deleted: ['t1'] })));
     expect([...resolveMilestoneKeep(after, selection, {})]).toEqual(['t2']);
   });
 
   it('a deleted memory never reaches the drop set (it is gone, not dropped)', () => {
-    const turns = applyMemoryOverrides(parseTurns(history()), { deleted: ['t2'] });
+    const turns = applyMemoryOverrides(parseTurns(history()), changes({ deleted: ['t2'] }));
     const drop = resolveMilestoneDrop(milestoneCandidates(turns), null, {});
     expect(drop.has('t2')).toBe(false);
   });
@@ -232,12 +233,12 @@ describe('buildMemoryLedger', () => {
   });
 
   it('carries the AI original alongside an edit so revert has a target', () => {
-    const { rows } = ledger({ edits: { t2: { text: 'mine', source: 'player' } } });
+    const { rows } = ledger(changes({ edits: { t2: { text: 'mine', source: 'player' } } }));
     expect(rows[1]).toMatchObject({ text: 'mine', original: 's2', edited: 'player' });
   });
 
   it('keeps a deleted memory in the ledger, flagged and out of the counts', () => {
-    const { rows, totalCount } = ledger({ deleted: ['t2'] });
+    const { rows, totalCount } = ledger(changes({ deleted: ['t2'] }));
     const t2 = rows.find((r) => r.id === 't2')!;
     expect(t2).toMatchObject({ deleted: true, kept: false, text: 's2' });
     expect(totalCount).toBe(3);

@@ -70,6 +70,27 @@ describe('importing saves', () => {
     expect(toastTexts(toast.error)).toEqual(["Couldn't import harbor.json.The storage is full.View Details →"]);
     expect(openLatestDetails(toast.error)?.details).toContain('Encountered full disk');
   });
+
+  it('stores a released save’s memory changes as the text edit layer only', async () => {
+    db.putSaveRecord.mockResolvedValue(undefined);
+    const released = {
+      name: 'Harbor Night', version: '3.7.0', stateHistory: [],
+      currentState: { worldName: 'Sedge Landing', timestamp: '2026-10-01T12:00:00Z', gameTime: 0 },
+      memoryEdits: { t1: { text: 'Rewritten.', source: 'player' } },
+      memoryDeleted: ['t2'],
+    };
+    await importSave(new File([JSON.stringify(released)], 'harbor.json', { type: 'application/json' }));
+
+    await waitFor(() => expect(db.putSaveRecord).toHaveBeenCalledTimes(1));
+    const stored = db.putSaveRecord.mock.calls[0][0] as Record<string, unknown>;
+    expect(stored.turnTextEdits).toEqual({
+      t1: { memory: { text: 'Rewritten.', source: 'player' } },
+      t2: { memory: { source: 'player', deleted: true } },
+    });
+    expect('memoryEdits' in stored).toBe(false);
+    expect('memoryDeleted' in stored).toBe(false);
+    expect(stored.name).toBe('Harbor Night');
+  });
 });
 
 describe('save failures', () => {

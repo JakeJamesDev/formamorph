@@ -17,12 +17,13 @@ import { Pin, PinOff, RotateCcw, Trash2, Undo2, Pencil, RefreshCw, Plus, Loader2
 import { cn } from '@/lib/utils';
 import { randomUUID } from '@/lib/uuid';
 import { playerEdit, restoreAll, restoreMemory } from '@/lib/namedMemories';
+import { deletedMemoryIds, hasMemoryChanges, withMemoryDeleted, withMemoryText, withoutMemoryChanges, withoutMemoryText } from '@/lib/turnTextEdits';
 
 /**
  * The Memory Manager: the full surface for the story's long-term memory. The side panel stays the
  * at-a-glance ledger; this is where a memory is rewritten, regenerated, deleted or written from scratch.
  *
- * Every change is an override (lib/memoryOverrides) — the AI's original summary is never destroyed, so
+ * Every change lands in the text edit layer (lib/turnTextEdits) — the AI's original summary is never destroyed, so
  * "revert to original" and "restore" always have something to go back to. Design:
  * docs-internal/designs/memory-editing/design.md.
  */
@@ -49,8 +50,7 @@ export const MemoryManagerModal = ({
     fullMessageHistory,
     memoryPins, setMemoryPins,
     milestoneSelection,
-    memoryEdits, setMemoryEdits,
-    memoryDeleted, setMemoryDeleted,
+    turnTextEdits, setTurnTextEdits,
     memoryNotes, setMemoryNotes,
     gameTime, calendar,
     contextMemoryIds, rehydratedMemoryIds,
@@ -73,7 +73,7 @@ export const MemoryManagerModal = ({
   const ledger = useMemo(
     () => buildMemoryLedger({
       history: fullMessageHistory,
-      overrides: { edits: memoryEdits, deleted: memoryDeleted, notes: memoryNotes },
+      overrides: { textEdits: turnTextEdits, notes: memoryNotes },
       pins: memoryPins,
       selection: milestoneSelection,
       verbatimFloor: narrationVerbatimTurns,
@@ -81,14 +81,13 @@ export const MemoryManagerModal = ({
       clock: aiClock ? { nowHours: gameTime, calendar } : undefined,
       context: { bandIds: contextMemoryIds, rehydratedIds: rehydratedMemoryIds },
     }),
-    [fullMessageHistory, memoryEdits, memoryDeleted, memoryNotes, memoryPins, milestoneSelection, narrationVerbatimTurns, aiClock, gameTime, calendar, contextMemoryIds, rehydratedMemoryIds],
+    [fullMessageHistory, turnTextEdits, memoryNotes, memoryPins, milestoneSelection, narrationVerbatimTurns, aiClock, gameTime, calendar, contextMemoryIds, rehydratedMemoryIds],
   );
 
   const oldestId = ledger.rows.find((r) => !r.deleted && !r.isNote)?.id;
   const editedCount = ledger.rows.filter((r) => !r.deleted && r.edited === 'player').length;
   const mineCount = ledger.rows.filter((r) => !r.deleted && r.isNote).length;
-  const hasChanges =
-    Object.keys(memoryEdits).length > 0 || memoryDeleted.length > 0 || Object.keys(memoryPins).length > 0;
+  const hasChanges = hasMemoryChanges(turnTextEdits) || Object.keys(memoryPins).length > 0;
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -122,18 +121,14 @@ export const MemoryManagerModal = ({
     } else {
       // A player rewrite is intent: force-keep it, so the selector never quietly lets go of text the
       // player wrote. Clearing the pin later falls back to the stored verdict; the text stays edited.
-      setMemoryEdits((prev) => ({ ...prev, [row.id]: { text, source: 'player' } }));
+      setTurnTextEdits((prev) => withMemoryText(prev, row.id, text, 'player'));
       setPin(row.id, 'keep');
     }
     setEditingId(null);
   };
 
   const revert = (row: MemoryRow) => {
-    setMemoryEdits((prev) => {
-      const next = { ...prev };
-      delete next[row.id];
-      return next;
-    });
+    setTurnTextEdits((prev) => withoutMemoryText(prev, row.id));
     // The auto-pin came with the edit, so it goes with it — back to the AI's own verdict.
     if (row.edited === 'player') setPin(row.id, null);
   };
@@ -153,14 +148,14 @@ export const MemoryManagerModal = ({
 
   const remove = (row: MemoryRow) => {
     if (!row.isNote && row.id === oldestId) { setConfirmOldest(row.id); return; }
-    setMemoryDeleted((prev) => (prev.includes(row.id) ? prev : [...prev, row.id]));
+    setTurnTextEdits((prev) => withMemoryDeleted(prev, row.id, true));
   };
 
   // The notes update reads the latest notes, so a turn that lands while the dialog is open keeps its writes. The
   // taken-name check reads the deletions of this render.
   const restore = (row: MemoryRow) => {
-    setMemoryNotes((prev) => restoreMemory(prev, memoryDeleted, row.id).notes);
-    setMemoryDeleted((prev) => prev.filter((id) => id !== row.id));
+    setMemoryNotes((prev) => restoreMemory(prev, deletedMemoryIds(turnTextEdits), row.id).notes);
+    setTurnTextEdits((prev) => withMemoryDeleted(prev, row.id, false));
   };
 
   const regenerate = async (row: MemoryRow) => {
@@ -185,9 +180,8 @@ export const MemoryManagerModal = ({
   };
 
   const resetAll = () => {
-    setMemoryEdits({});
-    setMemoryNotes((prev) => restoreAll(prev, memoryDeleted).notes);
-    setMemoryDeleted([]);
+    setMemoryNotes((prev) => restoreAll(prev, deletedMemoryIds(turnTextEdits)).notes);
+    setTurnTextEdits(withoutMemoryChanges);
     setMemoryPins({});
     setConfirmReset(false);
   };
@@ -457,7 +451,7 @@ export const MemoryManagerModal = ({
         title="Delete the Story's Opening Memory?"
         description="It's the earliest thing the story remembers, and it keeps later scenes consistent with how the story began. Without it, the AI may set up the scene again from the start."
         onConfirm={() => {
-          if (confirmOldest) setMemoryDeleted((prev) => (prev.includes(confirmOldest) ? prev : [...prev, confirmOldest]));
+          if (confirmOldest) setTurnTextEdits((prev) => withMemoryDeleted(prev, confirmOldest, true));
           setConfirmOldest(null);
         }}
       />

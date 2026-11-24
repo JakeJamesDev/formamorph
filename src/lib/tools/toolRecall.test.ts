@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { changes } from '@/test/memoryChanges';
 import type { ChatMessage } from '@/types';
 import { sampleChipScene, sampleDictionaries } from '@/lib/chipValues/sampleScene';
 import { serializeTurnContent } from '@/lib/turnDigest';
@@ -92,20 +93,20 @@ describe('recall, lexical', () => {
   });
 
   it('finds a rewritten digest by its new text, never its old', async () => {
-    const overrides: MemoryOverrides = { edits: { t1: { text: 'Wren sold the lantern.', source: 'player' } } };
+    const overrides: MemoryOverrides = changes({ edits: { t1: { text: 'Wren sold the lantern.', source: 'player' } } });
     const memory = source([{ summary: 'Wren broke the lantern.' }], 0, overrides);
     expect(await recall('broke', memory)).toEqual([]);
     expect(await recall('sold', memory)).toEqual([{ turn: 1, kind: 'digest', text: 'Wren sold the lantern.' }]);
   });
 
   it('never finds a deleted digest', async () => {
-    const overrides: MemoryOverrides = { deleted: ['t1'], edits: { t1: { text: 'Wren sold the lantern.', source: 'player' } } };
+    const overrides: MemoryOverrides = changes({ deleted: ['t1'], edits: { t1: { text: 'Wren sold the lantern.', source: 'player' } } });
     const memory = source([{ summary: 'Wren broke the lantern.' }], 0, overrides);
     expect(await recall('lantern broke sold', memory)).toEqual([]);
   });
 
   it('keeps a deleted digest\'s diary entries searchable', async () => {
-    const memory = source([{ summary: 'Wren broke the lantern.', diaries: { Bell: 'Wren broke my lantern.' } }], 0, { deleted: ['t1'] });
+    const memory = source([{ summary: 'Wren broke the lantern.', diaries: { Bell: 'Wren broke my lantern.' } }], 0, changes({ deleted: ['t1'] }));
     expect(await recall('lantern', memory)).toEqual([{ turn: 1, kind: 'diary', character: 'Bell', text: 'Wren broke my lantern.' }]);
   });
 
@@ -285,7 +286,7 @@ describe('recall, hybrid through the runner', () => {
   });
 
   it('matches a rewritten digest by words only, since its new text has no cached vector', async () => {
-    const overrides: MemoryOverrides = { edits: { t1: { text: 'Wren swore to guard the ferry.', source: 'player' } } };
+    const overrides: MemoryOverrides = changes({ edits: { t1: { text: 'Wren swore to guard the ferry.', source: 'player' } } });
     const memory = { ...withMeaning(async () => QUERY_VEC), overrides };
     expect((await recall('the promise', memory)).map((m) => m.turn)).toEqual([]);
     expect((await recall('swore', memory)).map((m) => m.turn)).toEqual([1]);

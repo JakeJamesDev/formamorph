@@ -31,7 +31,7 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
     fullMessageHistory,
     memoryPins, setMemoryPins,
     milestoneSelection,
-    memoryEdits, memoryDeleted, memoryNotes,
+    turnTextEdits, memoryNotes,
     gameTime, calendar,
     contextMemoryIds, rehydratedMemoryIds,
   } = useGameplay();
@@ -51,7 +51,7 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
   const ledger = useMemo(
     () => buildMemoryLedger({
       history: fullMessageHistory,
-      overrides: { edits: memoryEdits, deleted: memoryDeleted, notes: memoryNotes },
+      overrides: { textEdits: turnTextEdits, notes: memoryNotes },
       pins: memoryPins,
       selection: milestoneSelection,
       verbatimFloor: narrationVerbatimTurns,
@@ -59,7 +59,7 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
       clock: aiClock ? { nowHours: gameTime, calendar } : undefined,
       context: { bandIds: contextMemoryIds, rehydratedIds: rehydratedMemoryIds },
     }),
-    [fullMessageHistory, memoryEdits, memoryDeleted, memoryNotes, memoryPins, milestoneSelection, narrationVerbatimTurns, aiClock, gameTime, calendar, contextMemoryIds, rehydratedMemoryIds],
+    [fullMessageHistory, turnTextEdits, memoryNotes, memoryPins, milestoneSelection, narrationVerbatimTurns, aiClock, gameTime, calendar, contextMemoryIds, rehydratedMemoryIds],
   );
 
   const setPin = (id: string, pin: 'keep' | 'drop' | null) => {

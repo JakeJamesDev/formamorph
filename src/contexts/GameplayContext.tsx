@@ -56,7 +56,8 @@ import { addedCharacters } from '../lib/ownedTraitsInPlay';
 import { libraryBooksInPlay } from '../lib/dictionarySelection';
 import type { WorldCalendar } from '../lib/gameClock';
 import type { MemoryPinMap } from '../lib/milestoneMemory';
-import type { MemoryEditMap, MemoryNote } from '../lib/memoryOverrides';
+import type { MemoryNote } from '../lib/memoryOverrides';
+import type { TurnTextEdits } from '../lib/turnTextEdits';
 import type {
   CharacterData,
   CodePins,
@@ -344,11 +345,9 @@ function useProvideGameplay() {
   // selector has judged and which it kept (`selected` null = a legacy malformed full-vote → keep
   // everything). Persisted in the save envelope so verdicts survive load.
   const [milestoneSelection, setMilestoneSelection] = useState<{ seen: string[]; selected: string[] | null } | null>(null);
-  // The player's memory override layer (see lib/memoryOverrides): rewrites, tombstones and hand-written
-  // memories. The AI's own summaries stay untouched on their turns, so every override is reversible.
-  // All three persist in the save envelope.
-  const [memoryEdits, setMemoryEdits] = useState<MemoryEditMap>({});
-  const [memoryDeleted, setMemoryDeleted] = useState<string[]>([]);
+  // The player's changes to AI-written turn text (lib/turnTextEdits) and hand-written memories. The AI's own
+  // text stays untouched on its turn, so every change is reversible. Both persist in the save envelope.
+  const [turnTextEdits, setTurnTextEdits] = useState<TurnTextEdits>({});
   const [memoryNotes, setMemoryNotes] = useState<MemoryNote[]>([]);
   // Scene images by turn id. Held beside the history rather than inside the turns: everything that walks
   // the message list parses it, and a megabyte of base64 in a turn made the narration reveal crawl for the
@@ -663,8 +662,7 @@ function useProvideGameplay() {
         ...(Object.keys(entityVisualPreference).length ? { entityVisualPreference } : {}),
         ...(personaRef ? { persona: personaRef } : {}),
         ...(milestoneSelection ? { milestoneSelection } : {}),
-        ...(Object.keys(memoryEdits).length ? { memoryEdits } : {}),
-        ...(memoryDeleted.length ? { memoryDeleted } : {}),
+        ...(Object.keys(turnTextEdits).length ? { turnTextEdits } : {}),
         ...(memoryNotes.length ? { memoryNotes } : {}),
         ...(keepSceneImages && Object.keys(sceneImages).length ? { sceneImages } : {}),
         ...(Object.keys(actionAttachments).length ? { actionAttachments } : {}),
@@ -701,7 +699,7 @@ function useProvideGameplay() {
         return failed(error);
       }
     };
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, scriptTells, mentionReadings, mentionCorrections, sentActions, actionList, openingAction, drawnOpening, addSystemLogEntry, worldSupporterCopy, openWorldId]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, turnTextEdits, memoryNotes, sceneImages, actionAttachments, scriptTells, mentionReadings, mentionCorrections, sentActions, actionList, openingAction, drawnOpening, addSystemLogEntry, worldSupporterCopy, openWorldId]);
 
   const saveGame = useCallback(async (...args: Parameters<typeof prepareSave>) => (await prepareSave(...args)()).ok, [prepareSave]);
 
@@ -867,9 +865,8 @@ function useProvideGameplay() {
           // Restore accumulated verdicts (T4: sticky, never re-voted); older saves lack the field —
           // the loaded history is then judged fresh in one incremental batch on the next idle tick.
           setMilestoneSelection(migrated.milestoneSelection ?? null);
-          // The player's override layer; older saves lack all three ⇒ pure AI memory, unchanged behavior.
-          setMemoryEdits(migrated.memoryEdits ?? {});
-          setMemoryDeleted(migrated.memoryDeleted ?? []);
+          // Older saves lack both ⇒ pure AI memory, unchanged behavior.
+          setTurnTextEdits(migrated.turnTextEdits ?? {});
           setMemoryNotes(migrated.memoryNotes ?? []);
           // Absent whenever the save was written without images — the story loads with its tag lines and
           // no pictures, which is the default.
@@ -1253,10 +1250,8 @@ function useProvideGameplay() {
     personaPending,
     milestoneSelection,
     setMilestoneSelection,
-    memoryEdits,
-    setMemoryEdits,
-    memoryDeleted,
-    setMemoryDeleted,
+    turnTextEdits,
+    setTurnTextEdits,
     memoryNotes,
     setMemoryNotes,
     runtimeDictionary,

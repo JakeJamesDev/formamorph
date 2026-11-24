@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
+import { layerOf } from '@/test/memoryChanges';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
 import type { ChatMessage, PlayerStat, Script, Trait, World } from '@/types';
@@ -41,7 +42,7 @@ function Probe() {
       user('a1'), assistant('t1', 's1'), user('a2'), assistant('t2', 's2'), user('a3'), assistant('t3', 's3'), user('a4'), assistant('t4', 's4'),
     ]);
     play.setMemoryPins({ t1: 'keep', t3: 'drop' });
-    play.setMemoryDeleted(['t2']);
+    play.setTurnTextEdits(layerOf({ deleted: ['t2'] }));
     play.setMemoryNotes([{ id: 'n1', text: 'The bridge is out.', anchorTurn: 4 }]);
   };
   return null;
