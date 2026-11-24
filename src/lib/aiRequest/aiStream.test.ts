@@ -583,6 +583,12 @@ describe('the error for a thought the token limit cut', () => {
     expect(cutThoughtFailure({ ...roomed, requestType: 'choices' }).details).not.toContain('Max Output');
     expect(cutThoughtFailure({ ...spec, requestType: 'statUpdates' }).details).not.toContain('Max Output');
   });
+
+  it("points a room-less help request at the help window's prompt options", () => {
+    expect(cutThoughtFailure({ ...spec, requestType: 'help' }).details)
+      .toContain("raise Max Output under Options in the help window's Prompts settings.");
+    expect(cutThoughtFailure({ ...roomed, requestType: 'help' }).details).not.toContain('Max Output');
+  });
 });
 
 /** llama.cpp streams one token per frame, so the reasoning frames count the thought's tokens. */

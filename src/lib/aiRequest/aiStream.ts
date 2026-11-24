@@ -82,6 +82,13 @@ function parseServerError(raw: string): AiServerError | undefined {
 const requestLines = (spec: AiStreamSpec): string[] =>
   [`Request: POST ${redactUrl(spec.url)}`, spec.body.model ? `Model: ${spec.body.model}` : ''].filter(Boolean);
 
+/** Where the player raises the cap a request type sends, or `null` for a fixed cap. */
+function maxOutputWhere(requestType: AiStreamSpec['requestType'], prompt: string): string | null {
+  // Help requests take their cap from the help window's own prompt options.
+  if (requestType === 'help') return "under Options in the help window's Prompts settings";
+  return isMaxOutputKind(requestType) ? `for ${prompt}` : null;
+}
+
 /** The error for a reply the server stopped on its token limit before any answer or call. */
 export function cutThoughtFailure(spec: AiStreamSpec): AiStreamError {
   const limit = spec.body.max_tokens === undefined ? [] : [`max_tokens: ${spec.body.max_tokens}`];
@@ -94,9 +101,8 @@ export function cutThoughtFailure(spec: AiStreamSpec): AiStreamError {
     ? `The model used all its Thinking Room before it wrote an answer for ${prompt}`
     : `The model reached its token limit before it wrote an answer for ${prompt}`;
   // With no room, the app didn't know the model thinks, so the cap held the thought too.
-  const hint = room || !isMaxOutputKind(spec.requestType)
-    ? []
-    : ['', `If this model thinks before it answers, raise Max Output for ${prompt}.`];
+  const where = room ? null : maxOutputWhere(spec.requestType, prompt);
+  const hint = where ? ['', `If this model thinks before it answers, raise Max Output ${where}.`] : [];
   return new AiStreamError('cut-thought', message, {
     details: [`Prompt: ${prompt}`, ...requestLines(spec), ...limit, ...roomLines, ...hint].join('\n'),
   });
