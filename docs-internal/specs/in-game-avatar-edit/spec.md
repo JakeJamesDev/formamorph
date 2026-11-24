@@ -1,6 +1,7 @@
 # Spec: In-Game Avatar Edit
 
 Status: ready-for-agent
+Spec session: in-game-avatar-edit — spec
 
 ## Problem Statement
 
