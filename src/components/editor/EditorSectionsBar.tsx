@@ -38,7 +38,7 @@ export function EditorSectionsBar({ groups, label, bodyId, value, open, onOpenCh
       bodyId={bodyId}
       className="shrink-0"
     >
-      <TabsPrimitive.List aria-label={label} className="flex flex-col gap-1 border-t border-border/60 p-3">
+      <TabsPrimitive.List aria-label={label} className="flex flex-col gap-1 p-3">
         {drawn.map((group, index) => (
           <Fragment key={group.id}>
             {index > 0 && <div aria-hidden data-sections-separator className="mx-2 my-1.5 h-px shrink-0 bg-border" />}

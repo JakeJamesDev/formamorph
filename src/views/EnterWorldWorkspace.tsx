@@ -492,14 +492,6 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const locationIndex = categories.findIndex((category) => category.kind === 'location');
   const libraryIndex = categories.findIndex((category) => category.kind === 'library');
   const navigation = (
-    <ScrollArea
-      ref={navRootRef}
-      className={cn(
-        categoriesCollapsed
-          ? 'max-h-[45dvh] border-t border-border/60 [&>[data-radix-scroll-area-viewport]]:overscroll-contain'
-          : 'h-full min-h-0',
-      )}
-    >
     <nav ref={setNavElement} aria-label="World setup categories" className="space-y-1 p-3">
       {optionsIndex >= 0 && categoryButton(categories[optionsIndex], optionsIndex)}
       {personaIndex >= 0 && categoryButton(categories[personaIndex], personaIndex)}
@@ -534,7 +526,6 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
         </>
       )}
     </nav>
-    </ScrollArea>
   );
 
   return (
@@ -582,6 +573,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
             label="Categories"
             current={page?.group.name ?? current?.name ?? 'Setup'}
             bodyId="setup-category-tree"
+            scrollRef={navRootRef}
           >
             {navigation}
           </NavDisclosure>

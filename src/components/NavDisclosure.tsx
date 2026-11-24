@@ -1,7 +1,8 @@
-import { forwardRef, type ReactNode } from 'react';
+import { forwardRef, type ReactNode, type Ref } from 'react';
 import { ChevronDown, ListTree } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Hint } from '@/components/ui/typography';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export interface NavDisclosureProps {
   /** False draws the body alone at full height, as a sidebar. True folds it behind the bar. */
@@ -12,6 +13,8 @@ export interface NavDisclosureProps {
   /** The current page's name, at the bar's right end. */
   current: ReactNode;
   bodyId: string;
+  /** The body's scroll root, for a host that measures the space its list gets. */
+  scrollRef?: Ref<HTMLDivElement>;
   className?: string;
   children: ReactNode;
 }
@@ -19,7 +22,7 @@ export interface NavDisclosureProps {
 /** A full-width bar that names the current page and folds a navigation list below it. The ref is the bar's
  *  button, so a host can return focus to it after a pick. */
 export const NavDisclosure = forwardRef<HTMLButtonElement, NavDisclosureProps>(function NavDisclosure(
-  { collapsed = true, open, onOpenChange, label, current, bodyId, className, children },
+  { collapsed = true, open, onOpenChange, label, current, bodyId, scrollRef, className, children },
   ref,
 ) {
   return (
@@ -61,7 +64,17 @@ export const NavDisclosure = forwardRef<HTMLButtonElement, NavDisclosureProps>(f
         )}
         style={collapsed ? { gridTemplateRows: open ? '1fr' : '0fr' } : undefined}
       >
-        <div className={cn('min-h-0', collapsed ? 'overflow-hidden' : 'h-full')}>{children}</div>
+        <div className={cn('min-h-0', collapsed ? 'overflow-hidden' : 'h-full')}>
+          {/* Folded, the open list scrolls past 45% of the window instead of running off the screen. */}
+          <ScrollArea
+            ref={scrollRef}
+            className={collapsed
+              ? 'max-h-[45dvh] border-t border-border/60 [&>[data-radix-scroll-area-viewport]]:overscroll-contain'
+              : 'h-full min-h-0'}
+          >
+            {children}
+          </ScrollArea>
+        </div>
       </div>
     </div>
   );
