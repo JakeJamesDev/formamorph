@@ -115,7 +115,7 @@ Memories under the **Recent** divider still go to the AI word for word. A pin on
 | Button | What It Does |
 |---|---|
 | ✏️ **Edit This Memory** | Rewrite a memory in your own words. The story always keeps your version. |
-| 🔄 **Have the Story Write This Memory Again** | The story summarizes that turn again. The new text carries a **Rewritten** badge. |
+| 🔄 **Have the Story Write This Memory Again** | The story summarizes that turn again and shows the new text with the text it replaces. **Keep** stores it with a **Rewritten** badge. **Discard** leaves the memory as it was. |
 | 🗑️ **Delete This Memory** | Removes a memory. Select the **Deleted** chip to bring it back. |
 | ↩️ **Revert to the Original** | Puts an edited memory back to the story's own words. |
 | ♻️ **Restore This Memory** | Brings a deleted memory back. Shows under the **Deleted** chip. |

@@ -1,6 +1,6 @@
 # 03: Memory Regenerate Preview
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
@@ -15,10 +15,18 @@ Regenerate on a story memory shows the new text before it replaces anything, wit
 
 ## Acceptance criteria
 
-- [ ] Regenerate on a memory shows the preview; nothing in the layer changes until Keep.
-- [ ] Keep marks the memory Rewritten, and Revert to the Original returns the AI's first text.
-- [ ] Discard leaves the memory as it was.
-- [ ] Cancel stops a waiting or running request and leaves the memory as it was.
-- [ ] An empty or failed result says so and changes nothing.
-- [ ] The help topic and the wiki page describe the preview.
-- [ ] A changelog fragment: memory Regenerate shows the new text first.
+- [x] Regenerate on a memory shows the preview; nothing in the layer changes until Keep. (test "shows the new text and the text it replaces, and writes nothing until Keep")
+- [x] Keep marks the memory Rewritten, and Revert to the Original returns the AI's first text. (test "Keep stores a kept rewrite, and reverting returns the AI first text")
+- [x] Discard leaves the memory as it was. (test "Discard leaves the memory as it was")
+- [x] Cancel stops a waiting or running request and leaves the memory as it was. (test "Cancel aborts the request…")
+- [x] An empty or failed result says so and changes nothing. (tests "says so and changes nothing when the result is failed / empty")
+- [x] The help topic and the wiki page describe the preview. (`docs/Memory.md`, `src/lib/helpTopics.ts`)
+- [x] A changelog fragment: memory Regenerate shows the new text first. (`docs-internal/changelog.d/diaries-in-memories-03.md`)
+
+## Landed
+
+**Not verified**
+- Live look at the preview row in the Memories window: not checked in the browser pane; jsdom tests only.
+
+**For you**
+- Open Memories on a save with a few turns, press Regenerate on a memory, and read the preview: new text on top, "Replaces:" line under it, Keep and Discard.

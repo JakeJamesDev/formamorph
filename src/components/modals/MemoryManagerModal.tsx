@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { RegeneratePreview } from './RegeneratePreview';
 import { HelpButton } from '@/components/HelpButton';
 import { Pin, PinOff, RotateCcw, Trash2, Undo2, Pencil, RefreshCw, Plus, Loader2, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -42,9 +43,9 @@ export const MemoryManagerModal = ({
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Re-run the digest prompt for a turn, waiting behind other AI work; `signal` cancels it. Resolves false
-   *  when there's nothing to summarize or it failed, and undefined when it was canceled. */
-  onRegenerate?: (turnId: string, signal: AbortSignal) => Promise<boolean | undefined>;
+  /** Re-run the digest prompt for a turn, waiting behind other AI work; `signal` cancels it. Resolves the new
+   *  text, null when there's nothing to summarize or it failed, and undefined when it was canceled. */
+  onRegenerate?: (turnId: string, signal: AbortSignal) => Promise<string | null | undefined>;
 }) => {
   const {
     fullMessageHistory,
@@ -63,6 +64,15 @@ export const MemoryManagerModal = ({
   const [draft, setDraft] = useState('');
   const [adding, setAdding] = useState(false);
   const [regenerating, setRegenerating] = useState<string | null>(null);
+  // A regenerated text waits here for Keep or Discard; closing the window drops it.
+  const [preview, setPreview] = useState<{ id: string; text: string } | null>(null);
+  // Closing the window drops the preview and a request that still waits or runs.
+  useEffect(() => {
+    if (isOpen) return;
+    regenerateAbortRef.current?.abort();
+    setRegenerating(null);
+    setPreview(null);
+  }, [isOpen]);
   const [confirmReset, setConfirmReset] = useState(false);
   // The oldest memory anchors the scene; deleting it is allowed but warned about once (see ledger docs).
   const [confirmOldest, setConfirmOldest] = useState<string | null>(null);
@@ -84,6 +94,11 @@ export const MemoryManagerModal = ({
     [fullMessageHistory, turnTextEdits, memoryNotes, memoryPins, milestoneSelection, narrationVerbatimTurns, aiClock, gameTime, calendar, contextMemoryIds, rehydratedMemoryIds],
   );
 
+  // The turn can vanish while the preview is open (undo, re-roll): the preview closes and nothing is written.
+  useEffect(() => {
+    if (preview && !ledger.rows.some((r) => r.id === preview.id)) setPreview(null);
+  }, [preview, ledger.rows]);
+
   const oldestId = ledger.rows.find((r) => !r.deleted && !r.isNote)?.id;
   const editedCount = ledger.rows.filter((r) => !r.deleted && r.edited === 'player').length;
   const mineCount = ledger.rows.filter((r) => !r.deleted && r.isNote).length;
@@ -92,11 +107,12 @@ export const MemoryManagerModal = ({
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return ledger.rows.filter((r) => {
+      if (r.id === preview?.id) return true; // a pending preview never hides behind a chip or a search
       if (!matchesMemoryFilter(r, filter)) return false;
       if (q && !r.text.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [ledger.rows, filter, query]);
+  }, [ledger.rows, filter, query, preview?.id]);
 
   const setPin = (id: string, pin: 'keep' | 'drop' | null) => {
     setMemoryPins((prev) => {
@@ -163,12 +179,18 @@ export const MemoryManagerModal = ({
     const controller = new AbortController();
     regenerateAbortRef.current = controller;
     setRegenerating(row.id);
-    const ok = await onRegenerate(row.id, controller.signal);
+    const text = await onRegenerate(row.id, controller.signal);
     if (controller.signal.aborted) return; // the Cancel press already reset the row
     setRegenerating(null);
-    if (ok === undefined) return; // the queue canceled it
-    if (!ok) { toast.error('Could not rewrite that memory — try again in a moment.'); return; }
-    // Regenerating over a rewrite discards the player's text, so the auto-pin that came with it goes too —
+    if (text === undefined) return; // the queue canceled it
+    if (!text) { toast.error('Could not rewrite that memory — try again in a moment.'); return; }
+    setPreview({ id: row.id, text });
+  };
+
+  const keepPreview = (row: MemoryRow, text: string) => {
+    setPreview(null);
+    setTurnTextEdits((prev) => withMemoryText(prev, row.id, text, 'ai'));
+    // Keeping over a rewrite discards the player's text, so the auto-pin that came with it goes too —
     // otherwise a keep-pin outlives the intent that set it, on text the player never wrote.
     if (row.edited === 'player') setPin(row.id, null);
   };
@@ -313,6 +335,13 @@ export const MemoryManagerModal = ({
                           </div>
                         </div>
                       </div>
+                    ) : preview?.id === row.id ? (
+                      <RegeneratePreview
+                        current={row.text}
+                        proposed={preview.text}
+                        onKeep={() => keepPreview(row, preview.text)}
+                        onDiscard={() => setPreview(null)}
+                      />
                     ) : (
                       <>
                         <div className="flex items-start gap-2">
@@ -361,7 +390,7 @@ export const MemoryManagerModal = ({
                                       variant="ghost"
                                       size="icon"
                                       className="h-6 w-6"
-                                      disabled={regenerating !== null}
+                                      disabled={regenerating !== null || preview !== null}
                                       onClick={() => regenerate(row)}
                                     >
                                       {regenerating === row.id

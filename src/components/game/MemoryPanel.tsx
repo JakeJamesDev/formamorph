@@ -25,7 +25,7 @@ import { Hint, Meta } from '@/components/ui/typography';
 const PANEL_FILTERS: MemoryFilter[] = ['all', 'verbatim', 'summary', 'held', 'custom'];
 
 export const MemoryPanel = ({ onRegenerateMemory }: {
-  onRegenerateMemory?: (turnId: string, signal: AbortSignal) => Promise<boolean | undefined>;
+  onRegenerateMemory?: (turnId: string, signal: AbortSignal) => Promise<string | null | undefined>;
 }) => {
   const {
     fullMessageHistory,

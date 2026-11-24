@@ -183,7 +183,7 @@ The story keeps your recent turns word for word and carries older turns as short
 | | |
 |---|---|
 | **Edit This Memory** | Rewrite a memory in your own words. The story always keeps your version. |
-| **Have the Story Write This Memory Again** | The story summarizes that turn again. The new text carries a **Rewritten** badge. |
+| **Have the Story Write This Memory Again** | The story summarizes that turn again and shows the new text with the text it replaces. **Keep** stores it with a **Rewritten** badge. **Discard** leaves the memory as it was. |
 | **Pin This Memory** / **Forget This Memory** | Keep a memory the story let go, or let go of one it kept. **Clear the Pin and Let the Story Decide** gives the decision back to the story. |
 | **Delete This Memory** | Removes a memory. Select the **Deleted** chip, then **Restore This Memory**, to bring it back. |
 | **Add Memory** | Writes a memory for something that never happened in a turn. The story never judges yours. |

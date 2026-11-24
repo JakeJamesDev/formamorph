@@ -165,7 +165,7 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
   /** A stranger's row opened: its entity id and the label the player sees. */
   onStrangerClick?: (entityId: string, label: string) => void;
   /** Re-run the digest prompt for one turn (Memory Manager's regenerate); owned by GameViewer. */
-  onRegenerateMemory?: (turnId: string, signal: AbortSignal) => Promise<boolean | undefined>;
+  onRegenerateMemory?: (turnId: string, signal: AbortSignal) => Promise<string | null | undefined>;
   /** The narration prompt this world actually sends: the world's own unless declined, else the preset's. */
   narrationPrompt: string;
 }) => {

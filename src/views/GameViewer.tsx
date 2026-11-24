@@ -37,7 +37,7 @@ import { advancedClock, baseWritesOf, mergeWorldWrites } from "@/lib/worldWrites
 import { addScriptPins, pruneScriptPins, withScriptPins } from "@/lib/scriptPins";
 import { addNamedWrites, pruneNamedMemories, withNamedWrites } from "@/lib/namedMemories";
 import { notesAfter, pinsAfter, textEditsAfter } from "@/lib/memoryWrites";
-import { deletedMemoryIds, withMemoryText } from "@/lib/turnTextEdits";
+import { deletedMemoryIds } from "@/lib/turnTextEdits";
 import {
   actionTotals, type ActionTotals, changedAnyStat, overlayStatCodeResult, playthroughPlaceholderSet, runItemScripts, runStatCodeTurn, runSwitchScripts, splitOwnerTurns, stateInventory, withoutInventory, withPinWrites, withoutBodies,
   type ChainedItems, type InventoryStep, type SandboxState, type ScriptTrigger, type StatCodeTurn, type StatCodeTurnResult,
@@ -5733,32 +5733,29 @@ const GameViewer = ({
     return () => clearTimeout(timer);
   }, [devRoute?.modal, devRoute?.tab, isWaitingForAI, fullMessageHistory, playPrompts]);
 
-  // Regenerate one memory on demand (Memory Manager): re-run the digest prompt on that turn and land the
-  // result in the text edit layer as AI text — no pin and no importance bump, because the player authored
-  // nothing here; the selector's verdict still governs it. Silent, like every other digest request.
-  // It is a foreground queue job: it waits for running passes, holds the queue, and `signal` cancels it.
-  // Returns false when the turn has nothing to summarize or the call fails, and undefined when canceled.
-  const regenerateMemory = useCallback(async (turnId: string, signal: AbortSignal): Promise<boolean | undefined> => {
-    if (!passQueue) return false;
+  // Regenerate one memory on demand (Memory Manager): re-run the digest prompt on that turn and resolve to the
+  // new text. The window previews it; Keep writes it to the text edit layer. Silent, like every other digest
+  // request. It is a foreground queue job: it waits for running passes, holds the queue, and `signal` cancels it.
+  // Returns null when the turn has nothing to summarize or the call fails, and undefined when canceled.
+  const regenerateMemory = useCallback(async (turnId: string, signal: AbortSignal): Promise<string | null | undefined> => {
+    if (!passQueue) return null;
     try {
-      const run = await passQueue.runForeground(async (queueSignal) => {
+      const run = await passQueue.runForeground(async (queueSignal): Promise<string | null> => {
         // Read at start: a pass that ran first may have written this turn's digest.
         const target = digestTarget(fullMessageHistoryRef.current, turnId);
-        if (!target) return false;
+        if (!target) return null;
         const digest = await sendAiRequestRef.current({ ...buildDigestRequestRef.current(target), signal: queueSignal });
         const trimmed = (digest ?? "").trim();
-        if (!trimmed || queueSignal.aborted || !mounted.current) return false;
+        if (!trimmed || queueSignal.aborted || !mounted.current) return null;
         // The fresh digest replaces the AI's text only; the turn's `memories.append` lines still follow it.
         const codeMemory = parsedTurnById(fullMessageHistoryRef.current, turnId)?.codeMemory;
-        const text = turnMemory({ summary: trimmed, codeMemory }) ?? trimmed;
-        setTurnTextEdits((prev) => withMemoryText(prev, turnId, text, 'ai'));
-        return true;
+        return turnMemory({ summary: trimmed, codeMemory }) ?? trimmed;
       }, signal);
       return run ? run.value : undefined;
     } catch {
-      return false;
+      return null;
     }
-  }, [passQueue, setTurnTextEdits, mounted]);
+  }, [passQueue, mounted]);
 
   // Embedding drainer: keep a vector on hand for everything the semantic features score at turn time —
   // turn digests (semanticMemory) and dictionary entries (semanticLore) — so scoring is a sync lookup.
