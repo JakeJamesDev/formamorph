@@ -1,6 +1,7 @@
 # Spec: Diaries in Memories
 
 Status: ready-for-agent
+Spec session: diaries-in-memories — spec
 Prototype: branch `prototype/diary-view`, variant C4 (`#dev?view=gameViewer&fixture=diaries&modal=entity&variant=C4`). Rounds 1–3 compared a diary view in the popup (A), a section in the popup (B), and five placements inside Memories (C, C1–C4). C4 won on 2026-11-24.
 
 ## Problem Statement
