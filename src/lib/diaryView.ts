@@ -20,6 +20,8 @@ export interface DiaryEntry {
   original?: string;
   edited?: TextSource;
   deleted: boolean;
+  /** The pass wrote an entry for this name, or the player deleted one. False: only a script wrote here. */
+  aiEntry: boolean;
   /** The AI wrote "nothing notable", or nothing. */
   quiet: boolean;
   /** Lines a script wrote for this name on this turn. Read-only; the layer never changes them. */
@@ -36,15 +38,14 @@ export interface Diary {
 export const diaryKey = (name: string) => name.trim().toLowerCase();
 const fold = diaryKey;
 
-/** Whether the AI reads the entry: not deleted, and it carries something beyond "nothing notable". */
-export const isReadEntry = (entry: DiaryEntry): boolean => !entry.deleted && (!entry.quiet || entry.scriptLines.length > 0);
+/** Whether the AI reads the entry: its script lines, or its own text when that is kept and beyond "nothing notable". */
+export const isReadEntry = (entry: DiaryEntry): boolean =>
+  entry.scriptLines.length > 0 || (!entry.deleted && !entry.quiet);
 
-/** Entries the AI skips as "nothing notable", which Show Hidden Entries reveals. */
-const isQuietEntry = (entry: DiaryEntry): boolean => !entry.deleted && !isReadEntry(entry);
-
-/** How many entries the AI reads, and how many quiet ones stay hidden. */
+/** How many entries the AI reads, and how many quiet or deleted ones stay hidden. */
 export function diaryCounts(diary: Diary): { read: number; hidden: number } {
-  return { read: diary.entries.filter(isReadEntry).length, hidden: diary.entries.filter(isQuietEntry).length };
+  const read = diary.entries.filter(isReadEntry).length;
+  return { read, hidden: diary.entries.length - read };
 }
 
 /** How many entries the AI reads in the diary kept under `name`; 0 when there is none. */
@@ -54,12 +55,12 @@ export function readEntryCount(diaries: readonly Diary[], name: string): number 
   return diary ? diaryCounts(diary).read : 0;
 }
 
-/** The entries a diary view lists: what the AI reads, plus quiet ones with `showHidden`, matching `query` in the
- *  entry or its script lines. */
+/** The entries a diary view lists: what the AI reads, plus quiet and deleted ones with `showHidden`, matching
+ *  `query` in the entry or its script lines. */
 export function visibleDiaryEntries(diary: Diary, { query, showHidden }: { query: string; showHidden: boolean }): DiaryEntry[] {
   const q = query.trim().toLowerCase();
   return diary.entries.filter((entry) => {
-    if (!isReadEntry(entry) && !(showHidden && isQuietEntry(entry))) return false;
+    if (!showHidden && !isReadEntry(entry)) return false;
     return !q || entry.text.toLowerCase().includes(q) || entry.scriptLines.some((line) => line.toLowerCase().includes(q));
   });
 }
@@ -76,14 +77,19 @@ export function buildDiaries(history: readonly ChatMessage[], layer: TurnTextEdi
     const { turnId } = parsed;
     const written = parsed.diaries ?? {};
     const scripted = parsed.codeDiaries ?? {};
-    // The AI's spelling keys the entry; a script-only name keys it by the script's spelling.
+    const edits = layer?.[turnId]?.diaries ?? {};
+    // The AI's spelling keys the entry; a script-only name keys it by the script's spelling. A delete outlives the
+    // entry a narration edit cleared, so it still lists for Restore.
     const names = [...Object.keys(written)];
+    for (const name of Object.keys(edits)) {
+      if (edits[name].deleted && !(name in written)) names.push(name);
+    }
     for (const name of Object.keys(scripted)) {
       if (!names.some((known) => fold(known) === fold(name))) names.push(name);
     }
     for (const name of names) {
       const ai = written[name]?.trim() ?? '';
-      const edit = layer?.[turnId]?.diaries?.[name];
+      const edit = edits[name];
       const rewrite = edit?.text === undefined ? undefined : { text: edit.text.trim(), source: edit.source };
       const text = rewrite?.text ?? ai;
       const scriptLines = Object.entries(scripted)
@@ -97,6 +103,7 @@ export function buildDiaries(history: readonly ChatMessage[], layer: TurnTextEdi
         text,
         ...(rewrite ? { original: ai, edited: rewrite.source } : {}),
         deleted: edit?.deleted === true,
+        aiEntry: name in written || edit?.deleted === true,
         quiet: !text || !diaryHoldsMemory(text),
         scriptLines,
       };

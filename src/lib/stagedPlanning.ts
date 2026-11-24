@@ -2,6 +2,7 @@ import type { Entity, ChatMessage, AIRequestType, SceneEntity } from "@/types";
 import { renderPromptTemplate } from "./promptTemplate";
 import { layerValues, type TokenValues } from "./promptValues";
 import { collectCharacterDiary } from "./turnDigest";
+import type { TurnTextEdits } from "./turnTextEdits";
 import { selectRelevantDiary } from "./semanticDiary";
 import { sameCharacterName, matchNames, findEntityNames, stripQuotedSpeech, distinctiveWords } from "./entityMatch";
 import { escapeRegExp } from "./utils";
@@ -465,6 +466,8 @@ export async function runStagedPlanning(ctx: {
   /** Run the per-character motivation passes concurrently (they're independent) instead of one at a time. */
   concurrentCharacters: boolean;
   fullMessageHistory: ChatMessage[];
+  /** The player's changes to diary entries, applied as each character reads its diary. */
+  turnTextEdits: TurnTextEdits | undefined;
   diaryMemoryEntries: number;
   /** Diary retrieval (semantic-memory step 4): when set, each character's diary block becomes the
    *  recent tail plus the relevant older entries (lib/semanticDiary) instead of pure recency. Null =
@@ -485,7 +488,7 @@ export async function runStagedPlanning(ctx: {
     action, stageValues, lastStory, entities, presentEntityIds, playerNames, characterDiaries,
     concurrentCharacters, fullMessageHistory, diaryMemoryEntries, caps, activeCharacterCap,
     directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt, request, signal,
-    diaryRetrieval = null,
+    diaryRetrieval = null, turnTextEdits,
   } = ctx;
 
   // 1) Director: who is in the scene and what carries over.
@@ -514,7 +517,7 @@ export async function runStagedPlanning(ctx: {
     // retrieval, the whole diary is collected and lib/semanticDiary keeps the recent tail plus the
     // relevant older entries (chronological either way, so the block's "oldest first" stays true).
     const all = characterDiaries
-      ? collectCharacterDiary(fullMessageHistory, member.name, diaryRetrieval ? Number.MAX_SAFE_INTEGER : diaryMemoryEntries)
+      ? collectCharacterDiary(fullMessageHistory, member.name, diaryRetrieval ? Number.MAX_SAFE_INTEGER : diaryMemoryEntries, turnTextEdits)
       : [];
     const diary = diaryRetrieval ? selectRelevantDiary(all, diaryRetrieval.queryVec, diaryRetrieval.vectorsByKey) : all;
     return request(

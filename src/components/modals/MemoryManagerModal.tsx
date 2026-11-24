@@ -18,15 +18,18 @@ import { Pin, PinOff, RotateCcw, Trash2, Undo2, Pencil, RefreshCw, Plus, Loader2
 import { cn } from '@/lib/utils';
 import { randomUUID } from '@/lib/uuid';
 import { playerEdit, restoreAll, restoreMemory } from '@/lib/namedMemories';
-import { deletedMemoryIds, hasMemoryChanges, withMemoryDeleted, withMemoryText, withoutMemoryChanges, withoutMemoryText } from '@/lib/turnTextEdits';
-import { buildDiaries, diaryCounts, diaryKey, visibleDiaryEntries } from '@/lib/diaryView';
+import {
+  deletedMemoryIds, hasDiaryChanges, hasMemoryChanges, withDiaryDeleted, withDiaryText, withMemoryDeleted, withMemoryText,
+  withoutDiaryChanges, withoutDiaryText, withoutMemoryChanges, withoutMemoryText,
+} from '@/lib/turnTextEdits';
+import { buildDiaries, diaryCounts, diaryKey, visibleDiaryEntries, type DiaryEntry } from '@/lib/diaryView';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { NavRail, type NavRailGroup } from '@/components/NavRail';
 import { EditorSectionsBar } from '@/components/editor/EditorSectionsBar';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { NotebookPen, ScrollText } from 'lucide-react';
-import { MemoryDiaryView } from './MemoryDiaryView';
+import { MemoryDiaryView, type DiaryEntryActions } from './MemoryDiaryView';
 
 /**
  * The Memory Manager: the full surface for the story's long-term memory. The side panel stays the
@@ -53,6 +56,7 @@ export const MemoryManagerModal = ({
   isOpen,
   onOpenChange,
   onRegenerate,
+  onRegenerateDiary,
   initialDiary,
 }: {
   isOpen: boolean;
@@ -62,6 +66,8 @@ export const MemoryManagerModal = ({
   /** Re-run the digest prompt for a turn, waiting behind other AI work; `signal` cancels it. Resolves the new
    *  text, null when there's nothing to summarize or it failed, and undefined when it was canceled. */
   onRegenerate?: (turnId: string, signal: AbortSignal) => Promise<string | null | undefined>;
+  /** Re-run the diary pass for one turn and name, as `onRegenerate` does for a memory. */
+  onRegenerateDiary?: (turnId: string, name: string, signal: AbortSignal) => Promise<string | null | undefined>;
 }) => {
   const {
     fullMessageHistory,
@@ -121,11 +127,6 @@ export const MemoryManagerModal = ({
     [fullMessageHistory, turnTextEdits, memoryNotes, memoryPins, milestoneSelection, narrationVerbatimTurns, aiClock, gameTime, calendar, contextMemoryIds, rehydratedMemoryIds],
   );
 
-  // The turn can vanish while the preview is open (undo, re-roll): the preview closes and nothing is written.
-  useEffect(() => {
-    if (preview && !ledger.rows.some((r) => r.id === preview.id)) setPreview(null);
-  }, [preview, ledger.rows]);
-
   const oldestId = ledger.rows.find((r) => !r.deleted && !r.isNote)?.id;
   const editedCount = ledger.rows.filter((r) => !r.deleted && r.edited === 'player').length;
   const mineCount = ledger.rows.filter((r) => !r.deleted && r.isNote).length;
@@ -142,6 +143,14 @@ export const MemoryManagerModal = ({
   }, [ledger.rows, filter, query, preview?.id]);
 
   const diaries = useMemo(() => buildDiaries(fullMessageHistory, turnTextEdits), [fullMessageHistory, turnTextEdits]);
+
+  // The turn can vanish while the preview is open (undo, re-roll): the preview closes and nothing is written.
+  useEffect(() => {
+    if (!preview) return;
+    const live = ledger.rows.some((r) => r.id === preview.id)
+      || diaries.some((d) => d.entries.some((e) => e.key === preview.id && !e.deleted));
+    if (!live) setPreview(null);
+  }, [preview, ledger.rows, diaries]);
   // A diary the save doesn't have shows Story; each opening sets the view again.
   const diary = view === STORY_VIEW ? undefined : diaries.find((d) => diaryTabValue(d.name) === view);
   const shownView = diary ? view : STORY_VIEW;
@@ -234,17 +243,24 @@ export const MemoryManagerModal = ({
     setTurnTextEdits((prev) => withMemoryDeleted(prev, row.id, false));
   };
 
-  const regenerate = async (row: MemoryRow) => {
-    if (!onRegenerate) return;
+  /** Runs one regenerate for `id` and opens its preview. One runs at a time across the window. */
+  const runRegenerate = async (
+    id: string, run: (signal: AbortSignal) => Promise<string | null | undefined>, failure: string,
+  ) => {
     const controller = new AbortController();
     regenerateAbortRef.current = controller;
-    setRegenerating(row.id);
-    const text = await onRegenerate(row.id, controller.signal);
+    setRegenerating(id);
+    const text = await run(controller.signal);
     if (controller.signal.aborted) return; // the Cancel press already reset the row
     setRegenerating(null);
     if (text === undefined) return; // the queue canceled it
-    if (!text) { toast.error('Could not rewrite that memory — try again in a moment.'); return; }
-    setPreview({ id: row.id, text });
+    if (!text) { toast.error(failure); return; }
+    setPreview({ id, text });
+  };
+
+  const regenerate = (row: MemoryRow) => {
+    if (!onRegenerate) return;
+    void runRegenerate(row.id, (signal) => onRegenerate(row.id, signal), 'Could not rewrite that memory — try again in a moment.');
   };
 
   const keepPreview = (row: MemoryRow, text: string) => {
@@ -262,18 +278,78 @@ export const MemoryManagerModal = ({
   };
 
   const resetAll = () => {
-    setMemoryNotes((prev) => restoreAll(prev, deletedMemoryIds(turnTextEdits)).notes);
-    setTurnTextEdits(withoutMemoryChanges);
-    setMemoryPins({});
+    if (diary) {
+      const { name } = diary;
+      setTurnTextEdits((prev) => withoutDiaryChanges(prev, name));
+    } else {
+      setMemoryNotes((prev) => restoreAll(prev, deletedMemoryIds(turnTextEdits)).notes);
+      setTurnTextEdits(withoutMemoryChanges);
+      setMemoryPins({});
+    }
     setConfirmReset(false);
   };
+  const canReset = diary ? hasDiaryChanges(turnTextEdits, diary.name) : hasChanges;
 
   const counter = (
-    <span className={cn('text-[10px]', draft.length > MEMORY_SOFT_LIMIT ? 'text-amber-500' : 'text-muted-foreground')}>
+    <span className={cn('text-[10px]', !diary && draft.length > MEMORY_SOFT_LIMIT ? 'text-amber-500' : 'text-muted-foreground')}>
       {draft.length}
-      {draft.length > MEMORY_SOFT_LIMIT && ' · Long memories leave less room for the others'}
+      {!diary && draft.length > MEMORY_SOFT_LIMIT && ' · Long memories leave less room for the others'}
     </span>
   );
+
+  /** The edit box for the row or entry being edited. */
+  const editor = (onSave: () => void) => (
+    <div className="space-y-2">
+      <Textarea
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        className="min-h-[80px] text-meta"
+      />
+      <div className="flex items-center justify-between">
+        {counter}
+        <div className="flex gap-1">
+          <Button size="sm" variant="ghost" className="h-7" onClick={() => setEditingId(null)}>
+            <X className="mr-1 h-3.5 w-3.5" /> Cancel
+          </Button>
+          <Button size="sm" className="h-7" onClick={onSave} disabled={!draft.trim()}>
+            <Check className="mr-1 h-3.5 w-3.5" /> Save
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const editingEntry = diary?.entries.find((e) => e.key === editingId);
+  const saveDiaryEdit = (entry: DiaryEntry) => {
+    const text = draft.trim();
+    if (!text) return;
+    setTurnTextEdits((prev) => withDiaryText(prev, entry.turnId, entry.name, text, 'player'));
+    setEditingId(null);
+  };
+  const diaryActions: DiaryEntryActions = {
+    editingKey: editingEntry ? editingEntry.key : null,
+    editor: editingEntry ? editor(() => saveDiaryEdit(editingEntry)) : null,
+    // A quiet entry starts empty: "nothing notable" is the AI's marker, not text to keep.
+    onEdit: (entry) => { setEditingId(entry.key); setDraft(entry.quiet ? '' : entry.text); setAdding(false); },
+    onRevert: (entry) => setTurnTextEdits((prev) => withoutDiaryText(prev, entry.turnId, entry.name)),
+    onDelete: (entry) => setTurnTextEdits((prev) => withDiaryDeleted(prev, entry.turnId, entry.name, true)),
+    onRestore: (entry) => setTurnTextEdits((prev) => withDiaryDeleted(prev, entry.turnId, entry.name, false)),
+    onRegenerate: onRegenerateDiary && ((entry) => {
+      void runRegenerate(
+        entry.key, (signal) => onRegenerateDiary(entry.turnId, entry.name, signal), "Couldn't rewrite that entry. Try again in a moment.",
+      );
+    }),
+    onCancelRegenerate: () => cancelRegenerate(),
+    regeneratingKey: regenerating,
+    regenerateBlocked: regenerating !== null || preview !== null,
+    preview: preview && { key: preview.id, text: preview.text },
+    onKeep: (entry, text) => {
+      setPreview(null);
+      setTurnTextEdits((prev) => withDiaryText(prev, entry.turnId, entry.name, text, 'ai'));
+    },
+    onDiscard: () => setPreview(null),
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -391,9 +467,12 @@ export const MemoryManagerModal = ({
             <ScrollArea className="flex-grow min-h-0 -mx-1 px-1">
               {diary ? (
                 <MemoryDiaryView
+                  name={diary.name}
                   entries={diaryEntries}
                   memoryByTurn={memoryByTurn}
                   emptyText={diaryEmptyText}
+                  showHidden={showHidden}
+                  actions={diaryActions}
                 />
               ) : (
               <div className="space-y-1 pb-2">
@@ -426,27 +505,7 @@ export const MemoryManagerModal = ({
                           row.inContext && !isEditing && 'border-l-2 border-l-primary',
                         )}
                       >
-                        {isEditing ? (
-                          <div className="space-y-2">
-                            <Textarea
-                              autoFocus
-                              value={draft}
-                              onChange={(e) => setDraft(e.target.value)}
-                              className="min-h-[80px] text-meta"
-                            />
-                            <div className="flex items-center justify-between">
-                              {counter}
-                              <div className="flex gap-1">
-                                <Button size="sm" variant="ghost" className="h-7" onClick={() => setEditingId(null)}>
-                                  <X className="mr-1 h-3.5 w-3.5" /> Cancel
-                                </Button>
-                                <Button size="sm" className="h-7" onClick={() => saveEdit(row)} disabled={!draft.trim()}>
-                                  <Check className="mr-1 h-3.5 w-3.5" /> Save
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        ) : preview?.id === row.id ? (
+                        {isEditing ? editor(() => saveEdit(row)) : preview?.id === row.id ? (
                           <RegeneratePreview
                             current={row.text}
                             proposed={preview.text}
@@ -575,7 +634,7 @@ export const MemoryManagerModal = ({
         </Tabs>
 
         <div className="flex justify-end border-t border-border pt-2">
-          <Button size="sm" variant="ghost" className="h-7 text-meta text-muted-foreground" disabled={!!diary || !hasChanges} onClick={() => setConfirmReset(true)}>
+          <Button size="sm" variant="ghost" className="h-7 text-meta text-muted-foreground" disabled={!canReset} onClick={() => setConfirmReset(true)}>
             Reset All My Changes
           </Button>
         </div>
@@ -584,8 +643,13 @@ export const MemoryManagerModal = ({
       <ConfirmDialog
         open={confirmReset}
         onOpenChange={(o) => !o && setConfirmReset(false)}
-        title="Reset Every Memory Change?"
-        description="Your edits, deletions and pins are removed. The memories you wrote yourself stay. This can't be undone."
+        {...(diary ? {
+          title: `Reset Every Change to ${diary.name}'s Diary?`,
+          description: "Your edits, kept rewrites and deletions in this diary are removed. Other diaries and the story's memories stay. This can't be undone.",
+        } : {
+          title: 'Reset Every Memory Change?',
+          description: "Your edits, deletions and pins are removed. The memories you wrote yourself stay. This can't be undone.",
+        })}
         onConfirm={resetAll}
       />
       <ConfirmDialog

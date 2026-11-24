@@ -152,6 +152,26 @@ With **Character Diaries** on, each character keeps a first-person diary. The **
 - 🔍 **Search looks only in the open diary.**
 - 📴 **Character Diaries off:** the diaries your save already has still show, with a note. Characters write no new entries.
 
+## How to Change What a Character Remembers
+<!-- keywords: edit diary, fix diary, wrong belief, character remembers wrong, delete diary entry, forget, rewrite entry, restore entry, regenerate diary -->
+
+A character acts on its diary. Change an entry, and the character acts on your version from the next turn.
+
+1. Open the side panel's **Memory** tab, then select **Manage Memories**.
+2. Select the character's diary, such as **Bram's Diary**.
+3. On the entry, select what you need:
+
+| Button | What it does |
+|---|---|
+| ✏️ **Edit This Entry** | Rewrite the entry. One that said *Nothing notable* becomes a real entry. Your entry shows **Edited**, with the original under it. |
+| 🔄 **Have Bram Write This Entry Again** | Bram writes the entry again. You see the new text first: **Keep** stores it, **Discard** leaves the entry as it was. **Cancel Rewrite** stops it while it waits or runs. |
+| 🗑️ **Delete This Entry** | Bram forgets it. To bring it back, turn on **Show Hidden Entries**, then select **Restore This Entry**. |
+| ↩️ **Revert to the Original** | Puts back what Bram first wrote. |
+
+- ✍️ **Script lines stay as written.** Your changes touch only what the character wrote.
+- 🧹 **Reset All My Changes** on a diary resets that diary only. On **Story**, it resets only the memories.
+- 📝 **Editing a turn's story text** removes your edits to that turn's diary entries. Entries you deleted stay deleted.
+
 ## Kept vs Sent
 <!-- keywords: accent bar, colored stripe, which ones were used, difference, relevance ranking, held meaning, verbatim meaning, scene badge, left out this turn -->
 

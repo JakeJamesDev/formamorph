@@ -303,6 +303,23 @@ describe('recall, hybrid through the runner', () => {
   });
 });
 
+describe('recall through the player’s diary changes', () => {
+  it('finds an edited diary entry by its new text and never a deleted one', async () => {
+    const turns: TurnSpec[] = [
+      { summary: 'The storm broke.', diaries: { Wren: 'Bell owes me nothing.' } },
+      { summary: 'Wren rowed out.', diaries: { Bell: 'I hid the lantern.' } },
+    ];
+    const overrides: MemoryOverrides = {
+      textEdits: {
+        t1: { diaries: { Wren: { text: 'Bell owes me a lantern.', source: 'player' } } },
+        t2: { diaries: { Bell: { source: 'player', deleted: true } } },
+      },
+    };
+    const matches = await recall('lantern', source(turns, 0, overrides));
+    expect(matches.filter((m) => m.kind === 'diary')).toEqual([{ turn: 1, kind: 'diary', character: 'Wren', text: 'Bell owes me a lantern.' }]);
+  });
+});
+
 describe('the Tool Snapshot memory list', () => {
   it('counts every committed turn, lists turns with a memory outside the floor, and is frozen', () => {
     const turns: TurnSpec[] = [{}, { summary: 'The storm broke.' }, {}, { summary: 'Wren rowed out.' }];

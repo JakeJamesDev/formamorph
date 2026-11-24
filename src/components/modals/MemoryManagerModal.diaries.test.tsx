@@ -71,13 +71,18 @@ describe('Diaries in the Memories window', () => {
     expect(screen.getByText('2 entries')).toBeTruthy();
   });
 
-  it('shows script lines with a Script badge and no controls', () => {
-    state.history = DIARY_HISTORY;
+  it('shows script lines with a Script badge, and no controls on an entry that holds only script lines', () => {
+    state.history = [...DIARY_HISTORY, ...turn('t4', 'The river rose.', {}, { Ferryman: ['The water climbs.'] })];
     open({ initialDiary: 'bram' });
     const scripted = [...document.querySelectorAll('[data-diary-entry]')][1] as HTMLElement;
     expect(within(scripted).getByText('Script')).toBeTruthy();
     expect(within(scripted).getByText('My oath grows heavier.')).toBeTruthy();
-    expect(within(scripted).queryAllByRole('button')).toHaveLength(0);
+    expect(within(scripted).getByRole('button', { name: 'Edit This Entry' })).toBeTruthy();
+    cleanup();
+    open({ initialDiary: 'Ferryman' });
+    const scriptOnly = document.querySelector('[data-diary-entry]') as HTMLElement;
+    expect(within(scriptOnly).getByText('The water climbs.')).toBeTruthy();
+    expect(within(scriptOnly).queryAllByRole('button')).toHaveLength(0);
   });
 
   it('hides quiet entries until Show Hidden Entries is on, in place of the filter row', async () => {
@@ -115,9 +120,12 @@ describe('Diaries in the Memories window', () => {
       t3: { diaries: { Bram: { source: 'player', deleted: true } } },
     };
     open({ initialDiary: 'Bram' });
-    expect(entryTexts()).toHaveLength(1);
+    expect(entryTexts()).toHaveLength(2);
     expect(entryTexts()[0]).toContain('I told her everything.');
     expect(entryTexts()[0]).toContain('Originally: I gave her nothing.');
+    // The deleted entry stays for its script lines, without its own text.
+    expect(entryTexts()[1]).toContain('My oath grows heavier.');
+    expect(entryTexts()[1]).not.toContain('She knows about the basement.');
   });
 
   it('with Character Diaries off, shows the diaries and a note on a diary only', async () => {
@@ -137,17 +145,18 @@ describe('Diaries in the Memories window', () => {
     expect(screen.getByText('Sable woke.')).toBeTruthy();
   });
 
-  it('names Show Hidden Entries only while something is hidden', async () => {
+  it('points at Show Hidden Entries when every entry is hidden, deleted ones included', async () => {
     state.history = DIARY_HISTORY;
     state.textEdits = { t1: { diaries: { Wick: { source: 'player', deleted: true } } } };
     open({ initialDiary: 'Wick' });
     expect(screen.getByText(/Every entry here is hidden/)).toBeTruthy();
+    expect(screen.getByText('0 entries · 2 hidden')).toBeTruthy();
     await userEvent.click(screen.getByRole('checkbox', { name: 'Show Hidden Entries' }));
-    expect(entryTexts()).toHaveLength(1);
-    state.textEdits = { t1: { diaries: { Wick: { source: 'player', deleted: true } } }, t2: { diaries: { Wick: { source: 'player', deleted: true } } } };
+    expect(entryTexts()).toHaveLength(2);
     cleanup();
     open({ initialDiary: 'Wick' });
-    expect(screen.getByText('No entries to show.')).toBeTruthy();
+    await userEvent.type(screen.getByPlaceholderText("Search Wick's diary"), 'nobody');
+    expect(screen.getByText('No entries match that.')).toBeTruthy();
   });
 
   it('opens on Story when the asked-for diary does not exist', () => {

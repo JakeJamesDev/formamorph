@@ -2,6 +2,7 @@ import type { ChatMessage, RuntimeItem } from '@/types';
 import type { TransportRequest } from '@/lib/aiRequest/requestTransport';
 import { applyDiary, applyDigest, applyImportance, parseTurnContent } from '@/lib/turnDigest';
 import { sameCharacterName, sameNameSpelling } from '@/lib/entityMatch';
+import { isDiaryDeleted, type TurnTextEdits } from '@/lib/turnTextEdits';
 import { cleanDiscoveredDescription } from '@/lib/runtimeCharacters';
 import { cleanItemDescription, dueItemDescriptions, type DescribeItemTarget } from '@/lib/inventory/describe';
 import type { BandTurn } from '@/lib/turnBanding';
@@ -49,6 +50,8 @@ export interface QueueSnapshot {
   readingNames?: ReadingNames;
   /** The bracketed narration the digest and diary passes read. Absent, or null for a turn ⇒ the plain text. */
   memoryNarration?: MemoryNarrationFor;
+  /** The player's text changes; a deleted diary entry is never written again. Absent ⇒ none. */
+  textEdits?: TurnTextEdits;
 }
 
 /** What every pass target names: a stored turn and the narration the pass reads. */
@@ -152,11 +155,21 @@ const storeOnTurn = (write: PassWriter, store: (history: ChatMessage[]) => ChatM
 };
 
 /** What a memory pass sends for `target`: its bracketed view when one exists, and the scrub for the reply. */
-function memoryInput<T extends TurnTarget>(snapshot: QueueSnapshot, target: T): { target: T; scrub(reply: string): string } {
+function memoryInput<T extends TurnTarget>(
+  snapshot: Pick<QueueSnapshot, 'memoryNarration'>, target: T,
+): { target: T; scrub(reply: string): string } {
   const view = snapshot.memoryNarration?.(target.turnId, target.narration);
   return view
     ? { target: { ...target, narration: view.text }, scrub: view.scrub }
     : { target, scrub: (reply) => reply };
+}
+
+/** What the diary pass sends for `name` on `turnId`, and the scrub for its reply. Null when the turn has no narration. */
+export function diaryPassInput(
+  history: ChatMessage[], turnId: string, name: string, memoryNarration?: MemoryNarrationFor,
+): { target: DiaryTarget; scrub(reply: string): string } | null {
+  const narration = narrationOf(history, turnId);
+  return narration?.trim() ? memoryInput({ memoryNarration }, { turnId, name, narration }) : null;
 }
 
 /** The digest target at `index`, paired with the user message before it as stored. */
@@ -279,12 +292,12 @@ export function dueDiscoveries(history: ChatMessage[], knownNames: readonly stri
   return due;
 }
 
-/** Every (turn, name) pair still missing a diary entry, oldest turn first. */
-export function dueDiaries(history: ChatMessage[], readingNames?: ReadingNames): DiaryTarget[] {
+/** Every (turn, name) pair still missing a diary entry the player didn't delete, oldest turn first. */
+export function dueDiaries(history: ChatMessage[], readingNames?: ReadingNames, textEdits?: TurnTextEdits): DiaryTarget[] {
   const due: DiaryTarget[] = [];
   for (const turn of participantTurns(history, readingNames)) {
     for (const name of turn.names) {
-      if (turn.diaries?.[name] === undefined) due.push({ turnId: turn.turnId, name, narration: turn.narration });
+      if (turn.diaries?.[name] === undefined && !isDiaryDeleted(textEdits, turn.turnId, name)) due.push({ turnId: turn.turnId, name, narration: turn.narration });
     }
   }
   return due;
@@ -354,7 +367,7 @@ function dueItems(snapshot: QueueSnapshot, env: QueueEnv): { items: DueItem[]; p
     });
   }
   if (snapshot.characterDiaries) {
-    for (const target of dueDiaries(snapshot.history, snapshot.readingNames)) {
+    for (const target of dueDiaries(snapshot.history, snapshot.readingNames, snapshot.textEdits)) {
       // A new name waits until its entity shows in a snapshot, so the request reads the description. A name
       // no entity backs and no discover is coming for never gets one.
       if (!isKnown(target.name, snapshot.entityNames)) continue;

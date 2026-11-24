@@ -3,6 +3,7 @@ import type { AITurnResult, ChatMessage } from '@/types';
 import type { SceneTurn } from './presence';
 import type { ReadingNames } from './coref/mentionMemory';
 import { sameCharacterName } from './entityMatch';
+import type { TurnTextEdits } from './turnTextEdits';
 
 /**
  * Pure helpers for the per-turn memory digest (the "summary step").
@@ -207,9 +208,26 @@ export function turnMemory({ summary, codeMemory }: Pick<AITurnResult, 'summary'
   return [summary?.trim(), ...codeMemory].filter(Boolean).join(' ');
 }
 
-/** The turn's diary entries by name as readers see them: the pass's entry, then that name's `diary` lines. A code
- *  line replaces a `nothing notable` entry. Names match without case, under the entry's spelling. */
-export function turnDiaries({ diaries, codeDiaries }: Pick<AITurnResult, 'diaries' | 'codeDiaries'>): Record<string, string> {
+/** The pass's entries with the player's changes from `layer`: a rewrite replaces the text, a delete drops the entry. */
+function playerDiaries({ turnId, diaries }: Pick<AITurnResult, 'turnId' | 'diaries'>, layer: TurnTextEdits | undefined) {
+  const edits = turnId ? layer?.[turnId]?.diaries : undefined;
+  if (!edits || !diaries) return diaries;
+  const out: Record<string, string> = {};
+  for (const [name, text] of Object.entries(diaries)) {
+    const edit = edits[name];
+    if (!edit?.deleted) out[name] = edit?.text ?? text;
+  }
+  return out;
+}
+
+/** The turn's diary entries by name as readers see them: the pass's entry with the player's changes, then that
+ *  name's `diary` lines, which the layer never changes. A code line replaces a `nothing notable` entry. Names match
+ *  without case, under the entry's spelling. */
+export function turnDiaries(
+  turn: Pick<AITurnResult, 'turnId' | 'diaries' | 'codeDiaries'>, layer: TurnTextEdits | undefined,
+): Record<string, string> {
+  const { codeDiaries } = turn;
+  const diaries = playerDiaries(turn, layer);
   if (!codeDiaries) return diaries ?? {};
   const out: Record<string, string> = { ...diaries };
   for (const [name, lines] of Object.entries(codeDiaries)) {
@@ -221,18 +239,20 @@ export function turnDiaries({ diaries, codeDiaries }: Pick<AITurnResult, 'diarie
 }
 
 /**
- * A character's own diary entries across the history, chronological (oldest first), capped to the last
- * `max`. Key match is case-insensitive (a director cast name may differ in case from the entity name).
- * `nothing notable` entries carry no memory and are skipped.
+ * A character's own diary entries across the history with the player's changes from `layer`, chronological
+ * (oldest first), capped to the last `max`. Key match is case-insensitive (a director cast name may differ in
+ * case from the entity name). `nothing notable` and deleted entries carry no memory and are skipped.
  */
-export function collectCharacterDiary(history: ChatMessage[], name: string, max: number): string[] {
+export function collectCharacterDiary(
+  history: ChatMessage[], name: string, max: number, layer: TurnTextEdits | undefined,
+): string[] {
   const key = name.trim().toLowerCase();
   const entries: string[] = [];
   for (const message of history) {
     if (message.role !== 'assistant') continue;
     const parsed = parseTurnContent(message.content);
     if (!parsed?.diaries && !parsed?.codeDiaries) continue;
-    const match = Object.entries(turnDiaries(parsed)).find(([k]) => k.trim().toLowerCase() === key);
+    const match = Object.entries(turnDiaries(parsed, layer)).find(([k]) => k.trim().toLowerCase() === key);
     const text = match?.[1]?.trim();
     if (text && diaryHoldsMemory(text)) entries.push(text);
   }

@@ -32,6 +32,22 @@ const mount = () => {
   };
 };
 
+describe('diary changes in a save', () => {
+  it('survive a save and a load: an edit, a kept rewrite, a delete and a delete over a rewrite', async () => {
+    const live = mount();
+    const layer = {
+      t1: { diaries: { Bram: { text: 'I lied to her.', source: 'player' as const } } },
+      t2: { diaries: { Bram: { text: 'Again.', source: 'ai' as const }, Wick: { source: 'player' as const, deleted: true as const } } },
+      t3: { memory: { text: 'Mine.', source: 'player' as const }, diaries: { bram: { text: 'Hidden.', source: 'player' as const, deleted: true as const } } },
+    };
+    act(() => live().setTurnTextEdits(layer));
+    await act(async () => { await live().saveGame('slot', 'World', 'w1', 'diaries'); });
+    act(() => live().setTurnTextEdits({}));
+    await act(async () => { await live().loadGame('diaries', []); });
+    expect(live().turnTextEdits).toEqual(layer);
+  });
+});
+
 describe('memory changes in a released save', () => {
   it('load onto the text edit layer and save back as that layer only', async () => {
     const live = mount();

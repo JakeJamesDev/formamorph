@@ -190,7 +190,10 @@ The story keeps your recent turns word for word and carries older turns as short
 
 **Edits and deletions can be undone.** The story's own summary is always kept under what you write. **Revert to the Original** restores one memory's wording.
 
-**Reset All My Changes** puts every memory back the way the story had it. The memories you wrote stay. You can't undo a reset.
+**Reset All My Changes** works on the open view. You can't undo a reset.
+
+- On **Story**, it puts every memory back the way the story had it. The memories you wrote stay.
+- On a diary, it puts only that diary back.
 
 **Character diaries**
 
@@ -200,6 +203,17 @@ With **Character Diaries** on, each character keeps a first-person diary. The li
 - A **Script** badge marks a line the world's script wrote. You can't change it.
 - Entries that say *Nothing notable* are hidden. Turn on **Show Hidden Entries** to see them, faded.
 - Search looks only in the open diary.
+
+Change an entry, and the character acts on your version from the next turn:
+
+| | |
+|---|---|
+| **Edit This Entry** | Rewrite what the character remembers. An entry that said *Nothing notable* becomes a real one. |
+| **Have** *name* **Write This Entry Again** | The character writes that entry again and shows it with the text it replaces. **Keep** stores it. **Discard** leaves the entry as it was. |
+| **Delete This Entry** | The character forgets it. Turn on **Show Hidden Entries**, then select **Restore This Entry**, to bring it back. |
+| **Revert to the Original** | Puts back what the character first wrote. |
+
+If you edit a turn's story text, your edits to that turn's diary entries go away. Entries you deleted stay deleted.
 
 Turn **Character Diaries** off, and the diaries your save already has still show here, with a note. Characters write no new entries.
 

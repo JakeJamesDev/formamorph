@@ -29,8 +29,9 @@ export interface MemoriesRequest {
   diary?: string;
 }
 
-export const MemoryPanel = ({ onRegenerateMemory, memoriesRequest, onMemoriesOpened }: {
+export const MemoryPanel = ({ onRegenerateMemory, onRegenerateDiary, memoriesRequest, onMemoriesOpened }: {
   onRegenerateMemory?: (turnId: string, signal: AbortSignal) => Promise<string | null | undefined>;
+  onRegenerateDiary?: (turnId: string, name: string, signal: AbortSignal) => Promise<string | null | undefined>;
   memoriesRequest?: MemoriesRequest | null;
   /** The request opened the manager; the host clears it, so a later visit to the tab doesn't open it again. */
   onMemoriesOpened?: () => void;
@@ -94,7 +95,7 @@ export const MemoryPanel = ({ onRegenerateMemory, memoriesRequest, onMemoriesOpe
     </Button>
   );
   const manager = (
-    <MemoryManagerModal isOpen={managerOpen} onOpenChange={setManagerOpen} onRegenerate={onRegenerateMemory} initialDiary={managerDiary} />
+    <MemoryManagerModal isOpen={managerOpen} onOpenChange={setManagerOpen} onRegenerate={onRegenerateMemory} onRegenerateDiary={onRegenerateDiary} initialDiary={managerDiary} />
   );
 
   const rows = ledger.rows.filter((r) => matchesMemoryFilter(r, filter));

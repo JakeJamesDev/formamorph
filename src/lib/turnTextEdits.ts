@@ -48,39 +48,55 @@ export function deletedMemoryIds(layer: TurnTextEdits | undefined): string[] {
 export const hasMemoryChanges = (layer: TurnTextEdits): boolean =>
   Object.values(layer).some((record) => record.memory !== undefined);
 
+/** `layer` with `id`'s record replaced by `next`, removing a record left empty. */
+function withRecord(layer: TurnTextEdits, id: string, next: TurnTextRecord): TurnTextEdits {
+  if (Object.keys(next).length) return { ...layer, [id]: next };
+  if (!layer[id]) return layer;
+  const { [id]: _gone, ...others } = layer;
+  return others;
+}
+
 /** `layer` with `id`'s memory set to `memory`, pruning a record left empty. */
 function withMemory(layer: TurnTextEdits, id: string, memory: TextEdit | undefined): TurnTextEdits {
   const record = layer[id];
   if (record?.memory === memory) return layer;
   const { memory: _drop, ...rest } = record ?? {};
-  const next: TurnTextRecord = memory ? { ...rest, memory } : rest;
-  if (Object.keys(next).length) return { ...layer, [id]: next };
-  if (!record) return layer;
-  const { [id]: _gone, ...others } = layer;
-  return others;
+  return withRecord(layer, id, memory ? { ...rest, memory } : rest);
+}
+
+/** `was` rewritten to `text`; undefined when that changes nothing. A delete stays. */
+function rewritten(was: TextEdit | undefined, text: string, source: TextSource): TextEdit | undefined {
+  if (was?.text === text && was.source === source) return undefined;
+  return { text, source, ...(was?.deleted ? { deleted: true } : {}) };
+}
+
+/** What stays of `was` once its rewrite goes: the delete, or nothing. */
+const deleteOnly = (was: TextEdit): TextEdit | undefined => (was.deleted ? { source: 'player', deleted: true } : undefined);
+
+/** `was` deleted or restored. A rewrite stays under the delete. */
+function deletedAs(was: TextEdit | undefined, deleted: boolean): TextEdit | undefined {
+  if (deleted) return { ...(was ?? { source: 'player' }), deleted: true };
+  return was?.text === undefined ? undefined : { text: was.text, source: was.source };
 }
 
 /** A rewrite of `id`'s memory. A delete stays. */
 export function withMemoryText(layer: TurnTextEdits, id: string, text: string, source: TextSource): TurnTextEdits {
-  const was = layer[id]?.memory;
-  if (was?.text === text && was.source === source) return layer;
-  return withMemory(layer, id, { text, source, ...(was?.deleted ? { deleted: true } : {}) });
+  const next = rewritten(layer[id]?.memory, text, source);
+  return next ? withMemory(layer, id, next) : layer;
 }
 
 /** `id`'s memory back to the AI's first text. A delete stays. */
 export function withoutMemoryText(layer: TurnTextEdits, id: string): TurnTextEdits {
   const was = layer[id]?.memory;
   if (was?.text === undefined) return layer;
-  return withMemory(layer, id, was.deleted ? { source: 'player', deleted: true } : undefined);
+  return withMemory(layer, id, deleteOnly(was));
 }
 
 /** `id`'s memory deleted, or restored. A rewrite stays under the delete. */
 export function withMemoryDeleted(layer: TurnTextEdits, id: string, deleted: boolean): TurnTextEdits {
   const was = layer[id]?.memory;
   if ((was?.deleted === true) === deleted) return layer;
-  if (deleted) return withMemory(layer, id, { ...(was ?? { source: 'player' }), deleted: true });
-  if (was?.text === undefined) return withMemory(layer, id, undefined);
-  return withMemory(layer, id, { text: was.text, source: was.source });
+  return withMemory(layer, id, deletedAs(was, deleted));
 }
 
 /** Every memory change gone. Diary changes stay. */
@@ -88,8 +104,62 @@ export function withoutMemoryChanges(layer: TurnTextEdits): TurnTextEdits {
   return Object.keys(layer).reduce((at, id) => withMemory(at, id, undefined), layer);
 }
 
-/** A text change without its text: the delete it carried, or nothing. */
-const deleteOnly = (edit: TextEdit): TextEdit | undefined => (edit.deleted ? { source: 'player', deleted: true } : undefined);
+/** Two spellings of one diary name match without case. */
+const sameDiary = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** `layer` with `turnId`'s diary entry for `name` set to `edit`, pruning what is left empty. */
+function withDiary(layer: TurnTextEdits, turnId: string, name: string, edit: TextEdit | undefined): TurnTextEdits {
+  const record = layer[turnId];
+  if (record?.diaries?.[name] === edit) return layer;
+  const { [name]: _drop, ...others } = record?.diaries ?? {};
+  const diaries = edit ? { ...others, [name]: edit } : others;
+  const { diaries: _was, ...rest } = record ?? {};
+  return withRecord(layer, turnId, Object.keys(diaries).length ? { ...rest, diaries } : rest);
+}
+
+/** The change to `turnId`'s diary entry for `name`, by the name as stored on the turn. */
+export const diaryEdit = (layer: TurnTextEdits | undefined, turnId: string, name: string): TextEdit | undefined =>
+  layer?.[turnId]?.diaries?.[name];
+
+/** A rewrite of `turnId`'s diary entry for `name`. A delete stays. */
+export function withDiaryText(layer: TurnTextEdits, turnId: string, name: string, text: string, source: TextSource): TurnTextEdits {
+  const next = rewritten(diaryEdit(layer, turnId, name), text, source);
+  return next ? withDiary(layer, turnId, name, next) : layer;
+}
+
+/** `turnId`'s diary entry for `name` back to the AI's first text. A delete stays. */
+export function withoutDiaryText(layer: TurnTextEdits, turnId: string, name: string): TurnTextEdits {
+  const was = diaryEdit(layer, turnId, name);
+  if (was?.text === undefined) return layer;
+  return withDiary(layer, turnId, name, deleteOnly(was));
+}
+
+/** `turnId`'s diary entry for `name` deleted, or restored. A rewrite stays under the delete. */
+export function withDiaryDeleted(layer: TurnTextEdits, turnId: string, name: string, deleted: boolean): TurnTextEdits {
+  const was = diaryEdit(layer, turnId, name);
+  if ((was?.deleted === true) === deleted) return layer;
+  return withDiary(layer, turnId, name, deletedAs(was, deleted));
+}
+
+/** Whether `turnId`'s diary entry for `name` is deleted. Names match without case. */
+export function isDiaryDeleted(layer: TurnTextEdits | undefined, turnId: string, name: string): boolean {
+  return Object.entries(layer?.[turnId]?.diaries ?? {}).some(([key, edit]) => edit.deleted && sameDiary(key, name));
+}
+
+/** Whether the diary `name` carries a change on any turn. Names match without case. */
+export const hasDiaryChanges = (layer: TurnTextEdits, name: string): boolean =>
+  Object.values(layer).some((record) => Object.keys(record.diaries ?? {}).some((key) => sameDiary(key, name)));
+
+/** Every change to the diary `name` gone, on every turn and spelling. Memory and other diaries' changes stay. */
+export function withoutDiaryChanges(layer: TurnTextEdits, name: string): TurnTextEdits {
+  let out = layer;
+  for (const [turnId, record] of Object.entries(layer)) {
+    for (const key of Object.keys(record.diaries ?? {})) {
+      if (sameDiary(key, name)) out = withDiary(out, turnId, key, undefined);
+    }
+  }
+  return out;
+}
 
 /** `turnId`'s text changes gone after its narration changed: memory and diary rewrites go, deletes stay. */
 export function withoutTurnText(layer: TurnTextEdits, turnId: string): TurnTextEdits {

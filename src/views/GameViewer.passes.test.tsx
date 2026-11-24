@@ -133,6 +133,28 @@ describe('a diary written under a variant name', () => {
   });
 });
 
+describe('regenerating a diary entry', () => {
+  it("sends the diary pass's request for that turn and name, and Keep stores the reply as a kept rewrite", async () => {
+    localStorage.setItem('FORMAMORPH_characterDiaries', 'true');
+    localStorage.setItem('FORMAMORPH_thinkingMode', 'staged');
+    const aldric = { id: 'aldric', name: 'Aldric', aiDescription: 'A scarred veteran who guards the bell tower.' } as Entity;
+    renderGameViewer(harborWorld({ entities: [aldric] }), { inGameplay: <Seed /> });
+    await screen.findByPlaceholderText(/Type your action/);
+    const endpoint = stubEndpoint(new Set());
+    act(() => seedHistory(storedTurn({ entities: ['Aldric'], diaries: { Aldric: 'I ignored the bell.' } })));
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('tab', { name: 'Memory' }));
+    await user.click(await screen.findByRole('button', { name: 'Manage Memories' }));
+    await user.click(await screen.findByRole('tab', { name: "Aldric's Diary" }));
+    await user.click(screen.getByRole('button', { name: 'Have Aldric Write This Entry Again' }));
+    await waitFor(() => expect(endpoint.calls.diary).toHaveLength(1));
+    expect(userMessageOf(endpoint.calls.diary[0])).toContain('Aldric nods at the bell.');
+    await user.click(await screen.findByRole('button', { name: 'Keep' }));
+    expect(textEditsNow()).toEqual({ t1: { diaries: { Aldric: { text: REPLY.diary, source: 'ai' } } } });
+  });
+});
+
 describe('regenerating a memory', () => {
   it('writes no edit when the game view is gone before the reply lands', async () => {
     const view = renderGameViewer(harborWorld(), { inGameplay: <Seed /> });

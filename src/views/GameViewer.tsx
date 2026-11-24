@@ -218,7 +218,7 @@ import {
   OPENING_STAND_IN,
 } from "../lib/turnPipeline/turnPasses";
 import {
-  createBackgroundPassQueue, digestTarget,
+  createBackgroundPassQueue, diaryPassInput, digestTarget,
   type BackgroundPassKind, type BackgroundPassQueue, type DiaryTarget, type DigestTarget,
 } from "../lib/backgroundPassQueue/backgroundPassQueue";
 import { describeItemRequest, withItemDescription } from "@/lib/inventory/describe";
@@ -2584,6 +2584,8 @@ const GameViewer = ({
   const deletedIds = useMemo(() => deletedMemoryIds(turnTextEdits), [turnTextEdits]);
   const deletedIdsRef = useRef(deletedIds);
   deletedIdsRef.current = deletedIds;
+  const turnTextEditsRef = useRef(turnTextEdits);
+  turnTextEditsRef.current = turnTextEdits;
   const parseEffectiveTurns = useCallback(
     (history: ChatMessage[]) => applyMemoryOverrides(parseTurns(history), memoryOverrides),
     [memoryOverrides],
@@ -3933,7 +3935,7 @@ const GameViewer = ({
           ? { queryVec: actionVec, vectorsByKey: embedVectorsRef.current }
           : null;
         const all = characterDiaries
-          ? collectCharacterDiary(fullMessageHistory, name, retrieval ? Number.MAX_SAFE_INTEGER : DIARY_MEMORY_ENTRIES)
+          ? collectCharacterDiary(fullMessageHistory, name, retrieval ? Number.MAX_SAFE_INTEGER : DIARY_MEMORY_ENTRIES, turnTextEditsRef.current)
           : [];
         return retrieval ? selectRelevantDiary(all, retrieval.queryVec, retrieval.vectorsByKey) : all;
       };
@@ -5730,8 +5732,9 @@ const GameViewer = ({
       runtimeItems,
       readingNames,
       memoryNarration,
+      textEdits: turnTextEdits,
     });
-  }, [passQueue, settledHistory, parseEffectiveTurns, milestoneSelection, memoryPins, isWaitingForAI, sceneImageJob, concurrentTurnRequests, memoryDigests, describeCharacters, characterDiaries, thinkingMode, allEntities, suppressedCharacterNames, runtimeItems, readingNames, memoryNarration]);
+  }, [passQueue, settledHistory, parseEffectiveTurns, milestoneSelection, memoryPins, isWaitingForAI, sceneImageJob, concurrentTurnRequests, memoryDigests, describeCharacters, characterDiaries, thinkingMode, allEntities, suppressedCharacterNames, runtimeItems, readingNames, memoryNarration, turnTextEdits]);
 
   const fullMessageHistoryRef = useRef(fullMessageHistory);
   fullMessageHistoryRef.current = fullMessageHistory;
@@ -5780,6 +5783,27 @@ const GameViewer = ({
     }
   }, [passQueue, mounted]);
 
+  // Regenerate one diary entry on demand (Memories): the background diary pass's request for that turn and name,
+  // run as a foreground queue job like `regenerateMemory`. Resolves the new entry, null on failure, undefined when canceled.
+  const memoryNarrationRef = useRef(memoryNarration);
+  memoryNarrationRef.current = memoryNarration;
+  const regenerateDiary = useCallback(async (turnId: string, name: string, signal: AbortSignal): Promise<string | null | undefined> => {
+    if (!passQueue) return null;
+    try {
+      const run = await passQueue.runForeground(async (queueSignal): Promise<string | null> => {
+        const input = diaryPassInput(fullMessageHistoryRef.current, turnId, name, memoryNarrationRef.current);
+        if (!input) return null;
+        const reply = await sendAiRequestRef.current({ ...buildDiaryRequestRef.current(input.target), signal: queueSignal });
+        const entry = input.scrub(reply ?? "").trim();
+        if (!entry || queueSignal.aborted || !mounted.current) return null;
+        return entry;
+      }, signal);
+      return run ? run.value : undefined;
+    } catch {
+      return null;
+    }
+  }, [passQueue, mounted]);
+
   // Embedding drainer: keep a vector on hand for everything the semantic features score at turn time —
   // turn digests (semanticMemory) and dictionary entries (semanticLore) — so scoring is a sync lookup.
   // Cache-first (IndexedDB, hash-keyed so save/world switches just repopulate), then batch-embeds the
@@ -5807,7 +5831,7 @@ const GameViewer = ({
         const d = wantDigests ? turnMemory(parsed)?.trim() : undefined;
         if (d) wanted.set(vectorKey(d), d);
         if (wantDiaries) {
-          for (const text of Object.values(turnDiaries(parsed))) {
+          for (const text of Object.values(turnDiaries(parsed, turnTextEdits))) {
             const t = text?.trim();
             if (t && t.toLowerCase() !== "nothing notable") wanted.set(vectorKey(t), t);
           }
@@ -5848,7 +5872,7 @@ const GameViewer = ({
         embedDrainingRef.current = false;
       }
     })();
-  }, [semanticMemory, memoryDigests, semanticLore, semanticDiaries, characterDiaries, fullMessageHistory, dictionary, embedDrains]);
+  }, [semanticMemory, memoryDigests, semanticLore, semanticDiaries, characterDiaries, fullMessageHistory, turnTextEdits, dictionary, embedDrains]);
 
   // --- Discovered-character description: player edit + regenerate -----------------------------------
   // A discovered character's description is minted from the single passage that introduced them, so it
@@ -5901,7 +5925,7 @@ const GameViewer = ({
       name,
       sourceTurnId: record?.sourceTurnId,
       source,
-      diaryEntries: source === 'diary' ? collectCharacterDiary(history, name, -1) : undefined,
+      diaryEntries: source === 'diary' ? collectCharacterDiary(history, name, -1, turnTextEditsRef.current) : undefined,
       semantic,
     });
 
@@ -6895,6 +6919,7 @@ const GameViewer = ({
         setSelectedStranger({ entityId, label });
       }}
       onRegenerateMemory={regenerateMemory}
+      onRegenerateDiary={regenerateDiary}
       memoriesRequest={memoriesRequest}
       onMemoriesOpened={clearMemoriesRequest}
       narrationPrompt={systemPrompt}

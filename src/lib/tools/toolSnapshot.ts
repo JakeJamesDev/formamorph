@@ -111,12 +111,12 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
-/** Digests through the override layer and, unless turned off, diaries that hold a memory, outside the verbatim floor. No notes. */
+/** Digests and, unless turned off, diaries that hold a memory, through the override layer, outside the verbatim floor. No notes. */
 function toolMemories({ history, overrides, verbatimFloor, diaries: readDiaries = true }: ToolMemorySource): ToolMemory[] {
   const turns = applyMemoryOverrides(parseTurns([...history]), overrides);
   return turns.slice(0, Math.max(0, turns.length - verbatimFloor)).flatMap((t, i) => {
     const parsed = readDiaries ? parseTurnContent(history[t.index].content) : null;
-    const diaries = Object.entries(parsed ? turnDiaries(parsed) : {})
+    const diaries = Object.entries(parsed ? turnDiaries(parsed, overrides?.textEdits) : {})
       .flatMap(([character, text]) => (typeof text === 'string' ? [{ character: character.trim(), text: text.trim() }] : []))
       .filter((d) => d.text && diaryHoldsMemory(d.text));
     const digest = t.summary?.trim() ?? '';

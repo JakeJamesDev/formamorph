@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  deletedMemoryIds, hasMemoryChanges, isMemoryDeleted, memoryRewrite, withMemoryDeleted, withMemoryText,
+  deletedMemoryIds, diaryEdit, hasDiaryChanges, hasMemoryChanges, isDiaryDeleted, isMemoryDeleted, memoryRewrite,
+  withDiaryDeleted, withDiaryText, withMemoryDeleted, withMemoryText, withoutDiaryChanges, withoutDiaryText,
   withoutMemoryChanges, withoutMemoryText, withoutTurnText, type TurnTextEdits,
 } from './turnTextEdits';
 
@@ -43,6 +44,45 @@ describe('the memory part of the text edit layer', () => {
     expect(withMemoryDeleted(layer, 't1', false)).toBe(layer);
     expect(withoutMemoryText(layer, 't2')).toBe(layer);
     expect(withoutTurnText(layer, 't9')).toBe(layer);
+  });
+});
+
+describe('the diary part of the text edit layer', () => {
+  it('rewrites, deletes, restores and reverts one entry, leaving the memory alone', () => {
+    let layer = withMemoryText({}, 't1', 'Mine.', 'player');
+    layer = withDiaryText(layer, 't1', 'Bram', 'I lied.', 'player');
+    layer = withDiaryDeleted(layer, 't1', 'Bram', true);
+    expect(layer.t1).toEqual({ memory: { text: 'Mine.', source: 'player' }, diaries: { Bram: { text: 'I lied.', source: 'player', deleted: true } } });
+    expect(isDiaryDeleted(layer, 't1', 'bram')).toBe(true);
+    layer = withDiaryDeleted(layer, 't1', 'Bram', false);
+    expect(diaryEdit(layer, 't1', 'Bram')).toEqual({ text: 'I lied.', source: 'player' });
+    layer = withoutDiaryText(layer, 't1', 'Bram');
+    expect(layer).toEqual({ t1: { memory: { text: 'Mine.', source: 'player' } } });
+  });
+
+  it('keeps a delete when its rewrite is reverted, and removes a delete-only record on restore', () => {
+    const layer = withDiaryDeleted(withDiaryText({}, 't1', 'Bram', 'I lied.', 'ai'), 't1', 'Bram', true);
+    expect(withoutDiaryText(layer, 't1', 'Bram')).toEqual({ t1: { diaries: { Bram: { source: 'player', deleted: true } } } });
+    expect(withDiaryDeleted(withDiaryDeleted({}, 't2', 'Wick', true), 't2', 'Wick', false)).toEqual({});
+  });
+
+  it('resets one diary on every turn and spelling, leaving memories and other diaries', () => {
+    const layer: TurnTextEdits = {
+      t1: { memory: { text: 'Mine.', source: 'player' }, diaries: { Bram: { text: 'A.', source: 'player' }, Wick: { source: 'player', deleted: true } } },
+      t2: { diaries: { bram: { text: 'B.', source: 'ai' } } },
+    };
+    expect(hasDiaryChanges(layer, 'BRAM')).toBe(true);
+    const reset = withoutDiaryChanges(layer, 'Bram');
+    expect(reset).toEqual({ t1: { memory: { text: 'Mine.', source: 'player' }, diaries: { Wick: { source: 'player', deleted: true } } } });
+    expect(hasDiaryChanges(reset, 'Bram')).toBe(false);
+  });
+
+  it('hands back the same layer when a diary write changes nothing', () => {
+    const layer = withDiaryText({}, 't1', 'Bram', 'I lied.', 'player');
+    expect(withDiaryText(layer, 't1', 'Bram', 'I lied.', 'player')).toBe(layer);
+    expect(withDiaryDeleted(layer, 't1', 'Bram', false)).toBe(layer);
+    expect(withoutDiaryText(layer, 't1', 'Wick')).toBe(layer);
+    expect(withoutDiaryChanges(layer, 'Wick')).toBe(layer);
   });
 });
 

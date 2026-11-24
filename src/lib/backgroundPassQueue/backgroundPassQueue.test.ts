@@ -11,8 +11,9 @@ import { parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
 import { withItemDescription } from '@/lib/inventory/describe';
 import { collectCandidateEvidence, extractCharacterCandidates } from '@/lib/characterCandidates';
 import { stripQuotedSpeech } from '@/lib/entityMatch';
+import type { TurnTextEdits } from '@/lib/turnTextEdits';
 import {
-  createBackgroundPassQueue, dueDiaries, dueDiscoveries, type QueueEnv, type QueueSnapshot, type StoredMilestoneSelection,
+  createBackgroundPassQueue, diaryPassInput, dueDiaries, dueDiscoveries, type QueueEnv, type QueueSnapshot, type StoredMilestoneSelection,
 } from './backgroundPassQueue';
 
 /**
@@ -619,6 +620,21 @@ describe('the due selectors', () => {
       { turnId: 't2', name: 'Mira', narration: 'Two.' },
       { turnId: 't3', name: 'Kael', narration: 'Three.' },
     ]);
+  });
+
+  it('never writes again an entry the player deleted, after a narration edit cleared it', () => {
+    const history = [rawTurn({ turnId: 't1', narration: 'One.', entities: ['Kael', 'Mira'] })];
+    const textEdits: TurnTextEdits = { t1: { diaries: { mira: { source: 'player', deleted: true } } } };
+    expect(dueDiaries(history, undefined, textEdits)).toEqual([{ turnId: 't1', name: 'Kael', narration: 'One.' }]);
+  });
+
+  it("sends a diary regenerate the pass's bracketed narration, and scrubs its reply", () => {
+    const history = [rawTurn({ turnId: 't1', narration: 'She waved.', entities: ['Mira'] })];
+    const view = (_turnId: string, narration: string) => ({ text: `[Mira] ${narration}`, scrub: (r: string) => r.replace('[Mira]', 'Mira') });
+    const input = diaryPassInput(history, 't1', 'Mira', view);
+    expect(input?.target).toEqual({ turnId: 't1', name: 'Mira', narration: '[Mira] She waved.' });
+    expect(input?.scrub('[Mira] waved back.')).toBe('Mira waved back.');
+    expect(diaryPassInput(history, 'gone', 'Mira')).toBeNull();
   });
 });
 

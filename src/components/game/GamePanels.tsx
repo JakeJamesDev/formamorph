@@ -145,7 +145,7 @@ type EntityViewSubject = { kind: 'entity'; entity: Entity } | { kind: 'played' }
 const PLAYED_SIDE: Pick<Entity, 'id' | 'name'> = { id: '__you', name: 'You' };
 
 
-export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrangerClick, onRegenerateMemory, narrationPrompt, requestedTab, requestKey, initialTab, onTabChange, memoriesRequest, onMemoriesOpened, placement = 'docked' }: {
+export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrangerClick, onRegenerateMemory, onRegenerateDiary, narrationPrompt, requestedTab, requestKey, initialTab, onTabChange, memoriesRequest, onMemoriesOpened, placement = 'docked' }: {
   /** Opens the Memory tab, then Memories on it; see `MemoryPanel`. */
   memoriesRequest?: MemoriesRequest | null;
   onMemoriesOpened?: () => void;
@@ -169,6 +169,7 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
   onStrangerClick?: (entityId: string, label: string) => void;
   /** Re-run the digest prompt for one turn (Memory Manager's regenerate); owned by GameViewer. */
   onRegenerateMemory?: (turnId: string, signal: AbortSignal) => Promise<string | null | undefined>;
+  onRegenerateDiary?: (turnId: string, name: string, signal: AbortSignal) => Promise<string | null | undefined>;
   /** The narration prompt this world actually sends: the world's own unless declined, else the preset's. */
   narrationPrompt: string;
 }) => {
@@ -461,7 +462,7 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
           </div>
         </TabsContent>
         <TabsContent value="memory" className="flex-grow overflow-hidden min-h-[100px]">
-          <MemoryPanel onRegenerateMemory={onRegenerateMemory} memoriesRequest={memoriesRequest} onMemoriesOpened={onMemoriesOpened} />
+          <MemoryPanel onRegenerateMemory={onRegenerateMemory} onRegenerateDiary={onRegenerateDiary} memoriesRequest={memoriesRequest} onMemoriesOpened={onMemoriesOpened} />
         </TabsContent>
         <TabsContent value="logs" className="flex-grow overflow-hidden min-h-[100px]">
           <ScrollArea className="h-[calc(100%-1rem)]">

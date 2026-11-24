@@ -121,18 +121,41 @@ describe('a diary view', () => {
   const [diary] = buildDiaries(history, layer);
   const turnsOf = (entries: { turnId: string }[]) => entries.map((e) => e.turnId);
 
-  it('counts what the AI reads and the quiet entries, leaving deletes out of both', () => {
-    expect(diaryCounts(diary)).toEqual({ read: 2, hidden: 1 });
+  it('counts what the AI reads, and the quiet and deleted entries as hidden', () => {
+    expect(diaryCounts(diary)).toEqual({ read: 2, hidden: 2 });
   });
 
-  it('lists quiet entries only with Show Hidden Entries, and never a deleted one', () => {
+  it('lists quiet and deleted entries only with Show Hidden Entries', () => {
     expect(turnsOf(visibleDiaryEntries(diary, { query: '', showHidden: false }))).toEqual(['t1', 't3']);
-    expect(turnsOf(visibleDiaryEntries(diary, { query: '', showHidden: true }))).toEqual(['t1', 't2', 't3']);
+    expect(turnsOf(visibleDiaryEntries(diary, { query: '', showHidden: true }))).toEqual(['t1', 't2', 't3', 't4']);
   });
 
   it('searches the entry and its script lines', () => {
     expect(turnsOf(visibleDiaryEntries(diary, { query: 'DOOR', showHidden: false }))).toEqual(['t1']);
     expect(turnsOf(visibleDiaryEntries(diary, { query: 'oath', showHidden: false }))).toEqual(['t3']);
-    expect(turnsOf(visibleDiaryEntries(diary, { query: 'slept', showHidden: true }))).toEqual([]);
+    expect(turnsOf(visibleDiaryEntries(diary, { query: 'slept', showHidden: false }))).toEqual([]);
+    expect(turnsOf(visibleDiaryEntries(diary, { query: 'slept', showHidden: true }))).toEqual(['t4']);
+  });
+
+  it('keeps a deleted entry with script lines among what the AI reads, for its script lines', () => {
+    const scripted = turn('t1', { Bram: 'I lied.' }, { Bram: ['My oath grows heavier.'] });
+    const deleted: TurnTextEdits = { t1: { diaries: { Bram: { source: 'player', deleted: true } } } };
+    const [{ entries: [entry] }] = buildDiaries(scripted, deleted);
+    expect(entry).toMatchObject({ deleted: true, aiEntry: true });
+    expect(isReadEntry(entry)).toBe(true);
+  });
+});
+
+describe('a diary entry the player can change', () => {
+  it('marks a name with only script lines as having no AI entry', () => {
+    const [diary] = buildDiaries(turn('t1', {}, { Ferryman: ['The river rose.'] }), undefined);
+    expect(diary.entries[0].aiEntry).toBe(false);
+  });
+
+  it('still lists a delete whose AI entry a narration edit cleared, so it can be restored', () => {
+    const history = [...turn('t1', { Bram: 'One.' }), ...turn('t2', {})];
+    const layer: TurnTextEdits = { t2: { diaries: { Bram: { source: 'player', deleted: true } } } };
+    const [{ entries }] = buildDiaries(history, layer);
+    expect(entries.map((e) => [e.turnId, e.text, e.deleted, e.aiEntry])).toEqual([['t1', 'One.', false, true], ['t2', '', true, true]]);
   });
 });

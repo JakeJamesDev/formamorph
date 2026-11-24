@@ -126,9 +126,9 @@ describe('collectCharacterDiary', () => {
       ...pair('a2', { turnId: 't2', diaries: { Mira: 'I fled.' } }),
       ...pair('a3', { turnId: 't3', diaries: { Mira: 'I hid.' } }),
     ];
-    expect(collectCharacterDiary(history, 'Mira', 5)).toEqual(['I waved.', 'I fled.', 'I hid.']);
-    expect(collectCharacterDiary(history, 'Mira', 2)).toEqual(['I fled.', 'I hid.']); // last 2
-    expect(collectCharacterDiary(history, 'Kael', 5)).toEqual(['I watched.']);
+    expect(collectCharacterDiary(history, 'Mira', 5, undefined)).toEqual(['I waved.', 'I fled.', 'I hid.']);
+    expect(collectCharacterDiary(history, 'Mira', 2, undefined)).toEqual(['I fled.', 'I hid.']); // last 2
+    expect(collectCharacterDiary(history, 'Kael', 5, undefined)).toEqual(['I watched.']);
   });
 
   it('matches the name case-insensitively and skips turns without an entry', () => {
@@ -137,7 +137,7 @@ describe('collectCharacterDiary', () => {
       ...pair('a2', { turnId: 't2' }), // no diaries at all
       ...pair('a3', { turnId: 't3', diaries: { Kael: 'I watched.' } }), // different character
     ];
-    expect(collectCharacterDiary(history, 'mira', 5)).toEqual(['I waved.']);
+    expect(collectCharacterDiary(history, 'mira', 5, undefined)).toEqual(['I waved.']);
   });
 
   it('skips a "nothing notable" entry (it carries no memory)', () => {
@@ -145,12 +145,12 @@ describe('collectCharacterDiary', () => {
       ...pair('a1', { turnId: 't1', diaries: { Mira: 'nothing notable' } }),
       ...pair('a2', { turnId: 't2', diaries: { Mira: 'I fled.' } }),
     ];
-    expect(collectCharacterDiary(history, 'Mira', 5)).toEqual(['I fled.']);
+    expect(collectCharacterDiary(history, 'Mira', 5, undefined)).toEqual(['I fled.']);
   });
 
   it('returns empty when the character has no entries', () => {
     const history = [...pair('a1', { turnId: 't1', diaries: { Kael: 'I watched.' } })];
-    expect(collectCharacterDiary(history, 'Mira', 5)).toEqual([]);
+    expect(collectCharacterDiary(history, 'Mira', 5, undefined)).toEqual([]);
   });
 });
 
