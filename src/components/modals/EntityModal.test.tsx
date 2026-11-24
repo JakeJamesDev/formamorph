@@ -39,6 +39,27 @@ describe('EntityModal layout', () => {
   });
 });
 
+describe('EntityModal diary line', () => {
+  it('shows the count and opens the diary, closing the popup', () => {
+    const onOpen = vi.fn();
+    const onOpenChange = vi.fn();
+    render(<EntityModal entity={entity} isOpen onOpenChange={onOpenChange} diary={{ count: 5, onOpen }} />);
+    fireEvent.click(screen.getByRole('button', { name: "Grey Mouse's diary · 5 entries" }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('says "1 entry" for one', () => {
+    render(<EntityModal entity={entity} isOpen onOpenChange={() => {}} diary={{ count: 1, onOpen: () => {} }} />);
+    expect(screen.getByRole('button', { name: "Grey Mouse's diary · 1 entry" })).toBeTruthy();
+  });
+
+  it('shows nothing without entries', () => {
+    render(<EntityModal entity={entity} isOpen onOpenChange={() => {}} diary={{ count: 0, onOpen: () => {} }} />);
+    expect(screen.queryByText(/diary/i)).toBeNull();
+  });
+});
+
 describe('EntityModal description controls', () => {
   it('shows no edit or regenerate control for an authored entity', () => {
     render(<EntityModal entity={entity} isOpen onOpenChange={() => {}} />);

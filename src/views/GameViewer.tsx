@@ -38,6 +38,7 @@ import { addScriptPins, pruneScriptPins, withScriptPins } from "@/lib/scriptPins
 import { addNamedWrites, pruneNamedMemories, withNamedWrites } from "@/lib/namedMemories";
 import { notesAfter, pinsAfter, textEditsAfter } from "@/lib/memoryWrites";
 import { deletedMemoryIds } from "@/lib/turnTextEdits";
+import { buildDiaries, readEntryCount } from "@/lib/diaryView";
 import {
   actionTotals, type ActionTotals, changedAnyStat, overlayStatCodeResult, playthroughPlaceholderSet, runItemScripts, runStatCodeTurn, runSwitchScripts, splitOwnerTurns, stateInventory, withoutInventory, withPinWrites, withoutBodies,
   type ChainedItems, type InventoryStep, type SandboxState, type ScriptTrigger, type StatCodeTurn, type StatCodeTurnResult,
@@ -1839,6 +1840,11 @@ const GameViewer = ({
     if (isMobile) setMobilePanel('character');
     else if (leftCollapsed) openDrawer('left', 'memory');
   }, [isMobile, leftCollapsed, openDrawer]);
+  // Read only while a character popup is open, so a turn does not rebuild every diary.
+  const popupDiaries = useMemo(
+    () => (isEntityModalOpen ? buildDiaries(fullMessageHistory, turnTextEdits) : []),
+    [isEntityModalOpen, fullMessageHistory, turnTextEdits],
+  );
   // DEV dev-router: `modal=memoryManager`, with `diary=<name>` for a diary. Tree-shaken in prod.
   useEffect(() => {
     if (!import.meta.env.DEV || devRoute?.modal !== 'memoryManager') return;
@@ -7373,6 +7379,7 @@ const GameViewer = ({
               onSave: (text) => updateDiscoveredDescription(found.id, text),
               onRegenerate: (signal) => regenerateDiscoveredDescription(found, signal),
             } : undefined}
+            diary={found ? { count: readEntryCount(popupDiaries, found.name), onOpen: () => openMemories({ diary: found.name }) } : undefined}
           />
         );
       })()}

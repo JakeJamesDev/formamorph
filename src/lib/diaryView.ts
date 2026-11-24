@@ -47,6 +47,13 @@ export function diaryCounts(diary: Diary): { read: number; hidden: number } {
   return { read: diary.entries.filter(isReadEntry).length, hidden: diary.entries.filter(isQuietEntry).length };
 }
 
+/** How many entries the AI reads in the diary kept under `name`; 0 when there is none. */
+export function readEntryCount(diaries: readonly Diary[], name: string): number {
+  const key = diaryKey(name);
+  const diary = diaries.find((d) => diaryKey(d.name) === key);
+  return diary ? diaryCounts(diary).read : 0;
+}
+
 /** The entries a diary view lists: what the AI reads, plus quiet ones with `showHidden`, matching `query` in the
  *  entry or its script lines. */
 export function visibleDiaryEntries(diary: Diary, { query, showHidden }: { query: string; showHidden: boolean }): DiaryEntry[] {

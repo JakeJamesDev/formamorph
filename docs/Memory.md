@@ -148,6 +148,7 @@ With **Character Diaries** on, each character keeps a first-person diary. The **
 | **Script** badge | A line the world's script wrote. You can't change it. |
 
 - 🙈 **Entries that say *Nothing notable* are hidden.** Turn on **Show Hidden Entries** to see them, faded.
+- 🔗 **A character's popup links to the diary.** A line under the description, such as "Bram's diary · 5 entries", opens it. The line shows only when the diary has entries the AI reads.
 - 🔍 **Search looks only in the open diary.**
 - 📴 **Character Diaries off:** the diaries your save already has still show, with a note. Characters write no new entries.
 

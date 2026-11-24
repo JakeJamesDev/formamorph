@@ -27,11 +27,13 @@ export interface EntityDescriptionEditing {
   waiting: boolean;
 }
 
-export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
+export const EntityModal = ({ entity, isOpen, onOpenChange, editing, diary }: {
   entity: Entity | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   editing?: EntityDescriptionEditing;
+  /** The diary line under the description: entries the AI reads, and the route into Memories. */
+  diary?: { count: number; onOpen: () => void };
 }) => {
   const resolveEntityText = useEntityTextResolver();
   const { preference, onPreferenceChange } = useEntityVisualPreference(entity?.id);
@@ -192,6 +194,15 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
                     </div>
                   )}
                 </EntityDescription>
+              )}
+              {diary && diary.count > 0 && (
+                <button
+                  type="button"
+                  className="self-start text-meta text-muted-foreground hover:text-foreground hover:underline underline-offset-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                  onClick={() => { onOpenChange(false); diary.onOpen(); }}
+                >
+                  {entity.name}&apos;s diary · {diary.count} {diary.count === 1 ? 'entry' : 'entries'}
+                </button>
               )}
               <EntityEquipped entity={entity} />
         </EntityCardBody>

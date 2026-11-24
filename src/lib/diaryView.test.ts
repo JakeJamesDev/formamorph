@@ -2,12 +2,34 @@ import { describe, expect, it } from 'vitest';
 import type { ChatMessage } from '@/types';
 import type { TurnTextEdits } from '@/lib/turnTextEdits';
 import { diaryTurn } from '@/test/diaryTurns';
-import { buildDiaries, diaryCounts, isReadEntry, visibleDiaryEntries } from './diaryView';
+import { buildDiaries, diaryCounts, isReadEntry, readEntryCount, visibleDiaryEntries } from './diaryView';
 
 const turn = (turnId: string, diaries: Record<string, string>, codeDiaries?: Record<string, string[]>) =>
   diaryTurn(turnId, { diaries, ...(codeDiaries ? { codeDiaries } : {}) });
 
 const names = (history: ChatMessage[], layer?: TurnTextEdits) => buildDiaries(history, layer).map((d) => d.name);
+
+describe('readEntryCount', () => {
+  const history = [
+    ...turn('t1', { Bram: 'I ran.' }),
+    ...turn('t2', { Bram: 'nothing notable' }),
+    ...turn('t3', { bram: 'I hid.' }),
+    ...turn('t4', { Bram: 'I slept.' }),
+  ];
+  const layer: TurnTextEdits = { t4: { diaries: { Bram: { source: 'player', deleted: true } } } };
+
+  it('counts what the AI reads: not quiet entries, not deleted ones, names without case', () => {
+    expect(readEntryCount(buildDiaries(history, layer), 'BRAM')).toBe(2);
+  });
+
+  it('counts a deleted entry again once restored', () => {
+    expect(readEntryCount(buildDiaries(history, undefined), 'Bram')).toBe(3);
+  });
+
+  it('is 0 for a name with no diary', () => {
+    expect(readEntryCount(buildDiaries(history, layer), 'Wick')).toBe(0);
+  });
+});
 
 describe('buildDiaries', () => {
   it('lists one diary per name in order of first appearance, entries oldest first', () => {
