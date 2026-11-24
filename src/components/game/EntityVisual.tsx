@@ -211,7 +211,7 @@ const GalleryPicture = ({ images, index, gallery, name, onZoom }: {
   );
 };
 
-const CornerButton = ({ label, onClick, children }: {
+export const CornerButton = ({ label, onClick, children }: {
   label: string;
   onClick: () => void;
   children: React.ReactNode;

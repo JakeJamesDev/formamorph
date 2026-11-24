@@ -101,6 +101,7 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   storyCard: { ancestor: 'gameViewer' },
   entity: { ancestor: 'gameViewer.entities' },
   stranger: { ancestor: 'gameViewer.entities' },
+  avatarEdit: { ancestor: 'gameViewer.entities' },
   item: { ancestor: 'gameViewer.inventory' },
   memoryManager: { ancestor: 'gameViewer.memory' },
   persona: { ancestor: 'gameViewer' },

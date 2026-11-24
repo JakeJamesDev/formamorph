@@ -136,29 +136,49 @@ export interface VrmCustomization {
   controls: ReactNode;
   /** The composed choices, for a caller that finalizes a character (CharacterCustomization). */
   characterData: Omit<CharacterData, 'chosenVrm'>;
+  /** Whether the look differs from the starting look. False with no starting look. */
+  changed: boolean;
 }
+
+// The model's hairstyle for a stored one: kept when the model has it, else its first style at length 0.
+const fitHair = (caps: VRMCapabilities, style: string, length: number) => (caps.hairStyles.includes(style)
+  ? { currentHairStyle: style, hairLength: length }
+  : { currentHairStyle: caps.hairStyles[0] ?? '', hairLength: 0 });
+
+type Look = Omit<CharacterData, 'chosenVrm'>;
+const sameColor = (a: string | undefined, b: string | undefined) => a?.toLowerCase() === b?.toLowerCase();
+const sameLook = (a: Look, b: Look) =>
+  Object.keys({ ...a.bodyMorphs, ...b.bodyMorphs }).every((key) => (a.bodyMorphs[key] ?? SLIDER_BASE) === (b.bodyMorphs[key] ?? SLIDER_BASE))
+  && COLOR_CHANNELS.every((channel) => sameColor(a[`${channel}Color`], b[`${channel}Color`]))
+  && a.currentHairStyle === b.currentHairStyle && a.hairLength === b.hairLength
+  && Object.keys({ ...a.extraColors, ...b.extraColors }).every((key) => sameColor(a.extraColors?.[key], b.extraColors?.[key]));
 
 /**
  * @param includeAnimateToggle - whether the controls render the "Animate Avatar" checkbox (the enter-world
  *   flow shows it; a preview that's just testing morphs may not want it). Defaults to true.
  * @param lock - the checked traits whose pins hold sliders and colors. Absent in the Model Library, which locks nothing.
+ * @param initial - the look the controls start from. A color counts as changed exactly when it holds one.
  */
-export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLock): VrmCustomization {
+export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLock, initial?: Omit<CharacterData, 'chosenVrm'>): VrmCustomization {
   const [caps, setCaps] = useState<VRMCapabilities | null>(null);
   const vrmViewerRef = useRef<VRMViewerHandle>(null);
 
   // Chosen morph influences keyed by morph name; one slider is derived per morph the loaded model exposes.
-  const [bodyMorphs, setBodyMorphs] = useState<Record<string, number>>({});
-  const [hairColor, setHairColor] = useState<string>(DEFAULT_COLORS.hair);
-  const [eyeColor, setEyeColor] = useState<string>(DEFAULT_COLORS.eye);
-  const [skinColor, setSkinColor] = useState<string>(DEFAULT_COLORS.skin);
-  const [currentHairStyle, setCurrentHairStyle] = useState('');
-  const [hairLength, setHairLength] = useState(0);
+  const [bodyMorphs, setBodyMorphs] = useState<Record<string, number>>(() => ({ ...initial?.bodyMorphs }));
+  const [hairColor, setHairColor] = useState<string>(initial?.hairColor ?? DEFAULT_COLORS.hair);
+  const [eyeColor, setEyeColor] = useState<string>(initial?.eyeColor ?? DEFAULT_COLORS.eye);
+  const [skinColor, setSkinColor] = useState<string>(initial?.skinColor ?? DEFAULT_COLORS.skin);
+  const [currentHairStyle, setCurrentHairStyle] = useState(initial?.currentHairStyle ?? '');
+  const [hairLength, setHairLength] = useState(initial?.hairLength ?? 0);
   // Colors are applied only after the player actually changes them — keeps unedited (and custom) models pristine.
-  const [colorTouched, setColorTouched] = useState({ hair: false, eye: false, skin: false });
+  const [colorTouched, setColorTouched] = useState(() => ({
+    hair: initial?.hairColor !== undefined, eye: initial?.eyeColor !== undefined, skin: initial?.skinColor !== undefined,
+  }));
+  // The seeded colors the first model load must not replace; later loads (an Avatar switch) seed as usual.
+  const keepSeeded = useRef(initial ? { ...colorTouched } : null);
   const [extraSel, setExtraSel] = useState('');
-  const [extraColors, setExtraColors] = useState<Record<string, string>>({});
-  const [extraPicker, setExtraPicker] = useState<Record<string, string>>({});
+  const [extraColors, setExtraColors] = useState<Record<string, string>>(() => ({ ...initial?.extraColors }));
+  const [extraPicker, setExtraPicker] = useState<Record<string, string>>(() => ({ ...initial?.extraColors }));
   // Each material's own color, read when it was first selected.
   const [extraBase, setExtraBase] = useState<Record<string, string>>({});
   const [animate, setAnimate] = useState(true);
@@ -168,19 +188,31 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
   // Seed the color pickers from the model's actual colors once it loads, so edits start from its real look.
   useEffect(() => {
     if (!caps?.colors) return;
-    if (caps.colors.hair) setHairColor(caps.colors.hair);
-    if (caps.colors.skin) setSkinColor(caps.colors.skin);
-    if (caps.colors.eye) setEyeColor(caps.colors.eye);
+    const keep = keepSeeded.current;
+    keepSeeded.current = null;
+    if (caps.colors.hair && !keep?.hair) setHairColor(caps.colors.hair);
+    if (caps.colors.skin && !keep?.skin) setSkinColor(caps.colors.skin);
+    if (caps.colors.eye && !keep?.eye) setEyeColor(caps.colors.eye);
   }, [caps]);
 
   // Pick a valid hairstyle when the model loads or changes; avoids a bald avatar after a model swap.
   useEffect(() => {
     if (!caps) return;
     if (!caps.hairStyles.includes(currentHairStyle)) {
-      setCurrentHairStyle(caps.hairStyles[0] ?? '');
-      setHairLength(0);
+      const fit = fitHair(caps, currentHairStyle, 0);
+      setCurrentHairStyle(fit.currentHairStyle);
+      setHairLength(fit.hairLength);
     }
   }, [caps, currentHairStyle]);
+
+  // The starting look as the first model load settles it, which "changed" compares against.
+  const [firstCaps, setFirstCaps] = useState<VRMCapabilities | null>(null);
+  useEffect(() => {
+    if (caps && !firstCaps) setFirstCaps(caps);
+  }, [caps, firstCaps]);
+  const startLook = useMemo(() => initial && firstCaps
+    ? { ...initial, ...fitHair(firstCaps, initial.currentHairStyle, initial.hairLength) }
+    : initial, [initial, firstCaps]);
 
   const setBodyMorph = (morph: string, value: number) =>
     setBodyMorphs((prev) => ({ ...prev, [morph]: value }));
@@ -386,5 +418,5 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
     </>
   );
 
-  return { setCaps, vrmViewerRef, viewerProps, controls, characterData };
+  return { setCaps, vrmViewerRef, viewerProps, controls, characterData, changed: !!startLook && !sameLook(characterData, startLook) };
 }

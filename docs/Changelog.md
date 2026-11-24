@@ -60,6 +60,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Traits and image Visibility rules can now require the opening a game started from.** Pick Opening under Add Requirement, then check the openings that count. It holds all game, and players don't see it in requirement lines.
   - **Script entries now tell you what they are.** Every entity, location, item, stat, trait and other entry in a script reads a read-only `category`, such as "entity" or "itemInstance".
   - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
+  - **Edit your Avatar's look during play from the pencil on your Avatar.** Change sliders, colors and hair, or switch Avatars when the world allows it. The new look stays after a rollback or a regenerate.
 - **⚙️ Backend**
   - **Character Mentions:**
     - **The Mention Reading now records how each quote speaker was found.** Each quote keeps its rule, rule mention and first-person spans, with a reading version.

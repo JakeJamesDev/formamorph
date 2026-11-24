@@ -39,9 +39,26 @@ Your choices are kept in the game and its saves.
 
 - The choices apply to the Avatar of the entity you play. Other entities keep their own look.
 - The Avatar in your library does not change.
-- **Quick Start** skips this step and uses the Avatar as it is.
+- **Quick Start** skips this step and uses the Avatar as it is. You can change it later in the game.
 
 See [Avatar Customization](#avatar-customization).
+
+## How to Edit Your Avatar During a Game
+<!-- keywords: change look mid game, restyle, edit pencil, recolor during play, switch avatar in game, change hair later, after quick start -->
+<!-- route: avatarEdit -->
+
+1. In the game, find your Avatar in the entity view.
+2. Select the **Edit Avatar** pencil in its lower-right corner. **Avatar Customization** opens over the game, with your current look. On mobile, it fills the screen.
+3. Change the controls. If your persona uses **User's Default**, you can also pick another Avatar in **Player Avatar**.
+4. Select **Save**. Your Avatar changes at once.
+
+**Cancel** closes without changes. If you changed something, it asks first.
+
+- 🖊️ The pencil shows only on your own Avatar, and only on the latest page.
+- 🔒 It is hidden when the author picked your Avatar and the model has no sliders or colors.
+- 📊 The preview shows your look without stats. Your stats apply again after **Save**.
+- ⏪ Your new look stays when you roll back or regenerate a turn. Earlier pages show the look you had then.
+- 🧝 Active traits lock the controls they set, as at the start of the game.
 
 ## How to Set Your Default Avatar
 <!-- keywords: favorite avatar, preferred model, which avatar do i wear, default badge, clear default, bundled avatar, users default -->
