@@ -23,6 +23,7 @@ The **Requires** field becomes sentences in every host at once (Q1): traits, ima
 - Verb: a flip token. One click flips Not (Q6).
 - Target: a list token with targets of the same kind, plus an **Open** button for the target (Q8, Q17). A swap keeps the owner when the new target allows it, else clears it.
 - A broken part is a red token with a warning icon and a tooltip that gives the reason (Q14).
+- A Condition that reads global scope has no subject: `[Paladin] [is] active` (Q25). The builder from ticket 01 returns that clause. Such a row has no owner token, so ask the spec session how the author gives it an owner before the first edit.
 
 **Other kinds, for now.** Stat, item, time, weather, Opening and World Option Conditions render the builder's clause as one token whose popover holds today's controls. Tickets 03 and 04 replace that.
 

@@ -55,6 +55,10 @@ Every place that reads a rule as text uses the same wording: the editor, the pla
 | Q22 | A row wraps at "and". A Condition that does not fit moves to the next line whole, and the "and" stays on the line above. |
 | Q23 | "or" sits on its own line, muted, at the row's text size. |
 | Q24 | A persona Condition reads "The player is Albus" / "is not". (Replaces "plays as", 2026-11-24.) |
+| Q25 | A Condition with no owner that reads the world's own traits or stats (global scope) has no subject in the editor: "Paladin is active", "A trait in Combat is active", "Gold is at least 5". An item Condition there reads the persona and keeps "The player owns Lantern". The player's lock line keeps Q18 for traits and groups ("you have Paladin"); a world stat has no subject in both views. |
+| Q26 | An empty set reads as a prompt in its broken token: "It is [pick a time]", "The weather is [pick the weather]", "The opening is [pick an opening]". |
+| Q27 | A stat's value is one token, "50%". Its popover holds the number and the Raw / % switch. |
+| Q28 | The builder always writes the full subject. No "its" or "their" for a repeated subject. |
 
 ### Grammar (Q20)
 
@@ -76,6 +80,7 @@ Brackets mark tokens.
 
 - **Item verb (Q21):** owns, doesn't own, has equipped, doesn't have equipped. "Has equipped" is offered only for an item that fits a slot.
 - **Subject:** a named owner reads by name, the persona reads "the player", and no owner follows Q11.
+- **Global scope (Q25):** `[Paladin] [is] active` / `is not`; `[A trait in] [Combat] is active` / `No trait in`; `[Gold] [is] [at least] [5]`. This applies when a Condition with no owner reads global scope: on a world host, and on an entity host whose target is global and not held by the entity.
 - **Capitals:** the first word of a sentence takes a capital. A subject later in the sentence does not.
 
 ## User Stories
@@ -193,10 +198,6 @@ A good test here reads what the author or player reads and checks what an edit w
 **Open points from the prototype.** These are not ruled. The build should raise each one with the spec session.
 
 - **Density.** Almost every word is underlined. A row with three or more Conditions looks busy. A lighter underline, or underline on hover for some token types, are candidates.
-- **Empty set wording.** An empty time Condition reads "It is pick a time". It needs real copy.
-- **Stat value and unit.** The prototype shows one token ("50%") with the number and the Raw / % switch in one popover. The Q20 table first listed two tokens. One token read better.
-- **Repeated possessive.** "This entity's Health … this entity's Mana" is long. "Its" after the first use is a candidate.
-- **World traits.** The glossary says a Condition with no owner on a world trait reads the Persona. That row should say "The player", not "This entity". The prototype does not check which name each host passes.
 - **Popover in a popover.** The image rule editor already sits in a popover. Token popovers inside it need the modal popover setting, or wheel scroll stops.
 
 ## Prototype

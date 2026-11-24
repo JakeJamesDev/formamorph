@@ -26,7 +26,7 @@ Stat and World Option Conditions get their own tokens in the Requires field, in 
 
 Use the token types and the Condition box from ticket 02. The comparison token is shared by stats and number Options, and this ticket owns it.
 
-One open point from the spec's Further Notes belongs here; send it to the spec session before the first edit: the stat value and its unit as one token ("50%"), as the prototype shows, or two.
+The stat value and its unit are one token, "50%" (Q27). A stat Condition that reads global scope has no owner token and no possessive: `[Gold] [is] [at least] [5]` (Q25).
 
 ## Acceptance criteria
 
