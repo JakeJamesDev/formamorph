@@ -3,7 +3,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { playedVrmPick, playVrmContext } from '@/lib/vrmResolver';
-import type { AvatarLock } from '@/lib/customizationLock';
+import { traitNameOf, type AvatarLock } from '@/lib/customizationLock';
 import type { VRMCapabilities } from '@/views/VRMViewer';
 import type { BodyTraitOn, VrmPick } from '@/types';
 
@@ -34,11 +34,8 @@ export function useAvatarEditTarget(): AvatarEditTarget {
   const lookTraits = playerLookStats.traits ?? NO_LOOK_TRAITS;
   const lock = useMemo<AvatarLock>(() => ({
     traits: lookTraits,
-    nameOf: ({ ownerId, traitId }: BodyTraitOn) => {
-      const owned = ownerId === null ? [...globalTraits, ...traits]
-        : [persona?.entity, ...entities, ...allEntities].find((e) => e?.id === ownerId)?.traits ?? [];
-      return owned.find((t) => t.id === traitId)?.name ?? traitId;
-    },
+    nameOf: (holder: BodyTraitOn) => traitNameOf(holder, [...globalTraits, ...traits],
+      (ownerId) => [persona?.entity, ...entities, ...allEntities].find((e) => e?.id === ownerId)?.traits),
   }), [lookTraits, globalTraits, traits, persona, entities, allEntities]);
   return { vrm, locked: vrm.kind !== 'default', lock };
 }

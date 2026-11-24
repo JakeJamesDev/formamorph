@@ -16,12 +16,14 @@ import type { Entity } from '@/types';
  * An entity's Avatar in play. The played side wears the save's customization, with the player's active stats on
  * top. Any other entity shows its file as authored, with its own stats on top.
  */
-export function EntityAvatar({ entity, source, played, resolving }: {
+export function EntityAvatar({ entity, source, played, resolving, devRouteHost }: {
   entity: Pick<Entity, 'id' | 'stats' | 'statGroups'>;
   source: VrmSource;
   played: boolean;
   /** The library list is still loading, so a library source may not be final yet. */
   resolving: boolean;
+  /** Dev only: this instance opens the editor on the `avatarEdit` dev route, so one editor opens, not one per view. */
+  devRouteHost?: boolean;
 }) {
   const { viewCharacterData, playerLookStats, isViewingPast } = useGameplay();
   const ownLook = useEntityLookStats(played ? undefined : entity);
@@ -52,7 +54,7 @@ export function EntityAvatar({ entity, source, played, resolving }: {
   const [editing, setEditing] = useState(false);
   const canEdit = played && !isViewingPast && !!url && (!editTarget.locked || controlsFor === url);
   const devRoute = useDevRoute();
-  const devEdit = import.meta.env.DEV && played && devRoute?.modal === 'avatarEdit';
+  const devEdit = import.meta.env.DEV && played && devRouteHost && devRoute?.modal === 'avatarEdit';
   useEffect(() => {
     if (devEdit) setEditing(true);
   }, [devEdit]);

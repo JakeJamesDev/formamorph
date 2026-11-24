@@ -28,6 +28,8 @@ The played Avatar shows a pencil button in its bottom-right corner during play. 
 - **Q12 Locked in play.** The world locks the played Avatar by the same rule as at entry: the played side's pick, with `chosenVrm` left out, is not User's Default. A legacy `chosenVrm` also counts as locked.
 - **Q13 Trait lock in play.** The lock comes from the live active global traits (checked minus disabled) and the played entity's owned traits. These are the traits play already applies to the played Avatar, in play's switch-on order, so the editor's held values match the in-game Avatar.
 - **Q14 Something to change.** The loaded model reports at least one of these: a body or head morph, hair length, more than one hairstyle, a hair, eye or skin color, or an extra material. Only colors the model reports count, not the fallback rows.
+- **Q15 Save with no changes.** Save stays disabled until something changes, following the design system's Save rule.
+- **Q16 Colors after a switch.** A color the save stored stays marked as changed after a switch, as at entry. Save then stores the new model's own color.
 
 ## User Stories
 

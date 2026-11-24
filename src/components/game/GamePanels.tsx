@@ -322,6 +322,7 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
               source={entityViewAvatar}
               played={!entityViewEntity || entityViewEntity.id === avatars.playedId}
               resolving={avatars.resolving}
+              devRouteHost
             />
           )}
           preference={entityViewPreference.preference}

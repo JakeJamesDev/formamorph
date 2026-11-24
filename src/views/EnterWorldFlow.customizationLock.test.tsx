@@ -95,7 +95,7 @@ describe('the Avatar step lock', () => {
 describe('Customization without a lock', () => {
   it('shows no lock note in the Model Library, which has no world', async () => {
     const Library = () => {
-      const { setCaps, controls } = useVrmCustomization(false);
+      const { setCaps, controls } = useVrmCustomization({ includeAnimateToggle: false });
       useEffect(() => { setCaps(caps); }, [setCaps]);
       return <>{controls}</>;
     };

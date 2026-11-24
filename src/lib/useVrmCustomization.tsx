@@ -154,13 +154,16 @@ const sameLook = (a: Look, b: Look) =>
   && a.currentHairStyle === b.currentHairStyle && a.hairLength === b.hairLength
   && Object.keys({ ...a.extraColors, ...b.extraColors }).every((key) => sameColor(a.extraColors?.[key], b.extraColors?.[key]));
 
-/**
- * @param includeAnimateToggle - whether the controls render the "Animate Avatar" checkbox (the enter-world
- *   flow shows it; a preview that's just testing morphs may not want it). Defaults to true.
- * @param lock - the checked traits whose pins hold sliders and colors. Absent in the Model Library, which locks nothing.
- * @param initial - the look the controls start from. A color counts as changed exactly when it holds one.
- */
-export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLock, initial?: Look): VrmCustomization {
+export interface VrmCustomizationOptions {
+  /** Whether the controls render the "Animate Avatar" checkbox. A preview that only tests morphs may leave it out. Defaults to true. */
+  includeAnimateToggle?: boolean;
+  /** The checked traits whose pins hold sliders and colors. Absent in the Model Library, which locks nothing. */
+  lock?: AvatarLock;
+  /** The look the controls start from. A color counts as changed exactly when it holds one. */
+  initial?: Look;
+}
+
+export function useVrmCustomization({ includeAnimateToggle = true, lock, initial }: VrmCustomizationOptions = {}): VrmCustomization {
   const [caps, setCaps] = useState<VRMCapabilities | null>(null);
   const vrmViewerRef = useRef<VRMViewerHandle>(null);
 

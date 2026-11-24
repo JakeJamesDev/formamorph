@@ -1,34 +1,35 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, dialogFullHeight } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useGameplay } from '@/contexts/GameplayContext';
 import type { AvatarEditTarget } from '@/lib/useAvatarEdit';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { defaultCharacterData } from '@/lib/legacyVrm';
 import { cn } from '@/lib/utils';
-import CharacterCustomization from '@/views/CharacterCustomization';
+import { AvatarCustomizerLayout, useAvatarCustomizer } from '@/views/CharacterCustomization';
 import type { CharacterData } from '@/types';
 
 /**
  * The Avatar customization screen over the game, filled with the save's look. A dialog on desktop and the full
  * screen on mobile. Save replaces the live look at once; the turn history is not touched.
  */
-export function AvatarEditDialog({ target: { vrm, lock }, open, onOpenChange }: {
+export function AvatarEditDialog({ target, open, onOpenChange }: {
   target: AvatarEditTarget;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const { characterData, setCharacterData } = useGameplay();
   const isMobile = useIsMobile();
-  const [changed, setChanged] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
   const close = () => {
     setConfirming(false);
-    setChanged(false);
+    setDirty(false);
     onOpenChange(false);
   };
-  const requestClose = () => (changed ? setConfirming(true) : close());
+  const requestClose = () => (dirty ? setConfirming(true) : close());
   const save = (data: CharacterData) => {
     setCharacterData(data);
     close();
@@ -46,10 +47,12 @@ export function AvatarEditDialog({ target: { vrm, lock }, open, onOpenChange }: 
       >
         <DialogTitle className="sr-only">Edit Avatar</DialogTitle>
         <DialogDescription className="sr-only">Change your Avatar&apos;s look</DialogDescription>
-        <CharacterCustomization
-          vrm={vrm}
-          lock={lock}
-          edit={{ look: characterData ?? defaultCharacterData, onSave: save, onCancel: requestClose, onChangedChange: setChanged }}
+        <AvatarEditBody
+          target={target}
+          look={characterData ?? defaultCharacterData}
+          onSave={save}
+          onCancel={requestClose}
+          onDirtyChange={setDirty}
         />
       </DialogContent>
       <ConfirmDialog
@@ -63,5 +66,36 @@ export function AvatarEditDialog({ target: { vrm, lock }, open, onOpenChange }: 
         onCancel={() => setConfirming(false)}
       />
     </Dialog>
+  );
+}
+
+function AvatarEditBody({ target: { vrm, lock }, look, onSave, onCancel, onDirtyChange }: {
+  target: AvatarEditTarget;
+  look: CharacterData;
+  onSave: (data: CharacterData) => void;
+  onCancel: () => void;
+  /** Whether the look on screen differs from `look`, reported as it flips. */
+  onDirtyChange: (dirty: boolean) => void;
+}) {
+  const customizer = useAvatarCustomizer({ vrm, lock, initial: look });
+  const { characterData, chosenVrm, switched, changed, listing } = customizer;
+  useEffect(() => { onDirtyChange(changed); }, [onDirtyChange, changed]);
+  return (
+    <AvatarCustomizerLayout
+      customizer={customizer}
+      desktopRoot="h-full min-h-0"
+      actions={(
+        <>
+          <Button onClick={onCancel} variant="outline" className="flex-1">Cancel</Button>
+          <Button
+            onClick={() => onSave({ ...characterData, chosenVrm: switched ? chosenVrm : look.chosenVrm })}
+            disabled={listing || !changed}
+            className="flex-1"
+          >
+            Save
+          </Button>
+        </>
+      )}
+    />
   );
 }

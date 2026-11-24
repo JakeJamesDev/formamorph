@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ChangeEvent } from 'react';
+import { useState, useEffect, useRef, type ChangeEvent, type ReactNode } from 'react';
 import { AvatarEmptyState } from '@/components/AvatarEmptyState';
 import { Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label"
@@ -27,48 +27,30 @@ import { toastError } from '@/lib/linkToast';
 import { SurfaceLayer } from '@/components/ui/surface';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 
-/** Edit mode: the screen starts from a stored look and reports Cancel and Save to its host. */
-export interface AvatarEdit {
-  look: CharacterData;
-  onSave: (data: CharacterData) => void;
-  onCancel: () => void;
-  /** Whether the look on screen differs from `look`, reported as it flips. */
-  onChangedChange: (changed: boolean) => void;
-}
-
-interface EntryProps {
-  edit?: undefined;
-  onCharacterCustomized: (data: CharacterData) => void;
-  /** Step back in the enter-world flow. Undefined on the flow's first step, where the button becomes Abort. */
-  onBack?: () => void;
-  /** Cancel the whole enter-world flow (shown as Abort when there's no previous step to go back to). */
-  onAbort?: () => void;
-}
-
-const CharacterCustomization = (props: {
+export interface AvatarCustomizerInput {
   /** The played entity's Avatar. User's Default offers the library picker; any other pick shows as set. */
   vrm?: VrmPick;
   /** The checked traits that hold sliders and colors. Absent when the screen has no world. */
   lock?: AvatarLock;
-} & (EntryProps | { edit: AvatarEdit })) => {
-  const { vrm, lock, edit } = props;
-  const entry = props.edit ? undefined : props;
-  // This screen replaces the menu rather than layering over it, so the Android back button cannot see it
-  // and would offer to close the app instead. Whichever way out the flow gave us is the back step.
-  // In edit mode the host's dialog owns it.
-  useBackStop(entry && (entry.onBack ?? entry.onAbort));
-  // The sliders and color pickers (and the state that drives the preview) live in the shared hook, so the
-  // model-library details modal can offer the same controls to test an exported model.
-  const { setCaps, vrmViewerRef, viewerProps, controls, characterData, changed: lookChanged } = useVrmCustomization(true, lock, edit?.look);
+  /** The stored look the controls and picker start from. Absent at entry. */
+  initial?: CharacterData;
+}
+
+/**
+ * The Avatar picker, preview and controls both hosts share: the enter-world step and the in-game editor.
+ * The host adds its own buttons and decides what Finalize or Save writes.
+ */
+export function useAvatarCustomizer({ vrm, lock, initial }: AvatarCustomizerInput) {
+  const { setCaps, vrmViewerRef, viewerProps, controls, characterData, changed: lookChanged } = useVrmCustomization({ lock, initial });
 
   const { worldOverview } = useGameData();
   const locked = vrm && vrm.kind !== 'default' ? vrm : undefined;
   // Player model selection + local model library (per-browser, persisted in IndexedDB).
   const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_AVATAR_ID);
-  // The pick the picker started on; Save in edit mode writes a chosen Avatar only once the player leaves it.
+  // The pick the picker started on, so a host can tell a switch from no switch.
   const [startModelId, setStartModelId] = useState<string>();
   // The stored pick the picker starts on, read once at the first library list.
-  const editChosen = useRef(edit?.look.chosenVrm?.pick).current;
+  const initialPick = useRef(initial?.chosenVrm?.pick).current;
   const [libraryModels, setLibraryModels] = useState<ModelMetadata[]>();
   const lockedSource = locked && libraryModels
     && namedVrmSource(locked, {
@@ -94,13 +76,13 @@ const CharacterCustomization = (props: {
         if (!isMountedRef.current) return;
         setLibraryModels(models);
         const ids = models.map((m) => m.id);
-        const start = editChosen?.kind === 'library' && ids.includes(editChosen.id)
-          ? editChosen.id
+        const start = initialPick?.kind === 'library' && ids.includes(initialPick.id)
+          ? initialPick.id
           : pickerStart(ids, readUserDefaultAvatar());
         setSelectedModelId(start);
         setStartModelId(start);
       });
-  }, [isMountedRef, editChosen]);
+  }, [isMountedRef, initialPick]);
   const listing = !libraryModels;
 
   const handleModelUpload = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -120,23 +102,6 @@ const CharacterCustomization = (props: {
   // With no Avatar on screen there is nothing to customize.
   const showsAvatar = !noAvatars && !(locked && !listing && !lockedSource);
   const uploadRef = useRef<HTMLInputElement>(null);
-
-  const libraryChoice: ChosenVrm = { pick: { kind: 'library', id: selectedModelId } };
-  const handleFinalize = () => {
-    entry?.onCharacterCustomized({ ...characterData, chosenVrm: locked || noAvatars ? null : libraryChoice });
-  };
-
-  const switched = !locked && !noAvatars && startModelId !== undefined && selectedModelId !== startModelId;
-  const handleSave = () => edit?.onSave({
-    ...characterData,
-    chosenVrm: switched ? libraryChoice : edit.look.chosenVrm,
-  });
-  const changed = !!edit && (switched || lookChanged);
-  const onChangedChange = edit?.onChangedChange;
-  useEffect(() => { onChangedChange?.(changed); }, [onChangedChange, changed]);
-
-  // Portrait/narrow: the controls move into a bottom drawer that hovers over the viewer, so the model gets the
-  // full width and the panel doesn't truncate. Desktop keeps the side-by-side split.
   const isMobile = useIsMobile();
 
   // Outside the panel, which the mobile drawer unmounts while closed.
@@ -148,7 +113,6 @@ const CharacterCustomization = (props: {
         <CardTitle>Avatar Preview</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col items-center justify-center h-full">
-        {/* Adjust the VRMViewer container */}
         <div className="w-full h-full flex items-center justify-center" style={{ aspectRatio: '3/4' }}>
           {resolvingModel || (locked && listing) ? (
             <Loader2 className="animate-spin" size={32} />
@@ -170,57 +134,59 @@ const CharacterCustomization = (props: {
     </Card>
   );
 
-  const panel = (
+  const body = (
     <>
-      <div className="flex gap-2 mt-4">
-            {edit ? (
-              <>
-                <Button onClick={edit.onCancel} variant="outline" className="flex-1">Cancel</Button>
-                <Button onClick={handleSave} disabled={listing || !changed} className="flex-1">Save</Button>
-              </>
-            ) : (
-              <>
-                {entry?.onBack
-                  ? <Button onClick={entry.onBack} variant="outline" className="flex-1">Back</Button>
-                  : <Button onClick={entry?.onAbort} variant="destructive" className="flex-1">Abort</Button>}
-                <Button onClick={handleFinalize} disabled={listing} className="flex-1" {...targetAttribute('avatar', 'finalize-character')}>
-                  Finalize Avatar
-                </Button>
-              </>
-            )}
+      {!locked && (
+        <div className="space-y-2">
+          <h3 className="text-title font-semibold">Player Avatar</h3>
+          <Select value={noAvatars ? '' : selectedModelId} onValueChange={setSelectedModelId} disabled={listing || noAvatars}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a Player Avatar" />
+            </SelectTrigger>
+            <SelectContent>
+              {/* No hardcoded "Default" entry: the bundled model is seeded into the library, so it lists
+                  itself below. Two entries for one file would be the same model twice. */}
+              {libraryModels?.map((m) => (
+                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-3">
+            <Label htmlFor="model-upload" className="cursor-pointer text-label text-primary underline">
+              Add .vrm
+            </Label>
           </div>
-
-          {!locked && (
-          <div className="space-y-2">
-            <h3 className="text-title font-semibold">Player Avatar</h3>
-            <Select value={noAvatars ? '' : selectedModelId} onValueChange={setSelectedModelId} disabled={listing || noAvatars}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a Player Avatar" />
-              </SelectTrigger>
-              <SelectContent>
-                {/* No hardcoded "Default" entry: the bundled model is seeded into the library, so it lists
-                    itself below. Two entries for one file would be the same model twice. */}
-                {libraryModels?.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="flex items-center gap-3">
-              <Label htmlFor="model-upload" className="cursor-pointer text-label text-primary underline">
-                Add .vrm
-              </Label>
-            </div>
-          </div>
-          )}
-
-          {showsAvatar && controls}
+        </div>
+      )}
+      {showsAvatar && controls}
     </>
   );
 
+  const libraryChoice: ChosenVrm = { pick: { kind: 'library', id: selectedModelId } };
+  const switched = !locked && !noAvatars && startModelId !== undefined && selectedModelId !== startModelId;
+  return {
+    viewer, body, uploadInput, isMobile, characterData, listing, switched,
+    /** The library pick on screen, or null when the world locks the Avatar or the library is empty. */
+    chosenVrm: locked || noAvatars ? null : libraryChoice,
+    changed: switched || lookChanged,
+  };
+}
 
-  // In edit mode the host's dialog is the surface.
-  const surface = !edit && <SurfaceLayer id="avatar" />;
-
+/** The shared screen layout: preview beside the panel on desktop, the panel in a drawer on mobile. */
+export function AvatarCustomizerLayout({ customizer: { viewer, body, uploadInput, isMobile }, actions, desktopRoot, surface }: {
+  customizer: ReturnType<typeof useAvatarCustomizer>;
+  /** The host's button row, above the picker and controls. */
+  actions: ReactNode;
+  /** The desktop root's sizing, which the host owns. */
+  desktopRoot: string;
+  surface?: ReactNode;
+}) {
+  const panel = (
+    <>
+      <div className="flex gap-2 mt-4">{actions}</div>
+      {body}
+    </>
+  );
   if (isMobile) {
     return (
       <div className="relative flex app-viewport flex-col pt-[env(safe-area-inset-top)]">
@@ -231,9 +197,6 @@ const CharacterCustomization = (props: {
       </div>
     );
   }
-
-  // In edit mode the host's dialog sets the size.
-  const desktopRoot = edit ? 'h-full min-h-0' : 'app-viewport pt-[env(safe-area-inset-top)]';
   return (
     <div className={cn('flex', desktopRoot)}>
       {surface}
@@ -249,6 +212,45 @@ const CharacterCustomization = (props: {
         </ScrollArea>
       </Card>
     </div>
+  );
+}
+
+/** The enter-world flow's Avatar step. */
+const CharacterCustomization = ({ vrm, lock, onCharacterCustomized, onBack, onAbort }: {
+  vrm?: VrmPick;
+  lock?: AvatarLock;
+  onCharacterCustomized: (data: CharacterData) => void;
+  /** Step back in the enter-world flow. Undefined on the flow's first step, where the button becomes Abort. */
+  onBack?: () => void;
+  /** Cancel the whole enter-world flow (shown as Abort when there's no previous step to go back to). */
+  onAbort?: () => void;
+}) => {
+  // This screen replaces the menu rather than layering over it, so the Android back button cannot see it
+  // and would offer to close the app instead. Whichever way out the flow gave us is the back step.
+  useBackStop(onBack ?? onAbort);
+  const customizer = useAvatarCustomizer({ vrm, lock });
+  const { characterData, chosenVrm, listing } = customizer;
+  return (
+    <AvatarCustomizerLayout
+      customizer={customizer}
+      desktopRoot="app-viewport pt-[env(safe-area-inset-top)]"
+      surface={<SurfaceLayer id="avatar" />}
+      actions={(
+        <>
+          {onBack
+            ? <Button onClick={onBack} variant="outline" className="flex-1">Back</Button>
+            : <Button onClick={onAbort} variant="destructive" className="flex-1">Abort</Button>}
+          <Button
+            onClick={() => onCharacterCustomized({ ...characterData, chosenVrm })}
+            disabled={listing}
+            className="flex-1"
+            {...targetAttribute('avatar', 'finalize-character')}
+          >
+            Finalize Avatar
+          </Button>
+        </>
+      )}
+    />
   );
 };
 

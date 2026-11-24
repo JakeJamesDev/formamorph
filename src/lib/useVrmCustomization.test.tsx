@@ -17,7 +17,7 @@ const CAPS: VRMCapabilities = {
 function setup(caps: VRMCapabilities) {
   const latest: { current: VrmCustomization | null } = { current: null };
   function Harness() {
-    const customization = useVrmCustomization(false);
+    const customization = useVrmCustomization({ includeAnimateToggle: false });
     latest.current = customization;
     return <>{customization.controls}</>;
   }

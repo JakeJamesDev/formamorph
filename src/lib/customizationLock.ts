@@ -28,11 +28,19 @@ export function checkedAvatarLock({ trees, played, globalIds, ownedIds, inOrder 
   const checked = (traits: readonly Trait[], ids: readonly string[] | undefined) => traits.filter((t) => ids?.includes(t.id));
   const owners = Object.fromEntries(trees.owners.filter((o) => played.includes(o.id)).map((o) => [o.id, checked(o.traits, ownedIds[o.id])]));
   const scope = { global: inOrder(checked(trees.global.traits, globalIds)), owners, played };
-  const nameOf = ({ ownerId, traitId }: BodyTraitOn): string => {
-    const traits = ownerId === null ? trees.global.traits : trees.owners.find((o) => o.id === ownerId)?.traits ?? [];
-    return traits.find((t) => t.id === traitId)?.name ?? traitId;
-  };
+  const nameOf = (holder: BodyTraitOn) =>
+    traitNameOf(holder, trees.global.traits, (ownerId) => trees.owners.find((o) => o.id === ownerId)?.traits);
   return { traits: avatarLookTraits(scope, []).player, nameOf };
+}
+
+/** A holding trait's name, read from the global traits or its owner's. Falls back to the trait id. */
+export function traitNameOf(
+  { ownerId, traitId }: BodyTraitOn,
+  global: readonly Trait[],
+  ownerTraits: (ownerId: string) => readonly Trait[] | undefined,
+): string {
+  const traits = ownerId === null ? global : ownerTraits(ownerId) ?? [];
+  return traits.find((t) => t.id === traitId)?.name ?? traitId;
 }
 
 /** The pins the lock puts on one model: its slider values and colors by holder. */
