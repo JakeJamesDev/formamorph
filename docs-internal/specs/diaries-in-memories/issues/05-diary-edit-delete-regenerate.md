@@ -11,7 +11,7 @@ The player can change what a character remembers, and the AI reads the change (s
 
 - **Edit, Revert, Delete, Restore.** Each diary entry gets the controls a memory has. Changes go to the `diaries` part of the layer from ticket 01, keyed by the diary name as stored on the turn. An edited entry shows Edited and its original. A quiet entry edited into real text becomes a real entry. Script lines stay read-only; edits touch only the AI's entry.
 - **Show Hidden Entries** also shows deleted entries, dimmed, with Restore.
-- **Regenerate.** Sends the background diary pass's request for that turn and name, waits behind the Background Pass Queue as a memory regenerate does, and holds the queue while it runs. The result shows in ticket 03's preview row; Keep stores a kept rewrite. Disabled while a turn is generating; Cancel while waiting or running.
+- **Regenerate.** Sends the background diary pass's request for that turn and name, waits behind the Background Pass Queue as a memory regenerate does, and holds the queue while it runs. The result shows in ticket 03's preview row; Keep stores a kept rewrite. Enabled during a turn, waiting behind it; Cancel while waiting or running; disabled only while another regenerate or a preview is pending (spec, Regenerate).
 - **The AI reads the layer.** Every diary reader takes it: the character pass's diary, Diary Recall, the recall tool, and the description regenerate's diary tier. Edited text reaches the AI; a deleted entry never does. The Background Pass Queue doesn't refill a deleted entry.
 - **Reset All My Changes** resets the open view: memory changes on Story, that diary's changes on a diary.
 - Update the Memories help topic and the Memory wiki page.
