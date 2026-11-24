@@ -82,6 +82,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The tile strip in a World Editor image gallery now stays still as you select tiles.** The name row stays on every slot. Edit Layers and the Visibility rule are now buttons on the large image's corners, and the eye button's tooltip reads the rule.
   - **The help window no longer runs out of tokens on the built-in engine while the model thinks.** With Reasoning off, the model now answers at once. If another AI thinks too long, the error says to raise Max Output under Options in the help window's Prompts settings.
   - **On mobile, an open Sections list now scrolls when it's taller than the screen.** Before, the last sections were cut off in Settings, the World Editor and Community Creations.
+  - **The World Editor and Community Creations section rails scroll on short windows.** Every tab stays reachable, and the collapse button stays at the bottom.
 
 ---
 

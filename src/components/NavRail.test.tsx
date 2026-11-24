@@ -58,7 +58,8 @@ function Host({ initial = 'overview', storageKey = KEY, disabled, autoCollapsed,
 const rail = () => screen.getByRole('tablist', { name: 'Sections' });
 const toggle = () => screen.getByRole('button', { name: /^(Collapse|Expand)$/ });
 /** The rail's width as drawn: its column carries the inline width. */
-const width = () => rail().parentElement?.style.width;
+const column = () => rail().closest<HTMLElement>('.border-r');
+const width = () => column()?.style.width;
 /** The open flyout naming `text`, or null. The row's own label is a span; the flyout is a div. */
 const flyout = (text: string) => screen.queryByText(text, { selector: 'div' });
 /** Runs the fake clock through the shared tooltip delay, so an absent flyout is absent for good. */
@@ -78,6 +79,13 @@ describe('NavRail', () => {
     render(<Host />);
     expect(railSequence()).toEqual(['Overview', '|', 'Stats', 'Entities', 'Locations', '|', 'Dictionary', 'Placeholders']);
     expect(within(rail()).getByRole('tab', { name: 'Locations' })).toBeInTheDocument();
+  });
+
+  it('scrolls the tab list on its own and keeps the toggle outside it', () => {
+    render(<Host />);
+    const viewport = rail().closest('[data-rail-viewport]');
+    expect(viewport).toHaveClass('overscroll-contain');
+    expect(viewport).not.toContainElement(toggle());
   });
 
   it('draws no captions', () => {
@@ -256,13 +264,13 @@ describe('NavRail', () => {
 
   it('animates the width and the labels, and skips both with reduced motion', () => {
     const animated = render(<Host />);
-    expect(rail().parentElement?.style.transition).toBe('width 200ms cubic-bezier(0.2, 0, 0, 1)');
+    expect(column()?.style.transition).toBe('width 200ms cubic-bezier(0.2, 0, 0, 1)');
     expect(screen.getByText('Stats').style.transition).toBe('opacity 200ms cubic-bezier(0.2, 0, 0, 1)');
     animated.unmount();
 
     stubReducedMotion();
     render(<Host />);
-    expect(rail().parentElement?.style.transition).toBe('none');
+    expect(column()?.style.transition).toBe('none');
     expect(screen.getByText('Stats').style.transition).toBe('none');
     fireEvent.click(toggle());
     expect(width()).toBe('52px');

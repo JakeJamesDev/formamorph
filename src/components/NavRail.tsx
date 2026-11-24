@@ -1,6 +1,7 @@
 import { Fragment, useState, type CSSProperties } from 'react';
 import * as TabsPrimitive from '@radix-ui/react-tabs';
 import { PanelLeftClose, PanelLeftOpen, type LucideIcon } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import { readStorageJson, writeStorageJson } from '@/lib/keyedStorage';
 import { NAV_IDLE, NAV_TAB_STATES } from '@/lib/navSelection';
@@ -77,6 +78,11 @@ export function NavRail({
       className={cn('flex shrink-0 flex-col border-r p-1.5', className)}
       style={{ width: expanded ? EXPANDED_PX : COLLAPSED_PX, transition: transition('width') }}
     >
+      {/* -ml/pl keeps the edge bar inside the clip; pr-0 keeps collapsed rows full width. */}
+      <ScrollArea
+        className="-ml-1.5 min-h-0"
+        viewportProps={{ className: 'overscroll-contain pl-1.5 pr-0', 'data-rail-viewport': '' }}
+      >
       <TabsPrimitive.List aria-label={label} className="flex flex-col gap-0.5 pb-1.5">
         {drawn.map((group, index) => (
           <Fragment key={group.id}>
@@ -99,6 +105,7 @@ export function NavRail({
           </Fragment>
         ))}
       </TabsPrimitive.List>
+      </ScrollArea>
       {/* The tip sits on a wrapper, so the toggle still names itself while disabled. */}
       <Tip tip="Expand" side="right" labelsChild={false} disabled={expanded}>
         <span className="mt-auto flex">
