@@ -57,9 +57,13 @@ export function readEntryCount(diaries: readonly Diary[], name: string): number 
 
 /** The entries a diary view lists: what the AI reads, plus quiet and deleted ones with `showHidden`, matching
  *  `query` in the entry or its script lines. */
-export function visibleDiaryEntries(diary: Diary, { query, showHidden }: { query: string; showHidden: boolean }): DiaryEntry[] {
+export function visibleDiaryEntries(
+  diary: Diary,
+  { query, showHidden, pendingKey }: { query: string; showHidden: boolean; pendingKey?: string },
+): DiaryEntry[] {
   const q = query.trim().toLowerCase();
   return diary.entries.filter((entry) => {
+    if (entry.key === pendingKey) return true; // a pending preview never hides behind the toggle or a search
     if (!showHidden && !isReadEntry(entry)) return false;
     return !q || entry.text.toLowerCase().includes(q) || entry.scriptLines.some((line) => line.toLowerCase().includes(q));
   });

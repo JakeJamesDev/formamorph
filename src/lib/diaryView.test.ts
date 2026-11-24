@@ -137,6 +137,11 @@ describe('a diary view', () => {
     expect(turnsOf(visibleDiaryEntries(diary, { query: 'slept', showHidden: true }))).toEqual(['t4']);
   });
 
+  it('keeps the entry with a pending preview past the toggle and a search', () => {
+    const pending = diary.entries.find((e) => e.turnId === 't4')!.key;
+    expect(turnsOf(visibleDiaryEntries(diary, { query: 'DOOR', showHidden: false, pendingKey: pending }))).toEqual(['t1', 't4']);
+  });
+
   it('keeps a deleted entry with script lines among what the AI reads, for its script lines', () => {
     const scripted = turn('t1', { Bram: 'I lied.' }, { Bram: ['My oath grows heavier.'] });
     const deleted: TurnTextEdits = { t1: { diaries: { Bram: { source: 'player', deleted: true } } } };

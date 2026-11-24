@@ -330,7 +330,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
           continue;
         }
         const parsed = JSON.parse(text) as SaveRecord & { version?: string | number };
-        // migrateSave is idempotent and now also hoists the canonical history + strips snapshot copies for
+        // migrateSave is idempotent; it also hoists the canonical history + strips snapshot copies for
         // string-version saves, so run it for every envelope, not just numeric-legacy ones. The record is built
         // from its result, so the fields it drops stay dropped.
         const save = isSaveEnvelope(parsed)

@@ -168,8 +168,8 @@ export const MemoryManagerModal = ({
   );
   const counts = diary ? diaryCounts(diary) : { read: 0, hidden: 0 };
   const diaryEntries = useMemo(
-    () => (diary ? visibleDiaryEntries(diary, { query, showHidden }) : []),
-    [diary, query, showHidden],
+    () => (diary ? visibleDiaryEntries(diary, { query, showHidden, pendingKey: preview?.id }) : []),
+    [diary, query, showHidden, preview?.id],
   );
   let diaryEmptyText: ReactNode = 'No entries to show.';
   if (query.trim()) diaryEmptyText = 'No entries match that.';
