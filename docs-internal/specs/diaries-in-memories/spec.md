@@ -71,7 +71,7 @@ Q8, Q14 and Q16–Q19 were never asked; the numbers are skipped, not lost.
 23. As a player with a big cast, I want the rail and the Sections list to scroll, so that I can reach every character.
 24. As a player with Character Diaries off, I want the diaries my save already has to stay readable, so that turning the setting off hides nothing I had.
 25. As a player, I want a note in Memories when Character Diaries is off, so that I know why no new entries appear.
-26. As a player, I want editing a turn's narration to drop my edits to that turn's diary entries, so that diaries never describe prose that no longer exists.
+26. As a player, I want editing a turn's narration to drop my edits to that turn's diary entries but keep my deletes, so that diaries never describe prose that no longer exists and nothing I removed comes back.
 27. As a player, I want Regenerate disabled while a turn is being written, so that it never fights the story for the AI.
 28. As a player, I want my memory edits from older versions to still work after the update, so that nothing I fixed comes back wrong.
 29. As a player, I want a discovered character's diary listed under the name the AI uses, so that what I edit is what the AI reads.
@@ -96,7 +96,8 @@ Q8, Q14 and Q16–Q19 were never asked; the numbers are skipped, not lost.
   Nested by turn so a character name never has to be parsed out of a key. The glossary's **Override** is a Blueprints term, so this layer is not called an override in code or docs.
 - **Readers resolve the layer at read time.** The memory recap and ledger read it as they read `memoryEdits` today. Every diary reader (the per-turn diary map, the character pass's diary, Diary Recall, the recall tool, the description regenerate's diary tier) takes the layer, so edited text reaches the AI and deleted entries never do. Script diary lines are not part of the layer and always read as written.
 - **Migration.** `migrateSave` folds `memoryEdits` into `memory` and `memoryDeleted` into `memory.deleted`, idempotently, and drops the old fields. Loading runs it at the existing import boundary. **Export-shape change:** saves gain `turnTextEdits` and lose `memoryEdits` / `memoryDeleted`; a build older than this one can't read edits from a newer save.
-- **Narration edit.** Editing a turn's narration already clears its digest, its diaries and its memory edit. It now drops that turn's whole record in the layer.
+- **Narration edit.** Editing a turn's narration already clears its digest, its diaries and its memory edit. It now drops that turn's text changes in the layer, memory and diaries alike, and keeps every delete: a delete means "forget this", not a comment on the old prose. A record left empty is removed. (Ruled for ticket 01, 2026-11-24.)
+- **Delete-only changes.** A delete with no rewrite is stored as `{ source: 'player', deleted: true }` with no `text`; readers apply `source` only when `text` is present.
 - **Rollback.** The layer lives on the envelope like `memoryEdits`, so an undo leaves records for turns that are gone. They are harmless, as today.
 - **Regenerate, for memories and diaries.** It resolves to the new text instead of writing it. The window shows the preview; Keep writes a `source: 'ai'` change, Discard writes nothing. A diary regenerate sends the background diary pass's request for that turn and name, waits behind the Background Pass Queue like a memory regenerate does, and holds the queue while it runs. Disabled while a turn is generating, with Cancel while waiting or running.
 - **Delete and restore.** A diary delete sets `deleted`. The Background Pass Queue does not refill it, because the turn's AI entry still exists under the delete.
