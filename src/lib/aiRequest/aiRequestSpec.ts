@@ -248,7 +248,9 @@ function resolveReasoning(snapshot: AiSettingsSnapshot, call: CapCall, target: A
     target.reasoning, snapshot.keptReasoning,
   );
   const reasons = !reasoningRuledOut(target.reasoning);
-  const takesBudget = target.reasoning.budget === true && reasons;
+  // The bundled engine states off whatever the record says: a model ruled out by mistake still thinks unasked.
+  const engineOff = target.localEngine && effort === 'none';
+  const takesBudget = target.reasoning.budget === true && (reasons || engineOff);
   const answerCap = capFor(snapshot, call, target);
   const base = target.maxTokens;
   const floor = takesBudget ? reasoningDialectBudgetFloor(target.reasoning.dialect) : 0;

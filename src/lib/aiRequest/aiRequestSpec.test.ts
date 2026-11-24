@@ -6,7 +6,7 @@ import {
 import type { ReasoningDialect } from '@/lib/reasoningDialect';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import {
-  PROMPT_REQUEST_KINDS, reasoningCapabilityFromLevels, UNKNOWN_REASONING_CAPABILITY,
+  nonReasoningCapability, PROMPT_REQUEST_KINDS, reasoningCapabilityFromLevels, UNKNOWN_REASONING_CAPABILITY,
   type ReasoningCapability, type ReasoningEffortField,
 } from '@/lib/reasoningEffort';
 import { resolvePromptEndpoint, type ActiveEndpointState } from '@/lib/promptEndpoints';
@@ -364,6 +364,17 @@ describe('reasoning split — budget where the record says, effort everywhere el
   it('zeroes the engine budget for a Global prompt when the endpoint-wide switch is off', () => {
     const snap = snapshot(localEngine(), { reasoningEffort: 'none', promptReasoning: { narration: 'global' }, promptReasoningBudget: { narration: 40 } });
     expect(buildRequestBody(snap, call())).toMatchObject({ thinking_budget_tokens: 0 });
+  });
+
+  it('zeroes the engine budget for a switched-off prompt even where the record rules the model out', () => {
+    const ruledOut = { ...nonReasoningCapability('probe'), budget: true, dialect: 'engine' as const };
+    const help = call({ requestType: 'help', maxTokensOverride: 800 });
+    const off = snapshot(localEngine({ reasoning: ruledOut }), { promptReasoning: { help: 'none' } });
+    expect(buildRequestBody(off, help)).toMatchObject({ thinking_budget_tokens: 0, max_tokens: 800 });
+    const on = snapshot(localEngine({ reasoning: ruledOut }), { reasoningEngaged: true, promptReasoning: { help: 'low' } });
+    expect(buildRequestBody(on, help)).not.toHaveProperty('thinking_budget_tokens');
+    const elsewhere = snapshot(external({ reasoning: { ...ruledOut, dialect: 'unknown' } }), { promptReasoning: { help: 'none' } });
+    expect(buildRequestBody(elsewhere, help)).not.toHaveProperty('thinking_budget_tokens');
   });
 
   it('zeroes the engine budget for Inline narration, which writes its own <think> block', () => {
