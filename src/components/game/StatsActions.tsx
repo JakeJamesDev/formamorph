@@ -28,7 +28,7 @@ export function StatsActions({ past, busy, editing, onEditingChange, onRegenerat
           disabled={past}
           aria-label="Edit Stats"
           aria-pressed={editing}
-          className="h-8 w-8"
+          className="h-8 w-8 border-transparent"
         >
           <Pencil className="h-4 w-4" />
         </Button>
@@ -41,7 +41,7 @@ export function StatsActions({ past, busy, editing, onEditingChange, onRegenerat
             onClick={onRegenerate}
             disabled={past || busy}
             aria-label="Regenerate Stats"
-            className="h-8 w-8"
+            className="h-8 w-8 border-transparent"
           >
             <RefreshCw className="h-4 w-4" />
           </Button>

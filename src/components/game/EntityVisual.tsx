@@ -218,9 +218,9 @@ export const CornerButton = ({ label, onClick, children }: {
 }) => (
   <Tip tip={label}>
     <Button
-      variant="secondary"
+      variant="ghost"
       size="icon"
-      className="h-8 w-8 opacity-80 hover:opacity-100"
+      className="h-8 w-8 border-transparent"
       onClick={onClick}
     >
       {children}
